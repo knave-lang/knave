@@ -28,17 +28,13 @@ impl ModuleSources {
     pub const TEST: &str = "prelude/test";
     const PRELUDE_DIRECTORY: &str = "prelude/";
     const BYTE_ORDER_MARK: char = '\u{feff}';
-    const PRELUDE_FILES: [(&str, &str); 21] = [
+    const PRELUDE_FILES: [(&str, &str); 20] = [
         ("prelude", include_str!("../../prelude/prelude.rslisp")),
         (
             "prelude/macros",
             include_str!("../../prelude/macros.rslisp"),
         ),
         ("prelude/logic", include_str!("../../prelude/logic.rslisp")),
-        (
-            "prelude/bindings",
-            include_str!("../../prelude/bindings.rslisp"),
-        ),
         (
             "prelude/syntax",
             include_str!("../../prelude/syntax.rslisp"),

@@ -1,5 +1,5 @@
 (use prelude/macros defmacro whole-pairs?)
-(use prelude/bindings let)
+(use prelude/syntax let)
 
 (use code bool-not concat drop empty? fail field-keyword
           first keyword-name keyword? len list list? nth

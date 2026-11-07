@@ -1,7 +1,7 @@
 (use prelude/macros defrule-with-value document)
 (use prelude/pair pair)
 (use prelude/logic and)
-(use prelude/bindings let)
+(use prelude/syntax let)
 (use prelude/types box option result vec)
 
 (export * + - / < <= = > >= eq float hash integer neg not=

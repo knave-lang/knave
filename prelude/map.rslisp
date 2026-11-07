@@ -2,7 +2,7 @@
           prepend rest string symbol?)
 
 (use prelude/macros defmacro defrule document)
-(use prelude/bindings let)
+(use prelude/syntax let)
 (use prelude/types hash-map option slice sorted-map vec)
 (use prelude/pair pair)
 (use prelude/number eq hash ord)

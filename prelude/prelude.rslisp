@@ -4,9 +4,8 @@
                     template)
 
 (use prelude/logic and cond not or unless when)
-(use prelude/bindings let)
 
-(use prelude/syntax -> ->> comment defn let-try loop the
+(use prelude/syntax -> ->> comment defn let let-try loop the
                     try->)
 
 (use prelude/types box iterator option result sequence slice

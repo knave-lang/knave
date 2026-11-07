@@ -18,6 +18,11 @@ impl Corpus {
         }
     }
 
+    #[cfg(test)]
+    pub fn directory(&self) -> &Path {
+        &self.directory
+    }
+
     pub fn programs(&self) -> Result<Vec<PathBuf>, TaskFailure> {
         let entries = fs::read_dir(&self.directory)
             .map_err(|error| TaskFailure::unreadable(&self.directory, error))?;

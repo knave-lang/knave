@@ -74,3 +74,11 @@ error[L0336]: each name and its value go straight into the binding list of `let`
    |         ^^^^^^^^^^^ a name and its value in their own parentheses
    |
    = help: write it as `(let (label "a" count 1) ...)`
+
+error[L0336]: each name and its value go straight into the binding list of `let`, without their own parentheses
+  --> expand/let_binding_list_errors.rslisp:24:9
+   |
+24 |   (let ((done false) (found true)) done))
+   |         ^^^^^^^^^^^^ a name and its value in their own parentheses
+   |
+   = help: write it as `(let (done false found true) ...)`

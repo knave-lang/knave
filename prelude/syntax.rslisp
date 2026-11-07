@@ -115,7 +115,17 @@
 
 (def literal?
   (fn (item)
-    (if (number? item) true (string? item))))
+    (if (number? item)
+      true
+      (if (string? item) true (boolean-constant? item)))))
+
+(def boolean-constant?
+  (fn (item)
+    (if (symbol? item)
+      (if (same-binding? item (quote true))
+        true
+        (same-binding? item (quote false)))
+      false)))
 
 (def parenthesized-pairs
   (fn (form bindings)

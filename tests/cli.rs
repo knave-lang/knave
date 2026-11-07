@@ -4951,6 +4951,8 @@ fn test_lists_the_untested_names_of_a_program_with_no_tests() {
 
 const PROJECT: &str = "(project greeter)\n";
 const PROJECT_WITH_UNKNOWN_KEY: &str = "(project greeter :entyr \"src/main.rslisp\")\n";
+const PROJECT_WITH_DEPENDENCY: &str = "(project greeter (dependencies (serde \"1.0\")))\n";
+const SELF_IMPORT: &str = "(use sub/c)\n\n(defn f () 1)\n";
 const PROJECT_ENTRY: &str =
     "(use text/shout shout)\n\n(defn main ()\n  (println (shout \"hi\")))\n";
 const PROJECT_SHOUT: &str =
@@ -4962,6 +4964,13 @@ const PROJECT_TESTS: &str =
     "(use prelude/test assert deftest)\n\n(deftest adds (assert (= (+ 1 1) 2)))\n";
 
 impl Sandbox {
+    fn project_program(name: &str) -> PathBuf {
+        Path::new("target")
+            .join(Language::NAME)
+            .join(name)
+            .join(name)
+    }
+
     fn with_project(self, project: &str) -> Self {
         self.with_file(&Language::project_file_name(), project)
             .with_file("src/main.rslisp", PROJECT_ENTRY)
@@ -4987,8 +4996,46 @@ fn run_finds_the_project_from_a_subdirectory() {
 fn build_writes_a_project_under_its_root_with_the_project_name() {
     let sandbox = Sandbox::new("project_build").with_project(PROJECT);
     sandbox.compiler_in("src", &["build"]).assert_exit_code(0);
-    let greeter = sandbox.built_program("target/knave/greeter/greeter");
+    let greeter = sandbox.built_program(Sandbox::project_program("greeter"));
     assert_eq!(greeter.assert_exit_code(0).stdout(), "hi!\n");
+}
+
+#[test]
+fn building_a_file_beside_the_entry_leaves_the_project_program_alone() {
+    let sandbox = Sandbox::new("project_build_script")
+        .with_project(PROJECT)
+        .with_file("tools/script.rslisp", PROJECT_SCRIPT)
+        .with_file("tools/helper.rslisp", PROJECT_HELPER);
+    sandbox.compiler(&["build"]).assert_exit_code(0);
+    sandbox
+        .compiler(&["build", "tools/script.rslisp"])
+        .assert_exit_code(0);
+    let greeter = sandbox.built_program(Sandbox::project_program("greeter"));
+    assert_eq!(greeter.assert_exit_code(0).stdout(), "hi!\n");
+}
+
+#[test]
+fn a_project_section_with_entries_stops_the_command() {
+    let sandbox = Sandbox::new("project_unbuilt").with_project(PROJECT_WITH_DEPENDENCY);
+    let run = sandbox.compiler(&["run"]);
+    insta::assert_snapshot!(run.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn eval_names_a_module_in_a_directory_that_does_not_exist() {
+    let sandbox = Sandbox::new("project_absent_directory");
+    let eval = sandbox.compiler_reading(
+        "(defn f () 1)\n",
+        &["eval", "--stdin", "notes/draft.rslisp", "(f)"],
+    );
+    assert_eq!(eval.assert_silent_success().stdout(), "1\n");
+}
+
+#[test]
+fn eval_with_a_root_names_a_module_by_its_path_from_the_root() {
+    let sandbox = Sandbox::new("root_module_name").with_file("sub/c.rslisp", SELF_IMPORT);
+    let eval = sandbox.compiler(&["eval", "--root", ".", "sub/c.rslisp", "(f)"]);
+    insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
 }
 
 #[test]

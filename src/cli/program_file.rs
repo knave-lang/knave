@@ -70,8 +70,8 @@ impl ProgramFile {
         Self::module_name(&relative_directory.join(path.file_name()?))
     }
 
-    fn canonical(directory: &Path) -> Option<PathBuf> {
-        fs::canonicalize(Path::new(Self::CURRENT_DIRECTORY).join(directory)).ok()
+    pub fn canonical(path: &Path) -> Option<PathBuf> {
+        fs::canonicalize(Path::new(Self::CURRENT_DIRECTORY).join(path)).ok()
     }
 
     fn file_stem(path: &Path) -> String {

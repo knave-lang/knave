@@ -557,19 +557,19 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
     (proptest "1.5")))
 ```
 
-- The name follows `project` and is the only required part.
+- The name follows `project` and is the only required part. It is kebab-case: words of lowercase letters and digits, joined by single dashes.
 - `:entry` defaults to `src/main.rslisp`, `:lib` to `src/lib.rslisp`, `:version` to `"0.1.0"`, and `:edition` to the compiler's edition, 2026. An edition other than 2026 is an error.
 - A dependency is a list: the name, an optional version string, then `:key value` pairs. A feature is a string.
 - A crate dependency takes a version or a `:path`, and MAY take `:features`.
 - A library takes `:path`, or `:git` with `:rev`, and no version. `:rev` is a full 40-digit commit hash.
 - An unknown key or section is an error that suggests the closest name. A key, a section or a dependency given twice is an error.
-- The compiler reads and checks `libraries`, `dependencies` and `dev-dependencies`, and builds a program without them until the rest of RFC 0061 lands.
+- The compiler reads and checks `libraries`, `dependencies` and `dev-dependencies`. Until the rest of RFC 0061 lands, a section with entries is an error, and an empty section is allowed.
 
 **A command finds its project by walking up from its file, or from the working directory when it takes no file, to the nearest `project.rslisp`.** The project root is that file's directory. The source root is the directory of `:entry`.
 
 - In a project, `build`, `run`, `check`, `types`, `expand` and `emit` take their file as optional and default to `:entry`. Outside one, a missing file is a usage error.
 - A file inside the source root resolves `use` from the source root, and its module path is its path from there, so `src/text/pad.rslisp` is `text/pad`. A file outside the source root resolves `use` from its own directory.
-- `build` and `run` write a project's binary to `<root>/target/knave/<name>/<name>`, from any working directory.
+- `build` and `run` write the binary of `:entry` to `<root>/target/knave/<name>/<name>`, from any working directory. Any other file builds where it would outside a project.
 - An error in the project file stops the command.
 
 ## Modules

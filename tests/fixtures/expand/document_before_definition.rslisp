@@ -1,0 +1,9 @@
+(use prelude/macros document)
+
+(document (later) "Written before its definition.")
+
+(def later (fn () 1))
+
+(def page (doc-page later))
+
+(defn main () (println (later)))

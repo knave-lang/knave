@@ -1,0 +1,5 @@
+(use prelude/macros document)
+
+(document missing "A page of nothing.")
+
+(defn main () 1)

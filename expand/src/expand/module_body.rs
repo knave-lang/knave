@@ -90,6 +90,7 @@ impl Expander<'_> {
         self.lower_pending_group(module, exports, &budgets, &mut core);
         self.compile_pending_macros();
         self.record_answering_macros(module);
+        self.check_documented_terms(module);
         self.tables.order.push(module);
         self.tables.expanded.insert(module, core);
         self.current_module = outer_module;

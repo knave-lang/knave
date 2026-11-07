@@ -1,0 +1,9 @@
+(use prelude/macros document)
+
+(def greet (fn () 1))
+
+(document (greet) "Says hi.")
+
+(def page (doc-page greet))
+
+(defn main () (println (greet)))

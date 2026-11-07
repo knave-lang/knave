@@ -13,6 +13,10 @@ impl Syntax {
         Self::RESERVED.contains(&character)
     }
 
+    pub fn starts_form(character: char) -> bool {
+        [Self::OPEN, Self::QUOTE].contains(&character) || !Self::ends_atom(character)
+    }
+
     pub fn ends_atom(character: char) -> bool {
         character.is_whitespace()
             || [Self::OPEN, Self::CLOSE, Self::QUOTE, Self::COMMENT].contains(&character)

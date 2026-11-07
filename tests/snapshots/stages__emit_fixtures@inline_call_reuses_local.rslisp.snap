@@ -148,6 +148,60 @@ fn changed_in_place() -> Vec<i64> {
     readings
 }
 
+fn borrowed_into_a_container() -> usize {
+    let mut refs = Vec::new();
+    let count: i64 = 0;
+    refs.push(&count);
+    {
+        let mut count_2: i64 = count;
+        loop {
+            if count_2 < 3 {
+                count_2 += 1;
+                continue;
+            } else {
+                break count_2;
+            }
+        }
+    };
+    refs.len()
+}
+
+fn borrowed_through_a_second_binder() -> i64 {
+    let count: i64 = 0;
+    let first_ref = &count;
+    let second_ref = first_ref;
+    {
+        let mut count_2: i64 = count;
+        loop {
+            if count_2 < 3 {
+                count_2 += 1;
+                continue;
+            } else {
+                break count_2;
+            }
+        }
+    };
+    *second_ref
+}
+
+fn peek(value: &i64) -> i64 {
+    *value
+}
+
+fn borrowed_by_an_argument() -> i64 {
+    let count: i64 = 0;
+    peek(&count);
+    let mut count_2: i64 = count;
+    loop {
+        if count_2 < 3 {
+            count_2 += 1;
+            continue;
+        } else {
+            break count_2;
+        }
+    }
+}
+
 fn copied_before_the_call(limit: i64) -> i64 {
     let top: i64 = limit * 2;
     let mut step: i64 = top;
@@ -175,6 +229,9 @@ fn main() {
     println!("{}", captured_before_the_call());
     println!("{}", borrowed_argument());
     println!("{}", changed_in_place().len());
+    println!("{}", borrowed_into_a_container());
+    println!("{}", borrowed_through_a_second_binder());
+    println!("{}", borrowed_by_an_argument());
     println!("{}", copied_before_the_call(2))
 }
 

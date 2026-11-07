@@ -1,6 +1,7 @@
 (use prelude/macros defrule-with-value document)
 (use prelude/pair pair)
 (use prelude/logic and)
+(use prelude/bindings let)
 (use prelude/types box option result vec)
 
 (export * + - / < <= = > >= eq float hash integer neg not=
@@ -151,41 +152,36 @@
 (defrule-with-value < lt
   ((a b) (lt a b))
   ((a b c more ...)
-   (do
-     (local left a)
-     (local middle b)
+   (let (left a
+         middle b)
      (and (lt left middle) (< middle c more ...)))))
 
 (defrule-with-value <= le
   ((a b) (le a b))
   ((a b c more ...)
-   (do
-     (local left a)
-     (local middle b)
+   (let (left a
+         middle b)
      (and (le left middle) (<= middle c more ...)))))
 
 (defrule-with-value > gt
   ((a b) (gt a b))
   ((a b c more ...)
-   (do
-     (local left a)
-     (local middle b)
+   (let (left a
+         middle b)
      (and (gt left middle) (> middle c more ...)))))
 
 (defrule-with-value >= ge
   ((a b) (ge a b))
   ((a b c more ...)
-   (do
-     (local left a)
-     (local middle b)
+   (let (left a
+         middle b)
      (and (ge left middle) (>= middle c more ...)))))
 
 (defrule-with-value = equal
   ((a b) (equal a b))
   ((a b c more ...)
-   (do
-     (local left a)
-     (local middle b)
+   (let (left a
+         middle b)
      (and (equal left middle) (= middle c more ...)))))
 
 (defrule-with-value not= ne

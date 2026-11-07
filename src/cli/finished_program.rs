@@ -12,8 +12,6 @@ pub enum FinishedProgram {
 }
 
 impl FinishedProgram {
-    const UNREPORTABLE_CODE: u8 = 1;
-
     pub fn run(binary: &Path) -> Self {
         Self::run_with(binary, &[])
     }
@@ -49,6 +47,6 @@ impl FinishedProgram {
         status
             .code()
             .and_then(|code| u8::try_from(code).ok())
-            .unwrap_or(Self::UNREPORTABLE_CODE)
+            .unwrap_or(ProgramSignal::UNREPORTABLE_CODE)
     }
 }

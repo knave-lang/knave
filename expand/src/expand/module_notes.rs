@@ -1,10 +1,11 @@
 use crate::core::ModuleId;
 use crate::reader::Form;
 
-use super::saved_notes::{NotesKey, NotesTable, SavedNotes};
+use super::saved_notes::{NoteTables, NotesKey, NotesTable, SavedNotes};
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct ModuleNotes {
+    #[serde(skip)]
     saved: SavedNotes,
     notes: NotesTable,
     added: Vec<NotesKey>,
@@ -20,11 +21,14 @@ impl ModuleNotes {
         self.added.push(notes_key);
     }
 
-    pub fn saved(&self) -> Self {
-        Self {
-            saved: SavedNotes::encode(&self.notes),
-            ..Self::default()
-        }
+    pub fn take_saved(&mut self) -> NoteTables {
+        let tables = NoteTables::encode(&self.notes);
+        *self = Self::default();
+        tables
+    }
+
+    pub fn adopt(&mut self, saved: SavedNotes) {
+        self.saved = saved;
     }
 
     pub fn of(&self, module: ModuleId, key: &str) -> Vec<Form> {
@@ -33,6 +37,11 @@ impl ModuleNotes {
             .or_else(|| self.saved.of(module, key))
             .cloned()
             .unwrap_or_default()
+    }
+
+    #[cfg(test)]
+    pub fn holds_no_unsaved_note(&self) -> bool {
+        self.notes.is_empty() && self.added.is_empty()
     }
 
     #[cfg(test)]

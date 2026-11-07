@@ -1,9 +1,7 @@
 use std::cell::OnceCell;
-use std::fmt;
 
 use rustc_hash::FxHashMap;
-use serde::de::{self, Visitor};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::core::ModuleId;
 use crate::reader::Form;
@@ -12,12 +10,12 @@ pub type NotesKey = (ModuleId, String);
 pub type NotesTable = FxHashMap<NotesKey, Vec<Form>>;
 type ModuleTable = FxHashMap<String, Vec<Form>>;
 
-#[derive(Default, Serialize, Deserialize)]
-pub struct SavedNotes {
-    modules: FxHashMap<ModuleId, SavedModuleNotes>,
+#[derive(Default, Serialize)]
+pub struct NoteTables {
+    modules: Vec<(ModuleId, Vec<u8>)>,
 }
 
-impl SavedNotes {
+impl NoteTables {
     pub fn encode(table: &NotesTable) -> Self {
         let mut tables: FxHashMap<ModuleId, ModuleTable> = FxHashMap::default();
         for ((module, key), notes) in table {
@@ -26,14 +24,36 @@ impl SavedNotes {
                 .or_default()
                 .insert(key.clone(), notes.clone());
         }
-        Self {
-            modules: tables
-                .iter()
-                .map(|(module, table)| (*module, SavedModuleNotes::encode(table)))
-                .collect(),
-        }
+        let mut modules: Vec<(ModuleId, Vec<u8>)> = tables
+            .iter()
+            .map(|(module, table)| (*module, Self::encode_module(table)))
+            .collect();
+        modules.sort_by_key(|(module, _)| module.index());
+        Self { modules }
     }
 
+    fn encode_module(table: &ModuleTable) -> Vec<u8> {
+        bincode::serialize(table).expect("every note serializes")
+    }
+}
+
+#[derive(Default)]
+pub struct SavedNotes {
+    modules: FxHashMap<ModuleId, SavedModuleNotes>,
+}
+
+impl<'de: 'static> Deserialize<'de> for SavedNotes {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let modules: Vec<(ModuleId, &'static [u8])> = Deserialize::deserialize(deserializer)?;
+        let modules = modules
+            .into_iter()
+            .map(|(module, encoded)| (module, SavedModuleNotes::borrowing(encoded)))
+            .collect();
+        Ok(Self { modules })
+    }
+}
+
+impl SavedNotes {
     pub fn of(&self, module: ModuleId, key: &str) -> Option<&Vec<Form>> {
         self.modules.get(&module)?.decoded().get(key)
     }
@@ -44,17 +64,15 @@ impl SavedNotes {
     }
 }
 
-#[derive(Serialize, Deserialize)]
 struct SavedModuleNotes {
-    encoded: EncodedTable,
-    #[serde(skip)]
+    encoded: &'static [u8],
     decoded: OnceCell<ModuleTable>,
 }
 
 impl SavedModuleNotes {
-    fn encode(table: &ModuleTable) -> Self {
+    fn borrowing(encoded: &'static [u8]) -> Self {
         Self {
-            encoded: EncodedTable(bincode::serialize(table).expect("every note serializes")),
+            encoded,
             decoded: OnceCell::new(),
         }
     }
@@ -66,40 +84,7 @@ impl SavedModuleNotes {
 
     fn decoded(&self) -> &ModuleTable {
         self.decoded
-            .get_or_init(|| bincode::deserialize(&self.encoded.0).expect("the saved notes decode"))
-    }
-}
-
-#[derive(Default)]
-struct EncodedTable(Vec<u8>);
-
-impl Serialize for EncodedTable {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_bytes(&self.0)
-    }
-}
-
-impl<'de> Deserialize<'de> for EncodedTable {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_byte_buf(EncodedTableVisitor)
-    }
-}
-
-struct EncodedTableVisitor;
-
-impl Visitor<'_> for EncodedTableVisitor {
-    type Value = EncodedTable;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("the encoded notes table")
-    }
-
-    fn visit_bytes<E: de::Error>(self, bytes: &[u8]) -> Result<EncodedTable, E> {
-        Ok(EncodedTable(bytes.to_vec()))
-    }
-
-    fn visit_byte_buf<E: de::Error>(self, bytes: Vec<u8>) -> Result<EncodedTable, E> {
-        Ok(EncodedTable(bytes))
+            .get_or_init(|| bincode::deserialize(self.encoded).expect("the saved notes decode"))
     }
 }
 
@@ -135,8 +120,8 @@ mod tests {
                 table.insert((module, Self::KEY.to_string()), vec![Self::note()]);
             }
             let bytes =
-                bincode::serialize(&SavedNotes::encode(&table)).expect("saved notes serialize");
-            bincode::deserialize(&bytes).expect("saved notes deserialize")
+                bincode::serialize(&NoteTables::encode(&table)).expect("saved notes serialize");
+            bincode::deserialize(bytes.leak()).expect("saved notes deserialize")
         }
 
         fn note() -> Form {

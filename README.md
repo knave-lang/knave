@@ -62,6 +62,8 @@ knave fmt src/
 knave test tests/
 ```
 
+A project is a directory with a `project.rslisp` file. Inside one, `build`, `run`, `check`, `types`, `expand` and `emit` take the project's entry file when given no file.
+
 ## Develop
 
 The repository uses a [Nix](https://nixos.org/download/) flake.

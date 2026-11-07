@@ -32,6 +32,8 @@ jobs:
       cancel-in-progress: false
     env:
       COMMIT: ${{ github.event.workflow_run.head_sha }}
+    outputs:
+      tag: ${{ steps.push.outputs.pushed == 'true' && steps.tag.outputs.tag || '' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -125,3 +127,44 @@ jobs:
             sleep "$SECONDS_BETWEEN_ATTEMPTS"
           done
           exit 1
+
+  crates:
+    needs: release
+    if: needs.release.outputs.tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: crates-io
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TAG: ${{ needs.release.outputs.tag }}
+      CRATES: knave-expand knave
+      CRATES_IO_API: https://crates.io/api/v1/crates
+      CRATES_IO_USER_AGENT: knave-release (https://github.com/knave-lang/knave)
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ needs.release.outputs.tag }}
+      - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
+      - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+        with:
+          name: ${{ env.CACHIX_CACHE }}
+      - uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
+        id: auth
+      - name: Publish the crates to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          version=${TAG#v}
+          for crate in $CRATES; do
+            status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --user-agent "$CRATES_IO_USER_AGENT" "$CRATES_IO_API/$crate/$version")
+            case $status in
+              200) echo "::notice::$crate $version is already on crates.io, skipping it" ;;
+              404) nix develop .#ci -c cargo publish --locked --package "$crate" ||
+                     { echo "::error::cargo publish failed for $crate $version"; exit 1; } ;;
+              *) echo "::error::crates.io answered $status for $crate $version"; exit 1 ;;
+            esac
+          done

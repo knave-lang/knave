@@ -19,3 +19,6 @@
 
 (defn text-first ()
   (let ((label "a") (count 1)) count))
+
+(defn boolean-values ()
+  (let ((done false) (found true)) done))

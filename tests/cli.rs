@@ -1,7 +1,7 @@
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::os::unix::fs::PermissionsExt;
-use std::os::unix::process::ExitStatusExt;
+use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -400,6 +400,22 @@ impl Sandbox {
         let mut command = self.command(Path::new(Self::COMPILER), arguments);
         command.stdout(standard_output);
         Outcome::of(&mut command)
+    }
+
+    fn compiler_blocking_sigabrt(&self, arguments: &[&str]) -> Outcome {
+        let mut command = self.command(Path::new(Self::COMPILER), arguments);
+        unsafe { command.pre_exec(Self::block_sigabrt) };
+        Outcome::of(&mut command)
+    }
+
+    fn block_sigabrt() -> std::io::Result<()> {
+        unsafe {
+            let mut only_sigabrt: libc::sigset_t = std::mem::zeroed();
+            libc::sigemptyset(&mut only_sigabrt);
+            libc::sigaddset(&mut only_sigabrt, libc::SIGABRT);
+            libc::pthread_sigmask(libc::SIG_BLOCK, &only_sigabrt, std::ptr::null_mut());
+        }
+        Ok(())
     }
 
     fn compiler_reporting_to(&self, standard_error: Stdio, arguments: &[&str]) -> Outcome {
@@ -2156,6 +2172,14 @@ fn run_dies_by_the_signal_that_kills_the_program() {
     let sandbox = Sandbox::new("run_abort").with_file("abort.rslisp", ABORT);
     let run = sandbox.compiler(&["run", "abort.rslisp"]);
     assert_eq!(run.assert_killed_by(Outcome::SIGABRT).stderr(), "");
+}
+
+#[test]
+fn run_dies_by_the_program_signal_that_it_inherits_blocked() {
+    let sandbox = Sandbox::new("run_abort_blocked").with_file("abort.rslisp", ABORT);
+    sandbox
+        .compiler_blocking_sigabrt(&["run", "abort.rslisp"])
+        .assert_killed_by(Outcome::SIGABRT);
 }
 
 #[test]

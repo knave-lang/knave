@@ -34,6 +34,8 @@ jobs:
       shards: ${{ steps.plan.outputs.shards }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        continue-on-error: true
+        timeout-minutes: 5
         with:
           persist-credentials: false
           fetch-depth: 0
@@ -62,11 +64,14 @@ jobs:
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        continue-on-error: true
+        timeout-minutes: 5
         with:
           persist-credentials: false
           ref: ${{ needs.plan.outputs.head }}
       - uses: ./.github/actions/dev-shell
         continue-on-error: true
+        timeout-minutes: 10
         with:
           build-cache: mutation
           save-build-cache: ${{ matrix.shard == 0 }}
@@ -76,7 +81,7 @@ jobs:
           name: mutation-diff
       - name: Test the mutants
         continue-on-error: true
-        timeout-minutes: 225
+        timeout-minutes: 215
         env:
           SHARD: ${{ matrix.shard }}/${{ env.SHARDS }}
           CARGO_INCREMENTAL: "1"
@@ -99,6 +104,8 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        continue-on-error: true
+        timeout-minutes: 5
         with:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4

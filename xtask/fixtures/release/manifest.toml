@@ -13,5 +13,10 @@ version = "0.1.0"
 path = "helper"
 version = "=0.1.0"
 
+[workspace.dependencies.serde]
+version = "1.0.0"
+features = ["derive"]
+
 [dependencies]
 helper = { workspace = true }
+serde = { workspace = true }

@@ -125,6 +125,13 @@ impl Expander<'_> {
         unbound.with_note(ExpandProblems::type_in_value_note(symbol.name()))
     }
 
+    fn without_type_note<T>(&mut self, lower: impl FnOnce(&mut Self) -> T) -> T {
+        let outer = std::mem::replace(&mut self.type_note_shown, true);
+        let lowered = lower(self);
+        self.type_note_shown = outer;
+        lowered
+    }
+
     pub(super) fn with_fresh_type_note<T>(&mut self, lower: impl FnOnce(&mut Self) -> T) -> T {
         let outer = std::mem::take(&mut self.type_note_shown);
         let lowered = lower(self);
@@ -206,12 +213,25 @@ impl Expander<'_> {
         if let Some(failed) = self.failed_macro_use(form) {
             return Ok(failed);
         }
-        let callee = self.lower_recovered(&items[0])?;
+        let callee = self.lower_callee(&items[0])?;
         let arguments = self.lower_arguments(&items[1..])?;
         Ok(Expr::new(
             ExprKind::Call(Box::new(callee), arguments),
             form.span(),
         ))
+    }
+
+    fn lower_callee(&mut self, head: &Form) -> Result<Expr, Diagnostic> {
+        if self.names_struct(head) {
+            return self.without_type_note(|expander| expander.lower_recovered(head));
+        }
+        self.lower_recovered(head)
+    }
+
+    fn names_struct(&self, head: &Form) -> bool {
+        head.as_symbol()
+            .and_then(|symbol| self.try_resolve(symbol, Namespace::Type))
+            .is_some_and(|binding| matches!(self.kind(binding), BindingKind::Struct(_)))
     }
 
     fn lower_variant_call(

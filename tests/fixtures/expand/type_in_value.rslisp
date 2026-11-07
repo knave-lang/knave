@@ -23,3 +23,9 @@
 (def first-module-value i64)
 
 (def second-module-value string)
+
+(defstruct point
+  :x i64
+  :y i64)
+
+(defn struct-as-callee () (point 0 i64))

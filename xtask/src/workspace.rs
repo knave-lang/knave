@@ -204,7 +204,7 @@ impl WorkspaceFixture {
         serde_json::from_str(Self::METADATA).expect("the fixture metadata is JSON")
     }
 
-    fn repository_root() -> &'static Path {
+    pub fn repository_root() -> &'static Path {
         let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
         manifest.parent().unwrap_or(manifest)
     }

@@ -17,6 +17,7 @@ env:
   DIFF: git.diff
   ISSUE_TITLE: Nightly mutants
   INSTA_UPDATE: "no"
+  SHARDS: 16
 
 jobs:
   plan:
@@ -51,9 +52,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 240
     continue-on-error: true
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -69,7 +70,8 @@ jobs:
           name: mutation-diff
       - name: Test the mutants
         env:
-          SHARD: ${{ matrix.shard }}/4
+          SHARD: ${{ matrix.shard }}/${{ env.SHARDS }}
+          CARGO_INCREMENTAL: "1"
           RESULTS: ${{ github.workspace }}/results
         run: nix develop .#mutation -c bash .github/mutation/run.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -101,6 +103,5 @@ jobs:
           BASE: ${{ needs.plan.outputs.base }}
           HEAD_COMMIT: ${{ needs.plan.outputs.head }}
           CHANGED_SOURCES: ${{ needs.plan.outputs.changed-sources }}
-          SHARDS: 4
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: bash .github/mutation/report.sh

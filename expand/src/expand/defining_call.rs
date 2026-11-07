@@ -16,31 +16,7 @@ impl Expander<'_> {
     }
 
     fn written_form(&self, span: Span) -> Option<Form> {
-        let forms = Reader::new(self.sources.file(span.source())).read().ok()?;
-        SpanSearch::new(span).find(&forms)
-    }
-}
-
-struct SpanSearch {
-    target: Span,
-}
-
-impl SpanSearch {
-    fn new(target: Span) -> Self {
-        Self { target }
-    }
-
-    fn find(&self, forms: &[Form]) -> Option<Form> {
-        forms.iter().find_map(|form| self.search(form))
-    }
-
-    fn search(&self, form: &Form) -> Option<Form> {
-        if form.span() == self.target {
-            Some(form.clone())
-        } else if form.span().contains(self.target) {
-            self.find(form.as_list()?)
-        } else {
-            None
-        }
+        let source = self.sources.file(span.source());
+        Reader::read_form_at(source, span.range().start)
     }
 }

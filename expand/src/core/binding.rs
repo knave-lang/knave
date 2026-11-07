@@ -111,6 +111,12 @@ impl BindingArena {
         id
     }
 
+    #[cfg(test)]
+    pub fn ids(&self) -> impl Iterator<Item = BindingId> {
+        (0..self.infos.len())
+            .map(|index| BindingId(u32::try_from(index).expect("fewer than 2^32 bindings")))
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &BindingInfo> {
         self.infos.iter()
     }

@@ -48,7 +48,9 @@ use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::core::{BindingArena, BindingId, CoreModule, ModuleId, ModulePath, References};
+use crate::core::{
+    BindingArena, BindingId, BindingKind, CoreModule, ModuleId, ModulePath, References,
+};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::modules::{ModuleRegistry, ModuleSources};
 use crate::reader::Form;
@@ -185,6 +187,12 @@ struct ExpansionTables {
 }
 
 impl ExpansionTables {
+    fn forget_locals(&mut self) {
+        let bindings = &self.bindings;
+        self.table
+            .forget(|binding| matches!(bindings.get(binding).kind(), BindingKind::Local));
+    }
+
     fn find_string_view(&self) -> Option<BindingId> {
         let modules = self
             .order

@@ -119,6 +119,7 @@ impl Expander<'_> {
             .expect("the prelude loads");
         self.assert_no_problems();
         self.tables.string_view = self.tables.find_string_view();
+        self.tables.forget_locals();
         let lowered_globals = self.tables.take_lowered_globals();
         let saved_tables = self.tables.save_definitions();
         let macro_tables = MacroTables::of(self.tables.macros.take_ready());
@@ -172,8 +173,8 @@ mod tests {
 
     use super::*;
     use crate::core::{
-        BindingArena, ExprKind, Item, ItemKind, KernelConstants, KernelForm, KernelType, Leaf,
-        Literal, Namespace,
+        BindingArena, BindingKind, ExprKind, Item, ItemKind, KernelConstants, KernelForm,
+        KernelType, Leaf, Literal, Namespace,
     };
 
     struct UserProgram {
@@ -479,6 +480,18 @@ mod tests {
     #[should_panic(expected = "only a built prelude state saves")]
     fn a_loaded_state_does_not_save() {
         UserProgram::loaded_state().save();
+    }
+
+    #[test]
+    fn a_saved_state_resolves_no_prelude_local() {
+        let state = PreludeState::build();
+        let tables = state.tables();
+        let mut locals = tables
+            .bindings
+            .ids()
+            .filter(|binding| matches!(tables.bindings.get(*binding).kind(), BindingKind::Local));
+        let local = locals.next().expect("the prelude binds locals");
+        assert!(!tables.table.holds(local));
     }
 
     #[test]

@@ -190,6 +190,16 @@ impl NameEntries {
         self.sharing.retain(|entry| entry.binding != binding);
     }
 
+    fn forget(&mut self, forgotten: &impl Fn(BindingId) -> bool) {
+        self.plain_sorted_by_anchor
+            .retain(|entry| !forgotten(entry.binding));
+        self.sharing.retain(|entry| !forgotten(entry.binding));
+    }
+
+    fn is_empty(&self) -> bool {
+        self.plain_sorted_by_anchor.is_empty() && self.sharing.is_empty()
+    }
+
     fn all(&self) -> impl Iterator<Item = &Entry> {
         self.plain_sorted_by_anchor.iter().chain(&self.sharing)
     }
@@ -240,6 +250,19 @@ impl BindingTable {
         if let Some(entries) = self.entries.get_mut(&(symbol.shared_name(), namespace)) {
             entries.unbind(binding);
         }
+    }
+
+    pub fn forget(&mut self, forgotten: impl Fn(BindingId) -> bool) {
+        for entries in self.entries.values_mut() {
+            entries.forget(&forgotten);
+        }
+        self.entries.retain(|_, entries| !entries.is_empty());
+    }
+
+    #[cfg(test)]
+    pub fn holds(&self, binding: BindingId) -> bool {
+        let mut all = self.entries.values().flat_map(NameEntries::all);
+        all.any(|entry| entry.binding == binding)
     }
 
     pub fn resolve(&self, symbol: &Symbol, namespace: Namespace, phase: Phase) -> Resolution {
@@ -524,6 +547,62 @@ mod tests {
             self.table
                 .resolve(&Self::symbol(name, scopes), Namespace::Value, phase)
         }
+    }
+
+    #[test]
+    fn a_forgotten_binding_resolves_no_more() {
+        let mut world = World::new();
+        let scope = world.scope();
+        let kept = world.define("kept", &[scope], Phase::Runtime);
+        let forgotten = world.define("forgotten", &[scope], Phase::Runtime);
+        world.table.forget(|binding| binding == forgotten);
+        let resolve = |name| {
+            world.table.resolve(
+                &World::symbol(name, &[scope]),
+                Namespace::Value,
+                Phase::Runtime,
+            )
+        };
+        assert_eq!(resolve("forgotten"), Resolution::Unbound);
+        assert_eq!(resolve("kept"), Resolution::Bound(kept));
+        assert!(!world.table.holds(forgotten));
+        assert!(world.table.holds(kept));
+    }
+
+    #[test]
+    fn a_forgotten_sharing_binding_resolves_no_more() {
+        let mut world = World::new();
+        let chain = world.chain(ScopeSet::SHORTEST_SHARED_PREFIX);
+        let prefix = World::prefix(&chain);
+        let forgotten = world.define_sharing("shared", &prefix);
+        world.table.forget(|binding| binding == forgotten);
+        assert_eq!(
+            world.resolve_sharing("shared", &prefix),
+            Resolution::Unbound
+        );
+    }
+
+    #[test]
+    fn forgetting_every_binding_of_a_name_drops_the_name() {
+        let mut world = World::new();
+        let scope = world.scope();
+        let forgotten = world.define("gone", &[scope], Phase::Runtime);
+        world.table.forget(|binding| binding == forgotten);
+        assert!(world.table.entries.is_empty());
+    }
+
+    #[test]
+    fn forgetting_one_of_two_bindings_of_a_name_keeps_the_other() {
+        let mut world = World::new();
+        let (outer, inner) = (world.scope(), world.scope());
+        let wide = world.define("x", &[outer], Phase::Runtime);
+        let narrow = world.define("x", &[outer, inner], Phase::Runtime);
+        world.table.forget(|binding| binding == narrow);
+        let symbol = World::symbol("x", &[outer, inner]);
+        let resolution = world
+            .table
+            .resolve(&symbol, Namespace::Value, Phase::Runtime);
+        assert_eq!(resolution, Resolution::Bound(wide));
     }
 
     #[test]

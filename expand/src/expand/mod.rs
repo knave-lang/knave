@@ -108,7 +108,7 @@ impl Program {
     pub fn check_also(&mut self, binding: BindingId) {
         self.checked_roots.push(binding);
         self.pending_definitions
-            .restore(&mut self.modules, vec![binding]);
+            .restore(&mut self.modules, &mut self.bindings, vec![binding]);
     }
 
     fn restore_reached(&mut self) {
@@ -118,7 +118,8 @@ impl Program {
             .flat_map(CoreModule::definitions)
             .flat_map(|(_, value)| References::of(value, &self.bindings).into_globals())
             .collect();
-        self.pending_definitions.restore(&mut self.modules, roots);
+        self.pending_definitions
+            .restore(&mut self.modules, &mut self.bindings, roots);
     }
 
     fn written_entry_function(&self) -> Option<BindingId> {
@@ -208,7 +209,11 @@ impl ExpansionTables {
         for module in modules.filter(|module| ModuleSources::is_embedded_prelude(&module.path)) {
             saver.take_from(module);
         }
-        saver.finish()
+        let (tables, set_aside) = saver.finish();
+        for local in set_aside {
+            self.bindings.set_aside(local);
+        }
+        tables
     }
 
     fn take_lowered_globals(&mut self) -> LoweredGlobals {

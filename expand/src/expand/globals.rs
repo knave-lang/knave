@@ -181,11 +181,16 @@ impl Expander<'_> {
     }
 
     fn decode_saved_global(&mut self, binding: BindingId) {
-        let states = &mut self.tables.globals.states;
-        if !states.contains_key(&binding)
-            && let Some(value) = self.saved_definitions.value_of(binding)
-        {
-            states.insert(binding, GlobalState::Lowered(value));
+        let tables = &mut self.tables;
+        if tables.globals.states.contains_key(&binding) {
+            return;
+        }
+        let saved = self.saved_definitions;
+        if let Some(value) = saved.decode_value(binding, &mut tables.bindings) {
+            tables
+                .globals
+                .states
+                .insert(binding, GlobalState::Lowered(value));
         }
     }
 
@@ -248,10 +253,48 @@ impl Expander<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::core::{BindingArena, BindingInfo, BindingKind, ExprKind, Leaf, Literal, ModuleId};
-    use crate::source::SourceId;
+    use std::path::PathBuf;
 
+    use super::*;
+    use crate::core::{
+        BindingArena, BindingInfo, BindingKind, ExprKind, Leaf, Literal, ModuleId, ModulePath,
+    };
+    use crate::expand::PreludeState;
+    use crate::modules::ModuleSources;
+    use crate::source::{SourceId, SourceMap};
+
+    struct SavedGlobalFixture;
+
+    impl SavedGlobalFixture {
+        const ENTRY: &str = "global-user";
+
+        fn find(bindings: &BindingArena, name: &str, kind: fn(BindingKind) -> bool) -> BindingId {
+            let mut found = bindings.ids().filter(|binding| {
+                bindings
+                    .decoded(*binding)
+                    .is_some_and(|info| info.name() == name && kind(info.kind()))
+            });
+            found.next().expect("the prelude binds the name")
+        }
+    }
+
+    #[test]
+    fn lowering_a_saved_global_decodes_its_locals() {
+        let state = PreludeState::load(PreludeState::build().save().leak())
+            .expect("the saved prelude loads");
+        let mut sources = SourceMap::default();
+        let entry = sources.add(SavedGlobalFixture::ENTRY, "");
+        let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
+        let mut expander = Expander::with_prelude(&mut sources, module_sources, state);
+        expander.load_source_module(ModulePath::new(SavedGlobalFixture::ENTRY), &[entry]);
+        let is_global = |kind| matches!(kind, BindingKind::Global(_));
+        let sum = SavedGlobalFixture::find(&expander.tables.bindings, "sum", is_global);
+        let decoded_before = expander.tables.bindings.iter().count();
+        expander
+            .lowered_global(sum, Span::new(entry, 0..0))
+            .unwrap_or_else(|_| panic!("sum lowers"));
+        assert!(expander.tables.bindings.iter().count() > decoded_before);
+    }
     struct Definitions {
         bindings: BindingArena,
         values: Vec<(BindingId, Rc<Expr>)>,

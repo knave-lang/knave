@@ -122,7 +122,7 @@ pub struct MeasureOptions {
     workspace: Option<PathBuf>,
     #[arg(
         long,
-        help = "The directory of programs to measure [default: this workspace's tests/fixtures/corpus]"
+        help = "The directory of programs to measure [default: the measured checkout's tests/fixtures/corpus]"
     )]
     corpus: Option<PathBuf>,
     #[arg(long, help = "Write the results to this file for `compare`")]
@@ -245,7 +245,7 @@ impl<'a> FrontEndBenchmark<'a> {
     }
 
     fn measure_corpus(&self) -> Result<ResultSet, TaskFailure> {
-        let language = LanguageSource::find(&CargoWorkspace::read(self.root)?)?;
+        let language = self.language()?;
         let extension = language.constant(Self::EXTENSION_CONSTANT)?;
         let programs = self.corpus(&extension)?.programs()?;
         let measured = self.callgrind()?.measure_all(&programs)?;
@@ -291,10 +291,14 @@ impl<'a> FrontEndBenchmark<'a> {
         }
     }
 
+    fn language(&self) -> Result<LanguageSource, TaskFailure> {
+        LanguageSource::find(&CargoWorkspace::read(&self.workspace()?)?)
+    }
+
     fn corpus(&self, extension: &str) -> Result<Corpus, TaskFailure> {
         let directory = match &self.options.corpus {
             Some(corpus) => Self::absolute(corpus)?,
-            None => self.root.join(Corpus::DIRECTORY),
+            None => self.workspace()?.join(Corpus::DIRECTORY),
         };
         Ok(Corpus::new(directory, extension.to_string()))
     }
@@ -319,6 +323,7 @@ mod tests {
     use clap::{Command, FromArgMatches};
 
     use super::*;
+    use crate::workspace::WorkspaceFixture;
 
     struct BenchArgumentsFixture;
 
@@ -341,6 +346,46 @@ mod tests {
                 .unwrap();
             BenchTask::from_arg_matches(&matches).unwrap()
         }
+    }
+
+    struct MeasuredCheckoutFixture;
+
+    impl MeasuredCheckoutFixture {
+        const OTHER_ROOT: &'static str = "fixtures/bench";
+
+        fn other_root() -> PathBuf {
+            Path::new(env!("CARGO_MANIFEST_DIR")).join(Self::OTHER_ROOT)
+        }
+
+        fn options() -> MeasureOptions {
+            MeasureOptions {
+                workspace: Some(WorkspaceFixture::repository_root().to_path_buf()),
+                corpus: None,
+                save: None,
+            }
+        }
+
+        fn programs() -> Vec<PathBuf> {
+            let root = Self::other_root();
+            let benchmark = FrontEndBenchmark::new(&root, Self::options());
+            let extension = benchmark
+                .language()
+                .unwrap()
+                .constant(FrontEndBenchmark::EXTENSION_CONSTANT)
+                .unwrap();
+            benchmark.corpus(&extension).unwrap().programs().unwrap()
+        }
+    }
+
+    #[test]
+    fn a_measured_checkout_runs_its_own_corpus() {
+        let corpus = WorkspaceFixture::repository_root()
+            .canonicalize()
+            .unwrap()
+            .join(Corpus::DIRECTORY);
+        let programs = MeasuredCheckoutFixture::programs();
+        assert!(!programs.is_empty());
+        assert!(programs.iter().all(|program| program.starts_with(&corpus)));
     }
 
     #[test]

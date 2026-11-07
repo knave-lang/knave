@@ -5,6 +5,7 @@ use crate::core::{
 };
 use crate::diagnostic::{Counted, Diagnostic, DiagnosticCode, Label, MissingName, Suggestion};
 use crate::interpret::InterpretProblems;
+use crate::language::Language;
 use crate::reader::Form;
 use crate::source::Span;
 
@@ -514,6 +515,19 @@ impl ExpandProblems {
         .with_help(
             "a module path names a file relative to the root directory, without its extension",
         )
+    }
+
+    pub fn reserved_module(path: &ModulePath, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::RESERVED_MODULE_NAME,
+            format!("`{path}` cannot name a module"),
+            Label::new(span, "this name is reserved"),
+        )
+        .with_note(format!(
+            "`{}` at the root is the project file",
+            Language::project_file_name()
+        ))
+        .with_help("rename the module's file, and this path with it")
     }
 
     pub fn missing_export(

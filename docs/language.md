@@ -570,6 +570,7 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
 - In a project, `build`, `run`, `check`, `types`, `expand` and `emit` take their file as optional and default to `:entry`. Outside one, a missing file is a usage error.
 - A file inside the source root resolves `use` from the source root, and its module path is its path from there, so `src/text/pad.rslisp` is `text/pad`. A file outside the source root resolves `use` from its own directory.
 - `build` and `run` write the binary of `:entry` to `<root>/target/knave/<name>/<name>`, from any working directory. Any other file builds where it would outside a project.
+- No module at the source root is named `project`: `(use project)` is an error.
 - An error in the project file stops the command.
 
 ## Modules

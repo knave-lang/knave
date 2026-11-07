@@ -8,7 +8,7 @@ use crate::diagnostic::Diagnostics;
 use crate::reader::{Form, FormKind};
 use crate::source::Span;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Section {
     Libraries,
     Dependencies,
@@ -180,7 +180,13 @@ impl<'p> DependencyReader<'p> {
     }
 
     fn git_source(&mut self, parts: &EntryParts<'_>) -> Option<LibrarySource> {
-        let git = parts.fields.get("git")?;
+        let Some(git) = parts.fields.get("git") else {
+            self.problems.push(ProjectProblems::library_without_source(
+                parts.name,
+                parts.name_span,
+            ));
+            return None;
+        };
         if parts.fields.get("rev").is_none() {
             self.problems.push(ProjectProblems::git_without_revision(
                 parts.name,

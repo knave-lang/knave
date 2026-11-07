@@ -37,4 +37,24 @@ Project {
         },
     ],
     dev_dependencies: [],
+    sections: [
+        SectionHead {
+            section: Dependencies,
+            span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 27,
+                end: 39,
+            },
+            has_entries: true,
+        },
+    ],
 }
+error[L0719]: this compiler cannot build `dependencies` yet
+ --> project/crate_names.rslisp:2:11
+  |
+2 |          (dependencies (tokio_util "0.7")
+  |           ^^^^^^^^^^^^ this section has entries
+  |
+  = help: remove the entries of `dependencies` for now

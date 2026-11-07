@@ -33,6 +33,25 @@ impl ProjectProblems {
         .with_help("move this form inside the `project` form, or remove it")
     }
 
+    pub fn invalid_project_name(name: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::INVALID_PROJECT_NAME,
+            format!("`{name}` is not a project name"),
+            Label::new(span, "expected a kebab-case name"),
+        )
+        .with_note("the name names the build directory and the program")
+        .with_help("use lowercase letters, digits and single dashes, as `my-program`")
+    }
+
+    pub fn unbuilt_section(section: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::UNBUILT_PROJECT_SECTION,
+            format!("this compiler cannot build `{section}` yet"),
+            Label::new(span, "this section has entries"),
+        )
+        .with_help(format!("remove the entries of `{section}` for now"))
+    }
+
     pub fn missing_project_name(span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::MISSING_PROJECT_NAME,
@@ -108,7 +127,10 @@ impl ProjectProblems {
             "expected a key or a section",
             Label::new(span, "this is neither a `:key value` pair nor a section"),
         )
-        .with_help("give a value after a key, as `:entry \"src/main.rslisp\"`")
+        .with_help(format!(
+            "give a value after a key, as `:entry \"src/main.{}\"`",
+            Language::EXTENSION
+        ))
     }
 
     pub fn unexpected_entry_form(span: Span) -> Diagnostic {
@@ -163,7 +185,7 @@ impl ProjectProblems {
         Diagnostic::error(
             DiagnosticCode::CONFLICTING_LIBRARY_SOURCES,
             format!("library `{name}` has two sources"),
-            Label::new(span, "this source"),
+            Label::new(span, "a git source"),
         )
         .with_label(Label::new(other, "conflicts with this one"))
         .with_help("keep `:path` alone, or `:git` with `:rev`")

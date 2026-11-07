@@ -1,0 +1,24 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/nameless_with_field_error.rslisp
+---
+error[L0703]: the project has no name
+ --> project/nameless_with_field_error.rslisp:1:2
+  |
+1 | (project :edition 2025)
+  |  ^^^^^^^ expected a name after `project`
+  |
+  = help: name the project, as `(project my-program)`
+
+error[L0717]: edition 2025 does not exist
+ --> project/nameless_with_field_error.rslisp:1:19
+  |
+1 | (project :edition 2025)
+  |                   ^^^^ not an edition of this compiler
+  |
+help: the only edition is 2026
+  |
+1 - (project :edition 2025)
+1 + (project :edition 2026)
+  |

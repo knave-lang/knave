@@ -54,4 +54,62 @@ Project {
             path: None,
         },
     ],
+    sections: [
+        SectionHead {
+            section: Libraries,
+            span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 111,
+                end: 120,
+            },
+            has_entries: true,
+        },
+        SectionHead {
+            section: Dependencies,
+            span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 297,
+                end: 309,
+            },
+            has_entries: true,
+        },
+        SectionHead {
+            section: DevDependencies,
+            span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 394,
+                end: 410,
+            },
+            has_entries: true,
+        },
+    ],
 }
+error[L0719]: this compiler cannot build `libraries` yet
+ --> project/full.rslisp:6:11
+  |
+6 |          (libraries (hints :path "../hints")
+  |           ^^^^^^^^^ this section has entries
+  |
+  = help: remove the entries of `libraries` for now
+
+error[L0719]: this compiler cannot build `dependencies` yet
+  --> project/full.rslisp:10:11
+   |
+10 |          (dependencies (cef "144.0")
+   |           ^^^^^^^^^^^^ this section has entries
+   |
+   = help: remove the entries of `dependencies` for now
+
+error[L0719]: this compiler cannot build `dev-dependencies` yet
+  --> project/full.rslisp:13:11
+   |
+13 |          (dev-dependencies (proptest "1.5")))
+   |           ^^^^^^^^^^^^^^^^ this section has entries
+   |
+   = help: remove the entries of `dev-dependencies` for now

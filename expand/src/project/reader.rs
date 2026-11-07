@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use super::Project;
 use super::dependency_reader::{DependencyReader, Section};
 use super::fields::{FieldScanner, Fields};
 use super::problems::ProjectProblems;
+use super::{Project, SectionHead};
 use crate::diagnostic::{Diagnostics, SimilarName};
 use crate::language::Language;
 use crate::reader::Form;
@@ -47,8 +47,7 @@ impl ProjectReader {
             .others
             .iter()
             .for_each(|other| self.read_section(other, &mut sections));
-        let project = self.with_fields(name?, &scanned.fields, sections);
-        Some(project)
+        self.with_fields(name, &scanned.fields, sections)
     }
 
     fn project_form<'f>(&mut self, forms: &'f [Form], file: Span) -> Option<ProjectForm<'f>> {
@@ -72,13 +71,29 @@ impl ProjectReader {
     }
 
     fn name(&mut self, form: &ProjectForm<'_>) -> Option<String> {
-        let name = form.name.and_then(DependencyReader::bare_name);
-        if name.is_none() {
-            let span = form.name.unwrap_or(form.head).span();
+        let span = form.name.unwrap_or(form.head).span();
+        let Some(name) = form.name.and_then(DependencyReader::bare_name) else {
             self.problems
                 .push(ProjectProblems::missing_project_name(span));
+            return None;
+        };
+        if !Self::is_kebab_case(name) {
+            self.problems
+                .push(ProjectProblems::invalid_project_name(name, span));
+            return None;
         }
-        name.map(str::to_string)
+        Some(name.to_string())
+    }
+
+    fn is_kebab_case(name: &str) -> bool {
+        name.split('-').all(Self::is_kebab_word)
+    }
+
+    fn is_kebab_word(word: &str) -> bool {
+        !word.is_empty()
+            && word
+                .chars()
+                .all(|character| character.is_ascii_lowercase() || character.is_ascii_digit())
     }
 
     fn read_section(&mut self, form: &Form, sections: &mut SectionTable) {
@@ -90,14 +105,18 @@ impl ProjectReader {
         let Some(section) = self.section_named(head) else {
             return;
         };
-        if let Some(first) = sections.heads.iter().find(|(seen, _)| *seen == section) {
+        if let Some(first) = sections.heads.iter().find(|seen| seen.section == section) {
             return self.problems.push(ProjectProblems::duplicate_entry(
                 section.name(),
                 head.span(),
-                first.1,
+                first.span,
             ));
         }
-        sections.heads.push((section, head.span()));
+        sections.heads.push(SectionHead {
+            section,
+            span: head.span(),
+            has_entries: !entries.is_empty(),
+        });
         DependencyReader::new(section, &mut self.problems).read(entries, sections);
     }
 
@@ -130,22 +149,27 @@ impl ProjectReader {
 
     fn with_fields(
         &mut self,
-        name: String,
+        name: Option<String>,
         fields: &Fields<'_>,
         sections: SectionTable,
-    ) -> Project {
-        Project {
-            name,
-            version: fields
-                .string("version", &mut self.problems)
-                .unwrap_or_else(|| Self::DEFAULT_VERSION.to_string()),
-            entry: self.module_file(fields, "entry", Self::DEFAULT_ENTRY),
-            library_root: self.module_file(fields, "lib", Self::DEFAULT_LIBRARY_ROOT),
-            edition: self.edition(fields),
+    ) -> Option<Project> {
+        let version = fields
+            .string("version", &mut self.problems)
+            .unwrap_or_else(|| Self::DEFAULT_VERSION.to_string());
+        let entry = self.module_file(fields, "entry", Self::DEFAULT_ENTRY);
+        let library_root = self.module_file(fields, "lib", Self::DEFAULT_LIBRARY_ROOT);
+        let edition = self.edition(fields);
+        Some(Project {
+            name: name?,
+            version,
+            entry,
+            library_root,
+            edition,
             libraries: sections.libraries,
             dependencies: sections.dependencies,
             dev_dependencies: sections.dev_dependencies,
-        }
+            sections: sections.heads,
+        })
     }
 
     fn module_file(&mut self, fields: &Fields<'_>, key: &str, default_module: &str) -> PathBuf {
@@ -183,7 +207,7 @@ impl<'f> ProjectForm<'f> {
 
 #[derive(Default)]
 pub struct SectionTable {
-    heads: Vec<(Section, Span)>,
+    heads: Vec<SectionHead>,
     pub libraries: Vec<super::LibraryDependency>,
     pub dependencies: Vec<super::CrateDependency>,
     pub dev_dependencies: Vec<super::CrateDependency>,

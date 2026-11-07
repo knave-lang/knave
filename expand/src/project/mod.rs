@@ -5,8 +5,12 @@ mod reader;
 
 use std::path::PathBuf;
 
+pub use dependency_reader::Section;
 pub use problems::ProjectProblems;
 pub use reader::ProjectReader;
+
+use crate::diagnostic::Diagnostics;
+use crate::source::Span;
 
 #[derive(Debug)]
 pub struct Project {
@@ -18,6 +22,14 @@ pub struct Project {
     pub libraries: Vec<LibraryDependency>,
     pub dependencies: Vec<CrateDependency>,
     pub dev_dependencies: Vec<CrateDependency>,
+    pub sections: Vec<SectionHead>,
+}
+
+#[derive(Debug)]
+pub struct SectionHead {
+    pub section: Section,
+    pub span: Span,
+    pub has_entries: bool,
 }
 
 #[derive(Debug)]
@@ -42,4 +54,20 @@ pub struct CrateDependency {
     pub version: Option<String>,
     pub features: Vec<String>,
     pub path: Option<PathBuf>,
+}
+
+impl Project {
+    pub fn unbuilt_sections(&self) -> Diagnostics {
+        let mut problems = Diagnostics::default();
+        self.sections
+            .iter()
+            .filter(|head| head.has_entries)
+            .for_each(|head| {
+                problems.push(ProjectProblems::unbuilt_section(
+                    head.section.name(),
+                    head.span,
+                ))
+            });
+        problems
+    }
 }

@@ -276,7 +276,7 @@ jobs:
           path: ${{ env.BASELINE }}
       - name: Measure the base branch
         if: steps.recall-base.outputs.recalled == 'false'
-        run: nix develop .#ci -c cargo xtask bench measure --workspace "$BASELINE" --save target/bench/baseline.tsv
+        run: nix develop .#ci -c cargo xtask bench measure --workspace "$BASELINE" --corpus "$BASELINE/tests/fixtures/corpus" --save target/bench/baseline.tsv
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ env.BASE_COUNTS }}

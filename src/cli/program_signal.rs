@@ -10,7 +10,7 @@ pub struct ProgramSignal {
 }
 
 impl ProgramSignal {
-    const UNREPORTABLE_CODE: u8 = 1;
+    pub const UNREPORTABLE_CODE: u8 = 1;
 
     #[cfg(unix)]
     pub fn of(status: process::ExitStatus) -> Option<Self> {

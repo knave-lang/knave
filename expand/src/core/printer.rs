@@ -642,6 +642,17 @@ impl<'a> CorePrinter<'a> {
                 crate::core::RUST_TRAIT_HELP_MARKER
             ));
         }
+        if !declaration.requires.is_empty() {
+            let required = declaration
+                .requires
+                .iter()
+                .map(|required| self.bound(&required.bound))
+                .collect::<Vec<_>>();
+            parts.push(Self::list(
+                crate::core::RUST_TRAIT_REQUIRES_MARKER,
+                required,
+            ));
+        }
         if let Some(structural) = &declaration.structural {
             parts.push(Self::structural_clause(structural));
         }

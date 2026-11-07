@@ -640,6 +640,15 @@ impl TypeProblems {
         .with_label(Label::new(earlier, "this clause comes first"))
     }
 
+    pub fn requirement_cycle(trait_name: &str, required: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::REQUIREMENT_CYCLE,
+            format!("`{trait_name}` requires itself"),
+            Label::new(span, format!("`{required}` leads back to `{trait_name}`")),
+        )
+        .with_help("remove this requirement: Rust rejects a trait that is its own supertrait")
+    }
+
     pub fn out_of_range(literal: &str, type_name: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::LITERAL_OUT_OF_RANGE,

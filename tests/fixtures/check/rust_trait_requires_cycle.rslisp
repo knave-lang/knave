@@ -1,0 +1,29 @@
+(rust-trait looped "crate::marks::Looped"
+  (requires looped)
+  i64)
+
+(rust-trait first-mark "crate::marks::First"
+  (requires second-mark partial-eq)
+  i64)
+
+(rust-trait second-mark "crate::marks::Second"
+  (requires first-mark)
+  i64)
+
+(type same-looped
+  (where ((a looped)) (fn (a) bool)))
+
+(defn same-looped (x) (= x x))
+
+(type same-second
+  (where ((a second-mark)) (fn (a) bool)))
+
+(defn same-second (x) (= x x))
+
+(def chosen
+  (rust "default({0})"
+    (where (a) (fn (a) a))
+    (first-mark "first({0})")
+    (looped "looped({0})")))
+
+(defn main () (println (chosen 1)))

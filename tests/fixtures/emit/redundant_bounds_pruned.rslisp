@@ -1,0 +1,21 @@
+(type both
+  (where ((a ord partial-ord))
+    (fn (a a) bool)))
+
+(defn both (x y) (< x y))
+
+(type copies
+  (where ((a copy clone)) (fn (a) a)))
+
+(defn copies (x) x)
+
+(type eqs
+  (where ((a eq partial-eq))
+    (fn (a a) bool)))
+
+(defn eqs (x y) (= x y))
+
+(defn main ()
+  (println (both 1 2))
+  (println (copies 1))
+  (println (eqs 1 1)))

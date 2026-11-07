@@ -1,0 +1,14 @@
+(rust-trait unknown-requirement "Unknown"
+  (requires nosuch)
+  i64)
+
+(rust-trait type-requirement "Typed" (requires i64) i64)
+
+(rust-trait empty-requirement "Empty" (requires) i64)
+
+(rust-trait second-requirement "Second"
+  (requires partial-eq)
+  (requires partial-ord)
+  i64)
+
+(defn main () (println "unreachable"))

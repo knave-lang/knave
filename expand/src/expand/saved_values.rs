@@ -1,70 +1,83 @@
-use std::rc::Rc;
+use std::marker::PhantomData;
+
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use super::saved_index::{BindingIndex, SavedWords};
 use crate::core::BindingId;
-use crate::interpret::Closure;
 
-#[derive(Default, serde::Serialize)]
-pub struct MacroTables {
+#[derive(Default, Serialize)]
+pub struct ValueTables {
     rows: Vec<u8>,
-    closures: Vec<u8>,
+    encoded: Vec<u8>,
 }
 
-impl MacroTables {
+impl ValueTables {
     const START: usize = 1;
     const END: usize = 2;
     const WORDS: usize = 3;
 
-    pub fn of(ready: Vec<(BindingId, Rc<Closure>)>) -> Self {
+    pub fn of<T: Serialize>(values: impl IntoIterator<Item = (BindingId, T)>) -> Self {
         let mut tables = Self::default();
-        for (binding, closure) in ready {
-            tables.add(binding, &closure);
+        for (binding, value) in values {
+            tables.add(binding, &value);
         }
         tables
     }
 
-    fn add(&mut self, binding: BindingId, closure: &Closure) {
-        let start = SavedWords::index(self.closures.len());
-        let encoded = bincode::serialize(closure).expect("every prelude macro serializes");
-        self.closures.extend(encoded);
-        let end = SavedWords::index(self.closures.len());
+    fn add<T: Serialize>(&mut self, binding: BindingId, value: &T) {
+        let start = SavedWords::index(self.encoded.len());
+        let encoded = bincode::serialize(value).expect("every saved prelude value serializes");
+        self.encoded.extend(encoded);
+        let end = SavedWords::index(self.encoded.len());
         SavedWords::write(&[binding.index(), start, end], &mut self.rows);
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct SavedMacros {
+pub struct SavedValues<T> {
     index: BindingIndex,
-    closures: &'static [u8],
+    encoded: &'static [u8],
+    decodes: PhantomData<fn() -> T>,
 }
 
-impl Default for SavedMacros {
+impl<T> Clone for SavedValues<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for SavedValues<T> {}
+
+impl<T> Default for SavedValues<T> {
     fn default() -> Self {
         Self::borrowing(&[], &[])
     }
 }
 
-impl<'de: 'static> serde::Deserialize<'de> for SavedMacros {
+impl<'de: 'static, T> serde::Deserialize<'de> for SavedValues<T> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let (rows, closures) = serde::Deserialize::deserialize(deserializer)?;
-        Ok(Self::borrowing(rows, closures))
+        let (rows, encoded) = serde::Deserialize::deserialize(deserializer)?;
+        Ok(Self::borrowing(rows, encoded))
     }
 }
 
-impl SavedMacros {
-    fn borrowing(rows: &'static [u8], closures: &'static [u8]) -> Self {
+impl<T> SavedValues<T> {
+    fn borrowing(rows: &'static [u8], encoded: &'static [u8]) -> Self {
         Self {
-            index: BindingIndex::new(rows, MacroTables::WORDS),
-            closures,
+            index: BindingIndex::new(rows, ValueTables::WORDS),
+            encoded,
+            decodes: PhantomData,
         }
     }
+}
 
-    pub fn closure_of(&self, binding: BindingId) -> Option<Rc<Closure>> {
+impl<T: DeserializeOwned> SavedValues<T> {
+    pub fn value_of(&self, binding: BindingId) -> Option<T> {
         let row = self.index.rows_of(binding).next()?;
-        let start = self.index.word(row, MacroTables::START) as usize;
-        let end = self.index.word(row, MacroTables::END) as usize;
-        let closure = bincode::deserialize(&self.closures[start..end]);
-        Some(Rc::new(closure.expect("a saved prelude macro decodes")))
+        let start = self.index.word(row, ValueTables::START) as usize;
+        let end = self.index.word(row, ValueTables::END) as usize;
+        let value = bincode::deserialize(&self.encoded[start..end]);
+        Some(value.expect("a saved prelude value decodes"))
     }
 }
 
@@ -74,6 +87,7 @@ mod tests {
 
     use crate::core::{BindingId, BindingKind, ModulePath};
     use crate::expand::{Expander, PreludeState};
+    use crate::interpret::Closure;
     use crate::modules::ModuleSources;
     use crate::source::SourceMap;
 
@@ -127,8 +141,12 @@ mod tests {
     }
 
     #[test]
-    fn an_unknown_binding_has_no_saved_macro() {
+    fn an_unknown_binding_has_no_saved_value() {
         let unknown = BindingId::from_index(u32::MAX);
-        assert!(super::SavedMacros::default().closure_of(unknown).is_none());
+        assert!(
+            super::SavedValues::<Closure>::default()
+                .value_of(unknown)
+                .is_none()
+        );
     }
 }

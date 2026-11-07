@@ -43,6 +43,18 @@ pub enum CompileTimeCheck {
 }
 
 impl GlobalTable {
+    #[cfg(test)]
+    pub fn holds_no_value(&self) -> bool {
+        self.values.is_empty()
+    }
+
+    pub fn take_values(&mut self) -> Vec<(BindingId, Value)> {
+        let mut values: Vec<(BindingId, Value)> =
+            std::mem::take(&mut self.values).into_iter().collect();
+        values.sort_by_key(|(binding, _)| *binding);
+        values
+    }
+
     pub fn add_pending(&mut self, binding: BindingId, value: Form, budget: BudgetId) {
         self.states
             .insert(binding, GlobalState::Pending { value, budget });
@@ -202,6 +214,10 @@ impl Expander<'_> {
         if let Some(value) = self.tables.globals.values.get(&binding) {
             return Ok(value.clone());
         }
+        if let Some(value) = self.saved_globals.value_of(binding) {
+            self.tables.globals.values.insert(binding, value.clone());
+            return Ok(value);
+        }
         if !self.tables.globals.evaluating.insert(binding) {
             return Err(ExpandProblems::compile_time_cycle(
                 self.tables.bindings.get(binding).name(),
@@ -268,6 +284,17 @@ mod tests {
     impl SavedGlobalFixture {
         const ENTRY: &str = "global-user";
 
+        fn with_loaded_expander(run: impl FnOnce(&mut Expander<'_>, SourceId)) {
+            let state = PreludeState::load(PreludeState::build().save().leak())
+                .expect("the saved prelude loads");
+            let mut sources = SourceMap::default();
+            let entry = sources.add(Self::ENTRY, "");
+            let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
+            let mut expander = Expander::with_prelude(&mut sources, module_sources, state);
+            expander.load_source_module(ModulePath::new(Self::ENTRY), &[entry]);
+            run(&mut expander, entry);
+        }
+
         fn find(bindings: &BindingArena, name: &str, kind: fn(BindingKind) -> bool) -> BindingId {
             let mut found = bindings.ids().filter(|binding| {
                 bindings
@@ -276,6 +303,19 @@ mod tests {
             });
             found.next().expect("the prelude binds the name")
         }
+    }
+
+    #[test]
+    fn evaluating_a_saved_global_decodes_its_value_without_lowering_it() {
+        SavedGlobalFixture::with_loaded_expander(|expander, entry| {
+            let is_global = |kind| matches!(kind, BindingKind::Global(_));
+            let helper = SavedGlobalFixture::find(&expander.tables.bindings, "map-list", is_global);
+            expander
+                .evaluate_global(helper, Span::new(entry, 0..0))
+                .unwrap_or_else(|_| panic!("map-list evaluates"));
+            assert!(!expander.tables.globals.states.contains_key(&helper));
+            assert!(expander.tables.globals.values.contains_key(&helper));
+        });
     }
 
     #[test]

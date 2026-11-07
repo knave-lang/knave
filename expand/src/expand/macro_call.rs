@@ -396,7 +396,7 @@ impl Expander<'_> {
     }
 
     fn decode_saved_macro(&mut self, binding: BindingId) -> Option<Rc<Closure>> {
-        let closure = self.saved_macros.closure_of(binding)?;
+        let closure = Rc::new(self.saved_macros.value_of(binding)?);
         let ready = MacroState::Ready(Rc::clone(&closure));
         self.tables.macros.states.insert(binding, ready);
         Some(closure)

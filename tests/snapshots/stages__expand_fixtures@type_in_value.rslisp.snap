@@ -101,3 +101,23 @@ help: a name with a similar spelling exists
 25 - (def second-module-value string)
 25 + (def second-module-value stdin)
    |
+
+error[L0201]: cannot find `point` in this scope
+  --> expand/type_in_value.rslisp:31:28
+   |
+31 | (defn struct-as-callee () (point 0 i64))
+   |                            ^^^^^ not found in this scope
+   |
+help: a name with a similar spelling exists
+   |
+31 - (defn struct-as-callee () (point 0 i64))
+31 + (defn struct-as-callee () (print 0 i64))
+   |
+
+error[L0201]: cannot find `i64` in this scope
+  --> expand/type_in_value.rslisp:31:36
+   |
+31 | (defn struct-as-callee () (point 0 i64))
+   |                                    ^^^ not found in this scope
+   |
+   = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature

@@ -86,6 +86,12 @@ impl TaskFailure {
         Self::new(format!("{file} has no `{key}` under `{anchor}`"))
     }
 
+    pub fn pinned_crate_missing(file: &str, table_prefix: &str, key: &str) -> Self {
+        Self::new(format!(
+            "{file} has no `{table_prefix}<name>]` table with a `{key}` to pin"
+        ))
+    }
+
     pub fn pulls_unparsable(error: &serde_json::Error) -> Self {
         Self::new(format!("cannot parse the pull requests: {error}"))
     }

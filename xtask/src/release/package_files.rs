@@ -14,6 +14,7 @@ impl PackageFiles {
     const TABLE_END: &'static str = "]";
     const EXACT_REQUIREMENT: &'static str = "=";
     const NAME_KEY: &'static str = "name";
+    const PATH_KEY: &'static str = "path";
     const VERSION_KEY: &'static str = "version";
     const MANIFEST_NAME: &'static str = "the manifest";
     const LOCK_NAME: &'static str = "the lock file";
@@ -46,29 +47,53 @@ impl PackageFiles {
             version,
         )?;
         let requirement = format!("{}{version}", Self::EXACT_REQUIREMENT);
-        self.pinned_crates().try_fold(workspace, |manifest, name| {
-            let table = format!(
-                "{}{name}{}",
-                Self::WORKSPACE_DEPENDENCY_TABLE_PREFIX,
-                Self::TABLE_END
-            );
-            Self::with_version(&manifest, Self::MANIFEST_NAME, &table, &requirement)
-        })
+        self.pinned_crates()?
+            .into_iter()
+            .try_fold(workspace, |manifest, name| {
+                let table = Self::dependency_table(name);
+                Self::with_version(&manifest, Self::MANIFEST_NAME, &table, &requirement)
+            })
     }
 
     fn versioned_lock(&self, version: &str) -> Result<TomlText, TaskFailure> {
         let package = self.package_name()?;
         std::iter::once(package)
-            .chain(self.pinned_crates())
+            .chain(self.pinned_crates()?)
             .try_fold(self.lock.clone(), |lock, name| {
                 let entry = format!("{} = \"{name}\"", Self::NAME_KEY);
                 Self::with_version(&lock, Self::LOCK_NAME, &entry, version)
             })
     }
 
-    fn pinned_crates(&self) -> impl Iterator<Item = &str> {
-        self.manifest
+    fn pinned_crates(&self) -> Result<Vec<&str>, TaskFailure> {
+        let pinned: Vec<&str> = self
+            .manifest
             .table_names(Self::WORKSPACE_DEPENDENCY_TABLE_PREFIX, Self::TABLE_END)
+            .filter(|name| self.is_path_dependency(name))
+            .collect();
+        if pinned.is_empty() {
+            Err(TaskFailure::pinned_crate_missing(
+                Self::MANIFEST_NAME,
+                Self::WORKSPACE_DEPENDENCY_TABLE_PREFIX,
+                Self::PATH_KEY,
+            ))
+        } else {
+            Ok(pinned)
+        }
+    }
+
+    fn is_path_dependency(&self, name: &str) -> bool {
+        self.manifest
+            .string_value(&Self::dependency_table(name), Self::PATH_KEY)
+            .is_some()
+    }
+
+    fn dependency_table(name: &str) -> String {
+        format!(
+            "{}{name}{}",
+            Self::WORKSPACE_DEPENDENCY_TABLE_PREFIX,
+            Self::TABLE_END
+        )
     }
 
     fn package_name(&self) -> Result<&str, TaskFailure> {
@@ -110,14 +135,20 @@ mod tests {
         const VERSIONED_LOCK: &'static str =
             include_str!("../../fixtures/release/versioned-lock.toml");
 
+        const HELPER_PATH: &'static str = "path = \"helper\"\n";
+
         fn versioned(version: &str) -> PackageFiles {
+            Self::versioned_from(Self::MANIFEST, version).unwrap()
+        }
+
+        fn versioned_from(manifest: &str, version: &str) -> Result<PackageFiles, String> {
             let files = PackageFiles::new(
-                TomlText::new(Self::MANIFEST.to_string()),
+                TomlText::new(manifest.to_string()),
                 TomlText::new(Self::LOCK.to_string()),
             );
             files
                 .versioned(&ReleaseVersion::parse(version).unwrap())
-                .unwrap()
+                .map_err(|failure| failure.to_string())
         }
     }
 
@@ -135,5 +166,11 @@ mod tests {
             PackageFilesFixture::versioned("0.1.1").lock(),
             PackageFilesFixture::VERSIONED_LOCK
         );
+    }
+
+    #[test]
+    fn a_manifest_without_a_path_dependency_is_refused() {
+        let manifest = PackageFilesFixture::MANIFEST.replace(PackageFilesFixture::HELPER_PATH, "");
+        assert!(PackageFilesFixture::versioned_from(&manifest, "0.1.1").is_err());
     }
 }

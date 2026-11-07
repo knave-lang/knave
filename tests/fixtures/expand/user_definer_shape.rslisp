@@ -1,0 +1,13 @@
+(use code prepend)
+
+(defmacro deftype (name body ...)
+  (prepend (quote rust-type) (prepend name body)))
+
+(deftype meters)
+
+(deftype no-parameter "Holder<{0}>")
+
+(defmacro my-trait (name body ...)
+  (prepend (quote deftrait) (prepend name body)))
+
+(my-trait wrapped-trait (rust "Clone") i64 (help 3))

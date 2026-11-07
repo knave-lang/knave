@@ -29,8 +29,8 @@ pub use kernel::{
 };
 pub use keyword::Keyword;
 pub use module::{
-    AssociatedValue, CoreModule, EnumRust, ImplAssociatedType, ImplMethod, Item, ItemKind,
-    ModuleId, ModulePath, RUST_TRAIT_ASSOCIATED_MARKER, RUST_TRAIT_HELP_MARKER,
+    AssociatedValue, CoreModule, EnumDefiner, EnumRust, ImplAssociatedType, ImplMethod, Item,
+    ItemKind, ModuleId, ModulePath, RUST_TRAIT_ASSOCIATED_MARKER, RUST_TRAIT_HELP_MARKER,
     RUST_TRAIT_METHOD_MARKER, RUST_TRAIT_REQUIRES_MARKER, RUST_TRAIT_STRUCTURAL_MARKER,
     RequiredTrait, RustTraitAssociatedType, RustTraitDeclaration, RustTraitImplementor,
     TraitAssociatedType, TraitMethod, VariantDeclaration, VariantPayload,

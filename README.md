@@ -31,7 +31,7 @@
 Install the compiler with [Cargo](https://www.rust-lang.org/tools/install):
 
 ```sh
-cargo install --locked knave
+cargo install --locked --profile dist knave
 ```
 
 The compiler runs the `rustc` and `rustfmt` on your `PATH`, and needs Rust 1.88 or later.

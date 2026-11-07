@@ -40,9 +40,18 @@ impl ProgramSignal {
     #[cfg(unix)]
     fn raise_with_default_action(self) {
         Self::forbid_core_files();
+        unsafe { libc::signal(self.number, libc::SIG_DFL) };
+        self.unblock();
+        unsafe { libc::raise(self.number) };
+    }
+
+    #[cfg(unix)]
+    fn unblock(self) {
         unsafe {
-            libc::signal(self.number, libc::SIG_DFL);
-            libc::raise(self.number);
+            let mut only_this_signal: libc::sigset_t = std::mem::zeroed();
+            libc::sigemptyset(&mut only_this_signal);
+            libc::sigaddset(&mut only_this_signal, self.number);
+            libc::pthread_sigmask(libc::SIG_UNBLOCK, &only_this_signal, std::ptr::null_mut());
         }
     }
 

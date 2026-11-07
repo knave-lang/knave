@@ -2,7 +2,7 @@ name: Nightly mutants
 
 on:
   schedule:
-    - cron: "17 7 * * *"
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -17,14 +17,13 @@ env:
   DIFF: git.diff
   ISSUE_TITLE: Nightly mutants
   INSTA_UPDATE: "no"
-  SHARDS: 16
+  SHARDS: 4
 
 jobs:
   plan:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true
     permissions:
       contents: read
       issues: read
@@ -32,16 +31,21 @@ jobs:
       base: ${{ steps.plan.outputs.base }}
       head: ${{ steps.plan.outputs.head }}
       changed-sources: ${{ steps.plan.outputs.changed-sources }}
+      shards: ${{ steps.plan.outputs.shards }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
           fetch-depth: 0
       - id: plan
+        continue-on-error: true
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/mutation/plan.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.plan.outcome == 'success'
+        continue-on-error: true
         with:
           name: mutation-diff
           path: ${{ env.DIFF }}
@@ -51,24 +55,28 @@ jobs:
     if: needs.plan.outputs.changed-sources != '' && needs.plan.outputs.changed-sources != '0'
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     runs-on: ubuntu-latest
     timeout-minutes: 240
-    continue-on-error: true
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
           ref: ${{ needs.plan.outputs.head }}
       - uses: ./.github/actions/dev-shell
+        continue-on-error: true
         with:
           build-cache: mutation
           save-build-cache: ${{ matrix.shard == 0 }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        continue-on-error: true
         with:
           name: mutation-diff
       - name: Test the mutants
+        continue-on-error: true
+        timeout-minutes: 225
         env:
           SHARD: ${{ matrix.shard }}/${{ env.SHARDS }}
           CARGO_INCREMENTAL: "1"
@@ -76,16 +84,16 @@ jobs:
         run: nix develop .#mutation -c bash .github/mutation/run.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ !cancelled() }}
+        continue-on-error: true
         with:
           name: mutants-shard-${{ matrix.shard }}
           path: results/
 
   report:
     needs: [plan, mutants]
-    if: ${{ always() && needs.plan.outputs.head != '' }}
+    if: ${{ !cancelled() && needs.plan.outputs.head != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true
     permissions:
       contents: read
       issues: write
@@ -94,10 +102,13 @@ jobs:
         with:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        continue-on-error: true
         with:
           pattern: mutants-shard-*
           path: results
       - name: Report the surviving mutants
+        continue-on-error: true
+        timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           BASE: ${{ needs.plan.outputs.base }}

@@ -352,9 +352,15 @@ jobs:
             gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json jobs \
               --jq ".jobs[] | select(.name == \"$BASE_COUNTS_JOB\") | .conclusion"
           }
+          download_base_counts() {
+            local attempt
+            attempt=$(mktemp -d)
+            gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$BASE_COUNTS" --dir "$attempt" &&
+              mkdir -p target/bench && mv -f "$attempt"/* target/bench/
+          }
           while true; do
             conclusion=$(base_counts_conclusion)
-            gh run download "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$BASE_COUNTS" --dir target/bench && break
+            download_base_counts && break
             if [ -n "$conclusion" ]; then
               echo "::error::$BASE_COUNTS_JOB ended ${conclusion}, and left no base counts to compare"
               exit 1

@@ -40,9 +40,19 @@ impl ProgramSignal {
     #[cfg(unix)]
     fn raise_with_default_action(self) {
         Self::forbid_core_files();
-        unsafe { libc::signal(self.number, libc::SIG_DFL) };
+        self.restore_default_action();
         self.unblock();
         unsafe { libc::raise(self.number) };
+    }
+
+    #[cfg(unix)]
+    fn restore_default_action(self) {
+        unsafe {
+            let mut default_action: libc::sigaction = std::mem::zeroed();
+            default_action.sa_sigaction = libc::SIG_DFL;
+            libc::sigemptyset(&mut default_action.sa_mask);
+            libc::sigaction(self.number, &default_action, std::ptr::null_mut());
+        }
     }
 
     #[cfg(unix)]

@@ -1493,7 +1493,7 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn with_written_type(binder: &TypedBinder, value: &TypedExpr) -> TypedBinder {
-        let written = value.holds_written_type() && !binder.ty.holds_function();
+        let written = value.needs_written_type() && !binder.ty.holds_function();
         TypedBinder {
             annotated: binder.annotated || written,
             ..binder.clone()

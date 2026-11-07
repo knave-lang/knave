@@ -157,7 +157,9 @@ impl<'a> InlineCall<'a> {
     }
 
     fn reads_from_the_call_on(&self, local: BindingId, index: usize) -> bool {
-        self.reads_after_its_argument(local, index) || self.live_borrower(local)
+        self.reads_after_its_argument(local, index)
+            || self.borrowed_before(local)
+            || self.live_closure(local)
     }
 
     fn reads_after_its_argument(&self, local: BindingId, index: usize) -> bool {
@@ -182,9 +184,35 @@ impl<'a> InlineCall<'a> {
         in_body || after
     }
 
-    fn live_borrower(&self, local: BindingId) -> bool {
+    fn borrowed_before(&self, local: BindingId) -> bool {
+        self.body.items[..self.position]
+            .iter()
+            .any(|item| Self::borrows(item.expr(), local))
+    }
+
+    fn borrows(expr: &TypedExpr, local: BindingId) -> bool {
+        let direct = match &expr.kind {
+            TypedExprKind::Borrow(_, value) => value.mentions_local(local),
+            TypedExprKind::Call(_, arguments) | TypedExprKind::Recur(arguments) => arguments
+                .iter()
+                .any(|argument| Self::borrowed_argument(argument, local)),
+            _ => false,
+        };
+        direct
+            || expr
+                .children()
+                .into_iter()
+                .any(|child| Self::borrows(child, local))
+    }
+
+    fn borrowed_argument(argument: &TypedArgument, local: BindingId) -> bool {
+        matches!(argument.borrow, Borrow::Shared | Borrow::Mutable)
+            && argument.value.mentions_local(local)
+    }
+
+    fn live_closure(&self, local: BindingId) -> bool {
         self.earlier_bindings()
-            .filter(|(binder, value)| Self::can_borrow(binder) && value.mentions_local(local))
+            .filter(|(binder, value)| binder.ty.holds_function() && value.mentions_local(local))
             .any(|(binder, _)| {
                 let passed = self
                     .arguments
@@ -192,9 +220,5 @@ impl<'a> InlineCall<'a> {
                     .any(|argument| argument.value.mentions_local(binder.binding));
                 passed || self.reads_in_the_call_or_after(binder.binding)
             })
-    }
-
-    fn can_borrow(binder: &TypedBinder) -> bool {
-        binder.ty.holds_reference() || binder.ty.holds_function()
     }
 }

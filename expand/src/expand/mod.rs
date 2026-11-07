@@ -31,8 +31,8 @@ mod rust_clauses;
 mod rust_type;
 mod saved_definitions;
 mod saved_index;
-mod saved_macros;
 mod saved_notes;
+mod saved_values;
 mod session;
 mod shape;
 mod sourced_items;
@@ -52,6 +52,7 @@ use crate::core::{
     BindingArena, BindingId, BindingKind, CoreModule, ModuleId, ModulePath, References,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::interpret::{Closure, Value};
 use crate::modules::{ModuleRegistry, ModuleSources};
 use crate::reader::Form;
 use crate::scope::{BindingTable, Phase, Scope, ScopeAllocator};
@@ -72,7 +73,7 @@ pub use recorded_inputs::{BoundName, LoadedModule};
 pub use result_printer::{GeneratedFunction, ResultPrinter};
 pub use saved_definitions::PendingDefinitions;
 use saved_definitions::{DefinitionSaver, SavedDefinitions, SavedTables};
-use saved_macros::SavedMacros;
+use saved_values::SavedValues;
 pub use session::ExpansionSession;
 use string_view::StringViewSearch;
 
@@ -155,7 +156,8 @@ pub struct Expander<'s> {
     type_note_shown: bool,
     saved_prelude: Option<PreludeState>,
     saved_definitions: SavedDefinitions,
-    saved_macros: SavedMacros,
+    saved_macros: SavedValues<Closure>,
+    saved_globals: SavedValues<Value>,
     expansion: ExpansionWork,
     evaluated_forms: EvaluatedForms,
     recorded_inputs: RecordedInputs,
@@ -246,7 +248,8 @@ impl<'s> Expander<'s> {
             type_note_shown: false,
             saved_prelude: None,
             saved_definitions: SavedDefinitions::default(),
-            saved_macros: SavedMacros::default(),
+            saved_macros: SavedValues::default(),
+            saved_globals: SavedValues::default(),
             expansion: ExpansionWork::default(),
             evaluated_forms: EvaluatedForms::default(),
             recorded_inputs: RecordedInputs::default(),

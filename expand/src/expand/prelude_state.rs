@@ -2,11 +2,12 @@ use std::fmt;
 use std::path::PathBuf;
 
 use super::saved_definitions::{SavedDefinitions, SavedTables};
-use super::saved_macros::{MacroTables, SavedMacros};
 use super::saved_notes::{NoteTables, SavedNotes};
+use super::saved_values::{SavedValues, ValueTables};
 use super::{Expander, ExpansionTables, LoweredGlobals};
 use crate::core::{ModuleId, ModulePath};
 use crate::diagnostic::DiagnosticRenderer;
+use crate::interpret::{Closure, Value};
 use crate::modules::{ModuleRecord, ModuleSource, ModuleSources};
 use crate::source::{SourceId, SourceMap, Span};
 
@@ -22,17 +23,30 @@ pub struct PreludeState {
 }
 
 enum PreludeDefinitions {
-    Built(SavedTables, MacroTables, NoteTables),
-    Loaded(SavedDefinitions, SavedMacros, SavedNotes),
+    Built(BuiltTables),
+    Loaded(LoadedTables),
+}
+
+#[derive(serde::Serialize)]
+struct BuiltTables {
+    definitions: SavedTables,
+    macros: ValueTables,
+    globals: ValueTables,
+    notes: NoteTables,
+}
+
+#[derive(Default, serde::Deserialize)]
+#[serde(bound(deserialize = "'de: 'static"))]
+struct LoadedTables {
+    definitions: SavedDefinitions,
+    macros: SavedValues<Closure>,
+    globals: SavedValues<Value>,
+    notes: SavedNotes,
 }
 
 impl Default for PreludeDefinitions {
     fn default() -> Self {
-        Self::Loaded(
-            SavedDefinitions::default(),
-            SavedMacros::default(),
-            SavedNotes::default(),
-        )
+        Self::Loaded(LoadedTables::default())
     }
 }
 
@@ -76,18 +90,17 @@ impl PreludeState {
     }
 
     pub fn save(&self) -> Vec<u8> {
-        let PreludeDefinitions::Built(definitions, macros, notes) = &self.definitions else {
+        let PreludeDefinitions::Built(tables) = &self.definitions else {
             panic!("only a built prelude state saves")
         };
-        bincode::serialize(&(self, definitions, macros, notes))
-            .expect("every saved table serializes")
+        bincode::serialize(&(self, tables)).expect("every saved table serializes")
     }
 
     pub fn load(bytes: &'static [u8]) -> Result<Self, UnreadablePrelude> {
-        let (state, definitions, macros, notes): (Self, SavedDefinitions, SavedMacros, SavedNotes) =
+        let (state, tables): (Self, LoadedTables) =
             bincode::deserialize(bytes).map_err(UnreadablePrelude)?;
         Ok(Self {
-            definitions: PreludeDefinitions::Loaded(definitions, macros, notes),
+            definitions: PreludeDefinitions::Loaded(tables),
             ..state
         })
     }
@@ -99,13 +112,14 @@ impl PreludeState {
         for record in self.modules {
             expander.modules.adopt(record);
         }
-        let PreludeDefinitions::Loaded(definitions, macros, notes) = self.definitions else {
+        let PreludeDefinitions::Loaded(tables) = self.definitions else {
             panic!("a built prelude state installs only after a save and a load")
         };
-        expander.saved_definitions = definitions;
-        expander.saved_macros = macros;
+        expander.saved_definitions = tables.definitions;
+        expander.saved_macros = tables.macros;
+        expander.saved_globals = tables.globals;
         expander.tables = self.tables;
-        expander.tables.module_notes.adopt(notes);
+        expander.tables.module_notes.adopt(tables.notes);
         expander
             .tables
             .restore_lowered_globals(&self.lowered_globals);
@@ -129,7 +143,8 @@ impl Expander<'_> {
         self.tables.forget_locals();
         let lowered_globals = self.tables.take_lowered_globals();
         let saved_tables = self.tables.save_definitions();
-        let macro_tables = MacroTables::of(self.tables.macros.take_ready());
+        let macro_tables = ValueTables::of(self.tables.macros.take_ready());
+        let global_tables = ValueTables::of(self.tables.globals.take_values());
         let note_tables = self.tables.module_notes.take_saved();
         PreludeState {
             first_source,
@@ -137,7 +152,12 @@ impl Expander<'_> {
             modules: self.modules.into_records_after(placeholder),
             tables: self.tables,
             lowered_globals,
-            definitions: PreludeDefinitions::Built(saved_tables, macro_tables, note_tables),
+            definitions: PreludeDefinitions::Built(BuiltTables {
+                definitions: saved_tables,
+                macros: macro_tables,
+                globals: global_tables,
+                notes: note_tables,
+            }),
         }
     }
 
@@ -506,6 +526,12 @@ mod tests {
     fn a_saved_state_keeps_its_notes_only_in_the_saved_bytes() {
         let state = PreludeState::build();
         assert!(state.tables().module_notes.holds_no_unsaved_note());
+    }
+
+    #[test]
+    fn a_saved_state_keeps_its_evaluated_globals_only_in_the_saved_bytes() {
+        let state = PreludeState::build();
+        assert!(state.tables().globals.holds_no_value());
     }
 
     #[test]

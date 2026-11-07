@@ -16,9 +16,18 @@ pub struct PreludeState {
     tables: ExpansionTables,
     lowered_globals: LoweredGlobals,
     #[serde(skip)]
-    saved_tables: SavedTables,
-    #[serde(skip)]
-    saved_definitions: SavedDefinitions,
+    definitions: PreludeDefinitions,
+}
+
+enum PreludeDefinitions {
+    Built(SavedTables),
+    Loaded(SavedDefinitions),
+}
+
+impl Default for PreludeDefinitions {
+    fn default() -> Self {
+        Self::Loaded(SavedDefinitions::default())
+    }
 }
 
 #[derive(Debug)]
@@ -56,14 +65,17 @@ impl PreludeState {
     }
 
     pub fn save(&self) -> Vec<u8> {
-        bincode::serialize(&(self, &self.saved_tables)).expect("every saved table serializes")
+        let PreludeDefinitions::Built(tables) = &self.definitions else {
+            panic!("only a built prelude state saves")
+        };
+        bincode::serialize(&(self, tables)).expect("every saved table serializes")
     }
 
     pub fn load(bytes: &'static [u8]) -> Result<Self, UnreadablePrelude> {
-        let (state, saved_definitions): (Self, SavedDefinitions) =
+        let (state, saved): (Self, SavedDefinitions) =
             bincode::deserialize(bytes).map_err(UnreadablePrelude)?;
         Ok(Self {
-            saved_definitions,
+            definitions: PreludeDefinitions::Loaded(saved),
             ..state
         })
     }
@@ -75,7 +87,10 @@ impl PreludeState {
         for record in self.modules {
             expander.modules.adopt(record);
         }
-        expander.saved_definitions = self.saved_definitions;
+        let PreludeDefinitions::Loaded(saved) = self.definitions else {
+            panic!("a built prelude state installs only after a save and a load")
+        };
+        expander.saved_definitions = saved;
         expander.tables = self.tables;
         expander
             .tables
@@ -106,8 +121,7 @@ impl Expander<'_> {
             modules: self.modules.into_records_after(placeholder),
             tables: self.tables,
             lowered_globals,
-            saved_tables,
-            saved_definitions: SavedDefinitions::default(),
+            definitions: PreludeDefinitions::Built(saved_tables),
         }
     }
 
@@ -439,6 +453,24 @@ mod tests {
     fn a_saved_state_holds_the_string_view() {
         let state = UserProgram::loaded_state();
         assert!(state.tables.string_view.is_some());
+    }
+
+    #[test]
+    #[should_panic(expected = "installs only after a save and a load")]
+    fn a_built_state_does_not_install() {
+        let (mut sources, entry) = UserProgram::EMPTY.sources();
+        let expander = Expander::with_prelude(
+            &mut sources,
+            UserProgram::module_sources(),
+            PreludeState::build(),
+        );
+        UserProgram::EMPTY.entry_module(expander, entry);
+    }
+
+    #[test]
+    #[should_panic(expected = "only a built prelude state saves")]
+    fn a_loaded_state_does_not_save() {
+        UserProgram::loaded_state().save();
     }
 
     #[test]

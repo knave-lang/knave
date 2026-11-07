@@ -34,6 +34,7 @@ use crate::core::{
     VariantPayload as CoreVariantPayload,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::expand::PendingDefinitions;
 use crate::modules::ModuleSources;
 use crate::source::Span;
 
@@ -358,11 +359,7 @@ impl TypeChecker {
         self.record_definition_facts(definitions);
     }
 
-    fn record_prelude_definitions(
-        &mut self,
-        modules: &[CoreModule],
-        saved: &crate::expand::PendingDefinitions,
-    ) {
+    fn record_prelude_definitions(&mut self, modules: &[CoreModule], saved: &PendingDefinitions) {
         let defined = modules
             .iter()
             .filter(|module| ModuleSources::is_prelude(&module.path))

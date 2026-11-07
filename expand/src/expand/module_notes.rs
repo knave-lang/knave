@@ -21,6 +21,12 @@ impl ModuleNotes {
         self.added.push(notes_key);
     }
 
+    pub fn holds_any(&self, module: ModuleId) -> bool {
+        self.notes
+            .iter()
+            .any(|((noted_module, _), notes)| *noted_module == module && !notes.is_empty())
+    }
+
     pub fn take_saved(&mut self) -> NoteTables {
         let tables = NoteTables::encode(&self.notes);
         *self = Self::default();

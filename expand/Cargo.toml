@@ -6,7 +6,7 @@ description = "The reading, scoping and expansion stages of knave"
 license = "MIT"
 repository.workspace = true
 rust-version.workspace = true
-include = ["/src/", "/prelude/*.rslisp"]
+include = ["/src/", "/prelude/*.rslisp", "/LICENSE"]
 
 [dependencies]
 annotate-snippets = "0.12"

@@ -18,7 +18,7 @@ use super::rust_types::{RustType, RustTypeTable};
 use super::selection::Selection;
 use super::selfless_methods::SelflessMethods;
 use super::structs::{StructDefinition, StructTable};
-use super::template_clauses::TemplateClauses;
+use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::templates::TemplateBorrows;
 use super::traits::{Implementor, RustTrait, TraitTable};
 use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
@@ -1031,13 +1031,46 @@ impl TypeChecker {
             .clauses
             .iter()
             .map(|clause| {
-                let target = self.lower_type(&clause.target, &FxHashMap::default())?;
+                let target = self.clause_target(&clause.target)?;
                 Ok((target, Rc::clone(&clause.template)))
             })
             .collect::<Result<Vec<_>, Diagnostic>>();
         match lowered {
-            Ok(clauses) => self.template_clauses.add(binding, clauses),
+            Ok(clauses) => {
+                self.report_covered_clauses(template, &clauses);
+                self.template_clauses.add(binding, clauses);
+            }
             Err(diagnostic) => self.diagnostics.push(diagnostic),
+        }
+    }
+
+    fn clause_target(&mut self, target: &TypeExpr) -> Result<ClauseTarget, Diagnostic> {
+        match target.kind() {
+            TypeExprKind::Trait(binding) => Ok(ClauseTarget::Trait(Bound::plain(*binding))),
+            _ => self
+                .lower_type(target, &FxHashMap::default())
+                .map(ClauseTarget::Type),
+        }
+    }
+
+    fn report_covered_clauses(
+        &mut self,
+        template: &RustTemplate,
+        clauses: &[(ClauseTarget, Rc<str>)],
+    ) {
+        for (index, (target, _)) in clauses.iter().enumerate() {
+            let covering = clauses[..index]
+                .iter()
+                .position(|(earlier, _)| earlier.covers(target, &self.traits));
+            if let Some(covering) = covering {
+                let clause = template.clauses[index].target.span();
+                let earlier = template.clauses[covering].target.span();
+                self.diagnostics.push(if clauses[covering].0 == *target {
+                    TypeProblems::repeated_clause(clause, earlier)
+                } else {
+                    TypeProblems::covered_clause(clause, earlier)
+                });
+            }
         }
     }
 

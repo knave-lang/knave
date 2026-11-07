@@ -9,6 +9,10 @@ pub struct PackageFiles {
 
 impl PackageFiles {
     const PACKAGE_TABLE: &'static str = "[package]";
+    const WORKSPACE_PACKAGE_TABLE: &'static str = "[workspace.package]";
+    const WORKSPACE_DEPENDENCY_TABLE_PREFIX: &'static str = "[workspace.dependencies.";
+    const TABLE_END: &'static str = "]";
+    const EXACT_REQUIREMENT: &'static str = "=";
     const NAME_KEY: &'static str = "name";
     const VERSION_KEY: &'static str = "version";
     const MANIFEST_NAME: &'static str = "the manifest";
@@ -28,29 +32,47 @@ impl PackageFiles {
 
     pub fn versioned(&self, version: &ReleaseVersion) -> Result<Self, TaskFailure> {
         let version = version.to_string();
-        let lock_entry = self.lock_entry()?;
-        let manifest = self
-            .manifest
-            .with_string_value(Self::PACKAGE_TABLE, Self::VERSION_KEY, &version)
-            .ok_or_else(|| {
-                TaskFailure::manifest_key_missing(
-                    Self::MANIFEST_NAME,
-                    Self::PACKAGE_TABLE,
-                    Self::VERSION_KEY,
-                )
-            })?;
-        let lock = self
-            .lock
-            .with_string_value(&lock_entry, Self::VERSION_KEY, &version)
-            .ok_or_else(|| {
-                TaskFailure::manifest_key_missing(Self::LOCK_NAME, &lock_entry, Self::VERSION_KEY)
-            })?;
-        Ok(Self::new(manifest, lock))
+        Ok(Self::new(
+            self.versioned_manifest(&version)?,
+            self.versioned_lock(&version)?,
+        ))
     }
 
-    fn lock_entry(&self) -> Result<String, TaskFailure> {
-        let name = self
-            .manifest
+    fn versioned_manifest(&self, version: &str) -> Result<TomlText, TaskFailure> {
+        let workspace = Self::with_version(
+            &self.manifest,
+            Self::MANIFEST_NAME,
+            Self::WORKSPACE_PACKAGE_TABLE,
+            version,
+        )?;
+        let requirement = format!("{}{version}", Self::EXACT_REQUIREMENT);
+        self.pinned_crates().try_fold(workspace, |manifest, name| {
+            let table = format!(
+                "{}{name}{}",
+                Self::WORKSPACE_DEPENDENCY_TABLE_PREFIX,
+                Self::TABLE_END
+            );
+            Self::with_version(&manifest, Self::MANIFEST_NAME, &table, &requirement)
+        })
+    }
+
+    fn versioned_lock(&self, version: &str) -> Result<TomlText, TaskFailure> {
+        let package = self.package_name()?;
+        std::iter::once(package)
+            .chain(self.pinned_crates())
+            .try_fold(self.lock.clone(), |lock, name| {
+                let entry = format!("{} = \"{name}\"", Self::NAME_KEY);
+                Self::with_version(&lock, Self::LOCK_NAME, &entry, version)
+            })
+    }
+
+    fn pinned_crates(&self) -> impl Iterator<Item = &str> {
+        self.manifest
+            .table_names(Self::WORKSPACE_DEPENDENCY_TABLE_PREFIX, Self::TABLE_END)
+    }
+
+    fn package_name(&self) -> Result<&str, TaskFailure> {
+        self.manifest
             .string_value(Self::PACKAGE_TABLE, Self::NAME_KEY)
             .ok_or_else(|| {
                 TaskFailure::manifest_key_missing(
@@ -58,8 +80,17 @@ impl PackageFiles {
                     Self::PACKAGE_TABLE,
                     Self::NAME_KEY,
                 )
-            })?;
-        Ok(format!("{} = \"{name}\"", Self::NAME_KEY))
+            })
+    }
+
+    fn with_version(
+        text: &TomlText,
+        file: &str,
+        anchor: &str,
+        version: &str,
+    ) -> Result<TomlText, TaskFailure> {
+        text.with_string_value(anchor, Self::VERSION_KEY, version)
+            .ok_or_else(|| TaskFailure::manifest_key_missing(file, anchor, Self::VERSION_KEY))
     }
 }
 
@@ -91,7 +122,7 @@ mod tests {
     }
 
     #[test]
-    fn the_manifest_changes_only_the_package_version() {
+    fn the_manifest_changes_the_workspace_version_and_each_pin() {
         assert_eq!(
             PackageFilesFixture::versioned("0.1.1").manifest(),
             PackageFilesFixture::VERSIONED_MANIFEST
@@ -99,7 +130,7 @@ mod tests {
     }
 
     #[test]
-    fn the_lock_file_changes_only_the_package_entry() {
+    fn the_lock_file_changes_only_the_released_entries() {
         assert_eq!(
             PackageFilesFixture::versioned("0.1.1").lock(),
             PackageFilesFixture::VERSIONED_LOCK

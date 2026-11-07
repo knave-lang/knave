@@ -38,6 +38,26 @@ impl<'a> Reader<'a> {
         }
     }
 
+    pub fn read_form_at(source: &'a SourceFile, offset: usize) -> Option<Form> {
+        let excerpt = source.excerpt_range();
+        if !excerpt.contains(&offset) {
+            return None;
+        }
+        let mut reader = Self {
+            cursor: Cursor::starting_at(&source.text()[..excerpt.end], offset),
+            ..Self::new(source)
+        };
+        reader.read_one_form()
+    }
+
+    fn read_one_form(&mut self) -> Option<Form> {
+        if !self.cursor.peek().is_some_and(Syntax::starts_form) {
+            return None;
+        }
+        let form = self.read_form()?;
+        self.diagnostics.is_empty().then_some(form)
+    }
+
     fn excerpt_cursor(source: &'a SourceFile) -> Cursor<'a> {
         let excerpt = source.excerpt_range();
         Cursor::starting_at(&source.text()[..excerpt.end], excerpt.start)
@@ -237,8 +257,98 @@ impl<'a> Reader<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::Reader;
-    use crate::source::{SourceMap, TextPosition};
+    use super::{Form, Reader};
+    use crate::source::{SourceId, SourceMap, TextPosition};
+
+    struct ReadFixture {
+        sources: SourceMap,
+        file: SourceId,
+    }
+
+    impl ReadFixture {
+        const TEXT: &str = "(defn area (w h) (* w h))\n; a note\n(defn half (x) (/ x 2))\n";
+
+        fn new() -> Self {
+            let mut sources = SourceMap::default();
+            let file = sources.add("geometry.rslisp", Self::TEXT);
+            Self { sources, file }
+        }
+
+        fn offset_of(text: &str) -> usize {
+            Self::TEXT.find(text).expect("the text holds it")
+        }
+
+        fn form_at(&self, offset: usize) -> Option<Form> {
+            Reader::read_form_at(self.sources.file(self.file), offset)
+        }
+
+        fn whole_file(&self) -> Vec<Form> {
+            Reader::new(self.sources.file(self.file))
+                .read()
+                .unwrap_or_else(|_| panic!("the file reads"))
+        }
+    }
+
+    #[test]
+    fn a_form_in_the_middle_of_a_file_reads_alone() {
+        let fixture = ReadFixture::new();
+        let form = fixture.form_at(ReadFixture::offset_of("(defn half"));
+        assert_eq!(
+            form.map(|form| form.to_string()).as_deref(),
+            Some("(defn half (x) (/ x 2))")
+        );
+    }
+
+    #[test]
+    fn a_nested_form_reads_alone() {
+        let fixture = ReadFixture::new();
+        let form = fixture.form_at(ReadFixture::offset_of("(* w h)"));
+        assert_eq!(
+            form.map(|form| form.to_string()).as_deref(),
+            Some("(* w h)")
+        );
+    }
+
+    #[test]
+    fn a_form_read_alone_keeps_the_spans_of_a_whole_file_read() {
+        let fixture = ReadFixture::new();
+        let whole = fixture.whole_file();
+        let second = &whole[1];
+        let alone = fixture
+            .form_at(second.span().range().start)
+            .expect("the form reads");
+        assert_eq!(format!("{alone:?}"), format!("{second:?}"));
+    }
+
+    #[test]
+    fn an_offset_that_starts_no_form_reads_nothing() {
+        let fixture = ReadFixture::new();
+        for text in [" (w h)", ") (* w", "; a note", "\n(defn half"] {
+            assert!(
+                fixture.form_at(ReadFixture::offset_of(text)).is_none(),
+                "{text:?}"
+            );
+        }
+        assert!(fixture.form_at(ReadFixture::TEXT.len()).is_none());
+    }
+
+    #[test]
+    fn an_offset_outside_the_excerpt_reads_nothing() {
+        let text = "(defn area (w h) (* w h))\n(area 2 3)\n";
+        let mut sources = SourceMap::default();
+        let module = sources.add("geometry.rslisp", text);
+        let inside = sources
+            .add_inside(module, TextPosition::new(2, 1), "(area 2 3)")
+            .expect("the forms sit at that position");
+        assert!(Reader::read_form_at(sources.file(inside), 0).is_none());
+    }
+
+    #[test]
+    fn a_form_with_a_read_error_reads_nothing() {
+        let mut sources = SourceMap::default();
+        let file = sources.add("broken.rslisp", "(area [2] 3)");
+        assert!(Reader::read_form_at(sources.file(file), 0).is_none());
+    }
 
     #[test]
     fn a_source_inside_another_reads_only_its_own_forms_at_their_offsets() {

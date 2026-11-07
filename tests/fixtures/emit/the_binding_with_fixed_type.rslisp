@@ -1,0 +1,8 @@
+(defn main ()
+  (local offsets
+    (the (vec i32) (vec -2 9 10)))
+  (local nothing (the (option i64) none))
+  (local small (the i32 5))
+  (println (len offsets))
+  (println (none? nothing))
+  (println small))

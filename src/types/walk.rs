@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use crate::core::BindingId;
 
+use super::Type;
 use super::typed::{
     LetValue, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
     TypedLambda, TypedLeaf, TypedStructExpr,
@@ -12,8 +13,19 @@ impl TypedExpr {
         self.let_block().map(|(_, value)| value)
     }
 
-    pub fn holds_written_type(&self) -> bool {
-        self.let_block().is_some_and(|(binder, _)| binder.annotated)
+    pub fn needs_written_type(&self) -> bool {
+        self.let_block()
+            .is_some_and(|(binder, value)| binder.annotated && value.leaves_type_open())
+    }
+
+    fn leaves_type_open(&self) -> bool {
+        let generic = matches!(&self.ty, Type::Named(_, arguments) if !arguments.is_empty());
+        let takes_nothing = match &self.kind {
+            TypedExprKind::Leaf(_) => true,
+            TypedExprKind::Call(_, arguments) => arguments.is_empty(),
+            _ => false,
+        };
+        generic && takes_nothing
     }
 
     fn let_block(&self) -> Option<(&TypedBinder, &TypedExpr)> {

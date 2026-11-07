@@ -30,6 +30,7 @@ mod returned_arguments;
 mod rust_clauses;
 mod rust_type;
 mod saved_definitions;
+mod saved_index;
 mod saved_notes;
 mod session;
 mod shape;

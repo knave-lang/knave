@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashSet;
 
+use super::saved_index::{BindingIndex, SavedWords};
 use crate::core::{
     BindingArena, BindingId, CoreModule, Expr, Item, ItemKind, ModuleId, References,
 };
@@ -13,21 +14,23 @@ pub struct SavedTables {
     items: Vec<u8>,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub struct SavedDefinitions {
-    entries: &'static [u8],
+    index: BindingIndex,
     references: &'static [u8],
     items: &'static [u8],
+}
+
+impl Default for SavedDefinitions {
+    fn default() -> Self {
+        Self::borrowing(&[], &[], &[])
+    }
 }
 
 impl<'de: 'static> serde::Deserialize<'de> for SavedDefinitions {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let (entries, references, items) = serde::Deserialize::deserialize(deserializer)?;
-        Ok(Self {
-            entries,
-            references,
-            items,
-        })
+        Ok(Self::borrowing(entries, references, items))
     }
 }
 
@@ -43,12 +46,10 @@ struct SavedItem {
 }
 
 impl SavedItem {
-    const WORD: usize = size_of::<u32>();
     const WORDS: usize = 7;
-    const SIZE: usize = Self::WORDS * Self::WORD;
 
-    fn read(bytes: &[u8]) -> Self {
-        let word = |index: usize| SavedWords::read(&bytes[index * Self::WORD..]);
+    fn read(index: &BindingIndex, row: usize) -> Self {
+        let word = |field: usize| index.word(row, field);
         Self {
             binding: word(0),
             module: word(1),
@@ -61,7 +62,7 @@ impl SavedItem {
     }
 
     fn write(self, bytes: &mut Vec<u8>) {
-        for word in [
+        let words = [
             self.binding,
             self.module,
             self.position,
@@ -69,56 +70,30 @@ impl SavedItem {
             self.item_end,
             self.references_start,
             self.references_end,
-        ] {
-            bytes.extend(word.to_le_bytes());
-        }
-    }
-}
-
-struct SavedWords;
-
-impl SavedWords {
-    fn read(bytes: &[u8]) -> u32 {
-        let (word, _) = bytes.split_at(SavedItem::WORD);
-        u32::from_le_bytes(word.try_into().expect("a saved word has four bytes"))
-    }
-
-    fn index(value: usize) -> u32 {
-        u32::try_from(value).expect("the saved prelude stays under 4 GiB")
+        ];
+        SavedWords::write(&words, bytes);
     }
 }
 
 impl SavedDefinitions {
-    fn count(&self) -> usize {
-        self.entries.len() / SavedItem::SIZE
-    }
-
-    fn entry(&self, index: usize) -> SavedItem {
-        SavedItem::read(&self.entries[index * SavedItem::SIZE..])
-    }
-
-    fn entries(&self) -> impl Iterator<Item = SavedItem> + '_ {
-        (0..self.count()).map(|index| self.entry(index))
-    }
-
-    fn first_entry_at_or_after(&self, binding: u32) -> usize {
-        let (mut low, mut high) = (0, self.count());
-        while low < high {
-            let middle = low.midpoint(high);
-            if self.entry(middle).binding < binding {
-                low = middle + 1;
-            } else {
-                high = middle;
-            }
+    fn borrowing(entries: &'static [u8], references: &'static [u8], items: &'static [u8]) -> Self {
+        Self {
+            index: BindingIndex::new(entries, SavedItem::WORDS),
+            references,
+            items,
         }
-        low
+    }
+
+    fn entry(&self, row: usize) -> SavedItem {
+        SavedItem::read(&self.index, row)
+    }
+
+    fn bindings(&self) -> impl Iterator<Item = BindingId> + '_ {
+        self.index.all_rows().map(|row| self.index.binding(row))
     }
 
     fn entries_of(&self, binding: BindingId) -> impl Iterator<Item = SavedItem> + '_ {
-        let wanted = binding.index();
-        (self.first_entry_at_or_after(wanted)..self.count())
-            .map(|index| self.entry(index))
-            .take_while(move |entry| entry.binding == wanted)
+        self.index.rows_of(binding).map(|row| self.entry(row))
     }
 
     fn item(&self, entry: SavedItem) -> Item {
@@ -128,7 +103,7 @@ impl SavedDefinitions {
 
     fn references(&self, entry: SavedItem) -> impl Iterator<Item = BindingId> + '_ {
         self.references[entry.references_start as usize..entry.references_end as usize]
-            .chunks_exact(SavedItem::WORD)
+            .chunks_exact(SavedWords::SIZE)
             .map(|word| BindingId::from_index(SavedWords::read(word)))
     }
 
@@ -156,15 +131,12 @@ impl PendingDefinitions {
     }
 
     pub fn saved_bindings(&self) -> impl Iterator<Item = BindingId> + '_ {
-        self.saved
-            .entries()
-            .map(|entry| BindingId::from_index(entry.binding))
+        self.saved.bindings()
     }
 
     pub fn undecoded(&self) -> impl Iterator<Item = BindingId> + '_ {
         self.saved
-            .entries()
-            .map(|entry| BindingId::from_index(entry.binding))
+            .bindings()
             .filter(|binding| !self.restored.contains(binding))
     }
 

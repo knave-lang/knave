@@ -1,0 +1,106 @@
+name: Nightly mutants
+
+on:
+  schedule:
+    - cron: "17 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-mutants
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CACHIX_CACHE: rslisp
+  DIFF: git.diff
+  ISSUE_TITLE: Nightly mutants
+  INSTA_UPDATE: "no"
+
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      base: ${{ steps.plan.outputs.base }}
+      head: ${{ steps.plan.outputs.head }}
+      changed-sources: ${{ steps.plan.outputs.changed-sources }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/mutation/plan.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mutation-diff
+          path: ${{ env.DIFF }}
+
+  mutants:
+    needs: plan
+    if: needs.plan.outputs.changed-sources != '' && needs.plan.outputs.changed-sources != '0'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ needs.plan.outputs.head }}
+      - uses: ./.github/actions/dev-shell
+        with:
+          build-cache: mutation
+          save-build-cache: ${{ matrix.shard == 0 }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: mutation-diff
+      - name: Test the mutants
+        env:
+          SHARD: ${{ matrix.shard }}/4
+          RESULTS: ${{ github.workspace }}/results
+        run: nix develop .#mutation -c bash .github/mutation/run.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: mutants-shard-${{ matrix.shard }}
+          path: results/
+
+  report:
+    needs: [plan, mutants]
+    if: ${{ always() && needs.plan.outputs.head != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: mutants-shard-*
+          path: results
+      - name: Report the surviving mutants
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ needs.plan.outputs.base }}
+          HEAD_COMMIT: ${{ needs.plan.outputs.head }}
+          CHANGED_SOURCES: ${{ needs.plan.outputs.changed-sources }}
+          SHARDS: 4
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash .github/mutation/report.sh

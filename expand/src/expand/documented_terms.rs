@@ -19,7 +19,7 @@ impl Expander<'_> {
     const NOTED_TERM: &'static str = "noted-term";
 
     pub(super) fn check_documented_terms(&mut self, module: ModuleId) {
-        if ModuleSources::is_prelude(self.modules.get(module).path()) {
+        if self.skips_document_check(module) {
             return;
         }
         let Some(notes) = self.docstring_notes() else {
@@ -34,6 +34,11 @@ impl Expander<'_> {
             self.diagnostics
                 .push(ExpandProblems::undefined_documented_term(term.name(), span));
         }
+    }
+
+    fn skips_document_check(&self, module: ModuleId) -> bool {
+        ModuleSources::is_prelude(self.modules.get(module).path())
+            || !self.tables.module_notes.holds_any(module)
     }
 
     fn docstring_notes(&mut self) -> Option<DocstringNotes> {

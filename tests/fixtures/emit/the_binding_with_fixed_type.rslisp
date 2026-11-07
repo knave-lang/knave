@@ -3,6 +3,7 @@
     (the (vec i32) (vec -2 9 10)))
   (local nothing (the (option i64) none))
   (local small (the i32 5))
+  (push! offsets 11)
   (println (len offsets))
   (println (none? nothing))
   (println small))

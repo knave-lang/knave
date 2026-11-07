@@ -62,6 +62,8 @@ jobs:
         run: nix develop .#ci -c cargo fmt --all --check
       - name: Lint
         run: nix develop .#ci -c cargo clippy --workspace --all-targets -- -D warnings
+      - name: Package the published crates
+        run: nix develop .#ci -c cargo package --locked --package knave-expand --package knave
 
   coverage-shard:
     name: coverage (${{ matrix.shard }})

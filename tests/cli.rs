@@ -1,9 +1,9 @@
 use std::fs;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, ErrorKind};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::{Component, Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Child, Command, Output, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
@@ -217,6 +217,7 @@ impl Sandbox {
 
     const EXECUTABLE: u32 = 0o755;
     const PIPE_OVERFLOWING_GREETING_REPEATS: usize = 1 << 18;
+    const PIPE_OVERFLOWING_INPUT_BYTES: usize = 1 << 20;
     const READ_ONLY: u32 = 0o444;
     const NO_ACCESS: u32 = 0o000;
     const TERMINAL_RECORDER: &str = "script";
@@ -357,11 +358,7 @@ impl Sandbox {
             .stderr(Stdio::piped())
             .spawn()
             .expect("the compiler starts");
-        std::io::Write::write_all(
-            &mut child.stdin.take().expect("stdin is piped"),
-            input.as_ref(),
-        )
-        .expect("the compiler reads its input");
+        Self::offer_input(&mut child, input.as_ref());
         Outcome {
             output: child.wait_with_output().expect("the compiler finishes"),
         }
@@ -521,14 +518,24 @@ impl Sandbox {
         let (sender, shown) = mpsc::channel();
         let reader = std::thread::spawn(move || TerminalScreen::forward(&mut stdout, &sender));
         let before_input = shown.recv_timeout(Self::INPUT_PATIENCE).unwrap_or_default();
-        std::io::Write::write_all(
-            &mut child.stdin.take().expect("stdin is piped"),
-            input.as_bytes(),
-        )
-        .expect("the program reads its input");
+        Self::offer_input(&mut child, input.as_bytes());
         child.wait().expect("the program finishes");
         reader.join().expect("stdout is read");
         String::from_utf8(before_input).expect("the program prints UTF-8")
+    }
+
+    fn offer_input(child: &mut Child, input: &[u8]) {
+        let mut stdin = child.stdin.take().expect("stdin is piped");
+        std::io::Write::write_all(&mut stdin, input)
+            .or_else(Self::allow_exit_before_reading)
+            .expect("the child accepts its input");
+    }
+
+    fn allow_exit_before_reading(error: std::io::Error) -> std::io::Result<()> {
+        match error.kind() {
+            ErrorKind::BrokenPipe => Ok(()),
+            _ => Err(error),
+        }
     }
 
     fn built_program_reading_its_directory(&self, relative_path: impl AsRef<Path>) -> Outcome {
@@ -1200,6 +1207,31 @@ fn fmt_of_standard_input_with_another_path_is_a_usage_error() {
             .stderr()
             .starts_with("error: `-` reads standard input")
     );
+}
+
+#[test]
+fn fmt_of_unread_standard_input_with_another_path_is_a_usage_error() {
+    let sandbox = Sandbox::new("fmt_unread_standard_input").with_file("done.rslisp", FORMATTED);
+    let unread = vec![b' '; Sandbox::PIPE_OVERFLOWING_INPUT_BYTES];
+    let formatted = sandbox.compiler_reading(unread, &["fmt", "-", "done.rslisp"]);
+    assert!(
+        formatted
+            .assert_exit_code(2)
+            .stderr()
+            .starts_with("error: `-` reads standard input")
+    );
+}
+
+#[test]
+fn a_child_that_exits_before_reading_its_input_is_allowed() {
+    let closed_pipe = std::io::Error::from(ErrorKind::BrokenPipe);
+    assert!(Sandbox::allow_exit_before_reading(closed_pipe).is_ok());
+}
+
+#[test]
+fn any_other_failure_to_give_a_child_its_input_stays_an_error() {
+    let refused = std::io::Error::from(ErrorKind::PermissionDenied);
+    assert!(Sandbox::allow_exit_before_reading(refused).is_err());
 }
 
 #[test]

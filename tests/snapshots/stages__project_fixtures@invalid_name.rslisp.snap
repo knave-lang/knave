@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/invalid_name.rslisp
+---
+error[L0718]: `MyApp` is not a project name
+ --> project/invalid_name.rslisp:1:10
+  |
+1 | (project MyApp)
+  |          ^^^^^ expected a kebab-case name
+  |
+  = note: the name names the build directory and the program
+  = help: use lowercase letters, digits and single dashes, as `my-program`

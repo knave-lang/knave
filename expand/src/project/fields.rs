@@ -63,14 +63,14 @@ impl<'p> FieldScanner<'p> {
         keyword: &'f Form,
         value: Option<&'f Form>,
     ) {
+        if !self.known_keys.contains(&key) {
+            return self.report_unknown(key, keyword.span());
+        }
         let Some(value) = value else {
             return self
                 .problems
                 .push(ProjectProblems::missing_value(key, keyword.span()));
         };
-        if !self.known_keys.contains(&key) {
-            return self.report_unknown(key, keyword.span());
-        }
         if let Some(first) = fields.get(key) {
             return self.problems.push(ProjectProblems::duplicate_entry(
                 &format!(":{key}"),

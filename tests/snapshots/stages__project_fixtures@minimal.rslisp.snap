@@ -12,4 +12,5 @@ Project {
     libraries: [],
     dependencies: [],
     dev_dependencies: [],
+    sections: [],
 }

@@ -205,6 +205,8 @@ diagnostic_codes! {
     SHORT_REVISION = "L0715",
     UNVERSIONED_CRATE = "L0716",
     UNKNOWN_EDITION = "L0717",
+    INVALID_PROJECT_NAME = "L0718",
+    UNBUILT_PROJECT_SECTION = "L0719",
 }
 
 impl DiagnosticCode {

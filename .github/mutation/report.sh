@@ -34,7 +34,7 @@ merged_unchecked() {
 }
 
 unchecked_lines_under() {
-  awk -v heading="$1" '$0 == heading { inside = 1; next } /^## / { inside = 0 } inside && /^- \[ \] /'
+  awk -v heading="$1" '{ sub(/[ \t]+$/, "") } $0 == heading { inside = 1; next } /^## / { inside = 0 } inside && /^- \[ \] /'
 }
 
 surviving_mutants() {

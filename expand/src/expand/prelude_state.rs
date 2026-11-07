@@ -2,6 +2,7 @@ use std::fmt;
 use std::path::PathBuf;
 
 use super::saved_definitions::{SavedDefinitions, SavedTables};
+use super::saved_macros::{MacroTables, SavedMacros};
 use super::{Expander, ExpansionTables, LoweredGlobals};
 use crate::core::{ModuleId, ModulePath};
 use crate::diagnostic::DiagnosticRenderer;
@@ -20,13 +21,13 @@ pub struct PreludeState {
 }
 
 enum PreludeDefinitions {
-    Built(SavedTables),
-    Loaded(SavedDefinitions),
+    Built(SavedTables, MacroTables),
+    Loaded(SavedDefinitions, SavedMacros),
 }
 
 impl Default for PreludeDefinitions {
     fn default() -> Self {
-        Self::Loaded(SavedDefinitions::default())
+        Self::Loaded(SavedDefinitions::default(), SavedMacros::default())
     }
 }
 
@@ -64,18 +65,23 @@ impl PreludeState {
         }
     }
 
+    #[cfg(test)]
+    pub(super) fn tables(&self) -> &ExpansionTables {
+        &self.tables
+    }
+
     pub fn save(&self) -> Vec<u8> {
-        let PreludeDefinitions::Built(tables) = &self.definitions else {
+        let PreludeDefinitions::Built(definitions, macros) = &self.definitions else {
             panic!("only a built prelude state saves")
         };
-        bincode::serialize(&(self, tables)).expect("every saved table serializes")
+        bincode::serialize(&(self, definitions, macros)).expect("every saved table serializes")
     }
 
     pub fn load(bytes: &'static [u8]) -> Result<Self, UnreadablePrelude> {
-        let (state, saved): (Self, SavedDefinitions) =
+        let (state, definitions, macros): (Self, SavedDefinitions, SavedMacros) =
             bincode::deserialize(bytes).map_err(UnreadablePrelude)?;
         Ok(Self {
-            definitions: PreludeDefinitions::Loaded(saved),
+            definitions: PreludeDefinitions::Loaded(definitions, macros),
             ..state
         })
     }
@@ -87,10 +93,11 @@ impl PreludeState {
         for record in self.modules {
             expander.modules.adopt(record);
         }
-        let PreludeDefinitions::Loaded(saved) = self.definitions else {
+        let PreludeDefinitions::Loaded(definitions, macros) = self.definitions else {
             panic!("a built prelude state installs only after a save and a load")
         };
-        expander.saved_definitions = saved;
+        expander.saved_definitions = definitions;
+        expander.saved_macros = macros;
         expander.tables = self.tables;
         expander
             .tables
@@ -114,6 +121,7 @@ impl Expander<'_> {
         self.tables.string_view = self.tables.find_string_view();
         let lowered_globals = self.tables.take_lowered_globals();
         let saved_tables = self.tables.save_definitions();
+        let macro_tables = MacroTables::of(self.tables.macros.take_ready());
         self.tables.module_notes = self.tables.module_notes.saved();
         PreludeState {
             first_source,
@@ -121,7 +129,7 @@ impl Expander<'_> {
             modules: self.modules.into_records_after(placeholder),
             tables: self.tables,
             lowered_globals,
-            definitions: PreludeDefinitions::Built(saved_tables),
+            definitions: PreludeDefinitions::Built(saved_tables, macro_tables),
         }
     }
 

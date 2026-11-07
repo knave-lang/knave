@@ -39,6 +39,25 @@ impl MacroTable {
         self.states.insert(binding, MacroState::Pending(definition));
     }
 
+    pub fn take_ready(&mut self) -> Vec<(BindingId, Rc<Closure>)> {
+        let mut ready = Vec::new();
+        for (binding, state) in std::mem::take(&mut self.states) {
+            match state {
+                MacroState::Ready(closure) => ready.push((binding, closure)),
+                unready => {
+                    self.states.insert(binding, unready);
+                }
+            }
+        }
+        ready.sort_by_key(|(binding, _)| *binding);
+        ready
+    }
+
+    #[cfg(test)]
+    pub fn holds_ready(&self, binding: BindingId) -> bool {
+        matches!(self.states.get(&binding), Some(MacroState::Ready(_)))
+    }
+
     fn pending(&self) -> Vec<(BindingId, Form)> {
         let mut pending: Vec<(BindingId, Form)> = self
             .states
@@ -338,8 +357,17 @@ impl Expander<'_> {
                     .insert(binding, MacroState::Failed);
                 Err(ExpandProblems::broken_macro(&name, span))
             }
-            None => Err(ExpandProblems::compile_time_cycle(&name, span)),
+            None => self
+                .decode_saved_macro(binding)
+                .ok_or_else(|| ExpandProblems::compile_time_cycle(&name, span)),
         }
+    }
+
+    fn decode_saved_macro(&mut self, binding: BindingId) -> Option<Rc<Closure>> {
+        let closure = self.saved_macros.closure_of(binding)?;
+        let ready = MacroState::Ready(Rc::clone(&closure));
+        self.tables.macros.states.insert(binding, ready);
+        Some(closure)
     }
 
     pub(super) fn compile_pending_macros(&mut self) {
@@ -387,9 +415,31 @@ impl Expander<'_> {
 
 #[cfg(test)]
 mod tests {
+    use super::MacroTable;
+    use crate::core::BindingId;
     use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
     use crate::expand::Expander;
+    use crate::reader::{Form, FormKind};
     use crate::source::{SourceId, Span};
+
+    struct MacroTableFixture;
+
+    impl MacroTableFixture {
+        fn with_pending(binding: BindingId) -> MacroTable {
+            let span = Span::new(SourceId::new(0), 0..0);
+            let mut table = MacroTable::default();
+            table.add_pending(binding, Form::new(FormKind::List(Vec::new()), span));
+            table
+        }
+    }
+
+    #[test]
+    fn taking_the_ready_macros_leaves_a_pending_one() {
+        let binding = BindingId::from_index(0);
+        let mut table = MacroTableFixture::with_pending(binding);
+        assert!(table.take_ready().is_empty());
+        assert_eq!(table.pending().len(), 1);
+    }
 
     struct CallFixture;
 

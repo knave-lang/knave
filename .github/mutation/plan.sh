@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
+source .github/mutation/issue.sh
 
-last_tested_commit() {
-  gh issue list --state all --limit 100 --search "\"$ISSUE_TITLE\" in:title" --json title,body \
-    --jq '.[] | select(.title == env.ISSUE_TITLE) | .body' |
-    sed -n 's/.*<!-- tested: \([0-9a-f]\{40\}\) -->.*/\1/p' | head -n 1
-}
-
-commit_a_day_old() {
-  git rev-list -1 --first-parent --before="24 hours ago" HEAD
-}
+readonly OLDEST_BASE='3 days ago'
 
 base_commit() {
   local tested
-  tested=$(last_tested_commit)
-  if [[ -n $tested ]] && git merge-base --is-ancestor "$tested" HEAD; then
+  tested=$(nightly_issue | issue_body_text | tested_commit_in)
+  if [[ -n $tested ]] && git merge-base --is-ancestor "$tested" HEAD && is_recent "$tested"; then
     echo "$tested"
   else
     commit_a_day_old
   fi
+}
+
+is_recent() {
+  (($(git log -1 --format=%ct "$1") >= $(date -d "$OLDEST_BASE" +%s)))
+}
+
+commit_a_day_old() {
+  git rev-list -1 --first-parent --before="24 hours ago" HEAD
 }
 
 base=$(base_commit)

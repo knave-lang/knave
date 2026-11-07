@@ -151,6 +151,8 @@ const PROMPT_MULTI_LINE: &str =
 const PROMPT_USES: &str =
     "(use shapes circle square)\n(circle 2)\n(use shapes circle)\n(square 3)\n";
 const PROMPT_PANIC: &str = "(defn twice (x) (* 2 x))\n(at (vec 1 2) 5)\n(twice 4)\n";
+const PROMPT_ABORT: &str =
+    "(def abort (rust \"std::process::abort()\" (fn () unit)))\n(abort)\n(+ 1 2)\n";
 const PROMPT_EXIT: &str =
     "(def exit (rust \"std::process::exit({0})\" (fn (i32) unit)))\n(exit 3)\n(exit 0)\n";
 const PROMPT_UNCLOSED_END: &str = "(+ 1 2)\n(defn twice (x)\n  (* 2 x)\n";
@@ -765,6 +767,7 @@ impl Outcome {
     const PANIC_EXIT_CODE: i32 = 101;
     const PANIC_TEXT: &str = "panicked";
 
+    const SIGABRT: i32 = 6;
     const SIGPIPE: i32 = 13;
     const ESCAPE: &str = "\u{1b}[";
 
@@ -785,6 +788,18 @@ impl Outcome {
             self.output.status.code(),
             Some(expected),
             "stdout:\n{}\nstderr:\n{}",
+            self.stdout(),
+            self.stderr()
+        );
+        self
+    }
+
+    fn assert_killed_by(&self, signal: i32) -> &Self {
+        assert_eq!(
+            self.output.status.signal(),
+            Some(signal),
+            "status: {}\nstdout:\n{}\nstderr:\n{}",
+            self.output.status,
             self.stdout(),
             self.stderr()
         );
@@ -2130,18 +2145,17 @@ fn run_exits_with_the_program_exit_code() {
 }
 
 #[test]
-fn run_ends_quietly_when_its_reader_closes() {
+fn run_dies_by_sigpipe_when_its_reader_closes() {
     let sandbox = Sandbox::new("run_closed_pipe").with_file("lines.rslisp", THOUSAND_LINES);
-    sandbox
-        .compiler_writing_to_a_closed_pipe(&["run", "lines.rslisp"])
-        .assert_silent_success();
+    let run = sandbox.compiler_writing_to_a_closed_pipe(&["run", "lines.rslisp"]);
+    assert_eq!(run.assert_killed_by(Outcome::SIGPIPE).stderr(), "");
 }
 
 #[test]
-fn run_fails_when_the_program_dies_of_another_signal() {
+fn run_dies_by_the_signal_that_kills_the_program() {
     let sandbox = Sandbox::new("run_abort").with_file("abort.rslisp", ABORT);
     let run = sandbox.compiler(&["run", "abort.rslisp"]);
-    assert_eq!(run.assert_exit_code(1).stderr(), "");
+    assert_eq!(run.assert_killed_by(Outcome::SIGABRT).stderr(), "");
 }
 
 #[test]
@@ -2452,20 +2466,20 @@ fn eval_exits_with_the_code_of_a_panic() {
 }
 
 #[test]
-fn eval_exits_with_128_plus_the_signal_that_stops_the_program() {
+fn eval_dies_by_the_signal_that_kills_the_program() {
     let sandbox = Sandbox::new("eval_signal").with_file("exits.rslisp", EXITS);
     sandbox
         .compiler(&["eval", "exits.rslisp", "(abort)"])
-        .assert_exit_code(134);
+        .assert_killed_by(Outcome::SIGABRT);
 }
 
 #[test]
-fn eval_succeeds_when_its_output_closes() {
+fn eval_dies_by_sigpipe_when_its_output_closes() {
     let sandbox = Sandbox::new("eval_closed_output").with_file("session.rslisp", SESSION);
     let forms = "(for-each (range 0 1000000) (fn (i) (println i)))";
     sandbox
         .compiler_writing_to_a_closed_pipe(&["eval", "session.rslisp", forms])
-        .assert_exit_code(0);
+        .assert_killed_by(Outcome::SIGPIPE);
 }
 
 #[test]
@@ -2821,22 +2835,22 @@ fn eval_json_ends_with_the_exit_code_of_the_program() {
 }
 
 #[test]
-fn eval_json_ends_with_128_plus_the_signal_that_stops_the_program() {
+fn eval_json_ends_with_128_plus_the_signal_then_dies_by_it() {
     let sandbox = Sandbox::new("eval_json_signal").with_file("exits.rslisp", EXITS);
     let eval = sandbox.compiler(&["eval", "--json", "exits.rslisp", "(abort)"]);
     assert_eq!(
-        eval.assert_exit_code(134).json_replies(),
+        eval.assert_killed_by(Outcome::SIGABRT).json_replies(),
         [json!({"status": "done", "exit": 134})]
     );
 }
 
 #[test]
-fn eval_json_succeeds_when_its_output_closes() {
+fn eval_json_dies_by_sigpipe_when_its_output_closes() {
     let sandbox = Sandbox::new("eval_json_closed_output").with_file("session.rslisp", SESSION);
     let forms = "(for-each (range 0 1000000) (fn (i) (println i)))";
     sandbox
         .compiler_writing_to_a_closed_pipe(&["eval", "--json", "session.rslisp", forms])
-        .assert_exit_code(0);
+        .assert_killed_by(Outcome::SIGPIPE);
 }
 
 #[test]
@@ -2903,7 +2917,7 @@ fn eval_json_stops_a_program_whose_output_closes() {
     let sandbox = Sandbox::new("eval_json_closed_count").with_file("count.rslisp", COUNT_THEN_FAIL);
     sandbox
         .compiler_writing_to_a_closed_pipe(&["eval", "--json", "count.rslisp", "(count-up 0)"])
-        .assert_exit_code(0);
+        .assert_killed_by(Outcome::SIGPIPE);
 }
 
 #[test]
@@ -3334,6 +3348,18 @@ fn repl_shows_a_panic_and_keeps_its_definitions() {
         "{stderr}"
     );
     assert_eq!(repl.stdout(), "8\n");
+}
+
+#[test]
+fn repl_notes_128_plus_the_signal_that_kills_a_program_and_keeps_going() {
+    let sandbox = Sandbox::new("repl_abort");
+    let repl = sandbox.compiler_reading(PROMPT_ABORT, &["repl"]);
+    let stderr = repl.assert_exit_code(0).stderr();
+    assert!(
+        stderr.contains("note: the program exited with code 134\n"),
+        "{stderr}"
+    );
+    assert_eq!(repl.stdout(), "3\n");
 }
 
 #[test]

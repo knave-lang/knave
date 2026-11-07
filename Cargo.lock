@@ -341,6 +341,7 @@ dependencies = [
  "ctrlc",
  "insta",
  "knave-expand",
+ "libc",
  "rustc-hash",
  "rustyline",
  "serde_json",

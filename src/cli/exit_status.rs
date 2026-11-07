@@ -1,6 +1,7 @@
 use std::io;
 use std::process::ExitCode;
 
+use super::program_signal::ProgramSignal;
 use super::standard_error::StandardError;
 use crate::build::InterruptSignal;
 
@@ -12,6 +13,7 @@ pub enum ExitStatus {
     Environment,
     Program(u8),
     Interrupted,
+    KilledBy(ProgramSignal),
 }
 
 impl ExitStatus {
@@ -24,6 +26,21 @@ impl ExitStatus {
             ExitStatus::UsageError | ExitStatus::Environment => 2,
             ExitStatus::Program(code) => code,
             ExitStatus::Interrupted => Self::SIGNAL_BASE + InterruptSignal::NUMBER,
+            ExitStatus::KilledBy(signal) => signal.shell_code(),
+        }
+    }
+
+    pub fn is_interrupted(self) -> bool {
+        match self {
+            ExitStatus::Interrupted => true,
+            ExitStatus::KilledBy(signal) => signal.is_interrupt(),
+            _ => false,
+        }
+    }
+
+    pub fn die_by_the_program_signal(self) {
+        if let ExitStatus::KilledBy(signal) = self {
+            signal.kill_this_process();
         }
     }
 

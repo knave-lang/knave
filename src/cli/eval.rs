@@ -121,7 +121,7 @@ impl EvalCommand {
             output: &binary,
         };
         terminal.compile(emitted, &target, self.profile)?;
-        Ok(self.output.run(&binary, printed_forms).shell_status())
+        Ok(self.output.run(&binary, printed_forms).status())
     }
 
     fn root(&self) -> PathBuf {

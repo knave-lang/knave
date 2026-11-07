@@ -24,6 +24,7 @@ mod json_replies;
 mod name_records;
 mod open_input;
 mod painted_program;
+mod program_signal;
 mod program_stream;
 mod prompt_diagnostics;
 mod prompt_history;
@@ -309,6 +310,7 @@ impl Cli {
             report.add_stage_work(terminal.work());
             report.print();
         }
+        status.die_by_the_program_signal();
         status.into()
     }
 }

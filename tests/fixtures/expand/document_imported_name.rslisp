@@ -1,0 +1,8 @@
+(use document_imported/source helper)
+(use prelude/macros document)
+
+(document (helper) "A page from outside.")
+
+(def page (doc-page helper))
+
+(defn main () (println (helper)))

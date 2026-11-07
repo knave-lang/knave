@@ -1,0 +1,5 @@
+(use prelude/macros document)
+
+(document (if test then) "A user page of if.")
+
+(defn main () 1)

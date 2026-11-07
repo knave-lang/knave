@@ -1,0 +1,3 @@
+(export helper)
+
+(def helper (fn () 1))

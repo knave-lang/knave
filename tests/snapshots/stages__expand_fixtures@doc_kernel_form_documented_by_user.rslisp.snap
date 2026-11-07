@@ -3,4 +3,10 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/doc_kernel_form_documented_by_user.rslisp
 ---
-(def page "(if test then else)\n\nEvaluates `then` when the test is true, and `else` otherwise.\n\nIt emits a Rust `if` with an `else`.")
+error[L0351]: this module documents `if` but does not define it
+ --> expand/doc_kernel_form_documented_by_user.rslisp:3:12
+  |
+3 | (document (if test then) "User's if.")
+  |            ^^ not defined in this module
+  |
+  = help: define `if` in this module, or move this `document` to the module that defines it

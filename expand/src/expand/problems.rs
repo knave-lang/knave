@@ -1029,6 +1029,17 @@ impl ExpandProblems {
         .with_help("apply the variable to a type, such as `(vec a)`")
     }
 
+    pub fn undefined_documented_term(name: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::UNDEFINED_DOCUMENTED_TERM,
+            format!("this module documents `{name}` but does not define it"),
+            Label::new(span, "not defined in this module"),
+        )
+        .with_help(format!(
+            "define `{name}` in this module, or move this `document` to the module that defines it"
+        ))
+    }
+
     pub fn broken_definition(name: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::BROKEN_DEFINITION,

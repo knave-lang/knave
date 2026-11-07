@@ -1,7 +1,11 @@
 (use prelude/macros document)
 (use modules/prose)
 
+(def module-docstring 1)
+
 (document module-docstring "Not the module docstring.")
+
+(def module 2)
 
 (document module "Not the module docstring either.")
 

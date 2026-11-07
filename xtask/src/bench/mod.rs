@@ -209,9 +209,18 @@ impl MeasureOptions {
     }
 }
 
+type WorkspaceReader = fn(&Path) -> Result<CargoWorkspace, TaskFailure>;
+
 struct FrontEndBenchmark<'a> {
     root: &'a Path,
     options: MeasureOptions,
+    read_workspace: WorkspaceReader,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct MeasuredLanguage {
+    extension: String,
+    name: String,
 }
 
 impl<'a> FrontEndBenchmark<'a> {
@@ -222,7 +231,19 @@ impl<'a> FrontEndBenchmark<'a> {
     const TARGET_DIRECTORY: &'static str = "target";
 
     fn new(root: &'a Path, options: MeasureOptions) -> Self {
-        Self { root, options }
+        Self {
+            root,
+            options,
+            read_workspace: CargoWorkspace::read,
+        }
+    }
+
+    #[cfg(test)]
+    fn with_workspace_reader(self, read_workspace: WorkspaceReader) -> Self {
+        Self {
+            read_workspace,
+            ..self
+        }
     }
 
     fn measure(&self) -> Result<String, TaskFailure> {
@@ -245,13 +266,10 @@ impl<'a> FrontEndBenchmark<'a> {
     }
 
     fn measure_corpus(&self) -> Result<ResultSet, TaskFailure> {
-        let language = self.language()?;
-        let extension = language.constant(Self::EXTENSION_CONSTANT)?;
-        let programs = self.corpus(&extension)?.programs()?;
+        let language = self.measured_language()?;
+        let programs = self.corpus(&language.extension)?.programs()?;
         let measured = self.callgrind()?.measure_all(&programs)?;
-        let counted = self
-            .counter_run(language.constant(Self::NAME_CONSTANT)?)?
-            .count_all(&programs)?;
+        let counted = self.counter_run(language.name)?.count_all(&programs)?;
         Ok(ResultSet::new(Self::attach_counters(measured, counted)))
     }
 
@@ -291,8 +309,12 @@ impl<'a> FrontEndBenchmark<'a> {
         }
     }
 
-    fn language(&self) -> Result<LanguageSource, TaskFailure> {
-        LanguageSource::find(&CargoWorkspace::read(&self.workspace()?)?)
+    fn measured_language(&self) -> Result<MeasuredLanguage, TaskFailure> {
+        let source = LanguageSource::find(&(self.read_workspace)(&self.workspace()?)?)?;
+        Ok(MeasuredLanguage {
+            extension: source.constant(Self::EXTENSION_CONSTANT)?,
+            name: source.constant(Self::NAME_CONSTANT)?,
+        })
     }
 
     fn corpus(&self, extension: &str) -> Result<Corpus, TaskFailure> {
@@ -351,41 +373,48 @@ mod tests {
     struct MeasuredCheckoutFixture;
 
     impl MeasuredCheckoutFixture {
-        const OTHER_ROOT: &'static str = "fixtures/bench";
-
-        fn other_root() -> PathBuf {
-            Path::new(env!("CARGO_MANIFEST_DIR")).join(Self::OTHER_ROOT)
-        }
-
-        fn options() -> MeasureOptions {
-            MeasureOptions {
-                workspace: Some(WorkspaceFixture::repository_root().to_path_buf()),
+        fn benchmark(root: &Path, measured: PathBuf) -> FrontEndBenchmark<'_> {
+            let options = MeasureOptions {
+                workspace: Some(measured),
                 corpus: None,
                 save: None,
-            }
+            };
+            FrontEndBenchmark::new(root, options).with_workspace_reader(Self::read_workspace)
         }
 
-        fn programs() -> Vec<PathBuf> {
-            let root = Self::other_root();
-            let benchmark = FrontEndBenchmark::new(&root, Self::options());
-            let extension = benchmark
-                .language()
-                .unwrap()
-                .constant(FrontEndBenchmark::EXTENSION_CONSTANT)
-                .unwrap();
-            benchmark.corpus(&extension).unwrap().programs().unwrap()
+        fn read_workspace(path: &Path) -> Result<CargoWorkspace, TaskFailure> {
+            let fixture = WorkspaceFixture::root().canonicalize().unwrap();
+            if path == fixture {
+                Ok(WorkspaceFixture::workspace())
+            } else {
+                CargoWorkspace::read(path)
+            }
         }
     }
 
     #[test]
+    fn a_measured_checkout_supplies_its_own_extension_and_name() {
+        let repository = WorkspaceFixture::repository_root();
+        let benchmark = MeasuredCheckoutFixture::benchmark(repository, WorkspaceFixture::root());
+        assert_eq!(
+            benchmark.measured_language().unwrap(),
+            MeasuredLanguage {
+                extension: "ldg".to_string(),
+                name: "ledger".to_string(),
+            }
+        );
+    }
+
+    #[test]
     fn a_measured_checkout_runs_its_own_corpus() {
-        let corpus = WorkspaceFixture::repository_root()
-            .canonicalize()
-            .unwrap()
-            .join(Corpus::DIRECTORY);
-        let programs = MeasuredCheckoutFixture::programs();
-        assert!(!programs.is_empty());
-        assert!(programs.iter().all(|program| program.starts_with(&corpus)));
+        let repository = WorkspaceFixture::repository_root();
+        let measured = repository.join("xtask");
+        let benchmark = MeasuredCheckoutFixture::benchmark(repository, measured.clone());
+        let corpus = benchmark.corpus("rslisp").unwrap();
+        assert_eq!(
+            corpus.directory(),
+            measured.canonicalize().unwrap().join(Corpus::DIRECTORY)
+        );
     }
 
     #[test]

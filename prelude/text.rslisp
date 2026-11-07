@@ -2,7 +2,7 @@
                     map-list template)
 
 (use prelude/pair pair)
-(use prelude/bindings let)
+(use prelude/syntax let)
 
 (use code bool-not concat drop empty? escape-char
           escape-format escape-string fail first keyword?

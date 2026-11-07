@@ -21,7 +21,7 @@ impl RunCommand {
 
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
         match terminal.build(&self.file, &self.options) {
-            Ok(binary) => FinishedProgram::run_with(&binary, &self.arguments).run_status(),
+            Ok(binary) => FinishedProgram::run_with(&binary, &self.arguments).status(),
             Err(status) => status,
         }
     }

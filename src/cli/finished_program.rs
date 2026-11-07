@@ -3,8 +3,8 @@ use std::path::Path;
 use std::process::{self, Command};
 
 use super::exit_status::ExitStatus;
+use super::program_signal::ProgramSignal;
 use super::standard_error::StandardError;
-use crate::build::InterruptSignal;
 
 pub enum FinishedProgram {
     Exited(process::ExitStatus),
@@ -12,9 +12,7 @@ pub enum FinishedProgram {
 }
 
 impl FinishedProgram {
-    const KILLED_BY_SIGNAL: u8 = 1;
-    #[cfg(unix)]
-    const SIGPIPE: i32 = 13;
+    const UNREPORTABLE_CODE: u8 = 1;
 
     pub fn run(binary: &Path) -> Self {
         Self::run_with(binary, &[])
@@ -37,54 +35,20 @@ impl FinishedProgram {
         }
     }
 
-    pub fn run_status(&self) -> ExitStatus {
-        self.status_or(|_| Self::KILLED_BY_SIGNAL)
-    }
-
-    pub fn shell_status(&self) -> ExitStatus {
-        if self.was_interrupted() {
-            return ExitStatus::Interrupted;
-        }
-        self.status_or(|status| {
-            Self::signal(status)
-                .and_then(|signal| u8::try_from(i32::from(ExitStatus::SIGNAL_BASE) + signal).ok())
-                .unwrap_or(Self::KILLED_BY_SIGNAL)
-        })
-    }
-
-    fn was_interrupted(&self) -> bool {
-        matches!(self, Self::Exited(status) if InterruptSignal::stopped(*status))
-    }
-
-    fn status_or(&self, killed: impl FnOnce(process::ExitStatus) -> u8) -> ExitStatus {
+    pub fn status(&self) -> ExitStatus {
         let Self::Exited(status) = self else {
             return ExitStatus::Environment;
         };
-        if Self::stopped_by_a_closed_output(*status) {
-            return ExitStatus::Success;
+        match ProgramSignal::of(*status) {
+            Some(signal) => ExitStatus::KilledBy(signal),
+            None => ExitStatus::Program(Self::code(*status)),
         }
-        let code = status.code().and_then(|code| u8::try_from(code).ok());
-        ExitStatus::Program(code.unwrap_or_else(|| killed(*status)))
     }
 
-    #[cfg(unix)]
-    fn stopped_by_a_closed_output(status: process::ExitStatus) -> bool {
-        Self::signal(status) == Some(Self::SIGPIPE)
-    }
-
-    #[cfg(not(unix))]
-    fn stopped_by_a_closed_output(_status: process::ExitStatus) -> bool {
-        false
-    }
-
-    #[cfg(unix)]
-    fn signal(status: process::ExitStatus) -> Option<i32> {
-        use std::os::unix::process::ExitStatusExt;
-        status.signal()
-    }
-
-    #[cfg(not(unix))]
-    fn signal(_status: process::ExitStatus) -> Option<i32> {
-        None
+    fn code(status: process::ExitStatus) -> u8 {
+        status
+            .code()
+            .and_then(|code| u8::try_from(code).ok())
+            .unwrap_or(Self::UNREPORTABLE_CODE)
     }
 }

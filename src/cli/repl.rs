@@ -135,7 +135,7 @@ impl PromptSession {
         for form in forms {
             let input = self.next_input(terminal, text[form.span().range()].to_string());
             self.interruption.clear();
-            if self.enter_input(terminal, input) == ExitStatus::Interrupted {
+            if self.enter_input(terminal, input).is_interrupted() {
                 return self.acknowledge_interruption();
             }
         }
@@ -246,8 +246,11 @@ impl PromptSession {
     }
 
     fn note_failed_program(terminal: &Terminal, status: ExitStatus) {
-        if let ExitStatus::Program(code @ 1..) = status {
-            terminal.print_note(&format!("the program exited with code {code}"));
-        }
+        let code = match status {
+            ExitStatus::Program(code @ 1..) => code,
+            ExitStatus::KilledBy(signal) if !signal.is_interrupt() => signal.shell_code(),
+            _ => return,
+        };
+        terminal.print_note(&format!("the program exited with code {code}"));
     }
 }

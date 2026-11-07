@@ -579,9 +579,10 @@ Field names are not hygienic. They are looked up through the struct type.
 | --- | --- |
 | 1 | the module or the forms have errors |
 | 2 | a usage error |
-| 0 | a closed output stops the program, as under `run` |
-| 128 + N | signal N stops the program |
+| 128 + N | signal N stops the program: `eval` dies by signal N, as `env` does, so a closed output in `rslisp eval f '(g)' \| head -1` shows 141 |
 | the program's code | otherwise |
+
+**`rslisp run <file>` ends as its program does.** It exits 1 if the program has errors, and otherwise exits with the program's code or dies by the program's signal, as `eval` does. A platform without signals keeps the program's code.
 
 **`eval --json` writes one JSON object per line on standard output, so an editor can tell output, values and diagnostics apart** ([RFC 0049](../rfcs/0049-eval-amendments.md)). With `--id <text>`, every object also carries `id` with that text. `--id` requires `--json`.
 
@@ -590,7 +591,7 @@ Field names are not hygienic. They are looked up through the struct type.
 | `out`, `err` | the program's standard output and standard error, as they stream |
 | `value`, with `form` | one form's result, as `pr-str` prints it, and the number of the form from 1, definitions included |
 | `diagnostics` | the diagnostics of one report, notes included |
-| `status`, with `exit` | `"done"` and the exit code, as the last object |
+| `status`, with `exit` | `"done"` and the exit code, as the last object, which is 128 + N before `eval` dies by signal N |
 
 - Each diagnostic carries `severity`, which is `error`, `warning` or `note`, `code`, which a note lacks, `message`, `file`, `line`, `column`, `end_line`, `end_column` and `rendered`, the plain text that `eval` prints without `--json`.
 - Lines and columns count from 1, and columns count UTF-8 bytes, as `--line` and `--column` do. The end is one past the span.
@@ -631,7 +632,7 @@ Field names are not hygienic. They are looked up through the struct type.
 - The history holds the last 1000 texts, in `$XDG_STATE_HOME/knave/history`, or in `~/.local/state/knave/history` when `XDG_STATE_HOME` is unset or empty. The prompt adds each text to the file as it is entered.
 - If neither variable is set, or the file cannot be read or written, the prompt works without history and prints one `note` that says why.
 - If the prompt cannot catch Ctrl-C, it prints one `note` that Ctrl-C will end the session.
-- A rustc or rustfmt that Ctrl-C stops reports no diagnostic and no note, under every command, whether it dies of the signal or catches it and fails, as rustc does. A command other than `repl` then exits with code 130, as for a program that Ctrl-C stops.
+- A rustc or rustfmt that Ctrl-C stops reports no diagnostic and no note, under every command, whether it dies of the signal or catches it and fails, as rustc does. A command other than `repl` then exits with code 130, the code that a shell shows for a program that Ctrl-C stops.
 
 **A definition takes effect, and each earlier input that no longer checks is set aside.** The prompt checks the buffer as `check` checks a file, and locates each error at one input:
 

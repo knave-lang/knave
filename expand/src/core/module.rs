@@ -50,6 +50,7 @@ pub const RUST_TRAIT_METHOD_MARKER: &str = "method";
 pub const RUST_TRAIT_HELP_MARKER: &str = "help";
 pub const RUST_TRAIT_ASSOCIATED_MARKER: &str = "associated";
 pub const RUST_TRAIT_STRUCTURAL_MARKER: &str = "structural";
+pub const RUST_TRAIT_REQUIRES_MARKER: &str = "requires";
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct RustTraitAssociatedType {
@@ -72,12 +73,19 @@ pub struct RustTraitImplementor {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct RequiredTrait {
+    pub bound: TypeBound,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct RustTraitDeclaration {
     pub binding: BindingId,
     pub path: Rc<str>,
     pub self_variable: BindingId,
     pub methods: Vec<TraitMethod>,
     pub help: Option<Rc<str>>,
+    pub requires: Vec<RequiredTrait>,
     pub structural: Option<StructuralClause>,
     pub associated: Vec<RustTraitAssociatedType>,
     pub implementors: Vec<RustTraitImplementor>,

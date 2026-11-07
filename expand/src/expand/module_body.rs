@@ -13,9 +13,10 @@ use crate::core::{
     BindingId, BindingInfo, BindingKind, ControlForm, CoreModule, DefinitionForm, Expr, ExprKind,
     ExpressionForm, FieldLabel, ImplAssociatedType, ImplMethod, Item, ItemKind, KernelForm,
     Keyword, Leaf, ModuleId, Namespace, RUST_TRAIT_ASSOCIATED_MARKER, RUST_TRAIT_HELP_MARKER,
-    RUST_TRAIT_METHOD_MARKER, RUST_TRAIT_STRUCTURAL_MARKER, RustTemplate, RustTraitAssociatedType,
-    RustTraitDeclaration, RustTraitImplementor, TraitAssociatedType, TraitMethod, TypeBinder,
-    TypeBound, TypeExpr, TypeExprKind, VariantDeclaration, VariantInfo, VariantPayload,
+    RUST_TRAIT_METHOD_MARKER, RUST_TRAIT_REQUIRES_MARKER, RUST_TRAIT_STRUCTURAL_MARKER,
+    RequiredTrait, RustTemplate, RustTraitAssociatedType, RustTraitDeclaration,
+    RustTraitImplementor, TraitAssociatedType, TraitMethod, TypeBinder, TypeBound, TypeExpr,
+    TypeExprKind, VariantDeclaration, VariantInfo, VariantPayload,
 };
 use crate::diagnostic::{Counted, Diagnostic, DistinctDiagnostics};
 use crate::mangle::NameMangler;
@@ -45,6 +46,7 @@ type ImplLoweringParts = (ImplAssociated, Vec<Form>);
 struct RustTraitEntries {
     methods: Vec<TraitMethod>,
     help: Option<Rc<str>>,
+    requires: Vec<RequiredTrait>,
     structural: Option<Form>,
     associated: Vec<RustTraitAssociatedType>,
     implementors: Vec<RustTraitImplementor>,
@@ -68,6 +70,10 @@ enum PendingItem {
 }
 
 impl Expander<'_> {
+    const SECOND_REQUIRES_HELP: &'static str = "merge the two `requires` clauses into one";
+    const EMPTY_REQUIRES_HELP: &'static str =
+        "name each trait that Rust requires, as in `(requires partial-eq)`, or remove the clause";
+
     pub(super) fn expand_module_body(&mut self, module: ModuleId, forms: Vec<Form>) {
         let outer_module = self.current_module.replace(module);
         let (pending, budgets) = self.register_definitions(module, forms);
@@ -464,6 +470,10 @@ impl Expander<'_> {
 
     fn is_rust_trait_help(entry: &Form) -> bool {
         Self::rust_trait_marker(entry) == Some(RUST_TRAIT_HELP_MARKER)
+    }
+
+    fn is_rust_trait_requires(entry: &Form) -> bool {
+        Self::rust_trait_marker(entry) == Some(RUST_TRAIT_REQUIRES_MARKER)
     }
 
     fn is_rust_trait_associated(entry: &Form) -> bool {
@@ -1710,6 +1720,7 @@ impl Expander<'_> {
                 self_variable,
                 methods: entries.methods,
                 help: entries.help,
+                requires: entries.requires,
                 structural,
                 associated: entries.associated,
                 implementors: entries.implementors,
@@ -1729,6 +1740,7 @@ impl Expander<'_> {
         let mut lowered = RustTraitEntries {
             methods: Vec::new(),
             help: None,
+            requires: Vec::new(),
             structural: None,
             associated: Vec::new(),
             implementors: Vec::new(),
@@ -1773,6 +1785,8 @@ impl Expander<'_> {
     ) -> Result<bool, Diagnostic> {
         if Self::is_rust_trait_help(entry) {
             lowered.help = Some(self.lower_rust_trait_help(shape, entry)?);
+        } else if Self::is_rust_trait_requires(entry) {
+            lowered.requires = self.lower_rust_trait_requires(shape, entry, &lowered.requires)?;
         } else if Self::is_rust_trait_structural(entry) {
             lowered.structural = Some(Self::single_structural_clause(entry, lowered)?);
         } else {
@@ -1836,6 +1850,32 @@ impl Expander<'_> {
             signature: lowered,
             default: None,
         })
+    }
+
+    fn lower_rust_trait_requires(
+        &mut self,
+        shape: &Shape<'_>,
+        entry: &Form,
+        earlier: &[RequiredTrait],
+    ) -> Result<Vec<RequiredTrait>, Diagnostic> {
+        if !earlier.is_empty() {
+            return Err(shape.malformed_with_help(entry, Self::SECOND_REQUIRES_HELP));
+        }
+        let [_, required @ ..] = shape.list(entry)? else {
+            return Err(shape.malformed(entry));
+        };
+        if required.is_empty() {
+            return Err(shape.malformed_with_help(entry, Self::EMPTY_REQUIRES_HELP));
+        }
+        required
+            .iter()
+            .map(|trait_name| {
+                Ok(RequiredTrait {
+                    bound: self.lower_bound(trait_name)?,
+                    span: trait_name.span(),
+                })
+            })
+            .collect()
     }
 
     fn lower_rust_trait_help(

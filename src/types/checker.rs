@@ -2350,18 +2350,44 @@ impl TypeChecker {
         }
     }
 
+    fn acyclic_requirements(
+        &mut self,
+        declaration: &crate::core::RustTraitDeclaration,
+    ) -> Result<Vec<Bound>, Diagnostic> {
+        let mut supertraits = Vec::new();
+        for required in &declaration.requires {
+            let bound = self.lower_type_bound(&required.bound, &FxHashMap::default())?;
+            if self.leads_back(&bound, declaration.binding) {
+                self.diagnostics.push(TypeProblems::requirement_cycle(
+                    self.bindings.get(declaration.binding).name(),
+                    self.bindings.get(bound.binding).name(),
+                    required.span,
+                ));
+            } else {
+                supertraits.push(bound);
+            }
+        }
+        Ok(supertraits)
+    }
+
+    fn leads_back(&self, required: &Bound, declared: BindingId) -> bool {
+        self.traits
+            .brings(required, &|brought| brought.binding == declared)
+    }
+
     fn collect_rust_trait(
         &mut self,
         declaration: &crate::core::RustTraitDeclaration,
     ) -> Result<(), Diagnostic> {
         let implementors = self.lower_rust_trait_implementors(declaration)?;
+        let supertraits = self.acyclic_requirements(declaration)?;
         self.traits.add(
             declaration.binding,
             RustTrait {
                 path: declaration.path.clone(),
                 implementors,
                 help: declaration.help.clone(),
-                supertraits: Vec::new(),
+                supertraits,
                 associated: None,
             },
         );
@@ -2524,20 +2550,7 @@ impl TypeChecker {
         self.unifier
             .generic_bounds(generic)
             .iter()
-            .any(|declared| self.bound_implies(declared, bound))
-    }
-
-    fn bound_implies(&self, declared: &Bound, required: &Bound) -> bool {
-        if declared == required {
-            return true;
-        }
-        let Some(rust_trait) = self.traits.get(declared.binding) else {
-            return false;
-        };
-        rust_trait
-            .supertraits
-            .iter()
-            .any(|supertrait| self.bound_implies(supertrait, required))
+            .any(|declared| self.traits.implies(declared, bound, generic))
     }
 
     pub(super) fn report_missing_trait(&mut self, bound: &Bound, implementor: &Type, span: Span) {

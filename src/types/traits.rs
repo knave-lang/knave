@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::projection::ProjectionTable;
 use super::selection::{ImplementorMatch, Selection};
@@ -123,6 +123,32 @@ impl TraitTable {
         }
     }
 
+    pub fn implies(&self, declared: &Bound, required: &Bound, implementor: GenericId) -> bool {
+        self.brings(declared, &|brought| brought.meets(required, implementor))
+    }
+
+    pub fn brings(&self, declared: &Bound, wanted: &dyn Fn(&Bound) -> bool) -> bool {
+        self.brings_unvisited(declared, wanted, &mut FxHashSet::default())
+    }
+
+    fn brings_unvisited(
+        &self,
+        declared: &Bound,
+        wanted: &dyn Fn(&Bound) -> bool,
+        visited: &mut FxHashSet<BindingId>,
+    ) -> bool {
+        if wanted(declared) {
+            return true;
+        }
+        visited.insert(declared.binding)
+            && self.get(declared.binding).is_some_and(|rust_trait| {
+                rust_trait
+                    .supertraits
+                    .iter()
+                    .any(|supertrait| self.brings_unvisited(supertrait, wanted, visited))
+            })
+    }
+
     pub fn implemented_exactly_by(&self, types: &[Type]) -> Option<BindingId> {
         let mut matching = self
             .traits
@@ -195,7 +221,7 @@ impl TraitTable {
 #[cfg(test)]
 mod tests {
     use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleId, PrimitiveType};
-    use crate::types::{Implementor, RustTrait, Scheme, TraitTable, Type};
+    use crate::types::{Bound, GenericId, Implementor, RustTrait, Scheme, TraitTable, Type};
 
     struct TraitsFixture {
         bindings: BindingArena,
@@ -234,6 +260,40 @@ mod tests {
             );
             binding
         }
+
+        fn require(&mut self, binding: BindingId, required: BindingId) {
+            self.traits.add(
+                binding,
+                RustTrait {
+                    path: std::rc::Rc::from("Cycled"),
+                    implementors: Vec::new(),
+                    help: None,
+                    supertraits: vec![Bound::plain(required)],
+                    associated: None,
+                },
+            );
+        }
+    }
+
+    #[test]
+    fn a_walk_through_a_requirement_cycle_ends() {
+        let mut fixture = TraitsFixture::new();
+        let first = fixture.add("First", &[]);
+        let second = fixture.add("Second", &[]);
+        let unrelated = fixture.add("Third", &[]);
+        fixture.require(first, second);
+        fixture.require(second, first);
+        let start = Bound::plain(first);
+        assert!(
+            fixture
+                .traits
+                .brings(&start, &|brought| brought.binding == second)
+        );
+        assert!(
+            !fixture
+                .traits
+                .brings(&start, &|brought| brought.binding == unrelated)
+        );
     }
 
     #[test]
@@ -258,5 +318,20 @@ mod tests {
         fixture.add("countable", &numbers);
         let types = numbers.map(Type::Primitive);
         assert_eq!(fixture.traits.implemented_exactly_by(&types), None);
+    }
+
+    #[test]
+    fn a_bound_with_a_second_type_implies_itself_and_not_another_second_type() {
+        let mut fixture = TraitsFixture::new();
+        let compared = fixture.add("PartialEq", &[]);
+        let implementor = GenericId::new(0);
+        let with_string = Bound::with_argument(compared, Type::Primitive(PrimitiveType::String));
+        let with_str = Bound::with_argument(compared, Type::Primitive(PrimitiveType::Str));
+        assert!(
+            fixture
+                .traits
+                .implies(&with_string, &with_string, implementor)
+        );
+        assert!(!fixture.traits.implies(&with_string, &with_str, implementor));
     }
 }

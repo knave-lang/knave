@@ -1,0 +1,36 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/rust_trait_requires_cycle.rslisp
+---
+error[L0465]: `looped` requires itself
+ --> check/rust_trait_requires_cycle.rslisp:2:13
+  |
+2 |   (requires looped)
+  |             ^^^^^^ `looped` leads back to `looped`
+  |
+  = help: remove this requirement: Rust rejects a trait that is its own supertrait
+
+error[L0465]: `second-mark` requires itself
+  --> check/rust_trait_requires_cycle.rslisp:10:13
+   |
+10 |   (requires first-mark)
+   |             ^^^^^^^^^^ `first-mark` leads back to `second-mark`
+   |
+   = help: remove this requirement: Rust rejects a trait that is its own supertrait
+
+error[L0440]: `a` might not implement `partial-eq`
+  --> check/rust_trait_requires_cycle.rslisp:16:26
+   |
+16 | (defn same-looped (x) (= x x))
+   |                          ^ this needs `partial-eq`
+   |
+   = help: add the trait to the signature's `where`: `(a partial-eq)`
+
+error[L0440]: `a` might not implement `partial-eq`
+  --> check/rust_trait_requires_cycle.rslisp:21:26
+   |
+21 | (defn same-second (x) (= x x))
+   |                          ^ this needs `partial-eq`
+   |
+   = help: add the trait to the signature's `where`: `(a partial-eq)`

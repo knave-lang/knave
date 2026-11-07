@@ -13,11 +13,11 @@
 
 (export defmacro defrule defrule-with-value doc-page
         docstring docstring-before-body?
-        docstring-before-parameters document
+        docstring-before-parameters docstrings-key document
         documented-body? header header-shape
         kernel-definition map-list module note-docstring
-        page-body template type-doc-key value-doc-key
-        whole-pairs?)
+        noted-term page-body template type-doc-key
+        value-doc-key whole-pairs?)
 
 (def map-list
   (fn (function items)
@@ -514,10 +514,14 @@
                   (pattern-lets pattern)
                   body))))
 
+(def docstrings-key (quote docstrings))
+
+(def noted-term
+  (fn (note) (nth note 1)))
+
 (def note-docstring
   (fn (key text)
-    (add-module-note (quote docstrings)
-                     (concat key (list text)))))
+    (add-module-note docstrings-key (concat key (list text)))))
 
 (def value-doc-key
   (fn (name) (list "value" name)))
@@ -701,7 +705,7 @@
   The header is the term's call form, as in `(document (twice x) text)`, or
   the bare name of a term that takes no arguments. The page shows the header
   as written, and the header's head names the term."
-  (noted-docstring (quote docstrings)
+  (noted-docstring docstrings-key
                    (concat (value-doc-key (header-name header))
                            (list header text))
                    text))
@@ -936,8 +940,7 @@
 
 (def docstring-notes
   (fn (context key)
-    (notes-with-key key
-                    (module-notes context (quote docstrings)))))
+    (notes-with-key key (module-notes context docstrings-key))))
 
 (def notes-with-key
   (fn (key notes)
@@ -950,7 +953,7 @@
 (def same-doc-key?
   (fn (key note)
     (if (value-eq (first key) (first note))
-      (same-binding? (nth key 1) (nth note 1))
+      (same-binding? (noted-term key) (noted-term note))
       false)))
 
 (def type-doc-key

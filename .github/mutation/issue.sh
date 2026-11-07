@@ -14,7 +14,7 @@ issue_number() {
 }
 
 issue_body_text() {
-  jq -r '.body // empty'
+  jq -r '.body // empty' | tr -d '\r'
 }
 
 tested_commit_in() {

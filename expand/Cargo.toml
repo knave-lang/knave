@@ -5,6 +5,7 @@ edition = "2024"
 description = "The reading, scoping and expansion stages of knave"
 license = "MIT"
 repository.workspace = true
+rust-version.workspace = true
 include = ["/src/", "/prelude/*.rslisp"]
 
 [dependencies]

@@ -91,12 +91,13 @@ mod tests {
         }
 
         fn macro_binding(state: &PreludeState, name: &str) -> BindingId {
-            let bindings = state.tables().bindings.iter().enumerate();
-            let mut macros = bindings.filter(|(_, info)| {
-                info.name() == name && matches!(info.kind(), BindingKind::Macro(_))
+            let bindings = &state.tables().bindings;
+            let mut macros = bindings.ids().filter(|binding| {
+                bindings.decoded(*binding).is_some_and(|info| {
+                    info.name() == name && matches!(info.kind(), BindingKind::Macro(_))
+                })
             });
-            let (index, _) = macros.next().expect("the prelude defines the macro");
-            BindingId::from_index(u32::try_from(index).expect("few bindings"))
+            macros.next().expect("the prelude defines the macro")
         }
 
         fn readiness_after_expanding(names: [&str; 2]) -> [bool; 2] {

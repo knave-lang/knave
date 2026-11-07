@@ -4,7 +4,8 @@ use rustc_hash::FxHashSet;
 
 use super::saved_index::{BindingIndex, SavedWords};
 use crate::core::{
-    BindingArena, BindingId, CoreModule, Expr, Item, ItemKind, ModuleId, References,
+    Binders, BindingArena, BindingId, BindingInfo, CoreModule, Expr, Item, ItemKind, ModuleId,
+    References,
 };
 
 #[derive(Default, serde::Serialize)]
@@ -96,7 +97,7 @@ impl SavedDefinitions {
         self.index.rows_of(binding).map(|row| self.entry(row))
     }
 
-    fn item(&self, entry: SavedItem) -> Item {
+    fn item(&self, entry: SavedItem) -> (Item, Vec<(BindingId, BindingInfo)>) {
         let encoded = &self.items[entry.item_start as usize..entry.item_end as usize];
         bincode::deserialize(encoded).expect("a saved prelude item decodes")
     }
@@ -107,12 +108,25 @@ impl SavedDefinitions {
             .map(|word| BindingId::from_index(SavedWords::read(word)))
     }
 
-    pub fn value_of(&self, binding: BindingId) -> Option<Rc<Expr>> {
-        self.entries_of(binding)
-            .find_map(|entry| match self.item(entry).kind {
-                ItemKind::Def(_, value) => Some(value),
-                _ => None,
-            })
+    pub fn decode_value(
+        &self,
+        binding: BindingId,
+        bindings: &mut BindingArena,
+    ) -> Option<Rc<Expr>> {
+        self.entries_of(binding).find_map(|entry| {
+            let (item, locals) = self.item(entry);
+            let ItemKind::Def(_, value) = item.kind else {
+                return None;
+            };
+            Self::restore_locals(bindings, locals);
+            Some(value)
+        })
+    }
+
+    fn restore_locals(bindings: &mut BindingArena, locals: Vec<(BindingId, BindingInfo)>) {
+        for (binding, info) in locals {
+            bindings.restore(binding, info);
+        }
     }
 }
 
@@ -140,14 +154,21 @@ impl PendingDefinitions {
             .filter(|binding| !self.restored.contains(binding))
     }
 
-    pub fn restore(&mut self, modules: &mut [CoreModule], roots: Vec<BindingId>) {
+    pub fn restore(
+        &mut self,
+        modules: &mut [CoreModule],
+        bindings: &mut BindingArena,
+        roots: Vec<BindingId>,
+    ) {
         let mut found = self.reached_entries(roots);
         found.sort_by_key(|entry| (entry.module, entry.position));
         for entry in found {
             let module = ModuleId::new(entry.module as usize);
             let holder = modules.iter_mut().find(|candidate| candidate.id == module);
             let holder = holder.expect("a saved item names a loaded module");
-            holder.items.push(self.saved.item(entry));
+            let (item, locals) = self.saved.item(entry);
+            SavedDefinitions::restore_locals(bindings, locals);
+            holder.items.push(item);
         }
     }
 
@@ -176,6 +197,7 @@ pub struct DefinitionSaver<'a> {
     bindings: &'a BindingArena,
     kept: FxHashSet<BindingId>,
     encoded: Vec<EncodedItem>,
+    set_aside: Vec<BindingId>,
 }
 
 impl<'a> DefinitionSaver<'a> {
@@ -184,6 +206,7 @@ impl<'a> DefinitionSaver<'a> {
             bindings,
             kept: string_view.into_iter().collect(),
             encoded: Vec::new(),
+            set_aside: Vec::new(),
         }
     }
 
@@ -192,12 +215,27 @@ impl<'a> DefinitionSaver<'a> {
         self.kept
             .extend(items.iter().flat_map(|item| item.kind.method_bodies()));
         let saved = self.saved_bindings(&items);
+        let mut taken = Vec::new();
         for (position, item) in items.into_iter().enumerate() {
             match Self::named_binding(&item).filter(|binding| saved.contains(binding)) {
-                Some(binding) => self.encode(binding, module.id, position, &item),
+                Some(binding) => taken.push((binding, position, item)),
                 None => module.items.push(item),
             }
         }
+        for (binding, position, item) in taken {
+            let locals = self.locals_of(&item);
+            self.encode(binding, module.id, position, &item, locals);
+        }
+    }
+
+    fn locals_of(&mut self, item: &Item) -> Vec<(BindingId, BindingInfo)> {
+        let ItemKind::Def(_, value) = &item.kind else {
+            return Vec::new();
+        };
+        let locals = Binders::of(value);
+        self.set_aside.extend(&locals);
+        let info = |binding: BindingId| (binding, self.bindings.get(binding).clone());
+        locals.into_iter().map(info).collect()
     }
 
     fn saved_bindings(&self, items: &[Item]) -> FxHashSet<BindingId> {
@@ -217,7 +255,14 @@ impl<'a> DefinitionSaver<'a> {
         }
     }
 
-    fn encode(&mut self, binding: BindingId, module: ModuleId, position: usize, item: &Item) {
+    fn encode(
+        &mut self,
+        binding: BindingId,
+        module: ModuleId,
+        position: usize,
+        item: &Item,
+        locals: Vec<(BindingId, BindingInfo)>,
+    ) {
         self.encoded.push(EncodedItem {
             entry: SavedItem {
                 binding: binding.index(),
@@ -228,7 +273,7 @@ impl<'a> DefinitionSaver<'a> {
                 references_start: 0,
                 references_end: 0,
             },
-            item: bincode::serialize(item).expect("every prelude item serializes"),
+            item: bincode::serialize(&(item, locals)).expect("every prelude item serializes"),
             references: self.references_of(item),
         });
     }
@@ -240,7 +285,7 @@ impl<'a> DefinitionSaver<'a> {
         }
     }
 
-    pub fn finish(mut self) -> SavedTables {
+    pub fn finish(mut self) -> (SavedTables, Vec<BindingId>) {
         self.encoded
             .sort_by_key(|encoded| (encoded.entry.binding, encoded.entry.position));
         let (mut entries, mut references, mut items) = (Vec::new(), Vec::new(), Vec::new());
@@ -259,11 +304,12 @@ impl<'a> DefinitionSaver<'a> {
             entry.references_end = SavedWords::index(references.len());
             entry.write(&mut entries);
         }
-        SavedTables {
+        let tables = SavedTables {
             entries,
             references,
             items,
-        }
+        };
+        (tables, self.set_aside)
     }
 }
 
@@ -274,7 +320,8 @@ mod tests {
     use rustc_hash::FxHashSet;
 
     use super::{DefinitionSaver, SavedDefinitions};
-    use crate::core::{BindingId, ItemKind, ModulePath};
+    use crate::core::Binders;
+    use crate::core::{BindingArena, BindingId, BindingKind, ItemKind, ModulePath};
     use crate::expand::{Expander, PreludeState, Program};
     use crate::modules::ModuleSources;
     use crate::source::SourceMap;
@@ -328,6 +375,29 @@ mod tests {
             definitions.any(|(defined, _)| defined == binding)
         }
 
+        fn set_aside_locals(&mut self) -> Vec<BindingId> {
+            let entry = self.program.entry;
+            let mut saver = DefinitionSaver::new(&self.program.bindings, None);
+            let module = self
+                .program
+                .modules
+                .iter_mut()
+                .find(|module| module.id == entry);
+            saver.take_from(module.expect("the entry module is expanded"));
+            let (_, set_aside) = saver.finish();
+            set_aside
+        }
+
+        fn method_locals(&self) -> Vec<BindingId> {
+            let items = &self.program.entry_module().items;
+            let methods: Vec<BindingId> = self.method_bodies();
+            let bodies = items.iter().filter_map(|item| match &item.kind {
+                ItemKind::Def(binding, value) if methods.contains(binding) => Some(value),
+                _ => None,
+            });
+            bodies.flat_map(|value| Binders::of(value)).collect()
+        }
+
         fn save_definitions(&mut self) -> SavedDefinitions {
             let entry = self.program.entry;
             let mut saver = DefinitionSaver::new(&self.program.bindings, None);
@@ -337,7 +407,8 @@ mod tests {
                 .iter_mut()
                 .find(|module| module.id == entry);
             saver.take_from(module.expect("the entry module is expanded"));
-            let encoded = bincode::serialize(&saver.finish()).expect("the tables serialize");
+            let (tables, _) = saver.finish();
+            let encoded = bincode::serialize(&tables).expect("the tables serialize");
             bincode::deserialize(encoded.leak()).expect("the tables load")
         }
 
@@ -408,6 +479,10 @@ mod tests {
                 .map(|(binding, _)| binding)
                 .find(|binding| program.bindings.get(*binding).name() == name)
                 .expect("the program holds the definition")
+        }
+
+        fn local_slots_left_undecoded(program: &Program) -> usize {
+            program.bindings.ids().count() - program.bindings.iter().count()
         }
 
         fn binding_of(program: &Program, name: &str) -> BindingId {
@@ -502,12 +577,57 @@ mod tests {
     }
 
     #[test]
+    fn a_saver_keeps_the_locals_of_every_method_body() {
+        let mut built = BuiltModule::expand(BuiltModule::TRAIT_AND_IMPL);
+        let method_locals = built.method_locals();
+        assert!(!method_locals.is_empty());
+        let set_aside = built.set_aside_locals();
+        assert!(!method_locals.iter().any(|local| set_aside.contains(local)));
+    }
+
+    #[test]
     fn a_saver_saves_a_plain_definition() {
         let mut built = BuiltModule::expand(BuiltModule::TRAIT_AND_IMPL);
         let helper = built.definition("helper");
         let saved = built.save_definitions();
         assert!(!built.defines(helper));
         assert!(BuiltModule::saves(&saved, helper));
+    }
+
+    #[test]
+    fn an_unreached_definition_leaves_its_locals_undecoded() {
+        let program = LoadedProgram::expand(LoadedProgram::EMPTY);
+        assert!(LoadedProgram::local_slots_left_undecoded(&program) > 0);
+        assert!(
+            !program
+                .bindings
+                .iter()
+                .any(|info| info.name() == "values" && matches!(info.kind(), BindingKind::Local))
+        );
+    }
+
+    #[test]
+    fn a_reached_definition_decodes_its_locals() {
+        let program = LoadedProgram::expand(LoadedProgram::SUMMING);
+        assert!(
+            program
+                .bindings
+                .iter()
+                .any(|info| info.name() == "values" && matches!(info.kind(), BindingKind::Local))
+        );
+    }
+
+    #[test]
+    fn a_checked_root_decodes_its_locals() {
+        let mut program = LoadedProgram::expand(LoadedProgram::EMPTY);
+        let sum = LoadedProgram::binding_of(&program, "sum");
+        program.check_also(sum);
+        assert!(
+            program
+                .bindings
+                .iter()
+                .any(|info| info.name() == "values" && matches!(info.kind(), BindingKind::Local))
+        );
     }
 
     #[test]
@@ -531,6 +651,8 @@ mod tests {
     #[test]
     fn no_saved_definitions_hold_no_value() {
         let unknown = BindingId::from_index(0);
-        assert!(SavedDefinitions::default().value_of(unknown).is_none());
+        let mut bindings = BindingArena::default();
+        let saved = SavedDefinitions::default();
+        assert!(saved.decode_value(unknown, &mut bindings).is_none());
     }
 }

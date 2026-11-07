@@ -1,3 +1,4 @@
+mod binders;
 mod binding;
 mod builtin;
 mod expr;
@@ -11,6 +12,7 @@ mod template;
 mod template_operation;
 mod types;
 
+pub use binders::Binders;
 pub use binding::{
     BindingArena, BindingId, BindingInfo, BindingKind, Declaration, Namespace, VariantInfo,
 };

@@ -99,7 +99,7 @@ impl BindingInfo {
 
 #[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct BindingArena {
-    infos: Vec<BindingInfo>,
+    infos: Vec<Option<BindingInfo>>,
     introduced: FxHashSet<BindingId>,
     answering_macros: FxHashMap<BindingId, BindingId>,
 }
@@ -107,7 +107,7 @@ pub struct BindingArena {
 impl BindingArena {
     pub fn add(&mut self, info: BindingInfo) -> BindingId {
         let id = BindingId(u32::try_from(self.infos.len()).expect("fewer than 2^32 bindings"));
-        self.infos.push(info);
+        self.infos.push(Some(info));
         id
     }
 
@@ -118,11 +118,27 @@ impl BindingArena {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &BindingInfo> {
-        self.infos.iter()
+        self.infos.iter().flatten()
     }
 
+    #[inline]
     pub fn get(&self, id: BindingId) -> &BindingInfo {
-        &self.infos[id.0 as usize]
+        self.infos[id.0 as usize]
+            .as_ref()
+            .expect("a saved local decodes with its definition")
+    }
+
+    #[cfg(test)]
+    pub fn decoded(&self, id: BindingId) -> Option<&BindingInfo> {
+        self.infos[id.0 as usize].as_ref()
+    }
+
+    pub fn set_aside(&mut self, id: BindingId) {
+        self.infos[id.0 as usize] = None;
+    }
+
+    pub fn restore(&mut self, id: BindingId, info: BindingInfo) {
+        self.infos[id.0 as usize] = Some(info);
     }
 
     pub fn mark_introduced(&mut self, id: BindingId) {

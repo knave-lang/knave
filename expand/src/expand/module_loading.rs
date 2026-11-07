@@ -33,6 +33,9 @@ impl Expander<'_> {
         {
             return Ok(prelude.install(self));
         }
+        if ModuleSources::is_reserved(path) {
+            return Err(ExpandProblems::reserved_module(path, span));
+        }
         match self.module_sources.find(path) {
             Some(ModuleSource::Builtin(builtin)) => Ok(self.create_builtin(path, builtin)),
             Some(ModuleSource::Text { name, text }) => {

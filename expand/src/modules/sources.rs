@@ -96,6 +96,10 @@ impl ModuleSources {
         !Self::is_prelude(path) && !Self::is_compiler_provided(path)
     }
 
+    pub fn is_reserved(path: &ModulePath) -> bool {
+        path.as_str() == Language::PROJECT_FILE_STEM
+    }
+
     pub fn is_compiler_provided(path: &ModulePath) -> bool {
         [Self::KERNEL, Self::CODE].contains(&path.as_str())
     }

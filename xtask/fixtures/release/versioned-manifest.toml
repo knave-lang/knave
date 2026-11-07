@@ -1,10 +1,17 @@
 [package]
 name = "sample"
-version = "0.1.1"
+version.workspace = true
 edition = "2024"
 
 [workspace]
 members = ["helper"]
 
+[workspace.package]
+version = "0.1.1"
+
+[workspace.dependencies.helper]
+path = "helper"
+version = "=0.1.1"
+
 [dependencies]
-helper = { version = "0.1.0", path = "helper" }
+helper = { workspace = true }

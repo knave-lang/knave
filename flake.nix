@@ -54,7 +54,7 @@
 
       cargoManifest = builtins.fromTOML (builtins.readFile ./Cargo.toml);
       cratePackage = cargoManifest.package;
-      crateVersion = cratePackage.version;
+      crateVersion = cargoManifest.workspace.package.version;
       installedProfileName = "dist";
 
       coverageTools = pkgs: {

@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct TomlText {
     text: String,
 }
@@ -22,6 +23,16 @@ impl TomlText {
             .nth(index)
             .and_then(Self::entry)
             .map(|(_, value)| value)
+    }
+
+    pub fn table_names<'a>(
+        &'a self,
+        prefix: &'a str,
+        suffix: &'a str,
+    ) -> impl Iterator<Item = &'a str> {
+        self.text
+            .lines()
+            .filter_map(move |line| line.strip_prefix(prefix)?.strip_suffix(suffix))
     }
 
     pub fn with_string_value(&self, anchor: &str, key: &str, value: &str) -> Option<Self> {
@@ -93,6 +104,13 @@ mod tests {
             TomlFixture::text().string_value("[package]", "version"),
             None
         );
+    }
+
+    #[test]
+    fn table_names_are_read_from_matching_headers() {
+        let text = TomlFixture::text();
+        let names: Vec<&str> = text.table_names("[", "]").collect();
+        assert_eq!(names, ["package", "dependencies"]);
     }
 
     #[test]

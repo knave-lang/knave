@@ -165,7 +165,9 @@ impl Terminal {
         let source = self.load(path)?;
         let forms = self.read_source(source)?;
         let whole_file = Span::new(source, 0..self.sources.file(source).text().len());
-        ProjectReader::read(&forms, whole_file).map_err(|diagnostics| self.report(&diagnostics))
+        ProjectReader::read(&forms, whole_file)
+            .and_then(|project| project.unbuilt_sections().into_result(project))
+            .map_err(|diagnostics| self.report(&diagnostics))
     }
 
     pub fn build(
@@ -175,7 +177,7 @@ impl Terminal {
     ) -> Result<PathBuf, ExitStatus> {
         let emitted = self.emit(program.file())?;
         let crate_name = Self::crate_name(program.file().path());
-        let (directory, output_name) = match program.project() {
+        let (directory, output_name) = match program.entry_project() {
             Some(project) => (project.build_directory(), project.name().to_string()),
             None => (
                 Self::build_directory(program.file().path(), &crate_name)?,

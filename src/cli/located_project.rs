@@ -23,7 +23,9 @@ impl LocatedProject {
     }
 
     fn nearest_root(directory: &Path) -> Result<Option<PathBuf>, ExitStatus> {
-        let start = Terminal::canonical(directory)?;
+        let Some(start) = ProgramFile::canonical(directory) else {
+            return Ok(None);
+        };
         let file_name = Language::project_file_name();
         let found = start
             .ancestors()
@@ -49,6 +51,11 @@ impl LocatedProject {
     pub fn entry(&self) -> ProgramFile {
         let entry = self.root.join(&self.project.entry);
         self.file_within(entry)
+    }
+
+    pub fn is_entry(&self, file: &ProgramFile) -> bool {
+        let entry = ProgramFile::canonical(&self.root.join(&self.project.entry));
+        entry == ProgramFile::canonical(file.path())
     }
 
     pub fn file_within(&self, path: PathBuf) -> ProgramFile {

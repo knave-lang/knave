@@ -5,9 +5,10 @@ input_file: tests/fixtures/emit/the_binding_with_fixed_type.rslisp
 ---
 fn main() {
     crate::rt::restore_default_sigpipe();
-    let offsets = vec![-2_i32, 9_i32, 10_i32];
+    let mut offsets = vec![-2_i32, 9_i32, 10_i32];
     let nothing: Option<i64> = None;
     let small = 5;
+    offsets.push(11);
     println!("{}", offsets.len());
     println!("{}", nothing.is_none());
     println!("{}", small)

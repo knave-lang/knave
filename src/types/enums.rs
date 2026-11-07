@@ -71,6 +71,7 @@ pub struct EnumDefinition {
     pub params: Vec<GenericParam>,
     pub variants: Vec<VariantDefinition>,
     pub rust: Option<crate::core::EnumRust>,
+    pub definer: Option<crate::core::EnumDefiner>,
     pub derives: Vec<&'static str>,
     pub derived_traits: Vec<BindingId>,
     pub blocked: Vec<(BindingId, Rc<str>, Type)>,
@@ -78,6 +79,12 @@ pub struct EnumDefinition {
 }
 
 impl EnumDefinition {
+    pub fn writes_flat_fields(&self) -> bool {
+        self.definer
+            .as_ref()
+            .is_some_and(|definer| definer.flat_fields)
+    }
+
     pub fn is_bare_rust(&self) -> bool {
         self.rust
             .as_ref()
@@ -218,6 +225,7 @@ mod tests {
                 params: Vec::new(),
                 variants,
                 rust: None,
+                definer: None,
                 derives: Vec::new(),
                 derived_traits: Vec::new(),
                 blocked: Vec::new(),
@@ -242,6 +250,7 @@ mod tests {
                 VariantPayload::Positional(vec![Type::Generic(parameter.id)]),
             )],
             rust: None,
+            definer: None,
             derives: Vec::new(),
             derived_traits: Vec::new(),
             blocked: Vec::new(),

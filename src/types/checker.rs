@@ -28,10 +28,10 @@ use super::typed::{
 };
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
 use crate::core::{
-    BindingArena, BindingId, BindingKind, BodyItem, CopyTrait, CoreModule, Expr, ExprKind, Item,
-    ItemKind, Leaf, ModuleId, ParsedTemplate, PrimitiveType, ReferenceKind, RustTemplate,
-    StructDerives, StructExpr, TypeBinder, TypeExpr, TypeExprKind, VariantDeclaration,
-    VariantPayload as CoreVariantPayload,
+    BindingArena, BindingId, BindingKind, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr,
+    ExprKind, Item, ItemKind, KernelForm, Leaf, ModuleId, ParsedTemplate, PrimitiveType,
+    ReferenceKind, RustTemplate, StructDerives, StructExpr, TypeBinder, TypeExpr, TypeExprKind,
+    VariantDeclaration, VariantPayload as CoreVariantPayload,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::PendingDefinitions;
@@ -437,8 +437,8 @@ impl TypeChecker {
         if let ItemKind::Struct(binding, params, fields) = kind {
             return self.collect_struct(*binding, params, fields);
         }
-        if let ItemKind::Enum(binding, params, variants, rust) = kind {
-            return self.collect_enum(*binding, params, variants, rust);
+        if let ItemKind::Enum(binding, params, variants, rust, definer) = kind {
+            return self.collect_enum(*binding, params, variants, rust, definer);
         }
         if let ItemKind::RustTrait(declaration) = kind {
             return self.collect_rust_trait(declaration);
@@ -527,7 +527,11 @@ impl TypeChecker {
                 }
                 let struct_name = self.bindings.get(*binding).name().to_string();
                 let trait_name = self.bindings.get(*trait_binding).name().to_string();
+                let definer = self.macro_name(item.span);
                 self.diagnostics.push(TypeProblems::trait_claim_on_struct(
+                    definer
+                        .as_deref()
+                        .unwrap_or(KernelForm::Definition(DefinitionForm::RustTrait).name()),
                     &struct_name,
                     &trait_name,
                     implementor.span(),
@@ -569,7 +573,7 @@ impl TypeChecker {
     fn record_type_arities(&mut self, modules: &[CoreModule]) {
         for item in modules.iter().flat_map(|module| &module.items) {
             if let ItemKind::Struct(binding, params, _)
-            | ItemKind::Enum(binding, params, _, _)
+            | ItemKind::Enum(binding, params, ..)
             | ItemKind::RustType(binding, params, ..) = &item.kind
             {
                 let arity = params.iter().filter(|binder| !binder.lifetime).count();
@@ -1580,6 +1584,7 @@ impl TypeChecker {
         binders: &[TypeBinder],
         variants: &[VariantDeclaration],
         rust: &Option<crate::core::EnumRust>,
+        definer: &Option<crate::core::EnumDefiner>,
     ) -> Result<(), Diagnostic> {
         let params = self.struct_params(binders)?;
         let lifetimes = Self::lifetime_binders(binders);
@@ -1622,6 +1627,7 @@ impl TypeChecker {
                 params,
                 variants: lowered,
                 rust: rust.clone(),
+                definer: definer.clone(),
                 derives: Vec::new(),
                 derived_traits: Vec::new(),
                 blocked: Vec::new(),

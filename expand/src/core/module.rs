@@ -92,6 +92,12 @@ pub struct RustTraitDeclaration {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct EnumDefiner {
+    pub name: Rc<str>,
+    pub flat_fields: bool,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub enum ItemKind {
     Def(BindingId, Rc<Expr>),
     Signature(BindingId, TypeExpr),
@@ -101,6 +107,7 @@ pub enum ItemKind {
         Vec<TypeBinder>,
         Vec<VariantDeclaration>,
         Option<EnumRust>,
+        Option<EnumDefiner>,
     ),
     Derive(BindingId, Span, Vec<(BindingId, Span)>),
     RustTrait(RustTraitDeclaration),

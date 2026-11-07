@@ -1,0 +1,32 @@
+(use code prepend)
+
+(defenum tree
+  "A tree of numbers."
+  leaf
+  (node :left tree :right tree)
+  (twin tree tree))
+
+(enum kernel-tree
+  kernel-leaf
+  (kernel-node (struct (left kernel-tree))))
+
+(defmacro my-enum (name variants ...)
+  (prepend (quote enum) (prepend name variants)))
+
+(my-enum macro-tree macro-leaf
+         (macro-node (struct (left macro-tree))))
+
+(defmacro my-defenum (name variants ...)
+  (prepend (quote defenum) (prepend name variants)))
+
+(my-defenum wrapped-tree wrapped-leaf
+            (wrapped-node :left wrapped-tree))
+
+(defn depth ((value tree))
+  (match value
+    (leaf 0)
+    ((node left _) (+ 1 (depth left)))
+    ((twin left _) (+ 1 (depth left)))))
+
+(defn main ()
+  (println (depth (tree/twin tree/leaf tree/leaf))))

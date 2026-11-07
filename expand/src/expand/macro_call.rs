@@ -7,10 +7,11 @@ use super::context::DefinitionContext;
 use super::form_budget::FormBudget;
 use super::problems::ExpandProblems;
 use super::returned_arguments::ReturnedArguments;
-use super::shape::Shape;
+use super::shape::{Shape, WrittenDefiner};
 use crate::core::{BindingId, BindingKind, DefinitionForm, Expr, KernelForm, Lambda, Namespace};
 use crate::diagnostic::Diagnostic;
 use crate::interpret::{Closure, Env, Interpreter, Value};
+use crate::modules::ModuleSources;
 use crate::reader::Form;
 use crate::scope::{Phase, Scope};
 use crate::source::Span;
@@ -27,6 +28,7 @@ pub struct MacroOrigin {
     pub name: Rc<str>,
     pub defined: Span,
     pub call_site: Span,
+    pub through_prelude: bool,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -147,7 +149,11 @@ impl Expander<'_> {
         let origin = self.macro_origin(binding, call_site);
         self.record_introduced_names(&form, &origin);
         form.relocate_outside(call_site);
-        self.tables.macro_origins.entry(call_site).or_insert(origin);
+        self.tables
+            .macro_origins
+            .entry(call_site)
+            .and_modify(|outer| outer.through_prelude |= origin.through_prelude)
+            .or_insert(origin);
         form
     }
 
@@ -278,6 +284,7 @@ impl Expander<'_> {
             name: info.shared_name(),
             defined: info.span().unwrap_or(call_site),
             call_site,
+            through_prelude: self.is_prelude_macro(binding),
         }
     }
 
@@ -298,12 +305,37 @@ impl Expander<'_> {
         (form, introduction)
     }
 
+    fn is_prelude_macro(&self, binding: BindingId) -> bool {
+        match self.kind(binding) {
+            BindingKind::Macro(module) => {
+                ModuleSources::is_prelude(self.modules.get(module).path())
+            }
+            _ => false,
+        }
+    }
+
     pub(super) fn macro_origin_at(&self, span: Span) -> Option<&MacroOrigin> {
         self.tables
             .macro_origins
             .values()
             .filter(|origin| origin.call_site.contains(span))
             .min_by_key(|origin| origin.call_site.range().len())
+    }
+
+    pub(super) fn definition_shape<'f>(
+        &self,
+        definition: DefinitionForm,
+        form: &'f Form,
+    ) -> Shape<'f> {
+        let definer = self
+            .tables
+            .macro_origins
+            .get(&form.span())
+            .map(|origin| WrittenDefiner {
+                name: Rc::clone(&origin.name),
+                through_prelude: origin.through_prelude,
+            });
+        Shape::expanded_from(KernelForm::Definition(definition), form, definer)
     }
 
     pub(super) fn introduced_name(&self, call_site: Span, name: &str) -> Option<Span> {

@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/malformed_enum.rslisp
 ---
 error[L0210]: malformed `enum`
@@ -9,4 +9,4 @@ error[L0210]: malformed `enum`
 1 | (enum bad 1)
   |           ^ this does not fit the shape of `enum`
   |
-  = help: write it as `(enum (name parameter ...) variant ...)`
+  = help: write it as `(enum (name parameter ...) (rust "Path")? variant ...)`

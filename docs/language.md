@@ -474,7 +474,7 @@ A module's `export` lists expand after its `def` values, because exporting a tra
 
 `(header-shape (form name ...))` states the header of a form's calls: the leading forms that belong with the form's name, before its body. `(header-shape (defn name parameters))` says that the header of a `defn` call is its name and its parameter list. `doc` shows the header of an undocumented definition (see Docstrings), and `knave fmt` reads the same shapes to keep a header on a call's first line (see Source formatting).
 
-A `:docstring` after the shape states that the form takes a docstring as the first form after its header, when another form follows it: `(header-shape (defn name parameters) :docstring)`. A shape adds itself, such as `(defn name parameters)`, to its module's notes under `header-shapes`, and a `:docstring` adds the form's name under `docstring-forms`, so macro code reads both with `module-notes`. A `:one-per-line` after the shape states that the formatter does not fill runs of atoms in a broken call, so each later form takes its own line apart from keyword pairs, as the prelude states for `enum`. An `:arms` after the shape states that each list after the header, other than a keyword's value, is an arm, which stays on one line when it is at most as long as the fill width, whatever the number of lists inside it (see Source formatting): `(header-shape (match value) :arms)`, `(header-shape (cond) :arms)` and `(header-shape (defrule name) :docstring :arms)`. A user macro with arms opts in the same way. A `:bindings` after the shape states that the header's last form is a binding list, which alternates names and values and lays out one name and its value per line (see Source formatting), as `let`, `let-try` and `loop` do: `(header-shape (let bindings) :bindings)`. The formatter does not expand, so it reads the `header-shape` forms themselves.
+A `:docstring` after the shape states that the form takes a docstring as the first form after its header, when another form follows it: `(header-shape (defn name parameters) :docstring)`. A shape adds itself, such as `(defn name parameters)`, to its module's notes under `header-shapes`, and a `:docstring` adds the form's name under `docstring-forms`, so macro code reads both with `module-notes`. A `:one-per-line` after the shape states that the formatter does not fill runs of atoms in a broken call, so each later form takes its own line apart from keyword pairs, as the prelude states for `enum`. An `:arms` after the shape states that each list after the header, other than a keyword's value, is an arm, which stays on one line when it is at most as long as the fill width, whatever the number of lists inside it (see Source formatting): `(header-shape (match value) :arms)`, `(header-shape (cond) :arms)` and `(header-shape (defrule name) :docstring :arms)`. A user macro with arms opts in the same way. A `:bindings` after the shape states that the header's last form is a binding list, which alternates names and values and lays out one name and its value per line (see Source formatting), as `let`, `let-match`, `let-try` and `loop` do: `(header-shape (let bindings) :bindings)`. The formatter does not expand, so it reads the `header-shape` forms themselves.
 
 The prelude states the shapes of its seven definers, of `def` and of `document`, each with `:docstring`, of its macros whose calls have a header and a body, such as `(header-shape (loop bindings) :bindings)` and `(header-shape (let-pair names value))`, and of the kernel forms whose header stays on the first line when the call breaks, such as `(header-shape (match value) :arms)` and `(header-shape (impl trait type))`. `prelude/prelude.rslisp` states the kernel's shapes, beside its re-export of the kernel. `prelude/test` states `(header-shape (deftest name) :docstring)`, and `prelude/definers` states `(header-shape (defenum name) :docstring :one-per-line)`, `(header-shape (deftrait name) :docstring)` and `(header-shape (deftype name) :docstring)`. `prelude/project` states the shapes of `project` and its sections, and `fmt` reads it only for the project file. The kernel's shapes include `(header-shape (if test))` and `(header-shape (do))`, so an `if` or a `do` that breaks indents its branches or forms 2 columns, and `prelude/macros.rslisp` states `(header-shape (fail message))` for the `code` module's `fail`.
 
@@ -1217,6 +1217,24 @@ A pattern is sure when no value can fail it: `_`, a bare name that binds, a stru
 ```lisp
 (let-fields (parsed (node _)) p
   (tree/branch node))
+```
+
+`let-match` takes the binding list of `let` with a pattern in place of each name, and a body: `(let-match ((pair word count) entry (point :x x) p) body ...)`. Each pair is a one-arm `match` around the rest, so each value sees the names bound before it, a sure pattern emits `let <pattern> = <value>;`, and a pattern that some value fails, as `(let-match ((some x) (some 1)) ...)`, is `L0433` with the missing case. The macro builds every `match` in one expansion, so a long list does not reach `L0326`. It reports `L0334`, `L0335` and `L0336` for its own form, as `let-try` does, except that a binder of two items that ends in a literal is a pattern, as `(meters 5)`, and not a name and its value in their own parentheses. It states `(header-shape (let-match bindings) :bindings)`:
+
+```lisp
+(let-match ((pair word count) (pair "apples" 3)
+            (point x _) p
+            total (+ x count))
+  (println word)
+  (println total))
+```
+
+```rust
+let (word, count) = ("apples", 3_i64);
+let Point { x, .. } = p;
+let total = x + count;
+println!("{}", word);
+println!("{}", total)
 ```
 
 A `string` value matched against string literals emits `.as_str()` on the value, which borrows and allocates nothing. A string literal nested in a pattern, at a position of type `string`, binds a fresh name and adds an `if` guard that compares the name with the literal, as `Some(Token::Symbol(text)) if text == "("`. Several such literals in one pattern join their guards with `&&`. A position of type `str` matches the literal directly.

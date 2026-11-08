@@ -4,6 +4,8 @@
 
 (def loop-page (doc-page loop))
 
+(def let-match-page (doc-page let-match))
+
 (def let-try-page (doc-page let-try))
 
 (def try-thread-page (doc-page try->))

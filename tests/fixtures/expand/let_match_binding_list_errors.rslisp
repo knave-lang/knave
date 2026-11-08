@@ -1,0 +1,20 @@
+(defn no-list () (let-match))
+
+(defn flat (text)
+  (let-match text (parse text) (ok text)))
+
+(defn flat-without-body (text)
+  (let-match text (parse text)))
+
+(defn no-body (text)
+  (let-match (value (parse text))))
+
+(defn name-without-value (text)
+  (let-match (value) (ok value)))
+
+(defn old-list (text)
+  (let-match ((value (parse text)))
+    (ok value)))
+
+(defn pattern-without-value ()
+  (let-match ((some x)) (println x)))

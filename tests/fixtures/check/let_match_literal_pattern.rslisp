@@ -1,0 +1,6 @@
+(defstruct meters
+  :n i64)
+
+(defn main ()
+  (let-match ((meters 5) (->meters 5))
+    (println "five")))

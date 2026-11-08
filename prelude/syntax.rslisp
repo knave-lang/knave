@@ -13,8 +13,9 @@
 (export -> ->> call-signature comment declared-forms
         declared-name default-bindings default-pairs
         defaults-clause? definition defn has-argument? let
-        let-try loop pair-keys read-call signature-defaults
-        signature-name the try-> type-missing?)
+        let-match let-try loop pair-keys read-call
+        signature-defaults signature-name the try->
+        type-missing?)
 
 (def let
   (macro (form)
@@ -167,11 +168,7 @@
 
 (def value-help
   (fn (form bindings)
-    (local with-value
-      (string "write its value after it, as `"
-              (elided-call form
-                           (concat bindings (list (quote value))))
-              "`"))
+    (local with-value (with-value-help form bindings))
     (if (every-pair-list? bindings)
       (string with-value
               ", or write each name and its value without their own "
@@ -179,6 +176,13 @@
               (elided-call form (unwrapped-pairs bindings))
               "`")
       with-value)))
+
+(def with-value-help
+  (fn (form bindings)
+    (string "write its value after it, as `"
+            (elided-call form
+                         (concat bindings (list (quote value))))
+            "`")))
 
 (def every-pair-list?
   (fn (items)
@@ -1038,6 +1042,59 @@
                            (list (quote try) (nth bindings 1))))
              (drop 2 bindings)))))
 
+(def let-match
+  (macro (form)
+    (prepend (quote do)
+             (matched-body (reversed-bindings (pattern-binding-list form))
+                           (drop 2 form)))))
+
+(header-shape (let-match bindings) :bindings)
+
+(def pattern-binding-list
+  (fn (form)
+    (if (bindings-written? form)
+      (checked-patterns form (nth form 1))
+      (unlisted-bindings form))))
+
+(def checked-patterns
+  (fn (form bindings)
+    (if (whole-pairs? bindings)
+      (bindings-with-body form bindings)
+      (pattern-without-value form bindings))))
+
+(def pattern-without-value
+  (fn (form bindings)
+    (fail "a pattern in the binding list of `let-match` has no value"
+      (nth bindings (number-sub (len bindings) 1))
+      (with-value-help form bindings)
+      (quote (:code binding-without-value
+                    :label "this pattern has no value")))))
+
+(def matched-body
+  (fn (bindings body)
+    (if (empty? bindings)
+      body
+      (recur (rest bindings)
+             (list (one-arm-match (first bindings) body))))))
+
+(def one-arm-match
+  (fn (binding body)
+    (list (quote match)
+          (nth binding 1)
+          (prepend (first binding) body))))
+
+(def reversed-bindings
+  (fn (bindings)
+    (reversed-bindings-onto (list) bindings)))
+
+(def reversed-bindings-onto
+  (fn (reversed bindings)
+    (if (empty? bindings)
+      reversed
+      (recur (prepend (list (first bindings) (nth bindings 1))
+                      reversed)
+             (drop 2 bindings)))))
+
 (defrule try->
   ((value) value)
   ((value head) (head value))
@@ -1082,6 +1139,18 @@
   Each value goes through `try`, so the first `err` or `none` returns from the
   enclosing function, or leaves the enclosing `loop`. That function must
   return a `result` or an `option` of the same kind.")
+
+(document (let-match (pattern value
+                      ...)
+            body ...)
+  "Binds the names of each pattern to the parts of its value, in order.
+
+  The list is the binding list of `let`, with a `match` pattern in place of
+  each name, so `(let-match ((pair word count) entry) body ...)` binds `word`
+  and `count`. Each value sees the names bound before it. Each pattern is a
+  one-arm `match`, so a pattern that some value fails, such as `(some x)`, is
+  an error that names the missing case. On an owned value, each name moves its
+  part unless the part is `copy`, and `_` leaves its part in place.")
 
 (document (try-> value function ...)
   "Calls each function on the result of the one before, through `try`.

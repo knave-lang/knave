@@ -1,0 +1,15 @@
+(defstruct point
+  :x i64
+  :y i64)
+
+(defn main ()
+  (local p (->point 1 2))
+  (let-match ((pair word count) (pair "apples" 3)
+              (point x _) p
+              (point :y y) p
+              (pair (pair first second) third) (pair (pair 4 5) 6)
+              total (+ x y count))
+    (println word)
+    (println total)
+    (println first second third))
+  (let-match () (println "no bindings")))

@@ -1,11 +1,13 @@
 mod dependency_reader;
 mod fields;
+mod name;
 mod problems;
 mod reader;
 
 use std::path::PathBuf;
 
 pub use dependency_reader::Section;
+pub use name::ProjectName;
 pub use problems::ProjectProblems;
 pub use reader::ProjectReader;
 

@@ -62,7 +62,7 @@ knave fmt src/
 knave test tests/
 ```
 
-A project is a directory with a `project.rslisp` file. Inside one, `build`, `run`, `check`, `types`, `expand` and `emit` take the project's entry file when given no file.
+A project is a directory with a `project.rslisp` file, and `knave new <name>` creates one. Inside one, `build`, `run`, `check`, `types`, `expand` and `emit` take the project's entry file when given no file.
 
 ## Develop
 

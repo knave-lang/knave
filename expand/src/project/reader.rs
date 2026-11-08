@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use super::dependency_reader::{DependencyReader, Section};
 use super::fields::{FieldScanner, Fields};
+use super::name::ProjectName;
 use super::problems::ProjectProblems;
 use super::{Project, SectionHead};
 use crate::diagnostic::{Diagnostics, SimilarName};
@@ -21,7 +22,7 @@ struct ProjectForm<'f> {
 }
 
 impl ProjectReader {
-    const HEAD: &str = "project";
+    pub const HEAD: &str = "project";
     const KEYS: &[&str] = &["version", "entry", "lib", "edition"];
     const DEFAULT_VERSION: &str = "0.1.0";
     const DEFAULT_ENTRY: &str = "src/main";
@@ -77,23 +78,11 @@ impl ProjectReader {
                 .push(ProjectProblems::missing_project_name(span));
             return None;
         };
-        if !Self::is_kebab_case(name) {
-            self.problems
-                .push(ProjectProblems::invalid_project_name(name, span));
+        if let Err(problem) = ProjectName::check(name, span) {
+            self.problems.push(problem);
             return None;
         }
         Some(name.to_string())
-    }
-
-    fn is_kebab_case(name: &str) -> bool {
-        name.split('-').all(Self::is_kebab_word)
-    }
-
-    fn is_kebab_word(word: &str) -> bool {
-        !word.is_empty()
-            && word
-                .chars()
-                .all(|character| character.is_ascii_lowercase() || character.is_ascii_digit())
     }
 
     fn read_section(&mut self, form: &Form, sections: &mut SectionTable) {

@@ -1,0 +1,7 @@
+---
+source: tests/cli.rs
+expression: new.assert_exit_code(2).stderr()
+---
+error: a value is required for '<NAME>' but none was supplied
+
+For more information, try '--help'.

@@ -24,6 +24,7 @@ mod json_replies;
 mod located_program;
 mod located_project;
 mod name_records;
+mod new;
 mod open_input;
 mod painted_program;
 mod program_file;
@@ -76,6 +77,7 @@ use evaluation_output::{EvaluationOutput, JsonEvaluation, PrintedEvaluation};
 use exit_status::ExitStatus;
 use expand::ExpandCommand;
 use fmt::{FmtCommand, FmtMode};
+use new::NewCommand;
 use repl::ReplCommand;
 use run::RunCommand;
 use term_parser::{SurplusParser, TermParser};
@@ -175,6 +177,14 @@ enum InspectionCommand {
 
 #[derive(Subcommand)]
 enum ProgramCommand {
+    #[command(about = "Create a project in a new directory of its name")]
+    New {
+        #[arg(
+            help = "The project's name, in kebab-case",
+            value_parser = clap::builder::NonEmptyStringValueParser::new()
+        )]
+        name: String,
+    },
     #[command(about = "Compile a program to a native binary")]
     Build {
         #[arg(help = ENTRY_HELP)]
@@ -382,6 +392,7 @@ impl InspectionCommand {
 impl ProgramCommand {
     fn execute(self, terminal: &mut Terminal) -> ExitStatus {
         match self {
+            Self::New { name } => NewCommand::new(name).run(terminal),
             Self::Build {
                 file,
                 release,

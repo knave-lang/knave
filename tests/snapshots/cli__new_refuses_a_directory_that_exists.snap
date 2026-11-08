@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: new.assert_exit_code(2).stderr()
+---
+error: `demo-app` already exists
+help: choose another name, or remove it first

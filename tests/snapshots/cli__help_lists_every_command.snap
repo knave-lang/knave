@@ -13,6 +13,7 @@ Commands:
   expand  Print a program as kernel forms after macro expansion
   emit    Print the Rust code generated for a program
   fmt     Lay out source files in place, or standard input given `-`
+  new     Create a project in a new directory of its name
   build   Compile a program to a native binary
   eval    Check a module, then run forms once in its scope and print their values
   repl    Read forms at a prompt, keep the definitions and run the rest

@@ -104,19 +104,18 @@ mod tests {
                 .expect("the saved prelude loads")
         }
 
-        fn macro_binding(state: &PreludeState, name: &str) -> BindingId {
-            let bindings = &state.tables().bindings;
+        fn macro_binding(name: &str) -> BindingId {
+            let bindings = Self::loaded_state().installed_bindings();
             let mut macros = bindings.ids().filter(|binding| {
-                bindings.decoded(*binding).is_some_and(|info| {
-                    info.name() == name && matches!(info.kind(), BindingKind::Macro(_))
-                })
+                let info = bindings.get(*binding);
+                info.name() == name && matches!(info.kind(), BindingKind::Macro(_))
             });
             macros.next().expect("the prelude defines the macro")
         }
 
         fn readiness_after_expanding(names: [&str; 2]) -> [bool; 2] {
             let state = Self::loaded_state();
-            let bindings = names.map(|name| Self::macro_binding(&state, name));
+            let bindings = names.map(Self::macro_binding);
             let mut sources = SourceMap::default();
             let entry = sources.add(Self::ENTRY, Self::CALLS_DEFN);
             let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
@@ -129,7 +128,7 @@ mod tests {
     #[test]
     fn a_saved_state_keeps_no_ready_macro_in_its_table() {
         let state = SavedMacroFixture::loaded_state();
-        let defn = SavedMacroFixture::macro_binding(&state, SavedMacroFixture::USED);
+        let defn = SavedMacroFixture::macro_binding(SavedMacroFixture::USED);
         assert!(!state.tables().macros.holds_ready(defn));
     }
 

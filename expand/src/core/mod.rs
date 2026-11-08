@@ -1,4 +1,3 @@
-mod binders;
 mod binding;
 mod builtin;
 mod expr;
@@ -7,12 +6,12 @@ mod keyword;
 mod module;
 mod printer;
 mod references;
+mod saved_bindings;
 mod structural;
 mod template;
 mod template_operation;
 mod types;
 
-pub use binders::Binders;
 pub use binding::{
     BindingArena, BindingId, BindingInfo, BindingKind, Declaration, Namespace, VariantInfo,
 };
@@ -37,6 +36,7 @@ pub use module::{
 };
 pub use printer::CorePrinter;
 pub use references::References;
+pub use saved_bindings::{BindingTables, SavedBindings};
 pub use structural::{
     StructuralClause, StructuralKey, StructuralPiece, StructuralTemplate, StructuralValues,
     UnfilledPlaceholder,

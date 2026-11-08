@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::saved_bindings::{BindingTables, SavedBindings};
 use super::{Builtin, KernelForm, KernelType, ModuleId};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -99,46 +100,56 @@ impl BindingInfo {
 
 #[derive(Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct BindingArena {
-    infos: Vec<Option<BindingInfo>>,
+    #[serde(skip)]
+    saved: Rc<SavedBindings>,
+    infos: Vec<BindingInfo>,
     introduced: FxHashSet<BindingId>,
     answering_macros: FxHashMap<BindingId, BindingId>,
 }
 
 impl BindingArena {
     pub fn add(&mut self, info: BindingInfo) -> BindingId {
-        let id = BindingId(u32::try_from(self.infos.len()).expect("fewer than 2^32 bindings"));
-        self.infos.push(Some(info));
-        id
+        let index = self.saved.count() + self.infos.len();
+        self.infos.push(info);
+        BindingId(u32::try_from(index).expect("fewer than 2^32 bindings"))
+    }
+
+    pub fn take_saved(&mut self) -> BindingTables {
+        let tables = BindingTables::of(self.infos.iter());
+        self.infos.clear();
+        tables
+    }
+
+    pub fn adopt_saved(&mut self, saved: SavedBindings) {
+        assert!(
+            self.infos.is_empty(),
+            "saved bindings come before any other"
+        );
+        self.saved = Rc::new(saved);
     }
 
     #[cfg(test)]
     pub fn ids(&self) -> impl Iterator<Item = BindingId> {
-        (0..self.infos.len())
-            .map(|index| BindingId(u32::try_from(index).expect("fewer than 2^32 bindings")))
+        let count = self.saved.count() + self.infos.len();
+        (0..count).map(|index| BindingId(u32::try_from(index).expect("fewer than 2^32 bindings")))
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &BindingInfo> {
-        self.infos.iter().flatten()
+    pub fn is_saved(&self, id: BindingId) -> bool {
+        (id.0 as usize) < self.saved.count()
+    }
+
+    #[cfg(test)]
+    pub fn is_decoded(&self, id: BindingId) -> bool {
+        (id.0 as usize) >= self.saved.count() || self.saved.is_decoded(id.0 as usize)
     }
 
     #[inline]
     pub fn get(&self, id: BindingId) -> &BindingInfo {
-        self.infos[id.0 as usize]
-            .as_ref()
-            .expect("a saved local decodes with its definition")
-    }
-
-    #[cfg(test)]
-    pub fn decoded(&self, id: BindingId) -> Option<&BindingInfo> {
-        self.infos[id.0 as usize].as_ref()
-    }
-
-    pub fn set_aside(&mut self, id: BindingId) {
-        self.infos[id.0 as usize] = None;
-    }
-
-    pub fn restore(&mut self, id: BindingId, info: BindingInfo) {
-        self.infos[id.0 as usize] = Some(info);
+        let index = id.0 as usize;
+        match index.checked_sub(self.saved.count()) {
+            Some(own) => &self.infos[own],
+            None => self.saved.get(index),
+        }
     }
 
     pub fn mark_introduced(&mut self, id: BindingId) {

@@ -3,9 +3,8 @@ use std::rc::Rc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::deferred_definitions::DeferredDefinitions;
-use crate::core::{BindingArena, BindingId, BindingKind, Expr, ItemKind, ModuleId, References};
+use crate::core::{BindingArena, BindingId, Expr, ItemKind, References};
 use crate::expand::Program;
-use crate::modules::ModuleSources;
 use crate::source::Span;
 
 pub struct Definition<'p> {
@@ -26,7 +25,7 @@ impl<'p> DefinitionGraph<'p> {
         Self::deferring(
             program,
             DeferredDefinitions::of(program),
-            Self::prelude_macro_helpers(program),
+            program.prelude_macro_helpers(),
         )
     }
 
@@ -55,24 +54,6 @@ impl<'p> DefinitionGraph<'p> {
             components,
             unreached: Rc::new(deferred),
         }
-    }
-
-    fn prelude_macro_helpers(program: &Program) -> FxHashSet<BindingId> {
-        let prelude: FxHashSet<ModuleId> = program
-            .modules
-            .iter()
-            .filter(|module| ModuleSources::is_prelude(&module.path))
-            .map(|module| module.id)
-            .collect();
-        program
-            .macro_helpers
-            .iter()
-            .filter(|binding| {
-                matches!(program.bindings.get(**binding).kind(),
-                    BindingKind::Global(module) if prelude.contains(&module))
-            })
-            .copied()
-            .collect()
     }
 
     fn item_count(program: &Program) -> usize {
@@ -487,7 +468,7 @@ mod tests {
     #[test]
     fn an_empty_program_types_no_prelude_macro_helper() {
         let source = TypedSource::expand(PreludeFixture::EMPTY_PROGRAM);
-        let helpers = DefinitionGraph::prelude_macro_helpers(source.program());
+        let helpers = source.program().prelude_macro_helpers();
         assert!(!helpers.is_empty());
         assert!(PreludeFixture::typed_bindings(&source.typed()).is_disjoint(&helpers));
     }

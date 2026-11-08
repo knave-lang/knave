@@ -5,6 +5,7 @@ use super::saved_definitions::{SavedDefinitions, SavedTables};
 use super::saved_notes::{NoteTables, SavedNotes};
 use super::saved_values::{SavedValues, ValueTables};
 use super::{Expander, ExpansionTables, LoweredGlobals};
+use crate::core::{BindingTables, SavedBindings};
 use crate::core::{ModuleId, ModulePath};
 use crate::diagnostic::DiagnosticRenderer;
 use crate::interpret::{Closure, Value};
@@ -29,6 +30,7 @@ enum PreludeDefinitions {
 
 #[derive(serde::Serialize)]
 struct BuiltTables {
+    bindings: BindingTables,
     definitions: SavedTables,
     macros: ValueTables,
     globals: ValueTables,
@@ -38,6 +40,7 @@ struct BuiltTables {
 #[derive(Default, serde::Deserialize)]
 #[serde(bound(deserialize = "'de: 'static"))]
 struct LoadedTables {
+    bindings: SavedBindings,
     definitions: SavedDefinitions,
     macros: SavedValues<Closure>,
     globals: SavedValues<Value>,
@@ -85,6 +88,21 @@ impl PreludeState {
     }
 
     #[cfg(test)]
+    pub(super) fn installed_tables(self) -> ExpansionTables {
+        let PreludeDefinitions::Loaded(loaded) = self.definitions else {
+            panic!("only a loaded prelude state installs")
+        };
+        let mut tables = self.tables;
+        tables.bindings.adopt_saved(loaded.bindings);
+        tables
+    }
+
+    #[cfg(test)]
+    pub(super) fn installed_bindings(self) -> crate::core::BindingArena {
+        self.installed_tables().bindings
+    }
+
+    #[cfg(test)]
     pub(super) fn tables(&self) -> &ExpansionTables {
         &self.tables
     }
@@ -120,6 +138,7 @@ impl PreludeState {
         expander.saved_globals = tables.globals;
         expander.tables = self.tables;
         expander.tables.module_notes.adopt(tables.notes);
+        expander.tables.bindings.adopt_saved(tables.bindings);
         expander
             .tables
             .restore_lowered_globals(&self.lowered_globals);
@@ -145,6 +164,7 @@ impl Expander<'_> {
         let saved_tables = self.tables.save_definitions();
         let macro_tables = ValueTables::of(self.tables.macros.take_ready());
         let global_tables = ValueTables::of(self.tables.globals.take_values());
+        let binding_tables = self.tables.bindings.take_saved();
         let note_tables = self.tables.module_notes.take_saved();
         PreludeState {
             first_source,
@@ -153,6 +173,7 @@ impl Expander<'_> {
             tables: self.tables,
             lowered_globals,
             definitions: PreludeDefinitions::Built(BuiltTables {
+                bindings: binding_tables,
                 definitions: saved_tables,
                 macros: macro_tables,
                 globals: global_tables,
@@ -512,14 +533,36 @@ mod tests {
 
     #[test]
     fn a_saved_state_resolves_no_prelude_local() {
-        let state = PreludeState::build();
-        let tables = state.tables();
+        let tables = UserProgram::loaded_state().installed_tables();
         let mut locals = tables
             .bindings
             .ids()
             .filter(|binding| matches!(tables.bindings.get(*binding).kind(), BindingKind::Local));
         let local = locals.next().expect("the prelude binds locals");
         assert!(!tables.table.holds(local));
+    }
+
+    #[test]
+    fn a_loaded_state_decodes_a_binding_only_when_it_is_read() {
+        let bindings = UserProgram::loaded_state().installed_bindings();
+        let mut ids = bindings.ids();
+        let (first, second) = (
+            ids.next().expect("a binding"),
+            ids.next().expect("a binding"),
+        );
+        assert!(!bindings.is_decoded(first));
+        bindings.get(first);
+        assert!(bindings.is_decoded(first));
+        assert!(!bindings.is_decoded(second));
+    }
+
+    #[test]
+    fn a_cloned_arena_shares_the_decoded_prelude_bindings() {
+        let bindings = UserProgram::loaded_state().installed_bindings();
+        let first = bindings.ids().next().expect("a binding");
+        let copy = bindings.clone();
+        copy.get(first);
+        assert!(bindings.is_decoded(first));
     }
 
     #[test]

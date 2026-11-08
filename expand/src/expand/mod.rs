@@ -107,10 +107,28 @@ impl Program {
             .expect("the entry module is expanded")
     }
 
+    pub fn prelude_macro_helpers(&self) -> FxHashSet<BindingId> {
+        let prelude: FxHashSet<ModuleId> = self
+            .modules
+            .iter()
+            .filter(|module| ModuleSources::is_prelude(&module.path))
+            .map(|module| module.id)
+            .collect();
+        let is_prelude_global = |binding: BindingId| {
+            matches!(self.bindings.get(binding).kind(),
+                BindingKind::Global(module) if prelude.contains(&module))
+        };
+        self.macro_helpers
+            .iter()
+            .copied()
+            .filter(|binding| self.bindings.is_saved(*binding) || is_prelude_global(*binding))
+            .collect()
+    }
+
     pub fn check_also(&mut self, binding: BindingId) {
         self.checked_roots.push(binding);
         self.pending_definitions
-            .restore(&mut self.modules, &mut self.bindings, vec![binding]);
+            .restore(&mut self.modules, vec![binding]);
     }
 
     fn restore_reached(&mut self) {
@@ -120,8 +138,7 @@ impl Program {
             .flat_map(CoreModule::definitions)
             .flat_map(|(_, value)| References::of(value, &self.bindings).into_globals())
             .collect();
-        self.pending_definitions
-            .restore(&mut self.modules, &mut self.bindings, roots);
+        self.pending_definitions.restore(&mut self.modules, roots);
     }
 
     fn written_entry_function(&self) -> Option<BindingId> {
@@ -214,11 +231,7 @@ impl ExpansionTables {
         for module in modules.filter(|module| ModuleSources::is_embedded_prelude(&module.path)) {
             saver.take_from(module);
         }
-        let (tables, set_aside) = saver.finish();
-        for local in set_aside {
-            self.bindings.set_aside(local);
-        }
-        tables
+        saver.finish()
     }
 
     fn take_lowered_globals(&mut self) -> LoweredGlobals {

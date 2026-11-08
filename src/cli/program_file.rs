@@ -6,12 +6,14 @@ use super::exit_status::ExitStatus;
 use super::standard_error::StandardError;
 use crate::core::ModulePath;
 use crate::language::Language;
+use crate::modules::LibraryTable;
 
 #[derive(Clone)]
 pub struct ProgramFile {
     path: PathBuf,
     root: PathBuf,
     module: ModulePath,
+    libraries: LibraryTable,
 }
 
 impl ProgramFile {
@@ -29,6 +31,7 @@ impl ProgramFile {
             path,
             root,
             module: ModulePath::new(module),
+            libraries: LibraryTable::default(),
         }
     }
 
@@ -38,9 +41,18 @@ impl ProgramFile {
                 path,
                 root,
                 module: ModulePath::new(module),
+                libraries: LibraryTable::default(),
             },
             None => Self::beside_itself(path),
         }
+    }
+
+    pub fn with_libraries(self, libraries: LibraryTable) -> Self {
+        Self { libraries, ..self }
+    }
+
+    pub fn libraries(&self) -> &LibraryTable {
+        &self.libraries
     }
 
     pub fn path(&self) -> &Path {
@@ -91,7 +103,7 @@ impl ProgramFile {
         fs::canonicalize(Path::new(Self::CURRENT_DIRECTORY).join(path)).ok()
     }
 
-    fn file_stem(path: &Path) -> String {
+    pub fn file_stem(path: &Path) -> String {
         path.file_stem()
             .map(|stem| stem.to_string_lossy().into_owned())
             .unwrap_or_default()

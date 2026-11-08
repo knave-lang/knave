@@ -311,7 +311,7 @@ impl Terminal {
     pub fn expand(&mut self, file: &ProgramFile) -> Result<Program, ExitStatus> {
         let entry = self.load(file.path())?;
         let program = self
-            .expander_rooted(file.root())
+            .expander_rooted(file)
             .expand(file.module_path(), entry)
             .map_err(|diagnostics| self.report(&diagnostics))?;
         self.work.lowered_forms = Some(program.expansion.lowered_forms);
@@ -329,7 +329,7 @@ impl Terminal {
         entry: SourceId,
         work: impl FnOnce(ExpansionSession<'_>) -> Result<T, Diagnostics>,
     ) -> Result<T, ExitStatus> {
-        self.expander_rooted(file.root())
+        self.expander_rooted(file)
             .open(file.module_path(), &[entry])
             .and_then(work)
             .map_err(|diagnostics| self.report(&diagnostics))
@@ -341,7 +341,7 @@ impl Terminal {
         work: impl FnOnce(ExpansionSession<'_>) -> Result<T, Diagnostics>,
     ) -> Result<T, ExitStatus> {
         let module = &request.module;
-        self.expander_rooted(module.file.root())
+        self.expander_rooted(&module.file)
             .evaluating(request.evaluated.iter().copied())
             .open(module.file.module_path(), &module.sources)
             .and_then(work)
@@ -349,7 +349,7 @@ impl Terminal {
     }
 
     pub fn classify(&mut self, module: &ModuleOfSources, form: Span) -> ClassifiedForm {
-        self.expander_rooted(module.file.root()).classify(
+        self.expander_rooted(&module.file).classify(
             module.file.module_path(),
             &module.sources,
             form,
@@ -357,7 +357,7 @@ impl Terminal {
     }
 
     pub fn survey_sources(&mut self, module: &ModuleOfSources, inputs: &[Span]) -> SourcesSurvey {
-        let survey = self.expander_rooted(module.file.root()).survey(
+        let survey = self.expander_rooted(&module.file).survey(
             module.file.module_path(),
             &module.sources,
             inputs,
@@ -396,20 +396,21 @@ impl Terminal {
         shown_warning: impl FnMut(&Diagnostic) -> bool,
     ) -> Result<TypedProgram, ExitStatus> {
         let program = self
-            .expander_rooted(module.file.root())
+            .expander_rooted(&module.file)
             .open(module.file.module_path(), &module.sources)
             .and_then(ExpansionSession::finish)
             .map_err(|diagnostics| self.report(&diagnostics))?;
         self.check_showing(&program, shown_warning)
     }
 
-    fn expander_rooted(&mut self, root: &Path) -> Expander<'_> {
-        let directory = root.to_path_buf();
+    fn expander_rooted(&mut self, file: &ProgramFile) -> Expander<'_> {
+        let directory = file.root().to_path_buf();
         let prelude =
             PreludeState::load(Self::SAVED_PRELUDE).expect("the embedded prelude state loads");
         Expander::with_prelude(
             &mut self.sources,
-            ModuleSources::new(directory.clone(), directory),
+            ModuleSources::new(directory.clone(), directory)
+                .with_libraries(file.libraries().clone()),
             prelude,
         )
     }

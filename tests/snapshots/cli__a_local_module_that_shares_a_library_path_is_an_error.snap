@@ -1,0 +1,23 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0253]: `src/keymap.rslisp` and library `keymap` share the module path `keymap`
+ --> src/main.rslisp:2:6
+  |
+2 | (use keymap key)
+  |      ^^^^^^ this names both a local module and a library
+  |
+  = note: library `hints` lists `keymap`, whose modules take the path `keymap`
+  = help: rename `src/keymap.rslisp`
+
+error[L0201]: cannot find `key` in this scope
+ --> src/main.rslisp:4:31
+  |
+4 | (defn main () (println (shout key)))
+  |                               ^^^ not found in this scope
+  |
+help: a name with a similar spelling exists
+  |
+4 | (defn main () (println (shout keys)))
+  |                                  +

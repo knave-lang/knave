@@ -220,6 +220,7 @@ impl Sandbox {
     const PIPE_OVERFLOWING_GREETING_REPEATS: usize = 1 << 18;
     const PIPE_OVERFLOWING_INPUT_BYTES: usize = 1 << 20;
     const READ_ONLY: u32 = 0o444;
+    const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
     const UNWRITABLE_DIRECTORY: u32 = 0o555;
     const NO_ACCESS: u32 = 0o000;
     const TERMINAL_RECORDER: &str = "script";
@@ -426,6 +427,43 @@ impl Sandbox {
     fn compiler_in(&self, working_directory: &str, arguments: &[&str]) -> Outcome {
         let mut command = self.command(Path::new(Self::COMPILER), arguments);
         command.current_dir(self.directory.join(working_directory));
+        Outcome::of(&mut command)
+    }
+
+    fn compiler_reading_in(
+        &self,
+        working_directory: &str,
+        input: impl AsRef<[u8]>,
+        arguments: &[&str],
+    ) -> Outcome {
+        let mut command = self.command(Path::new(Self::COMPILER), arguments);
+        command.current_dir(self.directory.join(working_directory));
+        Self::reading(&mut command, input)
+    }
+
+    fn with_fixture_tree(self, name: &str) -> Self {
+        Self::copy_tree(&Path::new(Self::FIXTURES).join(name), &self.directory);
+        self
+    }
+
+    fn copy_tree(from: &Path, to: &Path) {
+        fs::create_dir_all(to).expect("the sandbox accepts directories");
+        for entry in fs::read_dir(from).expect("the fixture tree is readable") {
+            let entry = entry.expect("the fixture tree lists its entries");
+            let target = to.join(entry.file_name());
+            if entry.path().is_dir() {
+                Self::copy_tree(&entry.path(), &target);
+            } else {
+                fs::copy(entry.path(), target).expect("the sandbox accepts files");
+            }
+        }
+    }
+
+    fn check_fixture(directory: &str) -> Outcome {
+        let mut command = Command::new(Self::COMPILER);
+        command
+            .arg("check")
+            .current_dir(Path::new(Self::FIXTURES).join(directory));
         Outcome::of(&mut command)
     }
 
@@ -5206,4 +5244,92 @@ fn new_removes_its_directory_after_a_failed_write() {
         "{stderr}"
     );
     assert!(!sandbox.directory.join("demo").exists());
+}
+
+#[test]
+fn run_uses_a_path_library_and_the_library_it_lists() {
+    let sandbox = Sandbox::new("library_run").with_fixture_tree("libraries");
+    let run = sandbox.compiler_in("app", &["run"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "hi!k\n!\n");
+}
+
+#[test]
+fn a_library_listed_twice_at_one_source_loads_once() {
+    let sandbox = Sandbox::new("library_listed_twice").with_fixture_tree("libraries");
+    let run = sandbox.compiler_in("listed-twice", &["run"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "hi!k\n");
+}
+
+#[test]
+fn eval_with_a_root_reaches_the_project_libraries() {
+    let sandbox = Sandbox::new("library_eval_root").with_fixture_tree("libraries");
+    let eval = sandbox.compiler_in(
+        "app",
+        &["eval", "--root", "src", "src/main.rslisp", "(shout \"e\")"],
+    );
+    assert_eq!(eval.assert_silent_success().stdout(), "\"e!k\"\n");
+}
+
+#[test]
+fn repl_with_a_root_reaches_the_project_libraries() {
+    let sandbox = Sandbox::new("library_repl_root").with_fixture_tree("libraries");
+    let repl = sandbox.compiler_reading_in(
+        "app",
+        "(use hints shout)\n(shout \"r\")\n",
+        &["repl", "--root", "src"],
+    );
+    assert_eq!(repl.assert_exit_code(0).stdout(), "\"r!k\"\n");
+}
+
+#[test]
+fn a_program_cannot_use_a_library_its_project_does_not_list() {
+    let check = Sandbox::check_fixture("libraries/unlisted");
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn a_library_named_as_the_entry_module_leaves_the_entry_in_the_program() {
+    Sandbox::check_fixture("libraries/main-library").assert_silent_success();
+}
+
+#[test]
+fn a_library_at_two_sources_stops_the_command() {
+    let check = Sandbox::check_fixture("libraries/two-sources");
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn a_library_that_hides_a_local_module_warns_once() {
+    let check = Sandbox::check_fixture("libraries/hidden-file");
+    insta::assert_snapshot!(check.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn a_library_that_hides_a_local_directory_warns() {
+    let check = Sandbox::check_fixture("libraries/hidden-directory");
+    insta::assert_snapshot!(check.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn a_library_without_a_project_file_names_the_entry() {
+    let check = Sandbox::check_fixture("libraries/missing-project");
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn a_library_without_its_root_module_names_the_file() {
+    let check = Sandbox::check_fixture("libraries/missing-lib");
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn a_library_module_never_falls_back_to_a_local_file() {
+    let check = Sandbox::check_fixture("libraries/hidden-directory-module");
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn a_local_module_that_shares_a_library_path_is_an_error() {
+    let check = Sandbox::check_fixture("libraries/local-keymap");
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }

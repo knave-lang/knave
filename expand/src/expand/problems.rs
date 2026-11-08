@@ -6,6 +6,7 @@ use crate::core::{
 use crate::diagnostic::{Counted, Diagnostic, DiagnosticCode, Label, MissingName, Suggestion};
 use crate::interpret::InterpretProblems;
 use crate::language::Language;
+use crate::modules::{LibraryTable, LocalModuleClash};
 use crate::reader::Form;
 use crate::source::Span;
 
@@ -526,6 +527,51 @@ impl ExpandProblems {
         .with_help(
             "a module path names a file relative to the root directory, without its extension",
         )
+    }
+
+    pub fn local_module_beside_library(clash: &LocalModuleClash<'_>, span: Span) -> Diagnostic {
+        let (local, library) = (clash.local.display(), clash.library);
+        Diagnostic::error(
+            DiagnosticCode::LOCAL_MODULE_BESIDE_LIBRARY,
+            format!("`{local}` and library `{library}` share the module path `{library}`"),
+            Label::new(span, "this names both a local module and a library"),
+        )
+        .with_note(format!(
+            "library `{}` lists `{library}`, whose modules take the path `{library}`",
+            clash.lister
+        ))
+        .with_help(format!("rename `{local}`"))
+    }
+
+    pub fn unlisted_library(library: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::UNLISTED_LIBRARY,
+            format!("this project does not list library `{library}`"),
+            Label::new(span, "a library that another library uses"),
+        )
+        .with_help(format!(
+            "add `{library}` to the `libraries` of `{}`",
+            Language::project_file_name()
+        ))
+    }
+
+    pub fn library_hides_local_module(
+        written: &ModulePath,
+        local: &std::path::Path,
+        span: Span,
+    ) -> Diagnostic {
+        let library = LibraryTable::head(written);
+        Diagnostic::warning(
+            DiagnosticCode::LIBRARY_HIDES_LOCAL_MODULE,
+            format!("library `{library}` hides `{}`", local.display()),
+            Label::new(span, format!("this loads library `{library}`")),
+        )
+        .with_note("a library's name takes precedence over a local module of the same name")
+        .with_help(format!(
+            "rename `{}` to reach it, or rename the library in `{}`",
+            local.display(),
+            Language::project_file_name()
+        ))
     }
 
     pub fn reserved_module(path: &ModulePath, span: Span) -> Diagnostic {

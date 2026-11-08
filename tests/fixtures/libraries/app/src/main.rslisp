@@ -1,0 +1,7 @@
+(use hints shout)
+(use hints/marks bang)
+(use tone)
+
+(defn main ()
+  (println (shout "hi"))
+  (println bang))

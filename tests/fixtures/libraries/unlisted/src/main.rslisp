@@ -1,0 +1,3 @@
+(use keymap key)
+
+(defn main () (println key))

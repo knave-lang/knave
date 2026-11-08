@@ -1,0 +1,22 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0252]: this project does not list library `keymap`
+ --> src/main.rslisp:1:6
+  |
+1 | (use keymap key)
+  |      ^^^^^^ a library that another library uses
+  |
+  = help: add `keymap` to the `libraries` of `project.rslisp`
+
+error[L0201]: cannot find `key` in this scope
+ --> src/main.rslisp:3:24
+  |
+3 | (defn main () (println key))
+  |                        ^^^ not found in this scope
+  |
+help: a name with a similar spelling exists
+  |
+3 | (defn main () (println keys))
+  |                           +

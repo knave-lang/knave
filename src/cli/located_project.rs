@@ -1,14 +1,17 @@
 use std::path::{Path, PathBuf};
 
 use super::exit_status::ExitStatus;
+use super::library_walk::LibraryWalk;
 use super::program_file::ProgramFile;
 use super::terminal::Terminal;
 use crate::language::Language;
+use crate::modules::LibraryTable;
 use crate::project::Project;
 
 pub struct LocatedProject {
     root: PathBuf,
     project: Project,
+    libraries: LibraryTable,
 }
 
 impl LocatedProject {
@@ -16,10 +19,14 @@ impl LocatedProject {
         let Some(root) = Self::nearest_root(directory)? else {
             return Ok(None);
         };
-        let project = terminal
-            .scratch()
-            .load_project(&root.join(Language::project_file_name()))?;
-        Ok(Some(Self { root, project }))
+        let mut scratch = terminal.scratch();
+        let project = scratch.load_project(&root.join(Language::project_file_name()))?;
+        let libraries = LibraryWalk::table(&mut scratch, &root, &project)?;
+        Ok(Some(Self {
+            root,
+            project,
+            libraries,
+        }))
     }
 
     fn nearest_root(directory: &Path) -> Result<Option<PathBuf>, ExitStatus> {
@@ -44,6 +51,13 @@ impl LocatedProject {
             .to_path_buf())
     }
 
+    pub fn lend_libraries(project: Option<&Self>, file: ProgramFile) -> ProgramFile {
+        match project {
+            Some(project) => file.with_libraries(project.libraries.clone()),
+            None => file,
+        }
+    }
+
     pub fn name(&self) -> &str {
         &self.project.name
     }
@@ -60,6 +74,7 @@ impl LocatedProject {
 
     pub fn file_within(&self, path: PathBuf) -> ProgramFile {
         ProgramFile::inside_or_beside(path, self.source_root())
+            .with_libraries(self.libraries.clone())
     }
 
     pub fn source_root(&self) -> PathBuf {

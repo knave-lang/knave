@@ -20,7 +20,7 @@
         value-doc-key whole-pairs?)
 
 (def map-list
-  (fn (function items)
+  (fn (items function)
     (map-onto (list) function items)))
 
 (def map-onto
@@ -99,7 +99,7 @@
 (def entry-value
   (fn (entry)
     (if (entry-kind? entry (quote many))
-      (map-list entry-value (nth entry 2))
+      (map-list (nth entry 2) entry-value)
       (nth entry 2))))
 
 (def binding-value
@@ -113,7 +113,7 @@
       (if (pattern-variable? pattern)
         (list pattern)
         (if (list? pattern)
-          (concat-all (map-list pattern-variables pattern))
+          (concat-all (map-list pattern pattern-variables))
           (list))))))
 
 (def template-variables
@@ -123,7 +123,7 @@
         (list)
         (list template))
       (if (list? template)
-        (concat-all (map-list template-variables template))
+        (concat-all (map-list template template-variables))
         (list)))))
 
 (def join-matches
@@ -157,7 +157,7 @@
     (if (empty? patterns)
       (if (empty? inputs) (list) false)
       (if (followed-by-ellipsis? patterns)
-        (match-ellipsis (first patterns) (drop 2 patterns) inputs)
+        (match-ellipsis (first patterns) (drop patterns 2) inputs)
         (if (empty? inputs)
           false
           (join-matches (match-pattern (first patterns) (first inputs))
@@ -169,8 +169,8 @@
       (number-sub (len inputs) (len tail)))
     (if (number-lt repeat-count 0)
       false
-      (join-matches (match-repeated repeated (take repeat-count inputs))
-                    (match-list tail (drop repeat-count inputs))))))
+      (join-matches (match-repeated repeated (take inputs repeat-count))
+                    (match-list tail (drop inputs repeat-count))))))
 
 (def match-repeated
   (fn (repeated inputs)
@@ -181,12 +181,12 @@
 (def group-matches
   (fn (repeated matches)
     (if (list? matches)
-      (map-list (fn (variable)
+      (map-list (pattern-variables repeated)
+                (fn (variable)
                   (list (quote many)
                         variable
-                        (map-list (fn (bindings) (lookup variable bindings))
-                                  matches)))
-                (pattern-variables repeated))
+                        (map-list matches
+                                  (fn (bindings) (lookup variable bindings))))))
       false)))
 
 (def pattern-variable?
@@ -231,7 +231,7 @@
       (list)
       (if (followed-by-ellipsis? templates)
         (concat (fill-repeated (first templates) bindings)
-                (fill-list (drop 2 templates) bindings))
+                (fill-list (drop templates 2) bindings))
         (prepend (fill-template (first templates) bindings)
                  (fill-list (rest templates) bindings))))))
 
@@ -345,8 +345,8 @@
 
 (def iteration-bindings
   (fn (entries bindings index)
-    (concat (map-list (fn (entry) (iteration-entry entry index))
-                      entries)
+    (concat (map-list entries
+                      (fn (entry) (iteration-entry entry index)))
             bindings)))
 
 (def iteration-entry
@@ -377,9 +377,9 @@
 
 (def rule-shapes
   (fn (name clauses)
-    (join-shapes (map-list (fn (clause)
-                             (prepend name (first clause)))
-                           clauses))))
+    (join-shapes (map-list clauses
+                           (fn (clause)
+                             (prepend name (first clause)))))))
 
 (def join-shapes
   (fn (shapes)
@@ -393,7 +393,7 @@
 (def defrule
   (macro (form)
     (local name (nth form 1))
-    (local body (drop 2 form))
+    (local body (drop form 2))
     (if (documented-body? body)
       (do
         (note-docstring (value-doc-key name) (first body))
@@ -410,7 +410,7 @@
                 (list (quote if)
                       (list (quote symbol?) (quote rule-form))
                       (list (quote quote) (nth form 2))
-                      (rule-expansion (drop 3 form)))))))
+                      (rule-expansion (drop form 3)))))))
 
 (def documented-body?
   (fn (body)
@@ -438,7 +438,7 @@
       (nth template 1)
       (if (list? template)
         (prepend (quote concat)
-                 (map-list build-template-element template))
+                 (map-list template build-template-element))
         (list (quote quote) template)))))
 
 (def build-template-element
@@ -464,20 +464,20 @@
 
 (def pattern-lets
   (fn (pattern)
-    (map-list (fn (variable)
+    (map-list (pattern-variables pattern)
+              (fn (variable)
                 (list (quote local)
                       variable
                       (list (quote binding-value)
                             (quote macro-bindings)
-                            (list (quote quote) variable))))
-              (pattern-variables pattern))))
+                            (list (quote quote) variable)))))))
 
 (def defmacro
   (macro (form)
     (local name (nth form 1))
     (declare-macro-definition name)
     (local pattern (nth form 2))
-    (local body (drop 3 form))
+    (local body (drop form 3))
     (if (string? pattern)
       (docstring-before-parameters pattern)
       (if (docstring-before-body? body)
@@ -551,7 +551,7 @@
       true
       (if (empty? (rest arguments))
         false
-        (recur (drop 2 arguments))))))
+        (recur (drop arguments 2))))))
 
 (defmacro header-shape (shape markers ...)
   "States the header of a form's calls: (header-shape (form name ...)).
@@ -861,12 +861,12 @@
       texts
       (if (value-eq (clean-docstring (first texts)) "")
         (list)
-        (take 1 texts)))))
+        (take texts 1)))))
 
 (def export-listing
   (fn (path)
     (local entries
-      (distinct-entries (map-list listing-entry (module-exports path))))
+      (distinct-entries (map-list (module-exports path) listing-entry)))
     (if (empty? entries)
       ""
       (string "\n\n" (join-lines entries)))))
@@ -937,10 +937,10 @@
 
 (def value-notes
   (fn (term)
-    (map-list (fn (note)
-                (value-page term (drop 2 note)))
-              (docstring-notes (definition-symbol term "doc")
-                               (value-doc-key term)))))
+    (map-list (docstring-notes (definition-symbol term "doc")
+                               (value-doc-key term))
+              (fn (note)
+                (value-page term (drop note 2))))))
 
 (def value-page
   (fn (term page)
@@ -951,10 +951,10 @@
 (def type-notes
   (fn (term)
     (local context (type-definition-symbol term "doc"))
-    (map-list (fn (note)
+    (map-list (docstring-notes context (type-doc-key term))
+              (fn (note)
                 (prepend (calls-header term context (type-definition-call term))
-                         (drop 2 note)))
-              (docstring-notes context (type-doc-key term)))))
+                         (drop note 2))))))
 
 (def docstring-notes
   (fn (context key)
@@ -965,7 +965,7 @@
     (if (empty? notes)
       notes
       (if (same-doc-key? key (first notes))
-        (take 1 notes)
+        (take notes 1)
         (recur key (rest notes))))))
 
 (def same-doc-key?
@@ -1000,8 +1000,8 @@
     (if (symbol? form)
       (symbol context form)
       (if (list? form)
-        (map-list (fn (item) (scoped-form context item))
-                  form)
+        (map-list form
+                  (fn (item) (scoped-form context item)))
         form))))
 
 (def call-header
@@ -1015,7 +1015,7 @@
   (fn (shape call)
     (if (number-lt (len call) (len shape))
       call
-      (take (len shape) call))))
+      (take call (len shape)))))
 
 (def expansion-header
   (fn (term expand expansions-left)
@@ -1051,7 +1051,7 @@
     (if (empty? shapes)
       shapes
       (if (same-binding? definer (first (first shapes)))
-        (take 1 shapes)
+        (take shapes 1)
         (recur definer (rest shapes))))))
 
 (def note-header
@@ -1092,15 +1092,15 @@
     (local lines (string-lines text))
     (local margin (shared-indentation (rest lines)))
     (local continuation
-      (map-list (fn (line) (unindent margin line))
-                (rest lines)))
+      (map-list (rest lines)
+                (fn (line) (unindent margin line))))
     (local first-line (string-trim-start (first lines)))
     (without-trailing-newlines
       (join-lines (without-leading-blanks (prepend first-line continuation))))))
 
 (def shared-indentation
   (fn (lines)
-    (smallest (map-list indentation (written-lines lines)))))
+    (smallest (map-list (written-lines lines) indentation))))
 
 (def indentation
   (fn (line)
@@ -1137,7 +1137,7 @@
 
 (def unindent
   (fn (margin line)
-    (if (blank? line) "" (string-drop margin line))))
+    (if (blank? line) "" (string-drop line margin))))
 
 (def without-leading-blanks
   (fn (lines)

@@ -116,7 +116,7 @@
     (local written
       (list (form-location form) (string form)))
     (local message
-      (map-list deferred-message (rest (rest form))))
+      (map-list (rest (rest form)) deferred-message))
     (if (equality? checked)
       (equal-assertion (equal-check message)
                        written checked message)
@@ -216,9 +216,9 @@
     (template (do
                 (splice (untested-records marker (untested-option form) notes))
                 (start-run (unquote marker)
-                           (vec (splice (map-list test-full-name notes))))
-                (splice (map-list (fn (note) (test-run marker note))
-                                  notes))
+                           (vec (splice (map-list notes test-full-name))))
+                (splice (map-list notes
+                                  (fn (note) (test-run marker note))))
                 (finish-run (unquote marker))))))
 
 (def untested-option
@@ -265,9 +265,9 @@
   (fn (modules)
     (if (empty? modules)
       (list)
-      (concat (map-list (fn (note)
-                          (prepend (first modules) note))
-                        (module-notes (first modules) (quote tests)))
+      (concat (map-list (module-notes (first modules) (quote tests))
+                        (fn (note)
+                          (prepend (first modules) note)))
               (program-tests (rest modules))))))
 
 (def test-full-name
@@ -292,8 +292,8 @@
       (untested-record marker
                        (first option)
                        (module-exports (first option))
-                       (written-symbols (map-list note-body
-                                                  (map-list rest notes)))))))
+                       (written-symbols (map-list (map-list notes rest)
+                                                  note-body))))))
 
 (def untested-record
   (fn (marker module exports written)

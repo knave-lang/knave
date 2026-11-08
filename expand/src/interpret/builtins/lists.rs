@@ -73,15 +73,15 @@ impl<'a> ListOperations<'a> {
 
     pub fn take(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
-        let count = self.arguments.index(0)?;
-        let items = self.arguments.list(1)?;
+        let items = self.arguments.list(0)?;
+        let count = self.arguments.index(1)?;
         self.sliced(&items, 0..count)
     }
 
     pub fn drop(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
-        let count = self.arguments.index(0)?;
-        self.dropped(&self.arguments.list(1)?, count)
+        let count = self.arguments.index(1)?;
+        self.dropped(&self.arguments.list(0)?, count)
     }
 
     fn item(&self, items: &CodeList, index: usize) -> Result<Value, Diagnostic> {

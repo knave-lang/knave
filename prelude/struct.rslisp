@@ -29,7 +29,7 @@
     (if (empty? body)
       (list)
       (prepend (field-group (first body) (rest body))
-               (field-groups (drop 2 body))))))
+               (field-groups (drop body 2))))))
 
 (def field-group
   (fn (keyword more)
@@ -72,7 +72,7 @@
     (if (empty? arguments)
       (list)
       (prepend (list (first arguments) (nth arguments 1))
-               (named-initializers (drop 2 arguments))))))
+               (named-initializers (drop arguments 2))))))
 
 (def named-construction
   (fn (arguments shape)
@@ -128,7 +128,7 @@
   (fn (head body)
     (local name (head-name head))
     (local fields (field-groups (declared-forms body)))
-    (local field-names (map-list first fields))
+    (local field-names (map-list fields first))
     (local defaults
       (default-bindings (default-pairs body)
                         (field-definition name)
@@ -139,7 +139,7 @@
                 (struct (unquote head) (splice fields))
                 (defn (unquote hidden) (unquote field-names)
                   (new (unquote name)
-                    (splice (map-list field-initializer fields))))
+                    (splice (map-list fields field-initializer))))
                 (def (unquote (constructor-name name))
                   (macro (form)
                     (constructor-expansion form

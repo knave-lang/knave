@@ -89,7 +89,7 @@
     (check-enum-clause (rust-clause-of forms))
     (concat (list (quote enum) head)
             (rust-clause-of forms)
-            (map-list variant-form variants))))
+            (map-list variants variant-form))))
 
 (def check-enum-clause
   (fn (clauses)
@@ -241,7 +241,7 @@
     (if (empty? items)
       (list)
       (prepend (variant-field (first items) (rest items))
-               (variant-fields (drop 2 items))))))
+               (variant-fields (drop items 2))))))
 
 (def variant-field
   (fn (keyword more)

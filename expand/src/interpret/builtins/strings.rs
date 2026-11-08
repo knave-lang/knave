@@ -46,8 +46,8 @@ impl<'a> StringOperations<'a> {
 
     pub fn drop(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
-        let count = self.arguments.index(0)?;
-        let text = self.arguments.string(1)?;
+        let text = self.arguments.string(0)?;
+        let count = self.arguments.index(1)?;
         let start = self.char_boundary(text, count)?;
         Ok(self.string_value(text[start..].to_string()))
     }

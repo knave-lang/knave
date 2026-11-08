@@ -7,7 +7,7 @@
     (local other (concat base (list 4)))
     (local grown
       (concat (rest longer) (list 5)))
-    (local shorter (take 1 longer))
+    (local shorter (take longer 1))
     (concat (list (quote println))
             base
             (list " ")

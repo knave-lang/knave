@@ -21,7 +21,7 @@
   (macro (form)
     (prepend (quote do)
              (concat (local-steps (binding-list form))
-                     (drop 2 form)))))
+                     (drop form 2)))))
 
 (header-shape (let bindings) :bindings)
 
@@ -43,7 +43,7 @@
     (if (empty? bindings)
       steps
       (recur (concat steps (list (local-step bindings)))
-             (drop 2 bindings)))))
+             (drop bindings 2)))))
 
 (def local-step
   (fn (bindings)
@@ -73,7 +73,7 @@
 
 (def bindings-with-body
   (fn (form bindings)
-    (if (empty? (drop 2 form))
+    (if (empty? (drop form 2))
       (bindings-without-body form bindings)
       bindings)))
 
@@ -100,7 +100,7 @@
       bindings
       (if (parenthesized-pair? (first bindings) paired?)
         bindings
-        (recur (drop 2 bindings) paired?)))))
+        (recur (drop bindings 2) paired?)))))
 
 (def parenthesized-pair?
   (fn (binder paired?)
@@ -238,7 +238,7 @@
 (def flat-binding?
   (fn (form)
     (if (name? (nth form 1))
-      (bool-not (empty? (drop 2 form)))
+      (bool-not (empty? (drop form 2)))
       false)))
 
 (def name?
@@ -267,7 +267,7 @@
 
 (def flat-let-help
   (fn (form)
-    (if (empty? (drop 3 form))
+    (if (empty? (drop form 3))
       (string "to bind `"
               (symbol-name (nth form 1))
               "` for the rest of the body, write `"
@@ -277,7 +277,7 @@
               "`")
       (string "write the bindings in a list, as `"
               (prepend (first form)
-                       (prepend (flat-pair form) (drop 3 form)))
+                       (prepend (flat-pair form) (drop form 3)))
               "`"))))
 
 (defmacro defn (name parameters body ...)
@@ -314,7 +314,7 @@
   (fn (name parameters body)
     (local declared (declared-forms parameters))
     (local binders (parameter-binders declared))
-    (local names (map-list binder-name binders))
+    (local names (map-list binders binder-name))
     (check-distinct-parameters (parameter-keywords declared))
     (local defaults
       (default-bindings (default-pairs parameters)
@@ -392,7 +392,7 @@
 (def declared-forms
   (fn (forms)
     (if (ends-with-defaults? forms)
-      (take (number-sub (len forms) 1) forms)
+      (take forms (number-sub (len forms) 1))
       forms)))
 
 (def default-pairs
@@ -414,8 +414,8 @@
     (if (empty? forms)
       (list)
       (prepend (parameter-binder (first forms) (rest forms))
-               (parameter-binders (drop (parameter-width (rest forms))
-                                        forms))))))
+               (parameter-binders (drop forms
+                                        (parameter-width (rest forms))))))))
 
 (def parameter-binder
   (fn (keyword more)
@@ -474,8 +474,8 @@
     (if (empty? forms)
       (list)
       (prepend (first forms)
-               (parameter-keywords (drop (parameter-width (rest forms))
-                                         forms))))))
+               (parameter-keywords (drop forms
+                                         (parameter-width (rest forms))))))))
 
 (def check-distinct-parameters
   (fn (keywords)
@@ -520,7 +520,7 @@
     (if (empty? pairs)
       (list)
       (prepend (default-binding pairs owner names given-keys)
-               (given-default-bindings (drop 2 pairs)
+               (given-default-bindings (drop pairs 2)
                                        owner names
                                        given-keys)))))
 
@@ -529,7 +529,7 @@
     (local key (first pairs))
     (check-default-key key owner names given-keys)
     (check-default-value pairs)
-    (check-single-default key (pair-keys (drop 2 pairs)))
+    (check-single-default key (pair-keys (drop pairs 2)))
     (list (name-of-key key names) (nth pairs 1))))
 
 (def check-default-key
@@ -567,7 +567,7 @@
         (if (empty? names)
           (string "`" name "` has no " noun "s")
           (string "the " noun "s of `" name "` are "
-                  (joined-names (map-list spelling names) "")))
+                  (joined-names (map-list names spelling) "")))
         (string "a " noun " with a similar name exists"))
       (if (empty? closest)
         (template (:code (unquote code)))
@@ -634,7 +634,7 @@
     (if (empty? arguments)
       (list)
       (prepend (first arguments)
-               (pair-keys (drop 2 arguments))))))
+               (pair-keys (drop arguments 2))))))
 
 (def has-argument?
   (fn (name keys)
@@ -756,7 +756,7 @@
     (if (empty? (rest arguments))
       (first arguments)
       (if (keyword? (first arguments))
-        (first-unpaired (drop 2 arguments))
+        (first-unpaired (drop arguments 2))
         (first arguments)))))
 
 (def unpaired-label
@@ -849,9 +849,9 @@
 
 (def positional-arguments
   (fn (pairs signature)
-    (map-list (fn (name)
-                (argument-for name pairs (signature-defaults signature)))
-              (signature-names signature))))
+    (map-list (signature-names signature)
+              (fn (name)
+                (argument-for name pairs (signature-defaults signature))))))
 
 (def argument-for
   (fn (name pairs defaults)
@@ -866,7 +866,7 @@
       pairs
       (if (keyword-of? (first pairs) name)
         pairs
-        (pair-of name (drop 2 pairs))))))
+        (pair-of name (drop pairs 2))))))
 
 (def needs-temporaries?
   (fn (pairs names)
@@ -890,7 +890,7 @@
       false
       (if (list? (nth pairs 1))
         true
-        (any-compound-value? (drop 2 pairs))))))
+        (any-compound-value? (drop pairs 2))))))
 
 (def call-through-temporaries
   (fn (pairs positional signature)
@@ -904,7 +904,7 @@
     (if (empty? pairs)
       (list)
       (concat (list (first pairs) (bound-value pairs))
-              (bound-pairs (drop 2 pairs))))))
+              (bound-pairs (drop pairs 2))))))
 
 (def bound-value
   (fn (pairs)
@@ -923,8 +923,8 @@
       (if (list? (nth pairs 1))
         (prepend (temporary (first pairs))
                  (prepend (nth pairs 1)
-                          (temporary-bindings (drop 2 pairs))))
-        (temporary-bindings (drop 2 pairs))))))
+                          (temporary-bindings (drop pairs 2))))
+        (temporary-bindings (drop pairs 2))))))
 
 (def loop
   (macro (form)
@@ -932,14 +932,14 @@
     (if (sequential-values? bindings)
       (template (let (unquote bindings)
                   (unquote (loop-call form bindings
-                                      (map-list binder-name
-                                                (binders bindings))))))
+                                      (map-list (binders bindings)
+                                                binder-name)))))
       (loop-call form bindings (binding-values bindings)))))
 
 (def loop-call
   (fn (form bindings arguments)
     (template ((fn (unquote (binders bindings))
-                 (splice (drop 2 form)))
+                 (splice (drop form 2)))
                (splice arguments)))))
 
 (header-shape (loop bindings) :bindings)
@@ -955,7 +955,7 @@
       (if (mentions-any? (nth bindings 1) earlier)
         true
         (recur (prepend (binder-name (first bindings)) earlier)
-               (drop 2 bindings))))))
+               (drop bindings 2))))))
 
 (def mentions-any?
   (fn (form names)
@@ -989,7 +989,7 @@
     (if (empty? bindings)
       found
       (recur (concat found (list (nth bindings 1)))
-             (drop 2 bindings)))))
+             (drop bindings 2)))))
 
 (def binders
   (fn (bindings)
@@ -1000,7 +1000,7 @@
     (if (empty? bindings)
       found
       (recur (concat found (list (first bindings)))
-             (drop 2 bindings)))))
+             (drop bindings 2)))))
 
 (defrule the
   ((type-expression value)
@@ -1025,7 +1025,7 @@
 (def let-try
   (macro (form)
     (template (let (unquote (tried-bindings (binding-list form)))
-                (splice (drop 2 form))))))
+                (splice (drop form 2))))))
 
 (header-shape (let-try bindings) :bindings)
 
@@ -1040,13 +1040,13 @@
       (recur (concat tried
                      (list (first bindings)
                            (list (quote try) (nth bindings 1))))
-             (drop 2 bindings)))))
+             (drop bindings 2)))))
 
 (def let-match
   (macro (form)
     (prepend (quote do)
              (matched-body (reversed-bindings (pattern-binding-list form))
-                           (drop 2 form)))))
+                           (drop form 2)))))
 
 (header-shape (let-match bindings) :bindings)
 
@@ -1107,7 +1107,7 @@
       reversed
       (recur (prepend (list (first bindings) (nth bindings 1))
                       reversed)
-             (drop 2 bindings)))))
+             (drop bindings 2)))))
 
 (defrule try->
   ((value) value)

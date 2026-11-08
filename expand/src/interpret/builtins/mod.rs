@@ -28,7 +28,7 @@ pub struct BuiltinCall {
 }
 
 impl BuiltinCall {
-    const IMPLEMENTATIONS: [(Builtin, Implementation); 56] = [
+    const IMPLEMENTATIONS: [(Builtin, Implementation); 57] = [
         (Builtin::First, |operations, _| operations.lists.first()),
         (Builtin::Rest, |operations, _| operations.lists.rest()),
         (Builtin::List, |operations, _| operations.lists.list()),
@@ -174,6 +174,9 @@ impl BuiltinCall {
         }),
         (Builtin::ModuleSymbol, |operations, host| {
             operations.program.module_symbol(host)
+        }),
+        (Builtin::ProjectFileName, |operations, _| {
+            operations.program.project_file_name()
         }),
     ];
 

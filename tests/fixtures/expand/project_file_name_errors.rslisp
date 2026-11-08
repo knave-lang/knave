@@ -1,0 +1,6 @@
+(use code project-file-name)
+
+(def extra-argument
+  (macro (form) (project-file-name 1)))
+
+(def file-name (extra-argument))

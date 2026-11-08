@@ -1,0 +1,6 @@
+(use code project-file-name)
+
+(def shown-file-name
+  (macro (form) (project-file-name)))
+
+(def file-name (shown-file-name))

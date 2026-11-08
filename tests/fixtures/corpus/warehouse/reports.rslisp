@@ -60,7 +60,7 @@
                       0))))
   (for-each (iter totals)
             (fn (entry)
-              (let-pair (name worth) entry
+              (let-match ((pair name worth) entry)
                 (println (str "  " name ": " (dollars (deref worth))))))))
 
 (type print-top-value
@@ -94,7 +94,7 @@
                 (fn (pair) (deref (second-of pair)))))
   (match busiest
     ((some found)
-     (let-pair (sku count) found
+     (let-match ((pair sku count) found)
        (println (str "busiest: " sku " with " count " moves"))))
     (none (println "no moves"))))
 

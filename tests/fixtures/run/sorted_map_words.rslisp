@@ -10,5 +10,5 @@
 (defn main ()
   (for-each (iter (count-words (str "the cat and the hat")))
             (fn (entry)
-              (let-pair (word count) entry
+              (let-match ((pair word count) entry)
                 (println (str word " " count))))))

@@ -58,7 +58,7 @@
 
 (defn main ()
   (local leaf (->car "Leaf" 2024))
-  (let-pair (labeled name) (label leaf "Nissan")
+  (let-match ((pair labeled name) (label leaf "Nissan"))
     (println (:model labeled) " " name))
   (println (newer-model leaf (->car "Golf" 2019)))
   (println (echo leaf "echo")

@@ -63,7 +63,7 @@
   (reduce (edges corners)
           0.0
           (fn (total edge)
-            (let-pair (from to) edge
+            (let-match ((pair from to) edge)
               (+ total
                  (- (* (:x from) (:y to))
                     (* (:x to) (:y from))))))))
@@ -75,7 +75,7 @@
   (reduce (edges corners)
           0.0
           (fn (total edge)
-            (let-pair (from to) edge
+            (let-match ((pair from to) edge)
               (+ total (distance from to))))))
 
 (type edges

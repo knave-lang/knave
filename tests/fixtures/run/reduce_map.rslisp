@@ -2,5 +2,5 @@
   (local m (sorted-map "a" 1 "b" 2))
   (println (reduce m 0
                    (fn (total entry)
-                     (let-pair (_ value) entry
+                     (let-match ((pair _ value) entry)
                        (+ total (deref value)))))))

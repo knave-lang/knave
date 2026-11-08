@@ -18,6 +18,7 @@ mod exit_status;
 mod expand;
 mod finished_program;
 mod fmt;
+mod front_end_stack;
 mod input_helper;
 mod interruption;
 mod json_replies;
@@ -78,6 +79,7 @@ use evaluation_output::{EvaluationOutput, JsonEvaluation, PrintedEvaluation};
 use exit_status::ExitStatus;
 use expand::ExpandCommand;
 use fmt::{FmtCommand, FmtMode};
+use front_end_stack::FrontEndStack;
 use new::NewCommand;
 use repl::ReplCommand;
 use run::RunCommand;
@@ -334,6 +336,10 @@ impl Cli {
     }
 
     pub fn run(self, allocator: Option<&CountingAllocator>) -> ExitCode {
+        FrontEndStack::run(move || self.run_on_this_stack(allocator))
+    }
+
+    fn run_on_this_stack(self, allocator: Option<&CountingAllocator>) -> ExitCode {
         anstream::ColorChoice::from(self.color).write_global();
         let mut terminal = Terminal::new(AutoStream::choice(&io::stderr()));
         let command = self.command.unwrap_or_else(Command::prompt);

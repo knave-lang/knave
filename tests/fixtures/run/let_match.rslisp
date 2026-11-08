@@ -2,6 +2,17 @@
   :x i64
   :y i64)
 
+(defrule swapped
+  ((value body ...) (let-match ((pair a b) value) (pair b a))))
+
+(defn sum-pairs (items)
+  (loop (index 0
+         total 0)
+    (if (= index (len items))
+      total
+      (let-match ((pair left right) (at items index))
+        (recur (+ index 1) (+ total left right))))))
+
 (defn main ()
   (local p (->point 1 2))
   (let-match ((pair word count) (pair "apples" 3)
@@ -12,4 +23,11 @@
     (println word)
     (println total)
     (println first second third))
+  (let-match ((pair a b) (pair 1 2)
+              (pair a b) (pair b a))
+    (println a b))
+  (local a 10)
+  (let-match ((pair left right) (swapped (pair 3 4)))
+    (println a left right))
+  (println (sum-pairs (vec (pair 1 2) (pair 3 4))))
   (let-match () (println "no bindings")))

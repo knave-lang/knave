@@ -1,4 +1,4 @@
-use crate::interpret::Value;
+use crate::interpret::{PassedLimit, Value};
 use crate::reader::Form;
 use crate::scope::Scope;
 
@@ -9,6 +9,7 @@ pub struct FormBudget {
 
 impl FormBudget {
     pub const EXPANSION_LIMIT: usize = 131_072;
+    const NO_ENCLOSING_LISTS: usize = 0;
 
     pub fn full() -> Self {
         Self {
@@ -24,9 +25,9 @@ impl FormBudget {
         self.remaining == 0
     }
 
-    pub fn admitted_form(&self, value: &Value) -> Option<Form> {
+    pub fn admitted_form(&self, value: &Value) -> Result<Form, PassedLimit> {
         let mut allowance = self.remaining;
-        value.to_form_within(&mut allowance)
+        value.to_form_within(&mut allowance, Self::NO_ENCLOSING_LISTS)
     }
 
     pub fn flip_scope(&mut self, form: &mut Form, scope: Scope, counted_forms: usize) -> bool {
@@ -78,7 +79,7 @@ mod tests {
         }
 
         fn admits_value(&self, value: &Value) -> bool {
-            self.budget.admitted_form(value).is_some()
+            self.budget.admitted_form(value).is_ok()
         }
 
         fn list_of(forms: usize) -> Form {

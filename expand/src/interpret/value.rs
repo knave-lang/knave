@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use super::CodeList;
+use super::code_list::PassedLimit;
 use crate::core::{BindingId, Builtin, Keyword, Lambda};
 use crate::reader::{Form, FormKind, NumberValue, Symbol};
 
@@ -53,12 +54,16 @@ impl Value {
         }
     }
 
-    pub fn to_form_within(&self, allowance: &mut usize) -> Option<Form> {
+    pub fn to_form_within(
+        &self,
+        allowance: &mut usize,
+        enclosing_lists: usize,
+    ) -> Result<Form, PassedLimit> {
         match self {
-            Value::List(list) => list.to_form_within(allowance),
+            Value::List(list) => list.to_form_within(allowance, enclosing_lists),
             _ => {
-                *allowance = allowance.checked_sub(1)?;
-                self.to_form()
+                *allowance = allowance.checked_sub(1).ok_or(PassedLimit::FormCount)?;
+                self.to_form().ok_or(PassedLimit::FormCount)
             }
         }
     }

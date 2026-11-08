@@ -1,0 +1,56 @@
+---
+source: tests/cli.rs
+expression: fmt.assert_silent_success().stdout()
+---
+(project demo
+  alpha
+  beta
+  gamma
+  delta
+  epsilon
+  zeta
+  eta
+  theta
+  iota
+  kappa
+  lambda)
+
+(libraries
+  alpha
+  beta
+  gamma
+  delta
+  epsilon
+  zeta
+  eta
+  theta
+  iota
+  kappa
+  lambda
+  mu)
+
+(dependencies
+  alpha
+  beta
+  gamma
+  delta
+  epsilon
+  zeta
+  eta
+  theta
+  iota
+  kappa
+  lambda)
+
+(dev-dependencies
+  alpha
+  beta
+  gamma
+  delta
+  epsilon
+  zeta
+  eta
+  theta
+  iota
+  kappa
+  lambda)

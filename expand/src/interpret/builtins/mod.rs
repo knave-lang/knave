@@ -28,7 +28,7 @@ pub struct BuiltinCall {
 }
 
 impl BuiltinCall {
-    const IMPLEMENTATIONS: [(Builtin, Implementation); 58] = [
+    const IMPLEMENTATIONS: [(Builtin, Implementation); 63] = [
         (Builtin::First, |operations, _| operations.lists.first()),
         (Builtin::Rest, |operations, _| operations.lists.rest()),
         (Builtin::List, |operations, _| operations.lists.list()),
@@ -105,6 +105,9 @@ impl BuiltinCall {
         (Builtin::ClosestName, |operations, _| {
             operations.text.closest_name()
         }),
+        (Builtin::SortedNames, |operations, _| {
+            operations.text.sorted_names()
+        }),
         (Builtin::Fail, |operations, _| operations.text.fail()),
         (Builtin::NumberAdd, |operations, _| operations.numbers.add()),
         (Builtin::NumberSub, |operations, _| {
@@ -151,6 +154,12 @@ impl BuiltinCall {
         (Builtin::StringDrop, |operations, _| {
             operations.strings.drop()
         }),
+        (Builtin::StringLowercase, |operations, _| {
+            operations.strings.lowercase()
+        }),
+        (Builtin::StringContains, |operations, _| {
+            operations.strings.contains()
+        }),
         (Builtin::AddModuleNote, |operations, host| {
             operations.text.add_module_note(host)
         }),
@@ -174,6 +183,12 @@ impl BuiltinCall {
         }),
         (Builtin::ModuleExports, |operations, host| {
             operations.program.module_exports(host)
+        }),
+        (Builtin::ModuleDefinitions, |operations, host| {
+            operations.program.module_definitions(host)
+        }),
+        (Builtin::CurrentModule, |operations, host| {
+            operations.program.current_module(host)
         }),
         (Builtin::ModuleSymbol, |operations, host| {
             operations.program.module_symbol(host)

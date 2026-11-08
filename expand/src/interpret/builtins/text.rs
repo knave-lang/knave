@@ -203,6 +203,18 @@ impl<'a> TextOperations<'a> {
         Ok(Forms::list(found, self.call_site))
     }
 
+    pub fn sorted_names(&self) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(1)?;
+        let mut names = self.arguments.symbol_forms(0)?;
+        names.sort_by(|left, right| Self::written_name(left).cmp(&Self::written_name(right)));
+        names.dedup_by(|later, earlier| Self::written_name(later) == Self::written_name(earlier));
+        Ok(Forms::list(names, self.call_site))
+    }
+
+    fn written_name(form: &Form) -> Option<&str> {
+        form.as_symbol().map(Symbol::name)
+    }
+
     pub fn fail(&self) -> Result<Value, Diagnostic> {
         Err(FailCall::new(self.arguments).failure())
     }

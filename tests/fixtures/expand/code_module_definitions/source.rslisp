@@ -1,0 +1,5 @@
+(export shown)
+
+(defn shown () 1)
+
+(defn hidden () 2)

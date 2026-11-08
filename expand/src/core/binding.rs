@@ -128,7 +128,6 @@ impl BindingArena {
         self.saved = Rc::new(saved);
     }
 
-    #[cfg(test)]
     pub fn ids(&self) -> impl Iterator<Item = BindingId> {
         let count = self.saved.count() + self.infos.len();
         (0..count).map(|index| BindingId(u32::try_from(index).expect("fewer than 2^32 bindings")))

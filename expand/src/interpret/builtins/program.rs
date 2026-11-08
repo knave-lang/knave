@@ -46,6 +46,19 @@ impl<'a> ProgramOperations<'a> {
         Ok(self.symbols(exports))
     }
 
+    pub fn module_definitions(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(1)?;
+        let path = self.arguments.form(0)?;
+        let definitions = host.module_definitions(self.arguments.symbol(0)?, path.span())?;
+        Ok(self.symbols(definitions))
+    }
+
+    pub fn current_module(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(0)?;
+        let module = FormKind::Symbol(host.current_module());
+        Ok(Value::Form(Form::new(module, self.call_site)))
+    }
+
     pub fn module_symbol(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let path = self.arguments.form(0)?;

@@ -63,6 +63,7 @@ const STRUCTS: &str = "(defstruct person :name string :age i64)\n(defstruct tick
 const BOUND_ENTRY: &str = "(use other/person person)\n\n(rust-trait same \"std::ops::Add\" i64 (with i64 person))\n\n(type matches (where ((a (same person))) (fn (a) bool)))\n(defn matches (x) true)\n\n(defn main () (println (matches 1)))\n";
 
 const TRAIT_SHARED_VECTOR: &str = "(struct odometer (offset i64))\n\n(trait mileage\n  (first-reading (fn ((ref self) (ref (vec i64))) i64)))\n\n(impl mileage odometer\n  (first-reading (o readings) (+ (field o offset) (at readings 0))))\n\n(defn main ()\n  (println (first-reading (new odometer (offset 10)) (vec 1200))))\n";
+const DOCUMENTED_TWICE: &str = "(defn twice (x)\n  \"Doubles a number.\n\n  Handy for widgets.\"\n  (* 2 x))\n\n(defn main () (println (twice 2)))\n";
 const GEOMETRY: &str = "(export area)\n\n(defn area (width height) \"Multiplies a width by a height.\" (* width height))\n";
 const GEOMETRY_ENTRY: &str = "(use geometry area)\n\n(defn main () (println (area 3 4)))\n";
 const DOCUMENTED_GEOMETRY: &str = "(module \"Shapes on a grid.\")\n\n(export area perimeter)\n\n(defn area (width height)\n  \"Multiplies two sides.\"\n  (* width height))\n\n(defn perimeter (width height)\n  (* 2 (+ width height)))\n\n(defn helper (x)\n  \"Not exported.\"\n  x)\n";
@@ -1609,6 +1610,82 @@ fn doc_takes_a_term_that_starts_with_a_hyphen() {
     let doc = sandbox.compiler(&["doc", "->"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some(THREADING_HEADER));
+}
+
+#[test]
+fn doc_apropos_lists_the_prelude_names_that_hold_the_text() {
+    let sandbox = Sandbox::new("doc_apropos");
+    let doc = sandbox.compiler(&["doc", "(apropos sort)"]);
+    assert_eq!(
+        doc.assert_exit_code(0).stdout(),
+        "(apropos sort)\n\ninto-sorted-map sort! sort-by! sorted-map\n"
+    );
+}
+
+#[test]
+fn doc_apropos_ignores_case() {
+    let sandbox = Sandbox::new("doc_apropos_case");
+    let doc = sandbox.compiler(&["doc", "(apropos SORT)"]);
+    assert_eq!(
+        doc.assert_exit_code(0).stdout(),
+        "(apropos SORT)\n\ninto-sorted-map sort! sort-by! sorted-map\n"
+    );
+}
+
+#[test]
+fn doc_apropos_without_a_match_points_to_find_doc() {
+    let sandbox = Sandbox::new("doc_apropos_none");
+    let doc = sandbox.compiler(&["doc", "(apropos zzqx)"]);
+    assert_eq!(
+        doc.assert_exit_code(0).stdout(),
+        "(apropos zzqx)\n\nNo matches. Try (find-doc zzqx) to search docstrings.\n"
+    );
+}
+
+#[test]
+fn doc_find_doc_without_a_match_succeeds() {
+    let sandbox = Sandbox::new("doc_find_doc_none");
+    let doc = sandbox.compiler(&["doc", "(find-doc zzqx)"]);
+    assert_eq!(
+        doc.assert_exit_code(0).stdout(),
+        "(find-doc zzqx)\n\nNo matches.\n"
+    );
+}
+
+#[test]
+fn doc_find_doc_finds_a_term_through_the_body_of_its_docstring() {
+    let sandbox = Sandbox::new("doc_find_doc_body").with_file("main.rslisp", DOCUMENTED_TWICE);
+    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "(find-doc widgets)"]);
+    assert_eq!(
+        doc.assert_exit_code(0).stdout(),
+        "(find-doc widgets)\n\n(defn twice (x))\n    Doubles a number.\n"
+    );
+}
+
+#[test]
+fn doc_takes_a_search_text_that_starts_with_hyphens() {
+    let sandbox = Sandbox::new("doc_search_hyphens");
+    let doc = sandbox.compiler(&["doc", "(find-doc --zzqx)"]);
+    assert_eq!(
+        doc.assert_exit_code(0).stdout(),
+        "(find-doc --zzqx)\n\nNo matches.\n"
+    );
+}
+
+#[test]
+fn doc_dir_lists_the_exports_of_a_module() {
+    let sandbox = Sandbox::new("doc_dir_module")
+        .with_file("geometry.rslisp", GEOMETRY)
+        .with_file("main.rslisp", GEOMETRY_ENTRY);
+    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "(dir geometry)"]);
+    assert_eq!(doc.assert_exit_code(0).stdout(), "(dir geometry)\n\narea\n");
+}
+
+#[test]
+fn doc_dir_lists_the_names_of_the_entry_module() {
+    let sandbox = Sandbox::new("doc_dir_entry").with_file("main.rslisp", DOCUMENTED_TWICE);
+    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "(dir)"]);
+    assert_eq!(doc.assert_exit_code(0).stdout(), "(dir)\n\nmain twice\n");
 }
 
 #[test]

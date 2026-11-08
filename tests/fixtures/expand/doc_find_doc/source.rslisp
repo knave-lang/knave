@@ -1,0 +1,9 @@
+(export shown)
+
+(defn shown ()
+  "Is exported."
+  1)
+
+(defn hidden ()
+  "Mentions a marmot."
+  2)

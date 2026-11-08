@@ -1,0 +1,56 @@
+(use doc_find_doc/source shown)
+
+(defn quokka-count (x)
+  "Counts the animals."
+  x)
+
+(defn quokka-plain (x) x)
+
+(defn quokka-both (x)
+  "Holds a quokka."
+  x)
+
+(defenum shade
+  "Lists the shades a lemming takes."
+  (light)
+  (dark))
+
+(defn gadget (x)
+  "Fixes a gadget.
+
+  The body mentions a QUOKKA once."
+  x)
+
+(defstruct pen
+  "Holds a lemur."
+  :size i64)
+
+(def by-name-then-body (doc-page (find-doc quokka)))
+
+(def in-any-case (doc-page (find-doc "QUOKKA-COUNT")))
+
+(def by-body-phrase
+  (doc-page (find-doc "mentions a quokka")))
+
+(def by-type-docstring (doc-page (find-doc lemur)))
+
+(def by-private-docstring (doc-page (find-doc marmot)))
+
+(def by-enum-docstring (doc-page (find-doc lemming)))
+
+(def by-variant-name (doc-page (find-doc light)))
+
+(def in-prelude-docstring (doc-page (find-doc ascending)))
+
+(def no-match (doc-page (find-doc xyzzy-none)))
+
+(def leading-hyphens (doc-page (find-doc --quokka)))
+
+(def find-doc-header (doc-header (find-doc quokka)))
+
+(def find-doc-body (doc-body (find-doc xyzzy-none)))
+
+(defn main ()
+  (find-doc marmot)
+  (find-doc xyzzy-none)
+  (println (shown)))

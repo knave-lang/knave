@@ -1,0 +1,26 @@
+(use doc_apropos/source shown-lemming)
+
+(defn quokka-count (x) x)
+
+(defn Quokka-Upper (x) x)
+
+(defn shared-lemming () 4)
+
+(def by-name (doc-page (apropos quokka)))
+
+(def across-modules (doc-page (apropos lemming)))
+
+(def in-any-case (doc-page (apropos "QUOKKA-COUNT")))
+
+(def no-match (doc-page (apropos xyzzy-none)))
+
+(def no-match-with-spaces (doc-page (apropos "xyzzy none")))
+
+(def apropos-header (doc-header (apropos quokka)))
+
+(def apropos-body (doc-body (apropos quokka)))
+
+(defn main ()
+  (apropos quokka)
+  (apropos xyzzy-none)
+  (println (shown-lemming)))

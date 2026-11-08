@@ -236,6 +236,7 @@ mod tests {
     use super::*;
     use crate::core::{ItemKind, Leaf};
     use crate::expand::ResultPrinter;
+    use crate::interpret::{Env, Interpreter, Value};
     use crate::modules::ModuleSources;
     use crate::reader::{FormKind, Symbol};
     use crate::source::{SourceMap, Span};
@@ -257,11 +258,33 @@ mod tests {
         const PRINTER_NAME: &str = "print-value";
         const PRINTER: &str = "(fn (value) (println \"marker\" (pr-str value)))";
         const VALUE_TEXT: &str = "pr-str";
+        const MACROS_MODULE: &str = "prelude/macros";
+        const MANY_ENTRIES: usize = 1500;
 
         fn new(program: &str) -> Self {
             let mut sources = SourceMap::default();
             let entry = sources.add(Self::ENTRY, program);
             Self { sources, entry }
+        }
+
+        fn evaluated_in_macros_module(&mut self, text: &str) -> Value {
+            let source = self.sources.add(Self::ENTRY, text);
+            let mut session = self.session();
+            let module = session
+                .expander
+                .modules
+                .find(&ModulePath::new(Self::MACROS_MODULE))
+                .expect("the prelude loads its macros module");
+            let mut form = session
+                .read_one(source)
+                .unwrap_or_else(|_| panic!("the form reads"));
+            ExpansionSession::add_module_scopes(session.expander.modules.get(module), &mut form);
+            let expr = session
+                .lower_in(module, |expander| expander.lower_expr(&form))
+                .unwrap_or_else(|_| panic!("the form lowers"));
+            Interpreter::new(&mut session.expander, form.span())
+                .eval(&expr, &Env::default())
+                .unwrap_or_else(|problem| panic!("the form evaluates: {}", problem.title()))
         }
 
         fn session(&mut self) -> ExpansionSession<'_> {
@@ -493,6 +516,15 @@ mod tests {
         let mut fixture = SessionFixture::new(SessionFixture::GRID);
         let name = fixture.symbol(SessionFixture::TYPE_NAME);
         assert!(fixture.session().hide_type(&name).is_none());
+    }
+
+    #[test]
+    fn distinct_entries_walks_more_entries_than_the_interpreter_nests() {
+        let repeats = vec!["\"entry\""; SessionFixture::MANY_ENTRIES].join(" ");
+        let call = format!("(distinct-entries (quote ({repeats})))");
+        let kept = SessionFixture::new("").evaluated_in_macros_module(&call);
+        let kept = kept.to_form().expect("the entries form a list");
+        assert_eq!(kept.as_list().map(<[Form]>::len), Some(1));
     }
 
     #[test]

@@ -85,21 +85,20 @@
 (def entry-kind?
   (fn (entry kind)
     (if (list? entry)
-      (value-eq (symbol-name (first entry)) kind)
+      (value-eq (first entry) kind)
       false)))
 
 (def lookup
   (fn (variable bindings)
     (if (empty? bindings)
       false
-      (if (value-eq (symbol-name (nth (first bindings) 1))
-                    (symbol-name variable))
+      (if (value-eq (nth (first bindings) 1) variable)
         (first bindings)
         (recur variable (rest bindings))))))
 
 (def entry-value
   (fn (entry)
-    (if (entry-kind? entry "many")
+    (if (entry-kind? entry (quote many))
       (map-list entry-value (nth entry 2))
       (nth entry 2))))
 
@@ -220,7 +219,7 @@
 (def fill-symbol
   (fn (template bindings)
     (local entry (lookup template bindings))
-    (if (entry-kind? entry "one")
+    (if (entry-kind? entry (quote one))
       (nth entry 2)
       (if (repeated-entry? entry)
         (fail "this pattern variable needs `...` after it" template)
@@ -254,7 +253,9 @@
 
 (def lone-slice?
   (fn (template leader)
-    (if (symbol? template) (entry-kind? leader "forms") false)))
+    (if (symbol? template)
+      (entry-kind? leader (quote forms))
+      false)))
 
 (def repetition-count
   (fn (repeated entries fill-iteration)
@@ -316,7 +317,7 @@
 
 (def unpaired-label
   (fn (repeated names longer shorter)
-    (if (entry-kind? longer "forms")
+    (if (entry-kind? longer (quote forms))
       (list (nth (nth longer 2) (entry-length shorter))
             (string "this `"
                     (nth longer 1)
@@ -338,9 +339,9 @@
 
 (def repeated-entry?
   (fn (entry)
-    (if (entry-kind? entry "many")
+    (if (entry-kind? entry (quote many))
       true
-      (entry-kind? entry "forms"))))
+      (entry-kind? entry (quote forms)))))
 
 (def iteration-bindings
   (fn (entries bindings index)
@@ -351,7 +352,7 @@
 (def iteration-entry
   (fn (entry index)
     (local item (nth (nth entry 2) index))
-    (if (entry-kind? entry "forms")
+    (if (entry-kind? entry (quote forms))
       (list (quote one) (nth entry 1) item)
       item)))
 

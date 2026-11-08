@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-fixture_tests=(--test-package=knave -- --test stages -- expand_fixtures check_fixtures emit_fixtures)
+fixture_tests=(expand_fixtures check_fixtures emit_fixtures)
+xtask_unit_tests='tests::'
+first_stage_tests=(--test-package=knave,xtask -- --test stages --bin xtask -- "${fixture_tests[@]}" "$xtask_unit_tests")
 every_test=(--test-workspace=true)
 
 test_mutants() {
@@ -39,7 +41,7 @@ keep_survivors() {
 }
 
 mkdir -p "$RESULTS"
-test_mutants 240 --shard "$SHARD" "${fixture_tests[@]}"
+test_mutants 240 --shard "$SHARD" "${first_stage_tests[@]}"
 keep_first_stage_outcomes
 mapfile -t survivors < <(survivor_patterns)
 if ((${#survivors[@]} > 0)); then

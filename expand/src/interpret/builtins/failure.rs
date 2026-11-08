@@ -68,6 +68,7 @@ pub struct FailureDescription {
     earlier: Option<Earlier>,
     earlier_label: Option<EarlierLabel>,
     replacement: Option<String>,
+    note: Option<String>,
 }
 
 struct Earlier {
@@ -81,17 +82,19 @@ struct EarlierLabel {
 }
 
 impl FailureDescription {
-    pub const PARTS: [&'static str; 5] = [
+    pub const PARTS: [&'static str; 6] = [
         Self::CODE,
         Self::EARLIER,
         Self::EARLIER_LABEL,
         Self::LABEL,
+        Self::NOTE,
         Self::SUGGEST,
     ];
     const CODE: &'static str = "code";
     const EARLIER: &'static str = "earlier";
     const EARLIER_LABEL: &'static str = "earlier-label";
     const LABEL: &'static str = "label";
+    const NOTE: &'static str = "note";
     const SUGGEST: &'static str = "suggest";
 
     fn read(parts: &[Form]) -> Result<Self, Diagnostic> {
@@ -126,6 +129,7 @@ impl FailureDescription {
             Some(Self::EARLIER) => Ok(self.with_earlier(part, value)),
             Some(Self::EARLIER_LABEL) => self.with_earlier_label(part, value),
             Some(Self::LABEL) => self.with_label(value),
+            Some(Self::NOTE) => self.with_note(value),
             Some(Self::SUGGEST) => self.with_replacement(value),
             _ => Err(InterpretProblems::malformed_failure_part(part.span())),
         }
@@ -161,6 +165,13 @@ impl FailureDescription {
     fn with_label(self, value: &Form) -> Result<Self, Diagnostic> {
         Ok(Self {
             label: Some(Self::label_text(value)?),
+            ..self
+        })
+    }
+
+    fn with_note(self, value: &Form) -> Result<Self, Diagnostic> {
+        Ok(Self {
+            note: Some(Self::label_text(value)?),
             ..self
         })
     }
@@ -201,7 +212,12 @@ impl FailureDescription {
 
     fn diagnostic(mut self, message: String, culprit: Span, help: Option<String>) -> Diagnostic {
         let replacement = self.replacement.take();
-        let failure = self.labelled(message, culprit);
+        let note = self.note.take();
+        let labelled = self.labelled(message, culprit);
+        let failure = match note {
+            Some(note) => labelled.with_note(note),
+            None => labelled,
+        };
         match (help, replacement) {
             (Some(help), Some(replacement)) => {
                 failure.with_suggestion(help, Suggestion::new(culprit, replacement))
@@ -228,6 +244,7 @@ impl Default for FailureDescription {
             earlier: None,
             earlier_label: None,
             replacement: None,
+            note: None,
         }
     }
 }

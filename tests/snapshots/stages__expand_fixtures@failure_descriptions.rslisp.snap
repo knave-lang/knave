@@ -12,7 +12,7 @@ error[L0321]: a failure description takes `:part value` pairs
 83 | (unknown-part)
    | -------------- in this macro call
    |
-   = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:suggest`
+   = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:suggest`
 
 error[L0321]: a failure description takes `:part value` pairs
   --> expand/failure_descriptions.rslisp:11:44
@@ -23,7 +23,7 @@ error[L0321]: a failure description takes `:part value` pairs
 85 | (part-without-value)
    | -------------------- in this macro call
    |
-   = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:suggest`
+   = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:suggest`
 
 error[L0322]: no macro diagnostic is named `repeated-parametr`
   --> expand/failure_descriptions.rslisp:17:21
@@ -57,7 +57,7 @@ error[L0321]: a failure description takes `:part value` pairs
 91 | (string-code)
    | ------------- in this macro call
    |
-   = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:suggest`
+   = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:suggest`
 
 error[L0311]: `fail` takes 4 arguments but 5 were given
   --> expand/failure_descriptions.rslisp:31:5
@@ -77,7 +77,7 @@ error[L0321]: a failure description takes `:part value` pairs
 95 | (string-suggestion)
    | ------------------- in this macro call
    |
-   = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:suggest`
+   = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:suggest`
 
 error[L0321]: a failure description takes `:part value` pairs
    --> expand/failure_descriptions.rslisp:51:51
@@ -88,7 +88,7 @@ error[L0321]: a failure description takes `:part value` pairs
 101 | (symbol-label)
     | -------------- in this macro call
     |
-    = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:suggest`
+    = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:suggest`
 
 error[L0321]: an `:earlier` part needs an `:earlier-label`
    --> expand/failure_descriptions.rslisp:69:24
@@ -121,7 +121,7 @@ error[L0321]: a failure description takes `:part value` pairs
 103 | (symbol-earlier-label)
     | ---------------------- in this macro call
     |
-    = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:suggest`
+    = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:suggest`
 
 error[L0320]: the leaf is parked
   --> expand/failure_descriptions.rslisp:97:1

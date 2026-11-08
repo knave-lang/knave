@@ -56,10 +56,11 @@ pub enum Builtin {
     ProgramModules,
     ModuleExports,
     ModuleSymbol,
+    ProjectFileName,
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 56] = [
+    const NAMES: [(Builtin, &'static str); 57] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -116,6 +117,7 @@ impl Builtin {
         (Builtin::ProgramModules, "program-modules"),
         (Builtin::ModuleExports, "module-exports"),
         (Builtin::ModuleSymbol, "module-symbol"),
+        (Builtin::ProjectFileName, "project-file-name"),
     ];
 
     pub fn all() -> impl Iterator<Item = Builtin> {

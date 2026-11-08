@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/project_file_name.rslisp
+---
+(def file-name "project.rslisp")

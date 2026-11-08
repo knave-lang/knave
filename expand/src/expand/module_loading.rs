@@ -39,6 +39,7 @@ impl Expander<'_> {
         match self.module_sources.find(path) {
             Some(ModuleSource::Builtin(builtin)) => Ok(self.create_builtin(path, builtin)),
             Some(ModuleSource::Text { name, text }) => {
+                self.note_library_module(path);
                 let source = self.sources.add(name, text);
                 self.recorded_inputs.note_loaded(source);
                 Ok(DeepRecursion::guard(|| {
@@ -102,17 +103,78 @@ impl Expander<'_> {
     ) -> Result<(), Diagnostic> {
         let shape = Shape::new(KernelForm::Definition(DefinitionForm::Use), form);
         let items = shape.at_least(2)?;
-        let path = ModulePath::new(shape.symbol(&items[1])?.name());
+        let written = ModulePath::new(shape.symbol(&items[1])?.name());
+        let path = self.resolve_use(&written, items[1].span())?;
         let target = self.load_module(&path, items[1].span())?;
-        for name in &items[2..] {
+        self.import_names(target, &path, &items[2..], &shape, context)
+    }
+
+    fn import_names(
+        &mut self,
+        target: ModuleId,
+        path: &ModulePath,
+        names: &[Form],
+        shape: &Shape<'_>,
+        context: &DefinitionContext,
+    ) -> Result<(), Diagnostic> {
+        for name in names {
             let mut binder = name.clone();
             context.strip_use_sites(&mut binder);
             let symbol = binder.as_symbol().ok_or_else(|| shape.malformed(name))?;
-            if let Err(diagnostic) = self.import_name(target, &path, symbol, name.span()) {
+            if let Err(diagnostic) = self.import_name(target, path, symbol, name.span()) {
                 self.diagnostics.push(diagnostic);
             }
         }
         Ok(())
+    }
+
+    fn resolve_use(&mut self, written: &ModulePath, span: Span) -> Result<ModulePath, Diagnostic> {
+        let owner = self.importing_owner();
+        let owner = owner.as_deref();
+        if let Some(clash) = self
+            .module_sources
+            .local_module_beside_library(owner, written)
+        {
+            return Err(ExpandProblems::local_module_beside_library(&clash, span));
+        }
+        if let Some(library) = self.module_sources.unlisted_library(owner, written) {
+            return Err(ExpandProblems::unlisted_library(library, span));
+        }
+        self.report_hidden_local_module(owner, written, span);
+        Ok(self.module_sources.resolve(owner, written))
+    }
+
+    fn report_hidden_local_module(
+        &mut self,
+        owner: Option<&str>,
+        written: &ModulePath,
+        span: Span,
+    ) {
+        let Some(local) = self.module_sources.hidden_local_module(owner, written) else {
+            return;
+        };
+        if self.reported_hidden_modules.contains(&local) {
+            return;
+        }
+        let warning = ExpandProblems::library_hides_local_module(written, &local, span);
+        self.warnings.push(warning);
+        self.reported_hidden_modules.push(local);
+    }
+
+    fn note_library_module(&mut self, path: &ModulePath) {
+        if let Some(owner) = self.module_sources.library_owner(path) {
+            let owner = Rc::from(owner);
+            self.library_modules.push((path.clone(), owner));
+        }
+    }
+
+    fn importing_owner(&self) -> Option<Rc<str>> {
+        let module = self.current_module?;
+        let path = self.modules.get(module).path();
+        self.library_modules
+            .iter()
+            .find(|(loaded, _)| loaded == path)
+            .map(|(_, owner)| Rc::clone(owner))
     }
 
     fn loaded(&self, id: ModuleId, path: &ModulePath, span: Span) -> Result<ModuleId, Diagnostic> {

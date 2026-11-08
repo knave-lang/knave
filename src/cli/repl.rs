@@ -11,6 +11,7 @@ use super::exit_status::ExitStatus;
 use super::interruption::Interruption;
 use super::located_project::LocatedProject;
 use super::name_records::NameRecords;
+use super::program_file::ProgramFile;
 use super::prompt_diagnostics::{PromptAnnotations, PromptDiagnostics};
 use super::prompt_lines::{EnteredText, PromptLines};
 use super::prompt_module::PromptModule;
@@ -53,8 +54,8 @@ impl ReplCommand {
     }
 
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
-        let root = match self.source_root(terminal) {
-            Ok(root) => root,
+        let file = match self.prompt_file(terminal) {
+            Ok(file) => file,
             Err(status) => return status,
         };
         let mut lines = match PromptLines::standard_input(terminal.diagnostic_output()) {
@@ -65,7 +66,7 @@ impl ReplCommand {
             .catch_interrupts()
             .unwrap_or_else(|error| Self::note_uncaught_interrupts(terminal, &error));
         terminal.stop_before_rustc_on(interruption.clone());
-        let session = PromptSession::new(terminal, root, self.profile, interruption);
+        let session = PromptSession::new(terminal, file, self.profile, interruption);
         Self::answer(&mut lines, session, terminal)
     }
 
@@ -87,16 +88,16 @@ impl ReplCommand {
         }
     }
 
-    fn source_root(&self, terminal: &Terminal) -> Result<PathBuf, ExitStatus> {
-        if let Some(root) = &self.root {
-            return Ok(root.clone());
-        }
+    fn prompt_file(&self, terminal: &Terminal) -> Result<ProgramFile, ExitStatus> {
         let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
         let project = LocatedProject::search_from(working_directory, terminal)?;
-        Ok(project.map_or_else(
-            || working_directory.to_path_buf(),
-            |project| project.source_root(),
-        ))
+        let root = match (&self.root, &project) {
+            (Some(root), _) => root.clone(),
+            (None, Some(project)) => project.source_root(),
+            (None, None) => working_directory.to_path_buf(),
+        };
+        let file = ProgramFile::within(PathBuf::from(PromptModule::PATH), root);
+        Ok(LocatedProject::lend_libraries(project.as_ref(), file))
     }
 
     fn note_uncaught_interrupts(terminal: &Terminal, error: &ctrlc::Error) -> Interruption {
@@ -110,13 +111,13 @@ impl PromptSession {
 
     fn new(
         terminal: &mut Terminal,
-        root: PathBuf,
+        file: ProgramFile,
         profile: BuildProfile,
         interruption: Interruption,
     ) -> Self {
         let anchor = terminal.add_named_source(PromptModule::PATH, "");
         let session = Self {
-            module: PromptModule::new(anchor, root),
+            module: PromptModule::new(anchor, file),
             profile,
             buffer: DefinitionBuffer::default(),
             annotations: Rc::default(),

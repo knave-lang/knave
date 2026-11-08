@@ -575,7 +575,7 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
 - A crate dependency takes a version or a `:path`, and MAY take `:features`.
 - A library takes `:path`, or `:git` with `:rev`, and no version. `:rev` is a full 40-digit commit hash.
 - An unknown key or section is an error that suggests the closest name. A key, a section or a dependency given twice is an error.
-- The compiler reads and checks `libraries`, `dependencies` and `dev-dependencies`. Until the rest of RFC 0061 lands, a section with entries is an error, and an empty section is allowed.
+- The compiler reads and checks `dependencies` and `dev-dependencies`. Until the rest of RFC 0061 lands, either section with entries is an error, and so is a `:git` library. An empty section is allowed.
 
 **`knave new <name>` creates a project in a new directory of that name.** It writes `(project <name>)` and an entry at `src/main.rslisp` whose `main` prints `hello`. The name argument is checked first: a name that is not kebab-case is `L0718`, labeled on the argument. A path that already exists, or a file that cannot be written, is a usage error, and a failed write removes what `new` wrote.
 
@@ -588,6 +588,16 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
 - `build` and `run` write the binary of `:entry` to `<root>/target/knave/<name>/<name>`, from any working directory. Any other file builds where it would outside a project.
 - No module at the source root is named `project`: `(use project)` is an error.
 - An error in the project file stops the command.
+- `eval --root` and `repl --root` name the source root, and still walk up to find the project's libraries.
+
+**A library is a project that other projects list under `libraries`.** Its `:path` resolves from the project file that lists it, and the compiler reads the library's own project file for its `:lib` and its own libraries. A `:path` with no project file is `L0723`, and a `:lib` that names no file is `L0724`, both labeled on the entry that lists the library.
+
+- A library's name is kebab-case, `L0721`, and is not `prelude`, `kernel` or `code`, `L0720`.
+- `(use hints)` loads the library's root module, the file `:lib` names. `(use hints/labels label)` loads `labels` from the directory of `:lib`.
+- Inside a library, `use` resolves from the directory of its `:lib`, and the module's path in the program takes the library's name as its prefix, so `labels` inside `hints` is `hints/labels`. `prelude`, `kernel` and `code` modules keep their paths. A module belongs to a library when it was loaded from that library's files, so a program module never takes a library's prefix.
+- A program or a library reaches only the libraries its own project file lists. A `use` of a library that only another library lists is `L0252`. A program module of that name would share the library's module path, so a local module or directory named as a library that only another library lists is `L0253`, which names both.
+- A library's name takes precedence over a local module or directory of the same name, and the clash is the warning `L0251`, once per hidden module.
+- One library name at two sources is `L0722`, which labels both entries.
 
 ## Modules
 

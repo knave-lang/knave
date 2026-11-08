@@ -1,0 +1,4 @@
+(use hints shout)
+(use keymap key)
+
+(defn main () (println (shout key)))

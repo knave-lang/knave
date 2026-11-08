@@ -1,0 +1,4 @@
+(use hints shout)
+(use hints/marks bang)
+
+(defn main () (println (shout bang)))

@@ -60,15 +60,33 @@ pub struct CrateDependency {
 }
 
 impl Project {
+    pub fn path_libraries(&self) -> impl Iterator<Item = (&LibraryDependency, &PathBuf)> {
+        self.libraries
+            .iter()
+            .filter_map(|library| match &library.source {
+                LibrarySource::Path(path) => Some((library, path)),
+                LibrarySource::Git { .. } => None,
+            })
+    }
+
     pub fn unbuilt_sections(&self) -> Diagnostics {
         let mut problems = Diagnostics::default();
         self.sections
             .iter()
-            .filter(|head| head.has_entries)
+            .filter(|head| head.has_entries && !head.section.is_built())
             .for_each(|head| {
                 problems.push(ProjectProblems::unbuilt_section(
                     head.section.name(),
                     head.span,
+                ))
+            });
+        self.libraries
+            .iter()
+            .filter(|library| matches!(library.source, LibrarySource::Git { .. }))
+            .for_each(|library| {
+                problems.push(ProjectProblems::unbuilt_git_library(
+                    &library.name,
+                    library.name_span,
                 ))
             });
         problems

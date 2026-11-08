@@ -1,0 +1,9 @@
+(use marks bang)
+(use keymap key)
+(use prelude/test assert)
+
+(export shout)
+
+(defn shout (text)
+  (assert (= 1 1))
+  (str text bang key))

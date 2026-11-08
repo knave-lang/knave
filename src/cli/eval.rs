@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use super::evaluation_output::EvaluationOutput;
 use super::exit_status::ExitStatus;
 use super::located_program::LocatedProgram;
+use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::temporary_directory::TemporaryDirectory;
@@ -110,7 +111,12 @@ impl EvalCommand {
     fn module_file(&self, terminal: &mut Terminal) -> Result<ProgramFile, ExitStatus> {
         let path = self.module.path().to_path_buf();
         match &self.root {
-            Some(root) => Ok(ProgramFile::within(path, root.clone())),
+            Some(root) => {
+                let project =
+                    LocatedProject::search_from(&ProgramFile::directory_of(&path), terminal)?;
+                let file = ProgramFile::within(path, root.clone());
+                Ok(LocatedProject::lend_libraries(project.as_ref(), file))
+            }
             None => LocatedProgram::locate(Some(path), terminal).map(LocatedProgram::into_file),
         }
     }

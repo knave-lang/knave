@@ -1,0 +1,3 @@
+(use hints/notes)
+
+(defn main () (println "hi"))

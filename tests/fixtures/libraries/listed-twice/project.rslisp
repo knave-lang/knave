@@ -1,0 +1,4 @@
+(project app
+  (libraries
+    (hints :path "../hints")
+    (keymap :path "../keymap")))

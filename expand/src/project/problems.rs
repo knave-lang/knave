@@ -43,6 +43,15 @@ impl ProjectProblems {
         .with_help("use lowercase letters, digits and single dashes, as `my-program`")
     }
 
+    pub fn unbuilt_git_library(name: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::UNBUILT_PROJECT_SECTION,
+            format!("this compiler cannot fetch git library `{name}` yet"),
+            Label::new(span, "this library comes from git"),
+        )
+        .with_help("use a `:path` to a local copy for now")
+    }
+
     pub fn reserved_library_name(name: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::RESERVED_LIBRARY_NAME,
@@ -61,6 +70,39 @@ impl ProjectProblems {
         )
         .with_note("`use` reads a library's name as the first part of a module path")
         .with_help("use lowercase letters, digits and single dashes, as `my-library`")
+    }
+
+    pub fn library_at_two_sources(name: &str, span: Span, first: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::LIBRARY_AT_TWO_SOURCES,
+            format!("library `{name}` comes from two sources"),
+            Label::new(span, "this source differs"),
+        )
+        .with_label(Label::new(first, "from the source given here"))
+        .with_help(format!("point every `{name}` entry at one source"))
+    }
+
+    pub fn library_without_project_file(name: &str, span: Span, project_file: &str) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::LIBRARY_WITHOUT_PROJECT_FILE,
+            format!("library `{name}` has no project file at `{project_file}`"),
+            Label::new(span, "this library's `:path` names no project"),
+        )
+        .with_help("point `:path` at the library's directory, which holds its project file")
+    }
+
+    pub fn library_without_root_module(
+        name: &str,
+        span: Span,
+        root_file: &str,
+        project_file: &str,
+    ) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::LIBRARY_WITHOUT_ROOT_MODULE,
+            format!("library `{name}` has no root module `{root_file}`"),
+            Label::new(span, "this library's `:lib` names no file"),
+        )
+        .with_help(format!("fix `:lib` in `{project_file}`, or add the file"))
     }
 
     pub fn unbuilt_section(section: &str, span: Span) -> Diagnostic {

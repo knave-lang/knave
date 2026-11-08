@@ -2,6 +2,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use super::libraries::LibraryTable;
 use crate::core::ModulePath;
 use crate::language::Language;
 
@@ -16,9 +17,16 @@ pub enum ModuleSource {
     Text { name: String, text: String },
 }
 
+pub struct LocalModuleClash<'s> {
+    pub local: PathBuf,
+    pub library: &'s str,
+    pub lister: &'s str,
+}
+
 pub struct ModuleSources {
     root: PathBuf,
     display_root: PathBuf,
+    libraries: LibraryTable,
 }
 
 impl ModuleSources {
@@ -88,7 +96,65 @@ impl ModuleSources {
     ];
 
     pub fn new(root: PathBuf, display_root: PathBuf) -> Self {
-        Self { root, display_root }
+        Self {
+            root,
+            display_root,
+            libraries: LibraryTable::default(),
+        }
+    }
+
+    pub fn with_libraries(self, libraries: LibraryTable) -> Self {
+        Self { libraries, ..self }
+    }
+
+    pub fn resolve(&self, owner: Option<&str>, written: &ModulePath) -> ModulePath {
+        if !Self::is_written(written) {
+            return written.clone();
+        }
+        self.libraries.resolve(owner, written)
+    }
+
+    pub fn library_owner<'p>(&self, path: &'p ModulePath) -> Option<&'p str> {
+        self.libraries
+            .owner_of(path)
+            .map(|_| LibraryTable::head(path))
+    }
+
+    pub fn unlisted_library(&self, owner: Option<&str>, written: &ModulePath) -> Option<&str> {
+        self.libraries.unlisted_library(owner, written)
+    }
+
+    pub fn local_module_beside_library(
+        &self,
+        owner: Option<&str>,
+        written: &ModulePath,
+    ) -> Option<LocalModuleClash<'_>> {
+        let library = self.libraries.unlisted_library(owner, written)?;
+        Some(LocalModuleClash {
+            local: self.local_module(written)?,
+            library,
+            lister: self.libraries.lister_of(library)?,
+        })
+    }
+
+    pub fn hidden_local_module(
+        &self,
+        owner: Option<&str>,
+        written: &ModulePath,
+    ) -> Option<PathBuf> {
+        if owner.is_some() || !self.libraries.names_library(owner, written) {
+            return None;
+        }
+        self.local_module(written)
+    }
+
+    fn local_module(&self, written: &ModulePath) -> Option<PathBuf> {
+        let head = LibraryTable::head(written);
+        let file = PathBuf::from(format!("{head}.{}", Language::EXTENSION));
+        [file, PathBuf::from(head)]
+            .into_iter()
+            .find(|local| self.root.join(local).exists())
+            .map(|local| self.display_root.join(local))
     }
 
     pub fn is_prelude(path: &ModulePath) -> bool {
@@ -143,7 +209,7 @@ impl ModuleSources {
     pub fn find(&self, path: &ModulePath) -> Option<ModuleSource> {
         self.builtin(path)
             .or_else(|| self.prelude_file(path))
-            .or_else(|| self.user_file(path))
+            .or_else(|| self.written_file(path))
     }
 
     fn builtin(&self, path: &ModulePath) -> Option<ModuleSource> {
@@ -162,6 +228,22 @@ impl ModuleSources {
                 name: Self::file_name(path),
                 text: (*text).to_string(),
             })
+    }
+
+    fn written_file(&self, path: &ModulePath) -> Option<ModuleSource> {
+        match self.libraries.owner_of(path) {
+            Some(_) => self.library_file(path),
+            None => self.user_file(path),
+        }
+    }
+
+    fn library_file(&self, path: &ModulePath) -> Option<ModuleSource> {
+        let file = self.libraries.file(path)?;
+        let text = Self::read_file(&file.path).ok()?;
+        Some(ModuleSource::Text {
+            name: file.display.display().to_string(),
+            text,
+        })
     }
 
     fn user_file(&self, path: &ModulePath) -> Option<ModuleSource> {

@@ -21,6 +21,7 @@ mod fmt;
 mod input_helper;
 mod interruption;
 mod json_replies;
+mod library_walk;
 mod located_program;
 mod located_project;
 mod name_records;

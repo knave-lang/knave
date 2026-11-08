@@ -24,6 +24,20 @@ impl DeepRecursion {
     }
 }
 
+pub struct FreshStack {
+    bytes: usize,
+}
+
+impl FreshStack {
+    pub const fn of(bytes: usize) -> Self {
+        Self { bytes }
+    }
+
+    pub fn run<R>(&self, work: impl FnOnce() -> R) -> R {
+        stacker::grow(self.bytes, work)
+    }
+}
+
 struct Level {
     depth: usize,
 }

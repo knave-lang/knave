@@ -78,6 +78,7 @@ const SHADOWING_PAGE_BODY: &str = "(defrule page-body ((term) 0))\n\n(defn main 
 const SHADOWING_HEADER: &str = "(defrule header ((term) 0))\n\n(defn main () (do))\n";
 const TRUE_PAGE: &str = "true\n\nIs the `bool` value true.\n\nIt is a kernel constant, so macro code and program code see the same\nbooleans.\n";
 const IF_PAGE: &str = "(if test then else)\n\nEvaluates `then` when the test is true, and `else` otherwise.\n\nIt emits a Rust `if` with an `else`.\n";
+const DEEP_NESTING: usize = 1000;
 const MACRO_STRUCT_BESIDE_A_DEF: &str = "(defrule my-struct ((n) (do (defstruct n \"A documented struct.\" :x i64))))\n(my-struct point)\n(def point 1)\n(defn main () (do))\n";
 const THREADING_HEADER: &str = "(-> value form ...)";
 const THREAD_LAST_HEADER: &str = "(->> value form ...)";
@@ -416,6 +417,24 @@ impl Sandbox {
             libc::pthread_sigmask(libc::SIG_BLOCK, &only_sigabrt, std::ptr::null_mut());
         }
         Ok(())
+    }
+
+    fn compiler_on_a_short_stack(&self, arguments: &[&str]) -> Outcome {
+        let mut command = self.command(Path::new(Self::COMPILER), arguments);
+        unsafe { command.pre_exec(Self::shorten_the_stack) };
+        Outcome::of(&mut command)
+    }
+
+    fn shorten_the_stack() -> std::io::Result<()> {
+        const SHORT_STACK_BYTES: libc::rlim_t = 1024 * 1024;
+        let short = libc::rlimit {
+            rlim_cur: SHORT_STACK_BYTES,
+            rlim_max: SHORT_STACK_BYTES,
+        };
+        match unsafe { libc::setrlimit(libc::RLIMIT_STACK, &short) } {
+            0 => Ok(()),
+            _ => Err(std::io::Error::last_os_error()),
+        }
     }
 
     fn compiler_reporting_to(&self, standard_error: Stdio, arguments: &[&str]) -> Outcome {
@@ -5332,4 +5351,98 @@ fn a_library_module_never_falls_back_to_a_local_file() {
 fn a_local_module_that_shares_a_library_path_is_an_error() {
     let check = Sandbox::check_fixture("libraries/local-keymap");
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+struct DeepProgram;
+
+impl DeepProgram {
+    const FILE: &str = "deep.rslisp";
+
+    fn nested(prefix: &str, open: &str, innermost: &str, close: &str, suffix: &str) -> String {
+        format!(
+            "{prefix}{}{innermost}{}{suffix}",
+            open.repeat(DEEP_NESTING),
+            close.repeat(DEEP_NESTING)
+        )
+    }
+
+    fn blocks() -> String {
+        Self::nested("(defn main () (println ", "(do ", "1", ")", "))\n")
+    }
+
+    fn calls() -> String {
+        Self::nested(
+            "(defn add (a b) (+ a b))\n(defn main () (println ",
+            "(add 1 ",
+            "1",
+            ")",
+            "))\n",
+        )
+    }
+
+    fn matches() -> String {
+        let depth = DEEP_NESTING / 2;
+        format!(
+            "(defn step (n) (if (> n 1000) none (some (+ n 1))))\n(defn main () (println {}n{}))\n",
+            "(match (step 0) ((some n) ".repeat(depth),
+            ") (none 0))".repeat(depth)
+        )
+    }
+
+    fn recur_body() -> String {
+        Self::nested(
+            "(defn count-down (n) (if (> n 0) ",
+            "(do ",
+            "(recur (- n 1))",
+            ")",
+            " n))\n(defn main () (println (count-down 3)))\n",
+        )
+    }
+
+    fn passes_on_a_short_stack(test_name: &str, source: &str, command: &str) {
+        let sandbox = Sandbox::new(test_name).with_file(Self::FILE, source);
+        sandbox
+            .compiler_on_a_short_stack(&[command, Self::FILE])
+            .assert_exit_code(0);
+    }
+}
+
+#[test]
+fn deep_blocks_check_on_a_short_stack() {
+    DeepProgram::passes_on_a_short_stack("deep_blocks_check", &DeepProgram::blocks(), "check");
+}
+
+#[test]
+fn deep_calls_check_on_a_short_stack() {
+    DeepProgram::passes_on_a_short_stack("deep_calls_check", &DeepProgram::calls(), "check");
+}
+
+#[test]
+fn deep_matches_check_on_a_short_stack() {
+    DeepProgram::passes_on_a_short_stack("deep_matches_check", &DeepProgram::matches(), "check");
+}
+
+#[test]
+fn a_deep_recur_body_checks_on_a_short_stack() {
+    DeepProgram::passes_on_a_short_stack("deep_recur_check", &DeepProgram::recur_body(), "check");
+}
+
+#[test]
+fn deep_blocks_emit_on_a_short_stack() {
+    DeepProgram::passes_on_a_short_stack("deep_blocks_emit", &DeepProgram::blocks(), "emit");
+}
+
+#[test]
+fn deep_calls_emit_on_a_short_stack() {
+    DeepProgram::passes_on_a_short_stack("deep_calls_emit", &DeepProgram::calls(), "emit");
+}
+
+#[test]
+fn deep_matches_emit_on_a_short_stack() {
+    DeepProgram::passes_on_a_short_stack("deep_matches_emit", &DeepProgram::matches(), "emit");
+}
+
+#[test]
+fn a_deep_recur_body_emits_on_a_short_stack() {
+    DeepProgram::passes_on_a_short_stack("deep_recur_emit", &DeepProgram::recur_body(), "emit");
 }

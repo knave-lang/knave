@@ -2351,7 +2351,7 @@ fn run_reports_a_program_that_cannot_start() {
 }
 
 #[test]
-fn eval_prints_a_value_through_prn() {
+fn eval_prints_a_value_through_print_form() {
     let sandbox = Sandbox::new("eval_value").with_file("session.rslisp", SESSION);
     let eval = sandbox.compiler(&["eval", "session.rslisp", "(->point (square 2) 3)"]);
     assert_eq!(

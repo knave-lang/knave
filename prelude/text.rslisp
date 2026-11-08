@@ -17,11 +17,11 @@
 (use prelude/io io-error)
 
 (export alphanumeric? as-str char chars debug digit? display
-        doc eprintln from-str infallible lines lower-case
-        parse parse-bool-error parse-char-error parse-error
-        parse-float-error parse-int-error pr-str print
-        println prn show split split-when str subs trim
-        upper-case whitespace?)
+        doc eprint eprintln from-str infallible lines
+        lower-case parse parse-bool-error parse-char-error
+        parse-error parse-float-error parse-int-error pr-str
+        print print-form println prn show split split-when
+        str subs trim upper-case whitespace?)
 
 (rust-type formatter "std::fmt::Formatter<'_>")
 
@@ -130,9 +130,33 @@
     (where ((a display))
       (fn ((ref a)) string))))
 
-(def prn
+(def print-form
   (rust "println!(\"{{}}\", crate::rt::Shown({0}))"
     (where ((a show)) (fn ((ref a)) unit))))
+
+(def prn
+  (macro (form)
+    (if (symbol? form)
+      (quote print-form)
+      (printed-forms-call form))))
+
+(def printed-forms-call
+  (fn (form)
+    (local values (rest form))
+    (if (empty? values)
+      (fail "`prn` needs a value to print"
+        form "write a value after it, as in `(prn total)`"
+        (template (:code prn-without-value)))
+      (prepend (quote println) (spaced-printed-parts values)))))
+
+(def spaced-printed-parts
+  (fn (values)
+    (local part
+      (list (quote pr-str) (first values)))
+    (if (empty? (rest values))
+      (list part)
+      (prepend part
+               (prepend " " (spaced-printed-parts (rest values)))))))
 
 (def pr-str
   (rust "crate::rt::Shown({0}).to_string()"
@@ -348,10 +372,10 @@
             (list (list (quote literal) (string-strip-suffix text "\n"))))))
 
 (def print-call
-  (fn (pieces)
+  (fn (function pieces)
     (local formatted (format-pieces pieces 0 escape-format))
     (prepend (list (quote rust)
-                   (format-template "print!"
+                   (format-template function
                                     (nth formatted 0)
                                     (nth formatted 4))
                    (format-type (quote unit) (nth formatted 2)))
@@ -427,7 +451,7 @@
   (local pieces (flatten-parts parts))
   (if (ends-with-newline? pieces)
     (line-call "println!" (without-trailing-newline pieces))
-    (print-call pieces)))
+    (print-call "print!" pieces)))
 
 (defmacro println (parts ...)
   "Prints its parts and a newline to standard output.
@@ -435,6 +459,16 @@
   A string literal part is literal text, a `(pr-str x)` part prints with
   `show`, and any other part prints with `display`."
   (line-call "println!" (flatten-parts parts)))
+
+(defmacro eprint (parts ...)
+  "Prints its parts to standard error, with no newline of its own.
+
+  A string literal part is literal text, a `(pr-str x)` part prints with
+  `show`, and any other part prints with `display`."
+  (local pieces (flatten-parts parts))
+  (if (ends-with-newline? pieces)
+    (line-call "eprintln!" (without-trailing-newline pieces))
+    (print-call "eprint!" pieces)))
 
 (defmacro eprintln (parts ...)
   "Prints its parts and a newline to standard error.
@@ -710,10 +744,19 @@
 
   It is the `parse-error` of `string`.")
 
-(document (prn value)
+(document (prn value ...)
+  "Prints the printed forms of its values and a newline to standard output.
+
+  Each value's type implements `show`, and a `string` prints quoted. A space
+  separates two printed forms, so the line reads back as the values. `prn`
+  as a value is the one-value function `print-form`, which
+  `knave doc \"(module prelude/text)\"` lists.")
+
+(document (print-form value)
   "Prints the printed form of a value and a newline to standard output.
 
-  The value's type implements `show`, and a `string` prints quoted.")
+  It is `prn` as a value, and the printer of a result in `eval` and at the
+  prompt. The value's type implements `show`.")
 
 (document (pr-str value)
   "Returns the printed form of a value as a `string`.

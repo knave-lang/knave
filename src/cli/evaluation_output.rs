@@ -35,7 +35,8 @@ pub struct JsonEvaluation {
 }
 
 impl PrintedEvaluation {
-    const PRINTER: &'static str = "prn";
+    const PRINTER: &'static str = "print-form";
+    const PRINTER_MODULE: &'static str = "prelude/text";
 
     fn deciding(colors: TokenColors) -> Self {
         match colors {
@@ -50,7 +51,7 @@ impl PrintedEvaluation {
 
     fn plain_printer(session: &mut ExpansionSession<'_>) -> ResultPrinter {
         let printer = session
-            .prelude_value(Self::PRINTER)
+            .module_value(Self::PRINTER_MODULE, Self::PRINTER)
             .expect("the prelude defines the printer");
         ResultPrinter::calling(printer)
     }

@@ -1,0 +1,15 @@
+(defstruct crate-label
+  :name string
+  :weight i64)
+
+(defn main ()
+  (prn 7)
+  (prn 7 "seven" (vec 1 2))
+  (prn (->crate-label :name (str "apples") :weight 3)
+       (some 2))
+  (local words (vec "a"))
+  (push! words "b")
+  (for-each (iter words) prn)
+  (eprint "warning: " 2 " crates\n")
+  (eprint "no newline")
+  (eprintln))

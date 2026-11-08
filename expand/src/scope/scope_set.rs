@@ -1,6 +1,7 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::Copied;
+use std::ops::Range;
 use std::{slice, vec};
 
 use super::scope_chain::{ChainPrefix, SharedScopes};
@@ -16,6 +17,10 @@ pub struct ScopeAllocator {
 }
 
 impl ScopeAllocator {
+    pub fn next_scope(&self) -> Scope {
+        Scope(self.next)
+    }
+
     pub fn fresh(&mut self) -> Scope {
         let scope = Scope(self.next);
         self.next += 1;
@@ -104,6 +109,15 @@ impl ScopeSet {
 
     pub(super) fn len(&self) -> usize {
         self.own().len() + self.shared().map_or(0, SharedScopes::len)
+    }
+
+    pub(super) fn may_hold_scope_in(&self, range: &Range<Scope>) -> bool {
+        let own = self.own();
+        let first_at_or_after = own.partition_point(|scope| *scope < range.start);
+        self.shared().is_some()
+            || own
+                .get(first_at_or_after)
+                .is_some_and(|scope| *scope < range.end)
     }
 
     pub(super) fn is_plain(&self) -> bool {

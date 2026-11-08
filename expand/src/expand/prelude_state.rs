@@ -10,6 +10,7 @@ use crate::core::{ModuleId, ModulePath};
 use crate::diagnostic::DiagnosticRenderer;
 use crate::interpret::{Closure, Value};
 use crate::modules::{ModuleRecord, ModuleSource, ModuleSources};
+use crate::scope::{NameTables, SavedNames};
 use crate::source::{SourceId, SourceMap, Span};
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -31,6 +32,7 @@ enum PreludeDefinitions {
 #[derive(serde::Serialize)]
 struct BuiltTables {
     bindings: BindingTables,
+    names: NameTables,
     definitions: SavedTables,
     macros: ValueTables,
     globals: ValueTables,
@@ -41,6 +43,7 @@ struct BuiltTables {
 #[serde(bound(deserialize = "'de: 'static"))]
 struct LoadedTables {
     bindings: SavedBindings,
+    names: SavedNames,
     definitions: SavedDefinitions,
     macros: SavedValues<Closure>,
     globals: SavedValues<Value>,
@@ -94,6 +97,7 @@ impl PreludeState {
         };
         let mut tables = self.tables;
         tables.bindings.adopt_saved(loaded.bindings);
+        tables.table.adopt_saved(loaded.names);
         tables
     }
 
@@ -139,6 +143,7 @@ impl PreludeState {
         expander.tables = self.tables;
         expander.tables.module_notes.adopt(tables.notes);
         expander.tables.bindings.adopt_saved(tables.bindings);
+        expander.tables.table.adopt_saved(tables.names);
         expander
             .tables
             .restore_lowered_globals(&self.lowered_globals);
@@ -151,6 +156,7 @@ impl Expander<'_> {
         let placeholder =
             self.register_source_module(ModulePath::new(PreludeState::PLACEHOLDER_ENTRY));
         let first_source = self.sources.next_id();
+        let first_scope = self.tables.scopes.next_scope();
         let prelude = self
             .load_module(
                 &ModulePath::new(ModuleSources::PRELUDE),
@@ -165,6 +171,8 @@ impl Expander<'_> {
         let macro_tables = ValueTables::of(self.tables.macros.take_ready());
         let global_tables = ValueTables::of(self.tables.globals.take_values());
         let binding_tables = self.tables.bindings.take_saved();
+        let prelude_scopes = first_scope..self.tables.scopes.next_scope();
+        let name_tables = self.tables.table.take_saved(prelude_scopes);
         let note_tables = self.tables.module_notes.take_saved();
         PreludeState {
             first_source,
@@ -174,6 +182,7 @@ impl Expander<'_> {
             lowered_globals,
             definitions: PreludeDefinitions::Built(BuiltTables {
                 bindings: binding_tables,
+                names: name_tables,
                 definitions: saved_tables,
                 macros: macro_tables,
                 globals: global_tables,

@@ -1,7 +1,11 @@
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 
+use super::exit_status::ExitStatus;
+use super::standard_error::StandardError;
 use crate::core::ModulePath;
+use crate::language::Language;
 
 #[derive(Clone)]
 pub struct ProgramFile {
@@ -58,6 +62,19 @@ impl ProgramFile {
             .map(|component| component.as_os_str().to_str())
             .collect::<Option<_>>()?;
         Some(parts.join(Self::MODULE_SEPARATOR))
+    }
+
+    pub fn is_project_file(path: &Path) -> bool {
+        path.file_name()
+            .is_some_and(|name| *name == *Language::project_file_name())
+    }
+
+    pub fn report_unwritable(path: &Path, error: &io::Error) -> ExitStatus {
+        StandardError::write_line(format_args!(
+            "error: cannot write `{}`: {error}",
+            path.display()
+        ));
+        ExitStatus::UsageError
     }
 
     pub fn directory_of(path: &Path) -> PathBuf {

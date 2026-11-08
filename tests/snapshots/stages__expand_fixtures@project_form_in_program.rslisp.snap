@@ -1,0 +1,40 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/project_form_in_program.rslisp
+---
+error[L0350]: `project` belongs only in `project.rslisp`
+ --> expand/project_form_in_program.rslisp:4:1
+  |
+4 | (project demo)
+  | ^^^^^^^^^^^^^^ not a form of a program
+  |
+  = note: the compiler reads the project file as data, and never expands it
+  = help: move it into `project.rslisp` at the project root
+
+error[L0350]: `libraries` belongs only in `project.rslisp`
+ --> expand/project_form_in_program.rslisp:6:1
+  |
+6 | (libraries)
+  | ^^^^^^^^^^^ not a form of a program
+  |
+  = note: the compiler reads the project file as data, and never expands it
+  = help: move it into `project.rslisp` at the project root
+
+error[L0350]: `dependencies` belongs only in `project.rslisp`
+ --> expand/project_form_in_program.rslisp:8:1
+  |
+8 | (dependencies)
+  | ^^^^^^^^^^^^^^ not a form of a program
+  |
+  = note: the compiler reads the project file as data, and never expands it
+  = help: move it into `project.rslisp` at the project root
+
+error[L0350]: `dev-dependencies` belongs only in `project.rslisp`
+  --> expand/project_form_in_program.rslisp:10:1
+   |
+10 | (dev-dependencies)
+   | ^^^^^^^^^^^^^^^^^^ not a form of a program
+   |
+   = note: the compiler reads the project file as data, and never expands it
+   = help: move it into `project.rslisp` at the project root

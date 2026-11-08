@@ -4953,6 +4953,8 @@ fn test_lists_the_untested_names_of_a_program_with_no_tests() {
 const PROJECT: &str = "(project greeter)\n";
 const PROJECT_WITH_UNKNOWN_KEY: &str = "(project greeter :entyr \"src/main.rslisp\")\n";
 const PROJECT_WITH_DEPENDENCY: &str = "(project greeter (dependencies (serde \"1.0\")))\n";
+const UNLAID_PROJECT: &str = "(project browser :version \"0.1.0\" :entry \"src/main.rslisp\"\n  (libraries (hints :path \"../hints\"))\n\n  (dependencies (cef \"144.0\") (serde \"1.0\" :features (\"derive\"))))\n";
+const BARE_NAMES_PROJECT: &str = "(project demo alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(libraries alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu)\n\n(dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(dev-dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n";
 const SELF_IMPORT: &str = "(use sub/c)\n\n(defn f () 1)\n";
 const PROJECT_ENTRY: &str =
     "(use text/shout shout)\n\n(defn main ()\n  (println (shout \"hi\")))\n";
@@ -5093,3 +5095,29 @@ fn test_skips_the_project_file_in_a_directory() {
     let test = sandbox.compiler(&["test", "."]);
     assert!(test.assert_exit_code(0).stdout().contains("1 passed"));
 }
+
+
+
+
+#[test]
+fn fmt_lays_out_the_project_file_by_its_shapes() {
+    let sandbox =
+        Sandbox::new("fmt_project").with_file(&Language::project_file_name(), UNLAID_PROJECT);
+    let fmt = sandbox.compiler_reading(
+        UNLAID_PROJECT,
+        &["fmt", "-", "--stdin-path", &Language::project_file_name()],
+    );
+    insta::assert_snapshot!(fmt.assert_silent_success().stdout());
+}
+
+#[test]
+fn fmt_puts_each_bare_name_in_the_project_file_on_its_own_line() {
+    let sandbox = Sandbox::new("fmt_project_names");
+    let fmt = sandbox.compiler_reading(
+        BARE_NAMES_PROJECT,
+        &["fmt", "-", "--stdin-path", &Language::project_file_name()],
+    );
+    insta::assert_snapshot!(fmt.assert_silent_success().stdout());
+}
+
+

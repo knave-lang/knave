@@ -1,0 +1,10 @@
+(use prelude/project dependencies dev-dependencies libraries
+                     project)
+
+(project demo)
+
+(libraries)
+
+(dependencies)
+
+(dev-dependencies)

@@ -1,0 +1,57 @@
+(use prelude/macros document header-shape)
+(use code fail first project-file-name string symbol-name)
+
+(export dependencies dev-dependencies libraries project)
+
+(def outside-the-project-file
+  (fn (form)
+    (fail (string "`"
+                  (symbol-name (first form))
+                  "` belongs only in `"
+                  (project-file-name)
+                  "`")
+      form
+      (string "move it into `"
+              (project-file-name)
+              "` at the project root")
+      (quote (:code project-form-in-program
+                    :label "not a form of a program"
+                    :note "the compiler reads the project file as data, and never expands it")))))
+
+(def project
+  (macro (form) (outside-the-project-file form)))
+
+(def libraries
+  (macro (form) (outside-the-project-file form)))
+
+(def dependencies
+  (macro (form) (outside-the-project-file form)))
+
+(def dev-dependencies
+  (macro (form) (outside-the-project-file form)))
+
+(header-shape (project name) :one-per-line)
+
+(header-shape (libraries) :one-per-line)
+
+(header-shape (dependencies) :one-per-line)
+
+(header-shape (dev-dependencies) :one-per-line)
+
+(document (project name)
+  "Declares a project in the project file, which the compiler reads as data.
+
+  `knave fmt` lays the project file out by this module's shapes. A call in a
+  program is an error.")
+
+(document (libraries)
+  "Lists a project's libraries in the project file. A call in a program is an
+  error.")
+
+(document (dependencies)
+  "Lists a project's crates in the project file. A call in a program is an
+  error.")
+
+(document (dev-dependencies)
+  "Lists the crates of a project's tests in the project file. A call in a
+  program is an error.")

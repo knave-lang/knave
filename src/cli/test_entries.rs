@@ -58,14 +58,9 @@ impl TestEntries {
     }
 
     fn module_path(&self, file: &Path) -> Option<String> {
-        if file.extension()? != Language::EXTENSION || Self::is_project_file(file) {
+        if file.extension()? != Language::EXTENSION || ProgramFile::is_project_file(file) {
             return None;
         }
         ProgramFile::module_name(file.strip_prefix(&self.path).ok()?)
-    }
-
-    fn is_project_file(file: &Path) -> bool {
-        file.file_name()
-            .is_some_and(|name| *name == *Language::project_file_name())
     }
 }

@@ -11,6 +11,7 @@ use crate::source::SourceMap;
 
 pub struct ModuleLookup {
     directories: Vec<ModuleSources>,
+    shape_modules: Vec<ModulePath>,
 }
 
 #[derive(Default)]
@@ -38,7 +39,16 @@ impl ModuleLookup {
                 .ancestors()
                 .map(|ancestor| ModuleSources::new(ancestor.to_path_buf(), ancestor.to_path_buf()))
                 .collect(),
+            shape_modules: Vec::new(),
         }
+    }
+
+    pub fn beside_project_file(directory: &Path) -> Self {
+        let mut lookup = Self::beside(directory);
+        lookup
+            .shape_modules
+            .push(ModulePath::new(ModuleSources::PROJECT_SHAPES));
+        lookup
     }
 
     fn find(&self, path: &ModulePath) -> Option<(String, String)> {
@@ -61,6 +71,10 @@ impl ShapeReader {
             catalog: ShapeCatalog::default(),
         };
         walk.add_module(&ModulePath::new(ModuleSources::PRELUDE));
+        lookup
+            .shape_modules
+            .iter()
+            .for_each(|module| walk.add_module(module));
         walk.add_shapes(&file);
         walk.catalog
     }

@@ -140,7 +140,7 @@ impl FmtCommand {
             },
             FmtMode::Write => match fs::write(path, formatted) {
                 Ok(()) => ExitStatus::Success,
-                Err(error) => Self::report_unwritable(path, &error),
+                Err(error) => ProgramFile::report_unwritable(path, &error),
             },
         }
     }
@@ -162,14 +162,6 @@ impl FmtCommand {
         StandardError::write_line(format_args!(
             "error: `{}` reads standard input and takes no other path, and `--stdin-path` needs it",
             Self::STANDARD_INPUT
-        ));
-        ExitStatus::UsageError
-    }
-
-    fn report_unwritable(path: &Path, error: &io::Error) -> ExitStatus {
-        StandardError::write_line(format_args!(
-            "error: cannot write `{}`: {error}",
-            path.display()
         ));
         ExitStatus::UsageError
     }
@@ -232,6 +224,9 @@ impl SourceFiles {
         let directory = ProgramFile::directory_of(path);
         let absolute = fs::canonicalize(Path::new(Self::CURRENT_DIRECTORY).join(&directory))
             .unwrap_or(directory);
+        if ProgramFile::is_project_file(path) {
+            return ModuleLookup::beside_project_file(&absolute);
+        }
         ModuleLookup::beside(&absolute)
     }
 }

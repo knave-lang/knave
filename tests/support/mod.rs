@@ -18,7 +18,7 @@ use knave::expand::{Expander, PreludeState};
 use knave::format::{FormatFailure, SourceFormatter};
 use knave::language::Language;
 use knave::modules::ModuleSources;
-use knave::project::{Project, ProjectReader};
+use knave::project::ProjectReader;
 use knave::reader::Reader;
 use knave::source::{SourceId, SourceMap, Span};
 use knave::types::TypedProgram;
@@ -83,20 +83,9 @@ impl Fixture {
         let whole_file = Span::new(self.entry, 0..file.text().len());
         let read = Reader::new(file).read();
         match read.and_then(|forms| ProjectReader::read(&forms, whole_file)) {
-            Ok(project) => format!(
-                "{project:#?}\npath libraries: {:?}\n{}",
-                Self::path_library_names(&project),
-                self.render(&project.unbuilt_sections())
-            ),
+            Ok(project) => format!("{project:#?}\n{}", self.render(&project.unbuilt_sections())),
             Err(diagnostics) => self.render(&diagnostics),
         }
-    }
-
-    fn path_library_names(project: &Project) -> Vec<&str> {
-        project
-            .path_libraries()
-            .map(|(library, _)| library.name.as_str())
-            .collect()
     }
 
     pub fn format_report(&self) -> String {

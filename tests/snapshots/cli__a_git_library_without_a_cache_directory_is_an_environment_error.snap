@@ -1,0 +1,5 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(2).stderr()
+---
+error: no cache directory for git libraries: set `XDG_CACHE_HOME` or `HOME`

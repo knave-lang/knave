@@ -1,4 +1,5 @@
 mod formatting;
+mod git_store;
 mod interrupt_signal;
 mod profile;
 mod rustc_errors;
@@ -13,6 +14,7 @@ use crate::diagnostic::Diagnostics;
 use crate::emit::EmittedCrate;
 use crate::source::Span;
 pub use formatting::{EmittedFormatting, FormattingError};
+pub use git_store::{GitStore, StoreError};
 pub use interrupt_signal::InterruptSignal;
 pub use profile::BuildProfile;
 use rustc_errors::RustcDiagnosticMapper;

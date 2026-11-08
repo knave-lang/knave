@@ -223,6 +223,10 @@ impl Sandbox {
     const PIPE_OVERFLOWING_INPUT_BYTES: usize = 1 << 20;
     const READ_ONLY: u32 = 0o444;
     const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
+    const CACHE_HOME_VARIABLE: &str = "XDG_CACHE_HOME";
+    const CACHE_DIRECTORY: &str = "cache";
+    const GIT_MESSAGE: &str = "git says:";
+    const MASKED_GIT_MESSAGE: &str = "  = note: git says: <message>";
     const UNWRITABLE_DIRECTORY: u32 = 0o555;
     const NO_ACCESS: u32 = 0o000;
     const TERMINAL_RECORDER: &str = "script";
@@ -487,6 +491,67 @@ impl Sandbox {
             .arg("check")
             .current_dir(Path::new(Self::FIXTURES).join(directory));
         Outcome::of(&mut command)
+    }
+
+    fn compiler_in_with_cache(&self, working_directory: &str, arguments: &[&str]) -> Outcome {
+        let mut command = self.command(Path::new(Self::COMPILER), arguments);
+        command
+            .current_dir(self.directory.join(working_directory))
+            .env(
+                Self::CACHE_HOME_VARIABLE,
+                self.directory.join(Self::CACHE_DIRECTORY),
+            );
+        Outcome::of(&mut command)
+    }
+
+    fn git(&self, working_directory: &str, arguments: &[&str]) -> String {
+        let output = Command::new("git")
+            .args(arguments)
+            .current_dir(self.directory.join(working_directory))
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_AUTHOR_NAME", "Fixture Author")
+            .env("GIT_AUTHOR_EMAIL", "author@example.com")
+            .env("GIT_COMMITTER_NAME", "Fixture Author")
+            .env("GIT_COMMITTER_EMAIL", "author@example.com")
+            .output()
+            .expect("git starts");
+        assert!(
+            output.status.success(),
+            "git {arguments:?} fails: {output:?}"
+        );
+        String::from_utf8(output.stdout)
+            .expect("git prints text")
+            .trim()
+            .to_string()
+    }
+
+    fn with_git_library(self, commit_override: Option<&str>) -> (Self, String) {
+        let sandbox = self.with_fixture_tree("libraries");
+        Self::copy_tree(
+            &sandbox.directory.join("keymap"),
+            &sandbox.directory.join("keymap-source"),
+        );
+        sandbox.git("keymap-source", &["init", "--quiet"]);
+        sandbox.git("keymap-source", &["add", "--all"]);
+        sandbox.git(
+            "keymap-source",
+            &["commit", "--quiet", "--message", "Add keymap"],
+        );
+        let commit = sandbox.git("keymap-source", &["rev-parse", "HEAD"]);
+        sandbox.git(
+            ".",
+            &["clone", "--quiet", "--bare", "keymap-source", "keymap.git"],
+        );
+        let project = format!(
+            "(project app (libraries (keymap :git \"../keymap.git\" :rev \"{}\")))\n",
+            commit_override.unwrap_or(&commit)
+        );
+        let sandbox = sandbox.with_file(
+            &format!("git-app/{}", Language::project_file_name()),
+            &project,
+        );
+        (sandbox, commit)
     }
 
     fn compiler_with_path(&self, path_directory: &str, arguments: &[&str]) -> Outcome {
@@ -5016,6 +5081,7 @@ const PROJECT_WITH_UNKNOWN_KEY: &str = "(project greeter :entyr \"src/main.rslis
 const PROJECT_WITH_DEPENDENCY: &str = "(project greeter (dependencies (serde \"1.0\")))\n";
 const UNLAID_PROJECT: &str = "(project browser :version \"0.1.0\" :entry \"src/main.rslisp\"\n  (libraries (hints :path \"../hints\"))\n\n  (dependencies (cef \"144.0\") (serde \"1.0\" :features (\"derive\"))))\n";
 const BARE_NAMES_PROJECT: &str = "(project demo alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(libraries alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu)\n\n(dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(dev-dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n";
+const MISSING_COMMIT: &str = "0000000000000000000000000000000000000000";
 const SELF_IMPORT: &str = "(use sub/c)\n\n(defn f () 1)\n";
 const PROJECT_ENTRY: &str =
     "(use text/shout shout)\n\n(defn main ()\n  (println (shout \"hi\")))\n";
@@ -5458,4 +5524,121 @@ fn deep_matches_emit_on_a_short_stack() {
 #[test]
 fn a_deep_recur_body_emits_on_a_short_stack() {
     DeepProgram::passes_on_a_short_stack("deep_recur_emit", &DeepProgram::recur_body(), "emit");
+}
+
+#[test]
+fn run_fetches_a_git_library_into_the_cache_by_commit() {
+    let (sandbox, commit) = Sandbox::new("git_library_run").with_git_library(None);
+    let run = sandbox.compiler_in_with_cache("git-app/src", &["run"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "k\n");
+    let checkout = sandbox
+        .directory
+        .join(Sandbox::CACHE_DIRECTORY)
+        .join(Language::NAME)
+        .join("git")
+        .join(&commit);
+    assert!(checkout.join("src/lib.rslisp").is_file());
+}
+
+#[test]
+fn a_fetched_git_library_needs_no_repository_again() {
+    let (sandbox, _) = Sandbox::new("git_library_cached").with_git_library(None);
+    sandbox
+        .compiler_in_with_cache("git-app", &["check"])
+        .assert_silent_success();
+    fs::remove_dir_all(sandbox.directory.join("keymap.git"))
+        .expect("the sandbox removes directories");
+    let run = sandbox.compiler_in_with_cache("git-app", &["run"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "k\n");
+}
+
+#[test]
+fn a_git_library_at_a_missing_commit_names_the_library() {
+    let (sandbox, _) =
+        Sandbox::new("git_library_missing_commit").with_git_library(Some(MISSING_COMMIT));
+    let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
+    let stderr = check.assert_exit_code(1).stderr();
+    let shown: Vec<&str> = stderr
+        .lines()
+        .map(|line| {
+            if line.contains(Sandbox::GIT_MESSAGE) {
+                Sandbox::MASKED_GIT_MESSAGE
+            } else {
+                line
+            }
+        })
+        .collect();
+    insta::assert_snapshot!(shown.join("\n"));
+    let store = sandbox
+        .directory
+        .join(Sandbox::CACHE_DIRECTORY)
+        .join(Language::NAME)
+        .join("git");
+    assert_eq!(fs::read_dir(store).expect("the store exists").count(), 0);
+}
+
+#[test]
+fn a_git_library_without_git_is_an_environment_error() {
+    let (sandbox, _) = Sandbox::new("git_library_no_git").with_git_library(None);
+    let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["check"]);
+    command
+        .current_dir(sandbox.directory.join("git-app"))
+        .env(
+            Sandbox::CACHE_HOME_VARIABLE,
+            sandbox.directory.join(Sandbox::CACHE_DIRECTORY),
+        )
+        .env("PATH", sandbox.directory.join("no-tools"));
+    let check = Outcome::of(&mut command);
+    let stderr = check.assert_exit_code(2).stderr();
+    assert!(
+        stderr.starts_with("error: cannot run `git` to fetch git libraries: "),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_git_library_without_a_cache_directory_is_an_environment_error() {
+    let (sandbox, _) = Sandbox::new("git_library_no_cache").with_git_library(None);
+    let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["check"]);
+    command
+        .current_dir(sandbox.directory.join("git-app"))
+        .env_remove(Sandbox::CACHE_HOME_VARIABLE)
+        .env_remove("HOME");
+    let check = Outcome::of(&mut command);
+    insta::assert_snapshot!(check.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn a_git_library_falls_back_to_the_cache_under_home() {
+    let (sandbox, commit) = Sandbox::new("git_library_home_cache").with_git_library(None);
+    let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["check"]);
+    command
+        .current_dir(sandbox.directory.join("git-app"))
+        .env_remove(Sandbox::CACHE_HOME_VARIABLE)
+        .env("HOME", sandbox.directory.join("home"));
+    Outcome::of(&mut command).assert_silent_success();
+    let checkout = sandbox
+        .directory
+        .join("home/.cache")
+        .join(Language::NAME)
+        .join("git")
+        .join(&commit);
+    assert!(checkout.is_dir());
+}
+
+#[test]
+fn a_git_library_with_an_unwritable_cache_is_an_environment_error() {
+    let (sandbox, _) = Sandbox::new("git_library_unwritable_cache").with_git_library(None);
+    let cache = sandbox.directory.join(Sandbox::CACHE_DIRECTORY);
+    fs::create_dir_all(&cache).expect("the sandbox accepts directories");
+    fs::set_permissions(
+        &cache,
+        fs::Permissions::from_mode(Sandbox::UNWRITABLE_DIRECTORY),
+    )
+    .expect("the sandbox sets permissions");
+    let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
+    let stderr = check.assert_exit_code(2).stderr();
+    fs::set_permissions(&cache, fs::Permissions::from_mode(Sandbox::EXECUTABLE))
+        .expect("the sandbox sets permissions");
+    assert!(stderr.starts_with("error: cannot write `"), "{stderr}");
 }

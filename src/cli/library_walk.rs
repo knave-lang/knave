@@ -2,17 +2,20 @@ use std::path::{Path, PathBuf};
 
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
+use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use crate::build::{GitStore, StoreError};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::modules::{LibraryRoot, LibraryTable};
-use crate::project::{LibraryDependency, Project, ProjectProblems};
+use crate::project::{LibraryDependency, LibrarySource, Project, ProjectProblems};
 use crate::source::Span;
 
 pub struct LibraryWalk<'t> {
     terminal: &'t mut Terminal,
     seen: Vec<SeenLibrary>,
     roots: Vec<LibraryRoot>,
+    store: Option<GitStore>,
 }
 
 struct SeenLibrary {
@@ -22,6 +25,8 @@ struct SeenLibrary {
 }
 
 impl<'t> LibraryWalk<'t> {
+    const URL_SCHEME_OR_HOST: char = ':';
+
     pub fn table(
         terminal: &'t mut Terminal,
         root: &Path,
@@ -31,15 +36,80 @@ impl<'t> LibraryWalk<'t> {
             terminal,
             seen: Vec::new(),
             roots: Vec::new(),
+            store: None,
         };
         walk.visit_all(root, project)?;
         Ok(LibraryTable::new(Self::names(project), walk.roots))
     }
 
     fn visit_all(&mut self, declaring_root: &Path, project: &Project) -> Result<(), ExitStatus> {
-        project
-            .path_libraries()
-            .try_for_each(|(library, path)| self.visit(&declaring_root.join(path), library))
+        project.libraries.iter().try_for_each(|library| {
+            let library_root = self.library_directory(declaring_root, library)?;
+            self.visit(&library_root, library)
+        })
+    }
+
+    fn library_directory(
+        &mut self,
+        declaring_root: &Path,
+        library: &LibraryDependency,
+    ) -> Result<PathBuf, ExitStatus> {
+        match &library.source {
+            LibrarySource::Path(path) => Ok(declaring_root.join(path)),
+            LibrarySource::Git { url, commit } => {
+                let repository = Self::repository_location(declaring_root, url);
+                self.checkout(library, &repository, commit)
+            }
+        }
+    }
+
+    fn repository_location(declaring_root: &Path, url: &str) -> String {
+        let is_local_path = !url.contains(Self::URL_SCHEME_OR_HOST) && Path::new(url).is_relative();
+        if !is_local_path {
+            return url.to_string();
+        }
+        declaring_root.join(url).display().to_string()
+    }
+
+    fn checkout(
+        &mut self,
+        library: &LibraryDependency,
+        url: &str,
+        commit: &str,
+    ) -> Result<PathBuf, ExitStatus> {
+        let store = match self.store.take() {
+            Some(store) => store,
+            None => GitStore::for_user().map_err(|error| self.report_store(library, error))?,
+        };
+        let checked_out = store
+            .checkout(url, commit)
+            .map_err(|error| self.report_store(library, error));
+        self.store = Some(store);
+        checked_out
+    }
+
+    fn report_store(&self, library: &LibraryDependency, error: StoreError) -> ExitStatus {
+        match error {
+            StoreError::Fetch(reason) => self.report(ProjectProblems::unavailable_git_library(
+                &library.name,
+                library.name_span,
+                &reason,
+            )),
+            StoreError::NoCacheDirectory => Self::report_environment(
+                "no cache directory for git libraries: set `XDG_CACHE_HOME` or `HOME`",
+            ),
+            StoreError::GitMissing(error) => Self::report_environment(&format!(
+                "cannot run `git` to fetch git libraries: {error}"
+            )),
+            StoreError::Unwritable(path, error) => {
+                Self::report_environment(&format!("cannot write `{}`: {error}", path.display()))
+            }
+        }
+    }
+
+    fn report_environment(message: &str) -> ExitStatus {
+        StandardError::write_line(format_args!("error: {message}"));
+        ExitStatus::Environment
     }
 
     fn visit(

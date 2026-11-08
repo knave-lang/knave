@@ -581,7 +581,7 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
 - A crate dependency takes a version or a `:path`, and MAY take `:features`.
 - A library takes `:path`, or `:git` with `:rev`, and no version. `:rev` is a full 40-digit commit hash.
 - An unknown key or section is an error that suggests the closest name. A key, a section or a dependency given twice is an error.
-- The compiler reads and checks `dependencies` and `dev-dependencies`. Until the rest of RFC 0061 lands, either section with entries is an error, and so is a `:git` library. An empty section is allowed.
+- The compiler reads and checks `dependencies` and `dev-dependencies`. Until the rest of RFC 0061 lands, either section with entries is an error. An empty section is allowed.
 
 **`knave new <name>` creates a project in a new directory of that name.** It writes `(project <name>)` and an entry at `src/main.rslisp` whose `main` prints `hello`. The name argument is checked first: a name that is not kebab-case is `L0718`, labeled on the argument. A path that already exists, or a file that cannot be written, is a usage error, and a failed write removes what `new` wrote.
 
@@ -604,6 +604,12 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
 - A program or a library reaches only the libraries its own project file lists. A `use` of a library that only another library lists is `L0252`. A program module of that name would share the library's module path, so a local module or directory named as a library that only another library lists is `L0253`, which names both.
 - A library's name takes precedence over a local module or directory of the same name, and the clash is the warning `L0251`, once per hidden module.
 - One library name at two sources is `L0722`, which labels both entries.
+
+**A `:git` library is checked out by commit into `$XDG_CACHE_HOME/knave/git/<commit>`, or `~/.cache/knave/git/<commit>` without the variable.** Every command that finds the project fetches a missing commit with `git`, so `check` does too, and a commit already in the store needs no repository.
+
+- A relative local `:git` path resolves from the project file that lists the library.
+- A repository or commit that `git` cannot check out is `L0725`, labeled on the library's entry with git's message as a note.
+- No `git` on `PATH`, or no cache directory, is an environment error.
 
 ## Modules
 

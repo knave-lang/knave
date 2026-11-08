@@ -51,7 +51,6 @@ Project {
         },
     ],
 }
-path libraries: []
 error[L0719]: this compiler cannot build `dependencies` yet
  --> project/crate_names.rslisp:2:11
   |

@@ -43,15 +43,6 @@ impl ProjectProblems {
         .with_help("use lowercase letters, digits and single dashes, as `my-program`")
     }
 
-    pub fn unbuilt_git_library(name: &str, span: Span) -> Diagnostic {
-        Diagnostic::error(
-            DiagnosticCode::UNBUILT_PROJECT_SECTION,
-            format!("this compiler cannot fetch git library `{name}` yet"),
-            Label::new(span, "this library comes from git"),
-        )
-        .with_help("use a `:path` to a local copy for now")
-    }
-
     pub fn reserved_library_name(name: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::RESERVED_LIBRARY_NAME,
@@ -103,6 +94,16 @@ impl ProjectProblems {
             Label::new(span, "this library's `:lib` names no file"),
         )
         .with_help(format!("fix `:lib` in `{project_file}`, or add the file"))
+    }
+
+    pub fn unavailable_git_library(name: &str, span: Span, reason: &str) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::GIT_LIBRARY_UNAVAILABLE,
+            format!("cannot fetch git library `{name}`"),
+            Label::new(span, "this library's commit could not be checked out"),
+        )
+        .with_note(format!("git says: {reason}"))
+        .with_help("check the library's `:git` and `:rev`, and that the repository is reachable")
     }
 
     pub fn unbuilt_section(section: &str, span: Span) -> Diagnostic {

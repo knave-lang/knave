@@ -17,7 +17,7 @@ env:
   DIFF: git.diff
   ISSUE_TITLE: Nightly mutants
   INSTA_UPDATE: "no"
-  SHARDS: 4
+  SHARDS: 8
 
 jobs:
   plan:
@@ -61,7 +61,7 @@ jobs:
       matrix:
         shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 190
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         continue-on-error: true
@@ -81,7 +81,7 @@ jobs:
           name: mutation-diff
       - name: Test the mutants
         continue-on-error: true
-        timeout-minutes: 215
+        timeout-minutes: 170
         env:
           SHARD: ${{ matrix.shard }}/${{ env.SHARDS }}
           CARGO_INCREMENTAL: "1"

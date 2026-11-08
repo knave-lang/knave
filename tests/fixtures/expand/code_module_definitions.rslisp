@@ -1,0 +1,33 @@
+(use code current-module list module-definitions
+          sorted-names string)
+
+(use code_module_definitions/source shown)
+
+(defmacro here-names ()
+  (string (module-definitions (current-module))))
+
+(defmacro here-path ()
+  (string (current-module)))
+
+(defmacro source-names ()
+  (string (module-definitions (quote code_module_definitions/source))))
+
+(defmacro in-name-order ()
+  (string (sorted-names (list (quote pear)
+                              (quote apple)
+                              (quote pear)))))
+
+(defmacro define-introduced ()
+  (template (def introduced-name 1)))
+
+(define-introduced)
+
+(def own-names (here-names))
+
+(def own-path (here-path))
+
+(def imported-names (source-names))
+
+(def ordered (in-name-order))
+
+(defn main () (println (shown)))

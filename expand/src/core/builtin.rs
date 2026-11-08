@@ -30,6 +30,7 @@ pub enum Builtin {
     TypeDefinitionCall,
     ExpandCall,
     ClosestName,
+    SortedNames,
     Fail,
     NumberAdd,
     NumberSub,
@@ -48,6 +49,8 @@ pub enum Builtin {
     StringTrimStart,
     StringLength,
     StringDrop,
+    StringLowercase,
+    StringContains,
     AddModuleNote,
     ModuleNotes,
     DeclareDefinition,
@@ -56,12 +59,14 @@ pub enum Builtin {
     FormLocation,
     ProgramModules,
     ModuleExports,
+    ModuleDefinitions,
+    CurrentModule,
     ModuleSymbol,
     ProjectFileName,
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 58] = [
+    const NAMES: [(Builtin, &'static str); 63] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -92,6 +97,7 @@ impl Builtin {
         (Builtin::TypeDefinitionCall, "type-definition-call"),
         (Builtin::ExpandCall, "expand-call"),
         (Builtin::ClosestName, "closest-name"),
+        (Builtin::SortedNames, "sorted-names"),
         (Builtin::Fail, "fail"),
         (Builtin::NumberAdd, "number-add"),
         (Builtin::NumberSub, "number-sub"),
@@ -110,6 +116,8 @@ impl Builtin {
         (Builtin::StringTrimStart, "string-trim-start"),
         (Builtin::StringLength, "string-length"),
         (Builtin::StringDrop, "string-drop"),
+        (Builtin::StringLowercase, "string-lowercase"),
+        (Builtin::StringContains, "string-contains?"),
         (Builtin::AddModuleNote, "add-module-note"),
         (Builtin::ModuleNotes, "module-notes"),
         (Builtin::DeclareDefinition, "declare-definition"),
@@ -118,6 +126,8 @@ impl Builtin {
         (Builtin::FormLocation, "form-location"),
         (Builtin::ProgramModules, "program-modules"),
         (Builtin::ModuleExports, "module-exports"),
+        (Builtin::ModuleDefinitions, "module-definitions"),
+        (Builtin::CurrentModule, "current-module"),
         (Builtin::ModuleSymbol, "module-symbol"),
         (Builtin::ProjectFileName, "project-file-name"),
     ];

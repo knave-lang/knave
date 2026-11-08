@@ -104,6 +104,31 @@ impl CompileTimeHost for Expander<'_> {
             .collect())
     }
 
+    fn module_definitions(&self, path: &Symbol, span: Span) -> Result<Vec<Symbol>, Diagnostic> {
+        let record = self.loaded_module(path, span)?;
+        let module = self.modules.find(record.path());
+        let names: BTreeSet<&str> = self
+            .tables
+            .bindings
+            .ids()
+            .filter(|binding| !self.tables.bindings.is_introduced(*binding))
+            .filter(|binding| self.definition_module(*binding) == module)
+            .map(|binding| self.tables.bindings.get(binding).name())
+            .collect();
+        Ok(names
+            .into_iter()
+            .map(|name| Symbol::with_scopes(name, record.body_scopes()))
+            .collect())
+    }
+
+    fn current_module(&self) -> Symbol {
+        let module = self
+            .current_module
+            .expect("macro code runs while a module expands");
+        let record = self.modules.get(module);
+        Symbol::with_scopes(record.path().as_str(), record.body_scopes())
+    }
+
     fn module_symbol(&self, path: &Symbol, span: Span) -> Result<Symbol, Diagnostic> {
         let record = self.loaded_module(path, span)?;
         if ModuleSources::is_compiler_provided(record.path()) {

@@ -6,9 +6,9 @@
 (use code bool-not closest-name concat declare-definition
           drop empty? fail field-keyword first keyword-field
           keyword-name keyword-trim-end keyword? len list
-          list? nth number-sub number? prepend rest
-          same-binding? string string? symbol symbol-name
-          symbol? take value-eq)
+          list? nth number-sub number? pattern-head? prepend
+          rest same-binding? string string? symbol
+          symbol-name symbol? take value-eq)
 
 (export -> ->> call-signature comment declared-forms
         declared-name default-bindings default-pairs
@@ -65,8 +65,8 @@
 
 (def checked-bindings
   (fn (form bindings)
-    (if (parenthesized-pairs? bindings)
-      (parenthesized-pairs form bindings)
+    (if (parenthesized-pairs? bindings pair-list?)
+      (parenthesized-pairs form bindings pair-list?)
       (if (whole-pairs? bindings)
         (bindings-with-body form bindings)
         (name-without-value form bindings)))))
@@ -89,22 +89,22 @@
     (same-binding? (first form) (quote let))))
 
 (def parenthesized-pairs?
-  (fn (bindings)
+  (fn (bindings paired?)
     (if (whole-pairs? bindings)
-      (bool-not (empty? (parenthesized-binders bindings)))
+      (bool-not (empty? (parenthesized-binders bindings paired?)))
       false)))
 
 (def parenthesized-binders
-  (fn (bindings)
+  (fn (bindings paired?)
     (if (empty? bindings)
       bindings
-      (if (parenthesized-pair? (first bindings))
+      (if (parenthesized-pair? (first bindings) paired?)
         bindings
-        (recur (drop 2 bindings))))))
+        (recur (drop 2 bindings) paired?)))))
 
 (def parenthesized-pair?
-  (fn (binder)
-    (if (pair-list? binder)
+  (fn (binder paired?)
+    (if (paired? binder)
       (literal? (nth binder 1))
       false)))
 
@@ -129,12 +129,12 @@
       false)))
 
 (def parenthesized-pairs
-  (fn (form bindings)
+  (fn (form bindings paired?)
     (fail (string "each name and its value go straight into the binding "
                   "list of `"
                   (form-name form)
                   "`, without their own parentheses")
-      (first (parenthesized-binders bindings))
+      (first (parenthesized-binders bindings paired?))
       (string "write it as `"
               (elided-call form (unwrapped-pairs bindings))
               "`")
@@ -162,14 +162,14 @@
                   (form-name form)
                   "` has no value")
       (nth bindings (number-sub (len bindings) 1))
-      (value-help form bindings)
+      (value-help form bindings pair-list?)
       (quote (:code binding-without-value
                     :label "this name has no value")))))
 
 (def value-help
-  (fn (form bindings)
+  (fn (form bindings paired?)
     (local with-value (with-value-help form bindings))
-    (if (every-pair-list? bindings)
+    (if (every-binder? bindings paired?)
       (string with-value
               ", or write each name and its value without their own "
               "parentheses, as `"
@@ -184,12 +184,12 @@
                          (concat bindings (list (quote value))))
             "`")))
 
-(def every-pair-list?
-  (fn (items)
+(def every-binder?
+  (fn (items paired?)
     (if (empty? items)
       true
-      (if (pair-list? (first items))
-        (recur (rest items))
+      (if (paired? (first items))
+        (recur (rest items) paired?)
         false))))
 
 (def bindings-without-body
@@ -1058,15 +1058,29 @@
 
 (def checked-patterns
   (fn (form bindings)
-    (if (whole-pairs? bindings)
-      (bindings-with-body form bindings)
-      (pattern-without-value form bindings))))
+    (if (parenthesized-pairs? bindings name-pair-list?)
+      (parenthesized-pairs form bindings name-pair-list?)
+      (if (whole-pairs? bindings)
+        (bindings-with-body form bindings)
+        (pattern-without-value form bindings)))))
+
+(def name-pair-list?
+  (fn (item)
+    (if (pair-list? item)
+      (plain-name? (first item))
+      false)))
+
+(def plain-name?
+  (fn (form)
+    (if (name? form)
+      (bool-not (pattern-head? form))
+      false)))
 
 (def pattern-without-value
   (fn (form bindings)
     (fail "a pattern in the binding list of `let-match` has no value"
       (nth bindings (number-sub (len bindings) 1))
-      (with-value-help form bindings)
+      (value-help form bindings name-pair-list?)
       (quote (:code binding-without-value
                     :label "this pattern has no value")))))
 

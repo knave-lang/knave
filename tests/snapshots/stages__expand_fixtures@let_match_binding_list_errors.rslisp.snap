@@ -49,7 +49,7 @@ error[L0334]: a pattern in the binding list of `let-match` has no value
 16 |   (let-match ((value (parse text)))
    |               ^^^^^^^^^^^^^^^^^^^^ this pattern has no value
    |
-   = help: write its value after it, as `(let-match ((value (parse text)) value) ...)`
+   = help: write its value after it, as `(let-match ((value (parse text)) value) ...)`, or write each name and its value without their own parentheses, as `(let-match (value (parse text)) ...)`
 
 error[L0334]: a pattern in the binding list of `let-match` has no value
   --> expand/let_match_binding_list_errors.rslisp:20:15
@@ -58,3 +58,35 @@ error[L0334]: a pattern in the binding list of `let-match` has no value
    |               ^^^^^^^^ this pattern has no value
    |
    = help: write its value after it, as `(let-match ((some x) value) ...)`
+
+error[L0336]: each name and its value go straight into the binding list of `let-match`, without their own parentheses
+  --> expand/let_match_binding_list_errors.rslisp:23:15
+   |
+23 |   (let-match ((a 1) (b 2))
+   |               ^^^^^ a name and its value in their own parentheses
+   |
+   = help: write it as `(let-match (a 1 b 2) ...)`
+
+error[L0334]: a pattern in the binding list of `let-match` has no value
+  --> expand/let_match_binding_list_errors.rslisp:27:15
+   |
+27 |   (let-match ((a 1)) (println a)))
+   |               ^^^^^ this pattern has no value
+   |
+   = help: write its value after it, as `(let-match ((a 1) value) ...)`, or write each name and its value without their own parentheses, as `(let-match (a 1) ...)`
+
+error[L0334]: a pattern in the binding list of `let-match` has no value
+  --> expand/let_match_binding_list_errors.rslisp:30:15
+   |
+30 |   (let-match ((some x))))
+   |               ^^^^^^^^ this pattern has no value
+   |
+   = help: write its value after it, as `(let-match ((some x) value) ...)`
+
+error[L0231]: this is not a pattern
+  --> expand/let_match_binding_list_errors.rslisp:33:15
+   |
+33 |   (let-match ((1 2) (pair 1 2))
+   |               ^^^^^ a pattern names a binding, a literal or a variant
+   |
+   = help: write a binding name, `_`, a literal, or `(variant pattern ...)`

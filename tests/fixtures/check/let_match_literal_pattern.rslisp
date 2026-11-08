@@ -1,6 +1,23 @@
 (defstruct meters
   :n i64)
 
-(defn main ()
+(defenum size
+  (big i64)
+  small)
+
+(defn struct-head ()
   (let-match ((meters 5) (->meters 5))
     (println "five")))
+
+(defn variant-head ()
+  (let-match ((size/big 0) (size/big 1))
+    (println "zero")))
+
+(defn short-variant-head ()
+  (let-match ((big 0) (size/big 1))
+    (println "zero")))
+
+(defn main ()
+  (struct-head)
+  (variant-head)
+  (short-variant-head))

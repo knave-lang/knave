@@ -13,6 +13,7 @@ pub struct ExpandProblems;
 
 impl ExpandProblems {
     const QUOTE_SHORTHAND: char = '\'';
+    const SIMILAR_SPELLING_HELP: &'static str = "a name with a similar spelling exists";
     const CODE_REPLACEMENTS: [(&'static str, &'static str, &'static str); 9] = [
         ("+", "number-add", "code"),
         ("-", "number-sub", "code"),
@@ -384,7 +385,7 @@ impl ExpandProblems {
         );
         let diagnostic = match similar {
             Some(similar) => diagnostic.with_suggestion(
-                "a name with a similar spelling exists",
+                Self::SIMILAR_SPELLING_HELP,
                 Suggestion::new(span, similar.to_string()),
             ),
             None => diagnostic,
@@ -1029,15 +1030,25 @@ impl ExpandProblems {
         .with_help("apply the variable to a type, such as `(vec a)`")
     }
 
-    pub fn undefined_documented_term(name: &str, span: Span) -> Diagnostic {
-        Diagnostic::error(
+    pub fn undefined_documented_term(
+        name: &str,
+        span: Span,
+        similar: Option<Rc<str>>,
+    ) -> Diagnostic {
+        let diagnostic = Diagnostic::error(
             DiagnosticCode::UNDEFINED_DOCUMENTED_TERM,
             format!("this module documents `{name}` but does not define it"),
             Label::new(span, "not defined in this module"),
-        )
-        .with_help(format!(
-            "define `{name}` in this module, or move this `document` to the module that defines it"
-        ))
+        );
+        match similar {
+            Some(similar) => diagnostic.with_suggestion(
+                Self::SIMILAR_SPELLING_HELP,
+                Suggestion::new(span, similar.to_string()),
+            ),
+            None => diagnostic.with_help(format!(
+                "define `{name}` in this module, or move this `document` to the module that defines it"
+            )),
+        }
     }
 
     pub fn broken_definition(name: &str, span: Span) -> Diagnostic {

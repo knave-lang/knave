@@ -699,8 +699,9 @@ impl Expander<'_> {
         let body = items[2..].to_vec();
         if let Some(where_items) = self.old_parameters(&body) {
             let span = where_items[0].span();
-            let kind = self
-                .macro_origin_at(span)
+            let origin = self.macro_origin_at(span);
+            let kind = origin
+                .as_ref()
                 .map_or("struct", |origin| origin.name.as_ref());
             let replacement = self.old_head_replacement(kind, &items[1], where_items);
             return Err(ExpandProblems::parameters_on_name(kind, &replacement, span));

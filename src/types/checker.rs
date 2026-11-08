@@ -34,7 +34,7 @@ use crate::core::{
     VariantDeclaration, VariantPayload as CoreVariantPayload,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
-use crate::expand::PendingDefinitions;
+use crate::expand::{MacroOrigins, PendingDefinitions};
 use crate::modules::ModuleSources;
 use crate::source::Span;
 
@@ -195,7 +195,7 @@ pub struct TypeChecker {
     pub(super) try_target: Option<super::infer::TryTarget>,
     pub(super) changed_structs: FxHashSet<BindingId>,
     pub(super) inferred_copies: InferredCopies,
-    macro_origins: FxHashMap<Span, Rc<str>>,
+    macro_origins: Rc<MacroOrigins>,
     macro_field_reads: FxHashMap<Span, Rc<str>>,
     copy_trait: Option<BindingId>,
     box_binding: Option<BindingId>,
@@ -293,7 +293,7 @@ impl TypeChecker {
             try_target: None,
             changed_structs: FxHashSet::default(),
             inferred_copies: InferredCopies::default(),
-            macro_origins: FxHashMap::default(),
+            macro_origins: Rc::default(),
             macro_field_reads: FxHashMap::default(),
             copy_trait: None,
             box_binding: None,
@@ -779,7 +779,7 @@ impl TypeChecker {
     }
 
     pub(super) fn record_macro_field_read(&mut self, label: &crate::core::FieldLabel, span: Span) {
-        if self.macro_origins.contains_key(&label.span) {
+        if self.macro_origins.get(label.span).is_some() {
             return;
         }
         if let Some(name) = self.macro_name(span) {
@@ -788,7 +788,7 @@ impl TypeChecker {
     }
 
     pub(super) fn macro_name(&self, span: Span) -> Option<Rc<str>> {
-        self.macro_origins.get(&span).cloned()
+        self.macro_origins.get(span).map(|origin| origin.name)
     }
 
     pub(super) fn new_generic(&mut self, name: &str, bounds: Vec<Bound>) -> GenericParam {
@@ -2996,11 +2996,7 @@ impl TypeChecker {
             checker.literal_defaults = literal_defaults.clone();
             checker.default_literal_parameters = default_literal_parameters;
             checker.vector_bases = vector_bases.clone();
-            checker.macro_origins = program
-                .macro_origins
-                .iter()
-                .map(|(span, origin)| (*span, Rc::clone(&origin.name)))
-                .collect();
+            checker.macro_origins = Rc::clone(&program.macro_origins);
             checker
         };
         let mut vector_bases = FxHashSet::default();

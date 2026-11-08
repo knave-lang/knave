@@ -164,7 +164,7 @@ impl Expander<'_> {
         let definition = self.introduced_name(span, symbol.name());
         let primary = definition.unwrap_or(span);
         let diagnostic = ExpandProblems::unbound(symbol.name(), namespace, primary, similar);
-        match (definition, self.tables.macro_origins.get(&span)) {
+        match (definition, self.tables.macro_origins.get(span)) {
             (Some(_), Some(origin)) => diagnostic
                 .with_note(format!("in this expansion of `{}`", origin.name))
                 .with_label(ExpandProblems::macro_call(span)),

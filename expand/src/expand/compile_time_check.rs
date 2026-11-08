@@ -36,7 +36,7 @@ impl Expander<'_> {
     }
 
     fn macro_program_only(&self, span: Span) -> Option<Diagnostic> {
-        let origin = self.tables.macro_origins.get(&span)?;
+        let origin = self.tables.macro_origins.get(span)?;
         Some(ExpandProblems::macro_program_only(
             &origin.name,
             span,

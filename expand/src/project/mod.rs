@@ -37,6 +37,7 @@ pub struct SectionHead {
 #[derive(Debug)]
 pub struct LibraryDependency {
     pub name: String,
+    pub name_span: Span,
     pub source: LibrarySource,
 }
 

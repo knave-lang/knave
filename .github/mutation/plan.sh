@@ -39,7 +39,7 @@ else
 fi
 head=$(git rev-parse HEAD)
 git diff --find-renames "$base" "$head" > "$DIFF"
-changed_sources=$(git diff --name-only "$base" "$head" -- 'src/*.rs' 'expand/src/*.rs' | wc -l)
+changed_sources=$(git diff --name-only "$base" "$head" -- 'src/*.rs' 'expand/src/*.rs' 'xtask/src/*.rs' | wc -l)
 {
   echo "base=$base"
   echo "head=$head"

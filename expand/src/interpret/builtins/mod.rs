@@ -28,7 +28,7 @@ pub struct BuiltinCall {
 }
 
 impl BuiltinCall {
-    const IMPLEMENTATIONS: [(Builtin, Implementation); 57] = [
+    const IMPLEMENTATIONS: [(Builtin, Implementation); 58] = [
         (Builtin::First, |operations, _| operations.lists.first()),
         (Builtin::Rest, |operations, _| operations.lists.rest()),
         (Builtin::List, |operations, _| operations.lists.list()),
@@ -83,6 +83,9 @@ impl BuiltinCall {
         }),
         (Builtin::SameBinding, |operations, host| {
             operations.text.same_binding(host)
+        }),
+        (Builtin::IsPatternHead, |operations, host| {
+            operations.text.is_pattern_head(host)
         }),
         (Builtin::DefinitionSymbol, |operations, host| {
             operations.text.definition_symbol(host)

@@ -22,6 +22,7 @@ use crate::stack::DeepRecursion;
 pub trait CompileTimeHost {
     fn global_value(&mut self, binding: BindingId, span: Span) -> Result<Value, Diagnostic>;
     fn same_binding(&self, left: &Symbol, right: &Symbol) -> bool;
+    fn is_pattern_head(&self, head: &Symbol) -> bool;
     fn definition_symbol(
         &self,
         term: &Symbol,

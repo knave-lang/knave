@@ -105,6 +105,12 @@ impl<'a> TextOperations<'a> {
         Ok(Value::Bool(host.same_binding(left, right)))
     }
 
+    pub fn is_pattern_head(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(1)?;
+        let head = self.arguments.symbol(0)?;
+        Ok(Value::Bool(host.is_pattern_head(head)))
+    }
+
     pub fn definition_symbol(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.expect_symbol_arguments()?;
         let term = self.arguments.form(0)?;

@@ -23,6 +23,7 @@ pub enum Builtin {
     MakeSymbol,
     MakeString,
     SameBinding,
+    IsPatternHead,
     DefinitionSymbol,
     TypeDefinitionSymbol,
     DefinitionCall,
@@ -60,7 +61,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 57] = [
+    const NAMES: [(Builtin, &'static str); 58] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -84,6 +85,7 @@ impl Builtin {
         (Builtin::MakeSymbol, "symbol"),
         (Builtin::MakeString, "string"),
         (Builtin::SameBinding, "same-binding?"),
+        (Builtin::IsPatternHead, "pattern-head?"),
         (Builtin::DefinitionSymbol, "definition-symbol"),
         (Builtin::TypeDefinitionSymbol, "type-definition-symbol"),
         (Builtin::DefinitionCall, "definition-call"),

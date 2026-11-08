@@ -112,6 +112,10 @@ impl CompileTimeHost for Expander<'_> {
         Ok(Symbol::with_scopes(path.name(), record.body_scopes()))
     }
 
+    fn is_pattern_head(&self, head: &Symbol) -> bool {
+        self.names_pattern_head(head)
+    }
+
     fn same_binding(&self, left: &Symbol, right: &Symbol) -> bool {
         let pairs: Vec<(Resolution, Resolution)> = [Namespace::Value, Namespace::Type]
             .into_iter()

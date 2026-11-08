@@ -843,6 +843,12 @@ impl Expander<'_> {
         self.short_variant_pattern(head, &items[1..], span)
     }
 
+    pub(super) fn names_pattern_head(&self, head: &Symbol) -> bool {
+        self.variant_pattern_head(head).is_some()
+            || self.struct_pattern_head(head).is_some()
+            || !self.variant_candidates(head).is_empty()
+    }
+
     fn variant_pattern_head(&self, head: &Symbol) -> Option<BindingId> {
         let binding = self.try_resolve(head, Namespace::Value)?;
         let is_variant = matches!(self.kind(binding), BindingKind::Variant(_, _));

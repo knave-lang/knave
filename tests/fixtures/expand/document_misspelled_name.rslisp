@@ -1,0 +1,16 @@
+(use document_imported/source helper)
+(use prelude/macros document)
+
+(defn greet () 1)
+
+(defn helpers () 2)
+
+(document (gret) "Says hi.")
+
+(document (printn)
+  "Close only to a name of another module.")
+
+(document (helper)
+  "Imported, and close to a definition of this module.")
+
+(defn main () (greet))

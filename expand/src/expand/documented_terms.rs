@@ -3,6 +3,7 @@ use std::rc::Rc;
 use super::Expander;
 use super::problems::ExpandProblems;
 use crate::core::{ModuleId, ModulePath, Namespace};
+use crate::diagnostic::SimilarName;
 use crate::interpret::{Interpreter, Value};
 use crate::modules::ModuleSources;
 use crate::reader::{Form, Symbol};
@@ -17,6 +18,7 @@ impl Expander<'_> {
     const PAGE_MACRO: &'static str = "doc-page";
     const DOCSTRINGS_KEY: &'static str = "docstrings-key";
     const NOTED_TERM: &'static str = "noted-term";
+    const TERM_NAMESPACES: [Namespace; 2] = [Namespace::Value, Namespace::Type];
 
     pub(super) fn check_documented_terms(&mut self, module: ModuleId) {
         if self.skips_document_check(module) {
@@ -32,8 +34,13 @@ impl Expander<'_> {
             .filter(|(term, _)| !self.reported_as_duplicate(module, term))
             .collect();
         for (term, span) in undefined {
+            let similar = self.closest_own_definition(module, &term);
             self.diagnostics
-                .push(ExpandProblems::undefined_documented_term(term.name(), span));
+                .push(ExpandProblems::undefined_documented_term(
+                    term.name(),
+                    span,
+                    similar,
+                ));
         }
     }
 
@@ -97,9 +104,32 @@ impl Expander<'_> {
     }
 
     fn defines(&self, module: ModuleId, term: &Symbol) -> bool {
-        [Namespace::Value, Namespace::Type]
+        Self::TERM_NAMESPACES
             .into_iter()
             .filter_map(|namespace| self.try_resolve(term, namespace))
             .any(|binding| self.definition_module(binding) == Some(module))
+    }
+
+    fn closest_own_definition(&self, module: ModuleId, term: &Symbol) -> Option<Rc<str>> {
+        if self.resolves(term) {
+            return None;
+        }
+        let own_names: Vec<Rc<str>> = Self::TERM_NAMESPACES
+            .into_iter()
+            .flat_map(|namespace| {
+                self.tables
+                    .table
+                    .visible_name_bindings(term, namespace, self.phase)
+            })
+            .filter(|(_, binding)| self.definition_module(*binding) == Some(module))
+            .map(|(name, _)| name)
+            .collect();
+        SimilarName::closest(term.name(), &own_names)
+    }
+
+    fn resolves(&self, term: &Symbol) -> bool {
+        Self::TERM_NAMESPACES
+            .into_iter()
+            .any(|namespace| self.try_resolve(term, namespace).is_some())
     }
 }

@@ -577,7 +577,6 @@ impl OwnershipProblems {
             macro_name, field, ..
         } = read;
         let borrowed = format!("(ref {})", read.field_type);
-        let callee = read.callee.unwrap_or("...");
         Diagnostic::error(
             DiagnosticCode::NEEDS_OWNERSHIP,
             Self::BORROWED_ARGUMENT_TITLE,
@@ -587,9 +586,21 @@ impl OwnershipProblems {
             ),
         )
         .with_help(format!(
-            "`{macro_name}` passes `:{field}` as a `{borrowed}`; take a borrow and clone it, as in \
-             `({macro_name} item :{field} (fn (({field} {borrowed})) ({callee} (clone {field}))))`"
+            "`{macro_name}` passes `:{field}` as a `{borrowed}`; {}",
+            Self::borrowed_field_fix(read, &borrowed)
         ))
+    }
+
+    fn borrowed_field_fix(read: &MacroFieldRead<'_>, borrowed: &str) -> String {
+        let field = &read.field;
+        match read.callee {
+            Some(callee) => format!(
+                "take a borrow and clone it, as in `(fn (({field} {borrowed})) ({callee} (clone {field})))`"
+            ),
+            None => format!(
+                "annotate the parameter as `{borrowed}` and clone it before the owning call"
+            ),
+        }
     }
 
     pub fn needs_pipeline_ownership(span: Span) -> Diagnostic {

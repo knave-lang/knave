@@ -9,7 +9,7 @@ error[L0503]: this value is borrowed, but the call needs to own it
 7 |   (prn (update (->item :name (str "plum")) :name take-name))
   |                                            ^^^^^ `update` passes this field as a borrow
   |
-  = help: `update` passes `:name` as a `(ref string)`; take a borrow and clone it, as in `(update item :name (fn ((name (ref string))) (take-name (clone name))))`
+  = help: `update` passes `:name` as a `(ref string)`; take a borrow and clone it, as in `(fn ((name (ref string))) (take-name (clone name)))`
 
 error[L0503]: this value is borrowed, but the call needs to own it
  --> check/update_owning_function.rslisp:9:16
@@ -17,4 +17,4 @@ error[L0503]: this value is borrowed, but the call needs to own it
 9 |                :name (fn (name) (take-name (clone name))))))
   |                ^^^^^ `update` passes this field as a borrow
   |
-  = help: `update` passes `:name` as a `(ref string)`; take a borrow and clone it, as in `(update item :name (fn ((name (ref string))) (... (clone name))))`
+  = help: `update` passes `:name` as a `(ref string)`; annotate the parameter as `(ref string)` and clone it before the owning call

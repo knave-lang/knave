@@ -12,10 +12,10 @@
                    vec)
 
 (use prelude/pair pair)
-(use prelude/assoc assoc assoc-in)
+(use prelude/assoc assoc assoc-in update)
 
 (use prelude/map get hash-map into-hash-map into-sorted-map
-                 keys sorted-map update vals)
+                 keys sorted-map vals)
 
 (use prelude/sequence empty? len)
 

@@ -1,11 +1,17 @@
+use std::rc::Rc;
+
 use rustc_hash::FxHashMap;
 
-use super::problems::OwnershipProblems;
+use super::problems::{MacroFieldRead, OwnershipProblems};
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
-use crate::types::{Borrow, Pipelines, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf};
+use crate::types::{
+    Borrow, Pipelines, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
+    TypedStructExpr,
+};
 
 pub struct OwnershipNeeds<'a> {
+    program: &'a TypedProgram,
     function_params: &'a FxHashMap<BindingId, Vec<Type>>,
     pipelines: Pipelines<'a>,
     diagnostics: Vec<Diagnostic>,
@@ -13,10 +19,12 @@ pub struct OwnershipNeeds<'a> {
 
 impl<'a> OwnershipNeeds<'a> {
     pub fn new(
+        program: &'a TypedProgram,
         function_params: &'a FxHashMap<BindingId, Vec<Type>>,
         pipelines: Pipelines<'a>,
     ) -> Self {
         Self {
+            program,
             function_params,
             pipelines,
             diagnostics: Vec::new(),
@@ -52,32 +60,68 @@ impl<'a> OwnershipNeeds<'a> {
 
     fn check_arguments(&mut self, callee: &TypedExpr, arguments: &[TypedArgument]) {
         let parameters = self.parameters(callee);
-        self.check_with_parameters(arguments, &parameters);
+        self.check_with_parameters(Some(callee), arguments, &parameters);
     }
 
     fn check_recur(&mut self, arguments: &[TypedArgument], parameters: Option<&[Type]>) {
         if let Some(parameters) = parameters {
-            self.check_with_parameters(arguments, parameters);
+            self.check_with_parameters(None, arguments, parameters);
         }
     }
 
-    fn check_with_parameters(&mut self, arguments: &[TypedArgument], parameters: &[Type]) {
+    fn check_with_parameters(
+        &mut self,
+        callee: Option<&TypedExpr>,
+        arguments: &[TypedArgument],
+        parameters: &[Type],
+    ) {
         for (position, argument) in arguments.iter().enumerate() {
             let owns = parameters
                 .get(position)
                 .is_some_and(|parameter| !parameter.is_reference());
             if argument.borrow == Borrow::Passthrough && owns {
-                let diagnostic = self.needs_ownership(&argument.value);
+                let diagnostic = self.needs_ownership(callee, &argument.value);
                 self.diagnostics.push(diagnostic);
             }
         }
     }
 
-    fn needs_ownership(&self, value: &TypedExpr) -> Diagnostic {
+    fn needs_ownership(&self, callee: Option<&TypedExpr>, value: &TypedExpr) -> Diagnostic {
         if self.pipelines.is_pipeline(value.ty.referent()) {
             return OwnershipProblems::needs_pipeline_ownership(value.span);
         }
-        OwnershipProblems::needs_ownership(value.span)
+        match self.macro_field_read(callee, value) {
+            Some(read) => OwnershipProblems::macro_field_needs_ownership(&read),
+            None => OwnershipProblems::needs_ownership(value.span),
+        }
+    }
+
+    fn macro_field_read(
+        &self,
+        callee: Option<&TypedExpr>,
+        value: &TypedExpr,
+    ) -> Option<MacroFieldRead<'a>> {
+        let TypedExprKind::Struct(TypedStructExpr::Field(_, label)) = &value.kind else {
+            return None;
+        };
+        let callee = callee.filter(|callee| callee.span != value.span)?;
+        let macro_name = self.program.macro_field_reads.get(&value.span)?;
+        Some(MacroFieldRead {
+            macro_name: Rc::clone(macro_name),
+            field: Rc::clone(&label.name),
+            field_span: label.span,
+            field_type: self.program.show_type(value.ty.referent()),
+            callee: self.function_name(callee),
+        })
+    }
+
+    fn function_name(&self, callee: &TypedExpr) -> Option<&'a str> {
+        match callee.kind {
+            TypedExprKind::Leaf(TypedLeaf::Global(function) | TypedLeaf::Local(function)) => {
+                Some(self.program.bindings.get(function).name())
+            }
+            _ => None,
+        }
     }
 
     fn parameters(&self, callee: &TypedExpr) -> Vec<Type> {

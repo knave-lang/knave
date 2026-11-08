@@ -196,6 +196,7 @@ pub struct TypeChecker {
     pub(super) changed_structs: FxHashSet<BindingId>,
     pub(super) inferred_copies: InferredCopies,
     macro_origins: FxHashMap<Span, Rc<str>>,
+    macro_field_reads: FxHashMap<Span, Rc<str>>,
     copy_trait: Option<BindingId>,
     box_binding: Option<BindingId>,
     pub(super) inferred_boxes: BTreeSet<(BindingId, usize, usize)>,
@@ -293,6 +294,7 @@ impl TypeChecker {
             changed_structs: FxHashSet::default(),
             inferred_copies: InferredCopies::default(),
             macro_origins: FxHashMap::default(),
+            macro_field_reads: FxHashMap::default(),
             copy_trait: None,
             box_binding: None,
             inferred_boxes: BTreeSet::new(),
@@ -774,6 +776,15 @@ impl TypeChecker {
     fn open_roots(&self, var: TypeVar) -> Vec<TypeVar> {
         let roots = self.free_vars(&Type::Var(var));
         if roots.is_empty() { vec![var] } else { roots }
+    }
+
+    pub(super) fn record_macro_field_read(&mut self, label: &crate::core::FieldLabel, span: Span) {
+        if self.macro_origins.contains_key(&label.span) {
+            return;
+        }
+        if let Some(name) = self.macro_name(span) {
+            self.macro_field_reads.insert(span, name);
+        }
     }
 
     pub(super) fn macro_name(&self, span: Span) -> Option<Rc<str>> {
@@ -3082,6 +3093,7 @@ impl TypeChecker {
             entry: program.entry,
             entry_function: program.entry_function,
             bindings: self.bindings,
+            macro_field_reads: self.macro_field_reads,
             structs: self.structs,
             enums: self.enums,
             rust_types: self.rust_types,

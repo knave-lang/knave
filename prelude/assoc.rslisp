@@ -1,4 +1,4 @@
-(use prelude/macros defmacro whole-pairs?)
+(use prelude/macros defmacro document template whole-pairs?)
 (use prelude/syntax let)
 
 (use code bool-not concat drop empty? fail field-keyword
@@ -6,7 +6,7 @@
           number-sub prepend rest string symbol symbol?
           value-eq)
 
-(export assoc assoc-in)
+(export assoc assoc-in update)
 
 (defmacro assoc (value key more ...)
   "Returns a struct or a collection with new values at its keys.
@@ -30,6 +30,68 @@
     (if (whole-pairs? arguments)
       (collection-updates value arguments)
       (unpaired-key-error value arguments))))
+
+(defmacro update (value key more ...)
+  (if (keyword? key)
+    (field-update value key more)
+    (collection-update value key more)))
+
+(def field-update
+  (fn (value key more)
+    (if (value-eq (len more) 1)
+      (field-update-once value key (first more))
+      (field-update-error key more))))
+
+(def field-update-once
+  (fn (value key function)
+    (local root (read-root value))
+    (if (symbol? root)
+      (field-replacement value key function)
+      (list (quote let)
+            (list (quote base) root)
+            (field-replacement (rebased-read value root) key function)))))
+
+(def field-replacement
+  (fn (value key function)
+    (list (quote new)
+          (quote _)
+          value
+          (list key (list function (list key value))))))
+
+(def field-update-error
+  (fn (key more)
+    (if (empty? more)
+      (fail "this field update has no function"
+        key
+        "write a function after the field, as in `(update item :count neg)`"
+        (template (:code update-arguments)))
+      (fail "a field update takes no default, because the field always exists"
+        (nth more 1)
+        "drop the default"
+        (template (:code update-arguments))))))
+
+(def collection-update
+  (fn (value key more)
+    (if (value-eq (len more) 2)
+      (list (quote map-at)
+            (quote update)
+            value key
+            (first more)
+            (nth more 1))
+      (collection-update-error key more))))
+
+(def collection-update-error
+  (fn (key more)
+    (local message
+      "a map update takes a function and a default")
+    (local help "write `(update map key function default)`")
+    (if (value-eq (len more) 1)
+      (fail message
+        (first more)
+        help
+        (template (:code update-arguments
+                         :label "no default follows this function")))
+      (fail message key help (template (:code update-arguments))))))
 
 (def struct-update
   (fn (value pairs)
@@ -191,3 +253,25 @@
       (list (quote let)
             (list field (path-update (list key base) path item))
             (list (quote assoc) base key field)))))
+
+(document (update value key function default)
+  "Applies a function to a field of a struct, or to the value at a map's key.
+
+  With a keyword key, `(update item :count neg)` returns the struct with the
+  field replaced by the function's result, and takes no default. The function
+  takes the field as `(:count item)` reads it, which borrows a field that is
+  not `copy`, so a function that owns its argument is an error. Rust itself
+  could move the field, and RFC 0059 leaves that open. The call moves the
+  struct's other fields. A base that reads fields from a name updates in
+  place, and a base rooted in a call runs once.
+
+  With any other key, the call applies the function to the value at the key
+  and returns the map.
+
+  `function` takes the value at `key`, or `default` when the key is missing,
+  and the result is stored at `key`. `default` runs before the call, whether
+  or not the call uses it. The call moves the map.
+
+  `key` has the type of the map's keys: a string literal is a `(ref str)`, so
+  a `string` key takes `(str \"name\")`, and a `(ref str)` key takes
+  `(as-str name)`.")

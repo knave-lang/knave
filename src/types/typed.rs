@@ -412,6 +412,7 @@ pub struct TypedProgram {
     pub entry: ModuleId,
     pub entry_function: Option<BindingId>,
     pub bindings: BindingArena,
+    pub macro_field_reads: FxHashMap<Span, Rc<str>>,
     pub structs: StructTable,
     pub enums: EnumTable,
     pub rust_types: RustTypeTable,
@@ -709,6 +710,10 @@ impl TypedProgram {
             "(type {name} {})",
             display.scheme(&definition.scheme)
         ))
+    }
+
+    pub fn show_type(&self, shown: &Type) -> String {
+        self.type_display().show(shown)
     }
 
     fn type_display(&self) -> TypeDisplay<'_> {

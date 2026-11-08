@@ -1,0 +1,9 @@
+(defstruct item
+  :count i64)
+
+(defn main ()
+  (local entry (->item :count 1))
+  (update entry :count)
+  (update entry :count neg 0)
+  (update (hash-map) 1 neg)
+  (update (hash-map) 1))

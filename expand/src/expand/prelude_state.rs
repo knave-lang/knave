@@ -395,7 +395,7 @@ mod tests {
                 .enumerate()
                 .map(|(index, name)| {
                     format!(
-                        "(def {} (header {name}))\n(def {} (page-body {name}))\n",
+                        "(def {} (doc-header {name}))\n(def {} (doc-body {name}))\n",
                         Self::header_name(index),
                         Self::body_name(index),
                     )
@@ -407,7 +407,7 @@ mod tests {
         fn undocumented_lookup() -> String {
             let term = Self::UNDOCUMENTED_TERM;
             let name = Self::UNDOCUMENTED_BODY_NAME;
-            format!("(use prelude/macros {term})\n(def {name} (page-body {term}))\n")
+            format!("(use prelude/macros {term})\n(def {name} (doc-body {term}))\n")
         }
 
         fn header_name(index: usize) -> String {

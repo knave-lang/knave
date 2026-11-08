@@ -74,8 +74,8 @@ const MODULE_BINDING_ENTRY: &str =
 const SHADOWING_GEOMETRY_ENTRY: &str =
     "(use geometry area)\n\n(def geometry 1)\n\n(defn main ()\n  (println (area geometry 3)))\n";
 const UNDOCUMENTED_ENTRY: &str = "(defn twice (x) (* 2 x))\n\n(defn main () (println (twice 2)))\n";
-const SHADOWING_PAGE_BODY: &str = "(defrule page-body ((term) 0))\n\n(defn main () (do))\n";
-const SHADOWING_HEADER: &str = "(defrule header ((term) 0))\n\n(defn main () (do))\n";
+const SHADOWING_PAGE_BODY: &str = "(defrule doc-body ((term) 0))\n\n(defn main () (do))\n";
+const SHADOWING_HEADER: &str = "(defrule doc-header ((term) 0))\n\n(defn main () (do))\n";
 const TRUE_PAGE: &str = "true\n\nIs the `bool` value true.\n\nIt is a kernel constant, so macro code and program code see the same\nbooleans.\n";
 const IF_PAGE: &str = "(if test then else)\n\nEvaluates `then` when the test is true, and `else` otherwise.\n\nIt emits a Rust `if` with an `else`.\n";
 #[cfg(target_os = "linux")]
@@ -1720,7 +1720,7 @@ fn doc_rejects_a_shadowing_page_body_that_returns_no_string() {
     let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "main"]);
     assert_eq!(
         doc.assert_exit_code(1).stderr(),
-        "error: `page-body` did not expand to a string\n"
+        "error: `doc-body` did not expand to a string\n"
     );
 }
 
@@ -1730,7 +1730,7 @@ fn doc_rejects_a_shadowing_header_that_returns_no_string() {
     let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "main"]);
     assert_eq!(
         doc.assert_exit_code(1).stderr(),
-        "error: `header` did not expand to a string\n"
+        "error: `doc-header` did not expand to a string\n"
     );
 }
 

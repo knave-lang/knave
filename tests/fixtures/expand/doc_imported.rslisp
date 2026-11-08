@@ -4,7 +4,7 @@
 
 (def area-docstring (docstring area))
 
-(def area-header (header area))
+(def area-header (doc-header area))
 
 (defn main ()
   (println (area 3 4) area-page))

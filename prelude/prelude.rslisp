@@ -1,7 +1,6 @@
-(use prelude/macros defmacro defrule doc-page docstring
-                    document header header-shape
-                    kernel-definition module page-body
-                    template)
+(use prelude/macros defmacro defrule doc-body doc-header
+                    doc-page docstring document header-shape
+                    kernel-definition module template)
 
 (use prelude/logic and cond not or unless when)
 
@@ -38,8 +37,8 @@
                     partial-ord pi rem signed sqrt)
 
 (use prelude/text alphanumeric? as-str char chars debug
-                  digit? display doc eprint eprintln from-str
-                  infallible lines lower-case parse
+                  digit? display doc eprint eprintln
+                  from-str infallible lines lower-case parse
                   parse-bool-error parse-char-error
                   parse-error parse-float-error
                   parse-int-error pr-str print println prn
@@ -60,18 +59,18 @@
         chars clone collect command-line-args comment cond
         copied copy count debug dedup! def defenum defmacro
         defn defrule defstruct deftrait deftype deref derive
-        digit? display do doc doc-page docstring empty? enum
-        enumerate eprint eprintln eq err err? every? exit expect
-        expect-ok export f32 f64 false field filter find
-        first float fn fn-mut fn-once for-each from-str get
-        hash hash-map header i128 i16 i32 i64 i8 if impl
-        infallible infer integer into-hash-map
-        into-sorted-map io-error isize iter iterator keys
-        last len let let-match let-try line-seq lines local
-        loop lower-case macro map map-at map-err map-ok
-        map-some match max max-by-key min module mut neg new
-        none none? not not= number ok ok-or ok? option or
-        ord page-body pair parse parse-bool-error
+        digit? display do doc doc-body doc-header doc-page
+        docstring empty? enum enumerate eprint eprintln eq
+        err err? every? exit expect expect-ok export f32 f64
+        false field filter find first float fn fn-mut
+        fn-once for-each from-str get hash hash-map i128 i16
+        i32 i64 i8 if impl infallible infer integer
+        into-hash-map into-sorted-map io-error isize iter
+        iterator keys last len let let-match let-try
+        line-seq lines local loop lower-case macro map
+        map-at map-err map-ok map-some match max max-by-key
+        min module mut neg new none none? not not= number ok
+        ok-or ok? option or ord pair parse parse-bool-error
         parse-char-error parse-error parse-float-error
         parse-int-error partial-eq partial-ord pi pop!
         pr-str print println prn push! quote range read-line

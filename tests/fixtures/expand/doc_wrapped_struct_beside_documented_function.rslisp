@@ -15,6 +15,6 @@
 
 (def point-page (doc-page point))
 
-(def point-header (header point))
+(def point-header (doc-header point))
 
 (def point-docstring (docstring point))

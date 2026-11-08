@@ -11,13 +11,12 @@
           symbol? take type-definition-call
           type-definition-symbol value-eq)
 
-(export defmacro defrule defrule-with-value doc-page
-        docstring docstring-before-body?
+(export defmacro defrule defrule-with-value doc-body
+        doc-header doc-page docstring docstring-before-body?
         docstring-before-parameters docstrings-key document
-        documented-body? header header-shape
-        kernel-definition map-list module note-docstring
-        noted-term page-body template type-doc-key
-        value-doc-key whole-pairs?)
+        documented-body? header-shape kernel-definition
+        map-list module note-docstring noted-term template
+        type-doc-key value-doc-key whole-pairs?)
 
 (def map-list
   (fn (items function)
@@ -798,25 +797,25 @@
 
   The page is its header, a blank line, then its docstring. A term without a
   docstring has `No documentation.` in its place. The page is the text of
-  (header term) followed by the text of (page-body term). A term may be
+  (doc-header term) followed by the text of (doc-body term). A term may be
   (module path), whose page also lists the module's exports."
   (documentation-part (quote page) term))
 
-(defmacro page-body (term)
+(defmacro doc-body (term)
   "Returns a term's page after its header: a blank line, then its docstring.
 
   A term without a docstring has `No documentation.` in its place."
-  (documentation-part (quote page-body) term))
+  (documentation-part (quote doc-body) term))
 
 (defmacro docstring (term)
   "Returns the docstring of a term as a string."
   (documentation-part (quote docstring) term))
 
-(defmacro header (term)
+(defmacro doc-header (term)
   "Returns the first line of a term's definition as written.
 
   For example, (defn area (width height))."
-  (documentation-part (quote header) term))
+  (documentation-part (quote doc-header) term))
 
 (def documentation-part
   (fn (part term)
@@ -843,7 +842,7 @@
       (undocumented path "no docstring for this module"
                     "write `(module \"...\")` in the module's file")
       (string (doc-part part note)
-              (if (value-eq part (quote header))
+              (if (value-eq part (quote doc-header))
                 ""
                 (if (value-eq part (quote docstring))
                   ""
@@ -1071,11 +1070,11 @@
 
 (def doc-part
   (fn (part note)
-    (if (value-eq part (quote header))
+    (if (value-eq part (quote doc-header))
       (string (note-header note))
       (if (value-eq part (quote docstring))
         (clean-docstring (first (note-docstrings note)))
-        (if (value-eq part (quote page-body))
+        (if (value-eq part (quote doc-body))
           (page-body-text note)
           (string (note-header note) (page-body-text note)))))))
 

@@ -125,8 +125,8 @@ pub struct DocLookup<'t> {
 
 impl<'t> DocLookup<'t> {
     const TERM_SOURCE: &'static str = "<term>";
-    const HEADER_MACRO: &'static str = "header";
-    const BODY_MACRO: &'static str = "page-body";
+    const HEADER_MACRO: &'static str = "doc-header";
+    const BODY_MACRO: &'static str = "doc-body";
 
     pub fn new(terminal: &'t mut Terminal) -> Self {
         Self { terminal }

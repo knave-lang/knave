@@ -2,4 +2,4 @@
 
 (def threading-docstring (docstring ->))
 
-(def doc-header (header doc))
+(def doc-macro-header (doc-header doc))

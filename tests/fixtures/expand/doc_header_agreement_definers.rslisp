@@ -16,13 +16,13 @@
   "Holds one item."
   (rust "Box<{0}>"))
 
-(def enum-header (header labeled-shape))
+(def enum-header (doc-header labeled-shape))
 
-(def trait-header (header area-of))
+(def trait-header (doc-header area-of))
 
-(def rust-trait-header (header copyable))
+(def rust-trait-header (doc-header copyable))
 
-(def rust-type-header (header holder))
+(def rust-type-header (doc-header holder))
 
 (def enum-docstring (docstring labeled-shape))
 

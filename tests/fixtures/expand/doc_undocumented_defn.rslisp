@@ -2,4 +2,4 @@
 
 (def twice-page (doc-page twice))
 
-(def twice-header (header twice))
+(def twice-header (doc-header twice))

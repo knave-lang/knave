@@ -22,7 +22,7 @@
       (add-module-note (quote headed) name)
       (template (defn (unquote name) (unquote parameters)
                   (unquote body))))
-    (template (header (unquote name)))))
+    (template (doc-header (unquote name)))))
 
 (defn-once-into-header thrice (x) (* 3 x))
 

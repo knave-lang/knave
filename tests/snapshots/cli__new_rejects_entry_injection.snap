@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: new.assert_exit_code(1).stderr()
+---
+error[L0718]: `x :entry "../outside/escaped"` is not a project name
+ --> <name argument>:1:1
+  |
+1 | x :entry "../outside/escaped"
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected a kebab-case name
+  |
+  = note: the name names the build directory and the program
+  = help: use lowercase letters, digits and single dashes, as `my-program`

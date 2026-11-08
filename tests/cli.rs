@@ -220,6 +220,7 @@ impl Sandbox {
     const PIPE_OVERFLOWING_GREETING_REPEATS: usize = 1 << 18;
     const PIPE_OVERFLOWING_INPUT_BYTES: usize = 1 << 20;
     const READ_ONLY: u32 = 0o444;
+    const UNWRITABLE_DIRECTORY: u32 = 0o555;
     const NO_ACCESS: u32 = 0o000;
     const TERMINAL_RECORDER: &str = "script";
     const INPUT_PATIENCE: Duration = Duration::from_secs(10);
@@ -5096,8 +5097,29 @@ fn test_skips_the_project_file_in_a_directory() {
     assert!(test.assert_exit_code(0).stdout().contains("1 passed"));
 }
 
+#[test]
+fn new_creates_a_project_that_runs() {
+    let sandbox = Sandbox::new("new_project");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let run = sandbox.compiler_in("demo-app", &["run"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "hello\n");
+}
 
+#[test]
+fn new_refuses_a_directory_that_exists() {
+    let sandbox = Sandbox::new("new_existing").with_file("demo-app/notes.txt", "kept\n");
+    let new = sandbox.compiler(&["new", "demo-app"]);
+    insta::assert_snapshot!(new.assert_exit_code(2).stderr());
+}
 
+#[test]
+fn new_rejects_a_name_that_is_not_kebab_case() {
+    let sandbox = Sandbox::new("new_bad_name");
+    let new = sandbox.compiler(&["new", "DemoApp"]);
+    insta::assert_snapshot!(new.assert_exit_code(1).stderr());
+}
 
 #[test]
 fn fmt_lays_out_the_project_file_by_its_shapes() {
@@ -5120,4 +5142,68 @@ fn fmt_puts_each_bare_name_in_the_project_file_on_its_own_line() {
     insta::assert_snapshot!(fmt.assert_silent_success().stdout());
 }
 
+#[test]
+fn new_labels_each_rejected_name_on_the_argument() {
+    let sandbox = Sandbox::new("new_rejected_names");
+    let rejected = [
+        ("digit_first", "1abc"),
+        ("spaced", "a b"),
+        ("entry_injection", "x :entry \"../outside/escaped\""),
+    ];
+    for (label, name) in rejected {
+        let new = sandbox.compiler(&["new", name]);
+        insta::assert_snapshot!(
+            format!("new_rejects_{label}"),
+            new.assert_exit_code(1).stderr()
+        );
+    }
+    assert_eq!(
+        fs::read_dir(&sandbox.directory)
+            .expect("the sandbox is readable")
+            .count(),
+        0
+    );
+}
 
+#[test]
+fn new_reports_a_directory_it_cannot_write() {
+    let sandbox = Sandbox::new("new_unwritable");
+    fs::set_permissions(
+        &sandbox.directory,
+        fs::Permissions::from_mode(Sandbox::UNWRITABLE_DIRECTORY),
+    )
+    .expect("the sandbox sets permissions");
+    let new = sandbox.compiler(&["new", "demo"]);
+    let stderr = new.assert_exit_code(2).stderr();
+    assert!(
+        stderr.starts_with("error: cannot write `demo/project.rslisp`: "),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn new_rejects_an_empty_name_as_a_usage_error() {
+    let sandbox = Sandbox::new("new_empty_name");
+    let new = sandbox.compiler(&["new", ""]);
+    insta::assert_snapshot!(new.assert_exit_code(2).stderr());
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn new_removes_its_directory_after_a_failed_write() {
+    let sandbox = Sandbox::new("new_failed_write");
+    let new = Outcome::of(&mut sandbox.command(
+        Path::new("sh"),
+        &[
+            "-c",
+            "trap '' XFSZ; ulimit -f 0; exec \"$0\" new demo",
+            Sandbox::COMPILER,
+        ],
+    ));
+    let stderr = new.assert_exit_code(2).stderr();
+    assert!(
+        stderr.starts_with("error: cannot write `demo/project.rslisp`: "),
+        "{stderr}"
+    );
+    assert!(!sandbox.directory.join("demo").exists());
+}

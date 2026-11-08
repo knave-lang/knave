@@ -569,7 +569,7 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
     (proptest "1.5")))
 ```
 
-- The name follows `project` and is the only required part. It is kebab-case: words of lowercase letters and digits, joined by single dashes.
+- The name follows `project` and is the only required part. It is kebab-case: words of lowercase letters and digits, joined by single dashes, starting with a letter.
 - `:entry` defaults to `src/main.rslisp`, `:lib` to `src/lib.rslisp`, `:version` to `"0.1.0"`, and `:edition` to the compiler's edition, 2026. An edition other than 2026 is an error.
 - A dependency is a list: the name, an optional version string, then `:key value` pairs. A feature is a string.
 - A crate dependency takes a version or a `:path`, and MAY take `:features`.
@@ -577,7 +577,9 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
 - An unknown key or section is an error that suggests the closest name. A key, a section or a dependency given twice is an error.
 - The compiler reads and checks `libraries`, `dependencies` and `dev-dependencies`. Until the rest of RFC 0061 lands, a section with entries is an error, and an empty section is allowed.
 
-**`knave fmt` lays out the project file by the shapes in `prelude/project`.** The module states `(header-shape (project name) :one-per-line)` and the same marker for each section, so when a form breaks, each key and each dependency takes a line of its own. A program that uses `prelude/project` and calls `project` or a section gets `L0350`, because the form belongs only in the project file.
+**`knave new <name>` creates a project in a new directory of that name.** It writes `(project <name>)` and an entry at `src/main.rslisp` whose `main` prints `hello`. The name argument is checked first: a name that is not kebab-case is `L0718`, labeled on the argument. A path that already exists, or a file that cannot be written, is a usage error, and a failed write removes what `new` wrote.
+
+**`knave fmt` lays out the project file by the shapes in `prelude/project`.** The module states `(header-shape (project name) :one-per-line)` and the same marker for each section, so when a form breaks, each key and each dependency takes a line of its own. `knave new` writes its files through the formatter. A program that uses `prelude/project` and calls `project` or a section gets `L0350`, because the form belongs only in the project file.
 
 **A command finds its project by walking up from its file, or from the working directory when it takes no file, to the nearest `project.rslisp`.** The project root is that file's directory. The source root is the directory of `:entry`.
 

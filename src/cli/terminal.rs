@@ -163,6 +163,15 @@ impl Terminal {
 
     pub fn load_project(&mut self, path: &Path) -> Result<Project, ExitStatus> {
         let source = self.load(path)?;
+        self.read_project(source)
+    }
+
+    pub fn read_project_text(&mut self, path: &Path, text: String) -> Result<Project, ExitStatus> {
+        let source = self.add_source(path, text);
+        self.read_project(source)
+    }
+
+    fn read_project(&mut self, source: SourceId) -> Result<Project, ExitStatus> {
         let forms = self.read_source(source)?;
         let whole_file = Span::new(source, 0..self.sources.file(source).text().len());
         ProjectReader::read(&forms, whole_file)

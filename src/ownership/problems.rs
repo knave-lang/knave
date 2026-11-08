@@ -94,9 +94,20 @@ pub struct AliasLabel<'n> {
     pub target: &'n str,
 }
 
+pub struct MacroFieldRead<'n> {
+    pub macro_name: Rc<str>,
+    pub field: Rc<str>,
+    pub field_span: Span,
+    pub field_type: String,
+    pub callee: Option<&'n str>,
+}
+
 pub struct OwnershipProblems;
 
 impl OwnershipProblems {
+    const BORROWED_ARGUMENT_TITLE: &'static str =
+        "this value is borrowed, but the call needs to own it";
+
     pub fn use_after_move(name: &str, used: Span, moved: Span) -> Diagnostic {
         Self::moved_value(
             DiagnosticCode::USE_AFTER_MOVE,
@@ -561,6 +572,26 @@ impl OwnershipProblems {
         Self::borrowed_argument(span).with_help("pass a copy with `(clone ...)`")
     }
 
+    pub fn macro_field_needs_ownership(read: &MacroFieldRead<'_>) -> Diagnostic {
+        let MacroFieldRead {
+            macro_name, field, ..
+        } = read;
+        let borrowed = format!("(ref {})", read.field_type);
+        let callee = read.callee.unwrap_or("...");
+        Diagnostic::error(
+            DiagnosticCode::NEEDS_OWNERSHIP,
+            Self::BORROWED_ARGUMENT_TITLE,
+            Label::new(
+                read.field_span,
+                format!("`{macro_name}` passes this field as a borrow"),
+            ),
+        )
+        .with_help(format!(
+            "`{macro_name}` passes `:{field}` as a `{borrowed}`; take a borrow and clone it, as in \
+             `({macro_name} item :{field} (fn (({field} {borrowed})) ({callee} (clone {field}))))`"
+        ))
+    }
+
     pub fn needs_pipeline_ownership(span: Span) -> Diagnostic {
         Self::pipeline_wording(Self::borrowed_argument(span), "this value", "...")
     }
@@ -568,7 +599,7 @@ impl OwnershipProblems {
     fn borrowed_argument(span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::NEEDS_OWNERSHIP,
-            "this value is borrowed, but the call needs to own it",
+            Self::BORROWED_ARGUMENT_TITLE,
             Label::new(span, "only a borrow is available here"),
         )
     }

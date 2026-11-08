@@ -1,0 +1,9 @@
+(defstruct item
+  :name string)
+
+(defn take-name ((name string)) name)
+
+(defn main ()
+  (prn (update (->item :name (str "plum")) :name take-name))
+  (prn (update (->item :name (str "pear"))
+               :name (fn (name) (take-name (clone name))))))

@@ -3637,6 +3637,7 @@ impl TypeChecker {
         } else {
             Type::shared(ty)
         };
+        self.record_macro_field_read(label, span);
         Ok(TypedExpr {
             kind: TypedExprKind::Struct(TypedStructExpr::Field(Box::new(value), label.clone())),
             ty,

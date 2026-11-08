@@ -1,0 +1,29 @@
+(defstruct item
+  :name string
+  :count i64)
+
+(defstruct shelf
+  :top item)
+
+(defn build-shelf ()
+  (println "built shelf")
+  (->shelf :top (build)))
+
+(defn shout ((text (ref str)))
+  (str text "?"))
+
+(defn build ()
+  (println "built")
+  (->item :name (str "pear") :count 1))
+
+(defn main ()
+  (local first-item (->item :name (str "plum") :count 1))
+  (local counted
+    (update first-item
+            :count (fn (count) (+ count 1))))
+  (local named (update counted :name shout))
+  (prn named)
+  (prn (update (build) :count neg))
+  (local stocked (->shelf :top (build)))
+  (prn (update (:top stocked) :count neg))
+  (prn (update (:top (build-shelf)) :count neg)))

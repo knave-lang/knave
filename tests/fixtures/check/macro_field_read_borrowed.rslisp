@@ -1,0 +1,18 @@
+(defstruct item
+  :name string)
+
+(defn take-name ((name string)) name)
+
+(defrule take-field
+  ((value) (take-name (:name value))))
+
+(defrule rename
+  ((value) (update value :name take-name)))
+
+(defrule pluck
+  ((value key) (take-name (key value))))
+
+(defn main ()
+  (prn (take-field (->item :name (str "plum"))))
+  (prn (rename (->item :name (str "pear"))))
+  (prn (pluck (->item :name (str "fig")) :name)))

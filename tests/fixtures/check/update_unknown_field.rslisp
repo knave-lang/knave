@@ -1,0 +1,5 @@
+(defstruct item
+  :count i64)
+
+(defn main ()
+  (prn (update (->item :count 1) :total neg)))

@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/update_owning_function.rslisp
+---
+error[L0503]: this value is borrowed, but the call needs to own it
+ --> check/update_owning_function.rslisp:7:44
+  |
+7 |   (prn (update (->item :name (str "plum")) :name take-name))
+  |                                            ^^^^^ `update` passes this field as a borrow
+  |
+  = help: `update` passes `:name` as a `(ref string)`; take a borrow and clone it, as in `(update item :name (fn ((name (ref string))) (take-name (clone name))))`
+
+error[L0503]: this value is borrowed, but the call needs to own it
+ --> check/update_owning_function.rslisp:9:16
+  |
+9 |                :name (fn (name) (take-name (clone name))))))
+  |                ^^^^^ `update` passes this field as a borrow
+  |
+  = help: `update` passes `:name` as a `(ref string)`; take a borrow and clone it, as in `(update item :name (fn ((name (ref string))) (... (clone name))))`

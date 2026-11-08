@@ -2,11 +2,11 @@
 
 (def grid-page (doc-page (module modules/grid)))
 
-(def grid-body (page-body (module modules/grid)))
+(def grid-body (doc-body (module modules/grid)))
 
 (def grid-docstring (docstring (module modules/grid)))
 
-(def grid-header (header (module modules/grid)))
+(def grid-header (doc-header (module modules/grid)))
 
 (defn main ()
   (doc (module modules/grid))

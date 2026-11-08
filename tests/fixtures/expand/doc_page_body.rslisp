@@ -4,13 +4,13 @@
 
 (defn halve (x) (/ x 2))
 
-(def twice-body (page-body twice))
+(def twice-body (doc-body twice))
 
-(def halve-body (page-body halve))
+(def halve-body (doc-body halve))
 
 (def twice-page-agrees
   (= (doc-page twice)
-     (str (header twice) (page-body twice))))
+     (str (doc-header twice) (doc-body twice))))
 
 (defn main ()
   (println twice-body halve-body twice-page-agrees))

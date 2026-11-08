@@ -12,7 +12,7 @@
 (def prose-docstring (docstring (module modules/prose)))
 
 (def entry-header
-  (header (module doc_module_key_is_no_name)))
+  (doc-header (module doc_module_key_is_no_name)))
 
 (def entry-body
-  (page-body (module doc_module_key_is_no_name)))
+  (doc-body (module doc_module_key_is_no_name)))

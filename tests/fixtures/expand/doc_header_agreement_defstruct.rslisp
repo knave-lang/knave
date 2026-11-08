@@ -7,6 +7,6 @@
   :width a
   :height a)
 
-(def noted-header (header noted))
+(def noted-header (doc-header noted))
 
-(def plain-header (header plain))
+(def plain-header (doc-header plain))

@@ -2,7 +2,7 @@
 
 (def module 1)
 
-(def grid-header (header (module modules/grid)))
+(def grid-header (doc-header (module modules/grid)))
 
 (defn parameter-head (module)
-  (header (module modules/grid)))
+  (doc-header (module modules/grid)))

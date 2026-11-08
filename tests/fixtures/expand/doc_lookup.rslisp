@@ -12,7 +12,7 @@
 
 (def twice-docstring (docstring twice))
 
-(def twice-header (header twice))
+(def twice-header (doc-header twice))
 
 (def unless-page (doc-page unless))
 

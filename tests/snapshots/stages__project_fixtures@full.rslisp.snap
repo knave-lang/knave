@@ -104,15 +104,6 @@ Project {
         },
     ],
 }
-path libraries: ["hints"]
-error[L0719]: this compiler cannot fetch git library `keymap` yet
- --> project/full.rslisp:7:22
-  |
-7 |                     (keymap :git "https://example.com/keymap"
-  |                      ^^^^^^ this library comes from git
-  |
-  = help: use a `:path` to a local copy for now
-
 error[L0719]: this compiler cannot build `dependencies` yet
   --> project/full.rslisp:10:11
    |

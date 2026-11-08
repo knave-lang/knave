@@ -178,6 +178,7 @@ cargo test <narrowest test>
 | `xtask/` | `-p xtask` |
 
 - To run one fixture of a stage, prefix the stage's command with `INSTA_GLOB_FILTER='**/<fixture file name>'`.
+- To set the worker count of each stage test, set `KNAVE_FIXTURE_WORKERS` to a positive whole number.
 
 **CI posts the front end's instruction counts on each ready pull request and uploads its callgrind profiles.** If a ready pull request carries the change, read them from CI as `docs/pull-requests.md` says, and NEVER run `cargo xtask bench measure`. Otherwise, you MAY measure them on Linux with `cargo xtask bench measure`. To compare two checkouts, measure each with `--workspace <checkout> --save <file>`, then run `cargo xtask bench compare <before> <after>`.
 

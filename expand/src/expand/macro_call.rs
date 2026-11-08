@@ -10,7 +10,7 @@ use super::returned_arguments::ReturnedArguments;
 use super::shape::{Shape, WrittenDefiner};
 use crate::core::{BindingId, BindingKind, DefinitionForm, Expr, KernelForm, Lambda, Namespace};
 use crate::diagnostic::Diagnostic;
-use crate::interpret::{Closure, Env, Interpreter, Value};
+use crate::interpret::{Closure, Env, Interpreter, PassedLimit, Value};
 use crate::modules::ModuleSources;
 use crate::reader::Form;
 use crate::scope::{Phase, Scope};
@@ -245,8 +245,9 @@ impl Expander<'_> {
             return Err(ExpandProblems::macro_result(output.describe(), call_site));
         }
         match self.form_budgets.current().admitted_form(output) {
-            Some(form) => Ok(form),
-            None => Err(self.exhaust_budget(binding, call_site)),
+            Ok(form) => Ok(form),
+            Err(PassedLimit::FormCount) => Err(self.exhaust_budget(binding, call_site)),
+            Err(PassedLimit::Nesting) => Err(self.output_nests_too_deep(binding, call_site)),
         }
     }
 
@@ -271,6 +272,11 @@ impl Expander<'_> {
     fn exhaust_budget(&mut self, binding: BindingId, call_site: Span) -> Diagnostic {
         self.form_budgets.current().exhaust();
         self.expansion_too_large(binding, call_site)
+    }
+
+    fn output_nests_too_deep(&self, binding: BindingId, call_site: Span) -> Diagnostic {
+        let name = self.tables.bindings.get(binding).name();
+        ExpandProblems::expansion_nests_too_deep(call_site, Form::NESTING_LIMIT, Some(name))
     }
 
     fn expansion_too_large(&self, binding: BindingId, call_site: Span) -> Diagnostic {

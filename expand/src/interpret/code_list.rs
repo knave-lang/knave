@@ -6,6 +6,12 @@ use super::Value;
 use crate::reader::{Form, FormKind};
 use crate::source::Span;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PassedLimit {
+    FormCount,
+    Nesting,
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CodeList {
     items: ListItems,
@@ -83,13 +89,23 @@ impl CodeList {
         Form::new(FormKind::List(self.forms()), self.span)
     }
 
-    pub fn to_form_within(&self, allowance: &mut usize) -> Option<Form> {
-        *allowance = allowance.checked_sub(1)?;
+    pub fn to_form_within(
+        &self,
+        allowance: &mut usize,
+        enclosing_lists: usize,
+    ) -> Result<Form, PassedLimit> {
+        if enclosing_lists == Form::NESTING_LIMIT {
+            return Err(PassedLimit::Nesting);
+        }
+        *allowance = allowance.checked_sub(1).ok_or(PassedLimit::FormCount)?;
         let mut forms = Vec::with_capacity(self.len());
         for index in self.range.clone() {
-            forms.push(self.item(index).to_form_within(allowance)?);
+            forms.push(
+                self.item(index)
+                    .to_form_within(allowance, enclosing_lists + 1)?,
+            );
         }
-        Some(Form::new(FormKind::List(forms), self.span))
+        Ok(Form::new(FormKind::List(forms), self.span))
     }
 
     fn item(&self, index: usize) -> Value {
@@ -120,5 +136,60 @@ impl CodeList {
             items: ListItems::Built(Rc::clone(buffer)),
             span,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CodeList, PassedLimit};
+    use crate::interpret::Value;
+    use crate::reader::Form;
+    use crate::source::{SourceId, Span};
+
+    struct NestedList;
+
+    impl NestedList {
+        const FAR_PAST_THE_LIMIT: usize = 100_000;
+        const NO_ENCLOSING_LISTS: usize = 0;
+        const STACK_THAT_CAN_DROP_IT: usize = 256 * 1024 * 1024;
+
+        fn of_depth(depth: usize) -> Value {
+            let span = Span::new(SourceId::new(0), 0..1);
+            let innermost = Value::List(CodeList::new(Vec::new(), span));
+            (1..depth).fold(innermost, |inner, _| {
+                Value::List(CodeList::new(vec![inner], span))
+            })
+        }
+
+        fn on_a_stack_that_can_drop_it<R>(work: impl FnOnce() -> R) -> R {
+            stacker::grow(Self::STACK_THAT_CAN_DROP_IT, work)
+        }
+
+        fn converted(value: &Value) -> Result<Form, PassedLimit> {
+            let mut allowance = usize::MAX;
+            value.to_form_within(&mut allowance, Self::NO_ENCLOSING_LISTS)
+        }
+    }
+
+    #[test]
+    fn a_built_list_at_the_nesting_limit_becomes_a_form() {
+        let value = NestedList::of_depth(Form::NESTING_LIMIT);
+        assert!(NestedList::converted(&value).is_ok());
+    }
+
+    #[test]
+    fn a_built_list_one_past_the_nesting_limit_nests_too_deeply() {
+        let value = NestedList::of_depth(Form::NESTING_LIMIT + 1);
+        let refusal = NestedList::converted(&value).err();
+        assert_eq!(refusal, Some(PassedLimit::Nesting));
+    }
+
+    #[test]
+    fn a_built_list_far_past_the_nesting_limit_nests_too_deeply() {
+        let refusal = NestedList::on_a_stack_that_can_drop_it(|| {
+            let value = NestedList::of_depth(NestedList::FAR_PAST_THE_LIMIT);
+            NestedList::converted(&value).err()
+        });
+        assert_eq!(refusal, Some(PassedLimit::Nesting));
     }
 }

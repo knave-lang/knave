@@ -1,0 +1,7 @@
+(export shared-lemming shown-lemming)
+
+(defn shown-lemming () 1)
+
+(defn hidden-lemming () 2)
+
+(defn shared-lemming () 3)

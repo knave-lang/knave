@@ -5,19 +5,21 @@
           keyword-name keyword? len list list?
           module-definitions module-exports module-notes
           module-symbol nth number-add number-lt number-sub
-          prepend rest same-binding? string string-drop
-          string-length string-lines string-strip-prefix
-          string-strip-suffix string-trim-start string?
-          symbol symbol-name symbol? take
-          type-definition-call type-definition-symbol
-          value-eq)
+          prepend program-modules rest same-binding?
+          sorted-names string string-contains? string-drop
+          string-length string-lines string-lowercase
+          string-strip-prefix string-strip-suffix
+          string-trim-start string? symbol symbol-name
+          symbol? take type-definition-call
+          type-definition-symbol value-eq)
 
 (export defmacro defrule defrule-with-value doc-body
         doc-header doc-page docstring docstring-before-body?
         docstring-before-parameters docstrings-key document
         documented-body? header-shape kernel-definition
-        listing-results map-list module note-docstring noted-term template
-        type-doc-key value-doc-key whole-pairs?)
+        listing-part map-list module note-docstring
+        noted-term template type-doc-key value-doc-key
+        whole-pairs?)
 
 (def map-list
   (fn (items function)
@@ -799,7 +801,9 @@
   The page is its header, a blank line, then its docstring. A term without a
   docstring has `No documentation.` in its place. The page is the text of
   (doc-header term) followed by the text of (doc-body term). A term may be
-  (module path), whose page also lists the module's exports."
+  (module path), whose page also lists the module's exports, or a listing:
+  (dir), (dir module), (apropos text) or (find-doc text), whose page is the
+  form and its results."
   (documentation-part (quote page) term))
 
 (defmacro doc-body (term)
@@ -843,8 +847,16 @@
     (if (list? term)
       (if (empty? term)
         false
-        (value-eq (first term) (quote dir)))
+        (if (dir-listing? term)
+          true
+          (if (value-eq (first term) (quote apropos))
+            true
+            (value-eq (first term) (quote find-doc)))))
       false)))
+
+(def dir-listing?
+  (fn (term)
+    (value-eq (first term) (quote dir))))
 
 (def listing-part
   (fn (part term)
@@ -852,62 +864,163 @@
       (listing-page part term)
       (malformed-listing term))))
 
-(def listing-results
-  (fn (term)
-    (if (listing-arguments? term)
-      (listing-text term)
-      (malformed-listing term))))
-
 (def listing-arguments?
   (fn (term)
-    (if (empty? (rest term))
-      true
-      (if (value-eq (len term) 2)
-        (symbol? (nth term 1))
+    (local written (rest term))
+    (if (dir-listing? term)
+      (if (empty? written)
+        true
+        (if (value-eq (len written) 1)
+          (symbol? (first written))
+          false))
+      (if (value-eq (len written) 1)
+        (if (symbol? (first written))
+          true
+          (string? (first written)))
         false))))
 
 (def malformed-listing
   (fn (term)
-    (fail "`dir` takes one module name, or nothing"
-      term
-      "write `(dir)`, or a module as in `(dir geometry)`"
-      (quote (:label "not one module name")))))
+    (local head (first term))
+    (if (dir-listing? term)
+      (fail "`dir` takes one module name, or nothing"
+        term
+        "write `(dir)`, or a module as in `(dir geometry)`"
+        (quote (:label "not one module name")))
+      (fail (string "`" head
+                    "` takes one symbol or string to search for")
+        term
+        (string "write `(" head " sort)`, or `(" head
+                " \"sorted map\")` " "for text with spaces")
+        (quote (:label "not one search text"))))))
 
 (def listing-page
   (fn (part term)
-    (if (value-eq part (quote doc-header))
-      (string term)
-      (if (value-eq part (quote docstring))
-        (undocumented term "a listing has no docstring"
-                      "read its results with `doc-page`")
-        (if (value-eq part (quote doc-body))
-          (string "\n\n" (listing-text term))
-          (string term "\n\n" (listing-text term)))))))
+    (if (value-eq part (quote results))
+      (listing-text term)
+      (if (value-eq part (quote doc-header))
+        (string term)
+        (if (value-eq part (quote docstring))
+          (undocumented term "a listing has no docstring"
+                        "read its results with `doc-page`")
+          (if (value-eq part (quote doc-body))
+            (string "\n\n" (listing-text term))
+            (string term "\n\n" (listing-text term))))))))
 
 (def listing-text
   (fn (term)
-    (local names (listed-names (rest term)))
-    (if (empty? names) "No names." (join-words names))))
+    (if (dir-listing? term)
+      (dir-text term)
+      (if (value-eq (first term) (quote apropos))
+        (apropos-text (nth term 1))
+        (find-doc-text (nth term 1))))))
 
-(def listed-names
-  (fn (arguments)
-    (if (empty? arguments)
-      (module-definitions (current-module))
-      (module-exports (first arguments)))))
+(def dir-text
+  (fn (term)
+    (local names
+      (if (empty? (rest term))
+        (module-definitions (current-module))
+        (module-exports (nth term 1))))
+    (if (empty? names) "No names." (join-with " " names))))
 
-(def join-words
-  (fn (words)
-    (if (empty? words)
-      ""
-      (join-words-onto (string (first words))
-                       (rest words)))))
+(def apropos-text
+  (fn (text)
+    (local wanted (string-lowercase (string text)))
+    (local names
+      (sorted-names (items-where (fn (name) (name-holds? wanted name))
+                                 (searched-names))))
+    (if (empty? names)
+      (string "No matches. Try "
+              (list (quote find-doc) text)
+              " to search docstrings.")
+      (join-with " " names))))
 
-(def join-words-onto
-  (fn (joined words)
-    (if (empty? words)
-      joined
-      (recur (string joined " " (first words))
-             (rest words)))))
+(def find-doc-text
+  (fn (text)
+    (local wanted (string-lowercase (string text)))
+    (local named
+      (items-where (fn (name) (name-holds? wanted name))
+                   (searched-names)))
+    (local documented
+      (concat (documented-program-names wanted)
+              (items-where (fn (name)
+                             (if (name-holds? wanted name)
+                               false
+                               (docstring-holds? wanted name)))
+                           (module-exports (quote prelude)))))
+    (local entries
+      (without-repeated-headers
+        (distinct-entries (map-list (concat named documented) listing-entry))))
+    (if (empty? entries) "No matches." (join-lines entries))))
+
+(def documented-program-names
+  (fn (wanted)
+    (local noted-in
+      (fn (names paths)
+        (if (empty? paths)
+          names
+          (recur (concat names
+                         (sorted-names
+                           (map-list
+                             (items-where
+                               (fn (note) (only-note-holds? wanted note))
+                               (module-notes (first paths) docstrings-key))
+                             noted-term)))
+                 (rest paths)))))
+    (noted-in (list) (program-modules))))
+
+(def only-note-holds?
+  (fn (wanted note)
+    (if (name-holds? wanted (noted-term note))
+      false
+      (note-holds? wanted note))))
+
+(def searched-names
+  (fn ()
+    (local definitions-of
+      (fn (names paths)
+        (if (empty? paths)
+          names
+          (recur (concat names (module-definitions (first paths)))
+                 (rest paths)))))
+    (concat (definitions-of (list) (program-modules))
+            (module-exports (quote prelude)))))
+
+(def items-where
+  (fn (matches? names)
+    (local kept-of
+      (fn (kept remaining)
+        (if (empty? remaining)
+          kept
+          (recur (if (matches? (first remaining))
+                   (concat kept (list (first remaining)))
+                   kept)
+                 (rest remaining)))))
+    (kept-of (list) names)))
+
+(def name-holds?
+  (fn (wanted name)
+    (string-contains? (string-lowercase (symbol-name name))
+                      wanted)))
+
+(def docstring-holds?
+  (fn (wanted name)
+    (local values
+      (docstring-notes (definition-symbol name "doc")
+                       (value-doc-key name)))
+    (local notes
+      (if (empty? values)
+        (docstring-notes (type-definition-symbol name "doc")
+                         (type-doc-key name))
+        values))
+    (if (empty? notes)
+      false
+      (note-holds? wanted (first notes)))))
+
+(def note-holds?
+  (fn (wanted note)
+    (string-contains? (string-lowercase (nth note (number-sub (len note) 1)))
+                      wanted)))
 
 (def module-part
   (fn (part path)
@@ -956,12 +1069,27 @@
 
 (def distinct-entries
   (fn (entries)
-    (if (empty? entries)
-      entries
-      (if (shared-entry? (first entries) (rest entries))
-        (distinct-entries (rest entries))
-        (prepend (first entries)
-                 (distinct-entries (rest entries)))))))
+    (local kept-of
+      (fn (kept remaining)
+        (if (empty? remaining)
+          kept
+          (recur (if (shared-entry? (first remaining) (rest remaining))
+                   kept
+                   (concat kept (list (first remaining))))
+                 (rest remaining)))))
+    (kept-of (list) entries)))
+
+(def without-repeated-headers
+  (fn (entries)
+    (local kept-of
+      (fn (kept remaining)
+        (if (empty? remaining)
+          kept
+          (recur (if (shared-entry? (first remaining) kept)
+                   kept
+                   (concat kept (list (first remaining))))
+                 (rest remaining)))))
+    (kept-of (list) entries)))
 
 (def shared-entry?
   (fn (entry later)
@@ -1222,17 +1350,20 @@
         lines))))
 
 (def join-lines
-  (fn (lines)
-    (if (empty? lines)
-      ""
-      (join-onto (first lines) (rest lines)))))
+  (fn (lines) (join-with "\n" lines)))
 
-(def join-onto
-  (fn (joined lines)
-    (if (empty? lines)
-      joined
-      (recur (string joined "\n" (first lines))
-             (rest lines)))))
+(def join-with
+  (fn (separator parts)
+    (local joined-onto
+      (fn (joined remaining)
+        (if (empty? remaining)
+          joined
+          (recur (string joined separator (first remaining))
+                 (rest remaining)))))
+    (if (empty? parts)
+      ""
+      (joined-onto (string (first parts))
+                   (rest parts)))))
 
 (def without-trailing-newlines
   (fn (text)

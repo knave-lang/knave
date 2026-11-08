@@ -1,5 +1,5 @@
 (use prelude/macros defmacro doc-page document header-shape
-                    listing-results map-list template)
+                    listing-part map-list template)
 
 (use prelude/pair pair)
 (use prelude/syntax let)
@@ -16,12 +16,13 @@
 
 (use prelude/io io-error)
 
-(export alphanumeric? as-str char chars debug digit? dir display
-        doc eprint eprintln from-str infallible lines
-        lower-case parse parse-bool-error parse-char-error
-        parse-error parse-float-error parse-int-error pr-str
-        print print-form println prn show split split-when
-        str subs trim upper-case whitespace?)
+(export alphanumeric? apropos as-str char chars debug digit?
+        dir display doc eprint eprintln find-doc from-str
+        infallible lines lower-case parse parse-bool-error
+        parse-char-error parse-error parse-float-error
+        parse-int-error pr-str print print-form println prn
+        show split split-when str subs trim upper-case
+        whitespace?)
 
 (rust-type formatter "std::fmt::Formatter<'_>")
 
@@ -488,9 +489,15 @@
 (def dir
   (macro (form) (printed-listing form)))
 
+(def apropos
+  (macro (form) (printed-listing form)))
+
+(def find-doc
+  (macro (form) (printed-listing form)))
+
 (def printed-listing
   (fn (form)
-    (template (println (unquote (listing-results form))))))
+    (template (println (unquote (listing-part (quote results) form))))))
 
 (document (dir module)
   "Prints the names a module exports, in name order.
@@ -499,7 +506,40 @@
   names included. `(doc-page (dir module))` keeps the listing as a string.
 
   (dir prelude/pair)
-  => pair pair/pair")
+  => pair pair/pair
+
+  In a module that defines `main` and `twice`:
+
+  (dir)
+  => main twice")
+
+(document (apropos text)
+  "Prints the names that hold a text, ignoring case, in name order.
+
+  The text is a symbol, or a string when it holds spaces. A search covers
+  each module the program loads, private names included, and what `prelude`
+  exports. A search in a library's body misses the modules that load after
+  it, such as the module that imports it. With no match, it prints
+  `No matches.` and points to `find-doc`.
+
+  (apropos sort)
+  => into-sorted-map sort! sort-by! sorted-map")
+
+(document (find-doc text)
+  "Prints the header and summary of each term that holds a text.
+
+  It ignores case. The text is a symbol, or a string when it holds spaces.
+  It covers what `apropos` covers. It lists the names that hold the text
+  first, then the terms whose docstring alone holds it, anywhere in the
+  docstring.
+
+  This page holds its own example's text, so the example lists it too:
+
+  (find-doc ascending)
+  => (find-doc text)
+         Prints the header and summary of each term that holds a text.
+     (sort! items)
+         Sorts a vector in place, in ascending order.")
 
 (def display-type
   (fn (variables)

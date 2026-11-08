@@ -1,0 +1,15 @@
+(def apropos-number (apropos 1))
+
+(def apropos-no-text (apropos))
+
+(def apropos-two-texts (apropos one two))
+
+(def find-doc-number (find-doc 1))
+
+(def find-doc-no-text (find-doc))
+
+(def looked-up (doc-page (apropos 1)))
+
+(def header-of-malformed (doc-header (find-doc)))
+
+(def apropos-docstring (docstring (apropos quokka)))

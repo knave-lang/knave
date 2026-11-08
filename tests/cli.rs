@@ -1782,9 +1782,9 @@ fn doc_reports_a_term_that_is_no_name_or_module_as_a_program_error() {
         let sandbox = Sandbox::new("doc_malformed_term");
         let doc = sandbox.compiler(&["doc", term]);
         assert!(
-            doc.assert_exit_code(1)
-                .stderr()
-                .starts_with("error[L0301]: a documentation lookup takes a name or a module\n"),
+            doc.assert_exit_code(1).stderr().starts_with(
+                "error[L0301]: a documentation lookup takes a name, a module or a listing\n"
+            ),
             "{term}"
         );
     }

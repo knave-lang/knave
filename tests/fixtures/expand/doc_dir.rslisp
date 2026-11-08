@@ -1,0 +1,19 @@
+(use doc_dir/geometry area)
+(use doc_dir/empty)
+
+(defn own-helper () (area 2 3))
+
+(def own-names (doc-page (dir)))
+
+(def geometry-names (doc-page (dir doc_dir/geometry)))
+
+(def no-names (doc-page (dir doc_dir/empty)))
+
+(def listing-header (doc-header (dir doc_dir/geometry)))
+
+(def listing-body (doc-body (dir doc_dir/geometry)))
+
+(defn main ()
+  (dir)
+  (dir doc_dir/geometry)
+  (println (own-helper)))

@@ -1,0 +1,13 @@
+(def not-a-name (dir 1))
+
+(def two-names (dir one two))
+
+(def looked-up (doc-page (dir 1)))
+
+(def header-of-malformed (doc-header (dir 1)))
+
+(def no-docstring (docstring (dir)))
+
+(def empty-term (doc-page ()))
+
+(def unknown-module (dir nowhere))

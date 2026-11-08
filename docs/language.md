@@ -390,7 +390,7 @@ The prelude builds three tools on top of `macro`:
 
 A `defrule` clause is a pattern and a template. In a pattern, `name ...` matches zero or more forms, at any depth, and `(quote name)` matches the symbol `name` itself. The repeated variables that a template fills together under one `...` must have the same length: with `(defrule zip (((a ...) (b ...)) (vec (pair a b) ...)))`, the call `(zip (1 2) (4 5 6))` is `L0330`, with a caret on the `6` that has no matching `a`. A `defmacro` parameter list is a pattern in the same language.
 
-Write a macro with `defrule` when its expansion follows from the shape of its call. Use `defmacro` only for a macro that computes, such as one that counts forms or builds names. `dotimes` and `case` need no computation:
+Write a macro with `defrule` when its expansion follows from the shape of its call. Use `defmacro` only for a macro that computes, such as one that counts forms or builds names. `dotimes` and `case` need no computation. The prelude has neither, so a program that wants them writes them, as here:
 
 ```lisp
 (defrule dotimes
@@ -398,6 +398,11 @@ Write a macro with `defrule` when its expansion follows from the shape of its ca
 
 (defrule case
   ((value clause ...) (let (subject value) (case-clauses subject clause ...))))
+
+(defrule case-clauses
+  ((subject ((quote else) body)) body)
+  ((subject (test body) clause ...)
+   (if (= subject test) body (case-clauses subject clause ...))))
 ```
 
 One implementation per name keeps the compiler small. Compile-time twins of the prelude's Rust templates would disagree with Rust on integer width, overflow, division by zero and floats. Most macros need no computation when written with `defrule`.

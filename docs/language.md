@@ -338,7 +338,7 @@ A macro is a function from form to form that runs at compile time:
 (def defn
   (macro (form)
     (list (quote def) (nth form 1)
-          (prepend (quote fn) (drop 2 form)))))
+          (prepend (quote fn) (drop form 2)))))
 ```
 
 Macro bodies run in the compiler's interpreter. They use the kernel forms, the built-in `code` module, and functions that use only those. A `rust` definition belongs to the program, so macro code cannot run `+`, `<` or any other Rust template. To compute in the program, a macro returns the code, as in `(template (+ (unquote x) 1))`.
@@ -486,11 +486,11 @@ The compiler provides the `code` module for macro bodies. Code that uses it exis
 
 | Built-ins | Purpose |
 |---|---|
-| `first rest list prepend concat len empty? nth take drop` | Build and take apart lists of forms. |
+| `first rest list prepend concat len empty? nth take drop` | Build and take apart lists of forms. Data comes first, as in a program: `(take items 2)` and `(drop items 2)`. |
 | `symbol? keyword? list? string? number?` | Test what kind of form a value is. |
 | `symbol-name`, `keyword-name`, `keyword-field`, `field-keyword`, `keyword-trim-end`, `(symbol context part...)`, `(string part...)` | Read and build names and strings. |
 | `escape-string`, `escape-char`, `escape-format`, `string-strip-suffix`, `string-strip-prefix` | Escape a string for a Rust string literal, a Rust character literal or a format string in a template, and drop a suffix or a prefix. `escape-string` and `escape-format` write a control character as a `\u{..}` escape, so `"count\u{1e}"` stays readable. |
-| `(string-lines text)`, `(string-trim-start text)`, `(string-length text)`, `(string-drop count text)` | Split a string at each newline into a list of strings, drop its leading whitespace, count its characters, and drop its first `count` characters. A `count` past the end is an error. |
+| `(string-lines text)`, `(string-trim-start text)`, `(string-length text)`, `(string-drop text count)` | Split a string at each newline into a list of strings, drop its leading whitespace, count its characters, and drop its first `count` characters. A `count` past the end is an error. |
 | `(same-binding? left right)` | Test whether two symbols refer to the same binding. |
 | `(pattern-head? head)` | Test whether the symbol `head` heads a struct or variant pattern where it is written: it names a struct type, a variant, a name that a failed definer declared, or the short name of a visible variant. |
 | `(definition-symbol term part...)` | Build a symbol, as `symbol` does, with the scopes of the module that defines the binding `term` refers to. An unbound `term` is an unbound-name error at `term`. A kernel form, kernel type or kernel constant gives a symbol with the scopes of `prelude`, the module that documents it. Any other binding that no module defines, such as a local, gives a symbol with no scopes. |
@@ -517,7 +517,7 @@ A keyword is a symbol whose name is `:` followed by at least one character, such
 
 A `fail` error takes the code `L0301` unless its description names another. The description is a list of `:part value` pairs, as in `(template (:code repeated-parameter :label "given again here" :earlier (unquote first) :earlier-label "first given here"))`. `:code` names a macro-stage diagnostic by its name in `expand/src/diagnostic/code.rs`, lowercased with `-` for `_`, so a prelude error gets its own code without restating the code list. A code of another stage is an error, because a code's first digit names the stage that reports it. `:label "text"` names the label of `form`; a failure with no `:label` labels `form` "here". `:earlier` marks `form` as a repeat of an earlier form and needs `:earlier-label "text"`, which names the label of that earlier form. `:note "text"` adds a `note:` line. `:suggest` names a symbol that replaces `form`, and the help line introduces the replacement, as in `(fail message key "a parameter with a similar name exists" (template (:code unknown-parameter :suggest (unquote closest))))`. The message, the help line and the labels are the macro's own words.
 
-Macro code that maps a function over a list of forms imports `map-list` with `(use prelude/macros map-list)`.
+Macro code that maps a function over a list of forms imports `map-list` with `(use prelude/macros map-list)`, and calls it as `(map-list items function)`.
 
 ### Hygiene
 

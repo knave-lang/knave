@@ -247,9 +247,9 @@
     (list (quote where)
           variables
           (list (quote fn)
-                (map-list (fn (variable)
-                            (list (quote ref) (first variable)))
-                          variables)
+                (map-list variables
+                          (fn (variable)
+                            (list (quote ref) (first variable))))
                 result))))
 
 (def format-template
@@ -273,7 +273,7 @@
     (if (string? part)
       (list (list (quote literal) part))
       (if (splices? part (quote str))
-        (flatten-parts (drop 1 part))
+        (flatten-parts (drop part 1))
         (if (splices? part (quote pr-str))
           (list (list (quote shown) (nth part 1)))
           (list (list (quote value) part)))))))
@@ -368,7 +368,7 @@
 (def without-trailing-newline
   (fn (pieces)
     (local text (nth (last-piece pieces) 1))
-    (concat (take (number-sub (len pieces) 1) pieces)
+    (concat (take pieces (number-sub (len pieces) 1))
             (list (list (quote literal) (string-strip-suffix text "\n"))))))
 
 (def print-call
@@ -491,9 +491,9 @@
           variables
           (list (quote fn)
                 (concat (list (list (quote mut) (quote formatter)))
-                        (map-list (fn (variable)
-                                    (list (quote ref) (first variable)))
-                                  variables))
+                        (map-list variables
+                                  (fn (variable)
+                                    (list (quote ref) (first variable)))))
                 (quote fmt-result)))))
 
 (def display-template
@@ -533,11 +533,11 @@
 
 (def display-match
   (fn (form out)
-    (concat (take 2 form)
-            (map-list (fn (arm)
+    (concat (take form 2)
+            (map-list (drop form 2)
+                      (fn (arm)
                         (list (first arm)
-                              (display-body (rest arm) out)))
-                      (drop 2 form)))))
+                              (display-body (rest arm) out)))))))
 
 (def display-if
   (fn (form out)

@@ -103,7 +103,7 @@
     (if (empty? pairs)
       (list)
       (prepend (field-initializer (first pairs) (rest pairs))
-               (field-initializers (drop 2 pairs))))))
+               (field-initializers (drop pairs 2))))))
 
 (def field-initializer
   (fn (key more)
@@ -125,7 +125,7 @@
                                 value
                                 (list (first pairs))
                                 (nth pairs 1))
-                          (drop 2 pairs)))))
+                          (drop pairs 2)))))
 
 (def unpaired-key-error
   (fn (value arguments)

@@ -363,7 +363,7 @@ mod tests {
         const SUMMING: &str = "(defn main () (println (sum (vec 1 2))))";
         const MACRO_HELPER: &str = "(use code rest)
             (use prelude/macros map-list)
-            (def one (macro (form) (do (map-list (fn (item) item) (rest form)) 1)))
+            (def one (macro (form) (do (map-list (rest form) (fn (item) item)) 1)))
             (defn main () (println (one a b)))";
 
         fn expand(text: &str) -> Program {

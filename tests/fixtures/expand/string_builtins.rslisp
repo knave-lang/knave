@@ -9,9 +9,9 @@
 
 (defmacro show-length (form) (string-length "naïve"))
 
-(defmacro show-drop (form) (string-drop 2 "naïve"))
+(defmacro show-drop (form) (string-drop "naïve" 2))
 
-(defmacro show-drop-all (form) (string-drop 5 "naïve"))
+(defmacro show-drop-all (form) (string-drop "naïve" 5))
 
 (def lines (show-lines "unused"))
 

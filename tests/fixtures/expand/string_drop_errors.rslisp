@@ -1,5 +1,5 @@
 (use code string-drop)
 
-(defmacro drop-past-end (form) (string-drop 6 "naïve"))
+(defmacro drop-past-end (form) (string-drop "naïve" 6))
 
 (def past-end (drop-past-end "unused"))

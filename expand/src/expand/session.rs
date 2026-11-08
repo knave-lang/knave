@@ -125,6 +125,14 @@ impl ExpansionSession<'_> {
             .exported(name, Namespace::Value)
     }
 
+    pub fn module_value(&self, module: &str, name: &str) -> Option<BindingId> {
+        let module = self.expander.modules.find(&ModulePath::new(module))?;
+        self.expander
+            .modules
+            .get(module)
+            .exported(name, Namespace::Value)
+    }
+
     pub fn binding(&self, term: &Form) -> Option<BindingId> {
         let scoped = self.in_entry_scope(term.clone());
         self.expander.term_binding(scoped.as_symbol()?)

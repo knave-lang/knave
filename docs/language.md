@@ -225,13 +225,13 @@ The prelude binds these Rust types, the traits that abstract them, and the funct
 | `(sorted-map key value)` | `std::collections::BTreeMap<K, V>` | `sorted-map get keys vals iter update into-sorted-map assoc set! len empty?` |
 | `(hash-map key value)` | `std::collections::HashMap<K, V>` | `hash-map get keys vals iter update into-hash-map assoc set! len empty?` |
 
-`print`, `println` and `eprintln` take any number of parts. Each string literal part folds into one format string, and each other part becomes a `{}` placeholder. `eprintln` writes to standard error. `str` folds its literal parts the same way, and with one part that is not a string literal it emits `x.to_string()`, so `(str year)` emits `year.to_string()`. `str` as a value is that one-part function, so `(map (iter years) str)` turns each year into a `string`. A `print` whose last part ends in a newline emits `println!` without that newline. `prn` and `pr-str` print a value as a form the reader reads, through the `show` trait, described under Printed forms. `(display type (value) parts...)` implements `display` for a struct or enum the program defines, and makes the type printable with `print`, `println` and `str`. `subs` takes a `str`, a start and an end, and returns the `str` between them, so `(subs line 2 5)` emits `&line[2..5]`. `pi` is Rust's `std::f64::consts::PI`, an `f64`. `remove-at!` removes the element at an index and returns it, so `(remove-at! items 0)` emits `items.remove(0)`.
+`print`, `println`, `eprint` and `eprintln` take any number of parts. Each string literal part folds into one format string, and each other part becomes a `{}` placeholder. `eprint` and `eprintln` write to standard error. `str` folds its literal parts the same way, and with one part that is not a string literal it emits `x.to_string()`, so `(str year)` emits `year.to_string()`. `str` as a value is that one-part function, so `(map (iter years) str)` turns each year into a `string`. A `print` or `eprint` whose last part ends in a newline emits `println!` or `eprintln!` without that newline. `prn` and `pr-str` print a value as a form the reader reads, through the `show` trait, described under Printed forms. `(display type (value) parts...)` implements `display` for a struct or enum the program defines, and makes the type printable with `print`, `println` and `str`. `subs` takes a `str`, a start and an end, and returns the `str` between them, so `(subs line 2 5)` emits `&line[2..5]`. `pi` is Rust's `std::f64::consts::PI`, an `f64`. `remove-at!` removes the element at an index and returns it, so `(remove-at! items 0)` emits `items.remove(0)`.
 
 ### Printed forms
 
 `unwrap-ok`, `unwrap-err` and `expect-ok` panic with the printed form of the other side, as in `called unwrap-ok on (err (->failure :line 3))`, so they need `show` of it. `option`'s `unwrap` and `expect` need no bound.
 
-`prn` prints a value's printed form and a newline, `pr-str` returns it as a `string`, and a `(pr-str x)` part of `print`, `println`, `eprintln`, `str` or `display` prints it in place. All three need the `show` trait, backed by `Show` in the runtime. A printed form uses only atoms and lists, and where the source can build the value, it is the source that builds an equal value, so a printed result pastes back into a program:
+`prn` prints the printed forms of one or more values, separated by a space, and a newline, so `(prn 1 "a")` prints `1 "a"`. `(prn)` is `L0352`. `prn` as a value is `print-form`, the one-value function that `prelude/text` exports and `knave doc "(module prelude/text)"` lists. `pr-str` returns a printed form as a `string`, and a `(pr-str x)` part of `print`, `println`, `eprint`, `eprintln`, `str` or `display` prints it in place. All three need the `show` trait, backed by `Show` in the runtime. A printed form uses only atoms and lists, and where the source can build the value, it is the source that builds an equal value, so a printed result pastes back into a program:
 
 | Value | Prints as |
 |---|---|
@@ -627,7 +627,7 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
 | Result | Output |
 | --- | --- |
 | `unit` | nothing |
-| a type that the parameter of the prelude's `prn` accepts | the value, as `prn` prints it |
+| a type that the parameter of `print-form` in `prelude/text` accepts | the value, as `prn` prints it |
 | any other type, such as a closure or an `iterator` | a `note` on standard error that names the type and the trait it lacks |
 | a type still open after inference, such as `none` | `L0407` on the innermost open value, with a fix that wraps that value in `the` |
 

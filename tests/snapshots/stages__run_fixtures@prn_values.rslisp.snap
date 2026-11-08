@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/prn_values.rslisp
+---
+7
+7 "seven" (vec 1 2)
+(->crate-label :name "apples" :weight 3) (some 2)
+"a"
+"b"
+stderr:
+warning: 2 crates
+no newline
+exit code: 0

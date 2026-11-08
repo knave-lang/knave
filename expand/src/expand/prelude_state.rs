@@ -1,6 +1,7 @@
 use std::fmt;
 use std::path::PathBuf;
 
+use super::macro_origins::{OriginTables, SavedOrigins};
 use super::saved_definitions::{SavedDefinitions, SavedTables};
 use super::saved_notes::{NoteTables, SavedNotes};
 use super::saved_values::{SavedValues, ValueTables};
@@ -33,6 +34,7 @@ enum PreludeDefinitions {
 struct BuiltTables {
     bindings: BindingTables,
     names: NameTables,
+    origins: OriginTables,
     definitions: SavedTables,
     macros: ValueTables,
     globals: ValueTables,
@@ -44,6 +46,7 @@ struct BuiltTables {
 struct LoadedTables {
     bindings: SavedBindings,
     names: SavedNames,
+    origins: SavedOrigins,
     definitions: SavedDefinitions,
     macros: SavedValues<Closure>,
     globals: SavedValues<Value>,
@@ -144,6 +147,7 @@ impl PreludeState {
         expander.tables.module_notes.adopt(tables.notes);
         expander.tables.bindings.adopt_saved(tables.bindings);
         expander.tables.table.adopt_saved(tables.names);
+        expander.tables.macro_origins.adopt_saved(tables.origins);
         expander
             .tables
             .restore_lowered_globals(&self.lowered_globals);
@@ -173,6 +177,7 @@ impl Expander<'_> {
         let binding_tables = self.tables.bindings.take_saved();
         let prelude_scopes = first_scope..self.tables.scopes.next_scope();
         let name_tables = self.tables.table.take_saved(prelude_scopes);
+        let origin_tables = self.tables.macro_origins.take_saved();
         let note_tables = self.tables.module_notes.take_saved();
         PreludeState {
             first_source,
@@ -183,6 +188,7 @@ impl Expander<'_> {
             definitions: PreludeDefinitions::Built(BuiltTables {
                 bindings: binding_tables,
                 names: name_tables,
+                origins: origin_tables,
                 definitions: saved_tables,
                 macros: macro_tables,
                 globals: global_tables,
@@ -584,6 +590,12 @@ mod tests {
     fn a_saved_state_keeps_its_evaluated_globals_only_in_the_saved_bytes() {
         let state = PreludeState::build();
         assert!(state.tables().globals.holds_no_value());
+    }
+
+    #[test]
+    fn a_saved_state_keeps_its_macro_origins_only_in_the_saved_bytes() {
+        let state = PreludeState::build();
+        assert!(state.tables().macro_origins.holds_no_own_origin());
     }
 
     #[test]

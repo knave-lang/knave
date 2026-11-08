@@ -357,6 +357,9 @@ mod tests {
         const MODULE: &str = "program";
         const FILE: &str = "program.rslisp";
         const EMPTY: &str = "(defn main ())";
+        const MACRO_INTRODUCING_A_NAME: &str = "(def answer 1)
+            (def named (macro (form) (quote answer)))
+            (defn main () (println (named)))";
         const MACRO_WITH_HELPER: &str = "(def helper (fn (form) form))
             (def one (macro (form) (do (helper form) 1)))
             (defn main () (println (one)))";
@@ -535,6 +538,12 @@ mod tests {
         let helper = LoadedProgram::defined_binding(&program, "helper");
         assert!(program.macro_helpers.contains(&helper));
         assert!(!program.prelude_macro_helpers().contains(&helper));
+    }
+
+    #[test]
+    fn a_finished_program_keeps_no_introduced_name() {
+        let program = LoadedProgram::expand(LoadedProgram::MACRO_INTRODUCING_A_NAME);
+        assert!(program.macro_origins.holds_no_introduced_name());
     }
 
     #[test]

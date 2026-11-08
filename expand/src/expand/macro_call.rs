@@ -149,11 +149,7 @@ impl Expander<'_> {
         let origin = self.macro_origin(binding, call_site);
         self.record_introduced_names(&form, &origin);
         form.relocate_outside(call_site);
-        self.tables
-            .macro_origins
-            .entry(call_site)
-            .and_modify(|outer| outer.through_prelude |= origin.through_prelude)
-            .or_insert(origin);
+        self.tables.macro_origins.record(call_site, origin);
         form
     }
 
@@ -320,12 +316,8 @@ impl Expander<'_> {
         }
     }
 
-    pub(super) fn macro_origin_at(&self, span: Span) -> Option<&MacroOrigin> {
-        self.tables
-            .macro_origins
-            .values()
-            .filter(|origin| origin.call_site.contains(span))
-            .min_by_key(|origin| origin.call_site.range().len())
+    pub(super) fn macro_origin_at(&self, span: Span) -> Option<MacroOrigin> {
+        self.tables.macro_origins.enclosing(span)
     }
 
     pub(super) fn definition_shape<'f>(
@@ -336,29 +328,27 @@ impl Expander<'_> {
         let definer = self
             .tables
             .macro_origins
-            .get(&form.span())
+            .get(form.span())
             .map(|origin| WrittenDefiner {
-                name: Rc::clone(&origin.name),
+                name: origin.name,
                 through_prelude: origin.through_prelude,
             });
         Shape::expanded_from(KernelForm::Definition(definition), form, definer)
     }
 
     pub(super) fn introduced_name(&self, call_site: Span, name: &str) -> Option<Span> {
-        self.tables
-            .introduced_names
-            .get(&(call_site, name.to_string()))
-            .copied()
+        self.tables.macro_origins.introduced(call_site, name)
     }
 
     fn record_introduced_names(&mut self, form: &Form, origin: &MacroOrigin) {
         if let Some(symbol) = form.as_symbol()
             && !origin.call_site.contains(form.span())
         {
-            self.tables
-                .introduced_names
-                .entry((origin.call_site, symbol.name().to_string()))
-                .or_insert(form.span());
+            self.tables.macro_origins.record_introduced(
+                origin.call_site,
+                symbol.name(),
+                form.span(),
+            );
         }
         if let Some(items) = form.as_list() {
             for item in items {

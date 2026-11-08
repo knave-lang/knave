@@ -15,6 +15,7 @@ mod host;
 mod introduced;
 mod macro_call;
 mod macro_function;
+mod macro_origins;
 mod misplaced_definition;
 mod module_body;
 mod module_loading;
@@ -65,6 +66,7 @@ pub use generated_entry::GeneratedEntry;
 use globals::{GlobalTable, LoweredGlobals};
 pub use macro_call::MacroOrigin;
 use macro_call::MacroTable;
+pub use macro_origins::MacroOrigins;
 use module_notes::ModuleNotes;
 pub use module_survey::ModuleSurvey;
 pub use prelude_state::{PreludeState, UnreadablePrelude};
@@ -83,7 +85,7 @@ pub struct Program {
     pub entry: ModuleId,
     pub entry_function: Option<BindingId>,
     pub bindings: BindingArena,
-    pub macro_origins: FxHashMap<Span, MacroOrigin>,
+    pub macro_origins: Rc<MacroOrigins>,
     pub macro_helpers: FxHashSet<BindingId>,
     pub string_view: Option<BindingId>,
     pub checked_roots: Vec<BindingId>,
@@ -195,8 +197,7 @@ struct ExpansionTables {
     table: BindingTable,
     bindings: BindingArena,
     macros: MacroTable,
-    macro_origins: FxHashMap<Span, MacroOrigin>,
-    introduced_names: FxHashMap<(Span, String), Span>,
+    macro_origins: MacroOrigins,
     introduction_scopes: FxHashSet<Scope>,
     global_macros: Vec<(crate::core::BindingId, Form)>,
     trait_paths: FxHashMap<crate::core::BindingId, Rc<str>>,
@@ -305,6 +306,7 @@ impl<'s> Expander<'s> {
 
     fn into_program(mut self, entry: ModuleId) -> Result<Program, Diagnostics> {
         let diagnostics = self.take_diagnostics();
+        self.tables.macro_origins.forget_introduced_names();
         let string_view = self
             .tables
             .string_view
@@ -318,7 +320,7 @@ impl<'s> Expander<'s> {
             string_view,
             checked_roots: Vec::new(),
             pending_definitions: PendingDefinitions::new(self.saved_definitions),
-            macro_origins: self.tables.macro_origins,
+            macro_origins: Rc::new(self.tables.macro_origins),
             warnings: self.warnings,
             expansion: self.expansion,
         };

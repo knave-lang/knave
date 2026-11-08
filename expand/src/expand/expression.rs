@@ -35,11 +35,8 @@ impl Expander<'_> {
     }
 
     pub(super) fn nests_too_deep(&self, span: Span) -> Diagnostic {
-        let expansion = self
-            .tables
-            .macro_origins
-            .get(&span)
-            .map(|origin| &*origin.name);
+        let origin = self.tables.macro_origins.get(span);
+        let expansion = origin.as_ref().map(|origin| &*origin.name);
         ExpandProblems::expansion_nests_too_deep(span, Form::NESTING_LIMIT, expansion)
     }
 

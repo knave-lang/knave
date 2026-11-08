@@ -706,9 +706,19 @@
   the bare name of a term that takes no arguments. The page shows the header
   as written, and the header's head names the term."
   (noted-docstring docstrings-key
-                   (concat (value-doc-key (header-name header))
+                   (concat (value-doc-key (documented-name header))
                            (list header text))
                    text))
+
+(def documented-name
+  (fn (header)
+    (local name (header-name header))
+    (if (symbol? name)
+      name
+      (fail "a `document` header must name a term"
+        name
+        "start the header with the term's name, as in `(document (name part ...) text)`"
+        (quote (:label "not a name"))))))
 
 (def noted-docstring
   (fn (key note text)
@@ -721,6 +731,14 @@
         (quote (:label "not a string"))))))
 
 (def header-name
+  (fn (header)
+    (if (empty-list? header) header (head-of header))))
+
+(def empty-list?
+  (fn (form)
+    (if (list? form) (empty? form) false)))
+
+(def head-of
   (fn (header)
     (if (list? header) (first header) header)))
 

@@ -43,6 +43,26 @@ impl ProjectProblems {
         .with_help("use lowercase letters, digits and single dashes, as `my-program`")
     }
 
+    pub fn reserved_library_name(name: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::RESERVED_LIBRARY_NAME,
+            format!("`{name}` cannot name a library"),
+            Label::new(span, "this name is reserved"),
+        )
+        .with_note("`prelude`, `kernel` and `code` name the compiler's own modules")
+        .with_help("give the library another name")
+    }
+
+    pub fn invalid_library_name(name: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::INVALID_LIBRARY_NAME,
+            format!("`{name}` is not a library name"),
+            Label::new(span, "expected a kebab-case name"),
+        )
+        .with_note("`use` reads a library's name as the first part of a module path")
+        .with_help("use lowercase letters, digits and single dashes, as `my-library`")
+    }
+
     pub fn unbuilt_section(section: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::UNBUILT_PROJECT_SECTION,

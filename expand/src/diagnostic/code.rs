@@ -224,6 +224,8 @@ diagnostic_codes! {
     UNKNOWN_EDITION = "L0717",
     INVALID_PROJECT_NAME = "L0718",
     UNBUILT_PROJECT_SECTION = "L0719",
+    RESERVED_LIBRARY_NAME = "L0720",
+    INVALID_LIBRARY_NAME = "L0721",
 }
 
 impl DiagnosticCode {

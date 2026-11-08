@@ -1,10 +1,12 @@
 use std::path::PathBuf;
 
 use super::fields::{FieldScanner, Fields};
+use super::name::ProjectName;
 use super::problems::ProjectProblems;
 use super::reader::SectionTable;
 use super::{CrateDependency, LibraryDependency, LibrarySource};
 use crate::diagnostic::Diagnostics;
+use crate::modules::ModuleSources;
 use crate::reader::{Form, FormKind};
 use crate::source::Span;
 
@@ -146,10 +148,27 @@ impl<'p> DependencyReader<'p> {
             self.problems
                 .push(ProjectProblems::versioned_library(parts.name, version.span));
         }
+        self.check_library_name(parts);
         Some(LibraryDependency {
             name: parts.name.to_string(),
+            name_span: parts.name_span,
             source: self.library_source(parts)?,
         })
+    }
+
+    fn check_library_name(&mut self, parts: &EntryParts<'_>) {
+        if ModuleSources::is_reserved_library(parts.name) {
+            return self.problems.push(ProjectProblems::reserved_library_name(
+                parts.name,
+                parts.name_span,
+            ));
+        }
+        if !ProjectName::is_kebab_case(parts.name) {
+            self.problems.push(ProjectProblems::invalid_library_name(
+                parts.name,
+                parts.name_span,
+            ));
+        }
     }
 
     fn library_source(&mut self, parts: &EntryParts<'_>) -> Option<LibrarySource> {

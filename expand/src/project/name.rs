@@ -14,7 +14,7 @@ impl ProjectName {
         Err(ProjectProblems::invalid_project_name(name, span))
     }
 
-    fn is_kebab_case(name: &str) -> bool {
+    pub fn is_kebab_case(name: &str) -> bool {
         let starts_with_letter = name.starts_with(|first: char| first.is_ascii_lowercase());
         starts_with_letter && name.split(Self::WORD_SEPARATOR).all(Self::is_kebab_word)
     }

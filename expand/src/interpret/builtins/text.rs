@@ -321,3 +321,72 @@ impl<'a> TextOperations<'a> {
         Value::Form(Form::new(FormKind::String(text.into()), self.call_site))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::TextOperations;
+    use crate::interpret::Value;
+    use crate::interpret::arguments::Arguments;
+    use crate::reader::{Form, FormKind, Symbol};
+    use crate::scope::{ScopeAllocator, ScopeSet};
+    use crate::source::{SourceId, Span};
+
+    struct SymbolComparison {
+        scopes: ScopeAllocator,
+    }
+
+    impl SymbolComparison {
+        const FUNCTION: &'static str = "value-eq";
+
+        fn new() -> Self {
+            Self {
+                scopes: ScopeAllocator::default(),
+            }
+        }
+
+        fn span() -> Span {
+            Span::new(SourceId::new(0), 0..0)
+        }
+
+        fn scoped_symbol(&mut self, name: &str) -> Value {
+            let mut scopes = ScopeSet::default();
+            scopes.add(self.scopes.fresh());
+            let symbol = Symbol::with_scopes(name, scopes);
+            Value::Form(Form::new(FormKind::Symbol(symbol), Self::span()))
+        }
+
+        fn equal(left: Value, right: Value) -> bool {
+            let arguments = Arguments::new(Self::FUNCTION, vec![left, right], Self::span());
+            let result = TextOperations::new(&arguments, Self::span()).value_eq();
+            matches!(result, Ok(Value::Bool(true)))
+        }
+
+        fn name(symbol: &Value) -> Value {
+            let arguments = Arguments::new(Self::FUNCTION, vec![symbol.clone()], Self::span());
+            TextOperations::new(&arguments, Self::span())
+                .symbol_name()
+                .expect("a symbol has a name")
+        }
+
+        fn agrees_with_names(&mut self, left: &str, right: &str) -> (bool, bool) {
+            let left = self.scoped_symbol(left);
+            let right = self.scoped_symbol(right);
+            let by_names = Self::equal(Self::name(&left), Self::name(&right));
+            (Self::equal(left, right), by_names)
+        }
+    }
+
+    #[test]
+    fn symbols_of_one_name_in_different_scopes_are_equal_as_their_names_are() {
+        let (by_symbols, by_names) = SymbolComparison::new().agrees_with_names("item", "item");
+        assert!(by_symbols);
+        assert_eq!(by_symbols, by_names);
+    }
+
+    #[test]
+    fn symbols_of_different_names_differ_as_their_names_do() {
+        let (by_symbols, by_names) = SymbolComparison::new().agrees_with_names("item", "items");
+        assert!(!by_symbols);
+        assert_eq!(by_symbols, by_names);
+    }
+}

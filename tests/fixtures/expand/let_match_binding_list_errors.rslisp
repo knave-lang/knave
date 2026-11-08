@@ -18,3 +18,17 @@
 
 (defn pattern-without-value ()
   (let-match ((some x)) (println x)))
+
+(defn old-pairs ()
+  (let-match ((a 1) (b 2))
+    (println (+ a b))))
+
+(defn old-pair-without-value ()
+  (let-match ((a 1)) (println a)))
+
+(defn value-and-body-missing ()
+  (let-match ((some x))))
+
+(defn number-head ()
+  (let-match ((1 2) (pair 1 2))
+    (println "one")))

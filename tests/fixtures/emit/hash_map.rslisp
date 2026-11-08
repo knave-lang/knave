@@ -18,5 +18,6 @@
             (fn (value) (println value)))
   (for-each (iter next)
             (fn (entry)
-              (let-pair (key value) entry (println key " " value))))
+              (let-match ((pair key value) entry)
+                (println key " " value))))
   (println (len collected)))

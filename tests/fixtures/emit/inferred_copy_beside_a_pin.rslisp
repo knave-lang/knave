@@ -5,8 +5,8 @@
 (defn listen ((p u16)) p)
 
 (defn main ()
-  (let-pair (left right) (twice 7)
+  (let-match ((pair left right) (twice 7))
     (println left right))
-  (let-pair (left right) (twice 2.5)
+  (let-match ((pair left right) (twice 2.5))
     (println left right))
   (println (listen (port))))

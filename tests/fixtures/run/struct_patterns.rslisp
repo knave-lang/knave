@@ -27,7 +27,7 @@
   (match p ((parsed node _) node)))
 
 (defn fields (p)
-  (let-fields (parsed (node _)) p
+  (let-match ((parsed node _) p)
     (tree/branch node)))
 
 (defn main ()

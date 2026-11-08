@@ -28,7 +28,7 @@
 (type record (fn (book item) book))
 
 (defn record (current changed)
-  (let-fields (book (stock entries rejected)) current
+  (let-match ((book stock entries rejected) current)
     (local before
       (quantity-of (ref stock) (:sku changed)))
     (local growing entries)
@@ -44,7 +44,7 @@
 (type reject (fn (book ledger-error) book))
 
 (defn reject (current problem)
-  (let-fields (book (stock entries rejected)) current
+  (let-match ((book stock entries rejected) current)
     (local growing rejected)
     (push! growing (str problem))
     (->book stock entries growing)))

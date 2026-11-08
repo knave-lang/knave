@@ -33,7 +33,7 @@
       (local parsed (try (parse-statement tokens position)))
       (local after
         (try (skip-separator tokens (:next parsed))))
-      (let-fields (parsed-statement (statement _)) parsed
+      (let-match ((parsed-statement statement _) parsed)
         (parse-statements tokens after
                           (append statements statement))))))
 
@@ -56,7 +56,7 @@
     (parse-binding tokens (+ position 1))
     (do
       (local value (try (parse-expression tokens position)))
-      (let-fields (parsed (node next)) value
+      (let-match ((parsed node next) value)
         (ok (->parsed-statement (statement/show node) next))))))
 
 (type parse-binding
@@ -68,7 +68,7 @@
   (try (expect-symbol tokens (+ position 1) "="))
   (local value
     (try (parse-expression tokens (+ position 2))))
-  (let-fields (parsed (node next)) value
+  (let-match ((parsed node next) value)
     (ok (->parsed-statement (statement/binding name node) next))))
 
 (type parse-expression
@@ -93,11 +93,11 @@
   (local otherwise
     (try (parse-expression tokens (+ (:next then) 1))))
   (local next (:next otherwise))
-  (let-fields (parsed (test-node _)) test
-    (let-fields (parsed (then-node _)) then
-      (let-fields (parsed (otherwise-node _)) otherwise
-        (ok (->parsed (expr/choice test-node then-node otherwise-node)
-                      next))))))
+  (let-match ((parsed test-node _) test
+              (parsed then-node _) then
+              (parsed otherwise-node _) otherwise)
+    (ok (->parsed (expr/choice test-node then-node otherwise-node)
+                  next))))
 
 (type parse-comparison
   (fn ((ref (vec token)) usize)
@@ -164,7 +164,7 @@
     (do
       (local inner
         (try (parse-unary tokens (+ position 1))))
-      (let-fields (parsed (node next)) inner
+      (let-match ((parsed node next) inner)
         (ok (->parsed (expr/negate node) next))))
     (parse-primary tokens position)))
 
@@ -208,7 +208,7 @@
       (local argument (try (parse-expression tokens position)))
       (local next (:next argument))
       (local after (try (skip-argument-separator tokens next)))
-      (let-fields (parsed (node _)) argument
+      (let-match ((parsed node _) argument)
         (parse-arguments tokens after function
                          (append arguments node))))))
 
@@ -229,13 +229,13 @@
 (defn parse-group (tokens position)
   (local inner (try (parse-expression tokens position)))
   (try (expect-symbol tokens (:next inner) ")"))
-  (let-fields (parsed (node next)) inner
+  (let-match ((parsed node next) inner)
     (ok (->parsed node (+ next 1)))))
 
 (defn combine (operator left right)
-  (let-fields (parsed (left-node _)) left
-    (let-fields (parsed (right-node next)) right
-      (->parsed (expr/binary operator left-node right-node) next))))
+  (let-match ((parsed left-node _) left
+              (parsed right-node next) right)
+    (->parsed (expr/binary operator left-node right-node) next)))
 
 (type operator-at
   (fn ((ref (vec token))

@@ -296,8 +296,8 @@ mod tests {
             (defn port () 8080)
             (defn listen ((p u16)) p)
             (defn main ()
-              (let-pair (left right) (twice 7) (println left right))
-              (let-pair (left right) (twice 2.5) (println left right))
+              (let-match ((pair left right) (twice 7)) (println left right))
+              (let-match ((pair left right) (twice 2.5)) (println left right))
               (println (listen (port))))";
 
         fn prelude_definitions(source: &TypedSource) -> Vec<BindingId> {

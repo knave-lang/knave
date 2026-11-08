@@ -45,7 +45,7 @@
   (local several?
     (> (len (command-line-args)) 5))
   (local odometer (the i64 2024))
-  (let-pair (left right) (twice 3000000000)
+  (let-match ((pair left right) (twice 3000000000))
     (println left " " right))
   (prn (twice 2.5))
   (prn (twice -3000000000))

@@ -1,5 +1,5 @@
 (use prelude/macros defmacro doc-page document header-shape
-                    map-list template)
+                    listing-results map-list template)
 
 (use prelude/pair pair)
 (use prelude/syntax let)
@@ -16,7 +16,7 @@
 
 (use prelude/io io-error)
 
-(export alphanumeric? as-str char chars debug digit? display
+(export alphanumeric? as-str char chars debug digit? dir display
         doc eprint eprintln from-str infallible lines
         lower-case parse parse-bool-error parse-char-error
         parse-error parse-float-error parse-int-error pr-str
@@ -484,6 +484,22 @@
   docstring has `No documentation.` in its place. Write (doc-page term) to
   keep the page as a string."
   (template (println (doc-page (unquote term)))))
+
+(def dir
+  (macro (form) (printed-listing form)))
+
+(def printed-listing
+  (fn (form)
+    (template (println (unquote (listing-results form))))))
+
+(document (dir module)
+  "Prints the names a module exports, in name order.
+
+  Without a module, it prints every name the current module defines, private
+  names included. `(doc-page (dir module))` keeps the listing as a string.
+
+  (dir prelude/pair)
+  => pair pair/pair")
 
 (def display-type
   (fn (variables)

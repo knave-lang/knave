@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/doc_dir.rslisp
+---
+(def own-helper (fn () (area 2 3)))
+(def own-names "(dir)\n\ngeometry-names listing-body listing-header main no-names own-helper own-names")
+(def geometry-names "(dir doc_dir/geometry)\n\narea")
+(def no-names "(dir doc_dir/empty)\n\nNo names.")
+(def listing-header "(dir doc_dir/geometry)")
+(def listing-body "\n\narea")
+(def main (fn () ((rust "println!(\"geometry-names listing-body listing-header main no-names own-helper own-names\")" (where () (fn () unit)))) ((rust "println!(\"area\")" (where () (fn () unit)))) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) (own-helper))))

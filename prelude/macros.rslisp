@@ -1,21 +1,22 @@
 (use code add-module-note bool-not closest-name concat
-          declare-macro-definition definition-call
-          definition-symbol drop empty? expand-call fail
-          field-keyword first keyword-field keyword-name
-          keyword? len list list? module-exports
-          module-notes module-symbol nth number-add
-          number-lt number-sub prepend rest same-binding?
-          string string-drop string-length string-lines
-          string-strip-prefix string-strip-suffix
-          string-trim-start string? symbol symbol-name
-          symbol? take type-definition-call
-          type-definition-symbol value-eq)
+          current-module declare-macro-definition
+          definition-call definition-symbol drop empty?
+          expand-call fail field-keyword first keyword-field
+          keyword-name keyword? len list list?
+          module-definitions module-exports module-notes
+          module-symbol nth number-add number-lt number-sub
+          prepend rest same-binding? string string-drop
+          string-length string-lines string-strip-prefix
+          string-strip-suffix string-trim-start string?
+          symbol symbol-name symbol? take
+          type-definition-call type-definition-symbol
+          value-eq)
 
 (export defmacro defrule defrule-with-value doc-body
         doc-header doc-page docstring docstring-before-body?
         docstring-before-parameters docstrings-key document
         documented-body? header-shape kernel-definition
-        map-list module note-docstring noted-term template
+        listing-results map-list module note-docstring noted-term template
         type-doc-key value-doc-key whole-pairs?)
 
 (def map-list
@@ -823,7 +824,9 @@
       (term-part part term)
       (if (module-lookup? term)
         (module-part part (nth term 1))
-        (malformed-term term)))))
+        (if (listing-lookup? term)
+          (listing-part part term)
+          (malformed-term term))))))
 
 (def module-lookup?
   (fn (term)
@@ -834,6 +837,77 @@
           false)
         false)
       false)))
+
+(def listing-lookup?
+  (fn (term)
+    (if (list? term)
+      (if (empty? term)
+        false
+        (value-eq (first term) (quote dir)))
+      false)))
+
+(def listing-part
+  (fn (part term)
+    (if (listing-arguments? term)
+      (listing-page part term)
+      (malformed-listing term))))
+
+(def listing-results
+  (fn (term)
+    (if (listing-arguments? term)
+      (listing-text term)
+      (malformed-listing term))))
+
+(def listing-arguments?
+  (fn (term)
+    (if (empty? (rest term))
+      true
+      (if (value-eq (len term) 2)
+        (symbol? (nth term 1))
+        false))))
+
+(def malformed-listing
+  (fn (term)
+    (fail "`dir` takes one module name, or nothing"
+      term
+      "write `(dir)`, or a module as in `(dir geometry)`"
+      (quote (:label "not one module name")))))
+
+(def listing-page
+  (fn (part term)
+    (if (value-eq part (quote doc-header))
+      (string term)
+      (if (value-eq part (quote docstring))
+        (undocumented term "a listing has no docstring"
+                      "read its results with `doc-page`")
+        (if (value-eq part (quote doc-body))
+          (string "\n\n" (listing-text term))
+          (string term "\n\n" (listing-text term)))))))
+
+(def listing-text
+  (fn (term)
+    (local names (listed-names (rest term)))
+    (if (empty? names) "No names." (join-words names))))
+
+(def listed-names
+  (fn (arguments)
+    (if (empty? arguments)
+      (module-definitions (current-module))
+      (module-exports (first arguments)))))
+
+(def join-words
+  (fn (words)
+    (if (empty? words)
+      ""
+      (join-words-onto (string (first words))
+                       (rest words)))))
+
+(def join-words-onto
+  (fn (joined words)
+    (if (empty? words)
+      joined
+      (recur (string joined " " (first words))
+             (rest words)))))
 
 (def module-part
   (fn (part path)
@@ -902,10 +976,11 @@
 
 (def malformed-term
   (fn (term)
-    (fail "a documentation lookup takes a name or a module"
+    (fail "a documentation lookup takes a name, a module or a listing"
       term
-      "write a name, or a module as in `(module geometry)`"
-      (quote (:label "not a name or a module")))))
+      (string "write a name, a module as in `(module geometry)`, or a "
+              "listing as in `(dir geometry)`")
+      (quote (:label "not a name, a module or a listing")))))
 
 (def term-part
   (fn (part term)

@@ -29,6 +29,7 @@ impl Expander<'_> {
             .documented_terms(module, &notes)
             .into_iter()
             .filter(|(term, _)| !self.defines(module, term))
+            .filter(|(term, _)| !self.reported_as_duplicate(module, term))
             .collect();
         for (term, span) in undefined {
             self.diagnostics
@@ -88,6 +89,11 @@ impl Expander<'_> {
             .ok()?;
         let term = term.as_form()?;
         Some((term.as_symbol()?.clone(), term.span()))
+    }
+
+    fn reported_as_duplicate(&self, module: ModuleId, term: &Symbol) -> bool {
+        self.duplicate_definitions
+            .contains(&(module, term.shared_name()))
     }
 
     fn defines(&self, module: ModuleId, term: &Symbol) -> bool {

@@ -165,6 +165,7 @@ pub struct Expander<'s> {
     declared_definitions: Vec<failed_definition::DeclaredName>,
     failed_body_definitions: Vec<BindingId>,
     introductions: Vec<Scope>,
+    duplicate_definitions: FxHashSet<(ModuleId, Rc<str>)>,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -257,6 +258,7 @@ impl<'s> Expander<'s> {
             declared_definitions: Vec::new(),
             failed_body_definitions: Vec::new(),
             introductions: Vec::new(),
+            duplicate_definitions: FxHashSet::default(),
         }
     }
 

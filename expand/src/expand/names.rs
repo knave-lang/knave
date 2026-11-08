@@ -133,6 +133,7 @@ impl Expander<'_> {
         let info = BindingInfo::new(symbol.shared_name(), kind, Some(span));
         let binding = self.tables.bindings.add(info);
         self.bind_over_failed(symbol, namespace, binding, phase)
+            .inspect_err(|_| self.remember_duplicate_definition(symbol, binding))
             .map_err(|existing| {
                 ExpandProblems::duplicate(
                     symbol.name(),
@@ -141,6 +142,13 @@ impl Expander<'_> {
                 )
             })?;
         Ok(binding)
+    }
+
+    fn remember_duplicate_definition(&mut self, symbol: &Symbol, binding: BindingId) {
+        if let Some(module) = self.definition_module(binding) {
+            self.duplicate_definitions
+                .insert((module, symbol.shared_name()));
+        }
     }
 
     pub(super) fn unbound(&self, symbol: &Symbol, namespace: Namespace, span: Span) -> Diagnostic {

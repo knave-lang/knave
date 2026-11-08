@@ -1,0 +1,8 @@
+(use document_imported/source helper)
+(use prelude/macros document)
+
+(def helper (fn () 2))
+
+(document (helper) "Mine.")
+
+(defn main () (println (helper)))

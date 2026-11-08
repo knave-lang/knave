@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::saved_names::{NameTables, SavedNames};
 use super::{Scope, ScopeSet};
 use crate::core::{BindingId, Namespace};
 use crate::reader::Symbol;
@@ -47,7 +48,7 @@ impl Entry {
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
-struct NameEntries {
+pub(super) struct NameEntries {
     plain_sorted_by_anchor: Vec<Entry>,
     sharing: Vec<Entry>,
 }
@@ -200,6 +201,11 @@ impl NameEntries {
         self.plain_sorted_by_anchor.is_empty() && self.sharing.is_empty()
     }
 
+    pub(super) fn is_within(&self, scopes: &Range<Scope>) -> bool {
+        self.all()
+            .all(|entry| entry.scopes.iter().any(|scope| scopes.contains(&scope)))
+    }
+
     fn all(&self) -> impl Iterator<Item = &Entry> {
         self.plain_sorted_by_anchor.iter().chain(&self.sharing)
     }
@@ -224,6 +230,8 @@ impl NameEntries {
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct BindingTable {
+    #[serde(skip)]
+    saved: SavedNames,
     entries: FxHashMap<(Rc<str>, Namespace), NameEntries>,
     qualified_names: QualifiedNames,
 }
@@ -261,13 +269,23 @@ impl BindingTable {
 
     #[cfg(test)]
     pub fn holds(&self, binding: BindingId) -> bool {
-        let mut all = self.entries.values().flat_map(NameEntries::all);
+        let saved = self.saved.all().map(|(_, _, entries)| entries);
+        let mut all = self
+            .entries
+            .values()
+            .chain(saved)
+            .flat_map(NameEntries::all);
         all.any(|entry| entry.binding == binding)
     }
 
     pub fn resolve(&self, symbol: &Symbol, namespace: Namespace, phase: Phase) -> Resolution {
         let mut largest = LargestCandidates::default();
-        if let Some(entries) = self.entries.get(&(symbol.shared_name(), namespace)) {
+        for entries in self.entries_named(
+            symbol.scopes(),
+            symbol.name(),
+            symbol.shared_name(),
+            namespace,
+        ) {
             entries.visit_visible(symbol.scopes(), phase, |entry| largest.consider(entry));
         }
         largest.resolution()
@@ -279,14 +297,17 @@ impl BindingTable {
         namespace: Namespace,
         phase: Phase,
     ) -> Vec<(Rc<str>, BindingId)> {
-        self.entries
+        let own = self
+            .entries
             .iter()
-            .filter(|((_, entry_namespace), _)| *entry_namespace == namespace)
-            .flat_map(|((name, _), entries)| {
+            .map(|((name, entry_namespace), entries)| (Rc::clone(name), *entry_namespace, entries));
+        own.chain(self.saved.all())
+            .filter(|(_, entry_namespace, _)| *entry_namespace == namespace)
+            .flat_map(|(name, _, entries)| {
                 entries
                     .visible(symbol.scopes(), phase)
                     .into_iter()
-                    .map(|entry| (Rc::clone(name), entry.binding))
+                    .map(move |entry| (Rc::clone(&name), entry.binding))
             })
             .collect()
     }
@@ -297,10 +318,13 @@ impl BindingTable {
         namespace: Namespace,
         phase: Phase,
     ) -> Vec<BindingId> {
-        self.entries
+        let own = self
+            .entries
             .iter()
             .filter(|((_, entry_namespace), _)| *entry_namespace == namespace)
-            .flat_map(|(_, entries)| entries.visible(scopes, phase))
+            .map(|(_, entries)| entries);
+        own.chain(self.saved.all_of(namespace))
+            .flat_map(|entries| entries.visible(scopes, phase))
             .map(|entry| entry.binding)
             .collect()
     }
@@ -316,13 +340,39 @@ impl BindingTable {
             .qualified_names
             .ending_in(last_segment.shared_name(), namespace)
         {
-            self.entries[&(Rc::clone(name), namespace)].visit_visible(
-                last_segment.scopes(),
-                phase,
-                |entry| visible.push(entry.binding),
-            );
+            for entries in
+                self.entries_named(last_segment.scopes(), name, Rc::clone(name), namespace)
+            {
+                entries.visit_visible(last_segment.scopes(), phase, |entry| {
+                    visible.push(entry.binding);
+                });
+            }
         }
         visible
+    }
+
+    pub fn take_saved(&mut self, prelude_scopes: Range<Scope>) -> NameTables {
+        let entries = std::mem::take(&mut self.entries);
+        let keyed = entries
+            .into_iter()
+            .map(|((name, namespace), entries)| (name, namespace, entries));
+        NameTables::of(keyed.collect(), prelude_scopes)
+    }
+
+    pub fn adopt_saved(&mut self, saved: SavedNames) {
+        self.saved = saved;
+    }
+
+    fn entries_named(
+        &self,
+        scopes: &ScopeSet,
+        name: &str,
+        shared: Rc<str>,
+        namespace: Namespace,
+    ) -> impl Iterator<Item = &NameEntries> {
+        let own = self.entries.get(&(shared, namespace));
+        let saved = self.saved.entries_seen_from(scopes, name, namespace);
+        own.into_iter().chain(saved)
     }
 }
 
@@ -336,10 +386,13 @@ impl QualifiedNames {
 
     fn record(&mut self, (name, namespace): &(Rc<str>, Namespace)) {
         if let Some((_, last_segment)) = name.rsplit_once(Self::SEPARATOR) {
-            self.by_last_segment
+            let names = self
+                .by_last_segment
                 .entry((last_segment.into(), *namespace))
-                .or_default()
-                .push(Rc::clone(name));
+                .or_default();
+            if !names.contains(name) {
+                names.push(Rc::clone(name));
+            }
         }
     }
 
@@ -418,6 +471,19 @@ mod tests {
 
         fn scope(&mut self) -> Scope {
             self.scopes.fresh()
+        }
+
+        fn save_names(&mut self) {
+            let first = ScopeAllocator::default().next_scope();
+            self.save_names_from(first);
+        }
+
+        fn save_names_from(&mut self, first: Scope) {
+            let prelude_scopes = first..self.scopes.next_scope();
+            let tables = self.table.take_saved(prelude_scopes);
+            let encoded = bincode::serialize(&tables).expect("the tables serialize");
+            let saved = bincode::deserialize(encoded.leak()).expect("the tables load");
+            self.table.adopt_saved(saved);
         }
 
         fn chain(&mut self, length: usize) -> ScopeChain {
@@ -547,6 +613,167 @@ mod tests {
             self.table
                 .resolve(&Self::symbol(name, scopes), Namespace::Value, phase)
         }
+    }
+
+    #[test]
+    fn taking_the_saved_names_leaves_the_table_empty() {
+        let mut world = World::new();
+        let scope = world.scope();
+        world.define("taken", &[scope], Phase::Runtime);
+        let everything = ScopeAllocator::default().next_scope()..world.scopes.next_scope();
+        world.table.take_saved(everything);
+        assert!(world.table.entries.is_empty());
+    }
+
+    #[test]
+    fn a_symbol_with_a_prelude_scope_finds_a_saved_name() {
+        let mut world = World::new();
+        let scope = world.scope();
+        let saved = world.define("saved", &[scope], Phase::Runtime);
+        world.save_names();
+        let symbol = World::symbol("saved", &[scope]);
+        let resolution = world
+            .table
+            .resolve(&symbol, Namespace::Value, Phase::Runtime);
+        assert_eq!(resolution, Resolution::Bound(saved));
+    }
+
+    #[test]
+    fn a_symbol_with_only_later_scopes_decodes_no_saved_name() {
+        let mut world = World::new();
+        let scope = world.scope();
+        world.define("saved", &[scope], Phase::Runtime);
+        world.save_names();
+        let later = world.scope();
+        let symbol = World::symbol("saved", &[later]);
+        world
+            .table
+            .resolve(&symbol, Namespace::Value, Phase::Runtime);
+        assert!(!world.table.saved.is_decoded("saved", Namespace::Value));
+    }
+
+    #[test]
+    fn a_symbol_with_only_earlier_scopes_decodes_no_saved_name() {
+        let mut world = World::new();
+        let earlier = world.scope();
+        let first = world.scopes.next_scope();
+        let scope = world.scope();
+        world.define("saved", &[scope], Phase::Runtime);
+        world.save_names_from(first);
+        let symbol = World::symbol("saved", &[earlier]);
+        world
+            .table
+            .resolve(&symbol, Namespace::Value, Phase::Runtime);
+        assert!(!world.table.saved.is_decoded("saved", Namespace::Value));
+    }
+
+    #[test]
+    fn a_shared_scope_chain_still_looks_in_the_saved_names() {
+        let mut world = World::new();
+        let scope = world.scope();
+        world.define("saved", &[scope], Phase::Runtime);
+        world.save_names();
+        let chain = world.chain(ScopeSet::SHORTEST_SHARED_PREFIX);
+        world.resolve_sharing("saved", &World::prefix(&chain));
+        assert!(world.table.saved.is_decoded("saved", Namespace::Value));
+    }
+
+    #[test]
+    #[should_panic(expected = "every saved name is bound under a prelude scope")]
+    fn a_saved_name_outside_the_prelude_scopes_stops_the_build() {
+        let mut world = World::new();
+        let scope = world.scope();
+        world.define("saved", &[scope], Phase::Runtime);
+        let later = world.scopes.next_scope();
+        world.table.take_saved(later..later);
+    }
+
+    #[test]
+    fn a_saved_type_name_is_listed_in_the_type_namespace_only() {
+        let mut world = World::new();
+        let scope = world.scope();
+        let saved = world.define_type("saved", &[scope]);
+        world.save_names();
+        let symbol = World::symbol("anything", &[scope]);
+        let types = world
+            .table
+            .visible_name_bindings(&symbol, Namespace::Type, Phase::Runtime);
+        let values = world
+            .table
+            .visible_name_bindings(&symbol, Namespace::Value, Phase::Runtime);
+        assert_eq!(types, vec![(Rc::from("saved"), saved)]);
+        assert!(values.is_empty());
+    }
+
+    #[test]
+    fn a_qualified_name_bound_again_after_a_save_is_recorded_once() {
+        let mut world = World::new();
+        let (scope, other) = (world.scope(), world.scope());
+        world.define("option/some", &[scope], Phase::Runtime);
+        world.save_names();
+        world.define("option/some", &[other], Phase::Runtime);
+        let recorded = world
+            .table
+            .qualified_names
+            .ending_in("some".into(), Namespace::Value);
+        assert_eq!(recorded.len(), 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "every saved name is bound under a prelude scope")]
+    fn a_shared_saved_name_outside_the_prelude_scopes_stops_the_build() {
+        let mut world = World::new();
+        let chain = world.chain(ScopeSet::SHORTEST_SHARED_PREFIX);
+        world.define_sharing("saved", &World::prefix(&chain));
+        let later = world.scopes.next_scope();
+        world.table.take_saved(later..later);
+    }
+
+    #[test]
+    fn a_saved_name_is_listed_beside_the_programs_own() {
+        let mut world = World::new();
+        let scope = world.scope();
+        let saved = world.define("saved", &[scope], Phase::Runtime);
+        world.save_names();
+        let own = world.define("own", &[scope], Phase::Runtime);
+        let symbol = World::symbol("anything", &[scope]);
+        let mut listed =
+            world
+                .table
+                .visible_name_bindings(&symbol, Namespace::Value, Phase::Runtime);
+        listed.sort_by_key(|(_, binding)| *binding);
+        let bindings: Vec<BindingId> = listed.into_iter().map(|(_, binding)| binding).collect();
+        assert_eq!(bindings, vec![saved, own]);
+    }
+
+    #[test]
+    fn a_saved_binding_is_visible_beside_the_programs_own() {
+        let mut world = World::new();
+        let scope = world.scope();
+        let saved = world.define_type("saved", &[scope]);
+        world.save_names();
+        let own = world.define_type("own", &[scope]);
+        let scopes = World::scope_set(&[scope]);
+        let mut visible = world
+            .table
+            .visible_bindings(&scopes, Namespace::Type, Phase::Runtime);
+        visible.sort();
+        assert_eq!(visible, vec![saved, own]);
+    }
+
+    #[test]
+    fn a_saved_qualified_name_is_found_by_its_last_segment() {
+        let mut world = World::new();
+        let scope = world.scope();
+        let saved = world.define("option/some", &[scope], Phase::Runtime);
+        world.save_names();
+        let symbol = World::symbol("some", &[scope]);
+        let found = world.table.visible_qualified_bindings_ending_in(
+            &symbol,
+            Namespace::Value,
+            Phase::Runtime,
+        );
+        assert_eq!(found, vec![saved]);
     }
 
     #[test]

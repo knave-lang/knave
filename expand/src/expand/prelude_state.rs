@@ -523,7 +523,7 @@ mod tests {
     }
 
     #[test]
-    fn a_saved_state_keeps_its_notes_only_in_the_saved_bytes() {
+    fn a_saved_state_keeps_no_unsaved_note() {
         let state = PreludeState::build();
         assert!(state.tables().module_notes.holds_no_unsaved_note());
     }

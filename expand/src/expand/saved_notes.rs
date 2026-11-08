@@ -24,11 +24,10 @@ impl NoteTables {
                 .or_default()
                 .insert(key.clone(), notes.clone());
         }
-        let mut modules: Vec<(ModuleId, Vec<u8>)> = tables
+        let modules: Vec<(ModuleId, Vec<u8>)> = tables
             .iter()
             .map(|(module, table)| (*module, Self::encode_module(table)))
             .collect();
-        modules.sort_by_key(|(module, _)| module.index());
         Self { modules }
     }
 
@@ -114,14 +113,16 @@ mod tests {
             }
         }
 
-        fn saved(&self) -> SavedNotes {
+        fn encoded(&self) -> Vec<u8> {
             let mut table = NotesTable::default();
             for module in [self.noted_module, self.other_noted_module] {
                 table.insert((module, Self::KEY.to_string()), vec![Self::note()]);
             }
-            let bytes =
-                bincode::serialize(&NoteTables::encode(&table)).expect("saved notes serialize");
-            bincode::deserialize(bytes.leak()).expect("saved notes deserialize")
+            bincode::serialize(&NoteTables::encode(&table)).expect("saved notes serialize")
+        }
+
+        fn saved(&self) -> SavedNotes {
+            bincode::deserialize(self.encoded().leak()).expect("saved notes deserialize")
         }
 
         fn note() -> Form {
@@ -130,6 +131,16 @@ mod tests {
                 Span::new(SourceId::new(0), 0..0),
             )
         }
+    }
+
+    #[test]
+    fn a_loaded_table_borrows_its_encoded_notes() {
+        let table = SavedTable::new();
+        let bytes: &'static [u8] = table.encoded().leak();
+        let saved: SavedNotes = bincode::deserialize(bytes).expect("saved notes deserialize");
+        let encoded = saved.modules[&table.noted_module].encoded.as_ptr_range();
+        let held = bytes.as_ptr_range();
+        assert!(held.start <= encoded.start && encoded.end <= held.end);
     }
 
     #[test]

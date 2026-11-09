@@ -2133,7 +2133,7 @@ fn doc_types_prints_no_type_for_a_macro() {
     let sandbox = Sandbox::new("doc_types_macro");
     assert_eq!(
         sandbox.typed_page(&["when"]),
-        "(when test body ...)\n\nRuns the body when the test is true.\n\nIt returns unit when the test is false. The body must return unit, and so\ndoes the call.\n"
+        "(when test body ...)\n\nRuns the body when the test is true.\n\nIt returns unit when the test is false. The body must return unit, and so\ndoes the call.\n\n(local total 0)\n(when (> 2 1) (set! total 5))\n(= total 5)\n=> true\n\n(when (> 1 2) (set! total 9))\n(= total 5)\n=> true\n"
     );
 }
 

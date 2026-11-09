@@ -12,7 +12,7 @@
           keyword-name keyword? len list list? located
           module-exports module-notes module-symbol nth
           number-add number-lt number-sub prepend
-          program-modules read-form rest same-binding?
+          project-modules read-form rest same-binding?
           string string-drop string-length string-lines
           string-strip-prefix string-strip-suffix
           string-trim-end string-trim-start string? symbol
@@ -226,7 +226,7 @@
   (macro (form)
     (check-run-tests-shape form)
     (local marker (nth form 2))
-    (local modules (program-modules))
+    (local modules (project-modules))
     (local notes
       (concat (program-tests modules) (program-doc-tests modules)))
     (template (do

@@ -519,6 +519,7 @@ The compiler provides the `code` module for macro bodies. Code that uses it exis
 | `(module-definitions path)` | Return a list that holds a symbol per distinct name that the module at `path` defines, private names included and names that a macro introduces left out, sorted by name. Each symbol carries the module's scopes. |
 | `(current-module)` | Return a symbol that names the module being expanded, by its path, and carries that module's scopes, so `module-definitions` and `module-notes` read it. |
 | `(module-symbol path)` | Return a symbol that carries the scopes of the module at `path`, where `path` is a symbol that names the module as `use` writes it, so `module-notes` reads that module's notes. The symbol's name is the module's path. A module that the program has not loaded is `L0204`, and so are `kernel` and `code`, which the compiler provides and which hold no notes. |
+| `(project-modules)` | Return the symbols of the program's written modules that no library holds, as `(program-modules)` does for every written module. `run-tests` calls the tests of these modules only. |
 | `(read-form context literal character)` | Read one form from the string literal `literal`, starting at the decoded character `character`. Return a list of the form, with the scopes of the symbol `context` and each span inside `literal`, and the character after it, or an empty list when no form reads there. Macro expansion keeps those spans. `(read-form (quote here) "(+ 1 1) tail" 0)` then `=> ((+ 1 1) 7)`. |
 | `(located place form)` | Return `form` with the location of the form `place`. `(located place (quote missing))` then `=> missing`, so an error on the result points at `place`. |
 | `(project-file-name)` | Return the name of the project file, as a string, so a message names the file without restating its extension. |
@@ -843,7 +844,7 @@ right: "007"
 
 Each check takes the `assert`'s location, from `form-location`, and its written text first. A failed check stores its record in a static of the runtime, where the runner finds it, then panics.
 
-`(run-tests :marker "<marker>")` expands to the program's test runner: one call per test of every module that `(program-modules)` returns, in load order and then source order, between a start and a finish. `:untested <module>` adds the list of names that `<module>` exports and no test writes. The checks and the runner are `rust` templates over runtime parts in `prelude/runtime/`, one per marker, so the emitted Rust holds a function only when it calls that function. The runner runs each test under `std::panic::catch_unwind` and writes the records that `knave test` reads.
+`(run-tests :marker "<marker>")` expands to the program's test runner: one call per test of every module that `(project-modules)` returns, so a library's tests expand and check but do not run, in load order and then source order, between a start and a finish. `:untested <module>` adds the list of names that `<module>` exports and no test writes. The checks and the runner are `rust` templates over runtime parts in `prelude/runtime/`, one per marker, so the emitted Rust holds a function only when it calls that function. The runner runs each test under `std::panic::catch_unwind` and writes the records that `knave test` reads.
 
 **`knave test [path] [--filter <text>]` builds one program that runs the tests, and runs it.**
 

@@ -7032,3 +7032,13 @@ fn a_relative_cache_variable_is_ignored() {
         .join("app");
     assert!(!build_directory.join("relative-cache").exists());
 }
+
+#[test]
+fn test_calls_only_the_project_own_tests() {
+    let sandbox = Sandbox::new("test_own_tests").with_fixture_tree("libraries");
+    let test = sandbox.compiler_in("own-tests-app", &["test"]);
+    assert_eq!(
+        test.assert_exit_code(0).stdout(),
+        "running 1 test\ntest app/uses-double ... ok\n1 passed, 0 failed\n"
+    );
+}

@@ -34,6 +34,11 @@ impl<'a> ProgramOperations<'a> {
         Ok(Value::Form(Form::new(name, self.call_site)))
     }
 
+    pub fn project_modules(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(0)?;
+        Ok(self.symbols(host.project_modules()))
+    }
+
     pub fn program_modules(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(0)?;
         Ok(self.symbols(host.program_modules()))

@@ -66,10 +66,11 @@ pub enum Builtin {
     ProjectFileName,
     ReadForm,
     Located,
+    ProjectModules,
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 66] = [
+    const NAMES: [(Builtin, &'static str); 67] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -136,6 +137,7 @@ impl Builtin {
         (Builtin::ProjectFileName, "project-file-name"),
         (Builtin::ReadForm, "read-form"),
         (Builtin::Located, "located"),
+        (Builtin::ProjectModules, "project-modules"),
     ];
 
     pub fn all() -> impl Iterator<Item = Builtin> {

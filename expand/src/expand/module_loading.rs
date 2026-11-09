@@ -202,6 +202,12 @@ impl Expander<'_> {
         })
     }
 
+    pub(super) fn is_library_module(&self, path: &ModulePath) -> bool {
+        self.library_modules
+            .iter()
+            .any(|(loaded, _)| loaded == path)
+    }
+
     fn importing_owner(&self) -> Option<Rc<str>> {
         let module = self.current_module?;
         let path = self.modules.get(module).path();

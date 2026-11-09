@@ -205,10 +205,10 @@ impl TypeChecker {
             .positions()
             .map(|position| self.unifier.resolve(&arguments[position].value.ty))
             .collect();
-        let referent = Self::innermost_referent(&resolved[0]).clone();
+        let referent = resolved[0].innermost_referent().clone();
         if !resolved
             .iter()
-            .all(|argument| Self::innermost_referent(argument) == &referent)
+            .all(|argument| argument.innermost_referent() == &referent)
         {
             return true;
         }
@@ -311,7 +311,7 @@ impl TypeChecker {
         depths.windows(2).any(|pair| pair[0] != pair[1])
             && resolved
                 .iter()
-                .any(|argument| self.holds_copy_value(Self::innermost_referent(argument)))
+                .any(|argument| self.holds_copy_value(argument.innermost_referent()))
     }
 
     fn pass_each(
@@ -463,7 +463,7 @@ impl TypeChecker {
 
     fn referent_takes_literal(&self, kind: LiteralKind, value: &Type) -> bool {
         let resolved = self.unifier.resolve(value);
-        match Self::innermost_referent(&resolved) {
+        match resolved.innermost_referent() {
             Type::Primitive(primitive) => kind.accepts(*primitive),
             Type::Var(var) => self.unifier.literal_kind(*var).is_some(),
             _ => false,
@@ -476,10 +476,10 @@ impl TypeChecker {
         resolved: &[Type],
         arguments: &[TypedArgument],
     ) -> Result<Type, Diagnostic> {
-        let referent = Self::innermost_referent(&resolved[0]).clone();
+        let referent = resolved[0].innermost_referent().clone();
         for (position, argument) in positions.iter().zip(resolved).skip(1) {
             let span = arguments[*position].value.span;
-            let found = Self::innermost_referent(argument);
+            let found = argument.innermost_referent();
             self.expect(&referent, found, span, MismatchContext::Plain)?;
         }
         Ok(self.unifier.resolve(&referent))
@@ -556,7 +556,7 @@ impl TypeChecker {
         if Self::is_unsized_type(&self.rust_types, &written) {
             return Self::UNSIZED_VALUE_DEPTH;
         }
-        Self::reference_depth(&written)
+        written.reference_depth()
     }
 
     fn with_references(referent: Type, depth: usize) -> Type {

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_missing_struct_field.knv
+---
+error[L0433]: non-exhaustive `match`
+ --> check/match_missing_struct_field.knv:8:3
+  |
+8 |   (match p ((parsed (branch _) _) 0)))
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
+  |
+  = note: missing 1 case: `(parsed leaf _)`
+  = help: add an arm for each missing case

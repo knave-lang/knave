@@ -1,0 +1,31 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/document_misspelled_name.knv
+---
+error[L0351]: this module documents `gret` but does not define it
+ --> expand/document_misspelled_name.knv:8:12
+  |
+8 | (document (gret) "Says hi.")
+  |            ^^^^ not defined in this module
+  |
+help: a name with a similar spelling exists
+  |
+8 | (document (greet) "Says hi.")
+  |               +
+
+error[L0351]: this module documents `printn` but does not define it
+  --> expand/document_misspelled_name.knv:10:12
+   |
+10 | (document (printn)
+   |            ^^^^^^ not defined in this module
+   |
+   = help: define `printn` in this module, or move this `document` to the module that defines it
+
+error[L0351]: this module documents `helper` but does not define it
+  --> expand/document_misspelled_name.knv:13:12
+   |
+13 | (document (helper)
+   |            ^^^^^^ not defined in this module
+   |
+   = help: define `helper` in this module, or move this `document` to the module that defines it

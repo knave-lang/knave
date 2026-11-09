@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/arm_beside_a_function_of_its_name.knv
+---
+1
+text

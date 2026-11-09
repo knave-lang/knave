@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/use_own_prelude_internal_module.knv
+---
+(def copied own)

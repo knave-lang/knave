@@ -1,0 +1,58 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/user_examples.knv
+---
+const IS_ADMIN: bool = true;
+
+fn some_function(x: i64) -> i64 {
+    x * x
+}
+
+fn square(x: f64) -> f64 {
+    x * x
+}
+
+fn describe(n: i64) -> &'static str {
+    if n < 0 {
+        "negative"
+    } else if n == 0 {
+        "zero"
+    } else {
+        "positive"
+    }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", IS_ADMIN);
+    println!("{}", some_function(7));
+    println!("{}", square(2.5));
+    println!("{}", {
+        let x: i64 = 2;
+        let y: i64 = 3;
+        x + y
+    });
+    println!("{}", describe(-2));
+    println!("{}", describe(0));
+    if IS_ADMIN {
+        println!("welcome")
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

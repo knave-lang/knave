@@ -1,0 +1,219 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/returned_unpromoted_temporary.knv
+---
+error[L0510]: cannot return a borrow of a temporary value
+ --> check/returned_unpromoted_temporary.knv:6:3
+  |
+6 |   (ref (= "Leaf" "Ariya")))
+  |   ^^^^^------------------^
+  |   |    |
+  |   |    this temporary value is dropped when the function returns
+  |   this borrows a temporary value
+  |
+  = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+ --> check/returned_unpromoted_temporary.knv:8:18
+  |
+8 | (defn by-zero () (ref (/ 7 0)))
+  |                  ^^^^^-------^
+  |                  |    |
+  |                  |    this temporary value is dropped when the function returns
+  |                  this borrows a temporary value
+  |
+  = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:10:17
+   |
+10 | (defn by-sum () (ref (/ 7 (+ 1 1))))
+   |                 ^^^^^-------------^
+   |                 |    |
+   |                 |    this temporary value is dropped when the function returns
+   |                 this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:13:3
+   |
+13 |   (ref (/ (+ 3 4) -1)))
+   |   ^^^^^--------------^
+   |   |    |
+   |   |    this temporary value is dropped when the function returns
+   |   this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:16:3
+   |
+16 |   (ref (/ (+ 3 4) (- 1))))
+   |   ^^^^^-----------------^
+   |   |    |
+   |   |    this temporary value is dropped when the function returns
+   |   this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:18:21
+   |
+18 | (defn bumped (year) (ref (+ year 1)))
+   |                     ^^^^^----------^
+   |                     |    |
+   |                     |    this temporary value is dropped when the function returns
+   |                     this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:21:3
+   |
+21 |   (ref (if flag 2019 2021)))
+   |   ^^^^^-------------------^
+   |   |    |
+   |   |    this temporary value is dropped when the function returns
+   |   this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:24:3
+   |
+24 |   (ref (+ (if flag 2019 2021) 1)))
+   |   ^^^^^-------------------------^
+   |   |    |
+   |   |    this temporary value is dropped when the function returns
+   |   this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:27:3
+   |
+27 |   (ref (do (local year 2019) year)))
+   |   ^^^^^---------------------------^
+   |   |    |
+   |   |    this temporary value is dropped when the function returns
+   |   this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:29:16
+   |
+29 | (defn later () (ref (+ (base-year) 1)))
+   |                ^^^^^-----------------^
+   |                |    |
+   |                |    this temporary value is dropped when the function returns
+   |                this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:32:3
+   |
+32 |   (ref (pair (the (vec i64) (vec)) 1)))
+   |   ^^^^^------------------------------^
+   |   |    |
+   |   |    this temporary value is dropped when the function returns
+   |   this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:41:3
+   |
+41 |   (ref (if c (:x a) (:x b))))
+   |   ^^^^^--------------------^
+   |   |    |
+   |   |    this temporary value is dropped when the function returns
+   |   this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:44:3
+   |
+44 |   (ref (if (> (len years) 0) years (vec 2019))))
+   |   ^^^^^---------------------------------------^
+   |   |    |
+   |   |    this temporary value is dropped when the function returns
+   |   this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:47:3
+   |
+47 |      (ref (match (len years)
+   |  ____^    -
+   | | ________|
+48 | ||          (0 (vec 2019))
+49 | ||          (_ years))))
+   | ||___________________-^ this borrows a temporary value
+   |  |___________________|
+   |                      this temporary value is dropped when the function returns
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:52:3
+   |
+52 |      (ref (if c
+   |  ____^    -
+   | | ________|
+53 | ||          (do (println "Leaf") (local year 2019))
+54 | ||          (do (println "Ariya") (local year 2021)))))
+   | ||__________________________________________________-^ this borrows a temporary value
+   |  |__________________________________________________|
+   |                                                     this temporary value is dropped when the function returns
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:62:18
+   |
+62 | (defn nothing () (ref (by-nothing 7)))
+   |                  ^^^^^--------------^
+   |                  |    |
+   |                  |    this temporary value is dropped when the function returns
+   |                  this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:65:3
+   |
+65 |   (ref (flip (+ 3 4))))
+   |   ^^^^^--------------^
+   |   |    |
+   |   |    this temporary value is dropped when the function returns
+   |   this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:68:3
+   |
+68 |   (ref (+ (rust "std::process::id() as i64" i64) 1)))
+   |   ^^^^^--------------------------------------------^
+   |   |    |
+   |   |    this temporary value is dropped when the function returns
+   |   this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`
+
+error[L0510]: cannot return a borrow of a temporary value
+  --> check/returned_unpromoted_temporary.knv:71:3
+   |
+71 |   (at (do (println "noting") years) 0))
+   |   ^^^^-----------------------------^^^
+   |   |   |
+   |   |   this temporary value is dropped when the function returns
+   |   this borrows a temporary value
+   |
+   = help: return an owned value, or borrow from a parameter or a top-level `def`

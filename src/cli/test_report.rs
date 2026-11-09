@@ -335,7 +335,7 @@ mod tests {
             .records(&[
                 "(start 1)",
                 ReportFixture::DOCUMENTED_TEST,
-                "(fail-equal \"pads.rslisp:4:3\" \"(assert (= 1 2) \\\"close\\\")\" \"1\" \"2\" \"close\")",
+                "(fail-equal \"pads.knv:4:3\" \"(assert (= 1 2) \\\"close\\\")\" \"1\" \"2\" \"close\")",
                 "(done)",
             ])
             .finished(ReportFixture::CLEAN_EXIT);
@@ -343,7 +343,7 @@ mod tests {
             printed,
             "running 1 test\n\
              test pads/right ... FAIL\n\
-             FAIL pads/right: Pads on the right. (pads.rslisp:4:3)\n    \
+             FAIL pads/right: Pads on the right. (pads.knv:4:3)\n    \
              (assert (= 1 2) \"close\")\n    \
              left:  1\n    \
              right: 2\n    \
@@ -359,13 +359,13 @@ mod tests {
             .records(&[
                 "(start 1)",
                 ReportFixture::PADS_TEST,
-                "(fail \"pads.rslisp:2:3\" \"(assert false)\")",
+                "(fail \"pads.knv:2:3\" \"(assert false)\")",
                 "(done)",
             ])
             .finished(ReportFixture::CLEAN_EXIT);
         assert_eq!(
             printed,
-            "running 1 test\ntest pads/left ... FAIL\nFAIL pads/left (pads.rslisp:2:3)\n    (assert false)\n0 passed, 1 failed\n"
+            "running 1 test\ntest pads/left ... FAIL\nFAIL pads/left (pads.knv:2:3)\n    (assert false)\n0 passed, 1 failed\n"
         );
     }
 
@@ -375,13 +375,13 @@ mod tests {
             .records(&[
                 "(start 1)",
                 ReportFixture::PADS_TEST,
-                "(panic \"pads.rslisp:1:1\" \"first\\nsecond\")",
+                "(panic \"pads.knv:1:1\" \"first\\nsecond\")",
                 "(done)",
             ])
             .finished(ReportFixture::CLEAN_EXIT);
         assert_eq!(
             printed,
-            "running 1 test\ntest pads/left ... FAIL\nFAIL pads/left (pads.rslisp:1:1)\n    first\n    second\n0 passed, 1 failed\n"
+            "running 1 test\ntest pads/left ... FAIL\nFAIL pads/left (pads.knv:1:1)\n    first\n    second\n0 passed, 1 failed\n"
         );
     }
 

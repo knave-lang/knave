@@ -1,9 +1,0 @@
----
-source: tests/stages.rs
-expression: reports.report(path)
-input_file: tests/fixtures/run/definers.rslisp
----
-plain 6
-note 8
-plain 0
-42

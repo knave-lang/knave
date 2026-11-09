@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/generic_structs.knv
+---
+(derive pair clone copy partial-eq eq hash show)
+(type ->pair (where (a b) (fn (a b) (pair a b))))
+(type origin (pair i64 f64))
+(type first-of (where (a b) (fn ((ref (pair a b))) (ref a))))
+(type swap (where ((a clone) (b clone)) (fn ((ref (pair a b))) (pair b a))))
+(type main (fn () unit))

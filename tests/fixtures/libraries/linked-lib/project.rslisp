@@ -1,1 +1,0 @@
-(project linked-lib :lib "outer/lib.rslisp")

@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/set_map_in_macro.knv
+---
+error[L0316]: map operations only exist at runtime
+ --> check/set_map_in_macro.knv:2:3
+  |
+2 |   (set! (at m (str "x")) 1))
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^ used at compile time here

@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/rust_enum_clause_shapes.knv
+---
+error[L0210]: malformed `enum`
+ --> check/rust_enum_clause_shapes.knv:1:9
+  |
+1 | (enum a (rust) one)
+  |         ^^^^^^ this does not fit the shape of `enum`
+  |
+  = help: write it as `(rust "Path")` or `(rust "Path" bare)`
+
+error[L0210]: malformed `enum`
+ --> check/rust_enum_clause_shapes.knv:3:9
+  |
+3 | (enum b (rust "Thing" extra) one)
+  |         ^^^^^^^^^^^^^^^^^^^^ this does not fit the shape of `enum`
+  |
+  = help: write it as `(rust "Path")` or `(rust "Path" bare)`
+
+error[L0210]: malformed `enum`
+ --> check/rust_enum_clause_shapes.knv:5:9
+  |
+5 | (enum c (rust "{0}" bare) (of a))
+  |         ^^^^^^^^^^^^^^^^^ this does not fit the shape of `enum`
+  |
+  = help: write it as `(rust "Path")` or `(rust "Path" bare)`

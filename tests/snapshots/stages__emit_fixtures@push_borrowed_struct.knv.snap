@@ -1,0 +1,46 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/push_borrowed_struct.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Car<'a> {
+    make: &'a str,
+    model: &'a str,
+    year: u16,
+}
+
+fn add_car<'a>(cars: &mut Vec<Car<'a>>, car: Car<'a>) {
+    cars.push(car)
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut cars = Vec::new();
+    add_car(
+        &mut cars,
+        Car {
+            make: "Nissan",
+            model: "Leaf",
+            year: 2024,
+        },
+    );
+    println!("{}", cars[0].model)
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

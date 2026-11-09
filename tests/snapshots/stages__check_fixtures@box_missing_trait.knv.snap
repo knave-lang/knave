@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/box_missing_trait.knv
+---
+error[L0404]: `circle` does not implement `shape`
+  --> check/box_missing_trait.knv:11:9
+   |
+11 |   (take (box (new circle (radius 1.0)))))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `shape`

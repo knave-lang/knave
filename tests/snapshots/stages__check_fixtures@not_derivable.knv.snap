@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/not_derivable.knv
+---
+error[L0422]: `display` cannot be derived
+ --> check/not_derivable.knv:4:16
+  |
+4 | (derive ticket display)
+  |                ^^^^^^^ not a derivable trait
+  |
+  = help: a `derive` lists any of: clone, copy, debug, partial-eq, eq, partial-ord, ord, hash, show

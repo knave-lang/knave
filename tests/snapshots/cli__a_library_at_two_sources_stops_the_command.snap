@@ -3,12 +3,12 @@ source: tests/cli.rs
 expression: check.assert_exit_code(1).stderr()
 ---
 error[L0722]: library `keymap` comes from two sources
- --> project.rslisp:4:6
+ --> project.knv:4:6
   |
 4 |     (keymap :path "../other-keymap")))
   |      ^^^^^^ this source differs
   |
- ::: ../hints/project.rslisp:1:31
+ ::: ../hints/project.knv:1:31
   |
 1 | (project hint-kit (libraries (keymap :path "../keymap")))
   |                               ------ from the source given here

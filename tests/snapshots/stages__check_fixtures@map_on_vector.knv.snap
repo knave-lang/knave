@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/map_on_vector.knv
+---
+error[L0401]: mismatched types
+ --> check/map_on_vector.knv:1:21
+  |
+1 | (defn main () (vals (vec 1 2)))
+  |                     ^^^^^^^^^ expected a map, found (vec _)

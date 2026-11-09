@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/set_at_non_collection.knv
+---
+error[L0401]: mismatched types
+ --> check/set_at_non_collection.knv:5:13
+  |
+5 |   (set! (at (new cell (alive false)) 0)
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^ expected a collection, found cell

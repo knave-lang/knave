@@ -1,0 +1,44 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/macro_type_collision.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Point2 {
+    x: i64,
+}
+
+fn old_x() -> i64 {
+    Point2 { x: 3 }.x
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Point {
+    y: i64,
+}
+
+fn make_point(y: i64) -> Point {
+    Point { y }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{} {}", old_x(), make_point(7).y)
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/iter_number.knv
+---
+error[L0401]: mismatched types
+ --> check/iter_number.knv:1:21
+  |
+1 | (defn main () (iter 5))
+  |                     ^ expected a vector, a slice or a map, found an integer

@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/line_seq_invalid_utf8.knv
+---
+Leaf
+after: Civic
+stderr:
+stream did not contain valid UTF-8
+exit code: 0

@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: test.assert_exit_code(1).stderr()
 ---
 error[L0204]: cannot find module `parser`
- --> tests/parse.rslisp:2:6
+ --> tests/parse.knv:2:6
   |
 2 | (use parser parse)
   |      ^^^^^^ no module with this path

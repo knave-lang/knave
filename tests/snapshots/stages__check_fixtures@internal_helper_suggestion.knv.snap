@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/internal_helper_suggestion.knv
+---
+error[L0201]: cannot find `make-thng` in this scope
+ --> check/internal_helper_suggestion.knv:6:13
+  |
+6 |   (println (make-thng 1)))
+  |             ^^^^^^^^^ not found in this scope
+  |
+help: a name with a similar spelling exists
+  |
+6 |   (println (make-thing 1)))
+  |                    +
+
+error[L0201]: cannot find `internal-helpr` in this scope
+ --> check/internal_helper_suggestion/helpers.knv:6:14
+  |
+6 |   (template (internal-helpr (unquote x))))
+  |              ^^^^^^^^^^^^^^ not found in this scope
+  |
+ ::: check/internal_helper_suggestion.knv:3:24
+  |
+3 | (defn main () (println (make-thing 1)))
+  |                        -------------- in this macro call
+  |
+  = note: in this expansion of `make-thing`

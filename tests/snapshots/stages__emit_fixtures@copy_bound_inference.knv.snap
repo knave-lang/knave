@@ -1,0 +1,55 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/copy_bound_inference.knv
+---
+fn twice_pinned<A: Copy>(x: A) -> Vec<A> {
+    vec![x, x]
+}
+
+fn twice<A: Copy>(x: A) -> Vec<A> {
+    vec![x, x]
+}
+
+fn wrap<A>(x: A) -> Vec<A> {
+    vec![x]
+}
+
+fn show_twice<A: std::fmt::Display>(x: &A) {
+    println!("{}", x);
+    println!("{}", x)
+}
+
+fn bigger<A: PartialOrd>(a: A, b: A) -> A {
+    if a > b { a } else { b }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", twice(3_i64).len());
+    println!("{}", twice(1.5).len());
+    println!("{}", twice_pinned(3_i64).len());
+    println!("{}", wrap(3_i64).len());
+    println!("{}", wrap("one".to_string()).len());
+    show_twice(&3_i64);
+    show_twice(&"two".to_string());
+    println!("{}", bigger(1_i64, 2));
+    println!("{}", bigger("pear".to_string(), "apple".to_string()))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

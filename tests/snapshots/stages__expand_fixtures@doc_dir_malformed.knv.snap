@@ -1,0 +1,60 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/doc_dir_malformed.knv
+---
+error[L0301]: `dir` takes one module name, or nothing
+ --> expand/doc_dir_malformed.knv:1:17
+  |
+1 | (def not-a-name (dir 1))
+  |                 ^^^^^^^ not one module name
+  |
+  = help: write `(dir)`, or a module as in `(dir geometry)`
+
+error[L0301]: `dir` takes one module name, or nothing
+ --> expand/doc_dir_malformed.knv:3:16
+  |
+3 | (def two-names (dir one two))
+  |                ^^^^^^^^^^^^^ not one module name
+  |
+  = help: write `(dir)`, or a module as in `(dir geometry)`
+
+error[L0301]: `dir` takes one module name, or nothing
+ --> expand/doc_dir_malformed.knv:5:26
+  |
+5 | (def looked-up (doc-page (dir 1)))
+  |                          ^^^^^^^ not one module name
+  |
+  = help: write `(dir)`, or a module as in `(dir geometry)`
+
+error[L0301]: `dir` takes one module name, or nothing
+ --> expand/doc_dir_malformed.knv:7:38
+  |
+7 | (def header-of-malformed (doc-header (dir 1)))
+  |                                      ^^^^^^^ not one module name
+  |
+  = help: write `(dir)`, or a module as in `(dir geometry)`
+
+error[L0327]: `(dir)` has no docstring
+ --> expand/doc_dir_malformed.knv:9:30
+  |
+9 | (def no-docstring (docstring (dir)))
+  |                              ^^^^^ a listing has no docstring
+  |
+  = help: read its results with `doc-page`
+
+error[L0301]: a documentation lookup takes a name, a module or a listing
+  --> expand/doc_dir_malformed.knv:11:27
+   |
+11 | (def empty-term (doc-page ()))
+   |                           ^^ not a name, a module or a listing
+   |
+   = help: write a name, a module as in `(module geometry)`, or a listing as in `(dir geometry)`
+
+error[L0204]: cannot find module `nowhere`
+  --> expand/doc_dir_malformed.knv:13:26
+   |
+13 | (def unknown-module (dir nowhere))
+   |                          ^^^^^^^ no module with this path
+   |
+   = help: a module path names a file relative to the root directory, without its extension

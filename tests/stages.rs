@@ -6,7 +6,7 @@ use support::{Fixture, FixtureReports, FormatFailures, HeaderAgreement, SavedPre
 
 #[test]
 fn reader_fixtures() {
-    let fixtures = "fixtures/read/*.rslisp";
+    let fixtures = "fixtures/read/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).read_report());
@@ -17,7 +17,7 @@ fn reader_fixtures() {
 
 #[test]
 fn project_fixtures() {
-    let fixtures = "fixtures/project/*.rslisp";
+    let fixtures = "fixtures/project/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).project_report());
@@ -28,7 +28,7 @@ fn project_fixtures() {
 
 #[test]
 fn format_fixtures() {
-    let fixtures = "fixtures/format/*.rslisp";
+    let fixtures = "fixtures/format/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).format_report());
@@ -53,7 +53,7 @@ fn every_repository_source_formats_to_the_same_forms_and_stays_formatted() {
 
 #[test]
 fn expand_fixtures() {
-    let fixtures = "fixtures/expand/*.rslisp";
+    let fixtures = "fixtures/expand/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).expand_report());
@@ -64,7 +64,7 @@ fn expand_fixtures() {
 
 #[test]
 fn check_fixtures() {
-    let fixtures = "fixtures/check/*.rslisp";
+    let fixtures = "fixtures/check/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).check_report());
@@ -75,7 +75,7 @@ fn check_fixtures() {
 
 #[test]
 fn emit_fixtures() {
-    let fixtures = "fixtures/emit/*.rslisp";
+    let fixtures = "fixtures/emit/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).emit_report());
@@ -86,7 +86,7 @@ fn emit_fixtures() {
 
 #[test]
 fn run_fixtures() {
-    let fixtures = "fixtures/run/*.rslisp";
+    let fixtures = "fixtures/run/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).run_report());
@@ -97,7 +97,7 @@ fn run_fixtures() {
 
 #[test]
 fn corpus_fixtures() {
-    let fixtures = "fixtures/corpus/*.rslisp";
+    let fixtures = "fixtures/corpus/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).run_report());
@@ -129,7 +129,7 @@ fn defrule_headers_agree() {
 #[test]
 fn saved_prelude_expand_fixtures() {
     let mut paths = Vec::new();
-    insta::glob!("fixtures/expand/*.rslisp", |path| paths
+    insta::glob!("fixtures/expand/*.knv", |path| paths
         .push(PathBuf::from(path)));
     SavedPreludeAgreement::of(paths).assert_loaded_prelude_agrees();
 }
@@ -137,7 +137,7 @@ fn saved_prelude_expand_fixtures() {
 #[test]
 fn saved_prelude_check_fixtures() {
     let mut paths = Vec::new();
-    insta::glob!("fixtures/check/*.rslisp", |path| paths
+    insta::glob!("fixtures/check/*.knv", |path| paths
         .push(PathBuf::from(path)));
     SavedPreludeAgreement::of(paths).assert_loaded_prelude_agrees();
 }
@@ -145,7 +145,7 @@ fn saved_prelude_check_fixtures() {
 #[test]
 fn saved_prelude_emit_fixtures() {
     let mut paths = Vec::new();
-    insta::glob!("fixtures/emit/*.rslisp", |path| paths
+    insta::glob!("fixtures/emit/*.knv", |path| paths
         .push(PathBuf::from(path)));
     SavedPreludeAgreement::of(paths).assert_loaded_prelude_agrees();
 }
@@ -153,15 +153,14 @@ fn saved_prelude_emit_fixtures() {
 #[test]
 fn saved_prelude_run_fixtures() {
     let mut paths = Vec::new();
-    insta::glob!("fixtures/run/*.rslisp", |path| paths
-        .push(PathBuf::from(path)));
+    insta::glob!("fixtures/run/*.knv", |path| paths.push(PathBuf::from(path)));
     SavedPreludeAgreement::of(paths).assert_loaded_prelude_agrees();
 }
 
 #[test]
 fn saved_prelude_corpus_fixtures() {
     let mut paths = Vec::new();
-    insta::glob!("fixtures/corpus/*.rslisp", |path| paths
+    insta::glob!("fixtures/corpus/*.knv", |path| paths
         .push(PathBuf::from(path)));
     SavedPreludeAgreement::of(paths).assert_loaded_prelude_agrees();
 }

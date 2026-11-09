@@ -1,0 +1,50 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/person.knv
+---
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Person {
+    name: String,
+    age: i64,
+}
+
+fn make_person(name: String, age: i64) -> Person {
+    Person { name, age }
+}
+
+fn introduce(someone: &Person) -> String {
+    format!("{} is {}", someone.name, someone.age)
+}
+
+fn rename(someone: &Person, new_name: String) -> Person {
+    make_person(new_name, someone.age)
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let ada = make_person("Ada".to_string(), 36);
+    println!("{}", ada.name);
+    println!("{}", ada.name);
+    println!("{}", introduce(&ada));
+    let copy = ada.name.clone();
+    let renamed = rename(&ada, copy);
+    println!("{}", introduce(&renamed))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

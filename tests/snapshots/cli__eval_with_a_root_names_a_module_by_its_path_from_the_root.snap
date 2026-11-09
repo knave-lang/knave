@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: eval.assert_exit_code(1).stderr()
 ---
 error[L0206]: importing `sub/c` creates a cycle
- --> sub/c.rslisp:1:6
+ --> sub/c.knv:1:6
   |
 1 | (use sub/c)
   |      ^^^^^ this import closes the cycle

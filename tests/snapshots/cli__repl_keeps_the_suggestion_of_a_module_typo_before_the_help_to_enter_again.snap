@@ -6,7 +6,7 @@ exit code: Some(0)
 --- stdout
 --- stderr
 warning[L0249]: set aside `circle` after `<input 4>`
- --> ./shapes.rslisp:2:19
+ --> ./shapes.knv:2:19
   |
 2 | (defn circle (r) (nope r))
   |                   ^^^^ not found in this scope

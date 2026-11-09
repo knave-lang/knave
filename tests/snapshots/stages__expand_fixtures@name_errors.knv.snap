@@ -1,0 +1,76 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/name_errors.knv
+---
+error[L0201]: cannot find `widht` in this scope
+ --> expand/name_errors.knv:3:25
+  |
+3 | (def area (fn (height) (widht height)))
+  |                         ^^^^^ not found in this scope
+  |
+help: a name with a similar spelling exists
+  |
+3 - (def area (fn (height) (widht height)))
+3 + (def area (fn (height) (width height)))
+  |
+
+error[L0209]: `()` is not an expression
+ --> expand/name_errors.knv:5:14
+  |
+5 | (def nothing ())
+  |              ^^ an empty list has nothing to call
+  |
+help: the unit value is written `(do)`
+  |
+5 | (def nothing (do))
+  |               ++
+
+error[L0208]: `def` can only appear at module level
+ --> expand/name_errors.knv:7:20
+  |
+7 | (def nested (fn () (def inner 1)))
+  |                    ^^^^^^^^^^^^^ not allowed inside an expression
+  |
+  = help: use `local` to bind a name inside a body
+
+error[L0227]: `local` can only appear directly in a body
+ --> expand/name_errors.knv:9:12
+  |
+9 | (def loose (local x 1))
+  |            ^^^^^^^^^^^ not allowed here
+  |
+  = help: wrap the code that uses it in `(let (x 1) ...)`
+
+error[L0210]: malformed `if`
+  --> expand/name_errors.knv:11:14
+   |
+11 | (def mistake (if width))
+   |              ^^^^^^^^^^ this does not fit the shape of `if`
+   |
+   = help: write it as `(if test then else)`
+
+error[L0203]: `twice` is defined more than once
+  --> expand/name_errors.knv:15:6
+   |
+13 | (def twice 1)
+   |      ----- first defined here
+14 |
+15 | (def twice 2)
+   |      ^^^^^ defined again here
+
+error[L0201]: cannot find `'origin` in this scope
+  --> expand/name_errors.knv:17:13
+   |
+17 | (def quoted 'origin)
+   |             ^^^^^^^ not found in this scope
+   |
+   = help: there is no quote shorthand; write `(quote origin)`
+
+error[L0211]: `if` is a form, not a value
+  --> expand/name_errors.knv:19:17
+   |
+19 | (def form-value if)
+   |                 ^^ used as a value here
+   |
+   = help: write it as `(if test then else)`

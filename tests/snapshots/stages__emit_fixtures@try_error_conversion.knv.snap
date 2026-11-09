@@ -1,0 +1,57 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/try_error_conversion.knv
+---
+enum AppError {
+    Io(std::io::Error),
+    Parse(std::num::ParseIntError),
+}
+
+fn read_number(path: &str) -> Result<i64, AppError> {
+    let text = std::fs::read_to_string(path)?;
+    Ok(text.as_str().parse::<i64>()?)
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    match read_number("number.txt") {
+        Ok(number) => println!("{}", number),
+        Err(AppError::Io(_reason)) => println!("cannot read"),
+        Err(AppError::Parse(_reason)) => println!("not a number"),
+    }
+    match read_number("missing.txt") {
+        Ok(number) => println!("{}", number),
+        Err(AppError::Io(_reason)) => println!("cannot read"),
+        Err(AppError::Parse(_reason)) => println!("not a number"),
+    }
+}
+
+impl From<std::io::Error> for AppError {
+    fn from(error: std::io::Error) -> Self {
+        AppError::Io(error)
+    }
+}
+
+impl From<std::num::ParseIntError> for AppError {
+    fn from(error: std::num::ParseIntError) -> Self {
+        AppError::Parse(error)
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

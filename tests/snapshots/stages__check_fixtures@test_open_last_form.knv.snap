@@ -1,0 +1,26 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/test_open_last_form.knv
+---
+error[L0407]: type annotations needed
+ --> check/test_open_last_form.knv:3:35
+  |
+3 | (deftest ends-with-an-open-option none)
+  |                                   ^^^^ cannot infer the type `(option _)` of this value
+  |
+help: write the type with `the`, and replace each `_` with a type
+  |
+3 | (deftest ends-with-an-open-option (the (option _) none))
+  |                                   +++++++++++++++     +
+
+error[L0407]: type annotations needed
+ --> check/test_open_last_form.knv:5:35
+  |
+5 | (deftest ends-with-an-open-vector (vec))
+  |                                   ^^^^^ cannot infer the type `(vec _)` of this value
+  |
+help: write the type with `the`, and replace each `_` with a type
+  |
+5 | (deftest ends-with-an-open-vector (the (vec _) (vec)))
+  |                                   ++++++++++++      +

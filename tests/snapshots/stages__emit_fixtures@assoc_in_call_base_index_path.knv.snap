@@ -1,0 +1,48 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/assoc_in_call_base_index_path.knv
+---
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Shelf {
+    label: String,
+    items: Vec<i64>,
+}
+
+fn make_shelf(label: String, items: Vec<i64>) -> Shelf {
+    Shelf { label, items }
+}
+
+fn stock() -> Shelf {
+    make_shelf("top".to_string(), vec![1_i64, 2_i64, 3_i64])
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let items: Vec<i64> = {
+        let base = stock();
+        {
+            let mut value = base.items;
+            value[1] = 9;
+            value
+        }
+    };
+    println!("{} {} {} {}", stock().label, items[0], items[1], items[2])
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

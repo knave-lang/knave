@@ -1,0 +1,42 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/function_parameter_cycle_branches.knv
+---
+fn helper(g: impl FnOnce(i64), n: i64) -> i64 {
+    g(n);
+    0
+}
+
+fn ping(mut f: impl FnMut(i64), n: i64) -> i64 {
+    f(n);
+    if n > 0 { pong(f, n - 1) } else { 0 }
+}
+
+fn pong(f: impl FnMut(i64), n: i64) -> i64 {
+    if n > 0 { ping(f, n - 1) } else { helper(f, n) }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut total: Vec<i64> = vec![0_i64];
+    ping(|n: i64| total.push(n), 3);
+    println!("{}", total.len())
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

@@ -1,6 +1,0 @@
----
-source: tests/stages.rs
-expression: reports.report(path)
-input_file: tests/fixtures/check/macro_as_function.rslisp
----
-(type main (fn () unit))

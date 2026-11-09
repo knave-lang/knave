@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/struct_equality.knv
+---
+(derive point clone copy partial-eq eq hash show)
+(type ->point (fn (i64 i64) point))
+(type main (fn () unit))

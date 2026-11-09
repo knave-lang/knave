@@ -4,7 +4,7 @@ expression: fmt.assert_silent_success().stdout()
 ---
 (project browser
   :version "0.1.0"
-  :entry "src/main.rslisp"
+  :entry "src/main.knv"
   (libraries (hints :path "../hints"))
 
   (dependencies

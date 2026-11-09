@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/assoc_in_field_after_index.knv
+---
+error[L0301]: a field step cannot follow an index step
+  --> check/assoc_in_field_after_index.knv:14:29
+   |
+14 |   (assoc-in garage (:bays 0 :make) "Nissan"))
+   |                             ^^^^^ here

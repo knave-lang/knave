@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: run.assert_exit_code(1).stderr()
 ---
 error[L0719]: this compiler cannot build `dev-dependencies` yet
- --> project.rslisp:1:19
+ --> project.knv:1:19
   |
 1 | (project greeter (dev-dependencies (fake-check "0.3")))
   |                   ^^^^^^^^^^^^^^^^ this section has entries

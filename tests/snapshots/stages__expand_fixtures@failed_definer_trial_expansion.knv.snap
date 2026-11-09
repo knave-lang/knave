@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/failed_definer_trial_expansion.knv
+---
+error[L0301]: probe fails
+  --> expand/failed_definer_trial_expansion.knv:11:8
+   |
+11 | (probe 1)
+   |        ^ here
+
+error[L0201]: cannot find `area` in this scope
+  --> expand/failed_definer_trial_expansion.knv:13:25
+   |
+13 | (defn main () (println (area 1)))
+   |                         ^^^^ not found in this scope

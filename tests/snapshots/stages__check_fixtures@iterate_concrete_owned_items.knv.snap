@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/iterate_concrete_owned_items.knv
+---
+error[L0401]: mismatched types
+ --> check/iterate_concrete_owned_items.knv:9:23
+  |
+9 |   (println (shout-all models)))
+  |                       ^^^^^^ expected `(iterator string)`, found `(iterator (ref string))`

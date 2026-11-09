@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/compare_borrow_beside_string.knv
+---
+(type string-last (fn () bool))

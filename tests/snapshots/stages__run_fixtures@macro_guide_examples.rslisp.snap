@@ -1,8 +1,0 @@
----
-source: tests/stages.rs
-expression: reports.report(path)
-input_file: tests/fixtures/run/macro_guide_examples.rslisp
----
-none
-one
-many

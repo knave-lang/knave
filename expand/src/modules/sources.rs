@@ -45,68 +45,50 @@ impl ModuleSources {
     const INTERNAL_DIRECTORY: &str = "prelude/internal/";
     const BYTE_ORDER_MARK: char = '\u{feff}';
     const PRELUDE_FILES: [(&str, &str); 24] = [
-        ("prelude", include_str!("../../prelude/prelude.rslisp")),
+        ("prelude", include_str!("../../prelude/prelude.knv")),
         (
             "prelude/internal/macros",
-            include_str!("../../prelude/internal/macros.rslisp"),
+            include_str!("../../prelude/internal/macros.knv"),
         ),
-        (
-            "prelude/macros",
-            include_str!("../../prelude/macros.rslisp"),
-        ),
-        ("prelude/logic", include_str!("../../prelude/logic.rslisp")),
+        ("prelude/macros", include_str!("../../prelude/macros.knv")),
+        ("prelude/logic", include_str!("../../prelude/logic.knv")),
         (
             "prelude/internal/syntax",
-            include_str!("../../prelude/internal/syntax.rslisp"),
+            include_str!("../../prelude/internal/syntax.knv"),
         ),
-        (
-            "prelude/syntax",
-            include_str!("../../prelude/syntax.rslisp"),
-        ),
-        (
-            "prelude/number",
-            include_str!("../../prelude/number.rslisp"),
-        ),
-        ("prelude/text", include_str!("../../prelude/text.rslisp")),
-        (
-            "prelude/struct",
-            include_str!("../../prelude/struct.rslisp"),
-        ),
+        ("prelude/syntax", include_str!("../../prelude/syntax.knv")),
+        ("prelude/number", include_str!("../../prelude/number.knv")),
+        ("prelude/text", include_str!("../../prelude/text.knv")),
+        ("prelude/struct", include_str!("../../prelude/struct.knv")),
         (
             "prelude/definers",
-            include_str!("../../prelude/definers.rslisp"),
+            include_str!("../../prelude/definers.knv"),
         ),
         (
             "prelude/ownership",
-            include_str!("../../prelude/ownership.rslisp"),
+            include_str!("../../prelude/ownership.knv"),
         ),
-        ("prelude/types", include_str!("../../prelude/types.rslisp")),
-        ("prelude/pair", include_str!("../../prelude/pair.rslisp")),
-        ("prelude/assoc", include_str!("../../prelude/assoc.rslisp")),
-        ("prelude/place", include_str!("../../prelude/place.rslisp")),
-        ("prelude/vec", include_str!("../../prelude/vec.rslisp")),
+        ("prelude/types", include_str!("../../prelude/types.knv")),
+        ("prelude/pair", include_str!("../../prelude/pair.knv")),
+        ("prelude/assoc", include_str!("../../prelude/assoc.knv")),
+        ("prelude/place", include_str!("../../prelude/place.knv")),
+        ("prelude/vec", include_str!("../../prelude/vec.knv")),
         (
             "prelude/iterator",
-            include_str!("../../prelude/iterator.rslisp"),
+            include_str!("../../prelude/iterator.knv"),
         ),
-        (
-            "prelude/option",
-            include_str!("../../prelude/option.rslisp"),
-        ),
-        (
-            "prelude/result",
-            include_str!("../../prelude/result.rslisp"),
-        ),
-        ("prelude/io", include_str!("../../prelude/io.rslisp")),
-        ("prelude/map", include_str!("../../prelude/map.rslisp")),
+        ("prelude/option", include_str!("../../prelude/option.knv")),
+        ("prelude/result", include_str!("../../prelude/result.knv")),
+        ("prelude/io", include_str!("../../prelude/io.knv")),
+        ("prelude/map", include_str!("../../prelude/map.knv")),
         (
             "prelude/sequence",
-            include_str!("../../prelude/sequence.rslisp"),
+            include_str!("../../prelude/sequence.knv"),
         ),
-        ("prelude/test", include_str!("../../prelude/test.rslisp")),
+        ("prelude/test", include_str!("../../prelude/test.knv")),
         (
             "prelude/project-file",
-            include_str!("../../prelude/project-file.rslisp"),
+            include_str!("../../prelude/project-file.knv"),
         ),
     ];
 
@@ -383,7 +365,7 @@ mod tests {
     fn a_test_module_hides_the_source_module_of_its_path() {
         let app = TestedApp::new();
         let hidden = app.hidden(&app.sources(), None, "greeting");
-        assert_eq!(hidden, Some(app.directory.join("src/greeting.rslisp")));
+        assert_eq!(hidden, Some(app.directory.join("src/greeting.knv")));
     }
 
     #[test]

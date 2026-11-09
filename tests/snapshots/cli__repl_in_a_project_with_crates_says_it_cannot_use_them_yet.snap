@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: repl.assert_exit_code(1).stderr()
 ---
 error[L0719]: `repl` cannot use crate dependencies yet
- --> project.rslisp:1:29
+ --> project.knv:1:29
   |
 1 | (project app (dependencies (answer :path "../answer")))
   |                             ^^^^^^ this project uses crate `answer`

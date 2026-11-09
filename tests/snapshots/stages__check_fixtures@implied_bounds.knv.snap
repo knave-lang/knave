@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/implied_bounds.knv
+---
+error[L0440]: `n` might not implement `number`
+  --> check/implied_bounds.knv:14:27
+   |
+14 | (defn square-shown (x) (* x x))
+   |                           ^ this needs `number`
+   |
+   = help: add the trait to the signature's `where`: `(n number)`

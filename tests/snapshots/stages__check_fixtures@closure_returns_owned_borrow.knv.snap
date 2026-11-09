@@ -1,0 +1,54 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/closure_returns_owned_borrow.knv
+---
+error[L0510]: cannot return a borrow of a local value
+ --> check/closure_returns_owned_borrow.knv:2:28
+  |
+2 |   (local first (fn (items) (at items 0)))
+  |                     -----  ^^^^^^^^^^^^ this borrows a local value
+  |                     |
+  |                     this parameter owns its value, which is dropped when the function returns
+  |
+  = help: return an owned value with `(clone ...)`, or capture the value instead of passing it
+
+error[L0510]: cannot return a borrow of a local value
+ --> check/closure_returns_owned_borrow.knv:8:27
+  |
+8 | (defn first-owned (items) (at items 0))
+  |                    -----  ^^^^^^^^^^^^ this borrows a local value
+  |                    |
+  |                    this parameter owns its value, which is dropped when the function returns
+  |
+  = help: return an owned value with `(clone ...)`, or give this parameter a borrowed type
+
+error[L0510]: cannot return a borrow of a local value
+  --> check/closure_returns_owned_borrow.knv:14:7
+   |
+13 |       (local years (vec 2019 2021 2024))
+   |              ----- this local is dropped when the function returns
+14 |       (at years 0)))
+   |       ^^^^^^^^^^^^ this borrows a local value
+   |
+   = help: return an owned value with `(clone ...)`, or borrow from a parameter
+
+error[L0510]: cannot return a borrow of a local value
+  --> check/closure_returns_owned_borrow.knv:26:14
+   |
+25 |              (local years (vec year 2024))
+   |                     ----- this local is dropped when the function returns
+26 |              (at years 0)))
+   |              ^^^^^^^^^^^^ this borrows a local value
+   |
+   = help: return an owned value with `(clone ...)`, or borrow from a parameter
+
+error[L0510]: cannot return a borrow of a local value
+  --> check/closure_returns_owned_borrow.knv:33:30
+   |
+33 |     (local first (fn (items) (at items 0)))
+   |                       -----  ^^^^^^^^^^^^ this borrows a local value
+   |                       |
+   |                       this parameter owns its value, which is dropped when the function returns
+   |
+   = help: return an owned value with `(clone ...)`, or capture the value instead of passing it

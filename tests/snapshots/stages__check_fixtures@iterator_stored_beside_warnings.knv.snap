@@ -1,0 +1,29 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/iterator_stored_beside_warnings.knv
+---
+error[L0458]: Rust cannot name the type `(iterator i64)` here
+ --> check/iterator_stored_beside_warnings.knv:2:10
+  |
+2 |   :items (iterator i64)
+  |          ^^^^^^^^^^^^^^ this stores `(iterator i64)`
+  |
+  = note: Rust names this type only as the type of a function's own parameter or result
+  = help: store the collection the items come from instead, and call `iter` on it where the items are used
+
+warning[L0434]: unreachable `match` arm
+ --> check/iterator_stored_beside_warnings.knv:8:21
+  |
+8 |   (match s (_ 0.0) (point 1.0)))
+  |             -       ^^^^^ this arm can never match
+  |             |
+  |             this arm covers it
+
+warning[L0504]: `add-one` changes an argument, so its name should end with `!`
+  --> check/iterator_stored_beside_warnings.knv:10:7
+   |
+10 | (defn add-one (items) (push! items 1))
+   |       ^^^^^^^ this function changes an argument
+   |
+   = help: rename it `add-one!`

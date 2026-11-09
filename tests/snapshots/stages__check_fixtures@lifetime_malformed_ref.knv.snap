@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/lifetime_malformed_ref.knv
+---
+error[L0228]: malformed `ref` type
+ --> check/lifetime_malformed_ref.knv:3:10
+  |
+3 |     (fn ((ref 'a str extra) (ref 'b str))
+  |          ^^^^^^^^^^^^^^^^^^ this does not fit the shape of the type
+  |
+  = help: write it as `(ref type)`

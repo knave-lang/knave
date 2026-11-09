@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/missing_template_argument.knv
+---
+error[L0603]: invalid Rust template: `{1}` has no matching argument
+ --> emit/missing_template_argument.knv:4:24
+  |
+4 | (defn main () (println (broken 1)))
+  |                        ^^^^^^^^^^ in this template

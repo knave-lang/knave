@@ -1,0 +1,48 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/kernel_borrows.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Counter {
+    count: i64,
+}
+
+fn make_counter(count: i64) -> Counter {
+    Counter { count }
+}
+
+fn peek(x: &i64) -> i64 {
+    *x
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut n: i64 = 3;
+    let r = &n;
+    println!("{}", peek(r));
+    let m = &mut n;
+    *m += 1;
+    println!("{}", n);
+    let c = make_counter(3);
+    println!("{}", peek(&c.count));
+    let r_2 = &c;
+    println!("{}", peek(&r_2.count))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

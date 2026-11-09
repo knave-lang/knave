@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/function_field_branches_without_captures.knv
+---
+making
+5
+7
+4

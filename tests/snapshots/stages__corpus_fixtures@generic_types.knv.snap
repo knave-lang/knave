@@ -1,0 +1,126 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/corpus/generic_types.knv
+---
+parcel-1 crate: 4 items, 8 kg, 2 fragile, heaviest parcel-1 #3
+parcel-2 crate: 4 items, 24 kg, 2 fragile, heaviest parcel-2 #4
+parcel-3 crate: 4 items, 48 kg, 2 fragile, heaviest parcel-3 #5
+parcel-4 crate: 4 items, 80 kg, 2 fragile, heaviest parcel-4 #6
+parcel-5 crate: 4 items, 120 kg, 2 fragile, heaviest parcel-5 #7
+parcel-6 crate: 4 items, 168 kg, 2 fragile, heaviest parcel-6 #8
+parcel-7 crate: 4 items, 161 kg, 1 fragile, heaviest parcel-7 #8
+parcel-8 crate: 4 items, 18 kg, 1 fragile, heaviest parcel-8 #8
+parcel-9 crate: 4 items, 26 kg, 0 fragile, heaviest parcel-9 #8
+parcel-10 crate: 4 items, 24 kg, 0 fragile, heaviest parcel-10 #12
+parcel-11 crate: 4 items, 48 kg, 2 fragile, heaviest parcel-11 #13
+parcel-12 crate: 4 items, 80 kg, 2 fragile, heaviest parcel-12 #14
+parcel-13 crate: 4 items, 120 kg, 2 fragile, heaviest parcel-13 #15
+parcel-14 crate: 4 items, 168 kg, 2 fragile, heaviest parcel-14 #16
+parcel-15 crate: 4 items, 28 kg, 2 fragile, heaviest parcel-15 #17
+parcel-16 crate: 4 items, 46 kg, 2 fragile, heaviest parcel-16 #17
+parcel-17 crate: 4 items, 54 kg, 2 fragile, heaviest parcel-17 #17
+parcel-18 crate: 4 items, 52 kg, 1 fragile, heaviest parcel-18 #17
+parcel-19 crate: 4 items, 40 kg, 1 fragile, heaviest parcel-19 #21
+parcel-20 crate: 4 items, 72 kg, 0 fragile, heaviest parcel-20 #22
+parcel-21 crate: 4 items, 112 kg, 2 fragile, heaviest parcel-21 #23
+parcel-22 crate: 4 items, 20 kg, 2 fragile, heaviest parcel-22 #24
+parcel-23 crate: 4 items, 48 kg, 2 fragile, heaviest parcel-23 #25
+parcel-24 crate: 4 items, 84 kg, 2 fragile, heaviest parcel-24 #26
+parcel-25 crate: 4 items, 92 kg, 1 fragile, heaviest parcel-25 #26
+parcel-26 crate: 4 items, 90 kg, 2 fragile, heaviest parcel-26 #26
+parcel-27 crate: 4 items, 78 kg, 1 fragile, heaviest parcel-27 #26
+parcel-28 crate: 4 items, 56 kg, 1 fragile, heaviest parcel-28 #30
+parcel-29 crate: 4 items, 12 kg, 1 fragile, heaviest parcel-29 #31
+parcel-30 crate: 4 items, 32 kg, 1 fragile, heaviest parcel-30 #32
+parcel-31 crate: 4 items, 60 kg, 2 fragile, heaviest parcel-31 #33
+parcel-32 crate: 4 items, 96 kg, 2 fragile, heaviest parcel-32 #34
+parcel-33 crate: 4 items, 140 kg, 2 fragile, heaviest parcel-33 #35
+parcel-34 crate: 4 items, 138 kg, 2 fragile, heaviest parcel-34 #35
+parcel-35 crate: 4 items, 126 kg, 1 fragile, heaviest parcel-35 #35
+parcel-36 crate: 4 items, 13 kg, 2 fragile, heaviest parcel-36 #35
+parcel-37 crate: 4 items, 16 kg, 2 fragile, heaviest parcel-37 #39
+parcel-38 crate: 4 items, 36 kg, 1 fragile, heaviest parcel-38 #40
+parcel-39 crate: 4 items, 64 kg, 2 fragile, heaviest parcel-39 #41
+parcel-40 crate: 4 items, 100 kg, 1 fragile, heaviest parcel-40 #42
+parcel-41 crate: 4 items, 144 kg, 2 fragile, heaviest parcel-41 #43
+parcel-42 crate: 4 items, 196 kg, 2 fragile, heaviest parcel-42 #44
+parcel-43 crate: 4 items, 23 kg, 1 fragile, heaviest parcel-43 #44
+parcel-44 crate: 4 items, 36 kg, 1 fragile, heaviest parcel-44 #44
+parcel-45 crate: 4 items, 39 kg, 0 fragile, heaviest parcel-45 #44
+parcel-46 crate: 4 items, 32 kg, 2 fragile, heaviest parcel-46 #48
+parcel-47 crate: 4 items, 60 kg, 2 fragile, heaviest parcel-47 #49
+parcel-48 crate: 4 items, 96 kg, 2 fragile, heaviest parcel-48 #50
+parcel-49 crate: 4 items, 140 kg, 2 fragile, heaviest parcel-49 #51
+parcel-50 crate: 4 items, 24 kg, 2 fragile, heaviest parcel-50 #52
+parcel-51 crate: 4 items, 56 kg, 2 fragile, heaviest parcel-51 #53
+parcel-52 crate: 4 items, 69 kg, 2 fragile, heaviest parcel-52 #53
+parcel-53 crate: 4 items, 72 kg, 1 fragile, heaviest parcel-53 #53
+parcel-54 crate: 4 items, 65 kg, 1 fragile, heaviest parcel-54 #53
+parcel-55 crate: 4 items, 48 kg, 0 fragile, heaviest parcel-55 #57
+parcel-56 crate: 4 items, 84 kg, 2 fragile, heaviest parcel-56 #58
+parcel-57 crate: 4 items, 16 kg, 2 fragile, heaviest parcel-57 #59
+parcel-58 crate: 4 items, 40 kg, 2 fragile, heaviest parcel-58 #60
+parcel-59 crate: 4 items, 72 kg, 2 fragile, heaviest parcel-59 #61
+parcel-60 crate: 4 items, 112 kg, 2 fragile, heaviest parcel-60 #62
+group PARCEL-1 #0
+group PARCEL-2 #0
+group PARCEL-3 #0
+group PARCEL-4 #0
+group PARCEL-5 #4
+group PARCEL-6 #4
+group PARCEL-7 #4
+group PARCEL-8 #4
+group PARCEL-9 #8
+group PARCEL-10 #8
+group PARCEL-11 #8
+group PARCEL-12 #8
+group PARCEL-13 #12
+group PARCEL-14 #12
+group PARCEL-15 #12
+group PARCEL-16 #12
+group PARCEL-17 #16
+group PARCEL-18 #16
+group PARCEL-19 #16
+group PARCEL-20 #16
+group PARCEL-21 #20
+group PARCEL-22 #20
+group PARCEL-23 #20
+group PARCEL-24 #20
+group PARCEL-25 #24
+group PARCEL-26 #24
+group PARCEL-27 #24
+group PARCEL-28 #24
+group PARCEL-29 #28
+group PARCEL-30 #28
+group PARCEL-31 #28
+group PARCEL-32 #28
+group PARCEL-33 #32
+group PARCEL-34 #32
+group PARCEL-35 #32
+group PARCEL-36 #32
+group PARCEL-37 #36
+group PARCEL-38 #36
+group PARCEL-39 #36
+group PARCEL-40 #36
+group PARCEL-41 #40
+group PARCEL-42 #40
+group PARCEL-43 #40
+group PARCEL-44 #40
+group PARCEL-45 #44
+group PARCEL-46 #44
+group PARCEL-47 #44
+group PARCEL-48 #44
+group PARCEL-49 #48
+group PARCEL-50 #48
+group PARCEL-51 #48
+group PARCEL-52 #48
+group PARCEL-53 #52
+group PARCEL-54 #52
+group PARCEL-55 #52
+group PARCEL-56 #52
+group PARCEL-57 #56
+group PARCEL-58 #56
+group PARCEL-59 #56
+group PARCEL-60 #56
+boxed total: 351

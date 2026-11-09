@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/header_shape_errors.knv
+---
+error[L0329]: a header shape is a list that starts with the form's name
+ --> expand/header_shape_errors.knv:8:15
+  |
+8 | (header-shape my-defn)
+  |               ^^^^^^^ not a list that starts with a name
+  |
+  = help: write it as `(header-shape (form name ...))`
+
+error[L0329]: a header shape is a list that starts with the form's name
+  --> expand/header_shape_errors.knv:10:15
+   |
+10 | (header-shape ())
+   |               ^^ not a list that starts with a name
+   |
+   = help: write it as `(header-shape (form name ...))`
+
+error[L0329]: a header shape is a list that starts with the form's name
+  --> expand/header_shape_errors.knv:12:15
+   |
+12 | (header-shape ("my-defn" name parameters))
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a list that starts with a name
+   |
+   = help: write it as `(header-shape (form name ...))`

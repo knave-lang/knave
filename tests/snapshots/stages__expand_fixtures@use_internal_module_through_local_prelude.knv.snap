@@ -1,0 +1,27 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/use_internal_module_through_local_prelude.knv
+---
+error[L0205]: module `prelude/backdoor` does not export `definition`
+ --> expand/use_internal_module_through_local_prelude.knv:1:23
+  |
+1 | (use prelude/backdoor definition)
+  |                       ^^^^^^^^^^ not exported
+  |
+  = help: add `definition` to the `export` list of `prelude/backdoor`
+
+error[L0255]: `prelude/internal/syntax` is internal to the prelude
+ --> expand/prelude/backdoor.knv:1:6
+  |
+1 | (use prelude/internal/syntax definition)
+  |      ^^^^^^^^^^^^^^^^^^^^^^^ only the prelude imports this module
+  |
+  = note: it holds helpers of the prelude's own forms
+  = help: remove this `use`
+
+error[L0201]: cannot find `definition` in this scope
+ --> expand/prelude/backdoor.knv:3:9
+  |
+3 | (export definition)
+  |         ^^^^^^^^^^ not found in this scope

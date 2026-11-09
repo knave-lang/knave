@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/enums.knv
+---
+(enum (pair-of a) (both a a) neither)
+(enum shape (circle f64) (rect f64 f64) (labeled (struct (text string) (size f64))) point)
+(def value (shape/labeled ((rust "\"box\".to_string()" (where () (fn () string)))) 2.0))

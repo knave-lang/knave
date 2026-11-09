@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).run_report()"
+input_file: tests/fixtures/run/mutable_box.knv
+---
+7
+(tree/node (tree/node tree/leaf 7 tree/leaf) 2 tree/leaf)

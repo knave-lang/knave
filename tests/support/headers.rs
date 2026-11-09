@@ -30,7 +30,7 @@ impl HeaderAgreement {
 
     fn fixture_path(&self) -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR")).join(format!(
-            "tests/fixtures/expand/doc_header_agreement_{}.rslisp",
+            "tests/fixtures/expand/doc_header_agreement_{}.knv",
             self.definer
         ))
     }

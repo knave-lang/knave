@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/read/language_tour.knv
+---
+(fn (x y) (+ x y))
+(def some-function (fn (x) (* x x)))
+(defn some-function (x) (* x x))
+(use geometry ->point)
+(export ->point)
+(defstruct point :x f64 :y f64)
+(->point 1 2)
+(str "hello" " " "world")
+(def admin? true)
+()

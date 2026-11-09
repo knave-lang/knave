@@ -1,0 +1,30 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/failed_defstruct_value_use.knv
+---
+error[L0301]: a field must start with `:`
+ --> expand/failed_defstruct_value_use.knv:2:3
+  |
+2 |   (x i64)
+  |   ^^^^^^^ here
+  |
+  = help: write each field as `:name type`, as in (defstruct point :x f64 :y f64)
+
+error[L0201]: cannot find `point` in this scope
+ --> expand/failed_defstruct_value_use.knv:5:18
+  |
+5 | (defn origin () (point 0 0))
+  |                  ^^^^^ not found in this scope
+  |
+help: a name with a similar spelling exists
+  |
+5 - (defn origin () (point 0 0))
+5 + (defn origin () (print 0 0))
+  |
+
+error[L0201]: cannot find `point-x` in this scope
+ --> expand/failed_defstruct_value_use.knv:8:13
+  |
+8 |   (println (point-x (origin))))
+  |             ^^^^^^^ not found in this scope

@@ -3,10 +3,10 @@ source: tests/cli.rs
 expression: check.assert_exit_code(0).stderr()
 ---
 warning[L0251]: library `hints` hides `src/hints`
- --> src/main.rslisp:1:6
+ --> src/main.knv:1:6
   |
 1 | (use hints shout)
   |      ^^^^^ this loads library `hints`
   |
   = note: a library's name takes precedence over a local module of the same name
-  = help: rename `src/hints` to reach it, or rename the library in `project.rslisp`
+  = help: rename `src/hints` to reach it, or rename the library in `project.knv`

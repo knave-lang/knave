@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).read_report()"
+input_file: tests/fixtures/read/unterminated_string.knv
+---
+error[L0103]: this string is never closed
+ --> read/unterminated_string.knv:1:12
+  |
+1 | (def title "unfinished
+  |            ^ this `"` has no closing `"`
+  |
+  = help: add a `"` where the string ends

@@ -1,0 +1,36 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/update_errors.knv
+---
+error[L0353]: this field update has no function
+ --> expand/update_errors.knv:6:17
+  |
+6 |   (update entry :count)
+  |                 ^^^^^^ here
+  |
+  = help: write a function after the field, as in `(update item :count neg)`
+
+error[L0353]: a field update takes no default, because the field always exists
+ --> expand/update_errors.knv:7:28
+  |
+7 |   (update entry :count neg 0)
+  |                            ^ here
+  |
+  = help: drop the default
+
+error[L0353]: a map update takes a function and a default
+ --> expand/update_errors.knv:8:24
+  |
+8 |   (update (hash-map) 1 neg)
+  |                        ^^^ no default follows this function
+  |
+  = help: write `(update map key function default)`
+
+error[L0353]: a map update takes a function and a default
+ --> expand/update_errors.knv:9:22
+  |
+9 |   (update (hash-map) 1))
+  |                      ^ here
+  |
+  = help: write `(update map key function default)`

@@ -1,7 +1,0 @@
----
-source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
-input_file: tests/fixtures/check/compare_inferred.rslisp
----
-(type same? (fn (i64 i64) bool))
-(type main (fn () unit))

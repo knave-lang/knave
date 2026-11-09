@@ -1,0 +1,102 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/assoc_inline_base.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Point {
+    x: i64,
+    y: i64,
+}
+
+fn make_point(x: i64, y: i64) -> Point {
+    Point { x, y }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Line {
+    start: Point,
+    end: Point,
+}
+
+fn make_line(start: Point, end: Point) -> Line {
+    Line { start, end }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Car<'a> {
+    make: &'a str,
+    model: String,
+    year: u16,
+}
+
+fn make_car(make: &str, model: String, year: u16) -> Car<'_> {
+    Car { make, model, year }
+}
+
+fn origin() -> Point {
+    make_point(0, 0)
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let positional = {
+        let base = make_point(1, 2);
+        Point { x: 3, ..base }
+    };
+    println!("{}{}", positional.x, positional.y);
+    let named = {
+        let base = Point { x: 1, y: 2 };
+        Point { x: 3, ..base }
+    };
+    println!("{}{}", named.x, named.y);
+    let kernel = {
+        let base = Point { x: 1, y: 2 };
+        Point { x: 3, ..base }
+    };
+    println!("{}{}", kernel.x, kernel.y);
+    let shifted = {
+        let base = origin();
+        Point { y: 4, ..base }
+    };
+    println!("{}{}", shifted.x, shifted.y);
+    let nested = {
+        let base = make_line(make_point(1, 2), make_point(5, 6));
+        Line {
+            start: {
+                let base_2 = make_point(0, 0);
+                Point { y: 9, ..base_2 }
+            },
+            ..base
+        }
+    };
+    println!("{}{}", nested.start.y, nested.end.x);
+    let leaf = {
+        let base = make_car("Nissan", "Leaf".to_string(), 2024);
+        Car { year: 2025, ..base }
+    };
+    println!("{} {} {}", leaf.make, leaf.model, leaf.year);
+    let grid: Vec<Vec<i64>> = {
+        let mut value = vec![vec![1_i64, 2_i64], vec![3_i64, 4_i64]];
+        value[1][0] = 7;
+        value
+    };
+    println!("{}", grid[1][0])
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

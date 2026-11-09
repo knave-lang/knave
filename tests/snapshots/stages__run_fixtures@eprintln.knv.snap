@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).run_report()"
+input_file: tests/fixtures/run/eprintln.knv
+---
+before
+after
+stderr:
+bad line 3
+exit code: 0

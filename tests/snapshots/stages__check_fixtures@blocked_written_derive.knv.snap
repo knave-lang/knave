@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/blocked_written_derive.knv
+---
+error[L0423]: `point` cannot derive `eq`
+ --> check/blocked_written_derive.knv:5:15
+  |
+5 | (derive point eq)
+  |               ^^ field `x` is `f64`, which is not `eq`
+  |
+  = help: change the type of field `x`, or leave this trait out of the `derive`

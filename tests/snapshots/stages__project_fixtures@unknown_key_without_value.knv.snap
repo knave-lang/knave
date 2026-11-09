@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/unknown_key_without_value.knv
+---
+error[L0704]: unknown key `:entyr`
+ --> project/unknown_key_without_value.knv:1:12
+  |
+1 | (project q :entyr)
+  |            ^^^^^^ not a key of this form
+  |
+help: a key with a similar name exists
+  |
+1 - (project q :entyr)
+1 + (project q :entry)
+  |

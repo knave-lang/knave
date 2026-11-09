@@ -1,0 +1,40 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/redundant_bounds_pruned.knv
+---
+fn both<A: Ord>(x: A, y: A) -> bool {
+    x < y
+}
+
+fn copies<A: Copy>(x: A) -> A {
+    x
+}
+
+fn eqs<A: Eq>(x: A, y: A) -> bool {
+    x == y
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", both(1_i64, 2));
+    println!("{}", copies(1_i64));
+    println!("{}", eqs(1_i64, 1))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

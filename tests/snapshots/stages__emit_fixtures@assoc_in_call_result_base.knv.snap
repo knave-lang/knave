@@ -1,0 +1,67 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/assoc_in_call_result_base.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Point {
+    x: i64,
+    y: i64,
+}
+
+fn make_point(x: i64, y: i64) -> Point {
+    Point { x, y }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Badge {
+    text: String,
+    at: Point,
+}
+
+fn make_badge(text: String, at: Point) -> Badge {
+    Badge { text, at }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Garage {
+    badge: Badge,
+}
+
+fn make_garage(badge: Badge) -> Garage {
+    Garage { badge }
+}
+
+fn build() -> Garage {
+    make_garage(make_badge("open".to_string(), make_point(0, 0)))
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let moved = {
+        let base = build();
+        let at = Point {
+            x: 4,
+            ..base.badge.at
+        };
+        Badge { at, ..base.badge }
+    };
+    println!("{} {} {}", moved.text, moved.at.x, moved.at.y)
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

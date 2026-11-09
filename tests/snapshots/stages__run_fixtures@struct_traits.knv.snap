@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).run_report()"
+input_file: tests/fixtures/run/struct_traits.knv
+---
+(->point :x 0.0 :y 0.0)
+true
+(->person :name "Ada" :age 36)
+(->person :name "Bo" :age 7)

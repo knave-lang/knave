@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/box_mismatch.knv
+---
+error[L0401]: mismatched types
+ --> check/box_mismatch.knv:8:21
+  |
+8 | (defn main () (take 1))
+  |                     ^ expected `(box shape)`, found an integer

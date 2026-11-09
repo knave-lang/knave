@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/expansion_too_deep.knv
+---
+error[L0305]: macro expansion did not finish
+ --> expand/expansion_too_deep.knv:4:19
+  |
+4 | (def loops (fn () (forever 1)))
+  |                   ^^^^^^^^^^^ expanding this form keeps producing more macro calls
+  |
+  = help: check that every recursive macro has a case that stops
+
+error[L0305]: macro expansion did not finish
+ --> expand/expansion_too_deep.knv:7:15
+  |
+7 |   (fn () (+ 1 (forever 1))))
+  |               ^^^^^^^^^^^ expanding this form keeps producing more macro calls
+  |
+  = help: check that every recursive macro has a case that stops

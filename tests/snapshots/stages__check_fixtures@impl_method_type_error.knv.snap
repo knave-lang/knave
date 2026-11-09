@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).check_report()"
+input_file: tests/fixtures/check/impl_method_type_error.knv
+---
+error[L0401]: mismatched types
+ --> check/impl_method_type_error.knv:5:17
+  |
+5 |   (size (items) items))
+  |    ----         ^^^^^ expected `usize`, found `(mut (vec a))`
+  |    |
+  |    expected because of this signature

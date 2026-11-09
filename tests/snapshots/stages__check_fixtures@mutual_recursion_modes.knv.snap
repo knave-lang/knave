@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).check_report()"
+input_file: tests/fixtures/check/mutual_recursion_modes.knv
+---
+(type count-down (fn ((ref (slice i64)) i64) usize))
+(type step (fn ((ref (slice i64)) i64) usize))
+(type main (fn () unit))

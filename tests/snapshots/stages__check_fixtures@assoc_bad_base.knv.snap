@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/assoc_bad_base.knv
+---
+error[L0410]: `bool` has no fields
+ --> check/assoc_bad_base.knv:1:22
+  |
+1 | (defn main () (assoc true :x 2))
+  |                      ^^^^ only structs have fields

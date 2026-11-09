@@ -1,0 +1,41 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/compare_without_moving.knv
+---
+fn bigger<A: PartialOrd>(a: A, b: A) -> A {
+    if a > b { a } else { b }
+}
+
+fn same(a: i64, b: i64) -> i64 {
+    if a == b { a } else { b }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", bigger(3_i64, 7));
+    println!("{}", bigger("pear".to_string(), "apple".to_string()));
+    println!("{}", same(4, 4));
+    let name = "Ana".to_string();
+    let other = "Bo".to_string();
+    println!("{}", name == other);
+    println!("{}", name);
+    println!("{}", other)
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

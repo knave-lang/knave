@@ -2,10 +2,10 @@
 source: tests/cli.rs
 expression: check.assert_exit_code(1).stderr()
 ---
-error[L0724]: library `broken` has no root module `../broken/src/nope.rslisp`
- --> project.rslisp:1:26
+error[L0724]: library `broken` has no root module `../broken/src/nope.knv`
+ --> project.knv:1:26
   |
 1 | (project app (libraries (broken :path "../broken")))
   |                          ^^^^^^ this library's `:lib` names no file
   |
-  = help: fix `:lib` in `../broken/project.rslisp`, or add the file
+  = help: fix `:lib` in `../broken/project.knv`, or add the file

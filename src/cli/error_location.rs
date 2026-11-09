@@ -92,7 +92,7 @@ mod tests {
         const MODULE: usize = 4;
         const PRELUDE: usize = 5;
         const ENTERED_AGAIN: usize = 6;
-        const MODULE_FILE: &str = "shapes.rslisp";
+        const MODULE_FILE: &str = "shapes.knv";
 
         fn source(index: usize) -> SourceId {
             SourceId::new(index)

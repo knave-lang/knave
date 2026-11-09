@@ -1,9 +1,0 @@
----
-source: tests/stages.rs
-expression: reports.report(path)
-input_file: tests/fixtures/run/line_seq.rslisp
----
-4 Leaf
-0 
-5 Ariya
-5 Civic

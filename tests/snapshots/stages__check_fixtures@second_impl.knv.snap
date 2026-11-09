@@ -1,0 +1,37 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/second_impl.knv
+---
+error[L0459]: `p` already implements `display`
+  --> check/second_impl.knv:20:10
+   |
+18 | (display p (value) "p")
+   |          - first implemented here
+19 |
+20 | (display p (value) "again")
+   |          ^ this implements `display` again
+   |
+   = help: remove one of the two
+
+error[L0459]: `(tree i64)` already implements `display`
+  --> check/second_impl.knv:26:10
+   |
+24 | (display (tree a) (value) "tree")
+   |          -------- first implemented here
+25 |
+26 | (display (tree i64) (value) "tree of i64")
+   |          ^^^^^^^^^^ this implements `display` again
+   |
+   = help: remove one of the two
+
+error[L0459]: `listed` already implements `octal`
+  --> check/second_impl.knv:43:13
+   |
+37 | (derive listed clone octal)
+   |                      ----- this `derive` lists `octal`
+...
+43 | (impl octal listed
+   |             ^^^^^^ this implements `octal` again
+   |
+   = help: remove one of the two

@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/unbound_in_macro_definition.knv
+---
+error[L0201]: cannot find `missing-helper` in this scope
+ --> check/unbound_in_macro_definition.knv:2:14
+  |
+2 |   (template (missing-helper (unquote x))))
+  |              ^^^^^^^^^^^^^^ not found in this scope
+...
+5 |   (println (call-missing 1)))
+  |            ---------------- in this macro call
+  |
+  = note: in this expansion of `call-missing`

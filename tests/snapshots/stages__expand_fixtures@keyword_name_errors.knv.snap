@@ -1,0 +1,31 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/keyword_name_errors.knv
+---
+error[L0303]: `keyword-name` expects a keyword as argument 1, found a symbol
+  --> expand/keyword_name_errors.knv:5:5
+   |
+ 5 |     (keyword-name (quote year))))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ a symbol given here
+...
+13 | (name-of-symbol)
+   | ---------------- in this macro call
+
+error[L0303]: `keyword-name` expects a keyword as argument 1, found a symbol
+  --> expand/keyword_name_errors.knv:8:17
+   |
+ 8 |   (macro (form) (keyword-name (quote :))))
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ a symbol given here
+...
+15 | (name-of-colon)
+   | --------------- in this macro call
+
+error[L0303]: `keyword-name` expects a keyword as argument 1, found a string
+  --> expand/keyword_name_errors.knv:11:17
+   |
+11 |   (macro (form) (keyword-name ":year")))
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ a string given here
+...
+17 | (name-of-string)
+   | ---------------- in this macro call

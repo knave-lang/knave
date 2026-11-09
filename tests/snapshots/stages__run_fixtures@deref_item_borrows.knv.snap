@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/deref_item_borrows.knv
+---
+2
+2
+1
+2
+1
+2
+(some 2024)
+2
+2
+1
+1

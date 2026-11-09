@@ -1,0 +1,44 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/expression_errors.knv
+---
+error[L0229]: `macro` must be the value of a module-level `def`
+ --> expand/expression_errors.knv:4:10
+  |
+4 |   (fn () (macro (form) form)))
+  |          ^^^^^^^^^^^^^^^^^^^ not allowed here
+  |
+  = help: write `(def name (macro (form) body ...))`
+
+error[L0210]: malformed `new`
+ --> expand/expression_errors.knv:6:34
+  |
+6 | (def bare-field (fn () (new pair left)))
+  |                                  ^^^^ this does not fit the shape of `new`
+  |
+  = help: write it as `(new name (field value) ...) or (new _ base (field value) ...)`
+
+error[L0210]: malformed `rust`
+ --> expand/expression_errors.knv:8:31
+  |
+8 | (def extra-twin (rust "1" i64 add 2))
+  |                               ^^^ this does not fit the shape of `rust`
+  |
+  = help: write it as `(rust "template" type (target "template") ...)`
+
+error[L0210]: malformed `fn`
+  --> expand/expression_errors.knv:10:15
+   |
+10 | (def empty-fn (fn))
+   |               ^^^^ this does not fit the shape of `fn`
+   |
+   = help: write it as `(fn (parameter ...) body ...)`
+
+error[L0210]: malformed `rust`
+  --> expand/expression_errors.knv:12:30
+   |
+12 | (def numbered-template (rust 5 i64))
+   |                              ^ this does not fit the shape of `rust`
+   |
+   = help: write it as `(rust "template" type (target "template") ...)`

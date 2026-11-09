@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/let_match.knv
+---
+apples
+6
+456
+21
+1043
+10
+no bindings

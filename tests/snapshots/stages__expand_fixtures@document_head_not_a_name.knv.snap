@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/document_head_not_a_name.knv
+---
+error[L0301]: a `document` header must name a term
+ --> expand/document_head_not_a_name.knv:3:11
+  |
+3 | (document "str" "A string for a header.")
+  |           ^^^^^ not a name
+  |
+  = help: start the header with the term's name, as in `(document (name part ...) text)`
+
+error[L0301]: a `document` header must name a term
+ --> expand/document_head_not_a_name.knv:5:12
+  |
+5 | (document ((a b) c) "A list at the head of a header.")
+  |            ^^^^^ not a name
+  |
+  = help: start the header with the term's name, as in `(document (name part ...) text)`
+
+error[L0301]: a `document` header must name a term
+ --> expand/document_head_not_a_name.knv:7:11
+  |
+7 | (document () "An empty header.")
+  |           ^^ not a name
+  |
+  = help: start the header with the term's name, as in `(document (name part ...) text)`

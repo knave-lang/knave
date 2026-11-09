@@ -1,9 +1,0 @@
----
-source: tests/stages.rs
-expression: "Fixture::load(path).run_report()"
-input_file: tests/fixtures/run/printing_escapes.rslisp
----
-braces {done} quote " slash \ newline
-tab	 here
-plain {text} quote " slash \
-no newline

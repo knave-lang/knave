@@ -1,0 +1,82 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/template_sized.knv
+---
+fn exchange<A>(a: &mut A, b: &mut A) {
+    std::mem::swap(a, b)
+}
+
+fn swap_spots<A>(a: &mut A, b: &mut A) {
+    exchange(a, b)
+}
+
+fn measure<A: crate::rt::Sequence + ?Sized>(value: &A) -> usize {
+    value.len()
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut a = "a".to_string();
+    let mut b = "b".to_string();
+    swap_spots(&mut a, &mut b);
+    println!("{}{}", a, b);
+    let numbers: Vec<i64> = vec![1_i64, 2_i64, 3_i64];
+    println!("{}", measure(numbers.as_slice()));
+    let mut mut_a: i64 = 1;
+    let mut mut_b: i64 = 2;
+    swap_spots(&mut mut_a, &mut mut_b);
+    println!("{}{}", mut_a, mut_b);
+    println!("{}", measure(&"abc".to_string()))
+}
+
+mod rt {
+    pub trait Sequence {
+        fn len(&self) -> usize;
+    }
+
+    impl Sequence for String {
+        fn len(&self) -> usize {
+            self.as_str().len()
+        }
+    }
+
+    impl Sequence for str {
+        fn len(&self) -> usize {
+            str::len(self)
+        }
+    }
+
+    impl<T> Sequence for Vec<T> {
+        fn len(&self) -> usize {
+            Vec::len(self)
+        }
+    }
+
+    impl<T> Sequence for [T] {
+        fn len(&self) -> usize {
+            <[T]>::len(self)
+        }
+    }
+
+    impl<T: Sequence + ?Sized> Sequence for &T {
+        fn len(&self) -> usize {
+            T::len(self)
+        }
+    }
+
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

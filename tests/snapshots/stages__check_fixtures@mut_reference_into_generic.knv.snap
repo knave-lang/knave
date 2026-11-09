@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/mut_reference_into_generic.knv
+---
+error[L0501]: use of moved value `stack`
+  --> check/mut_reference_into_generic.knv:10:10
+   |
+ 9 |   (keep stack)
+   |         ----- value moved here
+10 |   (push! stack 1))
+   |          ^^^^^ value used here after it moved
+   |
+   = help: use the value before it moves, because a `mut` borrow cannot be cloned

@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: build.assert_exit_code(1).stderr()
 ---
 error[E0425]: cannot find function `missing` in crate `answer`
- --> src/main.rslisp:4:24
+ --> src/main.knv:4:24
   |
 4 | (defn main () (println (missing)))
   |                        ^^^^^^^^^ not found in `answer`

@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/constructor_misspelled_field.knv
+---
+error[L0408]: `car` has no field `:mak`
+ --> check/constructor_misspelled_field.knv:9:12
+  |
+9 |     (->car :mak "Nissan"
+  |            ^^^^ unknown field
+  |
+help: a field with a similar name exists
+  |
+9 |     (->car :make "Nissan"
+  |                +

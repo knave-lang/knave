@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).check_report()"
+input_file: tests/fixtures/check/lifetime_rust_type_head.knv
+---
+error[L0212]: expected a type parameter, found `'a`
+ --> check/lifetime_rust_type_head.knv:1:20
+  |
+1 | (rust-type (stored 'a) "Stored<{0}>")
+  |                    ^^ not a type parameter

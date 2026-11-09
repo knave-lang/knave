@@ -1,0 +1,62 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/set_map_borrowed_struct.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Car<'a> {
+    make: &'a str,
+    model: &'a str,
+    year: u16,
+}
+
+fn replace_car<'a>(
+    cars: &mut std::collections::HashMap<&'a str, Car<'a>>,
+    name: &'a str,
+    car: Car<'a>,
+) {
+    *cars.get_mut(name).unwrap() = car
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut cars = {
+        let mut map = std::collections::HashMap::new();
+        map.insert(
+            "leaf",
+            Car {
+                make: "Nissan",
+                model: "Leaf",
+                year: 2023,
+            },
+        );
+        map
+    };
+    replace_car(
+        &mut cars,
+        "leaf",
+        Car {
+            make: "Nissan",
+            model: "Leaf",
+            year: 2024,
+        },
+    );
+    println!("{}", cars.get("leaf").unwrap().year)
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

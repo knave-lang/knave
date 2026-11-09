@@ -1,0 +1,37 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/char_literals.knv
+---
+fn is_whitespace(c: char) -> bool {
+    c == ' '
+}
+
+fn is_digit(c: char) -> bool {
+    let left = '0';
+    let middle = c;
+    left <= middle && middle <= '9'
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", is_whitespace(' '));
+    println!("{}", is_digit('5'))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

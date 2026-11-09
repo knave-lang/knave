@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/compare_string_borrow_with_literal.knv
+---
+(type greater-after-literal? (fn () bool))
+(type greater-before-literal? (fn () bool))
+(type less-after-literal? (fn () bool))
+(type less-before-literal? (fn () bool))
+(type equal-after-literal? (fn () bool))
+(type equal-before-literal? (fn () bool))

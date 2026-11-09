@@ -1,0 +1,26 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/derive_leaves_out.knv
+---
+error[L0404]: `ticket` does not implement `show`
+ --> check/derive_leaves_out.knv:8:8
+  |
+4 | (derive ticket debug)
+  | --------------------- this `derive` leaves out `show`
+...
+8 |   (prn (clone early)))
+  |        ^^^^^^^^^^^^^ this needs `show`
+  |
+  = help: add `show` to the struct's `derive`
+
+error[L0404]: `ticket` does not implement `clone`
+ --> check/derive_leaves_out.knv:8:15
+  |
+4 | (derive ticket debug)
+  | --------------------- this `derive` leaves out `clone`
+...
+8 |   (prn (clone early)))
+  |               ^^^^^ this needs `clone`
+  |
+  = help: add `clone` to the struct's `derive`

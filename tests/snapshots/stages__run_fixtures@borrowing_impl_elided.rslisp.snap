@@ -1,8 +1,0 @@
----
-source: tests/stages.rs
-expression: reports.report(path)
-input_file: tests/fixtures/run/borrowing_impl_elided.rslisp
----
-Nissan
-Nissan
-Nissan

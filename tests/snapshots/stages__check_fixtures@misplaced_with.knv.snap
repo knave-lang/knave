@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/misplaced_with.knv
+---
+error[L0426]: `with` is only allowed in a Rust trait's list of implementors
+ --> check/misplaced_with.knv:4:19
+  |
+4 |   (where (a) (fn ((with a i64)) unit)))
+  |                   ^^^^^^^^^^^^ not allowed here
+  |
+  = help: write `(with type type)` in the list of a Rust trait's implementors

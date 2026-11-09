@@ -1,0 +1,25 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/trailing_dash_name.knv
+---
+error[L0718]: `my-app-` is not a project name
+ --> project/trailing_dash_name.knv:1:10
+  |
+1 | (project my-app- :edition 2025)
+  |          ^^^^^^^ expected a kebab-case name
+  |
+  = note: the name names the build directory and the program
+  = help: use lowercase letters, digits and single dashes, as `my-program`
+
+error[L0717]: edition 2025 does not exist
+ --> project/trailing_dash_name.knv:1:27
+  |
+1 | (project my-app- :edition 2025)
+  |                           ^^^^ not an edition of this compiler
+  |
+help: the only edition is 2026
+  |
+1 - (project my-app- :edition 2025)
+1 + (project my-app- :edition 2026)
+  |

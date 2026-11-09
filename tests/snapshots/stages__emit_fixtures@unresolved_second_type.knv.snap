@@ -1,0 +1,31 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/unresolved_second_type.knv
+---
+fn compare_with_name<A: PartialEq<String> + ?Sized>(x: &A) -> bool {
+    x == &"Ana".to_string()
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", compare_with_name(&"Bo".to_string()));
+    println!("{}", compare_with_name("Bob"))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

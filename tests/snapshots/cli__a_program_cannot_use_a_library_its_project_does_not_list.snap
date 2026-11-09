@@ -3,15 +3,15 @@ source: tests/cli.rs
 expression: check.assert_exit_code(1).stderr()
 ---
 error[L0252]: this project does not list library `keymap`
- --> src/main.rslisp:1:6
+ --> src/main.knv:1:6
   |
 1 | (use keymap key)
   |      ^^^^^^ a library that another library uses
   |
-  = help: add `keymap` to the `libraries` of `project.rslisp`
+  = help: add `keymap` to the `libraries` of `project.knv`
 
 error[L0201]: cannot find `key` in this scope
- --> src/main.rslisp:3:24
+ --> src/main.knv:3:24
   |
 3 | (defn main () (println key))
   |                        ^^^ not found in this scope

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/variant_as_value.knv
+---
+error[L0233]: `shape/circle` is a variant constructor, not a value
+ --> check/variant_as_value.knv:3:13
+  |
+3 | (def circle shape/circle)
+  |             ^^^^^^^^^^^^ this constructor takes 1 argument when it is called
+  |
+  = help: write `(shape/circle value ...)`

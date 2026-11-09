@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/call_function_value_modes.knv
+---
+fn take_owned(f: impl Fn(Vec<i64>)) {}
+
+fn change(items: &mut Vec<i64>) {
+    items.push(1)
+}
+
+fn main() {
+    take_owned(|mut argument: Vec<i64>| change(&mut argument))
+}

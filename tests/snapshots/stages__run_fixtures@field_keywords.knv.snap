@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/field_keywords.knv
+---
+2024
+(vec 2024 2019)
+(vec "ana" "bo")
+2
+cy

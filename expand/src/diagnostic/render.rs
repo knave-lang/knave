@@ -190,7 +190,7 @@ mod tests {
     #[test]
     fn styled_rendering_colors_the_report() {
         let mut sources = SourceMap::default();
-        let source = sources.add("sample.rslisp", "(def total)");
+        let source = sources.add("sample.knv", "(def total)");
         let mut diagnostics = Diagnostics::default();
         diagnostics.push(Diagnostic::error(
             DiagnosticCode::MALFORMED_FORM,
@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn helps_render_in_the_order_they_were_added() {
         let mut sources = SourceMap::default();
-        let source = sources.add("sample.rslisp", "(prnt 1)");
+        let source = sources.add("sample.knv", "(prnt 1)");
         let span = Span::new(source, 1..5);
         let diagnostic = Diagnostic::error(
             DiagnosticCode::UNBOUND_NAME,

@@ -1,0 +1,52 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/bound_associated_type.knv
+---
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Stack<A> {
+    items: Vec<A>,
+}
+
+fn count<C: Container<Item = Item>, Item>(c: &C) -> usize {
+    c.size()
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!(
+        "{}",
+        count(&Stack {
+            items: vec![1_i64, 2_i64]
+        })
+    )
+}
+
+trait Container {
+    type Item;
+    fn size(&self) -> usize;
+}
+
+impl<A> Container for Stack<A> {
+    type Item = A;
+    fn size(&self) -> usize {
+        self.items.len()
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

@@ -1,0 +1,83 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/function_parameter_branches.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Car<'a> {
+    make: &'a str,
+    year: u16,
+}
+
+fn build_either<'a>(constructor: impl FnOnce(&'a str, u16) -> Car<'a>, fresh: bool) -> Car<'a> {
+    constructor(if fresh { "Leaf" } else { "Nissan" }, 2025)
+}
+
+fn build_matched<'a>(
+    constructor: impl FnOnce(&'a str, u16) -> Car<'a>,
+    year: Option<u16>,
+) -> Car<'a> {
+    constructor(
+        match year {
+            Some(_) => "Leaf",
+            None => "Nissan",
+        },
+        2024,
+    )
+}
+
+fn build_alias<'a>(constructor: impl FnOnce(&'a str, u16) -> Car<'a>) -> Car<'a> {
+    let build = constructor;
+    build("Nissan", 2023)
+}
+
+fn first_word(text: &str) -> &str {
+    text
+}
+
+fn pick_alias<'a>(pick: impl FnOnce(&'a str) -> &'a str, text: &'a str) -> &'a str {
+    let chosen = pick;
+    chosen(text)
+}
+
+fn measure_alias(pick: impl FnOnce(&str) -> &str) -> u16 {
+    let chosen = pick;
+    let model = "Leaf".to_string();
+    if chosen(model.as_str()) == "Leaf" {
+        4
+    } else {
+        0
+    }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let model = "Leaf".to_string();
+    let borrowing = |make: &str, year: u16| Car {
+        make: model.as_str(),
+        year,
+    };
+    println!("{}", build_either(borrowing, true).make);
+    println!("{}", build_matched(borrowing, Some(2024)).make);
+    println!("{}", build_alias(borrowing).make);
+    let words = "Nissan Leaf".to_string();
+    println!("{}", pick_alias(first_word, words.as_str()));
+    println!("{}", measure_alias(first_word))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

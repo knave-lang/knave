@@ -1,0 +1,77 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/let_match.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Point {
+    x: i64,
+    y: i64,
+}
+
+fn make_point(x: i64, y: i64) -> Point {
+    Point { x, y }
+}
+
+fn sum_pairs(items: &[(i64, i64)]) -> i64 {
+    let mut index: usize = 0;
+    let mut total: i64 = 0;
+    loop {
+        if index == items.len() {
+            break total;
+        } else {
+            let (left, right) = &items[index];
+            (index, total) = (index + 1, total + *left + *right);
+            continue;
+        }
+    }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let p = make_point(1, 2);
+    {
+        let (word, count) = ("apples", 3_i64);
+        let Point { x, .. } = p;
+        let Point { y, .. } = p;
+        let ((first, second), third) = ((4_i64, 5_i64), 6_i64);
+        let total = x + y + count;
+        println!("{}", word);
+        println!("{}", total);
+        println!("{}{}{}", first, second, third)
+    }
+    {
+        let (a, b) = (1_i64, 2_i64);
+        let (a_2, b_2) = (b, a);
+        println!("{}{}", a_2, b_2)
+    }
+    let a: i64 = 10;
+    {
+        let (left, right) = {
+            let (a_2, b) = (3_i64, 4_i64);
+            (b, a_2)
+        };
+        println!("{}{}{}", a, left, right)
+    }
+    let mut items: Vec<(i64, i64)> = vec![(1_i64, 2_i64)];
+    items.push((3_i64, 4_i64));
+    println!("{}", sum_pairs(&items));
+    println!("no bindings")
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

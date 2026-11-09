@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: shown
 ---
 error[L0205]: module `linked-module` does not export `key`
- --> src/main.rslisp:1:20
+ --> src/main.knv:1:20
   |
 1 | (use linked-module key)
   |                    ^^^ not exported
@@ -11,7 +11,7 @@ error[L0205]: module `linked-module` does not export `key`
   = help: add `key` to the `export` list of `linked-module`
 
 error[L0201]: cannot find `key` in this scope
- --> src/main.rslisp:4:12
+ --> src/main.knv:4:12
   |
 4 |   (println key))
   |            ^^^ not found in this scope
@@ -22,16 +22,16 @@ help: a name with a similar spelling exists
   |               +
 
 error[L0254]: module `linked-module/other` resolves outside its library's checkout
- --> <sandbox>/cache/knave/git/e6c2ade19e10de46fb917e6f180e6260d09c8706/src/lib.rslisp:1:6
+ --> <sandbox>/cache/knave/git/f40a0285280750c3d445119a3e868f4dd6d5a2f6/src/lib.knv:1:6
   |
 1 | (use other key)
   |      ^^^^^ this module's file links outside the checkout
   |
-  = note: `<sandbox>/cache/knave/git/e6c2ade19e10de46fb917e6f180e6260d09c8706/src/other.rslisp` is a symbolic link, and a library fetched from git may only read files inside its own checkout
+  = note: `<sandbox>/cache/knave/git/f40a0285280750c3d445119a3e868f4dd6d5a2f6/src/other.knv` is a symbolic link, and a library fetched from git may only read files inside its own checkout
   = help: ask the library's authors to commit the module's file instead of a link
 
 error[L0201]: cannot find `key` in this scope
- --> <sandbox>/cache/knave/git/e6c2ade19e10de46fb917e6f180e6260d09c8706/src/lib.rslisp:3:9
+ --> <sandbox>/cache/knave/git/f40a0285280750c3d445119a3e868f4dd6d5a2f6/src/lib.knv:3:9
   |
 3 | (export key)
   |         ^^^ not found in this scope

@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/keyword_of_field_errors.knv
+---
+error[L0303]: `field-keyword` expects a field name as argument 1, found a keyword
+  --> expand/keyword_of_field_errors.knv:5:5
+   |
+ 5 |     (field-keyword (quote :year))))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a keyword given here
+...
+10 | (keyword-of-keyword)
+   | -------------------- in this macro call
+
+error[L0303]: `field-keyword` expects a field name as argument 1, found a string
+  --> expand/keyword_of_field_errors.knv:8:17
+   |
+ 8 |   (macro (form) (field-keyword "year")))
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ a string given here
+...
+12 | (keyword-of-string)
+   | ------------------- in this macro call

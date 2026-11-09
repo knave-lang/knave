@@ -68,6 +68,6 @@ mod tests {
             .iter()
             .map(|path| path.file_name().unwrap().to_string_lossy().into_owned())
             .collect();
-        assert_eq!(names, ["inventory.rslisp", "invoices.rslisp"]);
+        assert_eq!(names, ["inventory.knv", "invoices.knv"]);
     }
 }

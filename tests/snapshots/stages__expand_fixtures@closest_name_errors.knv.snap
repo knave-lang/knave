@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/closest_name_errors.knv
+---
+error[L0303]: `closest-name` expects a list of symbols as argument 2, found a list
+ --> expand/closest_name_errors.knv:5:5
+  |
+5 | /     (closest-name (quote leef)
+6 | |                   (quote ("leaf" "ariya")))))
+  | |___________________________________________^ a list given here
+7 |
+8 |   (closest-in-strings)
+  |   -------------------- in this macro call

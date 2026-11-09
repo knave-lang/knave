@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/name_collision.knv
+---
+error[L0602]: `admin?` and `is-admin` both become `is_admin` in Rust
+ --> emit/name_collision.knv:3:7
+  |
+1 | (defn admin? () true)
+  |       ------ this also becomes `is_admin`
+2 |
+3 | (defn is-admin () false)
+  |       ^^^^^^^^ this becomes `is_admin`
+  |
+  = help: rename one of them

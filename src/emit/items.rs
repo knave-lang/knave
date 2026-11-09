@@ -31,9 +31,9 @@ use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::{
-    Bound, GenericId, GenericParam, Lifetime, ReceiverKind, Scheme, Type, TypedAssociatedType,
-    TypedBinder, TypedConversion, TypedDefinition, TypedExpr, TypedExprKind, TypedImplMethod,
-    TypedLambda, TypedProgram, TypedTraitMethod, VariantDefinition,
+    Bound, GenericId, GenericParam, Lifetime, ReceiverKind, ReturnedValues, Scheme, Type,
+    TypedAssociatedType, TypedBinder, TypedConversion, TypedDefinition, TypedExpr, TypedExprKind,
+    TypedImplMethod, TypedLambda, TypedProgram, TypedTraitMethod, VariantDefinition,
 };
 
 struct ImplementedTrait<'l> {
@@ -1340,26 +1340,15 @@ impl<'a> ItemEmitter<'a> {
             .into_iter()
             .map(|param| param.binding)
             .filter(|binding| {
-                !flowing.contains(binding) && !Self::captured_by_closure(lambda, *binding)
+                !flowing.contains(binding) && !Self::captured_by_result(lambda, *binding)
             })
             .collect()
     }
 
-    fn captured_by_closure(lambda: &TypedLambda, binding: BindingId) -> bool {
-        lambda
-            .body
-            .expressions()
-            .any(|expr| Self::closure_mentions(expr, binding))
-    }
-
-    fn closure_mentions(expr: &TypedExpr, binding: BindingId) -> bool {
-        match &expr.kind {
-            TypedExprKind::Fn(_) => expr.mentions_local(binding),
-            _ => expr
-                .children()
-                .into_iter()
-                .any(|child| Self::closure_mentions(child, binding)),
-        }
+    fn captured_by_result(lambda: &TypedLambda, binding: BindingId) -> bool {
+        ReturnedValues::of(lambda)
+            .into_iter()
+            .any(|value| value.mentions_local(binding))
     }
 
     fn capture_plan(

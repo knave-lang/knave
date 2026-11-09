@@ -1,0 +1,12 @@
+(defn shifter! (x)
+  (set! x (+ x 1))
+  (for-each (range 0 2)
+            (fn (i) (println (+ i x))))
+  (local pad 0)
+  (fn (y) (* y 2)))
+
+(defn main ()
+  (local start 1)
+  (local double (shifter! start))
+  (println start)
+  (println (double 3)))

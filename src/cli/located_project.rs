@@ -77,6 +77,11 @@ impl LocatedProject {
             .with_libraries(self.libraries.clone())
     }
 
+    pub fn test_file(&self, file: ProgramFile) -> ProgramFile {
+        file.with_fallback_root(self.source_root())
+            .with_libraries(self.libraries.clone())
+    }
+
     pub fn source_root(&self) -> PathBuf {
         ProgramFile::directory_of(&self.root.join(&self.project.entry))
     }

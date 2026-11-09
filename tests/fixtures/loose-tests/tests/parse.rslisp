@@ -1,0 +1,5 @@
+(use prelude/test assert deftest)
+(use parser parse)
+
+(deftest parses
+  (assert (= (parse "7") "parsed 7")))

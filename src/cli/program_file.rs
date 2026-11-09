@@ -12,6 +12,7 @@ use crate::modules::LibraryTable;
 pub struct ProgramFile {
     path: PathBuf,
     root: PathBuf,
+    fallback_root: Option<PathBuf>,
     module: ModulePath,
     libraries: LibraryTable,
 }
@@ -30,6 +31,7 @@ impl ProgramFile {
         Self {
             path,
             root,
+            fallback_root: None,
             module: ModulePath::new(module),
             libraries: LibraryTable::default(),
         }
@@ -37,13 +39,15 @@ impl ProgramFile {
 
     pub fn inside_or_beside(path: PathBuf, root: PathBuf) -> Self {
         match Self::relative_module(&path, &root) {
-            Some(module) => Self {
-                path,
-                root,
-                module: ModulePath::new(module),
-                libraries: LibraryTable::default(),
-            },
+            Some(_) => Self::within(path, root),
             None => Self::beside_itself(path),
+        }
+    }
+
+    pub fn with_fallback_root(self, fallback_root: PathBuf) -> Self {
+        Self {
+            fallback_root: Some(fallback_root),
+            ..self
         }
     }
 
@@ -61,6 +65,10 @@ impl ProgramFile {
 
     pub fn root(&self) -> &Path {
         &self.root
+    }
+
+    pub fn fallback_root(&self) -> Option<&Path> {
+        self.fallback_root.as_deref()
     }
 
     pub fn module_path(&self) -> ModulePath {

@@ -26,6 +26,7 @@ pub struct LocalModuleClash<'s> {
 pub struct ModuleSources {
     root: PathBuf,
     display_root: PathBuf,
+    fallback_root: Option<PathBuf>,
     libraries: LibraryTable,
 }
 
@@ -108,7 +109,15 @@ impl ModuleSources {
         Self {
             root,
             display_root,
+            fallback_root: None,
             libraries: LibraryTable::default(),
+        }
+    }
+
+    pub fn with_fallback_root(self, fallback_root: PathBuf) -> Self {
+        Self {
+            fallback_root: Some(fallback_root),
+            ..self
         }
     }
 
@@ -162,10 +171,18 @@ impl ModuleSources {
     fn local_module(&self, written: &ModulePath) -> Option<PathBuf> {
         let head = LibraryTable::head(written);
         let file = PathBuf::from(format!("{head}.{}", Language::EXTENSION));
-        [file, PathBuf::from(head)]
-            .into_iter()
-            .find(|local| self.root.join(local).exists())
-            .map(|local| self.display_root.join(local))
+        self.local_roots().find_map(|(root, display_root)| {
+            [&file, Path::new(head)]
+                .into_iter()
+                .find(|local| root.join(local).exists())
+                .map(|local| display_root.join(local))
+        })
+    }
+
+    fn local_roots(&self) -> impl Iterator<Item = (&Path, &Path)> {
+        let fallback = self.fallback_root.as_deref();
+        std::iter::once((self.root.as_path(), self.display_root.as_path()))
+            .chain(fallback.map(|root| (root, root)))
     }
 
     pub fn is_prelude(path: &ModulePath) -> bool {
@@ -270,10 +287,12 @@ impl ModuleSources {
 
     fn user_file(&self, path: &ModulePath) -> Option<ModuleSource> {
         let file_name = Self::file_name(path);
-        let text = Self::read_file(&self.root.join(&file_name)).ok()?;
-        Some(ModuleSource::Text {
-            name: self.display_root.join(&file_name).display().to_string(),
-            text,
+        self.local_roots().find_map(|(root, display_root)| {
+            let text = Self::read_file(&root.join(&file_name)).ok()?;
+            Some(ModuleSource::Text {
+                name: display_root.join(&file_name).display().to_string(),
+                text,
+            })
         })
     }
 

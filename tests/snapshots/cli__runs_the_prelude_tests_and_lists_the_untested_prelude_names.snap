@@ -2,8 +2,8 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (144 of 230): -> ->> _ any? assoc assoc-at assoc-in at box clone comment copied copy count debug dedup! def defenum defmacro defn defrule defstruct deftrait deftype deref derive display do doc-body doc-header doc-page docstring empty? enum enumerate eprint eprintln eq err every? exit expect-ok export f32 field filter find first float fmt fn-mut fn-once for-each from-str get hash hash-map i128 i16 i32 i8 impl integer io-error isize iterator keys last len let let-match let-try loop macro map-at map-err map-ok match max max-by-key min module mut new number ok ok-or ok? option/none option/some ord pair pair/pair partial-eq partial-ord pop! push! quote range recur ref remove-at! result/err result/ok reverse reverse! rust rust-trait rust-type sequence set-at show signed slice sort! sort-by! sorted-map source struct sum take take-while template then-ok trait try try-> type u128 u16 u32 u64 u8 unit unwrap-err update use usize vals where windows with write-form zip
-running 72 tests
+untested in prelude (124 of 230): -> ->> _ any? assoc assoc-at assoc-in box comment copy debug def defenum defmacro defn defrule defstruct deftrait deftype derive display do doc-body doc-header doc-page docstring enum enumerate eprint eprintln eq err every? exit expect-ok export f32 field filter find float fmt fn-mut fn-once for-each from-str get hash hash-map i128 i16 i32 i8 impl integer io-error isize iterator keys let let-match let-try loop macro map-at map-err map-ok match max max-by-key min module mut new number ok ok-or ok? option/none option/some ord pair pair/pair partial-eq partial-ord quote recur result/err result/ok rust rust-trait rust-type sequence set-at show signed slice sorted-map source struct sum take take-while template then-ok trait try try-> type u128 u16 u32 u64 u8 unit unwrap-err update use usize vals where with write-form zip
+running 88 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -96,4 +96,20 @@ test prelude/text/doc:alphanumeric? ... ok
 test prelude/text/doc:whitespace? ... ok
 test prelude/text/doc:digit? ... ok
 test prelude/text/doc:subs ... ok
-72 passed, 0 failed
+test prelude/vec/doc:vec ... ok
+test prelude/vec/doc:push! ... ok
+test prelude/vec/doc:iter ... ok
+test prelude/vec/doc:copied ... ok
+test prelude/vec/doc:collect ... ok
+test prelude/vec/doc:pop! ... ok
+test prelude/vec/doc:remove-at! ... ok
+test prelude/vec/doc:sort! ... ok
+test prelude/vec/doc:sort-by! ... ok
+test prelude/vec/doc:windows ... ok
+test prelude/vec/doc:at ... ok
+test prelude/vec/doc:first ... ok
+test prelude/vec/doc:last ... ok
+test prelude/vec/doc:reverse ... ok
+test prelude/vec/doc:reverse! ... ok
+test prelude/vec/doc:dedup! ... ok
+88 passed, 0 failed

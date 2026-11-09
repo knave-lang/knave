@@ -1,0 +1,8 @@
+(use prelude/test doctest run-tests)
+(use doc_examples_lib/shapes area)
+
+(doctest doc_examples_lib/shapes)
+
+(defn main ()
+  (area)
+  (run-tests :marker "<record>"))

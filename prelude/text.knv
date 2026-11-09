@@ -506,12 +506,14 @@
   names included. `(doc-page (dir module))` keeps the listing as a string.
 
   (dir prelude/pair)
-  => pair pair/pair
+  => pair pair/pair ...
 
   In a module that defines `main` and `twice`:
 
+  ```
   (dir)
-  => main twice")
+  => main twice
+  ```")
 
 (document (apropos text)
   "Prints the names that hold a text, ignoring case, in name order.
@@ -523,7 +525,7 @@
   `No matches.` and points to `find-doc`.
 
   (apropos sort)
-  => into-sorted-map sort! sort-by! sorted-map")
+  => into-sorted-map sort! sort-by! sorted-map ...")
 
 (document (find-doc text)
   "Prints the header and summary of each term that holds a text.

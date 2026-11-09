@@ -501,7 +501,7 @@ The compiler provides the `code` module for macro bodies. Code that uses it exis
 | `symbol? keyword? list? string? number?` | Test what kind of form a value is. |
 | `symbol-name`, `keyword-name`, `keyword-field`, `field-keyword`, `keyword-trim-end`, `(symbol context part...)`, `(string part...)` | Read and build names and strings. |
 | `escape-string`, `escape-char`, `escape-format`, `string-strip-suffix`, `string-strip-prefix` | Escape a string for a Rust string literal, a Rust character literal or a format string in a template, and drop a suffix or a prefix. `escape-string` and `escape-format` write a control character as a `\u{..}` escape, so `"count\u{1e}"` stays readable. |
-| `(string-lines text)`, `(string-trim-start text)`, `(string-length text)`, `(string-drop text count)` | Split a string at each newline into a list of strings, drop its leading whitespace, count its characters, and drop its first `count` characters. A `count` past the end is an error. |
+| `(string-lines text)`, `(string-trim-start text)`, `(string-trim-end text)`, `(string-length text)`, `(string-drop text count)` | Split a string at each newline into a list of strings, drop its leading or trailing whitespace, count its characters, and drop its first `count` characters. A `count` past the end is an error. |
 | `(string-lowercase text)`, `(string-contains? text part)` | Return the text in lowercase, and test whether the text holds `part`. |
 | `(same-binding? left right)` | Test whether two symbols refer to the same binding. |
 | `(pattern-head? head)` | Test whether the symbol `head` heads a struct or variant pattern where it is written: it names a struct type, a variant, a name that a failed definer declared, or the short name of a visible variant. |
@@ -907,6 +907,27 @@ CRASH crash/crashes: the program exited with code 3
 | 0 | every selected test passes, or no test is selected |
 | 1 | a test fails or crashes, whatever the program's own exit code or signal, or the program has errors |
 | 2 | a usage error |
+
+**A docstring example is a test.** An example is a form that starts a line of a docstring paragraph, with its result on the next line after `=> `:
+
+```lisp
+(defn twice (x)
+  "Doubles a number.
+
+  (twice 3)
+  => 6"
+  (* 2 x))
+```
+
+- `knave test` runs every example of every module that the program loads, other than the prelude's. Only `knave test` reads examples: `knave check` and `knave build` do not.
+- A docstring's examples form one test, whose full name is its module's path, `/doc:` and the term, such as `text/format/doc:twice`, so `knave test path --filter doc:` runs only doc tests. They run in order and share their `local`s.
+- An example compares with `=`, as `(assert (= (twice 3) 6))` does. The result is one form, read as code. A failure reports the location of the example, and `left` and `right` as `assert` does.
+- A result whose last line ends in `...`, as in `=> into-sorted-map ...`, runs the example and compares nothing, and trailing whitespace does not count. A result that does not read as one form, with no `...`, is `L0354`, at the example.
+- A paragraph runs only when every line of it reads as forms, each form ends its line, and it holds an arrow. A `;` after a form or a result starts a comment, as in code. A paragraph of prose and a fenced code block never run: fence an example to show it without running it.
+- A fence follows Markdown: it opens on three or more backticks or tildes, and closes only on a line of the same character, at least as long, with nothing else on the line.
+- Only a module's first module docstring runs, because it is the only one that counts.
+- An example reads in the scope of its module, with the module's private names and imports.
+- `(doctest module)` at the top level of a module also runs the examples of the module at `module`, in the scope of the module that writes it. `prelude/tests/` uses it, one line per prelude module that holds an example, because `knave test` loads the prelude's modules without running their examples. Naming a module whose examples already run adds nothing.
 
 A non-empty untested list does not change the exit code. `prelude/tests/` holds the prelude's own tests, one module per prelude module, outside the embedded prelude, and a test in `tests/cli.rs` runs `knave test prelude/tests --untested prelude` and records the report.
 

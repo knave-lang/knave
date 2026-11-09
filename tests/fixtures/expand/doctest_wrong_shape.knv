@@ -1,0 +1,5 @@
+(use prelude/test doctest)
+
+(doctest one two)
+
+(doctest "text")

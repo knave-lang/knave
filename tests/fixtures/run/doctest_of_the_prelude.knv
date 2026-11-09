@@ -1,0 +1,5 @@
+(use prelude/test doctest run-tests)
+
+(doctest prelude/test)
+
+(defn main () (run-tests :marker "<record>"))

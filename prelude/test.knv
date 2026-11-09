@@ -10,7 +10,7 @@
 (use code add-module-note bool-not concat definition-symbol
           empty? expand-call fail first form-location
           keyword-name keyword? len list list? located
-          module-exports module-notes nth
+          module-exports module-notes module-symbol nth
           number-add number-lt number-sub prepend
           program-modules read-form rest same-binding?
           string string-drop string-length string-lines
@@ -18,7 +18,7 @@
           string-trim-end string-trim-start string? symbol
           symbol-name symbol? value-eq)
 
-(export assert deftest run-tests)
+(export assert deftest doctest run-tests)
 
 (def deftest
   (macro (form)
@@ -237,11 +237,66 @@
                                   (fn (note) (test-run marker note))))
                 (finish-run (unquote marker))))))
 
+(def doctest
+  (macro (form)
+    (check-doctest-shape form)
+    (module-symbol (nth form 1))
+    (add-module-note (quote doctests)
+                     (list (first form) (nth form 1)))
+    (template (do))))
+
+(def check-doctest-shape
+  (fn (form)
+    (if (doctest-call? form)
+      form
+      (fail "this use of `doctest` does not match its shape"
+        form "write it as `(doctest module)`"))))
+
+(def doctest-call?
+  (fn (form)
+    (if (value-eq (len form) 2)
+      (symbol? (nth form 1))
+      false)))
+
+(header-shape (doctest module))
+
+(document (doctest module)
+  "Runs the docstring examples of `module` under `knave test`.
+
+  The examples read in the scope of the module that writes the `doctest`.
+
+  (doctest prelude/test)
+  => ...")
+
 (def program-doc-tests
-  (fn (modules) (mapped-concat own-doc-tests modules)))
+  (fn (modules)
+    (concat (mapped-concat own-doc-tests modules)
+            (mapped-concat (fn (module) (asked-doc-tests modules module))
+                           modules))))
 
 (def own-doc-tests
   (fn (module) (module-doc-tests module module)))
+
+(def asked-doc-tests
+  (fn (modules module)
+    (mapped-concat (fn (asked) (asked-module-doc-tests modules asked))
+                   (module-notes module (quote doctests)))))
+
+(def asked-module-doc-tests
+  (fn (modules asked)
+    (if (loaded-module? modules (nth asked 1))
+      (list)
+      (module-doc-tests (module-symbol (nth asked 1))
+                        (first asked)))))
+
+(def loaded-module?
+  (fn (modules path)
+    (if (empty? modules)
+      false
+      (if (value-eq (symbol-name (first modules))
+                    (symbol-name path))
+        true
+        (recur (rest modules) path)))))
 
 (def module-doc-tests
   (fn (target context)

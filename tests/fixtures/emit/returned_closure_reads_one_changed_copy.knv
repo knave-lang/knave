@@ -1,0 +1,12 @@
+(defn shift! (x y)
+  (set! x (+ x 1))
+  (set! y (+ y 1))
+  (local pad 0)
+  (fn (z) (+ z x)))
+
+(defn main ()
+  (local a 1)
+  (local b 1)
+  (local add (shift! a b))
+  (println a b)
+  (println (add 1)))

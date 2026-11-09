@@ -360,14 +360,26 @@ impl<'a> ExpressionEmitter<'a> {
         });
         fragments.push(Fragment::Newline);
         fragments.extend(
-            Code::joined(
-                vec![Code::atom("move "), self.closure(lambda, &tail.ty)],
-                Precedence::Operator,
-            )
-            .spanned(tail.span)
-            .fragments,
+            self.moving_closure(lambda, &tail.ty)
+                .spanned(tail.span)
+                .fragments,
         );
         fragments
+    }
+
+    fn closure_value(&mut self, lambda: &TypedLambda, ty: &Type) -> Code {
+        if lambda.moves_captures {
+            self.moving_closure(lambda, ty)
+        } else {
+            self.closure(lambda, ty)
+        }
+    }
+
+    fn moving_closure(&mut self, lambda: &TypedLambda, ty: &Type) -> Code {
+        Code::joined(
+            vec![Code::atom("move "), self.closure(lambda, ty)],
+            Precedence::Operator,
+        )
     }
 
     pub fn statements(&mut self, block: &TypedBlock) -> Vec<Fragment> {
@@ -438,7 +450,7 @@ impl<'a> ExpressionEmitter<'a> {
         self.emission.emitted_expressions += 1;
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, expr, context),
-            TypedExprKind::Fn(lambda) => self.closure(lambda, &expr.ty),
+            TypedExprKind::Fn(lambda) => self.closure_value(lambda, &expr.ty),
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments, expr.span),
             TypedExprKind::Recur(_) => {
                 unreachable!("expansion allows `recur` only in tail position")

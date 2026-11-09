@@ -47,50 +47,103 @@
   "Wraps a value in an `option`.
 
   As a value, it is a function of one argument, as in `(map (iter v) some)`. In
-  a `match`, `(some x)` is the pattern that binds the value.")
+  a `match`, `(some x)` is the pattern that binds the value.
+
+  (match (some 3)
+    ((some value) (+ value 1))
+    (none 0))
+  => 4
+
+  (collect (map (range 1 3) some))
+  => (vec (some 1) (some 2))")
 
 (document none
   "Holds an `option` with no value.
 
-  In a `match`, `none` is the pattern for it.")
+  In a `match`, `none` is the pattern for it.
+
+  (unwrap-or none 7)
+  => 7
+
+  (match (the (option i64) none)
+    ((some value) value)
+    (none 0))
+  => 0")
 
 (document (some? option)
   "Returns whether an `option` holds a value.
 
-  It borrows the option, which stays usable.")
+  It borrows the option, which stays usable.
+
+  (local name (some (str \"pear\")))
+  (some? name)
+  => true
+
+  (unwrap name)
+  => \"pear\"")
 
 (document (none? option)
   "Returns whether an `option` holds no value.
 
-  It borrows the option, which stays usable.")
+  It borrows the option, which stays usable.
+
+  (none? (the (option i64) none))
+  => true
+
+  (none? (some 1))
+  => false")
 
 (document (unwrap-or option default)
   "Returns an `option`'s value, or `default` when it holds none.
 
   `default` runs before the call, whether or not the call uses it. The call
-  moves an option that is not `copy`.")
+  moves an option that is not `copy`.
+
+  (unwrap-or (some 3) 7)
+  => 3
+
+  (unwrap-or (the (option i64) none) 7)
+  => 7")
 
 (document (unwrap option)
   "Returns an `option`'s value.
 
-  It panics on `none`. It moves an option that is not `copy`.")
+  It panics on `none`. It moves an option that is not `copy`.
+
+  (unwrap (some 4))
+  => 4")
 
 (document (expect option message)
   "Returns an `option`'s value, or panics with a message on `none`.
 
   `message` is a `(ref str)`, so borrow a `string` with `as-str`. The call
-  moves an option that is not `copy`.")
+  moves an option that is not `copy`.
+
+  (expect (some \"card\") \"a card is drawn\")
+  => \"card\"")
 
 (document (map-some option function)
   "Applies a function to an `option`'s value.
 
   It returns the result in an `option`. For `none` the function does not run,
   and the call returns `none`. A keyword such as `:age` reads that field. The
-  call moves an option that is not `copy`.")
+  call moves an option that is not `copy`.
+
+  (map-some (some 2) (fn (n) (* n 10)))
+  => (some 20)
+
+  (map-some (the (option i64) none) (fn (n) (* n 10)))
+  => none")
 
 (document (then-some option function)
   "Calls a function that returns an `option` on an `option`'s value.
 
   It returns the function's `option` as it is. For `none` the function does
   not run, and the call returns `none`. The call moves an option that is not
-  `copy`.")
+  `copy`.
+
+  (then-some (some 4) (fn (n) (some (+ n 1))))
+  => (some 5)
+
+  (then-some (some 4) (fn (n) (if (> n 9) (some n) none)))
+  => none")

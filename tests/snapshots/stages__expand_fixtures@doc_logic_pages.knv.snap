@@ -3,5 +3,5 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/doc_logic_pages.knv
 ---
-(def not-page "(not value)\n\nReturns the opposite of a `bool`.\n\nIt emits `!value`.")
-(def cond-page "(cond (test body ...) clause ...)\n\nRuns the first clause whose test is true.\n\nA last clause `(else body ...)` runs when no test is true. Without one,\nevery body must return unit, and so does the call.")
+(def not-page "(not value)\n\nReturns the opposite of a `bool`.\n\nIt emits `!value`.\n\n(not true)\n=> false")
+(def cond-page "(cond (test body ...) clause ...)\n\nRuns the first clause whose test is true.\n\nA last clause `(else body ...)` runs when no test is true. Without one,\nevery body must return unit, and so does the call.\n\n(cond ((> 7 9) \"high\") ((> 7 5) \"middle\") (else \"low\"))\n=> \"middle\"")

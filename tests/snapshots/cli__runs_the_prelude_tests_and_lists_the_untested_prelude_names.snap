@@ -2,8 +2,8 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (188 of 230): -> ->> _ alphanumeric? and any? as-str assoc assoc-at assoc-in at bool box char chars clone command-line-args comment cond copied copy count debug dedup! def defenum defmacro defn defrule defstruct deftrait deftype deref derive digit? display do doc doc-body doc-header doc-page docstring empty? enum enumerate eprint eprintln eq err err? every? exit expect-ok export f32 f64 field filter find find-doc first float fmt fn-mut fn-once for-each from-str get hash hash-map i128 i16 i32 i8 impl infallible integer io-error isize iterator keys last len let let-match let-try line-seq lines local loop lower-case macro map-at map-err map-ok match max max-by-key min module mut new number ok ok-or ok? option/none option/some or ord pair pair/pair parse parse-bool-error parse-char-error parse-error parse-float-error parse-int-error partial-eq partial-ord pop! pr-str print println prn push! quote range read-line recur ref remove-at! result result/err result/ok reverse reverse! rust rust-trait rust-type sequence set! set-at show signed slice slurp sort! sort-by! sorted-map source split split-when stdin string struct subs sum take take-while template then-ok trait trim try try-> type u128 u16 u32 u64 u8 unit unless unwrap-err unwrap-ok update upper-case use usize vals when where whitespace? windows with write-form zip
-running 31 tests
+untested in prelude (181 of 230): -> ->> _ alphanumeric? any? as-str assoc assoc-at assoc-in at bool box char chars clone command-line-args comment copied copy count debug dedup! def defenum defmacro defn defrule defstruct deftrait deftype deref derive digit? display do doc doc-body doc-header doc-page docstring empty? enum enumerate eprint eprintln eq err err? every? exit expect-ok export f32 f64 field filter find find-doc first float fmt fn-mut fn-once for-each from-str get hash hash-map i128 i16 i32 i8 impl infallible integer io-error isize iterator keys last len let let-match let-try line-seq lines loop lower-case macro map-at map-err map-ok match max max-by-key min module mut new number ok ok-or ok? option/none option/some ord pair pair/pair parse parse-bool-error parse-char-error parse-error parse-float-error parse-int-error partial-eq partial-ord pop! pr-str print println prn push! quote range read-line recur ref remove-at! result result/err result/ok reverse reverse! rust rust-trait rust-type sequence set-at show signed slice slurp sort! sort-by! sorted-map source split split-when stdin string struct subs sum take take-while template then-ok trait trim try try-> type u128 u16 u32 u64 u8 unit unwrap-err unwrap-ok update upper-case use usize vals where whitespace? windows with write-form zip
+running 37 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -11,6 +11,12 @@ test option/unwrap-or-falls-back-on-none ... ok
 test option/expect-takes-the-value ... ok
 test option/map-some-changes-the-value ... ok
 test option/then-some-chains-an-optional-step ... ok
+test prelude/logic/doc:not ... ok
+test prelude/logic/doc:when ... ok
+test prelude/logic/doc:unless ... ok
+test prelude/logic/doc:and ... ok
+test prelude/logic/doc:or ... ok
+test prelude/logic/doc:cond ... ok
 test prelude/number/doc:number ... ok
 test prelude/number/doc:signed ... ok
 test prelude/number/doc:partial-eq ... ok
@@ -37,4 +43,4 @@ test prelude/text/doc:dir ... pair pair/pair
 ok
 test prelude/text/doc:apropos ... into-sorted-map sort! sort-by! sorted-map
 ok
-31 passed, 0 failed
+37 passed, 0 failed

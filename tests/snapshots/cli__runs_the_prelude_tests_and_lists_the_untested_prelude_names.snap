@@ -2,8 +2,8 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (149 of 230): -> ->> _ any? assoc assoc-at assoc-in at box clone command-line-args comment copied copy count debug dedup! def defenum defmacro defn defrule defstruct deftrait deftype deref derive display do doc-body doc-header doc-page docstring empty? enum enumerate eprint eprintln eq err every? exit expect-ok export f32 field filter find first float fmt fn-mut fn-once for-each from-str get hash hash-map i128 i16 i32 i8 impl integer io-error isize iterator keys last len let let-match let-try line-seq loop macro map-at map-err map-ok match max max-by-key min module mut new number ok ok-or ok? option/none option/some ord pair pair/pair partial-eq partial-ord pop! push! quote range read-line recur ref remove-at! result/err result/ok reverse reverse! rust rust-trait rust-type sequence set-at show signed slice slurp sort! sort-by! sorted-map source stdin struct sum take take-while template then-ok trait try try-> type u128 u16 u32 u64 u8 unit unwrap-err update use usize vals where windows with write-form zip
-running 68 tests
+untested in prelude (144 of 230): -> ->> _ any? assoc assoc-at assoc-in at box clone comment copied copy count debug dedup! def defenum defmacro defn defrule defstruct deftrait deftype deref derive display do doc-body doc-header doc-page docstring empty? enum enumerate eprint eprintln eq err every? exit expect-ok export f32 field filter find first float fmt fn-mut fn-once for-each from-str get hash hash-map i128 i16 i32 i8 impl integer io-error isize iterator keys last len let let-match let-try loop macro map-at map-err map-ok match max max-by-key min module mut new number ok ok-or ok? option/none option/some ord pair pair/pair partial-eq partial-ord pop! push! quote range recur ref remove-at! result/err result/ok reverse reverse! rust rust-trait rust-type sequence set-at show signed slice sort! sort-by! sorted-map source struct sum take take-while template then-ok trait try try-> type u128 u16 u32 u64 u8 unit unwrap-err update use usize vals where windows with write-form zip
+running 72 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -11,6 +11,10 @@ test option/unwrap-or-falls-back-on-none ... ok
 test option/expect-takes-the-value ... ok
 test option/map-some-changes-the-value ... ok
 test option/then-some-chains-an-optional-step ... ok
+test prelude/io/doc:io-error ... ok
+test prelude/io/doc:stdin ... ok
+test prelude/io/doc:source ... ok
+test prelude/io/doc:command-line-args ... ok
 test prelude/logic/doc:not ... ok
 test prelude/logic/doc:when ... ok
 test prelude/logic/doc:unless ... ok
@@ -92,4 +96,4 @@ test prelude/text/doc:alphanumeric? ... ok
 test prelude/text/doc:whitespace? ... ok
 test prelude/text/doc:digit? ... ok
 test prelude/text/doc:subs ... ok
-68 passed, 0 failed
+72 passed, 0 failed

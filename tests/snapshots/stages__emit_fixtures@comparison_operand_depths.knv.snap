@@ -45,6 +45,10 @@ fn is_first_name(p: &Page, names: &[String]) -> bool {
     p.file == names[0]
 }
 
+fn is_first_ref_named(refs: &[&String], p: &Page) -> bool {
+    p.file == *refs[0]
+}
+
 fn is_named(p: &Page, target: &String) -> bool {
     p.file == *target
 }
@@ -63,6 +67,10 @@ fn main() {
     let mut names = vec!["a".to_string()];
     names.push("b".to_string());
     println!("{}", is_first_name(&page, &names));
+    let file = "a".to_string();
+    let mut refs = vec![&file];
+    refs.push(&file);
+    println!("{}", is_first_ref_named(&refs, &page));
     println!("{}", is_named(&page, &"a".to_string()))
 }
 

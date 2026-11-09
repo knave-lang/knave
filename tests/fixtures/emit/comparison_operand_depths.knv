@@ -30,6 +30,13 @@
 (defn first-name? (p names)
   (same? (:file p) (at names 0)))
 
+(type first-ref-named?
+  (fn ((ref (vec (ref string))) (ref page))
+    bool))
+
+(defn first-ref-named? (refs p)
+  (same? (:file p) (at refs 0)))
+
 (defn named? (p target)
   (same? (:file p) (ref target)))
 
@@ -46,4 +53,8 @@
   (local names (vec (str "a")))
   (push! names (str "b"))
   (println (first-name? page names))
+  (local file (str "a"))
+  (local refs (vec (ref file)))
+  (push! refs (ref file))
+  (println (first-ref-named? (ref refs) page))
   (println (named? page (str "a"))))

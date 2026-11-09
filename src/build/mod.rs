@@ -1,3 +1,4 @@
+mod build_plan;
 mod formatting;
 mod git_store;
 mod interrupt_signal;
@@ -13,6 +14,7 @@ use std::process::Command;
 use crate::diagnostic::Diagnostics;
 use crate::emit::EmittedCrate;
 use crate::source::Span;
+pub use build_plan::BuildPlan;
 pub use formatting::{EmittedFormatting, FormattingError};
 pub use git_store::{GitStore, StoreError};
 pub use interrupt_signal::InterruptSignal;
@@ -33,7 +35,6 @@ pub struct RustCompiler {
 impl RustCompiler {
     const RUSTC: &str = "rustc";
     const SOURCE_FILE: &str = "main.rs";
-    const EDITION: &str = "2024";
 
     pub fn new(directory: PathBuf, profile: BuildProfile) -> Self {
         Self { directory, profile }
@@ -71,17 +72,16 @@ impl RustCompiler {
         command
             .args([
                 "--edition",
-                Self::EDITION,
+                BuildPlan::EDITION,
                 "--crate-name",
                 crate_name,
                 "--error-format=json",
-                "--cap-lints",
-                "allow",
             ])
+            .args(BuildPlan::new(self.profile).lint_flags())
             .arg("-o")
             .arg(output)
             .arg(source)
-            .args(self.profile.rustc_arguments());
+            .args(BuildPlan::new(self.profile).rustc_flags());
         command
     }
 

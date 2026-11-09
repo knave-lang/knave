@@ -1765,7 +1765,7 @@ fn doc_prints_the_call_form_of_template() {
     let doc = sandbox.compiler(&["doc", "template"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        "(template form)\n\nBuilds a form from a quoted form with holes in it.\n\n`(unquote x)` puts the value of `x` in place, and `(splice xs)` puts each\nform of the list `xs` in place, as in\n`(template (def (unquote name) (splice body)))`.\n"
+        "(template form)\n\nBuilds a form from a quoted form with holes in it.\n\n`(unquote x)` puts the value of `x` in place, and `(splice xs)` puts each\nform of the list `xs` in place, as in\n`(template (def (unquote name) (splice body)))`.\n\n```\n(defmacro twice (x) (template (* 2 (unquote x))))\n(twice 4)\n=> 8\n```\n"
     );
 }
 

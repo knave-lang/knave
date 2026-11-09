@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/import_internal_prelude_helper.rslisp
+---
+error[L0205]: module `prelude/macros` does not export `note-docstring`
+ --> check/import_internal_prelude_helper.rslisp:1:21
+  |
+1 | (use prelude/macros note-docstring)
+  |                     ^^^^^^^^^^^^^^ not exported
+  |
+  = note: `note-docstring` is internal to the prelude
+  = help: let a prelude definer build and document the definition, as in `(def name "text" value)` or `(defn name (parameter) body)`
+
+error[L0205]: module `prelude/syntax` does not export `call-signature`
+ --> check/import_internal_prelude_helper.rslisp:2:21
+  |
+2 | (use prelude/syntax call-signature)
+  |                     ^^^^^^^^^^^^^^ not exported
+  |
+  = note: `call-signature` is internal to the prelude
+  = help: let a prelude definer build and document the definition, as in `(def name "text" value)` or `(defn name (parameter) body)`
+
+error[L0205]: module `prelude/macros` does not export `unheard-of`
+ --> check/import_internal_prelude_helper.rslisp:3:21
+  |
+3 | (use prelude/macros unheard-of)
+  |                     ^^^^^^^^^^ not exported

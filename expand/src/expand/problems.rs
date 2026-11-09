@@ -10,6 +10,12 @@ use crate::modules::{LibraryTable, LocalModuleClash};
 use crate::reader::Form;
 use crate::source::Span;
 
+pub enum MissingExportRemedy {
+    AddToExports,
+    UseADefiner,
+    NoHelp,
+}
+
 pub struct ExpandProblems;
 
 impl ExpandProblems {
@@ -619,18 +625,28 @@ impl ExpandProblems {
         name: &str,
         span: Span,
         similar: Option<Rc<str>>,
+        remedy: MissingExportRemedy,
     ) -> Diagnostic {
         let diagnostic = Diagnostic::error(
             DiagnosticCode::MISSING_EXPORT,
             format!("module `{path}` does not export `{name}`"),
             Label::new(span, "not exported"),
         );
-        match similar {
-            Some(similar) => diagnostic.with_suggestion(
+        match (remedy, similar) {
+            (MissingExportRemedy::UseADefiner, _) => diagnostic
+                .with_note(format!("`{name}` is internal to the prelude"))
+                .with_help(
+                    "let a prelude definer build and document the definition, \
+                     as in `(def name \"text\" value)` or `(defn name (parameter) body)`",
+                ),
+            (_, Some(similar)) => diagnostic.with_suggestion(
                 "an export with a similar name exists",
                 Suggestion::new(span, similar.to_string()),
             ),
-            None => diagnostic.with_help(format!("add `{name}` to the `export` list of `{path}`")),
+            (MissingExportRemedy::AddToExports, None) => {
+                diagnostic.with_help(format!("add `{name}` to the `export` list of `{path}`"))
+            }
+            (MissingExportRemedy::NoHelp, None) => diagnostic,
         }
     }
 

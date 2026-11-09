@@ -177,6 +177,7 @@ impl TestCommand {
 
 impl TestSelection {
     const EXACT_FLAG: &'static str = "--exact";
+    const FILTER_FLAG: &'static str = "--filter";
 
     pub fn of(filter: Option<String>, exact: Option<String>) -> Self {
         match (filter, exact) {
@@ -184,6 +185,15 @@ impl TestSelection {
             (Some(filter), None) => Self::Containing(filter),
             (None, None) => Self::Every,
         }
+    }
+
+    pub fn report_positional_filter(filter: &str) -> ExitStatus {
+        StandardError::write_line(format_args!(
+            "error: unexpected argument `{filter}` after the path\n\
+             help: to run the tests whose full name contains it, write `{} {filter}`",
+            Self::FILTER_FLAG
+        ));
+        ExitStatus::UsageError
     }
 
     fn arguments(&self) -> Vec<String> {

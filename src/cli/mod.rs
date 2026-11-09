@@ -231,7 +231,13 @@ enum ProgramCommand {
     #[command(about = "Build the tests of a file or a directory and run them")]
     Test {
         path: PathBuf,
-        #[arg(help = "Run only the tests whose full name contains this text")]
+        #[arg(hide = true)]
+        positional_filter: Option<String>,
+        #[arg(
+            long,
+            value_name = "TEXT",
+            help = "Run only the tests whose full name contains this text"
+        )]
         filter: Option<String>,
         #[arg(
             long,
@@ -434,7 +440,12 @@ impl ProgramCommand {
             .run(terminal),
             Self::Repl { root, release } => ReplCommand::new(root, release.profile()).run(terminal),
             Self::Test {
+                positional_filter: Some(filter),
+                ..
+            } => TestSelection::report_positional_filter(&filter),
+            Self::Test {
                 path,
+                positional_filter: None,
                 filter,
                 exact,
                 untested,

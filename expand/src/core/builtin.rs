@@ -47,6 +47,7 @@ pub enum Builtin {
     StringStripPrefix,
     StringLines,
     StringTrimStart,
+    StringTrimEnd,
     StringLength,
     StringDrop,
     StringLowercase,
@@ -68,7 +69,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 65] = [
+    const NAMES: [(Builtin, &'static str); 66] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -116,6 +117,7 @@ impl Builtin {
         (Builtin::StringStripPrefix, "string-strip-prefix"),
         (Builtin::StringLines, "string-lines"),
         (Builtin::StringTrimStart, "string-trim-start"),
+        (Builtin::StringTrimEnd, "string-trim-end"),
         (Builtin::StringLength, "string-length"),
         (Builtin::StringDrop, "string-drop"),
         (Builtin::StringLowercase, "string-lowercase"),

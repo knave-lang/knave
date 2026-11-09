@@ -1,0 +1,12 @@
+(use code string)
+(use prelude/macros template)
+(use prelude/test run-tests)
+
+(defmacro documented (name)
+  (template (defn (unquote name) ()
+              (unquote (string "Built.\n\n  (twic 1)\n  => 1"))
+              1)))
+
+(documented one)
+
+(defn main () (run-tests :marker "m"))

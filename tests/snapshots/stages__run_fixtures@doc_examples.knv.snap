@@ -1,0 +1,38 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/doc_examples.knv
+---
+<record>(start 13)
+<record>(test "doc_examples/doc:twice" "Doubles a number.")
+<record>(ok)
+<record>(test "doc_examples/doc:thrice" "Triples a number, and this example is wrong.")
+<record>(fail-equal "doc_examples.knv:18:3" "(thrice 3) => 10" "9" "10")
+<record>(test "doc_examples/doc:chained" "Later examples see an earlier `local`.")
+<record>(ok)
+<record>(test "doc_examples/doc:numbers" "Compares a `vec`, a `string` and an `option`.")
+<record>(ok)
+<record>(test "doc_examples/doc:open-result" "Runs an example and does not compare its result.")
+open result ran
+<record>(ok)
+<record>(test "doc_examples/doc:only-open-result" "Keeps a paragraph that holds only an unchecked result.")
+only open result ran
+<record>(ok)
+<record>(test "doc_examples/doc:multi-line" "Reads a form and a result over several lines.")
+<record>(ok)
+<record>(test "doc_examples/doc:multi-line-unchecked" "Accepts `...` after a result that closes on a later line.")
+multi-line unchecked ran
+<record>(ok)
+<record>(test "doc_examples/doc:comments-after-forms" "Treats a comment as blank.")
+<record>(ok)
+<record>(test "doc_examples/doc:fenced-blocks" "Follows Markdown's fences.")
+<record>(ok)
+<record>(test "doc_examples/doc:examples-touching-fences" "Ends a paragraph at a fence, with no blank line around it.")
+before the fence ran
+after the fence ran
+<record>(ok)
+<record>(test "doc_examples/doc:macro-example" "Expands a macro in an example.")
+<record>(ok)
+<record>(test "doc_examples/doc:doc_examples" "Module docstrings run too.")
+<record>(ok)
+<record>(done)

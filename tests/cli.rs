@@ -4927,6 +4927,75 @@ const CRASHING_TESTS: &str = r#"(use prelude/test assert deftest)
 (deftest runs-last (assert true))
 "#;
 
+const FAILING_DOC_EXAMPLE: &str = r#"(defn twice (x)
+  "Doubles a number.
+
+  (twice 3)
+  => 7"
+  (* 2 x))
+"#;
+
+#[test]
+fn test_reports_a_failing_docstring_example_at_its_line() {
+    let sandbox = Sandbox::new("test_doc_example").with_file("twice.knv", FAILING_DOC_EXAMPLE);
+    let test = sandbox.compiler(&["test", "twice.knv"]);
+    insta::assert_snapshot!(test.assert_exit_code(1).transcript());
+}
+
+#[test]
+fn test_selects_a_docstring_example_by_its_full_name() {
+    let sandbox = Sandbox::new("test_doc_filter").with_file("twice.knv", FAILING_DOC_EXAMPLE);
+    let test = sandbox.compiler(&["test", "twice.knv", "--exact", "twice/doc:twice"]);
+    insta::assert_snapshot!(test.assert_exit_code(1).transcript());
+}
+
+#[test]
+fn test_filter_runs_only_docstring_examples() {
+    let source = format!(
+        "(use prelude/test assert deftest)\n\n(deftest plain (assert true))\n\n{FAILING_DOC_EXAMPLE}"
+    );
+    let sandbox = Sandbox::new("test_doc_only").with_file("twice.knv", &source);
+    let test = sandbox.compiler(&["test", "twice.knv", "--filter", "doc:"]);
+    insta::assert_snapshot!(test.assert_exit_code(1).transcript());
+}
+
+#[test]
+fn test_runs_a_docstring_example_with_crlf_line_endings() {
+    let sandbox = Sandbox::new("test_doc_crlf").with_file(
+        "twice.knv",
+        "(defn twice (x)\r\n  \"Doubles.\r\n\r\n  (twice 3)\r\n  => several forms ...\r\n  (twice 1)\r\n  => 2\"\r\n  (* 2 x))\r\n",
+    );
+    sandbox.compiler(&["test", "twice.knv"]).assert_exit_code(0);
+}
+
+#[test]
+fn test_accepts_a_thousand_docstrings_without_a_docstring_example() {
+    let source: String = (0..1100)
+        .map(|number| format!("(defn term-{number} (x) \"Documented.\" x)\n"))
+        .collect();
+    let sandbox = Sandbox::new("test_doc_many").with_file("many.knv", &source);
+    sandbox.compiler(&["test", "many.knv"]).assert_exit_code(0);
+}
+
+#[test]
+fn test_runs_two_hundred_docstring_examples_in_one_paragraph() {
+    let examples: String = (0..200).map(|_| "  (twice 1)\n  => 2\n").collect();
+    let source = format!("(defn twice (x)\n  \"Doubles.\n\n{examples}\"\n  (* 2 x))\n");
+    let sandbox = Sandbox::new("test_doc_paragraph").with_file("twice.knv", &source);
+    sandbox.compiler(&["test", "twice.knv"]).assert_exit_code(0);
+}
+
+#[test]
+fn check_leaves_a_docstring_example_unexpanded() {
+    let sandbox = Sandbox::new("check_doc_example").with_file(
+        "twice.knv",
+        "(defn twice (x)\n  \"Doubles.\n\n  (twic 3)\n  => 6\"\n  (* 2 x))\n",
+    );
+    sandbox
+        .compiler(&["check", "twice.knv"])
+        .assert_exit_code(0);
+}
+
 #[test]
 fn test_reports_passing_failing_and_panicking_tests() {
     let sandbox = Sandbox::new("test_report").with_file("padding.knv", PADDING_TESTS);

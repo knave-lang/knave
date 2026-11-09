@@ -1,0 +1,196 @@
+(use prelude/test run-tests)
+
+(module "Module docstrings run too.
+
+  (+ 1 1)
+  => 2")
+
+(defn twice (x)
+  "Doubles a number.
+
+  (twice 3)
+  => 6"
+  (* 2 x))
+
+(defn thrice (x)
+  "Triples a number, and this example is wrong.
+
+  (thrice 3)
+  => 10"
+  (* 3 x))
+
+(defn chained (x)
+  "Later examples see an earlier `local`.
+
+  (local doubled (twice 3))
+  (chained doubled)
+  => 7
+
+  (chained 1)
+  => 2"
+  (+ x 1))
+
+(defn numbers ()
+  "Compares a `vec`, a `string` and an `option`.
+
+  (numbers)
+  => (vec 1 2)
+
+  (str \"a\" \"b\")
+  => \"ab\"
+
+  (some 3)
+  => (some 3)"
+  (vec 1 2))
+
+(defn prose (x)
+  "Arrows in prose never run. See the rule => it holds.
+  => not an example either.
+
+  (see below)
+  words after a form
+
+  (see below) and more words
+  => 7
+
+  (unbalanced prose
+  still prose
+
+  (a call without a result)
+
+  word
+  => 7
+
+  ```
+  (exit 1)
+
+  (exit 2)
+  => 7
+
+  ```"
+  x)
+
+(defn open-result (x)
+  "Runs an example and does not compare its result.
+
+  (println \"open result ran\")
+  => anything at all ...
+
+  (open-result 1)
+  => 1"
+  x)
+
+(defn only-open-result (x)
+  "Keeps a paragraph that holds only an unchecked result.
+
+  (println \"only open result ran\")
+  => shown ..."
+  x)
+
+(defn multi-line (x)
+  "Reads a form and a result over several lines.
+
+  (multi-line
+    3)
+  => (+ 1
+        2)"
+  x)
+
+(defn multi-line-unchecked (x)
+  "Accepts `...` after a result that closes on a later line.
+
+  (println \"multi-line unchecked ran\")
+  => (vec 1
+          2) ...
+
+  (multi-line-unchecked 2)
+  => 2"
+  x)
+
+(defn closes-past-blank (x)
+  "A later form that closes past a blank line rejects its paragraph.
+
+  (closes-past-blank 1)
+  => 7
+  (still open
+
+  closed here)"
+  x)
+
+(defn forms-without-a-head (x)
+  "Reads forms with no symbol at their head.
+
+  ()
+
+  ((fn () 1))"
+  x)
+
+(defn comments-after-forms (x)
+  "Treats a comment as blank.
+
+  (comments-after-forms 1) ; after the code
+  => 1 ; after the result"
+  x)
+
+(defn fenced-blocks (x)
+  "Follows Markdown's fences.
+
+  ~~~
+
+  (exit 11)
+  => 7
+
+  ~~~
+
+  ````
+
+  ```
+
+  (exit 12)
+  => 7
+
+  ```
+
+  ````
+
+  ```
+
+  (exit 13)
+  => 7
+
+  ~~~
+
+  (exit 14)
+  => 7
+
+  ``` with more text
+
+  (exit 15)
+  => 7
+
+  ```
+
+  (fenced-blocks 1)
+  => 1"
+  x)
+
+(defn examples-touching-fences (x)
+  "Ends a paragraph at a fence, with no blank line around it.
+
+  (println \"before the fence ran\")
+  => shown ...
+  ```
+  (exit 16)
+  ```
+  (println \"after the fence ran\")
+  => shown ..."
+  x)
+
+(defn macro-example (x)
+  "Expands a macro in an example.
+
+  (-> 3 (- 10))
+  => -7"
+  x)
+
+(defn main () (run-tests :marker "<record>"))

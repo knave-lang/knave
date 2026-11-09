@@ -38,6 +38,12 @@ impl<'a> StringOperations<'a> {
         Ok(self.string_value(text.trim_start().to_string()))
     }
 
+    pub fn trim_end(&self) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(1)?;
+        let text = self.arguments.string(0)?;
+        Ok(self.string_value(text.trim_end().to_string()))
+    }
+
     pub fn length(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let count = self.arguments.string(0)?.chars().count();

@@ -28,7 +28,7 @@ pub struct BuiltinCall {
 }
 
 impl BuiltinCall {
-    const IMPLEMENTATIONS: [(Builtin, Implementation); 65] = [
+    const IMPLEMENTATIONS: [(Builtin, Implementation); 66] = [
         (Builtin::First, |operations, _| operations.lists.first()),
         (Builtin::Rest, |operations, _| operations.lists.rest()),
         (Builtin::List, |operations, _| operations.lists.list()),
@@ -147,6 +147,9 @@ impl BuiltinCall {
         }),
         (Builtin::StringTrimStart, |operations, _| {
             operations.strings.trim_start()
+        }),
+        (Builtin::StringTrimEnd, |operations, _| {
+            operations.strings.trim_end()
         }),
         (Builtin::StringLength, |operations, _| {
             operations.strings.length()

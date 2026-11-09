@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/doc_example_result_past_blank.knv
+---
+error[L0354]: the result of this example does not read as one form
+ --> expand/doc_example_result_past_blank.knv:6:3
+  |
+6 |   (twice 3)
+  |   ^^^^^^^^^ the line after this form starts with `=> `
+  |
+  = help: write the result as one form, end it with `...` to run the example without comparing its result, or put the example in a fenced code block to show it without running it

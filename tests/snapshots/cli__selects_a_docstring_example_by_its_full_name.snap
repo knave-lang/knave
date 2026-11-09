@@ -1,0 +1,14 @@
+---
+source: tests/cli.rs
+expression: test.assert_exit_code(1).transcript()
+---
+exit code: Some(1)
+--- stdout
+running 1 test
+test twice/doc:twice ... FAIL
+FAIL twice/doc:twice: Doubles a number. (twice.knv:4:3)
+    (twice 3) => 7
+    left:  6
+    right: 7
+0 passed, 1 failed
+--- stderr

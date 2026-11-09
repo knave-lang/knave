@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/doc_example_prints.knv
+---
+error[L0401]: mismatched types
+ --> check/doc_example_prints.knv:6:3
+  |
+6 |   (println (twice 3))
+  |   ^^^^^^^^^^^^^^^^^^^ expected `unit`, found an integer

@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/doc_example_built_by_a_macro.knv
+---
+error[L0201]: cannot find `twic` in this scope
+  --> expand/doc_example_built_by_a_macro.knv:10:1
+   |
+10 | (documented one)
+   | ^^^^^^^^^^^^^^^^ not found in this scope

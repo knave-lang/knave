@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/use_internal_module.rslisp
+---
+error[L0255]: `prelude/internal/macros` is internal to the prelude
+ --> expand/use_internal_module.rslisp:1:6
+  |
+1 | (use prelude/internal/macros whole-pairs?)
+  |      ^^^^^^^^^^^^^^^^^^^^^^^ only the prelude imports this module
+  |
+  = note: it holds helpers of the prelude's own forms
+  = help: remove this `use`
+
+error[L0255]: `prelude/internal/syntax` is internal to the prelude
+ --> expand/use_internal_module.rslisp:2:6
+  |
+2 | (use prelude/internal/syntax definition)
+  |      ^^^^^^^^^^^^^^^^^^^^^^^ only the prelude imports this module
+  |
+  = note: it holds helpers of the prelude's own forms
+  = help: remove this `use`

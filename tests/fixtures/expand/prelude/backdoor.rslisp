@@ -1,0 +1,3 @@
+(use prelude/internal/syntax definition)
+
+(export definition)

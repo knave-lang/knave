@@ -129,6 +129,9 @@ impl Expander<'_> {
     }
 
     fn resolve_use(&mut self, written: &ModulePath, span: Span) -> Result<ModulePath, Diagnostic> {
+        if ModuleSources::is_internal(written) && !self.importing_from_prelude() {
+            return Err(ExpandProblems::internal_module(written, span));
+        }
         let owner = self.importing_owner();
         let owner = owner.as_deref();
         if let Some(clash) = self
@@ -170,6 +173,12 @@ impl Expander<'_> {
             let owner = Rc::from(owner);
             self.library_modules.push((path.clone(), owner));
         }
+    }
+
+    fn importing_from_prelude(&self) -> bool {
+        self.current_module.is_some_and(|module| {
+            ModuleSources::is_embedded_prelude(self.modules.get(module).path())
+        })
     }
 
     fn importing_owner(&self) -> Option<Rc<str>> {

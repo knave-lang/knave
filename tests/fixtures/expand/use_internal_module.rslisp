@@ -1,0 +1,4 @@
+(use prelude/internal/macros whole-pairs?)
+(use prelude/internal/syntax definition)
+
+(defn main ())

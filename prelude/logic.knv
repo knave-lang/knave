@@ -35,34 +35,70 @@
 (document (not value)
   "Returns the opposite of a `bool`.
 
-  It emits `!value`.")
+  It emits `!value`.
+
+  (not true)
+  => false")
 
 (document (when test body ...)
   "Runs the body when the test is true.
 
   It returns unit when the test is false. The body must return unit, and so
-  does the call.")
+  does the call.
+
+  (local total 0)
+  (when (> 2 1) (set! total 5))
+  (= total 5)
+  => true
+
+  (when (> 1 2) (set! total 9))
+  (= total 5)
+  => true")
 
 (document (unless test body ...)
   "Runs the body when the test is false.
 
   It returns unit when the test is true. The body must return unit, and so
-  does the call.")
+  does the call.
+
+  (local total 0)
+  (unless (> 1 2) (set! total 5))
+  (= total 5)
+  => true
+
+  (unless (> 2 1) (set! total 9))
+  (= total 5)
+  => true")
 
 (document (and value ...)
   "Returns whether every argument is true.
 
   It stops at the first false argument. With no arguments it is `true`, and
-  with one it is that argument.")
+  with one it is that argument.
+
+  (and (> 2 1) (< 2 3))
+  => true
+
+  (and)
+  => true")
 
 (document (or value ...)
   "Returns whether any argument is true.
 
   It stops at the first true argument. With no arguments it is `false`, and
-  with one it is that argument.")
+  with one it is that argument.
+
+  (or (> 1 2) (< 1 2))
+  => true
+
+  (or)
+  => false")
 
 (document (cond (test body ...) clause ...)
   "Runs the first clause whose test is true.
 
   A last clause `(else body ...)` runs when no test is true. Without one,
-  every body must return unit, and so does the call.")
+  every body must return unit, and so does the call.
+
+  (cond ((> 7 9) \"high\") ((> 7 5) \"middle\") (else \"low\"))
+  => \"middle\"")

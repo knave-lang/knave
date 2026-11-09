@@ -1,0 +1,55 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/recur_passes_unchanged_parameter.knv
+---
+fn walk(steps: &mut i64, mut rounds: i64) -> i64 {
+    loop {
+        *steps = *steps + 1;
+        if rounds > 0 {
+            (*steps, rounds) = (rounds, rounds - 1);
+            continue;
+        } else {
+            return *steps;
+        }
+    }
+}
+
+fn walk_again(steps: &mut i64, mut rounds: i64) -> i64 {
+    loop {
+        *steps = *steps + 1;
+        if rounds > 0 {
+            (*steps, rounds) = (rounds, rounds - 1);
+            continue;
+        } else {
+            return *steps;
+        }
+    }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut laps: i64 = 0;
+    let rounds: i64 = 2;
+    println!("{}", walk(&mut laps, rounds));
+    println!("{}{}", laps, rounds);
+    println!("{}", walk_again(&mut laps, rounds));
+    println!("{}{}", laps, rounds)
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

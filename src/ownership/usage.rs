@@ -1,6 +1,7 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::functions::{FunctionTable, ParamMode};
+use super::recurrence::Recurrence;
 use super::value_kinds::ValueKind;
 use crate::core::{BindingId, ReferenceKind};
 use crate::types::{
@@ -14,7 +15,7 @@ pub struct UsageCollector<'a> {
     copy: &'a CopyRules<'a>,
     tracked: FxHashMap<BindingId, ValueKind>,
     pattern_bindings: FxHashSet<BindingId>,
-    self_modes: Vec<ParamMode>,
+    recurrence: Recurrence,
     required: FxHashMap<BindingId, ParamMode>,
     pattern_required: FxHashMap<BindingId, ParamMode>,
     callees: FxHashSet<BindingId>,
@@ -32,7 +33,7 @@ impl<'a> UsageCollector<'a> {
         modes: &'a FxHashMap<BindingId, ParamMode>,
         copy: &'a CopyRules<'a>,
         tracked: FxHashMap<BindingId, ValueKind>,
-        self_modes: Vec<ParamMode>,
+        recurrence: Recurrence,
     ) -> Self {
         Self {
             functions,
@@ -40,7 +41,7 @@ impl<'a> UsageCollector<'a> {
             copy,
             tracked,
             pattern_bindings: FxHashSet::default(),
-            self_modes,
+            recurrence,
             required: FxHashMap::default(),
             pattern_required: FxHashMap::default(),
             callees: FxHashSet::default(),
@@ -117,9 +118,9 @@ impl<'a> UsageCollector<'a> {
     }
 
     fn closure_body(&mut self, lambda: &TypedLambda) {
-        let outer = std::mem::take(&mut self.self_modes);
+        let outer = std::mem::take(&mut self.recurrence);
         self.block(&lambda.body, ParamMode::Own);
-        self.self_modes = outer;
+        self.recurrence = outer;
     }
 
     fn structure(&mut self, structure: &TypedStructExpr, context: ParamMode) {
@@ -203,11 +204,15 @@ impl<'a> UsageCollector<'a> {
         ) {
             self.expr(callee, ParamMode::Ref);
         }
-        self.arguments(arguments, &callee_modes);
+        if self.recurrence.is_tail_call(arguments) {
+            self.recur(arguments);
+        } else {
+            self.arguments(arguments, &callee_modes);
+        }
     }
 
     fn recur(&mut self, arguments: &[TypedArgument]) {
-        let modes = self.self_modes.clone();
+        let modes = self.recurrence.next_value_modes().to_vec();
         self.arguments(arguments, &modes);
     }
 

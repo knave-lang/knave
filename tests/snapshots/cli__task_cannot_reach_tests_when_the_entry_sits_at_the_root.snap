@@ -1,0 +1,17 @@
+---
+source: tests/cli.rs
+expression: tests_module.assert_exit_code(1).stderr()
+---
+error[L0204]: cannot find module `tests/support`
+ --> tasks/t.knv:1:6
+  |
+1 | (use tests/support helper)
+  |      ^^^^^^^^^^^^^ no module with this path
+  |
+  = help: a module path names a file relative to the root directory, without its extension
+
+error[L0201]: cannot find `helper` in this scope
+ --> tasks/t.knv:3:16
+  |
+3 | (deftask t () (helper))
+  |                ^^^^^^ not found in this scope

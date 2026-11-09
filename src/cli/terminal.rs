@@ -13,6 +13,7 @@ use super::error_location::ModuleLoader;
 use super::exit_status::ExitStatus;
 use super::interruption::Interruption;
 use super::located_program::LocatedProgram;
+use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::stage_work::StageWork;
 use super::standard_error::StandardError;
@@ -201,7 +202,7 @@ impl Terminal {
             .clone()
             .unwrap_or_else(|| directory.join(&output_name));
         if let Some(project) = program.project().filter(|project| project.uses_crates()) {
-            let target = project.cargo_target(&output);
+            let target = project.cargo_target(&output, project.name());
             self.compile_with_cargo(&emitted, &directory, &target, options.profile)?;
             return Ok(output);
         }
@@ -211,6 +212,30 @@ impl Terminal {
             output: &output,
         };
         self.compile(&emitted, &target, options.profile)?;
+        Ok(output)
+    }
+
+    pub fn build_task(
+        &mut self,
+        emitted: &EmittedCrate,
+        project: &LocatedProject,
+        task: &str,
+        profile: BuildProfile,
+    ) -> Result<PathBuf, ExitStatus> {
+        let directory = project.task_build_directory(task);
+        let output = directory.join(task);
+        if project.uses_crates() {
+            let target = project.cargo_target(&output, &project.task_bin_stem(task));
+            self.compile_with_cargo(emitted, &directory, &target, profile)?;
+            return Ok(output);
+        }
+        let crate_name = Self::crate_name(Path::new(task));
+        let target = BuildTarget {
+            directory,
+            crate_name: &crate_name,
+            output: &output,
+        };
+        self.compile(emitted, &target, profile)?;
         Ok(output)
     }
 
@@ -438,7 +463,8 @@ impl Terminal {
     fn module_sources(file: &ProgramFile) -> ModuleSources {
         let directory = file.root().to_path_buf();
         let sources = ModuleSources::new(directory.clone(), directory)
-            .with_libraries(file.libraries().clone());
+            .with_libraries(file.libraries().clone())
+            .without_fallback_into(file.fallback_excluded().to_vec());
         match file.fallback_root() {
             Some(fallback_root) => sources.with_fallback_root(fallback_root.to_path_buf()),
             None => sources,

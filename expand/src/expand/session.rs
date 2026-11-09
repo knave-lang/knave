@@ -10,6 +10,12 @@ use crate::modules::{ModuleRecord, ModuleSources};
 use crate::reader::{Form, Reader, Symbol};
 use crate::source::{SourceId, Span, TextPosition};
 
+struct RunnerForms {
+    module: ModuleId,
+    forms: Vec<Form>,
+    span: Span,
+}
+
 pub struct ExpansionSession<'s> {
     expander: Expander<'s>,
     entry: ModuleId,
@@ -71,13 +77,29 @@ impl ExpansionSession<'_> {
 
     pub fn test_runner_entry(&mut self, source: SourceId) -> Result<GeneratedEntry, Diagnostics> {
         self.check_library_examples();
+        let runner = self.runner_forms(ModuleSources::TEST, source)?;
+        self.entry_lowered_in(runner.module, &runner.forms, runner.span)
+    }
+
+    pub fn task_runner_entry(&mut self, source: SourceId) -> Result<GeneratedEntry, Diagnostics> {
+        let runner = self.runner_forms(ModuleSources::TASK, source)?;
+        let lowered = self.lower_in(runner.module, |expander| expander.lower_body(&runner.forms));
+        let body = self.collect_diagnostics(lowered)?;
+        Ok(GeneratedEntry::new(
+            self.entry_binding(runner.span),
+            body,
+            runner.span,
+        ))
+    }
+
+    fn runner_forms(&mut self, module: &str, source: SourceId) -> Result<RunnerForms, Diagnostics> {
         let span = Span::new(source, 0..self.expander.sources.file(source).text().len());
         let runner = self
             .expander
-            .load_module(&ModulePath::new(ModuleSources::TEST), span)
+            .load_module(&ModulePath::new(module), span)
             .map_err(Diagnostics::from)?;
         let forms = self.read(source)?;
-        let scoped: Vec<Form> = forms
+        let scoped = forms
             .iter()
             .map(|form| {
                 let mut scoped = form.clone();
@@ -85,7 +107,22 @@ impl ExpansionSession<'_> {
                 scoped
             })
             .collect();
-        self.entry_lowered_in(runner, &scoped, span)
+        Ok(RunnerForms {
+            module: runner,
+            forms: scoped,
+            span,
+        })
+    }
+
+    pub fn expression_in(&mut self, module: &ModulePath, form: Form) -> Result<Expr, Diagnostics> {
+        let loaded = self
+            .expander
+            .load_module(module, form.span())
+            .map_err(Diagnostics::from)?;
+        let mut scoped = form;
+        Self::add_module_scopes(self.expander.modules.get(loaded), &mut scoped);
+        let lowered = self.lower_in(loaded, |expander| expander.lower_expr(&scoped));
+        self.collect_diagnostics(lowered)
     }
 
     fn check_library_examples(&mut self) {

@@ -14,6 +14,7 @@ pub struct ProgramFile {
     path: PathBuf,
     root: PathBuf,
     fallback_root: Option<PathBuf>,
+    fallback_excluded: Vec<PathBuf>,
     module: ModulePath,
     libraries: LibraryTable,
 }
@@ -33,6 +34,7 @@ impl ProgramFile {
             path,
             root,
             fallback_root: None,
+            fallback_excluded: Vec::new(),
             module: ModulePath::new(module),
             libraries: LibraryTable::default(),
         }
@@ -50,6 +52,17 @@ impl ProgramFile {
             fallback_root: Some(fallback_root),
             ..self
         }
+    }
+
+    pub fn without_fallback_into(self, fallback_excluded: Vec<PathBuf>) -> Self {
+        Self {
+            fallback_excluded,
+            ..self
+        }
+    }
+
+    pub fn fallback_excluded(&self) -> &[PathBuf] {
+        &self.fallback_excluded
     }
 
     pub fn with_libraries(self, libraries: LibraryTable) -> Self {

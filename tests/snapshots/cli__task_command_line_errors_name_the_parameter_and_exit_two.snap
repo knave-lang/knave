@@ -1,0 +1,20 @@
+---
+source: tests/cli.rs
+expression: "errors.join(\"---\\n\")"
+---
+error: task `greet` takes 1 positional argument, and got 0
+usage: greet <who> [--times 1] [--loud]
+---
+error: task `greet` takes 1 positional argument, and got more
+usage: greet <who> [--times 1] [--loud]
+---
+error: task `greet` has no flag `--shout`
+usage: greet <who> [--times 1] [--loud]
+---
+error: flag `--times` needs a value
+usage: greet <who> [--times 1] [--loud]
+---
+error: task `greet` cannot read `many` as `--times`
+---
+error: task `count` needs `--limit`
+usage: count --limit <limit>

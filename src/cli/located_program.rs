@@ -48,6 +48,10 @@ impl LocatedProgram {
         self.file
     }
 
+    pub fn into_project(self) -> Option<LocatedProject> {
+        self.project
+    }
+
     pub fn project(&self) -> Option<&LocatedProject> {
         self.project.as_ref()
     }

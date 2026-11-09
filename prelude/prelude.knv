@@ -54,19 +54,20 @@
                 read-line slurp source stdin)
 
 (use prelude/place set!)
+(use prelude/task deftask)
 
 (export * + - -> ->> / < <= = > >= _ alphanumeric? and any?
         apropos as-str assoc assoc-at assoc-in at bool box
         char char chars clone collect command-line-args
         comment cond copied copy count debug dedup! def
-        defenum defmacro defn defrule defstruct deftrait
-        deftype deref derive digit? dir display do doc
-        doc-body doc-header doc-page docstring empty? enum
-        enumerate eprint eprintln eq err err? every? exit
-        expect expect-ok export f32 f64 false field filter
-        find find-doc first float fn fn-mut fn-once for-each
-        from-str get hash hash-map i128 i16 i32 i64 i8 if
-        impl infallible infer integer into-hash-map
+        defenum defmacro defn defrule defstruct deftask
+        deftrait deftype deref derive digit? dir display do
+        doc doc-body doc-header doc-page docstring empty?
+        enum enumerate eprint eprintln eq err err? every?
+        exit expect expect-ok export f32 f64 false field
+        filter find find-doc first float fn fn-mut fn-once
+        for-each from-str get hash hash-map i128 i16 i32 i64
+        i8 if impl infallible infer integer into-hash-map
         into-sorted-map io-error isize iter iterator keys
         last len let let-match let-try line-seq lines local
         loop lower-case macro map map-at map-err map-ok

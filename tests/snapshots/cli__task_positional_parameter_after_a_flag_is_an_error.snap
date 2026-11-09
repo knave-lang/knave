@@ -1,0 +1,11 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(1).stderr()
+---
+error[L0358]: a positional parameter of a task comes before its flags
+ --> tasks/mix.knv:1:25
+  |
+1 | (deftask mix (:fast u16 who) (println who))
+  |                         ^^^ a positional parameter after a flag
+  |
+  = help: move it before the first keyword

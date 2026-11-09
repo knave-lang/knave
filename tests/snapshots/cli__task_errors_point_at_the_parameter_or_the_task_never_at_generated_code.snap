@@ -1,0 +1,49 @@
+---
+source: tests/cli.rs
+expression: "reports.join(\"---\\n\")"
+---
+error[L0404]: `(vec i64)` does not implement `from-str`
+ --> tasks/total.knv:5:18
+  |
+5 | (deftask total ((xs (vec i64))) (println (len xs)))
+  |                  ^^ this needs `from-str`
+  |
+  = note: `from-str` is implemented for: bool, char, string, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+---
+error[L0404]: `(ref str)` does not implement `from-str`
+ --> tasks/hi.knv:5:14
+  |
+5 | (deftask hi (who) (greet-text who))
+  |              ^^^ this needs `from-str`
+  |
+  = note: `from-str` is implemented for: bool, char, string, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+---
+error[L0404]: `i64` does not implement `task-outcome`
+ --> tasks/add.knv:5:10
+  |
+5 | (deftask add ((a i64)) (+ a 1))
+  |          ^^^ this needs `task-outcome`
+  |
+  = note: `task-outcome` is implemented for: unit, (where (a (e display)) (result a e))
+---
+error[L0404]: `(ref str)` does not implement `task-outcome`
+ --> tasks/docless.knv:5:10
+  |
+5 | (deftask docless () "only a docstring")
+  |          ^^^^^^^ this needs `task-outcome`
+  |
+  = note: `task-outcome` is implemented for: unit, (where (a (e display)) (result a e))
+---
+error[L0406]: the literal `-1` does not fit in `u16`
+ --> tasks/d.knv:5:13
+  |
+5 | (deftask d (:port u16 -1) (println port))
+  |             ^^^^^ out of range for `u16`
+---
+error[L0404]: `string` does not implement `number`
+ --> tasks/area.knv:5:16
+  |
+5 | (deftask area (side) (println (square side)))
+  |                ^^^^ this needs `number`
+  |
+  = note: `number` is implemented for: i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64

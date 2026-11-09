@@ -19,7 +19,7 @@ pub use similar_name::SimilarName;
 use std::rc::Rc;
 
 use crate::core::Namespace;
-use crate::source::Span;
+use crate::source::{SourceId, Span};
 
 #[derive(Clone, Debug)]
 pub struct Diagnostic {
@@ -102,6 +102,13 @@ impl Diagnostic {
 
     pub fn with_label(mut self, label: Label) -> Self {
         self.report.secondary.push(label);
+        self
+    }
+
+    pub fn without_labels_in(mut self, source: SourceId) -> Self {
+        self.report
+            .secondary
+            .retain(|label| label.span().source() != source);
         self
     }
 

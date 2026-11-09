@@ -1,0 +1,10 @@
+---
+source: tests/cli.rs
+expression: listing.assert_exit_code(0).stdout()
+---
+clean-up2 [--label none] [--shown true]
+count --limit <limit>
+greet <who> [--times 1] [--loud]         Greets someone a few times.
+leave <code>
+paint --color <color> [--coats 2]
+where                                    Prints the working directory.

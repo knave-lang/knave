@@ -22,6 +22,7 @@ pub struct LocatedProject {
 
 impl LocatedProject {
     pub const TESTS_DIRECTORY: &str = "tests";
+    pub const TASKS_DIRECTORY: &str = "tasks";
     const LOCK_FILE: &str = "Cargo.lock";
     const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
     const FNV_PRIME: u64 = 0x0100_0000_01b3;
@@ -104,8 +105,13 @@ impl LocatedProject {
     }
 
     pub fn file_within(&self, path: PathBuf) -> ProgramFile {
-        ProgramFile::inside_or_beside(path, self.source_root())
-            .with_libraries(self.libraries.clone())
+        let tasks_directory = self.tasks_directory();
+        let file = if ProgramFile::relative_module(&path, &tasks_directory).is_some() {
+            self.task_file(ProgramFile::within(path, tasks_directory))
+        } else {
+            ProgramFile::inside_or_beside(path, self.source_root())
+        };
+        file.with_libraries(self.libraries.clone())
     }
 
     pub fn test_file(&self, file: ProgramFile) -> ProgramFile {
@@ -113,8 +119,22 @@ impl LocatedProject {
             .with_libraries(self.libraries.clone())
     }
 
+    pub fn task_file(&self, file: ProgramFile) -> ProgramFile {
+        file.with_fallback_root(self.source_root())
+            .without_fallback_into(vec![self.tests_directory(), self.tasks_directory()])
+            .with_libraries(self.libraries.clone())
+    }
+
     pub fn tests_directory(&self) -> PathBuf {
         self.root.join(Self::TESTS_DIRECTORY)
+    }
+
+    pub fn tasks_directory(&self) -> PathBuf {
+        self.root.join(Self::TASKS_DIRECTORY)
+    }
+
+    pub fn root(&self) -> &Path {
+        &self.root
     }
 
     pub fn source_root(&self) -> PathBuf {
@@ -150,10 +170,10 @@ impl LocatedProject {
         ProjectProblems::crates_unavailable_to(command, library.name_span, label)
     }
 
-    pub fn cargo_target<'t>(&'t self, output: &'t Path) -> CargoTarget<'t> {
+    pub fn cargo_target<'t>(&'t self, output: &'t Path, bin_stem: &str) -> CargoTarget<'t> {
         CargoTarget {
             manifest: CargoManifest {
-                bin_name: format!("{}-{}", self.project.name, self.root_hash()),
+                bin_name: format!("{bin_stem}-{}", self.root_hash()),
                 dependencies: &self.crates,
                 dev_dependencies: &self.dev_crates,
             },
@@ -189,5 +209,15 @@ impl LocatedProject {
         self.root
             .join(Terminal::build_root())
             .join(&self.project.name)
+    }
+
+    pub fn task_build_directory(&self, task: &str) -> PathBuf {
+        self.build_directory()
+            .join(Self::TASKS_DIRECTORY)
+            .join(task)
+    }
+
+    pub fn task_bin_stem(&self, task: &str) -> String {
+        format!("{}-task-{task}", self.project.name)
     }
 }

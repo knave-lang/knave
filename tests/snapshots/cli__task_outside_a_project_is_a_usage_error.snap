@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(2).stderr()
+---
+error: no `project.knv` in this directory or a parent
+help: run `knave task` inside a project

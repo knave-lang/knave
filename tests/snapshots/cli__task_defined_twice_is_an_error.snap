@@ -1,0 +1,16 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(1).stderr()
+---
+error[L0356]: task `where` is defined more than once
+ --> tasks/repeated.knv:1:10
+  |
+1 | (deftask where () (println "again"))
+  |          ^^^^^ defined again here
+  |
+ ::: tasks/chores.knv:7:10
+  |
+7 | (deftask where ()
+  |          ----- first defined here
+  |
+  = help: rename one of the tasks

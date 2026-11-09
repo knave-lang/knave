@@ -1,0 +1,11 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(1).stderr()
+---
+error[L0357]: task name `Tidy_up` is not kebab-case
+ --> tasks/misnamed.knv:1:10
+  |
+1 | (deftask Tidy_up () (println "x"))
+  |          ^^^^^^^ not kebab-case
+  |
+  = help: name a task with words of lowercase letters and digits, joined by single dashes, starting with a letter

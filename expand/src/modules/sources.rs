@@ -32,6 +32,7 @@ pub struct ModuleSources {
     root: PathBuf,
     display_root: PathBuf,
     fallback_root: Option<PathBuf>,
+    fallback_excluded: Vec<PathBuf>,
     libraries: LibraryTable,
 }
 
@@ -41,11 +42,12 @@ impl ModuleSources {
     pub const PRELUDE: &str = "prelude";
     pub const TEST: &str = "prelude/test";
     pub const LIBRARY_EXAMPLES: &str = "prelude/library-examples";
+    pub const TASK: &str = "prelude/task";
     pub const PROJECT_SHAPES: &str = "prelude/project-file";
     const PRELUDE_DIRECTORY: &str = "prelude/";
     const INTERNAL_DIRECTORY: &str = "prelude/internal/";
     const BYTE_ORDER_MARK: char = '\u{feff}';
-    const PRELUDE_FILES: [(&str, &str); 24] = [
+    const PRELUDE_FILES: [(&str, &str); 25] = [
         ("prelude", include_str!("../../prelude/prelude.knv")),
         (
             "prelude/internal/macros",
@@ -87,6 +89,7 @@ impl ModuleSources {
             include_str!("../../prelude/sequence.knv"),
         ),
         ("prelude/test", include_str!("../../prelude/test.knv")),
+        ("prelude/task", include_str!("../../prelude/task.knv")),
         (
             "prelude/project-file",
             include_str!("../../prelude/project-file.knv"),
@@ -98,6 +101,7 @@ impl ModuleSources {
             root,
             display_root,
             fallback_root: None,
+            fallback_excluded: Vec::new(),
             libraries: LibraryTable::default(),
         }
     }
@@ -105,6 +109,13 @@ impl ModuleSources {
     pub fn with_fallback_root(self, fallback_root: PathBuf) -> Self {
         Self {
             fallback_root: Some(fallback_root),
+            ..self
+        }
+    }
+
+    pub fn without_fallback_into(self, fallback_excluded: Vec<PathBuf>) -> Self {
+        Self {
+            fallback_excluded,
             ..self
         }
     }
@@ -181,18 +192,26 @@ impl ModuleSources {
     fn local_module(&self, written: &ModulePath) -> Option<PathBuf> {
         let head = LibraryTable::head(written);
         let file = PathBuf::from(format!("{head}.{}", Language::EXTENSION));
-        self.local_roots().find_map(|(root, display_root)| {
+        self.local_roots().find_map(|local_root| {
             [&file, Path::new(head)]
                 .into_iter()
-                .find(|local| root.join(local).exists())
-                .map(|local| display_root.join(local))
+                .find(|local| local_root.reaches(local))
+                .map(|local| local_root.display_root.join(local))
         })
     }
 
-    fn local_roots(&self) -> impl Iterator<Item = (&Path, &Path)> {
+    fn local_roots(&self) -> impl Iterator<Item = LocalRoot<'_>> {
         let fallback = self.fallback_root.as_deref();
-        std::iter::once((self.root.as_path(), self.display_root.as_path()))
-            .chain(fallback.map(|root| (root, root)))
+        let primary = LocalRoot {
+            root: &self.root,
+            display_root: &self.display_root,
+            excluded: &[],
+        };
+        std::iter::once(primary).chain(fallback.map(|root| LocalRoot {
+            root,
+            display_root: root,
+            excluded: &self.fallback_excluded,
+        }))
     }
 
     pub fn is_prelude(path: &ModulePath) -> bool {
@@ -297,10 +316,17 @@ impl ModuleSources {
 
     fn user_file(&self, path: &ModulePath) -> Option<ModuleSource> {
         let file_name = Self::file_name(path);
-        self.local_roots().find_map(|(root, display_root)| {
-            let text = Self::read_file(&root.join(&file_name)).ok()?;
+        self.local_roots().find_map(|local_root| {
+            if !local_root.reaches(Path::new(&file_name)) {
+                return None;
+            }
+            let text = Self::read_file(&local_root.root.join(&file_name)).ok()?;
             Some(ModuleSource::Text {
-                name: display_root.join(&file_name).display().to_string(),
+                name: local_root
+                    .display_root
+                    .join(&file_name)
+                    .display()
+                    .to_string(),
                 text,
             })
         })
@@ -308,6 +334,23 @@ impl ModuleSources {
 
     fn file_name(path: &ModulePath) -> String {
         format!("{path}.{}", Language::EXTENSION)
+    }
+}
+
+struct LocalRoot<'s> {
+    root: &'s Path,
+    display_root: &'s Path,
+    excluded: &'s [PathBuf],
+}
+
+impl LocalRoot<'_> {
+    fn reaches(&self, local: &Path) -> bool {
+        let path = self.root.join(local);
+        path.exists()
+            && !self
+                .excluded
+                .iter()
+                .any(|excluded| path.starts_with(excluded))
     }
 }
 

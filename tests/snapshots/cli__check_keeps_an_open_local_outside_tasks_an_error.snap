@@ -1,0 +1,14 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0407]: type annotations needed
+ --> open.knv:2:12
+  |
+2 |   (local x (parse "1"))
+  |            ^^^^^^^^^^^ cannot infer the type `(result _ (parse-error _))` of this value
+  |
+help: write the type with `the`, and replace each `_` with a type
+  |
+2 |   (local x (the (result _ (parse-error _)) (parse "1")))
+  |            +++++++++++++++++++++++++++++++            +

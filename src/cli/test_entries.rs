@@ -14,10 +14,17 @@ pub struct TestEntries {
     path: Option<PathBuf>,
 }
 
-struct TestTree {
+pub struct EntryTree {
     path: PathBuf,
     project: Option<LocatedProject>,
     skipped: SkippedDirectory,
+    rooting: Rooting,
+}
+
+#[derive(Clone, Copy)]
+enum Rooting {
+    Tests,
+    Tasks,
 }
 
 impl TestEntries {
@@ -27,16 +34,30 @@ impl TestEntries {
 
     pub fn load(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
         let tree = match &self.path {
-            Some(path) => TestTree::at(path.clone(), terminal)?,
-            None => TestTree::of_working_project(terminal)?,
+            Some(path) => EntryTree::at(path.clone(), terminal)?,
+            None => EntryTree::of_working_project(terminal)?,
         };
         tree.refuse_crates(terminal)?;
         tree.load(terminal)
     }
 }
 
-impl TestTree {
-    const DIRECTORY_ENTRY: &'static str = "<tests>";
+impl Rooting {
+    fn entry_name(self) -> &'static str {
+        match self {
+            Self::Tests => EntryTree::TESTS_ENTRY,
+            Self::Tasks => EntryTree::TASKS_ENTRY,
+        }
+    }
+
+    fn shares_source_paths(self) -> bool {
+        matches!(self, Self::Tests)
+    }
+}
+
+impl EntryTree {
+    const TESTS_ENTRY: &'static str = "<tests>";
+    const TASKS_ENTRY: &'static str = "<tasks>";
     const COMMAND: &'static str = "test";
 
     fn refuse_crates(&self, terminal: &Terminal) -> Result<(), ExitStatus> {
@@ -62,16 +83,32 @@ impl TestTree {
         Ok(Self::with_project(path, Some(project)))
     }
 
+    pub fn of_tasks(project: LocatedProject) -> Self {
+        Self {
+            rooting: Rooting::Tasks,
+            ..Self::with_project(project.tasks_directory(), Some(project))
+        }
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn project(&self) -> Option<&LocatedProject> {
+        self.project.as_ref()
+    }
+
     fn with_project(path: PathBuf, project: Option<LocatedProject>) -> Self {
         let skipped = SkippedDirectory::for_walk_of(&path);
         Self {
             path,
             project,
             skipped,
+            rooting: Rooting::Tests,
         }
     }
 
-    fn load(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
+    pub fn load(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
         if self.path.is_dir() {
             self.load_directory(terminal)
         } else {
@@ -89,16 +126,21 @@ impl TestTree {
         }
     }
 
-    fn load_directory(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
+    pub fn module_paths(&self) -> Result<Vec<String>, ExitStatus> {
         let mut modules = Vec::new();
         self.collect_modules(&self.path, &mut modules)
             .map_err(|error| Terminal::report_unreadable(&self.path, &error))?;
         modules.sort();
+        Ok(modules)
+    }
+
+    fn load_directory(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
+        let modules = self.module_paths()?;
         let uses: Vec<String> = modules
             .iter()
             .map(|module| format!("(use {module})"))
             .collect();
-        let source = terminal.add_named_source(Self::DIRECTORY_ENTRY, &uses.join("\n"));
+        let source = terminal.add_named_source(self.rooting.entry_name(), &uses.join("\n"));
         Ok(ModuleOfSources {
             file: self.directory_file(),
             sources: vec![source],
@@ -106,10 +148,12 @@ impl TestTree {
     }
 
     fn directory_file(&self) -> ProgramFile {
-        let file = ProgramFile::within(self.path.join(Self::DIRECTORY_ENTRY), self.path.clone());
-        match &self.project {
-            Some(project) => project.test_file(file),
-            None => file,
+        let file =
+            ProgramFile::within(self.path.join(self.rooting.entry_name()), self.path.clone());
+        match (&self.project, self.rooting) {
+            (Some(project), Rooting::Tests) => project.test_file(file),
+            (Some(project), Rooting::Tasks) => project.task_file(file),
+            (None, _) => file,
         }
     }
 
@@ -141,7 +185,10 @@ impl TestTree {
     }
 
     fn source_module_path(&self, file: &Path) -> Option<String> {
-        let project = self.project.as_ref()?;
+        let project = self
+            .project
+            .as_ref()
+            .filter(|_| self.rooting.shares_source_paths())?;
         ProgramFile::relative_module(file, &project.source_root())
     }
 

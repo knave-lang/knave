@@ -1,0 +1,9 @@
+---
+source: tests/cli.rs
+expression: mistyped.assert_exit_code(1).stderr()
+---
+error[L0401]: mismatched types
+ --> tasks/mistyped.knv:1:39
+  |
+1 | (deftask sum (:by u16) (println (+ by "x")))
+  |                                       ^^^ expected `u16`, found `str`

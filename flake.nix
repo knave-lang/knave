@@ -300,7 +300,7 @@
         pkgs.runCommand "source-format" { } ''
           fixtures=${./tests/fixtures}
           mapfile -t fixture_files < <(
-            find "$fixtures" -name '*.rslisp' \
+            find "$fixtures" -name '*.knv' \
               -not -path "$fixtures/read/*" \
               -not -path "$fixtures/format/*" \
               -not -path "$fixtures/expand/unreadable/*" | sort

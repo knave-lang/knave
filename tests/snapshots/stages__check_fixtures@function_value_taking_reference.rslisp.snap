@@ -1,9 +1,0 @@
----
-source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
-input_file: tests/fixtures/check/function_value_taking_reference.rslisp
----
-(type lines (fn ((ref str)) (iterator (ref str))))
-(type size (fn ((ref str)) usize))
-(type line-size (fn ((ref str)) usize))
-(type main (fn () unit))

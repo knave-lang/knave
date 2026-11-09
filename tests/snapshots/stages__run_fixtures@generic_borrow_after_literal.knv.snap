@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/generic_borrow_after_literal.knv
+---
+false
+true
+false

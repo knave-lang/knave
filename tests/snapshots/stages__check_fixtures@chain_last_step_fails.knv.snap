@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/chain_last_step_fails.knv
+---
+error[L0401]: mismatched types
+  --> check/chain_last_step_fails.knv:11:22
+   |
+11 |   (if (> n 0) n (+ n "five")))
+   |                      ^^^^^^ expected an integer, found `str`

@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/type_head_edges.knv
+---
+error[L0210]: malformed `struct`
+ --> check/type_head_edges.knv:1:9
+  |
+1 | (struct () (x i64))
+  |         ^^ this does not fit the shape of `struct`
+  |
+  = help: write it as `(struct (name parameter ...) (field type) ...)`
+
+error[L0219]: `struct` names its type parameters on its name
+ --> check/type_head_edges.knv:3:16
+  |
+3 | (struct empty (where () (x i64)))
+  |                ^^^^^ this `where` names them in the body
+  |
+  = help: write `(struct empty (x i64))`

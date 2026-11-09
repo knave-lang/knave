@@ -7,7 +7,7 @@ struct DiagnosticFixture {
 }
 
 impl DiagnosticFixture {
-    const SOURCE_NAME: &'static str = "sample.rslisp";
+    const SOURCE_NAME: &'static str = "sample.knv";
     const SOURCE_TEXT: &'static str = "origin";
 
     fn new() -> Self {

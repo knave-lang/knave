@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/closure_consumes_capture_twice.knv
+---
+error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
+  --> check/closure_consumes_capture_twice.knv:9:23
+   |
+ 8 |     (twice (fn ()
+   |  __________-
+ 9 | |            (prn (find values
+   | |                       ^^^^^^ `values` moves here
+10 | |                       (fn (value) (> (deref value) 5)))))))
+   | |_________________________________________________________- this closure is passed here
+   |
+   = note: `values` is a lazy pipeline, so it runs once
+   = help: collect it if both places need its items, as in `(collect values)`, or write a function that rebuilds it

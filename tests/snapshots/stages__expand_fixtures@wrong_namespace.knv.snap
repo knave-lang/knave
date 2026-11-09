@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).expand_report()"
+input_file: tests/fixtures/expand/wrong_namespace.knv
+---
+error[L0212]: expected a struct, found `number`
+ --> expand/wrong_namespace.knv:1:23
+  |
+1 | (def made (fn () (new number (x 1))))
+  |                       ^^^^^^ not a struct

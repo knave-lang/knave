@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/expansion_nests_far_too_deep.knv
+---
+error[L0325]: this expression nests too deeply
+  --> expand/expansion_nests_far_too_deep.knv:12:24
+   |
+12 | (defn main () (println (deep)))
+   |                        ^^^^^^ this expression sits inside 1024 others
+   |
+   = note: expressions nest at most 1024 deep
+   = note: in this expansion of `deep`
+   = help: move the inner expressions into a function of their own

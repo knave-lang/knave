@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/duplicate_derive.knv
+---
+error[L0424]: `ticket` has a second `derive`
+ --> check/duplicate_derive.knv:6:1
+  |
+4 | (derive ticket clone)
+  | --------------------- first `derive`
+5 |
+6 | (derive ticket debug)
+  | ^^^^^^^^^^^^^^^^^^^^^ second `derive`
+  |
+  = help: merge the two trait lists into one `derive`

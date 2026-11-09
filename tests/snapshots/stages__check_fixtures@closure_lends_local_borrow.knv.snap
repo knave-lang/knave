@@ -1,0 +1,81 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/closure_lends_local_borrow.knv
+---
+error[L0510]: cannot return a borrow of a local value
+  --> check/closure_lends_local_borrow.knv:17:7
+   |
+16 |       (local built (vec 2019 2021))
+   |              ----- this local is dropped when the function returns
+17 |       (at built 0)))
+   |       ^^^^^^^^^^^^ this borrows a local value
+   |
+   = help: return an owned value with `(clone ...)`, or borrow from a parameter
+
+error[L0512]: cannot pass a borrow of a local value to `first`
+  --> check/closure_lends_local_borrow.knv:24:19
+   |
+ 2 |   (local years (vec 2019 2021 2024))
+   |          ----- this local is dropped when the function returns
+...
+ 6 |     (fn ((items (ref (vec i64))))
+   |          ----------------------- `first` ties this parameter to its result, so it needs a borrow that outlives the function
+...
+24 |   (println (first years))
+   |                   ^^^^^ this borrows a local value
+   |
+   = help: define `first` with `defn`, where its result can borrow from its argument
+
+error[L0512]: cannot pass a borrow of a local value to `first`
+  --> check/closure_lends_local_borrow.knv:25:19
+   |
+ 2 |   (local years (vec 2019 2021 2024))
+   |          ----- this local is dropped when the function returns
+...
+ 6 |     (fn ((items (ref (vec i64))))
+   |          ----------------------- `first` ties this parameter to its result, so it needs a borrow that outlives the function
+...
+25 |   (println (first (ref years)))
+   |                   ^^^^^^^^^^^ this borrows a local value
+   |
+   = help: define `first` with `defn`, where its result can borrow from its argument
+
+error[L0512]: cannot pass a borrow of a local value to `pick`
+  --> check/closure_lends_local_borrow.knv:26:18
+   |
+ 2 |   (local years (vec 2019 2021 2024))
+   |          ----- this local is dropped when the function returns
+...
+ 9 |     (fn ((items (ref (vec i64))) (index usize))
+   |          ----------------------- `pick` ties this parameter to its result, so it needs a borrow that outlives the function
+...
+26 |   (println (pick years 1))
+   |                  ^^^^^ this borrows a local value
+   |
+   = help: define `pick` with `defn`, where its result can borrow from its argument
+
+error[L0512]: cannot pass a borrow of a local value to `longer`
+  --> check/closure_lends_local_borrow.knv:27:29
+   |
+12 |     (fn ((a (ref str)) (b (ref str)))
+   |                        ------------- `longer` ties this parameter to its result, so it needs a borrow that outlives the function
+...
+23 |   (local name (str "Ariya"))
+   |          ---- this local is dropped when the function returns
+...
+27 |   (println (longer "Nissan" (as-str name)))
+   |                             ^^^^^^^^^^^^^ this borrows a local value
+   |
+   = help: define `longer` with `defn`, where its result can borrow from its argument
+
+error[L0512]: cannot pass a borrow of a temporary value to `first`
+  --> check/closure_lends_local_borrow.knv:31:19
+   |
+ 6 |     (fn ((items (ref (vec i64))))
+   |          ----------------------- `first` ties this parameter to its result, so it needs a borrow that outlives the function
+...
+31 |   (println (first (vec 2019 2021)))
+   |                   ^^^^^^^^^^^^^^^ this temporary value is dropped at the end of the statement
+   |
+   = help: define `first` with `defn`, where its result can borrow from its argument

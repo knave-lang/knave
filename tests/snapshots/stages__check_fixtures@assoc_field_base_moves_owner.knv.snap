@@ -1,0 +1,18 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/assoc_field_base_moves_owner.knv
+---
+error[L0501]: use of moved value `(:badge garage)`
+  --> check/assoc_field_base_moves_owner.knv:14:16
+   |
+13 |   (local bigger (assoc (:badge garage) :size 14))
+   |                        --------------- value moved here
+14 |   (local again garage)
+   |                ^^^^^^ value used here after it moved
+   |
+help: clone the value if both places need it
+   |
+13 -   (local bigger (assoc (:badge garage) :size 14))
+13 +   (local bigger (assoc (clone (:badge garage)) :size 14))
+   |

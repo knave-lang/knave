@@ -7,16 +7,16 @@ exit code: Some(1)
 running 4 tests
 test padding/pads-a-letter ... ok
 test padding/pads-nothing ... FAIL
-FAIL padding/pads-nothing: Pads the empty string to one space. (padding.rslisp:9:3)
+FAIL padding/pads-nothing: Pads the empty string to one space. (padding.knv:9:3)
     (assert (= (pad "") "") "the empty string grows")
     left:  " "
     right: ""
     the empty string grows
 test padding/unwraps-nothing ... FAIL
-FAIL padding/unwraps-nothing (padding.rslisp:11:1)
+FAIL padding/unwraps-nothing (padding.knv:11:1)
     called `Option::unwrap()` on a `None` value
 test padding/counts-letters ... FAIL
-FAIL padding/counts-letters (padding.rslisp:13:25)
+FAIL padding/counts-letters (padding.knv:13:25)
     (assert (> (len (pad "")) 2))
 1 passed, 3 failed
 --- stderr

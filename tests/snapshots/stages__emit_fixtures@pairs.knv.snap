@@ -1,0 +1,47 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/pairs.knv
+---
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    "alpha\nbeta"
+        .lines()
+        .enumerate()
+        .for_each(|entry: (usize, &str)| {
+            let (index, line) = entry;
+            println!("{}: {}", index, line)
+        });
+    let left = "a\nb".lines().collect::<Vec<_>>();
+    let right: Vec<i64> = (1_i64..3_i64).collect::<Vec<_>>();
+    left.iter()
+        .copied()
+        .zip(right.iter().copied())
+        .for_each(|entry: (&str, i64)| {
+            let (text, number) = entry;
+            println!("{}{}", text, number)
+        });
+    let mut pairs: Vec<(i64, &str)> = vec![(2_i64, "b"), (1_i64, "a")];
+    pairs.sort();
+    pairs.iter().copied().for_each(|entry: (i64, &str)| {
+        let (number, text) = entry;
+        println!("{} {}", number, text)
+    })
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

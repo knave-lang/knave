@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/failed_user_macro_definer.knv
+---
+error[L0301]: defdsl is not ready
+ --> expand/failed_user_macro_definer.knv:7:9
+  |
+7 | (defdsl query)
+  |         ^^^^^ here

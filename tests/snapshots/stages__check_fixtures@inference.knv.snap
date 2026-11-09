@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/inference.knv
+---
+(derive point clone copy partial-eq show)
+(type add-numbers (where ((a number)) (fn (a a) a)))
+(type some-function (where ((a number)) (fn (a) a)))
+(type square (where ((a number)) (fn (a) a)))
+(type admin? bool)
+(type greeting (fn () string))
+(type ->point (fn (f64 f64) point))
+(type origin point)
+(type distance-squared (fn (point point) f64))
+(type identity (where (a) (fn (a) a)))
+(type main (fn () unit))

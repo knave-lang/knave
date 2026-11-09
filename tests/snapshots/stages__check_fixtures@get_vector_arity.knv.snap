@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/get_vector_arity.knv
+---
+error[L0402]: this function takes 1 argument but 0 were given
+ --> check/get_vector_arity.knv:3:3
+  |
+3 |   (get years))
+  |   ^^^^^^^^^^^ expected 1 argument

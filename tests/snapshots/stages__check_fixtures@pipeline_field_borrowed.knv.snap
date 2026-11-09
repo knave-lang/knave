@@ -1,0 +1,31 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/pipeline_field_borrowed.knv
+---
+error[L0458]: Rust cannot name the type `(iterator i64)` here
+ --> check/pipeline_field_borrowed.knv:2:10
+  |
+2 |   :items (iterator i64)
+  |          ^^^^^^^^^^^^^^ this stores `(iterator i64)`
+  |
+  = note: Rust names this type only as the type of a function's own parameter or result
+  = help: store the collection the items come from instead, and call `iter` on it where the items are used
+
+error[L0503]: this value is borrowed, but the call needs to own it
+ --> check/pipeline_field_borrowed.knv:6:23
+  |
+6 |   (local first (count (:items f)))
+  |                       ^^^^^^^^^^ only a borrow is available here
+  |
+  = note: this value is a lazy pipeline, so it runs once
+  = help: collect it if both places need its items, as in `(collect ...)`, or write a function that rebuilds it
+
+error[L0503]: this value is borrowed, but the call needs to own it
+ --> check/pipeline_field_borrowed.knv:7:19
+  |
+7 |   (+ first (count (:items f))))
+  |                   ^^^^^^^^^^ only a borrow is available here
+  |
+  = note: this value is a lazy pipeline, so it runs once
+  = help: collect it if both places need its items, as in `(collect ...)`, or write a function that rebuilds it

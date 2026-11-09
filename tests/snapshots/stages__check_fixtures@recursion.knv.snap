@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/recursion.knv
+---
+error[L0401]: mismatched types
+  --> check/recursion.knv:11:22
+   |
+11 | (defn broken () (+ 1 "one"))
+   |                      ^^^^^ expected an integer, found `str`

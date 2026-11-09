@@ -1,0 +1,43 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/pin_literal_parameter_wrapper.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Car<'a> {
+    make: &'a str,
+    year: u16,
+}
+
+fn build(year: u16) -> Car<'static> {
+    Car {
+        make: "Nissan",
+        year,
+    }
+}
+
+fn wrap(y: u16) -> Car<'static> {
+    build(y)
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", wrap(2025).year)
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

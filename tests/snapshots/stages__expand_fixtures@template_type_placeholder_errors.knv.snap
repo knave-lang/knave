@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/template_type_placeholder_errors.knv
+---
+error[L0221]: `{missing}` names no type parameter
+ --> expand/template_type_placeholder_errors.knv:2:9
+  |
+2 |   (rust "{missing}"
+  |         ^^^^^^^^^^^ this template's `where` has no such type parameter
+  |
+  = help: add `(missing)` to the template's `where`
+
+error[L0221]: `{target}` names no type parameter
+ --> expand/template_type_placeholder_errors.knv:6:9
+  |
+6 |   (rust "{target}"
+  |         ^^^^^^^^^^ this template's `where` has no such type parameter
+  |
+  = help: the type parameters are `item`

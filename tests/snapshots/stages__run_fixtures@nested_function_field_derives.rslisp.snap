@@ -1,9 +1,0 @@
----
-source: tests/stages.rs
-expression: reports.report(path)
-input_file: tests/fixtures/run/nested_function_field_derives.rslisp
----
-true
-0
-Nissan Leaf
-1

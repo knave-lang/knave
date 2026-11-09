@@ -355,7 +355,7 @@ mod tests {
 
     impl LoadedProgram {
         const MODULE: &str = "program";
-        const FILE: &str = "program.rslisp";
+        const FILE: &str = "program.knv";
         const EMPTY: &str = "(defn main ())";
         const MACRO_INTRODUCING_A_NAME: &str = "(def answer 1)
             (def named (macro (form) (quote answer)))

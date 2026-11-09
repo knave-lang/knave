@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).expand_report()"
+input_file: tests/fixtures/expand/escape_builtins.knv
+---
+(def escaped-string "brace {{ quote \\\" slash \\\\ newline\\n")
+(def escaped-format "brace {{{{ quote \\\" slash \\\\ newline\\n")
+(def stripped-suffix "brace { quote \" slash \\ newline\n")
+(def stripped-prefix "year")
+(def kept-prefix "year")

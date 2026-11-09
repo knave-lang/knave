@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: "shown.join(\"\\n\")"
 ---
 error[L0725]: cannot fetch git library `keymap`
- --> project.rslisp:1:26
+ --> project.knv:1:26
   |
 1 | (project app (libraries (keymap :git "../keymap.git" :rev "0000000000000000000000000000000000000000")))
   |                          ^^^^^^ this library's commit could not be checked out

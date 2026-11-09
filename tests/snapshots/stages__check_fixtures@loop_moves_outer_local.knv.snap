@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/loop_moves_outer_local.knv
+---
+error[L0501]: use of moved value `g`
+  --> check/loop_moves_outer_local.knv:15:29
+   |
+15 |                (do (local b g) (recur (+ i 1)))
+   |                             ^ value used here after an earlier pass of the loop moved it
+   |
+help: clone the value if both places need it
+   |
+15 -                (do (local b g) (recur (+ i 1)))
+15 +                (do (local b (clone g)) (recur (+ i 1)))
+   |

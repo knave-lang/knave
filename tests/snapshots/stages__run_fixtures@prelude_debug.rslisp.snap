@@ -1,8 +1,0 @@
----
-source: tests/stages.rs
-expression: "Fixture::load(path).run_report()"
-input_file: tests/fixtures/run/prelude_debug.rslisp
----
-"text"
-(vec 1 2)
-(some 3)

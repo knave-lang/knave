@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/constructor_repeated_key.knv
+---
+error[L0454]: `:name` is given twice in `user`
+ --> check/constructor_repeated_key.knv:9:25
+  |
+9 |     (->user :name "ana" :name "bea" :email "ana@example.com"))
+  |             -----       ^^^^^ given again here
+  |             |
+  |             first given here
+  |
+  = help: remove the second `:name` and its value

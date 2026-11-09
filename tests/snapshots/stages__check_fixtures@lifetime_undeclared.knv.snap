@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/lifetime_undeclared.knv
+---
+error[L0201]: cannot find lifetime `'missing` in this scope
+ --> check/lifetime_undeclared.knv:2:13
+  |
+2 |   (fn ((ref 'missing str)) (ref str)))
+  |             ^^^^^^^^ not found in this scope
+  |
+  = help: declare the lifetime in the enclosing `where` or type head

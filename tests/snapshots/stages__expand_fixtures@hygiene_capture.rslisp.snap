@@ -1,6 +1,0 @@
----
-source: tests/stages.rs
-expression: reports.report(path)
-input_file: tests/fixtures/expand/hygiene_capture.rslisp
----
-(def check (fn (tmp if_2) (do (local tmp_2 0) (if tmp_2 tmp_2 tmp))))

@@ -8,7 +8,7 @@
 [![Rust 2024](https://img.shields.io/badge/rust-2024-B7410E?logo=rust&logoColor=white)](https://doc.rust-lang.org/edition-guide/rust-2024/)
 
 > [!WARNING]
-> **Knave is experimental.** Expect breaking changes to the syntax, the prelude and the command line in any commit. The source extension is still `.rslisp`. It becomes `.knv` soon.
+> **Knave is experimental.** Expect breaking changes to the syntax, the prelude and the command line in any commit.
 
 ```clojure
 (def knave
@@ -48,7 +48,7 @@ To download a prebuilt binary instead of building it, run [`cachix use rslisp`](
 
 ## Use
 
-A program starts at `main`, as `examples/hello.rslisp` shows:
+A program starts at `main`, as `examples/hello.knv` shows:
 
 ```clojure
 (defn main ()
@@ -58,13 +58,13 @@ A program starts at `main`, as `examples/hello.rslisp` shows:
 Run `knave` alone to start the prompt, as `knave repl` does. Run `knave --help` to list the commands. Each command except `doc` and `repl` takes a source file, and `fmt` and `test` also take a directory:
 
 ```sh
-knave run examples/hello.rslisp
-knave emit examples/geometry/main.rslisp
+knave run examples/hello.knv
+knave emit examples/geometry/main.knv
 knave fmt src/
 knave test tests/
 ```
 
-A project is a directory with a `project.rslisp` file, and `knave new <name>` creates one. Inside one, `build`, `run`, `check`, `types`, `expand` and `emit` take the project's entry file when given no file. Given no path, `fmt` lays out the whole project and `test` runs the project's `tests/` directory.
+A project is a directory with a `project.knv` file, and `knave new <name>` creates one. Inside one, `build`, `run`, `check`, `types`, `expand` and `emit` take the project's entry file when given no file. Given no path, `fmt` lays out the whole project and `test` runs the project's `tests/` directory.
 
 ## Develop
 

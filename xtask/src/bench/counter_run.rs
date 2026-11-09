@@ -91,7 +91,7 @@ mod tests {
     struct CounterRunFixture;
 
     impl CounterRunFixture {
-        const PROGRAM: &'static str = "/checkout/corpus/inventory.rslisp";
+        const PROGRAM: &'static str = "/checkout/corpus/inventory.knv";
 
         fn command() -> Command {
             let run = CounterRun::new(
@@ -126,7 +126,7 @@ mod tests {
     fn emits_the_bare_file_name_with_the_counters_flag() {
         let command = CounterRunFixture::command();
         let arguments: Vec<&OsStr> = command.get_args().collect();
-        assert_eq!(arguments, ["--counters", "emit", "inventory.rslisp"]);
+        assert_eq!(arguments, ["--counters", "emit", "inventory.knv"]);
     }
 
     #[test]
@@ -146,7 +146,7 @@ mod tests {
     fn fails_on_a_last_line_that_is_not_json() {
         let failure =
             CounterRunFixture::read("{\"allocator.allocations\":1}\npanicked\n").unwrap_err();
-        assert!(failure.to_string().contains("inventory.rslisp"));
+        assert!(failure.to_string().contains("inventory.knv"));
     }
 
     #[test]

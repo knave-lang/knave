@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/lifetime_bounds.knv
+---
+error[L0417]: a lifetime cannot require traits
+ --> check/lifetime_bounds.knv:2:11
+  |
+2 |   (where (('a clone))
+  |           ^^^^^^^^^^ traits given here
+  |
+  = help: write the lifetime alone, as in `'a`

@@ -3,12 +3,12 @@ source: tests/cli.rs
 expression: check.assert_exit_code(1).stderr()
 ---
 error[L0726]: crate `serde` has two requests that cannot merge
- --> ../wants-serde/project.rslisp:1:37
+ --> ../wants-serde/project.knv:1:37
   |
 1 | (project wants-serde (dependencies (serde "2.0")))
   |                                     ^^^^^ this request
   |
- ::: project.rslisp:2:18
+ ::: project.knv:2:18
   |
 2 |   (dependencies (serde "1.0"))
   |                  ----- conflicts with this one

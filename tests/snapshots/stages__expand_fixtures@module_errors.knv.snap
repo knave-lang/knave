@@ -1,0 +1,36 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/module_errors.knv
+---
+error[L0204]: cannot find module `geometry`
+ --> expand/module_errors.knv:1:6
+  |
+1 | (use geometry point)
+  |      ^^^^^^^^ no module with this path
+  |
+  = help: a module path names a file relative to the root directory, without its extension
+
+error[L0205]: module `code` does not export `lenn`
+ --> expand/module_errors.knv:2:17
+  |
+2 | (use code first lenn)
+  |                 ^^^^ not exported
+  |
+help: an export with a similar name exists
+  |
+2 - (use code first lenn)
+2 + (use code first len)
+  |
+
+error[L0201]: cannot find `missing-name` in this scope
+ --> expand/module_errors.knv:4:9
+  |
+4 | (export missing-name)
+  |         ^^^^^^^^^^^^ not found in this scope
+
+error[L0201]: cannot find `launch` in this scope
+ --> expand/module_errors.knv:6:2
+  |
+6 | (launch 3)
+  |  ^^^^^^ not found in this scope

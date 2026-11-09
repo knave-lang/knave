@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/update_unknown_field.knv
+---
+error[L0408]: `item` has no field `:total`
+ --> check/update_unknown_field.knv:5:34
+  |
+5 |   (prn (update (->item :count 1) :total neg)))
+  |                                  ^^^^^^ unknown field

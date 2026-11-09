@@ -90,7 +90,7 @@ const FLAG_NAMED_DEF_PAGE: &str = "(def --verbose)\n\nNo documentation.\n";
 const DEFN_HEADER: &str = "(defmacro defn (name parameters body ...))";
 const SEPARATOR_TIP: &str = "write `knave doc -- <term>`";
 const UNKNOWN_FLAG_ERROR: &str = "error: unexpected argument '--typo' found";
-const ARITHMETIC: &str = include_str!("fixtures/emit/arithmetic.rslisp");
+const ARITHMETIC: &str = include_str!("fixtures/emit/arithmetic.knv");
 const EMPTY_MAIN: &str = "(def main (fn () (do)))\n";
 const ONE_BRANCH: &str = "(def main (fn () (if true (do) (do))))\n";
 
@@ -176,10 +176,10 @@ const PROMPT_EXPRESSION_CALLING_A_BROKEN_MACRO: &str =
     "(defmacro bad () (template (missing-helper 1)))\n(bad)\n";
 const PROMPT_TWO_ERRORS_IN_ONE_INPUT: &str = "(defstruct user :name str)\n(def karl (->user :name \"karl\"))\n(defn greet () (str (:name karl) (:name karl)))\n(defstruct user :name str :email str)\n";
 const SHAPES_WITH_A_TYPO: &str =
-    "(write-file \"shapes.rslisp\" \"(export circle)\\n(defn circle (r) (nope r))\\n\")\n";
+    "(write-file \"shapes.knv\" \"(export circle)\\n(defn circle (r) (nope r))\\n\")\n";
 const WRITE_FILE: &str = "(def write-file (rust \"std::fs::write({0}, {1}).unwrap()\" (fn ((ref str) (ref str)) unit)))\n";
 const SHAPES_WITHOUT_SQUARE: &str =
-    "(write-file \"shapes.rslisp\" \"(export circle)\\n(defn circle (r) r)\\n\")\n";
+    "(write-file \"shapes.knv\" \"(export circle)\\n(defn circle (r) r)\\n\")\n";
 const PROMPT_EXIT_ON_A_TERMINAL: &[Keys] = &[
     Keys::AtPrompt("(def exit (rust \"std::process::exit({0})\" (fn (i32) unit)))\r"),
     Keys::AtPrompt("(exit 3)\r"),
@@ -231,7 +231,7 @@ impl Sandbox {
     const BIN_NAME_PREFIX: &str = "name = \"app-";
     const LINKED_LIBRARY: &str = "linked-lib";
     const LINKED_MODULE: &str = "linked-module";
-    const OUTSIDE_FROM_STORE: &str = "../../../../../keymap/src/lib.rslisp";
+    const OUTSIDE_FROM_STORE: &str = "../../../../../keymap/src/lib.knv";
     const FIXTURE_COMMIT_DATE: &str = "2026-01-01T00:00:00Z";
     const FAKE_GIT: &str = "#!/bin/sh\necho \"fatal: prompt=$GIT_TERMINAL_PROMPT schemes=$GIT_ALLOW_PROTOCOL ssh=$GIT_SSH_COMMAND\" >&2\nexit 1\n";
     const MASKED_GIT_MESSAGE: &str = "  = note: git says: <message>";
@@ -513,7 +513,7 @@ impl Sandbox {
         } else {
             ""
         };
-        let project = format!("(project compare :entry \"src/{scenario}.rslisp\"{dependencies})\n");
+        let project = format!("(project compare :entry \"src/{scenario}.knv\"{dependencies})\n");
         fs::write(
             self.directory
                 .join("compare")
@@ -618,7 +618,7 @@ impl Sandbox {
         if library == Self::LINKED_MODULE {
             std::os::unix::fs::symlink(
                 Self::OUTSIDE_FROM_STORE,
-                self.directory.join(&source).join("src/other.rslisp"),
+                self.directory.join(&source).join("src/other.knv"),
             )
             .expect("the sandbox accepts symbolic links");
         }
@@ -1188,9 +1188,9 @@ fn no_command_takes_the_global_color_argument() {
 
 #[test]
 fn counters_flag_prints_one_json_object_after_the_command() {
-    let sandbox = Sandbox::new("counters").with_file("arithmetic.rslisp", ARITHMETIC);
-    let plain = sandbox.compiler(&["emit", "arithmetic.rslisp"]);
-    let counted = sandbox.compiler(&["--counters", "emit", "arithmetic.rslisp"]);
+    let sandbox = Sandbox::new("counters").with_file("arithmetic.knv", ARITHMETIC);
+    let plain = sandbox.compiler(&["emit", "arithmetic.knv"]);
+    let counted = sandbox.compiler(&["--counters", "emit", "arithmetic.knv"]);
     assert_eq!(counted.assert_exit_code(0).stdout(), plain.stdout());
     let stderr = counted.stderr();
     let last_line = stderr
@@ -1218,10 +1218,10 @@ fn counters_flag_stays_out_of_the_help() {
 #[test]
 fn counters_flag_counts_a_program_small_enough_to_count_by_hand() {
     let sandbox = Sandbox::new("counters-by-hand")
-        .with_file("empty.rslisp", EMPTY_MAIN)
-        .with_file("branch.rslisp", ONE_BRANCH);
-    let empty = sandbox.compiler(&["--counters", "emit", "empty.rslisp"]);
-    let branch = sandbox.compiler(&["--counters", "emit", "branch.rslisp"]);
+        .with_file("empty.knv", EMPTY_MAIN)
+        .with_file("branch.knv", ONE_BRANCH);
+    let empty = sandbox.compiler(&["--counters", "emit", "empty.knv"]);
+    let branch = sandbox.compiler(&["--counters", "emit", "branch.knv"]);
     assert_eq!(
         branch
             .assert_exit_code(0)
@@ -1238,9 +1238,9 @@ fn counters_flag_counts_a_program_small_enough_to_count_by_hand() {
 #[test]
 fn counters_flag_prints_no_build_work_when_rustfmt_fails() {
     let sandbox = Sandbox::new("counters-unformatted")
-        .with_file("branch.rslisp", ONE_BRANCH)
+        .with_file("branch.knv", ONE_BRANCH)
         .with_executable("tools/rustfmt", FAILING_RUSTFMT);
-    let emit = sandbox.compiler_with_path("tools", &["--counters", "emit", "branch.rslisp"]);
+    let emit = sandbox.compiler_with_path("tools", &["--counters", "emit", "branch.knv"]);
     let work = emit.assert_exit_code(0).stage_work();
     assert_eq!(
         work.keys().map(String::as_str).collect::<Vec<_>>(),
@@ -1254,8 +1254,8 @@ fn counters_flag_prints_no_build_work_when_rustfmt_fails() {
 
 #[test]
 fn counters_flag_prints_the_work_of_each_stage_that_ran() {
-    let sandbox = Sandbox::new("counters-stages").with_file("arithmetic.rslisp", ARITHMETIC);
-    let emit = ["--counters", "emit", "arithmetic.rslisp"];
+    let sandbox = Sandbox::new("counters-stages").with_file("arithmetic.knv", ARITHMETIC);
+    let emit = ["--counters", "emit", "arithmetic.knv"];
     let emitted = sandbox.compiler(&emit).assert_exit_code(0).stage_work();
     for key in STAGE_WORK_KEYS {
         assert!(
@@ -1264,7 +1264,7 @@ fn counters_flag_prints_the_work_of_each_stage_that_ran() {
         );
     }
     let checked = sandbox
-        .compiler(&["--counters", "check", "arithmetic.rslisp"])
+        .compiler(&["--counters", "check", "arithmetic.knv"])
         .assert_exit_code(0)
         .stage_work();
     assert_eq!(
@@ -1283,22 +1283,22 @@ fn unknown_command_is_a_usage_error() {
 #[test]
 fn unreadable_file_is_a_usage_error() {
     let sandbox = Sandbox::new("unreadable_file");
-    let check = sandbox.compiler(&["check", "missing.rslisp"]);
+    let check = sandbox.compiler(&["check", "missing.knv"]);
     assert!(
         check
             .assert_exit_code(2)
             .stderr()
-            .starts_with("error: cannot read `missing.rslisp`")
+            .starts_with("error: cannot read `missing.knv`")
     );
 }
 
 #[test]
 fn fmt_rewrites_a_file_in_place_and_prints_nothing() {
-    let sandbox = Sandbox::new("fmt_rewrites").with_file("twice.rslisp", UNFORMATTED);
-    let formatted = sandbox.compiler(&["fmt", "twice.rslisp"]);
+    let sandbox = Sandbox::new("fmt_rewrites").with_file("twice.knv", UNFORMATTED);
+    let formatted = sandbox.compiler(&["fmt", "twice.knv"]);
     formatted.assert_silent_success();
     assert_eq!(
-        (formatted.stdout(), sandbox.contents("twice.rslisp")),
+        (formatted.stdout(), sandbox.contents("twice.knv")),
         (String::new(), FORMATTED.to_string())
     );
 }
@@ -1306,20 +1306,20 @@ fn fmt_rewrites_a_file_in_place_and_prints_nothing() {
 #[test]
 fn fmt_check_prints_each_file_that_would_change_and_writes_nothing() {
     let sandbox = Sandbox::new("fmt_check_changes")
-        .with_file("twice.rslisp", UNFORMATTED)
-        .with_file("done.rslisp", FORMATTED);
-    let check = sandbox.compiler(&["fmt", "--check", "twice.rslisp", "done.rslisp"]);
+        .with_file("twice.knv", UNFORMATTED)
+        .with_file("done.knv", FORMATTED);
+    let check = sandbox.compiler(&["fmt", "--check", "twice.knv", "done.knv"]);
     check.assert_exit_code(1);
     assert_eq!(
-        (check.stdout(), sandbox.contents("twice.rslisp")),
-        ("twice.rslisp\n".to_string(), UNFORMATTED.to_string())
+        (check.stdout(), sandbox.contents("twice.knv")),
+        ("twice.knv\n".to_string(), UNFORMATTED.to_string())
     );
 }
 
 #[test]
 fn fmt_check_exits_0_when_every_file_is_formatted() {
-    let sandbox = Sandbox::new("fmt_check_formatted").with_file("done.rslisp", FORMATTED);
-    let check = sandbox.compiler(&["fmt", "--check", "done.rslisp"]);
+    let sandbox = Sandbox::new("fmt_check_formatted").with_file("done.knv", FORMATTED);
+    let check = sandbox.compiler(&["fmt", "--check", "done.knv"]);
     check.assert_silent_success();
     assert_eq!(check.stdout(), "");
 }
@@ -1335,10 +1335,10 @@ fn fmt_reads_standard_input_and_writes_the_formatted_text() {
 #[test]
 fn fmt_of_standard_input_reads_shapes_from_modules_beside_its_stdin_path() {
     let sandbox =
-        Sandbox::new("fmt_standard_input_shapes").with_file("shapes/loops.rslisp", LOOP_SHAPE);
+        Sandbox::new("fmt_standard_input_shapes").with_file("shapes/loops.knv", LOOP_SHAPE);
     let formatted = sandbox.compiler_reading(
         LOOP_CALL,
-        &["fmt", "--stdin-path", "programs/main.rslisp", "-"],
+        &["fmt", "--stdin-path", "programs/main.knv", "-"],
     );
     formatted.assert_silent_success();
     assert_eq!(formatted.stdout(), LOOP_CALL_SHAPED);
@@ -1347,16 +1347,16 @@ fn fmt_of_standard_input_reads_shapes_from_modules_beside_its_stdin_path() {
 #[test]
 fn fmt_formats_every_source_file_under_a_directory() {
     let sandbox = Sandbox::new("fmt_directory")
-        .with_file("project/twice.rslisp", UNFORMATTED)
-        .with_file("project/nested/limit.rslisp", UNFORMATTED)
+        .with_file("project/twice.knv", UNFORMATTED)
+        .with_file("project/nested/limit.knv", UNFORMATTED)
         .with_file("project/notes.txt", UNFORMATTED);
     sandbox
         .compiler(&["fmt", "project"])
         .assert_silent_success();
     assert_eq!(
         [
-            sandbox.contents("project/twice.rslisp"),
-            sandbox.contents("project/nested/limit.rslisp"),
+            sandbox.contents("project/twice.knv"),
+            sandbox.contents("project/nested/limit.knv"),
             sandbox.contents("project/notes.txt"),
         ],
         [FORMATTED, FORMATTED, UNFORMATTED].map(String::from)
@@ -1382,17 +1382,17 @@ fn fmt_check_of_formatted_standard_input_prints_nothing() {
 #[test]
 fn fmt_exits_2_when_an_unreadable_file_follows_a_reader_error() {
     let sandbox =
-        Sandbox::new("fmt_unreadable_after_reader_error").with_file("unclosed.rslisp", UNCLOSED);
+        Sandbox::new("fmt_unreadable_after_reader_error").with_file("unclosed.knv", UNCLOSED);
     sandbox
-        .compiler(&["fmt", "unclosed.rslisp", "missing.rslisp"])
+        .compiler(&["fmt", "unclosed.knv", "missing.knv"])
         .assert_exit_code(2);
 }
 
 #[test]
 fn fmt_skips_a_symlinked_directory() {
     let sandbox = Sandbox::new("fmt_symlinked_directory")
-        .with_file("project/twice.rslisp", UNFORMATTED)
-        .with_file("elsewhere/limit.rslisp", UNFORMATTED);
+        .with_file("project/twice.knv", UNFORMATTED)
+        .with_file("elsewhere/limit.knv", UNFORMATTED);
     std::os::unix::fs::symlink(
         sandbox.directory.join("elsewhere"),
         sandbox.directory.join("project/linked"),
@@ -1403,8 +1403,8 @@ fn fmt_skips_a_symlinked_directory() {
         .assert_silent_success();
     assert_eq!(
         [
-            sandbox.contents("project/twice.rslisp"),
-            sandbox.contents("elsewhere/limit.rslisp"),
+            sandbox.contents("project/twice.knv"),
+            sandbox.contents("elsewhere/limit.knv"),
         ],
         [FORMATTED, UNFORMATTED].map(String::from)
     );
@@ -1414,19 +1414,19 @@ fn fmt_skips_a_symlinked_directory() {
 fn fmt_skips_hidden_directories_and_the_project_build_directory() {
     let sandbox = Sandbox::new("fmt_skipped_directories")
         .with_file(&Language::project_file_name(), PROJECT)
-        .with_file("twice.rslisp", UNFORMATTED)
-        .with_file(".direnv/limit.rslisp", UNFORMATTED)
-        .with_file("target/limit.rslisp", UNFORMATTED)
-        .with_file("src/target/limit.rslisp", UNFORMATTED)
-        .with_file("tests/target/limit.rslisp", UNFORMATTED);
+        .with_file("twice.knv", UNFORMATTED)
+        .with_file(".direnv/limit.knv", UNFORMATTED)
+        .with_file("target/limit.knv", UNFORMATTED)
+        .with_file("src/target/limit.knv", UNFORMATTED)
+        .with_file("tests/target/limit.knv", UNFORMATTED);
     sandbox.compiler(&["fmt", "."]).assert_silent_success();
     assert_eq!(
         [
-            "twice.rslisp",
-            ".direnv/limit.rslisp",
-            "target/limit.rslisp",
-            "src/target/limit.rslisp",
-            "tests/target/limit.rslisp",
+            "twice.knv",
+            ".direnv/limit.knv",
+            "target/limit.knv",
+            "src/target/limit.knv",
+            "tests/target/limit.knv",
         ]
         .map(|file| sandbox.contents(file)),
         [FORMATTED, UNFORMATTED, UNFORMATTED, FORMATTED, FORMATTED].map(String::from)
@@ -1437,21 +1437,21 @@ fn fmt_skips_hidden_directories_and_the_project_build_directory() {
 fn fmt_in_a_project_walks_a_target_directory_below_the_root() {
     let sandbox = Sandbox::new("fmt_project_inner_target")
         .with_file(&Language::project_file_name(), PROJECT)
-        .with_file("src/target/limit.rslisp", UNFORMATTED);
+        .with_file("src/target/limit.knv", UNFORMATTED);
     sandbox.compiler(&["fmt", "src"]).assert_silent_success();
-    assert_eq!(sandbox.contents("src/target/limit.rslisp"), FORMATTED);
+    assert_eq!(sandbox.contents("src/target/limit.knv"), FORMATTED);
 }
 
 #[test]
 fn fmt_outside_a_project_skips_only_the_target_directory_of_its_walk() {
     let sandbox = Sandbox::new("fmt_skipped_walk_target")
-        .with_file("loose/target/limit.rslisp", UNFORMATTED)
-        .with_file("loose/src/target/limit.rslisp", UNFORMATTED);
+        .with_file("loose/target/limit.knv", UNFORMATTED)
+        .with_file("loose/src/target/limit.knv", UNFORMATTED);
     sandbox.compiler(&["fmt", "loose"]).assert_silent_success();
     assert_eq!(
         [
-            sandbox.contents("loose/target/limit.rslisp"),
-            sandbox.contents("loose/src/target/limit.rslisp"),
+            sandbox.contents("loose/target/limit.knv"),
+            sandbox.contents("loose/src/target/limit.knv"),
         ],
         [UNFORMATTED, FORMATTED].map(String::from)
     );
@@ -1460,9 +1460,9 @@ fn fmt_outside_a_project_skips_only_the_target_directory_of_its_walk() {
 #[test]
 fn fmt_reports_a_reader_error_and_leaves_the_file_as_it_was() {
     let sandbox = Sandbox::new("fmt_reader_error")
-        .with_file("unclosed.rslisp", UNCLOSED)
-        .with_file("twice.rslisp", UNFORMATTED);
-    let formatted = sandbox.compiler(&["fmt", "unclosed.rslisp", "twice.rslisp"]);
+        .with_file("unclosed.knv", UNCLOSED)
+        .with_file("twice.knv", UNFORMATTED);
+    let formatted = sandbox.compiler(&["fmt", "unclosed.knv", "twice.knv"]);
     formatted.assert_exit_code(1);
     assert!(
         formatted.stderr().contains("error[L0101]"),
@@ -1471,8 +1471,8 @@ fn fmt_reports_a_reader_error_and_leaves_the_file_as_it_was() {
     );
     assert_eq!(
         (
-            sandbox.contents("unclosed.rslisp"),
-            sandbox.contents("twice.rslisp")
+            sandbox.contents("unclosed.knv"),
+            sandbox.contents("twice.knv")
         ),
         (UNCLOSED.to_string(), FORMATTED.to_string())
     );
@@ -1481,12 +1481,12 @@ fn fmt_reports_a_reader_error_and_leaves_the_file_as_it_was() {
 #[test]
 fn fmt_of_a_missing_file_is_a_usage_error() {
     let sandbox = Sandbox::new("fmt_missing_file");
-    let formatted = sandbox.compiler(&["fmt", "missing.rslisp"]);
+    let formatted = sandbox.compiler(&["fmt", "missing.knv"]);
     assert!(
         formatted
             .assert_exit_code(2)
             .stderr()
-            .starts_with("error: cannot read `missing.rslisp`")
+            .starts_with("error: cannot read `missing.knv`")
     );
 }
 
@@ -1498,8 +1498,8 @@ fn fmt_without_a_path_outside_a_project_is_a_usage_error() {
 
 #[test]
 fn fmt_of_standard_input_with_another_path_is_a_usage_error() {
-    let sandbox = Sandbox::new("fmt_standard_input_and_path").with_file("done.rslisp", FORMATTED);
-    let formatted = sandbox.compiler_reading(FORMATTED, &["fmt", "-", "done.rslisp"]);
+    let sandbox = Sandbox::new("fmt_standard_input_and_path").with_file("done.knv", FORMATTED);
+    let formatted = sandbox.compiler_reading(FORMATTED, &["fmt", "-", "done.knv"]);
     assert!(
         formatted
             .assert_exit_code(2)
@@ -1510,9 +1510,9 @@ fn fmt_of_standard_input_with_another_path_is_a_usage_error() {
 
 #[test]
 fn fmt_of_unread_standard_input_with_another_path_is_a_usage_error() {
-    let sandbox = Sandbox::new("fmt_unread_standard_input").with_file("done.rslisp", FORMATTED);
+    let sandbox = Sandbox::new("fmt_unread_standard_input").with_file("done.knv", FORMATTED);
     let unread = vec![b' '; Sandbox::PIPE_OVERFLOWING_INPUT_BYTES];
-    let formatted = sandbox.compiler_reading(unread, &["fmt", "-", "done.rslisp"]);
+    let formatted = sandbox.compiler_reading(unread, &["fmt", "-", "done.knv"]);
     assert!(
         formatted
             .assert_exit_code(2)
@@ -1535,16 +1535,16 @@ fn any_other_failure_to_give_a_child_its_input_stays_an_error() {
 
 #[test]
 fn fmt_with_a_stdin_path_but_no_standard_input_is_a_usage_error() {
-    let sandbox = Sandbox::new("fmt_stdin_path_alone").with_file("done.rslisp", FORMATTED);
+    let sandbox = Sandbox::new("fmt_stdin_path_alone").with_file("done.knv", FORMATTED);
     sandbox
-        .compiler(&["fmt", "--stdin-path", "done.rslisp", "done.rslisp"])
+        .compiler(&["fmt", "--stdin-path", "done.knv", "done.knv"])
         .assert_exit_code(2);
 }
 
 #[test]
 fn check_is_silent_on_a_valid_program() {
-    let sandbox = Sandbox::new("check_valid").with_file("greeting.rslisp", GREETING);
-    let check = sandbox.compiler(&["check", "greeting.rslisp"]);
+    let sandbox = Sandbox::new("check_valid").with_file("greeting.knv", GREETING);
+    let check = sandbox.compiler(&["check", "greeting.knv"]);
     check.assert_exit_code(0);
     assert_eq!(
         (check.stdout(), check.stderr()),
@@ -1554,30 +1554,30 @@ fn check_is_silent_on_a_valid_program() {
 
 #[test]
 fn check_ignores_a_byte_order_mark() {
-    let sandbox = Sandbox::new("check_byte_order_mark").with_file("marked.rslisp", MARKED_PROGRAM);
+    let sandbox = Sandbox::new("check_byte_order_mark").with_file("marked.knv", MARKED_PROGRAM);
     sandbox
-        .compiler(&["check", "marked.rslisp"])
+        .compiler(&["check", "marked.knv"])
         .assert_exit_code(0);
 }
 
 #[test]
 fn types_prints_each_function() {
-    let sandbox = Sandbox::new("types").with_file("greeting.rslisp", GREETING);
-    let types = sandbox.compiler(&["types", "greeting.rslisp"]);
+    let sandbox = Sandbox::new("types").with_file("greeting.knv", GREETING);
+    let types = sandbox.compiler(&["types", "greeting.knv"]);
     insta::assert_snapshot!(types.assert_exit_code(0).stdout());
 }
 
 #[test]
 fn types_prints_inferred_struct_derives() {
-    let sandbox = Sandbox::new("types_structs").with_file("structs.rslisp", STRUCTS);
-    let types = sandbox.compiler(&["types", "structs.rslisp"]);
+    let sandbox = Sandbox::new("types_structs").with_file("structs.knv", STRUCTS);
+    let types = sandbox.compiler(&["types", "structs.knv"]);
     insta::assert_snapshot!(types.assert_exit_code(0).stdout());
 }
 
 #[test]
 fn signatures_is_an_unknown_command() {
-    let sandbox = Sandbox::new("signatures_unknown").with_file("greeting.rslisp", GREETING);
-    let signatures = sandbox.compiler(&["signatures", "greeting.rslisp"]);
+    let sandbox = Sandbox::new("signatures_unknown").with_file("greeting.knv", GREETING);
+    let signatures = sandbox.compiler(&["signatures", "greeting.knv"]);
     let stderr = signatures.assert_exit_code(2).stderr();
     assert_eq!(
         stderr.lines().next(),
@@ -1609,46 +1609,46 @@ fn doc_reports_a_standard_output_it_cannot_write() {
 
 #[test]
 fn doc_keeps_its_exit_code_when_its_error_reader_closes() {
-    let sandbox = Sandbox::new("doc_closed_error_pipe").with_file("unbound.rslisp", UNBOUND_NAME);
-    let arguments = ["doc", "--file", "unbound.rslisp", "main"];
+    let sandbox = Sandbox::new("doc_closed_error_pipe").with_file("unbound.knv", UNBOUND_NAME);
+    let arguments = ["doc", "--file", "unbound.knv", "main"];
     sandbox.assert_exit_code_with_a_closed_error_pipe(&arguments, 1);
 }
 
 #[test]
 fn check_keeps_its_exit_code_when_its_error_reader_closes() {
-    let sandbox = Sandbox::new("check_closed_error_pipe").with_file("unbound.rslisp", UNBOUND_NAME);
-    let arguments = ["check", "unbound.rslisp"];
+    let sandbox = Sandbox::new("check_closed_error_pipe").with_file("unbound.knv", UNBOUND_NAME);
+    let arguments = ["check", "unbound.knv"];
     sandbox.assert_exit_code_with_a_closed_error_pipe(&arguments, 1);
 }
 
 #[test]
 fn run_keeps_its_exit_code_when_its_error_reader_closes() {
-    let sandbox = Sandbox::new("run_closed_error_pipe").with_file("unbound.rslisp", UNBOUND_NAME);
-    let arguments = ["run", "unbound.rslisp"];
+    let sandbox = Sandbox::new("run_closed_error_pipe").with_file("unbound.knv", UNBOUND_NAME);
+    let arguments = ["run", "unbound.knv"];
     sandbox.assert_exit_code_with_a_closed_error_pipe(&arguments, 1);
 }
 
 #[test]
 fn emit_ends_quietly_when_its_reader_closes() {
-    let sandbox = Sandbox::new("emit_closed_pipe").with_file("greeting.rslisp", GREETING);
+    let sandbox = Sandbox::new("emit_closed_pipe").with_file("greeting.knv", GREETING);
     sandbox
-        .compiler_writing_to_a_closed_pipe(&["emit", "greeting.rslisp"])
+        .compiler_writing_to_a_closed_pipe(&["emit", "greeting.knv"])
         .assert_silent_success();
 }
 
 #[test]
 fn expand_ends_quietly_when_its_reader_closes() {
-    let sandbox = Sandbox::new("expand_closed_pipe").with_file("greeting.rslisp", GREETING);
+    let sandbox = Sandbox::new("expand_closed_pipe").with_file("greeting.knv", GREETING);
     sandbox
-        .compiler_writing_to_a_closed_pipe(&["expand", "greeting.rslisp"])
+        .compiler_writing_to_a_closed_pipe(&["expand", "greeting.knv"])
         .assert_silent_success();
 }
 
 #[test]
 fn types_ends_quietly_when_its_reader_closes() {
-    let sandbox = Sandbox::new("types_closed_pipe").with_file("greeting.rslisp", GREETING);
+    let sandbox = Sandbox::new("types_closed_pipe").with_file("greeting.knv", GREETING);
     sandbox
-        .compiler_writing_to_a_closed_pipe(&["types", "greeting.rslisp"])
+        .compiler_writing_to_a_closed_pipe(&["types", "greeting.knv"])
         .assert_silent_success();
 }
 
@@ -1759,8 +1759,8 @@ fn doc_find_doc_without_a_match_succeeds() {
 
 #[test]
 fn doc_find_doc_finds_a_term_through_the_body_of_its_docstring() {
-    let sandbox = Sandbox::new("doc_find_doc_body").with_file("main.rslisp", DOCUMENTED_TWICE);
-    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "(find-doc widgets)"]);
+    let sandbox = Sandbox::new("doc_find_doc_body").with_file("main.knv", DOCUMENTED_TWICE);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(find-doc widgets)"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
         "(find-doc widgets)\n\n(defn twice (x))\n    Doubles a number.\n"
@@ -1780,16 +1780,16 @@ fn doc_takes_a_search_text_that_starts_with_hyphens() {
 #[test]
 fn doc_dir_lists_the_exports_of_a_module() {
     let sandbox = Sandbox::new("doc_dir_module")
-        .with_file("geometry.rslisp", GEOMETRY)
-        .with_file("main.rslisp", GEOMETRY_ENTRY);
-    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "(dir geometry)"]);
+        .with_file("geometry.knv", GEOMETRY)
+        .with_file("main.knv", GEOMETRY_ENTRY);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(dir geometry)"]);
     assert_eq!(doc.assert_exit_code(0).stdout(), "(dir geometry)\n\narea\n");
 }
 
 #[test]
 fn doc_dir_lists_the_names_of_the_entry_module() {
-    let sandbox = Sandbox::new("doc_dir_entry").with_file("main.rslisp", DOCUMENTED_TWICE);
-    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "(dir)"]);
+    let sandbox = Sandbox::new("doc_dir_entry").with_file("main.knv", DOCUMENTED_TWICE);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(dir)"]);
     assert_eq!(doc.assert_exit_code(0).stdout(), "(dir)\n\nmain twice\n");
 }
 
@@ -1811,9 +1811,8 @@ fn doc_takes_the_minus_term() {
 
 #[test]
 fn doc_takes_a_program_term_that_starts_with_two_hyphens_after_the_separator() {
-    let sandbox =
-        Sandbox::new("doc_separated_program_term").with_file("main.rslisp", FLAG_NAMED_DEF);
-    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "--", "--verbose"]);
+    let sandbox = Sandbox::new("doc_separated_program_term").with_file("main.knv", FLAG_NAMED_DEF);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "--", "--verbose"]);
     assert_eq!(doc.assert_exit_code(0).stdout(), FLAG_NAMED_DEF_PAGE);
 }
 
@@ -1864,9 +1863,9 @@ fn doc_reports_a_second_term() {
 #[test]
 fn doc_prints_the_page_of_an_imported_term() {
     let sandbox = Sandbox::new("doc_imported")
-        .with_file("geometry.rslisp", GEOMETRY)
-        .with_file("main.rslisp", GEOMETRY_ENTRY);
-    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "area"]);
+        .with_file("geometry.knv", GEOMETRY)
+        .with_file("main.knv", GEOMETRY_ENTRY);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "area"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
         "(defn area (width height))\n\nMultiplies a width by a height.\n"
@@ -1876,9 +1875,9 @@ fn doc_prints_the_page_of_an_imported_term() {
 #[test]
 fn doc_prints_the_page_of_an_imported_module() {
     let sandbox = Sandbox::new("doc_module")
-        .with_file("geometry.rslisp", DOCUMENTED_GEOMETRY)
-        .with_file("main.rslisp", GEOMETRY_ENTRY);
-    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "(module geometry)"]);
+        .with_file("geometry.knv", DOCUMENTED_GEOMETRY)
+        .with_file("main.knv", GEOMETRY_ENTRY);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(module geometry)"]);
     assert_eq!(doc.assert_exit_code(0).stdout(), GEOMETRY_PAGE);
 }
 
@@ -1904,22 +1903,16 @@ fn doc_prints_the_page_of_a_prelude_module() {
 #[test]
 fn doc_prints_a_module_page_without_a_type_line() {
     let sandbox = Sandbox::new("doc_module_types")
-        .with_file("geometry.rslisp", DOCUMENTED_GEOMETRY)
-        .with_file("main.rslisp", GEOMETRY_ENTRY);
-    let doc = sandbox.compiler(&[
-        "doc",
-        "--types",
-        "--file",
-        "main.rslisp",
-        "(module geometry)",
-    ]);
+        .with_file("geometry.knv", DOCUMENTED_GEOMETRY)
+        .with_file("main.knv", GEOMETRY_ENTRY);
+    let doc = sandbox.compiler(&["doc", "--types", "--file", "main.knv", "(module geometry)"]);
     assert_eq!(doc.assert_exit_code(0).stdout(), GEOMETRY_PAGE);
 }
 
 #[test]
 fn doc_lists_the_exports_of_the_entry_module() {
-    let sandbox = Sandbox::new("doc_entry_module").with_file("main.rslisp", DOCUMENTED_ENTRY);
-    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "(module main)"]);
+    let sandbox = Sandbox::new("doc_entry_module").with_file("main.knv", DOCUMENTED_ENTRY);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(module main)"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
         "(module main)\n\nPrints an area.\n\n(defn main ())\n"
@@ -1929,9 +1922,9 @@ fn doc_lists_the_exports_of_the_entry_module() {
 #[test]
 fn doc_keeps_the_page_of_a_binding_named_like_a_module() {
     let sandbox = Sandbox::new("doc_module_binding")
-        .with_file("geometry.rslisp", DOCUMENTED_GEOMETRY)
-        .with_file("main.rslisp", SHADOWING_GEOMETRY_ENTRY);
-    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "geometry"]);
+        .with_file("geometry.knv", DOCUMENTED_GEOMETRY)
+        .with_file("main.knv", SHADOWING_GEOMETRY_ENTRY);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "geometry"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
         "(def geometry)\n\nNo documentation.\n"
@@ -1952,9 +1945,9 @@ fn doc_reports_an_unknown_module_at_its_path_in_the_term() {
 #[test]
 fn doc_finds_a_module_when_the_program_binds_the_name_module() {
     let sandbox = Sandbox::new("doc_module_bound_head")
-        .with_file("geometry.rslisp", DOCUMENTED_GEOMETRY)
-        .with_file("main.rslisp", MODULE_BINDING_ENTRY);
-    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "(module geometry)"]);
+        .with_file("geometry.knv", DOCUMENTED_GEOMETRY)
+        .with_file("main.knv", MODULE_BINDING_ENTRY);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(module geometry)"]);
     assert_eq!(doc.assert_exit_code(0).stdout(), GEOMETRY_PAGE);
 }
 
@@ -1974,8 +1967,8 @@ fn doc_reports_a_term_that_is_no_name_or_module_as_a_program_error() {
 
 #[test]
 fn doc_prints_the_page_of_an_undocumented_term() {
-    let sandbox = Sandbox::new("doc_undocumented").with_file("main.rslisp", UNDOCUMENTED_ENTRY);
-    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "twice"]);
+    let sandbox = Sandbox::new("doc_undocumented").with_file("main.knv", UNDOCUMENTED_ENTRY);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "twice"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
         "(defn twice (x))\n\nNo documentation.\n"
@@ -2009,18 +2002,18 @@ fn doc_rejects_a_term_that_does_not_read() {
 #[test]
 fn doc_reports_an_unreadable_file_as_a_usage_error() {
     let sandbox = Sandbox::new("doc_unreadable_file");
-    let doc = sandbox.compiler(&["doc", "--file", "missing.rslisp", "defn"]);
+    let doc = sandbox.compiler(&["doc", "--file", "missing.knv", "defn"]);
     assert!(
         doc.assert_exit_code(2)
             .stderr()
-            .starts_with("error: cannot read `missing.rslisp`")
+            .starts_with("error: cannot read `missing.knv`")
     );
 }
 
 #[test]
 fn doc_rejects_a_term_that_is_not_one_term_before_reading_the_file() {
     let sandbox = Sandbox::new("doc_term_before_file");
-    let doc = sandbox.compiler(&["doc", "--file", "missing.rslisp", "x y"]);
+    let doc = sandbox.compiler(&["doc", "--file", "missing.knv", "x y"]);
     assert_eq!(
         doc.assert_exit_code(2).stderr(),
         "error: `x y` is not one term\n"
@@ -2029,8 +2022,8 @@ fn doc_rejects_a_term_that_is_not_one_term_before_reading_the_file() {
 
 #[test]
 fn doc_rejects_a_shadowing_page_body_that_returns_no_string() {
-    let sandbox = Sandbox::new("doc_shadowed").with_file("main.rslisp", SHADOWING_PAGE_BODY);
-    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "main"]);
+    let sandbox = Sandbox::new("doc_shadowed").with_file("main.knv", SHADOWING_PAGE_BODY);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "main"]);
     assert_eq!(
         doc.assert_exit_code(1).stderr(),
         "error: `doc-body` did not expand to a string\n"
@@ -2039,8 +2032,8 @@ fn doc_rejects_a_shadowing_page_body_that_returns_no_string() {
 
 #[test]
 fn doc_rejects_a_shadowing_header_that_returns_no_string() {
-    let sandbox = Sandbox::new("doc_shadowed_header").with_file("main.rslisp", SHADOWING_HEADER);
-    let doc = sandbox.compiler(&["doc", "--file", "main.rslisp", "main"]);
+    let sandbox = Sandbox::new("doc_shadowed_header").with_file("main.knv", SHADOWING_HEADER);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "main"]);
     assert_eq!(
         doc.assert_exit_code(1).stderr(),
         "error: `doc-header` did not expand to a string\n"
@@ -2049,17 +2042,17 @@ fn doc_rejects_a_shadowing_header_that_returns_no_string() {
 
 #[test]
 fn doc_types_prints_the_inferred_type_above_the_page() {
-    let sandbox = Sandbox::new("doc_types").with_file("prog.rslisp", TYPED_PROGRAM);
+    let sandbox = Sandbox::new("doc_types").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
-        sandbox.typed_page(&["--file", "prog.rslisp", "twice"]),
+        sandbox.typed_page(&["--file", "prog.knv", "twice"]),
         format!("{TWICE_TYPE}\n{TWICE_PAGE}")
     );
 }
 
 #[test]
 fn doc_types_takes_the_flag_after_the_term() {
-    let sandbox = Sandbox::new("doc_types_after_term").with_file("prog.rslisp", TYPED_PROGRAM);
-    let doc = sandbox.compiler(&["doc", "twice", "--file", "prog.rslisp", "--types"]);
+    let sandbox = Sandbox::new("doc_types_after_term").with_file("prog.knv", TYPED_PROGRAM);
+    let doc = sandbox.compiler(&["doc", "twice", "--file", "prog.knv", "--types"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
         format!("{TWICE_TYPE}\n{TWICE_PAGE}")
@@ -2068,9 +2061,9 @@ fn doc_types_takes_the_flag_after_the_term() {
 
 #[test]
 fn doc_types_prints_the_generic_type_of_an_uncalled_function() {
-    let sandbox = Sandbox::new("doc_types_generic").with_file("prog.rslisp", TYPED_PROGRAM);
+    let sandbox = Sandbox::new("doc_types_generic").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
-        sandbox.typed_page(&["--file", "prog.rslisp", "same"]),
+        sandbox.typed_page(&["--file", "prog.knv", "same"]),
         "(type same (where (a) (fn (a) a)))\n(defn same (x))\n\nNo documentation.\n"
     );
 }
@@ -2102,53 +2095,53 @@ fn doc_types_prints_the_type_of_a_prelude_function() {
 #[test]
 fn check_reports_an_unused_broken_definition_in_a_user_prelude_directory() {
     let sandbox = Sandbox::new("user_prelude_directory")
-        .with_file("prog.rslisp", USES_PRELUDE_DIRECTORY)
-        .with_file("prelude/extra.rslisp", BROKEN_PRELUDE_DIRECTORY_MODULE);
-    let check = sandbox.compiler(&["check", "prog.rslisp"]);
+        .with_file("prog.knv", USES_PRELUDE_DIRECTORY)
+        .with_file("prelude/extra.knv", BROKEN_PRELUDE_DIRECTORY_MODULE);
+    let check = sandbox.compiler(&["check", "prog.knv"]);
     check.assert_exit_code(1);
     assert!(check.stderr().contains("L0401"), "{}", check.stderr());
 }
 
 #[test]
 fn run_finds_main_in_an_entry_named_prelude() {
-    let sandbox = Sandbox::new("entry_named_prelude").with_file("prelude.rslisp", MAIN_IN_PRELUDE);
-    let run = sandbox.compiler(&["run", "prelude.rslisp"]);
+    let sandbox = Sandbox::new("entry_named_prelude").with_file("prelude.knv", MAIN_IN_PRELUDE);
+    let run = sandbox.compiler(&["run", "prelude.knv"]);
     run.assert_exit_code(0);
     assert_eq!(run.stdout(), "hi\n");
 }
 
 #[test]
 fn doc_types_prints_no_type_for_a_struct() {
-    let sandbox = Sandbox::new("doc_types_struct").with_file("prog.rslisp", TYPED_PROGRAM);
+    let sandbox = Sandbox::new("doc_types_struct").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
-        sandbox.typed_page(&["--file", "prog.rslisp", "point"]),
+        sandbox.typed_page(&["--file", "prog.knv", "point"]),
         "(defstruct point)\n\nNo documentation.\n"
     );
 }
 
 #[test]
 fn doc_types_prints_the_type_of_a_struct_constructor() {
-    let sandbox = Sandbox::new("doc_types_constructor").with_file("prog.rslisp", TYPED_PROGRAM);
+    let sandbox = Sandbox::new("doc_types_constructor").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
-        sandbox.typed_page(&["--file", "prog.rslisp", "->point"]),
+        sandbox.typed_page(&["--file", "prog.knv", "->point"]),
         "(type ->point (fn (i64 i64) point))\n(defstruct point)\n\nNo documentation.\n"
     );
 }
 
 #[test]
 fn doc_types_prints_the_type_of_a_function_with_keyword_parameters() {
-    let sandbox = Sandbox::new("doc_types_keyword").with_file("prog.rslisp", TYPED_PROGRAM);
+    let sandbox = Sandbox::new("doc_types_keyword").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
-        sandbox.typed_page(&["--file", "prog.rslisp", "area"]),
+        sandbox.typed_page(&["--file", "prog.knv", "area"]),
         "(type area (fn (i64 i64) i64))\n(defn area (:width i64 :height i64))\n\nNo documentation.\n"
     );
 }
 
 #[test]
 fn doc_types_prints_the_type_of_a_plain_definition() {
-    let sandbox = Sandbox::new("doc_types_plain").with_file("prog.rslisp", TYPED_PROGRAM);
+    let sandbox = Sandbox::new("doc_types_plain").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
-        sandbox.typed_page(&["--file", "prog.rslisp", "limit"]),
+        sandbox.typed_page(&["--file", "prog.knv", "limit"]),
         "(type limit i64)\n(def limit)\n\nNo documentation.\n"
     );
 }
@@ -2162,9 +2155,9 @@ fn doc_types_prints_no_type_for_a_value_that_no_definition_binds() {
 #[test]
 fn doc_types_prints_no_type_above_a_struct_page_whose_header_matches_the_value() {
     let sandbox =
-        Sandbox::new("doc_types_same_header").with_file("prog.rslisp", MACRO_STRUCT_BESIDE_A_DEF);
+        Sandbox::new("doc_types_same_header").with_file("prog.knv", MACRO_STRUCT_BESIDE_A_DEF);
     assert_eq!(
-        sandbox.typed_page(&["--file", "prog.rslisp", "point"]),
+        sandbox.typed_page(&["--file", "prog.knv", "point"]),
         "point\n\nA documented struct.\n"
     );
 }
@@ -2172,9 +2165,9 @@ fn doc_types_prints_no_type_above_a_struct_page_whose_header_matches_the_value()
 #[test]
 fn doc_types_prints_no_type_above_a_documented_struct_beside_a_function() {
     let sandbox = Sandbox::new("doc_types_documented_struct")
-        .with_file("prog.rslisp", DOCUMENTED_STRUCT_BESIDE_A_FUNCTION);
+        .with_file("prog.knv", DOCUMENTED_STRUCT_BESIDE_A_FUNCTION);
     assert_eq!(
-        sandbox.typed_page(&["--file", "prog.rslisp", "point"]),
+        sandbox.typed_page(&["--file", "prog.knv", "point"]),
         "(defstruct point)\n\nA point on a grid.\n"
     );
 }
@@ -2182,9 +2175,9 @@ fn doc_types_prints_no_type_above_a_documented_struct_beside_a_function() {
 #[test]
 fn doc_types_prints_the_type_of_a_documented_function_beside_a_struct() {
     let sandbox = Sandbox::new("doc_types_documented_function")
-        .with_file("prog.rslisp", DOCUMENTED_FUNCTION_BESIDE_A_STRUCT);
+        .with_file("prog.knv", DOCUMENTED_FUNCTION_BESIDE_A_STRUCT);
     assert_eq!(
-        sandbox.typed_page(&["--file", "prog.rslisp", "point"]),
+        sandbox.typed_page(&["--file", "prog.knv", "point"]),
         format!("{POINT_TYPE}\n(defn point ())\n\nMakes the origin.\n")
     );
 }
@@ -2192,9 +2185,9 @@ fn doc_types_prints_the_type_of_a_documented_function_beside_a_struct() {
 #[test]
 fn doc_types_prints_the_type_of_an_undocumented_function_beside_a_struct() {
     let sandbox = Sandbox::new("doc_types_undocumented_function")
-        .with_file("prog.rslisp", UNDOCUMENTED_FUNCTION_BESIDE_A_STRUCT);
+        .with_file("prog.knv", UNDOCUMENTED_FUNCTION_BESIDE_A_STRUCT);
     assert_eq!(
-        sandbox.typed_page(&["--file", "prog.rslisp", "point"]),
+        sandbox.typed_page(&["--file", "prog.knv", "point"]),
         format!("{POINT_TYPE}\n(defn point ())\n\nNo documentation.\n")
     );
 }
@@ -2202,9 +2195,9 @@ fn doc_types_prints_the_type_of_an_undocumented_function_beside_a_struct() {
 #[test]
 fn doc_types_prints_the_type_of_an_undocumented_def_beside_a_struct() {
     let sandbox = Sandbox::new("doc_types_undocumented_def")
-        .with_file("prog.rslisp", UNDOCUMENTED_DEF_BESIDE_A_STRUCT);
+        .with_file("prog.knv", UNDOCUMENTED_DEF_BESIDE_A_STRUCT);
     assert_eq!(
-        sandbox.typed_page(&["--file", "prog.rslisp", "point"]),
+        sandbox.typed_page(&["--file", "prog.knv", "point"]),
         "(type point i64)\n(def point)\n\nNo documentation.\n"
     );
 }
@@ -2212,17 +2205,16 @@ fn doc_types_prints_the_type_of_an_undocumented_def_beside_a_struct() {
 #[test]
 fn doc_types_prints_the_page_alone_when_another_definition_fails_to_type_check() {
     let sandbox =
-        Sandbox::new("doc_types_other_fails").with_file("prog.rslisp", OTHER_DEFINITION_FAILS);
-    let doc = sandbox.typed_lookup(&["--file", "prog.rslisp", "twice"]);
+        Sandbox::new("doc_types_other_fails").with_file("prog.knv", OTHER_DEFINITION_FAILS);
+    let doc = sandbox.typed_lookup(&["--file", "prog.knv", "twice"]);
     assert!(doc.assert_exit_code(1).stderr().starts_with("error[L0401]"));
     assert_eq!(doc.stdout(), TWICE_PAGE);
 }
 
 #[test]
 fn doc_types_prints_the_page_alone_when_its_own_definition_fails_to_type_check() {
-    let sandbox =
-        Sandbox::new("doc_types_own_fails").with_file("prog.rslisp", OWN_DEFINITION_FAILS);
-    let doc = sandbox.typed_lookup(&["--file", "prog.rslisp", "twice"]);
+    let sandbox = Sandbox::new("doc_types_own_fails").with_file("prog.knv", OWN_DEFINITION_FAILS);
+    let doc = sandbox.typed_lookup(&["--file", "prog.knv", "twice"]);
     assert!(doc.assert_exit_code(1).stderr().starts_with("error[L0404]"));
     assert_eq!(doc.stdout(), TWICE_PAGE);
 }
@@ -2230,27 +2222,27 @@ fn doc_types_prints_the_page_alone_when_its_own_definition_fails_to_type_check()
 #[test]
 fn doc_types_prints_the_type_of_an_imported_term() {
     let sandbox = Sandbox::new("doc_types_imported")
-        .with_file("lib/numbers.rslisp", NUMBERS)
-        .with_file("main.rslisp", NUMBERS_ENTRY);
+        .with_file("lib/numbers.knv", NUMBERS)
+        .with_file("main.knv", NUMBERS_ENTRY);
     assert_eq!(
-        sandbox.typed_page(&["--file", "main.rslisp", "twice"]),
+        sandbox.typed_page(&["--file", "main.knv", "twice"]),
         format!("{TWICE_TYPE}\n{TWICE_PAGE}")
     );
 }
 
 #[test]
 fn doc_types_prints_the_type_of_the_definition_that_shadows_a_prelude_name() {
-    let sandbox = Sandbox::new("doc_types_shadowing").with_file("main.rslisp", SHADOWING_SUM);
+    let sandbox = Sandbox::new("doc_types_shadowing").with_file("main.knv", SHADOWING_SUM);
     assert_eq!(
-        sandbox.typed_page(&["--file", "main.rslisp", "sum"]),
+        sandbox.typed_page(&["--file", "main.knv", "sum"]),
         "(type sum (fn (i64 i64) i64))\n(defn sum (left right))\n\nNo documentation.\n"
     );
 }
 
 #[test]
 fn doc_types_leaves_a_page_in_the_program_untyped() {
-    let sandbox = Sandbox::new("doc_types_in_program").with_file("prog.rslisp", PAGE_PROGRAM);
-    let expanded = sandbox.compiler(&["expand", "prog.rslisp"]);
+    let sandbox = Sandbox::new("doc_types_in_program").with_file("prog.knv", PAGE_PROGRAM);
+    let expanded = sandbox.compiler(&["expand", "prog.knv"]);
     assert!(
         expanded
             .assert_exit_code(0)
@@ -2258,7 +2250,7 @@ fn doc_types_leaves_a_page_in_the_program_untyped() {
             .contains(r#"(def page "(defn twice (x))\n\nDoubles a number.")"#)
     );
     assert_eq!(
-        sandbox.typed_page(&["--file", "prog.rslisp", "page"]),
+        sandbox.typed_page(&["--file", "prog.knv", "page"]),
         "(type page (ref str))\n(def page)\n\nNo documentation.\n"
     );
 }
@@ -2266,9 +2258,9 @@ fn doc_types_leaves_a_page_in_the_program_untyped() {
 #[test]
 fn emit_qualifies_a_struct_named_in_a_bound() {
     let sandbox = Sandbox::new("bound_import")
-        .with_file("bound.rslisp", BOUND_ENTRY)
-        .with_file("other/person.rslisp", BOUND_MODULE);
-    let emitted = sandbox.compiler(&["emit", "bound.rslisp"]);
+        .with_file("bound.knv", BOUND_ENTRY)
+        .with_file("other/person.knv", BOUND_MODULE);
+    let emitted = sandbox.compiler(&["emit", "bound.knv"]);
     let stdout = emitted.assert_exit_code(0).stdout();
     assert!(stdout.contains("std::ops::Add<crate::other::person::Person>"));
     assert!(stdout.contains("struct Person"));
@@ -2276,39 +2268,39 @@ fn emit_qualifies_a_struct_named_in_a_bound() {
 
 #[test]
 fn run_keeps_a_trait_method_vector_parameter_as_written() {
-    let sandbox = Sandbox::new("trait_vector").with_file("mileage.rslisp", TRAIT_SHARED_VECTOR);
-    let run = sandbox.compiler(&["run", "mileage.rslisp"]);
+    let sandbox = Sandbox::new("trait_vector").with_file("mileage.knv", TRAIT_SHARED_VECTOR);
+    let run = sandbox.compiler(&["run", "mileage.knv"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "1210\n");
 }
 
 #[test]
 fn a_failed_main_stops_without_a_panic_when_standard_error_is_a_dead_pipe() {
-    let sandbox = Sandbox::new("dead_pipe_main_error").with_file("failure.rslisp", FAILED_MAIN);
+    let sandbox = Sandbox::new("dead_pipe_main_error").with_file("failure.knv", FAILED_MAIN);
     sandbox
-        .compiler_with_a_closed_standard_error(&["run", "failure.rslisp"])
+        .compiler_with_a_closed_standard_error(&["run", "failure.knv"])
         .assert_no_panic();
 }
 
 #[test]
 fn eprintln_in_a_result_main_stops_without_a_panic_when_standard_error_is_a_dead_pipe() {
-    let sandbox = Sandbox::new("dead_pipe_eprintln").with_file("report.rslisp", REPORTING_MAIN);
+    let sandbox = Sandbox::new("dead_pipe_eprintln").with_file("report.knv", REPORTING_MAIN);
     sandbox
-        .compiler_with_a_closed_standard_error(&["run", "report.rslisp"])
+        .compiler_with_a_closed_standard_error(&["run", "report.knv"])
         .assert_no_panic();
 }
 
 #[test]
 fn eprintln_alone_stops_without_a_panic_when_standard_error_is_a_dead_pipe() {
-    let sandbox = Sandbox::new("dead_pipe_error_only").with_file("report.rslisp", ERROR_ONLY_MAIN);
+    let sandbox = Sandbox::new("dead_pipe_error_only").with_file("report.knv", ERROR_ONLY_MAIN);
     sandbox
-        .compiler_with_a_closed_standard_error(&["run", "report.rslisp"])
+        .compiler_with_a_closed_standard_error(&["run", "report.knv"])
         .assert_no_panic();
 }
 
 #[test]
 fn run_panics_with_the_printed_form_of_an_unwrapped_error() {
-    let sandbox = Sandbox::new("unwrapped_failure").with_file("failure.rslisp", UNWRAPPED_FAILURE);
-    let run = sandbox.compiler(&["run", "failure.rslisp"]);
+    let sandbox = Sandbox::new("unwrapped_failure").with_file("failure.knv", UNWRAPPED_FAILURE);
+    let run = sandbox.compiler(&["run", "failure.knv"]);
     assert!(
         run.assert_exit_code(101)
             .stderr()
@@ -2318,23 +2310,23 @@ fn run_panics_with_the_printed_form_of_an_unwrapped_error() {
 
 #[test]
 fn check_reports_errors_without_terminal_styling() {
-    let sandbox = Sandbox::new("check_errors").with_file("unbound.rslisp", UNBOUND_NAME);
-    let check = sandbox.compiler(&["check", "unbound.rslisp"]);
+    let sandbox = Sandbox::new("check_errors").with_file("unbound.knv", UNBOUND_NAME);
+    let check = sandbox.compiler(&["check", "unbound.knv"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
 #[test]
 fn check_caps_the_printed_diagnostics_and_counts_the_rest() {
     let sandbox =
-        Sandbox::new("check_capped").with_unbound_names("flood.rslisp", UNBOUND_NAMES_PAST_THE_CAP);
-    let check = sandbox.compiler(&["check", "flood.rslisp"]);
+        Sandbox::new("check_capped").with_unbound_names("flood.knv", UNBOUND_NAMES_PAST_THE_CAP);
+    let check = sandbox.compiler(&["check", "flood.knv"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
 #[test]
 fn expand_prints_kernel_forms() {
-    let sandbox = Sandbox::new("expand").with_file("greeting.rslisp", GREETING);
-    let expand = sandbox.compiler(&["expand", "greeting.rslisp"]);
+    let sandbox = Sandbox::new("expand").with_file("greeting.knv", GREETING);
+    let expand = sandbox.compiler(&["expand", "greeting.knv"]);
     assert_eq!(
         expand.assert_exit_code(0).stdout(),
         "(def main (fn () ((rust \"println!(\\\"hello from the sandbox\\\")\" (where () (fn () unit))))))\n"
@@ -2343,16 +2335,16 @@ fn expand_prints_kernel_forms() {
 
 #[test]
 fn emit_prints_the_generated_rust() {
-    let sandbox = Sandbox::new("emit").with_file("greeting.rslisp", GREETING);
-    let emit = sandbox.compiler(&["emit", "greeting.rslisp"]);
+    let sandbox = Sandbox::new("emit").with_file("greeting.knv", GREETING);
+    let emit = sandbox.compiler(&["emit", "greeting.knv"]);
     assert!(emit.assert_exit_code(0).stdout().contains("fn main() {"));
 }
 
 #[test]
 fn build_writes_the_program_under_the_build_directory() {
-    let sandbox = Sandbox::new("build_default").with_file("greeting.rslisp", GREETING);
+    let sandbox = Sandbox::new("build_default").with_file("greeting.knv", GREETING);
     sandbox
-        .compiler(&["build", "greeting.rslisp"])
+        .compiler(&["build", "greeting.knv"])
         .assert_exit_code(0);
     let greeting = sandbox.built_program(Sandbox::built_path("greeting/greeting"));
     assert_eq!(
@@ -2364,13 +2356,13 @@ fn build_writes_the_program_under_the_build_directory() {
 #[test]
 fn build_keeps_entries_with_the_same_stem_apart() {
     let sandbox = Sandbox::new("build_same_stem")
-        .with_file("a/program.rslisp", PRINTS_A)
-        .with_file("b/program.rslisp", PRINTS_B);
+        .with_file("a/program.knv", PRINTS_A)
+        .with_file("b/program.knv", PRINTS_B);
     sandbox
-        .compiler(&["build", "a/program.rslisp"])
+        .compiler(&["build", "a/program.knv"])
         .assert_exit_code(0);
     sandbox
-        .compiler(&["build", "b/program.rslisp"])
+        .compiler(&["build", "b/program.knv"])
         .assert_exit_code(0);
     let first = sandbox.built_program(Sandbox::built_path("a/program/program"));
     let second = sandbox.built_program(Sandbox::built_path("b/program/program"));
@@ -2381,10 +2373,10 @@ fn build_keeps_entries_with_the_same_stem_apart() {
 #[test]
 fn build_mirrors_an_entry_outside_the_working_directory() {
     let sandbox = Sandbox::new("build_outside")
-        .with_file("shared/program.rslisp", PRINTS_A)
+        .with_file("shared/program.knv", PRINTS_A)
         .with_file("work/empty", "");
     sandbox
-        .compiler_in("work", &["build", "../shared/program.rslisp"])
+        .compiler_in("work", &["build", "../shared/program.knv"])
         .assert_exit_code(0);
     let program =
         sandbox.built_program(sandbox.outside_build_path("work", "shared/program/program"));
@@ -2393,9 +2385,9 @@ fn build_mirrors_an_entry_outside_the_working_directory() {
 
 #[test]
 fn built_program_stops_quietly_when_its_reader_closes_stdout() {
-    let sandbox = Sandbox::new("closed_stdout").with_file("count.rslisp", MILLION_LINES);
+    let sandbox = Sandbox::new("closed_stdout").with_file("count.knv", MILLION_LINES);
     sandbox
-        .compiler(&["build", "count.rslisp"])
+        .compiler(&["build", "count.knv"])
         .assert_exit_code(0);
     let count = sandbox.built_program_read_for_one_line(Sandbox::built_path("count/count"));
     assert_eq!(count.assert_quiet_stop().stdout(), "0\n");
@@ -2403,10 +2395,8 @@ fn built_program_stops_quietly_when_its_reader_closes_stdout() {
 
 #[test]
 fn built_program_shows_a_prompt_before_it_reads_a_line() {
-    let sandbox = Sandbox::new("prompt_before_read").with_file("who.rslisp", PROMPT_THEN_READ_LINE);
-    sandbox
-        .compiler(&["build", "who.rslisp"])
-        .assert_exit_code(0);
+    let sandbox = Sandbox::new("prompt_before_read").with_file("who.knv", PROMPT_THEN_READ_LINE);
+    sandbox.compiler(&["build", "who.knv"]).assert_exit_code(0);
     let shown =
         sandbox.built_program_output_before_its_input(Sandbox::built_path("who/who"), "Ada\n");
     assert_eq!(shown, "who? ");
@@ -2414,10 +2404,8 @@ fn built_program_shows_a_prompt_before_it_reads_a_line() {
 
 #[test]
 fn built_program_shows_a_prompt_before_it_slurps_its_input() {
-    let sandbox = Sandbox::new("prompt_before_slurp").with_file("who.rslisp", PROMPT_THEN_SLURP);
-    sandbox
-        .compiler(&["build", "who.rslisp"])
-        .assert_exit_code(0);
+    let sandbox = Sandbox::new("prompt_before_slurp").with_file("who.knv", PROMPT_THEN_SLURP);
+    sandbox.compiler(&["build", "who.knv"]).assert_exit_code(0);
     let shown =
         sandbox.built_program_output_before_its_input(Sandbox::built_path("who/who"), "Ada\n");
     assert_eq!(shown, "who? ");
@@ -2426,10 +2414,8 @@ fn built_program_shows_a_prompt_before_it_slurps_its_input() {
 #[test]
 fn built_program_shows_a_prompt_before_it_slurps_any_source() {
     let sandbox =
-        Sandbox::new("prompt_before_source").with_file("who.rslisp", PROMPT_THEN_SLURP_ANY_SOURCE);
-    sandbox
-        .compiler(&["build", "who.rslisp"])
-        .assert_exit_code(0);
+        Sandbox::new("prompt_before_source").with_file("who.knv", PROMPT_THEN_SLURP_ANY_SOURCE);
+    sandbox.compiler(&["build", "who.knv"]).assert_exit_code(0);
     let shown =
         sandbox.built_program_output_before_its_input(Sandbox::built_path("who/who"), "Ada\n");
     assert_eq!(shown, "who? ");
@@ -2437,9 +2423,9 @@ fn built_program_shows_a_prompt_before_it_slurps_any_source() {
 
 #[test]
 fn built_program_ends_its_input_lines_after_a_failed_read() {
-    let sandbox = Sandbox::new("failed_read").with_file("lines.rslisp", COUNT_INPUT_LINES);
+    let sandbox = Sandbox::new("failed_read").with_file("lines.knv", COUNT_INPUT_LINES);
     sandbox
-        .compiler(&["build", "lines.rslisp"])
+        .compiler(&["build", "lines.knv"])
         .assert_exit_code(0);
     let lines = sandbox.built_program_reading_its_directory(Sandbox::built_path("lines/lines"));
     assert_eq!(lines.assert_exit_code(0).stdout(), "1\n");
@@ -2447,9 +2433,9 @@ fn built_program_ends_its_input_lines_after_a_failed_read() {
 
 #[test]
 fn build_writes_the_program_to_the_output_path() {
-    let sandbox = Sandbox::new("build_output").with_file("greeting.rslisp", GREETING);
+    let sandbox = Sandbox::new("build_output").with_file("greeting.knv", GREETING);
     sandbox
-        .compiler(&["build", "greeting.rslisp", "-o", "bin/hello"])
+        .compiler(&["build", "greeting.knv", "-o", "bin/hello"])
         .assert_exit_code(0);
     let greeting = sandbox.built_program("bin/hello");
     assert_eq!(
@@ -2460,8 +2446,8 @@ fn build_writes_the_program_to_the_output_path() {
 
 #[test]
 fn emit_without_rustfmt_prints_one_note_and_writes_unformatted_rust() {
-    let sandbox = Sandbox::new("emit_without_rustfmt").with_file("greeting.rslisp", GREETING);
-    let emit = sandbox.compiler_with_path("no-tools", &["emit", "greeting.rslisp"]);
+    let sandbox = Sandbox::new("emit_without_rustfmt").with_file("greeting.knv", GREETING);
+    let emit = sandbox.compiler_with_path("no-tools", &["emit", "greeting.knv"]);
     let emit = emit.assert_exit_code(0);
     assert!(emit.stdout().contains("fn main() {"));
     assert_eq!(emit.stderr().matches("note:").count(), 1);
@@ -2472,9 +2458,9 @@ fn emit_without_rustfmt_prints_one_note_and_writes_unformatted_rust() {
 #[test]
 fn emit_with_a_failing_rustfmt_prints_one_note_and_writes_unformatted_rust() {
     let sandbox = Sandbox::new("emit_failing_rustfmt")
-        .with_file("greeting.rslisp", GREETING)
+        .with_file("greeting.knv", GREETING)
         .with_executable("tools/rustfmt", FAILING_RUSTFMT);
-    let emit = sandbox.compiler_with_path("tools", &["emit", "greeting.rslisp"]);
+    let emit = sandbox.compiler_with_path("tools", &["emit", "greeting.knv"]);
     let emit = emit.assert_exit_code(0);
     assert!(emit.stdout().contains("fn main() {"));
     assert_eq!(emit.stderr().matches("note:").count(), 1);
@@ -2500,10 +2486,10 @@ impl NestedIfProgram {
 #[test]
 fn emit_stops_rustfmt_past_its_time_limit_and_writes_unformatted_rust() {
     let time_limit = Duration::from_millis(500);
-    let sandbox = Sandbox::new("emit_rustfmt_time_limit")
-        .with_file("nested.rslisp", &NestedIfProgram::source());
+    let sandbox =
+        Sandbox::new("emit_rustfmt_time_limit").with_file("nested.knv", &NestedIfProgram::source());
     let started = Instant::now();
-    let emit = sandbox.compiler_with_rustfmt_time_limit(time_limit, &["emit", "nested.rslisp"]);
+    let emit = sandbox.compiler_with_rustfmt_time_limit(time_limit, &["emit", "nested.knv"]);
     assert!(started.elapsed() < time_limit + Duration::from_secs(5));
     let emit = emit.assert_exit_code(0);
     assert_eq!(emit.stderr().matches("note:").count(), 1);
@@ -2522,8 +2508,8 @@ fn emit_stops_rustfmt_past_its_time_limit_and_writes_unformatted_rust() {
 #[test]
 fn emit_rejects_a_malformed_rustfmt_time_limit_as_a_usage_error() {
     let sandbox =
-        Sandbox::new("emit_malformed_rustfmt_time_limit").with_file("greeting.rslisp", GREETING);
-    let emit = sandbox.compiler_with_rustfmt_time_limit_value("soon", &["emit", "greeting.rslisp"]);
+        Sandbox::new("emit_malformed_rustfmt_time_limit").with_file("greeting.knv", GREETING);
+    let emit = sandbox.compiler_with_rustfmt_time_limit_value("soon", &["emit", "greeting.knv"]);
     let emit = emit.assert_exit_code(2);
     assert!(
         emit.stderr()
@@ -2535,8 +2521,8 @@ fn emit_rejects_a_malformed_rustfmt_time_limit_as_a_usage_error() {
 
 #[test]
 fn build_reports_rustc_errors_as_program_errors() {
-    let sandbox = Sandbox::new("build_rustc_error").with_file("sign.rslisp", RUSTC_SYNTAX_ERROR);
-    let build = sandbox.compiler(&["build", "sign.rslisp"]);
+    let sandbox = Sandbox::new("build_rustc_error").with_file("sign.knv", RUSTC_SYNTAX_ERROR);
+    let build = sandbox.compiler(&["build", "sign.knv"]);
     assert!(
         build
             .assert_exit_code(1)
@@ -2547,52 +2533,50 @@ fn build_reports_rustc_errors_as_program_errors() {
 
 #[test]
 fn run_prints_the_program_output() {
-    let sandbox = Sandbox::new("run").with_file("greeting.rslisp", GREETING);
-    let run = sandbox.compiler(&["run", "--release", "greeting.rslisp"]);
+    let sandbox = Sandbox::new("run").with_file("greeting.knv", GREETING);
+    let run = sandbox.compiler(&["run", "--release", "greeting.knv"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "hello from the sandbox\n");
 }
 
 #[test]
 fn run_passes_the_arguments_after_the_separator() {
-    let sandbox = Sandbox::new("run_arguments").with_file("echo.rslisp", ECHO);
-    let run = sandbox.compiler(&["run", "echo.rslisp", "--", "fake-argument"]);
+    let sandbox = Sandbox::new("run_arguments").with_file("echo.knv", ECHO);
+    let run = sandbox.compiler(&["run", "echo.knv", "--", "fake-argument"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "fake-argument\n");
 }
 
 #[test]
 fn run_exits_with_the_program_exit_code() {
-    let sandbox = Sandbox::new("run_exit_code").with_file("exit.rslisp", EXIT_THREE);
-    sandbox
-        .compiler(&["run", "exit.rslisp"])
-        .assert_exit_code(3);
+    let sandbox = Sandbox::new("run_exit_code").with_file("exit.knv", EXIT_THREE);
+    sandbox.compiler(&["run", "exit.knv"]).assert_exit_code(3);
 }
 
 #[test]
 fn run_dies_by_sigpipe_when_its_reader_closes() {
-    let sandbox = Sandbox::new("run_closed_pipe").with_file("lines.rslisp", THOUSAND_LINES);
-    let run = sandbox.compiler_writing_to_a_closed_pipe(&["run", "lines.rslisp"]);
+    let sandbox = Sandbox::new("run_closed_pipe").with_file("lines.knv", THOUSAND_LINES);
+    let run = sandbox.compiler_writing_to_a_closed_pipe(&["run", "lines.knv"]);
     assert_eq!(run.assert_killed_by(Outcome::SIGPIPE).stderr(), "");
 }
 
 #[test]
 fn run_dies_by_the_signal_that_kills_the_program() {
-    let sandbox = Sandbox::new("run_abort").with_file("abort.rslisp", ABORT);
-    let run = sandbox.compiler(&["run", "abort.rslisp"]);
+    let sandbox = Sandbox::new("run_abort").with_file("abort.knv", ABORT);
+    let run = sandbox.compiler(&["run", "abort.knv"]);
     assert_eq!(run.assert_killed_by(Outcome::SIGABRT).stderr(), "");
 }
 
 #[test]
 fn run_dies_by_the_program_signal_that_it_inherits_blocked() {
-    let sandbox = Sandbox::new("run_abort_blocked").with_file("abort.rslisp", ABORT);
+    let sandbox = Sandbox::new("run_abort_blocked").with_file("abort.knv", ABORT);
     sandbox
-        .compiler_blocking_sigabrt(&["run", "abort.rslisp"])
+        .compiler_blocking_sigabrt(&["run", "abort.knv"])
         .assert_killed_by(Outcome::SIGABRT);
 }
 
 #[test]
 fn run_prints_a_main_error_with_display_and_exits_one() {
-    let sandbox = Sandbox::new("run_main_error").with_file("main_error.rslisp", MAIN_ERROR);
-    let run = sandbox.compiler(&["run", "main_error.rslisp"]);
+    let sandbox = Sandbox::new("run_main_error").with_file("main_error.knv", MAIN_ERROR);
+    let run = sandbox.compiler(&["run", "main_error.knv"]);
     run.assert_exit_code(1);
     let stderr = run.stderr();
     assert!(
@@ -2604,10 +2588,10 @@ fn run_prints_a_main_error_with_display_and_exits_one() {
 
 #[test]
 fn every_command_reports_program_errors() {
-    let sandbox = Sandbox::new("program_errors").with_file("unbound.rslisp", UNBOUND_NAME);
+    let sandbox = Sandbox::new("program_errors").with_file("unbound.knv", UNBOUND_NAME);
     for command in ["expand", "emit", "build", "run"] {
         sandbox
-            .compiler(&[command, "unbound.rslisp"])
+            .compiler(&[command, "unbound.knv"])
             .assert_exit_code(1);
     }
 }
@@ -2615,9 +2599,9 @@ fn every_command_reports_program_errors() {
 #[test]
 fn build_without_rustc_is_a_usage_error() {
     let sandbox = Sandbox::new("build_without_rustc")
-        .with_file("greeting.rslisp", GREETING)
+        .with_file("greeting.knv", GREETING)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
-    let build = sandbox.compiler_with_path("tools", &["build", "greeting.rslisp"]);
+    let build = sandbox.compiler_with_path("tools", &["build", "greeting.knv"]);
     assert!(
         build
             .assert_exit_code(2)
@@ -2629,9 +2613,9 @@ fn build_without_rustc_is_a_usage_error() {
 #[test]
 fn build_cannot_write_under_a_file() {
     let sandbox = Sandbox::new("build_under_file")
-        .with_file("greeting.rslisp", GREETING)
+        .with_file("greeting.knv", GREETING)
         .with_file("blocker", "");
-    let build = sandbox.compiler(&["build", "greeting.rslisp", "-o", "blocker/program"]);
+    let build = sandbox.compiler(&["build", "greeting.knv", "-o", "blocker/program"]);
     assert!(
         build
             .assert_exit_code(2)
@@ -2643,20 +2627,20 @@ fn build_cannot_write_under_a_file() {
 #[test]
 fn build_reports_a_rustc_failure_without_diagnostics() {
     let sandbox = Sandbox::new("build_rustc_crash")
-        .with_file("greeting.rslisp", GREETING)
+        .with_file("greeting.knv", GREETING)
         .with_executable("tools/rustc", CRASHING_RUSTC)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
-    let build = sandbox.compiler_with_path("tools", &["build", "greeting.rslisp"]);
+    let build = sandbox.compiler_with_path("tools", &["build", "greeting.knv"]);
     insta::assert_snapshot!(build.assert_exit_code(1).stderr());
 }
 
 #[test]
 fn run_reports_a_program_that_cannot_start() {
     let sandbox = Sandbox::new("run_missing_program")
-        .with_file("greeting.rslisp", GREETING)
+        .with_file("greeting.knv", GREETING)
         .with_executable("tools/rustc", SILENT_RUSTC)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
-    let run = sandbox.compiler_with_path("tools", &["run", "greeting.rslisp"]);
+    let run = sandbox.compiler_with_path("tools", &["run", "greeting.knv"]);
     assert!(run.assert_exit_code(2).stderr().starts_with(&format!(
         "error: cannot run `{}`",
         Sandbox::built_path("greeting/greeting").display()
@@ -2665,8 +2649,8 @@ fn run_reports_a_program_that_cannot_start() {
 
 #[test]
 fn eval_prints_a_value_through_print_form() {
-    let sandbox = Sandbox::new("eval_value").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "session.rslisp", "(->point (square 2) 3)"]);
+    let sandbox = Sandbox::new("eval_value").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "session.knv", "(->point (square 2) 3)"]);
     assert_eq!(
         eval.assert_silent_success().stdout(),
         "(->point :x 4 :y 3)\n"
@@ -2675,17 +2659,17 @@ fn eval_prints_a_value_through_print_form() {
 
 #[test]
 fn eval_prints_nothing_for_a_unit_result() {
-    let sandbox = Sandbox::new("eval_unit").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "session.rslisp", "(println \"side \" (square 3))"]);
+    let sandbox = Sandbox::new("eval_unit").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "session.knv", "(println \"side \" (square 3))"]);
     assert_eq!(eval.assert_silent_success().stdout(), "side 9\n");
 }
 
 #[test]
 fn eval_runs_every_form_once_in_order_as_one_body() {
-    let sandbox = Sandbox::new("eval_body").with_file("session.rslisp", SESSION);
+    let sandbox = Sandbox::new("eval_body").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&[
         "eval",
-        "session.rslisp",
+        "session.knv",
         "(local x 5) (println \"x\") (* x 2) (main)",
     ]);
     assert_eq!(
@@ -2696,40 +2680,40 @@ fn eval_runs_every_form_once_in_order_as_one_body() {
 
 #[test]
 fn eval_notes_a_value_whose_type_does_not_implement_show() {
-    let sandbox = Sandbox::new("eval_no_show").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "session.rslisp", "(square 2) (fn ((x i64)) x)"]);
+    let sandbox = Sandbox::new("eval_no_show").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "session.knv", "(square 2) (fn ((x i64)) x)"]);
     insta::assert_snapshot!(eval.assert_exit_code(0).stderr());
     assert_eq!(eval.stdout(), "4\n");
 }
 
 #[test]
 fn eval_reports_an_open_type_on_the_form() {
-    let sandbox = Sandbox::new("eval_open_type").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "session.rslisp", "(println \"never\") none"]);
+    let sandbox = Sandbox::new("eval_open_type").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "session.knv", "(println \"never\") none"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
     assert_eq!(eval.stdout(), "");
 }
 
 #[test]
 fn eval_wraps_a_lone_open_form() {
-    let sandbox = Sandbox::new("eval_lone_open_form").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "session.rslisp", "(vec)"]);
+    let sandbox = Sandbox::new("eval_lone_open_form").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "session.knv", "(vec)"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
     assert_eq!(eval.stdout(), "");
 }
 
 #[test]
 fn eval_wraps_the_innermost_open_value_of_a_form() {
-    let sandbox = Sandbox::new("eval_inner_open_type").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "session.rslisp", "(some none)"]);
+    let sandbox = Sandbox::new("eval_inner_open_type").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "session.knv", "(some none)"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
     assert_eq!(eval.stdout(), "");
 }
 
 #[test]
 fn eval_reports_a_diagnostic_of_the_module_and_runs_nothing() {
-    let sandbox = Sandbox::new("eval_module_error").with_file("geometry.rslisp", AREA_OF_A_STRING);
-    let eval = sandbox.compiler(&["eval", "geometry.rslisp", "(println \"never\")"]);
+    let sandbox = Sandbox::new("eval_module_error").with_file("geometry.knv", AREA_OF_A_STRING);
+    let eval = sandbox.compiler(&["eval", "geometry.knv", "(println \"never\")"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
     assert_eq!(eval.stdout(), "");
 }
@@ -2737,14 +2721,14 @@ fn eval_reports_a_diagnostic_of_the_module_and_runs_nothing() {
 #[test]
 fn eval_reports_a_diagnostic_of_a_form_at_its_own_line() {
     let sandbox =
-        Sandbox::new("eval_form_error").with_file("geometry.rslisp", TOP_LEVEL_AREA_OF_A_STRING);
+        Sandbox::new("eval_form_error").with_file("geometry.knv", TOP_LEVEL_AREA_OF_A_STRING);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
         "2",
         "--column",
         "1",
-        "geometry.rslisp",
+        "geometry.knv",
         "(area 2 \"3\")",
     ]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
@@ -2752,15 +2736,15 @@ fn eval_reports_a_diagnostic_of_a_form_at_its_own_line() {
 
 #[test]
 fn eval_reports_a_diagnostic_inside_a_definition_once() {
-    let sandbox = Sandbox::new("eval_form_in_definition_error")
-        .with_file("geometry.rslisp", AREA_OF_A_STRING);
+    let sandbox =
+        Sandbox::new("eval_form_in_definition_error").with_file("geometry.knv", AREA_OF_A_STRING);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
         "2",
         "--column",
         "17",
-        "geometry.rslisp",
+        "geometry.knv",
         "(area 2 \"3\")",
     ]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
@@ -2768,14 +2752,14 @@ fn eval_reports_a_diagnostic_inside_a_definition_once() {
 
 #[test]
 fn eval_runs_a_top_level_form_that_the_module_check_leaves_out() {
-    let sandbox = Sandbox::new("eval_top_level").with_file("geometry.rslisp", EVALUATED_GEOMETRY);
+    let sandbox = Sandbox::new("eval_top_level").with_file("geometry.knv", EVALUATED_GEOMETRY);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
         "2",
         "--column",
         "1",
-        "geometry.rslisp",
+        "geometry.knv",
         "(area 2 3)",
     ]);
     assert_eq!(eval.assert_silent_success().stdout(), "6\n");
@@ -2783,15 +2767,14 @@ fn eval_runs_a_top_level_form_that_the_module_check_leaves_out() {
 
 #[test]
 fn eval_notes_a_definition_form_and_runs_nothing() {
-    let sandbox =
-        Sandbox::new("eval_definition").with_file("geometry.rslisp", GEOMETRY_DEFINITIONS);
+    let sandbox = Sandbox::new("eval_definition").with_file("geometry.knv", GEOMETRY_DEFINITIONS);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
         "1",
         "--column",
         "1",
-        "geometry.rslisp",
+        "geometry.knv",
         "(defn area (w h) (* w h))",
     ]);
     insta::assert_snapshot!(eval.assert_exit_code(0).stderr());
@@ -2801,14 +2784,14 @@ fn eval_notes_a_definition_form_and_runs_nothing() {
 #[test]
 fn eval_notes_a_definition_inside_a_top_level_do() {
     let sandbox =
-        Sandbox::new("eval_definition_in_do").with_file("geometry.rslisp", GEOMETRY_DEFINITIONS);
+        Sandbox::new("eval_definition_in_do").with_file("geometry.knv", GEOMETRY_DEFINITIONS);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
         "4",
         "--column",
         "5",
-        "geometry.rslisp",
+        "geometry.knv",
         "(defn twice (n) (* 2 n))",
     ]);
     insta::assert_snapshot!(eval.assert_exit_code(0).stderr());
@@ -2816,14 +2799,14 @@ fn eval_notes_a_definition_inside_a_top_level_do() {
 
 #[test]
 fn eval_runs_a_form_inside_a_definition() {
-    let sandbox = Sandbox::new("eval_inside").with_file("geometry.rslisp", GEOMETRY_DEFINITIONS);
+    let sandbox = Sandbox::new("eval_inside").with_file("geometry.knv", GEOMETRY_DEFINITIONS);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
         "3",
         "--column",
         "12",
-        "geometry.rslisp",
+        "geometry.knv",
         "(area 4 5)",
     ]);
     assert_eq!(eval.assert_silent_success().stdout(), "20\n");
@@ -2831,26 +2814,26 @@ fn eval_runs_a_form_inside_a_definition() {
 
 #[test]
 fn eval_rejects_forms_that_are_not_the_text_at_their_position() {
-    let sandbox = Sandbox::new("eval_misplaced").with_file("geometry.rslisp", EVALUATED_GEOMETRY);
+    let sandbox = Sandbox::new("eval_misplaced").with_file("geometry.knv", EVALUATED_GEOMETRY);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
         "2",
         "--column",
         "2",
-        "geometry.rslisp",
+        "geometry.knv",
         "(area 2 3)",
     ]);
     assert_eq!(
         eval.assert_exit_code(2).stderr(),
-        "error: the forms are not the text of `geometry.rslisp` at 2:2\n"
+        "error: the forms are not the text of `geometry.knv` at 2:2\n"
     );
 }
 
 #[test]
 fn eval_rejects_a_line_without_a_column() {
-    let sandbox = Sandbox::new("eval_line_only").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "--line", "2", "session.rslisp", "1"]);
+    let sandbox = Sandbox::new("eval_line_only").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "--line", "2", "session.knv", "1"]);
     assert!(
         eval.assert_exit_code(2)
             .stderr()
@@ -2861,34 +2844,31 @@ fn eval_rejects_a_line_without_a_column() {
 #[test]
 fn eval_reads_the_module_from_standard_input() {
     let sandbox = Sandbox::new("eval_stdin");
-    let eval = sandbox.compiler_reading(
-        SESSION,
-        &["eval", "--stdin", "unsaved.rslisp", "(square 7)"],
-    );
+    let eval = sandbox.compiler_reading(SESSION, &["eval", "--stdin", "unsaved.knv", "(square 7)"]);
     assert_eq!(eval.assert_silent_success().stdout(), "49\n");
 }
 
 #[test]
 fn eval_resolves_use_from_the_root() {
     let sandbox = Sandbox::new("eval_root")
-        .with_file("shapes.rslisp", SHAPES)
-        .with_file("src/user.rslisp", SHAPES_USER);
-    let eval = sandbox.compiler(&["eval", "--root", ".", "src/user.rslisp", "(circle 2)"]);
+        .with_file("shapes.knv", SHAPES)
+        .with_file("src/user.knv", SHAPES_USER);
+    let eval = sandbox.compiler(&["eval", "--root", ".", "src/user.knv", "(circle 2)"]);
     assert_eq!(eval.assert_silent_success().stdout(), "12\n");
 }
 
 #[test]
 fn eval_exits_with_the_program_exit_code() {
-    let sandbox = Sandbox::new("eval_exit").with_file("exits.rslisp", EXITS);
+    let sandbox = Sandbox::new("eval_exit").with_file("exits.knv", EXITS);
     sandbox
-        .compiler(&["eval", "exits.rslisp", "(exit 3)"])
+        .compiler(&["eval", "exits.knv", "(exit 3)"])
         .assert_exit_code(3);
 }
 
 #[test]
 fn eval_exits_with_the_code_of_a_panic() {
-    let sandbox = Sandbox::new("eval_panic").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "session.rslisp", "(at (vec 1) 5)"]);
+    let sandbox = Sandbox::new("eval_panic").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "session.knv", "(at (vec 1) 5)"]);
     assert!(
         eval.assert_exit_code(101)
             .stderr()
@@ -2898,58 +2878,58 @@ fn eval_exits_with_the_code_of_a_panic() {
 
 #[test]
 fn eval_dies_by_the_signal_that_kills_the_program() {
-    let sandbox = Sandbox::new("eval_signal").with_file("exits.rslisp", EXITS);
+    let sandbox = Sandbox::new("eval_signal").with_file("exits.knv", EXITS);
     sandbox
-        .compiler(&["eval", "exits.rslisp", "(abort)"])
+        .compiler(&["eval", "exits.knv", "(abort)"])
         .assert_killed_by(Outcome::SIGABRT);
 }
 
 #[test]
 fn eval_dies_by_sigpipe_when_its_output_closes() {
-    let sandbox = Sandbox::new("eval_closed_output").with_file("session.rslisp", SESSION);
+    let sandbox = Sandbox::new("eval_closed_output").with_file("session.knv", SESSION);
     let forms = "(for-each (range 0 1000000) (fn (i) (println i)))";
     sandbox
-        .compiler_writing_to_a_closed_pipe(&["eval", "session.rslisp", forms])
+        .compiler_writing_to_a_closed_pipe(&["eval", "session.knv", forms])
         .assert_killed_by(Outcome::SIGPIPE);
 }
 
 #[test]
 fn eval_leaves_no_build_directory_beside_the_module() {
-    let sandbox = Sandbox::new("eval_no_target").with_file("session.rslisp", SESSION);
+    let sandbox = Sandbox::new("eval_no_target").with_file("session.knv", SESSION);
     sandbox
-        .compiler(&["eval", "session.rslisp", "(square 2)"])
+        .compiler(&["eval", "session.knv", "(square 2)"])
         .assert_exit_code(0);
     assert!(!sandbox.directory.join("target").exists());
 }
 
 #[test]
 fn eval_prints_a_warning_of_the_module_once_beside_a_warning_of_a_form() {
-    let sandbox = Sandbox::new("eval_warnings").with_file("pick.rslisp", UNREACHABLE_ARM);
-    let eval = sandbox.compiler(&["eval", "pick.rslisp", "(match 3 (_ 1) (_ 2))"]);
+    let sandbox = Sandbox::new("eval_warnings").with_file("pick.knv", UNREACHABLE_ARM);
+    let eval = sandbox.compiler(&["eval", "pick.knv", "(match 3 (_ 1) (_ 2))"]);
     let stderr = eval.assert_exit_code(0).stderr();
-    assert_eq!(stderr.matches("--> pick.rslisp").count(), 1, "{stderr}");
+    assert_eq!(stderr.matches("--> pick.knv").count(), 1, "{stderr}");
     assert_eq!(stderr.matches("--> <eval>").count(), 1, "{stderr}");
     assert_eq!(eval.stdout(), "1\n");
 }
 
 #[test]
 fn eval_prints_a_borrowed_value() {
-    let sandbox = Sandbox::new("eval_borrowed").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "session.rslisp", "(as-str (str \"ab\"))"]);
+    let sandbox = Sandbox::new("eval_borrowed").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "session.knv", "(as-str (str \"ab\"))"]);
     assert_eq!(eval.assert_silent_success().stdout(), "\"ab\"\n");
 }
 
 #[test]
 fn eval_notes_a_top_level_do_of_definitions() {
     let sandbox =
-        Sandbox::new("eval_do_of_definitions").with_file("geometry.rslisp", GEOMETRY_DEFINITIONS);
+        Sandbox::new("eval_do_of_definitions").with_file("geometry.knv", GEOMETRY_DEFINITIONS);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
         "4",
         "--column",
         "1",
-        "geometry.rslisp",
+        "geometry.knv",
         "(do (defn twice (n) (* 2 n)))",
     ]);
     insta::assert_snapshot!(eval.assert_exit_code(0).stderr());
@@ -2957,15 +2937,15 @@ fn eval_notes_a_top_level_do_of_definitions() {
 
 #[test]
 fn eval_runs_a_top_level_do_of_expressions() {
-    let sandbox = Sandbox::new("eval_do_of_expressions")
-        .with_file("square.rslisp", TOP_LEVEL_DO_OF_EXPRESSIONS);
+    let sandbox =
+        Sandbox::new("eval_do_of_expressions").with_file("square.knv", TOP_LEVEL_DO_OF_EXPRESSIONS);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
         "2",
         "--column",
         "1",
-        "square.rslisp",
+        "square.knv",
         "(do (prn (square 3)))",
     ]);
     assert_eq!(eval.assert_silent_success().stdout(), "9\n");
@@ -2973,9 +2953,9 @@ fn eval_runs_a_top_level_do_of_expressions() {
 
 #[test]
 fn eval_prints_a_warning_of_the_module_once_beside_a_failing_form() {
-    let sandbox = Sandbox::new("eval_warning_beside_error")
-        .with_file("pick.rslisp", UNREACHABLE_ARM_IN_A_BODY);
-    let eval = sandbox.compiler(&["eval", "pick.rslisp", "(square \"a\")"]);
+    let sandbox =
+        Sandbox::new("eval_warning_beside_error").with_file("pick.knv", UNREACHABLE_ARM_IN_A_BODY);
+    let eval = sandbox.compiler(&["eval", "pick.knv", "(square \"a\")"]);
     let stderr = eval.assert_exit_code(1).stderr();
     assert_eq!(
         stderr.matches("unreachable `match` arm").count(),
@@ -2987,14 +2967,14 @@ fn eval_prints_a_warning_of_the_module_once_beside_a_failing_form() {
 #[test]
 fn eval_prints_a_warning_of_a_form_inside_a_definition_once() {
     let sandbox =
-        Sandbox::new("eval_warning_inside").with_file("pick.rslisp", UNREACHABLE_ARM_IN_A_BODY);
+        Sandbox::new("eval_warning_inside").with_file("pick.knv", UNREACHABLE_ARM_IN_A_BODY);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
         "3",
         "--column",
         "3",
-        "pick.rslisp",
+        "pick.knv",
         "(match 3 (_ 1) (_ 2))",
     ]);
     let stderr = eval.assert_exit_code(0).stderr();
@@ -3008,21 +2988,21 @@ fn eval_prints_a_warning_of_a_form_inside_a_definition_once() {
 
 #[test]
 fn eval_prints_a_value_behind_a_mutable_borrow() {
-    let sandbox = Sandbox::new("eval_mutable").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "session.rslisp", "(local v (vec 1)) (mut v)"]);
+    let sandbox = Sandbox::new("eval_mutable").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "session.knv", "(local v (vec 1)) (mut v)"]);
     assert_eq!(eval.assert_silent_success().stdout(), "(vec 1)\n");
 }
 
 #[test]
 fn eval_reports_an_expression_beside_a_definition_in_a_top_level_do() {
-    let sandbox = Sandbox::new("eval_mixed_do").with_file("mixed.rslisp", MIXED_TOP_LEVEL_DO);
+    let sandbox = Sandbox::new("eval_mixed_do").with_file("mixed.knv", MIXED_TOP_LEVEL_DO);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
         "2",
         "--column",
         "1",
-        "mixed.rslisp",
+        "mixed.knv",
         "(do (defn cube (n) (* n (square n))) (prn 7))",
     ]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
@@ -3031,19 +3011,19 @@ fn eval_reports_an_expression_beside_a_definition_in_a_top_level_do() {
 
 #[test]
 fn eval_prints_a_warning_of_a_form_at_the_range_of_a_module_warning() {
-    let sandbox = Sandbox::new("eval_warning_same_range").with_file("pick.rslisp", UNREACHABLE_ARM);
+    let sandbox = Sandbox::new("eval_warning_same_range").with_file("pick.knv", UNREACHABLE_ARM);
     let indented = format!("{}(match 3 (_ 1) (_ 2))", " ".repeat(15));
-    let eval = sandbox.compiler(&["eval", "pick.rslisp", &indented]);
+    let eval = sandbox.compiler(&["eval", "pick.knv", &indented]);
     let stderr = eval.assert_exit_code(0).stderr();
-    assert_eq!(stderr.matches("--> pick.rslisp").count(), 1, "{stderr}");
+    assert_eq!(stderr.matches("--> pick.knv").count(), 1, "{stderr}");
     assert_eq!(stderr.matches("--> <eval>").count(), 1, "{stderr}");
 }
 
 #[test]
 fn eval_json_streams_output_and_values_in_order() {
-    let sandbox = Sandbox::new("eval_json_streams").with_file("session.rslisp", SESSION);
+    let sandbox = Sandbox::new("eval_json_streams").with_file("session.knv", SESSION);
     let forms = "(do (print \"x\") 6) (println \"hi\") (square 3)";
-    let eval = sandbox.compiler(&["eval", "--json", "session.rslisp", forms]);
+    let eval = sandbox.compiler(&["eval", "--json", "session.knv", forms]);
     assert_eq!(
         eval.assert_silent_success().json_replies(),
         [
@@ -3058,13 +3038,13 @@ fn eval_json_streams_output_and_values_in_order() {
 
 #[test]
 fn eval_json_echoes_the_id_on_every_object() {
-    let sandbox = Sandbox::new("eval_json_id").with_file("session.rslisp", SESSION);
+    let sandbox = Sandbox::new("eval_json_id").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&[
         "eval",
         "--json",
         "--id",
         "7",
-        "session.rslisp",
+        "session.knv",
         "(println \"a\") (square 2)",
     ]);
     let replies = eval.assert_silent_success().json_replies();
@@ -3077,8 +3057,7 @@ fn eval_json_echoes_the_id_on_every_object() {
 
 #[test]
 fn eval_json_numbers_a_value_by_its_form_among_definitions() {
-    let sandbox =
-        Sandbox::new("eval_json_numbers").with_file("geometry.rslisp", EVALUATED_GEOMETRY);
+    let sandbox = Sandbox::new("eval_json_numbers").with_file("geometry.knv", EVALUATED_GEOMETRY);
     let eval = sandbox.compiler(&[
         "eval",
         "--json",
@@ -3086,7 +3065,7 @@ fn eval_json_numbers_a_value_by_its_form_among_definitions() {
         "1",
         "--column",
         "1",
-        "geometry.rslisp",
+        "geometry.knv",
         "(defn area (w h) (* w h))\n(area 2 3)",
     ]);
     let replies = eval.assert_exit_code(0).json_replies();
@@ -3095,7 +3074,7 @@ fn eval_json_numbers_a_value_by_its_form_among_definitions() {
 
 #[test]
 fn eval_json_prints_nothing_for_a_comment_form() {
-    let sandbox = Sandbox::new("eval_json_comment").with_file("scratch.rslisp", SCRATCH);
+    let sandbox = Sandbox::new("eval_json_comment").with_file("scratch.knv", SCRATCH);
     let eval = sandbox.compiler(&[
         "eval",
         "--json",
@@ -3103,7 +3082,7 @@ fn eval_json_prints_nothing_for_a_comment_form() {
         "3",
         "--column",
         "1",
-        "scratch.rslisp",
+        "scratch.knv",
         "(comment (f 1) (exit 3))",
     ]);
     assert_eq!(
@@ -3114,7 +3093,7 @@ fn eval_json_prints_nothing_for_a_comment_form() {
 
 #[test]
 fn eval_json_runs_a_form_sent_from_inside_a_comment() {
-    let sandbox = Sandbox::new("eval_json_inside_comment").with_file("scratch.rslisp", SCRATCH);
+    let sandbox = Sandbox::new("eval_json_inside_comment").with_file("scratch.knv", SCRATCH);
     let eval = sandbox.compiler(&[
         "eval",
         "--json",
@@ -3122,7 +3101,7 @@ fn eval_json_runs_a_form_sent_from_inside_a_comment() {
         "3",
         "--column",
         "10",
-        "scratch.rslisp",
+        "scratch.knv",
         "(f 1)",
     ]);
     assert_eq!(
@@ -3136,9 +3115,9 @@ fn eval_json_runs_a_form_sent_from_inside_a_comment() {
 
 #[test]
 fn eval_json_prints_a_value_that_borrows_a_temporary() {
-    let sandbox = Sandbox::new("eval_json_temporary").with_file("session.rslisp", SESSION);
+    let sandbox = Sandbox::new("eval_json_temporary").with_file("session.knv", SESSION);
     let forms = "(trim (as-str (str \" a\" \"b \")))";
-    let eval = sandbox.compiler(&["eval", "--json", "session.rslisp", forms]);
+    let eval = sandbox.compiler(&["eval", "--json", "session.knv", forms]);
     assert_eq!(
         eval.assert_silent_success().json_replies()[0],
         json!({"value": "\"ab\"", "form": 1})
@@ -3147,8 +3126,8 @@ fn eval_json_prints_a_value_that_borrows_a_temporary() {
 
 #[test]
 fn eval_json_carries_an_inferred_type_as_a_string_value() {
-    let sandbox = Sandbox::new("eval_json_infer").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "--json", "session.rslisp", "(infer (vec 1 2))"]);
+    let sandbox = Sandbox::new("eval_json_infer").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "--json", "session.knv", "(infer (vec 1 2))"]);
     assert_eq!(
         eval.assert_silent_success().json_replies()[0],
         json!({"value": "\"(vec i64)\"", "form": 1})
@@ -3157,8 +3136,8 @@ fn eval_json_carries_an_inferred_type_as_a_string_value() {
 
 #[test]
 fn eval_json_streams_a_doc_page_as_out() {
-    let sandbox = Sandbox::new("eval_json_doc").with_file("page.rslisp", PAGE_PROGRAM);
-    let eval = sandbox.compiler(&["eval", "--json", "page.rslisp", "(doc twice)"]);
+    let sandbox = Sandbox::new("eval_json_doc").with_file("page.knv", PAGE_PROGRAM);
+    let eval = sandbox.compiler(&["eval", "--json", "page.knv", "(doc twice)"]);
     assert_eq!(
         eval.assert_silent_success().json_replies(),
         [
@@ -3170,8 +3149,8 @@ fn eval_json_streams_a_doc_page_as_out() {
 
 #[test]
 fn eval_json_streams_standard_error_as_err() {
-    let sandbox = Sandbox::new("eval_json_err").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "--json", "session.rslisp", "(eprintln \"oops\")"]);
+    let sandbox = Sandbox::new("eval_json_err").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "--json", "session.knv", "(eprintln \"oops\")"]);
     assert_eq!(
         eval.assert_silent_success().json_replies(),
         [
@@ -3183,8 +3162,8 @@ fn eval_json_streams_standard_error_as_err() {
 
 #[test]
 fn eval_json_reports_a_note_as_a_diagnostic_without_a_code() {
-    let sandbox = Sandbox::new("eval_json_note").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "--json", "session.rslisp", "(fn ((x i64)) x)"]);
+    let sandbox = Sandbox::new("eval_json_note").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "--json", "session.knv", "(fn ((x i64)) x)"]);
     let replies = eval.assert_silent_success().json_replies();
     let note = &replies[0]["diagnostics"][0];
     assert_eq!(note["severity"], "note");
@@ -3209,7 +3188,7 @@ fn eval_json_reports_a_note_as_a_diagnostic_without_a_code() {
 #[test]
 fn eval_json_places_an_error_in_the_module_text_in_bytes() {
     let sandbox = Sandbox::new("eval_json_error").with_file(
-        "geometry.rslisp",
+        "geometry.knv",
         "(defn area (w h) (* w h))\n(do \"☃\" (area 2 \"3\"))\n",
     );
     let eval = sandbox.compiler(&[
@@ -3219,14 +3198,14 @@ fn eval_json_places_an_error_in_the_module_text_in_bytes() {
         "2",
         "--column",
         "1",
-        "geometry.rslisp",
+        "geometry.knv",
         "(do \"☃\" (area 2 \"3\"))",
     ]);
     let replies = eval.assert_exit_code(1).json_replies();
     let error = &replies[0]["diagnostics"][0];
     assert_eq!(
         (&error["severity"], &error["code"], &error["file"]),
-        (&json!("error"), &json!("L0401"), &json!("geometry.rslisp"))
+        (&json!("error"), &json!("L0401"), &json!("geometry.knv"))
     );
     assert_eq!(
         (
@@ -3238,7 +3217,7 @@ fn eval_json_places_an_error_in_the_module_text_in_bytes() {
         (&json!(2), &json!(19), &json!(2), &json!(22))
     );
     assert!(eval.stdout().starts_with(
-        r#"{"diagnostics":[{"severity":"error","code":"L0401","message":"mismatched types","file":"geometry.rslisp","line":2,"column":19,"end_line":2,"end_column":22,"rendered":"#
+        r#"{"diagnostics":[{"severity":"error","code":"L0401","message":"mismatched types","file":"geometry.knv","line":2,"column":19,"end_line":2,"end_column":22,"rendered":"#
     ));
     assert_eq!(replies[1], json!({"status": "done", "exit": 1}));
 }
@@ -3246,8 +3225,8 @@ fn eval_json_places_an_error_in_the_module_text_in_bytes() {
 #[test]
 fn eval_json_reports_a_diagnostic_of_the_module_and_runs_nothing() {
     let sandbox =
-        Sandbox::new("eval_json_module_error").with_file("geometry.rslisp", AREA_OF_A_STRING);
-    let eval = sandbox.compiler(&["eval", "--json", "geometry.rslisp", "(println \"never\")"]);
+        Sandbox::new("eval_json_module_error").with_file("geometry.knv", AREA_OF_A_STRING);
+    let eval = sandbox.compiler(&["eval", "--json", "geometry.knv", "(println \"never\")"]);
     let replies = eval.assert_exit_code(1).json_replies();
     assert_eq!(replies.len(), 2, "{replies:?}");
     assert_eq!(replies[0]["diagnostics"][0]["code"], "L0401");
@@ -3257,8 +3236,8 @@ fn eval_json_reports_a_diagnostic_of_the_module_and_runs_nothing() {
 
 #[test]
 fn eval_json_ends_with_the_exit_code_of_the_program() {
-    let sandbox = Sandbox::new("eval_json_exit").with_file("exits.rslisp", EXITS);
-    let eval = sandbox.compiler(&["eval", "--json", "exits.rslisp", "(exit 3)"]);
+    let sandbox = Sandbox::new("eval_json_exit").with_file("exits.knv", EXITS);
+    let eval = sandbox.compiler(&["eval", "--json", "exits.knv", "(exit 3)"]);
     assert_eq!(
         eval.assert_exit_code(3).json_replies(),
         [json!({"status": "done", "exit": 3})]
@@ -3267,8 +3246,8 @@ fn eval_json_ends_with_the_exit_code_of_the_program() {
 
 #[test]
 fn eval_json_ends_with_128_plus_the_signal_then_dies_by_it() {
-    let sandbox = Sandbox::new("eval_json_signal").with_file("exits.rslisp", EXITS);
-    let eval = sandbox.compiler(&["eval", "--json", "exits.rslisp", "(abort)"]);
+    let sandbox = Sandbox::new("eval_json_signal").with_file("exits.knv", EXITS);
+    let eval = sandbox.compiler(&["eval", "--json", "exits.knv", "(abort)"]);
     assert_eq!(
         eval.assert_killed_by(Outcome::SIGABRT).json_replies(),
         [json!({"status": "done", "exit": 134})]
@@ -3277,17 +3256,16 @@ fn eval_json_ends_with_128_plus_the_signal_then_dies_by_it() {
 
 #[test]
 fn eval_json_dies_by_sigpipe_when_its_output_closes() {
-    let sandbox = Sandbox::new("eval_json_closed_output").with_file("session.rslisp", SESSION);
+    let sandbox = Sandbox::new("eval_json_closed_output").with_file("session.knv", SESSION);
     let forms = "(for-each (range 0 1000000) (fn (i) (println i)))";
     sandbox
-        .compiler_writing_to_a_closed_pipe(&["eval", "--json", "session.rslisp", forms])
+        .compiler_writing_to_a_closed_pipe(&["eval", "--json", "session.knv", forms])
         .assert_killed_by(Outcome::SIGPIPE);
 }
 
 #[test]
 fn eval_json_writes_no_json_for_misplaced_forms() {
-    let sandbox =
-        Sandbox::new("eval_json_misplaced").with_file("geometry.rslisp", EVALUATED_GEOMETRY);
+    let sandbox = Sandbox::new("eval_json_misplaced").with_file("geometry.knv", EVALUATED_GEOMETRY);
     let eval = sandbox.compiler(&[
         "eval",
         "--json",
@@ -3295,7 +3273,7 @@ fn eval_json_writes_no_json_for_misplaced_forms() {
         "9",
         "--column",
         "1",
-        "geometry.rslisp",
+        "geometry.knv",
         "(area 2 3)",
     ]);
     assert_eq!(eval.assert_exit_code(2).stdout(), "");
@@ -3308,25 +3286,25 @@ fn eval_json_writes_no_json_for_misplaced_forms() {
 #[test]
 fn eval_json_writes_no_json_for_a_missing_module() {
     let sandbox = Sandbox::new("eval_json_missing");
-    let eval = sandbox.compiler(&["eval", "--json", "missing.rslisp", "1"]);
+    let eval = sandbox.compiler(&["eval", "--json", "missing.knv", "1"]);
     assert_eq!(eval.assert_exit_code(2).stdout(), "");
     assert!(
         eval.stderr()
-            .starts_with("error: cannot read `missing.rslisp`")
+            .starts_with("error: cannot read `missing.knv`")
     );
 }
 
 #[test]
 fn eval_rejects_an_id_without_json() {
-    let sandbox = Sandbox::new("eval_id_without_json").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "--id", "7", "session.rslisp", "1"]);
+    let sandbox = Sandbox::new("eval_id_without_json").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "--id", "7", "session.knv", "1"]);
     assert_eq!(eval.assert_exit_code(2).stdout(), "");
 }
 
 #[test]
 fn eval_json_prints_a_value_beside_a_module_println() {
-    let sandbox = Sandbox::new("eval_json_shadowed").with_file("square.rslisp", SHADOWED_PRINTLN);
-    let eval = sandbox.compiler(&["eval", "--json", "square.rslisp", "(square 2)"]);
+    let sandbox = Sandbox::new("eval_json_shadowed").with_file("square.knv", SHADOWED_PRINTLN);
+    let eval = sandbox.compiler(&["eval", "--json", "square.knv", "(square 2)"]);
     assert_eq!(
         eval.assert_silent_success().json_replies()[0],
         json!({"value": "4", "form": 1})
@@ -3335,8 +3313,8 @@ fn eval_json_prints_a_value_beside_a_module_println() {
 
 #[test]
 fn eval_json_reports_a_warning_with_its_severity_and_code() {
-    let sandbox = Sandbox::new("eval_json_warning").with_file("pick.rslisp", UNREACHABLE_ARM);
-    let eval = sandbox.compiler(&["eval", "--json", "pick.rslisp", "(do)"]);
+    let sandbox = Sandbox::new("eval_json_warning").with_file("pick.knv", UNREACHABLE_ARM);
+    let eval = sandbox.compiler(&["eval", "--json", "pick.knv", "(do)"]);
     let replies = eval.assert_silent_success().json_replies();
     let warning = &replies[0]["diagnostics"][0];
     assert_eq!(warning["severity"], "warning");
@@ -3345,19 +3323,19 @@ fn eval_json_reports_a_warning_with_its_severity_and_code() {
 
 #[test]
 fn eval_json_stops_a_program_whose_output_closes() {
-    let sandbox = Sandbox::new("eval_json_closed_count").with_file("count.rslisp", COUNT_THEN_FAIL);
+    let sandbox = Sandbox::new("eval_json_closed_count").with_file("count.knv", COUNT_THEN_FAIL);
     sandbox
-        .compiler_writing_to_a_closed_pipe(&["eval", "--json", "count.rslisp", "(count-up 0)"])
+        .compiler_writing_to_a_closed_pipe(&["eval", "--json", "count.knv", "(count-up 0)"])
         .assert_killed_by(Outcome::SIGPIPE);
 }
 
 #[test]
 fn eval_json_ends_with_status_2_for_a_program_that_cannot_start() {
     let sandbox = Sandbox::new("eval_json_missing_program")
-        .with_file("session.rslisp", SESSION)
+        .with_file("session.knv", SESSION)
         .with_executable("tools/rustc", SILENT_RUSTC)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
-    let eval = sandbox.compiler_with_path("tools", &["eval", "--json", "session.rslisp", "1"]);
+    let eval = sandbox.compiler_with_path("tools", &["eval", "--json", "session.knv", "1"]);
     assert_eq!(
         eval.assert_exit_code(2).json_replies(),
         [json!({"status": "done", "exit": 2})]
@@ -3368,9 +3346,9 @@ fn eval_json_ends_with_status_2_for_a_program_that_cannot_start() {
 #[test]
 fn eval_json_ends_with_status_2_without_rustc() {
     let sandbox = Sandbox::new("eval_json_missing_rustc")
-        .with_file("pick.rslisp", UNREACHABLE_ARM)
+        .with_file("pick.knv", UNREACHABLE_ARM)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
-    let eval = sandbox.compiler_with_path("tools", &["eval", "--json", "pick.rslisp", "(pick 1)"]);
+    let eval = sandbox.compiler_with_path("tools", &["eval", "--json", "pick.knv", "(pick 1)"]);
     let replies = eval.assert_exit_code(2).json_replies();
     assert_eq!(replies[0]["diagnostics"][0]["severity"], "warning");
     assert_eq!(replies[1], json!({"status": "done", "exit": 2}));
@@ -3378,9 +3356,9 @@ fn eval_json_ends_with_status_2_without_rustc() {
 
 #[test]
 fn eval_json_ends_with_status_2_without_a_build_directory() {
-    let sandbox = Sandbox::new("eval_json_no_temporary").with_file("session.rslisp", SESSION);
+    let sandbox = Sandbox::new("eval_json_no_temporary").with_file("session.knv", SESSION);
     let eval = sandbox
-        .compiler_with_temporary_directory("missing", &["eval", "--json", "session.rslisp", "1"]);
+        .compiler_with_temporary_directory("missing", &["eval", "--json", "session.knv", "1"]);
     assert_eq!(
         eval.assert_exit_code(2).json_replies(),
         [json!({"status": "done", "exit": 2})]
@@ -3393,11 +3371,11 @@ fn eval_json_ends_with_status_2_without_a_build_directory() {
 
 #[test]
 fn eval_json_prints_values_of_two_types_in_one_call() {
-    let sandbox = Sandbox::new("eval_json_two_types").with_file("session.rslisp", SESSION);
+    let sandbox = Sandbox::new("eval_json_two_types").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&[
         "eval",
         "--json",
-        "session.rslisp",
+        "session.knv",
         "(square 3) (->point :x 4 :y 3)",
     ]);
     assert_eq!(
@@ -3412,8 +3390,8 @@ fn eval_json_prints_values_of_two_types_in_one_call() {
 
 #[test]
 fn eval_json_reports_a_reader_error_in_the_forms() {
-    let sandbox = Sandbox::new("eval_json_reader_error").with_file("session.rslisp", SESSION);
-    let eval = sandbox.compiler(&["eval", "--json", "session.rslisp", "(square 2"]);
+    let sandbox = Sandbox::new("eval_json_reader_error").with_file("session.knv", SESSION);
+    let eval = sandbox.compiler(&["eval", "--json", "session.knv", "(square 2"]);
     let replies = eval.assert_exit_code(1).json_replies();
     assert_eq!(replies[0]["diagnostics"][0]["code"], "L0101");
     assert_eq!(replies[1], json!({"status": "done", "exit": 1}));
@@ -3422,15 +3400,15 @@ fn eval_json_reports_a_reader_error_in_the_forms() {
 
 #[test]
 fn color_diagnostics_on_a_terminal() {
-    let sandbox = Sandbox::new("color_terminal").with_file("unbound.rslisp", UNBOUND_NAME);
-    let check = sandbox.compiler_on_a_terminal(&[("TERM", "xterm")], &["check", "unbound.rslisp"]);
+    let sandbox = Sandbox::new("color_terminal").with_file("unbound.knv", UNBOUND_NAME);
+    let check = sandbox.compiler_on_a_terminal(&[("TERM", "xterm")], &["check", "unbound.knv"]);
     assert!(check.stdout_is_colored(), "{}", check.stdout());
 }
 
 #[test]
 fn color_stays_off_diagnostics_on_a_dumb_terminal() {
-    let sandbox = Sandbox::new("color_dumb").with_file("unbound.rslisp", UNBOUND_NAME);
-    let check = sandbox.compiler_on_a_terminal(&[("TERM", "dumb")], &["check", "unbound.rslisp"]);
+    let sandbox = Sandbox::new("color_dumb").with_file("unbound.knv", UNBOUND_NAME);
+    let check = sandbox.compiler_on_a_terminal(&[("TERM", "dumb")], &["check", "unbound.knv"]);
     assert!(
         check.stdout().contains("error[L0201]"),
         "{}",
@@ -3441,9 +3419,9 @@ fn color_stays_off_diagnostics_on_a_dumb_terminal() {
 
 #[test]
 fn color_stays_off_diagnostics_on_a_terminal_when_clicolor_is_zero() {
-    let sandbox = Sandbox::new("color_clicolor").with_file("unbound.rslisp", UNBOUND_NAME);
+    let sandbox = Sandbox::new("color_clicolor").with_file("unbound.knv", UNBOUND_NAME);
     let environment = [("TERM", "xterm"), ("CLICOLOR", "0")];
-    let check = sandbox.compiler_on_a_terminal(&environment, &["check", "unbound.rslisp"]);
+    let check = sandbox.compiler_on_a_terminal(&environment, &["check", "unbound.knv"]);
     assert!(
         check.stdout().contains("error[L0201]"),
         "{}",
@@ -3454,9 +3432,9 @@ fn color_stays_off_diagnostics_on_a_terminal_when_clicolor_is_zero() {
 
 #[test]
 fn color_stays_off_diagnostics_on_a_terminal_when_no_color_is_set() {
-    let sandbox = Sandbox::new("color_no_color").with_file("unbound.rslisp", UNBOUND_NAME);
+    let sandbox = Sandbox::new("color_no_color").with_file("unbound.knv", UNBOUND_NAME);
     let environment = [("TERM", "xterm"), ("NO_COLOR", "1")];
-    let check = sandbox.compiler_on_a_terminal(&environment, &["check", "unbound.rslisp"]);
+    let check = sandbox.compiler_on_a_terminal(&environment, &["check", "unbound.knv"]);
     assert!(
         check.stdout().contains("error[L0201]"),
         "{}",
@@ -3467,8 +3445,8 @@ fn color_stays_off_diagnostics_on_a_terminal_when_no_color_is_set() {
 
 #[test]
 fn color_stays_off_diagnostics_written_to_a_file_from_a_terminal() {
-    let sandbox = Sandbox::new("color_file").with_file("unbound.rslisp", UNBOUND_NAME);
-    let arguments = ["check", "unbound.rslisp", "2>", "errors.log"];
+    let sandbox = Sandbox::new("color_file").with_file("unbound.knv", UNBOUND_NAME);
+    let arguments = ["check", "unbound.knv", "2>", "errors.log"];
     sandbox.compiler_on_a_terminal(&[("TERM", "xterm")], &arguments);
     let errors = sandbox.written_file("errors.log");
     assert!(errors.contains("error[L0201]"), "{errors}");
@@ -3477,8 +3455,8 @@ fn color_stays_off_diagnostics_written_to_a_file_from_a_terminal() {
 
 #[test]
 fn color_stays_off_diagnostics_in_a_pipe() {
-    let sandbox = Sandbox::new("color_pipe").with_file("unbound.rslisp", UNBOUND_NAME);
-    let check = sandbox.compiler_with_colors(&[("TERM", "xterm")], &["check", "unbound.rslisp"]);
+    let sandbox = Sandbox::new("color_pipe").with_file("unbound.knv", UNBOUND_NAME);
+    let check = sandbox.compiler_with_colors(&[("TERM", "xterm")], &["check", "unbound.knv"]);
     assert!(
         !check.assert_exit_code(1).stderr_is_colored(),
         "{}",
@@ -3488,9 +3466,8 @@ fn color_stays_off_diagnostics_in_a_pipe() {
 
 #[test]
 fn color_diagnostics_in_a_pipe_when_clicolor_force_is_set() {
-    let sandbox = Sandbox::new("color_force").with_file("unbound.rslisp", UNBOUND_NAME);
-    let check =
-        sandbox.compiler_with_colors(&[("CLICOLOR_FORCE", "1")], &["check", "unbound.rslisp"]);
+    let sandbox = Sandbox::new("color_force").with_file("unbound.knv", UNBOUND_NAME);
+    let check = sandbox.compiler_with_colors(&[("CLICOLOR_FORCE", "1")], &["check", "unbound.knv"]);
     assert!(
         check.assert_exit_code(1).stderr_is_colored(),
         "{}",
@@ -3500,9 +3477,9 @@ fn color_diagnostics_in_a_pipe_when_clicolor_force_is_set() {
 
 #[test]
 fn color_no_color_wins_over_clicolor_force() {
-    let sandbox = Sandbox::new("color_no_color_force").with_file("unbound.rslisp", UNBOUND_NAME);
+    let sandbox = Sandbox::new("color_no_color_force").with_file("unbound.knv", UNBOUND_NAME);
     let environment = [("CLICOLOR_FORCE", "1"), ("NO_COLOR", "1")];
-    let check = sandbox.compiler_with_colors(&environment, &["check", "unbound.rslisp"]);
+    let check = sandbox.compiler_with_colors(&environment, &["check", "unbound.knv"]);
     assert!(
         !check.assert_exit_code(1).stderr_is_colored(),
         "{}",
@@ -3523,18 +3500,17 @@ fn color_follows_the_decision_in_a_doc_term_that_does_not_read() {
 
 #[test]
 fn color_follows_the_decision_in_eval_forms_that_do_not_read() {
-    let sandbox = Sandbox::new("color_eval_forms").with_file("session.rslisp", SESSION);
+    let sandbox = Sandbox::new("color_eval_forms").with_file("session.knv", SESSION);
     let environment = [("CLICOLOR_FORCE", "1")];
-    let eval = sandbox.compiler_with_colors(&environment, &["eval", "session.rslisp", "("]);
+    let eval = sandbox.compiler_with_colors(&environment, &["eval", "session.knv", "("]);
     assert!(eval.stderr().contains("L0101"), "{}", eval.stderr());
     assert!(eval.stderr_is_colored(), "{}", eval.stderr());
 }
 
 #[test]
 fn color_always_colors_diagnostics_in_a_pipe() {
-    let sandbox = Sandbox::new("color_always").with_file("unbound.rslisp", UNBOUND_NAME);
-    let check =
-        sandbox.compiler_with_colors(&[], &["--color", "always", "check", "unbound.rslisp"]);
+    let sandbox = Sandbox::new("color_always").with_file("unbound.knv", UNBOUND_NAME);
+    let check = sandbox.compiler_with_colors(&[], &["--color", "always", "check", "unbound.knv"]);
     assert!(
         check.assert_exit_code(1).stderr_is_colored(),
         "{}",
@@ -3544,10 +3520,10 @@ fn color_always_colors_diagnostics_in_a_pipe() {
 
 #[test]
 fn color_never_wins_over_clicolor_force_after_the_subcommand() {
-    let sandbox = Sandbox::new("color_never").with_file("unbound.rslisp", UNBOUND_NAME);
+    let sandbox = Sandbox::new("color_never").with_file("unbound.knv", UNBOUND_NAME);
     let environment = [("CLICOLOR_FORCE", "1")];
     let check =
-        sandbox.compiler_with_colors(&environment, &["check", "unbound.rslisp", "--color=never"]);
+        sandbox.compiler_with_colors(&environment, &["check", "unbound.knv", "--color=never"]);
     assert!(
         !check.assert_exit_code(1).stderr_is_colored(),
         "{}",
@@ -3626,9 +3602,9 @@ fn color_after_the_end_of_options_is_not_read() {
 
 #[test]
 fn color_with_an_unknown_value_is_a_usage_error_under_auto() {
-    let sandbox = Sandbox::new("color_unknown").with_file("unbound.rslisp", UNBOUND_NAME);
+    let sandbox = Sandbox::new("color_unknown").with_file("unbound.knv", UNBOUND_NAME);
     let environment = [("CLICOLOR_FORCE", "1")];
-    let arguments = ["--color", "sometimes", "check", "unbound.rslisp"];
+    let arguments = ["--color", "sometimes", "check", "unbound.knv"];
     let forced = sandbox.compiler_with_colors(&environment, &arguments);
     let piped = sandbox.compiler_with_colors(&[], &arguments);
     assert!(
@@ -3658,13 +3634,13 @@ fn color_follows_the_last_color_argument() {
 
 #[test]
 fn color_always_keeps_eval_json_plain() {
-    let sandbox = Sandbox::new("color_json").with_file("session.rslisp", SESSION);
+    let sandbox = Sandbox::new("color_json").with_file("session.knv", SESSION);
     let arguments = [
         "--color",
         "always",
         "eval",
         "--json",
-        "session.rslisp",
+        "session.knv",
         "(+ 1 \"b\")",
     ];
     let eval = sandbox.compiler_with_colors(&[], &arguments);
@@ -3678,14 +3654,14 @@ fn color_always_keeps_eval_json_plain() {
 
 #[test]
 fn eval_notes_a_struct_that_the_module_defines() {
-    let sandbox = Sandbox::new("eval_struct_definition").with_file("points.rslisp", POINTS);
+    let sandbox = Sandbox::new("eval_struct_definition").with_file("points.knv", POINTS);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
         "1",
         "--column",
         "1",
-        "points.rslisp",
+        "points.knv",
         "(defstruct point :x i64 :y i64)",
     ]);
     assert_eq!(eval.assert_exit_code(0).stdout(), "");
@@ -3763,7 +3739,7 @@ fn repl_ends_an_input_at_an_extra_close() {
 
 #[test]
 fn repl_resolves_use_from_the_root_and_sets_aside_an_import_it_drops() {
-    let sandbox = Sandbox::new("repl_uses").with_file("lib/shapes.rslisp", SHAPES_OF_TWO);
+    let sandbox = Sandbox::new("repl_uses").with_file("lib/shapes.knv", SHAPES_OF_TWO);
     let repl = sandbox.compiler_reading(PROMPT_USES, &["repl", "--root", "lib"]);
     insta::assert_snapshot!(repl.transcript());
 }
@@ -3835,7 +3811,7 @@ fn repl_reports_unreadable_input() {
 #[test]
 fn eval_reports_unreadable_input() {
     let sandbox = Sandbox::new("eval_unreadable_input");
-    let eval = sandbox.compiler_reading(b"\xff", &["eval", "--stdin", "buffer.rslisp", "1"]);
+    let eval = sandbox.compiler_reading(b"\xff", &["eval", "--stdin", "buffer.knv", "1"]);
     assert_eq!(eval.assert_exit_code(2).stdout(), "");
     assert_eq!(
         eval.stderr(),
@@ -3993,12 +3969,12 @@ impl ValueColors {
             .chain(environment.iter().copied())
             .collect();
         let quoted = format!("'{forms}'");
-        let arguments: Vec<&str> = ["eval", "tags.rslisp", &quoted]
+        let arguments: Vec<&str> = ["eval", "tags.knv", &quoted]
             .into_iter()
             .chain(shell_words.iter().copied())
             .collect();
         Sandbox::new(name)
-            .with_file("tags.rslisp", Self::TAG)
+            .with_file("tags.knv", Self::TAG)
             .compiler_on_a_terminal(&environment, &arguments)
     }
 }
@@ -4127,10 +4103,10 @@ impl DocColors {
         let arguments: Vec<&str> = ["doc"]
             .into_iter()
             .chain(flags.iter().copied())
-            .chain(["--file", "scale.rslisp", "scale"])
+            .chain(["--file", "scale.knv", "scale"])
             .collect();
         Sandbox::new(name)
-            .with_file("scale.rslisp", Self::SCALE_PROGRAM)
+            .with_file("scale.knv", Self::SCALE_PROGRAM)
             .compiler_on_a_terminal(&environment, &arguments)
             .assert_exit_code(0)
             .stdout()
@@ -4163,7 +4139,7 @@ struct RedefinitionSession;
 
 impl RedefinitionSession {
     fn transcript(name: &str, input: &str) -> String {
-        let sandbox = Sandbox::new(name).with_file("shapes.rslisp", SHAPES_OF_TWO);
+        let sandbox = Sandbox::new(name).with_file("shapes.knv", SHAPES_OF_TWO);
         sandbox.compiler_reading(input, &["repl"]).transcript()
     }
 
@@ -4258,7 +4234,7 @@ fn repl_helps_an_expression_after_a_module_change() {
 
 #[test]
 fn repl_forgets_the_record_of_a_name_entered_again() {
-    let sandbox = Sandbox::new("repl_re_entered_type").with_file("geo.rslisp", GEO_WITHOUT_POINT);
+    let sandbox = Sandbox::new("repl_re_entered_type").with_file("geo.knv", GEO_WITHOUT_POINT);
     let repl = sandbox.compiler_reading(PROMPT_RE_ENTERED_TYPE, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
@@ -4668,10 +4644,10 @@ fn repl_says_once_that_history_cannot_be_written() {
 #[test]
 fn build_stops_quietly_when_rustc_is_interrupted() {
     let sandbox = Sandbox::new("build_rustc_interrupted")
-        .with_file("greeting.rslisp", GREETING)
+        .with_file("greeting.knv", GREETING)
         .with_executable("tools/rustc", INTERRUPTED_RUSTC)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
-    let build = sandbox.compiler_with_path("tools", &["build", "greeting.rslisp"]);
+    let build = sandbox.compiler_with_path("tools", &["build", "greeting.knv"]);
     assert_eq!(build.assert_exit_code(130).stderr(), "");
 }
 
@@ -4773,27 +4749,27 @@ fn repl_interrupts_a_running_program_on_an_unsupported_terminal() {
 #[test]
 fn emit_stops_quietly_when_rustfmt_is_interrupted() {
     let sandbox = Sandbox::new("emit_rustfmt_interrupted")
-        .with_file("greeting.rslisp", GREETING)
+        .with_file("greeting.knv", GREETING)
         .with_executable("tools/rustfmt", INTERRUPTED_RUSTFMT);
-    let emit = sandbox.compiler_with_path("tools", &["emit", "greeting.rslisp"]);
+    let emit = sandbox.compiler_with_path("tools", &["emit", "greeting.knv"]);
     assert_eq!(emit.assert_exit_code(130).stderr(), "");
 }
 
 #[test]
 fn emit_stops_quietly_when_rustfmt_is_interrupted_before_it_reads_its_input() {
     let sandbox = Sandbox::new("emit_rustfmt_interrupted_before_reading")
-        .with_file("greeting.rslisp", &Sandbox::pipe_overflowing_greeting())
+        .with_file("greeting.knv", &Sandbox::pipe_overflowing_greeting())
         .with_executable("tools/rustfmt", INTERRUPTED_RUSTFMT);
-    let emit = sandbox.compiler_with_path("tools", &["emit", "greeting.rslisp"]);
+    let emit = sandbox.compiler_with_path("tools", &["emit", "greeting.knv"]);
     assert_eq!(emit.assert_exit_code(130).stderr(), "");
 }
 
 #[test]
 fn emit_notes_a_rustfmt_that_fails_before_it_reads_its_input() {
     let sandbox = Sandbox::new("emit_rustfmt_failed_before_reading")
-        .with_file("greeting.rslisp", &Sandbox::pipe_overflowing_greeting())
+        .with_file("greeting.knv", &Sandbox::pipe_overflowing_greeting())
         .with_executable("tools/rustfmt", FAILING_RUSTFMT);
-    let emit = sandbox.compiler_with_path("tools", &["emit", "greeting.rslisp"]);
+    let emit = sandbox.compiler_with_path("tools", &["emit", "greeting.knv"]);
     assert!(
         emit.assert_exit_code(0).stderr().contains("Broken pipe"),
         "{}",
@@ -4902,15 +4878,15 @@ const CRASHING_TESTS: &str = r#"(use prelude/test assert deftest)
 
 #[test]
 fn test_reports_passing_failing_and_panicking_tests() {
-    let sandbox = Sandbox::new("test_report").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler(&["test", "padding.rslisp"]);
+    let sandbox = Sandbox::new("test_report").with_file("padding.knv", PADDING_TESTS);
+    let test = sandbox.compiler(&["test", "padding.knv"]);
     insta::assert_snapshot!(test.assert_exit_code(1).transcript());
 }
 
 #[test]
 fn test_exits_zero_when_every_selected_test_passes() {
-    let sandbox = Sandbox::new("test_pass").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler(&["test", "padding.rslisp", "--filter", "pads-a"]);
+    let sandbox = Sandbox::new("test_pass").with_file("padding.knv", PADDING_TESTS);
+    let test = sandbox.compiler(&["test", "padding.knv", "--filter", "pads-a"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
         "running 1 test\ntest padding/pads-a-letter ... ok\n1 passed, 0 failed\n"
@@ -4919,15 +4895,15 @@ fn test_exits_zero_when_every_selected_test_passes() {
 
 #[test]
 fn test_runs_the_tests_whose_full_name_contains_the_filter() {
-    let sandbox = Sandbox::new("test_filter").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler(&["test", "padding.rslisp", "--filter", "padding/pads"]);
+    let sandbox = Sandbox::new("test_filter").with_file("padding.knv", PADDING_TESTS);
+    let test = sandbox.compiler(&["test", "padding.knv", "--filter", "padding/pads"]);
     insta::assert_snapshot!(test.assert_exit_code(1).stdout());
 }
 
 #[test]
 fn test_with_exact_runs_only_the_test_of_that_full_name() {
-    let sandbox = Sandbox::new("test_exact").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler(&["test", "padding.rslisp", "--exact", "padding/pads-a-letter"]);
+    let sandbox = Sandbox::new("test_exact").with_file("padding.knv", PADDING_TESTS);
+    let test = sandbox.compiler(&["test", "padding.knv", "--exact", "padding/pads-a-letter"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
         "running 1 test\ntest padding/pads-a-letter ... ok\n1 passed, 0 failed\n"
@@ -4936,8 +4912,8 @@ fn test_with_exact_runs_only_the_test_of_that_full_name() {
 
 #[test]
 fn test_with_exact_runs_no_test_whose_name_only_contains_it() {
-    let sandbox = Sandbox::new("test_exact_part").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler(&["test", "padding.rslisp", "--exact", "padding/pads"]);
+    let sandbox = Sandbox::new("test_exact_part").with_file("padding.knv", PADDING_TESTS);
+    let test = sandbox.compiler(&["test", "padding.knv", "--exact", "padding/pads"]);
     test.assert_exit_code(0);
     assert_eq!(test.stdout(), "running 0 tests\n0 passed, 0 failed\n");
     assert_eq!(test.stderr(), "note: no test is named `padding/pads`\n");
@@ -4945,8 +4921,8 @@ fn test_with_exact_runs_no_test_whose_name_only_contains_it() {
 
 #[test]
 fn test_notes_a_filter_that_matches_no_test() {
-    let sandbox = Sandbox::new("test_no_match").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler(&["test", "padding.rslisp", "--filter", "trims"]);
+    let sandbox = Sandbox::new("test_no_match").with_file("padding.knv", PADDING_TESTS);
+    let test = sandbox.compiler(&["test", "padding.knv", "--filter", "trims"]);
     test.assert_exit_code(0);
     assert_eq!(test.stdout(), "running 0 tests\n0 passed, 0 failed\n");
     assert_eq!(test.stderr(), "note: no test name contains `trims`\n");
@@ -4954,8 +4930,8 @@ fn test_notes_a_filter_that_matches_no_test() {
 
 #[test]
 fn test_of_a_program_without_tests_runs_none() {
-    let sandbox = Sandbox::new("test_none").with_file("plain.rslisp", "(defn twice (x) (* 2 x))\n");
-    let test = sandbox.compiler(&["test", "plain.rslisp"]);
+    let sandbox = Sandbox::new("test_none").with_file("plain.knv", "(defn twice (x) (* 2 x))\n");
+    let test = sandbox.compiler(&["test", "plain.knv"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
         "running 0 tests\n0 passed, 0 failed\n"
@@ -4964,18 +4940,18 @@ fn test_of_a_program_without_tests_runs_none() {
 
 #[test]
 fn test_points_a_bare_filter_to_the_filter_flag() {
-    let sandbox = Sandbox::new("test_bare_filter").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler(&["test", "padding.rslisp", "pads"]);
+    let sandbox = Sandbox::new("test_bare_filter").with_file("padding.knv", PADDING_TESTS);
+    let test = sandbox.compiler(&["test", "padding.knv", "pads"]);
     insta::assert_snapshot!(test.assert_exit_code(2).stderr());
 }
 
 #[test]
 fn test_rejects_both_a_filter_and_exact() {
-    let sandbox = Sandbox::new("test_filter_and_exact").with_file("padding.rslisp", PADDING_TESTS);
+    let sandbox = Sandbox::new("test_filter_and_exact").with_file("padding.knv", PADDING_TESTS);
     sandbox
         .compiler(&[
             "test",
-            "padding.rslisp",
+            "padding.knv",
             "--filter",
             "pads",
             "--exact",
@@ -4986,15 +4962,15 @@ fn test_rejects_both_a_filter_and_exact() {
 
 #[test]
 fn test_reports_a_crash_and_counts_the_tests_not_run() {
-    let sandbox = Sandbox::new("test_crash").with_file("crash.rslisp", CRASHING_TESTS);
-    let test = sandbox.compiler(&["test", "crash.rslisp"]);
+    let sandbox = Sandbox::new("test_crash").with_file("crash.knv", CRASHING_TESTS);
+    let test = sandbox.compiler(&["test", "crash.knv"]);
     insta::assert_snapshot!(test.assert_exit_code(1).transcript());
 }
 
 #[test]
 fn test_reports_a_test_that_exits_with_zero_as_a_crash() {
-    let sandbox = Sandbox::new("test_exit_zero").with_file("crash.rslisp", CRASHING_TESTS);
-    let test = sandbox.compiler(&["test", "crash.rslisp", "--filter", "exits"]);
+    let sandbox = Sandbox::new("test_exit_zero").with_file("crash.knv", CRASHING_TESTS);
+    let test = sandbox.compiler(&["test", "crash.knv", "--filter", "exits"]);
     assert_eq!(
         test.assert_exit_code(1).stdout(),
         "running 1 test\n\
@@ -5006,8 +4982,8 @@ fn test_reports_a_test_that_exits_with_zero_as_a_crash() {
 
 #[test]
 fn test_reports_an_abort_by_its_signal() {
-    let sandbox = Sandbox::new("test_abort").with_file("crash.rslisp", CRASHING_TESTS);
-    let test = sandbox.compiler(&["test", "crash.rslisp", "--filter", "aborts"]);
+    let sandbox = Sandbox::new("test_abort").with_file("crash.knv", CRASHING_TESTS);
+    let test = sandbox.compiler(&["test", "crash.knv", "--filter", "aborts"]);
     assert_eq!(
         test.assert_exit_code(1).stdout(),
         "running 1 test\n\
@@ -5020,12 +4996,12 @@ fn test_reports_an_abort_by_its_signal() {
 #[test]
 fn test_puts_the_result_after_the_output_of_the_test() {
     let sandbox = Sandbox::new("test_output").with_file(
-        "talking.rslisp",
+        "talking.knv",
         "(use prelude/test deftest)\n\n(deftest prints-a-line (println \"hello\"))\n\n\
          (deftest prints-a-word (print \"hello\"))\n\n\
          (deftest reads (prn (read-line)))\n",
     );
-    let test = sandbox.compiler_reading("line one\n", &["test", "talking.rslisp"]);
+    let test = sandbox.compiler_reading("line one\n", &["test", "talking.knv"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
         "running 3 tests\n\
@@ -5039,10 +5015,10 @@ fn test_puts_the_result_after_the_output_of_the_test() {
 #[test]
 fn test_checks_the_entry_main_without_running_it() {
     let sandbox = Sandbox::new("test_main").with_file(
-        "app.rslisp",
+        "app.knv",
         "(use prelude/test deftest)\n\n(defn main () (println \"main ran\"))\n\n(deftest calls-main (main))\n",
     );
-    let test = sandbox.compiler(&["test", "app.rslisp"]);
+    let test = sandbox.compiler(&["test", "app.knv"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
         "running 1 test\ntest app/calls-main ... main ran\nok\n1 passed, 0 failed\n"
@@ -5052,9 +5028,9 @@ fn test_checks_the_entry_main_without_running_it() {
 #[test]
 fn test_runs_the_tests_of_every_module_of_a_directory() {
     let sandbox = Sandbox::new("test_directory")
-        .with_file("checks/text.rslisp", "(use prelude/test assert deftest)\n(use shelf/stock restock)\n\n(deftest restocks (assert (= (restock 1) 2)))\n")
+        .with_file("checks/text.knv", "(use prelude/test assert deftest)\n(use shelf/stock restock)\n\n(deftest restocks (assert (= (restock 1) 2)))\n")
         .with_file("checks/notes.txt", "(deftest ignored (assert false))\n")
-        .with_file("checks/shelf/stock.rslisp", "(use prelude/test assert deftest)\n\n(export restock)\n\n(defn restock (count) (+ count 1))\n\n(deftest keeps-count (assert (= (restock 0) 1)))\n");
+        .with_file("checks/shelf/stock.knv", "(use prelude/test assert deftest)\n\n(export restock)\n\n(defn restock (count) (+ count 1))\n\n(deftest keeps-count (assert (= (restock 0) 1)))\n");
     let test = sandbox.compiler(&["test", "checks"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
@@ -5068,10 +5044,10 @@ fn test_runs_the_tests_of_every_module_of_a_directory() {
 #[test]
 fn test_skips_hidden_directories_and_the_target_directory_of_its_walk() {
     let sandbox = Sandbox::new("test_skipped_directories")
-        .with_file("checks/stock.rslisp", PROJECT_TESTS)
-        .with_file("checks/.direnv/stock.rslisp", UNCLOSED)
-        .with_file("checks/target/stock.rslisp", UNCLOSED)
-        .with_file("checks/shelf/target/stock.rslisp", PROJECT_TESTS);
+        .with_file("checks/stock.knv", PROJECT_TESTS)
+        .with_file("checks/.direnv/stock.knv", UNCLOSED)
+        .with_file("checks/target/stock.knv", UNCLOSED)
+        .with_file("checks/shelf/target/stock.knv", PROJECT_TESTS);
     let test = sandbox.compiler(&["test", "checks"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
@@ -5086,7 +5062,7 @@ fn test_skips_hidden_directories_and_the_target_directory_of_its_walk() {
 fn test_in_a_project_walks_a_target_directory_of_its_test_directory() {
     let sandbox = Sandbox::new("project_test_inner_target")
         .with_file(&Language::project_file_name(), PROJECT)
-        .with_file("tests/target/stock.rslisp", PROJECT_TESTS);
+        .with_file("tests/target/stock.knv", PROJECT_TESTS);
     let test = sandbox.compiler(&["test", "tests"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
@@ -5098,10 +5074,10 @@ fn test_in_a_project_walks_a_target_directory_of_its_test_directory() {
 fn test_in_a_project_skips_only_the_project_build_directory() {
     let sandbox = Sandbox::new("project_test_skipped_directories")
         .with_file(&Language::project_file_name(), PROJECT)
-        .with_file("tests/stock.rslisp", PROJECT_TESTS)
-        .with_file("tests/target/stock.rslisp", PROJECT_TESTS)
-        .with_file("target/stock.rslisp", UNCLOSED)
-        .with_file(".direnv/stock.rslisp", UNCLOSED);
+        .with_file("tests/stock.knv", PROJECT_TESTS)
+        .with_file("tests/target/stock.knv", PROJECT_TESTS)
+        .with_file("target/stock.knv", UNCLOSED)
+        .with_file(".direnv/stock.knv", UNCLOSED);
     let test = sandbox.compiler(&["test", "."]);
     assert_eq!(
         test.assert_silent_success().stdout(),
@@ -5115,9 +5091,9 @@ fn test_in_a_project_skips_only_the_project_build_directory() {
 #[test]
 fn test_lists_the_exports_that_no_test_writes() {
     let sandbox = Sandbox::new("test_untested")
-        .with_file("app.rslisp", "(use prelude/test assert deftest)\n(use shelf restock)\n\n(deftest restocks (assert (= (restock 1) 2)))\n")
-        .with_file("shelf.rslisp", "(export restock shelve stack)\n\n(defn restock (count) (+ count 1))\n\n(defn shelve (count) (- count 1))\n\n(defn stack (count) (* count 2))\n");
-    let test = sandbox.compiler(&["test", "app.rslisp", "--untested", "shelf"]);
+        .with_file("app.knv", "(use prelude/test assert deftest)\n(use shelf restock)\n\n(deftest restocks (assert (= (restock 1) 2)))\n")
+        .with_file("shelf.knv", "(export restock shelve stack)\n\n(defn restock (count) (+ count 1))\n\n(defn shelve (count) (- count 1))\n\n(defn stack (count) (* count 2))\n");
+    let test = sandbox.compiler(&["test", "app.knv", "--untested", "shelf"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
         "untested in shelf (2 of 3): shelve stack\n\
@@ -5129,8 +5105,8 @@ fn test_lists_the_exports_that_no_test_writes() {
 
 #[test]
 fn test_rejects_untested_for_a_module_the_program_does_not_load() {
-    let sandbox = Sandbox::new("test_untested_unloaded").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler(&["test", "padding.rslisp", "--untested", "shelf"]);
+    let sandbox = Sandbox::new("test_untested_unloaded").with_file("padding.knv", PADDING_TESTS);
+    let test = sandbox.compiler(&["test", "padding.knv", "--untested", "shelf"]);
     test.assert_exit_code(2);
     assert_eq!(test.stdout(), "");
     assert_eq!(
@@ -5142,10 +5118,10 @@ fn test_rejects_untested_for_a_module_the_program_does_not_load() {
 #[test]
 fn test_of_a_program_with_errors_reports_them_and_runs_nothing() {
     let sandbox = Sandbox::new("test_errors").with_file(
-        "broken.rslisp",
+        "broken.knv",
         "(use prelude/test assert deftest)\n\n(deftest pads (assert (= (missing 1) 2)))\n",
     );
-    let test = sandbox.compiler(&["test", "broken.rslisp"]);
+    let test = sandbox.compiler(&["test", "broken.knv"]);
     test.assert_exit_code(1);
     assert_eq!(test.stdout(), "");
     assert!(test.stderr().contains("error[L0201]"), "{}", test.stderr());
@@ -5155,7 +5131,7 @@ fn test_of_a_program_with_errors_reports_them_and_runs_nothing() {
 fn test_of_a_missing_path_is_a_usage_error() {
     let sandbox = Sandbox::new("test_missing_path");
     sandbox
-        .compiler(&["test", "missing.rslisp"])
+        .compiler(&["test", "missing.knv"])
         .assert_exit_code(2);
 }
 
@@ -5171,17 +5147,17 @@ fn test_runs_the_prelude_tests_and_lists_the_untested_prelude_names() {
 
 #[test]
 fn test_ends_quietly_when_its_reader_closes() {
-    let sandbox = Sandbox::new("test_closed_pipe").with_file("padding.rslisp", PADDING_TESTS);
+    let sandbox = Sandbox::new("test_closed_pipe").with_file("padding.knv", PADDING_TESTS);
     sandbox
-        .compiler_writing_to_a_closed_pipe(&["test", "padding.rslisp"])
+        .compiler_writing_to_a_closed_pipe(&["test", "padding.knv"])
         .assert_silent_success();
 }
 
 #[test]
 #[cfg(target_os = "linux")]
 fn test_reports_a_standard_output_it_cannot_write() {
-    let sandbox = Sandbox::new("test_unwritable").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler_writing_to_a_full_device(&["test", "padding.rslisp"]);
+    let sandbox = Sandbox::new("test_unwritable").with_file("padding.knv", PADDING_TESTS);
+    let test = sandbox.compiler_writing_to_a_full_device(&["test", "padding.knv"]);
     assert!(
         test.assert_exit_code(2)
             .stderr()
@@ -5198,18 +5174,18 @@ const ASSERTING_PROGRAM: &str = "(use prelude/test assert deftest)\n\n\
 
 const FAILING_ASSERT: &str = "(use prelude/test assert)\n\n(defn main ()\n  (assert (= (str \"a\") \"b\") \"they differ\"))\n";
 
-const FAILED_ASSERT_TEXT: &str = "assertion failed at failing.rslisp:4:3: \
+const FAILED_ASSERT_TEXT: &str = "assertion failed at failing.knv:4:3: \
 (assert (= (str \"a\") \"b\") \"they differ\")\nleft:  \"a\"\nright: \"b\"\nthey differ\n";
 
 #[test]
 fn assert_in_a_helper_shared_with_a_test_builds_and_runs() {
-    let sandbox = Sandbox::new("assert_shared").with_file("shared.rslisp", ASSERTING_PROGRAM);
+    let sandbox = Sandbox::new("assert_shared").with_file("shared.knv", ASSERTING_PROGRAM);
     sandbox
-        .compiler(&["build", "shared.rslisp"])
+        .compiler(&["build", "shared.knv"])
         .assert_silent_success();
-    let run = sandbox.compiler(&["run", "shared.rslisp"]);
+    let run = sandbox.compiler(&["run", "shared.knv"]);
     assert_eq!(run.assert_silent_success().stdout(), "passed\n");
-    let test = sandbox.compiler(&["test", "shared.rslisp"]);
+    let test = sandbox.compiler(&["test", "shared.knv"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
         "running 1 test\ntest shared/keeps-a-positive-number ... ok\n1 passed, 0 failed\n"
@@ -5218,8 +5194,8 @@ fn assert_in_a_helper_shared_with_a_test_builds_and_runs() {
 
 #[test]
 fn a_failed_assert_in_main_prints_its_location_and_both_sides() {
-    let sandbox = Sandbox::new("assert_failed_run").with_file("failing.rslisp", FAILING_ASSERT);
-    let run = sandbox.compiler(&["run", "failing.rslisp"]);
+    let sandbox = Sandbox::new("assert_failed_run").with_file("failing.knv", FAILING_ASSERT);
+    let run = sandbox.compiler(&["run", "failing.knv"]);
     assert!(
         run.assert_exit_code(101)
             .stderr()
@@ -5231,15 +5207,15 @@ fn a_failed_assert_in_main_prints_its_location_and_both_sides() {
 
 #[test]
 fn assert_runs_under_eval() {
-    let sandbox = Sandbox::new("assert_eval").with_file("shared.rslisp", ASSERTING_PROGRAM);
-    let eval = sandbox.compiler(&["eval", "shared.rslisp", "(assert (= (positive 2) 2))"]);
+    let sandbox = Sandbox::new("assert_eval").with_file("shared.knv", ASSERTING_PROGRAM);
+    let eval = sandbox.compiler(&["eval", "shared.knv", "(assert (= (positive 2) 2))"]);
     eval.assert_silent_success();
 }
 
 #[test]
 fn a_failed_assert_under_eval_prints_both_sides() {
-    let sandbox = Sandbox::new("assert_eval_failed").with_file("shared.rslisp", ASSERTING_PROGRAM);
-    let eval = sandbox.compiler(&["eval", "shared.rslisp", "(assert (= (positive 2) 3))"]);
+    let sandbox = Sandbox::new("assert_eval_failed").with_file("shared.knv", ASSERTING_PROGRAM);
+    let eval = sandbox.compiler(&["eval", "shared.knv", "(assert (= (positive 2) 3))"]);
     assert!(
         eval.assert_exit_code(101).stderr().contains(
             "assertion failed at <eval>:1:1: (assert (= (positive 2) 3))\nleft:  2\nright: 3\n"
@@ -5270,14 +5246,14 @@ fn assert_runs_at_the_prompt() {
 fn test_prints_no_names_when_a_test_writes_every_export() {
     let sandbox = Sandbox::new("test_all_written")
         .with_file(
-            "app.rslisp",
+            "app.knv",
             "(use prelude/test assert deftest)\n(use shelf restock)\n\n(deftest restocks (assert (= (restock 1) 2)))\n",
         )
         .with_file(
-            "shelf.rslisp",
+            "shelf.knv",
             "(export restock)\n\n(defn restock (count) (+ count 1))\n",
         );
-    let test = sandbox.compiler(&["test", "app.rslisp", "--untested", "shelf"]);
+    let test = sandbox.compiler(&["test", "app.knv", "--untested", "shelf"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
         "untested in shelf (0 of 1)\nrunning 1 test\ntest app/restocks ... ok\n1 passed, 0 failed\n"
@@ -5288,14 +5264,14 @@ fn test_prints_no_names_when_a_test_writes_every_export() {
 fn test_does_not_count_a_binding_of_the_same_name_as_an_export() {
     let sandbox = Sandbox::new("test_same_name")
         .with_file(
-            "app.rslisp",
+            "app.knv",
             "(use prelude/test assert deftest)\n(use shelf shelve)\n\n(defn restock () (shelve 2))\n\n(deftest restocks (assert (= (restock) 1)))\n",
         )
         .with_file(
-            "shelf.rslisp",
+            "shelf.knv",
             "(export restock shelve)\n\n(defn restock (count) (+ count 1))\n\n(defn shelve (count) (- count 1))\n",
         );
-    let test = sandbox.compiler(&["test", "app.rslisp", "--untested", "shelf"]);
+    let test = sandbox.compiler(&["test", "app.knv", "--untested", "shelf"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
         "untested in shelf (2 of 2): restock shelve\nrunning 1 test\ntest app/restocks ... ok\n1 passed, 0 failed\n"
@@ -5304,9 +5280,8 @@ fn test_does_not_count_a_binding_of_the_same_name_as_an_export() {
 
 #[test]
 fn test_reports_a_missing_build_directory() {
-    let sandbox =
-        Sandbox::new("test_no_build_directory").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler_with_temporary_directory("missing", &["test", "padding.rslisp"]);
+    let sandbox = Sandbox::new("test_no_build_directory").with_file("padding.knv", PADDING_TESTS);
+    let test = sandbox.compiler_with_temporary_directory("missing", &["test", "padding.knv"]);
     assert!(
         test.assert_exit_code(2)
             .stderr()
@@ -5319,10 +5294,10 @@ fn test_reports_a_missing_build_directory() {
 #[test]
 fn test_reports_a_program_that_cannot_start() {
     let sandbox = Sandbox::new("test_missing_program")
-        .with_file("padding.rslisp", PADDING_TESTS)
+        .with_file("padding.knv", PADDING_TESTS)
         .with_executable("tools/rustc", SILENT_RUSTC)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
-    let test = sandbox.compiler_with_path("tools", &["test", "padding.rslisp"]);
+    let test = sandbox.compiler_with_path("tools", &["test", "padding.knv"]);
     assert!(
         test.assert_exit_code(2)
             .stderr()
@@ -5335,7 +5310,7 @@ fn test_reports_a_program_that_cannot_start() {
 #[test]
 fn test_reports_a_directory_it_cannot_read() {
     let sandbox = Sandbox::new("test_unreadable_directory")
-        .with_file("checks/hidden/stock.rslisp", "(defn restock () 1)\n");
+        .with_file("checks/hidden/stock.knv", "(defn restock () 1)\n");
     let hidden = sandbox.directory.join("checks/hidden");
     fs::set_permissions(&hidden, fs::Permissions::from_mode(Sandbox::NO_ACCESS))
         .expect("the sandbox changes permissions");
@@ -5354,10 +5329,10 @@ fn test_reports_a_directory_it_cannot_read() {
 #[test]
 fn form_location_keeps_the_name_of_a_source_outside_the_root() {
     let sandbox = Sandbox::new("form_location_outside_root").with_file(
-        "library/located.rslisp",
+        "library/located.knv",
         "(use code form-location)\n\n(def here (macro (form) (form-location form)))\n",
     );
-    let eval = sandbox.compiler(&["eval", "library/located.rslisp", "(println (here))"]);
+    let eval = sandbox.compiler(&["eval", "library/located.knv", "(println (here))"]);
     assert_eq!(eval.assert_silent_success().stdout(), "<eval>:1:10\n");
 }
 
@@ -5365,14 +5340,14 @@ fn form_location_keeps_the_name_of_a_source_outside_the_root() {
 fn test_lists_the_untested_names_of_a_program_with_no_tests() {
     let sandbox = Sandbox::new("test_untested_no_tests")
         .with_file(
-            "app.rslisp",
+            "app.knv",
             "(use shelf restock)\n\n(defn main () (println (restock 1)))\n",
         )
         .with_file(
-            "shelf.rslisp",
+            "shelf.knv",
             "(export restock)\n\n(defn restock (count) (+ count 1))\n",
         );
-    let test = sandbox.compiler(&["test", "app.rslisp", "--untested", "shelf"]);
+    let test = sandbox.compiler(&["test", "app.knv", "--untested", "shelf"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
         "untested in shelf (1 of 1): restock\nrunning 0 tests\n0 passed, 0 failed\n"
@@ -5380,9 +5355,9 @@ fn test_lists_the_untested_names_of_a_program_with_no_tests() {
 }
 
 const PROJECT: &str = "(project greeter)\n";
-const PROJECT_WITH_UNKNOWN_KEY: &str = "(project greeter :entyr \"src/main.rslisp\")\n";
+const PROJECT_WITH_UNKNOWN_KEY: &str = "(project greeter :entyr \"src/main.knv\")\n";
 const PROJECT_WITH_DEPENDENCY: &str = "(project greeter (dev-dependencies (fake-check \"0.3\")))\n";
-const UNLAID_PROJECT: &str = "(project browser :version \"0.1.0\" :entry \"src/main.rslisp\"\n  (libraries (hints :path \"../hints\"))\n\n  (dependencies (cef \"144.0\") (serde \"1.0\" :features (\"derive\"))))\n";
+const UNLAID_PROJECT: &str = "(project browser :version \"0.1.0\" :entry \"src/main.knv\"\n  (libraries (hints :path \"../hints\"))\n\n  (dependencies (cef \"144.0\") (serde \"1.0\" :features (\"derive\"))))\n";
 const BARE_NAMES_PROJECT: &str = "(project demo alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(libraries alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu)\n\n(dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(dev-dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n";
 const MISSING_COMMIT: &str = "0000000000000000000000000000000000000000";
 const SELF_IMPORT: &str = "(use sub/c)\n\n(defn f () 1)\n";
@@ -5406,9 +5381,9 @@ impl Sandbox {
 
     fn with_project(self, project: &str) -> Self {
         self.with_file(&Language::project_file_name(), project)
-            .with_file("src/main.rslisp", PROJECT_ENTRY)
-            .with_file("src/text/shout.rslisp", PROJECT_SHOUT)
-            .with_file("src/text/marks.rslisp", PROJECT_MARKS)
+            .with_file("src/main.knv", PROJECT_ENTRY)
+            .with_file("src/text/shout.knv", PROJECT_SHOUT)
+            .with_file("src/text/marks.knv", PROJECT_MARKS)
     }
 }
 
@@ -5437,11 +5412,11 @@ fn build_writes_a_project_under_its_root_with_the_project_name() {
 fn building_a_file_beside_the_entry_leaves_the_project_program_alone() {
     let sandbox = Sandbox::new("project_build_script")
         .with_project(PROJECT)
-        .with_file("tools/script.rslisp", PROJECT_SCRIPT)
-        .with_file("tools/helper.rslisp", PROJECT_HELPER);
+        .with_file("tools/script.knv", PROJECT_SCRIPT)
+        .with_file("tools/helper.knv", PROJECT_HELPER);
     sandbox.compiler(&["build"]).assert_exit_code(0);
     sandbox
-        .compiler(&["build", "tools/script.rslisp"])
+        .compiler(&["build", "tools/script.knv"])
         .assert_exit_code(0);
     let greeter = sandbox.built_program(Sandbox::project_program("greeter"));
     assert_eq!(greeter.assert_exit_code(0).stdout(), "hi!\n");
@@ -5459,15 +5434,15 @@ fn eval_names_a_module_in_a_directory_that_does_not_exist() {
     let sandbox = Sandbox::new("project_absent_directory");
     let eval = sandbox.compiler_reading(
         "(defn f () 1)\n",
-        &["eval", "--stdin", "notes/draft.rslisp", "(f)"],
+        &["eval", "--stdin", "notes/draft.knv", "(f)"],
     );
     assert_eq!(eval.assert_silent_success().stdout(), "1\n");
 }
 
 #[test]
 fn eval_with_a_root_names_a_module_by_its_path_from_the_root() {
-    let sandbox = Sandbox::new("root_module_name").with_file("sub/c.rslisp", SELF_IMPORT);
-    let eval = sandbox.compiler(&["eval", "--root", ".", "sub/c.rslisp", "(f)"]);
+    let sandbox = Sandbox::new("root_module_name").with_file("sub/c.knv", SELF_IMPORT);
+    let eval = sandbox.compiler(&["eval", "--root", ".", "sub/c.knv", "(f)"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
 }
 
@@ -5475,7 +5450,7 @@ fn eval_with_a_root_names_a_module_by_its_path_from_the_root() {
 fn check_resolves_use_from_the_source_root_for_a_module_in_a_subdirectory() {
     let sandbox = Sandbox::new("project_module").with_project(PROJECT);
     sandbox
-        .compiler(&["check", "src/text/shout.rslisp"])
+        .compiler(&["check", "src/text/shout.knv"])
         .assert_silent_success();
 }
 
@@ -5483,9 +5458,9 @@ fn check_resolves_use_from_the_source_root_for_a_module_in_a_subdirectory() {
 fn a_file_outside_the_source_root_resolves_use_from_its_directory() {
     let sandbox = Sandbox::new("project_script")
         .with_project(PROJECT)
-        .with_file("tools/script.rslisp", PROJECT_SCRIPT)
-        .with_file("tools/helper.rslisp", PROJECT_HELPER);
-    let run = sandbox.compiler(&["run", "tools/script.rslisp"]);
+        .with_file("tools/script.knv", PROJECT_SCRIPT)
+        .with_file("tools/helper.knv", PROJECT_HELPER);
+    let run = sandbox.compiler(&["run", "tools/script.knv"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "4\n");
 }
 
@@ -5499,14 +5474,14 @@ fn a_command_without_a_file_outside_a_project_is_a_usage_error() {
 #[test]
 fn a_project_file_error_stops_the_command() {
     let sandbox = Sandbox::new("project_error").with_project(PROJECT_WITH_UNKNOWN_KEY);
-    let check = sandbox.compiler(&["check", "src/main.rslisp"]);
+    let check = sandbox.compiler(&["check", "src/main.knv"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
 #[test]
 fn eval_resolves_use_from_the_project_source_root() {
     let sandbox = Sandbox::new("project_eval").with_project(PROJECT);
-    let eval = sandbox.compiler_in("src/text", &["eval", "shout.rslisp", "(shout \"a\")"]);
+    let eval = sandbox.compiler_in("src/text", &["eval", "shout.knv", "(shout \"a\")"]);
     assert_eq!(eval.assert_silent_success().stdout(), "\"a!\"\n");
 }
 
@@ -5521,7 +5496,7 @@ fn repl_resolves_use_from_the_project_source_root() {
 fn test_skips_the_project_file_in_a_directory() {
     let sandbox = Sandbox::new("project_test")
         .with_file(&Language::project_file_name(), PROJECT)
-        .with_file("src/checks.rslisp", PROJECT_TESTS);
+        .with_file("src/checks.knv", PROJECT_TESTS);
     let test = sandbox.compiler(&["test", "."]);
     assert!(test.assert_exit_code(0).stdout().contains("1 passed"));
 }
@@ -5539,7 +5514,7 @@ fn test_in_a_project_reaches_a_source_module() {
 #[test]
 fn test_of_a_file_in_a_project_reaches_a_source_module() {
     let sandbox = Sandbox::new("project_test_file").with_fixture_tree("libraries");
-    let test = sandbox.compiler_in("tested-app", &["test", "tests/parse.rslisp"]);
+    let test = sandbox.compiler_in("tested-app", &["test", "tests/parse.knv"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
         "running 2 tests\n\
@@ -5589,7 +5564,7 @@ fn test_directory_module_shadows_a_source_module() {
 fn test_in_a_project_warns_of_a_source_module_hidden_by_a_library() {
     let sandbox = Sandbox::new("project_test_hidden_source")
         .with_fixture_tree("libraries")
-        .with_file("tested-app/src/hints.rslisp", "(def unused 1)\n");
+        .with_file("tested-app/src/hints.knv", "(def unused 1)\n");
     let test = sandbox.compiler_in("tested-app", &["test", "tests", "--exact", "shout/shouts"]);
     insta::assert_snapshot!(test.assert_exit_code(0).stderr());
 }
@@ -5625,7 +5600,7 @@ fn test_without_a_path_outside_a_project_is_a_usage_error() {
 fn fmt_check_without_a_path_prints_paths_relative_to_the_working_directory() {
     let sandbox = Sandbox::new("fmt_project_check_paths")
         .with_file(&Language::project_file_name(), PROJECT)
-        .with_file("src/twice.rslisp", UNFORMATTED);
+        .with_file("src/twice.knv", UNFORMATTED);
     let from_root = sandbox.compiler(&["fmt", "--check"]);
     let from_source = sandbox.compiler_in("src", &["fmt", "--check"]);
     assert_eq!(
@@ -5633,7 +5608,7 @@ fn fmt_check_without_a_path_prints_paths_relative_to_the_working_directory() {
             from_root.assert_exit_code(1).stdout(),
             from_source.assert_exit_code(1).stdout()
         ],
-        ["src/twice.rslisp\n", "../src/twice.rslisp\n"]
+        ["src/twice.knv\n", "../src/twice.knv\n"]
     );
 }
 
@@ -5641,13 +5616,13 @@ fn fmt_check_without_a_path_prints_paths_relative_to_the_working_directory() {
 fn fmt_without_a_path_lays_out_the_whole_project_from_a_subdirectory() {
     let sandbox = Sandbox::new("fmt_project_default")
         .with_file(&Language::project_file_name(), UNLAID_PROJECT)
-        .with_file("src/twice.rslisp", UNFORMATTED)
-        .with_file("src/.direnv/limit.rslisp", UNFORMATTED);
+        .with_file("src/twice.knv", UNFORMATTED)
+        .with_file("src/.direnv/limit.knv", UNFORMATTED);
     sandbox.compiler_in("src", &["fmt"]).assert_silent_success();
     assert_eq!(
         [
-            sandbox.contents("src/twice.rslisp"),
-            sandbox.contents("src/.direnv/limit.rslisp"),
+            sandbox.contents("src/twice.knv"),
+            sandbox.contents("src/.direnv/limit.knv"),
         ],
         [FORMATTED, UNFORMATTED].map(String::from)
     );
@@ -5733,7 +5708,7 @@ fn new_reports_a_directory_it_cannot_write() {
     let new = sandbox.compiler(&["new", "demo"]);
     let stderr = new.assert_exit_code(2).stderr();
     assert!(
-        stderr.starts_with("error: cannot write `demo/project.rslisp`: "),
+        stderr.starts_with("error: cannot write `demo/project.knv`: "),
         "{stderr}"
     );
 }
@@ -5759,7 +5734,7 @@ fn new_removes_its_directory_after_a_failed_write() {
     ));
     let stderr = new.assert_exit_code(2).stderr();
     assert!(
-        stderr.starts_with("error: cannot write `demo/project.rslisp`: "),
+        stderr.starts_with("error: cannot write `demo/project.knv`: "),
         "{stderr}"
     );
     assert!(!sandbox.directory.join("demo").exists());
@@ -5784,7 +5759,7 @@ fn eval_with_a_root_reaches_the_project_libraries() {
     let sandbox = Sandbox::new("library_eval_root").with_fixture_tree("libraries");
     let eval = sandbox.compiler_in(
         "app",
-        &["eval", "--root", "src", "src/main.rslisp", "(shout \"e\")"],
+        &["eval", "--root", "src", "src/main.knv", "(shout \"e\")"],
     );
     assert_eq!(eval.assert_silent_success().stdout(), "\"e!k\"\n");
 }
@@ -5858,7 +5833,7 @@ struct DeepProgram;
 
 #[cfg(target_os = "linux")]
 impl DeepProgram {
-    const FILE: &str = "deep.rslisp";
+    const FILE: &str = "deep.knv";
 
     fn nested(prefix: &str, open: &str, innermost: &str, close: &str, suffix: &str) -> String {
         format!(
@@ -5968,7 +5943,7 @@ fn run_fetches_a_git_library_into_the_cache_by_commit() {
         .join(Language::NAME)
         .join("git")
         .join(&commit);
-    assert!(checkout.join("src/lib.rslisp").is_file());
+    assert!(checkout.join("src/lib.knv").is_file());
 }
 
 #[test]
@@ -6248,7 +6223,7 @@ fn libraries_in_one_git_checkout_may_name_each_other() {
     let sandbox = Sandbox::new("git_library_monorepo")
         .with_one_git_library("monorepo", "../monorepo.git")
         .with_file(
-            "git-app/src/main.rslisp",
+            "git-app/src/main.knv",
             "(defn main ()\n  (println \"hi\"))\n",
         );
     sandbox
@@ -6302,7 +6277,7 @@ fn a_git_library_may_list_another_git_library() {
             &project,
         )
         .with_file(
-            "git-app/src/main.rslisp",
+            "git-app/src/main.knv",
             "(use outer-git)\n\n(defn main ()\n  (println \"hi\"))\n",
         );
     let run = sandbox.compiler_in_with_cache("git-app", &["run"]);
@@ -6314,7 +6289,7 @@ fn a_module_file_linked_outside_a_git_checkout_is_an_error() {
     let sandbox = Sandbox::new("git_library_linked_module").with_fixture_tree("libraries");
     let sandbox = sandbox.with_one_git_library_from_tree("linked-module", "../linked-module.git");
     let sandbox = sandbox.with_file(
-        "git-app/src/main.rslisp",
+        "git-app/src/main.knv",
         "(use linked-module key)\n\n(defn main ()\n  (println key))\n",
     );
     let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
@@ -6375,7 +6350,7 @@ fn a_crate_build_without_cargo_is_an_environment_error() {
 
 #[test]
 fn eval_in_a_project_with_crates_says_it_cannot_use_them_yet() {
-    let eval = Sandbox::compiler_in_fixture("crates/app", &["eval", "src/main.rslisp", "1"]);
+    let eval = Sandbox::compiler_in_fixture("crates/app", &["eval", "src/main.knv", "1"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
 }
 
@@ -6465,7 +6440,7 @@ fn an_unchanged_program_keeps_its_generated_source_file() {
 #[test]
 fn run_of_another_file_in_a_project_with_crates_builds_through_cargo() {
     let sandbox = Sandbox::new("crate_other_file").with_fixture_tree("crates");
-    let run = sandbox.compiler_in("app", &["run", "src/tools/next.rslisp"]);
+    let run = sandbox.compiler_in("app", &["run", "src/tools/next.knv"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "43\n");
 }
 
@@ -6518,7 +6493,7 @@ fn a_build_uses_the_project_cargo_lock() {
     let written = fs::read_to_string(&lock).expect("the build writes a lock file");
     let older = written.replacen("version = 4", "version = 3", 1);
     fs::write(&lock, &older).expect("the sandbox accepts files");
-    let entry = sandbox.directory.join("app/src/main.rslisp");
+    let entry = sandbox.directory.join("app/src/main.knv");
     let source = fs::read_to_string(&entry).expect("the entry is readable");
     fs::write(&entry, format!("{source}\n")).expect("the sandbox accepts files");
     sandbox.compiler_in("app", &["build"]).assert_exit_code(0);
@@ -6529,7 +6504,7 @@ fn a_build_uses_the_project_cargo_lock() {
 #[test]
 fn eval_names_the_library_that_adds_crates() {
     let eval =
-        Sandbox::compiler_in_fixture("crates/library-eval-app", &["eval", "src/main.rslisp", "1"]);
+        Sandbox::compiler_in_fixture("crates/library-eval-app", &["eval", "src/main.knv", "1"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
 }
 
@@ -6537,7 +6512,7 @@ fn eval_names_the_library_that_adds_crates() {
 fn eval_with_a_root_in_a_project_with_crates_says_it_cannot_use_them_yet() {
     let eval = Sandbox::compiler_in_fixture(
         "crates/app",
-        &["eval", "--root", "src", "src/main.rslisp", "1"],
+        &["eval", "--root", "src", "src/main.knv", "1"],
     );
     assert!(
         eval.assert_exit_code(1)
@@ -6548,7 +6523,7 @@ fn eval_with_a_root_in_a_project_with_crates_says_it_cannot_use_them_yet() {
 
 #[test]
 fn test_of_a_file_in_a_project_with_crates_says_it_cannot_use_them_yet() {
-    let test = Sandbox::compiler_in_fixture("crates/app", &["test", "src/main.rslisp"]);
+    let test = Sandbox::compiler_in_fixture("crates/app", &["test", "src/main.knv"]);
     assert!(
         test.assert_exit_code(1)
             .stderr()

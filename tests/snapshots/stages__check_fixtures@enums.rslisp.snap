@@ -1,8 +1,0 @@
----
-source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
-input_file: tests/fixtures/check/enums.rslisp
----
-(derive shape clone partial-eq show)
-(derive marker clone copy partial-eq eq hash show)
-(type main (fn () unit))

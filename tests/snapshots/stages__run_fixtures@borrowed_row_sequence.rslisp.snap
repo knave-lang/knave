@@ -1,8 +1,0 @@
----
-source: tests/stages.rs
-expression: reports.report(path)
-input_file: tests/fixtures/run/borrowed_row_sequence.rslisp
----
-(vec 3 2)
-(vec 4 5)
-(vec 3 2)

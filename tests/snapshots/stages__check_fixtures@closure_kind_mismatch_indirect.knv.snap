@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/closure_kind_mismatch_indirect.knv
+---
+error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
+ --> check/closure_kind_mismatch_indirect.knv:4:25
+  |
+4 |   (map (iter (vec 1 2)) consume)
+  |                         ^^^^^^^ `text` moves here
+  |
+  = help: clone `text`, or borrow it with `(ref text)`
+
+error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
+ --> check/closure_kind_mismatch_indirect.knv:7:8
+  |
+7 | /        (if true
+8 | |          (fn (ignored) other)
+9 | |          (fn (ignored) other))))
+  | |______________________________^ this closure is stronger than the parameter accepts
+  |
+  = help: clone the closure's captures, or borrow them instead

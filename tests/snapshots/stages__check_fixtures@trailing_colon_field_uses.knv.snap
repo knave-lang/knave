@@ -1,0 +1,52 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/trailing_colon_field_uses.knv
+---
+error[L0408]: `user` has no field `:email:`
+ --> check/trailing_colon_field_uses.knv:5:35
+  |
+5 | (defn read-email (:someone user) (:email: someone))
+  |                                   ^^^^^^^ unknown field
+  |
+help: a field with a similar name exists
+  |
+5 - (defn read-email (:someone user) (:email: someone))
+5 + (defn read-email (:someone user) (:email someone))
+  |
+
+error[L0408]: `user` has no field `:email:`
+ --> check/trailing_colon_field_uses.knv:8:23
+  |
+8 |   (->user :name "ana" :email: "ana@example.com"))
+  |                       ^^^^^^^ unknown field
+  |
+help: a field with a similar name exists
+  |
+8 -   (->user :name "ana" :email: "ana@example.com"))
+8 +   (->user :name "ana" :email "ana@example.com"))
+  |
+
+error[L0408]: `user` has no field `:email:`
+  --> check/trailing_colon_field_uses.knv:11:18
+   |
+11 |   (assoc someone :email: "bo@example.com"))
+   |                  ^^^^^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+11 -   (assoc someone :email: "bo@example.com"))
+11 +   (assoc someone :email "bo@example.com"))
+   |
+
+error[L0408]: `user` has no field `:email:`
+  --> check/trailing_colon_field_uses.knv:14:21
+   |
+14 |   (map (iter users) :email:))
+   |                     ^^^^^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+14 -   (map (iter users) :email:))
+14 +   (map (iter users) :email))
+   |

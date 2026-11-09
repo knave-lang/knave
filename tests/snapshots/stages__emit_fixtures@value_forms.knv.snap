@@ -1,0 +1,69 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/value_forms.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Counter {
+    count: i64,
+}
+
+fn apply_to_four(f: impl FnOnce(f64) -> f64) -> f64 {
+    f(4.0)
+}
+
+static ROOT_OF_TWO: std::sync::LazyLock<f64> = std::sync::LazyLock::new(|| 2.0_f64.sqrt());
+
+const THREE: i64 = 1_i64 + 2_i64;
+
+fn fresh_counter() -> Counter {
+    Counter { count: 1 }
+}
+
+fn chosen_count(flag: bool) -> i64 {
+    (if flag {
+        fresh_counter()
+    } else {
+        fresh_counter()
+    })
+    .count
+}
+
+fn doubler() -> impl Fn(i64) -> i64 {
+    move |value: i64| {
+        let doubled: i64 = value * 2;
+        doubled
+    }
+}
+
+fn ends_with_let() {
+    let unused: i64 = 1;
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", apply_to_four(|argument_0: f64| argument_0.sqrt()));
+    println!("{}", apply_to_four(f64::sqrt));
+    println!("{}", *ROOT_OF_TWO);
+    println!("{}", THREE);
+    println!("{}", chosen_count(true));
+    println!("{}", doubler()(2));
+    ends_with_let()
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

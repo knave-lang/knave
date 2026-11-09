@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/empty.knv
+---
+error[L0701]: `project.knv` must hold a `project` form
+ --> project/empty.knv:1:1
+  |
+1 | ; this project file has only a comment
+  | ^ expected `(project <name> ...)` here
+  |
+  = help: start the file with `(project my-program)`

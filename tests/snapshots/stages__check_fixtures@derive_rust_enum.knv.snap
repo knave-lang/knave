@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/derive_rust_enum.knv
+---
+error[L0435]: `option` is a Rust type, so it has no `derive`
+ --> check/derive_rust_enum.knv:6:9
+  |
+6 | (derive option clone)
+  |         ^^^^^^ `option` names a Rust type
+  |
+  = help: the traits of a Rust type come from the Rust traits that list it

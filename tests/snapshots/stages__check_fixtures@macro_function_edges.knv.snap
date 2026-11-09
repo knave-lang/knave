@@ -1,0 +1,94 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/macro_function_edges.knv
+---
+error[L0304]: `swapped` is a macro, not a value
+  --> check/macro_function_edges.knv:34:10
+   |
+34 | (def one swapped)
+   |          ^^^^^^^ used as a value here
+   |
+   = help: a macro can only be called; pass a function instead
+
+error[L0304]: `mixed` is a macro, not a value
+  --> check/macro_function_edges.knv:36:10
+   |
+36 | (def two mixed)
+   |          ^^^^^ used as a value here
+   |
+help: a macro can only be called; pass `add` instead
+   |
+36 - (def two mixed)
+36 + (def two add)
+   |
+
+error[L0304]: `partial` is a macro, not a value
+  --> check/macro_function_edges.knv:38:12
+   |
+38 | (def three partial)
+   |            ^^^^^^^ used as a value here
+   |
+   = help: a macro can only be called; pass a function instead
+
+error[L0304]: `unary` is a macro, not a value
+  --> check/macro_function_edges.knv:40:11
+   |
+40 | (def four unary)
+   |           ^^^^^ used as a value here
+   |
+   = help: a macro can only be called; pass a function instead
+
+error[L0304]: `conditional` is a macro, not a value
+  --> check/macro_function_edges.knv:42:11
+   |
+42 | (def five conditional)
+   |           ^^^^^^^^^^^ used as a value here
+   |
+   = help: a macro can only be called; pass a function instead
+
+error[L0304]: `nested` is a macro, not a value
+  --> check/macro_function_edges.knv:44:10
+   |
+44 | (def six nested)
+   |          ^^^^^^ used as a value here
+   |
+   = help: a macro can only be called; pass a function instead
+
+error[L0304]: `quoted-thing` is a macro, not a value
+  --> check/macro_function_edges.knv:46:12
+   |
+46 | (def seven quoted-thing)
+   |            ^^^^^^^^^^^^ used as a value here
+   |
+   = help: a macro can only be called; pass a function instead
+
+error[L0304]: `broken` is a macro, not a value
+  --> check/macro_function_edges.knv:48:12
+   |
+48 | (def eight broken)
+   |            ^^^^^^ used as a value here
+   |
+   = help: a macro can only be called; pass a function instead
+
+error[L0210]: malformed `local`
+  --> check/macro_function_edges.knv:51:3
+   |
+51 |   (local bad)
+   |   ^^^^^^^^^^^ this does not fit the shape of `local`
+   |
+   = help: write it as `(local name value)`
+
+error[L0201]: cannot find `barr` in this scope
+  --> check/macro_function_edges.knv:52:4
+   |
+52 |   (barr))
+   |    ^^^^ not found in this scope
+
+error[L0304]: `shadowed-plus` is a macro, not a value
+  --> check/macro_function_edges.knv:56:12
+   |
+56 |   (println shadowed-plus))
+   |            ^^^^^^^^^^^^^ used as a value here
+   |
+   = help: a macro can only be called; pass a function instead

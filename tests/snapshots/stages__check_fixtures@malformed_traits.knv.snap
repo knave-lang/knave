@@ -1,0 +1,100 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/malformed_traits.knv
+---
+error[L0210]: malformed `trait`
+ --> check/malformed_traits.knv:1:1
+  |
+1 | (trait)
+  | ^^^^^^^ this does not fit the shape of `trait`
+  |
+  = help: write it as `(trait name (method type) ...)`
+
+error[L0210]: malformed `trait`
+ --> check/malformed_traits.knv:3:18
+  |
+3 | (trait shape-one area)
+  |                  ^^^^ this does not fit the shape of `trait`
+  |
+  = help: write it as `(trait name (method type) ...)`
+
+error[L0210]: malformed `trait`
+ --> check/malformed_traits.knv:5:18
+  |
+5 | (trait shape-two (area))
+  |                  ^^^^^^ this does not fit the shape of `trait`
+  |
+  = help: write it as `(trait name (method type) ...)`
+
+error[L0210]: malformed `trait`
+ --> check/malformed_traits.knv:7:15
+  |
+7 | (trait broken (area))
+  |               ^^^^^^ this does not fit the shape of `trait`
+  |
+  = help: write it as `(trait name (method type) ...)`
+
+error[L0210]: malformed `trait`
+ --> check/malformed_traits.knv:9:30
+  |
+9 | (trait not-a-function (probe i64))
+  |                              ^^^ this does not fit the shape of `trait`
+  |
+  = help: write it as `(trait name (method type) ...)`
+
+error[L0210]: malformed `impl`
+  --> check/malformed_traits.knv:16:7
+   |
+16 | (impl circle painted
+   |       ^^^^^^ this does not fit the shape of `impl`
+   |
+   = help: write a visible trait
+
+error[L0239]: `circle` is missing `area` from `painted`
+  --> check/malformed_traits.knv:21:15
+   |
+21 | (impl painted circle)
+   |               ^^^^^^ this implementation is missing `area`
+   |
+   = help: add the `area` method
+
+error[L0210]: malformed `impl`
+  --> check/malformed_traits.knv:23:22
+   |
+23 | (impl painted circle area)
+   |                      ^^^^ this does not fit the shape of `impl`
+   |
+   = help: write it as `(impl trait type (method (parameter ...) body ...) ...)`
+
+error[L0210]: malformed `impl`
+  --> check/malformed_traits.knv:25:22
+   |
+25 | (impl painted circle (area))
+   |                      ^^^^^^ this does not fit the shape of `impl`
+   |
+   = help: write it as `(impl trait type (method (parameter ...) body ...) ...)`
+
+error[L0239]: `circle` is missing `area` from `painted`
+  --> check/malformed_traits.knv:27:15
+   |
+27 | (impl painted circle (nope (c) c))
+   |               ^^^^^^ this implementation is missing `area`
+   |
+   = help: add the `area` method
+
+error[L0241]: `painted` does not declare `nope`
+  --> check/malformed_traits.knv:27:23
+   |
+27 | (impl painted circle (nope (c) c))
+   |                       ^^^^ not a method of `painted`
+   |
+   = help: declare it in the trait, or remove it
+
+error[L0210]: malformed `impl`
+  --> check/malformed_traits.knv:29:1
+   |
+29 | (impl broken circle (anything (c) c))
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this does not fit the shape of `impl`
+   |
+   = help: define the trait before implementing it

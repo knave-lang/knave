@@ -1,0 +1,97 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/lifetimes.knv
+---
+fn written_longer<'a>(a: &'a str, b: &'a str) -> &'a str {
+    if a.len() > b.len() { a } else { b }
+}
+
+fn longer<'a>(a: &'a str, b: &'a str) -> &'a str {
+    if a.len() > b.len() { a } else { b }
+}
+
+fn first<'a>(a: &'a str, b: &str) -> &'a str {
+    a
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Snippet<'a> {
+    text: &'a str,
+}
+
+fn snippet_of(source: &str) -> Snippet<'_> {
+    Snippet { text: source }
+}
+
+fn literal_snippet() -> Snippet<'static> {
+    Snippet { text: "hi" }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Label<'a> {
+    text: &'a str,
+}
+
+fn label_of(source: &str) -> Label<'_> {
+    Label { text: source }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum Token<'a> {
+    Symbol(&'a str),
+    Number(&'a str),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum Tagged<'a> {
+    Value(&'a str),
+}
+
+fn choose<'a, A>(x: A, y: A, s: &str, t: &'a str) -> &'a str {
+    t
+}
+
+fn token_text(token: Token<'_>) -> &str {
+    match token {
+        Token::Symbol(text) => text,
+        Token::Number(text) => text,
+    }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", written_longer("hi", "hello there"));
+    println!("{}", longer("hi", "hello there"));
+    println!("{}", first("hello", "hi"));
+    let source = "hello there";
+    let shorter = snippet_of(source);
+    println!("snippet {}", shorter.text);
+    println!("literal {}", literal_snippet().text);
+    let named = label_of(source);
+    println!("label {}", named.text);
+    println!("token {}", token_text(Token::Symbol("hi")));
+    println!("number {}", token_text(Token::Number("42")));
+    println!("{}", {
+        let Tagged::Value(text) = Tagged::Value("tagged");
+        text
+    });
+    println!("{}", choose(1_i64, 2, "hi", "there"))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

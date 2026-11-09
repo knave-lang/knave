@@ -23,7 +23,7 @@ A warning does not stop the build: the compiler prints it and continues.
 
 ```text
 error[L0201]: cannot find `distnce` in this scope
- --> src/main.rslisp:4:10
+ --> src/main.knv:4:10
   |
 4 |   (print (distnce origin target))
   |           ^^^^^^^ not found in this scope

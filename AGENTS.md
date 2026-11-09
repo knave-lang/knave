@@ -194,7 +194,7 @@ cargo test <narrowest test>
 
 **If a change touches what a small flake check checks, build that check alone with `nix build --no-link .#checks.<system>.<name>`.** Every flake check except `default` and `source-format`, which builds `default`, is small.
 
-**The `source-format` flake check fails on any `.rslisp` file under `prelude/`, `examples/` or `tests/fixtures/` that `knave fmt --check` would change.** The check skips `tests/fixtures/read/`, `tests/fixtures/format/` and `tests/fixtures/expand/unreadable/`.
+**The `source-format` flake check fails on any `.knv` file under `prelude/`, `examples/` or `tests/fixtures/` that `knave fmt --check` would change.** The check skips `tests/fixtures/read/`, `tests/fixtures/format/` and `tests/fixtures/expand/unreadable/`.
 
 **A change is done when CI passes on its pull request.** The `cargo (macos-latest)` job runs only on pushes to `main`.
 

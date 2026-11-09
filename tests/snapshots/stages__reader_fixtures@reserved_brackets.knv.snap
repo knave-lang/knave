@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).read_report()"
+input_file: tests/fixtures/read/reserved_brackets.knv
+---
+error[L0106]: `[` is not part of the syntax
+ --> read/reserved_brackets.knv:1:13
+  |
+1 | (def scores [10 20])
+  |             ^ not allowed here
+  |
+help: every list uses `(` and `)`
+  |
+1 - (def scores [10 20])
+1 + (def scores (10 20])
+  |
+
+error[L0106]: `]` is not part of the syntax
+ --> read/reserved_brackets.knv:1:19
+  |
+1 | (def scores [10 20])
+  |                   ^ not allowed here
+  |
+help: every list uses `(` and `)`
+  |
+1 - (def scores [10 20])
+1 + (def scores [10 20))
+  |

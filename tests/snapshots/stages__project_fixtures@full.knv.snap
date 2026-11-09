@@ -1,0 +1,134 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/full.knv
+---
+Project {
+    name: "browser",
+    version: "0.1.0",
+    entry: "src/main.knv",
+    library_root: "src/lib.knv",
+    edition: 2026,
+    libraries: [
+        LibraryDependency {
+            name: "hints",
+            name_span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 119,
+                end: 124,
+            },
+            source: Path(
+                "../hints",
+            ),
+        },
+        LibraryDependency {
+            name: "keymap",
+            name_span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 164,
+                end: 170,
+            },
+            source: Git {
+                url: "https://example.com/keymap",
+                commit: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+            },
+        },
+    ],
+    dependencies: [
+        CrateDependency {
+            name: "cef",
+            name_span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 308,
+                end: 311,
+            },
+            version: Some(
+                "144.0",
+            ),
+            features: [],
+            path: None,
+        },
+        CrateDependency {
+            name: "serde",
+            name_span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 345,
+                end: 350,
+            },
+            version: Some(
+                "1.0",
+            ),
+            features: [
+                "derive",
+            ],
+            path: None,
+        },
+    ],
+    dev_dependencies: [
+        CrateDependency {
+            name: "proptest",
+            name_span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 409,
+                end: 417,
+            },
+            version: Some(
+                "1.5",
+            ),
+            features: [],
+            path: None,
+        },
+    ],
+    sections: [
+        SectionHead {
+            section: Libraries,
+            span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 108,
+                end: 117,
+            },
+            has_entries: true,
+        },
+        SectionHead {
+            section: Dependencies,
+            span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 294,
+                end: 306,
+            },
+            has_entries: true,
+        },
+        SectionHead {
+            section: DevDependencies,
+            span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 391,
+                end: 407,
+            },
+            has_entries: true,
+        },
+    ],
+}
+error[L0719]: this compiler cannot build `dev-dependencies` yet
+  --> project/full.knv:13:11
+   |
+13 |          (dev-dependencies (proptest "1.5")))
+   |           ^^^^^^^^^^^^^^^^ this section has entries
+   |
+   = help: remove the entries of `dev-dependencies` for now

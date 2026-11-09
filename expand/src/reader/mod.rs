@@ -270,7 +270,7 @@ mod tests {
 
         fn new() -> Self {
             let mut sources = SourceMap::default();
-            let file = sources.add("geometry.rslisp", Self::TEXT);
+            let file = sources.add("geometry.knv", Self::TEXT);
             Self { sources, file }
         }
 
@@ -336,7 +336,7 @@ mod tests {
     fn an_offset_outside_the_excerpt_reads_nothing() {
         let text = "(defn area (w h) (* w h))\n(area 2 3)\n";
         let mut sources = SourceMap::default();
-        let module = sources.add("geometry.rslisp", text);
+        let module = sources.add("geometry.knv", text);
         let inside = sources
             .add_inside(module, TextPosition::new(2, 1), "(area 2 3)")
             .expect("the forms sit at that position");
@@ -346,7 +346,7 @@ mod tests {
     #[test]
     fn a_form_with_a_read_error_reads_nothing() {
         let mut sources = SourceMap::default();
-        let file = sources.add("broken.rslisp", "(area [2] 3)");
+        let file = sources.add("broken.knv", "(area [2] 3)");
         assert!(Reader::read_form_at(sources.file(file), 0).is_none());
     }
 
@@ -354,7 +354,7 @@ mod tests {
     fn a_source_inside_another_reads_only_its_own_forms_at_their_offsets() {
         let text = "(defn area (w h) (* w h))\n(area 2 3)\n(area 4 5)\n";
         let mut sources = SourceMap::default();
-        let module = sources.add("geometry.rslisp", text);
+        let module = sources.add("geometry.knv", text);
         let inside = sources
             .add_inside(module, TextPosition::new(2, 1), "(area 2 3)")
             .expect("the forms sit at that position");

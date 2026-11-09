@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/compile_time_errors.knv
+---
+error[L0412]: `first` only exists at compile time
+ --> check/compile_time_errors.knv:3:25
+  |
+3 | (def helper (fn (form) (first form)))
+  |                         ^^^^^ used in code that runs in the program
+  |
+  = note: definitions that use the `code` module or `quote` can only be used by macros
+
+error[L0442]: quoted code only exists at compile time
+ --> check/compile_time_errors.knv:7:17
+  |
+7 | (defn quotes () (quote (a b)))
+  |                 ^^^^^^^^^^^^^ used in code that runs in the program
+  |
+  = help: use `quote` inside macros, or write a string if you want text

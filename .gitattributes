@@ -1,1 +1,1 @@
-*.rslisp linguist-language=Clojure linguist-detectable=false
+*.knv linguist-language=Clojure linguist-detectable=false

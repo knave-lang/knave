@@ -1,6 +1,0 @@
----
-source: tests/stages.rs
-expression: reports.report(path)
-input_file: tests/fixtures/run/push_as_value.rslisp
----
-(vec 2019 2022 2025)

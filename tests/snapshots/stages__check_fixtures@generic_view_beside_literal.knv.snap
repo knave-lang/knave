@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/generic_view_beside_literal.knv
+---
+error[L0401]: mismatched types
+ --> check/generic_view_beside_literal.knv:9:16
+  |
+9 |   (later? 2020 (ref model)))
+  |                ^^^^^^^^^^^ expected an integer, found `(ref (ref str))`
+
+error[L0401]: mismatched types
+  --> check/generic_view_beside_literal.knv:13:23
+   |
+13 |   (later? (ref model) 2020))
+   |                       ^^^^ expected `(ref str)`, found an integer
+
+error[L0401]: mismatched types
+  --> check/generic_view_beside_literal.knv:17:16
+   |
+17 |   (later? 2020 (ref model)))
+   |                ^^^^^^^^^^^ expected an integer, found `(ref string)`
+
+error[L0401]: mismatched types
+  --> check/generic_view_beside_literal.knv:21:16
+   |
+21 |   (later? 2020 (ref years)))
+   |                ^^^^^^^^^^^ expected an integer, found `(ref (vec _))`

@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).run_report()"
+input_file: tests/fixtures/run/slices.knv
+---
+28
+2
+2
+4
+28
+13
+5
+1.5
+2
+7.5

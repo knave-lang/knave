@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/update_field.knv
+---
+(->item :name "plum?" :count 2)
+built
+(->item :name "pear" :count -1)
+built
+(->item :name "pear" :count -1)
+built shelf
+built
+(->item :name "pear" :count -1)

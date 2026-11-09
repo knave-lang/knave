@@ -1,0 +1,44 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/string_map_fields.knv
+---
+struct Dealer<'a> {
+    prices: std::collections::HashMap<&'a str, u32>,
+    ranking: std::collections::BTreeMap<u8, &'a str>,
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let dealer = Dealer {
+        prices: {
+            let mut map = std::collections::HashMap::new();
+            map.insert("Leaf", 30000_u32);
+            map
+        },
+        ranking: {
+            let mut map = std::collections::BTreeMap::new();
+            map.insert(1_u8, "Leaf");
+            map
+        },
+    };
+    println!("{}", dealer.prices.get("Leaf").unwrap());
+    println!("{}", dealer.ranking.get(&1).unwrap())
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

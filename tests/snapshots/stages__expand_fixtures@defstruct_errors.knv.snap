@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/defstruct_errors.knv
+---
+error[L0301]: this field has no type
+ --> expand/defstruct_errors.knv:3:3
+  |
+3 |   :year)
+  |   ^^^^^ here
+  |
+  = help: write a type after it, as in :year i64
+
+error[L0301]: a field must start with `:`
+ --> expand/defstruct_errors.knv:6:3
+  |
+6 |   make str)
+  |   ^^^^ here
+  |
+  = help: write each field as `:name type`, as in (defstruct point :x f64 :y f64)
+
+error[L0301]: this field has no type
+ --> expand/defstruct_errors.knv:9:3
+  |
+9 |   :seats :doors
+  |   ^^^^^^ here
+  |
+  = help: write a type after it, as in :seats i64

@@ -1,0 +1,31 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/repeated_pattern_errors.knv
+---
+error[L0301]: this pattern variable needs `...` after it
+ --> expand/repeated_pattern_errors.knv:1:31
+  |
+1 | (defrule flat ((item ...) (do item)))
+  |                               ^^^^ here
+...
+9 | (def a (fn () (flat 1 2)))
+  |               ---------- in this macro call
+
+error[L0301]: this pattern variable needs `...` after it
+  --> expand/repeated_pattern_errors.knv:4:27
+   |
+ 4 |   (((left right) ...) (do left)))
+   |                           ^^^^ here
+...
+11 | (def b (fn () (flat-pairs (1 2))))
+   |               ------------------ in this macro call
+
+error[L0301]: nothing before this `...` repeats
+  --> expand/repeated_pattern_errors.knv:7:19
+   |
+ 7 |   ((item ...) (do 1 ...)))
+   |                   ^ here
+...
+13 | (def c (fn () (empty-repeat 1 2)))
+   |               ------------------ in this macro call

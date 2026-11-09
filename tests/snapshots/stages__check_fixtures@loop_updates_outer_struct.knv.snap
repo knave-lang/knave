@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/loop_updates_outer_struct.knv
+---
+error[L0501]: use of moved value `g`
+  --> check/loop_updates_outer_struct.knv:16:40
+   |
+16 |                  (local renamed (assoc g :owner (str "Nissan")))
+   |                                        ^ value used here after an earlier pass of the loop moved it
+   |
+help: clone the value if both places need it
+   |
+16 -                  (local renamed (assoc g :owner (str "Nissan")))
+16 +                  (local renamed (assoc (clone g) :owner (str "Nissan")))
+   |

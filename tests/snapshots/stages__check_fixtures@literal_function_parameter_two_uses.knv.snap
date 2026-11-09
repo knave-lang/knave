@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/literal_function_parameter_two_uses.knv
+---
+error[L0401]: mismatched types
+  --> check/literal_function_parameter_two_uses.knv:12:31
+   |
+12 |   (println (:year (build-with ->car)))
+   |                               ^^^^^ expected `(fn ((ref str) i64) _)`, found `(fn ((ref str) u16) car)`

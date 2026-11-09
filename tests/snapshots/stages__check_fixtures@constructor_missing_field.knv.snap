@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/constructor_missing_field.knv
+---
+error[L0409]: missing field `email` in `user`
+ --> check/constructor_missing_field.knv:8:14
+  |
+8 |   (local ana (->user :name "ana"))
+  |              ^^^^^^^^^^^^^^^^^^^^ each missing field needs a value

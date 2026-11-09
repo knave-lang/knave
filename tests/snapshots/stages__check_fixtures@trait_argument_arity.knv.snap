@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/trait_argument_arity.knv
+---
+error[L0425]: `display` takes no second type
+ --> check/trait_argument_arity.knv:4:23
+  |
+4 |   (where ((a (display b)) b)
+  |                       ^ this gives it a second type
+  |
+  = help: write `display` alone, without a second type

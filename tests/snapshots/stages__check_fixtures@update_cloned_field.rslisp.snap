@@ -1,9 +1,0 @@
----
-source: tests/stages.rs
-expression: reports.report(path)
-input_file: tests/fixtures/check/update_cloned_field.rslisp
----
-(derive item clone partial-eq eq hash show)
-(type ->item (fn (string) item))
-(type take-name (fn (string) string))
-(type main (fn () unit))

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/projection_without_bound.knv
+---
+error[L0453]: `target` might not implement `from-str`
+ --> check/projection_without_bound.knv:4:22
+  |
+4 |       (result target (parse-error target)))))
+  |                      ^^^^^^^^^^^^^^^^^^^^ `(parse-error target)` needs `target` to implement `from-str`
+  |
+  = help: add the trait to the `where` that binds `target`: `(target from-str)`

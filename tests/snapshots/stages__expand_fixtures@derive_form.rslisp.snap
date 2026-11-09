@@ -1,9 +1,0 @@
----
-source: tests/stages.rs
-expression: "Fixture::load(path).expand_report()"
-input_file: tests/fixtures/expand/derive_form.rslisp
----
-(struct ticket (id u32) (seat u32))
-(def make-ticket (fn (id seat) (new ticket (id id) (seat seat))))
-(derive ticket copy ord)
-(def main (fn () (do)))

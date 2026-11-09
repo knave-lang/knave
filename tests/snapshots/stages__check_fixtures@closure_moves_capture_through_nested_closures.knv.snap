@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/closure_moves_capture_through_nested_closures.knv
+---
+error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
+  --> check/closure_moves_capture_through_nested_closures.knv:16:10
+   |
+16 |   (twice describe)
+   |          ^^^^^^^^ `model` moves here
+   |
+   = help: clone `model`, or borrow it with `(ref model)`

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/blocked_enum_derive.knv
+---
+error[L0423]: `value` cannot derive `eq`
+ --> check/blocked_enum_derive.knv:3:15
+  |
+3 | (derive value eq)
+  |               ^^ variant `number` holds `f64`, which is not `eq`
+  |
+  = help: change the payload of variant `number`, or leave this trait out of the `derive`

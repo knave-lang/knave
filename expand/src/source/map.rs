@@ -61,7 +61,7 @@ mod tests {
     }
 
     impl InsideFixture {
-        const MODULE: &str = "geometry.rslisp";
+        const MODULE: &str = "geometry.knv";
         const TEXT: &str = "(defn area (w h) (* w h))\n(area 2 3)\n(area 4 5)\n";
         const SECOND_LINE: &str = "(area 2 3)";
 

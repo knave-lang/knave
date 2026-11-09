@@ -187,7 +187,7 @@ mod tests {
 
         fn failure(sides: Option<(&str, &str)>, message: Option<&str>) -> TestRecord {
             TestRecord::Fail(TestFailure {
-                location: "pads.rslisp:3:3".to_string(),
+                location: "pads.knv:3:3".to_string(),
                 written: "(assert (= (pad \"a\") \"a\"))".to_string(),
                 sides: sides.map(|(left, right)| (left.to_string(), right.to_string())),
                 message: message.map(str::to_string),
@@ -216,7 +216,7 @@ mod tests {
 
     #[test]
     fn a_fail_record_reads_its_escaped_written_assert() {
-        let text = "(fail \"pads.rslisp:3:3\" \"(assert (= (pad \\\"a\\\") \\\"a\\\"))\")";
+        let text = "(fail \"pads.knv:3:3\" \"(assert (= (pad \\\"a\\\") \\\"a\\\"))\")";
         assert_eq!(
             RecordFixture::parsed(text),
             Some(RecordFixture::failure(None, None))
@@ -225,7 +225,7 @@ mod tests {
 
     #[test]
     fn a_fail_equal_record_carries_both_sides_and_a_message() {
-        let text = "(fail-equal \"pads.rslisp:3:3\" \"(assert (= (pad \\\"a\\\") \\\"a\\\"))\" \"\\\" a\\\"\" \"\\\"a\\\"\" \"pads\")";
+        let text = "(fail-equal \"pads.knv:3:3\" \"(assert (= (pad \\\"a\\\") \\\"a\\\"))\" \"\\\" a\\\"\" \"\\\"a\\\"\" \"pads\")";
         assert_eq!(
             RecordFixture::parsed(text),
             Some(RecordFixture::failure(
@@ -238,9 +238,9 @@ mod tests {
     #[test]
     fn a_panic_record_carries_the_location_and_the_message() {
         assert_eq!(
-            RecordFixture::parsed("(panic \"pads.rslisp:2:1\" \"boom\")"),
+            RecordFixture::parsed("(panic \"pads.knv:2:1\" \"boom\")"),
             Some(TestRecord::Panic(TestPanic {
-                location: "pads.rslisp:2:1".to_string(),
+                location: "pads.knv:2:1".to_string(),
                 message: "boom".to_string(),
             }))
         );

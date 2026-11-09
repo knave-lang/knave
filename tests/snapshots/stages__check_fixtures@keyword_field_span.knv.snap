@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/keyword_field_span.knv
+---
+error[L0408]: `car` has no field `:yer`
+  --> check/keyword_field_span.knv:14:36
+   |
+14 |   (println (:year (with-field leaf :yer 2025))))
+   |                                    ^^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+14 |   (println (:year (with-field leaf :year 2025))))
+   |                                       +

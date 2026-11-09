@@ -6,7 +6,7 @@ exit code: Some(0)
 --- stdout
 --- stderr
 error[L0201]: cannot find `nope` in this scope
- --> ./shapes.rslisp:2:19
+ --> ./shapes.knv:2:19
   |
 2 | (defn circle (r) (nope r))
   |                   ^^^^ not found in this scope

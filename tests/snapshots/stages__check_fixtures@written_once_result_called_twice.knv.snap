@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/written_once_result_called_twice.knv
+---
+error[L0501]: use of moved value `getter`
+ --> check/written_once_result_called_twice.knv:8:13
+  |
+7 |   (println (getter))
+  |             ------ value moved here
+8 |   (println (getter)))
+  |             ^^^^^^ value used here after it moved
+  |
+  = help: this closure moves a captured value, so it cannot be copied

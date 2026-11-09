@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/group_partial_failure.knv
+---
+error[L0401]: mismatched types
+  --> check/group_partial_failure.knv:10:10
+   |
+10 |     (+ n "one")))
+   |          ^^^^^ expected an integer, found `str`

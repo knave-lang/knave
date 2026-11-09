@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/malformed_enum.knv
+---
+error[L0210]: malformed `enum`
+ --> check/malformed_enum.knv:1:11
+  |
+1 | (enum bad 1)
+  |           ^ this does not fit the shape of `enum`
+  |
+  = help: write it as `(enum (name parameter ...) (rust "Path")? variant ...)`

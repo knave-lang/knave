@@ -1,0 +1,35 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/one_type_helpers_module.knv
+---
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", crate::one_type_helpers_module::helper::shout(7))
+}
+
+mod one_type_helpers_module {
+
+    pub(crate) mod helper {
+        pub fn shout(value: i64) -> String {
+            value.to_string()
+        }
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

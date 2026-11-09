@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/use_reserved_project.knv
+---
+error[L0250]: `project` cannot name a module
+ --> expand/use_reserved_project.knv:1:6
+  |
+1 | (use project)
+  |      ^^^^^^^ this name is reserved
+  |
+  = note: `project.knv` at the root is the project file
+  = help: rename the module's file, and this path with it

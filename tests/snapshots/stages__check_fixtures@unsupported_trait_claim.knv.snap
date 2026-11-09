@@ -1,0 +1,21 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/unsupported_trait_claim.knv
+---
+warning[L0217]: `point-eq` binds a Rust path that `eq` already binds
+ --> check/unsupported_trait_claim.knv:5:13
+  |
+5 | (rust-trait point-eq "Eq" point)
+  |             ^^^^^^^^ this also binds `Eq`
+  |
+  = note: two traits that bind one Rust path can disagree about its implementors
+  = help: use `eq`, or give `point-eq` a different Rust path
+
+error[L0421]: `point` does not derive `point-eq`
+ --> check/unsupported_trait_claim.knv:5:27
+  |
+5 | (rust-trait point-eq "Eq" point)
+  |                           ^^^^^ this struct does not derive `point-eq`
+  |
+  = help: remove `point` from this `rust-trait`, or list a type that Rust implements `point-eq` for

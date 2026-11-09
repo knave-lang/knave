@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).check_report()"
+input_file: tests/fixtures/check/function_field_with_reference.knv
+---
+(derive handler clone copy)
+(type main (fn () unit))

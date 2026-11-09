@@ -1,0 +1,40 @@
+---
+source: tests/stages.rs
+expression: "Fixture::load(path).emit_report()"
+input_file: tests/fixtures/emit/collections.knv
+---
+fn is_even(n: i64) -> bool {
+    n % 2 == 0
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!(
+        "{}",
+        (1_i64..1000001_i64).fold(0, |total: i64, n: i64| total + n)
+    );
+    let numbers: Vec<i64> = (1_i64..11_i64).collect::<Vec<_>>();
+    let evens: Vec<i64> = numbers
+        .iter()
+        .copied()
+        .filter(|n: &i64| is_even(*n))
+        .collect::<Vec<_>>();
+    evens.iter().copied().for_each(|n: i64| println!("{}", n))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

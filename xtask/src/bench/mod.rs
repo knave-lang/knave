@@ -410,7 +410,7 @@ mod tests {
         let repository = WorkspaceFixture::repository_root();
         let measured = repository.join("xtask");
         let benchmark = MeasuredCheckoutFixture::benchmark(repository, measured.clone());
-        let corpus = benchmark.corpus("rslisp").unwrap();
+        let corpus = benchmark.corpus("knv").unwrap();
         assert_eq!(
             corpus.directory(),
             measured.canonicalize().unwrap().join(Corpus::DIRECTORY)

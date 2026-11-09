@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/compare_incompatible.knv
+---
+error[L0401]: mismatched types
+ --> check/compare_incompatible.knv:1:29
+  |
+1 | (defn main () (println (= 1 "one")))
+  |                             ^^^^^ expected an integer, found `str`

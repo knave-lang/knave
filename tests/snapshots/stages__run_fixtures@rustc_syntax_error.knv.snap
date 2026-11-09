@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/rustc_syntax_error.knv
+---
+error[L0604]: leading `+` is not supported
+ --> run/rustc_syntax_error.knv:5:12
+  |
+5 |   (println (doubled-sign 1)))
+  |            ^^^^^^^^^^^^^^^^ unexpected `+`
+  |
+  = note: reported by rustc while compiling the generated Rust
+  = help: try removing the `+`

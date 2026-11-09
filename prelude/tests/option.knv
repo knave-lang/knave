@@ -1,4 +1,4 @@
-(use prelude/test assert deftest)
+(use prelude/test assert deftest doctest)
 
 (deftest some-holds-a-value
   (assert (some? (some 1)))
@@ -33,3 +33,5 @@
   (assert (= (then-some (some 2)
                         (fn (n) (if (> n 3) (some n) none)))
              none)))
+
+(doctest prelude/option)

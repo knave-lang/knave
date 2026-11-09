@@ -1,0 +1,19 @@
+---
+source: tests/cli.rs
+expression: "reports.join(\"---\\n\")"
+---
+error[L0360]: a task cannot have a flag named `--help`
+ --> tasks/t.knv:1:14
+  |
+1 | (deftask hv (:help "x") (println help))
+  |              ^^^^^ this flag
+  |
+  = help: rename the flag, because `--help` prints the task's usage
+---
+error[L0361]: the only form of task `docless` is a string, so it is the task's body, not its docstring
+ --> tasks/t.knv:1:21
+  |
+1 | (deftask docless () "only a docstring")
+  |                     ^^^^^^^^^^^^^^^^^^ this string is the body
+  |
+  = help: write the task's body after the docstring

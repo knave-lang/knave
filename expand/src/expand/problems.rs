@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::rc::Rc;
 
 use crate::core::{
@@ -531,6 +532,21 @@ impl ExpandProblems {
         )
     }
 
+    pub fn unreachable_module(path: &ModulePath, file: &Path, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::UNKNOWN_MODULE,
+            format!("cannot find module `{path}`"),
+            Label::new(span, "no module this file can use has this path"),
+        )
+        .with_note(format!(
+            "`{}` exists, under a directory a task cannot reach",
+            file.display()
+        ))
+        .with_help(
+            "a task cannot use a module under `tests/`, so move the shared code into the source root",
+        )
+    }
+
     pub fn local_module_beside_library(clash: &LocalModuleClash<'_>, span: Span) -> Diagnostic {
         let (local, library) = (clash.local.display(), clash.library);
         Diagnostic::error(
@@ -611,9 +627,14 @@ impl ExpandProblems {
             format!("`{hiding}` hides `{hidden}`"),
             Label::new(span, format!("this loads `{hiding}`")),
         )
-        .with_note(
-            "a module of the test directory takes precedence over a source module of the same path",
-        )
+        .with_note(format!(
+            "a module of the {} directory takes precedence over a source module of the same path",
+            if shadow.hiding_task_module {
+                "tasks"
+            } else {
+                "test"
+            }
+        ))
         .with_help(format!("rename `{hiding}` to reach `{hidden}`"))
     }
 

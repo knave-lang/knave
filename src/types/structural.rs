@@ -108,7 +108,7 @@ impl TypeChecker {
         program_type: bool,
     ) -> bool {
         if !self.is_structural_trait(trait_binding) {
-            return program_type;
+            return program_type || !self.declares_methods(trait_binding);
         }
         self.lacks_source_form(implementor)
             || self
@@ -160,6 +160,12 @@ impl TypeChecker {
             trait_name,
             head_name,
         ))
+    }
+
+    fn declares_methods(&self, trait_binding: BindingId) -> bool {
+        self.trait_methods
+            .values()
+            .any(|method| method.trait_binding == trait_binding)
     }
 
     pub(super) fn is_structural_trait(&self, trait_binding: BindingId) -> bool {

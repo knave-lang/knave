@@ -1,0 +1,176 @@
+---
+source: tests/cli.rs
+expression: program
+---
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let values = {
+        fn refuse(message: String, usage: &str) -> ! {
+            eprintln!("error: {}\nusage: {}", message, usage);
+            std::process::exit(2)
+        }
+        fn counted(count: usize) -> String {
+            if count == 1 {
+                "1 positional argument".to_string()
+            } else {
+                format!("{} positional arguments", count)
+            }
+        }
+        fn flag_name(word: &str) -> Option<&str> {
+            word.strip_prefix("--")
+                .map(|written| written.split_once('=').map_or(written, |(name, _)| name))
+        }
+        let task: &str = "greet";
+        let positional_count: usize = 1_usize;
+        let flags: Vec<&str> = "times ".split_whitespace().collect();
+        let switches: Vec<&str> = "loud ".split_whitespace().collect();
+        let usage: &str = "greet <who> [--times 1] [--loud]";
+        let documentation: String = "Greets someone a few times."
+            .lines()
+            .map(str::trim)
+            .collect::<Vec<_>>()
+            .join("\n");
+        let mut values: Vec<Option<String>> =
+            vec![None; positional_count + flags.len() + switches.len()];
+        let mut positional = 0;
+        let mut flags_ended = false;
+        let mut last_switch: Option<String> = None;
+        let mut words = std::env::args().skip(1).peekable();
+        while let Some(word) = words.next() {
+            let after_switch = last_switch.take();
+            if !flags_ended && word == "--" {
+                flags_ended = true;
+            } else if !flags_ended && word == "--help" {
+                println!("usage: {}", usage);
+                if !documentation.is_empty() {
+                    println!("\n{}", documentation);
+                }
+                std::process::exit(0)
+            } else if let Some(written) = word.strip_prefix("--").filter(|_| !flags_ended) {
+                let (name, attached) = match written.split_once('=') {
+                    Some((name, value)) => (name, Some(value.to_string())),
+                    None => (written, None),
+                };
+                let (slot, value) =
+                    if let Some(index) = switches.iter().position(|switch| *switch == name) {
+                        if attached.is_some() {
+                            refuse(format!("switch `--{}` takes no value", name), usage)
+                        }
+                        last_switch = Some(name.to_string());
+                        (positional_count + flags.len() + index, String::new())
+                    } else if let Some(index) = flags.iter().position(|flag| *flag == name) {
+                        let names_a_flag = words
+                            .peek()
+                            .and_then(|next| flag_name(next))
+                            .is_some_and(|next| {
+                                next == "help" || flags.contains(&next) || switches.contains(&next)
+                            });
+                        if attached.is_none() && names_a_flag {
+                            refuse(format!("flag `--{}` needs a value", name), usage)
+                        }
+                        let value = attached.or_else(|| words.next()).unwrap_or_else(|| {
+                            refuse(format!("flag `--{}` needs a value", name), usage)
+                        });
+                        (positional_count + index, value)
+                    } else {
+                        refuse(format!("task `{}` has no flag `--{}`", task, name), usage)
+                    };
+                if values[slot].is_some() {
+                    refuse(format!("flag `--{}` is given more than once", name), usage)
+                }
+                values[slot] = Some(value);
+            } else if positional < positional_count {
+                values[positional] = Some(word);
+                positional += 1;
+            } else if let Some(switch) = after_switch {
+                refuse(format!("switch `--{}` takes no value", switch), usage)
+            } else {
+                refuse(
+                    format!(
+                        "task `{}` takes {}, and got more",
+                        task,
+                        counted(positional_count)
+                    ),
+                    usage,
+                )
+            }
+        }
+        if positional < positional_count {
+            refuse(
+                format!(
+                    "task `{}` takes {}, and got {}",
+                    task,
+                    counted(positional_count),
+                    positional
+                ),
+                usage,
+            )
+        }
+        values
+    };
+    crate::chores::task_greet(
+        {
+            let template_argument_0 = &values;
+            let template_argument_1 = 0;
+            let template_argument_2 = "greet";
+            let template_argument_3 = "<who>";
+            let template_argument_4 = "greet <who> [--times 1] [--loud]";
+            match &(template_argument_0)[template_argument_1] {
+                Some(text) => text.parse::<String>().unwrap_or_else(|_| {
+                    eprintln!(
+                        "error: task `{}` cannot read `{}` as `{}`",
+                        template_argument_2, text, template_argument_3
+                    );
+                    std::process::exit(2)
+                }),
+                None => {
+                    eprintln!(
+                        "error: task `{}` needs `{}`\nusage: {}",
+                        template_argument_2, template_argument_3, template_argument_4
+                    );
+                    std::process::exit(2)
+                }
+            }
+        },
+        match &(&values)[1] {
+            Some(text) => text.parse::<u16>().unwrap_or_else(|_| {
+                eprintln!(
+                    "error: task `{}` cannot read `{}` as `{}`",
+                    "greet", text, "--times"
+                );
+                std::process::exit(2)
+            }),
+            None => 1,
+        },
+        (&values)[2].is_some(),
+    )
+}
+
+mod chores {
+    pub(crate) fn task_greet(who: String, times: u16, loud: bool) {
+        println!("{} {} {}", crate::main::greeting(&who), times, loud)
+    }
+}
+
+mod main {
+    pub fn greeting<A: std::fmt::Display>(name: &A) -> String {
+        format!("hello {}", name)
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

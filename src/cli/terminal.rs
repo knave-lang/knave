@@ -70,6 +70,7 @@ pub struct Terminal {
     work: StageWork,
     diagnostics: Rc<dyn DiagnosticOutput>,
     interruption: Interruption,
+    generated_sources: Vec<&'static str>,
 }
 
 impl Terminal {
@@ -91,6 +92,7 @@ impl Terminal {
             work: StageWork::default(),
             diagnostics,
             interruption: Interruption::default(),
+            generated_sources: Vec::new(),
         }
     }
 
@@ -464,7 +466,8 @@ impl Terminal {
         let directory = file.root().to_path_buf();
         let sources = ModuleSources::new(directory.clone(), directory)
             .with_libraries(file.libraries().clone())
-            .without_fallback_into(file.fallback_excluded().to_vec());
+            .without_reaching(file.unreachable().to_vec())
+            .with_tasks_directory(file.tasks_directory().map(Path::to_path_buf));
         match file.fallback_root() {
             Some(fallback_root) => sources.with_fallback_root(fallback_root.to_path_buf()),
             None => sources,
@@ -475,7 +478,8 @@ impl Terminal {
         if diagnostics.is_empty() {
             return;
         }
-        self.diagnostics.write(&self.sources, diagnostics);
+        self.diagnostics
+            .write(&self.sources, &self.without_generated_labels(diagnostics));
     }
 
     pub fn print_note(&self, message: &str) {
@@ -486,8 +490,37 @@ impl Terminal {
         if !diagnostics.has_errors() {
             return ExitStatus::Success;
         }
-        self.diagnostics.write(&self.sources, diagnostics);
+        self.diagnostics
+            .write(&self.sources, &self.without_generated_labels(diagnostics));
         ExitStatus::ProgramErrors
+    }
+
+    pub fn hide_labels_in_generated(&mut self, name: &'static str) {
+        if !self.generated_sources.contains(&name) {
+            self.generated_sources.push(name);
+        }
+    }
+
+    fn without_generated_labels(&self, diagnostics: &Diagnostics) -> Diagnostics {
+        diagnostics.clone().map(|diagnostic| {
+            let generated: Vec<SourceId> = diagnostic
+                .labels()
+                .map(|label| label.span().source())
+                .filter(|source| self.is_generated(*source))
+                .collect();
+            generated
+                .into_iter()
+                .fold(diagnostic, |diagnostic, source| {
+                    diagnostic.without_labels_in(source)
+                })
+        })
+    }
+
+    fn is_generated(&self, source: SourceId) -> bool {
+        let name = self.sources.file(source).name();
+        self.generated_sources
+            .iter()
+            .any(|generated| *generated == name)
     }
 
     fn report_build(&self, error: BuildError) -> ExitStatus {

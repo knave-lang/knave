@@ -14,7 +14,8 @@ pub struct ProgramFile {
     path: PathBuf,
     root: PathBuf,
     fallback_root: Option<PathBuf>,
-    fallback_excluded: Vec<PathBuf>,
+    unreachable: Vec<PathBuf>,
+    tasks_directory: Option<PathBuf>,
     module: ModulePath,
     libraries: LibraryTable,
 }
@@ -34,7 +35,8 @@ impl ProgramFile {
             path,
             root,
             fallback_root: None,
-            fallback_excluded: Vec::new(),
+            unreachable: Vec::new(),
+            tasks_directory: None,
             module: ModulePath::new(module),
             libraries: LibraryTable::default(),
         }
@@ -54,15 +56,26 @@ impl ProgramFile {
         }
     }
 
-    pub fn without_fallback_into(self, fallback_excluded: Vec<PathBuf>) -> Self {
+    pub fn without_reaching(self, unreachable: Vec<PathBuf>) -> Self {
         Self {
-            fallback_excluded,
+            unreachable,
             ..self
         }
     }
 
-    pub fn fallback_excluded(&self) -> &[PathBuf] {
-        &self.fallback_excluded
+    pub fn with_tasks_directory(self, tasks_directory: PathBuf) -> Self {
+        Self {
+            tasks_directory: Some(tasks_directory),
+            ..self
+        }
+    }
+
+    pub fn tasks_directory(&self) -> Option<&Path> {
+        self.tasks_directory.as_deref()
+    }
+
+    pub fn unreachable(&self) -> &[PathBuf] {
+        &self.unreachable
     }
 
     pub fn with_libraries(self, libraries: LibraryTable) -> Self {

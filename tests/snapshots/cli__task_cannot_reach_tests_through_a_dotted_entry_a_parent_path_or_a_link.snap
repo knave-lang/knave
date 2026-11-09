@@ -1,0 +1,48 @@
+---
+source: tests/cli.rs
+expression: "reports.join(\"---\\n\")"
+---
+error[L0204]: cannot find module `tests/support`
+ --> tasks/t.knv:1:6
+  |
+1 | (use tests/support helper)
+  |      ^^^^^^^^^^^^^ no module this file can use has this path
+  |
+  = note: `./tests/support.knv` exists, under a directory a task cannot reach
+  = help: a task cannot use a module under `tests/`, so move the shared code into the source root
+
+error[L0201]: cannot find `helper` in this scope
+ --> tasks/t.knv:3:16
+  |
+3 | (deftask t () (helper))
+  |                ^^^^^^ not found in this scope
+---
+error[L0204]: cannot find module `../tests/support`
+ --> tasks/t.knv:1:6
+  |
+1 | (use ../tests/support helper)
+  |      ^^^^^^^^^^^^^^^^ no module this file can use has this path
+  |
+  = note: `tasks/../tests/support.knv` exists, under a directory a task cannot reach
+  = help: a task cannot use a module under `tests/`, so move the shared code into the source root
+
+error[L0201]: cannot find `helper` in this scope
+ --> tasks/t.knv:3:16
+  |
+3 | (deftask t () (helper))
+  |                ^^^^^^ not found in this scope
+---
+error[L0204]: cannot find module `link/support`
+ --> tasks/t.knv:1:6
+  |
+1 | (use link/support helper)
+  |      ^^^^^^^^^^^^ no module this file can use has this path
+  |
+  = note: `src/link/support.knv` exists, under a directory a task cannot reach
+  = help: a task cannot use a module under `tests/`, so move the shared code into the source root
+
+error[L0201]: cannot find `helper` in this scope
+ --> tasks/t.knv:3:16
+  |
+3 | (deftask t () (helper))
+  |                ^^^^^^ not found in this scope

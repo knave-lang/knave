@@ -22,6 +22,7 @@ impl TaskLookup {
     const LOOKUP_SOURCE: &'static str = "<task lookup>";
     const RUNNER_SOURCE: &'static str = "<task runner>";
     const LISTING: &'static str = "(task-listing)";
+    const NO_RUNNER: &'static str = "(do)";
 
     pub fn load(tree: &EntryTree, terminal: &mut Terminal) -> Result<Self, ExitStatus> {
         let modules: Vec<String> = tree
@@ -70,13 +71,18 @@ impl TaskLookup {
     pub fn check(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
         let names = self.names(terminal)?;
         let signatures = self.signatures(terminal, &names)?;
-        let runners: Vec<String> = names
+        if names.is_empty() {
+            return self.check_entry(terminal, Self::NO_RUNNER);
+        }
+        names
             .iter()
             .zip(&signatures)
-            .map(|(name, signature)| Self::runner(name, signature))
-            .collect();
-        let program =
-            self.entered_program(terminal, &format!("(do {} (do))", runners.join(" ")))?;
+            .map(|(name, signature)| self.check_entry(terminal, &Self::runner(name, signature)))
+            .fold(Ok(()), Result::and)
+    }
+
+    fn check_entry(&self, terminal: &mut Terminal, entry: &str) -> Result<(), ExitStatus> {
+        let program = self.entered_program(terminal, entry)?;
         terminal.check_expanded(&program).map(|_| ())
     }
 
@@ -132,9 +138,10 @@ impl TaskLookup {
     }
 
     fn entered_program(&self, terminal: &mut Terminal, entry: &str) -> Result<Program, ExitStatus> {
+        terminal.hide_labels_in_generated(Self::RUNNER_SOURCE);
         terminal.within_evaluation(&self.request, |mut session| {
             let source = session.add_source(Self::RUNNER_SOURCE, entry);
-            Self::hiding_generated(source, Self::entered(session, source))
+            Self::entered(session, source)
         })
     }
 
@@ -146,15 +153,6 @@ impl TaskLookup {
         let mut program = session.finish()?;
         program.enter(&entry);
         Ok(program)
-    }
-
-    fn hiding_generated<T>(
-        source: SourceId,
-        result: Result<T, Diagnostics>,
-    ) -> Result<T, Diagnostics> {
-        result.map_err(|diagnostics| {
-            diagnostics.map(|diagnostic| diagnostic.without_labels_in(source))
-        })
     }
 
     fn task_expression(
@@ -196,9 +194,10 @@ impl TaskLookup {
     }
 
     fn expanded(&self, terminal: &mut Terminal, lookup: &str) -> Result<Expr, ExitStatus> {
+        terminal.hide_labels_in_generated(Self::LOOKUP_SOURCE);
         terminal.within_evaluation(&self.request, |mut session| {
             let source = session.add_source(Self::LOOKUP_SOURCE, lookup);
-            Self::hiding_generated(source, Self::task_expression(&mut session, source))
+            Self::task_expression(&mut session, source)
         })
     }
 

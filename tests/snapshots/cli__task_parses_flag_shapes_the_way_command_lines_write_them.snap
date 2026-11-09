@@ -18,3 +18,5 @@ usage: greet <who> [--times 1] [--loud]
 ---
 Some(0)
 usage: greet <who> [--times 1] [--loud]
+
+Greets someone a few times.

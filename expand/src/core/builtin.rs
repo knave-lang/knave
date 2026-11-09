@@ -58,6 +58,7 @@ pub enum Builtin {
     DeclareTypeDefinition,
     DeclareMacroDefinition,
     FormLocation,
+    InTasksDirectory,
     ProgramModules,
     ModuleExports,
     ModuleDefinitions,
@@ -70,7 +71,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 67] = [
+    const NAMES: [(Builtin, &'static str); 68] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -129,6 +130,7 @@ impl Builtin {
         (Builtin::DeclareTypeDefinition, "declare-type-definition"),
         (Builtin::DeclareMacroDefinition, "declare-macro-definition"),
         (Builtin::FormLocation, "form-location"),
+        (Builtin::InTasksDirectory, "in-tasks-directory?"),
         (Builtin::ProgramModules, "program-modules"),
         (Builtin::ModuleExports, "module-exports"),
         (Builtin::ModuleDefinitions, "module-definitions"),

@@ -6,9 +6,10 @@ error[L0204]: cannot find module `tests/support`
  --> tasks/t.knv:1:6
   |
 1 | (use tests/support helper)
-  |      ^^^^^^^^^^^^^ no module with this path
+  |      ^^^^^^^^^^^^^ no module this file can use has this path
   |
-  = help: a module path names a file relative to the root directory, without its extension
+  = note: `tests/support.knv` exists, under a directory a task cannot reach
+  = help: a task cannot use a module under `tests/`, so move the shared code into the source root
 
 error[L0201]: cannot find `helper` in this scope
  --> tasks/t.knv:3:16

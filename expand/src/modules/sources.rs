@@ -26,13 +26,15 @@ pub struct LocalModuleClash<'s> {
 pub struct HiddenSourceModule {
     pub hiding: PathBuf,
     pub hidden: PathBuf,
+    pub hiding_task_module: bool,
 }
 
 pub struct ModuleSources {
     root: PathBuf,
     display_root: PathBuf,
     fallback_root: Option<PathBuf>,
-    fallback_excluded: Vec<PathBuf>,
+    unreachable: Vec<PathBuf>,
+    tasks_directory: Option<PathBuf>,
     libraries: LibraryTable,
 }
 
@@ -101,7 +103,8 @@ impl ModuleSources {
             root,
             display_root,
             fallback_root: None,
-            fallback_excluded: Vec::new(),
+            unreachable: Vec::new(),
+            tasks_directory: None,
             libraries: LibraryTable::default(),
         }
     }
@@ -113,9 +116,27 @@ impl ModuleSources {
         }
     }
 
-    pub fn without_fallback_into(self, fallback_excluded: Vec<PathBuf>) -> Self {
+    pub fn with_tasks_directory(self, directory: Option<PathBuf>) -> Self {
         Self {
-            fallback_excluded,
+            tasks_directory: directory.and_then(|directory| fs::canonicalize(directory).ok()),
+            ..self
+        }
+    }
+
+    pub fn lies_in_tasks_directory(&self, file: &str) -> bool {
+        let Some(tasks_directory) = &self.tasks_directory else {
+            return false;
+        };
+        fs::canonicalize(file).is_ok_and(|file| file.starts_with(tasks_directory))
+    }
+
+    pub fn without_reaching(self, directories: Vec<PathBuf>) -> Self {
+        let unreachable = directories
+            .iter()
+            .filter_map(|directory| fs::canonicalize(directory).ok())
+            .collect();
+        Self {
+            unreachable,
             ..self
         }
     }
@@ -179,9 +200,15 @@ impl ModuleSources {
         let file_name = Self::file_name(written);
         let hidden = fallback_root.join(&file_name);
         let hides = self.root.join(&file_name).is_file() && hidden.is_file();
+        let hiding_task_module = self
+            .root
+            .join(&file_name)
+            .to_str()
+            .is_some_and(|hiding| self.lies_in_tasks_directory(hiding));
         hides.then(|| HiddenSourceModule {
             hiding: self.display_root.join(&file_name),
             hidden,
+            hiding_task_module,
         })
     }
 
@@ -205,13 +232,28 @@ impl ModuleSources {
         let primary = LocalRoot {
             root: &self.root,
             display_root: &self.display_root,
-            excluded: &[],
+            unreachable: self.unreachable.clone(),
         };
         std::iter::once(primary).chain(fallback.map(|root| LocalRoot {
             root,
             display_root: root,
-            excluded: &self.fallback_excluded,
+            unreachable: self.fallback_unreachable(),
         }))
+    }
+
+    fn fallback_unreachable(&self) -> Vec<PathBuf> {
+        if self.unreachable.is_empty() {
+            return Vec::new();
+        }
+        let primary = fs::canonicalize(&self.root).ok();
+        self.unreachable.iter().cloned().chain(primary).collect()
+    }
+
+    pub fn unreachable_file(&self, path: &ModulePath) -> Option<PathBuf> {
+        let file_name = Self::file_name(path);
+        self.local_roots()
+            .find(|local_root| local_root.holds_unreachable(Path::new(&file_name)))
+            .map(|local_root| local_root.display_root.join(&file_name))
     }
 
     pub fn is_prelude(path: &ModulePath) -> bool {
@@ -340,17 +382,25 @@ impl ModuleSources {
 struct LocalRoot<'s> {
     root: &'s Path,
     display_root: &'s Path,
-    excluded: &'s [PathBuf],
+    unreachable: Vec<PathBuf>,
 }
 
 impl LocalRoot<'_> {
     fn reaches(&self, local: &Path) -> bool {
         let path = self.root.join(local);
-        path.exists()
-            && !self
-                .excluded
-                .iter()
-                .any(|excluded| path.starts_with(excluded))
+        path.exists() && !self.is_unreachable(&path)
+    }
+
+    fn holds_unreachable(&self, local: &Path) -> bool {
+        let path = self.root.join(local);
+        path.exists() && self.is_unreachable(&path)
+    }
+
+    fn is_unreachable(&self, path: &Path) -> bool {
+        let canonical = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        self.unreachable
+            .iter()
+            .any(|unreachable| canonical.starts_with(unreachable))
     }
 }
 

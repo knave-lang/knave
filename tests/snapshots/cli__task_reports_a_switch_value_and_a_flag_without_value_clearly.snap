@@ -1,0 +1,9 @@
+---
+source: tests/cli.rs
+expression: "format!(\"{}---\\n{}\", switch_value.assert_exit_code(2).stderr(),\nflag_then_flag.assert_exit_code(2).stderr())"
+---
+error: switch `--loud` takes no value
+usage: told <who> [--times 1] [--loud]
+---
+error: flag `--times` needs a value
+usage: told <who> [--times 1] [--loud]

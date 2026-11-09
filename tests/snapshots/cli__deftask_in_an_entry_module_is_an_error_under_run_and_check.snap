@@ -1,0 +1,11 @@
+---
+source: tests/cli.rs
+expression: check
+---
+error[L0359]: `deftask` defines a task only in a file under `tasks/`
+ --> src/main.knv:1:10
+  |
+1 | (deftask hidden () (println "h"))
+  |          ^^^^^^ outside `tasks/`
+  |
+  = help: move this task into a file under `tasks/`

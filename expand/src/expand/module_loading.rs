@@ -46,7 +46,14 @@ impl Expander<'_> {
                     self.load_source_module(path.clone(), &[source])
                 }))
             }
-            None => Err(ExpandProblems::unknown_module(path, span)),
+            None => Err(self.missing_module(path, span)),
+        }
+    }
+
+    fn missing_module(&self, path: &ModulePath, span: Span) -> Diagnostic {
+        match self.module_sources.unreachable_file(path) {
+            Some(file) => ExpandProblems::unreachable_module(path, &file, span),
+            None => ExpandProblems::unknown_module(path, span),
         }
     }
 

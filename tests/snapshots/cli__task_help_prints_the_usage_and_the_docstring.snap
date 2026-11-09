@@ -1,0 +1,9 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(0).stdout()
+---
+usage: told <who> [--times 1] [--loud]
+
+Says hello.
+
+Says it a few times.

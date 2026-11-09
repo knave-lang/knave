@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(0).stderr()
+---
+warning[L0256]: `tasks/util.knv` hides `src/util.knv`
+ --> tasks/t.knv:1:6
+  |
+1 | (use util x)
+  |      ^^^^ this loads `tasks/util.knv`
+  |
+  = note: a module of the tasks directory takes precedence over a source module of the same path
+  = help: rename `tasks/util.knv` to reach `src/util.knv`

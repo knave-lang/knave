@@ -111,18 +111,23 @@ impl LocatedProject {
         } else {
             ProgramFile::inside_or_beside(path, self.source_root())
         };
+        self.in_project(file)
+    }
+
+    fn in_project(&self, file: ProgramFile) -> ProgramFile {
         file.with_libraries(self.libraries.clone())
+            .with_tasks_directory(self.tasks_directory())
     }
 
     pub fn test_file(&self, file: ProgramFile) -> ProgramFile {
-        file.with_fallback_root(self.source_root())
-            .with_libraries(self.libraries.clone())
+        self.in_project(file.with_fallback_root(self.source_root()))
     }
 
     pub fn task_file(&self, file: ProgramFile) -> ProgramFile {
-        file.with_fallback_root(self.source_root())
-            .without_fallback_into(vec![self.tests_directory(), self.tasks_directory()])
-            .with_libraries(self.libraries.clone())
+        self.in_project(
+            file.with_fallback_root(self.source_root())
+                .without_reaching(vec![self.tests_directory()]),
+        )
     }
 
     pub fn tests_directory(&self) -> PathBuf {

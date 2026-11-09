@@ -37,6 +37,7 @@ pub trait CompileTimeHost {
     fn module_notes(&self, context: &Symbol, key: &str) -> Vec<Form>;
     fn declare_definition(&mut self, name: Form, declaration: Declaration);
     fn form_location(&self, form: &Form) -> String;
+    fn in_tasks_directory(&self, form: &Form) -> bool;
     fn program_modules(&self) -> Vec<Symbol>;
     fn project_modules(&self) -> Vec<Symbol>;
     fn module_exports(&self, path: &Symbol, span: Span) -> Result<Vec<Symbol>, Diagnostic>;

@@ -17,6 +17,7 @@ pub struct LintedProgram {
 impl<'a> EmittedLints<'a> {
     const SNAPSHOTS: &'static str = "tests/snapshots";
     const EMIT_PREFIX: &'static str = "stages__emit_fixtures@";
+    const TASK_PROGRAM: &'static str = "cli__emitted_task_program.snap";
     const FENCE: &'static str = "---\n";
     const HEADER_FENCES: usize = 2;
     const DIAGNOSTIC_START: &'static str = "error[";
@@ -88,9 +89,11 @@ impl<'a> EmittedLints<'a> {
     }
 
     fn emit_fixture(&self, path: &Path) -> Option<String> {
-        path.file_name()?
-            .to_str()?
-            .strip_prefix(Self::EMIT_PREFIX)?
+        let name = path.file_name()?.to_str()?;
+        if name == Self::TASK_PROGRAM {
+            return name.strip_suffix(".snap").map(str::to_string);
+        }
+        name.strip_prefix(Self::EMIT_PREFIX)?
             .strip_suffix(&self.snapshot_suffix)
             .map(str::to_string)
     }

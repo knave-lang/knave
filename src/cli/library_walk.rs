@@ -9,7 +9,9 @@ use crate::build::{GitStore, StoreError};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::modules::{LibraryRoot, LibraryTable};
-use crate::project::{LibraryDependency, LibrarySource, Project, ProjectProblems};
+use crate::project::{
+    CrateDependency, CrateSet, LibraryDependency, LibrarySource, Project, ProjectProblems,
+};
 use crate::source::Span;
 
 pub struct LibraryWalk<'t> {
@@ -17,6 +19,12 @@ pub struct LibraryWalk<'t> {
     seen: Vec<SeenLibrary>,
     roots: Vec<LibraryRoot>,
     store: Option<GitStore>,
+    crates: CrateSet,
+}
+
+pub struct WalkedLibraries {
+    pub table: LibraryTable,
+    pub crates: Vec<CrateDependency>,
 }
 
 #[derive(Clone, Copy)]
@@ -50,19 +58,34 @@ impl<'t> LibraryWalk<'t> {
     const PATH_KEY: &'static str = ":path";
     const GIT_KEY: &'static str = ":git";
 
-    pub fn table(
+    pub fn walk(
         terminal: &'t mut Terminal,
         root: &Path,
         project: &Project,
-    ) -> Result<LibraryTable, ExitStatus> {
+    ) -> Result<WalkedLibraries, ExitStatus> {
         let mut walk = Self {
             terminal,
             seen: Vec::new(),
             roots: Vec::new(),
             store: None,
+            crates: CrateSet::default(),
         };
+        walk.add_crates(root, project)?;
         walk.visit_all(root, project, Listing::PROGRAM)?;
-        Ok(LibraryTable::new(Self::names(project), walk.roots))
+        Ok(WalkedLibraries {
+            table: LibraryTable::new(Self::names(project), walk.roots),
+            crates: walk.crates.into_crates(),
+        })
+    }
+
+    fn add_crates(&mut self, root: &Path, project: &Project) -> Result<(), ExitStatus> {
+        for dependency in &project.dependencies {
+            let resolved = ProgramFile::resolved_crate(dependency, root);
+            if let Err(problem) = self.crates.add(resolved) {
+                return Err(self.report(problem));
+            }
+        }
+        Ok(())
     }
 
     fn visit_all(
@@ -211,6 +234,7 @@ impl<'t> LibraryWalk<'t> {
         if let Some(bounds) = visited.checkout {
             self.keep_inside_checkout(bounds, visited.root, visited.library, visited.project)?;
         }
+        self.add_crates(visited.root, visited.project)?;
         let root = self.library_root(visited.library, visited.root, visited.project)?;
         let root = match visited.checkout {
             Some(bounds) => root.within_checkout(bounds.root().to_path_buf()),
@@ -238,14 +262,33 @@ impl<'t> LibraryWalk<'t> {
             .libraries
             .iter()
             .find_map(|nested| Self::reaching_outside(bounds, library_root, nested));
-        let Some((nested, key)) = outside else {
-            return Ok(());
-        };
-        Err(self.report(ProjectProblems::path_outside_checkout(
-            &nested.name,
-            key,
-            nested.name_span,
-        )))
+        if let Some((nested, key)) = outside {
+            return Err(self.report(ProjectProblems::path_outside_checkout(
+                &nested.name,
+                key,
+                nested.name_span,
+            )));
+        }
+        match Self::crate_outside(bounds, library_root, project) {
+            Some(dependency) => Err(self.report(ProjectProblems::crate_path_outside_checkout(
+                &dependency.name,
+                dependency.name_span,
+            ))),
+            None => Ok(()),
+        }
+    }
+
+    fn crate_outside<'p>(
+        bounds: &CheckoutBounds,
+        library_root: &Path,
+        project: &'p Project,
+    ) -> Option<&'p CrateDependency> {
+        project.dependencies.iter().find(|dependency| {
+            dependency
+                .path
+                .as_ref()
+                .is_some_and(|path| !bounds.contains(&library_root.join(path)))
+        })
     }
 
     fn reaching_outside<'d>(

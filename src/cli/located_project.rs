@@ -5,18 +5,25 @@ use super::library_walk::LibraryWalk;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use crate::build::{CargoManifest, CargoTarget};
 use crate::language::Language;
 use crate::modules::LibraryTable;
-use crate::project::Project;
+use crate::project::{CrateDependency, Project};
 
 pub struct LocatedProject {
     root: PathBuf,
     project: Project,
     libraries: LibraryTable,
+    crates: Vec<CrateDependency>,
+    dev_crates: Vec<CrateDependency>,
 }
 
 impl LocatedProject {
     pub const TESTS_DIRECTORY: &str = "tests";
+    const LOCK_FILE: &str = "Cargo.lock";
+    const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    const FNV_PRIME: u64 = 0x0100_0000_01b3;
+    const SHORT_HASH_MASK: u64 = 0xffff_ffff;
 
     pub fn search_from(directory: &Path, terminal: &Terminal) -> Result<Option<Self>, ExitStatus> {
         let Some(root) = Self::nearest_root(directory)? else {
@@ -24,11 +31,18 @@ impl LocatedProject {
         };
         let mut scratch = terminal.scratch();
         let project = scratch.load_project(&root.join(Language::project_file_name()))?;
-        let libraries = LibraryWalk::table(&mut scratch, &root, &project)?;
+        let walked = LibraryWalk::walk(&mut scratch, &root, &project)?;
+        let dev_crates = project
+            .dev_dependencies
+            .iter()
+            .map(|dependency| ProgramFile::resolved_crate(dependency, &root))
+            .collect();
         Ok(Some(Self {
             root,
             project,
-            libraries,
+            libraries: walked.table,
+            crates: walked.crates,
+            dev_crates,
         }))
     }
 
@@ -102,6 +116,34 @@ impl LocatedProject {
 
     pub fn source_root(&self) -> PathBuf {
         ProgramFile::directory_of(&self.root.join(&self.project.entry))
+    }
+
+    pub fn uses_crates(&self) -> bool {
+        !self.crates.is_empty()
+    }
+
+    pub fn cargo_target<'t>(&'t self, output: &'t Path) -> CargoTarget<'t> {
+        CargoTarget {
+            manifest: CargoManifest {
+                bin_name: format!("{}-{}", self.project.name, self.root_hash()),
+                dependencies: &self.crates,
+                dev_dependencies: &self.dev_crates,
+            },
+            lock_file: self.root.join(Self::LOCK_FILE),
+            output,
+        }
+    }
+
+    fn root_hash(&self) -> String {
+        let root = ProgramFile::canonical(&self.root).unwrap_or(self.root.clone());
+        let hash = root
+            .as_os_str()
+            .as_encoded_bytes()
+            .iter()
+            .fold(Self::FNV_OFFSET, |hash, byte| {
+                (hash ^ u64::from(*byte)).wrapping_mul(Self::FNV_PRIME)
+            });
+        format!("{:08x}", hash & Self::SHORT_HASH_MASK)
     }
 
     pub fn build_directory(&self) -> PathBuf {

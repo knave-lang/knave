@@ -1,0 +1,25 @@
+---
+source: tests/cli.rs
+expression: "shown.join(\"\\n\")"
+---
+[package]
+name = "knave-program"
+version = "0.1.0"
+edition = "2024"
+publish = false
+autobins = false
+autotests = false
+autoexamples = false
+autobenches = false
+
+[[bin]]
+name = "app-<hash>"
+path = "src/main.rs"
+
+[workspace]
+
+[profile.dev]
+debug = false
+
+[dependencies]
+"answer" = { path = "<sandbox>/answer" }

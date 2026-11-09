@@ -1,0 +1,3 @@
+(project app
+  (dependencies (serde "1.0"))
+  (libraries (wants-serde :path "../wants-serde")))

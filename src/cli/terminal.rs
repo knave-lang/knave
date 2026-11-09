@@ -16,7 +16,10 @@ use super::located_program::LocatedProgram;
 use super::program_file::ProgramFile;
 use super::stage_work::StageWork;
 use super::standard_error::StandardError;
-use crate::build::{BuildError, BuildProfile, EmittedFormatting, FormattingError, RustCompiler};
+use crate::build::{
+    BuildError, BuildPlan, BuildProfile, CargoCompiler, CargoTarget, EmittedFormatting,
+    FormattingError, RustCompiler,
+};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::emit::{EmittedCrate, RustEmitter};
 use crate::expand::{BoundName, ClassifiedForm, Expander, ExpansionSession, PreludeState, Program};
@@ -197,6 +200,11 @@ impl Terminal {
             .output
             .clone()
             .unwrap_or_else(|| directory.join(&output_name));
+        if let Some(project) = program.project().filter(|project| project.uses_crates()) {
+            let target = project.cargo_target(&output);
+            self.compile_with_cargo(&emitted, &directory, &target, options.profile)?;
+            return Ok(output);
+        }
         let target = BuildTarget {
             directory,
             crate_name: &crate_name,
@@ -222,6 +230,21 @@ impl Terminal {
                 target.output,
                 Self::entry_span(),
             )
+            .map_err(|error| self.report_build(self.interrupted_or(error)))
+    }
+
+    fn compile_with_cargo(
+        &self,
+        emitted: &EmittedCrate,
+        directory: &Path,
+        target: &CargoTarget<'_>,
+        profile: BuildProfile,
+    ) -> Result<(), ExitStatus> {
+        if self.interruption.is_raised() {
+            return Err(self.report_build(BuildError::Interrupted));
+        }
+        CargoCompiler::new(directory.to_path_buf(), BuildPlan::new(profile))
+            .compile(emitted, target, Self::entry_span())
             .map_err(|error| self.report_build(self.interrupted_or(error)))
     }
 

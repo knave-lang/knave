@@ -41,6 +41,13 @@ Project {
     dependencies: [
         CrateDependency {
             name: "cef",
+            name_span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 311,
+                end: 314,
+            },
             version: Some(
                 "144.0",
             ),
@@ -49,6 +56,13 @@ Project {
         },
         CrateDependency {
             name: "serde",
+            name_span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 348,
+                end: 353,
+            },
             version: Some(
                 "1.0",
             ),
@@ -61,6 +75,13 @@ Project {
     dev_dependencies: [
         CrateDependency {
             name: "proptest",
+            name_span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 412,
+                end: 420,
+            },
             version: Some(
                 "1.5",
             ),
@@ -104,14 +125,6 @@ Project {
         },
     ],
 }
-error[L0719]: this compiler cannot build `dependencies` yet
-  --> project/full.rslisp:10:11
-   |
-10 |          (dependencies (cef "144.0")
-   |           ^^^^^^^^^^^^ this section has entries
-   |
-   = help: remove the entries of `dependencies` for now
-
 error[L0719]: this compiler cannot build `dev-dependencies` yet
   --> project/full.rslisp:13:11
    |

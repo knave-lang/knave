@@ -1,3 +1,4 @@
+mod fixture_queue;
 mod formatting;
 mod headers;
 mod reports;

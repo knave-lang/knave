@@ -1,0 +1,2 @@
+(defn main ()
+  (let-try (x (parse "1")) (ok x)))

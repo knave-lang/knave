@@ -1,6 +1,8 @@
 use super::display::TypeDisplay;
 use super::problems::TypeProblems;
-use super::ty::Type;
+use rustc_hash::FxHashMap;
+
+use super::ty::{GenericId, Type, TypeVar};
 use super::typed::{
     TypedBodyItem, TypedControl, TypedDefinition, TypedExpr, TypedExprKind, TypedLambda,
     TypedProgram,
@@ -48,7 +50,12 @@ impl<'a> MainResult<'a> {
             return None;
         };
         if self.is_admissible(definition, result) {
-            return None;
+            return (!result.is_concrete()).then(|| {
+                TypeProblems::cannot_infer_value(
+                    &self.shown_open(result),
+                    Self::returned_span(definition, lambda),
+                )
+            });
         }
         Some(TypeProblems::main_returns_value(
             &self.display().show(result),
@@ -58,6 +65,17 @@ impl<'a> MainResult<'a> {
 
     fn is_admissible(&self, definition: &TypedDefinition, result: &Type) -> bool {
         *result == Type::unit() || definition.result_error(&self.program.enums).is_some()
+    }
+
+    fn shown_open(&self, result: &Type) -> String {
+        let unknown = Type::Var(TypeVar::new(0));
+        let unknowns: FxHashMap<GenericId, Type> = self
+            .program
+            .generics
+            .keys()
+            .map(|generic| (*generic, unknown.clone()))
+            .collect();
+        self.display().show(&result.substitute(&unknowns))
     }
 
     fn display(&self) -> TypeDisplay<'a> {

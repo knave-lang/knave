@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/main_with_a_bounded_open_success.knv
+---
+error[L0407]: type annotations needed
+ --> check/main_with_a_bounded_open_success.knv:2:28
+  |
+2 |   (let-try (x (parse "1")) (ok x)))
+  |                            ^^^^^^ cannot infer the type `(result _ (parse-error _))` of this value
+  |
+help: write the type with `the`, and replace each `_` with a type
+  |
+2 |   (let-try (x (parse "1")) (the (result _ (parse-error _)) (ok x))))
+  |                            +++++++++++++++++++++++++++++++       +

@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/main_returns_an_err_with_an_open_success.knv
+---
+stderr:
+stopped early
+exit code: 1

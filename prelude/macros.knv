@@ -510,7 +510,12 @@
   header, other than a keyword's value, is an arm, which stays on one
   line up to the fill width, and a `:bindings` states that the header's
   last form is a binding list, which the formatter lays out one name and
-  its value per line."
+  its value per line.
+
+  ```
+  (use prelude/macros header-shape)
+  (header-shape (twice x))
+  ```"
   (if (header-shape? shape)
     (stated-header-shape shape markers)
     (malformed-header-shape shape)))
@@ -650,7 +655,15 @@
 
   The header is the term's call form, as in `(document (twice x) text)`, or
   the bare name of a term that takes no arguments. The page shows the header
-  as written, and the header's head names the term."
+  as written, and the header's head names the term.
+
+  ```
+  (use prelude/macros document)
+  (def twice (fn (x) (* 2 x)))
+  (document (twice x) \"Doubles a number.\")
+  (docstring twice)
+  => \"Doubles a number.\"
+  ```"
   (noted-docstring docstrings-key
                    (concat (value-doc-key (documented-name header))
                            (list header text))
@@ -703,13 +716,27 @@
 
   The first rule whose pattern matches the call's arguments gives the
   expansion, its template filled with the pattern's variables. In a pattern,
-  `name ...` matches zero or more forms. A docstring may follow the name.")
+  `name ...` matches zero or more forms. A docstring may follow the name.
+
+  ```
+  (defrule swap ((a b) (pair b a)))
+  (swap 1 2)
+  => (pair 2 1)
+  ```")
 
 (document (defrule-with-value name value (pattern template) ...)
   "Defines a macro by rules, which is also a value where it is not called.
 
   A call takes the rules, as in `defrule`. A bare `name` expands to `value`,
-  so `+` is a macro whose value is a function of two numbers.")
+  so `+` is a macro whose value is a function of two numbers.
+
+  ```
+  (use prelude/macros defrule-with-value)
+  (defrule-with-value twice (fn (x) (* 2 x))
+    ((x) (* 2 x)))
+  (twice 4)
+  => 8
+  ```")
 
 (document (defmacro name pattern
             body ...)
@@ -717,14 +744,27 @@
 
   The pattern binds the call's arguments as a `defrule` pattern does, and the
   body's last form is the expansion. A docstring may lead the body when
-  another form follows it.")
+  another form follows it.
+
+  ```
+  (use code list)
+  (defmacro twice (x) (list (quote *) 2 x))
+  (twice 4)
+  => 8
+  ```")
 
 (document (template form)
   "Builds a form from a quoted form with holes in it.
 
   `(unquote x)` puts the value of `x` in place, and `(splice xs)` puts each
   form of the list `xs` in place, as in
-  `(template (def (unquote name) (splice body)))`.")
+  `(template (def (unquote name) (splice body)))`.
+
+  ```
+  (defmacro twice (x) (template (* 2 (unquote x))))
+  (twice 4)
+  => 8
+  ```")
 
 (header-shape (fail message))
 
@@ -737,7 +777,11 @@
   `(doc (module path))` prints the page: the module header, the docstring,
   then the exported names in name order. Each entry is a name's header and
   summary, and names with one header and one docstring share an entry. The
-  first `module` of a file wins.")
+  first `module` of a file wins.
+
+  ```
+  (module \"Shapes on a grid.\")
+  ```")
 
 (defmacro doc-page (term)
   "Returns the page of a term as a string.
@@ -747,23 +791,35 @@
   (doc-header term) followed by the text of (doc-body term). A term may be
   (module path), whose page also lists the module's exports, or a listing:
   (dir), (dir module), (apropos text) or (find-doc text), whose page is the
-  form and its results."
+  form and its results.
+
+  (= (doc-page digit?) (str (doc-header digit?) (doc-body digit?)))
+  => true"
   (documentation-part (quote page) term))
 
 (defmacro doc-body (term)
   "Returns a term's page after its header: a blank line, then its docstring.
 
-  A term without a docstring has `No documentation.` in its place."
+  A term without a docstring has `No documentation.` in its place.
+
+  (subs (doc-body digit?) 2 9)
+  => \"Returns\""
   (documentation-part (quote doc-body) term))
 
 (defmacro docstring (term)
-  "Returns the docstring of a term as a string."
+  "Returns the docstring of a term as a string.
+
+  (subs (docstring digit?) 0 7)
+  => \"Returns\""
   (documentation-part (quote docstring) term))
 
 (defmacro doc-header (term)
   "Returns the first line of a term's definition as written.
 
-  For example, (defn area (width height))."
+  For example, (defn area (width height)).
+
+  (doc-header digit?)
+  => \"(digit? character)\""
   (documentation-part (quote doc-header) term))
 
 (def documentation-part

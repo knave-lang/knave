@@ -48,7 +48,12 @@
 
   A string before at least one more body form is the docstring, whose first
   line a failure prints after the test's name. The test's function has an
-  introduced name, so no name of the program collides with it.")
+  introduced name, so no name of the program collides with it.
+
+  ```
+  (deftest addition
+    (assert (= (+ 1 2) 3)))
+  ```")
 
 (def check-test-shape
   (fn (form)
@@ -183,7 +188,13 @@
   "Ends the test with a failure unless `form` is true.
 
   `(assert form \"message\")` adds a message to the failure. When `form` is
-  `(= left right)`, the failure shows both sides in their printed form.")
+  `(= left right)`, the failure shows both sides in their printed form.
+
+  (assert (= (+ 1 2) 3))
+  => (do) ...
+
+  (assert (> 2 1) \"two is larger\")
+  => (do) ...")
 
 (def check-assert-shape
   (fn (form)

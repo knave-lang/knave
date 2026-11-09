@@ -227,6 +227,8 @@ impl Sandbox {
     const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
     const CACHE_HOME_VARIABLE: &str = "XDG_CACHE_HOME";
     const CACHE_DIRECTORY: &str = "cache";
+    const CARGO_TARGET_VARIABLE: &str = "CARGO_TARGET_DIR";
+    const CARGO_BUILD_TARGET_VARIABLE: &str = "CARGO_BUILD_TARGET_DIR";
     const GIT_MESSAGE: &str = "git says:";
     const SANDBOX_MASK: &str = "<sandbox>";
     const TRANSLATING_CARGO: &str = r#"#!/bin/sh
@@ -234,6 +236,10 @@ printf '\n[dependencies]\nfake_json = "1.0.0"\n' >> Cargo.toml
 "#;
     const VERSIONLESS_CARGO: &str = r#"#!/bin/sh
 printf '\n[dependencies]\nfake-json = { path = "elsewhere" }\n' >> Cargo.toml
+"#;
+    const WAITING_CARGO: &str = r#"#!/bin/sh
+echo "    Blocking waiting for file lock on build directory" >&2
+exit 101
 "#;
     const BIN_NAME_PREFIX: &str = "name = \"app-";
     const LINKED_LIBRARY: &str = "linked-lib";
@@ -506,6 +512,7 @@ printf '\n[dependencies]\nfake-json = { path = "elsewhere" }\n' >> Cargo.toml
             .args(arguments)
             .current_dir(Path::new(Self::FIXTURES).join(directory))
             .stdin(Stdio::null());
+        Self::isolated(&mut command, &Self::unsandboxed_cache());
         Outcome::of(&mut command)
     }
 
@@ -607,17 +614,7 @@ printf '\n[dependencies]\nfake-json = { path = "elsewhere" }\n' >> Cargo.toml
         command
             .arg("check")
             .current_dir(Path::new(Self::FIXTURES).join(directory));
-        Outcome::of(&mut command)
-    }
-
-    fn compiler_in_with_cache(&self, working_directory: &str, arguments: &[&str]) -> Outcome {
-        let mut command = self.command(Path::new(Self::COMPILER), arguments);
-        command
-            .current_dir(self.directory.join(working_directory))
-            .env(
-                Self::CACHE_HOME_VARIABLE,
-                self.directory.join(Self::CACHE_DIRECTORY),
-            );
+        Self::isolated(&mut command, &Self::unsandboxed_cache());
         Outcome::of(&mut command)
     }
 
@@ -719,10 +716,6 @@ printf '\n[dependencies]\nfake-json = { path = "elsewhere" }\n' >> Cargo.toml
         let mut command = self.command(Path::new(Self::COMPILER), &["check"]);
         command
             .current_dir(self.directory.join("git-app"))
-            .env(
-                Self::CACHE_HOME_VARIABLE,
-                self.directory.join(Self::CACHE_DIRECTORY),
-            )
             .env("PATH", self.directory.join("fake-bin"))
             .env_remove("GIT_SSH_COMMAND");
         if let Some(ssh_command) = ssh_command {
@@ -905,7 +898,23 @@ printf '\n[dependencies]\nfake-json = { path = "elsewhere" }\n' >> Cargo.toml
     fn command(&self, program: &Path, arguments: &[&str]) -> Command {
         let mut command = Command::new(program);
         command.args(arguments).current_dir(&self.directory);
+        Self::isolated(&mut command, &self.directory.join(Self::CACHE_DIRECTORY));
         command
+    }
+
+    fn isolated(command: &mut Command, cache: &Path) {
+        command
+            .env(Self::CACHE_HOME_VARIABLE, cache)
+            .env_remove(Self::CARGO_TARGET_VARIABLE)
+            .env_remove(Self::CARGO_BUILD_TARGET_VARIABLE);
+    }
+
+    fn unsandboxed_cache() -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "{}-cli-{}-unsandboxed-cache",
+            Language::NAME,
+            std::process::id()
+        ))
     }
 }
 
@@ -5261,6 +5270,7 @@ fn test_runs_the_prelude_tests_and_lists_the_untested_prelude_names() {
     command
         .args(["test", "prelude/tests", "--untested", "prelude"])
         .current_dir(env!("CARGO_MANIFEST_DIR"));
+    Sandbox::isolated(&mut command, &Sandbox::unsandboxed_cache());
     let test = Outcome::of(&mut command);
     insta::assert_snapshot!(test.assert_silent_success().stdout());
 }
@@ -6055,7 +6065,7 @@ fn a_deep_recur_body_emits_on_a_short_stack() {
 #[test]
 fn run_fetches_a_git_library_into_the_cache_by_commit() {
     let (sandbox, commit) = Sandbox::new("git_library_run").with_git_library(None);
-    let run = sandbox.compiler_in_with_cache("git-app/src", &["run"]);
+    let run = sandbox.compiler_in("git-app/src", &["run"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "k\n");
     let checkout = sandbox
         .directory
@@ -6070,11 +6080,11 @@ fn run_fetches_a_git_library_into_the_cache_by_commit() {
 fn a_fetched_git_library_needs_no_repository_again() {
     let (sandbox, _) = Sandbox::new("git_library_cached").with_git_library(None);
     sandbox
-        .compiler_in_with_cache("git-app", &["check"])
+        .compiler_in("git-app", &["check"])
         .assert_silent_success();
     fs::remove_dir_all(sandbox.directory.join("keymap.git"))
         .expect("the sandbox removes directories");
-    let run = sandbox.compiler_in_with_cache("git-app", &["run"]);
+    let run = sandbox.compiler_in("git-app", &["run"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "k\n");
 }
 
@@ -6082,7 +6092,7 @@ fn a_fetched_git_library_needs_no_repository_again() {
 fn a_git_library_at_a_missing_commit_names_the_library() {
     let (sandbox, _) =
         Sandbox::new("git_library_missing_commit").with_git_library(Some(MISSING_COMMIT));
-    let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
+    let check = sandbox.compiler_in("git-app", &["check"]);
     let stderr = check.assert_exit_code(1).stderr();
     let shown: Vec<&str> = stderr
         .lines()
@@ -6109,10 +6119,6 @@ fn a_git_library_without_git_is_an_environment_error() {
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["check"]);
     command
         .current_dir(sandbox.directory.join("git-app"))
-        .env(
-            Sandbox::CACHE_HOME_VARIABLE,
-            sandbox.directory.join(Sandbox::CACHE_DIRECTORY),
-        )
         .env("PATH", sandbox.directory.join("no-tools"));
     let check = Outcome::of(&mut command);
     let stderr = check.assert_exit_code(2).stderr();
@@ -6162,7 +6168,7 @@ fn a_git_library_with_an_unwritable_cache_is_an_environment_error() {
         fs::Permissions::from_mode(Sandbox::UNWRITABLE_DIRECTORY),
     )
     .expect("the sandbox sets permissions");
-    let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
+    let check = sandbox.compiler_in("git-app", &["check"]);
     let stderr = check.assert_exit_code(2).stderr();
     fs::set_permissions(&cache, fs::Permissions::from_mode(Sandbox::EXECUTABLE))
         .expect("the sandbox sets permissions");
@@ -6178,7 +6184,7 @@ fn a_git_scheme_outside_the_allowed_list_is_refused() {
         &format!("git-app/{}", Language::project_file_name()),
         &project,
     );
-    let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
+    let check = sandbox.compiler_in("git-app", &["check"]);
     let stderr = check.assert_exit_code(1).stderr();
     assert!(
         stderr.starts_with("error[L0725]: cannot fetch git library `keymap`"),
@@ -6224,7 +6230,7 @@ fn two_git_libraries_share_one_store() {
         &format!("two-git-app/{}", Language::project_file_name()),
         &project,
     );
-    let run = sandbox.compiler_in_with_cache("two-git-app", &["run"]);
+    let run = sandbox.compiler_in("two-git-app", &["run"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "k?\n");
 }
 
@@ -6250,7 +6256,7 @@ fn an_empty_cache_variable_falls_back_to_home() {
 fn a_git_library_lib_outside_its_checkout_is_an_error() {
     let sandbox = Sandbox::new("git_library_lib_outside")
         .with_one_git_library("lib-outside", "../lib-outside.git");
-    let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
+    let check = sandbox.compiler_in("git-app", &["check"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
@@ -6259,7 +6265,7 @@ fn a_git_library_path_outside_its_checkout_is_an_error() {
     let sandbox = Sandbox::new("git_library_path_outside")
         .with_one_git_library("path-outside", "../path-outside.git");
     let stderr = sandbox
-        .compiler_in_with_cache("git-app", &["check"])
+        .compiler_in("git-app", &["check"])
         .assert_exit_code(1)
         .stderr();
     assert!(
@@ -6273,7 +6279,7 @@ fn a_git_library_relative_git_outside_its_checkout_is_an_error() {
     let sandbox = Sandbox::new("git_library_git_outside")
         .with_one_git_library("git-outside", "../git-outside.git");
     let stderr = sandbox
-        .compiler_in_with_cache("git-app", &["check"])
+        .compiler_in("git-app", &["check"])
         .assert_exit_code(1)
         .stderr();
     assert!(
@@ -6286,7 +6292,7 @@ fn a_git_library_relative_git_outside_its_checkout_is_an_error() {
 fn a_library_inside_a_git_checkout_stays_inside_it_too() {
     let sandbox = Sandbox::new("git_library_chain").with_one_git_library("chain", "../chain.git");
     let stderr = sandbox
-        .compiler_in_with_cache("git-app", &["check"])
+        .compiler_in("git-app", &["check"])
         .assert_exit_code(1)
         .stderr();
     assert!(
@@ -6300,7 +6306,7 @@ fn a_git_library_file_url_outside_its_checkout_is_an_error() {
     let sandbox = Sandbox::new("git_library_file_url")
         .with_one_git_library("file-url-outside", "../file-url-outside.git");
     let stderr = sandbox
-        .compiler_in_with_cache("git-app", &["check"])
+        .compiler_in("git-app", &["check"])
         .assert_exit_code(1)
         .stderr();
     assert!(
@@ -6314,7 +6320,7 @@ fn a_git_library_absolute_path_with_a_colon_is_local() {
     let sandbox = Sandbox::new("git_library_colon_path")
         .with_one_git_library("colon-path-outside", "../colon-path-outside.git");
     let stderr = sandbox
-        .compiler_in_with_cache("git-app", &["check"])
+        .compiler_in("git-app", &["check"])
         .assert_exit_code(1)
         .stderr();
     assert!(
@@ -6328,7 +6334,7 @@ fn a_git_library_lib_through_a_symbolic_link_outside_is_an_error() {
     let sandbox = Sandbox::new("git_library_linked_lib")
         .with_one_git_library("linked-lib", "../linked-lib.git");
     let stderr = sandbox
-        .compiler_in_with_cache("git-app", &["check"])
+        .compiler_in("git-app", &["check"])
         .assert_exit_code(1)
         .stderr();
     assert!(
@@ -6347,7 +6353,7 @@ fn libraries_in_one_git_checkout_may_name_each_other() {
             "(defn main ()\n  (println \"hi\"))\n",
         );
     sandbox
-        .compiler_in_with_cache("git-app", &["check"])
+        .compiler_in("git-app", &["check"])
         .assert_silent_success();
 }
 
@@ -6356,7 +6362,7 @@ fn a_git_library_lib_that_climbs_past_a_missing_directory_is_an_error() {
     let sandbox =
         Sandbox::new("git_library_lib_climb").with_one_git_library("lib-climb", "../lib-climb.git");
     let stderr = sandbox
-        .compiler_in_with_cache("git-app", &["check"])
+        .compiler_in("git-app", &["check"])
         .assert_exit_code(1)
         .stderr();
     assert!(
@@ -6400,7 +6406,7 @@ fn a_git_library_may_list_another_git_library() {
             "git-app/src/main.knv",
             "(use outer-git)\n\n(defn main ()\n  (println \"hi\"))\n",
         );
-    let run = sandbox.compiler_in_with_cache("git-app", &["run"]);
+    let run = sandbox.compiler_in("git-app", &["run"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "hi\n");
 }
 
@@ -6412,7 +6418,7 @@ fn a_module_file_linked_outside_a_git_checkout_is_an_error() {
         "git-app/src/main.knv",
         "(use linked-module key)\n\n(defn main ()\n  (println key))\n",
     );
-    let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
+    let check = sandbox.compiler_in("git-app", &["check"]);
     let stderr = check.assert_exit_code(1).stderr();
     insta::assert_snapshot!(sandbox.masked(&stderr));
 }
@@ -6509,7 +6515,7 @@ fn a_git_library_crate_path_outside_its_checkout_is_an_error() {
     let sandbox = Sandbox::new("git_library_crate_outside")
         .with_one_git_library("crate-outside", "../crate-outside.git");
     let stderr = sandbox
-        .compiler_in_with_cache("git-app", &["check"])
+        .compiler_in("git-app", &["check"])
         .assert_exit_code(1)
         .stderr();
     assert!(
@@ -6921,4 +6927,108 @@ fn add_when_cargo_writes_no_version_is_an_environment_error() {
         "error: cargo added `fake-json` without a version\n"
     );
     assert_eq!(sandbox.project_file_text(), "(project demo)\n");
+}
+
+#[test]
+fn a_crate_build_puts_cargo_output_in_the_shared_target() {
+    let sandbox = Sandbox::new("crate_shared_target").with_fixture_tree("crates");
+    sandbox.compiler_in("app", &["build"]).assert_exit_code(0);
+    let shared = sandbox
+        .directory
+        .join(Sandbox::CACHE_DIRECTORY)
+        .join(Language::NAME)
+        .join("target");
+    assert!(shared.join("debug").is_dir());
+    let build_directory = sandbox
+        .directory
+        .join("app/target")
+        .join(Language::NAME)
+        .join("app");
+    assert!(build_directory.join("Cargo.toml").is_file());
+    assert!(!build_directory.join("target").exists());
+}
+
+#[test]
+fn a_user_cargo_target_dir_wins_over_the_shared_target() {
+    let sandbox = Sandbox::new("crate_own_target").with_fixture_tree("crates");
+    let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["build"]);
+    command.current_dir(sandbox.directory.join("app")).env(
+        Sandbox::CARGO_TARGET_VARIABLE,
+        sandbox.directory.join("own-target"),
+    );
+    Outcome::of(&mut command).assert_exit_code(0);
+    assert!(sandbox.directory.join("own-target/debug").is_dir());
+    assert!(
+        !sandbox
+            .directory
+            .join(Sandbox::CACHE_DIRECTORY)
+            .join(Language::NAME)
+            .join("target")
+            .exists()
+    );
+}
+
+#[test]
+fn a_crate_build_waiting_on_another_build_says_so() {
+    let sandbox = Sandbox::new("crate_waiting").with_fixture_tree("crates");
+    let fake_cargo = sandbox.directory.join("waiting-bin/cargo");
+    fs::create_dir_all(fake_cargo.parent().expect("the fake cargo has a directory"))
+        .expect("the sandbox accepts directories");
+    fs::write(&fake_cargo, Sandbox::WAITING_CARGO).expect("the sandbox accepts files");
+    fs::set_permissions(&fake_cargo, fs::Permissions::from_mode(Sandbox::EXECUTABLE))
+        .expect("the sandbox sets permissions");
+    let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["build"]);
+    command
+        .current_dir(sandbox.directory.join("app"))
+        .env("PATH", sandbox.directory.join("waiting-bin"));
+    let stderr = Outcome::of(&mut command).stderr();
+    let shown = sandbox.masked(&stderr);
+    let expected = format!(
+        "note: waiting for another build in `<sandbox>/cache/{}/target`",
+        Language::NAME
+    );
+    assert!(shown.contains(&expected), "{shown}");
+}
+
+#[test]
+fn a_user_cargo_build_target_dir_wins_over_the_shared_target() {
+    let sandbox = Sandbox::new("crate_own_build_target").with_fixture_tree("crates");
+    let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["build"]);
+    command.current_dir(sandbox.directory.join("app")).env(
+        Sandbox::CARGO_BUILD_TARGET_VARIABLE,
+        sandbox.directory.join("own-target"),
+    );
+    Outcome::of(&mut command).assert_exit_code(0);
+    assert!(sandbox.directory.join("own-target/debug").is_dir());
+    assert!(
+        !sandbox
+            .directory
+            .join(Sandbox::CACHE_DIRECTORY)
+            .join(Language::NAME)
+            .join("target")
+            .exists()
+    );
+}
+
+#[test]
+fn a_relative_cache_variable_is_ignored() {
+    let sandbox = Sandbox::new("crate_relative_cache").with_fixture_tree("crates");
+    let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["build"]);
+    command
+        .current_dir(sandbox.directory.join("app"))
+        .env(Sandbox::CACHE_HOME_VARIABLE, "relative-cache")
+        .env("HOME", sandbox.directory.join("home"));
+    Outcome::of(&mut command).assert_exit_code(0);
+    let home_target = sandbox
+        .directory
+        .join("home/.cache")
+        .join(Language::NAME)
+        .join("target");
+    assert!(home_target.join("debug").is_dir());
+    let build_directory = sandbox
+        .directory
+        .join("app/target")
+        .join(Language::NAME)
+        .join("app");
+    assert!(!build_directory.join("relative-cache").exists());
 }

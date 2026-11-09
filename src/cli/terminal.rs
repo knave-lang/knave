@@ -243,7 +243,10 @@ impl Terminal {
         if self.interruption.is_raised() {
             return Err(self.report_build(BuildError::Interrupted));
         }
-        CargoCompiler::new(directory.to_path_buf(), BuildPlan::new(profile))
+        let waiting = |target: &str| {
+            self.print_note(&format!("waiting for another build in {target}"));
+        };
+        CargoCompiler::new(directory.to_path_buf(), BuildPlan::new(profile), &waiting)
             .compile(emitted, target, Self::entry_span())
             .map_err(|error| self.report_build(self.interrupted_or(error)))
     }

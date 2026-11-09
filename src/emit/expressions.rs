@@ -33,6 +33,7 @@ use crate::types::{
     TypedProgram, TypedStructExpr, VariantPayload,
 };
 
+mod compound_assignment;
 mod tail_loop;
 pub(super) use tail_loop::TailLoop;
 
@@ -2064,6 +2065,13 @@ impl<'a> ExpressionEmitter<'a> {
     ) -> Code {
         if template.template.as_ref() == Self::MAP_UPDATE_TEMPLATE {
             return self.map_update_call(arguments);
+        }
+        if let Some((compound, operand)) = self.compound_assignment(&template.template, arguments) {
+            let rewritten = RustTemplate {
+                template: compound.into(),
+                ..RustTemplate::clone(template)
+            };
+            return self.template_call(&rewritten, &[arguments[0].clone(), operand], types, span);
         }
         let mut parsed = Template::new(&template.template);
         self.locals.enter();

@@ -2,6 +2,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::callers::Callers;
 use super::functions::{FunctionInfo, FunctionTable, ParamMode, ParamSlot};
+use super::recurrence::Recurrence;
 use super::tail_calls::TailCalls;
 use super::usage::{Usage, UsageCollector};
 use super::value_kinds::ValueKind;
@@ -79,12 +80,8 @@ impl<'a> ModeInference<'a> {
             .filter(|slot| slot.inferable && !slot.ty.is_unsized())
             .map(|slot| (slot.binding, ValueKind::of(slot, &self.copy)))
             .collect();
-        let self_modes = function
-            .params
-            .iter()
-            .map(|slot| modes[&slot.binding])
-            .collect();
-        UsageCollector::new(self.functions, modes, &self.copy, tracked, self_modes)
+        let recurrence = Recurrence::of(binding, function, modes, &self.copy);
+        UsageCollector::new(self.functions, modes, &self.copy, tracked, recurrence)
             .collect(&function.lambda.body)
     }
 

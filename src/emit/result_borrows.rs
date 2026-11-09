@@ -394,7 +394,7 @@ impl<'r, 'a> BodyFlows<'r, 'a> {
         param: &TypedBinder,
         value: &TypedExpr,
     ) -> FxHashSet<BindingId> {
-        if !self.carries_borrow(&param.ty) {
+        if !self.carries_borrow(&param.ty) || !self.carries_borrow(&value.ty) {
             return FxHashSet::default();
         }
         let mut sources = self.bound(value);

@@ -1,3 +1,4 @@
+mod aliased_changes;
 mod aliases;
 mod borrowing_lambdas;
 mod callers;
@@ -52,6 +53,7 @@ use crate::diagnostic::Diagnostics;
 use crate::types::{
     CopyRules, InferredCopies, PendingModeCheck, Pipelines, TypedExprKind, TypedProgram,
 };
+use aliased_changes::AliasedChanges;
 use borrowing_lambdas::BorrowingLambdas;
 use checks::OwnershipNeeds;
 use copied_reads::CopiedMutReads;
@@ -133,6 +135,7 @@ impl OwnershipChecker {
         diagnostics.extend(
             PlaceArguments::new(program, &functions, rewrite.function_params(), &copy).check(),
         );
+        diagnostics.extend(AliasedChanges::new(program, rewrite.function_params()).check());
         slices.rewrite_declarations(program);
         FunctionValueModes::apply(program, rewrite.function_params(), &copied_reads)
             .into_iter()

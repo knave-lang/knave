@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/compound_assignment_on_field_of_mut_parameter.knv
+---
+12 2

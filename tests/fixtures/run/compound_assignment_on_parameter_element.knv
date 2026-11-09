@@ -1,0 +1,7 @@
+(defn shave! (v f)
+  (set! (at v 1) (- (at v 1) (f))))
+
+(defn main ()
+  (local v (vec 10 20))
+  (shave! v (fn () 5))
+  (println (at v 1)))

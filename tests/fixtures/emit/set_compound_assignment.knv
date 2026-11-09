@@ -2,6 +2,9 @@
   :hits i64
   :misses i64)
 
+(defstruct cursor
+  :i usize)
+
 (defn miss! (tally)
   (set! (:misses tally)
         (+ (:misses tally) 1))
@@ -31,6 +34,17 @@
   (local by-index (ref index))
   (set! (at scores (deref by-index))
         (+ (at scores (deref by-index)) 1))
+  (set! (at scores (deref (ref index)))
+        (+ (at scores (deref (ref index))) 1))
+  (local position (->cursor 1))
+  (set! (at scores (:i (ref position)))
+        (+ (at scores (:i (ref position))) 1))
+  (set! (at scores (+ index 1))
+        (+ (at scores (+ index 1)) 1))
+  (local grid (vec (vec 1 2) (vec 3 4)))
+  (set! (at (at grid (deref (ref index))) 0)
+        (* 2
+           (at (at grid (deref (ref index))) 0)))
   (local step (fn () 2))
   (set! (at scores 1)
         (+ (at scores 1) (step)))

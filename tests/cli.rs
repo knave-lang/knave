@@ -7679,3 +7679,32 @@ fn task_file_needs_no_import_of_deftask() {
         .compiler(&["task", "plain"]);
     assert_eq!(task.assert_exit_code(0).stdout(), "plain\n");
 }
+
+const OWN_DEFINE_TASK: &str = "(defn define-task (x) (+ x 1))
+
+(deftask one () (println (define-task 1)))
+
+(deftask two () (println (define-task 2)))
+";
+
+#[test]
+fn task_expansion_leaves_the_name_define_task_to_the_program() {
+    let sandbox = Sandbox::new("task_own_define_task")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("tasks/own.knv", OWN_DEFINE_TASK);
+    let own = sandbox.compiler(&["task", "two"]);
+    let unbound = sandbox
+        .with_file(
+            "tasks/bare.knv",
+            "(deftask three () (println (define-task 3)))\n",
+        )
+        .compiler(&["task", "three"]);
+    assert_eq!(own.assert_exit_code(0).stdout(), "3\n");
+    assert!(
+        unbound
+            .assert_exit_code(1)
+            .stderr()
+            .starts_with("error[L0201]: cannot find `define-task` in this scope")
+    );
+}

@@ -621,7 +621,7 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 - An error in the project file stops the command.
 - `eval --root` and `repl --root` name the source root, and still walk up to find the project's libraries.
 
-**A task is a command of the project, written in Knave under `tasks/`** ([RFC 0066](../rfcs/0066-project-tasks.md)). `deftask` defines one, with the shape of `defn`. The prelude exports it, so a task file needs no `use` for it, unlike `deftest`. Any `.knv` file under `tasks/` holds any number of tasks, and the project file lists none.
+**A task is a command of the project, written in Knave under `tasks/`** ([RFC 0066](../rfcs/0066-project-tasks.md)). `deftask` defines one, with the shape of `defn`. The prelude exports it, so a task file needs no `use` for it, unlike `deftest`. It is a small macro of `prelude/syntax` that expands to a `use` of `prelude/task` and a call of its `define-task`, so a program loads `prelude/task` only when it writes a task, and the `use` binds `define-task` only inside that expansion. Any `.knv` file under `tasks/` holds any number of tasks, and the project file lists none.
 
 ```lisp
 (use preview serve-preview)

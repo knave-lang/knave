@@ -1,0 +1,1 @@
+(project monorepo (libraries (inner :path "inner")))

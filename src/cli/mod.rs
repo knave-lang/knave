@@ -2,6 +2,7 @@ mod build;
 mod build_directory;
 mod capped_report;
 mod check;
+mod checkout_bounds;
 mod color_when;
 mod counter_report;
 mod definition_buffer;

@@ -11,6 +11,7 @@ pub struct LibraryRoot {
     root_module: String,
     visible: Vec<String>,
     lister: Option<String>,
+    checkout: Option<PathBuf>,
 }
 
 #[derive(Clone, Default)]
@@ -39,6 +40,14 @@ impl LibraryRoot {
             root_module,
             visible,
             lister: None,
+            checkout: None,
+        }
+    }
+
+    pub fn within_checkout(self, checkout: PathBuf) -> Self {
+        Self {
+            checkout: Some(checkout),
+            ..self
         }
     }
 
@@ -117,6 +126,10 @@ impl LibraryTable {
             .strip_prefix(library.name.as_str())?
             .strip_prefix(Self::SEPARATOR);
         Some(library.file(inner.unwrap_or(&library.root_module)))
+    }
+
+    pub fn checkout_of(&self, path: &ModulePath) -> Option<&std::path::Path> {
+        self.owner_of(path)?.checkout.as_deref()
     }
 
     pub fn owner_of(&self, path: &ModulePath) -> Option<&LibraryRoot> {

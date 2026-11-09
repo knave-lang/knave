@@ -226,6 +226,9 @@ impl Sandbox {
     const CACHE_HOME_VARIABLE: &str = "XDG_CACHE_HOME";
     const CACHE_DIRECTORY: &str = "cache";
     const GIT_MESSAGE: &str = "git says:";
+    const LINKED_LIBRARY: &str = "linked-lib";
+    const LINKED_MODULE: &str = "linked-module";
+    const OUTSIDE_FROM_STORE: &str = "../../../../../keymap/src/lib.rslisp";
     const FIXTURE_COMMIT_DATE: &str = "2026-01-01T00:00:00Z";
     const FAKE_GIT: &str = "#!/bin/sh\necho \"fatal: prompt=$GIT_TERMINAL_PROMPT schemes=$GIT_ALLOW_PROTOCOL ssh=$GIT_SSH_COMMAND\" >&2\nexit 1\n";
     const MASKED_GIT_MESSAGE: &str = "  = note: git says: <message>";
@@ -547,6 +550,17 @@ impl Sandbox {
     fn git_repository(&self, library: &str) -> String {
         let source = format!("{library}-source");
         Self::copy_tree(&self.directory.join(library), &self.directory.join(&source));
+        if library == Self::LINKED_LIBRARY {
+            std::os::unix::fs::symlink("..", self.directory.join(&source).join("outer"))
+                .expect("the sandbox accepts symbolic links");
+        }
+        if library == Self::LINKED_MODULE {
+            std::os::unix::fs::symlink(
+                Self::OUTSIDE_FROM_STORE,
+                self.directory.join(&source).join("src/other.rslisp"),
+            )
+            .expect("the sandbox accepts symbolic links");
+        }
         self.git(&source, &["init", "--quiet"]);
         self.git(&source, &["add", "--all"]);
         self.git(
@@ -557,6 +571,21 @@ impl Sandbox {
         let bare = format!("{library}.git");
         self.git(".", &["clone", "--quiet", "--bare", &source, &bare]);
         commit
+    }
+
+    fn with_one_git_library(self, library: &str, url: &str) -> Self {
+        self.with_fixture_tree("libraries")
+            .with_one_git_library_from_tree(library, url)
+    }
+
+    fn with_one_git_library_from_tree(self, library: &str, url: &str) -> Self {
+        let commit = self.git_repository(library);
+        let project =
+            format!("(project app (libraries ({library} :git \"{url}\" :rev \"{commit}\")))\n");
+        self.with_file(
+            &format!("git-app/{}", Language::project_file_name()),
+            &project,
+        )
     }
 
     fn compiler_with_fake_git(&self, ssh_command: Option<&str>) -> Outcome {
@@ -5745,4 +5774,177 @@ fn an_empty_cache_variable_falls_back_to_home() {
         .join("git")
         .join(commit);
     assert!(checkout.is_dir());
+}
+
+#[test]
+fn a_git_library_lib_outside_its_checkout_is_an_error() {
+    let sandbox = Sandbox::new("git_library_lib_outside")
+        .with_one_git_library("lib-outside", "../lib-outside.git");
+    let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn a_git_library_path_outside_its_checkout_is_an_error() {
+    let sandbox = Sandbox::new("git_library_path_outside")
+        .with_one_git_library("path-outside", "../path-outside.git");
+    let stderr = sandbox
+        .compiler_in_with_cache("git-app", &["check"])
+        .assert_exit_code(1)
+        .stderr();
+    assert!(
+        stderr.starts_with("error[L0728]: library `other` names a `:path` outside its checkout"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_git_library_relative_git_outside_its_checkout_is_an_error() {
+    let sandbox = Sandbox::new("git_library_git_outside")
+        .with_one_git_library("git-outside", "../git-outside.git");
+    let stderr = sandbox
+        .compiler_in_with_cache("git-app", &["check"])
+        .assert_exit_code(1)
+        .stderr();
+    assert!(
+        stderr.starts_with("error[L0728]: library `other` names a `:git` outside its checkout"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_library_inside_a_git_checkout_stays_inside_it_too() {
+    let sandbox = Sandbox::new("git_library_chain").with_one_git_library("chain", "../chain.git");
+    let stderr = sandbox
+        .compiler_in_with_cache("git-app", &["check"])
+        .assert_exit_code(1)
+        .stderr();
+    assert!(
+        stderr.starts_with("error[L0728]: library `far` names a `:path` outside its checkout"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_git_library_file_url_outside_its_checkout_is_an_error() {
+    let sandbox = Sandbox::new("git_library_file_url")
+        .with_one_git_library("file-url-outside", "../file-url-outside.git");
+    let stderr = sandbox
+        .compiler_in_with_cache("git-app", &["check"])
+        .assert_exit_code(1)
+        .stderr();
+    assert!(
+        stderr.starts_with("error[L0728]: library `other` names a `:git` outside its checkout"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_git_library_absolute_path_with_a_colon_is_local() {
+    let sandbox = Sandbox::new("git_library_colon_path")
+        .with_one_git_library("colon-path-outside", "../colon-path-outside.git");
+    let stderr = sandbox
+        .compiler_in_with_cache("git-app", &["check"])
+        .assert_exit_code(1)
+        .stderr();
+    assert!(
+        stderr.starts_with("error[L0728]: library `other` names a `:git` outside its checkout"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_git_library_lib_through_a_symbolic_link_outside_is_an_error() {
+    let sandbox = Sandbox::new("git_library_linked_lib")
+        .with_one_git_library("linked-lib", "../linked-lib.git");
+    let stderr = sandbox
+        .compiler_in_with_cache("git-app", &["check"])
+        .assert_exit_code(1)
+        .stderr();
+    assert!(
+        stderr
+            .starts_with("error[L0728]: library `linked-lib` names a `:lib` outside its checkout"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn libraries_in_one_git_checkout_may_name_each_other() {
+    let sandbox = Sandbox::new("git_library_monorepo")
+        .with_one_git_library("monorepo", "../monorepo.git")
+        .with_file(
+            "git-app/src/main.rslisp",
+            "(defn main ()\n  (println \"hi\"))\n",
+        );
+    sandbox
+        .compiler_in_with_cache("git-app", &["check"])
+        .assert_silent_success();
+}
+
+#[test]
+fn a_git_library_lib_that_climbs_past_a_missing_directory_is_an_error() {
+    let sandbox =
+        Sandbox::new("git_library_lib_climb").with_one_git_library("lib-climb", "../lib-climb.git");
+    let stderr = sandbox
+        .compiler_in_with_cache("git-app", &["check"])
+        .assert_exit_code(1)
+        .stderr();
+    assert!(
+        stderr.starts_with("error[L0728]: library `lib-climb` names a `:lib` outside its checkout"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_git_library_may_list_another_git_library() {
+    let sandbox = Sandbox::new("git_library_nested_git").with_fixture_tree("libraries");
+    let inner = sandbox.git_repository("inner-git");
+    let bundle = sandbox.directory.join("outer-git/inner.bundle");
+    sandbox.git(
+        "inner-git-source",
+        &[
+            "bundle",
+            "create",
+            "--quiet",
+            &bundle.display().to_string(),
+            "--all",
+        ],
+    );
+    let outer_project = format!(
+        "(project outer-git (libraries (inner-git :git \"inner.bundle\" :rev \"{inner}\")))\n"
+    );
+    let sandbox = sandbox.with_file(
+        &format!("outer-git/{}", Language::project_file_name()),
+        &outer_project,
+    );
+    let outer = sandbox.git_repository("outer-git");
+    let project = format!(
+        "(project app (libraries (outer-git :git \"../outer-git.git\" :rev \"{outer}\")))\n"
+    );
+    let sandbox = sandbox
+        .with_file(
+            &format!("git-app/{}", Language::project_file_name()),
+            &project,
+        )
+        .with_file(
+            "git-app/src/main.rslisp",
+            "(use outer-git)\n\n(defn main ()\n  (println \"hi\"))\n",
+        );
+    let run = sandbox.compiler_in_with_cache("git-app", &["run"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "hi\n");
+}
+
+#[test]
+fn a_module_file_linked_outside_a_git_checkout_is_an_error() {
+    let sandbox = Sandbox::new("git_library_linked_module").with_fixture_tree("libraries");
+    let sandbox = sandbox.with_one_git_library_from_tree("linked-module", "../linked-module.git");
+    let sandbox = sandbox.with_file(
+        "git-app/src/main.rslisp",
+        "(use linked-module key)\n\n(defn main ()\n  (println key))\n",
+    );
+    let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
+    let stderr = check.assert_exit_code(1).stderr();
+    let sandbox_path = fs::canonicalize(&sandbox.directory).expect("the sandbox resolves");
+    let shown = stderr.replace(&sandbox_path.display().to_string(), "<sandbox>");
+    insta::assert_snapshot!(shown);
 }

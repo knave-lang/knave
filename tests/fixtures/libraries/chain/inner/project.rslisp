@@ -1,0 +1,1 @@
+(project inner (libraries (far :path "../../shared")))

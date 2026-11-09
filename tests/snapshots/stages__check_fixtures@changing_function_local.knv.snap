@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/changing_function_local.knv
+---
+error[L0515]: `bump!` changes its argument, but `change` passes it a copy
+ --> check/changing_function_local.knv:5:17
+  |
+1 | (defn bump! (x) (set! x (+ x 1)))
+  |                 ---------------- this would change only the copy
+...
+5 |   (local change bump!)
+  |                 ^^^^^ this binding takes `bump!` as `(fn (i64) unit)`
+  |
+  = help: to change the caller's value, call `bump!` by name; to change a copy on purpose, start its body with `(local x x)`

@@ -4,12 +4,23 @@ expression: reports.report(path)
 input_file: tests/fixtures/check/changing_function_value.knv
 ---
 error[L0515]: `bump!` changes its argument, but this call passes it a copy
- --> check/changing_function_value.knv:7:15
-  |
-1 | (defn bump! (x) (set! x (+ x 1)))
-  |                 ---------------- this would change only the copy
+  --> check/changing_function_value.knv:10:15
+   |
+ 4 | (defn bump! (x) (set! x (+ x 1)))
+   |                 ---------------- this would change only the copy
 ...
-7 |   (take-value bump! total)
-  |               ^^^^^ this parameter expects `i64`, and `bump!` takes `(mut i64)`
-  |
-  = help: to change a copy on purpose, write `(type bump! (fn (i64) unit))`, or start the body with `(local x x)`
+10 |   (take-value bump! total)
+   |               ^^^^^ this parameter expects `i64`, and `bump!` takes `(mut i64)`
+   |
+   = help: to change a copy on purpose, write `(type bump! (fn (i64) unit))`, or start the body with `(local x x)`
+
+error[L0515]: `bump!` changes its argument, but this field passes it a copy
+  --> check/changing_function_value.knv:11:33
+   |
+ 4 | (defn bump! (x) (set! x (+ x 1)))
+   |                 ---------------- this would change only the copy
+...
+11 |   (local next (new step (:apply bump!)))
+   |                                 ^^^^^ this field's function expects `i64`, and `bump!` takes `(mut i64)`
+   |
+   = help: to change a copy on purpose, write `(type bump! (fn (i64) unit))`, or start the body with `(local x x)`

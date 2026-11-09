@@ -645,10 +645,34 @@ impl OwnershipProblems {
         )
     }
 
-    pub fn changing_function_value(
+    pub fn changing_function_argument(
         value: Span,
         change: Option<Span>,
         problem: &ChangingFunctionValue,
+    ) -> Diagnostic {
+        Self::changing_function_expected(value, change, problem, "this call", "this parameter")
+    }
+
+    pub fn changing_function_field(
+        value: Span,
+        change: Option<Span>,
+        problem: &ChangingFunctionValue,
+    ) -> Diagnostic {
+        Self::changing_function_expected(
+            value,
+            change,
+            problem,
+            "this field",
+            "this field's function",
+        )
+    }
+
+    fn changing_function_expected(
+        value: Span,
+        change: Option<Span>,
+        problem: &ChangingFunctionValue,
+        receiver: &str,
+        slot: &str,
     ) -> Diagnostic {
         let ChangingFunctionValue {
             function,
@@ -656,18 +680,49 @@ impl OwnershipProblems {
             expected,
             found,
             by_value,
+            ..
         } = problem;
         let diagnostic = Diagnostic::error(
             DiagnosticCode::CHANGING_FUNCTION_VALUE,
-            format!("`{function}` changes its argument, but this call passes it a copy"),
+            format!("`{function}` changes its argument, but {receiver} passes it a copy"),
             Label::new(
                 value,
-                format!("this parameter expects `{expected}`, and `{function}` takes `{found}`"),
+                format!("{slot} expects `{expected}`, and `{function}` takes `{found}`"),
             ),
         )
         .with_help(format!(
             "to change a copy on purpose, write `(type {function} {by_value})`, or start the body with `(local {param} {param})`"
         ));
+        Self::with_lost_change(diagnostic, change)
+    }
+
+    pub fn changing_function_local(
+        value: Span,
+        change: Option<Span>,
+        problem: &ChangingFunctionValue,
+        local: &str,
+    ) -> Diagnostic {
+        let ChangingFunctionValue {
+            function,
+            param,
+            by_value,
+            ..
+        } = problem;
+        let diagnostic = Diagnostic::error(
+            DiagnosticCode::CHANGING_FUNCTION_VALUE,
+            format!("`{function}` changes its argument, but `{local}` passes it a copy"),
+            Label::new(
+                value,
+                format!("this binding takes `{function}` as `{by_value}`"),
+            ),
+        )
+        .with_help(format!(
+            "to change the caller's value, call `{function}` by name; to change a copy on purpose, start its body with `(local {param} {param})`"
+        ));
+        Self::with_lost_change(diagnostic, change)
+    }
+
+    fn with_lost_change(diagnostic: Diagnostic, change: Option<Span>) -> Diagnostic {
         match change {
             Some(change) => {
                 diagnostic.with_label(Label::new(change, "this would change only the copy"))

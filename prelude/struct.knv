@@ -109,7 +109,13 @@
 (defmacro defstruct (head body ...)
   "Defines a struct and its keyword constructor.
 
-  Write (defstruct name :field type ...)."
+  Write (defstruct name :field type ...).
+
+  ```
+  (defstruct point :x i64 :y i64)
+  (:x (->point :x 1 :y 2))
+  => 1
+  ```"
   (declare-struct-names (head-name head))
   (if (documented-body? body)
     (do

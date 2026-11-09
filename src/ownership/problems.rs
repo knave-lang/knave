@@ -745,6 +745,20 @@ impl OwnershipProblems {
         .with_help("pass a different place to each argument that the call changes")
     }
 
+    pub fn changed_by_returned_closure(function: &str, param: &str, change: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::CHANGED_BY_RETURNED_CLOSURE,
+            format!("the closure that `{function}` returns cannot change `{param}`"),
+            Label::new(change, format!("this changes the caller's value of `{param}`")),
+        )
+        .with_note(
+            "the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again",
+        )
+        .with_help(format!(
+            "to give the closure a value of its own, start `{function}` with `(local count {param})`"
+        ))
+    }
+
     pub fn inferred_mut_of_copy(argument: Span, change: Option<ChangeSite>) -> Diagnostic {
         Self::mut_of_copy(argument, change).with_quoting_help(
             format!(

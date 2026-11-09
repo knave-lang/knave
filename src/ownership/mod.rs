@@ -29,6 +29,7 @@ mod recurrence;
 mod refusals;
 mod repeats;
 mod returned;
+mod returned_changes;
 mod rewrite;
 mod shrunk_parameters;
 mod slices;
@@ -68,6 +69,7 @@ use names::ChangingFunctionNames;
 use place_arguments::PlaceArguments;
 use problems::OwnershipProblems;
 use returned::ReturnedBorrows;
+use returned_changes::ReturnedChanges;
 use rewrite::ModeRewrite;
 use slices::ShrinkSelection;
 use stored::StoredClosures;
@@ -139,6 +141,7 @@ impl OwnershipChecker {
             PlaceArguments::new(program, &functions, rewrite.function_params(), &copy).check(),
         );
         diagnostics.extend(AliasedChanges::new(program, rewrite.function_params()).check());
+        diagnostics.extend(ReturnedChanges::new(program).check());
         slices.rewrite_declarations(program);
         FunctionValueModes::apply(program, rewrite.function_params(), &copied_reads)
             .into_iter()

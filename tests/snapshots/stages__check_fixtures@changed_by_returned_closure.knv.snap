@@ -1,0 +1,49 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/changed_by_returned_closure.knv
+---
+error[L0517]: the closure that `counter!` returns cannot change `start`
+ --> check/changed_by_returned_closure.knv:6:10
+  |
+6 |   (fn () (set! start (+ start 1)) start))
+  |          ^^^^^^^^^^^^^^^^^^^^^^^^ this changes the caller's value of `start`
+  |
+  = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
+  = help: to give the closure a value of its own, start `counter!` with `(local count start)`
+
+error[L0517]: the closure that `ticker!` returns cannot change `x`
+  --> check/changed_by_returned_closure.knv:13:7
+   |
+13 |       (set! x (+ x 1))
+   |       ^^^^^^^^^^^^^^^^ this changes the caller's value of `x`
+   |
+   = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
+   = help: to give the closure a value of its own, start `ticker!` with `(local count x)`
+
+error[L0517]: the closure that `chooser!` returns cannot change `x`
+  --> check/changed_by_returned_closure.knv:19:12
+   |
+19 |     (fn () (set! x (+ x 1)) x)
+   |            ^^^^^^^^^^^^^^^^ this changes the caller's value of `x`
+   |
+   = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
+   = help: to give the closure a value of its own, start `chooser!` with `(local count x)`
+
+error[L0517]: the closure that `matcher!` returns cannot change `x`
+  --> check/changed_by_returned_closure.knv:24:23
+   |
+24 |     ((some by) (fn () (set! x (+ x by)) x))
+   |                       ^^^^^^^^^^^^^^^^^ this changes the caller's value of `x`
+   |
+   = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
+   = help: to give the closure a value of its own, start `matcher!` with `(local count x)`
+
+error[L0517]: the closure that `bumper!` returns cannot change `x`
+  --> check/changed_by_returned_closure.knv:27:26
+   |
+27 | (defn bumper! (x) (fn () (bump! x)))
+   |                          ^^^^^^^^^ this changes the caller's value of `x`
+   |
+   = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
+   = help: to give the closure a value of its own, start `bumper!` with `(local count x)`

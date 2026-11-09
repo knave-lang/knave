@@ -1,0 +1,42 @@
+(defn bump! (x)
+  (set! x (+ x 1))
+  x)
+
+(defn counter! (start)
+  (fn () (set! start (+ start 1)) start))
+
+(defn ticker! (x)
+  (set! x (+ x 100))
+  (local tick
+    (fn ()
+      (local seen x)
+      (set! x (+ x 1))
+      seen))
+  tick)
+
+(defn chooser! (x up)
+  (if up
+    (fn () (set! x (+ x 1)) x)
+    (fn () 0)))
+
+(defn matcher! (x step)
+  (match step
+    ((some by) (fn () (set! x (+ x by)) x))
+    (none (fn () 0))))
+
+(defn bumper! (x) (fn () (bump! x)))
+
+(defn main ()
+  (local laps 0)
+  (local next (counter! laps))
+  (println (next))
+  (local ticks 1)
+  (local tick (ticker! ticks))
+  (println (tick))
+  (local chosen 1)
+  (println ((chooser! chosen true)))
+  (local matched 1)
+  (println ((matcher! matched (some 2))))
+  (local bumped 1)
+  (println ((bumper! bumped)))
+  (println laps ticks chosen matched bumped))

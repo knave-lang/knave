@@ -7,7 +7,7 @@ use crate::core::{BindingId, BindingKind, Declaration, ModulePath, Namespace};
 use crate::diagnostic::Diagnostic;
 use crate::interpret::{CompileTimeHost, Value};
 use crate::modules::{ModuleRecord, ModuleSources};
-use crate::reader::{Form, Symbol};
+use crate::reader::{Form, LiteralForms, Symbol};
 use crate::scope::{Phase, Resolution, ScopeSet};
 use crate::source::{Span, TextPosition};
 
@@ -85,6 +85,16 @@ impl CompileTimeHost for Expander<'_> {
             "{}:{position}",
             self.module_sources.relative_name(file.name())
         )
+    }
+
+    fn read_literal_form(
+        &self,
+        literal: Span,
+        value: &str,
+        character: usize,
+    ) -> Option<(Form, usize)> {
+        LiteralForms::new(self.sources.file(literal.source()), literal.range(), value)
+            .read_at(character)
     }
 
     fn program_modules(&self) -> Vec<Symbol> {

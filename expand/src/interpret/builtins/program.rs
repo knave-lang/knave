@@ -3,7 +3,7 @@ use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::Arguments;
 use crate::interpret::{CompileTimeHost, Value};
 use crate::language::Language;
-use crate::reader::{Form, FormKind, Symbol};
+use crate::reader::{Form, FormKind, Number, NumberValue, Symbol};
 use crate::source::Span;
 
 pub struct ProgramOperations<'a> {
@@ -67,6 +67,32 @@ impl<'a> ProgramOperations<'a> {
             FormKind::Symbol(module),
             self.call_site,
         )))
+    }
+
+    pub fn read_form(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(3)?;
+        let context = self.arguments.symbol(0)?;
+        let literal = self.arguments.form(1)?.span();
+        let value = self.arguments.string(1)?;
+        let read = host.read_literal_form(literal, value, self.arguments.index(2)?);
+        Ok(Forms::list(
+            read.map_or_else(Vec::new, |(mut form, end)| {
+                form.set_scopes(context.scopes());
+                vec![form, self.count_form(end)]
+            }),
+            self.call_site,
+        ))
+    }
+
+    pub fn located(&self) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(2)?;
+        let place = self.arguments.form(0)?.span();
+        Ok(Value::Form(self.arguments.form(1)?.located_at(place)))
+    }
+
+    fn count_form(&self, count: usize) -> Form {
+        let number = Number::new(count.to_string(), NumberValue::Integer(count as i128));
+        Form::new(FormKind::Number(number), self.call_site)
     }
 
     fn symbols(&self, symbols: Vec<Symbol>) -> Value {

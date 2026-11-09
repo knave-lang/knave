@@ -4,12 +4,24 @@ use std::ops::Range;
 pub struct SourceId(u32);
 
 impl SourceId {
+    const PINNED: u32 = 1 << 31;
+
     pub fn new(index: usize) -> Self {
-        Self(u32::try_from(index).expect("fewer than 2^32 source files"))
+        let id = u32::try_from(index).expect("fewer than 2^31 source files");
+        assert!(id < Self::PINNED, "fewer than 2^31 source files");
+        Self(id)
+    }
+
+    pub fn pinned(self) -> Self {
+        Self(self.0 | Self::PINNED)
+    }
+
+    pub fn is_pinned(self) -> bool {
+        self.0 & Self::PINNED != 0
     }
 
     pub fn index(self) -> usize {
-        self.0 as usize
+        (self.0 & !Self::PINNED) as usize
     }
 }
 
@@ -27,6 +39,10 @@ impl Span {
             start: Self::offset(range.start),
             end: Self::offset(range.end),
         }
+    }
+
+    pub fn is_pinned(self) -> bool {
+        self.source.is_pinned()
     }
 
     pub fn source(self) -> SourceId {

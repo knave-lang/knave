@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/code_read_form.knv
+---
+(def sum (add 1 1))
+(def tail 7)
+(def end 7)
+(def nothing 0)

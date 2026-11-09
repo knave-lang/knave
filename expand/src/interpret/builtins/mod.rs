@@ -28,7 +28,7 @@ pub struct BuiltinCall {
 }
 
 impl BuiltinCall {
-    const IMPLEMENTATIONS: [(Builtin, Implementation); 63] = [
+    const IMPLEMENTATIONS: [(Builtin, Implementation); 65] = [
         (Builtin::First, |operations, _| operations.lists.first()),
         (Builtin::Rest, |operations, _| operations.lists.rest()),
         (Builtin::List, |operations, _| operations.lists.list()),
@@ -195,6 +195,12 @@ impl BuiltinCall {
         }),
         (Builtin::ProjectFileName, |operations, _| {
             operations.program.project_file_name()
+        }),
+        (Builtin::ReadForm, |operations, host| {
+            operations.program.read_form(host)
+        }),
+        (Builtin::Located, |operations, _| {
+            operations.program.located()
         }),
     ];
 

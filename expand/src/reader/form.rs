@@ -63,6 +63,14 @@ impl Form {
         }
     }
 
+    pub fn located_at(self, span: Span) -> Self {
+        Self { span, ..self }
+    }
+
+    pub fn set_scopes(&mut self, scopes: &ScopeSet) {
+        self.update_scopes(&|current| current.clone_from(scopes));
+    }
+
     pub fn add_scope(&mut self, scope: Scope) {
         self.update_scopes(&|scopes| scopes.add(scope));
     }
@@ -88,7 +96,7 @@ impl Form {
     }
 
     pub fn relocate_outside(&mut self, region: Span) {
-        if !region.contains(self.span) {
+        if !region.contains(self.span) && !self.span.is_pinned() {
             self.span = region;
         }
         if self.as_list().is_some()
@@ -219,5 +227,43 @@ impl Number {
 
     pub fn value(&self) -> &NumberValue {
         &self.value
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Form, FormKind};
+    use crate::source::{SourceId, Span};
+
+    struct RelocationFixture {
+        region: Span,
+    }
+
+    impl RelocationFixture {
+        fn new() -> Self {
+            Self {
+                region: Span::new(SourceId::new(0), 0..4),
+            }
+        }
+
+        fn relocated(&self, span: Span) -> Span {
+            let mut form = Form::new(FormKind::String("text".into()), span);
+            form.relocate_outside(self.region);
+            form.span()
+        }
+    }
+
+    #[test]
+    fn a_form_from_another_source_moves_onto_the_region() {
+        let fixture = RelocationFixture::new();
+        let outside = Span::new(SourceId::new(1), 8..12);
+        assert_eq!(fixture.relocated(outside), fixture.region);
+    }
+
+    #[test]
+    fn a_pinned_form_keeps_its_location() {
+        let fixture = RelocationFixture::new();
+        let pinned = Span::new(SourceId::new(1).pinned(), 8..12);
+        assert_eq!(fixture.relocated(pinned), pinned);
     }
 }

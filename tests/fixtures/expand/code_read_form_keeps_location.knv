@@ -1,0 +1,6 @@
+(use code first read-form)
+
+(defmacro read-text (text)
+  (first (read-form (quote here) text 0)))
+
+(defn main () (read-text "(missing 1)"))

@@ -1,5 +1,6 @@
 mod cursor;
 mod form;
+mod literal_forms;
 mod number;
 mod problems;
 mod string_literal;
@@ -7,6 +8,7 @@ mod syntax;
 mod token;
 
 pub use form::{Form, FormKind, Number, NumberValue, Symbol};
+pub use literal_forms::LiteralForms;
 pub use token::{Token, TokenKind, TokenScan};
 
 use std::ops::Range;

@@ -1,0 +1,11 @@
+(defn walk! (x ys)
+  (map (iter ys)
+       (fn (y)
+         (set! x (+ x 1))
+         (+ (deref y) x))))
+
+(defn main ()
+  (local a 0)
+  (local ys (vec 10 20))
+  (for-each (walk! a ys)
+            (fn (v) (println v))))

@@ -1,0 +1,11 @@
+(defn call-it (f) (f))
+
+(defn run! (x)
+  (set! x (+ x 1))
+  (+ 1
+     (call-it (fn () (set! x (+ x 10)) x))))
+
+(defn main ()
+  (local a 1)
+  (println (run! a))
+  (println a))

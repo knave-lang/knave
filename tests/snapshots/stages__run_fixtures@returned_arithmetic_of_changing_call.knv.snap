@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/returned_arithmetic_of_changing_call.knv
+---
+13
+12

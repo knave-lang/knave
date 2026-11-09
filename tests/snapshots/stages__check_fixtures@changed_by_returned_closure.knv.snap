@@ -10,7 +10,7 @@ error[L0517]: the closure that `counter!` returns cannot change `start`
   |          ^^^^^^^^^^^^^^^^^^^^^^^^ this changes the caller's value of `start`
   |
   = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
-  = help: to give the closure a value of its own, start `counter!` with `(local count start)`
+  = help: to give the closure a value of its own, start `counter!` with `(local count start)` and use `count` in the closure
 
 error[L0517]: the closure that `ticker!` returns cannot change `x`
   --> check/changed_by_returned_closure.knv:13:7
@@ -19,7 +19,7 @@ error[L0517]: the closure that `ticker!` returns cannot change `x`
    |       ^^^^^^^^^^^^^^^^ this changes the caller's value of `x`
    |
    = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
-   = help: to give the closure a value of its own, start `ticker!` with `(local count x)`
+   = help: to give the closure a value of its own, start `ticker!` with `(local count x)` and use `count` in the closure
 
 error[L0517]: the closure that `chooser!` returns cannot change `x`
   --> check/changed_by_returned_closure.knv:19:12
@@ -28,22 +28,31 @@ error[L0517]: the closure that `chooser!` returns cannot change `x`
    |            ^^^^^^^^^^^^^^^^ this changes the caller's value of `x`
    |
    = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
-   = help: to give the closure a value of its own, start `chooser!` with `(local count x)`
+   = help: to give the closure a value of its own, start `chooser!` with `(local count x)` and use `count` in the closure
+
+error[L0517]: the closure that `skipper!` returns cannot change `x`
+  --> check/changed_by_returned_closure.knv:25:12
+   |
+25 |     (fn () (set! x (+ x 1)) x)))
+   |            ^^^^^^^^^^^^^^^^ this changes the caller's value of `x`
+   |
+   = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
+   = help: to give the closure a value of its own, start `skipper!` with `(local count x)` and use `count` in the closure
 
 error[L0517]: the closure that `matcher!` returns cannot change `x`
-  --> check/changed_by_returned_closure.knv:24:23
+  --> check/changed_by_returned_closure.knv:29:23
    |
-24 |     ((some by) (fn () (set! x (+ x by)) x))
+29 |     ((some by) (fn () (set! x (+ x by)) x))
    |                       ^^^^^^^^^^^^^^^^^ this changes the caller's value of `x`
    |
    = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
-   = help: to give the closure a value of its own, start `matcher!` with `(local count x)`
+   = help: to give the closure a value of its own, start `matcher!` with `(local count x)` and use `count` in the closure
 
 error[L0517]: the closure that `bumper!` returns cannot change `x`
-  --> check/changed_by_returned_closure.knv:27:26
+  --> check/changed_by_returned_closure.knv:32:26
    |
-27 | (defn bumper! (x) (fn () (bump! x)))
+32 | (defn bumper! (x) (fn () (bump! x)))
    |                          ^^^^^^^^^ this changes the caller's value of `x`
    |
    = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
-   = help: to give the closure a value of its own, start `bumper!` with `(local count x)`
+   = help: to give the closure a value of its own, start `bumper!` with `(local count x)` and use `count` in the closure

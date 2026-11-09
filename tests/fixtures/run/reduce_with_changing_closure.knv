@@ -1,0 +1,13 @@
+(defn total! (x ys)
+  (set! x (+ x 1))
+  (reduce (iter ys)
+          0
+          (fn (acc y)
+            (set! x (+ x (deref y)))
+            (+ acc x))))
+
+(defn main ()
+  (local a 1)
+  (local ys (vec 1 2))
+  (println (total! a ys))
+  (println a))

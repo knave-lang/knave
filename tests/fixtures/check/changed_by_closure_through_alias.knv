@@ -1,0 +1,10 @@
+(defn counter! (start)
+  (local f
+    (fn () (set! start (+ start 1)) start))
+  (local g f)
+  g)
+
+(defn main ()
+  (local laps 0)
+  (local next (counter! laps))
+  (println (next)))

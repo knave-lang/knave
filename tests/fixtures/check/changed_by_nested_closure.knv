@@ -1,0 +1,17 @@
+(defn counter! (start)
+  (fn ()
+    ((fn () (set! start (+ start 1))))
+    start))
+
+(defn maker! (start)
+  (fn ()
+    (fn () (set! start (+ start 1)) start)))
+
+(defn main ()
+  (local laps 0)
+  (local next (counter! laps))
+  (println (next))
+  (local m 0)
+  (local mk (maker! m))
+  (println ((mk)))
+  (println laps m))

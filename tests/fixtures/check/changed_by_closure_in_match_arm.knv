@@ -1,0 +1,14 @@
+(defn counter! (start step)
+  (set! start (+ start 1))
+  (match step
+    ((some by)
+     (local f
+       (fn () (set! start (+ start by)) start))
+     f)
+    (none (local g (fn () (set! start (+ start 1)) start)) g)))
+
+(defn main ()
+  (local laps 0)
+  (local next (counter! laps (some 2)))
+  (println (next))
+  (println laps))

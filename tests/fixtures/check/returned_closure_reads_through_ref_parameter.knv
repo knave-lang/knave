@@ -1,0 +1,12 @@
+(type show (fn ((ref i64)) i64))
+
+(defn show (r) (+ r 0))
+
+(defn reader! (x)
+  (set! x (+ x 1))
+  (fn () (show x)))
+
+(defn main ()
+  (local a 1)
+  (local f (reader! a))
+  (println (f)))

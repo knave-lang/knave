@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/changed_by_closure_in_match_arm.knv
+---
+error[L0517]: the closure that `counter!` returns cannot change `start`
+ --> check/changed_by_closure_in_match_arm.knv:6:15
+  |
+6 |        (fn () (set! start (+ start by)) start))
+  |               ^^^^^^^^^^^^^^^^^^^^^^^^^ this changes the caller's value of `start`
+  |
+  = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
+  = help: to give the closure a value of its own, start `counter!` with `(local count start)` and use `count` in the closure

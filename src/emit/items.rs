@@ -1340,15 +1340,9 @@ impl<'a> ItemEmitter<'a> {
             .into_iter()
             .map(|param| param.binding)
             .filter(|binding| {
-                !flowing.contains(binding) && !Self::captured_by_result(lambda, *binding)
+                !flowing.contains(binding) && !ReturnedValues::keeps_borrow(lambda, *binding)
             })
             .collect()
-    }
-
-    fn captured_by_result(lambda: &TypedLambda, binding: BindingId) -> bool {
-        ReturnedValues::of(lambda)
-            .into_iter()
-            .any(|value| value.mentions_local(binding))
     }
 
     fn capture_plan(

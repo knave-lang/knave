@@ -19,6 +19,11 @@
     (fn () (set! x (+ x 1)) x)
     (fn () 0)))
 
+(defn skipper! (x up)
+  (if up
+    (fn () 0)
+    (fn () (set! x (+ x 1)) x)))
+
 (defn matcher! (x step)
   (match step
     ((some by) (fn () (set! x (+ x by)) x))
@@ -35,8 +40,10 @@
   (println (tick))
   (local chosen 1)
   (println ((chooser! chosen true)))
+  (local skipped 1)
+  (println ((skipper! skipped false)))
   (local matched 1)
   (println ((matcher! matched (some 2))))
   (local bumped 1)
   (println ((bumper! bumped)))
-  (println laps ticks chosen matched bumped))
+  (println laps ticks chosen skipped matched bumped))

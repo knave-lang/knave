@@ -1,0 +1,15 @@
+(defn counters! (start)
+  (vec (fn () (set! start (+ start 1)) start)))
+
+(defn wrapped! (start)
+  (some (fn () (set! start (+ start 1)) start)))
+
+(defn borrowed! (start)
+  (ref (fn () (set! start (+ start 1)) start)))
+
+(defn main ()
+  (local laps 0)
+  (local all (counters! laps))
+  (local maybe (wrapped! laps))
+  (local lent (borrowed! laps))
+  (println laps))

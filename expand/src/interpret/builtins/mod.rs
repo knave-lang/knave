@@ -28,7 +28,7 @@ pub struct BuiltinCall {
 }
 
 impl BuiltinCall {
-    const IMPLEMENTATIONS: [(Builtin, Implementation); 67] = [
+    const IMPLEMENTATIONS: [(Builtin, Implementation); 68] = [
         (Builtin::First, |operations, _| operations.lists.first()),
         (Builtin::Rest, |operations, _| operations.lists.rest()),
         (Builtin::List, |operations, _| operations.lists.list()),
@@ -180,6 +180,9 @@ impl BuiltinCall {
         }),
         (Builtin::FormLocation, |operations, host| {
             operations.program.form_location(host)
+        }),
+        (Builtin::InTasksDirectory, |operations, host| {
+            operations.program.in_tasks_directory(host)
         }),
         (Builtin::ProgramModules, |operations, host| {
             operations.program.program_modules(host)

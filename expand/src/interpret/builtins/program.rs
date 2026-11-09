@@ -58,6 +58,13 @@ impl<'a> ProgramOperations<'a> {
         Ok(self.symbols(definitions))
     }
 
+    pub fn in_tasks_directory(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(1)?;
+        Ok(Value::Bool(
+            host.in_tasks_directory(&self.arguments.form(0)?),
+        ))
+    }
+
     pub fn current_module(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(0)?;
         let module = FormKind::Symbol(host.current_module());

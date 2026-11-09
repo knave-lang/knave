@@ -74,6 +74,8 @@ help: a function with a similar name exists
 
 **Name a repeated task at the second `deftask`.** A second task of one name is `L0356`, ``task `serve` is defined more than once``, with its primary label on the second task's name, a secondary label on the first, and the help `rename one of the tasks`. A label never points at the source that `knave task` generates.
 
+**Label a task's own definition errors on the form at fault.** A task name that is not kebab-case is `L0357` on the name, a positional parameter after a flag is `L0358` on that name, a `deftask` outside `tasks/` is `L0359` on the task's name, a flag named `:help` is `L0360` on the keyword, and a task whose only form is a string is `L0361` on the string, each with a help that states the fix.
+
 **Point an unreadable example at its code.** A docstring example whose result does not read as one form is `L0354`, with its primary label on the example's code and a help that names the fenced code block.
 
 **Point a partly labeled call at the argument outside a pair.** `L0338` puts its primary label on the first argument that no `:field value` pair holds, with "this argument has no label" on a value and "this label has no value" on a keyword.

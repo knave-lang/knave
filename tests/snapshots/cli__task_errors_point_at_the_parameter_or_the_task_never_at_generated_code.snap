@@ -25,14 +25,15 @@ error[L0404]: `i64` does not implement `task-outcome`
   |          ^^^ this needs `task-outcome`
   |
   = note: `task-outcome` is implemented for: unit, (where (a (e display)) (result a e))
+  = help: end the task's body with a print or another call that returns `unit`, or return a `result`
 ---
-error[L0404]: `(ref str)` does not implement `task-outcome`
- --> tasks/docless.knv:5:10
+error[L0361]: the only form of task `docless` is a string, so it is the task's body, not its docstring
+ --> tasks/docless.knv:5:21
   |
 5 | (deftask docless () "only a docstring")
-  |          ^^^^^^^ this needs `task-outcome`
+  |                     ^^^^^^^^^^^^^^^^^^ this string is the body
   |
-  = note: `task-outcome` is implemented for: unit, (where (a (e display)) (result a e))
+  = help: write the task's body after the docstring
 ---
 error[L0406]: the literal `-1` does not fit in `u16`
  --> tasks/d.knv:5:13

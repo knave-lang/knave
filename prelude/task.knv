@@ -1,24 +1,26 @@
 (use prelude/macros document header-shape map-list template)
 (use prelude/internal/macros docstring-before-body?)
-(use prelude/syntax the)
+(use prelude/syntax deftask the)
 (use prelude/text display from-str str)
 (use prelude/types option result vec)
 
 (use code add-module-note bool-not concat empty? fail first
-          form-location keyword-field keyword-name keyword?
-          len list list? located module-notes nth number-add
-          number-lt number-sub number? prepend
-          program-modules read-form rest sorted-names string
-          string-length string-lines string-strip-prefix
-          string-trim-start string? symbol symbol-name
-          symbol? value-eq)
+          form-location in-tasks-directory? keyword-field
+          keyword-name keyword? len list list? located
+          module-notes nth number-add number-lt number-sub
+          number? prepend program-modules read-form rest
+          sorted-names string string-length string-lines
+          string-strip-prefix string-trim-start string?
+          symbol symbol-name symbol? value-eq)
 
-(export define-task run-task task-listing task-names
+(export define-task deftask run-task task-listing task-names
         task-signature)
 
 (def define-task
   (macro (form)
     (check-task-shape form)
+    (check-task-directory form)
+    (check-task-body form)
     (local name (nth form 1))
     (local parameters (task-parameters (nth form 2)))
     (local body (rest (rest (rest form))))
@@ -34,11 +36,40 @@
                            (unquote name)
                            (unquote (summary documented body))
                            (unquote parameters)
-                           (unquote (form-location form)))))))
+                           (unquote (form-location form))
+                           (unquote (if documented (first body) "")))))))
 
 (document (define-task name parameters)
   "Defines a task for `deftask`, which loads this module only when a
   program writes a task.")
+
+(def check-task-body
+  (fn (form)
+    (local body (rest (rest (rest form))))
+    (if (only-string? body)
+      (fail (string
+              "the only form of task `"
+              (symbol-name (nth form 1))
+              "` is a string, so it is the task's body, not its docstring")
+        (first body)
+        "write the task's body after the docstring"
+        (quote (:code task-without-body :label "this string is the body")))
+      form)))
+
+(def only-string?
+  (fn (body)
+    (if (value-eq (len body) 1)
+      (string? (first body))
+      false)))
+
+(def check-task-directory
+  (fn (form)
+    (if (in-tasks-directory? form)
+      form
+      (fail "`deftask` defines a task only in a file under `tasks/`"
+        (nth form 1)
+        "move this task into a file under `tasks/`"
+        (quote (:code task-outside-tasks :label "outside `tasks/`"))))))
 
 (def check-task-shape
   (fn (form)
@@ -89,7 +120,7 @@
       true
       (if (value-eq (string-strip-prefix text "-") text)
         (kebab-word? text word-characters)
-        (kebab-word? (string-strip-prefix text "-") letters)))))
+        (kebab-word? (string-strip-prefix text "-") word-characters)))))
 
 (def without-prefix
   (fn (text prefixes)
@@ -131,13 +162,22 @@
     (if (empty? written)
       (list)
       (if (keyword? (first written))
-        (flag-with-type (keyword-field (first written))
+        (flag-with-type (checked-flag-name (first written))
                         (rest written))
         (fail "a positional parameter of a task comes before its flags"
           (first written)
           "move it before the first keyword"
           (quote (:code positional-after-flag
                         :label "a positional parameter after a flag")))))))
+
+(def checked-flag-name
+  (fn (keyword)
+    (if (value-eq (keyword-name keyword) "help")
+      (fail "a task cannot have a flag named `--help`"
+        keyword
+        "rename the flag, because `--help` prints the task's usage"
+        (quote (:code task-help-flag :label "this flag")))
+      (keyword-field keyword))))
 
 (def flag-with-type
   (fn (name details)
@@ -233,6 +273,9 @@
 (def note-parameters
   (fn (note) (nth note 3)))
 
+(def note-documentation
+  (fn (note) (nth note 5)))
+
 (def run-task
   (macro (form)
     (local wanted (nth form 1))
@@ -248,7 +291,8 @@
                                      (unquote (len positional))
                                      (unquote (names-text flags))
                                      (unquote (names-text switches))
-                                     (unquote (parameters-usage parameters))))
+                                     (unquote (task-call note))
+                                     (unquote (note-documentation note))))
                 (unquote (entry-call (list wanted (task-call note))
                                      note ordered
                                      (open-parameters (nth form 2))))))))
@@ -499,20 +543,29 @@
     fn counted(count: usize) -> String {{
         if count == 1 {{ \"1 positional argument\".to_string() }} else {{ format!(\"{{}} positional arguments\", count) }}
     }}
+    fn flag_name(word: &str) -> Option<&str> {{
+        word.strip_prefix(\"--\").map(|written| written.split_once('=').map_or(written, |(name, _)| name))
+    }}
     let task: &str = {0};
     let positional_count: usize = {1};
     let flags: Vec<&str> = {2}.split_whitespace().collect();
     let switches: Vec<&str> = {3}.split_whitespace().collect();
-    let usage = if {4}.is_empty() {{ task.to_string() }} else {{ format!(\"{{}} {{}}\", task, {4}) }};
+    let usage: &str = {4};
+    let documentation: String = {5}.lines().map(str::trim).collect::<Vec<_>>().join(\"\\n\");
     let mut values: Vec<Option<String>> = vec![None; positional_count + flags.len() + switches.len()];
     let mut positional = 0;
     let mut flags_ended = false;
-    let mut words = std::env::args().skip(1);
+    let mut last_switch: Option<String> = None;
+    let mut words = std::env::args().skip(1).peekable();
     while let Some(word) = words.next() {{
+        let after_switch = last_switch.take();
         if !flags_ended && word == \"--\" {{
             flags_ended = true;
         }} else if !flags_ended && word == \"--help\" {{
             println!(\"usage: {{}}\", usage);
+            if !documentation.is_empty() {{
+                println!(\"\\n{{}}\", documentation);
+            }}
             std::process::exit(0)
         }} else if let Some(written) = word.strip_prefix(\"--\").filter(|_| !flags_ended) {{
             let (name, attached) = match written.split_once('=') {{
@@ -521,33 +574,44 @@
             }};
             let (slot, value) = if let Some(index) = switches.iter().position(|switch| *switch == name) {{
                 if attached.is_some() {{
-                    refuse(format!(\"switch `--{{}}` takes no value\", name), &usage)
+                    refuse(format!(\"switch `--{{}}` takes no value\", name), usage)
                 }}
+                last_switch = Some(name.to_string());
                 (positional_count + flags.len() + index, String::new())
             }} else if let Some(index) = flags.iter().position(|flag| *flag == name) {{
-                let value = attached.or_else(|| words.next()).unwrap_or_else(|| refuse(format!(\"flag `--{{}}` needs a value\", name), &usage));
+                let names_a_flag = words
+                    .peek()
+                    .and_then(|next| flag_name(next))
+                    .is_some_and(|next| next == \"help\" || flags.contains(&next) || switches.contains(&next));
+                if attached.is_none() && names_a_flag {{
+                    refuse(format!(\"flag `--{{}}` needs a value\", name), usage)
+                }}
+                let value = attached.or_else(|| words.next()).unwrap_or_else(|| refuse(format!(\"flag `--{{}}` needs a value\", name), usage));
                 (positional_count + index, value)
             }} else {{
-                refuse(format!(\"task `{{}}` has no flag `--{{}}`\", task, name), &usage)
+                refuse(format!(\"task `{{}}` has no flag `--{{}}`\", task, name), usage)
             }};
             if values[slot].is_some() {{
-                refuse(format!(\"flag `--{{}}` is given more than once\", name), &usage)
+                refuse(format!(\"flag `--{{}}` is given more than once\", name), usage)
             }}
             values[slot] = Some(value);
         }} else if positional < positional_count {{
             values[positional] = Some(word);
             positional += 1;
+        }} else if let Some(switch) = after_switch {{
+            refuse(format!(\"switch `--{{}}` takes no value\", switch), usage)
         }} else {{
-            refuse(format!(\"task `{{}}` takes {{}}, and got more\", task, counted(positional_count)), &usage)
+            refuse(format!(\"task `{{}}` takes {{}}, and got more\", task, counted(positional_count)), usage)
         }}
     }}
     if positional < positional_count {{
-        refuse(format!(\"task `{{}}` takes {{}}, and got {{}}\", task, counted(positional_count), positional), &usage)
+        refuse(format!(\"task `{{}}` takes {{}}, and got {{}}\", task, counted(positional_count), positional), usage)
     }}
     values
 }}"
     (fn ((ref str)
          usize
+         (ref str)
          (ref str)
          (ref str)
          (ref str))

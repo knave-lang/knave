@@ -7708,3 +7708,222 @@ fn task_expansion_leaves_the_name_define_task_to_the_program() {
             .starts_with("error[L0201]: cannot find `define-task` in this scope")
     );
 }
+
+const LOCATED_ARM_MODULE: &str = "(use code located nth)
+(use prelude/macros template)
+
+(export m)
+
+(def m
+  (macro (form)
+    (template (match 1 (_ 0) ((unquote (located (nth form 1) (quote _))) 2)))))
+
+(defn main () (println 1))
+";
+
+#[test]
+fn eval_shows_a_warning_at_a_located_place_inside_the_call() {
+    let eval = Sandbox::new("eval_located_warning")
+        .with_file("arms.knv", LOCATED_ARM_MODULE)
+        .compiler(&["eval", "arms.knv", "(m here)"]);
+    insta::assert_snapshot!(eval.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn emitted_task_program() {
+    let sandbox = Sandbox::with_tasks("emitted_task_program");
+    sandbox
+        .compiler(&["task", "greet", "ana"])
+        .assert_exit_code(0);
+    let program = sandbox.contents("target/knave/chores/tasks/greet/main.rs");
+    insta::assert_snapshot!(program);
+}
+
+const ROUND_TWO_TASKS: &str = "(defn double ((port u16)) (* port 2))
+
+(deftask shown (who :times 2) (println who \" \" times))
+
+(deftask doubled (who port) (println who \" \" (double port)))
+
+(deftask build-2024 () (println \"built\"))
+
+(deftask fails () (err \"boom\"))
+
+(deftask told (who :times 1 :loud false)
+  \"Says hello.
+
+  Says it a few times.\"
+  (println who \" \" times \" \" loud))
+";
+
+impl Sandbox {
+    fn with_round_two_tasks(test_name: &str) -> Self {
+        Self::new(test_name)
+            .with_file(&Language::project_file_name(), TASK_PROJECT)
+            .with_file("src/main.knv", TASK_MODULE)
+            .with_file("tasks/round.knv", ROUND_TWO_TASKS)
+    }
+}
+
+#[test]
+fn task_open_parameter_beside_a_display_only_defaulted_flag_keeps_its_default_type() {
+    let task =
+        Sandbox::with_round_two_tasks("task_display_default").compiler(&["task", "shown", "bo"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "bo 2\n");
+}
+
+#[test]
+fn task_open_parameter_beside_a_concrete_parameter_leaves_the_concrete_one_alone() {
+    let task = Sandbox::with_round_two_tasks("task_concrete_beside_open")
+        .compiler(&["task", "doubled", "bo", "21"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "bo 42\n");
+}
+
+#[test]
+fn task_name_may_hold_a_word_that_starts_with_a_digit() {
+    let task = Sandbox::with_round_two_tasks("task_digit_word").compiler(&["task", "build-2024"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "built\n");
+}
+
+#[test]
+fn check_without_a_file_accepts_a_task_that_only_fails() {
+    let sandbox = Sandbox::with_round_two_tasks("check_only_fails");
+    sandbox.compiler(&["check"]).assert_exit_code(0);
+    let task = sandbox.compiler(&["task", "fails"]);
+    assert_eq!(task.assert_exit_code(1).stderr(), "boom\n");
+}
+
+#[test]
+fn task_with_an_open_error_type_is_cannot_infer_at_its_name_under_task_and_check() {
+    let sandbox = Sandbox::new("task_open_error")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("tasks/k.knv", "(deftask k () (ok (do)))\n");
+    let task = sandbox
+        .compiler(&["task", "k"])
+        .assert_exit_code(1)
+        .stderr();
+    let check = sandbox.compiler(&["check"]).assert_exit_code(1).stderr();
+    assert_eq!(task, check);
+    insta::assert_snapshot!(task);
+}
+
+#[test]
+fn task_help_prints_the_usage_and_the_docstring() {
+    let task =
+        Sandbox::with_round_two_tasks("task_help_docstring").compiler(&["task", "told", "--help"]);
+    insta::assert_snapshot!(task.assert_exit_code(0).stdout());
+}
+
+#[test]
+fn task_reports_a_switch_value_and_a_flag_without_value_clearly() {
+    let sandbox = Sandbox::with_round_two_tasks("task_switch_and_flag_values");
+    let switch_value = sandbox.compiler(&["task", "told", "bo", "--loud", "true"]);
+    let flag_then_flag = sandbox.compiler(&["task", "told", "bo", "--times", "--loud"]);
+    insta::assert_snapshot!(format!(
+        "{}---\n{}",
+        switch_value.assert_exit_code(2).stderr(),
+        flag_then_flag.assert_exit_code(2).stderr()
+    ));
+}
+
+#[test]
+fn task_definition_errors_have_their_own_codes() {
+    let reports: Vec<String> = [
+        ("help_flag", "(deftask hv (:help \"x\") (println help))\n"),
+        ("docless", "(deftask docless () \"only a docstring\")\n"),
+    ]
+    .iter()
+    .map(|(name, source)| {
+        Sandbox::new(&format!("task_definition_{name}"))
+            .with_file(&Language::project_file_name(), TASK_PROJECT)
+            .with_file("src/main.knv", TASK_MODULE)
+            .with_file("tasks/t.knv", source)
+            .compiler(&["task"])
+            .assert_exit_code(1)
+            .stderr()
+    })
+    .collect();
+    insta::assert_snapshot!(reports.join("---\n"));
+}
+
+#[test]
+fn deftask_in_an_entry_module_is_an_error_under_run_and_check() {
+    let sandbox = Sandbox::new("deftask_in_main")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file(
+            "src/main.knv",
+            "(deftask hidden () (println \"h\"))\n\n(defn main () (println \"m\"))\n",
+        );
+    let check = sandbox.compiler(&["check"]).assert_exit_code(1).stderr();
+    let run = sandbox.compiler(&["run"]).assert_exit_code(1).stderr();
+    assert_eq!(check, run);
+    insta::assert_snapshot!(check);
+}
+
+#[test]
+fn task_cannot_reach_tests_through_a_dotted_entry_a_parent_path_or_a_link() {
+    let support = "(export helper)\n\n(defn helper () (println \"from tests\"))\n";
+    let dotted = Sandbox::new("task_tests_dotted")
+        .with_file(
+            &Language::project_file_name(),
+            "(project dotted :entry \"./main.knv\")\n",
+        )
+        .with_file("main.knv", "(defn main () (println \"m\"))\n")
+        .with_file("tests/support.knv", support)
+        .with_file(
+            "tasks/t.knv",
+            "(use tests/support helper)\n\n(deftask t () (helper))\n",
+        )
+        .compiler(&["task", "t"]);
+    let parent = Sandbox::new("task_tests_parent")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("tests/support.knv", support)
+        .with_file(
+            "tasks/t.knv",
+            "(use ../tests/support helper)\n\n(deftask t () (helper))\n",
+        )
+        .compiler(&["task", "t"]);
+    let linked_sandbox = Sandbox::new("task_tests_link")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("tests/support.knv", support)
+        .with_file(
+            "tasks/t.knv",
+            "(use link/support helper)\n\n(deftask t () (helper))\n",
+        );
+    std::os::unix::fs::symlink("../tests", linked_sandbox.directory.join("src/link"))
+        .expect("the sandbox accepts a symbolic link");
+    let linked = linked_sandbox.compiler(&["task", "t"]);
+    let reports = [dotted, parent, linked].map(|outcome| outcome.assert_exit_code(1).stderr());
+    insta::assert_snapshot!(reports.join("---\n"));
+}
+
+#[test]
+fn task_module_hiding_a_source_module_names_the_tasks_directory() {
+    let task = Sandbox::new("task_hides_source")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("src/util.knv", "(export x)\n\n(def x 1)\n")
+        .with_file("tasks/util.knv", "(export x)\n\n(def x 2)\n")
+        .with_file(
+            "tasks/t.knv",
+            "(use util x)\n\n(deftask t () (println x))\n",
+        )
+        .compiler(&["task", "t"]);
+    insta::assert_snapshot!(task.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn task_file_may_still_import_deftask_from_prelude_task() {
+    let task = Sandbox::new("task_explicit_import")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file(
+            "tasks/t.knv",
+            "(use prelude/task deftask)\n\n(deftask t () (println \"t\"))\n",
+        )
+        .compiler(&["task", "t"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "t\n");
+}

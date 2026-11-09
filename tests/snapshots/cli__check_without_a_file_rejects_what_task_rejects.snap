@@ -9,3 +9,4 @@ error[L0404]: `i64` does not implement `task-outcome`
   |          ^^^ this needs `task-outcome`
   |
   = note: `task-outcome` is implemented for: unit, (where (a (e display)) (result a e))
+  = help: end the task's body with a print or another call that returns `unit`, or return a `result`

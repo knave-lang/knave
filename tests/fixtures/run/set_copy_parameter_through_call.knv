@@ -1,6 +1,9 @@
-(defn change! ((x (mut i64))) (set! x 9))
+(defn change! ((x (mut i64)))
+  (set! x 9))
 
-(defn pass-on! (x) (change! x) x)
+(defn pass-on! (x)
+  (change! x)
+  x)
 
 (defn main ()
   (local total 5)

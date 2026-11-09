@@ -3,4 +3,6 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/run/set_large_copy_parameter.knv
 ---
-340
+121
+122
+122

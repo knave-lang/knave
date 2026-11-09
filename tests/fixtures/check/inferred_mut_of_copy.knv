@@ -4,7 +4,8 @@
 
 (defn bump! (x) (set! x (+ x 1)))
 
-(defn grow! (items) (push! items (str "bo")))
+(defn grow! (items)
+  (push! items (str "bo")))
 
 (defn main ()
   (local total 1)

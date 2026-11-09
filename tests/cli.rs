@@ -5563,6 +5563,22 @@ fn test_without_a_path_outside_a_project_is_a_usage_error() {
 }
 
 #[test]
+fn fmt_check_without_a_path_prints_paths_relative_to_the_working_directory() {
+    let sandbox = Sandbox::new("fmt_project_check_paths")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file("src/twice.rslisp", UNFORMATTED);
+    let from_root = sandbox.compiler(&["fmt", "--check"]);
+    let from_source = sandbox.compiler_in("src", &["fmt", "--check"]);
+    assert_eq!(
+        [
+            from_root.assert_exit_code(1).stdout(),
+            from_source.assert_exit_code(1).stdout()
+        ],
+        ["src/twice.rslisp\n", "../src/twice.rslisp\n"]
+    );
+}
+
+#[test]
 fn fmt_without_a_path_lays_out_the_whole_project_from_a_subdirectory() {
     let sandbox = Sandbox::new("fmt_project_default")
         .with_file(&Language::project_file_name(), UNLAID_PROJECT)

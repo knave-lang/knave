@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/comparison_operand_depths.knv
+---
+true
+true
+true
+true
+true
+true
+true

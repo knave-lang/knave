@@ -43,6 +43,10 @@ impl Template {
         self.parsed.receives(argument)
     }
 
+    pub fn is_binary_operation(&self) -> bool {
+        self.binary_operator().is_some()
+    }
+
     pub fn indexes(&self, argument: usize) -> bool {
         self.parsed.indexes(argument)
     }

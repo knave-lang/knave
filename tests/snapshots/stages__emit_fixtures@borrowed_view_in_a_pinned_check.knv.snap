@@ -30,11 +30,11 @@ fn is_holds(s: &Site, target: &str, id: &str) -> bool {
         .any(|p: &Page| p.file.as_str() == target && p.html.as_str() == suffix.as_str())
 }
 
-fn is_tagged(s: &Site, target: &str, id: &str) -> bool {
+fn is_tagged(s: &Site, target: &String, id: &str) -> bool {
     let suffix = format!(" id={}", id);
     s.pages
         .iter()
-        .any(|p: &Page| target == (&p.tags[0]).as_str() && suffix.as_str() == p.html.as_str())
+        .any(|p: &Page| *target == p.tags[0] && suffix.as_str() == p.html.as_str())
 }
 
 fn main() {
@@ -46,7 +46,7 @@ fn main() {
     )]);
     let target = "a".to_string();
     println!("{}", is_holds(&all, target.as_str(), "x"));
-    println!("{}", is_tagged(&all, "t", "x"))
+    println!("{}", is_tagged(&all, &"t".to_string(), "x"))
 }
 
 mod rt {

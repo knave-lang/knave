@@ -85,7 +85,7 @@ fn main() {
     println!("{}", is_printed(&items[0], "a"));
     println!("{}", is_reversed(&items[0], &"a".to_string()));
     println!("{}", is_before(&items[0], &"0".to_string()));
-    println!("{}", is_first_is(&vec!["a".to_string()], &"a".to_string()));
+    println!("{}", is_first_is(&items[0].tags, &"t".to_string()));
     println!("{}", is_tag_first(&items[0], &"t".to_string()));
     println!("{}", is_any_tag(&items, &"u".to_string()));
     println!("{}", is_same_three(&items[0], "a".to_string()));

@@ -17,7 +17,7 @@
   (local suffix (str " id=" id))
   (any? (iter (:pages s))
         (fn (p)
-          (and (= target (as-str (at (:tags p) 0)))
+          (and (= target (at (:tags p) 0))
                (= (as-str suffix) (as-str (:html p)))))))
 
 (defn main ()
@@ -27,4 +27,4 @@
                          (vec (str "t"))))))
   (local target (str "a"))
   (println (holds? (ref all) (as-str target) "x"))
-  (println (tagged? (ref all) "t" "x")))
+  (println (tagged? (ref all) (str "t") "x")))

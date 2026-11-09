@@ -2,7 +2,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use super::libraries::LibraryTable;
+use super::libraries::{LibraryRoot, LibraryTable};
 use crate::core::ModulePath;
 use crate::language::Language;
 
@@ -121,7 +121,9 @@ impl ModuleSources {
     }
 
     pub fn unlisted_library(&self, owner: Option<&str>, written: &ModulePath) -> Option<&str> {
-        self.libraries.unlisted_library(owner, written)
+        self.libraries
+            .unlisted_library(owner, written)
+            .map(LibraryRoot::name)
     }
 
     pub fn local_module_beside_library(
@@ -132,8 +134,8 @@ impl ModuleSources {
         let library = self.libraries.unlisted_library(owner, written)?;
         Some(LocalModuleClash {
             local: self.local_module(written)?,
-            library,
-            lister: self.libraries.lister_of(library)?,
+            library: library.name(),
+            lister: library.lister()?,
         })
     }
 

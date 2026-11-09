@@ -8,9 +8,9 @@ error[L0722]: library `keymap` comes from two sources
 4 |     (keymap :path "../other-keymap")))
   |      ^^^^^^ this source differs
   |
- ::: ../hints/project.rslisp:1:28
+ ::: ../hints/project.rslisp:1:31
   |
-1 | (project hints (libraries (keymap :path "../keymap")))
-  |                            ------ from the source given here
+1 | (project hint-kit (libraries (keymap :path "../keymap")))
+  |                               ------ from the source given here
   |
   = help: point every `keymap` entry at one source

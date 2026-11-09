@@ -10,6 +10,7 @@ pub struct LibraryRoot {
     display_root: PathBuf,
     root_module: String,
     visible: Vec<String>,
+    lister: Option<String>,
 }
 
 #[derive(Clone, Default)]
@@ -37,7 +38,20 @@ impl LibraryRoot {
             display_root,
             root_module,
             visible,
+            lister: None,
         }
+    }
+
+    pub fn listed_by(self, lister: Option<String>) -> Self {
+        Self { lister, ..self }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn lister(&self) -> Option<&str> {
+        self.lister.as_deref()
     }
 
     fn file(&self, inner_module: &str) -> LibraryFile {
@@ -68,19 +82,16 @@ impl LibraryTable {
         }
     }
 
-    pub fn unlisted_library(&self, owner: Option<&str>, written: &ModulePath) -> Option<&str> {
+    pub fn unlisted_library(
+        &self,
+        owner: Option<&str>,
+        written: &ModulePath,
+    ) -> Option<&LibraryRoot> {
         if owner.is_some() {
             return None;
         }
         let library = self.owner_of(written)?;
-        (!self.sees_library(None, written)).then_some(library.name.as_str())
-    }
-
-    pub fn lister_of(&self, name: &str) -> Option<&str> {
-        self.libraries
-            .iter()
-            .find(|library| library.visible.iter().any(|visible| visible == name))
-            .map(|library| library.name.as_str())
+        (!self.sees_library(None, written)).then_some(library)
     }
 
     pub fn names_library(&self, owner: Option<&str>, written: &ModulePath) -> bool {

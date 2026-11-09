@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
 untested in prelude (110 of 230): -> ->> _ assoc assoc-at assoc-in box comment copy debug def defenum defmacro defn defrule defstruct deftrait deftype derive display do doc-body doc-header doc-page docstring enum eprint eprintln eq err exit expect-ok export f32 field float fmt fn-mut fn-once from-str get hash hash-map i128 i16 i32 i8 impl integer io-error isize iterator keys let let-match let-try loop macro map-at map-err map-ok match module mut new number ok ok-or ok? option/none option/some ord pair/pair partial-eq partial-ord quote recur result/err result/ok rust rust-trait rust-type sequence set-at show signed slice sorted-map source struct template then-ok trait try try-> type u128 u16 u32 u64 u8 unit unwrap-err update use usize vals where with write-form
-running 105 tests
+running 107 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -59,6 +59,8 @@ test prelude/number/doc:> ... ok
 test prelude/number/doc:>= ... ok
 test prelude/number/doc:= ... ok
 test prelude/number/doc:not= ... ok
+test prelude/sequence/doc:empty? ... ok
+test prelude/sequence/doc:len ... ok
 test prelude/test/doc:doctest ... ok
 test prelude/text/doc:str ... ok
 test prelude/text/doc:print ... total: 3
@@ -129,4 +131,4 @@ test prelude/vec/doc:last ... ok
 test prelude/vec/doc:reverse ... ok
 test prelude/vec/doc:reverse! ... ok
 test prelude/vec/doc:dedup! ... ok
-105 passed, 0 failed
+107 passed, 0 failed

@@ -97,6 +97,15 @@ impl CompileTimeHost for Expander<'_> {
             .read_at(character)
     }
 
+    fn project_modules(&self) -> Vec<Symbol> {
+        self.modules
+            .records()
+            .filter(|record| ModuleSources::is_written(record.path()))
+            .filter(|record| !self.is_library_module(record.path()))
+            .map(|record| Symbol::with_scopes(record.path().as_str(), record.body_scopes()))
+            .collect()
+    }
+
     fn program_modules(&self) -> Vec<Symbol> {
         self.modules
             .records()

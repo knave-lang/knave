@@ -1,0 +1,8 @@
+(use prelude/test assert deftest)
+
+(export double)
+
+(defn double (n) (* 2 n))
+
+(deftest doubles
+  (assert (= (double 2) 4)))

@@ -515,13 +515,9 @@ impl ExpandProblems {
     }
 
     fn with_helps_of(warning: Diagnostic, error: &Diagnostic) -> Diagnostic {
-        error
-            .helps()
-            .iter()
-            .fold(warning, |warning, help| match help.suggestion() {
-                Some(suggestion) => warning.with_suggestion(help.message(), suggestion.clone()),
-                None => warning.with_help(help.message()),
-            })
+        error.helps().iter().fold(warning, |warning, help| {
+            warning.with_copied_help(help.clone())
+        })
     }
 
     pub fn unknown_module(path: &ModulePath, span: Span) -> Diagnostic {
@@ -1330,7 +1326,7 @@ impl ParameterExample<'_> {
 mod tests {
     use super::{ExpandProblems, SetAsideInput};
     use crate::core::Namespace;
-    use crate::diagnostic::MissingName;
+    use crate::diagnostic::{Diagnostic, DiagnosticCode, Label, MissingName};
     use crate::source::{SourceId, Span};
 
     struct SetAsideFixture;
@@ -1371,6 +1367,20 @@ mod tests {
             SetAsideFixture::title(&["a", "b", "c", "d", "e"]),
             "set aside `a`, `b`, `c` and 2 more after `<input 4>`"
         );
+    }
+
+    #[test]
+    fn a_set_aside_input_keeps_the_quoted_form_of_a_help() {
+        let span = Span::new(SourceId::new(0), 0..4);
+        let error = Diagnostic::error(
+            DiagnosticCode::UNBOUND_NAME,
+            "a title",
+            Label::new(span, "a label"),
+        )
+        .with_quoting_help("bind it: `{form}`", span);
+        let input = SetAsideInput::new(&["karl"], "<input 2>", "<input 4>");
+        let warning = ExpandProblems::set_aside(&input, &error);
+        assert_eq!(warning.helps()[0].quoted_form(), Some(span));
     }
 
     #[test]

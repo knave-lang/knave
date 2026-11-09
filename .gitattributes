@@ -1,1 +1,1 @@
-*.rslisp linguist-language=Clojure
+*.rslisp linguist-language=Clojure linguist-detectable=false

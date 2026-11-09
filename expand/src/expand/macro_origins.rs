@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use rustc_hash::FxHashMap;
 
 use super::macro_call::MacroOrigin;
@@ -17,23 +19,39 @@ pub struct MacroOrigins {
 impl MacroOrigins {
     pub fn get(&self, call_site: Span) -> Option<MacroOrigin> {
         let own = self.origins.get(&call_site).cloned();
-        own.or_else(|| self.saved.origin_at(call_site))
+        match (self.saved.origin_at(call_site), own) {
+            (Some(mut saved), Some(own)) => {
+                saved.through_prelude |= own.through_prelude;
+                Some(saved)
+            }
+            (saved, own) => saved.or(own),
+        }
     }
 
     pub fn enclosing(&self, span: Span) -> Option<MacroOrigin> {
-        let own = self
-            .origins
+        let saved = self.saved.enclosing(span);
+        let smallest = saved
+            .into_iter()
+            .chain(self.own_enclosing(span))
+            .min_by_key(Self::call_site_length)?;
+        self.get(smallest.call_site)
+    }
+
+    fn own_enclosing(&self, span: Span) -> Option<MacroOrigin> {
+        self.origins
             .values()
             .filter(|origin| origin.call_site.contains(span))
-            .min_by_key(|origin| origin.call_site.range().len())
-            .cloned();
-        own.or_else(|| self.saved.enclosing(span))
+            .min_by_key(|origin| Self::call_site_length(origin))
+            .cloned()
+    }
+
+    fn call_site_length(origin: &MacroOrigin) -> usize {
+        origin.call_site.range().len()
     }
 
     pub fn introduced(&self, call_site: Span, name: &str) -> Option<Span> {
-        let key = (call_site, name.to_string());
-        let own = self.introduced.get(&key).copied();
-        own.or_else(|| self.saved.introduced(call_site, name))
+        let saved = self.saved.introduced(call_site, name);
+        saved.or_else(|| self.introduced.get(&(call_site, name.to_string())).copied())
     }
 
     pub fn record(&mut self, call_site: Span, origin: MacroOrigin) {
@@ -172,8 +190,9 @@ impl SavedOrigins {
     }
 
     fn enclosing(&self, span: Span) -> Option<MacroOrigin> {
-        let containing =
-            (0..self.count()).filter(|row| OriginRow::call_site(self.row(*row)).contains(span));
+        let containing = self
+            .rows_of_source(span.source())
+            .filter(|row| OriginRow::call_site(self.row(*row)).contains(span));
         let smallest =
             containing.min_by_key(|row| OriginRow::call_site(self.row(*row)).range().len());
         smallest.map(|row| self.decode(row).0)
@@ -191,6 +210,11 @@ impl SavedOrigins {
         let key = OriginRow::key_of(call_site);
         let index = self.first_row_at_or_after(key);
         (index < self.count() && OriginRow::key(self.row(index)) == key).then_some(index)
+    }
+
+    fn rows_of_source(&self, source: SourceId) -> Range<usize> {
+        let word = SavedWords::index(source.index());
+        self.first_row_at_or_after([word, 0, 0])..self.first_row_at_or_after([word + 1, 0, 0])
     }
 
     fn first_row_at_or_after(&self, key: [u32; OriginRow::KEY_WORDS]) -> usize {
@@ -345,9 +369,90 @@ mod tests {
     }
 
     #[test]
-    fn a_program_origin_wins_over_a_saved_one() {
+    fn a_saved_origin_keeps_its_name_and_joins_through_prelude() {
         let mut origins = OriginsFixture::with_saved_origins();
         let call_site = OriginsFixture::call_site();
+        let mut own = OriginsFixture::origin("own", call_site);
+        own.through_prelude = true;
+        origins.record(call_site, own);
+        let found = origins.get(call_site).expect("the call site is recorded");
+        assert_eq!(found.name.as_ref(), "outer");
+        assert!(found.through_prelude);
+    }
+
+    #[test]
+    fn a_narrower_saved_call_site_encloses_over_a_wider_program_one() {
+        let mut origins = OriginsFixture::with_saved_origins();
+        let wide = OriginsFixture::span(1, 5, 30);
+        origins.record(wide, OriginsFixture::origin("wide", wide));
+        let found = origins.enclosing(OriginsFixture::span(1, 13, 14));
+        assert_eq!(OriginsFixture::name(found), Some("inner".to_string()));
+    }
+
+    #[test]
+    fn a_narrower_program_call_site_encloses_over_a_wider_saved_one() {
+        let mut origins = OriginsFixture::with_saved_origins();
+        let narrow = OriginsFixture::span(1, 13, 14);
+        origins.record(narrow, OriginsFixture::origin("narrow", narrow));
+        let found = origins.enclosing(OriginsFixture::span(1, 13, 14));
+        assert_eq!(OriginsFixture::name(found), Some("narrow".to_string()));
+    }
+
+    #[test]
+    fn an_enclosing_call_site_in_both_tables_joins_through_prelude() {
+        let mut origins = OriginsFixture::with_saved_origins();
+        let inner = OriginsFixture::span(1, 12, 15);
+        let mut own = OriginsFixture::origin("own", inner);
+        own.through_prelude = true;
+        origins.record(inner, own);
+        let found = origins
+            .enclosing(OriginsFixture::span(1, 13, 14))
+            .expect("the call site encloses the span");
+        assert_eq!(found.name.as_ref(), "inner");
+        assert!(found.through_prelude);
+    }
+
+    #[test]
+    fn a_program_call_site_alone_encloses() {
+        let mut origins = MacroOrigins::default();
+        let call_site = OriginsFixture::call_site();
+        origins.record(call_site, OriginsFixture::origin("own", call_site));
+        let found = origins.enclosing(OriginsFixture::span(1, 13, 14));
+        assert_eq!(OriginsFixture::name(found), Some("own".to_string()));
+    }
+
+    #[test]
+    fn the_smallest_program_call_site_around_a_span_encloses_it() {
+        let mut origins = MacroOrigins::default();
+        let wide = OriginsFixture::span(1, 5, 30);
+        origins.record(wide, OriginsFixture::origin("wide", wide));
+        let narrow = OriginsFixture::span(1, 12, 15);
+        origins.record(narrow, OriginsFixture::origin("narrow", narrow));
+        let found = origins.enclosing(OriginsFixture::span(1, 13, 14));
+        assert_eq!(OriginsFixture::name(found), Some("narrow".to_string()));
+    }
+
+    #[test]
+    fn a_program_call_site_away_from_a_span_does_not_enclose_it() {
+        let mut origins = MacroOrigins::default();
+        let elsewhere = OriginsFixture::span(1, 40, 50);
+        origins.record(elsewhere, OriginsFixture::origin("elsewhere", elsewhere));
+        assert!(origins.enclosing(OriginsFixture::span(1, 13, 14)).is_none());
+    }
+
+    #[test]
+    fn a_saved_origin_stays_unjoined_without_a_program_origin() {
+        let origins = OriginsFixture::with_saved_origins();
+        let found = origins
+            .get(OriginsFixture::call_site())
+            .expect("the call site is saved");
+        assert!(!found.through_prelude);
+    }
+
+    #[test]
+    fn a_program_origin_alone_is_found() {
+        let mut origins = OriginsFixture::with_saved_origins();
+        let call_site = OriginsFixture::span(5, 1, 2);
         origins.record(call_site, OriginsFixture::origin("own", call_site));
         assert_eq!(
             OriginsFixture::name(origins.get(call_site)),
@@ -356,12 +461,23 @@ mod tests {
     }
 
     #[test]
-    fn a_program_introduced_name_wins_over_a_saved_one() {
+    fn a_saved_introduced_name_wins_over_a_program_one() {
         let mut origins = OriginsFixture::with_saved_origins();
         let call_site = OriginsFixture::call_site();
+        origins.record_introduced(call_site, "helper", OriginsFixture::span(1, 1, 2));
+        assert_eq!(
+            origins.introduced(call_site, "helper"),
+            Some(OriginsFixture::span(0, 5, 6))
+        );
+    }
+
+    #[test]
+    fn a_program_introduced_name_alone_is_found() {
+        let mut origins = OriginsFixture::with_saved_origins();
+        let call_site = OriginsFixture::span(5, 1, 2);
         let own = OriginsFixture::span(1, 1, 2);
-        origins.record_introduced(call_site, "helper", own);
-        assert_eq!(origins.introduced(call_site, "helper"), Some(own));
+        origins.record_introduced(call_site, "own", own);
+        assert_eq!(origins.introduced(call_site, "own"), Some(own));
     }
 
     #[test]

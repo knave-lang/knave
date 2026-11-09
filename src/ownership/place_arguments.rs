@@ -95,9 +95,7 @@ impl<'a> PlaceArguments<'a> {
     }
 
     fn can_change(value: &TypedExpr) -> bool {
-        value.is_place()
-            || matches!(value.kind, TypedExprKind::Borrow(..))
-            || matches!(value.ty, Type::Mut(..))
+        value.is_place() || matches!(value.kind, TypedExprKind::Borrow(..))
     }
 
     fn change_site(

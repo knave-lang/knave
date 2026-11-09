@@ -11,20 +11,14 @@ pub(super) struct CompoundAssignment {
     pub arguments: Vec<TypedArgument>,
 }
 
-struct Assignment<'e> {
-    target: &'e str,
-    places: &'e [TypedArgument],
-    operator: &'static str,
-}
-
 struct Operands<'e> {
-    place: &'e TypedArgument,
     value: &'e TypedArgument,
-    commuted: bool,
+    place_first: bool,
 }
 
 impl ExpressionEmitter<'_> {
     const COMMUTING_OPERATORS: [&'static str; 2] = ["+", "*"];
+    const ELEMENT_READ: &'static str = "&{0}[{1}]";
     const READ_PLACE: &'static str = "{!current}";
     const COMPUTED_VALUE: &'static str = "{!value}";
 
@@ -44,47 +38,41 @@ impl ExpressionEmitter<'_> {
         let [left, right] = operands.as_slice() else {
             return None;
         };
-        let operator = self.compound_operator(callee)?;
+        let operator = self.compound_operator(callee, &value.value.ty)?;
         if !places.iter().all(|place| self.is_steady(&place.value)) {
             return None;
         }
         let target_text = self.target_text(template, target, places, types, span);
-        let operands =
-            self.operands_naming(&target_text, operator, [left, right], &value.value.ty)?;
-        self.is_steady(&operands.place.value).then(|| {
-            Self::compound(
-                &Assignment {
-                    target,
-                    places,
-                    operator,
-                },
-                &operands,
-            )
-        })
-    }
-
-    fn compound(assignment: &Assignment, operands: &Operands) -> CompoundAssignment {
-        let Assignment {
-            target,
-            places,
-            operator,
-        } = assignment;
+        let operands = self.operands_beside(&target_text, operator, [left, right])?;
         let value = format!("{{{}}}", places.len());
         let template = if Self::leaves_places_alone(&operands.value.value) {
             format!("{target} {operator}= {value}")
-        } else if operands.commuted {
-            let computed = Self::COMPUTED_VALUE;
-            format!("{{{{ let {computed} = {value}; {target} {operator}= {computed} }}}}")
         } else {
-            let current = Self::READ_PLACE;
-            format!("{{{{ let {current} = {target}; {target} = {current} {operator} {value} }}}}")
+            let assigned = Self::in_written_order(&operands, &target_text, operator, &value);
+            format!("{target} = {assigned}")
         };
-        let mut arguments = places.to_vec();
-        arguments.push(operands.value.clone());
-        CompoundAssignment {
+        Some(CompoundAssignment {
             template,
-            arguments,
-        }
+            arguments: places.iter().chain([operands.value]).cloned().collect(),
+        })
+    }
+
+    fn in_written_order(
+        operands: &Operands,
+        target_text: &str,
+        operator: &str,
+        value: &str,
+    ) -> String {
+        let place = target_text.replace('{', "{{").replace('}', "}}");
+        let (current, computed) = (Self::READ_PLACE, Self::COMPUTED_VALUE);
+        let statements = if operands.place_first {
+            format!(
+                "let {current} = {place}; let {computed} = {value}; {current} {operator} {computed}"
+            )
+        } else {
+            format!("let {computed} = {value}; {computed} {operator} {place}")
+        };
+        format!("{{{{ {statements} }}}}")
     }
 
     fn target_text(
@@ -103,48 +91,53 @@ impl ExpressionEmitter<'_> {
             .text()
     }
 
-    fn operands_naming<'e>(
+    fn operands_beside<'e>(
         &mut self,
         target_text: &str,
         operator: &str,
         [left, right]: [&'e TypedArgument; 2],
-        ty: &Type,
     ) -> Option<Operands<'e>> {
-        if self.operand_text(left) == target_text {
+        if self.names_place(left, target_text) {
             return Some(Operands {
-                place: left,
                 value: right,
-                commuted: false,
+                place_first: true,
             });
         }
-        let commutes =
-            Self::COMMUTING_OPERATORS.contains(&operator) && matches!(ty, Type::Primitive(_));
-        (commutes && self.operand_text(right) == target_text).then_some(Operands {
-            place: right,
+        let commutes = Self::COMMUTING_OPERATORS.contains(&operator);
+        (commutes && self.names_place(right, target_text)).then_some(Operands {
             value: left,
-            commuted: true,
+            place_first: false,
         })
     }
 
-    fn operand_text(&mut self, operand: &TypedArgument) -> String {
+    fn names_place(&mut self, operand: &TypedArgument, target_text: &str) -> bool {
         self.argument(operand, TypeContext::Known, ArgumentRole::Ordinary)
             .text()
+            == target_text
     }
 
     fn is_steady(&self, expr: &TypedExpr) -> bool {
         match &expr.kind {
-            TypedExprKind::Leaf(_) => true,
+            TypedExprKind::Leaf(TypedLeaf::Local(_) | TypedLeaf::Literal(_)) => true,
             TypedExprKind::Deref(value)
             | TypedExprKind::Borrow(ReferenceKind::Shared, value)
             | TypedExprKind::Struct(TypedStructExpr::Field(value, _)) => self.is_steady(value),
             TypedExprKind::Call(callee, arguments) => {
-                self.called_template(callee).is_some()
-                    && arguments.iter().all(|argument| {
-                        Self::passes_unchanged(argument) && self.is_steady(&argument.value)
-                    })
+                self.reads_element(callee)
+                    && arguments
+                        .iter()
+                        .all(|argument| self.is_steady(&argument.value))
             }
             _ => false,
         }
+    }
+
+    fn reads_element(&self, callee: &TypedExpr) -> bool {
+        let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = callee.kind else {
+            return false;
+        };
+        self.definition_template(binding, &callee.ty)
+            .is_some_and(|template| *template.template == *Self::ELEMENT_READ)
     }
 
     fn leaves_places_alone(expr: &TypedExpr) -> bool {

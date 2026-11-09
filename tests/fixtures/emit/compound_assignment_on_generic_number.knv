@@ -1,0 +1,22 @@
+(defn add-to (a b)
+  (local sum a)
+  (set! sum (+ sum b))
+  sum)
+
+(defn twice! (x) (set! x (+ x x)))
+
+(defn climb (n step limit)
+  (if (< n limit)
+    (recur (+ n step) step limit)
+    n))
+
+(defn main ()
+  (println (add-to 1 2))
+  (println (add-to 1.5 2.0))
+  (local whole 3)
+  (twice! whole)
+  (local half 1.5)
+  (twice! half)
+  (println whole half)
+  (println (climb 1 2 10))
+  (println (climb 1.0 2.5 10.0)))

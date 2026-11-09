@@ -1,0 +1,10 @@
+(defstruct counter
+  :hits i64)
+
+(defn main ()
+  (local total 1)
+  (set! total (+ total 2))
+  (set! total (- 10 total))
+  (local tally (->counter 0))
+  (set! (:hits tally) (* (:hits tally) 3))
+  (println total (:hits tally)))

@@ -4,7 +4,7 @@ expression: reports.report(path)
 input_file: tests/fixtures/emit/set_copy_parameter.knv
 ---
 fn bump(x: &mut i64) {
-    *x = *x + 1
+    *x += 1
 }
 
 fn change(x: &mut i64) {
@@ -17,7 +17,7 @@ fn pass_on(x: &mut i64) -> i64 {
 }
 
 fn twice(x: &mut i64) {
-    *x = *x + *x
+    *x += *x
 }
 
 fn append(mut s: String) -> String {

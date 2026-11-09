@@ -5,9 +5,9 @@ input_file: tests/fixtures/emit/recur_writes_through_copy_parameter.knv
 ---
 fn climb(height: &mut i64) -> i64 {
     loop {
-        *height = *height + 1;
+        *height += 1;
         if *height < 5 {
-            *height = *height + 1;
+            *height += 1;
             continue;
         } else {
             return *height;
@@ -17,7 +17,7 @@ fn climb(height: &mut i64) -> i64 {
 
 fn climb_counted(height: &mut i64, mut steps: i64) -> i64 {
     loop {
-        *height = *height + 1;
+        *height += 1;
         if steps < 3 {
             (*height, steps) = (*height + 1, steps + 1);
             continue;
@@ -29,7 +29,7 @@ fn climb_counted(height: &mut i64, mut steps: i64) -> i64 {
 
 fn climb_again(height: &mut i64) -> i64 {
     loop {
-        *height = *height + 1;
+        *height += 1;
         if *height < 9 {
             continue;
         } else {
@@ -40,7 +40,7 @@ fn climb_again(height: &mut i64) -> i64 {
 
 fn settle(height: &mut i64) -> i64 {
     loop {
-        *height = *height + 1;
+        *height += 1;
         if *height < 9 {
             continue;
         } else {

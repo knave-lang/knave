@@ -5,7 +5,7 @@ input_file: tests/fixtures/emit/recur_passes_unchanged_parameter.knv
 ---
 fn walk(steps: &mut i64, mut rounds: i64) -> i64 {
     loop {
-        *steps = *steps + 1;
+        *steps += 1;
         if rounds > 0 {
             (*steps, rounds) = (rounds, rounds - 1);
             continue;
@@ -17,7 +17,7 @@ fn walk(steps: &mut i64, mut rounds: i64) -> i64 {
 
 fn walk_again(steps: &mut i64, mut rounds: i64) -> i64 {
     loop {
-        *steps = *steps + 1;
+        *steps += 1;
         if rounds > 0 {
             (*steps, rounds) = (rounds, rounds - 1);
             continue;

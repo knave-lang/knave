@@ -442,11 +442,10 @@ impl ExpressionEmitter<'_> {
             return None;
         };
         let operator = self.compound_operator(callee)?;
-        matches!(target.value.kind, TypedExprKind::Leaf(TypedLeaf::Local(local)) if local == param)
-            .then_some((operator, operand))
+        TailLoop::passes_through(param, target).then_some((operator, operand))
     }
 
-    fn compound_operator(&self, callee: &TypedExpr) -> Option<&'static str> {
+    pub(super) fn compound_operator(&self, callee: &TypedExpr) -> Option<&'static str> {
         let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = callee.kind else {
             return None;
         };

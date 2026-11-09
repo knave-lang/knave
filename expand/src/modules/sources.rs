@@ -173,7 +173,7 @@ impl ModuleSources {
     }
 
     pub fn is_internal(path: &ModulePath) -> bool {
-        path.as_str().starts_with(Self::INTERNAL_DIRECTORY)
+        path.as_str().starts_with(Self::INTERNAL_DIRECTORY) && Self::is_embedded_prelude(path)
     }
 
     pub fn is_embedded_prelude(path: &ModulePath) -> bool {

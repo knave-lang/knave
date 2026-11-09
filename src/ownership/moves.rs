@@ -9,7 +9,7 @@ use super::repeats::{NextPass, RepeatingBody};
 use super::stored_definitions::StoredDefinitions;
 use super::update_bases::UpdateBases;
 use super::update_order::StructUpdateOrder;
-use crate::core::{BindingArena, BindingId, FieldLabel, FieldSpelling};
+use crate::core::{BindingArena, BindingId, FieldLabel};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::{
@@ -287,25 +287,12 @@ impl<'a> MoveChecker<'a> {
     fn field_site(&self, place: &FieldPlace, span: Span) -> MoveSite {
         MoveSite::Field {
             span,
-            place: self.place_text(place).into(),
+            place: place.written(self.bindings).into(),
         }
     }
 
     fn field_path(place: &FieldPlace) -> FieldPath {
         place.path.iter().map(|label| label.name.clone()).collect()
-    }
-
-    fn place_text(&self, place: &FieldPlace) -> String {
-        let root = self.bindings.get(place.root).name().to_string();
-        place.path.iter().fold(root, Self::field_text)
-    }
-
-    fn field_text(owner: String, label: &&FieldLabel) -> String {
-        let field = label.spelled(&label.name);
-        match label.spelling {
-            FieldSpelling::Keyword => format!("({field} {owner})"),
-            FieldSpelling::Bare => format!("(field {owner} {field})"),
-        }
     }
 
     fn control(&mut self, control: &TypedControl, usage: Usage) {

@@ -39,10 +39,10 @@ impl Adjustment {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 enum ValueSite {
     Argument,
-    Field,
+    Field(Rc<str>),
     Local(BindingId),
 }
 
@@ -62,6 +62,7 @@ pub struct FunctionValueModes<'a> {
     rust_types: &'a RustTypeTable,
     function_params: &'a FxHashMap<BindingId, Vec<Type>>,
     copied_reads: &'a CopiedMutReads,
+    constructor_fields: FxHashMap<BindingId, Vec<Option<Rc<str>>>>,
     copy: CopyRules<'a>,
     diagnostics: Vec<Diagnostic>,
 }
@@ -78,6 +79,7 @@ impl<'a> FunctionValueModes<'a> {
             &program.structs,
             &program.enums,
         );
+        let constructor_fields = Self::constructor_fields(program);
         let mut values = Self {
             bindings: &mut program.bindings,
             generics: &program.generics,
@@ -85,6 +87,7 @@ impl<'a> FunctionValueModes<'a> {
             rust_types: &program.rust_types,
             function_params,
             copied_reads,
+            constructor_fields,
             copy,
             diagnostics: Vec::new(),
         };
@@ -98,6 +101,40 @@ impl<'a> FunctionValueModes<'a> {
         values.diagnostics
     }
 
+    fn constructor_fields(program: &TypedProgram) -> FxHashMap<BindingId, Vec<Option<Rc<str>>>> {
+        program
+            .modules
+            .iter()
+            .flat_map(|module| &module.definitions)
+            .filter_map(|definition| {
+                let TypedExprKind::Fn(lambda) = &definition.value.kind else {
+                    return None;
+                };
+                let [TypedBodyItem::Expr(built)] = lambda.body.items.as_slice() else {
+                    return None;
+                };
+                let TypedExprKind::Struct(TypedStructExpr::New(_, fields)) = &built.kind else {
+                    return None;
+                };
+                let names = lambda
+                    .params
+                    .iter()
+                    .map(|param| Self::field_holding(fields, param.binding))
+                    .collect();
+                Some((definition.binding, names))
+            })
+            .collect()
+    }
+
+    fn field_holding(fields: &[(FieldLabel, TypedExpr)], param: BindingId) -> Option<Rc<str>> {
+        fields
+            .iter()
+            .find(|(_, value)| {
+                matches!(value.kind, TypedExprKind::Leaf(TypedLeaf::Local(binding)) if binding == param)
+            })
+            .map(|(label, _)| Rc::clone(&label.name))
+    }
+
     fn definition(&mut self, definition: &mut TypedDefinition) {
         let current = self.function_params.get(&definition.binding).cloned();
         self.expr(&mut definition.value, current.as_deref());
@@ -108,7 +145,8 @@ impl<'a> FunctionValueModes<'a> {
         match &mut expr.kind {
             TypedExprKind::Call(callee, arguments) => {
                 let expected = self.expected_params(callee);
-                self.arguments(arguments, expected.as_deref(), current);
+                let sites = self.argument_sites(callee, arguments.len());
+                self.arguments(arguments, expected.as_deref(), &sites, current);
                 self.expr(callee, current);
             }
             TypedExprKind::Control(control) => self.control(control, current),
@@ -118,7 +156,10 @@ impl<'a> FunctionValueModes<'a> {
 
     fn nested_expr(&mut self, kind: &mut TypedExprKind, ty: &Type, current: Option<&[Type]>) {
         match kind {
-            TypedExprKind::Recur(arguments) => self.arguments(arguments, current, current),
+            TypedExprKind::Recur(arguments) => {
+                let sites = vec![ValueSite::Argument; arguments.len()];
+                self.arguments(arguments, current, &sites, current)
+            }
             TypedExprKind::Struct(structure) => self.structure(structure, ty, current),
             TypedExprKind::Variant(_, arguments, _) => self.expressions(arguments, current),
             TypedExprKind::Assoc(value, keys, item) => self.assoc(value, keys, item, current),
@@ -215,7 +256,7 @@ impl<'a> FunctionValueModes<'a> {
             .find(|(name, _)| name.as_ref() == label.name.as_ref())
             .expect("the type checker checked every field");
         let expected = expected.clone();
-        if !self.compare(value, &expected, ValueSite::Field) {
+        if !self.compare(value, &expected, ValueSite::Field(Rc::clone(&label.name))) {
             self.expr(value, current);
         }
     }
@@ -234,17 +275,35 @@ impl<'a> FunctionValueModes<'a> {
         }
     }
 
+    fn argument_sites(&self, callee: &TypedExpr, count: usize) -> Vec<ValueSite> {
+        let fields = match callee.kind {
+            TypedExprKind::Leaf(TypedLeaf::Global(function)) => {
+                self.constructor_fields.get(&function)
+            }
+            _ => None,
+        };
+        (0..count)
+            .map(
+                |position| match fields.and_then(|names| names.get(position).cloned().flatten()) {
+                    Some(field) => ValueSite::Field(field),
+                    None => ValueSite::Argument,
+                },
+            )
+            .collect()
+    }
+
     fn arguments(
         &mut self,
         arguments: &mut [TypedArgument],
         expected: Option<&[Type]>,
+        sites: &[ValueSite],
         current: Option<&[Type]>,
     ) {
         for (position, argument) in arguments.iter_mut().enumerate() {
             let handled = expected
                 .and_then(|parameters| parameters.get(position))
                 .is_some_and(|expected| {
-                    self.compare(&mut argument.value, expected, ValueSite::Argument)
+                    self.compare(&mut argument.value, expected, sites[position].clone())
                 });
             if !handled {
                 self.expr(&mut argument.value, current);
@@ -415,10 +474,11 @@ impl<'a> FunctionValueModes<'a> {
                 lost.changed.change,
                 &problem,
             ),
-            ValueSite::Field => OwnershipProblems::changing_function_field(
+            ValueSite::Field(field) => OwnershipProblems::changing_function_field(
                 value.span,
                 lost.changed.change,
                 &problem,
+                &field,
             ),
             ValueSite::Local(local) => OwnershipProblems::changing_function_local(
                 value.span,
@@ -633,6 +693,7 @@ mod tests {
                 rust_types: &self.rust_types,
                 function_params: &self.function_params,
                 copied_reads: &self.copied_reads,
+                constructor_fields: FxHashMap::default(),
                 copy,
                 diagnostics: Vec::new(),
             }

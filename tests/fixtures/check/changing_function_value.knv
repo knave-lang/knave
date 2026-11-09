@@ -10,4 +10,6 @@
   (take-value bump! total)
   (local next (new step (:apply bump!)))
   ((:apply next) total)
+  (local again (->step bump!))
+  ((:apply again) total)
   (println total))

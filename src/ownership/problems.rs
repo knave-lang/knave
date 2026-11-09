@@ -657,13 +657,14 @@ impl OwnershipProblems {
         value: Span,
         change: Option<Span>,
         problem: &ChangingFunctionValue,
+        field: &str,
     ) -> Diagnostic {
         Self::changing_function_expected(
             value,
             change,
             problem,
-            "this field",
-            "this field's function",
+            &format!("the field `{field}`"),
+            &format!("the function in `{field}`"),
         )
     }
 
@@ -751,6 +752,12 @@ impl OwnershipProblems {
                 Help::QUOTED_FORM
             ),
             argument,
+        )
+    }
+
+    pub fn inferred_mut_of_shared_borrow(argument: Span, change: Option<ChangeSite>) -> Diagnostic {
+        Self::mut_of_copy(argument, change).with_help(
+            "a call cannot change a value behind a shared borrow, such as an element, yet; change it in place with `set!`",
         )
     }
 

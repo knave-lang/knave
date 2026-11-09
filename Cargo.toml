@@ -2,7 +2,7 @@
 name = "knave"
 version.workspace = true
 edition = "2024"
-description = "A small Lisp programming language for humans and agents that infers types and ownership and compiles to readable Rust"
+description = "A Lisp programming language for humans and agents that infers types and ownership and compiles to readable Rust"
 homepage = "https://knave-lang.org"
 keywords = ["programming-language", "lisp", "compiler", "transpiler", "type-inference"]
 categories = ["compilers", "command-line-utilities"]

@@ -3,6 +3,7 @@ mod dependency_reader;
 mod fields;
 mod name;
 mod problems;
+mod project_editor;
 mod reader;
 
 use std::path::PathBuf;
@@ -11,6 +12,7 @@ pub use crate_set::CrateSet;
 pub use dependency_reader::Section;
 pub use name::ProjectName;
 pub use problems::ProjectProblems;
+pub use project_editor::{CrateEntry, ProjectEditor};
 pub use reader::ProjectReader;
 
 use crate::diagnostic::Diagnostics;

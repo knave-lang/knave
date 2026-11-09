@@ -1,0 +1,8 @@
+---
+source: tests/cli.rs
+expression: test.assert_silent_success().stdout()
+---
+running 2 tests
+test parser/parses-itself ... ok
+test tests/parse/parses ... ok
+2 passed, 0 failed

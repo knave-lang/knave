@@ -5483,8 +5483,18 @@ fn test_of_a_file_in_a_project_reaches_a_source_module() {
     let test = sandbox.compiler_in("tested-app", &["test", "tests/parse.rslisp"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
-        "running 1 test\ntest parse/parses ... ok\n1 passed, 0 failed\n"
+        "running 2 tests\n\
+         test parse/parses ... ok\n\
+         test parser/parses-itself ... ok\n\
+         2 passed, 0 failed\n"
     );
+}
+
+#[test]
+fn test_of_the_project_root_loads_each_source_module_once() {
+    let sandbox = Sandbox::new("project_test_root").with_fixture_tree("libraries");
+    let test = sandbox.compiler_in("tested-app", &["test", ".", "--filter", "pars"]);
+    insta::assert_snapshot!(test.assert_silent_success().stdout());
 }
 
 #[test]
@@ -5502,7 +5512,12 @@ fn test_directory_module_shadows_a_source_module() {
     let sandbox = Sandbox::new("project_test_shadowing").with_fixture_tree("libraries");
     let test = sandbox.compiler_in(
         "tested-app",
-        &["test", "tests", "--exact", "greets/reads-the-test-greeting"],
+        &[
+            "test",
+            "shadowing-tests",
+            "--exact",
+            "greets/reads-the-test-greeting",
+        ],
     );
     assert_eq!(
         test.assert_silent_success().stdout(),

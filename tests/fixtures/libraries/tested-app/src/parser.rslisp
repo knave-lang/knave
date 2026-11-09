@@ -1,3 +1,8 @@
+(use prelude/test assert deftest)
+
 (export parse)
 
 (defn parse (text) (str "parsed " text))
+
+(deftest parses-itself
+  (assert (= (parse "1") "parsed 1")))

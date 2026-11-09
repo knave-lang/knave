@@ -127,7 +127,13 @@ impl TestTree {
         if file.extension()? != Language::EXTENSION || ProgramFile::is_project_file(file) {
             return None;
         }
-        ProgramFile::module_name(file.strip_prefix(&self.path).ok()?)
+        self.source_module_path(file)
+            .or_else(|| ProgramFile::module_name(file.strip_prefix(&self.path).ok()?))
+    }
+
+    fn source_module_path(&self, file: &Path) -> Option<String> {
+        let project = self.project.as_ref()?;
+        ProgramFile::relative_module(file, &project.source_root())
     }
 
     fn report_no_tests_directory(project: &LocatedProject) -> ExitStatus {

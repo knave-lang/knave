@@ -17,6 +17,7 @@ pub struct TestEntries {
 struct TestTree {
     path: PathBuf,
     project: Option<LocatedProject>,
+    skipped: SkippedDirectory,
 }
 
 impl TestEntries {
@@ -38,7 +39,7 @@ impl TestTree {
 
     fn at(path: PathBuf, terminal: &Terminal) -> Result<Self, ExitStatus> {
         let project = LocatedProject::search_from(&path, terminal)?;
-        Ok(Self { path, project })
+        Ok(Self::with_project(path, project))
     }
 
     fn of_working_project(terminal: &Terminal) -> Result<Self, ExitStatus> {
@@ -49,10 +50,16 @@ impl TestTree {
         if !path.is_dir() {
             return Err(Self::report_no_tests_directory(&project));
         }
-        Ok(Self {
+        Ok(Self::with_project(path, Some(project)))
+    }
+
+    fn with_project(path: PathBuf, project: Option<LocatedProject>) -> Self {
+        let skipped = SkippedDirectory::for_walk_of(&path);
+        Self {
             path,
-            project: Some(project),
-        })
+            project,
+            skipped,
+        }
     }
 
     fn load(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
@@ -110,7 +117,7 @@ impl TestTree {
     }
 
     fn collect_subdirectory(&self, directory: &Path, modules: &mut Vec<String>) -> io::Result<()> {
-        if SkippedDirectory::is_skipped(directory) {
+        if self.skipped.is_skipped(directory) {
             return Ok(());
         }
         self.collect_modules(directory, modules)

@@ -29,7 +29,9 @@ struct WorstStatus {
     status: ExitStatus,
 }
 
-struct SourceFiles;
+struct SourceFiles {
+    skipped: SkippedDirectory,
+}
 
 impl FmtCommand {
     pub const STANDARD_INPUT: &'static str = "-";
@@ -216,6 +218,11 @@ impl SourceFiles {
         if !path.is_dir() {
             return Ok(vec![path.to_path_buf()]);
         }
+        let skipped = SkippedDirectory::for_walk_of(path);
+        Self { skipped }.walk(path)
+    }
+
+    fn walk(&self, path: &Path) -> io::Result<Vec<PathBuf>> {
         let mut entries: Vec<PathBuf> = fs::read_dir(path)?
             .map(|entry| entry.map(|entry| entry.path()))
             .collect::<io::Result<_>>()?;
@@ -223,7 +230,7 @@ impl SourceFiles {
         let mut files = Vec::new();
         for entry in entries {
             if Self::is_real_directory(&entry) {
-                files.extend(Self::under_subdirectory(&entry)?);
+                files.extend(self.walk_subdirectory(&entry)?);
             } else if Self::is_source(&entry) {
                 files.push(entry);
             }
@@ -231,11 +238,11 @@ impl SourceFiles {
         Ok(files)
     }
 
-    fn under_subdirectory(directory: &Path) -> io::Result<Vec<PathBuf>> {
-        if SkippedDirectory::is_skipped(directory) {
+    fn walk_subdirectory(&self, directory: &Path) -> io::Result<Vec<PathBuf>> {
+        if self.skipped.is_skipped(directory) {
             return Ok(Vec::new());
         }
-        Self::under(directory)
+        self.walk(directory)
     }
 
     fn is_real_directory(path: &Path) -> bool {

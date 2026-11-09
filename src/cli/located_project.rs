@@ -33,17 +33,19 @@ impl LocatedProject {
     }
 
     pub fn nearest_root(directory: &Path) -> Result<Option<PathBuf>, ExitStatus> {
-        let Some(start) = ProgramFile::canonical(directory) else {
-            return Ok(None);
-        };
-        let file_name = Language::project_file_name();
-        let found = start
-            .ancestors()
-            .find(|ancestor| ancestor.join(&file_name).is_file());
-        match found {
-            Some(root) => Ok(Some(Self::shown(root)?)),
+        match Self::canonical_root(directory) {
+            Some(root) => Ok(Some(Self::shown(&root)?)),
             None => Ok(None),
         }
+    }
+
+    pub fn canonical_root(directory: &Path) -> Option<PathBuf> {
+        let start = ProgramFile::canonical(directory)?;
+        let file_name = Language::project_file_name();
+        start
+            .ancestors()
+            .find(|ancestor| ancestor.join(&file_name).is_file())
+            .map(Path::to_path_buf)
     }
 
     fn shown(root: &Path) -> Result<PathBuf, ExitStatus> {

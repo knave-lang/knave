@@ -1,0 +1,12 @@
+(use prelude/test run-tests)
+
+(defn twice (x)
+  "Doubles a number.
+
+  (twice 3)
+  => (vec 6
+
+  7)"
+  (* 2 x))
+
+(defn main () (run-tests :marker "m"))

@@ -1,4 +1,6 @@
-(use prelude/macros document header-shape map-list template)
+(use prelude/macros docstrings-key document header-shape
+                    map-list template)
+
 (use prelude/internal/macros docstring-before-body?)
 (use prelude/types vec)
 (use prelude/number =)
@@ -7,10 +9,13 @@
 
 (use code add-module-note bool-not concat definition-symbol
           empty? expand-call fail first form-location
-          keyword-name keyword? len list list?
-          module-exports module-notes nth number-lt prepend
-          program-modules rest same-binding? string
-          string-lines string-trim-start string? symbol
+          keyword-name keyword? len list list? located
+          module-exports module-notes nth
+          number-add number-lt number-sub prepend
+          program-modules read-form rest same-binding?
+          string string-drop string-length string-lines
+          string-strip-prefix string-strip-suffix
+          string-trim-end string-trim-start string? symbol
           symbol-name symbol? value-eq)
 
 (export assert deftest run-tests)
@@ -148,11 +153,21 @@
 
 (def equal-assertion
   (fn (check written checked message)
+    (comparison-call check written checked
+                     (comparison-closure)
+                     message)))
+
+(def comparison-closure
+  (fn ()
+    (template (fn (left right) (= left right)))))
+
+(def comparison-call
+  (fn (check written checked closure message)
     (template ((unquote check)
                (splice written)
                (unquote (passed-side (nth checked 1)))
                (unquote (passed-side (nth checked 2)))
-               (fn (left right) (= left right))
+               (unquote closure)
                (splice message)))))
 
 (def passed-side
@@ -211,7 +226,9 @@
   (macro (form)
     (check-run-tests-shape form)
     (local marker (nth form 2))
-    (local notes (program-tests (program-modules)))
+    (local modules (program-modules))
+    (local notes
+      (concat (program-tests modules) (program-doc-tests modules)))
     (template (do
                 (splice (untested-records marker (untested-option form) notes))
                 (start-run (unquote marker)
@@ -219,6 +236,381 @@
                 (splice (map-list notes
                                   (fn (note) (test-run marker note))))
                 (finish-run (unquote marker))))))
+
+(def program-doc-tests
+  (fn (modules) (mapped-concat own-doc-tests modules)))
+
+(def own-doc-tests
+  (fn (module) (module-doc-tests module module)))
+
+(def module-doc-tests
+  (fn (target context)
+    (concat (mapped-concat (fn (note) (term-doc-test target context note))
+                           (module-notes target docstrings-key))
+            (mapped-concat (fn (text) (doc-test target context target text))
+                           (counted-module-docstring target)))))
+
+(def counted-module-docstring
+  (fn (target)
+    (local docstrings
+      (module-notes target (quote module-docstrings)))
+    (if (empty? docstrings)
+      docstrings
+      (list (first docstrings)))))
+
+(def term-doc-test
+  (fn (target context note)
+    (doc-test target context
+              (noted-doc-name note)
+              (last-item note))))
+
+(def noted-doc-name
+  (fn (note) (nth note 1)))
+
+(def last-item
+  (fn (items)
+    (nth items (number-sub (len items) 1))))
+
+(def mapped-concat
+  (fn (function items)
+    (mapped-concat-onto function items (list))))
+
+(def mapped-concat-onto
+  (fn (function items found)
+    (if (empty? items)
+      found
+      (recur function
+             (rest items)
+             (concat found (function (first items)))))))
+
+(def doc-test
+  (fn (target context term text)
+    (local steps (docstring-steps context text))
+    (if (empty? steps)
+      (list)
+      (list (list target
+                  (template (fn () (splice steps) (do)))
+                  (symbol context "doc:" (symbol-name term))
+                  (string-trim-start (first (string-lines text)))
+                  (form-location text)
+                  steps)))))
+
+(def docstring-steps
+  (fn (context text)
+    (mapped-concat (fn (block) (block-steps context text block))
+                   (paragraphs (doc-lines (string-lines text)
+                                          0
+                                          (list)
+                                          (list))
+                               (list)
+                               (list)))))
+
+(def doc-lines
+  (fn (remaining offset fence found)
+    (if (empty? remaining)
+      found
+      (recur (rest remaining)
+             (number-add offset
+                         (number-add (string-length (first remaining)) 1))
+             (fence-after fence (first remaining))
+             (concat found
+                     (list (doc-line fence (first remaining) offset)))))))
+
+(def fence-after
+  (fn (fence line)
+    (if (empty? fence)
+      (opening-fence line)
+      (if (closes-fence? fence line) (list) fence))))
+
+(def opening-fence
+  (fn (line)
+    (concat (fence-of line "`") (fence-of line "~"))))
+
+(def fence-of
+  (fn (line mark)
+    (local run (leading-run (string-trim-start line) mark 0))
+    (if (number-lt run minimum-fence-length)
+      (list)
+      (list mark run))))
+
+(def minimum-fence-length 3)
+
+(def leading-run
+  (fn (text mark count)
+    (if (value-eq (string-strip-prefix text mark) text)
+      count
+      (recur (string-strip-prefix text mark)
+             mark
+             (number-add count 1)))))
+
+(def closes-fence?
+  (fn (fence line)
+    (local text (string-trim-start line))
+    (local run (leading-run text (first fence) 0))
+    (if (number-lt run (nth fence 1))
+      false
+      (value-eq (string-trim-end (string-drop text run)) ""))))
+
+(def starts-with?
+  (fn (line prefix)
+    (bool-not (value-eq (string-strip-prefix (string-trim-start line) prefix)
+                        (string-trim-start line)))))
+
+(def doc-line
+  (fn (fence line offset)
+    (if (empty? (concat fence (fence-after fence line)))
+      (list line offset)
+      (list "" offset))))
+
+(def line-text (fn (line) (first line)))
+
+(def line-offset
+  (fn (line) (nth line 1)))
+
+(def blank-line?
+  (fn (line)
+    (value-eq (string-trim-start (line-text line)) "")))
+
+(def paragraphs
+  (fn (lines current found)
+    (if (empty? lines)
+      (closed-paragraph found current)
+      (if (blank-line? (first lines))
+        (recur (rest lines)
+               (list)
+               (closed-paragraph found current))
+        (recur (rest lines)
+               (concat current (list (first lines)))
+               found)))))
+
+(def closed-paragraph
+  (fn (found current)
+    (if (empty? current)
+      found
+      (concat found (list current)))))
+
+(def block-steps
+  (fn (context text lines)
+    (local steps (block-forms context text lines (list)))
+    (if (holds-example? steps) steps (list))))
+
+(def holds-example?
+  (fn (steps)
+    (if (empty? steps)
+      false
+      (if (example-step? (first steps))
+        true
+        (recur (rest steps))))))
+
+(def example-step?
+  (fn (step)
+    (if (empty? step)
+      false
+      (if (symbol? (first step))
+        (example-head? (first step))
+        false))))
+
+(def example-head?
+  (fn (head)
+    (if (same-binding? head (quote check-example))
+      true
+      (if (same-binding? head (quote run-example))
+        true
+        (same-binding? head (quote unreadable-example))))))
+
+(def block-forms
+  (fn (context text lines steps)
+    (local state (block-state context text lines steps))
+    (if (empty? (state-lines state))
+      (state-steps state)
+      (recur context text (state-lines state) (state-steps state)))))
+
+(def state-lines
+  (fn (state) (first state)))
+
+(def state-steps
+  (fn (state) (nth state 1)))
+
+(def finished-block
+  (fn (steps) (list (list) steps)))
+
+(def rejected-block
+  (fn () (finished-block (list))))
+
+(def block-state
+  (fn (context text lines steps)
+    (code-form-state context text lines steps
+                     (read-line-form context text (first lines)))))
+
+(def read-line-form
+  (fn (context text line)
+    (if (starts-with? (line-text line) "(")
+      (read-form context text
+                 (number-add (line-offset line) (line-indent line)))
+      (list))))
+
+(def code-form-state
+  (fn (context text lines steps read)
+    (if (empty? read)
+      (rejected-block)
+      (after-code context text
+                  (lines-after lines (nth read 1))
+                  steps
+                  (first read)))))
+
+(def lines-after
+  (fn (lines end)
+    (if (empty? lines)
+      lines
+      (if (number-lt (end-of-line (first lines)) end)
+        (recur (rest lines) end)
+        (prepend (list (nth (first lines) 0)
+                       (nth (first lines) 1)
+                       end)
+                 (rest lines))))))
+
+(def end-of-line
+  (fn (line)
+    (number-add (line-offset line)
+                (string-length (line-text line)))))
+
+(def after-code
+  (fn (context text lines steps code)
+    (if (form-ends-its-line? lines)
+      (next-step context text (rest lines) steps code)
+      (rejected-block))))
+
+(def form-ends-its-line?
+  (fn (lines)
+    (if (empty? lines)
+      false
+      (rest-blank? (first lines)))))
+
+(def rest-blank?
+  (fn (line)
+    (blank-text? (string-drop (line-text line)
+                              (number-sub (nth line 2) (line-offset line))))))
+
+(def blank-text?
+  (fn (text)
+    (local trimmed (string-trim-start text))
+    (if (value-eq trimmed "")
+      true
+      (starts-with? trimmed comment-mark))))
+
+(def comment-mark ";")
+
+(def next-step
+  (fn (context text lines steps code)
+    (if (arrow-line? lines)
+      (read-example context text lines steps code)
+      (list lines (concat steps (list code))))))
+
+(def arrow-line?
+  (fn (lines)
+    (if (empty? lines)
+      false
+      (starts-with? (line-text (first lines)) arrow))))
+
+(def arrow "=> ")
+
+(def read-example
+  (fn (context text lines steps code)
+    (local arrow-form (read-arrow context text (first lines)))
+    (local read
+      (read-form context text (result-offset (first lines))))
+    (local remaining (result-lines lines read))
+    (if (unchecked-result? remaining)
+      (list (rest remaining)
+            (concat steps (list (unchecked-step arrow-form code))))
+      (compared-state steps arrow-form code read remaining))))
+
+(def read-arrow
+  (fn (context text line)
+    (first (read-form context text
+                      (number-add (line-offset line) (line-indent line))))))
+
+(def result-offset
+  (fn (line)
+    (number-add (line-offset line)
+                (number-add (line-indent line) (string-length arrow)))))
+
+(def line-indent
+  (fn (line)
+    (number-sub (string-length (line-text line))
+                (string-length (string-trim-start (line-text line))))))
+
+(def result-lines
+  (fn (lines read)
+    (if (empty? read)
+      lines
+      (lines-after lines (nth read 1)))))
+
+(def unchecked-result?
+  (fn (lines)
+    (if (empty? lines)
+      false
+      (ends-with-unchecked-mark? (string-trim-end (line-text (first lines)))))))
+
+(def ends-with-unchecked-mark?
+  (fn (text)
+    (bool-not (value-eq (string-strip-suffix text unchecked-result-mark)
+                        text))))
+
+(def unchecked-result-mark "...")
+
+(def compared-state
+  (fn (steps arrow-form code read remaining)
+    (if (if (empty? read) false (form-ends-its-line? remaining))
+      (list (rest remaining)
+            (concat steps
+                    (list (example-step arrow-form code (first read)))))
+      (finished-block (concat steps (list (unreadable-step code)))))))
+
+(def example-step
+  (fn (arrow-form code expected)
+    (located arrow-form
+             (template (check-example (unquote code) (unquote expected))))))
+
+(def unchecked-step
+  (fn (arrow-form code)
+    (located arrow-form
+             (template (run-example (unquote code))))))
+
+(def unreadable-step
+  (fn (code)
+    (located code
+             (template (unreadable-example (unquote code))))))
+
+(def run-example
+  (macro (form) (nth form 1)))
+
+(def unreadable-example
+  (macro (form)
+    (fail "the result of this example does not read as one form"
+      (nth form 1)
+      "write the result as one form, end it with `...` to run the example without comparing its result, or put the example in a fenced code block to show it without running it"
+      (quote (:code unreadable-doc-example
+                    :label "the line after this form starts with `=> `")))))
+
+(def check-example
+  (macro (form)
+    (local code (nth form 1))
+    (local expected (nth form 2))
+    (comparison-call (quote check-equal)
+                     (list (form-location code)
+                           (string (string code) " => " (string expected)))
+                     (list (quote =) code expected)
+                     (located-forms code (comparison-closure))
+                     (list))))
+
+(def located-forms
+  (fn (place form)
+    (if (list? form)
+      (located place
+               (map-list form
+                         (fn (item) (located-forms place item))))
+      (located place form))))
 
 (def untested-option
   (fn (form)

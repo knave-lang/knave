@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/doc_examples_two_module_docstrings.knv
+---
+<record>(start 1)
+<record>(test "doc_examples_two_module_docstrings/doc:doc_examples_two_module_docstrings" "The docstring that counts.")
+<record>(ok)
+<record>(done)

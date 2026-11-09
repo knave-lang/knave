@@ -1,0 +1,21 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/doc_example_error_order.knv
+---
+error[L0201]: cannot find `twic` in this scope
+ --> expand/doc_example_error_order.knv:6:4
+  |
+6 |   (twic 3)
+  |    ^^^^ not found in this scope
+  |
+help: a name with a similar spelling exists
+  |
+6 |   (twice 3)
+  |        +
+
+error[L0201]: cannot find `missing-in-body` in this scope
+ --> expand/doc_example_error_order.knv:8:4
+  |
+8 |   (missing-in-body x))
+  |    ^^^^^^^^^^^^^^^ not found in this scope

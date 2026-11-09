@@ -1,0 +1,13 @@
+(use prelude/test run-tests)
+
+(defmacro leaks (x)
+  (quote (missing-name)))
+
+(defn twice (x)
+  "Doubles a number.
+
+  (leaks 3)
+  => anything ..."
+  (* 2 x))
+
+(defn main () (run-tests :marker "m"))

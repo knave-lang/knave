@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/doc_example_unknown_name.knv
+---
+error[L0201]: cannot find `twic` in this scope
+ --> expand/doc_example_unknown_name.knv:6:4
+  |
+6 |   (twic 3)
+  |    ^^^^ not found in this scope
+  |
+help: a name with a similar spelling exists
+  |
+6 |   (twice 3)
+  |        +

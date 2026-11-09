@@ -6,7 +6,7 @@ use super::whole_value_changes::WholeValueChanges;
 use crate::core::BindingId;
 use crate::source::Span;
 use crate::types::{
-    Borrow, CopyRules, Type, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedLeaf,
+    CopyRules, Type, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedLeaf,
     TypedProgram, TypedStructExpr,
 };
 
@@ -145,11 +145,7 @@ impl CopyOut<'_> {
 
     fn recur(&self, arguments: &mut [TypedArgument]) {
         for argument in arguments {
-            if argument.borrow == Borrow::None {
-                self.read(&mut argument.value);
-            } else {
-                self.keep(&mut argument.value);
-            }
+            self.read(&mut argument.value);
         }
     }
 

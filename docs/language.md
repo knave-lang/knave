@@ -1162,7 +1162,7 @@ Python, Clojure and Kotlin give records equality and printing by default. An ord
 A call to the enclosing function in tail position already compiles to a Rust `loop`, as the Bodies section says.
 
 - A written `(recur argument...)` compiles to the same loop.
-- `recur` gives each parameter its new value as `set!` does. A new value for a parameter that a `set!` made `mut` writes through, so the caller sees the final value: `(recur (+ x 1))` emits `*x = *x + 1; continue;`, and a self tail call does the same. A parameter that `recur` rewrites and no `set!` touches stays by value, as `n -= 1;` in `count-down`.
+- `recur` gives each parameter its new value as `set!` does. A new value for a parameter that a `set!` made `mut` writes through, so the caller sees the final value: `(recur (+ x 1))` emits `*x = *x + 1; continue;`, and a self tail call does the same. Another such parameter as the new value writes its value, not its borrow, so `(recur b a)` emits `(*a, *b) = (*b, *a);`. A parameter that `recur` rewrites and no `set!` touches stays by value, as `n -= 1;` in `count-down`.
 - `recur` is an error outside tail position.
 - The number of arguments to `recur` must equal the number of parameters of the target.
 - `recur` targets the nearest `fn`, so the prelude defines Clojure's `loop` as a macro.

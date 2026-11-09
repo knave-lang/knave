@@ -1,0 +1,7 @@
+(defn label! (x)
+  (set! x 3)
+  (match x (3 "three") (_ "other")))
+
+(defn main ()
+  (local total 1)
+  (println (label! total)))

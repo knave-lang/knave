@@ -1,0 +1,35 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/match_on_changed_copy_parameter.knv
+---
+fn label(x: &mut i64) -> &'static str {
+    *x = 3;
+    match x {
+        3 => "three",
+        _ => "other",
+    }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut total: i64 = 1;
+    println!("{}", label(&mut total))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

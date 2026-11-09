@@ -18,6 +18,15 @@ pub struct LibraryWalk<'t> {
     store: Option<GitStore>,
 }
 
+#[derive(Clone, Copy)]
+struct Listing<'l> {
+    entry: Option<&'l str>,
+}
+
+impl Listing<'_> {
+    const PROGRAM: Self = Self { entry: None };
+}
+
 struct SeenLibrary {
     name: String,
     root: PathBuf,
@@ -38,14 +47,19 @@ impl<'t> LibraryWalk<'t> {
             roots: Vec::new(),
             store: None,
         };
-        walk.visit_all(root, project)?;
+        walk.visit_all(root, project, Listing::PROGRAM)?;
         Ok(LibraryTable::new(Self::names(project), walk.roots))
     }
 
-    fn visit_all(&mut self, declaring_root: &Path, project: &Project) -> Result<(), ExitStatus> {
+    fn visit_all(
+        &mut self,
+        declaring_root: &Path,
+        project: &Project,
+        listing: Listing<'_>,
+    ) -> Result<(), ExitStatus> {
         project.libraries.iter().try_for_each(|library| {
             let library_root = self.library_directory(declaring_root, library)?;
-            self.visit(&library_root, library)
+            self.visit(&library_root, library, listing)
         })
     }
 
@@ -116,6 +130,7 @@ impl<'t> LibraryWalk<'t> {
         &mut self,
         library_root: &Path,
         library: &LibraryDependency,
+        listing: Listing<'_>,
     ) -> Result<(), ExitStatus> {
         let project_file = library_root.join(Language::project_file_name());
         if !project_file.is_file() {
@@ -137,8 +152,12 @@ impl<'t> LibraryWalk<'t> {
         });
         let project = self.terminal.load_project(&project_file)?;
         let root = self.library_root(library, library_root, &project)?;
-        self.roots.push(root);
-        self.visit_all(library_root, &project)
+        self.roots
+            .push(root.listed_by(listing.entry.map(str::to_string)));
+        let nested = Listing {
+            entry: Some(&library.name),
+        };
+        self.visit_all(library_root, &project, nested)
     }
 
     fn is_seen(&self, library: &LibraryDependency, identity: &Path) -> Result<bool, ExitStatus> {

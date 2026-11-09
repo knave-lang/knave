@@ -144,6 +144,7 @@ impl Expander<'_> {
             return Err(ExpandProblems::unlisted_library(library, span));
         }
         self.report_hidden_local_module(owner, written, span);
+        self.report_hidden_source_module(owner, written, span);
         let path = self.module_sources.resolve(owner, written);
         match self.module_sources.module_outside_checkout(&path) {
             Some(file) => Err(ExpandProblems::module_outside_checkout(&path, &file, span)),
@@ -166,6 +167,26 @@ impl Expander<'_> {
         let warning = ExpandProblems::library_hides_local_module(written, &local, span);
         self.warnings.push(warning);
         self.reported_hidden_modules.push(local);
+    }
+
+    fn report_hidden_source_module(
+        &mut self,
+        owner: Option<&str>,
+        written: &ModulePath,
+        span: Span,
+    ) {
+        let Some(shadow) = self.module_sources.hidden_source_module(owner, written) else {
+            return;
+        };
+        let use_site = self.sources.file(span.source()).name();
+        if !ModuleSources::is_written_file(use_site)
+            || self.reported_hidden_modules.contains(&shadow.hidden)
+        {
+            return;
+        }
+        let warning = ExpandProblems::test_module_hides_source_module(&shadow, span);
+        self.warnings.push(warning);
+        self.reported_hidden_modules.push(shadow.hidden);
     }
 
     fn note_library_module(&mut self, path: &ModulePath) {

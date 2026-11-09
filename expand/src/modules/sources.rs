@@ -23,6 +23,11 @@ pub struct LocalModuleClash<'s> {
     pub lister: &'s str,
 }
 
+pub struct HiddenSourceModule {
+    pub hiding: PathBuf,
+    pub hidden: PathBuf,
+}
+
 pub struct ModuleSources {
     root: PathBuf,
     display_root: PathBuf,
@@ -168,6 +173,28 @@ impl ModuleSources {
         self.local_module(written)
     }
 
+    pub fn hidden_source_module(
+        &self,
+        owner: Option<&str>,
+        written: &ModulePath,
+    ) -> Option<HiddenSourceModule> {
+        let fallback_root = self.fallback_root.as_ref()?;
+        if owner.is_some() || self.libraries.owner_of(written).is_some() {
+            return None;
+        }
+        let file_name = Self::file_name(written);
+        let hidden = fallback_root.join(&file_name);
+        let hides = self.root.join(&file_name).is_file() && hidden.is_file();
+        hides.then(|| HiddenSourceModule {
+            hiding: self.display_root.join(&file_name),
+            hidden,
+        })
+    }
+
+    pub fn is_written_file(name: &str) -> bool {
+        Path::new(name).is_file()
+    }
+
     fn local_module(&self, written: &ModulePath) -> Option<PathBuf> {
         let head = LibraryTable::head(written);
         let file = PathBuf::from(format!("{head}.{}", Language::EXTENSION));
@@ -298,5 +325,91 @@ impl ModuleSources {
 
     fn file_name(path: &ModulePath) -> String {
         format!("{path}.{}", Language::EXTENSION)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::ModuleSources;
+    use crate::core::ModulePath;
+    use crate::modules::libraries::{LibraryRoot, LibraryTable};
+
+    struct TestedApp {
+        directory: PathBuf,
+    }
+
+    impl TestedApp {
+        const LIBRARY: &str = "greeting";
+
+        fn new() -> Self {
+            Self {
+                directory: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../tests/fixtures/libraries/tested-app"),
+            }
+        }
+
+        fn sources(&self) -> ModuleSources {
+            let tests = self.directory.join("shadowing-tests");
+            ModuleSources::new(tests.clone(), tests).with_fallback_root(self.directory.join("src"))
+        }
+
+        fn sources_with_library(&self) -> ModuleSources {
+            let library = LibraryRoot::new(
+                Self::LIBRARY.to_string(),
+                self.directory.join("src"),
+                self.directory.join("src"),
+                "main".to_string(),
+                Vec::new(),
+            );
+            let table = LibraryTable::new(vec![Self::LIBRARY.to_string()], vec![library]);
+            self.sources().with_libraries(table)
+        }
+
+        fn hidden(
+            &self,
+            sources: &ModuleSources,
+            owner: Option<&str>,
+            written: &str,
+        ) -> Option<PathBuf> {
+            sources
+                .hidden_source_module(owner, &ModulePath::new(written.to_string()))
+                .map(|shadow| shadow.hidden)
+        }
+    }
+
+    #[test]
+    fn a_test_module_hides_the_source_module_of_its_path() {
+        let app = TestedApp::new();
+        let hidden = app.hidden(&app.sources(), None, "greeting");
+        assert_eq!(hidden, Some(app.directory.join("src/greeting.rslisp")));
+    }
+
+    #[test]
+    fn a_source_module_without_a_test_module_is_not_hidden() {
+        let app = TestedApp::new();
+        assert_eq!(app.hidden(&app.sources(), None, "parser"), None);
+    }
+
+    #[test]
+    fn a_test_module_without_a_source_module_hides_nothing() {
+        let app = TestedApp::new();
+        assert_eq!(app.hidden(&app.sources(), None, "greets"), None);
+    }
+
+    #[test]
+    fn a_use_inside_a_library_hides_nothing() {
+        let app = TestedApp::new();
+        assert_eq!(app.hidden(&app.sources(), Some("hints"), "greeting"), None);
+    }
+
+    #[test]
+    fn a_library_path_hides_nothing() {
+        let app = TestedApp::new();
+        assert_eq!(
+            app.hidden(&app.sources_with_library(), None, "greeting"),
+            None
+        );
     }
 }

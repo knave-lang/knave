@@ -1,0 +1,43 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/uppercase_revision.rslisp
+---
+Project {
+    name: "app",
+    version: "0.1.0",
+    entry: "src/main.rslisp",
+    library_root: "src/lib.rslisp",
+    edition: 2026,
+    libraries: [
+        LibraryDependency {
+            name: "keymap",
+            name_span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 34,
+                end: 40,
+            },
+            source: Git {
+                url: "https://example.com/keymap.git",
+                commit: "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+            },
+        },
+    ],
+    dependencies: [],
+    dev_dependencies: [],
+    sections: [
+        SectionHead {
+            section: Libraries,
+            span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 23,
+                end: 32,
+            },
+            has_entries: true,
+        },
+    ],
+}

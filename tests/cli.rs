@@ -226,6 +226,8 @@ impl Sandbox {
     const CACHE_HOME_VARIABLE: &str = "XDG_CACHE_HOME";
     const CACHE_DIRECTORY: &str = "cache";
     const GIT_MESSAGE: &str = "git says:";
+    const FIXTURE_COMMIT_DATE: &str = "2026-01-01T00:00:00Z";
+    const FAKE_GIT: &str = "#!/bin/sh\necho \"fatal: prompt=$GIT_TERMINAL_PROMPT schemes=$GIT_ALLOW_PROTOCOL ssh=$GIT_SSH_COMMAND\" >&2\nexit 1\n";
     const MASKED_GIT_MESSAGE: &str = "  = note: git says: <message>";
     const UNWRITABLE_DIRECTORY: u32 = 0o555;
     const NO_ACCESS: u32 = 0o000;
@@ -514,6 +516,8 @@ impl Sandbox {
             .env("GIT_AUTHOR_EMAIL", "author@example.com")
             .env("GIT_COMMITTER_NAME", "Fixture Author")
             .env("GIT_COMMITTER_EMAIL", "author@example.com")
+            .env("GIT_AUTHOR_DATE", Self::FIXTURE_COMMIT_DATE)
+            .env("GIT_COMMITTER_DATE", Self::FIXTURE_COMMIT_DATE)
             .output()
             .expect("git starts");
         assert!(
@@ -528,21 +532,7 @@ impl Sandbox {
 
     fn with_git_library(self, commit_override: Option<&str>) -> (Self, String) {
         let sandbox = self.with_fixture_tree("libraries");
-        Self::copy_tree(
-            &sandbox.directory.join("keymap"),
-            &sandbox.directory.join("keymap-source"),
-        );
-        sandbox.git("keymap-source", &["init", "--quiet"]);
-        sandbox.git("keymap-source", &["add", "--all"]);
-        sandbox.git(
-            "keymap-source",
-            &["commit", "--quiet", "--message", "Add keymap"],
-        );
-        let commit = sandbox.git("keymap-source", &["rev-parse", "HEAD"]);
-        sandbox.git(
-            ".",
-            &["clone", "--quiet", "--bare", "keymap-source", "keymap.git"],
-        );
+        let commit = sandbox.git_repository("keymap");
         let project = format!(
             "(project app (libraries (keymap :git \"../keymap.git\" :rev \"{}\")))\n",
             commit_override.unwrap_or(&commit)
@@ -552,6 +542,43 @@ impl Sandbox {
             &project,
         );
         (sandbox, commit)
+    }
+
+    fn git_repository(&self, library: &str) -> String {
+        let source = format!("{library}-source");
+        Self::copy_tree(&self.directory.join(library), &self.directory.join(&source));
+        self.git(&source, &["init", "--quiet"]);
+        self.git(&source, &["add", "--all"]);
+        self.git(
+            &source,
+            &["commit", "--quiet", "--message", "Add the library"],
+        );
+        let commit = self.git(&source, &["rev-parse", "HEAD"]);
+        let bare = format!("{library}.git");
+        self.git(".", &["clone", "--quiet", "--bare", &source, &bare]);
+        commit
+    }
+
+    fn compiler_with_fake_git(&self, ssh_command: Option<&str>) -> Outcome {
+        let fake_git = self.directory.join("fake-bin/git");
+        fs::create_dir_all(fake_git.parent().expect("the fake git has a directory"))
+            .expect("the sandbox accepts directories");
+        fs::write(&fake_git, Self::FAKE_GIT).expect("the sandbox accepts files");
+        fs::set_permissions(&fake_git, fs::Permissions::from_mode(Self::EXECUTABLE))
+            .expect("the sandbox sets permissions");
+        let mut command = self.command(Path::new(Self::COMPILER), &["check"]);
+        command
+            .current_dir(self.directory.join("git-app"))
+            .env(
+                Self::CACHE_HOME_VARIABLE,
+                self.directory.join(Self::CACHE_DIRECTORY),
+            )
+            .env("PATH", self.directory.join("fake-bin"))
+            .env_remove("GIT_SSH_COMMAND");
+        if let Some(ssh_command) = ssh_command {
+            command.env("GIT_SSH_COMMAND", ssh_command);
+        }
+        Outcome::of(&mut command)
     }
 
     fn compiler_with_path(&self, path_directory: &str, arguments: &[&str]) -> Outcome {
@@ -5641,4 +5668,81 @@ fn a_git_library_with_an_unwritable_cache_is_an_environment_error() {
     fs::set_permissions(&cache, fs::Permissions::from_mode(Sandbox::EXECUTABLE))
         .expect("the sandbox sets permissions");
     assert!(stderr.starts_with("error: cannot write `"), "{stderr}");
+}
+
+#[test]
+fn a_git_scheme_outside_the_allowed_list_is_refused() {
+    let (sandbox, commit) = Sandbox::new("git_library_scheme").with_git_library(None);
+    let project =
+        format!("(project app (libraries (keymap :git \"ext::true\" :rev \"{commit}\")))\n");
+    let sandbox = sandbox.with_file(
+        &format!("git-app/{}", Language::project_file_name()),
+        &project,
+    );
+    let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
+    let stderr = check.assert_exit_code(1).stderr();
+    assert!(
+        stderr.starts_with("error[L0725]: cannot fetch git library `keymap`"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("not allowed"), "{stderr}");
+}
+
+#[test]
+fn git_runs_with_no_prompt_the_allowed_schemes_and_batch_ssh() {
+    let (sandbox, _) = Sandbox::new("git_library_environment").with_git_library(None);
+    let stderr = sandbox
+        .compiler_with_fake_git(None)
+        .assert_exit_code(1)
+        .stderr();
+    assert!(
+        stderr.contains(
+            "git says: fatal: prompt=0 schemes=file:git:http:https:ssh ssh=ssh -o BatchMode=yes"
+        ),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn git_keeps_the_ssh_command_the_user_set() {
+    let (sandbox, _) = Sandbox::new("git_library_user_ssh").with_git_library(None);
+    let stderr = sandbox
+        .compiler_with_fake_git(Some("ssh -p 2222"))
+        .assert_exit_code(1)
+        .stderr();
+    assert!(stderr.contains(" ssh=ssh -p 2222"), "{stderr}");
+}
+
+#[test]
+fn two_git_libraries_share_one_store() {
+    let sandbox = Sandbox::new("git_library_two").with_fixture_tree("libraries");
+    let keymap = sandbox.git_repository("keymap");
+    let marks = sandbox.git_repository("marks");
+    let project = format!(
+        "(project app (libraries (keymap :git \"../keymap.git\" :rev \"{keymap}\") (marks :git \"../marks.git\" :rev \"{marks}\")))\n"
+    );
+    let sandbox = sandbox.with_file(
+        &format!("two-git-app/{}", Language::project_file_name()),
+        &project,
+    );
+    let run = sandbox.compiler_in_with_cache("two-git-app", &["run"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "k?\n");
+}
+
+#[test]
+fn an_empty_cache_variable_falls_back_to_home() {
+    let (sandbox, commit) = Sandbox::new("git_library_empty_cache").with_git_library(None);
+    let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["check"]);
+    command
+        .current_dir(sandbox.directory.join("git-app"))
+        .env(Sandbox::CACHE_HOME_VARIABLE, "")
+        .env("HOME", sandbox.directory.join("home"));
+    Outcome::of(&mut command).assert_silent_success();
+    let checkout = sandbox
+        .directory
+        .join("home/.cache")
+        .join(Language::NAME)
+        .join("git")
+        .join(commit);
+    assert!(checkout.is_dir());
 }

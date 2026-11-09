@@ -1,0 +1,4 @@
+(use keymap key)
+(use marks mark)
+
+(defn main () (println (str key mark)))

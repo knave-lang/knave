@@ -69,6 +69,8 @@ impl Section {
 }
 
 impl<'p> DependencyReader<'p> {
+    const OPTION_PREFIX: char = '-';
+
     pub fn new(section: Section, problems: &'p mut Diagnostics) -> Self {
         Self {
             section,
@@ -217,7 +219,7 @@ impl<'p> DependencyReader<'p> {
             ));
             return None;
         }
-        let url = parts.fields.string("git", self.problems);
+        let url = self.repository_url(&parts.fields);
         let commit = self.full_commit(&parts.fields);
         Some(LibrarySource::Git {
             url: url?,
@@ -225,10 +227,21 @@ impl<'p> DependencyReader<'p> {
         })
     }
 
+    fn repository_url(&mut self, fields: &Fields<'_>) -> Option<String> {
+        let url = fields.string("git", self.problems)?;
+        if !url.starts_with(Self::OPTION_PREFIX) {
+            return Some(url);
+        }
+        let span = fields.get("git")?.value.span();
+        self.problems
+            .push(ProjectProblems::repository_like_an_option(span));
+        None
+    }
+
     fn full_commit(&mut self, fields: &Fields<'_>) -> Option<String> {
         let commit = fields.string("rev", self.problems)?;
         if Self::is_full_commit(&commit) {
-            return Some(commit);
+            return Some(commit.to_ascii_lowercase());
         }
         let span = fields.get("rev")?.value.span();
         self.problems.push(ProjectProblems::short_revision(span));

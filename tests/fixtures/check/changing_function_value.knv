@@ -1,0 +1,8 @@
+(defn bump! (x) (set! x (+ x 1)))
+
+(defn take-value (f t) (f t))
+
+(defn main ()
+  (local total 1)
+  (take-value bump! total)
+  (println total))

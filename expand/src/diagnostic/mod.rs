@@ -3,6 +3,7 @@ mod collection;
 mod counted;
 mod distinct;
 mod label;
+mod quoted_form;
 mod render;
 mod similar_name;
 mod source_window;
@@ -18,6 +19,7 @@ pub use similar_name::SimilarName;
 use std::rc::Rc;
 
 use crate::core::Namespace;
+use crate::source::Span;
 
 #[derive(Clone, Debug)]
 pub struct Diagnostic {
@@ -110,6 +112,11 @@ impl Diagnostic {
 
     pub fn with_help(mut self, help: impl Into<String>) -> Self {
         self.report.helps.push(Help::new(help.into()));
+        self
+    }
+
+    pub fn with_quoting_help(mut self, help: impl Into<String>, form: Span) -> Self {
+        self.report.helps.push(Help::quoting(help.into(), form));
         self
     }
 

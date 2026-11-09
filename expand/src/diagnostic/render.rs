@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::ops::Range;
 
@@ -5,9 +6,10 @@ use annotate_snippets::renderer::{DEFAULT_LINE_NUM_STYLE, Style};
 use annotate_snippets::{AnnotationKind, Group, Level, Patch, Renderer, Snippet};
 use rustc_hash::FxHashMap;
 
+use super::quoted_form::QuotedForm;
 use super::source_window::{LineIndex, SourceWindow};
 use super::{Diagnostic, Diagnostics, Help, Label, Suggestion};
-use crate::source::{SourceId, SourceMap};
+use crate::source::{SourceId, SourceMap, Span};
 
 pub struct DiagnosticRenderer<'a> {
     sources: &'a SourceMap,
@@ -64,8 +66,9 @@ impl<'a> DiagnosticRenderer<'a> {
     }
 
     fn help_group<'d>(&'d self, help: &'d Help) -> Group<'d> {
-        self.suggestion_group(help)
-            .unwrap_or_else(|| Group::with_title(Level::HELP.secondary_title(help.message())))
+        self.suggestion_group(help).unwrap_or_else(|| {
+            Group::with_title(Level::HELP.secondary_title(self.help_message(help)))
+        })
     }
 
     fn main_group<'d>(&'d self, diagnostic: &'d Diagnostic, helps: &'d [Help]) -> Group<'d> {
@@ -82,11 +85,27 @@ impl<'a> DiagnosticRenderer<'a> {
             .notes()
             .iter()
             .map(|note| Level::NOTE.message(note.as_str()));
-        let plain_helps = helps.iter().map(|help| Level::HELP.message(help.message()));
+        let plain_helps = helps
+            .iter()
+            .map(|help| Level::HELP.message(self.help_message(help)));
         title
             .elements(snippets)
             .elements(notes)
             .elements(plain_helps)
+    }
+
+    fn help_message<'d>(&self, help: &'d Help) -> Cow<'d, str> {
+        match help.quoted_form() {
+            Some(form) => Cow::Owned(
+                help.message()
+                    .replace(Help::QUOTED_FORM, &self.form_text(form)),
+            ),
+            None => Cow::Borrowed(help.message()),
+        }
+    }
+
+    fn form_text(&self, form: Span) -> String {
+        QuotedForm::of(&self.sources.file(form.source()).text()[form.range()])
     }
 
     fn level(diagnostic: &Diagnostic) -> Level<'static> {
@@ -223,5 +242,22 @@ mod tests {
             .expect("the suggestion renders");
         let last = rendered.find("last help").expect("the last help renders");
         assert!(first < suggestion && suggestion < last, "{rendered}");
+    }
+
+    #[test]
+    fn a_quoting_help_shows_the_form_as_written() {
+        let mut sources = SourceMap::default();
+        let source = sources.add("sample.knv", "(bump! (+  a\n 1))");
+        let diagnostic = Diagnostic::error(
+            DiagnosticCode::UNBOUND_NAME,
+            "a title",
+            Label::new(Span::new(source, 7..16), "a label"),
+        )
+        .with_quoting_help("bind it: `(local value {form})`", Span::new(source, 7..16));
+        let rendered = DiagnosticRenderer::plain(&sources).render(&diagnostic);
+        assert!(
+            rendered.contains("bind it: `(local value (+ a 1))`"),
+            "{rendered}"
+        );
     }
 }

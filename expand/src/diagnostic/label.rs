@@ -91,14 +91,29 @@ impl Suggestion {
 pub struct Help {
     message: String,
     suggestion: Option<Suggestion>,
+    quoted_form: Option<Span>,
 }
 
 impl Help {
+    pub const QUOTED_FORM: &str = "{form}";
+
     pub fn new(message: String) -> Self {
         Self {
             message,
             suggestion: None,
+            quoted_form: None,
         }
+    }
+
+    pub fn quoting(message: String, form: Span) -> Self {
+        Self {
+            quoted_form: Some(form),
+            ..Self::new(message)
+        }
+    }
+
+    pub fn quoted_form(&self) -> Option<Span> {
+        self.quoted_form
     }
 
     pub fn with_suggestion(self, suggestion: Suggestion) -> Self {

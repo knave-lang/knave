@@ -1,0 +1,19 @@
+(defstruct page
+  :file string
+  :html string)
+
+(defstruct site
+  :pages (vec page))
+
+(defn holds? (s target id)
+  (local suffix (str " id=" id))
+  (any? (iter (:pages s))
+        (fn (p)
+          (and (= (as-str (:file p)) target)
+               (= (as-str (:html p)) (as-str suffix))))))
+
+(defn main ()
+  (local all
+    (->site (vec (->page (str "a") (str " id=x")))))
+  (local target (str "a"))
+  (println (holds? (ref all) (as-str target) "x")))

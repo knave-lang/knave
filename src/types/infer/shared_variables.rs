@@ -147,6 +147,8 @@ impl SharedVariables {
 }
 
 impl TypeChecker {
+    const UNSIZED_VALUE_DEPTH: usize = 1;
+
     pub(super) fn pass_shared_arguments(
         &mut self,
         callee: Option<&TypedExpr>,
@@ -550,8 +552,11 @@ impl TypeChecker {
     }
 
     fn reference_depth_as_written(&self, argument: &TypedArgument) -> usize {
-        let written = self.place_type(&argument.value);
-        Self::reference_depth(&self.unifier.resolve(&written))
+        let written = self.unifier.resolve(&self.place_type(&argument.value));
+        if Self::is_unsized_type(&self.rust_types, &written) {
+            return Self::UNSIZED_VALUE_DEPTH;
+        }
+        Self::reference_depth(&written)
     }
 
     fn with_references(referent: Type, depth: usize) -> Type {

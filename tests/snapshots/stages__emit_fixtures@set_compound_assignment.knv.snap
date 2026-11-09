@@ -39,6 +39,11 @@ fn main() {
     };
     let mut scores: Vec<i64> = vec![1_i64, 2_i64, 3_i64];
     scores[0] += scores[2];
+    let order: Vec<usize> = vec![2_usize, 0_usize];
+    scores[order[0]] += 1;
+    let index: usize = 1;
+    let by_index = &index;
+    scores[*by_index] += 1;
     let step = || 2_i64;
     scores[1] = {
         let current = scores[1];

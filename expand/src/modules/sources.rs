@@ -40,6 +40,7 @@ impl ModuleSources {
     pub const CODE: &str = "code";
     pub const PRELUDE: &str = "prelude";
     pub const TEST: &str = "prelude/test";
+    pub const LIBRARY_EXAMPLES: &str = "prelude/library-examples";
     pub const PROJECT_SHAPES: &str = "prelude/project-file";
     const PRELUDE_DIRECTORY: &str = "prelude/";
     const INTERNAL_DIRECTORY: &str = "prelude/internal/";

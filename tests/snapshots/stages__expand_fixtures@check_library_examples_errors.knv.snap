@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/check_library_examples_errors.knv
+---
+error[L0301]: this use of `check-library-examples` does not match its shape
+ --> expand/check_library_examples_errors.knv:3:1
+  |
+3 | (check-library-examples extra)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
+  |
+  = help: write it as `(check-library-examples)`

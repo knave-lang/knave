@@ -15,5 +15,12 @@
   (assert (< 1 2))
   (assert (> 2 1) "two is above one"))
 
+(defn doubled (n)
+  "Doubles `n`.
+
+  (doubled 2)
+  => 4"
+  (* 2 n))
+
 (defn main ()
   (run-tests :marker "<record>" :untested stocked/shelf))

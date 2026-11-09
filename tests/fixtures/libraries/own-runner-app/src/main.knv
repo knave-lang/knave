@@ -1,0 +1,6 @@
+(use prelude/test run-tests)
+(use doc-checked twice)
+
+(defn main ()
+  (println (twice 2))
+  (run-tests :marker "<record>"))

@@ -1,0 +1,5 @@
+(use prelude/test assert deftest)
+(use doc-checked twice)
+
+(deftest uses-twice
+  (assert (= (twice 3) 6)))

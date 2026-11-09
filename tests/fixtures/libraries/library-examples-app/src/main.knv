@@ -1,0 +1,14 @@
+(use prelude/test check-library-examples)
+(use checked double)
+
+(defn halved (n)
+  "Halves `n`. The macro below leaves this example unchecked.
+
+  (halved \"four\")
+  => 2"
+  (/ n 2))
+
+(defn main ()
+  (println (double (halved 4))))
+
+(check-library-examples)

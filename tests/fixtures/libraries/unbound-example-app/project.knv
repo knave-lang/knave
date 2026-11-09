@@ -1,0 +1,2 @@
+(project app
+  (libraries (unbound-example :path "../unbound-example")))

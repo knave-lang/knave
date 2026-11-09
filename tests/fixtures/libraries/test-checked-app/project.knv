@@ -1,0 +1,2 @@
+(project app
+  (libraries (test-checked :path "../test-checked")))

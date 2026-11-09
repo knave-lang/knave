@@ -1,0 +1,8 @@
+(export same)
+
+(defn same (n)
+  "Returns `n`.
+
+  (absent-in-library 1)
+  => 1"
+  n)

@@ -65,7 +65,12 @@ impl ExpansionSession<'_> {
         self.entry_lowered_in(self.entry, &scoped, span)
     }
 
+    const LIBRARY_EXAMPLES_SOURCE: &'static str = "<library examples>";
+    const LIBRARY_EXAMPLES_TEXT: &'static str =
+        "(use prelude/test check-library-examples)\n(check-library-examples)\n";
+
     pub fn test_runner_entry(&mut self, source: SourceId) -> Result<GeneratedEntry, Diagnostics> {
+        self.check_library_examples();
         let span = Span::new(source, 0..self.expander.sources.file(source).text().len());
         let runner = self
             .expander
@@ -81,6 +86,12 @@ impl ExpansionSession<'_> {
             })
             .collect();
         self.entry_lowered_in(runner, &scoped, span)
+    }
+
+    fn check_library_examples(&mut self) {
+        let source = self.add_source(Self::LIBRARY_EXAMPLES_SOURCE, Self::LIBRARY_EXAMPLES_TEXT);
+        self.expander
+            .load_source_module(ModulePath::new(ModuleSources::LIBRARY_EXAMPLES), &[source]);
     }
 
     pub fn loads(&self, path: &ModulePath) -> bool {

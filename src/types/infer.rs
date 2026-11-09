@@ -2150,17 +2150,17 @@ impl TypeChecker {
         }
         let parameter = self.unifier.resolve(parameter);
         let argument = self.unifier.resolve(&value.ty);
-        let Type::Var(variable) = Self::innermost_referent(&parameter) else {
+        let Type::Var(variable) = parameter.innermost_referent() else {
             return None;
         };
-        let layers =
-            Self::reference_depth(&argument).checked_sub(Self::reference_depth(&parameter) + 1)?;
-        let holds_view =
-            Self::is_unsized_type(&self.rust_types, Self::innermost_referent(&argument))
-                && self
-                    .unifier
-                    .resolve(&callee.ty)
-                    .holds_outside_references(&Type::Var(*variable));
+        let layers = argument
+            .reference_depth()
+            .checked_sub(parameter.reference_depth() + 1)?;
+        let holds_view = Self::is_unsized_type(&self.rust_types, argument.innermost_referent())
+            && self
+                .unifier
+                .resolve(&callee.ty)
+                .holds_outside_references(&Type::Var(*variable));
         holds_view.then_some(layers)
     }
 
@@ -2410,7 +2410,7 @@ impl TypeChecker {
 
     fn referent_unknown(&self, argument: &Type) -> bool {
         matches!(
-            Self::innermost_referent(argument),
+            argument.innermost_referent(),
             Type::Var(var) if self.unifier.literal_kind(*var).is_none()
         )
     }
@@ -2435,8 +2435,8 @@ impl TypeChecker {
             && self.referent_unknown(&argument)
             && self.needs_value(var)
         {
-            let levels = Self::reference_depth(&argument);
-            let referent = Self::innermost_referent(&argument).clone();
+            let levels = argument.reference_depth();
+            let referent = argument.innermost_referent().clone();
             return self.pass(&parameter, &referent, pending.span, Borrow::Deref(levels));
         }
         if Self::borrows_open_parameter_type(&parameter, &argument) {
@@ -2462,12 +2462,13 @@ impl TypeChecker {
         argument: &Type,
         span: Span,
     ) -> Result<Borrow, Diagnostic> {
-        let referent = Self::innermost_referent(argument);
+        let referent = argument.innermost_referent();
         self.expect(view, referent, span, MismatchContext::Plain)?;
         let argument = self.unifier.resolve(argument);
         let parameter = self.unifier.resolve(parameter);
-        let extra =
-            Self::reference_depth(&argument).saturating_sub(Self::reference_depth(&parameter));
+        let extra = argument
+            .reference_depth()
+            .saturating_sub(parameter.reference_depth());
         let stripped = Self::without_references(&argument, extra);
         self.pass(&parameter, &stripped, span, Borrow::Deref(extra))
     }
@@ -2485,12 +2486,12 @@ impl TypeChecker {
     fn borrows_open_parameter_type(parameter: &Type, argument: &Type) -> bool {
         matches!(parameter, Type::Var(_))
             && argument.is_reference()
-            && Self::innermost_referent(argument) == parameter
+            && argument.innermost_referent() == parameter
     }
 
     fn copy_through_borrow(&mut self, parameter: &Type, argument: &Type, copied: Span) -> Borrow {
         self.require_copy_at(parameter, copied);
-        Borrow::Deref(Self::reference_depth(argument))
+        Borrow::Deref(argument.reference_depth())
     }
 
     fn needs_value(&self, var: TypeVar) -> bool {
@@ -2512,14 +2513,14 @@ impl TypeChecker {
     ) -> Result<Borrow, Diagnostic> {
         match (parameter, argument) {
             (expected, Type::Ref(_, _)) if Self::is_known_value(expected) => {
-                let levels = Self::reference_depth(argument);
-                let referent = Self::innermost_referent(argument).clone();
+                let levels = argument.reference_depth();
+                let referent = argument.innermost_referent().clone();
                 self.expect(expected, &referent, span, MismatchContext::Plain)?;
                 Ok(self.borrow_of_referent(&referent, levels))
             }
             (Type::Ref(_, _), Type::Ref(_, _)) if self.collapses(parameter, argument) => {
                 let parameter = self.unifier.resolve(parameter);
-                let extra = Self::reference_depth(argument) - Self::reference_depth(&parameter);
+                let extra = argument.reference_depth() - parameter.reference_depth();
                 let stripped = Self::without_references(argument, extra);
                 self.pass(&parameter, &stripped, span, Borrow::Collapse(extra))
             }
@@ -2549,21 +2550,7 @@ impl TypeChecker {
 
     fn collapses(&self, parameter: &Type, argument: &Type) -> bool {
         let parameter = self.unifier.resolve(parameter);
-        Self::reference_depth(argument) > Self::reference_depth(&parameter)
-    }
-
-    fn reference_depth(value: &Type) -> usize {
-        match value {
-            Type::Ref(_, inner) => 1 + Self::reference_depth(inner),
-            _ => 0,
-        }
-    }
-
-    fn innermost_referent(value: &Type) -> &Type {
-        match value {
-            Type::Ref(_, inner) => Self::innermost_referent(inner),
-            _ => value,
-        }
+        argument.reference_depth() > parameter.reference_depth()
     }
 
     fn without_references(value: &Type, levels: usize) -> Type {

@@ -87,6 +87,20 @@ impl Type {
         matches!(self, Type::Ref(..) | Type::Mut(..))
     }
 
+    pub fn innermost_referent(&self) -> &Type {
+        match self {
+            Type::Ref(_, inner) => inner.innermost_referent(),
+            _ => self,
+        }
+    }
+
+    pub fn reference_depth(&self) -> usize {
+        match self {
+            Type::Ref(_, inner) => 1 + inner.reference_depth(),
+            _ => 0,
+        }
+    }
+
     pub fn is_generic_behind_shared_references(&self) -> bool {
         match self {
             Type::Ref(_, referent) => referent.is_generic_behind_shared_references(),

@@ -756,9 +756,12 @@ impl OwnershipProblems {
     }
 
     pub fn inferred_mut_of_shared_borrow(argument: Span, change: Option<ChangeSite>) -> Diagnostic {
-        Self::mut_of_copy(argument, change).with_help(
-            "a call cannot change a value behind a shared borrow, such as an element, yet; change it in place with `set!`",
-        )
+        let diagnostic = Diagnostic::error(
+            DiagnosticCode::INFERRED_MUT_OF_COPY,
+            "a call cannot change a value behind a shared borrow, such as an element, yet",
+            Label::new(argument, "this value is borrowed, not passed as a place"),
+        );
+        Self::with_change_site(diagnostic, change).with_help("change it in place with `set!`")
     }
 
     pub fn inferred_mut_of_copy_definition(
@@ -788,6 +791,10 @@ impl OwnershipProblems {
             "this argument is a copy, so changing it changes nothing",
             Label::new(argument, "this is a copy, not a place"),
         );
+        Self::with_change_site(diagnostic, change)
+    }
+
+    fn with_change_site(diagnostic: Diagnostic, change: Option<ChangeSite>) -> Diagnostic {
         match change {
             Some(change) => diagnostic.with_label(Label::new(
                 change.span,

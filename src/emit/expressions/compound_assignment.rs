@@ -1,5 +1,5 @@
 use super::{ArgumentRole, ExpressionEmitter, TypeContext};
-use crate::core::{ReferenceKind, RustTemplate};
+use crate::core::RustTemplate;
 use crate::emit::fragment::Code;
 use crate::source::Span;
 use crate::types::{
@@ -120,7 +120,6 @@ impl ExpressionEmitter<'_> {
         match &expr.kind {
             TypedExprKind::Leaf(TypedLeaf::Local(_) | TypedLeaf::Literal(_)) => true,
             TypedExprKind::Deref(value)
-            | TypedExprKind::Borrow(ReferenceKind::Shared, value)
             | TypedExprKind::Struct(TypedStructExpr::Field(value, _)) => self.is_steady(value),
             TypedExprKind::Call(callee, arguments) => {
                 self.reads_element(callee)

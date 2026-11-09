@@ -285,6 +285,7 @@ pub struct TypedLambda {
     pub kind: ClosureKind,
     pub moved_capture: Option<(BindingId, Span)>,
     pub changed_capture: Option<(BindingId, Span)>,
+    pub moves_captures: bool,
 }
 
 #[derive(Clone, Debug)]

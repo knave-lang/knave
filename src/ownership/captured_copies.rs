@@ -4,12 +4,17 @@ use rustc_hash::FxHashSet;
 
 use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind};
 use crate::types::{
-    Pipelines, Type, TypedBinder, TypedBodyItem, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
-    TypedProgram,
+    Pipelines, ReturnedValues, Type, TypedBinder, TypedBlock, TypedBodyItem, TypedControl,
+    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedProgram,
 };
 
 pub struct CapturedCopies<'a> {
     changed_copies: &'a FxHashSet<BindingId>,
+}
+
+struct ReachedClosures {
+    addresses: FxHashSet<usize>,
+    params: Vec<(BindingId, Type)>,
 }
 
 impl<'a> CapturedCopies<'a> {
@@ -21,45 +26,102 @@ impl<'a> CapturedCopies<'a> {
         if self.changed_copies.is_empty() {
             return;
         }
-        for definition in program
-            .modules
-            .iter_mut()
-            .flat_map(|module| module.definitions.iter_mut())
-        {
-            if let TypedExprKind::Fn(lambda) = &mut definition.value.kind
-                && !Self::takes_opaque_parameter(lambda, Pipelines::new(&program.rust_types))
-            {
-                self.copy_into_returned_closure(Rc::make_mut(lambda), &mut program.bindings);
+        for position in Self::copying_definitions(program) {
+            let reached = self.reached_closures(program, position);
+            let (module, definition) = position;
+            let TypedExprKind::Fn(lambda) =
+                &mut program.modules[module].definitions[definition].value.kind
+            else {
+                unreachable!("a copying definition is a function")
+            };
+            for body in Rc::make_mut(lambda).body.expressions_mut() {
+                Self::copy_into_reached(body, &reached, &mut program.bindings);
             }
         }
     }
 
-    fn copy_into_returned_closure(&self, function: &mut TypedLambda, bindings: &mut BindingArena) {
-        let read_only: Vec<(BindingId, Type)> = match function.body.items.last() {
-            Some(TypedBodyItem::Expr(closure)) if matches!(closure.kind, TypedExprKind::Fn(_)) => {
-                function
-                    .params
-                    .iter()
-                    .filter(|param| self.changed_copies.contains(&param.binding))
-                    .filter(|param| closure.mentions_local(param.binding))
-                    .filter(|param| Self::only_copies(closure, param.binding))
-                    .map(|param| (param.binding, param.ty.referent().clone()))
-                    .collect()
+    fn copying_definitions(program: &mut TypedProgram) -> Vec<(usize, usize)> {
+        let pipelines = Pipelines::new(&program.rust_types);
+        let mut positions = Vec::new();
+        for (module_position, module) in program.modules.iter_mut().enumerate() {
+            for (position, definition) in module.definitions.iter_mut().enumerate() {
+                if let TypedExprKind::Fn(lambda) = &mut definition.value.kind
+                    && !Self::takes_opaque_parameter(lambda, pipelines)
+                {
+                    Rc::make_mut(lambda);
+                    positions.push((module_position, position));
+                }
             }
-            _ => Vec::new(),
-        };
-        for (param, value_type) in read_only {
-            self.capture_copy(function, bindings, param, value_type);
         }
+        positions
     }
 
-    fn capture_copy(
+    fn reached_closures(
         &self,
-        function: &mut TypedLambda,
+        program: &TypedProgram,
+        (module, definition): (usize, usize),
+    ) -> ReachedClosures {
+        let TypedExprKind::Fn(lambda) = &program.modules[module].definitions[definition].value.kind
+        else {
+            unreachable!("a copying definition is a function")
+        };
+        ReachedClosures {
+            addresses: ReturnedValues::new(program)
+                .closures(lambda)
+                .into_iter()
+                .map(Self::address)
+                .collect(),
+            params: lambda
+                .params
+                .iter()
+                .filter(|param| self.changed_copies.contains(&param.binding))
+                .map(|param| (param.binding, param.ty.referent().clone()))
+                .collect(),
+        }
+    }
+
+    fn copy_into_reached(
+        expr: &mut TypedExpr,
+        reached: &ReachedClosures,
         bindings: &mut BindingArena,
-        param: BindingId,
-        value_type: Type,
     ) {
+        if reached.addresses.contains(&Self::address(expr)) {
+            Self::capture_copies(expr, &reached.params, bindings);
+            return;
+        }
+        for child in expr.children_mut() {
+            Self::copy_into_reached(child, reached, bindings);
+        }
+    }
+
+    fn capture_copies(
+        closure: &mut TypedExpr,
+        params: &[(BindingId, Type)],
+        bindings: &mut BindingArena,
+    ) {
+        let mut items = Vec::new();
+        for (param, value_type) in params {
+            if closure.mentions_local(*param) && Self::only_copies(closure, *param) {
+                let (binder, read) = Self::copy_of(*param, value_type, bindings);
+                Self::read_copy(closure, *param, binder.binding);
+                items.push(TypedBodyItem::Let(binder, read));
+            }
+        }
+        if items.is_empty() {
+            return;
+        }
+        if let TypedExprKind::Fn(lambda) = &mut closure.kind {
+            Rc::make_mut(lambda).moves_captures = true;
+        }
+        items.push(TypedBodyItem::Expr(closure.clone()));
+        closure.kind = TypedExprKind::Control(TypedControl::Block(TypedBlock { items }));
+    }
+
+    fn copy_of(
+        param: BindingId,
+        value_type: &Type,
+        bindings: &mut BindingArena,
+    ) -> (TypedBinder, TypedExpr) {
         let info = bindings.get(param);
         let span = info.span().expect("a parameter has a span");
         let copy = bindings.add(BindingInfo::new(
@@ -67,10 +129,6 @@ impl<'a> CapturedCopies<'a> {
             BindingKind::Local,
             Some(span),
         ));
-        let Some(TypedBodyItem::Expr(closure)) = function.body.items.last_mut() else {
-            unreachable!("the caller found the returned closure")
-        };
-        Self::read_copy(closure, param, copy);
         let read = TypedExpr {
             kind: TypedExprKind::Deref(Box::new(TypedExpr {
                 kind: TypedExprKind::Leaf(TypedLeaf::Local(param)),
@@ -82,15 +140,15 @@ impl<'a> CapturedCopies<'a> {
         };
         let binder = TypedBinder {
             binding: copy,
-            ty: value_type,
+            ty: value_type.clone(),
             span,
             annotated: false,
         };
-        let tail = function.body.items.len() - 1;
-        function
-            .body
-            .items
-            .insert(tail, TypedBodyItem::Let(binder, read));
+        (binder, read)
+    }
+
+    fn address(expr: &TypedExpr) -> usize {
+        std::ptr::from_ref(expr) as usize
     }
 
     fn takes_opaque_parameter(function: &TypedLambda, pipelines: Pipelines) -> bool {

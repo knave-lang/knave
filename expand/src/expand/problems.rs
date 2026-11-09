@@ -560,6 +560,16 @@ impl ExpandProblems {
         .with_help("ask the library's authors to commit the module's file instead of a link")
     }
 
+    pub fn internal_module(path: &ModulePath, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::INTERNAL_MODULE,
+            format!("`{path}` is internal to the prelude"),
+            Label::new(span, "only the prelude imports this module"),
+        )
+        .with_note("it holds helpers of the prelude's own forms")
+        .with_help("remove this `use`")
+    }
+
     pub fn unlisted_library(library: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::UNLISTED_LIBRARY,

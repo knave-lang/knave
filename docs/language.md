@@ -630,7 +630,7 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
 - Exporting a struct makes all its fields public: every module that imports it can read, build and update it, and its emitted Rust fields are `pub`.
 - Every user module imports the prelude. An explicit `use` shadows a prelude name.
 - Every prelude module imports the kernel.
-- A module whose path starts with `prelude/internal/` is internal to the prelude. It holds the helpers of the prelude's own definers. `prelude/internal/macros` imports only `code` and holds the docstring and pair helpers of `prelude/macros`, and `prelude/internal/syntax` holds the helpers that `defn`, `defstruct` and the other definers build calls and signatures with. `prelude/macros` re-exports `docstrings-key` and `noted-term`, which the compiler reads from it.
+- A module whose path starts with `prelude/internal/` is internal to the prelude. It holds the helpers of the prelude's own definers, and only a module that the compiler embeds in the prelude can import it: a `use` of it anywhere else, a program's own module under a `prelude/` directory included, is `L0255`, which names the module as internal. `prelude/macros` re-exports `docstrings-key` and `noted-term`, which the compiler reads from it.
 - Import cycles are an error.
 
 ## Evaluation

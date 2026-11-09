@@ -1,6 +1,9 @@
 mod support;
 
+use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 use std::time::Duration;
 
@@ -168,6 +171,8 @@ fn saved_prelude_corpus_fixtures() {
 }
 
 const SHORT_DEADLINE: Duration = Duration::from_millis(50);
+const SLOW_FIXTURE: Duration = Duration::from_millis(500);
+const MORE_FIXTURES_THAN_WORKERS: usize = 1024;
 
 #[test]
 #[should_panic(expected = "the fixture slow.knv ran longer than")]
@@ -176,6 +181,26 @@ fn a_fixture_past_its_deadline_fails_naming_the_fixture() {
         thread::sleep(SHORT_DEADLINE * 10);
         String::new()
     });
+}
+
+#[test]
+fn a_fixture_past_its_deadline_stops_the_fixtures_still_waiting() {
+    let started = Arc::new(AtomicUsize::new(0));
+    let starts = Arc::clone(&started);
+    let paths = (0..MORE_FIXTURES_THAN_WORKERS)
+        .map(|index| PathBuf::from(format!("waiting{index}.knv")))
+        .collect();
+    let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
+        FixtureReports::compute_within(SHORT_DEADLINE, paths, move |_| {
+            starts.fetch_add(1, Ordering::SeqCst);
+            thread::sleep(SLOW_FIXTURE);
+            String::new()
+        })
+    }));
+    assert!(outcome.is_err(), "the slow fixtures pass their deadline");
+    let started_by_the_deadline = started.load(Ordering::SeqCst);
+    thread::sleep(SLOW_FIXTURE * 3);
+    assert_eq!(started.load(Ordering::SeqCst), started_by_the_deadline);
 }
 
 #[test]

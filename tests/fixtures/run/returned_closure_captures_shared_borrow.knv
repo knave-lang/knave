@@ -1,0 +1,11 @@
+(defn reader! (x items)
+  (set! x (+ x 1))
+  (local pad 0)
+  (fn () (count (iter items))))
+
+(defn main ()
+  (local reads 1)
+  (local scores (vec 1 2 3))
+  (local size (reader! reads scores))
+  (println reads)
+  (println (size)))

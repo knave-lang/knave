@@ -103,11 +103,11 @@ pub struct ItemEmitter<'a> {
     emission: EmissionWork,
 }
 
-struct OpaqueResult<'r> {
-    result: &'r str,
-    params: &'r [String],
-    lifetimes: &'r [String],
-    generics: &'r [GenericParam],
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CapturePlan {
+    Whole,
+    Precise,
+    Uncapturable(BindingId),
 }
 
 impl<'a> ItemEmitter<'a> {
@@ -1009,6 +1009,11 @@ impl<'a> ItemEmitter<'a> {
         let sharing = Self::sharing_parameters(&borrows, &shared);
         let store_targets = Self::store_targets(&borrows, &shared);
         let higher_ranked = borrows.higher_ranked;
+        let capture_plan = self.capture_plan(lambda, &types, &definition.value.ty, &scope);
+        let named_lending: Vec<BindingId> = match capture_plan {
+            CapturePlan::Precise => self.lending_borrowed_parameters(lambda),
+            _ => Vec::new(),
+        };
         let opaque_lifetimes = Rc::new(FreshLifetimes::new(
             self.declared_lifetimes(inferred.as_deref(), &definition.scheme.lifetimes),
         ));
@@ -1032,6 +1037,13 @@ impl<'a> ItemEmitter<'a> {
                     &higher_ranked,
                     &param.binding,
                 );
+                let scope = if named_lending.contains(&param.binding)
+                    && !sharing.contains(&param.binding)
+                {
+                    scope.with_elided(Some(opaque_lifetimes.issue()))
+                } else {
+                    scope
+                };
                 emitter.bind_parameter_in(param, TypePosition::Signature, &scope)
             })
             .collect();
@@ -1055,15 +1067,8 @@ impl<'a> ItemEmitter<'a> {
             ),
         );
         let where_clause = types.where_clause(&definition.scheme.params);
-        let capture = self.result_capture(
-            lambda,
-            OpaqueResult {
-                result: &result,
-                params: &params,
-                lifetimes: &lifetimes,
-                generics: &definition.scheme.params,
-            },
-        );
+        let capture =
+            self.result_capture(capture_plan, lambda, &lifetimes, &definition.scheme.params);
         let header = format!(
             "{}fn {}{generics}({}){result}{capture}{where_clause} {{",
             info.visibility.keyword(),
@@ -1334,35 +1339,93 @@ impl<'a> ItemEmitter<'a> {
         changed
             .into_iter()
             .map(|param| param.binding)
-            .filter(|binding| !flowing.contains(binding))
+            .filter(|binding| {
+                !flowing.contains(binding) && !Self::captured_by_closure(lambda, *binding)
+            })
             .collect()
     }
 
-    fn result_capture(&mut self, lambda: &TypedLambda, opaque: OpaqueResult) -> String {
-        if !opaque.result.contains(Self::OPAQUE_TYPE) {
-            return String::new();
+    fn captured_by_closure(lambda: &TypedLambda, binding: BindingId) -> bool {
+        lambda
+            .body
+            .expressions()
+            .any(|expr| Self::closure_mentions(expr, binding))
+    }
+
+    fn closure_mentions(expr: &TypedExpr, binding: BindingId) -> bool {
+        match &expr.kind {
+            TypedExprKind::Fn(_) => expr.mentions_local(binding),
+            _ => expr
+                .children()
+                .into_iter()
+                .any(|child| Self::closure_mentions(child, binding)),
+        }
+    }
+
+    fn capture_plan(
+        &self,
+        lambda: &TypedLambda,
+        types: &RustTypes,
+        function: &Type,
+        scope: &LifetimeScope,
+    ) -> CapturePlan {
+        let Type::Function(_, _, result) = function else {
+            return CapturePlan::Whole;
+        };
+        let opaque = |ty: &Type| {
+            types
+                .show_in(ty, TypePosition::Signature, scope)
+                .contains(Self::OPAQUE_TYPE)
+        };
+        if RustTypes::is_unit(result) || !opaque(result) {
+            return CapturePlan::Whole;
         }
         let Some(&unlent) = self.unlent_changed_copies(lambda).first() else {
-            return String::new();
+            return CapturePlan::Whole;
         };
-        if opaque
+        if lambda.params.iter().any(|param| opaque(&param.ty)) {
+            CapturePlan::Uncapturable(unlent)
+        } else {
+            CapturePlan::Precise
+        }
+    }
+
+    fn lending_borrowed_parameters(&self, lambda: &TypedLambda) -> Vec<BindingId> {
+        let unlent = self.unlent_changed_copies(lambda);
+        lambda
             .params
             .iter()
-            .any(|param| param.contains(Self::OPAQUE_TYPE))
-        {
-            let name = self.program.bindings.get(unlent).name();
-            let span = Self::parameter_span(lambda, unlent);
-            self.problems
-                .push(EmitProblems::uncapturable_changed_copy(name, span));
-            return String::new();
+            .filter(|param| !unlent.contains(&param.binding))
+            .filter(|param| param.ty.is_reference() || self.program.type_holds_borrow(&param.ty))
+            .map(|param| param.binding)
+            .collect()
+    }
+
+    fn result_capture(
+        &mut self,
+        plan: CapturePlan,
+        lambda: &TypedLambda,
+        lifetimes: &[String],
+        generics: &[GenericParam],
+    ) -> String {
+        match plan {
+            CapturePlan::Whole => String::new(),
+            CapturePlan::Uncapturable(unlent) => {
+                let name = self.program.bindings.get(unlent).name();
+                let span = Self::parameter_span(lambda, unlent);
+                self.problems
+                    .push(EmitProblems::uncapturable_changed_copy(name, span));
+                String::new()
+            }
+            CapturePlan::Precise => {
+                let captured: Vec<String> = lifetimes
+                    .iter()
+                    .cloned()
+                    .chain(generics.iter().map(RustTypes::generic_name))
+                    .collect();
+                format!(" + use<{}>", captured.join(", "))
+            }
         }
-        let captured: Vec<String> = opaque
-            .lifetimes
-            .iter()
-            .cloned()
-            .chain(opaque.generics.iter().map(RustTypes::generic_name))
-            .collect();
-        format!(" + use<{}>", captured.join(", "))
     }
 
     fn parameter_span(lambda: &TypedLambda, binding: BindingId) -> Span {

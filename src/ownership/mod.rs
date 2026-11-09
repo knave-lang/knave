@@ -132,7 +132,7 @@ impl OwnershipChecker {
             PlaceArguments::new(program, &functions, rewrite.function_params(), &copy).check(),
         );
         slices.rewrite_declarations(program);
-        FunctionValueModes::apply(program, rewrite.function_params())
+        FunctionValueModes::apply(program, rewrite.function_params(), &copied_reads)
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));
         program.escaping_lambdas = EscapingLambdas::in_program(program);

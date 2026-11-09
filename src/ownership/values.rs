@@ -2,7 +2,8 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use super::problems::OwnershipProblems;
+use super::copied_reads::{ChangedCopy, CopiedMutReads};
+use super::problems::{ChangingFunctionValue, OwnershipProblems};
 use crate::core::{BindingArena, BindingId, FieldLabel};
 use crate::diagnostic::Diagnostic;
 use crate::types::{
@@ -44,6 +45,7 @@ pub struct FunctionValueModes<'a> {
     structs: &'a StructTable,
     rust_types: &'a RustTypeTable,
     function_params: &'a FxHashMap<BindingId, Vec<Type>>,
+    copied_reads: &'a CopiedMutReads,
     copy: CopyRules<'a>,
     diagnostics: Vec<Diagnostic>,
 }
@@ -52,6 +54,7 @@ impl<'a> FunctionValueModes<'a> {
     pub fn apply(
         program: &'a mut TypedProgram,
         function_params: &'a FxHashMap<BindingId, Vec<Type>>,
+        copied_reads: &'a CopiedMutReads,
     ) -> Vec<Diagnostic> {
         let copy = CopyRules::new(
             &program.traits,
@@ -65,6 +68,7 @@ impl<'a> FunctionValueModes<'a> {
             structs: &program.structs,
             rust_types: &program.rust_types,
             function_params,
+            copied_reads,
             copy,
             diagnostics: Vec::new(),
         };
@@ -275,6 +279,16 @@ impl<'a> FunctionValueModes<'a> {
             Ok(adjustments) => adjustments,
             Err(parameter) => return self.mismatch(value, binding, &actual, expected, parameter),
         };
+        if let Some((position, changed)) = self.lost_change(binding, &adjustments) {
+            return self.changing_value(
+                value,
+                binding,
+                &actual,
+                expected_parameters,
+                position,
+                changed,
+            );
+        }
         if expected == &actual {
             if matches!(value.kind, TypedExprKind::Fn(_)) {
                 self.unwrap(value, binding, &actual);
@@ -345,6 +359,62 @@ impl<'a> FunctionValueModes<'a> {
             ));
         self.unwrap(value, binding, actual);
         true
+    }
+
+    fn lost_change(
+        &self,
+        binding: BindingId,
+        adjustments: &[Adjustment],
+    ) -> Option<(usize, ChangedCopy)> {
+        adjustments
+            .iter()
+            .enumerate()
+            .filter(|(_, adjustment)| **adjustment == Adjustment::Mutable)
+            .find_map(|(position, _)| {
+                self.copied_reads
+                    .changed_at(binding, position)
+                    .map(|changed| (position, changed))
+            })
+    }
+
+    fn changing_value(
+        &mut self,
+        value: &mut TypedExpr,
+        binding: BindingId,
+        actual: &Type,
+        expected_parameters: &[Type],
+        position: usize,
+        changed: ChangedCopy,
+    ) -> bool {
+        let by_value = Self::with_parameter_by_value(actual, position);
+        let display = TypeDisplay::new(self.bindings, self.generics);
+        let Type::Function(_, actual_parameters, _) = actual else {
+            unreachable!("a function value has a function type")
+        };
+        let problem = ChangingFunctionValue {
+            function: self.bindings.get(binding).name(),
+            param: self.bindings.get(changed.param).name(),
+            expected: display.show(&expected_parameters[position]),
+            found: display.show(&actual_parameters[position]),
+            by_value: display.show(&by_value),
+        };
+        self.diagnostics
+            .push(OwnershipProblems::changing_function_value(
+                value.span,
+                changed.change,
+                &problem,
+            ));
+        self.unwrap(value, binding, actual);
+        true
+    }
+
+    fn with_parameter_by_value(function: &Type, position: usize) -> Type {
+        let Type::Function(kind, parameters, result) = function else {
+            unreachable!("a function value has a function type")
+        };
+        let mut parameters = parameters.clone();
+        parameters[position] = parameters[position].referent().clone();
+        Type::Function(*kind, parameters, result.clone())
     }
 
     fn unwrap(&self, value: &mut TypedExpr, binding: BindingId, actual: &Type) {
@@ -464,6 +534,7 @@ mod tests {
         enums: crate::types::EnumTable,
         rust_types: crate::types::RustTypeTable,
         function_params: FxHashMap<BindingId, Vec<Type>>,
+        copied_reads: CopiedMutReads,
         traits: TraitTable,
     }
 
@@ -496,6 +567,7 @@ mod tests {
                 enums: crate::types::EnumTable::default(),
                 rust_types: crate::types::RustTypeTable::default(),
                 function_params: FxHashMap::default(),
+                copied_reads: CopiedMutReads::default(),
                 traits,
             }
         }
@@ -536,6 +608,7 @@ mod tests {
                 structs: &self.structs,
                 rust_types: &self.rust_types,
                 function_params: &self.function_params,
+                copied_reads: &self.copied_reads,
                 copy,
                 diagnostics: Vec::new(),
             }

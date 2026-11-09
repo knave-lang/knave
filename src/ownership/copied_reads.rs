@@ -2,14 +2,24 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::functions::{FunctionTable, ParamMode};
 use super::value_kinds::ValueKind;
+use super::whole_value_changes::WholeValueChanges;
 use crate::core::BindingId;
+use crate::source::Span;
 use crate::types::{
     Borrow, CopyRules, Type, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedLeaf,
     TypedProgram, TypedStructExpr,
 };
 
+#[derive(Default)]
 pub struct CopiedMutReads {
     changed_copies: FxHashSet<BindingId>,
+    positions: FxHashMap<(BindingId, usize), ChangedCopy>,
+}
+
+#[derive(Clone, Copy)]
+pub struct ChangedCopy {
+    pub param: BindingId,
+    pub change: Option<Span>,
 }
 
 struct CopyOut<'a> {
@@ -23,17 +33,46 @@ impl CopiedMutReads {
         modes: &FxHashMap<BindingId, ParamMode>,
         copy: &CopyRules,
     ) -> Self {
-        let changed_copies = functions
-            .definitions()
-            .flat_map(|function| &function.params)
-            .filter(|slot| {
+        let positions: FxHashMap<(BindingId, usize), ChangedCopy> = functions
+            .definition_bindings()
+            .flat_map(|function| Self::changed_positions(function, functions, modes, copy))
+            .collect();
+        let changed_copies = positions.values().map(|changed| changed.param).collect();
+        Self {
+            changed_copies,
+            positions,
+        }
+    }
+
+    fn changed_positions(
+        function: BindingId,
+        functions: &FunctionTable,
+        modes: &FxHashMap<BindingId, ParamMode>,
+        copy: &CopyRules,
+    ) -> Vec<((BindingId, usize), ChangedCopy)> {
+        let info = functions
+            .definition(function)
+            .expect("the binding names a definition");
+        info.params
+            .iter()
+            .enumerate()
+            .filter(|(_, slot)| {
                 slot.inferable
                     && modes.get(&slot.binding) == Some(&ParamMode::Mut)
                     && ValueKind::of(slot, copy) != ValueKind::Moving
             })
-            .map(|slot| slot.binding)
-            .collect();
-        Self { changed_copies }
+            .map(|(position, slot)| {
+                let changed = ChangedCopy {
+                    param: slot.binding,
+                    change: WholeValueChanges::site(&info.lambda, slot.binding),
+                };
+                ((function, position), changed)
+            })
+            .collect()
+    }
+
+    pub fn changed_at(&self, function: BindingId, position: usize) -> Option<ChangedCopy> {
+        self.positions.get(&(function, position)).copied()
     }
 
     pub fn apply(

@@ -6,6 +6,14 @@ use crate::diagnostic::{Diagnostic, DiagnosticCode, Help, Label, Suggestion};
 use crate::source::Span;
 use crate::types::ClosureKind;
 
+pub struct ChangingFunctionValue<'a> {
+    pub function: &'a str,
+    pub param: &'a str,
+    pub expected: String,
+    pub found: String,
+    pub by_value: String,
+}
+
 pub struct ChangeSite {
     pub function: Rc<str>,
     pub span: Span,
@@ -635,6 +643,37 @@ impl OwnershipProblems {
         .with_help(
             "change the parameter's ownership in a `type` signature, or pass a function that matches",
         )
+    }
+
+    pub fn changing_function_value(
+        value: Span,
+        change: Option<Span>,
+        problem: &ChangingFunctionValue,
+    ) -> Diagnostic {
+        let ChangingFunctionValue {
+            function,
+            param,
+            expected,
+            found,
+            by_value,
+        } = problem;
+        let diagnostic = Diagnostic::error(
+            DiagnosticCode::CHANGING_FUNCTION_VALUE,
+            format!("`{function}` changes its argument, but this call passes it a copy"),
+            Label::new(
+                value,
+                format!("this parameter expects `{expected}`, and `{function}` takes `{found}`"),
+            ),
+        )
+        .with_help(format!(
+            "to change a copy on purpose, write `(type {function} {by_value})`, or start the body with `(local {param} {param})`"
+        ));
+        match change {
+            Some(change) => {
+                diagnostic.with_label(Label::new(change, "this would change only the copy"))
+            }
+            None => diagnostic,
+        }
     }
 
     pub fn inferred_mut_of_copy(argument: Span, change: Option<ChangeSite>) -> Diagnostic {

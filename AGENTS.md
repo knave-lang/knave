@@ -142,6 +142,7 @@ The exceptions are:
 - If `direnv allow` has run in this repository, `.envrc` loads the dev shell through nix-direnv.
 - Stage each new file by path with `git add` before any `nix` command: flake commands ignore files outside the git index.
 - The dev shell runs at most two compiling `cargo` commands at once across every worktree. Set `KNAVE_BUILD_SLOTS` to change the limit.
+- `knave` runs `cargo` from `PATH` and knows nothing of build slots, so in the dev shell a project build through Cargo takes a slot, and a `knave` that runs under `cargo test` or `cargo run` inherits `KNAVE_BUILD_SLOT_HELD`, so its `cargo` takes no second slot.
 
 ### Commits
 

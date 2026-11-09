@@ -11,11 +11,15 @@ impl UserCache {
     const CACHE_UNDER_HOME: &str = ".cache";
 
     pub fn directory() -> Option<PathBuf> {
-        Self::variable_path(Self::CACHE_HOME)
+        Self::absolute_path(Self::CACHE_HOME)
             .or_else(|| {
-                Self::variable_path(Self::HOME).map(|home| home.join(Self::CACHE_UNDER_HOME))
+                Self::absolute_path(Self::HOME).map(|home| home.join(Self::CACHE_UNDER_HOME))
             })
             .map(|cache| cache.join(Language::NAME))
+    }
+
+    fn absolute_path(name: &str) -> Option<PathBuf> {
+        Self::variable_path(name).filter(|path| path.is_absolute())
     }
 
     pub fn variable_path(name: &str) -> Option<PathBuf> {

@@ -3,22 +3,12 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/aliased_change_of_copy.knv
 ---
-error[L0516]: this call changes `count` through two arguments at once
-  --> check/aliased_change_of_copy.knv:12:16
-   |
-12 |   (swap! count count)
-   |          ----- ^^^^^ this argument changes `count` again
-   |          |
-   |          this argument already changes `count`
-   |
-   = help: pass a different place to each argument that the call changes
-
 error[L0516]: this call changes `corner` through two arguments at once
-  --> check/aliased_change_of_copy.knv:15:22
+  --> check/aliased_change_of_copy.knv:20:23
    |
-15 |   (swap! (:x corner) (:x corner))
-   |          ----------- ^^^^^^^^^^^ this argument changes `corner` again
-   |          |
-   |          this argument already changes `corner`
+20 |   (reset-both! corner (:x corner))
+   |                ------ ^^^^^^^^^^^ this argument changes `corner` again
+   |                |
+   |                this argument already changes `corner`
    |
    = help: pass a different place to each argument that the call changes

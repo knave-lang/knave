@@ -73,12 +73,18 @@ impl<'a> AliasedChanges<'a> {
     }
 
     fn aliased_change(&self, first: &ChangedArgument, second: &ChangedArgument) -> Diagnostic {
-        let root = second
-            .place
-            .place_root()
-            .expect("a changed place has a root");
+        let places = [first, second].map(|changed| {
+            changed
+                .place
+                .field_place()
+                .expect("a changed argument is a place")
+        });
+        let outer = places
+            .iter()
+            .min_by_key(|place| place.path.len())
+            .expect("two places");
         OwnershipProblems::aliased_change(
-            self.program.bindings.get(root).name(),
+            &outer.written(&self.program.bindings),
             first.argument.span,
             second.argument.span,
         )

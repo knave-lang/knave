@@ -7,10 +7,15 @@
   (set! x y)
   (set! y t))
 
+(defn reset-both! (whole part)
+  (set! whole (->spot 0 0))
+  (set! part 1))
+
 (defn main ()
   (local count 2)
   (swap! count count)
   (local corner (->spot 1 2))
   (swap! (:x corner) (:y corner))
   (swap! (:x corner) (:x corner))
+  (reset-both! corner (:x corner))
   (println count))

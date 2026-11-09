@@ -111,6 +111,9 @@ impl<'a> PlaceArguments<'a> {
     }
 
     fn copy_argument(&self, value: &TypedExpr, change: Option<ChangeSite>) -> Diagnostic {
+        if matches!(value.ty, Type::Ref(..)) {
+            return OwnershipProblems::inferred_mut_of_shared_borrow(value.span, change);
+        }
         let TypedExprKind::Leaf(TypedLeaf::Global(definition)) = value.kind else {
             return OwnershipProblems::inferred_mut_of_copy(value.span, change);
         };

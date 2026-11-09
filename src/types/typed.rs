@@ -14,8 +14,8 @@ use super::traits::TraitTable;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
 use super::unifier::LiteralKind;
 use crate::core::{
-    BindingArena, BindingId, ClosureKind, DefinitionForm, FieldLabel, KernelForm, Literal,
-    ModuleId, ModulePath, ReferenceKind, RustTemplate,
+    BindingArena, BindingId, ClosureKind, DefinitionForm, FieldLabel, FieldSpelling, KernelForm,
+    Literal, ModuleId, ModulePath, ReferenceKind, RustTemplate,
 };
 use crate::diagnostic::Diagnostics;
 use crate::source::Span;
@@ -88,6 +88,19 @@ pub struct FieldPlace<'a> {
 impl FieldPlace<'_> {
     pub fn reads_field(&self) -> bool {
         !self.path.is_empty()
+    }
+
+    pub fn written(&self, bindings: &BindingArena) -> String {
+        let root = bindings.get(self.root).name().to_string();
+        self.path.iter().fold(root, Self::field_text)
+    }
+
+    fn field_text(owner: String, label: &&FieldLabel) -> String {
+        let field = label.spelled(&label.name);
+        match label.spelling {
+            FieldSpelling::Keyword => format!("({field} {owner})"),
+            FieldSpelling::Bare => format!("(field {owner} {field})"),
+        }
     }
 }
 

@@ -13,4 +13,6 @@
   (bump! (+ total 1))
   (bump! limit)
   (grow! (vec (str "cy")))
-  (grow! names))
+  (grow! names)
+  (local numbers (vec 1 2))
+  (bump! (at numbers 0)))

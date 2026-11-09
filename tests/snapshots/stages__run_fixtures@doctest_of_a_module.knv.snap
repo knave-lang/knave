@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/doctest_of_a_module.knv
+---
+<record>(start 1)
+<record>(test "doc_examples_lib/shapes/doc:area" "Reads a private name of its module.")
+<record>(ok)
+<record>(done)

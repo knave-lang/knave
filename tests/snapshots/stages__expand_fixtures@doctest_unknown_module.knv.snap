@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/doctest_unknown_module.knv
+---
+error[L0204]: cannot find module `no/such/module`
+ --> expand/doctest_unknown_module.knv:3:10
+  |
+3 | (doctest no/such/module)
+  |          ^^^^^^^^^^^^^^ no module with this path
+  |
+  = help: a module path names a file relative to the root directory, without its extension

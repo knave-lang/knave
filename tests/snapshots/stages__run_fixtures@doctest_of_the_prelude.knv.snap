@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/doctest_of_the_prelude.knv
+---
+<record>(start 1)
+<record>(test "prelude/test/doc:doctest" "Runs the docstring examples of `module` under `knave test`.")
+<record>(ok)
+<record>(done)

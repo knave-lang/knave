@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/doctest_wrong_shape.knv
+---
+error[L0301]: this use of `doctest` does not match its shape
+ --> expand/doctest_wrong_shape.knv:3:1
+  |
+3 | (doctest one two)
+  | ^^^^^^^^^^^^^^^^^ here
+  |
+  = help: write it as `(doctest module)`
+
+error[L0301]: this use of `doctest` does not match its shape
+ --> expand/doctest_wrong_shape.knv:5:1
+  |
+5 | (doctest "text")
+  | ^^^^^^^^^^^^^^^^ here
+  |
+  = help: write it as `(doctest module)`

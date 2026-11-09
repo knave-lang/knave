@@ -1,0 +1,10 @@
+(export area)
+
+(defn side () 3)
+
+(defn area ()
+  "Reads a private name of its module.
+
+  (side)
+  => 3"
+  (* (side) (side)))

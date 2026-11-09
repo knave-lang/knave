@@ -1,0 +1,5 @@
+(use prelude/macros note-docstring)
+(use prelude/syntax call-signature)
+(use prelude/macros unheard-of)
+
+(defn main ())

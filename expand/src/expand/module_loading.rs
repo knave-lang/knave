@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use super::Expander;
 use super::context::DefinitionContext;
-use super::problems::ExpandProblems;
+use super::problems::{ExpandProblems, MissingExportRemedy};
 use super::shape::Shape;
 use crate::core::{
     BindingId, BindingInfo, BindingKind, Builtin, DefinitionForm, KernelConstants, KernelForm,
@@ -358,7 +358,25 @@ impl Expander<'_> {
             .map(|(name, _, _)| Rc::clone(name))
             .collect();
         let similar = SimilarName::closest(symbol.name(), &exported);
-        ExpandProblems::missing_export(path, symbol.name(), span, similar)
+        let remedy = self.missing_export_remedy(path, symbol.name());
+        ExpandProblems::missing_export(path, symbol.name(), span, similar, remedy)
+    }
+
+    fn missing_export_remedy(&self, path: &ModulePath, name: &str) -> MissingExportRemedy {
+        if !ModuleSources::is_embedded_prelude(path) {
+            return MissingExportRemedy::AddToExports;
+        }
+        if self.internal_modules_export(name) {
+            return MissingExportRemedy::UseADefiner;
+        }
+        MissingExportRemedy::NoHelp
+    }
+
+    fn internal_modules_export(&self, name: &str) -> bool {
+        self.modules
+            .records()
+            .filter(|record| ModuleSources::is_internal(record.path()))
+            .any(|record| record.exports().any(|(exported, _, _)| **exported == *name))
     }
 
     fn create_builtin(&mut self, path: &ModulePath, builtin: BuiltinModule) -> ModuleId {

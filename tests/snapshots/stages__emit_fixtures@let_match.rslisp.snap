@@ -53,7 +53,9 @@ fn main() {
         };
         println!("{}{}{}", a, left, right)
     }
-    println!("{}", sum_pairs(&vec![(1_i64, 2_i64), (3_i64, 4_i64)]));
+    let mut items: Vec<(i64, i64)> = vec![(1_i64, 2_i64)];
+    items.push((3_i64, 4_i64));
+    println!("{}", sum_pairs(&items));
     println!("no bindings")
 }
 

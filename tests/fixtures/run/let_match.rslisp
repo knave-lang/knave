@@ -29,5 +29,7 @@
   (local a 10)
   (let-match ((pair left right) (swapped (pair 3 4)))
     (println a left right))
-  (println (sum-pairs (vec (pair 1 2) (pair 3 4))))
+  (local items (vec (pair 1 2)))
+  (push! items (pair 3 4))
+  (println (sum-pairs items))
   (let-match () (println "no bindings")))

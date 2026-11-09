@@ -106,6 +106,15 @@ impl ProjectProblems {
         .with_help("check the library's `:git` and `:rev`, and that the repository is reachable")
     }
 
+    pub fn repository_like_an_option(span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::INVALID_GIT_REPOSITORY,
+            "`:git` cannot start with `-`",
+            Label::new(span, "git would read this as an option"),
+        )
+        .with_help("write the repository's URL or path, as `https://example.com/keymap.git`")
+    }
+
     pub fn unbuilt_section(section: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::UNBUILT_PROJECT_SECTION,

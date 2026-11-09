@@ -609,7 +609,8 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
 
 - A relative local `:git` path resolves from the project file that lists the library.
 - A repository or commit that `git` cannot check out is `L0725`, labeled on the library's entry with git's message as a note.
-- No `git` on `PATH`, or no cache directory, is an environment error.
+- No `git` on `PATH`, no cache directory, or a store that cannot be written is an environment error.
+- A `:git` value that starts with `-` is `L0727`. Git runs with the URL after `--`, with `GIT_ALLOW_PROTOCOL` set to `file:git:http:https:ssh`, with no terminal prompt, and with `ssh -o BatchMode=yes` unless `GIT_SSH_COMMAND` is set. The store keys a commit by its lowercase hash.
 
 ## Modules
 

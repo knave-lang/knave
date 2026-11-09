@@ -1,5 +1,6 @@
 (defstruct page
-  :file string)
+  :file string
+  :tags (vec string))
 
 (defn holds? (pages target)
   (any? (iter pages)
@@ -18,10 +19,50 @@
   (println (:file p) target)
   (= (as-str (:file p)) target))
 
+(defn reversed? (p target)
+  (= target (:file p)))
+
+(defn before? (p target)
+  (< target (:file p)))
+
+(defn first-is? (names target)
+  (= (at names 0) target))
+
+(defn tag-first? (p target)
+  (= target (at (:tags p) 0)))
+
+(defn any-tag? (pages target)
+  (any? (iter pages)
+        (fn (p) (= (at (:tags p) 0) target))))
+
+(defn same-three? (p target)
+  (= (:file p) target (:file p)))
+
+(defn announced? (p target)
+  (println (:file p) target)
+  (= (:file p) target))
+
+(defn named-a? (p) (= (:file p) "a"))
+
+(defn held-file? (p)
+  (local name (str "a"))
+  (local held (ref name))
+  (= held (:file p)))
+
 (defn main ()
-  (local items (vec (->page (str "a"))))
+  (local items
+    (vec (->page (str "a") (vec (str "t")))))
   (println (holds? items (str "a")))
   (println (names? (at items 0) (str "b")))
   (println (views? (at items 0) "a"))
   (println (labeled (at items 0) "x"))
-  (println (printed? (at items 0) "a")))
+  (println (printed? (at items 0) "a"))
+  (println (reversed? (at items 0) (str "a")))
+  (println (before? (at items 0) (str "0")))
+  (println (first-is? (vec (str "a")) (str "a")))
+  (println (tag-first? (at items 0) (str "t")))
+  (println (any-tag? items (str "u")))
+  (println (same-three? (at items 0) (str "a")))
+  (println (announced? (at items 0) (str "a")))
+  (println (named-a? (at items 0)))
+  (println (held-file? (at items 0))))

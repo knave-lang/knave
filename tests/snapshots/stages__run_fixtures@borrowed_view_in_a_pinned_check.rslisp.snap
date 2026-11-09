@@ -4,3 +4,4 @@ expression: reports.report(path)
 input_file: tests/fixtures/run/borrowed_view_in_a_pinned_check.rslisp
 ---
 true
+true

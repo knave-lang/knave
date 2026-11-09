@@ -8,6 +8,7 @@ use crate::emitted_lints::{EmittedLints, LintedProgram};
 use crate::failure::TaskFailure;
 use crate::functions::{SourceFunction, SourceTree};
 use crate::instrumented_tests::InstrumentedTests;
+use crate::language::LanguageSource;
 use crate::lcov::LcovReport;
 use crate::workspace::CargoWorkspace;
 
@@ -25,6 +26,7 @@ impl QualityGate {
     const MINIMUM_LINE_COVERAGE: f64 = 99.0;
     const MAXIMUM_CRAP: f64 = 8.0;
     const README: &str = "README.md";
+    const EXTENSION_CONSTANT: &str = "EXTENSION";
 
     pub fn new(root: &Path) -> Self {
         Self {
@@ -43,15 +45,21 @@ impl QualityGate {
     }
 
     pub fn run_emitted_lints(&self) -> Result<ExitCode, TaskFailure> {
-        let linted = EmittedLints::new(&self.root).run()?;
+        let linted = self.lint_emitted_programs()?;
         Ok(Self::conclude(&[&CleanEmittedRust::new(linted)]))
     }
 
     fn measure_everything(&self) -> Result<(CoverageEvidence, Vec<LintedProgram>), TaskFailure> {
         let report = InstrumentedTests::new(&self.root).run()?;
         let evidence = self.evidence(report)?;
-        let linted = EmittedLints::new(&self.root).run()?;
+        let linted = self.lint_emitted_programs()?;
         Ok((evidence, linted))
+    }
+
+    fn lint_emitted_programs(&self) -> Result<Vec<LintedProgram>, TaskFailure> {
+        let workspace = CargoWorkspace::read(&self.root)?;
+        let extension = LanguageSource::find(&workspace)?.constant(Self::EXTENSION_CONSTANT)?;
+        EmittedLints::new(&self.root, &extension).run()
     }
 
     fn evidence(&self, report: LcovReport) -> Result<CoverageEvidence, TaskFailure> {

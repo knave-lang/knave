@@ -6,6 +6,7 @@ use crate::failure::TaskFailure;
 
 pub struct EmittedLints<'a> {
     root: &'a Path,
+    snapshot_suffix: String,
 }
 
 pub struct LintedProgram {
@@ -16,7 +17,6 @@ pub struct LintedProgram {
 impl<'a> EmittedLints<'a> {
     const SNAPSHOTS: &'static str = "tests/snapshots";
     const EMIT_PREFIX: &'static str = "stages__emit_fixtures@";
-    const SNAPSHOT_SUFFIX: &'static str = ".rslisp.snap";
     const FENCE: &'static str = "---\n";
     const HEADER_FENCES: usize = 2;
     const DIAGNOSTIC_START: &'static str = "error[";
@@ -39,8 +39,11 @@ impl<'a> EmittedLints<'a> {
     ];
     const UNFIXED: [&'static str; 0] = [];
 
-    pub fn new(root: &'a Path) -> Self {
-        Self { root }
+    pub fn new(root: &'a Path, extension: &str) -> Self {
+        Self {
+            root,
+            snapshot_suffix: format!(".{extension}.snap"),
+        }
     }
 
     pub fn run(&self) -> Result<Vec<LintedProgram>, TaskFailure> {
@@ -71,7 +74,7 @@ impl<'a> EmittedLints<'a> {
             let path = entry
                 .map_err(|error| TaskFailure::unreadable(&snapshots, error))?
                 .path();
-            let Some(fixture) = Self::emit_fixture(&path) else {
+            let Some(fixture) = self.emit_fixture(&path) else {
                 continue;
             };
             let text =
@@ -84,11 +87,11 @@ impl<'a> EmittedLints<'a> {
         Ok(programs)
     }
 
-    fn emit_fixture(path: &Path) -> Option<String> {
+    fn emit_fixture(&self, path: &Path) -> Option<String> {
         path.file_name()?
             .to_str()?
             .strip_prefix(Self::EMIT_PREFIX)?
-            .strip_suffix(Self::SNAPSHOT_SUFFIX)
+            .strip_suffix(&self.snapshot_suffix)
             .map(str::to_string)
     }
 
@@ -138,15 +141,25 @@ mod tests {
 
     use super::EmittedLints;
 
+    fn ledger_lints() -> EmittedLints<'static> {
+        EmittedLints::new(Path::new("/checkout"), "ldg")
+    }
+
     #[test]
     fn only_emit_snapshots_name_a_fixture() {
-        let emitted = Path::new("tests/snapshots/stages__emit_fixtures@person.rslisp.snap");
-        let checked = Path::new("tests/snapshots/stages__check_fixtures@person.rslisp.snap");
+        let emitted = Path::new("tests/snapshots/stages__emit_fixtures@person.ldg.snap");
+        let checked = Path::new("tests/snapshots/stages__check_fixtures@person.ldg.snap");
         assert_eq!(
-            EmittedLints::emit_fixture(emitted),
+            ledger_lints().emit_fixture(emitted),
             Some("person".to_string())
         );
-        assert_eq!(EmittedLints::emit_fixture(checked), None);
+        assert_eq!(ledger_lints().emit_fixture(checked), None);
+    }
+
+    #[test]
+    fn the_snapshot_suffix_follows_the_language_extension() {
+        let other_language = Path::new("tests/snapshots/stages__emit_fixtures@person.other.snap");
+        assert_eq!(ledger_lints().emit_fixture(other_language), None);
     }
 
     #[test]

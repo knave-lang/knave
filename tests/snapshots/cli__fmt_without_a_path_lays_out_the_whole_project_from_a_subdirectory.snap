@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: "sandbox.contents(&Language::project_file_name())"
+---
+(project browser
+  :version "0.1.0"
+  :entry "src/main.rslisp"
+  (libraries (hints :path "../hints"))
+
+  (dependencies
+    (cef "144.0")
+    (serde "1.0" :features ("derive"))))

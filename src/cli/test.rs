@@ -32,7 +32,7 @@ impl TestCommand {
     const CRATE_NAME: &'static str = "tests";
 
     pub fn new(
-        path: PathBuf,
+        path: Option<PathBuf>,
         selection: TestSelection,
         untested: Option<String>,
         profile: BuildProfile,

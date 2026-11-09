@@ -6,11 +6,12 @@ use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
+use super::standard_error::StandardError;
 use super::terminal::{ModuleOfSources, Terminal};
 use crate::language::Language;
 
 pub struct TestEntries {
-    path: PathBuf,
+    path: Option<PathBuf>,
 }
 
 struct TestTree {
@@ -19,12 +20,16 @@ struct TestTree {
 }
 
 impl TestEntries {
-    pub fn new(path: PathBuf) -> Self {
+    pub fn new(path: Option<PathBuf>) -> Self {
         Self { path }
     }
 
     pub fn load(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
-        TestTree::at(self.path.clone(), terminal)?.load(terminal)
+        let tree = match &self.path {
+            Some(path) => TestTree::at(path.clone(), terminal)?,
+            None => TestTree::of_working_project(terminal)?,
+        };
+        tree.load(terminal)
     }
 }
 
@@ -34,6 +39,20 @@ impl TestTree {
     fn at(path: PathBuf, terminal: &Terminal) -> Result<Self, ExitStatus> {
         let project = LocatedProject::search_from(&path, terminal)?;
         Ok(Self { path, project })
+    }
+
+    fn of_working_project(terminal: &Terminal) -> Result<Self, ExitStatus> {
+        let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
+        let project = LocatedProject::search_from(working_directory, terminal)?
+            .ok_or_else(LocatedProject::report_no_path)?;
+        let path = project.tests_directory();
+        if !path.is_dir() {
+            return Err(Self::report_no_tests_directory(&project));
+        }
+        Ok(Self {
+            path,
+            project: Some(project),
+        })
     }
 
     fn load(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
@@ -102,5 +121,15 @@ impl TestTree {
             return None;
         }
         ProgramFile::module_name(file.strip_prefix(&self.path).ok()?)
+    }
+
+    fn report_no_tests_directory(project: &LocatedProject) -> ExitStatus {
+        StandardError::write_line(format_args!(
+            "error: no `{}/` directory at the project root\n\
+             help: put the project's tests in `{}`, or name a test file or directory",
+            LocatedProject::TESTS_DIRECTORY,
+            project.tests_directory().display()
+        ));
+        ExitStatus::UsageError
     }
 }

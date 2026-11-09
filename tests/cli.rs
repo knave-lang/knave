@@ -1404,10 +1404,9 @@ fn fmt_of_a_missing_file_is_a_usage_error() {
 }
 
 #[test]
-fn fmt_without_a_path_is_a_usage_error() {
-    Sandbox::new("fmt_without_path")
-        .compiler(&["fmt"])
-        .assert_exit_code(2);
+fn fmt_without_a_path_outside_a_project_is_a_usage_error() {
+    let fmt = Sandbox::new("fmt_without_path").compiler(&["fmt"]);
+    insta::assert_snapshot!(fmt.assert_exit_code(2).stderr());
 }
 
 #[test]
@@ -5463,6 +5462,43 @@ fn test_outside_a_project_resolves_use_from_the_directory_alone() {
     let sandbox = Sandbox::new("loose_test").with_fixture_tree("loose-tests");
     let test = sandbox.compiler(&["test", "tests"]);
     insta::assert_snapshot!(test.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn test_without_a_path_runs_the_project_tests_directory_from_a_subdirectory() {
+    let sandbox = Sandbox::new("project_test_default").with_fixture_tree("libraries");
+    let test = sandbox.compiler_in("tested-app/src", &["test"]);
+    insta::assert_snapshot!(test.assert_silent_success().stdout());
+}
+
+#[test]
+fn test_without_a_path_in_a_project_without_tests_directory_is_a_usage_error() {
+    let sandbox = Sandbox::new("project_test_no_tests").with_fixture_tree("libraries");
+    let test = sandbox.compiler_in("app", &["test"]);
+    insta::assert_snapshot!(test.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn test_without_a_path_outside_a_project_is_a_usage_error() {
+    let test = Sandbox::new("test_without_path").compiler(&["test"]);
+    insta::assert_snapshot!(test.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn fmt_without_a_path_lays_out_the_whole_project_from_a_subdirectory() {
+    let sandbox = Sandbox::new("fmt_project_default")
+        .with_file(&Language::project_file_name(), UNLAID_PROJECT)
+        .with_file("src/twice.rslisp", UNFORMATTED)
+        .with_file("src/.direnv/limit.rslisp", UNFORMATTED);
+    sandbox.compiler_in("src", &["fmt"]).assert_silent_success();
+    assert_eq!(
+        [
+            sandbox.contents("src/twice.rslisp"),
+            sandbox.contents("src/.direnv/limit.rslisp"),
+        ],
+        [FORMATTED, UNFORMATTED].map(String::from)
+    );
+    insta::assert_snapshot!(sandbox.contents(&Language::project_file_name()));
 }
 
 #[test]

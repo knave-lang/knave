@@ -1352,21 +1352,49 @@ fn fmt_skips_a_symlinked_directory() {
 }
 
 #[test]
-fn fmt_skips_hidden_and_target_directories() {
+fn fmt_skips_hidden_directories_and_the_project_build_directory() {
     let sandbox = Sandbox::new("fmt_skipped_directories")
-        .with_file("project/twice.rslisp", UNFORMATTED)
-        .with_file("project/.direnv/limit.rslisp", UNFORMATTED)
-        .with_file("project/target/limit.rslisp", UNFORMATTED);
-    sandbox
-        .compiler(&["fmt", "project"])
-        .assert_silent_success();
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file("twice.rslisp", UNFORMATTED)
+        .with_file(".direnv/limit.rslisp", UNFORMATTED)
+        .with_file("target/limit.rslisp", UNFORMATTED)
+        .with_file("src/target/limit.rslisp", UNFORMATTED)
+        .with_file("tests/target/limit.rslisp", UNFORMATTED);
+    sandbox.compiler(&["fmt", "."]).assert_silent_success();
     assert_eq!(
         [
-            sandbox.contents("project/twice.rslisp"),
-            sandbox.contents("project/.direnv/limit.rslisp"),
-            sandbox.contents("project/target/limit.rslisp"),
+            "twice.rslisp",
+            ".direnv/limit.rslisp",
+            "target/limit.rslisp",
+            "src/target/limit.rslisp",
+            "tests/target/limit.rslisp",
+        ]
+        .map(|file| sandbox.contents(file)),
+        [FORMATTED, UNFORMATTED, UNFORMATTED, FORMATTED, FORMATTED].map(String::from)
+    );
+}
+
+#[test]
+fn fmt_in_a_project_walks_a_target_directory_below_the_root() {
+    let sandbox = Sandbox::new("fmt_project_inner_target")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file("src/target/limit.rslisp", UNFORMATTED);
+    sandbox.compiler(&["fmt", "src"]).assert_silent_success();
+    assert_eq!(sandbox.contents("src/target/limit.rslisp"), FORMATTED);
+}
+
+#[test]
+fn fmt_outside_a_project_skips_only_the_target_directory_of_its_walk() {
+    let sandbox = Sandbox::new("fmt_skipped_walk_target")
+        .with_file("loose/target/limit.rslisp", UNFORMATTED)
+        .with_file("loose/src/target/limit.rslisp", UNFORMATTED);
+    sandbox.compiler(&["fmt", "loose"]).assert_silent_success();
+    assert_eq!(
+        [
+            sandbox.contents("loose/target/limit.rslisp"),
+            sandbox.contents("loose/src/target/limit.rslisp"),
         ],
-        [FORMATTED, UNFORMATTED, UNFORMATTED].map(String::from)
+        [UNFORMATTED, FORMATTED].map(String::from)
     );
 }
 
@@ -4979,15 +5007,49 @@ fn test_runs_the_tests_of_every_module_of_a_directory() {
 }
 
 #[test]
-fn test_skips_hidden_and_target_directories() {
+fn test_skips_hidden_directories_and_the_target_directory_of_its_walk() {
     let sandbox = Sandbox::new("test_skipped_directories")
         .with_file("checks/stock.rslisp", PROJECT_TESTS)
         .with_file("checks/.direnv/stock.rslisp", UNCLOSED)
-        .with_file("checks/target/stock.rslisp", UNCLOSED);
+        .with_file("checks/target/stock.rslisp", UNCLOSED)
+        .with_file("checks/shelf/target/stock.rslisp", PROJECT_TESTS);
     let test = sandbox.compiler(&["test", "checks"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
-        "running 1 test\ntest stock/adds ... ok\n1 passed, 0 failed\n"
+        "running 2 tests\n\
+         test shelf/target/stock/adds ... ok\n\
+         test stock/adds ... ok\n\
+         2 passed, 0 failed\n"
+    );
+}
+
+#[test]
+fn test_in_a_project_walks_a_target_directory_of_its_test_directory() {
+    let sandbox = Sandbox::new("project_test_inner_target")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file("tests/target/stock.rslisp", PROJECT_TESTS);
+    let test = sandbox.compiler(&["test", "tests"]);
+    assert_eq!(
+        test.assert_silent_success().stdout(),
+        "running 1 test\ntest target/stock/adds ... ok\n1 passed, 0 failed\n"
+    );
+}
+
+#[test]
+fn test_in_a_project_skips_only_the_project_build_directory() {
+    let sandbox = Sandbox::new("project_test_skipped_directories")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file("tests/stock.rslisp", PROJECT_TESTS)
+        .with_file("tests/target/stock.rslisp", PROJECT_TESTS)
+        .with_file("target/stock.rslisp", UNCLOSED)
+        .with_file(".direnv/stock.rslisp", UNCLOSED);
+    let test = sandbox.compiler(&["test", "."]);
+    assert_eq!(
+        test.assert_silent_success().stdout(),
+        "running 2 tests\n\
+         test tests/stock/adds ... ok\n\
+         test tests/target/stock/adds ... ok\n\
+         2 passed, 0 failed\n"
     );
 }
 

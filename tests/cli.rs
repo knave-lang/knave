@@ -78,6 +78,7 @@ const SHADOWING_PAGE_BODY: &str = "(defrule page-body ((term) 0))\n\n(defn main 
 const SHADOWING_HEADER: &str = "(defrule header ((term) 0))\n\n(defn main () (do))\n";
 const TRUE_PAGE: &str = "true\n\nIs the `bool` value true.\n\nIt is a kernel constant, so macro code and program code see the same\nbooleans.\n";
 const IF_PAGE: &str = "(if test then else)\n\nEvaluates `then` when the test is true, and `else` otherwise.\n\nIt emits a Rust `if` with an `else`.\n";
+#[cfg(target_os = "linux")]
 const DEEP_NESTING: usize = 1000;
 const MACRO_STRUCT_BESIDE_A_DEF: &str = "(defrule my-struct ((n) (do (defstruct n \"A documented struct.\" :x i64))))\n(my-struct point)\n(def point 1)\n(defn main () (do))\n";
 const THREADING_HEADER: &str = "(-> value form ...)";
@@ -419,12 +420,14 @@ impl Sandbox {
         Ok(())
     }
 
+    #[cfg(target_os = "linux")]
     fn compiler_on_a_short_stack(&self, arguments: &[&str]) -> Outcome {
         let mut command = self.command(Path::new(Self::COMPILER), arguments);
         unsafe { command.pre_exec(Self::shorten_the_stack) };
         Outcome::of(&mut command)
     }
 
+    #[cfg(target_os = "linux")]
     fn shorten_the_stack() -> std::io::Result<()> {
         const SHORT_STACK_BYTES: libc::rlim_t = 1024 * 1024;
         let short = libc::rlimit {
@@ -5353,8 +5356,10 @@ fn a_local_module_that_shares_a_library_path_is_an_error() {
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
+#[cfg(target_os = "linux")]
 struct DeepProgram;
 
+#[cfg(target_os = "linux")]
 impl DeepProgram {
     const FILE: &str = "deep.rslisp";
 
@@ -5407,41 +5412,49 @@ impl DeepProgram {
     }
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn deep_blocks_check_on_a_short_stack() {
     DeepProgram::passes_on_a_short_stack("deep_blocks_check", &DeepProgram::blocks(), "check");
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn deep_calls_check_on_a_short_stack() {
     DeepProgram::passes_on_a_short_stack("deep_calls_check", &DeepProgram::calls(), "check");
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn deep_matches_check_on_a_short_stack() {
     DeepProgram::passes_on_a_short_stack("deep_matches_check", &DeepProgram::matches(), "check");
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn a_deep_recur_body_checks_on_a_short_stack() {
     DeepProgram::passes_on_a_short_stack("deep_recur_check", &DeepProgram::recur_body(), "check");
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn deep_blocks_emit_on_a_short_stack() {
     DeepProgram::passes_on_a_short_stack("deep_blocks_emit", &DeepProgram::blocks(), "emit");
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn deep_calls_emit_on_a_short_stack() {
     DeepProgram::passes_on_a_short_stack("deep_calls_emit", &DeepProgram::calls(), "emit");
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn deep_matches_emit_on_a_short_stack() {
     DeepProgram::passes_on_a_short_stack("deep_matches_emit", &DeepProgram::matches(), "emit");
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn a_deep_recur_body_emits_on_a_short_stack() {
     DeepProgram::passes_on_a_short_stack("deep_recur_emit", &DeepProgram::recur_body(), "emit");

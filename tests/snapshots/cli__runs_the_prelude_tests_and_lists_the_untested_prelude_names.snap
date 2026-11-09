@@ -2,8 +2,8 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (124 of 230): -> ->> _ any? assoc assoc-at assoc-in box comment copy debug def defenum defmacro defn defrule defstruct deftrait deftype derive display do doc-body doc-header doc-page docstring enum enumerate eprint eprintln eq err every? exit expect-ok export f32 field filter find float fmt fn-mut fn-once for-each from-str get hash hash-map i128 i16 i32 i8 impl integer io-error isize iterator keys let let-match let-try loop macro map-at map-err map-ok match max max-by-key min module mut new number ok ok-or ok? option/none option/some ord pair pair/pair partial-eq partial-ord quote recur result/err result/ok rust rust-trait rust-type sequence set-at show signed slice sorted-map source struct sum take take-while template then-ok trait try try-> type u128 u16 u32 u64 u8 unit unwrap-err update use usize vals where with write-form zip
-running 88 tests
+untested in prelude (110 of 230): -> ->> _ assoc assoc-at assoc-in box comment copy debug def defenum defmacro defn defrule defstruct deftrait deftype derive display do doc-body doc-header doc-page docstring enum eprint eprintln eq err exit expect-ok export f32 field float fmt fn-mut fn-once from-str get hash hash-map i128 i16 i32 i8 impl integer io-error isize iterator keys let let-match let-try loop macro map-at map-err map-ok match module mut new number ok ok-or ok? option/none option/some ord pair/pair partial-eq partial-ord quote recur result/err result/ok rust rust-trait rust-type sequence set-at show signed slice sorted-map source struct template then-ok trait try try-> type u128 u16 u32 u64 u8 unit unwrap-err update use usize vals where with write-form
+running 105 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -15,6 +15,23 @@ test prelude/io/doc:io-error ... ok
 test prelude/io/doc:stdin ... ok
 test prelude/io/doc:source ... ok
 test prelude/io/doc:command-line-args ... ok
+test prelude/iterator/doc:sum ... ok
+test prelude/iterator/doc:range ... ok
+test prelude/iterator/doc:map ... ok
+test prelude/iterator/doc:filter ... ok
+test prelude/iterator/doc:reduce ... ok
+test prelude/iterator/doc:for-each ... ok
+test prelude/iterator/doc:enumerate ... ok
+test prelude/iterator/doc:zip ... ok
+test prelude/iterator/doc:count ... ok
+test prelude/iterator/doc:max ... ok
+test prelude/iterator/doc:min ... ok
+test prelude/iterator/doc:max-by-key ... ok
+test prelude/iterator/doc:any? ... ok
+test prelude/iterator/doc:every? ... ok
+test prelude/iterator/doc:find ... ok
+test prelude/iterator/doc:take ... ok
+test prelude/iterator/doc:take-while ... ok
 test prelude/logic/doc:not ... ok
 test prelude/logic/doc:when ... ok
 test prelude/logic/doc:unless ... ok
@@ -112,4 +129,4 @@ test prelude/vec/doc:last ... ok
 test prelude/vec/doc:reverse ... ok
 test prelude/vec/doc:reverse! ... ok
 test prelude/vec/doc:dedup! ... ok
-88 passed, 0 failed
+105 passed, 0 failed

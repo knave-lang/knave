@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/borrowed_parameter_beside_a_field.rslisp
+---
+true
+false
+true
+a: x
+aa
+true

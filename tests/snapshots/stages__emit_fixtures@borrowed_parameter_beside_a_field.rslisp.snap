@@ -1,0 +1,61 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/borrowed_parameter_beside_a_field.rslisp
+---
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Page {
+    file: String,
+}
+
+fn make_page(file: String) -> Page {
+    Page { file }
+}
+
+fn is_holds(pages: &[Page], target: &String) -> bool {
+    pages.iter().any(|p: &Page| p.file == *target)
+}
+
+fn is_names(p: &Page, target: &String) -> bool {
+    p.file == *target
+}
+
+fn is_views(p: &Page, target: &str) -> bool {
+    p.file.as_str() == target
+}
+
+fn labeled(p: &Page, target: &str) -> String {
+    format!("{}: {}", p.file, target)
+}
+
+fn is_printed(p: &Page, target: &str) -> bool {
+    println!("{}{}", p.file, target);
+    p.file.as_str() == target
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let items = vec![make_page("a".to_string())];
+    println!("{}", is_holds(&items, &"a".to_string()));
+    println!("{}", is_names(&items[0], &"b".to_string()));
+    println!("{}", is_views(&items[0], "a"));
+    println!("{}", labeled(&items[0], "x"));
+    println!("{}", is_printed(&items[0], "a"))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

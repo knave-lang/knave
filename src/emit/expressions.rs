@@ -2076,10 +2076,18 @@ impl<'a> ExpressionEmitter<'a> {
             .iter()
             .map(|role| *role == ArgumentRole::MutPlace)
             .collect();
+        let dereferenced_parameters = self.dereferenced_parameters(&parsed, arguments, &roles);
         let mut codes: Vec<Code> = arguments
             .iter()
             .zip(&roles)
-            .map(|(argument, role)| self.argument(argument, context, *role))
+            .zip(dereferenced_parameters)
+            .map(|((argument, role), dereferenced)| {
+                if dereferenced {
+                    self.deref(&argument.value)
+                } else {
+                    self.argument(argument, context, *role)
+                }
+            })
             .collect();
         for (position, argument) in arguments.iter().enumerate() {
             let Some(call_arguments) = parsed.called_arguments(position) else {
@@ -2100,6 +2108,44 @@ impl<'a> ExpressionEmitter<'a> {
         let code = self.inline_with_places(&parsed, codes, types, &places, span);
         self.locals.leave();
         code
+    }
+
+    fn dereferenced_parameters(
+        &self,
+        template: &Template,
+        arguments: &[TypedArgument],
+        roles: &[ArgumentRole],
+    ) -> Vec<bool> {
+        let beside_a_field = template.is_binary_operation()
+            && arguments
+                .iter()
+                .zip(roles)
+                .any(|(argument, role)| Self::reads_borrowed_field(argument, *role));
+        arguments
+            .iter()
+            .zip(roles)
+            .map(|(argument, role)| {
+                beside_a_field && self.borrows_parameter_reference(argument, *role)
+            })
+            .collect()
+    }
+
+    fn reads_borrowed_field(argument: &TypedArgument, role: ArgumentRole) -> bool {
+        role == ArgumentRole::Borrowed
+            && argument.borrow == Borrow::None
+            && matches!(
+                argument.value.kind,
+                TypedExprKind::Struct(TypedStructExpr::Field(..))
+            )
+    }
+
+    fn borrows_parameter_reference(&self, argument: &TypedArgument, role: ArgumentRole) -> bool {
+        role == ArgumentRole::Borrowed
+            && argument.borrow == Borrow::Shared
+            && argument.value.ty.is_reference()
+            && matches!(&argument.value.kind,
+                TypedExprKind::Leaf(TypedLeaf::Local(binding))
+                    if self.program.borrowed_parameters.contains(binding))
     }
 
     fn with_fresh_template_binders(&mut self, template: &Template) -> Template {

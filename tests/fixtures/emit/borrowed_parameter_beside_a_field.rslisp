@@ -1,0 +1,27 @@
+(defstruct page
+  :file string)
+
+(defn holds? (pages target)
+  (any? (iter pages)
+        (fn (p) (= (:file p) target))))
+
+(defn names? (p target)
+  (= (:file p) target))
+
+(defn views? (p target)
+  (= (as-str (:file p)) target))
+
+(defn labeled (p target)
+  (str (:file p) ": " target))
+
+(defn printed? (p target)
+  (println (:file p) target)
+  (= (as-str (:file p)) target))
+
+(defn main ()
+  (local items (vec (->page (str "a"))))
+  (println (holds? items (str "a")))
+  (println (names? (at items 0) (str "b")))
+  (println (views? (at items 0) "a"))
+  (println (labeled (at items 0) "x"))
+  (println (printed? (at items 0) "a")))

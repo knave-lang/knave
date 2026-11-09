@@ -1,0 +1,84 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/comparison_operand_depths.knv
+---
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Page {
+    file: String,
+}
+
+fn make_page(file: String) -> Page {
+    Page { file }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Holder<A> {
+    item: A,
+}
+
+fn make_holder<A>(item: A) -> Holder<A> {
+    Holder { item }
+}
+
+fn is_matches_view(p: &Page, view: &&str) -> bool {
+    p.file == *view
+}
+
+fn is_holds_literal(h: Holder<&str>) -> bool {
+    h.item == "a"
+}
+
+fn is_any_holds_literal(hs: &[Holder<&str>]) -> bool {
+    hs.iter().any(|h: &Holder<&str>| h.item == "a")
+}
+
+fn is_holds_file(h: Holder<&str>, p: &Page) -> bool {
+    h.item == p.file.as_str()
+}
+
+fn is_holds_zero(h: Holder<i64>) -> bool {
+    h.item == 0
+}
+
+fn is_first_name(p: &Page, names: &[String]) -> bool {
+    p.file == names[0]
+}
+
+fn is_named(p: &Page, target: &String) -> bool {
+    p.file == *target
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let page = make_page("a".to_string());
+    let view = "a";
+    println!("{}", is_matches_view(&page, &view));
+    println!("{}", is_holds_literal(make_holder("a")));
+    let mut holders = vec![make_holder("b")];
+    holders.push(make_holder("a"));
+    println!("{}", is_any_holds_literal(&holders));
+    println!("{}", is_holds_file(make_holder("a"), &page));
+    println!("{}", is_holds_zero(make_holder(0)));
+    let mut names = vec!["a".to_string()];
+    names.push("b".to_string());
+    println!("{}", is_first_name(&page, &names));
+    println!("{}", is_named(&page, &"a".to_string()))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

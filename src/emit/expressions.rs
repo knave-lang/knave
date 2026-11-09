@@ -27,10 +27,10 @@ use crate::ownership::StructUpdateOrder;
 use crate::reader::{Number, NumberValue};
 use crate::source::Span;
 use crate::types::{
-    Borrow, Bound, ClosureKind, Collection, FieldOrder, GenericId, Type, TypedArgument, TypedArm,
-    TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
-    TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedProgram, TypedStructExpr,
-    VariantPayload,
+    Borrow, Bound, ClosureKind, Collection, FieldOrder, GenericId, Type, TypeChecker,
+    TypedArgument, TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
+    TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
+    TypedProgram, TypedStructExpr, VariantPayload,
 };
 
 mod tail_loop;
@@ -190,6 +190,7 @@ impl<'a> ExpressionEmitter<'a> {
     const BOX_BINDING: &'static str = "inner";
     const MAP_UPDATE_TEMPLATE: &'static str = "@map-update";
     const COMPARED_OPERANDS: usize = 2;
+    const VIEW_DEPTH_ALLOWANCE: usize = 1;
     const INTEGER_CONVERSION: &'static str = "from_literal";
     const FLOAT_CONVERSION: &'static str = "from_float_literal";
 
@@ -2125,14 +2126,26 @@ impl<'a> ExpressionEmitter<'a> {
     ) -> usize {
         let referent = operand.value.ty.innermost_referent();
         let depth = self.emitted_depth(operand, role);
-        let shallowest = arguments
+        arguments
             .iter()
             .zip(roles)
-            .filter(|(other, _)| other.value.ty.innermost_referent() == referent)
-            .map(|(other, role)| self.emitted_depth(other, *role))
-            .min()
-            .unwrap_or(depth);
-        depth - shallowest
+            .filter_map(|(other, other_role)| {
+                let allowance =
+                    Self::depth_allowance(referent, other.value.ty.innermost_referent())?;
+                Some(depth.saturating_sub(self.emitted_depth(other, *other_role) + allowance))
+            })
+            .max()
+            .unwrap_or(0)
+    }
+
+    fn depth_allowance(operand: &Type, other: &Type) -> Option<usize> {
+        if TypeChecker::views_string(operand, other) {
+            Some(Self::VIEW_DEPTH_ALLOWANCE)
+        } else if operand == other {
+            Some(0)
+        } else {
+            None
+        }
     }
 
     fn emitted_depth(&self, argument: &TypedArgument, role: ArgumentRole) -> usize {
@@ -2204,9 +2217,12 @@ impl<'a> ExpressionEmitter<'a> {
         }
         match &argument.value.kind {
             TypedExprKind::Borrow(ReferenceKind::Shared, place)
-                if argument.borrow == Borrow::None =>
+                if !Self::passes_through_reference(self.program, ReferenceKind::Shared, place) =>
             {
                 Some(self.borrowed_operand(place, context))
+            }
+            _ if self.is_borrowed_index_call(&argument.value) => {
+                Some(self.place(&argument.value, context))
             }
             _ => None,
         }
@@ -2407,6 +2423,30 @@ impl<'a> ExpressionEmitter<'a> {
     ) -> Option<Code> {
         self.borrowed_index_argument(argument, context)
             .or_else(|| self.argument_under_written_borrows(argument, context))
+            .or_else(|| self.dereferenced_field(argument))
+    }
+
+    fn dereferenced_field(&mut self, argument: &TypedArgument) -> Option<Code> {
+        let Borrow::Deref(levels) = argument.borrow else {
+            return None;
+        };
+        let TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) = &argument.value.kind
+        else {
+            return None;
+        };
+        let place_depth = self.declared_field_depth(owner, &label.name)?;
+        let own_reference = argument
+            .value
+            .ty
+            .reference_depth()
+            .saturating_sub(place_depth);
+        let span = argument.value.span;
+        let place = self.field_place(owner, label).spanned(span);
+        Some(Self::dereferenced(
+            place,
+            levels.saturating_sub(own_reference),
+            span,
+        ))
     }
 
     fn argument_under_written_borrows(

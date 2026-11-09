@@ -2,8 +2,8 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (91 of 230): -> ->> assoc assoc-at assoc-in comment copy debug def defenum defmacro defn defrule defstruct deftrait deftype derive display do doc-body doc-header doc-page docstring enum eprint eprintln eq exit export f32 field float fmt fn-mut fn-once from-str get hash hash-map i128 i16 i32 i8 impl integer io-error isize keys let let-match let-try loop macro map-at module mut new number ord partial-eq partial-ord quote recur rust rust-trait rust-type sequence set-at show signed sorted-map source struct template trait try try-> type u128 u16 u32 u64 u8 unit update use usize vals where with write-form
-running 141 tests
+untested in prelude (74 of 230): assoc-at copy debug def defenum defmacro defn defrule defstruct deftrait deftype derive display do doc-body doc-header doc-page docstring enum eprint eprintln eq exit export f32 field float fmt fn-mut fn-once from-str hash i128 i16 i32 i8 impl integer io-error isize macro map-at module mut new number ord partial-eq partial-ord quote rust rust-trait rust-type sequence set-at show signed source struct template trait try type u128 u16 u32 u64 u8 unit use usize where with write-form
+running 161 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -11,6 +11,9 @@ test option/unwrap-or-falls-back-on-none ... ok
 test option/expect-takes-the-value ... ok
 test option/map-some-changes-the-value ... ok
 test option/then-some-chains-an-optional-step ... ok
+test prelude/assoc/doc:assoc ... ok
+test prelude/assoc/doc:assoc-in ... ok
+test prelude/assoc/doc:update ... ok
 test prelude/io/doc:io-error ... ok
 test prelude/io/doc:stdin ... ok
 test prelude/io/doc:source ... ok
@@ -38,6 +41,13 @@ test prelude/logic/doc:unless ... ok
 test prelude/logic/doc:and ... ok
 test prelude/logic/doc:or ... ok
 test prelude/logic/doc:cond ... ok
+test prelude/map/doc:sorted-map ... ok
+test prelude/map/doc:hash-map ... ok
+test prelude/map/doc:get ... ok
+test prelude/map/doc:keys ... ok
+test prelude/map/doc:vals ... ok
+test prelude/map/doc:into-sorted-map ... ok
+test prelude/map/doc:into-hash-map ... ok
 test prelude/number/doc:number ... ok
 test prelude/number/doc:signed ... ok
 test prelude/number/doc:partial-eq ... ok
@@ -72,6 +82,7 @@ test prelude/ownership/doc:clone ... ok
 test prelude/ownership/doc:copy ... ok
 test prelude/pair/doc:pair ... ok
 test prelude/pair/doc:pair/pair ... ok
+test prelude/place/doc:set! ... ok
 test prelude/result/doc:ok ... ok
 test prelude/result/doc:err ... ok
 test prelude/result/doc:ok-or ... ok
@@ -85,6 +96,15 @@ test prelude/result/doc:map-err ... ok
 test prelude/result/doc:then-ok ... ok
 test prelude/sequence/doc:empty? ... ok
 test prelude/sequence/doc:len ... ok
+test prelude/syntax/doc:let ... ok
+test prelude/syntax/doc:->> ... ok
+test prelude/syntax/doc:the ... ok
+test prelude/syntax/doc:loop ... ok
+test prelude/syntax/doc:let-try ... ok
+test prelude/syntax/doc:let-match ... ok
+test prelude/syntax/doc:try-> ... ok
+test prelude/syntax/doc:comment ... ok
+test prelude/syntax/doc:-> ... ok
 test prelude/test/doc:doctest ... ok
 test prelude/text/doc:str ... ok
 test prelude/text/doc:print ... total: 3
@@ -165,4 +185,4 @@ test prelude/vec/doc:last ... ok
 test prelude/vec/doc:reverse ... ok
 test prelude/vec/doc:reverse! ... ok
 test prelude/vec/doc:dedup! ... ok
-141 passed, 0 failed
+161 passed, 0 failed

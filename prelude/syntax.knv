@@ -44,7 +44,12 @@
 
   Each value sees the names bound before it, and the value of the body
   is the value of its last form. To bind a name for the rest of the
-  enclosing body, write `local`.")
+  enclosing body, write `local`.
+
+  (let (first-part 1
+        next-part (+ first-part 1))
+    (* first-part next-part))
+  => 2")
 
 (def local-steps
   (fn (bindings)
@@ -295,7 +300,13 @@
 (defmacro defn (name parameters body ...)
   "Defines a function: (defn name (parameter ...) body ...).
 
-  A string before at least one more body form is the docstring."
+  A string before at least one more body form is the docstring.
+
+  ```
+  (defn twice (x) \"Doubles a number.\" (* 2 x))
+  (twice 4)
+  => 8
+  ```"
   (declare-definition name)
   (if (string? parameters)
     (docstring-before-parameters parameters)
@@ -787,7 +798,13 @@
   "Threads a value through each form as its last argument.
 
   `(->> 3 (- 10) (* 2))` is `(* 2 (- 10 3))`. A bare name in place of a form
-  is called with the value alone.")
+  is called with the value alone.
+
+  (->> 3 (- 10) (* 2))
+  => 14
+
+  (->> (range 0 3) collect)
+  => (vec 0 1 2)")
 
 (document (the type value)
   "Gives a value a written type.
@@ -795,7 +812,14 @@
   It binds the value with an annotated `let` and returns it, so a literal is
   checked against the type and a value that is not `copy` moves. A value of
   another type is an error, except that a borrowed `string`, `(ref name)`,
-  passes as a `(ref str)`.")
+  passes as a `(ref str)`.
+
+  (the i64 3)
+  => 3
+
+  (local word (str \"pear\"))
+  (the (ref str) (ref word))
+  => \"pear\"")
 
 (document (loop (name value
                  ...)
@@ -810,7 +834,12 @@
   bound to its new value. The call returns the body's last value.
 
   The body is a function, so `try`, `let-try` and `try->` in it leave the loop
-  with the failure, not the enclosing function.")
+  with the failure, not the enclosing function.
+
+  (loop (total 0
+        n 3)
+    (if (> n 0) (recur (+ total n) (- n 1)) total))
+  => 6")
 
 (document (let-try (name value
                     ...)
@@ -821,7 +850,14 @@
 
   Each value goes through `try`, so the first `err` or `none` returns from the
   enclosing function, or leaves the enclosing `loop`. That function must
-  return a `result` or an `option` of the same kind.")
+  return a `result` or an `option` of the same kind.
+
+  (local step (fn ((value (option i64))) (let-try (n value) (some (+ n 1)))))
+  (step (some 1))
+  => (some 2)
+
+  (step none)
+  => none")
 
 (document (let-match (pattern value
                       ...)
@@ -833,7 +869,11 @@
   and `count`. Each value sees the names bound before it. Each pattern is a
   one-arm `match`, so a pattern that some value fails, such as `(some x)`, is
   an error that names the missing case. On an owned value, each name moves its
-  part unless the part is `copy`, and `_` leaves its part in place.")
+  part unless the part is `copy`, and `_` leaves its part in place.
+
+  (let-match ((pair word total) (pair \"pear\" 3))
+    (str word total))
+  => \"pear3\"")
 
 (document (try-> value function ...)
   "Calls each function on the result of the one before, through `try`.
@@ -843,16 +883,33 @@
   result is returned as it is. With no function, the call returns the value.
 
   Unlike `->`, a step takes no extra arguments: a call form is a call whose
-  result is the function, so `(try-> x (make-step))` is `((make-step) x)`.")
+  result is the function, so `(try-> x (make-step))` is `((make-step) x)`.
+
+  (local half (fn ((n i64)) (if (> n 0) (some (/ n 2)) none)))
+  (local twice-halved (fn ((n i64)) (try-> n half half)))
+  (twice-halved 8)
+  => (some 2)
+
+  (twice-halved 0)
+  => none")
 
 (document (comment form ...)
   "Keeps forms in the source that never expand, check or run.
 
   The call is unit, so a file can hold scratch expressions to evaluate one at
-  a time from an editor.")
+  a time from an editor.
+
+  (comment (never checked))
+  => (do) ...")
 
 (document (-> value form ...)
   "Threads a value through each form as its first argument.
 
   `(-> 3 (- 10) (* 2))` is `(* (- 3 10) 2)`. A bare name in place of a form is
-  called with the value alone.")
+  called with the value alone.
+
+  (-> 3 (- 10) (* 2))
+  => -14
+
+  (-> 3 (- 10) neg)
+  => 7")

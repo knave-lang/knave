@@ -2221,7 +2221,9 @@ impl<'a> ExpressionEmitter<'a> {
             {
                 Some(self.borrowed_operand(place, context))
             }
-            _ if self.is_borrowed_index_call(&argument.value) => {
+            _ if argument.borrow == Borrow::None
+                && self.is_borrowed_index_call(&argument.value) =>
+            {
                 Some(self.place(&argument.value, context))
             }
             _ => None,

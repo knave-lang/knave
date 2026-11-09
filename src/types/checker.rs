@@ -165,6 +165,7 @@ pub struct TypeChecker {
     pub(super) locals: FxHashMap<BindingId, Type>,
     pub(super) variant_arm: FxHashMap<BindingId, VariantArmReference>,
     pub(super) unchecked: FxHashSet<BindingId>,
+    entry_function: Option<BindingId>,
     pub(super) unreached_prelude: Rc<FxHashSet<BindingId>>,
     failed_bindings: FxHashSet<BindingId>,
     bindings_after_errors: FxHashSet<BindingId>,
@@ -263,6 +264,7 @@ impl TypeChecker {
             locals: FxHashMap::default(),
             variant_arm: FxHashMap::default(),
             unchecked: FxHashSet::default(),
+            entry_function: None,
             unreached_prelude: Rc::default(),
             failed_bindings: FxHashSet::default(),
             bindings_after_errors: FxHashSet::default(),
@@ -591,6 +593,7 @@ impl TypeChecker {
     ) -> FxHashMap<BindingId, TypedDefinition> {
         let dependencies = graph.dependencies();
         self.unchecked = dependencies.unchecked(entry_function.as_slice());
+        self.entry_function = entry_function;
         self.unreached_prelude = graph.unreached();
         let by_binding: FxHashMap<BindingId, &Definition> = graph
             .definitions()
@@ -1267,9 +1270,34 @@ impl TypeChecker {
             .map(|(_, value)| value.span)
             .expect("a recursive group has at least one member");
         self.link_bounded_vars(&vars, span);
+        self.settle_entry_success(members, span);
         let pinnable_vars = self.pinnable_vars(members);
         self.generalize_vars(vars, start, span, &pinnable_vars);
         self.discharge_obligations(ObligationPass::Deferring);
+    }
+
+    fn settle_entry_success(&mut self, members: &[(BindingId, &TypedExpr)], span: Span) {
+        let entry = members
+            .iter()
+            .find(|(binding, _)| Some(*binding) == self.entry_function);
+        if let Some(success) = entry.and_then(|(_, value)| self.open_result_success(&value.ty)) {
+            self.unifier.unify(&success, &Type::unit(), span).ok();
+        }
+    }
+
+    fn open_result_success(&self, function: &Type) -> Option<Type> {
+        let Type::Function(_, _, result) = self.unifier.resolve(function) else {
+            return None;
+        };
+        let Type::Named(binding, arguments) = *result else {
+            return None;
+        };
+        let [success, _] = arguments.as_slice() else {
+            return None;
+        };
+        let success = self.unifier.shallow(success);
+        let open = matches!(success, Type::Var(var) if self.unifier.bounds(var).is_empty());
+        (open && self.enums.get(binding)?.is_result_shaped()).then_some(success)
     }
 
     fn pinnable_vars(&self, members: &[(BindingId, &TypedExpr)]) -> FxHashSet<TypeVar> {

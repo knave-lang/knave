@@ -411,6 +411,15 @@ mod tests {
             names.collect()
         }
 
+        fn encoded_macro_helpers(program: &Program) -> Vec<BindingId> {
+            program
+                .macro_helpers
+                .iter()
+                .copied()
+                .filter(|helper| !program.bindings.is_decoded(*helper))
+                .collect()
+        }
+
         fn defined_binding(program: &Program, name: &str) -> BindingId {
             program
                 .modules
@@ -524,12 +533,14 @@ mod tests {
     #[test]
     fn listing_the_prelude_macro_helpers_decodes_no_binding() {
         let program = LoadedProgram::expand(LoadedProgram::EMPTY);
-        let helpers = program.prelude_macro_helpers();
-        let helper = helpers
-            .iter()
-            .next()
-            .expect("the prelude has macro helpers");
-        assert!(!program.bindings.is_decoded(*helper));
+        let encoded = LoadedProgram::encoded_macro_helpers(&program);
+        assert!(!encoded.is_empty());
+        program.prelude_macro_helpers();
+        assert!(
+            encoded
+                .iter()
+                .all(|helper| !program.bindings.is_decoded(*helper))
+        );
     }
 
     #[test]

@@ -36,14 +36,23 @@ impl ModuleSources {
     pub const TEST: &str = "prelude/test";
     pub const PROJECT_SHAPES: &str = "prelude/project";
     const PRELUDE_DIRECTORY: &str = "prelude/";
+    const INTERNAL_DIRECTORY: &str = "prelude/internal/";
     const BYTE_ORDER_MARK: char = '\u{feff}';
-    const PRELUDE_FILES: [(&str, &str); 22] = [
+    const PRELUDE_FILES: [(&str, &str); 24] = [
         ("prelude", include_str!("../../prelude/prelude.rslisp")),
+        (
+            "prelude/internal/macros",
+            include_str!("../../prelude/internal/macros.rslisp"),
+        ),
         (
             "prelude/macros",
             include_str!("../../prelude/macros.rslisp"),
         ),
         ("prelude/logic", include_str!("../../prelude/logic.rslisp")),
+        (
+            "prelude/internal/syntax",
+            include_str!("../../prelude/internal/syntax.rslisp"),
+        ),
         (
             "prelude/syntax",
             include_str!("../../prelude/syntax.rslisp"),
@@ -161,6 +170,10 @@ impl ModuleSources {
 
     pub fn is_prelude(path: &ModulePath) -> bool {
         path.as_str() == Self::PRELUDE || path.as_str().starts_with(Self::PRELUDE_DIRECTORY)
+    }
+
+    pub fn is_internal(path: &ModulePath) -> bool {
+        path.as_str().starts_with(Self::INTERNAL_DIRECTORY)
     }
 
     pub fn is_embedded_prelude(path: &ModulePath) -> bool {

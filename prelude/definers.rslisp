@@ -1,8 +1,10 @@
-(use prelude/macros defmacro documented-body? header-shape
-                    map-list module note-docstring template
-                    type-doc-key)
+(use prelude/macros defmacro header-shape map-list module
+                    template)
 
-(use prelude/syntax declared-name type-missing?)
+(use prelude/internal/macros documented-body? note-docstring
+                             type-doc-key)
+
+(use prelude/internal/syntax declared-name type-missing?)
 
 (use code bool-not concat declare-definition
           declare-type-definition drop empty? fail first

@@ -1,4 +1,5 @@
-(use prelude/macros defmacro document template whole-pairs?)
+(use prelude/macros defmacro document template)
+(use prelude/internal/macros whole-pairs?)
 (use prelude/syntax let)
 
 (use code bool-not concat drop empty? fail field-keyword

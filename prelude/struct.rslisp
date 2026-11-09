@@ -1,13 +1,17 @@
-(use prelude/macros defmacro documented-body? header-shape
-                    map-list note-docstring template
-                    type-doc-key)
+(use prelude/macros defmacro header-shape map-list template)
 
-(use prelude/syntax call-signature declared-forms
-                    declared-name default-bindings
-                    default-pairs defaults-clause?
-                    definition defn has-argument? pair-keys
-                    read-call signature-defaults
-                    signature-name type-missing?)
+(use prelude/internal/macros documented-body? note-docstring
+                             type-doc-key)
+
+(use prelude/syntax defn)
+
+(use prelude/internal/syntax call-signature declared-forms
+                             declared-name default-bindings
+                             default-pairs defaults-clause?
+                             definition has-argument?
+                             pair-keys read-call
+                             signature-defaults
+                             signature-name type-missing?)
 
 (use code concat declare-macro-definition
           declare-type-definition drop empty? fail first

@@ -3,5 +3,10 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/runtime_call_to_a_macro_helper.rslisp
 ---
-(type parameter-record (where (a) (fn () (fn ((fn ((ref str) (ref str) i64 i64) a)) a))))
-(type main (fn () unit))
+error[L0412]: `empty?` only exists at compile time
+  --> prelude/macros.rslisp:33:10
+   |
+33 |     (if (empty? items)
+   |          ^^^^^^ used in code that runs in the program
+   |
+   = note: definitions that use the `code` module or `quote` can only be used by macros

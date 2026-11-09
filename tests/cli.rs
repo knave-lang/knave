@@ -1718,7 +1718,7 @@ fn doc_prints_the_page_of_a_prelude_term() {
     let doc = sandbox.compiler(&["doc", "defn"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        "(defmacro defn (name parameters body ...))\n\nDefines a function: (defn name (parameter ...) body ...).\n\nA string before at least one more body form is the docstring.\n"
+        "(defmacro defn (name parameters body ...))\n\nDefines a function: (defn name (parameter ...) body ...).\n\nA string before at least one more body form is the docstring.\n\n```\n(defn twice (x) \"Doubles a number.\" (* 2 x))\n(twice 4)\n=> 8\n```\n"
     );
 }
 

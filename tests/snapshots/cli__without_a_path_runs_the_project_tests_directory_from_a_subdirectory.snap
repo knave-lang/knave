@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
 running 3 tests
-test greets/reads-the-test-greeting ... ok
 test parse/parses ... ok
+test parser/parses-itself ... ok
 test shout/shouts ... ok
 3 passed, 0 failed

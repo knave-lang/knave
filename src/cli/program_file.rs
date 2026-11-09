@@ -101,7 +101,7 @@ impl ProgramFile {
         path.parent().map(Path::to_path_buf).unwrap_or_default()
     }
 
-    fn relative_module(path: &Path, root: &Path) -> Option<String> {
+    pub fn relative_module(path: &Path, root: &Path) -> Option<String> {
         let directory = Self::canonical(&Self::directory_of(path))?;
         let relative_directory = directory.strip_prefix(Self::canonical(root)?).ok()?;
         Self::module_name(&relative_directory.join(path.file_name()?))

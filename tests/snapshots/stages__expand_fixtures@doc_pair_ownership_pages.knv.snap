@@ -3,6 +3,6 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/doc_pair_ownership_pages.knv
 ---
-(def pair-page "(pair a b)\n\nBuilds a pair of two values.\n\n`pair` is also the type `(pair a b)`, Rust's `(A, B)`. In a `match` or a\n`let-match`, `(pair x y)` is the pattern that binds the parts.")
-(def clone-page "(clone value)\n\nReturns a copy of a value that owns its own data.\n\nIt takes a borrow, so `value` stays usable. A `str` has no `clone`:\n`(str text)` builds a `string` from it. `clone` is also the trait, Rust's\n`Clone`.")
-(def copy-page "copy\n\nMarks a type whose values copy where another type would move.\n\n`bool`, `char`, `unit`, the number types and `(ref a)` implement it, and an\n`option`, a `result` or a `pair` of such types does. `string` and `vec` do\nnot. A struct or an enum of `copy` fields that the program never changes in\nplace is `copy` too.")
+(def pair-page "(pair a b)\n\nBuilds a pair of two values.\n\n`pair` is also the type `(pair a b)`, Rust's `(A, B)`. In a `match` or a\n`let-match`, `(pair x y)` is the pattern that binds the parts.\n\n(match (pair 1 2)\n  ((pair left right) (+ left right)))\n=> 3\n\n(pair 1 \"a\")\n=> (pair 1 \"a\")")
+(def clone-page "(clone value)\n\nReturns a copy of a value that owns its own data.\n\nIt takes a borrow, so `value` stays usable. A `str` has no `clone`:\n`(str text)` builds a `string` from it. `clone` is also the trait, Rust's\n`Clone`.\n\n(local word (str \"pear\"))\n(clone word)\n=> \"pear\"\n\n(len word)\n=> 4")
+(def copy-page "copy\n\nMarks a type whose values copy where another type would move.\n\n`bool`, `char`, `unit`, the number types and `(ref a)` implement it, and an\n`option`, a `result` or a `pair` of such types does. `string` and `vec` do\nnot. A struct or an enum of `copy` fields that the program never changes in\nplace is `copy` too.\n\n(infer copied)\n=> \"(where ((a copy)) (fn ((ref (slice a))) (iterator a)))\"")

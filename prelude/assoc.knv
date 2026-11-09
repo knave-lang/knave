@@ -24,7 +24,13 @@
   when the index is out of bounds. A map key has the type of the map's keys: a
   string literal is a `(ref str)`, so a `string` key takes `(str \"name\")`,
   and a `(ref str)` key takes a literal or `(as-str name)`. A map adds a
-  missing key."
+  missing key.
+
+  (assoc (vec 1 2) 0 9)
+  => (vec 9 2)
+
+  (len (assoc (sorted-map \"pear\" 3) \"fig\" 1))
+  => 2"
   (local arguments (prepend key more))
   (if (keyword? key)
     (struct-update value arguments)
@@ -194,7 +200,14 @@
   map's keys: a string literal is a `(ref str)`, so a `string` key takes
   `(str \"name\")`, and a `(ref str)` key takes a literal or `(as-str name)`.
 
-  A path of only index or map key steps moves the collection."
+  A path of only index or map key steps moves the collection.
+
+  (assoc-in (vec (vec 1 2) (vec 3)) (1 0) 7)
+  => (vec (vec 1 2) (vec 7))
+
+  (local scores (assoc-in (sorted-map \"ana\" 1) (\"bo\") 7))
+  (get scores \"bo\")
+  => (some (ref 7))"
   (local root (read-root value))
   (if (bound-root? root value step)
     (list (quote let)
@@ -275,4 +288,12 @@
 
   `key` has the type of the map's keys: a string literal is a `(ref str)`, so
   a `string` key takes `(str \"name\")`, and a `(ref str)` key takes
-  `(as-str name)`.")
+  `(as-str name)`.
+
+  (local scores (update (sorted-map \"ana\" 1) \"ana\" (fn (n) (+ n 1)) 0))
+  (get scores \"ana\")
+  => (some (ref 2))
+
+  (local more (update scores \"bo\" (fn (n) (+ n 1)) 0))
+  (get more \"bo\")
+  => (some (ref 1))")

@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: add.assert_exit_code(2).stderr()
+---
+error: `fake-json` is listed with `:path`
+help: run `knave remove fake-json` first to switch it to a version

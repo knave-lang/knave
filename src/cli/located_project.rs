@@ -174,7 +174,14 @@ impl LocatedProject {
         format!("{:08x}", hash & Self::SHORT_HASH_MASK)
     }
 
-    fn project_file(&self) -> PathBuf {
+    pub fn own_crate(&self, name: &str) -> Option<&CrateDependency> {
+        self.project
+            .dependencies
+            .iter()
+            .find(|dependency| dependency.name == name)
+    }
+
+    pub fn project_file(&self) -> PathBuf {
         self.root.join(Language::project_file_name())
     }
 

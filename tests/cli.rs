@@ -223,11 +223,18 @@ impl Sandbox {
     const PIPE_OVERFLOWING_GREETING_REPEATS: usize = 1 << 18;
     const PIPE_OVERFLOWING_INPUT_BYTES: usize = 1 << 20;
     const READ_ONLY: u32 = 0o444;
+    const PRIVATE_FILE: u32 = 0o600;
     const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
     const CACHE_HOME_VARIABLE: &str = "XDG_CACHE_HOME";
     const CACHE_DIRECTORY: &str = "cache";
     const GIT_MESSAGE: &str = "git says:";
     const SANDBOX_MASK: &str = "<sandbox>";
+    const TRANSLATING_CARGO: &str = r#"#!/bin/sh
+printf '\n[dependencies]\nfake_json = "1.0.0"\n' >> Cargo.toml
+"#;
+    const VERSIONLESS_CARGO: &str = r#"#!/bin/sh
+printf '\n[dependencies]\nfake-json = { path = "elsewhere" }\n' >> Cargo.toml
+"#;
     const BIN_NAME_PREFIX: &str = "name = \"app-";
     const LINKED_LIBRARY: &str = "linked-lib";
     const LINKED_MODULE: &str = "linked-module";
@@ -549,6 +556,50 @@ impl Sandbox {
             }
             None => line.to_string(),
         }
+    }
+
+    fn with_fake_registry(self) -> Self {
+        Self::copy_tree(
+            &Path::new(Self::FIXTURES).join("registry"),
+            &self.directory.join("registry"),
+        );
+        let config = format!(
+            "[source.crates-io]\nreplace-with = \"fixtures\"\n\n[source.fixtures]\ndirectory = \"{}\"\n",
+            self.directory.join("registry").display()
+        );
+        self.with_file("cargo-home/config.toml", &config)
+            .with_file(&Language::project_file_name(), "(project demo)\n")
+            .with_file(
+                &format!("src/main.{}", Language::EXTENSION),
+                "(defn main ()\n  (println \"hi\"))\n",
+            )
+    }
+
+    fn compiler_with_registry(&self, arguments: &[&str]) -> Outcome {
+        let mut command = self.command(Path::new(Self::COMPILER), arguments);
+        command.env("CARGO_HOME", self.directory.join("cargo-home"));
+        Outcome::of(&mut command)
+    }
+
+    fn compiler_with_translating_cargo(&self, arguments: &[&str]) -> Outcome {
+        self.compiler_with_fake_cargo(Self::TRANSLATING_CARGO, arguments)
+    }
+
+    fn compiler_with_fake_cargo(&self, script: &str, arguments: &[&str]) -> Outcome {
+        let fake_cargo = self.directory.join("translating-bin/cargo");
+        fs::create_dir_all(fake_cargo.parent().expect("the fake cargo has a directory"))
+            .expect("the sandbox accepts directories");
+        fs::write(&fake_cargo, script).expect("the sandbox accepts files");
+        fs::set_permissions(&fake_cargo, fs::Permissions::from_mode(Self::EXECUTABLE))
+            .expect("the sandbox sets permissions");
+        let mut command = self.command(Path::new(Self::COMPILER), arguments);
+        command.env("PATH", self.directory.join("translating-bin"));
+        Outcome::of(&mut command)
+    }
+
+    fn project_file_text(&self) -> String {
+        fs::read_to_string(self.directory.join(Language::project_file_name()))
+            .expect("the project file is readable")
     }
 
     fn check_fixture(directory: &str) -> Outcome {
@@ -6529,4 +6580,276 @@ fn test_of_a_file_in_a_project_with_crates_says_it_cannot_use_them_yet() {
             .stderr()
             .starts_with("error[L0719]: `test` cannot use crate dependencies yet")
     );
+}
+
+#[test]
+fn add_writes_a_crate_with_the_version_cargo_picks_and_its_features() {
+    let sandbox = Sandbox::new("add_crate").with_fake_registry();
+    sandbox
+        .compiler_with_registry(&["add", "fake-json", "--features", "derive,std"])
+        .assert_silent_success();
+    insta::assert_snapshot!(sandbox.project_file_text());
+    sandbox.compiler(&["check"]).assert_silent_success();
+}
+
+#[test]
+fn add_keeps_the_features_a_listed_crate_has() {
+    let sandbox = Sandbox::new("add_listed_crate").with_fake_registry();
+    sandbox
+        .compiler_with_registry(&["add", "fake-json", "--features", "derive"])
+        .assert_silent_success();
+    sandbox
+        .compiler_with_registry(&["add", "fake-json", "--features", "std"])
+        .assert_silent_success();
+    assert!(
+        sandbox
+            .project_file_text()
+            .contains(":features (\"derive\" \"std\")")
+    );
+}
+
+#[test]
+fn add_of_a_crate_cargo_cannot_find_prints_cargo_text() {
+    let sandbox = Sandbox::new("add_unknown_crate").with_fake_registry();
+    let stderr = sandbox
+        .compiler_with_registry(&["add", "no-such-crate"])
+        .assert_exit_code(2)
+        .stderr();
+    assert!(
+        stderr.starts_with("error: the crate `no-such-crate` could not be found"),
+        "{stderr}"
+    );
+    assert_eq!(sandbox.project_file_text(), "(project demo)\n");
+}
+
+#[test]
+fn add_outside_a_project_is_a_usage_error() {
+    let sandbox = Sandbox::new("add_outside_project");
+    insta::assert_snapshot!(
+        sandbox
+            .compiler(&["add", "fake-json"])
+            .assert_exit_code(2)
+            .stderr()
+    );
+}
+
+#[test]
+fn add_without_cargo_is_an_environment_error() {
+    let sandbox = Sandbox::new("add_no_cargo").with_fake_registry();
+    let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["add", "fake-json"]);
+    command.env("PATH", sandbox.directory.join("no-tools"));
+    let stderr = Outcome::of(&mut command).assert_exit_code(2).stderr();
+    assert!(
+        stderr.starts_with("error: cannot run cargo, which finds the version of a crate to add: "),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn remove_deletes_the_entry_and_the_emptied_section() {
+    let sandbox = Sandbox::new("remove_crate").with_fake_registry();
+    sandbox
+        .compiler_with_registry(&["add", "fake-json"])
+        .assert_silent_success();
+    sandbox
+        .compiler(&["remove", "fake-json"])
+        .assert_silent_success();
+    assert_eq!(sandbox.project_file_text(), "(project demo)\n");
+}
+
+#[test]
+fn remove_of_a_crate_the_project_does_not_list_is_a_usage_error() {
+    let sandbox = Sandbox::new("remove_unlisted").with_fake_registry();
+    let remove = sandbox.compiler(&["remove", "fake-json"]);
+    insta::assert_snapshot!(remove.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn add_of_a_feature_a_crate_already_has_lists_it_once() {
+    let sandbox = Sandbox::new("add_same_feature").with_fake_registry();
+    for _ in 0..2 {
+        sandbox
+            .compiler_with_registry(&["add", "fake-json", "--features", "derive"])
+            .assert_silent_success();
+    }
+    assert!(
+        sandbox
+            .project_file_text()
+            .contains(":features (\"derive\")")
+    );
+}
+
+#[test]
+fn add_of_a_feature_cargo_cannot_find_prints_cargo_text() {
+    let sandbox = Sandbox::new("add_unknown_feature").with_fake_registry();
+    let add = sandbox.compiler_with_registry(&["add", "fake-json", "--features", "nope"]);
+    let stderr = add.assert_exit_code(2).stderr();
+    assert!(stderr.contains("nope"), "{stderr}");
+    assert_eq!(sandbox.project_file_text(), "(project demo)\n");
+}
+
+#[test]
+fn remove_keeps_a_comment_before_the_entry() {
+    let sandbox = Sandbox::new("remove_after_comment").with_fake_registry().with_file(
+        &Language::project_file_name(),
+        "(project demo\n  (dependencies ; first\n    (other \"1.0\")\n    ; json\n    (fake-json \"1.4.2\")))\n",
+    );
+    sandbox
+        .compiler(&["remove", "fake-json"])
+        .assert_silent_success();
+    insta::assert_snapshot!(sandbox.project_file_text());
+}
+
+#[test]
+fn add_of_a_name_that_is_not_a_crate_name_is_a_usage_error() {
+    let sandbox = Sandbox::new("add_bad_name").with_fake_registry();
+    for name in ["--path=x", "a b", "fake-json@1.4", "-quiet"] {
+        let stderr = sandbox
+            .compiler_with_registry(&["add", "--", name])
+            .assert_exit_code(2)
+            .stderr();
+        assert_eq!(stderr, format!("error: `{name}` is not a crate name\n"));
+    }
+    assert_eq!(sandbox.project_file_text(), "(project demo)\n");
+}
+
+#[test]
+fn add_of_a_value_that_is_not_a_feature_name_is_a_usage_error() {
+    let sandbox = Sandbox::new("add_bad_feature").with_fake_registry();
+    for feature in ["derive std", "a/b/c", "/derive", "-x", "--dry-run"] {
+        let value = format!("--features={feature}");
+        let add = sandbox.compiler_with_registry(&["add", "fake-json", &value]);
+        assert_eq!(
+            add.assert_exit_code(2).stderr(),
+            format!("error: `{feature}` is not a feature name\n")
+        );
+    }
+    sandbox
+        .compiler_with_registry(&["add", "fake-json", "--features", "serde/std"])
+        .assert_exit_code(2);
+}
+
+#[test]
+fn add_of_a_crate_listed_with_a_path_is_a_usage_error() {
+    let project = "(project demo (dependencies (fake-json :path \"../fake-json\")))\n";
+    let sandbox = Sandbox::new("add_path_crate")
+        .with_fake_registry()
+        .with_file(&Language::project_file_name(), project);
+    let add = sandbox.compiler_with_registry(&["add", "fake-json"]);
+    insta::assert_snapshot!(add.assert_exit_code(2).stderr());
+    assert_eq!(sandbox.project_file_text(), project);
+}
+
+#[test]
+fn add_without_a_temporary_directory_is_an_environment_error() {
+    let sandbox = Sandbox::new("add_no_temporary_directory").with_fake_registry();
+    let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["add", "fake-json"]);
+    command
+        .env("CARGO_HOME", sandbox.directory.join("cargo-home"))
+        .env(
+            Sandbox::TEMPORARY_DIRECTORY_VARIABLE,
+            sandbox.directory.join("missing"),
+        );
+    let stderr = Outcome::of(&mut command).assert_exit_code(2).stderr();
+    assert!(
+        stderr.starts_with("error: cannot write a scratch manifest for cargo: "),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn add_to_a_project_in_a_read_only_directory_reports_the_file() {
+    let sandbox = Sandbox::new("add_read_only_project").with_fake_registry();
+    fs::set_permissions(
+        &sandbox.directory,
+        fs::Permissions::from_mode(Sandbox::UNWRITABLE_DIRECTORY),
+    )
+    .expect("the sandbox sets permissions");
+    let add = sandbox.compiler_with_registry(&["add", "fake-json"]);
+    fs::set_permissions(
+        &sandbox.directory,
+        fs::Permissions::from_mode(Sandbox::EXECUTABLE),
+    )
+    .expect("the sandbox sets permissions");
+    let stderr = add.assert_exit_code(2).stderr();
+    assert!(
+        stderr.starts_with(&format!(
+            "error: cannot write `{}`: ",
+            Language::project_file_name()
+        )),
+        "{stderr}"
+    );
+    assert_eq!(sandbox.project_file_text(), "(project demo)\n");
+}
+
+#[test]
+fn add_writes_the_crate_name_cargo_wrote() {
+    let sandbox = Sandbox::new("add_translated_name").with_fake_registry();
+    sandbox
+        .compiler_with_translating_cargo(&["add", "fake-json"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.project_file_text(),
+        "(project demo (dependencies (fake_json \"1.0.0\")))\n"
+    );
+}
+
+#[test]
+fn add_refuses_a_path_crate_listed_under_the_name_cargo_wrote() {
+    let project = "(project demo (dependencies (fake_json :path \"../fake-json\")))\n";
+    let sandbox = Sandbox::new("add_translated_path_crate")
+        .with_fake_registry()
+        .with_file(&Language::project_file_name(), project);
+    let stderr = sandbox
+        .compiler_with_translating_cargo(&["add", "fake-json"])
+        .assert_exit_code(2)
+        .stderr();
+    assert!(
+        stderr.starts_with("error: `fake_json` is listed with `:path`"),
+        "{stderr}"
+    );
+    assert_eq!(sandbox.project_file_text(), project);
+}
+
+#[test]
+fn add_keeps_the_project_file_link_and_mode() {
+    let sandbox = Sandbox::new("add_linked_project").with_fake_registry();
+    let real = sandbox.directory.join("real-project.knv");
+    fs::rename(sandbox.directory.join(Language::project_file_name()), &real)
+        .expect("the sandbox renames files");
+    std::os::unix::fs::symlink(
+        "real-project.knv",
+        sandbox.directory.join(Language::project_file_name()),
+    )
+    .expect("the sandbox accepts symbolic links");
+    fs::set_permissions(&real, fs::Permissions::from_mode(Sandbox::PRIVATE_FILE))
+        .expect("the sandbox sets permissions");
+    sandbox
+        .compiler_with_registry(&["add", "fake-json"])
+        .assert_silent_success();
+    let link = fs::symlink_metadata(sandbox.directory.join(Language::project_file_name()))
+        .expect("the link stays");
+    assert!(link.file_type().is_symlink());
+    let mode = fs::metadata(&real)
+        .expect("the file stays")
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(mode, Sandbox::PRIVATE_FILE);
+    assert!(
+        fs::read_to_string(&real)
+            .expect("the file is readable")
+            .contains("fake-json")
+    );
+}
+
+#[test]
+fn add_when_cargo_writes_no_version_is_an_environment_error() {
+    let sandbox = Sandbox::new("add_versionless").with_fake_registry();
+    let add = sandbox.compiler_with_fake_cargo(Sandbox::VERSIONLESS_CARGO, &["add", "fake-json"]);
+    assert_eq!(
+        add.assert_exit_code(2).stderr(),
+        "error: cargo added `fake-json` without a version\n"
+    );
+    assert_eq!(sandbox.project_file_text(), "(project demo)\n");
 }

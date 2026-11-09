@@ -71,6 +71,10 @@ impl CopiedMutReads {
             .collect()
     }
 
+    pub fn parameters(&self) -> FxHashSet<BindingId> {
+        self.changed_copies.clone()
+    }
+
     pub fn changed_at(&self, function: BindingId, position: usize) -> Option<ChangedCopy> {
         self.positions.get(&(function, position)).copied()
     }

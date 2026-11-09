@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/changed_copy_result_outlives_borrow.knv
+---
+3
+three

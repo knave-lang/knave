@@ -1,0 +1,9 @@
+(defn label! (x)
+  (set! x 3)
+  (if (= x 3) "three" "other"))
+
+(defn main ()
+  (local total 1)
+  (local name (label! total))
+  (println total)
+  (println name))

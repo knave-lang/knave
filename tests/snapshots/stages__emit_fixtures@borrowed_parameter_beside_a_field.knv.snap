@@ -75,6 +75,32 @@ fn is_held_file(p: &Page) -> bool {
     *held == p.file
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Window<'a> {
+    title: &'a str,
+}
+
+fn make_window(title: &str) -> Window<'_> {
+    Window { title }
+}
+
+fn is_titled(w: Window<'_>, target: &str) -> bool {
+    w.title == target
+}
+
+fn is_titled_a(windows: &[Window<'_>]) -> bool {
+    windows.iter().any(|w: &Window<'_>| w.title == "a")
+}
+
+fn retitle(p: &mut Page, target: &String) -> bool {
+    p.file = "b".to_string();
+    p.file == *target
+}
+
+fn is_owned_match(p: &Page, target: &String) -> bool {
+    p.file == *target
+}
+
 fn main() {
     crate::rt::restore_default_sigpipe();
     let items = vec![make_page("a".to_string(), vec!["t".to_string()])];
@@ -91,7 +117,15 @@ fn main() {
     println!("{}", is_same_three(&items[0], "a".to_string()));
     println!("{}", is_announced(&items[0], &"a".to_string()));
     println!("{}", is_named_a(&items[0]));
-    println!("{}", is_held_file(&items[0]))
+    println!("{}", is_held_file(&items[0]));
+    let title = "a".to_string();
+    println!("{}", is_titled(make_window("a"), title.as_str()));
+    let mut windows = vec![make_window("b")];
+    windows.push(make_window("a"));
+    println!("{}", is_titled_a(&windows));
+    let mut page = make_page("a".to_string(), vec!["t".to_string()]);
+    println!("{}", retitle(&mut page, &"b".to_string()));
+    println!("{}", is_owned_match(&items[0], &title))
 }
 
 mod rt {

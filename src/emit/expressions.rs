@@ -189,6 +189,7 @@ impl<'a> ExpressionEmitter<'a> {
     const STRING_GUARD_BINDING: &'static str = "text";
     const BOX_BINDING: &'static str = "inner";
     const MAP_UPDATE_TEMPLATE: &'static str = "@map-update";
+    const COMPARED_OPERANDS: usize = 2;
     const INTEGER_CONVERSION: &'static str = "from_literal";
     const FLOAT_CONVERSION: &'static str = "from_float_literal";
 
@@ -2076,14 +2077,17 @@ impl<'a> ExpressionEmitter<'a> {
             .iter()
             .map(|role| *role == ArgumentRole::MutPlace)
             .collect();
-        let operand_derefs = self.operand_derefs(&parsed, arguments, &roles);
+        let compared = self.compares_borrowed_operands(&parsed, &roles);
         let mut codes: Vec<Code> = arguments
             .iter()
             .zip(&roles)
-            .zip(operand_derefs)
-            .map(|((argument, role), levels)| {
+            .map(|(argument, role)| {
                 let code = self.argument(argument, context, *role);
-                Self::dereferenced(code, levels).spanned(argument.value.span)
+                if !compared {
+                    return code;
+                }
+                let levels = self.depth_above_shallowest((argument, *role), arguments, &roles);
+                Self::dereferenced(code, levels, argument.value.span)
             })
             .collect();
         for (position, argument) in arguments.iter().enumerate() {
@@ -2107,74 +2111,78 @@ impl<'a> ExpressionEmitter<'a> {
         code
     }
 
-    fn operand_derefs(
-        &self,
-        template: &Template,
-        arguments: &[TypedArgument],
-        roles: &[ArgumentRole],
-    ) -> Vec<usize> {
-        let operands: Vec<Option<(Type, usize)>> = arguments
-            .iter()
-            .zip(roles)
-            .map(|(argument, role)| {
-                (template.is_binary_operation() && *role == ArgumentRole::Borrowed)
-                    .then(|| self.emitted_operand(argument))
-            })
-            .collect();
-        operands
-            .iter()
-            .map(|operand| {
-                operand.as_ref().map_or(0, |operand| {
-                    Self::depth_above_shallowest(operand, &operands)
-                })
-            })
-            .collect()
-    }
-
-    fn emitted_operand(&self, argument: &TypedArgument) -> (Type, usize) {
-        let referent = argument
-            .value
-            .ty
-            .innermost_referent()
-            .without_written_lifetimes();
-        (referent, self.emitted_depth(argument))
+    fn compares_borrowed_operands(&self, template: &Template, roles: &[ArgumentRole]) -> bool {
+        roles.len() >= Self::COMPARED_OPERANDS
+            && roles.contains(&ArgumentRole::Borrowed)
+            && template.is_binary_operation()
     }
 
     fn depth_above_shallowest(
-        (referent, depth): &(Type, usize),
-        operands: &[Option<(Type, usize)>],
+        &self,
+        (operand, role): (&TypedArgument, ArgumentRole),
+        arguments: &[TypedArgument],
+        roles: &[ArgumentRole],
     ) -> usize {
-        let shallowest = operands
+        let referent = operand.value.ty.innermost_referent();
+        let depth = self.emitted_depth(operand, role);
+        let shallowest = arguments
             .iter()
-            .flatten()
-            .filter(|(other, _)| other == referent)
-            .map(|(_, other_depth)| *other_depth)
+            .zip(roles)
+            .filter(|(other, _)| other.value.ty.innermost_referent() == referent)
+            .map(|(other, role)| self.emitted_depth(other, *role))
             .min()
-            .unwrap_or(*depth);
+            .unwrap_or(depth);
         depth - shallowest
     }
 
-    fn emitted_depth(&self, argument: &TypedArgument) -> usize {
-        let depth = argument.value.ty.reference_depth();
+    fn emitted_depth(&self, argument: &TypedArgument, role: ArgumentRole) -> usize {
+        let value = &argument.value;
         match argument.borrow {
-            Borrow::Deref(levels) | Borrow::Collapse(levels) => depth.saturating_sub(levels),
-            _ if self.emits_place(&argument.value) => depth.saturating_sub(1),
-            _ => depth,
+            Borrow::Deref(levels) | Borrow::Collapse(levels) => {
+                value.ty.reference_depth().saturating_sub(levels)
+            }
+            Borrow::Shared | Borrow::Mutable if !Self::borrowed_already(argument, role) => {
+                value.ty.reference_depth() + 1
+            }
+            _ if role == ArgumentRole::Borrowed => self
+                .place_depth(value)
+                .unwrap_or_else(|| value.ty.reference_depth()),
+            _ => value.ty.reference_depth(),
         }
     }
 
-    fn emits_place(&self, value: &TypedExpr) -> bool {
-        matches!(
-            value.kind,
-            TypedExprKind::Struct(TypedStructExpr::Field(..))
-        ) || self.is_borrowed_index_call(value)
+    fn place_depth(&self, value: &TypedExpr) -> Option<usize> {
+        match &value.kind {
+            TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) => {
+                self.declared_field_depth(owner, &label.name)
+            }
+            _ if self.is_borrowed_index_call(value) => {
+                Some(value.ty.reference_depth().saturating_sub(1))
+            }
+            _ => None,
+        }
     }
 
-    fn dereferenced(code: Code, levels: usize) -> Code {
+    fn declared_field_depth(&self, owner: &TypedExpr, field: &str) -> Option<usize> {
+        let mut owner_type = &owner.ty;
+        while let Type::Ref(_, inner) | Type::Mut(_, inner) = owner_type {
+            owner_type = inner;
+        }
+        let Type::Named(binding, _) = owner_type else {
+            return None;
+        };
+        self.program
+            .structs
+            .get(*binding)?
+            .field(field)
+            .map(Type::reference_depth)
+    }
+
+    fn dereferenced(code: Code, levels: usize, span: Span) -> Code {
         if levels == 0 {
             return code;
         }
-        Self::prefixed(&"*".repeat(levels), code)
+        Self::prefixed(&"*".repeat(levels), code).spanned(span)
     }
 
     fn with_fresh_template_binders(&mut self, template: &Template) -> Template {

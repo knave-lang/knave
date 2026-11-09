@@ -49,6 +49,28 @@
   (local held (ref name))
   (= held (:file p)))
 
+(defstruct window
+  :title (ref str))
+
+(defn titled? (w target)
+  (= (:title w) target))
+
+(defn titled-a? (windows)
+  (any? (iter windows)
+        (fn (w) (= (:title w) "a"))))
+
+(defn retitle! (p target)
+  (set! (:file p) (str "b"))
+  (= (:file p) target))
+
+(def equals-owned
+  (rust "{&0} == {1}"
+    (where ((a (partial-eq b)) b)
+      (fn (a b) bool))))
+
+(defn owned-match? (p target)
+  (equals-owned (:file p) target))
+
 (defn main ()
   (local items
     (vec (->page (str "a") (vec (str "t")))))
@@ -66,4 +88,13 @@
   (println (same-three? (at items 0) (str "a")))
   (println (announced? (at items 0) (str "a")))
   (println (named-a? (at items 0)))
-  (println (held-file? (at items 0))))
+  (println (held-file? (at items 0)))
+  (local title (str "a"))
+  (println (titled? (->window "a") (as-str title)))
+  (local windows (vec (->window "b")))
+  (push! windows (->window "a"))
+  (println (titled-a? windows))
+  (local page
+    (->page (str "a") (vec (str "t"))))
+  (println (retitle! (mut page) (str "b")))
+  (println (owned-match? (at items 0) (ref title))))

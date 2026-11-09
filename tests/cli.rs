@@ -493,6 +493,15 @@ impl Sandbox {
         }
     }
 
+    fn compiler_in_fixture(directory: &str, arguments: &[&str]) -> Outcome {
+        let mut command = Command::new(Self::COMPILER);
+        command
+            .args(arguments)
+            .current_dir(Path::new(Self::FIXTURES).join(directory))
+            .stdin(Stdio::null());
+        Outcome::of(&mut command)
+    }
+
     fn compared_run(
         &self,
         scenario: &str,
@@ -6365,6 +6374,24 @@ fn a_crate_build_without_cargo_is_an_environment_error() {
 }
 
 #[test]
+fn eval_in_a_project_with_crates_says_it_cannot_use_them_yet() {
+    let eval = Sandbox::compiler_in_fixture("crates/app", &["eval", "src/main.rslisp", "1"]);
+    insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn repl_in_a_project_with_crates_says_it_cannot_use_them_yet() {
+    let repl = Sandbox::compiler_in_fixture("crates/app", &["repl"]);
+    insta::assert_snapshot!(repl.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn test_in_a_project_with_crates_says_it_cannot_use_them_yet() {
+    let test = Sandbox::compiler_in_fixture("crates/app", &["test", "src"]);
+    insta::assert_snapshot!(test.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn crate_requests_that_cannot_merge_are_an_error() {
     let check = Sandbox::check_fixture("crates/conflict-app");
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
@@ -6497,4 +6524,34 @@ fn a_build_uses_the_project_cargo_lock() {
     sandbox.compiler_in("app", &["build"]).assert_exit_code(0);
     let kept = fs::read_to_string(&lock).expect("the lock file stays");
     assert!(kept.contains("version = 3"), "{kept}");
+}
+
+#[test]
+fn eval_names_the_library_that_adds_crates() {
+    let eval =
+        Sandbox::compiler_in_fixture("crates/library-eval-app", &["eval", "src/main.rslisp", "1"]);
+    insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn eval_with_a_root_in_a_project_with_crates_says_it_cannot_use_them_yet() {
+    let eval = Sandbox::compiler_in_fixture(
+        "crates/app",
+        &["eval", "--root", "src", "src/main.rslisp", "1"],
+    );
+    assert!(
+        eval.assert_exit_code(1)
+            .stderr()
+            .starts_with("error[L0719]: `eval` cannot use crate dependencies yet")
+    );
+}
+
+#[test]
+fn test_of_a_file_in_a_project_with_crates_says_it_cannot_use_them_yet() {
+    let test = Sandbox::compiler_in_fixture("crates/app", &["test", "src/main.rslisp"]);
+    assert!(
+        test.assert_exit_code(1)
+            .stderr()
+            .starts_with("error[L0719]: `test` cannot use crate dependencies yet")
+    );
 }

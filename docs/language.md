@@ -591,7 +591,7 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
 - A crate dependency takes a version or a `:path`, and MAY take `:features`.
 - A library takes `:path`, or `:git` with `:rev`, and no version. `:rev` is a full 40-digit commit hash.
 - An unknown key or section is an error that suggests the closest name. A key, a section or a dependency given twice is an error.
-- The compiler reads and checks `dependencies` and `dev-dependencies`. Until the rest of RFC 0061 lands, a `dev-dependencies` section with entries is an error. An empty section is allowed.
+- The compiler reads and checks `dependencies` and `dev-dependencies`. Until the rest of RFC 0061 lands, a `dev-dependencies` section with entries is an error. `eval`, `repl` and `test` in a project that uses crates are an error too, labeled on the project's first crate, or on the library entry that adds crates. An empty section is allowed.
 
 **`knave new <name>` creates a project in a new directory of that name.** It writes `(project <name>)` and an entry at `src/main.rslisp` whose `main` prints `hello`. The name argument is checked first: a name that is not kebab-case is `L0718`, labeled on the argument. A path that already exists, or a file that cannot be written, is a usage error, and a failed write removes what `new` wrote.
 

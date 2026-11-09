@@ -49,6 +49,8 @@ enum ClassifiedInput {
 }
 
 impl ReplCommand {
+    const COMMAND: &str = "repl";
+
     pub fn new(root: Option<PathBuf>, profile: BuildProfile) -> Self {
         Self { root, profile }
     }
@@ -91,6 +93,9 @@ impl ReplCommand {
     fn prompt_file(&self, terminal: &Terminal) -> Result<ProgramFile, ExitStatus> {
         let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
         let project = LocatedProject::search_from(working_directory, terminal)?;
+        if let Some(project) = &project {
+            project.refuse_crates(Self::COMMAND, terminal)?;
+        }
         let root = match (&self.root, &project) {
             (Some(root), _) => root.clone(),
             (None, Some(project)) => project.source_root(),

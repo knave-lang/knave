@@ -30,12 +30,21 @@ impl TestEntries {
             Some(path) => TestTree::at(path.clone(), terminal)?,
             None => TestTree::of_working_project(terminal)?,
         };
+        tree.refuse_crates(terminal)?;
         tree.load(terminal)
     }
 }
 
 impl TestTree {
     const DIRECTORY_ENTRY: &'static str = "<tests>";
+    const COMMAND: &'static str = "test";
+
+    fn refuse_crates(&self, terminal: &Terminal) -> Result<(), ExitStatus> {
+        match &self.project {
+            Some(project) => project.refuse_crates(Self::COMMAND, terminal),
+            None => Ok(()),
+        }
+    }
 
     fn at(path: PathBuf, terminal: &Terminal) -> Result<Self, ExitStatus> {
         let project = LocatedProject::search_from(&path, terminal)?;

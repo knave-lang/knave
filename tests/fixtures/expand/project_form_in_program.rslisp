@@ -1,5 +1,5 @@
-(use prelude/project dependencies dev-dependencies libraries
-                     project)
+(use prelude/project-file dependencies dev-dependencies
+                          libraries project)
 
 (project demo)
 

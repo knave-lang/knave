@@ -1027,7 +1027,8 @@ impl<'a> ItemEmitter<'a> {
             .collect();
         let result = match &definition.value.ty {
             Type::Function(_, parameters, result) if !RustTypes::is_unit(result) => {
-                let position = self.result_position(parameters, inferred.as_deref());
+                let lending = self.lending_parameters(lambda, parameters);
+                let position = self.result_position(&lending, inferred.as_deref());
                 format!(" -> {}", types.show_in(result, position, &scope))
             }
             _ => String::new(),
@@ -1284,6 +1285,21 @@ impl<'a> ItemEmitter<'a> {
         let mut names = lifetimes.to_vec();
         names.extend(params.iter().map(RustTypes::generic_name));
         format!("<{}>", names.join(", "))
+    }
+
+    fn lending_parameters(&self, lambda: &TypedLambda, parameters: &[Type]) -> Vec<Type> {
+        lambda
+            .params
+            .iter()
+            .zip(parameters)
+            .filter(|(param, _)| {
+                !self
+                    .program
+                    .changed_copy_parameters
+                    .contains(&param.binding)
+            })
+            .map(|(_, parameter)| parameter.clone())
+            .collect()
     }
 
     fn result_position(&self, parameters: &[Type], inferred: Option<&str>) -> TypePosition {

@@ -121,6 +121,7 @@ impl OwnershipChecker {
         );
         let copied_reads = CopiedMutReads::new(&functions, &modes, &copy);
         rewrite.apply(program);
+        program.changed_copy_parameters = copied_reads.parameters();
         copied_reads.apply(program, rewrite.function_params());
         let copy = CopyRules::new(
             &program.traits,

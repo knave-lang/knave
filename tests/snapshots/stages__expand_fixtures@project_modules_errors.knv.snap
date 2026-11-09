@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/project_modules_errors.knv
+---
+error[L0311]: `project-modules` takes 0 arguments but 1 was given
+ --> expand/project_modules_errors.knv:4:17
+  |
+4 |   (macro (form) (project-modules 1)))
+  |                 ^^^^^^^^^^^^^^^^^^^ 1 argument given
+5 |
+6 | (def modules (extra-argument))
+  |              ---------------- in this macro call

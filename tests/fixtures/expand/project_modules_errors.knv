@@ -1,0 +1,6 @@
+(use code project-modules)
+
+(def extra-argument
+  (macro (form) (project-modules 1)))
+
+(def modules (extra-argument))

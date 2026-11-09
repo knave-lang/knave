@@ -7042,3 +7042,69 @@ fn test_calls_only_the_project_own_tests() {
         "running 1 test\ntest app/uses-double ... ok\n1 passed, 0 failed\n"
     );
 }
+
+#[test]
+fn test_of_a_module_that_asks_for_library_examples_runs_only_its_own_tests() {
+    let sandbox = Sandbox::new("test_asks_library").with_fixture_tree("libraries");
+    let test = sandbox.compiler_in("asks-library-app", &["test"]);
+    assert_eq!(
+        test.assert_exit_code(0).stdout(),
+        "running 1 test\ntest app/runs ... ok\n1 passed, 0 failed\n"
+    );
+}
+
+#[test]
+fn test_checks_the_docstring_examples_of_a_library() {
+    let sandbox = Sandbox::new("test_library_doc").with_fixture_tree("libraries");
+    let test = sandbox.compiler_in("doc-checked-app", &["test"]);
+    assert!(
+        test.assert_exit_code(1)
+            .stderr()
+            .starts_with("error[L0401]: mismatched types\n --> ../doc-checked/src/lib.knv:6:10\n")
+    );
+}
+
+#[test]
+fn library_examples_check_without_emitting_or_checking_the_project() {
+    let sandbox = Sandbox::new("library_examples_emit").with_fixture_tree("libraries");
+    let emit = sandbox.compiler_in("library-examples-app", &["emit"]);
+    let emitted = emit.assert_exit_code(0).stdout();
+    assert!(!emitted.contains("check_equal"), "{emitted}");
+    assert!(!emitted.contains("|| {"), "{emitted}");
+}
+
+#[test]
+fn run_tests_from_a_program_main_checks_only_project_examples() {
+    let sandbox = Sandbox::new("own_runner_check").with_fixture_tree("libraries");
+    sandbox
+        .compiler_in("own-runner-app", &["check"])
+        .assert_exit_code(0);
+}
+
+#[test]
+fn test_reports_library_and_project_example_errors_together() {
+    let sandbox = Sandbox::new("test_example_errors").with_fixture_tree("libraries");
+    let test = sandbox.compiler_in("unbound-example-app", &["test"]);
+    let stderr = test.assert_exit_code(1).stderr();
+    assert!(
+        stderr.contains("cannot find `absent-in-project` in this scope\n --> tests/app.knv:7:4\n"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.contains(
+            "cannot find `absent-in-library` in this scope\n --> ../unbound-example/src/lib.knv:6:4\n"
+        ),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn test_checks_the_tests_of_a_library() {
+    let sandbox = Sandbox::new("test_library_test").with_fixture_tree("libraries");
+    let test = sandbox.compiler_in("test-checked-app", &["test"]);
+    assert!(
+        test.assert_exit_code(1)
+            .stderr()
+            .starts_with("error[L0401]: mismatched types\n --> ../test-checked/src/lib.knv:8:22\n")
+    );
+}

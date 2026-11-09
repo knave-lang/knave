@@ -1,0 +1,12 @@
+(use prelude/test assert deftest)
+(use unbound-example same)
+
+(defn twice (n)
+  "Doubles `n`.
+
+  (absent-in-project 1)
+  => 2"
+  (* 2 n))
+
+(deftest uses-same
+  (assert (= (same (twice 1)) 2)))

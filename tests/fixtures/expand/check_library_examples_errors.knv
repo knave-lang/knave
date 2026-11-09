@@ -1,0 +1,3 @@
+(use prelude/test check-library-examples)
+
+(check-library-examples extra)

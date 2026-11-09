@@ -12,13 +12,15 @@
           keyword-name keyword? len list list? located
           module-exports module-notes module-symbol nth
           number-add number-lt number-sub prepend
-          project-modules read-form rest same-binding?
-          string string-drop string-length string-lines
-          string-strip-prefix string-strip-suffix
-          string-trim-end string-trim-start string? symbol
-          symbol-name symbol? value-eq)
+          program-modules project-modules read-form rest
+          same-binding? string string-drop string-length
+          string-lines string-strip-prefix
+          string-strip-suffix string-trim-end
+          string-trim-start string? symbol symbol-name
+          symbol? value-eq)
 
-(export assert deftest doctest run-tests)
+(export assert check-library-examples deftest doctest
+        run-tests)
 
 (def deftest
   (macro (form)
@@ -41,7 +43,8 @@
 (header-shape (deftest name) :docstring)
 
 (document (deftest name)
-  "Defines a test that `knave test` runs.
+  "Defines a test that `knave test` runs when its module belongs to the
+  project, not to a library.
 
   A string before at least one more body form is the docstring, whose first
   line a failure prints after the test's name. The test's function has an
@@ -237,6 +240,56 @@
                                   (fn (note) (test-run marker note))))
                 (finish-run (unquote marker))))))
 
+(def library-modules
+  (fn (own)
+    (mapped-concat (fn (module)
+                     (if (loaded-module? own module)
+                       (list)
+                       (list module)))
+                   (program-modules))))
+
+(def check-library-examples
+  (macro (form)
+    (check-library-examples-shape form)
+    (local examples
+      (program-doc-tests (library-modules (project-modules))))
+    (template (do
+                (splice (library-example-definitions examples 0 (list)))))))
+
+(def check-library-examples-shape
+  (fn (form)
+    (if (value-eq (len form) 1)
+      form
+      (fail "this use of `check-library-examples` does not match its shape"
+        form "write it as `(check-library-examples)`"))))
+
+(header-shape (check-library-examples))
+
+(document (check-library-examples)
+  "Checks the docstring examples of every library the program loads, without
+  running them.
+
+  Each example becomes a definition with an introduced name that nothing
+  calls, so the examples emit nothing. `knave test` writes it in the module
+  it generates beside its runner.")
+
+(def library-example-definitions
+  (fn (notes index found)
+    (if (empty? notes)
+      found
+      (recur (rest notes)
+             (number-add index 1)
+             (concat found
+                     (list (library-example-definition (first notes)
+                                                       index)))))))
+
+(def library-example-definition
+  (fn (module-note index)
+    (template (def (unquote (symbol (quote check-library-examples)
+                                    "library-example-"
+                                    index))
+                (unquote (note-function (rest module-note)))))))
+
 (def doctest
   (macro (form)
     (check-doctest-shape form)
@@ -271,20 +324,19 @@
 (def program-doc-tests
   (fn (modules)
     (concat (mapped-concat own-doc-tests modules)
-            (mapped-concat (fn (module) (asked-doc-tests modules module))
-                           modules))))
+            (mapped-concat asked-doc-tests modules))))
 
 (def own-doc-tests
   (fn (module) (module-doc-tests module module)))
 
 (def asked-doc-tests
-  (fn (modules module)
-    (mapped-concat (fn (asked) (asked-module-doc-tests modules asked))
+  (fn (module)
+    (mapped-concat asked-module-doc-tests
                    (module-notes module (quote doctests)))))
 
 (def asked-module-doc-tests
-  (fn (modules asked)
-    (if (loaded-module? modules (nth asked 1))
+  (fn (asked)
+    (if (loaded-module? (program-modules) (nth asked 1))
       (list)
       (module-doc-tests (module-symbol (nth asked 1))
                         (first asked)))))

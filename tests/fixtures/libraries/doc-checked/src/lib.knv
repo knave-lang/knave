@@ -1,0 +1,8 @@
+(export twice)
+
+(defn twice (n)
+  "Doubles `n`.
+
+  (twice \"two\")
+  => 4"
+  (* 2 n))

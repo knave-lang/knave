@@ -42,6 +42,10 @@ fn test_checks() {
     );
 }
 
+fn doubled(n: i64) -> i64 {
+    2 * n
+}
+
 fn main() {
     crate::rt::restore_default_sigpipe();
     crate::rt::note_untested("<record>", "stocked/shelf", 3_usize, "shelve stack");
@@ -52,6 +56,7 @@ fn main() {
             "test_runner_entry/counts",
             "test_runner_entry/checks",
             "stocked/shelf/restocks",
+            "test_runner_entry/doc:doubled",
         ],
     );
     crate::rt::run_test(
@@ -81,6 +86,21 @@ fn main() {
         "",
         "stocked/shelf.knv:11:1",
         crate::stocked::shelf::test_restocks,
+    );
+    crate::rt::run_test(
+        "<record>",
+        "test_runner_entry/doc:doubled",
+        "Doubles `n`.",
+        "test_runner_entry.knv:19:3",
+        || {
+            crate::rt::check_equal(
+                "test_runner_entry.knv:21:3",
+                "(doubled 2) => 4",
+                &doubled(2),
+                &4,
+                |left: &i64, right: &i64| *left == *right,
+            );
+        },
     );
     crate::rt::finish_run("<record>")
 }

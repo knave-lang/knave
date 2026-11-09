@@ -1,0 +1,8 @@
+(use prelude/test assert deftest)
+
+(export triple)
+
+(defn triple (n) (* 3 n))
+
+(deftest triples
+  (assert (= (triple "three") 9)))

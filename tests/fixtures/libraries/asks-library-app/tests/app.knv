@@ -1,0 +1,6 @@
+(use prelude/test assert deftest doctest)
+(use checked)
+
+(doctest checked)
+
+(deftest runs (assert true))

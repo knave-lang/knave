@@ -27,6 +27,28 @@ fn climb_counted(height: &mut i64, mut steps: i64) -> i64 {
     }
 }
 
+fn climb_again(height: &mut i64) -> i64 {
+    loop {
+        *height = *height + 1;
+        if *height < 9 {
+            continue;
+        } else {
+            return *height;
+        }
+    }
+}
+
+fn settle(height: &mut i64) -> i64 {
+    loop {
+        *height = *height + 1;
+        if *height < 9 {
+            continue;
+        } else {
+            return *height;
+        }
+    }
+}
+
 fn count_down(mut n: i64) -> i64 {
     loop {
         if n > 0 {
@@ -43,6 +65,8 @@ fn main() {
     let mut floor: i64 = 0;
     println!("{}", climb(&mut floor));
     println!("{}", climb_counted(&mut floor, 0));
+    println!("{}", climb_again(&mut floor));
+    println!("{}", settle(&mut floor));
     println!("{}", count_down(3))
 }
 

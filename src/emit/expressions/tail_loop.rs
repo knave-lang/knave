@@ -76,7 +76,11 @@ impl TailLoop {
     }
 
     fn passes_through(param: BindingId, argument: &TypedArgument) -> bool {
-        matches!(argument.value.kind, TypedExprKind::Leaf(TypedLeaf::Local(binding)) if binding == param)
+        let value = match &argument.value.kind {
+            TypedExprKind::Deref(copied) => copied,
+            _ => &argument.value,
+        };
+        matches!(value.kind, TypedExprKind::Leaf(TypedLeaf::Local(binding)) if binding == param)
     }
 }
 

@@ -1,0 +1,11 @@
+(defn trade! (left right rounds)
+  (set! left (+ left 1))
+  (set! right (+ right 1))
+  (if (> rounds 0) (recur right left (- rounds 1)) rounds))
+
+(defn main ()
+  (local apples 1)
+  (local pears 10)
+  (trade! apples pears 1)
+  (println apples)
+  (println pears))

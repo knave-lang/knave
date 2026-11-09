@@ -1,0 +1,53 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/set_copy_parameter.knv
+---
+fn bump(x: &mut i64) {
+    *x = *x + 1
+}
+
+fn change(x: &mut i64) {
+    *x = 9
+}
+
+fn pass_on(x: &mut i64) -> i64 {
+    change(x);
+    *x
+}
+
+fn twice(x: &mut i64) {
+    *x = *x + *x
+}
+
+fn append(mut s: String) -> String {
+    s = format!("{}x", s);
+    s
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut total: i64 = 5;
+    bump(&mut total);
+    println!("{}", pass_on(&mut total));
+    twice(&mut total);
+    println!("{}", total);
+    println!("{}", append("box".to_string()))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

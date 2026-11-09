@@ -12,6 +12,7 @@ use crate::types::{
 pub struct TailLoop {
     function: Option<BindingId>,
     params: Vec<BindingId>,
+    borrowed_mutably: FxHashSet<BindingId>,
     reassigned: FxHashSet<BindingId>,
 }
 
@@ -30,22 +31,40 @@ impl TailLoop {
         if calls.arguments().is_empty() {
             return None;
         }
-        let reassigned = calls
-            .arguments()
+        let borrowed_mutably = lambda
+            .params
             .iter()
-            .flat_map(|arguments| {
-                params
-                    .iter()
-                    .zip(arguments.iter())
-                    .filter(|(param, argument)| !Self::passes_through(**param, argument))
-                    .map(|(param, _)| *param)
-            })
+            .filter(|param| matches!(param.ty, Type::Mut(..)))
+            .map(|param| param.binding)
             .collect();
-        Some(Self {
+        let mut tail_loop = Self {
             function,
             params,
-            reassigned,
-        })
+            borrowed_mutably,
+            reassigned: FxHashSet::default(),
+        };
+        tail_loop.reassigned = tail_loop.reassigned_params(calls.arguments());
+        Some(tail_loop)
+    }
+
+    fn reassigned_params(&self, calls: &[&[TypedArgument]]) -> FxHashSet<BindingId> {
+        calls
+            .iter()
+            .flat_map(|arguments| {
+                self.params
+                    .iter()
+                    .zip(arguments.iter())
+                    .filter(|(param, argument)| {
+                        !Self::passes_through(**param, argument)
+                            && !self.writes_through(**param, argument)
+                    })
+                    .map(|(param, _)| *param)
+            })
+            .collect()
+    }
+
+    fn writes_through(&self, param: BindingId, argument: &TypedArgument) -> bool {
+        self.borrowed_mutably.contains(&param) && !argument.value.ty.is_reference()
     }
 
     pub fn reassigns(&self, param: BindingId) -> bool {
@@ -347,7 +366,7 @@ impl ExpressionEmitter<'_> {
     }
 
     fn single_assignment(&mut self, param: BindingId, argument: &TypedArgument) -> Vec<Fragment> {
-        let name = self.parameter_name(param);
+        let name = self.assignment_target(param, argument);
         let (operator, value) = match self.compound_operand(param, argument) {
             Some((operator, operand)) => (format!("{operator}="), operand),
             None => ("=".to_string(), argument),
@@ -356,31 +375,48 @@ impl ExpressionEmitter<'_> {
             Fragment::Newline,
             Fragment::Text(format!("{name} {operator} ")),
         ];
-        fragments.extend(
-            self.argument(value, TypeContext::Known, ArgumentRole::Ordinary)
-                .fragments,
-        );
+        fragments.extend(self.next_value(param, value).fragments);
         fragments.push(Fragment::Text(";".to_string()));
         fragments
+    }
+
+    fn assignment_target(&self, param: BindingId, argument: &TypedArgument) -> String {
+        let name = self.parameter_name(param);
+        if self.writes_through(param, argument) {
+            format!("*{name}")
+        } else {
+            name
+        }
+    }
+
+    fn next_value(&mut self, param: BindingId, argument: &TypedArgument) -> Code {
+        if self.writes_through(param, argument) {
+            self.expr(&argument.value)
+        } else {
+            self.argument(argument, TypeContext::Known, ArgumentRole::Ordinary)
+        }
+    }
+
+    fn writes_through(&self, param: BindingId, argument: &TypedArgument) -> bool {
+        self.tail_loop
+            .as_ref()
+            .is_some_and(|tail_loop| tail_loop.writes_through(param, argument))
     }
 
     fn tuple_assignment(&mut self, changed: &[(BindingId, &TypedArgument)]) -> Vec<Fragment> {
         let names: Vec<String> = changed
             .iter()
-            .map(|(param, _)| self.parameter_name(*param))
+            .map(|(param, argument)| self.assignment_target(*param, argument))
             .collect();
         let mut fragments = vec![
             Fragment::Newline,
             Fragment::Text(format!("({}) = (", names.join(", "))),
         ];
-        for (position, (_, argument)) in changed.iter().enumerate() {
+        for (position, (param, argument)) in changed.iter().enumerate() {
             if position > 0 {
                 fragments.push(Fragment::Text(", ".to_string()));
             }
-            fragments.extend(
-                self.argument(argument, TypeContext::Known, ArgumentRole::Ordinary)
-                    .fragments,
-            );
+            fragments.extend(self.next_value(*param, argument).fragments);
         }
         fragments.push(Fragment::Text(");".to_string()));
         fragments

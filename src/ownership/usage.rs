@@ -1,6 +1,7 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::functions::{FunctionTable, ParamMode};
+use super::value_kinds::ValueKind;
 use crate::core::{BindingId, ReferenceKind};
 use crate::types::{
     Borrow, CopyRules, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
@@ -11,7 +12,7 @@ pub struct UsageCollector<'a> {
     functions: &'a FunctionTable,
     modes: &'a FxHashMap<BindingId, ParamMode>,
     copy: &'a CopyRules<'a>,
-    tracked: FxHashSet<BindingId>,
+    tracked: FxHashMap<BindingId, ValueKind>,
     pattern_bindings: FxHashSet<BindingId>,
     self_modes: Vec<ParamMode>,
     required: FxHashMap<BindingId, ParamMode>,
@@ -21,6 +22,7 @@ pub struct UsageCollector<'a> {
 
 pub struct Usage {
     pub required: FxHashMap<BindingId, ParamMode>,
+    pub kinds: FxHashMap<BindingId, ValueKind>,
     pub callees: FxHashSet<BindingId>,
 }
 
@@ -29,7 +31,7 @@ impl<'a> UsageCollector<'a> {
         functions: &'a FunctionTable,
         modes: &'a FxHashMap<BindingId, ParamMode>,
         copy: &'a CopyRules<'a>,
-        tracked: FxHashSet<BindingId>,
+        tracked: FxHashMap<BindingId, ValueKind>,
         self_modes: Vec<ParamMode>,
     ) -> Self {
         Self {
@@ -49,6 +51,7 @@ impl<'a> UsageCollector<'a> {
         self.block(body, ParamMode::Own);
         Usage {
             required: self.required,
+            kinds: self.tracked,
             callees: self.callees,
         }
     }
@@ -278,9 +281,9 @@ impl<'a> UsageCollector<'a> {
     }
 
     fn require(&mut self, binding: BindingId, mode: ParamMode) {
-        if self.tracked.contains(&binding) {
+        if let Some(kind) = self.tracked.get(&binding) {
             let required = self.required.entry(binding).or_insert(ParamMode::Copy);
-            *required = (*required).max(mode);
+            *required = kind.stronger(*required, kind.need(mode));
         } else if self.pattern_bindings.contains(&binding) {
             let required = self
                 .pattern_required

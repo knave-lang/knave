@@ -1,0 +1,15 @@
+(def limit 10)
+
+(def names (vec (str "ana")))
+
+(defn bump! (x) (set! x (+ x 1)))
+
+(defn grow! (items) (push! items (str "bo")))
+
+(defn main ()
+  (local total 1)
+  (bump! 5)
+  (bump! (+ total 1))
+  (bump! limit)
+  (grow! (vec (str "cy")))
+  (grow! names))

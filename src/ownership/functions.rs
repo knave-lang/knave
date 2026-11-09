@@ -43,12 +43,6 @@ pub struct FunctionTable {
 
 impl FunctionTable {
     pub fn collect(program: &TypedProgram) -> Self {
-        let copy = CopyRules::new(
-            &program.traits,
-            &program.generics,
-            &program.structs,
-            &program.enums,
-        );
         let definitions = || {
             program
                 .modules
@@ -56,8 +50,7 @@ impl FunctionTable {
                 .flat_map(|module| &module.definitions)
         };
         let top_level = definitions().filter_map(|definition| {
-            Self::lambda(&definition.value)
-                .map(|lambda| (definition.binding, Self::info(lambda, &copy)))
+            Self::lambda(&definition.value).map(|lambda| (definition.binding, Self::info(lambda)))
         });
         let local_closures = definitions()
             .flat_map(|definition| definition.value.let_bindings())
@@ -118,11 +111,9 @@ impl FunctionTable {
         Self::function_info(lambda, |_| false)
     }
 
-    fn info(lambda: &Rc<TypedLambda>, copy: &CopyRules) -> FunctionInfo {
+    fn info(lambda: &Rc<TypedLambda>) -> FunctionInfo {
         Self::function_info(lambda, |param| {
-            !param.annotated
-                && !matches!(param.ty, Type::Function(..) | Type::Mut(_, _))
-                && (!copy.is_small_copy(&param.ty) || lambda.body.writes_local(param.binding))
+            !param.annotated && !matches!(param.ty, Type::Function(..) | Type::Mut(_, _))
         })
     }
 

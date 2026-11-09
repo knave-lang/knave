@@ -3,6 +3,7 @@ mod borrowing_lambdas;
 mod callers;
 mod changes;
 mod checks;
+mod copied_reads;
 mod definitions;
 mod escaping_lambdas;
 mod functions;
@@ -19,6 +20,7 @@ mod moves;
 mod mutation;
 mod names;
 mod parameter_uses;
+mod place_arguments;
 mod problems;
 mod promoted_constants;
 mod refusals;
@@ -37,7 +39,9 @@ mod uncoerced_parameters;
 mod update_bases;
 mod update_order;
 mod usage;
+mod value_kinds;
 mod values;
+mod whole_value_changes;
 mod worklist;
 
 use rustc_hash::FxHashMap;
@@ -49,12 +53,14 @@ use crate::types::{
 };
 use borrowing_lambdas::BorrowingLambdas;
 use checks::OwnershipNeeds;
+use copied_reads::CopiedMutReads;
 use escaping_lambdas::EscapingLambdas;
 use functions::{FunctionTable, ParamMode};
 use kinds::{ClosureKinds, KindReport, KindSources};
 use modes::ModeInference;
 use moves::{MoveChecker, MoveReport};
 use names::ChangingFunctionNames;
+use place_arguments::PlaceArguments;
 use problems::OwnershipProblems;
 use returned::ReturnedBorrows;
 use rewrite::ModeRewrite;
@@ -113,7 +119,18 @@ impl OwnershipChecker {
             &copy,
             UncoercedMethodParameters::of(program),
         );
+        let copied_reads = CopiedMutReads::new(&functions, &modes, &copy);
         rewrite.apply(program);
+        copied_reads.apply(program, rewrite.function_params());
+        let copy = CopyRules::new(
+            &program.traits,
+            &program.generics,
+            &program.structs,
+            &program.enums,
+        );
+        diagnostics.extend(
+            PlaceArguments::new(program, &functions, rewrite.function_params(), &copy).check(),
+        );
         slices.rewrite_declarations(program);
         FunctionValueModes::apply(program, rewrite.function_params())
             .into_iter()

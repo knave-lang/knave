@@ -1,0 +1,5 @@
+(defn main ()
+  (local total 5)
+  (local next (fn (x) (set! x (+ x 1)) x))
+  (println (next total))
+  (println total))

@@ -1,0 +1,13 @@
+(defn clamp (x)
+  (if (> x 10) (set! x 10) (do))
+  (println x))
+
+(defn rename (name)
+  (set! name (str "ana"))
+  (println name))
+
+(defn main ()
+  (local total 12)
+  (clamp total)
+  (local person (str "bo"))
+  (rename person))

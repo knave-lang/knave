@@ -3,10 +3,12 @@ use rustc_hash::FxHashSet;
 use crate::core::BindingId;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::types::{
-    ReceiverKind, Type, TypedDefinition, TypedExprKind, TypedProgram, TypedTraitMethod,
+    CopyRules, ReceiverKind, Type, TypedDefinition, TypedExprKind, TypedLambda, TypedProgram,
+    TypedTraitMethod,
 };
 
 use super::problems::OwnershipProblems;
+use super::whole_value_changes::WholeValueChanges;
 
 pub struct ChangingFunctionNames;
 
@@ -76,6 +78,34 @@ impl ChangingFunctionNames {
             definition.span,
             changes_argument,
         )
+        .map(|warning| Self::with_replaced_parameter(warning, program, lambda))
+    }
+
+    fn with_replaced_parameter(
+        warning: Diagnostic,
+        program: &TypedProgram,
+        lambda: &TypedLambda,
+    ) -> Diagnostic {
+        let replaced = lambda.params.iter().find_map(|param| match &param.ty {
+            Type::Mut(_, referent) => WholeValueChanges::site(lambda, param.binding)
+                .map(|site| (param.binding, referent, site)),
+            _ => None,
+        });
+        let Some((param, referent, site)) = replaced else {
+            return warning;
+        };
+        let name = program.bindings.get(param).name();
+        let copy = CopyRules::new(
+            &program.traits,
+            &program.generics,
+            &program.structs,
+            &program.enums,
+        );
+        if copy.is_copy(referent) {
+            OwnershipProblems::with_copied_parameter_change(warning, site, name)
+        } else {
+            OwnershipProblems::with_cloned_parameter_change(warning, site, name)
+        }
     }
 
     fn trait_method_warning(

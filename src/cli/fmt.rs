@@ -1,6 +1,6 @@
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
@@ -109,10 +109,17 @@ impl FmtCommand {
         if !paths.is_empty() {
             return Ok(paths);
         }
-        let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
-        let root = LocatedProject::nearest_root(working_directory)?
+        let working_directory = Terminal::canonical(Path::new(Terminal::WORKING_DIRECTORY))?;
+        let root = LocatedProject::canonical_root(&working_directory)
             .ok_or_else(LocatedProject::report_no_path)?;
-        Ok(vec![Path::new(Terminal::WORKING_DIRECTORY).join(root)])
+        Ok(vec![Self::upward_path(&working_directory, &root)])
+    }
+
+    fn upward_path(from: &Path, ancestor: &Path) -> PathBuf {
+        let depth = from
+            .strip_prefix(ancestor)
+            .map_or(0, |rest| rest.components().count());
+        std::iter::repeat_n(Component::ParentDir, depth).collect()
     }
 
     fn format_walked(&mut self, terminal: &mut Terminal, paths: Vec<PathBuf>) -> ExitStatus {
@@ -215,16 +222,24 @@ impl SourceFiles {
     const CURRENT_DIRECTORY: &'static str = ".";
 
     fn under(path: &Path) -> io::Result<Vec<PathBuf>> {
-        if !path.is_dir() {
+        let listed = Self::listed(path);
+        if !listed.is_dir() {
             return Ok(vec![path.to_path_buf()]);
         }
-        let skipped = SkippedDirectory::for_walk_of(path);
+        let skipped = SkippedDirectory::for_walk_of(listed);
         Self { skipped }.walk(path)
     }
 
+    fn listed(path: &Path) -> &Path {
+        if path.as_os_str().is_empty() {
+            return Path::new(Self::CURRENT_DIRECTORY);
+        }
+        path
+    }
+
     fn walk(&self, path: &Path) -> io::Result<Vec<PathBuf>> {
-        let mut entries: Vec<PathBuf> = fs::read_dir(path)?
-            .map(|entry| entry.map(|entry| entry.path()))
+        let mut entries: Vec<PathBuf> = fs::read_dir(Self::listed(path))?
+            .map(|entry| entry.map(|entry| path.join(entry.file_name())))
             .collect::<io::Result<_>>()?;
         entries.sort();
         let mut files = Vec::new();

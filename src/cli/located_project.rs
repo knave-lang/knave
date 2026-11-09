@@ -32,7 +32,7 @@ impl LocatedProject {
         }))
     }
 
-    pub fn nearest_root(directory: &Path) -> Result<Option<PathBuf>, ExitStatus> {
+    fn nearest_root(directory: &Path) -> Result<Option<PathBuf>, ExitStatus> {
         match Self::canonical_root(directory) {
             Some(root) => Ok(Some(Self::shown(&root)?)),
             None => Ok(None),

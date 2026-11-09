@@ -2,8 +2,8 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (181 of 230): -> ->> _ alphanumeric? any? as-str assoc assoc-at assoc-in at bool box char chars clone command-line-args comment copied copy count debug dedup! def defenum defmacro defn defrule defstruct deftrait deftype deref derive digit? display do doc doc-body doc-header doc-page docstring empty? enum enumerate eprint eprintln eq err err? every? exit expect-ok export f32 f64 field filter find find-doc first float fmt fn-mut fn-once for-each from-str get hash hash-map i128 i16 i32 i8 impl infallible integer io-error isize iterator keys last len let let-match let-try line-seq lines loop lower-case macro map-at map-err map-ok match max max-by-key min module mut new number ok ok-or ok? option/none option/some ord pair pair/pair parse parse-bool-error parse-char-error parse-error parse-float-error parse-int-error partial-eq partial-ord pop! pr-str print println prn push! quote range read-line recur ref remove-at! result result/err result/ok reverse reverse! rust rust-trait rust-type sequence set-at show signed slice slurp sort! sort-by! sorted-map source split split-when stdin string struct subs sum take take-while template then-ok trait trim try try-> type u128 u16 u32 u64 u8 unit unwrap-err unwrap-ok update upper-case use usize vals where whitespace? windows with write-form zip
-running 37 tests
+untested in prelude (149 of 230): -> ->> _ any? assoc assoc-at assoc-in at box clone command-line-args comment copied copy count debug dedup! def defenum defmacro defn defrule defstruct deftrait deftype deref derive display do doc-body doc-header doc-page docstring empty? enum enumerate eprint eprintln eq err every? exit expect-ok export f32 field filter find first float fmt fn-mut fn-once for-each from-str get hash hash-map i128 i16 i32 i8 impl integer io-error isize iterator keys last len let let-match let-try line-seq loop macro map-at map-err map-ok match max max-by-key min module mut new number ok ok-or ok? option/none option/some ord pair pair/pair partial-eq partial-ord pop! push! quote range read-line recur ref remove-at! result/err result/ok reverse reverse! rust rust-trait rust-type sequence set-at show signed slice slurp sort! sort-by! sorted-map source stdin struct sum take take-while template then-ok trait try try-> type u128 u16 u32 u64 u8 unit unwrap-err update use usize vals where windows with write-form zip
+running 68 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -39,8 +39,57 @@ test prelude/number/doc:>= ... ok
 test prelude/number/doc:= ... ok
 test prelude/number/doc:not= ... ok
 test prelude/test/doc:doctest ... ok
+test prelude/text/doc:str ... ok
+test prelude/text/doc:print ... total: 3
+ok
+test prelude/text/doc:println ... total: 3
+"pear"
+ok
+test prelude/text/doc:doc ... (digit? character)
+
+Returns whether a `char` is an ASCII digit.
+
+(digit? (char "7"))
+=> true
+
+(digit? (char "a"))
+=> false
+ok
 test prelude/text/doc:dir ... pair pair/pair
 ok
 test prelude/text/doc:apropos ... into-sorted-map sort! sort-by! sorted-map
 ok
-37 passed, 0 failed
+test prelude/text/doc:find-doc ... (find-doc text)
+    Prints the header and summary of each term that holds a text.
+(sort! items)
+    Sorts a vector in place, in ascending order.
+ok
+test prelude/text/doc:display ... ok
+test prelude/text/doc:char ... ok
+test prelude/text/doc:show ... ok
+test prelude/text/doc:from-str ... ok
+test prelude/text/doc:parse-error ... ok
+test prelude/text/doc:parse-bool-error ... ok
+test prelude/text/doc:parse-char-error ... ok
+test prelude/text/doc:parse-int-error ... ok
+test prelude/text/doc:parse-float-error ... ok
+test prelude/text/doc:infallible ... ok
+test prelude/text/doc:prn ... "pear" 3
+ok
+test prelude/text/doc:print-form ... "pear"
+ok
+test prelude/text/doc:pr-str ... ok
+test prelude/text/doc:chars ... ok
+test prelude/text/doc:lines ... ok
+test prelude/text/doc:split ... ok
+test prelude/text/doc:split-when ... ok
+test prelude/text/doc:trim ... ok
+test prelude/text/doc:as-str ... ok
+test prelude/text/doc:parse ... ok
+test prelude/text/doc:lower-case ... ok
+test prelude/text/doc:upper-case ... ok
+test prelude/text/doc:alphanumeric? ... ok
+test prelude/text/doc:whitespace? ... ok
+test prelude/text/doc:digit? ... ok
+test prelude/text/doc:subs ... ok
+68 passed, 0 failed

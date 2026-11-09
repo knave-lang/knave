@@ -1,7 +1,7 @@
 ---
 source: tests/stages.rs
 expression: reports.report(path)
-input_file: tests/fixtures/emit/borrowed_parameter_beside_a_field.rslisp
+input_file: tests/fixtures/emit/borrowed_parameter_beside_a_field.knv
 ---
 #[derive(Clone, PartialEq, Eq, Hash)]
 struct Page {

@@ -18,7 +18,7 @@ impl SavedPreludeAgreement {
         let built = FixtureReports::compute(self.paths.clone(), |path| {
             Fixture::load(path).stage_report()
         });
-        let loaded = FixtureReports::compute(self.paths.clone(), |path| {
+        let loaded = FixtureReports::compute(self.paths.clone(), move |path| {
             let prelude = PreludeState::load(saved).expect("the saved prelude loads");
             Fixture::load(path)
                 .with_saved_prelude(prelude)

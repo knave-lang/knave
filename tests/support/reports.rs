@@ -1,10 +1,13 @@
 use std::env;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 
 use rustc_hash::FxHashMap;
+
+use super::fixture_queue::FixtureQueue;
 
 pub struct FixtureReports {
     reports: FxHashMap<PathBuf, String>,
@@ -12,17 +15,29 @@ pub struct FixtureReports {
 
 impl FixtureReports {
     const JOB_LIMIT: &str = "CARGO_BUILD_JOBS";
+    const FIXTURE_DEADLINE: Duration = Duration::from_secs(300);
 
-    pub fn compute(paths: Vec<PathBuf>, report: impl Fn(&Path) -> String + Sync) -> Self {
-        let pending = Mutex::new(paths);
-        let finished = Mutex::new(FxHashMap::default());
-        thread::scope(|scope| {
-            for _ in 0..Self::workers() {
-                scope.spawn(|| Self::drain(&pending, &finished, &report));
-            }
-        });
+    pub fn compute(
+        paths: Vec<PathBuf>,
+        report: impl Fn(&Path) -> String + Send + Sync + 'static,
+    ) -> Self {
+        Self::compute_within(Self::FIXTURE_DEADLINE, paths, report)
+    }
+
+    pub fn compute_within(
+        deadline: Duration,
+        paths: Vec<PathBuf>,
+        report: impl Fn(&Path) -> String + Send + Sync + 'static,
+    ) -> Self {
+        let queue = Arc::new(FixtureQueue::new(paths));
+        let report = Arc::new(report);
+        for _ in 0..Self::workers() {
+            let queue = Arc::clone(&queue);
+            let report = Arc::clone(&report);
+            thread::spawn(move || queue.drain(&*report));
+        }
         Self {
-            reports: finished.into_inner().expect("every worker finished"),
+            reports: queue.finished_reports(deadline),
         }
     }
 
@@ -37,26 +52,5 @@ impl FixtureReports {
             .ok()
             .and_then(|limit| limit.parse().ok())
             .unwrap_or_else(|| thread::available_parallelism().map_or(1, NonZeroUsize::get))
-    }
-
-    fn drain(
-        pending: &Mutex<Vec<PathBuf>>,
-        finished: &Mutex<FxHashMap<PathBuf, String>>,
-        report: &impl Fn(&Path) -> String,
-    ) {
-        while let Some(path) = Self::next(pending) {
-            let text = report(&path);
-            finished
-                .lock()
-                .expect("no worker panics while holding the reports")
-                .insert(path, text);
-        }
-    }
-
-    fn next(pending: &Mutex<Vec<PathBuf>>) -> Option<PathBuf> {
-        pending
-            .lock()
-            .expect("no worker panics while holding the queue")
-            .pop()
     }
 }

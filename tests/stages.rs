@@ -1,6 +1,8 @@
 mod support;
 
 use std::path::PathBuf;
+use std::thread;
+use std::time::Duration;
 
 use support::{Fixture, FixtureReports, FormatFailures, HeaderAgreement, SavedPreludeAgreement};
 
@@ -163,4 +165,32 @@ fn saved_prelude_corpus_fixtures() {
     insta::glob!("fixtures/corpus/*.knv", |path| paths
         .push(PathBuf::from(path)));
     SavedPreludeAgreement::of(paths).assert_loaded_prelude_agrees();
+}
+
+const SHORT_DEADLINE: Duration = Duration::from_millis(50);
+
+#[test]
+#[should_panic(expected = "the fixture slow.knv ran longer than")]
+fn a_fixture_past_its_deadline_fails_naming_the_fixture() {
+    FixtureReports::compute_within(SHORT_DEADLINE, vec![PathBuf::from("slow.knv")], |_| {
+        thread::sleep(SHORT_DEADLINE * 10);
+        String::new()
+    });
+}
+
+#[test]
+#[should_panic(expected = "the report of broken.knv fails")]
+fn a_fixture_whose_report_panics_fails_with_its_panic() {
+    FixtureReports::compute_within(SHORT_DEADLINE, vec![PathBuf::from("broken.knv")], |path| {
+        panic!("the report of {} fails", path.display())
+    });
+}
+
+#[test]
+fn fixtures_within_their_deadline_keep_their_reports() {
+    let path = PathBuf::from("quick.knv");
+    let reports = FixtureReports::compute_within(SHORT_DEADLINE, vec![path.clone()], |path| {
+        path.display().to_string()
+    });
+    assert_eq!(reports.report(&path), "quick.knv");
 }

@@ -2,8 +2,8 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (99 of 230): -> ->> assoc assoc-at assoc-in box comment copy debug def defenum defmacro defn defrule defstruct deftrait deftype derive display do doc-body doc-header doc-page docstring enum eprint eprintln eq exit export f32 field float fmt fn-mut fn-once from-str get hash hash-map i128 i16 i32 i8 impl integer io-error isize iterator keys let let-match let-try loop macro map-at module mut new number option/none option/some ord pair/pair partial-eq partial-ord quote recur result/err result/ok rust rust-trait rust-type sequence set-at show signed slice sorted-map source struct template trait try try-> type u128 u16 u32 u64 u8 unit update use usize vals where with write-form
-running 127 tests
+untested in prelude (92 of 230): -> ->> assoc assoc-at assoc-in comment copy debug def defenum defmacro defn defrule defstruct deftrait deftype derive display do doc-body doc-header doc-page docstring enum eprint eprintln eq exit export f32 field float fmt fn-mut fn-once from-str get hash hash-map i128 i16 i32 i8 impl integer io-error isize keys let let-match let-try loop macro map-at module mut new number ord pair/pair partial-eq partial-ord quote recur rust rust-trait rust-type sequence set-at show signed sorted-map source struct template trait try try-> type u128 u16 u32 u64 u8 unit update use usize vals where with write-form
+running 137 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -135,6 +135,16 @@ test prelude/text/doc:alphanumeric? ... ok
 test prelude/text/doc:whitespace? ... ok
 test prelude/text/doc:digit? ... ok
 test prelude/text/doc:subs ... ok
+test prelude/types/doc:box ... ok
+test prelude/types/doc:option ... ok
+test prelude/types/doc:option/some ... ok
+test prelude/types/doc:option/none ... ok
+test prelude/types/doc:result ... ok
+test prelude/types/doc:result/ok ... ok
+test prelude/types/doc:result/err ... ok
+test prelude/types/doc:iterator ... ok
+test prelude/types/doc:slice ... ok
+test prelude/types/doc:sequence ... ok
 test prelude/vec/doc:vec ... ok
 test prelude/vec/doc:push! ... ok
 test prelude/vec/doc:iter ... ok
@@ -151,4 +161,4 @@ test prelude/vec/doc:last ... ok
 test prelude/vec/doc:reverse ... ok
 test prelude/vec/doc:reverse! ... ok
 test prelude/vec/doc:dedup! ... ok
-127 passed, 0 failed
+137 passed, 0 failed

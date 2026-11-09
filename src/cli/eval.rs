@@ -45,6 +45,8 @@ pub struct FormsText {
 }
 
 impl EvalCommand {
+    const COMMAND: &str = "eval";
+
     pub fn new(
         module: ModuleText,
         root: Option<PathBuf>,
@@ -114,10 +116,25 @@ impl EvalCommand {
             Some(root) => {
                 let project =
                     LocatedProject::search_from(&ProgramFile::directory_of(&path), terminal)?;
+                Self::refuse_crates(project.as_ref(), terminal)?;
                 let file = ProgramFile::within(path, root.clone());
                 Ok(LocatedProject::lend_libraries(project.as_ref(), file))
             }
-            None => LocatedProgram::locate(Some(path), terminal).map(LocatedProgram::into_file),
+            None => {
+                let program = LocatedProgram::locate(Some(path), terminal)?;
+                Self::refuse_crates(program.project(), terminal)?;
+                Ok(program.into_file())
+            }
+        }
+    }
+
+    fn refuse_crates(
+        project: Option<&LocatedProject>,
+        terminal: &Terminal,
+    ) -> Result<(), ExitStatus> {
+        match project {
+            Some(project) => project.refuse_crates(Self::COMMAND, terminal),
+            None => Ok(()),
         }
     }
 

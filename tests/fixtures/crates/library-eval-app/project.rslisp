@@ -1,0 +1,5 @@
+(project app
+  (dependencies)
+  (libraries
+    (plain :path "../plain")
+    (helper :path "../helper")))

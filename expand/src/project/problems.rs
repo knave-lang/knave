@@ -153,6 +153,15 @@ impl ProjectProblems {
         ))
     }
 
+    pub fn crates_unavailable_to(command: &str, span: Span, label: String) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::UNBUILT_PROJECT_SECTION,
+            format!("`{command}` cannot use crate dependencies yet"),
+            Label::new(span, label),
+        )
+        .with_help("use `build` or `run` for a program with crates for now")
+    }
+
     pub fn unbuilt_section(section: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::UNBUILT_PROJECT_SECTION,

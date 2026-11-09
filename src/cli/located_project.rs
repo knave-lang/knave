@@ -6,9 +6,10 @@ use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
 use crate::build::{CargoManifest, CargoTarget};
+use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::modules::LibraryTable;
-use crate::project::{CrateDependency, Project};
+use crate::project::{CrateDependency, Project, ProjectProblems};
 
 pub struct LocatedProject {
     root: PathBuf,
@@ -16,6 +17,7 @@ pub struct LocatedProject {
     libraries: LibraryTable,
     crates: Vec<CrateDependency>,
     dev_crates: Vec<CrateDependency>,
+    crate_library: Option<String>,
 }
 
 impl LocatedProject {
@@ -42,6 +44,7 @@ impl LocatedProject {
             project,
             libraries: walked.table,
             crates: walked.crates,
+            crate_library: walked.crate_library,
             dev_crates,
         }))
     }
@@ -122,6 +125,31 @@ impl LocatedProject {
         !self.crates.is_empty()
     }
 
+    pub fn refuse_crates(&self, command: &str, terminal: &Terminal) -> Result<(), ExitStatus> {
+        if !self.uses_crates() {
+            return Ok(());
+        }
+        let mut scratch = terminal.scratch();
+        let project = scratch.load_project(&self.project_file())?;
+        let mut problems = Diagnostics::default();
+        problems.push(self.crate_use(&project, command));
+        Err(scratch.report(&problems))
+    }
+
+    fn crate_use(&self, project: &Project, command: &str) -> Diagnostic {
+        if let Some(dependency) = project.dependencies.first() {
+            let label = format!("this project uses crate `{}`", dependency.name);
+            return ProjectProblems::crates_unavailable_to(command, dependency.name_span, label);
+        }
+        let library = project
+            .libraries
+            .iter()
+            .find(|library| Some(&library.name) == self.crate_library.as_ref())
+            .expect("a project with crates and no crate of its own lists a library that adds them");
+        let label = format!("library `{}` adds crates", library.name);
+        ProjectProblems::crates_unavailable_to(command, library.name_span, label)
+    }
+
     pub fn cargo_target<'t>(&'t self, output: &'t Path) -> CargoTarget<'t> {
         CargoTarget {
             manifest: CargoManifest {
@@ -144,6 +172,10 @@ impl LocatedProject {
                 (hash ^ u64::from(*byte)).wrapping_mul(Self::FNV_PRIME)
             });
         format!("{:08x}", hash & Self::SHORT_HASH_MASK)
+    }
+
+    fn project_file(&self) -> PathBuf {
+        self.root.join(Language::project_file_name())
     }
 
     pub fn build_directory(&self) -> PathBuf {

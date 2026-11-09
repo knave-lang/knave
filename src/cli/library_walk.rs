@@ -20,11 +20,13 @@ pub struct LibraryWalk<'t> {
     roots: Vec<LibraryRoot>,
     store: Option<GitStore>,
     crates: CrateSet,
+    crate_library: Option<String>,
 }
 
 pub struct WalkedLibraries {
     pub table: LibraryTable,
     pub crates: Vec<CrateDependency>,
+    pub crate_library: Option<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -69,12 +71,14 @@ impl<'t> LibraryWalk<'t> {
             roots: Vec::new(),
             store: None,
             crates: CrateSet::default(),
+            crate_library: None,
         };
         walk.add_crates(root, project)?;
         walk.visit_all(root, project, Listing::PROGRAM)?;
         Ok(WalkedLibraries {
             table: LibraryTable::new(Self::names(project), walk.roots),
             crates: walk.crates.into_crates(),
+            crate_library: walk.crate_library,
         })
     }
 
@@ -96,8 +100,24 @@ impl<'t> LibraryWalk<'t> {
     ) -> Result<(), ExitStatus> {
         project.libraries.iter().try_for_each(|library| {
             let library_root = self.library_directory(declaring_root, library)?;
-            self.visit(&library_root, library, listing)
+            let crates_before = self.crates.count();
+            self.visit(&library_root, library, listing)?;
+            self.note_crate_library(library, listing, crates_before);
+            Ok(())
         })
+    }
+
+    fn note_crate_library(
+        &mut self,
+        library: &LibraryDependency,
+        listing: Listing<'_>,
+        crates_before: usize,
+    ) {
+        let listed_by_program = listing.entry.is_none();
+        let added_crates = self.crates.count() > crates_before;
+        if listed_by_program && added_crates && self.crate_library.is_none() {
+            self.crate_library = Some(library.name.clone());
+        }
     }
 
     fn library_directory(

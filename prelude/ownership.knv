@@ -33,7 +33,14 @@
 
   It takes a borrow, so `value` stays usable. A `str` has no `clone`:
   `(str text)` builds a `string` from it. `clone` is also the trait, Rust's
-  `Clone`.")
+  `Clone`.
+
+  (local word (str \"pear\"))
+  (clone word)
+  => \"pear\"
+
+  (len word)
+  => 4")
 
 (document copy
   "Marks a type whose values copy where another type would move.
@@ -41,4 +48,7 @@
   `bool`, `char`, `unit`, the number types and `(ref a)` implement it, and an
   `option`, a `result` or a `pair` of such types does. `string` and `vec` do
   not. A struct or an enum of `copy` fields that the program never changes in
-  place is `copy` too.")
+  place is `copy` too.
+
+  (infer copied)
+  => \"(where ((a copy)) (fn ((ref (slice a))) (iterator a)))\"")

@@ -42,16 +42,37 @@
   "Declares a project in the project file, which the compiler reads as data.
 
   `knave fmt` lays the project file out by this module's shapes. A call in a
-  program is an error.")
+  program is an error.
+
+  ```
+  (project browser
+    :version \"0.1.0\"
+    :entry \"src/main.knv\")
+  ```")
 
 (document (libraries)
   "Lists a project's libraries in the project file. A call in a program is an
-  error.")
+  error.
+
+  ```
+  (project browser
+    (libraries (hints :path \"../hints\")))
+  ```")
 
 (document (dependencies)
   "Lists a project's crates in the project file. A call in a program is an
-  error.")
+  error.
+
+  ```
+  (project browser
+    (dependencies (serde \"1.0\" :features (\"derive\"))))
+  ```")
 
 (document (dev-dependencies)
   "Lists the crates of a project's tests in the project file. A call in a
-  program is an error.")
+  program is an error.
+
+  ```
+  (project browser
+    (dev-dependencies (proptest \"1.5\")))
+  ```")

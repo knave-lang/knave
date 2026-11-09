@@ -2145,7 +2145,7 @@ impl TypeChecker {
         value: &TypedExpr,
     ) -> Option<usize> {
         let callee = callee?;
-        if !self.may_collapse(parameter, &value.ty) || self.passes_as_written(value) {
+        if !self.may_collapse(parameter) || self.passes_as_written(value) {
             return None;
         }
         let parameter = self.unifier.resolve(parameter);
@@ -2164,16 +2164,8 @@ impl TypeChecker {
         holds_view.then_some(layers)
     }
 
-    fn may_collapse(&self, parameter: &Type, argument: &Type) -> bool {
+    fn may_collapse(&self, parameter: &Type) -> bool {
         matches!(self.unifier.shallow(parameter), Type::Ref(..))
-            && self.is_nested_reference(argument)
-    }
-
-    fn is_nested_reference(&self, value: &Type) -> bool {
-        match self.unifier.shallow(value) {
-            Type::Ref(_, referent) => matches!(self.unifier.shallow(&referent), Type::Ref(..)),
-            _ => false,
-        }
     }
 
     fn pass_held_view(

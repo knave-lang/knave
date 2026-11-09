@@ -9,6 +9,7 @@ mod counter_report;
 mod definition_buffer;
 mod definition_rounds;
 mod diagnostic_output;
+mod distinct_output;
 mod doc;
 mod edited_lines;
 mod emit;
@@ -46,6 +47,8 @@ mod skipped_directory;
 mod stage_work;
 mod standard_error;
 mod streamed_program;
+mod task;
+mod task_lookup;
 mod temporary_directory;
 mod term_parser;
 mod terminal;
@@ -90,6 +93,7 @@ use new::NewCommand;
 use remove::RemoveCommand;
 use repl::ReplCommand;
 use run::RunCommand;
+use task::TaskCommand;
 use term_parser::{SurplusParser, TermParser};
 use terminal::{BuildOptions, Terminal};
 use test::{TestCommand, TestSelection};
@@ -147,6 +151,21 @@ enum ProjectCommand {
     Remove {
         #[arg(help = "The crate's name, as the project file writes it")]
         name: String,
+    },
+    #[command(
+        name = TaskCommand::NAME,
+        about = "Run a task from the project's `tasks` directory, or list the tasks"
+    )]
+    Task {
+        #[arg(
+            trailing_var_arg = true,
+            allow_hyphen_values = true,
+            value_name = "NAME [ARGUMENTS]",
+            help = "The task's name, then the arguments it takes [default: list the tasks]"
+        )]
+        command: Vec<String>,
+        #[command(flatten)]
+        release: ReleaseFlag,
     },
     #[command(about = "Create a project in a new directory of its name")]
     New {
@@ -439,6 +458,9 @@ impl ProjectCommand {
             Self::New { name } => NewCommand::new(name).run(terminal),
             Self::Add { name, features } => AddCommand::new(name, features).run(terminal),
             Self::Remove { name } => RemoveCommand::new(name).run(terminal),
+            Self::Task { command, release } => {
+                TaskCommand::new(command, release.profile()).run(terminal)
+            }
         }
     }
 }

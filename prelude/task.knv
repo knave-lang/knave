@@ -1,0 +1,734 @@
+(use prelude/macros document header-shape map-list template)
+(use prelude/internal/macros docstring-before-body?)
+(use prelude/syntax the)
+(use prelude/text display from-str str)
+(use prelude/types option result vec)
+
+(use code add-module-note bool-not concat empty? fail first
+          form-location keyword-field keyword-name keyword?
+          len list list? located module-notes nth number-add
+          number-lt number-sub number? prepend
+          program-modules read-form rest sorted-names string
+          string-length string-lines string-strip-prefix
+          string-trim-start string? symbol symbol-name
+          symbol? value-eq)
+
+(export deftask run-task task-listing task-names
+        task-signature)
+
+(def deftask
+  (macro (form)
+    (check-task-shape form)
+    (local name (nth form 1))
+    (local parameters (task-parameters (nth form 2)))
+    (local body (rest (rest (rest form))))
+    (local documented (docstring-before-body? body))
+    (local forms (if documented (rest body) body))
+    (local function
+      (symbol (quote task) "task-" (symbol-name name)))
+    (template (do
+                (def (unquote function)
+                  (fn (unquote (map-list parameters parameter-binding))
+                    (splice forms)))
+                (note-task (unquote function)
+                           (unquote name)
+                           (unquote (summary documented body))
+                           (unquote parameters)
+                           (unquote (form-location form)))))))
+
+(header-shape (deftask name parameters) :docstring)
+
+(document (deftask name parameters)
+  "Defines a task that `knave task name` runs.
+
+  The positional parameters come first, each a name or a name and a type,
+  then the flags: each keyword takes a `--name` flag, followed by an optional
+  type and an optional literal default, as in `(who :port u16 8000 :loud
+  false)`. A flag with no default is required, and a flag whose default is
+  `false` is a switch that `--name` turns on. Each argument parses
+  into its parameter's type. A string before at least one more body form is
+  the docstring, whose first line the list of tasks shows.")
+
+(def check-task-shape
+  (fn (form)
+    (if (number-lt 2 (len form))
+      (if (task-name? (nth form 1))
+        (if (list? (nth form 2))
+          (check-kebab-case (nth form 1))
+          (misshapen-task form))
+        (misshapen-task form))
+      (misshapen-task form))))
+
+(def task-name?
+  (fn (name)
+    (if (symbol? name)
+      (bool-not (keyword? name))
+      false)))
+
+(def misshapen-task
+  (fn (form)
+    (fail "this use of `deftask` does not match its shape"
+      form
+      "write it as `(deftask name (parameter ...) body ...)`")))
+
+(def check-kebab-case
+  (fn (name)
+    (if (kebab-case? (symbol-name name))
+      name
+      (fail (string "task name `"
+                    (symbol-name name)
+                    "` is not kebab-case")
+        name
+        "name a task with words of lowercase letters and digits, joined by single dashes, starting with a letter"
+        (quote (:code misnamed-task :label "not kebab-case"))))))
+
+(def kebab-case?
+  (fn (text) (kebab-word? text letters)))
+
+(def kebab-word?
+  (fn (text allowed)
+    (local rest-of-word (without-prefix text allowed))
+    (if (value-eq rest-of-word text)
+      false
+      (kebab-after-character? rest-of-word))))
+
+(def kebab-after-character?
+  (fn (text)
+    (if (value-eq text "")
+      true
+      (if (value-eq (string-strip-prefix text "-") text)
+        (kebab-word? text word-characters)
+        (kebab-word? (string-strip-prefix text "-") letters)))))
+
+(def without-prefix
+  (fn (text prefixes)
+    (if (empty? prefixes)
+      text
+      (if (value-eq (string-strip-prefix text (first prefixes)) text)
+        (without-prefix text (rest prefixes))
+        (string-strip-prefix text (first prefixes))))))
+
+(def letters
+  (list "a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m"
+        "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y"
+        "z"))
+
+(def word-characters
+  (concat letters
+          (list "0" "1" "2" "3" "4" "5" "6" "7" "8" "9")))
+
+(def task-parameters
+  (fn (written)
+    (if (empty? written)
+      (list)
+      (if (keyword? (first written))
+        (flag-parameters written)
+        (prepend (positional-parameter (first written))
+                 (task-parameters (rest written)))))))
+
+(def positional-parameter
+  (fn (written)
+    (if (list? written)
+      (parameter (quote positional)
+                 (first written)
+                 written
+                 (list))
+      (parameter (quote positional) written written (list)))))
+
+(def flag-parameters
+  (fn (written)
+    (if (empty? written)
+      (list)
+      (if (keyword? (first written))
+        (flag-with-type (keyword-field (first written))
+                        (rest written))
+        (fail "a positional parameter of a task comes before its flags"
+          (first written)
+          "move it before the first keyword"
+          (quote (:code positional-after-flag
+                        :label "a positional parameter after a flag")))))))
+
+(def flag-with-type
+  (fn (name details)
+    (if (flag-type? details)
+      (flag-with-default name
+                         (list name (first details))
+                         (rest details))
+      (flag-with-default name name details))))
+
+(def flag-type?
+  (fn (details)
+    (if (empty? details)
+      false
+      (if (keyword? (first details))
+        false
+        (bool-not (literal? (first details)))))))
+
+(def flag-with-default
+  (fn (name binding details)
+    (if (flag-default? details)
+      (prepend (defaulted-flag name binding (first details))
+               (flag-parameters (rest details)))
+      (prepend (parameter (quote flag) name binding (list))
+               (flag-parameters details)))))
+
+(def flag-default?
+  (fn (details)
+    (if (empty? details)
+      false
+      (literal? (first details)))))
+
+(def parameter
+  (fn (kind name binding default)
+    (list kind (symbol-name name) binding default)))
+
+(def parameter-kind
+  (fn (parameter) (nth parameter 0)))
+
+(def parameter-name
+  (fn (parameter) (nth parameter 1)))
+
+(def parameter-binding
+  (fn (parameter) (nth parameter 2)))
+
+(def parameter-default
+  (fn (parameter) (nth parameter 3)))
+
+(def defaulted-flag
+  (fn (name binding default)
+    (if (false-literal? default)
+      (parameter (quote switch) name binding (list))
+      (parameter (quote flag) name binding (list default)))))
+
+(def literal?
+  (fn (form)
+    (if (string? form)
+      true
+      (if (number? form)
+        true
+        (if (false-literal? form) true (true-literal? form))))))
+
+(def false-literal?
+  (fn (form)
+    (if (symbol? form)
+      (value-eq (symbol-name form) "false")
+      false)))
+
+(def true-literal?
+  (fn (form)
+    (if (symbol? form)
+      (value-eq (symbol-name form) "true")
+      false)))
+
+(def summary
+  (fn (documented body)
+    (if documented
+      (string-trim-start (first (string-lines (first body))))
+      "")))
+
+(def note-task
+  (macro (form)
+    (add-module-note (quote tasks) (rest form))
+    (template (do))))
+
+(def note-function
+  (fn (note) (nth note 0)))
+
+(def note-name (fn (note) (nth note 1)))
+
+(def note-summary
+  (fn (note) (nth note 2)))
+
+(def note-parameters
+  (fn (note) (nth note 3)))
+
+(def run-task
+  (macro (form)
+    (local wanted (nth form 1))
+    (local note (named-task wanted (program-tasks)))
+    (local parameters (note-parameters note))
+    (local positional (of-kind parameters (quote positional)))
+    (local flags (of-kind parameters (quote flag)))
+    (local switches (of-kind parameters (quote switch)))
+    (local ordered (concat positional (concat flags switches)))
+    (template (do
+                (local values
+                  (task-command-line (unquote wanted)
+                                     (unquote (len positional))
+                                     (unquote (names-text flags))
+                                     (unquote (names-text switches))
+                                     (unquote (parameters-usage parameters))))
+                (unquote (entry-call (list wanted (task-call note))
+                                     note ordered
+                                     (open-parameters (nth form 2))))))))
+
+(def parameter-place
+  (fn (parameter)
+    (local binding (parameter-binding parameter))
+    (if (list? binding) (first binding) binding)))
+
+(def entry-call
+  (fn (task note ordered open)
+    (local name (note-name note))
+    (local call
+      (located-head
+        name
+        (prepend (note-function note)
+                 (task-arguments task (note-parameters note) ordered open))))
+    (located-head name
+                  (template (task-outcome (unquote call))))))
+
+(def located-head
+  (fn (place form)
+    (located place
+             (prepend (located place (first form))
+                      (rest form)))))
+
+(document (run-task name signature)
+  "Runs the task `name` with the command's arguments.
+
+  `knave task name` builds a program whose entry is this call. `signature`
+  is the text that `(task-signature name)` gave, or `\"\"`. A parameter whose
+  type in it is a type variable of its `where` takes a `string`, because the
+  command line gives text, and every other parameter keeps the type that
+  inference gave it.")
+
+(def task-signature
+  (macro (form)
+    (local note
+      (named-task (nth form 1) (program-tasks)))
+    (if (every-type-known? (note-parameters note))
+      ""
+      (template (infer (unquote (note-function note)))))))
+
+(document (task-signature name)
+  "Returns the type of the task `name` as a `type` signature writes it.
+
+  It is `\"\"` when every parameter's type is known before inference: a
+  written type, a literal default or a switch.")
+
+(def every-type-known?
+  (fn (parameters)
+    (if (empty? parameters)
+      true
+      (if (type-known? (first parameters))
+        (every-type-known? (rest parameters))
+        false))))
+
+(def type-known?
+  (fn (parameter)
+    (if (list? (parameter-binding parameter))
+      true
+      (if (value-eq (symbol-name (parameter-kind parameter)) "switch")
+        true
+        (bool-not (empty? (parameter-default parameter)))))))
+
+(def open-parameters
+  (fn (signature)
+    (if (value-eq signature "")
+      (list)
+      (signature-open-parameters (first
+                                   (read-form (quote task) signature 0))))))
+
+(def signature-open-parameters
+  (fn (signature)
+    (if (value-eq (symbol-name (first signature)) "where")
+      (open-positions (nth (nth signature 2) 1)
+                      (map-list (nth signature 1) binder-name)
+                      0)
+      (list))))
+
+(def binder-name
+  (fn (binder)
+    (symbol-name (if (list? binder) (first binder) binder))))
+
+(def open-positions
+  (fn (types variables index)
+    (if (empty? types)
+      (list)
+      (if (type-variable? (first types) variables)
+        (prepend index
+                 (open-positions (rest types) variables (number-add index 1)))
+        (open-positions (rest types) variables (number-add index 1))))))
+
+(def type-variable?
+  (fn (type variables)
+    (if (symbol? type)
+      (one-of? (symbol-name type) variables)
+      false)))
+
+(def one-of?
+  (fn (name names)
+    (if (empty? names)
+      false
+      (if (value-eq name (first names))
+        true
+        (one-of? name (rest names))))))
+
+(def task-arguments
+  (fn (task parameters ordered open)
+    (task-arguments-from task parameters ordered open 0)))
+
+(def task-arguments-from
+  (fn (task parameters ordered open index)
+    (if (empty? parameters)
+      (list)
+      (prepend (task-argument task
+                              (first parameters)
+                              ordered
+                              (falls-back? (first parameters) index open))
+               (task-arguments-from task
+                                    (rest parameters)
+                                    ordered open
+                                    (number-add index 1))))))
+
+(def falls-back?
+  (fn (parameter index open)
+    (if (type-known? parameter) false (one-of? index open))))
+
+(def task-argument
+  (fn (task parameter ordered open)
+    (local value
+      (parameter-value task parameter
+                       (position-of parameter ordered 0)))
+    (located-deeply (parameter-place parameter)
+                    (if open
+                      (template (the string (unquote value)))
+                      value))))
+
+(def located-deeply
+  (fn (place form)
+    (if (list? form)
+      (located place
+               (map-list form
+                         (fn (item) (located-deeply place item))))
+      (located place form))))
+
+(def named-task
+  (fn (wanted notes)
+    (if (empty? notes)
+      (fail (string "no task named `" wanted "`")
+        wanted "name a task that `deftask` defines")
+      (if (value-eq (symbol-name (note-name (first notes)))
+                    wanted)
+        (first notes)
+        (named-task wanted (rest notes))))))
+
+(def of-kind
+  (fn (parameters kind)
+    (if (empty? parameters)
+      (list)
+      (if (value-eq (symbol-name (parameter-kind (first parameters)))
+                    (symbol-name kind))
+        (prepend (first parameters)
+                 (of-kind (rest parameters) kind))
+        (of-kind (rest parameters) kind)))))
+
+(def position-of
+  (fn (parameter ordered index)
+    (if (value-eq (parameter-name parameter)
+                  (parameter-name (first ordered)))
+      index
+      (position-of parameter (rest ordered) (number-add index 1)))))
+
+(def names-text
+  (fn (parameters)
+    (if (empty? parameters)
+      ""
+      (string (parameter-name (first parameters))
+              " "
+              (names-text (rest parameters))))))
+
+(def parameter-value
+  (fn (runner parameter index)
+    (local task (first runner))
+    (local kind (symbol-name (parameter-kind parameter)))
+    (local shown (parameter-usage-name parameter))
+    (if (value-eq kind "switch")
+      (template (task-switch values (unquote index)))
+      (if (empty? (parameter-default parameter))
+        (template (task-value values
+                              (unquote index)
+                              (unquote task)
+                              (unquote shown)
+                              (unquote (nth runner 1))))
+        (template (task-value-or values
+                                 (unquote index)
+                                 (unquote task)
+                                 (unquote shown)
+                                 (unquote (default-value parameter))))))))
+
+(def default-value
+  (fn (parameter)
+    (local default (first (parameter-default parameter)))
+    (if (string? default)
+      (template (str (unquote default)))
+      default)))
+
+(def parameter-usage-name
+  (fn (parameter)
+    (if (value-eq (symbol-name (parameter-kind parameter))
+                  "positional")
+      (string "<" (parameter-name parameter) ">")
+      (string "--" (parameter-name parameter)))))
+
+(def parameters-usage
+  (fn (parameters)
+    (if (empty? parameters)
+      ""
+      (string (parameter-usage (first parameters))
+              (usage-after (rest parameters))))))
+
+(def usage-after
+  (fn (parameters)
+    (if (empty? parameters)
+      ""
+      (string " " (parameters-usage parameters)))))
+
+(def parameter-usage
+  (fn (parameter)
+    (local kind (symbol-name (parameter-kind parameter)))
+    (local shown (parameter-usage-name parameter))
+    (if (value-eq kind "positional")
+      shown
+      (if (value-eq kind "switch")
+        (string "[" shown "]")
+        (if (empty? (parameter-default parameter))
+          (string shown " <" (parameter-name parameter) ">")
+          (string "[" shown " "
+                  (string (first (parameter-default parameter)))
+                  "]"))))))
+
+(def task-command-line
+  (rust "{{
+    fn refuse(message: String, usage: &str) -> ! {{
+        eprintln!(\"error: {{}}\\nusage: {{}}\", message, usage);
+        std::process::exit(2)
+    }}
+    fn counted(count: usize) -> String {{
+        if count == 1 {{ \"1 positional argument\".to_string() }} else {{ format!(\"{{}} positional arguments\", count) }}
+    }}
+    let task: &str = {0};
+    let positional_count: usize = {1};
+    let flags: Vec<&str> = {2}.split_whitespace().collect();
+    let switches: Vec<&str> = {3}.split_whitespace().collect();
+    let usage = if {4}.is_empty() {{ task.to_string() }} else {{ format!(\"{{}} {{}}\", task, {4}) }};
+    let mut values: Vec<Option<String>> = vec![None; positional_count + flags.len() + switches.len()];
+    let mut positional = 0;
+    let mut flags_ended = false;
+    let mut words = std::env::args().skip(1);
+    while let Some(word) = words.next() {{
+        if !flags_ended && word == \"--\" {{
+            flags_ended = true;
+        }} else if !flags_ended && word == \"--help\" {{
+            println!(\"usage: {{}}\", usage);
+            std::process::exit(0)
+        }} else if let Some(written) = word.strip_prefix(\"--\").filter(|_| !flags_ended) {{
+            let (name, attached) = match written.split_once('=') {{
+                Some((name, value)) => (name, Some(value.to_string())),
+                None => (written, None),
+            }};
+            let (slot, value) = if let Some(index) = switches.iter().position(|switch| *switch == name) {{
+                if attached.is_some() {{
+                    refuse(format!(\"switch `--{{}}` takes no value\", name), &usage)
+                }}
+                (positional_count + flags.len() + index, String::new())
+            }} else if let Some(index) = flags.iter().position(|flag| *flag == name) {{
+                let value = attached.or_else(|| words.next()).unwrap_or_else(|| refuse(format!(\"flag `--{{}}` needs a value\", name), &usage));
+                (positional_count + index, value)
+            }} else {{
+                refuse(format!(\"task `{{}}` has no flag `--{{}}`\", task, name), &usage)
+            }};
+            if values[slot].is_some() {{
+                refuse(format!(\"flag `--{{}}` is given more than once\", name), &usage)
+            }}
+            values[slot] = Some(value);
+        }} else if positional < positional_count {{
+            values[positional] = Some(word);
+            positional += 1;
+        }} else {{
+            refuse(format!(\"task `{{}}` takes {{}}, and got more\", task, counted(positional_count)), &usage)
+        }}
+    }}
+    if positional < positional_count {{
+        refuse(format!(\"task `{{}}` takes {{}}, and got {{}}\", task, counted(positional_count), positional), &usage)
+    }}
+    values
+}}"
+    (fn ((ref str)
+         usize
+         (ref str)
+         (ref str)
+         (ref str))
+      (vec (option string)))))
+
+(def task-value
+  (rust "match &({0})[{1}] {{ Some(text) => text.parse::<{target}>().unwrap_or_else(|_| {{ eprintln!(\"error: task `{{}}` cannot read `{{}}` as `{{}}`\", {2}, text, {3}); std::process::exit(2) }}), None => {{ eprintln!(\"error: task `{{}}` needs `{{}}`\\nusage: {{}}\", {2}, {3}, {4}); std::process::exit(2) }} }}"
+    (where ((target from-str))
+      (fn ((ref (vec (option string)))
+           usize
+           (ref str)
+           (ref str)
+           (ref str))
+        target))))
+
+(def task-value-or
+  (rust "match &({0})[{1}] {{ Some(text) => text.parse::<{target}>().unwrap_or_else(|_| {{ eprintln!(\"error: task `{{}}` cannot read `{{}}` as `{{}}`\", {2}, text, {3}); std::process::exit(2) }}), None => {4} }}"
+    (where ((target from-str))
+      (fn ((ref (vec (option string)))
+           usize
+           (ref str)
+           (ref str)
+           target)
+        target))))
+
+(rust-trait task-outcome "std::process::Termination"
+  (help "end the task's body with a print or another call that returns `unit`, or return a `result`")
+  unit
+  (where (a (e display)) (result a e)))
+
+(def task-outcome
+  (rust "{0}"
+    (where ((outcome task-outcome))
+      (fn (outcome) outcome))))
+
+(def task-switch
+  (rust "({0})[{1}].is_some()"
+    (fn ((ref (vec (option string))) usize)
+      bool)))
+
+(def task-names
+  (macro (form)
+    (check-task-modules (program-modules)
+                        (map-list (rest form) string-text))
+    (string-joined (map-list (program-tasks)
+                             (fn (note)
+                               (symbol-name (note-name note)))))))
+
+(document (task-names module ...)
+  "Returns the names of the program's tasks, one per line.
+
+  Each `module` is the path of a module under `tasks/`, as a string. A
+  `deftask` in any other module fails, because a task lives under `tasks/`.")
+
+(def task-listing
+  (macro (form)
+    (local notes (sorted-tasks (program-tasks)))
+    (local width (widest (map-list notes task-call) 0))
+    (string-joined (map-list notes
+                             (fn (note) (listing-line note width))))))
+
+(document (task-listing)
+  "Returns one line per task: its name, its parameters and its summary.")
+
+(def task-call
+  (fn (note)
+    (string (symbol-name (note-name note))
+            (usage-after (note-parameters note)))))
+
+(def listing-line
+  (fn (note width)
+    (local call (task-call note))
+    (if (value-eq (note-summary note) "")
+      call
+      (string call
+              (spaces (number-add 2 (number-sub width (string-length call))))
+              (note-summary note)))))
+
+(def widest
+  (fn (texts width)
+    (if (empty? texts)
+      width
+      (widest (rest texts)
+              (if (number-lt width (string-length (first texts)))
+                (string-length (first texts))
+                width)))))
+
+(def spaces
+  (fn (count)
+    (if (value-eq count 0)
+      ""
+      (string " " (spaces (number-sub count 1))))))
+
+(def string-joined
+  (fn (lines)
+    (if (empty? lines)
+      ""
+      (string (first lines)
+              (lines-after (rest lines))))))
+
+(def lines-after
+  (fn (lines)
+    (if (empty? lines)
+      ""
+      (string "\n" (string-joined lines)))))
+
+(def sorted-tasks
+  (fn (notes)
+    (map-list (sorted-names (map-list notes note-name))
+              (fn (name)
+                (named-task (symbol-name name) notes)))))
+
+(def string-text
+  (fn (text) (string text)))
+
+(def check-task-modules
+  (fn (modules allowed)
+    (if (empty? modules)
+      true
+      (do
+        (check-task-module (first modules) allowed)
+        (check-task-modules (rest modules) allowed)))))
+
+(def check-task-module
+  (fn (module allowed)
+    (local notes (module-notes module (quote tasks)))
+    (if (empty? notes)
+      true
+      (if (one-of? (symbol-name module) allowed)
+        true
+        (fail "`deftask` defines a task only in a file under `tasks/`"
+          (note-name (first notes))
+          "move this task into a file under `tasks/`"
+          (quote (:code task-outside-tasks :label "outside `tasks/`")))))))
+
+(def program-tasks
+  (fn ()
+    (distinct-tasks (modules-tasks (program-modules))
+                    (list))))
+
+(def modules-tasks
+  (fn (modules)
+    (if (empty? modules)
+      (list)
+      (concat (module-notes (first modules) (quote tasks))
+              (modules-tasks (rest modules))))))
+
+(def distinct-tasks
+  (fn (notes seen)
+    (if (empty? notes)
+      seen
+      (distinct-tasks (rest notes)
+                      (concat seen
+                              (list (new-task (first notes) seen)))))))
+
+(def new-task
+  (fn (note seen)
+    (if (empty? seen)
+      note
+      (if (value-eq (symbol-name (note-name note))
+                    (symbol-name (note-name (first seen))))
+        (duplicate-task note (first seen))
+        (new-task note (rest seen))))))
+
+(def duplicate-task
+  (fn (note earlier)
+    (fail (string "task `"
+                  (symbol-name (note-name note))
+                  "` is defined more than once")
+      (note-name note)
+      "rename one of the tasks"
+      (template (:code duplicate-task
+                       :label "defined again here"
+                       :earlier (unquote (note-name earlier))
+                       :earlier-label "first defined here")))))

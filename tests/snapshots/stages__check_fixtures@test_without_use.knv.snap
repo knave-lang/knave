@@ -1,5 +1,6 @@
 ---
 source: tests/stages.rs
+assertion_line: 72
 expression: reports.report(path)
 input_file: tests/fixtures/check/test_without_use.knv
 ---
@@ -8,3 +9,9 @@ error[L0201]: cannot find `deftest` in this scope
   |
 3 | (deftest doubles
   |  ^^^^^^^ not found in this scope
+  |
+help: a name with a similar spelling exists
+  |
+3 - (deftest doubles
+3 + (deftask doubles
+  |

@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(2).stderr()
+---
+error: no task named `deploy-everything`
+help: run `knave task` to list the tasks

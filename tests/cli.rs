@@ -7108,3 +7108,574 @@ fn test_checks_the_tests_of_a_library() {
             .starts_with("error[L0401]: mismatched types\n --> ../test-checked/src/lib.knv:8:22\n")
     );
 }
+
+const TASK_PROJECT: &str = "(project chores)\n";
+const TASK_MODULE: &str = "(export greeting)\n\n(defn greeting (name) (str \"hello \" name))\n\n(defn main () (println (greeting \"main\")))\n";
+const TASKS: &str = "(use main greeting)
+
+(deftask greet ((who string) :times u16 1 :loud false)
+  \"Greets someone a few times.\"
+  (println (greeting who) \" \" times \" \" loud))
+
+(deftask where ()
+  \"Prints the working directory.\"
+  (println (working-directory)))
+
+(deftask leave ((code i32))
+  (exit code))
+
+(deftask count (:limit u16)
+  (println limit))
+
+(deftask paint (:color :coats 2)
+  (println (as-str color) \" \" (+ coats 1)))
+
+(deftask clean-up2 (:label \"none\" :shown true)
+  (println label \" \" shown))
+
+(def working-directory
+  (rust \"std::env::current_dir().unwrap().display().to_string()\"
+    (fn () string)))
+";
+const MISNAMED_TASK: &str = "(deftask Tidy_up () (println \"x\"))\n";
+const LATE_MISNAMED_TASK: &str = "(deftask tidy_up () (println \"x\"))\n";
+const DOUBLE_DASHED_TASK: &str = "(deftask tidy--up () (println \"x\"))\n";
+const REPEATED_TASK: &str = "(deftask where () (println \"again\"))\n";
+const MISTYPED_TASK: &str = "(deftask sum (:by u16) (println (+ by \"x\")))\n";
+const FLAG_BEFORE_POSITIONAL_TASK: &str = "(deftask mix (:fast u16 who) (println who))\n";
+const FAILING_TASK: &str = "(deftask refuse () (err (str \"refused\")))\n";
+
+impl Sandbox {
+    fn with_tasks(test_name: &str) -> Self {
+        Self::new(test_name)
+            .with_file(&Language::project_file_name(), TASK_PROJECT)
+            .with_file("src/main.knv", TASK_MODULE)
+            .with_file("tasks/chores.knv", TASKS)
+    }
+}
+
+#[test]
+fn task_without_a_name_lists_the_tasks_with_their_parameters_and_summaries() {
+    let listing = Sandbox::with_tasks("task_listing").compiler_in("src", &["task"]);
+    insta::assert_snapshot!(listing.assert_exit_code(0).stdout());
+}
+
+#[test]
+fn task_binds_positional_arguments_flags_and_switches() {
+    let sandbox = Sandbox::with_tasks("task_arguments");
+    let given = sandbox.compiler(&["task", "greet", "ana", "--loud", "--times", "3"]);
+    let defaulted = sandbox.compiler(&["task", "greet", "ana"]);
+    assert_eq!(
+        [
+            given.assert_exit_code(0).stdout(),
+            defaulted.assert_exit_code(0).stdout()
+        ],
+        ["hello ana 3 true\n", "hello ana 1 false\n"]
+    );
+}
+
+#[test]
+fn task_runs_at_the_project_root_from_a_subdirectory() {
+    let sandbox = Sandbox::with_tasks("task_root");
+    let root = fs::canonicalize(&sandbox.directory).expect("the sandbox has a canonical path");
+    let task = sandbox.compiler_in("src", &["task", "where"]);
+    assert_eq!(
+        task.assert_exit_code(0).stdout(),
+        format!("{}\n", root.display())
+    );
+}
+
+#[test]
+fn task_exits_with_the_tasks_exit_code() {
+    let task = Sandbox::with_tasks("task_exit_code").compiler(&["task", "leave", "7"]);
+    task.assert_exit_code(7);
+}
+
+#[test]
+fn task_that_returns_an_err_fails_as_main_does() {
+    let task = Sandbox::with_tasks("task_err")
+        .with_file("tasks/failing.knv", FAILING_TASK)
+        .compiler(&["task", "refuse"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn task_command_line_errors_name_the_parameter_and_exit_two() {
+    let sandbox = Sandbox::with_tasks("task_command_line_errors");
+    let errors: Vec<String> = [
+        vec!["task", "greet"],
+        vec!["task", "greet", "ana", "bo"],
+        vec!["task", "greet", "ana", "--shout"],
+        vec!["task", "greet", "ana", "--times"],
+        vec!["task", "greet", "ana", "--times", "many"],
+        vec!["task", "count"],
+    ]
+    .iter()
+    .map(|arguments| sandbox.compiler(arguments).assert_exit_code(2).stderr())
+    .collect();
+    insta::assert_snapshot!(errors.join("---\n"));
+}
+
+#[test]
+fn task_with_an_unknown_name_suggests_the_closest_task() {
+    let task = Sandbox::with_tasks("task_unknown").compiler(&["task", "gret"]);
+    insta::assert_snapshot!(task.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn task_with_an_unknown_name_far_from_every_task_says_how_to_list_them() {
+    let task = Sandbox::with_tasks("task_unknown_far").compiler(&["task", "deploy-everything"]);
+    insta::assert_snapshot!(task.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn task_in_a_project_without_tasks_directory_is_a_usage_error() {
+    let task = Sandbox::new("task_no_directory")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn task_outside_a_project_is_a_usage_error() {
+    let task = Sandbox::new("task_outside_project").compiler(&["task", "greet"]);
+    insta::assert_snapshot!(task.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn task_with_a_name_that_is_not_kebab_case_is_an_error() {
+    let task = Sandbox::with_tasks("task_misnamed")
+        .with_file("tasks/misnamed.knv", MISNAMED_TASK)
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn task_defined_twice_is_an_error() {
+    let task = Sandbox::with_tasks("task_repeated")
+        .with_file("tasks/repeated.knv", REPEATED_TASK)
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn check_without_a_file_checks_every_task() {
+    let sandbox = Sandbox::with_tasks("check_tasks");
+    let clean = sandbox.compiler(&["check"]);
+    clean.assert_exit_code(0);
+    let mistyped = sandbox
+        .with_file("tasks/mistyped.knv", MISTYPED_TASK)
+        .compiler(&["check"]);
+    insta::assert_snapshot!(mistyped.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn check_of_a_task_file_resolves_use_from_the_source_root() {
+    let check = Sandbox::with_tasks("check_task_file").compiler(&["check", "tasks/chores.knv"]);
+    check.assert_exit_code(0);
+}
+
+const CRATE_TASK: &str = "(def answer
+  (rust \"answer::answer()\" (fn () i64)))
+
+(deftask show (:offset i64 2)
+  (println (+ (answer) offset)))
+";
+
+#[test]
+fn task_in_a_project_with_crates_builds_through_cargo_beside_the_program() {
+    let sandbox = Sandbox::new("crate_task")
+        .with_fixture_tree("crates")
+        .with_file("app/tasks/show.knv", CRATE_TASK);
+    let task = sandbox.compiler_in("app", &["task", "show"]);
+    let run = sandbox.compiler_in("app", &["run"]);
+    assert_eq!(
+        [
+            task.assert_exit_code(0).stdout(),
+            run.assert_exit_code(0).stdout()
+        ],
+        ["44\n", "42\n"]
+    );
+}
+
+#[test]
+fn task_with_an_unknown_name_in_a_project_with_no_tasks_says_none_is_defined() {
+    let task = Sandbox::new("task_none_defined")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("tasks/notes.knv", "(def note 1)\n")
+        .compiler(&["task", "greet"]);
+    insta::assert_snapshot!(task.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn check_without_a_file_in_a_project_without_tasks_checks_the_entry() {
+    let check = Sandbox::new("check_no_tasks_directory")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .compiler(&["check"]);
+    check.assert_silent_success();
+}
+
+#[test]
+fn task_list_ends_each_line_and_prints_nothing_without_tasks() {
+    let listing = Sandbox::with_tasks("task_listing_lines").compiler(&["task"]);
+    let empty = Sandbox::new("task_listing_empty")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("tasks/notes.knv", "(def note 1)\n")
+        .compiler(&["task"]);
+    assert_eq!(
+        [
+            listing.assert_exit_code(0).stdout().lines().count(),
+            empty.assert_exit_code(0).stdout().len()
+        ],
+        [6, 0]
+    );
+    assert!(
+        listing
+            .stdout()
+            .ends_with("Prints the working directory.\n")
+    );
+}
+
+#[test]
+fn task_flag_takes_a_string_or_true_default() {
+    let sandbox = Sandbox::with_tasks("task_true_default");
+    let defaulted = sandbox.compiler(&["task", "clean-up2"]);
+    let given = sandbox.compiler(&[
+        "task",
+        "clean-up2",
+        "--label",
+        "kitchen",
+        "--shown",
+        "false",
+    ]);
+    assert_eq!(
+        [
+            defaulted.assert_exit_code(0).stdout(),
+            given.assert_exit_code(0).stdout()
+        ],
+        ["none true\n", "kitchen false\n"]
+    );
+}
+
+#[test]
+fn task_name_breaks_kebab_case_after_its_first_letter() {
+    let sandbox = Sandbox::with_tasks("task_late_misnamed");
+    let underscored = sandbox
+        .with_file("tasks/misnamed.knv", LATE_MISNAMED_TASK)
+        .compiler(&["task"]);
+    let sandbox = Sandbox::with_tasks("task_double_dashed");
+    let double_dashed = sandbox
+        .with_file("tasks/misnamed.knv", DOUBLE_DASHED_TASK)
+        .compiler(&["task"]);
+    assert_eq!(
+        [
+            underscored.assert_exit_code(1).stderr().lines().next(),
+            double_dashed.assert_exit_code(1).stderr().lines().next()
+        ],
+        [
+            Some("error[L0357]: task name `tidy_up` is not kebab-case"),
+            Some("error[L0357]: task name `tidy--up` is not kebab-case")
+        ]
+    );
+}
+
+#[test]
+fn task_flag_without_type_or_default_is_required_beside_a_defaulted_flag() {
+    let sandbox = Sandbox::with_tasks("task_flat_flags");
+    let painted = sandbox.compiler(&["task", "paint", "--color", "teal"]);
+    let missing = sandbox.compiler(&["task", "paint", "--coats", "3"]);
+    assert_eq!(
+        [
+            painted.assert_exit_code(0).stdout(),
+            missing.assert_exit_code(2).stderr()
+        ],
+        [
+            "teal 3\n",
+            "error: task `paint` needs `--color`\nusage: paint --color <color> [--coats 2]\n"
+        ]
+    );
+}
+
+#[test]
+fn task_positional_parameter_after_a_flag_is_an_error() {
+    let task = Sandbox::with_tasks("task_flag_before_positional")
+        .with_file("tasks/mix.knv", FLAG_BEFORE_POSITIONAL_TASK)
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+const INFERRED_TASKS: &str = "(defn double ((port u16)) (* port 2))
+
+(defn square (x) (* x x))
+
+(deftask pinned (port) (println (double port)))
+
+(deftask hail (who) (println who))
+
+(deftask area (side) (println (square side)))
+";
+const SIGNATURE_LOOKUP: &str = "(use prelude/task task-signature)
+
+(deftask known ((port u16) :times 2 :quiet false) (println port times quiet))
+
+(deftask open (who) (println who))
+";
+const OPEN_LOCAL: &str = "(defn main ()\n  (local x (parse \"1\"))\n  (println \"ok\"))\n";
+
+#[test]
+fn task_parameter_that_nothing_fixes_takes_a_string() {
+    let task = Sandbox::with_tasks("task_open_parameter")
+        .with_file("tasks/inferred.knv", INFERRED_TASKS)
+        .compiler(&["task", "hail", "ana"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "ana\n");
+}
+
+#[test]
+fn task_parameter_keeps_the_type_inference_gives_it() {
+    let sandbox = Sandbox::with_tasks("task_pinned_parameter")
+        .with_file("tasks/inferred.knv", INFERRED_TASKS);
+    let doubled = sandbox.compiler(&["task", "pinned", "21"]);
+    let too_big = sandbox.compiler(&["task", "pinned", "70000"]);
+    assert_eq!(
+        [
+            doubled.assert_exit_code(0).stdout(),
+            too_big.assert_exit_code(2).stderr()
+        ],
+        [
+            "42\n",
+            "error: task `pinned` cannot read `70000` as `<port>`\n"
+        ]
+    );
+}
+
+#[test]
+fn task_parameter_whose_body_needs_more_than_a_string_is_a_type_error() {
+    let task = Sandbox::with_tasks("task_bound_string")
+        .with_file("tasks/inferred.knv", INFERRED_TASKS)
+        .compiler(&["task", "area", "3"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn task_signature_is_empty_when_every_parameter_type_is_known() {
+    let sandbox =
+        Sandbox::with_tasks("task_signature").with_file("tasks/lookup.knv", SIGNATURE_LOOKUP);
+    let known = sandbox.compiler(&["eval", "tasks/lookup.knv", "(task-signature \"known\")"]);
+    let open = sandbox.compiler(&["eval", "tasks/lookup.knv", "(task-signature \"open\")"]);
+    insta::assert_snapshot!(format!(
+        "{}{}",
+        known.assert_exit_code(0).stdout(),
+        open.assert_exit_code(0).stdout()
+    ));
+}
+
+#[test]
+fn check_keeps_an_open_local_outside_tasks_an_error() {
+    let check = Sandbox::new("open_local")
+        .with_file("open.knv", OPEN_LOCAL)
+        .compiler(&["check", "open.knv"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+const REVIEW_MODULE: &str = "(export greet-text loud loud-text)
+
+(defn greet-text ((name (ref str))) (println name))
+
+(deftrait loud (loud-text (fn ((ref self)) string)))
+
+(impl loud string (loud-text (s) (str s \"!\")))
+
+(defn main () (println \"main\"))
+";
+const REVIEW_TASKS: &str = "(use main greet-text loud-text)
+
+(defn square (x) (* x x))
+
+(deftask total ((xs (vec i64))) (println (len xs)))
+
+(deftask hi (who) (greet-text who))
+
+(deftask add ((a i64)) (+ a 1))
+
+(deftask docless () \"only a docstring\")
+
+(deftask d (:port u16 -1) (println port))
+
+(deftask area (side) (println (square side)))
+
+(deftask shout (who) (println (loud-text who)))
+
+(deftask mixed (who :times 2) (println who \" \" (+ times 1)))
+";
+const STRAY_TASK_MODULE: &str = "(export x)\n\n(def x 1)\n\n(deftask sneaky () (println \"s\"))\n";
+const STRAY_TASK_USER: &str = "(use stray x)\n\n(deftask t () (println x))\n";
+const SHARED_BROKEN: &str = "(export helper)\n\n(defn helper () (println (+ 1 \"x\")))\n";
+
+impl Sandbox {
+    fn with_review_tasks(test_name: &str, task: &str) -> Self {
+        Self::new(test_name)
+            .with_file(&Language::project_file_name(), TASK_PROJECT)
+            .with_file("src/main.knv", REVIEW_MODULE)
+            .with_file(&format!("tasks/{task}.knv"), &Self::only_task(task))
+    }
+
+    fn only_task(task: &str) -> String {
+        let header = REVIEW_TASKS
+            .split("\n\n(deftask")
+            .next()
+            .expect("the tasks start with uses");
+        let body = REVIEW_TASKS
+            .split("\n\n")
+            .find(|block| block.starts_with(&format!("(deftask {task} ")))
+            .expect("the task exists");
+        format!("{header}\n\n{body}\n")
+    }
+}
+
+#[test]
+fn task_errors_point_at_the_parameter_or_the_task_never_at_generated_code() {
+    let reports: Vec<String> = ["total", "hi", "add", "docless", "d", "area"]
+        .iter()
+        .map(|task| {
+            Sandbox::with_review_tasks(&format!("task_located_{task}"), task)
+                .compiler(&["task", task])
+                .assert_exit_code(1)
+                .stderr()
+        })
+        .collect();
+    assert!(reports.iter().all(|report| !report.contains("<task")));
+    insta::assert_snapshot!(reports.join("---\n"));
+}
+
+#[test]
+fn task_string_parameter_reaches_a_user_trait_that_string_implements() {
+    let task =
+        Sandbox::with_review_tasks("task_user_trait", "shout").compiler(&["task", "shout", "ana"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "ana!\n");
+}
+
+#[test]
+fn task_open_parameter_beside_a_defaulted_flag_keeps_the_flag_a_number() {
+    let task = Sandbox::with_review_tasks("task_open_beside_default", "mixed")
+        .compiler(&["task", "mixed", "bo", "--times", "3"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "bo 4\n");
+}
+
+#[test]
+fn check_without_a_file_rejects_what_task_rejects() {
+    let check = Sandbox::with_review_tasks("check_rejects_task", "add").compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn check_without_a_file_reports_an_error_shared_by_entry_and_task_once() {
+    let check = Sandbox::new("check_shared_error")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/shared.knv", SHARED_BROKEN)
+        .with_file(
+            "src/main.knv",
+            "(use shared helper)\n\n(defn main () (helper))\n",
+        )
+        .with_file(
+            "tasks/t.knv",
+            "(use shared helper)\n\n(deftask t () (helper))\n",
+        )
+        .compiler(&["check"]);
+    assert_eq!(
+        check
+            .assert_exit_code(1)
+            .stderr()
+            .matches("mismatched types")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn task_cannot_reach_tests_when_the_entry_sits_at_the_root() {
+    let sandbox = Sandbox::new("task_root_entry")
+        .with_file(
+            &Language::project_file_name(),
+            "(project rootreach :entry \"main.knv\")\n",
+        )
+        .with_file(
+            "main.knv",
+            "(export shout)\n\n(def shout \"hey\")\n\n(defn main () (println shout))\n",
+        )
+        .with_file(
+            "tests/support.knv",
+            "(export helper)\n\n(defn helper () (println \"t\"))\n",
+        )
+        .with_file(
+            "tasks/u.knv",
+            "(use main shout)\n\n(deftask u () (println shout))\n",
+        );
+    let root_module = sandbox.compiler(&["task", "u"]);
+    let tests_module = sandbox
+        .with_file(
+            "tasks/t.knv",
+            "(use tests/support helper)\n\n(deftask t () (helper))\n",
+        )
+        .compiler(&["task", "t"]);
+    assert_eq!(root_module.assert_exit_code(0).stdout(), "hey\n");
+    insta::assert_snapshot!(tests_module.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn task_parses_flag_shapes_the_way_command_lines_write_them() {
+    let sandbox = Sandbox::with_tasks("task_flag_shapes");
+    let outcomes: Vec<String> = [
+        vec!["task", "greet", "ana", "--times=3"],
+        vec!["task", "greet", "ana", "--loud=true"],
+        vec!["task", "greet", "--", "--ana"],
+        vec!["task", "greet", "ana", "--times", "1", "--times", "2"],
+        vec!["task", "greet", "--help"],
+    ]
+    .iter()
+    .map(|arguments| {
+        let outcome = sandbox.compiler(arguments);
+        format!(
+            "{:?}\n{}{}",
+            outcome.output.status.code(),
+            outcome.stdout(),
+            outcome.stderr()
+        )
+    })
+    .collect();
+    insta::assert_snapshot!(outcomes.join("---\n"));
+}
+
+#[test]
+fn task_deftask_outside_tasks_is_an_error_at_the_form() {
+    let task = Sandbox::with_tasks("task_stray")
+        .with_file("src/stray.knv", STRAY_TASK_MODULE)
+        .with_file("tasks/stray-user.knv", STRAY_TASK_USER)
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn task_without_tasks_directory_names_it_relative_from_a_subdirectory() {
+    let task = Sandbox::new("task_no_directory_subdirectory")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .compiler_in("src", &["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn task_file_needs_no_import_of_deftask() {
+    let task = Sandbox::new("task_no_import")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file(
+            "tasks/plain.knv",
+            "(deftask plain () (println \"plain\"))\n",
+        )
+        .compiler(&["task", "plain"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "plain\n");
+}

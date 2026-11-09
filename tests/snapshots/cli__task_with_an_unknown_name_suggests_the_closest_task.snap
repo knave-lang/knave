@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(2).stderr()
+---
+error: no task named `gret`
+help: did you mean `greet`?

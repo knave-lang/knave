@@ -64,7 +64,7 @@ knave fmt src/
 knave test tests/
 ```
 
-A project is a directory with a `project.knv` file, and `knave new <name>` creates one. Inside one, `build`, `run`, `check`, `types`, `expand` and `emit` take the project's entry file when given no file. Given no path, `fmt` lays out the whole project and `test` runs the project's `tests/` directory.
+A project is a directory with a `project.knv` file, and `knave new <name>` creates one. Inside one, `build`, `run`, `check`, `types`, `expand` and `emit` take the project's entry file when given no file. Given no path, `fmt` lays out the whole project and `test` runs the project's `tests/` directory, and given no file, `check` also checks the project's tasks. `knave task <name> [arguments]` runs a task that a `deftask` under `tasks/` defines, and `knave task` lists them.
 
 ## Develop
 

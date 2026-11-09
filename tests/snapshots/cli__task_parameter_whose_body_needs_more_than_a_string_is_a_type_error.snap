@@ -1,0 +1,11 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(1).stderr()
+---
+error[L0404]: `string` does not implement `number`
+ --> tasks/inferred.knv:9:16
+  |
+9 | (deftask area (side) (println (square side)))
+  |                ^^^^ this needs `number`
+  |
+  = note: `number` is implemented for: i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64

@@ -1,0 +1,11 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(1).stderr()
+---
+error[L0359]: `deftask` defines a task only in a file under `tasks/`
+ --> src/stray.knv:5:10
+  |
+5 | (deftask sneaky () (println "s"))
+  |          ^^^^^^ outside `tasks/`
+  |
+  = help: move this task into a file under `tasks/`

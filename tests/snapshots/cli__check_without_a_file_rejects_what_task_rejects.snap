@@ -1,0 +1,11 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0404]: `i64` does not implement `task-outcome`
+ --> tasks/add.knv:5:10
+  |
+5 | (deftask add ((a i64)) (+ a 1))
+  |          ^^^ this needs `task-outcome`
+  |
+  = note: `task-outcome` is implemented for: unit, (where (a (e display)) (result a e))

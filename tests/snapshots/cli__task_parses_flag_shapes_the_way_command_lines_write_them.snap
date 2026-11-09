@@ -1,0 +1,20 @@
+---
+source: tests/cli.rs
+expression: "outcomes.join(\"---\\n\")"
+---
+Some(0)
+hello ana 3 false
+---
+Some(2)
+error: switch `--loud` takes no value
+usage: greet <who> [--times 1] [--loud]
+---
+Some(0)
+hello --ana 1 false
+---
+Some(2)
+error: flag `--times` is given more than once
+usage: greet <who> [--times 1] [--loud]
+---
+Some(0)
+usage: greet <who> [--times 1] [--loud]

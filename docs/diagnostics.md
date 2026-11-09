@@ -72,6 +72,8 @@ help: a function with a similar name exists
 
 **Name a repeated test at the second `deftest`.** A second test of one name in one module is `L0333`, ``test `pads` is defined more than once``, with its primary label on the second test's name and a secondary label on the first, and the help `rename one of the tests`.
 
+**Name a repeated task at the second `deftask`.** A second task of one name is `L0356`, ``task `serve` is defined more than once``, with its primary label on the second task's name, a secondary label on the first, and the help `rename one of the tasks`. A label never points at the source that `knave task` generates.
+
 **Point an unreadable example at its code.** A docstring example whose result does not read as one form is `L0354`, with its primary label on the example's code and a help that names the fenced code block.
 
 **Point a partly labeled call at the argument outside a pair.** `L0338` puts its primary label on the first argument that no `:field value` pair holds, with "this argument has no label" on a value and "this label has no value" on a keyword.

@@ -1,0 +1,25 @@
+(defstruct tally
+  :hits i64)
+
+(defn hit! (t)
+  (set! (:hits t) (+ (:hits t) 10))
+  1)
+
+(defn bump! (x)
+  (set! x (+ x 1))
+  x)
+
+(defn main ()
+  (local score (->tally 0))
+  (set! (:hits score)
+        (+ (:hits score) (hit! score)))
+  (println (:hits score))
+  (local total 10)
+  (set! total (+ total (bump! total)))
+  (println total)
+  (local count 10)
+  (set! count (+ (bump! count) count))
+  (println count)
+  (local left 10)
+  (set! left (- left (bump! left)))
+  (println left))

@@ -1,10 +1,18 @@
 (defstruct counter
-  :hits i64)
+  :hits i64
+  :misses i64)
 
 (defn main ()
   (local total 1)
   (set! total (+ total 2))
+  (set! total (+ 3 total))
   (set! total (- 10 total))
-  (local tally (->counter 0))
+  (set! total (- total (* 2 3)))
+  (local tally (->counter 0 4))
   (set! (:hits tally) (* (:hits tally) 3))
-  (println total (:hits tally)))
+  (set! (:hits tally)
+        (+ (:misses tally) 1))
+  (local scores (vec 1 2 3))
+  (set! (at scores 0)
+        (+ (at scores 0) (at scores 2)))
+  (println total (:hits tally) (at scores 0)))

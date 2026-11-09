@@ -2066,12 +2066,12 @@ impl<'a> ExpressionEmitter<'a> {
         if template.template.as_ref() == Self::MAP_UPDATE_TEMPLATE {
             return self.map_update_call(arguments);
         }
-        if let Some((compound, operand)) = self.compound_assignment(&template.template, arguments) {
+        if let Some(compound) = self.compound_assignment(template, arguments, &types, span) {
             let rewritten = RustTemplate {
-                template: compound.into(),
+                template: compound.template.into(),
                 ..RustTemplate::clone(template)
             };
-            return self.template_call(&rewritten, &[arguments[0].clone(), operand], types, span);
+            return self.template_call(&rewritten, &compound.arguments, types, span);
         }
         let mut parsed = Template::new(&template.template);
         self.locals.enter();

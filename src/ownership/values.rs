@@ -39,6 +39,22 @@ impl Adjustment {
     }
 }
 
+#[derive(Clone, Copy)]
+enum ValueSite {
+    Argument,
+    Field,
+    Local(BindingId),
+}
+
+struct LostChange<'t> {
+    function: BindingId,
+    actual: &'t Type,
+    expected_parameters: &'t [Type],
+    position: usize,
+    changed: ChangedCopy,
+    site: ValueSite,
+}
+
 pub struct FunctionValueModes<'a> {
     bindings: &'a mut BindingArena,
     generics: &'a FxHashMap<GenericId, GenericParam>,
@@ -199,7 +215,7 @@ impl<'a> FunctionValueModes<'a> {
             .find(|(name, _)| name.as_ref() == label.name.as_ref())
             .expect("the type checker checked every field");
         let expected = expected.clone();
-        if !self.compare(value, &expected) {
+        if !self.compare(value, &expected, ValueSite::Field) {
             self.expr(value, current);
         }
     }
@@ -209,7 +225,7 @@ impl<'a> FunctionValueModes<'a> {
             match item {
                 TypedBodyItem::Let(binder, value) => {
                     let expected = binder.ty.clone();
-                    if !self.compare(value, &expected) {
+                    if !self.compare(value, &expected, ValueSite::Local(binder.binding)) {
                         self.expr(value, current);
                     }
                 }
@@ -227,7 +243,9 @@ impl<'a> FunctionValueModes<'a> {
         for (position, argument) in arguments.iter_mut().enumerate() {
             let handled = expected
                 .and_then(|parameters| parameters.get(position))
-                .is_some_and(|expected| self.compare(&mut argument.value, expected));
+                .is_some_and(|expected| {
+                    self.compare(&mut argument.value, expected, ValueSite::Argument)
+                });
             if !handled {
                 self.expr(&mut argument.value, current);
             }
@@ -265,7 +283,7 @@ impl<'a> FunctionValueModes<'a> {
         definition.instantiated_fields(arguments)
     }
 
-    fn compare(&mut self, value: &mut TypedExpr, expected: &Type) -> bool {
+    fn compare(&mut self, value: &mut TypedExpr, expected: &Type, site: ValueSite) -> bool {
         let Type::Function(_, expected_parameters, expected_result) = expected else {
             return false;
         };
@@ -280,14 +298,15 @@ impl<'a> FunctionValueModes<'a> {
             Err(parameter) => return self.mismatch(value, binding, &actual, expected, parameter),
         };
         if let Some((position, changed)) = self.lost_change(binding, &adjustments) {
-            return self.changing_value(
-                value,
-                binding,
-                &actual,
+            let lost = LostChange {
+                function: binding,
+                actual: &actual,
                 expected_parameters,
                 position,
                 changed,
-            );
+                site,
+            };
+            return self.changing_value(value, lost);
         }
         if expected == &actual {
             if matches!(value.kind, TypedExprKind::Fn(_)) {
@@ -377,34 +396,39 @@ impl<'a> FunctionValueModes<'a> {
             })
     }
 
-    fn changing_value(
-        &mut self,
-        value: &mut TypedExpr,
-        binding: BindingId,
-        actual: &Type,
-        expected_parameters: &[Type],
-        position: usize,
-        changed: ChangedCopy,
-    ) -> bool {
-        let by_value = Self::with_parameter_by_value(actual, position);
+    fn changing_value(&mut self, value: &mut TypedExpr, lost: LostChange) -> bool {
+        let by_value = Self::with_parameter_by_value(lost.actual, lost.position);
         let display = TypeDisplay::new(self.bindings, self.generics);
-        let Type::Function(_, actual_parameters, _) = actual else {
+        let Type::Function(_, actual_parameters, _) = lost.actual else {
             unreachable!("a function value has a function type")
         };
         let problem = ChangingFunctionValue {
-            function: self.bindings.get(binding).name(),
-            param: self.bindings.get(changed.param).name(),
-            expected: display.show(&expected_parameters[position]),
-            found: display.show(&actual_parameters[position]),
+            function: self.bindings.get(lost.function).name(),
+            param: self.bindings.get(lost.changed.param).name(),
+            expected: display.show(&lost.expected_parameters[lost.position]),
+            found: display.show(&actual_parameters[lost.position]),
             by_value: display.show(&by_value),
         };
-        self.diagnostics
-            .push(OwnershipProblems::changing_function_value(
+        let diagnostic = match lost.site {
+            ValueSite::Argument => OwnershipProblems::changing_function_argument(
                 value.span,
-                changed.change,
+                lost.changed.change,
                 &problem,
-            ));
-        self.unwrap(value, binding, actual);
+            ),
+            ValueSite::Field => OwnershipProblems::changing_function_field(
+                value.span,
+                lost.changed.change,
+                &problem,
+            ),
+            ValueSite::Local(local) => OwnershipProblems::changing_function_local(
+                value.span,
+                lost.changed.change,
+                &problem,
+                self.bindings.get(local).name(),
+            ),
+        };
+        self.diagnostics.push(diagnostic);
+        self.unwrap(value, lost.function, lost.actual);
         true
     }
 

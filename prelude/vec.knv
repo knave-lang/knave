@@ -45,7 +45,13 @@
 (defmacro vec (elements ...)
   "Builds a vector from its elements, which all have one type.
 
-  `(vec)` is empty. `vec` is also the type `(vec a)`, Rust's `Vec<A>`."
+  `(vec)` is empty. `vec` is also the type `(vec a)`, Rust's `Vec<A>`.
+
+  (len (vec 1 2 3))
+  => 3
+
+  (empty? (the (vec i64) (vec)))
+  => true"
   (local count (len elements))
   (if (empty? elements)
     (list (quote rust)
@@ -67,7 +73,17 @@
   "Adds an item to a vector or a string.
 
   A vector takes an element, and a `string` takes a `char` or a
-  `(ref str)`. `push!` as a value is the vector push.")
+  `(ref str)`. `push!` as a value is the vector push.
+
+  (local items (vec 1))
+  (push! items 2)
+  (clone items)
+  => (vec 1 2)
+
+  (local word (str \"pe\"))
+  (push! word (char \"a\"))
+  (clone word)
+  => \"pea\"")
 
 (def vec-push!
   (rust "{0}.push({1})"
@@ -167,26 +183,49 @@
 
   A vector or a slice yields `(ref a)`, and a map yields
   `(pair (ref key) (ref value))`. Where a call expects an `iterator`, a vector,
-  a slice or a map passes without `iter`.")
+  a slice or a map passes without `iter`.
+
+  (collect (map (iter (vec 1 2)) str))
+  => (vec (str 1) (str 2))")
 
 (document (copied items)
   "Returns an iterator over copies of a slice's items.
 
-  The items implement `copy`. It takes a vector or a slice, not an iterator.")
+  The items implement `copy`. It takes a vector or a slice, not an iterator.
+
+  (collect (copied (vec 1 2)))
+  => (vec 1 2)")
 
 (document (collect items)
-  "Collects the items of an iterator into a vector.")
+  "Collects the items of an iterator into a vector.
+
+  (collect (range 0 3))
+  => (vec 0 1 2)")
 
 (document (pop! items)
   "Removes a vector's last item and returns it as an `option`.
 
-  It returns `none` for an empty vector.")
+  It returns `none` for an empty vector.
+
+  (local items (vec 1))
+  (pop! items)
+  => (some 1)
+
+  (pop! items)
+  => none")
 
 (document (remove-at! items index)
   "Removes the item at an index and returns it.
 
   `index` is a `usize`, so an `i64` is an error. Each later item moves down by
-  one. It panics when `index` is not below the vector's length.")
+  one. It panics when `index` is not below the vector's length.
+
+  (local items (vec 1 2 3))
+  (remove-at! items 0)
+  => 1
+
+  (clone items)
+  => (vec 2 3)")
 
 (document (sort! items)
   "Sorts a vector in place, in ascending order.
@@ -197,49 +236,101 @@
   `(sort! items compare)` orders by a function of two `(ref a)` that returns
   an `i64`. A negative result puts the first item first, a positive result
   puts it last, and zero keeps the two in order. Rust's `sort_by` may panic
-  when `compare` is not a consistent order.")
+  when `compare` is not a consistent order.
+
+  (local items (vec 3 1 2))
+  (sort! items)
+  (clone items)
+  => (vec 1 2 3)
+
+  (sort! items >)
+  (clone items)
+  => (vec 3 2 1)")
 
 (document (sort-by! items key)
   "Sorts a vector in place by the key of each item.
 
   `key` takes a `(ref a)` and returns a value that implements `ord`. Items
   with equal keys keep their order. A keyword such as `:age` reads that field.
-  Rust's `sort_by_key` may panic when `key` is not consistent between calls.")
+  Rust's `sort_by_key` may panic when `key` is not consistent between calls.
+
+  (local words (vec \"pear\" \"fig\" \"kiwi\"))
+  (sort-by! words (fn (word) (len (deref word))))
+  (clone words)
+  => (vec \"fig\" \"pear\" \"kiwi\")")
 
 (document (windows items size)
   "Returns an iterator over each run of `size` neighboring items of a slice.
 
   Each run is a `(ref (slice a))`. `size` is a `usize`, so an `i64` is an
   error. A slice shorter than `size` gives no run. It panics when `size` is
-  zero. A vector passes as its slice.")
+  zero. A vector passes as its slice.
+
+  (count (windows (vec 1 2 3) 2))
+  => 2
+
+  (count (windows (vec 1) 2))
+  => 0")
 
 (document (at items index)
   "Returns a borrow of the item at an index.
 
   `index` is a `usize`, so an `i64` is an error. It panics when `index` is not
   below the length. `get` returns an `option` in place of the panic. A vector
-  passes as its slice.")
+  passes as its slice.
+
+  (local items (vec 10 20))
+  (deref (at items 1))
+  => 20")
 
 (document (first items)
   "Returns a borrow of a slice's first item as an `option`.
 
-  It returns `none` for an empty slice. A vector passes as its slice.")
+  It returns `none` for an empty slice. A vector passes as its slice.
+
+  (local items (vec 1 2))
+  (first items)
+  => (some (ref 1))
+
+  (first (the (vec i64) (vec)))
+  => none")
 
 (document (last items)
   "Returns a borrow of a slice's last item as an `option`.
 
-  It returns `none` for an empty slice. A vector passes as its slice.")
+  It returns `none` for an empty slice. A vector passes as its slice.
+
+  (local items (vec 1 2))
+  (last items)
+  => (some (ref 2))
+
+  (last (the (vec i64) (vec)))
+  => none")
 
 (document (reverse items)
   "Returns an iterator over borrows of a slice's items, last item first.
 
   It takes a vector or a slice, not an iterator, and leaves the items in
-  place. Use `reverse!` to reverse a vector itself.")
+  place. Use `reverse!` to reverse a vector itself.
 
-(document (reverse! items) "Reverses a vector in place.")
+  (collect (map (reverse (vec 1 2)) str))
+  => (vec (str 2) (str 1))")
+
+(document (reverse! items)
+  "Reverses a vector in place.
+
+  (local items (vec 1 2))
+  (reverse! items)
+  (clone items)
+  => (vec 2 1)")
 
 (document (dedup! items)
   "Removes from a vector each item equal to the one before it.
 
   Only neighbors count, so sort the vector first to remove every repeat. The
-  items implement `partial-eq`.")
+  items implement `partial-eq`.
+
+  (local items (vec 1 1 2 1))
+  (dedup! items)
+  (clone items)
+  => (vec 1 2 1)")

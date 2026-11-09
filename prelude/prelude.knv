@@ -126,7 +126,11 @@
 (document (fn (parameter ...) body ...)
   "Makes a function of its parameters, whose result is its last body form.
 
-  It emits a Rust `fn` item, a closure or a block, by where it appears.")
+  It emits a Rust `fn` item, a closure or a block, by where it appears.
+
+  (local twice (fn (x) (* x 2)))
+  (twice 3)
+  => 6")
 
 (document (def name value)
   "Defines a module-level name for a value.
@@ -136,47 +140,89 @@
 
   A string between the name and the value, as in
   `(def max-retries \"How many times a check reruns.\" 1)`, documents the
-  name.")
+  name.
+
+  ```
+  (def max-retries 3)
+  (+ max-retries 1)
+  => 4
+  ```")
 
 (document (local name value)
   "Binds a name to a value for the rest of the body.
 
-  It emits a Rust `let`.")
+  It emits a Rust `let`.
+
+  (local total 2)
+  (+ total 1)
+  => 3")
 
 (document (do form ...)
   "Evaluates its forms in order and returns the last one.
 
   It emits a block, and `(do)` is the unit value. At module level, its forms
-  are definitions.")
+  are definitions.
+
+  (do 1 2)
+  => 2")
 
 (document (if test then else)
   "Evaluates `then` when the test is true, and `else` otherwise.
 
-  It emits a Rust `if` with an `else`.")
+  It emits a Rust `if` with an `else`.
+
+  (if (> 2 1) \"yes\" \"no\")
+  => \"yes\"")
 
 (document (type name type)
   "Declares the type of a definition, as a signature.
 
   The name refers to a `def` of this module, or to a macro whose value
-  position expands to a function that the macro introduced in this module.")
+  position expands to a function that the macro introduced in this module.
+
+  ```
+  (type twice (fn (i64) i64))
+  (def twice (fn (x) (* 2 x)))
+  (twice 4)
+  => 8
+  ```")
 
 (document (struct (name parameter ...) (field type) ...)
   "Defines a struct type with named fields.
 
   The name is a bare name, or a list of the name and its type parameters.
-  It emits a Rust `struct`.")
+  It emits a Rust `struct`.
+
+  ```
+  (struct point (x i64) (y i64))
+  (field (new point (x 1) (y 2)) x)
+  => 1
+  ```")
 
 (document (enum (name parameter ...) variant ...)
   "Defines an enum type from its variants.
 
   The name is a bare name, or a list of the name and its type parameters. A
   variant is a name, `(name type ...)` or `(name (struct (field type) ...))`.
-  A `(rust \"Path\")` after the name makes the enum the named Rust type.")
+  A `(rust \"Path\")` after the name makes the enum the named Rust type.
+
+  ```
+  (enum shape (circle f64) square)
+  (match (shape/circle 1.0)
+    ((circle radius) radius)
+    (square 0.0))
+  => 1.0
+  ```")
 
 (document (derive type trait ...)
   "Derives traits for a struct or an enum of this module.
 
-  It emits a `#[derive(...)]` attribute on the type.")
+  It emits a `#[derive(...)]` attribute on the type.
+
+  ```
+  (struct mark (x i64))
+  (derive mark debug)
+  ```")
 
 (document (match value (pattern body ...) ...)
   "Evaluates the body of the first arm whose pattern matches the value.
@@ -185,75 +231,144 @@
 
   A pattern is `_`, a literal, a bare name, `(variant pattern ...)`,
   `(variant :field pattern ...)`, `(type-name pattern ...)` or
-  `(type-name :field pattern ...)`. It emits a Rust `match`.")
+  `(type-name :field pattern ...)`. It emits a Rust `match`.
+
+  (match 3
+    (0 \"zero\")
+    (_ \"other\"))
+  => \"other\"
+
+  (match (pair 1 2)
+    ((pair left _) left))
+  => 1")
 
 (document (assoc-at value (key ...) item)
   "Returns the collection with the item stored at a path of keys.
 
   The collection's inferred type picks the Rust, for a vector, a sorted map
-  or a hash map. `assoc` and `assoc-in` expand to it.")
+  or a hash map. `assoc` and `assoc-in` expand to it.
+
+  (assoc-at (vec 1 2) (0) 9)
+  => (vec 9 2)")
 
 (document (map-at operation value argument ...)
   "Applies a collection operation whose Rust the collection's type picks.
 
   The operation is `get`, `keys`, `vals`, `iter`, `update` or `push`.
-  `get`, `keys`, `vals`, `iter`, `update` and `push!` expand to it.")
+  `get`, `keys`, `vals`, `iter`, `update` and `push!` expand to it.
+
+  (local items (vec 1 2))
+  (map-at get items 1)
+  => (some (ref 2))")
 
 (document (set-at value (key ...) item)
   "Assigns the item at a path of keys inside a place.
 
-  It emits an assignment. `set!` expands to it.")
+  It emits an assignment. `set!` expands to it.
+
+  (local items (vec 1 2))
+  (set-at items (0) 9)
+  (clone items)
+  => (vec 9 2)")
 
 (document (new name (field value) ...)
   "Builds a struct value from its fields.
 
   A field label is a field name or a keyword, as in `(new car (:year 2025))`.
-  `(new _ base (field value) ...)` takes the other fields from a base value.")
+  `(new _ base (field value) ...)` takes the other fields from a base value.
+
+  ```
+  (struct point (x i64) (y i64))
+  (local start (new point (x 1) (y 2)))
+  (field (new _ start (x 9)) x)
+  => 9
+  ```")
 
 (document (field value name)
   "Reads a field of a struct value.
 
-  It emits `value.name`.")
+  It emits `value.name`.
+
+  ```
+  (struct point (x i64) (y i64))
+  (field (new point (x 1) (y 2)) y)
+  => 2
+  ```")
 
 (document (ref value)
   "Borrows a value.
 
-  It emits `&value`. In a type, `(ref type)` is a shared reference.")
+  It emits `&value`. In a type, `(ref type)` is a shared reference.
+
+  (local word (str \"pear\"))
+  (len (ref word))
+  => 4")
 
 (document (mut place)
   "Borrows a place mutably.
 
-  It emits `&mut place`. In a type, `(mut type)` is a mutable reference.")
+  It emits `&mut place`. In a type, `(mut type)` is a mutable reference.
+
+  (local total 1)
+  (local place (mut total))
+  (set! place 2)
+  (= total 2)
+  => true")
 
 (document (deref value)
   "Reads the value behind a reference.
 
-  It emits `*value`.")
+  It emits `*value`.
+
+  (local total 3)
+  (deref (ref total))
+  => 3")
 
 (document (quote form)
   "Returns a form as data, without evaluating it.
 
-  Macro code builds the forms it returns from quoted forms.")
+  Macro code builds the forms it returns from quoted forms.
+
+  ```
+  (use code list)
+  (defmacro twice (x) (list (quote *) 2 x))
+  (twice 4)
+  => 8
+  ```")
 
 (document (macro (form) body ...)
   "Makes a macro whose body turns its whole call form into a new form.
 
   It is the value of a `def`, as in `(def name (macro (form) body ...))`,
-  and its body runs at compile time.")
+  and its body runs at compile time.
+
+  ```
+  (use code list nth)
+  (def twice (macro (form) (list (quote *) 2 (nth form 1))))
+  (twice 4)
+  => 8
+  ```")
 
 (document (rust "template" type (target "template") ...)
   "Inlines a Rust template that has the given type.
 
   `{0}`, `{1}` and so on stand for the arguments of a call. Each clause
   pairs a type or a trait's name with its own template, and a call takes the
-  first clause that its type matches.")
+  first clause that its type matches.
+
+  (rust \"1 + 2\" i64)
+  => 3")
 
 (document (rust-trait name "Path" type ...)
   "Names a Rust trait and the types that implement it.
 
   Optional parts after the path declare the traits Rust requires of it, a
   method, the impl text that the compiler writes for program types, and the
-  help line that a missing implementor shows.")
+  help line that a missing implementor shows.
+
+  ```
+  (rust-trait lower-hex \"std::fmt::LowerHex\" i64 u8)
+  ```")
 
 (document (rust-type (name parameter ...)
             "template"
@@ -262,147 +377,271 @@
   "Names a Rust type by a template.
 
   The name is a bare name, or a list of the name and its type parameters.
-  Each clause pairs another type with its own template.")
+  Each clause pairs another type with its own template.
+
+  ```
+  (rust-type stopwatch \"std::time::Instant\")
+  ```")
 
 (document (recur argument ...)
   "Calls the enclosing function again with new arguments.
 
-  It emits a Rust `loop`, so the call takes no stack.")
+  It emits a Rust `loop`, so the call takes no stack.
+
+  (loop (n 3)
+    (if (> n 0) (recur (- n 1)) n))
+  => 0")
 
 (document (try expression)
   "Unwraps a successful value, or returns the failure from the function.
 
-  It emits `expression?`.")
+  It emits `expression?`.
+
+  (local step (fn ((value (option i64))) (some (+ (try value) 1))))
+  (step (some 1))
+  => (some 2)
+
+  (step none)
+  => none")
 
 (document (infer expression)
   "Gives the type the checker infers for the expression, as a string.
 
   The text is the type as a `type` signature writes it, such as
   `(vec i64)`. The expression is checked and never runs, so it emits only
-  the string literal.")
+  the string literal.
+
+  (infer (vec 1 2))
+  => \"(vec i64)\"")
 
 (document (trait name (method type) ...)
   "Defines a trait from its method signatures.
 
-  A method's first parameter may be `self`, `(ref self)` or `(mut self)`.")
+  A method's first parameter may be `self`, `(ref self)` or `(mut self)`.
+
+  ```
+  (trait greet (hello (fn ((ref self)) string)))
+  ```")
 
 (document (impl trait type (method (parameter ...) body ...) ...)
   "Implements a trait for a struct or an enum.
 
   Each method gives its name, its parameters and its body. It emits a Rust
-  `impl`.")
+  `impl`.
+
+  ```
+  (trait greet (hello (fn ((ref self)) string)))
+  (struct dog (name string))
+  (impl greet dog (hello (self) (str \"woof \" (field self name))))
+  ```")
 
 (document (use module name ...)
   "Imports names from a module.
 
   The module is a path such as `prelude/vec`, and each name becomes bound in
-  this module.")
+  this module.
+
+  ```
+  (use prelude/vec at)
+  ```")
 
 (document (export name ...)
   "Exports names from this module.
 
   A name refers to every namespace, so a type and a value of that name both
-  leave the module. It emits `pub`.")
+  leave the module. It emits `pub`.
+
+  ```
+  (export twice)
+  (def twice (fn (x) (* 2 x)))
+  ```")
 
 (document (fn-mut (argument ...) result)
   "Types a function that may change what it captures, as Rust's `FnMut` does.
 
   It emits `impl FnMut(argument, ...) -> result`. A written `fn-mut` is
-  exact, while a plain `fn` leaves the kind to inference.")
+  exact, while a plain `fn` leaves the kind to inference.
+
+  (local total 0)
+  (for-each (range 1 4) (fn (x) (set! total (+ total x))))
+  (= total 6)
+  => true")
 
 (document (fn-once (argument ...) result)
   "Types a function that may be called only once, as Rust's `FnOnce` does.
 
   It emits `impl FnOnce(argument, ...) -> result`. A written `fn-once` is
-  exact, while a plain `fn` leaves the kind to inference.")
+  exact, while a plain `fn` leaves the kind to inference.
+
+  (local word (str \"pear\"))
+  (map-some (some 1) (fn (n) word))
+  => (some (str \"pear\"))")
 
 (document (where (variable (variable trait ...) ...) type)
   "Binds the type variables of a type and the traits each must implement.
 
   A bare variable takes any type, and `(variable trait ...)` requires each
-  trait, so `(where ((n number)) (fn (n) n))` emits `fn<N: Number>(N) -> N`.")
+  trait, so `(where ((n number)) (fn (n) n))` emits `fn<N: Number>(N) -> N`.
+
+  (infer unwrap)
+  => \"(where (a) (fn ((option a)) a))\"")
 
 (document (with type type)
   "Gives an implementor of a Rust trait the trait's second type.
 
   `(with string str)` means that `String` implements the trait with `str` as
-  its second type.")
+  its second type.
+
+  ```
+  (rust-trait borrowable \"std::borrow::Borrow\"
+    (with string str))
+  ```")
 
 (document _
   "Stands for a type that inference fills in.
 
   In a `match` pattern, `_` matches any value, and `(new _ base ...)` updates
-  a struct whose type comes from its base.")
+  a struct whose type comes from its base.
+
+  (the (vec _) (vec 1))
+  => (vec 1)
+
+  (match 3
+    (_ \"any\"))
+  => \"any\"")
 
 (document bool
-  "Holds `true` or `false`, as Rust's `bool` does.")
+  "Holds `true` or `false`, as Rust's `bool` does.
+
+  (the bool true)
+  => true")
 
 (document string
   "Holds owned text that can grow, as Rust's `String` does.
 
-  A string literal is a `(ref str)`, and `str` builds a `string` from parts.")
+  A string literal is a `(ref str)`, and `str` builds a `string` from parts.
+
+  (the string (str \"pear\"))
+  => \"pear\"")
 
 (document unit
   "Holds no information, as Rust's `()` does.
 
-  `(do)` is the unit value.")
+  `(do)` is the unit value.
+
+  (infer (do))
+  => \"unit\"")
 
 (document i8
-  "Holds a signed 8-bit integer, as Rust's `i8` does.")
+  "Holds a signed 8-bit integer, as Rust's `i8` does.
+
+  (the i8 127)
+  => 127")
 
 (document i16
-  "Holds a signed 16-bit integer, as Rust's `i16` does.")
+  "Holds a signed 16-bit integer, as Rust's `i16` does.
+
+  (the i16 300)
+  => 300")
 
 (document i32
-  "Holds a signed 32-bit integer, as Rust's `i32` does.")
+  "Holds a signed 32-bit integer, as Rust's `i32` does.
+
+  (the i32 70000)
+  => 70000")
 
 (document i64
   "Holds a signed 64-bit integer, as Rust's `i64` does.
 
-  An integer literal whose type stays open defaults to `i64`.")
+  An integer literal whose type stays open defaults to `i64`.
+
+  (the i64 3)
+  => 3
+
+  (infer 1)
+  => \"i64\"")
 
 (document i128
-  "Holds a signed 128-bit integer, as Rust's `i128` does.")
+  "Holds a signed 128-bit integer, as Rust's `i128` does.
+
+  (the i128 3)
+  => 3")
 
 (document isize
-  "Holds a signed integer as wide as a pointer, as Rust's `isize` does.")
+  "Holds a signed integer as wide as a pointer, as Rust's `isize` does.
+
+  (the isize 3)
+  => 3")
 
 (document u8
-  "Holds an unsigned 8-bit integer, as Rust's `u8` does.")
+  "Holds an unsigned 8-bit integer, as Rust's `u8` does.
+
+  (the u8 255)
+  => 255")
 
 (document u16
-  "Holds an unsigned 16-bit integer, as Rust's `u16` does.")
+  "Holds an unsigned 16-bit integer, as Rust's `u16` does.
+
+  (the u16 300)
+  => 300")
 
 (document u32
-  "Holds an unsigned 32-bit integer, as Rust's `u32` does.")
+  "Holds an unsigned 32-bit integer, as Rust's `u32` does.
+
+  (the u32 70000)
+  => 70000")
 
 (document u64
-  "Holds an unsigned 64-bit integer, as Rust's `u64` does.")
+  "Holds an unsigned 64-bit integer, as Rust's `u64` does.
+
+  (the u64 3)
+  => 3")
 
 (document u128
-  "Holds an unsigned 128-bit integer, as Rust's `u128` does.")
+  "Holds an unsigned 128-bit integer, as Rust's `u128` does.
+
+  (the u128 3)
+  => 3")
 
 (document usize
   "Holds an unsigned integer as wide as a pointer, as Rust's `usize` does.
 
-  A vector or a slice is indexed by a `usize`.")
+  A vector or a slice is indexed by a `usize`.
+
+  (deref (at (vec 5 6) (the usize 1)))
+  => 6")
 
 (document f32
-  "Holds a 32-bit floating-point number, as Rust's `f32` does.")
+  "Holds a 32-bit floating-point number, as Rust's `f32` does.
+
+  (the f32 1.5)
+  => 1.5")
 
 (document f64
   "Holds a 64-bit floating-point number, as Rust's `f64` does.
 
-  A float literal whose type stays open defaults to `f64`.")
+  A float literal whose type stays open defaults to `f64`.
+
+  (the f64 1.5)
+  => 1.5
+
+  (infer 1.5)
+  => \"f64\"")
 
 (document true
   "Is the `bool` value true.
 
   It is a kernel constant, so macro code and program code see the same
-  booleans.")
+  booleans.
+
+  (if true 1 2)
+  => 1")
 
 (document false
   "Is the `bool` value false.
 
   It is a kernel constant, so macro code and program code see the same
-  booleans.")
+  booleans.
+
+  (if false 1 2)
+  => 2")

@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0728]: library `lib-outside` names a `:lib` outside its checkout
+ --> project.rslisp:1:26
+  |
+1 | (project app (libraries (lib-outside :git "../lib-outside.git" :rev "469776470fca64568c9a8a53a93791275a2988d3")))
+  |                          ^^^^^^^^^^^ this git library's project file reaches outside it
+  |
+  = note: a library fetched from git may only name files inside its own checkout
+  = help: ask the library's authors to use a relative `:lib` without `..`

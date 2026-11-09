@@ -115,6 +115,18 @@ impl ProjectProblems {
         .with_help("write the repository's URL or path, as `https://example.com/keymap.git`")
     }
 
+    pub fn path_outside_checkout(name: &str, key: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::PATH_OUTSIDE_CHECKOUT,
+            format!("library `{name}` names a `{key}` outside its checkout"),
+            Label::new(span, "this git library's project file reaches outside it"),
+        )
+        .with_note("a library fetched from git may only name files inside its own checkout")
+        .with_help(format!(
+            "ask the library's authors to use a relative `{key}` without `..`"
+        ))
+    }
+
     pub fn unbuilt_section(section: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::UNBUILT_PROJECT_SECTION,

@@ -1,0 +1,1 @@
+(project lib-outside :lib "../shared/src/lib.rslisp")

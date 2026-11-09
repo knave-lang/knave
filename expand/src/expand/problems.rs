@@ -543,6 +543,23 @@ impl ExpandProblems {
         .with_help(format!("rename `{local}`"))
     }
 
+    pub fn module_outside_checkout(
+        path: &ModulePath,
+        file: &std::path::Path,
+        span: Span,
+    ) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::MODULE_OUTSIDE_CHECKOUT,
+            format!("module `{path}` resolves outside its library's checkout"),
+            Label::new(span, "this module's file links outside the checkout"),
+        )
+        .with_note(format!(
+            "`{}` is a symbolic link, and a library fetched from git may only read files inside its own checkout",
+            file.display()
+        ))
+        .with_help("ask the library's authors to commit the module's file instead of a link")
+    }
+
     pub fn unlisted_library(library: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::UNLISTED_LIBRARY,

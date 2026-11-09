@@ -1,0 +1,1 @@
+(project path-outside (libraries (other :path "../other")))

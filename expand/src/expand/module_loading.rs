@@ -141,7 +141,11 @@ impl Expander<'_> {
             return Err(ExpandProblems::unlisted_library(library, span));
         }
         self.report_hidden_local_module(owner, written, span);
-        Ok(self.module_sources.resolve(owner, written))
+        let path = self.module_sources.resolve(owner, written);
+        match self.module_sources.module_outside_checkout(&path) {
+            Some(file) => Err(ExpandProblems::module_outside_checkout(&path, &file, span)),
+            None => Ok(path),
+        }
     }
 
     fn report_hidden_local_module(

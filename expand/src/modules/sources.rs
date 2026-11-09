@@ -239,6 +239,13 @@ impl ModuleSources {
         }
     }
 
+    pub fn module_outside_checkout(&self, path: &ModulePath) -> Option<PathBuf> {
+        let checkout = self.libraries.checkout_of(path)?;
+        let file = self.libraries.file(path)?;
+        let resolved = fs::canonicalize(&file.path).ok()?;
+        (!resolved.starts_with(checkout)).then_some(file.display)
+    }
+
     fn library_file(&self, path: &ModulePath) -> Option<ModuleSource> {
         let file = self.libraries.file(path)?;
         let text = Self::read_file(&file.path).ok()?;

@@ -7,4 +7,5 @@
 (defn main ()
   (local word "a")
   (local view (ref word))
-  (println (sample-of view (ref (vec word)))))
+  (local words (vec word))
+  (println (sample-of view (ref words))))

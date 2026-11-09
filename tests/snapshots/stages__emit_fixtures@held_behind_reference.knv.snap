@@ -11,7 +11,8 @@ fn main() {
     crate::rt::restore_default_sigpipe();
     let word = "a";
     let view = &word;
-    println!("{}", sample_of(view, &vec![word]))
+    let words = vec![word];
+    println!("{}", sample_of(view, &words))
 }
 
 mod rt {

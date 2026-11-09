@@ -141,8 +141,15 @@ mod tests {
 
     use super::EmittedLints;
 
-    fn ledger_lints() -> EmittedLints<'static> {
-        EmittedLints::new(Path::new("/checkout"), "ldg")
+    struct EmittedLintsFixture;
+
+    impl EmittedLintsFixture {
+        const ROOT: &'static str = "/checkout";
+        const EXTENSION: &'static str = "ldg";
+
+        fn ledger() -> EmittedLints<'static> {
+            EmittedLints::new(Path::new(Self::ROOT), Self::EXTENSION)
+        }
     }
 
     #[test]
@@ -150,16 +157,19 @@ mod tests {
         let emitted = Path::new("tests/snapshots/stages__emit_fixtures@person.ldg.snap");
         let checked = Path::new("tests/snapshots/stages__check_fixtures@person.ldg.snap");
         assert_eq!(
-            ledger_lints().emit_fixture(emitted),
+            EmittedLintsFixture::ledger().emit_fixture(emitted),
             Some("person".to_string())
         );
-        assert_eq!(ledger_lints().emit_fixture(checked), None);
+        assert_eq!(EmittedLintsFixture::ledger().emit_fixture(checked), None);
     }
 
     #[test]
     fn the_snapshot_suffix_follows_the_language_extension() {
         let other_language = Path::new("tests/snapshots/stages__emit_fixtures@person.other.snap");
-        assert_eq!(ledger_lints().emit_fixture(other_language), None);
+        assert_eq!(
+            EmittedLintsFixture::ledger().emit_fixture(other_language),
+            None
+        );
     }
 
     #[test]

@@ -3,6 +3,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use super::exit_status::ExitStatus;
+use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::terminal::{ModuleOfSources, Terminal};
@@ -12,21 +13,44 @@ pub struct TestEntries {
     path: PathBuf,
 }
 
-impl TestEntries {
-    const DIRECTORY_ENTRY: &'static str = "<tests>";
+struct TestTree {
+    path: PathBuf,
+    project: Option<LocatedProject>,
+}
 
+impl TestEntries {
     pub fn new(path: PathBuf) -> Self {
         Self { path }
     }
 
     pub fn load(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
+        TestTree::at(self.path.clone(), terminal)?.load(terminal)
+    }
+}
+
+impl TestTree {
+    const DIRECTORY_ENTRY: &'static str = "<tests>";
+
+    fn at(path: PathBuf, terminal: &Terminal) -> Result<Self, ExitStatus> {
+        let project = LocatedProject::search_from(&path, terminal)?;
+        Ok(Self { path, project })
+    }
+
+    fn load(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
         if self.path.is_dir() {
             self.load_directory(terminal)
         } else {
             Ok(ModuleOfSources {
-                file: ProgramFile::beside_itself(self.path.clone()),
+                file: self.entry_file(),
                 sources: vec![terminal.load(&self.path)?],
             })
+        }
+    }
+
+    fn entry_file(&self) -> ProgramFile {
+        match &self.project {
+            Some(project) => project.test_file(project.file_within(self.path.clone())),
+            None => ProgramFile::beside_itself(self.path.clone()),
         }
     }
 
@@ -41,9 +65,17 @@ impl TestEntries {
             .collect();
         let source = terminal.add_named_source(Self::DIRECTORY_ENTRY, &uses.join("\n"));
         Ok(ModuleOfSources {
-            file: ProgramFile::within(self.path.join(Self::DIRECTORY_ENTRY), self.path.clone()),
+            file: self.directory_file(),
             sources: vec![source],
         })
+    }
+
+    fn directory_file(&self) -> ProgramFile {
+        let file = ProgramFile::within(self.path.join(Self::DIRECTORY_ENTRY), self.path.clone());
+        match &self.project {
+            Some(project) => project.test_file(file),
+            None => file,
+        }
     }
 
     fn collect_modules(&self, directory: &Path, modules: &mut Vec<String>) -> io::Result<()> {

@@ -1,0 +1,3 @@
+(use parser parse)
+
+(defn main () (println (parse "7")))

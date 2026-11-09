@@ -5399,6 +5399,65 @@ fn test_skips_the_project_file_in_a_directory() {
 }
 
 #[test]
+fn test_in_a_project_reaches_a_source_module() {
+    let sandbox = Sandbox::new("project_test_source").with_fixture_tree("libraries");
+    let test = sandbox.compiler_in("tested-app", &["test", "tests", "--exact", "parse/parses"]);
+    assert_eq!(
+        test.assert_silent_success().stdout(),
+        "running 1 test\ntest parse/parses ... ok\n1 passed, 0 failed\n"
+    );
+}
+
+#[test]
+fn test_of_a_file_in_a_project_reaches_a_source_module() {
+    let sandbox = Sandbox::new("project_test_file").with_fixture_tree("libraries");
+    let test = sandbox.compiler_in("tested-app", &["test", "tests/parse.rslisp"]);
+    assert_eq!(
+        test.assert_silent_success().stdout(),
+        "running 1 test\ntest parse/parses ... ok\n1 passed, 0 failed\n"
+    );
+}
+
+#[test]
+fn test_in_a_project_reaches_a_library() {
+    let sandbox = Sandbox::new("project_test_library").with_fixture_tree("libraries");
+    let test = sandbox.compiler_in("tested-app", &["test", "tests", "--exact", "shout/shouts"]);
+    assert_eq!(
+        test.assert_silent_success().stdout(),
+        "running 1 test\ntest shout/shouts ... ok\n1 passed, 0 failed\n"
+    );
+}
+
+#[test]
+fn test_directory_module_shadows_a_source_module() {
+    let sandbox = Sandbox::new("project_test_shadowing").with_fixture_tree("libraries");
+    let test = sandbox.compiler_in(
+        "tested-app",
+        &["test", "tests", "--exact", "greets/reads-the-test-greeting"],
+    );
+    assert_eq!(
+        test.assert_silent_success().stdout(),
+        "running 1 test\ntest greets/reads-the-test-greeting ... ok\n1 passed, 0 failed\n"
+    );
+}
+
+#[test]
+fn test_in_a_project_warns_of_a_source_module_hidden_by_a_library() {
+    let sandbox = Sandbox::new("project_test_hidden_source")
+        .with_fixture_tree("libraries")
+        .with_file("tested-app/src/hints.rslisp", "(def unused 1)\n");
+    let test = sandbox.compiler_in("tested-app", &["test", "tests", "--exact", "shout/shouts"]);
+    insta::assert_snapshot!(test.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn test_outside_a_project_resolves_use_from_the_directory_alone() {
+    let sandbox = Sandbox::new("loose_test").with_fixture_tree("loose-tests");
+    let test = sandbox.compiler(&["test", "tests"]);
+    insta::assert_snapshot!(test.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn new_creates_a_project_that_runs() {
     let sandbox = Sandbox::new("new_project");
     sandbox

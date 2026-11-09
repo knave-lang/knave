@@ -337,7 +337,7 @@ mod tests {
         const ALTERNATIVE: &str = " or ";
         const OPTIONAL_PART_END: &str = ")?";
         const OPTIONAL_PART_START: &str = " (";
-        const UNDOCUMENTED_TERM: &str = "whole-pairs?";
+        const UNDOCUMENTED_TERM: &str = "noted-term";
         const UNDOCUMENTED_BODY_NAME: &str = "undocumented-body";
 
         fn of_saved_prelude(names: &[&str]) -> Self {

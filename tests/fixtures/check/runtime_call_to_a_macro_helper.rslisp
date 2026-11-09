@@ -1,6 +1,6 @@
-(use prelude/syntax definition)
+(use prelude/macros map-list)
 
-(defn parameter-record ()
-  (definition "limit" "parameter" 1 2))
+(defn mapped (items)
+  (map-list items (fn (item) item)))
 
-(defn main ())
+(defn main () (mapped (vec 1 2)))

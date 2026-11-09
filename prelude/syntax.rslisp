@@ -1,7 +1,23 @@
-(use prelude/macros defmacro defrule docstring-before-body?
-                    docstring-before-parameters document
-                    header-shape map-list note-docstring
-                    template value-doc-key whole-pairs?)
+(use prelude/macros defmacro defrule document header-shape
+                    map-list template)
+
+(use prelude/internal/macros docstring-before-body?
+                             docstring-before-parameters
+                             note-docstring value-doc-key
+                             whole-pairs?)
+
+(use prelude/internal/syntax call-signature declared-forms
+                             declared-name default-bindings
+                             default-pairs defaults-clause?
+                             definition find-keyword
+                             has-argument? joined-names
+                             key-names-one-of? keyword-of?
+                             names-without-argument
+                             pair-keys read-call
+                             signature-defaults
+                             signature-name signature-names
+                             type-missing?
+                             unknown-key-error)
 
 (use code bool-not closest-name concat declare-definition
           drop empty? fail field-keyword first keyword-field
@@ -10,12 +26,8 @@
           rest same-binding? string string? symbol
           symbol-name symbol? take value-eq)
 
-(export -> ->> call-signature comment declared-forms
-        declared-name default-bindings default-pairs
-        defaults-clause? definition defn has-argument? let
-        let-match let-try loop pair-keys read-call
-        signature-defaults signature-name the try->
-        type-missing?)
+(export -> ->> comment defn let let-match let-try loop the
+        try->)
 
 (def let
   (macro (form)
@@ -332,82 +344,10 @@
                                             (quote (unquote positional))
                                             (quote (unquote signature)))))))))
 
-(def definition
-  (fn (name noun spell code)
-    (fn (read) (read name noun spell code))))
-
-(def definition-name
-  (fn (owner)
-    (owner (fn (name noun spell code) name))))
-
-(def definition-noun
-  (fn (owner)
-    (owner (fn (name noun spell code) noun))))
-
-(def definition-spelling
-  (fn (owner)
-    (owner (fn (name noun spell code) spell))))
-
-(def definition-code
-  (fn (owner)
-    (owner (fn (name noun spell code) code))))
-
 (def parameter-definition
   (fn (name)
     (definition name "parameter" field-keyword
                 (quote unknown-parameter))))
-
-(def call-signature
-  (fn (name names defaults) (list name names defaults)))
-
-(def signature-name
-  (fn (signature) (first signature)))
-
-(def signature-names
-  (fn (signature) (nth signature 1)))
-
-(def signature-defaults
-  (fn (signature) (nth signature 2)))
-
-(def ends-with-defaults?
-  (fn (forms)
-    (if (empty? forms)
-      false
-      (defaults-clause? (nth forms (number-sub (len forms) 1))))))
-
-(def defaults-clause?
-  (fn (form)
-    (if (list? form)
-      (if (empty? form)
-        false
-        (defaults-head? (first form)))
-      false)))
-
-(def defaults-head?
-  (fn (head)
-    (if (symbol? head)
-      (value-eq (symbol-name head) "defaults")
-      false)))
-
-(def declared-forms
-  (fn (forms)
-    (if (ends-with-defaults? forms)
-      (take forms (number-sub (len forms) 1))
-      forms)))
-
-(def default-pairs
-  (fn (forms)
-    (if (ends-with-defaults? forms)
-      (rest (nth forms (number-sub (len forms) 1)))
-      (list))))
-
-(def type-missing?
-  (fn (more)
-    (if (empty? more)
-      true
-      (if (keyword? (first more))
-        true
-        (defaults-clause? (first more))))))
 
 (def parameter-binders
   (fn (forms)
@@ -429,27 +369,6 @@
     (if (keyword? keyword)
       (declared-name keyword "parameter")
       (parameter-start-error keyword))))
-
-(def declared-name
-  (fn (keyword noun)
-    (local trimmed (keyword-trim-end keyword))
-    (if (keyword? trimmed)
-      (named-declaration keyword trimmed noun)
-      (fail (string "a " noun " name cannot be only `:`")
-        keyword
-        "write a name after the first `:`, as in `:email`"
-        (template (:code trailing-colon :label "has no name"))))))
-
-(def named-declaration
-  (fn (keyword trimmed noun)
-    (if (value-eq (keyword-name keyword) (keyword-name trimmed))
-      (keyword-field keyword)
-      (fail (string "a " noun " name cannot end with `:`")
-        keyword
-        (string "write `" (symbol-name trimmed) "`")
-        (template (:code trailing-colon
-                         :label "ends with `:`"
-                         :suggest (unquote trimmed)))))))
 
 (def parameter-start-error
   (fn (form)
@@ -494,170 +413,6 @@
         (first repeated)
         "give each parameter its own name"))))
 
-(def find-keyword
-  (fn (keyword keywords)
-    (if (empty? keywords)
-      keywords
-      (if (same-keyword? keyword (first keywords))
-        keywords
-        (find-keyword keyword (rest keywords))))))
-
-(def same-keyword?
-  (fn (left right)
-    (if (keyword? right)
-      (value-eq (keyword-name left) (keyword-name right))
-      false)))
-
-(def default-bindings
-  (fn (pairs owner names)
-    (given-default-bindings pairs owner names
-                            (if (whole-pairs? pairs)
-                              (pair-keys pairs)
-                              (list)))))
-
-(def given-default-bindings
-  (fn (pairs owner names given-keys)
-    (if (empty? pairs)
-      (list)
-      (prepend (default-binding pairs owner names given-keys)
-               (given-default-bindings (drop pairs 2)
-                                       owner names
-                                       given-keys)))))
-
-(def default-binding
-  (fn (pairs owner names given-keys)
-    (local key (first pairs))
-    (check-default-key key owner names given-keys)
-    (check-default-value pairs)
-    (check-single-default key (pair-keys (drop pairs 2)))
-    (list (name-of-key key names) (nth pairs 1))))
-
-(def check-default-key
-  (fn (key owner names given-keys)
-    (if (keyword? key)
-      (if (key-names-one-of? key names)
-        key
-        (unknown-default-error key owner names given-keys))
-      (fail "a default must start with `:`"
-        key
-        (string "write each default as `:"
-                (definition-noun owner)
-                " value`, as in (defaults :admin? false)")))))
-
-(def unknown-default-error
-  (fn (key owner names given-keys)
-    (unknown-key-error key owner names given-keys)))
-
-(def unknown-key-error
-  (fn (key owner names given-keys)
-    (local noun (definition-noun owner))
-    (local name (definition-name owner))
-    (local spelling (definition-spelling owner))
-    (local code (definition-code owner))
-    (local closest
-      (closest-name (keyword-field key)
-                    (names-without-argument names given-keys)))
-    (local message
-      (string "`" name "` has no " noun " `"
-              (symbol-name (spelling (keyword-field key)))
-              "`"))
-    (fail message
-      key
-      (if (empty? closest)
-        (if (empty? names)
-          (string "`" name "` has no " noun "s")
-          (string "the " noun "s of `" name "` are "
-                  (joined-names (map-list names spelling) "")))
-        (string "a " noun " with a similar name exists"))
-      (if (empty? closest)
-        (template (:code (unquote code)))
-        (template (:code (unquote code)
-                         :suggest (unquote (field-keyword (first
-                                                            closest)))))))))
-
-(def check-default-value
-  (fn (pairs)
-    (if (empty? (rest pairs))
-      (fail "this default has no value"
-        (first pairs)
-        (string "write a value after it, as in "
-                (symbol-name (first pairs))
-                " false"))
-      pairs)))
-
-(def check-single-default
-  (fn (key later-keys)
-    (local repeated (find-keyword key later-keys))
-    (if (empty? repeated)
-      key
-      (fail (string "`" (keyword-name key) "` has two defaults")
-        (first repeated)
-        "keep one"))))
-
-(def joined-names
-  (fn (names quote-mark)
-    (if (empty? names)
-      ""
-      (joined-nonempty-names names quote-mark))))
-
-(def joined-nonempty-names
-  (fn (names quote-mark)
-    (local quoted
-      (string quote-mark (symbol-name (first names)) quote-mark))
-    (if (empty? (rest names))
-      quoted
-      (string quoted ", "
-              (joined-nonempty-names (rest names) quote-mark)))))
-
-(def keyword-of?
-  (fn (key name)
-    (if (keyword? key)
-      (value-eq (keyword-name key) (symbol-name name))
-      false)))
-
-(def key-names-one-of?
-  (fn (key names)
-    (if (empty? names)
-      false
-      (if (keyword-of? key (first names))
-        true
-        (key-names-one-of? key (rest names))))))
-
-(def name-of-key
-  (fn (key names)
-    (if (keyword-of? key (first names))
-      (first names)
-      (name-of-key key (rest names)))))
-
-(def pair-keys
-  (fn (arguments)
-    (if (empty? arguments)
-      (list)
-      (prepend (first arguments)
-               (pair-keys (drop arguments 2))))))
-
-(def has-argument?
-  (fn (name keys)
-    (if (empty? keys)
-      false
-      (if (keyword-of? (first keys) name)
-        true
-        (has-argument? name (rest keys))))))
-
-(def keyword-pairs?
-  (fn (arguments)
-    (if (whole-pairs? arguments)
-      (every-keyword? (pair-keys arguments))
-      false)))
-
-(def every-keyword?
-  (fn (forms)
-    (if (empty? forms)
-      true
-      (if (keyword? (first forms))
-        (every-keyword? (rest forms))
-        false))))
-
 (def required-names
   (fn (signature)
     (names-without-default (signature-names signature)
@@ -671,15 +426,6 @@
         (prepend (first names)
                  (names-without-default (rest names) defaults))
         (names-without-default (rest names) defaults)))))
-
-(def names-without-argument
-  (fn (names keys)
-    (if (empty? names)
-      (list)
-      (if (has-argument? (first names) keys)
-        (names-without-argument (rest names) keys)
-        (prepend (first names)
-                 (names-without-argument (rest names) keys))))))
 
 (def default-of
   (fn (name defaults)
@@ -702,83 +448,6 @@
       (parameter-definition (signature-name signature)))
     (read-call form positional signature owner
                (fn (form) (named-call form positional signature owner)))))
-
-(def read-call
-  (fn (form positional signature owner by-name)
-    (local arguments (rest form))
-    (if (keyword-pairs? arguments)
-      (by-name form)
-      (if (any-keyword? arguments)
-        (partly-labeled-error form signature)
-        (if (value-eq (len arguments)
-                      (len (signature-names signature)))
-          (prepend positional arguments)
-          (call-arity-error form signature owner))))))
-
-(def any-keyword?
-  (fn (forms)
-    (if (empty? forms)
-      false
-      (if (keyword? (first forms))
-        true
-        (any-keyword? (rest forms))))))
-
-(def partly-labeled-error
-  (fn (form signature)
-    (local unpaired (first-unpaired (rest form)))
-    (fail (string "`"
-                  (symbol-name (first form))
-                  "` takes a label on every argument or on none")
-      unpaired
-      (labeled-call-help (signature-names signature))
-      (template (:code partly-labeled-call
-                       :label (unquote (unpaired-label unpaired)))))))
-
-(def labeled-call-help
-  (fn (names)
-    (if (empty? names)
-      "remove the arguments"
-      (string "a keyword argument is always a label: write `"
-              (labeled-values names)
-              "`"))))
-
-(def labeled-values
-  (fn (names)
-    (local labeled
-      (string (symbol-name (field-keyword (first names)))
-              " value"))
-    (if (empty? (rest names))
-      labeled
-      (string labeled " " (labeled-values (rest names))))))
-
-(def first-unpaired
-  (fn (arguments)
-    (if (empty? (rest arguments))
-      (first arguments)
-      (if (keyword? (first arguments))
-        (first-unpaired (drop arguments 2))
-        (first arguments)))))
-
-(def unpaired-label
-  (fn (argument)
-    (if (keyword? argument)
-      "this label has no value"
-      "this argument has no label")))
-
-(def call-arity-error
-  (fn (form signature owner)
-    (local noun (definition-noun owner))
-    (fail (string "`"
-                  (symbol-name (first form))
-                  "` takes "
-                  (len (signature-names signature))
-                  " arguments, one per " noun ", or a `:"
-                  noun " value` pair for each " noun
-                  " without a default")
-      form
-      (string "write it as `"
-              (prepend (first form) (signature-names signature))
-              "`"))))
 
 (def named-call
   (fn (form positional signature owner)
@@ -1175,59 +844,6 @@
 
   Unlike `->`, a step takes no extra arguments: a call form is a call whose
   result is the function, so `(try-> x (make-step))` is `((make-step) x)`.")
-
-(document (call-signature name names defaults types)
-  "Builds the signature of a keyword function from its parts.
-
-  A prelude helper for definers such as `defstruct`.")
-
-(document (signature-name signature)
-  "Returns the name of a signature that `call-signature` built.")
-
-(document (signature-defaults signature)
-  "Returns the defaults of a signature that `call-signature` built.")
-
-(document (declared-forms forms)
-  "Returns a definer's forms without a trailing `(defaults ...)` clause.")
-
-(document (default-pairs forms)
-  "Returns the pairs of a trailing `(defaults ...)` clause.
-
-  It returns an empty list when the forms end with no such clause.")
-
-(document (defaults-clause? form)
-  "Returns whether a form is a list headed by `defaults`.")
-
-(document (declared-name keyword noun)
-  "Returns the name that a keyword such as `:email` declares.
-
-  A keyword with no name, or one that ends with `:`, is an error that names
-  the `noun`, such as `field`.")
-
-(document (default-bindings pairs owner names)
-  "Returns the bindings of a `(defaults ...)` clause, after checking it.
-
-  Each key must name one of `names`, once, and each needs a value.")
-
-(document (definition name noun spell code)
-  "Describes a name that a definer declares, for its error messages.")
-
-(document (has-argument? name keys)
-  "Returns whether a call's keys hold the keyword of a name.")
-
-(document (pair-keys arguments)
-  "Returns the keys of a list of key and value pairs.
-
-  It takes the first form and every other form after it.")
-
-(document (read-call form positional signature owner by-name)
-  "Reads a keyword function's call as a call by name or by position.
-
-  A call by position needs one argument per name of the signature, and any
-  other count is an error.")
-
-(document (type-missing? more)
-  "Returns whether the forms after a field keyword start with no type.")
 
 (document (comment form ...)
   "Keeps forms in the source that never expand, check or run.

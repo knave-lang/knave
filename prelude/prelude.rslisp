@@ -1,7 +1,8 @@
 (use prelude/macros defmacro defrule doc-body doc-header
                     doc-page docstring document header-shape
-                    kernel-definition module template)
+                    module template)
 
+(use prelude/internal/macros kernel-definition)
 (use prelude/logic and cond not or unless when)
 
 (use prelude/syntax -> ->> comment defn let let-match

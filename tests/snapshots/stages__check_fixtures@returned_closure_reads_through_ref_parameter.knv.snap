@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/returned_closure_reads_through_ref_parameter.knv
+---
+(type show (fn ((ref i64)) i64))
+(type reader! (fn ((mut i64)) (fn () i64)))
+(type main (fn () unit))

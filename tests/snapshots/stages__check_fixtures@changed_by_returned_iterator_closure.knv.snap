@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/changed_by_returned_iterator_closure.knv
+---
+error[L0517]: the closure that `walk!` returns cannot change `x`
+ --> check/changed_by_returned_iterator_closure.knv:4:10
+  |
+4 |          (set! x (+ x 1))
+  |          ^^^^^^^^^^^^^^^^ this changes the caller's value of `x`
+  |
+  = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
+  = help: to give the closure a value of its own, start `walk!` with `(local count x)` and use `count` in the closure

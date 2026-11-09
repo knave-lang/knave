@@ -3,7 +3,8 @@ use crate::core::BindingId;
 use crate::diagnostic::Diagnostics;
 use crate::source::Span;
 use crate::types::{
-    ReturnedValues, TypedArgument, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedProgram,
+    Borrow, ReturnedValues, TypedArgument, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
+    TypedProgram,
 };
 
 pub struct ReturnedChanges<'a> {
@@ -36,15 +37,15 @@ impl<'a> ReturnedChanges<'a> {
         lambda: &TypedLambda,
         diagnostics: &mut Diagnostics,
     ) {
-        let returned = ReturnedValues::of(lambda);
+        let closures = ReturnedValues::new(self.program).closures(lambda);
         for param in lambda.params.iter().filter(|param| {
             self.program
                 .changed_copy_parameters
                 .contains(&param.binding)
         }) {
-            if let Some(change) = returned
+            if let Some(change) = closures
                 .iter()
-                .find_map(|value| Self::change_in_closure(value, param.binding))
+                .find_map(|closure| Self::change_site(closure, param.binding))
             {
                 let bindings = &self.program.bindings;
                 diagnostics.push(OwnershipProblems::changed_by_returned_closure(
@@ -53,19 +54,6 @@ impl<'a> ReturnedChanges<'a> {
                     change,
                 ));
             }
-        }
-    }
-
-    fn change_in_closure(expr: &TypedExpr, param: BindingId) -> Option<Span> {
-        match &expr.kind {
-            TypedExprKind::Fn(closure) => closure
-                .body
-                .expressions()
-                .find_map(|body| Self::change_site(body, param)),
-            _ => expr
-                .children()
-                .into_iter()
-                .find_map(|child| Self::change_in_closure(child, param)),
         }
     }
 
@@ -84,5 +72,6 @@ impl<'a> ReturnedChanges<'a> {
 
     fn changes(argument: &TypedArgument, param: BindingId) -> bool {
         matches!(argument.value.kind, TypedExprKind::Leaf(TypedLeaf::Local(binding)) if binding == param)
+            && matches!(argument.borrow, Borrow::Mutable | Borrow::Reborrow)
     }
 }

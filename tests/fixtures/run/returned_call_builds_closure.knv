@@ -1,0 +1,11 @@
+(defn make-adder (n) (fn (y) (+ y n)))
+
+(defn mk! (x)
+  (set! x (+ x 1))
+  (make-adder x))
+
+(defn main ()
+  (local a 1)
+  (local f (mk! a))
+  (println a)
+  (println (f 3)))

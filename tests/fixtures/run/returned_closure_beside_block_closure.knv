@@ -1,0 +1,12 @@
+(defn stepper! (x)
+  (set! x (+ x 1))
+  (do
+    (local step (fn () (set! x (+ x 1))))
+    (step)
+    (fn (y) (+ y 1))))
+
+(defn main ()
+  (local start 1)
+  (local next (stepper! start))
+  (println start)
+  (println (next 3)))

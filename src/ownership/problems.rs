@@ -755,7 +755,7 @@ impl OwnershipProblems {
             "the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again",
         )
         .with_help(format!(
-            "to give the closure a value of its own, start `{function}` with `(local count {param})`"
+            "to give the closure a value of its own, start `{function}` with `(local count {param})` and use `count` in the closure"
         ))
     }
 

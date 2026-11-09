@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: test.assert_exit_code(2).stderr()
+---
+error: unexpected argument `pads` after the path
+help: to run the tests whose full name contains it, write `--filter pads`

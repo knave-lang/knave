@@ -4824,7 +4824,7 @@ fn test_reports_passing_failing_and_panicking_tests() {
 #[test]
 fn test_exits_zero_when_every_selected_test_passes() {
     let sandbox = Sandbox::new("test_pass").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler(&["test", "padding.rslisp", "pads-a"]);
+    let test = sandbox.compiler(&["test", "padding.rslisp", "--filter", "pads-a"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
         "running 1 test\ntest padding/pads-a-letter ... ok\n1 passed, 0 failed\n"
@@ -4834,7 +4834,7 @@ fn test_exits_zero_when_every_selected_test_passes() {
 #[test]
 fn test_runs_the_tests_whose_full_name_contains_the_filter() {
     let sandbox = Sandbox::new("test_filter").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler(&["test", "padding.rslisp", "padding/pads"]);
+    let test = sandbox.compiler(&["test", "padding.rslisp", "--filter", "padding/pads"]);
     insta::assert_snapshot!(test.assert_exit_code(1).stdout());
 }
 
@@ -4860,7 +4860,7 @@ fn test_with_exact_runs_no_test_whose_name_only_contains_it() {
 #[test]
 fn test_notes_a_filter_that_matches_no_test() {
     let sandbox = Sandbox::new("test_no_match").with_file("padding.rslisp", PADDING_TESTS);
-    let test = sandbox.compiler(&["test", "padding.rslisp", "trims"]);
+    let test = sandbox.compiler(&["test", "padding.rslisp", "--filter", "trims"]);
     test.assert_exit_code(0);
     assert_eq!(test.stdout(), "running 0 tests\n0 passed, 0 failed\n");
     assert_eq!(test.stderr(), "note: no test name contains `trims`\n");
@@ -4877,12 +4877,20 @@ fn test_of_a_program_without_tests_runs_none() {
 }
 
 #[test]
+fn test_points_a_bare_filter_to_the_filter_flag() {
+    let sandbox = Sandbox::new("test_bare_filter").with_file("padding.rslisp", PADDING_TESTS);
+    let test = sandbox.compiler(&["test", "padding.rslisp", "pads"]);
+    insta::assert_snapshot!(test.assert_exit_code(2).stderr());
+}
+
+#[test]
 fn test_rejects_both_a_filter_and_exact() {
     let sandbox = Sandbox::new("test_filter_and_exact").with_file("padding.rslisp", PADDING_TESTS);
     sandbox
         .compiler(&[
             "test",
             "padding.rslisp",
+            "--filter",
             "pads",
             "--exact",
             "padding/pads-nothing",
@@ -4900,7 +4908,7 @@ fn test_reports_a_crash_and_counts_the_tests_not_run() {
 #[test]
 fn test_reports_a_test_that_exits_with_zero_as_a_crash() {
     let sandbox = Sandbox::new("test_exit_zero").with_file("crash.rslisp", CRASHING_TESTS);
-    let test = sandbox.compiler(&["test", "crash.rslisp", "exits"]);
+    let test = sandbox.compiler(&["test", "crash.rslisp", "--filter", "exits"]);
     assert_eq!(
         test.assert_exit_code(1).stdout(),
         "running 1 test\n\
@@ -4913,7 +4921,7 @@ fn test_reports_a_test_that_exits_with_zero_as_a_crash() {
 #[test]
 fn test_reports_an_abort_by_its_signal() {
     let sandbox = Sandbox::new("test_abort").with_file("crash.rslisp", CRASHING_TESTS);
-    let test = sandbox.compiler(&["test", "crash.rslisp", "aborts"]);
+    let test = sandbox.compiler(&["test", "crash.rslisp", "--filter", "aborts"]);
     assert_eq!(
         test.assert_exit_code(1).stdout(),
         "running 1 test\n\

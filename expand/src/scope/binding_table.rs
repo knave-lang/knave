@@ -730,6 +730,39 @@ mod tests {
     }
 
     #[test]
+    fn a_program_name_beside_a_saved_one_still_sees_the_saved_one() {
+        let mut world = World::new();
+        let scope = world.scope();
+        let saved = world.define("shared", &[scope], Phase::Runtime);
+        world.save_names();
+        let later = world.scope();
+        world.define("shared", &[later], Phase::Runtime);
+        let symbol = World::symbol("shared", &[scope]);
+        let resolve = || {
+            world
+                .table
+                .resolve(&symbol, Namespace::Value, Phase::Runtime)
+        };
+        assert_eq!(resolve(), Resolution::Bound(saved));
+        assert_eq!(resolve(), Resolution::Bound(saved));
+    }
+
+    #[test]
+    fn a_program_name_with_only_later_scopes_decodes_no_saved_name() {
+        let mut world = World::new();
+        let scope = world.scope();
+        world.define("shared", &[scope], Phase::Runtime);
+        world.save_names();
+        let later = world.scope();
+        world.define("shared", &[later], Phase::Runtime);
+        let symbol = World::symbol("shared", &[later]);
+        world
+            .table
+            .resolve(&symbol, Namespace::Value, Phase::Runtime);
+        assert!(!world.table.saved.is_decoded("shared", Namespace::Value));
+    }
+
+    #[test]
     fn a_saved_name_is_listed_beside_the_programs_own() {
         let mut world = World::new();
         let scope = world.scope();

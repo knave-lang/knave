@@ -2,6 +2,7 @@ mod aliased_changes;
 mod aliases;
 mod borrowing_lambdas;
 mod callers;
+mod captured_copies;
 mod changes;
 mod checks;
 mod copied_reads;
@@ -55,6 +56,7 @@ use crate::types::{
 };
 use aliased_changes::AliasedChanges;
 use borrowing_lambdas::BorrowingLambdas;
+use captured_copies::CapturedCopies;
 use checks::OwnershipNeeds;
 use copied_reads::CopiedMutReads;
 use escaping_lambdas::EscapingLambdas;
@@ -126,6 +128,7 @@ impl OwnershipChecker {
         rewrite.apply(program);
         program.changed_copy_parameters = copied_reads.parameters();
         copied_reads.apply(program, rewrite.function_params());
+        CapturedCopies::new(&program.changed_copy_parameters.clone()).apply(program);
         let copy = CopyRules::new(
             &program.traits,
             &program.generics,

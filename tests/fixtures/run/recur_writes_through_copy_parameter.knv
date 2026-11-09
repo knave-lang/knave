@@ -1,14 +1,24 @@
 (defn climb! (height)
   (set! height (+ height 1))
-  (if (< height 5) (recur (+ height 1)) height))
+  (if (< height 5)
+    (recur (+ height 1))
+    height))
 
 (defn climb-counted! (height steps)
   (set! height (+ height 1))
-  (if (< steps 3) (recur (+ height 1) (+ steps 1)) steps))
+  (if (< steps 3)
+    (recur (+ height 1) (+ steps 1))
+    steps))
 
 (defn climb-again! (height)
   (set! height (+ height 1))
   (if (< height 9) (climb-again! height) height))
+
+(defn climb-twice! (height)
+  (set! height (+ height 1))
+  (if (< height 20)
+    (climb-twice! (+ height 1))
+    height))
 
 (defn main ()
   (local floor 0)
@@ -17,4 +27,6 @@
   (println (climb-counted! floor 0))
   (println floor)
   (println (climb-again! floor))
+  (println floor)
+  (println (climb-twice! floor))
   (println floor))

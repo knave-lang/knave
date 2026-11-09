@@ -18,6 +18,7 @@ use super::mutable_locals::MutableLocals;
 use super::opaque_borrows::OpaqueBorrows;
 use super::open_literals::OpenLiterals;
 use super::plan::{EmitPlan, ItemInfo, ItemKind};
+use super::problems::EmitProblems;
 use super::result_borrows::{FunctionFlows, LambdaFlows, ResultBorrows, StoredFlows};
 use super::reused_locals::ReusedLocals;
 use super::runtime::RuntimeModule;
@@ -102,7 +103,16 @@ pub struct ItemEmitter<'a> {
     emission: EmissionWork,
 }
 
+struct OpaqueResult<'r> {
+    result: &'r str,
+    params: &'r [String],
+    lifetimes: &'r [String],
+    generics: &'r [GenericParam],
+}
+
 impl<'a> ItemEmitter<'a> {
+    const OPAQUE_TYPE: &'static str = "impl ";
+
     const RUNTIME_MODULE: &'static str = "rt";
     const MAIN_HEADER: &'static str = "fn main() {";
     const SIZED_SELF: &'static str = " where Self: Sized";
@@ -1045,8 +1055,17 @@ impl<'a> ItemEmitter<'a> {
             ),
         );
         let where_clause = types.where_clause(&definition.scheme.params);
+        let capture = self.result_capture(
+            lambda,
+            OpaqueResult {
+                result: &result,
+                params: &params,
+                lifetimes: &lifetimes,
+                generics: &definition.scheme.params,
+            },
+        );
         let header = format!(
-            "{}fn {}{generics}({}){result}{where_clause} {{",
+            "{}fn {}{generics}({}){result}{capture}{where_clause} {{",
             info.visibility.keyword(),
             info.name,
             params.join(", ")
@@ -1288,18 +1307,71 @@ impl<'a> ItemEmitter<'a> {
     }
 
     fn lending_parameters(&self, lambda: &TypedLambda, parameters: &[Type]) -> Vec<Type> {
+        let unlent = self.unlent_changed_copies(lambda);
         lambda
             .params
             .iter()
             .zip(parameters)
-            .filter(|(param, _)| {
-                !self
-                    .program
+            .filter(|(param, _)| !unlent.contains(&param.binding))
+            .map(|(_, parameter)| parameter.clone())
+            .collect()
+    }
+
+    fn unlent_changed_copies(&self, lambda: &TypedLambda) -> Vec<BindingId> {
+        let changed: Vec<&TypedBinder> = lambda
+            .params
+            .iter()
+            .filter(|param| {
+                self.program
                     .changed_copy_parameters
                     .contains(&param.binding)
             })
-            .map(|(_, parameter)| parameter.clone())
+            .collect();
+        if changed.is_empty() {
+            return Vec::new();
+        }
+        let flowing = self.result_borrows.analyse_shared_arguments(lambda).flows;
+        changed
+            .into_iter()
+            .map(|param| param.binding)
+            .filter(|binding| !flowing.contains(binding))
             .collect()
+    }
+
+    fn result_capture(&mut self, lambda: &TypedLambda, opaque: OpaqueResult) -> String {
+        if !opaque.result.contains(Self::OPAQUE_TYPE) {
+            return String::new();
+        }
+        let Some(&unlent) = self.unlent_changed_copies(lambda).first() else {
+            return String::new();
+        };
+        if opaque
+            .params
+            .iter()
+            .any(|param| param.contains(Self::OPAQUE_TYPE))
+        {
+            let name = self.program.bindings.get(unlent).name();
+            let span = Self::parameter_span(lambda, unlent);
+            self.problems
+                .push(EmitProblems::uncapturable_changed_copy(name, span));
+            return String::new();
+        }
+        let captured: Vec<String> = opaque
+            .lifetimes
+            .iter()
+            .cloned()
+            .chain(opaque.generics.iter().map(RustTypes::generic_name))
+            .collect();
+        format!(" + use<{}>", captured.join(", "))
+    }
+
+    fn parameter_span(lambda: &TypedLambda, binding: BindingId) -> Span {
+        lambda
+            .params
+            .iter()
+            .find(|param| param.binding == binding)
+            .expect("the binding names a parameter")
+            .span
     }
 
     fn result_position(&self, parameters: &[Type], inferred: Option<&str>) -> TypePosition {

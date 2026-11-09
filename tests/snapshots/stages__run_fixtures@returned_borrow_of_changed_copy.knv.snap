@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/returned_borrow_of_changed_copy.knv
+---
+2
+2

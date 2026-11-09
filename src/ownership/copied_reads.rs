@@ -3,7 +3,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::functions::{FunctionTable, ParamMode};
 use super::value_kinds::ValueKind;
 use super::whole_value_changes::WholeValueChanges;
-use crate::core::BindingId;
+use crate::core::{BindingId, ReferenceKind};
 use crate::source::Span;
 use crate::types::{
     CopyRules, Type, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedLeaf,
@@ -106,7 +106,7 @@ impl CopyOut<'_> {
         match &mut expr.kind {
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
             TypedExprKind::Recur(arguments) => self.recur(arguments),
-            TypedExprKind::Borrow(_, value)
+            TypedExprKind::Borrow(ReferenceKind::Mutable, value)
             | TypedExprKind::Deref(value)
             | TypedExprKind::Struct(TypedStructExpr::Field(value, _)) => self.keep(value),
             TypedExprKind::Control(TypedControl::Match(matched)) => {

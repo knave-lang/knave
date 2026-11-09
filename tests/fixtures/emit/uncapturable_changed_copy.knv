@@ -1,0 +1,12 @@
+(defn adder! (count announce)
+  (set! count (+ count 1))
+  (announce)
+  (local step 1)
+  (fn (value) (+ value step)))
+
+(defn main ()
+  (local total 1)
+  (local add
+    (adder! total (fn () (println "ready"))))
+  (println (add 10))
+  (println total))

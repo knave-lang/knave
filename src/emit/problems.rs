@@ -10,6 +10,20 @@ pub struct UntiedNames {
 }
 
 impl EmitProblems {
+    pub fn uncapturable_changed_copy(param: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::UNCAPTURABLE_CHANGED_COPY,
+            format!("the result cannot leave out the borrow of `{param}`"),
+            Label::new(span, format!("a `set!` makes `{param}` a `mut` borrow")),
+        )
+        .with_note(
+            "the result is a closure or an iterator, and a parameter takes a function or an iterator, so Rust ties the result to every borrow the function takes",
+        )
+        .with_help(format!(
+            "to change only this function's copy, start the body with `(local {param} {param})`"
+        ))
+    }
+
     pub fn missing_main(span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::MISSING_MAIN,

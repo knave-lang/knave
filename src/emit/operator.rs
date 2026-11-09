@@ -19,8 +19,13 @@ pub struct RustOperator {
 }
 
 impl RustOperator {
-    const TABLE: [(&'static str, u8, Associativity); 19] = [
+    const TABLE: [(&'static str, u8, Associativity); 24] = [
         ("=", 0, Associativity::NonAssociative),
+        ("+=", 0, Associativity::NonAssociative),
+        ("-=", 0, Associativity::NonAssociative),
+        ("*=", 0, Associativity::NonAssociative),
+        ("/=", 0, Associativity::NonAssociative),
+        ("%=", 0, Associativity::NonAssociative),
         ("||", 1, Associativity::Associative),
         ("&&", 2, Associativity::Associative),
         ("==", 3, Associativity::NonAssociative),

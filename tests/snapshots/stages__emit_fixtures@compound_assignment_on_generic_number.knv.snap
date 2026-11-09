@@ -1,0 +1,87 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/compound_assignment_on_generic_number.knv
+---
+fn add_to<A: crate::rt::Number>(a: A, b: A) -> A {
+    let mut sum = a;
+    sum += b;
+    sum
+}
+
+fn twice<A: crate::rt::Number>(x: &mut A) {
+    *x += *x
+}
+
+fn climb<A: PartialOrd + crate::rt::Number>(mut n: A, step: A, limit: A) -> A {
+    loop {
+        if n < limit {
+            n += step;
+            continue;
+        } else {
+            return n;
+        }
+    }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", add_to(1_i64, 2));
+    println!("{}", add_to(1.5, 2.0));
+    let mut whole: i64 = 3;
+    twice(&mut whole);
+    let mut half = 1.5;
+    twice(&mut half);
+    println!("{}{}", whole, half);
+    println!("{}", climb(1_i64, 2, 10));
+    println!("{}", climb(1.0, 2.5, 10.0))
+}
+
+mod rt {
+    use std::ops::{
+        Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign,
+    };
+
+    pub trait Number:
+        Copy
+        + PartialOrd
+        + Add<Output = Self>
+        + Sub<Output = Self>
+        + Mul<Output = Self>
+        + Div<Output = Self>
+        + Rem<Output = Self>
+        + AddAssign
+        + SubAssign
+        + MulAssign
+        + DivAssign
+        + RemAssign
+    {
+    }
+
+    macro_rules! numbers {
+        ($($number:ty),*) => {
+            $(
+                impl Number for $number {}
+            )*
+        };
+    }
+
+    numbers!(
+        i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+    );
+
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

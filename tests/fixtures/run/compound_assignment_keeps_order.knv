@@ -1,6 +1,14 @@
 (defstruct tally
   :hits i64)
 
+(deftrait bumper
+  (bump-hits! (fn ((mut self)) i64)))
+
+(impl bumper tally
+  (bump-hits! (self)
+              (set! (:hits self) (+ (:hits self) 10))
+              1))
+
 (defn hit! (t)
   (set! (:hits t) (+ (:hits t) 10))
   1)
@@ -9,11 +17,23 @@
   (set! x (+ x 1))
   x)
 
+(defn add-bumped! (a)
+  (set! a (+ a (bump! a)))
+  a)
+
+(defn add-to-bumped! (a)
+  (set! a (+ (bump! a) a))
+  a)
+
 (defn main ()
   (local score (->tally 0))
   (set! (:hits score)
         (+ (:hits score) (hit! score)))
   (println (:hits score))
+  (local trait-score (->tally 1))
+  (set! (:hits trait-score)
+        (+ (:hits trait-score) (bump-hits! trait-score)))
+  (println (:hits trait-score))
   (local total 10)
   (set! total (+ total (bump! total)))
   (println total)
@@ -22,4 +42,16 @@
   (println count)
   (local left 10)
   (set! left (- left (bump! left)))
-  (println left))
+  (println left)
+  (local first 1)
+  (println (add-bumped! first) " " first)
+  (local second 1)
+  (println (add-to-bumped! second) " " second)
+  (local scores (vec 10 20 30))
+  (local steps 0)
+  (set! (at scores 0)
+        (+ (at scores 0) (bump! steps)))
+  (local five (fn () 5))
+  (set! (at scores 1)
+        (- (at scores 1) (five)))
+  (println (at scores 0) " " (at scores 1) " " steps))

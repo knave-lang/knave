@@ -441,14 +441,17 @@ impl ExpressionEmitter<'_> {
         let [target, operand] = operands.as_slice() else {
             return None;
         };
-        let operator = self.compound_operator(callee)?;
+        let operator = self.compound_operator(callee, &argument.value.ty)?;
         TailLoop::passes_through(param, target).then_some((operator, operand))
     }
 
-    pub(super) fn compound_operator(&self, callee: &TypedExpr) -> Option<&'static str> {
+    pub(super) fn compound_operator(&self, callee: &TypedExpr, ty: &Type) -> Option<&'static str> {
         let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = callee.kind else {
             return None;
         };
+        if !self.types().is_number(ty) {
+            return None;
+        }
         let template = self.definition_template(binding, &callee.ty)?;
         Self::COMPOUND_OPERATORS
             .into_iter()

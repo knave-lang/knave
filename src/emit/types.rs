@@ -325,6 +325,16 @@ impl<'a> RustTypes<'a> {
         }
     }
 
+    pub fn is_number(&self, ty: &Type) -> bool {
+        match ty {
+            Type::Primitive(primitive) => primitive.is_integer() || primitive.is_float(),
+            Type::Generic(generic) => self.program.generics.get(generic).is_some_and(|param| {
+                Self::is_covered(Self::NUMBER_TRAIT, &self.bound_paths(param))
+            }),
+            _ => false,
+        }
+    }
+
     fn bound_paths(&self, param: &GenericParam) -> Vec<String> {
         let mut bounds = self.declared_bounds(param);
         self.add_implied_bounds(param, &mut bounds);

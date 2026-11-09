@@ -2,6 +2,11 @@
   :hits i64
   :misses i64)
 
+(defn miss! (tally)
+  (set! (:misses tally)
+        (+ (:misses tally) 1))
+  1)
+
 (defn main ()
   (local total 1)
   (set! total (+ total 2))
@@ -12,7 +17,17 @@
   (set! (:hits tally) (* (:hits tally) 3))
   (set! (:hits tally)
         (+ (:misses tally) 1))
+  (set! (:misses tally)
+        (- (:misses tally) (miss! tally)))
+  (set! (:misses tally)
+        (* (miss! tally) (:misses tally)))
   (local scores (vec 1 2 3))
   (set! (at scores 0)
         (+ (at scores 0) (at scores 2)))
-  (println total (:hits tally) (at scores 0)))
+  (local step (fn () 2))
+  (set! (at scores 1)
+        (+ (at scores 1) (step)))
+  (println total
+           (:hits tally)
+           (:misses tally)
+           (at scores 0)))

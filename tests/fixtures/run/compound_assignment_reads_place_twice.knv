@@ -1,0 +1,14 @@
+(defn main ()
+  (local v (vec 0 10 20 30))
+  (set! (at v
+            (len (unwrap (unwrap-ok (read-line)))))
+        (+ (at v
+               (len (unwrap (unwrap-ok (read-line)))))
+           1))
+  (println (at v 0)
+           " "
+           (at v 1)
+           " "
+           (at v 2)
+           " "
+           (at v 3)))

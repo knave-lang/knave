@@ -226,6 +226,7 @@ impl Sandbox {
     const CACHE_HOME_VARIABLE: &str = "XDG_CACHE_HOME";
     const CACHE_DIRECTORY: &str = "cache";
     const GIT_MESSAGE: &str = "git says:";
+    const SANDBOX_MASK: &str = "<sandbox>";
     const LINKED_LIBRARY: &str = "linked-lib";
     const LINKED_MODULE: &str = "linked-module";
     const OUTSIDE_FROM_STORE: &str = "../../../../../keymap/src/lib.rslisp";
@@ -586,6 +587,15 @@ impl Sandbox {
             &format!("git-app/{}", Language::project_file_name()),
             &project,
         )
+    }
+
+    fn masked(&self, text: &str) -> String {
+        let canonical = fs::canonicalize(&self.directory).expect("the sandbox resolves");
+        [canonical, self.directory.clone()]
+            .iter()
+            .fold(text.to_string(), |masked, spelling| {
+                masked.replace(&spelling.display().to_string(), Self::SANDBOX_MASK)
+            })
     }
 
     fn compiler_with_fake_git(&self, ssh_command: Option<&str>) -> Outcome {
@@ -5944,7 +5954,5 @@ fn a_module_file_linked_outside_a_git_checkout_is_an_error() {
     );
     let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
     let stderr = check.assert_exit_code(1).stderr();
-    let sandbox_path = fs::canonicalize(&sandbox.directory).expect("the sandbox resolves");
-    let shown = stderr.replace(&sandbox_path.display().to_string(), "<sandbox>");
-    insta::assert_snapshot!(shown);
+    insta::assert_snapshot!(sandbox.masked(&stderr));
 }

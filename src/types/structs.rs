@@ -27,6 +27,20 @@ impl StructDefinition {
             .map(|(_, field_type)| field_type)
     }
 
+    pub fn instantiated_field_depth(&self, name: &str, arguments: &[Type]) -> Option<usize> {
+        let declared = self.field(name)?;
+        let argument_depth = match declared.innermost_referent() {
+            Type::Generic(generic) => self
+                .params
+                .iter()
+                .position(|param| param.id == *generic)
+                .and_then(|position| arguments.get(position))
+                .map_or(0, Type::reference_depth),
+            _ => 0,
+        };
+        Some(declared.reference_depth() + argument_depth)
+    }
+
     pub fn instantiated_field(&self, name: &str, arguments: &[Type]) -> Option<Type> {
         let replacements = self.replacements(arguments);
         self.field(name).map(|field_type| {

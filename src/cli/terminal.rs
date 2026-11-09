@@ -518,9 +518,7 @@ impl Terminal {
 
     fn is_generated(&self, source: SourceId) -> bool {
         let name = self.sources.file(source).name();
-        self.generated_sources
-            .iter()
-            .any(|generated| *generated == name)
+        self.generated_sources.contains(&name)
     }
 
     fn report_build(&self, error: BuildError) -> ExitStatus {

@@ -39,6 +39,7 @@ mod prompt_lines;
 mod prompt_module;
 mod repl;
 mod run;
+mod skipped_directory;
 mod stage_work;
 mod standard_error;
 mod streamed_program;

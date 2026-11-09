@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
+use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
 use crate::format::{FormatFailure, ModuleLookup, SourceFormatter};
@@ -203,12 +204,19 @@ impl SourceFiles {
         let mut files = Vec::new();
         for entry in entries {
             if Self::is_real_directory(&entry) {
-                files.extend(Self::under(&entry)?);
+                files.extend(Self::under_subdirectory(&entry)?);
             } else if Self::is_source(&entry) {
                 files.push(entry);
             }
         }
         Ok(files)
+    }
+
+    fn under_subdirectory(directory: &Path) -> io::Result<Vec<PathBuf>> {
+        if SkippedDirectory::is_skipped(directory) {
+            return Ok(Vec::new());
+        }
+        Self::under(directory)
     }
 
     fn is_real_directory(path: &Path) -> bool {

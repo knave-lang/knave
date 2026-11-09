@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
+use super::skipped_directory::SkippedDirectory;
 use super::terminal::{ModuleOfSources, Terminal};
 use crate::language::Language;
 
@@ -49,12 +50,19 @@ impl TestEntries {
         for entry in fs::read_dir(directory)? {
             let path = entry?.path();
             if path.is_dir() {
-                self.collect_modules(&path, modules)?;
+                self.collect_subdirectory(&path, modules)?;
             } else if let Some(module) = self.module_path(&path) {
                 modules.push(module);
             }
         }
         Ok(())
+    }
+
+    fn collect_subdirectory(&self, directory: &Path, modules: &mut Vec<String>) -> io::Result<()> {
+        if SkippedDirectory::is_skipped(directory) {
+            return Ok(());
+        }
+        self.collect_modules(directory, modules)
     }
 
     fn module_path(&self, file: &Path) -> Option<String> {

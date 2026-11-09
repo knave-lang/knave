@@ -69,7 +69,7 @@ pub struct Terminal {
 }
 
 impl Terminal {
-    const BUILD_PARENT: &str = "target";
+    pub const BUILD_PARENT: &str = "target";
     pub const WORKING_DIRECTORY: &str = ".";
     const SAVED_PRELUDE: &[u8] = include_bytes!(env!("PRELUDE_STATE"));
 

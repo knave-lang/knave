@@ -1352,6 +1352,25 @@ fn fmt_skips_a_symlinked_directory() {
 }
 
 #[test]
+fn fmt_skips_hidden_and_target_directories() {
+    let sandbox = Sandbox::new("fmt_skipped_directories")
+        .with_file("project/twice.rslisp", UNFORMATTED)
+        .with_file("project/.direnv/limit.rslisp", UNFORMATTED)
+        .with_file("project/target/limit.rslisp", UNFORMATTED);
+    sandbox
+        .compiler(&["fmt", "project"])
+        .assert_silent_success();
+    assert_eq!(
+        [
+            sandbox.contents("project/twice.rslisp"),
+            sandbox.contents("project/.direnv/limit.rslisp"),
+            sandbox.contents("project/target/limit.rslisp"),
+        ],
+        [FORMATTED, UNFORMATTED, UNFORMATTED].map(String::from)
+    );
+}
+
+#[test]
 fn fmt_reports_a_reader_error_and_leaves_the_file_as_it_was() {
     let sandbox = Sandbox::new("fmt_reader_error")
         .with_file("unclosed.rslisp", UNCLOSED)
@@ -4949,6 +4968,19 @@ fn test_runs_the_tests_of_every_module_of_a_directory() {
          test shelf/stock/keeps-count ... ok\n\
          test text/restocks ... ok\n\
          2 passed, 0 failed\n"
+    );
+}
+
+#[test]
+fn test_skips_hidden_and_target_directories() {
+    let sandbox = Sandbox::new("test_skipped_directories")
+        .with_file("checks/stock.rslisp", PROJECT_TESTS)
+        .with_file("checks/.direnv/stock.rslisp", UNCLOSED)
+        .with_file("checks/target/stock.rslisp", UNCLOSED);
+    let test = sandbox.compiler(&["test", "checks"]);
+    assert_eq!(
+        test.assert_silent_success().stdout(),
+        "running 1 test\ntest stock/adds ... ok\n1 passed, 0 failed\n"
     );
 }
 

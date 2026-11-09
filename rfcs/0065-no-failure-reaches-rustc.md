@@ -64,26 +64,29 @@ Lifetimes and aliasing hold 23 of the 38 and every generator failure. The other 
 A second generator tests rule 1 of Option A below on a wider grammar. Each program has four generated helpers and a `main` body:
 
 - **Helpers.** Their bodies are drawn from templates: a choice between two parameters' elements under `if`, a field of one parameter under a condition on another, a call of an earlier helper with its arguments swapped, a borrow held in a local and returned, a `mut` helper that returns an element after a `push!` on one branch, with or without a held borrow, a helper that stores a parameter's field into a vector parameter, a `loop` that returns an element, and `mut` helpers that hold a borrow across a `push!` inside an `if` or a `loop`, with the read before or after the `push!`.
-- **`main`.** It binds structs, vectors and integers; borrows of fields and elements; borrows held in a struct field, `(defstruct tag :label (ref str))`, and in a vector; closures that capture a vector, shared or as `mut`; and results of the helpers. It reads, changes, moves and pushes through them, at the top level and inside `if` branches and `loop` bodies.
+- **`main`.** It binds structs, vectors and integers; borrows of fields and elements; borrows held in a struct field, `(defstruct tag :label (ref str))`, and in a vector; closures that capture a vector, shared or as `mut`; and results of the helpers. It reads, changes, moves and pushes through them, at the top level and inside `if` branches and `loop` bodies. A block may bind a local and read it, and a later `local` may bind a name again to a new borrow.
 
-The model reads each program's syntax tree, the same tree the generator printed. It infers each helper's regions from its body: which parameters its result borrows, which parameters are `mut`, and which parameter's borrow the body stores into another. It does not read the generator's choices. It checks only the functions `main` reaches, because the emitter writes only those, so rustc sees only those. The generator, the model and both runs are under `target/scratch/gen2/` of the work tree that produced this RFC.
+The model reads each program's syntax tree, the same tree the generator printed. It infers each helper's regions from its body: which parameters its result borrows, which parameters are `mut`, and which parameter's borrow the body stores into another. It does not read the generator's choices. Each `local` starts a new value, so a name bound again, or bound on each pass through a loop, holds only the loans that flow into it after that binding. It checks only the functions `main` reaches, because the emitter writes only those, so rustc sees only those. The generator, the model and both runs are under `target/scratch/gen2/` of the work tree that produced this RFC.
 
 | Run | Programs | `check` rejects (`L0501`) | Accepted, rustc compiles | Accepted, rustc rejects | Model agrees |
 |---|---|---|---|---|---|
-| Seeds 1 to 1,000, 14 statements | 1,000 | 258 | 388 | 354 | 742 of 742 |
-| Seeds 1,001 to 2,000, 20 statements | 1,000 | 372 | 193 | 435 | 628 of 628 |
+| Seeds 1 to 1,000, 14 statements | 1,000 | 249 | 461 | 290 | 751 of 751 |
+| Seeds 1,001 to 2,000, 20 statements | 1,000 | 336 | 271 | 393 | 664 of 664 |
 
-Over both runs, the rustc rejections carry `E0502` in 684 programs, `E0499` in 219, `E0506` in 96 and `E0505` in 11, and a program can carry several. In the first run, the model places 113 of the 354 rejections in a helper's body, and 93 involve a `mut` loan. Of that run's 742 accepted programs, 613 have a branch in `main`, 568 a loop, 210 a borrow in a struct field, 207 a borrow in a vector, 303 call a helper with a branch or a loop, and 246 hold a helper's returned borrow. Seeds 1 to 40 were used to write and correct the model. The second run's seeds were never seen before the run, and neither run changed the model.
+Over both runs, the rustc rejections carry `E0502` in 611 programs, `E0499` in 167, `E0506` in 81 and `E0505` in 9, and a program can carry several. In the first run, the model places 103 of the 290 rejections in a helper's body, and 92 involve a `mut` loan. Of that run's 751 accepted programs, 647 have a branch in `main`, 628 a loop, 667 bind a local inside a branch or a loop, 533 bind a name twice, 199 hold a borrow in a struct field, 188 a borrow in a vector, 282 call a helper with a branch or a loop, and 226 hold a helper's returned borrow.
 
-Three variants of the model measure the rules that review questioned, on the first run:
+Seeds 1 to 40 of an earlier version of this generator were used to write and correct the model. Review then found that the model kept one value per name, which gave a false conflict on a local bound inside a loop and on a name bound twice, two forms that version never built. The model now starts a new value at each binding, the generator builds both forms, and both runs above are new. Review also ran the earlier version on 2,000 fresh seeds, and the model agreed on all 1,372 accepted programs.
 
-| Variant | Accepted programs it gets wrong |
-|---|---|
-| A place is a whole local, not a path | 8 that rustc compiles, each a change of one field while another field is borrowed |
-| A loan lives to the last use of a value that holds it, with no rule for the function's result | 27 that rustc rejects |
-| A call's `mut` loan starts before its other arguments are read | 228 of the 388 that rustc compiles pass a place as `mut` and read it in another argument, as `(push! v (len v))` does |
+Four variants of the model measure the rules that review questioned:
 
-**What these runs do not show.** No program has a `match`, a recursive function, a call cycle, a trait, a generic function or a closure that returns a borrow. Only 8 of the 742 call one helper from another, so the region rule through calls has little evidence, and the fixed point over cycles has none. `E0597`, `E0515` and `E0716` never arise, because the grammar never lets a borrow outlive its local. The share of programs that fail measures these grammars, not the programs people write.
+| Variant | Accepted programs it gets wrong, first run | Second run |
+|---|---|---|
+| A name holds one value for the whole body, with no new value at a binding | 126 that rustc compiles | 102 that rustc compiles |
+| A place is a whole local, not a path | 10 that rustc compiles, each a change of one field while another field is borrowed | 13 that rustc compiles |
+| A loan lives to the last use of a value that holds it, with no rule for the function's result | 23 that rustc rejects | 23 that rustc rejects |
+| A call's `mut` loan starts before its other arguments are read, as in `(push! v (len v))` | 241 that rustc compiles | 177 that rustc compiles |
+
+**What these runs do not show.** No program has a `match`, an enum, a map, a recursive function, a call cycle, a trait, a generic function, a closure with parameters, a closure that returns a borrow, a crate call or a `rust` template. No program reassigns a whole struct or vector with `set!` while a field of it is borrowed, has more than four helpers, or passes one place to a helper in two positions. Only 8 of the 751 call one helper from another, so the region rule through calls has little evidence, and the fixed point over cycles has none. `E0597`, `E0515` and `E0716` never arise, because the grammar never lets a borrow outlive its local. The share of programs that fail measures these grammars, not the programs people write.
 
 ## Options
 
@@ -96,7 +99,7 @@ The ownership stage gains two facts it does not hold today, and every later stag
 1. **Loans.**
    - **Places.** A place is a path: a local, then fields, dereferences and indexes. Two places conflict when one is a prefix of the other. An index lends the whole collection, so `(at v 0)` lends `v`. A call whose result borrows an argument lends each whole argument that its region record names. So `(local m (:make c))` followed by `(set! (:year c) 2)` is allowed, as rustc allows `let m = &c.make; c.year = 2;`.
    - **Making a loan.** Every `ref`, every adjustment that adds a borrow, every field read that borrows, every call whose result borrows an argument, and every closure that borrows a capture makes a loan of a place.
-   - **Liveness.** A loan is live at a point when the point is reachable from the loan and some value whose region holds the loan is live there. A value's region is one set for the whole body, as in rustc's non-lexical lifetimes: a loan that flows into a local on any path is in that local's region at every point where the local is live. A loan that reaches the function's result is live at every point from the loan to every exit. A value whose type has a `Drop` impl uses its loans at the end of its scope. This is rustc's region liveness, not Polonius's, and Knave must not accept what rustc rejects, even where rustc is less precise than it could be. In this program `r` has no later use on the `else` path, but its loan reaches the result, so the `push!` conflicts and rustc reports `E0502`:
+   - **Liveness.** A loan is live at a point when the point is reachable from the loan and some value whose region holds the loan is live there. Each binding starts a new value: a `local` inside a loop body is a new value on each pass, and a `local` that binds a name again is a different value from the one it shadows. A value's region is one set for the whole body, as in rustc's non-lexical lifetimes: a loan that flows into a value on any path after its binding is in that value's region at every point where the value is live. A loan that reaches the function's result is live at every point from the loan to every exit. A value whose type has a `Drop` impl uses its loans at the end of its scope. This is rustc's region liveness, not Polonius's, and Knave must not accept what rustc rejects, even where rustc is less precise than it could be. In this program `r` has no later use on the `else` path, but its loan reaches the result, so the `push!` conflicts and rustc reports `E0502`:
 
      ```lisp
      (defn pick! (v)
@@ -139,7 +142,7 @@ A call site then checks the tie by rule 1, as it checks a `defn`'s.
 The diagnostics are new ownership codes in the shape of `L0501`, with a label at the loan, the conflicting use, and the later use that keeps the loan alive:
 
 ```text
-error[L0517]: `v` changes while `r` still borrows it
+error[L0518]: `v` changes while `r` still borrows it
  --> src/main.knv:4:10
   |
 3 |   (local r (at v 0))
@@ -152,9 +155,9 @@ error[L0517]: `v` changes while `r` still borrows it
 help: read what you need from `v` before changing it, or copy the element with `(clone (at v 0))`
 ```
 
-`L0517` is a change or a `mut` loan of a place that a live loan borrows, and `L0518` is a move of such a place. `L0510` and `L0512` become cases of rule 1 and keep their codes. PR 421's `L0516`, two `mut` arguments of one place, is a case of `L0517` at one call and keeps its code.
+`L0518` is a change or a `mut` loan of a place that a live loan borrows, and `L0519` is a move of such a place. PR 421 claims `L0517`, for a returned closure that changes a parameter. `L0510` and `L0512` become cases of rule 1 and keep their codes. PR 421's `L0516`, two `mut` arguments of one place, is a case of `L0518` at one call and keeps its code.
 
-**Programs it rejects that rustc accepts.** On the 1,370 accepted generated programs, none. Knave's rule is rustc's rule on the Rust that Knave emits, so a difference is a bug in one of them. A borrow of a temporary keeps today's constant rule, which [docs/language.md: Ownership](../docs/language.md#ownership) states and which promotes `(ref (+ 1 2))` and `(ref (pair "Leaf" 2019))` as rustc does. This RFC closes only the rule's known holes from report 266: a `def` resolves to its value before the rule reads it, a divisor that is zero or `-1` is not constant, `&&`, `||` and `==` on operands that are not primitive are not constant, and a `ref` of a `do` or an `if` borrows a temporary even when each branch is a borrowed parameter. Each of these emits Rust that rustc rejects today, so no program that compiles today is rejected. `check` checks every function, and rustc sees only the functions `main` reaches, so a conflict in a function that nothing calls becomes an error that `build` does not report today.
+**Programs it rejects that rustc accepts.** On the 1,415 accepted generated programs, none. Knave's rule is rustc's rule on the Rust that Knave emits, so a difference is a bug in one of them. A borrow of a temporary keeps today's constant rule, which [docs/language.md: Ownership](../docs/language.md#ownership) states and which promotes `(ref (+ 1 2))` and `(ref (pair "Leaf" 2019))` as rustc does. This RFC closes only the rule's known holes from report 266: a `def` resolves to its value before the rule reads it, a divisor of zero is not constant, a divisor of `-1` is constant only when the dividend is a constant other than its type's minimum, `&&` and `||` are never constant, `==` on operands that are not primitive is not constant, and a `ref` of a `do` or an `if` borrows a temporary even when each branch is a borrowed parameter. Each of these emits Rust that rustc rejects today, so no program that compiles today is rejected. `check` checks every function, and rustc sees only the functions `main` reaches, so a conflict in a function that nothing calls becomes an error that `build` does not report today.
 
 **Compile speed.** Three costs, each with its own growth:
 
@@ -172,10 +175,10 @@ Each class gets a restriction instead of a check. On aliasing, the choices measu
 
 | Restriction | Accepted programs it rejects |
 |---|---|
-| No local holds a borrow: a borrow lives only inside the form that makes it | 460 (94%) |
-| A local that holds a borrow freezes the places it borrows until its scope ends | 187 (38%) |
+| No local holds a borrow: a borrow lives only inside the form that makes it | 449 (92%) |
+| A local that holds a borrow freezes the places it borrows until its scope ends | 186 (38%) |
 
-Five of that grammar's 16 statement choices make a held borrow, so these shares measure the grammar, not the programs people write. They show that each restriction rejects programs that rustc accepts often enough for a generator to find one every few programs.
+`target/scratch/gen/restrict.py` measures both, over the statement model of the first generator's prototype. An earlier count of 460 and 187 came from a script that was not kept, and review's separate reconstruction gives 449 and 186 as this script does. Five of that grammar's 16 statement choices make a held borrow, so these shares measure the grammar, not the programs people write. They show that each restriction rejects programs that rustc accepts often enough for a generator to find one every few programs.
 
 On closure signatures, a closure bound by `local` may not return a borrow of a parameter, and the program writes a `defn` instead. On closure kinds, every function type is a `fn` pointer, so no closure captures. On signature lifetimes, a function may return a borrow of one parameter only.
 
@@ -211,7 +214,7 @@ Take Option A for lifetimes and aliasing, and for every other class make one sta
 | Trait bounds | Every bound the emitted Rust requires is one the type stage proved. A runtime trait without methods lists its implementors, and `Sized` is a bound the type stage tracks for type parameters. |
 | One-off | The def-move check and the emitter ask one `const` rule. A field passed to a `mut` parameter is a `mut` use of its root. The others are emitter bugs that the generator finds. |
 
-On 1,370 accepted generated programs with branches, loops, borrows held in fields and vectors, and helper bodies whose regions it inferred, the loan rule agreed with rustc on every one. Option A keeps the language's model, Rust's ownership with Knave's inference, and it gives the interpreter a front end that has decided every fact the Rust holds, which the interpreter needs to walk the typed IR without guessing.
+On 1,415 accepted generated programs with branches, loops, locals bound inside them, names bound twice, borrows held in fields and vectors, and helper bodies whose regions it inferred, the loan rule agreed with rustc on every one. Option A keeps the language's model, Rust's ownership with Knave's inference, and it gives the interpreter a front end that has decided every fact the Rust holds, which the interpreter needs to walk the typed IR without guessing.
 
 ### The scope: Knave code and prelude forms
 
@@ -223,9 +226,12 @@ How the interpreter runs a Rust leaf is not this RFC's subject. Two designs hold
 
 A crate call's result can hold a borrow of an argument, and Knave code can then change the argument while the result lives. The conflict is in Knave code, so the loan rule must see the loan where it can.
 
-- **What counts as undetermined.** Recommended, for the owner to decide: a crate signature is undetermined when Rust's elision rules do not settle which arguments its result borrows from the types Knave reads. Every other crate signature is determined, and its loans enter the loan rule as a `defn`'s do. A result whose type has a `Drop` impl, such as a lock guard, keeps its loans until the end of its scope, by the liveness rule.
+- **What counts as undetermined.** Decided: a crate call's borrows are settled when Rust's elision rules decide them from the Knave type declared for the binding, including any written lifetime. Knave does not read the crate's own Rust signature. A binding whose declared type elision does not settle is undetermined. Every other crate call is determined, and its loans enter the loan rule as a `defn`'s do. A result whose type has a `Drop` impl, such as a lock guard, keeps its loans until the end of its scope, by the liveness rule.
 - **What an undetermined result borrows.** Decided: nothing, so `check` never rejects a valid program for it. If the program does change an argument while the result lives, rustc reports it, mapped to the source.
-- **The interpreter never runs such a program.** Under the interpreter design, a form that reaches a crate is not interpreted: that input compiles against prebuilt dependencies, so rustc sees the whole of it and reports the same error locally as in CI. Under the compiled crate bindings design, rustc sees only the wrappers, and a borrow does not outlive the call. A crate result that keeps a borrow therefore cannot be held in a handle: its wrapper fails to build, or the input takes the compile path as a backup. In neither case does the interpreter run a program that rustc would reject.
+- **Under the interpreter design.** Decided: an input that reaches a crate is not interpreted. It compiles against prebuilt dependencies, so rustc sees the whole of it and reports the same error locally as in CI.
+- **Under the compiled crate bindings design.** rustc sees only the wrappers, and a borrow does not outlive the call, so a crate result that keeps a borrow cannot be held in a handle. The owner has not chosen between two outcomes: the wrapper fails to build, or the input takes the compile path as a backup. This RFC recommends the compile path, because a wrapper's build error lands in generated code, not in the user's text, while the compile path reports rustc's error at the user's source, as CI does. The compiled crate bindings RFC makes the choice.
+
+With either outcome, the interpreter does not run a program that rustc would reject.
 
 ### Testing the claim
 
@@ -233,9 +239,25 @@ Fixtures cover only the shapes someone thought of. The two generators above foun
 
 1. **A generator of well-typed programs.** It builds programs typed by construction, from a seed, over a grammar of the language's forms. It starts from the second generator above, and grows to the forms that grammar lacks: `match`, enums, maps, recursive and mutually recursive functions, traits with default bodies, generic functions, calls through function values, and closures that return borrows. Each program prints the values it computes.
 2. **The oracle.** A program that `check` accepts and rustc rejects is a failure. A program that `check` rejects with an ownership code, and whose Rust, emitted without the ownership checks, rustc compiles, is a false error. A hidden `emit` flag skips the checks for the harness only. The oracle compares only functions that `main` reaches, because rustc sees only those.
-3. **Fixtures for known shapes.** The harness keeps review's probes as fixtures: `pick!` above, a borrow read inside a `loop` after a `push!` of its vector, a change of one field while another is borrowed, `(push! v (len v))`, a user `mut` helper called with `(len v)`, and `(ref (+ 1 2))`.
+3. **Fixtures for known shapes.** The harness keeps review's probes as fixtures: `pick!` above, a borrow read inside a `loop` after a `push!` of its vector, a change of one field while another is borrowed, `(push! v (len v))`, a user `mut` helper called with `(len v)`, `(ref (+ 1 2))` and `(defn quotient () (ref (/ 7 -1)))`, which compile, and these two programs, which compile and which a model with one value per name rejects:
+
+   ```lisp
+   (defn main ()
+     (local v (vec 1 2))
+     (loop (n 0) (if (< n 2) (do (push! v 9) (local r (at v 0)) (println r) (recur (+ n 1))) (do))))
+
+   (defn main ()
+     (local v (vec 1 2))
+     (local w (vec 5))
+     (local r (at v 0))
+     (println r)
+     (push! v 9)
+     (local r (at w 0))
+     (println r))
+   ```
+
 4. **A reducer.** A failing program shrinks to the smallest program that still fails, by dropping and simplifying forms, and becomes a fixture under `tests/fixtures/`.
-5. **Runs.** Each pull request runs a fixed set of seeds. 1,000 programs of the second generator took 67 to 70 seconds on four cores at `nice 19` on the machine that wrote this RFC, so 200 take about 14 seconds there. Review measured 21 seconds for 200 programs of the first generator on another machine. A scheduled job runs fresh seeds and files what it finds.
+5. **Runs.** Each pull request runs a fixed set of seeds. 1,000 programs of the second generator took 59 to 72 seconds on four cores at `nice 19` on the machine that wrote this RFC, so 200 take about 14 seconds there. Review measured 21 seconds for 200 programs of the first generator on another machine. A scheduled job runs fresh seeds and files what it finds.
 
 The generator grows with the language: a form it cannot build is a form the claim does not cover yet, and the RFC that adds a form adds it to the generator.
 
@@ -248,10 +270,10 @@ The two backends could disagree on these behaviors. Each needs a language rule t
 | Behavior | Rule |
 |---|---|
 | Evaluation order | Every form evaluates its parts once, left to right. A struct update evaluates its field values before its base when the base is a name or a field read. The emitter's hoisting of a `mut` argument keeps this order, as [Call order](../docs/language.md#ownership) states. |
-| Integer overflow | Decided: Rust's model. A debug build panics and `build --release` wraps. The interpreter, `knave test`, `eval` and `repl` follow debug builds, and agreement tests compare against debug builds only. |
+| Integer overflow | Decided: Rust's model. A debug build panics and `build --release` wraps. The interpreter, `knave test`, `eval` and `repl` follow debug builds, and agreement tests compare against debug builds only. The language reference says, next to the interpreter's documentation, that `build --release` wraps where the interpreter panics. |
 | Division by zero, and `MIN / -1` | Panics in both, in every profile. |
 | Floats | `f32` arithmetic rounds to `f32` at every step, and a float prints as Rust's `Display` prints it. |
-| `hash-map` order | Decided: a `hash-map` stays Rust's `HashMap`, with unspecified iteration order. Printing a map sorts its entries, but `iter`, `keys` and `vals` yield an order that differs on each compiled run. The interpreter varies its order on each run, so a test that depends on that order fails locally as it can in CI. The generator never lets `hash-map` iteration order reach output. A program that needs a stable order uses `sorted-map`, which iterates in key order in both backends. |
+| `hash-map` order | Decided: a `hash-map` stays Rust's `HashMap`, with unspecified iteration order. Printing a map sorts its entries, but `iter`, `keys` and `vals` yield an order that differs on each compiled run. The interpreter varies its order on each run, so a test that depends on that order fails locally as it can in CI. It draws the order from a seed and prints the seed when a run fails, so the run can be repeated. A fixture whose output depends on `hash-map` order is a fixture bug. The generator never lets `hash-map` iteration order reach output. A program that needs a stable order uses `sorted-map`, which iterates in key order in both backends. |
 | Drop order | A value drops at the end of its scope, in reverse order of binding, and a temporary at the end of its statement, as in Rust. Knave writes no destructors, so the order shows only through crate values with a `Drop` impl. `println` writes through Rust's standard output, which flushes each line. |
 | Closure captures | A `move` closure copies a Copy capture when the closure is made, so a later change of the local does not reach it. The interpreter captures the same way. |
 | Sharing | The interpreter may share values that Rust would copy or move, because the ownership checks prove the difference unobservable. That proof is this RFC: a program that rustc would reject for aliasing could show a change through a shared value when interpreted. |
@@ -275,15 +297,15 @@ The project owner decided on 2026-11-09:
 
 - **Option A.** Knave checks lifetimes and aliasing.
 - **Scope.** The rule covers every program built from Knave code and prelude forms. An error in a user's own Rust text, a `(rust ...)` template or a crate call, stays a mapped rustc error.
-- **Crate borrows.** A crate call's result whose borrow Knave cannot determine counts as borrowing nothing, so a valid program is never rejected.
-- **Overflow.** Overflow keeps Rust's model. The interpreter, `knave test`, `eval` and `repl` follow debug builds, and agreement tests compare against debug builds only.
-- **Compile speed budget.** Across the steps of Option A, the front end's instruction count on the corpus grows by at most 10% in total, and no corpus entry's emission goes over one second. CI's instruction count job never fails on a rise, so a breach stops the work and goes to the owner. The job's 1% gate on allocated and peak live bytes applies as usual.
-
-- **`hash-map` order.** A `hash-map` stays Rust's `HashMap`, with unspecified iteration order. The interpreter varies the order on each run, the generator never lets it reach output, and a program that needs a stable order uses `sorted-map`.
+- **Crate borrows.** A crate call's borrows are settled when Rust's elision rules decide them from the Knave type declared for the binding, including any written lifetime, because Knave does not read the crate's own Rust signature. A result whose borrow Knave cannot determine counts as borrowing nothing, so a valid program is never rejected.
+- **Crate calls under the interpreter design.** An input that reaches a crate is not interpreted: it compiles against prebuilt dependencies, so rustc reports the same error locally as in CI.
+- **Overflow.** Overflow keeps Rust's model. The interpreter, `knave test`, `eval` and `repl` follow debug builds, and agreement tests compare against debug builds only. The language reference notes, next to the interpreter's documentation, that `build --release` wraps.
+- **Compile speed budget.** The baseline is the commit before step 1 of the order of work. Across the steps of Option A, the front end's total instruction count over the corpus grows by at most 10% against that baseline, and no corpus entry's emission goes over one second. Each step's pull request body reports the comparison of its head with the baseline. CI's instruction count job never fails on a rise, so a breach stops the work and goes to the owner. The job's 1% gate on allocated and peak live bytes applies as usual.
+- **`hash-map` order.** A `hash-map` stays Rust's `HashMap`, with unspecified iteration order. The interpreter varies the order on each run from a seed that it prints when a run fails, the generator never lets the order reach output, a fixture whose output depends on it is a fixture bug, and a program that needs a stable order uses `sorted-map`.
 
 The project owner chose the `tied` helper for closures bound by `local` on 2026-11-06.
 
-Open, with the owner: what counts as a crate call whose borrows Knave cannot determine, as recommended above.
+Left to the compiled crate bindings RFC: whether a crate result that keeps a borrow fails its wrapper's build or takes the compile path. This RFC recommends the compile path.
 
 ## Rejected options and why
 

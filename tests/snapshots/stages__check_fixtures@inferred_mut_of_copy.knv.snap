@@ -1,0 +1,53 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/inferred_mut_of_copy.knv
+---
+error[L0514]: this argument is a copy, so changing it changes nothing
+  --> check/inferred_mut_of_copy.knv:11:10
+   |
+ 5 | (defn bump! (x) (set! x (+ x 1)))
+   |                 ---------------- `bump!` changes its parameter here
+...
+11 |   (bump! 5)
+   |          ^ this is a copy, not a place
+   |
+   = help: bind it to a local and pass the local: `(local value 5)`
+
+error[L0514]: this argument is a copy, so changing it changes nothing
+  --> check/inferred_mut_of_copy.knv:12:10
+   |
+ 5 | (defn bump! (x) (set! x (+ x 1)))
+   |                 ---------------- `bump!` changes its parameter here
+...
+12 |   (bump! (+ total 1))
+   |          ^^^^^^^^^^^ this is a copy, not a place
+   |
+   = help: bind it to a local and pass the local: `(local value (+ total 1))`
+
+error[L0514]: this argument is a copy, so changing it changes nothing
+  --> check/inferred_mut_of_copy.knv:13:10
+   |
+ 5 | (defn bump! (x) (set! x (+ x 1)))
+   |                 ---------------- `bump!` changes its parameter here
+...
+13 |   (bump! limit)
+   |          ^^^^^ this is a copy, not a place
+   |
+   = help: a `def` never changes: `(local value limit)`
+
+error[L0514]: this argument is a copy, so changing it changes nothing
+  --> check/inferred_mut_of_copy.knv:14:10
+   |
+14 |   (grow! (vec (str "cy")))
+   |          ^^^^^^^^^^^^^^^^ this is a copy, not a place
+   |
+   = help: bind it to a local and pass the local: `(local value (vec (str "cy")))`
+
+error[L0514]: this argument is a copy, so changing it changes nothing
+  --> check/inferred_mut_of_copy.knv:15:10
+   |
+15 |   (grow! names))
+   |          ^^^^^ this is a copy, not a place
+   |
+   = help: a `def` never changes: `(local value (clone names))`

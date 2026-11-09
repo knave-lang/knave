@@ -1,0 +1,17 @@
+(defn bump! (x) (set! x (+ x 1)))
+
+(defn change! ((x (mut i64))) (set! x 9))
+
+(defn pass-on! (x) (change! x) x)
+
+(defn twice! (x) (set! x (+ x x)))
+
+(defn append (s) (set! s (str s "x")) s)
+
+(defn main ()
+  (local total 5)
+  (bump! total)
+  (println (pass-on! total))
+  (twice! total)
+  (println total)
+  (println (append (str "box"))))

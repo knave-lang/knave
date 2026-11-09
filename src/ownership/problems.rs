@@ -2,9 +2,14 @@ use std::rc::Rc;
 
 use super::functions::ParamMode;
 use crate::core::ReferenceKind;
-use crate::diagnostic::{Diagnostic, DiagnosticCode, Label, Suggestion};
+use crate::diagnostic::{Diagnostic, DiagnosticCode, Help, Label, Suggestion};
 use crate::source::Span;
 use crate::types::ClosureKind;
+
+pub struct ChangeSite {
+    pub function: Rc<str>,
+    pub span: Span,
+}
 
 #[derive(Clone)]
 pub enum FunctionStorage {
@@ -630,6 +635,76 @@ impl OwnershipProblems {
         .with_help(
             "change the parameter's ownership in a `type` signature, or pass a function that matches",
         )
+    }
+
+    pub fn inferred_mut_of_copy(argument: Span, change: Option<ChangeSite>) -> Diagnostic {
+        Self::mut_of_copy(argument, change).with_quoting_help(
+            format!(
+                "bind it to a local and pass the local: `(local value {})`",
+                Help::QUOTED_FORM
+            ),
+            argument,
+        )
+    }
+
+    pub fn inferred_mut_of_copy_definition(
+        argument: Span,
+        change: Option<ChangeSite>,
+        name: &str,
+    ) -> Diagnostic {
+        Self::mut_of_definition(argument, change, name)
+    }
+
+    pub fn inferred_mut_of_cloned_definition(
+        argument: Span,
+        change: Option<ChangeSite>,
+        name: &str,
+    ) -> Diagnostic {
+        Self::mut_of_definition(argument, change, &format!("(clone {name})"))
+    }
+
+    fn mut_of_definition(argument: Span, change: Option<ChangeSite>, value: &str) -> Diagnostic {
+        Self::mut_of_copy(argument, change)
+            .with_help(format!("a `def` never changes: `(local value {value})`"))
+    }
+
+    fn mut_of_copy(argument: Span, change: Option<ChangeSite>) -> Diagnostic {
+        let diagnostic = Diagnostic::error(
+            DiagnosticCode::INFERRED_MUT_OF_COPY,
+            "this argument is a copy, so changing it changes nothing",
+            Label::new(argument, "this is a copy, not a place"),
+        );
+        match change {
+            Some(change) => diagnostic.with_label(Label::new(
+                change.span,
+                format!("`{}` changes its parameter here", change.function),
+            )),
+            None => diagnostic,
+        }
+    }
+
+    pub fn with_copied_parameter_change(
+        warning: Diagnostic,
+        site: Span,
+        param: &str,
+    ) -> Diagnostic {
+        Self::with_parameter_change(warning, site, &format!("(local {param} {param})"))
+    }
+
+    pub fn with_cloned_parameter_change(
+        warning: Diagnostic,
+        site: Span,
+        param: &str,
+    ) -> Diagnostic {
+        Self::with_parameter_change(warning, site, &format!("(local {param} (clone {param}))"))
+    }
+
+    fn with_parameter_change(warning: Diagnostic, site: Span, local: &str) -> Diagnostic {
+        warning
+            .with_label(Label::new(site, "this changes the caller's value"))
+            .with_help(format!(
+                "to change only this function's copy, start the body with `{local}`"
+            ))
     }
 
     pub fn missing_bang(name: &str, span: Span) -> Diagnostic {

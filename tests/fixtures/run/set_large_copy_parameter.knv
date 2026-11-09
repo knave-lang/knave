@@ -1,0 +1,8 @@
+(defn flip (p) (match p ((pair a b) (pair b a))))
+
+(defn step! (p) (set! p (flip p)))
+
+(defn main ()
+  (local miles (pair 120 (the i128 340)))
+  (step! miles)
+  (println (match miles ((pair first _) first))))

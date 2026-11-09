@@ -1,0 +1,30 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/missing_bang_on_set_parameter.knv
+---
+warning[L0504]: `clamp` changes an argument, so its name should end with `!`
+ --> check/missing_bang_on_set_parameter.knv:1:7
+  |
+1 | (defn clamp (x)
+  |       ^^^^^ this function changes an argument
+2 |   (if (> x 10) (set! x 10) (do))
+  |                ----------- this changes the caller's value
+  |
+  = help: rename it `clamp!`
+  = help: to change only this function's copy, start the body with `(local x x)`
+
+warning[L0504]: `rename` changes an argument, so its name should end with `!`
+ --> check/missing_bang_on_set_parameter.knv:5:7
+  |
+5 | (defn rename (name)
+  |       ^^^^^^ this function changes an argument
+6 |   (set! name (str "ana"))
+  |   ----------------------- this changes the caller's value
+  |
+  = help: rename it `rename!`
+  = help: to change only this function's copy, start the body with `(local name (clone name))`
+
+(type clamp (fn ((mut i64)) unit))
+(type rename (fn ((mut string)) unit))
+(type main (fn () unit))

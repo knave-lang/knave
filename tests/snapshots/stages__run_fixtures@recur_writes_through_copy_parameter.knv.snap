@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/recur_writes_through_copy_parameter.knv
+---
+5
+5
+3
+12
+13
+13

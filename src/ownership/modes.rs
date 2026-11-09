@@ -4,6 +4,7 @@ use super::callers::Callers;
 use super::functions::{FunctionInfo, FunctionTable, ParamMode, ParamSlot};
 use super::tail_calls::TailCalls;
 use super::usage::{Usage, UsageCollector};
+use super::value_kinds::ValueKind;
 use super::worklist::Worklist;
 use crate::core::BindingId;
 use crate::types::CopyRules;
@@ -25,7 +26,7 @@ impl<'a> ModeInference<'a> {
         while let Some(binding) = pending.pop() {
             let usage = self.usage(binding, &modes);
             callers.record(binding, &usage.callees);
-            if Self::raise_modes(usage, &mut modes) {
+            if self.raise_modes(usage, &mut modes) {
                 pending.extend([binding]);
                 pending.extend(callers.of_function(binding).iter().copied());
             }
@@ -61,10 +62,9 @@ impl<'a> ModeInference<'a> {
     fn initial_mode(&self, slot: &ParamSlot, rebuilt: &FxHashSet<BindingId>) -> ParamMode {
         if !slot.inferable {
             FunctionTable::fixed_mode(slot, &self.copy)
-        } else if rebuilt.contains(&slot.binding) && !slot.ty.is_unsized() {
-            ParamMode::Own
         } else {
-            ParamMode::Ref
+            let rebuilt = rebuilt.contains(&slot.binding) && !slot.ty.is_unsized();
+            ValueKind::of(slot, &self.copy).starting_mode(rebuilt)
         }
     }
 
@@ -77,7 +77,7 @@ impl<'a> ModeInference<'a> {
             .params
             .iter()
             .filter(|slot| slot.inferable && !slot.ty.is_unsized())
-            .map(|slot| slot.binding)
+            .map(|slot| (slot.binding, ValueKind::of(slot, &self.copy)))
             .collect();
         let self_modes = function
             .params
@@ -88,11 +88,13 @@ impl<'a> ModeInference<'a> {
             .collect(&function.lambda.body)
     }
 
-    fn raise_modes(usage: Usage, modes: &mut FxHashMap<BindingId, ParamMode>) -> bool {
+    fn raise_modes(&self, usage: Usage, modes: &mut FxHashMap<BindingId, ParamMode>) -> bool {
         let mut changed = false;
         for (param, needed) in usage.required {
-            if needed > modes[&param] {
-                modes.insert(param, needed);
+            let current = modes[&param];
+            let stronger = usage.kinds[&param].stronger(current, needed);
+            if stronger != current {
+                modes.insert(param, stronger);
                 changed = true;
             }
         }

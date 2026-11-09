@@ -1,0 +1,64 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/recur_writes_through_copy_parameter.knv
+---
+fn climb(height: &mut i64) -> i64 {
+    loop {
+        *height = *height + 1;
+        if *height < 5 {
+            *height = *height + 1;
+            continue;
+        } else {
+            return *height;
+        }
+    }
+}
+
+fn climb_counted(height: &mut i64, mut steps: i64) -> i64 {
+    loop {
+        *height = *height + 1;
+        if steps < 3 {
+            (*height, steps) = (*height + 1, steps + 1);
+            continue;
+        } else {
+            return steps;
+        }
+    }
+}
+
+fn count_down(mut n: i64) -> i64 {
+    loop {
+        if n > 0 {
+            n -= 1;
+            continue;
+        } else {
+            return n;
+        }
+    }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut floor: i64 = 0;
+    println!("{}", climb(&mut floor));
+    println!("{}", climb_counted(&mut floor, 0));
+    println!("{}", count_down(3))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

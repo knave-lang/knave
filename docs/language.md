@@ -1,6 +1,6 @@
 # The knave language
 
-The language is named knave. Before [RFC 0062](../rfcs/0062-rename-to-knave.md), the language was named `rslisp`, with the `.rslisp` extension. Source files use the `.knv` extension. A source file may start with a UTF-8 byte-order mark, which the compiler skips, as rustc does.
+The language is named knave. Before [RFC 0062](../rfcs/0062-rename-to-knave.md), the language was named `rslisp`, with the `.knv` extension. Source files use the `.knv` extension. A source file may start with a UTF-8 byte-order mark, which the compiler skips, as rustc does.
 
 The language is a Lisp that compiles to Rust. Its design follows five principles:
 
@@ -519,6 +519,8 @@ The compiler provides the `code` module for macro bodies. Code that uses it exis
 | `(module-definitions path)` | Return a list that holds a symbol per distinct name that the module at `path` defines, private names included and names that a macro introduces left out, sorted by name. Each symbol carries the module's scopes. |
 | `(current-module)` | Return a symbol that names the module being expanded, by its path, and carries that module's scopes, so `module-definitions` and `module-notes` read it. |
 | `(module-symbol path)` | Return a symbol that carries the scopes of the module at `path`, where `path` is a symbol that names the module as `use` writes it, so `module-notes` reads that module's notes. The symbol's name is the module's path. A module that the program has not loaded is `L0204`, and so are `kernel` and `code`, which the compiler provides and which hold no notes. |
+| `(read-form context literal character)` | Read one form from the string literal `literal`, starting at the decoded character `character`. Return a list of the form, with the scopes of the symbol `context` and each span inside `literal`, and the character after it, or an empty list when no form reads there. Macro expansion keeps those spans. `(read-form (quote here) "(+ 1 1) tail" 0)` then `=> ((+ 1 1) 7)`. |
+| `(located place form)` | Return `form` with the location of the form `place`. `(located place (quote missing))` then `=> missing`, so an error on the result points at `place`. |
 | `(project-file-name)` | Return the name of the project file, as a string, so a message names the file without restating its extension. |
 | `(sorted-names names)` | Return one symbol per distinct name in the list `names`, sorted by name. Of the symbols that share a name, the first stays. |
 | `(closest-name name names)` | Return a list that holds the symbol of `names` closest to `name`, other than `name` itself, ranked as the compiler ranks a misspelled name, or an empty list when none is close. |

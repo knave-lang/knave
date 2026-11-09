@@ -42,6 +42,12 @@ pub trait CompileTimeHost {
     fn module_definitions(&self, path: &Symbol, span: Span) -> Result<Vec<Symbol>, Diagnostic>;
     fn current_module(&self) -> Symbol;
     fn module_symbol(&self, path: &Symbol, span: Span) -> Result<Symbol, Diagnostic>;
+    fn read_literal_form(
+        &self,
+        literal: Span,
+        value: &str,
+        character: usize,
+    ) -> Option<(Form, usize)>;
 }
 
 enum Step {

@@ -1,0 +1,6 @@
+(use code located)
+
+(defmacro missing-at (place)
+  (located place (quote missing)))
+
+(def value (missing-at "the place"))

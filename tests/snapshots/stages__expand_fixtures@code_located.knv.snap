@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/code_located.knv
+---
+error[L0201]: cannot find `missing` in this scope
+ --> expand/code_located.knv:6:24
+  |
+6 | (def value (missing-at "the place"))
+  |                        ^^^^^^^^^^^ not found in this scope

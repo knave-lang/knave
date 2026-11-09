@@ -48,6 +48,30 @@ impl<'c, 'a> StringLiteralReader<'c, 'a> {
         }
     }
 
+    pub fn read_written_ranges(cursor: &'c mut Cursor<'a>) -> (String, Vec<Range<usize>>) {
+        let mut reader = Self {
+            cursor,
+            value: String::new(),
+            problems: Vec::new(),
+        };
+        reader.cursor.advance();
+        let written_ranges = reader.read_contents_recording_written_ranges();
+        (reader.value, written_ranges)
+    }
+
+    fn read_contents_recording_written_ranges(&mut self) -> Vec<Range<usize>> {
+        let mut written_ranges = Vec::new();
+        loop {
+            let start = self.cursor.position();
+            match self.cursor.advance() {
+                None | Some(Syntax::QUOTE) => return written_ranges,
+                Some(Syntax::ESCAPE) => self.read_escape(),
+                Some(character) => self.value.push(character),
+            }
+            written_ranges.resize(self.value.len(), start..self.cursor.position());
+        }
+    }
+
     fn read_contents(&mut self) {
         loop {
             match self.cursor.advance() {

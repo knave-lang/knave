@@ -40,38 +40,75 @@
 (document io-error
   "Names the error of an input or output call, Rust's `std::io::Error`.
 
-  It implements `display`, `debug` and `show`.")
+  It implements `display`, `debug` and `show`.
+
+  (infer read-line)
+  => \"(fn () (result (option string) io-error))\"")
 
 (document stdin
   "Holds the program's standard input.
 
-  `stdin` is also its type, Rust's `std::io::Stdin`.")
+  `stdin` is also its type, Rust's `std::io::Stdin`.
+
+  (infer (line-seq stdin))
+  => \"(iterator (result string io-error))\"")
 
 (document source
-  "Marks what `slurp` reads: a path as a `str` or a `string`, or `stdin`.")
+  "Marks what `slurp` reads: a path as a `str` or a `string`, or `stdin`.
+
+  (infer slurp)
+  => \"(where ((a source)) (fn ((ref a)) (result string io-error)))\"")
 
 (document (slurp source)
   "Reads all of a file or of standard input into a `string`.
 
   It returns `(result string io-error)`. It takes its source by reference, so
-  an owned path stays usable. Reading `stdin` flushes standard output first.")
+  an owned path stays usable. Reading `stdin` flushes standard output first.
+
+  ```
+  (unwrap-ok (slurp \"notes.txt\"))
+  => \"first line\\n\"
+  ```")
 
 (document (line-seq stdin)
   "Returns an iterator over the lines of standard input, one read at a time.
 
   Each item is a `(result string io-error)` without its line ending. A failed
-  read yields one `err` and ends the iterator.")
+  read yields one `err` and ends the iterator.
+
+  With three lines on standard input:
+
+  ```
+  (count (line-seq stdin))
+  => 3
+  ```")
 
 (document (read-line)
   "Reads one line of standard input.
 
   It returns `(result (option string) io-error)`, with `none` at the end of
-  input, and drops the line ending. It flushes standard output first.")
+  input, and drops the line ending. It flushes standard output first.
+
+  With `first` on standard input:
+
+  ```
+  (unwrap-ok (read-line))
+  => (some \"first\")
+  ```")
 
 (document (command-line-args)
-  "Returns the program's arguments, after its name, as a `(vec string)`.")
+  "Returns the program's arguments, after its name, as a `(vec string)`.
+
+  Run as `program input.txt`:
+
+  (command-line-args)
+  => (vec \"input.txt\") ...")
 
 (document (exit code)
   "Stops the process with an `i32` exit code.
 
-  It runs no destructor of a live value.")
+  It runs no destructor of a live value.
+
+  ```
+  (exit 3)
+  ```")

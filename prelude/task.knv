@@ -13,10 +13,10 @@
           string-trim-start string? symbol symbol-name
           symbol? value-eq)
 
-(export deftask run-task task-listing task-names
+(export define-task run-task task-listing task-names
         task-signature)
 
-(def deftask
+(def define-task
   (macro (form)
     (check-task-shape form)
     (local name (nth form 1))
@@ -36,18 +36,9 @@
                            (unquote parameters)
                            (unquote (form-location form)))))))
 
-(header-shape (deftask name parameters) :docstring)
-
-(document (deftask name parameters)
-  "Defines a task that `knave task name` runs.
-
-  The positional parameters come first, each a name or a name and a type,
-  then the flags: each keyword takes a `--name` flag, followed by an optional
-  type and an optional literal default, as in `(who :port u16 8000 :loud
-  false)`. A flag with no default is required, and a flag whose default is
-  `false` is a switch that `--name` turns on. Each argument parses
-  into its parameter's type. A string before at least one more body form is
-  the docstring, whose first line the list of tasks shows.")
+(document (define-task name parameters)
+  "Defines a task for `deftask`, which loads this module only when a
+  program writes a task.")
 
 (def check-task-shape
   (fn (form)

@@ -5,8 +5,8 @@
 (use prelude/internal/macros kernel-definition)
 (use prelude/logic and cond not or unless when)
 
-(use prelude/syntax -> ->> comment defn let let-match
-                    let-try loop the try->)
+(use prelude/syntax -> ->> comment defn deftask let
+                    let-match let-try loop the try->)
 
 (use prelude/types box iterator option result sequence slice
                    vec)
@@ -54,7 +54,6 @@
                 read-line slurp source stdin)
 
 (use prelude/place set!)
-(use prelude/task deftask)
 
 (export * + - -> ->> / < <= = > >= _ alphanumeric? and any?
         apropos as-str assoc assoc-at assoc-in at bool box

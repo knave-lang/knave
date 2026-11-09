@@ -1,8 +1,9 @@
 ---
 source: tests/stages.rs
+assertion_line: 61
 expression: reports.report(path)
 input_file: tests/fixtures/expand/header_shape_prelude_docstring_forms.knv
 ---
-(def syntax-docstring-forms (quote (defn)))
+(def syntax-docstring-forms (quote (defn deftask)))
 (def struct-docstring-forms (quote (defstruct)))
 (def macros-docstring-forms (quote (document defrule defmacro)))

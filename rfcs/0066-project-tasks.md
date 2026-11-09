@@ -82,7 +82,7 @@ The owner decided on 2026-11-09:
 4. **A task's name is kebab-case,** enforced now, since enforcing it later would break existing tasks.
 5. **Parameters bind command-line arguments** in a flat list, `(deftask serve (:port 8000) "docstring" body ...)`: names are positional, keywords are flags with an optional type and an optional literal default, and a literal default is a deliberate difference from `defn`, as point 2 states.
 6. **A parameter that nothing fixes falls back to `string`, outside the type checker:** the signature lookup of point 3, option A of the owner's two. A type checker rule scoped to `deftask` was the other option. A missing trait is the checker's own error at the parameter, with no list of `string`'s traits in the prelude.
-7. **`deftask` needs no `use`:** the prelude exports it. It costs `empty_program` +1.61% of total instructions (expand +3.18%, check +2.36%), above the 1% bar, and the owner accepted the cost.
+7. **`deftask` needs no `use`:** the prelude exports it. Importing all of `prelude/task` into the prelude cost `empty_program` 39 KB of peak memory (+7.45%) and +3.15% of instructions, because its macros and their helpers load with the module. `deftask` is instead a small macro of `prelude/syntax` that expands to a `use` of `prelude/task` and a call of its `define-task`, so the module loads only when a program writes a task. That costs `empty_program` about 1.1 KB of peak memory (+0.21%), which the owner accepted.
 8. **Every error of a task labels the user's code,** never `<task runner>` or `<task lookup>`, and `knave check` rejects what `knave task` rejects, with no doubled diagnostic.
 9. **The entry's `unit` success stays,** settling only a variable that no bound constrains.
 

@@ -26,8 +26,8 @@
           rest same-binding? string string? symbol
           symbol-name symbol? take value-eq)
 
-(export -> ->> comment defn let let-match let-try loop the
-        try->)
+(export -> ->> comment defn deftask let let-match let-try
+        loop the try->)
 
 (def let
   (macro (form)
@@ -913,3 +913,22 @@
 
   (-> 3 (- 10) neg)
   => 7")
+
+(def deftask
+  (macro (form)
+    (template (do
+                (use prelude/task define-task)
+                (define-task (splice (rest form)))))))
+
+(header-shape (deftask name parameters) :docstring)
+
+(document (deftask name parameters)
+  "Defines a task that `knave task name` runs.
+
+  The positional parameters come first, each a name or a name and a type,
+  then the flags: each keyword takes a `--name` flag, followed by an optional
+  type and an optional literal default, as in `(who :port u16 8000 :loud
+  false)`. A flag with no default is required, and a flag whose default is
+  `false` is a switch that `--name` turns on. Each argument parses
+  into its parameter's type. A string before at least one more body form is
+  the docstring, whose first line the list of tasks shows.")

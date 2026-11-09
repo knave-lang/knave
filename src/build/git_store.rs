@@ -4,7 +4,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
-use crate::language::Language;
+use super::user_cache::UserCache;
 
 pub struct GitStore {
     root: PathBuf,
@@ -18,9 +18,6 @@ pub enum StoreError {
 }
 
 impl GitStore {
-    const CACHE_HOME: &str = "XDG_CACHE_HOME";
-    const HOME: &str = "HOME";
-    const CACHE_UNDER_HOME: &str = ".cache";
     const DIRECTORY: &str = "git";
     const GIT: &str = "git";
     const NO_PROMPT: (&str, &str) = ("GIT_TERMINAL_PROMPT", "0");
@@ -30,13 +27,9 @@ impl GitStore {
     const MESSAGE_STARTS: [&str; 2] = ["fatal:", "error:"];
 
     pub fn for_user() -> Result<Self, StoreError> {
-        let cache = Self::variable_path(Self::CACHE_HOME)
-            .or_else(|| {
-                Self::variable_path(Self::HOME).map(|home| home.join(Self::CACHE_UNDER_HOME))
-            })
-            .ok_or(StoreError::NoCacheDirectory)?;
+        let cache = UserCache::directory().ok_or(StoreError::NoCacheDirectory)?;
         Ok(Self {
-            root: cache.join(Language::NAME).join(Self::DIRECTORY),
+            root: cache.join(Self::DIRECTORY),
         })
     }
 
@@ -115,12 +108,6 @@ impl GitStore {
             .or_else(|| lines.clone().next())
             .unwrap_or_default()
             .to_string()
-    }
-
-    fn variable_path(name: &str) -> Option<PathBuf> {
-        env::var_os(name)
-            .filter(|value| !value.is_empty())
-            .map(PathBuf::from)
     }
 }
 

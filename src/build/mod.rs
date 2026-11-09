@@ -8,6 +8,7 @@ mod interrupt_signal;
 mod profile;
 mod rustc_errors;
 mod token_alignment;
+mod user_cache;
 
 use std::fs;
 use std::io;

@@ -1,0 +1,16 @@
+(defstruct spot
+  :x i64
+  :y i64)
+
+(defn swap! (x y)
+  (local t x)
+  (set! x y)
+  (set! y t))
+
+(defn main ()
+  (local count 2)
+  (swap! count count)
+  (local corner (->spot 1 2))
+  (swap! (:x corner) (:y corner))
+  (swap! (:x corner) (:x corner))
+  (println count))

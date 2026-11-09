@@ -1,0 +1,24 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/aliased_change_of_vector.knv
+---
+error[L0516]: this call changes `scores` through two arguments at once
+ --> check/aliased_change_of_vector.knv:7:22
+  |
+7 |   (grow-both! scores scores)
+  |               ------ ^^^^^^ this argument changes `scores` again
+  |               |
+  |               this argument already changes `scores`
+  |
+  = help: pass a different place to each argument that the call changes
+
+error[L0516]: this call changes `scores` through two arguments at once
+ --> check/aliased_change_of_vector.knv:8:28
+  |
+8 |   (grow-both! (mut scores) scores)
+  |               ------------ ^^^^^^ this argument changes `scores` again
+  |               |
+  |               this argument already changes `scores`
+  |
+  = help: pass a different place to each argument that the call changes

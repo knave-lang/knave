@@ -731,6 +731,19 @@ impl OwnershipProblems {
         }
     }
 
+    pub fn aliased_change(place: &str, first: Span, second: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::ALIASED_CHANGE,
+            format!("this call changes `{place}` through two arguments at once"),
+            Label::new(second, format!("this argument changes `{place}` again")),
+        )
+        .with_label(Label::new(
+            first,
+            format!("this argument already changes `{place}`"),
+        ))
+        .with_help("pass a different place to each argument that the call changes")
+    }
+
     pub fn inferred_mut_of_copy(argument: Span, change: Option<ChangeSite>) -> Diagnostic {
         Self::mut_of_copy(argument, change).with_quoting_help(
             format!(

@@ -1,0 +1,9 @@
+(defn grow-both! (left right)
+  (push! left 1)
+  (push! right 2))
+
+(defn main ()
+  (local scores (vec 0))
+  (grow-both! scores scores)
+  (grow-both! (mut scores) scores)
+  (println (len scores)))

@@ -2076,17 +2076,14 @@ impl<'a> ExpressionEmitter<'a> {
             .iter()
             .map(|role| *role == ArgumentRole::MutPlace)
             .collect();
-        let dereferenced_parameters = self.dereferenced_parameters(&parsed, arguments, &roles);
+        let operand_derefs = self.operand_derefs(&parsed, arguments, &roles);
         let mut codes: Vec<Code> = arguments
             .iter()
             .zip(&roles)
-            .zip(dereferenced_parameters)
-            .map(|((argument, role), dereferenced)| {
-                if dereferenced {
-                    self.deref(&argument.value)
-                } else {
-                    self.argument(argument, context, *role)
-                }
+            .zip(operand_derefs)
+            .map(|((argument, role), levels)| {
+                let code = self.argument(argument, context, *role);
+                Self::dereferenced(code, levels).spanned(argument.value.span)
             })
             .collect();
         for (position, argument) in arguments.iter().enumerate() {
@@ -2110,42 +2107,74 @@ impl<'a> ExpressionEmitter<'a> {
         code
     }
 
-    fn dereferenced_parameters(
+    fn operand_derefs(
         &self,
         template: &Template,
         arguments: &[TypedArgument],
         roles: &[ArgumentRole],
-    ) -> Vec<bool> {
-        let beside_a_field = template.is_binary_operation()
-            && arguments
-                .iter()
-                .zip(roles)
-                .any(|(argument, role)| Self::reads_borrowed_field(argument, *role));
-        arguments
+    ) -> Vec<usize> {
+        let operands: Vec<Option<(Type, usize)>> = arguments
             .iter()
             .zip(roles)
             .map(|(argument, role)| {
-                beside_a_field && self.borrows_parameter_reference(argument, *role)
+                (template.is_binary_operation() && *role == ArgumentRole::Borrowed)
+                    .then(|| self.emitted_operand(argument))
+            })
+            .collect();
+        operands
+            .iter()
+            .map(|operand| {
+                operand.as_ref().map_or(0, |operand| {
+                    Self::depth_above_shallowest(operand, &operands)
+                })
             })
             .collect()
     }
 
-    fn reads_borrowed_field(argument: &TypedArgument, role: ArgumentRole) -> bool {
-        role == ArgumentRole::Borrowed
-            && argument.borrow == Borrow::None
-            && matches!(
-                argument.value.kind,
-                TypedExprKind::Struct(TypedStructExpr::Field(..))
-            )
+    fn emitted_operand(&self, argument: &TypedArgument) -> (Type, usize) {
+        let referent = argument
+            .value
+            .ty
+            .innermost_referent()
+            .without_written_lifetimes();
+        (referent, self.emitted_depth(argument))
     }
 
-    fn borrows_parameter_reference(&self, argument: &TypedArgument, role: ArgumentRole) -> bool {
-        role == ArgumentRole::Borrowed
-            && argument.borrow == Borrow::Shared
-            && argument.value.ty.is_reference()
-            && matches!(&argument.value.kind,
-                TypedExprKind::Leaf(TypedLeaf::Local(binding))
-                    if self.program.borrowed_parameters.contains(binding))
+    fn depth_above_shallowest(
+        (referent, depth): &(Type, usize),
+        operands: &[Option<(Type, usize)>],
+    ) -> usize {
+        let shallowest = operands
+            .iter()
+            .flatten()
+            .filter(|(other, _)| other == referent)
+            .map(|(_, other_depth)| *other_depth)
+            .min()
+            .unwrap_or(*depth);
+        depth - shallowest
+    }
+
+    fn emitted_depth(&self, argument: &TypedArgument) -> usize {
+        let depth = argument.value.ty.reference_depth();
+        match argument.borrow {
+            Borrow::Deref(levels) | Borrow::Collapse(levels) => depth.saturating_sub(levels),
+            _ if self.emits_place(&argument.value) => depth.saturating_sub(1),
+            _ => depth,
+        }
+    }
+
+    fn emits_place(&self, value: &TypedExpr) -> bool {
+        matches!(
+            value.kind,
+            TypedExprKind::Struct(TypedStructExpr::Field(..))
+        ) || self.is_borrowed_index_call(value)
+    }
+
+    fn dereferenced(code: Code, levels: usize) -> Code {
+        if levels == 0 {
+            return code;
+        }
+        Self::prefixed(&"*".repeat(levels), code)
     }
 
     fn with_fresh_template_binders(&mut self, template: &Template) -> Template {

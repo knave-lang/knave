@@ -1,6 +1,7 @@
 (defstruct page
   :file string
-  :html string)
+  :html string
+  :tags (vec string))
 
 (defstruct site
   :pages (vec page))
@@ -12,8 +13,18 @@
           (and (= (as-str (:file p)) target)
                (= (as-str (:html p)) (as-str suffix))))))
 
+(defn tagged? (s target id)
+  (local suffix (str " id=" id))
+  (any? (iter (:pages s))
+        (fn (p)
+          (and (= target (as-str (at (:tags p) 0)))
+               (= (as-str suffix) (as-str (:html p)))))))
+
 (defn main ()
   (local all
-    (->site (vec (->page (str "a") (str " id=x")))))
+    (->site (vec (->page (str "a")
+                         (str " id=x")
+                         (vec (str "t"))))))
   (local target (str "a"))
-  (println (holds? (ref all) (as-str target) "x")))
+  (println (holds? (ref all) (as-str target) "x"))
+  (println (tagged? (ref all) "t" "x")))

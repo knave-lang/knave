@@ -7,10 +7,11 @@ input_file: tests/fixtures/emit/borrowed_view_in_a_pinned_check.rslisp
 struct Page {
     file: String,
     html: String,
+    tags: Vec<String>,
 }
 
-fn make_page(file: String, html: String) -> Page {
-    Page { file, html }
+fn make_page(file: String, html: String, tags: Vec<String>) -> Page {
+    Page { file, html, tags }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -29,11 +30,23 @@ fn is_holds(s: &Site, target: &str, id: &str) -> bool {
         .any(|p: &Page| p.file.as_str() == target && p.html.as_str() == suffix.as_str())
 }
 
+fn is_tagged(s: &Site, target: &str, id: &str) -> bool {
+    let suffix = format!(" id={}", id);
+    s.pages
+        .iter()
+        .any(|p: &Page| target == (&p.tags[0]).as_str() && suffix.as_str() == p.html.as_str())
+}
+
 fn main() {
     crate::rt::restore_default_sigpipe();
-    let all = make_site(vec![make_page("a".to_string(), " id=x".to_string())]);
+    let all = make_site(vec![make_page(
+        "a".to_string(),
+        " id=x".to_string(),
+        vec!["t".to_string()],
+    )]);
     let target = "a".to_string();
-    println!("{}", is_holds(&all, target.as_str(), "x"))
+    println!("{}", is_holds(&all, target.as_str(), "x"));
+    println!("{}", is_tagged(&all, "t", "x"))
 }
 
 mod rt {

@@ -6,10 +6,11 @@ input_file: tests/fixtures/emit/borrowed_parameter_beside_a_field.rslisp
 #[derive(Clone, PartialEq, Eq, Hash)]
 struct Page {
     file: String,
+    tags: Vec<String>,
 }
 
-fn make_page(file: String) -> Page {
-    Page { file }
+fn make_page(file: String, tags: Vec<String>) -> Page {
+    Page { file, tags }
 }
 
 fn is_holds(pages: &[Page], target: &String) -> bool {
@@ -33,14 +34,64 @@ fn is_printed(p: &Page, target: &str) -> bool {
     p.file.as_str() == target
 }
 
+fn is_reversed(p: &Page, target: &String) -> bool {
+    *target == p.file
+}
+
+fn is_before(p: &Page, target: &String) -> bool {
+    *target < p.file
+}
+
+fn is_first_is(names: &[String], target: &String) -> bool {
+    names[0] == *target
+}
+
+fn is_tag_first(p: &Page, target: &String) -> bool {
+    *target == p.tags[0]
+}
+
+fn is_any_tag(pages: &[Page], target: &String) -> bool {
+    pages.iter().any(|p: &Page| p.tags[0] == *target)
+}
+
+fn is_same_three(p: &Page, target: String) -> bool {
+    let left = &p.file;
+    let middle = target;
+    *left == middle && middle == p.file
+}
+
+fn is_announced(p: &Page, target: &String) -> bool {
+    println!("{}{}", p.file, target);
+    p.file == *target
+}
+
+fn is_named_a(p: &Page) -> bool {
+    p.file == "a"
+}
+
+fn is_held_file(p: &Page) -> bool {
+    let name = "a".to_string();
+    let held = &name;
+    *held == p.file
+}
+
 fn main() {
     crate::rt::restore_default_sigpipe();
-    let items = vec![make_page("a".to_string())];
+    let items = vec![make_page("a".to_string(), vec!["t".to_string()])];
     println!("{}", is_holds(&items, &"a".to_string()));
     println!("{}", is_names(&items[0], &"b".to_string()));
     println!("{}", is_views(&items[0], "a"));
     println!("{}", labeled(&items[0], "x"));
-    println!("{}", is_printed(&items[0], "a"))
+    println!("{}", is_printed(&items[0], "a"));
+    println!("{}", is_reversed(&items[0], &"a".to_string()));
+    println!("{}", is_before(&items[0], &"0".to_string()));
+    println!("{}", is_first_is(&vec!["a".to_string()], &"a".to_string()));
+    println!("{}", is_tag_first(&items[0], &"t".to_string()));
+    println!("{}", is_any_tag(&items, &"u".to_string()));
+    println!("{}", is_same_three(&items[0], "a".to_string()));
+    println!("{}", is_announced(&items[0], &"a".to_string()));
+    println!("{}", is_named_a(&items[0]));
+    println!("{}", is_held_file(&items[0]))
 }
 
 mod rt {

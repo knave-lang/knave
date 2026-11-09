@@ -463,6 +463,9 @@ impl<'r, 'a> BodyFlows<'r, 'a> {
     }
 
     fn borrowed(&mut self, place: &TypedExpr) -> FxHashSet<BindingId> {
+        if let TypedExprKind::Deref(reference) = &place.kind {
+            return self.value(reference);
+        }
         let mut flows = self.value(place);
         if let Some(root) = place.place_root() {
             flows.extend(self.local(root));

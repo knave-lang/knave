@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/uncapturable_changed_copy.knv
+---
+error[L0606]: the result cannot leave out the borrow of `count`
+ --> emit/uncapturable_changed_copy.knv:1:15
+  |
+1 | (defn adder! (count announce)
+  |               ^^^^^ a `set!` makes `count` a `mut` borrow
+  |
+  = note: the result is a closure or an iterator, and a parameter takes a function or an iterator, so Rust ties the result to every borrow the function takes
+  = help: to change only this function's copy, start the body with `(local count count)`

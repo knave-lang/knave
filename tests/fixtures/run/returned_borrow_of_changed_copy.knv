@@ -1,0 +1,8 @@
+(defn raise! (level)
+  (set! level (+ level 1))
+  (ref level))
+
+(defn main ()
+  (local floor 1)
+  (println (raise! floor))
+  (println floor))

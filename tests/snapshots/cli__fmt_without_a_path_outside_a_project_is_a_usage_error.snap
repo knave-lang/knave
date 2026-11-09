@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: fmt.assert_exit_code(2).stderr()
+---
+error: no path given, and no `project.rslisp` in this directory or a parent
+help: name a path, or run the command inside a project

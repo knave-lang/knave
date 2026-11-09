@@ -3,6 +3,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use super::exit_status::ExitStatus;
+use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
@@ -95,8 +96,26 @@ impl FmtCommand {
     }
 
     fn format_paths(&mut self, terminal: &mut Terminal) -> ExitStatus {
+        match self.walked_paths() {
+            Ok(paths) => self.format_walked(terminal, paths),
+            Err(status) => status,
+        }
+    }
+
+    fn walked_paths(&mut self) -> Result<Vec<PathBuf>, ExitStatus> {
+        let paths = std::mem::take(&mut self.paths);
+        if !paths.is_empty() {
+            return Ok(paths);
+        }
+        let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
+        let root = LocatedProject::nearest_root(working_directory)?
+            .ok_or_else(LocatedProject::report_no_path)?;
+        Ok(vec![Path::new(Terminal::WORKING_DIRECTORY).join(root)])
+    }
+
+    fn format_walked(&mut self, terminal: &mut Terminal, paths: Vec<PathBuf>) -> ExitStatus {
         let mut worst = WorstStatus::new();
-        for path in std::mem::take(&mut self.paths) {
+        for path in paths {
             match SourceFiles::under(&path) {
                 Ok(files) => files
                     .iter()

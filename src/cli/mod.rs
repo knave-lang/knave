@@ -167,7 +167,7 @@ enum InspectionCommand {
     },
     #[command(about = "Lay out source files in place, or standard input given `-`")]
     Fmt {
-        #[arg(required = true)]
+        #[arg(help = "The files and directories to lay out [default: the project's root]")]
         paths: Vec<PathBuf>,
         #[command(flatten)]
         check: CheckFlag,
@@ -230,7 +230,8 @@ enum ProgramCommand {
     },
     #[command(about = "Build the tests of a file or a directory and run them")]
     Test {
-        path: PathBuf,
+        #[arg(help = "The test file or directory [default: the project's `tests` directory]")]
+        path: Option<PathBuf>,
         #[arg(hide = true)]
         positional_filter: Option<String>,
         #[arg(

@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: test.assert_exit_code(2).stderr()
+---
+error: no `tests/` directory at the project root
+help: put the project's tests in `tests`, or name a test file or directory

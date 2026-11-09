@@ -1,0 +1,4 @@
+(use prelude/project-file project)
+(use prelude/test doctest)
+
+(doctest prelude/project-file)

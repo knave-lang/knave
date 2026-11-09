@@ -20,7 +20,15 @@
 
   Write (defenum name variant ...). A variant is a name, `(name type ...)` or
   `(name :field type ...)`. A `(rust \"Path\")` right after the name or the
-  docstring makes the enum the named Rust type."
+  docstring makes the enum the named Rust type.
+
+  ```
+  (defenum shape (circle f64) square)
+  (match (shape/circle 1.0)
+    ((circle radius) radius)
+    (square 0.0))
+  => 1.0
+  ```"
   (check-head "defenum" head)
   (declare-type-definition (head-name head))
   (enum-definition head (after-docstring head body)))
@@ -33,7 +41,11 @@
   Write (deftrait name (method type) ...), where a method's first parameter
   may be `self`, `(ref self)` or `(mut self)`. Write
   (deftrait name (rust \"Path\") type ...) to name a Rust trait and the types
-  that implement it."
+  that implement it.
+
+  ```
+  (deftrait greet (hello (fn ((ref self)) string)))
+  ```"
   (check-head "deftrait" head)
   (declare-type-definition (head-name head))
   (trait-definition head (after-docstring head body)))
@@ -46,7 +58,11 @@
   Write (deftype name (rust \"template\")) or
   (deftype (name parameter ...) (rust \"template\") (type \"template\") ...).
   `{0}` in the template is the first parameter, and each clause pairs a type
-  with its own template."
+  with its own template.
+
+  ```
+  (deftype stopwatch (rust \"std::time::Instant\"))
+  ```"
   (check-head "deftype" head)
   (declare-type-definition (head-name head))
   (type-definition head (after-docstring head body)))

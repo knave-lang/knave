@@ -1,5 +1,6 @@
-(defn counter! (start)
-  (fn () (set! start (+ start 1)) start))
+(defn counter (start)
+  (local count start)
+  (fn () (set! count (+ count 1)) count))
 
 (defn adder! (x)
   (set! x (+ x 1))
@@ -8,9 +9,10 @@
 
 (defn main ()
   (local laps 0)
-  (local next (counter! laps))
+  (local next (counter laps))
   (println (next))
   (println (next))
+  (println laps)
   (local total 1)
   (local add (adder! total))
   (println (add 1))

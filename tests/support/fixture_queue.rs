@@ -118,6 +118,7 @@ impl QueueState {
             return Some(Outcome::Panicked(payload));
         }
         if let Some(path) = self.overdue(deadline) {
+            self.pending.clear();
             return Some(Outcome::Overdue(path));
         }
         self.is_done()

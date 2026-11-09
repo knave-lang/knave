@@ -1,0 +1,9 @@
+---
+source: tests/cli.rs
+expression: sandbox.project_file_text()
+---
+(project demo
+  (dependencies ; first
+    (other "1.0")
+    ; json
+    ))

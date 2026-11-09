@@ -1,0 +1,5 @@
+---
+source: tests/cli.rs
+expression: remove.assert_exit_code(2).stderr()
+---
+error: the project's `dependencies` do not list `fake-json`

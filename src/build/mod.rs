@@ -1,6 +1,7 @@
 mod build_plan;
 mod cargo_compiler;
 mod cargo_manifest;
+mod crate_resolver;
 mod formatting;
 mod git_store;
 mod interrupt_signal;
@@ -19,6 +20,7 @@ use crate::source::Span;
 pub use build_plan::BuildPlan;
 pub use cargo_compiler::{CargoCompiler, CargoTarget};
 pub use cargo_manifest::CargoManifest;
+pub use crate_resolver::{CrateResolver, ResolveError, ResolvedCrate};
 pub use formatting::{EmittedFormatting, FormattingError};
 pub use git_store::{GitStore, StoreError};
 pub use interrupt_signal::InterruptSignal;

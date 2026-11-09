@@ -1,3 +1,4 @@
+mod add;
 mod build;
 mod build_directory;
 mod capped_report;
@@ -33,10 +34,12 @@ mod painted_program;
 mod program_file;
 mod program_signal;
 mod program_stream;
+mod project_file_edit;
 mod prompt_diagnostics;
 mod prompt_history;
 mod prompt_lines;
 mod prompt_module;
+mod remove;
 mod repl;
 mod run;
 mod skipped_directory;
@@ -70,6 +73,7 @@ use crate::build::BuildProfile;
 use crate::counters::CountingAllocator;
 use crate::language::Language;
 use crate::source::TextPosition;
+use add::AddCommand;
 use build::BuildCommand;
 use check::CheckCommand;
 use color_when::ColorWhen;
@@ -83,6 +87,7 @@ use expand::ExpandCommand;
 use fmt::{FmtCommand, FmtMode};
 use front_end_stack::FrontEndStack;
 use new::NewCommand;
+use remove::RemoveCommand;
 use repl::ReplCommand;
 use run::RunCommand;
 use term_parser::{SurplusParser, TermParser};
@@ -121,6 +126,36 @@ enum Command {
     Inspection(InspectionCommand),
     #[command(flatten)]
     Program(ProgramCommand),
+    #[command(flatten)]
+    Project(ProjectCommand),
+}
+
+#[derive(Subcommand)]
+enum ProjectCommand {
+    #[command(about = "Add a crate to the project's dependencies, at the version Cargo picks")]
+    Add {
+        #[arg(help = "The crate's name, as crates.io writes it")]
+        name: String,
+        #[arg(
+            long,
+            value_delimiter = ',',
+            help = "Features to turn on, separated by commas"
+        )]
+        features: Vec<String>,
+    },
+    #[command(about = "Remove a crate from the project's dependencies")]
+    Remove {
+        #[arg(help = "The crate's name, as the project file writes it")]
+        name: String,
+    },
+    #[command(about = "Create a project in a new directory of its name")]
+    New {
+        #[arg(
+            help = "The project's name, in kebab-case",
+            value_parser = clap::builder::NonEmptyStringValueParser::new()
+        )]
+        name: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -182,14 +217,6 @@ enum InspectionCommand {
 
 #[derive(Subcommand)]
 enum ProgramCommand {
-    #[command(about = "Create a project in a new directory of its name")]
-    New {
-        #[arg(
-            help = "The project's name, in kebab-case",
-            value_parser = clap::builder::NonEmptyStringValueParser::new()
-        )]
-        name: String,
-    },
     #[command(about = "Compile a program to a native binary")]
     Build {
         #[arg(help = ENTRY_HELP)]
@@ -375,6 +402,7 @@ impl Command {
         match self {
             Command::Inspection(command) => command.execute(terminal),
             Command::Program(command) => command.execute(terminal),
+            Command::Project(command) => command.execute(terminal),
         }
     }
 }
@@ -405,10 +433,19 @@ impl InspectionCommand {
     }
 }
 
-impl ProgramCommand {
+impl ProjectCommand {
     fn execute(self, terminal: &mut Terminal) -> ExitStatus {
         match self {
             Self::New { name } => NewCommand::new(name).run(terminal),
+            Self::Add { name, features } => AddCommand::new(name, features).run(terminal),
+            Self::Remove { name } => RemoveCommand::new(name).run(terminal),
+        }
+    }
+}
+
+impl ProgramCommand {
+    fn execute(self, terminal: &mut Terminal) -> ExitStatus {
+        match self {
             Self::Build {
                 file,
                 release,

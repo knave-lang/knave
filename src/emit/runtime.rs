@@ -223,7 +223,7 @@ impl RuntimeModule {
             input: "f64",
         },
     ];
-    const NUMBER_TRAIT: &'static str = "pub trait Number:\n    Copy + PartialOrd + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> + Rem<Output = Self>\n";
+    const NUMBER_TRAIT: &'static str = "pub trait Number:\n    Copy + PartialOrd + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> + Rem<Output = Self>\n    + AddAssign + SubAssign + MulAssign + DivAssign + RemAssign\n";
     const NUMBER_IMPLEMENTATIONS: &'static str = "macro_rules! numbers {\n    ($($number:ty),*) => {\n        $(\n            impl Number for $number ";
     const NUMBER_IMPLEMENTATIONS_END: &'static str = "\n        )*\n    };\n}\n\nnumbers!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64);";
     const IMPLEMENTATION_INDENT: &'static str = "            ";
@@ -272,7 +272,9 @@ impl RuntimeModule {
         } else {
             ""
         };
-        format!("use std::ops::{{Add, Div, Mul, {negation}Rem, Sub}};")
+        format!(
+            "use std::ops::{{Add, AddAssign, Div, DivAssign, Mul, MulAssign, {negation}Rem, RemAssign, Sub, SubAssign}};"
+        )
     }
 
     fn number_trait(&self) -> String {

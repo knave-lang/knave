@@ -39,7 +39,9 @@ mod prelude {
 }
 
 mod rt {
-    use std::ops::{Add, Div, Mul, Rem, Sub};
+    use std::ops::{
+        Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign,
+    };
 
     pub trait Number:
         Copy
@@ -49,6 +51,11 @@ mod rt {
         + Mul<Output = Self>
         + Div<Output = Self>
         + Rem<Output = Self>
+        + AddAssign
+        + SubAssign
+        + MulAssign
+        + DivAssign
+        + RemAssign
     {
         fn from_literal(value: i128) -> Self;
     }

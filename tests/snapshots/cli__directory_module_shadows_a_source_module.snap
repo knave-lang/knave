@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: test.stderr()
+---
+warning[L0256]: `shadowing-tests/greeting.rslisp` hides `src/greeting.rslisp`
+ --> shadowing-tests/greets.rslisp:2:6
+  |
+2 | (use greeting greeting)
+  |      ^^^^^^^^ this loads `shadowing-tests/greeting.rslisp`
+  |
+  = note: a module of the test directory takes precedence over a source module of the same path
+  = help: rename `shadowing-tests/greeting.rslisp` to reach `src/greeting.rslisp`

@@ -1,0 +1,4 @@
+(use prelude/test assert deftest)
+(use greeting greeting)
+
+(deftest welcomes (assert (= greeting "from the tests")))

@@ -6,7 +6,7 @@ use crate::core::{
 use crate::diagnostic::{Counted, Diagnostic, DiagnosticCode, Label, MissingName, Suggestion};
 use crate::interpret::InterpretProblems;
 use crate::language::Language;
-use crate::modules::{LibraryTable, LocalModuleClash};
+use crate::modules::{HiddenSourceModule, LibraryTable, LocalModuleClash};
 use crate::reader::Form;
 use crate::source::Span;
 
@@ -605,6 +605,20 @@ impl ExpandProblems {
             local.display(),
             Language::project_file_name()
         ))
+    }
+
+    pub fn test_module_hides_source_module(shadow: &HiddenSourceModule, span: Span) -> Diagnostic {
+        let hiding = shadow.hiding.display();
+        let hidden = shadow.hidden.display();
+        Diagnostic::warning(
+            DiagnosticCode::TEST_MODULE_HIDES_SOURCE_MODULE,
+            format!("`{hiding}` hides `{hidden}`"),
+            Label::new(span, format!("this loads `{hiding}`")),
+        )
+        .with_note(
+            "a module of the test directory takes precedence over a source module of the same path",
+        )
+        .with_help(format!("rename `{hiding}` to reach `{hidden}`"))
     }
 
     pub fn reserved_module(path: &ModulePath, span: Span) -> Diagnostic {

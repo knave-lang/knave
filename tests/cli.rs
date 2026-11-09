@@ -5520,9 +5520,10 @@ fn test_directory_module_shadows_a_source_module() {
         ],
     );
     assert_eq!(
-        test.assert_silent_success().stdout(),
+        test.assert_exit_code(0).stdout(),
         "running 1 test\ntest greets/reads-the-test-greeting ... ok\n1 passed, 0 failed\n"
     );
+    insta::assert_snapshot!(test.stderr());
 }
 
 #[test]

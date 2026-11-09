@@ -115,6 +115,11 @@ impl Diagnostic {
         self
     }
 
+    pub fn with_copied_help(mut self, help: Help) -> Self {
+        self.report.helps.push(help);
+        self
+    }
+
     pub fn with_quoting_help(mut self, help: impl Into<String>, form: Span) -> Self {
         self.report.helps.push(Help::quoting(help.into(), form));
         self

@@ -52,13 +52,13 @@ error[L0514]: this argument is a copy, so changing it changes nothing
    |
    = help: a `def` never changes: `(local value (clone names))`
 
-error[L0514]: this argument is a copy, so changing it changes nothing
+error[L0514]: a call cannot change a value behind a shared borrow, such as an element, yet
   --> check/inferred_mut_of_copy.knv:18:10
    |
  5 | (defn bump! (x) (set! x (+ x 1)))
    |                 ---------------- `bump!` changes its parameter here
 ...
 18 |   (bump! (at numbers 0)))
-   |          ^^^^^^^^^^^^^^ this is a copy, not a place
+   |          ^^^^^^^^^^^^^^ this value is borrowed, not passed as a place
    |
-   = help: a call cannot change a value behind a shared borrow, such as an element, yet; change it in place with `set!`
+   = help: change it in place with `set!`

@@ -1,0 +1,54 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/borrowed_view_in_a_pinned_check.rslisp
+---
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Page {
+    file: String,
+    html: String,
+}
+
+fn make_page(file: String, html: String) -> Page {
+    Page { file, html }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Site {
+    pages: Vec<Page>,
+}
+
+fn make_site(pages: Vec<Page>) -> Site {
+    Site { pages }
+}
+
+fn is_holds(s: &Site, target: &str, id: &str) -> bool {
+    let suffix = format!(" id={}", id);
+    s.pages
+        .iter()
+        .any(|p: &Page| p.file.as_str() == target && p.html.as_str() == suffix.as_str())
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let all = make_site(vec![make_page("a".to_string(), " id=x".to_string())]);
+    let target = "a".to_string();
+    println!("{}", is_holds(&all, target.as_str(), "x"))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

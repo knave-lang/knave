@@ -24,7 +24,7 @@
        "Errors worth reading."))
 ```
 
-Knave is a programming language. [knave-lang.org](https://knave-lang.org) is the Knave website.
+[knave-lang.org](https://knave-lang.org) is the Knave website.
 
 [docs/language.md](docs/language.md) describes the language.
 

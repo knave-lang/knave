@@ -1,0 +1,10 @@
+(defstruct cursor
+  :i usize)
+
+(defn main ()
+  (local v (vec 1 2 3))
+  (local c (->cursor 2))
+  (local f (fn () 7))
+  (set! (at v (:i c))
+        (* (f) (at v (:i c))))
+  (println (at v 2)))

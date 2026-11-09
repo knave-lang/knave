@@ -13,6 +13,15 @@ fn make_counter(hits: i64, misses: i64) -> Counter {
     Counter { hits, misses }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Cursor {
+    i: usize,
+}
+
+fn make_cursor(i: usize) -> Cursor {
+    Cursor { i }
+}
+
 fn miss(tally: &mut Counter) -> i64 {
     tally.misses += 1;
     1
@@ -44,6 +53,12 @@ fn main() {
     let index: usize = 1;
     let by_index = &index;
     scores[*by_index] += 1;
+    scores[index] += 1;
+    let position = make_cursor(1);
+    scores[position.i] += 1;
+    scores[index + 1] += 1;
+    let mut grid: Vec<Vec<i64>> = vec![vec![1_i64, 2_i64], vec![3_i64, 4_i64]];
+    grid[index][0] *= 2;
     let step = || 2_i64;
     scores[1] = {
         let current = scores[1];

@@ -71,6 +71,32 @@
 (defn owned-match? (p target)
   (equals-owned (:file p) target))
 
+(def equals-borrowed
+  (rust "{&0} == {1}"
+    (where ((a (partial-eq b)) b)
+      (fn ((ref a) (ref b)) bool))))
+
+(defn borrowed-match? (p)
+  (local title (str "a"))
+  (equals-borrowed (:file p) title))
+
+(defn written-match? (p)
+  (local title (str "a"))
+  (equals-owned (:file p) (ref title)))
+
+(defn reversed-owned? (p target)
+  (equals-owned target (:file p)))
+
+(defstruct (holder item)
+  :item item)
+
+(type holds-view?
+  (fn ((ref (holder (ref str))) (ref str))
+    bool))
+
+(defn holds-view? (h target)
+  (= (:item h) target))
+
 (defn main ()
   (local items
     (vec (->page (str "a") (vec (str "t")))))
@@ -97,4 +123,8 @@
   (local page
     (->page (str "a") (vec (str "t"))))
   (println (retitle! (mut page) (str "b")))
-  (println (owned-match? (at items 0) (ref title))))
+  (println (owned-match? (at items 0) (ref title)))
+  (println (written-match? (at items 0)))
+  (println (reversed-owned? (at items 0) (str "a")))
+  (println (holds-view? (->holder "a") "a"))
+  (println (borrowed-match? (at items 0))))

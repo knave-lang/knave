@@ -2082,12 +2082,12 @@ impl<'a> ExpressionEmitter<'a> {
             .iter()
             .zip(&roles)
             .map(|(argument, role)| {
-                let code = self.argument(argument, context, *role);
-                if !compared {
-                    return code;
-                }
-                let levels = self.depth_above_shallowest((argument, *role), arguments, &roles);
-                Self::dereferenced(code, levels, argument.value.span)
+                let levels = if compared {
+                    self.depth_above_shallowest((argument, *role), arguments, &roles)
+                } else {
+                    0
+                };
+                self.argument_at_depth(argument, context, *role, levels)
             })
             .collect();
         for (position, argument) in arguments.iter().enumerate() {
@@ -2141,9 +2141,7 @@ impl<'a> ExpressionEmitter<'a> {
             Borrow::Deref(levels) | Borrow::Collapse(levels) => {
                 value.ty.reference_depth().saturating_sub(levels)
             }
-            Borrow::Shared | Borrow::Mutable if !Self::borrowed_already(argument, role) => {
-                value.ty.reference_depth() + 1
-            }
+            _ if Self::writes_borrow_prefix(argument, role) => value.ty.reference_depth() + 1,
             _ if role == ArgumentRole::Borrowed => self
                 .place_depth(value)
                 .unwrap_or_else(|| value.ty.reference_depth()),
@@ -2168,14 +2166,55 @@ impl<'a> ExpressionEmitter<'a> {
         while let Type::Ref(_, inner) | Type::Mut(_, inner) = owner_type {
             owner_type = inner;
         }
-        let Type::Named(binding, _) = owner_type else {
+        let Type::Named(binding, arguments) = owner_type else {
             return None;
         };
         self.program
             .structs
             .get(*binding)?
-            .field(field)
-            .map(Type::reference_depth)
+            .instantiated_field_depth(field, arguments)
+    }
+
+    fn argument_at_depth(
+        &mut self,
+        argument: &TypedArgument,
+        context: TypeContext,
+        role: ArgumentRole,
+        levels: usize,
+    ) -> Code {
+        let span = argument.value.span;
+        if levels == 0 {
+            return self.argument(argument, context, role);
+        }
+        match self.without_own_borrow(argument, context, role) {
+            Some(code) => Self::dereferenced(code, levels - 1, span),
+            None => Self::dereferenced(self.argument(argument, context, role), levels, span),
+        }
+    }
+
+    fn without_own_borrow(
+        &mut self,
+        argument: &TypedArgument,
+        context: TypeContext,
+        role: ArgumentRole,
+    ) -> Option<Code> {
+        if Self::writes_borrow_prefix(argument, role) {
+            let value = self.argument_value(&argument.value, context, role);
+            return Some(value.spanned(argument.value.span));
+        }
+        match &argument.value.kind {
+            TypedExprKind::Borrow(ReferenceKind::Shared, place)
+                if argument.borrow == Borrow::None =>
+            {
+                Some(self.borrowed_operand(place, context))
+            }
+            _ => None,
+        }
+    }
+
+    fn writes_borrow_prefix(argument: &TypedArgument, role: ArgumentRole) -> bool {
+        matches!(argument.borrow, Borrow::Shared | Borrow::Mutable)
+            && !Self::borrowed_already(argument, role)
     }
 
     fn dereferenced(code: Code, levels: usize, span: Span) -> Code {

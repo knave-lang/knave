@@ -101,6 +101,33 @@ fn is_owned_match(p: &Page, target: &String) -> bool {
     p.file == *target
 }
 
+fn is_borrowed_match(p: &Page) -> bool {
+    let title = "a".to_string();
+    p.file == title
+}
+
+fn is_written_match(p: &Page) -> bool {
+    let title = "a".to_string();
+    p.file == title
+}
+
+fn is_reversed_owned(p: &Page, target: &String) -> bool {
+    target == &p.file
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Holder<Item> {
+    item: Item,
+}
+
+fn make_holder(item: &str) -> Holder<&str> {
+    Holder { item }
+}
+
+fn is_holds_view(h: &Holder<&str>, target: &str) -> bool {
+    h.item == target
+}
+
 fn main() {
     crate::rt::restore_default_sigpipe();
     let items = vec![make_page("a".to_string(), vec!["t".to_string()])];
@@ -125,7 +152,11 @@ fn main() {
     println!("{}", is_titled_a(&windows));
     let mut page = make_page("a".to_string(), vec!["t".to_string()]);
     println!("{}", retitle(&mut page, &"b".to_string()));
-    println!("{}", is_owned_match(&items[0], &title))
+    println!("{}", is_owned_match(&items[0], &title));
+    println!("{}", is_written_match(&items[0]));
+    println!("{}", is_reversed_owned(&items[0], &"a".to_string()));
+    println!("{}", is_holds_view(&make_holder("a"), "a"));
+    println!("{}", is_borrowed_match(&items[0]))
 }
 
 mod rt {

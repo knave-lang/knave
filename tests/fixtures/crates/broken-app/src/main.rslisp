@@ -1,0 +1,4 @@
+(def broken
+  (rust "broken::broken()" (fn () i64)))
+
+(defn main () (println (broken)))

@@ -1,0 +1,4 @@
+(export answer)
+
+(def answer
+  (rust "answer::answer()" (fn () i64)))

@@ -57,7 +57,7 @@ impl Section {
     }
 
     pub fn is_built(self) -> bool {
-        self == Section::Libraries
+        self != Section::DevDependencies
     }
 
     fn keys(self) -> &'static [&'static str] {
@@ -264,6 +264,7 @@ impl<'p> DependencyReader<'p> {
         }
         CrateDependency {
             name: parts.name.to_string(),
+            name_span: parts.name_span,
             version: parts
                 .version
                 .as_ref()

@@ -1,0 +1,4 @@
+(def missing
+  (rust "answer::missing()" (fn () i64)))
+
+(defn main () (println (missing)))

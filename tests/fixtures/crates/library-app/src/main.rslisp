@@ -1,0 +1,3 @@
+(use helper answer)
+
+(defn main () (println (answer)))

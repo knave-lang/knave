@@ -1,3 +1,4 @@
+mod crate_set;
 mod dependency_reader;
 mod fields;
 mod name;
@@ -6,6 +7,7 @@ mod reader;
 
 use std::path::PathBuf;
 
+pub use crate_set::CrateSet;
 pub use dependency_reader::Section;
 pub use name::ProjectName;
 pub use problems::ProjectProblems;
@@ -51,12 +53,33 @@ impl LibrarySource {
     pub const FULL_COMMIT_LENGTH: usize = 40;
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CrateDependency {
     pub name: String,
+    pub name_span: Span,
     pub version: Option<String>,
     pub features: Vec<String>,
     pub path: Option<PathBuf>,
+}
+
+impl CrateDependency {
+    pub fn same_request(&self, other: &Self) -> bool {
+        self.version == other.version
+            && self.path == other.path
+            && Self::covers(&self.features, &other.features)
+            && Self::covers(&other.features, &self.features)
+    }
+
+    fn covers(features: &[String], others: &[String]) -> bool {
+        others.iter().all(|feature| features.contains(feature))
+    }
+
+    pub fn resolved_from(&self, root: &std::path::Path) -> Self {
+        Self {
+            path: self.path.as_ref().map(|path| root.join(path)),
+            ..self.clone()
+        }
+    }
 }
 
 impl Project {

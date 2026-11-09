@@ -7,6 +7,7 @@ use super::standard_error::StandardError;
 use crate::core::ModulePath;
 use crate::language::Language;
 use crate::modules::LibraryTable;
+use crate::project::CrateDependency;
 
 #[derive(Clone)]
 pub struct ProgramFile {
@@ -105,6 +106,15 @@ impl ProgramFile {
         let directory = Self::canonical(&Self::directory_of(path))?;
         let relative_directory = directory.strip_prefix(Self::canonical(root)?).ok()?;
         Self::module_name(&relative_directory.join(path.file_name()?))
+    }
+
+    pub fn resolved_crate(dependency: &CrateDependency, root: &Path) -> CrateDependency {
+        let root = Self::canonical(root).unwrap_or_else(|| root.to_path_buf());
+        let mut resolved = dependency.resolved_from(&root);
+        resolved.path = resolved
+            .path
+            .map(|path| Self::canonical(&path).unwrap_or(path));
+        resolved
     }
 
     pub fn canonical(path: &Path) -> Option<PathBuf> {

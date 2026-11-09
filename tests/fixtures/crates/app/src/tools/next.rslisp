@@ -1,0 +1,4 @@
+(def answer
+  (rust "answer::answer()" (fn () i64)))
+
+(defn main () (println (+ (answer) 1)))

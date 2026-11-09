@@ -228,6 +228,7 @@ impl Sandbox {
     const CACHE_DIRECTORY: &str = "cache";
     const GIT_MESSAGE: &str = "git says:";
     const SANDBOX_MASK: &str = "<sandbox>";
+    const BIN_NAME_PREFIX: &str = "name = \"app-";
     const LINKED_LIBRARY: &str = "linked-lib";
     const LINKED_MODULE: &str = "linked-module";
     const OUTSIDE_FROM_STORE: &str = "../../../../../keymap/src/lib.rslisp";
@@ -489,6 +490,55 @@ impl Sandbox {
             } else {
                 fs::copy(entry.path(), target).expect("the sandbox accepts files");
             }
+        }
+    }
+
+    fn compared_run(
+        &self,
+        scenario: &str,
+        profile: Option<&str>,
+        with_crate: bool,
+    ) -> (i32, String, String) {
+        let dependencies = if with_crate {
+            " (dependencies (answer :path \"../answer\"))"
+        } else {
+            ""
+        };
+        let project = format!("(project compare :entry \"src/{scenario}.rslisp\"{dependencies})\n");
+        fs::write(
+            self.directory
+                .join("compare")
+                .join(Language::project_file_name()),
+            project,
+        )
+        .expect("the sandbox accepts files");
+        let mut arguments = vec!["build", "-o", "program"];
+        arguments.extend(profile);
+        self.compiler_in("compare", &arguments).assert_exit_code(0);
+        let output = Command::new(self.directory.join("compare/program"))
+            .output()
+            .expect("the built program starts");
+        let stderr = String::from_utf8_lossy(&output.stderr)
+            .lines()
+            .map(Self::without_panic_location)
+            .collect::<Vec<_>>()
+            .join("\n");
+        (
+            output.status.code().unwrap_or(-1),
+            String::from_utf8_lossy(&output.stdout).into_owned(),
+            stderr,
+        )
+    }
+
+    fn without_panic_location(line: &str) -> String {
+        match line.split_once(" panicked at ") {
+            Some((_, location)) => {
+                let position = location
+                    .rsplit_once("main.rs:")
+                    .map_or(location, |(_, at)| at);
+                format!("thread 'main' panicked at main.rs:{position}")
+            }
+            None => line.to_string(),
         }
     }
 
@@ -5322,7 +5372,7 @@ fn test_lists_the_untested_names_of_a_program_with_no_tests() {
 
 const PROJECT: &str = "(project greeter)\n";
 const PROJECT_WITH_UNKNOWN_KEY: &str = "(project greeter :entyr \"src/main.rslisp\")\n";
-const PROJECT_WITH_DEPENDENCY: &str = "(project greeter (dependencies (serde \"1.0\")))\n";
+const PROJECT_WITH_DEPENDENCY: &str = "(project greeter (dev-dependencies (fake-check \"0.3\")))\n";
 const UNLAID_PROJECT: &str = "(project browser :version \"0.1.0\" :entry \"src/main.rslisp\"\n  (libraries (hints :path \"../hints\"))\n\n  (dependencies (cef \"144.0\") (serde \"1.0\" :features (\"derive\"))))\n";
 const BARE_NAMES_PROJECT: &str = "(project demo alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(libraries alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu)\n\n(dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(dev-dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n";
 const MISSING_COMMIT: &str = "0000000000000000000000000000000000000000";
@@ -6261,4 +6311,190 @@ fn a_module_file_linked_outside_a_git_checkout_is_an_error() {
     let check = sandbox.compiler_in_with_cache("git-app", &["check"]);
     let stderr = check.assert_exit_code(1).stderr();
     insta::assert_snapshot!(sandbox.masked(&stderr));
+}
+
+#[test]
+fn run_builds_a_program_with_a_path_crate_through_cargo() {
+    let sandbox = Sandbox::new("crate_run").with_fixture_tree("crates");
+    let run = sandbox.compiler_in("app", &["run"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "42\n");
+    assert!(sandbox.directory.join("app/Cargo.lock").is_file());
+}
+
+#[test]
+fn a_rustc_error_in_a_crate_build_maps_to_the_source() {
+    let sandbox = Sandbox::new("crate_wrong_call").with_fixture_tree("crates");
+    let build = sandbox.compiler_in("wrong-call-app", &["build"]);
+    insta::assert_snapshot!(build.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn a_crate_that_fails_to_build_is_named() {
+    let sandbox = Sandbox::new("crate_broken").with_fixture_tree("crates");
+    let build = sandbox.compiler_in("broken-app", &["build"]);
+    let stderr = build.assert_exit_code(2).stderr();
+    assert!(
+        stderr.starts_with("error: crate `broken` failed to build:"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("mismatched types"), "{stderr}");
+}
+
+#[test]
+fn a_crate_cargo_cannot_resolve_prints_cargo_text() {
+    let sandbox = Sandbox::new("crate_unresolved").with_fixture_tree("crates");
+    let build = sandbox.compiler_in("unresolved-app", &["build"]);
+    let stderr = build.assert_exit_code(2).stderr();
+    assert!(stderr.starts_with("error: "), "{stderr}");
+    assert!(stderr.contains("Cargo.toml"), "{stderr}");
+}
+
+#[test]
+fn a_crate_build_without_cargo_is_an_environment_error() {
+    let sandbox = Sandbox::new("crate_no_cargo").with_fixture_tree("crates");
+    let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["build"]);
+    command
+        .current_dir(sandbox.directory.join("app"))
+        .env("PATH", sandbox.directory.join("no-tools"));
+    let stderr = Outcome::of(&mut command).assert_exit_code(2).stderr();
+    assert!(
+        stderr
+            .contains("error: cannot run cargo, which builds a project with crate dependencies: "),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn crate_requests_that_cannot_merge_are_an_error() {
+    let check = Sandbox::check_fixture("crates/conflict-app");
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn a_program_behaves_the_same_built_by_rustc_and_by_cargo() {
+    let sandbox = Sandbox::new("crate_compare").with_fixture_tree("crates");
+    for scenario in ["overflow", "zero", "leave"] {
+        for profile in [None, Some("--release")] {
+            let direct = sandbox.compared_run(scenario, profile, false);
+            let through_cargo = sandbox.compared_run(scenario, profile, true);
+            assert_eq!(direct, through_cargo, "{scenario} {profile:?}");
+        }
+    }
+}
+
+#[test]
+fn a_git_library_crate_path_outside_its_checkout_is_an_error() {
+    let sandbox = Sandbox::new("git_library_crate_outside")
+        .with_one_git_library("crate-outside", "../crate-outside.git");
+    let stderr = sandbox
+        .compiler_in_with_cache("git-app", &["check"])
+        .assert_exit_code(1)
+        .stderr();
+    assert!(
+        stderr.starts_with(
+            "error[L0728]: crate `answer` names a `:path` outside its library's checkout"
+        ),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_library_crate_joins_the_program_manifest() {
+    let sandbox = Sandbox::new("crate_from_library").with_fixture_tree("crates");
+    let run = sandbox.compiler_in("library-app", &["run"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "42\n");
+    let manifest = fs::read_to_string(
+        sandbox
+            .directory
+            .join("library-app/target/knave/app/Cargo.toml"),
+    )
+    .expect("the build writes a manifest");
+    let shown: Vec<String> = sandbox
+        .masked(&manifest)
+        .lines()
+        .map(|line| match line.strip_prefix(Sandbox::BIN_NAME_PREFIX) {
+            Some(_) => format!("{}<hash>\"", Sandbox::BIN_NAME_PREFIX),
+            None => line.to_string(),
+        })
+        .collect();
+    insta::assert_snapshot!(shown.join("\n"));
+}
+
+#[test]
+fn an_unchanged_program_keeps_its_generated_source_file() {
+    let sandbox = Sandbox::new("crate_unchanged_source").with_fixture_tree("crates");
+    sandbox.compiler_in("app", &["build"]).assert_exit_code(0);
+    let source = sandbox.directory.join("app/target/knave/app/src/main.rs");
+    let first = fs::metadata(&source)
+        .and_then(|metadata| metadata.modified())
+        .expect("the source exists");
+    sandbox.compiler_in("app", &["build"]).assert_exit_code(0);
+    let second = fs::metadata(&source)
+        .and_then(|metadata| metadata.modified())
+        .expect("the source exists");
+    assert_eq!(first, second);
+}
+
+#[test]
+fn run_of_another_file_in_a_project_with_crates_builds_through_cargo() {
+    let sandbox = Sandbox::new("crate_other_file").with_fixture_tree("crates");
+    let run = sandbox.compiler_in("app", &["run", "src/tools/next.rslisp"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "43\n");
+}
+
+#[test]
+fn a_missing_crate_path_resolves_from_the_project_root() {
+    let sandbox = Sandbox::new("crate_missing_path")
+        .with_fixture_tree("crates")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(project app (dependencies (answer :path \"../nowhere\")))\n",
+        );
+    let stderr = sandbox
+        .compiler_in("app", &["build"])
+        .assert_exit_code(2)
+        .stderr();
+    assert!(
+        sandbox
+            .masked(&stderr)
+            .contains("<sandbox>/nowhere/Cargo.toml"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_dependency_named_like_the_program_package_is_still_a_dependency() {
+    let sandbox = Sandbox::new("crate_program_like_name").with_fixture_tree("crates");
+    Sandbox::copy_tree(
+        &sandbox.directory.join("broken"),
+        &sandbox.directory.join("knave-program-broken"),
+    );
+    let sandbox = sandbox.with_file(
+        &format!("broken-app/{}", Language::project_file_name()),
+        "(project app (dependencies (broken :path \"../knave-program-broken\")))\n",
+    );
+    let stderr = sandbox
+        .compiler_in("broken-app", &["build"])
+        .assert_exit_code(2)
+        .stderr();
+    assert!(
+        stderr.starts_with("error: crate `broken` failed to build:"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn a_build_uses_the_project_cargo_lock() {
+    let sandbox = Sandbox::new("crate_lock_in").with_fixture_tree("crates");
+    sandbox.compiler_in("app", &["build"]).assert_exit_code(0);
+    let lock = sandbox.directory.join("app/Cargo.lock");
+    let written = fs::read_to_string(&lock).expect("the build writes a lock file");
+    let older = written.replacen("version = 4", "version = 3", 1);
+    fs::write(&lock, &older).expect("the sandbox accepts files");
+    let entry = sandbox.directory.join("app/src/main.rslisp");
+    let source = fs::read_to_string(&entry).expect("the entry is readable");
+    fs::write(&entry, format!("{source}\n")).expect("the sandbox accepts files");
+    sandbox.compiler_in("app", &["build"]).assert_exit_code(0);
+    let kept = fs::read_to_string(&lock).expect("the lock file stays");
+    assert!(kept.contains("version = 3"), "{kept}");
 }

@@ -591,11 +591,17 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
 - A crate dependency takes a version or a `:path`, and MAY take `:features`.
 - A library takes `:path`, or `:git` with `:rev`, and no version. `:rev` is a full 40-digit commit hash.
 - An unknown key or section is an error that suggests the closest name. A key, a section or a dependency given twice is an error.
-- The compiler reads and checks `dependencies` and `dev-dependencies`. Until the rest of RFC 0061 lands, either section with entries is an error. An empty section is allowed.
+- The compiler reads and checks `dependencies` and `dev-dependencies`. Until the rest of RFC 0061 lands, a `dev-dependencies` section with entries is an error. An empty section is allowed.
 
 **`knave new <name>` creates a project in a new directory of that name.** It writes `(project <name>)` and an entry at `src/main.rslisp` whose `main` prints `hello`. The name argument is checked first: a name that is not kebab-case is `L0718`, labeled on the argument. A path that already exists, or a file that cannot be written, is a usage error, and a failed write removes what `new` wrote.
 
 **`knave fmt` lays out the project file by the shapes in `prelude/project-file`.** The module states `(header-shape (project name) :one-per-line)` and the same marker for each section, so when a form breaks, each key and each dependency takes a line of its own. `knave new` writes its files through the formatter. A program that uses `prelude/project-file` and calls `project` or a section gets `L0350`, because the form belongs only in the project file.
+
+**A project that uses crates builds through Cargo, for `:entry` and for any other file of the project.** The crates are the project's `dependencies` and every library's, and a relative `:path` resolves from the project file that wrote it. `build` and `run` write `Cargo.toml` and `src/main.rs` into the build directory, with an empty `[workspace]`, a package named `knave-program` and a bin named after the project with a hash of its root. They run `cargo rustc --bin <bin> --message-format=json -- --cap-lints allow`, with `--release` for a release build, and copy the project's `Cargo.lock` in and back.
+
+- Both build paths read one plan: the edition, `[profile.dev] debug = false`, and capped lints, so a program behaves the same built by rustc or by Cargo.
+- A rustc error in the program maps to the source as on the direct path. An error in another crate names that crate, and a failure with no compiler message, such as a crate Cargo cannot resolve, prints Cargo's text. These, and a missing `cargo`, which the message says builds a project with crate dependencies, are environment errors.
+- Entries for one crate merge into one manifest line. Plain caret-style versions that are semver-compatible, the same major, or the same minor for `0.x`, or the same patch for `0.0.x`, merge to the highest requirement, and their features merge to the sorted union. A requirement is written without its `^`. Any other difference, such as incompatible versions, a path against a version, two paths, or a requirement that is not a plain version such as `=1.0`, is `L0726`, which labels both entries in the files that wrote them.
 
 **A command finds its project by walking up from its file, or from the working directory when it takes no file, to the nearest `project.rslisp`.** The project root is that file's directory. The source root is the directory of `:entry`.
 
@@ -621,7 +627,7 @@ A project is a directory with a `project.rslisp` file ([RFC 0061](../rfcs/0061-p
 - A repository or commit that `git` cannot check out is `L0725`, labeled on the library's entry with git's message as a note.
 - No `git` on `PATH`, no cache directory, or a store that cannot be written is an environment error.
 - A `:git` value that starts with `-` is `L0727`. Git runs with the URL after `--`, with `GIT_ALLOW_PROTOCOL` set to `file:git:http:https:ssh`, with no terminal prompt, and with `ssh -o BatchMode=yes` unless `GIT_SSH_COMMAND` is set. The store keys a commit by its lowercase hash.
-- A library fetched from git, and every library it lists, may name only paths inside its own checkout: a `:lib`, a `:path` or a local `:git` that is absolute or leaves the checkout through `..` is `L0728`, labeled on the library's entry. A library listed by a git library takes that checkout's bounds if it is a `:path` library, and its own checkout's if it is a `:git` library. A module file of such a library that resolves outside the checkout through a symbolic link is `L0254`, labeled on the `use`.
+- A library fetched from git, and every library it lists, may name only paths inside its own checkout: a `:lib`, a `:path` or a local `:git` that is absolute or leaves the checkout through `..` is `L0728`, labeled on the library's entry. A library listed by a git library takes that checkout's bounds if it is a `:path` library, and its own checkout's if it is a `:git` library. A module file of such a library that resolves outside the checkout through a symbolic link is `L0254`, labeled on the `use`, and a crate `:path` of such a library outside the checkout is `L0728`.
 
 ## Modules
 

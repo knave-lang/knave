@@ -127,6 +127,32 @@ impl ProjectProblems {
         ))
     }
 
+    pub fn crate_path_outside_checkout(name: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::PATH_OUTSIDE_CHECKOUT,
+            format!("crate `{name}` names a `:path` outside its library's checkout"),
+            Label::new(span, "this git library's project file reaches outside it"),
+        )
+        .with_note("a library fetched from git may only name files inside its own checkout")
+        .with_help("ask the library's authors to use a relative `:path` without `..`")
+    }
+
+    pub fn crate_requests_conflict(name: &str, span: Span, first: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::CRATE_REQUESTS_CONFLICT,
+            format!("crate `{name}` has two requests that cannot merge"),
+            Label::new(span, "this request"),
+        )
+        .with_label(Label::new(first, "conflicts with this one"))
+        .with_note(
+            "the program builds one copy of each crate, and only plain versions that are \
+             semver-compatible merge",
+        )
+        .with_help(format!(
+            "make the `{name}` entries ask for compatible plain versions"
+        ))
+    }
+
     pub fn unbuilt_section(section: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::UNBUILT_PROJECT_SECTION,

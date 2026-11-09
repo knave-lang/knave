@@ -31,6 +31,16 @@ impl<'a> RustcDiagnosticMapper<'a> {
         }
     }
 
+    pub fn errors_of(&self, messages: &[String]) -> Diagnostics {
+        let mut diagnostics = Diagnostics::default();
+        messages
+            .iter()
+            .filter_map(|message| serde_json::from_str::<Value>(message).ok())
+            .filter_map(|message| self.diagnostic(&message))
+            .for_each(|diagnostic| diagnostics.push(diagnostic));
+        diagnostics
+    }
+
     pub fn map(&self, stderr: &str) -> Diagnostics {
         let mut diagnostics = Diagnostics::default();
         for message in stderr

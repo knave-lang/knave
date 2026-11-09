@@ -2,10 +2,10 @@
 source: tests/cli.rs
 expression: run.assert_exit_code(1).stderr()
 ---
-error[L0719]: this compiler cannot build `dependencies` yet
+error[L0719]: this compiler cannot build `dev-dependencies` yet
  --> project.rslisp:1:19
   |
-1 | (project greeter (dependencies (serde "1.0")))
-  |                   ^^^^^^^^^^^^ this section has entries
+1 | (project greeter (dev-dependencies (fake-check "0.3")))
+  |                   ^^^^^^^^^^^^^^^^ this section has entries
   |
-  = help: remove the entries of `dependencies` for now
+  = help: remove the entries of `dev-dependencies` for now

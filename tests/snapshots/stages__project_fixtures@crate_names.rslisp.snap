@@ -13,6 +13,13 @@ Project {
     dependencies: [
         CrateDependency {
             name: "tokio_util",
+            name_span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 41,
+                end: 51,
+            },
             version: Some(
                 "0.7",
             ),
@@ -21,6 +28,13 @@ Project {
         },
         CrateDependency {
             name: "Inflector",
+            name_span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 83,
+                end: 92,
+            },
             version: Some(
                 "0.11",
             ),
@@ -29,6 +43,13 @@ Project {
         },
         CrateDependency {
             name: "hints-core",
+            name_span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 125,
+                end: 135,
+            },
             version: None,
             features: [],
             path: Some(
@@ -51,10 +72,3 @@ Project {
         },
     ],
 }
-error[L0719]: this compiler cannot build `dependencies` yet
- --> project/crate_names.rslisp:2:11
-  |
-2 |          (dependencies (tokio_util "0.7")
-  |           ^^^^^^^^^^^^ this section has entries
-  |
-  = help: remove the entries of `dependencies` for now

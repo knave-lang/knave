@@ -1,0 +1,17 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0726]: crate `serde` has two requests that cannot merge
+ --> ../wants-serde/project.rslisp:1:37
+  |
+1 | (project wants-serde (dependencies (serde "2.0")))
+  |                                     ^^^^^ this request
+  |
+ ::: project.rslisp:2:18
+  |
+2 |   (dependencies (serde "1.0"))
+  |                  ----- conflicts with this one
+  |
+  = note: the program builds one copy of each crate, and only plain versions that are semver-compatible merge
+  = help: make the `serde` entries ask for compatible plain versions

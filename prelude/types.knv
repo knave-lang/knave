@@ -42,54 +42,85 @@
 (document (box value)
   "Puts a value on the heap.
 
-  `box` is also the type `(box a)`, Rust's `Box<A>`.")
+  `box` is also the type `(box a)`, Rust's `Box<A>`.
+
+  (infer (box \"pear\"))
+  => \"(box (ref str))\"")
 
 (document (option a)
   "Types a value that may be absent, Rust's `Option<A>`.
 
   `some` and `none` build one, and `match` reads it with the patterns
-  `(some x)` and `none`.")
+  `(some x)` and `none`.
+
+  (the (option i64) (some 3))
+  => (some 3)")
 
 (document (option/some value)
   "Builds the `some` variant of an `option`.
 
-  `some` is the macro for this call.")
+  `some` is the macro for this call.
+
+  (option/some 3)
+  => (some 3)")
 
 (document option/none
   "Holds the `none` variant of an `option`.
 
-  `none` is the same value.")
+  `none` is the same value.
+
+  (the (option i64) option/none)
+  => none")
 
 (document (result a b)
   "Types a success `a` or a failure `b`, Rust's `Result<A, B>`.
 
   `ok` and `err` build one, and `match` reads it with the patterns `(ok x)`
-  and `(err x)`.")
+  and `(err x)`.
+
+  (the (result i64 string) (ok 3))
+  => (ok 3)")
 
 (document (result/ok value)
   "Builds the `ok` variant of a `result`.
 
-  `ok` is the macro for this call.")
+  `ok` is the macro for this call.
+
+  (the (result i64 string) (result/ok 3))
+  => (ok 3)")
 
 (document (result/err error)
   "Builds the `err` variant of a `result`.
 
-  `err` is the macro for this call.")
+  `err` is the macro for this call.
+
+  (the (result i64 string) (result/err (str \"bad\")))
+  => (err (str \"bad\"))")
 
 (document (iterator a)
   "Types a lazy run of items, Rust's `impl Iterator<Item = A>`.
 
   It is an error in a struct field or an enum payload, because Rust names this
-  type only as a function's own parameter or result.")
+  type only as a function's own parameter or result.
+
+  (collect (the (iterator i64) (range 0 2)))
+  => (vec 0 1)")
 
 (document (slice a)
   "Types a run of items in one place, Rust's `[A]`.
 
   Write it behind a borrow, as `(ref (slice a))`. A `(ref (vec a))` passes as
-  one.")
+  one.
+
+  (local items (vec 1 2))
+  (len (the (ref (slice i64)) (ref items)))
+  => 2")
 
 (document sequence
   "Marks a type that `len` and `empty?` read.
 
   `str`, `string`, a vector, a slice, a map and a reference to any of them
-  implement it.")
+  implement it.
+
+  (infer len)
+  => \"(where ((a sequence)) (fn ((ref a)) usize))\"")

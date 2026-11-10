@@ -8,7 +8,7 @@ use super::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload}
 use super::parameter_modes::ParameterModes;
 use super::rust_types::RustTypeTable;
 use super::structs::StructTable;
-use super::structural::{StructuralTrait, StructuralUses};
+use super::structural_uses::{StructuralTrait, StructuralUses};
 use super::template_clauses::TemplateClauses;
 use super::templates::TemplateBorrows;
 use super::traits::TraitTable;

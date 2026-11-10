@@ -15,8 +15,8 @@ fn make_user(name: String, age: u16) -> User {
 
 fn adult_names<'a>(users: impl Iterator<Item = &'a User>) -> impl Iterator<Item = &'a str> {
     users
-        .filter(move |u: &&User| u.age > 17)
-        .map(move |value: &User| value.name.as_str())
+        .filter(|u: &&User| u.age > 17)
+        .map(|value: &User| value.name.as_str())
 }
 
 fn name_of(someone: &User) -> &str {

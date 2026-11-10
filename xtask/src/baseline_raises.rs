@@ -37,10 +37,9 @@ impl BaselineRaises {
         file: &str,
         before: Option<String>,
     ) -> Result<Vec<Raise>, TaskFailure> {
-        match before {
-            Some(text) => Ok(after.raised_since(&Baseline::parse(file, &text)?)),
-            None => Ok(Vec::new()),
-        }
+        let absent_at_base = String::new();
+        let before = Baseline::parse(file, &before.unwrap_or(absent_at_base))?;
+        Ok(after.raised_since(&before))
     }
 
     fn verify_revision(git: &Git, base: &str) -> Result<(), TaskFailure> {
@@ -216,11 +215,16 @@ mod tests {
     }
 
     #[test]
-    fn a_baseline_absent_at_the_base_adds_no_raise() {
-        let after = Baseline::parse(RaiseCase::FILE, "src/a.rs 901").expect("the head parses");
+    fn a_baseline_absent_at_the_base_makes_every_entry_a_raise() {
+        let after = Baseline::parse(RaiseCase::FILE, "src/a.rs 901\nsrc/b.rs 600")
+            .expect("the head parses");
         let raises =
             BaselineRaises::raises(&after, RaiseCase::FILE, None).expect("nothing to parse");
-        assert!(raises.is_empty());
+        let joined: Vec<(&str, Option<usize>)> = raises
+            .iter()
+            .map(|raise| (raise.subject.as_str(), raise.from))
+            .collect();
+        assert_eq!(joined, [("src/a.rs", None), ("src/b.rs", None)]);
     }
 
     #[test]

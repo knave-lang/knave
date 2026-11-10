@@ -225,6 +225,21 @@ fn area() -> u32 {
     }
 
     #[test]
+    fn a_production_file_behind_a_cfg_pair_keeps_its_count() {
+        for production in [
+            "#[cfg(not(test))]\nmod checker;",
+            "#[cfg(not(test))]\n#[path = \"../types/checker.rs\"]\nmod checker;",
+        ] {
+            let parent = format!("#[cfg(test)]\nmod checker;\n{production}\n");
+            let census = SourceText::census(&[
+                ("src/types/mod.rs", &parent),
+                ("src/types/checker.rs", "fn check() {}\nfn infer() {}\n"),
+            ]);
+            assert_eq!(census["src/types/checker.rs"], 2, "{production}");
+        }
+    }
+
+    #[test]
     fn a_file_declared_as_a_test_module_counts_nothing() {
         let census = SourceText::census(&[
             (

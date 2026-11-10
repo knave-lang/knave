@@ -1,5 +1,5 @@
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use syn::{Expr, ExprLit, Item, ItemMod, Lit, Meta};
 
@@ -42,8 +42,20 @@ impl TestModuleFiles {
     }
 
     fn collect(&mut self, items: &[Item], directory: &Path, beside_parent: &Path) {
-        for item in items {
-            if let Item::Mod(module) = item {
+        let modules: Vec<&ItemMod> = items
+            .iter()
+            .filter_map(|item| match item {
+                Item::Mod(module) => Some(module),
+                _ => None,
+            })
+            .collect();
+        for module in &modules {
+            let namesakes = modules
+                .iter()
+                .filter(|other| other.ident == module.ident)
+                .count();
+            let has_a_production_twin = namesakes > 1 && TestCode::marks(&module.attrs);
+            if !has_a_production_twin {
                 self.declare(module, directory, beside_parent);
             }
         }
@@ -58,7 +70,8 @@ impl TestModuleFiles {
             }
             (Some((_, items)), _) => self.collect(items, &child, beside_parent),
             (None, Some(written)) if !is_test => {
-                self.production_paths.insert(beside_parent.join(written));
+                self.production_paths
+                    .insert(Self::lexically_resolved(&beside_parent.join(written)));
             }
             (None, None) if is_test => {
                 self.files
@@ -67,6 +80,20 @@ impl TestModuleFiles {
             }
             (None, _) => {}
         }
+    }
+
+    fn lexically_resolved(path: &Path) -> PathBuf {
+        let mut resolved = PathBuf::new();
+        for component in path.components() {
+            match component {
+                Component::CurDir => {}
+                Component::ParentDir => {
+                    resolved.pop();
+                }
+                other => resolved.push(other),
+            }
+        }
+        resolved
     }
 
     fn module_directory(parent: &Path, beside_parent: &Path) -> PathBuf {
@@ -178,6 +205,24 @@ mod tests {
         let parent = Tree::file(
             "src/types/mod.rs",
             "#[cfg(test)]\nmod fixture;\n#[path = \"fixture.rs\"]\nmod shared;",
+        );
+        assert!(Tree::test_files(&parent, &["src/types/fixture.rs"]).is_empty());
+    }
+
+    #[test]
+    fn a_test_module_with_a_production_twin_stays_production() {
+        let parent = Tree::file(
+            "src/types/mod.rs",
+            "#[cfg(test)]\nmod checker;\n#[cfg(not(test))]\nmod checker;",
+        );
+        assert!(Tree::test_files(&parent, &["src/types/checker.rs"]).is_empty());
+    }
+
+    #[test]
+    fn a_production_path_through_the_parent_directory_keeps_its_file_production() {
+        let parent = Tree::file(
+            "src/types/mod.rs",
+            "#[cfg(test)]\nmod fixture;\n#[path = \"../types/./fixture.rs\"]\nmod shared;",
         );
         assert!(Tree::test_files(&parent, &["src/types/fixture.rs"]).is_empty());
     }

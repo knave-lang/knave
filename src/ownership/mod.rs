@@ -100,6 +100,11 @@ impl OwnershipChecker {
             .filter(|(_, mode)| matches!(mode, ParamMode::Ref | ParamMode::Mut))
             .map(|(binding, _)| *binding)
             .collect();
+        program.changed_parameters = modes
+            .iter()
+            .filter(|(_, mode)| **mode == ParamMode::Mut)
+            .map(|(binding, _)| *binding)
+            .collect();
         let mut diagnostics = Diagnostics::default();
         Self::check_written_modes(
             &program.pending_mode_checks,

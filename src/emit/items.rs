@@ -1312,7 +1312,7 @@ impl<'a> ItemEmitter<'a> {
     }
 
     fn lending_parameters(&self, lambda: &TypedLambda, parameters: &[Type]) -> Vec<Type> {
-        let unlent = self.unlent_changed_copies(lambda);
+        let unlent = self.unlent_changed_parameters(lambda);
         lambda
             .params
             .iter()
@@ -1322,15 +1322,11 @@ impl<'a> ItemEmitter<'a> {
             .collect()
     }
 
-    fn unlent_changed_copies(&self, lambda: &TypedLambda) -> Vec<BindingId> {
+    fn unlent_changed_parameters(&self, lambda: &TypedLambda) -> Vec<BindingId> {
         let changed: Vec<&TypedBinder> = lambda
             .params
             .iter()
-            .filter(|param| {
-                self.program
-                    .changed_copy_parameters
-                    .contains(&param.binding)
-            })
+            .filter(|param| self.program.changed_parameters.contains(&param.binding))
             .collect();
         if changed.is_empty() {
             return Vec::new();
@@ -1361,7 +1357,7 @@ impl<'a> ItemEmitter<'a> {
         if RustTypes::is_unit(result) || !opaque(result) {
             return CapturePlan::Whole;
         }
-        let Some(&unlent) = self.unlent_changed_copies(lambda).first() else {
+        let Some(&unlent) = self.unlent_changed_parameters(lambda).first() else {
             return CapturePlan::Whole;
         };
         if lambda.params.iter().any(|param| opaque(&param.ty)) {
@@ -1372,7 +1368,7 @@ impl<'a> ItemEmitter<'a> {
     }
 
     fn lending_borrowed_parameters(&self, lambda: &TypedLambda) -> Vec<BindingId> {
-        let unlent = self.unlent_changed_copies(lambda);
+        let unlent = self.unlent_changed_parameters(lambda);
         lambda
             .params
             .iter()

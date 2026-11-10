@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/returned_closure_uses_cloned_string.knv
+---
+pearpear
+fixedplum
+ready
+1

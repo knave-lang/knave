@@ -12,6 +12,12 @@ use crate::reader::{Form, StringLiteral};
 pub struct DocumentedModules {
     file: ProgramFile,
     written: Vec<String>,
+    linked: LinkedModules,
+}
+
+struct LinkedModules {
+    written: String,
+    prelude: String,
 }
 
 struct TypedName {
@@ -27,13 +33,21 @@ struct NamedBinding {
 }
 
 impl DocumentedModules {
-    const CALL_SOURCE: &'static str = "<documentation>";
+    pub const CALL_SOURCE: &'static str = "<documentation>";
     const LOADING_FORM: &'static str = "(do)";
     const NAMES_MACRO: &'static str = "documentation-names";
     const PAGE_MACRO: &'static str = "documentation-page";
 
     pub fn new(file: ProgramFile, written: Vec<String>) -> Self {
-        Self { file, written }
+        let linked = LinkedModules {
+            written: written.join(" "),
+            prelude: Self::public_prelude().join(" "),
+        };
+        Self {
+            file,
+            written,
+            linked,
+        }
     }
 
     pub fn public_prelude() -> Vec<String> {
@@ -153,8 +167,8 @@ impl DocumentedModules {
         format!(
             "({} {module} ({}) ({}) ({}))",
             Self::PAGE_MACRO,
-            self.written.join(" "),
-            Self::public_prelude().join(" "),
+            self.linked.written,
+            self.linked.prelude,
             entries.join(" ")
         )
     }

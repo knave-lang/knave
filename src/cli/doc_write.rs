@@ -20,7 +20,6 @@ pub enum DocScope {
 
 impl DocWriteCommand {
     pub const DEFAULT_FOLDER: &'static str = "doc";
-    const ENTRY: &'static str = "<documentation>";
 
     pub fn new(output: Option<PathBuf>, scope: DocScope) -> Self {
         Self { output, scope }
@@ -50,7 +49,7 @@ impl DocWriteCommand {
             LocatedProject::search_from(Path::new(Terminal::WORKING_DIRECTORY), terminal)?
                 .ok_or_else(LocatedProject::report_no_path)?;
         let folder = self.folder_in(project.root());
-        let file = project.file_within(project.source_root().join(Self::ENTRY));
+        let file = project.file_within(project.source_root().join(DocumentedModules::CALL_SOURCE));
         let modules = SourceWalk::of(&project).module_paths(terminal)?;
         Ok((folder, DocumentedModules::new(file, modules)))
     }
@@ -58,7 +57,7 @@ impl DocWriteCommand {
     fn prelude_target(&self) -> (PathBuf, DocumentedModules) {
         let root = LocatedProject::canonical_root(Path::new(Terminal::WORKING_DIRECTORY))
             .unwrap_or_default();
-        let file = ProgramFile::beside_itself(PathBuf::from(Self::ENTRY));
+        let file = ProgramFile::beside_itself(PathBuf::from(DocumentedModules::CALL_SOURCE));
         let modules = DocumentedModules::new(file, DocumentedModules::public_prelude());
         (self.folder_in(&root), modules)
     }

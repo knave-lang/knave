@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_exhaustive_open_column.knv
+---
+(derive reading clone copy partial-eq eq hash show)
+(type ->reading (fn (i64 bool) reading))
+(type checked (fn (reading) i64))

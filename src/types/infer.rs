@@ -12,7 +12,7 @@ use super::borrowed_items::ArgumentSite;
 use super::checker::{TypeChecker, VariantArmReference};
 use super::collection::{Collection, CollectionKind};
 use super::enums::{VariantDefinition, VariantPayload};
-use super::parameter_calls::ParameterCallRequest;
+use super::parameter_call_labels::ParameterCallRequest;
 use super::pattern_placement::{PatternFields, PatternPlacement};
 use super::pending::{DecidedBorrows, PendingBorrow};
 use super::pipelines::Pipelines;

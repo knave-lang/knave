@@ -10,7 +10,7 @@ use super::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload}
 use super::graph::{Definition, DefinitionGraph, DependencyGraph};
 use super::impl_overlap::ImplementorOverlap;
 use super::infer::OpenCollections;
-use super::parameter_calls::ParameterCallRequest;
+use super::parameter_call_labels::ParameterCallRequest;
 use super::parameter_modes::ParameterModes;
 use super::pending::PendingBorrow;
 use super::pinning::LiteralDefaults;

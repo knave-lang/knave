@@ -1,7 +1,6 @@
 use crate::core::ModulePath;
 use crate::diagnostic::{Diagnostic, DiagnosticCode};
 use crate::interpret::{LimitProblems, ListNesting};
-use crate::language::Language;
 use crate::modules::ModuleSources;
 use crate::source::{SourceMap, Span};
 
@@ -30,9 +29,6 @@ impl ExpansionLimit {
     fn in_prelude(file_name: &str) -> bool {
         file_name
             .rsplit_once('.')
-            .is_some_and(|(module, extension)| {
-                extension == Language::EXTENSION
-                    && ModuleSources::is_embedded_prelude(&ModulePath::new(module))
-            })
+            .is_some_and(|(module, _)| ModuleSources::is_embedded_prelude(&ModulePath::new(module)))
     }
 }

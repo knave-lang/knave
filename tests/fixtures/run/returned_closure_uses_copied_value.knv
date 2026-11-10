@@ -20,7 +20,9 @@
 (defn branch-adder! (x up)
   (set! x (+ x 1))
   (local value x)
-  (if up (set! x (+ x 5)) (set! x (- x 5)))
+  (if up
+    (set! x (+ x 5))
+    (set! x (- x 5)))
   (local pad 0)
   (fn (y) (+ y value)))
 

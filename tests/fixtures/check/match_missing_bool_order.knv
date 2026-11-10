@@ -1,0 +1,6 @@
+(defstruct switches
+  :first bool
+  :second bool)
+
+(defn state (s)
+  (match s ((switches false false) 0)))

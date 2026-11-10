@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_missing_bool_order.knv
+---
+error[L0433]: non-exhaustive `match`
+ --> check/match_missing_bool_order.knv:6:3
+  |
+6 |   (match s ((switches false false) 0)))
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
+  |
+  = note: missing 3 cases: `(switches false true)`, `(switches true false)`, `(switches true true)`
+  = help: add an arm for each missing case

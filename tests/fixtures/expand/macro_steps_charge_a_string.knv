@@ -3,10 +3,10 @@
 (defmacro grows (times)
   ((fn (text remaining)
      (if (number-gt remaining 0)
-       (recur (string text "abcdefghijklmnop") (number-sub remaining 1))
+       (recur (string text "abcdefghijklmnop")
+              (number-sub remaining 1))
        (quote 1)))
-   ""
-   times))
+   "" times))
 
 (with-macro-steps 1000
                   (defn main () (println (grows 400))))

@@ -1,0 +1,16 @@
+(use code expand-call list number-gt number-sub)
+
+(defmacro plain () (quote 1))
+
+(def keep-count (fn (expanded count) count))
+
+(defmacro loops (times)
+  ((fn (remaining)
+     (if (number-gt remaining 0)
+       (recur (keep-count (expand-call (list (quote plain)))
+                          (number-sub remaining 1)))
+       (quote 1)))
+   times))
+
+(with-macro-steps 1000
+                  (defn main () (println (loops 20))))

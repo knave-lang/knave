@@ -5,7 +5,7 @@ use super::failure::FailCall;
 use crate::core::Declaration;
 use crate::diagnostic::{Diagnostic, SimilarName};
 use crate::interpret::arguments::Arguments;
-use crate::interpret::{CompileTimeHost, Value, WorkMeter};
+use crate::interpret::{CompileTimeHost, StepBudget, Value, WorkMeter};
 use crate::reader::{Form, FormKind, Symbol};
 use crate::source::Span;
 
@@ -151,7 +151,10 @@ impl<'a> TextOperations<'a> {
 
     pub fn expand_call(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
+        self.arguments.charge(StepBudget::EXPAND_CALL_WORK)?;
         let expansion = host.expand_call(self.arguments.form(0)?)?;
+        self.arguments
+            .charge(expansion.as_ref().map_or(0, Form::form_count))?;
         Forms::list(
             expansion.into_iter().collect(),
             self.call_site,

@@ -12,5 +12,6 @@
    (quote x)
    0))
 
-(defn main ()
-  (println (wrap-deep-through-calls 5000)))
+(with-macro-steps 1000000000
+                  (defn main ()
+                    (println (wrap-deep-through-calls 5000))))

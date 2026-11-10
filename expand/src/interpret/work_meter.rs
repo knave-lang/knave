@@ -10,10 +10,8 @@ pub struct WorkMeter {
 }
 
 impl WorkMeter {
-    const BYTES_PER_STEP: usize = 16;
-
     pub fn text_work(bytes: usize) -> usize {
-        bytes.div_ceil(Self::BYTES_PER_STEP)
+        bytes.div_ceil(StepBudget::BYTES_PER_STEP)
     }
 
     pub fn new(steps: StepBudget, call_site: Span) -> Self {

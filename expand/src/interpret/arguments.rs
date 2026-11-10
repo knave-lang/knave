@@ -1,30 +1,40 @@
 use super::problems::InterpretProblems;
+use super::work_meter::WorkMeter;
 use super::{CodeList, Value};
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, NumberValue, Symbol};
 use crate::source::Span;
 
+pub struct BuiltinSite {
+    pub function: &'static str,
+    pub span: Span,
+}
+
 pub struct Arguments {
-    function: &'static str,
+    site: BuiltinSite,
     values: Vec<Value>,
-    span: Span,
+    meter: WorkMeter,
 }
 
 impl Arguments {
-    pub fn new(function: &'static str, values: Vec<Value>, span: Span) -> Self {
+    pub fn new(site: BuiltinSite, values: Vec<Value>, meter: WorkMeter) -> Self {
         Self {
-            function,
+            site,
             values,
-            span,
+            meter,
         }
     }
 
+    pub fn charge(&self, work: usize) -> Result<(), Diagnostic> {
+        self.meter.charge(work)
+    }
+
     pub fn span(&self) -> Span {
-        self.span
+        self.site.span
     }
 
     pub fn function(&self) -> &'static str {
-        self.function
+        self.site.function
     }
 
     pub fn values(&self) -> &[Value] {
@@ -36,10 +46,10 @@ impl Arguments {
             Ok(())
         } else {
             Err(InterpretProblems::builtin_argument_count(
-                self.function,
+                self.site.function,
                 expected,
                 self.values.len(),
-                self.span,
+                self.site.span,
             ))
         }
     }
@@ -58,10 +68,14 @@ impl Arguments {
     }
 
     pub fn form(&self, index: usize) -> Result<Form, Diagnostic> {
-        self.values[index]
+        let form = self.values[index]
             .to_form()
-            .map_err(|large| large.at(self.span))?
-            .ok_or_else(|| self.wrong(index, "code"))
+            .map_err(|large| large.at(self.site.span))?
+            .ok_or_else(|| self.wrong(index, "code"))?;
+        if matches!(self.values[index], Value::List(_)) {
+            self.charge(form.form_count())?;
+        }
+        Ok(form)
     }
 
     pub fn list(&self, index: usize) -> Result<CodeList, Diagnostic> {
@@ -71,15 +85,21 @@ impl Arguments {
     }
 
     pub fn list_forms(&self, index: usize) -> Result<Vec<Form>, Diagnostic> {
-        self.list(index)?
+        let forms = self
+            .list(index)?
             .forms()
-            .map_err(|large| large.at(self.span))
+            .map_err(|large| large.at(self.site.span))?;
+        self.charge(forms.iter().map(Form::form_count).sum())?;
+        Ok(forms)
     }
 
     pub fn symbol(&self, index: usize) -> Result<&Symbol, Diagnostic> {
-        self.atom(index, "a symbol")?
+        let symbol = self
+            .atom(index, "a symbol")?
             .as_symbol()
-            .ok_or_else(|| self.wrong(index, "a symbol"))
+            .ok_or_else(|| self.wrong(index, "a symbol"))?;
+        self.charge(WorkMeter::text_work(symbol.name().len()))?;
+        Ok(symbol)
     }
 
     pub fn symbol_forms(&self, index: usize) -> Result<Vec<Form>, Diagnostic> {
@@ -92,32 +112,41 @@ impl Arguments {
     }
 
     pub fn keyword_name(&self, index: usize) -> Result<&str, Diagnostic> {
-        self.values[index]
+        let name = self.values[index]
             .keyword_name()
-            .ok_or_else(|| self.wrong(index, "a keyword"))
+            .ok_or_else(|| self.wrong(index, "a keyword"))?;
+        self.charge(WorkMeter::text_work(name.len()))?;
+        Ok(name)
     }
 
-    pub fn keyword_field(&self, index: usize) -> Result<Form, Diagnostic> {
-        self.values[index]
-            .keyword_field()
-            .ok_or_else(|| self.wrong(index, "a keyword"))
-    }
-
-    pub fn keyword_trim_end(&self, index: usize) -> Result<Form, Diagnostic> {
-        self.values[index]
-            .keyword_trim_end()
-            .ok_or_else(|| self.wrong(index, "a keyword"))
+    pub fn keyword_part(
+        &self,
+        index: usize,
+        read: fn(&Value) -> Option<Form>,
+    ) -> Result<Form, Diagnostic> {
+        let part = read(&self.values[index]).ok_or_else(|| self.wrong(index, "a keyword"))?;
+        self.charge(WorkMeter::text_work(
+            part.as_symbol().map_or(0, |symbol| symbol.name().len()),
+        ))?;
+        Ok(part)
     }
 
     pub fn field_keyword(&self, index: usize) -> Result<Form, Diagnostic> {
-        self.values[index]
+        let keyword = self.values[index]
             .field_keyword()
-            .ok_or_else(|| self.wrong(index, "a field name"))
+            .ok_or_else(|| self.wrong(index, "a field name"))?;
+        self.charge(WorkMeter::text_work(
+            keyword.as_symbol().map_or(0, |symbol| symbol.name().len()),
+        ))?;
+        Ok(keyword)
     }
 
     pub fn string(&self, index: usize) -> Result<&str, Diagnostic> {
         match self.atom(index, "a string")?.kind() {
-            FormKind::String(text) => Ok(text),
+            FormKind::String(text) => {
+                self.charge(WorkMeter::text_work(text.len()))?;
+                Ok(text)
+            }
             _ => Err(self.wrong(index, "a string")),
         }
     }
@@ -154,11 +183,11 @@ impl Arguments {
     fn wrong(&self, index: usize, expected: &str) -> Diagnostic {
         let position = index + 1;
         InterpretProblems::wrong_argument(
-            self.function,
+            self.site.function,
             position,
             expected,
             &self.values[index],
-            self.span,
+            self.site.span,
         )
     }
 }

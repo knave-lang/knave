@@ -5,7 +5,7 @@ use super::failure::FailCall;
 use crate::core::Declaration;
 use crate::diagnostic::{Diagnostic, SimilarName};
 use crate::interpret::arguments::Arguments;
-use crate::interpret::{CompileTimeHost, Value};
+use crate::interpret::{CompileTimeHost, Value, WorkMeter};
 use crate::reader::{Form, FormKind, Symbol};
 use crate::source::Span;
 
@@ -70,7 +70,9 @@ impl<'a> TextOperations<'a> {
 
     pub fn keyword_field(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
-        Ok(Value::Form(self.arguments.keyword_field(0)?))
+        Ok(Value::Form(
+            self.arguments.keyword_part(0, Value::keyword_field)?,
+        ))
     }
 
     pub fn field_keyword(&self) -> Result<Value, Diagnostic> {
@@ -80,7 +82,9 @@ impl<'a> TextOperations<'a> {
 
     pub fn keyword_trim_end(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
-        Ok(Value::Form(self.arguments.keyword_trim_end(0)?))
+        Ok(Value::Form(
+            self.arguments.keyword_part(0, Value::keyword_trim_end)?,
+        ))
     }
 
     pub fn make_symbol(&self) -> Result<Value, Diagnostic> {
@@ -133,11 +137,7 @@ impl<'a> TextOperations<'a> {
         self.arguments.expect_count(1)?;
         let term = self.arguments.form(0)?;
         let call = host.definition_call(self.arguments.symbol(0)?, term.span())?;
-        Forms::list(
-            call.into_iter().collect(),
-            self.call_site,
-            self.arguments.span(),
-        )
+        Forms::list(call.into_iter().collect(), self.call_site, self.arguments)
     }
 
     pub fn type_definition_call(
@@ -146,11 +146,7 @@ impl<'a> TextOperations<'a> {
     ) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let call = host.type_definition_call(self.arguments.symbol(0)?);
-        Forms::list(
-            call.into_iter().collect(),
-            self.call_site,
-            self.arguments.span(),
-        )
+        Forms::list(call.into_iter().collect(), self.call_site, self.arguments)
     }
 
     pub fn expand_call(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
@@ -159,7 +155,7 @@ impl<'a> TextOperations<'a> {
         Forms::list(
             expansion.into_iter().collect(),
             self.call_site,
-            self.arguments.span(),
+            self.arguments,
         )
     }
 
@@ -183,7 +179,7 @@ impl<'a> TextOperations<'a> {
         self.arguments.expect_count(2)?;
         let context = self.arguments.symbol(0)?;
         let notes = host.module_notes(context, self.arguments.symbol(1)?.name());
-        Forms::list(notes, self.call_site, self.arguments.span())
+        Forms::list(notes, self.call_site, self.arguments)
     }
 
     pub fn declare_definition(
@@ -205,6 +201,9 @@ impl<'a> TextOperations<'a> {
             .filter_map(Form::as_symbol)
             .map(|symbol| Rc::from(symbol.name()))
             .collect();
+        let candidate_bytes: usize = names.iter().map(|candidate| candidate.len()).sum();
+        self.arguments
+            .charge(name.len().saturating_mul(candidate_bytes))?;
         let closest = SimilarName::closest(name, &names);
         let found = candidates
             .iter()
@@ -212,15 +211,22 @@ impl<'a> TextOperations<'a> {
             .take(1)
             .cloned()
             .collect();
-        Forms::list(found, self.call_site, self.arguments.span())
+        Forms::list(found, self.call_site, self.arguments)
     }
 
     pub fn sorted_names(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let mut names = self.arguments.symbol_forms(0)?;
+        self.arguments.charge(WorkMeter::text_work(
+            names
+                .iter()
+                .filter_map(Self::written_name)
+                .map(str::len)
+                .sum(),
+        ))?;
         names.sort_by(|left, right| Self::written_name(left).cmp(&Self::written_name(right)));
         names.dedup_by(|later, earlier| Self::written_name(later) == Self::written_name(earlier));
-        Forms::list(names, self.call_site, self.arguments.span())
+        Forms::list(names, self.call_site, self.arguments)
     }
 
     fn written_name(form: &Form) -> Option<&str> {
@@ -235,17 +241,21 @@ impl<'a> TextOperations<'a> {
         self.arguments.expect_count(2)?;
         let left = self.arguments.value(0);
         let right = self.arguments.value(1);
-        let left_form = left
-            .to_form()
-            .map_err(|large| large.at(self.arguments.span()))?;
-        let right_form = right
-            .to_form()
-            .map_err(|large| large.at(self.arguments.span()))?;
-        let equal = match (left_form, right_form) {
-            (Some(left), Some(right)) => Self::forms_equal(&left, &right),
+        let equal = match (self.form_of(left)?, self.form_of(right)?) {
+            (Some(left), Some(right)) => self.forms_equal(&left, &right)?,
             _ => Self::plain_values_equal(left, right),
         };
         Ok(Value::Bool(equal))
+    }
+
+    fn form_of(&self, value: &Value) -> Result<Option<Form>, Diagnostic> {
+        let form = value
+            .to_form()
+            .map_err(|large| large.at(self.arguments.span()))?;
+        if let (Value::List(_), Some(built)) = (value, &form) {
+            self.arguments.charge(built.form_count())?;
+        }
+        Ok(form)
     }
 
     fn plain_values_equal(left: &Value, right: &Value) -> bool {
@@ -297,10 +307,6 @@ impl<'a> TextOperations<'a> {
         Ok(self.string_value(text.strip_prefix(prefix).unwrap_or(text).to_string()))
     }
 
-    fn template_escape(character: char) -> String {
-        format!("\\u{{{{{:x}}}}}", u32::from(character))
-    }
-
     fn escape(&self, braces: &[(char, &'static str); 2]) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let text = self.arguments.string(0)?;
@@ -313,7 +319,7 @@ impl<'a> TextOperations<'a> {
             {
                 Some((_, escape)) => escaped.push_str(escape),
                 None if character.is_control() => {
-                    escaped.push_str(&Self::template_escape(character))
+                    escaped.push_str(&format!("\\u{{{{{:x}}}}}", u32::from(character)))
                 }
                 None => escaped.push(character),
             }
@@ -321,19 +327,26 @@ impl<'a> TextOperations<'a> {
         Ok(self.string_value(escaped))
     }
 
-    fn forms_equal(left: &Form, right: &Form) -> bool {
+    fn forms_equal(&self, left: &Form, right: &Form) -> Result<bool, Diagnostic> {
+        self.arguments.charge(1)?;
         match (left.kind(), right.kind()) {
-            (FormKind::Symbol(left), FormKind::Symbol(right)) => left.name() == right.name(),
-            (FormKind::String(left), FormKind::String(right)) => left == right,
-            (FormKind::Number(left), FormKind::Number(right)) => left.value() == right.value(),
-            (FormKind::List(left), FormKind::List(right)) => {
-                left.len() == right.len()
-                    && left
-                        .iter()
-                        .zip(right)
-                        .all(|(left, right)| Self::forms_equal(left, right))
+            (FormKind::Symbol(left), FormKind::Symbol(right)) => {
+                self.arguments
+                    .charge(WorkMeter::text_work(left.name().len()))?;
+                Ok(left.name() == right.name())
             }
-            _ => false,
+            (FormKind::String(left), FormKind::String(right)) => {
+                self.arguments.charge(WorkMeter::text_work(left.len()))?;
+                Ok(left == right)
+            }
+            (FormKind::Number(left), FormKind::Number(right)) => Ok(left.value() == right.value()),
+            (FormKind::List(left), FormKind::List(right)) if left.len() == right.len() => left
+                .iter()
+                .zip(right)
+                .try_fold(true, |equal, (left, right)| {
+                    Ok(equal && self.forms_equal(left, right)?)
+                }),
+            _ => Ok(false),
         }
     }
 
@@ -345,12 +358,14 @@ impl<'a> TextOperations<'a> {
 
     fn part_text(&self, index: usize) -> Result<String, Diagnostic> {
         let form = self.arguments.form(index)?;
-        Ok(match form.kind() {
+        let text = match form.kind() {
             FormKind::Symbol(symbol) => symbol.name().to_string(),
             FormKind::String(text) => text.to_string(),
             FormKind::Number(number) => number.text().to_string(),
             FormKind::List(_) => form.to_string(),
-        })
+        };
+        self.arguments.charge(WorkMeter::text_work(text.len()))?;
+        Ok(text)
     }
 
     fn string_value(&self, text: String) -> Value {
@@ -361,8 +376,8 @@ impl<'a> TextOperations<'a> {
 #[cfg(test)]
 mod tests {
     use super::TextOperations;
-    use crate::interpret::Value;
-    use crate::interpret::arguments::Arguments;
+    use crate::interpret::arguments::{Arguments, BuiltinSite};
+    use crate::interpret::{StepBudget, Value, WorkMeter};
     use crate::reader::{Form, FormKind, Symbol};
     use crate::scope::{ScopeAllocator, ScopeSet};
     use crate::source::{SourceId, Span};
@@ -384,6 +399,18 @@ mod tests {
             Span::new(SourceId::new(0), 0..0)
         }
 
+        fn arguments(values: Vec<Value>) -> Arguments {
+            let site = BuiltinSite {
+                function: Self::FUNCTION,
+                span: Self::span(),
+            };
+            Arguments::new(
+                site,
+                values,
+                WorkMeter::new(StepBudget::unmetered(), Self::span()),
+            )
+        }
+
         fn scoped_symbol(&mut self, name: &str) -> Value {
             let mut scopes = ScopeSet::default();
             scopes.add(self.scopes.fresh());
@@ -392,13 +419,13 @@ mod tests {
         }
 
         fn equal(left: Value, right: Value) -> bool {
-            let arguments = Arguments::new(Self::FUNCTION, vec![left, right], Self::span());
+            let arguments = Self::arguments(vec![left, right]);
             let result = TextOperations::new(&arguments, Self::span()).value_eq();
             matches!(result, Ok(Value::Bool(true)))
         }
 
         fn name(symbol: &Value) -> Value {
-            let arguments = Arguments::new(Self::FUNCTION, vec![symbol.clone()], Self::span());
+            let arguments = Self::arguments(vec![symbol.clone()]);
             TextOperations::new(&arguments, Self::span())
                 .symbol_name()
                 .expect("a symbol has a name")

@@ -90,8 +90,8 @@ impl<'a> StringOperations<'a> {
 #[cfg(test)]
 mod tests {
     use super::StringOperations;
-    use crate::interpret::Value;
-    use crate::interpret::arguments::Arguments;
+    use crate::interpret::arguments::{Arguments, BuiltinSite};
+    use crate::interpret::{StepBudget, Value, WorkMeter};
     use crate::reader::{Form, FormKind};
     use crate::source::{SourceId, Span};
 
@@ -107,8 +107,16 @@ mod tests {
                 .iter()
                 .map(|text| Value::Form(Self::string(text)))
                 .collect();
+            let site = BuiltinSite {
+                function: Self::FUNCTION,
+                span: Self::span(),
+            };
             Self {
-                arguments: Arguments::new(Self::FUNCTION, values, Self::span()),
+                arguments: Arguments::new(
+                    site,
+                    values,
+                    WorkMeter::new(StepBudget::unmetered(), Self::span()),
+                ),
             }
         }
 

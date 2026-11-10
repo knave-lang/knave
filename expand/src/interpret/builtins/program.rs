@@ -60,7 +60,7 @@ impl<'a> ProgramOperations<'a> {
                 vec![form, self.count_form(end)]
             }),
             self.call_site,
-            self.arguments.span(),
+            self.arguments,
         )
     }
 
@@ -137,6 +137,6 @@ impl<'a> ModuleOperations<'a> {
             .into_iter()
             .map(|symbol| Form::new(FormKind::Symbol(symbol), self.call_site))
             .collect();
-        Forms::list(forms, self.call_site, self.arguments.span())
+        Forms::list(forms, self.call_site, self.arguments)
     }
 }

@@ -190,6 +190,10 @@ impl Env {
         })))
     }
 
+    pub fn frame_count(&self) -> usize {
+        std::iter::successors(self.0.as_deref(), |frame| frame.parent.0.as_deref()).count()
+    }
+
     fn is_sole_owner(&self) -> bool {
         self.0
             .as_ref()

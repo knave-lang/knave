@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_exhaustive_sibling_variants.knv
+---
+(derive side clone copy partial-eq eq hash show)
+(derive move clone copy partial-eq eq hash show)
+(type cost (fn ((ref move)) i64))

@@ -85,12 +85,10 @@ impl TestModuleFiles {
     fn lexically_resolved(path: &Path) -> PathBuf {
         let mut resolved = PathBuf::new();
         for component in path.components() {
-            match component {
-                Component::CurDir => {}
-                Component::ParentDir => {
-                    resolved.pop();
-                }
-                other => resolved.push(other),
+            if component == Component::ParentDir {
+                resolved.pop();
+            } else {
+                resolved.push(component);
             }
         }
         resolved

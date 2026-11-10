@@ -43,6 +43,19 @@ impl TestEntries {
 }
 
 impl Rooting {
+    const UNNAMABLE: [char; 4] = ['(', ')', '"', ';'];
+
+    fn stays_inside(self) -> bool {
+        matches!(self, Self::Tasks)
+    }
+
+    fn refuses(self, module: &str) -> bool {
+        self.stays_inside()
+            && module
+                .chars()
+                .any(|character| character.is_whitespace() || Self::UNNAMABLE.contains(&character))
+    }
+
     fn entry_name(self) -> &'static str {
         match self {
             Self::Tests => EntryTree::TESTS_ENTRY,
@@ -57,7 +70,7 @@ impl Rooting {
 
 impl EntryTree {
     const TESTS_ENTRY: &'static str = "<tests>";
-    const TASKS_ENTRY: &'static str = "<tasks>";
+    pub const TASKS_ENTRY: &'static str = "<tasks>";
     const COMMAND: &'static str = "test";
 
     fn refuse_crates(&self, terminal: &Terminal) -> Result<(), ExitStatus> {
@@ -131,7 +144,20 @@ impl EntryTree {
         self.collect_modules(&self.path, &mut modules)
             .map_err(|error| Terminal::report_unreadable(&self.path, &error))?;
         modules.sort();
-        Ok(modules)
+        match modules.iter().find(|module| self.rooting.refuses(module)) {
+            Some(module) => Err(self.report_unnamable(module)),
+            None => Ok(modules),
+        }
+    }
+
+    fn report_unnamable(&self, module: &str) -> ExitStatus {
+        let file = self.path.join(format!("{module}.{}", Language::EXTENSION));
+        StandardError::write_line(format_args!(
+            "error: `{}` cannot be a module, because a module path cannot hold a space, a parenthesis, a quote or a semicolon\n\
+             help: rename the file",
+            file.display()
+        ));
+        ExitStatus::UsageError
     }
 
     fn load_directory(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
@@ -170,10 +196,17 @@ impl EntryTree {
     }
 
     fn collect_subdirectory(&self, directory: &Path, modules: &mut Vec<String>) -> io::Result<()> {
-        if self.skipped.is_skipped(directory) {
+        if self.skipped.is_skipped(directory) || self.leaves_the_tree(directory) {
             return Ok(());
         }
         self.collect_modules(directory, modules)
+    }
+
+    fn leaves_the_tree(&self, directory: &Path) -> bool {
+        let inside = ProgramFile::canonical(directory)
+            .zip(ProgramFile::canonical(&self.path))
+            .is_some_and(|(directory, tree)| directory.starts_with(tree));
+        self.rooting.stays_inside() && !inside
     }
 
     fn module_path(&self, file: &Path) -> Option<String> {

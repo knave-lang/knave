@@ -25,9 +25,24 @@ fn main() {
         let flags: Vec<&str> = "times ".split_whitespace().collect();
         let switches: Vec<&str> = "loud ".split_whitespace().collect();
         let usage: &str = "greet <who> [--times 1] [--loud]";
-        let documentation: String = "Greets someone a few times."
-            .lines()
-            .map(str::trim)
+        let written: Vec<&str> = "Greets someone a few times.".lines().collect();
+        let margin = written
+            .iter()
+            .skip(1)
+            .filter(|line| !line.trim().is_empty())
+            .map(|line| line.len() - line.trim_start().len())
+            .min()
+            .unwrap_or(0);
+        let documentation: String = written
+            .iter()
+            .enumerate()
+            .map(|(index, line)| {
+                if index == 0 {
+                    line.trim()
+                } else {
+                    line.get(margin..).unwrap_or_else(|| line.trim())
+                }
+            })
             .collect::<Vec<_>>()
             .join("\n");
         let mut values: Vec<Option<String>> =

@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::rc::Rc;
 
+use super::distinct_output::DistinctOutput;
 use super::exit_status::ExitStatus;
 use super::finished_program::FinishedProgram;
 use super::located_project::LocatedProject;
@@ -31,6 +32,8 @@ impl TaskCommand {
     }
 
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
+        let distinct = DistinctOutput::new(terminal.diagnostic_output());
+        terminal.report_diagnostics_to(Rc::new(distinct));
         match self.execute(terminal) {
             Ok(status) | Err(status) => status,
         }

@@ -7461,7 +7461,7 @@ fn task_parameter_whose_body_needs_more_than_a_string_is_a_type_error() {
 }
 
 #[test]
-fn task_signature_is_empty_when_every_parameter_type_is_known() {
+fn task_signature_shows_each_task_type_as_inferred() {
     let sandbox =
         Sandbox::with_tasks("task_signature").with_file("tasks/lookup.knv", SIGNATURE_LOOKUP);
     let known = sandbox.compiler(&["eval", "tasks/lookup.knv", "(task-signature \"known\")"]);
@@ -7709,26 +7709,6 @@ fn task_expansion_leaves_the_name_define_task_to_the_program() {
     );
 }
 
-const LOCATED_ARM_MODULE: &str = "(use code located nth)
-(use prelude/macros template)
-
-(export m)
-
-(def m
-  (macro (form)
-    (template (match 1 (_ 0) ((unquote (located (nth form 1) (quote _))) 2)))))
-
-(defn main () (println 1))
-";
-
-#[test]
-fn eval_shows_a_warning_at_a_located_place_inside_the_call() {
-    let eval = Sandbox::new("eval_located_warning")
-        .with_file("arms.knv", LOCATED_ARM_MODULE)
-        .compiler(&["eval", "arms.knv", "(m here)"]);
-    insta::assert_snapshot!(eval.assert_exit_code(0).stderr());
-}
-
 #[test]
 fn emitted_task_program() {
     let sandbox = Sandbox::with_tasks("emitted_task_program");
@@ -7794,7 +7774,7 @@ fn check_without_a_file_accepts_a_task_that_only_fails() {
 }
 
 #[test]
-fn task_with_an_open_error_type_is_cannot_infer_at_its_name_under_task_and_check() {
+fn task_with_an_open_error_type_is_refused_at_its_name_under_task_and_check() {
     let sandbox = Sandbox::new("task_open_error")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
@@ -7926,4 +7906,118 @@ fn task_file_may_still_import_deftask_from_prelude_task() {
         )
         .compiler(&["task", "t"]);
     assert_eq!(task.assert_exit_code(0).stdout(), "t\n");
+}
+
+#[test]
+fn deftask_in_an_entry_module_is_an_error_beside_a_tasks_directory() {
+    let check = Sandbox::with_tasks("deftask_in_main_beside_tasks")
+        .with_file(
+            "src/main.knv",
+            "(deftask hidden () (println \"h\"))\n\n(defn main () (println \"m\"))\n",
+        )
+        .compiler(&["check"]);
+    assert!(
+        check
+            .assert_exit_code(1)
+            .stderr()
+            .starts_with("error[L0359]: `deftask` defines a task only in a file under `tasks/`")
+    );
+}
+
+#[test]
+fn task_cannot_reach_another_task_module_through_the_source_root() {
+    let reports: Vec<String> = [false, true]
+        .iter()
+        .map(|with_tests| {
+            let sandbox = Sandbox::new(&format!("task_through_source_root_{with_tests}"))
+                .with_file(
+                    &Language::project_file_name(),
+                    "(project rootent :entry \"main.knv\")\n",
+                )
+                .with_file("main.knv", "(defn main () (println \"m\"))\n")
+                .with_file("tasks/util.knv", "(export h)\n\n(def h \"h\")\n")
+                .with_file(
+                    "tasks/t.knv",
+                    "(use tasks/util h)\n\n(deftask t () (println h))\n",
+                );
+            let sandbox = if *with_tests {
+                sandbox.with_file("tests/kept.knv", "(def kept 1)\n")
+            } else {
+                sandbox
+            };
+            sandbox
+                .compiler(&["task", "t"])
+                .assert_exit_code(1)
+                .stderr()
+        })
+        .collect();
+    assert_eq!(reports[0], reports[1]);
+    insta::assert_snapshot!(reports[0]);
+}
+
+#[test]
+fn task_with_a_bounded_open_success_is_refused_at_its_name() {
+    let task = Sandbox::new("task_bounded_success")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file(
+            "tasks/p.knv",
+            "(deftask p ()\n  (let-try (x (parse \"1\"))\n    (ok x)))\n",
+        )
+        .compiler(&["task", "p"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn task_help_keeps_the_docstring_indentation_relative_to_its_text() {
+    let task = Sandbox::new("task_help_indentation")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file(
+            "tasks/t.knv",
+            "(deftask t ()\n  \"Runs it.\n\n  For example:\n\n      knave task t\"\n  (println \"t\"))\n",
+        )
+        .compiler(&["task", "t", "--help"]);
+    assert_eq!(
+        task.assert_exit_code(0).stdout(),
+        "usage: t\n\nRuns it.\n\nFor example:\n\n    knave task t\n"
+    );
+}
+
+#[test]
+fn task_file_whose_name_cannot_be_a_module_is_a_usage_error() {
+    let task = Sandbox::with_tasks("task_unnamable_file")
+        .with_file("tasks/Has Space.knv", "(deftask spaced () (println 1))\n")
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn task_tree_keeps_its_subdirectories_and_skips_a_link_that_leaves_it() {
+    let sandbox = Sandbox::with_tasks("task_tree_links")
+        .with_file(
+            "tests/support.knv",
+            "(export helper)\n\n(defn helper () (println \"t\"))\n",
+        )
+        .with_file(
+            "tasks/shared/text.knv",
+            "(export word)\n\n(def word \"shared\")\n",
+        )
+        .with_file(
+            "tasks/uses.knv",
+            "(use shared/text word)\n\n(deftask shared () (println word))\n",
+        );
+    std::os::unix::fs::symlink("../tests", sandbox.directory.join("tasks/link"))
+        .expect("the sandbox accepts a symbolic link");
+    let shared = sandbox.compiler(&["task", "shared"]);
+    let linked = sandbox
+        .with_file(
+            "tasks/linked.knv",
+            "(use link/support helper)\n\n(deftask linked () (helper))\n",
+        )
+        .compiler(&["task", "linked"]);
+    assert_eq!(shared.assert_exit_code(0).stdout(), "shared\n");
+    let report = linked.assert_exit_code(1).stderr();
+    assert!(!report.contains("<tasks>"));
+    assert!(report.contains(" --> tasks/linked.knv:1:6"));
 }

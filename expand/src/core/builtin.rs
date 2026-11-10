@@ -59,6 +59,7 @@ pub enum Builtin {
     DeclareMacroDefinition,
     FormLocation,
     InTasksDirectory,
+    PinnedAt,
     ProgramModules,
     ModuleExports,
     ModuleDefinitions,
@@ -71,7 +72,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 68] = [
+    const NAMES: [(Builtin, &'static str); 69] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -131,6 +132,7 @@ impl Builtin {
         (Builtin::DeclareMacroDefinition, "declare-macro-definition"),
         (Builtin::FormLocation, "form-location"),
         (Builtin::InTasksDirectory, "in-tasks-directory?"),
+        (Builtin::PinnedAt, "pinned-at"),
         (Builtin::ProgramModules, "program-modules"),
         (Builtin::ModuleExports, "module-exports"),
         (Builtin::ModuleDefinitions, "module-definitions"),

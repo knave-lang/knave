@@ -21,7 +21,7 @@ impl TaskFailure {
 
     pub fn compiler_missing(workspace: &Path) -> Self {
         Self::new(format!(
-            "the optimized build of `{}` produced no binary of its root package",
+            "the benchmark build of `{}` produced no binary of its root package",
             workspace.display()
         ))
     }

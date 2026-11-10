@@ -95,7 +95,7 @@ mod tests {
 
         fn command() -> Command {
             let run = CounterRun::new(
-                PathBuf::from("/checkout/target/local/compiler"),
+                PathBuf::from("/checkout/target/benchmark/compiler"),
                 "ledger-lang".to_string(),
             );
             run.command(Path::new(Self::PROGRAM))

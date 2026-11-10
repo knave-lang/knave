@@ -1,3 +1,4 @@
+mod benchmark_profile;
 mod callgrind;
 mod change;
 mod comparison;

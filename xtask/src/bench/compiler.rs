@@ -4,6 +4,7 @@ use std::process::Command;
 
 use serde_json::Value;
 
+use super::benchmark_profile::BenchmarkProfile;
 use crate::cargo::Cargo;
 use crate::failure::TaskFailure;
 use crate::workspace::CargoWorkspace;
@@ -18,6 +19,7 @@ pub struct CompilerBuild<'a> {
     workspace: &'a Path,
     target_directory: &'a Path,
     variant: BuildVariant,
+    profile: BenchmarkProfile,
 }
 
 #[derive(Clone, Copy)]
@@ -45,17 +47,8 @@ impl BuildVariant {
 }
 
 impl<'a> CompilerBuild<'a> {
-    const PROFILE_BUILD: [&'static str; 5] = [
-        "build",
-        "--profile",
-        "local",
-        "--quiet",
-        "--message-format=json",
-    ];
-    const PROFILE_DEFINITION: [&'static str; 2] =
-        ["--config", "profile.local.inherits=\"release\""];
-    const UNPARTITIONED_CODEGEN: [&'static str; 2] = ["--config", "profile.local.codegen-units=1"];
-    const PROFILE_CLEAN: [&'static str; 4] = ["clean", "--profile", "local", "--quiet"];
+    const BUILD: [&'static str; 3] = ["build", "--quiet", "--message-format=json"];
+    const CLEAN: [&'static str; 2] = ["clean", "--quiet"];
     const PACKAGE_FLAG: &'static str = "--package";
     const TARGET_DIRECTORY_FLAG: &'static str = "--target-dir";
     const MANIFEST: &'static str = "Cargo.toml";
@@ -65,6 +58,7 @@ impl<'a> CompilerBuild<'a> {
             workspace,
             target_directory,
             variant: BuildVariant::Plain,
+            profile: BenchmarkProfile,
         }
     }
 
@@ -102,18 +96,16 @@ impl<'a> CompilerBuild<'a> {
     fn preparation(&self, package_names: &BTreeSet<String>) -> Option<Command> {
         self.variant
             .cleans_first()
-            .then(|| self.profile_clean(package_names))
+            .then(|| self.benchmark_clean(package_names))
     }
 
-    fn profile_clean(&self, package_names: &BTreeSet<String>) -> Command {
+    fn benchmark_clean(&self, package_names: &BTreeSet<String>) -> Command {
         let packages = package_names
             .iter()
             .flat_map(|name| [Self::PACKAGE_FLAG, name.as_str()]);
-        let arguments = Self::PROFILE_CLEAN
-            .into_iter()
-            .chain(Self::PROFILE_DEFINITION)
-            .chain(packages);
-        self.cargo_in_target(arguments)
+        let mut clean = self.benchmark_cargo(Self::CLEAN);
+        clean.args(packages);
+        clean
     }
 
     fn build_compiler(&self) -> Result<String, TaskFailure> {
@@ -125,18 +117,16 @@ impl<'a> CompilerBuild<'a> {
     }
 
     fn compiler_build(&self) -> Command {
-        let arguments = Self::PROFILE_BUILD
-            .into_iter()
-            .chain(Self::PROFILE_DEFINITION)
-            .chain(Self::UNPARTITIONED_CODEGEN)
-            .chain(self.variant.features().iter().copied());
-        self.cargo_in_target(arguments)
+        let mut build = self.benchmark_cargo(Self::BUILD);
+        build.args(self.variant.features());
+        build
     }
 
-    fn cargo_in_target<'b>(&self, arguments: impl IntoIterator<Item = &'b str>) -> Command {
+    fn benchmark_cargo<'b>(&self, arguments: impl IntoIterator<Item = &'b str>) -> Command {
         let mut command = self.cargo_in_checkout();
         command
             .args(arguments)
+            .args(self.profile.cargo_arguments())
             .arg(Self::TARGET_DIRECTORY_FLAG)
             .arg(self.target_directory);
         command
@@ -198,13 +188,46 @@ mod tests {
 
     const MESSAGES: &str = include_str!("../../fixtures/bench/cargo-build.json");
 
+    struct ProfileArguments {
+        arguments: Vec<String>,
+    }
+
+    impl ProfileArguments {
+        fn new(command: &Command) -> Self {
+            let arguments = command
+                .get_args()
+                .map(|argument| argument.to_string_lossy().into_owned())
+                .collect();
+            Self { arguments }
+        }
+
+        fn assert_selects_the_defined_profile(&self) {
+            let selected: BTreeSet<_> = self.values_of("--profile").collect();
+            let defined: BTreeSet<_> = self
+                .values_of("--config")
+                .filter_map(|setting| setting.strip_prefix("profile."))
+                .filter_map(|setting| setting.split_once('.'))
+                .map(|(profile, _)| profile)
+                .collect();
+            assert_eq!(selected.len(), 1);
+            assert_eq!(selected, defined);
+        }
+
+        fn values_of<'a>(&'a self, flag: &'a str) -> impl Iterator<Item = &'a str> {
+            self.arguments
+                .windows(2)
+                .filter(move |pair| pair[0] == flag)
+                .map(|pair| pair[1].as_str())
+        }
+    }
+
     #[test]
     fn takes_the_binary_of_the_checkout_package() {
         let executable = CompilerBuild::new(Path::new("/checkout"), Path::new("/checkout/target"))
             .read_executable(MESSAGES);
         assert_eq!(
             executable,
-            Some(PathBuf::from("/checkout/target/local/ledger-lang"))
+            Some(PathBuf::from("/checkout/target/benchmark/ledger-lang"))
         );
     }
 
@@ -212,7 +235,7 @@ mod tests {
     fn cleans_every_package_of_the_workspace() {
         let package_names = WorkspaceFixture::workspace().package_names();
         let clean = CompilerBuild::new(Path::new("/checkout"), Path::new("/checkout/target"))
-            .profile_clean(&package_names);
+            .benchmark_clean(&package_names);
         let arguments: Vec<_> = clean.get_args().collect();
         for package in ["ledger-lang", "ledger-syntax"] {
             assert!(
@@ -224,40 +247,18 @@ mod tests {
     }
 
     #[test]
-    fn builds_the_compiler_in_one_codegen_unit() {
+    fn builds_the_profile_that_its_configuration_defines() {
         let build = CompilerBuild::new(Path::new("/checkout"), Path::new("/checkout/target"))
             .compiler_build();
-        let arguments: Vec<_> = build.get_args().collect();
-        assert!(
-            arguments
-                .windows(2)
-                .any(|pair| pair == ["--config", "profile.local.codegen-units=1"])
-        );
+        ProfileArguments::new(&build).assert_selects_the_defined_profile();
     }
 
     #[test]
-    fn defines_the_profile_for_a_build_of_a_checkout_without_it() {
-        let build = CompilerBuild::new(Path::new("/checkout"), Path::new("/checkout/target"))
-            .compiler_build();
-        let arguments: Vec<_> = build.get_args().collect();
-        assert!(
-            arguments
-                .windows(2)
-                .any(|pair| pair == ["--config", "profile.local.inherits=\"release\""])
-        );
-    }
-
-    #[test]
-    fn defines_the_profile_for_a_clean_of_a_checkout_without_it() {
+    fn cleans_the_profile_that_its_configuration_defines() {
         let package_names = WorkspaceFixture::workspace().package_names();
         let clean = CompilerBuild::new(Path::new("/checkout"), Path::new("/checkout/target"))
-            .profile_clean(&package_names);
-        let arguments: Vec<_> = clean.get_args().collect();
-        assert!(
-            arguments
-                .windows(2)
-                .any(|pair| pair == ["--config", "profile.local.inherits=\"release\""])
-        );
+            .benchmark_clean(&package_names);
+        ProfileArguments::new(&clean).assert_selects_the_defined_profile();
     }
 
     #[test]

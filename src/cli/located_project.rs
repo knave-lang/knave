@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use super::crate_section::CrateSection;
 use super::exit_status::ExitStatus;
 use super::library_walk::LibraryWalk;
 use super::program_file::ProgramFile;
@@ -224,9 +225,9 @@ impl LocatedProject {
         format!("{:08x}", hash & Self::SHORT_HASH_MASK)
     }
 
-    pub fn own_crate(&self, name: &str) -> Option<&CrateDependency> {
-        self.project
-            .dependencies
+    pub fn own_crate(&self, section: CrateSection, name: &str) -> Option<&CrateDependency> {
+        section
+            .listed(&self.project)
             .iter()
             .find(|dependency| dependency.name == name)
     }

@@ -6781,6 +6781,65 @@ fn remove_deletes_the_entry_and_the_emptied_section() {
 }
 
 #[test]
+fn add_with_dev_writes_the_crate_into_dev_dependencies() {
+    let sandbox = Sandbox::new("add_dev_crate").with_fake_registry();
+    sandbox
+        .compiler_with_registry(&["add", "--dev", "fake-json", "--features", "std"])
+        .assert_silent_success();
+    insta::assert_snapshot!(sandbox.project_file_text());
+}
+
+#[test]
+fn add_with_dev_refuses_a_path_crate_listed_in_dev_dependencies() {
+    let sandbox = Sandbox::new("add_dev_path_crate")
+        .with_fake_registry()
+        .with_file(
+            &Language::project_file_name(),
+            "(project demo (dev-dependencies (fake-json :path \"../fake-json\")))\n",
+        );
+    let stderr = sandbox
+        .compiler_with_registry(&["add", "--dev", "fake-json"])
+        .assert_exit_code(2)
+        .stderr();
+    assert_eq!(
+        stderr,
+        "error: `fake-json` is listed with `:path`\nhelp: run `knave remove --dev fake-json` first to switch it to a version\n"
+    );
+}
+
+#[test]
+fn remove_with_dev_leaves_the_dependencies_alone() {
+    let sandbox = Sandbox::new("remove_dev_crate").with_fake_registry();
+    for arguments in [
+        ["add", "fake-json"].as_slice(),
+        &["add", "--dev", "fake-json"],
+    ] {
+        sandbox
+            .compiler_with_registry(arguments)
+            .assert_silent_success();
+    }
+    sandbox
+        .compiler(&["remove", "--dev", "fake-json"])
+        .assert_silent_success();
+    let text = sandbox.project_file_text();
+    assert!(text.contains("(dependencies (fake-json"), "{text}");
+    assert!(!text.contains("dev-dependencies"), "{text}");
+}
+
+#[test]
+fn remove_with_dev_of_an_unlisted_crate_names_dev_dependencies() {
+    let sandbox = Sandbox::new("remove_dev_unlisted").with_fake_registry();
+    let stderr = sandbox
+        .compiler(&["remove", "--dev", "fake-json"])
+        .assert_exit_code(2)
+        .stderr();
+    assert_eq!(
+        stderr,
+        "error: the project's `dev-dependencies` do not list `fake-json`\n"
+    );
+}
+
+#[test]
 fn remove_of_a_crate_the_project_does_not_list_is_a_usage_error() {
     let sandbox = Sandbox::new("remove_unlisted").with_fake_registry();
     let remove = sandbox.compiler(&["remove", "fake-json"]);

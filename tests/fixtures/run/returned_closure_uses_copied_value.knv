@@ -6,7 +6,6 @@
   (set! x (+ x 1))
   (local value x)
   (set! x (+ x 10))
-  (local pad 0)
   (fn () value))
 
 (defn shown-adder! (x)
@@ -14,7 +13,6 @@
   (local value x)
   (println value)
   (set! x (+ x 1))
-  (local pad 0)
   (fn (y) (+ y value)))
 
 (defn branch-adder! (x up)
@@ -23,7 +21,6 @@
   (if up
     (set! x (+ x 5))
     (set! x (- x 5)))
-  (local pad 0)
   (fn (y) (+ y value)))
 
 (defn bump! (n) (set! n (+ n 7)))
@@ -32,7 +29,6 @@
   (set! x (+ x 1))
   (local value x)
   (bump! x)
-  (local pad 0)
   (fn (y) (+ y value)))
 
 (defn main ()

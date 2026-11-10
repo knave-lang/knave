@@ -1,6 +1,5 @@
 (defn reader! (x items)
   (set! x (+ x 1))
-  (local pad 0)
   (fn () (count (iter items))))
 
 (defn main ()

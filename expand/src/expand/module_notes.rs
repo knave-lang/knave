@@ -14,6 +14,12 @@ pub struct ModuleNotes {
 #[derive(Clone, Copy)]
 pub struct NotesCheckpoint(usize);
 
+impl NotesCheckpoint {
+    pub fn notes_added(self) -> usize {
+        self.0
+    }
+}
+
 impl ModuleNotes {
     pub fn add(&mut self, module: ModuleId, key: &str, note: Form) {
         let notes_key = (module, key.to_string());

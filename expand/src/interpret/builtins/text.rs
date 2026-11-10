@@ -2,10 +2,11 @@ use std::rc::Rc;
 
 use super::Forms;
 use super::failure::FailCall;
+use super::joined_parts::JoinedParts;
 use crate::core::Declaration;
 use crate::diagnostic::{Diagnostic, SimilarName};
 use crate::interpret::arguments::Arguments;
-use crate::interpret::{CompileTimeHost, StepBudget, Value, WorkMeter};
+use crate::interpret::{BuildLimit, CompileTimeHost, HeldNotes, StepBudget, Value, WorkMeter};
 use crate::reader::{Form, FormKind, Symbol};
 use crate::source::Span;
 
@@ -52,7 +53,7 @@ impl<'a> TextOperations<'a> {
     pub fn symbol_name(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let name = self.arguments.symbol(0)?.name().to_string();
-        Ok(self.string_value(name))
+        self.string_value(name)
     }
 
     pub fn is_keyword(&self) -> Result<Value, Diagnostic> {
@@ -65,7 +66,7 @@ impl<'a> TextOperations<'a> {
     pub fn keyword_name(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let name = self.arguments.keyword_name(0)?.to_string();
-        Ok(self.string_value(name))
+        self.string_value(name)
     }
 
     pub fn keyword_field(&self) -> Result<Value, Diagnostic> {
@@ -90,7 +91,7 @@ impl<'a> TextOperations<'a> {
     pub fn make_symbol(&self) -> Result<Value, Diagnostic> {
         self.expect_symbol_arguments()?;
         let context = self.arguments.symbol(0)?;
-        let name = self.joined_parts(1)?;
+        let name = JoinedParts::new(self.arguments).from(1)?;
         let symbol = Symbol::with_scopes(name, context.scopes().clone());
         Ok(Value::Form(Form::new(
             FormKind::Symbol(symbol),
@@ -99,7 +100,7 @@ impl<'a> TextOperations<'a> {
     }
 
     pub fn make_string(&self) -> Result<Value, Diagnostic> {
-        Ok(self.string_value(self.joined_parts(0)?))
+        self.string_value(JoinedParts::new(self.arguments).from(0)?)
     }
 
     pub fn same_binding(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
@@ -119,7 +120,11 @@ impl<'a> TextOperations<'a> {
         self.expect_symbol_arguments()?;
         let term = self.arguments.form(0)?;
         let context = self.arguments.symbol(0)?;
-        let symbol = host.definition_symbol(context, self.joined_parts(1)?, term.span())?;
+        let symbol = host.definition_symbol(
+            context,
+            JoinedParts::new(self.arguments).from(1)?,
+            term.span(),
+        )?;
         Ok(self.symbol_value(symbol))
     }
 
@@ -129,7 +134,7 @@ impl<'a> TextOperations<'a> {
     ) -> Result<Value, Diagnostic> {
         self.expect_symbol_arguments()?;
         let term = self.arguments.symbol(0)?;
-        let symbol = host.type_definition_symbol(term, self.joined_parts(1)?);
+        let symbol = host.type_definition_symbol(term, JoinedParts::new(self.arguments).from(1)?);
         Ok(self.symbol_value(symbol))
     }
 
@@ -174,6 +179,7 @@ impl<'a> TextOperations<'a> {
 
     pub fn add_module_note(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
+        BuildLimit::of(self.arguments).check(HeldNotes(host.module_note_count() + 1))?;
         host.add_module_note(self.arguments.symbol(0)?.name(), self.arguments.form(1)?);
         Ok(Value::Unit)
     }
@@ -290,7 +296,7 @@ impl<'a> TextOperations<'a> {
                 _ => escaped.push(character),
             }
         }
-        Ok(self.string_value(escaped))
+        self.string_value(escaped)
     }
 
     pub fn escape_format(&self) -> Result<Value, Diagnostic> {
@@ -301,14 +307,14 @@ impl<'a> TextOperations<'a> {
         self.arguments.expect_count(2)?;
         let text = self.arguments.string(0)?;
         let suffix = self.arguments.string(1)?;
-        Ok(self.string_value(text.strip_suffix(suffix).unwrap_or(text).to_string()))
+        self.string_value(text.strip_suffix(suffix).unwrap_or(text).to_string())
     }
 
     pub fn string_strip_prefix(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
         let text = self.arguments.string(0)?;
         let prefix = self.arguments.string(1)?;
-        Ok(self.string_value(text.strip_prefix(prefix).unwrap_or(text).to_string()))
+        self.string_value(text.strip_prefix(prefix).unwrap_or(text).to_string())
     }
 
     fn escape(&self, braces: &[(char, &'static str); 2]) -> Result<Value, Diagnostic> {
@@ -328,7 +334,7 @@ impl<'a> TextOperations<'a> {
                 None => escaped.push(character),
             }
         }
-        Ok(self.string_value(escaped))
+        self.string_value(escaped)
     }
 
     fn forms_equal(&self, left: &Form, right: &Form) -> Result<bool, Diagnostic> {
@@ -359,26 +365,12 @@ impl<'a> TextOperations<'a> {
         Ok(true)
     }
 
-    fn joined_parts(&self, start: usize) -> Result<String, Diagnostic> {
-        (start..self.arguments.values().len())
-            .map(|index| self.part_text(index))
-            .collect()
-    }
-
-    fn part_text(&self, index: usize) -> Result<String, Diagnostic> {
-        let form = self.arguments.form(index)?;
-        let text = match form.kind() {
-            FormKind::Symbol(symbol) => symbol.name().to_string(),
-            FormKind::String(text) => text.to_string(),
-            FormKind::Number(number) => number.text().to_string(),
-            FormKind::List(_) => form.to_string(),
-        };
-        self.arguments.charge(WorkMeter::text_work(text.len()))?;
-        Ok(text)
-    }
-
-    fn string_value(&self, text: String) -> Value {
-        Value::Form(Form::new(FormKind::String(text.into()), self.call_site))
+    fn string_value(&self, text: String) -> Result<Value, Diagnostic> {
+        let text = BuildLimit::of(self.arguments).check(text)?;
+        Ok(Value::Form(Form::new(
+            FormKind::String(text.into()),
+            self.call_site,
+        )))
     }
 }
 

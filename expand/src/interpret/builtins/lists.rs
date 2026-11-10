@@ -4,7 +4,7 @@ use super::Forms;
 use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::Arguments;
 use crate::interpret::problems::InterpretProblems;
-use crate::interpret::{CodeList, NestedTooDeep, Value};
+use crate::interpret::{BuildLimit, CodeList, NestedTooDeep, Value};
 use crate::source::Span;
 
 pub struct ListOperations<'a> {
@@ -92,8 +92,9 @@ impl<'a> ListOperations<'a> {
     }
 
     fn built(&self, list: Result<CodeList, NestedTooDeep>) -> Result<Value, Diagnostic> {
-        list.map(Value::List)
-            .map_err(|deep| deep.at(self.arguments.span()))
+        let limit = BuildLimit::of(self.arguments);
+        let list = list.map_err(|deep| deep.at(limit.span()))?;
+        Ok(Value::List(limit.check(list)?))
     }
 
     fn item(&self, items: &CodeList, index: usize) -> Result<Value, Diagnostic> {

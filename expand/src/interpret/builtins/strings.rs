@@ -1,8 +1,9 @@
 use super::Forms;
 use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::Arguments;
+use crate::interpret::code_list::ListSize;
 use crate::interpret::problems::InterpretProblems;
-use crate::interpret::{CodeList, Value};
+use crate::interpret::{BuildLimit, CodeList, PlannedList, Value};
 use crate::reader::{Form, FormKind};
 use crate::source::Span;
 
@@ -23,27 +24,30 @@ impl<'a> StringOperations<'a> {
 
     pub fn lines(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
-        let lines = self
-            .arguments
-            .string(0)?
+        let text = self.arguments.string(0)?;
+        let limit = BuildLimit::of(self.arguments);
+        let line_count = text.matches(Self::LINE_BREAK).count() + 1;
+        limit.check(PlannedList(ListSize::EMPTY + line_count))?;
+        self.arguments.charge(line_count)?;
+        let lines = text
             .split(Self::LINE_BREAK)
             .map(|line| self.string_value(line.to_string()))
-            .collect();
+            .collect::<Result<_, _>>()?;
         CodeList::new(lines, self.call_site)
             .map(Value::List)
-            .map_err(|deep| deep.at(self.arguments.span()))
+            .map_err(|deep| deep.at(limit.span()))
     }
 
     pub fn trim_start(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let text = self.arguments.string(0)?;
-        Ok(self.string_value(text.trim_start().to_string()))
+        self.string_value(text.trim_start().to_string())
     }
 
     pub fn trim_end(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let text = self.arguments.string(0)?;
-        Ok(self.string_value(text.trim_end().to_string()))
+        self.string_value(text.trim_end().to_string())
     }
 
     pub fn length(&self) -> Result<Value, Diagnostic> {
@@ -57,12 +61,12 @@ impl<'a> StringOperations<'a> {
         let text = self.arguments.string(0)?;
         let count = self.arguments.index(1)?;
         let start = self.char_boundary(text, count)?;
-        Ok(self.string_value(text[start..].to_string()))
+        self.string_value(text[start..].to_string())
     }
 
     pub fn lowercase(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
-        Ok(self.string_value(self.arguments.string(0)?.to_lowercase()))
+        self.string_value(self.arguments.string(0)?.to_lowercase())
     }
 
     pub fn contains(&self) -> Result<Value, Diagnostic> {
@@ -82,8 +86,12 @@ impl<'a> StringOperations<'a> {
             })
     }
 
-    fn string_value(&self, text: String) -> Value {
-        Value::Form(Form::new(FormKind::String(text.into()), self.call_site))
+    fn string_value(&self, text: String) -> Result<Value, Diagnostic> {
+        let text = BuildLimit::of(self.arguments).check(text)?;
+        Ok(Value::Form(Form::new(
+            FormKind::String(text.into()),
+            self.call_site,
+        )))
     }
 }
 

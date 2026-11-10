@@ -19,7 +19,7 @@
   (template (println (splice (doubled (list (quote (past-the-limit)))
                                       6)))))
 
-(defmacro huge () (nest (list 0) 40))
+(defmacro huge () (nest (list 0) 20))
 
 (def ran
   (macro (form)

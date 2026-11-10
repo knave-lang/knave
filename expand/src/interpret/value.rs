@@ -76,6 +76,7 @@ impl Value {
         self.as_code_list().is_some()
     }
 
+    #[inline]
     pub fn as_code_list(&self) -> Option<CodeList> {
         match self {
             Value::Form(form) => CodeList::of_form(form),

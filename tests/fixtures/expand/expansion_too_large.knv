@@ -22,7 +22,7 @@
       item
       (nest (list item item) (number-sub times 1)))))
 
-(defmacro huge () (nest (list 0) 40))
+(defmacro huge () (nest (list 0) 20))
 
 (defn nested () (huge))
 

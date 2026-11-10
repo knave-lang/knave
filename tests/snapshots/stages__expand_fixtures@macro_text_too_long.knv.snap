@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/macro_text_too_long.knv
+---
+error[L0355]: macro code built a value too large
+ --> expand/macro_text_too_long.knv:4:22
+  |
+4 |   ((fn (text) (recur (string text text)))
+  |                      ^^^^^^^^^^^^^^^^^^ `string` builds text of 33554432 bytes here
+...
+7 | (defn main () (grow))
+  |               ------ in this macro call
+  |
+  = note: text that macro code builds holds at most 16777216 bytes
+  = help: build smaller text, or make the macro stop growing it

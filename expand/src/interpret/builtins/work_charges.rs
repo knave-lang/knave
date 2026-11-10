@@ -116,6 +116,15 @@ fn concat_that_copies_its_head_charges_the_copy() {
 }
 
 #[test]
+fn splitting_lines_charges_each_line_it_builds() {
+    let text = "a\nb\nc\nd";
+    assert_eq!(
+        WorkFixture::string_work(&[WorkFixture::string(text)], |strings| strings.lines()),
+        1 + 4
+    );
+}
+
+#[test]
 fn a_string_argument_charges_one_step_per_sixteen_bytes() {
     let text = WorkFixture::SIXTEEN_BYTES.repeat(2);
     assert_eq!(

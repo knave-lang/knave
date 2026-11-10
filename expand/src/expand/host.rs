@@ -73,6 +73,10 @@ impl CompileTimeHost for Expander<'_> {
         self.tables.module_notes.add(module, key, note);
     }
 
+    fn module_note_count(&self) -> usize {
+        self.tables.module_notes.checkpoint().notes_added()
+    }
+
     fn module_notes(&self, context: &Symbol, key: &str) -> Vec<Form> {
         self.modules
             .with_body_scopes(context.scopes())

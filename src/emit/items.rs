@@ -31,9 +31,9 @@ use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::{
-    Bound, GenericId, GenericParam, Lifetime, ReceiverKind, Scheme, Type, TypedAssociatedType,
-    TypedBinder, TypedConversion, TypedDefinition, TypedExpr, TypedExprKind, TypedImplMethod,
-    TypedLambda, TypedProgram, TypedTraitMethod, VariantDefinition,
+    Bound, CopyRules, GenericId, GenericParam, Lifetime, ParameterCopy, ReceiverKind, Scheme, Type,
+    TypedAssociatedType, TypedBinder, TypedConversion, TypedDefinition, TypedExpr, TypedExprKind,
+    TypedImplMethod, TypedLambda, TypedProgram, TypedTraitMethod, VariantDefinition,
 };
 
 struct ImplementedTrait<'l> {
@@ -1327,6 +1327,7 @@ impl<'a> ItemEmitter<'a> {
             .params
             .iter()
             .filter(|param| self.program.parameter_modes.changes(param.binding))
+            .filter(|param| self.result_cannot_hold(lambda, param))
             .collect();
         if changed.is_empty() {
             return Vec::new();
@@ -1337,6 +1338,27 @@ impl<'a> ItemEmitter<'a> {
             .map(|param| param.binding)
             .filter(|binding| !flowing.contains(binding))
             .collect()
+    }
+
+    fn infers_mut(param: &TypedBinder) -> bool {
+        !param.annotated
+    }
+
+    fn result_cannot_hold(&self, lambda: &TypedLambda, param: &TypedBinder) -> bool {
+        let returns_closure = lambda
+            .body
+            .tail()
+            .is_some_and(|tail| matches!(tail.ty, Type::Function(..)));
+        returns_closure || self.copy_rules().is_copy(param.ty.referent())
+    }
+
+    fn copy_rules(&self) -> CopyRules<'_> {
+        CopyRules::new(
+            &self.program.traits,
+            &self.program.generics,
+            &self.program.structs,
+            &self.program.enums,
+        )
     }
 
     fn capture_plan(
@@ -1357,14 +1379,20 @@ impl<'a> ItemEmitter<'a> {
         if RustTypes::is_unit(result) || !opaque(result) {
             return CapturePlan::Whole;
         }
-        let Some(&unlent) = self.unlent_changed_parameters(lambda).first() else {
+        let unlent = self.unlent_changed_parameters(lambda);
+        if unlent.is_empty() {
             return CapturePlan::Whole;
-        };
-        if lambda.params.iter().any(|param| opaque(&param.ty)) {
-            CapturePlan::Uncapturable(unlent)
-        } else {
-            CapturePlan::Precise
         }
+        if !lambda.params.iter().any(|param| opaque(&param.ty)) {
+            return CapturePlan::Precise;
+        }
+        lambda
+            .params
+            .iter()
+            .find(|param| unlent.contains(&param.binding) && Self::infers_mut(param))
+            .map_or(CapturePlan::Whole, |param| {
+                CapturePlan::Uncapturable(param.binding)
+            })
     }
 
     fn lending_borrowed_parameters(&self, lambda: &TypedLambda) -> Vec<BindingId> {
@@ -1388,10 +1416,8 @@ impl<'a> ItemEmitter<'a> {
         match plan {
             CapturePlan::Whole => String::new(),
             CapturePlan::Uncapturable(unlent) => {
-                let name = self.program.bindings.get(unlent).name();
-                let span = Self::parameter_span(lambda, unlent);
-                self.problems
-                    .push(EmitProblems::uncapturable_changed_copy(name, span));
+                let problem = self.uncapturable_problem(Self::parameter(lambda, unlent));
+                self.problems.push(problem);
                 String::new()
             }
             CapturePlan::Precise => {
@@ -1405,13 +1431,20 @@ impl<'a> ItemEmitter<'a> {
         }
     }
 
-    fn parameter_span(lambda: &TypedLambda, binding: BindingId) -> Span {
+    fn uncapturable_problem(&self, param: &TypedBinder) -> Diagnostic {
+        EmitProblems::uncapturable_changed_parameter(
+            self.program.bindings.get(param.binding).name(),
+            param.span,
+            ParameterCopy::of(param, &self.copy_rules()),
+        )
+    }
+
+    fn parameter(lambda: &TypedLambda, binding: BindingId) -> &TypedBinder {
         lambda
             .params
             .iter()
             .find(|param| param.binding == binding)
             .expect("the binding names a parameter")
-            .span
     }
 
     fn result_position(&self, parameters: &[Type], inferred: Option<&str>) -> TypePosition {

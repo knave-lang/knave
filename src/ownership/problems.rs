@@ -4,7 +4,7 @@ use super::functions::ParamMode;
 use crate::core::ReferenceKind;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Help, Label, Suggestion};
 use crate::source::Span;
-use crate::types::ClosureKind;
+use crate::types::{ClosureKind, ParameterCopy};
 
 pub struct ChangingFunctionValue<'a> {
     pub function: &'a str,
@@ -745,37 +745,11 @@ impl OwnershipProblems {
         .with_help("pass a different place to each argument that the call changes")
     }
 
-    pub fn changed_copy_parameter_in_returned_closure(
+    pub fn changed_parameter_in_returned_closure(
         function: &str,
         param: &str,
         usage: Span,
-    ) -> Diagnostic {
-        Self::changed_parameter_in_returned_closure(
-            function,
-            param,
-            usage,
-            &format!("(local value {param})"),
-        )
-    }
-
-    pub fn changed_owned_parameter_in_returned_closure(
-        function: &str,
-        param: &str,
-        usage: Span,
-    ) -> Diagnostic {
-        Self::changed_parameter_in_returned_closure(
-            function,
-            param,
-            usage,
-            &format!("(local value (clone {param}))"),
-        )
-    }
-
-    fn changed_parameter_in_returned_closure(
-        function: &str,
-        param: &str,
-        usage: Span,
-        local: &str,
+        copy: ParameterCopy,
     ) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::RETURNED_CLOSURE_USES_CHANGED_PARAMETER,
@@ -786,7 +760,8 @@ impl OwnershipProblems {
             "`{param}` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives"
         ))
         .with_help(format!(
-            "copy it first with `{local}` and use `value` in the closure"
+            "copy it first with `(local value {})` and use `value` in the closure",
+            copy.expression(param)
         ))
     }
 

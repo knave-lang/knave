@@ -1,0 +1,37 @@
+(defstruct tag
+  :label string
+  :uses i64)
+
+(defn wrap! (t g)
+  (local t (clone t))
+  (set! t (assoc t :uses (+ (:uses t) 1)))
+  (println (:uses t))
+  (fn (y) (g y)))
+
+(defn shift! ((t (mut i64)) g)
+  (set! t (+ (deref t) 1))
+  (fn (y) (g y)))
+
+(defn bump-ref! ((t (mut i64)))
+  (set! t (+ (deref t) 1))
+  (local value (deref t))
+  (fn () value))
+
+(defn counter! ((items (mut (vec i64))))
+  (push! items 1)
+  (local value (clone items))
+  (fn () (len value)))
+
+(defn main ()
+  (local t (->tag (str "z") 1))
+  (local f (wrap! t (fn (v) (* v 2))))
+  (println (f 4) (:uses t))
+  (local a 1)
+  (local h (shift! a (fn (v) (* v 3))))
+  (println (h 4) a)
+  (local b 1)
+  (local read (bump-ref! b))
+  (println (read) b)
+  (local items (vec 0))
+  (local count (counter! items))
+  (println (count) (len items)))

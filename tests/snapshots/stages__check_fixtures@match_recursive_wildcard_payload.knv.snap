@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_recursive_wildcard_payload.knv
+---
+(derive chain clone partial-eq eq hash show)
+(enum chain (link (box chain) bool) end)
+(type weight (fn ((ref chain)) i64))

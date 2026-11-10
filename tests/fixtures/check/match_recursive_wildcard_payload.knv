@@ -1,0 +1,7 @@
+(enum chain (link chain bool) end)
+
+(defn weight (c)
+  (match c
+    (end 0)
+    ((link _ false) 1)
+    ((link _ true) 2)))

@@ -25,7 +25,7 @@ impl TestBinary {
     ) -> Result<Self, ExitStatus> {
         let directory = TemporaryDirectory::create().map_err(Self::report_no_build_directory)?;
         let path = directory.path().join(Self::CRATE_NAME);
-        let build = Self::program_build(project, &directory, &path);
+        let build = Self::route(project, &directory, &path);
         terminal.compile_into(emitted, &build, profile)?;
         Ok(Self {
             path,
@@ -37,7 +37,7 @@ impl TestBinary {
         &self.path
     }
 
-    fn program_build<'b>(
+    fn route<'b>(
         project: Option<&'b LocatedProject>,
         directory: &TemporaryDirectory,
         path: &'b Path,

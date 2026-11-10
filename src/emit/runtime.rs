@@ -1,5 +1,7 @@
 use std::collections::BTreeSet;
 
+use crate::language::Language;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum RuntimePart {
     Number,
@@ -264,10 +266,25 @@ impl RuntimeModule {
         }
         for (part, text) in Self::FIXED_PARTS {
             if self.parts.contains(&part) {
-                sections.push(text.trim_end().to_string());
+                sections.push(Self::rendered(part, text));
             }
         }
         sections.join("\n\n")
+    }
+
+    pub fn test_marker_variable() -> String {
+        format!("{}_TEST_MARKER", Language::NAME.to_ascii_uppercase())
+    }
+
+    fn rendered(part: RuntimePart, text: &str) -> String {
+        let text = text.trim_end();
+        match part {
+            RuntimePart::RunMarker => format!(
+                "const TEST_MARKER_VARIABLE: &str = {:?};\n\n{text}",
+                Self::test_marker_variable()
+            ),
+            _ => text.to_string(),
+        }
     }
 
     fn arithmetic_imports(&self) -> String {

@@ -34,6 +34,7 @@ mod unsized_parameters;
 mod untied_borrows;
 mod writer;
 
+pub use runtime::RuntimeModule;
 pub use writer::SpanMap;
 
 use crate::diagnostic::Diagnostics;

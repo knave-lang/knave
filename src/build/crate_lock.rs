@@ -22,8 +22,10 @@ impl CrateLock {
         }
         Ok(Self { _file: file })
     }
+}
 
-    #[cfg(unix)]
+#[cfg(unix)]
+impl CrateLock {
     fn try_lock(file: &File) -> io::Result<bool> {
         use std::os::fd::AsRawFd;
         if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
@@ -36,7 +38,6 @@ impl CrateLock {
         }
     }
 
-    #[cfg(unix)]
     fn lock(file: &File) -> io::Result<()> {
         use std::os::fd::AsRawFd;
         if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) } == 0 {
@@ -44,13 +45,14 @@ impl CrateLock {
         }
         Err(io::Error::last_os_error())
     }
+}
 
-    #[cfg(not(unix))]
+#[cfg(not(unix))]
+impl CrateLock {
     fn try_lock(_file: &File) -> io::Result<bool> {
         Ok(true)
     }
 
-    #[cfg(not(unix))]
     fn lock(_file: &File) -> io::Result<()> {
         Ok(())
     }

@@ -243,7 +243,7 @@ impl Terminal {
         }
     }
 
-    pub fn compile(
+    fn compile(
         &self,
         emitted: &EmittedCrate,
         target: &BuildTarget<'_>,

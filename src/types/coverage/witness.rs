@@ -34,13 +34,13 @@ impl Witness {
     }
 }
 
-pub(super) struct WitnessText<'a> {
+pub(in crate::types) struct WitnessText<'a> {
     bindings: &'a BindingArena,
     enums: &'a EnumTable,
 }
 
 impl<'a> WitnessText<'a> {
-    pub(super) fn new(bindings: &'a BindingArena, enums: &'a EnumTable) -> Self {
+    pub(in crate::types) fn new(bindings: &'a BindingArena, enums: &'a EnumTable) -> Self {
         Self { bindings, enums }
     }
 

@@ -64,14 +64,14 @@ impl Constructor {
     }
 }
 
-pub(super) struct ConstructorCatalog<'a> {
+pub(in crate::types) struct ConstructorCatalog<'a> {
     peeling: ReferencePeeling<'a>,
     structs: &'a StructTable,
     payloads: VariantPayloads<'a>,
 }
 
 impl<'a> ConstructorCatalog<'a> {
-    pub(super) fn new(
+    pub(in crate::types) fn new(
         peeling: ReferencePeeling<'a>,
         structs: &'a StructTable,
         payloads: VariantPayloads<'a>,

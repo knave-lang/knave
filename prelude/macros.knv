@@ -1392,9 +1392,9 @@
   step for each expression of the body it runs. An `expand-call` costs 64
   steps and one for each form it returns. A closure costs one step and one
   for each binding in scope where it is made. A built-in costs one step for
-  each list item it copies or reads and one for every 16 bytes of text. The
-  limit stays set for the rest of the top-level form, so a smaller `count`
-  lowers it.
+  each list item it copies or reads and one for every 16 bytes of text it
+  reads. The limit stays set for the rest of the top-level form, so a smaller
+  `count` lowers it.
 
   (with-macro-steps 1000000000 (+ 1 2))
   => 3"

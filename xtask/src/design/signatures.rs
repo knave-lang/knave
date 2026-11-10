@@ -1,7 +1,7 @@
 use syn::visit::{self, Visit};
 use syn::{FnArg, ImplItem, ImplItemFn, ItemFn, ItemImpl, ItemTrait, Signature, TraitItemFn, Type};
 
-use crate::function_owner::FunctionOwner;
+use crate::function_owner::{FunctionOwner, OwnerScope};
 use crate::parsed_source::ParsedSource;
 use crate::ratchet::Counts;
 
@@ -87,11 +87,11 @@ impl SignatureVisitor<'_> {
             }
         }
     }
+}
 
-    fn within_owner(&mut self, owner: FunctionOwner, visit: impl FnOnce(&mut Self)) {
-        let outer = std::mem::replace(&mut self.owner, owner);
-        visit(self);
-        self.owner = outer;
+impl OwnerScope for SignatureVisitor<'_> {
+    fn owner_slot(&mut self) -> &mut FunctionOwner {
+        &mut self.owner
     }
 }
 

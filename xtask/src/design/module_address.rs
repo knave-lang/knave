@@ -2,7 +2,27 @@ use std::collections::BTreeMap;
 
 use crate::parsed_source::ParsedSource;
 
-pub type Stage = (&'static str, &'static str);
+pub struct Stage {
+    crate_directory: &'static str,
+    module: &'static str,
+}
+
+impl Stage {
+    pub const fn new(crate_directory: &'static str, module: &'static str) -> Self {
+        Self {
+            crate_directory,
+            module,
+        }
+    }
+
+    pub fn contains(&self, address: &ModuleAddress) -> bool {
+        address.crate_directory == self.crate_directory
+            && address
+                .segments
+                .first()
+                .is_some_and(|top| top == self.module)
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ModuleAddress {
@@ -38,12 +58,6 @@ impl ModuleAddress {
             crate_directory: source.crate_directory().to_string(),
             segments,
         }
-    }
-
-    pub fn is_stage(&self, stage: &Stage) -> bool {
-        let (crate_directory, name) = stage;
-        self.crate_directory == *crate_directory
-            && self.segments.first().is_some_and(|top| top == name)
     }
 
     fn within(&self, segments: Vec<String>) -> Self {

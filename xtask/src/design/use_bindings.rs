@@ -1,7 +1,9 @@
 use std::collections::BTreeMap;
 
+use syn::ItemUse;
 use syn::visit::Visit;
-use syn::{ItemUse, UseTree};
+
+use super::use_paths::UseTreeWalk;
 
 #[derive(Default)]
 pub struct UseBindings {
@@ -9,8 +11,6 @@ pub struct UseBindings {
 }
 
 impl UseBindings {
-    const SELF: &str = "self";
-
     pub fn of(syntax: &syn::File) -> Self {
         let mut bindings = Self::default();
         bindings.visit_file(syntax);
@@ -20,38 +20,15 @@ impl UseBindings {
     pub fn path_of(&self, name: &str) -> Option<&[String]> {
         self.paths.get(name).map(Vec::as_slice)
     }
-
-    fn bind(&mut self, tree: &UseTree, prefix: &[String]) {
-        match tree {
-            UseTree::Path(path) => self.bind(&path.tree, &Self::joined(prefix, &path.ident)),
-            UseTree::Name(name) if name.ident == Self::SELF => {
-                if let Some(module) = prefix.last() {
-                    self.paths.insert(module.clone(), prefix.to_vec());
-                }
-            }
-            UseTree::Name(name) => {
-                self.paths
-                    .insert(name.ident.to_string(), Self::joined(prefix, &name.ident));
-            }
-            UseTree::Rename(rename) => {
-                self.paths.insert(
-                    rename.rename.to_string(),
-                    Self::joined(prefix, &rename.ident),
-                );
-            }
-            UseTree::Glob(_) => {}
-            UseTree::Group(group) => group.items.iter().for_each(|item| self.bind(item, prefix)),
-        }
-    }
-
-    fn joined(prefix: &[String], name: &syn::Ident) -> Vec<String> {
-        [prefix, &[name.to_string()]].concat()
-    }
 }
 
 impl<'ast> Visit<'ast> for UseBindings {
     fn visit_item_use(&mut self, item: &'ast ItemUse) {
-        self.bind(&item.tree, &[]);
+        for found in UseTreeWalk::paths(&item.tree) {
+            if let Some(binding) = found.binding {
+                self.paths.insert(binding, found.path);
+            }
+        }
     }
 }
 

@@ -3,6 +3,7 @@ mod module_graph;
 mod signatures;
 mod type_shapes;
 mod use_bindings;
+mod use_paths;
 
 use std::path::Path;
 
@@ -28,13 +29,13 @@ impl DesignRules {
     const MAXIMUM_CYCLE_PARTNERS_PER_MODULE: usize = 0;
     const MAXIMUM_LATER_STAGE_DEPENDENCIES_PER_MODULE: usize = 0;
     const STAGE_ORDER: [Stage; 7] = [
-        ("expand/src", "reader"),
-        ("expand/src", "expand"),
-        ("src", "types"),
-        ("src", "ownership"),
-        ("src", "emit"),
-        ("src", "build"),
-        ("src", "cli"),
+        Stage::new("expand/src", "reader"),
+        Stage::new("expand/src", "expand"),
+        Stage::new("src", "types"),
+        Stage::new("src", "ownership"),
+        Stage::new("src", "emit"),
+        Stage::new("src", "build"),
+        Stage::new("src", "cli"),
     ];
     const EXTRACT_AN_OBJECT: &str = "Extract an object.";
 

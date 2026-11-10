@@ -47,7 +47,7 @@ impl QualityGate {
 
     pub fn run_emitted_lints(&self) -> Result<ExitCode, TaskFailure> {
         let linted = self.lint_emitted_programs()?;
-        Ok(Verdict::of(&[&CleanEmittedRust::new(linted)]))
+        Ok(Verdict::announce(&[&CleanEmittedRust::new(linted)]))
     }
 
     fn measure_everything(&self) -> Result<(CoverageEvidence, Vec<LintedProgram>), TaskFailure> {
@@ -83,7 +83,7 @@ impl QualityGate {
         let crap = CrapLimit::new(Self::MAXIMUM_CRAP, scored);
         let badge = BadgeFreshness::new(&evidence.readme, coverage);
         let coverage_checks: [&dyn Check; 3] = [&floor, &crap, &badge];
-        Verdict::of(&[&coverage_checks[..], further_checks].concat())
+        Verdict::announce(&[&coverage_checks[..], further_checks].concat())
     }
 
     fn score(functions: Vec<SourceFunction>, report: &LcovReport) -> Vec<ScoredFunction> {

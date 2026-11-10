@@ -1,9 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use syn::visit::{self, Visit};
-use syn::{ItemUse, Path, UseTree, Visibility};
+use syn::{ItemUse, Path, Visibility};
 
 use super::module_address::{ModuleFiles, Stage};
+use super::use_paths::UseTreeWalk;
 use crate::parsed_source::ParsedSource;
 use crate::ratchet::Counts;
 
@@ -59,7 +60,7 @@ impl ModuleGraph {
 
     fn stage(&self, module: &str, stage_order: &[Stage]) -> Option<usize> {
         let address = self.modules.address(module);
-        stage_order.iter().position(|stage| address.is_stage(stage))
+        stage_order.iter().position(|stage| stage.contains(address))
     }
 
     fn reachable_from<'a>(&'a self, module: &'a String) -> BTreeSet<&'a String> {
@@ -93,27 +94,6 @@ struct PathCollector {
     paths: Vec<Vec<String>>,
 }
 
-impl PathCollector {
-    fn flatten(&mut self, tree: &UseTree, prefix: &[String]) {
-        match tree {
-            UseTree::Path(path) => {
-                self.flatten(&path.tree, &[prefix, &[path.ident.to_string()]].concat())
-            }
-            UseTree::Name(name) => self
-                .paths
-                .push([prefix, &[name.ident.to_string()]].concat()),
-            UseTree::Rename(rename) => self
-                .paths
-                .push([prefix, &[rename.ident.to_string()]].concat()),
-            UseTree::Glob(_) => self.paths.push(prefix.to_vec()),
-            UseTree::Group(group) => group
-                .items
-                .iter()
-                .for_each(|item| self.flatten(item, prefix)),
-        }
-    }
-}
-
 impl<'ast> Visit<'ast> for PathCollector {
     fn visit_path(&mut self, path: &'ast Path) {
         self.paths.push(
@@ -126,7 +106,11 @@ impl<'ast> Visit<'ast> for PathCollector {
     }
 
     fn visit_item_use(&mut self, item: &'ast ItemUse) {
-        self.flatten(&item.tree, &[]);
+        self.paths.extend(
+            UseTreeWalk::paths(&item.tree)
+                .into_iter()
+                .map(|found| found.path),
+        );
     }
 
     fn visit_visibility(&mut self, _visibility: &'ast Visibility) {}
@@ -141,7 +125,7 @@ mod tests {
     struct Modules;
 
     impl Modules {
-        const STAGES: [Stage; 2] = [("src", "reader"), ("src", "emit")];
+        const STAGES: [Stage; 2] = [Stage::new("src", "reader"), Stage::new("src", "emit")];
 
         fn graph(files: &[(&str, &str)]) -> ModuleGraph {
             let sources: Vec<_> = files

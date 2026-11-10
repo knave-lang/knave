@@ -5,10 +5,10 @@ use crate::checks::Check;
 pub struct Verdict;
 
 impl Verdict {
-    pub fn of(checks: &[&dyn Check]) -> ExitCode {
+    pub fn announce(checks: &[&dyn Check]) -> ExitCode {
         let failures = checks
             .iter()
-            .filter(|check| !Self::announce(**check))
+            .filter(|check| !Self::announce_one(**check))
             .count();
         if failures == 0 {
             ExitCode::SUCCESS
@@ -17,17 +17,20 @@ impl Verdict {
         }
     }
 
-    fn announce(check: &dyn Check) -> bool {
-        println!("{}", Self::line(check));
-        check.passes()
+    fn announce_one(check: &dyn Check) -> bool {
+        let (passes, line) = Self::judged(check);
+        println!("{line}");
+        passes
     }
 
-    fn line(check: &dyn Check) -> String {
-        if check.passes() {
+    fn judged(check: &dyn Check) -> (bool, String) {
+        let passes = check.passes();
+        let line = if passes {
             format!("ok: {}", check.summary())
         } else {
             format!("error: {}\n{}", check.summary(), check.details())
-        }
+        };
+        (passes, line)
     }
 }
 
@@ -57,16 +60,16 @@ mod tests {
     #[test]
     fn a_passing_check_prints_its_summary() {
         assert_eq!(
-            Verdict::line(&FixedCheck { passes: true }),
-            "ok: the summary"
+            Verdict::judged(&FixedCheck { passes: true }),
+            (true, "ok: the summary".to_string())
         );
     }
 
     #[test]
     fn a_failing_check_prints_its_summary_and_details() {
         assert_eq!(
-            Verdict::line(&FixedCheck { passes: false }),
-            "error: the summary\nthe details"
+            Verdict::judged(&FixedCheck { passes: false }),
+            (false, "error: the summary\nthe details".to_string())
         );
     }
 }

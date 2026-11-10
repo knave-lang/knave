@@ -218,13 +218,6 @@ src/types/checker.rs::TypeChecker::type_trait_help 4
 src/types/checker.rs::TypeChecker::with_non_order_help 5
 src/types/checker.rs::TypeChecker::with_order_help 6
 src/types/copy.rs::CopyRules::new 4
-src/types/coverage.rs::TypeChecker::useful 4
-src/types/coverage.rs::TypeChecker::useful_constructor 5
-src/types/coverage.rs::TypeChecker::useful_literal 5
-src/types/coverage.rs::TypeChecker::useful_recursive_wild 4
-src/types/coverage.rs::TypeChecker::useful_struct 4
-src/types/coverage.rs::TypeChecker::useful_variant 4
-src/types/coverage.rs::TypeChecker::useful_wild 4
 src/types/derives.rs::TypeChecker::derive_source 5
 src/types/derives.rs::TypeChecker::listing_span 4
 src/types/derives.rs::TypeChecker::report_listed_block 4

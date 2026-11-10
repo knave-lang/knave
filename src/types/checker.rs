@@ -702,41 +702,8 @@ impl TypeChecker {
         matches!(ty, Type::Named(binding, arguments) if Some(*binding) == self.box_binding && arguments.len() == 1)
     }
 
-    pub(super) fn is_inferred_box(&self, owner: BindingId, variant: usize, payload: usize) -> bool {
-        self.inferred_boxes.contains(&(owner, variant, payload))
-    }
-
-    pub(super) fn visible_payloads(
-        &self,
-        owner: BindingId,
-        index: usize,
-        arguments: &[Type],
-    ) -> Vec<Type> {
-        self.enums
-            .get(owner)
-            .and_then(|definition| definition.instantiated_payload(index, arguments))
-            .unwrap_or_default()
-            .into_iter()
-            .enumerate()
-            .map(|(payload, ty)| {
-                let unboxed = self.unboxed(&ty);
-                match self.is_inferred_box(owner, index, payload) {
-                    true => unboxed.expect("an inferred box has one type argument"),
-                    false => ty,
-                }
-            })
-            .collect()
-    }
-
-    pub(super) fn unboxed(&self, ty: &Type) -> Option<Type> {
-        match ty {
-            Type::Named(binding, arguments)
-                if Some(*binding) == self.box_binding && arguments.len() == 1 =>
-            {
-                Some(arguments[0].clone())
-            }
-            _ => None,
-        }
+    pub(super) fn box_binding(&self) -> Option<BindingId> {
+        self.box_binding
     }
 
     pub(super) fn require_copy(&mut self, value: &Type) {

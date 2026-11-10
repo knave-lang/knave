@@ -8,12 +8,12 @@ use super::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload}
 use super::parameter_modes::ParameterModes;
 use super::rust_types::RustTypeTable;
 use super::structs::StructTable;
-use super::structural_uses::{StructuralTrait, StructuralUses};
 use super::template_clauses::TemplateClauses;
 use super::templates::TemplateBorrows;
 use super::traits::TraitTable;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
 use super::unifier::LiteralKind;
+use super::{StructuralTrait, StructuralUses};
 use crate::core::{
     BindingArena, BindingId, ClosureKind, DefinitionForm, FieldLabel, FieldSpelling, KernelForm,
     Literal, ModuleId, ModulePath, ReferenceKind, RustTemplate,

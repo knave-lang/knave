@@ -202,7 +202,7 @@ pub struct TypeChecker {
     copy_trait: Option<BindingId>,
     box_binding: Option<BindingId>,
     pub(super) inferred_boxes: BTreeSet<(BindingId, usize, usize)>,
-    pub(super) structural_traits: Vec<super::structural_uses::StructuralTrait>,
+    pub(super) structural_traits: Vec<super::structural_trait::StructuralTrait>,
     pub(super) structural_uses: super::structural_uses::StructuralUses,
     pub(super) reported_path_clashes: FxHashSet<super::structural_uses::StructuralUse>,
     pub(super) written_parameters: FxHashMap<BindingId, Vec<bool>>,

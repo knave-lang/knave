@@ -3,17 +3,8 @@ use std::collections::BTreeSet;
 use rustc_hash::FxHashMap;
 
 use super::ty::{Bound, Type};
-use crate::core::{BindingId, StructuralClause};
+use crate::core::BindingId;
 use crate::source::Span;
-
-#[derive(Clone)]
-pub struct StructuralTrait {
-    pub binding: BindingId,
-    pub method: BindingId,
-    pub parameters: Vec<Type>,
-    pub result: Type,
-    pub clause: StructuralClause,
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StructuralUse {
@@ -48,12 +39,12 @@ impl StructuralUses {
             .collect()
     }
 
-    pub(super) fn wait_on_impls(&mut self, pending: ImplBoundUse) {
+    pub(super) fn defer_until_impls(&mut self, pending: ImplBoundUse) {
         self.through_impls.push(pending);
     }
 
-    pub(super) fn waiting_on_impls(&self) -> Vec<ImplBoundUse> {
-        self.through_impls.clone()
+    pub(super) fn deferred_until_impls(&self) -> &[ImplBoundUse] {
+        &self.through_impls
     }
 
     pub(super) fn record(&mut self, definitions: &[BindingId], used: StructuralUse) {

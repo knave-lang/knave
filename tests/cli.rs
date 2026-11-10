@@ -2315,6 +2315,19 @@ fn doc_write_reports_the_error_that_fails_the_entry_program() {
 }
 
 #[test]
+fn doc_write_reports_an_entry_it_cannot_read() {
+    let sandbox = Sandbox::new("doc_write_unreadable_entry")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file("src/lib.knv", "(export nothing)\n(def nothing none)\n")
+        .with_file("src/main.knv/notes.txt", "");
+    let write = sandbox.compiler(&["doc", "--write"]);
+    let error = write.assert_exit_code(2).stderr();
+    assert!(error.starts_with("error: cannot read `"), "{error}");
+    assert!(error.contains("main.knv`"), "{error}");
+    assert!(!error.contains("L0407"), "{error}");
+}
+
+#[test]
 fn doc_write_outside_a_project_is_a_usage_error() {
     let sandbox = Sandbox::new("doc_write_no_project");
     sandbox.compiler(&["doc", "--write"]).assert_exit_code(2);

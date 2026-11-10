@@ -1,3 +1,4 @@
+use std::io;
 use std::path::{Path, PathBuf};
 
 use super::doc_folder::DocFolder;
@@ -53,9 +54,17 @@ impl DocWriteCommand {
         let file = project.file_within(project.source_root().join(DocumentedModules::CALL_SOURCE));
         let modules = SourceWalk::of(&project).module_paths(terminal)?;
         let entry = project.entry();
-        let unreadable_as_empty = ModuleSources::read_file(entry.path()).unwrap_or_default();
-        let entry = EntryProgram::new(entry, unreadable_as_empty);
+        let text = Self::entry_text(entry.path())?;
+        let entry = EntryProgram::new(entry, text);
         Ok((folder, DocumentedModules::new(file, entry, modules)))
+    }
+
+    fn entry_text(path: &Path) -> Result<String, ExitStatus> {
+        match ModuleSources::read_file(path) {
+            Ok(text) => Ok(text),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(String::new()),
+            Err(error) => Err(Terminal::report_unreadable(path, &error)),
+        }
     }
 
     fn prelude_target(&self) -> (PathBuf, DocumentedModules) {

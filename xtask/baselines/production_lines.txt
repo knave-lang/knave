@@ -2,10 +2,10 @@ expand/src/core/kernel.rs 518
 expand/src/core/printer.rs 693
 expand/src/expand/expression.rs 1017
 expand/src/expand/module_body.rs 2007
-expand/src/expand/problems.rs 1343
+expand/src/expand/problems.rs 1353
 expand/src/format/layout.rs 538
-src/cli/mod.rs 595
-src/cli/terminal.rs 572
+src/cli/mod.rs 610
+src/cli/terminal.rs 566
 src/emit/expressions.rs 2995
 src/emit/items.rs 1712
 src/emit/plan.rs 680

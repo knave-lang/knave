@@ -46,7 +46,7 @@ impl FunctionOwner {
 mod tests {
     use syn::{Ident, ItemImpl, ItemTrait};
 
-    use super::FunctionOwner;
+    use super::{FunctionOwner, OwnerScope};
 
     struct Owner;
 
@@ -71,6 +71,28 @@ mod tests {
     fn an_impl_for_a_type_without_a_path_has_no_owner() {
         let owner = Owner::of_impl("impl Shape for &Square { }");
         assert_eq!(owner.qualify(&Owner::function()), "area");
+    }
+
+    struct Scoped {
+        owner: FunctionOwner,
+    }
+
+    impl OwnerScope for Scoped {
+        fn owner_slot(&mut self) -> &mut FunctionOwner {
+            &mut self.owner
+        }
+    }
+
+    #[test]
+    fn a_scope_restores_the_outer_owner() {
+        let definition: ItemTrait = syn::parse_str("trait Shape { }").expect("the trait parses");
+        let mut scoped = Scoped {
+            owner: FunctionOwner::default(),
+        };
+        scoped.within_owner(FunctionOwner::of_trait(&definition), |inner| {
+            assert_eq!(inner.owner.qualify(&Owner::function()), "Shape::area");
+        });
+        assert_eq!(scoped.owner.qualify(&Owner::function()), "area");
     }
 
     #[test]

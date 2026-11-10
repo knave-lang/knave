@@ -212,16 +212,54 @@ mod tests {
         let partners = Modules::graph(&[
             (
                 "src/types/mod.rs",
-                "mod checker; mod scheme; mod outer; pub use outer::TypeChecker; pub use scheme::*;",
+                "mod checker; mod scheme; mod outer; pub use outer::*; pub use scheme::*;",
             ),
             ("src/types/outer.rs", "pub use super::checker::TypeChecker;"),
-            ("src/types/checker.rs", "use super::Scheme; pub struct TypeChecker;"),
-            ("src/types/scheme.rs", "use super::TypeChecker; pub struct Scheme;"),
+            (
+                "src/types/checker.rs",
+                "use super::Scheme; pub struct TypeChecker;",
+            ),
+            (
+                "src/types/scheme.rs",
+                "use super::TypeChecker; pub struct Scheme;",
+            ),
         ])
         .cycle_links();
         assert_eq!(partners.get("src/types/checker.rs"), Some(&1));
         assert_eq!(partners.get("src/types/scheme.rs"), Some(&1));
         assert_eq!(partners.get("src/types/outer.rs"), Some(&0));
+    }
+
+    #[test]
+    fn a_re_exported_module_leads_to_that_module() {
+        let partners = Modules::graph(&[
+            ("src/a.rs", "use crate::shapes::geometry; pub struct Thing;"),
+            ("src/shapes/mod.rs", "pub use crate::geometry;"),
+            ("src/geometry.rs", "use crate::a::Thing;"),
+        ])
+        .cycle_links();
+        assert_eq!(partners.get("src/a.rs"), Some(&1));
+        assert_eq!(partners.get("src/geometry.rs"), Some(&1));
+    }
+
+    #[test]
+    fn a_glob_of_enum_variants_offers_no_item_of_its_module() {
+        let partners = Modules::graph(&[
+            (
+                "src/shapes/mod.rs",
+                "mod child; mod shape; use child::Probe; pub use shape::Kind::*;",
+            ),
+            (
+                "src/shapes/shape.rs",
+                "pub enum Kind { Circle } pub struct Circle;",
+            ),
+            (
+                "src/shapes/child.rs",
+                "use super::Circle; pub struct Probe;",
+            ),
+        ])
+        .cycle_links();
+        assert_eq!(partners.get("src/shapes/child.rs"), Some(&1));
     }
 
     #[test]

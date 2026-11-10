@@ -51,8 +51,12 @@
   parameter stay local to the body.
 
   A function cannot return a closure that uses a parameter it also changes,
-  which is `L0517`. Bind a local first, as `(local value start)`, and use
-  `value` in the closure. That copies a `copy` type and moves any other.
+  which is `L0517`. Copy the value into a local first, and use the local in
+  the closure. Write `(local value (clone start))` for a type that is not
+  `copy`. For a `copy` type, write `(local value start)`, or
+  `(local value (deref start))` when the parameter is written as a `mut`,
+  such as `(start (mut i64))`. The closure's changes then reach only its
+  own copy.
 
   It returns `unit`, which prints as `(do)`.
 

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use clap::Args;
 
 use super::doc::{DocCommand, DocEnvironment, DocPage};
-use super::doc_write::DocWriteCommand;
+use super::doc_write::{DocScope, DocWriteCommand};
 use super::exit_status::ExitStatus;
 use super::term_parser::{SurplusParser, TermParser};
 use super::terminal::Terminal;
@@ -38,12 +38,19 @@ pub struct DocArguments {
         help = "The folder that --write writes into [default: doc/ at the project root]"
     )]
     output: Option<PathBuf>,
+    #[arg(
+        long,
+        requires = "write",
+        help = "Write the pages of the prelude's modules instead of the project's"
+    )]
+    prelude: bool,
 }
 
 impl DocArguments {
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
         if self.write {
-            return DocWriteCommand::new(self.output).run(terminal);
+            let scope = self.scope();
+            return DocWriteCommand::new(self.output, scope).run(terminal);
         }
         let page = self.page();
         let term = self
@@ -51,6 +58,14 @@ impl DocArguments {
             .or(self.separated_term)
             .expect("clap requires one term");
         DocCommand::new(DocEnvironment::new(self.file), term, page).run(terminal)
+    }
+
+    fn scope(&self) -> DocScope {
+        if self.prelude {
+            DocScope::Prelude
+        } else {
+            DocScope::Project
+        }
     }
 
     fn page(&self) -> DocPage {

@@ -71,6 +71,33 @@ const DOCUMENTED_AREA: &str = "(export area)\n\n(defn area (width height)\n  \"M
 const AREA_SECTION: &str = "<a id=\"area\"></a>\n\n## `area`\n\n```lisp\n(defn area (width height))\n(type area (where ((a number)) (fn (a a) a)))\n```\n\nMultiplies two sides, as [option](https://knave-lang.org/docs/prelude/types/#option) does not.\n";
 const UNTYPED_SHAPES: &str = "(export point twice)\n\n(defstruct point \"A point.\" :x i64)\n\n(defrule twice \"Writes a form twice.\" ((x) (do x x)))\n";
 const UNTYPED_SHAPES_PAGE: &str = "# shapes\n\n<a id=\"point\"></a>\n\n## `point`\n\n```lisp\n(defstruct point)\n```\n\nA point.\n\n<a id=\"twice\"></a>\n\n## `twice`\n\n```lisp\n(defrule twice)\n```\n\nWrites a form twice.\n";
+const PRELUDE_PAGES: [&str; 23] = [
+    "assoc",
+    "definers",
+    "documentation",
+    "io",
+    "iterator",
+    "logic",
+    "macros",
+    "map",
+    "number",
+    "option",
+    "ownership",
+    "pair",
+    "place",
+    "project-file",
+    "result",
+    "sequence",
+    "struct",
+    "syntax",
+    "task",
+    "test",
+    "text",
+    "types",
+    "vec",
+];
+const UNWRAP_OR_SECTION: &str = "<a id=\"unwrap-or\"></a>\n\n## `unwrap-or`\n\n```lisp\n(unwrap-or option default)\n(type unwrap-or (where (a) (fn ((option a) a) a)))\n```\n";
+const PRELUDE_REEXPORT: &str = "## Re-exported names\n\n- [`*`](prelude/number.md#%2A)\n";
 const GEOMETRY: &str = "(export area)\n\n(defn area (width height) \"Multiplies a width by a height.\" (* width height))\n";
 const GEOMETRY_ENTRY: &str = "(use geometry area)\n\n(defn main () (println (area 3 4)))\n";
 const DOCUMENTED_GEOMETRY: &str = "(module \"Shapes on a grid.\")\n\n(export area perimeter)\n\n(defn area (width height)\n  \"Multiplies two sides.\"\n  (* width height))\n\n(defn perimeter (width height)\n  (* 2 (+ width height)))\n\n(defn helper (x)\n  \"Not exported.\"\n  x)\n";
@@ -2000,6 +2027,35 @@ fn doc_write_shows_no_type_for_a_macro_or_a_struct() {
         .compiler(&["doc", "--write"])
         .assert_silent_success();
     assert_eq!(sandbox.contents("doc/shapes.md"), UNTYPED_SHAPES_PAGE);
+}
+
+#[test]
+fn doc_write_prelude_writes_a_page_per_public_prelude_module() {
+    let sandbox = Sandbox::new("doc_write_prelude");
+    sandbox
+        .compiler(&["doc", "--write", "--prelude"])
+        .assert_silent_success();
+    let pages: Vec<String> = PRELUDE_PAGES
+        .iter()
+        .map(|page| format!("prelude/{page}.md"))
+        .collect();
+    let mut expected = [
+        vec![".knave-doc".to_string(), "prelude.md".to_string()],
+        pages,
+    ]
+    .concat();
+    expected.sort();
+    assert_eq!(sandbox.files_under("doc"), expected);
+    assert!(
+        sandbox
+            .contents("doc/prelude/option.md")
+            .contains(UNWRAP_OR_SECTION)
+    );
+    assert!(
+        sandbox
+            .contents("doc/prelude.md")
+            .contains(PRELUDE_REEXPORT)
+    );
 }
 
 #[test]

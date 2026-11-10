@@ -44,25 +44,31 @@ impl fmt::Display for TextPosition {
 }
 
 pub struct LineStarts {
-    starts: Vec<usize>,
+    starts: Vec<u32>,
 }
 
 impl LineStarts {
     pub fn of(text: &str) -> Self {
-        Self {
-            starts: Self::starts_in(text).collect(),
-        }
+        let mut starts = Vec::with_capacity(text.matches('\n').count() + 1);
+        starts.extend(Self::starts_in(text).map(Self::stored));
+        Self { starts }
     }
 
     pub fn position(&self, offset: usize) -> TextPosition {
-        let lines_started = self.starts.partition_point(|start| *start <= offset);
-        let line_start = self.starts[lines_started - 1];
+        let lines_started = self
+            .starts
+            .partition_point(|start| *start as usize <= offset);
+        let line_start = self.starts[lines_started - 1] as usize;
         TextPosition::new(lines_started, offset - line_start + 1)
     }
 
     fn starts_in(text: &str) -> impl Iterator<Item = usize> + '_ {
         let following_newlines = text.match_indices('\n').map(|(offset, _)| offset + 1);
         std::iter::once(0).chain(following_newlines)
+    }
+
+    fn stored(offset: usize) -> u32 {
+        u32::try_from(offset).expect("source files are smaller than 4 GiB")
     }
 }
 

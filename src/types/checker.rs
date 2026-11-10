@@ -12,6 +12,7 @@ use super::graph::{Definition, DefinitionGraph, DependencyGraph};
 use super::impl_overlap::ImplementorOverlap;
 use super::infer::OpenCollections;
 use super::parameter_call_labels::ParameterCallRequest;
+use super::parameter_call_search::CalledParameters;
 use super::parameter_modes::ParameterModes;
 use super::peeling::ReferencePeeling;
 use super::pending::PendingBorrow;
@@ -706,6 +707,13 @@ impl TypeChecker {
 
     pub(super) fn variant_payloads(&self) -> VariantPayloads<'_> {
         VariantPayloads::new(&self.enums, self.box_binding, &self.inferred_boxes)
+    }
+
+    pub(super) fn called_parameters<'m>(
+        &'m self,
+        modules: &'m [CoreModule],
+    ) -> CalledParameters<'m> {
+        CalledParameters::new(modules, &self.bindings)
     }
 
     pub(super) fn match_coverage(&self) -> MatchCoverage<'_> {

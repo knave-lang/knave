@@ -9,6 +9,7 @@ use super::expressions::ExpressionEmitter;
 use super::fragment::{Code, Fragment};
 use super::fresh_lifetimes::FreshLifetimes;
 use super::generic_callees::GenericCallees;
+use super::held_borrows::HeldBorrows;
 use super::literal_generics::LiteralGenerics;
 use super::local_closures::LocalClosures;
 use super::locals::LocalNames;
@@ -1329,7 +1330,7 @@ impl<'a> ItemEmitter<'a> {
             .filter(|param| self.program.parameter_modes.changes(param.binding))
             .filter(|param| self.result_cannot_hold(lambda, param))
             .collect();
-        if changed.is_empty() {
+        if changed.is_empty() || HeldBorrows::new(self.program).in_returned_closures(lambda) {
             return Vec::new();
         }
         let flowing = self.result_borrows.analyse_shared_arguments(lambda).flows;

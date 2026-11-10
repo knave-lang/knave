@@ -5,6 +5,7 @@ mod fresh_lifetimes;
 mod function_borrow;
 mod generic_callees;
 mod generic_positions;
+mod held_borrows;
 mod items;
 mod let_annotation;
 mod literal_generics;

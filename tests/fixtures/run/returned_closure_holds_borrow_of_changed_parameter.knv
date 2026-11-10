@@ -1,0 +1,15 @@
+(defn counter! (items)
+  (push! items 1)
+  (local it (iter items))
+  (fn () (count it)))
+
+(defn reader! (x)
+  (set! x (+ x 1))
+  (local r (ref x))
+  (fn () (+ (deref r) 10)))
+
+(defn main ()
+  (local items (vec 0))
+  (println ((counter! items)))
+  (local x 1)
+  (println ((reader! x))))

@@ -1,0 +1,15 @@
+(defn looped! (items)
+  (push! items 1)
+  (loop (it (iter items))
+    (fn () (count it))))
+
+(defn matched! (items)
+  (push! items 1)
+  (match (some (iter items))
+    ((some it) (fn () (count it)))
+    (none (fn () 0))))
+
+(defn main ()
+  (local items (vec 0))
+  (println ((looped! items)))
+  (println ((matched! items))))

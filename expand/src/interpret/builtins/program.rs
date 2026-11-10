@@ -34,30 +34,6 @@ impl<'a> ProgramOperations<'a> {
         Ok(Value::Form(Form::new(name, self.call_site)))
     }
 
-    pub fn project_modules(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
-        self.arguments.expect_count(0)?;
-        Ok(self.symbols(host.project_modules()))
-    }
-
-    pub fn program_modules(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
-        self.arguments.expect_count(0)?;
-        Ok(self.symbols(host.program_modules()))
-    }
-
-    pub fn module_exports(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
-        self.arguments.expect_count(1)?;
-        let path = self.arguments.form(0)?;
-        let exports = host.module_exports(self.arguments.symbol(0)?, path.span())?;
-        Ok(self.symbols(exports))
-    }
-
-    pub fn module_definitions(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
-        self.arguments.expect_count(1)?;
-        let path = self.arguments.form(0)?;
-        let definitions = host.module_definitions(self.arguments.symbol(0)?, path.span())?;
-        Ok(self.symbols(definitions))
-    }
-
     pub fn pinned_at(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
         let place = self.arguments.form(0)?.span();
@@ -70,33 +46,6 @@ impl<'a> ProgramOperations<'a> {
         Ok(Value::Bool(
             host.in_tasks_directory(&self.arguments.form(0)?),
         ))
-    }
-
-    pub fn current_module(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
-        self.arguments.expect_count(0)?;
-        let module = FormKind::Symbol(host.current_module());
-        Ok(Value::Form(Form::new(module, self.call_site)))
-    }
-
-    pub fn module_symbol(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
-        self.module_named(|path, span| host.module_symbol(path, span))
-    }
-
-    pub fn require_module(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
-        self.module_named(|path, span| host.require_module(path, span))
-    }
-
-    fn module_named(
-        &self,
-        find: impl FnOnce(&Symbol, Span) -> Result<Symbol, Diagnostic>,
-    ) -> Result<Value, Diagnostic> {
-        self.arguments.expect_count(1)?;
-        let path = self.arguments.form(0)?;
-        let module = find(self.arguments.symbol(0)?, path.span())?;
-        Ok(Value::Form(Form::new(
-            FormKind::Symbol(module),
-            self.call_site,
-        )))
     }
 
     pub fn read_form(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
@@ -123,6 +72,63 @@ impl<'a> ProgramOperations<'a> {
     fn count_form(&self, count: usize) -> Form {
         let number = Number::new(count.to_string(), NumberValue::Integer(count as i128));
         Form::new(FormKind::Number(number), self.call_site)
+    }
+}
+
+pub struct ModuleOperations<'a> {
+    arguments: &'a Arguments,
+    call_site: Span,
+}
+
+impl<'a> ModuleOperations<'a> {
+    pub fn new(arguments: &'a Arguments, call_site: Span) -> Self {
+        Self {
+            arguments,
+            call_site,
+        }
+    }
+
+    pub fn project_modules(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(0)?;
+        Ok(self.symbols(host.project_modules()))
+    }
+
+    pub fn program_modules(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(0)?;
+        Ok(self.symbols(host.program_modules()))
+    }
+
+    pub fn module_exports(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(1)?;
+        let path = self.arguments.form(0)?;
+        let exports = host.module_exports(self.arguments.symbol(0)?, path.span())?;
+        Ok(self.symbols(exports))
+    }
+
+    pub fn module_definitions(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(1)?;
+        let path = self.arguments.form(0)?;
+        let definitions = host.module_definitions(self.arguments.symbol(0)?, path.span())?;
+        Ok(self.symbols(definitions))
+    }
+
+    pub fn current_module(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(0)?;
+        let module = FormKind::Symbol(host.current_module());
+        Ok(Value::Form(Form::new(module, self.call_site)))
+    }
+
+    pub fn named(
+        &self,
+        find: impl FnOnce(&Symbol, Span) -> Result<Symbol, Diagnostic>,
+    ) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(1)?;
+        let path = self.arguments.form(0)?;
+        let module = find(self.arguments.symbol(0)?, path.span())?;
+        Ok(Value::Form(Form::new(
+            FormKind::Symbol(module),
+            self.call_site,
+        )))
     }
 
     fn symbols(&self, symbols: Vec<Symbol>) -> Value {

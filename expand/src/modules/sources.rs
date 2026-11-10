@@ -245,10 +245,6 @@ impl ModuleSources {
             && (Self::is_embedded_prelude(path) || path.as_str() == Self::PRELUDE_CODE)
     }
 
-    pub fn is_public_prelude(path: &ModulePath) -> bool {
-        Self::is_embedded_prelude(path) && !Self::is_internal(path)
-    }
-
     pub fn is_embedded_prelude(path: &ModulePath) -> bool {
         Self::PRELUDE_FILES
             .iter()

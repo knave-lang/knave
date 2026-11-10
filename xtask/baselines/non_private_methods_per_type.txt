@@ -10,14 +10,12 @@ expand/src/expand/session.rs::ExpansionSession 16
 expand/src/expand/shape.rs::Shape 15
 expand/src/interpret/arguments.rs::Arguments 20
 expand/src/interpret/builtins/lists.rs::ListOperations 11
-expand/src/interpret/builtins/program.rs::ProgramOperations 13
 expand/src/interpret/builtins/strings.rs::StringOperations 8
 expand/src/interpret/builtins/text.rs::TextOperations 31
 expand/src/interpret/code_list.rs::CodeList 12
 expand/src/interpret/problems.rs::InterpretProblems 17
 expand/src/interpret/value.rs::Value 11
 expand/src/modules/libraries.rs::LibraryTable 8
-expand/src/modules/registry.rs::ModuleRecord 8
 expand/src/modules/registry.rs::ModuleRegistry 10
 expand/src/modules/sources.rs::ModuleSources 25
 expand/src/project/problems.rs::ProjectProblems 31

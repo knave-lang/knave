@@ -124,7 +124,7 @@ impl CompileTimeHost for Expander<'_> {
         let names: BTreeSet<&str> = record.exports().map(|(name, _, _)| &**name).collect();
         Ok(names
             .into_iter()
-            .map(|name| Symbol::with_scopes(name, record.body_scopes()))
+            .map(|name| Symbol::with_scopes(name, record.scopes().set()))
             .collect())
     }
 
@@ -141,7 +141,7 @@ impl CompileTimeHost for Expander<'_> {
             .collect();
         Ok(names
             .into_iter()
-            .map(|name| Symbol::with_scopes(name, record.body_scopes()))
+            .map(|name| Symbol::with_scopes(name, record.scopes().set()))
             .collect())
     }
 
@@ -162,7 +162,7 @@ impl CompileTimeHost for Expander<'_> {
 
     fn require_module(&mut self, path: &Symbol, span: Span) -> Result<Symbol, Diagnostic> {
         let path = ModulePath::new(path.name());
-        if !ModuleSources::is_public_prelude(&path) {
+        if !ModuleSources::is_embedded_prelude(&path) || ModuleSources::is_internal(&path) {
             return Err(ExpandProblems::unknown_module(&path, span));
         }
         let module = self.load_module(&path, span)?;
@@ -206,7 +206,7 @@ impl Expander<'_> {
 
     fn definition_scopes(&self, binding: BindingId) -> ScopeSet {
         if let Some(module) = self.definition_module(binding) {
-            return self.modules.get(module).body_scopes();
+            return self.modules.get(module).scopes().set();
         }
         match self.kind(binding) {
             BindingKind::KernelForm(_) | BindingKind::KernelType(_) | BindingKind::Boolean(_) => {
@@ -221,7 +221,7 @@ impl Expander<'_> {
             .modules
             .find(&ModulePath::new(ModuleSources::PRELUDE))
             .expect("macro code runs after the prelude module is registered");
-        self.modules.get(prelude).body_scopes()
+        self.modules.get(prelude).scopes().set()
     }
 
     fn bound_term(&self, term: &Symbol, span: Span) -> Result<BindingId, Diagnostic> {

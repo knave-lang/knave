@@ -239,7 +239,7 @@
 (def run-tests
   (macro (form)
     (check-run-tests-shape form)
-    (local marker (nth form 2))
+    (local marker (runner-marker form))
     (local modules (project-modules))
     (local notes
       (concat (program-tests modules) (program-doc-tests modules)))
@@ -730,11 +730,21 @@
                  (fn (item) (located-forms place item))))
       (located place form))))
 
+(def runner-marker
+  (fn (form)
+    (if (marker-option? form)
+      (nth form 2)
+      (template (run-marker)))))
+
 (def untested-option
   (fn (form)
     (if (value-eq (len form) 5)
       (list (nth form 4))
-      (list))))
+      (if (value-eq (len form) 3)
+        (if (marker-option? form)
+          (list)
+          (list (nth form 2)))
+        (list)))))
 
 (def check-run-tests-shape
   (fn (form)
@@ -742,26 +752,32 @@
       form
       (fail "this use of `run-tests` does not match its shape"
         form
-        "write it as `(run-tests :marker \"text\")` or `(run-tests :marker \"text\" :untested module)`"))))
+        "write it as `(run-tests)` or `(run-tests :marker \"text\")`, either one with `:untested module` at the end"))))
 
 (def runner-call?
   (fn (form)
-    (if (value-eq (len form) 3)
-      (marker-option? form)
-      (if (value-eq (len form) 5)
-        (if (marker-option? form) (untested-option? form) false)
-        false))))
+    (if (value-eq (len form) 1)
+      true
+      (if (value-eq (len form) 3)
+        (if (marker-option? form) true (untested-option-at? form 1))
+        (if (value-eq (len form) 5)
+          (if (marker-option? form)
+            (untested-option-at? form 3)
+            false)
+          false)))))
 
 (def marker-option?
   (fn (form)
-    (if (named-key? (nth form 1) "marker")
-      (string? (nth form 2))
-      false)))
+    (if (value-eq (len form) 1)
+      false
+      (if (named-key? (nth form 1) "marker")
+        (string? (nth form 2))
+        false))))
 
-(def untested-option?
-  (fn (form)
-    (if (named-key? (nth form 3) "untested")
-      (symbol? (nth form 4))
+(def untested-option-at?
+  (fn (form index)
+    (if (named-key? (nth form index) "untested")
+      (symbol? (nth form (number-add index 1)))
       false)))
 
 (def named-key?
@@ -894,6 +910,10 @@
   (rust "crate::rt::note_untested({0}, {1}, {2}, {3})"
     (fn ((ref str) (ref str) usize (ref str))
       unit)))
+
+(def run-marker
+  (rust "crate::rt::run_marker()"
+    (fn () (ref str))))
 
 (def start-run
   (rust "crate::rt::start_run({0}, {1})"

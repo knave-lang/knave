@@ -6,6 +6,7 @@ use super::program_stream::{ProgramStream, Streamed};
 use super::standard_error::StandardError;
 use super::test_record::TestRecord;
 use super::test_report::{ProgramEnding, TestOutcome, TestReport};
+use super::value_marker::ValueMarker;
 
 pub struct TestRun<'a> {
     binary: &'a Path,
@@ -27,11 +28,13 @@ impl<'a> TestRun<'a> {
 
     pub fn run(
         &self,
-        records: ProgramStream,
+        marker: &ValueMarker,
         report: &mut TestReport<impl io::Write>,
     ) -> Result<TestOutcome, TestRunError> {
+        let records = marker.records();
         let mut child = Command::new(self.binary)
             .args(&self.arguments)
+            .env(ValueMarker::TEST_VARIABLE, marker.text())
             .stdout(Stdio::piped())
             .spawn()
             .map_err(|error| self.report_not_started(&error))?;

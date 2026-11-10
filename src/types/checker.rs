@@ -5,6 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::assumed_collections::AssumedCollections;
 use super::copy::InferredCopies;
+use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload, VariantPayloads};
 use super::graph::{Definition, DefinitionGraph, DependencyGraph};
@@ -12,6 +13,7 @@ use super::impl_overlap::ImplementorOverlap;
 use super::infer::OpenCollections;
 use super::parameter_call_labels::ParameterCallRequest;
 use super::parameter_modes::ParameterModes;
+use super::peeling::ReferencePeeling;
 use super::pending::PendingBorrow;
 use super::pinning::LiteralDefaults;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
@@ -704,6 +706,16 @@ impl TypeChecker {
 
     pub(super) fn variant_payloads(&self) -> VariantPayloads<'_> {
         VariantPayloads::new(&self.enums, self.box_binding, &self.inferred_boxes)
+    }
+
+    pub(super) fn match_coverage(&self) -> MatchCoverage<'_> {
+        let catalog = ConstructorCatalog::new(
+            ReferencePeeling::new(&self.unifier),
+            &self.structs,
+            self.variant_payloads(),
+        );
+        let text = WitnessText::new(&self.bindings, &self.enums);
+        MatchCoverage::new(&self.bindings, catalog, text)
     }
 
     pub(super) fn require_copy(&mut self, value: &Type) {

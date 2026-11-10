@@ -3,19 +3,18 @@ mod guard;
 mod matrix;
 mod pattern;
 mod query;
-mod type_checker;
 mod usefulness;
 mod witness;
 
 use rustc_hash::FxHashSet;
 
-use constructors::ConstructorCatalog;
+pub(super) use constructors::ConstructorCatalog;
 use guard::PatternGuard;
 use matrix::PatternMatrix;
 use pattern::CoverPattern;
 use query::Query;
 use usefulness::Usefulness;
-use witness::WitnessText;
+pub(super) use witness::WitnessText;
 
 use super::problems::TypeProblems;
 use crate::core::BindingArena;
@@ -41,7 +40,7 @@ struct UnreachableArm {
 }
 
 impl<'a> MatchCoverage<'a> {
-    fn new(
+    pub(super) fn new(
         bindings: &'a BindingArena,
         catalog: ConstructorCatalog<'a>,
         text: WitnessText<'a>,

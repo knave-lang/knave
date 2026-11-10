@@ -5,8 +5,7 @@ use rustc_hash::FxHashSet;
 use super::checker::{Admissible, TypeChecker};
 use super::literal_fit::LiteralFit;
 use super::problems::TypeProblems;
-use super::ty::{GenericId, Type, TypeVar};
-use super::type_text::TypeTextWriter;
+use super::ty::{Bound, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::typed::{ClosureType, LetValue, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf};
 use super::unifier::LiteralKind;
 use crate::core::{BindingId, Literal, PrimitiveType};
@@ -287,5 +286,112 @@ impl<'c> Finalizer<'c> {
         if let Some(diagnostic) = diagnostic {
             self.checker.diagnostics.push(diagnostic);
         }
+    }
+}
+
+pub struct TypeTextWriter {
+    definition: BindingId,
+    enclosing_names: FxHashSet<String>,
+}
+
+impl TypeTextWriter {
+    pub fn new(definition: BindingId, enclosing: &Scheme) -> Self {
+        let enclosing_names = enclosing
+            .params
+            .iter()
+            .map(|param| param.name.to_string())
+            .collect();
+        Self {
+            definition,
+            enclosing_names,
+        }
+    }
+
+    pub fn write(&self, checker: &mut TypeChecker, operand: &TypedExpr) -> Rc<str> {
+        let scheme = self.generalize(checker, &operand.ty, operand.span);
+        let text: Rc<str> = checker.display().scheme(&scheme).into();
+        checker.type_texts.record(self.definition, Rc::clone(&text));
+        text
+    }
+
+    fn generalize(&self, checker: &mut TypeChecker, operand: &Type, span: Span) -> Scheme {
+        let bounded: Vec<(TypeVar, Vec<Bound>)> = Self::open_vars(checker, operand, span)
+            .into_iter()
+            .map(|var| (var, checker.self_plain_bounds(var)))
+            .collect();
+        let mut names = self.free_names();
+        let params: Vec<GenericParam> = bounded
+            .into_iter()
+            .map(|bounded| Self::generalize_var(checker, bounded, &mut names))
+            .collect();
+        Scheme {
+            lifetimes: Vec::new(),
+            params: params
+                .into_iter()
+                .map(|param| Self::with_named_bounds(checker, param))
+                .collect(),
+            body: checker.unifier.resolve(operand),
+        }
+    }
+
+    fn open_vars(checker: &mut TypeChecker, operand: &Type, span: Span) -> Vec<TypeVar> {
+        let mut open_vars = Vec::new();
+        for var in Self::vars_with_their_bounds(checker, operand) {
+            match checker.unifier.literal_kind(var) {
+                Some(literal) => checker.default_literal(var, literal, span),
+                None => open_vars.push(var),
+            }
+        }
+        open_vars
+    }
+
+    fn vars_with_their_bounds(checker: &TypeChecker, operand: &Type) -> Vec<TypeVar> {
+        let mut vars = checker.free_vars(operand);
+        let mut position = 0;
+        while let Some(var) = vars.get(position).copied() {
+            for named in Self::vars_in_bounds(checker, var) {
+                if !vars.contains(&named) {
+                    vars.push(named);
+                }
+            }
+            position += 1;
+        }
+        vars
+    }
+
+    fn vars_in_bounds(checker: &TypeChecker, var: TypeVar) -> Vec<TypeVar> {
+        checker
+            .self_plain_bounds(var)
+            .iter()
+            .filter_map(|bound| bound.argument.as_ref())
+            .flat_map(|argument| checker.free_vars(argument))
+            .collect()
+    }
+
+    fn free_names(&self) -> impl Iterator<Item = String> + use<'_> {
+        (0..)
+            .map(TypeChecker::parameter_name)
+            .filter(|name| !self.enclosing_names.contains(name))
+    }
+
+    fn generalize_var(
+        checker: &mut TypeChecker,
+        (var, bounds): (TypeVar, Vec<Bound>),
+        names: &mut impl Iterator<Item = String>,
+    ) -> GenericParam {
+        let name = names.next().expect("parameter names never run out");
+        let param = checker.new_generic(&name, bounds);
+        checker.unifier.bind(var, Type::Generic(param.id));
+        param
+    }
+
+    fn with_named_bounds(checker: &TypeChecker, mut param: GenericParam) -> GenericParam {
+        for bound in &mut param.bounds {
+            bound.argument = bound
+                .argument
+                .as_ref()
+                .map(|argument| checker.unifier.resolve(argument));
+        }
+        param
     }
 }

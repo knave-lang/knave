@@ -10,7 +10,7 @@ use crate::core::{
 };
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
-use crate::modules::{ModuleSource, ModuleSources};
+use crate::modules::{ModuleScopes, ModuleSource, ModuleSources};
 use crate::reader::{Form, Reader, Symbol};
 use crate::scope::{Phase, ScopeSet};
 use crate::source::{SourceId, Span};
@@ -66,12 +66,12 @@ impl Expander<'_> {
         let forms = self.read_sources(sources);
         self.import_base(id, &path, Self::module_start(sources));
         let record = self.modules.get(id);
-        let (base_scope, body_scope) = (record.base_scope(), record.body_scope());
+        let scopes = record.scopes();
         let scoped = forms
             .into_iter()
             .map(|mut form| {
-                form.add_scope(base_scope);
-                form.add_scope(body_scope);
+                form.add_scope(scopes.base());
+                form.add_scope(scopes.body());
                 form
             })
             .collect();
@@ -98,9 +98,8 @@ impl Expander<'_> {
     }
 
     pub(super) fn register_source_module(&mut self, path: ModulePath) -> ModuleId {
-        let base_scope = self.tables.scopes.fresh();
-        let body_scope = self.tables.scopes.fresh();
-        self.modules.register(path, base_scope, body_scope)
+        let scopes = ModuleScopes::new(self.tables.scopes.fresh(), self.tables.scopes.fresh());
+        self.modules.register(path, scopes)
     }
 
     pub(super) fn import(
@@ -262,7 +261,7 @@ impl Expander<'_> {
 
     fn import_everything(&mut self, module: ModuleId, base: ModuleId) {
         let mut scopes = ScopeSet::default();
-        scopes.add(self.modules.get(module).base_scope());
+        scopes.add(self.modules.get(module).scopes().base());
         let exports: Vec<(Rc<str>, Namespace, _)> = self
             .modules
             .get(base)
@@ -417,10 +416,8 @@ impl Expander<'_> {
     }
 
     fn create_builtin(&mut self, path: &ModulePath, builtin: BuiltinModule) -> ModuleId {
-        let base_scope = self.tables.scopes.fresh();
-        let id = self
-            .modules
-            .register(path.clone(), base_scope, self.tables.scopes.fresh());
+        let scopes = ModuleScopes::new(self.tables.scopes.fresh(), self.tables.scopes.fresh());
+        let id = self.modules.register(path.clone(), scopes);
         for (name, namespace, kind) in Self::builtin_exports(builtin) {
             let binding = self
                 .tables

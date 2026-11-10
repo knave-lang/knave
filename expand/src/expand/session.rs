@@ -226,8 +226,8 @@ impl ExpansionSession<'_> {
     }
 
     fn add_module_scopes(module: &ModuleRecord, form: &mut Form) {
-        form.add_scope(module.base_scope());
-        form.add_scope(module.body_scope());
+        form.add_scope(module.scopes().base());
+        form.add_scope(module.scopes().body());
     }
 
     fn lower_in_entry<T>(

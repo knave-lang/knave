@@ -2,9 +2,10 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::module_scopes::ModuleScopes;
 use crate::core::{BindingId, ModuleId, ModulePath, Namespace};
 use crate::reader::Symbol;
-use crate::scope::{Scope, ScopeSet};
+use crate::scope::ScopeSet;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 enum LoadStatus {
@@ -15,8 +16,7 @@ enum LoadStatus {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ModuleRecord {
     path: ModulePath,
-    base_scope: Scope,
-    body_scope: Scope,
+    scopes: ModuleScopes,
     exports: FxHashMap<(Rc<str>, Namespace), BindingId>,
     status: LoadStatus,
 }
@@ -26,23 +26,12 @@ impl ModuleRecord {
         &self.path
     }
 
-    pub fn base_scope(&self) -> Scope {
-        self.base_scope
-    }
-
-    pub fn body_scope(&self) -> Scope {
-        self.body_scope
+    pub fn scopes(&self) -> ModuleScopes {
+        self.scopes
     }
 
     pub fn symbol(&self) -> Symbol {
-        Symbol::with_scopes(self.path.as_str(), self.body_scopes())
-    }
-
-    pub fn body_scopes(&self) -> ScopeSet {
-        let mut scopes = ScopeSet::default();
-        scopes.add(self.base_scope);
-        scopes.add(self.body_scope);
-        scopes
+        Symbol::with_scopes(self.path.as_str(), self.scopes.set())
     }
 
     pub fn export(&mut self, name: Rc<str>, namespace: Namespace, binding: BindingId) {
@@ -71,11 +60,10 @@ pub struct ModuleRegistry {
 }
 
 impl ModuleRegistry {
-    pub fn register(&mut self, path: ModulePath, base_scope: Scope, body_scope: Scope) -> ModuleId {
+    pub fn register(&mut self, path: ModulePath, scopes: ModuleScopes) -> ModuleId {
         self.adopt(ModuleRecord {
             path,
-            base_scope,
-            body_scope,
+            scopes,
             exports: FxHashMap::default(),
             status: LoadStatus::Loading,
         })
@@ -111,7 +99,7 @@ impl ModuleRegistry {
     pub fn with_body_scopes(&self, scopes: &ScopeSet) -> Option<ModuleId> {
         self.records
             .iter()
-            .position(|record| record.body_scopes() == *scopes)
+            .position(|record| record.scopes.set() == *scopes)
             .map(ModuleId::new)
     }
 

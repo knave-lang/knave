@@ -17,7 +17,7 @@ use crate::reader::{Form, FormKind, Number, NumberValue};
 use crate::source::Span;
 use lists::ListOperations;
 use numbers::NumberOperations;
-use program::ProgramOperations;
+use program::{ModuleOperations, ProgramOperations};
 use strings::StringOperations;
 use text::TextOperations;
 
@@ -188,22 +188,26 @@ impl BuiltinCall {
             operations.program.pinned_at()
         }),
         (Builtin::ProgramModules, |operations, host| {
-            operations.program.program_modules(host)
+            operations.modules.program_modules(host)
         }),
         (Builtin::ModuleExports, |operations, host| {
-            operations.program.module_exports(host)
+            operations.modules.module_exports(host)
         }),
         (Builtin::ModuleDefinitions, |operations, host| {
-            operations.program.module_definitions(host)
+            operations.modules.module_definitions(host)
         }),
         (Builtin::CurrentModule, |operations, host| {
-            operations.program.current_module(host)
+            operations.modules.current_module(host)
         }),
         (Builtin::ModuleSymbol, |operations, host| {
-            operations.program.module_symbol(host)
+            operations
+                .modules
+                .named(|path, span| host.module_symbol(path, span))
         }),
         (Builtin::RequireModule, |operations, host| {
-            operations.program.require_module(host)
+            operations
+                .modules
+                .named(|path, span| host.require_module(path, span))
         }),
         (Builtin::ProjectFileName, |operations, _| {
             operations.program.project_file_name()
@@ -215,7 +219,7 @@ impl BuiltinCall {
             operations.program.located()
         }),
         (Builtin::ProjectModules, |operations, host| {
-            operations.program.project_modules(host)
+            operations.modules.project_modules(host)
         }),
     ];
 
@@ -243,6 +247,7 @@ type Implementation =
 
 struct Operations<'a> {
     lists: ListOperations<'a>,
+    modules: ModuleOperations<'a>,
     numbers: NumberOperations<'a>,
     program: ProgramOperations<'a>,
     strings: StringOperations<'a>,
@@ -253,6 +258,7 @@ impl<'a> Operations<'a> {
     fn new(arguments: &'a Arguments, call_site: Span) -> Self {
         Self {
             lists: ListOperations::new(arguments, call_site),
+            modules: ModuleOperations::new(arguments, call_site),
             numbers: NumberOperations::new(arguments, call_site),
             program: ProgramOperations::new(arguments, call_site),
             strings: StringOperations::new(arguments, call_site),

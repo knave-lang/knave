@@ -3140,7 +3140,6 @@ impl TypeChecker {
             pending_mode_checks: self.pending_mode_checks,
             borrowed_parameters: FxHashSet::default(),
             changed_parameters: FxHashSet::default(),
-            changed_copy_parameters: FxHashSet::default(),
             stored_function_parameters: FxHashSet::default(),
             escaping_lambdas: FxHashSet::default(),
             borrowing_lambdas: FxHashMap::default(),

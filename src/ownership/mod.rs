@@ -131,7 +131,6 @@ impl OwnershipChecker {
         );
         let copied_reads = CopiedMutReads::new(&functions, &modes, &copy);
         rewrite.apply(program);
-        program.changed_copy_parameters = copied_reads.parameters();
         copied_reads.apply(program, rewrite.function_params());
         let copy = CopyRules::new(
             &program.traits,
@@ -143,7 +142,7 @@ impl OwnershipChecker {
             PlaceArguments::new(program, &functions, rewrite.function_params(), &copy).check(),
         );
         diagnostics.extend(AliasedChanges::new(program, rewrite.function_params()).check());
-        diagnostics.extend(ReturnedClosureUses::new(program).check());
+        diagnostics.extend(ReturnedClosureUses::new(program, &copy).check());
         slices.rewrite_declarations(program);
         FunctionValueModes::apply(program, rewrite.function_params(), &copied_reads)
             .into_iter()

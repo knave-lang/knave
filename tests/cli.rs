@@ -6202,6 +6202,15 @@ fn new_creates_a_project_that_runs() {
 }
 
 #[test]
+fn new_writes_a_gitignore_that_lists_the_doc_folder() {
+    let sandbox = Sandbox::new("new_gitignore");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    assert_eq!(sandbox.contents("demo-app/.gitignore"), "/doc/\n");
+}
+
+#[test]
 fn new_refuses_a_directory_that_exists() {
     let sandbox = Sandbox::new("new_existing").with_file("demo-app/notes.txt", "kept\n");
     let new = sandbox.compiler(&["new", "demo-app"]);

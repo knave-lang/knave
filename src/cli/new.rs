@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use super::doc_write::DocWriteCommand;
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
@@ -25,6 +26,7 @@ impl NewCommand {
     const ENTRY_TEXT: &str = "(defn main ()\n  (println \"hello\"))\n";
     const WORKING_DIRECTORY: &str = ".";
     const NAME_ARGUMENT: &str = "<name argument>";
+    const IGNORE_FILE: &str = ".gitignore";
 
     pub fn new(name: String) -> Self {
         Self {
@@ -41,7 +43,7 @@ impl NewCommand {
         }
     }
 
-    fn files(&mut self, terminal: &mut Terminal, root: &Path) -> Result<[NewFile; 2], ExitStatus> {
+    fn files(&mut self, terminal: &mut Terminal, root: &Path) -> Result<[NewFile; 3], ExitStatus> {
         self.check_name(terminal)?;
         Self::refuse_existing(root)?;
         let project_file = NewFile {
@@ -65,7 +67,15 @@ impl NewCommand {
                 entry_file,
                 &ModuleLookup::beside(working_directory),
             ),
+            Self::ignore_file(root),
         ])
+    }
+
+    fn ignore_file(root: &Path) -> NewFile {
+        NewFile {
+            path: root.join(Self::IGNORE_FILE),
+            text: format!("/{}/\n", DocWriteCommand::DEFAULT_FOLDER),
+        }
     }
 
     fn check_name(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {

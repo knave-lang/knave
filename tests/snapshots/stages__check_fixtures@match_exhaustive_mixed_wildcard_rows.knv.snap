@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_exhaustive_mixed_wildcard_rows.knv
+---
+(derive turn clone copy partial-eq eq hash show)
+(derive side clone copy partial-eq eq hash show)
+(type ->turn (fn (side bool) turn))
+(type cost (fn (turn) i64))

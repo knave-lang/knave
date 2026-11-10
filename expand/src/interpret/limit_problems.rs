@@ -1,3 +1,4 @@
+use super::step_budget::StepBudget;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::source::Span;
 
@@ -18,7 +19,9 @@ impl LimitProblems {
         ))
         .with_help(format!(
             "make the macro stop, or wrap the top-level form in `(with-macro-steps {} ...)`",
-            limit.saturating_mul(Self::RAISED_LIMIT_FACTOR)
+            limit
+                .saturating_mul(Self::RAISED_LIMIT_FACTOR)
+                .max(StepBudget::DEFAULT_LIMIT)
         ))
     }
 

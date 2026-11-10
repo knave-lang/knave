@@ -1,0 +1,10 @@
+(use prelude/test run-tests)
+
+(defn bare-keyword (x)
+  "Reads a keyword as an example, which the type checker then refuses.
+
+  :size
+  => :size"
+  x)
+
+(defn main () (run-tests :marker "<record>"))

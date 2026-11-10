@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/doc_examples_bare_keyword.knv
+---
+error[L0407]: type annotations needed
+ --> run/doc_examples_bare_keyword.knv:6:3
+  |
+6 |   :size
+  |   ^^^^^ cannot tell which struct's `size` this is
+  |
+  = help: name the struct in a signature, as in `(fn ((ref point)) _)`

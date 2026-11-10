@@ -522,11 +522,13 @@
 
 (def example-step?
   (fn (step)
-    (if (empty? step)
-      false
-      (if (symbol? (first step))
-        (example-head? (first step))
-        false))))
+    (if (list? step)
+      (if (empty? step)
+        false
+        (if (symbol? (first step))
+          (example-head? (first step))
+          false))
+      false)))
 
 (def example-head?
   (fn (head)
@@ -562,10 +564,8 @@
 
 (def read-line-form
   (fn (context text line)
-    (if (starts-with? (line-text line) "(")
-      (read-form context text
-                 (number-add (line-offset line) (line-indent line)))
-      (list))))
+    (read-form context text
+               (number-add (line-offset line) (line-indent line)))))
 
 (def code-form-state
   (fn (context text lines steps read)

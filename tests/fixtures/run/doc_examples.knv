@@ -58,7 +58,16 @@
 
   (a call without a result)
 
+  two words
+  => 7
+
   word
+
+  word
+  above prose
+
+  ; a comment line
+  (exit 17)
   => 7
 
   ```
@@ -191,6 +200,44 @@
 
   (-> 3 (- 10))
   => -7"
+  x)
+
+(def answer 42)
+
+(defn bare-name (x)
+  "Reads a bare name as an example.
+
+  answer
+  => 42"
+  x)
+
+(defn bare-number (x)
+  "Reads a number as an example.
+
+  42
+  => 42"
+  x)
+
+(defn bare-string (x)
+  "Reads a string as an example.
+
+  \"pear\"
+  => \"pear\""
+  x)
+
+(defn bare-local (x)
+  "Reads a `local` back by its bare name.
+
+  (local doubled (twice 3))
+  doubled
+  => 6"
+  x)
+
+(defn wrong-bare-name (x)
+  "Fails on a bare name whose result is wrong.
+
+  answer
+  => 7"
   x)
 
 (defn main () (run-tests :marker "<record>"))

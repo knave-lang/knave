@@ -909,7 +909,7 @@ CRASH crash/crashes: the program exited with code 3
 | 1 | a test fails or crashes, whatever the program's own exit code or signal, or the program has errors |
 | 2 | a usage error |
 
-**A docstring example is a test.** An example is a form that starts a line of a docstring paragraph, with its result on the next line after `=> `:
+**A docstring example is a test.** An example is a form, such as a call, a bare name or a literal, that starts a line of a docstring paragraph and ends it, with its result on the next line after `=> `:
 
 ```lisp
 (defn twice (x)
@@ -924,7 +924,7 @@ CRASH crash/crashes: the program exited with code 3
 - A docstring's examples form one test, whose full name is its module's path, `/doc:` and the term, such as `text/format/doc:twice`, so `knave test path --filter doc:` runs only doc tests. They run in order and share their `local`s.
 - An example compares with `=`, as `(assert (= (twice 3) 6))` does. The result is one form, read as code. A failure reports the location of the example, and `left` and `right` as `assert` does.
 - A result whose last line ends in `...`, as in `=> into-sorted-map ...`, runs the example and compares nothing, and trailing whitespace does not count. A result that does not read as one form, with no `...`, is `L0354`, at the example.
-- A paragraph runs only when every line of it reads as forms, each form ends its line, and it holds an arrow. A `;` after a form or a result starts a comment, as in code. A paragraph of prose and a fenced code block never run: fence an example to show it without running it.
+- A paragraph runs only when every line of it reads as forms, each form ends its line, and it holds an arrow. A `;` after a form or a result starts a comment, as in code, and a line that starts with `;` makes its paragraph prose. A paragraph of prose and a fenced code block never run: fence an example to show it without running it.
 - A fence follows Markdown: it opens on three or more backticks or tildes, and closes only on a line of the same character, at least as long, with nothing else on the line.
 - Only a module's first module docstring runs, because it is the only one that counts.
 - An example reads in the scope of its module, with the module's private names and imports.

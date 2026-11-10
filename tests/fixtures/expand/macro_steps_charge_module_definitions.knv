@@ -1,0 +1,12 @@
+(use code current-module len module-definitions number-add)
+
+(def area 1)
+
+(defmacro lists ()
+  ((fn (count)
+     (recur (number-add count
+                        (len (module-definitions (current-module))))))
+   0))
+
+(with-macro-steps 10000
+                  (defn main () (println (lists))))

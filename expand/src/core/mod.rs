@@ -13,7 +13,8 @@ mod template_operation;
 mod types;
 
 pub use binding::{
-    BindingArena, BindingId, BindingInfo, BindingKind, Declaration, Namespace, VariantInfo,
+    BindingArena, BindingId, BindingInfo, BindingKind, Declaration, ModuleDefinitions, Namespace,
+    VariantInfo,
 };
 pub use builtin::{Builtin, BuiltinModule};
 pub use expr::{

@@ -182,15 +182,6 @@ impl Expander<'_> {
     }
 
     pub(super) fn definition_module(&self, binding: BindingId) -> Option<ModuleId> {
-        match self.kind(binding) {
-            BindingKind::Global(module)
-            | BindingKind::Macro(module)
-            | BindingKind::Struct(module)
-            | BindingKind::Enum(module)
-            | BindingKind::Variant(module, _)
-            | BindingKind::Trait(module)
-            | BindingKind::RustType(module) => Some(module),
-            _ => None,
-        }
+        self.kind(binding).defining_module()
     }
 }

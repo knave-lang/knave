@@ -141,7 +141,7 @@ impl<'a> RustTypes<'a> {
     pub const SLICE_TYPE: &'static str = RustType::SLICE_TEMPLATE;
     const MAYBE_UNSIZED: &'static str = "?Sized";
     const SIZED_TRAITS: [&'static str; 3] = ["Clone", "Copy", "Default"];
-    const INFERRED: &'static str = "_";
+    pub const INFERRED: &'static str = "_";
     const ELIDED_LIFETIME_ARGUMENT: &'static str = "'_";
     const STATIC_LIFETIME: &'static str = "'static";
     const NUMBER_TRAIT: &'static str = "crate::rt::Number";

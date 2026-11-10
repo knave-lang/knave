@@ -5,9 +5,8 @@
 
 (defn matched! (items)
   (push! items 1)
-  (match (some (iter items))
-    ((some it) (fn () (count it)))
-    (none (fn () 0))))
+  (match (iter items)
+    (it (fn () (count it)))))
 
 (defn main ()
   (local items (vec 0))

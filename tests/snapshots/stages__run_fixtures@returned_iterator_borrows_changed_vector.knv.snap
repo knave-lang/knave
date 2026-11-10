@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/returned_iterator_borrows_changed_vector.knv
+---
+2
+2
+2
+8
+2
+2

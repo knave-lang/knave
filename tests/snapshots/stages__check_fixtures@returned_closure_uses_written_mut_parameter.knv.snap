@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/returned_closure_uses_written_mut_parameter.knv
+---
+error[L0517]: a returned closure cannot use `t`, which `bump-ref!` changes
+ --> check/returned_closure_uses_written_mut_parameter.knv:3:17
+  |
+3 |   (fn () (deref t)))
+  |                 ^ the closure uses `t` here
+  |
+  = note: `t` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
+  = help: copy it first with `(local value (deref t))` and use `value` in the closure
+
+error[L0517]: a returned closure cannot use `items`, which `counter!` changes
+ --> check/returned_closure_uses_written_mut_parameter.knv:7:15
+  |
+7 |   (fn () (len items)))
+  |               ^^^^^ the closure uses `items` here
+  |
+  = note: `items` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
+  = help: copy it first with `(local value (clone items))` and use `value` in the closure

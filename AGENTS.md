@@ -133,7 +133,7 @@ The exceptions are:
 - Then time the entry's emission with `bash -c 'time cargo run --release --quiet -- emit <entry> > /dev/null'`.
 - If that emission takes more than one second, shrink the entry.
 - NEVER lower `MINIMUM_LINE_COVERAGE`, raise `MAXIMUM_CRAP` or raise `MAXIMUM_PRODUCTION_LINES` in `xtask/src/gate.rs` without the project owner's approval.
-- NEVER add an entry to `xtask/baselines/production_lines.txt` without the project owner's approval.
+- NEVER add an entry to, or raise an entry in, `xtask/baselines/production_lines.txt` without the project owner's approval.
 - NEVER hide code from `cargo xtask coverage`, such as by moving branches into a macro: the gate cannot see inside a macro.
 
 ### Dev shell

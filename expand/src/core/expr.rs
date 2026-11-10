@@ -355,6 +355,15 @@ impl Block {
             count += 1;
             match expr.kind() {
                 ExprKind::Fn(_) => {}
+                ExprKind::Leaf(_) => {}
+                ExprKind::Call(callee, arguments) => {
+                    pending.push(callee);
+                    pending.extend(arguments);
+                }
+                ExprKind::Control(Control::If(test, then, otherwise)) => {
+                    pending.extend([test.as_ref(), then.as_ref(), otherwise.as_ref()]);
+                }
+                ExprKind::Control(Control::Block(block)) => pending.extend(block.expressions()),
                 _ => pending.extend(expr.children()),
             }
         }
@@ -378,7 +387,7 @@ impl BodyItem {
 mod body_size_tests {
     use std::rc::Rc;
 
-    use super::{Block, BodyItem, Expr, ExprKind, Lambda, Leaf, Literal};
+    use super::{Block, BodyItem, Control, Expr, ExprKind, Lambda, Leaf, Literal};
     use crate::source::{SourceId, Span};
 
     struct BodyFixture;
@@ -419,6 +428,30 @@ mod body_size_tests {
     fn a_body_counts_a_function_it_makes_but_not_that_function_body() {
         let function = BodyFixture::function_of(vec![BodyFixture::leaf(); 5]);
         assert_eq!(BodyFixture::block(vec![function]).expressions_run(), 1);
+    }
+
+    #[test]
+    fn a_body_counts_both_branches_and_the_test_of_an_if() {
+        let branch = BodyFixture::expr(ExprKind::Control(Control::If(
+            Box::new(BodyFixture::leaf()),
+            Box::new(BodyFixture::leaf()),
+            Box::new(BodyFixture::leaf()),
+        )));
+        assert_eq!(BodyFixture::block(vec![branch]).expressions_run(), 4);
+    }
+
+    #[test]
+    fn a_body_counts_the_expressions_of_a_nested_block() {
+        let nested = BodyFixture::expr(ExprKind::Control(Control::Block(BodyFixture::block(
+            vec![BodyFixture::leaf(); 3],
+        ))));
+        assert_eq!(BodyFixture::block(vec![nested]).expressions_run(), 4);
+    }
+
+    #[test]
+    fn a_body_counts_the_value_of_a_borrow() {
+        let borrow = BodyFixture::expr(ExprKind::Deref(Box::new(BodyFixture::leaf())));
+        assert_eq!(BodyFixture::block(vec![borrow]).expressions_run(), 2);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 (use code add-module-note concat drop empty? fail first len
-          list nth number-lt prepend rest string string? symbol
-          symbol? take value-eq)
+          list nth number-lt prepend rest string string?
+          symbol symbol? take value-eq)
 
 (export add-docstring-note docstring-before-body?
         docstring-before-parameters docstrings-key

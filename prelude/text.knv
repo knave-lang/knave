@@ -333,13 +333,14 @@
 
 (def format-pieces
   (fn (pieces index escaper)
-    (with-joined-text
-      (format-pieces-onto (list (list) (list) (list) index (list))
-                          pieces escaper))))
+    (with-joined-text (format-pieces-onto
+                        (list (list) (list) (list) index (list))
+                        pieces escaper))))
 
 (def with-joined-text
   (fn (formatted)
-    (prepend (joined-texts (first formatted)) (rest formatted))))
+    (prepend (joined-texts (first formatted))
+             (rest formatted))))
 
 (def format-pieces-onto
   (fn (formatted pieces escaper)
@@ -353,7 +354,8 @@
 
 (def join-formatted
   (fn (formatted rendered)
-    (list (concat (nth formatted 0) (list (nth rendered 0)))
+    (list (concat (nth formatted 0)
+                  (list (nth rendered 0)))
           (concat (nth formatted 1) (nth rendered 1))
           (concat (nth formatted 2) (nth rendered 2))
           (nth rendered 3)

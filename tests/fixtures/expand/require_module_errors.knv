@@ -2,6 +2,7 @@
           symbol symbol-name)
 
 (use code require-modules)
+(use prelude/syntax pinned-at)
 
 (def make-loader
   (macro (form)

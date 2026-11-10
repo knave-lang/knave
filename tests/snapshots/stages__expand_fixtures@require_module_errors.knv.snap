@@ -21,44 +21,50 @@ error[L0205]: module `code` does not export `require-modules`
 4 | (use code require-modules)
   |           ^^^^^^^^^^^^^^^ not exported
 
+error[L0205]: module `prelude/syntax` does not export `pinned-at`
+ --> expand/require_module_errors.knv:5:21
+  |
+5 | (use prelude/syntax pinned-at)
+  |                     ^^^^^^^^^ not exported
+
 error[L0204]: cannot find module `noted/birds`
-  --> expand/require_module_errors.knv:14:1
+  --> expand/require_module_errors.knv:15:1
    |
-14 | (make-loader)
+15 | (make-loader)
    | ^^^^^^^^^^^^^ no module with this path
-15 |
-16 | (def loaded (load-written))
+16 |
+17 | (def loaded (load-written))
    |             -------------- in this macro call
    |
    = help: a module path names a file relative to the root directory, without its extension
 
 error[L0204]: cannot find module `prelude/internal/macros`
-  --> expand/require_module_errors.knv:26:1
+  --> expand/require_module_errors.knv:27:1
    |
-26 | (make-internal-loader)
+27 | (make-internal-loader)
    | ^^^^^^^^^^^^^^^^^^^^^^ no module with this path
-27 |
-28 | (def internal (load-internal))
+28 |
+29 | (def internal (load-internal))
    |               --------------- in this macro call
    |
    = help: a module path names a file relative to the root directory, without its extension
 
 error[L0255]: `prelude/internal/code` is internal to the prelude
-  --> expand/require_module_errors.knv:30:6
+  --> expand/require_module_errors.knv:31:6
    |
-30 | (use prelude/internal/code require-module)
+31 | (use prelude/internal/code require-module)
    |      ^^^^^^^^^^^^^^^^^^^^^ only the prelude imports this module
    |
    = note: it holds helpers of the prelude's own forms
    = help: remove this `use`
 
 error[L0204]: cannot find module `prelude/internal/code`
-  --> expand/require_module_errors.knv:34:40
+  --> expand/require_module_errors.knv:35:40
    |
-34 |     (symbol-name (module-symbol (quote prelude/internal/code)))))
+35 |     (symbol-name (module-symbol (quote prelude/internal/code)))))
    |                                        ^^^^^^^^^^^^^^^^^^^^^ no module with this path
-35 |
-36 | (def internal-code (internal-code-symbol))
+36 |
+37 | (def internal-code (internal-code-symbol))
    |                    ---------------------- in this macro call
    |
    = help: a module path names a file relative to the root directory, without its extension

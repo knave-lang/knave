@@ -412,6 +412,7 @@ impl Expander<'_> {
         self.modules
             .records()
             .filter(|record| ModuleSources::is_internal(record.path()))
+            .filter(|record| !ModuleSources::is_compiler_provided(record.path()))
             .any(|record| record.exports().any(|(exported, _, _)| **exported == *name))
     }
 

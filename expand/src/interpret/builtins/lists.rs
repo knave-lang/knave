@@ -8,12 +8,12 @@ use crate::interpret::{CodeList, NestedTooDeep, Value};
 use crate::source::Span;
 
 pub struct ListOperations<'a> {
-    arguments: &'a Arguments,
+    arguments: &'a Arguments<'a>,
     call_site: Span,
 }
 
 impl<'a> ListOperations<'a> {
-    pub fn new(arguments: &'a Arguments, call_site: Span) -> Self {
+    pub fn new(arguments: &'a Arguments<'a>, call_site: Span) -> Self {
         Self {
             arguments,
             call_site,

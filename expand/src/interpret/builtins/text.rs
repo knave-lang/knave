@@ -10,7 +10,7 @@ use crate::reader::{Form, FormKind, Symbol};
 use crate::source::Span;
 
 pub struct TextOperations<'a> {
-    arguments: &'a Arguments,
+    arguments: &'a Arguments<'a>,
     call_site: Span,
 }
 
@@ -27,7 +27,7 @@ impl<'a> TextOperations<'a> {
     const FORMAT_BRACES: [(char, &'static str); 2] = [('{', "{{{{"), ('}', "}}}}")];
     const FEWEST_SYMBOL_ARGUMENTS: usize = 1;
 
-    pub fn new(arguments: &'a Arguments, call_site: Span) -> Self {
+    pub fn new(arguments: &'a Arguments<'a>, call_site: Span) -> Self {
         Self {
             arguments,
             call_site,
@@ -402,7 +402,7 @@ mod tests {
             Span::new(SourceId::new(0), 0..0)
         }
 
-        fn arguments(values: Vec<Value>) -> Arguments {
+        fn arguments(values: Vec<Value>) -> Arguments<'static> {
             let site = BuiltinSite {
                 function: Self::FUNCTION,
                 span: Self::span(),
@@ -410,7 +410,10 @@ mod tests {
             Arguments::new(
                 site,
                 values,
-                WorkMeter::new(StepBudget::unmetered(), Self::span()),
+                Box::leak(Box::new(WorkMeter::new(
+                    StepBudget::unmetered(),
+                    Self::span(),
+                ))),
             )
         }
 

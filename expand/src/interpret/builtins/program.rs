@@ -7,12 +7,12 @@ use crate::reader::{Form, FormKind, Number, NumberValue, Symbol};
 use crate::source::Span;
 
 pub struct ProgramOperations<'a> {
-    arguments: &'a Arguments,
+    arguments: &'a Arguments<'a>,
     call_site: Span,
 }
 
 impl<'a> ProgramOperations<'a> {
-    pub fn new(arguments: &'a Arguments, call_site: Span) -> Self {
+    pub fn new(arguments: &'a Arguments<'a>, call_site: Span) -> Self {
         Self {
             arguments,
             call_site,
@@ -77,12 +77,12 @@ impl<'a> ProgramOperations<'a> {
 }
 
 pub struct ModuleOperations<'a> {
-    arguments: &'a Arguments,
+    arguments: &'a Arguments<'a>,
     call_site: Span,
 }
 
 impl<'a> ModuleOperations<'a> {
-    pub fn new(arguments: &'a Arguments, call_site: Span) -> Self {
+    pub fn new(arguments: &'a Arguments<'a>, call_site: Span) -> Self {
         Self {
             arguments,
             call_site,

@@ -4,11 +4,11 @@ use crate::interpret::arguments::Arguments;
 use crate::reader::{FormKind, NumberValue};
 
 pub struct StepLimitSetting<'a> {
-    arguments: &'a Arguments,
+    arguments: &'a Arguments<'a>,
 }
 
 impl<'a> StepLimitSetting<'a> {
-    pub fn new(arguments: &'a Arguments) -> Self {
+    pub fn new(arguments: &'a Arguments<'a>) -> Self {
         Self { arguments }
     }
 

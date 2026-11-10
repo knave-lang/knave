@@ -19,7 +19,7 @@ pub(super) enum Witness {
 
 impl Witness {
     pub(super) fn built_by(constructor: &Constructor, arguments: &[Witness]) -> Self {
-        match constructor.tag {
+        match constructor.tag() {
             Tag::Variant { owner, index } => Witness::Variant {
                 owner,
                 index,

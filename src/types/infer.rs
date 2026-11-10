@@ -11,7 +11,7 @@ use super::assumed_collections::CollectionAssumption;
 use super::borrowed_items::ArgumentSite;
 use super::checker::{TypeChecker, VariantArmReference};
 use super::collection::{Collection, CollectionKind};
-use super::enums::{VariantDefinition, VariantPayload};
+use super::enums::{PayloadPosition, VariantDefinition, VariantPayload};
 use super::parameter_call_labels::ParameterCallRequest;
 use super::pattern_placement::{PatternFields, PatternPlacement};
 use super::peeling::ReferencePeeling;
@@ -326,7 +326,9 @@ impl TypeChecker {
             }
             _ => self.fresh_arguments(info.owner),
         };
-        let payload = self.visible_payloads(info.owner, info.index, &type_arguments);
+        let payload = self
+            .variant_payloads()
+            .visible(info.owner, info.index, &type_arguments);
         VariantSite {
             info,
             type_arguments,
@@ -888,13 +890,10 @@ impl TypeChecker {
     ) -> Result<Vec<TypedPattern>, Diagnostic> {
         let mut typed = Vec::with_capacity(patterns.len());
         for (payload, (pattern, storage)) in patterns.iter().zip(storage).enumerate() {
-            let inferred = self.is_inferred_box(owner, variant, payload);
-            let payload = match inferred {
-                true => self
-                    .unboxed(storage)
-                    .expect("an inferred box has one type argument"),
-                false => storage.clone(),
-            };
+            let position = PayloadPosition { variant, payload };
+            let payloads = self.variant_payloads();
+            let inferred = payloads.is_inferred_box(owner, position);
+            let payload = payloads.seen_by_pattern(owner, position, storage.clone());
             let mut value = self.lower_pattern(pattern, &payload, mode)?;
             value.boxed = inferred;
             typed.push(value);

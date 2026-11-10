@@ -1,8 +1,9 @@
-use crate::core::{BindingId, PrimitiveType};
+use super::pattern::CoverPattern;
+use crate::core::{BindingId, Literal, PrimitiveType};
 use crate::types::Type;
+use crate::types::enums::VariantPayloads;
 use crate::types::peeling::ReferencePeeling;
 use crate::types::structs::StructTable;
-use crate::types::variant_payloads::VariantPayloads;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Tag {
@@ -12,8 +13,55 @@ pub(super) enum Tag {
 }
 
 pub(super) struct Constructor {
-    pub tag: Tag,
-    pub arguments: Vec<Type>,
+    tag: Tag,
+    arguments: Vec<Type>,
+}
+
+impl Constructor {
+    fn new(tag: Tag, arguments: Vec<Type>) -> Self {
+        Self { tag, arguments }
+    }
+
+    pub(super) fn tag(&self) -> Tag {
+        self.tag
+    }
+
+    pub(super) fn arity(&self) -> usize {
+        self.arguments.len()
+    }
+
+    pub(super) fn wild_arguments(&self) -> Vec<CoverPattern> {
+        vec![CoverPattern::Wild; self.arity()]
+    }
+
+    pub(super) fn columns_with(&self, rest: &[Type]) -> Vec<Type> {
+        [&self.arguments[..], rest].concat()
+    }
+
+    pub(super) fn arguments_of(&self, pattern: &CoverPattern) -> Option<Vec<CoverPattern>> {
+        match pattern {
+            CoverPattern::Wild => Some(self.wild_arguments()),
+            CoverPattern::Variant {
+                owner,
+                index,
+                arguments,
+            } if self.tag
+                == (Tag::Variant {
+                    owner: *owner,
+                    index: *index,
+                }) =>
+            {
+                Some(arguments.clone())
+            }
+            CoverPattern::Struct { owner, arguments } if self.tag == Tag::Struct(*owner) => {
+                Some(arguments.clone())
+            }
+            CoverPattern::Literal(Literal::Bool(value)) if self.tag == Tag::Bool(*value) => {
+                Some(Vec::new())
+            }
+            _ => None,
+        }
+    }
 }
 
 pub(super) struct ConstructorCatalog<'a> {
@@ -59,10 +107,7 @@ impl<'a> ConstructorCatalog<'a> {
     fn booleans() -> Vec<Constructor> {
         [false, true]
             .into_iter()
-            .map(|value| Constructor {
-                tag: Tag::Bool(value),
-                arguments: Vec::new(),
-            })
+            .map(|value| Constructor::new(Tag::Bool(value), Vec::new()))
             .collect()
     }
 
@@ -82,22 +127,22 @@ impl<'a> ConstructorCatalog<'a> {
         arguments: &[Type],
     ) -> Vec<Constructor> {
         (0..count)
-            .map(|index| Constructor {
-                tag: Tag::Variant { owner, index },
-                arguments: self.payloads.visible(owner, index, arguments),
+            .map(|index| {
+                Constructor::new(
+                    Tag::Variant { owner, index },
+                    self.payloads.visible(owner, index, arguments),
+                )
             })
             .collect()
     }
 
     fn struct_constructor(&self, owner: BindingId, arguments: &[Type]) -> Option<Constructor> {
         let definition = self.structs.get(owner)?;
-        Some(Constructor {
-            tag: Tag::Struct(owner),
-            arguments: definition
-                .instantiated_fields(arguments)
-                .into_iter()
-                .map(|(_, field_type)| field_type)
-                .collect(),
-        })
+        let fields = definition
+            .instantiated_fields(arguments)
+            .into_iter()
+            .map(|(_, field_type)| field_type)
+            .collect();
+        Some(Constructor::new(Tag::Struct(owner), fields))
     }
 }

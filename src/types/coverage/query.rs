@@ -1,5 +1,5 @@
 use super::constructors::Constructor;
-use super::matrix::CoverPattern;
+use super::pattern::CoverPattern;
 use crate::types::Type;
 
 #[derive(Clone, Copy)]
@@ -41,7 +41,7 @@ impl<'q> Query<'q> {
     ) -> ExpandedQuery {
         ExpandedQuery {
             patterns: [arguments, &self.patterns[1..]].concat(),
-            types: [&constructor.arguments[..], &self.types[1..]].concat(),
+            types: constructor.columns_with(&self.types[1..]),
         }
     }
 }

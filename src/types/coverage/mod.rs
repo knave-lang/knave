@@ -1,6 +1,7 @@
 mod constructors;
 mod guard;
 mod matrix;
+mod pattern;
 mod query;
 mod type_checker;
 mod usefulness;
@@ -10,7 +11,8 @@ use rustc_hash::FxHashSet;
 
 use constructors::ConstructorCatalog;
 use guard::PatternGuard;
-use matrix::{CoverPattern, PatternMatrix};
+use matrix::PatternMatrix;
+use pattern::CoverPattern;
 use query::Query;
 use usefulness::Usefulness;
 use witness::WitnessText;

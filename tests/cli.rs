@@ -2299,6 +2299,22 @@ fn doc_write_falls_back_for_a_module_whose_exports_have_no_type() {
 }
 
 #[test]
+fn doc_write_reports_the_error_that_fails_the_entry_program() {
+    let sandbox = Sandbox::new("doc_write_failing_entry_program")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file("src/lib.knv", "(export nothing)\n(def nothing none)\n")
+        .with_file(
+            "src/main.knv",
+            "(use lib nothing)\n\n(defn main ()\n  (println (+ 1 \"x\"))\n  (println (unwrap-or nothing 3)))\n",
+        );
+    let write = sandbox.compiler(&["doc", "--write"]);
+    let error = write.assert_exit_code(1).stderr();
+    assert!(error.contains("error[L0401]"), "{error}");
+    assert!(error.contains("src/main.knv:4:17"), "{error}");
+    assert!(!error.contains("L0407"), "{error}");
+}
+
+#[test]
 fn doc_write_outside_a_project_is_a_usage_error() {
     let sandbox = Sandbox::new("doc_write_no_project");
     sandbox.compiler(&["doc", "--write"]).assert_exit_code(2);

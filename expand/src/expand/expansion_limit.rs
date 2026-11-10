@@ -1,16 +1,11 @@
 use crate::diagnostic::{Diagnostic, DiagnosticCode};
+use crate::interpret::LimitProblems;
 
 pub struct ExpansionLimit;
 
 impl ExpansionLimit {
-    const CODES: [DiagnosticCode; 2] = [
-        DiagnosticCode::EXPANSION_NESTS_TOO_DEEP,
-        DiagnosticCode::MACRO_STEP_LIMIT,
-    ];
-
     pub fn stopped(failure: &Diagnostic) -> bool {
-        failure
-            .code()
-            .is_some_and(|code| Self::CODES.contains(code))
+        failure.code() == Some(&DiagnosticCode::MACRO_STEP_LIMIT)
+            || failure.title() == LimitProblems::BUILT_LIST_NESTS_TOO_DEEP
     }
 }

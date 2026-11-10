@@ -4,6 +4,7 @@ use crate::source::Span;
 pub struct LimitProblems;
 
 impl LimitProblems {
+    pub const BUILT_LIST_NESTS_TOO_DEEP: &'static str = "macro code built a list nested too deeply";
     const RAISED_LIMIT_FACTOR: u64 = 10;
 
     pub fn too_many_steps(limit: u64, span: Span) -> Diagnostic {
@@ -36,7 +37,7 @@ impl LimitProblems {
     pub fn value_nests_too_deep(limit: usize, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::EXPANSION_NESTS_TOO_DEEP,
-            "macro code built a list nested too deeply",
+            Self::BUILT_LIST_NESTS_TOO_DEEP,
             Label::new(span, format!("this call builds a list past {limit} levels")),
         )
         .with_note(format!(

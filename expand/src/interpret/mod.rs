@@ -10,6 +10,7 @@ pub use builtins::BuiltinCall;
 pub use code_list::{
     CodeList, ListConversion, ListNesting, ListTooLarge, NestedTooDeep, PassedLimit,
 };
+pub use limit_problems::LimitProblems;
 pub use problems::InterpretProblems;
 pub use step_budget::StepBudget;
 pub use value::{Closure, Env, Value};
@@ -23,7 +24,6 @@ use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Symbol};
 use crate::source::Span;
 use crate::stack::DeepRecursion;
-use limit_problems::LimitProblems;
 
 pub trait CompileTimeHost {
     fn global_value(&mut self, binding: BindingId, span: Span) -> Result<Value, Diagnostic>;

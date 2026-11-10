@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/expand_call_recovers_from_a_deep_result.knv
+---
+(def bury (fn (form count) (if (number-gt count 0) (recur (list (quote do) form) (number-sub count 1)) form)))
+(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) "recovered")))

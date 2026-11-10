@@ -173,11 +173,11 @@ mod tests {
         let partners = Modules::graph(&[
             (
                 "src/shapes/mod.rs",
-                "mod circle; mod square; pub use circle::Circle; pub(crate) use square::Square;",
+                "mod circle; mod square; pub use circle::Circle; pub(crate) use square::Square; pub struct Unit;",
             ),
             (
                 "src/shapes/circle.rs",
-                "use super::Square; pub struct Circle(Square);",
+                "use super::{Square, Unit}; pub struct Circle(Square, Unit);",
             ),
             ("src/shapes/square.rs", "pub struct Square;"),
         ])
@@ -228,6 +228,57 @@ mod tests {
         assert_eq!(partners.get("src/types/checker.rs"), Some(&1));
         assert_eq!(partners.get("src/types/scheme.rs"), Some(&1));
         assert_eq!(partners.get("src/types/outer.rs"), Some(&0));
+    }
+
+    #[test]
+    fn a_parent_using_a_name_it_re_exports_links_to_its_definition() {
+        for visibility in ["pub", "pub(crate)"] {
+            let partners = Modules::graph(&[
+                (
+                    "src/types/mod.rs",
+                    &format!(
+                        "mod checker; {visibility} use checker::TypeChecker; pub struct Shared; pub struct Holder(TypeChecker);"
+                    ),
+                ),
+                (
+                    "src/types/checker.rs",
+                    "use super::Shared; pub struct TypeChecker;",
+                ),
+            ])
+            .cycle_links();
+            assert_eq!(partners.get("src/types/mod.rs"), Some(&1), "{visibility}");
+            assert_eq!(
+                partners.get("src/types/checker.rs"),
+                Some(&1),
+                "{visibility}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_re_exported_later_stage_used_in_code_is_a_dependency() {
+        let later = Modules::graph(&[
+            (
+                "src/reader/mod.rs",
+                "pub(crate) use crate::emit::Plan; pub struct Holder(Plan);",
+            ),
+            ("src/emit/mod.rs", "pub struct Plan;"),
+        ])
+        .later_stage_dependencies(&Modules::STAGES);
+        assert_eq!(later.get("src/reader/mod.rs"), Some(&1));
+    }
+
+    #[test]
+    fn a_name_reached_through_two_glob_re_exports_is_found() {
+        let partners = Modules::graph(&[
+            ("src/types/mod.rs", "mod a; mod b; mod c; pub use a::*;"),
+            ("src/types/a.rs", "pub use super::b::*;"),
+            ("src/types/b.rs", "use super::c::C; pub struct B;"),
+            ("src/types/c.rs", "use super::B; pub struct C;"),
+        ])
+        .cycle_links();
+        assert_eq!(partners.get("src/types/b.rs"), Some(&1));
+        assert_eq!(partners.get("src/types/c.rs"), Some(&1));
     }
 
     #[test]

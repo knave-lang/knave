@@ -63,7 +63,16 @@ impl DocWriteCommand {
 
     fn project_modules(project: LocatedProject) -> Result<DocumentedModules, ExitStatus> {
         let file = project.file_within(project.source_root().join(Self::ENTRY));
-        let tree = EntryTree::of_tests(project.source_root(), Some(project));
+        let tree = EntryTree::of_tests(Self::walked_root(&project), Some(project));
         Ok(DocumentedModules::new(file, tree.module_paths()?))
+    }
+
+    fn walked_root(project: &LocatedProject) -> PathBuf {
+        let source_root = project.source_root();
+        if source_root.as_os_str().is_empty() {
+            PathBuf::from(Terminal::WORKING_DIRECTORY)
+        } else {
+            source_root
+        }
     }
 }

@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/returned_closure_holds_borrow_beside_changed_copy.knv
+---
+2
+2
+5
+2
+3
+3
+2
+1
+4
+5

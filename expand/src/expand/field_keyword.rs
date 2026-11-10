@@ -35,16 +35,16 @@ impl Expander<'_> {
         ));
         let value = Expr::new(ExprKind::Leaf(Leaf::Var(parameter)), span);
         let read = Self::field_read(value, Self::keyword_label(field_name, span), span);
-        ExprKind::Fn(Rc::new(Lambda {
-            params: vec![Binder {
+        ExprKind::Fn(Rc::new(Lambda::new(
+            vec![Binder {
                 binding: parameter,
                 annotation: None,
                 span,
             }],
-            body: Block {
+            Block {
                 items: vec![BodyItem::Expr(read)],
             },
-        }))
+        )))
     }
 
     pub(super) fn reject_keyword_binder(name: &str, span: Span) -> Result<(), Diagnostic> {

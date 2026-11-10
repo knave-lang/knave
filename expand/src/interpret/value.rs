@@ -237,10 +237,7 @@ mod tests {
         }
 
         fn closure_over(env: Env) -> Rc<Closure> {
-            let lambda = Lambda {
-                params: Vec::new(),
-                body: Default::default(),
-            };
+            let lambda = Lambda::new(Vec::new(), Default::default());
             Rc::new(Closure {
                 lambda: Rc::new(lambda),
                 env,

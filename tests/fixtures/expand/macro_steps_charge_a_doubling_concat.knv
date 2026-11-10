@@ -8,5 +8,5 @@
    (quote (a b c d))
    times))
 
-(with-macro-steps 1000
+(with-macro-steps 10000
                   (defn main () (println (doubles 12))))

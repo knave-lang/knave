@@ -206,7 +206,7 @@ impl<'h> Interpreter<'h> {
                 span,
             ));
         }
-        self.spend_step()?;
+        self.spend_body(closure)?;
         if self.depth >= Self::MAX_DEPTH {
             return Err(InterpretProblems::too_deep(span));
         }
@@ -222,7 +222,7 @@ impl<'h> Interpreter<'h> {
             match self.step_block(&closure.lambda.body, &env) {
                 Ok(Step::Value(value)) => return Ok(value),
                 Ok(Step::Recur(arguments)) => {
-                    self.spend_step()?;
+                    self.spend_body(closure)?;
                     env = Self::bind_arguments(closure, arguments);
                 }
                 Err(diagnostic) => return Err(diagnostic),
@@ -231,8 +231,8 @@ impl<'h> Interpreter<'h> {
     }
 
     #[inline]
-    fn spend_step(&self) -> Result<(), Diagnostic> {
-        self.meter.charge(1)
+    fn spend_body(&self, closure: &Closure) -> Result<(), Diagnostic> {
+        self.meter.charge(closure.lambda.body_size)
     }
 
     fn bind_arguments(closure: &Closure, arguments: Vec<Value>) -> Env {

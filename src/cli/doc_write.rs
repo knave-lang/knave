@@ -52,7 +52,8 @@ impl DocWriteCommand {
         let folder = self.folder_in(project.root());
         let file = project.file_within(project.source_root().join(DocumentedModules::CALL_SOURCE));
         let modules = SourceWalk::of(&project).module_paths(terminal)?;
-        Ok((folder, DocumentedModules::new(file, modules)))
+        let modules = DocumentedModules::new(file, modules).with_entry(project.entry());
+        Ok((folder, modules))
     }
 
     fn prelude_target(&self) -> (PathBuf, DocumentedModules) {

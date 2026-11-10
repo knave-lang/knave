@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::doc::ExpandedPage;
 use super::doc_folder::WrittenPage;
 use super::exit_status::ExitStatus;
@@ -13,9 +15,12 @@ use crate::types::TypedProgram;
 
 pub struct DocumentedModules {
     file: ProgramFile,
+    entry: Option<ProgramFile>,
     written: Vec<String>,
     linked: LinkedModules,
 }
+
+type ModuleTypes = HashMap<String, Vec<TypedName>>;
 
 struct LinkedModules {
     written: String,
@@ -48,8 +53,16 @@ impl DocumentedModules {
         };
         Self {
             file,
+            entry: None,
             written,
             linked,
+        }
+    }
+
+    pub fn with_entry(self, entry: ProgramFile) -> Self {
+        Self {
+            entry: Some(entry),
+            ..self
         }
     }
 
@@ -76,60 +89,82 @@ impl DocumentedModules {
     }
 
     fn types(&self, terminal: &mut Terminal) -> Result<Vec<TypedName>, ExitStatus> {
+        let own_checks = self
+            .written
+            .iter()
+            .map(|module| self.own_types(terminal, module))
+            .collect::<Result<Vec<_>, ExitStatus>>()?;
+        let entry_types = if own_checks.iter().any(Result::is_err) {
+            self.entry_program_types(terminal)?
+        } else {
+            None
+        };
         let mut types = Vec::new();
-        let mut whole_program = None;
-        for module in &self.written {
-            match self.own_types(terminal, module)? {
-                Some(own) => types.extend(own),
-                None => {
-                    let whole = match whole_program.take() {
-                        Some(whole) => whole,
-                        None => self.whole_program_types(terminal)?,
-                    };
-                    types.extend(Self::of_module(&whole, module));
-                    whole_program = Some(whole);
-                }
-            }
+        for (module, own) in self.written.iter().zip(own_checks) {
+            types.extend(own.or_else(|own_errors| {
+                Self::of_module(entry_types.as_ref(), module)
+                    .ok_or_else(|| terminal.report(&own_errors))
+            })?);
         }
         Ok(types)
     }
 
-    fn of_module(types: &[TypedName], module: &str) -> Vec<TypedName> {
-        types
-            .iter()
-            .filter(|typed| typed.module == module)
-            .cloned()
-            .collect()
+    fn of_module(entry_types: Option<&ModuleTypes>, module: &str) -> Option<Vec<TypedName>> {
+        entry_types?.get(module).cloned()
     }
 
     fn own_types(
         &self,
         terminal: &mut Terminal,
         module: &str,
-    ) -> Result<Option<Vec<TypedName>>, ExitStatus> {
+    ) -> Result<Result<Vec<TypedName>, Diagnostics>, ExitStatus> {
         let entry = terminal.add_empty_source(self.file.path());
         let (program, named) = terminal.within_session(&self.file, entry, |mut session| {
             Self::load(&mut session, module)?;
             let named = Self::named_bindings(&mut session, module)?;
             Ok((Self::checked_also(session.finish()?, &named), named))
         })?;
-        Ok(ProgramChecker::check(&program)
-            .ok()
-            .map(|typed| Self::typed_names(&typed, named)))
+        Ok(ProgramChecker::check(&program).map(|typed| Self::typed_names(&typed, named)))
     }
 
-    fn whole_program_types(&self, terminal: &mut Terminal) -> Result<Vec<TypedName>, ExitStatus> {
-        let entry = terminal.add_empty_source(self.file.path());
-        let (program, named) = terminal.within_session(&self.file, entry, |mut session| {
-            self.load_written(&mut session)?;
+    fn entry_program_types(
+        &self,
+        terminal: &mut Terminal,
+    ) -> Result<Option<ModuleTypes>, ExitStatus> {
+        let Some(entry) = &self.entry else {
+            return Ok(None);
+        };
+        let source = terminal.load(entry.path())?;
+        let (program, loaded, named) = terminal.within_session(entry, source, |mut session| {
+            let loaded = self.loaded_written(&session);
             let mut named = Vec::new();
-            for module in &self.written {
+            for module in &loaded {
                 named.extend(Self::named_bindings(&mut session, module)?);
             }
-            Ok((Self::checked_also(session.finish()?, &named), named))
+            Ok((Self::checked_also(session.finish()?, &named), loaded, named))
         })?;
-        let typed = terminal.check_showing(&program, |_| false)?;
-        Ok(Self::typed_names(&typed, named))
+        Ok(ProgramChecker::check(&program)
+            .ok()
+            .map(|typed| Self::by_module(loaded, Self::typed_names(&typed, named))))
+    }
+
+    fn loaded_written(&self, session: &ExpansionSession<'_>) -> Vec<String> {
+        self.written
+            .iter()
+            .filter(|module| session.loads(&ModulePath::new(module.as_str())))
+            .cloned()
+            .collect()
+    }
+
+    fn by_module(loaded: Vec<String>, typed: Vec<TypedName>) -> ModuleTypes {
+        let mut types: ModuleTypes = loaded
+            .into_iter()
+            .map(|module| (module, Vec::new()))
+            .collect();
+        for name in typed {
+            types.entry(name.module.clone()).or_default().push(name);
+        }
+        types
     }
 
     fn checked_also(mut program: Program, named: &[NamedBinding]) -> Program {

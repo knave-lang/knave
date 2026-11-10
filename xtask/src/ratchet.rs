@@ -139,6 +139,10 @@ impl Ratchet {
         Ok(Self::new(limit, measured, baseline))
     }
 
+    pub fn baseline_file(&self) -> &'static str {
+        self.limit.baseline
+    }
+
     fn new(limit: Limit, measured: Counts, baseline: Baseline) -> Self {
         Self {
             limit,

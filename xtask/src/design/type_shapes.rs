@@ -1,18 +1,19 @@
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 
 use syn::visit::{self, Visit};
-use syn::{ImplItem, ItemEnum, ItemImpl, ItemStruct, ItemUnion, Visibility};
+use syn::{Ident, ImplItem, ItemEnum, ItemImpl, ItemStruct, ItemUnion, Visibility};
 
-use crate::functions::FunctionCollector;
+use crate::function_owner::FunctionOwner;
 use crate::parsed_source::ParsedSource;
 use crate::ratchet::Counts;
 
 #[derive(Default)]
 pub struct TypeShapes {
-    pub methods: Counts,
-    pub non_private_methods: Counts,
-    pub inherent_impl_files: Counts,
-    pub fields: Counts,
+    methods: Counts,
+    non_private_methods: Counts,
+    inherent_impl_files: Counts,
+    fields: Counts,
 }
 
 impl TypeShapes {
@@ -29,63 +30,98 @@ impl TypeShapes {
         }
         census.into_shapes()
     }
+
+    pub fn into_counts(self) -> [Counts; 4] {
+        [
+            self.methods,
+            self.non_private_methods,
+            self.fields,
+            self.inherent_impl_files,
+        ]
+    }
+}
+
+struct TypeKey<'a> {
+    file: &'a str,
+    name: &'a str,
+}
+
+impl fmt::Display for TypeKey<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}::{}", self.file, self.name)
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct CrateType {
+    crate_directory: String,
+    name: String,
+}
+
+impl CrateType {
+    fn of(source: &ParsedSource, name: &str) -> Self {
+        Self {
+            crate_directory: source.crate_directory().to_string(),
+            name: name.to_string(),
+        }
+    }
 }
 
 #[derive(Default)]
 struct TypeDefinitions {
-    files: BTreeMap<(String, String), BTreeSet<String>>,
-    collecting_from: Option<(String, String)>,
+    files: BTreeMap<CrateType, BTreeSet<String>>,
 }
 
 impl TypeDefinitions {
     fn collect(sources: &[ParsedSource]) -> Self {
         let mut definitions = Self::default();
         for source in sources {
-            definitions.collecting_from = Some((
-                source.crate_directory().to_string(),
-                source.file().to_string(),
-            ));
-            definitions.visit_file(source.syntax());
+            DefinitionVisitor {
+                source,
+                definitions: &mut definitions,
+            }
+            .visit_file(source.syntax());
         }
         definitions
     }
 
-    fn define(&mut self, name: &syn::Ident) {
-        if let Some((crate_directory, file)) = &self.collecting_from {
-            self.files
-                .entry((crate_directory.clone(), name.to_string()))
-                .or_default()
-                .insert(file.clone());
-        }
+    fn define(&mut self, source: &ParsedSource, name: &Ident) {
+        self.files
+            .entry(CrateType::of(source, &name.to_string()))
+            .or_default()
+            .insert(source.file().to_string());
     }
 
-    fn key(&self, source: &ParsedSource, name: &str) -> String {
-        let defined_in = self
-            .files
-            .get(&(source.crate_directory().to_string(), name.to_string()));
+    fn key<'a>(&'a self, source: &'a ParsedSource, name: &'a str) -> TypeKey<'a> {
+        let defined_in = self.files.get(&CrateType::of(source, name));
         let file = match defined_in {
             Some(files) if files.len() == 1 && !files.contains(source.file()) => {
                 files.first().map_or(source.file(), String::as_str)
             }
             _ => source.file(),
         };
-        format!("{file}::{name}")
+        TypeKey { file, name }
     }
 }
 
-impl<'ast> Visit<'ast> for TypeDefinitions {
+struct DefinitionVisitor<'a> {
+    source: &'a ParsedSource,
+    definitions: &'a mut TypeDefinitions,
+}
+
+impl<'ast> Visit<'ast> for DefinitionVisitor<'_> {
     fn visit_item_struct(&mut self, definition: &'ast ItemStruct) {
-        self.define(&definition.ident);
+        self.definitions.define(self.source, &definition.ident);
         visit::visit_item_struct(self, definition);
     }
 
     fn visit_item_enum(&mut self, definition: &'ast ItemEnum) {
-        self.define(&definition.ident);
+        self.definitions.define(self.source, &definition.ident);
         visit::visit_item_enum(self, definition);
     }
 
     fn visit_item_union(&mut self, definition: &'ast ItemUnion) {
-        self.define(&definition.ident);
+        self.definitions.define(self.source, &definition.ident);
         visit::visit_item_union(self, definition);
     }
 }
@@ -97,7 +133,7 @@ struct ImplCensus {
 }
 
 impl ImplCensus {
-    fn record_impl(&mut self, key: &str, file: &str, implementation: &ItemImpl) {
+    fn record_impl(&mut self, key: &TypeKey, file: &str, implementation: &ItemImpl) {
         let methods: Vec<&Visibility> = implementation
             .items
             .iter()
@@ -110,20 +146,21 @@ impl ImplCensus {
             .iter()
             .filter(|visibility| !matches!(visibility, Visibility::Inherited))
             .count();
-        *self.shapes.methods.entry(key.to_string()).or_default() += methods.len();
+        let key = key.to_string();
+        *self.shapes.methods.entry(key.clone()).or_default() += methods.len();
         *self
             .shapes
             .non_private_methods
-            .entry(key.to_string())
+            .entry(key.clone())
             .or_default() += non_private;
         self.impl_files
-            .entry(key.to_string())
+            .entry(key)
             .or_default()
             .insert(file.to_string());
     }
 
-    fn record_struct(&mut self, key: String, fields: usize) {
-        let recorded = self.shapes.fields.entry(key).or_default();
+    fn record_struct(&mut self, key: &TypeKey, fields: usize) {
+        let recorded = self.shapes.fields.entry(key.to_string()).or_default();
         *recorded = (*recorded).max(fields);
     }
 
@@ -145,13 +182,12 @@ struct ShapeVisitor<'a> {
 
 impl<'ast> Visit<'ast> for ShapeVisitor<'_> {
     fn visit_item_impl(&mut self, implementation: &'ast ItemImpl) {
-        let inherent_type = implementation
-            .trait_
-            .is_none()
-            .then(|| FunctionCollector::type_name(implementation))
-            .flatten();
+        let owner = FunctionOwner::of_impl(implementation);
+        let inherent_type = owner
+            .type_name()
+            .filter(|_| implementation.trait_.is_none());
         if let Some(name) = inherent_type {
-            let key = self.definitions.key(self.source, &name);
+            let key = self.definitions.key(self.source, name);
             self.census
                 .record_impl(&key, self.source.file(), implementation);
         }
@@ -159,8 +195,12 @@ impl<'ast> Visit<'ast> for ShapeVisitor<'_> {
     }
 
     fn visit_item_struct(&mut self, definition: &'ast ItemStruct) {
-        let key = format!("{}::{}", self.source.file(), definition.ident);
-        self.census.record_struct(key, definition.fields.len());
+        let name = definition.ident.to_string();
+        let key = TypeKey {
+            file: self.source.file(),
+            name: &name,
+        };
+        self.census.record_struct(&key, definition.fields.len());
         visit::visit_item_struct(self, definition);
     }
 }
@@ -168,15 +208,15 @@ impl<'ast> Visit<'ast> for ShapeVisitor<'_> {
 #[cfg(test)]
 mod tests {
     use super::TypeShapes;
-    use crate::parsed_source::ParsedSource;
+    use crate::parsed_source::ParsedSourceFixture;
 
     struct Sources;
 
     impl Sources {
         fn shapes(files: &[(&str, &str)]) -> TypeShapes {
-            let sources: Vec<ParsedSource> = files
+            let sources: Vec<_> = files
                 .iter()
-                .map(|(file, text)| ParsedSource::sample(file, text))
+                .map(|(file, text)| ParsedSourceFixture::sample(file, text))
                 .collect();
             TypeShapes::measure(&sources)
         }

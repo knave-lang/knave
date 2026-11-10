@@ -1,15 +1,15 @@
 use syn::visit::{self, Visit};
 use syn::{FnArg, ImplItemFn, ItemFn, ItemImpl, ItemTrait, Signature, TraitItemFn, Type};
 
-use crate::functions::FunctionCollector;
+use crate::function_owner::FunctionOwner;
 use crate::parsed_source::ParsedSource;
 use crate::ratchet::Counts;
 
 #[derive(Default)]
 pub struct Signatures {
-    pub arguments: Counts,
-    pub bool_parameters: Counts,
-    pub free_functions: Counts,
+    arguments: Counts,
+    bool_parameters: Counts,
+    free_functions: Counts,
 }
 
 impl Signatures {
@@ -22,12 +22,16 @@ impl Signatures {
         for source in sources {
             SignatureVisitor {
                 file: source.file(),
-                owner: None,
+                owner: FunctionOwner::default(),
                 signatures: &mut signatures,
             }
             .visit_file(source.syntax());
         }
         signatures
+    }
+
+    pub fn into_counts(self) -> [Counts; 3] {
+        [self.arguments, self.bool_parameters, self.free_functions]
     }
 
     fn record(&mut self, function: String, signature: &Signature) {
@@ -67,19 +71,16 @@ impl Signatures {
 
 struct SignatureVisitor<'a> {
     file: &'a str,
-    owner: Option<String>,
+    owner: FunctionOwner,
     signatures: &'a mut Signatures,
 }
 
 impl SignatureVisitor<'_> {
     fn function(&self, signature: &Signature) -> String {
-        match &self.owner {
-            Some(owner) => format!("{}::{owner}::{}", self.file, signature.ident),
-            None => format!("{}::{}", self.file, signature.ident),
-        }
+        format!("{}::{}", self.file, self.owner.qualify(&signature.ident))
     }
 
-    fn within_owner(&mut self, owner: Option<String>, visit: impl FnOnce(&mut Self)) {
+    fn within_owner(&mut self, owner: FunctionOwner, visit: impl FnOnce(&mut Self)) {
         let outer = std::mem::replace(&mut self.owner, owner);
         visit(self);
         self.owner = outer;
@@ -95,13 +96,13 @@ impl<'ast> Visit<'ast> for SignatureVisitor<'_> {
     }
 
     fn visit_item_impl(&mut self, implementation: &'ast ItemImpl) {
-        self.within_owner(FunctionCollector::type_name(implementation), |visitor| {
+        self.within_owner(FunctionOwner::of_impl(implementation), |visitor| {
             visit::visit_item_impl(visitor, implementation);
         });
     }
 
     fn visit_item_trait(&mut self, definition: &'ast ItemTrait) {
-        self.within_owner(Some(definition.ident.to_string()), |visitor| {
+        self.within_owner(FunctionOwner::of_trait(definition), |visitor| {
             visit::visit_item_trait(visitor, definition);
         });
     }
@@ -122,13 +123,13 @@ impl<'ast> Visit<'ast> for SignatureVisitor<'_> {
 #[cfg(test)]
 mod tests {
     use super::Signatures;
-    use crate::parsed_source::ParsedSource;
+    use crate::parsed_source::ParsedSourceFixture;
 
     struct Source;
 
     impl Source {
         fn signatures(text: &str) -> Signatures {
-            Signatures::measure(&[ParsedSource::sample("src/a.rs", text)])
+            Signatures::measure(&[ParsedSourceFixture::sample("src/a.rs", text)])
         }
     }
 

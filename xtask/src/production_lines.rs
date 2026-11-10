@@ -4,7 +4,10 @@ use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{ImplItem, Item, TraitItem};
 
-use crate::ratchet::Counts;
+use std::path::Path;
+
+use crate::failure::TaskFailure;
+use crate::ratchet::{Counts, Limit, Ratchet, Unit};
 use crate::source_file::SourceFile;
 use crate::test_code::TestCode;
 use crate::test_modules::TestModuleFiles;
@@ -13,8 +16,20 @@ pub struct ProductionLineCensus;
 
 impl ProductionLineCensus {
     const TEST_FILE_LINES: usize = 0;
+    const MAXIMUM_PRODUCTION_LINES: usize = 500;
+    pub const LIMIT: Limit = Limit {
+        baseline: "xtask/baselines/production_lines.txt",
+        maximum: Self::MAXIMUM_PRODUCTION_LINES,
+        subjects: "Rust files",
+        unit: Unit::new("production line", "production lines"),
+        advice: "Split it by responsibility.",
+    };
 
-    pub fn measure(sources: &[SourceFile]) -> Counts {
+    pub fn ratchet(root: &Path, sources: &[SourceFile]) -> Result<Ratchet, TaskFailure> {
+        Ratchet::read(root, Self::LIMIT, Self::measure(sources))
+    }
+
+    fn measure(sources: &[SourceFile]) -> Counts {
         let test_files = TestModuleFiles::find(sources);
         sources
             .iter()
@@ -105,6 +120,11 @@ mod tests {
             SourceFile::parse(PathBuf::from(path), path.to_string(), text)
                 .expect("the source parses")
         }
+    }
+
+    #[test]
+    fn the_production_line_limit_is_500() {
+        assert_eq!(ProductionLineCensus::LIMIT.maximum, 500);
     }
 
     #[test]

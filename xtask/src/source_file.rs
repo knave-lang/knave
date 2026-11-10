@@ -45,10 +45,6 @@ impl SourceFile {
     pub fn syntax(&self) -> &syn::File {
         &self.syntax
     }
-
-    pub fn into_syntax(self) -> syn::File {
-        self.syntax
-    }
 }
 
 #[cfg(test)]

@@ -1,0 +1,10 @@
+expand/src/expand/mod.rs::Expander 26
+expand/src/expand/mod.rs::ExpansionTables 19
+expand/src/expand/mod.rs::Program 11
+src/emit/expressions.rs::ExpressionEmitter 16
+src/emit/plan.rs::EmitPlan 11
+src/ownership/kinds.rs::ClosureKinds 21
+src/ownership/kinds.rs::KindSources 11
+src/ownership/moves.rs::MoveChecker 18
+src/types/checker.rs::TypeChecker 74
+src/types/typed.rs::TypedProgram 37

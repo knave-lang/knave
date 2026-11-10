@@ -65,6 +65,10 @@ jobs:
         env:
           BASE_OPTION: ${{ github.event_name == 'pull_request' && '--base HEAD^1' || '' }}
         run: nix develop .#ci -c cargo xtask file-sizes $BASE_OPTION
+      - name: Design rules
+        env:
+          BASE_OPTION: ${{ github.event_name == 'pull_request' && '--base HEAD^1' || '' }}
+        run: nix develop .#ci -c cargo xtask design-rules $BASE_OPTION
       - name: Lint
         run: nix develop .#ci -c cargo clippy --workspace --all-targets -- -D warnings
       - name: Package the published crates

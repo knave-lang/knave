@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -5,12 +6,14 @@ use std::process::ExitCode;
 use crate::baseline_raises::BaselineRaises;
 use crate::checks::{BadgeFreshness, Check, CleanEmittedRust, CoverageFloor, CrapLimit};
 use crate::crap::ScoredFunction;
+use crate::design::DesignRules;
 use crate::emitted_lints::{EmittedLints, LintedProgram};
 use crate::failure::TaskFailure;
 use crate::functions::{SourceFunction, SourceTree};
 use crate::instrumented_tests::InstrumentedTests;
 use crate::language::LanguageSource;
 use crate::lcov::LcovReport;
+use crate::parsed_source::ParsedSource;
 use crate::production_lines::ProductionLineCensus;
 use crate::ratchet::{Limit, Ratchet, Unit};
 use crate::source_file::SourceFile;
@@ -78,9 +81,48 @@ impl QualityGate {
         Ok(checks)
     }
 
+    pub fn run_design_rules(&self, base: Option<&str>) -> Result<ExitCode, TaskFailure> {
+        let checks = self.design_rule_checks(base)?;
+        let checks: Vec<&dyn Check> = checks.iter().map(Box::as_ref).collect();
+        Ok(Self::conclude(&checks))
+    }
+
+    fn design_rule_checks(&self, base: Option<&str>) -> Result<Vec<Box<dyn Check>>, TaskFailure> {
+        let sources = self.parsed_production_sources()?;
+        let mut checks: Vec<Box<dyn Check>> = DesignRules::ratchets(&self.root, &sources)?
+            .into_iter()
+            .map(|ratchet| Box::new(ratchet) as Box<dyn Check>)
+            .collect();
+        if let Some(base) = base {
+            for baseline in DesignRules::baselines() {
+                checks.push(Box::new(BaselineRaises::since(&self.root, baseline, base)?));
+            }
+        }
+        Ok(checks)
+    }
+
+    fn parsed_production_sources(&self) -> Result<Vec<ParsedSource>, TaskFailure> {
+        let directories = self.source_directories()?;
+        let crate_directories: Vec<String> = directories
+            .iter()
+            .map(|directory| {
+                directory
+                    .strip_prefix(&self.root)
+                    .unwrap_or(directory)
+                    .display()
+                    .to_string()
+            })
+            .collect();
+        let files = SourceTree::new(&self.root, directories).files()?;
+        Ok(ParsedSource::all_production(files, &crate_directories))
+    }
+
     fn production_sources(&self) -> Result<Vec<SourceFile>, TaskFailure> {
-        let directories = CargoWorkspace::read(&self.root)?.source_directories_with_tooling();
-        SourceTree::new(&self.root, directories).files()
+        SourceTree::new(&self.root, self.source_directories()?).files()
+    }
+
+    fn source_directories(&self) -> Result<BTreeSet<PathBuf>, TaskFailure> {
+        Ok(CargoWorkspace::read(&self.root)?.source_directories_with_tooling())
     }
 
     fn measure_everything(&self) -> Result<(CoverageEvidence, Vec<LintedProgram>), TaskFailure> {
@@ -211,6 +253,24 @@ mod tests {
             "{}",
             with_base[1]
         );
+    }
+
+    #[test]
+    fn design_rules_check_every_baseline_against_a_base() {
+        let gate = QualityGate::new(WorkspaceFixture::repository_root());
+        let summaries = |base| -> Vec<String> {
+            gate.design_rule_checks(base)
+                .expect("the repository reads")
+                .iter()
+                .map(|check| check.summary())
+                .collect()
+        };
+        assert_eq!(summaries(None).len(), 9);
+        let raises: Vec<String> = summaries(Some("HEAD"))
+            .into_iter()
+            .filter(|summary| summary.contains("added or raised since the base"))
+            .collect();
+        assert_eq!(raises.len(), 9, "{raises:?}");
     }
 
     #[test]

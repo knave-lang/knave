@@ -219,9 +219,10 @@ impl Expander<'_> {
                 span,
             ));
         }
-        let result = self
-            .lowered_global(binding, span)
-            .and_then(|expr| Interpreter::new(self, span).eval(&expr, &Env::default()));
+        let result = self.lowered_global(binding, span).and_then(|expr| {
+            let steps = self.form_budgets.current().steps();
+            Interpreter::new(self, span, steps).eval(&expr, &Env::default())
+        });
         self.tables.globals.evaluating.remove(&binding);
         let value = result?;
         self.tables.globals.values.insert(binding, value.clone());

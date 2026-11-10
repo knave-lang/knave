@@ -3,11 +3,13 @@ mod builtins;
 mod code_list;
 mod limit_problems;
 mod problems;
+mod step_budget;
 mod value;
 
 pub use builtins::BuiltinCall;
 pub use code_list::{CodeList, ListNesting, NestedTooDeep, PassedLimit};
 pub use problems::InterpretProblems;
+pub use step_budget::StepBudget;
 pub use value::{Closure, Env, Value};
 
 use std::rc::Rc;
@@ -19,6 +21,7 @@ use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Symbol};
 use crate::source::Span;
 use crate::stack::DeepRecursion;
+use limit_problems::LimitProblems;
 
 pub trait CompileTimeHost {
     fn global_value(&mut self, binding: BindingId, span: Span) -> Result<Value, Diagnostic>;
@@ -63,16 +66,18 @@ pub struct Interpreter<'h> {
     host: &'h mut dyn CompileTimeHost,
     call_site: Span,
     depth: usize,
+    steps: StepBudget,
 }
 
 impl<'h> Interpreter<'h> {
     const MAX_DEPTH: usize = 1000;
 
-    pub fn new(host: &'h mut dyn CompileTimeHost, call_site: Span) -> Self {
+    pub fn new(host: &'h mut dyn CompileTimeHost, call_site: Span, steps: StepBudget) -> Self {
         Self {
             host,
             call_site,
             depth: 0,
+            steps,
         }
     }
 
@@ -167,6 +172,13 @@ impl<'h> Interpreter<'h> {
         self.call(&function, values, span)
     }
 
+    #[inline]
+    fn spend_step(&self) -> Result<(), Diagnostic> {
+        self.steps
+            .spend()
+            .map_err(|passed| LimitProblems::too_many_steps(passed.limit, self.call_site))
+    }
+
     fn eval_recur(&mut self, arguments: &[Expr], env: &Env) -> Result<Step, Diagnostic> {
         Ok(Step::Recur(self.eval_arguments(arguments, env)?))
     }
@@ -193,6 +205,7 @@ impl<'h> Interpreter<'h> {
                 span,
             ));
         }
+        self.spend_step()?;
         if self.depth >= Self::MAX_DEPTH {
             return Err(InterpretProblems::too_deep(span));
         }
@@ -208,6 +221,7 @@ impl<'h> Interpreter<'h> {
             match self.step_block(&closure.lambda.body, &env) {
                 Ok(Step::Value(value)) => return Ok(value),
                 Ok(Step::Recur(arguments)) => {
+                    self.spend_step()?;
                     env = Self::bind_arguments(closure, arguments);
                 }
                 Err(diagnostic) => return Err(diagnostic),

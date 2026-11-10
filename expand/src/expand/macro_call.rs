@@ -221,7 +221,8 @@ impl Expander<'_> {
         let arguments = ReturnedArguments::of_call(&input);
         self.expansion_depth += 1;
         self.introductions.push(introduction);
-        let result = Interpreter::new(self, call_site).call(
+        let steps = self.form_budgets.current().steps();
+        let result = Interpreter::new(self, call_site, steps).call(
             &Value::Closure(closure),
             vec![Value::Form(input)],
             call_site,

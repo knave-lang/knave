@@ -1,10 +1,11 @@
-use crate::interpret::{PassedLimit, Value};
+use crate::interpret::{PassedLimit, StepBudget, Value};
 use crate::reader::Form;
 use crate::scope::Scope;
 
 #[derive(Clone)]
 pub struct FormBudget {
     remaining: usize,
+    steps: StepBudget,
 }
 
 impl FormBudget {
@@ -14,7 +15,12 @@ impl FormBudget {
     pub fn full() -> Self {
         Self {
             remaining: Self::EXPANSION_LIMIT,
+            steps: StepBudget::full(),
         }
+    }
+
+    pub fn steps(&self) -> StepBudget {
+        self.steps.clone()
     }
 
     pub fn exhaust(&mut self) {

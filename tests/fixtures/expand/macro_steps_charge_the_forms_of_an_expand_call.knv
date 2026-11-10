@@ -14,5 +14,5 @@
        (quote 1)))
    times))
 
-(with-macro-steps 3000
-                  (defn main () (println (loops 30))))
+(with-macro-steps 14300
+                  (defn main () (println (loops 60))))

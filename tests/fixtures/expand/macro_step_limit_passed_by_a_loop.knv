@@ -8,5 +8,5 @@
 
 (defmacro loops (times) (count-down times))
 
-(with-macro-steps 1000
+(with-macro-steps 5000
                   (defn main () (println (loops 2000))))

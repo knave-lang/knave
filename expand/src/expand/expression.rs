@@ -80,7 +80,7 @@ impl Expander<'_> {
         let body = self.lower_body(&body)?;
         RecurCheck::inside(params.len()).block(&body)?;
         TryCheck::inside().block(&body)?;
-        Ok(Lambda { params, body })
+        Ok(Lambda::new(params, body))
     }
 
     pub(super) fn field_label(&self, shape: &Shape, form: &Form) -> Result<FieldLabel, Diagnostic> {

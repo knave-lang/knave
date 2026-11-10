@@ -9,5 +9,5 @@
    (quote ())
    times))
 
-(with-macro-steps 1000
+(with-macro-steps 10000
                   (defn main () (println (grows 400))))

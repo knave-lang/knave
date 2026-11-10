@@ -58,10 +58,7 @@ impl GeneratedEntry {
     }
 
     fn item(&self) -> Item {
-        let lambda = Lambda {
-            params: Vec::new(),
-            body: self.body.clone(),
-        };
+        let lambda = Lambda::new(Vec::new(), self.body.clone());
         let holds_no_written_text = self.span.start();
         let value = Expr::new(ExprKind::Fn(Rc::new(lambda)), holds_no_written_text);
         Item {

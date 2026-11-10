@@ -9,5 +9,5 @@
    (fn () 1)
    times))
 
-(with-macro-steps 1000
-                  (defn main () (println (chains 200))))
+(with-macro-steps 35000
+                  (defn main () (println (chains 2000))))

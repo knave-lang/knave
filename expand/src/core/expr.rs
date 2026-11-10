@@ -226,6 +226,18 @@ pub struct Binder {
 pub struct Lambda {
     pub params: Vec<Binder>,
     pub body: Block,
+    pub body_size: usize,
+}
+
+impl Lambda {
+    pub fn new(params: Vec<Binder>, body: Block) -> Self {
+        let body_size = body.expressions_run();
+        Self {
+            params,
+            body,
+            body_size,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
@@ -336,6 +348,19 @@ impl StructExpr {
 }
 
 impl Block {
+    pub fn expressions_run(&self) -> usize {
+        let mut pending: Vec<&Expr> = self.expressions().collect();
+        let mut count = 0;
+        while let Some(expr) = pending.pop() {
+            count += 1;
+            match expr.kind() {
+                ExprKind::Fn(_) => {}
+                _ => pending.extend(expr.children()),
+            }
+        }
+        count.max(1)
+    }
+
     pub fn expressions(&self) -> impl Iterator<Item = &Expr> {
         self.items.iter().map(BodyItem::expr)
     }
@@ -346,6 +371,59 @@ impl BodyItem {
         match self {
             BodyItem::Let(_, value) | BodyItem::Expr(value) => value,
         }
+    }
+}
+
+#[cfg(test)]
+mod body_size_tests {
+    use std::rc::Rc;
+
+    use super::{Block, BodyItem, Expr, ExprKind, Lambda, Leaf, Literal};
+    use crate::source::{SourceId, Span};
+
+    struct BodyFixture;
+
+    impl BodyFixture {
+        fn expr(kind: ExprKind) -> Expr {
+            Expr::new(kind, Span::new(SourceId::new(0), 0..0))
+        }
+
+        fn leaf() -> Expr {
+            Self::expr(ExprKind::Leaf(Leaf::Literal(Literal::Bool(true))))
+        }
+
+        fn block(exprs: Vec<Expr>) -> Block {
+            Block {
+                items: exprs.into_iter().map(BodyItem::Expr).collect(),
+            }
+        }
+
+        fn function_of(exprs: Vec<Expr>) -> Expr {
+            Self::expr(ExprKind::Fn(Rc::new(Lambda::new(
+                Vec::new(),
+                Self::block(exprs),
+            ))))
+        }
+    }
+
+    #[test]
+    fn a_body_counts_each_expression_it_runs() {
+        let call = BodyFixture::expr(ExprKind::Call(
+            Box::new(BodyFixture::leaf()),
+            vec![BodyFixture::leaf(), BodyFixture::leaf()],
+        ));
+        assert_eq!(BodyFixture::block(vec![call]).expressions_run(), 4);
+    }
+
+    #[test]
+    fn a_body_counts_a_function_it_makes_but_not_that_function_body() {
+        let function = BodyFixture::function_of(vec![BodyFixture::leaf(); 5]);
+        assert_eq!(BodyFixture::block(vec![function]).expressions_run(), 1);
+    }
+
+    #[test]
+    fn an_empty_body_still_costs_one() {
+        assert_eq!(BodyFixture::block(Vec::new()).expressions_run(), 1);
     }
 }
 

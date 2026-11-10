@@ -2,13 +2,13 @@
 
 (defmacro innocent () 1)
 
-(with-macro-steps 1000
+(with-macro-steps 5000
                   (defn main ()
                     (println (spin))
                     (println (innocent))
                     (println (spin))))
 
-(with-macro-steps 1000
+(with-macro-steps 5000
                   (do
                     (def first-value (spin))
                     (def second-value (innocent))

@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
-use std::fmt;
 use std::fs;
 use std::path::Path;
 
@@ -39,14 +38,14 @@ pub struct Baseline {
 }
 
 impl Baseline {
-    fn read(root: &Path, file: &str) -> Result<Self, TaskFailure> {
+    pub fn read(root: &Path, file: &str) -> Result<Self, TaskFailure> {
         let path = root.join(file);
         let text =
             fs::read_to_string(&path).map_err(|error| TaskFailure::unreadable(&path, error))?;
         Self::parse(file, &text)
     }
 
-    fn parse(file: &str, text: &str) -> Result<Self, TaskFailure> {
+    pub fn parse(file: &str, text: &str) -> Result<Self, TaskFailure> {
         let mut entries = Counts::new();
         for line in text.lines() {
             let (subject, count) =
@@ -66,6 +65,18 @@ impl Baseline {
         Some((subject.to_string(), count.parse().ok()?))
     }
 
+    pub fn raised_since(&self, base: &Baseline) -> Vec<Raise> {
+        self.entries
+            .iter()
+            .filter(|(subject, count)| base.listed(subject).is_none_or(|before| **count > before))
+            .map(|(subject, &count)| Raise {
+                subject: subject.clone(),
+                from: base.listed(subject),
+                to: count,
+            })
+            .collect()
+    }
+
     fn listed(&self, subject: &str) -> Option<usize> {
         self.entries.get(subject).copied()
     }
@@ -80,12 +91,16 @@ impl Baseline {
     fn len(&self) -> usize {
         self.entries.len()
     }
+
+    fn file(&self) -> &str {
+        &self.file
+    }
 }
 
-impl fmt::Display for Baseline {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(&self.file)
-    }
+pub struct Raise {
+    pub subject: String,
+    pub from: Option<usize>,
+    pub to: usize,
 }
 
 enum Problem<'a> {
@@ -196,17 +211,17 @@ impl Ratchet {
             } => format!(
                 "{} and below its baseline of {listed}. Lower its entry in {} to {count}.",
                 self.over_limit(subject, count),
-                self.baseline
+                self.baseline.file()
             ),
             Problem::WithinLimit { subject, count } => format!(
                 "{subject} has {}, within the limit of {}. Remove its entry from {}.",
                 self.limit.unit.count(count),
                 self.limit.maximum,
-                self.baseline
+                self.baseline.file()
             ),
             Problem::Vanished { subject } => format!(
                 "{subject} is listed in {} but no longer exists. Remove its entry.",
-                self.baseline
+                self.baseline.file()
             ),
         }
     }
@@ -232,7 +247,7 @@ impl Check for Ratchet {
             self.limit.subjects,
             self.limit.unit.count(self.limit.maximum),
             self.baseline.len(),
-            self.baseline
+            self.baseline.file()
         )
     }
 
@@ -370,6 +385,26 @@ mod tests {
     #[test]
     fn a_baseline_line_without_a_separator_is_malformed() {
         assert!(Baseline::parse("baseline.txt", "src/a.rs").is_err());
+    }
+
+    #[test]
+    fn a_raised_or_new_entry_is_a_raise_and_a_lowered_or_kept_one_is_not() {
+        let base =
+            Baseline::parse("baseline.txt", "a 10\nb 10\nc 10\nd 10").expect("the base parses");
+        let head =
+            Baseline::parse("baseline.txt", "a 11\nb 10\nc 9\ne 600").expect("the head parses");
+        let raises: Vec<(String, Option<usize>, usize)> = head
+            .raised_since(&base)
+            .into_iter()
+            .map(|raise| (raise.subject, raise.from, raise.to))
+            .collect();
+        assert_eq!(
+            raises,
+            [
+                ("a".to_string(), Some(10), 11),
+                ("e".to_string(), None, 600)
+            ]
+        );
     }
 
     #[test]

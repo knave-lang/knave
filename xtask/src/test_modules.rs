@@ -9,6 +9,7 @@ use crate::test_code::TestCode;
 pub struct TestModuleFiles {
     files: BTreeSet<PathBuf>,
     directories: BTreeSet<PathBuf>,
+    production_paths: BTreeSet<PathBuf>,
 }
 
 impl TestModuleFiles {
@@ -19,48 +20,53 @@ impl TestModuleFiles {
         let mut found = Self {
             files: BTreeSet::new(),
             directories: BTreeSet::new(),
+            production_paths: BTreeSet::new(),
         };
         for source in sources {
-            for module in Self::declared_test_modules(source.syntax()) {
-                found.add(source.path(), module);
-            }
+            let parent = source.path();
+            let beside_parent = parent.parent().unwrap_or(parent);
+            let directory = Self::module_directory(parent, beside_parent);
+            found.collect(&source.syntax().items, &directory, beside_parent);
         }
         found
     }
 
     pub fn contains(&self, source: &SourceFile) -> bool {
         let path = source.path();
-        self.files.contains(path)
+        let declared_for_tests = self.files.contains(path)
             || self
                 .directories
                 .iter()
-                .any(|directory| path.starts_with(directory))
+                .any(|directory| path.starts_with(directory));
+        declared_for_tests && !self.production_paths.contains(path)
     }
 
-    fn declared_test_modules(syntax: &syn::File) -> Vec<&ItemMod> {
-        syntax
-            .items
-            .iter()
-            .filter_map(|item| match item {
-                Item::Mod(module) if module.content.is_none() && TestCode::marks(&module.attrs) => {
-                    Some(module)
-                }
-                _ => None,
-            })
-            .collect()
-    }
-
-    fn add(&mut self, parent: &Path, module: &ItemMod) {
-        let beside_parent = parent.parent().unwrap_or(parent);
-        if let Some(written) = Self::written_path(module) {
-            self.files.insert(beside_parent.join(written));
-            return;
+    fn collect(&mut self, items: &[Item], directory: &Path, beside_parent: &Path) {
+        for item in items {
+            if let Item::Mod(module) = item {
+                self.declare(module, directory, beside_parent);
+            }
         }
-        let directory =
-            Self::module_directory(parent, beside_parent).join(module.ident.to_string());
-        self.files
-            .insert(directory.with_extension(SourceFile::EXTENSION));
-        self.directories.insert(directory);
+    }
+
+    fn declare(&mut self, module: &ItemMod, directory: &Path, beside_parent: &Path) {
+        let child = directory.join(module.ident.to_string());
+        let is_test = TestCode::marks(&module.attrs);
+        match (&module.content, Self::written_path(module)) {
+            (Some(_), _) if is_test => {
+                self.directories.insert(child);
+            }
+            (Some((_, items)), _) => self.collect(items, &child, beside_parent),
+            (None, Some(written)) if !is_test => {
+                self.production_paths.insert(beside_parent.join(written));
+            }
+            (None, None) if is_test => {
+                self.files
+                    .insert(child.with_extension(SourceFile::EXTENSION));
+                self.directories.insert(child);
+            }
+            (None, _) => {}
+        }
     }
 
     fn module_directory(parent: &Path, beside_parent: &Path) -> PathBuf {
@@ -159,20 +165,53 @@ mod tests {
     }
 
     #[test]
-    fn a_written_path_names_the_test_module_file() {
+    fn a_test_module_with_a_written_path_stays_production() {
         let parent = Tree::file(
-            "src/cli/run.rs",
-            "/// Cases.\n#[cfg(test)]\n#[path = \"run_cases.rs\"]\nmod cases;",
+            "src/types/mod.rs",
+            "mod checker;\n/// Cases.\n#[cfg(test)]\n#[path = \"checker.rs\"]\nmod checker_for_tests;",
+        );
+        assert!(Tree::test_files(&parent, &["src/types/checker.rs"]).is_empty());
+    }
+
+    #[test]
+    fn a_production_module_with_a_written_path_keeps_its_file_production() {
+        let parent = Tree::file(
+            "src/types/mod.rs",
+            "#[cfg(test)]\nmod fixture;\n#[path = \"fixture.rs\"]\nmod shared;",
+        );
+        assert!(Tree::test_files(&parent, &["src/types/fixture.rs"]).is_empty());
+    }
+
+    #[test]
+    fn a_test_module_inside_an_inline_module_lies_in_its_directory() {
+        let parent = Tree::file(
+            "src/types/mod.rs",
+            "mod outer {\n    #[cfg(test)]\n    mod nested;\n    mod kept;\n}",
         );
         assert_eq!(
-            Tree::test_files(&parent, &["src/cli/run_cases.rs", "src/cli/run/cases.rs"]),
-            ["src/cli/run_cases.rs"]
+            Tree::test_files(
+                &parent,
+                &["src/types/outer/nested.rs", "src/types/outer/kept.rs"]
+            ),
+            ["src/types/outer/nested.rs"]
+        );
+    }
+
+    #[test]
+    fn the_children_of_an_inline_test_module_are_test_files() {
+        let parent = Tree::file(
+            "src/lib.rs",
+            "#[cfg(test)]\nmod support {\n    mod fixture;\n}",
+        );
+        assert_eq!(
+            Tree::test_files(&parent, &["src/support/fixture.rs", "src/fixture.rs"]),
+            ["src/support/fixture.rs"]
         );
     }
 
     #[test]
     fn inline_and_production_modules_declare_no_test_file() {
-        let parent = Tree::file("src/lib.rs", "#[cfg(test)]\nmod inline {}\nmod production;");
+        let parent = Tree::file("src/lib.rs", "mod inline {}\nmod production;");
         assert!(Tree::test_files(&parent, &["src/inline.rs", "src/production.rs"]).is_empty());
     }
 }

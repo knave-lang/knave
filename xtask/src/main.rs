@@ -1,4 +1,5 @@
 mod badge;
+mod baseline_raises;
 mod bench;
 mod cargo;
 mod checks;
@@ -9,6 +10,7 @@ mod emitted_lints;
 mod failure;
 mod functions;
 mod gate;
+mod git;
 mod instrumented_tests;
 mod language;
 mod lcov;
@@ -49,7 +51,7 @@ enum Task {
     #[command(
         about = "Check that no Rust file outgrows the production line limit or its baseline entry"
     )]
-    FileSizes,
+    FileSizes(FileSizesTask),
     #[command(
         subcommand,
         about = "Measure the compiler's front end under callgrind, or compare two measurements"
@@ -65,6 +67,15 @@ enum Task {
         about = "Print the release notes: the pull requests with a release label first, then the rest"
     )]
     ReleaseNotes(ReleaseNotesTask),
+}
+
+#[derive(Args)]
+struct FileSizesTask {
+    #[arg(
+        long,
+        help = "Also refuse a baseline entry added or raised since this revision, unless a `Baseline-Accepted:` trailer names it"
+    )]
+    base: Option<String>,
 }
 
 #[derive(Args)]
@@ -111,8 +122,8 @@ impl Task {
         let workspace_root = manifest_directory.parent().unwrap_or(manifest_directory);
         match self {
             Task::Coverage(coverage) => coverage.run(workspace_root),
-            Task::FileSizes => QualityGate::new(workspace_root)
-                .run_file_sizes()
+            Task::FileSizes(sizes) => QualityGate::new(workspace_root)
+                .run_file_sizes(sizes.base.as_deref())
                 .unwrap_or_else(|failure| failure.report()),
             Task::Bench(task) => task.run(workspace_root),
             Task::NextRelease(release) => release.run(),
@@ -161,6 +172,22 @@ mod tests {
                 Err(failure) => failure.to_string(),
             }
         }
+    }
+
+    #[test]
+    fn file_sizes_takes_an_optional_base() {
+        let base = |arguments: &[&str]| match Tasks::try_parse_from(arguments)
+            .expect("the command line parses")
+            .task
+        {
+            Task::FileSizes(sizes) => sizes.base,
+            _ => panic!("the command line names another task"),
+        };
+        assert_eq!(base(&["xtask", "file-sizes"]), None);
+        assert_eq!(
+            base(&["xtask", "file-sizes", "--base", "HEAD^1"]),
+            Some("HEAD^1".to_string())
+        );
     }
 
     #[test]

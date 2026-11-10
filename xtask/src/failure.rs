@@ -56,6 +56,10 @@ impl TaskFailure {
         Self::new(format!("{file} lists a subject twice, again in {line:?}"))
     }
 
+    pub fn unknown_revision(revision: &str) -> Self {
+        Self::new(format!("cannot find the revision `{revision}`"))
+    }
+
     pub fn constant_missing(path: &Path, owner: &str, name: &str) -> Self {
         Self::new(format!(
             "`{}` defines no string constant `{owner}::{name}`",

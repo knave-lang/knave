@@ -213,6 +213,18 @@ fn area() -> u32 {
     }
 
     #[test]
+    fn a_test_module_that_names_a_production_file_leaves_its_count() {
+        let census = SourceText::census(&[
+            (
+                "src/types/mod.rs",
+                "mod checker;\n#[cfg(test)]\n#[path = \"checker.rs\"]\nmod checker_for_tests;\n",
+            ),
+            ("src/types/checker.rs", "fn check() {}\nfn infer() {}\n"),
+        ]);
+        assert_eq!(census["src/types/checker.rs"], 2);
+    }
+
+    #[test]
     fn a_file_declared_as_a_test_module_counts_nothing() {
         let census = SourceText::census(&[
             (

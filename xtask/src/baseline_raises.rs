@@ -18,10 +18,8 @@ impl BaselineRaises {
     pub fn since(root: &Path, file: &str, base: &str) -> Result<Self, TaskFailure> {
         let git = Git::new(root);
         Self::verify_revision(&git, base)?;
-        let raises = match Self::file_at(&git, base, file)? {
-            Some(text) => Baseline::read(root, file)?.raised_since(&Baseline::parse(file, &text)?),
-            None => Vec::new(),
-        };
+        let after = Baseline::read(root, file)?;
+        let raises = Self::raises(&after, file, Self::file_at(&git, base, file)?)?;
         let log = Self::trailer_log(&git, base)?;
         Ok(Self::new(file, raises, Self::accepted_subjects(&log)))
     }
@@ -31,6 +29,17 @@ impl BaselineRaises {
             file: file.to_string(),
             raises,
             accepted,
+        }
+    }
+
+    fn raises(
+        after: &Baseline,
+        file: &str,
+        before: Option<String>,
+    ) -> Result<Vec<Raise>, TaskFailure> {
+        match before {
+            Some(text) => Ok(after.raised_since(&Baseline::parse(file, &text)?)),
+            None => Ok(Vec::new()),
         }
     }
 
@@ -116,7 +125,7 @@ mod tests {
     use super::BaselineRaises;
     use crate::checks::Check;
     use crate::git::Git;
-    use crate::ratchet::Raise;
+    use crate::ratchet::{Baseline, Raise};
     use crate::workspace::WorkspaceFixture;
 
     struct RaiseCase;
@@ -190,6 +199,34 @@ mod tests {
             failure.to_string(),
             "cannot find the revision `no-such-revision`"
         );
+    }
+
+    #[test]
+    fn a_baseline_present_at_the_base_is_compared_entry_by_entry() {
+        let after = Baseline::parse(RaiseCase::FILE, "src/a.rs 901\nsrc/b.rs 900")
+            .expect("the head parses");
+        let raises = BaselineRaises::raises(
+            &after,
+            RaiseCase::FILE,
+            Some("src/a.rs 900\nsrc/b.rs 900".to_string()),
+        )
+        .expect("the base parses");
+        let subjects: Vec<&str> = raises.iter().map(|raise| raise.subject.as_str()).collect();
+        assert_eq!(subjects, ["src/a.rs"]);
+    }
+
+    #[test]
+    fn a_baseline_absent_at_the_base_adds_no_raise() {
+        let after = Baseline::parse(RaiseCase::FILE, "src/a.rs 901").expect("the head parses");
+        let raises =
+            BaselineRaises::raises(&after, RaiseCase::FILE, None).expect("nothing to parse");
+        assert!(raises.is_empty());
+    }
+
+    #[test]
+    fn a_failed_trailer_log_fails() {
+        let git = Git::new(WorkspaceFixture::repository_root());
+        assert!(BaselineRaises::trailer_log(&git, "no-such-revision").is_err());
     }
 
     #[test]

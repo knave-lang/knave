@@ -408,11 +408,14 @@
   "Gives the type the checker infers for the expression, as a string.
 
   The text is the type as a `type` signature writes it, such as
-  `(vec i64)`. The expression is checked and never runs, so it emits only
-  the string literal.
+  `(vec i64)`, and a function type prints as `fn` whatever its kind. The
+  expression is checked and never runs, so it emits only the string literal.
 
   (infer (vec 1 2))
-  => \"(vec i64)\"")
+  => \"(vec i64)\"
+
+  (infer (the (fn-mut (i64) i64) (fn (x) x)))
+  => \"(fn (i64) i64)\"")
 
 (document (trait name (method type) ...)
   "Defines a trait from its method signatures.

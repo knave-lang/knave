@@ -2,7 +2,7 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (51 of 230): copy debug def defenum defmacro defn defrule defstruct deftrait deftype derive display enum eprint eprintln eq exit export field float fmt fn-mut fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord quote rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
+untested in prelude (50 of 230): copy debug def defenum defmacro defn defrule defstruct deftrait deftype derive display enum eprint eprintln eq exit export field float fmt fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord quote rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
 running 203 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok

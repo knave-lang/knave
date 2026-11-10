@@ -15,9 +15,14 @@ use crate::types::TypedProgram;
 
 pub struct DocumentedModules {
     file: ProgramFile,
-    entry: Option<ProgramFile>,
+    entry: EntryProgram,
     written: Vec<String>,
     linked: LinkedModules,
+}
+
+pub struct EntryProgram {
+    file: ProgramFile,
+    text: String,
 }
 
 type ModuleTypes = FxHashMap<String, Vec<TypedName>>;
@@ -40,29 +45,28 @@ struct NamedBinding {
     binding: BindingId,
 }
 
+impl EntryProgram {
+    pub fn new(file: ProgramFile, text: String) -> Self {
+        Self { file, text }
+    }
+}
+
 impl DocumentedModules {
     pub const CALL_SOURCE: &'static str = "<documentation>";
     const LOADING_FORM: &'static str = "(do)";
     const NAMES_MACRO: &'static str = "documentation-names";
     const PAGE_MACRO: &'static str = "documentation-page";
 
-    pub fn new(file: ProgramFile, written: Vec<String>) -> Self {
+    pub fn new(file: ProgramFile, entry: EntryProgram, written: Vec<String>) -> Self {
         let linked = LinkedModules {
             written: written.join(" "),
             prelude: PublicPrelude::paths().join(" "),
         };
         Self {
             file,
-            entry: None,
+            entry,
             written,
             linked,
-        }
-    }
-
-    pub fn with_entry(self, entry: ProgramFile) -> Self {
-        Self {
-            entry: Some(entry),
-            ..self
         }
     }
 
@@ -131,18 +135,17 @@ impl DocumentedModules {
         &self,
         terminal: &mut Terminal,
     ) -> Result<Option<ModuleTypes>, ExitStatus> {
-        let Some(entry) = &self.entry else {
-            return Ok(None);
-        };
-        let source = terminal.load(entry.path())?;
-        let (program, loaded, named) = terminal.within_session(entry, source, |mut session| {
-            let loaded = self.loaded_written(&session);
-            let mut named = Vec::new();
-            for module in &loaded {
-                named.extend(Self::named_bindings(&mut session, module)?);
-            }
-            Ok((Self::checked_also(session.finish()?, &named), loaded, named))
-        })?;
+        let entry = &self.entry;
+        let source = terminal.add_source(entry.file.path(), entry.text.clone());
+        let (program, loaded, named) =
+            terminal.within_session(&entry.file, source, |mut session| {
+                let loaded = self.loaded_written(&session);
+                let mut named = Vec::new();
+                for module in &loaded {
+                    named.extend(Self::named_bindings(&mut session, module)?);
+                }
+                Ok((Self::checked_also(session.finish()?, &named), loaded, named))
+            })?;
         Ok(ProgramChecker::check(&program)
             .ok()
             .map(|typed| Self::by_module(loaded, Self::typed_names(&typed, named))))

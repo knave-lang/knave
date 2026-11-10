@@ -38,6 +38,7 @@ pub enum Builtin {
     ExpandCall,
     ClosestName,
     SortedNames,
+    DistinctLeadingLines,
     Fail,
     NumberAdd,
     NumberSub,
@@ -80,7 +81,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 70] = [
+    const NAMES: [(Builtin, &'static str); 71] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -112,6 +113,7 @@ impl Builtin {
         (Builtin::ExpandCall, "expand-call"),
         (Builtin::ClosestName, "closest-name"),
         (Builtin::SortedNames, "sorted-names"),
+        (Builtin::DistinctLeadingLines, "distinct-leading-lines"),
         (Builtin::Fail, "fail"),
         (Builtin::NumberAdd, "number-add"),
         (Builtin::NumberSub, "number-sub"),

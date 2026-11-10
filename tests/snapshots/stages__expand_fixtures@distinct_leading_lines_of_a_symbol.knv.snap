@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/distinct_leading_lines_of_a_symbol.knv
+---
+error[L0303]: `distinct-leading-lines` expects a list of strings as argument 1, found a symbol
+ --> expand/distinct_leading_lines_of_a_symbol.knv:4:47
+  |
+4 |   (distinct-leading-lines (list "area" (quote width))))
+  |                                               ^^^^^ a symbol given here
+5 |
+6 | (defn main () (println (kept-texts)))
+  |                        ------------ in this macro call

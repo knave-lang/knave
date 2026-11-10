@@ -1,7 +1,9 @@
+use std::cell::OnceCell;
 use std::ops::Range;
 
 use rustc_hash::FxHashMap;
 
+use super::enclosing_index::EnclosingIndex;
 use super::macro_call::MacroOrigin;
 use super::saved_index::SavedWords;
 use crate::source::{SourceId, Span};
@@ -14,6 +16,8 @@ pub struct MacroOrigins {
     saved: SavedOrigins,
     origins: FxHashMap<Span, MacroOrigin>,
     introduced: FxHashMap<(Span, String), Span>,
+    #[serde(skip)]
+    enclosing_index: OnceCell<EnclosingIndex>,
 }
 
 impl MacroOrigins {
@@ -38,11 +42,11 @@ impl MacroOrigins {
     }
 
     fn own_enclosing(&self, span: Span) -> Option<MacroOrigin> {
-        self.origins
-            .values()
-            .filter(|origin| origin.call_site.contains(span))
-            .min_by_key(|origin| Self::call_site_length(origin))
-            .cloned()
+        let index = self
+            .enclosing_index
+            .get_or_init(|| EnclosingIndex::of(self.origins.keys().copied()));
+        let call_site = index.smallest_enclosing(span)?;
+        self.origins.get(&call_site).cloned()
     }
 
     fn call_site_length(origin: &MacroOrigin) -> usize {
@@ -55,6 +59,7 @@ impl MacroOrigins {
     }
 
     pub fn record(&mut self, call_site: Span, origin: MacroOrigin) {
+        self.enclosing_index.take();
         self.origins
             .entry(call_site)
             .and_modify(|outer| outer.through_prelude |= origin.through_prelude)
@@ -426,6 +431,18 @@ mod tests {
         let mut origins = MacroOrigins::default();
         let wide = OriginsFixture::span(1, 5, 30);
         origins.record(wide, OriginsFixture::origin("wide", wide));
+        let narrow = OriginsFixture::span(1, 12, 15);
+        origins.record(narrow, OriginsFixture::origin("narrow", narrow));
+        let found = origins.enclosing(OriginsFixture::span(1, 13, 14));
+        assert_eq!(OriginsFixture::name(found), Some("narrow".to_string()));
+    }
+
+    #[test]
+    fn a_call_site_recorded_after_a_lookup_can_enclose_the_next_lookup() {
+        let mut origins = MacroOrigins::default();
+        let wide = OriginsFixture::span(1, 5, 30);
+        origins.record(wide, OriginsFixture::origin("wide", wide));
+        origins.enclosing(OriginsFixture::span(1, 13, 14));
         let narrow = OriginsFixture::span(1, 12, 15);
         origins.record(narrow, OriginsFixture::origin("narrow", narrow));
         let found = origins.enclosing(OriginsFixture::span(1, 13, 14));

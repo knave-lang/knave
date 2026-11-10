@@ -1,0 +1,8 @@
+(use code distinct-leading-lines list string)
+
+(defmacro kept-texts ()
+  (string (distinct-leading-lines (list "area\n    Measures."
+                                        "area" "are"
+                                        "area\n    Measures."))))
+
+(defn main () (println (kept-texts)))

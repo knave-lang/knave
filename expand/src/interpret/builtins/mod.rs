@@ -1,4 +1,5 @@
 mod failure;
+mod leading_lines;
 mod lists;
 mod numbers;
 mod program;
@@ -15,6 +16,7 @@ use crate::core::{Builtin, Declaration};
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Number, NumberValue};
 use crate::source::Span;
+use leading_lines::DistinctLeadingLines;
 use lists::ListOperations;
 use numbers::NumberOperations;
 use program::{ModuleOperations, ProgramOperations};
@@ -28,7 +30,7 @@ pub struct BuiltinCall {
 }
 
 impl BuiltinCall {
-    const IMPLEMENTATIONS: [(Builtin, Implementation); 70] = [
+    const IMPLEMENTATIONS: [(Builtin, Implementation); 71] = [
         (Builtin::First, |operations, _| operations.lists.first()),
         (Builtin::Rest, |operations, _| operations.lists.rest()),
         (Builtin::List, |operations, _| operations.lists.list()),
@@ -107,6 +109,9 @@ impl BuiltinCall {
         }),
         (Builtin::SortedNames, |operations, _| {
             operations.text.sorted_names()
+        }),
+        (Builtin::DistinctLeadingLines, |operations, _| {
+            operations.leading_lines.kept_texts()
         }),
         (Builtin::Fail, |operations, _| operations.text.fail()),
         (Builtin::NumberAdd, |operations, _| operations.numbers.add()),
@@ -251,6 +256,7 @@ struct Operations<'a> {
     numbers: NumberOperations<'a>,
     program: ProgramOperations<'a>,
     strings: StringOperations<'a>,
+    leading_lines: DistinctLeadingLines<'a>,
     text: TextOperations<'a>,
 }
 
@@ -262,6 +268,7 @@ impl<'a> Operations<'a> {
             numbers: NumberOperations::new(arguments, call_site),
             program: ProgramOperations::new(arguments, call_site),
             strings: StringOperations::new(arguments, call_site),
+            leading_lines: DistinctLeadingLines::new(arguments, call_site),
             text: TextOperations::new(arguments, call_site),
         }
     }

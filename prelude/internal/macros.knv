@@ -1,10 +1,12 @@
 (use code add-module-note concat drop empty? fail first len
-          list nth number-lt prepend rest string? symbol?
-          value-eq)
+          list nth number-lt prepend rest string? symbol
+          symbol? take value-eq)
 
-(export docstring-before-body? docstring-before-parameters
-        docstrings-key documented-body? kernel-definition
-        note-docstring noted-term type-doc-key value-doc-key
+(export add-docstring-note docstring-before-body?
+        docstring-before-parameters docstrings-key
+        documented-body? documented-terms-key
+        kernel-definition note-docstring noted-term
+        term-docstrings-key type-doc-key value-doc-key
         whole-pairs?)
 
 (def documented-body?
@@ -29,12 +31,23 @@
 
 (def docstrings-key (quote docstrings))
 
+(def documented-terms-key (quote documented-terms))
+
 (def noted-term
   (fn (note) (nth note 1)))
 
 (def note-docstring
   (fn (key text)
-    (add-module-note docstrings-key (concat key (list text)))))
+    (add-docstring-note (concat key (list text)))))
+
+(def add-docstring-note
+  (fn (note)
+    (add-module-note documented-terms-key (take note 2))
+    (add-module-note (term-docstrings-key (noted-term note))
+                     note)))
+
+(def term-docstrings-key
+  (fn (term) (symbol docstrings-key "docstrings-of-" term)))
 
 (def value-doc-key
   (fn (name) (list "value" name)))

@@ -99,7 +99,7 @@ impl DocumentedModules {
             .map(|module| self.own_types(terminal, module))
             .collect::<Result<Vec<_>, ExitStatus>>()?;
         let entry_types = if own_checks.iter().any(Result::is_err) {
-            self.entry_program_types(terminal)?
+            Some(self.entry_program_types(terminal)?)
         } else {
             None
         };
@@ -131,10 +131,7 @@ impl DocumentedModules {
         Ok(ProgramChecker::check(&program).map(|typed| Self::typed_names(&typed, named)))
     }
 
-    fn entry_program_types(
-        &self,
-        terminal: &mut Terminal,
-    ) -> Result<Option<ModuleTypes>, ExitStatus> {
+    fn entry_program_types(&self, terminal: &mut Terminal) -> Result<ModuleTypes, ExitStatus> {
         let entry = &self.entry;
         let source = terminal.add_source(entry.file.path(), entry.text.clone());
         let (program, loaded, named) =
@@ -146,9 +143,8 @@ impl DocumentedModules {
                 }
                 Ok((Self::checked_also(session.finish()?, &named), loaded, named))
             })?;
-        Ok(ProgramChecker::check(&program)
-            .ok()
-            .map(|typed| Self::by_module(loaded, Self::typed_names(&typed, named))))
+        let typed = terminal.check_showing(&program, |_| false)?;
+        Ok(Self::by_module(loaded, Self::typed_names(&typed, named)))
     }
 
     fn loaded_written(&self, session: &ExpansionSession<'_>) -> Vec<String> {

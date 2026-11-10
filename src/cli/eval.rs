@@ -8,7 +8,7 @@ use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::temporary_directory::TemporaryDirectory;
-use super::terminal::{BuildTarget, EvaluationRequest, ModuleOfSources, Terminal};
+use super::terminal::{BuildRoute, BuildTarget, EvaluationRequest, ModuleOfSources, Terminal};
 use crate::build::BuildProfile;
 use crate::check::ProgramChecker;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Diagnostics};
@@ -152,7 +152,7 @@ impl EvalCommand {
             crate_name: &crate_name,
             output: &binary,
         };
-        terminal.compile(emitted, &target, self.profile)?;
+        terminal.compile_into(emitted, &BuildRoute::Rustc(target), self.profile)?;
         Ok(self.output.run(&binary, printed_forms).status())
     }
 

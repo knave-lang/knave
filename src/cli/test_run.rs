@@ -7,6 +7,7 @@ use super::standard_error::StandardError;
 use super::test_record::TestRecord;
 use super::test_report::{ProgramEnding, TestOutcome, TestReport};
 use super::value_marker::ValueMarker;
+use crate::emit::RuntimeModule;
 
 pub struct TestRun<'a> {
     binary: &'a Path,
@@ -34,7 +35,7 @@ impl<'a> TestRun<'a> {
         let records = marker.records();
         let mut child = Command::new(self.binary)
             .args(&self.arguments)
-            .env(ValueMarker::TEST_VARIABLE, marker.text())
+            .env(RuntimeModule::test_marker_variable(), marker.text())
             .stdout(Stdio::piped())
             .spawn()
             .map_err(|error| self.report_not_started(&error))?;

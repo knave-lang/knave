@@ -272,7 +272,7 @@ mod tests {
     fn a_file_that_production_code_includes_stays_production() {
         let parent = Tree::file(
             "src/types/mod.rs",
-            "#[cfg(test)]\nmod checker;\n#[cfg(not(test))]\nmod checker_real {\n    include!(\"checker.rs\");\n}",
+            "#[cfg(test)]\nmod checker;\n#[cfg(not(test))]\nmod checker_real {\n    include!(\"../types/checker.rs\");\n}",
         );
         assert!(Tree::test_files(&parent, &["src/types/checker.rs"]).is_empty());
     }

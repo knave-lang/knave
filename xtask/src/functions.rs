@@ -9,6 +9,8 @@ use syn::{Block, Ident, ImplItemFn, ItemFn, ItemImpl, ItemMod, ItemTrait, Signat
 
 use crate::complexity::ComplexityCounter;
 use crate::failure::TaskFailure;
+use crate::file_size::ProductionLineCounts;
+use crate::production_lines::ProductionLines;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct LineSpan {
@@ -90,12 +92,27 @@ impl SourceTree {
         Ok(())
     }
 
+    pub fn production_lines(&self) -> Result<ProductionLineCounts, TaskFailure> {
+        self.files()?
+            .iter()
+            .map(|path| Ok((self.relative(path), Self::production_lines_in(path)?)))
+            .collect()
+    }
+
     fn functions_in(&self, path: &Path) -> Result<Vec<SourceFunction>, TaskFailure> {
-        let text =
-            fs::read_to_string(path).map_err(|error| TaskFailure::unreadable(path, error))?;
+        let text = Self::read(path)?;
         let syntax =
             syn::parse_file(&text).map_err(|error| TaskFailure::unparsable(path, &error))?;
         Ok(FunctionCollector::collect(self.relative(path), &syntax))
+    }
+
+    fn production_lines_in(path: &Path) -> Result<usize, TaskFailure> {
+        ProductionLines::count(&Self::read(path)?)
+            .map_err(|error| TaskFailure::unparsable(path, &error))
+    }
+
+    fn read(path: &Path) -> Result<String, TaskFailure> {
+        fs::read_to_string(path).map_err(|error| TaskFailure::unreadable(path, error))
     }
 
     fn relative(&self, path: &Path) -> String {
@@ -275,6 +292,27 @@ mod tests {
                 "src/lib.rs:1 post_entry",
                 "src/main.rs:1 main",
                 "syntax/src/lib.rs:1 read_entry",
+            ]
+        );
+    }
+
+    #[test]
+    fn counts_the_production_lines_of_every_crate_in_the_workspace() {
+        let workspace = WorkspaceFixture::workspace();
+        let counts = SourceTree::new(&WorkspaceFixture::root(), workspace.source_directories())
+            .production_lines()
+            .unwrap();
+        let counts: Vec<(&str, usize)> = counts
+            .iter()
+            .map(|(source, &count)| (source.as_str(), count))
+            .collect();
+        assert_eq!(
+            counts,
+            [
+                ("src/lib.rs", 1),
+                ("src/main.rs", 1),
+                ("syntax/src/language.rs", 6),
+                ("syntax/src/lib.rs", 1),
             ]
         );
     }

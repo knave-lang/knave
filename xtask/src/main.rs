@@ -7,11 +7,13 @@ mod coverage;
 mod crap;
 mod emitted_lints;
 mod failure;
+mod file_size;
 mod functions;
 mod gate;
 mod instrumented_tests;
 mod language;
 mod lcov;
+mod production_lines;
 mod release;
 mod test_shard;
 mod workspace;
@@ -41,6 +43,10 @@ enum Task {
         about = "Run the tests with coverage, then check the coverage floor, the CRAP limit, the README badge and the emitted Rust's lints"
     )]
     Coverage(CoverageTask),
+    #[command(
+        about = "Check that no Rust file outgrows the production line limit or its baseline entry"
+    )]
+    FileSizes,
     #[command(
         subcommand,
         about = "Measure the compiler's front end under callgrind, or compare two measurements"
@@ -102,6 +108,9 @@ impl Task {
         let workspace_root = manifest_directory.parent().unwrap_or(manifest_directory);
         match self {
             Task::Coverage(coverage) => coverage.run(workspace_root),
+            Task::FileSizes => QualityGate::new(workspace_root)
+                .run_file_sizes()
+                .unwrap_or_else(|failure| failure.report()),
             Task::Bench(task) => task.run(workspace_root),
             Task::NextRelease(release) => release.run(),
             Task::SetVersion(version) => version.run(workspace_root),

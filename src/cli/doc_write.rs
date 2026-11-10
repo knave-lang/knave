@@ -1,13 +1,13 @@
 use std::path::{Path, PathBuf};
 
 use super::doc_folder::DocFolder;
-use super::doc_pages::DocumentedModules;
+use super::doc_pages::{DocumentedModules, EntryProgram};
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::source_walk::SourceWalk;
 use super::terminal::Terminal;
-use crate::modules::PublicPrelude;
+use crate::modules::{ModuleSources, PublicPrelude};
 
 pub struct DocWriteCommand {
     output: Option<PathBuf>,
@@ -52,15 +52,18 @@ impl DocWriteCommand {
         let folder = self.folder_in(project.root());
         let file = project.file_within(project.source_root().join(DocumentedModules::CALL_SOURCE));
         let modules = SourceWalk::of(&project).module_paths(terminal)?;
-        let modules = DocumentedModules::new(file, modules).with_entry(project.entry());
-        Ok((folder, modules))
+        let entry = project.entry();
+        let unreadable_as_empty = ModuleSources::read_file(entry.path()).unwrap_or_default();
+        let entry = EntryProgram::new(entry, unreadable_as_empty);
+        Ok((folder, DocumentedModules::new(file, entry, modules)))
     }
 
     fn prelude_target(&self) -> (PathBuf, DocumentedModules) {
         let root = LocatedProject::canonical_root(Path::new(Terminal::WORKING_DIRECTORY))
             .unwrap_or_default();
         let file = ProgramFile::beside_itself(PathBuf::from(DocumentedModules::CALL_SOURCE));
-        let modules = DocumentedModules::new(file, PublicPrelude::paths());
+        let empty_entry = EntryProgram::new(file.clone(), String::new());
+        let modules = DocumentedModules::new(file, empty_entry, PublicPrelude::paths());
         (self.folder_in(&root), modules)
     }
 

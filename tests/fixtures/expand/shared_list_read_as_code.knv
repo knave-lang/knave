@@ -1,0 +1,30 @@
+(use code expand-call form-location list located number-gt
+          number-sub string value-eq)
+
+(def shared
+  (fn (item count)
+    (if (number-gt count 0)
+      (recur (list item item) (number-sub count 1))
+      item)))
+
+(defmacro compares ()
+  (value-eq (shared 1 200) 1))
+
+(defmacro locates ()
+  (form-location (shared 1 200)))
+
+(defmacro prints ()
+  (string (shared 1 200)))
+
+(defmacro expands ()
+  (expand-call (shared 1 200)))
+
+(defmacro moves ()
+  (located (quote x) (shared 1 200)))
+
+(defn main ()
+  (compares)
+  (locates)
+  (prints)
+  (expands)
+  (moves))

@@ -7,7 +7,9 @@ mod step_budget;
 mod value;
 
 pub use builtins::BuiltinCall;
-pub use code_list::{CodeList, ListNesting, NestedTooDeep, PassedLimit};
+pub use code_list::{
+    CodeList, ListConversion, ListNesting, ListTooLarge, NestedTooDeep, PassedLimit,
+};
 pub use problems::InterpretProblems;
 pub use step_budget::StepBudget;
 pub use value::{Closure, Env, Value};

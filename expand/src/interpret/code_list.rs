@@ -23,6 +23,62 @@ impl NestedTooDeep {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ListTooLarge;
+
+impl ListTooLarge {
+    pub fn at(self, span: Span) -> Diagnostic {
+        LimitProblems::list_too_large(ListConversion::FORM_LIMIT, span)
+    }
+}
+
+pub struct ListConversion {
+    remaining: usize,
+}
+
+impl ListConversion {
+    pub const FORM_LIMIT: usize = 131_072;
+
+    fn full() -> Self {
+        Self {
+            remaining: Self::FORM_LIMIT,
+        }
+    }
+
+    fn form_of(&mut self, value: &Value) -> Result<Form, ListTooLarge> {
+        match value {
+            Value::List(list) => self.form_of_list(list),
+            Value::Form(form) => {
+                self.charge(form)?;
+                Ok(form.clone())
+            }
+            _ => unreachable!("a code list holds only code"),
+        }
+    }
+
+    fn form_of_list(&mut self, list: &CodeList) -> Result<Form, ListTooLarge> {
+        self.remaining = self.remaining.checked_sub(1).ok_or(ListTooLarge)?;
+        let forms = self.forms_of(list)?;
+        Ok(Form::new(FormKind::List(forms), list.span))
+    }
+
+    fn forms_of(&mut self, list: &CodeList) -> Result<Vec<Form>, ListTooLarge> {
+        let mut forms = Vec::with_capacity(list.len());
+        for index in list.range.clone() {
+            forms.push(self.form_of(&list.item(index))?);
+        }
+        Ok(forms)
+    }
+
+    fn charge(&mut self, form: &Form) -> Result<(), ListTooLarge> {
+        self.remaining = self.remaining.checked_sub(1).ok_or(ListTooLarge)?;
+        form.as_list()
+            .unwrap_or_default()
+            .iter()
+            .try_for_each(|item| self.charge(item))
+    }
+}
+
 pub struct ListNesting;
 
 impl ListNesting {
@@ -126,15 +182,12 @@ impl CodeList {
         self.range.clone().map(|index| self.item(index)).collect()
     }
 
-    pub fn forms(&self) -> Vec<Form> {
-        self.values()
-            .iter()
-            .map(|value| value.to_form().expect("a code list holds only code"))
-            .collect()
+    pub fn forms(&self) -> Result<Vec<Form>, ListTooLarge> {
+        ListConversion::full().forms_of(self)
     }
 
-    pub fn to_form(&self) -> Form {
-        Form::new(FormKind::List(self.forms()), self.span)
+    pub fn to_form(&self) -> Result<Form, ListTooLarge> {
+        ListConversion::full().form_of_list(self)
     }
 
     pub fn to_form_within(
@@ -191,7 +244,7 @@ impl CodeList {
 
 #[cfg(test)]
 mod tests {
-    use super::{CodeList, ListNesting, NestedTooDeep, PassedLimit};
+    use super::{CodeList, ListConversion, ListNesting, ListTooLarge, NestedTooDeep, PassedLimit};
     use crate::interpret::Value;
     use crate::reader::{Form, FormKind, Symbol};
     use crate::source::{SourceId, Span};
@@ -244,6 +297,40 @@ mod tests {
         let value = NestedList::of_depth(Form::NESTING_LIMIT + 1);
         let refusal = NestedList::converted(&value).err();
         assert_eq!(refusal, Some(PassedLimit::Nesting));
+    }
+
+    #[test]
+    fn a_list_within_the_form_limit_converts() {
+        let items = vec![NestedList::leaf(); ListConversion::FORM_LIMIT - 1];
+        assert!(NestedList::list_of(items).to_form().is_ok());
+    }
+
+    #[test]
+    fn a_list_one_past_the_form_limit_does_not_convert() {
+        let items = vec![NestedList::leaf(); ListConversion::FORM_LIMIT];
+        assert_eq!(
+            NestedList::list_of(items).to_form().err(),
+            Some(ListTooLarge)
+        );
+    }
+
+    #[test]
+    fn a_shared_list_is_charged_for_every_copy() {
+        let shared = (0..64).fold(NestedList::leaf(), |item, _| {
+            Value::List(NestedList::list_of(vec![item.clone(), item]))
+        });
+        let list = NestedList::list_of(vec![shared]);
+        assert_eq!(list.forms().err(), Some(ListTooLarge));
+    }
+
+    #[test]
+    fn a_shared_form_is_charged_for_every_copy() {
+        let leaf = Form::new(FormKind::Symbol(Symbol::new("leaf")), NestedList::span());
+        let shared = (0..64).fold(leaf, |item, _| {
+            Form::new(FormKind::List(vec![item.clone(), item]), NestedList::span())
+        });
+        let list = NestedList::list_of(vec![Value::Form(shared)]);
+        assert_eq!(list.to_form().err(), Some(ListTooLarge));
     }
 
     #[test]

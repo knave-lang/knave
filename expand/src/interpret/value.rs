@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::CodeList;
-use super::code_list::PassedLimit;
+use super::code_list::{ListTooLarge, PassedLimit};
 use crate::core::{BindingId, Builtin, Keyword, Lambda};
 use crate::reader::{Form, FormKind, NumberValue, Symbol};
 
@@ -46,11 +46,11 @@ impl Value {
         }
     }
 
-    pub fn to_form(&self) -> Option<Form> {
+    pub fn to_form(&self) -> Result<Option<Form>, ListTooLarge> {
         match self {
-            Value::Form(form) => Some(form.clone()),
-            Value::List(list) => Some(list.to_form()),
-            _ => None,
+            Value::Form(form) => Ok(Some(form.clone())),
+            Value::List(list) => list.to_form().map(Some),
+            _ => Ok(None),
         }
     }
 
@@ -63,7 +63,7 @@ impl Value {
             Value::List(list) => list.to_form_within(allowance, enclosing_lists),
             _ => {
                 *allowance = allowance.checked_sub(1).ok_or(PassedLimit::FormCount)?;
-                self.to_form().ok_or(PassedLimit::FormCount)
+                self.as_form().cloned().ok_or(PassedLimit::FormCount)
             }
         }
     }

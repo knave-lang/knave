@@ -1,4 +1,4 @@
-use crate::interpret::{PassedLimit, StepBudget, Value};
+use crate::interpret::{ListConversion, PassedLimit, StepBudget, Value};
 use crate::reader::Form;
 use crate::scope::Scope;
 
@@ -9,7 +9,7 @@ pub struct FormBudget {
 }
 
 impl FormBudget {
-    pub const EXPANSION_LIMIT: usize = 131_072;
+    pub const EXPANSION_LIMIT: usize = ListConversion::FORM_LIMIT;
     const NO_ENCLOSING_LISTS: usize = 0;
 
     pub fn full() -> Self {

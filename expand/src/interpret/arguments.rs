@@ -60,6 +60,7 @@ impl Arguments {
     pub fn form(&self, index: usize) -> Result<Form, Diagnostic> {
         self.values[index]
             .to_form()
+            .map_err(|large| large.at(self.span))?
             .ok_or_else(|| self.wrong(index, "code"))
     }
 
@@ -70,7 +71,9 @@ impl Arguments {
     }
 
     pub fn list_forms(&self, index: usize) -> Result<Vec<Form>, Diagnostic> {
-        Ok(self.list(index)?.forms())
+        self.list(index)?
+            .forms()
+            .map_err(|large| large.at(self.span))
     }
 
     pub fn symbol(&self, index: usize) -> Result<&Symbol, Diagnostic> {

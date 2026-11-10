@@ -3,11 +3,13 @@ use super::doc_folder::WrittenPage;
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
 use super::terminal::Terminal;
+use crate::check::ProgramChecker;
 use crate::core::{BindingId, Expr, ModulePath};
 use crate::diagnostic::Diagnostics;
 use crate::expand::{ExpansionSession, Program};
 use crate::modules::{ModuleSources, PublicPrelude};
 use crate::reader::{Form, StringLiteral};
+use crate::types::TypedProgram;
 
 pub struct DocumentedModules {
     file: ProgramFile,
@@ -20,6 +22,7 @@ struct LinkedModules {
     prelude: String,
 }
 
+#[derive(Clone)]
 struct TypedName {
     module: String,
     name: String,
@@ -74,37 +77,70 @@ impl DocumentedModules {
 
     fn types(&self, terminal: &mut Terminal) -> Result<Vec<TypedName>, ExitStatus> {
         let mut types = Vec::new();
+        let mut whole_program = None;
         for module in &self.written {
-            types.extend(self.module_types(terminal, module)?);
+            match self.own_types(terminal, module)? {
+                Some(own) => types.extend(own),
+                None => {
+                    let whole = match whole_program.take() {
+                        Some(whole) => whole,
+                        None => self.whole_program_types(terminal)?,
+                    };
+                    types.extend(Self::of_module(&whole, module));
+                    whole_program = Some(whole);
+                }
+            }
         }
         Ok(types)
     }
 
-    fn module_types(
+    fn of_module(types: &[TypedName], module: &str) -> Vec<TypedName> {
+        types
+            .iter()
+            .filter(|typed| typed.module == module)
+            .cloned()
+            .collect()
+    }
+
+    fn own_types(
         &self,
         terminal: &mut Terminal,
         module: &str,
-    ) -> Result<Vec<TypedName>, ExitStatus> {
+    ) -> Result<Option<Vec<TypedName>>, ExitStatus> {
         let entry = terminal.add_empty_source(self.file.path());
         let (program, named) = terminal.within_session(&self.file, entry, |mut session| {
             Self::load(&mut session, module)?;
             let named = Self::named_bindings(&mut session, module)?;
-            let mut program = session.finish()?;
-            for name in &named {
-                program.check_also(name.binding);
-            }
-            Ok((program, named))
+            Ok((Self::checked_also(session.finish()?, &named), named))
         })?;
-        Self::typed_names(terminal, &program, named)
+        Ok(ProgramChecker::check(&program)
+            .ok()
+            .map(|typed| Self::typed_names(&typed, named)))
     }
 
-    fn typed_names(
-        terminal: &mut Terminal,
-        program: &Program,
-        named: Vec<NamedBinding>,
-    ) -> Result<Vec<TypedName>, ExitStatus> {
-        let typed = terminal.check_showing(program, |_| false)?;
-        Ok(named
+    fn whole_program_types(&self, terminal: &mut Terminal) -> Result<Vec<TypedName>, ExitStatus> {
+        let entry = terminal.add_empty_source(self.file.path());
+        let (program, named) = terminal.within_session(&self.file, entry, |mut session| {
+            self.load_written(&mut session)?;
+            let mut named = Vec::new();
+            for module in &self.written {
+                named.extend(Self::named_bindings(&mut session, module)?);
+            }
+            Ok((Self::checked_also(session.finish()?, &named), named))
+        })?;
+        let typed = terminal.check_showing(&program, |_| false)?;
+        Ok(Self::typed_names(&typed, named))
+    }
+
+    fn checked_also(mut program: Program, named: &[NamedBinding]) -> Program {
+        for name in named {
+            program.check_also(name.binding);
+        }
+        program
+    }
+
+    fn typed_names(typed: &TypedProgram, named: Vec<NamedBinding>) -> Vec<TypedName> {
+        named
             .into_iter()
             .filter_map(|name| {
                 let line = typed.signature(name.binding)?;
@@ -114,7 +150,7 @@ impl DocumentedModules {
                     line,
                 })
             })
-            .collect())
+            .collect()
     }
 
     fn load_written(&self, session: &mut ExpansionSession<'_>) -> Result<(), Diagnostics> {

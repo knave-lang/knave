@@ -2199,6 +2199,31 @@ fn doc_write_prelude_ignores_a_broken_project_file() {
 }
 
 #[test]
+fn doc_write_types_a_module_from_the_whole_program_when_its_own_check_fails() {
+    let sandbox = Sandbox::new("doc_write_whole_program_type")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file("src/lib.knv", "(export nothing)\n\n(def nothing none)\n")
+        .with_file("src/other.knv", "(export nobody)\n\n(def nobody none)\n")
+        .with_file(
+            "src/main.knv",
+            "(use lib nothing)\n(use other nobody)\n\n(defn main ()\n  (println (unwrap-or nothing 3))\n  (println (unwrap-or nobody \"x\")))\n",
+        );
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert!(
+        sandbox
+            .contents("doc/lib.md")
+            .contains("\n(def nothing)\n(type nothing (option i64))\n```")
+    );
+    assert!(
+        sandbox
+            .contents("doc/other.md")
+            .contains("\n(def nobody)\n(type nobody (option (ref str)))\n```")
+    );
+}
+
+#[test]
 fn doc_write_outside_a_project_is_a_usage_error() {
     let sandbox = Sandbox::new("doc_write_no_project");
     sandbox.compiler(&["doc", "--write"]).assert_exit_code(2);

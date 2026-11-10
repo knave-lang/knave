@@ -8,14 +8,14 @@ use crate::reader::{Form, FormKind};
 use crate::source::Span;
 
 pub struct DistinctLeadingLines<'a> {
-    arguments: &'a Arguments,
+    arguments: &'a Arguments<'a>,
     call_site: Span,
 }
 
 impl<'a> DistinctLeadingLines<'a> {
     const TEXTS_POSITION: usize = 1;
 
-    pub fn new(arguments: &'a Arguments, call_site: Span) -> Self {
+    pub fn new(arguments: &'a Arguments<'a>, call_site: Span) -> Self {
         Self {
             arguments,
             call_site,

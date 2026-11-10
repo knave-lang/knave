@@ -133,17 +133,13 @@ struct Frame {
 
 impl Drop for Frame {
     fn drop(&mut self) {
-        if self.owns_a_chain() {
+        if self.owns_a_closure() || self.parent.is_a_sole_chain() {
             ChainRelease::default().release_links_of(self);
         }
     }
 }
 
 impl Frame {
-    fn owns_a_chain(&self) -> bool {
-        self.parent.is_sole_owner() || self.owns_a_closure()
-    }
-
     fn owns_a_closure(&self) -> bool {
         matches!(&self.value, Value::Closure(closure) if Rc::strong_count(closure) == 1)
     }
@@ -176,7 +172,9 @@ impl ChainRelease {
     }
 
     fn next_link_of(&mut self, frame: &mut Frame) -> Env {
-        self.closure_envs.extend(frame.take_closure_env());
+        if frame.owns_a_closure() {
+            self.closure_envs.extend(frame.take_closure_env());
+        }
         std::mem::take(&mut frame.parent)
     }
 }
@@ -198,6 +196,12 @@ impl Env {
         self.0
             .as_ref()
             .is_some_and(|frame| Rc::strong_count(frame) == 1)
+    }
+
+    fn is_a_sole_chain(&self) -> bool {
+        self.0
+            .as_ref()
+            .is_some_and(|frame| Rc::strong_count(frame) == 1 && frame.parent.is_sole_owner())
     }
 
     fn into_sole_frame(self) -> Option<Frame> {

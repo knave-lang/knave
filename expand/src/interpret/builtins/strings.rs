@@ -7,14 +7,14 @@ use crate::reader::{Form, FormKind};
 use crate::source::Span;
 
 pub struct StringOperations<'a> {
-    arguments: &'a Arguments,
+    arguments: &'a Arguments<'a>,
     call_site: Span,
 }
 
 impl<'a> StringOperations<'a> {
     const LINE_BREAK: char = '\n';
 
-    pub fn new(arguments: &'a Arguments, call_site: Span) -> Self {
+    pub fn new(arguments: &'a Arguments<'a>, call_site: Span) -> Self {
         Self {
             arguments,
             call_site,
@@ -96,7 +96,7 @@ mod tests {
     use crate::source::{SourceId, Span};
 
     struct StringCall {
-        arguments: Arguments,
+        arguments: Arguments<'static>,
     }
 
     impl StringCall {
@@ -115,7 +115,10 @@ mod tests {
                 arguments: Arguments::new(
                     site,
                     values,
-                    WorkMeter::new(StepBudget::unmetered(), Self::span()),
+                    Box::leak(Box::new(WorkMeter::new(
+                        StepBudget::unmetered(),
+                        Self::span(),
+                    ))),
                 ),
             }
         }

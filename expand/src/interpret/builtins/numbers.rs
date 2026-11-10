@@ -8,12 +8,12 @@ use crate::reader::{Form, FormKind, Number, NumberValue};
 use crate::source::Span;
 
 pub struct NumberOperations<'a> {
-    arguments: &'a Arguments,
+    arguments: &'a Arguments<'a>,
     call_site: Span,
 }
 
 impl<'a> NumberOperations<'a> {
-    pub fn new(arguments: &'a Arguments, call_site: Span) -> Self {
+    pub fn new(arguments: &'a Arguments<'a>, call_site: Span) -> Self {
         Self {
             arguments,
             call_site,

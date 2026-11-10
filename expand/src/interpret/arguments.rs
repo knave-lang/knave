@@ -10,14 +10,14 @@ pub struct BuiltinSite {
     pub span: Span,
 }
 
-pub struct Arguments {
+pub struct Arguments<'m> {
     site: BuiltinSite,
     values: Vec<Value>,
-    meter: WorkMeter,
+    meter: &'m WorkMeter,
 }
 
-impl Arguments {
-    pub fn new(site: BuiltinSite, values: Vec<Value>, meter: WorkMeter) -> Self {
+impl<'m> Arguments<'m> {
+    pub fn new(site: BuiltinSite, values: Vec<Value>, meter: &'m WorkMeter) -> Self {
         Self {
             site,
             values,

@@ -6,7 +6,7 @@ use crate::reader::{Form, FormKind};
 use crate::source::Span;
 
 pub struct FailCall<'a> {
-    arguments: &'a Arguments,
+    arguments: &'a Arguments<'a>,
 }
 
 impl<'a> FailCall<'a> {
@@ -17,7 +17,7 @@ impl<'a> FailCall<'a> {
     const FEWEST_ARGUMENTS: usize = 2;
     const MOST_ARGUMENTS: usize = 4;
 
-    pub fn new(arguments: &'a Arguments) -> Self {
+    pub fn new(arguments: &'a Arguments<'a>) -> Self {
         Self { arguments }
     }
 

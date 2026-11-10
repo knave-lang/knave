@@ -27,13 +27,13 @@ use step_limit::StepLimitSetting;
 use strings::StringOperations;
 use text::TextOperations;
 
-pub struct BuiltinCall {
+pub struct BuiltinCall<'m> {
     builtin: Builtin,
-    arguments: Arguments,
+    arguments: Arguments<'m>,
     call_site: Span,
 }
 
-impl BuiltinCall {
+impl<'m> BuiltinCall<'m> {
     const IMPLEMENTATIONS: [(Builtin, Implementation); 72] = [
         (Builtin::First, |operations, _| operations.lists.first()),
         (Builtin::Rest, |operations, _| operations.lists.rest()),
@@ -237,14 +237,14 @@ impl BuiltinCall {
         }),
     ];
 
-    pub fn new(builtin: Builtin, values: Vec<Value>, span: Span, meter: &WorkMeter) -> Self {
+    pub fn new(builtin: Builtin, values: Vec<Value>, span: Span, meter: &'m WorkMeter) -> Self {
         let site = BuiltinSite {
             function: builtin.name(),
             span,
         };
         Self {
             builtin,
-            arguments: Arguments::new(site, values, meter.clone()),
+            arguments: Arguments::new(site, values, meter),
             call_site: meter.call_site(),
         }
     }
@@ -275,7 +275,7 @@ struct Operations<'a> {
 }
 
 impl<'a> Operations<'a> {
-    fn new(arguments: &'a Arguments, call_site: Span) -> Self {
+    fn new(arguments: &'a Arguments<'a>, call_site: Span) -> Self {
         Self {
             lists: ListOperations::new(arguments, call_site),
             modules: ModuleOperations::new(arguments, call_site),

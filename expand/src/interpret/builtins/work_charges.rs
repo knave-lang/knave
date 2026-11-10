@@ -36,14 +36,18 @@ impl WorkFixture {
         Value::Form(Form::new(FormKind::List(vec![leaf; count]), Self::span()))
     }
 
-    fn arguments(values: &[Value], limit: u64) -> Arguments {
+    fn arguments(values: &[Value], limit: u64) -> Arguments<'static> {
         let site = BuiltinSite {
             function: Self::FUNCTION,
             span: Self::span(),
         };
         let budget = StepBudget::full();
         budget.set_limit(limit);
-        Arguments::new(site, values.to_vec(), WorkMeter::new(budget, Self::span()))
+        Arguments::new(
+            site,
+            values.to_vec(),
+            Box::leak(Box::new(WorkMeter::new(budget, Self::span()))),
+        )
     }
 
     fn work(values: &[Value], run: impl Fn(&Arguments) -> Result<Value, Diagnostic>) -> u64 {

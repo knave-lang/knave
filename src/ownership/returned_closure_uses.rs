@@ -42,7 +42,7 @@ impl<'a> ReturnedClosureUses<'a> {
         for param in lambda
             .params
             .iter()
-            .filter(|param| self.program.changed_parameters.contains(&param.binding))
+            .filter(|param| self.program.parameter_modes.changes(param.binding))
         {
             if let Some(usage) = closures
                 .iter()

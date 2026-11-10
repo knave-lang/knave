@@ -1326,7 +1326,7 @@ impl<'a> ItemEmitter<'a> {
         let changed: Vec<&TypedBinder> = lambda
             .params
             .iter()
-            .filter(|param| self.program.changed_parameters.contains(&param.binding))
+            .filter(|param| self.program.parameter_modes.changes(param.binding))
             .collect();
         if changed.is_empty() {
             return Vec::new();

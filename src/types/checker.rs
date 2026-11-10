@@ -11,6 +11,7 @@ use super::graph::{Definition, DefinitionGraph, DependencyGraph};
 use super::impl_overlap::ImplementorOverlap;
 use super::infer::OpenCollections;
 use super::parameter_calls::ParameterCallRequest;
+use super::parameter_modes::ParameterModes;
 use super::pending::PendingBorrow;
 use super::pinning::LiteralDefaults;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
@@ -3138,8 +3139,7 @@ impl TypeChecker {
             template_borrows: self.template_borrows,
             template_clauses: self.template_clauses,
             pending_mode_checks: self.pending_mode_checks,
-            borrowed_parameters: FxHashSet::default(),
-            changed_parameters: FxHashSet::default(),
+            parameter_modes: ParameterModes::default(),
             stored_function_parameters: FxHashSet::default(),
             escaping_lambdas: FxHashSet::default(),
             borrowing_lambdas: FxHashMap::default(),

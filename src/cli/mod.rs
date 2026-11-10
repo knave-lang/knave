@@ -94,7 +94,6 @@ use color_when::ColorWhen;
 use counter_report::CounterReport;
 use crate_section::CrateSection;
 use doc::DocCommand;
-use doc_arguments::DocArguments;
 use emit::EmitCommand;
 use eval::{EvalCommand, EvaluationSettings, FormsText, ModuleText};
 use evaluation_output::{EvaluationOutput, JsonEvaluation, PrintedEvaluation};
@@ -210,7 +209,7 @@ enum InspectionCommand {
         name = DocCommand::NAME,
         about = "Print the page of a prelude term, or of a program's term with --file"
     )]
-    Doc(DocArguments),
+    Doc(doc_arguments::DocArguments),
     #[command(about = "Print a program as kernel forms after macro expansion")]
     Expand {
         #[arg(help = ENTRY_HELP)]

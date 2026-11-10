@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/expand_call_restores_the_step_limit.knv
+---
+(def count-down (fn (remaining) (if (number-gt remaining 0) (recur (number-sub remaining 1)) remaining)))
+(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) 0)))

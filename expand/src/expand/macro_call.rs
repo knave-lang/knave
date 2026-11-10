@@ -168,9 +168,12 @@ impl Expander<'_> {
     ) -> Result<Form, Diagnostic> {
         let checkpoint = self.tables.module_notes.checkpoint();
         let budget = self.form_budgets.current().clone();
+        let steps = budget.steps();
+        let limit = steps.limit();
         let expansion = self.trial_expansion(binding, form);
         self.tables.module_notes.roll_back(checkpoint);
         *self.form_budgets.current() = budget;
+        steps.set_limit(limit);
         expansion
     }
 

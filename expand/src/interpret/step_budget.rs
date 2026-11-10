@@ -11,7 +11,7 @@ pub struct StepBudget {
 #[derive(Debug)]
 struct StepCounts {
     limit: Cell<u64>,
-    remaining: Cell<u64>,
+    spent: Cell<u64>,
     first_passed_at: Cell<Option<Span>>,
 }
 
@@ -36,7 +36,7 @@ impl StepBudget {
         Self {
             counts: Rc::new(StepCounts {
                 limit: Cell::new(limit),
-                remaining: Cell::new(limit),
+                spent: Cell::new(0),
                 first_passed_at: Cell::new(None),
             }),
         }
@@ -44,15 +44,18 @@ impl StepBudget {
 
     #[inline]
     pub fn spend(&self) -> Result<(), PassedStepLimit> {
-        match self.counts.remaining.get().checked_sub(1) {
-            Some(remaining) => {
-                self.counts.remaining.set(remaining);
-                Ok(())
-            }
-            None => Err(PassedStepLimit {
-                limit: self.counts.limit.get(),
-            }),
+        let spent = self.counts.spent.get();
+        let limit = self.counts.limit.get();
+        if spent < limit {
+            self.counts.spent.set(spent + 1);
+            Ok(())
+        } else {
+            Err(PassedStepLimit { limit })
         }
+    }
+
+    pub fn limit(&self) -> u64 {
+        self.counts.limit.get()
     }
 
     pub fn first_passed_at(&self, call_site: Span) -> Span {
@@ -62,9 +65,7 @@ impl StepBudget {
     }
 
     pub fn set_limit(&self, limit: u64) {
-        let spent = self.counts.limit.get() - self.counts.remaining.get();
         self.counts.limit.set(limit);
-        self.counts.remaining.set(limit.saturating_sub(spent));
     }
 }
 
@@ -113,6 +114,17 @@ mod tests {
         budget.spend().expect("two steps fit");
         budget.set_limit(1);
         assert_eq!(budget.spend(), Err(PassedStepLimit { limit: 1 }));
+    }
+
+    #[test]
+    fn restoring_a_limit_keeps_the_spent_steps() {
+        let budget = StepBudget::of(3);
+        budget.spend().expect("one step fits");
+        budget.set_limit(1);
+        budget.set_limit(3);
+        assert!(budget.spend().is_ok());
+        assert!(budget.spend().is_ok());
+        assert_eq!(budget.spend(), Err(PassedStepLimit { limit: 3 }));
     }
 
     #[test]

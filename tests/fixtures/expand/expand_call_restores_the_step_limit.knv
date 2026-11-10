@@ -1,0 +1,14 @@
+(use code expand-call number-gt number-sub)
+
+(def count-down
+  (fn (remaining)
+    (if (number-gt remaining 0)
+      (recur (number-sub remaining 1))
+      remaining)))
+
+(defmacro probes-then-loops ()
+  (expand-call (quote (with-macro-steps 1 1)))
+  (count-down 2000))
+
+(defn main ()
+  (println (probes-then-loops)))

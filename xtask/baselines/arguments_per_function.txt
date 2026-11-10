@@ -318,7 +318,6 @@ src/types/problems.rs::TypeProblems::unknown_variant 4
 src/types/problems.rs::TypeProblems::wrong_type_argument_count 4
 src/types/selection.rs::ImplementorMatch::select 4
 src/types/structural.rs::TypeChecker::record_use_in 4
-src/types/type_text.rs::TypeTextWriter::generalize_var 4
 src/types/unifier.rs::Unifier::unify_functions 5
 xtask/src/bench/mod.rs::BenchTask::compare 4
 xtask/src/release/package_files.rs::PackageFiles::with_version 4

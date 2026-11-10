@@ -150,6 +150,15 @@ impl<'s> LayoutEngine<'s> {
         }
         let plan = self.plan(list);
         let assembly = ListAssembly::new(list, &plan, column, trailing);
+        let preferred = plan
+            .preferred_arrangement()
+            .filter(|arrangement| assembly.first_line_fits(self, *arrangement));
+        if let Some(arrangement) = preferred {
+            return Choice {
+                measure: assembly.assemble(self, arrangement),
+                layout: ChosenLayout::Arranged(arrangement),
+            };
+        }
         plan.arrangements_at(column)
             .iter()
             .map(|arrangement| Choice {
@@ -206,10 +215,7 @@ impl<'s> LayoutEngine<'s> {
     }
 
     fn one_line_entry(&mut self, entry: &Entry, index: usize) -> Option<Rc<str>> {
-        let breaks = entry.trailing_comment.is_some()
-            || !entry.leading_comments.is_empty()
-            || entry.keeps_blank_line(index);
-        (!breaks).then_some(())?;
+        (!entry.breaks_line(index)).then_some(())?;
         match &entry.node {
             SyntaxNode::Atom(atom) if !atom.is_multi_line() => Some(atom.text.as_str().into()),
             SyntaxNode::Atom(_) => None,
@@ -258,6 +264,29 @@ impl<'l> ListAssembly<'l> {
             column,
             trailing,
         }
+    }
+
+    fn first_line_fits(&self, engine: &mut LayoutEngine<'_>, arrangement: Arrangement) -> bool {
+        let mut end = self.column + Self::OPEN.len();
+        for (index, unit) in self.plan.units[..arrangement.first_line_units]
+            .iter()
+            .enumerate()
+        {
+            let breaks = unit
+                .entries()
+                .any(|entry| self.list.entries[entry].breaks_line(index));
+            let start = end + Self::separator(index).len();
+            let unit_layout: Measure = self.unit(engine, index, *unit, start);
+            if breaks || unit_layout.line_count() > 1 {
+                return false;
+            }
+            end = unit_layout.end_column();
+        }
+        end <= Block::WIDTH
+    }
+
+    fn separator(index: usize) -> &'static str {
+        if index == 0 { "" } else { Self::SEPARATOR }
     }
 
     fn assemble<L: LaidOut>(&self, engine: &mut LayoutEngine<'_>, arrangement: Arrangement) -> L {
@@ -351,7 +380,7 @@ impl<'l> ListAssembly<'l> {
         index: usize,
         unit: Unit,
     ) {
-        let separator = if index == 0 { "" } else { Self::SEPARATOR };
+        let separator = Self::separator(index);
         let start = state.laid_out.end_column() + separator.len();
         if index + 1 == arrangement.first_line_units {
             state.later_indent.get_or_insert(start);

@@ -1,7 +1,7 @@
 use super::block::Block;
 use super::shapes::{Shape, ShapeCatalog};
 use super::syntax_tree::{Entry, ListNode};
-use crate::core::{DefinitionForm, KernelForm, Keyword};
+use crate::core::{DefinitionForm, ExpressionForm, KernelForm, Keyword};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unit {
@@ -27,6 +27,7 @@ pub struct ListPlan {
     pub docstring_entry: Option<usize>,
     pub fillable_units: Vec<bool>,
     pub binding_list_entry: Option<usize>,
+    preferred_arrangement: Option<Arrangement>,
     one_line_allowed: bool,
     first_arm_entry: Option<usize>,
 }
@@ -49,24 +50,24 @@ impl Arrangement {
 
 impl ListPlan {
     pub fn new(list: &ListNode, shapes: &ShapeCatalog) -> Self {
-        let head = list
-            .entries
-            .first()
-            .and_then(|entry| entry.node.symbol_name());
+        let head = list.head_name();
         let shape = head.and_then(|name| shapes.of(name));
+        let kind = ListKind::of(head, shape);
         let header_length = shape.map_or(0, |shape| shape.header_length);
         let units = UnitGrouping::new(&list.entries, header_length).units();
         let docstring_entry = Self::docstring_entry(list, head, shapes);
         let fills_atom_runs = !shape.is_some_and(|shape| shape.one_per_line);
         let body_forms = list.entries.len().saturating_sub(header_length + 1);
         let definer = shape.is_some_and(|shape| shape.takes_docstring);
+        let preferred_arrangement = kind.trailing_fn_arrangement(list, &units);
         Self {
             fillable_units: units
                 .iter()
                 .map(|unit| fills_atom_runs && Self::is_fillable(list, *unit, docstring_entry))
                 .collect(),
             units,
-            arrangements: Self::arrangements(head, shape),
+            preferred_arrangement,
+            arrangements: kind.arrangements(),
             docstring_entry,
             binding_list_entry: Self::binding_list_entry(shape),
             one_line_allowed: !definer || body_forms <= 1,
@@ -85,6 +86,7 @@ impl ListPlan {
             }],
             docstring_entry: None,
             binding_list_entry: None,
+            preferred_arrangement: None,
             one_line_allowed: list.entries.len() <= BindingPairs::PAIR_LENGTH,
             first_arm_entry: None,
         }
@@ -100,6 +102,10 @@ impl ListPlan {
         self.first_arm_entry.is_some_and(|first| entry >= first)
     }
 
+    pub fn preferred_arrangement(&self) -> Option<Arrangement> {
+        self.preferred_arrangement
+    }
+
     pub fn allows_one_line(&self) -> bool {
         self.one_line_allowed
     }
@@ -110,36 +116,6 @@ impl ListPlan {
         } else {
             &self.arrangements[self.arrangements.len() - 1..]
         }
-    }
-
-    fn arrangements(head: Option<&str>, shape: Option<Shape>) -> Vec<Arrangement> {
-        match (head, shape) {
-            (None, _) => vec![Arrangement {
-                first_line_units: 1,
-                later_indent: LaterIndent::Past(Arrangement::UNDER_HEAD_INDENT),
-            }],
-            (Some(name), Some(shape)) if Self::is_kernel(name, DefinitionForm::Use) => {
-                vec![Arrangement::aligned_after(shape.header_length + 2)]
-            }
-            (Some(name), None) if Self::is_kernel(name, DefinitionForm::Export) => {
-                vec![Arrangement::aligned_after(2)]
-            }
-            (Some(_), Some(shape)) => vec![Arrangement {
-                first_line_units: shape.header_length + 1,
-                later_indent: Arrangement::body(),
-            }],
-            (Some(_), None) => vec![
-                Arrangement::aligned_after(2),
-                Arrangement {
-                    first_line_units: 1,
-                    later_indent: Arrangement::body(),
-                },
-            ],
-        }
-    }
-
-    fn is_kernel(name: &str, form: DefinitionForm) -> bool {
-        name == KernelForm::Definition(form).name()
     }
 
     fn is_fillable(list: &ListNode, unit: Unit, docstring_entry: Option<usize>) -> bool {
@@ -162,6 +138,71 @@ impl ListPlan {
         let is_string = list.entries.get(position)?.node.as_atom()?.is_string();
         let followed = list.entries.len() > position + 1;
         (is_string && followed).then_some(position)
+    }
+}
+
+enum ListKind {
+    Data,
+    Use(Shape),
+    Export,
+    Shaped(Shape),
+    Call,
+}
+
+impl ListKind {
+    fn of(head: Option<&str>, shape: Option<Shape>) -> Self {
+        match (head, shape) {
+            (None, _) => Self::Data,
+            (Some(name), Some(shape)) if Self::is_kernel(name, DefinitionForm::Use) => {
+                Self::Use(shape)
+            }
+            (Some(name), None) if Self::is_kernel(name, DefinitionForm::Export) => Self::Export,
+            (Some(_), Some(shape)) => Self::Shaped(shape),
+            (Some(_), None) => Self::Call,
+        }
+    }
+
+    fn is_kernel(name: &str, form: DefinitionForm) -> bool {
+        name == KernelForm::Definition(form).name()
+    }
+
+    fn arrangements(&self) -> Vec<Arrangement> {
+        match self {
+            Self::Data => vec![Arrangement {
+                first_line_units: 1,
+                later_indent: LaterIndent::Past(Arrangement::UNDER_HEAD_INDENT),
+            }],
+            Self::Use(shape) => vec![Arrangement::aligned_after(shape.header_length + 2)],
+            Self::Export => vec![Arrangement::aligned_after(2)],
+            Self::Shaped(shape) => vec![Arrangement {
+                first_line_units: shape.header_length + 1,
+                later_indent: Arrangement::body(),
+            }],
+            Self::Call => vec![
+                Arrangement::aligned_after(2),
+                Arrangement {
+                    first_line_units: 1,
+                    later_indent: Arrangement::body(),
+                },
+            ],
+        }
+    }
+
+    fn trailing_fn_arrangement(&self, list: &ListNode, units: &[Unit]) -> Option<Arrangement> {
+        let earlier_units = units.len().saturating_sub(1);
+        let has_earlier_argument = earlier_units > 1;
+        let ends_with_fn = matches!(units.last(), Some(Unit::Single(entry))
+            if Self::is_fn_literal(&list.entries[*entry]));
+        let is_call = matches!(self, Self::Call);
+        (is_call && has_earlier_argument && ends_with_fn).then_some(Arrangement {
+            first_line_units: earlier_units,
+            later_indent: Arrangement::body(),
+        })
+    }
+
+    fn is_fn_literal(entry: &Entry) -> bool {
+        let fn_name = KernelForm::Expression(ExpressionForm::Fn).name();
+        entry.node.as_list().and_then(ListNode::head_name) == Some(fn_name)
     }
 }
 

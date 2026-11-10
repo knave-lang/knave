@@ -504,7 +504,7 @@ impl<'a> ItemEmitter<'a> {
             },
         ));
         let header = header(&rendered);
-        let body = emitter.function_body(&lambda.body);
+        let body = emitter.function_body(&lambda);
         self.absorb(emitter);
         vec![
             Fragment::Text(format!("{header} {{")),
@@ -776,7 +776,7 @@ impl<'a> ItemEmitter<'a> {
                 && self.program.type_holds_borrow(shown_result),
         };
         self.report_untied_borrows(&shown, implemented);
-        let body = emitter.function_body(&lambda.body);
+        let body = emitter.function_body(lambda);
         self.absorb(emitter);
         let name = NameMangler::value(self.program.bindings.get(binding).name());
         declared.extend(opaque_lifetimes.issued());
@@ -1075,7 +1075,7 @@ impl<'a> ItemEmitter<'a> {
             info.name,
             params.join(", ")
         );
-        let body = emitter.function_body(&lambda.body);
+        let body = emitter.function_body(lambda);
         self.absorb(emitter);
         vec![Fragment::Spanned(
             definition.span,

@@ -2139,6 +2139,33 @@ fn doc_write_refuses_a_file_that_takes_a_compiler_module() {
 }
 
 #[test]
+fn doc_write_gives_each_page_the_type_of_its_own_name() {
+    let sandbox = Sandbox::new("doc_write_same_name")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file(
+            "src/a.knv",
+            "(export size)\n\n(defn size () \"Counts.\" 1)\n",
+        )
+        .with_file(
+            "src/b.knv",
+            "(export size)\n\n(defn size () \"Names.\" \"big\")\n",
+        );
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert!(
+        sandbox
+            .contents("doc/a.md")
+            .contains("\n(type size (fn () i64))\n```")
+    );
+    assert!(
+        sandbox
+            .contents("doc/b.md")
+            .contains("\n(type size (fn () (ref str)))\n```")
+    );
+}
+
+#[test]
 fn doc_write_outside_a_project_is_a_usage_error() {
     let sandbox = Sandbox::new("doc_write_no_project");
     sandbox.compiler(&["doc", "--write"]).assert_exit_code(2);

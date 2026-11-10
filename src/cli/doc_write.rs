@@ -7,6 +7,7 @@ use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::source_walk::SourceWalk;
 use super::terminal::Terminal;
+use crate::modules::PublicPrelude;
 
 pub struct DocWriteCommand {
     output: Option<PathBuf>,
@@ -58,7 +59,7 @@ impl DocWriteCommand {
         let root = LocatedProject::canonical_root(Path::new(Terminal::WORKING_DIRECTORY))
             .unwrap_or_default();
         let file = ProgramFile::beside_itself(PathBuf::from(DocumentedModules::CALL_SOURCE));
-        let modules = DocumentedModules::new(file, DocumentedModules::public_prelude());
+        let modules = DocumentedModules::new(file, PublicPrelude::paths());
         (self.folder_in(&root), modules)
     }
 

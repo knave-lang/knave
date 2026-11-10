@@ -6,7 +6,7 @@ use super::terminal::Terminal;
 use crate::core::{BindingId, Expr, ModulePath};
 use crate::diagnostic::Diagnostics;
 use crate::expand::{ExpansionSession, Program};
-use crate::modules::ModuleSources;
+use crate::modules::{ModuleSources, PublicPrelude};
 use crate::reader::{Form, StringLiteral};
 
 pub struct DocumentedModules {
@@ -41,22 +41,13 @@ impl DocumentedModules {
     pub fn new(file: ProgramFile, written: Vec<String>) -> Self {
         let linked = LinkedModules {
             written: written.join(" "),
-            prelude: Self::public_prelude().join(" "),
+            prelude: PublicPrelude::paths().join(" "),
         };
         Self {
             file,
             written,
             linked,
         }
-    }
-
-    pub fn public_prelude() -> Vec<String> {
-        ModuleSources::PRELUDE_FILES
-            .iter()
-            .map(|(module, _)| ModulePath::new(*module))
-            .filter(|module| !ModuleSources::is_internal(module))
-            .map(|module| module.as_str().to_string())
-            .collect()
     }
 
     pub fn pages(&self, terminal: &mut Terminal) -> Result<Vec<WrittenPage>, ExitStatus> {

@@ -45,7 +45,7 @@ impl ModuleSources {
     const PRELUDE_DIRECTORY: &str = "prelude/";
     const INTERNAL_DIRECTORY: &str = "prelude/internal/";
     const BYTE_ORDER_MARK: char = '\u{feff}';
-    pub const PRELUDE_FILES: [(&str, &str); 26] = [
+    const PRELUDE_FILES: [(&str, &str); 26] = [
         ("prelude", include_str!("../../prelude/prelude.knv")),
         (
             "prelude/internal/macros",
@@ -377,6 +377,19 @@ struct LocalRoot<'s> {
 enum RootRole {
     Primary,
     Fallback,
+}
+
+pub struct PublicPrelude;
+
+impl PublicPrelude {
+    pub fn paths() -> Vec<String> {
+        ModuleSources::PRELUDE_FILES
+            .iter()
+            .map(|(module, _)| *module)
+            .filter(|module| !module.starts_with(ModuleSources::INTERNAL_DIRECTORY))
+            .map(String::from)
+            .collect()
+    }
 }
 
 impl LocalRoot<'_> {

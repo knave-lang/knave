@@ -1,0 +1,18 @@
+(enum side left right)
+
+(enum wrap (single bool) (double side bool))
+
+(defstruct pick
+  :wrap wrap
+  :side side)
+
+(defn score (p)
+  (match p
+    ((pick (wrap/single true) side/left) 1)
+    ((pick (wrap/single true) side/right) 2)
+    ((pick (wrap/single false) side/left) 3)
+    ((pick (wrap/single false) side/right) 4)
+    ((pick (wrap/double _ true) _) 5)
+    ((pick (wrap/double side/left false) _) 6)
+    ((pick (wrap/double side/right false) _) 7)
+    ((pick _ side/left) 8)))

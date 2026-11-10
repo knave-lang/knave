@@ -24,5 +24,7 @@
   (* 2 (+ width height)))
 
 (defn square? (width height)
-  "Tells whether both sides match."
+  "Tells whether both sides match, as the private [helper] does not."
   (= width height))
+
+(defn helper (width) width)

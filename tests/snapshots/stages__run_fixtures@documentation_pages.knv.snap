@@ -50,7 +50,7 @@ No documentation.
 (defn square? (width height))
 ```
 
-Tells whether both sides match.
+Tells whether both sides match, as the private [helper] does not.
 
 ## Re-exported names
 
@@ -124,4 +124,4 @@ No documentation.
 (defn square? (width height))
 ```
 
-Tells whether both sides match.
+Tells whether both sides match, as the private [helper] does not.

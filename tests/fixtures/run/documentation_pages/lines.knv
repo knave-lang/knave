@@ -1,0 +1,5 @@
+(export double)
+
+(defn double (x)
+  "Doubles [x], which [area] cannot see."
+  (* 2 x))

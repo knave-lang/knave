@@ -44,7 +44,7 @@ impl ModuleSources {
     const PRELUDE_DIRECTORY: &str = "prelude/";
     const INTERNAL_DIRECTORY: &str = "prelude/internal/";
     const BYTE_ORDER_MARK: char = '\u{feff}';
-    const PRELUDE_FILES: [(&str, &str); 25] = [
+    const PRELUDE_FILES: [(&str, &str); 26] = [
         ("prelude", include_str!("../../prelude/prelude.knv")),
         (
             "prelude/internal/macros",
@@ -90,6 +90,10 @@ impl ModuleSources {
         (
             "prelude/project-file",
             include_str!("../../prelude/project-file.knv"),
+        ),
+        (
+            "prelude/documentation",
+            include_str!("../../prelude/documentation.knv"),
         ),
     ];
 

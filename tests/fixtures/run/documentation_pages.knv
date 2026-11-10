@@ -1,0 +1,19 @@
+(use prelude/documentation documentation-page)
+(use documentation_pages/lines)
+(use documentation_pages/shapes)
+
+(def shapes-page
+  (documentation-page documentation_pages/shapes
+                      (documentation_pages/lines documentation_pages/shapes)
+                      (prelude/types prelude/option)
+                      ((area "(type area (fn (i64 i64) i64))"))))
+
+(def lines-page
+  (documentation-page documentation_pages/lines
+                      (documentation_pages/lines documentation_pages/shapes)
+                      (prelude/types)
+                      ()))
+
+(defn main ()
+  (println shapes-page)
+  (println lines-page))

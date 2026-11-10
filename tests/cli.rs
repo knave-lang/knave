@@ -2244,6 +2244,26 @@ fn doc_write_types_a_module_from_the_whole_program_when_its_own_check_fails() {
 }
 
 #[test]
+fn doc_write_refuses_a_fallback_type_that_only_a_module_outside_the_entry_program_fixes() {
+    let sandbox = Sandbox::new("doc_write_fallback_outside_entry")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file("src/lib.knv", "(export nothing)\n(def nothing none)\n")
+        .with_file(
+            "src/main.knv",
+            "(use lib nothing)\n(defn main () (println \"hi\"))\n",
+        )
+        .with_file(
+            "src/extra.knv",
+            "(use lib nothing)\n(export three)\n(defn three () (unwrap-or nothing 3))\n",
+        );
+    let write = sandbox.compiler(&["doc", "--write"]);
+    let error = write.assert_exit_code(1).stderr();
+    assert!(error.contains("error[L0407]"), "{error}");
+    assert!(error.contains("src/lib.knv:2:14"), "{error}");
+    assert!(!sandbox.directory.join("doc").exists());
+}
+
+#[test]
 fn doc_write_outside_a_project_is_a_usage_error() {
     let sandbox = Sandbox::new("doc_write_no_project");
     sandbox.compiler(&["doc", "--write"]).assert_exit_code(2);

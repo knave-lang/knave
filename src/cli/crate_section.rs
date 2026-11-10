@@ -8,7 +8,7 @@ pub enum CrateSection {
 }
 
 impl CrateSection {
-    const DEV_FLAG: &'static str = " --dev";
+    pub const DEV_FLAG_NAME: &'static str = "dev";
 
     pub fn of(dev: bool) -> Self {
         if dev {
@@ -25,6 +25,10 @@ impl CrateSection {
         }
     }
 
+    pub fn name(self) -> &'static str {
+        self.section().name()
+    }
+
     pub fn listed(self, project: &Project) -> &[CrateDependency] {
         match self {
             Self::Dependencies => &project.dependencies,
@@ -33,10 +37,11 @@ impl CrateSection {
     }
 
     pub fn command(self, command: &str) -> String {
-        let flag = match self {
-            Self::Dependencies => "",
-            Self::DevDependencies => Self::DEV_FLAG,
-        };
-        format!("{} {command}{flag}", Language::NAME)
+        match self {
+            Self::Dependencies => format!("{} {command}", Language::NAME),
+            Self::DevDependencies => {
+                format!("{} {command} --{}", Language::NAME, Self::DEV_FLAG_NAME)
+            }
+        }
     }
 }

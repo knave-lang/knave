@@ -3,10 +3,10 @@ use crate::language::Language;
 use crate::project::CrateDependency;
 
 pub struct CargoManifest<'p> {
-    pub target: CargoTargetKind,
-    pub target_name: String,
-    pub dependencies: &'p [CrateDependency],
-    pub dev_dependencies: &'p [CrateDependency],
+    kind: CargoTargetKind,
+    target_name: String,
+    dependencies: &'p [CrateDependency],
+    dev_dependencies: &'p [CrateDependency],
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -15,26 +15,60 @@ pub enum CargoTargetKind {
     Test,
 }
 
+struct TargetShape {
+    flag: &'static str,
+    table: &'static str,
+    harness: &'static str,
+    name_part: &'static str,
+}
+
 impl CargoTargetKind {
-    pub fn cargo_flag(self) -> &'static str {
+    const BIN: TargetShape = TargetShape {
+        flag: "--bin",
+        table: "[[bin]]",
+        harness: "",
+        name_part: "",
+    };
+    const TEST: TargetShape = TargetShape {
+        flag: "--test",
+        table: "[[test]]",
+        harness: "harness = false\n",
+        name_part: "-tests",
+    };
+
+    pub fn target_name(self, name_stem: &str, root_hash: &str) -> String {
+        format!("{name_stem}{}-{root_hash}", self.shape().name_part)
+    }
+
+    fn shape(self) -> &'static TargetShape {
         match self {
-            Self::Bin => "--bin",
-            Self::Test => "--test",
+            Self::Bin => &Self::BIN,
+            Self::Test => &Self::TEST,
+        }
+    }
+}
+
+impl<'p> CargoManifest<'p> {
+    pub fn new(
+        kind: CargoTargetKind,
+        target_name: String,
+        dependencies: &'p [CrateDependency],
+        dev_dependencies: &'p [CrateDependency],
+    ) -> Self {
+        Self {
+            kind,
+            target_name,
+            dependencies,
+            dev_dependencies,
         }
     }
 
-    fn table(self) -> &'static str {
-        match self {
-            Self::Bin => "[[bin]]",
-            Self::Test => "[[test]]",
-        }
+    pub fn target_arguments(&self) -> [&str; 2] {
+        [self.kind.shape().flag, &self.target_name]
     }
 
-    fn harness(self) -> &'static str {
-        match self {
-            Self::Bin => "",
-            Self::Test => "harness = false\n",
-        }
+    pub fn names_target(&self, name: &str) -> bool {
+        self.target_name == name
     }
 }
 
@@ -53,10 +87,10 @@ impl CargoManifest<'_> {
              {}\nname = {}\npath = {}\n{}\n[workspace]\n\n{}\n",
             Self::quoted(&Self::package_name()),
             Self::quoted(BuildPlan::EDITION),
-            self.target.table(),
+            self.kind.shape().table,
             Self::quoted(&self.target_name),
             Self::quoted(Self::SOURCE_PATH),
-            self.target.harness(),
+            self.kind.shape().harness,
             plan.manifest_profile(),
         );
         Self::write_section(&mut text, "dependencies", self.dependencies);
@@ -140,12 +174,12 @@ mod tests {
             dependency("fake_local", None, &[], Some("/fixtures/fake \"local\"")),
         ];
         let dev_dependencies = [dependency("fake-check", Some("0.3"), &[], None)];
-        let manifest = CargoManifest {
-            target: CargoTargetKind::Bin,
-            target_name: "demo-00000000".to_string(),
-            dependencies: &dependencies,
-            dev_dependencies: &dev_dependencies,
-        };
+        let manifest = CargoManifest::new(
+            CargoTargetKind::Bin,
+            "demo-00000000".to_string(),
+            &dependencies,
+            &dev_dependencies,
+        );
         let text = manifest.render(&BuildPlan::new(BuildProfile::Debug));
         assert!(text.contains("[dependencies]\n\"fake-json\" = { version = \"1.2\", features = [\"derive\", \"std\"] }\n"));
         assert!(text.contains("\"fake_local\" = { path = \"/fixtures/fake \\\"local\\\"\" }\n"));
@@ -155,25 +189,33 @@ mod tests {
 
     #[test]
     fn the_manifest_leaves_out_an_empty_section() {
-        let manifest = CargoManifest {
-            target: CargoTargetKind::Bin,
-            target_name: "demo-00000000".to_string(),
-            dependencies: &[],
-            dev_dependencies: &[],
-        };
+        let manifest =
+            CargoManifest::new(CargoTargetKind::Bin, "demo-00000000".to_string(), &[], &[]);
         let text = manifest.render(&BuildPlan::new(BuildProfile::Release));
         assert!(!text.contains("dependencies]"));
         assert!(text.contains("[profile.dev]\ndebug = false\n"));
     }
 
     #[test]
+    fn a_target_name_joins_the_project_and_the_root_hash() {
+        assert_eq!(
+            CargoTargetKind::Bin.target_name("demo", "0000abcd"),
+            "demo-0000abcd"
+        );
+        assert_eq!(
+            CargoTargetKind::Test.target_name("demo", "0000abcd"),
+            "demo-tests-0000abcd"
+        );
+    }
+
+    #[test]
     fn a_test_target_runs_its_own_main() {
-        let manifest = CargoManifest {
-            target: CargoTargetKind::Test,
-            target_name: "demo-tests-00000000".to_string(),
-            dependencies: &[],
-            dev_dependencies: &[],
-        };
+        let manifest = CargoManifest::new(
+            CargoTargetKind::Test,
+            "demo-tests-00000000".to_string(),
+            &[],
+            &[],
+        );
         let text = manifest.render(&BuildPlan::new(BuildProfile::Debug));
         assert!(text.contains(
             "[[test]]\nname = \"demo-tests-00000000\"\npath = \"src/main.rs\"\nharness = false\n\n[workspace]\n"

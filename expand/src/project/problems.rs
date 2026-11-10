@@ -155,7 +155,7 @@ impl ProjectProblems {
 
     pub fn crates_unavailable_to(command: &str, span: Span, label: String) -> Diagnostic {
         Diagnostic::error(
-            DiagnosticCode::UNBUILT_PROJECT_SECTION,
+            DiagnosticCode::CRATES_UNAVAILABLE_TO_COMMAND,
             format!("`{command}` cannot use crate dependencies yet"),
             Label::new(span, label),
         )

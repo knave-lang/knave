@@ -67,10 +67,7 @@ pub struct BuildTarget<'a> {
 
 pub enum BuildRoute<'a> {
     Rustc(BuildTarget<'a>),
-    Cargo {
-        directory: PathBuf,
-        target: CargoTarget<'a>,
-    },
+    Cargo(CargoTarget<'a>),
 }
 
 pub struct Terminal {
@@ -207,11 +204,13 @@ impl Terminal {
             .output
             .clone()
             .unwrap_or_else(|| directory.join(&output_name));
-        let route = match program.project().filter(|project| project.uses_crates()) {
-            Some(project) => BuildRoute::Cargo {
-                directory,
-                target: project.cargo_target(&output, project.name()),
-            },
+        let cargo = program.project().and_then(|project| {
+            project
+                .crates()
+                .program_target(project.name(), directory.clone(), output.clone())
+        });
+        let route = match cargo {
+            Some(target) => BuildRoute::Cargo(target),
             None => BuildRoute::Rustc(BuildTarget {
                 directory,
                 crate_name: &crate_name,
@@ -232,7 +231,7 @@ impl Terminal {
         Ok(task.binary().to_path_buf())
     }
 
-    fn compile_into(
+    pub fn compile_into(
         &self,
         emitted: &EmittedCrate,
         route: &BuildRoute<'_>,
@@ -240,9 +239,7 @@ impl Terminal {
     ) -> Result<(), ExitStatus> {
         match route {
             BuildRoute::Rustc(target) => self.compile(emitted, target, profile),
-            BuildRoute::Cargo { directory, target } => {
-                self.compile_with_cargo(emitted, directory, target, profile)
-            }
+            BuildRoute::Cargo(target) => self.compile_with_cargo(emitted, target, profile),
         }
     }
 
@@ -265,10 +262,9 @@ impl Terminal {
             .map_err(|error| self.report_build(self.interrupted_or(error)))
     }
 
-    pub fn compile_with_cargo(
+    fn compile_with_cargo(
         &self,
         emitted: &EmittedCrate,
-        directory: &Path,
         target: &CargoTarget<'_>,
         profile: BuildProfile,
     ) -> Result<(), ExitStatus> {
@@ -278,7 +274,7 @@ impl Terminal {
         let waiting = |target: &str| {
             self.print_note(&format!("waiting for another build in {target}"));
         };
-        CargoCompiler::new(directory.to_path_buf(), BuildPlan::new(profile), &waiting)
+        CargoCompiler::new(target.directory.clone(), BuildPlan::new(profile), &waiting)
             .compile(emitted, target, Self::entry_span())
             .map_err(|error| self.report_build(self.interrupted_or(error)))
     }

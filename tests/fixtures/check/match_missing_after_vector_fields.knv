@@ -1,0 +1,7 @@
+(defstruct batch
+  :inputs (vec i64)
+  :outputs (vec i64)
+  :done bool)
+
+(defn finished (b)
+  (match b ((batch _ _ true) 1)))

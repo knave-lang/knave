@@ -2,8 +2,8 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (74 of 230): assoc-at copy debug def defenum defmacro defn defrule defstruct deftrait deftype derive display do doc-body doc-header doc-page docstring enum eprint eprintln eq exit export f32 field float fmt fn-mut fn-once from-str hash i128 i16 i32 i8 impl integer io-error isize macro map-at module mut new number ord partial-eq partial-ord quote rust rust-trait rust-type sequence set-at show signed source struct template trait try type u128 u16 u32 u64 u8 unit use usize where with write-form
-running 161 tests
+untested in prelude (51 of 230): copy debug def defenum defmacro defn defrule defstruct deftrait deftype derive display enum eprint eprintln eq exit export field float fmt fn-mut fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord quote rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
+running 203 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -35,12 +35,54 @@ test prelude/iterator/doc:every? ... ok
 test prelude/iterator/doc:find ... ok
 test prelude/iterator/doc:take ... ok
 test prelude/iterator/doc:take-while ... ok
+test prelude/doc:fn ... ok
+test prelude/doc:local ... ok
+test prelude/doc:do ... ok
+test prelude/doc:if ... ok
+test prelude/doc:match ... ok
+test prelude/doc:assoc-at ... ok
+test prelude/doc:map-at ... ok
+test prelude/doc:set-at ... ok
+test prelude/doc:ref ... ok
+test prelude/doc:mut ... ok
+test prelude/doc:deref ... ok
+test prelude/doc:rust ... ok
+test prelude/doc:recur ... ok
+test prelude/doc:try ... ok
+test prelude/doc:infer ... ok
+test prelude/doc:fn-mut ... ok
+test prelude/doc:fn-once ... ok
+test prelude/doc:where ... ok
+test prelude/doc:_ ... ok
+test prelude/doc:bool ... ok
+test prelude/doc:string ... ok
+test prelude/doc:unit ... ok
+test prelude/doc:i8 ... ok
+test prelude/doc:i16 ... ok
+test prelude/doc:i32 ... ok
+test prelude/doc:i64 ... ok
+test prelude/doc:i128 ... ok
+test prelude/doc:isize ... ok
+test prelude/doc:u8 ... ok
+test prelude/doc:u16 ... ok
+test prelude/doc:u32 ... ok
+test prelude/doc:u64 ... ok
+test prelude/doc:u128 ... ok
+test prelude/doc:usize ... ok
+test prelude/doc:f32 ... ok
+test prelude/doc:f64 ... ok
+test prelude/doc:true ... ok
+test prelude/doc:false ... ok
 test prelude/logic/doc:not ... ok
 test prelude/logic/doc:when ... ok
 test prelude/logic/doc:unless ... ok
 test prelude/logic/doc:and ... ok
 test prelude/logic/doc:or ... ok
 test prelude/logic/doc:cond ... ok
+test prelude/macros/doc:doc-page ... ok
+test prelude/macros/doc:doc-body ... ok
+test prelude/macros/doc:docstring ... ok
+test prelude/macros/doc:doc-header ... ok
 test prelude/map/doc:sorted-map ... ok
 test prelude/map/doc:hash-map ... ok
 test prelude/map/doc:get ... ok
@@ -185,4 +227,4 @@ test prelude/vec/doc:last ... ok
 test prelude/vec/doc:reverse ... ok
 test prelude/vec/doc:reverse! ... ok
 test prelude/vec/doc:dedup! ... ok
-161 passed, 0 failed
+203 passed, 0 failed

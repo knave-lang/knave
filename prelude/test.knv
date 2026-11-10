@@ -190,11 +190,11 @@
   `(assert form \"message\")` adds a message to the failure. When `form` is
   `(= left right)`, the failure shows both sides in their printed form.
 
-  (assert (= (+ 1 2) 3))
-  => (do) ...
-
-  (assert (> 2 1) \"two is larger\")
-  => (do) ...")
+  ```
+  (deftest addition
+    (assert (= (+ 1 2) 3))
+    (assert (> 2 1) \"two is larger\"))
+  ```")
 
 (def check-assert-shape
   (fn (form)

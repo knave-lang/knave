@@ -571,7 +571,10 @@ mod tests {
         let repeats = vec!["\"entry\""; SessionFixture::MANY_ENTRIES].join(" ");
         let call = format!("(distinct-entries (quote ({repeats})))");
         let kept = SessionFixture::new("").evaluated_in_macros_module(&call);
-        let kept = kept.to_form().expect("the entries form a list");
+        let kept = kept
+            .to_form()
+            .expect("within the limit")
+            .expect("the entries form a list");
         assert_eq!(kept.as_list().map(<[Form]>::len), Some(1));
     }
 

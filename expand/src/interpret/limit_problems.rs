@@ -21,6 +21,18 @@ impl LimitProblems {
         ))
     }
 
+    pub fn list_too_large(limit: usize, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::EXPANSION_TOO_LARGE,
+            "macro code used a list too large to read as code",
+            Label::new(span, format!("this call reads a list past {limit} forms")),
+        )
+        .with_note(format!(
+            "a list that macro code passes to a built-in reads as at most {limit} forms, counting each shared part once per use"
+        ))
+        .with_help("build a smaller list, or stop repeating the same list inside itself")
+    }
+
     pub fn value_nests_too_deep(limit: usize, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::EXPANSION_NESTS_TOO_DEEP,

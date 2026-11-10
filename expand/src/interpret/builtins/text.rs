@@ -235,7 +235,13 @@ impl<'a> TextOperations<'a> {
         self.arguments.expect_count(2)?;
         let left = self.arguments.value(0);
         let right = self.arguments.value(1);
-        let equal = match (left.to_form(), right.to_form()) {
+        let left_form = left
+            .to_form()
+            .map_err(|large| large.at(self.arguments.span()))?;
+        let right_form = right
+            .to_form()
+            .map_err(|large| large.at(self.arguments.span()))?;
+        let equal = match (left_form, right_form) {
             (Some(left), Some(right)) => Self::forms_equal(&left, &right),
             _ => Self::plain_values_equal(left, right),
         };

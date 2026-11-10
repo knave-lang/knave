@@ -1,0 +1,64 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/shared_list_read_as_code.knv
+---
+error[L0326]: macro code used a list too large to read as code
+  --> expand/shared_list_read_as_code.knv:11:3
+   |
+11 |   (value-eq (shared 1 200) 1))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this call reads a list past 131072 forms
+...
+26 |   (compares)
+   |   ---------- in this macro call
+   |
+   = note: a list that macro code passes to a built-in reads as at most 131072 forms, counting each shared part once per use
+   = help: build a smaller list, or stop repeating the same list inside itself
+
+error[L0326]: macro code used a list too large to read as code
+  --> expand/shared_list_read_as_code.knv:14:3
+   |
+14 |   (form-location (shared 1 200)))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this call reads a list past 131072 forms
+...
+27 |   (locates)
+   |   --------- in this macro call
+   |
+   = note: a list that macro code passes to a built-in reads as at most 131072 forms, counting each shared part once per use
+   = help: build a smaller list, or stop repeating the same list inside itself
+
+error[L0326]: macro code used a list too large to read as code
+  --> expand/shared_list_read_as_code.knv:17:3
+   |
+17 |   (string (shared 1 200)))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^ this call reads a list past 131072 forms
+...
+28 |   (prints)
+   |   -------- in this macro call
+   |
+   = note: a list that macro code passes to a built-in reads as at most 131072 forms, counting each shared part once per use
+   = help: build a smaller list, or stop repeating the same list inside itself
+
+error[L0326]: macro code used a list too large to read as code
+  --> expand/shared_list_read_as_code.knv:20:3
+   |
+20 |   (expand-call (shared 1 200)))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this call reads a list past 131072 forms
+...
+29 |   (expands)
+   |   --------- in this macro call
+   |
+   = note: a list that macro code passes to a built-in reads as at most 131072 forms, counting each shared part once per use
+   = help: build a smaller list, or stop repeating the same list inside itself
+
+error[L0326]: macro code used a list too large to read as code
+  --> expand/shared_list_read_as_code.knv:23:3
+   |
+23 |   (located (quote x) (shared 1 200)))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this call reads a list past 131072 forms
+...
+30 |   (moves))
+   |   ------- in this macro call
+   |
+   = note: a list that macro code passes to a built-in reads as at most 131072 forms, counting each shared part once per use
+   = help: build a smaller list, or stop repeating the same list inside itself

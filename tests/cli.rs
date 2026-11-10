@@ -4906,6 +4906,12 @@ fn repl_on_piped_input_stops_at_an_interrupt() {
     assert_eq!(status.signal(), Some(2));
 }
 
+const UNIMPORTED_TESTS: &str = r#"(defn pad (text) (str " " text))
+
+(deftest pads-a-letter (assert (= (pad "a") " a")))
+
+(deftest pads-nothing (assert (= (pad "") "") "the empty string grows"))
+"#;
 const PADDING_TESTS: &str = r#"(use prelude/test assert deftest)
 
 (defn pad (text) (str " " text))
@@ -5020,6 +5026,13 @@ fn test_exits_zero_when_every_selected_test_passes() {
         test.assert_silent_success().stdout(),
         "running 1 test\ntest padding/pads-a-letter ... ok\n1 passed, 0 failed\n"
     );
+}
+
+#[test]
+fn test_runs_tests_that_use_no_module() {
+    let sandbox = Sandbox::new("test_without_use").with_file("padding.knv", UNIMPORTED_TESTS);
+    let test = sandbox.compiler(&["test", "padding.knv"]);
+    insta::assert_snapshot!(test.assert_exit_code(1).stdout());
 }
 
 #[test]

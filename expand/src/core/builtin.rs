@@ -65,6 +65,7 @@ pub enum Builtin {
     ModuleDefinitions,
     CurrentModule,
     ModuleSymbol,
+    RequireModule,
     ProjectFileName,
     ReadForm,
     Located,
@@ -72,7 +73,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 69] = [
+    const NAMES: [(Builtin, &'static str); 70] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -138,6 +139,7 @@ impl Builtin {
         (Builtin::ModuleDefinitions, "module-definitions"),
         (Builtin::CurrentModule, "current-module"),
         (Builtin::ModuleSymbol, "module-symbol"),
+        (Builtin::RequireModule, "require-module"),
         (Builtin::ProjectFileName, "project-file-name"),
         (Builtin::ReadForm, "read-form"),
         (Builtin::Located, "located"),

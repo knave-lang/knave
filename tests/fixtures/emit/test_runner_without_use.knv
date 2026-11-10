@@ -1,0 +1,4 @@
+(deftest adds
+  (assert (= (+ 1 1) 2) "sums"))
+
+(defn main () (run-tests :marker "<record>"))

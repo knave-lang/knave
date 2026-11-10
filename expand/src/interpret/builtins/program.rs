@@ -88,6 +88,16 @@ impl<'a> ProgramOperations<'a> {
         )))
     }
 
+    pub fn require_module(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.arguments.expect_count(1)?;
+        let path = self.arguments.form(0)?;
+        let module = host.require_module(self.arguments.symbol(0)?, path.span())?;
+        Ok(Value::Form(Form::new(
+            FormKind::Symbol(module),
+            self.call_site,
+        )))
+    }
+
     pub fn read_form(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(3)?;
         let context = self.arguments.symbol(0)?;

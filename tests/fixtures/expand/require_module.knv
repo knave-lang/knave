@@ -1,0 +1,10 @@
+(use code require-module symbol)
+
+(def greeting-of
+  (macro (form)
+    (symbol (require-module (quote required/greeting))
+            "greeting")))
+
+(def welcome (greeting-of))
+
+(def again (greeting-of))

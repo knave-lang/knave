@@ -4,7 +4,6 @@ use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 use syn::{ImplItem, Item, TraitItem};
 
-use crate::failure::TaskFailure;
 use crate::ratchet::Counts;
 use crate::source_file::SourceFile;
 use crate::test_code::TestCode;
@@ -15,29 +14,29 @@ pub struct ProductionLineCensus;
 impl ProductionLineCensus {
     const TEST_FILE_LINES: usize = 0;
 
-    pub fn measure(sources: &[SourceFile]) -> Result<Counts, TaskFailure> {
-        let test_files = TestModuleFiles::find(sources)?;
+    pub fn measure(sources: &[SourceFile]) -> Counts {
+        let test_files = TestModuleFiles::find(sources);
         sources
             .iter()
             .map(|source| {
                 let count = if test_files.contains(source) {
                     Self::TEST_FILE_LINES
                 } else {
-                    Self::count(source)?
+                    Self::count(source)
                 };
-                Ok((source.relative().to_string(), count))
+                (source.relative().to_string(), count)
             })
             .collect()
     }
 
-    fn count(source: &SourceFile) -> Result<usize, TaskFailure> {
-        let syntax = source.syntax()?;
+    fn count(source: &SourceFile) -> usize {
+        let syntax = source.syntax();
         if TestCode::marks(&syntax.attrs) {
-            return Ok(Self::TEST_FILE_LINES);
+            return Self::TEST_FILE_LINES;
         }
         let mut test_lines = TestLines::default();
-        test_lines.visit_file(&syntax);
-        Ok(source.text().lines().count() - test_lines.excluded.len())
+        test_lines.visit_file(syntax);
+        source.line_count() - test_lines.excluded.len()
     }
 }
 
@@ -99,11 +98,12 @@ mod tests {
                 .iter()
                 .map(|(path, text)| Self::source(path, text))
                 .collect();
-            ProductionLineCensus::measure(&sources).expect("the sources parse")
+            ProductionLineCensus::measure(&sources)
         }
 
         fn source(path: &str, text: &str) -> SourceFile {
-            SourceFile::new(PathBuf::from(path), path.to_string(), text.to_string())
+            SourceFile::parse(PathBuf::from(path), path.to_string(), text)
+                .expect("the source parses")
         }
     }
 
@@ -228,11 +228,5 @@ fn area() -> u32 {
         assert_eq!(census["src/types/mod.rs"], 1);
         assert_eq!(census["src/types/typed_source.rs"], 0);
         assert_eq!(census["src/types/kept.rs"], 1);
-    }
-
-    #[test]
-    fn unparsable_source_is_an_error() {
-        let source = SourceText::source("src/a.rs", "fn {");
-        assert!(ProductionLineCensus::measure(&[source]).is_err());
     }
 }

@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 
 use syn::{Expr, ExprLit, Item, ItemMod, Lit, Meta};
 
-use crate::failure::TaskFailure;
 use crate::source_file::SourceFile;
 use crate::test_code::TestCode;
 
@@ -15,19 +14,18 @@ pub struct TestModuleFiles {
 impl TestModuleFiles {
     const PATH_ATTRIBUTE: &str = "path";
     const DIRECTORY_OWNERS: [&str; 3] = ["mod.rs", "lib.rs", "main.rs"];
-    const EXTENSION: &str = "rs";
 
-    pub fn find(sources: &[SourceFile]) -> Result<Self, TaskFailure> {
+    pub fn find(sources: &[SourceFile]) -> Self {
         let mut found = Self {
             files: BTreeSet::new(),
             directories: BTreeSet::new(),
         };
         for source in sources {
-            for module in Self::declared_test_modules(&source.syntax()?) {
+            for module in Self::declared_test_modules(source.syntax()) {
                 found.add(source.path(), module);
             }
         }
-        Ok(found)
+        found
     }
 
     pub fn contains(&self, source: &SourceFile) -> bool {
@@ -60,7 +58,8 @@ impl TestModuleFiles {
         }
         let directory =
             Self::module_directory(parent, beside_parent).join(module.ident.to_string());
-        self.files.insert(directory.with_extension(Self::EXTENSION));
+        self.files
+            .insert(directory.with_extension(SourceFile::EXTENSION));
         self.directories.insert(directory);
     }
 
@@ -105,12 +104,12 @@ mod tests {
 
     impl Tree {
         fn file(path: &str, text: &str) -> SourceFile {
-            SourceFile::new(PathBuf::from(path), path.to_string(), text.to_string())
+            SourceFile::parse(PathBuf::from(path), path.to_string(), text)
+                .expect("the source parses")
         }
 
         fn test_files(declaring: &SourceFile, candidates: &[&str]) -> Vec<String> {
-            let found =
-                TestModuleFiles::find(std::slice::from_ref(declaring)).expect("the sources parse");
+            let found = TestModuleFiles::find(std::slice::from_ref(declaring));
             candidates
                 .iter()
                 .filter(|candidate| found.contains(&Self::file(candidate, "")))

@@ -1,7 +1,8 @@
 use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 
-use syn::{Expr, ExprLit, Item, ItemMod, Lit, Meta};
+use syn::visit::{self, Visit};
+use syn::{Expr, ExprLit, Item, ItemMod, Lit, LitStr, Macro, Meta};
 
 use crate::source_file::SourceFile;
 use crate::test_code::TestCode;
@@ -27,6 +28,9 @@ impl TestModuleFiles {
             let beside_parent = parent.parent().unwrap_or(parent);
             let directory = Self::module_directory(parent, beside_parent);
             found.collect(&source.syntax().items, &directory, beside_parent);
+            found
+                .production_paths
+                .extend(IncludedFiles::of(source.syntax(), beside_parent));
         }
         found
     }
@@ -41,7 +45,7 @@ impl TestModuleFiles {
         declared_for_tests && !self.production_paths.contains(path)
     }
 
-    fn collect(&mut self, items: &[Item], directory: &Path, beside_parent: &Path) {
+    fn collect(&mut self, items: &[Item], directory: &Path, path_base: &Path) {
         let modules: Vec<&ItemMod> = items
             .iter()
             .filter_map(|item| match item {
@@ -56,22 +60,22 @@ impl TestModuleFiles {
                 .count();
             let has_a_production_twin = namesakes > 1 && TestCode::marks(&module.attrs);
             if !has_a_production_twin {
-                self.declare(module, directory, beside_parent);
+                self.declare(module, directory, path_base);
             }
         }
     }
 
-    fn declare(&mut self, module: &ItemMod, directory: &Path, beside_parent: &Path) {
+    fn declare(&mut self, module: &ItemMod, directory: &Path, path_base: &Path) {
         let child = directory.join(module.ident.to_string());
         let is_test = TestCode::marks(&module.attrs);
         match (&module.content, Self::written_path(module)) {
             (Some(_), _) if is_test => {
                 self.directories.insert(child);
             }
-            (Some((_, items)), _) => self.collect(items, &child, beside_parent),
+            (Some((_, items)), _) => self.collect(items, &child, &child),
             (None, Some(written)) if !is_test => {
                 self.production_paths
-                    .insert(Self::lexically_resolved(&beside_parent.join(written)));
+                    .insert(Self::lexically_resolved(&path_base.join(written)));
             }
             (None, None) if is_test => {
                 self.files
@@ -121,6 +125,36 @@ impl TestModuleFiles {
                 }
                 _ => None,
             })
+    }
+}
+
+struct IncludedFiles<'a> {
+    directory: &'a Path,
+    paths: Vec<PathBuf>,
+}
+
+impl<'a> IncludedFiles<'a> {
+    const INCLUDE: &'static str = "include";
+
+    fn of(syntax: &syn::File, directory: &'a Path) -> Vec<PathBuf> {
+        let mut included = Self {
+            directory,
+            paths: Vec::new(),
+        };
+        included.visit_file(syntax);
+        included.paths
+    }
+}
+
+impl<'ast> Visit<'ast> for IncludedFiles<'_> {
+    fn visit_macro(&mut self, invocation: &'ast Macro) {
+        if invocation.path.is_ident(Self::INCLUDE)
+            && let Ok(file) = invocation.parse_body::<LitStr>()
+        {
+            let path = self.directory.join(file.value());
+            self.paths.push(TestModuleFiles::lexically_resolved(&path));
+        }
+        visit::visit_macro(self, invocation);
     }
 }
 
@@ -223,6 +257,36 @@ mod tests {
             "#[cfg(test)]\nmod fixture;\n#[path = \"../types/./fixture.rs\"]\nmod shared;",
         );
         assert!(Tree::test_files(&parent, &["src/types/fixture.rs"]).is_empty());
+    }
+
+    #[test]
+    fn a_production_path_inside_an_inline_module_resolves_below_it() {
+        let parent = Tree::file(
+            "src/types/mod.rs",
+            "#[cfg(test)]\nmod checker;\nmod inner {\n    #[cfg(not(test))]\n    #[path = \"../checker.rs\"]\n    pub mod checker;\n}",
+        );
+        assert!(Tree::test_files(&parent, &["src/types/checker.rs"]).is_empty());
+    }
+
+    #[test]
+    fn a_file_that_production_code_includes_stays_production() {
+        let parent = Tree::file(
+            "src/types/mod.rs",
+            "#[cfg(test)]\nmod checker;\n#[cfg(not(test))]\nmod checker_real {\n    include!(\"checker.rs\");\n}",
+        );
+        assert!(Tree::test_files(&parent, &["src/types/checker.rs"]).is_empty());
+    }
+
+    #[test]
+    fn another_macro_naming_a_test_file_leaves_it_a_test_file() {
+        let parent = Tree::file(
+            "src/types/mod.rs",
+            "#[cfg(test)]\nmod checker;\nfn name() -> &'static str {\n    concat!(\"checker.rs\")\n}",
+        );
+        assert_eq!(
+            Tree::test_files(&parent, &["src/types/checker.rs"]),
+            ["src/types/checker.rs"]
+        );
     }
 
     #[test]

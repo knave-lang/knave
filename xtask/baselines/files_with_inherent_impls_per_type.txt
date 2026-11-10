@@ -1,0 +1,7 @@
+expand/src/expand/mod.rs::Expander 26
+expand/src/expand/mod.rs::ExpansionTables 2
+expand/src/expand/mod.rs::Program 2
+src/emit/expressions.rs::ExpressionEmitter 3
+src/types/checker.rs::TypeChecker 14
+src/types/typed.rs::TypedExpr 2
+xtask/src/failure.rs::TaskFailure 2

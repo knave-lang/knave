@@ -83,6 +83,7 @@ The exceptions are:
 ### Object-oriented Rust
 
 - Put behavior in `impl` blocks. Inject dependencies through constructors.
+- If a new method would bring a type near a limit in `xtask/src/design.rs`, extract an object first.
 - A type that carries behavior keeps its fields private.
 - A type of the core IR, the typed IR, or another plain data structure MAY expose public fields.
 - NEVER write a free function except `main` and `#[test]` functions: Rust requires those to be free.
@@ -99,6 +100,7 @@ The exceptions are:
 ### Stages
 
 - A stage depends only on earlier stages. NEVER make a stage depend on a later one.
+- `DesignRules::STAGE_ORDER` in `xtask/src/design.rs` lists the stages from first to last.
 - A stage reports problems as `Diagnostic` values. NEVER print from a stage.
 - Only `src/cli/` prints, except the directives that `build.rs` gives cargo.
 - Only `src/cli/`, `src/build/`, `ModuleSources`, `build.rs`, which writes only to `OUT_DIR`, and `xtask/` touch the file system or run processes.
@@ -133,7 +135,8 @@ The exceptions are:
 - Then time the entry's emission with `bash -c 'time cargo run --release --quiet -- emit <entry> > /dev/null'`.
 - If that emission takes more than one second, shrink the entry.
 - NEVER lower `MINIMUM_LINE_COVERAGE`, raise `MAXIMUM_CRAP` or raise `MAXIMUM_PRODUCTION_LINES` in `xtask/src/gate.rs` without the project owner's approval.
-- NEVER add an entry to, or raise an entry in, `xtask/baselines/production_lines.txt` without the project owner's approval.
+- NEVER raise a limit in `xtask/src/design.rs` without the project owner's approval.
+- NEVER add an entry to, or raise an entry in, a file under `xtask/baselines/` without the project owner's approval.
 - NEVER hide code from `cargo xtask coverage`, such as by moving branches into a macro: the gate cannot see inside a macro.
 
 ### Dev shell
@@ -181,7 +184,7 @@ cargo test <narrowest test>
 
 - To run one fixture of a stage, prefix the stage's command with `INSTA_GLOB_FILTER='**/<fixture file name>'`.
 
-**If a change touches a Rust file under `src/`, `expand/src/` or `xtask/src/`, run `cargo xtask file-sizes`.** If the command fails, do what its message says for each file it names.
+**If a change touches a Rust file under `src/`, `expand/src/` or `xtask/src/`, run `cargo xtask file-sizes` and `cargo xtask design-rules`.** If either command fails, do what its message says for each item it names.
 
 **CI posts the front end's instruction counts on each ready pull request and uploads its callgrind profiles.** If a ready pull request carries the change, read them from CI as `docs/pull-requests.md` says, and NEVER run `cargo xtask bench measure`. Otherwise, you MAY measure them on Linux with `cargo xtask bench measure`. To compare two checkouts, measure each with `--workspace <checkout> --save <file>`, then run `cargo xtask bench compare <before> <after>`.
 

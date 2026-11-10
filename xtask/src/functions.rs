@@ -144,7 +144,7 @@ impl FunctionCollector {
         self.owner = outer;
     }
 
-    fn type_name(implementation: &ItemImpl) -> Option<String> {
+    pub fn type_name(implementation: &ItemImpl) -> Option<String> {
         match implementation.self_ty.as_ref() {
             syn::Type::Path(path) => path
                 .path

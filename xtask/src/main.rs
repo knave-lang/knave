@@ -6,6 +6,7 @@ mod checks;
 mod complexity;
 mod coverage;
 mod crap;
+mod design;
 mod emitted_lints;
 mod failure;
 mod functions;
@@ -14,6 +15,7 @@ mod git;
 mod instrumented_tests;
 mod language;
 mod lcov;
+mod parsed_source;
 mod production_lines;
 mod ratchet;
 mod release;
@@ -51,7 +53,11 @@ enum Task {
     #[command(
         about = "Check that no Rust file outgrows the production line limit or its baseline entry"
     )]
-    FileSizes(FileSizesTask),
+    FileSizes(RatchetTask),
+    #[command(
+        about = "Check the design rules of the Rust code: type, function and module limits, each with its baseline"
+    )]
+    DesignRules(RatchetTask),
     #[command(
         subcommand,
         about = "Measure the compiler's front end under callgrind, or compare two measurements"
@@ -70,7 +76,7 @@ enum Task {
 }
 
 #[derive(Args)]
-struct FileSizesTask {
+struct RatchetTask {
     #[arg(
         long,
         help = "Also refuse a baseline entry added or raised since this revision, unless a `Baseline-Accepted:` trailer names it"
@@ -124,6 +130,9 @@ impl Task {
             Task::Coverage(coverage) => coverage.run(workspace_root),
             Task::FileSizes(sizes) => QualityGate::new(workspace_root)
                 .run_file_sizes(sizes.base.as_deref())
+                .unwrap_or_else(|failure| failure.report()),
+            Task::DesignRules(rules) => QualityGate::new(workspace_root)
+                .run_design_rules(rules.base.as_deref())
                 .unwrap_or_else(|failure| failure.report()),
             Task::Bench(task) => task.run(workspace_root),
             Task::NextRelease(release) => release.run(),
@@ -186,6 +195,22 @@ mod tests {
         assert_eq!(base(&["xtask", "file-sizes"]), None);
         assert_eq!(
             base(&["xtask", "file-sizes", "--base", "HEAD^1"]),
+            Some("HEAD^1".to_string())
+        );
+    }
+
+    #[test]
+    fn design_rules_take_an_optional_base() {
+        let base = |arguments: &[&str]| match Tasks::try_parse_from(arguments)
+            .expect("the command line parses")
+            .task
+        {
+            Task::DesignRules(rules) => rules.base,
+            _ => panic!("the command line names another task"),
+        };
+        assert_eq!(base(&["xtask", "design-rules"]), None);
+        assert_eq!(
+            base(&["xtask", "design-rules", "--base", "HEAD^1"]),
             Some("HEAD^1".to_string())
         );
     }

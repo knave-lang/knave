@@ -2,7 +2,8 @@ use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::parse::{ParseStream, Parser};
 use syn::punctuated::Punctuated;
-use syn::{Attribute, Item, Meta, Token};
+use syn::visit_mut::{self, VisitMut};
+use syn::{Attribute, Block, Item, ItemImpl, ItemMod, ItemTrait, Meta, Stmt, Token};
 
 pub struct TestCode;
 
@@ -20,6 +21,10 @@ impl TestCode {
             Item::Mod(module) => Self::marks(&module.attrs),
             other => Self::marks_tokens(other),
         }
+    }
+
+    pub fn strip(syntax: &mut syn::File) {
+        TestItemRemover.visit_file_mut(syntax);
     }
 
     pub fn marks_tokens(node: &impl ToTokens) -> bool {
@@ -55,8 +60,47 @@ impl TestCode {
     }
 }
 
+struct TestItemRemover;
+
+impl VisitMut for TestItemRemover {
+    fn visit_file_mut(&mut self, syntax: &mut syn::File) {
+        syntax.items.retain(|item| !TestCode::marks_item(item));
+        visit_mut::visit_file_mut(self, syntax);
+    }
+
+    fn visit_item_mod_mut(&mut self, module: &mut ItemMod) {
+        if let Some((_, items)) = &mut module.content {
+            items.retain(|item| !TestCode::marks_item(item));
+        }
+        visit_mut::visit_item_mod_mut(self, module);
+    }
+
+    fn visit_item_impl_mut(&mut self, implementation: &mut ItemImpl) {
+        implementation
+            .items
+            .retain(|item| !TestCode::marks_tokens(item));
+        visit_mut::visit_item_impl_mut(self, implementation);
+    }
+
+    fn visit_item_trait_mut(&mut self, definition: &mut ItemTrait) {
+        definition
+            .items
+            .retain(|item| !TestCode::marks_tokens(item));
+        visit_mut::visit_item_trait_mut(self, definition);
+    }
+
+    fn visit_block_mut(&mut self, block: &mut Block) {
+        block.stmts.retain(
+            |statement| !matches!(statement, Stmt::Item(item) if TestCode::marks_item(item)),
+        );
+        visit_mut::visit_block_mut(self, block);
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use quote::ToTokens;
+
     use super::TestCode;
 
     struct Snippet;
@@ -64,6 +108,12 @@ mod tests {
     impl Snippet {
         fn is_test(text: &str) -> bool {
             TestCode::marks_item(&syn::parse_str(text).expect("the item parses"))
+        }
+
+        fn stripped(text: &str) -> String {
+            let mut syntax = syn::parse_file(text).expect("the source parses");
+            TestCode::strip(&mut syntax);
+            syntax.to_token_stream().to_string()
         }
     }
 
@@ -97,5 +147,29 @@ mod tests {
         ));
         assert!(!Snippet::is_test("#[allow(test)] fn allowed() {}"));
         assert!(!Snippet::is_test("mod shapes { fn area() {} }"));
+    }
+
+    #[test]
+    fn strips_test_items_from_files_modules_impls_traits_and_blocks() {
+        let text = "\
+#[cfg(test)] fn file_helper() {}
+mod shapes { #[cfg(test)] fn module_helper() {} fn kept() {} }
+impl Square { #[cfg(test)] fn sample() {} fn side() {} }
+trait Shape { #[cfg(test)] fn sample() {} fn area(); }
+fn body() { #[cfg(test)] fn block_helper() {} let kept = 1; }
+mod inner { #![cfg(test)] fn helper() {} }
+";
+        assert_eq!(
+            Snippet::stripped(text),
+            "mod shapes { fn kept () { } } impl Square { fn side () { } } trait Shape { fn area () ; } fn body () { let kept = 1 ; }"
+        );
+    }
+
+    #[test]
+    fn keeps_items_under_other_conditions() {
+        assert_eq!(
+            Snippet::stripped("#[cfg(unix)] fn on_unix() {}"),
+            "# [cfg (unix)] fn on_unix () { }"
+        );
     }
 }

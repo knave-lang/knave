@@ -29,12 +29,47 @@ enum TreeKind {
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
-struct TreeFile {
-    module: String,
-    path: PathBuf,
+pub struct TreeFile {
+    pub module: String,
+    pub path: PathBuf,
 }
 
 impl TreeFile {
+    const UNNAMABLE: [char; 4] = ['(', ')', '"', ';'];
+
+    pub fn is_unnamable(&self) -> bool {
+        self.module
+            .chars()
+            .any(|character| character.is_whitespace() || Self::UNNAMABLE.contains(&character))
+    }
+
+    pub fn report_unnamable(&self) -> ExitStatus {
+        StandardError::write_line(format_args!(
+            "error: `{}` cannot be a module, because a module path cannot hold a space, a parenthesis, a quote or a semicolon\n\
+             help: rename the file",
+            self.path.display()
+        ));
+        ExitStatus::UsageError
+    }
+
+    pub fn refuse_compiler_modules(
+        files: &[TreeFile],
+        terminal: &mut Terminal,
+    ) -> Result<(), ExitStatus> {
+        let mut problems = Diagnostics::default();
+        for file in files.iter().filter(|file| file.takes_compiler_module()) {
+            let start = Span::new(terminal.load(&file.path)?, 0..0);
+            problems.push(ExpandProblems::file_takes_compiler_module(
+                &file.module_path(),
+                start,
+            ));
+        }
+        if problems.has_errors() {
+            return Err(terminal.report(&problems));
+        }
+        Ok(())
+    }
+
     fn module_path(&self) -> ModulePath {
         ModulePath::new(self.module.as_str())
     }
@@ -47,17 +82,12 @@ impl TreeFile {
 impl TreeKind {
     const TESTS_ENTRY: &'static str = "<tests>";
     const TASKS_ENTRY: &'static str = "<tasks>";
-    const UNNAMABLE: [char; 4] = ['(', ')', '"', ';'];
-
     fn stays_inside(self) -> bool {
         matches!(self, Self::Tasks)
     }
 
-    fn refuses(self, module: &str) -> bool {
-        self.stays_inside()
-            && module
-                .chars()
-                .any(|character| character.is_whitespace() || Self::UNNAMABLE.contains(&character))
+    fn refuses(self, file: &TreeFile) -> bool {
+        self.stays_inside() && file.is_unnamable()
     }
 
     fn entry_name(self) -> &'static str {
@@ -139,25 +169,15 @@ impl EntryTree {
         self.collect_modules(&self.path, &mut files)
             .map_err(|error| Terminal::report_unreadable(&self.path, &error))?;
         files.sort();
-        match files.iter().find(|file| self.kind.refuses(&file.module)) {
-            Some(file) => Err(self.report_unnamable(&file.module)),
+        match files.iter().find(|file| self.kind.refuses(file)) {
+            Some(file) => Err(file.report_unnamable()),
             None => Ok(files),
         }
     }
 
-    fn report_unnamable(&self, module: &str) -> ExitStatus {
-        let file = self.path.join(format!("{module}.{}", Language::EXTENSION));
-        StandardError::write_line(format_args!(
-            "error: `{}` cannot be a module, because a module path cannot hold a space, a parenthesis, a quote or a semicolon\n\
-             help: rename the file",
-            file.display()
-        ));
-        ExitStatus::UsageError
-    }
-
     fn load_directory(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
         let files = self.module_files()?;
-        Self::refuse_compiler_modules(&files, terminal)?;
+        TreeFile::refuse_compiler_modules(&files, terminal)?;
         let uses: Vec<String> = files
             .iter()
             .map(|file| format!("(use {})", file.module))
@@ -167,24 +187,6 @@ impl EntryTree {
             file: self.directory_file(),
             sources: vec![source],
         })
-    }
-
-    fn refuse_compiler_modules(
-        files: &[TreeFile],
-        terminal: &mut Terminal,
-    ) -> Result<(), ExitStatus> {
-        let mut problems = Diagnostics::default();
-        for file in files.iter().filter(|file| file.takes_compiler_module()) {
-            let start = Span::new(terminal.load(&file.path)?, 0..0);
-            problems.push(ExpandProblems::file_takes_compiler_module(
-                &file.module_path(),
-                start,
-            ));
-        }
-        if problems.has_errors() {
-            return Err(terminal.report(&problems));
-        }
-        Ok(())
     }
 
     fn directory_file(&self) -> ProgramFile {

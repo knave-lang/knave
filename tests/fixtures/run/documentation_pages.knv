@@ -14,6 +14,13 @@
                       (prelude/types)
                       ()))
 
+(def page-beside-the-prelude
+  (documentation-page documentation_pages/shapes
+                      (documentation_pages/shapes prelude)
+                      (prelude/types)
+                      ()))
+
 (defn main ()
   (println shapes-page)
-  (println lines-page))
+  (println lines-page)
+  (println page-beside-the-prelude))

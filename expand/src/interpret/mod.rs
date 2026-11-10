@@ -177,9 +177,9 @@ impl<'h> Interpreter<'h> {
 
     #[inline]
     fn spend_step(&self) -> Result<(), Diagnostic> {
-        self.steps
-            .spend()
-            .map_err(|passed| LimitProblems::too_many_steps(passed.limit, self.call_site))
+        self.steps.spend().map_err(|passed| {
+            LimitProblems::too_many_steps(passed.limit, self.steps.first_passed_at(self.call_site))
+        })
     }
 
     fn eval_recur(&mut self, arguments: &[Expr], env: &Env) -> Result<Step, Diagnostic> {

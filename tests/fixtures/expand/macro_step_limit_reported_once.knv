@@ -1,0 +1,16 @@
+(defmacro spin () ((fn () (recur))))
+
+(defmacro innocent () 1)
+
+(with-macro-steps 1000
+                  (defn main ()
+                    (println (spin))
+                    (println (innocent))
+                    (println (spin))))
+
+(with-macro-steps 1000
+                  (do
+                    (def first-value (spin))
+                    (def second-value (innocent))
+                    (defn other ()
+                      (println (innocent) first-value second-value))))

@@ -372,7 +372,10 @@ impl Expander<'_> {
 
     fn point_at_call(diagnostic: Diagnostic, call_site: Span) -> Diagnostic {
         let already_labels_the_call = diagnostic.labels().any(|label| label.span() == call_site);
-        if call_site.contains(diagnostic.primary().span()) || already_labels_the_call {
+        if call_site.contains(diagnostic.primary().span())
+            || already_labels_the_call
+            || ExpansionLimit::ran_too_many_steps(&diagnostic)
+        {
             diagnostic
         } else {
             diagnostic.with_label(ExpandProblems::macro_call(call_site))

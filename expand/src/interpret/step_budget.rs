@@ -1,6 +1,8 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
+use crate::source::Span;
+
 #[derive(Clone, Debug)]
 pub struct StepBudget {
     counts: Rc<StepCounts>,
@@ -10,6 +12,7 @@ pub struct StepBudget {
 struct StepCounts {
     limit: Cell<u64>,
     remaining: Cell<u64>,
+    first_passed_at: Cell<Option<Span>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -34,6 +37,7 @@ impl StepBudget {
             counts: Rc::new(StepCounts {
                 limit: Cell::new(limit),
                 remaining: Cell::new(limit),
+                first_passed_at: Cell::new(None),
             }),
         }
     }
@@ -51,6 +55,12 @@ impl StepBudget {
         }
     }
 
+    pub fn first_passed_at(&self, call_site: Span) -> Span {
+        let passed_at = self.counts.first_passed_at.get().unwrap_or(call_site);
+        self.counts.first_passed_at.set(Some(passed_at));
+        passed_at
+    }
+
     pub fn set_limit(&self, limit: u64) {
         let spent = self.counts.limit.get() - self.counts.remaining.get();
         self.counts.limit.set(limit);
@@ -61,6 +71,7 @@ impl StepBudget {
 #[cfg(test)]
 mod tests {
     use super::{PassedStepLimit, StepBudget};
+    use crate::source::{SourceId, Span};
 
     #[test]
     fn spends_exactly_the_limit() {
@@ -102,6 +113,15 @@ mod tests {
         budget.spend().expect("two steps fit");
         budget.set_limit(1);
         assert_eq!(budget.spend(), Err(PassedStepLimit { limit: 1 }));
+    }
+
+    #[test]
+    fn the_first_call_that_passes_the_limit_keeps_the_blame() {
+        let budget = StepBudget::of(0);
+        let first = Span::new(SourceId::new(0), 0..1);
+        let later = Span::new(SourceId::new(0), 2..3);
+        assert_eq!(budget.first_passed_at(first), first);
+        assert_eq!(budget.first_passed_at(later), first);
     }
 
     #[test]

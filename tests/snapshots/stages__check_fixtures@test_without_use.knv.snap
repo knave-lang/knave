@@ -1,6 +1,5 @@
 ---
 source: tests/stages.rs
-assertion_line: 72
 expression: reports.report(path)
 input_file: tests/fixtures/check/test_without_use.knv
 ---

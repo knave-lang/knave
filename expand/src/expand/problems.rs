@@ -539,11 +539,11 @@ impl ExpandProblems {
             Label::new(span, "no module this file can use has this path"),
         )
         .with_note(format!(
-            "`{}` exists, under a directory a task cannot reach",
+            "`{}` exists, under a directory a task cannot reach this way",
             file.display()
         ))
         .with_help(
-            "a task cannot use a module under `tests/`, so move the shared code into the source root",
+            "a task uses a module of `tasks/` by its path from `tasks/`, and cannot use a module under `tests/`",
         )
     }
 

@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(2).stderr()
+---
+error: `tasks/Has Space.knv` cannot be a module, because a module path cannot hold a space, a parenthesis, a quote or a semicolon
+help: rename the file

@@ -1,0 +1,11 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(1).stderr()
+---
+error[L0362]: the success type of task `p` cannot be inferred
+ --> tasks/p.knv:1:10
+  |
+1 | (deftask p ()
+  |          ^ this task's result type is open
+  |
+  = help: end the task with a value of a known type, or write the type with `the`, as in `(the (result unit string) (ok (do)))`

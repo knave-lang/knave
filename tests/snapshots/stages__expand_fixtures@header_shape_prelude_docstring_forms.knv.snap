@@ -1,6 +1,5 @@
 ---
 source: tests/stages.rs
-assertion_line: 61
 expression: reports.report(path)
 input_file: tests/fixtures/expand/header_shape_prelude_docstring_forms.knv
 ---

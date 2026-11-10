@@ -52,7 +52,6 @@ impl TestCommand {
     }
 
     fn test(&self, terminal: &mut Terminal) -> Result<ExitStatus, ExitStatus> {
-        terminal.hide_labels_in_generated(Self::RUNNER_SOURCE);
         let module = self.entries.load(terminal)?;
         let marker = ValueMarker::random();
         let program = self.runner_program(terminal, module, &marker)?;

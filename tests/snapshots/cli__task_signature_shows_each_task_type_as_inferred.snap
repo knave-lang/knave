@@ -2,5 +2,5 @@
 source: tests/cli.rs
 expression: "format!(\"{}{}\", known.assert_exit_code(0).stdout(),\nopen.assert_exit_code(0).stdout())"
 ---
-""
+"(where ((a display) (b display)) (fn (u16 a b) unit))"
 "(where ((a display)) (fn (a) unit))"

@@ -1,0 +1,11 @@
+---
+source: tests/cli.rs
+expression: task
+---
+error[L0362]: the error type of task `k` cannot be inferred
+ --> tasks/k.knv:1:10
+  |
+1 | (deftask k () (ok (do)))
+  |          ^ this task's result type is open
+  |
+  = help: end the task with a value of a known type, or write the type with `the`, as in `(the (result unit string) (ok (do)))`

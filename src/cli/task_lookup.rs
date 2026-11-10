@@ -22,9 +22,10 @@ impl TaskLookup {
     const LOOKUP_SOURCE: &'static str = "<task lookup>";
     const RUNNER_SOURCE: &'static str = "<task runner>";
     const LISTING: &'static str = "(task-listing)";
-    const NO_RUNNER: &'static str = "(do)";
+    const SIGNATURES: &'static str = "(task-signature name)";
 
     pub fn load(tree: &EntryTree, terminal: &mut Terminal) -> Result<Self, ExitStatus> {
+        terminal.hide_labels_in_generated(EntryTree::TASKS_ENTRY);
         let modules: Vec<String> = tree
             .module_paths()?
             .iter()
@@ -71,18 +72,13 @@ impl TaskLookup {
     pub fn check(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
         let names = self.names(terminal)?;
         let signatures = self.signatures(terminal, &names)?;
-        if names.is_empty() {
-            return self.check_entry(terminal, Self::NO_RUNNER);
-        }
-        names
+        let runners: Vec<String> = names
             .iter()
             .zip(&signatures)
-            .map(|(name, signature)| self.check_entry(terminal, &Self::runner(name, signature)))
-            .fold(Ok(()), Result::and)
-    }
-
-    fn check_entry(&self, terminal: &mut Terminal, entry: &str) -> Result<(), ExitStatus> {
-        let program = self.entered_program(terminal, entry)?;
+            .map(|(name, signature)| Self::runner(name, signature))
+            .collect();
+        let program =
+            self.entered_program(terminal, &format!("(do {} (do))", runners.join(" ")))?;
         terminal.check_expanded(&program).map(|_| ())
     }
 
@@ -95,45 +91,18 @@ impl TaskLookup {
         terminal: &mut Terminal,
         names: &[String],
     ) -> Result<Vec<String>, ExitStatus> {
-        let mut signatures = Vec::new();
-        let mut open = Vec::new();
-        for (index, name) in names.iter().enumerate() {
-            let lookup = Self::signature_lookup(name);
-            match Self::literal(&self.expanded(terminal, &lookup)?) {
-                Some(known) => signatures.push(known),
-                None => {
-                    signatures.push(String::new());
-                    open.push((index, lookup));
-                }
-            }
-        }
-        for ((index, _), inferred) in open.iter().zip(self.inferred_signatures(terminal, &open)?) {
-            signatures[*index] = inferred;
-        }
-        Ok(signatures)
-    }
-
-    fn signature_lookup(name: &str) -> String {
-        format!("(task-signature {name:?})")
-    }
-
-    fn inferred_signatures(
-        &self,
-        terminal: &mut Terminal,
-        open: &[(usize, String)],
-    ) -> Result<Vec<String>, ExitStatus> {
-        if open.is_empty() {
-            return Ok(Vec::new());
-        }
-        let lookups: Vec<&str> = open.iter().map(|(_, lookup)| lookup.as_str()).collect();
+        let lookups: Vec<String> = names
+            .iter()
+            .map(|name| format!("(task-signature {name:?})"))
+            .collect();
         let program =
             self.entered_program(terminal, &format!("(do {} (do))", lookups.join(" ")))?;
         let typed = terminal.check_expanded(&program)?;
         let texts = Self::inferred_texts(&typed);
-        if texts.len() == open.len() {
+        if texts.len() == names.len() {
             Ok(texts)
         } else {
-            Err(Self::report_no_string(lookups[0]))
+            Err(Self::report_no_string(Self::SIGNATURES))
         }
     }
 

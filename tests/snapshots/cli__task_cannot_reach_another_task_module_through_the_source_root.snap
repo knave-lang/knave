@@ -1,0 +1,18 @@
+---
+source: tests/cli.rs
+expression: "reports[0]"
+---
+error[L0204]: cannot find module `tasks/util`
+ --> tasks/t.knv:1:6
+  |
+1 | (use tasks/util h)
+  |      ^^^^^^^^^^ no module this file can use has this path
+  |
+  = note: `tasks/util.knv` exists, under a directory a task cannot reach this way
+  = help: a task uses a module of `tasks/` by its path from `tasks/`, and cannot use a module under `tests/`
+
+error[L0201]: cannot find `h` in this scope
+ --> tasks/t.knv:3:24
+  |
+3 | (deftask t () (println h))
+  |                        ^ not found in this scope

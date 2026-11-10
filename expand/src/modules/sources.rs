@@ -1,6 +1,6 @@
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use super::libraries::{LibraryRoot, LibraryTable};
 use crate::core::ModulePath;
@@ -34,6 +34,7 @@ pub struct ModuleSources {
     display_root: PathBuf,
     fallback_root: Option<PathBuf>,
     unreachable: Vec<PathBuf>,
+    fallback_unreachable: Vec<PathBuf>,
     tasks_directory: Option<PathBuf>,
     libraries: LibraryTable,
 }
@@ -104,6 +105,7 @@ impl ModuleSources {
             display_root,
             fallback_root: None,
             unreachable: Vec::new(),
+            fallback_unreachable: Vec::new(),
             tasks_directory: None,
             libraries: LibraryTable::default(),
         }
@@ -131,12 +133,19 @@ impl ModuleSources {
     }
 
     pub fn without_reaching(self, directories: Vec<PathBuf>) -> Self {
-        let unreachable = directories
+        let unreachable: Vec<PathBuf> = directories
             .iter()
             .filter_map(|directory| fs::canonicalize(directory).ok())
             .collect();
+        let fallback_unreachable = if directories.is_empty() {
+            Vec::new()
+        } else {
+            let primary = fs::canonicalize(&self.root).ok();
+            unreachable.iter().cloned().chain(primary).collect()
+        };
         Self {
             unreachable,
+            fallback_unreachable,
             ..self
         }
     }
@@ -232,28 +241,34 @@ impl ModuleSources {
         let primary = LocalRoot {
             root: &self.root,
             display_root: &self.display_root,
-            unreachable: self.unreachable.clone(),
+            unreachable: &self.unreachable,
         };
         std::iter::once(primary).chain(fallback.map(|root| LocalRoot {
             root,
             display_root: root,
-            unreachable: self.fallback_unreachable(),
+            unreachable: &self.fallback_unreachable,
         }))
-    }
-
-    fn fallback_unreachable(&self) -> Vec<PathBuf> {
-        if self.unreachable.is_empty() {
-            return Vec::new();
-        }
-        let primary = fs::canonicalize(&self.root).ok();
-        self.unreachable.iter().cloned().chain(primary).collect()
     }
 
     pub fn unreachable_file(&self, path: &ModulePath) -> Option<PathBuf> {
         let file_name = Self::file_name(path);
         self.local_roots()
             .find(|local_root| local_root.holds_unreachable(Path::new(&file_name)))
-            .map(|local_root| local_root.display_root.join(&file_name))
+            .map(|local_root| Self::normalized(&local_root.display_root.join(&file_name)))
+    }
+
+    fn normalized(path: &Path) -> PathBuf {
+        let mut normalized = PathBuf::new();
+        for component in path.components() {
+            match component {
+                Component::CurDir => {}
+                Component::ParentDir if normalized.file_name().is_some() => {
+                    normalized.pop();
+                }
+                other => normalized.push(other),
+            }
+        }
+        normalized
     }
 
     pub fn is_prelude(path: &ModulePath) -> bool {
@@ -382,7 +397,7 @@ impl ModuleSources {
 struct LocalRoot<'s> {
     root: &'s Path,
     display_root: &'s Path,
-    unreachable: Vec<PathBuf>,
+    unreachable: &'s [PathBuf],
 }
 
 impl LocalRoot<'_> {
@@ -397,6 +412,9 @@ impl LocalRoot<'_> {
     }
 
     fn is_unreachable(&self, path: &Path) -> bool {
+        if self.unreachable.is_empty() {
+            return false;
+        }
         let canonical = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
         self.unreachable
             .iter()

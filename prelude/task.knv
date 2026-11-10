@@ -6,9 +6,9 @@
 
 (use code add-module-note bool-not concat empty? fail first
           form-location in-tasks-directory? keyword-field
-          keyword-name keyword? len list list? located
-          module-notes nth number-add number-lt number-sub
-          number? prepend program-modules read-form rest
+          keyword-name keyword? len list list? module-notes
+          nth number-add number-lt number-sub number?
+          pinned-at prepend program-modules read-form rest
           sorted-names string string-length string-lines
           string-strip-prefix string-trim-start string?
           symbol symbol-name symbol? value-eq)
@@ -279,7 +279,7 @@
 (def run-task
   (macro (form)
     (local wanted (nth form 1))
-    (local note (named-task wanted (program-tasks)))
+    (local note (named-task wanted (written-tasks)))
     (local parameters (note-parameters note))
     (local positional (of-kind parameters (quote positional)))
     (local flags (of-kind parameters (quote flag)))
@@ -295,7 +295,8 @@
                                      (unquote (note-documentation note))))
                 (unquote (entry-call (list wanted (task-call note))
                                      note ordered
-                                     (open-parameters (nth form 2))))))))
+                                     (open-parameters (nth form 2))
+                                     (nth form 2)))))))
 
 (def parameter-place
   (fn (parameter)
@@ -303,21 +304,97 @@
     (if (list? binding) (first binding) binding)))
 
 (def entry-call
-  (fn (task note ordered open)
+  (fn (task note ordered open signature)
     (local name (note-name note))
     (local call
       (located-head
         name
         (prepend (note-function note)
                  (task-arguments task (note-parameters note) ordered open))))
-    (located-head name
-                  (template (task-outcome (unquote call))))))
+    (located-head name (outcome-call note signature call))))
+
+(def outcome-call
+  (fn (note signature call)
+    (local parsed (parsed-signature signature))
+    (if (empty? parsed)
+      (template (task-outcome (unquote call)))
+      (signed-outcome note
+                      (signature-binders parsed)
+                      (nth (signature-function parsed) 2)
+                      call))))
+
+(def signed-outcome
+  (fn (note binders result call)
+    (if (result-type? result)
+      (if (open-variable? (nth result 2) binders)
+        (open-outcome note "error")
+        (if (open-variable? (nth result 1) binders)
+          (if (bounded-variable? (nth result 1) binders)
+            (open-outcome note "success")
+            (template (task-outcome (unit-success (unquote call)))))
+          (template (task-outcome (unquote call)))))
+      (template (task-outcome (unquote call))))))
+
+(def open-outcome
+  (fn (note part)
+    (fail (string "the " part " type of task `"
+                  (symbol-name (note-name note))
+                  "` cannot be inferred")
+      (note-name note)
+      "end the task with a value of a known type, or write the type with `the`, as in `(the (result unit string) (ok (do)))`"
+      (quote (:code open-task-result
+                    :label "this task's result type is open")))))
+
+(def parsed-signature
+  (fn (signature)
+    (if (value-eq signature "")
+      (list)
+      (first (read-form (quote task) signature 0)))))
+
+(def where-signature?
+  (fn (parsed)
+    (if (list? parsed)
+      (value-eq (symbol-name (first parsed)) "where")
+      false)))
+
+(def signature-binders
+  (fn (parsed)
+    (if (where-signature? parsed)
+      (nth parsed 1)
+      (list))))
+
+(def signature-function
+  (fn (parsed)
+    (if (where-signature? parsed) (nth parsed 2) parsed)))
+
+(def result-type?
+  (fn (type)
+    (if (list? type)
+      (if (value-eq (len type) 3)
+        (if (symbol? (first type))
+          (value-eq (symbol-name (first type)) "result")
+          false)
+        false)
+      false)))
+
+(def open-variable?
+  (fn (type binders)
+    (type-variable? type (map-list binders binder-name))))
+
+(def bounded-variable?
+  (fn (type binders)
+    (if (empty? binders)
+      false
+      (if (value-eq (binder-name (first binders))
+                    (symbol-name type))
+        (list? (first binders))
+        (bounded-variable? type (rest binders))))))
 
 (def located-head
   (fn (place form)
-    (located place
-             (prepend (located place (first form))
-                      (rest form)))))
+    (pinned-at place
+               (prepend (pinned-at place (first form))
+                        (rest form)))))
 
 (document (run-task name signature)
   "Runs the task `name` with the command's arguments.
@@ -331,24 +408,14 @@
 (def task-signature
   (macro (form)
     (local note
-      (named-task (nth form 1) (program-tasks)))
-    (if (every-type-known? (note-parameters note))
-      ""
-      (template (infer (unquote (note-function note)))))))
+      (named-task (nth form 1) (written-tasks)))
+    (template (infer (unquote (note-function note))))))
 
 (document (task-signature name)
   "Returns the type of the task `name` as a `type` signature writes it.
 
-  It is `\"\"` when every parameter's type is known before inference: a
-  written type, a literal default or a switch.")
-
-(def every-type-known?
-  (fn (parameters)
-    (if (empty? parameters)
-      true
-      (if (type-known? (first parameters))
-        (every-type-known? (rest parameters))
-        false))))
+  The command reads it from one check of the task definitions, and
+  `run-task` reads each parameter's and the result's type from it.")
 
 (def type-known?
   (fn (parameter)
@@ -434,10 +501,10 @@
 (def located-deeply
   (fn (place form)
     (if (list? form)
-      (located place
-               (map-list form
-                         (fn (item) (located-deeply place item))))
-      (located place form))))
+      (pinned-at place
+                 (map-list form
+                           (fn (item) (located-deeply place item))))
+      (pinned-at place form))))
 
 (def named-task
   (fn (wanted notes)
@@ -551,7 +618,9 @@
     let flags: Vec<&str> = {2}.split_whitespace().collect();
     let switches: Vec<&str> = {3}.split_whitespace().collect();
     let usage: &str = {4};
-    let documentation: String = {5}.lines().map(str::trim).collect::<Vec<_>>().join(\"\\n\");
+    let written: Vec<&str> = {5}.lines().collect();
+    let margin = written.iter().skip(1).filter(|line| !line.trim().is_empty()).map(|line| line.len() - line.trim_start().len()).min().unwrap_or(0);
+    let documentation: String = written.iter().enumerate().map(|(index, line)| if index == 0 {{ line.trim() }} else {{ line.get(margin..).unwrap_or_else(|| line.trim()) }}).collect::<Vec<_>>().join(\"\\n\");
     let mut values: Vec<Option<String>> = vec![None; positional_count + flags.len() + switches.len()];
     let mut positional = 0;
     let mut flags_ended = false;
@@ -646,6 +715,12 @@
   (rust "{0}"
     (where ((outcome task-outcome))
       (fn (outcome) outcome))))
+
+(def unit-success
+  (rust "{0}"
+    (where ((error))
+      (fn ((result unit error))
+        (result unit error)))))
 
 (def task-switch
   (rust "({0})[{1}].is_some()"
@@ -746,6 +821,10 @@
           (note-name (first notes))
           "move this task into a file under `tasks/`"
           (quote (:code task-outside-tasks :label "outside `tasks/`")))))))
+
+(def written-tasks
+  (fn ()
+    (modules-tasks (program-modules))))
 
 (def program-tasks
   (fn ()

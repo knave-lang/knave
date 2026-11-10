@@ -1,0 +1,11 @@
+(enum side left right)
+
+(enum move (step side bool) (jump side bool))
+
+(defn cost (m)
+  (match m
+    ((move/step side/left _) 1)
+    ((move/step side/right _) 2)
+    ((move/jump side/left _) 3)
+    ((move/jump _ false) 4)
+    ((move/jump side/right true) 5)))

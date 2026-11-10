@@ -1,0 +1,69 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/documentation_pages.knv
+---
+# documentation_pages/shapes
+
+Measures shapes on a grid, as [area](#area) does.
+
+<a id="area"></a>
+
+## `area`
+
+```lisp
+(defn area (width height))
+(type area (fn (i64 i64) i64))
+```
+
+Multiplies two sides, as [perimeter](#perimeter) adds them.
+
+It returns no [option](https://knave-lang.org/docs/prelude/types/#option), and [double](../documentation_pages/lines.md#double) or [square?](#square%3F) help. An [if](https://knave-lang.org/docs/prelude/#if) decides
+nothing here, and [missing] names nothing. `[perimeter]` is code,
+[a website](https://example.com) is a link, and [two words], [a][b] and [open
+stay.
+
+```lisp
+(area 2 3)
+=> 6
+```
+
+```
+(area 1 1)
+```
+
+<a id="perimeter"></a>
+
+## `perimeter`
+
+```lisp
+(defn perimeter (width height))
+```
+
+No documentation.
+
+<a id="square?"></a>
+
+## `square?`
+
+```lisp
+(defn square? (width height))
+```
+
+Tells whether both sides match.
+
+## Re-exported names
+
+- [`double`](../documentation_pages/lines.md#double)
+
+# documentation_pages/lines
+
+<a id="double"></a>
+
+## `double`
+
+```lisp
+(defn double (x))
+```
+
+Doubles [x], which [area] cannot see.

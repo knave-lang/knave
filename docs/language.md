@@ -481,6 +481,12 @@ An entry is the name's header, then, for a name with a summary, the first line o
 
 A module's `export` lists expand after its `def` values, because exporting a trait needs the trait's methods. So a lookup of a module written in that module's own body lists no exports. `knave doc` looks up after the entry module has expanded, so `knave doc --file main.knv '(module main)'` lists them.
 
+### Documentation pages
+
+**`prelude/documentation` writes a module's page as Markdown.** `(documentation-page path written-modules prelude-modules types)` expands to the page of the module at `path` as a string, and `(documentation-names path)` to the names it exports, one per line. A page opens with `# path`, then the module docstring. Each exported name that the module defines gets a section: an anchor `<a id="name"></a>` with the raw name, a `## ` heading, a fenced block that holds the name's header and, when `types` holds a `(name "type line")` entry for it, the type line, then the docstring. A name the module only re-exports, from a module in either list, goes to a closing `## Re-exported names` list that links each name to its home page instead. A paragraph of docstring examples gets a `lisp` fence, and a fenced block stays as written.
+
+**A docstring links to a term with brackets, as Go does: `Returns an [option]'s value`.** The name between the brackets resolves in the scope of the page's module, and links to the module that defines it, or else the first listed module that exports it. A link between two pages of `written-modules` is relative, such as `../geometry/area.md#area`. A link to a module of `prelude-modules` alone points at `https://knave-lang.org/docs/<module path>/`. The fragment percent-encodes each character other than a letter, a digit, `-`, `.`, `_` and `~`, so a link to `>=` ends in `#%3E%3D`. A name that resolves to no listed module's term, a name with a space, a bracket followed by `(` or `[`, and brackets inside backticks or a fence stay as written. `knave doc` prints the brackets as written.
+
 ### Header shapes
 
 `(header-shape (form name ...))` states the header of a form's calls: the leading forms that belong with the form's name, before its body. `(header-shape (defn name parameters))` says that the header of a `defn` call is its name and its parameter list. `doc` shows the header of an undocumented definition (see Docstrings), and `knave fmt` reads the same shapes to keep a header on a call's first line (see Source formatting).

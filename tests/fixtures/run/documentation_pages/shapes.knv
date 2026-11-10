@@ -1,0 +1,28 @@
+(use documentation_pages/lines double)
+
+(export area double perimeter square?)
+
+(module "Measures shapes on a grid, as [area] does.")
+
+(defn area (width height)
+  "Multiplies two sides, as [perimeter] adds them.
+
+  It returns no [option], and [double] or [square?] help. An [if] decides
+  nothing here, and [missing] names nothing. `[perimeter]` is code,
+  [a website](https://example.com) is a link, and [two words], [a][b] and [open
+  stay.
+
+  (area 2 3)
+  => 6
+
+  ```
+  (area 1 1)
+  ```"
+  (* width height))
+
+(defn perimeter (width height)
+  (* 2 (+ width height)))
+
+(defn square? (width height)
+  "Tells whether both sides match."
+  (= width height))

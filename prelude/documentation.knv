@@ -1,0 +1,469 @@
+(use code bool-not concat empty? expand-call first list
+          module-definitions module-exports module-symbol
+          nth number-add rest same-binding? string
+          string-contains? string-drop string-length
+          string-lines string-strip-prefix
+          string-strip-suffix string-trim-start symbol
+          symbol-name value-eq)
+
+(use prelude/internal/code require-module)
+
+(use prelude/macros defmacro doc-body doc-header docstring
+                    document map-list module)
+
+(export documentation-names documentation-page)
+
+(module "Writes the Markdown pages of `knave doc --write`.")
+
+(def documentation-origin "https://knave-lang.org/docs/")
+
+(defmacro documentation-names (path)
+  (join-text "\n"
+             (map-list (module-exports path) symbol-name)))
+
+(document (documentation-names path)
+  "Returns the names that the module at `path` exports, one per line.")
+
+(defmacro documentation-page (path written-modules prelude-modules types)
+  (page-text (list path
+                   (linked-modules written-modules prelude-modules)
+                   types)))
+
+(document (documentation-page path written-modules
+                              prelude-modules types)
+  "Returns the Markdown page of the module at `path`.
+
+  `written-modules` lists the modules whose pages one run writes, and a link
+  between two of them is relative. A link to a term of a module in
+  `prelude-modules` alone points at the Knave website. `types` holds a
+  `(name \"type line\")` entry for each name that has a type.")
+
+(def page-path (fn (page) (first page)))
+
+(def page-links
+  (fn (page) (nth page 1)))
+
+(def page-types
+  (fn (page) (nth page 2)))
+
+(def linked-modules
+  (fn (written-modules prelude-modules)
+    (concat (concat (map-list (without-prelude written-modules)
+                      (fn (path) (linked-module path true)))
+                    (map-list (without-prelude (not-listed prelude-modules
+                                                           written-modules))
+                              (fn (path) (linked-module path false))))
+            (list (linked-module (quote prelude)
+                                 (listed? (quote prelude) written-modules))))))
+
+(def linked-module
+  (fn (path written?)
+    (if written? (do) (require-module path))
+    (list path
+          (module-exports path)
+          (module-definitions path)
+          (if written? (quote written) (quote linked)))))
+
+(def linked-path
+  (fn (linked) (first linked)))
+
+(def linked-exports
+  (fn (linked) (nth linked 1)))
+
+(def linked-definitions
+  (fn (linked) (nth linked 2)))
+
+(def linked-written?
+  (fn (linked)
+    (value-eq (nth linked 3) (quote written))))
+
+(def without-prelude
+  (fn (paths)
+    (items-where (fn (path)
+                   (bool-not (value-eq path (quote prelude))))
+                 paths)))
+
+(def not-listed
+  (fn (paths listed)
+    (items-where (fn (path)
+                   (bool-not (listed? path listed)))
+                 paths)))
+
+(def listed?
+  (fn (path paths)
+    (if (empty? paths)
+      false
+      (if (value-eq path (first paths))
+        true
+        (recur path (rest paths))))))
+
+(def page-text
+  (fn (page)
+    (local terms (module-exports (page-path page)))
+    (local own
+      (items-where (fn (term) (own-term? page term))
+                   terms))
+    (local exported
+      (items-where (fn (term)
+                     (bool-not (own-term? page term)))
+                   terms))
+    (string "# "
+            (page-path page)
+            "\n\n"
+            (module-summary page)
+            (join-text "\n"
+                       (map-list own
+                         (fn (term) (term-section page term))))
+            (reexport-list page exported))))
+
+(def module-summary
+  (fn (page)
+    (local expanded
+      (expand-call (list (quote docstring)
+                         (list (quote module) (page-path page)))))
+    (if (empty? expanded)
+      ""
+      (string (body-markdown page (first expanded)) "\n\n"))))
+
+(def own-term?
+  (fn (page term)
+    (local home (home-of page term))
+    (if (empty? home)
+      true
+      (value-eq (linked-path (first home))
+                (page-path page)))))
+
+(def term-section
+  (fn (page term)
+    (string "<a id=\""
+            (symbol-name term)
+            "\"></a>\n\n" "## `"
+            (symbol-name term)
+            "`\n\n" "```lisp\n"
+            (looked-up (quote doc-header) term)
+            (type-line page term)
+            "\n```\n\n"
+            (body-markdown page (written-body term))
+            "\n")))
+
+(def type-line
+  (fn (page term)
+    (local found
+      (named-type (page-types page) (symbol-name term)))
+    (if (empty? found)
+      ""
+      (string "\n" (first found)))))
+
+(def named-type
+  (fn (types name)
+    (if (empty? types)
+      types
+      (if (value-eq (string (first (first types)))
+                    name)
+        (list (nth (first types) 1))
+        (recur (rest types) name)))))
+
+(def written-body
+  (fn (term)
+    (string-drop (looked-up (quote doc-body) term) 2)))
+
+(def looked-up
+  (fn (lookup term)
+    (first (expand-call (list lookup term)))))
+
+(def reexport-list
+  (fn (page terms)
+    (if (empty? terms)
+      ""
+      (string "\n## Re-exported names\n\n"
+              (join-text "\n"
+                         (map-list terms
+                           (fn (term)
+                             (string "- [`"
+                                     (symbol-name term)
+                                     "`]("
+                                     (term-target page term)
+                                     ")"))))
+              "\n"))))
+
+(def home-of
+  (fn (page term)
+    (local defining
+      (items-where (fn (linked)
+                     (holds-binding? (linked-definitions linked) term))
+                   (page-links page)))
+    (if (empty? defining)
+      (take-first (items-where (fn (linked)
+                                 (holds-binding? (linked-exports linked) term))
+                               (page-links page)))
+      (take-first defining))))
+
+(def take-first
+  (fn (items)
+    (if (empty? items)
+      items
+      (list (first items)))))
+
+(def holds-binding?
+  (fn (names term)
+    (if (empty? names)
+      false
+      (if (same-named-binding? (first names) term)
+        true
+        (recur (rest names) term)))))
+
+(def same-named-binding?
+  (fn (name term)
+    (if (value-eq (symbol-name name) (symbol-name term))
+      (same-binding? name term)
+      false)))
+
+(def term-target
+  (fn (page term)
+    (local home (first (home-of page term)))
+    (string (page-address page home)
+            "#"
+            (fragment (symbol-name term)))))
+
+(def page-address
+  (fn (page home)
+    (if (value-eq (linked-path home) (page-path page))
+      ""
+      (if (linked-written? home)
+        (string (parent-steps (string (page-path page)))
+                (linked-path home)
+                ".md")
+        (string documentation-origin (linked-path home) "/")))))
+
+(def parent-steps
+  (fn (path)
+    (local steps
+      (fn (remaining climbed)
+        (if (value-eq remaining "")
+          climbed
+          (recur (string-drop remaining 1)
+                 (if (value-eq (first-character remaining) "/")
+                   (string climbed "../")
+                   climbed)))))
+    (steps path "")))
+
+(def fragment
+  (fn (name)
+    (local encoded
+      (fn (remaining written)
+        (if (value-eq remaining "")
+          written
+          (recur (string-drop remaining 1)
+                 (string written
+                         (encoded-character (first-character remaining)))))))
+    (encoded name "")))
+
+(def encoded-character
+  (fn (character)
+    (if (string-contains? fragment-characters character)
+      character
+      (percent-code character percent-codes))))
+
+(def fragment-characters
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+
+(def percent-code
+  (fn (character codes)
+    (if (empty? codes)
+      character
+      (if (value-eq (first (first codes)) character)
+        (nth (first codes) 1)
+        (recur character (rest codes))))))
+
+(def percent-codes
+  (quote ((" " "%20")
+          ("!" "%21")
+          ("\"" "%22")
+          ("#" "%23")
+          ("$" "%24")
+          ("%" "%25")
+          ("&" "%26")
+          ("'" "%27")
+          ("(" "%28")
+          (")" "%29")
+          ("*" "%2A")
+          ("+" "%2B")
+          ("," "%2C")
+          ("/" "%2F")
+          (":" "%3A")
+          (";" "%3B")
+          ("<" "%3C")
+          ("=" "%3D")
+          (">" "%3E")
+          ("?" "%3F")
+          ("@" "%40")
+          ("[" "%5B")
+          ("\\" "%5C")
+          ("]" "%5D")
+          ("^" "%5E")
+          ("`" "%60")
+          ("{" "%7B")
+          ("|" "%7C")
+          ("}" "%7D"))))
+
+(def body-markdown
+  (fn (page text)
+    (local converted
+      (fn (written paragraph lines fenced?)
+        (if (empty? lines)
+          (concat written (finished-paragraph page paragraph))
+          (if (fence-line? (first lines))
+            (recur (concat (concat written (finished-paragraph page paragraph))
+                           (list (first lines)))
+                   (list)
+                   (rest lines)
+                   (bool-not fenced?))
+            (if fenced?
+              (recur (concat written (list (first lines)))
+                     paragraph
+                     (rest lines)
+                     true)
+              (if (blank-line? (first lines))
+                (recur (concat (concat written
+                                       (finished-paragraph page paragraph))
+                               (list ""))
+                       (list)
+                       (rest lines)
+                       false)
+                (recur written
+                       (concat paragraph (list (first lines)))
+                       (rest lines)
+                       false)))))))
+    (join-text "\n"
+               (converted (list)
+                          (list)
+                          (string-lines text)
+                          false))))
+
+(def fence-line?
+  (fn (line)
+    (bool-not (value-eq (string-strip-prefix line "```") line))))
+
+(def blank-line?
+  (fn (line)
+    (value-eq (string-trim-start line) "")))
+
+(def finished-paragraph
+  (fn (page paragraph)
+    (if (holds-arrow? paragraph)
+      (concat (concat (list "```lisp") paragraph)
+              (list "```"))
+      (map-list paragraph
+        (fn (line) (linked-line page line))))))
+
+(def holds-arrow?
+  (fn (lines)
+    (if (empty? lines)
+      false
+      (if (arrow-line? (first lines))
+        true
+        (recur (rest lines))))))
+
+(def arrow-line?
+  (fn (line)
+    (local trimmed (string-trim-start line))
+    (bool-not (value-eq (string-strip-prefix trimmed "=> ") trimmed))))
+
+(def linked-line
+  (fn (page line)
+    (local linked
+      (fn (remaining written code?)
+        (if (value-eq remaining "")
+          written
+          (if (value-eq (first-character remaining) "`")
+            (recur (string-drop remaining 1)
+                   (string written "`")
+                   (bool-not code?))
+            (if (if code? false (bracket-start? remaining))
+              (recur (string-drop remaining (bracket-length remaining))
+                     (string written
+                             (bracket-link page (bracketed-name remaining)))
+                     false)
+              (recur (string-drop remaining 1)
+                     (string written (first-character remaining))
+                     code?))))))
+    (linked line "" false)))
+
+(def bracket-start?
+  (fn (text)
+    (if (value-eq (first-character text) "[")
+      (link-name? (bracketed-name text)
+                  (string-drop text (bracket-length text)))
+      false)))
+
+(def link-name?
+  (fn (name after)
+    (if (value-eq name "")
+      false
+      (if (value-eq (first-character after) "(")
+        false
+        (bool-not (value-eq (first-character after) "["))))))
+
+(def bracketed-name
+  (fn (text)
+    (local collected
+      (fn (remaining name)
+        (if (value-eq remaining "")
+          ""
+          (if (value-eq (first-character remaining) "]")
+            name
+            (if (string-contains? name-breaks (first-character remaining))
+              ""
+              (recur (string-drop remaining 1)
+                     (string name (first-character remaining))))))))
+    (collected (string-drop text 1) "")))
+
+(def name-breaks " `[\t")
+
+(def bracket-length
+  (fn (text)
+    (local name (bracketed-name text))
+    (if (value-eq name "")
+      1
+      (number-add (string-length name) 2))))
+
+(def bracket-link
+  (fn (page name)
+    (local term
+      (symbol (module-symbol (page-path page)) name))
+    (if (empty? (home-of page term))
+      (unmatched-link name)
+      (string "[" name "](" (term-target page term) ")"))))
+
+(def unmatched-link
+  (fn (name) (string "[" name "]")))
+
+(def first-character
+  (fn (text)
+    (string-strip-suffix text (string-drop text 1))))
+
+(def items-where
+  (fn (matches? items)
+    (local kept-of
+      (fn (kept remaining)
+        (if (empty? remaining)
+          kept
+          (recur (if (matches? (first remaining))
+                   (concat kept (list (first remaining)))
+                   kept)
+                 (rest remaining)))))
+    (kept-of (list) items)))
+
+(def join-text
+  (fn (separator texts)
+    (if (empty? texts)
+      ""
+      (joined-from separator (first texts) (rest texts)))))
+
+(def joined-from
+  (fn (separator joined texts)
+    (if (empty? texts)
+      joined
+      (recur separator
+             (string joined separator (first texts))
+             (rest texts)))))

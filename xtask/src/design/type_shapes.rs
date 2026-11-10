@@ -398,4 +398,20 @@ mod tests {
         assert_eq!(shapes.methods.get("src/expand/shape.rs::Shape"), Some(&1));
         assert_eq!(shapes.methods.get("src/format/shape.rs::Shape"), Some(&1));
     }
+
+    #[test]
+    fn an_impl_through_a_re_export_counts_under_every_definition() {
+        let shapes = Sources::shapes(&[
+            ("src/expand/mod.rs", "mod shape; pub use shape::Shape;"),
+            ("src/expand/shape.rs", "pub struct Shape;"),
+            ("src/format/shape.rs", "pub struct Shape;"),
+            (
+                "src/other.rs",
+                "use crate::expand::Shape; impl Shape { fn one() {} }",
+            ),
+        ]);
+        assert_eq!(shapes.methods.get("src/expand/mod.rs::Shape"), None);
+        assert_eq!(shapes.methods.get("src/expand/shape.rs::Shape"), Some(&1));
+        assert_eq!(shapes.methods.get("src/format/shape.rs::Shape"), Some(&1));
+    }
 }

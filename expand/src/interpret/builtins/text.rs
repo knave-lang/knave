@@ -480,6 +480,15 @@ mod tests {
     }
 
     #[test]
+    fn lists_that_differ_in_one_item_differ() {
+        let first = Form::new(FormKind::Symbol(Symbol::new("a")), SymbolComparison::span());
+        let second = Form::new(FormKind::Symbol(Symbol::new("b")), SymbolComparison::span());
+        let left = SymbolComparison::form(FormKind::List(vec![first.clone(), first.clone()]));
+        let right = SymbolComparison::form(FormKind::List(vec![first, second]));
+        assert!(!SymbolComparison::equal(left, right));
+    }
+
+    #[test]
     fn forms_of_different_kinds_differ() {
         let symbol = SymbolComparison::form(FormKind::Symbol(Symbol::new("a")));
         let text = SymbolComparison::form(FormKind::String("a".into()));

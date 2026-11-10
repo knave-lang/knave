@@ -66,3 +66,125 @@ impl CoverPattern {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::CoverPattern;
+    use crate::core::{
+        BindingArena, BindingId, BindingInfo, BindingKind, Literal, ModuleId, PrimitiveType,
+        VariantInfo,
+    };
+    use crate::source::{SourceId, Span};
+    use crate::types::{Type, TypedPattern, TypedPatternKind};
+
+    struct PatternFixture {
+        bindings: BindingArena,
+        owner: BindingId,
+        variant: BindingId,
+    }
+
+    impl PatternFixture {
+        fn new() -> Self {
+            let mut bindings = BindingArena::default();
+            let owner = bindings.add(BindingInfo::new(
+                "shape".into(),
+                BindingKind::Enum(ModuleId::new(0)),
+                None,
+            ));
+            let info = VariantInfo {
+                owner,
+                index: 1,
+                arity: 1,
+            };
+            let variant = bindings.add(BindingInfo::new(
+                "circle".into(),
+                BindingKind::Variant(ModuleId::new(0), info),
+                None,
+            ));
+            Self {
+                bindings,
+                owner,
+                variant,
+            }
+        }
+
+        fn typed(kind: TypedPatternKind) -> TypedPattern {
+            TypedPattern {
+                kind,
+                boxed: false,
+                span: Span::new(SourceId::new(0), 0..0),
+            }
+        }
+
+        fn circle_of(&self, argument: TypedPatternKind) -> CoverPattern {
+            let pattern = TypedPatternKind::Variant(self.variant, vec![Self::typed(argument)]);
+            CoverPattern::of(&Self::typed(pattern), &self.bindings)
+        }
+
+        fn text(text: &str) -> Literal {
+            Literal::String(text.into())
+        }
+
+        fn string_type() -> Type {
+            Type::Primitive(PrimitiveType::String)
+        }
+    }
+
+    #[test]
+    fn a_wildcard_covers_as_a_wildcard() {
+        let fixture = PatternFixture::new();
+        let pattern = CoverPattern::of(
+            &PatternFixture::typed(TypedPatternKind::Wildcard),
+            &fixture.bindings,
+        );
+        assert!(matches!(pattern, CoverPattern::Wild));
+    }
+
+    #[test]
+    fn a_variant_covers_with_the_owner_and_index_of_its_binding() {
+        let fixture = PatternFixture::new();
+        let pattern = fixture.circle_of(TypedPatternKind::Wildcard);
+        assert!(matches!(
+            pattern,
+            CoverPattern::Variant { owner, index: 1, .. } if owner == fixture.owner
+        ));
+    }
+
+    #[test]
+    fn a_variant_keeps_its_argument_patterns() {
+        let literal =
+            TypedPatternKind::Literal(PatternFixture::text("unit"), PatternFixture::string_type());
+        let pattern = PatternFixture::new().circle_of(literal);
+        assert!(matches!(
+            pattern.arguments(),
+            [CoverPattern::Literal(Literal::String(_))]
+        ));
+    }
+
+    #[test]
+    fn a_literal_has_no_arguments() {
+        assert!(
+            CoverPattern::Literal(Literal::Bool(true))
+                .arguments()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn a_wildcard_matches_every_literal() {
+        assert!(CoverPattern::Wild.matches_literal(&PatternFixture::text("any")));
+    }
+
+    #[test]
+    fn a_string_matches_only_the_same_string() {
+        let pattern = CoverPattern::Literal(PatternFixture::text("north"));
+        assert!(pattern.matches_literal(&PatternFixture::text("north")));
+        assert!(!pattern.matches_literal(&PatternFixture::text("south")));
+    }
+
+    #[test]
+    fn a_literal_never_matches_one_of_another_kind() {
+        let pattern = CoverPattern::Literal(Literal::Bool(true));
+        assert!(!pattern.matches_literal(&PatternFixture::text("true")));
+    }
+}

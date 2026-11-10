@@ -28,11 +28,12 @@ impl TypeChecker {
             return;
         }
         let requests = std::mem::take(&mut self.parameter_call_requests);
-        let labels = ParameterCallLabels {
-            calls: CalledParameters::new(modules, &self.bindings),
-        };
         let diagnostics = std::mem::take(&mut self.diagnostics);
-        self.diagnostics = diagnostics.map(|diagnostic| labels.label(&requests, diagnostic));
+        let labels = ParameterCallLabels {
+            calls: self.called_parameters(modules),
+        };
+        let labeled = diagnostics.map(|diagnostic| labels.label(&requests, diagnostic));
+        self.diagnostics = labeled;
     }
 }
 

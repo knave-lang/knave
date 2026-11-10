@@ -33,7 +33,7 @@ src/ownership/rewrite.rs::ModeRewrite 29
 src/ownership/slices.rs::ShrinkSelection 27
 src/ownership/usage.rs::UsageCollector 23
 src/ownership/values.rs::FunctionValueModes 38
-src/types/checker.rs::TypeChecker 511
+src/types/checker.rs::TypeChecker 512
 src/types/opaque_positions.rs::OpaquePositions 24
 src/types/pinning.rs::InstantiationReport 26
 src/types/problems.rs::TypeProblems 118

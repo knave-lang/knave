@@ -2264,6 +2264,41 @@ fn doc_write_refuses_a_fallback_type_that_only_a_module_outside_the_entry_progra
 }
 
 #[test]
+fn doc_write_refuses_a_module_the_entry_program_does_not_load() {
+    let sandbox = Sandbox::new("doc_write_unloaded_fallback")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file("src/unused.knv", "(export nothing)\n(def nothing none)\n")
+        .with_file("src/main.knv", "(defn main () (println \"hi\"))\n");
+    let write = sandbox.compiler(&["doc", "--write"]);
+    let error = write.assert_exit_code(1).stderr();
+    assert!(error.contains("error[L0407]"), "{error}");
+    assert!(error.contains("src/unused.knv:2:14"), "{error}");
+    assert!(!sandbox.directory.join("doc").exists());
+}
+
+#[test]
+fn doc_write_falls_back_for_a_module_whose_exports_have_no_type() {
+    let sandbox = Sandbox::new("doc_write_untyped_fallback")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file(
+            "src/lib.knv",
+            "(export get-nothing)\n(def nothing none)\n(defmacro get-nothing () (template nothing))\n",
+        )
+        .with_file(
+            "src/main.knv",
+            "(use lib get-nothing)\n(defn main () (println (unwrap-or (get-nothing) 3)))\n",
+        );
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert!(
+        sandbox
+            .contents("doc/lib.md")
+            .contains("(defmacro get-nothing ())")
+    );
+}
+
+#[test]
 fn doc_write_outside_a_project_is_a_usage_error() {
     let sandbox = Sandbox::new("doc_write_no_project");
     sandbox.compiler(&["doc", "--write"]).assert_exit_code(2);

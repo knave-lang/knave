@@ -1818,6 +1818,16 @@ fn doc_find_doc_without_a_match_succeeds() {
 }
 
 #[test]
+fn doc_finds_the_page_of_assert_imported_from_prelude_test() {
+    let sandbox = Sandbox::new("doc_imported_assert").with_file("main.knv", PADDING_TESTS);
+    let doc = sandbox.compiler(&["doc", "--file", "main.knv", "assert"]);
+    let page = doc.assert_exit_code(0).stdout();
+    assert!(
+        page.starts_with("(assert form)\n\nEnds the test with a failure unless `form` is true.")
+    );
+}
+
+#[test]
 fn doc_find_doc_finds_a_term_through_the_body_of_its_docstring() {
     let sandbox = Sandbox::new("doc_find_doc_body").with_file("main.knv", DOCUMENTED_TWICE);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(find-doc widgets)"]);
@@ -6122,6 +6132,12 @@ fn a_library_at_two_sources_stops_the_command() {
 fn a_library_that_hides_a_local_module_warns_once() {
     let check = Sandbox::check_fixture("libraries/hidden-file");
     insta::assert_snapshot!(check.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn a_library_macro_cannot_import_the_prelude_only_require_module() {
+    let check = Sandbox::check_fixture("libraries/loader-app");
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
 #[test]

@@ -3,24 +3,42 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/require_module_errors.knv
 ---
-error[L0204]: cannot find module `missing/module`
-  --> expand/require_module_errors.knv:5:36
+error[L0205]: module `code` does not export `pinned-at`
+ --> expand/require_module_errors.knv:1:31
+  |
+1 | (use code first module-symbol pinned-at require-module
+  |                               ^^^^^^^^^ not exported
+
+error[L0205]: module `code` does not export `require-module`
+ --> expand/require_module_errors.knv:1:41
+  |
+1 | (use code first module-symbol pinned-at require-module
+  |                                         ^^^^^^^^^^^^^^ not exported
+
+error[L0205]: module `code` does not export `require-modules`
+ --> expand/require_module_errors.knv:4:11
+  |
+4 | (use code require-modules)
+  |           ^^^^^^^^^^^^^^^ not exported
+
+error[L0204]: cannot find module `noted/birds`
+  --> expand/require_module_errors.knv:14:1
    |
- 5 |     (symbol (require-module (quote missing/module)) "name")))
-   |                                    ^^^^^^^^^^^^^^ no module with this path
-...
-11 | (def missing (missing-name))
-   |              -------------- in this macro call
+14 | (make-loader)
+   | ^^^^^^^^^^^^^ no module with this path
+15 |
+16 | (def loaded (load-written))
+   |             -------------- in this macro call
    |
    = help: a module path names a file relative to the root directory, without its extension
 
-error[L0204]: cannot find module `code`
-  --> expand/require_module_errors.knv:9:36
+error[L0204]: cannot find module `prelude/internal/macros`
+  --> expand/require_module_errors.knv:26:1
    |
- 9 |     (symbol (require-module (quote code)) "name")))
-   |                                    ^^^^ no module with this path
-...
-13 | (def provided (provided-name))
+26 | (make-internal-loader)
+   | ^^^^^^^^^^^^^^^^^^^^^^ no module with this path
+27 |
+28 | (def internal (load-internal))
    |               --------------- in this macro call
    |
    = help: a module path names a file relative to the root directory, without its extension

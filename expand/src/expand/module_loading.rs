@@ -299,12 +299,32 @@ impl Expander<'_> {
     ) -> Result<bool, Diagnostic> {
         let mut found = false;
         for namespace in Self::NAMESPACES {
-            if let Some(binding) = self.modules.get(target).exported(symbol.name(), namespace) {
+            if let Some(binding) = self.visible_export(target, symbol.name(), namespace) {
                 self.bind_import(symbol, namespace, binding, span)?;
                 found = true;
             }
         }
         Ok(found)
+    }
+
+    fn visible_export(
+        &self,
+        target: ModuleId,
+        name: &str,
+        namespace: Namespace,
+    ) -> Option<BindingId> {
+        self.modules
+            .get(target)
+            .exported(name, namespace)
+            .filter(|binding| self.is_visible(*binding))
+    }
+
+    fn is_visible(&self, binding: BindingId) -> bool {
+        let prelude_only = matches!(
+            self.kind(binding),
+            BindingKind::CodeBuiltin(builtin) if builtin.is_prelude_only()
+        );
+        !prelude_only || self.importing_from_prelude()
     }
 
     fn import_members(
@@ -389,6 +409,7 @@ impl Expander<'_> {
             .modules
             .get(target)
             .exports()
+            .filter(|(_, _, binding)| self.is_visible(*binding))
             .map(|(name, _, _)| Rc::clone(name))
             .collect();
         let similar = SimilarName::closest(symbol.name(), &exported);
@@ -397,6 +418,9 @@ impl Expander<'_> {
     }
 
     fn missing_export_remedy(&self, path: &ModulePath, name: &str) -> MissingExportRemedy {
+        if ModuleSources::is_compiler_provided(path) {
+            return MissingExportRemedy::NoHelp;
+        }
         if !ModuleSources::is_embedded_prelude(path) {
             return MissingExportRemedy::AddToExports;
         }

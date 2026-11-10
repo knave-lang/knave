@@ -1,13 +1,28 @@
-(use code require-module symbol)
+(use code first module-symbol pinned-at require-module
+          symbol)
 
-(def missing-name
+(use code require-modules)
+
+(def make-loader
   (macro (form)
-    (symbol (require-module (quote missing/module)) "name")))
+    (template (def (unquote (symbol (first form) "load-written"))
+                (macro (form)
+                  ((unquote (symbol (module-symbol (quote prelude/syntax))
+                                    "require-module"))
+                   (quote noted/birds)))))))
 
-(def provided-name
+(make-loader)
+
+(def loaded (load-written))
+
+(def make-internal-loader
   (macro (form)
-    (symbol (require-module (quote code)) "name")))
+    (template (def (unquote (symbol (first form) "load-internal"))
+                (macro (form)
+                  ((unquote (symbol (module-symbol (quote prelude/syntax))
+                                    "require-module"))
+                   (quote prelude/internal/macros)))))))
 
-(def missing (missing-name))
+(make-internal-loader)
 
-(def provided (provided-name))
+(def internal (load-internal))

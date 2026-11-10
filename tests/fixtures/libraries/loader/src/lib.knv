@@ -1,0 +1,7 @@
+(use code require-module symbol)
+
+(export load-text)
+
+(def load-text
+  (macro (form)
+    (symbol (require-module (quote prelude/text)) "str")))

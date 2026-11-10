@@ -13,11 +13,12 @@
           string-strip-prefix string-trim-start string?
           symbol symbol-name symbol? value-eq)
 
-(export define-task deftask run-task task-listing task-names
+(export deftask run-task task-listing task-names
         task-signature)
 
 (def define-task
-  (macro (form)
+  (macro (call)
+    (local form (nth call 1))
     (check-task-shape form)
     (check-task-directory form)
     (check-task-body form)
@@ -38,10 +39,6 @@
                            (unquote parameters)
                            (unquote (form-location form))
                            (unquote (if documented (first body) "")))))))
-
-(document (define-task name parameters)
-  "Defines a task for `deftask`, which loads this module only when a
-  program writes a task.")
 
 (def check-task-body
   (fn (form)

@@ -158,7 +158,11 @@ impl CompileTimeHost for Expander<'_> {
     }
 
     fn require_module(&mut self, path: &Symbol, span: Span) -> Result<Symbol, Diagnostic> {
-        let module = self.load_module(&ModulePath::new(path.name()), span)?;
+        let path = ModulePath::new(path.name());
+        if !ModuleSources::is_public_prelude(&path) {
+            return Err(ExpandProblems::unknown_module(&path, span));
+        }
+        let module = self.load_module(&path, span)?;
         Self::symbol_of(self.modules.get(module), span)
     }
 

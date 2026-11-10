@@ -19,11 +19,14 @@
           string-trim-start string? symbol symbol-name
           symbol? value-eq)
 
+(use prelude/syntax assert deftest run-tests)
+
 (export assert check-library-examples deftest doctest
         run-tests)
 
-(def deftest
-  (macro (form)
+(def define-test
+  (macro (call)
+    (local form (nth call 1))
     (check-test-shape form)
     (local name (nth form 1))
     (local body (rest (rest form)))
@@ -39,8 +42,6 @@
                            (unquote (summary documented body))
                            (unquote (form-location form))
                            (unquote forms))))))
-
-(header-shape (deftest name) :docstring)
 
 (def check-test-shape
   (fn (form)
@@ -108,8 +109,9 @@
 
 (def note-body (fn (note) (nth note 4)))
 
-(def assert
-  (macro (form)
+(def assertion
+  (macro (call)
+    (local form (nth call 1))
     (check-assert-shape form)
     (local checked (nth form 1))
     (local written
@@ -211,8 +213,9 @@
       (quote check-true)
       (quote check-true-with))))
 
-(def run-tests
-  (macro (form)
+(def test-runner
+  (macro (call)
+    (local form (nth call 1))
     (check-run-tests-shape form)
     (local marker (runner-marker form))
     (local modules (project-modules))

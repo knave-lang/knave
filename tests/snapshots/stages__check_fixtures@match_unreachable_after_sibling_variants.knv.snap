@@ -1,0 +1,18 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_unreachable_after_sibling_variants.knv
+---
+warning[L0434]: unreachable `match` arm
+  --> check/match_unreachable_after_sibling_variants.knv:18:6
+   |
+18 |     ((pick _ side/left) 8)))
+   |      ^^^^^^^^^^^^^^^^^^ this arm can never match
+   |
+   = note: the earlier arms together cover every value this arm matches
+
+(derive pick clone copy partial-eq eq hash show)
+(derive side clone copy partial-eq eq hash show)
+(derive wrap clone copy partial-eq eq hash show)
+(type ->pick (fn (wrap side) pick))
+(type score (fn ((ref pick)) i64))

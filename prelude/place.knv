@@ -45,6 +45,15 @@
   must fit the map's key type: a `(ref str)` key takes a literal or
   `(as-str name)`, and a `string` is an error.
 
+  A `set!` of a whole parameter changes the caller's variable, for every
+  type, unless the function also moves it: then the caller gives the value
+  up. A parameter written by value, as `(count i64)`, and a closure's own
+  parameter stay local to the body.
+
+  A function cannot return a closure that uses a parameter it also changes,
+  which is `L0517`. Bind a local first, as `(local value start)`, and use
+  `value` in the closure. That copies a `copy` type and moves any other.
+
   It returns `unit`, which prints as `(do)`.
 
   (local total 1)
@@ -55,7 +64,17 @@
   (local items (vec 1 2))
   (set! (at items 0) 9)
   (clone items)
-  => (vec 9 2)"
+  => (vec 9 2)
+
+  ```
+  (defn bump! (count)
+    (set! count (+ count 1)))
+
+  (local total 1)
+  (bump! total)
+  total
+  => 2
+  ```"
   (if (at-form? target)
     (list (quote set-at)
           (at-base target)

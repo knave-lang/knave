@@ -27,6 +27,7 @@ mod parameter_call_search;
 mod parameter_copy;
 mod parameter_modes;
 mod pattern_placement;
+mod peeling;
 mod pending;
 mod pinning;
 mod pipelines;
@@ -52,6 +53,7 @@ mod typed;
 #[cfg(test)]
 mod typed_source;
 mod unifier;
+mod variant_payloads;
 mod walk;
 mod wrapper;
 

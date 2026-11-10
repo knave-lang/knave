@@ -14,6 +14,7 @@ use super::collection::{Collection, CollectionKind};
 use super::enums::{VariantDefinition, VariantPayload};
 use super::parameter_call_labels::ParameterCallRequest;
 use super::pattern_placement::{PatternFields, PatternPlacement};
+use super::peeling::ReferencePeeling;
 use super::pending::{DecidedBorrows, PendingBorrow};
 use super::pipelines::Pipelines;
 use super::problems::{MismatchContext, TypeProblems};
@@ -396,8 +397,9 @@ impl TypeChecker {
             )?;
             typed_arms.push(typed_arm);
         }
-        self.check_match_coverage(span, &value.ty, &typed_arms);
-        let unguarded_exhaustive = self.match_is_exhaustive_without_guards(&value.ty, &typed_arms);
+        let verdict = self.match_coverage().judge(&value.ty, &typed_arms);
+        verdict.report(span, &mut self.diagnostics, &mut self.warnings);
+        let unguarded_exhaustive = verdict.is_exhaustive_without_guards();
         Ok(TypedExpr {
             kind: TypedExprKind::Control(TypedControl::Match(TypedMatch {
                 value: Box::new(value),
@@ -990,21 +992,7 @@ impl TypeChecker {
     }
 
     pub(super) fn peeled_reference(&self, ty: &Type) -> (Type, Option<ReferenceKind>) {
-        let mut matched = self.unifier.resolve(ty);
-        let mut mode = None;
-        loop {
-            match matched.clone() {
-                Type::Ref(_, inner) => {
-                    mode.get_or_insert(ReferenceKind::Shared);
-                    matched = self.unifier.resolve(&inner);
-                }
-                Type::Mut(_, inner) => {
-                    mode.get_or_insert(ReferenceKind::Mutable);
-                    matched = self.unifier.resolve(&inner);
-                }
-                _ => return (matched, mode),
-            }
-        }
+        ReferencePeeling::new(&self.unifier).peel(ty)
     }
 
     fn binding_mode_type(matched: Type, mode: Option<ReferenceKind>) -> Type {

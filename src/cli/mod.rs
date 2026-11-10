@@ -69,6 +69,7 @@ mod test_record;
 mod test_report;
 mod test_run;
 mod token_colors;
+mod tree_bounds;
 mod types;
 mod user_label_output;
 mod value_marker;

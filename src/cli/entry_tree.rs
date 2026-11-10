@@ -8,6 +8,7 @@ use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
 use super::terminal::{ModuleOfSources, Terminal};
+use super::tree_bounds::TreeBounds;
 use crate::core::ModulePath;
 use crate::diagnostic::Diagnostics;
 use crate::expand::ExpandProblems;
@@ -225,10 +226,7 @@ impl EntryTree {
     }
 
     fn leaves_the_tree(&self, directory: &Path) -> bool {
-        let inside = ProgramFile::canonical(directory)
-            .zip(ProgramFile::canonical(&self.path))
-            .is_some_and(|(directory, tree)| directory.starts_with(tree));
-        self.kind.stays_inside() && !inside
+        self.kind.stays_inside() && TreeBounds::of(&self.path).inside(directory).is_none()
     }
 
     fn module_path(&self, file: &Path) -> Option<String> {

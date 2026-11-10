@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_unreachable_repeated_variant.knv
+---
+warning[L0434]: unreachable `match` arm
+ --> check/match_unreachable_repeated_variant.knv:7:6
+  |
+5 |     ((circle r) r)
+  |      ---------- this arm covers it
+6 |     (point 0.0)
+7 |     ((circle _) 1.0)))
+  |      ^^^^^^^^^^ this arm can never match
+
+(derive shape clone copy partial-eq show)
+(type area (fn (shape) f64))

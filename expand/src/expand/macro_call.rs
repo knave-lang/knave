@@ -232,7 +232,11 @@ impl Expander<'_> {
         );
         self.introductions.pop();
         self.expansion_depth -= 1;
-        let output = result.map_err(|diagnostic| Self::point_at_call(diagnostic, call_site))?;
+        let sources = &*self.sources;
+        let output = result.map_err(|failure| {
+            let failure = ExpansionLimit::at_user_call(failure, call_site, sources);
+            Self::point_at_call(failure, call_site)
+        })?;
         let mut form = self.output_form(binding, &output, call_site)?;
         let counted_forms = self.counted_definition_forms(arguments, &form);
         self.introduce_within_budget(binding, &mut form, introduction, counted_forms, call_site)?;

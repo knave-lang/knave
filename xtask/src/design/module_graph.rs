@@ -16,12 +16,36 @@ impl ModuleAddress {
     const CRATE: &str = "crate";
     const SELF: &str = "self";
     const SUPER: &str = "super";
+    const CRATE_ROOTS: [&str; 2] = ["lib", "main"];
+    const DIRECTORY_MODULE: &str = "mod";
+    const EXTENSION: &str = ".rs";
 
     fn of(source: &ParsedSource) -> Self {
+        let within = source
+            .file()
+            .strip_prefix(source.crate_directory())
+            .unwrap_or(source.file())
+            .trim_start_matches('/')
+            .trim_end_matches(Self::EXTENSION);
+        let mut segments: Vec<String> = within.split('/').map(String::from).collect();
+        let is_crate_root = segments.len() == 1 && Self::CRATE_ROOTS.contains(&within);
+        if is_crate_root
+            || segments
+                .last()
+                .is_some_and(|last| last == Self::DIRECTORY_MODULE)
+        {
+            segments.pop();
+        }
         Self {
             crate_directory: source.crate_directory().to_string(),
-            segments: source.module(),
+            segments,
         }
+    }
+
+    fn is_stage(&self, stage: &Stage) -> bool {
+        let (crate_directory, name) = stage;
+        self.crate_directory == *crate_directory
+            && self.segments.first().is_some_and(|top| top == name)
     }
 
     fn within(&self, segments: Vec<String>) -> Self {
@@ -76,6 +100,8 @@ impl Resolution {
     }
 }
 
+pub type Stage = (&'static str, &'static str);
+
 pub struct ModuleGraph {
     modules: BTreeMap<String, ModuleAddress>,
     edges: BTreeMap<String, BTreeSet<String>>,
@@ -116,7 +142,7 @@ impl ModuleGraph {
             .collect()
     }
 
-    pub fn later_stage_dependencies(&self, stage_order: &[&str]) -> Counts {
+    pub fn later_stage_dependencies(&self, stage_order: &[Stage]) -> Counts {
         self.modules
             .keys()
             .filter_map(|module| {
@@ -133,9 +159,9 @@ impl ModuleGraph {
             .collect()
     }
 
-    fn stage(&self, module: &str, stage_order: &[&str]) -> Option<usize> {
-        let top = self.modules[module].segments.first()?;
-        stage_order.iter().position(|stage| stage == top)
+    fn stage(&self, module: &str, stage_order: &[Stage]) -> Option<usize> {
+        let address = &self.modules[module];
+        stage_order.iter().position(|stage| address.is_stage(stage))
     }
 
     fn reachable_from<'a>(&'a self, module: &'a String) -> BTreeSet<&'a String> {
@@ -228,21 +254,59 @@ impl<'ast> Visit<'ast> for PathCollector {
 
 #[cfg(test)]
 mod tests {
-    use super::ModuleGraph;
-    use crate::parsed_source::ParsedSource;
+    use super::{ModuleAddress, ModuleGraph, Stage};
+    use crate::parsed_source::ParsedSourceFixture;
 
     struct Modules;
 
     impl Modules {
-        const STAGES: [&str; 2] = ["reader", "emit"];
+        const STAGES: [Stage; 2] = [("src", "reader"), ("src", "emit")];
 
         fn graph(files: &[(&str, &str)]) -> ModuleGraph {
-            let sources: Vec<ParsedSource> = files
+            let sources: Vec<_> = files
                 .iter()
-                .map(|(file, text)| ParsedSource::sample(file, text))
+                .map(|(file, text)| ParsedSourceFixture::sample(file, text))
                 .collect();
             ModuleGraph::build(&sources)
         }
+
+        fn address_of(file: &str) -> Vec<String> {
+            ModuleAddress::of(&ParsedSourceFixture::sample(file, "")).segments
+        }
+    }
+
+    #[test]
+    fn a_crate_root_is_the_empty_module() {
+        assert!(Modules::address_of("src/lib.rs").is_empty());
+        assert!(Modules::address_of("expand/src/main.rs").is_empty());
+    }
+
+    #[test]
+    fn a_file_names_its_module_by_its_path() {
+        assert_eq!(
+            Modules::address_of("expand/src/core/kernel.rs"),
+            ["core", "kernel"]
+        );
+    }
+
+    #[test]
+    fn a_directory_module_drops_its_file_name() {
+        assert_eq!(Modules::address_of("src/cli/mod.rs"), ["cli"]);
+    }
+
+    #[test]
+    fn a_module_named_like_a_crate_root_below_the_root_keeps_its_name() {
+        assert_eq!(Modules::address_of("src/build/main.rs"), ["build", "main"]);
+    }
+
+    #[test]
+    fn a_stage_belongs_to_its_crate() {
+        let later = Modules::graph(&[
+            ("expand/src/reader/parse.rs", "use crate::emit::Plan;"),
+            ("expand/src/emit/mod.rs", ""),
+        ])
+        .later_stage_dependencies(&Modules::STAGES);
+        assert_eq!(later.get("expand/src/reader/parse.rs"), None);
     }
 
     #[test]

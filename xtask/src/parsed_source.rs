@@ -9,21 +9,17 @@ pub struct ParsedSource {
 }
 
 impl ParsedSource {
-    const CRATE_ROOTS: [&str; 2] = ["lib", "main"];
-    const DIRECTORY_MODULE: &str = "mod";
-    const EXTENSION: &str = ".rs";
-
     pub fn all_production(sources: Vec<SourceFile>, crate_directories: &[String]) -> Vec<Self> {
         let test_files = TestModuleFiles::find(&sources);
         sources
-            .into_iter()
+            .iter()
             .filter(|source| {
                 !test_files.contains(source) && !TestCode::marks(&source.syntax().attrs)
             })
             .map(|source| {
-                let crate_directory = Self::crate_directory_of(&source, crate_directories);
+                let crate_directory = Self::crate_directory_of(source, crate_directories);
                 let file = source.relative().to_string();
-                Self::stripped(crate_directory, file, source.into_syntax())
+                Self::stripped(crate_directory, file, source.syntax().clone())
             })
             .collect()
     }
@@ -57,38 +53,22 @@ impl ParsedSource {
     pub fn syntax(&self) -> &syn::File {
         &self.syntax
     }
-
-    pub fn module(&self) -> Vec<String> {
-        let within = self
-            .file
-            .strip_prefix(&self.crate_directory)
-            .unwrap_or(&self.file)
-            .trim_start_matches('/')
-            .trim_end_matches(Self::EXTENSION);
-        let mut segments: Vec<String> = within.split('/').map(String::from).collect();
-        let is_crate_root = segments.len() == 1 && Self::CRATE_ROOTS.contains(&within);
-        if is_crate_root
-            || segments
-                .last()
-                .is_some_and(|last| last == Self::DIRECTORY_MODULE)
-        {
-            segments.pop();
-        }
-        segments
-    }
 }
 
 #[cfg(test)]
-impl ParsedSource {
+pub struct ParsedSourceFixture;
+
+#[cfg(test)]
+impl ParsedSourceFixture {
     const SOURCE_DIRECTORY: &str = "src";
 
-    pub fn sample(file: &str, text: &str) -> Self {
+    pub fn sample(file: &str, text: &str) -> ParsedSource {
         let start = file
             .find(Self::SOURCE_DIRECTORY)
             .expect("the file lies in a src directory");
         let crate_directory = file[..start + Self::SOURCE_DIRECTORY.len()].to_string();
         let syntax = syn::parse_file(text).expect("the sample parses");
-        Self::stripped(crate_directory, file.to_string(), syntax)
+        ParsedSource::stripped(crate_directory, file.to_string(), syntax)
     }
 }
 
@@ -96,7 +76,7 @@ impl ParsedSource {
 mod tests {
     use std::path::PathBuf;
 
-    use super::ParsedSource;
+    use super::{ParsedSource, ParsedSourceFixture};
     use crate::source_file::SourceFile;
 
     struct Fixture;
@@ -106,38 +86,6 @@ mod tests {
             SourceFile::parse(PathBuf::from(path), path.to_string(), text)
                 .expect("the source parses")
         }
-    }
-
-    struct ModuleOf;
-
-    impl ModuleOf {
-        fn file(file: &str) -> Vec<String> {
-            ParsedSource::sample(file, "").module()
-        }
-    }
-
-    #[test]
-    fn a_crate_root_is_the_empty_module() {
-        assert!(ModuleOf::file("src/lib.rs").is_empty());
-        assert!(ModuleOf::file("expand/src/main.rs").is_empty());
-    }
-
-    #[test]
-    fn a_file_names_its_module_by_its_path() {
-        assert_eq!(
-            ModuleOf::file("expand/src/core/kernel.rs"),
-            ["core", "kernel"]
-        );
-    }
-
-    #[test]
-    fn a_directory_module_drops_its_file_name() {
-        assert_eq!(ModuleOf::file("src/cli/mod.rs"), ["cli"]);
-    }
-
-    #[test]
-    fn a_module_named_like_a_crate_root_below_the_root_keeps_its_name() {
-        assert_eq!(ModuleOf::file("src/build/main.rs"), ["build", "main"]);
     }
 
     #[test]
@@ -155,7 +103,7 @@ mod tests {
         let parsed = ParsedSource::all_production(sources, &directories);
         let files: Vec<(&str, &str)> = parsed
             .iter()
-            .map(|source| (source.crate_directory.as_str(), source.file.as_str()))
+            .map(|source| (source.crate_directory(), source.file()))
             .collect();
         assert_eq!(
             files,
@@ -168,12 +116,13 @@ mod tests {
         let sources = vec![Fixture::source("src/build/src/a.rs", "")];
         let directories = ["src".to_string(), "src/build/src".to_string()];
         let parsed = ParsedSource::all_production(sources, &directories);
-        assert_eq!(parsed[0].crate_directory, "src/build/src");
+        assert_eq!(parsed[0].crate_directory(), "src/build/src");
     }
 
     #[test]
     fn test_items_are_gone() {
-        let source = ParsedSource::sample("src/a.rs", "#[cfg(test)] mod tests {} fn kept() {}");
-        assert_eq!(source.syntax.items.len(), 1);
+        let source =
+            ParsedSourceFixture::sample("src/a.rs", "#[cfg(test)] mod tests {} fn kept() {}");
+        assert_eq!(source.syntax().items.len(), 1);
     }
 }

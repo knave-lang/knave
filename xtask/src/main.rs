@@ -9,6 +9,7 @@ mod crap;
 mod design;
 mod emitted_lints;
 mod failure;
+mod function_owner;
 mod functions;
 mod gate;
 mod git;
@@ -17,12 +18,15 @@ mod language;
 mod lcov;
 mod parsed_source;
 mod production_lines;
+mod production_sources;
 mod ratchet;
+mod ratchet_gate;
 mod release;
 mod source_file;
 mod test_code;
 mod test_modules;
 mod test_shard;
+mod verdict;
 mod workspace;
 
 use std::path::Path;
@@ -31,9 +35,13 @@ use std::process::ExitCode;
 use clap::{Args, Parser, Subcommand};
 
 use bench::BenchTask;
+use design::DesignRules;
 use failure::TaskFailure;
 use gate::QualityGate;
 use instrumented_tests::InstrumentedTests;
+use production_lines::ProductionLineCensus;
+use production_sources::ProductionSources;
+use ratchet_gate::RatchetGate;
 use release::{NextReleaseTask, ReleaseNotesTask, SetVersionTask};
 use test_shard::TestShard;
 
@@ -100,6 +108,24 @@ enum CoveragePart {
     EmittedLints,
 }
 
+impl RatchetTask {
+    fn check_file_sizes(&self, workspace_root: &Path) -> Result<ExitCode, TaskFailure> {
+        let files = ProductionSources::new(workspace_root).files()?;
+        let ratchet = ProductionLineCensus::ratchet(workspace_root, &files)?;
+        self.gate(workspace_root).run(vec![ratchet])
+    }
+
+    fn check_design_rules(&self, workspace_root: &Path) -> Result<ExitCode, TaskFailure> {
+        let sources = ProductionSources::new(workspace_root).parsed()?;
+        let ratchets = DesignRules::ratchets(workspace_root, &sources)?;
+        self.gate(workspace_root).run(ratchets)
+    }
+
+    fn gate(&self, workspace_root: &Path) -> RatchetGate {
+        RatchetGate::new(workspace_root, self.base.as_deref())
+    }
+}
+
 impl CoverageTask {
     fn run(self, workspace_root: &Path) -> ExitCode {
         self.attempt(workspace_root)
@@ -128,11 +154,11 @@ impl Task {
         let workspace_root = manifest_directory.parent().unwrap_or(manifest_directory);
         match self {
             Task::Coverage(coverage) => coverage.run(workspace_root),
-            Task::FileSizes(sizes) => QualityGate::new(workspace_root)
-                .run_file_sizes(sizes.base.as_deref())
+            Task::FileSizes(sizes) => sizes
+                .check_file_sizes(workspace_root)
                 .unwrap_or_else(|failure| failure.report()),
-            Task::DesignRules(rules) => QualityGate::new(workspace_root)
-                .run_design_rules(rules.base.as_deref())
+            Task::DesignRules(rules) => rules
+                .check_design_rules(workspace_root)
                 .unwrap_or_else(|failure| failure.report()),
             Task::Bench(task) => task.run(workspace_root),
             Task::NextRelease(release) => release.run(),

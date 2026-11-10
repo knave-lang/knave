@@ -134,7 +134,8 @@ The exceptions are:
 - If a change adds or grows a corpus entry, build the compiler with `cargo build --release`.
 - Then time the entry's emission with `bash -c 'time cargo run --release --quiet -- emit <entry> > /dev/null'`.
 - If that emission takes more than one second, shrink the entry.
-- NEVER lower `MINIMUM_LINE_COVERAGE`, raise `MAXIMUM_CRAP` or raise `MAXIMUM_PRODUCTION_LINES` in `xtask/src/gate.rs` without the project owner's approval.
+- NEVER lower `MINIMUM_LINE_COVERAGE` or raise `MAXIMUM_CRAP` in `xtask/src/gate.rs` without the project owner's approval.
+- NEVER raise `MAXIMUM_PRODUCTION_LINES` in `xtask/src/production_lines.rs` without the project owner's approval.
 - NEVER raise a limit in `xtask/src/design.rs` without the project owner's approval.
 - NEVER add an entry to, or raise an entry in, a file under `xtask/baselines/` without the project owner's approval.
 - NEVER hide code from `cargo xtask coverage`, such as by moving branches into a macro: the gate cannot see inside a macro.

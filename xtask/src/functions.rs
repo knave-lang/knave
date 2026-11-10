@@ -5,10 +5,11 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use syn::visit::{self, Visit};
-use syn::{Block, Ident, ImplItemFn, ItemFn, ItemImpl, ItemMod, ItemTrait, Signature, TraitItemFn};
+use syn::{Block, ImplItemFn, ItemFn, ItemImpl, ItemMod, ItemTrait, Signature, TraitItemFn};
 
 use crate::complexity::ComplexityCounter;
 use crate::failure::TaskFailure;
+use crate::function_owner::FunctionOwner;
 use crate::source_file::SourceFile;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -105,7 +106,7 @@ impl SourceTree {
 
 pub struct FunctionCollector {
     file: String,
-    owner: Option<String>,
+    owner: FunctionOwner,
     functions: Vec<SourceFunction>,
 }
 
@@ -115,7 +116,7 @@ impl FunctionCollector {
     pub fn collect(file: String, syntax: &syn::File) -> Vec<SourceFunction> {
         let mut collector = Self {
             file,
-            owner: None,
+            owner: FunctionOwner::default(),
             functions: Vec::new(),
         };
         collector.visit_file(syntax);
@@ -125,34 +126,16 @@ impl FunctionCollector {
     fn record(&mut self, signature: &Signature, body: &Block) {
         self.functions.push(SourceFunction {
             file: self.file.clone(),
-            name: self.qualified(&signature.ident),
+            name: self.owner.qualify(&signature.ident),
             lines: LineSpan::of(signature, body),
             complexity: ComplexityCounter::of(body),
         });
     }
 
-    fn qualified(&self, name: &Ident) -> String {
-        match &self.owner {
-            Some(owner) => format!("{owner}::{name}"),
-            None => name.to_string(),
-        }
-    }
-
-    fn within_owner(&mut self, owner: Option<String>, visit: impl FnOnce(&mut Self)) {
+    fn within_owner(&mut self, owner: FunctionOwner, visit: impl FnOnce(&mut Self)) {
         let outer = std::mem::replace(&mut self.owner, owner);
         visit(self);
         self.owner = outer;
-    }
-
-    pub fn type_name(implementation: &ItemImpl) -> Option<String> {
-        match implementation.self_ty.as_ref() {
-            syn::Type::Path(path) => path
-                .path
-                .segments
-                .last()
-                .map(|segment| segment.ident.to_string()),
-            _ => None,
-        }
     }
 }
 
@@ -168,13 +151,13 @@ impl<'ast> Visit<'ast> for FunctionCollector {
     }
 
     fn visit_item_impl(&mut self, implementation: &'ast ItemImpl) {
-        self.within_owner(Self::type_name(implementation), |collector| {
+        self.within_owner(FunctionOwner::of_impl(implementation), |collector| {
             visit::visit_item_impl(collector, implementation);
         });
     }
 
     fn visit_item_trait(&mut self, definition: &'ast ItemTrait) {
-        self.within_owner(Some(definition.ident.to_string()), |collector| {
+        self.within_owner(FunctionOwner::of_trait(definition), |collector| {
             visit::visit_item_trait(collector, definition);
         });
     }

@@ -4,7 +4,7 @@ mod type_shapes;
 
 use std::path::Path;
 
-use module_graph::ModuleGraph;
+use module_graph::{ModuleGraph, Stage};
 use signatures::Signatures;
 use type_shapes::TypeShapes;
 
@@ -24,14 +24,14 @@ impl DesignRules {
     const MAXIMUM_FREE_FUNCTIONS: usize = 0;
     const MAXIMUM_CYCLE_PARTNERS_PER_MODULE: usize = 0;
     const MAXIMUM_LATER_STAGE_DEPENDENCIES_PER_MODULE: usize = 0;
-    const STAGE_ORDER: [&str; 7] = [
-        "reader",
-        "expand",
-        "types",
-        "ownership",
-        "emit",
-        "build",
-        "cli",
+    const STAGE_ORDER: [Stage; 7] = [
+        ("expand/src", "reader"),
+        ("expand/src", "expand"),
+        ("src", "types"),
+        ("src", "ownership"),
+        ("src", "emit"),
+        ("src", "build"),
+        ("src", "cli"),
     ];
     const EXTRACT_AN_OBJECT: &str = "Extract an object.";
 
@@ -102,44 +102,32 @@ impl DesignRules {
         advice: Self::EXTRACT_AN_OBJECT,
     };
 
-    const LIMITS: [Limit; 9] = [
-        Self::METHODS,
-        Self::NON_PRIVATE_METHODS,
-        Self::FIELDS,
-        Self::INHERENT_IMPL_FILES,
-        Self::ARGUMENTS,
-        Self::BOOL_PARAMETERS,
-        Self::FREE_FUNCTIONS,
-        Self::CYCLE_PARTNERS,
-        Self::LATER_STAGE_DEPENDENCIES,
-    ];
-
-    pub fn baselines() -> impl Iterator<Item = &'static str> {
-        Self::LIMITS.into_iter().map(|limit| limit.baseline)
-    }
-
     pub fn ratchets(root: &Path, sources: &[ParsedSource]) -> Result<Vec<Ratchet>, TaskFailure> {
-        Self::LIMITS
+        Self::measured(sources)
             .into_iter()
-            .zip(Self::measure(sources))
             .map(|(limit, measured)| Ratchet::read(root, limit, measured))
             .collect()
     }
 
-    fn measure(sources: &[ParsedSource]) -> [Counts; 9] {
-        let shapes = TypeShapes::measure(sources);
-        let signatures = Signatures::measure(sources);
+    fn measured(sources: &[ParsedSource]) -> [(Limit, Counts); 9] {
+        let [methods, non_private_methods, fields, inherent_impl_files] =
+            TypeShapes::measure(sources).into_counts();
+        let [arguments, bool_parameters, free_functions] =
+            Signatures::measure(sources).into_counts();
         let graph = ModuleGraph::build(sources);
         [
-            shapes.methods,
-            shapes.non_private_methods,
-            shapes.fields,
-            shapes.inherent_impl_files,
-            signatures.arguments,
-            signatures.bool_parameters,
-            signatures.free_functions,
-            graph.cycle_partners(),
-            graph.later_stage_dependencies(&Self::STAGE_ORDER),
+            (Self::METHODS, methods),
+            (Self::NON_PRIVATE_METHODS, non_private_methods),
+            (Self::FIELDS, fields),
+            (Self::INHERENT_IMPL_FILES, inherent_impl_files),
+            (Self::ARGUMENTS, arguments),
+            (Self::BOOL_PARAMETERS, bool_parameters),
+            (Self::FREE_FUNCTIONS, free_functions),
+            (Self::CYCLE_PARTNERS, graph.cycle_partners()),
+            (
+                Self::LATER_STAGE_DEPENDENCIES,
+                graph.later_stage_dependencies(&Self::STAGE_ORDER),
+            ),
         ]
     }
 }

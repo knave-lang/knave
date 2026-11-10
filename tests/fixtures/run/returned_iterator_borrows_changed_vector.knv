@@ -5,12 +5,12 @@
 (defn doubled! (items)
   (push! items 4)
   (map (iter items)
-       (fn (i) (* (deref i) 2))))
+    (fn (i) (* (deref i) 2))))
 
 (defn evens! (items)
   (push! items 4)
   (filter (iter items)
-          (fn (i) (= (rem (deref i) 2) 0))))
+    (fn (i) (= (rem (deref i) 2) 0))))
 
 (defn main ()
   (local items (vec 0))
@@ -18,7 +18,7 @@
   (println (len items))
   (local more (vec 1))
   (for-each (doubled! more)
-            (fn (v) (println v)))
+    (fn (v) (println v)))
   (println (len more))
   (local mixed (vec 1 2))
   (println (count (evens! mixed))))

@@ -1,0 +1,10 @@
+(enum rope (strand knot) frayed)
+
+(defstruct knot
+  :value i64
+  :next rope)
+
+(type pick (fn (knot) i64))
+
+(defn pick (value)
+  (match value ((knot _ rope/frayed) 0)))

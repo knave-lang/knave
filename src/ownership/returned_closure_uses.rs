@@ -1,18 +1,20 @@
 use super::problems::OwnershipProblems;
 use crate::core::BindingId;
-use crate::diagnostic::Diagnostics;
+use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::source::Span;
 use crate::types::{
-    ReturnedValues, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedProgram,
+    CopyRules, ReturnedValues, TypedBinder, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
+    TypedProgram,
 };
 
 pub struct ReturnedClosureUses<'a> {
     program: &'a TypedProgram,
+    copy: &'a CopyRules<'a>,
 }
 
 impl<'a> ReturnedClosureUses<'a> {
-    pub fn new(program: &'a TypedProgram) -> Self {
-        Self { program }
+    pub fn new(program: &'a TypedProgram, copy: &'a CopyRules<'a>) -> Self {
+        Self { program, copy }
     }
 
     pub fn check(&self) -> Diagnostics {
@@ -46,23 +48,18 @@ impl<'a> ReturnedClosureUses<'a> {
                 .iter()
                 .find_map(|closure| Self::use_site(closure, param.binding))
             {
-                let bindings = &self.program.bindings;
-                diagnostics.push(OwnershipProblems::changed_parameter_in_returned_closure(
-                    bindings.get(function).name(),
-                    bindings.get(param.binding).name(),
-                    usage,
-                    self.copying_expression(param.binding),
-                ));
+                diagnostics.push(self.problem(function, param, usage));
             }
         }
     }
 
-    fn copying_expression(&self, param: BindingId) -> String {
-        let name = self.program.bindings.get(param).name();
-        if self.program.changed_copy_parameters.contains(&param) {
-            name.to_string()
+    fn problem(&self, function: BindingId, param: &TypedBinder, usage: Span) -> Diagnostic {
+        let function = self.program.bindings.get(function).name();
+        let name = self.program.bindings.get(param.binding).name();
+        if self.copy.is_copy(param.ty.referent()) {
+            OwnershipProblems::changed_copy_parameter_in_returned_closure(function, name, usage)
         } else {
-            format!("(clone {name})")
+            OwnershipProblems::changed_owned_parameter_in_returned_closure(function, name, usage)
         }
     }
 

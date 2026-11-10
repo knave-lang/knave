@@ -745,11 +745,37 @@ impl OwnershipProblems {
         .with_help("pass a different place to each argument that the call changes")
     }
 
-    pub fn changed_parameter_in_returned_closure(
+    pub fn changed_copy_parameter_in_returned_closure(
         function: &str,
         param: &str,
         usage: Span,
-        copying: String,
+    ) -> Diagnostic {
+        Self::changed_parameter_in_returned_closure(
+            function,
+            param,
+            usage,
+            &format!("(local value {param})"),
+        )
+    }
+
+    pub fn changed_owned_parameter_in_returned_closure(
+        function: &str,
+        param: &str,
+        usage: Span,
+    ) -> Diagnostic {
+        Self::changed_parameter_in_returned_closure(
+            function,
+            param,
+            usage,
+            &format!("(local value (clone {param}))"),
+        )
+    }
+
+    fn changed_parameter_in_returned_closure(
+        function: &str,
+        param: &str,
+        usage: Span,
+        local: &str,
     ) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::RETURNED_CLOSURE_USES_CHANGED_PARAMETER,
@@ -760,7 +786,7 @@ impl OwnershipProblems {
             "`{param}` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives"
         ))
         .with_help(format!(
-            "copy it first with `(local value {copying})` and use `value` in the closure"
+            "copy it first with `{local}` and use `value` in the closure"
         ))
     }
 

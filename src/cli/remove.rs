@@ -33,7 +33,7 @@ impl RemoveCommand {
         }
         StandardError::write_line(format_args!(
             "error: the project's `{}` do not list `{}`",
-            self.section.section().name(),
+            self.section.name(),
             self.name
         ));
         Err(ExitStatus::UsageError)

@@ -37,6 +37,7 @@ mod painted_program;
 mod program_file;
 mod program_signal;
 mod program_stream;
+mod project_crates;
 mod project_file_edit;
 mod project_task;
 mod prompt_diagnostics;
@@ -57,7 +58,7 @@ mod temporary_directory;
 mod term_parser;
 mod terminal;
 mod test;
-mod test_build;
+mod test_binary;
 mod test_entries;
 mod test_record;
 mod test_report;
@@ -154,14 +155,14 @@ enum ProjectCommand {
             help = "Features to turn on, separated by commas"
         )]
         features: Vec<String>,
-        #[arg(long, help = DEV_HELP)]
+        #[arg(long = CrateSection::DEV_FLAG_NAME, help = DEV_HELP)]
         dev: bool,
     },
     #[command(about = "Remove a crate from the project's dependencies")]
     Remove {
         #[arg(help = "The crate's name, as the project file writes it")]
         name: String,
-        #[arg(long, help = DEV_HELP)]
+        #[arg(long = CrateSection::DEV_FLAG_NAME, help = DEV_HELP)]
         dev: bool,
     },
     #[command(

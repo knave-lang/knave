@@ -5,7 +5,7 @@ use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::standard_error::StandardError;
 use super::terminal::{EvaluationRequest, ModuleOfSources, Terminal};
-use super::test_build::TestBuild;
+use super::test_binary::TestBinary;
 use super::test_entries::TestEntries;
 use super::test_report::{TestOutcome, TestReport};
 use super::test_run::{TestRun, TestRunError};
@@ -111,10 +111,9 @@ impl TestCommand {
         project: Option<&LocatedProject>,
         marker: &ValueMarker,
     ) -> Result<TestOutcome, ExitStatus> {
-        let build = TestBuild::for_project(project)?;
-        let binary = build.compile(terminal, emitted, self.profile)?;
+        let binary = TestBinary::build(terminal, emitted, project, self.profile)?;
         let mut report = TestReport::new(io::stdout().lock());
-        TestRun::new(&binary, self.selection.arguments())
+        TestRun::new(binary.path(), self.selection.arguments())
             .run(marker.records(), &mut report)
             .map_err(Self::report_run_error)
     }

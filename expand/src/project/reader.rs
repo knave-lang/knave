@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use super::Project;
 use super::dependency_reader::{DependencyReader, Section};
 use super::fields::{FieldScanner, Fields};
 use super::name::ProjectName;
 use super::problems::ProjectProblems;
-use super::{Project, SectionHead};
 use crate::diagnostic::{Diagnostics, SimilarName};
 use crate::language::Language;
 use crate::reader::Form;
@@ -190,6 +190,11 @@ impl<'f> ProjectForm<'f> {
         let body = &parts[usize::from(name.is_some())..];
         Some(Self { head, name, body })
     }
+}
+
+struct SectionHead {
+    section: Section,
+    span: Span,
 }
 
 #[derive(Default)]

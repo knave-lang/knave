@@ -30,12 +30,6 @@ pub struct Project {
 }
 
 #[derive(Debug)]
-pub struct SectionHead {
-    pub section: Section,
-    pub span: Span,
-}
-
-#[derive(Debug)]
 pub struct LibraryDependency {
     pub name: String,
     pub name_span: Span,

@@ -61,17 +61,19 @@ impl<'p> ProjectTask<'p> {
     }
 
     pub fn route(&self) -> BuildRoute<'_> {
-        if self.project.uses_crates() {
-            let bin_stem = format!(
-                "{}-{}-{}",
-                self.project.name(),
-                Self::BIN_INFIX,
-                self.name.as_str()
-            );
-            return BuildRoute::Cargo {
-                directory: self.build_directory(),
-                target: self.project.cargo_target(&self.binary, &bin_stem),
-            };
+        let bin_stem = format!(
+            "{}-{}-{}",
+            self.project.name(),
+            Self::BIN_INFIX,
+            self.name.as_str()
+        );
+        let cargo = self.project.crates().program_target(
+            &bin_stem,
+            self.build_directory(),
+            self.binary.clone(),
+        );
+        if let Some(target) = cargo {
+            return BuildRoute::Cargo(target);
         }
         BuildRoute::Rustc(BuildTarget {
             directory: self.build_directory(),

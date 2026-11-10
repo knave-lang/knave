@@ -24,12 +24,13 @@ pub struct CargoCompiler<'w> {
 
 pub struct CargoTarget<'t> {
     pub manifest: CargoManifest<'t>,
+    pub directory: PathBuf,
     pub lock_file: PathBuf,
-    pub output: &'t Path,
+    pub output: PathBuf,
 }
 
-struct CargoReport {
-    target_name: String,
+struct CargoReport<'m> {
+    manifest: &'m CargoManifest<'m>,
     program_messages: Vec<String>,
     dependency_errors: Vec<String>,
     executable: Option<PathBuf>,
@@ -73,10 +74,7 @@ impl<'w> CargoCompiler<'w> {
         if InterruptSignal::stopped(output.status) {
             return Err(BuildError::Interrupted);
         }
-        let report = CargoReport::read(
-            &String::from_utf8_lossy(&output.stdout),
-            &target.manifest.target_name,
-        );
+        let report = CargoReport::read(&String::from_utf8_lossy(&output.stdout), &target.manifest);
         match (&report.executable, output.status.success()) {
             (Some(executable), true) => self.finish(executable, target),
             _ => Err(report.failure(emitted, entry, &output.stderr)),
@@ -108,7 +106,7 @@ impl<'w> CargoCompiler<'w> {
         let mut command = Command::new(Self::CARGO);
         command
             .arg("rustc")
-            .args([manifest.target.cargo_flag(), &manifest.target_name])
+            .args(manifest.target_arguments())
             .arg("--message-format=json")
             .args(self.plan.cargo_flags())
             .arg("--")
@@ -184,7 +182,7 @@ impl<'w> CargoCompiler<'w> {
             fs::create_dir_all(directory)
                 .map_err(|error| Self::environment("create the output directory", &error))?;
         }
-        fs::copy(executable, target.output)
+        fs::copy(executable, &target.output)
             .map_err(|error| Self::environment("copy the built program", &error))?;
         fs::copy(self.directory.join(Self::LOCK_FILE), &target.lock_file)
             .map_err(|error| Self::environment("copy `Cargo.lock` back", &error))?;
@@ -196,10 +194,10 @@ impl<'w> CargoCompiler<'w> {
     }
 }
 
-impl CargoReport {
-    fn read(stdout: &str, target_name: &str) -> Self {
+impl<'m> CargoReport<'m> {
+    fn read(stdout: &str, manifest: &'m CargoManifest<'m>) -> Self {
         let mut report = Self {
-            target_name: target_name.to_string(),
+            manifest,
             program_messages: Vec::new(),
             dependency_errors: Vec::new(),
             executable: None,
@@ -239,7 +237,9 @@ impl CargoReport {
     }
 
     fn is_program(&self, record: &Value) -> bool {
-        record["target"]["name"].as_str() == Some(self.target_name.as_str())
+        record["target"]["name"]
+            .as_str()
+            .is_some_and(|name| self.manifest.names_target(name))
     }
 
     fn failure(&self, emitted: &EmittedCrate, entry: Span, stderr: &[u8]) -> BuildError {

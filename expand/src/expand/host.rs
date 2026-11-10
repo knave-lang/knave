@@ -10,7 +10,7 @@ use crate::interpret::{CompileTimeHost, Value};
 use crate::modules::{ModuleRecord, ModuleSources};
 use crate::reader::{Form, LiteralForms, Symbol};
 use crate::scope::{Phase, Resolution, ScopeSet};
-use crate::source::{Span, TextPosition};
+use crate::source::Span;
 
 impl CompileTimeHost for Expander<'_> {
     fn global_value(&mut self, binding: BindingId, span: Span) -> Result<Value, Diagnostic> {
@@ -91,7 +91,7 @@ impl CompileTimeHost for Expander<'_> {
     fn form_location(&self, form: &Form) -> String {
         let span = form.span();
         let file = self.sources.file(span.source());
-        let position = TextPosition::of_offset(file.text(), span.range().start);
+        let position = file.position(span.range().start);
         format!(
             "{}:{position}",
             self.module_sources.relative_name(file.name())

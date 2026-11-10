@@ -1,7 +1,7 @@
 use super::Forms;
 use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::Arguments;
-use crate::interpret::{CompileTimeHost, Value};
+use crate::interpret::{CompileTimeHost, Value, WorkMeter};
 use crate::language::Language;
 use crate::reader::{Form, FormKind, Number, NumberValue, Symbol};
 use crate::source::Span;
@@ -22,6 +22,8 @@ impl<'a> ProgramOperations<'a> {
     pub fn form_location(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let location = host.form_location(&self.arguments.form(0)?);
+        self.arguments
+            .charge(WorkMeter::text_work(location.len()))?;
         Ok(Value::Form(Form::new(
             FormKind::String(location.into()),
             self.call_site,

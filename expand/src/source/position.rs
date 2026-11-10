@@ -12,9 +12,7 @@ impl TextPosition {
     }
 
     pub fn of_offset(text: &str, offset: usize) -> Self {
-        let before = &text[..offset];
-        let line_start = before.rfind('\n').map_or(0, |newline| newline + 1);
-        Self::new(before.matches('\n').count() + 1, offset - line_start + 1)
+        LineStarts::of(&text[..offset]).position(offset)
     }
 
     pub fn line(self) -> usize {
@@ -35,10 +33,7 @@ impl TextPosition {
     }
 
     fn line_start_in(self, text: &str) -> Option<usize> {
-        let following_newlines = text.match_indices('\n').map(|(offset, _)| offset + 1);
-        std::iter::once(0)
-            .chain(following_newlines)
-            .nth(self.line.checked_sub(1)?)
+        LineStarts::starts_in(text).nth(self.line.checked_sub(1)?)
     }
 }
 
@@ -48,9 +43,32 @@ impl fmt::Display for TextPosition {
     }
 }
 
+pub struct LineStarts {
+    starts: Vec<usize>,
+}
+
+impl LineStarts {
+    pub fn of(text: &str) -> Self {
+        Self {
+            starts: Self::starts_in(text).collect(),
+        }
+    }
+
+    pub fn position(&self, offset: usize) -> TextPosition {
+        let lines_started = self.starts.partition_point(|start| *start <= offset);
+        let line_start = self.starts[lines_started - 1];
+        TextPosition::new(lines_started, offset - line_start + 1)
+    }
+
+    fn starts_in(text: &str) -> impl Iterator<Item = usize> + '_ {
+        let following_newlines = text.match_indices('\n').map(|(offset, _)| offset + 1);
+        std::iter::once(0).chain(following_newlines)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::TextPosition;
+    use super::{LineStarts, TextPosition};
 
     struct PositionFixture;
 
@@ -133,5 +151,41 @@ mod tests {
             TextPosition::of_offset(PositionFixture::TEXT, offset),
             position
         );
+    }
+
+    struct LineStartsFixture;
+
+    impl LineStartsFixture {
+        const TEXT: &str = "(defn main ()\n\n  (prn 1))\n";
+
+        fn position(offset: usize) -> TextPosition {
+            LineStarts::of(Self::TEXT).position(offset)
+        }
+    }
+
+    #[test]
+    fn the_first_offset_is_the_first_column_of_the_first_line() {
+        assert_eq!(LineStartsFixture::position(0), TextPosition::new(1, 1));
+    }
+
+    #[test]
+    fn a_newline_ends_its_own_line() {
+        let newline = LineStartsFixture::TEXT.find('\n').expect("a newline");
+        assert_eq!(
+            LineStartsFixture::position(newline),
+            TextPosition::new(1, 14)
+        );
+    }
+
+    #[test]
+    fn an_empty_line_counts_as_a_line() {
+        let call = LineStartsFixture::TEXT.find("(prn").expect("a call");
+        assert_eq!(LineStartsFixture::position(call), TextPosition::new(3, 3));
+    }
+
+    #[test]
+    fn the_end_of_the_text_starts_a_line_after_a_final_newline() {
+        let end = LineStartsFixture::TEXT.len();
+        assert_eq!(LineStartsFixture::position(end), TextPosition::new(4, 1));
     }
 }

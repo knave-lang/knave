@@ -15,7 +15,7 @@ mod types;
 pub use binding::{
     BindingArena, BindingId, BindingInfo, BindingKind, Declaration, Namespace, VariantInfo,
 };
-pub use builtin::Builtin;
+pub use builtin::{Builtin, BuiltinModule};
 pub use expr::{
     Arm, Binder, Block, BodyItem, Control, Expr, ExprKind, FieldLabel, FieldSpelling, Lambda, Leaf,
     Literal, MapOperation, Pattern, PatternArguments, PatternKind, PatternPart, RustClause,

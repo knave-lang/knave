@@ -4,14 +4,8 @@ use std::path::{Component, Path, PathBuf};
 
 use super::libraries::{LibraryRoot, LibraryTable};
 use super::search_scope::SearchScope;
-use crate::core::ModulePath;
+use crate::core::{BuiltinModule, ModulePath};
 use crate::language::Language;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BuiltinModule {
-    Kernel,
-    Code,
-}
 
 pub enum ModuleSource {
     Builtin(BuiltinModule),
@@ -41,6 +35,7 @@ pub struct ModuleSources {
 impl ModuleSources {
     pub const KERNEL: &str = "kernel";
     pub const CODE: &str = "code";
+    pub const PRELUDE_CODE: &str = "prelude/internal/code";
     pub const PRELUDE: &str = "prelude";
     pub const TEST: &str = "prelude/test";
     pub const LIBRARY_EXAMPLES: &str = "prelude/library-examples";
@@ -246,7 +241,8 @@ impl ModuleSources {
     }
 
     pub fn is_internal(path: &ModulePath) -> bool {
-        path.as_str().starts_with(Self::INTERNAL_DIRECTORY) && Self::is_embedded_prelude(path)
+        path.as_str().starts_with(Self::INTERNAL_DIRECTORY)
+            && (Self::is_embedded_prelude(path) || path.as_str() == Self::PRELUDE_CODE)
     }
 
     pub fn is_public_prelude(path: &ModulePath) -> bool {
@@ -272,7 +268,7 @@ impl ModuleSources {
     }
 
     pub fn is_compiler_provided(path: &ModulePath) -> bool {
-        [Self::KERNEL, Self::CODE].contains(&path.as_str())
+        [Self::KERNEL, Self::CODE, Self::PRELUDE_CODE].contains(&path.as_str())
     }
 
     pub fn relative_name<'n>(&self, name: &'n str) -> &'n str {
@@ -308,6 +304,7 @@ impl ModuleSources {
         match path.as_str() {
             Self::KERNEL => Some(ModuleSource::Builtin(BuiltinModule::Kernel)),
             Self::CODE => Some(ModuleSource::Builtin(BuiltinModule::Code)),
+            Self::PRELUDE_CODE => Some(ModuleSource::Builtin(BuiltinModule::PreludeCode)),
             _ => None,
         }
     }

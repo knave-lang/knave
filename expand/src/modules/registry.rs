@@ -3,6 +3,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use crate::core::{BindingId, ModuleId, ModulePath, Namespace};
+use crate::reader::Symbol;
 use crate::scope::{Scope, ScopeSet};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -31,6 +32,10 @@ impl ModuleRecord {
 
     pub fn body_scope(&self) -> Scope {
         self.body_scope
+    }
+
+    pub fn symbol(&self) -> Symbol {
+        Symbol::with_scopes(self.path.as_str(), self.body_scopes())
     }
 
     pub fn body_scopes(&self) -> ScopeSet {

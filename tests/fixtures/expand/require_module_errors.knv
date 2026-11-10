@@ -1,5 +1,5 @@
 (use code first module-symbol pinned-at require-module
-          symbol)
+          symbol symbol-name)
 
 (use code require-modules)
 
@@ -26,3 +26,11 @@
 (make-internal-loader)
 
 (def internal (load-internal))
+
+(use prelude/internal/code require-module)
+
+(def internal-code-symbol
+  (macro (form)
+    (symbol-name (module-symbol (quote prelude/internal/code)))))
+
+(def internal-code (internal-code-symbol))

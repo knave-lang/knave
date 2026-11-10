@@ -8,10 +8,12 @@
           form-location in-tasks-directory? keyword-field
           keyword-name keyword? len list list? module-notes
           nth number-add number-lt number-sub number?
-          pinned-at prepend program-modules read-form rest
+          prepend program-modules read-form rest
           sorted-names string string-length string-lines
           string-strip-prefix string-trim-start string?
           symbol symbol-name symbol? value-eq)
+
+(use prelude/internal/code pinned-at)
 
 (export deftask run-task task-listing task-names
         task-signature)

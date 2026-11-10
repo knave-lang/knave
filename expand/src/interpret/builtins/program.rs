@@ -79,19 +79,20 @@ impl<'a> ProgramOperations<'a> {
     }
 
     pub fn module_symbol(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
-        self.arguments.expect_count(1)?;
-        let path = self.arguments.form(0)?;
-        let module = host.module_symbol(self.arguments.symbol(0)?, path.span())?;
-        Ok(Value::Form(Form::new(
-            FormKind::Symbol(module),
-            self.call_site,
-        )))
+        self.module_named(|path, span| host.module_symbol(path, span))
     }
 
     pub fn require_module(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+        self.module_named(|path, span| host.require_module(path, span))
+    }
+
+    fn module_named(
+        &self,
+        find: impl FnOnce(&Symbol, Span) -> Result<Symbol, Diagnostic>,
+    ) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let path = self.arguments.form(0)?;
-        let module = host.require_module(self.arguments.symbol(0)?, path.span())?;
+        let module = find(self.arguments.symbol(0)?, path.span())?;
         Ok(Value::Form(Form::new(
             FormKind::Symbol(module),
             self.call_site,

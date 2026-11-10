@@ -32,10 +32,24 @@ impl RemoveCommand {
             return Ok(());
         }
         StandardError::write_line(format_args!(
-            "error: the project's `{}` do not list `{}`",
+            "error: the project's `{}` do not list `{}`{}",
             self.section.name(),
-            self.name
+            self.name,
+            self.other_section_help(&edit)
         ));
         Err(ExitStatus::UsageError)
+    }
+
+    fn other_section_help(&self, edit: &ProjectFileEdit) -> String {
+        let other = self.section.other();
+        match edit.listed_crate(other, &self.name) {
+            Some(_) => format!(
+                "\nhelp: `{}` lists it: run `{} {}`",
+                other.name(),
+                other.command(Self::COMMAND),
+                self.name
+            ),
+            None => String::new(),
+        }
     }
 }

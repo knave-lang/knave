@@ -106,7 +106,8 @@ impl Expander<'_> {
 
     fn noted_term(&mut self, accessor: &Value, note: Form) -> Option<(Symbol, Span)> {
         let span = note.span();
-        let term = Interpreter::new(self, span)
+        let steps = self.form_budgets.current().steps();
+        let term = Interpreter::new(self, span, steps)
             .call(accessor, vec![Value::Form(note)], span)
             .ok()?;
         let term = term.as_form()?;

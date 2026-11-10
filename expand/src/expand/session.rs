@@ -284,7 +284,7 @@ mod tests {
     use super::*;
     use crate::core::{ItemKind, Leaf};
     use crate::expand::ResultPrinter;
-    use crate::interpret::{Env, Interpreter, Value};
+    use crate::interpret::{Env, Interpreter, StepBudget, Value};
     use crate::modules::ModuleSources;
     use crate::reader::{FormKind, Symbol};
     use crate::source::{SourceMap, Span};
@@ -330,7 +330,7 @@ mod tests {
             let expr = session
                 .lower_in(module, |expander| expander.lower_expr(&form))
                 .unwrap_or_else(|_| panic!("the form lowers"));
-            Interpreter::new(&mut session.expander, form.span())
+            Interpreter::new(&mut session.expander, form.span(), StepBudget::full())
                 .eval(&expr, &Env::default())
                 .unwrap_or_else(|problem| panic!("the form evaluates: {}", problem.title()))
         }

@@ -1,0 +1,9 @@
+(defstruct point
+  :x i64
+  :y i64)
+
+(defn place (p)
+  (match p
+    ((point _ 2) 1)
+    ((point 1 2) 2)
+    ((point _ _) 3)))

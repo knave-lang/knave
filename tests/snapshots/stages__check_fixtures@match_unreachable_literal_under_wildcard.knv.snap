@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_unreachable_literal_under_wildcard.knv
+---
+warning[L0434]: unreachable `match` arm
+ --> check/match_unreachable_literal_under_wildcard.knv:8:6
+  |
+7 |     ((point _ 2) 1)
+  |      ----------- this arm covers it
+8 |     ((point 1 2) 2)
+  |      ^^^^^^^^^^^ this arm can never match
+
+(derive point clone copy partial-eq eq hash show)
+(type ->point (fn (i64 i64) point))
+(type place (fn (point) i64))

@@ -1,6 +1,6 @@
 # RFC 0065: No failure reaches rustc
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-11-09
 
 RFC numbers 0063 and 0064 are reserved for the program interpreter and for compiled crate bindings, whose designs are not yet in this folder.

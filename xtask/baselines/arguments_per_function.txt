@@ -75,6 +75,7 @@ expand/src/project/problems.rs::ProjectProblems::library_without_root_module 4
 expand/src/scope/binding_table.rs::BindingTable::bind 4
 expand/src/scope/binding_table.rs::BindingTable::entries_named 4
 expand/src/source/file.rs::SourceFile::excerpt 4
+src/build/cargo_manifest.rs::CargoManifest::new 4
 src/build/formatting.rs::Rustfmt::communicate 4
 src/build/mod.rs::RustCompiler::compile 4
 src/cli/definition_rounds.rs::DefinitionRounds::new 4
@@ -84,9 +85,11 @@ src/cli/eval.rs::ExpandedEvaluation::new 4
 src/cli/fmt.rs::FmtCommand::answer_standard_input 4
 src/cli/fmt.rs::FmtCommand::formatted 4
 src/cli/library_walk.rs::LibraryWalk::keep_inside_checkout 4
+src/cli/project_crates.rs::ProjectCrates::new 4
 src/cli/repl.rs::PromptSession::new 4
-src/cli/terminal.rs::Terminal::compile_with_cargo 4
+src/cli/test.rs::TestCommand::build_and_run 4
 src/cli/test.rs::TestCommand::new 4
+src/cli/test_binary.rs::TestBinary::build 4
 src/emit/expressions.rs::ExpressionEmitter::argument_at_depth 4
 src/emit/expressions.rs::ExpressionEmitter::assoc_assignment 4
 src/emit/expressions.rs::ExpressionEmitter::eta_expanded 4

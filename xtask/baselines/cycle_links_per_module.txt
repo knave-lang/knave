@@ -25,8 +25,6 @@ expand/src/interpret/code_list.rs 1
 expand/src/interpret/problems.rs 1
 expand/src/interpret/value.rs 1
 expand/src/project/dependency_reader.rs 1
-expand/src/project/mod.rs 1
-expand/src/project/problems.rs 1
 expand/src/project/reader.rs 1
 expand/src/scope/binding_table.rs 1
 expand/src/scope/saved_names.rs 1
@@ -36,8 +34,9 @@ src/cli/edited_lines.rs 2
 src/cli/exit_status.rs 1
 src/cli/library_walk.rs 1
 src/cli/located_program.rs 2
-src/cli/located_project.rs 2
+src/cli/located_project.rs 3
 src/cli/program_signal.rs 1
+src/cli/project_crates.rs 1
 src/cli/project_task.rs 2
 src/cli/prompt_history.rs 1
 src/cli/prompt_lines.rs 1

@@ -74,6 +74,7 @@ pub enum Builtin {
     CurrentModule,
     ModuleSymbol,
     RequireModule,
+    SetMacroStepLimit,
     ProjectFileName,
     ReadForm,
     Located,
@@ -81,7 +82,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 71] = [
+    const NAMES: [(Builtin, &'static str); 72] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -149,6 +150,7 @@ impl Builtin {
         (Builtin::CurrentModule, "current-module"),
         (Builtin::ModuleSymbol, "module-symbol"),
         (Builtin::RequireModule, "require-module"),
+        (Builtin::SetMacroStepLimit, "set-macro-step-limit"),
         (Builtin::ProjectFileName, "project-file-name"),
         (Builtin::ReadForm, "read-form"),
         (Builtin::Located, "located"),
@@ -157,7 +159,9 @@ impl Builtin {
 
     pub fn module(self) -> BuiltinModule {
         match self {
-            Builtin::PinnedAt | Builtin::RequireModule => BuiltinModule::PreludeCode,
+            Builtin::PinnedAt | Builtin::RequireModule | Builtin::SetMacroStepLimit => {
+                BuiltinModule::PreludeCode
+            }
             _ => BuiltinModule::Code,
         }
     }

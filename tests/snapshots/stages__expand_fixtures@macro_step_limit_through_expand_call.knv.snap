@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/macro_step_limit_through_expand_call.knv
+---
+error[L0363]: macro code ran too many steps
+ --> expand/macro_step_limit_through_expand_call.knv:8:24
+  |
+8 | (with-macro-steps 1000 (expands-spin))
+  |                        ^^^^^^^^^^^^^^ this call passed 1000 macro steps
+  |
+  = note: the macro calls in one top-level form run at most 1000 steps: a step is one function call or one `recur`
+  = help: make the macro stop, or wrap the top-level form in `(with-macro-steps 10000 ...)`

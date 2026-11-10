@@ -4,6 +4,8 @@ use crate::source::Span;
 pub struct LimitProblems;
 
 impl LimitProblems {
+    const RAISED_LIMIT_FACTOR: u64 = 10;
+
     pub fn too_many_steps(limit: u64, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::MACRO_STEP_LIMIT,
@@ -13,7 +15,10 @@ impl LimitProblems {
         .with_note(format!(
             "the macro calls in one top-level form run at most {limit} steps: a step is one function call or one `recur`"
         ))
-        .with_help("make the macro stop")
+        .with_help(format!(
+            "make the macro stop, or wrap the top-level form in `(with-macro-steps {} ...)`",
+            limit.saturating_mul(Self::RAISED_LIMIT_FACTOR)
+        ))
     }
 
     pub fn value_nests_too_deep(limit: usize, span: Span) -> Diagnostic {

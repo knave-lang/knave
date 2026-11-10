@@ -1,0 +1,12 @@
+(use code number-gt number-sub)
+
+(def count-down
+  (fn (remaining)
+    (if (number-gt remaining 0)
+      (recur (number-sub remaining 1))
+      remaining)))
+
+(defmacro loops (times) (count-down times))
+
+(with-macro-steps 1000
+                  (defn main () (println (loops 2000))))

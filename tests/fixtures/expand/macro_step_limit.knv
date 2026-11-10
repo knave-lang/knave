@@ -1,5 +1,5 @@
 (defmacro spin () ((fn () (recur))))
 
-(spin)
+(with-macro-steps 1000 (spin))
 
 (defn main () (println "unreachable"))

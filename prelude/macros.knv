@@ -1,3 +1,5 @@
+(use prelude/internal/code set-macro-step-limit)
+
 (use prelude/internal/macros add-docstring-note
                              docstring-before-body?
                              docstring-before-parameters
@@ -15,7 +17,7 @@
           keyword-name keyword? len list list?
           module-definitions module-exports module-notes
           module-symbol nth number-add number-lt number-sub
-          prepend program-modules rest same-binding?
+          number? prepend program-modules rest same-binding?
           sorted-names string string-contains? string-drop
           string-length string-lines string-lowercase
           string-strip-suffix string-trim-start string?
@@ -27,7 +29,7 @@
         doc-header doc-page docstring docstrings-key
         document documented-terms-key header-shape
         listing-part map-list module module-docstring-notes
-        noted-term template)
+        noted-term template with-macro-steps)
 
 (def map-list
   (fn (items function)
@@ -1383,3 +1385,18 @@
   (fn (text)
     (local stripped (string-strip-suffix text "\n"))
     (if (value-eq stripped text) text (recur stripped))))
+
+(defmacro with-macro-steps (count form)
+  "Sets the macro step limit of the enclosing top-level form to `count`, then
+  expands to `form`. A macro step is one function call or one `recur` that
+  macro code runs. The limit stays set for the rest of the top-level form, so
+  a smaller `count` lowers it.
+
+  (with-macro-steps 1000000000 (+ 1 2))
+  => 3"
+  (if (number? count)
+    (set-macro-step-limit count)
+    (fail "`with-macro-steps` takes a number of steps"
+      count "write the number of steps as a whole number"
+      (quote (:label "not a number"))))
+  form)

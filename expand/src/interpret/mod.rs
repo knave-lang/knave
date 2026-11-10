@@ -37,6 +37,7 @@ pub trait CompileTimeHost {
     fn definition_call(&self, term: &Symbol, span: Span) -> Result<Option<Form>, Diagnostic>;
     fn type_definition_call(&self, term: &Symbol) -> Option<Form>;
     fn expand_call(&mut self, call: Form) -> Result<Option<Form>, Diagnostic>;
+    fn set_macro_step_limit(&mut self, limit: u64);
     fn add_module_note(&mut self, key: &str, note: Form);
     fn module_notes(&self, context: &Symbol, key: &str) -> Vec<Form>;
     fn declare_definition(&mut self, name: Form, declaration: Declaration);

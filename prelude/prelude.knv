@@ -1,6 +1,6 @@
 (use prelude/macros defmacro defrule doc-body doc-header
                     doc-page docstring document header-shape
-                    module template)
+                    module template with-macro-steps)
 
 (use prelude/internal/macros kernel-definition)
 (use prelude/logic and cond not or unless when)
@@ -86,7 +86,8 @@
         the then-ok then-some trait trim true try try-> type
         u128 u16 u32 u64 u8 unit unless unwrap unwrap-err
         unwrap-ok unwrap-or update upper-case use usize vals
-        vec when where whitespace? windows with zip)
+        vec when where whitespace? windows with
+        with-macro-steps zip)
 
 (def def
   (macro (form) (kernel-definition form)))

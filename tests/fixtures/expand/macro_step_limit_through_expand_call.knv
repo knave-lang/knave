@@ -1,0 +1,10 @@
+(use code expand-call list)
+
+(defmacro spin () ((fn () (recur))))
+
+(defmacro expands-spin ()
+  (expand-call (list (quote spin))))
+
+(with-macro-steps 1000 (expands-spin))
+
+(defn main () (println "unreachable"))

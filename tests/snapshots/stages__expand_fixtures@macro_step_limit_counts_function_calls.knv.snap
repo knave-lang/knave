@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/macro_step_limit_counts_function_calls.knv
+---
+error[L0363]: macro code ran too many steps
+  --> expand/macro_step_limit_counts_function_calls.knv:12:42
+   |
+12 |                   (defn main () (println (descends))))
+   |                                          ^^^^^^^^^^ this call passed 400 macro steps
+   |
+   = note: the macro calls in one top-level form run at most 400 steps: a step is one function call or one `recur`
+   = help: make the macro stop, or wrap the top-level form in `(with-macro-steps 4000 ...)`

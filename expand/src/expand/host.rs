@@ -62,6 +62,10 @@ impl CompileTimeHost for Expander<'_> {
         Symbol::with_scopes(name, scopes)
     }
 
+    fn set_macro_step_limit(&mut self, limit: u64) {
+        self.form_budgets.current().steps().set_limit(limit);
+    }
+
     fn add_module_note(&mut self, key: &str, note: Form) {
         let module = self
             .current_module

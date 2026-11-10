@@ -1,0 +1,12 @@
+(use code number-gt number-sub)
+
+(def descend
+  (fn (remaining)
+    (if (number-gt remaining 0)
+      (descend (number-sub remaining 1))
+      remaining)))
+
+(defmacro descends () (descend 900))
+
+(with-macro-steps 400
+                  (defn main () (println (descends))))

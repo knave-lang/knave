@@ -28,16 +28,11 @@ impl LocatedProject {
         let mut scratch = terminal.scratch();
         let project = scratch.load_project(&root.join(Language::project_file_name()))?;
         let walked = LibraryWalk::walk(&mut scratch, &root, &project)?;
-        let dev_crates = project
-            .dev_dependencies
-            .iter()
-            .map(|dependency| ProgramFile::resolved_crate(dependency, &root))
-            .collect();
         let crates = ProjectCrates::new(
             root.clone(),
             project.name.clone(),
             walked.crates,
-            dev_crates,
+            walked.dev_crates,
         );
         Ok(Some(Self {
             root,

@@ -2,7 +2,7 @@ use super::CrateDependency;
 use super::problems::ProjectProblems;
 use crate::diagnostic::Diagnostic;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct CrateSet {
     crates: Vec<CrateDependency>,
 }

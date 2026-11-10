@@ -26,6 +26,7 @@ pub struct LibraryWalk<'t> {
 pub struct WalkedLibraries {
     pub table: LibraryTable,
     pub crates: Vec<CrateDependency>,
+    pub dev_crates: Vec<CrateDependency>,
     pub crate_library: Option<String>,
 }
 
@@ -75,8 +76,10 @@ impl<'t> LibraryWalk<'t> {
         };
         walk.add_crates(root, project)?;
         walk.visit_all(root, project, Listing::PROGRAM)?;
+        let dev_crates = walk.dev_crates(root, project)?;
         Ok(WalkedLibraries {
             table: LibraryTable::new(Self::names(project), walk.roots),
+            dev_crates,
             crates: walk.crates.into_crates(),
             crate_library: walk.crate_library,
         })
@@ -90,6 +93,25 @@ impl<'t> LibraryWalk<'t> {
             }
         }
         Ok(())
+    }
+
+    fn dev_crates(
+        &self,
+        root: &Path,
+        project: &Project,
+    ) -> Result<Vec<CrateDependency>, ExitStatus> {
+        let mut every_crate = self.crates.clone();
+        project
+            .dev_dependencies
+            .iter()
+            .map(|dependency| {
+                let resolved = ProgramFile::resolved_crate(dependency, root);
+                every_crate
+                    .add(resolved.clone())
+                    .map_err(|problem| self.report(problem))?;
+                Ok(resolved)
+            })
+            .collect()
     }
 
     fn visit_all(

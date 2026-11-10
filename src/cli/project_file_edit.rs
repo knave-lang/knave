@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 
+use super::crate_section::CrateSection;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
@@ -25,8 +26,8 @@ impl ProjectFileEdit {
         }
     }
 
-    pub fn listed_crate(&self, name: &str) -> Option<&CrateDependency> {
-        self.project.own_crate(name)
+    pub fn listed_crate(&self, section: CrateSection, name: &str) -> Option<&CrateDependency> {
+        self.project.own_crate(section, name)
     }
 
     pub fn apply(

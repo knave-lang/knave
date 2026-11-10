@@ -6,6 +6,7 @@ mod check;
 mod checkout_bounds;
 mod color_when;
 mod counter_report;
+mod crate_section;
 mod definition_buffer;
 mod definition_rounds;
 mod diagnostic_output;
@@ -86,6 +87,7 @@ use build::BuildCommand;
 use check::CheckCommand;
 use color_when::ColorWhen;
 use counter_report::CounterReport;
+use crate_section::CrateSection;
 use doc::{DocCommand, DocEnvironment, DocPage};
 use emit::EmitCommand;
 use eval::{EvalCommand, EvaluationSettings, FormsText, ModuleText};
@@ -104,6 +106,7 @@ use terminal::{BuildOptions, Terminal};
 use test::{TestCommand, TestSelection};
 use types::TypesCommand;
 
+const DEV_HELP: &str = "Edit `dev-dependencies`, which only `test` builds with";
 const ENTRY_HELP: &str = "The program's entry file [default: the project's `:entry`]";
 
 #[derive(Parser)]
@@ -151,11 +154,15 @@ enum ProjectCommand {
             help = "Features to turn on, separated by commas"
         )]
         features: Vec<String>,
+        #[arg(long, help = DEV_HELP)]
+        dev: bool,
     },
     #[command(about = "Remove a crate from the project's dependencies")]
     Remove {
         #[arg(help = "The crate's name, as the project file writes it")]
         name: String,
+        #[arg(long, help = DEV_HELP)]
+        dev: bool,
     },
     #[command(
         name = TaskCommand::NAME,
@@ -461,8 +468,14 @@ impl ProjectCommand {
     fn execute(self, terminal: &mut Terminal) -> ExitStatus {
         match self {
             Self::New { name } => NewCommand::new(name).run(terminal),
-            Self::Add { name, features } => AddCommand::new(name, features).run(terminal),
-            Self::Remove { name } => RemoveCommand::new(name).run(terminal),
+            Self::Add {
+                name,
+                features,
+                dev,
+            } => AddCommand::new(name, features, CrateSection::of(dev)).run(terminal),
+            Self::Remove { name, dev } => {
+                RemoveCommand::new(name, CrateSection::of(dev)).run(terminal)
+            }
             Self::Task { command, release } => {
                 TaskCommand::new(command, release.profile()).run(terminal)
             }

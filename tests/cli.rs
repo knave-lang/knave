@@ -2083,6 +2083,26 @@ fn doc_write_leaves_out_the_tasks_and_tests_folders() {
 }
 
 #[test]
+fn doc_write_leaves_out_a_library_inside_the_project() {
+    let sandbox = Sandbox::new("doc_write_inner_library")
+        .with_file(&Language::project_file_name(), ROOT_ENTRY_PROJECT)
+        .with_file("main.knv", ROOT_ENTRY)
+        .with_file("vendor/hints/project.knv", "(project hints)\n")
+        .with_file(
+            "vendor/hints/src/lib.knv",
+            "(use labels label)\n\n(export hint)\n\n(def hint label)\n",
+        )
+        .with_file(
+            "vendor/hints/src/labels.knv",
+            "(export label)\n\n(def label 1)\n",
+        );
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert_eq!(sandbox.files_under("doc"), [".knave-doc", "main.md"]);
+}
+
+#[test]
 fn doc_write_stays_inside_the_source_root() {
     let sandbox = Sandbox::with_documented_project("doc_write_outside_link")
         .with_file("elsewhere/far.knv", "(export far)\n\n(def far 1)\n");

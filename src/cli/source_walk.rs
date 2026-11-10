@@ -82,10 +82,16 @@ impl SourceWalk {
             .filter(|(directory, root)| directory.starts_with(root));
         match inside {
             Some((directory, _)) => {
-                !self.skipped.is_skipped(&directory) && !self.left_out.contains(&directory)
+                !self.skipped.is_skipped(&directory)
+                    && !self.left_out.contains(&directory)
+                    && !Self::holds_a_project(&directory)
             }
             None => false,
         }
+    }
+
+    fn holds_a_project(directory: &Path) -> bool {
+        directory.join(Language::project_file_name()).is_file()
     }
 
     fn module_of(&self, file: &Path) -> Option<String> {

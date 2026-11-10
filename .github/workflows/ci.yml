@@ -60,6 +60,8 @@ jobs:
           save-build-cache: ${{ env.SAVE_BUILD_CACHE }}
       - name: Format
         run: nix develop .#ci -c cargo fmt --all --check
+      - name: File sizes
+        run: nix develop .#ci -c cargo xtask file-sizes
       - name: Lint
         run: nix develop .#ci -c cargo clippy --workspace --all-targets -- -D warnings
       - name: Package the published crates

@@ -46,6 +46,12 @@ impl TaskFailure {
         Self::new(format!("cannot parse `{}`: {error}", path.display()))
     }
 
+    pub fn malformed_baseline(file: &str, line: &str) -> Self {
+        Self::new(format!(
+            "{file} has a malformed line {line:?}: expected <file> <production lines>"
+        ))
+    }
+
     pub fn constant_missing(path: &Path, owner: &str, name: &str) -> Self {
         Self::new(format!(
             "`{}` defines no string constant `{owner}::{name}`",

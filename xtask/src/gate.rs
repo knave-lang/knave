@@ -6,6 +6,7 @@ use crate::checks::{BadgeFreshness, Check, CleanEmittedRust, CoverageFloor, Crap
 use crate::crap::ScoredFunction;
 use crate::emitted_lints::{EmittedLints, LintedProgram};
 use crate::failure::TaskFailure;
+use crate::file_size::{FileSizeLimit, ProductionLineBaseline, ProductionLineCounts};
 use crate::functions::{SourceFunction, SourceTree};
 use crate::instrumented_tests::InstrumentedTests;
 use crate::language::LanguageSource;
@@ -25,6 +26,9 @@ struct CoverageEvidence {
 impl QualityGate {
     const MINIMUM_LINE_COVERAGE: f64 = 99.0;
     const MAXIMUM_CRAP: f64 = 8.0;
+    const MAXIMUM_PRODUCTION_LINES: usize = 500;
+    const PRODUCTION_LINE_BASELINE: &str = "xtask/baselines/production_lines.txt";
+    const TOOLING_SOURCES: &str = "xtask/src";
     const README: &str = "README.md";
     const EXTENSION_CONSTANT: &str = "EXTENSION";
 
@@ -47,6 +51,19 @@ impl QualityGate {
     pub fn run_emitted_lints(&self) -> Result<ExitCode, TaskFailure> {
         let linted = self.lint_emitted_programs()?;
         Ok(Self::conclude(&[&CleanEmittedRust::new(linted)]))
+    }
+
+    pub fn run_file_sizes(&self) -> Result<ExitCode, TaskFailure> {
+        let measured = self.production_lines()?;
+        let baseline = ProductionLineBaseline::read(&self.root, Self::PRODUCTION_LINE_BASELINE)?;
+        let limit = FileSizeLimit::new(Self::MAXIMUM_PRODUCTION_LINES, measured, baseline);
+        Ok(Self::conclude(&[&limit]))
+    }
+
+    fn production_lines(&self) -> Result<ProductionLineCounts, TaskFailure> {
+        let mut directories = CargoWorkspace::read(&self.root)?.source_directories();
+        directories.insert(self.root.join(Self::TOOLING_SOURCES));
+        SourceTree::new(&self.root, directories).production_lines()
     }
 
     fn measure_everything(&self) -> Result<(CoverageEvidence, Vec<LintedProgram>), TaskFailure> {

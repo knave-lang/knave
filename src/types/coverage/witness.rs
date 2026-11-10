@@ -32,3 +32,57 @@ impl Witness {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Witness;
+    use crate::core::BindingId;
+    use crate::types::coverage::constructor::{Constructor, Tag};
+
+    struct WitnessFixture {
+        owner: BindingId,
+    }
+
+    impl WitnessFixture {
+        fn new() -> Self {
+            Self {
+                owner: BindingId::from_index(3),
+            }
+        }
+
+        fn built_by(tag: Tag) -> Witness {
+            Witness::built_by(&Constructor::new(tag, Vec::new()), &[Witness::Wild])
+        }
+    }
+
+    #[test]
+    fn a_variant_constructor_builds_a_variant_witness_with_its_arguments() {
+        let fixture = WitnessFixture::new();
+        let witness = WitnessFixture::built_by(Tag::Variant {
+            owner: fixture.owner,
+            index: 2,
+        });
+        assert!(matches!(
+            witness,
+            Witness::Variant { owner, index: 2, arguments } if owner == fixture.owner && arguments.len() == 1
+        ));
+    }
+
+    #[test]
+    fn a_struct_constructor_builds_a_struct_witness_with_its_arguments() {
+        let fixture = WitnessFixture::new();
+        let witness = WitnessFixture::built_by(Tag::Struct(fixture.owner));
+        assert!(matches!(
+            witness,
+            Witness::Struct { owner, arguments } if owner == fixture.owner && arguments.len() == 1
+        ));
+    }
+
+    #[test]
+    fn a_bool_constructor_builds_its_bool() {
+        assert!(matches!(
+            WitnessFixture::built_by(Tag::Bool(false)),
+            Witness::Bool(false)
+        ));
+    }
+}

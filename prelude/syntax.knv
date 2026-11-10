@@ -23,8 +23,10 @@
           drop empty? fail field-keyword first keyword-field
           keyword-name keyword-trim-end keyword? len list
           list? located nth number-sub number? pattern-head?
-          prepend require-module rest same-binding? string
-          string? symbol symbol-name symbol? take value-eq)
+          prepend rest same-binding? string string? symbol
+          symbol-name symbol? take value-eq)
+
+(use prelude/internal/code require-module)
 
 (export -> ->> assert comment defn deftask deftest let
         let-match let-try loop run-tests the try->)

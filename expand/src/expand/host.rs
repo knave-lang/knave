@@ -107,7 +107,7 @@ impl CompileTimeHost for Expander<'_> {
             .records()
             .filter(|record| ModuleSources::is_written(record.path()))
             .filter(|record| !self.is_library_module(record.path()))
-            .map(|record| Symbol::with_scopes(record.path().as_str(), record.body_scopes()))
+            .map(ModuleRecord::symbol)
             .collect()
     }
 
@@ -115,7 +115,7 @@ impl CompileTimeHost for Expander<'_> {
         self.modules
             .records()
             .filter(|record| ModuleSources::is_written(record.path()))
-            .map(|record| Symbol::with_scopes(record.path().as_str(), record.body_scopes()))
+            .map(ModuleRecord::symbol)
             .collect()
     }
 
@@ -149,12 +149,15 @@ impl CompileTimeHost for Expander<'_> {
         let module = self
             .current_module
             .expect("macro code runs while a module expands");
-        let record = self.modules.get(module);
-        Symbol::with_scopes(record.path().as_str(), record.body_scopes())
+        self.modules.get(module).symbol()
     }
 
     fn module_symbol(&self, path: &Symbol, span: Span) -> Result<Symbol, Diagnostic> {
-        Self::symbol_of(self.loaded_module(path, span)?, span)
+        let record = self.loaded_module(path, span)?;
+        if ModuleSources::is_compiler_provided(record.path()) {
+            return Err(ExpandProblems::unknown_module(record.path(), span));
+        }
+        Ok(record.symbol())
     }
 
     fn require_module(&mut self, path: &Symbol, span: Span) -> Result<Symbol, Diagnostic> {
@@ -163,7 +166,7 @@ impl CompileTimeHost for Expander<'_> {
             return Err(ExpandProblems::unknown_module(&path, span));
         }
         let module = self.load_module(&path, span)?;
-        Self::symbol_of(self.modules.get(module), span)
+        Ok(self.modules.get(module).symbol())
     }
 
     fn is_pattern_head(&self, head: &Symbol) -> bool {
@@ -192,16 +195,6 @@ impl CompileTimeHost for Expander<'_> {
 }
 
 impl Expander<'_> {
-    fn symbol_of(record: &ModuleRecord, span: Span) -> Result<Symbol, Diagnostic> {
-        if ModuleSources::is_compiler_provided(record.path()) {
-            return Err(ExpandProblems::unknown_module(record.path(), span));
-        }
-        Ok(Symbol::with_scopes(
-            record.path().as_str(),
-            record.body_scopes(),
-        ))
-    }
-
     fn loaded_module(&self, path: &Symbol, span: Span) -> Result<&ModuleRecord, Diagnostic> {
         let path = ModulePath::new(path.name());
         let module = self

@@ -42,3 +42,23 @@ error[L0204]: cannot find module `prelude/internal/macros`
    |               --------------- in this macro call
    |
    = help: a module path names a file relative to the root directory, without its extension
+
+error[L0255]: `prelude/internal/code` is internal to the prelude
+  --> expand/require_module_errors.knv:30:6
+   |
+30 | (use prelude/internal/code require-module)
+   |      ^^^^^^^^^^^^^^^^^^^^^ only the prelude imports this module
+   |
+   = note: it holds helpers of the prelude's own forms
+   = help: remove this `use`
+
+error[L0204]: cannot find module `prelude/internal/code`
+  --> expand/require_module_errors.knv:34:40
+   |
+34 |     (symbol-name (module-symbol (quote prelude/internal/code)))))
+   |                                        ^^^^^^^^^^^^^^^^^^^^^ no module with this path
+35 |
+36 | (def internal-code (internal-code-symbol))
+   |                    ---------------------- in this macro call
+   |
+   = help: a module path names a file relative to the root directory, without its extension

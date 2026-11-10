@@ -1,0 +1,7 @@
+(use code module-exports)
+
+(def code-names
+  (macro (form)
+    (template (quote (unquote (module-exports (quote code)))))))
+
+(def names (code-names))

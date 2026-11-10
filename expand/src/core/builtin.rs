@@ -1,3 +1,10 @@
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BuiltinModule {
+    Kernel,
+    Code,
+    PreludeCode,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Builtin {
     First,
@@ -146,8 +153,11 @@ impl Builtin {
         (Builtin::ProjectModules, "project-modules"),
     ];
 
-    pub fn is_prelude_only(self) -> bool {
-        matches!(self, Builtin::PinnedAt | Builtin::RequireModule)
+    pub fn module(self) -> BuiltinModule {
+        match self {
+            Builtin::PinnedAt | Builtin::RequireModule => BuiltinModule::PreludeCode,
+            _ => BuiltinModule::Code,
+        }
     }
 
     pub fn all() -> impl Iterator<Item = Builtin> {

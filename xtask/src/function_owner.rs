@@ -30,10 +30,6 @@ impl FunctionOwner {
             None => function.to_string(),
         }
     }
-
-    pub fn type_name(&self) -> Option<&str> {
-        self.name.as_deref()
-    }
 }
 
 #[cfg(test)]
@@ -58,14 +54,12 @@ mod tests {
     #[test]
     fn an_impl_names_its_type_by_the_last_path_segment() {
         let owner = Owner::of_impl("impl shapes::Square { }");
-        assert_eq!(owner.type_name(), Some("Square"));
         assert_eq!(owner.qualify(&Owner::function()), "Square::area");
     }
 
     #[test]
     fn an_impl_for_a_type_without_a_path_has_no_owner() {
         let owner = Owner::of_impl("impl Shape for &Square { }");
-        assert_eq!(owner.type_name(), None);
         assert_eq!(owner.qualify(&Owner::function()), "area");
     }
 

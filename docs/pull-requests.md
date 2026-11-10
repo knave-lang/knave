@@ -33,7 +33,7 @@
 
 **If the job fails on allocation growth, stop and report the programs and counters it names to the project owner.** NEVER add a `Counters-Accepted:` trailer before the project owner approves the rise.
 
-**On a pull request, the `File sizes` and `Design rules` steps refuse a new or raised entry in a file under `xtask/baselines/`.** A `Baseline-Accepted:` trailer that names the entry's subject in a commit of the pull request lets the entry pass. If the base has no baseline file at that path, every entry counts as new. If the step fails on such an entry, stop and report the entry to the project owner. NEVER add a `Baseline-Accepted:` trailer before the project owner approves the entry.
+**On a pull request, the `File sizes` and `Design rules` steps refuse a new or raised entry in a file under `xtask/baselines/`.** A `Baseline-Accepted: <baseline> <subject>` trailer in a commit of the pull request lets the entry pass. `<baseline>` is the baseline's file name without `.txt`, such as `production_lines`, and one trailer MAY list several subjects of that baseline. If the base has no baseline file at that path, every entry counts as new. If the step fails on such an entry, stop and report the entry to the project owner. NEVER add a `Baseline-Accepted:` trailer before the project owner approves the entry.
 
 **If CI fails, run these steps:**
 

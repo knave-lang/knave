@@ -1,5 +1,5 @@
 use syn::visit::{self, Visit};
-use syn::{FnArg, ImplItemFn, ItemFn, ItemImpl, ItemTrait, Signature, TraitItemFn, Type};
+use syn::{FnArg, ImplItem, ImplItemFn, ItemFn, ItemImpl, ItemTrait, Signature, TraitItemFn, Type};
 
 use crate::function_owner::FunctionOwner;
 use crate::parsed_source::ParsedSource;
@@ -80,6 +80,14 @@ impl SignatureVisitor<'_> {
         format!("{}::{}", self.file, self.owner.qualify(&signature.ident))
     }
 
+    fn visit_trait_impl_bodies(&mut self, implementation: &ItemImpl) {
+        for item in &implementation.items {
+            if let ImplItem::Fn(method) = item {
+                self.visit_block(&method.block);
+            }
+        }
+    }
+
     fn within_owner(&mut self, owner: FunctionOwner, visit: impl FnOnce(&mut Self)) {
         let outer = std::mem::replace(&mut self.owner, owner);
         visit(self);
@@ -97,7 +105,11 @@ impl<'ast> Visit<'ast> for SignatureVisitor<'_> {
 
     fn visit_item_impl(&mut self, implementation: &'ast ItemImpl) {
         self.within_owner(FunctionOwner::of_impl(implementation), |visitor| {
-            visit::visit_item_impl(visitor, implementation);
+            if implementation.trait_.is_some() {
+                visitor.visit_trait_impl_bodies(implementation);
+            } else {
+                visit::visit_item_impl(visitor, implementation);
+            }
         });
     }
 
@@ -172,6 +184,22 @@ mod tests {
         assert_eq!(
             signatures.free_functions.get("src/a.rs::Square::side"),
             None
+        );
+    }
+
+    #[test]
+    fn a_trait_impl_fixes_its_signatures_but_its_bodies_still_count() {
+        let signatures = Source::signatures(
+            "impl Shape for Square { fn draw(&self, a: u8, b: u8, c: u8, filled: bool) { fn nested() {} } }",
+        );
+        assert_eq!(signatures.arguments.get("src/a.rs::Square::draw"), None);
+        assert_eq!(
+            signatures.bool_parameters.get("src/a.rs::Square::draw"),
+            None
+        );
+        assert_eq!(
+            signatures.free_functions.get("src/a.rs::Square::nested"),
+            Some(&1)
         );
     }
 }

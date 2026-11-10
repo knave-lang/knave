@@ -1,125 +1,23 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use syn::visit::{self, Visit};
-use syn::{ItemUse, Path, UseTree};
+use syn::{ItemUse, Path, UseTree, Visibility};
 
+use super::module_address::{ModuleFiles, Stage};
 use crate::parsed_source::ParsedSource;
 use crate::ratchet::Counts;
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct ModuleAddress {
-    crate_directory: String,
-    segments: Vec<String>,
-}
-
-impl ModuleAddress {
-    const CRATE: &str = "crate";
-    const SELF: &str = "self";
-    const SUPER: &str = "super";
-    const CRATE_ROOTS: [&str; 2] = ["lib", "main"];
-    const DIRECTORY_MODULE: &str = "mod";
-    const EXTENSION: &str = ".rs";
-
-    fn of(source: &ParsedSource) -> Self {
-        let within = source
-            .file()
-            .strip_prefix(source.crate_directory())
-            .unwrap_or(source.file())
-            .trim_start_matches('/')
-            .trim_end_matches(Self::EXTENSION);
-        let mut segments: Vec<String> = within.split('/').map(String::from).collect();
-        let is_crate_root = segments.len() == 1 && Self::CRATE_ROOTS.contains(&within);
-        if is_crate_root
-            || segments
-                .last()
-                .is_some_and(|last| last == Self::DIRECTORY_MODULE)
-        {
-            segments.pop();
-        }
-        Self {
-            crate_directory: source.crate_directory().to_string(),
-            segments,
-        }
-    }
-
-    fn is_stage(&self, stage: &Stage) -> bool {
-        let (crate_directory, name) = stage;
-        self.crate_directory == *crate_directory
-            && self.segments.first().is_some_and(|top| top == name)
-    }
-
-    fn within(&self, segments: Vec<String>) -> Self {
-        Self {
-            crate_directory: self.crate_directory.clone(),
-            segments,
-        }
-    }
-
-    fn resolution(&self, path: &[String]) -> Option<Resolution> {
-        let (first, rest) = path.split_first()?;
-        match first.as_str() {
-            Self::CRATE => Some(Resolution::anywhere(rest.to_vec())),
-            Self::SELF => Some(self.below(rest)),
-            Self::SUPER => self.above(path),
-            _ => Some(self.below(path)),
-        }
-    }
-
-    fn below(&self, path: &[String]) -> Resolution {
-        Resolution {
-            absolute: [&self.segments[..], path].concat(),
-            shortest: self.segments.len() + 1,
-        }
-    }
-
-    fn above(&self, path: &[String]) -> Option<Resolution> {
-        let levels = path
-            .iter()
-            .take_while(|segment| *segment == Self::SUPER)
-            .count();
-        let base = self.segments.len().checked_sub(levels)?;
-        Some(Resolution::anywhere(
-            [&self.segments[..base], &path[levels..]].concat(),
-        ))
-    }
-}
-
-struct Resolution {
-    absolute: Vec<String>,
-    shortest: usize,
-}
-
-impl Resolution {
-    const SHORTEST_MODULE_PATH: usize = 1;
-
-    fn anywhere(absolute: Vec<String>) -> Self {
-        Self {
-            absolute,
-            shortest: Self::SHORTEST_MODULE_PATH,
-        }
-    }
-}
-
-pub type Stage = (&'static str, &'static str);
-
 pub struct ModuleGraph {
-    modules: BTreeMap<String, ModuleAddress>,
+    modules: ModuleFiles,
     edges: BTreeMap<String, BTreeSet<String>>,
 }
 
 impl ModuleGraph {
     pub fn build(sources: &[ParsedSource]) -> Self {
-        let modules: BTreeMap<String, ModuleAddress> = sources
-            .iter()
-            .map(|source| (source.file().to_string(), ModuleAddress::of(source)))
-            .collect();
-        let files: BTreeMap<&ModuleAddress, &String> = modules
-            .iter()
-            .map(|(file, address)| (address, file))
-            .collect();
+        let modules = ModuleFiles::build(sources);
         let edges = sources
             .iter()
-            .map(|source| (source.file().to_string(), Self::targets(source, &files)))
+            .map(|source| (source.file().to_string(), Self::targets(source, &modules)))
             .collect();
         Self { modules, edges }
     }
@@ -127,7 +25,7 @@ impl ModuleGraph {
     pub fn cycle_partners(&self) -> Counts {
         let reachable: BTreeMap<&String, BTreeSet<&String>> = self
             .modules
-            .keys()
+            .files()
             .map(|module| (module, self.reachable_from(module)))
             .collect();
         reachable
@@ -144,7 +42,7 @@ impl ModuleGraph {
 
     pub fn later_stage_dependencies(&self, stage_order: &[Stage]) -> Counts {
         self.modules
-            .keys()
+            .files()
             .filter_map(|module| {
                 let stage = self.stage(module, stage_order)?;
                 let later = self.edges[module]
@@ -160,7 +58,7 @@ impl ModuleGraph {
     }
 
     fn stage(&self, module: &str, stage_order: &[Stage]) -> Option<usize> {
-        let address = &self.modules[module];
+        let address = self.modules.address(module);
         stage_order.iter().position(|stage| address.is_stage(stage))
     }
 
@@ -177,36 +75,16 @@ impl ModuleGraph {
         reached
     }
 
-    fn targets(
-        source: &ParsedSource,
-        files: &BTreeMap<&ModuleAddress, &String>,
-    ) -> BTreeSet<String> {
-        let address = ModuleAddress::of(source);
+    fn targets(source: &ParsedSource, modules: &ModuleFiles) -> BTreeSet<String> {
         let mut paths = PathCollector::default();
         paths.visit_file(source.syntax());
         paths
             .paths
             .iter()
-            .filter_map(|path| Self::resolve(&address, path, files))
+            .filter_map(|path| modules.resolve(source.file(), path))
             .filter(|target| **target != source.file())
             .cloned()
             .collect()
-    }
-
-    fn resolve<'a>(
-        address: &ModuleAddress,
-        path: &[String],
-        files: &BTreeMap<&ModuleAddress, &'a String>,
-    ) -> Option<&'a String> {
-        let resolution = address.resolution(path)?;
-        let absolute = &resolution.absolute;
-        (resolution.shortest..=absolute.len())
-            .rev()
-            .find_map(|length| {
-                files
-                    .get(&address.within(absolute[..length].to_vec()))
-                    .copied()
-            })
     }
 }
 
@@ -250,11 +128,14 @@ impl<'ast> Visit<'ast> for PathCollector {
     fn visit_item_use(&mut self, item: &'ast ItemUse) {
         self.flatten(&item.tree, &[]);
     }
+
+    fn visit_visibility(&mut self, _visibility: &'ast Visibility) {}
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{ModuleAddress, ModuleGraph, Stage};
+    use super::ModuleGraph;
+    use crate::design::module_address::Stage;
     use crate::parsed_source::ParsedSourceFixture;
 
     struct Modules;
@@ -269,34 +150,6 @@ mod tests {
                 .collect();
             ModuleGraph::build(&sources)
         }
-
-        fn address_of(file: &str) -> Vec<String> {
-            ModuleAddress::of(&ParsedSourceFixture::sample(file, "")).segments
-        }
-    }
-
-    #[test]
-    fn a_crate_root_is_the_empty_module() {
-        assert!(Modules::address_of("src/lib.rs").is_empty());
-        assert!(Modules::address_of("expand/src/main.rs").is_empty());
-    }
-
-    #[test]
-    fn a_file_names_its_module_by_its_path() {
-        assert_eq!(
-            Modules::address_of("expand/src/core/kernel.rs"),
-            ["core", "kernel"]
-        );
-    }
-
-    #[test]
-    fn a_directory_module_drops_its_file_name() {
-        assert_eq!(Modules::address_of("src/cli/mod.rs"), ["cli"]);
-    }
-
-    #[test]
-    fn a_module_named_like_a_crate_root_below_the_root_keeps_its_name() {
-        assert_eq!(Modules::address_of("src/build/main.rs"), ["build", "main"]);
     }
 
     #[test]
@@ -354,6 +207,21 @@ mod tests {
                 Modules::graph(&[("src/a.rs", using), ("src/b.rs", "use crate::a::Other;")])
                     .cycle_partners();
             assert_eq!(partners.get("src/a.rs"), Some(&1), "{using}");
+        }
+    }
+
+    #[test]
+    fn a_restricted_visibility_adds_no_edge() {
+        for visibility in ["pub(super)", "pub(in crate::shapes)"] {
+            let partners = Modules::graph(&[
+                ("src/shapes/mod.rs", "mod child; pub use child::Probe;"),
+                (
+                    "src/shapes/child.rs",
+                    &format!("pub struct Probe; impl Probe {{ {visibility} fn make() {{}} }}"),
+                ),
+            ])
+            .cycle_partners();
+            assert_eq!(partners.get("src/shapes/mod.rs"), Some(&0), "{visibility}");
         }
     }
 

@@ -1,10 +1,13 @@
+mod module_address;
 mod module_graph;
 mod signatures;
 mod type_shapes;
+mod use_bindings;
 
 use std::path::Path;
 
-use module_graph::{ModuleGraph, Stage};
+use module_address::Stage;
+use module_graph::ModuleGraph;
 use signatures::Signatures;
 use type_shapes::TypeShapes;
 

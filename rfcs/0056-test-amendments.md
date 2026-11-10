@@ -1,6 +1,6 @@
 # RFC 0056: Amendments to tests written in the language
 
-**Status:** Accepted
+**Status:** Accepted. Decision 1's place of `deftest`, `assert` and `run-tests` outside the always-loaded prelude, with a `use` of `prelude/test` in every test module, is superseded by 0068.
 **Date:** 2026-11-05
 
 ## Problem

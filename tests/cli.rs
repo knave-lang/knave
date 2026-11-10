@@ -2188,6 +2188,17 @@ fn doc_write_shows_the_type_a_module_gives_its_own_name() {
 }
 
 #[test]
+fn doc_write_prelude_ignores_a_broken_project_file() {
+    let sandbox = Sandbox::new("doc_write_prelude_broken_project")
+        .with_file(&Language::project_file_name(), "(project\n")
+        .with_file("src/notes.knv", "");
+    sandbox
+        .compiler_in("src", &["doc", "--write", "--prelude"])
+        .assert_silent_success();
+    assert!(sandbox.directory.join("doc/prelude/option.md").is_file());
+}
+
+#[test]
 fn doc_write_outside_a_project_is_a_usage_error() {
     let sandbox = Sandbox::new("doc_write_no_project");
     sandbox.compiler(&["doc", "--write"]).assert_exit_code(2);

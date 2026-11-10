@@ -33,45 +33,39 @@ impl DocWriteCommand {
     }
 
     fn write(&self, terminal: &mut Terminal) -> Result<ExitStatus, ExitStatus> {
-        let project =
-            LocatedProject::search_from(Path::new(Terminal::WORKING_DIRECTORY), terminal)?;
-        let folder = self.folder(project.as_ref());
-        let modules = self.modules(project, terminal)?;
+        let (folder, modules) = match self.scope {
+            DocScope::Project => self.project_target(terminal)?,
+            DocScope::Prelude => self.prelude_target(),
+        };
         let folder = DocFolder::new(folder).writable()?;
         let pages = modules.pages(terminal)?;
         Ok(folder.replace_pages(&pages))
     }
 
-    fn folder(&self, project: Option<&LocatedProject>) -> PathBuf {
-        let root = project.map_or_else(PathBuf::new, |project| project.root().to_path_buf());
+    fn project_target(
+        &self,
+        terminal: &mut Terminal,
+    ) -> Result<(PathBuf, DocumentedModules), ExitStatus> {
+        let project =
+            LocatedProject::search_from(Path::new(Terminal::WORKING_DIRECTORY), terminal)?
+                .ok_or_else(LocatedProject::report_no_path)?;
+        let folder = self.folder_in(project.root());
+        let file = project.file_within(project.source_root().join(Self::ENTRY));
+        let modules = SourceWalk::of(&project).module_paths(terminal)?;
+        Ok((folder, DocumentedModules::new(file, modules)))
+    }
+
+    fn prelude_target(&self) -> (PathBuf, DocumentedModules) {
+        let root = LocatedProject::canonical_root(Path::new(Terminal::WORKING_DIRECTORY))
+            .unwrap_or_default();
+        let file = ProgramFile::beside_itself(PathBuf::from(Self::ENTRY));
+        let modules = DocumentedModules::new(file, DocumentedModules::public_prelude());
+        (self.folder_in(&root), modules)
+    }
+
+    fn folder_in(&self, root: &Path) -> PathBuf {
         self.output
             .clone()
             .unwrap_or_else(|| root.join(Self::DEFAULT_FOLDER))
-    }
-
-    fn modules(
-        &self,
-        project: Option<LocatedProject>,
-        terminal: &mut Terminal,
-    ) -> Result<DocumentedModules, ExitStatus> {
-        match self.scope {
-            DocScope::Project => Self::project_modules(
-                project.ok_or_else(LocatedProject::report_no_path)?,
-                terminal,
-            ),
-            DocScope::Prelude => Ok(DocumentedModules::new(
-                ProgramFile::beside_itself(PathBuf::from(Self::ENTRY)),
-                DocumentedModules::public_prelude(),
-            )),
-        }
-    }
-
-    fn project_modules(
-        project: LocatedProject,
-        terminal: &mut Terminal,
-    ) -> Result<DocumentedModules, ExitStatus> {
-        let file = project.file_within(project.source_root().join(Self::ENTRY));
-        let modules = SourceWalk::of(&project).module_paths(terminal)?;
-        Ok(DocumentedModules::new(file, modules))
     }
 }

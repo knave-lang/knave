@@ -1,0 +1,6 @@
+(enum side left right)
+
+(enum hold (front side) (back side))
+
+(defn grip (h)
+  (match h ((hold/front side/left) 1)))

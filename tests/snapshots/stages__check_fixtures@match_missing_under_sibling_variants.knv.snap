@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_missing_under_sibling_variants.knv
+---
+error[L0433]: non-exhaustive `match`
+ --> check/match_missing_under_sibling_variants.knv:6:3
+  |
+6 |   (match h ((hold/front side/left) 1)))
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
+  |
+  = note: missing 3 cases: `(front right)`, `(back left)`, `(back right)`
+  = help: add an arm for each missing case

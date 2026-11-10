@@ -27,9 +27,9 @@ use crate::ownership::StructUpdateOrder;
 use crate::reader::{Number, NumberValue};
 use crate::source::Span;
 use crate::types::{
-    Borrow, Bound, ClosureKind, Collection, FieldOrder, GenericId, ReturnedValues, Type,
-    TypeChecker, TypedArgument, TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl,
-    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
+    Borrow, Bound, ClosureKind, Collection, FieldOrder, GenericId, Type, TypeChecker,
+    TypedArgument, TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
+    TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
     TypedProgram, TypedStructExpr, VariantPayload,
 };
 
@@ -180,7 +180,6 @@ pub struct ExpressionEmitter<'a> {
     open_literals: OpenLiterals,
     enclosing_lifetime: Option<String>,
     result_parameters: FxHashSet<BindingId>,
-    returned_closures: FxHashSet<*const TypedExpr>,
     tail_loop: Option<TailLoop>,
     loop_exit: LoopExit,
     emission: EmissionWork,
@@ -217,7 +216,6 @@ impl<'a> ExpressionEmitter<'a> {
             open_literals: OpenLiterals::default(),
             enclosing_lifetime: None,
             result_parameters: FxHashSet::default(),
-            returned_closures: FxHashSet::default(),
             tail_loop: None,
             loop_exit: LoopExit::Return,
             emission: EmissionWork::default(),
@@ -345,18 +343,29 @@ impl<'a> ExpressionEmitter<'a> {
         if mutable { "mut " } else { "" }
     }
 
-    pub fn function_body(&mut self, lambda: &TypedLambda) -> Vec<Fragment> {
-        self.returned_closures = ReturnedValues::new(self.program)
-            .closures(lambda)
-            .into_iter()
-            .map(std::ptr::from_ref)
-            .collect();
+    pub fn function_body(&mut self, block: &TypedBlock) -> Vec<Fragment> {
         if self.tail_loop.is_some() {
             let mut fragments = vec![Fragment::Newline];
-            fragments.extend(self.loop_expression(&lambda.body, LoopExit::Return));
+            fragments.extend(self.loop_expression(block, LoopExit::Return));
             return fragments;
         }
-        self.statements(&lambda.body)
+        let Some((TypedBodyItem::Expr(tail), leading)) = block.items.split_last() else {
+            return self.statements(block);
+        };
+        let TypedExprKind::Fn(lambda) = &tail.kind else {
+            return self.statements(block);
+        };
+        let mut fragments = self.leading_statements(leading);
+        fragments.push(Fragment::Newline);
+        fragments.extend(
+            Code::joined(
+                vec![Code::atom("move "), self.closure(lambda, &tail.ty)],
+                Precedence::Operator,
+            )
+            .spanned(tail.span)
+            .fragments,
+        );
+        fragments
     }
 
     pub fn statements(&mut self, block: &TypedBlock) -> Vec<Fragment> {
@@ -427,7 +436,7 @@ impl<'a> ExpressionEmitter<'a> {
         self.emission.emitted_expressions += 1;
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, expr, context),
-            TypedExprKind::Fn(lambda) => self.closure_value(lambda, expr),
+            TypedExprKind::Fn(lambda) => self.closure(lambda, &expr.ty),
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments, expr.span),
             TypedExprKind::Recur(_) => {
                 unreachable!("expansion allows `recur` only in tail position")
@@ -2575,15 +2584,6 @@ impl<'a> ExpressionEmitter<'a> {
             parts.push(argument);
         }
         parts
-    }
-
-    fn closure_value(&mut self, lambda: &TypedLambda, expr: &TypedExpr) -> Code {
-        let closure = self.closure(lambda, &expr.ty);
-        if self.returned_closures.contains(&std::ptr::from_ref(expr)) {
-            Code::joined(vec![Code::atom("move "), closure], Precedence::Operator)
-        } else {
-            closure
-        }
     }
 
     fn closure(&mut self, lambda: &TypedLambda, ty: &Type) -> Code {

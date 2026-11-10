@@ -72,18 +72,18 @@ fn make_mover() -> impl FnOnce() -> String {
 }
 
 fn choose(flag: bool) -> impl Fn() -> i64 {
-    if flag { move || 1 } else { move || 2 }
+    if flag { || 1 } else { || 2 }
 }
 
 fn choose_by(value: i64) -> impl Fn() -> i64 {
     match value {
-        0 => move || 1,
-        _ => move || 2,
+        0 => || 1,
+        _ => || 2,
     }
 }
 
 fn choose_block() -> impl Fn() -> i64 {
-    move || 3
+    || 3
 }
 
 fn main() {

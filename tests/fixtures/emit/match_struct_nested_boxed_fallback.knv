@@ -1,0 +1,19 @@
+(enum (tree a)
+  (node (tree a) a (tree a))
+  leaf)
+
+(defstruct holder
+  :tree (tree i64))
+
+(defn held-value (holder)
+  (match holder
+    ((holder (tree/node (tree/node _ value _) _ _)) value)
+    ((holder (tree/node tree/leaf value _)) value)
+    ((holder tree/leaf) 0)))
+
+(defn main ()
+  (println (held-value (->holder :tree (tree/node
+                                         (tree/node tree/leaf 7 tree/leaf)
+                                         1 tree/leaf))))
+  (println (held-value (->holder :tree (tree/node tree/leaf 2 tree/leaf))))
+  (println (held-value (->holder :tree tree/leaf))))

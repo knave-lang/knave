@@ -68,10 +68,22 @@ impl DocumentedModules {
     }
 
     fn types(&self, terminal: &mut Terminal) -> Result<Vec<TypedName>, ExitStatus> {
+        let mut types = Vec::new();
+        for module in &self.written {
+            types.extend(self.module_types(terminal, module)?);
+        }
+        Ok(types)
+    }
+
+    fn module_types(
+        &self,
+        terminal: &mut Terminal,
+        module: &str,
+    ) -> Result<Vec<TypedName>, ExitStatus> {
         let entry = terminal.add_empty_source(self.file.path());
         let (program, named) = terminal.within_session(&self.file, entry, |mut session| {
-            self.load_written(&mut session)?;
-            let named = self.named_bindings(&mut session)?;
+            Self::load(&mut session, module)?;
+            let named = Self::named_bindings(&mut session, module)?;
             let mut program = session.finish()?;
             for name in &named {
                 program.check_also(name.binding);
@@ -86,7 +98,7 @@ impl DocumentedModules {
         program: &Program,
         named: Vec<NamedBinding>,
     ) -> Result<Vec<TypedName>, ExitStatus> {
-        let typed = terminal.check_expanded(program)?;
+        let typed = terminal.check_showing(program, |_| false)?;
         Ok(named
             .into_iter()
             .filter_map(|name| {
@@ -102,30 +114,34 @@ impl DocumentedModules {
 
     fn load_written(&self, session: &mut ExpansionSession<'_>) -> Result<(), Diagnostics> {
         for module in &self.written {
-            let form = Self::read(session, Self::LOADING_FORM)?;
-            session.expression_in(&ModulePath::new(module.as_str()), form)?;
+            Self::load(session, module)?;
         }
         Ok(())
     }
 
+    fn load(session: &mut ExpansionSession<'_>, module: &str) -> Result<(), Diagnostics> {
+        let form = Self::read(session, Self::LOADING_FORM)?;
+        session.expression_in(&ModulePath::new(module), form)?;
+        Ok(())
+    }
+
     fn named_bindings(
-        &self,
         session: &mut ExpansionSession<'_>,
+        module: &str,
     ) -> Result<Vec<NamedBinding>, Diagnostics> {
-        let mut named = Vec::new();
-        for module in &self.written {
-            let call = format!("({} {module})", Self::NAMES_MACRO);
-            let names = Self::expand(session, &call)?;
-            let text = ExpandedPage::literal(&names).unwrap_or_default();
-            named.extend(text.lines().filter_map(|name| {
+        let call = format!("({} {module})", Self::NAMES_MACRO);
+        let names = Self::expand(session, &call)?;
+        let text = ExpandedPage::literal(&names).unwrap_or_default();
+        Ok(text
+            .lines()
+            .filter_map(|name| {
                 Some(NamedBinding {
-                    module: module.clone(),
+                    module: module.to_string(),
                     name: name.to_string(),
                     binding: session.module_value(module, name)?,
                 })
-            }));
-        }
-        Ok(named)
+            })
+            .collect())
     }
 
     fn page_call(&self, module: &str, types: &[TypedName]) -> String {

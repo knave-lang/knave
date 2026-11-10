@@ -2166,6 +2166,28 @@ fn doc_write_gives_each_page_the_type_of_its_own_name() {
 }
 
 #[test]
+fn doc_write_shows_the_type_a_module_gives_its_own_name() {
+    let sandbox = Sandbox::new("doc_write_own_type")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file(
+            "src/main.knv",
+            "(use geometry/area square-area)\n\n(defn main () (println (square-area 2)))\n",
+        )
+        .with_file(
+            "src/geometry/area.knv",
+            "(export square-area)\n\n(defn square-area (side) \"Squares a side.\" (* side side))\n",
+        );
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert!(
+        sandbox
+            .contents("doc/geometry/area.md")
+            .contains("\n(type square-area (where ((a number)) (fn (a) a)))\n```")
+    );
+}
+
+#[test]
 fn doc_write_outside_a_project_is_a_usage_error() {
     let sandbox = Sandbox::new("doc_write_no_project");
     sandbox.compiler(&["doc", "--write"]).assert_exit_code(2);

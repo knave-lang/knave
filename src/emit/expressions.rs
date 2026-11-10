@@ -530,7 +530,7 @@ impl<'a> ExpressionEmitter<'a> {
         let TypedExprKind::Leaf(TypedLeaf::Local(binding)) = &value.kind else {
             return false;
         };
-        program.borrowed_parameters.contains(binding)
+        program.parameter_modes.borrows(*binding)
             && matches!(
                 (kind, &value.ty),
                 (ReferenceKind::Shared, Type::Ref(_, _))

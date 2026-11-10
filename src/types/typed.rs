@@ -5,6 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload};
+use super::parameter_modes::ParameterModes;
 use super::rust_types::RustTypeTable;
 use super::structs::StructTable;
 use super::structural::{StructuralTrait, StructuralUses};
@@ -446,8 +447,7 @@ pub struct TypedProgram {
     pub template_borrows: TemplateBorrows,
     pub template_clauses: TemplateClauses,
     pub pending_mode_checks: Vec<PendingModeCheck>,
-    pub borrowed_parameters: FxHashSet<BindingId>,
-    pub changed_parameters: FxHashSet<BindingId>,
+    pub parameter_modes: ParameterModes,
     pub stored_function_parameters: FxHashSet<BindingId>,
     pub escaping_lambdas: FxHashSet<BindingId>,
     pub borrowing_lambdas: FxHashMap<BindingId, FxHashSet<BindingId>>,

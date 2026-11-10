@@ -52,7 +52,8 @@ use rustc_hash::FxHashMap;
 use crate::core::{BindingArena, BindingId};
 use crate::diagnostic::Diagnostics;
 use crate::types::{
-    CopyRules, InferredCopies, PendingModeCheck, Pipelines, TypedExprKind, TypedProgram,
+    CopyRules, InferredCopies, ParameterModes, PendingModeCheck, Pipelines, TypedExprKind,
+    TypedProgram,
 };
 use aliased_changes::AliasedChanges;
 use borrowing_lambdas::BorrowingLambdas;
@@ -95,16 +96,7 @@ impl OwnershipChecker {
             ),
         )
         .run();
-        program.borrowed_parameters = modes
-            .iter()
-            .filter(|(_, mode)| matches!(mode, ParamMode::Ref | ParamMode::Mut))
-            .map(|(binding, _)| *binding)
-            .collect();
-        program.changed_parameters = modes
-            .iter()
-            .filter(|(_, mode)| **mode == ParamMode::Mut)
-            .map(|(binding, _)| *binding)
-            .collect();
+        program.parameter_modes = ParameterModes::new(modes.clone());
         let mut diagnostics = Diagnostics::default();
         Self::check_written_modes(
             &program.pending_mode_checks,

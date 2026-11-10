@@ -2,27 +2,11 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use crate::core::{BindingId, ReferenceKind};
+use crate::core::BindingId;
+pub use crate::types::ParamMode;
 use crate::types::{
     CopyRules, Type, TypedBinder, TypedExpr, TypedExprKind, TypedLambda, TypedProgram,
 };
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ParamMode {
-    Copy,
-    Ref,
-    Mut,
-    Own,
-}
-
-impl ParamMode {
-    pub fn accepts(self, kind: ReferenceKind) -> bool {
-        matches!(
-            (kind, self),
-            (ReferenceKind::Shared, ParamMode::Ref) | (ReferenceKind::Mutable, ParamMode::Mut)
-        )
-    }
-}
 
 pub struct ParamSlot {
     pub binding: BindingId,

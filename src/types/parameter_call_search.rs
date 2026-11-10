@@ -25,6 +25,10 @@ impl<'m> CalledParameters<'m> {
         Self { modules, bindings }
     }
 
+    pub(super) fn function_name(&self, function: BindingId) -> &'m str {
+        self.bindings.get(function).name()
+    }
+
     pub(super) fn first_call_of(
         &self,
         function: BindingId,

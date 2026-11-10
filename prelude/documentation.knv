@@ -189,14 +189,19 @@
 (def home-of
   (fn (page term)
     (local defining
-      (items-where (fn (linked)
-                     (holds-binding? (linked-definitions linked) term))
+      (items-where (fn (linked) (defines-export? linked term))
                    (page-links page)))
     (if (empty? defining)
       (take-first (items-where (fn (linked)
                                  (holds-binding? (linked-exports linked) term))
                                (page-links page)))
       (take-first defining))))
+
+(def defines-export?
+  (fn (linked term)
+    (if (holds-binding? (linked-definitions linked) term)
+      (holds-binding? (linked-exports linked) term)
+      false)))
 
 (def take-first
   (fn (items)

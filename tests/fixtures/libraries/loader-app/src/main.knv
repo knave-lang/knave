@@ -1,0 +1,3 @@
+(use loader load-text)
+
+(defn main () (println "x"))

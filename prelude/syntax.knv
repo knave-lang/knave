@@ -933,7 +933,7 @@
 
 (def deftest
   (macro (form)
-    (call-in-module (quote prelude/test) "deftest" form)))
+    (call-in-module (quote prelude/test) "define-test" form)))
 
 (header-shape (deftest name) :docstring)
 
@@ -952,7 +952,7 @@
 
 (def assert
   (macro (form)
-    (call-in-module (quote prelude/test) "assert" form)))
+    (call-in-module (quote prelude/test) "assertion" form)))
 
 (document (assert form)
   "Ends the test with a failure unless `form` is true.
@@ -968,7 +968,7 @@
 
 (def run-tests
   (macro (form)
-    (call-in-module (quote prelude/test) "run-tests" form)))
+    (call-in-module (quote prelude/test) "test-runner" form)))
 
 (document (run-tests :marker marker)
   "Runs the tests and docstring examples of the project's modules, as the
@@ -978,4 +978,4 @@
   (fn (module name form)
     (template ((unquote (located (first form)
                                  (symbol (require-module module) name)))
-               (splice (rest form))))))
+               (unquote form)))))

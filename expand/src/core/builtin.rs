@@ -146,6 +146,10 @@ impl Builtin {
         (Builtin::ProjectModules, "project-modules"),
     ];
 
+    pub fn is_prelude_only(self) -> bool {
+        matches!(self, Builtin::PinnedAt | Builtin::RequireModule)
+    }
+
     pub fn all() -> impl Iterator<Item = Builtin> {
         Self::NAMES.iter().map(|(builtin, _)| *builtin)
     }

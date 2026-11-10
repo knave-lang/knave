@@ -64,14 +64,15 @@ impl<'a> UnlentParameters<'a> {
             .filter(|param| self.program.parameter_modes.changes(param.binding))
             .filter(|param| self.result_cannot_hold(param))
             .collect();
-        if changed.is_empty() || HeldBorrows::new(self.program).in_returned_closures(self.lambda) {
+        if changed.is_empty() {
             return Vec::new();
         }
+        let held = HeldBorrows::new(self.program).kept_parameters(self.lambda);
         let flowing = shared_flows();
         changed
             .into_iter()
             .map(|param| param.binding)
-            .filter(|binding| !flowing.contains(binding))
+            .filter(|binding| !held.contains(binding) && !flowing.contains(binding))
             .collect()
     }
 

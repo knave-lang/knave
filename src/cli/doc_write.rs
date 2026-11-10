@@ -2,10 +2,10 @@ use std::path::{Path, PathBuf};
 
 use super::doc_folder::DocFolder;
 use super::doc_pages::DocumentedModules;
-use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
+use super::source_walk::SourceWalk;
 use super::terminal::Terminal;
 
 pub struct DocWriteCommand {
@@ -36,7 +36,7 @@ impl DocWriteCommand {
         let project =
             LocatedProject::search_from(Path::new(Terminal::WORKING_DIRECTORY), terminal)?;
         let folder = self.folder(project.as_ref());
-        let modules = self.modules(project)?;
+        let modules = self.modules(project, terminal)?;
         let folder = DocFolder::new(folder).writable()?;
         let pages = modules.pages(terminal)?;
         Ok(folder.replace_pages(&pages))
@@ -49,11 +49,16 @@ impl DocWriteCommand {
             .unwrap_or_else(|| root.join(Self::DEFAULT_FOLDER))
     }
 
-    fn modules(&self, project: Option<LocatedProject>) -> Result<DocumentedModules, ExitStatus> {
+    fn modules(
+        &self,
+        project: Option<LocatedProject>,
+        terminal: &mut Terminal,
+    ) -> Result<DocumentedModules, ExitStatus> {
         match self.scope {
-            DocScope::Project => {
-                Self::project_modules(project.ok_or_else(LocatedProject::report_no_path)?)
-            }
+            DocScope::Project => Self::project_modules(
+                project.ok_or_else(LocatedProject::report_no_path)?,
+                terminal,
+            ),
             DocScope::Prelude => Ok(DocumentedModules::new(
                 ProgramFile::beside_itself(PathBuf::from(Self::ENTRY)),
                 DocumentedModules::public_prelude(),
@@ -61,18 +66,12 @@ impl DocWriteCommand {
         }
     }
 
-    fn project_modules(project: LocatedProject) -> Result<DocumentedModules, ExitStatus> {
+    fn project_modules(
+        project: LocatedProject,
+        terminal: &mut Terminal,
+    ) -> Result<DocumentedModules, ExitStatus> {
         let file = project.file_within(project.source_root().join(Self::ENTRY));
-        let tree = EntryTree::of_tests(Self::walked_root(&project), Some(project));
-        Ok(DocumentedModules::new(file, tree.module_paths()?))
-    }
-
-    fn walked_root(project: &LocatedProject) -> PathBuf {
-        let source_root = project.source_root();
-        if source_root.as_os_str().is_empty() {
-            PathBuf::from(Terminal::WORKING_DIRECTORY)
-        } else {
-            source_root
-        }
+        let modules = SourceWalk::of(&project).module_paths(terminal)?;
+        Ok(DocumentedModules::new(file, modules))
     }
 }

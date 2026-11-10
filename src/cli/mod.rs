@@ -52,6 +52,7 @@ mod remove;
 mod repl;
 mod run;
 mod skipped_directory;
+mod source_walk;
 mod stage_work;
 mod standard_error;
 mod streamed_program;

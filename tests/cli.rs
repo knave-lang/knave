@@ -2070,6 +2070,75 @@ fn doc_write_reads_a_project_whose_entry_sits_at_its_root() {
 }
 
 #[test]
+fn doc_write_leaves_out_the_tasks_and_tests_folders() {
+    let sandbox = Sandbox::new("doc_write_tasks_and_tests")
+        .with_file(&Language::project_file_name(), ROOT_ENTRY_PROJECT)
+        .with_file("main.knv", ROOT_ENTRY)
+        .with_file("tasks/build.knv", HELPER_TASK)
+        .with_file("tests/build.knv", HELPER_TASK_TEST);
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert_eq!(sandbox.files_under("doc"), [".knave-doc", "main.md"]);
+}
+
+#[test]
+fn doc_write_stays_inside_the_source_root() {
+    let sandbox = Sandbox::with_documented_project("doc_write_outside_link")
+        .with_file("elsewhere/far.knv", "(export far)\n\n(def far 1)\n");
+    std::os::unix::fs::symlink(
+        sandbox.directory.join("elsewhere"),
+        sandbox.directory.join("src/linked"),
+    )
+    .expect("the sandbox makes links");
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.files_under("doc"),
+        [".knave-doc", "geometry/area.md", "main.md"]
+    );
+}
+
+#[test]
+fn doc_write_reads_only_source_files_outside_hidden_folders() {
+    let sandbox = Sandbox::with_documented_project("doc_write_hidden")
+        .with_file("src/.cache/old.knv", "(export old)\n\n(def old 1)\n")
+        .with_file("src/notes.txt", "(export notes)\n");
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.files_under("doc"),
+        [".knave-doc", "geometry/area.md", "main.md"]
+    );
+}
+
+#[test]
+fn doc_write_refuses_a_file_that_cannot_be_a_module() {
+    let sandbox =
+        Sandbox::with_documented_project("doc_write_unnamable").with_file("src/odd name.knv", "");
+    let write = sandbox.compiler(&["doc", "--write"]);
+    assert_eq!(
+        write.assert_exit_code(2).stderr(),
+        "error: `src/odd name.knv` cannot be a module, because a module path cannot hold a space, a parenthesis, a quote or a semicolon\nhelp: rename the file\n"
+    );
+}
+
+#[test]
+fn doc_write_refuses_a_file_that_takes_a_compiler_module() {
+    let sandbox = Sandbox::with_documented_project("doc_write_compiler_module")
+        .with_file("src/prelude/extra.knv", "");
+    let write = sandbox.compiler(&["doc", "--write"]);
+    assert!(
+        write.assert_exit_code(1).stderr().contains("error[L0257]"),
+        "{}",
+        write.stderr()
+    );
+    assert!(!sandbox.directory.join("doc").exists());
+}
+
+#[test]
 fn doc_write_outside_a_project_is_a_usage_error() {
     let sandbox = Sandbox::new("doc_write_no_project");
     sandbox.compiler(&["doc", "--write"]).assert_exit_code(2);

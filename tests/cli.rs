@@ -64,6 +64,13 @@ const BOUND_ENTRY: &str = "(use other/person person)\n\n(rust-trait same \"std::
 
 const TRAIT_SHARED_VECTOR: &str = "(struct odometer (offset i64))\n\n(trait mileage\n  (first-reading (fn ((ref self) (ref (vec i64))) i64)))\n\n(impl mileage odometer\n  (first-reading (o readings) (+ (field o offset) (at readings 0))))\n\n(defn main ()\n  (println (first-reading (new odometer (offset 10)) (vec 1200))))\n";
 const DOCUMENTED_TWICE: &str = "(defn twice (x)\n  \"Doubles a number.\n\n  Handy for widgets.\"\n  (* 2 x))\n\n(defn main () (println (twice 2)))\n";
+const DOCUMENTED_PROJECT: &str = "(project demo)\n";
+const DOCUMENTED_MAIN: &str =
+    "(module \"Prints a greeting.\")\n\n(export main)\n\n(defn main () (println \"hi\"))\n";
+const DOCUMENTED_AREA: &str = "(export area)\n\n(defn area (width height)\n  \"Multiplies two sides, as [option] does not.\"\n  (* width height))\n";
+const AREA_SECTION: &str = "<a id=\"area\"></a>\n\n## `area`\n\n```lisp\n(defn area (width height))\n(type area (where ((a number)) (fn (a a) a)))\n```\n\nMultiplies two sides, as [option](https://knave-lang.org/docs/prelude/types/#option) does not.\n";
+const UNTYPED_SHAPES: &str = "(export point twice)\n\n(defstruct point \"A point.\" :x i64)\n\n(defrule twice \"Writes a form twice.\" ((x) (do x x)))\n";
+const UNTYPED_SHAPES_PAGE: &str = "# shapes\n\n<a id=\"point\"></a>\n\n## `point`\n\n```lisp\n(defstruct point)\n```\n\nA point.\n\n<a id=\"twice\"></a>\n\n## `twice`\n\n```lisp\n(defrule twice)\n```\n\nWrites a form twice.\n";
 const GEOMETRY: &str = "(export area)\n\n(defn area (width height) \"Multiplies a width by a height.\" (* width height))\n";
 const GEOMETRY_ENTRY: &str = "(use geometry area)\n\n(defn main () (println (area 3 4)))\n";
 const DOCUMENTED_GEOMETRY: &str = "(module \"Shapes on a grid.\")\n\n(export area perimeter)\n\n(defn area (width height)\n  \"Multiplies two sides.\"\n  (* width height))\n\n(defn perimeter (width height)\n  (* 2 (+ width height)))\n\n(defn helper (x)\n  \"Not exported.\"\n  x)\n";
@@ -270,8 +277,39 @@ exit 101
         self
     }
 
+    fn without_file(self, name: &str) -> Self {
+        fs::remove_file(self.directory.join(name)).expect("the sandbox removes files");
+        self
+    }
+
+    fn files_under(&self, directory: &str) -> Vec<String> {
+        let root = self.directory.join(directory);
+        let mut pending = vec![root.clone()];
+        let mut files = Vec::new();
+        while let Some(folder) = pending.pop() {
+            for entry in fs::read_dir(&folder).expect("the sandbox folder is readable") {
+                let path = entry.expect("the sandbox folder lists").path();
+                if path.is_dir() {
+                    pending.push(path);
+                } else {
+                    let relative = path.strip_prefix(&root).expect("the file is inside");
+                    files.push(relative.display().to_string());
+                }
+            }
+        }
+        files.sort();
+        files
+    }
+
     fn contents(&self, name: &str) -> String {
         fs::read_to_string(self.directory.join(name)).expect("the sandbox file is readable")
+    }
+
+    fn with_documented_project(test_name: &str) -> Self {
+        Self::new(test_name)
+            .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+            .with_file("src/main.knv", DOCUMENTED_MAIN)
+            .with_file("src/geometry/area.knv", DOCUMENTED_AREA)
     }
 
     fn with_unbound_names(self, name: &str, count: usize) -> Self {
@@ -1863,6 +1901,121 @@ fn doc_dir_lists_the_names_of_the_entry_module() {
     let sandbox = Sandbox::new("doc_dir_entry").with_file("main.knv", DOCUMENTED_TWICE);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(dir)"]);
     assert_eq!(doc.assert_exit_code(0).stdout(), "(dir)\n\nmain twice\n");
+}
+
+#[test]
+fn doc_write_writes_a_page_per_module_and_the_marker() {
+    let sandbox = Sandbox::with_documented_project("doc_write_pages");
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.files_under("doc"),
+        [".knave-doc", "geometry/area.md", "main.md"]
+    );
+    assert_eq!(
+        sandbox.contents("doc/geometry/area.md"),
+        format!("# geometry/area\n\n{AREA_SECTION}")
+    );
+}
+
+#[test]
+fn doc_write_removes_the_page_of_a_deleted_module() {
+    let sandbox = Sandbox::with_documented_project("doc_write_deleted");
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    let sandbox = sandbox.without_file("src/geometry/area.knv");
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert_eq!(sandbox.files_under("doc"), [".knave-doc", "main.md"]);
+}
+
+#[test]
+fn doc_write_refuses_a_folder_that_holds_other_files() {
+    let sandbox = Sandbox::with_documented_project("doc_write_foreign")
+        .with_file("site/content/install.md", "kept\n");
+    let write = sandbox.compiler(&["doc", "--write", "--output", "site/content"]);
+    assert_eq!(
+        write.assert_exit_code(2).stderr(),
+        "error: `site/content` holds files that `knave doc --write` did not write\nhelp: name an empty folder with `--output`, or empty `site/content`\n"
+    );
+    assert_eq!(sandbox.files_under("site/content"), ["install.md"]);
+    assert_eq!(sandbox.contents("site/content/install.md"), "kept\n");
+}
+
+#[test]
+fn doc_write_writes_into_an_empty_output_folder() {
+    let sandbox = Sandbox::with_documented_project("doc_write_empty_output");
+    fs::create_dir_all(sandbox.directory.join("pages")).expect("the sandbox makes folders");
+    sandbox
+        .compiler(&["doc", "--write", "--output", "pages"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.files_under("pages"),
+        [".knave-doc", "geometry/area.md", "main.md"]
+    );
+}
+
+#[test]
+fn doc_write_reports_an_output_that_is_a_file() {
+    let sandbox = Sandbox::with_documented_project("doc_write_file_output");
+    let write = sandbox.compiler(&["doc", "--write", "--output", "project.knv"]);
+    assert!(
+        write
+            .assert_exit_code(2)
+            .stderr()
+            .starts_with("error: cannot write the pages into `project.knv`: "),
+        "{}",
+        write.stderr()
+    );
+}
+
+#[test]
+fn doc_write_reports_a_folder_it_cannot_write() {
+    let sandbox = Sandbox::with_documented_project("doc_write_read_only");
+    let folder = sandbox.directory.join("pages");
+    fs::create_dir_all(&folder).expect("the sandbox makes folders");
+    fs::set_permissions(&folder, fs::Permissions::from_mode(Sandbox::READ_ONLY))
+        .expect("the sandbox marks folders read-only");
+    let write = sandbox.compiler(&["doc", "--write", "--output", "pages"]);
+    fs::set_permissions(&folder, fs::Permissions::from_mode(Sandbox::EXECUTABLE))
+        .expect("the sandbox restores the folder");
+    assert!(
+        write
+            .assert_exit_code(2)
+            .stderr()
+            .starts_with("error: cannot write the pages into `pages`: "),
+        "{}",
+        write.stderr()
+    );
+}
+
+#[test]
+fn doc_write_shows_no_type_for_a_macro_or_a_struct() {
+    let sandbox = Sandbox::with_documented_project("doc_write_untyped")
+        .with_file("src/shapes.knv", UNTYPED_SHAPES);
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert_eq!(sandbox.contents("doc/shapes.md"), UNTYPED_SHAPES_PAGE);
+}
+
+#[test]
+fn doc_write_outside_a_project_is_a_usage_error() {
+    let sandbox = Sandbox::new("doc_write_no_project");
+    sandbox.compiler(&["doc", "--write"]).assert_exit_code(2);
+}
+
+#[test]
+fn doc_write_takes_no_term() {
+    let sandbox = Sandbox::new("doc_write_term");
+    let write = sandbox.compiler(&["doc", "--write", "defn"]);
+    assert_eq!(
+        write.assert_exit_code(2).stderr().lines().next(),
+        Some("error: the argument '--write' cannot be used with '[TERM]'")
+    );
 }
 
 #[test]

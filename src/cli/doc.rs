@@ -206,7 +206,7 @@ impl<'t> DocLookup<'t> {
     }
 }
 
-struct ExpandedPage {
+pub struct ExpandedPage {
     header: Expr,
     body: Expr,
 }
@@ -242,7 +242,7 @@ impl ExpandedPage {
         [Self::literal(&self.header), Self::literal(&self.body)]
     }
 
-    fn string(expanded: &Expr, lookup: &str) -> Result<String, ExitStatus> {
+    pub fn string(expanded: &Expr, lookup: &str) -> Result<String, ExitStatus> {
         match Self::literal(expanded) {
             Some(text) => Ok(text.to_string()),
             None => {
@@ -254,7 +254,7 @@ impl ExpandedPage {
         }
     }
 
-    fn literal(expanded: &Expr) -> Option<&str> {
+    pub fn literal(expanded: &Expr) -> Option<&str> {
         match expanded.kind() {
             ExprKind::Leaf(Leaf::Literal(Literal::String(text))) => Some(text),
             _ => None,

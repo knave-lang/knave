@@ -1,0 +1,63 @@
+use std::convert::Infallible;
+use std::path::PathBuf;
+
+use clap::Args;
+
+use super::doc::{DocCommand, DocEnvironment, DocPage};
+use super::doc_write::DocWriteCommand;
+use super::exit_status::ExitStatus;
+use super::term_parser::{SurplusParser, TermParser};
+use super::terminal::Terminal;
+
+#[derive(Args)]
+pub struct DocArguments {
+    #[arg(
+        allow_hyphen_values = true,
+        value_parser = TermParser,
+        required_unless_present_any = ["separated_term", "write"]
+    )]
+    term: Option<String>,
+    #[arg(hide = true, value_parser = SurplusParser)]
+    surplus: Vec<Infallible>,
+    #[arg(last = true, hide = true, value_name = "TERM", conflicts_with = "term")]
+    separated_term: Option<String>,
+    #[arg(long)]
+    file: Option<PathBuf>,
+    #[arg(long, help = "Print the inferred type above the page")]
+    types: bool,
+    #[arg(
+        long,
+        conflicts_with_all = ["term", "separated_term", "file", "types"],
+        help = "Write a Markdown page per module of the project into doc/"
+    )]
+    write: bool,
+    #[arg(
+        long,
+        requires = "write",
+        value_name = "DIRECTORY",
+        help = "The folder that --write writes into [default: doc/ at the project root]"
+    )]
+    output: Option<PathBuf>,
+}
+
+impl DocArguments {
+    pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
+        if self.write {
+            return DocWriteCommand::new(self.output).run(terminal);
+        }
+        let page = self.page();
+        let term = self
+            .term
+            .or(self.separated_term)
+            .expect("clap requires one term");
+        DocCommand::new(DocEnvironment::new(self.file), term, page).run(terminal)
+    }
+
+    fn page(&self) -> DocPage {
+        if self.types {
+            DocPage::Typed
+        } else {
+            DocPage::Written
+        }
+    }
+}

@@ -7,14 +7,17 @@ mod coverage;
 mod crap;
 mod emitted_lints;
 mod failure;
-mod file_size;
 mod functions;
 mod gate;
 mod instrumented_tests;
 mod language;
 mod lcov;
 mod production_lines;
+mod ratchet;
 mod release;
+mod source_file;
+mod test_code;
+mod test_modules;
 mod test_shard;
 mod workspace;
 

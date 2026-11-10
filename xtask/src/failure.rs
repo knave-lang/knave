@@ -48,8 +48,12 @@ impl TaskFailure {
 
     pub fn malformed_baseline(file: &str, line: &str) -> Self {
         Self::new(format!(
-            "{file} has a malformed line {line:?}: expected <file> <production lines>"
+            "{file} has a malformed line {line:?}: expected <subject> <count>"
         ))
+    }
+
+    pub fn repeated_baseline_entry(file: &str, line: &str) -> Self {
+        Self::new(format!("{file} lists a subject twice, again in {line:?}"))
     }
 
     pub fn constant_missing(path: &Path, owner: &str, name: &str) -> Self {

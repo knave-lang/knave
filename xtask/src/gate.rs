@@ -6,11 +6,13 @@ use crate::checks::{BadgeFreshness, Check, CleanEmittedRust, CoverageFloor, Crap
 use crate::crap::ScoredFunction;
 use crate::emitted_lints::{EmittedLints, LintedProgram};
 use crate::failure::TaskFailure;
-use crate::file_size::{FileSizeLimit, ProductionLineBaseline, ProductionLineCounts};
 use crate::functions::{SourceFunction, SourceTree};
 use crate::instrumented_tests::InstrumentedTests;
 use crate::language::LanguageSource;
 use crate::lcov::LcovReport;
+use crate::production_lines::ProductionLineCensus;
+use crate::ratchet::{Baseline, Limit, Ratchet, Unit};
+use crate::source_file::SourceFile;
 use crate::workspace::CargoWorkspace;
 
 pub struct QualityGate {
@@ -27,8 +29,16 @@ impl QualityGate {
     const MINIMUM_LINE_COVERAGE: f64 = 99.0;
     const MAXIMUM_CRAP: f64 = 8.0;
     const MAXIMUM_PRODUCTION_LINES: usize = 500;
-    const PRODUCTION_LINE_BASELINE: &str = "xtask/baselines/production_lines.txt";
-    const TOOLING_SOURCES: &str = "xtask/src";
+    const PRODUCTION_LINES: Limit = Limit {
+        baseline: "xtask/baselines/production_lines.txt",
+        maximum: Self::MAXIMUM_PRODUCTION_LINES,
+        subjects: "Rust files",
+        unit: Unit {
+            one: "production line",
+            many: "production lines",
+        },
+        advice: "Split it by responsibility.",
+    };
     const README: &str = "README.md";
     const EXTENSION_CONSTANT: &str = "EXTENSION";
 
@@ -54,16 +64,15 @@ impl QualityGate {
     }
 
     pub fn run_file_sizes(&self) -> Result<ExitCode, TaskFailure> {
-        let measured = self.production_lines()?;
-        let baseline = ProductionLineBaseline::read(&self.root, Self::PRODUCTION_LINE_BASELINE)?;
-        let limit = FileSizeLimit::new(Self::MAXIMUM_PRODUCTION_LINES, measured, baseline);
-        Ok(Self::conclude(&[&limit]))
+        let measured = ProductionLineCensus::measure(&self.production_sources()?)?;
+        let baseline = Baseline::read(&self.root, Self::PRODUCTION_LINES.baseline)?;
+        let ratchet = Ratchet::new(Self::PRODUCTION_LINES, measured, baseline);
+        Ok(Self::conclude(&[&ratchet]))
     }
 
-    fn production_lines(&self) -> Result<ProductionLineCounts, TaskFailure> {
-        let mut directories = CargoWorkspace::read(&self.root)?.source_directories();
-        directories.insert(self.root.join(Self::TOOLING_SOURCES));
-        SourceTree::new(&self.root, directories).production_lines()
+    fn production_sources(&self) -> Result<Vec<SourceFile>, TaskFailure> {
+        let directories = CargoWorkspace::read(&self.root)?.source_directories_with_tooling();
+        SourceTree::new(&self.root, directories).files()
     }
 
     fn measure_everything(&self) -> Result<(CoverageEvidence, Vec<LintedProgram>), TaskFailure> {
@@ -144,6 +153,7 @@ mod tests {
     use crate::badge::CoverageBadge;
     use crate::checks::Check;
     use crate::lcov::LcovReport;
+    use crate::workspace::WorkspaceFixture;
 
     struct FixedCheck {
         passes: bool,
@@ -172,6 +182,20 @@ mod tests {
                 functions: Vec::new(),
                 readme,
             }
+        }
+    }
+
+    #[test]
+    fn file_sizes_measure_each_crate_and_the_tooling() {
+        let gate = QualityGate::new(WorkspaceFixture::repository_root());
+        let sources = gate.production_sources().expect("the repository reads");
+        for directory in ["src/", "expand/src/", "xtask/src/"] {
+            assert!(
+                sources
+                    .iter()
+                    .any(|source| source.relative().starts_with(directory)),
+                "no source under {directory}"
+            );
         }
     }
 

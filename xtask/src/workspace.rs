@@ -9,6 +9,7 @@ use crate::failure::TaskFailure;
 pub struct CargoWorkspace {
     root: PathBuf,
     packages: Vec<MemberPackage>,
+    tooling: Vec<MemberPackage>,
 }
 
 impl CargoWorkspace {
@@ -37,7 +38,19 @@ impl CargoWorkspace {
     }
 
     pub fn source_directories(&self) -> BTreeSet<PathBuf> {
-        self.targets()
+        self.directories_of(&self.packages)
+    }
+
+    pub fn source_directories_with_tooling(&self) -> BTreeSet<PathBuf> {
+        let mut directories = self.source_directories();
+        directories.extend(self.directories_of(&self.tooling));
+        directories
+    }
+
+    fn directories_of(&self, packages: &[MemberPackage]) -> BTreeSet<PathBuf> {
+        packages
+            .iter()
+            .flat_map(|package| &package.targets)
             .filter_map(|target| target.source_file.parent())
             .map(|directory| self.root.join(directory))
             .collect()
@@ -54,19 +67,23 @@ impl CargoWorkspace {
     }
 
     fn parse(root: &Path, metadata: &str) -> Result<Self, TaskFailure> {
-        let packages = serde_json::from_str(metadata)
+        let all_packages: Vec<MemberPackage> = serde_json::from_str(metadata)
             .ok()
             .and_then(|metadata| Self::member_packages(&metadata))
             .ok_or_else(TaskFailure::metadata_malformed)?;
-        if let Some(package) = packages
+        if let Some(package) = all_packages
             .iter()
             .find(|package| package.keeps_sources_at_root())
         {
             return Err(TaskFailure::sources_at_package_root(&package.name));
         }
+        let (tooling, packages) = all_packages
+            .into_iter()
+            .partition(|package| package.name == Self::TOOLING_PACKAGE);
         Ok(Self {
             root: root.to_path_buf(),
             packages,
+            tooling,
         })
     }
 
@@ -75,7 +92,6 @@ impl CargoWorkspace {
         metadata["packages"]
             .as_array()?
             .iter()
-            .filter(|package| package["name"] != Self::TOOLING_PACKAGE)
             .map(|package| MemberPackage::read(package, &workspace_root))
             .collect()
     }
@@ -220,6 +236,19 @@ mod tests {
         assert_eq!(
             WorkspaceFixture::workspace().source_directories(),
             BTreeSet::from([root.join("src"), root.join("syntax/src")])
+        );
+    }
+
+    #[test]
+    fn adds_the_tooling_sources_on_request() {
+        let root = WorkspaceFixture::root();
+        assert_eq!(
+            WorkspaceFixture::workspace().source_directories_with_tooling(),
+            BTreeSet::from([
+                root.join("src"),
+                root.join("syntax/src"),
+                root.join("xtask/src")
+            ])
         );
     }
 

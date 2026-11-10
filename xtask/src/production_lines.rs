@@ -1,79 +1,79 @@
 use std::collections::BTreeSet;
 
-use proc_macro2::TokenStream;
-use quote::ToTokens;
-use syn::parse::{ParseStream, Parser};
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
-use syn::{Attribute, Ident, ImplItem, Item, TraitItem};
+use syn::{ImplItem, Item, TraitItem};
 
-pub struct ProductionLines {
-    test_lines: BTreeSet<usize>,
-}
+use crate::failure::TaskFailure;
+use crate::ratchet::Counts;
+use crate::source_file::SourceFile;
+use crate::test_code::TestCode;
+use crate::test_modules::TestModuleFiles;
 
-impl ProductionLines {
-    const CONDITION: &str = "cfg";
-    const TEST_CONDITION: &str = "test";
+pub struct ProductionLineCensus;
 
-    pub fn count(text: &str) -> Result<usize, syn::Error> {
-        let syntax = syn::parse_file(text)?;
-        if Self::marks_test(&syntax.attrs) {
-            return Ok(0);
+impl ProductionLineCensus {
+    const TEST_FILE_LINES: usize = 0;
+
+    pub fn measure(sources: &[SourceFile]) -> Result<Counts, TaskFailure> {
+        let test_files = TestModuleFiles::find(sources)?;
+        sources
+            .iter()
+            .map(|source| {
+                let count = if test_files.contains(source) {
+                    Self::TEST_FILE_LINES
+                } else {
+                    Self::count(source)?
+                };
+                Ok((source.relative().to_string(), count))
+            })
+            .collect()
+    }
+
+    fn count(source: &SourceFile) -> Result<usize, TaskFailure> {
+        let syntax = source.syntax()?;
+        if TestCode::marks(&syntax.attrs) {
+            return Ok(Self::TEST_FILE_LINES);
         }
-        let mut lines = Self {
-            test_lines: BTreeSet::new(),
-        };
-        lines.visit_file(&syntax);
-        Ok(text.lines().count() - lines.test_lines.len())
-    }
-
-    fn records_test_item(&mut self, node: &(impl ToTokens + Spanned)) -> bool {
-        let is_test = Self::marks_test(&Self::outer_attributes(node));
-        if is_test {
-            let span = node.span();
-            self.test_lines.extend(span.start().line..=span.end().line);
-        }
-        is_test
-    }
-
-    fn outer_attributes(node: &impl ToTokens) -> Vec<Attribute> {
-        let attributes_then_anything = |input: ParseStream| {
-            let attributes = Attribute::parse_outer(input)?;
-            input.parse::<TokenStream>()?;
-            Ok(attributes)
-        };
-        attributes_then_anything
-            .parse2(node.to_token_stream())
-            .unwrap_or_default()
-    }
-
-    fn marks_test(attributes: &[Attribute]) -> bool {
-        attributes.iter().any(Self::is_test_condition)
-    }
-
-    fn is_test_condition(attribute: &Attribute) -> bool {
-        attribute.path().is_ident(Self::CONDITION)
-            && attribute
-                .parse_args::<Ident>()
-                .is_ok_and(|condition| condition == Self::TEST_CONDITION)
+        let mut test_lines = TestLines::default();
+        test_lines.visit_file(&syntax);
+        Ok(source.text().lines().count() - test_lines.excluded.len())
     }
 }
 
-impl<'ast> Visit<'ast> for ProductionLines {
+#[derive(Default)]
+struct TestLines {
+    excluded: BTreeSet<usize>,
+}
+
+impl TestLines {
+    fn exclude(&mut self, node: &impl Spanned) {
+        let span = node.span();
+        self.excluded.extend(span.start().line..=span.end().line);
+    }
+}
+
+impl<'ast> Visit<'ast> for TestLines {
     fn visit_item(&mut self, item: &'ast Item) {
-        if !self.records_test_item(item) {
+        if TestCode::marks_item(item) {
+            self.exclude(item);
+        } else {
             visit::visit_item(self, item);
         }
     }
 
     fn visit_impl_item(&mut self, item: &'ast ImplItem) {
-        if !self.records_test_item(item) {
+        if TestCode::marks_tokens(item) {
+            self.exclude(item);
+        } else {
             visit::visit_impl_item(self, item);
         }
     }
 
     fn visit_trait_item(&mut self, item: &'ast TraitItem) {
-        if !self.records_test_item(item) {
+        if TestCode::marks_tokens(item) {
+            self.exclude(item);
+        } else {
             visit::visit_trait_item(self, item);
         }
     }
@@ -81,13 +81,29 @@ impl<'ast> Visit<'ast> for ProductionLines {
 
 #[cfg(test)]
 mod tests {
-    use super::ProductionLines;
+    use std::path::PathBuf;
+
+    use super::ProductionLineCensus;
+    use crate::ratchet::Counts;
+    use crate::source_file::SourceFile;
 
     struct SourceText;
 
     impl SourceText {
         fn production_lines(text: &str) -> usize {
-            ProductionLines::count(text).expect("the source parses")
+            Self::census(&[("src/a.rs", text)])["src/a.rs"]
+        }
+
+        fn census(files: &[(&str, &str)]) -> Counts {
+            let sources: Vec<SourceFile> = files
+                .iter()
+                .map(|(path, text)| Self::source(path, text))
+                .collect();
+            ProductionLineCensus::measure(&sources).expect("the sources parse")
+        }
+
+        fn source(path: &str, text: &str) -> SourceFile {
+            SourceFile::new(PathBuf::from(path), path.to_string(), text.to_string())
         }
     }
 
@@ -155,12 +171,6 @@ fn area() -> u32 {
     }
 
     #[test]
-    fn a_test_default_method_of_a_trait_does_not_count() {
-        let text = "trait Shape {\n    #[cfg(test)]\n    fn sample() {}\n    fn area(&self);\n}\n";
-        assert_eq!(SourceText::production_lines(text), 3);
-    }
-
-    #[test]
     fn a_test_item_inside_a_production_method_does_not_count() {
         let text = "impl Square {\n    fn side() {\n        #[cfg(test)]\n        fn helper() {}\n    }\n}\n";
         assert_eq!(SourceText::production_lines(text), 4);
@@ -173,14 +183,26 @@ fn area() -> u32 {
     }
 
     #[test]
-    fn a_test_argument_of_another_attribute_counts() {
-        let text = "#[allow(test)]\nfn area() {}\n";
-        assert_eq!(SourceText::production_lines(text), 2);
+    fn a_test_default_method_of_a_trait_does_not_count() {
+        let text = "trait Shape {\n    #[cfg(test)]\n    fn sample() {}\n    fn area(&self);\n}\n";
+        assert_eq!(SourceText::production_lines(text), 3);
+    }
+
+    #[test]
+    fn an_inline_module_with_an_inner_test_condition_does_not_count() {
+        let text = "mod tests {\n    #![cfg(test)]\n    fn helper() {}\n}\nfn area() {}\n";
+        assert_eq!(SourceText::production_lines(text), 1);
+    }
+
+    #[test]
+    fn an_item_under_all_conditions_with_test_does_not_count() {
+        let text = "#[cfg(all(test, unix))]\nmod tests {\n    fn helper() {}\n}\nfn area() {}\n";
+        assert_eq!(SourceText::production_lines(text), 1);
     }
 
     #[test]
     fn other_conditions_count() {
-        let text = "#[cfg(unix)]\nfn on_unix() {}\n#[cfg(not(test))]\nfn outside_tests() {}\n#[allow(dead_code)]\nfn unused() {}\n";
+        let text = "#[cfg(unix)]\nfn on_unix() {}\n#[cfg(not(test))]\nfn outside_tests() {}\n#[allow(test)]\nfn unused() {}\n";
         assert_eq!(SourceText::production_lines(text), 6);
     }
 
@@ -191,7 +213,26 @@ fn area() -> u32 {
     }
 
     #[test]
+    fn a_file_declared_as_a_test_module_counts_nothing() {
+        let census = SourceText::census(&[
+            (
+                "src/types/mod.rs",
+                "#[cfg(test)]\nmod typed_source;\nmod kept;\n",
+            ),
+            (
+                "src/types/typed_source.rs",
+                "fn helper() {}\nfn other() {}\n",
+            ),
+            ("src/types/kept.rs", "fn area() {}\n"),
+        ]);
+        assert_eq!(census["src/types/mod.rs"], 1);
+        assert_eq!(census["src/types/typed_source.rs"], 0);
+        assert_eq!(census["src/types/kept.rs"], 1);
+    }
+
+    #[test]
     fn unparsable_source_is_an_error() {
-        assert!(ProductionLines::count("fn {").is_err());
+        let source = SourceText::source("src/a.rs", "fn {");
+        assert!(ProductionLineCensus::measure(&[source]).is_err());
     }
 }

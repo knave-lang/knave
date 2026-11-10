@@ -1,10 +1,10 @@
 (use code add-module-note concat drop empty? fail first len
-          list nth number-lt prepend rest string? symbol
+          list nth number-lt prepend rest string string? symbol
           symbol? take value-eq)
 
 (export add-docstring-note docstring-before-body?
         docstring-before-parameters docstrings-key
-        documented-body? documented-terms-key
+        documented-body? documented-terms-key joined-texts
         kernel-definition note-docstring noted-term
         term-docstrings-key type-doc-key value-doc-key
         whole-pairs?)
@@ -81,3 +81,21 @@
 
 (def type-doc-key
   (fn (name) (list "type" name)))
+
+(def joined-texts
+  (fn (texts)
+    (if (empty? texts)
+      ""
+      (if (empty? (rest texts))
+        (first texts)
+        (recur (joined-pairs-onto (list) texts))))))
+
+(def joined-pairs-onto
+  (fn (joined texts)
+    (if (empty? texts)
+      joined
+      (if (empty? (rest texts))
+        (concat joined texts)
+        (recur (concat joined
+                       (list (string (first texts) (nth texts 1))))
+               (drop texts 2))))))

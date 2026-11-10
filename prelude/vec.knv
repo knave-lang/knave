@@ -1,4 +1,5 @@
 (use prelude/macros defmacro defrule document module)
+(use prelude/internal/macros joined-texts)
 (use prelude/types iterator option slice vec)
 (use prelude/number < > ord partial-eq)
 (use prelude/ownership copy)
@@ -13,15 +14,18 @@
         windows)
 
 (def element-placeholders
-  (fn (count) (element-placeholders-onto "" 0 count)))
+  (fn (count)
+    (joined-texts (placeholder-texts-onto (list) 0 count))))
 
-(def element-placeholders-onto
-  (fn (text index count)
+(def placeholder-texts-onto
+  (fn (texts index count)
     (if (number-lt index count)
-      (recur (string text (if (number-lt 0 index) ", " "") "{" index "}")
+      (recur (concat texts
+                     (list (string (if (number-lt 0 index) ", " "")
+                                   "{" index "}")))
              (number-add index 1)
              count)
-      text)))
+      texts)))
 
 (def repeated-item
   (fn (count)

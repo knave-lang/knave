@@ -11,27 +11,26 @@ pub struct TestEntries {
     path: Option<PathBuf>,
 }
 
-impl TestEntries {
-    const COMMAND: &'static str = "test";
+pub struct LoadedTests {
+    pub module: ModuleOfSources,
+    pub project: Option<LocatedProject>,
+}
 
+impl TestEntries {
     pub fn new(path: Option<PathBuf>) -> Self {
         Self { path }
     }
 
-    pub fn load(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
+    pub fn load(&self, terminal: &mut Terminal) -> Result<LoadedTests, ExitStatus> {
         let tree = match &self.path {
             Some(path) => Self::at(path.clone(), terminal)?,
             None => Self::of_working_project(terminal)?,
         };
-        Self::refuse_crates(&tree, terminal)?;
-        tree.load(terminal)
-    }
-
-    fn refuse_crates(tree: &EntryTree, terminal: &Terminal) -> Result<(), ExitStatus> {
-        match tree.project() {
-            Some(project) => project.refuse_crates(Self::COMMAND, terminal),
-            None => Ok(()),
-        }
+        let module = tree.load(terminal)?;
+        Ok(LoadedTests {
+            module,
+            project: tree.into_project(),
+        })
     }
 
     fn at(path: PathBuf, terminal: &Terminal) -> Result<EntryTree, ExitStatus> {

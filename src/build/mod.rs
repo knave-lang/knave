@@ -20,7 +20,7 @@ use crate::emit::EmittedCrate;
 use crate::source::Span;
 pub use build_plan::BuildPlan;
 pub use cargo_compiler::{CargoCompiler, CargoTarget};
-pub use cargo_manifest::CargoManifest;
+pub use cargo_manifest::{CargoManifest, CargoTargetKind};
 pub use crate_resolver::{CrateResolver, ResolveError, ResolvedCrate};
 pub use formatting::{EmittedFormatting, FormattingError};
 pub use git_store::{GitStore, StoreError};

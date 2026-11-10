@@ -1,0 +1,3 @@
+(project tested-app
+  (dependencies (answer :path "../answer"))
+  (dev-dependencies (expected :path "../expected")))

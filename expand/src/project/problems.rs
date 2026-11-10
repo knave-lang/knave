@@ -159,16 +159,7 @@ impl ProjectProblems {
             format!("`{command}` cannot use crate dependencies yet"),
             Label::new(span, label),
         )
-        .with_help("use `build` or `run` for a program with crates for now")
-    }
-
-    pub fn unbuilt_section(section: &str, span: Span) -> Diagnostic {
-        Diagnostic::error(
-            DiagnosticCode::UNBUILT_PROJECT_SECTION,
-            format!("this compiler cannot build `{section}` yet"),
-            Label::new(span, "this section has entries"),
-        )
-        .with_help(format!("remove the entries of `{section}` for now"))
+        .with_help("use `build`, `run` or `test` for a program with crates for now")
     }
 
     pub fn missing_project_name(span: Span) -> Diagnostic {

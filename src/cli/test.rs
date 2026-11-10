@@ -2,9 +2,10 @@ use std::io;
 use std::path::PathBuf;
 
 use super::exit_status::ExitStatus;
+use super::located_project::LocatedProject;
 use super::standard_error::StandardError;
-use super::temporary_directory::TemporaryDirectory;
-use super::terminal::{BuildTarget, EvaluationRequest, ModuleOfSources, Terminal};
+use super::terminal::{EvaluationRequest, ModuleOfSources, Terminal};
+use super::test_build::TestBuild;
 use super::test_entries::TestEntries;
 use super::test_report::{TestOutcome, TestReport};
 use super::test_run::{TestRun, TestRunError};
@@ -29,7 +30,6 @@ pub enum TestSelection {
 
 impl TestCommand {
     const RUNNER_SOURCE: &'static str = "<test runner>";
-    const CRATE_NAME: &'static str = "tests";
 
     pub fn new(
         path: Option<PathBuf>,
@@ -52,12 +52,12 @@ impl TestCommand {
     }
 
     fn test(&self, terminal: &mut Terminal) -> Result<ExitStatus, ExitStatus> {
-        let module = self.entries.load(terminal)?;
+        let loaded = self.entries.load(terminal)?;
         let marker = ValueMarker::random();
-        let program = self.runner_program(terminal, module, &marker)?;
+        let program = self.runner_program(terminal, loaded.module, &marker)?;
         let checked = terminal.check_expanded(&program)?;
         let emitted = terminal.emit_checked(&checked)?;
-        let outcome = self.build_and_run(terminal, &emitted, &marker)?;
+        let outcome = self.build_and_run(terminal, &emitted, loaded.project.as_ref(), &marker)?;
         self.note_no_selected_test(terminal, &outcome);
         Ok(Self::status(&outcome))
     }
@@ -108,16 +108,11 @@ impl TestCommand {
         &self,
         terminal: &mut Terminal,
         emitted: &EmittedCrate,
+        project: Option<&LocatedProject>,
         marker: &ValueMarker,
     ) -> Result<TestOutcome, ExitStatus> {
-        let directory = TemporaryDirectory::create().map_err(Self::report_no_build_directory)?;
-        let binary = directory.path().join(Self::CRATE_NAME);
-        let target = BuildTarget {
-            directory: directory.path().to_path_buf(),
-            crate_name: Self::CRATE_NAME,
-            output: &binary,
-        };
-        terminal.compile(emitted, &target, self.profile)?;
+        let build = TestBuild::for_project(project)?;
+        let binary = build.compile(terminal, emitted, self.profile)?;
         let mut report = TestReport::new(io::stdout().lock());
         TestRun::new(&binary, self.selection.arguments())
             .run(marker.records(), &mut report)
@@ -150,13 +145,6 @@ impl TestCommand {
             "error: the program does not load module `{module}`"
         ));
         ExitStatus::UsageError
-    }
-
-    fn report_no_build_directory(error: io::Error) -> ExitStatus {
-        StandardError::write_line(format_args!(
-            "error: cannot create a build directory: {error}"
-        ));
-        ExitStatus::Environment
     }
 
     fn report_run_error(error: TestRunError) -> ExitStatus {

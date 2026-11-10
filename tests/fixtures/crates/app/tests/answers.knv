@@ -1,0 +1,7 @@
+(use prelude/test assert deftest)
+
+(def answer
+  (rust "answer::answer()" (fn () i64)))
+
+(deftest reads-the-crate
+  (assert (= (answer) 42)))

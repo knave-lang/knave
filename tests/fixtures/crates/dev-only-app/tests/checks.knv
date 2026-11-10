@@ -1,0 +1,7 @@
+(use prelude/test assert deftest)
+
+(def expected
+  (rust "expected::value()" (fn () i64)))
+
+(deftest reads-the-dev-crate
+  (assert (= (expected) 42)))

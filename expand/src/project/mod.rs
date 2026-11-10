@@ -15,7 +15,6 @@ pub use problems::ProjectProblems;
 pub use project_editor::{CrateEntry, ProjectEditor};
 pub use reader::ProjectReader;
 
-use crate::diagnostic::Diagnostics;
 use crate::source::Span;
 
 #[derive(Debug)]
@@ -28,14 +27,12 @@ pub struct Project {
     pub libraries: Vec<LibraryDependency>,
     pub dependencies: Vec<CrateDependency>,
     pub dev_dependencies: Vec<CrateDependency>,
-    pub sections: Vec<SectionHead>,
 }
 
 #[derive(Debug)]
 pub struct SectionHead {
     pub section: Section,
     pub span: Span,
-    pub has_entries: bool,
 }
 
 #[derive(Debug)]
@@ -81,21 +78,5 @@ impl CrateDependency {
             path: self.path.as_ref().map(|path| root.join(path)),
             ..self.clone()
         }
-    }
-}
-
-impl Project {
-    pub fn unbuilt_sections(&self) -> Diagnostics {
-        let mut problems = Diagnostics::default();
-        self.sections
-            .iter()
-            .filter(|head| head.has_entries && !head.section.is_built())
-            .for_each(|head| {
-                problems.push(ProjectProblems::unbuilt_section(
-                    head.section.name(),
-                    head.span,
-                ))
-            });
-        problems
     }
 }

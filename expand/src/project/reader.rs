@@ -104,7 +104,6 @@ impl ProjectReader {
         sections.heads.push(SectionHead {
             section,
             span: head.span(),
-            has_entries: !entries.is_empty(),
         });
         DependencyReader::new(section, &mut self.problems).read(entries, sections);
     }
@@ -157,7 +156,6 @@ impl ProjectReader {
             libraries: sections.libraries,
             dependencies: sections.dependencies,
             dev_dependencies: sections.dev_dependencies,
-            sections: sections.heads,
         })
     }
 

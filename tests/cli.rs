@@ -2059,6 +2059,17 @@ fn doc_write_prelude_writes_a_page_per_public_prelude_module() {
 }
 
 #[test]
+fn doc_write_reads_a_project_whose_entry_sits_at_its_root() {
+    let sandbox = Sandbox::new("doc_write_root_entry")
+        .with_file(&Language::project_file_name(), ROOT_ENTRY_PROJECT)
+        .with_file("main.knv", ROOT_ENTRY);
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert_eq!(sandbox.files_under("doc"), [".knave-doc", "main.md"]);
+}
+
+#[test]
 fn doc_write_outside_a_project_is_a_usage_error() {
     let sandbox = Sandbox::new("doc_write_no_project");
     sandbox.compiler(&["doc", "--write"]).assert_exit_code(2);

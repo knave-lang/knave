@@ -1,6 +1,6 @@
 # RFC 0053: A source formatter
 
-**Status:** Accepted. Its rule 2, its rule 5 and its run filling no longer apply to a binding list, as 0058 states. Its rule that an arm of a `match`, `cond` or `defrule` lays out as any other list is superseded by 0057.
+**Status:** Accepted. Its rule 2, its rule 5 and its run filling no longer apply to a binding list, as 0058 states. Its rule that an arm of a `match`, `cond` or `defrule` lays out as any other list is superseded by 0057. Its layout rule 5 is amended by 0067 for a call whose last argument is a `fn` literal.
 **Date:** 2026-11-02
 
 ## Problem

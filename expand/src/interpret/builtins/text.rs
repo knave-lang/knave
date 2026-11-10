@@ -223,17 +223,18 @@ impl<'a> TextOperations<'a> {
         self.arguments.charge(WorkMeter::text_work(
             names
                 .iter()
-                .filter_map(Self::written_name)
-                .map(str::len)
+                .filter_map(Form::as_symbol)
+                .map(|symbol| symbol.name().len())
                 .sum(),
         ))?;
-        names.sort_by(|left, right| Self::written_name(left).cmp(&Self::written_name(right)));
-        names.dedup_by(|later, earlier| Self::written_name(later) == Self::written_name(earlier));
+        names.sort_by(|left, right| {
+            let left = left.as_symbol().map(Symbol::name);
+            left.cmp(&right.as_symbol().map(Symbol::name))
+        });
+        names.dedup_by(|later, earlier| {
+            later.as_symbol().map(Symbol::name) == earlier.as_symbol().map(Symbol::name)
+        });
         Forms::list(names, self.call_site, self.arguments)
-    }
-
-    fn written_name(form: &Form) -> Option<&str> {
-        form.as_symbol().map(Symbol::name)
     }
 
     pub fn fail(&self) -> Result<Value, Diagnostic> {
@@ -331,26 +332,31 @@ impl<'a> TextOperations<'a> {
     }
 
     fn forms_equal(&self, left: &Form, right: &Form) -> Result<bool, Diagnostic> {
-        self.arguments.charge(1)?;
-        match (left.kind(), right.kind()) {
+        let (equal, text_bytes) = match (left.kind(), right.kind()) {
+            (FormKind::List(left), FormKind::List(right)) => return self.lists_equal(left, right),
             (FormKind::Symbol(left), FormKind::Symbol(right)) => {
-                self.arguments
-                    .charge(WorkMeter::text_work(left.name().len()))?;
-                Ok(left.name() == right.name())
+                (left.name() == right.name(), left.name().len())
             }
-            (FormKind::String(left), FormKind::String(right)) => {
-                self.arguments.charge(WorkMeter::text_work(left.len()))?;
-                Ok(left == right)
-            }
-            (FormKind::Number(left), FormKind::Number(right)) => Ok(left.value() == right.value()),
-            (FormKind::List(left), FormKind::List(right)) if left.len() == right.len() => left
-                .iter()
-                .zip(right)
-                .try_fold(true, |equal, (left, right)| {
-                    Ok(equal && self.forms_equal(left, right)?)
-                }),
-            _ => Ok(false),
+            (FormKind::String(left), FormKind::String(right)) => (left == right, left.len()),
+            (FormKind::Number(left), FormKind::Number(right)) => (left.value() == right.value(), 0),
+            _ => (false, 0),
+        };
+        self.arguments
+            .charge(1 + WorkMeter::text_work(text_bytes))?;
+        Ok(equal)
+    }
+
+    fn lists_equal(&self, left: &[Form], right: &[Form]) -> Result<bool, Diagnostic> {
+        self.arguments.charge(1)?;
+        if left.len() != right.len() {
+            return Ok(false);
         }
+        for (left, right) in left.iter().zip(right) {
+            if !self.forms_equal(left, right)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     fn joined_parts(&self, start: usize) -> Result<String, Diagnostic> {
@@ -381,7 +387,7 @@ mod tests {
     use super::TextOperations;
     use crate::interpret::arguments::{Arguments, BuiltinSite};
     use crate::interpret::{StepBudget, Value, WorkMeter};
-    use crate::reader::{Form, FormKind, Symbol};
+    use crate::reader::{Form, FormKind, Number, NumberValue, Symbol};
     use crate::scope::{ScopeAllocator, ScopeSet};
     use crate::source::{SourceId, Span};
 
@@ -417,6 +423,10 @@ mod tests {
             )
         }
 
+        fn form(kind: FormKind) -> Value {
+            Value::Form(Form::new(kind, Self::span()))
+        }
+
         fn scoped_symbol(&mut self, name: &str) -> Value {
             let mut scopes = ScopeSet::default();
             scopes.add(self.scopes.fresh());
@@ -443,6 +453,37 @@ mod tests {
             let by_names = Self::equal(Self::name(&left), Self::name(&right));
             (Self::equal(left, right), by_names)
         }
+    }
+
+    #[test]
+    fn numbers_of_one_value_are_equal() {
+        let one =
+            SymbolComparison::form(FormKind::Number(Number::new("1", NumberValue::Integer(1))));
+        assert!(SymbolComparison::equal(one.clone(), one));
+    }
+
+    #[test]
+    fn numbers_of_different_values_differ() {
+        let one =
+            SymbolComparison::form(FormKind::Number(Number::new("1", NumberValue::Integer(1))));
+        let two =
+            SymbolComparison::form(FormKind::Number(Number::new("2", NumberValue::Integer(2))));
+        assert!(!SymbolComparison::equal(one, two));
+    }
+
+    #[test]
+    fn lists_of_different_lengths_differ() {
+        let leaf = Form::new(FormKind::Symbol(Symbol::new("a")), SymbolComparison::span());
+        let short = SymbolComparison::form(FormKind::List(vec![leaf.clone()]));
+        let long = SymbolComparison::form(FormKind::List(vec![leaf.clone(), leaf]));
+        assert!(!SymbolComparison::equal(short, long));
+    }
+
+    #[test]
+    fn forms_of_different_kinds_differ() {
+        let symbol = SymbolComparison::form(FormKind::Symbol(Symbol::new("a")));
+        let text = SymbolComparison::form(FormKind::String("a".into()));
+        assert!(!SymbolComparison::equal(symbol, text));
     }
 
     #[test]

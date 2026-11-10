@@ -56,7 +56,7 @@
   (println ((snap! a)))
   (println ((shown-adder! a) 1))
   (for-each (walk! a ys)
-            (fn (v) (println v)))
+    (fn (v) (println v)))
   (println ((branch-adder! a true) 0))
   (println ((bumped-adder! a) 0))
   (println ((called-adder! a) 0))

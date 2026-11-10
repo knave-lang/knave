@@ -7,14 +7,14 @@
 
 (defn count-long (names)
   (count (filter names
-                 (fn (name) (> (len name) 4)))))
+           (fn (name) (> (len name) 4)))))
 
 (type count-big
   (fn ((iterator (ref i64))) usize))
 
 (defn count-big (values)
   (count (filter values
-                 (fn (value) (> value 50)))))
+           (fn (value) (> value 50)))))
 
 (defn main ()
   (local scores (vec 70 40 90))

@@ -9,16 +9,16 @@
 (defn holds? (s target id)
   (local suffix (str " id=" id))
   (any? (iter (:pages s))
-        (fn (p)
-          (and (= (as-str (:file p)) target)
-               (= (as-str (:html p)) (as-str suffix))))))
+    (fn (p)
+      (and (= (as-str (:file p)) target)
+           (= (as-str (:html p)) (as-str suffix))))))
 
 (defn tagged? (s target id)
   (local suffix (str " id=" id))
   (any? (iter (:pages s))
-        (fn (p)
-          (and (= target (at (:tags p) 0))
-               (= (as-str suffix) (as-str (:html p)))))))
+    (fn (p)
+      (and (= target (at (:tags p) 0))
+           (= (as-str suffix) (as-str (:html p)))))))
 
 (defn main ()
   (local all

@@ -10,15 +10,13 @@
 
 (defn print-summary (stock)
   (local units
-    (reduce (vals stock)
-            0
-            (fn (total current)
-              (+ total (widen (:quantity current))))))
+    (reduce (vals stock) 0
+      (fn (total current)
+        (+ total (widen (:quantity current))))))
   (local worth
-    (reduce (vals stock)
-            0
-            (fn (total current)
-              (+ total (value-cents current)))))
+    (reduce (vals stock) 0
+      (fn (total current)
+        (+ total (value-cents current)))))
   (println (str "items: "
                 (len stock)
                 ", units: " units ", value: "
@@ -31,19 +29,19 @@
 (defn print-low-stock (stock)
   (local low
     (collect (filter (vals stock)
-                     (fn (current)
-                       (<= (:quantity current) (:reorder-at current))))))
+               (fn (current)
+                 (<= (:quantity current) (:reorder-at current))))))
   (sort-by! low
-            (fn (current) (:quantity current)))
+    (fn (current) (:quantity current)))
   (println (str "low stock: " (len low)))
   (for-each (iter low)
-            (fn (current)
-              (println (str "  "
-                            (:sku current)
-                            " has "
-                            (:quantity current)
-                            ", reorder at "
-                            (:reorder-at current))))))
+    (fn (current)
+      (println (str "  "
+                    (:sku current)
+                    " has "
+                    (:quantity current)
+                    ", reorder at "
+                    (:reorder-at current))))))
 
 (type print-categories
   (fn ((ref (sorted-map string item)))
@@ -51,17 +49,16 @@
 
 (defn print-categories (stock)
   (local totals
-    (reduce (vals stock)
-            (sorted-map)
-            (fn (totals current)
-              (update totals
-                      (category (as-str (:sku current)))
-                      (fn (sum) (+ sum (value-cents current)))
-                      0))))
+    (reduce (vals stock) (sorted-map)
+      (fn (totals current)
+        (update totals
+                (category (as-str (:sku current)))
+                (fn (sum) (+ sum (value-cents current)))
+                0))))
   (for-each (iter totals)
-            (fn (entry)
-              (let-match ((pair name worth) entry)
-                (println (str "  " name ": " (dollars (deref worth))))))))
+    (fn (entry)
+      (let-match ((pair name worth) entry)
+        (println (str "  " name ": " (dollars (deref worth))))))))
 
 (type print-top-value
   (fn ((ref (sorted-map string item)) usize)
@@ -70,28 +67,26 @@
 (defn print-top-value (stock limit)
   (local ranked (collect (vals stock)))
   (sort-by! ranked
-            (fn (current) (value-cents current)))
+    (fn (current) (value-cents current)))
   (reverse! ranked)
   (for-each (take (iter ranked) limit)
-            (fn (current)
-              (println (str "  " current " = "
-                            (dollars (value-cents current)))))))
+    (fn (current)
+      (println (str "  " current " = " (dollars (value-cents current)))))))
 
 (type print-activity
   (fn ((ref (vec entry))) unit))
 
 (defn print-activity (ledger)
   (local moves
-    (reduce (iter ledger)
-            (sorted-map)
-            (fn (moves current)
-              (update moves
-                      (clone (:sku current))
-                      (fn (count) (+ count 1))
-                      0))))
+    (reduce (iter ledger) (sorted-map)
+      (fn (moves current)
+        (update moves
+                (clone (:sku current))
+                (fn (count) (+ count 1))
+                0))))
   (local busiest
     (max-by-key (iter moves)
-                (fn (pair) (deref (second-of pair)))))
+      (fn (pair) (deref (second-of pair)))))
   (match busiest
     ((some found)
      (let-match ((pair sku count) found)

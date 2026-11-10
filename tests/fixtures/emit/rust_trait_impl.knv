@@ -6,7 +6,7 @@
 
 (rust-trait shown "std::fmt::Write"
   (method write-str
-          (fn ((mut self) (ref str)) fmt-result)))
+    (fn ((mut self) (ref str)) fmt-result)))
 
 (impl shown point
   (write-str (p _text)

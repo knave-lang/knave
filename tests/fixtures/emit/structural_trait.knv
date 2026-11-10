@@ -4,8 +4,8 @@
 
 (rust-trait octal "std::fmt::Octal"
   (method fmt
-          (fn ((ref self) (mut octal-out))
-            octal-result))
+    (fn ((ref self) (mut octal-out))
+      octal-result))
   (structural
     :struct "{{ let out = {1}; write!(out, \"({name}\")?{parts}; write!(out, \")\") }}"
     :field "; write!(out, \" :{field} {{:o}}\", {value})?"

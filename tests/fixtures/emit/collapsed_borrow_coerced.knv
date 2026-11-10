@@ -23,7 +23,7 @@
     (fn (left right) (= left right)))
   (println (equal outer outer))
   (println (check-both outer outer
-                       (fn (left right) (= left right))))
+             (fn (left right) (= left right))))
   (println (total outer))
   (local items (vec 1 2))
   (local view (ref items))
@@ -33,5 +33,5 @@
   (push! names "c")
   (local matches
     (collect (map (iter names)
-                  (fn (name) (= name "a")))))
+               (fn (name) (= name "a")))))
   (println (len matches)))

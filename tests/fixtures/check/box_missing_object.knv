@@ -8,7 +8,7 @@
 
 (defn total (shapes)
   (reduce shapes 0.0
-          (fn (sum shape) (+ sum (area shape)))))
+    (fn (sum shape) (+ sum (area shape)))))
 
 (defn main ()
   (println (total (vec (box (new circle (radius 1.0)))))))

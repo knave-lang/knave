@@ -48,7 +48,7 @@
 (deftrait number-again
   (rust "crate::rt::Number")
   (method mark-number
-          (fn ((ref self)) string))
+    (fn ((ref self)) string))
   (structural :struct ""
               :field ""
               :variant ""
@@ -58,7 +58,7 @@
 (deftrait first-octal
   (rust "std::fmt::Octal")
   (method write-first
-          (fn ((ref self)) string))
+    (fn ((ref self)) string))
   (structural :struct ""
               :field ""
               :variant ""
@@ -68,7 +68,7 @@
 (deftrait second-octal
   (rust "std::fmt::Octal")
   (method write-second
-          (fn ((ref self)) string))
+    (fn ((ref self)) string))
   (structural :struct ""
               :field ""
               :variant ""

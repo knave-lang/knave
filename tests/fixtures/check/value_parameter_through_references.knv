@@ -13,6 +13,6 @@
          (->employee (str "Bo") 70)))
   (local numbers (vec 1 2 3))
   (println (count (filter (iter people)
-                          (fn (person) (high? person)))))
+                    (fn (person) (high? person)))))
   (println (count (filter (iter numbers)
-                          (fn (n) (big? n))))))
+                    (fn (n) (big? n))))))

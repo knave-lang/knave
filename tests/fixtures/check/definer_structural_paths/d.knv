@@ -7,8 +7,8 @@
 (deftrait octal3
   (rust "std::fmt::Octal")
   (method fmt
-          (fn ((ref self) (mut octal-out))
-            octal-result))
+    (fn ((ref self) (mut octal-out))
+      octal-result))
   (structural :struct "write!({1}, \"{name}\")"
               :field ""
               :variant "write!({1}, \"{name}\")"

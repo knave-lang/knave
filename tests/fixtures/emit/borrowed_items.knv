@@ -9,18 +9,18 @@
 
 (defn leaf-count (models)
   (count (filter (iter models)
-                 (fn (m) (= m "Leaf")))))
+           (fn (m) (= m "Leaf")))))
 
 (type deref-leaf-count
   (fn ((ref (slice (ref str)))) usize))
 
 (defn deref-leaf-count (models)
   (count (filter (iter models)
-                 (fn (m) (= (deref m) "Leaf")))))
+           (fn (m) (= (deref m) "Leaf")))))
 
 (defn count-of (names wanted)
   (count (filter (iter names)
-                 (fn (n) (= n wanted)))))
+           (fn (n) (= n wanted)))))
 
 (defn report-years (years)
   (local next (fn (y) (+ (deref y) 1)))

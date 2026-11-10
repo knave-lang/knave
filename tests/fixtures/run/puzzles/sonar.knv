@@ -13,15 +13,15 @@
 
 (defn parse-depths (report)
   (collect (map (lines report)
-                (fn (line) (parse-integer line)))))
+             (fn (line) (parse-integer line)))))
 
 (defn count-increases (readings)
   (count (filter (windows readings 2)
-                 (fn (pair) (< (at pair 0) (at pair 1))))))
+           (fn (pair) (< (at pair 0) (at pair 1))))))
 
 (defn window-sums (readings)
   (collect (map (windows readings 3)
-                (fn (window)
-                  (+ (at window 0)
-                     (at window 1)
-                     (at window 2))))))
+             (fn (window)
+               (+ (at window 0)
+                  (at window 1)
+                  (at window 2))))))

@@ -31,6 +31,5 @@
   (local source
     (new queue (items (vec 1))))
   (local target (new queue (items (vec))))
-  (move! (mut source)
-         (mut target)
-         (fn (item) (println item))))
+  (move! (mut source) (mut target)
+    (fn (item) (println item))))

@@ -248,7 +248,7 @@
                 (start-run (unquote marker)
                            (vec (splice (map-list notes test-full-name))))
                 (splice (map-list notes
-                                  (fn (note) (test-run marker note))))
+                          (fn (note) (test-run marker note))))
                 (finish-run (unquote marker))))))
 
 (def library-modules
@@ -727,7 +727,7 @@
     (if (list? form)
       (located place
                (map-list form
-                         (fn (item) (located-forms place item))))
+                 (fn (item) (located-forms place item))))
       (located place form))))
 
 (def untested-option
@@ -775,8 +775,8 @@
     (if (empty? modules)
       (list)
       (concat (map-list (module-notes (first modules) (quote tests))
-                        (fn (note)
-                          (prepend (first modules) note)))
+                (fn (note)
+                  (prepend (first modules) note)))
               (program-tests (rest modules))))))
 
 (def test-full-name

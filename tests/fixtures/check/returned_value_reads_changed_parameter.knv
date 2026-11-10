@@ -20,7 +20,7 @@
   (local b 1)
   (local items (vec 1 2))
   (for-each (shifted! b items)
-            (fn (n) (println n)))
+    (fn (n) (println n)))
   (println a b)
   (local c 1)
   (local entries (vec 0))

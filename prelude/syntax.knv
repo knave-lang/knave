@@ -458,7 +458,7 @@
     (local owner
       (parameter-definition (signature-name signature)))
     (read-call form positional signature owner
-               (fn (form) (named-call form positional signature owner)))))
+      (fn (form) (named-call form positional signature owner)))))
 
 (def named-call
   (fn (form positional signature owner)
@@ -530,8 +530,8 @@
 (def positional-arguments
   (fn (pairs signature)
     (map-list (signature-names signature)
-              (fn (name)
-                (argument-for name pairs (signature-defaults signature))))))
+      (fn (name)
+        (argument-for name pairs (signature-defaults signature))))))
 
 (def argument-for
   (fn (name pairs defaults)

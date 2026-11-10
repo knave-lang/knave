@@ -59,10 +59,9 @@
   (fn ((ref (vec f64))) string))
 
 (defn joined (values)
-  (reduce (iter values)
-          (str "")
-          (fn (text value)
-            (str text " " (rounded (deref value))))))
+  (reduce (iter values) (str "")
+    (fn (text value)
+      (str text " " (rounded (deref value))))))
 
 (defn report-transforms ()
   (local turn (rotation 0.5))
@@ -130,16 +129,15 @@
                                    (->point 0.0 4.0)
                                    (->point -2.0 1.0)))))))
   (for-each (iter shapes)
-            (fn (s)
-              (println (str (title s)
-                            ": area "
-                            (rounded (area s))
-                            ", perimeter "
-                            (rounded (perimeter s))))))
+    (fn (s)
+      (println (str (title s)
+                    ": area "
+                    (rounded (area s))
+                    ", perimeter "
+                    (rounded (perimeter s))))))
   (local total
-    (reduce (iter shapes)
-            0.0
-            (fn (sum s) (+ sum (area s)))))
+    (reduce (iter shapes) 0.0
+      (fn (sum s) (+ sum (area s)))))
   (println (str "total area: " (rounded total))))
 
 (defn report-hull ()
@@ -151,7 +149,7 @@
                 (len outline)
                 " corners"))
   (for-each (iter outline)
-            (fn (p) (println (str "  " p))))
+    (fn (p) (println (str "  " p))))
   (local fence (->polygon "hull" outline))
   (println (str "hull area "
                 (rounded (area (ref fence)))
@@ -164,24 +162,22 @@
 
 (defn scatter (count)
   (collect (map (range 0 count)
-                (fn (index)
-                  (->point (/ (as-float (rem (* index 37) 101))
-                              10.0)
-                           (/ (as-float (rem (* index 53) 89))
-                              10.0))))))
+             (fn (index)
+               (->point (/ (as-float (rem (* index 37) 101))
+                           10.0)
+                        (/ (as-float (rem (* index 53) 89))
+                           10.0))))))
 
 (type widest-gap
   (fn ((ref (vec point))) f64))
 
 (defn widest-gap (cloud)
-  (reduce (iter cloud)
-          0.0
-          (fn (best from)
-            (reduce (iter cloud)
-                    best
-                    (fn (inner to)
-                      (larger inner
-                              (distance (deref from) (deref to))))))))
+  (reduce (iter cloud) 0.0
+    (fn (best from)
+      (reduce (iter cloud) best
+        (fn (inner to)
+          (larger inner
+                  (distance (deref from) (deref to))))))))
 
 (defn larger (left right)
   (if (> left right) left right))

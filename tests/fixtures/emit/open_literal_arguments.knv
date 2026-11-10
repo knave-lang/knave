@@ -37,16 +37,16 @@
 
 (defn any-big? (values)
   (some? (find values
-               (fn (value)
-                 (> (deref (first-of value 3000000000)) 1)))))
+           (fn (value)
+             (> (deref (first-of value 3000000000)) 1)))))
 
 (type total-weight
   (fn ((vec (box weighed))) i64))
 
 (defn total-weight (crates)
   (reduce crates 0
-          (fn (total item)
-            (+ total (weight-of item)))))
+    (fn (total item)
+      (+ total (weight-of item)))))
 
 (defn main ()
   (local several?
@@ -62,7 +62,7 @@
   (println (larger 1 odometer))
   (println (larger (if several? 1 2) odometer))
   (println (apply-to (if several? 1 2)
-                     (fn (n) (* n 2))))
+             (fn (n) (* n 2))))
   (println (larger 3 (if several? 1 2)))
   (println (= 0 odometer))
   (println (= odometer 0))
@@ -101,6 +101,6 @@
   (prn (wrap "Leaf"))
   (println (square 2.5))
   (println (apply-to "Leaf"
-                     (fn (model) (len model))))
+             (fn (model) (len model))))
   (println (first-of "Leaf" 2.5))
   (println (same "Leaf")))

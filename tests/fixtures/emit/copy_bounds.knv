@@ -6,6 +6,6 @@
 
 (defn main ()
   (println (twice 4
-                  (fn (left right) (+ left right))))
+             (fn (left right) (+ left right))))
   (println (twice true
-                  (fn (left right) (and left right)))))
+             (fn (left right) (and left right)))))

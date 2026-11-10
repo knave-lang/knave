@@ -1,7 +1,7 @@
 (defn both (values)
   (local first
     (find values
-          (fn (value) (> (deref value) 5))))
+      (fn (value) (> (deref value) 5))))
   (and (some? first)
        (any? values (fn (value) (> value 50)))))
 
@@ -10,6 +10,6 @@
   (prn (both (range 0 10)))
   (local steps (range 0 10))
   (prn (find steps
-             (fn (step) (> (deref step) 2))))
+         (fn (step) (> (deref step) 2))))
   (prn (find steps
-             (fn (step) (> (deref step) 2)))))
+         (fn (step) (> (deref step) 2)))))

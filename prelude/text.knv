@@ -30,8 +30,8 @@
 
 (rust-trait display "std::fmt::Display"
   (method fmt
-          (fn ((ref self) (mut formatter))
-            fmt-result))
+    (fn ((ref self) (mut formatter))
+      fmt-result))
   (help "write `(display type (value) ...)`, or print the value with `prn`")
   bool char str string
   (ref str)
@@ -86,8 +86,8 @@
 
 (rust-trait show "crate::rt::Show"
   (method write-form
-          (fn ((ref self) (mut formatter))
-            fmt-result))
+    (fn ((ref self) (mut formatter))
+      fmt-result))
   (structural
     :struct "crate::rt::Record::open({1}, \"->{name}\"){parts}.close()"
     :field ".text(\":{field}\").part({value})"
@@ -249,8 +249,8 @@
           variables
           (list (quote fn)
                 (map-list variables
-                          (fn (variable)
-                            (list (quote ref) (first variable))))
+                  (fn (variable)
+                    (list (quote ref) (first variable))))
                 result))))
 
 (def format-template
@@ -584,8 +584,8 @@
           (list (quote fn)
                 (concat (list (list (quote mut) (quote formatter)))
                         (map-list variables
-                                  (fn (variable)
-                                    (list (quote ref) (first variable)))))
+                          (fn (variable)
+                            (list (quote ref) (first variable)))))
                 (quote fmt-result)))))
 
 (def display-template
@@ -627,9 +627,9 @@
   (fn (form out)
     (concat (take form 2)
             (map-list (drop form 2)
-                      (fn (arm)
-                        (list (first arm)
-                              (display-body (rest arm) out)))))))
+              (fn (arm)
+                (list (first arm)
+                      (display-body (rest arm) out)))))))
 
 (def display-if
   (fn (form out)

@@ -7,6 +7,6 @@
   (println (len scores))
   (println (len primes))
   (for-each (copied scores)
-            (fn (score) (println score)))
+    (fn (score) (println score)))
   (for-each (iter primes)
-            (fn (prime) (println prime))))
+    (fn (prime) (println prime))))

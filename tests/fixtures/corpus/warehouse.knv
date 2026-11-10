@@ -133,10 +133,10 @@
                 ", rejected: "
                 (len (:rejected finished))))
   (for-each (iter (:rejected finished))
-            (fn (problem)
-              (println (str "  rejected: " problem))))
+    (fn (problem)
+      (println (str "  rejected: " problem))))
   (for-each (take (iter (:entries finished)) 5)
-            (fn (moved) (println (str "  " moved))))
+    (fn (moved) (println (str "  " moved))))
   (print-summary (:stock finished))
   (print-low-stock (:stock finished))
   (println "by category:")

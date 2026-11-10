@@ -1,6 +1,6 @@
 (defn record-each (record years)
   (for-each years
-            (fn (year) (record year))))
+    (fn (year) (record year))))
 
 (type each-year
   (fn ((fn-mut (i64) unit) i64) unit))

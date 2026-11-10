@@ -1,8 +1,7 @@
 (defn main ()
-  (println (reduce (range 1 5)
-                   10
-                   (fn (total n) (+ total n))))
+  (println (reduce (range 1 5) 10
+             (fn (total n) (+ total n))))
   (println (unwrap-or (reduce (range 1 5)
-                              (fn (product n) (* product n)))
+                        (fn (product n) (* product n)))
                       0))
   (println (none? (reduce (range 1 1) +))))

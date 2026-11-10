@@ -1,6 +1,6 @@
 (defn sum-of (it)
   (reduce it 0
-          (fn (total year) (+ total year))))
+    (fn (total year) (+ total year))))
 
 (defn main ()
   (local through-function

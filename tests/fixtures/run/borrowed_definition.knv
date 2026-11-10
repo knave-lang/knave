@@ -9,4 +9,4 @@
 (defn main ()
   (prn (len cards))
   (for-each (iter cards)
-            (fn (card) (println (:name card)))))
+    (fn (card) (println (:name card)))))

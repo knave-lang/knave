@@ -27,7 +27,7 @@
 (defn main ()
   (local users (roster))
   (for-each (adult-names users)
-            (fn (name) (println name)))
+    (fn (name) (println name)))
   (local ana (->user (str "Ana") 34))
   (println (name-of ana))
   (println (name-length (:name ana))))

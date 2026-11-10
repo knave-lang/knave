@@ -456,10 +456,9 @@
     (fn ((ref (crate a))) f64)))
 
 (defn crate-weight (crate)
-  (reduce (iter (:items crate))
-          0.0
-          (fn (total item)
-            (+ total (weight item)))))
+  (reduce (iter (:items crate)) 0.0
+    (fn (total item)
+      (+ total (weight item)))))
 
 (type heaviest-label
   (where ((a cargo))
@@ -467,7 +466,7 @@
 
 (defn heaviest-label (crate)
   (match (max-by-key (iter (:items crate))
-                     (fn (item) (whole-grams (weight item))))
+           (fn (item) (whole-grams (weight item))))
     ((some item) (label item))
     (none (str "empty"))))
 
@@ -477,7 +476,7 @@
 
 (defn fragile-count (crate)
   (count (filter (iter (:items crate))
-                 (fn (item) (fragile? item)))))
+           (fn (item) (fragile? item)))))
 
 (type describe
   (where ((a cargo))
@@ -1797,7 +1796,6 @@
   (fn ((ref (vec (box measured)))) f64))
 
 (defn total-weight (items)
-  (reduce (iter items)
-          0.0
-          (fn (total item)
-            (+ total (weight item)))))
+  (reduce (iter items) 0.0
+    (fn (total item)
+      (+ total (weight item)))))

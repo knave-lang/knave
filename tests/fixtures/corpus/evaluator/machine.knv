@@ -120,10 +120,9 @@
      (ok-or (min (copied numbers))
             (str "min needs an argument")))
     ("sum"
-     (ok (reduce (iter numbers)
-                 0
-                 (fn (total value)
-                   (+ total (deref value))))))
+     (ok (reduce (iter numbers) 0
+           (fn (total value)
+             (+ total (deref value))))))
     ("abs"
      (match (first numbers)
        ((some value)

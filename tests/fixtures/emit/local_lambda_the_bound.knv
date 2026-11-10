@@ -5,5 +5,5 @@
     (fn (n) (println model n)))
   (local apply
     (the (fn ((fn (i64) unit)) unit)
-         (fn (action) (action year))))
+      (fn (action) (action year))))
   (apply (fn (n) (record n))))

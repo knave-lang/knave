@@ -28,10 +28,9 @@
   (fn ((ref (vec point))) (vec point)))
 
 (defn chain-of (points)
-  (reduce (iter points)
-          (vec)
-          (fn (chain p)
-            (push-turning chain (deref p)))))
+  (reduce (iter points) (vec)
+    (fn (chain p)
+      (push-turning chain (deref p)))))
 
 (type push-turning
   (fn ((vec point) point) (vec point)))
@@ -65,5 +64,5 @@
   (local rest upper)
   (pop! rest)
   (for-each (iter rest)
-            (fn (p) (push! joined (deref p))))
+    (fn (p) (push! joined (deref p))))
   joined)

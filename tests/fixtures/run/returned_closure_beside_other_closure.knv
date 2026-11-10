@@ -1,7 +1,7 @@
 (defn shifter! (x)
   (set! x (+ x 1))
   (for-each (range 0 2)
-            (fn (i) (println (+ i x))))
+    (fn (i) (println (+ i x))))
   (local pad 0)
   (fn (y) (* y 2)))
 

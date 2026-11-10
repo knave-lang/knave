@@ -187,11 +187,11 @@
   (fn (repeated matches)
     (if (list? matches)
       (map-list (pattern-variables repeated)
-                (fn (variable)
-                  (list (quote many)
-                        variable
-                        (map-list matches
-                                  (fn (bindings) (lookup variable bindings))))))
+        (fn (variable)
+          (list (quote many)
+                variable
+                (map-list matches
+                  (fn (bindings) (lookup variable bindings))))))
       false)))
 
 (def pattern-variable?
@@ -351,7 +351,7 @@
 (def iteration-bindings
   (fn (entries bindings index)
     (concat (map-list entries
-                      (fn (entry) (iteration-entry entry index)))
+              (fn (entry) (iteration-entry entry index)))
             bindings)))
 
 (def iteration-entry
@@ -383,8 +383,8 @@
 (def rule-shapes
   (fn (name clauses)
     (join-shapes (map-list clauses
-                           (fn (clause)
-                             (prepend name (first clause)))))))
+                   (fn (clause)
+                     (prepend name (first clause)))))))
 
 (def join-shapes
   (fn (shapes)
@@ -464,12 +464,12 @@
 (def pattern-lets
   (fn (pattern)
     (map-list (pattern-variables pattern)
-              (fn (variable)
-                (list (quote local)
-                      variable
-                      (list (quote binding-value)
-                            (quote macro-bindings)
-                            (list (quote quote) variable)))))))
+      (fn (variable)
+        (list (quote local)
+              variable
+              (list (quote binding-value)
+                    (quote macro-bindings)
+                    (list (quote quote) variable)))))))
 
 (def defmacro
   (macro (form)
@@ -1154,9 +1154,9 @@
   (fn (term)
     (local context (type-definition-symbol term "doc"))
     (map-list (docstring-notes context (type-doc-key term))
-              (fn (note)
-                (prepend (calls-header term context (type-definition-call term))
-                         (drop note 2))))))
+      (fn (note)
+        (prepend (calls-header term context (type-definition-call term))
+                 (drop note 2))))))
 
 (def docstring-notes
   (fn (context key)
@@ -1200,7 +1200,7 @@
       (symbol context form)
       (if (list? form)
         (map-list form
-                  (fn (item) (scoped-form context item)))
+          (fn (item) (scoped-form context item)))
         form))))
 
 (def call-header
@@ -1292,7 +1292,7 @@
     (local margin (shared-indentation (rest lines)))
     (local continuation
       (map-list (rest lines)
-                (fn (line) (unindent margin line))))
+        (fn (line) (unindent margin line))))
     (local first-line (string-trim-start (first lines)))
     (without-trailing-newlines
       (join-lines (without-leading-blanks (prepend first-line continuation))))))

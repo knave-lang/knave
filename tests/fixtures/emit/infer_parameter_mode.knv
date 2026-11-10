@@ -1,8 +1,7 @@
 (defn total (v)
   (println (infer v))
-  (reduce (iter v)
-          0
-          (fn (sum n) (+ sum (deref n)))))
+  (reduce (iter v) 0
+    (fn (sum n) (+ sum (deref n)))))
 
 (defn head (v)
   (println (infer v))

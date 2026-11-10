@@ -11,7 +11,7 @@
 
 (rust-trait two-methods "std::fmt::Binary"
   (method write-two-methods
-          (fn ((ref self) (mut out)) written))
+    (fn ((ref self) (mut out)) written))
   (method other (fn ((ref self)) written))
   (structural :struct ""
               :field ""
@@ -21,7 +21,7 @@
 
 (rust-trait owned-receiver "std::fmt::LowerHex"
   (method write-owned-receiver
-          (fn (self (mut out)) written))
+    (fn (self (mut out)) written))
   (structural :struct ""
               :field ""
               :variant ""
@@ -30,7 +30,7 @@
 
 (rust-trait cl "std::clone::Clone"
   (method clone-it
-          (fn ((ref self)) written))
+    (fn ((ref self)) written))
   (structural :struct ""
               :field ""
               :variant ""
@@ -39,7 +39,7 @@
 
 (rust-trait num2 "crate::rt::Number"
   (method write-num2
-          (fn ((ref self) (mut out)) written))
+    (fn ((ref self) (mut out)) written))
   (structural :struct ""
               :field ""
               :variant ""
@@ -48,12 +48,12 @@
 
 (rust-trait missing-bare "std::fmt::UpperHex"
   (method write-missing-bare
-          (fn ((ref self) (mut out)) written))
+    (fn ((ref self) (mut out)) written))
   (structural :struct "" :field "" :variant "" :part ""))
 
 (rust-trait unknown-key "std::fmt::LowerExp"
   (method write-unknown-key
-          (fn ((ref self) (mut out)) written))
+    (fn ((ref self) (mut out)) written))
   (structural :struct ""
               :field ""
               :variant ""
@@ -63,7 +63,7 @@
 
 (rust-trait not-a-key "std::fmt::UpperExp"
   (method write-not-a-key
-          (fn ((ref self) (mut out)) written))
+    (fn ((ref self) (mut out)) written))
   (structural "text"
               :struct ""
               :field ""
@@ -73,7 +73,7 @@
 
 (rust-trait repeated-key "std::fmt::Pointer"
   (method write-repeated-key
-          (fn ((ref self) (mut out)) written))
+    (fn ((ref self) (mut out)) written))
   (structural :struct ""
               :field ""
               :field ""
@@ -83,12 +83,12 @@
 
 (rust-trait key-without-string "std::fmt::Write"
   (method write-key-without-string
-          (fn ((ref self) (mut out)) written))
+    (fn ((ref self) (mut out)) written))
   (structural :struct "" :field "" :variant "" :part "" :bare))
 
 (rust-trait key-with-symbol "std::error::Error"
   (method write-key-with-symbol
-          (fn ((ref self) (mut out)) written))
+    (fn ((ref self) (mut out)) written))
   (structural :struct ""
               :field ""
               :variant ""
@@ -97,7 +97,7 @@
 
 (rust-trait field-in-part "std::hash::Hasher"
   (method write-field-in-part
-          (fn ((ref self) (mut out)) written))
+    (fn ((ref self) (mut out)) written))
   (structural :struct ""
               :field ""
               :variant ""
@@ -106,7 +106,7 @@
 
 (rust-trait past-the-method "std::io::Read"
   (method write-past-the-method
-          (fn ((ref self) (mut out)) written))
+    (fn ((ref self) (mut out)) written))
   (structural :struct ""
               :field ""
               :variant ""
@@ -115,7 +115,7 @@
 
 (rust-trait unclosed-placeholder "std::io::Seek"
   (method write-unclosed-placeholder
-          (fn ((ref self) (mut out)) written))
+    (fn ((ref self) (mut out)) written))
   (structural :struct "{name"
               :field ""
               :variant ""
@@ -124,7 +124,7 @@
 
 (rust-trait two-clauses "std::io::Write"
   (method write-two-clauses
-          (fn ((ref self) (mut out)) written))
+    (fn ((ref self) (mut out)) written))
   (structural :struct ""
               :field ""
               :variant ""

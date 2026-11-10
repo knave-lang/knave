@@ -75,6 +75,6 @@
          (shape/labeled (str "note") 2.0)))
   (push! shapes (hush shape/dot))
   (for-each (iter shapes)
-            (fn (item)
-              (println (title item) " " (doubled item))))
+    (fn (item)
+      (println (title item) " " (doubled item))))
   (println (add-values 40 2)))

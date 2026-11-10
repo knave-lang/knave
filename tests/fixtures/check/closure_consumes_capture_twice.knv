@@ -7,6 +7,6 @@
 (defn later (values)
   (twice (fn ()
            (prn (find values
-                      (fn (value) (> (deref value) 5)))))))
+                  (fn (value) (> (deref value) 5)))))))
 
 (defn main () (later (range 0 10)))

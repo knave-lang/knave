@@ -1,5 +1,3 @@
 (defn main ()
-  (map-at update
-          (sorted-map "a" 1)
-          "a"
-          (fn (n) (+ n 1))))
+  (map-at update (sorted-map "a" 1) "a"
+    (fn (n) (+ n 1))))

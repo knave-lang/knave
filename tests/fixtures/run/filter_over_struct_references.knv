@@ -4,7 +4,7 @@
 
 (defn adults (people)
   (collect (filter (iter people)
-                   (fn (p) (>= (:age p) 18)))))
+             (fn (p) (>= (:age p) 18)))))
 
 (defn main ()
   (local people

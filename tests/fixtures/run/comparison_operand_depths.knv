@@ -20,7 +20,7 @@
 
 (defn any-holds-literal? (hs)
   (any? (iter hs)
-        (fn (h) (= (:item h) "a"))))
+    (fn (h) (= (:item h) "a"))))
 
 (defn holds-file? (h p)
   (= (:item h) (as-str (:file p))))

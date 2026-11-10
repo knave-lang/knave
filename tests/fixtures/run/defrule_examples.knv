@@ -1,7 +1,7 @@
 (defrule dotimes
   (((index count) body ...)
    (for-each (range 0 count)
-             (fn (index) body ...))))
+     (fn (index) body ...))))
 
 (defrule case
   ((value clause ...)

@@ -6,5 +6,5 @@
   (local models (vec "Leaf" "Ariya"))
   (local nissan (->car :make "Nissan" :models models))
   (for-each (iter (:models nissan))
-            (fn (model)
-              (println (:make nissan) " " model))))
+    (fn (model)
+      (println (:make nissan) " " model))))

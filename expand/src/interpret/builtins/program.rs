@@ -54,13 +54,14 @@ impl<'a> ProgramOperations<'a> {
         let literal = self.arguments.form(1)?.span();
         let value = self.arguments.string(1)?;
         let read = host.read_literal_form(literal, value, self.arguments.index(2)?);
-        Ok(Forms::list(
+        Forms::list(
             read.map_or_else(Vec::new, |(mut form, end)| {
                 form.set_scopes(context.scopes());
                 vec![form, self.count_form(end)]
             }),
             self.call_site,
-        ))
+            self.arguments.span(),
+        )
     }
 
     pub fn located(&self) -> Result<Value, Diagnostic> {
@@ -90,26 +91,26 @@ impl<'a> ModuleOperations<'a> {
 
     pub fn project_modules(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(0)?;
-        Ok(self.symbols(host.project_modules()))
+        self.symbols(host.project_modules())
     }
 
     pub fn program_modules(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(0)?;
-        Ok(self.symbols(host.program_modules()))
+        self.symbols(host.program_modules())
     }
 
     pub fn module_exports(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let path = self.arguments.form(0)?;
         let exports = host.module_exports(self.arguments.symbol(0)?, path.span())?;
-        Ok(self.symbols(exports))
+        self.symbols(exports)
     }
 
     pub fn module_definitions(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let path = self.arguments.form(0)?;
         let definitions = host.module_definitions(self.arguments.symbol(0)?, path.span())?;
-        Ok(self.symbols(definitions))
+        self.symbols(definitions)
     }
 
     pub fn current_module(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
@@ -131,11 +132,11 @@ impl<'a> ModuleOperations<'a> {
         )))
     }
 
-    fn symbols(&self, symbols: Vec<Symbol>) -> Value {
+    fn symbols(&self, symbols: Vec<Symbol>) -> Result<Value, Diagnostic> {
         let forms = symbols
             .into_iter()
             .map(|symbol| Form::new(FormKind::Symbol(symbol), self.call_site))
             .collect();
-        Forms::list(forms, self.call_site)
+        Forms::list(forms, self.call_site, self.arguments.span())
     }
 }

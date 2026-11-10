@@ -133,7 +133,11 @@ impl<'a> TextOperations<'a> {
         self.arguments.expect_count(1)?;
         let term = self.arguments.form(0)?;
         let call = host.definition_call(self.arguments.symbol(0)?, term.span())?;
-        Ok(Forms::list(call.into_iter().collect(), self.call_site))
+        Forms::list(
+            call.into_iter().collect(),
+            self.call_site,
+            self.arguments.span(),
+        )
     }
 
     pub fn type_definition_call(
@@ -142,13 +146,21 @@ impl<'a> TextOperations<'a> {
     ) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let call = host.type_definition_call(self.arguments.symbol(0)?);
-        Ok(Forms::list(call.into_iter().collect(), self.call_site))
+        Forms::list(
+            call.into_iter().collect(),
+            self.call_site,
+            self.arguments.span(),
+        )
     }
 
     pub fn expand_call(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
-        let expansion = host.expand_call(self.arguments.form(0)?);
-        Ok(Forms::list(expansion.into_iter().collect(), self.call_site))
+        let expansion = host.expand_call(self.arguments.form(0)?)?;
+        Forms::list(
+            expansion.into_iter().collect(),
+            self.call_site,
+            self.arguments.span(),
+        )
     }
 
     fn expect_symbol_arguments(&self) -> Result<(), Diagnostic> {
@@ -171,7 +183,7 @@ impl<'a> TextOperations<'a> {
         self.arguments.expect_count(2)?;
         let context = self.arguments.symbol(0)?;
         let notes = host.module_notes(context, self.arguments.symbol(1)?.name());
-        Ok(Forms::list(notes, self.call_site))
+        Forms::list(notes, self.call_site, self.arguments.span())
     }
 
     pub fn declare_definition(
@@ -200,7 +212,7 @@ impl<'a> TextOperations<'a> {
             .take(1)
             .cloned()
             .collect();
-        Ok(Forms::list(found, self.call_site))
+        Forms::list(found, self.call_site, self.arguments.span())
     }
 
     pub fn sorted_names(&self) -> Result<Value, Diagnostic> {
@@ -208,7 +220,7 @@ impl<'a> TextOperations<'a> {
         let mut names = self.arguments.symbol_forms(0)?;
         names.sort_by(|left, right| Self::written_name(left).cmp(&Self::written_name(right)));
         names.dedup_by(|later, earlier| Self::written_name(later) == Self::written_name(earlier));
-        Ok(Forms::list(names, self.call_site))
+        Forms::list(names, self.call_site, self.arguments.span())
     }
 
     fn written_name(form: &Form) -> Option<&str> {

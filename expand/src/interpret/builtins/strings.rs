@@ -29,7 +29,9 @@ impl<'a> StringOperations<'a> {
             .split(Self::LINE_BREAK)
             .map(|line| self.string_value(line.to_string()))
             .collect();
-        Ok(Value::List(CodeList::new(lines, self.call_site)))
+        CodeList::new(lines, self.call_site)
+            .map(Value::List)
+            .map_err(|deep| deep.at(self.arguments.span()))
     }
 
     pub fn trim_start(&self) -> Result<Value, Diagnostic> {

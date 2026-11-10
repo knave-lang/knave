@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use super::Expander;
+use super::expansion_limit::ExpansionLimit;
 use super::failed_definition::DeclaredName;
 use super::problems::ExpandProblems;
 use crate::core::{BindingId, BindingKind, Declaration, ModulePath, Namespace};
@@ -43,9 +44,15 @@ impl CompileTimeHost for Expander<'_> {
         self.defining_call(binding)
     }
 
-    fn expand_call(&mut self, call: Form) -> Option<Form> {
-        let binding = self.macro_head(&call)?;
-        self.discarded_expansion(binding, call)
+    fn expand_call(&mut self, call: Form) -> Result<Option<Form>, Diagnostic> {
+        let Some(binding) = self.macro_head(&call) else {
+            return Ok(None);
+        };
+        match self.discarded_expansion(binding, call) {
+            Ok(expansion) => Ok(Some(expansion)),
+            Err(failure) if ExpansionLimit::stopped(&failure) => Err(failure),
+            Err(_) => Ok(None),
+        }
     }
 
     fn type_definition_symbol(&self, term: &Symbol, name: String) -> Symbol {

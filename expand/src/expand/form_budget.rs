@@ -88,7 +88,7 @@ mod tests {
         }
 
         fn code_list(items: Vec<Value>) -> Value {
-            Value::List(CodeList::new(items, Self::span()))
+            Value::List(CodeList::new(items, Self::span()).expect("within the limit"))
         }
 
         fn leaf() -> Form {

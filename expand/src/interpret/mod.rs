@@ -1,11 +1,12 @@
 mod arguments;
 mod builtins;
 mod code_list;
+mod limit_problems;
 mod problems;
 mod value;
 
 pub use builtins::BuiltinCall;
-pub use code_list::{CodeList, PassedLimit};
+pub use code_list::{CodeList, ListNesting, NestedTooDeep, PassedLimit};
 pub use problems::InterpretProblems;
 pub use value::{Closure, Env, Value};
 
@@ -32,7 +33,7 @@ pub trait CompileTimeHost {
     fn type_definition_symbol(&self, term: &Symbol, name: String) -> Symbol;
     fn definition_call(&self, term: &Symbol, span: Span) -> Result<Option<Form>, Diagnostic>;
     fn type_definition_call(&self, term: &Symbol) -> Option<Form>;
-    fn expand_call(&mut self, call: Form) -> Option<Form>;
+    fn expand_call(&mut self, call: Form) -> Result<Option<Form>, Diagnostic>;
     fn add_module_note(&mut self, key: &str, note: Form);
     fn module_notes(&self, context: &Symbol, key: &str) -> Vec<Form>;
     fn declare_definition(&mut self, name: Form, declaration: Declaration);

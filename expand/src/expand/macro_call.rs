@@ -4,6 +4,7 @@ use rustc_hash::FxHashMap;
 
 use super::Expander;
 use super::context::DefinitionContext;
+use super::expansion_limit::ExpansionLimit;
 use super::form_budget::FormBudget;
 use super::problems::ExpandProblems;
 use super::returned_arguments::ReturnedArguments;
@@ -139,10 +140,17 @@ impl Expander<'_> {
         Ok(self.place_expansion(binding, call_site, expanded))
     }
 
-    pub(super) fn value_expansion(&mut self, binding: BindingId, form: Form) -> Option<Form> {
+    pub(super) fn value_expansion(
+        &mut self,
+        binding: BindingId,
+        form: Form,
+    ) -> Result<Option<Form>, Diagnostic> {
         let call_site = form.span();
-        let expanded = self.trial_expansion(binding, form)?;
-        Some(self.place_expansion(binding, call_site, expanded))
+        match self.trial_expansion(binding, form) {
+            Ok(expanded) => Ok(Some(self.place_expansion(binding, call_site, expanded))),
+            Err(failure) if ExpansionLimit::stopped(&failure) => Err(failure),
+            Err(_) => Ok(None),
+        }
     }
 
     fn place_expansion(&mut self, binding: BindingId, call_site: Span, mut form: Form) -> Form {
@@ -153,7 +161,11 @@ impl Expander<'_> {
         form
     }
 
-    pub(super) fn discarded_expansion(&mut self, binding: BindingId, form: Form) -> Option<Form> {
+    pub(super) fn discarded_expansion(
+        &mut self,
+        binding: BindingId,
+        form: Form,
+    ) -> Result<Form, Diagnostic> {
         let checkpoint = self.tables.module_notes.checkpoint();
         let budget = self.form_budgets.current().clone();
         let expansion = self.trial_expansion(binding, form);
@@ -162,16 +174,16 @@ impl Expander<'_> {
         expansion
     }
 
-    fn trial_expansion(&mut self, binding: BindingId, form: Form) -> Option<Form> {
+    fn trial_expansion(&mut self, binding: BindingId, form: Form) -> Result<Form, Diagnostic> {
         let diagnostics = self.diagnostics.len();
         let recovered = self.recovered_diagnostics.len();
         let declared = self.declared_definitions.len();
         let budget_before = self.form_budgets.current().clone();
-        let result = self.run_macro(binding, form, None).ok();
+        let result = self.run_macro(binding, form, None);
         self.diagnostics.truncate(diagnostics);
         self.recovered_diagnostics.truncate(recovered);
         self.declared_definitions.truncate(declared);
-        if result.is_none() {
+        if result.is_err() {
             *self.form_budgets.current() = budget_before;
         }
         result
@@ -358,7 +370,8 @@ impl Expander<'_> {
     }
 
     fn point_at_call(diagnostic: Diagnostic, call_site: Span) -> Diagnostic {
-        if call_site.contains(diagnostic.primary().span()) {
+        let already_labels_the_call = diagnostic.labels().any(|label| label.span() == call_site);
+        if call_site.contains(diagnostic.primary().span()) || already_labels_the_call {
             diagnostic
         } else {
             diagnostic.with_label(ExpandProblems::macro_call(call_site))

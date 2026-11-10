@@ -1,0 +1,18 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/expand_call_nests_too_deep.knv
+---
+error[L0325]: macro code built a list nested too deeply
+   --> prelude/macros.knv:160:9
+    |
+160 |         (list (list (quote one) pattern input))
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this call builds a list past 4096 levels
+    |
+   ::: expand/expand_call_nests_too_deep.knv:16:12
+    |
+ 16 |   (println (wrap-deep-through-calls 5000)))
+    |            ------------------------------ in this macro call
+    |
+    = note: lists that macro code builds nest at most 4096 deep
+    = help: make the macro stop nesting, or build a flatter list

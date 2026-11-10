@@ -11,7 +11,7 @@ pub use failure::FailureDescription;
 use std::cmp::Ordering;
 
 use super::arguments::Arguments;
-use super::{CompileTimeHost, Value};
+use super::{CompileTimeHost, ListNesting, Value};
 use crate::core::{Builtin, Declaration};
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Number, NumberValue};
@@ -277,8 +277,8 @@ impl<'a> Operations<'a> {
 struct Forms;
 
 impl Forms {
-    fn list(items: Vec<Form>, span: Span) -> Value {
-        Value::Form(Form::new(FormKind::List(items), span))
+    fn list(items: Vec<Form>, span: Span, called_at: Span) -> Result<Value, Diagnostic> {
+        ListNesting::form_list(items, span).map_err(|deep| deep.at(called_at))
     }
 
     fn count(count: usize, span: Span) -> Value {

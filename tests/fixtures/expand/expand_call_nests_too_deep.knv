@@ -1,0 +1,16 @@
+(use code expand-call first list number-add value-eq)
+
+(defmacro wrap-once (form)
+  (list (quote wrapped) form))
+
+(defmacro wrap-deep-through-calls (levels)
+  ((fn (form count)
+     (if (value-eq count levels)
+       (quote 1)
+       (recur (first (expand-call (list (quote wrap-once) form)))
+              (number-add count 1))))
+   (quote x)
+   0))
+
+(defn main ()
+  (println (wrap-deep-through-calls 5000)))

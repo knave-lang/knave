@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/macro_nesting_limit_in_a_value_trial.knv
+---
+error[L0325]: macro code built a list nested too deeply
+  --> expand/macro_nesting_limit_in_a_value_trial.knv:6:14
+   |
+ 6 |       (recur (list form) (number-sub count 1))
+   |              ^^^^^^^^^^^ this call builds a list past 4096 levels
+...
+11 | (defn main () (println deep))
+   |                        ---- in this macro call
+   |
+   = note: lists that macro code builds nest at most 4096 deep
+   = help: make the macro stop nesting, or build a flatter list

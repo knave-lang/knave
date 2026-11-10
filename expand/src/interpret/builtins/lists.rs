@@ -4,7 +4,7 @@ use super::Forms;
 use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::Arguments;
 use crate::interpret::problems::InterpretProblems;
-use crate::interpret::{CodeList, Value};
+use crate::interpret::{CodeList, NestedTooDeep, Value};
 use crate::source::Span;
 
 pub struct ListOperations<'a> {
@@ -34,14 +34,14 @@ impl<'a> ListOperations<'a> {
         let values = (0..self.arguments.values().len())
             .map(|index| self.arguments.code(index))
             .collect::<Result<Vec<Value>, Diagnostic>>()?;
-        Ok(Value::List(CodeList::new(values, self.call_site)))
+        self.built(CodeList::new(values, self.call_site))
     }
 
     pub fn prepend(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
         let item = self.arguments.code(0)?;
         let items = self.arguments.list(1)?;
-        Ok(Value::List(items.prepended(item, self.call_site)))
+        self.built(items.prepended(item, self.call_site))
     }
 
     pub fn concat(&self) -> Result<Value, Diagnostic> {
@@ -49,10 +49,10 @@ impl<'a> ListOperations<'a> {
             .map(|index| self.arguments.list(index))
             .collect::<Result<Vec<CodeList>, Diagnostic>>()?;
         let Some((head, tail)) = lists.split_first() else {
-            return Ok(Value::List(CodeList::new(Vec::new(), self.call_site)));
+            return self.built(CodeList::new(Vec::new(), self.call_site));
         };
         let extra = tail.iter().flat_map(CodeList::values).collect();
-        Ok(Value::List(head.appended(extra, self.call_site)))
+        self.built(head.appended(extra, self.call_site))
     }
 
     pub fn len(&self) -> Result<Value, Diagnostic> {
@@ -82,6 +82,11 @@ impl<'a> ListOperations<'a> {
         self.arguments.expect_count(2)?;
         let count = self.arguments.index(1)?;
         self.dropped(&self.arguments.list(0)?, count)
+    }
+
+    fn built(&self, list: Result<CodeList, NestedTooDeep>) -> Result<Value, Diagnostic> {
+        list.map(Value::List)
+            .map_err(|deep| deep.at(self.arguments.span()))
     }
 
     fn item(&self, items: &CodeList, index: usize) -> Result<Value, Diagnostic> {

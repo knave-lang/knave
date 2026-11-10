@@ -149,7 +149,7 @@ impl Expander<'_> {
         symbol: &Symbol,
         form: &Form,
     ) -> Result<Expr, Diagnostic> {
-        match self.value_expansion(binding, form.clone()) {
+        match self.value_expansion(binding, form.clone())? {
             Some(expanded) => self.lower_expansion(&expanded),
             None => Err(self.macro_as_value(binding, symbol, form.span())),
         }

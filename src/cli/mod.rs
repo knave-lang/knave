@@ -3,6 +3,7 @@ mod build;
 mod build_directory;
 mod capped_report;
 mod check;
+mod check_flag;
 mod checkout_bounds;
 mod color_when;
 mod counter_report;
@@ -91,16 +92,18 @@ use crate::source::TextPosition;
 use add::AddCommand;
 use build::BuildCommand;
 use check::CheckCommand;
+use check_flag::CheckFlag;
 use color_when::ColorWhen;
 use counter_report::CounterReport;
 use crate_section::CrateSection;
 use doc::DocCommand;
+use doc_arguments::DocArguments;
 use emit::EmitCommand;
 use eval::{EvalCommand, EvaluationSettings, FormsText, ModuleText};
 use evaluation_output::{EvaluationOutput, JsonEvaluation, PrintedEvaluation};
 use exit_status::ExitStatus;
 use expand::ExpandCommand;
-use fmt::{FmtCommand, FmtMode};
+use fmt::FmtCommand;
 use front_end_stack::FrontEndStack;
 use new::NewCommand;
 use remove::RemoveCommand;
@@ -210,7 +213,7 @@ enum InspectionCommand {
         name = DocCommand::NAME,
         about = "Print the page of a prelude term, or of a program's term with --file"
     )]
-    Doc(doc_arguments::DocArguments),
+    Doc(DocArguments),
     #[command(about = "Print a program as kernel forms after macro expansion")]
     Expand {
         #[arg(help = ENTRY_HELP)]
@@ -356,15 +359,6 @@ struct JsonFlags {
         help = "Echo this text as `id` on every JSON object"
     )]
     id: Option<String>,
-}
-
-#[derive(Args)]
-struct CheckFlag {
-    #[arg(
-        long,
-        help = "Write nothing, print each file that would change, and exit 1 if any would"
-    )]
-    check: bool,
 }
 
 impl Cli {
@@ -559,16 +553,6 @@ impl JsonFlags {
             Box::new(JsonEvaluation::new(self.id))
         } else {
             Box::new(PrintedEvaluation::for_standard_output())
-        }
-    }
-}
-
-impl CheckFlag {
-    fn mode(&self) -> FmtMode {
-        if self.check {
-            FmtMode::Check
-        } else {
-            FmtMode::Write
         }
     }
 }

@@ -38,7 +38,7 @@ impl SourceWalk {
             return Err(file.report_unnamable());
         }
         TreeFile::refuse_compiler_modules(&files, terminal)?;
-        Ok(files.into_iter().map(|file| file.module).collect())
+        Ok(files.into_iter().map(TreeFile::into_module).collect())
     }
 
     fn walked_root(project: &LocatedProject) -> PathBuf {
@@ -63,7 +63,7 @@ impl SourceWalk {
             if path.is_dir() {
                 self.collect_inside(&path, files)?;
             } else if let Some(module) = self.module_of(&path) {
-                files.push(TreeFile { module, path });
+                files.push(TreeFile::new(module, path));
             }
         }
         Ok(())

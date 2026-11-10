@@ -7693,6 +7693,21 @@ fn task_parses_flag_shapes_the_way_command_lines_write_them() {
 }
 
 #[test]
+fn task_refuses_a_task_file_that_takes_a_compiler_module_path() {
+    let task = Sandbox::with_tasks("task_compiler_module_paths")
+        .with_file(
+            "tasks/kernel.knv",
+            "(deftask from-kernel () (println \"ran\"))\n",
+        )
+        .with_file(
+            "tasks/prelude.knv",
+            "(deftask from-prelude () (println \"ran\"))\n",
+        )
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn task_deftask_outside_tasks_is_an_error_at_the_form() {
     let task = Sandbox::with_tasks("task_stray")
         .with_file("src/stray.knv", STRAY_TASK_MODULE)

@@ -53,10 +53,6 @@ impl TreeKind {
         matches!(self, Self::Tasks)
     }
 
-    fn refuses_compiler_modules(self) -> bool {
-        matches!(self, Self::Tests)
-    }
-
     fn refuses(self, module: &str) -> bool {
         self.stays_inside()
             && module
@@ -157,7 +153,7 @@ impl EntryTree {
 
     fn load_directory(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
         let files = self.module_files()?;
-        self.refuse_compiler_modules(&files, terminal)?;
+        Self::refuse_compiler_modules(&files, terminal)?;
         let uses: Vec<String> = files
             .iter()
             .map(|file| format!("(use {})", file.module))
@@ -170,17 +166,13 @@ impl EntryTree {
     }
 
     fn refuse_compiler_modules(
-        &self,
         files: &[TreeFile],
         terminal: &mut Terminal,
     ) -> Result<(), ExitStatus> {
-        if !self.kind.refuses_compiler_modules() {
-            return Ok(());
-        }
         let mut problems = Diagnostics::default();
         for file in files.iter().filter(|file| file.takes_compiler_module()) {
             let start = Span::new(terminal.load(&file.path)?, 0..0);
-            problems.push(ExpandProblems::test_file_takes_compiler_module(
+            problems.push(ExpandProblems::file_takes_compiler_module(
                 &file.module_path(),
                 start,
             ));

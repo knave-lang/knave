@@ -4,7 +4,7 @@
 
 (defn count-long (names)
   (count (filter names
-                 (fn (name) (> (len name) 4)))))
+           (fn (name) (> (len name) 4)))))
 
 (defn main ()
   (local (models (vec (ref str)))

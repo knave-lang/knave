@@ -4,7 +4,7 @@
 (defn first-even (numbers)
   (local found
     (find (copied numbers)
-          (fn (n) (= (rem n 2) 0))))
+      (fn (n) (= (rem n 2) 0))))
   (ok-or found (str "no even number")))
 
 (defn main ()

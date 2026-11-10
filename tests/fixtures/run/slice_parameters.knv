@@ -8,7 +8,7 @@
 
 (defn print-years (cars)
   (for-each (iter cars)
-            (fn (car) (println (:year car)))))
+    (fn (car) (println (:year car)))))
 
 (defn years (cars)
   (collect (map (iter cars) :year)))

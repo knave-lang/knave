@@ -14,7 +14,7 @@
 
 (defn group-totals (packing)
   (collect (map (split packing "\n\n")
-                (fn (group) (group-total group)))))
+             (fn (group) (group-total group)))))
 
 (defn group-total (group)
   (sum (map (lines group) parse-integer)))

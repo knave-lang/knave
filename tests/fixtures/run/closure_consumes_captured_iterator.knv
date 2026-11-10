@@ -2,7 +2,7 @@
   (local pick
     (fn ()
       (find values
-            (fn (value) (> (deref value) 5)))))
+        (fn (value) (> (deref value) 5)))))
   (pick))
 
 (defn main ()

@@ -2,9 +2,9 @@
   (local numbers (vec 3 1 2))
   (sort! numbers (fn (a b) (- b a)))
   (sort! numbers
-         (fn (a b)
-           (local difference (- b a))
-           (+ difference difference)))
+    (fn (a b)
+      (local difference (- b a))
+      (+ difference difference)))
   (println (unwrap (first numbers))))
 
 (defn main () (ordered 1))

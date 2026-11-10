@@ -16,4 +16,4 @@
   (prn (sizes grid))
   (prn (sizes models))
   (prn (collect (map (iter grid)
-                     (fn (row) (owned-size row))))))
+                  (fn (row) (owned-size row))))))

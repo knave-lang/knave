@@ -6,5 +6,5 @@
   (println (len items))
   (local more (vec 1))
   (for-each (iter (vec 1 2))
-            (fn (value) (push! more (deref value))))
+    (fn (value) (push! more (deref value))))
   (println (len more)))

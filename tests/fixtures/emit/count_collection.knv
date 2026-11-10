@@ -8,4 +8,4 @@
   (local prices (hash-map "leaf" 28000 "ariya" 39000))
   (println (count (iter prices)))
   (println (count (filter (iter years)
-                          (fn (year) (> year 2015))))))
+                    (fn (year) (> year 2015))))))

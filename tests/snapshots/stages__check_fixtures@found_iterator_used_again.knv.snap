@@ -20,7 +20,7 @@ error[L0501]: use of moved value `steps`
    |
 12 |   (prn (find steps
    |              ----- value moved here
-13 |              (fn (step) (> (deref step) 2))))
+13 |          (fn (step) (> (deref step) 2))))
 14 |   (prn (find steps
    |              ^^^^^ value used here after it moved
    |

@@ -7,4 +7,4 @@
     (->car :make "Nissan" :models (vec "Leaf" "Ariya")))
   (println (:make nissan))
   (for-each (iter (:models nissan))
-            (fn (model) (println model))))
+    (fn (model) (println model))))

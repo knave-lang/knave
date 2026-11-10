@@ -21,7 +21,7 @@
 (defrule dotimes
   (((index count) body ...)
    (for-each (range 0 count)
-             (fn (index) body ...))))
+     (fn (index) body ...))))
 
 (defmacro case (value clauses ...)
   (local subject (quote case-value))
@@ -29,8 +29,7 @@
               (local (unquote subject) (unquote value))
               (cond
                 (splice (map-list clauses
-                                  (fn (clause)
-                                    (case-clause subject clause))))))))
+                          (fn (clause) (case-clause subject clause))))))))
 
 (def case-clause
   (fn (subject clause)
@@ -70,21 +69,20 @@
   (local left (quote left))
   (local right (quote right))
   (local record (quote record))
-  (template (do
-              (defstruct (unquote name)
-                (splice (flat-fields fields)))
-              (defn (unquote (symbol name (symbol-name name) "-equal?")) ((unquote
-                                                                            left)
-                                                                          (unquote
-                                                                            right))
-                (and (splice (map-list fields
-                                       (fn (field)
-                                         (field-equality field left right))))))
-              (defn (unquote (symbol name (symbol-name name) "->string")) ((unquote
-                                                                             record))
-                (str (unquote (string "(" name))
-                     (splice (field-texts fields record))
-                     ")")))))
+  (template
+    (do
+      (defstruct (unquote name)
+        (splice (flat-fields fields)))
+      (defn (unquote (symbol name (symbol-name name) "-equal?")) ((unquote left)
+                                                                  (unquote
+                                                                    right))
+        (and (splice (map-list fields
+                       (fn (field) (field-equality field left right))))))
+      (defn (unquote (symbol name (symbol-name name) "->string")) ((unquote
+                                                                     record))
+        (str (unquote (string "(" name))
+             (splice (field-texts fields record))
+             ")")))))
 
 (def flat-fields
   (fn (fields)

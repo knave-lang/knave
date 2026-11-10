@@ -21,8 +21,8 @@
   (local built (build ->car lot))
   (local restocked
     (restock lot
-             (fn ()
-               (->car :make (as-str model) :year 2025))))
+      (fn ()
+        (->car :make (as-str model) :year 2025))))
   (println (:make built))
   (println (:year built))
   (println (:make restocked))

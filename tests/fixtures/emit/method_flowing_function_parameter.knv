@@ -16,6 +16,6 @@
   (local lot (->depot 1))
   (local picked
     (pick lot
-          (fn (make) (->car :make make :year 2025))))
+      (fn (make) (->car :make make :year 2025))))
   (println (:make picked))
   (println (+ (:size lot) (:year picked))))

@@ -1,21 +1,21 @@
 (defn recent (years floor)
   (count (filter (iter years)
-                 (fn (y) (> (deref y) floor)))))
+           (fn (y) (> (deref y) floor)))))
 
 (defn after? (years floor)
   (any? (iter years) (fn (y) (> y floor))))
 
 (defn typed-recent ((years (ref (slice i64))) floor)
   (count (filter (iter years)
-                 (fn (y) (> (deref y) floor)))))
+           (fn (y) (> (deref y) floor)))))
 
 (defn written-recent (years (floor (ref i64)))
   (count (filter (iter years)
-                 (fn (y) (> y floor)))))
+           (fn (y) (> y floor)))))
 
 (defn named (names wanted)
   (count (filter (iter names)
-                 (fn (n) (= n wanted)))))
+           (fn (n) (= n wanted)))))
 
 (defn main ()
   (local years (vec 2019 2021 2024))

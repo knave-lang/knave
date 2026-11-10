@@ -30,16 +30,16 @@
 
 (defn any-big? (values)
   (some? (find values
-               (fn (value)
-                 (> (deref (first-of value 3000000000)) 1)))))
+           (fn (value)
+             (> (deref (first-of value 3000000000)) 1)))))
 
 (type total-weight
   (fn ((vec (box weighed))) i64))
 
 (defn total-weight (crates)
   (reduce crates 0
-          (fn (total item)
-            (+ total (weight-of item)))))
+    (fn (total item)
+      (+ total (weight-of item)))))
 
 (defn main ()
   (local several?
@@ -94,5 +94,5 @@
   (prn (wrap "Leaf"))
   (shown "Leaf")
   (println (apply-to "Leaf"
-                     (fn (model) (len model))))
+             (fn (model) (len model))))
   (do))

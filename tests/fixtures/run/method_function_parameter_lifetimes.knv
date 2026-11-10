@@ -48,7 +48,7 @@
                       (->car :make (as-str model) :year 2025))
                     lot))
   (println (inspect lot
-                    (fn ()
-                      (->car :make (as-str model) :year 2026))))
+             (fn ()
+               (->car :make (as-str model) :year 2026))))
   (println (assemble ->car lot))
   (println (assemble ->car (->yard 2))))

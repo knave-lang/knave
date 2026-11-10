@@ -4,10 +4,10 @@ expression: reports.report(path)
 input_file: tests/fixtures/check/changed_by_returned_iterator_closure.knv
 ---
 error[L0517]: a returned closure cannot use `x`, which `walk!` changes
- --> check/changed_by_returned_iterator_closure.knv:4:16
+ --> check/changed_by_returned_iterator_closure.knv:4:13
   |
-4 |          (set! x (+ x 1))
-  |                ^ the closure uses `x` here
+4 |       (set! x (+ x 1))
+  |             ^ the closure uses `x` here
   |
   = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
   = help: copy it first with `(local value x)` and use `value` in the closure

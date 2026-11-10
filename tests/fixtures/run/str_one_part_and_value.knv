@@ -9,4 +9,4 @@
   (local years (vec 2019))
   (push! (mut years) year)
   (for-each (map (iter years) str)
-            (fn (text) (println text))))
+    (fn (text) (println text))))

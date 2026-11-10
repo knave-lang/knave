@@ -10,22 +10,20 @@
   (fn ((ref matrix)) string))
 
 (defn matrix-text (m)
-  (reduce (iter (:rows m))
-          (str "")
-          (fn (text row)
-            (str text "[" (row-text row) "]"))))
+  (reduce (iter (:rows m)) (str "")
+    (fn (text row)
+      (str text "[" (row-text row) "]"))))
 
 (type row-text
   (fn ((ref (vec f64))) string))
 
 (defn row-text (row)
-  (reduce (enumerate (iter row))
-          (str "")
-          (fn (text entry)
-            (let-match ((pair index value) entry)
-              (if (= index 0)
-                (str (rounded (deref value)))
-                (str text " " (rounded (deref value))))))))
+  (reduce (enumerate (iter row)) (str "")
+    (fn (text entry)
+      (let-match ((pair index value) entry)
+        (if (= index 0)
+          (str (rounded (deref value)))
+          (str text " " (rounded (deref value))))))))
 
 (type size (fn ((ref matrix)) usize))
 
@@ -41,10 +39,10 @@
 
 (defn identity (n)
   (->matrix (collect (map (range 0 n)
-                          (fn (row)
-                            (collect (map (range 0 n)
-                                          (fn (column)
-                                            (if (= row column) 1.0 0.0)))))))))
+                       (fn (row)
+                         (collect (map (range 0 n)
+                                    (fn (column)
+                                      (if (= row column) 1.0 0.0)))))))))
 
 (type multiply
   (fn ((ref matrix) (ref matrix)) matrix))
@@ -52,22 +50,20 @@
 (defn multiply (left right)
   (local n (size left))
   (->matrix (collect (map (range 0 n)
-                          (fn (row)
-                            (collect (map
-                                       (range 0 n)
-                                       (fn (column)
-                                         (dot-at left right row column)))))))))
+                       (fn (row)
+                         (collect (map (range 0 n)
+                                    (fn (column)
+                                      (dot-at left right row column)))))))))
 
 (type dot-at
   (fn ((ref matrix) (ref matrix) usize usize)
     f64))
 
 (defn dot-at (left right row column)
-  (reduce (range 0 (size left))
-          0.0
-          (fn (total k)
-            (+ total
-               (* (cell left row k) (cell right k column))))))
+  (reduce (range 0 (size left)) 0.0
+    (fn (total k)
+      (+ total
+         (* (cell left row k) (cell right k column))))))
 
 (type transpose
   (fn ((ref matrix)) matrix))
@@ -75,10 +71,9 @@
 (defn transpose (m)
   (local n (size m))
   (->matrix (collect (map (range 0 n)
-                          (fn (row)
-                            (collect (map (range 0 n)
-                                          (fn (column)
-                                            (cell m column row)))))))))
+                       (fn (row)
+                         (collect (map (range 0 n)
+                                    (fn (column) (cell m column row)))))))))
 
 (type minor
   (fn ((ref matrix) usize) matrix))
@@ -86,11 +81,10 @@
 (defn minor (m skipped)
   (local n (size m))
   (->matrix (collect (map (range 1 n)
-                          (fn (row)
-                            (collect (map
-                                       (filter (range 0 n)
-                                               (fn (column)
-                                                 (not= (deref column) skipped)))
+                       (fn (row)
+                         (collect (map (filter (range 0 n)
+                                         (fn (column)
+                                           (not= (deref column) skipped)))
                                        (fn (column) (cell m row column)))))))))
 
 (type determinant
@@ -99,13 +93,12 @@
 (defn determinant (m)
   (if (= (size m) 1)
     (cell m 0 0)
-    (reduce (range 0 (size m))
-            0.0
-            (fn (total column)
-              (+ total
-                 (* (sign-of column)
-                    (cell m 0 column)
-                    (determinant (ref (minor m column)))))))))
+    (reduce (range 0 (size m)) 0.0
+      (fn (total column)
+        (+ total
+           (* (sign-of column)
+              (cell m 0 column)
+              (determinant (ref (minor m column)))))))))
 
 (type sign-of (fn (usize) f64))
 
@@ -121,10 +114,9 @@
   (if (< (magnitude whole) 0.000001)
     none
     (some (collect (map (range 0 (size m))
-                        (fn (column)
-                          (/ (determinant (ref
-                                            (replace-column m column targets)))
-                             whole)))))))
+                     (fn (column)
+                       (/ (determinant (ref (replace-column m column targets)))
+                          whole)))))))
 
 (type replace-column
   (fn ((ref matrix) usize (ref (vec f64)))
@@ -133,12 +125,12 @@
 (defn replace-column (m replaced targets)
   (local n (size m))
   (->matrix (collect (map (range 0 n)
-                          (fn (row)
-                            (collect (map (range 0 n)
-                                          (fn (column)
-                                            (if (= column replaced)
-                                              (deref (at targets row))
-                                              (cell m row column))))))))))
+                       (fn (row)
+                         (collect (map (range 0 n)
+                                    (fn (column)
+                                      (if (= column replaced)
+                                        (deref (at targets row))
+                                        (cell m row column))))))))))
 
 (type apply-to
   (fn ((ref matrix) (ref (vec f64)))
@@ -146,13 +138,12 @@
 
 (defn apply-to (m point)
   (collect (map (range 0 (size m))
-                (fn (row)
-                  (reduce (enumerate (iter point))
-                          0.0
-                          (fn (total entry)
-                            (let-match ((pair column value) entry)
-                              (+ total
-                                 (* (cell m row column) (deref value))))))))))
+             (fn (row)
+               (reduce (enumerate (iter point)) 0.0
+                 (fn (total entry)
+                   (let-match ((pair column value) entry)
+                     (+ total
+                        (* (cell m row column) (deref value))))))))))
 
 (def magnitude
   (rust "{0}.abs()" (fn (f64) f64)))

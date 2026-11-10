@@ -8,4 +8,4 @@
   (local names (map users :name))
   (println (count names))
   (for-each names
-            (fn (name) (println name))))
+    (fn (name) (println name))))

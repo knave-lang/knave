@@ -38,7 +38,7 @@
   (println (size-many word))
   (println (size-many (vec 1 2)))
   (for-each (map (range 0 4) shout)
-            (fn (text) (println text)))
+    (fn (text) (println text)))
   (println (countdown 3 false))
   (println (even-step 4 false))
   (println (identity 3))

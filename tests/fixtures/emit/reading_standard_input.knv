@@ -12,7 +12,7 @@
     ((ok text) (println (count (lines (as-str text)))))
     ((err error) (eprintln error)))
   (for-each (line-seq stdin)
-            (fn (line)
-              (match line
-                ((ok text) (println text))
-                ((err error) (eprintln error))))))
+    (fn (line)
+      (match line
+        ((ok text) (println text))
+        ((err error) (eprintln error))))))

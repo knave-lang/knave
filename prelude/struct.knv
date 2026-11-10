@@ -95,10 +95,9 @@
 
 (def constructor-call
   (fn (form hidden shape)
-    (read-call form hidden shape
-               (field-definition (signature-name shape))
-               (fn (form)
-                 (named-construction (rest form) shape)))))
+    (read-call form hidden shape (field-definition (signature-name shape))
+      (fn (form)
+        (named-construction (rest form) shape)))))
 
 (def constructor-expansion
   (fn (form hidden shape)

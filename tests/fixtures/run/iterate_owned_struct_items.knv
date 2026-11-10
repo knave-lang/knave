@@ -4,13 +4,13 @@
 
 (defn adult-ages (users)
   (map (filter users
-               (fn (u)
-                 (and (> (:age u) 17)
-                      (> (len (:name u)) 0))))
+         (fn (u)
+           (and (> (:age u) 17)
+                (> (len (:name u)) 0))))
        :age))
 
 (defn main ()
   (local ages (vec 34 12))
   (for-each (adult-ages (map ages
-                             (fn (age) (->user (str "Ana") age))))
+                          (fn (age) (->user (str "Ana") age))))
             (fn (age) (println age))))

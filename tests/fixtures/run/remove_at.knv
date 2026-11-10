@@ -3,4 +3,4 @@
   (println (remove-at! items 1))
   (println (len items))
   (for-each (copied items)
-            (fn (item) (println item))))
+    (fn (item) (println item))))

@@ -8,7 +8,7 @@
 
 (defn evaluate (tokens)
   (then-ok (parse-expression tokens 0)
-           (fn (result) (expect-end tokens result))))
+    (fn (result) (expect-end tokens result))))
 
 (defn expect-end (tokens result)
   (if (= (:next result) (len tokens))
@@ -21,7 +21,7 @@
 
 (defn parse-expression (tokens position)
   (then-ok (parse-term tokens position)
-           (fn (left) (parse-sums tokens left))))
+    (fn (left) (parse-sums tokens left))))
 
 (defn parse-sums (tokens left)
   (local next (:next left))
@@ -30,18 +30,18 @@
      (match (as-str text)
        ("+"
         (then-ok (parse-term tokens (+ next 1))
-                 (fn (right)
-                   (parse-sums tokens (combine left right +)))))
+          (fn (right)
+            (parse-sums tokens (combine left right +)))))
        ("-"
         (then-ok (parse-term tokens (+ next 1))
-                 (fn (right)
-                   (parse-sums tokens (combine left right -)))))
+          (fn (right)
+            (parse-sums tokens (combine left right -)))))
        (_ (ok left))))
     (_ (ok left))))
 
 (defn parse-term (tokens position)
   (then-ok (parse-factor tokens position)
-           (fn (left) (parse-products tokens left))))
+    (fn (left) (parse-products tokens left))))
 
 (defn parse-products (tokens left)
   (local next (:next left))
@@ -50,11 +50,11 @@
      (match (as-str text)
        ("*"
         (then-ok (parse-factor tokens (+ next 1))
-                 (fn (right)
-                   (parse-products tokens (combine left right *)))))
+          (fn (right)
+            (parse-products tokens (combine left right *)))))
        ("/"
         (then-ok (parse-factor tokens (+ next 1))
-                 (fn (right) (divide tokens left right))))
+          (fn (right) (divide tokens left right))))
        (_ (ok left))))
     (_ (ok left))))
 
@@ -69,7 +69,7 @@
      (match (as-str text)
        ("("
         (then-ok (parse-expression tokens (+ position 1))
-                 (fn (inner) (expect-close tokens inner))))
+          (fn (inner) (expect-close tokens inner))))
        (_ (err (str "expected a number at token " position)))))
     ((some (number text))
      (ok (->parsed (number-value text) (+ position 1))))

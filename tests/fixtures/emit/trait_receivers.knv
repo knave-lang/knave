@@ -53,10 +53,9 @@
   (swap! (a b) (do (local _b b))))
 
 (defn total-area (shapes)
-  (reduce (iter shapes)
-          0.0
-          (fn (total shape)
-            (+ total (area shape)))))
+  (reduce (iter shapes) 0.0
+    (fn (total shape)
+      (+ total (area shape)))))
 
 (defn areas (items)
   (local shapes (iter items))
@@ -64,7 +63,7 @@
 
 (defn total-of (areas)
   (reduce areas 0.0
-          (fn (total area) (+ total area))))
+    (fn (total area) (+ total area))))
 
 (defn main ()
   (local shapes

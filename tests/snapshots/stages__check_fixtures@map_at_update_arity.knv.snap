@@ -6,8 +6,6 @@ input_file: tests/fixtures/check/map_at_update_arity.knv
 error[L0402]: this function takes 3 arguments but 2 were given
  --> check/map_at_update_arity.knv:2:3
   |
-2 | /   (map-at update
-3 | |           (sorted-map "a" 1)
-4 | |           "a"
-5 | |           (fn (n) (+ n 1))))
-  | |___________________________^ expected 3 arguments
+2 | /   (map-at update (sorted-map "a" 1) "a"
+3 | |     (fn (n) (+ n 1))))
+  | |_____________________^ expected 3 arguments

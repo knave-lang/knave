@@ -4,7 +4,7 @@
 (defrule dotimes
   (((index count) body ...)
    (for-each (range 0 count)
-             (fn (index) body ...))))
+     (fn (index) body ...))))
 
 (defrule case
   ((value clause ...)
@@ -33,12 +33,11 @@
 
 (defrule tally
   ((counter (item ...) test)
-   (reduce (iter (vec item ...))
-           0
-           (fn (counter element)
-             (if (test (deref element))
-               (+ counter 1)
-               counter)))))
+   (reduce (iter (vec item ...)) 0
+     (fn (counter element)
+       (if (test (deref element))
+         (+ counter 1)
+         counter)))))
 
 (defmacro defcounter (name start step)
   (local next-name (symbol name "next-" (symbol-name name)))
@@ -94,7 +93,7 @@
 
 (defn parse-level (text)
   (map-err (parse text)
-           (fn (problem) (str "bad level " text ": " problem))))
+    (fn (problem) (str "bad level " text ": " problem))))
 
 (type sum-levels
   (fn ((ref str) (ref str))

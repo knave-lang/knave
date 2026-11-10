@@ -15,8 +15,8 @@
 
 (defn report (tokens)
   (for-each (iter tokens)
-            (fn (t)
-              (match t
-                ((symbol text) (println (str "symbol " text)))
-                ((number text) (println (str "number " text))))))
+    (fn (t)
+      (match t
+        ((symbol text) (println (str "symbol " text)))
+        ((number text) (println (str "number " text))))))
   (println (str "= " (evaluate tokens))))

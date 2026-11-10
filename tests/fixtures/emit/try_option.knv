@@ -4,7 +4,7 @@
 (defn first-even-double (numbers)
   (local found
     (try (find (copied numbers)
-               (fn (n) (= (rem n 2) 0)))))
+           (fn (n) (= (rem n 2) 0)))))
   (some (* found 2)))
 
 (defn main ()

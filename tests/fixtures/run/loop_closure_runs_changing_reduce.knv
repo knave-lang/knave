@@ -1,11 +1,10 @@
 (defn wrap! (x ys)
   (set! x (+ x 1))
   (loop (i 0)
-    (if (> (reduce (iter ys)
-                   i
-                   (fn (acc z)
-                     (set! x (+ x 1))
-                     (+ acc (deref z))))
+    (if (> (reduce (iter ys) i
+             (fn (acc z)
+               (set! x (+ x 1))
+               (+ acc (deref z))))
            100)
       (fn (y) (+ y 1))
       (recur (+ i 50)))))

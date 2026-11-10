@@ -9,6 +9,6 @@
   (println (expect-ok (halve 10) "even"))
   (println (unwrap-ok (map-ok (halve 10) (fn (n) (* n 2)))))
   (println (unwrap-err (map-err (halve 7)
-                                (fn (message) (str message "!")))))
+                         (fn (message) (str message "!")))))
   (println (unwrap-ok (then-ok (halve 10)
-                               (fn (n) (ok (+ n 1)))))))
+                        (fn (n) (ok (+ n 1)))))))

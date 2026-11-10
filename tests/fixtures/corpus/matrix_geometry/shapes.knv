@@ -60,23 +60,21 @@
   (fn ((ref (vec point))) f64))
 
 (defn shoelace (corners)
-  (reduce (edges corners)
-          0.0
-          (fn (total edge)
-            (let-match ((pair from to) edge)
-              (+ total
-                 (- (* (:x from) (:y to))
-                    (* (:x to) (:y from))))))))
+  (reduce (edges corners) 0.0
+    (fn (total edge)
+      (let-match ((pair from to) edge)
+        (+ total
+           (- (* (:x from) (:y to))
+              (* (:x to) (:y from))))))))
 
 (type edge-length
   (fn ((ref (vec point))) f64))
 
 (defn edge-length (corners)
-  (reduce (edges corners)
-          0.0
-          (fn (total edge)
-            (let-match ((pair from to) edge)
-              (+ total (distance from to))))))
+  (reduce (edges corners) 0.0
+    (fn (total edge)
+      (let-match ((pair from to) edge)
+        (+ total (distance from to))))))
 
 (type edges
   (fn ((ref (vec point)))
@@ -85,9 +83,9 @@
 (defn edges (corners)
   (local count (len corners))
   (collect (map (range 0 count)
-                (fn (index)
-                  (pair (deref (at corners index))
-                        (deref (at corners (rem (+ index 1) count))))))))
+             (fn (index)
+               (pair (deref (at corners index))
+                     (deref (at corners (rem (+ index 1) count))))))))
 
 (type distance (fn (point point) f64))
 

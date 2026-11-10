@@ -1,7 +1,6 @@
 (defn total (items)
-  (reduce (iter items)
-          0
-          (fn (sum item) (+ sum item))))
+  (reduce (iter items) 0
+    (fn (sum item) (+ sum item))))
 
 (defn main ()
   (println (total (vec 1 2 3))))

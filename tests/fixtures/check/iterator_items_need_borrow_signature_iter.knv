@@ -11,4 +11,4 @@
     (vec (->user (str "Ana") 34)
          (->user (str "Ben") 12)))
   (for-each (adult-ages (iter users))
-            (fn (age) (println age))))
+    (fn (age) (println age))))

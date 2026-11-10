@@ -6,8 +6,8 @@
 
 (rust-trait octal2 "std::fmt::Octal"
   (method fmt
-          (fn ((ref self) (mut octal-out))
-            octal-result)))
+    (fn ((ref self) (mut octal-out))
+      octal-result)))
 
 (defstruct p
   :x i64)

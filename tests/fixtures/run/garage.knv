@@ -28,8 +28,8 @@
   (local mine (->garage "karl" (vec leaf civic golf)))
   (println (:owner mine) "'s garage:")
   (for-each (iter (:cars mine))
-            (fn (vehicle)
-              (println (describe vehicle))))
+    (fn (vehicle)
+      (println (describe vehicle))))
   (println (describe (assoc civic :year 2020)))
   (local newest
     (max (map (iter (:cars mine)) :year)))

@@ -16,9 +16,9 @@
 
 (defn main ()
   (for-each (enumerate (iter scripts))
-            (fn (entry)
-              (let-match ((pair index script) entry)
-                (run index script)))))
+    (fn (entry)
+      (let-match ((pair index script) entry)
+        (run index script)))))
 
 (type run (fn (usize (ref str)) unit))
 
@@ -44,6 +44,6 @@
 
 (defn report-names (names)
   (for-each (iter names)
-            (fn (entry)
-              (let-match ((pair name value) entry)
-                (println (str "  " name " = " value))))))
+    (fn (entry)
+      (let-match ((pair name value) entry)
+        (println (str "  " name " = " value))))))

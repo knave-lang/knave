@@ -4,7 +4,7 @@
 
 (defn holds? (pages target)
   (any? (iter pages)
-        (fn (p) (= (:file p) target))))
+    (fn (p) (= (:file p) target))))
 
 (defn names? (p target)
   (= (:file p) target))
@@ -33,7 +33,7 @@
 
 (defn any-tag? (pages target)
   (any? (iter pages)
-        (fn (p) (= (at (:tags p) 0) target))))
+    (fn (p) (= (at (:tags p) 0) target))))
 
 (defn same-three? (p target)
   (= (:file p) target (:file p)))
@@ -57,7 +57,7 @@
 
 (defn titled-a? (windows)
   (any? (iter windows)
-        (fn (w) (= (:title w) "a"))))
+    (fn (w) (= (:title w) "a"))))
 
 (defn retitle! (p target)
   (set! (:file p) (str "b"))

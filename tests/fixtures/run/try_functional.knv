@@ -16,7 +16,7 @@
 
 (defn add-text-threaded (text)
   (try-> text parse
-         (fn (value) (ok (+ value 1)))))
+    (fn (value) (ok (+ value 1)))))
 
 (defn add-two-texts (left right)
   (let-try (a (parse left)

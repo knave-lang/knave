@@ -3,7 +3,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::core::BindingId;
 use crate::types::{
     Pipelines, ReturnedValues, Type, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem,
-    TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedProgram, TypedStructExpr,
+    TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedProgram,
+    TypedStructExpr,
 };
 
 pub struct HeldBorrows<'a> {
@@ -99,22 +100,26 @@ impl<'l> FunctionScope<'l> {
             }
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
             TypedExprKind::Recur(arguments) => self.recur(arguments),
-            TypedExprKind::Fn(lambda) => {
-                self.rebound.push(&lambda.params);
-                self.children(expr);
-                self.rebound.pop();
-            }
+            TypedExprKind::Fn(lambda) => self.closure(lambda, expr),
             TypedExprKind::Control(TypedControl::Block(block)) => self.block(block),
-            TypedExprKind::Control(TypedControl::Match(matched)) => {
-                self.expr(&matched.value);
-                for arm in &matched.arms {
-                    for binder in arm.pattern.binders() {
-                        self.bind(binder.binding, &matched.value);
-                    }
-                    self.block(&arm.body);
-                }
-            }
+            TypedExprKind::Control(TypedControl::Match(matched)) => self.matched(matched),
             _ => self.children(expr),
+        }
+    }
+
+    fn closure(&mut self, lambda: &'l TypedLambda, expr: &'l TypedExpr) {
+        self.rebound.push(&lambda.params);
+        self.children(expr);
+        self.rebound.pop();
+    }
+
+    fn matched(&mut self, matched: &'l TypedMatch) {
+        self.expr(&matched.value);
+        for arm in &matched.arms {
+            for binder in arm.pattern.binders() {
+                self.bind(binder.binding, &matched.value);
+            }
+            self.block(&arm.body);
         }
     }
 
@@ -283,6 +288,10 @@ mod tests {
                   (fn (v) (if (> (len v) 9) (recur (ref items)) (len v))))
                 (println (g (ref other)))
                 (fn () (count r))))
+            (defn matched! (x items)
+              (set! x (+ x 1))
+              (match (iter items)
+                (it (fn () (count it)))))
             (defn main ())";
 
         fn new() -> Self {
@@ -364,6 +373,11 @@ mod tests {
     #[test]
     fn a_held_local_keeps_only_the_parameter_it_borrows() {
         assert_eq!(KeptFixture::new().kept_names("beside!"), vec!["items"]);
+    }
+
+    #[test]
+    fn a_match_binder_keeps_the_parameter_its_scrutinee_borrows() {
+        assert_eq!(KeptFixture::new().kept_names("matched!"), vec!["items"]);
     }
 
     #[test]

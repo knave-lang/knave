@@ -212,7 +212,7 @@ mod tests {
     struct CallgrindFixture;
 
     impl CallgrindFixture {
-        const EXECUTABLE: &'static str = "/checkout/target/release/compiler";
+        const EXECUTABLE: &'static str = "/checkout/target/local/compiler";
         const PROFILES: &'static str = "/profiles";
         const PROGRAM: &'static str = "/checkout/corpus/inventory";
         const PROFILE: &'static str = "/profiles/inventory.callgrind";

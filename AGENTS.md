@@ -131,8 +131,8 @@ The exceptions are:
 - The standard error and the exit code follow the standard output in the snapshot.
 - Create or update snapshots with `INSTA_UPDATE=always`.
 - NEVER commit a snapshot that you have not read.
-- If a change adds or grows a corpus entry, build the compiler with `cargo build --release`.
-- Then time the entry's emission with `bash -c 'time cargo run --release --quiet -- emit <entry> > /dev/null'`.
+- If a change adds or grows a corpus entry, build the compiler with `cargo build --profile local`.
+- Then time the entry's emission with `bash -c 'time cargo run --profile local --quiet -- emit <entry> > /dev/null'`.
 - If that emission takes more than one second, shrink the entry.
 - NEVER lower `MINIMUM_LINE_COVERAGE` or raise `MAXIMUM_CRAP` in `xtask/src/gate.rs` without the project owner's approval.
 - NEVER raise `MAXIMUM_PRODUCTION_LINES` in `xtask/src/production_lines.rs` without the project owner's approval.
@@ -194,7 +194,7 @@ cargo test <narrowest test>
 - `cargo test` without a test target
 - `cargo test --test cli` without a test name
 - `cargo clippy --workspace`
-- `cargo build --release` to probe a pull request's unedited code: download the binaries, as `docs/pull-requests.md` says
+- `cargo build --profile local` to probe a pull request's unedited code: download the binaries, as `docs/pull-requests.md` says
 - `git rebase -x` with a build command, or another loop that builds each commit
 - `cargo xtask coverage`
 - `nix flake check`

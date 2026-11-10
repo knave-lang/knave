@@ -5654,6 +5654,68 @@ fn a_test_run_waits_while_another_run_builds_the_same_crate() {
 }
 
 #[test]
+fn a_test_run_holds_its_crate_lock_while_cargo_builds() {
+    let sandbox = Sandbox::new("crate_test_lock_held").with_fixture_tree("crates");
+    let release = sandbox.directory.join("release-cargo");
+    let fifo = std::ffi::CString::new(release.as_os_str().as_encoded_bytes())
+        .expect("the sandbox path has no zero byte");
+    assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o600) }, 0);
+    let blocked_cargo = format!("#!/bin/sh\n: < '{}'\nexit 101\n", release.display());
+    let fake_cargo = sandbox.directory.join("blocked-bin/cargo");
+    fs::create_dir_all(fake_cargo.parent().expect("the fake cargo has a directory"))
+        .expect("the sandbox accepts directories");
+    fs::write(&fake_cargo, blocked_cargo).expect("the sandbox accepts files");
+    fs::set_permissions(&fake_cargo, fs::Permissions::from_mode(Sandbox::EXECUTABLE))
+        .expect("the sandbox sets permissions");
+    let mut run = sandbox
+        .command(Path::new(Sandbox::COMPILER), &["test"])
+        .current_dir(sandbox.directory.join("dev-only-app"))
+        .env("PATH", sandbox.directory.join("blocked-bin"))
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("the compiler starts");
+    let crate_directory = sandbox.directory.join(format!(
+        "dev-only-app/target/{}/dev-only-app/test_runner",
+        Language::NAME
+    ));
+    let started = Instant::now();
+    while !crate_directory.join("src/main.rs").is_file() {
+        assert!(
+            started.elapsed() < Duration::from_secs(60),
+            "the crate is written"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let lock = fs::File::open(crate_directory.join("build.lock")).expect("the lock file exists");
+    let taken = unsafe {
+        libc::flock(
+            std::os::fd::AsRawFd::as_raw_fd(&lock),
+            libc::LOCK_EX | libc::LOCK_NB,
+        )
+    };
+    fs::write(&release, "").expect("the fake cargo is released");
+    run.wait().expect("the run ends");
+    assert_eq!(taken, -1, "the run holds its lock while cargo builds");
+}
+
+#[test]
+fn a_test_program_does_not_pass_its_marker_to_child_processes() {
+    let sandbox = Sandbox::new("test_marker_hidden").with_file(
+        "hidden.knv",
+        "(use prelude/test assert deftest)\n\n(def marker-hidden\n  (rust \"std::env::var(\\\"KNAVE_TEST_MARKER\\\").is_err()\" (fn () bool)))\n\n(deftest hides-the-marker\n  (assert (marker-hidden)))\n",
+    );
+    let stdout = sandbox
+        .compiler(&["test", "hidden.knv"])
+        .assert_exit_code(0)
+        .stdout();
+    assert!(
+        stdout.contains("test hidden/hides-the-marker ... ok"),
+        "{stdout}"
+    );
+}
+
+#[test]
 fn test_builds_through_cargo_with_only_dev_crates() {
     let sandbox = Sandbox::new("crate_dev_only_test").with_fixture_tree("crates");
     let stdout = sandbox
@@ -6777,6 +6839,12 @@ fn a_build_uses_the_project_cargo_lock() {
 #[test]
 fn a_dev_crate_that_cannot_merge_with_a_dependency_is_an_error() {
     let check = Sandbox::check_fixture("crates/dev-conflict-app");
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn a_dev_crate_that_cannot_merge_with_a_library_crate_is_an_error() {
+    let check = Sandbox::check_fixture("crates/dev-library-conflict-app");
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 

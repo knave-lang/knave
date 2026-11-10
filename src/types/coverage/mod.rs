@@ -1,24 +1,28 @@
-mod constructors;
-mod guard;
-mod matrix;
-mod pattern;
+mod constructor;
+mod constructor_catalog;
+mod cover_pattern;
+mod coverage_verdict;
+mod pattern_guard;
+mod pattern_matrix;
 mod query;
+mod unreachable_arm;
 mod usefulness;
 mod witness;
+mod witness_text;
 
 use rustc_hash::FxHashSet;
 
-pub(super) use constructors::ConstructorCatalog;
-use guard::PatternGuard;
-use matrix::PatternMatrix;
-use pattern::CoverPattern;
+pub(super) use constructor_catalog::ConstructorCatalog;
+use cover_pattern::CoverPattern;
+use coverage_verdict::CoverageVerdict;
+use pattern_guard::PatternGuard;
+use pattern_matrix::PatternMatrix;
 use query::Query;
+use unreachable_arm::UnreachableArm;
 use usefulness::Usefulness;
-pub(super) use witness::WitnessText;
+pub(super) use witness_text::WitnessText;
 
-use super::problems::TypeProblems;
 use crate::core::BindingArena;
-use crate::diagnostic::Diagnostics;
 use crate::source::Span;
 use crate::types::{Type, TypedArm};
 
@@ -26,17 +30,6 @@ pub(super) struct MatchCoverage<'a> {
     bindings: &'a BindingArena,
     catalog: ConstructorCatalog<'a>,
     text: WitnessText<'a>,
-}
-
-pub(super) struct CoverageVerdict {
-    unreachable_arms: Vec<UnreachableArm>,
-    missing_cases: Option<Vec<String>>,
-    exhaustive_without_guards: bool,
-}
-
-struct UnreachableArm {
-    pattern: Span,
-    covered_by: Option<Span>,
 }
 
 impl<'a> MatchCoverage<'a> {
@@ -68,15 +61,12 @@ impl<'a> MatchCoverage<'a> {
                 });
             }
         }
-        CoverageVerdict {
-            unreachable_arms,
-            missing_cases: self.missing_cases(&mut usefulness, &matrix, scrutinee.clone()),
-            exhaustive_without_guards: self.is_exhaustive_without_guards(
-                &mut usefulness,
-                &scrutinee,
-                arms,
-            ),
+        let missing_cases = self.missing_cases(&mut usefulness, &matrix, scrutinee.clone());
+        let mut verdict = CoverageVerdict::new(unreachable_arms, missing_cases);
+        if self.is_exhaustive_without_guards(&mut usefulness, &scrutinee, arms) {
+            verdict.mark_exhaustive_without_guards();
         }
+        verdict
     }
 
     fn single_query<'q>(pattern: &'q CoverPattern, scrutinee: &'q Type) -> Query<'q> {
@@ -137,25 +127,5 @@ impl<'a> MatchCoverage<'a> {
             &unguarded,
             Self::single_query(&CoverPattern::Wild, scrutinee),
         )
-    }
-}
-
-impl CoverageVerdict {
-    pub(super) fn report(
-        &self,
-        span: Span,
-        diagnostics: &mut Diagnostics,
-        warnings: &mut Diagnostics,
-    ) {
-        for arm in &self.unreachable_arms {
-            warnings.push(TypeProblems::unreachable_arm(arm.pattern, arm.covered_by));
-        }
-        if let Some(cases) = &self.missing_cases {
-            diagnostics.push(TypeProblems::non_exhaustive_match(cases, span));
-        }
-    }
-
-    pub(super) fn is_exhaustive_without_guards(&self) -> bool {
-        self.exhaustive_without_guards
     }
 }

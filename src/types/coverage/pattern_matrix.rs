@@ -1,5 +1,5 @@
-use super::constructors::Constructor;
-use super::pattern::CoverPattern;
+use super::constructor::Constructor;
+use super::cover_pattern::CoverPattern;
 use crate::core::Literal;
 
 #[derive(Default)]

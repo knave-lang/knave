@@ -2,47 +2,47 @@
 source: tests/cli.rs
 expression: test.assert_exit_code(1).stderr()
 ---
-error[L0257]: this test file's module path `code` belongs to the compiler
+error[L0257]: this file's module path `code` belongs to the compiler
  --> tests/code.knv:1:1
   |
 1 | this does not ) read (
   | ^ this file never loads
   |
-  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so no test in this file would run
-  = help: rename the test file
+  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so this file would never run
+  = help: rename the file
 
-error[L0257]: this test file's module path `kernel` belongs to the compiler
+error[L0257]: this file's module path `kernel` belongs to the compiler
  --> tests/kernel.knv:1:1
   |
 1 | (use prelude/test deftest assert)
   | ^ this file never loads
   |
-  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so no test in this file would run
-  = help: rename the test file
+  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so this file would never run
+  = help: rename the file
 
-error[L0257]: this test file's module path `prelude` belongs to the compiler
+error[L0257]: this file's module path `prelude` belongs to the compiler
  --> tests/prelude.knv:1:1
   |
 1 | (use prelude/test deftest assert)
   | ^ this file never loads
   |
-  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so no test in this file would run
-  = help: rename the test file
+  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so this file would never run
+  = help: rename the file
 
-error[L0257]: this test file's module path `prelude/extra` belongs to the compiler
+error[L0257]: this file's module path `prelude/extra` belongs to the compiler
  --> tests/prelude/extra.knv:1:1
   |
 1 | (use prelude/test deftest assert)
   | ^ this file never loads
   |
-  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so no test in this file would run
-  = help: rename the test file
+  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so this file would never run
+  = help: rename the file
 
-error[L0257]: this test file's module path `prelude/vec` belongs to the compiler
+error[L0257]: this file's module path `prelude/vec` belongs to the compiler
  --> tests/prelude/vec.knv:1:1
   |
 1 | (use prelude/test deftest assert)
   | ^ this file never loads
   |
-  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so no test in this file would run
-  = help: rename the test file
+  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so this file would never run
+  = help: rename the file

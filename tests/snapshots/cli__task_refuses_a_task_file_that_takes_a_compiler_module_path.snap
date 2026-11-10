@@ -1,0 +1,21 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(1).stderr()
+---
+error[L0257]: this file's module path `kernel` belongs to the compiler
+ --> tasks/kernel.knv:1:1
+  |
+1 | (deftask from-kernel () (println "ran"))
+  | ^ this file never loads
+  |
+  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so this file would never run
+  = help: rename the file
+
+error[L0257]: this file's module path `prelude` belongs to the compiler
+ --> tasks/prelude.knv:1:1
+  |
+1 | (deftask from-prelude () (println "ran"))
+  | ^ this file never loads
+  |
+  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so this file would never run
+  = help: rename the file

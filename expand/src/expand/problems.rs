@@ -636,14 +636,14 @@ impl ExpandProblems {
         .with_help(format!("rename `{hiding}` to reach `{hidden}`"))
     }
 
-    pub fn test_file_takes_compiler_module(path: &ModulePath, span: Span) -> Diagnostic {
+    pub fn file_takes_compiler_module(path: &ModulePath, span: Span) -> Diagnostic {
         Diagnostic::error(
-            DiagnosticCode::TEST_FILE_TAKES_COMPILER_MODULE,
-            format!("this test file's module path `{path}` belongs to the compiler"),
+            DiagnosticCode::FILE_TAKES_COMPILER_MODULE,
+            format!("this file's module path `{path}` belongs to the compiler"),
             Label::new(span, "this file never loads"),
         )
-        .with_note("`prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so no test in this file would run")
-        .with_help("rename the test file")
+        .with_note("`prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so this file would never run")
+        .with_help("rename the file")
     }
 
     pub fn reserved_module(path: &ModulePath, span: Span) -> Diagnostic {

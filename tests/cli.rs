@@ -6921,6 +6921,56 @@ fn add_with_dev_refuses_a_path_crate_listed_in_dependencies() {
 }
 
 #[test]
+fn add_with_dev_keeps_the_features_of_the_dev_entry() {
+    let sandbox = Sandbox::new("add_dev_beside_dependency")
+        .with_fake_registry()
+        .with_file(
+            &Language::project_file_name(),
+            "(project demo\n  (dependencies (fake-json \"1.0\"))\n  (dev-dependencies (fake-json \"1.0\" :features (\"std\"))))\n",
+        );
+    sandbox
+        .compiler_with_registry(&["add", "--dev", "fake-json"])
+        .assert_silent_success();
+    insta::assert_snapshot!(sandbox.project_file_text());
+}
+
+#[test]
+fn remove_of_a_crate_only_the_other_section_lists_names_that_section() {
+    let sandbox = Sandbox::new("remove_from_other_section")
+        .with_fake_registry()
+        .with_file(
+            &Language::project_file_name(),
+            "(project demo (dev-dependencies (fake-json \"1.0\")))\n",
+        );
+    let stderr = sandbox
+        .compiler(&["remove", "fake-json"])
+        .assert_exit_code(2)
+        .stderr();
+    assert_eq!(
+        stderr,
+        "error: the project's `dependencies` do not list `fake-json`\nhelp: `dev-dependencies` lists it: run `knave remove --dev fake-json`\n"
+    );
+}
+
+#[test]
+fn remove_with_dev_of_a_crate_only_dependencies_list_names_them() {
+    let sandbox = Sandbox::new("remove_dev_from_other_section")
+        .with_fake_registry()
+        .with_file(
+            &Language::project_file_name(),
+            "(project demo (dependencies (fake-json \"1.0\")))\n",
+        );
+    let stderr = sandbox
+        .compiler(&["remove", "--dev", "fake-json"])
+        .assert_exit_code(2)
+        .stderr();
+    assert_eq!(
+        stderr,
+        "error: the project's `dev-dependencies` do not list `fake-json`\nhelp: `dependencies` lists it: run `knave remove fake-json`\n"
+    );
+}
+
+#[test]
 fn remove_with_dev_leaves_the_dependencies_alone() {
     let sandbox = Sandbox::new("remove_dev_crate").with_fake_registry();
     for arguments in [

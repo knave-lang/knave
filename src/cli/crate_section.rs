@@ -26,6 +26,13 @@ impl CrateSection {
         }
     }
 
+    pub fn other(self) -> Self {
+        match self {
+            Self::Dependencies => Self::DevDependencies,
+            Self::DevDependencies => Self::Dependencies,
+        }
+    }
+
     pub fn name(self) -> &'static str {
         self.section().name()
     }

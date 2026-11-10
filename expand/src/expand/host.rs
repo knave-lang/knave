@@ -4,7 +4,7 @@ use super::Expander;
 use super::expansion_limit::ExpansionLimit;
 use super::failed_definition::DeclaredName;
 use super::problems::ExpandProblems;
-use crate::core::{BindingId, BindingKind, Declaration, ModulePath, Namespace};
+use crate::core::{BindingId, BindingKind, Declaration, ModuleDefinitions, ModulePath, Namespace};
 use crate::diagnostic::Diagnostic;
 use crate::interpret::{CompileTimeHost, Value};
 use crate::modules::{ModuleRecord, ModuleSources};
@@ -141,13 +141,14 @@ impl CompileTimeHost for Expander<'_> {
 
     fn module_definitions(&self, path: &Symbol, span: Span) -> Result<Vec<Symbol>, Diagnostic> {
         let record = self.loaded_module(path, span)?;
-        let module = self.modules.find(record.path());
-        let names: BTreeSet<&str> = self
-            .tables
-            .bindings
-            .ids()
-            .filter(|binding| !self.tables.bindings.is_introduced(*binding))
-            .filter(|binding| self.definition_module(*binding) == module)
+        let defined = self
+            .modules
+            .find(record.path())
+            .map_or_else(Vec::new, |module| {
+                ModuleDefinitions::of(&self.tables.bindings, module)
+            });
+        let names: BTreeSet<&str> = defined
+            .into_iter()
             .map(|binding| self.tables.bindings.get(binding).name())
             .collect();
         Ok(names

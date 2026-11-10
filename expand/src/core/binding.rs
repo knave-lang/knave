@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -69,6 +70,21 @@ pub enum BindingKind {
     Lifetime,
 }
 
+impl BindingKind {
+    pub fn defining_module(self) -> Option<ModuleId> {
+        match self {
+            Self::Global(module)
+            | Self::Macro(module)
+            | Self::Struct(module)
+            | Self::Enum(module)
+            | Self::Variant(module, _)
+            | Self::Trait(module)
+            | Self::RustType(module) => Some(module),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct BindingInfo {
     name: Rc<str>,
@@ -105,6 +121,8 @@ pub struct BindingArena {
     infos: Vec<BindingInfo>,
     introduced: FxHashSet<BindingId>,
     answering_macros: FxHashMap<BindingId, BindingId>,
+    #[serde(skip)]
+    definitions: RefCell<ModuleDefinitions>,
 }
 
 impl BindingArena {
@@ -117,6 +135,7 @@ impl BindingArena {
     pub fn take_saved(&mut self) -> BindingTables {
         let tables = BindingTables::of(self.infos.iter());
         self.infos.clear();
+        self.definitions.take();
         tables
     }
 
@@ -165,5 +184,115 @@ impl BindingArena {
 
     pub fn answering_macro(&self, function: BindingId) -> Option<BindingId> {
         self.answering_macros.get(&function).copied()
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct ModuleDefinitions {
+    indexed: usize,
+    by_module: FxHashMap<ModuleId, Vec<BindingId>>,
+}
+
+impl ModuleDefinitions {
+    pub fn of(bindings: &BindingArena, module: ModuleId) -> Vec<BindingId> {
+        let mut definitions = bindings.definitions.borrow_mut();
+        definitions.index_new(bindings);
+        definitions
+            .by_module
+            .get(&module)
+            .into_iter()
+            .flatten()
+            .copied()
+            .filter(|binding| !bindings.is_introduced(*binding))
+            .collect()
+    }
+
+    fn index_new(&mut self, bindings: &BindingArena) {
+        let added = bindings.ids().skip(self.indexed);
+        for binding in added {
+            if let Some(module) = bindings.get(binding).kind().defining_module() {
+                self.by_module.entry(module).or_default().push(binding);
+            }
+            self.indexed += 1;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleDefinitions};
+    use crate::core::ModuleId;
+
+    struct DefinitionsFixture {
+        bindings: BindingArena,
+    }
+
+    impl DefinitionsFixture {
+        fn new() -> Self {
+            Self {
+                bindings: BindingArena::default(),
+            }
+        }
+
+        fn shapes() -> ModuleId {
+            ModuleId::new(1)
+        }
+
+        fn colors() -> ModuleId {
+            ModuleId::new(2)
+        }
+
+        fn add(&mut self, name: &str, kind: BindingKind) -> BindingId {
+            self.bindings.add(BindingInfo::new(name.into(), kind, None))
+        }
+
+        fn defined_in(&self, module: ModuleId) -> Vec<BindingId> {
+            ModuleDefinitions::of(&self.bindings, module)
+        }
+    }
+
+    #[test]
+    fn a_module_lists_only_the_definitions_it_holds() {
+        let mut fixture = DefinitionsFixture::new();
+        let area = fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
+        fixture.add("red", BindingKind::Global(DefinitionsFixture::colors()));
+        fixture.add("width", BindingKind::Local);
+        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), [area]);
+    }
+
+    #[test]
+    fn a_definition_added_after_a_listing_joins_the_next_listing() {
+        let mut fixture = DefinitionsFixture::new();
+        let area = fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
+        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), [area]);
+        let square = fixture.add("square", BindingKind::Struct(DefinitionsFixture::shapes()));
+        assert_eq!(
+            fixture.defined_in(DefinitionsFixture::shapes()),
+            [area, square]
+        );
+    }
+
+    #[test]
+    fn a_module_leaves_out_the_definitions_a_macro_introduced() {
+        let mut fixture = DefinitionsFixture::new();
+        let area = fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
+        let helper = fixture.add("helper", BindingKind::Global(DefinitionsFixture::shapes()));
+        fixture.defined_in(DefinitionsFixture::shapes());
+        fixture.bindings.mark_introduced(helper);
+        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), [area]);
+    }
+
+    #[test]
+    fn saving_the_bindings_forgets_their_definitions() {
+        let mut fixture = DefinitionsFixture::new();
+        fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
+        fixture.add(
+            "perimeter",
+            BindingKind::Global(DefinitionsFixture::shapes()),
+        );
+        fixture.defined_in(DefinitionsFixture::shapes());
+        fixture.bindings.take_saved();
+        let red = fixture.add("red", BindingKind::Global(DefinitionsFixture::shapes()));
+        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), [red]);
     }
 }

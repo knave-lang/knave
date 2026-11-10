@@ -1,5 +1,7 @@
+mod defining_modules;
 mod module_address;
 mod module_graph;
+mod module_names;
 mod signatures;
 mod type_shapes;
 mod use_bindings;
@@ -26,7 +28,7 @@ impl DesignRules {
     const MAXIMUM_ARGUMENTS_PER_FUNCTION: usize = 3;
     const MAXIMUM_BOOL_PARAMETERS_PER_FUNCTION: usize = 0;
     const MAXIMUM_FREE_FUNCTIONS: usize = 0;
-    const MAXIMUM_CYCLE_PARTNERS_PER_MODULE: usize = 0;
+    const MAXIMUM_CYCLE_LINKS_PER_MODULE: usize = 0;
     const MAXIMUM_LATER_STAGE_DEPENDENCIES_PER_MODULE: usize = 0;
     const STAGE_ORDER: [Stage; 7] = [
         Stage::new("expand/src", "reader"),
@@ -88,11 +90,14 @@ impl DesignRules {
         unit: Unit::new("free function definition", "free function definitions"),
         advice: Self::EXTRACT_AN_OBJECT,
     };
-    const CYCLE_PARTNERS: Limit = Limit {
-        baseline: "xtask/baselines/module_cycle_partners.txt",
-        maximum: Self::MAXIMUM_CYCLE_PARTNERS_PER_MODULE,
+    const CYCLE_LINKS: Limit = Limit {
+        baseline: "xtask/baselines/cycle_links_per_module.txt",
+        maximum: Self::MAXIMUM_CYCLE_LINKS_PER_MODULE,
         subjects: "modules",
-        unit: Unit::new("module in a cycle with it", "modules in a cycle with it"),
+        unit: Unit::new(
+            "link to another module of its cycle",
+            "links to other modules of its cycle",
+        ),
         advice: Self::EXTRACT_AN_OBJECT,
     };
     const LATER_STAGE_DEPENDENCIES: Limit = Limit {
@@ -127,7 +132,7 @@ impl DesignRules {
             (Self::ARGUMENTS, arguments),
             (Self::BOOL_PARAMETERS, bool_parameters),
             (Self::FREE_FUNCTIONS, free_functions),
-            (Self::CYCLE_PARTNERS, graph.cycle_partners()),
+            (Self::CYCLE_LINKS, graph.cycle_links()),
             (
                 Self::LATER_STAGE_DEPENDENCIES,
                 graph.later_stage_dependencies(&Self::STAGE_ORDER),

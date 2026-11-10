@@ -197,7 +197,7 @@ mod tests {
     #[test]
     fn a_trailer_for_another_baseline_leaves_the_subject_refused() {
         let check =
-            RaiseCase::check("module_cycle_partners src/a.rs src/b.rs\nsrc/a.rs src/b.rs\n");
+            RaiseCase::check("cycle_links_per_module src/a.rs src/b.rs\nsrc/a.rs src/b.rs\n");
         assert!(!check.passes());
         assert_eq!(check.unaccepted().count(), 2);
     }
@@ -205,8 +205,8 @@ mod tests {
     #[test]
     fn a_baseline_is_named_by_its_file_stem() {
         assert_eq!(
-            BaselineRaises::name_of("xtask/baselines/module_cycle_partners.txt"),
-            "module_cycle_partners"
+            BaselineRaises::name_of("xtask/baselines/cycle_links_per_module.txt"),
+            "cycle_links_per_module"
         );
     }
 

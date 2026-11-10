@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use syn::visit::{self, Visit};
 use syn::{ItemUse, Path, Visibility};
 
+use super::defining_modules::DefiningModules;
 use super::module_address::{ModuleFiles, Stage};
 use super::use_paths::UseTreeWalk;
 use crate::parsed_source::ParsedSource;
@@ -16,27 +17,30 @@ pub struct ModuleGraph {
 impl ModuleGraph {
     pub fn build(sources: &[ParsedSource]) -> Self {
         let modules = ModuleFiles::build(sources);
-        let edges = sources
-            .iter()
-            .map(|source| (source.file().to_string(), Self::targets(source, &modules)))
-            .collect();
+        let edges = {
+            let defining = DefiningModules::build(sources, &modules);
+            sources
+                .iter()
+                .map(|source| (source.file().to_string(), Self::targets(source, &defining)))
+                .collect()
+        };
         Self { modules, edges }
     }
 
-    pub fn cycle_partners(&self) -> Counts {
+    pub fn cycle_links(&self) -> Counts {
         let reachable: BTreeMap<&String, BTreeSet<&String>> = self
             .modules
             .files()
             .map(|module| (module, self.reachable_from(module)))
             .collect();
-        reachable
+        self.edges
             .iter()
             .map(|(module, targets)| {
-                let partners = targets
+                let links = targets
                     .iter()
-                    .filter(|target| *target != module && reachable[*target].contains(module))
+                    .filter(|target| reachable[target].contains(module))
                     .count();
-                (module.to_string(), partners)
+                (module.clone(), links)
             })
             .collect()
     }
@@ -76,15 +80,15 @@ impl ModuleGraph {
         reached
     }
 
-    fn targets(source: &ParsedSource, modules: &ModuleFiles) -> BTreeSet<String> {
+    fn targets(source: &ParsedSource, defining: &DefiningModules) -> BTreeSet<String> {
         let mut paths = PathCollector::default();
         paths.visit_file(source.syntax());
         paths
             .paths
             .iter()
-            .filter_map(|path| modules.resolve(source.file(), path))
-            .filter(|target| **target != source.file())
-            .cloned()
+            .filter_map(|path| defining.target(source.file(), path))
+            .filter(|target| *target != source.file())
+            .map(String::from)
             .collect()
     }
 }
@@ -106,6 +110,9 @@ impl<'ast> Visit<'ast> for PathCollector {
     }
 
     fn visit_item_use(&mut self, item: &'ast ItemUse) {
+        if !matches!(item.vis, Visibility::Inherited) {
+            return;
+        }
         self.paths.extend(
             UseTreeWalk::paths(&item.tree)
                 .into_iter()
@@ -147,26 +154,146 @@ mod tests {
     }
 
     #[test]
-    fn modules_that_use_each_other_are_cycle_partners() {
+    fn each_module_of_a_cycle_counts_its_own_links_within_it() {
         let partners = Modules::graph(&[
-            ("src/a.rs", "use crate::b::Thing;"),
+            ("src/a.rs", "use crate::b::Thing; use crate::c::Other;"),
             ("src/b.rs", "fn make() -> crate::c::Other { todo!() }"),
             ("src/c.rs", "use super::a::{First, Second};"),
             ("src/d.rs", "use crate::a::First;"),
         ])
-        .cycle_partners();
+        .cycle_links();
         assert_eq!(partners.get("src/a.rs"), Some(&2));
-        assert_eq!(partners.get("src/c.rs"), Some(&2));
+        assert_eq!(partners.get("src/b.rs"), Some(&1));
+        assert_eq!(partners.get("src/c.rs"), Some(&1));
         assert_eq!(partners.get("src/d.rs"), Some(&0));
+    }
+
+    #[test]
+    fn a_parent_that_only_re_exports_forms_no_cycle_with_its_children() {
+        let partners = Modules::graph(&[
+            (
+                "src/shapes/mod.rs",
+                "mod circle; mod square; pub use circle::Circle; pub(crate) use square::Square;",
+            ),
+            (
+                "src/shapes/circle.rs",
+                "use super::Square; pub struct Circle(Square);",
+            ),
+            ("src/shapes/square.rs", "pub struct Square;"),
+        ])
+        .cycle_links();
+        assert!(partners.values().all(|links| *links == 0), "{partners:?}");
+    }
+
+    #[test]
+    fn a_cycle_through_re_exports_is_found() {
+        let partners = Modules::graph(&[
+            (
+                "src/types/mod.rs",
+                "mod checker; mod scheme; pub use checker::TypeChecker; pub use scheme::Scheme;",
+            ),
+            (
+                "src/types/checker.rs",
+                "use super::Scheme; pub struct TypeChecker(Scheme);",
+            ),
+            (
+                "src/types/scheme.rs",
+                "use super::TypeChecker; pub struct Scheme(Box<TypeChecker>);",
+            ),
+        ])
+        .cycle_links();
+        assert_eq!(partners.get("src/types/checker.rs"), Some(&1));
+        assert_eq!(partners.get("src/types/scheme.rs"), Some(&1));
+        assert_eq!(partners.get("src/types/mod.rs"), Some(&0));
+    }
+
+    #[test]
+    fn a_cycle_through_a_glob_re_export_and_a_chain_is_found() {
+        let partners = Modules::graph(&[
+            (
+                "src/types/mod.rs",
+                "mod checker; mod scheme; mod outer; pub use outer::TypeChecker; pub use scheme::*;",
+            ),
+            ("src/types/outer.rs", "pub use super::checker::TypeChecker;"),
+            ("src/types/checker.rs", "use super::Scheme; pub struct TypeChecker;"),
+            ("src/types/scheme.rs", "use super::TypeChecker; pub struct Scheme;"),
+        ])
+        .cycle_links();
+        assert_eq!(partners.get("src/types/checker.rs"), Some(&1));
+        assert_eq!(partners.get("src/types/scheme.rs"), Some(&1));
+        assert_eq!(partners.get("src/types/outer.rs"), Some(&0));
+    }
+
+    #[test]
+    fn a_new_link_inside_a_cycle_raises_one_entry() {
+        let ring = [
+            ("src/a.rs", "use crate::b::B; pub struct A;"),
+            ("src/b.rs", "use crate::c::C; pub struct B;"),
+            ("src/c.rs", "use crate::a::A; pub struct C;"),
+        ];
+        let before = Modules::graph(&ring).cycle_links();
+        let mut linked = ring;
+        linked[0] = (
+            "src/a.rs",
+            "use crate::b::B; use crate::c::C; pub struct A;",
+        );
+        let after = Modules::graph(&linked).cycle_links();
+        let raised: Vec<&String> = after
+            .iter()
+            .filter(|(module, links)| before.get(*module) != Some(links))
+            .map(|(module, _)| module)
+            .collect();
+        assert_eq!(raised, ["src/a.rs"]);
+        assert_eq!(after.get("src/a.rs"), Some(&2));
+    }
+
+    #[test]
+    fn a_new_file_joining_a_cycle_raises_only_the_modules_it_links() {
+        let pair = [
+            ("src/a.rs", "use crate::b::B; pub struct A;"),
+            ("src/b.rs", "use crate::a::A; pub struct B;"),
+        ];
+        let before = Modules::graph(&pair).cycle_links();
+        let after = Modules::graph(&[
+            pair[0],
+            (
+                "src/b.rs",
+                "use crate::a::A; use crate::c::C; pub struct B;",
+            ),
+            ("src/c.rs", "use crate::a::A; pub struct C;"),
+        ])
+        .cycle_links();
+        assert_eq!(after.get("src/a.rs"), before.get("src/a.rs"));
+        assert_eq!(after.get("src/b.rs"), Some(&2));
+        assert_eq!(after.get("src/c.rs"), Some(&1));
+    }
+
+    #[test]
+    fn a_name_that_cannot_be_resolved_keeps_its_edge() {
+        let partners = Modules::graph(&[
+            ("src/shapes/mod.rs", "mod child; use child::Probe;"),
+            (
+                "src/shapes/child.rs",
+                "use super::Unknown; pub struct Probe;",
+            ),
+        ])
+        .cycle_links();
+        assert_eq!(partners.get("src/shapes/child.rs"), Some(&1));
     }
 
     #[test]
     fn a_parent_and_its_child_module_can_form_a_cycle() {
         let partners = Modules::graph(&[
-            ("src/shapes/mod.rs", "mod square; use square::Square;"),
-            ("src/shapes/square.rs", "use super::Shape;"),
+            (
+                "src/shapes/mod.rs",
+                "mod square; use square::Square; pub trait Shape {}",
+            ),
+            (
+                "src/shapes/square.rs",
+                "use super::Shape; pub struct Square;",
+            ),
         ])
-        .cycle_partners();
+        .cycle_links();
         assert_eq!(partners.get("src/shapes/mod.rs"), Some(&1));
     }
 
@@ -176,7 +303,7 @@ mod tests {
             ("src/a.rs", "use self::b::Thing;"),
             ("src/b.rs", "use crate::a::Other;"),
         ])
-        .cycle_partners();
+        .cycle_links();
         assert_eq!(partners.get("src/a.rs"), Some(&0));
     }
 
@@ -189,7 +316,7 @@ mod tests {
         ] {
             let partners =
                 Modules::graph(&[("src/a.rs", using), ("src/b.rs", "use crate::a::Other;")])
-                    .cycle_partners();
+                    .cycle_links();
             assert_eq!(partners.get("src/a.rs"), Some(&1), "{using}");
         }
     }
@@ -198,13 +325,13 @@ mod tests {
     fn a_restricted_visibility_adds_no_edge() {
         for visibility in ["pub(super)", "pub(in crate::shapes)"] {
             let partners = Modules::graph(&[
-                ("src/shapes/mod.rs", "mod child; pub use child::Probe;"),
+                ("src/shapes/mod.rs", "mod child; use child::Probe;"),
                 (
                     "src/shapes/child.rs",
                     &format!("pub struct Probe; impl Probe {{ {visibility} fn make() {{}} }}"),
                 ),
             ])
-            .cycle_partners();
+            .cycle_links();
             assert_eq!(partners.get("src/shapes/mod.rs"), Some(&0), "{visibility}");
         }
     }
@@ -218,7 +345,7 @@ mod tests {
                 "fn side() -> String { self::String::new() }",
             ),
         ])
-        .cycle_partners();
+        .cycle_links();
         assert_eq!(partners.get("src/shapes/square.rs"), Some(&0));
     }
 
@@ -231,7 +358,7 @@ mod tests {
             ),
             ("src/b.rs", "use crate::a::X;"),
         ])
-        .cycle_partners();
+        .cycle_links();
         assert_eq!(partners.get("src/a.rs"), Some(&0));
     }
 
@@ -242,7 +369,7 @@ mod tests {
             ("expand/src/b.rs", "use crate::a::X;"),
             ("expand/src/a.rs", ""),
         ])
-        .cycle_partners();
+        .cycle_links();
         assert_eq!(partners.get("src/a.rs"), Some(&0));
     }
 

@@ -8,6 +8,7 @@ use super::use_paths::UseTreeWalk;
 #[derive(Default)]
 pub struct UseBindings {
     paths: BTreeMap<String, Vec<String>>,
+    globs: Vec<Vec<String>>,
 }
 
 impl UseBindings {
@@ -20,13 +21,20 @@ impl UseBindings {
     pub fn path_of(&self, name: &str) -> Option<&[String]> {
         self.paths.get(name).map(Vec::as_slice)
     }
+
+    pub fn globs(&self) -> &[Vec<String>] {
+        &self.globs
+    }
 }
 
 impl<'ast> Visit<'ast> for UseBindings {
     fn visit_item_use(&mut self, item: &'ast ItemUse) {
         for found in UseTreeWalk::paths(&item.tree) {
-            if let Some(binding) = found.binding {
-                self.paths.insert(binding, found.path);
+            match found.binding {
+                Some(binding) => {
+                    self.paths.insert(binding, found.path);
+                }
+                None => self.globs.push(found.path),
             }
         }
     }
@@ -78,5 +86,14 @@ mod tests {
     #[test]
     fn a_glob_binds_nothing() {
         assert_eq!(Uses::path_of("use crate::shape::*;", "Shape"), None);
+    }
+
+    #[test]
+    fn a_glob_is_kept_as_a_module_to_search() {
+        let syntax = syn::parse_file("use crate::shape::*;").expect("the use parses");
+        assert_eq!(
+            UseBindings::of(&syntax).globs(),
+            [vec!["crate".to_string(), "shape".to_string()]]
+        );
     }
 }

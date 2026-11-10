@@ -355,9 +355,7 @@ impl<'a> ExpressionEmitter<'a> {
         let TypedExprKind::Fn(lambda) = &tail.kind else {
             return self.statements(block);
         };
-        let mut fragments = self.statements(&TypedBlock {
-            items: leading.to_vec(),
-        });
+        let mut fragments = self.leading_statements(leading);
         fragments.push(Fragment::Newline);
         fragments.extend(
             Code::joined(

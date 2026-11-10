@@ -2,7 +2,7 @@
                     listing-part map-list template)
 
 (use prelude/internal/macros joined-chunks
-                             text-chunk-characters)
+                             text-chunk-pieces)
 
 (use prelude/pair pair)
 (use prelude/syntax let)
@@ -10,7 +10,7 @@
 (use code bool-not concat drop empty? escape-char
           escape-format escape-string fail first keyword?
           len list list? nth number-add number-lt number-sub
-          prepend rest same-binding? string string-length
+          prepend rest same-binding? string
           string-strip-suffix string? symbol symbol-name
           symbol? take value-eq)
 
@@ -225,21 +225,31 @@
 
 (def arguments-text
   (fn (wrappers index)
-    (arguments-text-onto (list) "" wrappers index)))
+    (argument-groups-onto (list) wrappers index)))
+
+(def argument-groups-onto
+  (fn (chunks wrappers index)
+    (if (number-lt text-chunk-pieces (len wrappers))
+      (recur (concat chunks
+                     (list (arguments-text-onto ""
+                                                (take wrappers
+                                                      text-chunk-pieces)
+                                                index)))
+             (drop wrappers text-chunk-pieces)
+             (number-add index text-chunk-pieces))
+      (joined-chunks chunks
+                     (arguments-text-onto "" wrappers index)))))
 
 (def arguments-text-onto
-  (fn (chunks text wrappers index)
+  (fn (text wrappers index)
     (if (empty? wrappers)
-      (joined-chunks chunks text)
-      (if (number-lt text-chunk-characters (string-length text))
-        (recur (concat chunks (list text)) "" wrappers index)
-        (recur chunks
-               (string text ", "
-                       (first (first wrappers))
-                       index
-                       (nth (first wrappers) 1))
-               (rest wrappers)
-               (number-add index 1))))))
+      text
+      (recur (string text ", "
+                     (first (first wrappers))
+                     index
+                     (nth (first wrappers) 1))
+             (rest wrappers)
+             (number-add index 1)))))
 
 (def plain-argument (list "{&" "}"))
 
@@ -337,43 +347,38 @@
 
 (def format-pieces
   (fn (pieces index escaper)
-    (with-joined-text (format-pieces-onto (list ""
-                                                (list)
-                                                (list)
-                                                index
-                                                (list)
-                                                (list))
-                                          pieces escaper))))
+    (format-groups-onto (list)
+                        (list "" (list) (list) index (list))
+                        pieces escaper)))
+
+(def format-groups-onto
+  (fn (chunks formatted pieces escaper)
+    (if (number-lt text-chunk-pieces (len pieces))
+      (recur (concat chunks (list (first formatted)))
+             (format-pieces-onto (prepend "" (rest formatted))
+                                 (take pieces text-chunk-pieces)
+                                 escaper)
+             (drop pieces text-chunk-pieces)
+             escaper)
+      (with-joined-text chunks
+                        (format-pieces-onto formatted pieces escaper)))))
 
 (def with-joined-text
-  (fn (formatted)
-    (if (empty? (nth formatted 5))
+  (fn (chunks formatted)
+    (if (empty? chunks)
       formatted
-      (prepend (joined-chunks (nth formatted 5) (first formatted))
+      (prepend (joined-chunks chunks (first formatted))
                (rest formatted)))))
 
 (def format-pieces-onto
   (fn (formatted pieces escaper)
     (if (empty? pieces)
       formatted
-      (if (number-lt text-chunk-characters
-                     (string-length (nth formatted 0)))
-        (recur (with-text-chunked formatted) pieces escaper)
-        (recur (join-formatted
-                 formatted
-                 (format-piece (first pieces) (nth formatted 3) escaper))
-               (rest pieces)
-               escaper)))))
-
-(def with-text-chunked
-  (fn (formatted)
-    (list ""
-          (nth formatted 1)
-          (nth formatted 2)
-          (nth formatted 3)
-          (nth formatted 4)
-          (concat (nth formatted 5)
-                  (list (nth formatted 0))))))
+      (recur (join-formatted
+               formatted
+               (format-piece (first pieces) (nth formatted 3) escaper))
+             (rest pieces)
+             escaper))))
 
 (def join-formatted
   (fn (formatted rendered)
@@ -381,8 +386,7 @@
           (concat (nth formatted 1) (nth rendered 1))
           (concat (nth formatted 2) (nth rendered 2))
           (nth rendered 3)
-          (concat (nth formatted 4) (nth rendered 4))
-          (nth formatted 5))))
+          (concat (nth formatted 4) (nth rendered 4)))))
 
 (def last-piece
   (fn (pieces)

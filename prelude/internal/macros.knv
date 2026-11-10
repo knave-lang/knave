@@ -6,8 +6,8 @@
         docstring-before-parameters docstrings-key
         documented-body? documented-terms-key joined-chunks
         kernel-definition note-docstring noted-term
-        term-docstrings-key text-chunk-characters
-        type-doc-key value-doc-key whole-pairs?)
+        term-docstrings-key text-chunk-pieces type-doc-key
+        value-doc-key whole-pairs?)
 
 (def documented-body?
   (fn (body)
@@ -82,7 +82,7 @@
 (def type-doc-key
   (fn (name) (list "type" name)))
 
-(def text-chunk-characters 1024)
+(def text-chunk-pieces 64)
 
 (def joined-chunks
   (fn (chunks text)

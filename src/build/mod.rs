@@ -1,6 +1,7 @@
 mod build_plan;
 mod cargo_compiler;
 mod cargo_manifest;
+mod crate_lock;
 mod crate_resolver;
 mod formatting;
 mod git_store;

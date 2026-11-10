@@ -5598,6 +5598,62 @@ fn a_second_test_run_through_cargo_rewrites_and_relinks_nothing() {
 }
 
 #[test]
+fn two_test_runs_of_one_project_at_once_both_pass() {
+    let sandbox = Sandbox::new("crate_test_together").with_fixture_tree("crates");
+    let runs: Vec<Child> = (0..2)
+        .map(|_| {
+            sandbox
+                .command(Path::new(Sandbox::COMPILER), &["test"])
+                .current_dir(sandbox.directory.join("dev-only-app"))
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .expect("the compiler starts")
+        })
+        .collect();
+    for run in runs {
+        let output = run.wait_with_output().expect("the run ends");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(output.status.success(), "{stdout}");
+        assert!(
+            stdout.contains("test checks/reads-the-dev-crate ... ok"),
+            "{stdout}"
+        );
+    }
+}
+
+#[test]
+fn a_test_run_waits_while_another_run_builds_the_same_crate() {
+    let sandbox = Sandbox::new("crate_test_waiting").with_fixture_tree("crates");
+    let crate_directory = sandbox.directory.join(format!(
+        "dev-only-app/target/{}/dev-only-app/test_runner",
+        Language::NAME
+    ));
+    fs::create_dir_all(&crate_directory).expect("the sandbox accepts directories");
+    let held = fs::File::create(crate_directory.join("build.lock")).expect("the lock file opens");
+    let locked = unsafe { libc::flock(std::os::fd::AsRawFd::as_raw_fd(&held), libc::LOCK_EX) };
+    assert_eq!(locked, 0);
+    let mut run = sandbox
+        .command(Path::new(Sandbox::COMPILER), &["test"])
+        .current_dir(sandbox.directory.join("dev-only-app"))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("the compiler starts");
+    let mut first_line = String::new();
+    BufReader::new(run.stderr.take().expect("standard error is piped"))
+        .read_line(&mut first_line)
+        .expect("standard error is readable");
+    drop(held);
+    let output = run.wait_with_output().expect("the run ends");
+    assert!(
+        first_line.starts_with("note: waiting for another build in `"),
+        "{first_line}"
+    );
+    assert!(output.status.success());
+}
+
+#[test]
 fn test_builds_through_cargo_with_only_dev_crates() {
     let sandbox = Sandbox::new("crate_dev_only_test").with_fixture_tree("crates");
     let stdout = sandbox

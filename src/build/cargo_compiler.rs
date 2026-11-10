@@ -10,6 +10,7 @@ use serde_json::Value;
 use super::BuildError;
 use super::build_plan::BuildPlan;
 use super::cargo_manifest::CargoManifest;
+use super::crate_lock::CrateLock;
 use super::interrupt_signal::InterruptSignal;
 use super::rustc_errors::RustcDiagnosticMapper;
 use super::user_cache::UserCache;
@@ -68,6 +69,7 @@ impl<'w> CargoCompiler<'w> {
         target: &CargoTarget<'_>,
         entry: Span,
     ) -> Result<(), BuildError> {
+        let _lock = self.lock_crate()?;
         self.write_crate(emitted, target)
             .map_err(|error| Self::environment("write the generated crate", &error))?;
         let output = self.run_cargo(&target.manifest)?;
@@ -79,6 +81,12 @@ impl<'w> CargoCompiler<'w> {
             (Some(executable), true) => self.finish(executable, target),
             _ => Err(report.failure(emitted, entry, &output.stderr)),
         }
+    }
+
+    fn lock_crate(&self) -> Result<CrateLock, BuildError> {
+        let waiting = || (self.waiting)(&format!("`{}`", self.directory.display()));
+        CrateLock::acquire(&self.directory, waiting)
+            .map_err(|error| Self::environment("lock the generated crate", &error))
     }
 
     fn write_crate(&self, emitted: &EmittedCrate, target: &CargoTarget<'_>) -> io::Result<()> {

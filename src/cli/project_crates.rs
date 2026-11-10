@@ -49,9 +49,8 @@ impl ProjectCrates {
         })
     }
 
-    pub fn test_target(&self, binary_name: &str) -> Option<CargoTarget<'_>> {
+    pub fn test_target(&self, output: PathBuf) -> Option<CargoTarget<'_>> {
         let directory = self.build_directory().join(Self::TEST_CRATE_DIRECTORY);
-        let output = directory.join(binary_name);
         let tests_use_crates = self.has_crates() || !self.dev_crates.is_empty();
         tests_use_crates.then(|| {
             let manifest = self.manifest(CargoTargetKind::Test, &self.name);

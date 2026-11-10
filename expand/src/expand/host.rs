@@ -91,7 +91,7 @@ impl CompileTimeHost for Expander<'_> {
     fn form_location(&self, form: &Form) -> String {
         let span = form.span();
         let file = self.sources.file(span.source());
-        let position = file.position(span.range().start);
+        let position = self.sources.start_position(span);
         format!(
             "{}:{position}",
             self.module_sources.relative_name(file.name())

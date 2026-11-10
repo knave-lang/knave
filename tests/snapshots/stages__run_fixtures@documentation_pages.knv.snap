@@ -67,3 +67,61 @@ Tells whether both sides match.
 ```
 
 Doubles [x], which [area] cannot see.
+
+# documentation_pages/shapes
+
+Measures shapes on a grid, as [area](#area) does.
+
+<a id="area"></a>
+
+## `area`
+
+```lisp
+(defn area (width height))
+```
+
+Multiplies two sides, as [perimeter](#perimeter) adds them.
+
+It returns no [option](https://knave-lang.org/docs/prelude/types/#option), and [double](#double) or [square?](#square%3F) help. An [if](../prelude.md#if) decides
+nothing here, and [missing] names nothing. `[perimeter]` is code,
+[a website](https://example.com) is a link, and [two words], [a][b] and [open
+stay.
+
+```lisp
+(area 2 3)
+=> 6
+```
+
+```
+(area 1 1)
+```
+
+<a id="double"></a>
+
+## `double`
+
+```lisp
+(defn double (x))
+```
+
+Doubles [x], which [area](#area) cannot see.
+
+<a id="perimeter"></a>
+
+## `perimeter`
+
+```lisp
+(defn perimeter (width height))
+```
+
+No documentation.
+
+<a id="square?"></a>
+
+## `square?`
+
+```lisp
+(defn square? (width height))
+```
+
+Tells whether both sides match.

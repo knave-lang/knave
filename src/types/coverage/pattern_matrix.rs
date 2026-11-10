@@ -74,7 +74,8 @@ mod tests {
     use super::PatternMatrix;
     use crate::core::{BindingId, Literal, PrimitiveType};
     use crate::types::Type;
-    use crate::types::coverage::constructor::{Constructor, Tag};
+    use crate::types::coverage::constructor::Constructor;
+    use crate::types::coverage::constructor_tag::ConstructorTag;
     use crate::types::coverage::cover_pattern::CoverPattern;
 
     struct MatrixFixture {
@@ -102,7 +103,7 @@ mod tests {
 
         fn first_variant(&self) -> Constructor {
             Constructor::new(
-                Tag::Variant {
+                ConstructorTag::Variant {
                     owner: self.owner,
                     index: 0,
                 },
@@ -145,7 +146,7 @@ mod tests {
             ],
         };
         let pair = Constructor::new(
-            Tag::Variant {
+            ConstructorTag::Variant {
                 owner: fixture.owner,
                 index: 0,
             },

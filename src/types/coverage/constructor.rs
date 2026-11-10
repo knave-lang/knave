@@ -1,25 +1,19 @@
+use super::constructor_tag::ConstructorTag;
 use super::cover_pattern::CoverPattern;
-use crate::core::{BindingId, Literal};
+use crate::core::Literal;
 use crate::types::Type;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum Tag {
-    Variant { owner: BindingId, index: usize },
-    Struct(BindingId),
-    Bool(bool),
-}
-
 pub(super) struct Constructor {
-    tag: Tag,
+    tag: ConstructorTag,
     arguments: Vec<Type>,
 }
 
 impl Constructor {
-    pub(super) fn new(tag: Tag, arguments: Vec<Type>) -> Self {
+    pub(super) fn new(tag: ConstructorTag, arguments: Vec<Type>) -> Self {
         Self { tag, arguments }
     }
 
-    pub(super) fn tag(&self) -> Tag {
+    pub(super) fn tag(&self) -> ConstructorTag {
         self.tag
     }
 
@@ -43,17 +37,21 @@ impl Constructor {
                 index,
                 arguments,
             } if self.tag
-                == (Tag::Variant {
+                == (ConstructorTag::Variant {
                     owner: *owner,
                     index: *index,
                 }) =>
             {
                 Some(arguments.clone())
             }
-            CoverPattern::Struct { owner, arguments } if self.tag == Tag::Struct(*owner) => {
+            CoverPattern::Struct { owner, arguments }
+                if self.tag == ConstructorTag::Struct(*owner) =>
+            {
                 Some(arguments.clone())
             }
-            CoverPattern::Literal(Literal::Bool(value)) if self.tag == Tag::Bool(*value) => {
+            CoverPattern::Literal(Literal::Bool(value))
+                if self.tag == ConstructorTag::Bool(*value) =>
+            {
                 Some(Vec::new())
             }
             _ => None,
@@ -63,9 +61,10 @@ impl Constructor {
 
 #[cfg(test)]
 mod tests {
-    use super::{Constructor, Tag};
+    use super::Constructor;
     use crate::core::{BindingId, Literal, PrimitiveType};
     use crate::types::Type;
+    use crate::types::coverage::constructor_tag::ConstructorTag;
     use crate::types::coverage::cover_pattern::CoverPattern;
 
     struct ConstructorFixture {
@@ -81,7 +80,7 @@ mod tests {
 
         fn pair(&self) -> Constructor {
             Constructor::new(
-                Tag::Variant {
+                ConstructorTag::Variant {
                     owner: self.owner,
                     index: 0,
                 },
@@ -109,7 +108,7 @@ mod tests {
         }
 
         fn true_constructor() -> Constructor {
-            Constructor::new(Tag::Bool(true), Vec::new())
+            Constructor::new(ConstructorTag::Bool(true), Vec::new())
         }
     }
 

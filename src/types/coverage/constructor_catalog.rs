@@ -1,4 +1,5 @@
-use super::constructor::{Constructor, Tag};
+use super::constructor::Constructor;
+use super::constructor_tag::ConstructorTag;
 use crate::core::{BindingId, PrimitiveType};
 use crate::types::Type;
 use crate::types::enums::VariantPayloads;
@@ -48,7 +49,7 @@ impl<'a> ConstructorCatalog<'a> {
     fn booleans() -> Vec<Constructor> {
         [false, true]
             .into_iter()
-            .map(|value| Constructor::new(Tag::Bool(value), Vec::new()))
+            .map(|value| Constructor::new(ConstructorTag::Bool(value), Vec::new()))
             .collect()
     }
 
@@ -70,7 +71,7 @@ impl<'a> ConstructorCatalog<'a> {
         (0..count)
             .map(|index| {
                 Constructor::new(
-                    Tag::Variant { owner, index },
+                    ConstructorTag::Variant { owner, index },
                     self.payloads.visible(owner, index, arguments),
                 )
             })
@@ -84,6 +85,6 @@ impl<'a> ConstructorCatalog<'a> {
             .into_iter()
             .map(|(_, field_type)| field_type)
             .collect();
-        Some(Constructor::new(Tag::Struct(owner), fields))
+        Some(Constructor::new(ConstructorTag::Struct(owner), fields))
     }
 }

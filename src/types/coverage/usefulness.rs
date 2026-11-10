@@ -1,5 +1,6 @@
-use super::constructor::{Constructor, Tag};
+use super::constructor::Constructor;
 use super::constructor_catalog::ConstructorCatalog;
+use super::constructor_tag::ConstructorTag;
 use super::cover_pattern::CoverPattern;
 use super::pattern_matrix::PatternMatrix;
 use super::query::{ExpandedQuery, Query};
@@ -33,14 +34,14 @@ impl<'c, 'a> Usefulness<'c, 'a> {
         match query.first_pattern() {
             CoverPattern::Wild => self.is_useful_wild(matrix, query),
             CoverPattern::Variant { owner, index, .. } => {
-                let tag = Tag::Variant {
+                let tag = ConstructorTag::Variant {
                     owner: *owner,
                     index: *index,
                 };
                 self.is_useful_variant(matrix, query, tag)
             }
             CoverPattern::Struct { owner, .. } => {
-                self.is_useful_tagged(matrix, query, Tag::Struct(*owner))
+                self.is_useful_tagged(matrix, query, ConstructorTag::Struct(*owner))
             }
             CoverPattern::Literal(literal) => self.is_useful_literal(matrix, query, literal),
         }
@@ -84,7 +85,12 @@ impl<'c, 'a> Usefulness<'c, 'a> {
         self.is_useful_specialized(matrix, constructor, &expanded)
     }
 
-    fn is_useful_variant(&mut self, matrix: &PatternMatrix, query: Query, tag: Tag) -> bool {
+    fn is_useful_variant(
+        &mut self,
+        matrix: &PatternMatrix,
+        query: Query,
+        tag: ConstructorTag,
+    ) -> bool {
         let owner = self
             .catalog
             .value_owner(query.first_type())
@@ -94,7 +100,12 @@ impl<'c, 'a> Usefulness<'c, 'a> {
         })
     }
 
-    fn is_useful_tagged(&mut self, matrix: &PatternMatrix, query: Query, tag: Tag) -> bool {
+    fn is_useful_tagged(
+        &mut self,
+        matrix: &PatternMatrix,
+        query: Query,
+        tag: ConstructorTag,
+    ) -> bool {
         let constructor = self
             .catalog
             .constructors(query.first_type())

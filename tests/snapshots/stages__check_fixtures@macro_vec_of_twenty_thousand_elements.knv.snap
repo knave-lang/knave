@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/macro_vec_of_twenty_thousand_elements.knv
+---
+(type main (fn () unit))

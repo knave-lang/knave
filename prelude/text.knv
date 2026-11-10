@@ -1,6 +1,7 @@
 (use prelude/macros defmacro doc-page document header-shape
                     listing-part map-list template)
 
+(use prelude/internal/macros joined-texts)
 (use prelude/pair pair)
 (use prelude/syntax let)
 
@@ -222,16 +223,17 @@
 
 (def arguments-text
   (fn (wrappers index)
-    (arguments-text-onto "" wrappers index)))
+    (joined-texts (argument-texts-onto (list) wrappers index))))
 
-(def arguments-text-onto
-  (fn (text wrappers index)
+(def argument-texts-onto
+  (fn (texts wrappers index)
     (if (empty? wrappers)
-      text
-      (recur (string text ", "
-                     (first (first wrappers))
-                     index
-                     (nth (first wrappers) 1))
+      texts
+      (recur (concat texts
+                     (list (string ", "
+                                   (first (first wrappers))
+                                   index
+                                   (nth (first wrappers) 1))))
              (rest wrappers)
              (number-add index 1)))))
 
@@ -331,8 +333,13 @@
 
 (def format-pieces
   (fn (pieces index escaper)
-    (format-pieces-onto (list "" (list) (list) index (list))
-                        pieces escaper)))
+    (with-joined-text
+      (format-pieces-onto (list (list) (list) (list) index (list))
+                          pieces escaper))))
+
+(def with-joined-text
+  (fn (formatted)
+    (prepend (joined-texts (first formatted)) (rest formatted))))
 
 (def format-pieces-onto
   (fn (formatted pieces escaper)
@@ -346,7 +353,7 @@
 
 (def join-formatted
   (fn (formatted rendered)
-    (list (string (nth formatted 0) (nth rendered 0))
+    (list (concat (nth formatted 0) (list (nth rendered 0)))
           (concat (nth formatted 1) (nth rendered 1))
           (concat (nth formatted 2) (nth rendered 2))
           (nth rendered 3)

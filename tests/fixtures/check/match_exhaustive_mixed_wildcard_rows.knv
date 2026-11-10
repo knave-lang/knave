@@ -1,0 +1,11 @@
+(enum side left right)
+
+(defstruct turn
+  :side side
+  :sharp bool)
+
+(defn cost (t)
+  (match t
+    ((turn side/left _) 1)
+    ((turn _ false) 2)
+    ((turn side/right true) 3)))

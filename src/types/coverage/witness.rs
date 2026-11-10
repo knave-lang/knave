@@ -1,4 +1,5 @@
-use super::constructor::{Constructor, Tag};
+use super::constructor::Constructor;
+use super::constructor_tag::ConstructorTag;
 use crate::core::BindingId;
 
 #[derive(Clone)]
@@ -19,16 +20,16 @@ pub(super) enum Witness {
 impl Witness {
     pub(super) fn built_by(constructor: &Constructor, arguments: &[Witness]) -> Self {
         match constructor.tag() {
-            Tag::Variant { owner, index } => Witness::Variant {
+            ConstructorTag::Variant { owner, index } => Witness::Variant {
                 owner,
                 index,
                 arguments: arguments.to_vec(),
             },
-            Tag::Struct(owner) => Witness::Struct {
+            ConstructorTag::Struct(owner) => Witness::Struct {
                 owner,
                 arguments: arguments.to_vec(),
             },
-            Tag::Bool(value) => Witness::Bool(value),
+            ConstructorTag::Bool(value) => Witness::Bool(value),
         }
     }
 }
@@ -37,7 +38,8 @@ impl Witness {
 mod tests {
     use super::Witness;
     use crate::core::BindingId;
-    use crate::types::coverage::constructor::{Constructor, Tag};
+    use crate::types::coverage::constructor::Constructor;
+    use crate::types::coverage::constructor_tag::ConstructorTag;
 
     struct WitnessFixture {
         owner: BindingId,
@@ -50,7 +52,7 @@ mod tests {
             }
         }
 
-        fn built_by(tag: Tag) -> Witness {
+        fn built_by(tag: ConstructorTag) -> Witness {
             Witness::built_by(&Constructor::new(tag, Vec::new()), &[Witness::Wild])
         }
     }
@@ -58,7 +60,7 @@ mod tests {
     #[test]
     fn a_variant_constructor_builds_a_variant_witness_with_its_arguments() {
         let fixture = WitnessFixture::new();
-        let witness = WitnessFixture::built_by(Tag::Variant {
+        let witness = WitnessFixture::built_by(ConstructorTag::Variant {
             owner: fixture.owner,
             index: 2,
         });
@@ -71,7 +73,7 @@ mod tests {
     #[test]
     fn a_struct_constructor_builds_a_struct_witness_with_its_arguments() {
         let fixture = WitnessFixture::new();
-        let witness = WitnessFixture::built_by(Tag::Struct(fixture.owner));
+        let witness = WitnessFixture::built_by(ConstructorTag::Struct(fixture.owner));
         assert!(matches!(
             witness,
             Witness::Struct { owner, arguments } if owner == fixture.owner && arguments.len() == 1
@@ -81,7 +83,7 @@ mod tests {
     #[test]
     fn a_bool_constructor_builds_its_bool() {
         assert!(matches!(
-            WitnessFixture::built_by(Tag::Bool(false)),
+            WitnessFixture::built_by(ConstructorTag::Bool(false)),
             Witness::Bool(false)
         ));
     }

@@ -57,7 +57,8 @@ mod tests {
     use super::Query;
     use crate::core::{Literal, PrimitiveType};
     use crate::types::Type;
-    use crate::types::coverage::constructor::{Constructor, Tag};
+    use crate::types::coverage::constructor::Constructor;
+    use crate::types::coverage::constructor_tag::ConstructorTag;
     use crate::types::coverage::cover_pattern::CoverPattern;
 
     struct QueryFixture {
@@ -123,7 +124,7 @@ mod tests {
     #[test]
     fn expanding_puts_the_constructor_columns_in_place_of_the_first() {
         let fixture = QueryFixture::new();
-        let constructor = Constructor::new(Tag::Bool(true), vec![QueryFixture::unit()]);
+        let constructor = Constructor::new(ConstructorTag::Bool(true), vec![QueryFixture::unit()]);
         let expanded = fixture
             .query()
             .expanded(&constructor, &[CoverPattern::Wild]);

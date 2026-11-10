@@ -1,5 +1,6 @@
 mod constructor;
 mod constructor_catalog;
+mod constructor_tag;
 mod cover_pattern;
 mod coverage_verdict;
 mod exhaustiveness;

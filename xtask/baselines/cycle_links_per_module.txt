@@ -69,11 +69,11 @@ src/types/assumed_collections.rs 1
 src/types/borrowed_items.rs 1
 src/types/checker.rs 5
 src/types/enums.rs 1
-src/types/finalize.rs 1
+src/types/finalize.rs 2
 src/types/infer.rs 4
 src/types/infer/open_collections.rs 1
 src/types/infer/shared_variables.rs 1
-src/types/parameter_calls.rs 1
+src/types/parameter_call_labels.rs 1
 src/types/pattern_placement.rs 1
 src/types/pinning.rs 1
 src/types/problems.rs 2
@@ -82,6 +82,7 @@ src/types/selection.rs 1
 src/types/templates.rs 1
 src/types/traits.rs 2
 src/types/type_text.rs 1
+src/types/type_text_writer.rs 1
 src/types/typed.rs 3
 xtask/src/bench/change.rs 1
 xtask/src/bench/counter_gate.rs 2

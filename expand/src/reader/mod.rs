@@ -9,6 +9,7 @@ mod token;
 
 pub use form::{Form, FormKind, Number, NumberValue, Symbol};
 pub use literal_forms::LiteralForms;
+pub use string_literal::StringLiteral;
 pub use token::{Token, TokenKind, TokenScan};
 
 use std::ops::Range;

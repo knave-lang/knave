@@ -1,17 +1,19 @@
 use std::path::Path;
 use std::rc::Rc;
 
-use super::distinct_output::DistinctOutput;
+use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
 use super::finished_program::FinishedProgram;
 use super::located_project::LocatedProject;
+use super::project_task::{ProjectTask, TaskName};
 use super::standard_error::StandardError;
-use super::task_lookup::TaskLookup;
+use super::task_catalog::TaskCatalog;
+use super::task_runners::TaskRunners;
 use super::terminal::Terminal;
-use super::test_entries::EntryTree;
 use crate::build::BuildProfile;
 use crate::diagnostic::SimilarName;
 use crate::language::Language;
+use crate::modules::SearchScope;
 
 pub struct TaskCommand {
     name: Option<String>,
@@ -32,8 +34,7 @@ impl TaskCommand {
     }
 
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
-        let distinct = DistinctOutput::new(terminal.diagnostic_output());
-        terminal.report_diagnostics_to(Rc::new(distinct));
+        terminal.report_diagnostics_to(TaskCatalog::user_output(terminal.diagnostic_output()));
         match self.execute(terminal) {
             Ok(status) | Err(status) => status,
         }
@@ -42,15 +43,20 @@ impl TaskCommand {
     fn execute(&self, terminal: &mut Terminal) -> Result<ExitStatus, ExitStatus> {
         let tree = Self::task_tree(terminal)?;
         let project = tree.project().expect("the task tree belongs to a project");
-        let lookup = TaskLookup::load(&tree, terminal)?;
+        let catalog = TaskCatalog::load(&tree, terminal)?;
         let Some(name) = &self.name else {
-            let listing = lookup.listing(terminal)?;
+            let listing = catalog.listing(terminal)?;
             return Ok(terminal.write_output(listing));
         };
-        let names: Vec<Rc<str>> = lookup.names(terminal)?.into_iter().map(Rc::from).collect();
+        let names: Vec<Rc<str>> = catalog
+            .names(terminal)?
+            .iter()
+            .map(|known| Rc::from(known.as_str()))
+            .collect();
         Self::expect_task(&names, name)?;
-        let binary = lookup.build(terminal, project, name, self.profile)?;
-        Ok(FinishedProgram::run_in(&binary, &self.arguments, project.root()).status())
+        let task = ProjectTask::new(project, TaskName::new(name.clone()));
+        let binary = TaskRunners::new(&catalog).build(terminal, &task, self.profile)?;
+        Ok(FinishedProgram::run_in(&binary, &self.arguments, task.root()).status())
     }
 
     fn task_tree(terminal: &Terminal) -> Result<EntryTree, ExitStatus> {
@@ -94,7 +100,7 @@ impl TaskCommand {
         StandardError::write_line(format_args!(
             "error: no `{0}/` directory at the project root\n\
              help: define a task with `deftask` in a file under `{0}/`",
-            LocatedProject::TASKS_DIRECTORY
+            SearchScope::TASKS_DIRECTORY
         ));
         ExitStatus::UsageError
     }

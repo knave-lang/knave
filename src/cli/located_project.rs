@@ -8,7 +8,7 @@ use super::terminal::Terminal;
 use crate::build::{CargoManifest, CargoTarget};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
-use crate::modules::LibraryTable;
+use crate::modules::{LibraryTable, SearchScope};
 use crate::project::{CrateDependency, Project, ProjectProblems};
 
 pub struct LocatedProject {
@@ -21,8 +21,6 @@ pub struct LocatedProject {
 }
 
 impl LocatedProject {
-    pub const TESTS_DIRECTORY: &str = "tests";
-    pub const TASKS_DIRECTORY: &str = "tasks";
     const LOCK_FILE: &str = "Cargo.lock";
     const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
     const FNV_PRIME: u64 = 0x0100_0000_01b3;
@@ -106,36 +104,36 @@ impl LocatedProject {
 
     pub fn file_within(&self, path: PathBuf) -> ProgramFile {
         let tasks_directory = self.tasks_directory();
-        let file = if ProgramFile::relative_module(&path, &tasks_directory).is_some() {
-            self.task_file(ProgramFile::within(path, tasks_directory))
-        } else {
-            ProgramFile::inside_or_beside(path, self.source_root())
-        };
-        self.in_project(file)
-    }
-
-    fn in_project(&self, file: ProgramFile) -> ProgramFile {
-        file.with_libraries(self.libraries.clone())
-            .with_tasks_directory(self.tasks_directory())
+        if ProgramFile::relative_module(&path, &tasks_directory).is_some() {
+            return self.task_file(ProgramFile::within(path, tasks_directory));
+        }
+        let scope = SearchScope::in_project(&tasks_directory);
+        ProgramFile::inside_or_beside(path, self.source_root())
+            .with_libraries(self.libraries.clone())
+            .within_scope(scope)
     }
 
     pub fn test_file(&self, file: ProgramFile) -> ProgramFile {
-        self.in_project(file.with_fallback_root(self.source_root()))
+        let scope = SearchScope::tests(&self.tasks_directory());
+        self.beside_source_root(file).within_scope(scope)
     }
 
     pub fn task_file(&self, file: ProgramFile) -> ProgramFile {
-        self.in_project(
-            file.with_fallback_root(self.source_root())
-                .without_reaching(vec![self.tests_directory()]),
-        )
+        let scope = SearchScope::tasks(&self.tasks_directory(), &self.tests_directory());
+        self.beside_source_root(file).within_scope(scope)
+    }
+
+    fn beside_source_root(&self, file: ProgramFile) -> ProgramFile {
+        file.with_fallback_root(self.source_root())
+            .with_libraries(self.libraries.clone())
     }
 
     pub fn tests_directory(&self) -> PathBuf {
-        self.root.join(Self::TESTS_DIRECTORY)
+        self.root.join(SearchScope::TESTS_DIRECTORY)
     }
 
     pub fn tasks_directory(&self) -> PathBuf {
-        self.root.join(Self::TASKS_DIRECTORY)
+        self.root.join(SearchScope::TASKS_DIRECTORY)
     }
 
     pub fn root(&self) -> &Path {
@@ -214,15 +212,5 @@ impl LocatedProject {
         self.root
             .join(Terminal::build_root())
             .join(&self.project.name)
-    }
-
-    pub fn task_build_directory(&self, task: &str) -> PathBuf {
-        self.build_directory()
-            .join(Self::TASKS_DIRECTORY)
-            .join(task)
-    }
-
-    pub fn task_bin_stem(&self, task: &str) -> String {
-        format!("{}-task-{task}", self.project.name)
     }
 }

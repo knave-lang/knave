@@ -89,7 +89,7 @@ impl CompileTimeHost for Expander<'_> {
 
     fn in_tasks_directory(&self, form: &Form) -> bool {
         let file = self.sources.file(form.span().source());
-        self.module_sources.lies_in_tasks_directory(file.name())
+        self.module_sources.holds_task(file.name())
     }
 
     fn read_literal_form(

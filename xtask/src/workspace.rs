@@ -48,22 +48,20 @@ impl CargoWorkspace {
     }
 
     fn directories_of(&self, packages: &[MemberPackage]) -> BTreeSet<PathBuf> {
-        packages
-            .iter()
-            .flat_map(|package| &package.targets)
+        Self::targets(packages)
             .filter_map(|target| target.source_file.parent())
             .map(|directory| self.root.join(directory))
             .collect()
     }
 
     pub fn crate_names(&self) -> BTreeSet<String> {
-        self.targets()
+        Self::targets(&self.packages)
             .map(|target| target.crate_name.clone())
             .collect()
     }
 
-    fn targets(&self) -> impl Iterator<Item = &CrateTarget> {
-        self.packages.iter().flat_map(|package| &package.targets)
+    fn targets(packages: &[MemberPackage]) -> impl Iterator<Item = &CrateTarget> {
+        packages.iter().flat_map(|package| &package.targets)
     }
 
     fn parse(root: &Path, metadata: &str) -> Result<Self, TaskFailure> {

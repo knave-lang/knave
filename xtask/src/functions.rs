@@ -50,8 +50,6 @@ pub struct SourceTree {
 }
 
 impl SourceTree {
-    const EXTENSION: &str = "rs";
-
     pub fn new(root: &Path, directories: BTreeSet<PathBuf>) -> Self {
         Self {
             root: root.to_path_buf(),
@@ -64,7 +62,7 @@ impl SourceTree {
         for source in self.files()? {
             functions.extend(FunctionCollector::collect(
                 source.relative().to_string(),
-                &source.syntax()?,
+                source.syntax(),
             ));
         }
         Ok(functions)
@@ -89,7 +87,7 @@ impl SourceTree {
                 Self::collect_files(&path, files)?;
             } else if path
                 .extension()
-                .is_some_and(|extension| extension == Self::EXTENSION)
+                .is_some_and(|extension| extension == SourceFile::EXTENSION)
             {
                 files.insert(path);
             }

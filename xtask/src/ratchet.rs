@@ -10,11 +10,15 @@ use crate::failure::TaskFailure;
 pub type Counts = BTreeMap<String, usize>;
 
 pub struct Unit {
-    pub one: &'static str,
-    pub many: &'static str,
+    one: &'static str,
+    many: &'static str,
 }
 
 impl Unit {
+    pub const fn new(one: &'static str, many: &'static str) -> Self {
+        Self { one, many }
+    }
+
     fn count(&self, count: usize) -> String {
         let noun = if count == 1 { self.one } else { self.many };
         format!("{count} {noun}")
@@ -35,7 +39,7 @@ pub struct Baseline {
 }
 
 impl Baseline {
-    pub fn read(root: &Path, file: &str) -> Result<Self, TaskFailure> {
+    fn read(root: &Path, file: &str) -> Result<Self, TaskFailure> {
         let path = root.join(file);
         let text =
             fs::read_to_string(&path).map_err(|error| TaskFailure::unreadable(&path, error))?;
@@ -115,7 +119,12 @@ pub struct Ratchet {
 }
 
 impl Ratchet {
-    pub fn new(limit: Limit, measured: Counts, baseline: Baseline) -> Self {
+    pub fn read(root: &Path, limit: Limit, measured: Counts) -> Result<Self, TaskFailure> {
+        let baseline = Baseline::read(root, limit.baseline)?;
+        Ok(Self::new(limit, measured, baseline))
+    }
+
+    fn new(limit: Limit, measured: Counts, baseline: Baseline) -> Self {
         Self {
             limit,
             measured,
@@ -259,10 +268,7 @@ mod tests {
                 baseline: Self::BASELINE,
                 maximum: 500,
                 subjects: "Rust files",
-                unit: Unit {
-                    one: "production line",
-                    many: "production lines",
-                },
+                unit: Unit::new("production line", "production lines"),
                 advice: "Split it by responsibility.",
             }
         }

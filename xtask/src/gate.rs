@@ -11,7 +11,7 @@ use crate::instrumented_tests::InstrumentedTests;
 use crate::language::LanguageSource;
 use crate::lcov::LcovReport;
 use crate::production_lines::ProductionLineCensus;
-use crate::ratchet::{Baseline, Limit, Ratchet, Unit};
+use crate::ratchet::{Limit, Ratchet, Unit};
 use crate::source_file::SourceFile;
 use crate::workspace::CargoWorkspace;
 
@@ -33,10 +33,7 @@ impl QualityGate {
         baseline: "xtask/baselines/production_lines.txt",
         maximum: Self::MAXIMUM_PRODUCTION_LINES,
         subjects: "Rust files",
-        unit: Unit {
-            one: "production line",
-            many: "production lines",
-        },
+        unit: Unit::new("production line", "production lines"),
         advice: "Split it by responsibility.",
     };
     const README: &str = "README.md";
@@ -64,9 +61,8 @@ impl QualityGate {
     }
 
     pub fn run_file_sizes(&self) -> Result<ExitCode, TaskFailure> {
-        let measured = ProductionLineCensus::measure(&self.production_sources()?)?;
-        let baseline = Baseline::read(&self.root, Self::PRODUCTION_LINES.baseline)?;
-        let ratchet = Ratchet::new(Self::PRODUCTION_LINES, measured, baseline);
+        let measured = ProductionLineCensus::measure(&self.production_sources()?);
+        let ratchet = Ratchet::read(&self.root, Self::PRODUCTION_LINES, measured)?;
         Ok(Self::conclude(&[&ratchet]))
     }
 

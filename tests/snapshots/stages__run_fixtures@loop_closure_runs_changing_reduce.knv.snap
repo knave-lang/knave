@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/loop_closure_runs_changing_reduce.knv
+---
+7
+2

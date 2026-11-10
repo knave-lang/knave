@@ -3,6 +3,11 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/returned_closure_reads_through_ref_parameter.knv
 ---
-(type show (fn ((ref i64)) i64))
-(type reader! (fn ((mut i64)) (fn () i64)))
-(type main (fn () unit))
+error[L0517]: a returned closure cannot use `x`, which `reader!` changes
+ --> check/returned_closure_reads_through_ref_parameter.knv:7:16
+  |
+7 |   (fn () (show x)))
+  |                ^ the closure uses `x` here
+  |
+  = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
+  = help: copy it first with `(local value x)` and use `value` in the closure

@@ -3,15 +3,14 @@ use crate::core::BindingId;
 use crate::diagnostic::Diagnostics;
 use crate::source::Span;
 use crate::types::{
-    Borrow, ReturnedValues, TypedArgument, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
-    TypedProgram,
+    ReturnedValues, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedProgram,
 };
 
-pub struct ReturnedChanges<'a> {
+pub struct ReturnedClosureUses<'a> {
     program: &'a TypedProgram,
 }
 
-impl<'a> ReturnedChanges<'a> {
+impl<'a> ReturnedClosureUses<'a> {
     pub fn new(program: &'a TypedProgram) -> Self {
         Self { program }
     }
@@ -43,35 +42,26 @@ impl<'a> ReturnedChanges<'a> {
                 .changed_copy_parameters
                 .contains(&param.binding)
         }) {
-            if let Some(change) = closures
+            if let Some(usage) = closures
                 .iter()
-                .find_map(|closure| Self::change_site(closure, param.binding))
+                .find_map(|closure| Self::use_site(closure, param.binding))
             {
                 let bindings = &self.program.bindings;
-                diagnostics.push(OwnershipProblems::changed_by_returned_closure(
+                diagnostics.push(OwnershipProblems::changed_parameter_in_returned_closure(
                     bindings.get(function).name(),
                     bindings.get(param.binding).name(),
-                    change,
+                    usage,
                 ));
             }
         }
     }
 
-    fn change_site(expr: &TypedExpr, param: BindingId) -> Option<Span> {
-        if let TypedExprKind::Call(_, arguments) = &expr.kind
-            && arguments
-                .iter()
-                .any(|argument| Self::changes(argument, param))
-        {
+    fn use_site(expr: &TypedExpr, param: BindingId) -> Option<Span> {
+        if matches!(expr.kind, TypedExprKind::Leaf(TypedLeaf::Local(binding)) if binding == param) {
             return Some(expr.span);
         }
         expr.children()
             .into_iter()
-            .find_map(|child| Self::change_site(child, param))
-    }
-
-    fn changes(argument: &TypedArgument, param: BindingId) -> bool {
-        matches!(argument.value.kind, TypedExprKind::Leaf(TypedLeaf::Local(binding)) if binding == param)
-            && matches!(argument.borrow, Borrow::Mutable | Borrow::Reborrow)
+            .find_map(|child| Self::use_site(child, param))
     }
 }

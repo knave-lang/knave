@@ -1317,7 +1317,6 @@ impl TypeChecker {
                 kind: crate::types::ClosureKind::Fn,
                 moved_capture: None,
                 changed_capture: None,
-                moves_captures: false,
             })),
             function,
         ))

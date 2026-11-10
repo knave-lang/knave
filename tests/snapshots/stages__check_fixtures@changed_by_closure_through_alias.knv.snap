@@ -3,11 +3,11 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/changed_by_closure_through_alias.knv
 ---
-error[L0517]: the closure that `counter!` returns cannot change `start`
- --> check/changed_by_closure_through_alias.knv:3:12
+error[L0517]: a returned closure cannot use `start`, which `counter!` changes
+ --> check/changed_by_closure_through_alias.knv:3:18
   |
 3 |     (fn () (set! start (+ start 1)) start))
-  |            ^^^^^^^^^^^^^^^^^^^^^^^^ this changes the caller's value of `start`
+  |                  ^^^^^ the closure uses `start` here
   |
-  = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
-  = help: to give the closure a value of its own, start `counter!` with `(local count start)` and use `count` in the closure
+  = note: `start` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
+  = help: copy it first with `(local value start)` and use `value` in the closure

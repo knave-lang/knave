@@ -1,0 +1,13 @@
+(defn wrap! (x ys)
+  (set! x (+ x 1))
+  (loop (i 0)
+    (if (> (reduce (iter ys) i (fn (acc z) (set! x (+ x 1)) (+ acc (deref z)))) 100)
+      (fn (y) (+ y 1))
+      (recur (+ i 50)))))
+
+(defn main ()
+  (local a 0)
+  (local ys (vec 10 20))
+  (local h (wrap! a ys))
+  (println a)
+  (println (h 1)))

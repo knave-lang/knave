@@ -2,7 +2,6 @@ mod aliased_changes;
 mod aliases;
 mod borrowing_lambdas;
 mod callers;
-mod captured_copies;
 mod changes;
 mod checks;
 mod copied_reads;
@@ -29,7 +28,7 @@ mod recurrence;
 mod refusals;
 mod repeats;
 mod returned;
-mod returned_changes;
+mod returned_closure_uses;
 mod rewrite;
 mod shrunk_parameters;
 mod slices;
@@ -57,7 +56,6 @@ use crate::types::{
 };
 use aliased_changes::AliasedChanges;
 use borrowing_lambdas::BorrowingLambdas;
-use captured_copies::CapturedCopies;
 use checks::OwnershipNeeds;
 use copied_reads::CopiedMutReads;
 use escaping_lambdas::EscapingLambdas;
@@ -69,7 +67,7 @@ use names::ChangingFunctionNames;
 use place_arguments::PlaceArguments;
 use problems::OwnershipProblems;
 use returned::ReturnedBorrows;
-use returned_changes::ReturnedChanges;
+use returned_closure_uses::ReturnedClosureUses;
 use rewrite::ModeRewrite;
 use slices::ShrinkSelection;
 use stored::StoredClosures;
@@ -130,7 +128,6 @@ impl OwnershipChecker {
         rewrite.apply(program);
         program.changed_copy_parameters = copied_reads.parameters();
         copied_reads.apply(program, rewrite.function_params());
-        CapturedCopies::new(&program.changed_copy_parameters.clone()).apply(program);
         let copy = CopyRules::new(
             &program.traits,
             &program.generics,
@@ -141,7 +138,7 @@ impl OwnershipChecker {
             PlaceArguments::new(program, &functions, rewrite.function_params(), &copy).check(),
         );
         diagnostics.extend(AliasedChanges::new(program, rewrite.function_params()).check());
-        diagnostics.extend(ReturnedChanges::new(program).check());
+        diagnostics.extend(ReturnedClosureUses::new(program).check());
         slices.rewrite_declarations(program);
         FunctionValueModes::apply(program, rewrite.function_params(), &copied_reads)
             .into_iter()

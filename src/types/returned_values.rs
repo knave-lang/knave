@@ -1,8 +1,8 @@
 use rustc_hash::FxHashMap;
 
 use super::{
-    Pipelines, Type, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
-    TypedLambda, TypedLeaf, TypedProgram,
+    Pipelines, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
+    TypedExprKind, TypedLambda, TypedLeaf, TypedProgram,
 };
 use crate::core::BindingId;
 
@@ -23,14 +23,6 @@ impl<'p> ReturnedValues<'p> {
             self.collect_closures(value, lets, &mut closures);
         });
         closures
-    }
-
-    pub fn keeps_borrow(lambda: &TypedLambda, param: BindingId) -> bool {
-        let mut keeps = false;
-        Self::visit_block(&lambda.body, Lets::default(), &mut |value, _| {
-            keeps |= Self::captures(value, param);
-        });
-        keeps
     }
 
     fn visit_block<'e>(
@@ -66,8 +58,25 @@ impl<'p> ReturnedValues<'p> {
                     Self::visit_block(&arm.body, lets.clone(), visit);
                 }
             }
+            TypedExprKind::Call(callee, arguments)
+                if let TypedExprKind::Fn(body) = &callee.kind =>
+            {
+                Self::visit_block(&body.body, Self::bind_loop(body, arguments, lets), visit);
+            }
             _ => visit(value, lets),
         }
+    }
+
+    fn bind_loop<'e>(
+        body: &'e TypedLambda,
+        arguments: &'e [TypedArgument],
+        lets: &Lets<'e>,
+    ) -> Lets<'e> {
+        let mut bound = lets.clone();
+        for (param, argument) in body.params.iter().zip(arguments) {
+            bound.insert(param.binding, &argument.value);
+        }
+        bound
     }
 
     fn collect_closures<'e>(
@@ -77,7 +86,10 @@ impl<'p> ReturnedValues<'p> {
         closures: &mut Vec<&'e TypedExpr>,
     ) {
         match &value.kind {
-            TypedExprKind::Fn(_) => closures.push(value),
+            TypedExprKind::Fn(_) => {
+                closures.push(value);
+                self.collect_captured(value, lets, closures);
+            }
             TypedExprKind::Leaf(TypedLeaf::Local(binding)) if lets.contains_key(binding) => {
                 self.collect_closures(lets[binding], lets, closures);
             }
@@ -90,13 +102,19 @@ impl<'p> ReturnedValues<'p> {
         }
     }
 
-    fn captures(value: &TypedExpr, param: BindingId) -> bool {
-        match &value.kind {
-            TypedExprKind::Fn(_) => value.mentions_local(param),
-            _ => value
-                .children()
-                .into_iter()
-                .any(|child| Self::captures(child, param)),
+    fn collect_captured<'e>(
+        &self,
+        closure: &'e TypedExpr,
+        lets: &Lets<'e>,
+        closures: &mut Vec<&'e TypedExpr>,
+    ) {
+        for child in closure.children() {
+            match &child.kind {
+                TypedExprKind::Leaf(TypedLeaf::Local(binding)) if lets.contains_key(binding) => {
+                    self.collect_closures(lets[binding], lets, closures);
+                }
+                _ => self.collect_captured(child, lets, closures),
+            }
         }
     }
 

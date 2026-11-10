@@ -3,14 +3,14 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/changed_by_closure_inside_returned_value.knv
 ---
-error[L0517]: the closure that `counters!` returns cannot change `start`
- --> check/changed_by_closure_inside_returned_value.knv:2:15
+error[L0517]: a returned closure cannot use `start`, which `counters!` changes
+ --> check/changed_by_closure_inside_returned_value.knv:2:21
   |
 2 |   (vec (fn () (set! start (+ start 1)) start)))
-  |               ^^^^^^^^^^^^^^^^^^^^^^^^ this changes the caller's value of `start`
+  |                     ^^^^^ the closure uses `start` here
   |
-  = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
-  = help: to give the closure a value of its own, start `counters!` with `(local count start)` and use `count` in the closure
+  = note: `start` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
+  = help: copy it first with `(local value start)` and use `value` in the closure
 
 error[L0509]: this closure is `FnMut`, but the parameter accepts `Fn`
  --> check/changed_by_closure_inside_returned_value.knv:2:21
@@ -23,20 +23,20 @@ error[L0509]: this closure is `FnMut`, but the parameter accepts `Fn`
   |
   = help: `this function` calls this closure as `Fn`, but it changes `start`
 
-error[L0517]: the closure that `wrapped!` returns cannot change `start`
- --> check/changed_by_closure_inside_returned_value.knv:5:16
+error[L0517]: a returned closure cannot use `start`, which `wrapped!` changes
+ --> check/changed_by_closure_inside_returned_value.knv:5:22
   |
 5 |   (some (fn () (set! start (+ start 1)) start)))
-  |                ^^^^^^^^^^^^^^^^^^^^^^^^ this changes the caller's value of `start`
+  |                      ^^^^^ the closure uses `start` here
   |
-  = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
-  = help: to give the closure a value of its own, start `wrapped!` with `(local count start)` and use `count` in the closure
+  = note: `start` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
+  = help: copy it first with `(local value start)` and use `value` in the closure
 
-error[L0517]: the closure that `borrowed!` returns cannot change `start`
- --> check/changed_by_closure_inside_returned_value.knv:8:15
+error[L0517]: a returned closure cannot use `start`, which `borrowed!` changes
+ --> check/changed_by_closure_inside_returned_value.knv:8:21
   |
 8 |   (ref (fn () (set! start (+ start 1)) start)))
-  |               ^^^^^^^^^^^^^^^^^^^^^^^^ this changes the caller's value of `start`
+  |                     ^^^^^ the closure uses `start` here
   |
-  = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
-  = help: to give the closure a value of its own, start `borrowed!` with `(local count start)` and use `count` in the closure
+  = note: `start` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
+  = help: copy it first with `(local value start)` and use `value` in the closure

@@ -1,0 +1,12 @@
+(use code concat number-gt number-sub)
+
+(defmacro doubles (times)
+  ((fn (items remaining)
+     (if (number-gt remaining 0)
+       (recur (concat items items) (number-sub remaining 1))
+       (quote 1)))
+   (quote (a b c d))
+   times))
+
+(with-macro-steps 1000
+                  (defn main () (println (doubles 12))))

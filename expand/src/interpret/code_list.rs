@@ -174,8 +174,12 @@ impl CodeList {
         }
     }
 
-    pub fn prepended(&self, value: Value, span: Span) -> Result<Self, NestedTooDeep> {
-        Self::new([vec![value], self.values()].concat(), span)
+    pub fn append_work(&self, added: usize) -> usize {
+        if self.growable_buffer().is_some() {
+            added
+        } else {
+            added + self.len()
+        }
     }
 
     pub fn values(&self) -> Vec<Value> {
@@ -380,12 +384,32 @@ mod tests {
     }
 
     #[test]
-    fn prepending_counts_the_new_item() {
-        let list = NestedList::list_of(vec![NestedList::leaf()]);
-        let deep = NestedList::of_depth(ListNesting::LIMIT);
+    fn a_list_at_the_end_of_its_buffer_charges_only_the_added_items() {
+        let list = NestedList::list_of(vec![NestedList::leaf(), NestedList::leaf()]);
+        assert_eq!(list.append_work(3), 3);
+    }
+
+    #[test]
+    fn a_list_before_the_end_of_its_buffer_charges_the_copied_items() {
+        let list = NestedList::list_of(vec![NestedList::leaf(), NestedList::leaf()]);
+        let prefix = list.slice(0..1, NestedList::span()).expect("in range");
+        assert_eq!(prefix.append_work(3), 4);
+    }
+
+    #[test]
+    fn a_read_list_charges_the_copied_items() {
+        let read = Form::new(
+            FormKind::List(vec![Form::new(
+                FormKind::Symbol(Symbol::new("leaf")),
+                NestedList::span(),
+            )]),
+            NestedList::span(),
+        );
         assert_eq!(
-            list.prepended(deep, NestedList::span()).err(),
-            Some(NestedTooDeep)
+            CodeList::of_form(&read)
+                .expect("a list form")
+                .append_work(2),
+            3
         );
     }
 

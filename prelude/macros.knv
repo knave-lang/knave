@@ -1388,8 +1388,9 @@
 
 (defmacro with-macro-steps (count form)
   "Sets the macro step limit of the enclosing top-level form to `count`, then
-  expands to `form`. A macro step is one function call or one `recur` that
-  macro code runs. The limit stays set for the rest of the top-level form, so
+  expands to `form`. A macro step is one function call or one `recur` of
+  macro code, a closure and each variable it captures, one list item that a
+  built-in copies or reads, or 16 bytes of text. The limit stays set for the rest of the top-level form, so
   a smaller `count` lowers it.
 
   (with-macro-steps 1000000000 (+ 1 2))

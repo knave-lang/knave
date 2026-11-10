@@ -56,10 +56,15 @@ impl StepBudget {
 
     #[inline]
     pub fn spend(&self) -> Result<(), PassedStepLimit> {
+        self.spend_work(1)
+    }
+
+    #[inline]
+    pub fn spend_work(&self, work: u64) -> Result<(), PassedStepLimit> {
         let spent = self.counts.spent.get();
         let limit = self.counts.limit.get();
-        if spent < limit {
-            self.counts.spent.set(spent + 1);
+        if work <= limit.saturating_sub(spent) {
+            self.counts.spent.set(spent + work);
             Ok(())
         } else {
             Err(PassedStepLimit { limit })
@@ -94,6 +99,27 @@ mod tests {
         assert!(budget.spend().is_ok());
         assert!(budget.spend().is_ok());
         assert_eq!(budget.spend(), Err(PassedStepLimit { limit: 2 }));
+    }
+
+    #[test]
+    fn work_spends_exactly_the_limit() {
+        let budget = StepBudget::of(5);
+        assert!(budget.spend_work(5).is_ok());
+        assert_eq!(budget.spend_work(1), Err(PassedStepLimit { limit: 5 }));
+    }
+
+    #[test]
+    fn work_past_the_rest_of_the_limit_is_refused_without_spending() {
+        let budget = StepBudget::of(5);
+        budget.spend_work(3).expect("three steps fit");
+        assert!(budget.spend_work(3).is_err());
+        assert!(budget.spend_work(2).is_ok());
+    }
+
+    #[test]
+    fn work_at_the_largest_count_does_not_overflow() {
+        let budget = StepBudget::of(5);
+        assert!(budget.spend_work(u64::MAX).is_err());
     }
 
     #[test]

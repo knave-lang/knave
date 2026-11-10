@@ -6,13 +6,15 @@ mod program;
 mod step_limit;
 mod strings;
 mod text;
+#[cfg(test)]
+mod work_charges;
 
 pub use failure::FailureDescription;
 
 use std::cmp::Ordering;
 
-use super::arguments::Arguments;
-use super::{CompileTimeHost, ListNesting, Value};
+use super::arguments::{Arguments, BuiltinSite};
+use super::{CompileTimeHost, ListNesting, Value, WorkMeter};
 use crate::core::{Builtin, Declaration};
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Number, NumberValue};
@@ -235,11 +237,15 @@ impl BuiltinCall {
         }),
     ];
 
-    pub fn new(builtin: Builtin, values: Vec<Value>, span: Span, call_site: Span) -> Self {
+    pub fn new(builtin: Builtin, values: Vec<Value>, span: Span, meter: &WorkMeter) -> Self {
+        let site = BuiltinSite {
+            function: builtin.name(),
+            span,
+        };
         Self {
             builtin,
-            arguments: Arguments::new(builtin.name(), values, span),
-            call_site,
+            arguments: Arguments::new(site, values, meter.clone()),
+            call_site: meter.call_site(),
         }
     }
 
@@ -286,8 +292,9 @@ impl<'a> Operations<'a> {
 struct Forms;
 
 impl Forms {
-    fn list(items: Vec<Form>, span: Span, called_at: Span) -> Result<Value, Diagnostic> {
-        ListNesting::form_list(items, span).map_err(|deep| deep.at(called_at))
+    fn list(items: Vec<Form>, span: Span, arguments: &Arguments) -> Result<Value, Diagnostic> {
+        arguments.charge(items.len())?;
+        ListNesting::form_list(items, span).map_err(|deep| deep.at(arguments.span()))
     }
 
     fn count(count: usize, span: Span) -> Value {

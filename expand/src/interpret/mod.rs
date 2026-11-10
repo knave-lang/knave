@@ -5,6 +5,7 @@ mod limit_problems;
 mod problems;
 mod step_budget;
 mod value;
+mod work_meter;
 
 pub use builtins::BuiltinCall;
 pub use code_list::{
@@ -14,11 +15,12 @@ pub use limit_problems::LimitProblems;
 pub use problems::InterpretProblems;
 pub use step_budget::StepBudget;
 pub use value::{Closure, Env, Value};
+pub use work_meter::WorkMeter;
 
 use std::rc::Rc;
 
 use crate::core::{
-    BindingId, Block, BodyItem, Control, Declaration, Expr, ExprKind, Leaf, Literal,
+    BindingId, Block, BodyItem, Control, Declaration, Expr, ExprKind, Lambda, Leaf, Literal,
 };
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Symbol};
@@ -67,9 +69,8 @@ enum Step {
 
 pub struct Interpreter<'h> {
     host: &'h mut dyn CompileTimeHost,
-    call_site: Span,
     depth: usize,
-    steps: StepBudget,
+    meter: WorkMeter,
 }
 
 impl<'h> Interpreter<'h> {
@@ -78,9 +79,8 @@ impl<'h> Interpreter<'h> {
     pub fn new(host: &'h mut dyn CompileTimeHost, call_site: Span, steps: StepBudget) -> Self {
         Self {
             host,
-            call_site,
             depth: 0,
-            steps,
+            meter: WorkMeter::new(steps, call_site),
         }
     }
 
@@ -93,7 +93,7 @@ impl<'h> Interpreter<'h> {
         match callee {
             Value::Closure(closure) => self.call_closure(closure, arguments, span),
             Value::Builtin(builtin) => {
-                BuiltinCall::new(*builtin, arguments, span, self.call_site).run(self.host)
+                BuiltinCall::new(*builtin, arguments, span, &self.meter).run(self.host)
             }
             other => Err(InterpretProblems::not_callable(other, span)),
         }
@@ -114,10 +114,7 @@ impl<'h> Interpreter<'h> {
         let span = expr.span();
         match expr.kind() {
             ExprKind::Leaf(leaf) => self.eval_leaf(leaf, env, span).map(Step::Value),
-            ExprKind::Fn(lambda) => Ok(Step::Value(Value::Closure(Rc::new(Closure {
-                lambda: Rc::clone(lambda),
-                env: env.clone(),
-            })))),
+            ExprKind::Fn(lambda) => self.closure_over(lambda, env).map(Step::Value),
             ExprKind::Call(callee, arguments) => self
                 .eval_call(callee, arguments, env, span)
                 .map(Step::Value),
@@ -127,6 +124,14 @@ impl<'h> Interpreter<'h> {
             }
             _ => self.value(expr, env, span),
         }
+    }
+
+    fn closure_over(&self, lambda: &Rc<Lambda>, env: &Env) -> Result<Value, Diagnostic> {
+        self.meter.charge(1 + env.frame_count())?;
+        Ok(Value::Closure(Rc::new(Closure {
+            lambda: Rc::clone(lambda),
+            env: env.clone(),
+        })))
     }
 
     fn value(&mut self, expr: &Expr, env: &Env, span: Span) -> Result<Step, Diagnostic> {
@@ -227,9 +232,7 @@ impl<'h> Interpreter<'h> {
 
     #[inline]
     fn spend_step(&self) -> Result<(), Diagnostic> {
-        self.steps.spend().map_err(|passed| {
-            LimitProblems::too_many_steps(passed.limit, self.steps.first_passed_at(self.call_site))
-        })
+        self.meter.charge(1)
     }
 
     fn bind_arguments(closure: &Closure, arguments: Vec<Value>) -> Env {

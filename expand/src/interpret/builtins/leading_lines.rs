@@ -3,7 +3,7 @@ use rustc_hash::FxHashSet;
 use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::Arguments;
 use crate::interpret::problems::InterpretProblems;
-use crate::interpret::{ListNesting, Value};
+use crate::interpret::{ListNesting, Value, WorkMeter};
 use crate::reader::{Form, FormKind};
 use crate::source::Span;
 
@@ -28,7 +28,10 @@ impl<'a> DistinctLeadingLines<'a> {
         let mut leading_lines = LeadingLines::default();
         let mut kept = Vec::with_capacity(forms.len());
         for form in &forms {
-            if leading_lines.admit(self.text_of(form)?) {
+            let text = self.text_of(form)?;
+            self.arguments
+                .charge(WorkMeter::text_work(LeadingLines::hashed_bytes(text)))?;
+            if leading_lines.admit(text) {
                 kept.push(form.clone());
             }
         }
@@ -57,6 +60,14 @@ struct LeadingLines<'t> {
 impl<'t> LeadingLines<'t> {
     const LINE_BREAK: char = '\n';
 
+    fn hashed_bytes(text: &str) -> usize {
+        text.len()
+            + text
+                .match_indices(Self::LINE_BREAK)
+                .map(|(line_end, _)| line_end)
+                .sum::<usize>()
+    }
+
     fn admit(&mut self, text: &'t str) -> bool {
         if self.seen.contains(text) {
             return false;
@@ -73,6 +84,16 @@ impl<'t> LeadingLines<'t> {
 #[cfg(test)]
 mod tests {
     use super::LeadingLines;
+
+    #[test]
+    fn a_text_without_a_line_break_hashes_once() {
+        assert_eq!(LeadingLines::hashed_bytes("area"), 4);
+    }
+
+    #[test]
+    fn each_line_break_hashes_the_text_before_it() {
+        assert_eq!(LeadingLines::hashed_bytes("a\nbc\n"), 5 + 1 + 4);
+    }
 
     #[test]
     fn admits_a_new_text() {

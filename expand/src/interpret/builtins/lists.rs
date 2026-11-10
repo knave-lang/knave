@@ -34,6 +34,7 @@ impl<'a> ListOperations<'a> {
         let values = (0..self.arguments.values().len())
             .map(|index| self.arguments.code(index))
             .collect::<Result<Vec<Value>, Diagnostic>>()?;
+        self.arguments.charge(values.len())?;
         self.built(CodeList::new(values, self.call_site))
     }
 
@@ -41,7 +42,11 @@ impl<'a> ListOperations<'a> {
         self.arguments.expect_count(2)?;
         let item = self.arguments.code(0)?;
         let items = self.arguments.list(1)?;
-        self.built(items.prepended(item, self.call_site))
+        self.arguments.charge(items.len() + 1)?;
+        self.built(CodeList::new(
+            [vec![item], items.values()].concat(),
+            self.call_site,
+        ))
     }
 
     pub fn concat(&self) -> Result<Value, Diagnostic> {
@@ -51,6 +56,8 @@ impl<'a> ListOperations<'a> {
         let Some((head, tail)) = lists.split_first() else {
             return self.built(CodeList::new(Vec::new(), self.call_site));
         };
+        let added = tail.iter().map(CodeList::len).sum();
+        self.arguments.charge(head.append_work(added))?;
         let extra = tail.iter().flat_map(CodeList::values).collect();
         self.built(head.appended(extra, self.call_site))
     }

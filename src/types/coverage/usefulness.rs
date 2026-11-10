@@ -1,5 +1,6 @@
 use super::constructors::{Constructor, ConstructorCatalog, Tag};
-use super::matrix::{CoverPattern, PatternMatrix};
+use super::matrix::PatternMatrix;
+use super::pattern::CoverPattern;
 use super::query::{ExpandedQuery, Query};
 use super::witness::Witness;
 use crate::core::{BindingId, Literal};
@@ -60,10 +61,11 @@ impl<'c, 'a> Usefulness<'c, 'a> {
     }
 
     fn is_useful_recursive_wild(&mut self, matrix: &PatternMatrix, query: Query) -> bool {
-        let (default, concrete) = matrix.split_wild_rows();
+        let default = matrix.default_rows();
         if !default.is_empty() && !self.is_useful(&default, query.rest()) {
             return false;
         }
+        let concrete = matrix.concrete_rows();
         self.catalog
             .constructors(query.first_type())
             .unwrap_or_default()
@@ -77,8 +79,7 @@ impl<'c, 'a> Usefulness<'c, 'a> {
         query: Query,
         constructor: &Constructor,
     ) -> bool {
-        let wild_arguments = vec![CoverPattern::Wild; constructor.arguments.len()];
-        let expanded = query.expanded(constructor, &wild_arguments);
+        let expanded = query.expanded(constructor, &constructor.wild_arguments());
         self.is_useful_specialized(matrix, constructor, &expanded)
     }
 
@@ -99,7 +100,7 @@ impl<'c, 'a> Usefulness<'c, 'a> {
             .and_then(|constructors| {
                 constructors
                     .into_iter()
-                    .find(|constructor| constructor.tag == tag)
+                    .find(|constructor| constructor.tag() == tag)
             });
         match constructor {
             Some(constructor) => {
@@ -157,11 +158,11 @@ impl<'c, 'a> Usefulness<'c, 'a> {
         types: &[Type],
         constructor: &Constructor,
     ) -> Vec<Vec<Witness>> {
-        let columns = [&constructor.arguments[..], &types[1..]].concat();
+        let columns = constructor.columns_with(&types[1..]);
         self.witnesses(&matrix.specialize(constructor), &columns)
             .into_iter()
             .map(|row| {
-                let (arguments, rest) = row.split_at(constructor.arguments.len());
+                let (arguments, rest) = row.split_at(constructor.arity());
                 let mut witness = Vec::with_capacity(rest.len() + 1);
                 witness.push(Witness::built_by(constructor, arguments));
                 witness.extend_from_slice(rest);

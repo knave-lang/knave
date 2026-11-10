@@ -6,7 +6,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::assumed_collections::AssumedCollections;
 use super::copy::InferredCopies;
 use super::display::TypeDisplay;
-use super::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload};
+use super::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload, VariantPayloads};
 use super::graph::{Definition, DefinitionGraph, DependencyGraph};
 use super::impl_overlap::ImplementorOverlap;
 use super::infer::OpenCollections;
@@ -702,8 +702,8 @@ impl TypeChecker {
         matches!(ty, Type::Named(binding, arguments) if Some(*binding) == self.box_binding && arguments.len() == 1)
     }
 
-    pub(super) fn box_binding(&self) -> Option<BindingId> {
-        self.box_binding
+    pub(super) fn variant_payloads(&self) -> VariantPayloads<'_> {
+        VariantPayloads::new(&self.enums, self.box_binding, &self.inferred_boxes)
     }
 
     pub(super) fn require_copy(&mut self, value: &Type) {

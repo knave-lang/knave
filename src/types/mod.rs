@@ -53,7 +53,6 @@ mod typed;
 #[cfg(test)]
 mod typed_source;
 mod unifier;
-mod variant_payloads;
 mod walk;
 mod wrapper;
 

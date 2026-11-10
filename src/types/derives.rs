@@ -439,9 +439,7 @@ impl TypeChecker {
         payload: &'p Type,
         trait_binding: BindingId,
     ) -> &'p Type {
-        let inferred_box =
-            self.inferred_boxes
-                .contains(&(binding, position.variant, position.payload));
+        let inferred_box = self.variant_payloads().is_inferred_box(binding, position);
         match payload {
             Type::Named(_, arguments)
                 if inferred_box && self.is_structural_trait(trait_binding) =>

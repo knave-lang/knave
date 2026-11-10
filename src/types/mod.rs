@@ -3,6 +3,7 @@ mod assumed_collections;
 mod binding;
 mod borrowed_items;
 mod boxes;
+mod called_parameters;
 mod checker;
 mod collection;
 mod copy;

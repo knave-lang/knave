@@ -12,6 +12,10 @@ mod definition_rounds;
 mod diagnostic_output;
 mod distinct_output;
 mod doc;
+mod doc_arguments;
+mod doc_folder;
+mod doc_pages;
+mod doc_write;
 mod edited_lines;
 mod emit;
 mod enter_key;
@@ -69,7 +73,6 @@ mod user_label_output;
 mod value_marker;
 mod whole_characters;
 
-use std::convert::Infallible;
 use std::env;
 use std::ffi::OsString;
 use std::io;
@@ -89,7 +92,8 @@ use check::CheckCommand;
 use color_when::ColorWhen;
 use counter_report::CounterReport;
 use crate_section::CrateSection;
-use doc::{DocCommand, DocEnvironment, DocPage};
+use doc::DocCommand;
+use doc_arguments::DocArguments;
 use emit::EmitCommand;
 use eval::{EvalCommand, EvaluationSettings, FormsText, ModuleText};
 use evaluation_output::{EvaluationOutput, JsonEvaluation, PrintedEvaluation};
@@ -102,7 +106,6 @@ use remove::RemoveCommand;
 use repl::ReplCommand;
 use run::RunCommand;
 use task::TaskCommand;
-use term_parser::{SurplusParser, TermParser};
 use terminal::{BuildOptions, Terminal};
 use test::{TestCommand, TestSelection};
 use types::TypesCommand;
@@ -206,22 +209,7 @@ enum InspectionCommand {
         name = DocCommand::NAME,
         about = "Print the page of a prelude term, or of a program's term with --file"
     )]
-    Doc {
-        #[arg(
-            allow_hyphen_values = true,
-            value_parser = TermParser,
-            required_unless_present = "separated_term"
-        )]
-        term: Option<String>,
-        #[arg(hide = true, value_parser = SurplusParser)]
-        surplus: Vec<Infallible>,
-        #[arg(last = true, hide = true, value_name = "TERM", conflicts_with = "term")]
-        separated_term: Option<String>,
-        #[arg(long)]
-        file: Option<PathBuf>,
-        #[command(flatten)]
-        types: TypesFlag,
-    },
+    Doc(DocArguments),
     #[command(about = "Print a program as kernel forms after macro expansion")]
     Expand {
         #[arg(help = ENTRY_HELP)]
@@ -378,12 +366,6 @@ struct CheckFlag {
     check: bool,
 }
 
-#[derive(Args)]
-struct TypesFlag {
-    #[arg(long, help = "Print the inferred type above the page")]
-    types: bool,
-}
-
 impl Cli {
     pub fn parse_arguments() -> Self {
         let arguments: Vec<OsString> = env::args_os().collect();
@@ -444,16 +426,7 @@ impl InspectionCommand {
         match self {
             Self::Check { file } => CheckCommand::new(file).run(terminal),
             Self::Types { file } => TypesCommand::new(file).run(terminal),
-            Self::Doc {
-                term,
-                separated_term,
-                file,
-                types,
-                ..
-            } => {
-                let term = term.or(separated_term).expect("clap requires one term");
-                DocCommand::new(DocEnvironment::new(file), term, types.page()).run(terminal)
-            }
+            Self::Doc(arguments) => arguments.run(terminal),
             Self::Expand { file } => ExpandCommand::new(file).run(terminal),
             Self::Emit { file } => EmitCommand::new(file).run(terminal),
             Self::Fmt {
@@ -595,16 +568,6 @@ impl CheckFlag {
             FmtMode::Check
         } else {
             FmtMode::Write
-        }
-    }
-}
-
-impl TypesFlag {
-    fn page(&self) -> DocPage {
-        if self.types {
-            DocPage::Typed
-        } else {
-            DocPage::Written
         }
     }
 }

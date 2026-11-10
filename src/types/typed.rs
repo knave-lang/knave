@@ -447,6 +447,7 @@ pub struct TypedProgram {
     pub template_clauses: TemplateClauses,
     pub pending_mode_checks: Vec<PendingModeCheck>,
     pub borrowed_parameters: FxHashSet<BindingId>,
+    pub changed_parameters: FxHashSet<BindingId>,
     pub changed_copy_parameters: FxHashSet<BindingId>,
     pub stored_function_parameters: FxHashSet<BindingId>,
     pub escaping_lambdas: FxHashSet<BindingId>,

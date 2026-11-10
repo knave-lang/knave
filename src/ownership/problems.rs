@@ -749,6 +749,7 @@ impl OwnershipProblems {
         function: &str,
         param: &str,
         usage: Span,
+        copying: String,
     ) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::RETURNED_CLOSURE_USES_CHANGED_PARAMETER,
@@ -759,7 +760,7 @@ impl OwnershipProblems {
             "`{param}` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives"
         ))
         .with_help(format!(
-            "copy it first with `(local value {param})` and use `value` in the closure"
+            "copy it first with `(local value {copying})` and use `value` in the closure"
         ))
     }
 

@@ -37,11 +37,11 @@ impl<'a> ReturnedClosureUses<'a> {
         diagnostics: &mut Diagnostics,
     ) {
         let closures = ReturnedValues::new(self.program).closures(lambda);
-        for param in lambda.params.iter().filter(|param| {
-            self.program
-                .changed_copy_parameters
-                .contains(&param.binding)
-        }) {
+        for param in lambda
+            .params
+            .iter()
+            .filter(|param| self.program.changed_parameters.contains(&param.binding))
+        {
             if let Some(usage) = closures
                 .iter()
                 .find_map(|closure| Self::use_site(closure, param.binding))
@@ -51,8 +51,18 @@ impl<'a> ReturnedClosureUses<'a> {
                     bindings.get(function).name(),
                     bindings.get(param.binding).name(),
                     usage,
+                    self.copying_expression(param.binding),
                 ));
             }
+        }
+    }
+
+    fn copying_expression(&self, param: BindingId) -> String {
+        let name = self.program.bindings.get(param).name();
+        if self.program.changed_copy_parameters.contains(&param) {
+            name.to_string()
+        } else {
+            format!("(clone {name})")
         }
     }
 

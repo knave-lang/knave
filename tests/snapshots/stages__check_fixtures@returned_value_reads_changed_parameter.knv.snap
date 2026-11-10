@@ -4,27 +4,36 @@ expression: reports.report(path)
 input_file: tests/fixtures/check/returned_value_reads_changed_parameter.knv
 ---
 error[L0517]: a returned closure cannot use `x`, which `scaled!` changes
- --> check/returned_value_reads_changed_parameter.knv:4:19
+ --> check/returned_value_reads_changed_parameter.knv:3:19
   |
-4 |   (fn (y) (f (+ y x))))
+3 |   (fn (y) (f (+ y x))))
   |                   ^ the closure uses `x` here
   |
   = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
   = help: copy it first with `(local value x)` and use `value` in the closure
 
 error[L0517]: a returned closure cannot use `x`, which `shifted!` changes
- --> check/returned_value_reads_changed_parameter.knv:9:39
+ --> check/returned_value_reads_changed_parameter.knv:7:39
   |
-9 |   (map (iter xs) (fn (i) (+ (deref i) x))))
+7 |   (map (iter xs) (fn (i) (+ (deref i) x))))
   |                                       ^ the closure uses `x` here
   |
   = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
   = help: copy it first with `(local value x)` and use `value` in the closure
 
-error[L0517]: a returned closure cannot use `x`, which `recorder!` changes
-  --> check/returned_value_reads_changed_parameter.knv:14:27
+error[L0517]: a returned closure cannot use `log`, which `recorder!` changes
+  --> check/returned_value_reads_changed_parameter.knv:11:18
    |
-14 |   (fn (y) (push! log (+ y x)) (len log)))
+11 |   (fn (y) (push! log (+ y x)) (len log)))
+   |                  ^^^ the closure uses `log` here
+   |
+   = note: `log` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
+   = help: copy it first with `(local value (clone log))` and use `value` in the closure
+
+error[L0517]: a returned closure cannot use `x`, which `recorder!` changes
+  --> check/returned_value_reads_changed_parameter.knv:11:27
+   |
+11 |   (fn (y) (push! log (+ y x)) (len log)))
    |                           ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives

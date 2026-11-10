@@ -1,0 +1,13 @@
+(defn greeter! (name)
+  (set! name (str "pear"))
+  (fn () (str name)))
+
+(defn counter! (items)
+  (push! items 1)
+  (fn () (len items)))
+
+(defn main ()
+  (local name (str "apple"))
+  (println ((greeter! name)))
+  (local items (vec 0))
+  (println ((counter! items))))

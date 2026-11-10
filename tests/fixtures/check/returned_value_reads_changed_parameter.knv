@@ -1,16 +1,13 @@
 (defn scaled! (x f)
   (set! x (+ x 1))
-  (local pad 0)
   (fn (y) (f (+ y x))))
 
 (defn shifted! (x xs)
   (set! x (+ x 1))
-  (local pad 0)
   (map (iter xs) (fn (i) (+ (deref i) x))))
 
 (defn recorder! (x log)
   (set! x (+ x 1))
-  (local pad 0)
   (fn (y) (push! log (+ y x)) (len log)))
 
 (defn main ()

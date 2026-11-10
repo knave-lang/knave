@@ -45,11 +45,17 @@ impl BuildVariant {
 }
 
 impl<'a> CompilerBuild<'a> {
-    const RELEASE_BUILD: [&'static str; 4] =
-        ["build", "--release", "--quiet", "--message-format=json"];
-    const UNPARTITIONED_CODEGEN: [&'static str; 2] =
-        ["--config", "profile.release.codegen-units=1"];
-    const RELEASE_CLEAN: [&'static str; 3] = ["clean", "--release", "--quiet"];
+    const PROFILE_BUILD: [&'static str; 5] = [
+        "build",
+        "--profile",
+        "local",
+        "--quiet",
+        "--message-format=json",
+    ];
+    const PROFILE_DEFINITION: [&'static str; 2] =
+        ["--config", "profile.local.inherits=\"release\""];
+    const UNPARTITIONED_CODEGEN: [&'static str; 2] = ["--config", "profile.local.codegen-units=1"];
+    const PROFILE_CLEAN: [&'static str; 4] = ["clean", "--profile", "local", "--quiet"];
     const PACKAGE_FLAG: &'static str = "--package";
     const TARGET_DIRECTORY_FLAG: &'static str = "--target-dir";
     const MANIFEST: &'static str = "Cargo.toml";
@@ -72,7 +78,7 @@ impl<'a> CompilerBuild<'a> {
     pub fn run(&self) -> Result<BuiltCompiler, TaskFailure> {
         let workspace = CargoWorkspace::read(self.workspace)?;
         self.prepare_target(&workspace.package_names())?;
-        let messages = self.build_release()?;
+        let messages = self.build_compiler()?;
         let executable = self
             .read_executable(&messages)
             .ok_or_else(|| TaskFailure::compiler_missing(self.workspace))?;
@@ -96,27 +102,32 @@ impl<'a> CompilerBuild<'a> {
     fn preparation(&self, package_names: &BTreeSet<String>) -> Option<Command> {
         self.variant
             .cleans_first()
-            .then(|| self.release_clean(package_names))
+            .then(|| self.profile_clean(package_names))
     }
 
-    fn release_clean(&self, package_names: &BTreeSet<String>) -> Command {
+    fn profile_clean(&self, package_names: &BTreeSet<String>) -> Command {
         let packages = package_names
             .iter()
             .flat_map(|name| [Self::PACKAGE_FLAG, name.as_str()]);
-        self.cargo_in_target(Self::RELEASE_CLEAN.into_iter().chain(packages))
+        let arguments = Self::PROFILE_CLEAN
+            .into_iter()
+            .chain(Self::PROFILE_DEFINITION)
+            .chain(packages);
+        self.cargo_in_target(arguments)
     }
 
-    fn build_release(&self) -> Result<String, TaskFailure> {
-        let mut build = self.release_build();
+    fn build_compiler(&self) -> Result<String, TaskFailure> {
+        let mut build = self.compiler_build();
         let stdout = Cargo::run(&mut build, |stderr| {
             TaskFailure::build_failed("the compiler", stderr)
         })?;
         Ok(String::from_utf8_lossy(&stdout).into_owned())
     }
 
-    fn release_build(&self) -> Command {
-        let arguments = Self::RELEASE_BUILD
+    fn compiler_build(&self) -> Command {
+        let arguments = Self::PROFILE_BUILD
             .into_iter()
+            .chain(Self::PROFILE_DEFINITION)
             .chain(Self::UNPARTITIONED_CODEGEN)
             .chain(self.variant.features().iter().copied());
         self.cargo_in_target(arguments)
@@ -193,7 +204,7 @@ mod tests {
             .read_executable(MESSAGES);
         assert_eq!(
             executable,
-            Some(PathBuf::from("/checkout/target/release/ledger-lang"))
+            Some(PathBuf::from("/checkout/target/local/ledger-lang"))
         );
     }
 
@@ -201,7 +212,7 @@ mod tests {
     fn cleans_every_package_of_the_workspace() {
         let package_names = WorkspaceFixture::workspace().package_names();
         let clean = CompilerBuild::new(Path::new("/checkout"), Path::new("/checkout/target"))
-            .release_clean(&package_names);
+            .profile_clean(&package_names);
         let arguments: Vec<_> = clean.get_args().collect();
         for package in ["ledger-lang", "ledger-syntax"] {
             assert!(
@@ -215,19 +226,44 @@ mod tests {
     #[test]
     fn builds_the_compiler_in_one_codegen_unit() {
         let build = CompilerBuild::new(Path::new("/checkout"), Path::new("/checkout/target"))
-            .release_build();
+            .compiler_build();
         let arguments: Vec<_> = build.get_args().collect();
         assert!(
             arguments
                 .windows(2)
-                .any(|pair| pair == ["--config", "profile.release.codegen-units=1"])
+                .any(|pair| pair == ["--config", "profile.local.codegen-units=1"])
+        );
+    }
+
+    #[test]
+    fn defines_the_profile_for_a_build_of_a_checkout_without_it() {
+        let build = CompilerBuild::new(Path::new("/checkout"), Path::new("/checkout/target"))
+            .compiler_build();
+        let arguments: Vec<_> = build.get_args().collect();
+        assert!(
+            arguments
+                .windows(2)
+                .any(|pair| pair == ["--config", "profile.local.inherits=\"release\""])
+        );
+    }
+
+    #[test]
+    fn defines_the_profile_for_a_clean_of_a_checkout_without_it() {
+        let package_names = WorkspaceFixture::workspace().package_names();
+        let clean = CompilerBuild::new(Path::new("/checkout"), Path::new("/checkout/target"))
+            .profile_clean(&package_names);
+        let arguments: Vec<_> = clean.get_args().collect();
+        assert!(
+            arguments
+                .windows(2)
+                .any(|pair| pair == ["--config", "profile.local.inherits=\"release\""])
         );
     }
 
     #[test]
     fn builds_the_plain_compiler_without_features() {
         let build = CompilerBuild::new(Path::new("/checkout"), Path::new("/checkout/target"))
-            .release_build();
+            .compiler_build();
         assert!(!build.get_args().any(|argument| argument == "--features"));
     }
 
@@ -235,7 +271,7 @@ mod tests {
     fn builds_the_counters_compiler_with_the_counters_feature() {
         let build = CompilerBuild::new(Path::new("/checkout"), Path::new("/checkout/target"))
             .with_counters_over_plain_build()
-            .release_build();
+            .compiler_build();
         let arguments: Vec<_> = build.get_args().collect();
         assert!(
             arguments

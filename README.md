@@ -33,7 +33,7 @@
 Install the compiler with [Cargo](https://www.rust-lang.org/tools/install):
 
 ```sh
-cargo install --locked --profile dist knave
+cargo install --locked knave
 ```
 
 The compiler runs the `rustc` and `rustfmt` on your `PATH`, and needs Rust 1.88 or later.
@@ -92,7 +92,7 @@ The repository uses a [Nix](https://nixos.org/download/) flake.
    nix build
    ```
 
-   The binary is `result/bin/knave`. To install a checkout without Nix, run `cargo install --locked --profile dist --path .`.
+   The binary is `result/bin/knave`. To install a checkout without Nix, run `cargo install --locked --path .`.
 
 Run `nix fmt` to format the Nix files, and `nix flake check` to build the package and run the checks that `cargo xtask coverage` leaves out.
 

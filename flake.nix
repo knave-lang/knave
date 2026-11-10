@@ -55,7 +55,7 @@
       cargoManifest = builtins.fromTOML (builtins.readFile ./Cargo.toml);
       cratePackage = cargoManifest.package;
       crateVersion = cargoManifest.workspace.package.version;
-      installedProfileName = "dist";
+      installedProfileName = "release";
 
       coverageTools = pkgs: {
         LLVM_COV = "${pkgs.rustc.llvmPackages.llvm}/bin/llvm-cov";
@@ -314,7 +314,6 @@
         pkgs: package:
         let
           wantedSettings = {
-            inherits = "release";
             codegen-units = 1;
             lto = "fat";
           };

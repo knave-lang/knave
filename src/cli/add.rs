@@ -5,7 +5,7 @@ use super::standard_error::StandardError;
 use super::temporary_directory::TemporaryDirectory;
 use super::terminal::Terminal;
 use crate::build::{CrateResolver, ResolveError, ResolvedCrate};
-use crate::project::{CrateDependency, CrateEntry};
+use crate::project::CrateEntry;
 
 pub struct AddCommand {
     name: String,
@@ -36,10 +36,10 @@ impl AddCommand {
     fn add(&self, terminal: &Terminal) -> Result<(), ExitStatus> {
         self.check_names()?;
         let edit = ProjectFileEdit::of_working_directory(terminal, Self::COMMAND)?;
-        self.refuse_path(edit.listed_crate(self.section, &self.name))?;
+        Self::refuse_path(&edit, &self.name)?;
         let resolved = self.resolved()?;
+        Self::refuse_path(&edit, &resolved.name)?;
         let listed = edit.listed_crate(self.section, &resolved.name);
-        self.refuse_path(listed)?;
         let entry = CrateEntry {
             features: self.features_with(listed.map(|dependency| dependency.features.clone())),
             name: resolved.name,
@@ -70,14 +70,18 @@ impl AddCommand {
         }
     }
 
-    fn refuse_path(&self, listed: Option<&CrateDependency>) -> Result<(), ExitStatus> {
-        let Some(dependency) = listed.filter(|dependency| dependency.path.is_some()) else {
+    fn refuse_path(edit: &ProjectFileEdit, name: &str) -> Result<(), ExitStatus> {
+        let Some((section, dependency)) = CrateSection::ALL.into_iter().find_map(|section| {
+            edit.listed_crate(section, name)
+                .filter(|dependency| dependency.path.is_some())
+                .map(|dependency| (section, dependency))
+        }) else {
             return Ok(());
         };
         Err(Self::report_usage(&format!(
             "`{name}` is listed with `:path`\nhelp: run `{remove} {name}` first to switch it to a version",
             name = dependency.name,
-            remove = self.section.command("remove")
+            remove = section.command("remove")
         )))
     }
 

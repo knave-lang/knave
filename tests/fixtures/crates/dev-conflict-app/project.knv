@@ -1,0 +1,3 @@
+(project dev-conflict-app
+  (dependencies (answer :path "../answer"))
+  (dev-dependencies (answer :path "../expected")))

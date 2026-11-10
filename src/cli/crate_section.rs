@@ -9,6 +9,7 @@ pub enum CrateSection {
 
 impl CrateSection {
     pub const DEV_FLAG_NAME: &'static str = "dev";
+    pub const ALL: [Self; 2] = [Self::Dependencies, Self::DevDependencies];
 
     pub fn of(dev: bool) -> Self {
         if dev {

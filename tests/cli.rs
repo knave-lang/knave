@@ -6686,6 +6686,12 @@ fn a_build_uses_the_project_cargo_lock() {
 }
 
 #[test]
+fn a_dev_crate_that_cannot_merge_with_a_dependency_is_an_error() {
+    let check = Sandbox::check_fixture("crates/dev-conflict-app");
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn eval_names_the_library_that_adds_crates() {
     let eval =
         Sandbox::compiler_in_fixture("crates/library-eval-app", &["eval", "src/main.knv", "1"]);
@@ -6804,6 +6810,24 @@ fn add_with_dev_refuses_a_path_crate_listed_in_dev_dependencies() {
     assert_eq!(
         stderr,
         "error: `fake-json` is listed with `:path`\nhelp: run `knave remove --dev fake-json` first to switch it to a version\n"
+    );
+}
+
+#[test]
+fn add_with_dev_refuses_a_path_crate_listed_in_dependencies() {
+    let sandbox = Sandbox::new("add_dev_over_path_dependency")
+        .with_fake_registry()
+        .with_file(
+            &Language::project_file_name(),
+            "(project demo (dependencies (fake-json :path \"../fake-json\")))\n",
+        );
+    let stderr = sandbox
+        .compiler_with_registry(&["add", "--dev", "fake-json"])
+        .assert_exit_code(2)
+        .stderr();
+    assert_eq!(
+        stderr,
+        "error: `fake-json` is listed with `:path`\nhelp: run `knave remove fake-json` first to switch it to a version\n"
     );
 }
 

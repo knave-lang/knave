@@ -1,10 +1,14 @@
+use std::cell::RefCell;
 use std::ops::Range;
 
-use super::{SourceFile, SourceId, TextPosition};
+use rustc_hash::FxHashMap;
+
+use super::{LineStarts, SourceFile, SourceId, Span, TextPosition};
 
 #[derive(Default)]
 pub struct SourceMap {
     files: Vec<SourceFile>,
+    line_starts: RefCell<FxHashMap<SourceId, LineStarts>>,
 }
 
 impl SourceMap {
@@ -36,6 +40,15 @@ impl SourceMap {
         &self.files[id.index()]
     }
 
+    pub fn start_position(&self, span: Span) -> TextPosition {
+        let source = span.source();
+        self.line_starts
+            .borrow_mut()
+            .entry(source)
+            .or_insert_with(|| LineStarts::of(self.file(source).text()))
+            .position(span.range().start)
+    }
+
     fn add_excerpt(&mut self, enclosing: SourceId, range: Range<usize>) -> SourceId {
         let id = self.next_id();
         let enclosing = self.file(enclosing);
@@ -53,7 +66,7 @@ impl SourceMap {
 #[cfg(test)]
 mod tests {
     use super::SourceMap;
-    use crate::source::{SourceId, TextPosition};
+    use crate::source::{SourceId, Span, TextPosition};
 
     struct InsideFixture {
         sources: SourceMap,
@@ -119,5 +132,26 @@ mod tests {
     fn a_source_inside_another_needs_a_position_of_its_text() {
         let mut fixture = InsideFixture::new();
         assert_eq!(fixture.add(TextPosition::new(9, 1), ""), None);
+    }
+
+    #[test]
+    fn a_map_keeps_the_line_starts_it_finds_a_position_with() {
+        let fixture = InsideFixture::new();
+        let second_line = InsideFixture::TEXT
+            .find(InsideFixture::SECOND_LINE)
+            .expect("the text holds the line");
+        let span = Span::new(fixture.enclosing, second_line..second_line);
+        assert!(fixture.sources.line_starts.borrow().is_empty());
+        assert_eq!(
+            fixture.sources.start_position(span),
+            InsideFixture::second_line()
+        );
+        assert!(
+            fixture
+                .sources
+                .line_starts
+                .borrow()
+                .contains_key(&fixture.enclosing)
+        );
     }
 }

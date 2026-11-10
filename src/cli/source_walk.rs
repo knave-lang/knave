@@ -8,10 +8,12 @@ use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::terminal::Terminal;
+use super::tree_bounds::TreeBounds;
 use crate::language::Language;
 
 pub struct SourceWalk {
     root: PathBuf,
+    bounds: TreeBounds,
     skipped: SkippedDirectory,
     left_out: Vec<PathBuf>,
 }
@@ -25,6 +27,7 @@ impl SourceWalk {
             .collect();
         Self {
             skipped: SkippedDirectory::for_walk_of(&root),
+            bounds: TreeBounds::of(&root),
             root,
             left_out,
         }
@@ -77,11 +80,8 @@ impl SourceWalk {
     }
 
     fn walks_into(&self, directory: &Path) -> bool {
-        let inside = ProgramFile::canonical(directory)
-            .zip(ProgramFile::canonical(&self.root))
-            .filter(|(directory, root)| directory.starts_with(root));
-        match inside {
-            Some((directory, _)) => {
+        match self.bounds.inside(directory) {
+            Some(directory) => {
                 !self.skipped.is_skipped(&directory)
                     && !self.left_out.contains(&directory)
                     && !Self::holds_a_project(&directory)

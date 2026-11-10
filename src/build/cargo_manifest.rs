@@ -3,9 +3,39 @@ use crate::language::Language;
 use crate::project::CrateDependency;
 
 pub struct CargoManifest<'p> {
-    pub bin_name: String,
+    pub target: CargoTargetKind,
+    pub target_name: String,
     pub dependencies: &'p [CrateDependency],
     pub dev_dependencies: &'p [CrateDependency],
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum CargoTargetKind {
+    Bin,
+    Test,
+}
+
+impl CargoTargetKind {
+    pub fn cargo_flag(self) -> &'static str {
+        match self {
+            Self::Bin => "--bin",
+            Self::Test => "--test",
+        }
+    }
+
+    fn table(self) -> &'static str {
+        match self {
+            Self::Bin => "[[bin]]",
+            Self::Test => "[[test]]",
+        }
+    }
+
+    fn harness(self) -> &'static str {
+        match self {
+            Self::Bin => "",
+            Self::Test => "harness = false\n",
+        }
+    }
 }
 
 impl CargoManifest<'_> {
@@ -20,11 +50,13 @@ impl CargoManifest<'_> {
         let mut text = format!(
             "[package]\nname = {}\nversion = \"0.1.0\"\nedition = {}\npublish = false\n\
              autobins = false\nautotests = false\nautoexamples = false\nautobenches = false\n\n\
-             [[bin]]\nname = {}\npath = {}\n\n[workspace]\n\n{}\n",
+             {}\nname = {}\npath = {}\n{}\n[workspace]\n\n{}\n",
             Self::quoted(&Self::package_name()),
             Self::quoted(BuildPlan::EDITION),
-            Self::quoted(&self.bin_name),
+            self.target.table(),
+            Self::quoted(&self.target_name),
             Self::quoted(Self::SOURCE_PATH),
+            self.target.harness(),
             plan.manifest_profile(),
         );
         Self::write_section(&mut text, "dependencies", self.dependencies);
@@ -79,7 +111,7 @@ impl CargoManifest<'_> {
 mod tests {
     use std::path::PathBuf;
 
-    use super::CargoManifest;
+    use super::{CargoManifest, CargoTargetKind};
     use crate::build::{BuildPlan, BuildProfile};
     use crate::project::CrateDependency;
     use crate::source::{SourceMap, Span};
@@ -109,7 +141,8 @@ mod tests {
         ];
         let dev_dependencies = [dependency("fake-check", Some("0.3"), &[], None)];
         let manifest = CargoManifest {
-            bin_name: "demo-00000000".to_string(),
+            target: CargoTargetKind::Bin,
+            target_name: "demo-00000000".to_string(),
             dependencies: &dependencies,
             dev_dependencies: &dev_dependencies,
         };
@@ -123,12 +156,28 @@ mod tests {
     #[test]
     fn the_manifest_leaves_out_an_empty_section() {
         let manifest = CargoManifest {
-            bin_name: "demo-00000000".to_string(),
+            target: CargoTargetKind::Bin,
+            target_name: "demo-00000000".to_string(),
             dependencies: &[],
             dev_dependencies: &[],
         };
         let text = manifest.render(&BuildPlan::new(BuildProfile::Release));
         assert!(!text.contains("dependencies]"));
         assert!(text.contains("[profile.dev]\ndebug = false\n"));
+    }
+
+    #[test]
+    fn a_test_target_runs_its_own_main() {
+        let manifest = CargoManifest {
+            target: CargoTargetKind::Test,
+            target_name: "demo-tests-00000000".to_string(),
+            dependencies: &[],
+            dev_dependencies: &[],
+        };
+        let text = manifest.render(&BuildPlan::new(BuildProfile::Debug));
+        assert!(text.contains(
+            "[[test]]\nname = \"demo-tests-00000000\"\npath = \"src/main.rs\"\nharness = false\n\n[workspace]\n"
+        ));
+        assert!(!text.contains("[[bin]]"));
     }
 }

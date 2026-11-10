@@ -8,4 +8,4 @@ error[L0719]: `eval` cannot use crate dependencies yet
 5 |     (helper :path "../helper")))
   |      ^^^^^^ library `helper` adds crates
   |
-  = help: use `build` or `run` for a program with crates for now
+  = help: use `build`, `run` or `test` for a program with crates for now

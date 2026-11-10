@@ -89,46 +89,4 @@ Project {
             path: None,
         },
     ],
-    sections: [
-        SectionHead {
-            section: Libraries,
-            span: Span {
-                source: SourceId(
-                    0,
-                ),
-                start: 108,
-                end: 117,
-            },
-            has_entries: true,
-        },
-        SectionHead {
-            section: Dependencies,
-            span: Span {
-                source: SourceId(
-                    0,
-                ),
-                start: 294,
-                end: 306,
-            },
-            has_entries: true,
-        },
-        SectionHead {
-            section: DevDependencies,
-            span: Span {
-                source: SourceId(
-                    0,
-                ),
-                start: 391,
-                end: 407,
-            },
-            has_entries: true,
-        },
-    ],
 }
-error[L0719]: this compiler cannot build `dev-dependencies` yet
-  --> project/full.knv:13:11
-   |
-13 |          (dev-dependencies (proptest "1.5")))
-   |           ^^^^^^^^^^^^^^^^ this section has entries
-   |
-   = help: remove the entries of `dev-dependencies` for now

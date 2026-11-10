@@ -27,17 +27,4 @@ Project {
     ],
     dependencies: [],
     dev_dependencies: [],
-    sections: [
-        SectionHead {
-            section: Libraries,
-            span: Span {
-                source: SourceId(
-                    0,
-                ),
-                start: 23,
-                end: 32,
-            },
-            has_entries: true,
-        },
-    ],
 }

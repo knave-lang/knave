@@ -5486,7 +5486,6 @@ fn test_lists_the_untested_names_of_a_program_with_no_tests() {
 
 const PROJECT: &str = "(project greeter)\n";
 const PROJECT_WITH_UNKNOWN_KEY: &str = "(project greeter :entyr \"src/main.knv\")\n";
-const PROJECT_WITH_DEPENDENCY: &str = "(project greeter (dev-dependencies (fake-check \"0.3\")))\n";
 const UNLAID_PROJECT: &str = "(project browser :version \"0.1.0\" :entry \"src/main.knv\"\n  (libraries (hints :path \"../hints\"))\n\n  (dependencies (cef \"144.0\") (serde \"1.0\" :features (\"derive\"))))\n";
 const BARE_NAMES_PROJECT: &str = "(project demo alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(libraries alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu)\n\n(dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(dev-dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n";
 const MISSING_COMMIT: &str = "0000000000000000000000000000000000000000";
@@ -5553,10 +5552,29 @@ fn building_a_file_beside_the_entry_leaves_the_project_program_alone() {
 }
 
 #[test]
-fn a_project_section_with_entries_stops_the_command() {
-    let sandbox = Sandbox::new("project_unbuilt").with_project(PROJECT_WITH_DEPENDENCY);
-    let run = sandbox.compiler(&["run"]);
-    insta::assert_snapshot!(run.assert_exit_code(1).stderr());
+fn run_in_a_project_with_only_dev_crates_builds_without_cargo() {
+    let sandbox = Sandbox::new("crate_dev_only_run").with_fixture_tree("crates");
+    let run = sandbox.compiler_in("dev-only-app", &["run"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "hi\n");
+    assert!(
+        !sandbox
+            .directory
+            .join("dev-only-app/target/knave/dev-only-app/Cargo.toml")
+            .exists()
+    );
+}
+
+#[test]
+fn test_builds_through_cargo_with_only_dev_crates() {
+    let sandbox = Sandbox::new("crate_dev_only_test").with_fixture_tree("crates");
+    let stdout = sandbox
+        .compiler_in("dev-only-app", &["test"])
+        .assert_exit_code(0)
+        .stdout();
+    assert!(
+        stdout.contains("test checks/reads-the-dev-crate ... ok"),
+        "{stdout}"
+    );
 }
 
 #[test]
@@ -6501,9 +6519,35 @@ fn repl_in_a_project_with_crates_says_it_cannot_use_them_yet() {
 }
 
 #[test]
-fn test_in_a_project_with_crates_says_it_cannot_use_them_yet() {
-    let test = Sandbox::compiler_in_fixture("crates/app", &["test", "src"]);
-    insta::assert_snapshot!(test.assert_exit_code(1).stderr());
+fn test_builds_through_cargo_with_only_the_project_crates() {
+    let sandbox = Sandbox::new("crate_test_without_dev").with_fixture_tree("crates");
+    let stdout = sandbox
+        .compiler_in("app", &["test"])
+        .assert_exit_code(0)
+        .stdout();
+    assert!(
+        stdout.contains("test answers/reads-the-crate ... ok"),
+        "{stdout}"
+    );
+}
+
+#[test]
+fn test_builds_through_cargo_with_the_crates_and_dev_crates() {
+    let sandbox = Sandbox::new("crate_test").with_fixture_tree("crates");
+    let stdout = sandbox
+        .compiler_in("tested-app", &["test"])
+        .assert_exit_code(0)
+        .stdout();
+    assert!(
+        stdout.contains("test checks/matches-the-expected-value ... ok"),
+        "{stdout}"
+    );
+    assert!(
+        sandbox
+            .directory
+            .join("tested-app/target/knave/tested-app/test_runner/Cargo.toml")
+            .is_file()
+    );
 }
 
 #[test]
@@ -6658,16 +6702,6 @@ fn eval_with_a_root_in_a_project_with_crates_says_it_cannot_use_them_yet() {
         eval.assert_exit_code(1)
             .stderr()
             .starts_with("error[L0719]: `eval` cannot use crate dependencies yet")
-    );
-}
-
-#[test]
-fn test_of_a_file_in_a_project_with_crates_says_it_cannot_use_them_yet() {
-    let test = Sandbox::compiler_in_fixture("crates/app", &["test", "src/main.knv"]);
-    assert!(
-        test.assert_exit_code(1)
-            .stderr()
-            .starts_with("error[L0719]: `test` cannot use crate dependencies yet")
     );
 }
 

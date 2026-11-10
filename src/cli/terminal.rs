@@ -186,9 +186,7 @@ impl Terminal {
     fn read_project(&mut self, source: SourceId) -> Result<Project, ExitStatus> {
         let forms = self.read_source(source)?;
         let whole_file = Span::new(source, 0..self.sources.file(source).text().len());
-        ProjectReader::read(&forms, whole_file)
-            .and_then(|project| project.unbuilt_sections().into_result(project))
-            .map_err(|diagnostics| self.report(&diagnostics))
+        ProjectReader::read(&forms, whole_file).map_err(|diagnostics| self.report(&diagnostics))
     }
 
     pub fn build(
@@ -267,7 +265,7 @@ impl Terminal {
             .map_err(|error| self.report_build(self.interrupted_or(error)))
     }
 
-    fn compile_with_cargo(
+    pub fn compile_with_cargo(
         &self,
         emitted: &EmittedCrate,
         directory: &Path,

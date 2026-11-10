@@ -56,10 +56,6 @@ impl Section {
         }
     }
 
-    pub fn is_built(self) -> bool {
-        self != Section::DevDependencies
-    }
-
     fn keys(self) -> &'static [&'static str] {
         match self {
             Section::Libraries => Self::LIBRARY_KEYS,

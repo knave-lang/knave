@@ -1,0 +1,8 @@
+(use prelude/test assert deftest)
+(use answer answer)
+
+(def expected
+  (rust "expected::value()" (fn () i64)))
+
+(deftest matches-the-expected-value
+  (assert (= (answer) (expected))))

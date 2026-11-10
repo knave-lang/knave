@@ -8,4 +8,4 @@ error[L0719]: `eval` cannot use crate dependencies yet
 1 | (project app (dependencies (answer :path "../answer")))
   |                             ^^^^^^ this project uses crate `answer`
   |
-  = help: use `build` or `run` for a program with crates for now
+  = help: use `build`, `run` or `test` for a program with crates for now

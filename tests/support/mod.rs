@@ -83,7 +83,7 @@ impl Fixture {
         let whole_file = Span::new(self.entry, 0..file.text().len());
         let read = Reader::new(file).read();
         match read.and_then(|forms| ProjectReader::read(&forms, whole_file)) {
-            Ok(project) => format!("{project:#?}\n{}", self.render(&project.unbuilt_sections())),
+            Ok(project) => format!("{project:#?}\n"),
             Err(diagnostics) => self.render(&diagnostics),
         }
     }

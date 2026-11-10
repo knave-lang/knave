@@ -29,7 +29,7 @@ pub struct CargoTarget<'t> {
 }
 
 struct CargoReport {
-    bin_name: String,
+    target_name: String,
     program_messages: Vec<String>,
     dependency_errors: Vec<String>,
     executable: Option<PathBuf>,
@@ -69,13 +69,13 @@ impl<'w> CargoCompiler<'w> {
     ) -> Result<(), BuildError> {
         self.write_crate(emitted, target)
             .map_err(|error| Self::environment("write the generated crate", &error))?;
-        let output = self.run_cargo(&target.manifest.bin_name)?;
+        let output = self.run_cargo(&target.manifest)?;
         if InterruptSignal::stopped(output.status) {
             return Err(BuildError::Interrupted);
         }
         let report = CargoReport::read(
             &String::from_utf8_lossy(&output.stdout),
-            &target.manifest.bin_name,
+            &target.manifest.target_name,
         );
         match (&report.executable, output.status.success()) {
             (Some(executable), true) => self.finish(executable, target),
@@ -104,10 +104,12 @@ impl<'w> CargoCompiler<'w> {
         fs::write(path, text)
     }
 
-    fn run_cargo(&self, bin_name: &str) -> Result<Output, BuildError> {
+    fn run_cargo(&self, manifest: &CargoManifest<'_>) -> Result<Output, BuildError> {
         let mut command = Command::new(Self::CARGO);
         command
-            .args(["rustc", "--bin", bin_name, "--message-format=json"])
+            .arg("rustc")
+            .args([manifest.target.cargo_flag(), &manifest.target_name])
+            .arg("--message-format=json")
             .args(self.plan.cargo_flags())
             .arg("--")
             .args(self.plan.lint_flags())
@@ -195,9 +197,9 @@ impl<'w> CargoCompiler<'w> {
 }
 
 impl CargoReport {
-    fn read(stdout: &str, bin_name: &str) -> Self {
+    fn read(stdout: &str, target_name: &str) -> Self {
         let mut report = Self {
-            bin_name: bin_name.to_string(),
+            target_name: target_name.to_string(),
             program_messages: Vec::new(),
             dependency_errors: Vec::new(),
             executable: None,
@@ -237,7 +239,7 @@ impl CargoReport {
     }
 
     fn is_program(&self, record: &Value) -> bool {
-        record["target"]["name"].as_str() == Some(self.bin_name.as_str())
+        record["target"]["name"].as_str() == Some(self.target_name.as_str())
     }
 
     fn failure(&self, emitted: &EmittedCrate, entry: Span, stderr: &[u8]) -> BuildError {

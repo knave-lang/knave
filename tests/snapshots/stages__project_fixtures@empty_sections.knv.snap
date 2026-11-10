@@ -12,39 +12,4 @@ Project {
     libraries: [],
     dependencies: [],
     dev_dependencies: [],
-    sections: [
-        SectionHead {
-            section: Libraries,
-            span: Span {
-                source: SourceId(
-                    0,
-                ),
-                start: 28,
-                end: 37,
-            },
-            has_entries: false,
-        },
-        SectionHead {
-            section: Dependencies,
-            span: Span {
-                source: SourceId(
-                    0,
-                ),
-                start: 49,
-                end: 61,
-            },
-            has_entries: false,
-        },
-        SectionHead {
-            section: DevDependencies,
-            span: Span {
-                source: SourceId(
-                    0,
-                ),
-                start: 73,
-                end: 89,
-            },
-            has_entries: false,
-        },
-    ],
 }

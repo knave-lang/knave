@@ -58,17 +58,4 @@ Project {
         },
     ],
     dev_dependencies: [],
-    sections: [
-        SectionHead {
-            section: Dependencies,
-            span: Span {
-                source: SourceId(
-                    0,
-                ),
-                start: 27,
-                end: 39,
-            },
-            has_entries: true,
-        },
-    ],
 }

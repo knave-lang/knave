@@ -5,7 +5,7 @@ use super::library_walk::LibraryWalk;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
-use crate::build::{CargoManifest, CargoTarget};
+use crate::build::{CargoManifest, CargoTarget, CargoTargetKind};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::modules::{LibraryTable, SearchScope};
@@ -21,6 +21,8 @@ pub struct LocatedProject {
 }
 
 impl LocatedProject {
+    const TEST_CRATE_DIRECTORY: &str = "test_runner";
+    const TEST_TARGET_PREFIX: &str = "tests";
     const LOCK_FILE: &str = "Cargo.lock";
     const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
     const FNV_PRIME: u64 = 0x0100_0000_01b3;
@@ -173,10 +175,35 @@ impl LocatedProject {
         ProjectProblems::crates_unavailable_to(command, library.name_span, label)
     }
 
+    pub fn tests_use_crates(&self) -> bool {
+        self.uses_crates() || !self.dev_crates.is_empty()
+    }
+
     pub fn cargo_target<'t>(&'t self, output: &'t Path, bin_stem: &str) -> CargoTarget<'t> {
+        let name = format!("{bin_stem}-{}", self.root_hash());
+        self.target_of(CargoTargetKind::Bin, name, output)
+    }
+
+    pub fn cargo_test_target<'t>(&'t self, output: &'t Path) -> CargoTarget<'t> {
+        let name = format!(
+            "{}-{}-{}",
+            self.project.name,
+            Self::TEST_TARGET_PREFIX,
+            self.root_hash()
+        );
+        self.target_of(CargoTargetKind::Test, name, output)
+    }
+
+    fn target_of<'t>(
+        &'t self,
+        target: CargoTargetKind,
+        target_name: String,
+        output: &'t Path,
+    ) -> CargoTarget<'t> {
         CargoTarget {
             manifest: CargoManifest {
-                bin_name: format!("{bin_stem}-{}", self.root_hash()),
+                target,
+                target_name,
                 dependencies: &self.crates,
                 dev_dependencies: &self.dev_crates,
             },
@@ -212,5 +239,9 @@ impl LocatedProject {
         self.root
             .join(Terminal::build_root())
             .join(&self.project.name)
+    }
+
+    pub fn test_crate_directory(&self) -> PathBuf {
+        self.build_directory().join(Self::TEST_CRATE_DIRECTORY)
     }
 }

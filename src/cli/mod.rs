@@ -56,6 +56,7 @@ mod temporary_directory;
 mod term_parser;
 mod terminal;
 mod test;
+mod test_build;
 mod test_entries;
 mod test_record;
 mod test_report;

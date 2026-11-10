@@ -107,6 +107,10 @@ impl EntryTree {
         self.project.as_ref()
     }
 
+    pub fn into_project(self) -> Option<LocatedProject> {
+        self.project
+    }
+
     pub fn load(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
         if self.path.is_dir() {
             self.load_directory(terminal)

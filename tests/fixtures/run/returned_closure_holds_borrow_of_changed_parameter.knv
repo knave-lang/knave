@@ -8,8 +8,47 @@
   (local r (ref x))
   (fn () (+ (deref r) 10)))
 
+(defn sizer (v) (fn () (len v)))
+
+(defn sized! (items)
+  (push! items 1)
+  (local size (sizer items))
+  (fn () (size)))
+
+(defn doubled! (items)
+  (push! items 1)
+  (local twice
+    (map (iter items)
+      (fn (i) (* (deref i) 2))))
+  (fn () (count twice)))
+
+(defn looped! (items)
+  (push! items 1)
+  (loop (n 0)
+    (local it (iter items))
+    (fn () (count it))))
+
+(defn blocked! (items)
+  (push! items 1)
+  (do
+    (local it (iter items))
+    (fn () (count it))))
+
+(defn namer! (name)
+  (set! name (str "pear"))
+  (local value (clone name))
+  (fn () (loop (r (ref value)) (len r))))
+
 (defn main ()
   (local items (vec 0))
   (println ((counter! items)))
   (local x 1)
-  (println ((reader! x))))
+  (println ((reader! x)))
+  (println ((sized! items)))
+  (println ((doubled! items)))
+  (println ((looped! items)))
+  (println ((blocked! items)))
+  (local name (str "apple"))
+  (local n (namer! name))
+  (println name)
+  (println (n)))

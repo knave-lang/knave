@@ -9,5 +9,5 @@ error[L0363]: macro code ran too many steps
 12 |                   (defn main () (println (doubles 12))))
    |                                          ^^^^^^^^^^^^ this call passed 1000 macro steps
    |
-   = note: the macro calls in one top-level form run at most 1000 steps: a function call or a `recur` costs one step, a closure costs one step for itself and each variable it captures, and a built-in costs one step per list item it copies or reads and per 16 bytes of text
+   = note: the macro calls in one top-level form run at most 1000 steps: a function call or a `recur` costs one step, an `expand-call` costs 64, a closure costs one step for itself and each variable it captures, and a built-in costs one step per list item it copies or reads and per 16 bytes of text
    = help: make the macro stop, or wrap the top-level form in `(with-macro-steps 30000000 ...)`

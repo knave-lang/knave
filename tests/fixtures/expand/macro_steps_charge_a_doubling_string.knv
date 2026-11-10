@@ -5,8 +5,7 @@
      (if (number-gt remaining 0)
        (recur (string text text) (number-sub remaining 1))
        (quote 1)))
-   "abcdefghijklmnop"
-   times))
+   "abcdefghijklmnop" times))
 
 (with-macro-steps 1000
                   (defn main () (println (doubles 12))))

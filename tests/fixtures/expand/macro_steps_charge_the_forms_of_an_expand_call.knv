@@ -1,0 +1,18 @@
+(use code expand-call list number-gt number-sub)
+
+(defmacro wide ()
+  (quote (a b c d e f g h i j k l m n o p q r s t u v w x y
+            z a b c d e f g h i j k l m n)))
+
+(def keep-count (fn (expanded count) count))
+
+(defmacro loops (times)
+  ((fn (remaining)
+     (if (number-gt remaining 0)
+       (recur (keep-count (expand-call (list (quote wide)))
+                          (number-sub remaining 1)))
+       (quote 1)))
+   times))
+
+(with-macro-steps 3000
+                  (defn main () (println (loops 30))))

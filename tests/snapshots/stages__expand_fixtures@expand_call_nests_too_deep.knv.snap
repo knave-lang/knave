@@ -4,10 +4,10 @@ expression: reports.report(path)
 input_file: tests/fixtures/expand/expand_call_nests_too_deep.knv
 ---
 error[L0325]: macro code built a list nested too deeply
-  --> expand/expand_call_nests_too_deep.knv:16:12
+  --> expand/expand_call_nests_too_deep.knv:17:30
    |
-16 |   (println (wrap-deep-through-calls 5000)))
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this call builds a list past 4096 levels
+17 |                     (println (wrap-deep-through-calls 5000))))
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this call builds a list past 4096 levels
    |
    = note: lists that macro code builds nest at most 4096 deep
    = help: make the macro stop nesting, or build a flatter list

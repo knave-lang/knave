@@ -3,10 +3,10 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/macro_step_limit_of_a_non_integer.knv
 ---
-error[L0301]: `with-macro-steps` takes a number of steps
+error[L0301]: `with-macro-steps` takes a whole number of steps
  --> expand/macro_step_limit_of_a_non_integer.knv:3:19
   |
 3 | (with-macro-steps many (spin))
-  |                   ^^^^ not a number
+  |                   ^^^^ not a number of steps
   |
-  = help: write the number of steps as a whole number
+  = help: write a whole number from 0 to 18446744073709551615

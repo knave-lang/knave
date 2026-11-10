@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/macro_step_limit_of_a_float.knv
+---
+error[L0301]: `with-macro-steps` takes a whole number of steps
+ --> expand/macro_step_limit_of_a_float.knv:3:19
+  |
+3 | (with-macro-steps 1.5 (spin))
+  |                   ^^^ not a number of steps
+  |
+  = help: write a whole number from 0 to 18446744073709551615

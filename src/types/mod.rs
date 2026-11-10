@@ -47,6 +47,7 @@ mod templates;
 mod traits;
 mod ty;
 mod type_text;
+mod type_text_writer;
 mod typed;
 #[cfg(test)]
 mod typed_source;

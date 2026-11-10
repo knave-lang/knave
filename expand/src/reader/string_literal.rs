@@ -13,6 +13,32 @@ pub struct StringLiteral {
     pub problems: Vec<StringProblem>,
 }
 
+impl StringLiteral {
+    const QUOTE: char = '"';
+
+    pub fn quoted(text: &str) -> String {
+        let mut quoted = String::from(Self::QUOTE);
+        for character in text.chars() {
+            match Self::escape_of(character) {
+                Some(escape) => {
+                    quoted.push(Syntax::ESCAPE);
+                    quoted.push(escape);
+                }
+                None => quoted.push(character),
+            }
+        }
+        quoted.push(Self::QUOTE);
+        quoted
+    }
+
+    fn escape_of(character: char) -> Option<char> {
+        StringLiteralReader::SIMPLE_ESCAPES
+            .iter()
+            .find(|(_, escaped)| *escaped == character)
+            .map(|(escape, _)| *escape)
+    }
+}
+
 pub struct StringLiteralReader<'c, 'a> {
     cursor: &'c mut Cursor<'a>,
     value: String,
@@ -118,5 +144,34 @@ impl<'c, 'a> StringLiteralReader<'c, 'a> {
         (self.cursor.peek() == Some(expected)).then(|| {
             self.cursor.advance();
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::StringLiteral;
+    use crate::reader::{FormKind, Reader};
+    use crate::source::SourceMap;
+
+    struct QuotingFixture;
+
+    impl QuotingFixture {
+        fn read_back(text: &str) -> String {
+            let mut sources = SourceMap::default();
+            let source = sources.add("quoted.knv", StringLiteral::quoted(text));
+            let forms = Reader::new(sources.file(source))
+                .read()
+                .expect("a quoted string reads");
+            match forms[0].kind() {
+                FormKind::String(read) => read.to_string(),
+                _ => panic!("a quoted string reads as a string"),
+            }
+        }
+    }
+
+    #[test]
+    fn a_quoted_string_reads_back_as_written() {
+        let text = "a \"b\" \\c\nd\te'f";
+        assert_eq!(QuotingFixture::read_back(text), text);
     }
 }

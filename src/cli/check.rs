@@ -1,12 +1,11 @@
 use std::path::PathBuf;
-use std::rc::Rc;
 
-use super::distinct_output::DistinctOutput;
+use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
 use super::located_program::LocatedProgram;
-use super::task_lookup::TaskLookup;
+use super::task_catalog::TaskCatalog;
+use super::task_runners::TaskRunners;
 use super::terminal::Terminal;
-use super::test_entries::EntryTree;
 
 pub struct CheckCommand {
     file: Option<PathBuf>,
@@ -23,8 +22,7 @@ impl CheckCommand {
             Ok(program) => program,
             Err(status) => return status,
         };
-        let distinct = DistinctOutput::new(terminal.diagnostic_output());
-        terminal.report_diagnostics_to(Rc::new(distinct));
+        terminal.report_diagnostics_to(TaskCatalog::user_output(terminal.diagnostic_output()));
         let entry = terminal.check(program.file()).map(|_| ());
         let tasks = match program.into_project().filter(|_| checks_tasks) {
             Some(project) => Self::check_tasks(terminal, EntryTree::of_tasks(project)),
@@ -40,6 +38,7 @@ impl CheckCommand {
         if !tree.path().is_dir() {
             return Ok(());
         }
-        TaskLookup::load(&tree, terminal)?.check(terminal)
+        let catalog = TaskCatalog::load(&tree, terminal)?;
+        TaskRunners::new(&catalog).check(terminal)
     }
 }

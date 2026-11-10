@@ -13,8 +13,8 @@ use super::error_location::ModuleLoader;
 use super::exit_status::ExitStatus;
 use super::interruption::Interruption;
 use super::located_program::LocatedProgram;
-use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
+use super::project_task::ProjectTask;
 use super::stage_work::StageWork;
 use super::standard_error::StandardError;
 use crate::build::{
@@ -65,12 +65,19 @@ pub struct BuildTarget<'a> {
     pub output: &'a Path,
 }
 
+pub enum BuildRoute<'a> {
+    Rustc(BuildTarget<'a>),
+    Cargo {
+        directory: PathBuf,
+        target: CargoTarget<'a>,
+    },
+}
+
 pub struct Terminal {
     sources: SourceMap,
     work: StageWork,
     diagnostics: Rc<dyn DiagnosticOutput>,
     interruption: Interruption,
-    generated_sources: Vec<&'static str>,
 }
 
 impl Terminal {
@@ -92,7 +99,6 @@ impl Terminal {
             work: StageWork::default(),
             diagnostics,
             interruption: Interruption::default(),
-            generated_sources: Vec::new(),
         }
     }
 
@@ -203,42 +209,43 @@ impl Terminal {
             .output
             .clone()
             .unwrap_or_else(|| directory.join(&output_name));
-        if let Some(project) = program.project().filter(|project| project.uses_crates()) {
-            let target = project.cargo_target(&output, project.name());
-            self.compile_with_cargo(&emitted, &directory, &target, options.profile)?;
-            return Ok(output);
-        }
-        let target = BuildTarget {
-            directory,
-            crate_name: &crate_name,
-            output: &output,
+        let route = match program.project().filter(|project| project.uses_crates()) {
+            Some(project) => BuildRoute::Cargo {
+                directory,
+                target: project.cargo_target(&output, project.name()),
+            },
+            None => BuildRoute::Rustc(BuildTarget {
+                directory,
+                crate_name: &crate_name,
+                output: &output,
+            }),
         };
-        self.compile(&emitted, &target, options.profile)?;
+        self.compile_into(&emitted, &route, options.profile)?;
         Ok(output)
     }
 
     pub fn build_task(
         &mut self,
         emitted: &EmittedCrate,
-        project: &LocatedProject,
-        task: &str,
+        task: &ProjectTask<'_>,
         profile: BuildProfile,
     ) -> Result<PathBuf, ExitStatus> {
-        let directory = project.task_build_directory(task);
-        let output = directory.join(task);
-        if project.uses_crates() {
-            let target = project.cargo_target(&output, &project.task_bin_stem(task));
-            self.compile_with_cargo(emitted, &directory, &target, profile)?;
-            return Ok(output);
+        self.compile_into(emitted, &task.route(), profile)?;
+        Ok(task.binary().to_path_buf())
+    }
+
+    fn compile_into(
+        &self,
+        emitted: &EmittedCrate,
+        route: &BuildRoute<'_>,
+        profile: BuildProfile,
+    ) -> Result<(), ExitStatus> {
+        match route {
+            BuildRoute::Rustc(target) => self.compile(emitted, target, profile),
+            BuildRoute::Cargo { directory, target } => {
+                self.compile_with_cargo(emitted, directory, target, profile)
+            }
         }
-        let crate_name = Self::crate_name(Path::new(task));
-        let target = BuildTarget {
-            directory,
-            crate_name: &crate_name,
-            output: &output,
-        };
-        self.compile(emitted, &target, profile)?;
-        Ok(output)
     }
 
     pub fn compile(
@@ -466,8 +473,7 @@ impl Terminal {
         let directory = file.root().to_path_buf();
         let sources = ModuleSources::new(directory.clone(), directory)
             .with_libraries(file.libraries().clone())
-            .without_reaching(file.unreachable().to_vec())
-            .with_tasks_directory(file.tasks_directory().map(Path::to_path_buf));
+            .within(file.scope().clone());
         match file.fallback_root() {
             Some(fallback_root) => sources.with_fallback_root(fallback_root.to_path_buf()),
             None => sources,
@@ -478,8 +484,7 @@ impl Terminal {
         if diagnostics.is_empty() {
             return;
         }
-        self.diagnostics
-            .write(&self.sources, &self.without_generated_labels(diagnostics));
+        self.diagnostics.write(&self.sources, diagnostics);
     }
 
     pub fn print_note(&self, message: &str) {
@@ -490,35 +495,8 @@ impl Terminal {
         if !diagnostics.has_errors() {
             return ExitStatus::Success;
         }
-        self.diagnostics
-            .write(&self.sources, &self.without_generated_labels(diagnostics));
+        self.diagnostics.write(&self.sources, diagnostics);
         ExitStatus::ProgramErrors
-    }
-
-    pub fn hide_labels_in_generated(&mut self, name: &'static str) {
-        if !self.generated_sources.contains(&name) {
-            self.generated_sources.push(name);
-        }
-    }
-
-    fn without_generated_labels(&self, diagnostics: &Diagnostics) -> Diagnostics {
-        diagnostics.clone().map(|diagnostic| {
-            let generated: Vec<SourceId> = diagnostic
-                .labels()
-                .map(|label| label.span().source())
-                .filter(|source| self.is_generated(*source))
-                .collect();
-            generated
-                .into_iter()
-                .fold(diagnostic, |diagnostic, source| {
-                    diagnostic.without_labels_in(source)
-                })
-        })
-    }
-
-    fn is_generated(&self, source: SourceId) -> bool {
-        let name = self.sources.file(source).name();
-        self.generated_sources.contains(&name)
     }
 
     fn report_build(&self, error: BuildError) -> ExitStatus {

@@ -7,7 +7,7 @@ use crate::core::{
 use crate::diagnostic::{Counted, Diagnostic, DiagnosticCode, Label, MissingName, Suggestion};
 use crate::interpret::InterpretProblems;
 use crate::language::Language;
-use crate::modules::{HiddenSourceModule, LibraryTable, LocalModuleClash};
+use crate::modules::{HiddenSourceModule, LibraryTable, LocalModuleClash, SearchScope};
 use crate::reader::Form;
 use crate::source::Span;
 
@@ -542,9 +542,11 @@ impl ExpandProblems {
             "`{}` exists, under a directory a task cannot reach this way",
             file.display()
         ))
-        .with_help(
-            "a task uses a module of `tasks/` by its path from `tasks/`, and cannot use a module under `tests/`",
-        )
+        .with_help(format!(
+            "a task uses a module of `{tasks}/` by its path from `{tasks}/`, and cannot use a module under `{tests}/`",
+            tasks = SearchScope::TASKS_DIRECTORY,
+            tests = SearchScope::TESTS_DIRECTORY,
+        ))
     }
 
     pub fn local_module_beside_library(clash: &LocalModuleClash<'_>, span: Span) -> Diagnostic {
@@ -629,11 +631,7 @@ impl ExpandProblems {
         )
         .with_note(format!(
             "a module of the {} directory takes precedence over a source module of the same path",
-            if shadow.hiding_task_module {
-                "tasks"
-            } else {
-                "test"
-            }
+            shadow.directory_name
         ))
         .with_help(format!("rename `{hiding}` to reach `{hidden}`"))
     }

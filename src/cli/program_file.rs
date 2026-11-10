@@ -6,7 +6,7 @@ use super::exit_status::ExitStatus;
 use super::standard_error::StandardError;
 use crate::core::ModulePath;
 use crate::language::Language;
-use crate::modules::LibraryTable;
+use crate::modules::{LibraryTable, SearchScope};
 use crate::project::CrateDependency;
 
 #[derive(Clone)]
@@ -14,8 +14,7 @@ pub struct ProgramFile {
     path: PathBuf,
     root: PathBuf,
     fallback_root: Option<PathBuf>,
-    unreachable: Vec<PathBuf>,
-    tasks_directory: Option<PathBuf>,
+    scope: SearchScope,
     module: ModulePath,
     libraries: LibraryTable,
 }
@@ -35,8 +34,7 @@ impl ProgramFile {
             path,
             root,
             fallback_root: None,
-            unreachable: Vec::new(),
-            tasks_directory: None,
+            scope: SearchScope::default(),
             module: ModulePath::new(module),
             libraries: LibraryTable::default(),
         }
@@ -56,26 +54,12 @@ impl ProgramFile {
         }
     }
 
-    pub fn without_reaching(self, unreachable: Vec<PathBuf>) -> Self {
-        Self {
-            unreachable,
-            ..self
-        }
+    pub fn within_scope(self, scope: SearchScope) -> Self {
+        Self { scope, ..self }
     }
 
-    pub fn with_tasks_directory(self, tasks_directory: PathBuf) -> Self {
-        Self {
-            tasks_directory: Some(tasks_directory),
-            ..self
-        }
-    }
-
-    pub fn tasks_directory(&self) -> Option<&Path> {
-        self.tasks_directory.as_deref()
-    }
-
-    pub fn unreachable(&self) -> &[PathBuf] {
-        &self.unreachable
+    pub fn scope(&self) -> &SearchScope {
+        &self.scope
     }
 
     pub fn with_libraries(self, libraries: LibraryTable) -> Self {

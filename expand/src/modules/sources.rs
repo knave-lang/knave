@@ -3,6 +3,7 @@ use std::io;
 use std::path::{Component, Path, PathBuf};
 
 use super::libraries::{LibraryRoot, LibraryTable};
+use super::search_scope::SearchScope;
 use crate::core::ModulePath;
 use crate::language::Language;
 
@@ -26,16 +27,14 @@ pub struct LocalModuleClash<'s> {
 pub struct HiddenSourceModule {
     pub hiding: PathBuf,
     pub hidden: PathBuf,
-    pub hiding_task_module: bool,
+    pub directory_name: &'static str,
 }
 
 pub struct ModuleSources {
     root: PathBuf,
     display_root: PathBuf,
     fallback_root: Option<PathBuf>,
-    unreachable: Vec<PathBuf>,
-    fallback_unreachable: Vec<PathBuf>,
-    tasks_directory: Option<PathBuf>,
+    scope: SearchScope,
     libraries: LibraryTable,
 }
 
@@ -104,9 +103,7 @@ impl ModuleSources {
             root,
             display_root,
             fallback_root: None,
-            unreachable: Vec::new(),
-            fallback_unreachable: Vec::new(),
-            tasks_directory: None,
+            scope: SearchScope::default(),
             libraries: LibraryTable::default(),
         }
     }
@@ -118,36 +115,12 @@ impl ModuleSources {
         }
     }
 
-    pub fn with_tasks_directory(self, directory: Option<PathBuf>) -> Self {
-        Self {
-            tasks_directory: directory.and_then(|directory| fs::canonicalize(directory).ok()),
-            ..self
-        }
+    pub fn within(self, scope: SearchScope) -> Self {
+        Self { scope, ..self }
     }
 
-    pub fn lies_in_tasks_directory(&self, file: &str) -> bool {
-        let Some(tasks_directory) = &self.tasks_directory else {
-            return false;
-        };
-        fs::canonicalize(file).is_ok_and(|file| file.starts_with(tasks_directory))
-    }
-
-    pub fn without_reaching(self, directories: Vec<PathBuf>) -> Self {
-        let unreachable: Vec<PathBuf> = directories
-            .iter()
-            .filter_map(|directory| fs::canonicalize(directory).ok())
-            .collect();
-        let fallback_unreachable = if directories.is_empty() {
-            Vec::new()
-        } else {
-            let primary = fs::canonicalize(&self.root).ok();
-            unreachable.iter().cloned().chain(primary).collect()
-        };
-        Self {
-            unreachable,
-            fallback_unreachable,
-            ..self
-        }
+    pub fn holds_task(&self, file: &str) -> bool {
+        self.scope.holds_task(Path::new(file))
     }
 
     pub fn with_libraries(self, libraries: LibraryTable) -> Self {
@@ -209,15 +182,10 @@ impl ModuleSources {
         let file_name = Self::file_name(written);
         let hidden = fallback_root.join(&file_name);
         let hides = self.root.join(&file_name).is_file() && hidden.is_file();
-        let hiding_task_module = self
-            .root
-            .join(&file_name)
-            .to_str()
-            .is_some_and(|hiding| self.lies_in_tasks_directory(hiding));
         hides.then(|| HiddenSourceModule {
             hiding: self.display_root.join(&file_name),
             hidden,
-            hiding_task_module,
+            directory_name: self.scope.directory_name(),
         })
     }
 
@@ -241,12 +209,14 @@ impl ModuleSources {
         let primary = LocalRoot {
             root: &self.root,
             display_root: &self.display_root,
-            unreachable: &self.unreachable,
+            scope: &self.scope,
+            role: RootRole::Primary,
         };
         std::iter::once(primary).chain(fallback.map(|root| LocalRoot {
             root,
             display_root: root,
-            unreachable: &self.fallback_unreachable,
+            scope: &self.scope,
+            role: RootRole::Fallback,
         }))
     }
 
@@ -397,28 +367,32 @@ impl ModuleSources {
 struct LocalRoot<'s> {
     root: &'s Path,
     display_root: &'s Path,
-    unreachable: &'s [PathBuf],
+    scope: &'s SearchScope,
+    role: RootRole,
+}
+
+#[derive(Clone, Copy)]
+enum RootRole {
+    Primary,
+    Fallback,
 }
 
 impl LocalRoot<'_> {
     fn reaches(&self, local: &Path) -> bool {
         let path = self.root.join(local);
-        path.exists() && !self.is_unreachable(&path)
+        path.exists() && self.allows(&path)
     }
 
     fn holds_unreachable(&self, local: &Path) -> bool {
         let path = self.root.join(local);
-        path.exists() && self.is_unreachable(&path)
+        path.exists() && !self.allows(&path)
     }
 
-    fn is_unreachable(&self, path: &Path) -> bool {
-        if self.unreachable.is_empty() {
-            return false;
+    fn allows(&self, path: &Path) -> bool {
+        match self.role {
+            RootRole::Primary => self.scope.primary_reaches(path),
+            RootRole::Fallback => self.scope.fallback_reaches(path),
         }
-        let canonical = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-        self.unreachable
-            .iter()
-            .any(|unreachable| canonical.starts_with(unreachable))
     }
 }
 

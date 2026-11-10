@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(1).stderr()
+---
+error[L0206]: importing `first` creates a cycle
+ --> tasks/second.knv:1:6
+  |
+1 | (use first)
+  |      ^^^^^ this import closes the cycle
+  |
+  = note: the modules import each other: <tasks> -> first -> second -> first
+  = help: move the shared definitions into a module that both can import

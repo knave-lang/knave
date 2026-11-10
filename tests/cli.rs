@@ -7110,6 +7110,12 @@ fn test_checks_the_tests_of_a_library() {
 }
 
 const TASK_PROJECT: &str = "(project chores)\n";
+const CYCLE_FIRST_TASK: &str = "(use second)\n\n(deftask first () (println 1))\n";
+const CYCLE_SECOND_TASK: &str = "(use first)\n\n(deftask second () (println 2))\n";
+const ROOT_ENTRY_PROJECT: &str = "(project chores :entry \"main.knv\")\n";
+const ROOT_ENTRY: &str = "(defn main () (println \"m\"))\n";
+const HELPER_TASK: &str = "(export loud)\n\n(defn loud (text) (str text \"!\"))\n\n(deftask shout (who) (println (loud who)))\n";
+const HELPER_TASK_TEST: &str = "(use prelude/test assert deftest)\n(use tasks/build loud)\n\n(deftest louder (assert (= (loud \"a\") \"a!\")))\n";
 const TASK_MODULE: &str = "(export greeting)\n\n(defn greeting (name) (str \"hello \" name))\n\n(defn main () (println (greeting \"main\")))\n";
 const TASKS: &str = "(use main greeting)
 
@@ -7257,6 +7263,29 @@ fn task_defined_twice_is_an_error() {
         .with_file("tasks/repeated.knv", REPEATED_TASK)
         .compiler(&["task"]);
     insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn task_modules_that_import_each_other_name_the_tasks_entry_in_the_cycle() {
+    let task = Sandbox::with_tasks("task_cycle")
+        .with_file("tasks/first.knv", CYCLE_FIRST_TASK)
+        .with_file("tasks/second.knv", CYCLE_SECOND_TASK)
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn test_can_use_a_task_module_beside_a_root_entry() {
+    let sandbox = Sandbox::new("test_task_helper")
+        .with_file(&Language::project_file_name(), ROOT_ENTRY_PROJECT)
+        .with_file("main.knv", ROOT_ENTRY)
+        .with_file("tasks/build.knv", HELPER_TASK)
+        .with_file("tests/build_test.knv", HELPER_TASK_TEST);
+    let test = sandbox.compiler(&["test"]);
+    assert_eq!(
+        test.assert_silent_success().stdout(),
+        "running 1 test\ntest tests/build_test/louder ... ok\n1 passed, 0 failed\n"
+    );
 }
 
 #[test]
@@ -7481,7 +7510,7 @@ fn check_keeps_an_open_local_outside_tasks_an_error() {
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
-const REVIEW_MODULE: &str = "(export greet-text loud loud-text)
+const TRAIT_MODULE: &str = "(export greet-text loud loud-text)
 
 (defn greet-text ((name (ref str))) (println name))
 
@@ -7491,7 +7520,7 @@ const REVIEW_MODULE: &str = "(export greet-text loud loud-text)
 
 (defn main () (println \"main\"))
 ";
-const REVIEW_TASKS: &str = "(use main greet-text loud-text)
+const ONE_TASK_CHOICES: &str = "(use main greet-text loud-text)
 
 (defn square (x) (* x x))
 
@@ -7516,19 +7545,19 @@ const STRAY_TASK_USER: &str = "(use stray x)\n\n(deftask t () (println x))\n";
 const SHARED_BROKEN: &str = "(export helper)\n\n(defn helper () (println (+ 1 \"x\")))\n";
 
 impl Sandbox {
-    fn with_review_tasks(test_name: &str, task: &str) -> Self {
+    fn with_one_task(test_name: &str, task: &str) -> Self {
         Self::new(test_name)
             .with_file(&Language::project_file_name(), TASK_PROJECT)
-            .with_file("src/main.knv", REVIEW_MODULE)
+            .with_file("src/main.knv", TRAIT_MODULE)
             .with_file(&format!("tasks/{task}.knv"), &Self::only_task(task))
     }
 
     fn only_task(task: &str) -> String {
-        let header = REVIEW_TASKS
+        let header = ONE_TASK_CHOICES
             .split("\n\n(deftask")
             .next()
             .expect("the tasks start with uses");
-        let body = REVIEW_TASKS
+        let body = ONE_TASK_CHOICES
             .split("\n\n")
             .find(|block| block.starts_with(&format!("(deftask {task} ")))
             .expect("the task exists");
@@ -7541,7 +7570,7 @@ fn task_errors_point_at_the_parameter_or_the_task_never_at_generated_code() {
     let reports: Vec<String> = ["total", "hi", "add", "docless", "d", "area"]
         .iter()
         .map(|task| {
-            Sandbox::with_review_tasks(&format!("task_located_{task}"), task)
+            Sandbox::with_one_task(&format!("task_located_{task}"), task)
                 .compiler(&["task", task])
                 .assert_exit_code(1)
                 .stderr()
@@ -7554,20 +7583,20 @@ fn task_errors_point_at_the_parameter_or_the_task_never_at_generated_code() {
 #[test]
 fn task_string_parameter_reaches_a_user_trait_that_string_implements() {
     let task =
-        Sandbox::with_review_tasks("task_user_trait", "shout").compiler(&["task", "shout", "ana"]);
+        Sandbox::with_one_task("task_user_trait", "shout").compiler(&["task", "shout", "ana"]);
     assert_eq!(task.assert_exit_code(0).stdout(), "ana!\n");
 }
 
 #[test]
 fn task_open_parameter_beside_a_defaulted_flag_keeps_the_flag_a_number() {
-    let task = Sandbox::with_review_tasks("task_open_beside_default", "mixed")
+    let task = Sandbox::with_one_task("task_open_beside_default", "mixed")
         .compiler(&["task", "mixed", "bo", "--times", "3"]);
     assert_eq!(task.assert_exit_code(0).stdout(), "bo 4\n");
 }
 
 #[test]
 fn check_without_a_file_rejects_what_task_rejects() {
-    let check = Sandbox::with_review_tasks("check_rejects_task", "add").compiler(&["check"]);
+    let check = Sandbox::with_one_task("check_rejects_task", "add").compiler(&["check"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
@@ -7719,7 +7748,7 @@ fn emitted_task_program() {
     insta::assert_snapshot!(program);
 }
 
-const ROUND_TWO_TASKS: &str = "(defn double ((port u16)) (* port 2))
+const PARAMETER_TASKS: &str = "(defn double ((port u16)) (* port 2))
 
 (deftask shown (who :times 2) (println who \" \" times))
 
@@ -7737,37 +7766,37 @@ const ROUND_TWO_TASKS: &str = "(defn double ((port u16)) (* port 2))
 ";
 
 impl Sandbox {
-    fn with_round_two_tasks(test_name: &str) -> Self {
+    fn with_parameter_tasks(test_name: &str) -> Self {
         Self::new(test_name)
             .with_file(&Language::project_file_name(), TASK_PROJECT)
             .with_file("src/main.knv", TASK_MODULE)
-            .with_file("tasks/round.knv", ROUND_TWO_TASKS)
+            .with_file("tasks/round.knv", PARAMETER_TASKS)
     }
 }
 
 #[test]
 fn task_open_parameter_beside_a_display_only_defaulted_flag_keeps_its_default_type() {
     let task =
-        Sandbox::with_round_two_tasks("task_display_default").compiler(&["task", "shown", "bo"]);
+        Sandbox::with_parameter_tasks("task_display_default").compiler(&["task", "shown", "bo"]);
     assert_eq!(task.assert_exit_code(0).stdout(), "bo 2\n");
 }
 
 #[test]
 fn task_open_parameter_beside_a_concrete_parameter_leaves_the_concrete_one_alone() {
-    let task = Sandbox::with_round_two_tasks("task_concrete_beside_open")
+    let task = Sandbox::with_parameter_tasks("task_concrete_beside_open")
         .compiler(&["task", "doubled", "bo", "21"]);
     assert_eq!(task.assert_exit_code(0).stdout(), "bo 42\n");
 }
 
 #[test]
 fn task_name_may_hold_a_word_that_starts_with_a_digit() {
-    let task = Sandbox::with_round_two_tasks("task_digit_word").compiler(&["task", "build-2024"]);
+    let task = Sandbox::with_parameter_tasks("task_digit_word").compiler(&["task", "build-2024"]);
     assert_eq!(task.assert_exit_code(0).stdout(), "built\n");
 }
 
 #[test]
 fn check_without_a_file_accepts_a_task_that_only_fails() {
-    let sandbox = Sandbox::with_round_two_tasks("check_only_fails");
+    let sandbox = Sandbox::with_parameter_tasks("check_only_fails");
     sandbox.compiler(&["check"]).assert_exit_code(0);
     let task = sandbox.compiler(&["task", "fails"]);
     assert_eq!(task.assert_exit_code(1).stderr(), "boom\n");
@@ -7791,13 +7820,13 @@ fn task_with_an_open_error_type_is_refused_at_its_name_under_task_and_check() {
 #[test]
 fn task_help_prints_the_usage_and_the_docstring() {
     let task =
-        Sandbox::with_round_two_tasks("task_help_docstring").compiler(&["task", "told", "--help"]);
+        Sandbox::with_parameter_tasks("task_help_docstring").compiler(&["task", "told", "--help"]);
     insta::assert_snapshot!(task.assert_exit_code(0).stdout());
 }
 
 #[test]
 fn task_reports_a_switch_value_and_a_flag_without_value_clearly() {
-    let sandbox = Sandbox::with_round_two_tasks("task_switch_and_flag_values");
+    let sandbox = Sandbox::with_parameter_tasks("task_switch_and_flag_values");
     let switch_value = sandbox.compiler(&["task", "told", "bo", "--loud", "true"]);
     let flag_then_flag = sandbox.compiler(&["task", "told", "bo", "--times", "--loud"]);
     insta::assert_snapshot!(format!(

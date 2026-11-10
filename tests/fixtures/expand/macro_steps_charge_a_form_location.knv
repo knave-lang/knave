@@ -1,0 +1,13 @@
+(use code form-location number-gt number-sub value-eq)
+
+(defmacro locates (times)
+  ((fn (remaining)
+     (if (number-gt remaining 0)
+       (recur (if (value-eq (form-location (quote here)) "")
+                remaining
+                (number-sub remaining 1)))
+       (quote 1)))
+   times))
+
+(with-macro-steps 12500
+                  (defn main () (println (locates 400))))

@@ -5,5 +5,5 @@ mod span;
 
 pub use file::SourceFile;
 pub use map::SourceMap;
-pub use position::TextPosition;
+pub use position::{LineStarts, TextPosition};
 pub use span::{SourceId, Span};

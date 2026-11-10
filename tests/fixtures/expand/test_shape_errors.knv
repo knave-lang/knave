@@ -13,7 +13,8 @@
 (deftest compares-an-empty-list
   (assert (= () 1)))
 
-(defn runs-nothing () (run-tests))
+(defn runs-with-an-untested-key-alone ()
+  (run-tests :untested))
 
 (defn runs-a-number () (run-tests 1))
 

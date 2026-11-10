@@ -26,6 +26,7 @@ enum RuntimePart {
     CheckTrueWith,
     CheckEqualWith,
     NoteUntested,
+    RunMarker,
     TestRun,
     RunTest,
     Max,
@@ -41,7 +42,7 @@ impl RuntimePart {
         "eprintln!(",
         "std::io::stderr(",
     ];
-    const ALL: [(RuntimePart, &'static [&'static str]); 26] = [
+    const ALL: [(RuntimePart, &'static [&'static str]); 27] = [
         (RuntimePart::Number, &["crate::rt::Number"]),
         (RuntimePart::FromLiteral, &["::from_literal("]),
         (RuntimePart::FromFloatLiteral, &["::from_float_literal("]),
@@ -67,6 +68,7 @@ impl RuntimePart {
             &["crate::rt::check_equal_with("],
         ),
         (RuntimePart::NoteUntested, &["crate::rt::note_untested("]),
+        (RuntimePart::RunMarker, &["crate::rt::run_marker("]),
         (RuntimePart::TestRun, &["crate::rt::start_run("]),
         (RuntimePart::RunTest, &["crate::rt::run_test("]),
         (RuntimePart::Max, &["crate::rt::max("]),
@@ -179,12 +181,13 @@ impl RuntimeModule {
     const CHECK_EQUAL_WITH: &'static str =
         include_str!("../../prelude/runtime/check_equal_with.rs");
     const NOTE_UNTESTED: &'static str = include_str!("../../prelude/runtime/note_untested.rs");
+    const RUN_MARKER: &'static str = include_str!("../../prelude/runtime/run_marker.rs");
     const TEST_RUN: &'static str = include_str!("../../prelude/runtime/test_run.rs");
     const RUN_TEST: &'static str = include_str!("../../prelude/runtime/run_test.rs");
     const MAX: &'static str = include_str!("../../prelude/runtime/max.rs");
     const MIN: &'static str = include_str!("../../prelude/runtime/min.rs");
     const START_UP_CALL: &'static str = "crate::rt::restore_default_sigpipe();";
-    const FIXED_PARTS: [(RuntimePart, &'static str); 25] = [
+    const FIXED_PARTS: [(RuntimePart, &'static str); 26] = [
         (RuntimePart::Signed, Self::SIGNED),
         (RuntimePart::Float, Self::FLOAT),
         (RuntimePart::Integer, Self::INTEGER),
@@ -206,6 +209,7 @@ impl RuntimeModule {
         (RuntimePart::CheckTrueWith, Self::CHECK_TRUE_WITH),
         (RuntimePart::CheckEqualWith, Self::CHECK_EQUAL_WITH),
         (RuntimePart::NoteUntested, Self::NOTE_UNTESTED),
+        (RuntimePart::RunMarker, Self::RUN_MARKER),
         (RuntimePart::TestRun, Self::TEST_RUN),
         (RuntimePart::RunTest, Self::RUN_TEST),
         (RuntimePart::Max, Self::MAX),

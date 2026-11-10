@@ -5565,6 +5565,39 @@ fn run_in_a_project_with_only_dev_crates_builds_without_cargo() {
 }
 
 #[test]
+fn a_second_test_run_through_cargo_rewrites_and_relinks_nothing() {
+    let sandbox = Sandbox::new("crate_test_unchanged").with_fixture_tree("crates");
+    let built = || {
+        sandbox
+            .compiler_in("dev-only-app", &["test"])
+            .assert_exit_code(0);
+        let deps = sandbox
+            .directory
+            .join(Sandbox::CACHE_DIRECTORY)
+            .join(Language::NAME)
+            .join("target/debug/deps");
+        let binary = fs::read_dir(&deps)
+            .expect("the shared target holds the built crates")
+            .map(|entry| entry.expect("the target lists its files").path())
+            .find(|path| {
+                let name = path.file_name().unwrap_or_default().to_string_lossy();
+                name.starts_with("dev_only_app_tests_") && path.extension().is_none()
+            })
+            .expect("the test target is built");
+        let source = sandbox
+            .directory
+            .join("dev-only-app/target/knave/dev-only-app/test_runner/src/main.rs");
+        [binary, source].map(|path| {
+            fs::metadata(path)
+                .and_then(|metadata| metadata.modified())
+                .expect("the built files have a time")
+        })
+    };
+    let first = built();
+    assert_eq!(built(), first);
+}
+
+#[test]
 fn test_builds_through_cargo_with_only_dev_crates() {
     let sandbox = Sandbox::new("crate_dev_only_test").with_fixture_tree("crates");
     let stdout = sandbox

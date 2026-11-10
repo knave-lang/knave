@@ -53,10 +53,10 @@ impl TestCommand {
 
     fn test(&self, terminal: &mut Terminal) -> Result<ExitStatus, ExitStatus> {
         let loaded = self.entries.load(terminal)?;
-        let marker = ValueMarker::random();
-        let program = self.runner_program(terminal, loaded.module, &marker)?;
+        let program = self.runner_program(terminal, loaded.module)?;
         let checked = terminal.check_expanded(&program)?;
         let emitted = terminal.emit_checked(&checked)?;
+        let marker = ValueMarker::random();
         let outcome = self.build_and_run(terminal, &emitted, loaded.project.as_ref(), &marker)?;
         self.note_no_selected_test(terminal, &outcome);
         Ok(Self::status(&outcome))
@@ -66,13 +66,12 @@ impl TestCommand {
         &self,
         terminal: &mut Terminal,
         module: ModuleOfSources,
-        marker: &ValueMarker,
     ) -> Result<Program, ExitStatus> {
         let request = EvaluationRequest {
             module,
             evaluated: Vec::new(),
         };
-        let runner = self.runner_text(marker);
+        let runner = self.runner_text();
         let program = terminal
             .within_evaluation(&request, |session| self.entered_runner(session, &runner))?;
         program.ok_or_else(|| self.report_unloaded_module())
@@ -95,13 +94,13 @@ impl TestCommand {
         Ok(Some(program))
     }
 
-    fn runner_text(&self, marker: &ValueMarker) -> String {
+    fn runner_text(&self) -> String {
         let untested = self
             .untested
             .as_ref()
             .map(|module| format!(" :untested {module}"))
             .unwrap_or_default();
-        format!("(run-tests :marker \"{}\"{untested})", marker.text())
+        format!("(run-tests{untested})")
     }
 
     fn build_and_run(
@@ -114,7 +113,7 @@ impl TestCommand {
         let binary = TestBinary::build(terminal, emitted, project, self.profile)?;
         let mut report = TestReport::new(io::stdout().lock());
         TestRun::new(binary.path(), self.selection.arguments())
-            .run(marker.records(), &mut report)
+            .run(marker, &mut report)
             .map_err(Self::report_run_error)
     }
 

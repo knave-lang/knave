@@ -14,6 +14,7 @@ impl ValueMarker {
     const VALUE_PRINTER: &'static str = "print-value";
     const VALUE_PRINTER_SOURCE: &'static str = "<value printer>";
     const RECORD_SEPARATOR: char = '\u{1e}';
+    pub const TEST_VARIABLE: &'static str = "KNAVE_TEST_MARKER";
 
     pub fn random() -> Self {
         let random = || RandomState::new().hash_one(());

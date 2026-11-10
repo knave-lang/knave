@@ -8,6 +8,15 @@ use crate::source::Span;
 pub struct Form {
     kind: Rc<FormKind>,
     span: Span,
+    nesting: u32,
+}
+
+pub struct FormNesting;
+
+impl FormNesting {
+    pub fn of(form: &Form) -> u32 {
+        form.nesting
+    }
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -22,9 +31,14 @@ impl Form {
     pub const NESTING_LIMIT: usize = 1024;
 
     pub fn new(kind: FormKind, span: Span) -> Self {
+        let nesting = match &kind {
+            FormKind::List(items) => 1 + items.iter().map(|item| item.nesting).max().unwrap_or(0),
+            _ => 0,
+        };
         Self {
             kind: Rc::new(kind),
             span,
+            nesting,
         }
     }
 

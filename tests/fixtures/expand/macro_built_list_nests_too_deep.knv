@@ -1,0 +1,12 @@
+(use code list number-add value-eq)
+
+(defmacro wrap-deep (levels)
+  ((fn (form count)
+     (if (value-eq count levels)
+       (quote 1)
+       (recur (list form) (number-add count 1))))
+   (quote x)
+   0))
+
+(defn main ()
+  (println (wrap-deep 5000)))

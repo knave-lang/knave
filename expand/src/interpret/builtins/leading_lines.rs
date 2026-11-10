@@ -1,9 +1,9 @@
 use rustc_hash::FxHashSet;
 
 use crate::diagnostic::Diagnostic;
-use crate::interpret::Value;
 use crate::interpret::arguments::Arguments;
 use crate::interpret::problems::InterpretProblems;
+use crate::interpret::{ListNesting, Value};
 use crate::reader::{Form, FormKind};
 use crate::source::Span;
 
@@ -32,7 +32,7 @@ impl<'a> DistinctLeadingLines<'a> {
                 kept.push(form.clone());
             }
         }
-        Ok(Value::Form(Form::new(FormKind::List(kept), self.call_site)))
+        ListNesting::form_list(kept, self.call_site).map_err(|deep| deep.at(self.arguments.span()))
     }
 
     fn text_of<'f>(&self, form: &'f Form) -> Result<&'f str, Diagnostic> {

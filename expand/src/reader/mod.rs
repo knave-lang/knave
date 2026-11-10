@@ -7,7 +7,7 @@ mod string_literal;
 mod syntax;
 mod token;
 
-pub use form::{Form, FormKind, Number, NumberValue, Symbol};
+pub use form::{Form, FormKind, FormNesting, Number, NumberValue, Symbol};
 pub use literal_forms::LiteralForms;
 pub use string_literal::StringLiteral;
 pub use token::{Token, TokenKind, TokenScan};

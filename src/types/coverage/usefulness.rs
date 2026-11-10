@@ -1,6 +1,7 @@
-use super::constructors::{Constructor, ConstructorCatalog, Tag};
-use super::matrix::PatternMatrix;
-use super::pattern::CoverPattern;
+use super::constructor::{Constructor, Tag};
+use super::constructor_catalog::ConstructorCatalog;
+use super::cover_pattern::CoverPattern;
+use super::pattern_matrix::PatternMatrix;
 use super::query::{ExpandedQuery, Query};
 use super::witness::Witness;
 use crate::core::{BindingId, Literal};

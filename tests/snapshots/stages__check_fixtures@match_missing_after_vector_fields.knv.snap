@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_missing_after_vector_fields.knv
+---
+error[L0433]: non-exhaustive `match`
+ --> check/match_missing_after_vector_fields.knv:7:3
+  |
+7 |   (match b ((batch _ _ true) 1)))
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
+  |
+  = note: missing 1 case: `(batch _ _ false)`
+  = help: add an arm for each missing case

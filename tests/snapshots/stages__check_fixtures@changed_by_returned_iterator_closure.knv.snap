@@ -3,11 +3,11 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/changed_by_returned_iterator_closure.knv
 ---
-error[L0517]: the closure that `walk!` returns cannot change `x`
- --> check/changed_by_returned_iterator_closure.knv:4:10
+error[L0517]: a returned closure cannot use `x`, which `walk!` changes
+ --> check/changed_by_returned_iterator_closure.knv:4:16
   |
 4 |          (set! x (+ x 1))
-  |          ^^^^^^^^^^^^^^^^ this changes the caller's value of `x`
+  |                ^ the closure uses `x` here
   |
-  = note: the closure would keep a `mut` borrow of the caller's value for as long as it lives, so the caller could not read that value again
-  = help: to give the closure a value of its own, start `walk!` with `(local count x)` and use `count` in the closure
+  = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
+  = help: copy it first with `(local value x)` and use `value` in the closure

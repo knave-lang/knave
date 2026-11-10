@@ -1,0 +1,31 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/returned_value_reads_changed_parameter.knv
+---
+error[L0517]: a returned closure cannot use `x`, which `scaled!` changes
+ --> check/returned_value_reads_changed_parameter.knv:4:19
+  |
+4 |   (fn (y) (f (+ y x))))
+  |                   ^ the closure uses `x` here
+  |
+  = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
+  = help: copy it first with `(local value x)` and use `value` in the closure
+
+error[L0517]: a returned closure cannot use `x`, which `shifted!` changes
+ --> check/returned_value_reads_changed_parameter.knv:9:39
+  |
+9 |   (map (iter xs) (fn (i) (+ (deref i) x))))
+  |                                       ^ the closure uses `x` here
+  |
+  = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
+  = help: copy it first with `(local value x)` and use `value` in the closure
+
+error[L0517]: a returned closure cannot use `x`, which `recorder!` changes
+  --> check/returned_value_reads_changed_parameter.knv:14:27
+   |
+14 |   (fn (y) (push! log (+ y x)) (len log)))
+   |                           ^ the closure uses `x` here
+   |
+   = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
+   = help: copy it first with `(local value x)` and use `value` in the closure

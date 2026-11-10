@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/returned_closure_uses_copied_value.knv
+---
+1
+2
+0
+212
+2
+33
+72
+92

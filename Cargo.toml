@@ -16,7 +16,7 @@ include = ["/build.rs", "/src/", "/prelude/runtime/", "/README.md", "/LICENSE"]
 members = ["expand", "xtask"]
 
 [workspace.package]
-version = "0.12.8"
+version = "0.12.9"
 repository = "https://github.com/knave-lang/knave"
 rust-version = "1.88"
 
@@ -25,7 +25,7 @@ rustc-hash = "2.1"
 
 [workspace.dependencies.knave-expand]
 path = "expand"
-version = "=0.12.8"
+version = "=0.12.9"
 
 [dependencies]
 anstream = "1.0.0"

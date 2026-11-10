@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/uncapturable_changed_owned_parameter.knv
+---
+error[L0606]: the result cannot leave out the borrow of `s`
+ --> emit/uncapturable_changed_owned_parameter.knv:1:14
+  |
+1 | (defn wrap! (s g)
+  |              ^ a `set!` makes `s` a `mut` borrow
+  |
+  = note: the result is a closure or an iterator, and a parameter takes a function or an iterator, so Rust ties the result to every borrow the function takes
+  = help: to change only this function's copy, start the body with `(local s (clone s))`

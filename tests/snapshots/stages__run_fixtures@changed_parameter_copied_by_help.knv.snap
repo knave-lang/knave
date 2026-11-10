@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/changed_parameter_copied_by_help.knv
+---
+2
+81
+122
+22
+22

@@ -8,7 +8,12 @@ use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
 use super::terminal::{ModuleOfSources, Terminal};
+use crate::core::ModulePath;
+use crate::diagnostic::Diagnostics;
+use crate::expand::ExpandProblems;
 use crate::language::Language;
+use crate::modules::ModuleSources;
+use crate::source::Span;
 
 pub struct EntryTree {
     path: PathBuf,
@@ -23,6 +28,22 @@ enum TreeKind {
     Tasks,
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct TreeFile {
+    module: String,
+    path: PathBuf,
+}
+
+impl TreeFile {
+    fn module_path(&self) -> ModulePath {
+        ModulePath::new(self.module.as_str())
+    }
+
+    fn takes_compiler_module(&self) -> bool {
+        !ModuleSources::is_written(&self.module_path())
+    }
+}
+
 impl TreeKind {
     const TESTS_ENTRY: &'static str = "<tests>";
     const TASKS_ENTRY: &'static str = "<tasks>";
@@ -30,6 +51,10 @@ impl TreeKind {
 
     fn stays_inside(self) -> bool {
         matches!(self, Self::Tasks)
+    }
+
+    fn refuses_compiler_modules(self) -> bool {
+        matches!(self, Self::Tests)
     }
 
     fn refuses(self, module: &str) -> bool {
@@ -105,13 +130,18 @@ impl EntryTree {
     }
 
     pub fn module_paths(&self) -> Result<Vec<String>, ExitStatus> {
-        let mut modules = Vec::new();
-        self.collect_modules(&self.path, &mut modules)
+        let files = self.module_files()?;
+        Ok(files.into_iter().map(|file| file.module).collect())
+    }
+
+    fn module_files(&self) -> Result<Vec<TreeFile>, ExitStatus> {
+        let mut files = Vec::new();
+        self.collect_modules(&self.path, &mut files)
             .map_err(|error| Terminal::report_unreadable(&self.path, &error))?;
-        modules.sort();
-        match modules.iter().find(|module| self.kind.refuses(module)) {
-            Some(module) => Err(self.report_unnamable(module)),
-            None => Ok(modules),
+        files.sort();
+        match files.iter().find(|file| self.kind.refuses(&file.module)) {
+            Some(file) => Err(self.report_unnamable(&file.module)),
+            None => Ok(files),
         }
     }
 
@@ -126,16 +156,39 @@ impl EntryTree {
     }
 
     fn load_directory(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
-        let modules = self.module_paths()?;
-        let uses: Vec<String> = modules
+        let files = self.module_files()?;
+        self.refuse_compiler_modules(&files, terminal)?;
+        let uses: Vec<String> = files
             .iter()
-            .map(|module| format!("(use {module})"))
+            .map(|file| format!("(use {})", file.module))
             .collect();
         let source = terminal.add_named_source(self.kind.entry_name(), &uses.join("\n"));
         Ok(ModuleOfSources {
             file: self.directory_file(),
             sources: vec![source],
         })
+    }
+
+    fn refuse_compiler_modules(
+        &self,
+        files: &[TreeFile],
+        terminal: &mut Terminal,
+    ) -> Result<(), ExitStatus> {
+        if !self.kind.refuses_compiler_modules() {
+            return Ok(());
+        }
+        let mut problems = Diagnostics::default();
+        for file in files.iter().filter(|file| file.takes_compiler_module()) {
+            let start = Span::new(terminal.load(&file.path)?, 0..0);
+            problems.push(ExpandProblems::test_file_takes_compiler_module(
+                &file.module_path(),
+                start,
+            ));
+        }
+        if problems.has_errors() {
+            return Err(terminal.report(&problems));
+        }
+        Ok(())
     }
 
     fn directory_file(&self) -> ProgramFile {
@@ -146,23 +199,23 @@ impl EntryTree {
         }
     }
 
-    fn collect_modules(&self, directory: &Path, modules: &mut Vec<String>) -> io::Result<()> {
+    fn collect_modules(&self, directory: &Path, files: &mut Vec<TreeFile>) -> io::Result<()> {
         for entry in fs::read_dir(directory)? {
             let path = entry?.path();
             if path.is_dir() {
-                self.collect_subdirectory(&path, modules)?;
+                self.collect_subdirectory(&path, files)?;
             } else if let Some(module) = self.module_path(&path) {
-                modules.push(module);
+                files.push(TreeFile { module, path });
             }
         }
         Ok(())
     }
 
-    fn collect_subdirectory(&self, directory: &Path, modules: &mut Vec<String>) -> io::Result<()> {
+    fn collect_subdirectory(&self, directory: &Path, files: &mut Vec<TreeFile>) -> io::Result<()> {
         if self.skipped.is_skipped(directory) || self.leaves_the_tree(directory) {
             return Ok(());
         }
-        self.collect_modules(directory, modules)
+        self.collect_modules(directory, files)
     }
 
     fn leaves_the_tree(&self, directory: &Path) -> bool {

@@ -5,7 +5,7 @@ expand/src/diagnostic/mod.rs::Diagnostic 21
 expand/src/expand/globals.rs::GlobalTable 13
 expand/src/expand/macro_origins.rs::MacroOrigins 8
 expand/src/expand/mod.rs::Expander 101
-expand/src/expand/problems.rs::ExpandProblems 94
+expand/src/expand/problems.rs::ExpandProblems 95
 expand/src/expand/session.rs::ExpansionSession 16
 expand/src/expand/shape.rs::Shape 15
 expand/src/interpret/arguments.rs::Arguments 20
@@ -20,7 +20,7 @@ expand/src/modules/libraries.rs::LibraryTable 8
 expand/src/modules/registry.rs::ModuleRecord 8
 expand/src/modules/registry.rs::ModuleRegistry 10
 expand/src/modules/sources.rs::ModuleSources 25
-expand/src/project/problems.rs::ProjectProblems 32
+expand/src/project/problems.rs::ProjectProblems 31
 expand/src/reader/cursor.rs::Cursor 8
 expand/src/reader/form.rs::Form 17
 expand/src/reader/problems.rs::ReadProblems 8
@@ -29,7 +29,7 @@ expand/src/scope/scope_chain.rs::ChainPrefix 8
 expand/src/scope/scope_chain.rs::SharedScopes 11
 expand/src/scope/scope_set.rs::ScopeSet 17
 src/cli/definition_buffer.rs::DefinitionBuffer 11
-src/cli/located_project.rs::LocatedProject 20
+src/cli/located_project.rs::LocatedProject 19
 src/cli/program_file.rs::ProgramFile 20
 src/cli/terminal.rs::Terminal 41
 src/emit/callee_parameters.rs::OpenCallees 8

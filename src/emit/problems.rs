@@ -1,5 +1,6 @@
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::source::Span;
+use crate::types::ParameterCopy;
 
 pub struct EmitProblems;
 
@@ -10,7 +11,11 @@ pub struct UntiedNames {
 }
 
 impl EmitProblems {
-    pub fn uncapturable_changed_copy(param: &str, span: Span) -> Diagnostic {
+    pub fn uncapturable_changed_parameter(
+        param: &str,
+        span: Span,
+        copy: ParameterCopy,
+    ) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::UNCAPTURABLE_CHANGED_COPY,
             format!("the result cannot leave out the borrow of `{param}`"),
@@ -20,7 +25,8 @@ impl EmitProblems {
             "the result is a closure or an iterator, and a parameter takes a function or an iterator, so Rust ties the result to every borrow the function takes",
         )
         .with_help(format!(
-            "to change only this function's copy, start the body with `(local {param} {param})`"
+            "to change only this function's copy, start the body with `(local {param} {})`",
+            copy.expression(param)
         ))
     }
 

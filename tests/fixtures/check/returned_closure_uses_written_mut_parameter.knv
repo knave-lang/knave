@@ -1,0 +1,13 @@
+(defn bump-ref! ((t (mut i64)))
+  (set! t (+ (deref t) 1))
+  (fn () (deref t)))
+
+(defn counter! ((items (mut (vec i64))))
+  (push! items 1)
+  (fn () (len items)))
+
+(defn main ()
+  (local a 1)
+  (println ((bump-ref! a)))
+  (local items (vec 0))
+  (println ((counter! items))))

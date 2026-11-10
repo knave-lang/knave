@@ -1,0 +1,9 @@
+(defn wrap! (s g)
+  (set! s (str "a"))
+  (fn (y) (g y)))
+
+(defn main ()
+  (local s (str "z"))
+  (local f (wrap! s (fn (v) (* v 2))))
+  (println (f 4))
+  (println s))

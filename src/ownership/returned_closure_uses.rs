@@ -3,8 +3,8 @@ use crate::core::BindingId;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::source::Span;
 use crate::types::{
-    CopyRules, ReturnedValues, TypedBinder, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
-    TypedProgram,
+    CopyRules, ParameterCopy, ReturnedValues, TypedBinder, TypedExpr, TypedExprKind, TypedLambda,
+    TypedLeaf, TypedProgram,
 };
 
 pub struct ReturnedClosureUses<'a> {
@@ -54,13 +54,12 @@ impl<'a> ReturnedClosureUses<'a> {
     }
 
     fn problem(&self, function: BindingId, param: &TypedBinder, usage: Span) -> Diagnostic {
-        let function = self.program.bindings.get(function).name();
-        let name = self.program.bindings.get(param.binding).name();
-        if self.copy.is_copy(param.ty.referent()) {
-            OwnershipProblems::changed_copy_parameter_in_returned_closure(function, name, usage)
-        } else {
-            OwnershipProblems::changed_owned_parameter_in_returned_closure(function, name, usage)
-        }
+        OwnershipProblems::changed_parameter_in_returned_closure(
+            self.program.bindings.get(function).name(),
+            self.program.bindings.get(param.binding).name(),
+            usage,
+            ParameterCopy::of(param, self.copy),
+        )
     }
 
     fn use_site(expr: &TypedExpr, param: BindingId) -> Option<Span> {

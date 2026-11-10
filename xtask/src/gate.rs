@@ -62,14 +62,20 @@ impl QualityGate {
     }
 
     pub fn run_file_sizes(&self, base: Option<&str>) -> Result<ExitCode, TaskFailure> {
+        let checks = self.file_size_checks(base)?;
+        let checks: Vec<&dyn Check> = checks.iter().map(Box::as_ref).collect();
+        Ok(Self::conclude(&checks))
+    }
+
+    fn file_size_checks(&self, base: Option<&str>) -> Result<Vec<Box<dyn Check>>, TaskFailure> {
         let measured = ProductionLineCensus::measure(&self.production_sources()?);
         let ratchet = Ratchet::read(&self.root, Self::PRODUCTION_LINES, measured)?;
-        let raises = base
-            .map(|base| BaselineRaises::since(&self.root, Self::PRODUCTION_LINES.baseline, base))
-            .transpose()?;
-        let mut checks: Vec<&dyn Check> = vec![&ratchet];
-        checks.extend(raises.as_ref().map(|raises| raises as &dyn Check));
-        Ok(Self::conclude(&checks))
+        let mut checks: Vec<Box<dyn Check>> = vec![Box::new(ratchet)];
+        if let Some(base) = base {
+            let baseline = Self::PRODUCTION_LINES.baseline;
+            checks.push(Box::new(BaselineRaises::since(&self.root, baseline, base)?));
+        }
+        Ok(checks)
     }
 
     fn production_sources(&self) -> Result<Vec<SourceFile>, TaskFailure> {
@@ -185,6 +191,26 @@ mod tests {
                 readme,
             }
         }
+    }
+
+    #[test]
+    fn file_sizes_also_check_raises_against_a_base() {
+        let gate = QualityGate::new(WorkspaceFixture::repository_root());
+        let summaries = |base| -> Vec<String> {
+            gate.file_size_checks(base)
+                .expect("the repository reads")
+                .iter()
+                .map(|check| check.summary())
+                .collect()
+        };
+        assert_eq!(summaries(None).len(), 1);
+        let with_base = summaries(Some("HEAD"));
+        assert_eq!(with_base.len(), 2);
+        assert!(
+            with_base[1].contains("added or raised since the base"),
+            "{}",
+            with_base[1]
+        );
     }
 
     #[test]

@@ -1,0 +1,140 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/format/layout_trailing_fn.knv
+---
+(defn join-items (items) (reduce (iter items) (ok (str "")) (fn (joined item) (let-try (text joined) (ok (str text (describe item)))))))
+(defn print-twice () (for-each (range 0 2) (fn (i) (println (str "pass " i ": " (render-the-whole-report i))))))
+(defn leap-years (years) (filter (iter years) (fn (year) (and (= (% year 4) 0) (or (!= (% year 100) 0) (= (% year 400) 0))))))
+(defn any-draft? (pages) (any? (iter pages) (fn (page) (and (:draft page) (not (empty? (:title page)))))))
+(defn adult-ages (users) (map (filter users (fn (user) (and (>= (:age user) 18) (:active user)))) :age))
+(defn alone (items) (for-each (fn (item) (println (str "item " item ": " (describe item))))))
+(defn long-earlier (items) (reduce (iter (sorted-by-the-longest-name-first items)) (ok (str "starting text")) (fn (joined item) (ok (str joined item)))))
+(defn keyword-value (state) (button :label "save the current state" :on-click (fn (event) (save-state state event))))
+(defn not-last (items) (sort-with (fn (left right) (compare-the-two (:name left) (:name right))) items))
+(defn shaped (x) (when (ready? x) (fn (value) (println (str "the value is ready: " value)))))
+(defn one-line-earlier (rows) (fold (pairs (zip (keys the-rows) (values the-rows))) (fn (total row) (+ total (weight row)))))
+(defn broken-earlier (rows) (fold (pairs (zip (keys rows) (values rows) (labels rows))) 0 (fn (total row) (+ total (weight row)))))
+(defn trailing-comment (items) (reduce (iter items) ; the items in order
+ 0 (fn (total item) (+ total item))))
+(defn leading-comment (items) (reduce (iter items)
+ ; the starting total
+ 0 (fn (total item) (+ total item))))
+(defn blank-line (items) (reduce (iter items)
+
+ 0 (fn (total item) (+ total (weight-of-the-item item)))))
+((choose-a-reducer items) (iter items) (fn (total item) (+ total (weight item))))
+(defn at-the-width (items) (reduce (iter items) (ok (str "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")) (fn (joined item) (ok (str joined item)))))
+(defn past-the-width (items) (reduce (iter items) (ok (str "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")) (fn (joined item) (ok (str joined item)))))
+(defn branch-fn (x) (if (ready? x) (default-handler x) (fn (value) (println (str "the value is ready: " value)))))
+(export first-name second-name (fn (value) (println (str "the exported value is " value))))
+
+---
+(defn join-items (items)
+  (reduce (iter items) (ok (str ""))
+    (fn (joined item)
+      (let-try (text joined)
+        (ok (str text (describe item)))))))
+
+(defn print-twice ()
+  (for-each (range 0 2)
+    (fn (i)
+      (println (str "pass " i ": " (render-the-whole-report i))))))
+
+(defn leap-years (years)
+  (filter (iter years)
+    (fn (year)
+      (and (= (% year 4) 0)
+           (or (!= (% year 100) 0)
+               (= (% year 400) 0))))))
+
+(defn any-draft? (pages)
+  (any? (iter pages)
+    (fn (page)
+      (and (:draft page)
+           (not (empty? (:title page)))))))
+
+(defn adult-ages (users)
+  (map (filter users
+         (fn (user)
+           (and (>= (:age user) 18) (:active user))))
+       :age))
+
+(defn alone (items)
+  (for-each (fn (item)
+              (println (str "item " item ": " (describe item))))))
+
+(defn long-earlier (items)
+  (reduce (iter (sorted-by-the-longest-name-first items))
+          (ok (str "starting text"))
+          (fn (joined item)
+            (ok (str joined item)))))
+
+(defn keyword-value (state)
+  (button :label "save the current state"
+          :on-click (fn (event) (save-state state event))))
+
+(defn not-last (items)
+  (sort-with (fn (left right)
+               (compare-the-two (:name left) (:name right)))
+             items))
+
+(defn shaped (x)
+  (when (ready? x)
+    (fn (value)
+      (println (str "the value is ready: " value)))))
+
+(defn one-line-earlier (rows)
+  (fold (pairs (zip (keys the-rows) (values the-rows)))
+    (fn (total row) (+ total (weight row)))))
+
+(defn broken-earlier (rows)
+  (fold (pairs (zip (keys rows)
+                    (values rows)
+                    (labels rows)))
+        0
+        (fn (total row) (+ total (weight row)))))
+
+(defn trailing-comment (items)
+  (reduce (iter items) ; the items in order
+          0
+          (fn (total item) (+ total item))))
+
+(defn leading-comment (items)
+  (reduce (iter items)
+          ; the starting total
+          0
+          (fn (total item) (+ total item))))
+
+(defn blank-line (items)
+  (reduce (iter items)
+
+          0
+          (fn (total item)
+            (+ total (weight-of-the-item item)))))
+
+((choose-a-reducer items)
+ (iter items)
+ (fn (total item)
+   (+ total (weight item))))
+
+(defn at-the-width (items)
+  (reduce (iter items) (ok (str "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"))
+    (fn (joined item)
+      (ok (str joined item)))))
+
+(defn past-the-width (items)
+  (reduce (iter items)
+          (ok (str "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"))
+          (fn (joined item)
+            (ok (str joined item)))))
+
+(defn branch-fn (x)
+  (if (ready? x)
+    (default-handler x)
+    (fn (value)
+      (println (str "the value is ready: " value)))))
+
+(export first-name second-name
+        (fn (value)
+          (println (str "the exported value is " value))))

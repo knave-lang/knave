@@ -102,7 +102,17 @@ impl Atom {
     }
 }
 
+impl ListNode {
+    pub fn head_name(&self) -> Option<&str> {
+        self.entries.first()?.node.symbol_name()
+    }
+}
+
 impl Entry {
+    pub fn breaks_line(&self, index: usize) -> bool {
+        self.trailing_comment.is_some() || self.interrupts_line(index)
+    }
+
     pub fn is_interrupted(&self) -> bool {
         !self.leading_comments.is_empty() || self.blank_before_node
     }

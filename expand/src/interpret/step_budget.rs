@@ -8,10 +8,17 @@ pub struct StepBudget {
     counts: Rc<StepCounts>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Meter {
+    On,
+    Off,
+}
+
 #[derive(Debug)]
 struct StepCounts {
     limit: Cell<u64>,
     spent: Cell<u64>,
+    meter: Meter,
     first_passed_at: Cell<Option<Span>>,
 }
 
@@ -29,14 +36,19 @@ impl StepBudget {
     }
 
     pub fn unmetered() -> Self {
-        Self::of(Self::UNMETERED_LIMIT)
+        Self::with_counts(Self::UNMETERED_LIMIT, Meter::Off)
     }
 
     fn of(limit: u64) -> Self {
+        Self::with_counts(limit, Meter::On)
+    }
+
+    fn with_counts(limit: u64, meter: Meter) -> Self {
         Self {
             counts: Rc::new(StepCounts {
                 limit: Cell::new(limit),
                 spent: Cell::new(0),
+                meter,
                 first_passed_at: Cell::new(None),
             }),
         }
@@ -65,7 +77,9 @@ impl StepBudget {
     }
 
     pub fn set_limit(&self, limit: u64) {
-        self.counts.limit.set(limit);
+        if self.counts.meter == Meter::On {
+            self.counts.limit.set(limit);
+        }
     }
 }
 
@@ -137,10 +151,23 @@ mod tests {
     }
 
     #[test]
+    fn an_unmetered_budget_has_the_largest_limit() {
+        assert_eq!(StepBudget::unmetered().limit(), u64::MAX);
+    }
+
+    #[test]
     fn an_unmetered_budget_spends_without_end() {
         let budget = StepBudget::unmetered();
         for _ in 0..1_000 {
             assert!(budget.spend().is_ok());
         }
+    }
+
+    #[test]
+    fn setting_the_limit_of_an_unmetered_budget_does_nothing() {
+        let budget = StepBudget::unmetered();
+        budget.set_limit(0);
+        assert_eq!(budget.limit(), u64::MAX);
+        assert!(budget.spend().is_ok());
     }
 }

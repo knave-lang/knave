@@ -17,7 +17,7 @@
           keyword-name keyword? len list list?
           module-definitions module-exports module-notes
           module-symbol nth number-add number-lt number-sub
-          number? prepend program-modules rest same-binding?
+          prepend program-modules rest same-binding?
           sorted-names string string-contains? string-drop
           string-length string-lines string-lowercase
           string-strip-suffix string-trim-start string?
@@ -1394,9 +1394,9 @@
 
   (with-macro-steps 1000000000 (+ 1 2))
   => 3"
-  (if (number? count)
-    (set-macro-step-limit count)
-    (fail "`with-macro-steps` takes a number of steps"
-      count "write the number of steps as a whole number"
-      (quote (:label "not a number"))))
-  form)
+  (if (set-macro-step-limit count)
+    form
+    (fail "`with-macro-steps` takes a whole number of steps"
+      count
+      "write a whole number from 0 to 18446744073709551615"
+      (quote (:label "not a number of steps")))))

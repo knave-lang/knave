@@ -324,6 +324,14 @@ mod tests {
     }
 
     #[test]
+    fn a_listed_subject_at_the_limit_must_leave_the_baseline() {
+        assert_eq!(
+            RatchetCase::details(&[("src/a.rs", 500)], "src/a.rs 900"),
+            "  src/a.rs has 500 production lines, within the limit of 500. Remove its entry from xtask/baselines/production_lines.txt.\n"
+        );
+    }
+
+    #[test]
     fn a_listed_subject_that_no_longer_exists_must_leave_the_baseline() {
         assert_eq!(
             RatchetCase::details(&[], "src/gone.rs 900"),

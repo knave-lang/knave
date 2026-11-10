@@ -31,6 +31,7 @@ mod structural_impls;
 mod template;
 mod type_anchor;
 mod types;
+mod unlent_parameters;
 mod unsized_parameters;
 mod untied_borrows;
 mod writer;

@@ -747,10 +747,10 @@ impl OwnershipProblems {
 
     pub fn changed_parameter_in_returned_closure(
         function: &str,
-        param: &str,
-        usage: Span,
         copy: ParameterCopy,
+        usage: Span,
     ) -> Diagnostic {
+        let param = copy.name();
         Diagnostic::error(
             DiagnosticCode::RETURNED_CLOSURE_USES_CHANGED_PARAMETER,
             format!("a returned closure cannot use `{param}`, which `{function}` changes"),
@@ -760,8 +760,7 @@ impl OwnershipProblems {
             "`{param}` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives"
         ))
         .with_help(format!(
-            "copy it first with `(local value {})` and use `value` in the closure",
-            copy.expression(param)
+            "copy it first with `(local value {copy})` and use `value` in the closure"
         ))
     }
 

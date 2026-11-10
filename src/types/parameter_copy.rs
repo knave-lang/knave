@@ -1,29 +1,45 @@
+use std::fmt;
+
 use super::copy::CopyRules;
 use super::typed::TypedBinder;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ParameterCopy {
+pub struct ParameterCopy<'n> {
+    name: &'n str,
+    form: CopyForm,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CopyForm {
     Read,
     Dereference,
     Clone,
 }
 
-impl ParameterCopy {
-    pub fn of(param: &TypedBinder, copy: &CopyRules) -> Self {
-        if !copy.is_copy(param.ty.referent()) {
-            ParameterCopy::Clone
+impl<'n> ParameterCopy<'n> {
+    pub fn of(name: &'n str, param: &TypedBinder, copy: &CopyRules) -> Self {
+        let form = if !copy.is_copy(param.ty.referent()) {
+            CopyForm::Clone
         } else if param.annotated {
-            ParameterCopy::Dereference
+            CopyForm::Dereference
         } else {
-            ParameterCopy::Read
-        }
+            CopyForm::Read
+        };
+        Self { name, form }
     }
 
-    pub fn expression(self, param: &str) -> String {
-        match self {
-            ParameterCopy::Read => param.to_string(),
-            ParameterCopy::Dereference => format!("(deref {param})"),
-            ParameterCopy::Clone => format!("(clone {param})"),
+    pub fn name(&self) -> &'n str {
+        self.name
+    }
+}
+
+impl fmt::Display for ParameterCopy<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = self.name;
+        match self.form {
+            CopyForm::Read => write!(formatter, "{name}"),
+            CopyForm::Dereference => write!(formatter, "(deref {name})"),
+            CopyForm::Clone => write!(formatter, "(clone {name})"),
         }
     }
 }

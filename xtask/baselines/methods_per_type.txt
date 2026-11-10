@@ -18,7 +18,7 @@ src/cli/library_walk.rs::LibraryWalk 22
 src/cli/located_project.rs::LocatedProject 23
 src/cli/terminal.rs::Terminal 59
 src/emit/expressions.rs::ExpressionEmitter 229
-src/emit/items.rs::ItemEmitter 85
+src/emit/items.rs::ItemEmitter 84
 src/emit/plan.rs::EmitPlan 48
 src/emit/result_borrows.rs::BodyFlows 30
 src/emit/result_borrows.rs::ResultBorrows 23

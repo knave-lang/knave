@@ -1,0 +1,8 @@
+(defstruct reading
+  :value i64
+  :valid bool)
+
+(defn checked (r)
+  (match r
+    ((reading _ true) 1)
+    ((reading _ false) 0)))

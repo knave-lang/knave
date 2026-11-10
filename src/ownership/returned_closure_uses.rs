@@ -54,11 +54,11 @@ impl<'a> ReturnedClosureUses<'a> {
     }
 
     fn problem(&self, function: BindingId, param: &TypedBinder, usage: Span) -> Diagnostic {
+        let name = self.program.bindings.get(param.binding).name();
         OwnershipProblems::changed_parameter_in_returned_closure(
             self.program.bindings.get(function).name(),
-            self.program.bindings.get(param.binding).name(),
+            ParameterCopy::of(name, param, self.copy),
             usage,
-            ParameterCopy::of(param, self.copy),
         )
     }
 

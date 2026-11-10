@@ -7,4 +7,4 @@ src/ownership/kinds.rs::ClosureKinds 21
 src/ownership/kinds.rs::KindSources 11
 src/ownership/moves.rs::MoveChecker 18
 src/types/checker.rs::TypeChecker 74
-src/types/typed.rs::TypedProgram 37
+src/types/typed.rs::TypedProgram 36

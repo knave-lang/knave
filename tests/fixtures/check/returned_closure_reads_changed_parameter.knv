@@ -13,14 +13,17 @@
 
 (defn walk! (x ys)
   (set! x (+ x 1))
-  (local it (map (iter ys) (fn (y) (+ (deref y) x))))
+  (local it
+    (map (iter ys) (fn (y) (+ (deref y) x))))
   (set! x (+ x 100))
   it)
 
 (defn branch-adder! (x up)
   (set! x (+ x 1))
   (local f (fn (y) (+ y x)))
-  (if up (set! x (+ x 5)) (set! x (- x 5)))
+  (if up
+    (set! x (+ x 5))
+    (set! x (- x 5)))
   f)
 
 (defn bump! (n) (set! n (+ n 7)))
@@ -45,15 +48,15 @@
 
 (defn seeded-adder! (x)
   (set! x (+ x 1))
-  (loop (f (fn (y) (+ y x)))
-    f))
+  (loop (f (fn (y) (+ y x))) f))
 
 (defn main ()
   (local a 1)
   (local ys (vec 10 20))
   (println ((snap! a)))
   (println ((shown-adder! a) 1))
-  (for-each (walk! a ys) (fn (v) (println v)))
+  (for-each (walk! a ys)
+            (fn (v) (println v)))
   (println ((branch-adder! a true) 0))
   (println ((bumped-adder! a) 0))
   (println ((called-adder! a) 0))

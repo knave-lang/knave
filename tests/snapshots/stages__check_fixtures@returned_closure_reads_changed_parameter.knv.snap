@@ -22,54 +22,54 @@ error[L0517]: a returned closure cannot use `x`, which `shown-adder!` changes
   = help: copy it first with `(local value x)` and use `value` in the closure
 
 error[L0517]: a returned closure cannot use `x`, which `walk!` changes
-  --> check/returned_closure_reads_changed_parameter.knv:16:49
+  --> check/returned_closure_reads_changed_parameter.knv:17:41
    |
-16 |   (local it (map (iter ys) (fn (y) (+ (deref y) x))))
-   |                                                 ^ the closure uses `x` here
+17 |     (map (iter ys) (fn (y) (+ (deref y) x))))
+   |                                         ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
 
 error[L0517]: a returned closure cannot use `x`, which `branch-adder!` changes
-  --> check/returned_closure_reads_changed_parameter.knv:22:25
+  --> check/returned_closure_reads_changed_parameter.knv:23:25
    |
-22 |   (local f (fn (y) (+ y x)))
+23 |   (local f (fn (y) (+ y x)))
    |                         ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
 
 error[L0517]: a returned closure cannot use `x`, which `bumped-adder!` changes
-  --> check/returned_closure_reads_changed_parameter.knv:30:25
+  --> check/returned_closure_reads_changed_parameter.knv:33:25
    |
-30 |   (local f (fn (y) (+ y x)))
+33 |   (local f (fn (y) (+ y x)))
    |                         ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
 
 error[L0517]: a returned closure cannot use `x`, which `called-adder!` changes
-  --> check/returned_closure_reads_changed_parameter.knv:36:19
+  --> check/returned_closure_reads_changed_parameter.knv:39:19
    |
-36 |   (local g (fn () x))
+39 |   (local g (fn () x))
    |                   ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
 
 error[L0517]: a returned closure cannot use `x`, which `looped-adder!` changes
-  --> check/returned_closure_reads_changed_parameter.knv:43:20
+  --> check/returned_closure_reads_changed_parameter.knv:46:20
    |
-43 |       (fn (y) (+ y x))
+46 |       (fn (y) (+ y x))
    |                    ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
 
 error[L0517]: a returned closure cannot use `x`, which `seeded-adder!` changes
-  --> check/returned_closure_reads_changed_parameter.knv:48:25
+  --> check/returned_closure_reads_changed_parameter.knv:51:25
    |
-48 |   (loop (f (fn (y) (+ y x)))
+51 |   (loop (f (fn (y) (+ y x))) f))
    |                         ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives

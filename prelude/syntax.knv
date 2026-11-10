@@ -22,12 +22,12 @@
 (use code bool-not closest-name concat declare-definition
           drop empty? fail field-keyword first keyword-field
           keyword-name keyword-trim-end keyword? len list
-          list? nth number-sub number? pattern-head? prepend
-          rest same-binding? string string? symbol
-          symbol-name symbol? take value-eq)
+          list? located nth number-sub number? pattern-head?
+          prepend require-module rest same-binding? string
+          string? symbol symbol-name symbol? take value-eq)
 
-(export -> ->> comment defn deftask let let-match let-try
-        loop the try->)
+(export -> ->> assert comment defn deftask deftest let
+        let-match let-try loop run-tests the try->)
 
 (def let
   (macro (form)
@@ -916,9 +916,7 @@
 
 (def deftask
   (macro (form)
-    (template (do
-                (use prelude/task define-task)
-                (define-task (splice (rest form)))))))
+    (call-in-module (quote prelude/task) "define-task" form)))
 
 (header-shape (deftask name parameters) :docstring)
 
@@ -932,3 +930,52 @@
   `false` is a switch that `--name` turns on. Each argument parses
   into its parameter's type. A string before at least one more body form is
   the docstring, whose first line the list of tasks shows.")
+
+(def deftest
+  (macro (form)
+    (call-in-module (quote prelude/test) "deftest" form)))
+
+(header-shape (deftest name) :docstring)
+
+(document (deftest name)
+  "Defines a test that `knave test` runs when its module belongs to the
+  project, not to a library.
+
+  A string before at least one more body form is the docstring, whose first
+  line a failure prints after the test's name. The test's function has an
+  introduced name, so no name of the program collides with it.
+
+  ```
+  (deftest addition
+    (assert (= (+ 1 2) 3)))
+  ```")
+
+(def assert
+  (macro (form)
+    (call-in-module (quote prelude/test) "assert" form)))
+
+(document (assert form)
+  "Ends the test with a failure unless `form` is true.
+
+  `(assert form \"message\")` adds a message to the failure. When `form` is
+  `(= left right)`, the failure shows both sides in their printed form.
+
+  ```
+  (deftest addition
+    (assert (= (+ 1 2) 3))
+    (assert (> 2 1) \"two is larger\"))
+  ```")
+
+(def run-tests
+  (macro (form)
+    (call-in-module (quote prelude/test) "run-tests" form)))
+
+(document (run-tests :marker marker)
+  "Runs the tests and docstring examples of the project's modules, as the
+  `main` that `knave test` builds.")
+
+(def call-in-module
+  (fn (module name form)
+    (template ((unquote (located (first form)
+                                 (symbol (require-module module) name)))
+               (splice (rest form))))))

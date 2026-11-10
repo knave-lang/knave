@@ -1,4 +1,4 @@
-(use prelude/test assert deftest doctest)
+(use prelude/test doctest)
 
 (deftest some-holds-a-value
   (assert (some? (some 1)))

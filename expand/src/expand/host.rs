@@ -154,11 +154,12 @@ impl CompileTimeHost for Expander<'_> {
     }
 
     fn module_symbol(&self, path: &Symbol, span: Span) -> Result<Symbol, Diagnostic> {
-        let record = self.loaded_module(path, span)?;
-        if ModuleSources::is_compiler_provided(record.path()) {
-            return Err(ExpandProblems::unknown_module(record.path(), span));
-        }
-        Ok(Symbol::with_scopes(path.name(), record.body_scopes()))
+        Self::symbol_of(self.loaded_module(path, span)?, span)
+    }
+
+    fn require_module(&mut self, path: &Symbol, span: Span) -> Result<Symbol, Diagnostic> {
+        let module = self.load_module(&ModulePath::new(path.name()), span)?;
+        Self::symbol_of(self.modules.get(module), span)
     }
 
     fn is_pattern_head(&self, head: &Symbol) -> bool {
@@ -187,6 +188,16 @@ impl CompileTimeHost for Expander<'_> {
 }
 
 impl Expander<'_> {
+    fn symbol_of(record: &ModuleRecord, span: Span) -> Result<Symbol, Diagnostic> {
+        if ModuleSources::is_compiler_provided(record.path()) {
+            return Err(ExpandProblems::unknown_module(record.path(), span));
+        }
+        Ok(Symbol::with_scopes(
+            record.path().as_str(),
+            record.body_scopes(),
+        ))
+    }
+
     fn loaded_module(&self, path: &Symbol, span: Span) -> Result<&ModuleRecord, Diagnostic> {
         let path = ModulePath::new(path.name());
         let module = self

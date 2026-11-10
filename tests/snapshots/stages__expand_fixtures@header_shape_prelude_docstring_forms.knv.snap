@@ -3,6 +3,6 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/header_shape_prelude_docstring_forms.knv
 ---
-(def syntax-docstring-forms (quote (defn deftask)))
+(def syntax-docstring-forms (quote (defn deftask deftest)))
 (def struct-docstring-forms (quote (defstruct)))
 (def macros-docstring-forms (quote (document defrule defmacro)))

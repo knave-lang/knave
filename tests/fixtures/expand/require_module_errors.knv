@@ -1,0 +1,13 @@
+(use code require-module symbol)
+
+(def missing-name
+  (macro (form)
+    (symbol (require-module (quote missing/module)) "name")))
+
+(def provided-name
+  (macro (form)
+    (symbol (require-module (quote code)) "name")))
+
+(def missing (missing-name))
+
+(def provided (provided-name))

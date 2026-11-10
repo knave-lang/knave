@@ -3,14 +3,5 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/test_without_use.knv
 ---
-error[L0201]: cannot find `deftest` in this scope
- --> check/test_without_use.knv:3:2
-  |
-3 | (deftest doubles
-  |  ^^^^^^^ not found in this scope
-  |
-help: a name with a similar spelling exists
-  |
-3 - (deftest doubles
-3 + (deftask doubles
-  |
+(type twice (fn (i64) i64))
+(type main (fn () unit))

@@ -1,6 +1,6 @@
-use super::git::Git;
 use super::results::ResultSet;
 use crate::failure::TaskFailure;
+use crate::git::Git;
 
 pub struct BenchHistory<'a> {
     git: Git<'a>,

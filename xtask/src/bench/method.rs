@@ -2,9 +2,9 @@ use std::process::{Command, Output};
 
 use super::callgrind::Callgrind;
 use super::corpus::Corpus;
-use super::git::Git;
 use super::header::ResultHeader;
 use crate::failure::TaskFailure;
+use crate::git::Git;
 
 pub struct MeasurementMethod<'a> {
     git: Git<'a>,

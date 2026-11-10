@@ -9,7 +9,7 @@ mod counter_run;
 mod failure;
 #[cfg(test)]
 mod fixture;
-mod git;
+
 mod header;
 mod history;
 mod measurement;
@@ -27,6 +27,7 @@ use std::process::ExitCode;
 use clap::{Args, Subcommand, ValueEnum};
 
 use crate::failure::TaskFailure;
+use crate::git::Git;
 use crate::language::LanguageSource;
 use crate::workspace::CargoWorkspace;
 use callgrind::Callgrind;
@@ -35,7 +36,6 @@ use compiler::{BuiltCompiler, CompilerBuild};
 use corpus::Corpus;
 use counter_gate::CounterGate;
 use counter_run::CounterRun;
-use git::Git;
 use header::ResultHeader;
 use history::BenchHistory;
 use method::MeasurementMethod;

@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use crate::baseline_raises::BaselineRaises;
 use crate::checks::{BadgeFreshness, Check, CleanEmittedRust, CoverageFloor, CrapLimit};
 use crate::crap::ScoredFunction;
 use crate::emitted_lints::{EmittedLints, LintedProgram};
@@ -60,10 +61,15 @@ impl QualityGate {
         Ok(Self::conclude(&[&CleanEmittedRust::new(linted)]))
     }
 
-    pub fn run_file_sizes(&self) -> Result<ExitCode, TaskFailure> {
+    pub fn run_file_sizes(&self, base: Option<&str>) -> Result<ExitCode, TaskFailure> {
         let measured = ProductionLineCensus::measure(&self.production_sources()?);
         let ratchet = Ratchet::read(&self.root, Self::PRODUCTION_LINES, measured)?;
-        Ok(Self::conclude(&[&ratchet]))
+        let raises = base
+            .map(|base| BaselineRaises::since(&self.root, Self::PRODUCTION_LINES.baseline, base))
+            .transpose()?;
+        let mut checks: Vec<&dyn Check> = vec![&ratchet];
+        checks.extend(raises.as_ref().map(|raises| raises as &dyn Check));
+        Ok(Self::conclude(&checks))
     }
 
     fn production_sources(&self) -> Result<Vec<SourceFile>, TaskFailure> {
@@ -179,6 +185,11 @@ mod tests {
                 readme,
             }
         }
+    }
+
+    #[test]
+    fn the_production_line_limit_is_500() {
+        assert_eq!(QualityGate::PRODUCTION_LINES.maximum, 500);
     }
 
     #[test]

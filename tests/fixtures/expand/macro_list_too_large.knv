@@ -1,0 +1,7 @@
+(use code list)
+
+(defmacro grow ()
+  ((fn (items) (recur (list items items)))
+   (list 1)))
+
+(defn main () (grow))

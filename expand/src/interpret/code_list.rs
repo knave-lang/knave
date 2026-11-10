@@ -5,7 +5,7 @@ use std::rc::Rc;
 use super::Value;
 use super::limit_problems::LimitProblems;
 use crate::diagnostic::Diagnostic;
-use crate::reader::{Form, FormKind, FormNesting};
+use crate::reader::{Form, FormCount, FormKind, FormNesting};
 use crate::source::Span;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -64,7 +64,7 @@ impl ListConversion {
 
     fn forms_of(&mut self, list: &CodeList) -> Result<Vec<Form>, ListTooLarge> {
         let mut forms = Vec::with_capacity(list.len());
-        for index in list.range.clone() {
+        for index in list.range.indices() {
             forms.push(self.form_of(&list.item(index))?);
         }
         Ok(forms)
@@ -90,8 +90,16 @@ impl ListNesting {
         Ok(Value::Form(list))
     }
 
-    fn of_items(values: &[Value]) -> Result<u32, NestedTooDeep> {
-        Self::admitted(1 + values.iter().map(Self::of_value).max().unwrap_or(0))
+    fn with_size_of_items(values: &[Value]) -> Result<(u32, usize), NestedTooDeep> {
+        let (deepest, size) = values
+            .iter()
+            .fold((0, ListSize::EMPTY), |(deepest, size), value| {
+                (
+                    deepest.max(Self::of_value(value)),
+                    size + ListSize::of_value(value),
+                )
+            });
+        Self::admitted(1 + deepest).map(|nesting| (nesting, size))
     }
 
     fn of_value(value: &Value) -> u32 {
@@ -114,9 +122,71 @@ impl ListNesting {
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct CodeList {
     items: ListItems,
-    range: Range<usize>,
+    range: ItemRange,
     span: Span,
     nesting: u32,
+    size: u32,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+struct ItemRange {
+    start: u32,
+    end: u32,
+}
+
+impl ItemRange {
+    fn new(start: usize, end: usize) -> Self {
+        Self {
+            start: Self::stored(start),
+            end: Self::stored(end),
+        }
+    }
+
+    fn stored(index: usize) -> u32 {
+        debug_assert!(
+            u32::try_from(index).is_ok(),
+            "a code list holds fewer than 2^32 values"
+        );
+        index as u32
+    }
+
+    fn start(&self) -> usize {
+        self.start as usize
+    }
+
+    fn end(&self) -> usize {
+        self.end as usize
+    }
+
+    fn len(&self) -> usize {
+        self.indices().len()
+    }
+
+    fn indices(&self) -> Range<usize> {
+        self.start()..self.end()
+    }
+}
+
+pub struct ListSize;
+
+impl ListSize {
+    pub const EMPTY: usize = 1;
+
+    pub fn of(list: &CodeList) -> usize {
+        list.size as usize
+    }
+
+    fn of_value(value: &Value) -> usize {
+        match value {
+            Value::Form(form) => FormCount::stored(form),
+            Value::List(list) => Self::of(list),
+            _ => Self::EMPTY,
+        }
+    }
+
+    fn stored(size: usize) -> u32 {
+        u32::try_from(size).unwrap_or(u32::MAX)
+    }
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -127,22 +197,25 @@ enum ListItems {
 
 impl CodeList {
     pub fn new(values: Vec<Value>, span: Span) -> Result<Self, NestedTooDeep> {
-        let nesting = ListNesting::of_items(&values)?;
+        let (nesting, size) = ListNesting::with_size_of_items(&values)?;
         Ok(Self {
-            range: 0..values.len(),
+            range: ItemRange::new(0, values.len()),
+            size: ListSize::stored(size),
             items: ListItems::Built(Rc::new(RefCell::new(values))),
             span,
             nesting,
         })
     }
 
+    #[inline]
     pub fn of_form(form: &Form) -> Option<Self> {
         let length = form.as_list()?.len();
         Some(Self {
             items: ListItems::Read(form.clone()),
-            range: 0..length,
+            range: ItemRange::new(0, length),
             span: form.span(),
             nesting: FormNesting::of(form),
+            size: ListSize::stored(FormCount::stored(form)),
         })
     }
 
@@ -151,19 +224,23 @@ impl CodeList {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.range.is_empty()
+        self.range.len() == 0
     }
 
     pub fn get(&self, index: usize) -> Option<Value> {
-        (index < self.len()).then(|| self.item(self.range.start + index))
+        (index < self.len()).then(|| self.item(self.range.start() + index))
     }
 
     pub fn slice(&self, range: Range<usize>, span: Span) -> Option<Self> {
         (range.start <= range.end && range.end <= self.len()).then(|| Self {
             items: self.items.clone(),
-            range: self.range.start + range.start..self.range.start + range.end,
+            range: ItemRange::new(
+                self.range.start() + range.start,
+                self.range.start() + range.end,
+            ),
             span,
             nesting: self.nesting,
+            size: self.size,
         })
     }
 
@@ -183,7 +260,7 @@ impl CodeList {
     }
 
     pub fn values(&self) -> Vec<Value> {
-        self.range.clone().map(|index| self.item(index)).collect()
+        self.range.indices().map(|index| self.item(index)).collect()
     }
 
     pub fn forms(&self) -> Result<Vec<Form>, ListTooLarge> {
@@ -204,7 +281,7 @@ impl CodeList {
         }
         *allowance = allowance.checked_sub(1).ok_or(PassedLimit::FormCount)?;
         let mut forms = Vec::with_capacity(self.len());
-        for index in self.range.clone() {
+        for index in self.range.indices() {
             forms.push(
                 self.item(index)
                     .to_form_within(allowance, enclosing_lists + 1)?,
@@ -219,13 +296,16 @@ impl CodeList {
         extra: Vec<Value>,
         span: Span,
     ) -> Result<Self, NestedTooDeep> {
-        let nesting = list.nesting.max(ListNesting::of_items(&extra)?);
+        let (extra_nesting, extra_size) = ListNesting::with_size_of_items(&extra)?;
+        let nesting = list.nesting.max(extra_nesting);
+        let size = ListSize::of(list).saturating_add(extra_size - ListSize::EMPTY);
         buffer.borrow_mut().extend(extra);
         Ok(Self {
-            range: list.range.start..buffer.borrow().len(),
+            range: ItemRange::new(list.range.start(), buffer.borrow().len()),
             items: ListItems::Built(Rc::clone(buffer)),
             span,
             nesting,
+            size: ListSize::stored(size),
         })
     }
 
@@ -240,7 +320,7 @@ impl CodeList {
 
     fn growable_buffer(&self) -> Option<&Rc<RefCell<Vec<Value>>>> {
         match &self.items {
-            ListItems::Built(buffer) if buffer.borrow().len() == self.range.end => Some(buffer),
+            ListItems::Built(buffer) if buffer.borrow().len() == self.range.end() => Some(buffer),
             _ => None,
         }
     }
@@ -248,7 +328,9 @@ impl CodeList {
 
 #[cfg(test)]
 mod tests {
-    use super::{CodeList, ListConversion, ListNesting, ListTooLarge, NestedTooDeep, PassedLimit};
+    use super::{
+        CodeList, ListConversion, ListNesting, ListSize, ListTooLarge, NestedTooDeep, PassedLimit,
+    };
     use crate::interpret::Value;
     use crate::reader::{Form, FormKind, Symbol};
     use crate::source::{SourceId, Span};
@@ -288,6 +370,30 @@ mod tests {
             let mut allowance = usize::MAX;
             value.to_form_within(&mut allowance, Self::NO_ENCLOSING_LISTS)
         }
+    }
+
+    #[test]
+    fn a_list_counts_itself_and_each_appearance_of_a_list_it_holds() {
+        let inner = NestedList::list_of(vec![NestedList::leaf(), NestedList::leaf()]);
+        let outer = NestedList::list_of(vec![Value::List(inner.clone()), Value::List(inner)]);
+        assert_eq!(ListSize::of(&outer), 7);
+    }
+
+    #[test]
+    fn appending_adds_the_size_of_each_new_value() {
+        let list = NestedList::list_of(vec![NestedList::leaf()]);
+        let longer = list
+            .appended(
+                vec![NestedList::leaf(), NestedList::leaf()],
+                NestedList::span(),
+            )
+            .expect("within the limit");
+        assert_eq!(ListSize::of(&longer), 4);
+    }
+
+    #[test]
+    fn a_size_past_what_a_list_stores_is_kept_at_the_largest() {
+        assert_eq!(ListSize::stored((1 << 32) + 1), u32::MAX);
     }
 
     #[test]
@@ -420,6 +526,14 @@ mod tests {
         let slice = list.slice(0..1, NestedList::span()).expect("in range");
         let wrapped = CodeList::new(vec![Value::List(slice)], NestedList::span());
         assert_eq!(wrapped.err(), Some(NestedTooDeep));
+    }
+
+    #[test]
+    fn a_read_list_takes_its_size_from_its_form() {
+        let leaf = Form::new(FormKind::Symbol(Symbol::new("leaf")), NestedList::span());
+        let form = Form::new(FormKind::List(vec![leaf.clone(), leaf]), NestedList::span());
+        let read = CodeList::of_form(&form).expect("a list form");
+        assert_eq!(ListSize::of(&read), 3);
     }
 
     #[test]

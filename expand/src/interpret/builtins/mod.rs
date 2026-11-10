@@ -1,4 +1,5 @@
 mod failure;
+mod joined_parts;
 mod leading_lines;
 mod lists;
 mod numbers;
@@ -14,10 +15,11 @@ pub use failure::FailureDescription;
 use std::cmp::Ordering;
 
 use super::arguments::{Arguments, BuiltinSite};
-use super::{CompileTimeHost, ListNesting, Value, WorkMeter};
+use super::code_list::ListSize;
+use super::{BuildLimit, CompileTimeHost, ListNesting, PlannedList, Value, WorkMeter};
 use crate::core::{Builtin, Declaration};
 use crate::diagnostic::Diagnostic;
-use crate::reader::{Form, FormKind, Number, NumberValue};
+use crate::reader::{Form, FormCount, FormKind, Number, NumberValue};
 use crate::source::Span;
 use leading_lines::DistinctLeadingLines;
 use lists::ListOperations;
@@ -294,6 +296,8 @@ struct Forms;
 impl Forms {
     fn list(items: Vec<Form>, span: Span, arguments: &Arguments) -> Result<Value, Diagnostic> {
         arguments.charge(items.len())?;
+        let forms = items.iter().map(FormCount::stored).sum::<usize>();
+        BuildLimit::of(arguments).check(PlannedList(ListSize::EMPTY + forms))?;
         ListNesting::form_list(items, span).map_err(|deep| deep.at(arguments.span()))
     }
 
@@ -305,8 +309,51 @@ impl Forms {
 
 #[cfg(test)]
 mod tests {
-    use super::BuiltinCall;
+    use super::{BuiltinCall, Forms};
     use crate::core::Builtin;
+    use crate::diagnostic::DiagnosticCode;
+    use crate::interpret::arguments::{Arguments, BuiltinSite};
+    use crate::interpret::{BuildLimit, StepBudget, WorkMeter};
+    use crate::reader::{Form, FormKind, Symbol};
+    use crate::source::{SourceId, Span};
+
+    struct WideForms;
+
+    impl WideForms {
+        const COPIES: usize = 16;
+
+        fn span() -> Span {
+            Span::new(SourceId::new(0), 0..1)
+        }
+
+        fn tree_past_a_sixteenth_of_the_limit() -> Form {
+            let leaf = Form::new(FormKind::Symbol(Symbol::new("leaf")), Self::span());
+            let leaves = vec![leaf; BuildLimit::LIST_SIZE / Self::COPIES];
+            Form::new(FormKind::List(leaves), Self::span())
+        }
+
+        fn meter() -> WorkMeter {
+            WorkMeter::new(StepBudget::unmetered(), Self::span())
+        }
+
+        fn arguments(meter: &WorkMeter) -> Arguments<'_> {
+            let site = BuiltinSite {
+                function: "module-notes",
+                span: Self::span(),
+            };
+            Arguments::new(site, Vec::new(), meter)
+        }
+    }
+
+    #[test]
+    fn a_form_list_past_the_list_limit_is_refused() {
+        let tree = WideForms::tree_past_a_sixteenth_of_the_limit();
+        let items = vec![tree; WideForms::COPIES];
+        let meter = WideForms::meter();
+        let refusal = Forms::list(items, WideForms::span(), &WideForms::arguments(&meter))
+            .expect_err("past the list limit");
+        assert_eq!(refusal.code(), Some(&DiagnosticCode::MACRO_VALUE_SIZE));
+    }
 
     #[test]
     fn each_builtin_finds_its_own_implementation_row() {

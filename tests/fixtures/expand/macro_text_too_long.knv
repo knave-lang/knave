@@ -1,0 +1,7 @@
+(use code string)
+
+(defmacro grow ()
+  ((fn (text) (recur (string text text)))
+   "ab"))
+
+(defn main () (grow))

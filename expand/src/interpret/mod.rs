@@ -1,4 +1,5 @@
 mod arguments;
+mod build_limit;
 mod builtins;
 mod code_list;
 mod limit_problems;
@@ -7,6 +8,7 @@ mod step_budget;
 mod value;
 mod work_meter;
 
+pub(crate) use build_limit::{BuildLimit, HeldNotes, LimitedText, PlannedList};
 pub use builtins::BuiltinCall;
 pub use code_list::{
     CodeList, ListConversion, ListNesting, ListTooLarge, NestedTooDeep, PassedLimit,
@@ -43,6 +45,7 @@ pub trait CompileTimeHost {
     fn expand_call(&mut self, call: Form) -> Result<Option<Form>, Diagnostic>;
     fn set_macro_step_limit(&mut self, limit: u64);
     fn add_module_note(&mut self, key: &str, note: Form);
+    fn module_note_count(&self) -> usize;
     fn module_notes(&self, context: &Symbol, key: &str) -> Vec<Form>;
     fn declare_definition(&mut self, name: Form, declaration: Declaration);
     fn form_location(&self, form: &Form) -> String;

@@ -18,6 +18,8 @@ mod introduced;
 mod macro_call;
 mod macro_function;
 mod macro_origins;
+#[cfg(test)]
+mod macro_value_limits;
 mod misplaced_definition;
 mod module_body;
 mod module_loading;
@@ -287,6 +289,18 @@ impl<'s> Expander<'s> {
             evaluated_forms: EvaluatedForms::new(spans),
             ..self
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn diagnostics_with_code(
+        &self,
+        code: &crate::diagnostic::DiagnosticCode,
+    ) -> impl Iterator<Item = &Diagnostic> {
+        self.diagnostics
+            .in_source_order()
+            .into_iter()
+            .chain(&self.recovered_diagnostics)
+            .filter(move |diagnostic| diagnostic.code() == Some(code))
     }
 
     pub fn with_prelude(

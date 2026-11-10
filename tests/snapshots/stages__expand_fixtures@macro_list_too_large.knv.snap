@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/macro_list_too_large.knv
+---
+error[L0355]: macro code built a value too large
+ --> expand/macro_list_too_large.knv:4:23
+  |
+4 |   ((fn (items) (recur (list items items)))
+  |                       ^^^^^^^^^^^^^^^^^^ `list` builds a list of 6291455 values here
+...
+7 | (defn main () (grow))
+  |               ------ in this macro call
+  |
+  = note: a list that macro code builds holds at most 4194304 values, counting each value inside it
+  = help: build a smaller list, or make the macro stop growing it

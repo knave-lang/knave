@@ -8,19 +8,19 @@
       item)))
 
 (defmacro compares ()
-  (value-eq (shared 1 200) 1))
+  (value-eq (shared 1 20) 1))
 
 (defmacro locates ()
-  (form-location (shared 1 200)))
+  (form-location (shared 1 20)))
 
 (defmacro prints ()
-  (string (shared 1 200)))
+  (string (shared 1 20)))
 
 (defmacro expands ()
-  (expand-call (shared 1 200)))
+  (expand-call (shared 1 20)))
 
 (defmacro moves ()
-  (located (quote x) (shared 1 200)))
+  (located (quote x) (shared 1 20)))
 
 (defn main ()
   (compares)

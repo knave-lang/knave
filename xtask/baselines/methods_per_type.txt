@@ -7,7 +7,7 @@ expand/src/expand/problems.rs::ExpandProblems 104
 expand/src/expand/session.rs::ExpansionSession 30
 expand/src/expand/shape.rs::Shape 21
 expand/src/interpret/arguments.rs::Arguments 22
-expand/src/interpret/builtins/text.rs::TextOperations 41
+expand/src/interpret/builtins/text.rs::TextOperations 39
 expand/src/mangle.rs::NameMangler 22
 expand/src/modules/sources.rs::ModuleSources 35
 expand/src/project/problems.rs::ProjectProblems 31

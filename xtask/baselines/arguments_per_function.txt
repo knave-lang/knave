@@ -51,7 +51,6 @@ expand/src/expand/recur_check.rs::RecurCheck::branches 4
 expand/src/expand/rust_type.rs::Expander::check_type_placeholders 5
 expand/src/expand/rust_type.rs::Expander::lower_rust_type_clauses 4
 expand/src/expand/saved_definitions.rs::DefinitionSaver::encode 4
-expand/src/format/block.rs::Block::list 4
 expand/src/format/layout.rs::LaidOut::list 4
 expand/src/format/layout.rs::ListAssembly::end_unit 4
 expand/src/format/layout.rs::ListAssembly::entry_layout 4
@@ -62,7 +61,6 @@ expand/src/format/layout.rs::ListAssembly::pair_value_layout 4
 expand/src/format/layout.rs::ListAssembly::place 5
 expand/src/format/layout.rs::ListAssembly::push_on_own_line 4
 expand/src/format/layout.rs::ListAssembly::unit 4
-expand/src/format/measure.rs::Measure::list 4
 expand/src/interpret/builtins/mod.rs::BuiltinCall::new 4
 expand/src/interpret/code_list.rs::CodeList::grown 4
 expand/src/interpret/mod.rs::Interpreter::eval_call 4
@@ -81,7 +79,6 @@ src/build/formatting.rs::Rustfmt::communicate 4
 src/build/mod.rs::RustCompiler::compile 4
 src/cli/definition_rounds.rs::DefinitionRounds::new 4
 src/cli/definition_rounds.rs::DefinitionRounds::record_names_no_longer_bound 4
-src/cli/enter_key.rs::EnterKey::handle 4
 src/cli/eval.rs::EvalCommand::new 4
 src/cli/eval.rs::ExpandedEvaluation::new 4
 src/cli/fmt.rs::FmtCommand::answer_standard_input 4

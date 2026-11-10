@@ -2,9 +2,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use syn::visit::{self, Visit};
-use syn::{Ident, ImplItem, ItemEnum, ItemImpl, ItemStruct, ItemUnion, Visibility};
+use syn::{Ident, ImplItem, ItemEnum, ItemImpl, ItemStruct, ItemUnion, Type, Visibility};
 
-use crate::function_owner::FunctionOwner;
+use super::module_address::ModuleFiles;
+use super::use_bindings::UseBindings;
 use crate::parsed_source::ParsedSource;
 use crate::ratchet::Counts;
 
@@ -24,6 +25,7 @@ impl TypeShapes {
             ShapeVisitor {
                 source,
                 definitions: &definitions,
+                bindings: UseBindings::of(source.syntax()),
                 census: &mut census,
             }
             .visit_file(source.syntax());
@@ -67,14 +69,17 @@ impl CrateType {
     }
 }
 
-#[derive(Default)]
 struct TypeDefinitions {
     files: BTreeMap<CrateType, BTreeSet<String>>,
+    modules: ModuleFiles,
 }
 
 impl TypeDefinitions {
     fn collect(sources: &[ParsedSource]) -> Self {
-        let mut definitions = Self::default();
+        let mut definitions = Self {
+            files: BTreeMap::new(),
+            modules: ModuleFiles::build(sources),
+        };
         for source in sources {
             DefinitionVisitor {
                 source,
@@ -92,15 +97,26 @@ impl TypeDefinitions {
             .insert(source.file().to_string());
     }
 
-    fn key<'a>(&'a self, source: &'a ParsedSource, name: &'a str) -> TypeKey<'a> {
-        let defined_in = self.files.get(&CrateType::of(source, name));
-        let file = match defined_in {
-            Some(files) if files.len() == 1 && !files.contains(source.file()) => {
-                files.first().map_or(source.file(), String::as_str)
-            }
-            _ => source.file(),
+    fn keys<'a>(&'a self, source: &'a ParsedSource, written: &'a ImplTarget) -> Vec<TypeKey<'a>> {
+        let name = written.name();
+        let Some(defined_in) = self.files.get(&CrateType::of(source, name)) else {
+            return vec![TypeKey {
+                file: source.file(),
+                name,
+            }];
         };
-        TypeKey { file, name }
+        let resolved = match written.module_path() {
+            Some(path) => self.modules.resolve(source.file(), path),
+            None => defined_in.get(source.file()),
+        };
+        let files: Vec<&String> = match resolved.filter(|file| defined_in.contains(*file)) {
+            Some(file) => vec![file],
+            None => defined_in.iter().collect(),
+        };
+        files
+            .into_iter()
+            .map(|file| TypeKey { file, name })
+            .collect()
     }
 }
 
@@ -174,22 +190,64 @@ impl ImplCensus {
     }
 }
 
+struct ImplTarget {
+    path: Vec<String>,
+    local: bool,
+}
+
+impl ImplTarget {
+    fn of(implementation: &ItemImpl, bindings: &UseBindings) -> Option<Self> {
+        let Type::Path(written) = implementation.self_ty.as_ref() else {
+            return None;
+        };
+        let path: Vec<String> = written
+            .path
+            .segments
+            .iter()
+            .map(|segment| segment.ident.to_string())
+            .collect();
+        let target = match path.as_slice() {
+            [name] => match bindings.path_of(name) {
+                Some(imported) => Self::through(imported.to_vec()),
+                None => Self { path, local: true },
+            },
+            _ => Self::through(path),
+        };
+        Some(target)
+    }
+
+    fn through(path: Vec<String>) -> Self {
+        Self { path, local: false }
+    }
+
+    fn name(&self) -> &str {
+        self.path.last().map_or("", String::as_str)
+    }
+
+    fn module_path(&self) -> Option<&[String]> {
+        (!self.local).then_some(self.path.as_slice())
+    }
+}
+
 struct ShapeVisitor<'a> {
     source: &'a ParsedSource,
     definitions: &'a TypeDefinitions,
+    bindings: UseBindings,
     census: &'a mut ImplCensus,
 }
 
 impl<'ast> Visit<'ast> for ShapeVisitor<'_> {
     fn visit_item_impl(&mut self, implementation: &'ast ItemImpl) {
-        let owner = FunctionOwner::of_impl(implementation);
-        let inherent_type = owner
-            .type_name()
-            .filter(|_| implementation.trait_.is_none());
-        if let Some(name) = inherent_type {
-            let key = self.definitions.key(self.source, name);
-            self.census
-                .record_impl(&key, self.source.file(), implementation);
+        let inherent_type = implementation
+            .trait_
+            .is_none()
+            .then(|| ImplTarget::of(implementation, &self.bindings))
+            .flatten();
+        if let Some(target) = inherent_type {
+            for key in self.definitions.keys(self.source, &target) {
+                self.census
+                    .record_impl(&key, self.source.file(), implementation);
+            }
         }
         visit::visit_item_impl(self, implementation);
     }
@@ -287,5 +345,57 @@ mod tests {
             "#[cfg(unix)] struct Point { x: i32, y: i32 } #[cfg(not(unix))] struct Point { x: i32 }",
         )]);
         assert_eq!(shapes.fields.get("src/a.rs::Point"), Some(&2));
+    }
+
+    #[test]
+    fn an_impl_counts_under_the_definition_its_use_names() {
+        let shapes = Sources::shapes(&[
+            (
+                "expand/src/expand/shape.rs",
+                "pub struct Shape; impl Shape { pub fn a(&self) {} }",
+            ),
+            (
+                "expand/src/format/shape.rs",
+                "pub struct Shape; impl Shape { fn b(&self) {} }",
+            ),
+            (
+                "expand/src/expand/extra.rs",
+                "use super::shape::Shape; impl Shape { pub fn one(&self) {} pub fn two(&self) {} }",
+            ),
+        ]);
+        let expand = "expand/src/expand/shape.rs::Shape";
+        let format = "expand/src/format/shape.rs::Shape";
+        assert_eq!(shapes.methods.get(expand), Some(&3));
+        assert_eq!(shapes.inherent_impl_files.get(expand), Some(&2));
+        assert_eq!(shapes.methods.get(format), Some(&1));
+        assert_eq!(shapes.inherent_impl_files.get(format), Some(&1));
+    }
+
+    #[test]
+    fn an_impl_through_a_written_path_counts_under_that_definition() {
+        let shapes = Sources::shapes(&[
+            ("src/expand/shape.rs", "pub struct Shape;"),
+            ("src/format/shape.rs", "pub struct Shape;"),
+            (
+                "src/expand/extra.rs",
+                "impl super::shape::Shape { fn one() {} }",
+            ),
+        ]);
+        assert_eq!(shapes.methods.get("src/expand/shape.rs::Shape"), Some(&1));
+        assert_eq!(shapes.methods.get("src/format/shape.rs::Shape"), None);
+    }
+
+    #[test]
+    fn an_impl_that_cannot_be_resolved_counts_under_every_definition() {
+        let shapes = Sources::shapes(&[
+            ("src/expand/shape.rs", "pub struct Shape;"),
+            ("src/format/shape.rs", "pub struct Shape;"),
+            (
+                "src/other.rs",
+                "use crate::expand::shape::*; impl Shape { fn one() {} }",
+            ),
+        ]);
+        assert_eq!(shapes.methods.get("src/expand/shape.rs::Shape"), Some(&1));
+        assert_eq!(shapes.methods.get("src/format/shape.rs::Shape"), Some(&1));
     }
 }

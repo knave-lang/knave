@@ -87,7 +87,7 @@ enum Task {
 struct RatchetTask {
     #[arg(
         long,
-        help = "Also refuse a baseline entry added or raised since this revision, unless a `Baseline-Accepted:` trailer names it"
+        help = "Also refuse a baseline entry added or raised since this revision, unless a `Baseline-Accepted:` trailer names its baseline and subject"
     )]
     base: Option<String>,
 }

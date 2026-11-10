@@ -18,12 +18,55 @@ impl Verdict {
     }
 
     fn announce(check: &dyn Check) -> bool {
-        let passes = check.passes();
-        if passes {
-            println!("ok: {}", check.summary());
+        println!("{}", Self::line(check));
+        check.passes()
+    }
+
+    fn line(check: &dyn Check) -> String {
+        if check.passes() {
+            format!("ok: {}", check.summary())
         } else {
-            println!("error: {}\n{}", check.summary(), check.details());
+            format!("error: {}\n{}", check.summary(), check.details())
         }
-        passes
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Verdict;
+    use crate::checks::Check;
+
+    struct FixedCheck {
+        passes: bool,
+    }
+
+    impl Check for FixedCheck {
+        fn passes(&self) -> bool {
+            self.passes
+        }
+
+        fn summary(&self) -> String {
+            "the summary".to_string()
+        }
+
+        fn details(&self) -> String {
+            "the details".to_string()
+        }
+    }
+
+    #[test]
+    fn a_passing_check_prints_its_summary() {
+        assert_eq!(
+            Verdict::line(&FixedCheck { passes: true }),
+            "ok: the summary"
+        );
+    }
+
+    #[test]
+    fn a_failing_check_prints_its_summary_and_details() {
+        assert_eq!(
+            Verdict::line(&FixedCheck { passes: false }),
+            "error: the summary\nthe details"
+        );
     }
 }

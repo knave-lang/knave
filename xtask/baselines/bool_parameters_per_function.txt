@@ -5,8 +5,6 @@ expand/src/format/layout.rs::ListAssembly::opens_run 1
 expand/src/format/layout.rs::ListAssembly::position 1
 expand/src/format/meaning.rs::MeaningComparison::same_form 1
 src/build/cargo_compiler.rs::CargoCompiler::target_for 1
-src/cli/enter_key.rs::EnterKey::handle 1
-src/cli/input_helper.rs::InputHelper::highlight_prompt 1
 src/emit/expressions.rs::ExpressionEmitter::add_fallback 1
 src/emit/expressions.rs::ExpressionEmitter::closure_body 1
 src/emit/expressions.rs::ExpressionEmitter::destructure_statement 1

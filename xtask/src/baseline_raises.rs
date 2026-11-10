@@ -21,7 +21,15 @@ impl BaselineRaises {
         let after = Baseline::read(root, file)?;
         let raises = Self::raises(&after, file, Self::file_at(&git, base, file)?)?;
         let log = Self::trailer_log(&git, base)?;
-        Ok(Self::new(file, raises, Self::accepted_subjects(&log)))
+        let accepted = Self::accepted_subjects(&log, Self::name_of(file));
+        Ok(Self::new(file, raises, accepted))
+    }
+
+    fn name_of(file: &str) -> &str {
+        Path::new(file)
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .unwrap_or(file)
     }
 
     fn new(file: &str, raises: Vec<Raise>, accepted: BTreeSet<String>) -> Self {
@@ -73,8 +81,15 @@ impl BaselineRaises {
         Ok(String::from_utf8_lossy(&output.stdout).into_owned())
     }
 
-    fn accepted_subjects(log: &str) -> BTreeSet<String> {
-        log.split_whitespace().map(String::from).collect()
+    fn accepted_subjects(log: &str, baseline: &str) -> BTreeSet<String> {
+        log.lines()
+            .filter_map(|trailer| {
+                let mut words = trailer.split_whitespace();
+                (words.next() == Some(baseline)).then_some(words)
+            })
+            .flatten()
+            .map(String::from)
+            .collect()
     }
 
     fn unaccepted(&self) -> impl Iterator<Item = &Raise> {
@@ -89,9 +104,10 @@ impl BaselineRaises {
             None => format!("joined {} with {}", self.file, raise.to),
         };
         format!(
-            "{} {change}. Only the project owner may approve that, with a `{}: {}` trailer.",
+            "{} {change}. Only the project owner may approve that, with a `{}: {} {}` trailer.",
             raise.subject,
             Self::TRAILER,
+            Self::name_of(&self.file),
             raise.subject
         )
     }
@@ -145,7 +161,8 @@ mod tests {
                     to: 600,
                 },
             ];
-            BaselineRaises::new(Self::FILE, raises, BaselineRaises::accepted_subjects(log))
+            let accepted = BaselineRaises::accepted_subjects(log, "production_lines");
+            BaselineRaises::new(Self::FILE, raises, accepted)
         }
     }
 
@@ -155,13 +172,14 @@ mod tests {
         assert!(!check.passes());
         assert_eq!(
             check.details(),
-            "  src/a.rs rose from 900 to 901 in xtask/baselines/production_lines.txt. Only the project owner may approve that, with a `Baseline-Accepted: src/a.rs` trailer.\n  src/b.rs joined xtask/baselines/production_lines.txt with 600. Only the project owner may approve that, with a `Baseline-Accepted: src/b.rs` trailer.\n"
+            "  src/a.rs rose from 900 to 901 in xtask/baselines/production_lines.txt. Only the project owner may approve that, with a `Baseline-Accepted: production_lines src/a.rs` trailer.\n  src/b.rs joined xtask/baselines/production_lines.txt with 600. Only the project owner may approve that, with a `Baseline-Accepted: production_lines src/b.rs` trailer.\n"
         );
     }
 
     #[test]
     fn a_trailer_accepts_the_raises_it_names() {
-        let check = RaiseCase::check("src/a.rs\n\nsrc/b.rs src/c.rs\n");
+        let check =
+            RaiseCase::check("production_lines src/a.rs\n\nproduction_lines src/b.rs src/c.rs\n");
         assert!(check.passes());
         assert_eq!(
             check.summary(),
@@ -171,9 +189,25 @@ mod tests {
 
     #[test]
     fn a_trailer_for_one_raise_leaves_the_other() {
-        let check = RaiseCase::check("src/b.rs\n");
+        let check = RaiseCase::check("production_lines src/b.rs\n");
         assert!(check.details().starts_with("  src/a.rs rose"));
         assert!(!check.details().contains("src/b.rs"));
+    }
+
+    #[test]
+    fn a_trailer_for_another_baseline_leaves_the_subject_refused() {
+        let check =
+            RaiseCase::check("module_cycle_partners src/a.rs src/b.rs\nsrc/a.rs src/b.rs\n");
+        assert!(!check.passes());
+        assert_eq!(check.unaccepted().count(), 2);
+    }
+
+    #[test]
+    fn a_baseline_is_named_by_its_file_stem() {
+        assert_eq!(
+            BaselineRaises::name_of("xtask/baselines/module_cycle_partners.txt"),
+            "module_cycle_partners"
+        );
     }
 
     #[test]

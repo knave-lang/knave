@@ -171,6 +171,15 @@ mod tests {
     }
 
     #[test]
+    fn a_cloned_budget_spends_from_the_same_steps() {
+        let budget = FormBudget::full();
+        budget.steps().set_limit(1);
+        let restored = budget.clone();
+        assert!(restored.steps().spend().is_ok());
+        assert!(budget.steps().spend().is_err());
+    }
+
+    #[test]
     fn a_full_budget_is_not_exhausted() {
         assert!(!FormBudget::full().is_exhausted());
     }

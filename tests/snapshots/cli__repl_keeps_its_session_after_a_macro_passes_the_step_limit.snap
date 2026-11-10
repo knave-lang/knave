@@ -1,0 +1,16 @@
+---
+source: tests/cli.rs
+expression: repl.transcript()
+---
+exit code: Some(0)
+--- stdout
+3
+--- stderr
+error[L0363]: macro code ran too many steps
+ --> <input 2>:1:24
+  |
+1 | (with-macro-steps 1000 (spin))
+  |                        ^^^^^^ this call passed 1000 macro steps
+  |
+  = note: the macro calls in one top-level form run at most 1000 steps: a step is one function call or one `recur`
+  = help: make the macro stop, or wrap the top-level form in `(with-macro-steps 10000 ...)`

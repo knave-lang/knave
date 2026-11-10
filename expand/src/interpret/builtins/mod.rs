@@ -3,6 +3,7 @@ mod leading_lines;
 mod lists;
 mod numbers;
 mod program;
+mod step_limit;
 mod strings;
 mod text;
 
@@ -20,6 +21,7 @@ use leading_lines::DistinctLeadingLines;
 use lists::ListOperations;
 use numbers::NumberOperations;
 use program::{ModuleOperations, ProgramOperations};
+use step_limit::StepLimitSetting;
 use strings::StringOperations;
 use text::TextOperations;
 
@@ -30,7 +32,7 @@ pub struct BuiltinCall {
 }
 
 impl BuiltinCall {
-    const IMPLEMENTATIONS: [(Builtin, Implementation); 71] = [
+    const IMPLEMENTATIONS: [(Builtin, Implementation); 72] = [
         (Builtin::First, |operations, _| operations.lists.first()),
         (Builtin::Rest, |operations, _| operations.lists.rest()),
         (Builtin::List, |operations, _| operations.lists.list()),
@@ -214,6 +216,11 @@ impl BuiltinCall {
                 .modules
                 .named(|path, span| host.require_module(path, span))
         }),
+        (Builtin::SetMacroStepLimit, |operations, host| {
+            operations
+                .step_limit
+                .apply(|limit| host.set_macro_step_limit(limit))
+        }),
         (Builtin::ProjectFileName, |operations, _| {
             operations.program.project_file_name()
         }),
@@ -255,6 +262,7 @@ struct Operations<'a> {
     modules: ModuleOperations<'a>,
     numbers: NumberOperations<'a>,
     program: ProgramOperations<'a>,
+    step_limit: StepLimitSetting<'a>,
     strings: StringOperations<'a>,
     leading_lines: DistinctLeadingLines<'a>,
     text: TextOperations<'a>,
@@ -267,6 +275,7 @@ impl<'a> Operations<'a> {
             modules: ModuleOperations::new(arguments, call_site),
             numbers: NumberOperations::new(arguments, call_site),
             program: ProgramOperations::new(arguments, call_site),
+            step_limit: StepLimitSetting::new(arguments),
             strings: StringOperations::new(arguments, call_site),
             leading_lines: DistinctLeadingLines::new(arguments, call_site),
             text: TextOperations::new(arguments, call_site),

@@ -50,6 +50,12 @@ impl StepBudget {
             }),
         }
     }
+
+    pub fn set_limit(&self, limit: u64) {
+        let spent = self.counts.limit.get() - self.counts.remaining.get();
+        self.counts.limit.set(limit);
+        self.counts.remaining.set(limit.saturating_sub(spent));
+    }
 }
 
 #[cfg(test)]
@@ -77,6 +83,25 @@ mod tests {
         let clone = budget.clone();
         assert!(clone.spend().is_ok());
         assert!(budget.spend().is_err());
+    }
+
+    #[test]
+    fn raising_the_limit_adds_the_difference() {
+        let budget = StepBudget::of(1);
+        budget.spend().expect("one step fits");
+        budget.set_limit(3);
+        assert!(budget.spend().is_ok());
+        assert!(budget.spend().is_ok());
+        assert_eq!(budget.spend(), Err(PassedStepLimit { limit: 3 }));
+    }
+
+    #[test]
+    fn lowering_the_limit_below_the_spent_steps_exhausts_the_budget() {
+        let budget = StepBudget::of(5);
+        budget.spend().expect("one step fits");
+        budget.spend().expect("two steps fit");
+        budget.set_limit(1);
+        assert_eq!(budget.spend(), Err(PassedStepLimit { limit: 1 }));
     }
 
     #[test]

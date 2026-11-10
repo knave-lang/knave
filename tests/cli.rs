@@ -140,6 +140,8 @@ const POINTS: &str = "(defstruct point :x i64 :y i64)\n";
 const PROMPT_DEFINITIONS: &str = "(defn square (n) (* n n))\n(defstruct point :x i64 :y i64)\n(->point (square 2) 3)\n(println \"side \" (square 3))\n";
 const PROMPT_DOC: &str =
     "(defn twice (x) \"Doubles a number.\" (* 2 x))\n(doc twice)\n(doc-page twice)\n";
+const PROMPT_RUNAWAY_MACRO: &str =
+    "(defmacro spin () ((fn () (recur))))\n(with-macro-steps 1000 (spin))\n(+ 1 2)\n";
 const PROMPT_INFER: &str = "(defn identity (x) x)\n(infer (vec 1 2))\n(infer identity)\n(infer none)\n(def text (infer identity))\ntext\n";
 const PROMPT_REDEFINITION: &str = "(defn square (n) (* n n))\n(defn cube (n) (* n (square n)))\n(cube 3)\n(defn square (n) (+ n n))\n(cube 3)\n";
 const PROMPT_DROPPING_REPLACEMENT: &str = "(defstruct point :x i64 :y i64)
@@ -3749,6 +3751,21 @@ fn repl_prints_a_doc_page_as_text() {
     let sandbox = Sandbox::new("repl_doc");
     let repl = sandbox.compiler_reading(PROMPT_DOC, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
+}
+
+#[test]
+fn repl_keeps_its_session_after_a_macro_passes_the_step_limit() {
+    let sandbox = Sandbox::new("repl_step_limit");
+    let repl = sandbox.compiler_reading(PROMPT_RUNAWAY_MACRO, &["repl"]);
+    insta::assert_snapshot!(repl.transcript());
+}
+
+#[test]
+fn eval_reports_a_macro_that_passes_the_step_limit() {
+    let sandbox = Sandbox::new("eval_step_limit")
+        .with_file("session.knv", "(defmacro spin () ((fn () (recur))))\n");
+    let eval = sandbox.compiler(&["eval", "session.knv", "(with-macro-steps 1000 (spin))"]);
+    insta::assert_snapshot!(eval.transcript());
 }
 
 #[test]

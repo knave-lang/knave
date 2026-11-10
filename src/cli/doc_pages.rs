@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use super::doc::ExpandedPage;
 use super::doc_folder::WrittenPage;
@@ -20,7 +20,7 @@ pub struct DocumentedModules {
     linked: LinkedModules,
 }
 
-type ModuleTypes = HashMap<String, Vec<TypedName>>;
+type ModuleTypes = FxHashMap<String, Vec<TypedName>>;
 
 struct LinkedModules {
     written: String,

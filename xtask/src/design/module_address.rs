@@ -139,12 +139,20 @@ impl ModuleFiles {
     }
 
     pub fn resolve(&self, file: &str, path: &[String]) -> Option<&String> {
+        self.locate(file, path).map(|(found, _)| found)
+    }
+
+    pub fn locate(&self, file: &str, path: &[String]) -> Option<(&String, Vec<String>)> {
         let address = self.address(file);
         let resolution = address.resolution(path)?;
         let absolute = &resolution.absolute;
         (resolution.shortest..=absolute.len())
             .rev()
-            .find_map(|length| self.files.get(&address.within(absolute[..length].to_vec())))
+            .find_map(|length| {
+                self.files
+                    .get(&address.within(absolute[..length].to_vec()))
+                    .map(|found| (found, absolute[length..].to_vec()))
+            })
     }
 }
 

@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/doc_find_doc_repeated_header.knv
+---
+(def quokka-area (fn (x) x))
+(def main (fn () ((rust "println!(\"{{}}{{}}\", {&0}, {&1})" (where ((part-type-0 display) (part-type-1 display)) (fn ((ref part-type-0) (ref part-type-1)) unit))) (shown 1) (quokka-area 1)) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_2 display)) (fn ((ref part-type-0_2)) unit))) "(find-doc quokka)\n\n(defn quokka-area (x))\n    Measures the pen.")))

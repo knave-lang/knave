@@ -11,12 +11,28 @@ use crate::source::Span;
 
 struct DocstringNotes {
     key: Rc<str>,
+    documented_terms_key: Rc<str>,
     noted_term: Value,
+}
+
+impl DocstringNotes {
+    fn of(key: &Value, documented_terms_key: &Value, noted_term: Value) -> Option<Self> {
+        Some(Self {
+            key: Self::symbol_name(key)?,
+            documented_terms_key: Self::symbol_name(documented_terms_key)?,
+            noted_term,
+        })
+    }
+
+    fn symbol_name(value: &Value) -> Option<Rc<str>> {
+        Some(value.as_form()?.as_symbol()?.shared_name())
+    }
 }
 
 impl Expander<'_> {
     const PAGE_MACRO: &'static str = "doc-page";
     const DOCSTRINGS_KEY: &'static str = "docstrings-key";
+    const DOCUMENTED_TERMS_KEY: &'static str = "documented-terms-key";
     const NOTED_TERM: &'static str = "noted-term";
     const TERM_NAMESPACES: [Namespace; 2] = [Namespace::Value, Namespace::Type];
 
@@ -52,11 +68,9 @@ impl Expander<'_> {
     fn docstring_notes(&mut self) -> Option<DocstringNotes> {
         let page_module = self.page_module()?;
         let key = self.exported_value(page_module, Self::DOCSTRINGS_KEY)?;
+        let documented_terms_key = self.exported_value(page_module, Self::DOCUMENTED_TERMS_KEY)?;
         let noted_term = self.exported_value(page_module, Self::NOTED_TERM)?;
-        Some(DocstringNotes {
-            key: key.as_form()?.as_symbol()?.shared_name(),
-            noted_term,
-        })
+        DocstringNotes::of(&key, &documented_terms_key, noted_term)
     }
 
     fn page_module(&self) -> Option<ModuleId> {
@@ -81,9 +95,10 @@ impl Expander<'_> {
         module: ModuleId,
         notes: &DocstringNotes,
     ) -> Vec<(Symbol, Span)> {
-        self.tables
-            .module_notes
-            .of(module, &notes.key)
+        [&notes.key, &notes.documented_terms_key]
+            .into_iter()
+            .flat_map(|key| self.tables.module_notes.of(module, key))
+            .collect::<Vec<Form>>()
             .into_iter()
             .filter_map(|note| self.noted_term(&notes.noted_term, note))
             .collect()

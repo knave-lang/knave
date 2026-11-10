@@ -1,5 +1,5 @@
-(use prelude/macros docstrings-key document header-shape
-                    map-list template)
+(use prelude/macros document header-shape map-list
+                    module-docstring-notes template)
 
 (use prelude/internal/macros docstring-before-body?)
 (use prelude/types vec)
@@ -342,7 +342,7 @@
 (def module-doc-tests
   (fn (target context)
     (concat (mapped-concat (fn (note) (term-doc-test target context note))
-                           (module-notes target docstrings-key))
+                           (module-docstring-notes target))
             (mapped-concat (fn (text) (doc-test target context target text))
                            (counted-module-docstring target)))))
 

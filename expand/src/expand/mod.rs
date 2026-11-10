@@ -4,6 +4,7 @@ mod compile_time_check;
 mod context;
 mod defining_call;
 mod documented_terms;
+mod enclosing_index;
 mod evaluated_forms;
 mod expression;
 mod failed_definition;

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/document_undefined_user_definer_note.knv
+---
+error[L0351]: this module documents `quokka-missing` but does not define it
+ --> expand/document_undefined_user_definer_note.knv:8:12
+  |
+8 | (note-only quokka-missing "Counts the pen.")
+  |            ^^^^^^^^^^^^^^ not defined in this module
+  |
+  = help: define `quokka-missing` in this module, or move this `document` to the module that defines it

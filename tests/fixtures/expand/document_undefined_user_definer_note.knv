@@ -1,0 +1,10 @@
+(use code add-module-note list)
+(use prelude/macros docstrings-key)
+
+(defmacro note-only (name text)
+  (add-module-note docstrings-key (list "value" name text))
+  (quote (do)))
+
+(note-only quokka-missing "Counts the pen.")
+
+(defn main () (println 1))

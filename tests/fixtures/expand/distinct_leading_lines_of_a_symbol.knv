@@ -1,0 +1,6 @@
+(use code distinct-leading-lines list)
+
+(defmacro kept-texts ()
+  (distinct-leading-lines (list "area" (quote width))))
+
+(defn main () (println (kept-texts)))

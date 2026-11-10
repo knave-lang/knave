@@ -1,0 +1,17 @@
+(use code len module-notes string symbol)
+
+(defn quokka (x)
+  "Counts the animals."
+  x)
+
+(defn lemming (x)
+  "Counts the others."
+  x)
+
+(defmacro notes-of-quokka ()
+  (string (len (module-notes (quote docstrings)
+                             (symbol (quote docstrings)
+                                     "docstrings-of-quokka")))))
+
+(defn main ()
+  (println (notes-of-quokka)))

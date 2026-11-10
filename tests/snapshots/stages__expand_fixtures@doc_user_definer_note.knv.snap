@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/doc_user_definer_note.knv
+---
+(def quokka-count (fn (x) x))
+(def page "(defn quokka-count (x))\n\nCounts the zzpen.")
+(def text "Counts the zzpen.")
+(def found "(find-doc zzpen)\n\n(defn quokka-count (x))\n    Counts the zzpen.")
+(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) page) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_2 display)) (fn ((ref part-type-0_2)) unit))) text) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_3 display)) (fn ((ref part-type-0_3)) unit))) found) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_4 display)) (fn ((ref part-type-0_4)) unit))) (quokka-count 1))))

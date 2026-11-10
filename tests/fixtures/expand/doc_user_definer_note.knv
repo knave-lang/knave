@@ -1,0 +1,23 @@
+(use code add-module-note list)
+(use prelude/macros docstrings-key)
+
+(defmacro noted-defn (name text)
+  (add-module-note docstrings-key (list "value" name text))
+  (list (quote defn)
+        name
+        (quote (x))
+        (quote x)))
+
+(noted-defn quokka-count "Counts the zzpen.")
+
+(def page (doc-page quokka-count))
+
+(def text (docstring quokka-count))
+
+(def found (doc-page (find-doc zzpen)))
+
+(defn main ()
+  (println page)
+  (println text)
+  (println found)
+  (println (quokka-count 1)))

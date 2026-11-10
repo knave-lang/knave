@@ -1,0 +1,9 @@
+(use doc_find_doc_repeated_header/undocumented shown)
+
+(defn quokka-area (x)
+  "Measures the pen."
+  x)
+
+(defn main ()
+  (println (shown 1) (quokka-area 1))
+  (println (doc-page (find-doc quokka))))

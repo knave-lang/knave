@@ -1,27 +1,32 @@
-(use prelude/internal/macros docstring-before-body?
+(use prelude/internal/macros add-docstring-note
+                             docstring-before-body?
                              docstring-before-parameters
                              docstrings-key documented-body?
+                             documented-terms-key
                              note-docstring noted-term
+                             term-docstrings-key
                              type-doc-key value-doc-key)
 
 (use code add-module-note bool-not closest-name concat
           current-module declare-macro-definition
-          definition-call definition-symbol drop empty?
-          expand-call fail field-keyword first keyword-field
+          definition-call definition-symbol
+          distinct-leading-lines drop empty? expand-call
+          fail field-keyword first keyword-field
           keyword-name keyword? len list list?
           module-definitions module-exports module-notes
           module-symbol nth number-add number-lt number-sub
           prepend program-modules rest same-binding?
           sorted-names string string-contains? string-drop
           string-length string-lines string-lowercase
-          string-strip-prefix string-strip-suffix
-          string-trim-start string? symbol symbol-name
-          symbol? take type-definition-call
-          type-definition-symbol value-eq)
+          string-strip-suffix string-trim-start string?
+          symbol symbol-name symbol? take
+          type-definition-call type-definition-symbol
+          value-eq)
 
 (export defmacro defrule defrule-with-value doc-body
         doc-header doc-page docstring docstrings-key
-        document header-shape listing-part map-list module
+        document documented-terms-key header-shape
+        listing-part map-list module module-docstring-notes
         noted-term template)
 
 (def map-list
@@ -664,9 +669,10 @@
   (docstring twice)
   => \"Doubles a number.\"
   ```"
-  (noted-docstring docstrings-key
-                   (concat (value-doc-key (documented-name header))
-                           (list header text))
+  (local note
+    (concat (value-doc-key (documented-name header))
+            (list header text)))
+  (noted-docstring (fn () (add-docstring-note note))
                    text))
 
 (def documented-name
@@ -680,11 +686,9 @@
         (quote (:label "not a name"))))))
 
 (def noted-docstring
-  (fn (key note text)
+  (fn (add-note text)
     (if (string? text)
-      (do
-        (add-module-note key note)
-        (quote (do)))
+      (do (add-note) (quote (do)))
       (fail "a docstring is a string"
         text "write it as a string literal"
         (quote (:label "not a string"))))))
@@ -769,7 +773,9 @@
 (header-shape (fail message))
 
 (defmacro module (text)
-  (noted-docstring (quote module-docstrings) text text))
+  (noted-docstring (fn ()
+                     (add-module-note (quote module-docstrings) text))
+                   text))
 
 (document (module text)
   "Documents the module it is written in.
@@ -961,11 +967,11 @@
           names
           (recur (concat names
                          (sorted-names
-                           (map-list
-                             (items-where
-                               (fn (note) (only-note-holds? wanted note))
-                               (module-notes (first paths) docstrings-key))
-                             noted-term)))
+                           (map-list (items-where
+                                       (fn (note)
+                                         (only-note-holds? wanted note))
+                                       (module-docstring-notes (first paths)))
+                                     noted-term)))
                  (rest paths)))))
     (noted-in (list) (program-modules))))
 
@@ -1069,38 +1075,17 @@
 
 (def distinct-entries
   (fn (entries)
-    (local kept-of
-      (fn (kept remaining)
-        (if (empty? remaining)
-          kept
-          (recur (if (shared-entry? (first remaining) (rest remaining))
-                   kept
-                   (concat kept (list (first remaining))))
-                 (rest remaining)))))
-    (kept-of (list) entries)))
+    (reversed (distinct-leading-lines (reversed entries)))))
 
 (def without-repeated-headers
-  (fn (entries)
-    (local kept-of
-      (fn (kept remaining)
-        (if (empty? remaining)
-          kept
-          (recur (if (shared-entry? (first remaining) kept)
-                   kept
-                   (concat kept (list (first remaining))))
-                 (rest remaining)))))
-    (kept-of (list) entries)))
+  (fn (entries) (distinct-leading-lines entries)))
 
-(def shared-entry?
-  (fn (entry later)
-    (if (empty? later)
-      false
-      (if (value-eq entry (first later))
-        true
-        (if (value-eq (first later)
-                      (string-strip-prefix (first later) (string entry "\n")))
-          (recur entry (rest later))
-          true)))))
+(def reversed
+  (fn (items)
+    (local last-index (number-sub (len items) 1))
+    (map-count (len items)
+      (fn (index)
+        (nth items (number-sub last-index index))))))
 
 (def malformed-term
   (fn (term)
@@ -1160,7 +1145,28 @@
 
 (def docstring-notes
   (fn (context key)
-    (notes-with-key key (module-notes context docstrings-key))))
+    (local noted
+      (notes-with-key key
+                      (module-notes context
+                                    (term-docstrings-key (noted-term key)))))
+    (if (empty? noted)
+      (notes-with-key key (module-notes context docstrings-key))
+      noted)))
+
+(def module-docstring-notes
+  (fn (context)
+    (local with-notes-of
+      (fn (notes terms)
+        (if (empty? terms)
+          notes
+          (recur (concat notes
+                         (module-notes context
+                                       (term-docstrings-key (first terms))))
+                 (rest terms)))))
+    (with-notes-of (module-notes context docstrings-key)
+                   (distinct-leading-lines
+                     (map-list (module-notes context documented-terms-key)
+                       (fn (entry) (string (noted-term entry))))))))
 
 (def notes-with-key
   (fn (key notes)
@@ -1351,16 +1357,27 @@
 
 (def join-with
   (fn (separator parts)
-    (local joined-onto
-      (fn (joined remaining)
-        (if (empty? remaining)
-          joined
-          (recur (string joined separator (first remaining))
-                 (rest remaining)))))
     (if (empty? parts)
       ""
-      (joined-onto (string (first parts))
-                   (rest parts)))))
+      (pairs-joined separator (map-list parts string)))))
+
+(def pairs-joined
+  (fn (separator parts)
+    (if (empty? (rest parts))
+      (first parts)
+      (recur separator
+             (adjacent-pairs-joined separator (list) parts)))))
+
+(def adjacent-pairs-joined
+  (fn (separator joined parts)
+    (if (empty? parts)
+      joined
+      (if (empty? (rest parts))
+        (concat joined parts)
+        (recur separator
+               (concat joined
+                       (list (string (first parts) separator (nth parts 1))))
+               (drop parts 2))))))
 
 (def without-trailing-newlines
   (fn (text)

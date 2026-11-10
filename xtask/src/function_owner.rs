@@ -1,5 +1,15 @@
 use syn::{Ident, ItemImpl, ItemTrait, Type};
 
+pub trait OwnerScope: Sized {
+    fn owner_slot(&mut self) -> &mut FunctionOwner;
+
+    fn within_owner(&mut self, owner: FunctionOwner, visit: impl FnOnce(&mut Self)) {
+        let outer = std::mem::replace(self.owner_slot(), owner);
+        visit(self);
+        *self.owner_slot() = outer;
+    }
+}
+
 #[derive(Default)]
 pub struct FunctionOwner {
     name: Option<String>,

@@ -23,7 +23,7 @@ impl RatchetGate {
     pub fn run(&self, ratchets: Vec<Ratchet>) -> Result<ExitCode, TaskFailure> {
         let checks = self.checks(ratchets)?;
         let checks: Vec<&dyn Check> = checks.iter().map(Box::as_ref).collect();
-        Ok(Verdict::of(&checks))
+        Ok(Verdict::announce(&checks))
     }
 
     fn checks(&self, ratchets: Vec<Ratchet>) -> Result<Vec<Box<dyn Check>>, TaskFailure> {

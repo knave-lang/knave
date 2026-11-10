@@ -9,7 +9,7 @@ use syn::{Block, ImplItemFn, ItemFn, ItemImpl, ItemMod, ItemTrait, Signature, Tr
 
 use crate::complexity::ComplexityCounter;
 use crate::failure::TaskFailure;
-use crate::function_owner::FunctionOwner;
+use crate::function_owner::{FunctionOwner, OwnerScope};
 use crate::source_file::SourceFile;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -131,11 +131,11 @@ impl FunctionCollector {
             complexity: ComplexityCounter::of(body),
         });
     }
+}
 
-    fn within_owner(&mut self, owner: FunctionOwner, visit: impl FnOnce(&mut Self)) {
-        let outer = std::mem::replace(&mut self.owner, owner);
-        visit(self);
-        self.owner = outer;
+impl OwnerScope for FunctionCollector {
+    fn owner_slot(&mut self) -> &mut FunctionOwner {
+        &mut self.owner
     }
 }
 

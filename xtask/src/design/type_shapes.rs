@@ -190,9 +190,9 @@ impl ImplCensus {
     }
 }
 
-struct ImplTarget {
-    path: Vec<String>,
-    local: bool,
+enum ImplTarget {
+    Local(String),
+    Through { name: String, path: Vec<String> },
 }
 
 impl ImplTarget {
@@ -206,26 +206,34 @@ impl ImplTarget {
             .iter()
             .map(|segment| segment.ident.to_string())
             .collect();
-        let target = match path.as_slice() {
+        match path.as_slice() {
             [name] => match bindings.path_of(name) {
-                Some(imported) => Self::through(imported.to_vec()),
-                None => Self { path, local: true },
+                Some(imported) => Self::through(imported),
+                None => Some(Self::Local(name.clone())),
             },
-            _ => Self::through(path),
-        };
-        Some(target)
+            _ => Self::through(&path),
+        }
     }
 
-    fn through(path: Vec<String>) -> Self {
-        Self { path, local: false }
+    fn through(path: &[String]) -> Option<Self> {
+        let name = path.last()?.clone();
+        Some(Self::Through {
+            name,
+            path: path.to_vec(),
+        })
     }
 
     fn name(&self) -> &str {
-        self.path.last().map_or("", String::as_str)
+        match self {
+            Self::Local(name) | Self::Through { name, .. } => name,
+        }
     }
 
     fn module_path(&self) -> Option<&[String]> {
-        (!self.local).then_some(self.path.as_slice())
+        match self {
+            Self::Local(_) => None,
+            Self::Through { path, .. } => Some(path),
+        }
     }
 }
 

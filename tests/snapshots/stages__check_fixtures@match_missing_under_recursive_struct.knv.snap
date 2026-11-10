@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_missing_under_recursive_struct.knv
+---
+error[L0433]: non-exhaustive `match`
+  --> check/match_missing_under_recursive_struct.knv:10:3
+   |
+10 |   (match value ((knot _ rope/frayed) 0)))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
+   |
+   = note: missing 1 case: `(knot _ (strand _))`
+   = help: add an arm for each missing case

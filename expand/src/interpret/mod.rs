@@ -175,13 +175,6 @@ impl<'h> Interpreter<'h> {
         self.call(&function, values, span)
     }
 
-    #[inline]
-    fn spend_step(&self) -> Result<(), Diagnostic> {
-        self.steps.spend().map_err(|passed| {
-            LimitProblems::too_many_steps(passed.limit, self.steps.first_passed_at(self.call_site))
-        })
-    }
-
     fn eval_recur(&mut self, arguments: &[Expr], env: &Env) -> Result<Step, Diagnostic> {
         Ok(Step::Recur(self.eval_arguments(arguments, env)?))
     }
@@ -230,6 +223,13 @@ impl<'h> Interpreter<'h> {
                 Err(diagnostic) => return Err(diagnostic),
             }
         }
+    }
+
+    #[inline]
+    fn spend_step(&self) -> Result<(), Diagnostic> {
+        self.steps.spend().map_err(|passed| {
+            LimitProblems::too_many_steps(passed.limit, self.steps.first_passed_at(self.call_site))
+        })
     }
 
     fn bind_arguments(closure: &Closure, arguments: Vec<Value>) -> Env {

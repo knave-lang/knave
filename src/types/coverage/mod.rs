@@ -2,6 +2,7 @@ mod constructor;
 mod constructor_catalog;
 mod cover_pattern;
 mod coverage_verdict;
+mod exhaustiveness;
 mod pattern_guard;
 mod pattern_matrix;
 mod query;
@@ -15,6 +16,7 @@ use rustc_hash::FxHashSet;
 pub(super) use constructor_catalog::ConstructorCatalog;
 use cover_pattern::CoverPattern;
 use coverage_verdict::CoverageVerdict;
+use exhaustiveness::Exhaustiveness;
 use pattern_guard::PatternGuard;
 use pattern_matrix::PatternMatrix;
 use query::Query;
@@ -61,12 +63,14 @@ impl<'a> MatchCoverage<'a> {
                 });
             }
         }
-        let missing_cases = self.missing_cases(&mut usefulness, &matrix, scrutinee.clone());
-        let mut verdict = CoverageVerdict::new(unreachable_arms, missing_cases);
-        if self.is_exhaustive_without_guards(&mut usefulness, &scrutinee, arms) {
-            verdict.mark_exhaustive_without_guards();
-        }
-        verdict
+        let exhaustiveness = match self.missing_cases(&mut usefulness, &matrix, scrutinee.clone()) {
+            Some(cases) => Exhaustiveness::Missing(cases),
+            None if self.is_exhaustive_without_guards(&mut usefulness, &scrutinee, arms) => {
+                Exhaustiveness::Complete
+            }
+            None => Exhaustiveness::OnlyWithGuards,
+        };
+        CoverageVerdict::new(unreachable_arms, exhaustiveness)
     }
 
     fn single_query<'q>(pattern: &'q CoverPattern, scrutinee: &'q Type) -> Query<'q> {

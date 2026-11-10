@@ -503,7 +503,7 @@
     (if (list? form)
       (pinned-at place
                  (map-list form
-                           (fn (item) (located-deeply place item))))
+                   (fn (item) (located-deeply place item))))
       (pinned-at place form))))
 
 (def named-task
@@ -732,8 +732,8 @@
     (check-task-modules (program-modules)
                         (map-list (rest form) string-text))
     (string-joined (map-list (program-tasks)
-                             (fn (note)
-                               (symbol-name (note-name note)))))))
+                     (fn (note)
+                       (symbol-name (note-name note)))))))
 
 (document (task-names module ...)
   "Returns the names of the program's tasks, one per line.
@@ -746,7 +746,7 @@
     (local notes (sorted-tasks (program-tasks)))
     (local width (widest (map-list notes task-call) 0))
     (string-joined (map-list notes
-                             (fn (note) (listing-line note width))))))
+                     (fn (note) (listing-line note width))))))
 
 (document (task-listing)
   "Returns one line per task: its name, its parameters and its summary.")
@@ -796,8 +796,8 @@
 (def sorted-tasks
   (fn (notes)
     (map-list (sorted-names (map-list notes note-name))
-              (fn (name)
-                (named-task (symbol-name name) notes)))))
+      (fn (name)
+        (named-task (symbol-name name) notes)))))
 
 (def string-text
   (fn (text) (string text)))

@@ -281,11 +281,11 @@ impl<'a> ExpressionEmitter<'a> {
         };
         let ty = self.types().show_in(&param.ty, position, lifetimes);
         let mutable = self.is_reassigned(param) || self.changes_in_place(param);
-        format!(
-            "{}{}: {ty}",
-            Self::mutability(mutable),
-            self.bind_name(param)
-        )
+        let binding = format!("{}{}", Self::mutability(mutable), self.bind_name(param));
+        match ty.as_str() {
+            RustTypes::INFERRED => binding,
+            _ => format!("{binding}: {ty}"),
+        }
     }
 
     fn bind_closure_parameter(&mut self, param: &TypedBinder) -> String {

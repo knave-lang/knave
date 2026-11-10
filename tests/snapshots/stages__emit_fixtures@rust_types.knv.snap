@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).emit_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/emit/rust_types.knv
 ---
 fn total(values: impl Iterator<Item = i64>) -> i64 {
@@ -11,7 +11,7 @@ fn main() {
     crate::rt::restore_default_sigpipe();
     let boxed_seven: Box<i64> = Box::new(7_i64);
     println!("{}", *boxed_seven);
-    let summed = |values: _| total(values);
+    let summed = |values| total(values);
     println!("{}", summed((1_i64..4)))
 }
 

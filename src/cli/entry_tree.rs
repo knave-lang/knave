@@ -30,12 +30,20 @@ enum TreeKind {
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct TreeFile {
-    pub module: String,
-    pub path: PathBuf,
+    module: String,
+    path: PathBuf,
 }
 
 impl TreeFile {
     const UNNAMABLE: [char; 4] = ['(', ')', '"', ';'];
+
+    pub fn new(module: String, path: PathBuf) -> Self {
+        Self { module, path }
+    }
+
+    pub fn into_module(self) -> String {
+        self.module
+    }
 
     pub fn is_unnamable(&self) -> bool {
         self.module
@@ -161,7 +169,7 @@ impl EntryTree {
 
     pub fn module_paths(&self) -> Result<Vec<String>, ExitStatus> {
         let files = self.module_files()?;
-        Ok(files.into_iter().map(|file| file.module).collect())
+        Ok(files.into_iter().map(TreeFile::into_module).collect())
     }
 
     fn module_files(&self) -> Result<Vec<TreeFile>, ExitStatus> {
@@ -203,7 +211,7 @@ impl EntryTree {
             if path.is_dir() {
                 self.collect_subdirectory(&path, files)?;
             } else if let Some(module) = self.module_path(&path) {
-                files.push(TreeFile { module, path });
+                files.push(TreeFile::new(module, path));
             }
         }
         Ok(())

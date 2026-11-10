@@ -17,7 +17,7 @@
   (set! name (str "fig"))
   (local value (clone name))
   (map (iter ys)
-       (fn (y) (+ (deref y) (len value)))))
+    (fn (y) (+ (deref y) (len value)))))
 
 (defn main ()
   (local name (str "apple"))
@@ -25,5 +25,5 @@
   (println ((loop-greeter! name)) name)
   (local ys (vec 10 20))
   (for-each (tagged! name ys)
-            (fn (v) (println v)))
+    (fn (v) (println v)))
   (println name))

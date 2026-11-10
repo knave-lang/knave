@@ -194,7 +194,7 @@ cargo test <narrowest test>
 - `cargo test` without a test target
 - `cargo test --test cli` without a test name
 - `cargo clippy --workspace`
-- `cargo build --profile local` to probe a pull request's unedited code: download the binaries, as `docs/pull-requests.md` says
+- `cargo build --release` or `cargo build --profile local` to probe a pull request's unedited code: download the binaries, as `docs/pull-requests.md` says
 - `git rebase -x` with a build command, or another loop that builds each commit
 - `cargo xtask coverage`
 - `nix flake check`

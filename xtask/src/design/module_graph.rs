@@ -282,6 +282,20 @@ mod tests {
     }
 
     #[test]
+    fn a_loop_of_glob_re_exports_ends_on_the_named_module() {
+        let partners = Modules::graph(&[
+            (
+                "src/types/mod.rs",
+                "mod a; mod b; pub use a::*; use b::Probe;",
+            ),
+            ("src/types/a.rs", "pub use super::*;"),
+            ("src/types/b.rs", "use super::Missing; pub struct Probe;"),
+        ])
+        .cycle_links();
+        assert_eq!(partners.get("src/types/b.rs"), Some(&1));
+    }
+
+    #[test]
     fn a_re_exported_module_leads_to_that_module() {
         let partners = Modules::graph(&[
             ("src/a.rs", "use crate::shapes::geometry; pub struct Thing;"),

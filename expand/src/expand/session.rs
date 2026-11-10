@@ -121,7 +121,9 @@ impl ExpansionSession<'_> {
             .map_err(Diagnostics::from)?;
         let mut scoped = form;
         Self::add_module_scopes(self.expander.modules.get(loaded), &mut scoped);
-        let lowered = self.lower_in(loaded, |expander| expander.lower_expr(&scoped));
+        let lowered = self.lower_in(loaded, |expander| {
+            expander.within_top_level_form(|expander| expander.lower_expr(&scoped))
+        });
         self.collect_diagnostics(lowered)
     }
 

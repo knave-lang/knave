@@ -65,3 +65,64 @@ impl Expander<'_> {
         most_helpful_error
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::Expander;
+    use crate::core::ModulePath;
+    use crate::modules::ModuleSources;
+    use crate::source::SourceMap;
+
+    struct ExpressionFixture {
+        sources: SourceMap,
+    }
+
+    impl ExpressionFixture {
+        const ENTRY: &str = "entry";
+        const SPINNING_MACRO: &str = "(use code number-gt number-sub)
+
+(defmacro spin-steps (count)
+  (local spin
+    (fn (left)
+      (if (number-gt left 0) (recur (number-sub left 1)) left)))
+  (spin count))";
+        const LOWERED_LIMIT: &str = "(with-macro-steps 20000 0)";
+        const SPENDS_PAST_THE_LOWERED_LIMIT: &str = "(spin-steps 20000)";
+
+        fn new() -> Self {
+            Self {
+                sources: SourceMap::default(),
+            }
+        }
+
+        fn expands_both(&mut self, first: &str, second: &str) -> bool {
+            let entry = self.sources.add(Self::ENTRY, Self::SPINNING_MACRO);
+            let mut session = Expander::new(
+                &mut self.sources,
+                ModuleSources::new(PathBuf::new(), PathBuf::new()),
+            )
+            .open(ModulePath::new(Self::ENTRY), &[entry])
+            .unwrap_or_else(|_| panic!("the entry expands"));
+            [first, second].iter().all(|text| {
+                let source = session.add_source(Self::ENTRY, text);
+                let form = session
+                    .read(source)
+                    .unwrap_or_else(|_| panic!("the expression reads"))
+                    .remove(0);
+                session
+                    .expression_in(&ModulePath::new(Self::ENTRY), form)
+                    .is_ok()
+            })
+        }
+    }
+
+    #[test]
+    fn each_expression_spends_from_its_own_step_budget() {
+        assert!(ExpressionFixture::new().expands_both(
+            ExpressionFixture::LOWERED_LIMIT,
+            ExpressionFixture::SPENDS_PAST_THE_LOWERED_LIMIT,
+        ));
+    }
+}

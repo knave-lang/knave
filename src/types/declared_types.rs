@@ -63,6 +63,7 @@ mod tests {
 
     const SOURCE: &str = "
         (struct reading (value i64))
+        (enum level low high)
         (defn readings ((items (vec i64))) items)
         (defn window ((items (ref (slice u8)))) (len items))
         (defn main () (println \"Leaf\"))";
@@ -134,6 +135,50 @@ mod tests {
             !fixture
                 .declared_types()
                 .is_unsized(&Type::Primitive(PrimitiveType::I64))
+        );
+    }
+
+    #[test]
+    fn a_struct_is_declared_and_is_a_struct() {
+        let fixture = DeclarationsFixture::new(SOURCE);
+        let reading = fixture.type_named("reading");
+        let declared = fixture.declared_types();
+        assert!(declared.declares(reading));
+        assert!(declared.is_struct(reading));
+    }
+
+    #[test]
+    fn an_enum_is_declared_and_is_not_a_struct() {
+        let fixture = DeclarationsFixture::new(SOURCE);
+        let level = fixture.type_named("level");
+        let declared = fixture.declared_types();
+        assert!(declared.declares(level));
+        assert!(!declared.is_struct(level));
+    }
+
+    #[test]
+    fn a_rust_type_is_not_declared() {
+        let fixture = DeclarationsFixture::new(SOURCE);
+        let Type::Named(vector, _) = fixture.parameter("readings") else {
+            panic!("a vector is a named type");
+        };
+        assert!(!fixture.declared_types().declares(vector));
+    }
+
+    #[test]
+    fn a_vector_is_not_a_box() {
+        let fixture = DeclarationsFixture::new(SOURCE);
+        let vector = fixture.parameter("readings");
+        assert!(!fixture.declared_types().is_box(&vector));
+    }
+
+    #[test]
+    fn a_number_is_not_a_box() {
+        let fixture = DeclarationsFixture::new(SOURCE);
+        assert!(
+            !fixture
+                .declared_types()
+                .is_box(&Type::Primitive(PrimitiveType::I64))
         );
     }
 }

@@ -82,3 +82,42 @@ impl From<Diagnostic> for Diagnostics {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::diagnostic::{DiagnosticCode, Label};
+    use crate::source::{SourceId, Span};
+
+    struct CollectionFixture;
+
+    impl CollectionFixture {
+        fn unbound(name: &str) -> Diagnostic {
+            let span = Span::new(SourceId::new(0), 0..4);
+            Diagnostic::error(
+                DiagnosticCode::UNBOUND_NAME,
+                format!("cannot find `{name}` in this scope"),
+                Label::new(span, "not found in this scope"),
+            )
+        }
+
+        fn titles(diagnostics: &Diagnostics) -> Vec<&str> {
+            diagnostics.items.iter().map(Diagnostic::title).collect()
+        }
+    }
+
+    #[test]
+    fn collecting_keeps_the_order_of_the_diagnostics() {
+        let collected: Diagnostics = ["first", "second"]
+            .into_iter()
+            .map(CollectionFixture::unbound)
+            .collect();
+        assert_eq!(
+            CollectionFixture::titles(&collected),
+            vec![
+                "cannot find `first` in this scope",
+                "cannot find `second` in this scope"
+            ]
+        );
+    }
+}

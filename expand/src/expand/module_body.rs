@@ -116,12 +116,11 @@ impl Expander<'_> {
         module: ModuleId,
         items: Vec<PendingItem>,
         core: &mut CoreModule,
-    ) {
-        for item in items {
-            if let Err(diagnostic) = self.lower_pending(module, item, core) {
-                self.recovered.add(diagnostic);
-            }
-        }
+    ) -> Vec<Diagnostic> {
+        items
+            .into_iter()
+            .filter_map(|item| self.lower_pending(module, item, core).err())
+            .collect()
     }
 
     pub(super) fn split_binder(binder: &Form) -> (&Form, Option<&Form>) {

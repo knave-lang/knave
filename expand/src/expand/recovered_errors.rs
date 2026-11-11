@@ -13,12 +13,8 @@ impl RecoveredErrors {
         if phase == Phase::CompileTime {
             return Err(error);
         }
-        self.add(error);
-        Ok(())
-    }
-
-    pub(super) fn add(&mut self, error: Diagnostic) {
         self.errors.push(error);
+        Ok(())
     }
 
     pub(super) fn mark(&self) -> ProblemMark {
@@ -38,6 +34,12 @@ impl RecoveredErrors {
             }
             Err(error) => Err(self.keep_distinct_beside(error, recovered)),
         }
+    }
+
+    pub(super) fn keep_distinct_since(&mut self, mark: ProblemMark, failures: Vec<Diagnostic>) {
+        let mut recovered = self.errors.split_off(mark.position());
+        recovered.extend(failures);
+        self.keep_distinct(recovered);
     }
 
     pub(super) fn take_first_since(&mut self, mark: ProblemMark) -> Option<Diagnostic> {
@@ -172,6 +174,26 @@ mod tests {
         let mark = fixture.recovered.mark();
         fixture.keep_at(4);
         let _ = fixture.recovered.settle_since(mark, Ok(()));
+        assert_eq!(fixture.starts(), [4, 4]);
+    }
+
+    #[test]
+    fn a_run_keeps_its_failures_beside_its_recovered_errors_once_each() {
+        let mut fixture = RecoveryFixture::new();
+        let mark = fixture.recovered.mark();
+        fixture.keep_at(4);
+        let failures = vec![RecoveryFixture::error_at(4), RecoveryFixture::error_at(8)];
+        fixture.recovered.keep_distinct_since(mark, failures);
+        assert_eq!(fixture.starts(), [4, 8]);
+    }
+
+    #[test]
+    fn a_run_leaves_errors_before_its_mark_alone() {
+        let mut fixture = RecoveryFixture::new();
+        fixture.keep_at(4);
+        let mark = fixture.recovered.mark();
+        let failures = vec![RecoveryFixture::error_at(4)];
+        fixture.recovered.keep_distinct_since(mark, failures);
         assert_eq!(fixture.starts(), [4, 4]);
     }
 

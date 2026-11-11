@@ -136,6 +136,9 @@ impl<'a> DefinitionRounds<'a> {
     }
 
     fn set_aside_dropped(&mut self, drop: DroppedNames) {
+        if drop.dropped.is_empty() {
+            return self.set_aside_documents(&drop);
+        }
         let names: Vec<&str> = drop.dropped.iter().map(|name| &*name.name).collect();
         let first = drop.dropped[0].span;
         let input = self.set_aside_input(&names, &drop.input);
@@ -145,6 +148,13 @@ impl<'a> DefinitionRounds<'a> {
             let reason = ExpandProblems::set_aside_reason(&drop.replacing, &name.name);
             self.pending.set_aside(name, self.entered.name(), &reason);
         }
+    }
+
+    fn set_aside_documents(&mut self, drop: &DroppedNames) {
+        let terms: Vec<&str> = drop.documents.iter().map(|term| &**term).collect();
+        let input = SetAsideInput::documents(&terms, drop.input.name(), self.entered.name());
+        let warning = ExpandProblems::dropped(&input, &drop.replacing, drop.input.span());
+        self.warnings.push(warning);
     }
 
     fn set_aside_input<'n>(

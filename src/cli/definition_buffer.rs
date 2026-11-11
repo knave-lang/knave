@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::expand::{BoundName, InputTerms};
+use crate::expand::{BoundName, DocumentsLeft, InputTerms};
 use crate::source::{SourceId, Span};
 
 #[derive(Clone)]
@@ -23,6 +23,7 @@ pub struct Replacement {
 pub struct DroppedNames {
     pub input: BufferedInput,
     pub dropped: Vec<BoundName>,
+    pub documents: Vec<Rc<str>>,
     pub replacing: Rc<str>,
 }
 
@@ -41,6 +42,10 @@ impl BufferedInput {
 
     pub fn source(&self) -> SourceId {
         self.span.source()
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
     }
 
     pub fn binds(&self, name: &BoundName) -> bool {
@@ -148,6 +153,9 @@ impl DefinitionBuffer {
     }
 
     fn drop_of(earlier: &BufferedInput, entered: &BufferedInput) -> Option<DroppedNames> {
+        if let Some(documents) = earlier.terms.documents_left_by(&entered.terms) {
+            return Self::documents_drop(earlier, documents);
+        }
         let dropped: Vec<BoundName> = earlier
             .names()
             .iter()
@@ -158,7 +166,17 @@ impl DefinitionBuffer {
         (!dropped.is_empty()).then(|| DroppedNames {
             input: earlier.clone(),
             dropped,
+            documents: Vec::new(),
             replacing: Rc::clone(&replacing.name),
+        })
+    }
+
+    fn documents_drop(earlier: &BufferedInput, documents: DocumentsLeft) -> Option<DroppedNames> {
+        (!documents.left.is_empty()).then(|| DroppedNames {
+            input: earlier.clone(),
+            dropped: Vec::new(),
+            documents: documents.left,
+            replacing: documents.replacing,
         })
     }
 }

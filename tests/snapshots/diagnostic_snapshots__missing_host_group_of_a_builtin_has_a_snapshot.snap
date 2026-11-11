@@ -1,0 +1,11 @@
+---
+source: tests/diagnostic_snapshots.rs
+expression: fixture.render(diagnostic)
+---
+error[L0364]: `origin` is not available where this code runs
+ --> sample.knv:1:1
+  |
+1 | origin
+  | ^^^^^^ used here
+  |
+  = help: this built-in works only inside a macro

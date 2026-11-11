@@ -1,21 +1,25 @@
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::source::Span;
 
-pub(super) struct HostProblems;
+pub struct HostProblems;
 
 impl HostProblems {
-    pub(super) fn missing_group_of_builtin(builtin: &str, span: Span) -> Diagnostic {
-        Self::missing_group(&format!("`{builtin}`"), span)
+    pub fn missing_group_of_builtin(builtin: &str, span: Span) -> Diagnostic {
+        Self::missing_group(
+            format!("`{builtin}` is not available where this code runs"),
+            span,
+        )
+        .with_help("this built-in works only inside a macro")
     }
 
-    pub(super) fn missing_global_values(span: Span) -> Diagnostic {
-        Self::missing_group("reading a global", span)
+    pub fn missing_global_values(span: Span) -> Diagnostic {
+        Self::missing_group("macro code cannot read a global here".to_string(), span)
     }
 
-    fn missing_group(what: &str, span: Span) -> Diagnostic {
+    fn missing_group(title: String, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::MISSING_HOST_GROUP,
-            format!("{what} is not available where this code runs"),
+            title,
             Label::new(span, "used here"),
         )
     }

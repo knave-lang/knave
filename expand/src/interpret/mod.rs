@@ -42,7 +42,7 @@ pub use expansion_callbacks::ExpansionCallbacks;
 pub use global_values::GlobalValues;
 pub use held_bytes::HeldBytes;
 pub use host::Host;
-use host_problems::HostProblems;
+pub use host_problems::HostProblems;
 pub use limit_problems::LimitProblems;
 pub(crate) use limited_text::LimitedText;
 pub use local_bindings::LocalBindings;
@@ -361,7 +361,7 @@ mod tests {
     fn the_refusal_of_a_global_read_says_what_was_refused() {
         let refusal = GlobalReadFixture::read_without_global_values();
         assert!(
-            refusal.title().contains("reading a global"),
+            refusal.title().contains("read a global"),
             "{}",
             refusal.title()
         );

@@ -1,0 +1,9 @@
+---
+source: tests/diagnostic_snapshots.rs
+expression: fixture.render(diagnostic)
+---
+error[L0364]: macro code cannot read a global here
+ --> sample.knv:1:1
+  |
+1 | origin
+  | ^^^^^^ used here

@@ -4,9 +4,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/revision_without_git.knv
 ---
 error[L0712]: library `keymap` has no source
- --> project/revision_without_git.knv:2:22
+ --> project/revision_without_git.knv:2:25
   |
-2 |          (libraries (keymap :rev "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678")))
-  |                      ^^^^^^ this library needs `:path` or `:git`
+2 |             (libraries (keymap
+  |                         ^^^^^^ this library needs `:path` or `:git`
   |
   = help: write `(keymap :path "../keymap")`, or `:git` with a `:rev`

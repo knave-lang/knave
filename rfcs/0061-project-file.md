@@ -1,6 +1,6 @@
 # RFC 0061: Project file, crate dependencies and libraries
 
-**Status:** Accepted. Amended 2026-11-08: the project owner decided that a program uses only the libraries its own project file lists, even when another library uses one. [docs/language.md: Projects](../docs/language.md#projects) states the rule.
+**Status:** Accepted. Amended 2026-11-08: the project owner decided that a program uses only the libraries its own project file lists, even when another library uses one. Amended 2026-11-10: the project owner renamed the file's form from `project` to `defproject`, to match the other forms that introduce a named thing. [docs/language.md: Projects](../docs/language.md#projects) states the rule.
 **Date:** 2026-11-07
 
 ## Problem

@@ -1,1 +1,1 @@
-(project app (libraries (hints :path "../hints")))
+(defproject app (libraries (hints :path "../hints")))

@@ -4,9 +4,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/library_without_source.knv
 ---
 error[L0712]: library `hints` has no source
- --> project/library_without_source.knv:1:30
+ --> project/library_without_source.knv:1:33
   |
-1 | (project browser (libraries (hints)))
-  |                              ^^^^^ this library needs `:path` or `:git`
+1 | (defproject browser (libraries (hints)))
+  |                                 ^^^^^ this library needs `:path` or `:git`
   |
   = help: write `(hints :path "../hints")`, or `:git` with a `:rev`

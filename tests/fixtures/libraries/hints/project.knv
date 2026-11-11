@@ -1,1 +1,1 @@
-(project hint-kit (libraries (keymap :path "../keymap")))
+(defproject hint-kit (libraries (keymap :path "../keymap")))

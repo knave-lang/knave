@@ -4,10 +4,10 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/dotted_name.knv
 ---
 error[L0718]: `..` is not a project name
- --> project/dotted_name.knv:1:10
+ --> project/dotted_name.knv:1:13
   |
-1 | (project ..)
-  |          ^^ expected a kebab-case name
+1 | (defproject ..)
+  |             ^^ expected a kebab-case name
   |
   = note: the name names the build directory and the program
   = help: use lowercase letters, digits and single dashes, as `my-program`

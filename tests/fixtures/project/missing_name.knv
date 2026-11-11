@@ -1,1 +1,1 @@
-(project :version "0.1.0")
+(defproject :version "0.1.0")

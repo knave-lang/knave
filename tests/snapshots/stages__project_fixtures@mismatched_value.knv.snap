@@ -4,25 +4,25 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/mismatched_value.knv
 ---
 error[L0706]: `:entry` takes a string
- --> project/mismatched_value.knv:2:17
+ --> project/mismatched_value.knv:2:20
   |
-2 |          :entry main
-  |                 ^^^^ expected a string
+2 |             :entry main
+  |                    ^^^^ expected a string
 
 error[L0706]: a feature is a string
- --> project/mismatched_value.knv:3:48
+ --> project/mismatched_value.knv:3:51
   |
-3 |          (dependencies (serde "1.0" :features (derive))
-  |                                                ^^^^^^ expected a string
+3 |             (dependencies (serde "1.0" :features (derive))
+  |                                                   ^^^^^^ expected a string
   |
 help: quote the feature's name
   |
-3 -          (dependencies (serde "1.0" :features (derive))
-3 +          (dependencies (serde "1.0" :features ("derive"))
+3 -             (dependencies (serde "1.0" :features (derive))
+3 +             (dependencies (serde "1.0" :features ("derive"))
   |
 
 error[L0706]: `:features` takes a list of strings
- --> project/mismatched_value.knv:4:46
+ --> project/mismatched_value.knv:4:49
   |
-4 |                        (itoa "1.0" :features "std")))
-  |                                              ^^^^^ expected a list of strings
+4 |                           (itoa "1.0" :features "std")))
+  |                                                 ^^^^^ expected a list of strings

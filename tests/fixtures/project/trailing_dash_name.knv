@@ -1,1 +1,1 @@
-(project my-app- :edition 2025)
+(defproject my-app- :edition 2025)

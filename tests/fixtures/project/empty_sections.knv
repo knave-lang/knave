@@ -1,4 +1,4 @@
-(project web2-app
-         (libraries)
-         (dependencies)
-         (dev-dependencies))
+(defproject web2-app
+            (libraries)
+            (dependencies)
+            (dev-dependencies))

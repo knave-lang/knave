@@ -1,1 +1,1 @@
-(project b (zzz))
+(defproject b (zzz))

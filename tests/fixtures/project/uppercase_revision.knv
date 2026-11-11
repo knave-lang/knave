@@ -1,3 +1,4 @@
-(project app
-         (libraries (keymap :git "https://example.com/keymap.git"
-                            :rev "A1B2C3D4E5F60718293A4B5C6D7E8F9012345678")))
+(defproject app
+            (libraries (keymap
+                         :git "https://example.com/keymap.git"
+                         :rev "A1B2C3D4E5F60718293A4B5C6D7E8F9012345678")))

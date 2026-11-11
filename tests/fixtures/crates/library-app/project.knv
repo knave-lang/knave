@@ -1,1 +1,1 @@
-(project app (libraries (helper :path "../helper")))
+(defproject app (libraries (helper :path "../helper")))

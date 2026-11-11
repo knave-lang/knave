@@ -1,1 +1,1 @@
-(project lib-climb :lib "missing/../../outside.knv")
+(defproject lib-climb :lib "missing/../../outside.knv")

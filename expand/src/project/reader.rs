@@ -22,7 +22,7 @@ struct ProjectForm<'f> {
 }
 
 impl ProjectReader {
-    pub const HEAD: &str = "project";
+    pub const HEAD: &str = "defproject";
     const KEYS: &[&str] = &["version", "entry", "lib", "edition"];
     const DEFAULT_VERSION: &str = "0.1.0";
     const DEFAULT_ENTRY: &str = "src/main";

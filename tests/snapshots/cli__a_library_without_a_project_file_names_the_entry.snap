@@ -3,9 +3,9 @@ source: tests/cli.rs
 expression: check.assert_exit_code(1).stderr()
 ---
 error[L0723]: library `hints` has no project file at `../nowhere/project.knv`
- --> project.knv:1:26
+ --> project.knv:1:29
   |
-1 | (project app (libraries (hints :path "../nowhere")))
-  |                          ^^^^^ this library's `:path` names no project
+1 | (defproject app (libraries (hints :path "../nowhere")))
+  |                             ^^^^^ this library's `:path` names no project
   |
   = help: point `:path` at the library's directory, which holds its project file

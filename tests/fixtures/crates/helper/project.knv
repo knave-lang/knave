@@ -1,1 +1,2 @@
-(project helper (dependencies (answer :path "../answer")))
+(defproject helper
+  (dependencies (answer :path "../answer")))

@@ -4,19 +4,19 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/invalid_library_name.knv
 ---
 error[L0721]: `KeyMap` is not a library name
- --> project/invalid_library_name.knv:2:22
+ --> project/invalid_library_name.knv:2:25
   |
-2 |          (libraries (KeyMap :path "../keymap")
-  |                      ^^^^^^ expected a kebab-case name
+2 |             (libraries (KeyMap :path "../keymap")
+  |                         ^^^^^^ expected a kebab-case name
   |
   = note: `use` reads a library's name as the first part of a module path
   = help: use lowercase letters, digits and single dashes, as `my-library`
 
 error[L0721]: `key_map` is not a library name
- --> project/invalid_library_name.knv:3:22
+ --> project/invalid_library_name.knv:3:25
   |
-3 |                     (key_map :path "../key-map")))
-  |                      ^^^^^^^ expected a kebab-case name
+3 |                        (key_map :path "../key-map")))
+  |                         ^^^^^^^ expected a kebab-case name
   |
   = note: `use` reads a library's name as the first part of a module path
   = help: use lowercase letters, digits and single dashes, as `my-library`

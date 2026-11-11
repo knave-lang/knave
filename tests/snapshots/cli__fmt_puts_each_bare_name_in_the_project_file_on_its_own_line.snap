@@ -2,7 +2,7 @@
 source: tests/cli.rs
 expression: fmt.assert_silent_success().stdout()
 ---
-(project demo
+(defproject demo
   alpha
   beta
   gamma

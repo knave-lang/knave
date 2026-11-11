@@ -1,4 +1,4 @@
-(project app
+(defproject app
   (dependencies)
   (libraries
     (plain :path "../plain")

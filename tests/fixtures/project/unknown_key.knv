@@ -1,1 +1,1 @@
-(project browser :entyr "src/main.knv")
+(defproject browser :entyr "src/main.knv")

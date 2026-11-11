@@ -2,7 +2,7 @@
 source: tests/cli.rs
 expression: sandbox.project_file_text()
 ---
-(project demo
+(defproject demo
   (dependencies ; first
     (other "1.0")
     ; json

@@ -1,1 +1,1 @@
-(project browser :edition 2025)
+(defproject browser :edition 2025)

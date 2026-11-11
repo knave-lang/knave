@@ -4,13 +4,13 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/unknown_edition.knv
 ---
 error[L0717]: edition 2025 does not exist
- --> project/unknown_edition.knv:1:27
+ --> project/unknown_edition.knv:1:30
   |
-1 | (project browser :edition 2025)
-  |                           ^^^^ not an edition of this compiler
+1 | (defproject browser :edition 2025)
+  |                              ^^^^ not an edition of this compiler
   |
 help: the only edition is 2026
   |
-1 - (project browser :edition 2025)
-1 + (project browser :edition 2026)
+1 - (defproject browser :edition 2025)
+1 + (defproject browser :edition 2026)
   |

@@ -1,2 +1,2 @@
-(project dev-only-app
+(defproject dev-only-app
   (dev-dependencies (expected :path "../expected")))

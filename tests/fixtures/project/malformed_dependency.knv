@@ -1,1 +1,1 @@
-(project browser (dependencies serde ("1.0")))
+(defproject browser (dependencies serde ("1.0")))

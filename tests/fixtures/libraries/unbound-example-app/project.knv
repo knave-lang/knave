@@ -1,2 +1,2 @@
-(project app
+(defproject app
   (libraries (unbound-example :path "../unbound-example")))

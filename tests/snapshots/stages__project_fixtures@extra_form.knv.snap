@@ -3,13 +3,13 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/project/extra_form.knv
 ---
-error[L0702]: `project.knv` holds a form after its `project` form
+error[L0702]: `project.knv` holds a form after its `defproject` form
  --> project/extra_form.knv:3:1
   |
-1 | (project browser)
-  | ----------------- the `project` form ends here
+1 | (defproject browser)
+  | -------------------- the `defproject` form ends here
 2 |
-3 | (project other)
-  | ^^^^^^^^^^^^^^^ this form is outside the `project` form
+3 | (defproject other)
+  | ^^^^^^^^^^^^^^^^^^ this form is outside the `defproject` form
   |
-  = help: move this form inside the `project` form, or remove it
+  = help: move this form inside the `defproject` form, or remove it

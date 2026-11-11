@@ -4,9 +4,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/git_option_like.knv
 ---
 error[L0727]: `:git` cannot start with `-`
- --> project/git_option_like.knv:2:34
+ --> project/git_option_like.knv:3:31
   |
-2 |          (libraries (keymap :git "-q"
-  |                                  ^^^^ git would read this as an option
+3 |                          :git "-q"
+  |                               ^^^^ git would read this as an option
   |
   = help: write the repository's URL or path, as `https://example.com/keymap.git`

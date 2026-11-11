@@ -4,7 +4,7 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/unknown_far_key.knv
 ---
 error[L0704]: unknown key `:qqqqqq`
- --> project/unknown_far_key.knv:1:12
+ --> project/unknown_far_key.knv:1:15
   |
-1 | (project b :qqqqqq "x")
-  |            ^^^^^^^ not a key of this form
+1 | (defproject b :qqqqqq "x")
+  |               ^^^^^^^ not a key of this form

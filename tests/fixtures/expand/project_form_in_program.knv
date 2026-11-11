@@ -1,7 +1,7 @@
-(use prelude/project-file dependencies dev-dependencies
-                          libraries project)
+(use prelude/project-file defproject dependencies
+                          dev-dependencies libraries)
 
-(project demo)
+(defproject demo)
 
 (libraries)
 

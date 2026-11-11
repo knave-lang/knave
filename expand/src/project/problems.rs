@@ -6,16 +6,16 @@ use crate::source::Span;
 pub struct ProjectProblems;
 
 impl ProjectProblems {
-    const PROJECT_EXAMPLE: &str = "(project my-program)";
+    const PROJECT_EXAMPLE: &str = "(defproject my-program)";
 
     pub fn missing_project_form(span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::MISSING_PROJECT_FORM,
             format!(
-                "`{}` must hold a `project` form",
+                "`{}` must hold a `defproject` form",
                 Language::project_file_name()
             ),
-            Label::new(span, "expected `(project <name> ...)` here"),
+            Label::new(span, "expected `(defproject <name> ...)` here"),
         )
         .with_help(format!("start the file with `{}`", Self::PROJECT_EXAMPLE))
     }
@@ -24,13 +24,13 @@ impl ProjectProblems {
         Diagnostic::error(
             DiagnosticCode::EXTRA_PROJECT_FORM,
             format!(
-                "`{}` holds a form after its `project` form",
+                "`{}` holds a form after its `defproject` form",
                 Language::project_file_name()
             ),
-            Label::new(extra, "this form is outside the `project` form"),
+            Label::new(extra, "this form is outside the `defproject` form"),
         )
-        .with_label(Label::new(project, "the `project` form ends here"))
-        .with_help("move this form inside the `project` form, or remove it")
+        .with_label(Label::new(project, "the `defproject` form ends here"))
+        .with_help("move this form inside the `defproject` form, or remove it")
     }
 
     pub fn invalid_project_name(name: &str, span: Span) -> Diagnostic {
@@ -166,7 +166,7 @@ impl ProjectProblems {
         Diagnostic::error(
             DiagnosticCode::MISSING_PROJECT_NAME,
             "the project has no name",
-            Label::new(span, "expected a name after `project`"),
+            Label::new(span, "expected a name after `defproject`"),
         )
         .with_help(format!("name the project, as `{}`", Self::PROJECT_EXAMPLE))
     }

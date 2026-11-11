@@ -1,1 +1,1 @@
-(project app (dependencies (answer :path "../answer")))
+(defproject app (dependencies (answer :path "../answer")))

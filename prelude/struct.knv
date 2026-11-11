@@ -1,4 +1,5 @@
-(use prelude/macros defmacro header-shape map-list template)
+(use prelude/macros defmacro header-shape map-list module
+                    template)
 
 (use prelude/internal/macros documented-body? note-docstring
                              type-doc-key)
@@ -17,6 +18,8 @@
           declare-type-definition drop empty? fail first
           keyword? list list? nth prepend rest string symbol
           symbol-name symbol?)
+
+(module "Defines structs and their keyword constructors.")
 
 (export defstruct)
 

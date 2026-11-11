@@ -9,9 +9,9 @@ error[L0306]: `str` belongs to the program, so macro code cannot run it
   4 |   (macro (form) (str 1) (list)))
     |                 ^^^^^^^ macro code runs this
     |
-   ::: prelude/text.knv:469:6
+   ::: prelude/text.knv:474:6
     |
-469 | (def str
+474 | (def str
     |      --- `str` expands to Rust code that runs in the program
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`
@@ -30,9 +30,9 @@ error[L0306]: `+` belongs to the program, so macro code cannot run it
  14 |   (macro (form) (+ 1 2) (list)))
     |                 ^^^^^^^ macro code runs this
     |
-   ::: prelude/number.knv:133:21
+   ::: prelude/number.knv:135:21
     |
-133 | (defrule-with-value + add
+135 | (defrule-with-value + add
     |                     - `+` expands to Rust code that runs in the program
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`
@@ -44,9 +44,9 @@ error[L0306]: `str` belongs to the program, so macro code cannot run it
  20 |     (if true (quote 1) (str 1))))
     |                        ^^^^^^^ macro code runs this
     |
-   ::: prelude/text.knv:469:6
+   ::: prelude/text.knv:474:6
     |
-469 | (def str
+474 | (def str
     |      --- `str` expands to Rust code that runs in the program
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`
@@ -60,9 +60,9 @@ error[L0306]: `*` belongs to the program, so macro code cannot run it
  28 |   (macro (form) (double 2) (list)))
     |                  ------ macro code reaches it through this
     |
-   ::: prelude/number.knv:143:21
+   ::: prelude/number.knv:145:21
     |
-143 | (defrule-with-value * mul
+145 | (defrule-with-value * mul
     |                     - `*` expands to Rust code that runs in the program
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`
@@ -79,22 +79,22 @@ error[L0306]: `print` belongs to the program, so macro code cannot run it
  38 |   (macro (form) (print "unused")))
     |                 ^^^^^^^^^^^^^^^^ macro code runs this
     |
-   ::: prelude/text.knv:489:11
+   ::: prelude/text.knv:494:11
     |
-489 | (defmacro print (parts ...)
+494 | (defmacro print (parts ...)
     |           ----- `print` expands to Rust code that runs in the program
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`
 
 error[L0306]: `sqrt` belongs to the program, so macro code cannot run it
-  --> expand/program_only.knv:41:18
-   |
-41 |   (macro (form) (sqrt 2.0) (list)))
-   |                  ^^^^ macro code runs this
-   |
-  ::: prelude/number.knv:99:3
-   |
-99 |   (rust "{0}.sqrt()" (fn (f64) f64)))
-   |   ---------------------------------- `sqrt` is Rust code that runs in the program
-   |
-   = help: to compute this in the program, return it as code from the macro, for example with `quote`
+   --> expand/program_only.knv:41:18
+    |
+ 41 |   (macro (form) (sqrt 2.0) (list)))
+    |                  ^^^^ macro code runs this
+    |
+   ::: prelude/number.knv:101:3
+    |
+101 |   (rust "{0}.sqrt()" (fn (f64) f64)))
+    |   ---------------------------------- `sqrt` is Rust code that runs in the program
+    |
+    = help: to compute this in the program, return it as code from the macro, for example with `quote`

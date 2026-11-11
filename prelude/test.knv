@@ -1,4 +1,4 @@
-(use prelude/macros document header-shape map-list
+(use prelude/macros document header-shape map-list module
                     module-docstring-notes template)
 
 (use prelude/internal/macros docstring-before-body?)
@@ -20,6 +20,8 @@
           symbol? value-eq)
 
 (use prelude/syntax assert deftest run-tests)
+
+(module "Runs tests and docstring examples under `knave test`.")
 
 (export assert check-library-examples deftest doctest
         run-tests)

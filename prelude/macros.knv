@@ -791,6 +791,11 @@
   (module \"Shapes on a grid.\")
   ```")
 
+(module "Defines macros, and documents and looks up terms.
+
+  It holds the definers of macros, the docstring lookups, and the helpers
+  that macro code builds forms with, such as [template] and [map-list].")
+
 (defmacro doc-page (term)
   "Returns the page of a term as a string.
 

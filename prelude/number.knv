@@ -1,8 +1,10 @@
-(use prelude/macros defrule-with-value document)
+(use prelude/macros defrule-with-value document module)
 (use prelude/pair pair)
 (use prelude/logic and)
 (use prelude/syntax let)
 (use prelude/types box option result vec)
+
+(module "Does arithmetic and comparison, and names the number traits.")
 
 (export * + - / < <= = > >= eq float hash integer neg not=
         number ord partial-eq partial-ord pi rem signed

@@ -1,4 +1,6 @@
-(use prelude/macros document header-shape map-list template)
+(use prelude/macros document header-shape map-list module
+                    template)
+
 (use prelude/internal/macros docstring-before-body?)
 (use prelude/syntax deftask the)
 (use prelude/text display from-str str)
@@ -14,6 +16,8 @@
           symbol symbol-name symbol? value-eq)
 
 (use prelude/internal/code pinned-at)
+
+(module "Runs the tasks of a project and lists them for `knave task`.")
 
 (export deftask run-task task-listing task-names
         task-signature)

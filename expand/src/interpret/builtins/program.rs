@@ -2,7 +2,7 @@ use super::Forms;
 use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::Arguments;
 use crate::interpret::list_size::ListSize;
-use crate::interpret::{BuildLimit, CompileTimeHost, PlannedList, Value, WorkMeter};
+use crate::interpret::{BuildLimit, ModuleQueries, PlannedList, SourceQueries, Value, WorkMeter};
 use crate::language::Language;
 use crate::reader::{Form, FormKind, Number, NumberValue, Symbol};
 use crate::source::Span;
@@ -20,9 +20,9 @@ impl<'a> ProgramOperations<'a> {
         }
     }
 
-    pub fn form_location(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn form_location(&self, sources: &dyn SourceQueries) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
-        let location = host.form_location(&self.arguments.form(0)?);
+        let location = sources.form_location(&self.arguments.form(0)?);
         Ok(Value::Form(Form::new(
             FormKind::String(location.into()),
             self.call_site,
@@ -42,19 +42,19 @@ impl<'a> ProgramOperations<'a> {
         Ok(Value::Form(self.arguments.form(1)?.located_at(pinned)))
     }
 
-    pub fn in_tasks_directory(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn in_tasks_directory(&self, sources: &dyn SourceQueries) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         Ok(Value::Bool(
-            host.in_tasks_directory(&self.arguments.form(0)?),
+            sources.in_tasks_directory(&self.arguments.form(0)?),
         ))
     }
 
-    pub fn read_form(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn read_form(&self, sources: &dyn SourceQueries) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(3)?;
         let context = self.arguments.symbol(0)?;
         let literal = self.arguments.form(1)?.span();
         let value = self.arguments.string(1)?;
-        let read = host.read_literal_form(literal, value, self.arguments.index(2)?);
+        let read = sources.read_literal_form(literal, value, self.arguments.index(2)?);
         let items = read.map_or_else(Vec::new, |(mut form, end)| {
             form.set_scopes(context.scopes());
             vec![form, self.count_form(end)]
@@ -96,33 +96,33 @@ impl<'a> ModuleOperations<'a> {
         }
     }
 
-    pub fn project_modules(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn project_modules(&self, modules: &dyn ModuleQueries) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(0)?;
-        self.symbols(host.project_modules())
+        self.symbols(modules.project_modules())
     }
 
-    pub fn program_modules(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn program_modules(&self, modules: &dyn ModuleQueries) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(0)?;
-        self.symbols(host.program_modules())
+        self.symbols(modules.program_modules())
     }
 
-    pub fn module_exports(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn module_exports(&self, modules: &dyn ModuleQueries) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let path = self.arguments.form(0)?;
-        let exports = host.module_exports(self.arguments.symbol(0)?, path.span())?;
+        let exports = modules.module_exports(self.arguments.symbol(0)?, path.span())?;
         self.symbols(exports)
     }
 
-    pub fn module_definitions(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn module_definitions(&self, modules: &dyn ModuleQueries) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let path = self.arguments.form(0)?;
-        let definitions = host.module_definitions(self.arguments.symbol(0)?, path.span())?;
+        let definitions = modules.module_definitions(self.arguments.symbol(0)?, path.span())?;
         self.symbols(definitions)
     }
 
-    pub fn current_module(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn current_module(&self, modules: &dyn ModuleQueries) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(0)?;
-        let module = FormKind::Symbol(host.current_module());
+        let module = FormKind::Symbol(modules.current_module());
         Ok(Value::Form(Form::new(module, self.call_site)))
     }
 

@@ -3,7 +3,7 @@ use super::constructor_catalog::ConstructorCatalog;
 use super::constructor_tag::ConstructorTag;
 use super::cover_pattern::CoverPattern;
 use super::pattern_matrix::PatternMatrix;
-use super::query::{ExpandedQuery, Query};
+use super::query::Query;
 use super::witness::Witness;
 use crate::core::{BindingId, Literal};
 use crate::types::Type;
@@ -82,7 +82,7 @@ impl<'c, 'a> Usefulness<'c, 'a> {
         constructor: &Constructor,
     ) -> bool {
         let expanded = query.expanded(constructor, &constructor.wild_arguments());
-        self.is_useful_specialized(matrix, constructor, &expanded)
+        self.is_useful_specialized(matrix, constructor, expanded.query())
     }
 
     fn is_useful_variant(
@@ -117,7 +117,7 @@ impl<'c, 'a> Usefulness<'c, 'a> {
         match constructor {
             Some(constructor) => {
                 let expanded = query.expanded(&constructor, query.first_pattern().arguments());
-                self.is_useful_specialized(matrix, &constructor, &expanded)
+                self.is_useful_specialized(matrix, &constructor, expanded.query())
             }
             None => false,
         }
@@ -127,9 +127,9 @@ impl<'c, 'a> Usefulness<'c, 'a> {
         &mut self,
         matrix: &PatternMatrix,
         constructor: &Constructor,
-        expanded: &ExpandedQuery,
+        query: Query,
     ) -> bool {
-        self.is_useful(&matrix.specialize(constructor), expanded.query())
+        self.is_useful(&matrix.specialize(constructor), query)
     }
 
     fn is_useful_literal(

@@ -66,6 +66,7 @@ impl<'a> FailCall<'a> {
     }
 }
 
+#[derive(Default)]
 pub struct FailureDescription {
     code: Option<DiagnosticCode>,
     label: Option<String>,
@@ -243,18 +244,5 @@ impl FailureDescription {
             .map(|(earlier, label)| (earlier.form, label.text));
         let code = self.code.unwrap_or(DiagnosticCode::MACRO_FAILED);
         InterpretProblems::failed(code, message, culprit, self.label, earlier)
-    }
-}
-
-impl Default for FailureDescription {
-    fn default() -> Self {
-        Self {
-            code: None,
-            label: None,
-            earlier: None,
-            earlier_label: None,
-            replacement: None,
-            note: None,
-        }
     }
 }

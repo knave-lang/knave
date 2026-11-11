@@ -1,15 +1,28 @@
 (use code add-module-note concat distinct-leading-lines drop
-          empty? fail first len list module-notes nth
+          empty? fail first len list list? module-notes nth
           number-lt prepend rest string string? symbol
           symbol? take value-eq)
 
 (export add-docstring-note docstring-before-body?
         docstring-before-parameters docstrings-key
-        documented-body? documented-terms-key joined-chunks
-        kernel-definition module-docstring-notes
-        note-docstring noted-term term-docstrings-key
-        text-chunk-pieces type-doc-key value-doc-key
-        value-docstring-note whole-pairs?)
+        documented-body? documented-terms-key head-of
+        joined-chunks kernel-definition map-list
+        module-docstring-notes note-docstring noted-term
+        term-docstrings-key text-chunk-pieces type-doc-key
+        value-doc-key value-docstring-note whole-pairs?)
+
+(def map-list
+  (fn (items function)
+    (map-onto (list) function items)))
+
+(def map-onto
+  (fn (mapped function items)
+    (if (empty? items)
+      mapped
+      (recur (concat mapped
+                     (list (function (first items))))
+             function
+             (rest items)))))
 
 (def documented-body?
   (fn (body)
@@ -49,18 +62,9 @@
                                        (term-docstrings-key (first terms))))
                  (rest terms)))))
     (with-notes-of (module-notes context docstrings-key)
-                   (distinct-leading-lines (documented-term-names context)))))
-
-(def documented-term-names
-  (fn (context)
-    (local named
-      (fn (names entries)
-        (if (empty? entries)
-          names
-          (recur (concat names
-                         (list (string (noted-term (first entries)))))
-                 (rest entries)))))
-    (named (list) (module-notes context documented-terms-key))))
+                   (distinct-leading-lines
+                     (map-list (module-notes context documented-terms-key)
+                       (fn (entry) (string (noted-term entry))))))))
 
 (def note-docstring
   (fn (key text)
@@ -84,9 +88,30 @@
 
 (def document-value
   (macro (form)
-    (local name (nth form 1))
-    (add-docstring-note (value-docstring-note name name (nth form 2)))
+    (local header (nth form 1))
+    (add-docstring-note
+      (value-docstring-note (head-of header) header (nth form 2)))
     (quote (do))))
+
+(def head-of
+  (fn (header)
+    (if (list? header) (first header) header)))
+
+(document-value (map-list items function)
+                "Returns a list of a function's result for each item of a list.
+
+  It runs in macro code, on the forms that a macro reads. A program imports it
+  with `(use prelude/macros map-list)`.
+
+  ```
+  (use prelude/macros map-list)
+
+  (defmacro doubled-sum (x ...)
+    (template
+      (+ (splice (map-list x (fn (item) (template (* 2 (unquote item)))))))))
+  (doubled-sum 1 2 3)
+  => 12
+  ```")
 
 (document-value docstrings-key
                 "Holds the key under which a user definer adds a docstring note.

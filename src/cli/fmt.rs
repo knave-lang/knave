@@ -295,7 +295,7 @@ impl NearbyProjects {
         if ProgramFile::is_project_file(path) {
             return ModuleLookup::beside_project_file(&directory);
         }
-        match self.project_around(&directory, terminal) {
+        match self.project_around(path, &directory, terminal) {
             Some(project) => {
                 let file = project.placement().placed_file(path.to_path_buf());
                 ModuleLookup::within_project(file.module_sources())
@@ -310,16 +310,21 @@ impl NearbyProjects {
         fs::canonicalize(working_directory.join(&directory)).unwrap_or(directory)
     }
 
-    fn project_around(&mut self, directory: &Path, terminal: &Terminal) -> Option<&LocatedProject> {
+    fn project_around(
+        &mut self,
+        path: &Path,
+        directory: &Path,
+        terminal: &Terminal,
+    ) -> Option<&LocatedProject> {
         let root = LocatedProject::canonical_root(directory)?;
         self.projects
             .entry(root)
-            .or_insert_with_key(|root| Self::load(root, terminal))
+            .or_insert_with_key(|root| Self::load(root, path, terminal))
             .as_ref()
     }
 
-    fn load(root: &Path, terminal: &Terminal) -> Option<LocatedProject> {
-        let warning = Rc::new(ProjectLoadWarning::new(root, terminal.diagnostic_output()));
+    fn load(root: &Path, path: &Path, terminal: &Terminal) -> Option<LocatedProject> {
+        let warning = Rc::new(ProjectLoadWarning::new(path, terminal.diagnostic_output()));
         let loading = Terminal::reporting_to(warning.clone());
         let loaded = LocatedProject::search_from(root, &loading, CacheOnlyStore::default());
         if loaded.is_err() {

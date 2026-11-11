@@ -24,18 +24,15 @@ impl Expander<'_> {
         let module = self.load_source_module(path, sources);
         let record = self.recorded_inputs.of(form);
         if self.evaluated_forms.is_definition(form) {
-            return ClassifiedForm::Definition(InputTerms::binding(record.bound));
+            return ClassifiedForm::Definition(InputTerms::binding(record.into_bound()));
         }
-        if !record.adds_notes || !self.evaluated_forms.left_out_within(form).is_empty() {
+        if !record.is_lone_document(&self.evaluated_forms.left_out_within(form)) {
             return ClassifiedForm::Expression;
         }
         let documented = self
             .noted_terms(module, NotesCheckpoint::START)
             .named_within(form);
-        ClassifiedForm::Definition(InputTerms {
-            bound: record.bound,
-            documented,
-        })
+        ClassifiedForm::Definition(InputTerms::documenting(record.into_bound(), documented))
     }
 }
 
@@ -85,8 +82,8 @@ mod tests {
                 panic!("`{input}` is a definition");
             };
             terms
-                .bound
-                .into_iter()
+                .bound()
+                .iter()
                 .map(|bound| (bound.name.to_string(), bound.namespace))
                 .collect()
         }

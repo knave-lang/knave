@@ -7,8 +7,7 @@ use crate::source::{SourceId, Span};
 pub struct BufferedInput {
     name: String,
     span: Span,
-    names: Vec<BoundName>,
-    documented: Vec<Rc<str>>,
+    terms: InputTerms,
 }
 
 #[derive(Clone, Default)]
@@ -29,12 +28,7 @@ pub struct DroppedNames {
 
 impl BufferedInput {
     pub fn new(name: String, span: Span, terms: InputTerms) -> Self {
-        Self {
-            name,
-            span,
-            names: terms.bound,
-            documented: terms.documented,
-        }
+        Self { name, span, terms }
     }
 
     pub fn name(&self) -> &str {
@@ -42,7 +36,7 @@ impl BufferedInput {
     }
 
     pub fn names(&self) -> &[BoundName] {
-        &self.names
+        self.terms.bound()
     }
 
     pub fn source(&self) -> SourceId {
@@ -50,7 +44,7 @@ impl BufferedInput {
     }
 
     pub fn binds(&self, name: &BoundName) -> bool {
-        self.names.iter().any(|bound| bound.names_the_same(name))
+        self.terms.binds(name)
     }
 }
 
@@ -68,7 +62,7 @@ impl DefinitionBuffer {
     }
 
     pub fn bound_names(&self) -> impl Iterator<Item = &BoundName> {
-        self.inputs.iter().flat_map(|input| &input.names)
+        self.inputs.iter().flat_map(|input| input.names())
     }
 
     pub fn sources_kept_by(&self, replacement: &Replacement) -> Vec<SourceId> {
@@ -86,7 +80,7 @@ impl DefinitionBuffer {
             .iter()
             .enumerate()
             .filter(|(position, input)| {
-                !replacement.replaces(*position) && Self::shares_a_term(input, entered)
+                !replacement.replaces(*position) && input.terms.shares_a_term_with(entered)
             })
             .map(|(position, _)| position)
             .collect();
@@ -132,7 +126,7 @@ impl DefinitionBuffer {
             .iter()
             .zip(names)
             .map(|(input, names)| BufferedInput {
-                names,
+                terms: input.terms.rebound(names),
                 ..input.clone()
             })
             .collect();
@@ -155,29 +149,17 @@ impl DefinitionBuffer {
 
     fn drop_of(earlier: &BufferedInput, entered: &BufferedInput) -> Option<DroppedNames> {
         let dropped: Vec<BoundName> = earlier
-            .names
+            .names()
             .iter()
             .filter(|name| !entered.binds(name))
             .cloned()
             .collect();
-        let replacing = entered.names.iter().find(|bound| earlier.binds(bound))?;
+        let replacing = entered.names().iter().find(|bound| earlier.binds(bound))?;
         (!dropped.is_empty()).then(|| DroppedNames {
             input: earlier.clone(),
             dropped,
             replacing: Rc::clone(&replacing.name),
         })
-    }
-
-    fn shares_a_term(earlier: &BufferedInput, entered: &InputTerms) -> bool {
-        let shares_a_name = earlier
-            .names
-            .iter()
-            .any(|name| entered.bound.iter().any(|bound| bound.names_the_same(name)));
-        let documents_a_term_again = earlier
-            .documented
-            .iter()
-            .any(|term| entered.documented.contains(term));
-        shares_a_name || documents_a_term_again
     }
 }
 
@@ -213,11 +195,7 @@ mod tests {
         }
 
         fn document(source: usize, term: &str) -> BufferedInput {
-            let terms = InputTerms {
-                bound: Vec::new(),
-                documented: vec![term.into()],
-            };
-            Self::entered(SourceId::new(source), terms)
+            Self::entered(SourceId::new(source), Self::documenting(term))
         }
 
         fn entered(source: SourceId, terms: InputTerms) -> BufferedInput {
@@ -228,15 +206,20 @@ mod tests {
             )
         }
 
+        fn documenting(term: &str) -> InputTerms {
+            InputTerms::documenting(Vec::new(), vec![term.into()])
+        }
+
         fn terms(names: &[BoundName]) -> InputTerms {
             InputTerms::binding(names.to_vec())
         }
 
-        fn documents(buffer: &DefinitionBuffer) -> Vec<usize> {
+        fn documenting_sources(buffer: &DefinitionBuffer, term: &str) -> Vec<usize> {
+            let documenting = Self::documenting(term);
             buffer
                 .inputs
                 .iter()
-                .filter(|input| !input.documented.is_empty())
+                .filter(|input| input.terms.shares_a_term_with(&documenting))
                 .map(|input| input.source().index())
                 .collect()
         }
@@ -261,7 +244,7 @@ mod tests {
         let entered = BufferFixture::input(3, &["b"]);
         let replacement = buffer
             .widened(
-                &BufferFixture::terms(&entered.names),
+                &BufferFixture::terms(entered.names()),
                 &Replacement::default(),
             )
             .expect("`b` is defined earlier");
@@ -275,12 +258,12 @@ mod tests {
         let entered = BufferFixture::input(3, &["a", "c"]);
         let first = buffer
             .widened(
-                &BufferFixture::terms(&entered.names[..1]),
+                &BufferFixture::terms(&entered.names()[..1]),
                 &Replacement::default(),
             )
             .expect("`a` is defined earlier");
         let both = buffer
-            .widened(&BufferFixture::terms(&entered.names), &first)
+            .widened(&BufferFixture::terms(entered.names()), &first)
             .expect("`c` is defined earlier");
         let replaced = buffer.replaced(&both, entered);
         assert_eq!(BufferFixture::sources(&replaced), [3, 1]);
@@ -296,7 +279,7 @@ mod tests {
     #[test]
     fn a_replacement_widens_only_by_inputs_it_does_not_hold() {
         let buffer = BufferFixture::buffer(&[(0, &["a"]), (1, &["b"])]);
-        let names = BufferFixture::input(2, &["a", "b"]).names;
+        let names = BufferFixture::input(2, &["a", "b"]).names().to_vec();
         let first = buffer
             .widened(&BufferFixture::terms(&names[..1]), &Replacement::default())
             .expect("`a` is defined earlier");
@@ -313,7 +296,7 @@ mod tests {
         let entered = BufferFixture::input(1, &["b", "a"]);
         let replacement = buffer
             .widened(
-                &BufferFixture::terms(&entered.names),
+                &BufferFixture::terms(entered.names()),
                 &Replacement::default(),
             )
             .expect("`a` is defined earlier");
@@ -326,7 +309,7 @@ mod tests {
         let entered = BufferFixture::input(1, &["b"]);
         let replacement = buffer
             .widened(
-                &BufferFixture::terms(&entered.names),
+                &BufferFixture::terms(entered.names()),
                 &Replacement::default(),
             )
             .expect("`b` is defined earlier");
@@ -339,7 +322,10 @@ mod tests {
     #[test]
     fn a_renamed_buffer_takes_each_inputs_new_names() {
         let buffer = BufferFixture::buffer(&[(0, &["a"]), (1, &["b"])]);
-        let renamed = buffer.renamed(vec![Vec::new(), BufferFixture::input(1, &["c"]).names]);
+        let renamed = buffer.renamed(vec![
+            Vec::new(),
+            BufferFixture::input(1, &["c"]).names().to_vec(),
+        ]);
         let names: Vec<&str> = renamed.bound_names().map(|name| &*name.name).collect();
         assert_eq!(names, ["c"]);
     }
@@ -363,27 +349,17 @@ mod tests {
         };
         let later = BufferFixture::document(2, "g");
         let replacement = buffer
-            .widened(
-                &InputTerms {
-                    bound: Vec::new(),
-                    documented: later.documented.clone(),
-                },
-                &Replacement::default(),
-            )
+            .widened(&BufferFixture::documenting("g"), &Replacement::default())
             .expect("`g` is documented earlier");
         let replaced = buffer.replaced(&replacement, later);
         assert_eq!(BufferFixture::sources(&replaced), [0, 2]);
-        assert_eq!(BufferFixture::documents(&replaced), [2]);
+        assert_eq!(BufferFixture::documenting_sources(&replaced, "g"), [2]);
     }
 
     #[test]
     fn a_document_never_replaces_the_input_that_defines_its_term() {
         let buffer = BufferFixture::buffer(&[(0, &["g"])]);
-        let later = BufferFixture::document(1, "g");
-        let terms = InputTerms {
-            bound: Vec::new(),
-            documented: later.documented.clone(),
-        };
+        let terms = BufferFixture::documenting("g");
         assert_eq!(buffer.widened(&terms, &Replacement::default()), None);
     }
 }

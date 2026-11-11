@@ -16,7 +16,7 @@ impl EmitCommand {
         match self
             .entry
             .locate(terminal)
-            .and_then(|program| terminal.emit(program.file()))
+            .and_then(|program| terminal.emit_file(program.file()))
         {
             Ok(emitted) => StandardOutput::locked().write(&emitted.code),
             Err(status) => status,

@@ -87,7 +87,15 @@ impl EvalCommand {
         let enclosing = self.forms.enclosing(anchor);
         let shown = ShownWarnings::new(expanded.forms_source, enclosing, module_warnings);
         let checked = expanded.checked_with_printing(terminal, &entry, &shown)?;
-        let emitted = terminal.emit_checked(&checked.program)?;
+        self.emit_and_run(terminal, checked)
+    }
+
+    fn emit_and_run(
+        &self,
+        terminal: &mut Terminal,
+        checked: CheckedEvaluation,
+    ) -> Result<ExitStatus, ExitStatus> {
+        let emitted = terminal.emission()?.emit(&checked.program)?;
         self.build_and_run(terminal, &emitted, checked.printed_forms)
     }
 

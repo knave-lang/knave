@@ -28,7 +28,7 @@ impl<'c> TaskRunners<'c> {
         let runner = Self::runner(task.name(), &signatures[0]);
         let entered = self.catalog.entered_program(terminal, &runner)?;
         let checked = terminal.checking().check(&entered.program)?;
-        let emitted = terminal.emit_checked(&checked)?;
+        let emitted = terminal.emission()?.emit(&checked)?;
         terminal.build_task(&emitted, task, profile)
     }
 

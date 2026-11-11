@@ -248,6 +248,11 @@ impl SourceQueries for Expander<'_> {
         self.module_sources.holds_task(file.name())
     }
 
+    fn introducing_macro(&self, form: &Form) -> Option<Rc<str>> {
+        let origin = self.tables.macro_origins.get(form.span())?;
+        Some(origin.name)
+    }
+
     fn read_literal_form(
         &self,
         literal: Span,
@@ -315,12 +320,15 @@ impl Expander<'_> {
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
+    use std::rc::Rc;
 
     use super::Expander;
-    use crate::core::{BindingInfo, BindingKind};
+    use crate::core::{BindingInfo, BindingKind, Builtin};
     use crate::diagnostic::{Diagnostic, DiagnosticCode};
-    use crate::interpret::{GlobalValues, Host};
+    use crate::expand::macro_call::MacroOrigin;
+    use crate::interpret::{GlobalValues, Host, Interpreter, SourceQueries, StepBudget, Value};
     use crate::modules::ModuleSources;
+    use crate::reader::{Form, FormKind, Symbol};
     use crate::source::{SourceMap, Span};
 
     struct HostFixture {
@@ -355,6 +363,63 @@ mod tests {
             let source = self.sources.add("sample.knv", "origin");
             Span::new(source, 0..6)
         }
+
+        fn introducing_macro_at(&mut self, call_site: Span, binder: Span) -> Option<Rc<str>> {
+            let expander = self.expander_with_origin_at(call_site);
+            expander.introducing_macro(&Self::hidden(binder))
+        }
+
+        fn called_introducing_macro_at(&mut self, call_site: Span) -> Option<String> {
+            let builtin = Builtin::all().find(|builtin| builtin.name() == "introducing-macro")?;
+            let mut expander = self.expander_with_origin_at(call_site);
+            let hidden = Value::Form(Self::hidden(call_site));
+            let names = Interpreter::new(&mut expander, call_site, StepBudget::full())
+                .call(&Value::Builtin(builtin), vec![hidden], call_site)
+                .ok()?;
+            names.as_form().map(Form::to_string)
+        }
+
+        fn expander_with_origin_at(&mut self, call_site: Span) -> Expander<'_> {
+            let mut expander = self.expander();
+            let origin = MacroOrigin {
+                name: "hide-a-name".into(),
+                defined: call_site,
+                call_site,
+                through_prelude: false,
+            };
+            expander.tables.macro_origins.record(call_site, origin);
+            expander
+        }
+
+        fn hidden(binder: Span) -> Form {
+            Form::new(FormKind::Symbol(Symbol::new("hidden")), binder)
+        }
+    }
+
+    #[test]
+    fn the_introducing_macro_built_in_names_the_macro_at_its_call() {
+        let mut fixture = HostFixture::new();
+        let call_site = fixture.span();
+        assert_eq!(
+            fixture.called_introducing_macro_at(call_site).as_deref(),
+            Some("(hide-a-name)")
+        );
+    }
+
+    #[test]
+    fn a_form_at_a_macro_call_names_the_macro_that_introduced_it() {
+        let mut fixture = HostFixture::new();
+        let call_site = fixture.span();
+        let name = fixture.introducing_macro_at(call_site, call_site);
+        assert_eq!(name.as_deref(), Some("hide-a-name"));
+    }
+
+    #[test]
+    fn a_form_written_inside_a_macro_call_names_no_macro() {
+        let mut fixture = HostFixture::new();
+        let call_site = fixture.span();
+        let written = Span::new(call_site.source(), 1..4);
+        assert_eq!(fixture.introducing_macro_at(call_site, written), None);
     }
 
     #[test]

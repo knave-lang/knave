@@ -42,7 +42,7 @@ pub struct BuiltinCall<'m> {
 }
 
 impl<'m> BuiltinCall<'m> {
-    const IMPLEMENTATIONS: [(Builtin, Implementation); 74] = [
+    const IMPLEMENTATIONS: [(Builtin, Implementation); 75] = [
         (Builtin::First, |operations, _| operations.lists.first()),
         (Builtin::Rest, |operations, _| operations.lists.rest()),
         (Builtin::List, |operations, _| operations.lists.list()),
@@ -279,6 +279,10 @@ impl<'m> BuiltinCall<'m> {
         (Builtin::ProjectModules, |operations, host| {
             let group = host.granted(|host| host.module_queries())?;
             operations.modules.project_modules(group)
+        }),
+        (Builtin::IntroducingMacro, |operations, host| {
+            let group = host.granted(|host| host.source_queries())?;
+            operations.sources.introducing_macro(group)
         }),
     ];
 

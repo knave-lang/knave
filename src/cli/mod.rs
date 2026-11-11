@@ -6,6 +6,7 @@ mod check;
 mod check_flag;
 mod checkout_bounds;
 mod color_when;
+mod command;
 mod counter_report;
 mod crate_section;
 mod definition_buffer;
@@ -20,6 +21,7 @@ mod doc_write;
 mod edited_lines;
 mod emit;
 mod enter_key;
+mod entry_help;
 mod entry_tree;
 mod error_location;
 mod eval;
@@ -30,6 +32,7 @@ mod finished_program;
 mod fmt;
 mod front_end_stack;
 mod input_helper;
+mod inspection_command;
 mod interruption;
 mod json_replies;
 mod library_walk;
@@ -39,9 +42,11 @@ mod name_records;
 mod new;
 mod open_input;
 mod painted_program;
+mod program_command;
 mod program_file;
 mod program_signal;
 mod program_stream;
+mod project_command;
 mod project_crates;
 mod project_file_edit;
 mod project_task;
@@ -80,43 +85,19 @@ mod whole_characters;
 use std::env;
 use std::ffi::OsString;
 use std::io;
-use std::path::PathBuf;
 use std::process::ExitCode;
 
 use anstream::AutoStream;
-use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand};
+use clap::{CommandFactory, FromArgMatches, Parser};
 
 use crate::counters::CountingAllocator;
 use crate::language::Language;
-use crate::source::TextPosition;
-use add::AddCommand;
-use build::BuildCommand;
-use check::CheckCommand;
-use check_flag::CheckFlag;
 use color_when::ColorWhen;
+use command::Command;
 use counter_report::CounterReport;
-use crate_section::CrateSection;
 use doc::DocCommand;
-use doc_arguments::DocArguments;
-use emit::EmitCommand;
-use eval::{EvalCommand, EvaluationSettings, FormsText, ModuleText};
-use evaluation_output::{EvaluationOutput, JsonEvaluation, PrintedEvaluation};
-use exit_status::ExitStatus;
-use expand::ExpandCommand;
-use fmt::FmtCommand;
 use front_end_stack::FrontEndStack;
-use new::NewCommand;
-use release_flag::ReleaseFlag;
-use remove::RemoveCommand;
-use repl::ReplCommand;
-use run::RunCommand;
-use task::TaskCommand;
-use terminal::{BuildOptions, Terminal};
-use test::{TestCommand, TestSelection};
-use types::TypesCommand;
-
-const DEV_HELP: &str = "Edit `dev-dependencies`, which only `test` builds with";
-const ENTRY_HELP: &str = "The program's entry file [default: the project's `:entry`]";
+use terminal::Terminal;
 
 #[derive(Parser)]
 #[command(
@@ -139,221 +120,6 @@ pub struct Cli {
         help = "When to color the output"
     )]
     color: ColorWhen,
-}
-
-#[derive(Subcommand)]
-enum Command {
-    #[command(flatten)]
-    Inspection(InspectionCommand),
-    #[command(flatten)]
-    Program(ProgramCommand),
-    #[command(flatten)]
-    Project(ProjectCommand),
-}
-
-#[derive(Subcommand)]
-enum ProjectCommand {
-    #[command(about = "Add a crate to the project's dependencies, at the version Cargo picks")]
-    Add {
-        #[arg(help = "The crate's name, as crates.io writes it")]
-        name: String,
-        #[arg(
-            long,
-            value_delimiter = ',',
-            help = "Features to turn on, separated by commas"
-        )]
-        features: Vec<String>,
-        #[arg(long = CrateSection::DEV_FLAG_NAME, help = DEV_HELP)]
-        dev: bool,
-    },
-    #[command(about = "Remove a crate from the project's dependencies")]
-    Remove {
-        #[arg(help = "The crate's name, as the project file writes it")]
-        name: String,
-        #[arg(long = CrateSection::DEV_FLAG_NAME, help = DEV_HELP)]
-        dev: bool,
-    },
-    #[command(
-        name = TaskCommand::NAME,
-        about = "Run a task from the project's `tasks` directory, or list the tasks"
-    )]
-    Task {
-        #[arg(
-            trailing_var_arg = true,
-            allow_hyphen_values = true,
-            value_name = "NAME [ARGUMENTS]",
-            help = "The task's name, then the arguments it takes [default: list the tasks]"
-        )]
-        command: Vec<String>,
-        #[command(flatten)]
-        release: ReleaseFlag,
-    },
-    #[command(about = "Create a project in a new directory of its name")]
-    New {
-        #[arg(
-            help = "The project's name, in kebab-case",
-            value_parser = clap::builder::NonEmptyStringValueParser::new()
-        )]
-        name: String,
-    },
-}
-
-#[derive(Subcommand)]
-enum InspectionCommand {
-    #[command(about = "Read, expand and check a program, then print its diagnostics")]
-    Check {
-        #[arg(help = ENTRY_HELP)]
-        file: Option<PathBuf>,
-    },
-    #[command(about = "Print the inferred signature of each function in a program")]
-    Types {
-        #[arg(help = ENTRY_HELP)]
-        file: Option<PathBuf>,
-    },
-    #[command(
-        name = DocCommand::NAME,
-        about = "Print the page of a prelude term, or of a program's term with --file"
-    )]
-    Doc(DocArguments),
-    #[command(about = "Print a program as kernel forms after macro expansion")]
-    Expand {
-        #[arg(help = ENTRY_HELP)]
-        file: Option<PathBuf>,
-    },
-    #[command(about = "Print the Rust code generated for a program")]
-    Emit {
-        #[arg(help = ENTRY_HELP)]
-        file: Option<PathBuf>,
-    },
-    #[command(about = "Lay out source files in place, or standard input given `-`")]
-    Fmt {
-        #[arg(help = "The files and directories to lay out [default: the project's root]")]
-        paths: Vec<PathBuf>,
-        #[command(flatten)]
-        check: CheckFlag,
-        #[arg(
-            long,
-            value_name = "FILE",
-            help = "Find the modules that standard input uses as if it were this file"
-        )]
-        stdin_path: Option<PathBuf>,
-    },
-}
-
-#[derive(Subcommand)]
-enum ProgramCommand {
-    #[command(about = "Compile a program to a native binary")]
-    Build {
-        #[arg(help = ENTRY_HELP)]
-        file: Option<PathBuf>,
-        #[command(flatten)]
-        release: ReleaseFlag,
-        #[arg(short, long)]
-        output: Option<PathBuf>,
-    },
-    #[command(about = "Check a module, then run forms once in its scope and print their values")]
-    Eval {
-        file: PathBuf,
-        #[arg(allow_hyphen_values = true)]
-        forms: String,
-        #[command(flatten)]
-        stdin: StdinFlag,
-        #[arg(
-            long,
-            help = "Resolve `use` from this directory [default: the project's source root, or the file's directory]"
-        )]
-        root: Option<PathBuf>,
-        #[command(flatten)]
-        position: PositionFlags,
-        #[command(flatten)]
-        release: ReleaseFlag,
-        #[command(flatten)]
-        json: JsonFlags,
-    },
-    #[command(about = "Read forms at a prompt, keep the definitions and run the rest")]
-    Repl {
-        #[arg(
-            long,
-            help = "Resolve `use` from this directory [default: the project's source root, or the working directory]"
-        )]
-        root: Option<PathBuf>,
-        #[command(flatten)]
-        release: ReleaseFlag,
-    },
-    #[command(about = "Build the tests of a file or a directory and run them")]
-    Test {
-        #[arg(help = "The test file or directory [default: the project's `tests` directory]")]
-        path: Option<PathBuf>,
-        #[arg(hide = true)]
-        positional_filter: Option<String>,
-        #[arg(
-            long,
-            value_name = "TEXT",
-            help = "Run only the tests whose full name contains this text"
-        )]
-        filter: Option<String>,
-        #[arg(
-            long,
-            value_name = "NAME",
-            conflicts_with = "filter",
-            help = "Run only the test with this full name"
-        )]
-        exact: Option<String>,
-        #[arg(
-            long,
-            value_name = "MODULE",
-            help = "List the names that MODULE exports and no test writes"
-        )]
-        untested: Option<String>,
-        #[command(flatten)]
-        release: ReleaseFlag,
-    },
-    #[command(about = "Build a program and run it")]
-    Run {
-        #[arg(help = ENTRY_HELP)]
-        file: Option<PathBuf>,
-        #[command(flatten)]
-        release: ReleaseFlag,
-        #[arg(last = true)]
-        args: Vec<String>,
-    },
-}
-
-#[derive(Args)]
-struct StdinFlag {
-    #[arg(long, help = "Read the module's text from standard input")]
-    stdin: bool,
-}
-
-#[derive(Args)]
-struct PositionFlags {
-    #[arg(
-        long,
-        requires = "column",
-        help = "The line where the forms start in the module's text"
-    )]
-    line: Option<usize>,
-    #[arg(
-        long,
-        requires = "line",
-        help = "The byte column where the forms start, from 1"
-    )]
-    column: Option<usize>,
-}
-
-#[derive(Args)]
-struct JsonFlags {
-    #[arg(
-        long,
-        help = "Write one JSON object per line for each output, value and diagnostic"
-    )]
-    json: bool,
-    #[arg(
-        long,
-        requires = "json",
-        help = "Echo this text as `id` on every JSON object"
-    )]
-    id: Option<String>,
 }
 
 impl Cli {
@@ -391,153 +157,5 @@ impl Cli {
         }
         status.die_by_the_program_signal();
         status.into()
-    }
-}
-
-impl Command {
-    fn prompt() -> Self {
-        Self::Program(ProgramCommand::Repl {
-            root: None,
-            release: ReleaseFlag::default(),
-        })
-    }
-
-    fn execute(self, terminal: &mut Terminal) -> ExitStatus {
-        match self {
-            Command::Inspection(command) => command.execute(terminal),
-            Command::Program(command) => command.execute(terminal),
-            Command::Project(command) => command.execute(terminal),
-        }
-    }
-}
-
-impl InspectionCommand {
-    fn execute(self, terminal: &mut Terminal) -> ExitStatus {
-        match self {
-            Self::Check { file } => CheckCommand::new(file).run(terminal),
-            Self::Types { file } => TypesCommand::new(file).run(terminal),
-            Self::Doc(arguments) => arguments.run(terminal),
-            Self::Expand { file } => ExpandCommand::new(file).run(terminal),
-            Self::Emit { file } => EmitCommand::new(file).run(terminal),
-            Self::Fmt {
-                paths,
-                check,
-                stdin_path,
-            } => FmtCommand::new(paths, check.mode(), stdin_path).run(terminal),
-        }
-    }
-}
-
-impl ProjectCommand {
-    fn execute(self, terminal: &mut Terminal) -> ExitStatus {
-        match self {
-            Self::New { name } => NewCommand::new(name).run(terminal),
-            Self::Add {
-                name,
-                features,
-                dev,
-            } => AddCommand::new(name, features, CrateSection::of(dev)).run(terminal),
-            Self::Remove { name, dev } => {
-                RemoveCommand::new(name, CrateSection::of(dev)).run(terminal)
-            }
-            Self::Task { command, release } => {
-                TaskCommand::new(command, release.profile()).run(terminal)
-            }
-        }
-    }
-}
-
-impl ProgramCommand {
-    fn execute(self, terminal: &mut Terminal) -> ExitStatus {
-        match self {
-            Self::Build {
-                file,
-                release,
-                output,
-            } => BuildCommand::new(
-                file,
-                BuildOptions {
-                    profile: release.profile(),
-                    output,
-                },
-            )
-            .run(terminal),
-            Self::Eval {
-                file,
-                forms,
-                stdin,
-                root,
-                position,
-                release,
-                json,
-            } => EvalCommand::new(
-                stdin.module_text(file),
-                root,
-                FormsText::new(forms, position.position()),
-                EvaluationSettings {
-                    profile: release.profile(),
-                    output: json.output(),
-                },
-            )
-            .run(terminal),
-            Self::Repl { root, release } => ReplCommand::new(root, release.profile()).run(terminal),
-            Self::Test {
-                positional_filter: Some(filter),
-                ..
-            } => TestSelection::report_positional_filter(&filter),
-            Self::Test {
-                path,
-                positional_filter: None,
-                filter,
-                exact,
-                untested,
-                release,
-            } => TestCommand::new(
-                path,
-                TestSelection::of(filter, exact),
-                untested,
-                release.profile(),
-            )
-            .run(terminal),
-            Self::Run {
-                file,
-                release,
-                args,
-            } => RunCommand::new(
-                file,
-                BuildOptions {
-                    profile: release.profile(),
-                    output: None,
-                },
-                args,
-            )
-            .run(terminal),
-        }
-    }
-}
-
-impl StdinFlag {
-    fn module_text(&self, file: PathBuf) -> ModuleText {
-        if self.stdin {
-            ModuleText::StandardInput(file)
-        } else {
-            ModuleText::File(file)
-        }
-    }
-}
-
-impl PositionFlags {
-    fn position(&self) -> Option<TextPosition> {
-        Some(TextPosition::new(self.line?, self.column?))
-    }
-}
-
-impl JsonFlags {
-    fn output(self) -> Box<dyn EvaluationOutput> {
-        if self.json {
-            Box::new(JsonEvaluation::new(self.id))
-        } else {
-            Box::new(PrintedEvaluation::for_standard_output())
-        }
     }
 }

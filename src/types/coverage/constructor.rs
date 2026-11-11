@@ -192,4 +192,21 @@ mod tests {
                 .is_none()
         );
     }
+
+    #[test]
+    fn a_struct_pattern_with_its_tag_gives_it_the_pattern_fields() {
+        let fixture = ConstructorFixture::new();
+        let point = Constructor::new(
+            ConstructorTag::Struct(fixture.owner),
+            vec![ConstructorFixture::boolean()],
+        );
+        let pattern = CoverPattern::Struct {
+            owner: fixture.owner,
+            arguments: vec![CoverPattern::Literal(Literal::Bool(false))],
+        };
+        assert!(matches!(
+            point.arguments_of(&pattern).as_deref(),
+            Some([CoverPattern::Literal(Literal::Bool(false))])
+        ));
+    }
 }

@@ -74,8 +74,9 @@ mod tests {
         BindingArena, BindingId, BindingInfo, BindingKind, Literal, ModuleId, PrimitiveType,
         VariantInfo,
     };
+    use crate::reader::{Number, NumberValue};
     use crate::source::{SourceId, Span};
-    use crate::types::{Type, TypedPattern, TypedPatternKind};
+    use crate::types::{Type, TypedBinder, TypedPattern, TypedPatternKind};
 
     struct PatternFixture {
         bindings: BindingArena,
@@ -127,6 +128,19 @@ mod tests {
 
         fn string_type() -> Type {
             Type::Primitive(PrimitiveType::String)
+        }
+
+        fn number(value: i128) -> Literal {
+            Literal::Number(Number::new(value.to_string(), NumberValue::Integer(value)))
+        }
+
+        fn binder(&self) -> TypedPatternKind {
+            TypedPatternKind::Bind(TypedBinder {
+                binding: self.variant,
+                ty: Self::string_type(),
+                span: Span::new(SourceId::new(0), 0..0),
+                annotated: false,
+            })
         }
     }
 
@@ -186,5 +200,44 @@ mod tests {
     fn a_literal_never_matches_one_of_another_kind() {
         let pattern = CoverPattern::Literal(Literal::Bool(true));
         assert!(!pattern.matches_literal(&PatternFixture::text("true")));
+    }
+
+    #[test]
+    fn a_binding_covers_as_a_wildcard() {
+        let fixture = PatternFixture::new();
+        let pattern = CoverPattern::of(&PatternFixture::typed(fixture.binder()), &fixture.bindings);
+        assert!(matches!(pattern, CoverPattern::Wild));
+    }
+
+    #[test]
+    fn a_struct_covers_with_its_binding_and_field_patterns() {
+        let fixture = PatternFixture::new();
+        let field = PatternFixture::typed(TypedPatternKind::Literal(
+            Literal::Bool(true),
+            Type::Primitive(PrimitiveType::Bool),
+        ));
+        let pattern = CoverPattern::of(
+            &PatternFixture::typed(TypedPatternKind::Struct(fixture.owner, vec![field])),
+            &fixture.bindings,
+        );
+        assert!(matches!(
+            &pattern,
+            CoverPattern::Struct { owner, arguments } if *owner == fixture.owner
+                && matches!(arguments.as_slice(), [CoverPattern::Literal(Literal::Bool(true))])
+        ));
+    }
+
+    #[test]
+    fn a_number_matches_only_the_same_number() {
+        let pattern = CoverPattern::Literal(PatternFixture::number(7));
+        assert!(pattern.matches_literal(&PatternFixture::number(7)));
+        assert!(!pattern.matches_literal(&PatternFixture::number(8)));
+    }
+
+    #[test]
+    fn a_bool_matches_only_the_same_bool() {
+        let pattern = CoverPattern::Literal(Literal::Bool(true));
+        assert!(pattern.matches_literal(&Literal::Bool(true)));
+        assert!(!pattern.matches_literal(&Literal::Bool(false)));
     }
 }

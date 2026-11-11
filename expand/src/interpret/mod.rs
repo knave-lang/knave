@@ -4,6 +4,7 @@ mod built_value;
 mod builtin_site;
 mod builtins;
 mod code_list;
+mod held_bytes;
 mod limit_problems;
 mod limited_text;
 mod list_item;
@@ -21,6 +22,7 @@ pub use builtins::BuiltinCall;
 pub use code_list::{
     CodeList, ListConversion, ListNesting, ListTooLarge, NestedTooDeep, PassedLimit,
 };
+pub use held_bytes::HeldBytes;
 pub use limit_problems::LimitProblems;
 pub(crate) use limited_text::LimitedText;
 pub use notes_too_large::NotesTooLarge;

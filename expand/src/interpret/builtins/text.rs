@@ -6,7 +6,7 @@ use super::joined_parts::JoinedParts;
 use crate::core::Declaration;
 use crate::diagnostic::{Diagnostic, SimilarName};
 use crate::interpret::arguments::Arguments;
-use crate::interpret::{CompileTimeHost, StepBudget, Value, WorkMeter};
+use crate::interpret::{CompileTimeHost, HeldBytes, StepBudget, Value, WorkMeter};
 use crate::reader::{Form, FormKind, Symbol};
 use crate::source::Span;
 
@@ -180,7 +180,8 @@ impl<'a> TextOperations<'a> {
     pub fn add_module_note(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
         let note = self.arguments.form(1)?;
-        self.arguments.charge(note.form_count())?;
+        self.arguments
+            .charge(WorkMeter::text_work(HeldBytes::of_form(&note)))?;
         host.add_module_note(self.arguments.symbol(0)?.name(), note)
             .map_err(|too_large| too_large.at(self.arguments.function(), self.arguments.span()))?;
         Ok(Value::Unit)
@@ -298,7 +299,7 @@ impl<'a> TextOperations<'a> {
                 _ => escaped.push(character),
             }
         }
-        self.string_value(escaped)
+        Forms::grown_string(escaped, self.call_site, self.arguments)
     }
 
     pub fn escape_format(&self) -> Result<Value, Diagnostic> {
@@ -336,7 +337,7 @@ impl<'a> TextOperations<'a> {
                 None => escaped.push(character),
             }
         }
-        self.string_value(escaped)
+        Forms::grown_string(escaped, self.call_site, self.arguments)
     }
 
     fn forms_equal(&self, left: &Form, right: &Form) -> Result<bool, Diagnostic> {

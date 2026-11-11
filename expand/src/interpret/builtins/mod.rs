@@ -306,6 +306,11 @@ impl Forms {
         Ok(Value::Form(Form::new(FormKind::String(text.into()), span)))
     }
 
+    fn grown_string(text: String, span: Span, arguments: &Arguments) -> Result<Value, Diagnostic> {
+        arguments.charge(WorkMeter::text_work(text.len()))?;
+        Self::string(text, span, arguments)
+    }
+
     fn count(count: usize, span: Span) -> Value {
         let number = Number::new(count.to_string(), NumberValue::Integer(count as i128));
         Value::Form(Form::new(FormKind::Number(number), span))

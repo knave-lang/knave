@@ -14,6 +14,8 @@ impl WorkFixture {
     const MOST_WORK: u64 = 4_096;
     const FUNCTION: &'static str = "built-in";
     const SIXTEEN_BYTES: &'static str = "abcdefghijklmnop";
+    const BYTES_BUILT_PER_STEP: usize = 64;
+    const GROWING_TEXT: usize = 64;
 
     fn span() -> Span {
         Span::new(SourceId::new(0), 0..0)
@@ -81,6 +83,40 @@ impl WorkFixture {
         Self::work(values, |arguments| {
             run(&StringOperations::new(arguments, Self::span()))
         })
+    }
+
+    fn builds_within_bound(
+        values: &[Value],
+        run: impl Fn(&Arguments) -> Result<Value, Diagnostic>,
+    ) -> bool {
+        let work = Self::work(values, &run) as usize;
+        let built = run(&Self::arguments(values, Self::MOST_WORK)).expect("it builds text");
+        match built.as_form().map(Form::kind) {
+            Some(FormKind::String(text)) => text.len() <= Self::BYTES_BUILT_PER_STEP * work,
+            _ => panic!("the built-in builds text"),
+        }
+    }
+
+    fn text_within_bound(
+        values: &[Value],
+        run: impl for<'a> Fn(&TextOperations<'a>) -> Result<Value, Diagnostic>,
+    ) -> bool {
+        Self::builds_within_bound(values, |arguments| {
+            run(&TextOperations::new(arguments, Self::span()))
+        })
+    }
+
+    fn strings_within_bound(
+        values: &[Value],
+        run: impl for<'a> Fn(&StringOperations<'a>) -> Result<Value, Diagnostic>,
+    ) -> bool {
+        Self::builds_within_bound(values, |arguments| {
+            run(&StringOperations::new(arguments, Self::span()))
+        })
+    }
+
+    fn repeated(text: &str) -> Value {
+        Self::string(&text.repeat(Self::GROWING_TEXT))
     }
 
     fn leaves(count: usize) -> Vec<Value> {
@@ -271,4 +307,81 @@ fn distinct_leading_lines_charges_each_text() {
         DistinctLeadingLines::new(arguments, WorkFixture::span()).kept_texts()
     });
     assert_eq!(work, 1 + 3);
+}
+
+#[test]
+fn escaping_a_string_builds_within_the_bound() {
+    let values = [WorkFixture::repeated("\u{1}")];
+    assert!(WorkFixture::text_within_bound(&values, |text| text.escape_string()));
+}
+
+#[test]
+fn escaping_a_character_builds_within_the_bound() {
+    let values = [WorkFixture::repeated("\u{1}")];
+    assert!(WorkFixture::text_within_bound(&values, |text| text.escape_char()));
+}
+
+#[test]
+fn escaping_a_format_builds_within_the_bound() {
+    let values = [WorkFixture::repeated("{\u{1}")];
+    assert!(WorkFixture::text_within_bound(&values, |text| text.escape_format()));
+}
+
+#[test]
+fn stripping_a_suffix_builds_within_the_bound() {
+    let values = [WorkFixture::repeated("ab"), WorkFixture::string("b")];
+    assert!(WorkFixture::text_within_bound(&values, |text| text.string_strip_suffix()));
+}
+
+#[test]
+fn stripping_a_prefix_builds_within_the_bound() {
+    let values = [WorkFixture::repeated("ab"), WorkFixture::string("a")];
+    assert!(WorkFixture::text_within_bound(&values, |text| text.string_strip_prefix()));
+}
+
+#[test]
+fn naming_a_symbol_builds_within_the_bound() {
+    let values = [WorkFixture::symbol(&"s".repeat(WorkFixture::GROWING_TEXT))];
+    assert!(WorkFixture::text_within_bound(&values, |text| text.symbol_name()));
+}
+
+#[test]
+fn naming_a_keyword_builds_within_the_bound() {
+    let keyword = format!(":{}", "k".repeat(WorkFixture::GROWING_TEXT));
+    let values = [WorkFixture::symbol(&keyword)];
+    assert!(WorkFixture::text_within_bound(&values, |text| text.keyword_name()));
+}
+
+#[test]
+fn lowering_a_string_stays_within_the_bound() {
+    let values = [WorkFixture::repeated("\u{130}")];
+    assert!(WorkFixture::strings_within_bound(&values, |strings| {
+        strings.lowercase()
+    }));
+}
+
+#[test]
+fn trimming_a_string_builds_within_the_bound() {
+    let values = [WorkFixture::repeated(" a")];
+    assert!(WorkFixture::strings_within_bound(&values, |strings| {
+        strings.trim_start()
+    }));
+    assert!(WorkFixture::strings_within_bound(&values, |strings| {
+        strings.trim_end()
+    }));
+}
+
+#[test]
+fn dropping_from_a_string_builds_within_the_bound() {
+    let count = Value::Form(Form::new(
+        FormKind::Number(crate::reader::Number::new(
+            "1",
+            crate::reader::NumberValue::Integer(1),
+        )),
+        WorkFixture::span(),
+    ));
+    let values = [WorkFixture::repeated("ab"), count];
+    assert!(WorkFixture::strings_within_bound(&values, |strings| {
+        strings.drop()
+    }));
 }

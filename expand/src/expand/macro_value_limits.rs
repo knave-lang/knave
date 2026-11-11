@@ -192,7 +192,7 @@ fn reading_forms_spends_steps_for_each_form_it_builds() {
 }
 
 #[test]
-fn adding_a_module_note_spends_steps_for_each_form_it_holds() {
+fn adding_a_module_note_spends_steps_for_the_bytes_it_holds() {
     let body = "(def share (fn (x k) (if (value-eq k 0) x (recur (list x x) (number-sub k 1)))))
 (def tree (share (quote a) 10))
 (def run (macro (form) (do (add-module-note (quote k) tree) (quote 1))))";
@@ -214,14 +214,16 @@ fn splitting_text_into_too_many_lines_stops_at_the_list_limit() {
 }
 
 #[test]
-fn adding_module_notes_past_their_form_limit_stops_at_it() {
-    let body = "(def share (fn (x k) (if (value-eq k 0) x (recur (list x x) (number-sub k 1)))))
-(def tree (share (quote a) 16))
-(def add (fn (n) (if (value-eq n 0) (quote 1) (do (add-module-note (quote k) tree) (recur (number-sub n 1))))))
-(def run (macro (form) (add 40)))";
+fn adding_module_notes_past_their_byte_limit_stops_at_it() {
+    let body = format!(
+        "{}
+(def add (fn (n) (if (value-eq n 0) (quote 1) (do (add-module-note (quote k) text) (recur (number-sub n 1))))))
+(def run (macro (form) (add 20)))",
+        MacroRun::doubled_text("x", 24)
+    );
     assert_eq!(
-        MacroRun::too_large(body).as_deref(),
-        Some("(add-module-note (quote k) tree)")
+        MacroRun::too_large(&body).as_deref(),
+        Some("(add-module-note (quote k) text)")
     );
 }
 

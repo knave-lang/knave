@@ -20,11 +20,6 @@ pub trait DiagnosticOutput {
         StandardError::write_line(format_args!("error: {message}"));
     }
 
-    fn report_unreadable(&self, file: &UnreadableFile) -> ExitStatus {
-        self.write_error(&file.to_string());
-        UnreadableFile::EXIT_STATUS
-    }
-
     fn report(&self, sources: &SourceMap, diagnostics: &Diagnostics) -> ExitStatus {
         if !diagnostics.has_errors() {
             return ExitStatus::Success;

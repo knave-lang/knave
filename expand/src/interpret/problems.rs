@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use super::Value;
-use super::builtins::FailureDescription;
 use crate::diagnostic::{Counted, Diagnostic, DiagnosticCode, Label, Suggestion};
 use crate::source::Span;
 
@@ -161,11 +160,8 @@ impl InterpretProblems {
         .with_help("add `:earlier` beside `:earlier-label`")
     }
 
-    pub fn malformed_failure_part(span: Span) -> Diagnostic {
-        let parts: Vec<String> = FailureDescription::PARTS
-            .iter()
-            .map(|part| format!("`:{part}`"))
-            .collect();
+    pub fn malformed_failure_part(span: Span, parts: &[&str]) -> Diagnostic {
+        let parts: Vec<String> = parts.iter().map(|part| format!("`:{part}`")).collect();
         Diagnostic::error(
             DiagnosticCode::FAILURE_PART,
             "a failure description takes `:part value` pairs",

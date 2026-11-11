@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/warn_then_fail.knv
+---
+error[L0301]: the van cannot move
+  --> expand/warn_then_fail.knv:10:18
+   |
+10 | (def van (parked "blue van"))
+   |                  ^^^^^^^^^^ here

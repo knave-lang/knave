@@ -40,6 +40,7 @@ pub enum Builtin {
     SortedNames,
     DistinctLeadingLines,
     Fail,
+    Warn,
     NumberAdd,
     NumberSub,
     NumberLt,
@@ -82,7 +83,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 72] = [
+    const NAMES: [(Builtin, &'static str); 73] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -116,6 +117,7 @@ impl Builtin {
         (Builtin::SortedNames, "sorted-names"),
         (Builtin::DistinctLeadingLines, "distinct-leading-lines"),
         (Builtin::Fail, "fail"),
+        (Builtin::Warn, "warn"),
         (Builtin::NumberAdd, "number-add"),
         (Builtin::NumberSub, "number-sub"),
         (Builtin::NumberLt, "number-lt"),

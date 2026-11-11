@@ -1,7 +1,16 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).expand_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/expand/trait_arguments.knv
 ---
+warning[L0217]: `comparable` binds a Rust path that `partial-eq` already binds
+ --> expand/trait_arguments.knv:1:13
+  |
+1 | (rust-trait comparable "PartialEq"
+  |             ^^^^^^^^^^ this also binds `PartialEq`
+  |
+  = note: two traits that bind one Rust path can disagree about its implementors
+  = help: use `partial-eq`, or give `comparable` a different Rust path
+
 (rust-trait comparable "PartialEq" i64 (with i64 i64) (where ((a (comparable b)) b) (with (ref a) (ref b))))
 (def compare-with (rust "{&0} == {&1}" (where ((a_2 (comparable b_2)) b_2) (fn (a_2 b_2) bool))))

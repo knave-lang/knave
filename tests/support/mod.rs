@@ -15,7 +15,7 @@ use knave::build::{BuildError, BuildProfile, EmittedFormatting, RustCompiler};
 use knave::core::{BindingArena, CorePrinter, ExprKind, Item, ItemKind, Leaf, Literal, ModulePath};
 use knave::diagnostic::{DiagnosticRenderer, Diagnostics};
 use knave::emit::{EmittedCrate, RustEmitter};
-use knave::expand::{Expander, PreludeState};
+use knave::expand::{Expander, PreludeState, Program};
 use knave::format::{FormatFailure, SourceFormatter};
 use knave::language::Language;
 use knave::modules::ModuleSources;
@@ -104,9 +104,18 @@ impl Fixture {
 
     pub fn expand_report(mut self) -> String {
         match self.expand() {
-            Ok(program) => CorePrinter::new(&program.bindings).module(program.entry_module()),
+            Ok(program) if program.warnings.is_empty() => Self::printed_core(&program),
+            Ok(program) => format!(
+                "{}\n\n{}",
+                self.render(&program.warnings),
+                Self::printed_core(&program)
+            ),
             Err(diagnostics) => self.render(&diagnostics),
         }
+    }
+
+    fn printed_core(program: &Program) -> String {
+        CorePrinter::new(&program.bindings).module(program.entry_module())
     }
 
     pub fn string_definitions(mut self) -> FxHashMap<String, String> {

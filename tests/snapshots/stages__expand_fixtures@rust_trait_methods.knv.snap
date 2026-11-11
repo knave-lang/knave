@@ -1,6 +1,15 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).expand_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/expand/rust_trait_methods.knv
 ---
+warning[L0217]: `shown` binds a Rust path that `debug` already binds
+ --> expand/rust_trait_methods.knv:1:13
+  |
+1 | (rust-trait shown "std::fmt::Debug"
+  |             ^^^^^ this also binds `std::fmt::Debug`
+  |
+  = note: two traits that bind one Rust path can disagree about its implementors
+  = help: use `debug`, or give `shown` a different Rust path
+
 (rust-trait shown "std::fmt::Debug" (method show (fn ((ref self)) string)) i64)

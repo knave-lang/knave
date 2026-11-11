@@ -1,0 +1,29 @@
+(use code nth warn)
+
+(def uncoded
+  (macro (form)
+    (warn "the van is parked" form "move it" (quote (:label "parked")))
+    (nth form 1)))
+
+(def misspelled-lint
+  (macro (form)
+    (warn "the van is parked" form (quote (:code unmatched-lnk)))
+    (nth form 1)))
+
+(def macro-stage-code
+  (macro (form)
+    (warn "the van is parked" form (quote (:code repeated-parameter)))
+    (nth form 1)))
+
+(def too-few
+  (macro (form)
+    (warn "the van is parked" form)
+    (nth form 1)))
+
+(def van (uncoded "blue van"))
+
+(def bus (misspelled-lint "red bus"))
+
+(def cab (macro-stage-code "yellow cab"))
+
+(def car (too-few "green car"))

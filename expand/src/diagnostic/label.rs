@@ -132,6 +132,18 @@ impl Help {
     }
 }
 
+impl From<String> for Help {
+    fn from(message: String) -> Self {
+        Self::new(message)
+    }
+}
+
+impl From<&str> for Help {
+    fn from(message: &str) -> Self {
+        Self::new(message.to_owned())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Label;

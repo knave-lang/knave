@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::rc::Rc;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DiagnosticCode(Cow<'static, str>);
@@ -9,7 +8,7 @@ macro_rules! diagnostic_codes {
         impl DiagnosticCode {
             $(pub const $constant: Self = Self(Cow::Borrowed($code));)*
 
-            const NAMED: &[(&str, &str)] = &[$((stringify!($constant), $code)),*];
+            pub(super) const NAMED: &[(&str, &str)] = &[$((stringify!($constant), $code)),*];
         }
     };
 }
@@ -257,11 +256,11 @@ diagnostic_codes! {
     CRATE_REQUESTS_CONFLICT = "L0726",
     INVALID_GIT_REPOSITORY = "L0727",
     PATH_OUTSIDE_CHECKOUT = "L0728",
+
+    UNMATCHED_LINK = "L0802",
 }
 
 impl DiagnosticCode {
-    const STAGE_PREFIX_LENGTH: usize = 3;
-
     pub fn from_rustc(code: String) -> Self {
         Self(Cow::Owned(code))
     }
@@ -270,30 +269,9 @@ impl DiagnosticCode {
         &self.0
     }
 
-    pub fn macro_stage_named(name: &str) -> Option<Self> {
-        Self::macro_stage_codes()
-            .find(|(source_name, _)| source_name == name)
-            .map(|(_, code)| code)
-    }
-
-    pub fn macro_stage_names() -> Vec<Rc<str>> {
-        Self::macro_stage_codes()
-            .map(|(source_name, _)| Rc::from(source_name))
-            .collect()
-    }
-
-    fn macro_stage_codes() -> impl Iterator<Item = (String, Self)> {
+    pub(super) fn named() -> impl Iterator<Item = (&'static str, Self)> {
         Self::NAMED
             .iter()
-            .map(|(constant, code)| (Self::source_name(constant), Self(Cow::Borrowed(code))))
-            .filter(|(_, code)| code.stage() == Self::MACRO_FAILED.stage())
-    }
-
-    fn source_name(constant: &str) -> String {
-        constant.replace('_', "-").to_lowercase()
-    }
-
-    fn stage(&self) -> &str {
-        &self.0[..Self::STAGE_PREFIX_LENGTH]
+            .map(|(constant, code)| (*constant, Self(Cow::Borrowed(code))))
     }
 }

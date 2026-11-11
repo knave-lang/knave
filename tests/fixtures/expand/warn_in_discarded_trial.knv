@@ -1,0 +1,16 @@
+(use code empty? expand-call list nth warn)
+
+(def parked
+  (macro (form)
+    (warn "the van is parked on a link"
+      (nth form 1)
+      (quote (:code unmatched-link)))
+    (nth form 1)))
+
+(def peek
+  (macro (form)
+    (if (empty? (expand-call (list (quote parked) (nth form 1))))
+      "no expansion"
+      "expanded")))
+
+(def van (peek "blue van"))

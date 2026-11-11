@@ -431,7 +431,7 @@ pub struct TypedProgram {
     pub enums: EnumTable,
     pub rust_types: RustTypeTable,
     pub box_binding: Option<BindingId>,
-    pub inferred_boxes: BTreeSet<(BindingId, usize, usize)>,
+    pub inferred_boxes: BTreeSet<super::boxed_payload::BoxedPayload>,
     pub structural_traits: Vec<StructuralTrait>,
     pub structural_uses: StructuralUses,
     pub traits: TraitTable,

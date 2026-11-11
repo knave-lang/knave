@@ -2,7 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use rustc_hash::FxHashMap;
 
+use super::boxed_payload::BoxedPayload;
 use super::enums::{EnumTable, VariantPayload};
+use super::payload_position::PayloadPosition;
 use super::structs::StructTable;
 use super::ty::{GenericId, GenericParam, Type};
 use crate::core::BindingId;
@@ -48,7 +50,7 @@ impl BoxPlanner {
         structs: &mut StructTable,
         enums: &mut EnumTable,
         box_binding: BindingId,
-    ) -> BTreeSet<(BindingId, usize, usize)> {
+    ) -> BTreeSet<BoxedPayload> {
         let plan = Self::new(structs.clone(), enums.clone(), box_binding).plan();
         let mut boxed = BTreeSet::new();
         for target in plan {
@@ -62,7 +64,13 @@ impl BoxPlanner {
             if let VariantPayload::Named(fields) = payload {
                 fields[target.payload].1 = target.ty;
             }
-            boxed.insert((target.binding, target.variant, target.payload));
+            boxed.insert(BoxedPayload {
+                owner: target.binding,
+                position: PayloadPosition {
+                    variant: target.variant,
+                    payload: target.payload,
+                },
+            });
         }
         boxed
     }

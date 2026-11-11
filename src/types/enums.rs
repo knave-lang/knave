@@ -3,7 +3,9 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::boxed_payload::BoxedPayload;
 use super::pattern_placement::PatternFields;
+use super::payload_position::PayloadPosition;
 use super::ty::{GenericId, GenericParam, Type};
 use crate::core::BindingId;
 use crate::source::Span;
@@ -58,12 +60,6 @@ impl VariantDefinition {
                 .collect(),
         }
     }
-}
-
-#[derive(Clone, Copy)]
-pub struct PayloadPosition {
-    pub variant: usize,
-    pub payload: usize,
 }
 
 #[derive(Clone)]
@@ -196,14 +192,14 @@ impl EnumTable {
 pub(super) struct VariantPayloads<'a> {
     enums: &'a EnumTable,
     box_binding: Option<BindingId>,
-    inferred_boxes: &'a BTreeSet<(BindingId, usize, usize)>,
+    inferred_boxes: &'a BTreeSet<BoxedPayload>,
 }
 
 impl<'a> VariantPayloads<'a> {
     pub(super) fn new(
         enums: &'a EnumTable,
         box_binding: Option<BindingId>,
-        inferred_boxes: &'a BTreeSet<(BindingId, usize, usize)>,
+        inferred_boxes: &'a BTreeSet<BoxedPayload>,
     ) -> Self {
         Self {
             enums,
@@ -251,7 +247,7 @@ impl<'a> VariantPayloads<'a> {
 
     pub(super) fn is_inferred_box(&self, owner: BindingId, position: PayloadPosition) -> bool {
         self.inferred_boxes
-            .contains(&(owner, position.variant, position.payload))
+            .contains(&BoxedPayload { owner, position })
     }
 
     fn unboxed(&self, ty: Type) -> Option<Type> {

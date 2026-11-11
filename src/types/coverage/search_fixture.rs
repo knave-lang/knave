@@ -22,7 +22,7 @@ pub(super) struct SearchFixture {
     unifier: Unifier,
     structs: StructTable,
     enums: EnumTable,
-    inferred_boxes: BTreeSet<(BindingId, usize, usize)>,
+    inferred_boxes: BTreeSet<crate::types::BoxedPayload>,
 }
 
 impl SearchFixture {

@@ -83,6 +83,7 @@ The exceptions are:
 ### Object-oriented Rust
 
 - Put behavior in `impl` blocks. Inject dependencies through constructors.
+- Build each object that holds a reference to a field of `TypeChecker` only in a factory method in `src/types/checker.rs`.
 - If a new method would bring a type near a limit in `xtask/src/design.rs`, extract an object first.
 - A type that carries behavior keeps its fields private.
 - A type of the core IR, the typed IR, or another plain data structure MAY expose public fields.

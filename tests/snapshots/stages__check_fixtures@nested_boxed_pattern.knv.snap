@@ -12,5 +12,5 @@ error[L0433]: non-exhaustive `match`
 9 | |     (tree/leaf 0)))
   | |__________________^ this `match` does not cover every value
   |
-  = note: missing 1 case: `(node _ _ _)`
+  = note: missing 1 case: `(node leaf _ _)`
   = help: add an arm for each missing case

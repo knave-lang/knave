@@ -1,0 +1,19 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_missing_beside_same_type_fields.knv
+---
+error[L0433]: non-exhaustive `match`
+   --> check/match_missing_beside_same_type_fields.knv:26:3
+    |
+ 26 | /   (match x
+ 27 | |     ((wide outer/no _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) 0)
+ 28 | |     ((wide (outer/yes inner/flat true)
+ 29 | |            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+...   |
+165 | |            (outer/yes inner/flat false))
+166 | |      47)))
+    | |_________^ this `match` does not cover every value
+    |
+    = note: missing 1 case: `(wide (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _))`
+    = help: add an arm for each missing case

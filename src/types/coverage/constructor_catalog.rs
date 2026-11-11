@@ -26,15 +26,6 @@ impl<'a> ConstructorCatalog<'a> {
         }
     }
 
-    pub(super) fn value_owner(&self, ty: &Type) -> Option<BindingId> {
-        let Type::Named(owner, _) = self.peeled(ty) else {
-            return None;
-        };
-        let owned =
-            self.payloads.variant_count(owner).is_some() || self.structs.get(owner).is_some();
-        owned.then_some(owner)
-    }
-
     pub(super) fn constructors_named_by(
         &self,
         ty: &Type,

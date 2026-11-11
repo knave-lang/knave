@@ -1,0 +1,321 @@
+(enum chain (link chain bool) end)
+
+(defstruct wide
+  :f0 chain
+  :f1 chain
+  :f2 chain
+  :f3 chain
+  :f4 chain
+  :f5 chain
+  :f6 chain
+  :f7 chain)
+
+(type pick (fn (wide) i64))
+
+(defn pick (x)
+  (match x
+    ((wide chain/end _ _ _ _ _ _ _) 0)
+    ((wide (link chain/end true) _ _ _ _ _ _ _) 1)
+    ((wide (link chain/end false) _ _ _ _ _ _ _) 2)
+    ((wide (link (link chain/end true) true) _ _ _ _ _ _ _) 3)
+    ((wide (link (link chain/end true) false) _ _ _ _ _ _ _) 4)
+    ((wide (link (link chain/end false) true) _ _ _ _ _ _ _) 5)
+    ((wide (link (link chain/end false) false) _ _ _ _ _ _ _) 6)
+    ((wide (link (link (link chain/end true) true) true)
+           _ _ _ _ _ _ _)
+     7)
+    ((wide (link (link (link chain/end true) true) false)
+           _ _ _ _ _ _ _)
+     8)
+    ((wide (link (link (link chain/end true) false) true)
+           _ _ _ _ _ _ _)
+     9)
+    ((wide (link (link (link chain/end true) false) false)
+           _ _ _ _ _ _ _)
+     10)
+    ((wide (link (link (link chain/end false) true) true)
+           _ _ _ _ _ _ _)
+     11)
+    ((wide (link (link (link chain/end false) true) false)
+           _ _ _ _ _ _ _)
+     12)
+    ((wide (link (link (link chain/end false) false) true)
+           _ _ _ _ _ _ _)
+     13)
+    ((wide (link (link (link chain/end false) false) false)
+           _ _ _ _ _ _ _)
+     14)
+    ((wide _ chain/end _ _ _ _ _ _) 15)
+    ((wide _ (link chain/end true) _ _ _ _ _ _) 16)
+    ((wide _ (link chain/end false) _ _ _ _ _ _) 17)
+    ((wide _ (link (link chain/end true) true) _ _ _ _ _ _) 18)
+    ((wide _ (link (link chain/end true) false) _ _ _ _ _ _) 19)
+    ((wide _ (link (link chain/end false) true) _ _ _ _ _ _) 20)
+    ((wide _ (link (link chain/end false) false) _ _ _ _ _ _)
+     21)
+    ((wide _
+           (link (link (link chain/end true) true) true)
+           _ _ _ _ _ _)
+     22)
+    ((wide _
+           (link (link (link chain/end true) true) false)
+           _ _ _ _ _ _)
+     23)
+    ((wide _
+           (link (link (link chain/end true) false) true)
+           _ _ _ _ _ _)
+     24)
+    ((wide _
+           (link (link (link chain/end true) false) false)
+           _ _ _ _ _ _)
+     25)
+    ((wide _
+           (link (link (link chain/end false) true) true)
+           _ _ _ _ _ _)
+     26)
+    ((wide _
+           (link (link (link chain/end false) true) false)
+           _ _ _ _ _ _)
+     27)
+    ((wide _
+           (link (link (link chain/end false) false) true)
+           _ _ _ _ _ _)
+     28)
+    ((wide _
+           (link (link (link chain/end false) false) false)
+           _ _ _ _ _ _)
+     29)
+    ((wide _ _ chain/end _ _ _ _ _) 30)
+    ((wide _ _ (link chain/end true) _ _ _ _ _) 31)
+    ((wide _ _ (link chain/end false) _ _ _ _ _) 32)
+    ((wide _ _ (link (link chain/end true) true) _ _ _ _ _) 33)
+    ((wide _ _ (link (link chain/end true) false) _ _ _ _ _) 34)
+    ((wide _ _ (link (link chain/end false) true) _ _ _ _ _) 35)
+    ((wide _ _ (link (link chain/end false) false) _ _ _ _ _)
+     36)
+    ((wide _ _
+           (link (link (link chain/end true) true) true)
+           _ _ _ _ _)
+     37)
+    ((wide _ _
+           (link (link (link chain/end true) true) false)
+           _ _ _ _ _)
+     38)
+    ((wide _ _
+           (link (link (link chain/end true) false) true)
+           _ _ _ _ _)
+     39)
+    ((wide _ _
+           (link (link (link chain/end true) false) false)
+           _ _ _ _ _)
+     40)
+    ((wide _ _
+           (link (link (link chain/end false) true) true)
+           _ _ _ _ _)
+     41)
+    ((wide _ _
+           (link (link (link chain/end false) true) false)
+           _ _ _ _ _)
+     42)
+    ((wide _ _
+           (link (link (link chain/end false) false) true)
+           _ _ _ _ _)
+     43)
+    ((wide _ _
+           (link (link (link chain/end false) false) false)
+           _ _ _ _ _)
+     44)
+    ((wide _ _ _ chain/end _ _ _ _) 45)
+    ((wide _ _ _ (link chain/end true) _ _ _ _) 46)
+    ((wide _ _ _ (link chain/end false) _ _ _ _) 47)
+    ((wide _ _ _ (link (link chain/end true) true) _ _ _ _) 48)
+    ((wide _ _ _ (link (link chain/end true) false) _ _ _ _) 49)
+    ((wide _ _ _ (link (link chain/end false) true) _ _ _ _) 50)
+    ((wide _ _ _ (link (link chain/end false) false) _ _ _ _)
+     51)
+    ((wide _ _ _
+           (link (link (link chain/end true) true) true)
+           _ _ _ _)
+     52)
+    ((wide _ _ _
+           (link (link (link chain/end true) true) false)
+           _ _ _ _)
+     53)
+    ((wide _ _ _
+           (link (link (link chain/end true) false) true)
+           _ _ _ _)
+     54)
+    ((wide _ _ _
+           (link (link (link chain/end true) false) false)
+           _ _ _ _)
+     55)
+    ((wide _ _ _
+           (link (link (link chain/end false) true) true)
+           _ _ _ _)
+     56)
+    ((wide _ _ _
+           (link (link (link chain/end false) true) false)
+           _ _ _ _)
+     57)
+    ((wide _ _ _
+           (link (link (link chain/end false) false) true)
+           _ _ _ _)
+     58)
+    ((wide _ _ _
+           (link (link (link chain/end false) false) false)
+           _ _ _ _)
+     59)
+    ((wide _ _ _ _ chain/end _ _ _) 60)
+    ((wide _ _ _ _ (link chain/end true) _ _ _) 61)
+    ((wide _ _ _ _ (link chain/end false) _ _ _) 62)
+    ((wide _ _ _ _ (link (link chain/end true) true) _ _ _) 63)
+    ((wide _ _ _ _ (link (link chain/end true) false) _ _ _) 64)
+    ((wide _ _ _ _ (link (link chain/end false) true) _ _ _) 65)
+    ((wide _ _ _ _ (link (link chain/end false) false) _ _ _)
+     66)
+    ((wide _ _ _ _
+           (link (link (link chain/end true) true) true)
+           _ _ _)
+     67)
+    ((wide _ _ _ _
+           (link (link (link chain/end true) true) false)
+           _ _ _)
+     68)
+    ((wide _ _ _ _
+           (link (link (link chain/end true) false) true)
+           _ _ _)
+     69)
+    ((wide _ _ _ _
+           (link (link (link chain/end true) false) false)
+           _ _ _)
+     70)
+    ((wide _ _ _ _
+           (link (link (link chain/end false) true) true)
+           _ _ _)
+     71)
+    ((wide _ _ _ _
+           (link (link (link chain/end false) true) false)
+           _ _ _)
+     72)
+    ((wide _ _ _ _
+           (link (link (link chain/end false) false) true)
+           _ _ _)
+     73)
+    ((wide _ _ _ _
+           (link (link (link chain/end false) false) false)
+           _ _ _)
+     74)
+    ((wide _ _ _ _ _ chain/end _ _) 75)
+    ((wide _ _ _ _ _ (link chain/end true) _ _) 76)
+    ((wide _ _ _ _ _ (link chain/end false) _ _) 77)
+    ((wide _ _ _ _ _ (link (link chain/end true) true) _ _) 78)
+    ((wide _ _ _ _ _ (link (link chain/end true) false) _ _) 79)
+    ((wide _ _ _ _ _ (link (link chain/end false) true) _ _) 80)
+    ((wide _ _ _ _ _ (link (link chain/end false) false) _ _)
+     81)
+    ((wide _ _ _ _ _
+           (link (link (link chain/end true) true) true)
+           _ _)
+     82)
+    ((wide _ _ _ _ _
+           (link (link (link chain/end true) true) false)
+           _ _)
+     83)
+    ((wide _ _ _ _ _
+           (link (link (link chain/end true) false) true)
+           _ _)
+     84)
+    ((wide _ _ _ _ _
+           (link (link (link chain/end true) false) false)
+           _ _)
+     85)
+    ((wide _ _ _ _ _
+           (link (link (link chain/end false) true) true)
+           _ _)
+     86)
+    ((wide _ _ _ _ _
+           (link (link (link chain/end false) true) false)
+           _ _)
+     87)
+    ((wide _ _ _ _ _
+           (link (link (link chain/end false) false) true)
+           _ _)
+     88)
+    ((wide _ _ _ _ _
+           (link (link (link chain/end false) false) false)
+           _ _)
+     89)
+    ((wide _ _ _ _ _ _ chain/end _) 90)
+    ((wide _ _ _ _ _ _ (link chain/end true) _) 91)
+    ((wide _ _ _ _ _ _ (link chain/end false) _) 92)
+    ((wide _ _ _ _ _ _ (link (link chain/end true) true) _) 93)
+    ((wide _ _ _ _ _ _ (link (link chain/end true) false) _) 94)
+    ((wide _ _ _ _ _ _ (link (link chain/end false) true) _) 95)
+    ((wide _ _ _ _ _ _ (link (link chain/end false) false) _)
+     96)
+    ((wide _ _ _ _ _ _
+           (link (link (link chain/end true) true) true)
+           _)
+     97)
+    ((wide _ _ _ _ _ _
+           (link (link (link chain/end true) true) false)
+           _)
+     98)
+    ((wide _ _ _ _ _ _
+           (link (link (link chain/end true) false) true)
+           _)
+     99)
+    ((wide _ _ _ _ _ _
+           (link (link (link chain/end true) false) false)
+           _)
+     100)
+    ((wide _ _ _ _ _ _
+           (link (link (link chain/end false) true) true)
+           _)
+     101)
+    ((wide _ _ _ _ _ _
+           (link (link (link chain/end false) true) false)
+           _)
+     102)
+    ((wide _ _ _ _ _ _
+           (link (link (link chain/end false) false) true)
+           _)
+     103)
+    ((wide _ _ _ _ _ _
+           (link (link (link chain/end false) false) false)
+           _)
+     104)
+    ((wide _ _ _ _ _ _ _ chain/end) 105)
+    ((wide _ _ _ _ _ _ _ (link chain/end true)) 106)
+    ((wide _ _ _ _ _ _ _ (link chain/end false)) 107)
+    ((wide _ _ _ _ _ _ _ (link (link chain/end true) true)) 108)
+    ((wide _ _ _ _ _ _ _ (link (link chain/end true) false))
+     109)
+    ((wide _ _ _ _ _ _ _ (link (link chain/end false) true))
+     110)
+    ((wide _ _ _ _ _ _ _ (link (link chain/end false) false))
+     111)
+    ((wide _ _ _ _ _ _ _
+           (link (link (link chain/end true) true) true))
+     112)
+    ((wide _ _ _ _ _ _ _
+           (link (link (link chain/end true) true) false))
+     113)
+    ((wide _ _ _ _ _ _ _
+           (link (link (link chain/end true) false) true))
+     114)
+    ((wide _ _ _ _ _ _ _
+           (link (link (link chain/end true) false) false))
+     115)
+    ((wide _ _ _ _ _ _ _
+           (link (link (link chain/end false) true) true))
+     116)
+    ((wide _ _ _ _ _ _ _
+           (link (link (link chain/end false) true) false))
+     117)
+    ((wide _ _ _ _ _ _ _
+           (link (link (link chain/end false) false) true))
+     118)
+    ((wide _ _ _ _ _ _ _
+           (link (link (link chain/end false) false) false))
+     119)))

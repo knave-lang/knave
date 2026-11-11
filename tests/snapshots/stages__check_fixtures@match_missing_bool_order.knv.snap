@@ -9,5 +9,5 @@ error[L0433]: non-exhaustive `match`
 6 |   (match s ((switches false false) 0)))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
   |
-  = note: missing 3 cases: `(switches false true)`, `(switches true false)`, `(switches true true)`
+  = note: missing 2 cases: `(switches false true)`, `(switches true _)`
   = help: add an arm for each missing case

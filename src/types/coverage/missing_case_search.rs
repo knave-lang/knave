@@ -2,45 +2,45 @@ use super::constructor::Constructor;
 use super::constructor_catalog::ConstructorCatalog;
 use super::pattern_matrix::PatternMatrix;
 use super::witness::Witness;
-use crate::core::BindingId;
 use crate::types::Type;
 
 pub(super) struct MissingCaseSearch<'c, 'a> {
     catalog: &'c ConstructorCatalog<'a>,
-    expanding: Vec<BindingId>,
 }
 
 impl<'c, 'a> MissingCaseSearch<'c, 'a> {
     pub(super) fn new(catalog: &'c ConstructorCatalog<'a>) -> Self {
-        Self {
-            catalog,
-            expanding: Vec::new(),
-        }
+        Self { catalog }
     }
 
-    pub(super) fn witnesses(
-        &mut self,
-        matrix: &PatternMatrix,
-        types: &[Type],
-    ) -> Vec<Vec<Witness>> {
-        if types.is_empty() {
-            return match matrix.is_empty() {
-                true => vec![Vec::new()],
-                false => Vec::new(),
-            };
+    pub(super) fn witnesses(&self, matrix: &PatternMatrix, types: &[Type]) -> Vec<Vec<Witness>> {
+        if matrix.is_empty() {
+            return vec![vec![Witness::Wild; types.len()]];
         }
-        let (owner, constructors) = self.expansion(matrix, &types[0]);
-        self.while_expanding(owner, |search| match constructors {
-            Some(constructors) => constructors
-                .iter()
-                .flat_map(|constructor| search.constructor_witnesses(matrix, types, constructor))
-                .collect(),
-            None => search.wild_witnesses(matrix, types),
-        })
+        if types.is_empty() || matrix.has_wild_row() {
+            return Vec::new();
+        }
+        let constructors = self.catalog.constructors(&types[0]).unwrap_or_default();
+        let named =
+            |constructor: &Constructor| matrix.heads_cover(std::slice::from_ref(constructor));
+        if !constructors.iter().any(named) {
+            return Self::prefixed(&Witness::Wild, &self.default_witnesses(matrix, types));
+        }
+        let defaults = match constructors.iter().all(named) {
+            true => Vec::new(),
+            false => self.default_witnesses(matrix, types),
+        };
+        constructors
+            .iter()
+            .flat_map(|constructor| match named(constructor) {
+                true => self.constructor_witnesses(matrix, types, constructor),
+                false => Self::prefixed(&Self::with_wild_arguments(constructor), &defaults),
+            })
+            .collect()
     }
 
     fn constructor_witnesses(
-        &mut self,
+        &self,
         matrix: &PatternMatrix,
         types: &[Type],
         constructor: &Constructor,
@@ -58,45 +58,24 @@ impl<'c, 'a> MissingCaseSearch<'c, 'a> {
             .collect()
     }
 
-    fn wild_witnesses(&mut self, matrix: &PatternMatrix, types: &[Type]) -> Vec<Vec<Witness>> {
+    fn default_witnesses(&self, matrix: &PatternMatrix, types: &[Type]) -> Vec<Vec<Witness>> {
         self.witnesses(&matrix.default_rows(), &types[1..])
-            .into_iter()
-            .map(|row| {
-                let mut witness = Vec::with_capacity(row.len() + 1);
-                witness.push(Witness::Wild);
-                witness.extend(row);
+    }
+
+    fn with_wild_arguments(constructor: &Constructor) -> Witness {
+        Witness::built_by(constructor, &vec![Witness::Wild; constructor.arity()])
+    }
+
+    fn prefixed(head: &Witness, rests: &[Vec<Witness>]) -> Vec<Vec<Witness>> {
+        rests
+            .iter()
+            .map(|rest| {
+                let mut witness = Vec::with_capacity(rest.len() + 1);
+                witness.push(head.clone());
+                witness.extend_from_slice(rest);
                 witness
             })
             .collect()
-    }
-
-    fn expansion(
-        &self,
-        matrix: &PatternMatrix,
-        ty: &Type,
-    ) -> (Option<BindingId>, Option<Vec<Constructor>>) {
-        match self.catalog.value_owner(ty) {
-            Some(owner) if !self.expanding.contains(&owner) => {
-                (Some(owner), self.catalog.constructors(ty))
-            }
-            Some(_) => (None, self.catalog.constructors_named_by(ty, matrix)),
-            None => (None, self.catalog.constructors(ty)),
-        }
-    }
-
-    fn while_expanding<T>(
-        &mut self,
-        owner: Option<BindingId>,
-        work: impl FnOnce(&mut Self) -> T,
-    ) -> T {
-        if let Some(owner) = owner {
-            self.expanding.push(owner);
-        }
-        let result = work(self);
-        if owner.is_some() {
-            self.expanding.pop();
-        }
-        result
     }
 }
 
@@ -138,6 +117,16 @@ mod tests {
             cases
                 .iter()
                 .all(|row| matches!(row[0], Witness::Struct { .. }))
+        );
+    }
+
+    #[test]
+    fn fields_of_one_recursive_type_miss_one_case_together() {
+        let fixture = SearchFixture::new();
+        let cases = fixture.missing_cases(SearchFixture::wide_arms(), SearchFixture::wide_type());
+        assert_eq!(cases.len(), 1);
+        assert!(
+            matches!(cases[0].as_slice(), [Witness::Struct { arguments, .. }] if arguments.len() == 8)
         );
     }
 }

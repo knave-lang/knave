@@ -29,6 +29,8 @@ impl SearchFixture {
     const SIDE: u32 = 0;
     const TWIN: u32 = 1;
     const CHAIN: u32 = 2;
+    const WIDE: u32 = 3;
+    const WIDE_FIELDS: usize = 8;
 
     pub(super) fn new() -> Self {
         let mut enums = EnumTable::default();
@@ -52,6 +54,10 @@ impl SearchFixture {
                 Self::boolean(),
             ]),
         );
+        structs.add(
+            Self::binding(Self::WIDE),
+            Self::structure(vec![Self::named(Self::CHAIN); Self::WIDE_FIELDS]),
+        );
         Self {
             unifier: Unifier::default(),
             structs,
@@ -62,6 +68,29 @@ impl SearchFixture {
 
     pub(super) fn twin_type() -> Type {
         Self::named(Self::TWIN)
+    }
+
+    pub(super) fn wide_type() -> Type {
+        Self::named(Self::WIDE)
+    }
+
+    pub(super) fn wide_arms() -> Vec<CoverPattern> {
+        (0..Self::WIDE_FIELDS)
+            .flat_map(|field| {
+                [
+                    Self::end(),
+                    Self::link(Self::end(), Self::flag(true)),
+                    Self::link(Self::end(), Self::flag(false)),
+                ]
+                .map(|pattern| Self::wide_with(field, pattern))
+            })
+            .collect()
+    }
+
+    fn wide_with(field: usize, pattern: CoverPattern) -> CoverPattern {
+        let mut fields = vec![CoverPattern::wild(); Self::WIDE_FIELDS];
+        fields[field] = pattern;
+        CoverPattern::constructed(ConstructorTag::Struct(Self::binding(Self::WIDE)), fields)
     }
 
     pub(super) fn chain_type() -> Type {

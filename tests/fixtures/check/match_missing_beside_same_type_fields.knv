@@ -1,0 +1,166 @@
+(enum inner (deep bool) flat)
+
+(enum outer (yes inner bool) no)
+
+(defstruct wide
+  :f0 outer
+  :f1 outer
+  :f2 outer
+  :f3 outer
+  :f4 outer
+  :f5 outer
+  :f6 outer
+  :f7 outer
+  :f8 outer
+  :f9 outer
+  :f10 outer
+  :f11 outer
+  :f12 outer
+  :f13 outer
+  :f14 outer
+  :f15 outer)
+
+(type pick (fn (wide) i64))
+
+(defn pick (x)
+  (match x
+    ((wide outer/no _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) 0)
+    ((wide (outer/yes inner/flat true)
+           _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+     1)
+    ((wide (outer/yes inner/flat false)
+           _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+     2)
+    ((wide _ outer/no _ _ _ _ _ _ _ _ _ _ _ _ _ _) 3)
+    ((wide _
+           (outer/yes inner/flat true)
+           _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+     4)
+    ((wide _
+           (outer/yes inner/flat false)
+           _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+     5)
+    ((wide _ _ outer/no _ _ _ _ _ _ _ _ _ _ _ _ _) 6)
+    ((wide _ _
+           (outer/yes inner/flat true)
+           _ _ _ _ _ _ _ _ _ _ _ _ _)
+     7)
+    ((wide _ _
+           (outer/yes inner/flat false)
+           _ _ _ _ _ _ _ _ _ _ _ _ _)
+     8)
+    ((wide _ _ _ outer/no _ _ _ _ _ _ _ _ _ _ _ _) 9)
+    ((wide _ _ _
+           (outer/yes inner/flat true)
+           _ _ _ _ _ _ _ _ _ _ _ _)
+     10)
+    ((wide _ _ _
+           (outer/yes inner/flat false)
+           _ _ _ _ _ _ _ _ _ _ _ _)
+     11)
+    ((wide _ _ _ _ outer/no _ _ _ _ _ _ _ _ _ _ _) 12)
+    ((wide _ _ _ _
+           (outer/yes inner/flat true)
+           _ _ _ _ _ _ _ _ _ _ _)
+     13)
+    ((wide _ _ _ _
+           (outer/yes inner/flat false)
+           _ _ _ _ _ _ _ _ _ _ _)
+     14)
+    ((wide _ _ _ _ _ outer/no _ _ _ _ _ _ _ _ _ _) 15)
+    ((wide _ _ _ _ _
+           (outer/yes inner/flat true)
+           _ _ _ _ _ _ _ _ _ _)
+     16)
+    ((wide _ _ _ _ _
+           (outer/yes inner/flat false)
+           _ _ _ _ _ _ _ _ _ _)
+     17)
+    ((wide _ _ _ _ _ _ outer/no _ _ _ _ _ _ _ _ _) 18)
+    ((wide _ _ _ _ _ _
+           (outer/yes inner/flat true)
+           _ _ _ _ _ _ _ _ _)
+     19)
+    ((wide _ _ _ _ _ _
+           (outer/yes inner/flat false)
+           _ _ _ _ _ _ _ _ _)
+     20)
+    ((wide _ _ _ _ _ _ _ outer/no _ _ _ _ _ _ _ _) 21)
+    ((wide _ _ _ _ _ _ _
+           (outer/yes inner/flat true)
+           _ _ _ _ _ _ _ _)
+     22)
+    ((wide _ _ _ _ _ _ _
+           (outer/yes inner/flat false)
+           _ _ _ _ _ _ _ _)
+     23)
+    ((wide _ _ _ _ _ _ _ _ outer/no _ _ _ _ _ _ _) 24)
+    ((wide _ _ _ _ _ _ _ _
+           (outer/yes inner/flat true)
+           _ _ _ _ _ _ _)
+     25)
+    ((wide _ _ _ _ _ _ _ _
+           (outer/yes inner/flat false)
+           _ _ _ _ _ _ _)
+     26)
+    ((wide _ _ _ _ _ _ _ _ _ outer/no _ _ _ _ _ _) 27)
+    ((wide _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat true)
+           _ _ _ _ _ _)
+     28)
+    ((wide _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat false)
+           _ _ _ _ _ _)
+     29)
+    ((wide _ _ _ _ _ _ _ _ _ _ outer/no _ _ _ _ _) 30)
+    ((wide _ _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat true)
+           _ _ _ _ _)
+     31)
+    ((wide _ _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat false)
+           _ _ _ _ _)
+     32)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ outer/no _ _ _ _) 33)
+    ((wide _ _ _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat true)
+           _ _ _ _)
+     34)
+    ((wide _ _ _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat false)
+           _ _ _ _)
+     35)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ _ outer/no _ _ _) 36)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat true)
+           _ _ _)
+     37)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat false)
+           _ _ _)
+     38)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ _ _ outer/no _ _) 39)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat true)
+           _ _)
+     40)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat false)
+           _ _)
+     41)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ _ _ _ outer/no _) 42)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat true)
+           _)
+     43)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat false)
+           _)
+     44)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ outer/no) 45)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat true))
+     46)
+    ((wide _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+           (outer/yes inner/flat false))
+     47)))

@@ -32,6 +32,7 @@ mod module_survey;
 mod names;
 mod noted_term;
 mod noted_terms;
+mod notes_module;
 mod prelude_state;
 mod problem_mark;
 mod problem_report;
@@ -91,6 +92,7 @@ use module_notes::{ModuleNotes, NotesCheckpoint};
 pub use module_survey::ModuleSurvey;
 use noted_term::NotedTerm;
 use noted_terms::NotedTerms;
+use notes_module::NotesModule;
 pub use prelude_state::{PreludeState, UnreadablePrelude};
 use problem_report::ProblemReport;
 pub use problems::{ExpandProblems, SetAsideInput};
@@ -397,7 +399,8 @@ impl<'s> Expander<'s> {
     }
 
     fn noted_terms(&mut self, module: ModuleId, since: NotesCheckpoint) -> NotedTerms {
-        if self.skips_document_check(module, since) {
+        let is_prelude = ModuleSources::is_prelude(self.modules.get(module).path());
+        if is_prelude || self.tables.module_notes.checkpoint() == since {
             return NotedTerms::new(module, Vec::new());
         }
         let Some(notes) = self.docstring_notes() else {
@@ -414,34 +417,13 @@ impl<'s> Expander<'s> {
         NotedTerms::new(module, terms)
     }
 
-    fn skips_document_check(&self, module: ModuleId, since: NotesCheckpoint) -> bool {
-        ModuleSources::is_prelude(self.modules.get(module).path())
-            || self.tables.module_notes.checkpoint() == since
-    }
-
     fn docstring_notes(&mut self) -> Option<DocstringNotes> {
-        let notes_module = self.notes_module()?;
+        let notes_module = NotesModule::new(&self.modules, self.bindings()).find()?;
         let key = self.exported_value(notes_module, DocstringNotes::DOCSTRINGS_KEY)?;
         let documented_terms_key =
             self.exported_value(notes_module, DocstringNotes::DOCUMENTED_TERMS_KEY)?;
         let noted_term = self.exported_value(notes_module, DocstringNotes::NOTED_TERM)?;
         DocstringNotes::of(&key, &documented_terms_key, noted_term)
-    }
-
-    fn notes_module(&self) -> Option<ModuleId> {
-        let prelude = self
-            .modules
-            .find(&ModulePath::new(ModuleSources::PRELUDE))?;
-        let page_macro = self
-            .modules
-            .get(prelude)
-            .exported(DocstringNotes::PAGE_MACRO, Namespace::Value)?;
-        let page_module = self.definition_module(page_macro)?;
-        let key = self
-            .modules
-            .get(page_module)
-            .exported(DocstringNotes::DOCSTRINGS_KEY, Namespace::Value)?;
-        self.definition_module(key)
     }
 
     fn exported_value(&mut self, module: ModuleId, name: &str) -> Option<Value> {

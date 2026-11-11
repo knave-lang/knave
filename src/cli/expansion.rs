@@ -103,6 +103,7 @@ mod tests {
     use super::Expansion;
     use crate::cli::evaluation_request::EvaluationRequest;
     use crate::cli::exit_status::ExitStatus;
+    use crate::cli::fake_programs::FakePrograms;
     use crate::cli::module_of_sources::ModuleOfSources;
     use crate::cli::program_file::ProgramFile;
     use crate::cli::recorded_output::RecordedOutput;
@@ -124,9 +125,6 @@ mod tests {
         const FIRST_DEFINITION: &str = "(def width 1)";
         const SECOND_DEFINITION: &str = "(def height 2)";
         const UNBOUND: &str = "(def width missing-name)\n";
-        const MISTYPED: &str = "(def width (+ 1 \"two\"))\n";
-        const UNREACHABLE_ARM: &str =
-            "(enum shape (circle f64) point)\n\n(defn area (s)\n  (match s (_ 0.0) (point 1.0)))\n";
         const LOADED_MODULE: &str = "shapes";
         const LOADED_TEXT: &str = "(def side 3)\n";
         const LOADING_INPUT: &str = "(use shapes side)\n";
@@ -274,7 +272,7 @@ mod tests {
     #[test]
     fn surveys_the_type_errors_of_a_module_that_expands() {
         let mut fixture = ExpansionFixture::new();
-        let module = fixture.module(&[ExpansionFixture::MISTYPED]);
+        let module = fixture.module(&[FakePrograms::MISTYPED]);
         let survey = fixture.expansion().survey(&module, &[]);
         assert!(survey.diagnostics().has_errors());
     }
@@ -282,7 +280,7 @@ mod tests {
     #[test]
     fn surveys_the_warnings_of_a_module_that_checks() {
         let mut fixture = ExpansionFixture::new();
-        let module = fixture.module(&[ExpansionFixture::UNREACHABLE_ARM]);
+        let module = fixture.module(&[FakePrograms::UNREACHABLE_ARM]);
         let survey = fixture.expansion().survey(&module, &[]);
         assert_eq!(survey.diagnostics().len(), 1);
         assert!(!survey.diagnostics().has_errors());

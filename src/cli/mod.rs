@@ -31,6 +31,8 @@ mod evaluation_request;
 mod exit_status;
 mod expand;
 mod expansion;
+#[cfg(test)]
+mod fake_programs;
 mod finished_program;
 mod fmt;
 mod front_end_stack;

@@ -100,9 +100,9 @@
 (def page-text
   (fn (page)
     (local terms (module-exports (page-path page)))
-    (local homed (homed-terms terms (homes-of page terms)))
+    (local pairs (paired-terms terms (homes-of page terms)))
     (local sections
-      (map-list (owned-terms page homed)
+      (map-list (owned-terms page pairs)
         (fn (term)
           (list term (written-body term)))))
     (local summary (module-docstring page))
@@ -116,7 +116,7 @@
             (join-text "\n"
                        (map-list sections
                          (fn (section) (term-section page links section))))
-            (reexport-list page (reexported-terms page homed)))))
+            (reexport-list page (reexported-terms page pairs)))))
 
 (def section-term
   (fn (section) (first section)))
@@ -135,36 +135,36 @@
       ""
       (string (body-markdown page links (first summary)) "\n\n"))))
 
-(def homed-terms
+(def paired-terms
   (fn (terms homes)
     (local paired
-      (fn (homed terms homes)
+      (fn (pairs terms homes)
         (if (empty? terms)
-          homed
-          (recur (concat homed
+          pairs
+          (recur (concat pairs
                          (list (list (first terms) (first homes))))
                  (rest terms)
                  (rest homes)))))
     (paired (list) terms homes)))
 
-(def homed-term
-  (fn (homed) (first homed)))
+(def paired-term
+  (fn (paired) (first paired)))
 
-(def homed-home
-  (fn (homed) (nth homed 1)))
+(def paired-home
+  (fn (paired) (nth paired 1)))
 
 (def owned-terms
-  (fn (page homed)
-    (map-list (items-where (fn (term-home)
-                             (own-home? page (homed-home term-home)))
-                           homed)
-              homed-term)))
+  (fn (page pairs)
+    (map-list (items-where (fn (paired)
+                             (own-home? page (paired-home paired)))
+                           pairs)
+              paired-term)))
 
 (def reexported-terms
-  (fn (page homed)
-    (items-where (fn (term-home)
-                   (bool-not (own-home? page (homed-home term-home))))
-                 homed)))
+  (fn (page pairs)
+    (items-where (fn (paired)
+                   (bool-not (own-home? page (paired-home paired))))
+                 pairs)))
 
 (def own-home?
   (fn (page home)
@@ -217,15 +217,14 @@
     (if (empty? reexported)
       ""
       (string "\n## Re-exported names\n\n"
-              (join-text "\n"
-                         (map-list reexported
-                           (fn (term-home)
-                             (local name (symbol-name (homed-term term-home)))
-                             (string "- [`" name "`]("
-                                     (term-target page
-                                                  (first (homed-home term-home))
-                                                  name)
-                                     ")"))))
+              (join-text
+                "\n"
+                (map-list reexported
+                  (fn (paired)
+                    (local name (symbol-name (paired-term paired)))
+                    (string "- [`" name "`]("
+                            (term-target page (first (paired-home paired)) name)
+                            ")"))))
               "\n"))))
 
 (def homes-of
@@ -519,7 +518,7 @@
 (def link-table
   (fn (page texts)
     (local terms (link-terms page texts))
-    (homed-terms terms (homes-of page terms))))
+    (paired-terms terms (homes-of page terms))))
 
 (def link-terms
   (fn (page texts)
@@ -560,9 +559,9 @@
   (fn (links name)
     (if (empty? links)
       links
-      (if (value-eq (symbol-name (homed-term (first links)))
+      (if (value-eq (symbol-name (paired-term (first links)))
                     name)
-        (homed-home (first links))
+        (paired-home (first links))
         (recur (rest links) name)))))
 
 (def bracket-start?

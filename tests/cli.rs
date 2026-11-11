@@ -3288,6 +3288,14 @@ fn emit_stops_rustfmt_past_its_time_limit_and_writes_unformatted_rust() {
 }
 
 #[test]
+fn emit_reports_an_entry_without_main() {
+    let sandbox = Sandbox::new("emit_without_main").with_file("helper.knv", "(defn helper () 1)\n");
+    let emit = sandbox.compiler(&["emit", "helper.knv"]);
+    let stderr = emit.assert_exit_code(1).stderr();
+    assert!(stderr.starts_with("error[L0601]: "), "{stderr}");
+}
+
+#[test]
 fn emit_rejects_a_malformed_rustfmt_time_limit_as_a_usage_error() {
     let sandbox =
         Sandbox::new("emit_malformed_rustfmt_time_limit").with_file("greeting.knv", GREETING);

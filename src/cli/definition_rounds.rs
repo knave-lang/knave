@@ -1,7 +1,8 @@
-use super::definition_buffer::{BufferedInput, DefinitionBuffer, DroppedNames, Replacement};
+use super::definition_buffer::{BufferedInput, DefinitionBuffer, Replacement};
 use super::error_location::{InputLocator, Location, ModuleLoader};
 use super::name_records::NameRecords;
 use super::prompt_module::PromptModule;
+use super::set_aside_drop::SetAsideDrop;
 use super::sources_survey::SourcesSurvey;
 use super::terminal::Terminal;
 use crate::diagnostic::{Diagnostic, Diagnostics};
@@ -55,8 +56,8 @@ impl<'a> DefinitionRounds<'a> {
             warnings: Diagnostics::default(),
             pending: NameRecords::default(),
         };
-        for names in dropped {
-            rounds.set_aside_dropped(names);
+        for drop in dropped {
+            rounds.set_aside_dropped(drop.as_ref());
         }
         rounds
     }
@@ -135,27 +136,9 @@ impl<'a> DefinitionRounds<'a> {
         }
     }
 
-    fn set_aside_dropped(&mut self, drop: DroppedNames) {
-        if drop.dropped.is_empty() {
-            return self.set_aside_documents(&drop);
-        }
-        let names: Vec<&str> = drop.dropped.iter().map(|name| &*name.name).collect();
-        let first = drop.dropped[0].span;
-        let input = self.set_aside_input(&names, &drop.input);
-        let warning = SetAsideProblems::dropped_definitions(&input, &drop.replacing, first);
-        self.warnings.push(warning);
-        for name in &drop.dropped {
-            let reason = SetAsideProblems::set_aside_reason(&drop.replacing, &name.name);
-            self.pending.set_aside(name, self.entered.name(), &reason);
-        }
-    }
-
-    fn set_aside_documents(&mut self, drop: &DroppedNames) {
-        let terms: Vec<&str> = drop.documents.iter().map(|term| &**term).collect();
-        let input = self.set_aside_input(&terms, &drop.input);
-        let warning =
-            SetAsideProblems::dropped_documents(&input, &drop.replacing, drop.input.span());
-        self.warnings.push(warning);
+    fn set_aside_dropped(&mut self, drop: &dyn SetAsideDrop) {
+        self.warnings.push(drop.warning(self.entered.name()));
+        drop.record(&mut self.pending, self.entered.name());
     }
 
     fn set_aside_input<'n>(

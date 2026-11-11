@@ -9,8 +9,14 @@ pub struct InputTerms {
 }
 
 pub struct DocumentsLeft {
-    pub replacing: Rc<str>,
-    pub left: Vec<Rc<str>>,
+    replacing: Rc<str>,
+    left: Vec<Rc<str>>,
+}
+
+impl DocumentsLeft {
+    pub fn into_parts(self) -> (Rc<str>, Vec<Rc<str>>) {
+        (self.replacing, self.left)
+    }
 }
 
 impl InputTerms {
@@ -126,8 +132,9 @@ mod tests {
         let left = earlier
             .documents_left_by(&TermsFixture::documenting(&["g"]))
             .expect("the later input documents `g` again");
-        assert_eq!(&*left.replacing, "g");
-        assert_eq!(left.left, [Rc::from("k")]);
+        let (replacing, left) = left.into_parts();
+        assert_eq!(&*replacing, "g");
+        assert_eq!(left, [Rc::from("k")]);
     }
 
     #[test]

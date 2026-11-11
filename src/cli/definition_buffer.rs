@@ -1,6 +1,7 @@
-use std::rc::Rc;
-
-use crate::expand::{BoundName, DocumentsLeft, InputTerms};
+use super::dropped_definitions::DroppedDefinitions;
+use super::dropped_documents::DroppedDocuments;
+use super::set_aside_drop::SetAsideDrop;
+use crate::expand::{BoundName, InputTerms};
 use crate::source::{SourceId, Span};
 
 #[derive(Clone)]
@@ -20,13 +21,6 @@ pub struct Replacement {
     replaced: Vec<usize>,
 }
 
-pub struct DroppedNames {
-    pub input: BufferedInput,
-    pub dropped: Vec<BoundName>,
-    pub documents: Vec<Rc<str>>,
-    pub replacing: Rc<str>,
-}
-
 impl BufferedInput {
     pub fn new(name: String, span: Span, terms: InputTerms) -> Self {
         Self { name, span, terms }
@@ -42,10 +36,6 @@ impl BufferedInput {
 
     pub fn source(&self) -> SourceId {
         self.span.source()
-    }
-
-    pub fn span(&self) -> Span {
-        self.span
     }
 
     pub fn binds(&self, name: &BoundName) -> bool {
@@ -101,7 +91,7 @@ impl DefinitionBuffer {
         &self,
         replacement: &Replacement,
         entered: &BufferedInput,
-    ) -> Vec<DroppedNames> {
+    ) -> Vec<Box<dyn SetAsideDrop>> {
         replacement
             .replaced
             .iter()
@@ -152,32 +142,15 @@ impl DefinitionBuffer {
         self.inputs.iter().find(|input| input.source() == source)
     }
 
-    fn drop_of(earlier: &BufferedInput, entered: &BufferedInput) -> Option<DroppedNames> {
-        if let Some(documents) = earlier.terms.documents_left_by(&entered.terms) {
-            return Self::documents_drop(earlier, documents);
+    fn drop_of(earlier: &BufferedInput, entered: &BufferedInput) -> Option<Box<dyn SetAsideDrop>> {
+        match earlier.terms.documents_left_by(&entered.terms) {
+            Some(documents) => {
+                DroppedDocuments::left_behind(earlier.name(), earlier.span, documents)
+                    .map(|drop| Box::new(drop) as Box<dyn SetAsideDrop>)
+            }
+            None => DroppedDefinitions::left_behind(earlier.name(), &earlier.terms, &entered.terms)
+                .map(|drop| Box::new(drop) as Box<dyn SetAsideDrop>),
         }
-        let dropped: Vec<BoundName> = earlier
-            .names()
-            .iter()
-            .filter(|name| !entered.binds(name))
-            .cloned()
-            .collect();
-        let replacing = entered.names().iter().find(|bound| earlier.binds(bound))?;
-        (!dropped.is_empty()).then(|| DroppedNames {
-            input: earlier.clone(),
-            dropped,
-            documents: Vec::new(),
-            replacing: Rc::clone(&replacing.name),
-        })
-    }
-
-    fn documents_drop(earlier: &BufferedInput, documents: DocumentsLeft) -> Option<DroppedNames> {
-        (!documents.left.is_empty()).then(|| DroppedNames {
-            input: earlier.clone(),
-            dropped: Vec::new(),
-            documents: documents.left,
-            replacing: documents.replacing,
-        })
     }
 }
 
@@ -199,6 +172,8 @@ mod tests {
     struct BufferFixture;
 
     impl BufferFixture {
+        const SETTER: &str = "<input 1>";
+
         fn input(source: usize, names: &[&str]) -> BufferedInput {
             let source = SourceId::new(source);
             let names = names
@@ -332,9 +307,27 @@ mod tests {
             )
             .expect("`b` is defined earlier");
         let dropped = buffer.dropped_by(&replacement, &entered);
-        let names: Vec<&str> = dropped[0].dropped.iter().map(|name| &*name.name).collect();
-        assert_eq!(names, ["a"]);
-        assert_eq!(&*dropped[0].replacing, "b");
+        let warning = dropped[0].warning(BufferFixture::SETTER);
+        assert_eq!(warning.title(), "set aside `a` after `<input 1>`");
+        assert_eq!(warning.notes(), ["`b` replaced the input that defined `a`"]);
+    }
+
+    #[test]
+    fn a_document_that_leaves_a_term_behind_drops_it() {
+        let earlier = BufferFixture::entered(
+            SourceId::new(0),
+            InputTerms::documenting(Vec::new(), vec!["g".into(), "k".into()]),
+        );
+        let buffer = DefinitionBuffer {
+            inputs: vec![earlier],
+        };
+        let entered = BufferFixture::document(1, "g");
+        let replacement = buffer
+            .widened(&BufferFixture::documenting("g"), &Replacement::default())
+            .expect("`g` is documented earlier");
+        let dropped = buffer.dropped_by(&replacement, &entered);
+        let warning = dropped[0].warning(BufferFixture::SETTER);
+        assert_eq!(warning.title(), "set aside `k` after `<input 1>`");
     }
 
     #[test]

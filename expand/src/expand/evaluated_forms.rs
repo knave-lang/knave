@@ -47,13 +47,10 @@ impl EvaluatedForms {
         self.definitions.contains(&span) || self.splices_definition(span)
     }
 
-    pub(super) fn misplaced_expressions(&self, span: Span) -> Vec<Span> {
-        if !self.is_definition(span) {
-            return Vec::new();
-        }
-        let mut misplaced = Vec::new();
-        self.collect_left_out(span, &mut misplaced);
-        misplaced
+    pub(super) fn left_out_within(&self, span: Span) -> Vec<Span> {
+        let mut left_out = Vec::new();
+        self.collect_left_out(span, &mut left_out);
+        left_out
     }
 
     fn collect_left_out(&self, span: Span, misplaced: &mut Vec<Span>) {
@@ -131,17 +128,20 @@ mod tests {
         let mut forms = SpanFixture::spliced_do();
         forms.note_definition(SpanFixture::span(SpanFixture::FIRST_ITEM));
         forms.leave_out(SpanFixture::span(SpanFixture::SECOND_ITEM));
-        let misplaced = forms.misplaced_expressions(SpanFixture::span(SpanFixture::DO_FORM));
+        let misplaced = forms.left_out_within(SpanFixture::span(SpanFixture::DO_FORM));
         assert_eq!(misplaced, [SpanFixture::span(SpanFixture::SECOND_ITEM)]);
     }
 
     #[test]
-    fn a_spliced_do_of_expressions_misplaces_nothing() {
+    fn a_spliced_do_of_expressions_leaves_out_every_item() {
         let mut forms = SpanFixture::spliced_do();
         forms.leave_out(SpanFixture::span(SpanFixture::FIRST_ITEM));
         forms.leave_out(SpanFixture::span(SpanFixture::SECOND_ITEM));
-        let misplaced = forms.misplaced_expressions(SpanFixture::span(SpanFixture::DO_FORM));
-        assert!(misplaced.is_empty());
+        let left_out = forms.left_out_within(SpanFixture::span(SpanFixture::DO_FORM));
+        assert_eq!(
+            left_out,
+            [SpanFixture::FIRST_ITEM, SpanFixture::SECOND_ITEM].map(SpanFixture::span)
+        );
     }
 
     #[test]
@@ -154,7 +154,7 @@ mod tests {
         );
         forms.note_definition(SpanFixture::span(SpanFixture::FIRST_ITEM));
         forms.leave_out(nested[0]);
-        let misplaced = forms.misplaced_expressions(SpanFixture::span(SpanFixture::DO_FORM));
+        let misplaced = forms.left_out_within(SpanFixture::span(SpanFixture::DO_FORM));
         assert_eq!(misplaced, nested);
     }
 
@@ -165,7 +165,7 @@ mod tests {
         forms.splice(do_form, [do_form, do_form].into_iter());
         forms.note_definition(do_form);
         forms.leave_out(do_form);
-        assert!(forms.misplaced_expressions(do_form).is_empty());
+        assert!(forms.left_out_within(do_form).is_empty());
     }
 
     #[test]

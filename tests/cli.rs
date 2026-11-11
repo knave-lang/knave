@@ -183,6 +183,8 @@ const PROMPT_DOCUMENT_ABOVE_ITS_DEFINITION: &str =
     "(use prelude/macros document)\n(document (h) \"Returns three.\")\n(defn h () 3)\n(h)\n";
 const PROMPT_DOCUMENT_BELOW_ITS_DEFINITION: &str =
     "(use prelude/macros document)\n(defn g () 2)\n(document (g) \"Returns two.\")\n(doc g)\n";
+const PROMPT_DOCUMENT_BESIDE_AN_EXPRESSION: &str =
+    "(use prelude/macros document)\n(defn g () 2)\n(do (document (g) \"x\") (println 1))\n";
 const PROMPT_RUNAWAY_MACRO: &str =
     "(defmacro spin () ((fn () (recur))))\n(with-macro-steps 1000 (spin))\n(+ 1 2)\n";
 const PROMPT_INFER: &str = "(defn identity (x) x)\n(infer (vec 1 2))\n(infer identity)\n(infer none)\n(def text (infer identity))\ntext\n";
@@ -4528,6 +4530,15 @@ fn repl_keeps_a_document_entered_alone() {
     let sandbox = Sandbox::new("repl_document_alone");
     let repl = sandbox.compiler_reading(PROMPT_DOCUMENT_BELOW_ITS_DEFINITION, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
+}
+
+#[test]
+fn repl_runs_a_document_beside_an_expression() {
+    let sandbox = Sandbox::new("repl_document_beside_an_expression");
+    let repl = sandbox.compiler_reading(PROMPT_DOCUMENT_BESIDE_AN_EXPRESSION, &["repl"]);
+    let output = repl.assert_exit_code(0);
+    assert_eq!(output.stdout(), "1\n");
+    assert_eq!(output.stderr(), "");
 }
 
 #[test]

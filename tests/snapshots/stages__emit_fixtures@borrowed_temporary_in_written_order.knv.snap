@@ -1,0 +1,188 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/borrowed_temporary_in_written_order.knv
+---
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Counter {
+    n: i64,
+}
+
+fn first_letter(text: &str) -> &str {
+    &text[0..1]
+}
+
+fn announced(text: &str) -> String {
+    println!("{}", text);
+    text.to_string()
+}
+
+fn keep(n: i64, text: &str) -> &str {
+    println!("{}", n);
+    text
+}
+
+fn tick(c: &mut i64) -> String {
+    *c += 1;
+    format!("tick-{}", c)
+}
+
+fn tick_counter(c: &mut Counter) -> String {
+    c.n += 1;
+    format!("tick-{}", c.n)
+}
+
+fn chooser() -> impl Fn(&str) -> &str {
+    println!("callee");
+    first_letter
+}
+
+fn pick_ref(x: &i64) -> &i64 {
+    println!("picked");
+    x
+}
+
+fn nums() -> Vec<i64> {
+    println!("nums");
+    vec![1_i64, 2_i64, 3_i64]
+}
+
+fn first_of(items: impl Iterator<Item = i64>, text: &str) -> &str {
+    &text[0..items.count()]
+}
+
+fn lifted_local() {
+    let mut n: i64 = 1;
+    let owner;
+    let t = keep(
+        n,
+        {
+            owner = tick(&mut n);
+            &owner
+        }
+        .as_str(),
+    );
+    println!("{}", t)
+}
+
+fn explicit_local() {
+    let mut n: i64 = 1;
+    let seen: i64 = n;
+    let text = tick(&mut n);
+    let t = keep(seen, text.as_str());
+    println!("{}", t)
+}
+
+fn lifted_field() {
+    let mut c = Counter { n: 1 };
+    let owner;
+    let t = keep(
+        c.n,
+        {
+            owner = tick_counter(&mut c);
+            &owner
+        }
+        .as_str(),
+    );
+    println!("{}", t)
+}
+
+fn explicit_field() {
+    let mut c = Counter { n: 1 };
+    let seen: i64 = c.n;
+    let text = tick_counter(&mut c);
+    let t = keep(seen, text.as_str());
+    println!("{}", t)
+}
+
+fn lifted_callee() {
+    let owner;
+    let t = chooser()(
+        {
+            owner = announced("argument");
+            &owner
+        }
+        .as_str(),
+    );
+    println!("{}", t)
+}
+
+fn explicit_callee() {
+    let f = chooser();
+    let text = announced("argument");
+    let t = f(text.as_str());
+    println!("{}", t)
+}
+
+fn lifted_deref() {
+    let n: i64 = 3;
+    let owner;
+    let t = keep(
+        *pick_ref(&n),
+        {
+            owner = announced("deref");
+            &owner
+        }
+        .as_str(),
+    );
+    println!("{}", t)
+}
+
+fn explicit_deref() {
+    let n: i64 = 3;
+    let seen: i64 = *pick_ref(&n);
+    let text = announced("deref");
+    let t = keep(seen, text.as_str());
+    println!("{}", t)
+}
+
+fn lifted_iterator() {
+    let owner;
+    let t = first_of(
+        nums().iter().copied(),
+        {
+            owner = announced("iterated");
+            &owner
+        }
+        .as_str(),
+    );
+    println!("{}", t)
+}
+
+fn explicit_iterator() {
+    let items: Vec<i64> = nums();
+    let text = announced("iterated");
+    let t = first_of(items.iter().copied(), text.as_str());
+    println!("{}", t)
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    lifted_local();
+    explicit_local();
+    lifted_field();
+    explicit_field();
+    lifted_callee();
+    explicit_callee();
+    lifted_deref();
+    explicit_deref();
+    lifted_iterator();
+    explicit_iterator()
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

@@ -1,0 +1,21 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/borrowed_temporary_in_branch.knv
+---
+a
+a
+none
+none
+c
+c
+none
+none
+in
+d
+in
+d
+made
+f
+made
+f

@@ -1,0 +1,137 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/borrowed_temporary_in_branch.knv
+---
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Page {
+    title: String,
+}
+
+fn first_letter(text: &str) -> &str {
+    &text[0..1]
+}
+
+fn make_page(title: &str) -> Page {
+    println!("made");
+    Page {
+        title: title.to_string(),
+    }
+}
+
+fn lifted_if(flag: bool, name: &str) {
+    let owner;
+    let t = if flag {
+        first_letter(
+            {
+                owner = format!("{}-if", name);
+                &owner
+            }
+            .as_str(),
+        )
+    } else {
+        "none"
+    };
+    println!("{}", t)
+}
+
+fn explicit_if(flag: bool, name: &str) {
+    let text = format!("{}-if", name);
+    let t = if flag {
+        first_letter(text.as_str())
+    } else {
+        "none"
+    };
+    println!("{}", t)
+}
+
+fn lifted_match(found: Option<&str>) {
+    let owner;
+    let t = match found {
+        Some(name) => first_letter(
+            {
+                owner = format!("{}-match", name);
+                &owner
+            }
+            .as_str(),
+        ),
+        None => "none",
+    };
+    println!("{}", t)
+}
+
+fn explicit_match(found: Option<&str>) {
+    let text = format!("{}-match", found.unwrap_or(""));
+    let t = match found {
+        Some(_) => first_letter(text.as_str()),
+        None => "none",
+    };
+    println!("{}", t)
+}
+
+fn lifted_block(name: &str) {
+    let owner;
+    let t = {
+        println!("in");
+        first_letter(
+            {
+                owner = format!("{}-do", name);
+                &owner
+            }
+            .as_str(),
+        )
+    };
+    println!("{}", t)
+}
+
+fn explicit_block(name: &str) {
+    println!("in");
+    let text = format!("{}-do", name);
+    let t = first_letter(text.as_str());
+    println!("{}", t)
+}
+
+fn lifted_field() {
+    let owner = make_page("field");
+    let t = first_letter(owner.title.as_str());
+    println!("{}", t)
+}
+
+fn explicit_field() {
+    let made = make_page("field");
+    let t = first_letter(made.title.as_str());
+    println!("{}", t)
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    lifted_if(true, "ann");
+    explicit_if(true, "ann");
+    lifted_if(false, "bo");
+    explicit_if(false, "bo");
+    lifted_match(Some("cy"));
+    explicit_match(Some("cy"));
+    lifted_match(None);
+    explicit_match(None);
+    lifted_block("dee");
+    explicit_block("dee");
+    lifted_field();
+    explicit_field()
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

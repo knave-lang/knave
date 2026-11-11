@@ -1520,6 +1520,55 @@ fn fmt_lays_out_a_call_by_a_shape_in_a_library_of_the_project() {
 }
 
 #[test]
+fn fmt_lays_out_a_call_by_a_shape_in_a_fetched_git_library() {
+    let sandbox = Sandbox::new("fmt_git_library_shapes")
+        .with_file(
+            &format!("looping/{}", Language::project_file_name()),
+            "(defproject looping)\n",
+        )
+        .with_file("looping/src/lib.knv", LOOPING_LIBRARY_ROOT)
+        .with_file("looping/src/shapes/loops.knv", LOOP_SHAPE)
+        .with_one_git_library_from_tree("looping", "../looping.git")
+        .with_file("git-app/src/main.knv", LOOPING_CALL);
+    sandbox.compiler_in("git-app", &["check"]);
+    sandbox
+        .compiler_in("git-app", &["fmt", "src/main.knv"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.contents("git-app/src/main.knv"),
+        LOOPING_CALL_SHAPED
+    );
+}
+
+#[test]
+fn fmt_never_fetches_a_git_library_the_cache_lacks() {
+    let (sandbox, commit) = Sandbox::new("fmt_git_unfetched").with_git_library(None);
+    let fmt = sandbox.compiler_in("git-app", &["fmt", "src/main.knv"]);
+    insta::assert_snapshot!(fmt.assert_exit_code(0).stderr());
+    let checkout = sandbox
+        .directory
+        .join(Sandbox::CACHE_DIRECTORY)
+        .join(Language::NAME)
+        .join("git")
+        .join(&commit);
+    assert!(!checkout.exists());
+}
+
+#[test]
+fn fmt_with_a_git_library_at_an_unreachable_host_finishes_at_once() {
+    let project = format!(
+        "(defproject app (libraries (grid :git \"{UNREACHABLE_REPOSITORY}\" :rev \"{MISSING_COMMIT}\")))\n"
+    );
+    let sandbox = Sandbox::new("fmt_git_unreachable")
+        .with_file(&Language::project_file_name(), &project)
+        .with_file("src/main.knv", LOOP_CALL);
+    let started = Instant::now();
+    let fmt = sandbox.compiler(&["fmt", "src/main.knv"]);
+    assert!(started.elapsed() < Sandbox::INPUT_PATIENCE);
+    assert!(fmt.assert_exit_code(0).stderr().starts_with("warning: "));
+}
+
+#[test]
 fn fmt_in_a_project_also_finds_a_module_beside_a_parent_directory() {
     let sandbox = Sandbox::new("fmt_project_parent_shapes")
         .with_file(&Language::project_file_name(), PROJECT)
@@ -6139,6 +6188,7 @@ const PROJECT_WITH_UNKNOWN_KEY: &str = "(defproject greeter :entyr \"src/main.kn
 const UNLAID_PROJECT: &str = "(defproject browser :version \"0.1.0\" :entry \"src/main.knv\"\n  (libraries (hints :path \"../hints\"))\n\n  (dependencies (cef \"144.0\") (serde \"1.0\" :features (\"derive\"))))\n";
 const BARE_NAMES_PROJECT: &str = "(defproject demo alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(libraries alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu)\n\n(dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(dev-dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n";
 const MISSING_COMMIT: &str = "0000000000000000000000000000000000000000";
+const UNREACHABLE_REPOSITORY: &str = "http://10.255.255.1/grid.git";
 const SELF_IMPORT: &str = "(use sub/c)\n\n(defn f () 1)\n";
 const PROJECT_ENTRY: &str =
     "(use text/shout shout)\n\n(defn main ()\n  (println (shout \"hi\")))\n";

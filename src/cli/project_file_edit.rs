@@ -3,6 +3,7 @@ use std::path::Path;
 
 use super::crate_section::CrateSection;
 use super::exit_status::ExitStatus;
+use super::library_walk::LibraryStore;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
@@ -20,7 +21,7 @@ impl ProjectFileEdit {
 
     pub fn of_working_directory(terminal: &Terminal, command: &str) -> Result<Self, ExitStatus> {
         let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
-        match LocatedProject::search_from(working_directory, terminal)? {
+        match LocatedProject::search_from(working_directory, terminal, LibraryStore::fetching())? {
             Some(project) => Ok(Self { project }),
             None => Err(Self::report_no_project(command)),
         }

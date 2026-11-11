@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
+use super::library_walk::LibraryStore;
 use super::located_project::LocatedProject;
 use super::standard_error::StandardError;
 use super::terminal::{ModuleOfSources, Terminal};
@@ -34,14 +35,15 @@ impl TestEntries {
     }
 
     fn at(path: PathBuf, terminal: &Terminal) -> Result<EntryTree, ExitStatus> {
-        let project = LocatedProject::search_from(&path, terminal)?;
+        let project = LocatedProject::search_from(&path, terminal, LibraryStore::fetching())?;
         Ok(EntryTree::of_tests(path, project))
     }
 
     fn of_working_project(terminal: &Terminal) -> Result<EntryTree, ExitStatus> {
         let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
-        let project = LocatedProject::search_from(working_directory, terminal)?
-            .ok_or_else(LocatedProject::report_no_path)?;
+        let project =
+            LocatedProject::search_from(working_directory, terminal, LibraryStore::fetching())?
+                .ok_or_else(LocatedProject::report_no_path)?;
         let path = project.tests_directory();
         if !path.is_dir() {
             return Err(Self::report_no_tests_directory(&project));

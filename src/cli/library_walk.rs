@@ -1,10 +1,12 @@
+mod library_store;
+
 use std::path::{Path, PathBuf};
 
 use super::checkout_bounds::{CheckoutBounds, RepositoryAddress};
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
 use super::terminal::Terminal;
-use crate::build::{GitStore, StoreError};
+use crate::build::StoreError;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::modules::{LibraryRoot, LibraryTable};
@@ -12,17 +14,19 @@ use crate::project::{
     CrateDependency, CrateSet, LibraryDependency, LibrarySource, Project, ProjectProblems,
 };
 use crate::source::Span;
+pub use library_store::LibraryStore;
 
 pub struct LibraryWalk<'t> {
     terminal: &'t mut Terminal,
     seen: Vec<SeenLibrary>,
     roots: Vec<LibraryRoot>,
-    store: Option<GitStore>,
+    store: LibraryStore,
     crates: CrateSet,
     crate_library: Option<String>,
 }
 
 pub struct WalkedLibraries {
+    pub project: Project,
     pub table: LibraryTable,
     pub crates: Vec<CrateDependency>,
     pub dev_crates: Vec<CrateDependency>,
@@ -63,21 +67,23 @@ impl<'t> LibraryWalk<'t> {
     pub fn walk(
         terminal: &'t mut Terminal,
         root: &Path,
-        project: &Project,
+        store: LibraryStore,
     ) -> Result<WalkedLibraries, ExitStatus> {
+        let project = terminal.load_project(&root.join(Language::project_file_name()))?;
         let mut walk = Self {
             terminal,
             seen: Vec::new(),
             roots: Vec::new(),
-            store: None,
+            store,
             crates: CrateSet::default(),
             crate_library: None,
         };
-        walk.add_crates(root, project)?;
-        walk.visit_all(root, project, Listing::PROGRAM)?;
-        let dev_crates = walk.dev_crates(root, project)?;
+        walk.add_crates(root, &project)?;
+        walk.visit_all(root, &project, Listing::PROGRAM)?;
+        let dev_crates = walk.dev_crates(root, &project)?;
         Ok(WalkedLibraries {
-            table: LibraryTable::new(Self::names(project), walk.roots),
+            table: LibraryTable::new(Self::names(&project), walk.roots),
+            project,
             dev_crates,
             crates: walk.crates.into_crates(),
             crate_library: walk.crate_library,
@@ -168,15 +174,9 @@ impl<'t> LibraryWalk<'t> {
         url: &str,
         commit: &str,
     ) -> Result<PathBuf, ExitStatus> {
-        let store = match self.store.take() {
-            Some(store) => store,
-            None => GitStore::for_user().map_err(|error| self.report_store(library, error))?,
-        };
-        let checked_out = store
+        self.store
             .checkout(url, commit)
-            .map_err(|error| self.report_store(library, error));
-        self.store = Some(store);
-        checked_out
+            .map_err(|error| self.report_store(library, error))
     }
 
     fn report_store(&self, library: &LibraryDependency, error: StoreError) -> ExitStatus {
@@ -185,6 +185,11 @@ impl<'t> LibraryWalk<'t> {
                 &library.name,
                 library.name_span,
                 &reason,
+            )),
+            StoreError::NotCached => self.report_environment(&format!(
+                "git library `{}` is not in the cache\nhelp: run `{} check` to fetch it",
+                library.name,
+                Language::NAME
             )),
             StoreError::NoCacheDirectory => self.report_environment(
                 "no cache directory for git libraries: set `XDG_CACHE_HOME` or `HOME`",

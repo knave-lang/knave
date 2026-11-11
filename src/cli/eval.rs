@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use super::evaluation_output::EvaluationOutput;
 use super::exit_status::ExitStatus;
+use super::library_walk::LibraryStore;
 use super::located_program::LocatedProgram;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
@@ -114,8 +115,11 @@ impl EvalCommand {
         let path = self.module.path().to_path_buf();
         match &self.root {
             Some(root) => {
-                let project =
-                    LocatedProject::search_from(&ProgramFile::directory_of(&path), terminal)?;
+                let project = LocatedProject::search_from(
+                    &ProgramFile::directory_of(&path),
+                    terminal,
+                    LibraryStore::fetching(),
+                )?;
                 Self::refuse_crates(project.as_ref(), terminal)?;
                 let file = ProgramFile::within(path, root.clone());
                 Ok(LocatedProject::lend_libraries(project.as_ref(), file))

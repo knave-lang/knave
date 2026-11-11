@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use super::crate_section::CrateSection;
 use super::exit_status::ExitStatus;
-use super::library_walk::LibraryWalk;
+use super::library_walk::{LibraryStore, LibraryWalk};
 use super::program_file::ProgramFile;
 use super::project_crates::ProjectCrates;
 use super::standard_error::StandardError;
@@ -24,22 +24,25 @@ pub struct LocatedProject {
 }
 
 impl LocatedProject {
-    pub fn search_from(directory: &Path, terminal: &Terminal) -> Result<Option<Self>, ExitStatus> {
+    pub fn search_from(
+        directory: &Path,
+        terminal: &Terminal,
+        store: LibraryStore,
+    ) -> Result<Option<Self>, ExitStatus> {
         let Some(root) = Self::nearest_root(directory)? else {
             return Ok(None);
         };
         let mut scratch = terminal.scratch();
-        let project = scratch.load_project(&root.join(Language::project_file_name()))?;
-        let walked = LibraryWalk::walk(&mut scratch, &root, &project)?;
+        let walked = LibraryWalk::walk(&mut scratch, &root, store)?;
         let crates = ProjectCrates::new(
             root.clone(),
-            project.name.clone(),
+            walked.project.name.clone(),
             walked.crates,
             walked.dev_crates,
         );
         Ok(Some(Self {
             root,
-            project,
+            project: walked.project,
             libraries: walked.table,
             crates,
             crate_library: walked.crate_library,

@@ -4,6 +4,7 @@ use std::rc::Rc;
 use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
 use super::finished_program::FinishedProgram;
+use super::library_walk::LibraryStore;
 use super::located_project::LocatedProject;
 use super::project_task::{ProjectTask, TaskName};
 use super::standard_error::StandardError;
@@ -61,8 +62,9 @@ impl TaskCommand {
 
     fn task_tree(terminal: &Terminal) -> Result<EntryTree, ExitStatus> {
         let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
-        let project = LocatedProject::search_from(working_directory, terminal)?
-            .ok_or_else(Self::report_no_project)?;
+        let project =
+            LocatedProject::search_from(working_directory, terminal, LibraryStore::fetching())?
+                .ok_or_else(Self::report_no_project)?;
         let directory = project.tasks_directory();
         if !directory.is_dir() {
             return Err(Self::report_no_tasks_directory());

@@ -9,7 +9,9 @@
 
 (module "Returns structs and collections with new values at their keys.
 
-  The call moves the value and returns it with the new values in place.")
+  A collection moves into the call and comes back with the new values in place.
+  A struct comes back as a new struct, which takes each field the call does not
+  list: such a field moves unless it is `copy`.")
 
 (export assoc assoc-in update)
 

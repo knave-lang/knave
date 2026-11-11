@@ -28,6 +28,16 @@
 
   ```rust
   width == height
+  ```
+
+  ````markdown
+  ```
+  (square? 1 1)
+  ```
+  ````
+
+  ```
+  ```sh
   ```"
   (= width height))
 

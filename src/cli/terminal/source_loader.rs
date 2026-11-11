@@ -63,12 +63,15 @@ impl<'a> SourceLoader<'a> {
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;
-    use std::path::Path;
+    use std::fs;
+    use std::path::{Path, PathBuf};
 
     use super::SourceLoader;
     use crate::cli::diagnostic_output::{DiagnosticOutput, MessageOutput};
     use crate::cli::exit_status::ExitStatus;
+    use crate::cli::temporary_directory::TemporaryDirectory;
     use crate::diagnostic::Diagnostics;
+    use crate::language::Language;
     use crate::source::{SourceId, SourceMap, TextPosition};
 
     #[derive(Default)]
@@ -110,6 +113,12 @@ mod tests {
 
         fn added(&mut self, text: &str) -> SourceId {
             self.loader().add(Path::new(Self::MODULE), text.to_string())
+        }
+
+        fn written_project_file(directory: &TemporaryDirectory, text: &str) -> PathBuf {
+            let path = directory.path().join(Language::project_file_name());
+            fs::write(&path, text).expect("the scratch directory is writable");
+            path
         }
 
         fn reports(&self) -> Vec<String> {
@@ -155,6 +164,18 @@ mod tests {
         assert_eq!(status.err(), Some(ExitStatus::UsageError));
         let [report] = fixture.reports().try_into().expect("one report");
         assert!(report.starts_with("cannot read `no-such-directory/missing.knv`: "));
+    }
+
+    #[test]
+    fn loads_a_project_from_its_file() {
+        let directory = TemporaryDirectory::create().expect("a scratch directory is created");
+        let path = LoaderFixture::written_project_file(&directory, "(defproject app)");
+        let mut fixture = LoaderFixture::default();
+        let project = fixture
+            .loader()
+            .load_project(&path)
+            .expect("the project loads");
+        assert_eq!(project.name, "app");
     }
 
     #[test]

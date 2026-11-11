@@ -43,10 +43,9 @@ src/cli/terminal.rs 2
 src/emit/expressions.rs 3
 src/emit/expressions/tail_loop.rs 1
 src/emit/generic_callees.rs 1
-src/emit/generic_positions.rs 2
+src/emit/generic_positions.rs 1
 src/emit/items.rs 4
 src/emit/mod.rs 1
-src/emit/open_literals.rs 3
 src/emit/result_borrows.rs 1
 src/emit/reused_locals.rs 2
 src/emit/store_sites.rs 1

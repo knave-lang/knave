@@ -5,6 +5,7 @@ use super::generic_positions::GenericPositions;
 use super::let_annotation::LetAnnotation;
 use super::rust_fallback::RustFallback;
 use super::type_anchor::TypeAnchor;
+pub(super) use super::type_context::TypeContext;
 use crate::core::{BindingId, BindingKind, FieldLabel, Literal, VariantInfo};
 use crate::reader::Number;
 use crate::source::Span;
@@ -12,12 +13,6 @@ use crate::types::{
     TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
     TypedLeaf, TypedProgram, TypedStructExpr,
 };
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum TypeContext {
-    Known,
-    Unknown,
-}
 
 #[derive(Default)]
 pub(super) struct OpenLiterals {

@@ -1567,10 +1567,7 @@ impl<'a> ExpressionEmitter<'a> {
             (Literal::String(text), _) => Code::atom(format!("{text:?}")),
             (Literal::Bool(value), _) => Code::atom(value.to_string()),
             (Literal::Number(number), Type::Generic(_)) => self.converted_literal(number, ty),
-            (Literal::Number(number), _) => match context {
-                TypeContext::Known => NumberLiteral::new(number, ty).code(),
-                TypeContext::Unknown => NumberLiteral::new(number, ty).suffixed_code(),
-            },
+            (Literal::Number(number), _) => NumberLiteral::new(number, ty).code(context),
         }
     }
 

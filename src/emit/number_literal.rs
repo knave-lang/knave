@@ -1,4 +1,5 @@
 use super::fragment::{Code, Precedence};
+use super::type_context::TypeContext;
 use crate::reader::{Number, NumberValue};
 use crate::types::Type;
 
@@ -12,14 +13,12 @@ impl<'n> NumberLiteral<'n> {
         Self { number, ty }
     }
 
-    pub fn code(&self) -> Code {
-        Self::signed(self.digits())
-    }
-
-    pub fn suffixed_code(&self) -> Code {
+    pub fn code(&self, context: TypeContext) -> Code {
         let digits = self.digits();
-        match self.ty {
-            Type::Primitive(primitive) => Self::signed(format!("{digits}_{}", primitive.name())),
+        match (self.ty, context) {
+            (Type::Primitive(primitive), TypeContext::Unknown) => {
+                Self::signed(format!("{digits}_{}", primitive.name()))
+            }
             _ => Self::signed(digits),
         }
     }
@@ -49,6 +48,7 @@ mod tests {
     use super::NumberLiteral;
     use crate::core::PrimitiveType;
     use crate::emit::fragment::Precedence;
+    use crate::emit::type_context::TypeContext;
     use crate::reader::{Number, NumberValue};
     use crate::types::{GenericId, Type};
 
@@ -69,7 +69,12 @@ mod tests {
     fn writes_the_digits_without_a_plus_sign() {
         let number = NumberFixture::integer("+7");
         let ty = NumberFixture::primitive(PrimitiveType::I64);
-        assert_eq!(NumberLiteral::new(&number, &ty).code().text(), "7");
+        assert_eq!(
+            NumberLiteral::new(&number, &ty)
+                .code(TypeContext::Known)
+                .text(),
+            "7"
+        );
     }
 
     #[test]
@@ -84,7 +89,9 @@ mod tests {
         let number = NumberFixture::integer("7");
         let ty = NumberFixture::primitive(PrimitiveType::U8);
         assert_eq!(
-            NumberLiteral::new(&number, &ty).suffixed_code().text(),
+            NumberLiteral::new(&number, &ty)
+                .code(TypeContext::Unknown)
+                .text(),
             "7_u8"
         );
     }
@@ -93,14 +100,19 @@ mod tests {
     fn leaves_a_generic_number_unsuffixed() {
         let number = NumberFixture::integer("7");
         let ty = Type::Generic(GenericId::new(0));
-        assert_eq!(NumberLiteral::new(&number, &ty).suffixed_code().text(), "7");
+        assert_eq!(
+            NumberLiteral::new(&number, &ty)
+                .code(TypeContext::Unknown)
+                .text(),
+            "7"
+        );
     }
 
     #[test]
     fn a_negative_number_is_a_prefix_expression() {
         let number = NumberFixture::integer("-7");
         let ty = NumberFixture::primitive(PrimitiveType::I64);
-        let code = NumberLiteral::new(&number, &ty).suffixed_code();
+        let code = NumberLiteral::new(&number, &ty).code(TypeContext::Unknown);
         assert_eq!(code.precedence, Precedence::Prefix);
     }
 }

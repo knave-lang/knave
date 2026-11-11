@@ -33,6 +33,7 @@ mod stored_functions;
 mod structural_impls;
 mod template;
 mod type_anchor;
+mod type_context;
 mod types;
 mod unlent_parameters;
 mod unsized_parameters;

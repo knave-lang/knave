@@ -69,7 +69,7 @@ impl ProjectFileEdit {
     fn formatted(&self, scratch: &mut Terminal, path: &Path, text: String) -> String {
         let directory = ProgramFile::directory_of(path);
         let root = ProgramFile::canonical(&directory).unwrap_or(directory);
-        let source = scratch.sources().add(path, text);
+        let source = scratch.sources().add(path.display(), text);
         SourceFormatter::default()
             .format(
                 scratch.source_file(source),

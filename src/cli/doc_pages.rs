@@ -72,7 +72,9 @@ impl DocumentedModules {
 
     pub fn pages(&self, terminal: &mut Terminal) -> Result<Vec<WrittenPage>, ExitStatus> {
         let types = self.types(terminal)?;
-        let entry = terminal.sources().add(self.file.path(), String::new());
+        let entry = terminal
+            .sources()
+            .add(self.file.path().display(), String::new());
         let texts = terminal.within_session(&self.file, entry, |mut session| {
             self.load_written(&mut session)?;
             self.written
@@ -122,7 +124,9 @@ impl DocumentedModules {
         terminal: &mut Terminal,
         module: &str,
     ) -> Result<Result<Vec<TypedName>, Diagnostics>, ExitStatus> {
-        let entry = terminal.sources().add(self.file.path(), String::new());
+        let entry = terminal
+            .sources()
+            .add(self.file.path().display(), String::new());
         let (program, named) = terminal.within_session(&self.file, entry, |mut session| {
             Self::load(&mut session, module)?;
             let named = Self::named_bindings(&mut session, module)?;
@@ -135,7 +139,7 @@ impl DocumentedModules {
         let entry = &self.entry;
         let source = terminal
             .sources()
-            .add(entry.file.path(), entry.text.clone());
+            .add(entry.file.path().display(), entry.text.clone());
         let (program, loaded, named) =
             terminal.within_session(&entry.file, source, |mut session| {
                 let loaded = self.loaded_written(&session);

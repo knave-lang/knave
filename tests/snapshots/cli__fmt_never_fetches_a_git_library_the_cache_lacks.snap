@@ -2,6 +2,6 @@
 source: tests/cli.rs
 expression: fmt.assert_exit_code(0).stderr()
 ---
-warning: cannot load `project.knv` with its libraries, so `fmt` reads shapes only beside each file and in its parent directories
+warning: cannot load the project around `src/main.knv` with its libraries, so `fmt` reads shapes only beside each file and in its parent directories
 error: git library `keymap` is not in the cache
 help: run `knave check` to fetch it

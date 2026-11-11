@@ -8,6 +8,7 @@ use super::fragment::{Code, Fragment, Precedence};
 use super::let_annotation::LetAnnotation;
 use super::local_closures::LocalClosures;
 use super::locals::LocalNames;
+use super::number_literal::NumberLiteral;
 use super::open_literals::{OpenLiterals, TypeContext};
 use super::operator::{RustOperator, Side};
 use super::plan::{EmitPlan, ItemKind};
@@ -1014,7 +1015,7 @@ impl<'a> ExpressionEmitter<'a> {
     fn literal_shape(&mut self, literal: &Literal, ty: &Type) -> PatternShape {
         match literal {
             Literal::Number(number) => {
-                let code = Code::atom(Self::number_digits(number, ty));
+                let code = Code::atom(NumberLiteral::new(number, ty).digits());
                 PatternShape::plain(code)
             }
             Literal::Bool(value) => {
@@ -1560,37 +1561,10 @@ impl<'a> ExpressionEmitter<'a> {
             (Literal::String(text), _) => Code::atom(format!("{text:?}")),
             (Literal::Bool(value), _) => Code::atom(value.to_string()),
             (Literal::Number(number), Type::Generic(_)) => self.converted_literal(number, ty),
-            (Literal::Number(number), _) => Self::number(number, ty, context),
-        }
-    }
-
-    fn number(number: &Number, ty: &Type, context: TypeContext) -> Code {
-        let text = Self::number_text(number, ty, context);
-        let precedence = if text.starts_with('-') {
-            Precedence::Prefix
-        } else {
-            Precedence::Atom
-        };
-        Code::with(text, precedence)
-    }
-
-    fn number_text(number: &Number, ty: &Type, context: TypeContext) -> String {
-        let digits = Self::number_digits(number, ty);
-        match (ty, context) {
-            (Type::Primitive(primitive), TypeContext::Unknown) => {
-                format!("{digits}_{}", primitive.name())
-            }
-            _ => digits,
-        }
-    }
-
-    fn number_digits(number: &Number, ty: &Type) -> String {
-        let digits = number.text().trim_start_matches('+').to_string();
-        match (number.value(), ty) {
-            (NumberValue::Integer(_), Type::Primitive(primitive)) if primitive.is_float() => {
-                format!("{digits}.0")
-            }
-            _ => digits,
+            (Literal::Number(number), _) => match context {
+                TypeContext::Known => NumberLiteral::new(number, ty).code(),
+                TypeContext::Unknown => NumberLiteral::new(number, ty).suffixed_code(),
+            },
         }
     }
 

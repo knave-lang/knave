@@ -45,3 +45,14 @@ error[L0311]: `warn` takes 3 arguments but 2 were given
 ...
 35 | (def car (too-few "green car"))
    |          --------------------- in this macro call
+
+error[L0321]: a `warn` description needs a `:code` part
+  --> expand/warn_descriptions.knv:39:36
+   |
+39 |     (warn "the van is parked" form "move it")
+   |                                    ^^^^^^^^^ this description names no lint
+...
+42 | (def taxi (help-only "white taxi"))
+   |           ------------------------ in this macro call
+   |
+   = help: name the lint, as in `(:code unmatched-link)`

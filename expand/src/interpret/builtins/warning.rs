@@ -4,6 +4,7 @@ use crate::diagnostic::{CodeStage, Diagnostic, RuleName};
 use crate::interpret::arguments::Arguments;
 use crate::interpret::warning_problems::WarningProblems;
 use crate::interpret::{Value, Warnings};
+use crate::reader::FormKind;
 
 pub struct WarnCall<'a> {
     arguments: &'a Arguments<'a>,
@@ -43,8 +44,12 @@ impl<'a> WarnCall<'a> {
     }
 
     fn description(&self) -> Result<FailureDescription, Diagnostic> {
-        let parts = self.arguments.list_forms(self.description_position())?;
-        FailureDescription::read(&parts, &CodeBook::LINTS)
+        let position = self.description_position();
+        let description = self.arguments.form(position)?;
+        if let FormKind::String(_) = description.kind() {
+            return Err(WarningProblems::missing_lint(description.span()));
+        }
+        FailureDescription::read(&self.arguments.list_forms(position)?, &CodeBook::LINTS)
     }
 
     fn rule(&self, description: &FailureDescription) -> Result<RuleName, Diagnostic> {

@@ -31,8 +31,11 @@ impl<'a> ConstructorCatalog<'a> {
         ty: &Type,
         matrix: &PatternMatrix,
     ) -> Option<Vec<Constructor>> {
-        self.constructors(ty)
-            .filter(|constructors| matrix.heads_cover(constructors))
+        self.constructors(ty).filter(|constructors| {
+            constructors
+                .iter()
+                .all(|constructor| matrix.heads_name(constructor.tag()))
+        })
     }
 
     pub(super) fn constructors(&self, ty: &Type) -> Option<Vec<Constructor>> {
@@ -87,5 +90,34 @@ impl<'a> ConstructorCatalog<'a> {
             .map(|(_, field_type)| field_type)
             .collect();
         Some(Constructor::new(ConstructorTag::Struct(owner), fields))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::coverage::cover_pattern::CoverPattern;
+    use crate::types::coverage::search_fixture::SearchFixture;
+
+    #[test]
+    fn a_column_whose_rows_name_every_constructor_is_split_by_all_of_them() {
+        let fixture = SearchFixture::new();
+        let arms = vec![
+            SearchFixture::end(),
+            SearchFixture::link(CoverPattern::wild(), CoverPattern::wild()),
+        ];
+        assert_eq!(
+            fixture.constructors_named_by(arms, SearchFixture::chain_type()),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn a_column_whose_rows_miss_a_constructor_is_not_split() {
+        let fixture = SearchFixture::new();
+        let arms = vec![SearchFixture::end()];
+        assert_eq!(
+            fixture.constructors_named_by(arms, SearchFixture::chain_type()),
+            None
+        );
     }
 }

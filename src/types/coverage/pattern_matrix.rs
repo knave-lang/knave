@@ -1,4 +1,5 @@
 use super::constructor::Constructor;
+use super::constructor_tag::ConstructorTag;
 use super::cover_pattern::CoverPattern;
 use crate::core::Literal;
 
@@ -40,13 +41,10 @@ impl PatternMatrix {
         self.keep_rows(|first| first.kind().is_wild().then(Vec::new))
     }
 
-    pub(super) fn heads_cover(&self, constructors: &[Constructor]) -> bool {
-        constructors.iter().all(|constructor| {
-            self.rows.iter().any(|row| {
-                row.first()
-                    .is_some_and(|first| first.kind().names(constructor.tag()))
-            })
-        })
+    pub(super) fn heads_name(&self, tag: ConstructorTag) -> bool {
+        self.rows
+            .iter()
+            .any(|row| row.first().is_some_and(|first| first.kind().names(tag)))
     }
 
     fn of_rows(rows: Vec<Vec<CoverPattern>>) -> Self {
@@ -225,17 +223,17 @@ mod tests {
     }
 
     #[test]
-    fn heads_cover_the_constructors_that_some_row_starts_with() {
+    fn heads_name_a_constructor_that_some_row_starts_with() {
         let fixture = MatrixFixture::new();
         let matrix = MatrixFixture::rows(vec![fixture.variant(0)]);
-        assert!(matrix.heads_cover(&[fixture.first_variant()]));
+        assert!(matrix.heads_name(fixture.first_variant().tag()));
     }
 
     #[test]
-    fn heads_do_not_cover_a_constructor_that_no_row_starts_with() {
+    fn heads_do_not_name_a_constructor_that_no_row_starts_with() {
         let fixture = MatrixFixture::new();
         let matrix = MatrixFixture::rows(vec![fixture.variant(1), CoverPattern::wild()]);
-        assert!(!matrix.heads_cover(&[fixture.first_variant()]));
+        assert!(!matrix.heads_name(fixture.first_variant().tag()));
     }
 
     #[test]
@@ -266,19 +264,5 @@ mod tests {
             .default_rows();
         assert!(!default.is_empty());
         assert!(!default.has_wild_row());
-    }
-
-    #[test]
-    fn heads_do_not_cover_a_type_when_one_of_its_constructors_is_missing() {
-        let fixture = MatrixFixture::new();
-        let second = Constructor::new(
-            ConstructorTag::Variant {
-                owner: fixture.owner,
-                index: 1,
-            },
-            Vec::new(),
-        );
-        let matrix = MatrixFixture::rows(vec![fixture.variant(0)]);
-        assert!(!matrix.heads_cover(&[fixture.first_variant(), second]));
     }
 }

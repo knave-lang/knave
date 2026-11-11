@@ -38,9 +38,9 @@ impl ProjectFileEdit {
     ) -> Result<bool, ExitStatus> {
         let path = self.project.project_file();
         let mut scratch = terminal.scratch();
-        let source = scratch.load(&path)?;
+        let source = scratch.sources().load(&path)?;
         let text = scratch.source_file(source).text().to_string();
-        let forms = scratch.read_source(source)?;
+        let forms = scratch.sources().read(source)?;
         let editor =
             ProjectEditor::of(&text, &forms).expect("a loaded project file holds a project form");
         let Some(edited) = edit(&editor) else {
@@ -69,7 +69,7 @@ impl ProjectFileEdit {
     fn formatted(&self, scratch: &mut Terminal, path: &Path, text: String) -> String {
         let directory = ProgramFile::directory_of(path);
         let root = ProgramFile::canonical(&directory).unwrap_or(directory);
-        let source = scratch.add_source(path, text);
+        let source = scratch.sources().add(path, text);
         SourceFormatter::default()
             .format(
                 scratch.source_file(source),

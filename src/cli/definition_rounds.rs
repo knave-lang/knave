@@ -82,7 +82,7 @@ impl<'a> DefinitionRounds<'a> {
         let mut located = LocatedDiagnostics::default();
         for diagnostic in survey.diagnostics.in_source_order() {
             let location = locator.locate(diagnostic, |source| {
-                terminal.source_name(source).to_string()
+                terminal.source_file(source).name().to_string()
             });
             located.add(location, diagnostic);
         }

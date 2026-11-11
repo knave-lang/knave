@@ -1,6 +1,7 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
+use super::diagnostic_output::UnreadableFile;
 use super::doc_folder::DocFolder;
 use super::doc_pages::{DocumentedModules, EntryProgram};
 use super::exit_status::ExitStatus;
@@ -69,7 +70,7 @@ impl DocWriteCommand {
         match ModuleSources::read_file(path) {
             Ok(text) => Ok(text),
             Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(String::new()),
-            Err(error) => Err(Terminal::report_unreadable(path, &error)),
+            Err(error) => Err(UnreadableFile::new(path, &error).report()),
         }
     }
 

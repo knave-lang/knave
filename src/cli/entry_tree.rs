@@ -2,6 +2,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use super::diagnostic_output::UnreadableFile;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
@@ -67,7 +68,7 @@ impl TreeFile {
     ) -> Result<(), ExitStatus> {
         let mut problems = Diagnostics::default();
         for file in files.iter().filter(|file| file.takes_compiler_module()) {
-            let start = Span::new(terminal.load(&file.path)?, 0..0);
+            let start = Span::new(terminal.sources().load(&file.path)?, 0..0);
             problems.push(ExpandProblems::file_takes_compiler_module(
                 &file.module_path(),
                 start,
@@ -157,7 +158,7 @@ impl EntryTree {
         } else {
             Ok(ModuleOfSources {
                 file: self.entry_file(),
-                sources: vec![terminal.load(&self.path)?],
+                sources: vec![terminal.sources().load(&self.path)?],
             })
         }
     }
@@ -180,7 +181,7 @@ impl EntryTree {
     fn module_files(&self) -> Result<Vec<TreeFile>, ExitStatus> {
         let mut files = Vec::new();
         self.collect_modules(&self.path, &mut files)
-            .map_err(|error| Terminal::report_unreadable(&self.path, &error))?;
+            .map_err(|error| UnreadableFile::new(&self.path, &error).report())?;
         files.sort();
         match files.iter().find(|file| self.kind.refuses(file)) {
             Some(file) => Err(file.report_unnamable()),
@@ -195,7 +196,9 @@ impl EntryTree {
             .iter()
             .map(|file| format!("(use {})", file.module))
             .collect();
-        let source = terminal.add_named_source(self.kind.entry_name(), &uses.join("\n"));
+        let source = terminal
+            .sources()
+            .add_named(self.kind.entry_name(), &uses.join("\n"));
         Ok(ModuleOfSources {
             file: self.directory_file(),
             sources: vec![source],

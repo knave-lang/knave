@@ -1,12 +1,16 @@
+mod unreadable_file;
+
 use std::sync::Arc;
 
 use anstream::ColorChoice;
 
 use super::capped_report::CappedReport;
+use super::exit_status::ExitStatus;
 use super::json_replies::{JsonObject, JsonReplies};
 use super::standard_error::StandardError;
 use crate::diagnostic::{Diagnostic, DiagnosticRenderer, Diagnostics};
 use crate::source::{SourceMap, TextPosition};
+pub use unreadable_file::UnreadableFile;
 
 pub trait DiagnosticOutput {
     fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics);
@@ -14,6 +18,14 @@ pub trait DiagnosticOutput {
 
     fn write_error(&self, message: &str) {
         StandardError::write_line(format_args!("error: {message}"));
+    }
+
+    fn report(&self, sources: &SourceMap, diagnostics: &Diagnostics) -> ExitStatus {
+        if !diagnostics.has_errors() {
+            return ExitStatus::Success;
+        }
+        self.write(sources, diagnostics);
+        ExitStatus::ProgramErrors
     }
 }
 

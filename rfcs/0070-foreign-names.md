@@ -34,7 +34,7 @@ Every option shares the diagnostics of the Diagnostics section. The options diff
 
 ### A. A `foreign-names` form beside the definition
 
-The prelude states each definition's names in other languages with a form that sits next to the definition, as `header-shape` and `document` do. Every example form in this RFC uses entries of Appendix C1, the list that ships first, except the one under rule 7 that shows a form with both a purpose phrase and a `:help`, which no C1 row needs. The form names the definition, a short purpose phrase or a `:help` text, and the names by language:
+The prelude states each definition's names in other languages with a form that sits next to the definition, as `header-shape` and `document` do. Every example form in this RFC uses entries of Appendix C1, the list that ships first, except the one under rule 7 that shows a form with both a purpose phrase and a `:help`, which no C1 row needs. The form names the definition, a short purpose phrase, a `:help` text, both, or neither, and the names by language:
 
 ```lisp
 (foreign-names vec "build a vector"
@@ -253,7 +253,7 @@ error[L0301]: no rule of `some` matches this form
  --> src/main.knv:4:3
   |
 4 |   (some (fn (x) (> x 1)) items)
-  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
   |
   = note: `some` wraps a value in an `option`
   = help: write it as `(some value)`
@@ -326,7 +326,7 @@ A page `docs/writing-knave-with-a-language-model.md`, for people who let a model
 1. **What a model gets wrong and why.** One paragraph: it reaches for Rust, Python, JavaScript and Clojure names and forms.
 2. **The loop that works.** Run `knave check` after each change, read the `help:` line of each error before guessing again, and use `knave doc <term>`, `(apropos text)` and `(find-doc text)` to find a name. With this RFC, `find-doc` also searches the `foreign-names` notes, so `(find-doc length)` finds `len`.
 3. **A table of foreign names by language.** Generated from the `foreign-names` notes, as `knave doc --write --prelude` writes the prelude pages, so the page never disagrees with the prelude.
-4. **The syntax differences a model must know**, each with a wrong line and the right line: no `[]`, `{}`, `'` or commas; `(char "a")`; keyword struct fields; `local` for a step and `let` for scoped bindings; no top-level expressions; `main` returns `unit` or a `result`; no format strings; `len` and `subs` count a string's bytes, where Python counts code points and JavaScript UTF-16 units, so `(len (chars text))` counts characters. Python's `len` keeps its name in knave, so no entry and no error can warn of the unit.
+4. **The syntax differences a model must know**, each with a wrong line and the right line: no `[]`, `{}`, `'` or commas; `(char "a")`; keyword struct fields; `local` for a step and `let` for scoped bindings; no top-level expressions; `main` returns `unit` or a `result`; no format strings; `len` and `subs` count a string's bytes, where Python counts code points and JavaScript UTF-16 units, so `(len (chars text))` counts characters. Python's `len` keeps its name in knave, so no entry and no error can warn of the unit. Clojure's `subs` keeps its name and counts UTF-16 units, so, as with Python's `len`, only this page can warn of the unit.
 5. **Argument order.** knave follows Rust's method order: the collection comes first, as in `(map (iter v) f)` and `(reduce v 0 +)`, the opposite of Clojure.
 6. **A snippet to paste into a project's `AGENTS.md` or `CLAUDE.md`** that points the model at `knave check`, `knave doc` and this page.
 
@@ -546,7 +546,7 @@ Of these 21 probes, four get a wrong help today and seven get none. The review's
 
 ## Appendix C: Proposed entries by source language
 
-Each row maps a foreign name to a knave definition. **R** means the help shows the replacement: the knave definition takes the same arguments in the same order and means the same. **H** means the entry sits in a form with no purpose phrase, so every call gets the `:help` text and no replacement, because the order, the meaning or the form differs. **R, H** means a form with both, where the argument count chooses (rule 7). **B** marks a foreign name bound in `prelude`, which hints only when its call fails. **E** marks a name from Appendix B.
+Each row maps a foreign name to a knave definition. **R** means the help shows the replacement: the knave definition takes the same arguments in the same order and means the same. **H** means the entry sits in a form with a `:help` and no purpose phrase, so every call gets the `:help` text and no replacement, because the order, the meaning or the form differs. **R, H** means a form with both, where the argument count chooses (rule 7). **B** marks a foreign name bound in `prelude`, which hints only when its call fails. **E** marks a name from Appendix B.
 
 Every row of C1 was checked against the prelude signature of its target, against rule 5 for whether its name is bound, and against rule 8 for entries that share a spelling. C2 lists candidates: each later pull request checks its rows against rules 5 and 8 and its target's signature before it ships them, as Decision 6 says. Names that agree with knave, such as Python's `len` or Clojure's `filter`, are left out by rule 6.
 

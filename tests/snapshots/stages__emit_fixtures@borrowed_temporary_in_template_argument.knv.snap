@@ -3,6 +3,146 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/borrowed_temporary_in_template_argument.knv
 ---
+fn announced(text: &str) -> String {
+    println!("{}", text);
+    text.to_string()
+}
+
+fn first_letter(text: &str) -> &str {
+    &text[0..1]
+}
+
+fn lifted_longer() {
+    let owner;
+    let owner_2;
+    let t = {
+        let template_argument_0 = {
+            owner = announced("aa");
+            &owner
+        }
+        .as_str();
+        let template_argument_1 = {
+            owner_2 = announced("b");
+            &owner_2
+        }
+        .as_str();
+        if template_argument_1.len() > template_argument_0.len() {
+            template_argument_1
+        } else {
+            template_argument_0
+        }
+    };
+    println!("{}", t)
+}
+
+fn explicit_longer() {
+    let first = announced("aa");
+    let second = announced("b");
+    let t = {
+        let template_argument_0 = first.as_str();
+        let template_argument_1 = second.as_str();
+        if template_argument_1.len() > template_argument_0.len() {
+            template_argument_1
+        } else {
+            template_argument_0
+        }
+    };
+    println!("{}", t)
+}
+
+fn lifted_nested_longer() {
+    let owner;
+    let owner_2;
+    let owner_3;
+    let t = {
+        let template_argument_0 = {
+            let template_argument_0 = {
+                owner = announced("aaa");
+                &owner
+            }
+            .as_str();
+            let template_argument_1 = {
+                owner_2 = announced("b");
+                &owner_2
+            }
+            .as_str();
+            if template_argument_1.len() > template_argument_0.len() {
+                template_argument_1
+            } else {
+                template_argument_0
+            }
+        };
+        let template_argument_1 = {
+            owner_3 = announced("cc");
+            &owner_3
+        }
+        .as_str();
+        if template_argument_1.len() > template_argument_0.len() {
+            template_argument_1
+        } else {
+            template_argument_0
+        }
+    };
+    println!("{}", t)
+}
+
+fn explicit_nested_longer() {
+    let first = announced("aaa");
+    let second = announced("b");
+    let inner = {
+        let template_argument_0 = first.as_str();
+        let template_argument_1 = second.as_str();
+        if template_argument_1.len() > template_argument_0.len() {
+            template_argument_1
+        } else {
+            template_argument_0
+        }
+    };
+    let third = announced("cc");
+    let t = {
+        let template_argument_0 = inner;
+        let template_argument_1 = third.as_str();
+        if template_argument_1.len() > template_argument_0.len() {
+            template_argument_1
+        } else {
+            template_argument_0
+        }
+    };
+    println!("{}", t)
+}
+
+fn lifted_letter_of_longer() {
+    let owner;
+    let t = first_letter({
+        let template_argument_0 = {
+            owner = announced("aa");
+            &owner
+        }
+        .as_str();
+        let template_argument_1 = "b";
+        if template_argument_1.len() > template_argument_0.len() {
+            template_argument_1
+        } else {
+            template_argument_0
+        }
+    });
+    println!("{}", t)
+}
+
+fn explicit_letter_of_longer() {
+    let first = announced("aa");
+    let t = first_letter({
+        let template_argument_0 = first.as_str();
+        let template_argument_1 = "b";
+        if template_argument_1.len() > template_argument_0.len() {
+            template_argument_1
+        } else {
+            template_argument_0
+        }
+    });
+    println!("{}", t)
+}
+
 fn report(read: &Result<String, std::io::Error>) {
     match read {
         Ok(text) => print!("{}", text),
@@ -15,12 +155,8 @@ fn main() {
     let stem = "borrowed_temporary_in_template_argument";
     report(
         &({
-            let owner;
-            let template_argument_0 = {
-                owner = format!("{}.txt", stem);
-                &owner
-            }
-            .as_str();
+            let owner = format!("{}.txt", stem);
+            let template_argument_0 = owner.as_str();
             std::fs::read_to_string(template_argument_0).map_err(|error| {
                 std::io::Error::new(
                     error.kind(),
@@ -31,12 +167,8 @@ fn main() {
     );
     report(
         &({
-            let owner;
-            let template_argument_0 = {
-                owner = format!("{}.missing", stem);
-                &owner
-            }
-            .as_str();
+            let owner = format!("{}.missing", stem);
+            let template_argument_0 = owner.as_str();
             std::fs::read_to_string(template_argument_0).map_err(|error| {
                 std::io::Error::new(
                     error.kind(),
@@ -46,14 +178,16 @@ fn main() {
         }),
     );
     println!("{}", {
-        let owner;
-        let template_argument_0 = {
-            owner = format!("{}-x", stem);
-            &owner
-        }
-        .as_str();
+        let owner = format!("{}-x", stem);
+        let template_argument_0 = owner.as_str();
         template_argument_0.len() + template_argument_0.len()
-    })
+    });
+    lifted_longer();
+    explicit_longer();
+    lifted_nested_longer();
+    explicit_nested_longer();
+    lifted_letter_of_longer();
+    explicit_letter_of_longer()
 }
 
 mod rt {

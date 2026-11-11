@@ -1499,7 +1499,7 @@ impl<'a> ExpressionEmitter<'a> {
     ) -> PrecededCode {
         let mut names = |base: &str| self.locals.temporary(base);
         let lifted = LentTemporaries::new(self.program, &mut names).lift(value);
-        let statements = lifted.statements();
+        let statements = lifted.statements(|temporary| self.expr(temporary));
         PrecededCode::new(statements, emit(self, lifted.value()))
     }
 

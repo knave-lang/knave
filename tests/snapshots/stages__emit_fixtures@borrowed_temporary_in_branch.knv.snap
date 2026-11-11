@@ -106,15 +106,8 @@ fn explicit_block(name: &str) {
 }
 
 fn lifted_field() {
-    let owner;
-    let t = first_letter(
-        {
-            owner = make_page("field");
-            &owner
-        }
-        .title
-        .as_str(),
-    );
+    let owner = make_page("field");
+    let t = first_letter(owner.title.as_str());
     println!("{}", t)
 }
 
@@ -124,14 +117,68 @@ fn explicit_field() {
     println!("{}", t)
 }
 
-fn lifted_borrowing_field() {
+fn announced(text: &str) -> String {
+    println!("{}", text);
+    text.to_string()
+}
+
+fn lifted_else() {
     let owner;
-    let name = {
-        owner = make_entry("eve");
-        &owner
-    }
-    .name
-    .as_str();
+    let owner_2;
+    let t = if false {
+        first_letter(
+            {
+                owner = announced("then");
+                &owner
+            }
+            .as_str(),
+        )
+    } else {
+        first_letter(
+            {
+                owner_2 = announced("else");
+                &owner_2
+            }
+            .as_str(),
+        )
+    };
+    println!("{}", t)
+}
+
+fn explicit_else() {
+    let text = announced("else");
+    let t = if false {
+        "t"
+    } else {
+        first_letter(text.as_str())
+    };
+    println!("{}", t)
+}
+
+fn lifted_scrutinee() {
+    let owner;
+    let t = {
+        let text = {
+            owner = announced("matched");
+            &owner
+        };
+        first_letter(text)
+    };
+    println!("{}", t)
+}
+
+fn explicit_scrutinee() {
+    let owned = announced("matched");
+    let t = {
+        let text = &owned;
+        first_letter(text)
+    };
+    println!("{}", t)
+}
+
+fn lifted_borrowing_field() {
+    let owner = make_entry("eve");
+    let name = owner.name.as_str();
     println!("{}", name)
 }
 
@@ -155,6 +202,10 @@ fn main() {
     explicit_block("dee");
     lifted_field();
     explicit_field();
+    lifted_else();
+    explicit_else();
+    lifted_scrutinee();
+    explicit_scrutinee();
     lifted_borrowing_field();
     explicit_borrowing_field()
 }

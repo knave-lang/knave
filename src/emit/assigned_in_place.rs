@@ -1,5 +1,7 @@
+use super::lift_placement::LiftPlacement;
 use super::lifted_temporary::LiftedTemporary;
 use super::rust_leaf::RustLeaf;
+use super::temporary_scope::TemporaryScope;
 use super::tree_position::TreePosition;
 use crate::types::{Borrow, ClosureKind, Lifetime, Type, TypedArgument, TypedExpr, TypedExprKind};
 
@@ -30,14 +32,6 @@ impl AssignedInPlace {
             site: borrow,
             lend: LendSite::WrittenBorrow,
         }
-    }
-
-    pub fn take(&self, root: &mut TypedExpr, name: String) -> LiftedTemporary {
-        let node = self.site.node_mut(root);
-        let placeholder = RustLeaf::new(name.as_str()).typed(node.ty.clone(), node.span);
-        let site = std::mem::replace(node, placeholder);
-        *node = self.assigned(&name, site);
-        LiftedTemporary::new(name)
     }
 
     fn assigned(&self, name: &str, site: TypedExpr) -> TypedExpr {
@@ -75,10 +69,29 @@ impl AssignedInPlace {
     }
 }
 
+impl LiftPlacement for AssignedInPlace {
+    fn inner_scope(&self) -> TemporaryScope {
+        TemporaryScope::Statement
+    }
+
+    fn settles_inside(&self) -> bool {
+        false
+    }
+
+    fn take(&self, root: &mut TypedExpr, name: String) -> LiftedTemporary {
+        let node = self.site.node_mut(root);
+        let placeholder = RustLeaf::new(name.as_str()).typed(node.ty.clone(), node.span);
+        let site = std::mem::replace(node, placeholder);
+        *node = self.assigned(&name, site);
+        LiftedTemporary::declared(name)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::AssignedInPlace;
     use crate::emit::fragment::Code;
+    use crate::emit::lift_placement::LiftPlacement;
     use crate::emit::test_program::TestProgram;
     use crate::emit::tree_position::TreePosition;
     use crate::types::{TypedExpr, TypedExprKind, TypedLeaf};
@@ -111,17 +124,12 @@ mod tests {
         fn lent_owner(value: &TypedExpr) -> TreePosition {
             let lent = &TestProgram::arguments(value)[0].value;
             let owner = &TestProgram::arguments(lent)[0].value;
-            let mut position = TreePosition::default();
-            position.enter(value, lent);
-            position.enter(lent, owner);
-            position
+            TreePosition::along(&[value, lent, owner])
         }
 
         fn written_borrow(value: &TypedExpr) -> TreePosition {
             let borrow = &TestProgram::arguments(value)[0].value;
-            let mut position = TreePosition::default();
-            position.enter(value, borrow);
-            position
+            TreePosition::along(&[value, borrow])
         }
 
         fn assignment(&self, assigned: &TypedExpr) -> (String, &'static str) {
@@ -143,7 +151,10 @@ mod tests {
         let mut rewritten = value.clone();
         let temporary = AssignedInPlace::of_argument(position.clone())
             .take(&mut rewritten, "owner".to_string());
-        assert_eq!(Code::text_of(&temporary.statement()), "let owner;");
+        assert_eq!(
+            Code::text_of(&temporary.statement(|_| Code::atom(""))),
+            "let owner;"
+        );
         let assigned = position.node_mut(&mut rewritten);
         assert!(assigned.ty.is_reference());
         assert_eq!(

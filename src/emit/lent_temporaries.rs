@@ -1,8 +1,11 @@
 use std::borrow::Cow;
 
 use super::assigned_in_place::AssignedInPlace;
+use super::bound_before::BoundBefore;
 use super::expression_holder::ExpressionHolder;
+use super::lift_placement::LiftPlacement;
 use super::lifted_value::LiftedValue;
+use super::short_form::ShortForm;
 use super::temporary_scope::TemporaryScope;
 use super::tree_position::TreePosition;
 use crate::types::{
@@ -22,7 +25,8 @@ impl<'a, 'n> LentTemporaries<'a, 'n> {
     }
 
     pub fn lift<'v, T: ExpressionHolder>(self, value: &'v T) -> LiftedValue<'v, T> {
-        let lifts = TemporarySearch::new(self.program).lifts(value.expression());
+        let lifts = TemporarySearch::new(self.program, ShortForm::new(self.program))
+            .lifts(value.expression());
         if lifts.is_empty() {
             return LiftedValue::new(Vec::new(), Cow::Borrowed(value));
         }
@@ -35,55 +39,111 @@ impl<'a, 'n> LentTemporaries<'a, 'n> {
     }
 }
 
-struct TemporarySearch<'p> {
+struct TemporarySearch<'p, 'e> {
     program: &'p TypedProgram,
-    position: TreePosition,
-    lifts: Vec<AssignedInPlace>,
+    short_form: ShortForm<'p>,
+    path: Vec<&'e TypedExpr>,
+    root: Option<usize>,
+    lifts: Vec<Box<dyn LiftPlacement>>,
 }
 
-impl<'p> TemporarySearch<'p> {
-    fn new(program: &'p TypedProgram) -> Self {
+impl<'p, 'e> TemporarySearch<'p, 'e> {
+    fn new(program: &'p TypedProgram, short_form: ShortForm<'p>) -> Self {
         Self {
             program,
-            position: TreePosition::default(),
+            short_form,
+            path: Vec::new(),
+            root: Some(0),
             lifts: Vec::new(),
         }
     }
 
-    fn lifts(mut self, value: &TypedExpr) -> Vec<AssignedInPlace> {
-        self.visit(value, TemporaryScope::Binding);
+    fn lifts(mut self, value: &'e TypedExpr) -> Vec<Box<dyn LiftPlacement>> {
+        if Self::may_lend(value) {
+            self.path.push(value);
+            self.visit(value, TemporaryScope::Binding);
+        }
         self.lifts
     }
 
-    fn visit(&mut self, expr: &TypedExpr, scope: TemporaryScope) {
-        if !self.program.type_holds_borrow(&expr.ty) {
-            return;
-        }
+    fn may_lend(expr: &TypedExpr) -> bool {
         match &expr.kind {
-            TypedExprKind::Call(_, arguments) => self.call(expr, arguments),
+            TypedExprKind::Call(_, arguments) => arguments
+                .iter()
+                .any(|argument| Self::lends_temporary(argument) || Self::may_lend(&argument.value)),
+            TypedExprKind::Borrow(_, value) => Self::is_temporary(value) || Self::may_lend(value),
+            TypedExprKind::Struct(TypedStructExpr::Field(owner, _)) => {
+                Self::lends_owner(expr, owner) || Self::may_lend(owner)
+            }
+            TypedExprKind::Control(control) => Self::control_may_lend(control),
+            _ => Self::nested_may_lend(expr),
+        }
+    }
+
+    fn nested_may_lend(expr: &TypedExpr) -> bool {
+        match &expr.kind {
+            TypedExprKind::Struct(TypedStructExpr::New(_, fields)) => {
+                fields.iter().any(|(_, value)| Self::may_lend(value))
+            }
+            TypedExprKind::Variant(_, values, _) => values.iter().any(Self::may_lend),
+            TypedExprKind::Try { value, .. } => Self::may_lend(value),
+            _ => false,
+        }
+    }
+
+    fn control_may_lend(control: &TypedControl) -> bool {
+        match control {
+            TypedControl::If(_, then, otherwise) => {
+                Self::may_lend(then) || Self::may_lend(otherwise)
+            }
+            TypedControl::Block(block) => block.tail().is_some_and(Self::may_lend),
+            TypedControl::Match(matched) => {
+                Self::may_lend(&matched.value)
+                    || matched
+                        .arms
+                        .iter()
+                        .filter_map(|arm| arm.body.tail())
+                        .any(Self::may_lend)
+            }
+        }
+    }
+
+    fn visit(&mut self, expr: &'e TypedExpr, scope: TemporaryScope) {
+        if self.program.type_holds_borrow(&expr.ty) {
+            self.visit_borrowing(expr, scope);
+        }
+    }
+
+    fn visit_borrowing(&mut self, expr: &'e TypedExpr, scope: TemporaryScope) {
+        match &expr.kind {
+            TypedExprKind::Call(_, arguments) => self.call(arguments),
             TypedExprKind::Borrow(..)
             | TypedExprKind::Struct(TypedStructExpr::New(..))
             | TypedExprKind::Variant(..) => self.operands(expr, scope),
-            TypedExprKind::Struct(TypedStructExpr::Field(owner, _))
-                if scope == TemporaryScope::Statement && Self::lends_owner(expr, owner) =>
-            {
-                self.lift_child(expr, owner)
+            TypedExprKind::Struct(TypedStructExpr::Field(owner, _)) => {
+                self.field(expr, owner, scope)
             }
-            TypedExprKind::Try { .. } | TypedExprKind::Struct(TypedStructExpr::Field(..)) => {
-                self.operands(expr, TemporaryScope::Statement)
-            }
-            TypedExprKind::Control(control) => self.control(expr, control, scope),
+            TypedExprKind::Try { .. } => self.operands(expr, TemporaryScope::Statement),
+            TypedExprKind::Control(control) => self.control(control, scope),
             _ => {}
         }
     }
 
-    fn call(&mut self, call: &TypedExpr, arguments: &[TypedArgument]) {
+    fn call(&mut self, arguments: &'e [TypedArgument]) {
         for argument in arguments {
             if Self::lends_temporary(argument) {
-                self.lift_child(call, &argument.value);
+                self.lift_argument(&argument.value);
             } else {
-                self.operand(call, &argument.value, TemporaryScope::Statement);
+                self.operand(&argument.value, TemporaryScope::Statement);
             }
+        }
+    }
+
+    fn field(&mut self, field: &'e TypedExpr, owner: &'e TypedExpr, scope: TemporaryScope) {
+        if scope == TemporaryScope::Statement && Self::lends_owner(field, owner) {
+            self.lift_argument(owner);
+        } else {
+            self.operands(field, TemporaryScope::Statement);
         }
     }
 
@@ -92,49 +152,49 @@ impl<'p> TemporarySearch<'p> {
     }
 
     fn lends_temporary(argument: &TypedArgument) -> bool {
-        argument.borrow == Borrow::Shared && Self::is_temporary(&argument.value)
+        argument.borrow == Borrow::Shared
+            && !argument.value.ty.is_reference()
+            && Self::is_temporary(&argument.value)
     }
 
-    fn control(&mut self, expr: &TypedExpr, control: &TypedControl, scope: TemporaryScope) {
+    fn control(&mut self, control: &'e TypedControl, scope: TemporaryScope) {
         match control {
             TypedControl::If(_, then, otherwise) => {
-                self.operand(expr, then, scope);
-                self.operand(expr, otherwise, scope);
+                self.operand(then, scope);
+                self.operand(otherwise, scope);
             }
             TypedControl::Block(block) => {
                 if let Some(tail) = block.tail() {
-                    self.operand(expr, tail, scope);
+                    self.operand(tail, scope);
                 }
             }
             TypedControl::Match(matched) => {
-                self.operand(expr, &matched.value, TemporaryScope::Statement);
+                self.operand(&matched.value, TemporaryScope::Statement);
                 for tail in matched.arms.iter().filter_map(|arm| arm.body.tail()) {
-                    self.operand(expr, tail, scope);
+                    self.operand(tail, scope);
                 }
             }
         }
     }
 
-    fn operands(&mut self, expr: &TypedExpr, scope: TemporaryScope) {
+    fn operands(&mut self, expr: &'e TypedExpr, scope: TemporaryScope) {
         for operand in expr.children() {
-            self.operand(expr, operand, scope);
+            self.operand(operand, scope);
         }
     }
 
-    fn operand(&mut self, parent: &TypedExpr, operand: &TypedExpr, scope: TemporaryScope) {
-        self.position.enter(parent, operand);
+    fn operand(&mut self, operand: &'e TypedExpr, scope: TemporaryScope) {
+        self.path.push(operand);
         match Self::borrowed_temporary(operand) {
             Some(temporary) if scope == TemporaryScope::Statement => {
-                let lift = AssignedInPlace::of_written_borrow(self.position.clone());
-                self.position.enter(operand, temporary);
-                self.lift(temporary, lift);
-                self.position.leave();
+                let in_place = AssignedInPlace::of_written_borrow(TreePosition::along(&self.path));
+                self.path.push(temporary);
+                self.lift(in_place);
+                self.path.pop();
             }
-            _ => {
-                self.visit(operand, scope);
-            }
+            _ => self.visit(operand, scope),
         }
-        self.position.leave();
+        self.path.pop();
     }
 
     fn borrowed_temporary(operand: &TypedExpr) -> Option<&TypedExpr> {
@@ -144,16 +204,30 @@ impl<'p> TemporarySearch<'p> {
         }
     }
 
-    fn lift_child(&mut self, parent: &TypedExpr, temporary: &TypedExpr) {
-        self.position.enter(parent, temporary);
-        let lift = AssignedInPlace::of_argument(self.position.clone());
-        self.lift(temporary, lift);
-        self.position.leave();
+    fn lift_argument(&mut self, temporary: &'e TypedExpr) {
+        self.path.push(temporary);
+        let in_place = AssignedInPlace::of_argument(TreePosition::along(&self.path));
+        self.lift(in_place);
+        self.path.pop();
     }
 
-    fn lift(&mut self, temporary: &TypedExpr, lift: AssignedInPlace) {
-        self.visit(temporary, TemporaryScope::Statement);
-        self.lifts.push(lift);
+    fn lift(&mut self, in_place: AssignedInPlace) {
+        let placement = self.placement(in_place);
+        let temporary = self.path[self.path.len() - 1];
+        let inner_root = placement.settles_inside().then_some(self.path.len() - 1);
+        let outer_root = std::mem::replace(&mut self.root, inner_root);
+        self.visit(temporary, placement.inner_scope());
+        self.root = outer_root;
+        self.lifts.push(placement);
+    }
+
+    fn placement(&self, in_place: AssignedInPlace) -> Box<dyn LiftPlacement> {
+        match self.root {
+            Some(root) if self.short_form.admits(&self.path[root..]) => {
+                Box::new(BoundBefore::new(TreePosition::along(&self.path)))
+            }
+            _ => Box::new(in_place),
+        }
     }
 
     fn is_temporary(value: &TypedExpr) -> bool {
@@ -366,6 +440,12 @@ mod tests {
             (defn moved-field (name)
               (local t (owned-label-text (:inner (make-outer name))))
               (len t))
+            (defn scrutinee ()
+              (local t (match (ref (announced \"m\")) (text (first-letter text))))
+              (len t))
+            (defn else-branch (flag name)
+              (local t (if flag \"z\" (first-letter (as-str (str name \"-q\")))))
+              (len t))
             (defn main ())";
 
         fn new() -> Self {
@@ -378,11 +458,19 @@ mod tests {
             let mut names = |base: &str| base.to_string();
             let lifted = LentTemporaries::new(self.program.program(), &mut names)
                 .lift(self.last_let_value(function));
-            let mut owned = Vec::new();
-            Self::collect_owned(lifted.value(), &mut owned);
-            owned
+            let mut assigned = Vec::new();
+            Self::collect_owned(lifted.value(), &mut assigned);
+            let mut assigned = assigned.into_iter();
+            lifted
+                .temporaries()
                 .iter()
-                .map(|value| format!("owner {}", self.text(value)))
+                .map(|temporary| match temporary.value() {
+                    Some(value) => format!("short {}", self.text(value)),
+                    None => {
+                        let value = assigned.next().expect("each declared owner is assigned");
+                        format!("in place {}", self.text(value))
+                    }
+                })
                 .collect()
         }
 
@@ -451,16 +539,13 @@ mod tests {
     fn lifts_a_string_lent_through_as_str() {
         assert_eq!(
             LiftFixture::new().lifted("as-str-argument"),
-            ["owner (str name \"-a\")"]
+            ["short (str name \"-a\")",]
         );
     }
 
     #[test]
-    fn assigns_the_lifted_temporary_where_it_is_written() {
-        assert_eq!(
-            LiftFixture::new().rewritten("as-str-argument"),
-            "assign (str name \"-a\")"
-        );
+    fn names_a_short_form_owner_where_the_value_was() {
+        assert_eq!(LiftFixture::new().rewritten("as-str-argument"), "owner");
     }
 
     #[test]
@@ -482,7 +567,7 @@ mod tests {
     fn lifts_a_written_borrow_passed_to_a_call() {
         assert_eq!(
             LiftFixture::new().lifted("written-borrow-argument"),
-            ["owner (->page :title (str name \"-e\"))"]
+            ["short (->page :title (str name \"-e\"))",]
         );
     }
 
@@ -490,7 +575,7 @@ mod tests {
     fn lifts_a_struct_the_call_borrows() {
         assert_eq!(
             LiftFixture::new().lifted("borrowed-argument"),
-            ["owner (->page :title (str name \"-f\"))"]
+            ["short (->page :title (str name \"-f\"))",]
         );
     }
 
@@ -498,7 +583,7 @@ mod tests {
     fn lifts_a_temporary_lent_to_a_struct_field() {
         assert_eq!(
             LiftFixture::new().lifted("struct-field"),
-            ["owner (str name \"-g\")"]
+            ["short (str name \"-g\")",]
         );
     }
 
@@ -506,7 +591,7 @@ mod tests {
     fn lifts_a_temporary_lent_to_a_variant_payload() {
         assert_eq!(
             LiftFixture::new().lifted("variant-payload"),
-            ["owner (str name \"-h\")"]
+            ["short (str name \"-h\")",]
         );
     }
 
@@ -532,7 +617,7 @@ mod tests {
     fn lifts_a_temporary_lent_through_a_tried_call() {
         assert_eq!(
             LiftFixture::new().lifted("tried"),
-            ["owner (str name \"-i\")"]
+            ["short (str name \"-i\")",]
         );
     }
 
@@ -546,8 +631,8 @@ mod tests {
         assert_eq!(
             LiftFixture::new().lifted("two-written-borrows"),
             [
-                "owner (->page :title (str name))",
-                "owner (announced \"y\")"
+                "short (->page :title (str name))",
+                "in place (announced \"y\")",
             ]
         );
     }
@@ -562,8 +647,8 @@ mod tests {
         assert_eq!(
             LiftFixture::new().lifted("lent-inside-lifted"),
             [
-                "owner (str name \"-l\")",
-                "owner (->label :text (as-str (str name \"-l\")))"
+                "short (str name \"-l\")",
+                "short (->label :text (as-str (str name \"-l\")))",
             ]
         );
     }
@@ -572,7 +657,7 @@ mod tests {
     fn lifts_a_temporary_lent_inside_a_written_borrow_rust_extends() {
         assert_eq!(
             LiftFixture::new().lifted("written-borrow-of-struct"),
-            ["owner (str name \"-m\")"]
+            ["short (str name \"-m\")",]
         );
     }
 
@@ -586,9 +671,9 @@ mod tests {
         assert_eq!(
             LiftFixture::new().lifted("lifted-beside-lifted"),
             [
-                "owner (announced \"p\")",
-                "owner (->label :text (cut (as-str (announced \"p\")) (len (announced \"q\"))))",
-                "owner (announced \"r\")"
+                "short (announced \"p\")",
+                "short (->label :text (cut (as-str (announced \"p\")) (len (announced \"q\"))))",
+                "in place (announced \"r\")",
             ]
         );
     }
@@ -629,7 +714,7 @@ mod tests {
     fn lifts_a_temporary_whose_field_is_borrowed() {
         assert_eq!(
             LiftFixture::new().lifted("page-title-letter"),
-            ["owner (->page :title (str \"q\"))"]
+            ["short (->page :title (str \"q\"))",]
         );
     }
 
@@ -642,18 +727,15 @@ mod tests {
     fn lifts_a_written_borrow_in_a_tried_value() {
         assert_eq!(
             LiftFixture::new().lifted("tried-page"),
-            ["owner (->page :title (str name))"]
+            ["short (->page :title (str name))",]
         );
     }
 
     #[test]
-    fn lifts_a_borrow_that_an_assignment_does_not_extend() {
+    fn keeps_a_borrow_that_a_short_form_owner_extends() {
         assert_eq!(
             LiftFixture::new().lifted("hoisted-card"),
-            [
-                "owner (->page :title (str name))",
-                "owner (->card :page (ref (->page :title (str name))) :text \"t\")"
-            ]
+            ["short (->card :page (ref (->page :title (str name))) :text \"t\")",]
         );
     }
 
@@ -677,8 +759,8 @@ mod tests {
         assert_eq!(
             LiftFixture::new().lifted("nested-in-place"),
             [
-                "owner (announced \"b\")",
-                "owner (->label :text (as-str (announced \"b\")))"
+                "in place (announced \"b\")",
+                "in place (->label :text (as-str (announced \"b\")))",
             ]
         );
     }
@@ -699,5 +781,21 @@ mod tests {
     #[test]
     fn keeps_a_field_moved_out_of_a_temporary() {
         assert!(LiftFixture::new().lifted("moved-field").is_empty());
+    }
+
+    #[test]
+    fn lifts_a_written_borrow_that_a_match_checks() {
+        assert_eq!(
+            LiftFixture::new().lifted("scrutinee"),
+            ["in place (announced \"m\")",]
+        );
+    }
+
+    #[test]
+    fn lifts_a_temporary_lent_only_in_an_else_branch() {
+        assert_eq!(
+            LiftFixture::new().lifted("else-branch"),
+            ["in place (str name \"-q\")",]
+        );
     }
 }

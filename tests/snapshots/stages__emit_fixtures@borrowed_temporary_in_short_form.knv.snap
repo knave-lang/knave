@@ -1,0 +1,276 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/borrowed_temporary_in_short_form.knv
+---
+fn first_letter(text: &str) -> &str {
+    &text[0..1]
+}
+
+fn announced(text: &str) -> String {
+    println!("{}", text);
+    text.to_string()
+}
+
+fn keep(n: i64, text: &str) -> &str {
+    println!("{}", n);
+    text
+}
+
+fn seven() -> i64 {
+    println!("seven");
+    7
+}
+
+static LAZY_SEVEN: std::sync::LazyLock<i64> = std::sync::LazyLock::new(|| seven() * 2);
+
+fn applied(f: impl FnOnce(i64) -> i64, text: &str) -> &str {
+    println!("{}", f(1));
+    text
+}
+
+fn short_function() {
+    let owner = announced("function");
+    let t = first_letter(owner.as_str());
+    println!("{}", t)
+}
+
+fn explicit_function() {
+    let text = announced("function");
+    let t = first_letter(text.as_str());
+    println!("{}", t)
+}
+
+fn short_literal_ahead() {
+    let owner = announced("literal");
+    let t = keep(1, owner.as_str());
+    println!("{}", t)
+}
+
+fn explicit_literal_ahead() {
+    let text = announced("literal");
+    let t = keep(1, text.as_str());
+    println!("{}", t)
+}
+
+fn short_template() {
+    let owner = announced("template");
+    let t = std::convert::identity((1, owner.as_str()).1);
+    println!("{}", t)
+}
+
+fn explicit_template() {
+    let text = announced("template");
+    let t = std::convert::identity((1, text.as_str()).1);
+    println!("{}", t)
+}
+
+fn local_ahead() {
+    let n: i64 = 2;
+    let owner;
+    let t = keep(
+        n,
+        {
+            owner = announced("local");
+            &owner
+        }
+        .as_str(),
+    );
+    println!("{}", t)
+}
+
+fn explicit_local_ahead() {
+    let n: i64 = 2;
+    let text = announced("local");
+    let t = keep(n, text.as_str());
+    println!("{}", t)
+}
+
+fn global_ahead() {
+    let owner;
+    let t = keep(
+        *LAZY_SEVEN,
+        {
+            owner = announced("global");
+            &owner
+        }
+        .as_str(),
+    );
+    println!("{}", t)
+}
+
+fn explicit_global_ahead() {
+    let seen: i64 = *LAZY_SEVEN;
+    let text = announced("global");
+    let t = keep(seen, text.as_str());
+    println!("{}", t)
+}
+
+fn closure_ahead() {
+    let owner;
+    let t = applied(
+        |x: i64| x + 1,
+        {
+            owner = announced("closure");
+            &owner
+        }
+        .as_str(),
+    );
+    println!("{}", t)
+}
+
+fn explicit_closure_ahead() {
+    let text = announced("closure");
+    let t = applied(|x: i64| x + 1, text.as_str());
+    println!("{}", t)
+}
+
+fn call_ahead_in_template() {
+    let owner;
+    let t = std::convert::identity(
+        (
+            seven(),
+            {
+                owner = announced("call");
+                &owner
+            }
+            .as_str(),
+        )
+            .1,
+    );
+    println!("{}", t)
+}
+
+fn explicit_call_ahead_in_template() {
+    let seen: i64 = seven();
+    let text = announced("call");
+    let t = std::convert::identity((seen, text.as_str()).1);
+    println!("{}", t)
+}
+
+fn local_callee() {
+    let f = first_letter;
+    let owner;
+    let t = f({
+        owner = announced("callee");
+        &owner
+    }
+    .as_str());
+    println!("{}", t)
+}
+
+fn explicit_local_callee() {
+    let f = first_letter;
+    let text = announced("callee");
+    let t = f(text.as_str());
+    println!("{}", t)
+}
+
+fn block_template() {
+    let owner;
+    let t = {
+        println!("before");
+        first_letter(
+            {
+                owner = announced("block");
+                &owner
+            }
+            .as_str(),
+        )
+    };
+    println!("{}", t)
+}
+
+fn explicit_block_template() {
+    println!("before");
+    let text = announced("block");
+    let t = first_letter(text.as_str());
+    println!("{}", t)
+}
+
+fn code_ahead_template() {
+    let owner;
+    let t = std::convert::identity(
+        (
+            std::process::id(),
+            {
+                owner = announced("code");
+                &owner
+            }
+            .as_str(),
+        )
+            .1,
+    );
+    println!("{}", t)
+}
+
+fn explicit_code_ahead_template() {
+    let text = announced("code");
+    let t = std::convert::identity((std::process::id(), text.as_str()).1);
+    println!("{}", t)
+}
+
+fn repeated_template() {
+    let owner;
+    let t = {
+        let template_argument_0 = {
+            owner = announced("repeated");
+            &owner
+        }
+        .as_str();
+        std::cmp::max(template_argument_0, template_argument_0)
+    };
+    println!("{}", t)
+}
+
+fn explicit_repeated_template() {
+    let text = announced("repeated");
+    let t = {
+        let template_argument_0 = text.as_str();
+        std::cmp::max(template_argument_0, template_argument_0)
+    };
+    println!("{}", t)
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    short_function();
+    explicit_function();
+    short_literal_ahead();
+    explicit_literal_ahead();
+    short_template();
+    explicit_template();
+    local_ahead();
+    explicit_local_ahead();
+    global_ahead();
+    explicit_global_ahead();
+    closure_ahead();
+    explicit_closure_ahead();
+    call_ahead_in_template();
+    explicit_call_ahead_in_template();
+    local_callee();
+    explicit_local_callee();
+    block_template();
+    explicit_block_template();
+    code_ahead_template();
+    explicit_code_ahead_template();
+    repeated_template();
+    explicit_repeated_template()
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

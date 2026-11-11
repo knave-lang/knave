@@ -165,7 +165,8 @@ impl<'t> DocLookup<'t> {
         let page = lookup.page.text()?;
         let type_line = self
             .terminal
-            .check_expanded(&lookup.program)
+            .checking()
+            .check(&lookup.program)
             .map(|typed| lookup.type_line(&typed));
         Ok(DocOutput::typed(page, type_line))
     }

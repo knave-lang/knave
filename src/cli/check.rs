@@ -21,7 +21,7 @@ impl CheckCommand {
             Err(status) => return status,
         };
         terminal.report_diagnostics_to(TaskCatalog::user_output(terminal.diagnostic_output()));
-        let entry = terminal.check(program.file()).map(|_| ());
+        let entry = terminal.check_file(program.file()).map(|_| ());
         let tasks = match program.into_project().filter(|_| checks_tasks) {
             Some(project) => Self::check_tasks(terminal, EntryTree::of_tasks(project)),
             None => Ok(()),

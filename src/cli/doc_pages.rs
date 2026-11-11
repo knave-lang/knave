@@ -161,7 +161,7 @@ impl DocumentedModules {
                 Ok((Self::checked_also(session.finish()?, &named), loaded, named))
             },
         )?;
-        let typed = terminal.check_showing(&program, |_| false)?;
+        let typed = terminal.checking().check_silently(&program)?;
         Ok(Self::by_module(loaded, Self::typed_names(&typed, named)))
     }
 

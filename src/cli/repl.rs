@@ -140,8 +140,11 @@ impl PromptSession {
     }
 
     fn place_prelude_sources_before_the_inputs(&self, terminal: &mut Terminal) {
+        let anchor_only = self.module.of(Vec::new());
         terminal
-            .check_sources(&self.module.of(Vec::new()), |_| false)
+            .expansion()
+            .within_session(&anchor_only, |session| session.finish())
+            .and_then(|program| terminal.checking().check_silently(&program))
             .ok();
     }
 

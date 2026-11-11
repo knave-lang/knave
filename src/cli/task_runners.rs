@@ -27,7 +27,7 @@ impl<'c> TaskRunners<'c> {
             .signatures(terminal, std::slice::from_ref(task.name()))?;
         let runner = Self::runner(task.name(), &signatures[0]);
         let entered = self.catalog.entered_program(terminal, &runner)?;
-        let checked = terminal.check_expanded(&entered.program)?;
+        let checked = terminal.checking().check(&entered.program)?;
         let emitted = terminal.emit_checked(&checked)?;
         terminal.build_task(&emitted, task, profile)
     }
@@ -42,7 +42,7 @@ impl<'c> TaskRunners<'c> {
             .collect();
         let (block, _) = TaskCatalog::block_of(&runners);
         let entered = self.catalog.entered_program(terminal, &block)?;
-        terminal.check_expanded(&entered.program).map(|_| ())
+        terminal.checking().check(&entered.program).map(|_| ())
     }
 
     fn runner(name: &TaskName, signature: &str) -> String {

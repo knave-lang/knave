@@ -16,7 +16,7 @@ impl TypesCommand {
         match self
             .entry
             .locate(terminal)
-            .and_then(|program| terminal.check(program.file()))
+            .and_then(|program| terminal.check_file(program.file()))
         {
             Ok(program) => StandardOutput::locked().write(program.entry_signatures()),
             Err(status) => status,

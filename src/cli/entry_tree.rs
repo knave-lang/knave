@@ -200,7 +200,7 @@ impl EntryTree {
             .collect();
         let source = terminal
             .sources()
-            .add_named(self.kind.entry_name(), &uses.join("\n"));
+            .add(self.kind.entry_name(), uses.join("\n"));
         Ok(ModuleOfSources {
             file: self.directory_file(),
             sources: vec![source],

@@ -171,7 +171,7 @@ impl<'t> DocLookup<'t> {
     fn read_term(&self, term: &str) -> Result<Form, ExitStatus> {
         let mut scratch = self.terminal.scratch();
         let mut sources = scratch.sources();
-        let source = sources.add_named(Self::TERM_SOURCE, term);
+        let source = sources.add(Self::TERM_SOURCE, term);
         let forms = sources.read(source).map_err(|_| ExitStatus::UsageError)?;
         match forms.as_slice() {
             [form] => Ok(form.clone()),
@@ -334,7 +334,7 @@ impl DocEnvironment {
 
     fn load(&self, terminal: &mut Terminal) -> Result<SourceId, ExitStatus> {
         match self {
-            Self::Prelude => Ok(terminal.sources().add(&self.entry(), String::new())),
+            Self::Prelude => Ok(terminal.sources().add(self.entry(), String::new())),
             Self::Program(path) => terminal.sources().load(path),
         }
     }

@@ -236,7 +236,7 @@ impl FormsText {
         module: &Path,
     ) -> Result<SourceId, ExitStatus> {
         let Some(position) = self.position else {
-            return Ok(sources.add_named(&self.name, &self.text));
+            return Ok(sources.add(&self.name, &self.text));
         };
         sources
             .add_inside(enclosing, position, &self.text)

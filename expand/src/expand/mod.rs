@@ -302,16 +302,13 @@ impl<'s> Expander<'s> {
     }
 
     #[cfg(test)]
-    pub(crate) fn diagnostics_with_code(
+    pub(crate) fn take_diagnostics_with_code(
         &mut self,
         code: &crate::diagnostic::DiagnosticCode,
     ) -> Vec<crate::diagnostic::Diagnostic> {
-        let recovered = self.recovered.take_all();
-        let errors = self.problems.take_errors();
-        errors
+        self.take_diagnostics()
             .in_source_order()
             .into_iter()
-            .chain(&recovered)
             .filter(|diagnostic| diagnostic.code() == Some(code))
             .cloned()
             .collect()
@@ -360,9 +357,7 @@ impl<'s> Expander<'s> {
     }
 
     fn take_diagnostics(&mut self) -> Diagnostics {
-        for error in self.recovered.take_all() {
-            self.problems.report(error);
-        }
+        self.recovered.hand_over(&mut self.problems);
         self.problems.take_errors()
     }
 

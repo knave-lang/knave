@@ -1,7 +1,8 @@
 use std::io;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
-use super::diagnostic_output::{StandardErrorMessages, UnreadableFile};
+use super::diagnostic_output::{DiagnosticOutput, StandardErrorMessages, UnreadableFile};
 use super::doc_folder::DocFolder;
 use super::doc_pages::{DocumentedModules, EntryProgram};
 use super::exit_status::ExitStatus;
@@ -10,6 +11,7 @@ use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::source_walk::SourceWalk;
 use super::terminal::Terminal;
+use super::user_label_output::UserLabelOutput;
 use crate::modules::{ModuleSources, PublicPrelude};
 
 pub struct DocWriteCommand {
@@ -30,9 +32,15 @@ impl DocWriteCommand {
     }
 
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
+        terminal.report_diagnostics_to(Self::user_output(terminal.diagnostic_output()));
         match self.write(terminal) {
             Ok(status) | Err(status) => status,
         }
+    }
+
+    fn user_output(inner: Rc<dyn DiagnosticOutput>) -> Rc<dyn DiagnosticOutput> {
+        let generated = vec![DocumentedModules::CALL_SOURCE];
+        Rc::new(UserLabelOutput::new(inner, generated))
     }
 
     fn write(&self, terminal: &mut Terminal) -> Result<ExitStatus, ExitStatus> {

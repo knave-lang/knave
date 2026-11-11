@@ -1,0 +1,10 @@
+(use code nth warn)
+
+(export parked)
+
+(def parked
+  (macro (form)
+    (warn "the van is parked on a link"
+      (quote here)
+      (quote (:code unmatched-link)))
+    (nth form 1)))

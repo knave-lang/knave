@@ -54,6 +54,8 @@ mod prompt_diagnostics;
 mod prompt_history;
 mod prompt_lines;
 mod prompt_module;
+#[cfg(test)]
+mod recorded_output;
 mod release_flag;
 mod remove;
 mod repl;

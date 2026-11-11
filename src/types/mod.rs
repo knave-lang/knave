@@ -6,7 +6,7 @@ mod binding;
 mod borrowed_items;
 mod boxed_payload;
 mod boxes;
-mod checked_items;
+mod checked_program;
 mod checker;
 mod collection;
 mod copy;

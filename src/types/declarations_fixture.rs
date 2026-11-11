@@ -1,10 +1,11 @@
 use super::declarations::Declarations;
 use super::declared_traits::DeclaredTraits;
+use super::declared_types::DeclaredTypes;
 use super::derive_blockers::DeriveBlockers;
 use super::trait_declarations::TraitDeclarations;
 use super::type_declarations::TypeDeclarations;
 use super::variant_payloads::VariantPayloads;
-use super::{TypedProgram, TypedSource};
+use super::{Type, TypedProgram, TypedSource};
 use crate::core::BindingId;
 
 pub(super) struct DeclarationsFixture {
@@ -15,23 +16,16 @@ pub(super) struct DeclarationsFixture {
 impl DeclarationsFixture {
     pub(super) fn new(source: &str) -> Self {
         let mut program = TypedSource::expand(source).typed();
-        let types = TypeDeclarations {
-            structs: std::mem::take(&mut program.structs),
-            enums: std::mem::take(&mut program.enums),
-            rust_types: std::mem::take(&mut program.rust_types),
-            box_binding: program.box_binding,
-            inferred_boxes: std::mem::take(&mut program.inferred_boxes),
-        };
-        let traits = TraitDeclarations {
-            table: std::mem::take(&mut program.traits),
-            impls: std::mem::take(&mut program.trait_impls),
-            structural: std::mem::take(&mut program.structural_traits),
-            ..TraitDeclarations::default()
-        };
+        let types = TypeDeclarations::taken_from(&mut program);
+        let traits = TraitDeclarations::taken_from(&mut program);
         Self {
             program,
             declarations: Declarations { types, traits },
         }
+    }
+
+    pub(super) fn declared_types(&self) -> DeclaredTypes<'_> {
+        DeclaredTypes::new(&self.declarations.types)
     }
 
     pub(super) fn declared_traits(&self) -> DeclaredTraits<'_> {
@@ -57,6 +51,20 @@ impl DeclarationsFixture {
         self.binding_named(name, &|binding| {
             types.structs.get(binding).is_some() || types.enums.get(binding).is_some()
         })
+    }
+
+    pub(super) fn parameter(&self, function: &str) -> Type {
+        let definition = self
+            .program
+            .modules
+            .iter()
+            .flat_map(|module| &module.definitions)
+            .find(|definition| self.program.bindings.get(definition.binding).name() == function)
+            .expect("the source defines the function");
+        let Type::Function(_, parameters, _) = &definition.scheme.body else {
+            panic!("a defn has a function type");
+        };
+        parameters[0].clone()
     }
 
     fn binding_named(&self, name: &str, declared: &dyn Fn(BindingId) -> bool) -> BindingId {

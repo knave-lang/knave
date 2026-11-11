@@ -5,7 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::admissible::Admissible;
 use super::admissible_types::AdmissibleTypes;
 use super::assumed_collections::AssumedCollections;
-use super::checked_items::CheckedItems;
+use super::checked_program::CheckedProgram;
 use super::copy::InferredCopies;
 use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
 use super::declarations::Declarations;
@@ -700,12 +700,12 @@ impl TypeChecker {
         }
     }
 
-    pub(super) fn opaque_positions<'c>(
+    fn opaque_positions<'c>(
         &'c self,
         modules: &'c [CoreModule],
         definitions: &'c FxHashMap<BindingId, TypedDefinition>,
     ) -> OpaquePositions<'c> {
-        let checked = CheckedItems {
+        let checked = CheckedProgram {
             modules,
             definitions,
             closures: &self.closure_types,

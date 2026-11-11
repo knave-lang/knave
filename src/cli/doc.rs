@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use anstream::AutoStream;
 
 use super::exit_status::ExitStatus;
+use super::module_of_sources::ModuleOfSources;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::standard_output::StandardOutput;
@@ -140,12 +141,13 @@ impl<'t> DocLookup<'t> {
     ) -> Result<PageText, ExitStatus> {
         let read = self.read_term(term)?;
         let entry = environment.load(self.terminal)?;
-        let expanded =
-            self.terminal
-                .within_session(&environment.file(), entry, |mut session| {
-                    let source = session.add_source(Self::TERM_SOURCE, term);
-                    ExpandedPage::expand(&mut session, &read, source)
-                })?;
+        let expanded = self.terminal.expansion().within_session(
+            &ModuleOfSources::single(environment.file(), entry),
+            |mut session| {
+                let source = session.add_source(Self::TERM_SOURCE, term);
+                ExpandedPage::expand(&mut session, &read, source)
+            },
+        )?;
         expanded.text()
     }
 
@@ -156,11 +158,10 @@ impl<'t> DocLookup<'t> {
     ) -> Result<DocOutput, ExitStatus> {
         let read = self.read_term(term)?;
         let entry = environment.load(self.terminal)?;
-        let lookup = self
-            .terminal
-            .within_session(&environment.file(), entry, |session| {
-                TypedLookup::new(session, (Self::TERM_SOURCE, term)).look_up(&read)
-            })?;
+        let lookup = self.terminal.expansion().within_session(
+            &ModuleOfSources::single(environment.file(), entry),
+            |session| TypedLookup::new(session, (Self::TERM_SOURCE, term)).look_up(&read),
+        )?;
         let page = lookup.page.text()?;
         let type_line = self
             .terminal

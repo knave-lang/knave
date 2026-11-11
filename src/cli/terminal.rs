@@ -9,10 +9,11 @@ use anstream::ColorChoice;
 
 use super::build_directory::BuildDirectory;
 use super::diagnostic_output::{DiagnosticOutput, RenderedDiagnostics};
-use super::error_location::ModuleLoader;
 use super::exit_status::ExitStatus;
+use super::expansion::Expansion;
 use super::interruption::Interruption;
 use super::located_program::LocatedProgram;
+use super::module_of_sources::ModuleOfSources;
 use super::program_file::ProgramFile;
 use super::project_task::ProjectTask;
 use super::source_report::SourceReport;
@@ -22,9 +23,9 @@ use crate::build::{
     BuildError, BuildPlan, BuildProfile, CargoCompiler, CargoTarget, EmittedFormatting,
     FormattingError, RustCompiler,
 };
-use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::diagnostic::Diagnostic;
 use crate::emit::{EmittedCrate, RustEmitter};
-use crate::expand::{BoundName, ClassifiedForm, Expander, ExpansionSession, PreludeState, Program};
+use crate::expand::Program;
 use crate::language::Language;
 use crate::source::Span;
 use crate::source::{SourceFile, SourceId, SourceMap};
@@ -34,28 +35,6 @@ pub use source_loader::SourceLoader;
 pub struct BuildOptions {
     pub profile: BuildProfile,
     pub output: Option<PathBuf>,
-}
-
-pub struct EvaluationRequest {
-    pub module: ModuleOfSources,
-    pub evaluated: Vec<Span>,
-}
-
-pub struct ModuleOfSources {
-    pub file: ProgramFile,
-    pub sources: Vec<SourceId>,
-}
-
-impl ModuleOfSources {
-    pub fn anchor(&self) -> SourceId {
-        self.sources[0]
-    }
-}
-
-pub struct SourcesSurvey {
-    pub diagnostics: Diagnostics,
-    pub names: Vec<Vec<BoundName>>,
-    pub loaders: Vec<ModuleLoader>,
 }
 
 pub struct BuildTarget<'a> {
@@ -79,7 +58,6 @@ pub struct Terminal {
 impl Terminal {
     pub const BUILD_PARENT: &str = "target";
     pub const WORKING_DIRECTORY: &str = ".";
-    const SAVED_PRELUDE: &[u8] = include_bytes!(env!("PRELUDE_STATE"));
 
     pub fn new(standard_error: ColorChoice) -> Self {
         Self::reporting_to(Rc::new(RenderedDiagnostics::new(standard_error)))
@@ -120,6 +98,10 @@ impl Terminal {
 
     pub fn source_file(&self, source: SourceId) -> &SourceFile {
         self.sources.file(source)
+    }
+
+    pub fn expansion(&mut self) -> Expansion<'_> {
+        Expansion::new(&mut self.sources, &mut self.work, self.diagnostics.as_ref())
     }
 
     pub fn source_report(&self) -> SourceReport<'_> {
@@ -282,7 +264,8 @@ impl Terminal {
     }
 
     pub fn check(&mut self, file: &ProgramFile) -> Result<TypedProgram, ExitStatus> {
-        let program = self.expand(file)?;
+        let entry = self.sources().load(file.path())?;
+        let program = self.expansion().expand(file, entry)?;
         self.check_expanded(&program)
     }
 
@@ -303,96 +286,15 @@ impl Terminal {
         Ok(typed)
     }
 
-    pub fn expand(&mut self, file: &ProgramFile) -> Result<Program, ExitStatus> {
-        let entry = self.sources().load(file.path())?;
-        let program = self
-            .expander_rooted(file)
-            .expand(file.module_path(), entry)
-            .map_err(|diagnostics| self.source_report().report(&diagnostics))?;
-        self.work.lowered_forms = Some(program.expansion.lowered_forms);
-        Ok(program)
-    }
-
-    pub fn within_session<T>(
-        &mut self,
-        file: &ProgramFile,
-        entry: SourceId,
-        work: impl FnOnce(ExpansionSession<'_>) -> Result<T, Diagnostics>,
-    ) -> Result<T, ExitStatus> {
-        self.expander_rooted(file)
-            .open(file.module_path(), &[entry])
-            .and_then(work)
-            .map_err(|diagnostics| self.source_report().report(&diagnostics))
-    }
-
-    pub fn within_evaluation<T>(
-        &mut self,
-        request: &EvaluationRequest,
-        work: impl FnOnce(ExpansionSession<'_>) -> Result<T, Diagnostics>,
-    ) -> Result<T, ExitStatus> {
-        let module = &request.module;
-        self.expander_rooted(&module.file)
-            .evaluating(request.evaluated.iter().copied())
-            .open(module.file.module_path(), &module.sources)
-            .and_then(work)
-            .map_err(|diagnostics| self.source_report().report(&diagnostics))
-    }
-
-    pub fn classify(&mut self, module: &ModuleOfSources, form: Span) -> ClassifiedForm {
-        self.expander_rooted(&module.file).classify(
-            module.file.module_path(),
-            &module.sources,
-            form,
-        )
-    }
-
-    pub fn survey_sources(&mut self, module: &ModuleOfSources, inputs: &[Span]) -> SourcesSurvey {
-        let survey = self.expander_rooted(&module.file).survey(
-            module.file.module_path(),
-            &module.sources,
-            inputs,
-        );
-        let loaders = survey
-            .loaded
-            .iter()
-            .map(|loaded| ModuleLoader {
-                file: self.source_file(loaded.source).name().to_string(),
-                input: loaded.input.source(),
-            })
-            .collect();
-        SourcesSurvey {
-            diagnostics: survey
-                .program
-                .map_or_else(|errors| errors, |program| Self::check_quietly(&program)),
-            names: survey.names,
-            loaders,
-        }
-    }
-
-    fn check_quietly(program: &Program) -> Diagnostics {
-        match crate::check::ProgramChecker::check(program) {
-            Ok(typed) => typed.warnings,
-            Err(diagnostics) => diagnostics,
-        }
-    }
-
     pub fn check_sources(
         &mut self,
         module: &ModuleOfSources,
         shown_warning: impl FnMut(&Diagnostic) -> bool,
     ) -> Result<TypedProgram, ExitStatus> {
         let program = self
-            .expander_rooted(&module.file)
-            .open(module.file.module_path(), &module.sources)
-            .and_then(ExpansionSession::finish)
-            .map_err(|diagnostics| self.source_report().report(&diagnostics))?;
+            .expansion()
+            .within_session(module, |session| session.finish())?;
         self.check_showing(&program, shown_warning)
-    }
-
-    fn expander_rooted(&mut self, file: &ProgramFile) -> Expander<'_> {
-        let prelude =
-            PreludeState::load(Self::SAVED_PRELUDE).expect("the embedded prelude state loads");
-        Expander::with_prelude(&mut self.sources, file.module_sources(), prelude)
     }
 
     fn report_build(&self, error: BuildError) -> ExitStatus {

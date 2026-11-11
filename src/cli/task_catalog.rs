@@ -6,10 +6,11 @@ use rustc_hash::FxHashMap;
 use super::diagnostic_output::DiagnosticOutput;
 use super::distinct_output::DistinctOutput;
 use super::entry_tree::EntryTree;
+use super::evaluation_request::EvaluationRequest;
 use super::exit_status::ExitStatus;
 use super::project_task::TaskName;
 use super::standard_error::StandardError;
-use super::terminal::{EvaluationRequest, Terminal};
+use super::terminal::Terminal;
 use super::user_label_output::UserLabelOutput;
 use crate::core::{Expr, ExprKind, Leaf, Literal, ModulePath};
 use crate::diagnostic::Diagnostics;
@@ -122,10 +123,12 @@ impl TaskCatalog {
         terminal: &mut Terminal,
         entry: &str,
     ) -> Result<EnteredProgram, ExitStatus> {
-        terminal.within_evaluation(&self.request, |mut session| {
-            let source = session.add_source(Self::RUNNER_SOURCE, entry);
-            Self::entered(session, source).map(|program| EnteredProgram { program, source })
-        })
+        terminal
+            .expansion()
+            .within_evaluation(&self.request, |mut session| {
+                let source = session.add_source(Self::RUNNER_SOURCE, entry);
+                Self::entered(session, source).map(|program| EnteredProgram { program, source })
+            })
     }
 
     fn entered(
@@ -169,10 +172,12 @@ impl TaskCatalog {
     }
 
     fn expanded(&self, terminal: &mut Terminal, lookup: &str) -> Result<Expr, ExitStatus> {
-        terminal.within_evaluation(&self.request, |mut session| {
-            let source = session.add_source(Self::LOOKUP_SOURCE, lookup);
-            Self::task_expression(&mut session, source)
-        })
+        terminal
+            .expansion()
+            .within_evaluation(&self.request, |mut session| {
+                let source = session.add_source(Self::LOOKUP_SOURCE, lookup);
+                Self::task_expression(&mut session, source)
+            })
     }
 
     fn task_expression(

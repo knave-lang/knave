@@ -1,7 +1,7 @@
 use std::path::Path;
 
+use super::module_of_sources::ModuleOfSources;
 use super::program_file::ProgramFile;
-use super::terminal::ModuleOfSources;
 use crate::source::SourceId;
 
 pub struct PromptModule {

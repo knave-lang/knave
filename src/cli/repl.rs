@@ -108,7 +108,9 @@ impl ReplCommand {
     }
 
     fn note_uncaught_interrupts(terminal: &Terminal, error: &ctrlc::Error) -> Interruption {
-        terminal.print_note(&format!("Ctrl-C will end the session: {error}"));
+        terminal
+            .source_report()
+            .note(&format!("Ctrl-C will end the session: {error}"));
         Interruption::default()
     }
 }
@@ -232,12 +234,12 @@ impl PromptSession {
             .commit(accepted.records, accepted.buffer.bound_names());
         self.buffer = accepted.buffer;
         self.loaders = accepted.loaders;
-        terminal.print_diagnostics(&accepted.report);
+        terminal.source_report().print(&accepted.report);
     }
 
     fn reject(&self, terminal: &Terminal, errors: &Diagnostics, pending: NameRecords) {
         self.annotations.borrow_mut().hold_pending(pending);
-        terminal.report(errors);
+        terminal.source_report().report(errors);
         self.annotations.borrow_mut().drop_pending();
     }
 
@@ -275,6 +277,8 @@ impl PromptSession {
             ExitStatus::KilledBy(signal) if !signal.is_interrupt() => signal.shell_code(),
             _ => return,
         };
-        terminal.print_note(&format!("the program exited with code {code}"));
+        terminal
+            .source_report()
+            .note(&format!("the program exited with code {code}"));
     }
 }

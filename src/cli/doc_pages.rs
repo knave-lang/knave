@@ -84,7 +84,7 @@ impl DocumentedModules {
                 .collect::<Result<Vec<Expr>, Diagnostics>>()?;
             Ok((texts, session.finish()?.warnings))
         })?;
-        terminal.print_diagnostics(&warnings);
+        terminal.source_report().print(&warnings);
         self.written
             .iter()
             .zip(texts)
@@ -112,7 +112,7 @@ impl DocumentedModules {
         for (module, own) in self.written.iter().zip(own_checks) {
             types.extend(own.or_else(|own_errors| {
                 Self::of_module(entry_types.as_ref(), module)
-                    .ok_or_else(|| terminal.report(&own_errors))
+                    .ok_or_else(|| terminal.source_report().report(&own_errors))
             })?);
         }
         Ok(types)

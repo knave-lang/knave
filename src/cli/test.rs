@@ -122,7 +122,7 @@ impl TestCommand {
             return;
         }
         if let Some(note) = self.selection.unmatched_note() {
-            terminal.print_note(&note);
+            terminal.source_report().note(&note);
         }
     }
 

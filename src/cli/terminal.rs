@@ -17,6 +17,7 @@ use super::interruption::Interruption;
 use super::located_program::LocatedProgram;
 use super::program_file::ProgramFile;
 use super::project_task::ProjectTask;
+use super::source_report::SourceReport;
 use super::stage_work::StageWork;
 use super::standard_error::StandardError;
 use crate::build::{
@@ -123,6 +124,10 @@ impl Terminal {
         self.sources.file(source)
     }
 
+    pub fn source_report(&self) -> SourceReport<'_> {
+        SourceReport::new(&self.sources, self.diagnostics.as_ref())
+    }
+
     pub fn write_output(&self, output: impl Display) -> ExitStatus {
         match Self::write_standard_output(output) {
             Err(error) if error.kind() != ErrorKind::BrokenPipe => Self::report_unwritable(&error),
@@ -222,7 +227,8 @@ impl Terminal {
             return Err(self.report_build(BuildError::Interrupted));
         }
         let waiting = |target: &str| {
-            self.print_note(&format!("waiting for another build in {target}"));
+            self.source_report()
+                .note(&format!("waiting for another build in {target}"));
         };
         CargoCompiler::new(target.directory.clone(), BuildPlan::new(profile), &waiting)
             .compile(emitted, target, Self::entry_span())
@@ -253,7 +259,7 @@ impl Terminal {
         formatting: &EmittedFormatting,
     ) -> Result<EmittedCrate, ExitStatus> {
         let emitted = RustEmitter::emit(program, Self::entry_span())
-            .map_err(|diagnostics| self.report(&diagnostics))?;
+            .map_err(|diagnostics| self.source_report().report(&diagnostics))?;
         self.work.emitted_expressions = Some(emitted.emission.emitted_expressions);
         let written = match formatting.apply(&emitted) {
             Ok(formatted) => formatted,
@@ -305,10 +311,10 @@ impl Terminal {
         shown_warning: impl FnMut(&Diagnostic) -> bool,
     ) -> Result<TypedProgram, ExitStatus> {
         let mut typed = crate::check::ProgramChecker::check(program)
-            .map_err(|diagnostics| self.report(&diagnostics))?;
+            .map_err(|diagnostics| self.source_report().report(&diagnostics))?;
         self.work.inferred_expressions = Some(typed.checking.inferred_expressions);
         typed.warnings.retain(shown_warning);
-        self.print_diagnostics(&typed.warnings);
+        self.source_report().print(&typed.warnings);
         Ok(typed)
     }
 
@@ -317,7 +323,7 @@ impl Terminal {
         let program = self
             .expander_rooted(file)
             .expand(file.module_path(), entry)
-            .map_err(|diagnostics| self.report(&diagnostics))?;
+            .map_err(|diagnostics| self.source_report().report(&diagnostics))?;
         self.work.lowered_forms = Some(program.expansion.lowered_forms);
         Ok(program)
     }
@@ -331,7 +337,7 @@ impl Terminal {
         self.expander_rooted(file)
             .open(file.module_path(), &[entry])
             .and_then(work)
-            .map_err(|diagnostics| self.report(&diagnostics))
+            .map_err(|diagnostics| self.source_report().report(&diagnostics))
     }
 
     pub fn within_evaluation<T>(
@@ -344,7 +350,7 @@ impl Terminal {
             .evaluating(request.evaluated.iter().copied())
             .open(module.file.module_path(), &module.sources)
             .and_then(work)
-            .map_err(|diagnostics| self.report(&diagnostics))
+            .map_err(|diagnostics| self.source_report().report(&diagnostics))
     }
 
     pub fn classify(&mut self, module: &ModuleOfSources, form: Span) -> ClassifiedForm {
@@ -394,7 +400,7 @@ impl Terminal {
             .expander_rooted(&module.file)
             .open(module.file.module_path(), &module.sources)
             .and_then(ExpansionSession::finish)
-            .map_err(|diagnostics| self.report(&diagnostics))?;
+            .map_err(|diagnostics| self.source_report().report(&diagnostics))?;
         self.check_showing(&program, shown_warning)
     }
 
@@ -404,24 +410,9 @@ impl Terminal {
         Expander::with_prelude(&mut self.sources, file.module_sources(), prelude)
     }
 
-    pub fn print_diagnostics(&self, diagnostics: &Diagnostics) {
-        if diagnostics.is_empty() {
-            return;
-        }
-        self.diagnostics.write(&self.sources, diagnostics);
-    }
-
-    pub fn print_note(&self, message: &str) {
-        self.diagnostics.write_note(&self.sources, message);
-    }
-
-    pub fn report(&self, diagnostics: &Diagnostics) -> ExitStatus {
-        self.diagnostics.report(&self.sources, diagnostics)
-    }
-
     fn report_build(&self, error: BuildError) -> ExitStatus {
         match error {
-            BuildError::Program(diagnostics) => self.report(&diagnostics),
+            BuildError::Program(diagnostics) => self.source_report().report(&diagnostics),
             BuildError::Environment(message) => {
                 StandardError::write_line(format_args!("error: {message}"));
                 ExitStatus::Environment

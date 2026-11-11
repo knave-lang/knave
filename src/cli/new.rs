@@ -88,7 +88,7 @@ impl NewCommand {
         ProjectName::check(&self.name, whole_name).map_err(|problem| {
             let mut problems = Diagnostics::default();
             problems.push(problem);
-            terminal.report(&problems)
+            terminal.source_report().report(&problems)
         })
     }
 

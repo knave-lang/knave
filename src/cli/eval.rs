@@ -80,7 +80,7 @@ impl EvalCommand {
         let ranges = self.forms.ranges(terminal, self.module.path(), anchor)?;
         let expanded = self.expand(terminal, module, &ranges)?;
         let module_warnings = self.module.check(terminal, &expanded.program)?.warnings;
-        terminal.print_diagnostics(&expanded.definition_notes());
+        terminal.source_report().print(&expanded.definition_notes());
         let Some(entry) = expanded.entry(terminal)? else {
             return Ok(ExitStatus::Success);
         };
@@ -360,7 +360,7 @@ impl ExpandedEvaluation {
         self.entry
             .clone()
             .transpose()
-            .map_err(|diagnostics| terminal.report(&diagnostics))
+            .map_err(|diagnostics| terminal.source_report().report(&diagnostics))
     }
 
     fn checked_with_printing(
@@ -373,8 +373,10 @@ impl ExpandedEvaluation {
         program.enter(entry);
         program.check_also(self.printer.bound_holder());
         let results = ProgramChecker::form_results(&program, self.printer.bound_holder())
-            .map_err(|diagnostics| terminal.report(&diagnostics))?;
-        terminal.print_diagnostics(&Self::result_notes(&results));
+            .map_err(|diagnostics| terminal.source_report().report(&diagnostics))?;
+        terminal
+            .source_report()
+            .print(&Self::result_notes(&results));
         let printed = Self::printed(&results);
         program.enter(&entry.printing(&self.printer, &printed));
         let printed_forms = printed

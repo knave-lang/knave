@@ -5,6 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::admissible::Admissible;
 use super::admissible_types::AdmissibleTypes;
 use super::assumed_collections::AssumedCollections;
+use super::checked_items::CheckedItems;
 use super::copy::InferredCopies;
 use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
 use super::declarations::Declarations;
@@ -16,6 +17,8 @@ use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
 use super::graph::{Definition, DefinitionGraph, DependencyGraph};
 use super::impl_overlap::ImplementorOverlap;
 use super::infer::OpenCollections;
+use super::method_receivers::MethodReceivers;
+use super::opaque_positions::OpaquePositions;
 use super::parameter_call_labels::ParameterCallRequest;
 use super::parameter_call_search::CalledParameters;
 use super::parameter_modes::ParameterModes;
@@ -679,6 +682,36 @@ impl TypeChecker {
             self.declared_traits(),
             self.variant_payloads(),
         )
+    }
+
+    fn check_opaque_positions(
+        &mut self,
+        modules: &[CoreModule],
+        definitions: &FxHashMap<BindingId, TypedDefinition>,
+    ) {
+        let unnameable = self.opaque_positions(modules, definitions).unnameable();
+        let display = self.display();
+        let diagnostics: Vec<Diagnostic> = unnameable
+            .iter()
+            .map(|unnameable| unnameable.diagnostic(&display))
+            .collect();
+        for diagnostic in diagnostics {
+            self.unnameable_types.push(diagnostic);
+        }
+    }
+
+    pub(super) fn opaque_positions<'c>(
+        &'c self,
+        modules: &'c [CoreModule],
+        definitions: &'c FxHashMap<BindingId, TypedDefinition>,
+    ) -> OpaquePositions<'c> {
+        let checked = CheckedItems {
+            modules,
+            definitions,
+            closures: &self.closure_types,
+        };
+        let receivers = MethodReceivers::new(&self.template_borrows);
+        OpaquePositions::new(&self.declarations.types, receivers, checked)
     }
 
     pub(super) fn reference_peeling(&self) -> ReferencePeeling<'_> {

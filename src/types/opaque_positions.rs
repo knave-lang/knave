@@ -1,18 +1,17 @@
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 
-use super::checker::TypeChecker;
-use super::enums::EnumTable;
+use super::checked_items::CheckedItems;
+use super::display::TypeDisplay;
 use super::method_receivers::MethodReceivers;
 use super::problems::TypeProblems;
-use super::rust_types::RustTypeTable;
-use super::structs::StructTable;
 use super::ty::Type;
-use super::typed::{ClosureType, TypedDefinition, TypedExpr, TypedExprKind, TypedLambda};
-use crate::core::{BindingId, CoreModule, Item, ItemKind, TraitMethod, TypeExpr, TypeExprKind};
+use super::type_declarations::TypeDeclarations;
+use super::typed::{TypedDefinition, TypedExpr, TypedExprKind, TypedLambda};
+use crate::core::{BindingId, Item, ItemKind, TraitMethod, TypeExpr, TypeExprKind};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 
-struct UnnameableType {
+pub(super) struct UnnameableType {
     opaque: Type,
     span: Span,
     place: UnnameablePlace,
@@ -31,40 +30,15 @@ enum FunctionLabels<'f> {
     Inferred(&'f TypedLambda),
 }
 
-struct OpaquePositions<'c> {
-    rust_types: &'c RustTypeTable,
-    structs: &'c StructTable,
-    enums: &'c EnumTable,
+pub(super) struct OpaquePositions<'c> {
+    types: &'c TypeDeclarations,
     receivers: MethodReceivers<'c>,
-    definitions: &'c FxHashMap<BindingId, TypedDefinition>,
-    closures: &'c [ClosureType],
-    modules: &'c [CoreModule],
-}
-
-impl TypeChecker {
-    pub(super) fn check_opaque_positions(
-        &mut self,
-        modules: &[CoreModule],
-        definitions: &FxHashMap<BindingId, TypedDefinition>,
-    ) {
-        let positions = OpaquePositions {
-            rust_types: &self.declarations.types.rust_types,
-            structs: &self.declarations.types.structs,
-            enums: &self.declarations.types.enums,
-            receivers: MethodReceivers::new(&self.template_borrows),
-            definitions,
-            closures: &self.closure_types,
-            modules,
-        };
-        for unnameable in positions.unnameable() {
-            let shown = self.display().show(&unnameable.opaque);
-            self.unnameable_types.push(unnameable.diagnostic(&shown));
-        }
-    }
+    checked: CheckedItems<'c>,
 }
 
 impl UnnameableType {
-    fn diagnostic(&self, shown: &str) -> Diagnostic {
+    pub(super) fn diagnostic(&self, display: &TypeDisplay) -> Diagnostic {
+        let shown = &display.show(&self.opaque);
         match self.place {
             UnnameablePlace::FunctionType => TypeProblems::unnameable_type(shown, self.span),
             UnnameablePlace::StoredValue => TypeProblems::stored_unnameable_type(shown, self.span),
@@ -75,8 +49,20 @@ impl UnnameableType {
     }
 }
 
-impl OpaquePositions<'_> {
-    fn unnameable(&self) -> Vec<UnnameableType> {
+impl<'c> OpaquePositions<'c> {
+    pub(super) fn new(
+        types: &'c TypeDeclarations,
+        receivers: MethodReceivers<'c>,
+        checked: CheckedItems<'c>,
+    ) -> Self {
+        Self {
+            types,
+            receivers,
+            checked,
+        }
+    }
+
+    pub(super) fn unnameable(&self) -> Vec<UnnameableType> {
         let mut reporting_forms: Vec<Span> = Vec::new();
         let mut found = Vec::new();
         let closure_owners = self.owners_of_closures_taking_opaque();
@@ -94,11 +80,12 @@ impl OpaquePositions<'_> {
     }
 
     fn items(&self) -> impl Iterator<Item = &Item> {
-        self.modules.iter().flat_map(|module| &module.items)
+        self.checked.modules.iter().flat_map(|module| &module.items)
     }
 
     fn owners_of_closures_taking_opaque(&self) -> Vec<BindingId> {
-        self.closures
+        self.checked
+            .closures
             .iter()
             .filter(|closure| self.takes_opaque(&closure.ty))
             .map(|closure| closure.definition)
@@ -144,7 +131,8 @@ impl OpaquePositions<'_> {
         binding: BindingId,
         closure_owners: &[BindingId],
     ) -> Vec<UnnameableType> {
-        self.definitions
+        self.checked
+            .definitions
             .get(&binding)
             .map_or_else(Vec::new, |definition| {
                 let in_signature = self.in_function(binding, definition);
@@ -194,7 +182,8 @@ impl OpaquePositions<'_> {
     }
 
     fn in_trait_method(&self, method: &TraitMethod) -> Vec<UnnameableType> {
-        self.definitions
+        self.checked
+            .definitions
             .get(&method.binding)
             .zip(FunctionLabels::written(&method.signature))
             .map_or_else(Vec::new, |(declaration, labels)| {
@@ -221,7 +210,8 @@ impl OpaquePositions<'_> {
     }
 
     fn in_struct(&self, binding: BindingId) -> Vec<UnnameableType> {
-        self.structs
+        self.types
+            .structs
             .get(binding)
             .into_iter()
             .flat_map(|definition| definition.fields.iter().zip(&definition.field_spans))
@@ -230,7 +220,8 @@ impl OpaquePositions<'_> {
     }
 
     fn in_enum(&self, binding: BindingId) -> Vec<UnnameableType> {
-        self.enums
+        self.types
+            .enums
             .get(binding)
             .into_iter()
             .flat_map(|definition| &definition.variants)
@@ -297,21 +288,13 @@ impl OpaquePositions<'_> {
     }
 
     fn opaque_part<'t>(&self, ty: &'t Type) -> Option<&'t Type> {
-        if self.is_opaque(ty) {
-            return Some(ty);
+        match ty {
+            Type::Named(binding, _) if self.types.rust_types.is_opaque(*binding) => Some(ty),
+            _ => ty
+                .parts()
+                .into_iter()
+                .find_map(|part| self.opaque_part(part)),
         }
-        ty.parts()
-            .into_iter()
-            .find_map(|part| self.opaque_part(part))
-    }
-
-    fn is_opaque(&self, ty: &Type) -> bool {
-        let Type::Named(binding, _) = ty else {
-            return false;
-        };
-        self.rust_types
-            .get(*binding)
-            .is_some_and(|rust_type| rust_type.is_opaque())
     }
 }
 

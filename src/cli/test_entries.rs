@@ -44,7 +44,7 @@ impl TestEntries {
         let project =
             LocatedProject::search_from(working_directory, terminal, FetchingStore::default())?
                 .ok_or_else(LocatedProject::report_no_path)?;
-        let path = project.tests_directory();
+        let path = project.placement().tests_directory().to_path_buf();
         if !path.is_dir() {
             return Err(Self::report_no_tests_directory(&project));
         }
@@ -56,7 +56,7 @@ impl TestEntries {
             "error: no `{}/` directory at the project root\n\
              help: put the project's tests in `{}`, or name a test file or directory",
             SearchScope::TESTS_DIRECTORY,
-            project.tests_directory().display()
+            project.placement().tests_directory().display()
         ));
         ExitStatus::UsageError
     }

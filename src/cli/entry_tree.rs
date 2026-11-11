@@ -132,9 +132,10 @@ impl EntryTree {
     }
 
     pub fn of_tasks(project: LocatedProject) -> Self {
+        let directory = project.placement().tasks_directory().to_path_buf();
         Self {
             kind: TreeKind::Tasks,
-            ..Self::of_tests(project.tasks_directory(), Some(project))
+            ..Self::of_tests(directory, Some(project))
         }
     }
 

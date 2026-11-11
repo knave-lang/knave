@@ -107,14 +107,6 @@ impl LocatedProject {
         FilePlacement::new(&self.root, self.source_root(), &self.libraries)
     }
 
-    pub fn tests_directory(&self) -> PathBuf {
-        self.placement().tests_directory().to_path_buf()
-    }
-
-    pub fn tasks_directory(&self) -> PathBuf {
-        self.placement().tasks_directory().to_path_buf()
-    }
-
     pub fn root(&self) -> &Path {
         &self.root
     }

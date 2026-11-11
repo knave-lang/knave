@@ -1,12 +1,12 @@
 use crate::types::{TypedArgument, TypedExpr};
 
-pub trait BindingValue: Clone {
+pub trait ExpressionHolder: Clone {
     fn expression(&self) -> &TypedExpr;
 
     fn with_expression(&self, expression: TypedExpr) -> Self;
 }
 
-impl BindingValue for TypedExpr {
+impl ExpressionHolder for TypedExpr {
     fn expression(&self) -> &TypedExpr {
         self
     }
@@ -16,7 +16,7 @@ impl BindingValue for TypedExpr {
     }
 }
 
-impl BindingValue for TypedArgument {
+impl ExpressionHolder for TypedArgument {
     fn expression(&self) -> &TypedExpr {
         &self.value
     }

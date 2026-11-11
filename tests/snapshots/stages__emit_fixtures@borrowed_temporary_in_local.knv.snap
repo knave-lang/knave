@@ -35,50 +35,84 @@ fn prefix(size: usize, text: &str) -> &str {
 }
 
 fn through_as_str(name: &str) {
-    let owner = format!("{}-a", name);
-    let letter = first_letter(owner.as_str());
+    let owner;
+    let letter = first_letter(
+        {
+            owner = format!("{}-a", name);
+            &owner
+        }
+        .as_str(),
+    );
     println!("{}", letter)
 }
 
 fn through_borrowed_argument(name: &str) {
-    let owner = Page {
-        title: format!("{}-b", name),
-    };
-    let letter = title_of(&owner);
+    let owner;
+    let letter = title_of({
+        owner = Page {
+            title: format!("{}-b", name),
+        };
+        &owner
+    });
     println!("{}", letter)
 }
 
 fn through_ref(name: &str) {
-    let owner = Page {
-        title: format!("{}-c", name),
-    };
-    let letter = title_of(&owner);
+    let owner;
+    let letter = title_of({
+        owner = Page {
+            title: format!("{}-c", name),
+        };
+        &owner
+    });
     println!("{}", letter)
 }
 
 fn through_field(name: &str) {
-    let owner = format!("{}-d", name);
+    let owner;
     let tag = Label {
-        text: owner.as_str(),
+        text: {
+            owner = format!("{}-d", name);
+            &owner
+        }
+        .as_str(),
     };
     println!("{}", tag.text)
 }
 
 fn through_variant(name: &str) {
-    let owner = format!("{}-e", name);
-    let found = Some(owner.as_str());
+    let owner;
+    let found = Some(
+        {
+            owner = format!("{}-e", name);
+            &owner
+        }
+        .as_str(),
+    );
     println!("{}", found.unwrap())
 }
 
 fn through_nested_str(name: &str) {
-    let owner = format!("{}-g", format!("{}-f", name).as_str());
-    let letter = first_letter(owner.as_str());
+    let owner;
+    let letter = first_letter(
+        {
+            owner = format!("{}-g", format!("{}-f", name).as_str());
+            &owner
+        }
+        .as_str(),
+    );
     println!("{}", letter)
 }
 
 fn through_try(name: &str) -> Result<usize, std::io::Error> {
-    let owner = format!("{}-j", name);
-    let letter = checked(owner.as_str())?;
+    let owner;
+    let letter = checked(
+        {
+            owner = format!("{}-j", name);
+            &owner
+        }
+        .as_str(),
+    )?;
     Ok(letter.len())
 }
 
@@ -87,18 +121,29 @@ fn label_text<'a>(tag: &'a Label<'a>) -> &'a str {
 }
 
 fn lent_inside_lifted(name: &str) {
-    let owner = format!("{}-k", name);
-    let owner_2 = Label {
-        text: owner.as_str(),
-    };
-    let text = label_text(&owner_2);
+    let owner;
+    let owner_2;
+    let text = label_text({
+        owner_2 = Label {
+            text: {
+                owner = format!("{}-k", name);
+                &owner
+            }
+            .as_str(),
+        };
+        &owner_2
+    });
     println!("{}", text)
 }
 
 fn written_borrow_of_struct(name: &str) {
-    let owner = format!("{}-l", name);
+    let owner;
     let tag = &Label {
-        text: owner.as_str(),
+        text: {
+            owner = format!("{}-l", name);
+            &owner
+        }
+        .as_str(),
     };
     println!("{}", tag.text)
 }

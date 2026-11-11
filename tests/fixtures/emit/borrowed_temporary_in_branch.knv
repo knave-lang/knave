@@ -1,6 +1,16 @@
 (defstruct page
   :title string)
 
+(defstruct entry
+  :name string
+  :tag (ref str))
+
+(type make-entry (fn ((ref str)) entry))
+
+(defn make-entry (name)
+  (println "entry")
+  (->entry :name (str name "-name") :tag "tag"))
+
 (type first-letter
   (fn ((ref str)) (ref str)))
 
@@ -70,6 +80,16 @@
     (first-letter (as-str (:title made))))
   (println t))
 
+(defn lifted-borrowing-field ()
+  (local name
+    (as-str (:name (make-entry "eve"))))
+  (println name))
+
+(defn explicit-borrowing-field ()
+  (local made (make-entry "eve"))
+  (local name (as-str (:name made)))
+  (println name))
+
 (defn main ()
   (lifted-if true "ann")
   (explicit-if true "ann")
@@ -82,4 +102,6 @@
   (lifted-block "dee")
   (explicit-block "dee")
   (lifted-field)
-  (explicit-field))
+  (explicit-field)
+  (lifted-borrowing-field)
+  (explicit-borrowing-field))

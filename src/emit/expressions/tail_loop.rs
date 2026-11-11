@@ -1,8 +1,9 @@
 use rustc_hash::FxHashSet;
 
-use super::{ArgumentRole, BoxPosition, ExpressionEmitter, LoopExit, TypeContext};
+use super::{ArgumentRole, BoxPosition, ExpressionEmitter, LoopExit};
 use crate::core::BindingId;
 use crate::emit::fragment::{Code, Fragment};
+use crate::emit::type_context::TypeContext;
 use crate::ownership::TailCalls;
 use crate::types::{
     Type, TypedArgument, TypedArm, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,

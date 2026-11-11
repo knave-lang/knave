@@ -54,6 +54,25 @@
 (defn first-of (items text)
   (subs text 0 (count items)))
 
+(type seven (fn () i64))
+
+(defn seven ()
+  (println "seven")
+  7)
+
+(def lazy-seven (* (seven) 2))
+
+(def noisy (rust "{{ println!(\"noisy\"); 7 }}" i64))
+
+(def pick
+  (rust "if {0} {{ {1} }} else {{ {2} }}"
+    (fn (bool (ref str) (ref str))
+      (ref str))))
+
+(def logged
+  (rust "{{ println!(\"before\"); {0} }}"
+    (fn ((ref str)) (ref str))))
+
 (defn lifted-local ()
   (local n 1)
   (local t (keep n (as-str (tick! n))))
@@ -117,6 +136,52 @@
   (local t (first-of items (as-str text)))
   (println t))
 
+(defn lifted-global ()
+  (local t
+    (keep lazy-seven (as-str (announced "global"))))
+  (println t))
+
+(defn explicit-global ()
+  (local seen lazy-seven)
+  (local text (announced "global"))
+  (local t (keep seen (as-str text)))
+  (println t))
+
+(defn lifted-rust-global ()
+  (local t
+    (keep noisy (as-str (announced "rust"))))
+  (println t))
+
+(defn explicit-rust-global ()
+  (local seen noisy)
+  (local text (announced "rust"))
+  (local t (keep seen (as-str text)))
+  (println t))
+
+(defn lifted-branching-template ()
+  (local t
+    (pick false
+          (first-letter (as-str (announced "skipped")))
+          (first-letter (as-str (announced "taken")))))
+  (println t))
+
+(defn explicit-branching-template ()
+  (local text (announced "taken"))
+  (local t
+    (pick false "s" (first-letter (as-str text))))
+  (println t))
+
+(defn lifted-leading-template ()
+  (local t
+    (logged (first-letter (as-str (announced "after")))))
+  (println t))
+
+(defn explicit-leading-template ()
+  (println "before")
+  (local text (announced "after"))
+  (local t (first-letter (as-str text)))
+  (println t))
+
 (defn main ()
   (lifted-local)
   (explicit-local)
@@ -127,4 +192,12 @@
   (lifted-deref)
   (explicit-deref)
   (lifted-iterator)
-  (explicit-iterator))
+  (explicit-iterator)
+  (lifted-global)
+  (explicit-global)
+  (lifted-rust-global)
+  (explicit-rust-global)
+  (lifted-branching-template)
+  (explicit-branching-template)
+  (lifted-leading-template)
+  (explicit-leading-template))

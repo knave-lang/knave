@@ -12,6 +12,8 @@ mod collection;
 mod copy;
 mod coverage;
 mod declarations;
+#[cfg(test)]
+mod declarations_fixture;
 mod declared_traits;
 mod declared_types;
 mod deferred_definitions;

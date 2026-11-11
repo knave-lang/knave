@@ -103,3 +103,131 @@ impl<'a> DeriveBlockers<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::core::PrimitiveType;
+    use crate::types::Type;
+    use crate::types::declarations_fixture::DeclarationsFixture;
+
+    const SOURCE: &str = "
+        (struct ticket (id u32) (owner string))
+        (struct (holder a) (value a))
+        (struct locker (opener (fn () i64)))
+        (struct shelf (labels (vec string)))
+        (struct toolbox (openers (vec (fn () i64))))
+        (enum reading (text string) (number f64))
+        (rust-type octal-out \"std::fmt::Formatter<'_>\")
+        (rust-type octal-result \"std::fmt::Result\")
+        (rust-trait octal \"std::fmt::Octal\"
+          (method fmt
+            (fn ((ref self) (mut octal-out))
+              octal-result))
+          (structural
+            :struct \"write!({1}, \\\"{name}\\\")\"
+            :field \"\"
+            :variant \"write!({1}, \\\"{name}\\\")\"
+            :part \"\"
+            :bare \"write!({1}, \\\"{name}\\\")\")
+          u32)
+        (enum chain
+          end
+          (link u32 chain))
+        (defn main () (do))";
+
+    struct BlockerFixture {
+        declarations: DeclarationsFixture,
+    }
+
+    impl BlockerFixture {
+        fn new() -> Self {
+            Self {
+                declarations: DeclarationsFixture::new(SOURCE),
+            }
+        }
+
+        fn blocking_field(&self, owner: &str, trait_name: &str) -> Option<String> {
+            let owner = self.declarations.type_named(owner);
+            let trait_binding = self.declarations.trait_named(trait_name);
+            self.declarations
+                .derive_blockers()
+                .blocking_field(owner, trait_binding)
+                .map(|(field, _)| field.to_string())
+        }
+
+        fn blocking_payload(&self, owner: &str, trait_name: &str) -> Option<(String, Type)> {
+            let owner = self.declarations.type_named(owner);
+            let trait_binding = self.declarations.trait_named(trait_name);
+            self.declarations
+                .derive_blockers()
+                .blocking_enum_payload(owner, trait_binding)
+                .map(|(variant, payload)| (variant.to_string(), payload))
+        }
+    }
+
+    #[test]
+    fn a_field_without_the_trait_blocks_it() {
+        let fixture = BlockerFixture::new();
+        assert_eq!(
+            fixture.blocking_field("ticket", "copy"),
+            Some("owner".to_string())
+        );
+    }
+
+    #[test]
+    fn fields_that_all_have_the_trait_block_nothing() {
+        let fixture = BlockerFixture::new();
+        assert_eq!(fixture.blocking_field("ticket", "clone"), None);
+    }
+
+    #[test]
+    fn a_field_of_a_type_parameter_blocks_nothing() {
+        let fixture = BlockerFixture::new();
+        assert_eq!(fixture.blocking_field("holder", "copy"), None);
+    }
+
+    #[test]
+    fn a_function_field_blocks_equality() {
+        let fixture = BlockerFixture::new();
+        assert_eq!(
+            fixture.blocking_field("locker", "eq"),
+            Some("opener".to_string())
+        );
+    }
+
+    #[test]
+    fn a_function_field_does_not_block_debug() {
+        let fixture = BlockerFixture::new();
+        assert_eq!(fixture.blocking_field("locker", "debug"), None);
+    }
+
+    #[test]
+    fn a_collection_whose_items_have_the_trait_blocks_nothing() {
+        let fixture = BlockerFixture::new();
+        assert_eq!(fixture.blocking_field("shelf", "clone"), None);
+    }
+
+    #[test]
+    fn a_collection_whose_items_lack_the_trait_blocks_it() {
+        let fixture = BlockerFixture::new();
+        assert_eq!(
+            fixture.blocking_field("toolbox", "eq"),
+            Some("openers".to_string())
+        );
+    }
+
+    #[test]
+    fn a_variant_payload_without_the_trait_blocks_it() {
+        let fixture = BlockerFixture::new();
+        assert_eq!(
+            fixture.blocking_payload("reading", "eq"),
+            Some(("number".to_string(), Type::Primitive(PrimitiveType::F64)))
+        );
+    }
+
+    #[test]
+    fn an_inferred_box_is_seen_through_for_a_structural_trait() {
+        let fixture = BlockerFixture::new();
+        assert_eq!(fixture.blocking_payload("chain", "octal"), None);
+    }
+}

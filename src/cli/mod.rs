@@ -49,6 +49,7 @@ mod prompt_diagnostics;
 mod prompt_history;
 mod prompt_lines;
 mod prompt_module;
+mod release_flag;
 mod remove;
 mod repl;
 mod run;
@@ -85,7 +86,6 @@ use std::process::ExitCode;
 use anstream::AutoStream;
 use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand};
 
-use crate::build::BuildProfile;
 use crate::counters::CountingAllocator;
 use crate::language::Language;
 use crate::source::TextPosition;
@@ -106,6 +106,7 @@ use expand::ExpandCommand;
 use fmt::FmtCommand;
 use front_end_stack::FrontEndStack;
 use new::NewCommand;
+use release_flag::ReleaseFlag;
 use remove::RemoveCommand;
 use repl::ReplCommand;
 use run::RunCommand;
@@ -319,12 +320,6 @@ enum ProgramCommand {
 }
 
 #[derive(Args)]
-struct ReleaseFlag {
-    #[arg(long)]
-    release: bool,
-}
-
-#[derive(Args)]
 struct StdinFlag {
     #[arg(long, help = "Read the module's text from standard input")]
     stdin: bool,
@@ -403,7 +398,7 @@ impl Command {
     fn prompt() -> Self {
         Self::Program(ProgramCommand::Repl {
             root: None,
-            release: ReleaseFlag { release: false },
+            release: ReleaseFlag::default(),
         })
     }
 
@@ -517,16 +512,6 @@ impl ProgramCommand {
                 args,
             )
             .run(terminal),
-        }
-    }
-}
-
-impl ReleaseFlag {
-    fn profile(&self) -> BuildProfile {
-        if self.release {
-            BuildProfile::Release
-        } else {
-            BuildProfile::Debug
         }
     }
 }

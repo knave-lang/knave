@@ -26,7 +26,7 @@ The language cannot solve this today for two reasons:
 1. `AGENTS.md` forbids the compiler to state a name or a fact that the prelude states. A table of synonyms in the compiler would restate the prelude's names. `ExpandProblems::CODE_REPLACEMENTS` in `expand/src/expand/problems.rs` is such a table today, for macro code.
 2. No prelude form says "this definition is what language X calls Y", so there is nothing for a diagnostic to read.
 
-This RFC builds on the owner's decision that `count` leaves the prelude and `len` serves collections and iterators. Every example below assumes it: `count` is a foreign name, from Clojure and Rust, with no knave binding. The order matters: the change that removes `count` lands before this RFC's build. If it did not, rule 5 would judge `:rust (count)` and `:clojure (count)` as bound entries, and `(count v test)` would get its hint at `L0402` instead of `L0201`. If this build comes first, the `count` rows of Appendix C1 wait for that change.
+This RFC builds on the owner's decision that `count` leaves the prelude and `len` serves collections and iterators. Every example below assumes it: `count` is a foreign name, from Clojure and Rust, with no knave binding. The order matters: the change that removes `count` lands before this RFC's build. If it did not, rule 5 would judge `:rust (count)` and `:clojure (count)` as bound entries, and `(count v test)` would get its hint at `L0402` instead of `L0201`. If this build comes first, the `count` rows of Appendix C1 wait for that change. The decision on prelude helpers (Decision 5) adds `concat`, which joins iterators end to end, as Clojure's does. If it lands first, `concat` is bound, so the JavaScript `concat` entry of C1 is a **B** entry, which hints only when its call fails, and Clojure's `concat` agrees with knave and gets no entry by rule 6.
 
 ## Options
 
@@ -178,7 +178,7 @@ error[L0201]: cannot find `return` in this scope
 2 |   (return 1))
   |    ^^^^^^ not found in this scope
   |
-help: knave has no `return`, which Rust uses: a body's last form is its value, so write the value last
+  = help: knave has no `return`, which Rust uses: a body's last form is its value, so write the value last
 ```
 
 The name of the language matters to the reader. It tells a person why the name looked right, and it tells a model which of its habits to correct, so the next guess comes from knave instead of from the same language.
@@ -237,8 +237,8 @@ error[L0301]: no rule of `some` matches this form
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
   |
   = help: write it as `(some value)`
-note: `some` wraps a value in an `option`
-help: Clojure's `some` is `any?`: write `(any? items test)`, with the items first
+  = note: `some` wraps a value in an `option`
+  = help: Clojure's `some` is `any?`: write `(any? items test)`, with the items first
 ```
 
 ```text
@@ -248,7 +248,7 @@ error[L0401]: mismatched types
 4 |   (map (first scores) (fn (s) (* s 2)))
   |        ^^^^^^^^^^^^^^ expected `(iterator _)`, found `(option (ref _))`
   |
-note: `map` returns an iterator over a function's result for each item
+  = note: `map` returns an iterator over a function's result for each item
 help: to apply a function to an option's value, knave uses `map-some`, which Rust calls `map`
   |
 4 -   (map (first scores) (fn (s) (* s 2)))
@@ -282,7 +282,7 @@ Each row recognizes a known form from another language and says the knave form. 
 | **1** | `return`, `for`, `while` | `L0201`; `for` suggests `or`, `return` suggests `recur` | `:help` entries (rule 7 of option A). Prelude only. |
 | **1** | Rust predicates and types, `is-some`, `is_empty`, `HashMap`, `PartialEq` | `L0201`, no help. `String` and `Vec` already get `string` and `vec` by edit distance | The Rust spelling rule. |
 | **1** | Rust parameter types, `(defn double (x: i64) ...)`, and commas, `(defn reducer (action, state) ...)` | `L0201` on each use of `x` in the body, no help, and nothing at the definition, because `x:` and `i64` are two parameters. For the comma, `L0201` with the help `action,`, the broken binder itself | One rule: when an unbound name plus a trailing `:` or `,` is a binder in scope, the help points at that binder and shows the list fixed, `((x i64))` or `(action state)`. It reads binders and the type namespace. The comma help is wrong today. |
-| **1** | `format`, `format!` | `L0201`, no help | `:help` entry on `str`: "`str` joins its parts: write `(str \"hello \" name)`". Not a replacement, because the arguments differ. Prelude only. |
+| **1** | `format`, `format!` | `L0201`, no help | `:help` entry on `str`: "`str` joins its parts: write `(str "hello " name)`". Not a replacement, because the arguments differ. Prelude only. |
 | **1** | A placeholder in `println`, `(println "x = {}" x)` | Nothing: it runs and prints `x = {}3` | A warning from the `println`, `print`, `eprintln`, `eprint` and `str` macros, with the lint name `format-placeholder` under [RFC 0069](../rfcs/0069-lint.md). It runs during expansion, so `knave check` shows it. The Decision section states it. |
 | **1** | A struct name at the head of a call | `L0201`, suggests `print` for `point` | The rule in Diagnostics. |
 | **1** | `#t`, `#f` | `L0201`; `#t` suggests `at` | Entries on `true` and `false`, `:scheme (#t #f) :racket (#t #f)`. The reader accepts `#` in a symbol. Prelude only. |
@@ -361,9 +361,9 @@ The owner accepted option A with the Rust spelling rule, and decided each questi
 
    The checker adds the help to an `L0401` whose expected type is the first type and whose found type is the second, comparing types, never names. Every other conversion, such as an `i64` where an `f64` is expected, waits for a later RFC, which may replace `mismatch-help` with a general form.
 
-   **How the rule squares with `AGENTS.md`.** `AGENTS.md` forbids the compiler to emit "a clone or an allocation that the source does not write". A string literal in an owned position writes the allocation: the program wrote a new text where an owned text is wanted, and `String::from` is the only Rust that means that, as `(str "ana")` would. The literal is the source writing it. A `(ref str)` variable differs: it names text the program already holds, and turning it into a `string` would copy that text without the source asking, which the rule forbids, so the variable gets a help and no conversion.
+   **How the rule squares with `AGENTS.md`.** `AGENTS.md` forbids the compiler to emit "a clone or an allocation that the source does not write". A string literal in an owned position writes the allocation: the program wrote a new text where an owned text is wanted, as `(str "ana")` does, and the literal emits it as `String::from("ana")`. The literal is the source writing it. A `(ref str)` variable differs: it names text the program already holds, and turning it into a `string` would copy that text without the source asking, which the rule forbids, so the variable gets a help and no conversion.
 5. **The missing functions are settled by a separate decision on prelude helpers, which its own RFC records.** knave adds `contains?`, `second` on a pair, `join` and `starts-with?` there. Their `foreign-names` entries, such as the membership names of Appendix C2, ship with or after that change. `panic` needs its own decision on what a knave program does on an unrecoverable error, which is larger than a name.
-6. **The first build ships Appendix C1.** Each row of Appendix C2 ships later in its own pull request that links its source, as rule 2 requires, and checks its replacement against the prelude signature.
+6. **The first build ships Appendix C1.** Each row of Appendix C2 ships later in its own pull request that links its source, as rule 2 requires, and checks its rows against rules 5 and 8 and the prelude signature of each target.
 7. **`count` leaves the prelude, and `len` serves collections and iterators.** This RFC assumes that change and lands its `count` rows after it.
 
 ## Rejected options and why
@@ -527,7 +527,7 @@ Of these 21 probes, four get a wrong help today and seven get none. The review's
 
 Each row maps a foreign name to a knave definition. **R** means the help shows the replacement: the knave definition takes the same arguments in the same order and means the same. **H** means the entry carries a `:help` text, because the order, the meaning or the form differs, and the text says what to write. **B** marks a foreign name bound in `prelude`, which hints only when its call fails. **E** marks a name from Appendix B.
 
-Every row was checked against the prelude signature of its target. Names that agree with knave, such as Python's `len` or Clojure's `filter`, are left out by rule 6.
+Every row of C1 was checked against the prelude signature of its target, against rule 5 for whether its name is bound, and against rule 8 for entries that share a spelling. C2 lists candidates: each later pull request checks its rows against rules 5 and 8 and its target's signature before it ships them, as Decision 6 says. Names that agree with knave, such as Python's `len` or Clojure's `filter`, are left out by rule 6.
 
 ### C1. The first build
 
@@ -551,7 +551,7 @@ Every row was checked against the prelude signature of its target. Names that ag
 | Rust, Python | `%` **E** | `rem` | H: `rem` keeps the sign of the first number, as Rust's `%` does and Python's does not |
 | Python | `None`, `True`, `False` | `none`, `true`, `false` | R |
 | JavaScript | `length` **E**, `size` **E** | `len` | R |
-| JavaScript | `concat` **E** | `str` | H: "to join strings, write `(str a b)`"; an array `concat` has no knave form |
+| JavaScript | `concat` **E** | `str` | H: "to join strings, write `(str a b)`"; an array `concat` has no knave form. **B** once the helpers decision adds `concat` |
 | JavaScript | `some` **B** | `any?` | H, in the same form as Clojure's |
 | JavaScript | `every` | `every?` | R |
 | JavaScript | `null`, `undefined` | `none` | R |
@@ -586,22 +586,22 @@ The Rust spelling rule covers `is_some`, `is_none`, `is_ok`, `is_err`, `is_empty
 
 ### C2. Candidates for later pull requests, each with its source link
 
-**Python.** R: `append` to `push!`, `pop` to `pop!`, `reversed` to `reverse`, `str.strip` written `strip` to `trim`, `upper` and `lower` to `upper-case` and `lower-case`, `input` to `read-line`, `dict` to `hash-map`, `list` to `vec`, `any` to `any?`, `all` to `every?`. H: `sorted` (knave's `sort!` changes in place and returns `unit`), `extend` (no knave form appends a sequence), `items` (`iter` on a map), `int` and `float` (`(the i64 (unwrap (parse text)))`), `del` (`remove-at!` for a list index), `count` (`(len (filter items test))`), `print(..., end="")` needs nothing (`print` agrees).
+**Python.** R: `append` to `push!`, `pop` to `pop!`, `reversed` to `reverse`, `str.strip` written `strip` to `trim`, `upper` and `lower` to `upper-case` and `lower-case`, `dict` to `hash-map`. H: `any` and `all` (they take one iterable of booleans, and `any?` and `every?` take items and a test, so the pull request adds to C1's Rust `any` and `all` forms a `:help` for the one-argument call, `(any? items (fn (b) b))`, which keeps Rust's replacement by rule 7's count), `list` (`(the (vec i64) (collect items))`, because `(vec items)` builds a vector of one iterator), `input` (`(read-line)` takes no prompt and returns `(result (option string) io-error)`, so print the prompt with `print` first), `sorted` (knave's `sort!` changes in place and returns `unit`), `items` (`iter` on a map), `int` and `float` (`(the i64 (unwrap (parse text)))`), `del` (`remove-at!` for a list index), `count` (joins C1's `count` form on `len`, whose `:help` answers `list.count(x)` with `(len (filter items test))`), `print(..., end="")` needs nothing (`print` agrees).
 
-**Rust.** R: `pop` to `pop!`, `remove` to `remove-at!`, `sort` and `sort-unstable` to `sort!`, `sort-by-key` to `sort-by!`, `dedup` to `dedup!`, `reverse` to `reverse!`, `to-uppercase` and `to-lowercase` to `upper-case` and `lower-case`, `std/fs/read-to-string` to `slurp`, `std/process/exit` to `exit`, `Box/new` to `box`, `Vec/new` to `vec`, `HashMap/new` to `hash-map`. H: `position` (`find` over `(enumerate items)`), `sort-by` (knave sorts by a key, not a comparison), `insert` on a vector (no knave form inserts at an index), `dbg!` (`prn` prints but returns `unit`).
+**Rust.** R: `pop` to `pop!`, `remove` to `remove-at!`, `sort` and `sort-unstable` to `sort!`, `sort-by-key` to `sort-by!`, `dedup` to `dedup!`, `to-uppercase` and `to-lowercase` to `upper-case` and `lower-case`, `std/fs/read-to-string` to `slurp`, `std/process/exit` to `exit`, `Box/new` to `box`, `Vec/new` to `vec`, `HashMap/new` to `hash-map`. B, R: `reverse` to `reverse!`; knave's `reverse` returns an iterator, last item first, so a working `(reverse v)` gets no hint. H: `position` (`find` over `(enumerate items)`), `sort-by` (knave sorts by a key, not a comparison), `dbg!` (`prn` prints but returns `unit`).
 
-**JavaScript.** R: `pop` to `pop!`, `reverse` to `reverse!` (both change the array), `sort` to `sort!`, `forEach` to `for-each`, `toUpperCase` and `toLowerCase` to `upper-case` and `lower-case`, `toString` to `str`, `console.log` to `println`, `console.error` to `eprintln`, `process.exit` to `exit`, `Math.max`, `Math.min`, `Math.sqrt` to `max`, `min`, `sqrt`. H: `slice` and `substring` (`subs` takes byte offsets), `splice` (`remove-at!` for one item), `findIndex` and `indexOf` (`find` over `enumerate`), `parseInt` and `parseFloat` (`parse` with `the`), `Object.keys`, `Object.values`, `Object.entries` (`keys`, `vals`, `iter` on a map).
+**JavaScript.** R: `pop` to `pop!`, `sort` to `sort!`, `forEach` to `for-each`, `toUpperCase` and `toLowerCase` to `upper-case` and `lower-case`, `toString` to `str`, `console.log` to `println`, `console.error` to `eprintln`, `process.exit` to `exit`, `Math.max`, `Math.min`, `Math.sqrt` to `max`, `min`, `sqrt`. B, R: `reverse` to `reverse!`, in the same form as Rust's. H: `slice` and `substring` (`subs` takes byte offsets), `splice` (`remove-at!` for one item), `findIndex` and `indexOf` (`find` over `enumerate`), `parseInt` and `parseFloat` (`parse` with `the`), `Object.keys`, `Object.values`, `Object.entries` (`keys`, `vals`, `iter` on a map).
 
-**Clojure.** R: `nth` to `at`, `peek` to `last` on a vector, `doall` needs nothing. H: `conj` (`push!` changes the vector; `conj` returns a new one), `into` (`collect`, `into-hash-map` or `into-sorted-map` by target), `sort` (`sort!` changes in place), `distinct` and `dedupe` (`dedup!` removes neighbors only), `mod` (`rem` keeps the sign of the first number), `quot` (`/`), `if-let` and `when-let` (`let-match`), `condp` (`cond`), `defrecord` (`defstruct`), `defprotocol` (`deftrait`), `extend-protocol` (`impl`), `defn-` (`defn` without `export`).
+**Clojure.** R: `nth` to `at`, `peek` to `last` on a vector, `doall` needs nothing. H: `conj` (`push!` changes the vector; `conj` returns a new one), `into` (`collect`, `into-hash-map` or `into-sorted-map` by target), `distinct` and `dedupe` (`dedup!` removes neighbors only), `mod` (`rem` keeps the sign of the first number), `quot` (`/`), `if-let` and `when-let` (`let-match`), `condp` (`cond`), `defrecord` (`defstruct`), `defprotocol` (`deftrait`), `extend-protocol` (`impl`), `defn-` (`defn` without `export`).
 
-**Common Lisp.** R: `elt`, `aref` to `at`, `vector-push-extend` to `push!`, `nreverse` to `reverse!`, `remove-duplicates` needs H, `make-hash-table` to `hash-map`, `princ` to `print`, `write-line` to `println`, `string-upcase`, `string-downcase` to `upper-case`, `lower-case`, `string-trim` H (it takes the characters first), `parse-integer` H, `subseq` to `subs` H (byte offsets), `/=` to `not=`, `eq` and `equal` to `=`, `null` to `none?`. H: `nth` (`(at items index)`, the index comes second), `gethash` (`(get map key)`, the key comes second), `mapcar` (`(map items f)`, the function comes second), `remove-if-not` (`filter`, test second), `find-if` (`find`, test second), `every` and `some` (`every?` and `any?`, test second), `reduce` with `:initial-value` (`(reduce items init f)`), `dolist`, `dotimes` and `loop for` (`for-each`), `format` (`str`), `error` (none).
+**Common Lisp.** R: `elt`, `aref` to `at`, `vector-push-extend` to `push!`, `nreverse` to `reverse!`, `make-hash-table` to `hash-map`, `princ` to `print`, `write-line` to `println`, `string-upcase`, `string-downcase` to `upper-case`, `lower-case`, `/=` to `not=`, `eq` and `equal` to `=`, `null` to `none?`. B, H: `some` (`any?`, in the same form and with the same help as Clojure's `some`), `reduce` (knave's `reduce` takes the items first: `(reduce items f)` or `(reduce items init f)`). H: `remove-duplicates` (`dedup!` removes neighbors only), `string-trim` (`trim`; it takes the characters first), `parse-integer` (`parse` with `the`), `subseq` (`subs`, byte offsets), `gethash` (`(get map key)`, the key comes second), `mapcar` (`(map items f)`, the function comes second), `remove-if-not` (`filter`, test second), `find-if` (`find`, test second), `dolist`, `dotimes` and `loop for` (`for-each`), `format` (`str`).
 
-**Scheme and Racket.** R: `vector-ref`, `list-ref` to `at`, `hash-ref` to `get`, `displayln` to `println`, `display` to `print`, `number->string` to `str`, `equal?`, `eqv?`, `eq?` to `=`, `null?` to `empty?`, `string-upcase`, `string-downcase` to `upper-case`, `lower-case`. H: `foldl`, `fold-left`, `fold` (`(reduce items init f)`, the function comes last), `andmap` and `ormap` (`every?` and `any?`, the function second), `findf` (`find`, the function second), `sort` (`sort!` changes in place and sorts by `<` only), `remove-duplicates` (`dedup!` removes neighbors only), `hash-set!` (`assoc`), `make-hash` and `hash` (`hash-map`), `newline` (`(println)`), `string->number` (`parse` with `the`), `substring` (`subs`, byte offsets), `modulo` (`rem` keeps the sign of the first number), `struct` in Racket (`defstruct`; knave's kernel `struct` takes another shape), `error` and `raise` (none).
+**Scheme and Racket.** R: `vector-ref`, `list-ref` to `at`, `hash-ref` to `get`, `displayln` to `println`, `number->string` to `str`, `equal?`, `eqv?`, `eq?` to `=`, `null?` to `empty?`, `string-upcase`, `string-downcase` to `upper-case`, `lower-case`. B, R: Racket's `display` to `print`; knave's `display` is a macro that defines how a type prints, so a printing call fails with `L0301` and gets the hint. H: `foldl` and `fold-left` (`(reduce items init f)`, the function comes last), `andmap` and `ormap` (`every?` and `any?`, the function second), `findf` (`find`, the function second), `remove-duplicates` (`dedup!` removes neighbors only), `hash-set!` (`assoc`), `make-hash` and `hash` (`hash-map`), `newline` (`(println)`), `string->number` (`parse` with `the`), `substring` (`subs`, byte offsets), `modulo` (`rem` keeps the sign of the first number).
 
 **Membership, which the prelude lacks today.** The names split by what they test:
 
 - `contains` (Rust, on a slice or a string), `in` (Python), `includes` (JavaScript), `member` and `memq` (the Lisps) test whether a string or a sequence holds an item. They wait for `contains?` (Decision 5), and each is R or H by its signature.
-- `contains-key` (Rust) and `has` (JavaScript's `Map` and `Set`) test a key. No helper gives them a target, so they are H entries with `(some? (get map key))`, which can ship as C2 rows now.
+- `contains-key` (Rust) and `has` (JavaScript's `Map`) test a key. No helper gives them a target, so they are H entries with `(some? (get map key))`, which can ship as C2 rows now.
 - Clojure's `contains?` tests a key, and on a vector an index. Once knave's `contains?` exists with another meaning, it is a B entry with a `:help`. The Lisps' `find` is bound in knave today, test second, so it is a B entry with a `:help` too.
 
 Until `contains?` lands, `(any? (iter items) (fn (x) (= x needle)))` is the knave form for an item, and the model guide states it.

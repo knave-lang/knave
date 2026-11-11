@@ -33,7 +33,7 @@
 (document (clone value)
   "Returns a copy of a value that owns its own data.
 
-  It takes a borrow, so `value` stays usable. A [str] has no `clone`:
+  It takes a borrow, so `value` stays usable. A `str` has no `clone`:
   `(str text)` builds a [string] from it. `clone` is also the trait, Rust's
   `Clone`.
 

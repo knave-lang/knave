@@ -57,7 +57,7 @@
   => \"(iterator (result string io-error))\"")
 
 (document source
-  "Marks what [slurp] reads: a path as a [str] or a [string], or [stdin].
+  "Marks what [slurp] reads: a path as a `str` or a [string], or [stdin].
 
   (infer slurp)
   => \"(where ((a source)) (fn ((ref a)) (result string io-error)))\"")

@@ -18,7 +18,7 @@
 (document (empty? collection)
   "Returns whether a collection has no items.
 
-  It takes a [string], a [str], a vector, a slice or a map, or a reference to
+  It takes a [string], a `str`, a vector, a slice or a map, or a reference to
   one.
 
   (empty? \"\")

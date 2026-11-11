@@ -201,7 +201,7 @@
 (document number
   "Marks a type that does arithmetic.
 
-  Every integer and float type implements it, and [+], [-], [*], [/] and `rem`
+  Every integer and float type implements it, and [+], [-], [*], [/] and [rem]
   take its types.
 
   (infer +)
@@ -244,7 +244,7 @@
   "Marks a type whose values [=] and [not=] compare, as Rust's `PartialEq` does.
 
   A bound may name a second type, as in `(a (partial-eq b))`, so a `string`
-  compares with a [str].
+  compares with a `str`.
 
   (infer =)
   => \"(where ((a (partial-eq b)) b) (fn (a b) bool))\"

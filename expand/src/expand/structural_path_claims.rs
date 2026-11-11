@@ -5,12 +5,12 @@ use rustc_hash::FxHashMap;
 use super::structural_path_claim::StructuralPathClaim;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
-pub struct StructuralPathClaims {
+pub(super) struct StructuralPathClaims {
     claims: FxHashMap<Rc<str>, StructuralPathClaim>,
 }
 
 impl StructuralPathClaims {
-    pub fn claim(
+    pub(super) fn claim(
         &mut self,
         path: &str,
         claim: StructuralPathClaim,

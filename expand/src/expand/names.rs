@@ -143,8 +143,7 @@ impl Expander<'_> {
 
     fn remember_duplicate_definition(&mut self, symbol: &Symbol, binding: BindingId) {
         if let Some(module) = self.definition_module(binding) {
-            self.duplicate_definitions
-                .insert((module, symbol.shared_name()));
+            self.duplicate_definitions.remember(module, symbol);
         }
     }
 

@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use super::duplicate_definitions::DuplicateDefinitions;
 use super::noted_term::NotedTerm;
 use crate::core::ModuleId;
 use crate::reader::Symbol;
@@ -31,8 +32,8 @@ impl NotedTerms {
         module == Some(self.module)
     }
 
-    pub(super) fn duplicate_key(&self, term: &Symbol) -> (ModuleId, Rc<str>) {
-        (self.module, term.shared_name())
+    pub(super) fn is_duplicate(&self, term: &Symbol, duplicates: &DuplicateDefinitions) -> bool {
+        duplicates.holds(self.module, term)
     }
 }
 
@@ -101,8 +102,13 @@ mod tests {
     }
 
     #[test]
-    fn a_duplicate_key_pairs_the_module_with_the_term_name() {
-        let key = NotedFixture::terms().duplicate_key(&Symbol::new(NotedFixture::FIRST));
-        assert_eq!(key, (NotedFixture::module(), Rc::from(NotedFixture::FIRST)));
+    fn a_term_is_a_duplicate_only_where_its_module_holds_it() {
+        let term = Symbol::new(NotedFixture::FIRST);
+        let mut own = DuplicateDefinitions::default();
+        own.remember(NotedFixture::module(), &term);
+        let mut other = DuplicateDefinitions::default();
+        other.remember(ModuleId::new(NotedFixture::OTHER_MODULE_INDEX), &term);
+        assert!(NotedFixture::terms().is_duplicate(&term, &own));
+        assert!(!NotedFixture::terms().is_duplicate(&term, &other));
     }
 }

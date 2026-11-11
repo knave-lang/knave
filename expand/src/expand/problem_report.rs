@@ -19,14 +19,14 @@ impl ProblemReport {
 
     pub(super) fn mark(&self) -> ReportMark {
         ReportMark {
-            errors: ProblemMark::at(self.errors.len()),
-            warnings: ProblemMark::at(self.warnings.len()),
+            errors: ProblemMark::end_of(&self.errors),
+            warnings: ProblemMark::end_of(&self.warnings),
         }
     }
 
     pub(super) fn roll_back(&mut self, mark: ReportMark) {
-        drop(self.errors.split_off(mark.errors.position()));
-        drop(self.warnings.split_off(mark.warnings.position()));
+        drop(mark.errors.since(&mut self.errors));
+        drop(mark.warnings.since(&mut self.warnings));
     }
 
     pub(super) fn relabel_warnings_since(
@@ -34,7 +34,7 @@ impl ProblemReport {
         mark: ReportMark,
         relabel: impl FnMut(Diagnostic) -> Diagnostic,
     ) {
-        let since = self.warnings.split_off(mark.warnings.position());
+        let since = mark.warnings.since(&mut self.warnings);
         self.warnings.extend(since.map(relabel));
     }
 

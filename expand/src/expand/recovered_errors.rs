@@ -18,7 +18,7 @@ impl RecoveredErrors {
     }
 
     pub(super) fn mark(&self) -> ProblemMark {
-        ProblemMark::at(self.errors.len())
+        ProblemMark::end_of(&self.errors)
     }
 
     pub(super) fn settle_since<T>(
@@ -26,7 +26,7 @@ impl RecoveredErrors {
         mark: ProblemMark,
         outcome: Result<T, Diagnostic>,
     ) -> Result<T, Diagnostic> {
-        let recovered = self.errors.split_off(mark.position());
+        let recovered = mark.since(&mut self.errors);
         match outcome {
             Ok(value) => {
                 self.keep_distinct(recovered);
@@ -37,18 +37,20 @@ impl RecoveredErrors {
     }
 
     pub(super) fn keep_distinct_since(&mut self, mark: ProblemMark, failures: Vec<Diagnostic>) {
-        let mut recovered = self.errors.split_off(mark.position());
+        let mut recovered = mark.since(&mut self.errors);
         recovered.extend(failures);
         self.keep_distinct(recovered);
     }
 
     pub(super) fn take_first_since(&mut self, mark: ProblemMark) -> Option<Diagnostic> {
-        let first = mark.position();
-        (self.errors.len() > first).then(|| self.errors.remove(first))
+        let mut since = mark.since(&mut self.errors);
+        let first = (!since.is_empty()).then(|| since.remove(0));
+        self.errors.extend(since);
+        first
     }
 
     pub(super) fn roll_back(&mut self, mark: ProblemMark) {
-        self.errors.truncate(mark.position());
+        drop(mark.since(&mut self.errors));
     }
 
     pub(super) fn hand_over(&mut self, report: &mut ProblemReport) {

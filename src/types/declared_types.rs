@@ -130,4 +130,38 @@ mod tests {
             )])
         );
     }
+
+    #[test]
+    fn a_string_slice_is_unsized() {
+        let fixture = DeclarationsFixture::new();
+        assert!(
+            fixture
+                .declarations()
+                .is_unsized(&Type::Primitive(PrimitiveType::Str))
+        );
+    }
+
+    #[test]
+    fn a_slice_is_unsized() {
+        let fixture = DeclarationsFixture::new();
+        let slice = fixture.parameter_referent("window");
+        assert!(fixture.declarations().is_unsized(&slice));
+    }
+
+    #[test]
+    fn a_vector_is_sized() {
+        let fixture = DeclarationsFixture::new();
+        let vector = fixture.parameter_referent("readings");
+        assert!(!fixture.declarations().is_unsized(&vector));
+    }
+
+    #[test]
+    fn a_number_is_sized() {
+        let fixture = DeclarationsFixture::new();
+        assert!(
+            !fixture
+                .declarations()
+                .is_unsized(&Type::Primitive(PrimitiveType::I64))
+        );
+    }
 }

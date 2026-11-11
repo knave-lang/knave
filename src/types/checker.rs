@@ -8,7 +8,9 @@ use super::assumed_collections::AssumedCollections;
 use super::copy::InferredCopies;
 use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
 use super::declarations::Declarations;
+use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
+use super::derive_blockers::DeriveBlockers;
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
 use super::graph::{Definition, DefinitionGraph, DependencyGraph};
@@ -665,6 +667,18 @@ impl TypeChecker {
 
     pub(super) fn declared_types(&self) -> DeclaredTypes<'_> {
         DeclaredTypes::new(&self.declarations.types)
+    }
+
+    pub(super) fn declared_traits(&self) -> DeclaredTraits<'_> {
+        DeclaredTraits::new(&self.declarations.traits)
+    }
+
+    pub(super) fn derive_blockers(&self) -> DeriveBlockers<'_> {
+        DeriveBlockers::new(
+            &self.declarations.types,
+            self.declared_traits(),
+            self.variant_payloads(),
+        )
     }
 
     pub(super) fn reference_peeling(&self) -> ReferencePeeling<'_> {
@@ -2829,7 +2843,7 @@ impl TypeChecker {
         let enum_name = self.bindings.get(binding).name().to_string();
         let trait_name = self.bindings.get(bound.binding).name();
         let mut diagnostic = match definition.written_derive {
-            Some(span) if self.is_derivable(bound.binding) => diagnostic
+            Some(span) if self.declared_traits().is_derivable(bound.binding) => diagnostic
                 .with_label(TypeProblems::derive_leaves_out(span, trait_name))
                 .with_help(TypeProblems::add_to_enum_derive_help(trait_name)),
             _ => diagnostic,
@@ -2839,7 +2853,9 @@ impl TypeChecker {
                 diagnostic =
                     diagnostic.with_note(TypeProblems::order_not_inferred_enum_note(trait_name));
             }
-            if let Some((variant, field_type)) = self.blocking_enum_payload(binding, bound.binding)
+            if let Some((variant, field_type)) = self
+                .derive_blockers()
+                .blocking_enum_payload(binding, bound.binding)
             {
                 diagnostic = diagnostic.with_note(TypeProblems::order_blocked_enum_note(
                     &enum_name,
@@ -2952,7 +2968,10 @@ impl TypeChecker {
             None => diagnostic.with_note(TypeProblems::order_not_inferred_note(trait_name)),
         };
         let sortable = self.first_ord_field(definition, trait_binding);
-        match self.blocking_field(struct_binding, trait_binding) {
+        match self
+            .derive_blockers()
+            .blocking_field(struct_binding, trait_binding)
+        {
             Some((field, field_type)) => diagnostic
                 .with_note(TypeProblems::order_blocked_note(
                     struct_name,
@@ -3020,26 +3039,13 @@ impl TypeChecker {
         let Some(derive_span) = definition.written_derive else {
             return diagnostic;
         };
-        if !self.is_derivable(bound) {
+        if !self.declared_traits().is_derivable(bound) {
             return diagnostic;
         }
         let trait_name = self.bindings.get(bound).name();
         diagnostic
             .with_label(TypeProblems::derive_leaves_out(derive_span, trait_name))
             .with_help(TypeProblems::add_to_derive_help(trait_name))
-    }
-
-    fn is_derivable(&self, bound: BindingId) -> bool {
-        let written = self
-            .declarations
-            .traits
-            .table
-            .get(bound)
-            .is_some_and(|rust_trait| {
-                let name = StructDerives::derive_name(&rust_trait.path);
-                StructDerives::DERIVABLE.contains(&name)
-            });
-        written || self.is_structural_trait(bound)
     }
 }
 

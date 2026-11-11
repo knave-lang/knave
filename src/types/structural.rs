@@ -55,7 +55,7 @@ impl TypeChecker {
         implementor: &Type,
         program_type: bool,
     ) -> bool {
-        if !self.is_structural_trait(trait_binding) {
+        if !self.declared_traits().is_structural(trait_binding) {
             return program_type || !self.declares_methods(trait_binding);
         }
         self.lacks_source_form(implementor)
@@ -96,9 +96,10 @@ impl TypeChecker {
         head: BindingId,
         trait_binding: BindingId,
     ) -> Diagnostic {
-        let replacing = self
-            .is_structural_trait(trait_binding)
-            .then(|| self.written_impl(trait_binding, head))
+        let traits = self.declared_traits();
+        let replacing = traits
+            .is_structural(trait_binding)
+            .then(|| traits.written_impl(trait_binding, head))
             .flatten();
         let Some(replacing) = replacing else {
             return diagnostic;
@@ -118,14 +119,6 @@ impl TypeChecker {
             .methods
             .values()
             .any(|method| method.trait_binding == trait_binding)
-    }
-
-    pub(super) fn is_structural_trait(&self, trait_binding: BindingId) -> bool {
-        self.declarations
-            .traits
-            .structural
-            .iter()
-            .any(|structural| structural.binding == trait_binding)
     }
 
     pub(super) fn record_structural_use(&mut self, bound: &Bound, implementor: &Type, span: Span) {
@@ -190,7 +183,7 @@ impl TypeChecker {
         let Type::Named(head, _) = implementor else {
             return;
         };
-        if !self.is_structural_trait(trait_binding) {
+        if !self.declared_traits().is_structural(trait_binding) {
             return;
         }
         self.report_path_clash(trait_binding, *head, span);

@@ -1,4 +1,5 @@
 use super::Expander;
+use super::binder_form::BinderForm;
 use super::context::DefinitionContext;
 use super::problems::ExpandProblems;
 use super::rest_of_body::RestOfBody;
@@ -13,13 +14,6 @@ use crate::scope::ScopeKind;
 use crate::source::Span;
 
 impl Expander<'_> {
-    pub(super) fn split_binder(binder: &Form) -> (&Form, Option<&Form>) {
-        match binder.as_list() {
-            Some([name, annotation]) if name.as_symbol().is_some() => (name, Some(annotation)),
-            _ => (binder, None),
-        }
-    }
-
     pub(super) const DEF_FORM: KernelForm = KernelForm::Definition(DefinitionForm::Def);
     pub(super) const STRUCT_FORM: KernelForm = KernelForm::Definition(DefinitionForm::Struct);
     pub(super) const DO_FORM: KernelForm =
@@ -58,7 +52,7 @@ impl Expander<'_> {
             [_, binder, value, ..] => (binder, Some(value)),
             _ => return None,
         };
-        Self::split_binder(binder).0.as_symbol()?;
+        BinderForm::of(binder).name.as_symbol()?;
         Some((binder, value))
     }
 

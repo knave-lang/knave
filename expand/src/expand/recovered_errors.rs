@@ -1,4 +1,5 @@
 use super::problem_mark::ProblemMark;
+use super::problem_report::ProblemReport;
 use crate::diagnostic::{Diagnostic, DistinctDiagnostics};
 use crate::scope::Phase;
 
@@ -48,8 +49,10 @@ impl RecoveredErrors {
         self.errors.truncate(mark.position());
     }
 
-    pub(super) fn take_all(&mut self) -> Vec<Diagnostic> {
-        std::mem::take(&mut self.errors)
+    pub(super) fn hand_over(&mut self, report: &mut ProblemReport) {
+        for error in std::mem::take(&mut self.errors) {
+            report.report(error);
+        }
     }
 
     fn keep_distinct(&mut self, recovered: Vec<Diagnostic>) {
@@ -74,6 +77,7 @@ impl RecoveredErrors {
 mod tests {
     use super::RecoveredErrors;
     use crate::diagnostic::Diagnostic;
+    use crate::expand::problem_report::ProblemReport;
     use crate::expand::problems::ExpandProblems;
     use crate::scope::Phase;
     use crate::source::{SourceId, Span};
@@ -99,8 +103,11 @@ mod tests {
         }
 
         fn starts(&mut self) -> Vec<usize> {
-            self.recovered
-                .take_all()
+            let mut report = ProblemReport::default();
+            self.recovered.hand_over(&mut report);
+            report
+                .take_errors()
+                .in_source_order()
                 .iter()
                 .map(|error| error.primary().span().range().start)
                 .collect()
@@ -115,7 +122,7 @@ mod tests {
     }
 
     #[test]
-    fn taking_every_error_leaves_none() {
+    fn handing_over_leaves_no_error_behind() {
         let mut fixture = RecoveryFixture::new();
         fixture.keep_at(4);
         fixture.starts();

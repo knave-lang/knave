@@ -566,7 +566,7 @@ Every row of C1 was checked against the prelude signature of its target, against
 | Rust | `any` | `any?` | R |
 | Rust | `values` | `vals` | R |
 | Rust | `map` **B** | `map-some` | R, with `:given option` |
-| Rust | `sort-by` | `sort!` | H: "`sort!` takes the comparison second, and it returns an `i64`: negative puts the first item first, as in `(sort! items (fn (a b) (- (deref a) (deref b))))`" |
+| Rust | `sort-by` | `sort!` | H: "`sort!` takes the comparison second, and the comparison returns an `i64`: negative puts the first item first, as in `(sort! items (fn (a b) (- (deref a) (deref b))))`" |
 | Rust | `then-some` **B** | `then-some` | H: "`then-some` chains an `option`; for a `bool`, write `(if flag (some value) none)`" |
 | Rust | `read-line` **B** | `read-line` | H: "`read-line` takes no buffer and returns the line as `(result (option string) io-error)`" |
 | Rust | `is-digit` | `digit?` | H: "`digit?` tests an ASCII digit and takes no radix: write `(digit? c)`" |

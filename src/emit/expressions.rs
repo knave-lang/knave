@@ -3,7 +3,8 @@ use std::rc::Rc;
 use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::expression_holder::ExpressionHolder;
+use super::callee_definition::{CalleeDefinition, CalleeDefinitions};
+use super::emitted_value::EmittedValue;
 use super::fragment::{Code, Fragment, Precedence};
 use super::lent_temporaries::LentTemporaries;
 use super::let_annotation::LetAnnotation;
@@ -17,8 +18,10 @@ use super::preceded_code::PrecededCode;
 use super::problems::EmitProblems;
 use super::result_borrows::ResultBorrows;
 use super::reused_locals::ReusedLocals;
+use super::short_form::ShortForm;
 use super::stored_functions::StoredFunctions;
 use super::template::{Template, TemplateError};
+use super::template_arguments::TemplateArguments;
 use super::types::{LifetimeScope, RustTypes, TypePosition};
 use super::unsized_parameters::UnsizedParameters;
 use super::{EmissionWork, type_context::TypeContext};
@@ -1289,11 +1292,7 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn fill_enum_template(&mut self, template: &ParsedTemplate, arguments: Vec<Code>) -> Code {
         Template::new(template.text())
-            .inline_with_types(
-                arguments.into_iter().map(PrecededCode::plain).collect(),
-                &[],
-                &[],
-            )
+            .inline_with_types(TemplateArguments::Written(arguments), &[], &[])
             .expect("the expansion checked the template")
     }
 
@@ -1492,13 +1491,14 @@ impl<'a> ExpressionEmitter<'a> {
         Code::block(value.bind(&format!("{mutability}{name}{annotation}")))
     }
 
-    fn preceded<T: ExpressionHolder>(
+    fn preceded<T: EmittedValue>(
         &mut self,
         value: &T,
         emit: impl FnOnce(&mut Self, &T) -> Code,
     ) -> PrecededCode {
         let mut names = |base: &str| self.locals.temporary(base);
-        let lifted = LentTemporaries::new(self.program, &mut names).lift(value);
+        let short_form = ShortForm::new(CalleeDefinitions::new(self.plan));
+        let lifted = LentTemporaries::new(self.program, short_form, &mut names).lift(value);
         let statements = lifted.statements(|temporary| self.expr(temporary));
         PrecededCode::new(statements, emit(self, lifted.value()))
     }
@@ -1612,7 +1612,7 @@ impl<'a> ExpressionEmitter<'a> {
         let parsed = self.with_fresh_template_binders(&parsed);
         let code = match ty {
             Type::Function(_, parameters, _) => self.eta_expanded(&parsed, parameters, types, span),
-            _ => self.inline_with_places(&parsed, Vec::new(), types, &[], span),
+            _ => self.inline_with_places(&parsed, TemplateArguments::none(), types, &[], span),
         };
         self.locals.leave();
         code
@@ -1633,10 +1633,8 @@ impl<'a> ExpressionEmitter<'a> {
             .zip(parameters)
             .map(|(name, ty)| format!("{name}: {}", self.types().show(ty, TypePosition::Value)))
             .collect();
-        let arguments = names
-            .iter()
-            .map(|name| PrecededCode::plain(Code::atom(name.clone())))
-            .collect();
+        let arguments =
+            TemplateArguments::Written(names.iter().map(|name| Code::atom(name.clone())).collect());
         let body = self.inline_with_places(template, arguments, types, &[], span);
         Code::joined(
             vec![Code::atom(format!("|{}| ", parameters.join(", "))), body],
@@ -1647,18 +1645,15 @@ impl<'a> ExpressionEmitter<'a> {
     fn inline_with_places(
         &mut self,
         template: &Template,
-        arguments: Vec<PrecededCode>,
+        arguments: TemplateArguments,
         types: Vec<(String, Code)>,
         places: &[bool],
         span: Span,
     ) -> Code {
-        match template.inline_with_types(arguments, &types, places) {
-            Ok(code) => code,
-            Err(error) => self.template_problem(error, span),
-        }
-    }
-
-    fn template_problem(&mut self, error: TemplateError, span: Span) -> Code {
+        let error = match template.inline_with_types(arguments, &types, places) {
+            Ok(code) => return code,
+            Err(error) => error,
+        };
         let message = match error {
             TemplateError::MissingArgument(index) => {
                 format!("`{{{index}}}` has no matching argument")
@@ -1889,11 +1884,11 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn called_template(&self, callee: &TypedExpr) -> Option<Rc<RustTemplate>> {
-        match &callee.kind {
-            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => Some(template.clone()),
-            TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
+        match (CalleeDefinitions::new(self.plan).of(callee), &callee.kind) {
+            (CalleeDefinition::Template(_), TypedExprKind::Leaf(TypedLeaf::Global(binding))) => {
                 self.definition_template(*binding, &callee.ty)
             }
+            (CalleeDefinition::Template(template), _) => Some(Rc::clone(template)),
             _ => None,
         }
     }
@@ -1903,8 +1898,8 @@ impl<'a> ExpressionEmitter<'a> {
         binding: BindingId,
         instantiated: &Type,
     ) -> Option<Rc<RustTemplate>> {
-        let TypedExprKind::Leaf(TypedLeaf::Rust(template)) =
-            &self.plan.definition(binding)?.value.kind
+        let CalleeDefinition::Template(template) =
+            CalleeDefinitions::new(self.plan).of_definition(binding)
         else {
             return None;
         };
@@ -2050,31 +2045,33 @@ impl<'a> ExpressionEmitter<'a> {
             matches!(&arguments[position].value.kind,
                 TypedExprKind::Fn(lambda) if Self::inlines_call(lambda, call_arguments))
         });
-        let binds = inlined.template().binds_arguments(&places);
-        let mut codes: Vec<PrecededCode> = arguments
-            .iter()
-            .zip(&roles)
-            .map(|(argument, role)| {
-                let levels = if compared {
-                    self.depth_above_shallowest((argument, *role), arguments, &roles)
-                } else {
-                    0
-                };
-                let emit = |emitter: &mut Self, argument: &TypedArgument| {
-                    emitter.argument_at_depth(argument, context, *role, levels)
-                };
-                match binds {
-                    true => self.preceded(argument, emit),
-                    false => PrecededCode::plain(emit(self, argument)),
-                }
-            })
-            .collect();
+        let emit = |emitter: &mut Self, argument: &TypedArgument, position: usize| {
+            let operand = (&arguments[position], roles[position]);
+            let levels = if compared {
+                emitter.depth_above_shallowest(operand, arguments, &roles)
+            } else {
+                0
+            };
+            emitter.argument_at_depth(argument, context, roles[position], levels)
+        };
+        let positions = 0..arguments.len();
+        let mut codes = if inlined.template().binds_arguments(&places) {
+            let bind = |position: usize| {
+                self.preceded(&arguments[position], |emitter, value| {
+                    emit(emitter, value, position)
+                })
+            };
+            TemplateArguments::Bound(positions.map(bind).collect())
+        } else {
+            let write = |position: usize| emit(self, &arguments[position], position);
+            TemplateArguments::Written(positions.map(write).collect())
+        };
         for call in inlined.calls() {
             let TypedExprKind::Fn(lambda) = &arguments[call.position()].value.kind else {
                 continue;
             };
             let body = self.inlined_closure_body(lambda, &call.arguments());
-            codes[call.position()] = PrecededCode::plain(body);
+            codes.replace(call.position(), body);
         }
         let code = self.inline_with_places(inlined.template(), codes, types, &places, span);
         self.locals.leave();
@@ -2663,7 +2660,7 @@ impl<'a> ExpressionEmitter<'a> {
                 continue;
             }
             let binding = self.bind_parameter(param, TypePosition::Value);
-            let value = self.annotated_expression_holder(argument);
+            let value = self.annotated_binding_value(argument);
             fragments.push(Fragment::Newline);
             fragments.push(Fragment::Text(format!("let {binding} = ")));
             fragments.extend(value.fragments);
@@ -2680,7 +2677,7 @@ impl<'a> ExpressionEmitter<'a> {
         fragments
     }
 
-    fn annotated_expression_holder(&mut self, argument: &TypedArgument) -> Code {
+    fn annotated_binding_value(&mut self, argument: &TypedArgument) -> Code {
         let Some(literal) = Self::bound_literal(&argument.value) else {
             return self.argument(argument, TypeContext::Known, ArgumentRole::Ordinary);
         };

@@ -2,31 +2,38 @@ use std::borrow::Cow;
 
 use super::assigned_in_place::AssignedInPlace;
 use super::bound_before::BoundBefore;
-use super::expression_holder::ExpressionHolder;
+use super::emitted_value::EmittedValue;
+use super::lending_expression::{LendingExpression, Loan};
 use super::lift_placement::LiftPlacement;
 use super::lifted_value::LiftedValue;
 use super::short_form::ShortForm;
 use super::temporary_scope::TemporaryScope;
 use super::tree_position::TreePosition;
-use crate::types::{
-    Borrow, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedProgram, TypedStructExpr,
-};
+use crate::types::{TypedExpr, TypedProgram};
 
-pub struct LentTemporaries<'a, 'n> {
-    program: &'a TypedProgram,
+pub struct LentTemporaries<'p, 'n> {
+    program: &'p TypedProgram,
+    short_form: ShortForm<'p>,
     names: &'n mut dyn FnMut(&str) -> String,
 }
 
-impl<'a, 'n> LentTemporaries<'a, 'n> {
+impl<'p, 'n> LentTemporaries<'p, 'n> {
     const OWNER: &'static str = "owner";
 
-    pub fn new(program: &'a TypedProgram, names: &'n mut dyn FnMut(&str) -> String) -> Self {
-        Self { program, names }
+    pub fn new(
+        program: &'p TypedProgram,
+        short_form: ShortForm<'p>,
+        names: &'n mut dyn FnMut(&str) -> String,
+    ) -> Self {
+        Self {
+            program,
+            short_form,
+            names,
+        }
     }
 
-    pub fn lift<'v, T: ExpressionHolder>(self, value: &'v T) -> LiftedValue<'v, T> {
-        let lifts = TemporarySearch::new(self.program, ShortForm::new(self.program))
-            .lifts(value.expression());
+    pub fn lift<'v, T: EmittedValue>(self, value: &'v T) -> LiftedValue<'v, T> {
+        let lifts = TemporarySearch::new(self.program, self.short_form).lifts(value.expression());
         if lifts.is_empty() {
             return LiftedValue::new(Vec::new(), Cow::Borrowed(value));
         }
@@ -59,135 +66,29 @@ impl<'p, 'e> TemporarySearch<'p, 'e> {
     }
 
     fn lifts(mut self, value: &'e TypedExpr) -> Vec<Box<dyn LiftPlacement>> {
-        if Self::may_lend(value) {
+        if LendingExpression::new(value).may_lend() {
             self.path.push(value);
             self.visit(value, TemporaryScope::Binding);
         }
         self.lifts
     }
 
-    fn may_lend(expr: &TypedExpr) -> bool {
-        match &expr.kind {
-            TypedExprKind::Call(_, arguments) => arguments.iter().any(Self::argument_may_lend),
-            TypedExprKind::Borrow(_, value) => Self::is_temporary(value) || Self::may_lend(value),
-            TypedExprKind::Struct(TypedStructExpr::Field(owner, _)) => {
-                Self::lends_owner(expr, owner) || Self::may_lend(owner)
-            }
-            TypedExprKind::Control(control) => Self::control_may_lend(control),
-            _ => Self::nested_may_lend(expr),
-        }
-    }
-
-    fn argument_may_lend(argument: &TypedArgument) -> bool {
-        Self::lends_temporary(argument) || Self::may_lend(&argument.value)
-    }
-
-    fn nested_may_lend(expr: &TypedExpr) -> bool {
-        match &expr.kind {
-            TypedExprKind::Struct(TypedStructExpr::New(_, fields)) => {
-                fields.iter().any(|(_, value)| Self::may_lend(value))
-            }
-            TypedExprKind::Variant(_, values, _) => values.iter().any(Self::may_lend),
-            TypedExprKind::Try { value, .. } => Self::may_lend(value),
-            _ => false,
-        }
-    }
-
-    fn control_may_lend(control: &TypedControl) -> bool {
-        match control {
-            TypedControl::If(_, then, otherwise) => {
-                Self::may_lend(then) || Self::may_lend(otherwise)
-            }
-            TypedControl::Block(block) => block.tail().is_some_and(Self::may_lend),
-            TypedControl::Match(matched) => {
-                Self::may_lend(&matched.value)
-                    || matched
-                        .arms
-                        .iter()
-                        .filter_map(|arm| arm.body.tail())
-                        .any(Self::may_lend)
-            }
-        }
-    }
-
     fn visit(&mut self, expr: &'e TypedExpr, scope: TemporaryScope) {
         if self.program.type_holds_borrow(&expr.ty) {
-            self.visit_borrowing(expr, scope);
+            LendingExpression::new(expr).for_each_loan(scope, |loan| self.take(loan));
         }
     }
 
-    fn visit_borrowing(&mut self, expr: &'e TypedExpr, scope: TemporaryScope) {
-        match &expr.kind {
-            TypedExprKind::Call(_, arguments) => self.call(arguments),
-            TypedExprKind::Borrow(..)
-            | TypedExprKind::Struct(TypedStructExpr::New(..))
-            | TypedExprKind::Variant(..) => self.operands(expr, scope),
-            TypedExprKind::Struct(TypedStructExpr::Field(owner, _)) => {
-                self.field(expr, owner, scope)
-            }
-            TypedExprKind::Try { .. } => self.operands(expr, TemporaryScope::Statement),
-            TypedExprKind::Control(control) => self.control(control, scope),
-            _ => {}
-        }
-    }
-
-    fn call(&mut self, arguments: &'e [TypedArgument]) {
-        for argument in arguments {
-            if Self::lends_temporary(argument) {
-                self.lift_argument(&argument.value);
-            } else {
-                self.operand(&argument.value, TemporaryScope::Statement);
-            }
-        }
-    }
-
-    fn field(&mut self, field: &'e TypedExpr, owner: &'e TypedExpr, scope: TemporaryScope) {
-        if scope == TemporaryScope::Statement && Self::lends_owner(field, owner) {
-            self.lift_argument(owner);
-        } else {
-            self.operands(field, TemporaryScope::Statement);
-        }
-    }
-
-    fn lends_owner(field: &TypedExpr, owner: &TypedExpr) -> bool {
-        field.ty.is_reference() && Self::is_temporary(owner)
-    }
-
-    fn lends_temporary(argument: &TypedArgument) -> bool {
-        argument.borrow == Borrow::Shared
-            && !argument.value.ty.is_reference()
-            && Self::is_temporary(&argument.value)
-    }
-
-    fn control(&mut self, control: &'e TypedControl, scope: TemporaryScope) {
-        match control {
-            TypedControl::If(_, then, otherwise) => {
-                self.operand(then, scope);
-                self.operand(otherwise, scope);
-            }
-            TypedControl::Block(block) => {
-                if let Some(tail) = block.tail() {
-                    self.operand(tail, scope);
-                }
-            }
-            TypedControl::Match(matched) => {
-                self.operand(&matched.value, TemporaryScope::Statement);
-                for tail in matched.arms.iter().filter_map(|arm| arm.body.tail()) {
-                    self.operand(tail, scope);
-                }
-            }
-        }
-    }
-
-    fn operands(&mut self, expr: &'e TypedExpr, scope: TemporaryScope) {
-        for operand in expr.children() {
-            self.operand(operand, scope);
+    fn take(&mut self, loan: Loan<'e>) {
+        match loan {
+            Loan::Temporary(temporary) => self.lift_argument(temporary),
+            Loan::Operand(operand, scope) => self.operand(operand, scope),
         }
     }
 
     fn operand(&mut self, operand: &'e TypedExpr, scope: TemporaryScope) {
         self.path.push(operand);
-        match Self::borrowed_temporary(operand) {
+        match LendingExpression::new(operand).borrowed_temporary() {
             Some(temporary) if scope == TemporaryScope::Statement => {
                 let in_place = AssignedInPlace::of_written_borrow(TreePosition::along(&self.path));
                 self.path.push(temporary);
@@ -197,13 +98,6 @@ impl<'p, 'e> TemporarySearch<'p, 'e> {
             _ => self.visit(operand, scope),
         }
         self.path.pop();
-    }
-
-    fn borrowed_temporary(operand: &TypedExpr) -> Option<&TypedExpr> {
-        match &operand.kind {
-            TypedExprKind::Borrow(_, value) if Self::is_temporary(value) => Some(value),
-            _ => None,
-        }
     }
 
     fn lift_argument(&mut self, temporary: &'e TypedExpr) {
@@ -216,9 +110,10 @@ impl<'p, 'e> TemporarySearch<'p, 'e> {
     fn lift(&mut self, in_place: AssignedInPlace) {
         let placement = self.placement(in_place);
         let temporary = self.path[self.path.len() - 1];
-        let inner_root = placement.settles_inside().then_some(self.path.len() - 1);
+        let inner_scope = placement.inner_scope();
+        let inner_root = (inner_scope == TemporaryScope::Binding).then_some(self.path.len() - 1);
         let outer_root = std::mem::replace(&mut self.root, inner_root);
-        self.visit(temporary, placement.inner_scope());
+        self.visit(temporary, inner_scope);
         self.root = outer_root;
         self.lifts.push(placement);
     }
@@ -231,19 +126,12 @@ impl<'p, 'e> TemporarySearch<'p, 'e> {
             _ => Box::new(in_place),
         }
     }
-
-    fn is_temporary(value: &TypedExpr) -> bool {
-        match &value.kind {
-            TypedExprKind::Leaf(_) | TypedExprKind::Deref(_) => false,
-            TypedExprKind::Borrow(_, inner) => Self::is_temporary(inner),
-            _ => !value.is_place(),
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::LentTemporaries;
+    use crate::emit::assigned_in_place::AssignedInPlace;
     use crate::emit::test_program::TestProgram;
     use crate::types::{TypedExpr, TypedExprKind, TypedLeaf};
 
@@ -458,7 +346,9 @@ mod tests {
 
         fn lifted(&self, function: &str) -> Vec<String> {
             let mut names = |base: &str| base.to_string();
-            let lifted = LentTemporaries::new(self.program.program(), &mut names)
+            let plan = self.program.plan();
+            let short_form = TestProgram::short_form(&plan);
+            let lifted = LentTemporaries::new(self.program.program(), short_form, &mut names)
                 .lift(self.last_let_value(function));
             let mut assigned = Vec::new();
             Self::collect_owned(lifted.value(), &mut assigned);
@@ -491,7 +381,9 @@ mod tests {
 
         fn rewritten(&self, function: &str) -> String {
             let mut names = |base: &str| base.to_string();
-            let lifted = LentTemporaries::new(self.program.program(), &mut names)
+            let plan = self.program.plan();
+            let short_form = TestProgram::short_form(&plan);
+            let lifted = LentTemporaries::new(self.program.program(), short_form, &mut names)
                 .lift(self.last_let_value(function));
             Self::named_leaves(lifted.value()).join(" ")
         }
@@ -520,8 +412,7 @@ mod tests {
         }
 
         fn assigns(callee: &TypedExpr) -> bool {
-            matches!(&callee.kind,
-                TypedExprKind::Leaf(TypedLeaf::Rust(template)) if template.template.starts_with("{{"))
+            AssignedInPlace::is_assignment(callee)
         }
 
         fn source(expr: &TypedExpr) -> &'static str {

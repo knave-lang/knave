@@ -20,10 +20,6 @@ impl LiftPlacement for BoundBefore {
         TemporaryScope::Binding
     }
 
-    fn settles_inside(&self) -> bool {
-        true
-    }
-
     fn take(&self, root: &mut TypedExpr, name: String) -> LiftedTemporary {
         let node = self.owner.node_mut(root);
         let named = RustLeaf::new(name.as_str()).typed(node.ty.clone(), node.span);

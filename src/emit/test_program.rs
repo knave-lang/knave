@@ -1,3 +1,7 @@
+use super::callee_definition::CalleeDefinitions;
+use super::plan::EmitPlan;
+use super::short_form::ShortForm;
+use crate::source::{SourceId, Span};
 use crate::types::{
     TypedArgument, TypedBodyItem, TypedExpr, TypedExprKind, TypedProgram, TypedSource,
 };
@@ -17,6 +21,15 @@ impl TestProgram {
 
     pub fn program(&self) -> &TypedProgram {
         &self.program
+    }
+
+    pub fn plan(&self) -> EmitPlan<'_> {
+        EmitPlan::build(&self.program, Span::new(SourceId::new(0), 0..0))
+            .unwrap_or_else(|_| panic!("the source defines main"))
+    }
+
+    pub fn short_form<'p>(plan: &'p EmitPlan<'p>) -> ShortForm<'p> {
+        ShortForm::new(CalleeDefinitions::new(plan))
     }
 
     pub fn last_let_value(&self, function: &str) -> &TypedExpr {

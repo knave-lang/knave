@@ -1,16 +1,15 @@
-use crate::core::{BindingId, ParsedTemplate, Piece, RustTemplate};
-use crate::types::{
-    TypedArgument, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
-    TypedStructExpr,
-};
+use super::callee_definition::{CalleeDefinition, CalleeDefinitions};
+use crate::core::{ParsedTemplate, Piece, RustTemplate};
+use crate::types::{TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr};
 
+#[derive(Clone, Copy)]
 pub struct ShortForm<'p> {
-    program: &'p TypedProgram,
+    callees: CalleeDefinitions<'p>,
 }
 
 impl<'p> ShortForm<'p> {
-    pub fn new(program: &'p TypedProgram) -> Self {
-        Self { program }
+    pub fn new(callees: CalleeDefinitions<'p>) -> Self {
+        Self { callees }
     }
 
     pub fn admits(&self, path: &[&TypedExpr]) -> bool {
@@ -33,14 +32,6 @@ impl<'p> ShortForm<'p> {
             | TypedExprKind::Try { .. } => true,
             _ => false,
         }
-    }
-
-    fn definition(&self, binding: BindingId) -> Option<&'p TypedDefinition> {
-        self.program
-            .modules
-            .iter()
-            .flat_map(|module| &module.definitions)
-            .find(|definition| definition.binding == binding)
     }
 
     fn only_literals_ahead<'e>(
@@ -68,21 +59,13 @@ impl<'p> ShortForm<'p> {
         else {
             return false;
         };
-        let template = match &callee.kind {
-            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => template,
-            TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
-                match self
-                    .definition(*binding)
-                    .map(|definition| &definition.value.kind)
-                {
-                    Some(TypedExprKind::Fn(_)) => return true,
-                    Some(TypedExprKind::Leaf(TypedLeaf::Rust(template))) => template,
-                    _ => return false,
-                }
+        match self.callees.of(callee) {
+            CalleeDefinition::Function => true,
+            CalleeDefinition::Template(template) => {
+                TemplateShape::new(template, arguments, lent).runs_nothing_ahead()
             }
-            _ => return false,
-        };
-        TemplateShape::new(template, arguments, lent).runs_nothing_ahead()
+            CalleeDefinition::Unknown => false,
+        }
     }
 }
 
@@ -168,7 +151,6 @@ impl<'t> TemplateShape<'t> {
 
 #[cfg(test)]
 mod tests {
-    use super::ShortForm;
     use crate::emit::test_program::TestProgram;
     use crate::types::{TypedExpr, TypedExprKind};
 
@@ -237,7 +219,8 @@ mod tests {
                 let node = Self::child(path[path.len() - 1], *position);
                 path.push(node);
             }
-            ShortForm::new(self.program.program()).admits(&path)
+            let plan = self.program.plan();
+            TestProgram::short_form(&plan).admits(&path)
         }
 
         fn child(node: &TypedExpr, position: usize) -> &TypedExpr {

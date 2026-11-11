@@ -1,8 +1,6 @@
 mod source_loader;
 
 use std::env::{self, VarError};
-use std::fmt::Display;
-use std::io::{self, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::Duration;
@@ -126,19 +124,6 @@ impl Terminal {
 
     pub fn source_report(&self) -> SourceReport<'_> {
         SourceReport::new(&self.sources, self.diagnostics.as_ref())
-    }
-
-    pub fn write_output(&self, output: impl Display) -> ExitStatus {
-        match Self::write_standard_output(output) {
-            Err(error) if error.kind() != ErrorKind::BrokenPipe => Self::report_unwritable(&error),
-            _ => ExitStatus::Success,
-        }
-    }
-
-    fn write_standard_output(output: impl Display) -> io::Result<()> {
-        let mut standard_output = io::stdout().lock();
-        write!(standard_output, "{output}")?;
-        standard_output.flush()
     }
 
     pub fn build(
@@ -465,11 +450,6 @@ impl Terminal {
         StandardError::write_line(format_args!(
             "error: `{variable}` must be a whole number of milliseconds"
         ));
-        ExitStatus::UsageError
-    }
-
-    fn report_unwritable(error: &io::Error) -> ExitStatus {
-        StandardError::write_line(format_args!("error: cannot write standard output: {error}"));
         ExitStatus::UsageError
     }
 }

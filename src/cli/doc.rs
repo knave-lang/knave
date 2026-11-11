@@ -6,6 +6,7 @@ use anstream::AutoStream;
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
+use super::standard_output::StandardOutput;
 use super::terminal::Terminal;
 use super::token_colors::TokenColors;
 use crate::core::{BindingId, Expr, ExprKind, Leaf, Literal};
@@ -57,7 +58,7 @@ impl DocCommand {
         };
         let colors = TokenColors::deciding(AutoStream::choice(&io::stdout()));
         match output {
-            Ok(output) => output.print(terminal, colors),
+            Ok(output) => output.print(colors),
             Err(status) => status,
         }
     }
@@ -102,8 +103,8 @@ impl DocOutput {
         }
     }
 
-    fn print(&self, terminal: &Terminal, colors: TokenColors) -> ExitStatus {
-        match terminal.write_output(self.text(colors)) {
+    fn print(&self, colors: TokenColors) -> ExitStatus {
+        match StandardOutput::locked().write(self.text(colors)) {
             ExitStatus::Success => self.status,
             failure => failure,
         }

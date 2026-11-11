@@ -13,6 +13,7 @@ use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
+use super::standard_output::StandardOutput;
 use super::terminal::Terminal;
 use super::unreadable_file::UnreadableFile;
 use crate::format::{FormatFailure, ModuleLookup, SourceFormatter};
@@ -92,22 +93,16 @@ impl FmtCommand {
             .unwrap_or_else(|| PathBuf::from(Self::STANDARD_INPUT_NAME));
         let lookup = self.lookups.lookup_for(&name, terminal);
         match self.formatted(terminal, &name, text.clone(), &lookup) {
-            Ok(formatted) => self.answer_standard_input(terminal, &name, &text, &formatted),
+            Ok(formatted) => self.answer_standard_input(&name, &text, &formatted),
             Err(status) => status,
         }
     }
 
-    fn answer_standard_input(
-        &self,
-        terminal: &Terminal,
-        name: &Path,
-        text: &str,
-        formatted: &str,
-    ) -> ExitStatus {
+    fn answer_standard_input(&self, name: &Path, text: &str, formatted: &str) -> ExitStatus {
         match self.mode {
-            FmtMode::Write => terminal.write_output(formatted),
+            FmtMode::Write => StandardOutput::locked().write(formatted),
             FmtMode::Check if formatted == text => ExitStatus::Success,
-            FmtMode::Check => self.apply(terminal, name, formatted),
+            FmtMode::Check => self.apply(name, formatted),
         }
     }
 
@@ -161,7 +156,7 @@ impl FmtCommand {
         let lookup = self.lookups.lookup_for(path, terminal);
         match self.formatted(terminal, path, text.clone(), &lookup) {
             Ok(formatted) if formatted == text => ExitStatus::Success,
-            Ok(formatted) => self.apply(terminal, path, &formatted),
+            Ok(formatted) => self.apply(path, &formatted),
             Err(status) => status,
         }
     }
@@ -179,9 +174,10 @@ impl FmtCommand {
             .map_err(|failure| Self::report_failure(terminal, path, failure))
     }
 
-    fn apply(&self, terminal: &Terminal, path: &Path, formatted: &str) -> ExitStatus {
+    fn apply(&self, path: &Path, formatted: &str) -> ExitStatus {
         match self.mode {
-            FmtMode::Check => match terminal.write_output(format!("{}\n", path.display())) {
+            FmtMode::Check => match StandardOutput::locked().write(format!("{}\n", path.display()))
+            {
                 ExitStatus::Success => ExitStatus::ProgramErrors,
                 failure => failure,
             },

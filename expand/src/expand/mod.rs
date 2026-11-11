@@ -409,7 +409,7 @@ impl<'s> Expander<'s> {
             .flat_map(|key| self.tables.module_notes.added_since(since, module, key))
             .collect::<Vec<Form>>()
             .into_iter()
-            .filter_map(|note| self.noted_term(&notes.noted_term, note))
+            .filter_map(|note| self.noted_term(notes.noted_term(), note))
             .collect();
         NotedTerms::new(module, terms)
     }

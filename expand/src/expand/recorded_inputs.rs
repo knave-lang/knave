@@ -19,8 +19,18 @@ pub(super) struct Registration {
 }
 
 pub(super) struct InputRecord {
-    pub bound: Vec<BoundName>,
-    pub adds_notes: bool,
+    bound: Vec<BoundName>,
+    adds_notes: bool,
+}
+
+impl InputRecord {
+    pub(super) fn is_lone_document(&self, left_out: &[Span]) -> bool {
+        self.adds_notes && left_out.is_empty()
+    }
+
+    pub(super) fn into_bound(self) -> Vec<BoundName> {
+        self.bound
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -148,7 +158,7 @@ mod tests {
         let outside = RecordFixture::span(RecordFixture::OUTSIDE);
         recorded.note_bound(outside, || RecordFixture::name(outside));
         let covering = Span::new(SourceId::new(0), 0..RecordFixture::OUTSIDE + 1);
-        assert!(recorded.of(covering).bound.is_empty());
+        assert!(recorded.of(covering).into_bound().is_empty());
     }
 
     #[test]
@@ -157,7 +167,7 @@ mod tests {
         let input = RecordFixture::span(RecordFixture::INPUT);
         let registration = recorded.enter(input, &ModuleNotes::default());
         recorded.leave(registration, &RecordFixture::noted());
-        assert!(recorded.of(input).adds_notes);
+        assert!(recorded.of(input).is_lone_document(&[]));
     }
 
     #[test]
@@ -167,7 +177,17 @@ mod tests {
         let unnoted = ModuleNotes::default();
         let registration = recorded.enter(input, &unnoted);
         recorded.leave(registration, &unnoted);
-        assert!(!recorded.of(input).adds_notes);
+        assert!(!recorded.of(input).is_lone_document(&[]));
+    }
+
+    #[test]
+    fn an_input_that_leaves_out_an_expression_is_not_a_lone_document() {
+        let mut recorded = RecordFixture::recording();
+        let input = RecordFixture::span(RecordFixture::INPUT);
+        let registration = recorded.enter(input, &ModuleNotes::default());
+        recorded.leave(registration, &RecordFixture::noted());
+        let left_out = RecordFixture::span(RecordFixture::OUTSIDE);
+        assert!(!recorded.of(input).is_lone_document(&[left_out]));
     }
 
     #[test]

@@ -23,7 +23,7 @@ impl Expander<'_> {
         ModuleSurvey {
             names: inputs
                 .iter()
-                .map(|input| recorded.of(*input).bound)
+                .map(|input| recorded.of(*input).into_bound())
                 .collect(),
             loaded: recorded.loaded().to_vec(),
             program: self.into_program(entry),

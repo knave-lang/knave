@@ -80,6 +80,38 @@
     (first-letter (as-str (:title made))))
   (println t))
 
+(type announced (fn ((ref str)) string))
+
+(defn announced (text)
+  (println text)
+  (str text))
+
+(defn lifted-else ()
+  (local t
+    (if false
+      (first-letter (as-str (announced "then")))
+      (first-letter (as-str (announced "else")))))
+  (println t))
+
+(defn explicit-else ()
+  (local text (announced "else"))
+  (local t
+    (if false "t" (first-letter (as-str text))))
+  (println t))
+
+(defn lifted-scrutinee ()
+  (local t
+    (match (ref (announced "matched"))
+      (text (first-letter text))))
+  (println t))
+
+(defn explicit-scrutinee ()
+  (local owned (announced "matched"))
+  (local t
+    (match (ref owned)
+      (text (first-letter text))))
+  (println t))
+
 (defn lifted-borrowing-field ()
   (local name
     (as-str (:name (make-entry "eve"))))
@@ -103,5 +135,9 @@
   (explicit-block "dee")
   (lifted-field)
   (explicit-field)
+  (lifted-else)
+  (explicit-else)
+  (lifted-scrutinee)
+  (explicit-scrutinee)
   (lifted-borrowing-field)
   (explicit-borrowing-field))

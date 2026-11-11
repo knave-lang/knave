@@ -71,12 +71,11 @@ impl Template {
         &self,
         arguments: usize,
         mut inlines: impl FnMut(usize, &[&str]) -> bool,
-    ) -> InlinedCalls {
-        let mut template = Self {
-            parsed: self.parsed.clone(),
-        };
+    ) -> InlinedCalls<'_> {
+        let mut rewritten: Option<Self> = None;
         let mut calls = Vec::new();
         for position in 0..arguments {
+            let template = rewritten.as_ref().unwrap_or(self);
             let Some(call_arguments) = template.parsed.called_arguments(position) else {
                 continue;
             };
@@ -87,9 +86,9 @@ impl Template {
                 continue;
             };
             calls.push(InlinedCall::new(position, &call_arguments));
-            template = without;
+            rewritten = Some(without);
         }
-        InlinedCalls::new(template, calls)
+        InlinedCalls::new(self, rewritten, calls)
     }
 
     fn without_call(&self, argument: usize) -> Option<Self> {
@@ -358,8 +357,9 @@ impl Template {
     }
 }
 
-pub struct InlinedCalls {
-    template: Template,
+pub struct InlinedCalls<'t> {
+    written: &'t Template,
+    rewritten: Option<Template>,
     calls: Vec<InlinedCall>,
 }
 
@@ -368,13 +368,21 @@ pub struct InlinedCall {
     arguments: Vec<String>,
 }
 
-impl InlinedCalls {
-    pub fn new(template: Template, calls: Vec<InlinedCall>) -> Self {
-        Self { template, calls }
+impl<'t> InlinedCalls<'t> {
+    pub fn new(
+        written: &'t Template,
+        rewritten: Option<Template>,
+        calls: Vec<InlinedCall>,
+    ) -> Self {
+        Self {
+            written,
+            rewritten,
+            calls,
+        }
     }
 
     pub fn template(&self) -> &Template {
-        &self.template
+        self.rewritten.as_ref().unwrap_or(self.written)
     }
 
     pub fn calls(&self) -> &[InlinedCall] {

@@ -16,14 +16,8 @@ fn main() {
     crate::rt::restore_default_sigpipe();
     let mut values: Vec<i64> = vec![7_i64, 8_i64];
     println!("{}", {
-        let owner;
-        let call_argument_1 = first_letter(
-            {
-                owner = values.len().to_string();
-                &owner
-            }
-            .as_str(),
-        );
+        let owner = values.len().to_string();
+        let call_argument_1 = first_letter(owner.as_str());
         counted(&mut values, call_argument_1)
     })
 }

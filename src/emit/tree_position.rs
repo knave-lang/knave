@@ -6,17 +6,18 @@ pub struct TreePosition {
 }
 
 impl TreePosition {
-    pub fn enter(&mut self, parent: &TypedExpr, child: &TypedExpr) {
-        let index = parent
-            .children()
-            .into_iter()
-            .position(|candidate| std::ptr::eq(candidate, child))
-            .expect("the child is one of its parent's children");
-        self.children.push(index);
-    }
-
-    pub fn leave(&mut self) {
-        self.children.pop();
+    pub fn along(path: &[&TypedExpr]) -> Self {
+        let children = path
+            .windows(2)
+            .map(|step| {
+                step[0]
+                    .children()
+                    .into_iter()
+                    .position(|candidate| std::ptr::eq(candidate, step[1]))
+                    .expect("each node of the path is a child of the one before it")
+            })
+            .collect();
+        Self { children }
     }
 
     pub fn node_mut<'e>(&self, root: &'e mut TypedExpr) -> &'e mut TypedExpr {
@@ -81,9 +82,7 @@ mod tests {
         let printed = fixture.printed();
         let outer = PositionFixture::last_child(printed);
         let inner = PositionFixture::last_child(outer);
-        let mut position = TreePosition::default();
-        position.enter(printed, outer);
-        position.enter(outer, inner);
+        let position = TreePosition::along(&[printed, outer, inner]);
         let mut copy = printed.clone();
         assert_eq!(
             PositionFixture::text(position.node_mut(&mut copy)),
@@ -92,19 +91,14 @@ mod tests {
     }
 
     #[test]
-    fn leaving_returns_to_the_parent() {
+    fn a_path_of_one_node_names_the_root() {
         let fixture = PositionFixture::new();
         let printed = fixture.printed();
-        let outer = PositionFixture::last_child(printed);
-        let inner = PositionFixture::last_child(outer);
-        let mut position = TreePosition::default();
-        position.enter(printed, outer);
-        position.enter(outer, inner);
-        position.leave();
+        let position = TreePosition::along(&[printed]);
         let mut copy = printed.clone();
         assert_eq!(
             PositionFixture::text(position.node_mut(&mut copy)),
-            "(pick 1 (pick 2 3))"
+            "(println (pick 1 (pick 2 3)))"
         );
     }
 }

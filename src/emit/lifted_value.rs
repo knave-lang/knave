@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
 use super::expression_holder::ExpressionHolder;
-use super::fragment::Fragment;
+use super::fragment::{Code, Fragment};
 use super::lifted_temporary::LiftedTemporary;
+use crate::types::TypedExpr;
 
 pub struct LiftedValue<'v, T: ExpressionHolder> {
     temporaries: Vec<LiftedTemporary>,
@@ -18,10 +19,15 @@ impl<'v, T: ExpressionHolder> LiftedValue<'v, T> {
         &self.value
     }
 
-    pub fn statements(&self) -> Vec<Fragment> {
+    pub fn statements(&self, mut emit: impl FnMut(&TypedExpr) -> Code) -> Vec<Fragment> {
         self.temporaries
             .iter()
-            .flat_map(LiftedTemporary::statement)
+            .flat_map(|temporary| temporary.statement(&mut emit))
             .collect()
+    }
+
+    #[cfg(test)]
+    pub fn temporaries(&self) -> &[LiftedTemporary] {
+        &self.temporaries
     }
 }

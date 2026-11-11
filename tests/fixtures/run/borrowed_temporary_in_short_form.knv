@@ -1,0 +1,193 @@
+(type first-letter
+  (fn ((ref str)) (ref str)))
+
+(defn first-letter (text) (subs text 0 1))
+
+(type announced (fn ((ref str)) string))
+
+(defn announced (text)
+  (println text)
+  (str text))
+
+(type keep
+  (fn (i64 (ref str)) (ref str)))
+
+(defn keep (n text)
+  (println n)
+  text)
+
+(type seven (fn () i64))
+
+(defn seven ()
+  (println "seven")
+  7)
+
+(def lazy-seven (* (seven) 2))
+
+(type applied
+  (fn ((fn (i64) i64) (ref str))
+    (ref str)))
+
+(defn applied (f text)
+  (println (f 1))
+  text)
+
+(def paired
+  (rust "std::convert::identity(({0}, {1}).1)"
+    (fn (i64 (ref str)) (ref str))))
+
+(def after-call
+  (rust "std::convert::identity((std::process::id(), {0}).1)"
+    (fn ((ref str)) (ref str))))
+
+(def logged
+  (rust "{{ println!(\"before\"); {0} }}"
+    (fn ((ref str)) (ref str))))
+
+(def larger
+  (rust "std::cmp::max({0}, {0})"
+    (fn ((ref str)) (ref str))))
+
+(defn short-function ()
+  (local t
+    (first-letter (as-str (announced "function"))))
+  (println t))
+
+(defn explicit-function ()
+  (local text (announced "function"))
+  (local t (first-letter (as-str text)))
+  (println t))
+
+(defn short-literal-ahead ()
+  (local t
+    (keep 1 (as-str (announced "literal"))))
+  (println t))
+
+(defn explicit-literal-ahead ()
+  (local text (announced "literal"))
+  (local t (keep 1 (as-str text)))
+  (println t))
+
+(defn short-template ()
+  (local t
+    (paired 1 (as-str (announced "template"))))
+  (println t))
+
+(defn explicit-template ()
+  (local text (announced "template"))
+  (local t (paired 1 (as-str text)))
+  (println t))
+
+(defn local-ahead ()
+  (local n 2)
+  (local t
+    (keep n (as-str (announced "local"))))
+  (println t))
+
+(defn explicit-local-ahead ()
+  (local n 2)
+  (local text (announced "local"))
+  (local t (keep n (as-str text)))
+  (println t))
+
+(defn global-ahead ()
+  (local t
+    (keep lazy-seven (as-str (announced "global"))))
+  (println t))
+
+(defn explicit-global-ahead ()
+  (local seen lazy-seven)
+  (local text (announced "global"))
+  (local t (keep seen (as-str text)))
+  (println t))
+
+(defn closure-ahead ()
+  (local t
+    (applied (fn (x) (+ x 1))
+             (as-str (announced "closure"))))
+  (println t))
+
+(defn explicit-closure-ahead ()
+  (local text (announced "closure"))
+  (local t
+    (applied (fn (x) (+ x 1)) (as-str text)))
+  (println t))
+
+(defn call-ahead-in-template ()
+  (local t
+    (paired (seven)
+            (as-str (announced "call"))))
+  (println t))
+
+(defn explicit-call-ahead-in-template ()
+  (local seen (seven))
+  (local text (announced "call"))
+  (local t (paired seen (as-str text)))
+  (println t))
+
+(defn local-callee ()
+  (local f first-letter)
+  (local t
+    (f (as-str (announced "callee"))))
+  (println t))
+
+(defn explicit-local-callee ()
+  (local f first-letter)
+  (local text (announced "callee"))
+  (local t (f (as-str text)))
+  (println t))
+
+(defn block-template ()
+  (local t
+    (logged (first-letter (as-str (announced "block")))))
+  (println t))
+
+(defn explicit-block-template ()
+  (println "before")
+  (local text (announced "block"))
+  (local t (first-letter (as-str text)))
+  (println t))
+
+(defn code-ahead-template ()
+  (local t
+    (after-call (as-str (announced "code"))))
+  (println t))
+
+(defn explicit-code-ahead-template ()
+  (local text (announced "code"))
+  (local t (after-call (as-str text)))
+  (println t))
+
+(defn repeated-template ()
+  (local t
+    (larger (as-str (announced "repeated"))))
+  (println t))
+
+(defn explicit-repeated-template ()
+  (local text (announced "repeated"))
+  (local t (larger (as-str text)))
+  (println t))
+
+(defn main ()
+  (short-function)
+  (explicit-function)
+  (short-literal-ahead)
+  (explicit-literal-ahead)
+  (short-template)
+  (explicit-template)
+  (local-ahead)
+  (explicit-local-ahead)
+  (global-ahead)
+  (explicit-global-ahead)
+  (closure-ahead)
+  (explicit-closure-ahead)
+  (call-ahead-in-template)
+  (explicit-call-ahead-in-template)
+  (local-callee)
+  (explicit-local-callee)
+  (block-template)
+  (explicit-block-template)
+  (code-ahead-template)
+  (explicit-code-ahead-template)
+  (repeated-template)
+  (explicit-repeated-template))

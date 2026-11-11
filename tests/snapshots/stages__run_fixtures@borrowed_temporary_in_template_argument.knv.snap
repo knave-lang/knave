@@ -6,3 +6,21 @@ input_file: tests/fixtures/run/borrowed_temporary_in_template_argument.knv
 fake page body
 borrowed_temporary_in_template_argument.missing: No such file or directory (os error 2)
 82
+aa
+b
+aa
+aa
+b
+aa
+aaa
+b
+cc
+aaa
+aaa
+b
+cc
+aaa
+aa
+a
+aa
+a

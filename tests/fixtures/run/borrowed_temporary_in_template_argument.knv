@@ -7,6 +7,61 @@
   (rust "{0}.len() + {0}.len()"
     (fn ((ref str)) usize)))
 
+(def longer
+  (rust "if {1}.len() > {0}.len() {{ {1} }} else {{ {0} }}"
+    (fn ((ref str) (ref str)) (ref str))))
+
+(type announced (fn ((ref str)) string))
+
+(defn announced (text)
+  (println text)
+  (str text))
+
+(type first-letter
+  (fn ((ref str)) (ref str)))
+
+(defn first-letter (text) (subs text 0 1))
+
+(defn lifted-longer ()
+  (local t
+    (longer (as-str (announced "aa"))
+            (as-str (announced "b"))))
+  (println t))
+
+(defn explicit-longer ()
+  (local first (announced "aa"))
+  (local second (announced "b"))
+  (local t
+    (longer (as-str first) (as-str second)))
+  (println t))
+
+(defn lifted-nested-longer ()
+  (local t
+    (longer (longer (as-str (announced "aaa"))
+                    (as-str (announced "b")))
+            (as-str (announced "cc"))))
+  (println t))
+
+(defn explicit-nested-longer ()
+  (local first (announced "aaa"))
+  (local second (announced "b"))
+  (local inner
+    (longer (as-str first) (as-str second)))
+  (local third (announced "cc"))
+  (local t (longer inner (as-str third)))
+  (println t))
+
+(defn lifted-letter-of-longer ()
+  (local t
+    (first-letter (longer (as-str (announced "aa")) "b")))
+  (println t))
+
+(defn explicit-letter-of-longer ()
+  (local first (announced "aa"))
+  (local t
+    (first-letter (longer (as-str first) "b")))
+  (println t))
+
 (defn report (read)
   (match read
     ((ok text) (print text))
@@ -16,4 +71,10 @@
   (local stem "borrowed_temporary_in_template_argument")
   (report (read-text (as-str (str stem ".txt"))))
   (report (read-text (as-str (str stem ".missing"))))
-  (println (doubled-length (as-str (str stem "-x")))))
+  (println (doubled-length (as-str (str stem "-x"))))
+  (lifted-longer)
+  (explicit-longer)
+  (lifted-nested-longer)
+  (explicit-nested-longer)
+  (lifted-letter-of-longer)
+  (explicit-letter-of-longer))

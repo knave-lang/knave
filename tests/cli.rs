@@ -1823,6 +1823,14 @@ fn fmt_with_a_stdin_path_but_no_standard_input_is_a_usage_error() {
 }
 
 #[test]
+fn check_prints_the_warnings_of_a_valid_program() {
+    let sandbox = Sandbox::new("check_warns").with_file("pick.knv", UNREACHABLE_ARM);
+    let check = sandbox.compiler(&["check", "pick.knv"]);
+    let stderr = check.assert_exit_code(0).stderr();
+    assert!(stderr.starts_with("warning[L0434]: "), "{stderr}");
+}
+
+#[test]
 fn check_is_silent_on_a_valid_program() {
     let sandbox = Sandbox::new("check_valid").with_file("greeting.knv", GREETING);
     let check = sandbox.compiler(&["check", "greeting.knv"]);

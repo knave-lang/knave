@@ -10,7 +10,6 @@
 (def peek
   (macro (form)
     (if (empty? (expand-call (list (quote parked) (nth form 1))))
-      "no expansion"
-      "expanded")))
+      "no expansion" "expanded")))
 
 (def van (peek "blue van"))

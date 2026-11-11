@@ -2,17 +2,23 @@
 
 (def uncoded
   (macro (form)
-    (warn "the van is parked" form "move it" (quote (:label "parked")))
+    (warn "the van is parked"
+      form "move it"
+      (quote (:label "parked")))
     (nth form 1)))
 
 (def misspelled-lint
   (macro (form)
-    (warn "the van is parked" form (quote (:code unmatched-lnk)))
+    (warn "the van is parked"
+      form
+      (quote (:code unmatched-lnk)))
     (nth form 1)))
 
 (def macro-stage-code
   (macro (form)
-    (warn "the van is parked" form (quote (:code repeated-parameter)))
+    (warn "the van is parked"
+      form
+      (quote (:code repeated-parameter)))
     (nth form 1)))
 
 (def too-few

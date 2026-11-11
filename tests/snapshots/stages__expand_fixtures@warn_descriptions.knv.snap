@@ -4,44 +4,44 @@ expression: reports.report(path)
 input_file: tests/fixtures/expand/warn_descriptions.knv
 ---
 error[L0321]: a `warn` description needs a `:code` part
-  --> expand/warn_descriptions.knv:5:53
+  --> expand/warn_descriptions.knv:7:14
    |
- 5 |     (warn "the van is parked" form "move it" (quote (:label "parked")))
-   |                                                     ^^^^^^^^^^^^^^^^^ this description names no lint
+ 7 |       (quote (:label "parked")))
+   |              ^^^^^^^^^^^^^^^^^ this description names no lint
 ...
-23 | (def van (uncoded "blue van"))
+29 | (def van (uncoded "blue van"))
    |          -------------------- in this macro call
    |
    = help: name the lint, as in `(:code unmatched-link)`
 
 error[L0322]: no lint is named `unmatched-lnk`
-  --> expand/warn_descriptions.knv:10:50
+  --> expand/warn_descriptions.knv:14:21
    |
-10 |     (warn "the van is parked" form (quote (:code unmatched-lnk)))
-   |                                                  ^^^^^^^^^^^^^ unknown lint
+14 |       (quote (:code unmatched-lnk)))
+   |                     ^^^^^^^^^^^^^ unknown lint
 ...
-25 | (def bus (misspelled-lint "red bus"))
+31 | (def bus (misspelled-lint "red bus"))
    |          --------------------------- in this macro call
    |
 help: a lint with a similar name exists
    |
-10 |     (warn "the van is parked" form (quote (:code unmatched-link)))
-   |                                                             +
+14 |       (quote (:code unmatched-link)))
+   |                                +
 
 error[L0322]: no lint is named `repeated-parameter`
-  --> expand/warn_descriptions.knv:15:50
+  --> expand/warn_descriptions.knv:21:21
    |
-15 |     (warn "the van is parked" form (quote (:code repeated-parameter)))
-   |                                                  ^^^^^^^^^^^^^^^^^^ unknown lint
+21 |       (quote (:code repeated-parameter)))
+   |                     ^^^^^^^^^^^^^^^^^^ unknown lint
 ...
-27 | (def cab (macro-stage-code "yellow cab"))
+33 | (def cab (macro-stage-code "yellow cab"))
    |          ------------------------------- in this macro call
 
 error[L0311]: `warn` takes 3 arguments but 2 were given
-  --> expand/warn_descriptions.knv:20:5
+  --> expand/warn_descriptions.knv:26:5
    |
-20 |     (warn "the van is parked" form)
+26 |     (warn "the van is parked" form)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 2 arguments given
 ...
-29 | (def car (too-few "green car"))
+35 | (def car (too-few "green car"))
    |          --------------------- in this macro call

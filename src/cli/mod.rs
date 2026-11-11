@@ -21,7 +21,7 @@ mod doc_write;
 mod edited_lines;
 mod emit;
 mod enter_key;
-mod entry_help;
+mod entry_argument;
 mod entry_tree;
 mod error_location;
 mod eval;

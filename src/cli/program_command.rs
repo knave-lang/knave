@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{Args, Subcommand};
 
 use super::build::BuildCommand;
-use super::entry_help::ENTRY_HELP;
+use super::entry_argument::EntryArgument;
 use super::eval::{EvalCommand, EvaluationSettings, FormsText, ModuleText};
 use super::evaluation_output::{EvaluationOutput, JsonEvaluation, PrintedEvaluation};
 use super::exit_status::ExitStatus;
@@ -18,8 +18,8 @@ use crate::source::TextPosition;
 pub enum ProgramCommand {
     #[command(about = "Compile a program to a native binary")]
     Build {
-        #[arg(help = ENTRY_HELP)]
-        file: Option<PathBuf>,
+        #[command(flatten)]
+        entry: EntryArgument,
         #[command(flatten)]
         release: ReleaseFlag,
         #[arg(short, long)]
@@ -84,8 +84,8 @@ pub enum ProgramCommand {
     },
     #[command(about = "Build a program and run it")]
     Run {
-        #[arg(help = ENTRY_HELP)]
-        file: Option<PathBuf>,
+        #[command(flatten)]
+        entry: EntryArgument,
         #[command(flatten)]
         release: ReleaseFlag,
         #[arg(last = true)]
@@ -97,11 +97,11 @@ impl ProgramCommand {
     pub fn execute(self, terminal: &mut Terminal) -> ExitStatus {
         match self {
             Self::Build {
-                file,
+                entry,
                 release,
                 output,
             } => BuildCommand::new(
-                file,
+                entry.into_file(),
                 BuildOptions {
                     profile: release.profile(),
                     output,
@@ -146,11 +146,11 @@ impl ProgramCommand {
             )
             .run(terminal),
             Self::Run {
-                file,
+                entry,
                 release,
                 args,
             } => RunCommand::new(
-                file,
+                entry.into_file(),
                 BuildOptions {
                     profile: release.profile(),
                     output: None,

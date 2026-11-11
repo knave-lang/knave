@@ -81,10 +81,11 @@ pub enum Builtin {
     ReadForm,
     Located,
     ProjectModules,
+    IntroducingMacro,
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 74] = [
+    const NAMES: [(Builtin, &'static str); 75] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -159,13 +160,15 @@ impl Builtin {
         (Builtin::ReadForm, "read-form"),
         (Builtin::Located, "located"),
         (Builtin::ProjectModules, "project-modules"),
+        (Builtin::IntroducingMacro, "introducing-macro"),
     ];
 
     pub fn module(self) -> BuiltinModule {
         match self {
-            Builtin::PinnedAt | Builtin::RequireModule | Builtin::SetMacroStepLimit => {
-                BuiltinModule::PreludeCode
-            }
+            Builtin::PinnedAt
+            | Builtin::RequireModule
+            | Builtin::SetMacroStepLimit
+            | Builtin::IntroducingMacro => BuiltinModule::PreludeCode,
             _ => BuiltinModule::Code,
         }
     }

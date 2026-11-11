@@ -13,7 +13,7 @@ use crate::diagnostic::SimilarName;
 use crate::interpret::Warnings;
 use crate::modules::{LocatedModule, ModuleScopes, ModuleSource, ModuleSources};
 use crate::reader::{Form, Reader, Symbol};
-use crate::scope::{Phase, ScopeSet};
+use crate::scope::{Phase, ScopeKind, ScopeSet};
 use crate::source::{SourceId, Span};
 use crate::stack::DeepRecursion;
 
@@ -105,7 +105,10 @@ impl Expander<'_> {
     }
 
     pub(super) fn register_source_module(&mut self, path: ModulePath) -> ModuleId {
-        let scopes = ModuleScopes::new(self.tables.scopes.fresh(), self.tables.scopes.fresh());
+        let scopes = ModuleScopes::new(
+            self.tables.scopes.fresh(ScopeKind::Module),
+            self.tables.scopes.fresh(ScopeKind::Module),
+        );
         self.modules.register(path, scopes)
     }
 
@@ -423,7 +426,10 @@ impl Expander<'_> {
     }
 
     fn create_builtin(&mut self, path: &ModulePath, builtin: BuiltinModule) -> ModuleId {
-        let scopes = ModuleScopes::new(self.tables.scopes.fresh(), self.tables.scopes.fresh());
+        let scopes = ModuleScopes::new(
+            self.tables.scopes.fresh(ScopeKind::Module),
+            self.tables.scopes.fresh(ScopeKind::Module),
+        );
         let id = self.modules.register(path.clone(), scopes);
         for (name, namespace, kind) in Self::builtin_exports(builtin) {
             let binding = self

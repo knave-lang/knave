@@ -1,10 +1,10 @@
-use super::{Expander, ExpansionTables};
+use super::Expander;
 use crate::core::{BindingId, BindingKind, ModuleId, Namespace};
 use crate::reader::Form;
 
 impl Expander<'_> {
     pub(super) fn note_global(&mut self, binding: BindingId, binder: &Form) {
-        if self.tables.carries_introduction_scope(binder) {
+        if self.tables.scopes.carries_introduction_scope(binder) {
             self.tables.bindings.mark_introduced(binding);
         }
         if matches!(self.kind(binding), BindingKind::Macro(_)) {
@@ -45,15 +45,5 @@ impl Expander<'_> {
             .bindings
             .is_introduced(function)
             .then_some(function)
-    }
-}
-
-impl ExpansionTables {
-    pub(super) fn carries_introduction_scope(&self, binder: &Form) -> bool {
-        binder.as_symbol().is_some_and(|symbol| {
-            symbol
-                .scopes()
-                .any(|scope| self.introduction_scopes.contains(&scope))
-        })
     }
 }

@@ -8,6 +8,7 @@ use crate::core::{
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::modules::{ModuleRecord, ModuleSources};
 use crate::reader::{Form, Reader, Symbol};
+use crate::scope::ScopeKind;
 use crate::source::{SourceId, Span, TextPosition};
 
 struct RunnerForms {
@@ -193,7 +194,7 @@ impl ExpansionSession<'_> {
         if !self.names_a_value_and_a_type(hidden.as_symbol()?) {
             return None;
         }
-        hidden.add_scope(self.expander.fresh_local_scope());
+        hidden.add_scope(self.expander.tables.scopes.fresh(ScopeKind::Local));
         self.expander
             .define_local(&hidden, Namespace::Type, BindingKind::TypeVariable, None)
             .expect("a fresh scope holds no binding");

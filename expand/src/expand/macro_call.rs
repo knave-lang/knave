@@ -14,7 +14,7 @@ use crate::diagnostic::Diagnostic;
 use crate::interpret::{Closure, Env, Interpreter, LocalBindings, PassedLimit, Value};
 use crate::modules::ModuleSources;
 use crate::reader::Form;
-use crate::scope::{Phase, Scope};
+use crate::scope::{Phase, Scope, ScopeKind};
 use crate::source::Span;
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -318,12 +318,10 @@ impl Expander<'_> {
         mut form: Form,
         context: Option<&mut DefinitionContext>,
     ) -> (Form, Scope) {
-        let introduction = self.tables.scopes.fresh();
-        self.tables.introduction_scopes.insert(introduction);
+        let introduction = self.tables.scopes.fresh(ScopeKind::Introduction);
         form.flip_scope(introduction);
         if let Some(context) = context {
-            let use_site = self.tables.scopes.fresh();
-            self.tables.use_site_scopes.insert(use_site);
+            let use_site = self.tables.scopes.fresh(ScopeKind::UseSite);
             form.add_scope(use_site);
             context.record_fresh_use_site(use_site);
         }

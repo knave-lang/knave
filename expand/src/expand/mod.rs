@@ -43,6 +43,7 @@ mod saved_definitions;
 mod saved_index;
 mod saved_notes;
 mod saved_values;
+mod scopes;
 mod session;
 mod shape;
 mod sourced_items;
@@ -68,7 +69,7 @@ use crate::diagnostic::Diagnostics;
 use crate::interpret::{Closure, Value};
 use crate::modules::{ModuleRegistry, ModuleSources};
 use crate::reader::Form;
-use crate::scope::{BindingTable, Phase, Scope, ScopeAllocator};
+use crate::scope::{BindingTable, Phase, Scope};
 use crate::source::{SourceId, SourceMap, Span};
 use budget_arena::BudgetArena;
 pub use classified_form::ClassifiedForm;
@@ -90,6 +91,7 @@ pub use result_printer::{GeneratedFunction, ResultPrinter};
 pub use saved_definitions::PendingDefinitions;
 use saved_definitions::{DefinitionSaver, SavedDefinitions, SavedTables};
 use saved_values::SavedValues;
+use scopes::Scopes;
 pub use session::ExpansionSession;
 use string_view::StringViewSearch;
 use structural_path_claims::StructuralPathClaims;
@@ -206,14 +208,11 @@ pub struct Expander<'s> {
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 struct ExpansionTables {
-    scopes: ScopeAllocator,
-    local_scopes: FxHashSet<Scope>,
-    use_site_scopes: FxHashSet<Scope>,
+    scopes: Scopes,
     table: BindingTable,
     bindings: BindingArena,
     macros: MacroTable,
     macro_origins: MacroOrigins,
-    introduction_scopes: FxHashSet<Scope>,
     global_macros: Vec<(crate::core::BindingId, Form)>,
     trait_paths: FxHashMap<crate::core::BindingId, Rc<str>>,
     structural_path_claims: StructuralPathClaims,
@@ -359,21 +358,6 @@ impl<'s> Expander<'s> {
     fn take_diagnostics(&mut self) -> Diagnostics {
         self.recovered.hand_over(&mut self.problems);
         self.problems.take_errors()
-    }
-
-    fn fresh_local_scope(&mut self) -> Scope {
-        let scope = self.tables.scopes.fresh();
-        self.tables.local_scopes.insert(scope);
-        scope
-    }
-
-    fn quoted(&self, datum: &Form) -> Form {
-        let mut quoted = datum.clone();
-        quoted.retain_scopes(&|scope| {
-            !self.tables.local_scopes.contains(&scope)
-                && !self.tables.use_site_scopes.contains(&scope)
-        });
-        quoted
     }
 
     fn structural_traits(&mut self) -> StructuralTraits<'_> {

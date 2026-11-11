@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::diagnostic_output::DiagnosticOutput;
+use super::diagnostic_output::{DiagnosticOutput, MessageOutput};
 use crate::diagnostic::Diagnostics;
 use crate::source::{SourceId, SourceMap};
 
@@ -33,6 +33,8 @@ impl UserLabelOutput {
         })
     }
 }
+
+impl MessageOutput for UserLabelOutput {}
 
 impl DiagnosticOutput for UserLabelOutput {
     fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics) {

@@ -2,8 +2,8 @@ use std::fmt::{self, Display};
 use std::io;
 use std::path::Path;
 
+use super::MessageOutput;
 use crate::cli::exit_status::ExitStatus;
-use crate::cli::standard_error::StandardError;
 
 pub struct UnreadableFile<'a> {
     path: &'a Path,
@@ -11,14 +11,14 @@ pub struct UnreadableFile<'a> {
 }
 
 impl<'a> UnreadableFile<'a> {
-    pub const EXIT_STATUS: ExitStatus = ExitStatus::UsageError;
+    const EXIT_STATUS: ExitStatus = ExitStatus::UsageError;
 
     pub fn new(path: &'a Path, error: &'a io::Error) -> Self {
         Self { path, error }
     }
 
-    pub fn report(&self) -> ExitStatus {
-        StandardError::write_line(format_args!("error: {self}"));
+    pub fn report_to(&self, output: &dyn MessageOutput) -> ExitStatus {
+        output.write_error(&self.to_string());
         Self::EXIT_STATUS
     }
 }

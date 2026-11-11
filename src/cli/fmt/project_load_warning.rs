@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use crate::cli::diagnostic_output::DiagnosticOutput;
+use crate::cli::diagnostic_output::{DiagnosticOutput, MessageOutput};
 use crate::cli::standard_error::StandardError;
 use crate::diagnostic::Diagnostics;
 use crate::source::SourceMap;
@@ -42,7 +42,9 @@ impl DiagnosticOutput for ProjectLoadWarning {
     fn write_note(&self, sources: &SourceMap, message: &str) {
         self.output.write_note(sources, message);
     }
+}
 
+impl MessageOutput for ProjectLoadWarning {
     fn write_error(&self, message: &str) {
         self.warn_once();
         StandardError::write_line(format_args!("warning: {message}"));

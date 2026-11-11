@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use super::diagnostic_output::DiagnosticOutput;
+use super::diagnostic_output::{DiagnosticOutput, MessageOutput};
 use super::error_location::{InputLocator, Location};
 use super::name_records::{NameRecords, Tense};
 use crate::diagnostic::{Diagnostic, Diagnostics};
@@ -28,6 +28,8 @@ impl PromptDiagnostics {
         Self { inner, annotations }
     }
 }
+
+impl MessageOutput for PromptDiagnostics {}
 
 impl DiagnosticOutput for PromptDiagnostics {
     fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics) {

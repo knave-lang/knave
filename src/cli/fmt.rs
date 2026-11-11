@@ -143,7 +143,9 @@ impl FmtCommand {
                 Ok(files) => files
                     .iter()
                     .for_each(|file| worst.record(self.format_file(terminal, file))),
-                Err(error) => worst.record(UnreadableFile::new(&path, &error).report()),
+                Err(error) => worst.record(
+                    UnreadableFile::new(&path, &error).report_to(&*terminal.diagnostic_output()),
+                ),
             }
         }
         worst.status
@@ -152,7 +154,9 @@ impl FmtCommand {
     fn format_file(&mut self, terminal: &mut Terminal, path: &Path) -> ExitStatus {
         let text = match ModuleSources::read_file(path) {
             Ok(text) => text,
-            Err(error) => return UnreadableFile::new(path, &error).report(),
+            Err(error) => {
+                return UnreadableFile::new(path, &error).report_to(&*terminal.diagnostic_output());
+            }
         };
         let lookup = self.lookups.lookup_for(path, terminal);
         match self.formatted(terminal, path, text.clone(), &lookup) {

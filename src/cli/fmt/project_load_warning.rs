@@ -47,6 +47,6 @@ impl DiagnosticOutput for ProjectLoadWarning {
 impl MessageOutput for ProjectLoadWarning {
     fn write_error(&self, message: &str) {
         self.warn_once();
-        StandardError::write_line(format_args!("warning: {message}"));
+        self.output.write_warning(message);
     }
 }

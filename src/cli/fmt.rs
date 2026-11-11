@@ -29,7 +29,7 @@ pub struct FmtCommand {
     mode: FmtMode,
     standard_input_path: Option<PathBuf>,
     formatter: SourceFormatter,
-    lookups: ModuleLookups,
+    lookups: NearbyProjects,
 }
 
 struct WorstStatus {
@@ -40,7 +40,7 @@ struct SourceFiles {
     skipped: SkippedDirectory,
 }
 
-struct ModuleLookups {
+struct NearbyProjects {
     terminal: Terminal,
     projects: FxHashMap<PathBuf, Option<LocatedProject>>,
 }
@@ -57,7 +57,7 @@ impl FmtCommand {
             mode,
             standard_input_path,
             formatter: SourceFormatter::default(),
-            lookups: ModuleLookups::new(),
+            lookups: NearbyProjects::new(),
         }
     }
 
@@ -285,7 +285,7 @@ impl SourceFiles {
     }
 }
 
-impl ModuleLookups {
+impl NearbyProjects {
     fn new() -> Self {
         Self {
             terminal: Terminal::reporting_to(Rc::new(UnreportedDiagnostics)),

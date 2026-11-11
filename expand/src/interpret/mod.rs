@@ -316,7 +316,7 @@ impl<'h> Interpreter<'h> {
 #[cfg(test)]
 mod tests {
     use super::partial_host::PartialHost;
-    use super::{Interpreter, StepBudget};
+    use super::{Interpreter, StepBudget, Value};
     use crate::core::{BindingArena, BindingInfo, BindingKind, Expr, ExprKind, Leaf, ModuleId};
     use crate::diagnostic::{Diagnostic, DiagnosticCode};
     use crate::source::{SourceId, Span};
@@ -332,21 +332,26 @@ mod tests {
             Span::new(SourceId::new(0), 20..26)
         }
 
-        fn read_without_global_values() -> Diagnostic {
+        fn read(mut host: PartialHost) -> Result<Value, Diagnostic> {
             let binding = BindingArena::default().add(BindingInfo::new(
                 "origin".into(),
                 BindingKind::Global(ModuleId::new(0)),
                 None,
             ));
             let read = Expr::new(ExprKind::Leaf(Leaf::Var(binding)), Self::span());
-            Interpreter::new(
-                &mut PartialHost::offering_nothing(),
-                Self::call_site(),
-                StepBudget::full(),
-            )
-            .evaluate(&read)
-            .expect_err("the host offers no global values")
+            Interpreter::new(&mut host, Self::call_site(), StepBudget::full()).evaluate(&read)
         }
+
+        fn read_without_global_values() -> Diagnostic {
+            Self::read(PartialHost::offering_nothing())
+                .expect_err("the host offers no global values")
+        }
+    }
+
+    #[test]
+    fn a_global_read_gets_the_value_the_host_gives() {
+        let value = GlobalReadFixture::read(PartialHost::offering_its_groups());
+        assert!(matches!(value, Ok(Value::Bool(true))));
     }
 
     #[test]

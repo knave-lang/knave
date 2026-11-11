@@ -300,18 +300,10 @@ impl ModuleLookups {
         }
         match self.project_around(&directory) {
             Some(project) => {
-                let file = Self::file_as_placed(project, path);
+                let file = project.placement().placed_file(path.to_path_buf());
                 ModuleLookup::within_project(file.module_sources(), &directory)
             }
             None => ModuleLookup::beside(&directory),
-        }
-    }
-
-    fn file_as_placed(project: &LocatedProject, path: &Path) -> ProgramFile {
-        let file = project.file_within(path.to_path_buf());
-        match ProgramFile::relative_module(path, &project.tests_directory()) {
-            Some(_) => project.test_file(file),
-            None => file,
         }
     }
 

@@ -1,3 +1,5 @@
+mod file_placement;
+
 use std::path::{Path, PathBuf};
 
 use super::crate_section::CrateSection;
@@ -9,8 +11,9 @@ use super::standard_error::StandardError;
 use super::terminal::Terminal;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
-use crate::modules::{LibraryTable, SearchScope};
+use crate::modules::LibraryTable;
 use crate::project::{CrateDependency, Project, ProjectProblems};
+use file_placement::FilePlacement;
 
 pub struct LocatedProject {
     root: PathBuf,
@@ -89,7 +92,7 @@ impl LocatedProject {
 
     pub fn entry(&self) -> ProgramFile {
         let entry = self.root.join(&self.project.entry);
-        self.file_within(entry)
+        self.placement().file_within(entry)
     }
 
     pub fn is_entry(&self, file: &ProgramFile) -> bool {
@@ -97,38 +100,16 @@ impl LocatedProject {
         entry == ProgramFile::canonical(file.path())
     }
 
-    pub fn file_within(&self, path: PathBuf) -> ProgramFile {
-        let tasks_directory = self.tasks_directory();
-        if ProgramFile::relative_module(&path, &tasks_directory).is_some() {
-            return self.task_file(ProgramFile::within(path, tasks_directory));
-        }
-        let scope = SearchScope::in_project(&tasks_directory);
-        ProgramFile::inside_or_beside(path, self.source_root())
-            .with_libraries(self.libraries.clone())
-            .within_scope(scope)
-    }
-
-    pub fn test_file(&self, file: ProgramFile) -> ProgramFile {
-        let scope = SearchScope::tests(&self.tasks_directory());
-        self.beside_source_root(file).within_scope(scope)
-    }
-
-    pub fn task_file(&self, file: ProgramFile) -> ProgramFile {
-        let scope = SearchScope::tasks(&self.tasks_directory(), &self.tests_directory());
-        self.beside_source_root(file).within_scope(scope)
-    }
-
-    fn beside_source_root(&self, file: ProgramFile) -> ProgramFile {
-        file.with_fallback_root(self.source_root())
-            .with_libraries(self.libraries.clone())
+    pub fn placement(&self) -> FilePlacement<'_> {
+        FilePlacement::new(&self.root, self.source_root(), &self.libraries)
     }
 
     pub fn tests_directory(&self) -> PathBuf {
-        self.root.join(SearchScope::TESTS_DIRECTORY)
+        self.placement().tests_directory().to_path_buf()
     }
 
     pub fn tasks_directory(&self) -> PathBuf {
-        self.root.join(SearchScope::TASKS_DIRECTORY)
+        self.placement().tasks_directory().to_path_buf()
     }
 
     pub fn root(&self) -> &Path {

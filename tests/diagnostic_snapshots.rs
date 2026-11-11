@@ -1,5 +1,6 @@
 use knave::diagnostic::{Diagnostic, DiagnosticRenderer, Diagnostics};
 use knave::expand::ExpandProblems;
+use knave::interpret::HostProblems;
 use knave::source::{SourceId, SourceMap, Span};
 
 struct DiagnosticFixture {
@@ -31,5 +32,19 @@ impl DiagnosticFixture {
 fn not_at_compile_time_has_a_snapshot() {
     let fixture = DiagnosticFixture::new();
     let diagnostic = ExpandProblems::not_at_compile_time("origin", fixture.span());
+    insta::assert_snapshot!(fixture.render(diagnostic));
+}
+
+#[test]
+fn missing_host_group_of_a_builtin_has_a_snapshot() {
+    let fixture = DiagnosticFixture::new();
+    let diagnostic = HostProblems::missing_group_of_builtin("origin", fixture.span());
+    insta::assert_snapshot!(fixture.render(diagnostic));
+}
+
+#[test]
+fn missing_global_values_has_a_snapshot() {
+    let fixture = DiagnosticFixture::new();
+    let diagnostic = HostProblems::missing_global_values(fixture.span());
     insta::assert_snapshot!(fixture.render(diagnostic));
 }

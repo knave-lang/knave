@@ -1,30 +1,61 @@
-use rustc_hash::FxHashSet;
-
 use crate::core::{BindingId, Block, BodyItem, Control, Expr, ExprKind, Lambda};
 
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct LocalBindings {
-    bound: FxHashSet<BindingId>,
+    first: u32,
+    bits: Box<[u64]>,
 }
 
 impl LocalBindings {
+    const WORD_BITS: usize = u64::BITS as usize;
+
     pub fn of_lambda(lambda: &Lambda) -> Self {
-        let mut locals = Self::default();
-        let body = locals.bind_lambda(lambda);
-        locals.collect(body);
-        locals
+        let mut walk = BinderWalk::default();
+        let body = walk.bind_lambda(lambda);
+        walk.collect(body);
+        Self::of_bindings(&walk.binders)
     }
 
     pub fn of_expr(expr: &Expr) -> Self {
-        let mut locals = Self::default();
-        locals.collect(vec![expr]);
-        locals
+        let mut walk = BinderWalk::default();
+        walk.collect(vec![expr]);
+        Self::of_bindings(&walk.binders)
     }
 
+    #[inline]
     pub fn binds(&self, binding: BindingId) -> bool {
-        self.bound.contains(&binding)
+        let offset = binding.index().wrapping_sub(self.first) as usize;
+        self.bits
+            .get(offset / Self::WORD_BITS)
+            .is_some_and(|word| word & Self::bit_of(offset) != 0)
     }
 
+    fn of_bindings(bindings: &[BindingId]) -> Self {
+        let indexes = bindings.iter().map(|binding| binding.index());
+        let (Some(first), Some(last)) = (indexes.clone().min(), indexes.clone().max()) else {
+            return Self::default();
+        };
+        let mut bits = vec![0; (last - first) as usize / Self::WORD_BITS + 1];
+        for offset in indexes.map(|index| (index - first) as usize) {
+            bits[offset / Self::WORD_BITS] |= Self::bit_of(offset);
+        }
+        Self {
+            first,
+            bits: bits.into_boxed_slice(),
+        }
+    }
+
+    fn bit_of(offset: usize) -> u64 {
+        1 << (offset % Self::WORD_BITS)
+    }
+}
+
+#[derive(Default)]
+struct BinderWalk {
+    binders: Vec<BindingId>,
+}
+
+impl BinderWalk {
     fn collect(&mut self, mut pending: Vec<&Expr>) {
         while let Some(expr) = pending.pop() {
             let children = self.bind(expr);
@@ -41,13 +72,13 @@ impl LocalBindings {
     }
 
     fn bind_lambda<'e>(&mut self, lambda: &'e Lambda) -> Vec<&'e Expr> {
-        self.bound
+        self.binders
             .extend(lambda.params.iter().map(|param| param.binding));
         self.bind_block(&lambda.body)
     }
 
     fn bind_block<'e>(&mut self, block: &'e Block) -> Vec<&'e Expr> {
-        self.bound
+        self.binders
             .extend(block.items.iter().filter_map(|item| match item {
                 BodyItem::Let(binder, _) => Some(binder.binding),
                 BodyItem::Expr(_) => None,
@@ -112,6 +143,12 @@ mod tests {
             Expr::new(ExprKind::Call(callee, vec![argument]), Self::span())
         }
 
+        fn locals_at(indexes: &[u32]) -> LocalBindings {
+            let bindings: Vec<BindingId> =
+                indexes.iter().copied().map(BindingId::from_index).collect();
+            LocalBindings::of_bindings(&bindings)
+        }
+
         fn function() -> Lambda {
             let body = Block {
                 items: vec![
@@ -146,6 +183,32 @@ mod tests {
         let locals = LocalBindings::of_expr(&LoweredFixture::nested_block());
         assert!(locals.binds(LoweredFixture::NESTED_LET));
         assert!(locals.binds(LoweredFixture::NESTED_PARAMETER));
+        assert!(!locals.binds(LoweredFixture::GLOBAL));
+    }
+
+    #[test]
+    fn a_name_between_two_locals_is_free() {
+        let locals = LoweredFixture::locals_at(&[10, 12]);
+        assert!(!locals.binds(BindingId::from_index(11)));
+    }
+
+    #[test]
+    fn a_name_before_the_first_local_is_free() {
+        let locals = LoweredFixture::locals_at(&[10, 12]);
+        assert!(!locals.binds(BindingId::from_index(9)));
+    }
+
+    #[test]
+    fn locals_words_apart_each_bind_alone() {
+        let locals = LoweredFixture::locals_at(&[10, 140]);
+        assert!(locals.binds(BindingId::from_index(10)));
+        assert!(locals.binds(BindingId::from_index(140)));
+        assert!(!locals.binds(BindingId::from_index(74)));
+    }
+
+    #[test]
+    fn code_without_binders_leaves_every_name_free() {
+        let locals = LocalBindings::of_expr(&LoweredFixture::read(LoweredFixture::GLOBAL));
         assert!(!locals.binds(LoweredFixture::GLOBAL));
     }
 }

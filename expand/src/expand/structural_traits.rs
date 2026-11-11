@@ -1,6 +1,7 @@
 use super::declared_trait::DeclaredTrait;
 use super::problems::ExpandProblems;
-use super::structural_path_claims::{StructuralPathClaim, StructuralPathClaims};
+use super::structural_path_claim::StructuralPathClaim;
+use super::structural_path_claims::StructuralPathClaims;
 use crate::core::{
     BindingArena, BindingId, ReferenceKind, StructDerives, StructuralClause, StructuralKey,
     StructuralTemplate, TypeExpr, TypeExprKind,

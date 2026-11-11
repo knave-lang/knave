@@ -43,6 +43,7 @@ mod shape;
 mod sourced_items;
 mod spliced_forms;
 mod string_view;
+mod structural_path_claim;
 mod structural_path_claims;
 mod structural_traits;
 mod top_level_form;

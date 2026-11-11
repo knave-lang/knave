@@ -11,12 +11,7 @@ impl<'p> PatternGuard<'p> {
     }
 
     pub(super) fn is_needed(&self) -> bool {
-        if self.pattern.boxed
-            && matches!(
-                &self.pattern.kind,
-                TypedPatternKind::Variant(..) | TypedPatternKind::Literal(..)
-            )
-        {
+        if self.is_boxed_value_test() {
             return true;
         }
         match &self.pattern.kind {
@@ -31,6 +26,14 @@ impl<'p> PatternGuard<'p> {
                     && matches!(ty, Type::Primitive(PrimitiveType::String))
             }
         }
+    }
+
+    fn is_boxed_value_test(&self) -> bool {
+        self.pattern.boxed
+            && !matches!(
+                &self.pattern.kind,
+                TypedPatternKind::Wildcard | TypedPatternKind::Bind(_)
+            )
     }
 }
 
@@ -143,5 +146,19 @@ mod tests {
         let variant =
             GuardFixture::typed(fixture.variant_of(vec![wildcard, GuardFixture::string_literal()]));
         assert!(GuardFixture::is_needed(&variant));
+    }
+
+    #[test]
+    fn a_boxed_struct_needs_a_guard() {
+        let fields = vec![GuardFixture::typed(TypedPatternKind::Wildcard)];
+        let boxed = GuardFixture::boxed(TypedPatternKind::Struct(BindingId::from_index(1), fields));
+        assert!(GuardFixture::is_needed(&boxed));
+    }
+
+    #[test]
+    fn a_boxed_wildcard_needs_no_guard() {
+        assert!(!GuardFixture::is_needed(&GuardFixture::boxed(
+            TypedPatternKind::Wildcard
+        )));
     }
 }

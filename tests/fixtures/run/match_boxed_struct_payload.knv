@@ -1,0 +1,14 @@
+(enum chain (link node) end)
+
+(defstruct node
+  :value i64
+  :next chain)
+
+(defn first-value (c)
+  (match c
+    ((chain/link (node value _)) value)
+    (chain/end 0)))
+
+(defn main ()
+  (println (first-value (chain/link (->node :value 4 :next chain/end))))
+  (println (first-value chain/end)))

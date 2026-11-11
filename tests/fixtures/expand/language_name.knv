@@ -1,0 +1,6 @@
+(use code language-name)
+
+(def shown-language-name
+  (macro (form) (language-name)))
+
+(def name (shown-language-name))

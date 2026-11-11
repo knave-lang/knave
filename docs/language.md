@@ -532,6 +532,7 @@ The compiler provides the `code` module for macro bodies. Code that uses it exis
 | `(read-form context literal character)` | Read one form from the string literal `literal`, starting at the decoded character `character`. Return a list of the form, with the scopes of the symbol `context` and each span inside `literal`, and the character after it, or an empty list when no form reads there. Macro expansion keeps those spans. `(read-form (quote here) "(+ 1 1) tail" 0)` then `=> ((+ 1 1) 7)`. |
 | `(located place form)` | Return `form` with the location of the form `place`. `(located place (quote missing))` then `=> missing`, so an error on the result points at `place`. |
 | `(project-file-name)` | Return the name of the project file, as a string, so a message names the file without restating its extension. |
+| `(language-name)` | Return the name of the language, as a string, so `knave doc --write` tags its code fences without restating the name. |
 | `(sorted-names names)` | Return one symbol per distinct name in the list `names`, sorted by name. Of the symbols that share a name, the first stays. |
 | `(distinct-leading-lines texts)` | Return the strings of the list `texts` in order, without each string that repeats a kept string or a run of its leading lines. A later `"area"` goes when `"area\n    Measures."` was kept. |
 | `(closest-name name names)` | Return a list that holds the symbol of `names` closest to `name`, other than `name` itself, ranked as the compiler ranks a misspelled name, or an empty list when none is close. |

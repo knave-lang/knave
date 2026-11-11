@@ -1,7 +1,7 @@
 use super::selection::Selection;
 use super::trait_declarations::TraitDeclarations;
 use super::ty::{Bound, Type};
-use super::typed::TypedTraitImpl;
+use super::typed_trait_impl::TypedTraitImpl;
 use crate::core::{BindingId, FunctionFieldTraits, StructDerives};
 
 #[derive(Clone, Copy)]

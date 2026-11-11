@@ -4,8 +4,10 @@ use rustc_hash::FxHashMap;
 
 use super::selfless_methods::SelflessMethods;
 use super::structural_trait::StructuralTrait;
+use super::trait_method_info::TraitMethodInfo;
 use super::traits::TraitTable;
-use super::typed::{TraitMethodInfo, TypedTrait, TypedTraitImpl};
+use super::typed_trait::TypedTrait;
+use super::typed_trait_impl::TypedTraitImpl;
 use crate::core::BindingId;
 
 #[derive(Default)]

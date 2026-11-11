@@ -45,6 +45,7 @@ mod pinning;
 mod pipelines;
 mod problems;
 mod projection;
+mod receiver_kind;
 mod returned_values;
 mod rust_types;
 mod selection;
@@ -58,14 +59,20 @@ mod structural_uses;
 mod template_clauses;
 mod templates;
 mod trait_declarations;
+mod trait_method_info;
 mod traits;
 mod ty;
 mod type_declarations;
 mod type_text;
 mod type_text_writer;
 mod typed;
+mod typed_associated_type;
+mod typed_impl_method;
 #[cfg(test)]
 mod typed_source;
+mod typed_trait;
+mod typed_trait_impl;
+mod typed_trait_method;
 mod unification;
 mod unifier;
 mod variant_payloads;
@@ -90,6 +97,7 @@ pub use payload_position::PayloadPosition;
 pub use pinning::{InstantiationReport, LiteralDefaults, Pinning};
 pub use pipelines::Pipelines;
 pub use projection::{AssociatedType, ProjectionTable};
+pub use receiver_kind::ReceiverKind;
 pub use returned_values::ReturnedValues;
 pub use rust_types::{RustType, RustTypeTable};
 pub use structs::{StructDefinition, StructTable};
@@ -97,16 +105,21 @@ pub use structural_trait::StructuralTrait;
 pub use structural_uses::{StructuralUse, StructuralUses};
 pub use template_clauses::TemplateClauses;
 pub use templates::TemplateBorrows;
+pub use trait_method_info::TraitMethodInfo;
 pub use traits::{Implementor, RustTrait, TraitTable};
 pub use ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type, TypeVar};
 pub use typed::{
-    Borrow, ClosureType, FieldOrder, FieldPlace, PendingModeCheck, ReceiverKind, TraitMethodInfo,
-    TypedArgument, TypedArm, TypedAssociatedType, TypedBinder, TypedBlock, TypedBodyItem,
-    TypedControl, TypedConversion, TypedDefinition, TypedExpr, TypedExprKind, TypedImplMethod,
-    TypedLambda, TypedLeaf, TypedMatch, TypedModule, TypedPattern, TypedPatternKind, TypedProgram,
-    TypedStructExpr, TypedTrait, TypedTraitImpl, TypedTraitMethod,
+    Borrow, ClosureType, FieldOrder, FieldPlace, PendingModeCheck, TypedArgument, TypedArm,
+    TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedDefinition,
+    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedModule, TypedPattern,
+    TypedPatternKind, TypedProgram, TypedStructExpr,
 };
+pub use typed_associated_type::TypedAssociatedType;
+pub use typed_impl_method::TypedImplMethod;
 #[cfg(test)]
 pub use typed_source::TypedSource;
+pub use typed_trait::TypedTrait;
+pub use typed_trait_impl::TypedTraitImpl;
+pub use typed_trait_method::TypedTraitMethod;
 pub use view_coercion::ViewCoercion;
 pub use wrapper::{FunctionValueWrapper, PreparedFunctionValue};

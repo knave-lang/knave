@@ -15,6 +15,7 @@ pub enum StoreError {
     GitMissing(io::Error),
     Unwritable(PathBuf, io::Error),
     Fetch(String),
+    NotCached,
 }
 
 impl GitStore {
@@ -34,9 +35,8 @@ impl GitStore {
     }
 
     pub fn checkout(&self, url: &str, commit: &str) -> Result<PathBuf, StoreError> {
-        let destination = self.root.join(commit);
-        if destination.is_dir() {
-            return Ok(destination);
+        if let Some(cached) = self.cached(commit) {
+            return Ok(cached);
         }
         fs::create_dir_all(&self.root)
             .map_err(|error| StoreError::Unwritable(self.root.clone(), error))?;
@@ -47,7 +47,12 @@ impl GitStore {
             fs::remove_dir_all(&staging).ok();
         }
         fetched?;
-        Self::settle(&staging, destination)
+        Self::settle(&staging, self.root.join(commit))
+    }
+
+    pub fn cached(&self, commit: &str) -> Option<PathBuf> {
+        let destination = self.root.join(commit);
+        destination.is_dir().then_some(destination)
     }
 
     fn fetch(url: &str, commit: &str, staging: &Path) -> Result<(), StoreError> {

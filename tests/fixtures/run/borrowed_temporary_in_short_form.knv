@@ -168,6 +168,99 @@
   (local t (larger (as-str text)))
   (println t))
 
+(rust-trait textual "AsRef<str>" str string)
+
+(def shown
+  (rust "std::convert::identity({0}.as_ref())"
+    (where ((s textual))
+      (fn ((ref s)) (ref str)))
+    (str "{{ println!(\"before\"); {0} }}")))
+
+(def same
+  (rust "std::convert::identity::<&{s}>({0})"
+    (where ((s textual))
+      (fn ((ref s)) (ref s)))))
+
+(def lazy-short (* (seven) 2))
+
+(def lazy-explicit (* (seven) 2))
+
+(def peek-short
+  (rust "std::convert::identity((*LAZY_SHORT, {0}).1)"
+    (fn ((ref str)) (ref str))))
+
+(def peek-explicit
+  (rust "std::convert::identity((*LAZY_EXPLICIT, {0}).1)"
+    (fn ((ref str)) (ref str))))
+
+(type alias-short (fn ((ref str)) (ref str)))
+
+(def alias-short
+  (if (> (seven) 0) first-letter first-letter))
+
+(type alias-explicit (fn ((ref str)) (ref str)))
+
+(def alias-explicit
+  (if (> (seven) 0) first-letter first-letter))
+
+(defn short-type-placeholder ()
+  (local t
+    (first-letter (same (as-str (announced "typed")))))
+  (println t))
+
+(defn explicit-type-placeholder ()
+  (local text (announced "typed"))
+  (local t (first-letter (same (as-str text))))
+  (println t))
+
+(defn clause-block ()
+  (local t
+    (shown (as-str (announced "clause"))))
+  (println t))
+
+(defn explicit-clause-block ()
+  (println "before")
+  (local text (announced "clause"))
+  (local t (as-str text))
+  (println t))
+
+(defn inline-block-callee ()
+  (local t
+    ((rust "{{ println!(\"before\"); {0} }}"
+       (fn ((ref str)) (ref str)))
+     (as-str (announced "inline"))))
+  (println t))
+
+(defn explicit-inline-block-callee ()
+  (println "before")
+  (local text (announced "inline"))
+  (local t (as-str text))
+  (println t))
+
+(defn computed-global-callee ()
+  (local t
+    (alias-short (as-str (announced "alias"))))
+  (println t))
+
+(defn explicit-computed-global-callee ()
+  (local f alias-explicit)
+  (local text (announced "alias"))
+  (local t (f (as-str text)))
+  (println t))
+
+(defn deref-ahead ()
+  (local t
+    (peek-short (as-str (announced "deref"))))
+  (println t)
+  (println lazy-short))
+
+(defn explicit-deref-ahead ()
+  (local seen lazy-explicit)
+  (local text (announced "deref"))
+  (local t (peek-explicit (as-str text)))
+  (println t)
+  (println seen))
+
 (defn main ()
   (short-function)
   (explicit-function)
@@ -190,4 +283,14 @@
   (code-ahead-template)
   (explicit-code-ahead-template)
   (repeated-template)
-  (explicit-repeated-template))
+  (explicit-repeated-template)
+  (short-type-placeholder)
+  (explicit-type-placeholder)
+  (clause-block)
+  (explicit-clause-block)
+  (inline-block-callee)
+  (explicit-inline-block-callee)
+  (computed-global-callee)
+  (explicit-computed-global-callee)
+  (deref-ahead)
+  (explicit-deref-ahead))

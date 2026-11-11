@@ -20,8 +20,14 @@ impl<'p> ShortForm<'p> {
     fn admits_step(&self, parent: &TypedExpr, child: &TypedExpr) -> bool {
         match &parent.kind {
             TypedExprKind::Call(callee, arguments) => {
-                Self::only_literals_ahead(arguments.iter().map(|argument| &argument.value), child)
-                    && self.admits_callee(callee, arguments, child)
+                let lent = arguments
+                    .iter()
+                    .take_while(|argument| !std::ptr::eq(&argument.value, child))
+                    .count();
+                arguments[..lent]
+                    .iter()
+                    .all(|argument| Self::is_literal(&argument.value))
+                    && self.admits_callee(callee, arguments, lent)
             }
             TypedExprKind::Struct(TypedStructExpr::New(_, fields)) => {
                 Self::only_literals_ahead(fields.iter().map(|(_, value)| value), child)
@@ -47,18 +53,7 @@ impl<'p> ShortForm<'p> {
         matches!(operand.kind, TypedExprKind::Leaf(TypedLeaf::Literal(_)))
     }
 
-    fn admits_callee(
-        &self,
-        callee: &TypedExpr,
-        arguments: &[TypedArgument],
-        child: &TypedExpr,
-    ) -> bool {
-        let Some(lent) = arguments
-            .iter()
-            .position(|argument| std::ptr::eq(&argument.value, child))
-        else {
-            return false;
-        };
+    fn admits_callee(&self, callee: &TypedExpr, arguments: &[TypedArgument], lent: usize) -> bool {
         match self.callees.of(callee) {
             CalleeDefinition::Function => true,
             CalleeDefinition::Template(template) => {
@@ -78,7 +73,7 @@ struct TemplateShape<'t> {
 impl<'t> TemplateShape<'t> {
     const FORBIDDEN_CHARACTERS: [char; 3] = ['{', '|', ';'];
     const FORBIDDEN_OPERATORS: [&'static str; 2] = ["&&", "?"];
-    const PATH_CHARACTERS: [char; 10] = ['_', ':', '(', '[', ',', ' ', '&', '*', '<', '>'];
+    const PATH_CHARACTERS: [char; 9] = ['_', ':', '(', '[', ',', ' ', '&', '<', '>'];
 
     fn new(template: &'t RustTemplate, arguments: &'t [TypedArgument], lent: usize) -> Self {
         Self {
@@ -91,7 +86,11 @@ impl<'t> TemplateShape<'t> {
     fn runs_nothing_ahead(&self) -> bool {
         std::iter::once(&self.template.template)
             .chain(self.template.clauses.iter().map(|clause| &clause.template))
-            .all(|text| ParsedTemplate::parse(text).is_ok_and(|parsed| self.admits(&parsed)))
+            .all(|text| {
+                self.admits(
+                    &ParsedTemplate::parse(text).expect("the expansion checked the template"),
+                )
+            })
     }
 
     fn admits(&self, parsed: &ParsedTemplate) -> bool {
@@ -130,8 +129,7 @@ impl<'t> TemplateShape<'t> {
                     .arguments
                     .get(*index)
                     .is_some_and(|argument| ShortForm::is_literal(&argument.value)),
-                Piece::TypePlaceholder { .. } => true,
-                Piece::BinderPlaceholder { .. } => false,
+                Piece::TypePlaceholder { .. } | Piece::BinderPlaceholder { .. } => true,
             })
     }
 

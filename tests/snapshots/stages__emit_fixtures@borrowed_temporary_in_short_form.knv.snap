@@ -232,6 +232,122 @@ fn explicit_repeated_template() {
     println!("{}", t)
 }
 
+static LAZY_SHORT: std::sync::LazyLock<i64> = std::sync::LazyLock::new(|| seven() * 2);
+
+static LAZY_EXPLICIT: std::sync::LazyLock<i64> = std::sync::LazyLock::new(|| seven() * 2);
+
+static ALIAS_SHORT: std::sync::LazyLock<fn(&str) -> &str> = std::sync::LazyLock::new(|| {
+    if seven() > 0 {
+        first_letter
+    } else {
+        first_letter
+    }
+});
+
+static ALIAS_EXPLICIT: std::sync::LazyLock<fn(&str) -> &str> = std::sync::LazyLock::new(|| {
+    if seven() > 0 {
+        first_letter
+    } else {
+        first_letter
+    }
+});
+
+fn short_type_placeholder() {
+    let owner = announced("typed");
+    let t = first_letter(std::convert::identity::<&str>(owner.as_str()));
+    println!("{}", t)
+}
+
+fn explicit_type_placeholder() {
+    let text = announced("typed");
+    let t = first_letter(std::convert::identity::<&str>(text.as_str()));
+    println!("{}", t)
+}
+
+fn clause_block() {
+    let owner;
+    let t = {
+        println!("before");
+        {
+            owner = announced("clause");
+            &owner
+        }
+        .as_str()
+    };
+    println!("{}", t)
+}
+
+fn explicit_clause_block() {
+    println!("before");
+    let text = announced("clause");
+    let t = text.as_str();
+    println!("{}", t)
+}
+
+fn inline_block_callee() {
+    let owner;
+    let t = {
+        println!("before");
+        {
+            owner = announced("inline");
+            &owner
+        }
+        .as_str()
+    };
+    println!("{}", t)
+}
+
+fn explicit_inline_block_callee() {
+    println!("before");
+    let text = announced("inline");
+    let t = text.as_str();
+    println!("{}", t)
+}
+
+fn computed_global_callee() {
+    let owner;
+    let t = (*ALIAS_SHORT)(
+        {
+            owner = announced("alias");
+            &owner
+        }
+        .as_str(),
+    );
+    println!("{}", t)
+}
+
+fn explicit_computed_global_callee() {
+    let f = *ALIAS_EXPLICIT;
+    let text = announced("alias");
+    let t = f(text.as_str());
+    println!("{}", t)
+}
+
+fn deref_ahead() {
+    let owner;
+    let t = std::convert::identity(
+        (
+            *LAZY_SHORT,
+            {
+                owner = announced("deref");
+                &owner
+            }
+            .as_str(),
+        )
+            .1,
+    );
+    println!("{}", t);
+    println!("{}", *LAZY_SHORT)
+}
+
+fn explicit_deref_ahead() {
+    let seen: i64 = *LAZY_EXPLICIT;
+    let text = announced("deref");
+    let t = std::convert::identity((*LAZY_EXPLICIT, text.as_str()).1);
+    println!("{}", t);
+    println!("{}", seen)
+}
+
 fn main() {
     crate::rt::restore_default_sigpipe();
     short_function();
@@ -255,7 +371,17 @@ fn main() {
     code_ahead_template();
     explicit_code_ahead_template();
     repeated_template();
-    explicit_repeated_template()
+    explicit_repeated_template();
+    short_type_placeholder();
+    explicit_type_placeholder();
+    clause_block();
+    explicit_clause_block();
+    inline_block_callee();
+    explicit_inline_block_callee();
+    computed_global_callee();
+    explicit_computed_global_callee();
+    deref_ahead();
+    explicit_deref_ahead()
 }
 
 mod rt {

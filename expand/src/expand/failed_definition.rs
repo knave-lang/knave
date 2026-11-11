@@ -7,7 +7,7 @@ use crate::core::{
 };
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, Symbol};
-use crate::scope::{Phase, Scope};
+use crate::scope::{Phase, Scope, ScopeKind};
 
 pub(super) struct DeclaredName {
     name: Form,
@@ -106,7 +106,7 @@ impl Expander<'_> {
         if names.is_empty() {
             return vec![BodyItem::Expr(failure.clone())];
         }
-        let scope = self.fresh_local_scope();
+        let scope = self.tables.scopes.fresh(ScopeKind::Local);
         rest_of_body.add_scope(scope);
         names
             .into_iter()

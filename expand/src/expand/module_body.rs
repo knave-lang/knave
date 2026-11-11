@@ -1,7 +1,5 @@
 use std::rc::Rc;
 
-use super::Expander;
-use super::TraitMethods;
 use super::budget_arena::BudgetId;
 use super::context::DefinitionContext;
 use super::declared_trait::DeclaredTrait;
@@ -9,6 +7,7 @@ use super::problems::ExpandProblems;
 use super::shape::Shape;
 use super::sourced_items::SourcedItems;
 use super::spliced_forms::{SplicedForm, SplicedForms};
+use super::{Expander, TraitMethods};
 use crate::core::{
     BindingId, BindingInfo, BindingKind, ControlForm, CoreModule, DefinitionForm, Expr, ExprKind,
     ExpressionForm, FieldLabel, ImplAssociatedType, ImplMethod, Item, ItemKind, KernelForm,
@@ -22,6 +21,7 @@ use crate::diagnostic::{Counted, Diagnostic, DistinctDiagnostics};
 use crate::interpret::Warnings;
 use crate::mangle::NameMangler;
 use crate::reader::{Form, FormKind, Symbol};
+use crate::scope::ScopeKind;
 use crate::source::Span;
 
 struct TraitLowering<'a, 'f> {
@@ -518,7 +518,7 @@ impl Expander<'_> {
 
     fn register_impl(&mut self, form: Form) -> Result<Option<PendingItem>, Diagnostic> {
         let mut form = form;
-        let scope = self.fresh_local_scope();
+        let scope = self.tables.scopes.fresh(ScopeKind::Local);
         form.add_scope(scope);
         Ok(Some(PendingItem::Impl(scope, form)))
     }
@@ -1008,7 +1008,7 @@ impl Expander<'_> {
         let name = self.head_name(&shape, &items[1])?;
         let supertraits = self.lower_supertraits(&shape, &items[1])?;
         let rust_name: Rc<str> = Rc::from(NameMangler::type_name(name.to_string().as_str()));
-        let scope = self.fresh_local_scope();
+        let scope = self.tables.scopes.fresh(ScopeKind::Local);
         let associated = self.define_associated_types(&shape, &items[1], &items[2..], scope)?;
         let mut self_symbol = Symbol::new("self");
         self_symbol.scopes_mut().add(scope);
@@ -1671,7 +1671,7 @@ impl Expander<'_> {
         let items = shape.at_least(3)?;
         let path: Rc<str> = shape.string(&items[2])?.into();
         self.warn_second_trait_path(binding, &items[1], &path);
-        let scope = self.fresh_local_scope();
+        let scope = self.tables.scopes.fresh(ScopeKind::Local);
         let mut self_symbol = Symbol::new("self");
         self_symbol.scopes_mut().add(scope);
         let self_form = Form::new(FormKind::Symbol(self_symbol), items[1].span());

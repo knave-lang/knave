@@ -9,6 +9,7 @@ use crate::core::{
 };
 use crate::diagnostic::Diagnostic;
 use crate::reader::Form;
+use crate::scope::ScopeKind;
 use crate::source::Span;
 
 impl Expander<'_> {
@@ -28,7 +29,7 @@ impl Expander<'_> {
             return Err(misplaced);
         };
         self.recovered.keep(misplaced, self.phase)?;
-        let scope = self.fresh_local_scope();
+        let scope = self.tables.scopes.fresh(ScopeKind::Local);
         rest_of_body.add_scope(scope);
         let binder = self.lower_binder(&Self::scoped(binder, scope), Some(context))?;
         let value = match value {
@@ -77,7 +78,7 @@ impl Expander<'_> {
             return Err(misplaced);
         };
         self.recovered.keep(misplaced, self.phase)?;
-        let scope = self.fresh_local_scope();
+        let scope = self.tables.scopes.fresh(ScopeKind::Local);
         rest_of_body.add_scope(scope);
         let module = self
             .current_module

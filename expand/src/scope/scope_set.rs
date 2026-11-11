@@ -9,7 +9,7 @@ use super::scope_chain::{ChainPrefix, SharedScopes};
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
-pub struct Scope(u32);
+pub struct Scope(pub(super) u32);
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct ScopeAllocator {

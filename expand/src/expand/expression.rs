@@ -18,7 +18,7 @@ use crate::core::{
 };
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Symbol};
-use crate::scope::Scope;
+use crate::scope::{Scope, ScopeKind};
 use crate::source::Span;
 use crate::stack::DeepRecursion;
 
@@ -67,7 +67,7 @@ impl Expander<'_> {
         params: &Form,
         body: &[Form],
     ) -> Result<Lambda, Diagnostic> {
-        let scope = self.fresh_local_scope();
+        let scope = self.tables.scopes.fresh(ScopeKind::Local);
         let mut params = shape.list(params)?.to_vec();
         let mut body = body.to_vec();
         params
@@ -463,7 +463,7 @@ impl Expander<'_> {
     }
 
     fn lower_quote(&self, shape: &Shape) -> Result<ExprKind, Diagnostic> {
-        let quoted = self.quoted(&shape.exactly(2)?[1]);
+        let quoted = self.tables.scopes.quoted(&shape.exactly(2)?[1]);
         Ok(ExprKind::Leaf(Leaf::Quote(quoted)))
     }
 
@@ -567,7 +567,7 @@ impl Expander<'_> {
     ) -> Result<BodyItem, Diagnostic> {
         let items = shape.exactly(3)?;
         let value = self.lower_recovered(&items[2])?;
-        let scope = self.fresh_local_scope();
+        let scope = self.tables.scopes.fresh(ScopeKind::Local);
         rest_of_body.add_scope(scope);
         Ok(BodyItem::Let(
             self.lower_binder(&Self::scoped(&items[1], scope), Some(context))?,
@@ -743,7 +743,7 @@ impl Expander<'_> {
     fn lower_arm(&mut self, shape: &Shape, arm: &Form) -> Result<Arm, Diagnostic> {
         let items = shape.list(arm)?;
         let (pattern, body) = items.split_first().ok_or_else(|| shape.malformed(arm))?;
-        let scope = self.fresh_local_scope();
+        let scope = self.tables.scopes.fresh(ScopeKind::Local);
         let mut pattern = pattern.clone();
         let mut body = body.to_vec();
         pattern.add_scope(scope);

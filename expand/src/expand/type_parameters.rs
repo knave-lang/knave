@@ -4,6 +4,7 @@ use super::shape::Shape;
 use crate::core::{BindingKind, KernelType, Namespace, TypeBinder};
 use crate::diagnostic::Diagnostic;
 use crate::reader::Form;
+use crate::scope::ScopeKind;
 
 pub(super) struct Parameterized {
     pub binders: Vec<TypeBinder>,
@@ -84,7 +85,7 @@ impl Expander<'_> {
         }) {
             return Err(ExpandProblems::bounded_lifetime(binder.span()));
         }
-        let scope = self.fresh_local_scope();
+        let scope = self.tables.scopes.fresh(ScopeKind::Local);
         binders
             .iter_mut()
             .chain(body.iter_mut())

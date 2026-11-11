@@ -244,4 +244,12 @@ impl SearchFixture {
         let matrix: PatternMatrix = arms.into_iter().collect();
         MissingCaseSearch::new(&catalog).witnesses(&matrix, columns)
     }
+
+    pub(super) fn visited_matrices(&self, arms: Vec<CoverPattern>, scrutinee: Type) -> usize {
+        let catalog = self.catalog();
+        let matrix: PatternMatrix = arms.into_iter().collect();
+        let search = MissingCaseSearch::new(&catalog);
+        search.witnesses(&matrix, &[scrutinee]);
+        search.visited_matrices()
+    }
 }

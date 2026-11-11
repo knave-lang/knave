@@ -1,148 +1,71 @@
 use std::rc::Rc;
 
-use super::Expander;
+use rustc_hash::FxHashSet;
+
+use super::noted_terms::NotedTerms;
 use super::problems::ExpandProblems;
-use crate::core::{ModuleId, ModulePath, Namespace};
-use crate::diagnostic::SimilarName;
-use crate::interpret::{Interpreter, Value};
-use crate::modules::ModuleSources;
-use crate::reader::{Form, Symbol};
-use crate::source::Span;
+use super::term_resolver::TermResolver;
+use crate::core::{BindingId, ModuleId, Namespace};
+use crate::diagnostic::{Diagnostic, SimilarName};
+use crate::reader::Symbol;
 
-struct DocstringNotes {
-    key: Rc<str>,
-    documented_terms_key: Rc<str>,
-    noted_term: Value,
+pub(super) struct DocumentedTerms<'t> {
+    resolver: TermResolver<'t>,
+    duplicates: &'t FxHashSet<(ModuleId, Rc<str>)>,
+    noted: NotedTerms,
 }
 
-impl DocstringNotes {
-    fn of(key: &Value, documented_terms_key: &Value, noted_term: Value) -> Option<Self> {
-        Some(Self {
-            key: Self::symbol_name(key)?,
-            documented_terms_key: Self::symbol_name(documented_terms_key)?,
-            noted_term,
-        })
-    }
-
-    fn symbol_name(value: &Value) -> Option<Rc<str>> {
-        Some(value.as_form()?.as_symbol()?.shared_name())
-    }
-}
-
-impl Expander<'_> {
-    const PAGE_MACRO: &'static str = "doc-page";
-    const DOCSTRINGS_KEY: &'static str = "docstrings-key";
-    const DOCUMENTED_TERMS_KEY: &'static str = "documented-terms-key";
-    const NOTED_TERM: &'static str = "noted-term";
+impl<'t> DocumentedTerms<'t> {
     const TERM_NAMESPACES: [Namespace; 2] = [Namespace::Value, Namespace::Type];
 
-    pub(super) fn check_documented_terms(&mut self, module: ModuleId) {
-        if self.skips_document_check(module) {
-            return;
-        }
-        let Some(notes) = self.docstring_notes() else {
-            return;
-        };
-        let undefined: Vec<(Symbol, Span)> = self
-            .documented_terms(module, &notes)
-            .into_iter()
-            .filter(|(term, _)| !self.defines(module, term))
-            .filter(|(term, _)| !self.reported_as_duplicate(module, term))
-            .collect();
-        for (term, span) in undefined {
-            let similar = self.closest_own_definition(module, &term);
-            self.problems
-                .report(ExpandProblems::undefined_documented_term(
-                    term.name(),
-                    span,
-                    similar,
-                ));
+    pub(super) fn new(
+        resolver: TermResolver<'t>,
+        duplicates: &'t FxHashSet<(ModuleId, Rc<str>)>,
+        noted: NotedTerms,
+    ) -> Self {
+        Self {
+            resolver,
+            duplicates,
+            noted,
         }
     }
 
-    fn skips_document_check(&self, module: ModuleId) -> bool {
-        ModuleSources::is_prelude(self.modules.get(module).path())
-            || !self.tables.module_notes.holds_any(module)
-    }
-
-    fn docstring_notes(&mut self) -> Option<DocstringNotes> {
-        let notes_module = self.notes_module()?;
-        let key = self.exported_value(notes_module, Self::DOCSTRINGS_KEY)?;
-        let documented_terms_key = self.exported_value(notes_module, Self::DOCUMENTED_TERMS_KEY)?;
-        let noted_term = self.exported_value(notes_module, Self::NOTED_TERM)?;
-        DocstringNotes::of(&key, &documented_terms_key, noted_term)
-    }
-
-    fn notes_module(&self) -> Option<ModuleId> {
-        let prelude = self
-            .modules
-            .find(&ModulePath::new(ModuleSources::PRELUDE))?;
-        let page_macro = self
-            .modules
-            .get(prelude)
-            .exported(Self::PAGE_MACRO, Namespace::Value)?;
-        let page_module = self.definition_module(page_macro)?;
-        let key = self
-            .modules
-            .get(page_module)
-            .exported(Self::DOCSTRINGS_KEY, Namespace::Value)?;
-        self.definition_module(key)
-    }
-
-    fn exported_value(&mut self, module: ModuleId, name: &str) -> Option<Value> {
-        let binding = self.modules.get(module).exported(name, Namespace::Value)?;
-        let span = self.tables.bindings.get(binding).span()?;
-        self.evaluate_global(binding, span).ok()
-    }
-
-    fn documented_terms(
-        &mut self,
-        module: ModuleId,
-        notes: &DocstringNotes,
-    ) -> Vec<(Symbol, Span)> {
-        [&notes.key, &notes.documented_terms_key]
-            .into_iter()
-            .flat_map(|key| self.tables.module_notes.of(module, key))
-            .collect::<Vec<Form>>()
-            .into_iter()
-            .filter_map(|note| self.noted_term(&notes.noted_term, note))
+    pub(super) fn undefined(&self) -> Vec<Diagnostic> {
+        self.noted
+            .terms
+            .iter()
+            .filter(|noted| !self.defines(&noted.term))
+            .filter(|noted| !self.reported_as_duplicate(&noted.term))
+            .map(|noted| {
+                ExpandProblems::undefined_documented_term(
+                    noted.term.name(),
+                    noted.span,
+                    self.closest_own_definition(&noted.term),
+                )
+            })
             .collect()
     }
 
-    fn noted_term(&mut self, accessor: &Value, note: Form) -> Option<(Symbol, Span)> {
-        let span = note.span();
-        let steps = self.form_budgets.current().steps();
-        let term = Interpreter::new(self, span, steps)
-            .call(accessor, vec![Value::Form(note)], span)
-            .ok()?;
-        let term = term.as_form()?;
-        Some((term.as_symbol()?.clone(), term.span()))
+    fn reported_as_duplicate(&self, term: &Symbol) -> bool {
+        self.duplicates
+            .contains(&(self.noted.module, term.shared_name()))
     }
 
-    fn reported_as_duplicate(&self, module: ModuleId, term: &Symbol) -> bool {
-        self.duplicate_definitions
-            .contains(&(module, term.shared_name()))
-    }
-
-    fn defines(&self, module: ModuleId, term: &Symbol) -> bool {
+    fn defines(&self, term: &Symbol) -> bool {
         Self::TERM_NAMESPACES
             .into_iter()
-            .filter_map(|namespace| self.try_resolve(term, namespace))
-            .any(|binding| self.definition_module(binding) == Some(module))
+            .filter_map(|namespace| self.resolver.resolve(term, namespace))
+            .any(|binding| self.is_own(binding))
     }
 
-    fn closest_own_definition(&self, module: ModuleId, term: &Symbol) -> Option<Rc<str>> {
+    fn closest_own_definition(&self, term: &Symbol) -> Option<Rc<str>> {
         if self.resolves(term) {
             return None;
         }
         let own_names: Vec<Rc<str>> = Self::TERM_NAMESPACES
             .into_iter()
-            .flat_map(|namespace| {
-                self.tables
-                    .table
-                    .visible_name_bindings(term, namespace, self.phase)
-            })
-            .filter(|(_, binding)| self.definition_module(*binding) == Some(module))
+            .flat_map(|namespace| self.resolver.visible_bindings(term, namespace))
+            .filter(|(_, binding)| self.is_own(*binding))
             .map(|(name, _)| name)
             .collect();
         SimilarName::closest(term.name(), &own_names)
@@ -151,6 +74,10 @@ impl Expander<'_> {
     fn resolves(&self, term: &Symbol) -> bool {
         Self::TERM_NAMESPACES
             .into_iter()
-            .any(|namespace| self.try_resolve(term, namespace).is_some())
+            .any(|namespace| self.resolver.resolve(term, namespace).is_some())
+    }
+
+    fn is_own(&self, binding: BindingId) -> bool {
+        self.resolver.definition_module(binding) == Some(self.noted.module)
     }
 }

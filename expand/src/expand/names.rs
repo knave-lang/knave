@@ -30,10 +30,7 @@ impl Expander<'_> {
     }
 
     pub(super) fn try_resolve(&self, symbol: &Symbol, namespace: Namespace) -> Option<BindingId> {
-        match self.tables.table.resolve(symbol, namespace, self.phase) {
-            Resolution::Bound(binding) => Some(binding),
-            Resolution::Unbound | Resolution::Ambiguous(_) => None,
-        }
+        self.term_resolver().resolve(symbol, namespace)
     }
 
     pub(super) fn kind(&self, binding: BindingId) -> BindingKind {

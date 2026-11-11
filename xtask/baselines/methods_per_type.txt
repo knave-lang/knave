@@ -2,7 +2,7 @@ expand/src/core/printer.rs::CorePrinter 49
 expand/src/core/template.rs::ParsedTemplate 28
 expand/src/core/template_operation.rs::TemplateOperation 33
 expand/src/diagnostic/mod.rs::Diagnostic 22
-expand/src/expand/mod.rs::Expander 388
+expand/src/expand/mod.rs::Expander 386
 expand/src/expand/problems.rs::ExpandProblems 104
 expand/src/expand/session.rs::ExpansionSession 30
 expand/src/expand/shape.rs::Shape 21

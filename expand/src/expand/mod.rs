@@ -4,6 +4,7 @@ mod compile_time_check;
 mod context;
 mod declared_trait;
 mod defining_call;
+mod docstring_notes;
 mod documented_terms;
 mod enclosing_index;
 mod evaluated_forms;
@@ -27,6 +28,8 @@ mod module_loading;
 mod module_notes;
 mod module_survey;
 mod names;
+mod noted_term;
+mod noted_terms;
 mod prelude_state;
 mod problem_mark;
 mod problem_report;
@@ -51,6 +54,7 @@ mod string_view;
 mod structural_path_claim;
 mod structural_path_claims;
 mod structural_traits;
+mod term_resolver;
 mod top_level_form;
 mod try_check;
 mod type_expr;
@@ -62,16 +66,18 @@ use std::rc::Rc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::{
-    BindingArena, BindingId, BindingKind, CoreModule, ModuleId, ModulePath, References,
+    BindingArena, BindingId, BindingKind, CoreModule, ModuleId, ModulePath, Namespace, References,
 };
 use crate::diagnostic::Diagnostics;
-use crate::interpret::{Closure, Value};
+use crate::interpret::{Closure, Interpreter, Value};
 use crate::modules::{ModuleRegistry, ModuleSources};
 use crate::reader::Form;
 use crate::scope::{BindingTable, Phase, Scope, Scopes};
 use crate::source::{SourceId, SourceMap, Span};
 use budget_arena::BudgetArena;
 pub use classified_form::ClassifiedForm;
+use docstring_notes::DocstringNotes;
+use documented_terms::DocumentedTerms;
 use evaluated_forms::EvaluatedForms;
 pub use generated_entry::GeneratedEntry;
 use globals::{GlobalTable, LoweredGlobals};
@@ -80,6 +86,8 @@ use macro_call::MacroTable;
 pub use macro_origins::MacroOrigins;
 use module_notes::ModuleNotes;
 pub use module_survey::ModuleSurvey;
+use noted_term::NotedTerm;
+use noted_terms::NotedTerms;
 pub use prelude_state::{PreludeState, UnreadablePrelude};
 use problem_report::ProblemReport;
 pub use problems::{ExpandProblems, SetAsideInput};
@@ -94,6 +102,7 @@ pub use session::ExpansionSession;
 use string_view::StringViewSearch;
 use structural_path_claims::StructuralPathClaims;
 use structural_traits::StructuralTraits;
+use term_resolver::TermResolver;
 use type_note::TypeNote;
 
 pub struct Program {
@@ -364,6 +373,90 @@ impl<'s> Expander<'s> {
             &mut self.tables.structural_path_claims,
             &mut self.problems,
         )
+    }
+
+    fn check_documented_terms(&mut self, module: ModuleId) {
+        for undefined in self.documented_terms(module).undefined() {
+            self.problems.report(undefined);
+        }
+    }
+
+    fn documented_terms(&mut self, module: ModuleId) -> DocumentedTerms<'_> {
+        let noted = NotedTerms {
+            module,
+            terms: self.noted_terms(module),
+        };
+        DocumentedTerms::new(self.term_resolver(), &self.duplicate_definitions, noted)
+    }
+
+    fn term_resolver(&self) -> TermResolver<'_> {
+        TermResolver::new(&self.tables.table, &self.tables.bindings, self.phase)
+    }
+
+    fn noted_terms(&mut self, module: ModuleId) -> Vec<NotedTerm> {
+        if self.skips_document_check(module) {
+            return Vec::new();
+        }
+        let Some(notes) = self.docstring_notes() else {
+            return Vec::new();
+        };
+        notes
+            .keys()
+            .into_iter()
+            .flat_map(|key| self.tables.module_notes.of(module, key))
+            .collect::<Vec<Form>>()
+            .into_iter()
+            .filter_map(|note| self.noted_term(&notes.noted_term, note))
+            .collect()
+    }
+
+    fn skips_document_check(&self, module: ModuleId) -> bool {
+        ModuleSources::is_prelude(self.modules.get(module).path())
+            || !self.tables.module_notes.holds_any(module)
+    }
+
+    fn docstring_notes(&mut self) -> Option<DocstringNotes> {
+        let notes_module = self.notes_module()?;
+        let key = self.exported_value(notes_module, DocstringNotes::DOCSTRINGS_KEY)?;
+        let documented_terms_key =
+            self.exported_value(notes_module, DocstringNotes::DOCUMENTED_TERMS_KEY)?;
+        let noted_term = self.exported_value(notes_module, DocstringNotes::NOTED_TERM)?;
+        DocstringNotes::of(&key, &documented_terms_key, noted_term)
+    }
+
+    fn notes_module(&self) -> Option<ModuleId> {
+        let prelude = self
+            .modules
+            .find(&ModulePath::new(ModuleSources::PRELUDE))?;
+        let page_macro = self
+            .modules
+            .get(prelude)
+            .exported(DocstringNotes::PAGE_MACRO, Namespace::Value)?;
+        let page_module = self.definition_module(page_macro)?;
+        let key = self
+            .modules
+            .get(page_module)
+            .exported(DocstringNotes::DOCSTRINGS_KEY, Namespace::Value)?;
+        self.definition_module(key)
+    }
+
+    fn exported_value(&mut self, module: ModuleId, name: &str) -> Option<Value> {
+        let binding = self.modules.get(module).exported(name, Namespace::Value)?;
+        let span = self.tables.bindings.get(binding).span()?;
+        self.evaluate_global(binding, span).ok()
+    }
+
+    fn noted_term(&mut self, accessor: &Value, note: Form) -> Option<NotedTerm> {
+        let span = note.span();
+        let steps = self.form_budgets.current().steps();
+        let term = Interpreter::new(self, span, steps)
+            .call(accessor, vec![Value::Form(note)], span)
+            .ok()?;
+        let term = term.as_form()?;
+        Some(NotedTerm {
+            term: term.as_symbol()?.clone(),
+            span: term.span(),
+        })
     }
 
     fn take_modules(&mut self) -> Vec<CoreModule> {

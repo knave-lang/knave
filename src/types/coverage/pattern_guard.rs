@@ -11,11 +11,18 @@ impl<'p> PatternGuard<'p> {
     }
 
     pub(super) fn is_needed(&self) -> bool {
-        if self.is_boxed_value_test() {
-            return true;
-        }
+        self.tests_a_value() && (self.pattern.boxed || self.has_guarded_part())
+    }
+
+    fn tests_a_value(&self) -> bool {
+        !matches!(
+            &self.pattern.kind,
+            TypedPatternKind::Wildcard | TypedPatternKind::Bind(_)
+        )
+    }
+
+    fn has_guarded_part(&self) -> bool {
         match &self.pattern.kind {
-            TypedPatternKind::Wildcard | TypedPatternKind::Bind(_) => false,
             TypedPatternKind::Variant(_, arguments) | TypedPatternKind::Struct(_, arguments) => {
                 arguments
                     .iter()
@@ -25,15 +32,8 @@ impl<'p> PatternGuard<'p> {
                 matches!(literal, Literal::String(_))
                     && matches!(ty, Type::Primitive(PrimitiveType::String))
             }
+            _ => false,
         }
-    }
-
-    fn is_boxed_value_test(&self) -> bool {
-        self.pattern.boxed
-            && !matches!(
-                &self.pattern.kind,
-                TypedPatternKind::Wildcard | TypedPatternKind::Bind(_)
-            )
     }
 }
 

@@ -4500,6 +4500,16 @@ fn eval_reports_a_document_of_a_name_the_module_does_not_define() {
 }
 
 #[test]
+fn eval_reports_a_misplaced_documented_definition_once() {
+    let sandbox =
+        Sandbox::new("eval_misplaced_documented_definition").with_file("e.knv", DOCUMENTED_ONE);
+    let eval = sandbox.compiler(&["eval", "e.knv", "(defn k () \"K doc.\" 2) (doc k)"]);
+    let stderr = eval.assert_exit_code(1).stderr();
+    assert_eq!(stderr.matches("error[L0208]").count(), 1, "{stderr}");
+    assert!(!stderr.contains("L0351"), "{stderr}");
+}
+
+#[test]
 fn repl_reports_a_document_of_an_unbound_name_once() {
     let sandbox = Sandbox::new("repl_undefined_documented_term");
     let repl = sandbox.compiler_reading(PROMPT_DOCUMENTED_UNBOUND_NAME, &["repl"]);

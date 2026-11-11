@@ -9,8 +9,9 @@ use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::temporary_directory::TemporaryDirectory;
-use super::terminal::SourceLoader;
-use super::terminal::{BuildRoute, BuildTarget, EvaluationRequest, ModuleOfSources, Terminal};
+use super::terminal::{
+    BuildRoute, BuildTarget, EvaluationRequest, ModuleOfSources, SourceLoader, Terminal,
+};
 use crate::build::BuildProfile;
 use crate::check::ProgramChecker;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Diagnostics};

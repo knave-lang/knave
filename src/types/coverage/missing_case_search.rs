@@ -47,20 +47,28 @@ impl<'c, 'a> MissingCaseSearch<'c, 'a> {
 
     fn column_witnesses(&self, matrix: &PatternMatrix, types: &[Type]) -> Vec<Vec<Witness>> {
         let constructors = self.catalog.constructors(&types[0]).unwrap_or_default();
-        let named =
-            |constructor: &Constructor| matrix.heads_cover(std::slice::from_ref(constructor));
-        if !constructors.iter().any(named) {
+        if !constructors
+            .iter()
+            .any(|constructor| matrix.heads_name(constructor.tag()))
+        {
             return Self::prefixed(&Witness::Wild, &self.default_witnesses(matrix, types));
         }
-        let defaults = match constructors.iter().all(named) {
-            true => Vec::new(),
-            false => self.default_witnesses(matrix, types),
+        let defaults = if constructors
+            .iter()
+            .all(|constructor| matrix.heads_name(constructor.tag()))
+        {
+            Vec::new()
+        } else {
+            self.default_witnesses(matrix, types)
         };
         constructors
             .iter()
-            .flat_map(|constructor| match named(constructor) {
-                true => self.constructor_witnesses(matrix, types, constructor),
-                false => Self::prefixed(&Self::with_wild_arguments(constructor), &defaults),
+            .flat_map(|constructor| {
+                if matrix.heads_name(constructor.tag()) {
+                    self.constructor_witnesses(matrix, types, constructor)
+                } else {
+                    Self::prefixed(&Self::with_wild_arguments(constructor), &defaults)
+                }
             })
             .collect()
     }

@@ -227,6 +227,18 @@ impl SearchFixture {
         ]
     }
 
+    pub(super) fn constructors_named_by(
+        &self,
+        arms: Vec<CoverPattern>,
+        scrutinee: Type,
+    ) -> Option<usize> {
+        let catalog = self.catalog();
+        let matrix: PatternMatrix = arms.into_iter().collect();
+        catalog
+            .constructors_named_by(&scrutinee, &matrix)
+            .map(|constructors| constructors.len())
+    }
+
     pub(super) fn missing_cases(
         &self,
         arms: Vec<CoverPattern>,

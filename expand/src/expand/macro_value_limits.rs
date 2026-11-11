@@ -10,6 +10,7 @@ struct MacroRun;
 
 impl MacroRun {
     const ENTRY: &str = "work";
+    const RUN: &str = "(def x (run))";
     const BUILTINS: &str = "(use code add-module-note concat escape-char escape-string first list \
                             located number-sub prepend read-form rest string string-lines string-lowercase \
                             symbol value-eq)";
@@ -20,9 +21,18 @@ impl MacroRun {
             .next()
     }
 
+    fn runs_out_of_steps(body: &str, steps: u64) -> bool {
+        let run = format!("(with-macro-steps {steps} (def x (run)))");
+        !Self::failures_of(body, &run, &DiagnosticCode::MACRO_STEP_LIMIT).is_empty()
+    }
+
     fn failure_texts(body: &str, code: &DiagnosticCode) -> Vec<String> {
+        Self::failures_of(body, Self::RUN, code)
+    }
+
+    fn failures_of(body: &str, run: &str, code: &DiagnosticCode) -> Vec<String> {
         let mut sources = SourceMap::default();
-        let program = format!("{}\n{body}\n(def x (run))\n", Self::BUILTINS);
+        let program = format!("{}\n{body}\n{run}\n", Self::BUILTINS);
         let entry = sources.add(Self::ENTRY, program);
         let mut expander = Expander::new(
             &mut sources,
@@ -158,6 +168,39 @@ fn lowercasing_text_that_grows_stops_at_the_text_limit() {
 }
 
 #[test]
+fn reading_a_form_past_the_list_limit_stops_at_it() {
+    let body = format!(
+        "{}
+(def run (macro (form) (do (read-form (quote x) (string \"(\" text \")\") 0) (quote 1))))",
+        MacroRun::doubled_text("a ", 22)
+    );
+    assert_eq!(
+        MacroRun::too_large(&body).as_deref(),
+        Some("(read-form (quote x) (string \"(\" text \")\") 0)")
+    );
+}
+
+#[test]
+fn reading_forms_spends_steps_for_each_form_it_builds() {
+    let body = format!(
+        "{}
+(def run (macro (form) (do (read-form (quote x) (string \"(\" text \")\") 0) (quote 1))))",
+        MacroRun::doubled_text("a ", 10)
+    );
+    assert!(MacroRun::runs_out_of_steps(&body, 2000));
+    assert!(!MacroRun::runs_out_of_steps(&body, 20000));
+}
+
+#[test]
+fn adding_a_module_note_spends_steps_for_each_form_it_holds() {
+    let body = "(def share (fn (x k) (if (value-eq k 0) x (recur (list x x) (number-sub k 1)))))
+(def tree (share (quote a) 10))
+(def run (macro (form) (do (add-module-note (quote k) tree) (quote 1))))";
+    assert!(MacroRun::runs_out_of_steps(body, 3000));
+    assert!(!MacroRun::runs_out_of_steps(body, 20000));
+}
+
+#[test]
 fn splitting_text_into_too_many_lines_stops_at_the_list_limit() {
     let body = format!(
         "{}
@@ -171,12 +214,14 @@ fn splitting_text_into_too_many_lines_stops_at_the_list_limit() {
 }
 
 #[test]
-fn adding_too_many_module_notes_stops_at_the_note_limit() {
-    let body = "(def add (fn (n) (if (value-eq n 0) (quote 1) (do (add-module-note (quote k) (quote 0)) (recur (number-sub n 1))))))
-(def run (macro (form) (add 1048577)))";
+fn adding_module_notes_past_their_form_limit_stops_at_it() {
+    let body = "(def share (fn (x k) (if (value-eq k 0) x (recur (list x x) (number-sub k 1)))))
+(def tree (share (quote a) 16))
+(def add (fn (n) (if (value-eq n 0) (quote 1) (do (add-module-note (quote k) tree) (recur (number-sub n 1))))))
+(def run (macro (form) (add 40)))";
     assert_eq!(
         MacroRun::too_large(body).as_deref(),
-        Some("(add-module-note (quote k) (quote 0))")
+        Some("(add-module-note (quote k) tree)")
     );
 }
 

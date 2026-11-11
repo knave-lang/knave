@@ -3,7 +3,7 @@ use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::Arguments;
 use crate::interpret::list_size::ListSize;
 use crate::interpret::problems::InterpretProblems;
-use crate::interpret::{BuildLimit, CodeList, PlannedList, Value};
+use crate::interpret::{BuildLimit, CodeList, PlannedList, Value, WorkMeter};
 use crate::source::Span;
 
 pub struct StringOperations<'a> {
@@ -27,7 +27,8 @@ impl<'a> StringOperations<'a> {
         let limit = BuildLimit::of(self.arguments.function(), self.arguments.span());
         let line_count = text.matches(Self::LINE_BREAK).count() + 1;
         limit.check(PlannedList(ListSize::of_texts(line_count)))?;
-        self.arguments.charge(line_count)?;
+        self.arguments
+            .charge(WorkMeter::built_forms_work(line_count))?;
         let lines = text
             .split(Self::LINE_BREAK)
             .map(|line| self.string_value(line.to_string()))

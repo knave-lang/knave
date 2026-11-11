@@ -24,39 +24,60 @@ impl SimilarName {
     fn edit_distance(left: &str, right: &str) -> usize {
         let left: Vec<char> = left.chars().collect();
         let right: Vec<char> = right.chars().collect();
-        let mut distances = vec![vec![0; right.len() + 1]; left.len() + 1];
-        (0..=left.len()).for_each(|row| distances[row][0] = row);
-        (0..=right.len()).for_each(|column| distances[0][column] = column);
+        let mut rows = EditRows::new(right.len());
         for row in 1..=left.len() {
+            rows.start(row);
             for column in 1..=right.len() {
-                distances[row][column] =
-                    Self::cheapest_edit(&distances, &left, &right, row, column);
+                let cost = Self::cheapest_edit(&rows, &left, &right, row, column);
+                rows.current[column] = cost;
             }
         }
-        distances[left.len()][right.len()]
+        rows.current[right.len()]
     }
 
     fn cheapest_edit(
-        distances: &[Vec<usize>],
+        rows: &EditRows,
         left: &[char],
         right: &[char],
         row: usize,
         column: usize,
     ) -> usize {
         let substitution =
-            distances[row - 1][column - 1] + usize::from(left[row - 1] != right[column - 1]);
-        let deletion = distances[row - 1][column] + 1;
-        let insertion = distances[row][column - 1] + 1;
+            rows.previous[column - 1] + usize::from(left[row - 1] != right[column - 1]);
+        let deletion = rows.previous[column] + 1;
+        let insertion = rows.current[column - 1] + 1;
         let best = substitution.min(deletion).min(insertion);
         let is_transposition = row > 1
             && column > 1
             && left[row - 1] == right[column - 2]
             && left[row - 2] == right[column - 1];
         if is_transposition {
-            best.min(distances[row - 2][column - 2] + 1)
+            best.min(rows.two_back[column - 2] + 1)
         } else {
             best
         }
+    }
+}
+
+struct EditRows {
+    two_back: Vec<usize>,
+    previous: Vec<usize>,
+    current: Vec<usize>,
+}
+
+impl EditRows {
+    fn new(width: usize) -> Self {
+        Self {
+            two_back: vec![0; width + 1],
+            previous: vec![0; width + 1],
+            current: (0..=width).collect(),
+        }
+    }
+
+    fn start(&mut self, row: usize) {
+        std::mem::swap(&mut self.two_back, &mut self.previous);
+        std::mem::swap(&mut self.previous, &mut self.current);
+        self.current[0] = row;
     }
 }
 

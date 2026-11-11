@@ -7,9 +7,11 @@ impl ListSize {
     pub const ATOM: usize = 1;
 
     pub fn of_items<I: ListItem>(items: &[I]) -> usize {
-        items
-            .iter()
-            .fold(Self::EMPTY, |size, item| size + item.list_size())
+        Self::of_counts(items.iter().map(ListItem::list_size))
+    }
+
+    pub fn of_counts(counts: impl Iterator<Item = usize>) -> usize {
+        counts.fold(Self::EMPTY, |size, count| size + count)
     }
 
     pub fn of_texts(count: usize) -> usize {

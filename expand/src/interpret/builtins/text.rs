@@ -179,8 +179,10 @@ impl<'a> TextOperations<'a> {
 
     pub fn add_module_note(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
-        host.add_module_note(self.arguments.symbol(0)?.name(), self.arguments.form(1)?)
-            .map_err(|too_many| too_many.at(self.arguments.function(), self.arguments.span()))?;
+        let note = self.arguments.form(1)?;
+        self.arguments.charge(note.form_count())?;
+        host.add_module_note(self.arguments.symbol(0)?.name(), note)
+            .map_err(|too_large| too_large.at(self.arguments.function(), self.arguments.span()))?;
         Ok(Value::Unit)
     }
 

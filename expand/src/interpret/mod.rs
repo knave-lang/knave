@@ -8,10 +8,10 @@ mod limit_problems;
 mod limited_text;
 mod list_item;
 mod list_size;
+mod notes_too_large;
 mod planned_list;
 mod problems;
 mod step_budget;
-mod too_many_notes;
 mod value;
 mod value_limits;
 mod work_meter;
@@ -23,10 +23,10 @@ pub use code_list::{
 };
 pub use limit_problems::LimitProblems;
 pub(crate) use limited_text::LimitedText;
+pub use notes_too_large::NotesTooLarge;
 pub(crate) use planned_list::PlannedList;
 pub use problems::InterpretProblems;
 pub use step_budget::StepBudget;
-pub use too_many_notes::TooManyNotes;
 pub use value::{Closure, Env, Value};
 pub use work_meter::WorkMeter;
 
@@ -55,7 +55,7 @@ pub trait CompileTimeHost {
     fn type_definition_call(&self, term: &Symbol) -> Option<Form>;
     fn expand_call(&mut self, call: Form) -> Result<Option<Form>, Diagnostic>;
     fn set_macro_step_limit(&mut self, limit: u64);
-    fn add_module_note(&mut self, key: &str, note: Form) -> Result<(), TooManyNotes>;
+    fn add_module_note(&mut self, key: &str, note: Form) -> Result<(), NotesTooLarge>;
     fn module_notes(&self, context: &Symbol, key: &str) -> Vec<Form>;
     fn declare_definition(&mut self, name: Form, declaration: Declaration);
     fn form_location(&self, form: &Form) -> String;

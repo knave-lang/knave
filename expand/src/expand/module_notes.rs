@@ -1,5 +1,5 @@
 use crate::core::ModuleId;
-use crate::interpret::TooManyNotes;
+use crate::interpret::NotesTooLarge;
 use crate::reader::Form;
 
 use super::saved_notes::{NoteTables, NotesKey, NotesTable, SavedNotes};
@@ -10,21 +10,28 @@ pub struct ModuleNotes {
     saved: SavedNotes,
     notes: NotesTable,
     added: Vec<NotesKey>,
+    #[serde(skip)]
+    held_forms: usize,
 }
 
 #[derive(Clone, Copy)]
 pub struct NotesCheckpoint(usize);
 
 impl ModuleNotes {
-    pub const LIMIT: usize = 1 << 20;
+    pub const FORM_LIMIT: usize = 1 << 22;
 
-    pub fn add(&mut self, module: ModuleId, key: &str, note: Form) -> Result<(), TooManyNotes> {
-        if self.added.len() == Self::LIMIT {
-            return Err(TooManyNotes { limit: Self::LIMIT });
+    pub fn add(&mut self, module: ModuleId, key: &str, note: Form) -> Result<(), NotesTooLarge> {
+        let held_forms = self.held_forms + note.form_count();
+        if held_forms > Self::FORM_LIMIT {
+            return Err(NotesTooLarge {
+                held_forms,
+                limit: Self::FORM_LIMIT,
+            });
         }
         let notes_key = (module, key.to_string());
         self.notes.entry(notes_key.clone()).or_default().push(note);
         self.added.push(notes_key);
+        self.held_forms = held_forms;
         Ok(())
     }
 
@@ -68,10 +75,64 @@ impl ModuleNotes {
 
     pub fn roll_back(&mut self, checkpoint: NotesCheckpoint) {
         for notes_key in self.added.split_off(checkpoint.0).into_iter().rev() {
-            self.notes
+            let removed = self
+                .notes
                 .get_mut(&notes_key)
-                .expect("every added key holds its notes")
-                .pop();
+                .and_then(Vec::pop)
+                .expect("every added key holds its notes");
+            self.held_forms = self.held_forms.saturating_sub(removed.form_count());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ModuleNotes;
+    use crate::core::ModuleId;
+    use crate::reader::{Form, FormKind, Symbol};
+    use crate::source::{SourceId, Span};
+
+    struct NoteForms;
+
+    impl NoteForms {
+        fn span() -> Span {
+            Span::new(SourceId::new(0), 0..1)
+        }
+
+        fn leaf() -> Form {
+            Form::new(FormKind::Symbol(Symbol::new("leaf")), Self::span())
+        }
+
+        fn of_forms(count: usize) -> Form {
+            Form::new(FormKind::List(vec![Self::leaf(); count - 1]), Self::span())
+        }
+
+        fn add(notes: &mut ModuleNotes, note: Form) -> bool {
+            notes.add(ModuleId::new(0), "key", note).is_ok()
+        }
+    }
+
+    #[test]
+    fn notes_up_to_the_form_limit_are_held() {
+        let mut notes = ModuleNotes::default();
+        let half = ModuleNotes::FORM_LIMIT / 2;
+        assert!(NoteForms::add(&mut notes, NoteForms::of_forms(half)));
+        assert!(NoteForms::add(&mut notes, NoteForms::of_forms(half)));
+        assert!(!NoteForms::add(&mut notes, NoteForms::leaf()));
+    }
+
+    #[test]
+    fn rolling_back_a_note_frees_its_forms() {
+        let mut notes = ModuleNotes::default();
+        let checkpoint = notes.checkpoint();
+        assert!(NoteForms::add(
+            &mut notes,
+            NoteForms::of_forms(ModuleNotes::FORM_LIMIT)
+        ));
+        notes.roll_back(checkpoint);
+        assert!(NoteForms::add(
+            &mut notes,
+            NoteForms::of_forms(ModuleNotes::FORM_LIMIT)
+        ));
     }
 }

@@ -17,6 +17,7 @@ use super::parameter_modes::ParameterModes;
 use super::peeling::ReferencePeeling;
 use super::pending::PendingBorrow;
 use super::pinning::LiteralDefaults;
+use super::pipelines::Pipelines;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
 use super::rust_types::{RustType, RustTypeTable};
 use super::selection::Selection;
@@ -31,6 +32,7 @@ use super::typed::{
     TypedExprKind, TypedLeaf, TypedTrait, TypedTraitImpl, TypedTraitMethod,
 };
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
+use super::wrapper::FunctionValueWrapper;
 use crate::core::{
     BindingArena, BindingId, BindingKind, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr,
     ExprKind, Item, ItemKind, KernelForm, Leaf, ModuleId, ParsedTemplate, PrimitiveType,
@@ -333,11 +335,7 @@ impl TypeChecker {
         }
     }
 
-    pub(super) fn collect_declarations(
-        &mut self,
-        modules: &[CoreModule],
-        definitions: &[Definition],
-    ) {
+    fn collect_declarations(&mut self, modules: &[CoreModule], definitions: &[Definition]) {
         self.record_type_arities(modules);
         self.record_projections(modules);
         self.record_trait_arguments(modules);
@@ -590,7 +588,7 @@ impl TypeChecker {
         }
     }
 
-    pub(super) fn check_definitions(
+    fn check_definitions(
         &mut self,
         entry_function: Option<BindingId>,
         graph: &DefinitionGraph,
@@ -709,6 +707,18 @@ impl TypeChecker {
         VariantPayloads::new(&self.enums, self.box_binding, &self.inferred_boxes)
     }
 
+    pub(super) fn reference_peeling(&self) -> ReferencePeeling<'_> {
+        ReferencePeeling::new(&self.unifier)
+    }
+
+    pub(super) fn pipelines(&self) -> Pipelines<'_> {
+        Pipelines::new(&self.rust_types)
+    }
+
+    pub(super) fn function_value_wrapper(&mut self) -> FunctionValueWrapper<'_> {
+        FunctionValueWrapper::new(&mut self.bindings)
+    }
+
     pub(super) fn called_parameters<'m>(
         &'m self,
         modules: &'m [CoreModule],
@@ -718,7 +728,7 @@ impl TypeChecker {
 
     pub(super) fn match_coverage(&self) -> MatchCoverage<'_> {
         let catalog = ConstructorCatalog::new(
-            ReferencePeeling::new(&self.unifier),
+            self.reference_peeling(),
             &self.structs,
             self.variant_payloads(),
         );
@@ -794,7 +804,7 @@ impl TypeChecker {
         param
     }
 
-    pub(super) fn discharge_obligations(&mut self, pass: ObligationPass) {
+    fn discharge_obligations(&mut self, pass: ObligationPass) {
         self.recheck_deferred_equalities();
         for obligation in self.unifier.take_obligations() {
             self.with_operand_mark(obligation.inside_operand, |checker| {

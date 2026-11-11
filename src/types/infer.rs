@@ -14,9 +14,7 @@ use super::collection::{Collection, CollectionKind};
 use super::enums::{PayloadPosition, VariantDefinition, VariantPayload};
 use super::parameter_call_labels::ParameterCallRequest;
 use super::pattern_placement::{PatternFields, PatternPlacement};
-use super::peeling::ReferencePeeling;
 use super::pending::{DecidedBorrows, PendingBorrow};
-use super::pipelines::Pipelines;
 use super::problems::{MismatchContext, TypeProblems};
 use super::rust_types::RustType;
 use super::selfless_methods::SelflessMethod;
@@ -29,7 +27,6 @@ use super::typed::{
     TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedStructExpr,
 };
 use super::unifier::{LiteralKind, UnifyError};
-use super::wrapper::FunctionValueWrapper;
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, Control, Expr, ExprKind, FieldLabel,
     Keyword, Lambda, Leaf, Literal, MapOperation, Pattern, PatternArguments, PatternKind,
@@ -990,8 +987,8 @@ impl TypeChecker {
         }
     }
 
-    pub(super) fn peeled_reference(&self, ty: &Type) -> (Type, Option<ReferenceKind>) {
-        ReferencePeeling::new(&self.unifier).peel(ty)
+    fn peeled_reference(&self, ty: &Type) -> (Type, Option<ReferenceKind>) {
+        self.reference_peeling().peel(ty)
     }
 
     fn binding_mode_type(matched: Type, mode: Option<ReferenceKind>) -> Type {
@@ -1875,7 +1872,7 @@ impl TypeChecker {
         site: &ArgumentSite<'_>,
     ) -> Result<TypedExpr, Diagnostic> {
         let expected = self.unifier.resolve(parameter);
-        if value.is_written_form() || !Pipelines::new(&self.rust_types).is_pipeline(&expected) {
+        if value.is_written_form() || !self.pipelines().is_pipeline(&expected) {
             return Ok(value);
         }
         let Some((item, collection_type)) = self.collection_item(&value.ty) else {
@@ -2000,8 +1997,9 @@ impl TypeChecker {
             return Ok(value);
         }
         self.give_items_to_parameters(binding, &expected, &found, value.span)?;
-        let mut wrapped =
-            FunctionValueWrapper::new(&mut self.bindings).prepare(&expected, value, binding);
+        let mut wrapped = self
+            .function_value_wrapper()
+            .prepare(&expected, value, binding);
         for argument in &mut wrapped.arguments {
             argument.borrow = Borrow::None;
         }

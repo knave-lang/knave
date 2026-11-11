@@ -208,7 +208,7 @@ struct ExpansionTables {
     introduction_scopes: FxHashSet<Scope>,
     global_macros: Vec<(crate::core::BindingId, Form)>,
     trait_paths: FxHashMap<crate::core::BindingId, Rc<str>>,
-    structural_paths: StructuralPathClaims,
+    structural_path_claims: StructuralPathClaims,
     enum_variants: FxHashMap<crate::core::BindingId, Vec<crate::core::BindingId>>,
     variant_fields: FxHashMap<crate::core::BindingId, Vec<Rc<str>>>,
     trait_methods: FxHashMap<crate::core::BindingId, TraitMethods>,
@@ -361,7 +361,7 @@ impl<'s> Expander<'s> {
     fn structural_traits(&mut self) -> StructuralTraits<'_> {
         StructuralTraits::new(
             &self.tables.bindings,
-            &mut self.tables.structural_paths,
+            &mut self.tables.structural_path_claims,
             &mut self.diagnostics,
         )
     }

@@ -566,7 +566,7 @@ Every row of C1 was checked against the prelude signature of its target, against
 | Rust | `any` | `any?` | R |
 | Rust | `values` | `vals` | R |
 | Rust | `map` **B** | `map-some` | R, with `:given option` |
-| Rust | `sort-by` | `sort-by!` | H: "`sort-by!` sorts by a key, not by a comparison: write `(sort-by! items (fn (item) key))`" |
+| Rust | `sort-by` | `sort!` | H: "`sort!` takes the comparison second, and it returns an `i64`: negative puts the first item first, as in `(sort! items (fn (a b) (- (deref a) (deref b))))`" |
 | Rust | `then-some` **B** | `then-some` | H: "`then-some` chains an `option`; for a `bool`, write `(if flag (some value) none)`" |
 | Rust | `read-line` **B** | `read-line` | H: "`read-line` takes no buffer and returns the line as `(result (option string) io-error)`" |
 | Rust | `is-digit` | `digit?` | H: "`digit?` tests an ASCII digit and takes no radix: write `(digit? c)`" |
@@ -611,7 +611,7 @@ Every row of C1 was checked against the prelude signature of its target, against
 | Scheme, Racket | `#t`, `#f` | `true`, `false` | R |
 | Scheme, Racket | `string-append` | `str` | R |
 
-The Rust spelling rule covers `is_some`, `is_none`, `is_ok`, `is_err`, `is_empty`, `HashMap`, `PartialEq`, `Option` and the other names that the prelude's Rust templates or the mangling rule spell, with no entry. Its matches were checked against Rust's meaning, as C1's rows were: every exported prelude name whose mangled spelling differs from its knave spelling was compared with the Rust standard library item of that spelling. A type matched through a template is the Rust type itself, so it means the same. Four value matches differ, and each gets an **H** entry above, which decides before the spelling rule: `sort-by!` against Rust's `sort_by`, which takes a comparison; `then-some` against `bool::then_some`; `read-line` against `Stdin::read_line`, which fills a buffer; and `digit?` against `char::is_digit`, which takes a radix. The rest mean what Rust's namesakes mean: `as-str`, `dedup!`, `empty?`, `err?`, `for-each`, `map-err`, `max-by-key`, `none?`, `ok-or`, `ok?`, `pop!`, `push!`, `reverse!`, `some?`, `sort!`, `take-while`, `unwrap-err`, `unwrap-or`, `alphanumeric?` and `whitespace?`.
+The Rust spelling rule covers `is_some`, `is_none`, `is_ok`, `is_err`, `is_empty`, `HashMap`, `PartialEq`, `Option` and the other names that the prelude's Rust templates or the mangling rule spell, with no entry. Its matches were checked against Rust's meaning, as C1's rows were: every exported prelude name whose mangled spelling differs from its knave spelling was compared with the Rust standard library item of that spelling. A type matched through a template is the Rust type itself, so it means the same. Four value matches differ, and each gets an **H** entry above, which decides before the spelling rule: `sort-by!` against Rust's `sort_by`, which takes a comparison, so the entry for `sort_by` sits on `sort!`, which also takes one, and overrides that spelling match; `then-some` against `bool::then_some`; `read-line` against `Stdin::read_line`, which fills a buffer; and `digit?` against `char::is_digit`, which takes a radix. The rest mean what Rust's namesakes mean: `as-str`, `dedup!`, `empty?`, `err?`, `for-each`, `map-err`, `max-by-key`, `none?`, `ok-or`, `ok?`, `pop!`, `push!`, `reverse!`, `some?`, `sort!`, `take-while`, `unwrap-err`, `unwrap-or`, `alphanumeric?` and `whitespace?`.
 
 ### C2. Candidates for later pull requests, each with its source link
 

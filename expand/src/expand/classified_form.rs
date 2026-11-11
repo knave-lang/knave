@@ -1,13 +1,15 @@
 use super::Expander;
 use super::evaluated_forms::EvaluatedForms;
-use super::recorded_inputs::{BoundName, RecordedInputs};
+use super::input_terms::InputTerms;
+use super::module_notes::NotesCheckpoint;
+use super::recorded_inputs::RecordedInputs;
 use crate::core::ModulePath;
 use crate::source::{SourceId, Span};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ClassifiedForm {
     Expression,
-    Definition(Vec<BoundName>),
+    Definition(InputTerms),
 }
 
 impl Expander<'_> {
@@ -19,14 +21,21 @@ impl Expander<'_> {
     ) -> ClassifiedForm {
         self.evaluated_forms = EvaluatedForms::new([form]);
         self.recorded_inputs = RecordedInputs::new(vec![form]);
-        self.load_source_module(path, sources);
+        let module = self.load_source_module(path, sources);
         let record = self.recorded_inputs.of(form);
-        let leaves_no_expression = self.evaluated_forms.left_out_within(form).is_empty();
-        if self.evaluated_forms.is_definition(form) || record.adds_notes && leaves_no_expression {
-            ClassifiedForm::Definition(record.bound)
-        } else {
-            ClassifiedForm::Expression
+        if self.evaluated_forms.is_definition(form) {
+            return ClassifiedForm::Definition(InputTerms::binding(record.bound));
         }
+        if !record.adds_notes || !self.evaluated_forms.left_out_within(form).is_empty() {
+            return ClassifiedForm::Expression;
+        }
+        let documented = self
+            .documented_terms(module, NotesCheckpoint::START)
+            .named_within(form);
+        ClassifiedForm::Definition(InputTerms {
+            bound: record.bound,
+            documented,
+        })
     }
 }
 
@@ -72,10 +81,11 @@ mod tests {
         }
 
         fn names(&mut self, input: &str) -> Vec<(String, Namespace)> {
-            let ClassifiedForm::Definition(names) = self.classify(input) else {
+            let ClassifiedForm::Definition(terms) = self.classify(input) else {
                 panic!("`{input}` is a definition");
             };
-            names
+            terms
+                .bound
                 .into_iter()
                 .map(|bound| (bound.name.to_string(), bound.namespace))
                 .collect()

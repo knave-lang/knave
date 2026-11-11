@@ -1,0 +1,10 @@
+---
+source: tests/cli.rs
+expression: repl.transcript()
+---
+exit code: Some(0)
+--- stdout
+(g)
+
+Returns seven.
+--- stderr

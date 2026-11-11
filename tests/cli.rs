@@ -98,6 +98,7 @@ const PRELUDE_PAGES: [&str; 23] = [
 ];
 const UNWRAP_OR_SECTION: &str = "<a id=\"unwrap-or\"></a>\n\n## `unwrap-or`\n\n```lisp\n(unwrap-or option default)\n(type unwrap-or (where (a) (fn ((option a) a) a)))\n```\n";
 const PRELUDE_REEXPORT: &str = "## Re-exported names\n\n- [`*`](prelude/number.md#%2A)\n";
+const VEC_REEXPORT: &str = "- [`vec`](../prelude/types.md#vec)\n";
 const GEOMETRY: &str = "(export area)\n\n(defn area (width height) \"Multiplies a width by a height.\" (* width height))\n";
 const GEOMETRY_ENTRY: &str = "(use geometry area)\n\n(defn main () (println (area 3 4)))\n";
 const DOCUMENTED_GEOMETRY: &str = "(module \"Shapes on a grid.\")\n\n(export area perimeter)\n\n(defn area (width height)\n  \"Multiplies two sides.\"\n  (* width height))\n\n(defn perimeter (width height)\n  (* 2 (+ width height)))\n\n(defn helper (x)\n  \"Not exported.\"\n  x)\n";
@@ -2055,6 +2056,29 @@ fn doc_write_prelude_writes_a_page_per_public_prelude_module() {
         sandbox
             .contents("doc/prelude.md")
             .contains(PRELUDE_REEXPORT)
+    );
+    assert!(
+        sandbox
+            .contents("doc/prelude/vec.md")
+            .contains(VEC_REEXPORT)
+    );
+}
+
+#[test]
+fn doc_write_links_a_reexport_to_the_module_that_defines_it() {
+    let sandbox = Sandbox::new("doc_write_reexport_home")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file("src/a.knv", "(use b size)\n\n(export size)\n")
+        .with_file(
+            "src/b.knv",
+            "(export size)\n\n(defn size () \"Counts.\" 1)\n",
+        );
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.contents("doc/a.md"),
+        "# a\n\n\n## Re-exported names\n\n- [`size`](b.md#size)\n"
     );
 }
 

@@ -1,0 +1,104 @@
+(defstruct label
+  :text (ref str))
+
+(defstruct page
+  :title string)
+
+(type checked
+  (fn ((ref str))
+    (result (ref str) io-error)))
+
+(defn checked (text) (ok text))
+
+(type first-letter
+  (fn ((ref str)) (ref str)))
+
+(defn first-letter (text) (subs text 0 1))
+
+(type title-of
+  (fn ((ref page)) (ref str)))
+
+(defn title-of (page)
+  (as-str (:title page)))
+
+(type announced (fn ((ref str)) string))
+
+(defn announced (text)
+  (println text)
+  (str text))
+
+(type prefix
+  (fn (usize (ref str)) (ref str)))
+
+(defn prefix (size text) (subs text 0 size))
+
+(defn through-as-str (name)
+  (local letter
+    (first-letter (as-str (str name "-a"))))
+  (println letter))
+
+(defn through-borrowed-argument (name)
+  (local letter
+    (title-of (->page :title (str name "-b"))))
+  (println letter))
+
+(defn through-ref (name)
+  (local letter
+    (title-of (ref (->page :title (str name "-c")))))
+  (println letter))
+
+(defn through-field (name)
+  (local tag
+    (->label :text (as-str (str name "-d"))))
+  (println (:text tag)))
+
+(defn through-variant (name)
+  (local found
+    (some (as-str (str name "-e"))))
+  (println (unwrap found)))
+
+(defn through-nested-str (name)
+  (local letter
+    (first-letter (as-str (str (as-str (str name "-f")) "-g"))))
+  (println letter))
+
+(type through-try
+  (fn ((ref str)) (result usize io-error)))
+
+(defn through-try (name)
+  (local letter
+    (try (checked (as-str (str name "-j")))))
+  (ok (len letter)))
+
+(type label-text
+  (fn ((ref label)) (ref str)))
+
+(defn label-text (tag) (:text tag))
+
+(defn lent-inside-lifted (name)
+  (local text
+    (label-text (ref (->label :text (as-str (str name "-k"))))))
+  (println text))
+
+(defn written-borrow-of-struct (name)
+  (local tag
+    (ref (->label :text (as-str (str name "-l")))))
+  (println (:text tag)))
+
+(defn in-written-order ()
+  (local shown
+    (prefix (len (announced "first"))
+            (as-str (announced "second"))))
+  (println shown))
+
+(defn main ()
+  (through-as-str "ada")
+  (through-borrowed-argument "bea")
+  (through-ref "cy")
+  (through-field "dee")
+  (through-variant "eve")
+  (through-nested-str "fay")
+  (println (unwrap-ok (through-try "jo")))
+  (lent-inside-lifted "kim")
+  (written-borrow-of-struct "lu")
+  (in-written-order))

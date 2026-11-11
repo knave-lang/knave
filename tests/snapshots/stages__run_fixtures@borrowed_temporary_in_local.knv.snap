@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/borrowed_temporary_in_local.knv
+---
+a
+bea-b
+cy-c
+dee-d
+eve-e
+f
+4
+kim-k
+lu-l
+first
+second
+secon

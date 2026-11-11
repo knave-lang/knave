@@ -1,0 +1,62 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/borrowed_temporary_in_template_argument.knv
+---
+fn report(read: &Result<String, std::io::Error>) {
+    match read {
+        Ok(text) => print!("{}", text),
+        Err(error) => println!("{}", error),
+    }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let stem = "borrowed_temporary_in_template_argument";
+    report(
+        &({
+            let owner = format!("{}.txt", stem);
+            let template_argument_0 = owner.as_str();
+            std::fs::read_to_string(template_argument_0).map_err(|error| {
+                std::io::Error::new(
+                    error.kind(),
+                    String::from(template_argument_0) + ": " + &error.to_string(),
+                )
+            })
+        }),
+    );
+    report(
+        &({
+            let owner = format!("{}.missing", stem);
+            let template_argument_0 = owner.as_str();
+            std::fs::read_to_string(template_argument_0).map_err(|error| {
+                std::io::Error::new(
+                    error.kind(),
+                    String::from(template_argument_0) + ": " + &error.to_string(),
+                )
+            })
+        }),
+    );
+    println!("{}", {
+        let owner = format!("{}-x", stem);
+        let template_argument_0 = owner.as_str();
+        template_argument_0.len() + template_argument_0.len()
+    })
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

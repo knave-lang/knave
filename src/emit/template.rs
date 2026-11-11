@@ -111,7 +111,7 @@ impl Template {
         if let [Piece::Placeholder { index, .. }] = self.parsed.pieces() {
             return Ok(arguments[*index].clone());
         }
-        if !places.iter().any(|place| *place) && self.needs_temporaries(&arguments) {
+        if self.binds_arguments(places) && !arguments.iter().all(Code::is_plain_name) {
             return self.inline_with_temporaries(arguments, types);
         }
         self.substitute(&arguments, types, places)
@@ -152,6 +152,7 @@ impl Template {
             fragments,
             precedence: self.precedence(),
             bare_struct_literal,
+            preceding_statements: Vec::new(),
         })
     }
 
@@ -306,10 +307,10 @@ impl Template {
         RustText::new(text).has_top_level_operator()
     }
 
-    fn needs_temporaries(&self, arguments: &[Code]) -> bool {
+    pub fn binds_arguments(&self, places: &[bool]) -> bool {
         let order: Vec<usize> = self.parsed.placeholders().collect();
         let repeated_or_reordered = order.windows(2).any(|pair| pair[0] >= pair[1]);
-        repeated_or_reordered && arguments.iter().any(|argument| !argument.is_plain_name())
+        repeated_or_reordered && !places.iter().any(|place| *place)
     }
 
     fn inline_with_temporaries(
@@ -322,6 +323,7 @@ impl Template {
         for (index, argument) in arguments.into_iter().enumerate() {
             let temporary = format!("{}{index}", Self::TEMPORARY_PREFIX);
             statements.push(Fragment::Newline);
+            statements.extend(argument.preceding_statements);
             statements.push(Fragment::Text(format!("let {temporary} = ")));
             statements.extend(argument.fragments);
             statements.push(Fragment::Text(";".to_string()));

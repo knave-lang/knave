@@ -1,0 +1,19 @@
+(def read-text
+  (rust "std::fs::read_to_string({0}).map_err(|error| std::io::Error::new(error.kind(), String::from({0}) + \": \" + &error.to_string()))"
+    (fn ((ref str))
+      (result string io-error))))
+
+(def doubled-length
+  (rust "{0}.len() + {0}.len()"
+    (fn ((ref str)) usize)))
+
+(defn report (read)
+  (match read
+    ((ok text) (print text))
+    ((err error) (println error))))
+
+(defn main ()
+  (local stem "borrowed_temporary_in_template_argument")
+  (report (read-text (as-str (str stem ".txt"))))
+  (report (read-text (as-str (str stem ".missing"))))
+  (println (doubled-length (as-str (str stem "-x")))))

@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/borrowed_temporary_in_conflicting_argument.knv
+---
+4

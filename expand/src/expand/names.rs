@@ -150,9 +150,8 @@ impl Expander<'_> {
 
     pub(super) fn unbound(&self, symbol: &Symbol, namespace: Namespace, span: Span) -> Diagnostic {
         let candidates: Vec<_> = self
-            .tables
-            .table
-            .visible_name_bindings(symbol, namespace, self.phase)
+            .term_resolver()
+            .visible_bindings(symbol, namespace)
             .into_iter()
             .filter(|(name, binding)| self.is_public(name, namespace, *binding))
             .map(|(name, _)| name)
@@ -179,6 +178,6 @@ impl Expander<'_> {
     }
 
     pub(super) fn definition_module(&self, binding: BindingId) -> Option<ModuleId> {
-        self.kind(binding).defining_module()
+        self.term_resolver().definition_module(binding)
     }
 }

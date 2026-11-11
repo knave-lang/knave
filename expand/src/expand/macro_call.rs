@@ -10,7 +10,7 @@ use super::problems::ExpandProblems;
 use super::returned_arguments::ReturnedArguments;
 use super::shape::{Shape, WrittenDefiner};
 use crate::core::{BindingId, BindingKind, DefinitionForm, Expr, KernelForm, Lambda, Namespace};
-use crate::diagnostic::Diagnostic;
+use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::interpret::{Closure, Env, Interpreter, LocalBindings, PassedLimit, Value};
 use crate::modules::ModuleSources;
 use crate::reader::Form;
@@ -227,6 +227,9 @@ impl Expander<'_> {
         self.expansion_depth += 1;
         self.introductions.push(introduction);
         let steps = self.form_budgets.current().steps();
+        let reported = ReportedWarnings {
+            first: self.warnings.len(),
+        };
         let result = Interpreter::new(self, call_site, steps).call(
             &Value::Closure(closure),
             vec![Value::Form(input)],
@@ -234,6 +237,7 @@ impl Expander<'_> {
         );
         self.introductions.pop();
         self.expansion_depth -= 1;
+        self.warnings = reported.pointed_at_call(std::mem::take(&mut self.warnings), call_site);
         let sources = &*self.sources;
         let output = result.map_err(|failure| {
             let failure = ExpansionLimit::at_user_call(failure, call_site, sources);
@@ -465,6 +469,24 @@ impl Expander<'_> {
         let lambda = self.lower_lambda(&shape, &items[1], &items[2..]);
         self.phase = outer_phase;
         lambda
+    }
+}
+
+struct ReportedWarnings {
+    first: usize,
+}
+
+impl ReportedWarnings {
+    fn pointed_at_call(&self, warnings: Diagnostics, call_site: Span) -> Diagnostics {
+        let mut position = 0;
+        warnings.map(|warning| {
+            position += 1;
+            if position > self.first {
+                Expander::point_at_call(warning, call_site)
+            } else {
+                warning
+            }
+        })
     }
 }
 

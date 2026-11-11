@@ -1,0 +1,5 @@
+(use warn_at_macro_call/parking parked)
+
+(def van (parked "blue van"))
+
+(def bus (parked "red bus"))

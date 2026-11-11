@@ -1,0 +1,29 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/warn_at_macro_call.knv
+---
+warning[L0802]: the van is parked on a link
+ --> expand/warn_at_macro_call/parking.knv:8:14
+  |
+8 |       (quote here)
+  |              ^^^^ here
+  |
+ ::: expand/warn_at_macro_call.knv:3:10
+  |
+3 | (def van (parked "blue van"))
+  |          ------------------- in this macro call
+
+warning[L0802]: the van is parked on a link
+ --> expand/warn_at_macro_call/parking.knv:8:14
+  |
+8 |       (quote here)
+  |              ^^^^ here
+  |
+ ::: expand/warn_at_macro_call.knv:5:10
+  |
+5 | (def bus (parked "red bus"))
+  |          ------------------ in this macro call
+
+(def van "blue van")
+(def bus "red bus")

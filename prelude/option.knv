@@ -1,5 +1,9 @@
-(use prelude/macros defrule-with-value document)
+(use prelude/macros defrule-with-value document module)
 (use prelude/types option)
+
+(module "Builds and reads values that may be absent.
+
+  An [option] holds a value as [some] or no value as [none].")
 
 (export expect map-some none none? some some? then-some
         unwrap unwrap-or)

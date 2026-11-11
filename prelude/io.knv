@@ -1,5 +1,8 @@
-(use prelude/macros document)
+(use prelude/macros document module)
 (use prelude/types iterator option result vec)
+
+(module
+  "Reads standard input, files and the command line, and ends the process.")
 
 (export command-line-args exit io-error line-seq read-line
         slurp source stdin)

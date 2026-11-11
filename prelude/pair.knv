@@ -1,4 +1,6 @@
-(use prelude/macros document)
+(use prelude/macros document module)
+
+(module "Builds pairs of two values.")
 
 (export pair)
 

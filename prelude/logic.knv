@@ -1,4 +1,6 @@
-(use prelude/macros defrule document header-shape)
+(use prelude/macros defrule document header-shape module)
+
+(module "Combines booleans and runs code on a condition.")
 
 (export and cond not or unless when)
 

@@ -1,5 +1,5 @@
 (use prelude/macros defmacro defrule document header-shape
-                    map-list template)
+                    map-list module template)
 
 (use prelude/internal/macros docstring-before-body?
                              docstring-before-parameters
@@ -27,6 +27,9 @@
           symbol-name symbol? take value-eq)
 
 (use prelude/internal/code require-module)
+
+(module
+  "Binds names, loops, threads values and defines functions, tests and tasks.")
 
 (export -> ->> assert comment defn deftask deftest let
         let-match let-try loop run-tests the try->)

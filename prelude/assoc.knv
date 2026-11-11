@@ -1,4 +1,4 @@
-(use prelude/macros defmacro document template)
+(use prelude/macros defmacro document module template)
 (use prelude/internal/macros whole-pairs?)
 (use prelude/syntax let)
 
@@ -6,6 +6,10 @@
           first keyword-name keyword? len list list? nth
           number-sub prepend rest string symbol symbol?
           value-eq)
+
+(module "Returns structs and collections with new values at their keys.
+
+  The value itself does not change: each call returns an updated copy.")
 
 (export assoc assoc-in update)
 

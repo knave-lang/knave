@@ -1,6 +1,10 @@
-(use prelude/macros defrule-with-value document)
+(use prelude/macros defrule-with-value document module)
 (use prelude/types option result)
 (use prelude/text show)
+
+(module "Builds and reads the results of calls that can fail.
+
+  A [result] holds a success as [ok] or a failure as [err].")
 
 (export err err? expect-ok map-err map-ok ok ok-or ok?
         then-ok unwrap-err unwrap-ok)

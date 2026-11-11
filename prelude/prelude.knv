@@ -56,6 +56,11 @@
 
 (use prelude/place set!)
 
+(module
+  "Re-exports the kernel and the prelude's modules, which every module sees.
+
+  It documents each kernel form, constant and type.")
+
 (export * + - -> ->> / < <= = > >= _ alphanumeric? and any?
         apropos as-str assert assoc assoc-at assoc-in at
         bool box char char chars clone collect

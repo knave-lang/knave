@@ -1,11 +1,16 @@
 (use code concat empty? len list number-add number-lt
           prepend rest string symbol?)
 
-(use prelude/macros defmacro defrule document)
+(use prelude/macros defmacro defrule document module)
 (use prelude/syntax let)
 (use prelude/types hash-map option slice sorted-map vec)
 (use prelude/pair pair)
 (use prelude/number eq hash ord)
+
+(module "Builds and reads hash maps and sorted maps.
+
+  A [sorted-map] yields its keys in order, and a [hash-map] yields them in no
+  order that a program may rely on.")
 
 (export get hash-map into-hash-map into-sorted-map keys
         sorted-map vals)

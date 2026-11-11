@@ -1,4 +1,7 @@
-(use prelude/macros document)
+(use prelude/macros document module)
+
+(module
+  "Names the prelude's generic types, such as [option], [result] and [vec].")
 
 (export box hash-map iterator option result sequence slice
         sorted-map vec)

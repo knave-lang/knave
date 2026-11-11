@@ -2,12 +2,21 @@
 (use prelude/pair pair)
 (use prelude/number + integer number ord partial-ord)
 (use prelude/syntax defn)
-(use prelude/macros defrule defrule-with-value document)
+
+(use prelude/macros defrule defrule-with-value document
+                    module)
+
 (use prelude/vec iter)
 (use prelude/sequence len)
 
 (use code empty? first list list? prepend rest same-binding?
           symbol?)
+
+(module "Builds, transforms and consumes lazy iterators.
+
+  A step such as [map] or [filter] runs only when a call such as [reduce],
+  [for-each] or `collect` reads its items. A vector or a map passes as its
+  [iter].")
 
 (export any? count enumerate every? filter find for-each map
         max max-by-key min range reduce sum take take-while

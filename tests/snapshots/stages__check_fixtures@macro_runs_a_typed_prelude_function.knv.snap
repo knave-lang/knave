@@ -4,12 +4,12 @@ expression: reports.report(path)
 input_file: tests/fixtures/check/macro_runs_a_typed_prelude_function.knv
 ---
 error[L0306]: `reduce` belongs to the program, so macro code cannot run it
-  --> prelude/iterator.knv:85:3
+  --> prelude/iterator.knv:94:3
    |
-47 | (defrule reduce
+56 | (defrule reduce
    |          ------ `reduce` expands to Rust code that runs in the program
 ...
-85 |   (reduce values 0 +))
+94 |   (reduce values 0 +))
    |   ^^^^^^^^^^^^^^^^^^^ macro code runs this
    |
   ::: check/macro_runs_a_typed_prelude_function.knv:2:22

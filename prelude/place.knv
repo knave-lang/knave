@@ -1,8 +1,10 @@
 (use code concat empty? first list list? rest same-binding?
           symbol?)
 
-(use prelude/macros defmacro)
+(use prelude/macros defmacro module)
 (use prelude/vec at)
+
+(module "Changes a local, a field or an element in place.")
 
 (export set!)
 

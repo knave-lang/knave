@@ -1,5 +1,5 @@
 (use prelude/macros defmacro doc-page document header-shape
-                    listing-part map-list template)
+                    listing-part map-list module template)
 
 (use prelude/internal/macros joined-chunks
                              text-chunk-pieces)
@@ -18,6 +18,11 @@
                    sorted-map vec)
 
 (use prelude/io io-error)
+
+(module "Builds, prints, parses and splits strings.
+
+  It also holds the lookups that print documentation, such as [doc], [dir]
+  and [apropos].")
 
 (export alphanumeric? apropos as-str char chars debug digit?
         dir display doc eprint eprintln find-doc from-str

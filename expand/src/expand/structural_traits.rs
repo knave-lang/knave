@@ -229,3 +229,156 @@ impl<'f> ClauseReading<'f> {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::structural_path_claims::StructuralPathClaims;
+    use super::{DeclaredTrait, StructuralTraits};
+    use crate::core::{
+        BindingArena, BindingId, BindingInfo, BindingKind, ClosureKind, ReferenceKind, TraitMethod,
+        TypeExpr, TypeExprKind,
+    };
+    use crate::diagnostic::Diagnostics;
+    use crate::reader::{Form, Reader};
+    use crate::source::{SourceId, SourceMap, Span};
+
+    struct StructuralFixture {
+        bindings: BindingArena,
+        claims: StructuralPathClaims,
+        problems: Diagnostics,
+        sources: SourceMap,
+        self_variable: BindingId,
+    }
+
+    impl StructuralFixture {
+        const CLAUSE: &str = r#"(structural :struct "write!({1}, \"{name}\"){parts}" :field "" :variant "write!({1}, \"{{{name}}}\")" :part "" :bare "write!({1}, \"{name}\")")"#;
+        const PATH: &str = "std::fmt::Octal";
+
+        fn new() -> Self {
+            let mut bindings = BindingArena::default();
+            let self_variable =
+                bindings.add(BindingInfo::new("self".into(), BindingKind::Local, None));
+            Self {
+                bindings,
+                claims: StructuralPathClaims::default(),
+                problems: Diagnostics::default(),
+                sources: SourceMap::default(),
+                self_variable,
+            }
+        }
+
+        fn declare_trait(&mut self, name: &str) -> BindingId {
+            self.bindings
+                .add(BindingInfo::new(name.into(), BindingKind::Local, None))
+        }
+
+        fn clause(&mut self, text: &str) -> Form {
+            let file = self.sources.add("traits.knv", text);
+            let mut forms = Reader::new(self.sources.file(file))
+                .read()
+                .unwrap_or_else(|_| panic!("the clause reads"));
+            forms.remove(0)
+        }
+
+        fn self_method(&self, receiver: ReferenceKind) -> TraitMethod {
+            self.method_taking(receiver, self.self_variable)
+        }
+
+        fn method_taking(&self, receiver: ReferenceKind, referent: BindingId) -> TraitMethod {
+            let span = Span::new(SourceId::new(0), 0..0);
+            let named_self =
+                TypeExpr::new(TypeExprKind::Named(self.self_variable, Vec::new()), span);
+            let named_referent = TypeExpr::new(TypeExprKind::Named(referent, Vec::new()), span);
+            let reference = TypeExprKind::Reference(receiver, None, Box::new(named_referent));
+            let signature = TypeExprKind::Function(
+                ClosureKind::Fn,
+                vec![TypeExpr::new(reference, span), named_self.clone()],
+                Box::new(named_self),
+            );
+            TraitMethod {
+                binding: self.self_variable,
+                signature: TypeExpr::new(signature, span),
+                default: None,
+            }
+        }
+
+        fn reported_problems(
+            &mut self,
+            owner: BindingId,
+            methods: &[TraitMethod],
+            text: &str,
+        ) -> usize {
+            let clause = self.clause(text);
+            let declared = DeclaredTrait {
+                binding: owner,
+                definer: "rust-trait",
+                path: Self::PATH,
+                path_owner: None,
+                self_variable: self.self_variable,
+                methods,
+            };
+            let before = self.problems.len();
+            StructuralTraits::new(&self.bindings, &mut self.claims, &mut self.problems)
+                .lower(&clause, &declared);
+            self.problems.len() - before
+        }
+    }
+
+    #[test]
+    fn a_clause_of_a_trait_with_one_shared_self_method_lowers() {
+        let mut fixture = StructuralFixture::new();
+        let octal = fixture.declare_trait("octal");
+        let methods = [fixture.self_method(ReferenceKind::Shared)];
+        assert_eq!(
+            fixture.reported_problems(octal, &methods, StructuralFixture::CLAUSE),
+            0
+        );
+    }
+
+    #[test]
+    fn a_trait_whose_method_takes_a_mutable_self_has_no_structural_clause() {
+        let mut fixture = StructuralFixture::new();
+        let octal = fixture.declare_trait("octal");
+        let methods = [fixture.self_method(ReferenceKind::Mutable)];
+        assert_eq!(
+            fixture.reported_problems(octal, &methods, StructuralFixture::CLAUSE),
+            1
+        );
+    }
+
+    #[test]
+    fn a_trait_whose_method_takes_another_type_first_has_no_structural_clause() {
+        let mut fixture = StructuralFixture::new();
+        let octal = fixture.declare_trait("octal");
+        let other = fixture.declare_trait("other");
+        let methods = [fixture.method_taking(ReferenceKind::Shared, other)];
+        assert_eq!(
+            fixture.reported_problems(octal, &methods, StructuralFixture::CLAUSE),
+            1
+        );
+    }
+
+    #[test]
+    fn a_second_trait_cannot_claim_the_same_path() {
+        let mut fixture = StructuralFixture::new();
+        let octal = fixture.declare_trait("octal");
+        let other = fixture.declare_trait("other-octal");
+        let methods = [fixture.self_method(ReferenceKind::Shared)];
+        let _ = fixture.reported_problems(octal, &methods, StructuralFixture::CLAUSE);
+        assert_eq!(
+            fixture.reported_problems(other, &methods, StructuralFixture::CLAUSE),
+            1
+        );
+    }
+
+    #[test]
+    fn a_clause_missing_a_key_reports_it() {
+        let mut fixture = StructuralFixture::new();
+        let octal = fixture.declare_trait("octal");
+        let methods = [fixture.self_method(ReferenceKind::Shared)];
+        assert_eq!(
+            fixture.reported_problems(octal, &methods, r#"(structural :struct "")"#),
+            1
+        );
+    }
+}

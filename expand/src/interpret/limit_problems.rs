@@ -15,7 +15,7 @@ impl LimitProblems {
             Label::new(span, format!("this call passed {limit} macro steps")),
         )
         .with_note(format!(
-            "the macro calls in one top-level form run at most {limit} steps: a function call or a `recur` costs one step per expression of the body it runs, an `expand-call` costs {} and one per form it returns, a closure costs one step and one per binding in scope, and a built-in costs one step per list item it copies or reads and one for every {} bytes of text it reads",
+            "the macro calls in one top-level form run at most {limit} steps: a function call or a `recur` costs one step per expression of the body it runs, an `expand-call` costs {} and one per form it returns, a closure costs one step and one per binding in scope, and a built-in costs one step per list item it copies or reads and one for every {} bytes of text it reads, and `closest-name` one step for each pair of bytes it compares between the name and the candidates",
             StepBudget::EXPAND_CALL_WORK,
             StepBudget::BYTES_PER_STEP
         ))

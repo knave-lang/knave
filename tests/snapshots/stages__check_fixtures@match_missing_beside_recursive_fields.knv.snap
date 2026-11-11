@@ -1,0 +1,19 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_missing_beside_recursive_fields.knv
+---
+error[L0433]: non-exhaustive `match`
+   --> check/match_missing_beside_recursive_fields.knv:16:3
+    |
+ 16 | /   (match x
+ 17 | |     ((wide chain/end _ _ _ _ _ _ _) 0)
+ 18 | |     ((wide (link chain/end true) _ _ _ _ _ _ _) 1)
+ 19 | |     ((wide (link chain/end false) _ _ _ _ _ _ _) 2)
+...   |
+320 | |            (link (link (link chain/end false) false) false))
+321 | |      119)))
+    | |__________^ this `match` does not cover every value
+    |
+    = note: missing 1 case: `(wide (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _))`
+    = help: add an arm for each missing case

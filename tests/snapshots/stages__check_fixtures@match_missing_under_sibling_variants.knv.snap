@@ -9,5 +9,5 @@ error[L0433]: non-exhaustive `match`
 6 |   (match h ((hold/front side/left) 1)))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
   |
-  = note: missing 3 cases: `(front right)`, `(back left)`, `(back right)`
+  = note: missing 2 cases: `(front right)`, `(back _)`
   = help: add an arm for each missing case

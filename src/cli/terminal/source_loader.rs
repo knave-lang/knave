@@ -64,40 +64,15 @@ impl<'a> SourceLoader<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::cell::RefCell;
     use std::fs;
     use std::path::{Path, PathBuf};
 
     use super::SourceLoader;
-    use crate::cli::diagnostic_output::{DiagnosticOutput, MessageOutput};
     use crate::cli::exit_status::ExitStatus;
+    use crate::cli::recorded_output::RecordedOutput;
     use crate::cli::temporary_directory::TemporaryDirectory;
-    use crate::diagnostic::Diagnostics;
     use crate::language::Language;
     use crate::source::{SourceId, SourceMap, TextPosition};
-
-    #[derive(Default)]
-    struct RecordedOutput {
-        reports: RefCell<Vec<String>>,
-    }
-
-    impl DiagnosticOutput for RecordedOutput {
-        fn write(&self, _: &SourceMap, diagnostics: &Diagnostics) {
-            self.reports
-                .borrow_mut()
-                .push(format!("{} diagnostics", diagnostics.len()));
-        }
-
-        fn write_note(&self, _: &SourceMap, message: &str) {
-            self.reports.borrow_mut().push(message.to_string());
-        }
-    }
-
-    impl MessageOutput for RecordedOutput {
-        fn write_error(&self, message: &str) {
-            self.reports.borrow_mut().push(message.to_string());
-        }
-    }
 
     #[derive(Default)]
     struct LoaderFixture {
@@ -124,7 +99,7 @@ mod tests {
         }
 
         fn reports(&self) -> Vec<String> {
-            self.output.reports.borrow().clone()
+            self.output.writes()
         }
     }
 
@@ -165,7 +140,7 @@ mod tests {
         let status = fixture.loader().load(Path::new(LoaderFixture::MISSING));
         assert_eq!(status.err(), Some(ExitStatus::UsageError));
         let [report] = fixture.reports().try_into().expect("one report");
-        assert!(report.starts_with("cannot read `no-such-directory/missing.knv`: "));
+        assert!(report.starts_with("error: cannot read `no-such-directory/missing.knv`: "));
     }
 
     #[test]

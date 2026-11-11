@@ -298,7 +298,7 @@ impl NearbyProjects {
         match self.project_around(&directory, terminal) {
             Some(project) => {
                 let file = project.placement().placed_file(path.to_path_buf());
-                ModuleLookup::within_project(file.module_sources(), &directory)
+                ModuleLookup::within_project(file.module_sources())
             }
             None => ModuleLookup::beside(&directory),
         }

@@ -29,3 +29,6 @@
   :y i64)
 
 (defn struct-as-callee () (point 0 i64))
+
+(defn note-in-each-body ()
+  (+ i64 (fn () (local count i64) count)))

@@ -121,3 +121,19 @@ error[L0201]: cannot find `i64` in this scope
    |                                    ^^^ not found in this scope
    |
    = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature
+
+error[L0201]: cannot find `i64` in this scope
+  --> expand/type_in_value.knv:34:6
+   |
+34 |   (+ i64 (fn () (local count i64) count)))
+   |      ^^^ not found in this scope
+   |
+   = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature
+
+error[L0201]: cannot find `i64` in this scope
+  --> expand/type_in_value.knv:34:30
+   |
+34 |   (+ i64 (fn () (local count i64) count)))
+   |                              ^^^ not found in this scope
+   |
+   = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature

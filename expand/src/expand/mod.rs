@@ -7,6 +7,7 @@ mod declared_trait;
 mod defining_call;
 mod docstring_notes;
 mod documented_terms;
+mod duplicate_definitions;
 mod enclosing_index;
 mod evaluated_forms;
 mod expansion_limit;
@@ -81,6 +82,7 @@ use budget_arena::BudgetArena;
 pub use classified_form::ClassifiedForm;
 use docstring_notes::DocstringNotes;
 use documented_terms::DocumentedTerms;
+use duplicate_definitions::DuplicateDefinitions;
 use evaluated_forms::EvaluatedForms;
 pub use generated_entry::GeneratedEntry;
 use globals::{GlobalTable, LoweredGlobals};
@@ -214,7 +216,7 @@ pub struct Expander<'s> {
     declared_definitions: Vec<failed_definition::DeclaredName>,
     failed_body_definitions: Vec<BindingId>,
     introductions: Vec<Scope>,
-    duplicate_definitions: FxHashSet<(ModuleId, Rc<str>)>,
+    duplicate_definitions: DuplicateDefinitions,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -300,7 +302,7 @@ impl<'s> Expander<'s> {
             declared_definitions: Vec::new(),
             failed_body_definitions: Vec::new(),
             introductions: Vec::new(),
-            duplicate_definitions: FxHashSet::default(),
+            duplicate_definitions: DuplicateDefinitions::default(),
         }
     }
 

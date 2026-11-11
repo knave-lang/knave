@@ -1,17 +1,16 @@
 use std::rc::Rc;
 
-use rustc_hash::FxHashSet;
-
 use super::bindings::Bindings;
+use super::duplicate_definitions::DuplicateDefinitions;
 use super::noted_terms::NotedTerms;
 use super::problems::ExpandProblems;
-use crate::core::{BindingId, ModuleId, Namespace};
+use crate::core::{BindingId, Namespace};
 use crate::diagnostic::{Diagnostic, SimilarName};
 use crate::reader::Symbol;
 
 pub(super) struct DocumentedTerms<'t> {
     bindings: Bindings<'t>,
-    duplicates: &'t FxHashSet<(ModuleId, Rc<str>)>,
+    duplicates: &'t DuplicateDefinitions,
     noted: NotedTerms,
 }
 
@@ -20,7 +19,7 @@ impl<'t> DocumentedTerms<'t> {
 
     pub(super) fn new(
         bindings: Bindings<'t>,
-        duplicates: &'t FxHashSet<(ModuleId, Rc<str>)>,
+        duplicates: &'t DuplicateDefinitions,
         noted: NotedTerms,
     ) -> Self {
         Self {
@@ -46,7 +45,7 @@ impl<'t> DocumentedTerms<'t> {
     }
 
     fn reported_as_duplicate(&self, term: &Symbol) -> bool {
-        self.duplicates.contains(&self.noted.duplicate_key(term))
+        self.noted.is_duplicate(term, self.duplicates)
     }
 
     fn defines(&self, term: &Symbol) -> bool {

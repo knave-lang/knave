@@ -6,7 +6,10 @@ use super::joined_parts::JoinedParts;
 use crate::core::Declaration;
 use crate::diagnostic::{Diagnostic, SimilarName};
 use crate::interpret::arguments::Arguments;
-use crate::interpret::{CompileTimeHost, HeldBytes, StepBudget, Value, WorkMeter};
+use crate::interpret::{
+    DefinitionQueries, ExpansionCallbacks, HeldBytes, ModuleNotes, NameComparison, StepBudget,
+    Value, WorkMeter,
+};
 use crate::reader::{Form, FormKind, Symbol};
 use crate::source::Span;
 
@@ -103,24 +106,27 @@ impl<'a> TextOperations<'a> {
         self.string_value(JoinedParts::new(self.arguments).from(0)?)
     }
 
-    pub fn same_binding(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn same_binding(&self, names: &dyn NameComparison) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
         let left = self.arguments.symbol(0)?;
         let right = self.arguments.symbol(1)?;
-        Ok(Value::Bool(host.same_binding(left, right)))
+        Ok(Value::Bool(names.same_binding(left, right)))
     }
 
-    pub fn is_pattern_head(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn is_pattern_head(&self, names: &dyn NameComparison) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let head = self.arguments.symbol(0)?;
-        Ok(Value::Bool(host.is_pattern_head(head)))
+        Ok(Value::Bool(names.is_pattern_head(head)))
     }
 
-    pub fn definition_symbol(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn definition_symbol(
+        &self,
+        definitions: &dyn DefinitionQueries,
+    ) -> Result<Value, Diagnostic> {
         self.expect_symbol_arguments()?;
         let term = self.arguments.form(0)?;
         let context = self.arguments.symbol(0)?;
-        let symbol = host.definition_symbol(
+        let symbol = definitions.definition_symbol(
             context,
             JoinedParts::new(self.arguments).from(1)?,
             term.span(),
@@ -130,34 +136,38 @@ impl<'a> TextOperations<'a> {
 
     pub fn type_definition_symbol(
         &self,
-        host: &mut dyn CompileTimeHost,
+        definitions: &dyn DefinitionQueries,
     ) -> Result<Value, Diagnostic> {
         self.expect_symbol_arguments()?;
         let term = self.arguments.symbol(0)?;
-        let symbol = host.type_definition_symbol(term, JoinedParts::new(self.arguments).from(1)?);
+        let symbol =
+            definitions.type_definition_symbol(term, JoinedParts::new(self.arguments).from(1)?);
         Ok(self.symbol_value(symbol))
     }
 
-    pub fn definition_call(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn definition_call(
+        &self,
+        definitions: &dyn DefinitionQueries,
+    ) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let term = self.arguments.form(0)?;
-        let call = host.definition_call(self.arguments.symbol(0)?, term.span())?;
+        let call = definitions.definition_call(self.arguments.symbol(0)?, term.span())?;
         Forms::list(call.into_iter().collect(), self.call_site, self.arguments)
     }
 
     pub fn type_definition_call(
         &self,
-        host: &mut dyn CompileTimeHost,
+        definitions: &dyn DefinitionQueries,
     ) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
-        let call = host.type_definition_call(self.arguments.symbol(0)?);
+        let call = definitions.type_definition_call(self.arguments.symbol(0)?);
         Forms::list(call.into_iter().collect(), self.call_site, self.arguments)
     }
 
-    pub fn expand_call(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn expand_call(&self, callbacks: &mut dyn ExpansionCallbacks) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         self.arguments.charge(StepBudget::EXPAND_CALL_WORK)?;
-        let expansion = host.expand_call(self.arguments.form(0)?)?;
+        let expansion = callbacks.expand_call(self.arguments.form(0)?)?;
         self.arguments
             .charge(expansion.as_ref().map_or(0, Form::form_count))?;
         Forms::list(
@@ -177,30 +187,31 @@ impl<'a> TextOperations<'a> {
         Value::Form(Form::new(FormKind::Symbol(symbol), self.call_site))
     }
 
-    pub fn add_module_note(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn add_module_note(&self, notes: &mut dyn ModuleNotes) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
         let note = self.arguments.form(1)?;
         self.arguments
             .charge(WorkMeter::text_work(HeldBytes::of_form(&note)))?;
-        host.add_module_note(self.arguments.symbol(0)?.name(), note)
+        notes
+            .add_module_note(self.arguments.symbol(0)?.name(), note)
             .map_err(|too_large| too_large.at(self.arguments.function(), self.arguments.span()))?;
         Ok(Value::Unit)
     }
 
-    pub fn module_notes(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn module_notes(&self, notes: &dyn ModuleNotes) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
         let context = self.arguments.symbol(0)?;
-        let notes = host.module_notes(context, self.arguments.symbol(1)?.name());
+        let notes = notes.module_notes(context, self.arguments.symbol(1)?.name());
         Forms::list(notes, self.call_site, self.arguments)
     }
 
     pub fn declare_definition(
         &self,
-        host: &mut dyn CompileTimeHost,
+        callbacks: &mut dyn ExpansionCallbacks,
         declaration: Declaration,
     ) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
-        host.declare_definition(self.arguments.form(0)?, declaration);
+        callbacks.declare_definition(self.arguments.form(0)?, declaration);
         Ok(Value::Unit)
     }
 

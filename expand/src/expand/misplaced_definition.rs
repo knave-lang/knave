@@ -27,7 +27,7 @@ impl Expander<'_> {
         let Some((binder, value)) = Self::misplaced_def_parts(form) else {
             return Err(misplaced);
         };
-        self.keep_recovered(misplaced)?;
+        self.recovered.keep(misplaced, self.phase)?;
         let scope = self.fresh_local_scope();
         rest_of_body.add_scope(scope);
         let binder = self.lower_binder(&Self::scoped(binder, scope), Some(context))?;
@@ -76,7 +76,7 @@ impl Expander<'_> {
         else {
             return Err(misplaced);
         };
-        self.keep_recovered(misplaced)?;
+        self.recovered.keep(misplaced, self.phase)?;
         let scope = self.fresh_local_scope();
         rest_of_body.add_scope(scope);
         let module = self

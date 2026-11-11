@@ -1,4 +1,5 @@
 use super::declared_trait::DeclaredTrait;
+use super::problem_report::ProblemReport;
 use super::problems::ExpandProblems;
 use super::structural_path_claim::StructuralPathClaim;
 use super::structural_path_claims::StructuralPathClaims;
@@ -6,13 +7,13 @@ use crate::core::{
     BindingArena, BindingId, ReferenceKind, StructDerives, StructuralClause, StructuralKey,
     StructuralTemplate, TypeExpr, TypeExprKind,
 };
-use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind};
 
 pub(super) struct StructuralTraits<'t> {
     bindings: &'t BindingArena,
     claims: &'t mut StructuralPathClaims,
-    problems: &'t mut Diagnostics,
+    problems: &'t mut ProblemReport,
 }
 
 struct ClauseReading<'f> {
@@ -26,7 +27,7 @@ impl<'t> StructuralTraits<'t> {
     pub(super) fn new(
         bindings: &'t BindingArena,
         claims: &'t mut StructuralPathClaims,
-        problems: &'t mut Diagnostics,
+        problems: &'t mut ProblemReport,
     ) -> Self {
         Self {
             bindings,
@@ -44,7 +45,7 @@ impl<'t> StructuralTraits<'t> {
             .map_err(|problems| {
                 problems
                     .into_iter()
-                    .for_each(|problem| self.problems.push(problem))
+                    .for_each(|problem| self.problems.report(problem))
             })
             .ok()
     }
@@ -233,20 +234,20 @@ impl<'f> ClauseReading<'f> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::problem_report::ProblemReport;
     use super::super::structural_path_claims::StructuralPathClaims;
     use super::{DeclaredTrait, StructuralTraits};
     use crate::core::{
         BindingArena, BindingId, BindingInfo, BindingKind, ClosureKind, ReferenceKind, TraitMethod,
         TypeExpr, TypeExprKind,
     };
-    use crate::diagnostic::Diagnostics;
     use crate::reader::{Form, Reader};
     use crate::source::{SourceId, SourceMap, Span};
 
     struct StructuralFixture {
         bindings: BindingArena,
         claims: StructuralPathClaims,
-        problems: Diagnostics,
+        problems: ProblemReport,
         sources: SourceMap,
         self_variable: BindingId,
     }
@@ -262,7 +263,7 @@ mod tests {
             Self {
                 bindings,
                 claims: StructuralPathClaims::default(),
-                problems: Diagnostics::default(),
+                problems: ProblemReport::default(),
                 sources: SourceMap::default(),
                 self_variable,
             }
@@ -318,10 +319,9 @@ mod tests {
                 self_variable: self.self_variable,
                 methods,
             };
-            let before = self.problems.len();
             StructuralTraits::new(&self.bindings, &mut self.claims, &mut self.problems)
                 .lower(&clause, &declared);
-            self.problems.len() - before
+            self.problems.take_errors().len()
         }
     }
 

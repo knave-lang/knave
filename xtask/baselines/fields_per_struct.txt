@@ -1,4 +1,4 @@
-expand/src/expand/mod.rs::Expander 26
+expand/src/expand/mod.rs::Expander 25
 expand/src/expand/mod.rs::ExpansionTables 19
 expand/src/expand/mod.rs::Program 11
 src/emit/expressions.rs::ExpressionEmitter 16

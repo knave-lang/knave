@@ -41,6 +41,7 @@ impl MacroRun {
         expander.load_source_module(ModulePath::new(Self::ENTRY), &[entry]);
         let spans: Vec<_> = expander
             .diagnostics_with_code(code)
+            .iter()
             .map(|diagnostic| diagnostic.primary().span())
             .collect();
         drop(expander);

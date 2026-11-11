@@ -51,8 +51,8 @@ impl Expander<'_> {
             .collect();
         for (term, span) in undefined {
             let similar = self.closest_own_definition(module, &term);
-            self.diagnostics
-                .push(ExpandProblems::undefined_documented_term(
+            self.problems
+                .report(ExpandProblems::undefined_documented_term(
                     term.name(),
                     span,
                     similar,

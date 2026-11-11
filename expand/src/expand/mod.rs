@@ -28,8 +28,11 @@ mod module_notes;
 mod module_survey;
 mod names;
 mod prelude_state;
+mod problem_mark;
+mod problem_report;
 mod problems;
 mod recorded_inputs;
+mod recovered_errors;
 mod recur_check;
 mod rest_of_body;
 mod result_printer;
@@ -51,6 +54,7 @@ mod structural_traits;
 mod top_level_form;
 mod try_check;
 mod type_expr;
+mod type_note;
 mod type_parameters;
 
 use std::rc::Rc;
@@ -60,7 +64,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::core::{
     BindingArena, BindingId, BindingKind, CoreModule, ModuleId, ModulePath, References,
 };
-use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::diagnostic::Diagnostics;
 use crate::interpret::{Closure, Value};
 use crate::modules::{ModuleRegistry, ModuleSources};
 use crate::reader::Form;
@@ -77,9 +81,11 @@ pub use macro_origins::MacroOrigins;
 use module_notes::ModuleNotes;
 pub use module_survey::ModuleSurvey;
 pub use prelude_state::{PreludeState, UnreadablePrelude};
+use problem_report::ProblemReport;
 pub use problems::{ExpandProblems, SetAsideInput};
 use recorded_inputs::RecordedInputs;
 pub use recorded_inputs::{BoundName, LoadedModule};
+use recovered_errors::RecoveredErrors;
 pub use result_printer::{GeneratedFunction, ResultPrinter};
 pub use saved_definitions::PendingDefinitions;
 use saved_definitions::{DefinitionSaver, SavedDefinitions, SavedTables};
@@ -88,6 +94,7 @@ pub use session::ExpansionSession;
 use string_view::StringViewSearch;
 use structural_path_claims::StructuralPathClaims;
 use structural_traits::StructuralTraits;
+use type_note::TypeNote;
 
 pub struct Program {
     pub modules: Vec<CoreModule>,
@@ -175,16 +182,15 @@ pub struct Expander<'s> {
     modules: ModuleRegistry,
     tables: ExpansionTables,
     current_module: Option<ModuleId>,
-    diagnostics: Diagnostics,
-    warnings: Diagnostics,
+    problems: ProblemReport,
     reported_hidden_modules: Vec<std::path::PathBuf>,
     library_modules: Vec<(ModulePath, Rc<str>)>,
     phase: Phase,
     expansion_depth: usize,
     nesting_depth: usize,
     form_budgets: BudgetArena,
-    recovered_diagnostics: Vec<Diagnostic>,
-    type_note_shown: bool,
+    recovered: RecoveredErrors,
+    type_note: TypeNote,
     saved_prelude: Option<PreludeState>,
     saved_definitions: SavedDefinitions,
     saved_macros: SavedValues<Closure>,
@@ -265,16 +271,15 @@ impl<'s> Expander<'s> {
             modules: ModuleRegistry::default(),
             tables: ExpansionTables::default(),
             current_module: None,
-            diagnostics: Diagnostics::default(),
-            warnings: Diagnostics::default(),
+            problems: ProblemReport::default(),
             reported_hidden_modules: Vec::new(),
             library_modules: Vec::new(),
             phase: Phase::Runtime,
             expansion_depth: 0,
             nesting_depth: 0,
             form_budgets: BudgetArena::default(),
-            recovered_diagnostics: Vec::new(),
-            type_note_shown: false,
+            recovered: RecoveredErrors::default(),
+            type_note: TypeNote::default(),
             saved_prelude: None,
             saved_definitions: SavedDefinitions::default(),
             saved_macros: SavedValues::default(),
@@ -298,14 +303,18 @@ impl<'s> Expander<'s> {
 
     #[cfg(test)]
     pub(crate) fn diagnostics_with_code(
-        &self,
+        &mut self,
         code: &crate::diagnostic::DiagnosticCode,
-    ) -> impl Iterator<Item = &Diagnostic> {
-        self.diagnostics
+    ) -> Vec<crate::diagnostic::Diagnostic> {
+        let recovered = self.recovered.take_all();
+        let errors = self.problems.take_errors();
+        errors
             .in_source_order()
             .into_iter()
-            .chain(&self.recovered_diagnostics)
-            .filter(move |diagnostic| diagnostic.code() == Some(code))
+            .chain(&recovered)
+            .filter(|diagnostic| diagnostic.code() == Some(code))
+            .cloned()
+            .collect()
     }
 
     pub fn with_prelude(
@@ -342,7 +351,7 @@ impl<'s> Expander<'s> {
             checked_roots: Vec::new(),
             pending_definitions: PendingDefinitions::new(self.saved_definitions),
             macro_origins: Rc::new(self.tables.macro_origins),
-            warnings: self.warnings,
+            warnings: self.problems.take_warnings(),
             expansion: self.expansion,
         };
         program.restore_reached();
@@ -351,10 +360,10 @@ impl<'s> Expander<'s> {
     }
 
     fn take_diagnostics(&mut self) -> Diagnostics {
-        for diagnostic in std::mem::take(&mut self.recovered_diagnostics) {
-            self.diagnostics.push(diagnostic);
+        for error in self.recovered.take_all() {
+            self.problems.report(error);
         }
-        std::mem::take(&mut self.diagnostics)
+        self.problems.take_errors()
     }
 
     fn fresh_local_scope(&mut self) -> Scope {
@@ -376,7 +385,7 @@ impl<'s> Expander<'s> {
         StructuralTraits::new(
             &self.tables.bindings,
             &mut self.tables.structural_path_claims,
-            &mut self.diagnostics,
+            &mut self.problems,
         )
     }
 

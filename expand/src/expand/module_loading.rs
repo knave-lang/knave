@@ -10,6 +10,7 @@ use crate::core::{
 };
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
+use crate::interpret::Warnings;
 use crate::modules::{LocatedModule, ModuleScopes, ModuleSource, ModuleSources};
 use crate::reader::{Form, Reader, Symbol};
 use crate::scope::{Phase, ScopeSet};
@@ -134,7 +135,7 @@ impl Expander<'_> {
             context.strip_use_sites(&mut binder);
             let symbol = binder.as_symbol().ok_or_else(|| shape.malformed(name))?;
             if let Err(diagnostic) = self.import_name(target, path, symbol, name.span()) {
-                self.diagnostics.push(diagnostic);
+                self.problems.report(diagnostic);
             }
         }
         Ok(())
@@ -177,7 +178,7 @@ impl Expander<'_> {
             return;
         }
         let warning = ExpandProblems::library_hides_local_module(written, &local, span);
-        self.warnings.push(warning);
+        self.problems.report_warning(warning);
         self.reported_hidden_modules.push(local);
     }
 
@@ -197,7 +198,7 @@ impl Expander<'_> {
             return;
         }
         let warning = ExpandProblems::test_module_hides_source_module(&shadow, span);
-        self.warnings.push(warning);
+        self.problems.report_warning(warning);
         self.reported_hidden_modules.push(shadow.hidden);
     }
 
@@ -246,7 +247,7 @@ impl Expander<'_> {
         match Reader::new(self.sources.file(source)).read() {
             Ok(forms) => forms,
             Err(diagnostics) => {
-                self.diagnostics.extend(diagnostics);
+                self.problems.report_all(diagnostics);
                 Vec::new()
             }
         }
@@ -260,7 +261,7 @@ impl Expander<'_> {
         };
         match self.load_module(&ModulePath::new(base_name), span) {
             Ok(base) => self.import_everything(module, base),
-            Err(diagnostic) => self.diagnostics.push(diagnostic),
+            Err(diagnostic) => self.problems.report(diagnostic),
         }
     }
 

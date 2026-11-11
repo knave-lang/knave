@@ -19,6 +19,7 @@ use crate::core::{
     TypeExprKind, VariantDeclaration, VariantInfo, VariantPayload,
 };
 use crate::diagnostic::{Counted, Diagnostic, DistinctDiagnostics};
+use crate::interpret::Warnings;
 use crate::mangle::NameMangler;
 use crate::reader::{Form, FormKind, Symbol};
 use crate::source::Span;
@@ -118,7 +119,7 @@ impl Expander<'_> {
     ) {
         for item in items {
             if let Err(diagnostic) = self.lower_pending(module, item, core) {
-                self.recovered_diagnostics.push(diagnostic);
+                self.recovered.add(diagnostic);
             }
         }
     }
@@ -145,7 +146,7 @@ impl Expander<'_> {
                 expander.register_source_form(module, form, &mut context, &mut items)
             });
             if let Err(diagnostic) = registered {
-                self.diagnostics.push(diagnostic);
+                self.problems.report(diagnostic);
             }
             pending.add_source(items);
             budgets.push(budget);
@@ -184,8 +185,7 @@ impl Expander<'_> {
 
     fn report_misplaced_expressions(&mut self, written_span: Span) {
         for span in self.evaluated_forms.misplaced_expressions(written_span) {
-            self.diagnostics
-                .push(ExpandProblems::not_a_definition(span));
+            self.problems.report(ExpandProblems::not_a_definition(span));
         }
     }
 
@@ -204,7 +204,7 @@ impl Expander<'_> {
             }
         }
         for diagnostic in errors.into_diagnostics() {
-            self.diagnostics.push(diagnostic);
+            self.problems.report(diagnostic);
         }
     }
 
@@ -1456,8 +1456,8 @@ impl Expander<'_> {
                 continue;
             };
             if !defined.insert(trait_type) {
-                self.diagnostics
-                    .push(ExpandProblems::duplicate_associated_type(
+                self.problems
+                    .report(ExpandProblems::duplicate_associated_type(
                         &name,
                         entry.span(),
                     ));
@@ -1467,8 +1467,8 @@ impl Expander<'_> {
         }
         for (trait_type, name) in &trait_methods.associated {
             if !defined.contains(trait_type) {
-                self.diagnostics
-                    .push(ExpandProblems::missing_associated_type(
+                self.problems
+                    .report(ExpandProblems::missing_associated_type(
                         trait_name,
                         name,
                         type_name,
@@ -1498,8 +1498,8 @@ impl Expander<'_> {
             .iter()
             .find(|(_, declared)| declared.as_ref() == symbol.name())
         else {
-            self.diagnostics
-                .push(ExpandProblems::unknown_associated_type(
+            self.problems
+                .report(ExpandProblems::unknown_associated_type(
                     trait_name,
                     symbol.name(),
                     name.span(),
@@ -1538,7 +1538,7 @@ impl Expander<'_> {
         for (method, _) in &trait_methods.methods {
             if !implemented.contains(method) && !trait_methods.defaults.contains(method) {
                 let name = self.tables.bindings.get(*method).name().to_string();
-                self.diagnostics.push(ExpandProblems::missing_method(
+                self.problems.report(ExpandProblems::missing_method(
                     &name,
                     lowering.trait_name,
                     type_name,
@@ -1570,7 +1570,7 @@ impl Expander<'_> {
                 self.tables.bindings.get(*binding).name() == method_symbol.name()
             })
         else {
-            self.diagnostics.push(ExpandProblems::undeclared_method(
+            self.problems.report(ExpandProblems::undeclared_method(
                 method_symbol.name(),
                 lowering.trait_name,
                 method_name.span(),
@@ -1578,7 +1578,7 @@ impl Expander<'_> {
             return Ok(None);
         };
         if !implemented.insert(*method_binding) {
-            self.diagnostics.push(ExpandProblems::extra_method(
+            self.problems.report(ExpandProblems::extra_method(
                 method_symbol.name(),
                 method_name.span(),
             ));
@@ -1890,9 +1890,8 @@ impl Expander<'_> {
         let span = name.span();
         let name = self.tables.bindings.get(binding).name().to_string();
         let existing = self.tables.bindings.get(existing).name().to_string();
-        self.warnings.push(ExpandProblems::second_trait_path(
-            &name, &existing, path, span,
-        ));
+        let warning = ExpandProblems::second_trait_path(&name, &existing, path, span);
+        self.problems.report_warning(warning);
     }
 
     fn trait_binding_with_path(
@@ -1922,7 +1921,7 @@ impl Expander<'_> {
         let shape = Shape::new(KernelForm::Definition(DefinitionForm::Export), form);
         for name in shape.items().iter().skip(1) {
             if let Err(diagnostic) = self.export_name(module, &shape, name, core) {
-                self.diagnostics.push(diagnostic);
+                self.problems.report(diagnostic);
             }
         }
     }

@@ -9,6 +9,7 @@ use super::rest_of_body::RestOfBody;
 use super::rust_clauses::ClausedTemplate;
 use super::shape::Shape;
 use super::try_check::TryCheck;
+use super::type_note::TypeNote;
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, Control, ControlForm, Expr, ExprKind,
     ExpressionForm, FieldLabel, FieldSpelling, KernelForm, Keyword, Lambda, Leaf, LeafForm,
@@ -17,7 +18,7 @@ use crate::core::{
 };
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Symbol};
-use crate::scope::{Phase, Scope};
+use crate::scope::Scope;
 use crate::source::Span;
 use crate::stack::DeepRecursion;
 
@@ -114,25 +115,21 @@ impl Expander<'_> {
     }
 
     fn noted_if_type(&mut self, unbound: Diagnostic, symbol: &Symbol) -> Diagnostic {
-        let names_type = self.try_resolve(symbol, Namespace::Type).is_some();
-        if !names_type || self.type_note_shown {
-            return unbound;
-        }
-        self.type_note_shown = true;
-        unbound.with_note(ExpandProblems::type_in_value_note(symbol.name()))
+        let type_name = self.try_resolve(symbol, Namespace::Type).map(|_| symbol);
+        self.type_note.noted(unbound, type_name)
     }
 
     fn without_type_note<T>(&mut self, lower: impl FnOnce(&mut Self) -> T) -> T {
-        let outer = std::mem::replace(&mut self.type_note_shown, true);
+        let outer = std::mem::replace(&mut self.type_note, TypeNote::shown());
         let lowered = lower(self);
-        self.type_note_shown = outer;
+        self.type_note = outer;
         lowered
     }
 
     pub(super) fn with_fresh_type_note<T>(&mut self, lower: impl FnOnce(&mut Self) -> T) -> T {
-        let outer = std::mem::take(&mut self.type_note_shown);
+        let outer = std::mem::take(&mut self.type_note);
         let lowered = lower(self);
-        self.type_note_shown = outer;
+        self.type_note = outer;
         lowered
     }
 
@@ -336,16 +333,8 @@ impl Expander<'_> {
     }
 
     fn recover(&mut self, diagnostic: Diagnostic, span: Span) -> Result<Expr, Diagnostic> {
-        self.keep_recovered(diagnostic)?;
+        self.recovered.keep(diagnostic, self.phase)?;
         Ok(Self::placeholder(span))
-    }
-
-    pub(super) fn keep_recovered(&mut self, diagnostic: Diagnostic) -> Result<(), Diagnostic> {
-        if self.phase == Phase::CompileTime {
-            return Err(diagnostic);
-        }
-        self.recovered_diagnostics.push(diagnostic);
-        Ok(())
     }
 
     pub(super) fn placeholder(span: Span) -> Expr {

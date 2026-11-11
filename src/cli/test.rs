@@ -1,10 +1,12 @@
 use std::io;
 use std::path::PathBuf;
 
+use super::evaluation_request::EvaluationRequest;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
+use super::module_of_sources::ModuleOfSources;
 use super::standard_error::StandardError;
-use super::terminal::{EvaluationRequest, ModuleOfSources, Terminal};
+use super::terminal::Terminal;
 use super::test_binary::TestBinary;
 use super::test_entries::TestEntries;
 use super::test_report::{TestOutcome, TestReport};
@@ -73,6 +75,7 @@ impl TestCommand {
         };
         let runner = self.runner_text();
         let program = terminal
+            .expansion()
             .within_evaluation(&request, |session| self.entered_runner(session, &runner))?;
         program.ok_or_else(|| self.report_unloaded_module())
     }

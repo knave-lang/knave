@@ -2,16 +2,16 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 
 use super::evaluation_output::EvaluationOutput;
+use super::evaluation_request::EvaluationRequest;
 use super::exit_status::ExitStatus;
 use super::library_walk::FetchingStore;
 use super::located_program::LocatedProgram;
 use super::located_project::LocatedProject;
+use super::module_of_sources::ModuleOfSources;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::temporary_directory::TemporaryDirectory;
-use super::terminal::{
-    BuildRoute, BuildTarget, EvaluationRequest, ModuleOfSources, SourceLoader, Terminal,
-};
+use super::terminal::{BuildRoute, BuildTarget, SourceLoader, Terminal};
 use crate::build::BuildProfile;
 use crate::check::ProgramChecker;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Diagnostics};
@@ -101,7 +101,7 @@ impl EvalCommand {
             evaluated: self.forms.module_spans(module.anchor(), ranges),
             module,
         };
-        terminal.within_evaluation(&request, |session| {
+        terminal.expansion().within_evaluation(&request, |session| {
             ExpandedEvaluation::new(session, &request, &self.forms, self.output.as_ref())
         })
     }

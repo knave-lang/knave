@@ -2,7 +2,8 @@ use super::definition_buffer::{BufferedInput, DefinitionBuffer, DroppedNames, Re
 use super::error_location::{InputLocator, Location, ModuleLoader};
 use super::name_records::NameRecords;
 use super::prompt_module::PromptModule;
-use super::terminal::{SourcesSurvey, Terminal};
+use super::sources_survey::SourcesSurvey;
+use super::terminal::Terminal;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::{ExpandProblems, SetAsideInput};
 use crate::source::SourceId;
@@ -63,7 +64,9 @@ impl<'a> DefinitionRounds<'a> {
     pub fn run(mut self, terminal: &mut Terminal) -> DefinitionOutcome {
         loop {
             let module = self.module.of(self.candidate.sources());
-            let survey = terminal.survey_sources(&module, &self.candidate.spans());
+            let survey = terminal
+                .expansion()
+                .survey(&module, &self.candidate.spans());
             let located = self.locate(&survey, terminal);
             if !located.entered_errors.is_empty() {
                 return self.rejected(located.entered_errors);
@@ -80,7 +83,7 @@ impl<'a> DefinitionRounds<'a> {
     fn locate(&self, survey: &SourcesSurvey, terminal: &Terminal) -> LocatedDiagnostics {
         let locator = self.locator(survey);
         let mut located = LocatedDiagnostics::default();
-        for diagnostic in survey.diagnostics.in_source_order() {
+        for diagnostic in survey.diagnostics().in_source_order() {
             let location = locator.locate(diagnostic, |source| {
                 terminal.source_file(source).name().to_string()
             });
@@ -98,7 +101,7 @@ impl<'a> DefinitionRounds<'a> {
             .filter(|source| *source != entered)
             .collect();
         let name = self.entered.name().to_string();
-        InputLocator::new(buffered, name, survey.loaders.clone())
+        InputLocator::new(buffered, name, survey.loaders().to_vec())
     }
 
     fn rejected(self, errors: Diagnostics) -> DefinitionOutcome {
@@ -118,7 +121,8 @@ impl<'a> DefinitionRounds<'a> {
             self.set_aside(&input, error);
         }
         let set_aside: Vec<SourceId> = errors.iter().map(|(source, _)| *source).collect();
-        self.candidate = self.candidate.renamed(survey.names).without(&set_aside);
+        let (names, _) = survey.into_names_and_loaders();
+        self.candidate = self.candidate.renamed(names).without(&set_aside);
     }
 
     fn set_aside(&mut self, input: &BufferedInput, error: &Diagnostic) {
@@ -152,8 +156,8 @@ impl<'a> DefinitionRounds<'a> {
     }
 
     fn accepted(self, survey: SourcesSurvey, entered_warnings: Diagnostics) -> AcceptedDefinition {
-        let loaders = survey.loaders;
-        let buffer = self.candidate.renamed(survey.names);
+        let (names, loaders) = survey.into_names_and_loaders();
+        let buffer = self.candidate.renamed(names);
         let mut records = self.pending;
         for input in buffer.inputs() {
             Self::record_names_no_longer_bound(self.before, input, &self.entered, &mut records);

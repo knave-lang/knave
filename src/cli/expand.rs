@@ -14,11 +14,10 @@ impl ExpandCommand {
     }
 
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
-        match self
-            .entry
-            .locate(terminal)
-            .and_then(|program| terminal.expand(program.file()))
-        {
+        match self.entry.locate(terminal).and_then(|program| {
+            let entry = terminal.sources().load(program.file().path())?;
+            terminal.expansion().expand(program.file(), entry)
+        }) {
             Ok(program) => StandardOutput::locked()
                 .write(CorePrinter::new(&program.bindings).module(program.entry_module())),
             Err(status) => status,

@@ -205,7 +205,8 @@ impl PromptSession {
             let mut sources = self.buffer.sources_kept_by(&replacement);
             sources.push(input.source);
             let module = self.module.of(sources);
-            let ClassifiedForm::Definition(names) = terminal.classify(&module, form) else {
+            let ClassifiedForm::Definition(names) = terminal.expansion().classify(&module, form)
+            else {
                 return ClassifiedInput::Expression;
             };
             match self.buffer.widened(&names, &replacement) {

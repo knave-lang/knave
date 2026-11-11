@@ -3,6 +3,7 @@ use rustc_hash::FxHashMap;
 use super::doc::ExpandedPage;
 use super::doc_folder::WrittenPage;
 use super::exit_status::ExitStatus;
+use super::module_of_sources::ModuleOfSources;
 use super::program_file::ProgramFile;
 use super::terminal::Terminal;
 use crate::check::ProgramChecker;
@@ -75,15 +76,18 @@ impl DocumentedModules {
         let entry = terminal
             .sources()
             .add(self.file.path().display(), String::new());
-        let (texts, warnings) = terminal.within_session(&self.file, entry, |mut session| {
-            self.load_written(&mut session)?;
-            let texts = self
-                .written
-                .iter()
-                .map(|module| Self::expand(&mut session, &self.page_call(module, &types)))
-                .collect::<Result<Vec<Expr>, Diagnostics>>()?;
-            Ok((texts, session.finish()?.warnings))
-        })?;
+        let (texts, warnings) = terminal.expansion().within_session(
+            &ModuleOfSources::single(self.file.clone(), entry),
+            |mut session| {
+                self.load_written(&mut session)?;
+                let texts = self
+                    .written
+                    .iter()
+                    .map(|module| Self::expand(&mut session, &self.page_call(module, &types)))
+                    .collect::<Result<Vec<Expr>, Diagnostics>>()?;
+                Ok((texts, session.finish()?.warnings))
+            },
+        )?;
         terminal.source_report().print(&warnings);
         self.written
             .iter()
@@ -130,11 +134,14 @@ impl DocumentedModules {
         let entry = terminal
             .sources()
             .add(self.file.path().display(), String::new());
-        let (program, named) = terminal.within_session(&self.file, entry, |mut session| {
-            Self::load(&mut session, module)?;
-            let named = Self::named_bindings(&mut session, module)?;
-            Ok((Self::checked_also(session.finish()?, &named), named))
-        })?;
+        let (program, named) = terminal.expansion().within_session(
+            &ModuleOfSources::single(self.file.clone(), entry),
+            |mut session| {
+                Self::load(&mut session, module)?;
+                let named = Self::named_bindings(&mut session, module)?;
+                Ok((Self::checked_also(session.finish()?, &named), named))
+            },
+        )?;
         Ok(ProgramChecker::check(&program).map(|typed| Self::typed_names(&typed, named)))
     }
 
@@ -143,15 +150,17 @@ impl DocumentedModules {
         let source = terminal
             .sources()
             .add(entry.file.path().display(), entry.text.clone());
-        let (program, loaded, named) =
-            terminal.within_session(&entry.file, source, |mut session| {
+        let (program, loaded, named) = terminal.expansion().within_session(
+            &ModuleOfSources::single(entry.file.clone(), source),
+            |mut session| {
                 let loaded = self.loaded_written(&session);
                 let mut named = Vec::new();
                 for module in &loaded {
                     named.extend(Self::named_bindings(&mut session, module)?);
                 }
                 Ok((Self::checked_also(session.finish()?, &named), loaded, named))
-            })?;
+            },
+        )?;
         let typed = terminal.check_showing(&program, |_| false)?;
         Ok(Self::by_module(loaded, Self::typed_names(&typed, named)))
     }

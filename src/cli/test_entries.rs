@@ -4,8 +4,9 @@ use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
 use super::library_walk::FetchingStore;
 use super::located_project::LocatedProject;
+use super::module_of_sources::ModuleOfSources;
 use super::standard_error::StandardError;
-use super::terminal::{ModuleOfSources, Terminal};
+use super::terminal::Terminal;
 use crate::modules::SearchScope;
 
 pub struct TestEntries {

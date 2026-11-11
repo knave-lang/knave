@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/trait_argument_literal_mismatch.knv
+---
+error[L0404]: `(vec i64)` does not implement `holds`
+  --> check/trait_argument_literal_mismatch.knv:11:11
+   |
+11 |   (holds? scores 0.5))
+   |           ^^^^^^ this needs `holds`
+   |
+   = note: `holds` is implemented for: (with (where (item) (vec item)) item)

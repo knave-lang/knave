@@ -155,11 +155,15 @@ impl<'s> ImplementorMatch<'s> {
     }
 
     fn bind(&mut self, generic: GenericId, target: &Type) -> bool {
-        let bound = self
-            .bindings
-            .entry(generic)
-            .or_insert_with(|| target.clone());
-        bound == target
+        match self.bindings.get(&generic) {
+            None => {
+                self.bindings.insert(generic, target.clone());
+                true
+            }
+            Some(bound) if bound == target => true,
+            Some(_) if matches!(target, Type::Var(_)) => self.leave_undecided(),
+            Some(_) => false,
+        }
     }
 
     fn requirements(&self) -> Vec<Requirement> {

@@ -1,0 +1,14 @@
+(deftrait holds
+  (rust "Holds")
+  (where (item) (with (vec item) item)))
+
+(def holds?
+  (rust "{0}.holds(&{&1})"
+    (where ((whole (holds part)) part)
+      (fn ((ref whole) part) bool))))
+
+(defn has-three? ((scores (vec i64)))
+  (holds? scores 3))
+
+(defn has-half? ((weights (vec f64)))
+  (holds? weights 0.5))

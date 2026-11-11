@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/trait_argument_from_literal.knv
+---
+(type holds? (where ((whole (holds part)) part) (fn ((ref whole) part) bool)))
+(type has-three? (fn ((vec i64)) bool))
+(type has-half? (fn ((vec f64)) bool))

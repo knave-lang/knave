@@ -180,7 +180,7 @@
 (document (type name type)
   "Declares the type of a definition, as a signature.
 
-  The name refers to a `def` of this module, or to a macro whose value
+  The name refers to a [def] of this module, or to a macro whose value
   position expands to a function that the macro introduced in this module.
 
   ```
@@ -230,9 +230,9 @@
 (document (match value (pattern body ...) ...)
   "Evaluates the body of the first arm whose pattern matches the value.
 
-  An arm's body is a `do`, so its last form is the arm's value.
+  An arm's body is a [do], so its last form is the arm's value.
 
-  A pattern is `_`, a literal, a bare name, `(variant pattern ...)`,
+  A pattern is [_], a literal, a bare name, `(variant pattern ...)`,
   `(variant :field pattern ...)`, `(type-name pattern ...)` or
   `(type-name :field pattern ...)`. It emits a Rust `match`.
 
@@ -249,7 +249,7 @@
   "Returns the collection with the item stored at a path of keys.
 
   The collection's inferred type picks the Rust, for a vector, a sorted map
-  or a hash map. `assoc` and `assoc-in` expand to it.
+  or a hash map. [assoc] and [assoc-in] expand to it.
 
   (assoc-at (vec 1 2) (0) 9)
   => (vec 9 2)")
@@ -257,8 +257,8 @@
 (document (map-at operation value argument ...)
   "Applies a collection operation whose Rust the collection's type picks.
 
-  The operation is `get`, `keys`, `vals`, `iter`, `update` or `push`.
-  `get`, `keys`, `vals`, `iter`, `update` and `push!` expand to it.
+  The operation is [get], [keys], [vals], [iter], [update] or `push`.
+  `get`, `keys`, `vals`, `iter`, `update` and [push!] expand to it.
 
   (local items (vec 1 2))
   (map-at get items 1)
@@ -267,7 +267,7 @@
 (document (set-at value (key ...) item)
   "Assigns the item at a path of keys inside a place.
 
-  It emits an assignment. `set!` expands to it.
+  It emits an assignment. [set!] expands to it.
 
   (local items (vec 1 2))
   (set-at items (0) 9)
@@ -342,7 +342,7 @@
 (document (macro (form) body ...)
   "Makes a macro whose body turns its whole call form into a new form.
 
-  It is the value of a `def`, as in `(def name (macro (form) body ...))`,
+  It is the value of a [def], as in `(def name (macro (form) body ...))`,
   and its body runs at compile time.
 
   ```
@@ -410,8 +410,8 @@
 (document (infer expression)
   "Gives the type the checker infers for the expression, as a string.
 
-  The text is the type as a `type` signature writes it, such as
-  `(vec i64)`, and a function type prints as `fn` whatever its kind. The
+  The text is the type as a [type] signature writes it, such as
+  `(vec i64)`, and a function type prints as [fn] whatever its kind. The
   expression is checked and never runs, so it emits only the string literal.
 
   (infer (vec 1 2))
@@ -466,7 +466,7 @@
   "Types a function that may change what it captures, as Rust's `FnMut` does.
 
   It emits `impl FnMut(argument, ...) -> result`. A written `fn-mut` is
-  exact, while a plain `fn` leaves the kind to inference.
+  exact, while a plain [fn] leaves the kind to inference.
 
   (local total 0)
   (for-each (range 1 4) (fn (x) (set! total (+ total x))))
@@ -477,7 +477,7 @@
   "Types a function that may be called only once, as Rust's `FnOnce` does.
 
   It emits `impl FnOnce(argument, ...) -> result`. A written `fn-once` is
-  exact, while a plain `fn` leaves the kind to inference.
+  exact, while a plain [fn] leaves the kind to inference.
 
   (local word (str \"pear\"))
   (map-some (some 1) (fn (n) word))
@@ -495,7 +495,7 @@
 (document (with type type)
   "Gives an implementor of a Rust trait the trait's second type.
 
-  `(with string str)` means that `String` implements the trait with `str` as
+  `(with string str)` means that `String` implements the trait with [str] as
   its second type.
 
   ```
@@ -506,7 +506,7 @@
 (document _
   "Stands for a type that inference fills in.
 
-  In a `match` pattern, `_` matches any value, and `(new _ base ...)` updates
+  In a [match] pattern, `_` matches any value, and `(new _ base ...)` updates
   a struct whose type comes from its base.
 
   (the (vec _) (vec 1))
@@ -517,7 +517,7 @@
   => \"any\"")
 
 (document bool
-  "Holds `true` or `false`, as Rust's `bool` does.
+  "Holds [true] or [false], as Rust's `bool` does.
 
   (the bool true)
   => true")
@@ -525,7 +525,7 @@
 (document string
   "Holds owned text that can grow, as Rust's `String` does.
 
-  A string literal is a `(ref str)`, and `str` builds a `string` from parts.
+  A string literal is a `(ref str)`, and [str] builds a `string` from parts.
 
   (the string (str \"pear\"))
   => \"pear\"")
@@ -635,7 +635,7 @@
   => \"f64\"")
 
 (document true
-  "Is the `bool` value true.
+  "Is the [bool] value true.
 
   It is a kernel constant, so macro code and program code see the same
   booleans.
@@ -644,7 +644,7 @@
   => 1")
 
 (document false
-  "Is the `bool` value false.
+  "Is the [bool] value false.
 
   It is a kernel constant, so macro code and program code see the same
   booleans.

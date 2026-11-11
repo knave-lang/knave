@@ -16,7 +16,7 @@
 (document (empty? collection)
   "Returns whether a collection has no items.
 
-  It takes a `string`, a `str`, a vector, a slice or a map, or a reference to
+  It takes a [string], a [str], a vector, a slice or a map, or a reference to
   one.
 
   (empty? \"\")
@@ -26,10 +26,10 @@
   => false")
 
 (document (len collection)
-  "Returns the number of items of a collection as a `usize`.
+  "Returns the number of items of a collection as a [usize].
 
   A string counts bytes, not characters, so `(len \"héllo\")` is 6. Use
-  `(count (chars text))` for characters, and borrow a `string` first with
+  `(count (chars text))` for characters, and borrow a [string] first with
   `as-str`.
 
   (len (vec 1 2))

@@ -400,7 +400,7 @@
 
   `knave task name` builds a program whose entry is this call. `signature`
   is the text that `(task-signature name)` gave, or `\"\"`. A parameter whose
-  type in it is a type variable of its `where` takes a `string`, because the
+  type in it is a type variable of its [where] takes a [string], because the
   command line gives text, and every other parameter keeps the type that
   inference gave it.")
 
@@ -411,10 +411,10 @@
     (template (infer (unquote (note-function note))))))
 
 (document (task-signature name)
-  "Returns the type of the task `name` as a `type` signature writes it.
+  "Returns the type of the task `name` as a [type] signature writes it.
 
   The command reads it from one check of the task definitions, and
-  `run-task` reads each parameter's and the result's type from it.")
+  [run-task] reads each parameter's and the result's type from it.")
 
 (def type-known?
   (fn (parameter)
@@ -738,7 +738,7 @@
   "Returns the names of the program's tasks, one per line.
 
   Each `module` is the path of a module under `tasks/`, as a string. A
-  `deftask` in any other module fails, because a task lives under `tasks/`.")
+  [deftask] in any other module fails, because a task lives under `tasks/`.")
 
 (def task-listing
   (macro (form)

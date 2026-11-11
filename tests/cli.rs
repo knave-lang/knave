@@ -112,7 +112,7 @@ const SHADOWING_GEOMETRY_ENTRY: &str =
 const UNDOCUMENTED_ENTRY: &str = "(defn twice (x) (* 2 x))\n\n(defn main () (println (twice 2)))\n";
 const SHADOWING_PAGE_BODY: &str = "(defrule doc-body ((term) 0))\n\n(defn main () (do))\n";
 const SHADOWING_HEADER: &str = "(defrule doc-header ((term) 0))\n\n(defn main () (do))\n";
-const TRUE_PAGE: &str = "true\n\nIs the `bool` value true.\n\nIt is a kernel constant, so macro code and program code see the same\nbooleans.\n\n(if true 1 2)\n=> 1\n";
+const TRUE_PAGE: &str = "true\n\nIs the [bool] value true.\n\nIt is a kernel constant, so macro code and program code see the same\nbooleans.\n\n(if true 1 2)\n=> 1\n";
 const IF_PAGE: &str = "(if test then else)\n\nEvaluates `then` when the test is true, and `else` otherwise.\n\nIt emits a Rust `if` with an `else`.\n\n(if (> 2 1) \"yes\" \"no\")\n=> \"yes\"\n";
 #[cfg(target_os = "linux")]
 const DEEP_NESTING: usize = 1000;
@@ -1942,7 +1942,7 @@ fn doc_prints_the_header_that_documents_a_prelude_term() {
     let doc = sandbox.compiler(&["doc", "str"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        "(str part ...)\n\nBuilds a `string` from its parts.\n\nA string literal part is literal text, and any other part prints with\n`display`. `(str x)` emits `x.to_string()`, and `str` as a value is that\none-part function, so `(map (iter years) str)` turns each year into a\n`string`.\n\n(str \"year \" 2026)\n=> \"year 2026\"\n\n(collect (map (iter (vec 1 2)) str))\n=> (vec (str 1) (str 2))\n"
+        "(str part ...)\n\nBuilds a [string] from its parts.\n\nA string literal part is literal text, and any other part prints with\n[display]. `(str x)` emits `x.to_string()`, and `str` as a value is that\none-part function, so `(map (iter years) str)` turns each year into a\n`string`.\n\n(str \"year \" 2026)\n=> \"year 2026\"\n\n(collect (map (iter (vec 1 2)) str))\n=> (vec (str 1) (str 2))\n"
     );
 }
 
@@ -1952,7 +1952,7 @@ fn doc_prints_the_page_of_a_kernel_form() {
     let doc = sandbox.compiler(&["doc", "match"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        "(match value (pattern body ...) ...)\n\nEvaluates the body of the first arm whose pattern matches the value.\n\nAn arm's body is a `do`, so its last form is the arm's value.\n\nA pattern is `_`, a literal, a bare name, `(variant pattern ...)`,\n`(variant :field pattern ...)`, `(type-name pattern ...)` or\n`(type-name :field pattern ...)`. It emits a Rust `match`.\n\n(match 3\n  (0 \"zero\")\n  (_ \"other\"))\n=> \"other\"\n\n(match (pair 1 2)\n  ((pair left _) left))\n=> 1\n"
+        "(match value (pattern body ...) ...)\n\nEvaluates the body of the first arm whose pattern matches the value.\n\nAn arm's body is a [do], so its last form is the arm's value.\n\nA pattern is [_], a literal, a bare name, `(variant pattern ...)`,\n`(variant :field pattern ...)`, `(type-name pattern ...)` or\n`(type-name :field pattern ...)`. It emits a Rust `match`.\n\n(match 3\n  (0 \"zero\")\n  (_ \"other\"))\n=> \"other\"\n\n(match (pair 1 2)\n  ((pair left _) left))\n=> 1\n"
     );
 }
 

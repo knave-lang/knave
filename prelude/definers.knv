@@ -16,7 +16,7 @@
 (module "Defines enums and traits, and names Rust types and traits.")
 
 (defmacro defenum (head body ...)
-  "Defines an enum, or names a Rust enum with a `rust` clause.
+  "Defines an enum, or names a Rust enum with a [rust] clause.
 
   Write (defenum name variant ...). A variant is a name, `(name type ...)` or
   `(name :field type ...)`. A `(rust \"Path\")` right after the name or the
@@ -36,7 +36,7 @@
 (header-shape (defenum name) :docstring :one-per-line)
 
 (defmacro deftrait (head body ...)
-  "Defines a trait, or names a Rust trait with a `rust` clause.
+  "Defines a trait, or names a Rust trait with a [rust] clause.
 
   Write (deftrait name (method type) ...), where a method's first parameter
   may be `self`, `(ref self)` or `(mut self)`. Write

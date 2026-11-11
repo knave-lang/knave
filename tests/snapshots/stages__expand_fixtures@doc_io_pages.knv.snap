@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/doc_io_pages.knv
 ---
-(def slurp-page "(slurp source)\n\nReads all of a file or of standard input into a `string`.\n\nIt returns `(result string io-error)`. It takes its source by reference, so\nan owned path stays usable. Reading `stdin` flushes standard output first.\n\n```\n(unwrap-ok (slurp \"notes.txt\"))\n=> \"first line\\n\"\n```")
+(def slurp-page "(slurp source)\n\nReads all of a file or of standard input into a [string].\n\nIt returns `(result string io-error)`. It takes its source by reference, so\nan owned path stays usable. Reading [stdin] flushes standard output first.\n\n```\n(unwrap-ok (slurp \"notes.txt\"))\n=> \"first line\\n\"\n```")
 (def read-line-page "(read-line)\n\nReads one line of standard input.\n\nIt returns `(result (option string) io-error)`, with `none` at the end of\ninput, and drops the line ending. It flushes standard output first.\n\nWith `first` on standard input:\n\n```\n(unwrap-ok (read-line))\n=> (some \"first\")\n```")
 (def stdin-page "stdin\n\nHolds the program's standard input.\n\n`stdin` is also its type, Rust's `std::io::Stdin`.\n\n(infer (line-seq stdin))\n=> \"(iterator (result string io-error))\"")
 (def io-error-page "io-error\n\nNames the error of an input or output call, Rust's `std::io::Error`.\n\nIt implements `display`, `debug` and `show`.\n\n(infer read-line)\n=> \"(fn () (result (option string) io-error))\"")

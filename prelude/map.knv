@@ -119,7 +119,7 @@
 (document (get collection key)
   "Reads a slice by index or a map by key.
 
-  It returns an `option` of a borrow, and `none` for a missing index or
+  It returns an [option] of a borrow, and `none` for a missing index or
   key. `get` as a value is the slice reader.
 
   (local items (vec 10 20))
@@ -143,7 +143,7 @@
 (document (keys map)
   "Returns an iterator over borrows of a map's keys.
 
-  A `sorted-map` yields them in key order, and the order of a `hash-map` is
+  A [sorted-map] yields them in key order, and the order of a [hash-map] is
   not fixed. The map stays usable.
 
   (local prices (sorted-map \"pear\" 3 \"fig\" 1))
@@ -156,7 +156,7 @@
 (document (vals map)
   "Returns an iterator over borrows of a map's values.
 
-  A `sorted-map` yields them in key order, and the order of a `hash-map` is
+  A [sorted-map] yields them in key order, and the order of a [hash-map] is
   not fixed. The map stays usable. Each item is a borrow, so
   `(sum (vals map))` is an error, and `(reduce (vals map) 0 +)` adds them.
 
@@ -168,20 +168,20 @@
   => 4")
 
 (document (into-sorted-map pairs)
-  "Builds a `sorted-map` from a vector of pairs.
+  "Builds a [sorted-map] from a vector of pairs.
 
   `pairs` is a `(vec (pair key value))`, and the call moves it. Keys implement
-  `ord`, and the last pair of a repeated key wins.
+  [ord], and the last pair of a repeated key wins.
 
   (local prices (into-sorted-map (vec (pair \"pear\" 3) (pair \"pear\" 5))))
   (get prices \"pear\")
   => (some (ref 5))")
 
 (document (into-hash-map pairs)
-  "Builds a `hash-map` from a vector of pairs.
+  "Builds a [hash-map] from a vector of pairs.
 
   `pairs` is a `(vec (pair key value))`, and the call moves it. Keys implement
-  `hash` and `eq`, and the last pair of a repeated key wins.
+  [hash] and [eq], and the last pair of a repeated key wins.
 
   (local prices (into-hash-map (vec (pair \"pear\" 3) (pair \"pear\" 5))))
   (get prices \"pear\")

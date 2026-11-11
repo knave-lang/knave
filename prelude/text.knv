@@ -473,10 +473,10 @@
       (string-form (rest form)))))
 
 (document (str part ...)
-  "Builds a `string` from its parts.
+  "Builds a [string] from its parts.
 
   A string literal part is literal text, and any other part prints with
-  `display`. `(str x)` emits `x.to_string()`, and `str` as a value is that
+  [display]. `(str x)` emits `x.to_string()`, and `str` as a value is that
   one-part function, so `(map (iter years) str)` turns each year into a
   `string`.
 
@@ -490,7 +490,7 @@
   "Prints its parts to standard output, with no newline of its own.
 
   A string literal part is literal text, a `(pr-str x)` part prints with
-  `show`, and any other part prints with `display`.
+  [show], and any other part prints with [display].
 
   (print \"total: \" 3)
   => total: 3 ..."
@@ -503,7 +503,7 @@
   "Prints its parts and a newline to standard output.
 
   A string literal part is literal text, a `(pr-str x)` part prints with
-  `show`, and any other part prints with `display`.
+  [show], and any other part prints with [display].
 
   (println \"total: \" 3)
   => total: 3 ...
@@ -516,7 +516,7 @@
   "Prints its parts to standard error, with no newline of its own.
 
   A string literal part is literal text, a `(pr-str x)` part prints with
-  `show`, and any other part prints with `display`.
+  [show], and any other part prints with [display].
 
   ```
   (eprint \"total: \" 3)
@@ -531,7 +531,7 @@
   "Prints its parts and a newline to standard error.
 
   A string literal part is literal text, a `(pr-str x)` part prints with
-  `show`, and any other part prints with `display`.
+  [show], and any other part prints with [display].
 
   ```
   (eprintln \"total: \" 3)
@@ -586,7 +586,7 @@
   each module the program loads, private names included, and what `prelude`
   exports. A search in a library's body misses the modules that load after
   it, such as the module that imports it. With no match, it prints
-  `No matches.` and points to `find-doc`.
+  `No matches.` and points to [find-doc].
 
   (apropos sort)
   => into-sorted-map sort! sort-by! sorted-map ...")
@@ -595,7 +595,7 @@
   "Prints the header and summary of each term that holds a text.
 
   It ignores case. The text is a symbol, or a string when it holds spaces.
-  It covers what `apropos` covers. It lists the names that hold the text
+  It covers what [apropos] covers. It lists the names that hold the text
   first, then the terms whose docstring alone holds it, anywhere in the
   docstring.
 
@@ -691,7 +691,7 @@
   "Implements the `display` trait for a struct or an enum of the program.
 
   `param` is a one-name list that binds the value, and `parts` are what
-  `print` takes. One `match` or `if` part prints each arm by its own parts.
+  [print] takes. One [match] or [if] part prints each arm by its own parts.
   `display` is also the trait, Rust's `Display`, that a `print` part needs.
 
   ```
@@ -841,7 +841,7 @@
   `param` is a one-name list that binds the value, and `body` is a symbol or
   a list headed by a symbol. A keyword argument of the list prints as
   written, and any other argument prints with `show`. `show` is also the
-  trait that `prn` and `pr-str` need.
+  trait that [prn] and [pr-str] need.
 
   ```
   (defstruct money :cents i64)
@@ -865,7 +865,7 @@
 (document debug
   "Marks a type that Rust's `{:?}` formatting prints, as Rust's `Debug` does.
 
-  `derive` adds it to a struct or an enum of the program.
+  [derive] adds it to a struct or an enum of the program.
 
   ```
   (defstruct point :x i64)
@@ -873,9 +873,9 @@
   ```")
 
 (document from-str
-  "Marks a type that `parse` builds from a string, as Rust's `FromStr` does.
+  "Marks a type that [parse] builds from a string, as Rust's `FromStr` does.
 
-  The `bool`, `char`, `string`, integer and float types implement it.
+  The [bool], [char], [string], integer and float types implement it.
 
   (infer parse)
   => \"(where ((a from-str)) (fn ((ref str)) (result a (parse-error a))))\"")
@@ -883,20 +883,20 @@
 (document (parse-error target)
   "Names the error type of parsing a `target` type.
 
-  It is the associated type of `from-str`, as `Err` is in Rust, so
-  `(parse-error i64)` is `parse-int-error`.
+  It is the associated type of [from-str], as `Err` is in Rust, so
+  `(parse-error i64)` is [parse-int-error].
 
   (unwrap-ok (the (result i64 (parse-error i64)) (parse \"12\")))
   => 12")
 
 (document parse-bool-error
-  "Names the error of parsing a `bool`, Rust's `ParseBoolError`.
+  "Names the error of parsing a [bool], Rust's `ParseBoolError`.
 
   (err? (the (result bool parse-bool-error) (parse \"maybe\")))
   => true")
 
 (document parse-char-error
-  "Names the error of parsing a `char`, Rust's `ParseCharError`.
+  "Names the error of parsing a [char], Rust's `ParseCharError`.
 
   (err? (the (result char parse-char-error) (parse \"ab\")))
   => true")
@@ -916,7 +916,7 @@
 (document infallible
   "Names the error of a parse that cannot fail, Rust's `Infallible`.
 
-  It is the `parse-error` of `string`.
+  It is the [parse-error] of [string].
 
   (unwrap-ok (the (result string infallible) (parse \"pear\")))
   => \"pear\"")
@@ -924,9 +924,9 @@
 (document (prn value ...)
   "Prints the printed forms of its values and a newline to standard output.
 
-  Each value's type implements `show`, and a `string` prints quoted. A space
+  Each value's type implements [show], and a [string] prints quoted. A space
   separates two printed forms, so the line reads back as the values. `prn`
-  as a value is the one-value function `print-form`, which
+  as a value is the one-value function [print-form], which
   `knave doc \"(module prelude/text)\"` lists.
 
   (prn \"pear\" 3)
@@ -935,25 +935,25 @@
 (document (print-form value)
   "Prints the printed form of a value and a newline to standard output.
 
-  It is `prn` as a value, and the printer of a result in `eval` and at the
-  prompt. The value's type implements `show`.
+  It is [prn] as a value, and the printer of a result in `eval` and at the
+  prompt. The value's type implements [show].
 
   (print-form \"pear\")
   => \"pear\" ...")
 
 (document (pr-str value)
-  "Returns the printed form of a value as a `string`.
+  "Returns the printed form of a value as a [string].
 
-  The value's type implements `show`. As a part of `print`, `println`,
-  `eprintln`, `str` or `display`, it prints in place.
+  The value's type implements [show]. As a part of [print], [println],
+  [eprintln], [str] or [display], it prints in place.
 
   (pr-str \"pear\")
   => \"\\\"pear\\\"\"")
 
 (document (chars text)
-  "Returns an iterator over the `char`s of a string.
+  "Returns an iterator over the [char]s of a string.
 
-  It takes a `(ref str)`, so borrow a `string` with `as-str`.
+  It takes a `(ref str)`, so borrow a [string] with [as-str].
 
   (collect (chars \"hi\"))
   => (vec (char \"h\") (char \"i\"))")
@@ -964,7 +964,7 @@
   Each line drops its `\\n` or `\\r\\n` ending, and a final ending starts no
   empty line. Use `line-seq` for standard input.
 
-  It takes a `(ref str)`, so borrow a `string` with `as-str`.
+  It takes a `(ref str)`, so borrow a [string] with [as-str].
 
   (collect (lines \"a\\nb\\n\"))
   => (vec \"a\" \"b\")
@@ -985,11 +985,11 @@
   => (vec \"a\" \"\" \"b\")")
 
 (document (split-when text test)
-  "Returns an iterator over the parts of a string between matching `char`s.
+  "Returns an iterator over the parts of a string between matching [char]s.
 
-  `test` is a function from a `char` to a `bool`, such as `digit?`.
+  `test` is a function from a `char` to a [bool], such as [digit?].
 
-  It takes a `(ref str)`, so borrow a `string` with `as-str`.
+  It takes a `(ref str)`, so borrow a [string] with [as-str].
 
   (collect (split-when \"a1b\" digit?))
   => (vec \"a\" \"b\")")
@@ -999,13 +999,13 @@
 
   The result borrows from `text`.
 
-  It takes a `(ref str)`, so borrow a `string` with `as-str`.
+  It takes a `(ref str)`, so borrow a [string] with [as-str].
 
   (trim \"  pear\\n\")
   => \"pear\"")
 
 (document (as-str text)
-  "Borrows a `string` as a `(ref str)`.
+  "Borrows a [string] as a `(ref str)`.
 
   It emits `text.as_str()`.
 
@@ -1017,27 +1017,27 @@
   "Parses a string into the type that the call's result takes.
 
   It returns `(result target (parse-error target))`, where `target` implements
-  `from-str`, so `(the (result i64 parse-int-error) (parse \"12\"))` is `ok`.
+  [from-str], so `(the (result i64 parse-int-error) (parse \"12\"))` is `ok`.
 
-  It takes a `(ref str)`, so borrow a `string` with `as-str`.
+  It takes a `(ref str)`, so borrow a [string] with [as-str].
 
   (unwrap-ok (the (result i64 parse-int-error) (parse \"12\")))
   => 12")
 
 (document (lower-case text)
-  "Returns a new `string` with each character in lower case.
+  "Returns a new [string] with each character in lower case.
 
-  It takes a `(ref str)`, so borrow a `string` with `as-str`.
+  It takes a `(ref str)`, so borrow a `string` with [as-str].
 
   (lower-case \"PEAR\")
   => \"pear\"")
 
 (document (upper-case text)
-  "Returns a new `string` with each character in upper case.
+  "Returns a new [string] with each character in upper case.
 
   A character may become several, as `ß` becomes `SS`.
 
-  It takes a `(ref str)`, so borrow a `string` with `as-str`.
+  It takes a `(ref str)`, so borrow a `string` with [as-str].
 
   (upper-case \"pear\")
   => \"PEAR\"
@@ -1046,7 +1046,7 @@
   => \"STRASSE\"")
 
 (document (alphanumeric? character)
-  "Returns whether a `char` is a Unicode letter or number.
+  "Returns whether a [char] is a Unicode letter or number.
 
   (alphanumeric? (char \"a\"))
   => true
@@ -1055,7 +1055,7 @@
   => false")
 
 (document (whitespace? character)
-  "Returns whether a `char` is Unicode whitespace.
+  "Returns whether a [char] is Unicode whitespace.
 
   (whitespace? (char \" \"))
   => true
@@ -1064,7 +1064,7 @@
   => false")
 
 (document (digit? character)
-  "Returns whether a `char` is an ASCII digit.
+  "Returns whether a [char] is an ASCII digit.
 
   (digit? (char \"7\"))
   => true
@@ -1078,7 +1078,7 @@
   It emits `&text[start..end]`, so it panics when an offset is out of bounds
   or falls inside a character, or when `start` is past `end`.
 
-  It takes a `(ref str)`, so borrow a `string` with `as-str`.
+  It takes a `(ref str)`, so borrow a [string] with [as-str].
 
   (subs \"pear\" 1 3)
   => \"ea\"
@@ -1087,7 +1087,7 @@
   => \"hé\"")
 
 (document (fmt value formatter)
-  "Writes a value's `display` text to a formatter.
+  "Writes a value's [display] text to a formatter.
 
   It is the method of the `display` trait, and the `display` macro implements
   it.
@@ -1103,7 +1103,7 @@
 (document (write-form value formatter)
   "Writes a value's printed form to a formatter.
 
-  It is the method of the `show` trait, and the `show` macro implements it.
+  It is the method of the [show] trait, and the `show` macro implements it.
 
   ```
   (defstruct label :text string)

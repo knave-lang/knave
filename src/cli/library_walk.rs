@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use super::checkout_bounds::{CheckoutBounds, RepositoryAddress};
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
-use super::standard_error::StandardError;
 use super::terminal::Terminal;
 use crate::build::{GitStore, StoreError};
 use crate::diagnostic::{Diagnostic, Diagnostics};
@@ -187,20 +186,19 @@ impl<'t> LibraryWalk<'t> {
                 library.name_span,
                 &reason,
             )),
-            StoreError::NoCacheDirectory => Self::report_environment(
+            StoreError::NoCacheDirectory => self.report_environment(
                 "no cache directory for git libraries: set `XDG_CACHE_HOME` or `HOME`",
             ),
-            StoreError::GitMissing(error) => Self::report_environment(&format!(
-                "cannot run `git` to fetch git libraries: {error}"
-            )),
+            StoreError::GitMissing(error) => self
+                .report_environment(&format!("cannot run `git` to fetch git libraries: {error}")),
             StoreError::Unwritable(path, error) => {
-                Self::report_environment(&format!("cannot write `{}`: {error}", path.display()))
+                self.report_environment(&format!("cannot write `{}`: {error}", path.display()))
             }
         }
     }
 
-    fn report_environment(message: &str) -> ExitStatus {
-        StandardError::write_line(format_args!("error: {message}"));
+    fn report_environment(&self, message: &str) -> ExitStatus {
+        self.terminal.diagnostic_output().write_error(message);
         ExitStatus::Environment
     }
 

@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: fmt.assert_exit_code(0).stderr()
+---
+error: cannot read `project.knv`: Permission denied (os error 13)
+warning: cannot load `project.knv` with its libraries, so `fmt` reads shapes only beside each file and in its parent directories

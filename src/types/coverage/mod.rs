@@ -4,6 +4,7 @@ mod constructor_tag;
 mod cover_pattern;
 mod coverage_verdict;
 mod exhaustiveness;
+mod missing_case_search;
 mod pattern_guard;
 mod pattern_matrix;
 mod query;
@@ -18,6 +19,7 @@ pub(super) use constructor_catalog::ConstructorCatalog;
 use cover_pattern::CoverPattern;
 use coverage_verdict::CoverageVerdict;
 use exhaustiveness::Exhaustiveness;
+use missing_case_search::MissingCaseSearch;
 use pattern_guard::PatternGuard;
 use pattern_matrix::PatternMatrix;
 use query::Query;
@@ -50,7 +52,7 @@ impl<'a> MatchCoverage<'a> {
 
     pub(super) fn judge(&self, scrutinee: &Type, arms: &[TypedArm]) -> CoverageVerdict {
         let scrutinee = self.catalog.peeled(scrutinee);
-        let mut usefulness = Usefulness::new(&self.catalog);
+        let usefulness = Usefulness::new(&self.catalog);
         let mut matrix = PatternMatrix::default();
         let mut unreachable_arms = Vec::new();
         for (position, arm) in arms.iter().enumerate() {
@@ -64,9 +66,9 @@ impl<'a> MatchCoverage<'a> {
                 });
             }
         }
-        let exhaustiveness = match self.missing_cases(&mut usefulness, &matrix, scrutinee.clone()) {
+        let exhaustiveness = match self.missing_cases(&usefulness, &matrix, scrutinee.clone()) {
             Some(cases) => Exhaustiveness::Missing(cases),
-            None if self.is_exhaustive_without_guards(&mut usefulness, &scrutinee, arms) => {
+            None if self.is_exhaustive_without_guards(&usefulness, &scrutinee, arms) => {
                 Exhaustiveness::Complete
             }
             None => Exhaustiveness::OnlyWithGuards,
@@ -87,7 +89,7 @@ impl<'a> MatchCoverage<'a> {
         pattern: &CoverPattern,
         scrutinee: &Type,
     ) -> Option<Span> {
-        let mut usefulness = Usefulness::new(&self.catalog);
+        let usefulness = Usefulness::new(&self.catalog);
         previous
             .iter()
             .find(|arm| {
@@ -100,7 +102,7 @@ impl<'a> MatchCoverage<'a> {
 
     fn missing_cases(
         &self,
-        usefulness: &mut Usefulness,
+        usefulness: &Usefulness,
         matrix: &PatternMatrix,
         scrutinee: Type,
     ) -> Option<Vec<String>> {
@@ -109,7 +111,7 @@ impl<'a> MatchCoverage<'a> {
             return None;
         }
         let mut seen = FxHashSet::default();
-        let cases = usefulness
+        let cases = MissingCaseSearch::new(&self.catalog)
             .witnesses(matrix, &[scrutinee])
             .iter()
             .map(|row| self.text.show(&row[0]))
@@ -120,7 +122,7 @@ impl<'a> MatchCoverage<'a> {
 
     fn is_exhaustive_without_guards(
         &self,
-        usefulness: &mut Usefulness,
+        usefulness: &Usefulness,
         scrutinee: &Type,
         arms: &[TypedArm],
     ) -> bool {

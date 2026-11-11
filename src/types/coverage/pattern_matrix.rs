@@ -39,14 +39,12 @@ impl PatternMatrix {
         self.keep_rows(|first| first.is_wild().then(Vec::new))
     }
 
-    pub(super) fn concrete_rows(&self) -> Self {
-        Self::of_rows(
+    pub(super) fn heads_cover(&self, constructors: &[Constructor]) -> bool {
+        constructors.iter().all(|constructor| {
             self.rows
                 .iter()
-                .filter(|row| !row.first().is_some_and(CoverPattern::is_wild))
-                .cloned()
-                .collect(),
-        )
+                .any(|row| row.first().and_then(CoverPattern::head_tag) == Some(constructor.tag()))
+        })
     }
 
     fn of_rows(rows: Vec<Vec<CoverPattern>>) -> Self {
@@ -225,18 +223,17 @@ mod tests {
     }
 
     #[test]
-    fn the_concrete_rows_are_the_rows_that_start_with_a_value() {
+    fn heads_cover_the_constructors_that_some_row_starts_with() {
         let fixture = MatrixFixture::new();
-        assert!(
-            MatrixFixture::rows(vec![CoverPattern::wild()])
-                .concrete_rows()
-                .is_empty()
-        );
-        assert!(
-            !MatrixFixture::rows(vec![fixture.variant(0)])
-                .concrete_rows()
-                .is_empty()
-        );
+        let matrix = MatrixFixture::rows(vec![fixture.variant(0)]);
+        assert!(matrix.heads_cover(&[fixture.first_variant()]));
+    }
+
+    #[test]
+    fn heads_do_not_cover_a_constructor_that_no_row_starts_with() {
+        let fixture = MatrixFixture::new();
+        let matrix = MatrixFixture::rows(vec![fixture.variant(1), CoverPattern::wild()]);
+        assert!(!matrix.heads_cover(&[fixture.first_variant()]));
     }
 
     #[test]

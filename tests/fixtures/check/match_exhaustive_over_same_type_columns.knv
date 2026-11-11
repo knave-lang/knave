@@ -1,0 +1,13 @@
+(enum side left right)
+
+(defstruct twin
+  :first side
+  :second side
+  :flag bool)
+
+(defn pick (t)
+  (match t
+    ((twin side/left _ _) 1)
+    ((twin side/right side/left _) 2)
+    ((twin side/right _ false) 3)
+    ((twin side/right side/right true) 4)))

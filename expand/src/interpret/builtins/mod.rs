@@ -17,7 +17,7 @@ use std::cmp::Ordering;
 
 use super::arguments::{Arguments, BuiltinSite};
 use super::list_size::ListSize;
-use super::{BuildLimit, CompileTimeHost, ListNesting, PlannedList, Value, WorkMeter};
+use super::{BuildLimit, Host, HostProblems, ListNesting, PlannedList, Value, WorkMeter};
 use crate::core::{Builtin, Declaration};
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Number, NumberValue};
@@ -93,25 +93,32 @@ impl<'m> BuiltinCall<'m> {
             operations.text.make_string()
         }),
         (Builtin::SameBinding, |operations, host| {
-            operations.text.same_binding(host)
+            let group = operations.granted(host.name_comparison())?;
+            operations.text.same_binding(group)
         }),
         (Builtin::IsPatternHead, |operations, host| {
-            operations.text.is_pattern_head(host)
+            let group = operations.granted(host.name_comparison())?;
+            operations.text.is_pattern_head(group)
         }),
         (Builtin::DefinitionSymbol, |operations, host| {
-            operations.text.definition_symbol(host)
+            let group = operations.granted(host.definition_queries())?;
+            operations.text.definition_symbol(group)
         }),
         (Builtin::TypeDefinitionSymbol, |operations, host| {
-            operations.text.type_definition_symbol(host)
+            let group = operations.granted(host.definition_queries())?;
+            operations.text.type_definition_symbol(group)
         }),
         (Builtin::DefinitionCall, |operations, host| {
-            operations.text.definition_call(host)
+            let group = operations.granted(host.definition_queries())?;
+            operations.text.definition_call(group)
         }),
         (Builtin::TypeDefinitionCall, |operations, host| {
-            operations.text.type_definition_call(host)
+            let group = operations.granted(host.definition_queries())?;
+            operations.text.type_definition_call(group)
         }),
         (Builtin::ExpandCall, |operations, host| {
-            operations.text.expand_call(host)
+            let group = operations.granted(host.expansion_callbacks())?;
+            operations.text.expand_call(group)
         }),
         (Builtin::ClosestName, |operations, _| {
             operations.text.closest_name()
@@ -124,7 +131,8 @@ impl<'m> BuiltinCall<'m> {
         }),
         (Builtin::Fail, |operations, _| operations.text.fail()),
         (Builtin::Warn, |operations, host| {
-            operations.warning.report(host)
+            let group = operations.granted(host.warnings())?;
+            operations.warning.report(group)
         }),
         (Builtin::NumberAdd, |operations, _| operations.numbers.add()),
         (Builtin::NumberSub, |operations, _| {
@@ -181,55 +189,73 @@ impl<'m> BuiltinCall<'m> {
             operations.strings.contains()
         }),
         (Builtin::AddModuleNote, |operations, host| {
-            operations.text.add_module_note(host)
+            let group = operations.granted(host.module_notes())?;
+            operations.text.add_module_note(group)
         }),
         (Builtin::ModuleNotes, |operations, host| {
-            operations.text.module_notes(host)
+            let group = operations.granted(host.module_notes())?;
+            operations.text.module_notes(group)
         }),
         (Builtin::DeclareDefinition, |operations, host| {
-            operations.text.declare_definition(host, Declaration::Value)
+            let group = operations.granted(host.expansion_callbacks())?;
+            operations
+                .text
+                .declare_definition(group, Declaration::Value)
         }),
         (Builtin::DeclareTypeDefinition, |operations, host| {
-            operations.text.declare_definition(host, Declaration::Type)
+            let group = operations.granted(host.expansion_callbacks())?;
+            operations.text.declare_definition(group, Declaration::Type)
         }),
         (Builtin::DeclareMacroDefinition, |operations, host| {
-            operations.text.declare_definition(host, Declaration::Macro)
+            let group = operations.granted(host.expansion_callbacks())?;
+            operations
+                .text
+                .declare_definition(group, Declaration::Macro)
         }),
         (Builtin::FormLocation, |operations, host| {
-            operations.program.form_location(host)
+            let group = operations.granted(host.source_queries())?;
+            operations.program.form_location(group)
         }),
         (Builtin::InTasksDirectory, |operations, host| {
-            operations.program.in_tasks_directory(host)
+            let group = operations.granted(host.source_queries())?;
+            operations.program.in_tasks_directory(group)
         }),
         (Builtin::PinnedAt, |operations, _| {
             operations.program.pinned_at()
         }),
         (Builtin::ProgramModules, |operations, host| {
-            operations.modules.program_modules(host)
+            let group = operations.granted(host.module_queries())?;
+            operations.modules.program_modules(group)
         }),
         (Builtin::ModuleExports, |operations, host| {
-            operations.modules.module_exports(host)
+            let group = operations.granted(host.module_queries())?;
+            operations.modules.module_exports(group)
         }),
         (Builtin::ModuleDefinitions, |operations, host| {
-            operations.modules.module_definitions(host)
+            let group = operations.granted(host.module_queries())?;
+            operations.modules.module_definitions(group)
         }),
         (Builtin::CurrentModule, |operations, host| {
-            operations.modules.current_module(host)
+            let group = operations.granted(host.module_queries())?;
+            operations.modules.current_module(group)
         }),
         (Builtin::ModuleSymbol, |operations, host| {
+            let group = operations.granted(host.module_queries())?;
             operations
                 .modules
-                .named(|path, span| host.module_symbol(path, span))
+                .named(|path, span| group.module_symbol(path, span))
         }),
         (Builtin::RequireModule, |operations, host| {
+            let group = operations.granted(host.expansion_callbacks())?;
             operations
                 .modules
-                .named(|path, span| host.require_module(path, span))
+                .named(|path, span| group.require_module(path, span))
         }),
         (Builtin::SetMacroStepLimit, |operations, host| {
+            let group = operations.granted(host.expansion_callbacks())?;
             operations
                 .step_limit
-                .apply(|limit| host.set_macro_step_limit(limit))
+                .apply(|limit| group.set_macro_step_limit(limit))
         }),
         (Builtin::ProjectFileName, |operations, _| {
             operations.language_names.project_file_name()
@@ -238,13 +264,15 @@ impl<'m> BuiltinCall<'m> {
             operations.language_names.language_name()
         }),
         (Builtin::ReadForm, |operations, host| {
-            operations.program.read_form(host)
+            let group = operations.granted(host.source_queries())?;
+            operations.program.read_form(group)
         }),
         (Builtin::Located, |operations, _| {
             operations.program.located()
         }),
         (Builtin::ProjectModules, |operations, host| {
-            operations.modules.project_modules(host)
+            let group = operations.granted(host.module_queries())?;
+            operations.modules.project_modules(group)
         }),
     ];
 
@@ -260,7 +288,7 @@ impl<'m> BuiltinCall<'m> {
         }
     }
 
-    pub fn run(self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
+    pub fn run(self, host: &mut dyn Host) -> Result<Value, Diagnostic> {
         let operations = Operations::new(&self.arguments, self.call_site);
         Self::implementation(self.builtin)(&operations, host)
     }
@@ -271,8 +299,7 @@ impl<'m> BuiltinCall<'m> {
     }
 }
 
-type Implementation =
-    for<'a> fn(&Operations<'a>, &mut dyn CompileTimeHost) -> Result<Value, Diagnostic>;
+type Implementation = for<'a> fn(&Operations<'a>, &mut dyn Host) -> Result<Value, Diagnostic>;
 
 struct Operations<'a> {
     language_names: LanguageNames<'a>,
@@ -285,6 +312,7 @@ struct Operations<'a> {
     leading_lines: DistinctLeadingLines<'a>,
     text: TextOperations<'a>,
     warning: WarnCall<'a>,
+    arguments: &'a Arguments<'a>,
 }
 
 impl<'a> Operations<'a> {
@@ -300,7 +328,18 @@ impl<'a> Operations<'a> {
             leading_lines: DistinctLeadingLines::new(arguments, call_site),
             text: TextOperations::new(arguments, call_site),
             warning: WarnCall::new(arguments),
+            arguments,
         }
+    }
+
+    fn granted<'g, Group: ?Sized>(
+        &self,
+        group: Option<&'g mut Group>,
+    ) -> Result<&'g mut Group, Diagnostic> {
+        group.ok_or_else(|| {
+            let builtin = format!("`{}`", self.arguments.function());
+            HostProblems::missing_group(&builtin, self.arguments.span())
+        })
     }
 }
 

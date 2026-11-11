@@ -1,10 +1,10 @@
 (use code bool-not concat empty? expand-call first list
           module-definitions module-exports module-symbol
-          nth number-add rest same-binding? string
-          string-contains? string-drop string-length
+          nth number-add rest same-binding? sorted-names
+          string string-contains? string-drop string-length
           string-lines string-strip-prefix
-          string-strip-suffix string-trim-start symbol
-          symbol-name value-eq)
+          string-strip-suffix string-trim-start string?
+          symbol symbol-name value-eq)
 
 (use prelude/internal/code require-module)
 
@@ -100,41 +100,79 @@
 (def page-text
   (fn (page)
     (local terms (module-exports (page-path page)))
-    (local own
-      (items-where (fn (term) (own-term? page term))
-                   terms))
-    (local exported
-      (items-where (fn (term)
-                     (bool-not (own-term? page term)))
-                   terms))
+    (local homes (homes-of page terms))
+    (local sections
+      (map-list (owned-terms page terms homes)
+        (fn (term)
+          (list term (written-body term)))))
+    (local summary (module-docstring page))
+    (local linked-page
+      (with-link-homes page
+                       (concat summary (map-list sections section-body))))
     (string "# "
             (page-path page)
             "\n\n"
-            (module-summary page)
+            (module-summary linked-page summary)
             (join-text "\n"
-                       (map-list own
-                         (fn (term) (term-section page term))))
-            (reexport-list page exported))))
+                       (map-list sections
+                         (fn (section) (term-section linked-page section))))
+            (reexport-list linked-page
+                           (reexported-terms page terms homes)))))
+
+(def section-term
+  (fn (section) (first section)))
+
+(def section-body
+  (fn (section) (nth section 1)))
+
+(def module-docstring
+  (fn (page)
+    (expand-call (list (quote docstring)
+                       (list (quote module) (page-path page))))))
 
 (def module-summary
-  (fn (page)
-    (local expanded
-      (expand-call (list (quote docstring)
-                         (list (quote module) (page-path page)))))
-    (if (empty? expanded)
+  (fn (page summary)
+    (if (empty? summary)
       ""
-      (string (body-markdown page (first expanded)) "\n\n"))))
+      (string (body-markdown page (first summary)) "\n\n"))))
 
-(def own-term?
-  (fn (page term)
-    (local home (home-of page term))
+(def owned-terms
+  (fn (page terms homes)
+    (local owned-of
+      (fn (owned terms homes)
+        (if (empty? terms)
+          owned
+          (recur (if (own-home? page (first homes))
+                   (concat owned (list (first terms)))
+                   owned)
+                 (rest terms)
+                 (rest homes)))))
+    (owned-of (list) terms homes)))
+
+(def reexported-terms
+  (fn (page terms homes)
+    (local reexported-of
+      (fn (reexported terms homes)
+        (if (empty? terms)
+          reexported
+          (recur (if (own-home? page (first homes))
+                   reexported
+                   (concat reexported
+                           (list (list (first terms) (first homes)))))
+                 (rest terms)
+                 (rest homes)))))
+    (reexported-of (list) terms homes)))
+
+(def own-home?
+  (fn (page home)
     (if (empty? home)
       true
       (value-eq (linked-path (first home))
                 (page-path page)))))
 
 (def term-section
-  (fn (page term)
+  (fn (page section)
+    (local term (section-term section))
     (string "<a id=\""
             (symbol-name term)
             "\"></a>\n\n" "## `"
@@ -143,7 +181,7 @@
             (looked-up (quote doc-header) term)
             (type-line page term)
             "\n```\n\n"
-            (body-markdown page (written-body term))
+            (body-markdown page (section-body section))
             "\n")))
 
 (def type-line
@@ -172,63 +210,121 @@
     (first (expand-call (list lookup term)))))
 
 (def reexport-list
-  (fn (page terms)
-    (if (empty? terms)
+  (fn (page reexported)
+    (if (empty? reexported)
       ""
       (string "\n## Re-exported names\n\n"
               (join-text "\n"
-                         (map-list terms
-                           (fn (term)
-                             (string "- [`"
-                                     (symbol-name term)
-                                     "`]("
-                                     (term-target page term)
-                                     ")"))))
+                         (map-list reexported
+                           (fn (term-home)
+                             (local name (symbol-name (first term-home)))
+                             (string
+                               "- [`" name "`]("
+                               (term-target page (first (nth term-home 1)) name)
+                               ")"))))
               "\n"))))
 
-(def home-of
-  (fn (page term)
-    (local defining
-      (items-where (fn (linked) (defines-export? linked term))
-                   (page-links page)))
-    (if (empty? defining)
-      (take-first (items-where (fn (linked)
-                                 (holds-binding? (linked-exports linked) term))
-                               (page-links page)))
-      (take-first defining))))
+(def homes-of
+  (fn (page terms)
+    (map-list (marked-homes (page-links page)
+                            terms
+                            (map-list terms (fn (term) unmarked-home)))
+              chosen-home)))
 
-(def defines-export?
-  (fn (linked term)
-    (if (holds-binding? (linked-definitions linked) term)
-      (holds-binding? (linked-exports linked) term)
-      false)))
+(def unmarked-home (list (list) (list)))
 
-(def take-first
-  (fn (items)
-    (if (empty? items)
-      items
-      (list (first items)))))
+(def chosen-home
+  (fn (mark)
+    (if (empty? (defining-home mark))
+      (exporting-home mark)
+      (defining-home mark))))
 
-(def holds-binding?
-  (fn (names term)
+(def defining-home
+  (fn (mark) (first mark)))
+
+(def exporting-home
+  (fn (mark) (nth mark 1)))
+
+(def marked-homes
+  (fn (links terms marks)
+    (if (empty? links)
+      marks
+      (recur (rest links)
+             terms
+             (module-marks (first links) terms marks)))))
+
+(def module-marks
+  (fn (linked terms marks)
+    (local marked-of
+      (fn (marked names terms marks exports definitions)
+        (if (empty? terms)
+          marked
+          (do
+            (local name (first names))
+            (local exported (named-head exports name))
+            (local defined (named-head definitions name))
+            (if (same-name? (first terms) name)
+              (recur (concat marked
+                             (list (marked-with (first marks)
+                                                linked
+                                                (first terms)
+                                                (list exported defined))))
+                     (rest names)
+                     (rest terms)
+                     (rest marks)
+                     (past-head exported exports)
+                     (past-head defined definitions))
+              (recur marked
+                     (rest names)
+                     terms marks
+                     (past-head exported exports)
+                     (past-head defined definitions)))))))
+    (marked-of (list)
+               (sorted-names (concat terms
+                                     (linked-exports linked)
+                                     (linked-definitions linked)))
+               terms marks
+               (linked-exports linked)
+               (linked-definitions linked))))
+
+(def named-head
+  (fn (names name)
     (if (empty? names)
-      false
-      (if (same-named-binding? (first names) term)
-        true
-        (recur (rest names) term)))))
+      names
+      (if (same-name? (first names) name)
+        (list (first names))
+        (list)))))
 
-(def same-named-binding?
-  (fn (name term)
-    (if (value-eq (symbol-name name) (symbol-name term))
-      (same-binding? name term)
-      false)))
+(def past-head
+  (fn (head names)
+    (if (empty? head) names (rest names))))
+
+(def same-name?
+  (fn (left right)
+    (value-eq (symbol-name left) (symbol-name right))))
+
+(def marked-with
+  (fn (mark linked term heads)
+    (if (binds-head? (first heads) term)
+      (list (if (empty? (defining-home mark))
+              (if (binds-head? (nth heads 1) term)
+                (list linked)
+                (list))
+              (defining-home mark))
+            (if (empty? (exporting-home mark))
+              (list linked)
+              (exporting-home mark)))
+      mark)))
+
+(def binds-head?
+  (fn (head term)
+    (if (empty? head)
+      false
+      (same-binding? (first head) term))))
 
 (def term-target
-  (fn (page term)
-    (local home (first (home-of page term)))
-    (string (page-address page home)
-            "#"
-            (fragment (symbol-name term)))))
+  (fn (page home name)
+    (string (page-address page home) "#" (fragment name))))
 
 (def page-address
   (fn (page home)
@@ -376,23 +472,99 @@
 
 (def linked-line
   (fn (page line)
-    (local linked
-      (fn (remaining written code?)
+    (if (string-contains? line "[")
+      (join-text ""
+                 (map-list (line-pieces line)
+                   (fn (piece) (piece-text page piece))))
+      line)))
+
+(def piece-text
+  (fn (page piece)
+    (if (string? piece)
+      piece
+      (bracket-link page (first piece)))))
+
+(def line-pieces
+  (fn (line)
+    (local pieces-of
+      (fn (pieces run remaining code?)
         (if (value-eq remaining "")
-          written
+          (with-run pieces run remaining)
           (if (value-eq (first-character remaining) "`")
-            (recur (string-drop remaining 1)
-                   (string written "`")
+            (recur pieces run
+                   (string-drop remaining 1)
                    (bool-not code?))
             (if (if code? false (bracket-start? remaining))
-              (recur (string-drop remaining (bracket-length remaining))
-                     (string written
-                             (bracket-link page (bracketed-name remaining)))
-                     false)
-              (recur (string-drop remaining 1)
-                     (string written (first-character remaining))
-                     code?))))))
-    (linked line "" false)))
+              (do
+                (local after
+                  (string-drop remaining (bracket-length remaining)))
+                (recur (concat (with-run pieces run remaining)
+                               (list (list (bracketed-name remaining))))
+                       after after false))
+              (recur pieces run (string-drop remaining 1) code?))))))
+    (pieces-of (list) line line false)))
+
+(def with-run
+  (fn (pieces run remaining)
+    (concat pieces (list (string-strip-suffix run remaining)))))
+
+(def with-link-homes
+  (fn (page texts)
+    (local terms (link-terms page texts))
+    (list (page-path page)
+          (page-links page)
+          (page-types page)
+          (list terms (homes-of page terms)))))
+
+(def link-terms
+  (fn (page texts)
+    (local module (module-symbol (page-path page)))
+    (sorted-names (map-list (link-names texts)
+                    (fn (name) (symbol module name))))))
+
+(def link-names
+  (fn (texts)
+    (local names-of
+      (fn (names texts)
+        (if (empty? texts)
+          names
+          (recur (concat names (text-link-names (first texts)))
+                 (rest texts)))))
+    (names-of (list) texts)))
+
+(def text-link-names
+  (fn (text)
+    (local names-of
+      (fn (names lines)
+        (if (empty? lines)
+          names
+          (recur (if (string-contains? (first lines) "[")
+                   (concat names
+                           (piece-names (line-pieces (first lines))))
+                   names)
+                 (rest lines)))))
+    (names-of (list) (string-lines text))))
+
+(def piece-names
+  (fn (pieces)
+    (map-list (items-where (fn (piece) (bool-not (string? piece)))
+                           pieces)
+              first)))
+
+(def link-home
+  (fn (page name)
+    (local found
+      (fn (terms homes)
+        (if (empty? terms)
+          terms
+          (if (value-eq (symbol-name (first terms)) name)
+            (first homes)
+            (recur (rest terms) (rest homes))))))
+    (local table (page-link-homes page))
+    (found (first table) (nth table 1))))
+
+(def page-link-homes
+  (fn (page) (nth page 3)))
 
 (def bracket-start?
   (fn (text)
@@ -434,11 +606,12 @@
 
 (def bracket-link
   (fn (page name)
-    (local term
-      (symbol (module-symbol (page-path page)) name))
-    (if (empty? (home-of page term))
+    (local home (link-home page name))
+    (if (empty? home)
       (unmatched-link name)
-      (string "[" name "](" (term-target page term) ")"))))
+      (string "[" name "]("
+              (term-target page (first home) name)
+              ")"))))
 
 (def unmatched-link
   (fn (name) (string "[" name "]")))

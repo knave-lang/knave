@@ -1,5 +1,5 @@
 use crate::core::ModuleId;
-use crate::interpret::NotesTooLarge;
+use crate::interpret::{HeldBytes, NotesTooLarge};
 use crate::reader::Form;
 
 use super::saved_notes::{NoteTables, NotesKey, NotesTable, SavedNotes};
@@ -11,27 +11,27 @@ pub struct ModuleNotes {
     notes: NotesTable,
     added: Vec<NotesKey>,
     #[serde(skip)]
-    held_forms: usize,
+    held_bytes: usize,
 }
 
 #[derive(Clone, Copy)]
 pub struct NotesCheckpoint(usize);
 
 impl ModuleNotes {
-    pub const FORM_LIMIT: usize = 1 << 22;
+    pub const BYTE_LIMIT: usize = 1 << 28;
 
     pub fn add(&mut self, module: ModuleId, key: &str, note: Form) -> Result<(), NotesTooLarge> {
-        let held_forms = self.held_forms + note.form_count();
-        if held_forms > Self::FORM_LIMIT {
+        let held_bytes = self.held_bytes + HeldBytes::of_form(&note);
+        if held_bytes > Self::BYTE_LIMIT {
             return Err(NotesTooLarge {
-                held_forms,
-                limit: Self::FORM_LIMIT,
+                held_bytes,
+                limit: Self::BYTE_LIMIT,
             });
         }
         let notes_key = (module, key.to_string());
         self.notes.entry(notes_key.clone()).or_default().push(note);
         self.added.push(notes_key);
-        self.held_forms = held_forms;
+        self.held_bytes = held_bytes;
         Ok(())
     }
 
@@ -80,7 +80,7 @@ impl ModuleNotes {
                 .get_mut(&notes_key)
                 .and_then(Vec::pop)
                 .expect("every added key holds its notes");
-            self.held_forms = self.held_forms.saturating_sub(removed.form_count());
+            self.held_bytes = self.held_bytes.saturating_sub(HeldBytes::of_form(&removed));
         }
     }
 }
@@ -89,6 +89,7 @@ impl ModuleNotes {
 mod tests {
     use super::ModuleNotes;
     use crate::core::ModuleId;
+    use crate::interpret::HeldBytes;
     use crate::reader::{Form, FormKind, Symbol};
     use crate::source::{SourceId, Span};
 
@@ -103,8 +104,9 @@ mod tests {
             Form::new(FormKind::Symbol(Symbol::new("leaf")), Self::span())
         }
 
-        fn of_forms(count: usize) -> Form {
-            Form::new(FormKind::List(vec![Self::leaf(); count - 1]), Self::span())
+        fn holding(bytes: usize) -> Form {
+            let text = "x".repeat(bytes - HeldBytes::PER_FORM);
+            Form::new(FormKind::String(text.into()), Self::span())
         }
 
         fn add(notes: &mut ModuleNotes, note: Form) -> bool {
@@ -113,26 +115,21 @@ mod tests {
     }
 
     #[test]
-    fn notes_up_to_the_form_limit_are_held() {
+    fn notes_up_to_the_byte_limit_are_held() {
         let mut notes = ModuleNotes::default();
-        let half = ModuleNotes::FORM_LIMIT / 2;
-        assert!(NoteForms::add(&mut notes, NoteForms::of_forms(half)));
-        assert!(NoteForms::add(&mut notes, NoteForms::of_forms(half)));
+        let half = ModuleNotes::BYTE_LIMIT / 2;
+        assert!(NoteForms::add(&mut notes, NoteForms::holding(half)));
+        assert!(NoteForms::add(&mut notes, NoteForms::holding(half)));
         assert!(!NoteForms::add(&mut notes, NoteForms::leaf()));
     }
 
     #[test]
-    fn rolling_back_a_note_frees_its_forms() {
+    fn rolling_back_a_note_frees_its_bytes() {
         let mut notes = ModuleNotes::default();
         let checkpoint = notes.checkpoint();
-        assert!(NoteForms::add(
-            &mut notes,
-            NoteForms::of_forms(ModuleNotes::FORM_LIMIT)
-        ));
+        let full = ModuleNotes::BYTE_LIMIT;
+        assert!(NoteForms::add(&mut notes, NoteForms::holding(full)));
         notes.roll_back(checkpoint);
-        assert!(NoteForms::add(
-            &mut notes,
-            NoteForms::of_forms(ModuleNotes::FORM_LIMIT)
-        ));
+        assert!(NoteForms::add(&mut notes, NoteForms::holding(full)));
     }
 }

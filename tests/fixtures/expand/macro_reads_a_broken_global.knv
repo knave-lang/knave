@@ -1,0 +1,16 @@
+(defrule doubled
+  ((name x) (def name (+ x x))))
+
+(def two-errors (+ missing-a missing-b))
+
+(doubled one-error-twice missing-c)
+
+(defmacro reads-two-errors ()
+  (do two-errors (quote (def first-fine 1))))
+
+(defmacro reads-one-error-twice ()
+  (do one-error-twice (quote (def second-fine 1))))
+
+(reads-two-errors)
+
+(reads-one-error-twice)

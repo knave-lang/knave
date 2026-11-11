@@ -4,7 +4,8 @@
           rest same-binding? sorted-names string
           string-contains? string-drop string-length
           string-lines string-strip-prefix
-          string-strip-suffix string-trim-start string?
+          string-strip-suffix string-trim-end
+          string-trim-start string?
           symbol symbol-name symbol? take value-eq warn)
 
 (use prelude/internal/code require-module)
@@ -441,43 +442,61 @@
       (fn (paragraph)
         (finished-paragraph page links docstring paragraph)))
     (local converted
-      (fn (written paragraph lines number fenced?)
+      (fn (written paragraph lines number opener)
         (local next (number-add number 1))
         (if (empty? lines)
           (concat written (finished paragraph))
-          (if (fence-line? (first lines))
-            (recur (concat (concat written (finished paragraph))
-                           (list (if fenced?
-                                   (first lines)
-                                   (tagged-fence (first lines)))))
-                   (list)
-                   (rest lines)
-                   next
-                   (bool-not fenced?))
-            (if fenced?
-              (recur (concat written (list (first lines)))
-                     paragraph
+          (if (value-eq opener "")
+            (if (fence-line? (first lines))
+              (recur (concat (concat written (finished paragraph))
+                             (list (tagged-fence (first lines))))
+                     (list)
                      (rest lines)
-                     next true)
+                     next
+                     (backtick-run (first lines)))
               (if (blank-line? (first lines))
                 (recur (concat (concat written (finished paragraph))
                                (list ""))
                        (list)
                        (rest lines)
-                       next false)
+                       next "")
                 (recur written
-                       (concat paragraph
-                               (list (list (first lines) number)))
+                       (concat paragraph (list (list (first lines) number)))
                        (rest lines)
-                       next false)))))))
+                       next "")))
+            (recur (concat written (list (first lines)))
+                   paragraph
+                   (rest lines)
+                   next
+                   (open-fence-after opener (first lines)))))))
     (join-text "\n"
                (converted (list)
                           (list)
                           (string-lines (docstring-text docstring))
-                          0 false))))
+                          0 ""))))
 
 (def fence-line?
   (fn (line) (starts-with? line code-fence)))
+
+(def open-fence-after
+  (fn (opener line)
+    (if (closing-fence? opener line) "" opener)))
+
+(def closing-fence?
+  (fn (opener line)
+    (local trimmed (string-trim-end line))
+    (if (value-eq (backtick-run trimmed) trimmed)
+      (starts-with? trimmed opener)
+      false)))
+
+(def backtick-run
+  (fn (line)
+    (local counted
+      (fn (run remaining)
+        (if (starts-with? remaining "`")
+          (recur (string run "`") (string-drop remaining 1))
+          run)))
+    (counted "" line)))
 
 (def tagged-fence
   (fn (line)

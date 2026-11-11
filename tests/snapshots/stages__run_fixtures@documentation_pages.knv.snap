@@ -56,6 +56,16 @@ Tells whether both sides match, as the private [helper] does not.
 width == height
 ```
 
+````markdown
+```
+(square? 1 1)
+```
+````
+
+```knave
+```sh
+```
+
 ## Re-exported names
 
 - [`double`](../documentation_pages/lines.md#double)
@@ -132,4 +142,14 @@ Tells whether both sides match, as the private [helper] does not.
 
 ```rust
 width == height
+```
+
+````markdown
+```
+(square? 1 1)
+```
+````
+
+```knave
+```sh
 ```

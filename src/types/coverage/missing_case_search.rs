@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn an_exhaustive_match_misses_no_case() {
         let fixture = SearchFixture::new();
-        let cases = fixture.missing_cases(SearchFixture::twin_arms(), SearchFixture::TWIN);
+        let cases = fixture.missing_cases(SearchFixture::twin_arms(), SearchFixture::twin_type());
         assert!(cases.is_empty());
     }
 
@@ -118,7 +118,7 @@ mod tests {
         let fixture = SearchFixture::new();
         let mut arms = SearchFixture::chain_arms();
         arms.remove(0);
-        let cases = fixture.missing_cases(arms, SearchFixture::CHAIN);
+        let cases = fixture.missing_cases(arms, SearchFixture::chain_type());
         assert_eq!(cases.len(), 1);
         assert!(matches!(
             cases[0].as_slice(),
@@ -131,7 +131,7 @@ mod tests {
         let fixture = SearchFixture::new();
         let wild = CoverPattern::wild;
         let arms = vec![SearchFixture::twin(SearchFixture::side(0), wild(), wild())];
-        let cases = fixture.missing_cases(arms, SearchFixture::TWIN);
+        let cases = fixture.missing_cases(arms, SearchFixture::twin_type());
         assert!(!cases.is_empty());
         assert!(cases.iter().all(|row| row.len() == 1));
         assert!(

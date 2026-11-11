@@ -42,6 +42,33 @@
   (where (key value) (sorted-map key value))
   (where (key value) (hash-map key value)))
 
+(document (vec a)
+  "Types a growable run of items, Rust's `Vec<A>`.
+
+  `vec` also builds one from its items, and a `(ref (vec a))` passes as a
+  `(ref (slice a))`.
+
+  (the (vec i64) (vec 1 2))
+  => (vec 1 2)")
+
+(document (sorted-map key value)
+  "Types a map that keeps its keys in order, Rust's `BTreeMap<K, V>`.
+
+  Its keys implement `ord`. `sorted-map` also builds one from keys and
+  values.
+
+  (len (the (sorted-map i64 bool) (sorted-map 1 true 2 false)))
+  => 2")
+
+(document (hash-map key value)
+  "Types a map that finds a key by its hash, Rust's `HashMap<K, V>`.
+
+  Its keys implement `hash` and `eq`, and it holds them in no order that a
+  program may rely on. `hash-map` also builds one from keys and values.
+
+  (len (the (hash-map i64 bool) (hash-map 1 true)))
+  => 1")
+
 (document (box value)
   "Puts a value on the heap.
 

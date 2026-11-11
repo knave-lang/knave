@@ -759,6 +759,20 @@
   => 8
   ```")
 
+(document (map-list items function)
+  "Returns a list of a function's result for each item of a list.
+
+  It runs in macro code, on the forms that a macro reads. A program imports it
+  with `(use prelude/macros map-list)`.
+
+  ```
+  (defmacro doubled-sum (x ...)
+    (template
+      (+ (splice (map-list x (fn (item) (template (* 2 (unquote item)))))))))
+  (doubled-sum 1 2 3)
+  => 12
+  ```")
+
 (document (template form)
   "Builds a form from a quoted form with holes in it.
 

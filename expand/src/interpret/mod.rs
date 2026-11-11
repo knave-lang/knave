@@ -1,6 +1,7 @@
 mod arguments;
 mod build_limit;
 mod built_value;
+mod builtin_host;
 mod builtin_site;
 mod builtins;
 mod code_list;
@@ -292,7 +293,7 @@ impl<'h> Interpreter<'h> {
             None => self
                 .host
                 .global_values()
-                .ok_or_else(|| HostProblems::missing_group("reading a global", span))?
+                .ok_or_else(|| HostProblems::missing_global_values(span))?
                 .global_value(binding, span),
         }
     }

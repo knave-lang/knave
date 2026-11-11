@@ -33,3 +33,10 @@
 (def cab (macro-stage-code "yellow cab"))
 
 (def car (too-few "green car"))
+
+(def help-only
+  (macro (form)
+    (warn "the van is parked" form "move it")
+    (nth form 1)))
+
+(def taxi (help-only "white taxi"))

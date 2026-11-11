@@ -17,7 +17,7 @@ error[L0201]: cannot find `length` in this scope
   |                         ^^^^^^ not found in this scope
 ```
 
-Worse, a short foreign word often lies one or two edits from an unrelated knave name, and the suggestion then points the wrong way: `for` suggests `or`, `return` suggests `recur`, `#t` suggests `at`, `to-string` suggests `docstring`. The reader, or the model, has to search the prelude, and a model often guesses again with a second foreign name. Appendix B lists 35 foreign names that models wrote in recorded sessions. Of their `L0201` reports, only `push`, which already gets `push!`, named the knave function.
+Worse, a short foreign word often lies one or two edits from an unrelated knave name, and the suggestion then points the wrong way: `for` suggests `or`, `return` suggests `recur`, `#t` suggests `at`, `to-string` suggests `docstring`. The reader, or the model, has to search the prelude, and a model often guesses again with a second foreign name. Appendix B lists 35 foreign names that models wrote in recorded sessions. Of their `L0201` reports, only `push`, `String` and `'origin` got a help that named the knave form: `push!`, `string` and `(quote origin)`.
 
 A second case is a foreign name that is also a knave name with another meaning. Clojure's `some` tests whether any item passes a test. knave's `some` wraps a value in an `option`. `(some items (fn (x) (> x 1)))` fails with `L0301` "no rule of `some` matches this form", and the help shows `(some value)`, with no word about `any?`.
 
@@ -34,7 +34,7 @@ Every option shares the diagnostics of the Diagnostics section. The options diff
 
 ### A. A `foreign-names` form beside the definition
 
-The prelude states each definition's names in other languages with a form that sits next to the definition, as `header-shape` and `document` do. The form names the definition, a short purpose phrase, and the names by language:
+The prelude states each definition's names in other languages with a form that sits next to the definition, as `header-shape` and `document` do. Every example form in this RFC uses entries of Appendix C1, the list that ships first. The form names the definition, a short purpose phrase, and the names by language:
 
 ```lisp
 (foreign-names len "get the length"
@@ -46,9 +46,11 @@ The prelude states each definition's names in other languages with a form that s
   :scheme (length vector-length string-length)
   :racket (length vector-length string-length))
 
-(foreign-names (type string) "own a text"
-  :python (str)
-  :javascript (String))
+(foreign-names vec "build a vector"
+  :clojure (vector)
+  :common-lisp (vector)
+  :scheme (vector)
+  :racket (vector))
 ```
 
 The form emits nothing:
@@ -89,10 +91,10 @@ Rules of the form, each checked when the form expands:
 
    ```lisp
    (foreign-names any? "test whether any item passes"
-     :rust (any) :python (any))
+     :rust (any))
 
    (foreign-names any? :help "write `(any? items test)`, with the items first"
-     :javascript (some) :clojure (some) :racket (ormap) :common-lisp (some))
+     :javascript (some) :clojure (some))
    ```
 
 9. **`:given type` narrows an entry for a bound name** to an `L0401` mismatch whose found type is an application of that type binding. A `:given` entry stays quiet at `L0301`, `L0402` and `L0404`, which have no found type. Diagnostics, "A foreign name that is a knave name", states it.
@@ -183,7 +185,7 @@ The name of the language matters to the reader. It tells a person why the name l
 
 ### How a name matches
 
-A program's unbound name matches an entry when the two are equal after both are read the same way: `_` as `-`, `::` as `/`, and for a `:rust` entry, both mangled by the Names in Rust rule, so that a `!` or `?` the model added does not matter. Qualified names match whole: `console.log` and `std::process::exit` are one symbol each, as the reader reads them, so their entries are written whole, and `String::from` matches the entry `String/from`.
+A program's unbound name matches an entry when the two are equal after both are read the same way: `_` as `-`, `::` as `/`, and for a `:rust` entry that holds a letter, both mangled by the Names in Rust rule, so that a `!` or `?` the model added does not matter. An operator entry, such as `%`, `!`, `==`, `!=`, `&&` or `||`, is compared as written, because the mangler spells punctuation out, and a program's unbound `percent` or `bang` must not match `%` or `!`. Qualified names match whole: `console.log` and `std::process::exit` are one symbol each, as the reader reads them, so their entries are written whole, and `String::from` matches the entry `String/from`.
 
 A foreign name counts only when its definition is visible where the error is, through the same `visible_name_bindings` and `is_public` filter that the spelling suggestion uses today (`expand/src/expand/names.rs`). Every name in the first build is re-exported by `prelude`, so every program sees it. A hint never names a definition the reader cannot call.
 
@@ -281,7 +283,7 @@ Each row recognizes a known form from another language and says the knave form. 
 | **1** | Rust predicates and types, `is-some`, `is_empty`, `HashMap`, `PartialEq` | `L0201`, no help. `String` and `Vec` already get `string` and `vec` by edit distance | The Rust spelling rule. |
 | **1** | Rust parameter types, `(defn double (x: i64) ...)`, and commas, `(defn reducer (action, state) ...)` | `L0201` on each use of `x` in the body, no help, and nothing at the definition, because `x:` and `i64` are two parameters. For the comma, `L0201` with the help `action,`, the broken binder itself | One rule: when an unbound name plus a trailing `:` or `,` is a binder in scope, the help points at that binder and shows the list fixed, `((x i64))` or `(action state)`. It reads binders and the type namespace. The comma help is wrong today. |
 | **1** | `format`, `format!` | `L0201`, no help | `:help` entry on `str`: "`str` joins its parts: write `(str \"hello \" name)`". Not a replacement, because the arguments differ. Prelude only. |
-| **1** | A placeholder in `println`, `(println "x = {}" x)` | Nothing: it runs and prints `x = {}3` | A warning from the `println`, `print`, `eprintln` and `str` macros, with the lint name `format-placeholder` under [RFC 0069](../rfcs/0069-lint.md). It runs during expansion, so `knave check` shows it. The Decision section states it. |
+| **1** | A placeholder in `println`, `(println "x = {}" x)` | Nothing: it runs and prints `x = {}3` | A warning from the `println`, `print`, `eprintln`, `eprint` and `str` macros, with the lint name `format-placeholder` under [RFC 0069](../rfcs/0069-lint.md). It runs during expansion, so `knave check` shows it. The Decision section states it. |
 | **1** | A struct name at the head of a call | `L0201`, suggests `print` for `point` | The rule in Diagnostics. |
 | **1** | `#t`, `#f` | `L0201`; `#t` suggests `at` | Entries on `true` and `false`, `:scheme (#t #f) :racket (#t #f)`. The reader accepts `#` in a symbol. Prelude only. |
 | **1** | A literal where a `string` is expected, `(->user "ana")` | `L0401` "expected `string`, found `str`", no help | Accepted: a string literal takes `string` from context. A `(ref str)` variable there keeps `L0401` and gets the help `(str name)`. The Decision section states both. |
@@ -292,7 +294,7 @@ Each row recognizes a known form from another language and says the knave form. 
 | | A Clojure `cond`, `(cond test value ... :else value)` | `L0301`, with the shapes of `cond` | A rule in `cond`'s `defrule` for the flat shape, failing with the clauses paired. Prelude only. |
 | | `=>` in a `match` arm | `L0210` and `L0201` | When a `match` arm list holds `=>`, the help shows the arm as `((some v) v)`. The kernel `match` owns this error. |
 | | Rust generic types, `Vec<i64>`, `&str` | `L0201` "cannot find type `Vec<i64>`", no help | Follow-up. It needs a Rust type parser in the compiler, and a type with a space, `HashMap<String, i64>`, reads as two symbols that the rule must rejoin. One probe and no session evidence. |
-| | Rust and Lisp character literals, `'a'`, `#\a` | `L0201` with "there is no quote shorthand" | When the name is `'x'` with one character between quotes, or starts with `#\`, the help shows `(char "a")`. |
+| | Rust and Lisp character literals, `'a'`, `#\a` | `'a'`: `L0201` with "there is no quote shorthand" and the wrong fix `(quote a')`. `#\a`: `L0201`, no help | When the name is `'x'` with one character between quotes, or starts with `#\`, the help shows `(char "a")`. |
 | | `shape::circle` | `L0201` with the help `shape/circle` | Already right by edit distance. |
 | | `[ ]` parameters, struct fields as pairs, top-level expressions, `defn` in a body, `main` that returns a value | `L0106`, `L0301`, `L0207`, `L0208`, `L0455`, each with help | Already caught. |
 
@@ -326,7 +328,7 @@ Option A, the `foreign-names` form, with the Rust spelling rule beside it.
 - **It keeps old knave spellings out by construction,** because every entry names another language, needs a source, and is spelled as that language writes it.
 - **It removes the wrong helps the probes found,** `or` for `for`, `recur` for `return`, `at` for `#t`, `docstring` for `to-string` and `print` for a struct name, because a declared entry or the struct rule decides before edit distance runs.
 
-The first build ships the form, the Rust spelling rule, the struct rule, the binder rule for `x:` and `,`, the `foreign-names` entries of Appendix C1, and the hint path at `L0201`, `L0301`, `L0401`, `L0402` and `L0404`, the `:given` clause, the `format-placeholder` warning, and the string literal rule. The other rows of "Other mistakes" are follow-ups, each with its own evidence. Moving `CODE_REPLACEMENTS` into a prelude form beside the `code` module is a follow-up too: it states a fact of the prelude in the compiler today, but it is a phase hint, not a foreign name.
+The first build ships the form, the Rust spelling rule, the struct rule, the binder rule for `x:` and `,`, the `foreign-names` entries of Appendix C1, and the hint path at `L0201`, `L0301`, `L0401`, `L0402` and `L0404`, the `:given` clause, the `format-placeholder` warning, the string literal rule, and the `mismatch-help` form with its `(str name)` entry. The other rows of "Other mistakes" are follow-ups, each with its own evidence. Moving `CODE_REPLACEMENTS` into a prelude form beside the `code` module is a follow-up too: it states a fact of the prelude in the compiler today, but it is a phase hint, not a foreign name.
 
 ## Decision
 
@@ -334,27 +336,33 @@ The owner accepted option A with the Rust spelling rule, and decided each questi
 
 1. **A foreign name that is a knave name hints only when its call fails.** A working call shows nothing. A failing call adds the note and the help, at `L0301` in the expander and at `L0401`, `L0402` and `L0404` in the type stage, as Diagnostics states.
 2. **`:given` narrows that hint, and ships in the first build.** An entry with `:given type` fires only on an `L0401` whose found type is an application of that type, and stays quiet at the other codes. `map-some`'s entry for Rust's `map` takes `:given option`, so Clojure's `(map f coll)` gets no `map-some` hint. An entry without `:given` keeps rule 1.
-3. **`(println "x = {}" x)` warns, in the first build.** The `println`, `print`, `eprintln` and `str` macros call `warn` with `(:code format-placeholder)` when a literal argument holds `{}` or `{:?}` and that many arguments follow it. The warning differs from the rejected hint on working code: its output, `x = {}3`, is almost never what the writer meant, and under [RFC 0069](0069-lint.md) a project's `lints` list silences it. It lives in the macros rather than in `prelude/lint`, because RFC 0069 runs `prelude/lint` only under `knave lint`, and a `warn` during expansion reaches `knave check`, the command the model guide's loop runs. `warn` resolves the lint name through `CodeStage::LINTS`, so the build adds a `FORMAT_PLACEHOLDER` constant in `expand/src/diagnostic/code.rs`, with the next free `L08xx` code in the order RFC 0069 assigns codes: `L0806` if RFC 0069's codes land first.
+3. **`(println "x = {}" x)` warns, in the first build.** The `println`, `print`, `eprintln`, `eprint` and `str` macros call `warn` with `(:code format-placeholder)` when a literal argument holds `{}` or `{:?}` and that many arguments follow it. The warning differs from the rejected hint on working code: its output, `x = {}3`, is almost never what the writer meant, and under [RFC 0069](0069-lint.md) a project's `lints` list silences it. It lives in the macros rather than in `prelude/lint`, because RFC 0069 runs `prelude/lint` only under `knave lint`, and a `warn` during expansion reaches `knave check`, the command the model guide's loop runs. `warn` resolves the lint name through `CodeStage::LINTS`, so the build adds a `FORMAT_PLACEHOLDER` constant in `expand/src/diagnostic/code.rs`, with the next free `L08xx` code when the build lands, in the order RFC 0069 assigns codes.
 4. **A string literal takes its type from context, as a number literal does.** A literal where a `string` is expected emits `String::from`, so this program is accepted:
 
    ```lisp
    (defstruct user :name string)
 
    (defn main ()
-     (local u (->user :name "ana"))
+     (local u (->user "ana"))
      (println (:name u)))
    ```
 
    ```rust
-   let u: User = make_user(String::from("ana"));
+   let u = make_user(String::from("ana"));
    ```
 
    The literal follows the rules of [docs/language.md: Literals](../docs/language.md#literals) for number literals: a call or a use pins it to `string`, the pin passes through unannotated functions, so `(defn default-name () "ana")` used only where a `string` is expected emits `fn default_name() -> String { String::from("ana") }`, and a literal still open after pinning is a `(ref str)`.
 
-   The rule covers literals only. A `(ref str)` variable where a `string` is expected keeps `L0401`, and the error adds the help `(str name)` with the variable's name. The help text is stated in the prelude beside `str`, with `(mismatch-help string (ref str) "build a `string` with `(str {value})`")`, where `{value}` stands for the labeled value as the user wrote it. The checker adds the help to an `L0401` whose expected type is the first type and whose found type is the second, comparing types, never names. Every other conversion, such as an `i64` where an `f64` is expected, waits for a later RFC, which may replace `mismatch-help` with a general form.
+   The rule covers literals only. A `(ref str)` variable where a `string` is expected keeps `L0401`, and the error adds the help `(str name)` with the variable's name. The help text is stated in the prelude beside `str`, with a `mismatch-help` form, where `{value}` stands for the labeled value as the user wrote it:
+
+   ```lisp
+   (mismatch-help string (ref str) "build a `string` with `(str {value})`")
+   ```
+
+   The checker adds the help to an `L0401` whose expected type is the first type and whose found type is the second, comparing types, never names. Every other conversion, such as an `i64` where an `f64` is expected, waits for a later RFC, which may replace `mismatch-help` with a general form.
 
    **How the rule squares with `AGENTS.md`.** `AGENTS.md` forbids the compiler to emit "a clone or an allocation that the source does not write". A string literal in an owned position writes the allocation: the program wrote a new text where an owned text is wanted, and `String::from` is the only Rust that means that, as `(str "ana")` would. The literal is the source writing it. A `(ref str)` variable differs: it names text the program already holds, and turning it into a `string` would copy that text without the source asking, which the rule forbids, so the variable gets a help and no conversion.
-5. **The missing functions are settled by a separate decision on prelude helpers.** knave adds `contains?`, `second` on a pair, `join` and `starts-with?` there. Their `foreign-names` entries, such as the membership names of Appendix C2, ship with or after that change. `panic` needs its own decision on what a knave program does on an unrecoverable error, which is larger than a name.
+5. **The missing functions are settled by a separate decision on prelude helpers, which its own RFC records.** knave adds `contains?`, `second` on a pair, `join` and `starts-with?` there. Their `foreign-names` entries, such as the membership names of Appendix C2, ship with or after that change. `panic` needs its own decision on what a knave program does on an unrecoverable error, which is larger than a name.
 6. **The first build ships Appendix C1.** Each row of Appendix C2 ships later in its own pull request that links its source, as rule 2 requires, and checks its replacement against the prelude signature.
 7. **`count` leaves the prelude, and `len` serves collections and iterators.** This RFC assumes that change and lands its `count` rows after it.
 
@@ -374,11 +382,12 @@ The owner accepted option A with the Rust spelling rule, and decided each questi
 
 ## Rule
 
-- [docs/language.md: Foreign names](../docs/language.md#foreign-names), a new section beside Header shapes, which states the form and its rules.
+- [docs/language.md: Foreign names](../docs/language.md#foreign-names), a new section beside Header shapes, which states the form and its rules, and the `mismatch-help` form with the help it adds to `L0401`.
+- [docs/language.md: Standard types](../docs/language.md#standard-types), whose paragraph on `print`, `println`, `eprint`, `eprintln` and `str` gains the `format-placeholder` warning.
 - [docs/language.md: Names in Rust](../docs/language.md#names-in-rust), which gains the reading of the mangling rule backwards for a suggestion.
 - [docs/language.md: Bodies](../docs/language.md#bodies), whose note on a type in a value position gains the struct-at-the-head-of-a-call case.
 - [docs/language.md: Literals](../docs/language.md#literals), whose rule "A string literal has type `(ref str)`" becomes the context rule of Decision 4.
-- [docs/diagnostics.md: Tone](../docs/diagnostics.md#tone), whose rule "If a name does not resolve, suggest the closest name" gains the order of the three suggestions, the position rule, the `:help` form of an `L0201` help, and the note and help that a foreign name adds to `L0301` and to a type error.
+- [docs/diagnostics.md: Tone](../docs/diagnostics.md#tone), whose rule "If a name does not resolve, suggest the closest name" gains the order of the three suggestions, the position rule, the `:help` form of an `L0201` help, the help for a binder written with a trailing `:` or `,`, and the note and help that a foreign name adds to `L0301` and to a type error.
 
 ---
 
@@ -391,7 +400,7 @@ The owner accepted option A with the Rust spelling rule, and decided each questi
 5. A name counts as foreign when a standard library of the named language has it and no knave release ever defined it (checked with `git log -G` over `prelude/`), or when it has both histories, which the tables mark. Five names that models wrote are knave-shaped guesses with no library source, `str-len`, `vec-first`, `parse-i64`, `to-i128` and `formatter`, and are left out, as is the generic `cast`. 35 foreign names remain.
 6. A set of 21 probe programs, written for the model guide, adds one program per habit. Appendix B lists them apart from the sessions. A review of this RFC probed further cases, `#t`, `to-string`, `console.log` and `std::process::exit`, against `origin/main`.
 7. A second scan collected every compiler error that followed a model's own run of `knave`, 877 errors in 159 sessions, to find mistakes that are not names.
-8. The prelude names come from `(dir prelude)` on a knave 0.14.13 build, before `count` was removed.
+8. The prelude names come from `(dir prelude)` on a knave 0.14.13 build, which still had `count`.
 
 The sessions are compiler development sessions, not users writing applications, so the counts are low and every model there had read the prelude. Users who have not will make these mistakes more often. The counts rank the names. They do not measure the rate.
 
@@ -589,7 +598,13 @@ The Rust spelling rule covers `is_some`, `is_none`, `is_ok`, `is_err`, `is_empty
 
 **Scheme and Racket.** R: `vector-ref`, `list-ref` to `at`, `hash-ref` to `get`, `displayln` to `println`, `display` to `print`, `number->string` to `str`, `equal?`, `eqv?`, `eq?` to `=`, `null?` to `empty?`, `string-upcase`, `string-downcase` to `upper-case`, `lower-case`. H: `foldl`, `fold-left`, `fold` (`(reduce items init f)`, the function comes last), `andmap` and `ormap` (`every?` and `any?`, the function second), `findf` (`find`, the function second), `sort` (`sort!` changes in place and sorts by `<` only), `remove-duplicates` (`dedup!` removes neighbors only), `hash-set!` (`assoc`), `make-hash` and `hash` (`hash-map`), `newline` (`(println)`), `string->number` (`parse` with `the`), `substring` (`subs`, byte offsets), `modulo` (`rem` keeps the sign of the first number), `struct` in Racket (`defstruct`; knave's kernel `struct` takes another shape), `error` and `raise` (none).
 
-**Membership, which the prelude lacks today.** `contains`, `contains-key` (Rust), `in` (Python), `includes`, `has` (JavaScript), `contains?` (Clojure), `member`, `memq`, `find` (the Lisps) all wait for `contains?` (Decision 5). Until then, `(any? (iter items) (fn (x) (= x needle)))` and `(some? (get map key))` are the knave forms, and the model guide states them.
+**Membership, which the prelude lacks today.** The names split by what they test:
+
+- `contains` (Rust, on a slice or a string), `in` (Python), `includes` (JavaScript), `member` and `memq` (the Lisps) test whether a string or a sequence holds an item. They wait for `contains?` (Decision 5), and each is R or H by its signature.
+- `contains-key` (Rust) and `has` (JavaScript's `Map` and `Set`) test a key. No helper gives them a target, so they are H entries with `(some? (get map key))`, which can ship as C2 rows now.
+- Clojure's `contains?` tests a key, and on a vector an index. Once knave's `contains?` exists with another meaning, it is a B entry with a `:help`. The Lisps' `find` is bound in knave today, test second, so it is a B entry with a `:help` too.
+
+Until `contains?` lands, `(any? (iter items) (fn (x) (= x needle)))` is the knave form for an item, and the model guide states it.
 
 ### Names with no knave operation today, ranked by session count
 

@@ -91,6 +91,40 @@
             (as-str (announced "second"))))
   (println shown))
 
+(type make-page (fn ((ref str)) page))
+
+(defn make-page (name)
+  (println name)
+  (->page :title (str name "-m")))
+
+(type label-of
+  (fn ((ref (ref page))) (ref str)))
+
+(defn label-of (page)
+  (as-str (:title page)))
+
+(defn field-of-ref (name)
+  (local letter
+    (first-letter (as-str (:title (ref (make-page name))))))
+  (println letter))
+
+(defn field-of-ref-local (name)
+  (local page (make-page name))
+  (local letter
+    (first-letter (as-str (:title (ref page)))))
+  (println letter))
+
+(defn ref-of-ref-argument (name)
+  (local letter
+    (label-of (ref (ref (make-page name)))))
+  (println letter))
+
+(defn explicit-ref-of-ref-argument (name)
+  (local page (make-page name))
+  (local borrowed (ref page))
+  (local letter (label-of (ref borrowed)))
+  (println letter))
+
 (defn main ()
   (through-as-str "ada")
   (through-borrowed-argument "bea")
@@ -101,4 +135,8 @@
   (println (unwrap-ok (through-try "jo")))
   (lent-inside-lifted "kim")
   (written-borrow-of-struct "lu")
-  (in-written-order))
+  (in-written-order)
+  (field-of-ref "mo")
+  (field-of-ref-local "mo")
+  (ref-of-ref-argument "ned")
+  (explicit-ref-of-ref-argument "ned"))

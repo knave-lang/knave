@@ -7,6 +7,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::diagnostic_output::UnreadableFile;
 use super::exit_status::ExitStatus;
 use super::library_walk::CacheOnlyStore;
 use super::located_project::LocatedProject;
@@ -142,7 +143,7 @@ impl FmtCommand {
                 Ok(files) => files
                     .iter()
                     .for_each(|file| worst.record(self.format_file(terminal, file))),
-                Err(error) => worst.record(Terminal::report_unreadable(&path, &error)),
+                Err(error) => worst.record(UnreadableFile::new(&path, &error).report()),
             }
         }
         worst.status
@@ -151,7 +152,7 @@ impl FmtCommand {
     fn format_file(&mut self, terminal: &mut Terminal, path: &Path) -> ExitStatus {
         let text = match ModuleSources::read_file(path) {
             Ok(text) => text,
-            Err(error) => return Terminal::report_unreadable(path, &error),
+            Err(error) => return UnreadableFile::new(path, &error).report(),
         };
         let lookup = self.lookups.lookup_for(path, terminal);
         match self.formatted(terminal, path, text.clone(), &lookup) {
@@ -168,7 +169,7 @@ impl FmtCommand {
         text: String,
         lookup: &ModuleLookup,
     ) -> Result<String, ExitStatus> {
-        let source = terminal.add_source(path, text);
+        let source = terminal.sources().add(path, text);
         self.formatter
             .format(terminal.source_file(source), lookup)
             .map_err(|failure| Self::report_failure(terminal, path, failure))

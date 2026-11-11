@@ -9,6 +9,7 @@ use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::temporary_directory::TemporaryDirectory;
+use super::terminal::SourceLoader;
 use super::terminal::{BuildRoute, BuildTarget, EvaluationRequest, ModuleOfSources, Terminal};
 use crate::build::BuildProfile;
 use crate::check::ProgramChecker;
@@ -177,9 +178,9 @@ impl ModuleText {
 
     fn load(&self, terminal: &mut Terminal) -> Result<Vec<SourceId>, ExitStatus> {
         match self {
-            Self::File(path) => Ok(vec![terminal.load(path)?]),
+            Self::File(path) => Ok(vec![terminal.sources().load(path)?]),
             Self::StandardInput(path) => match ModuleSources::read_standard_input() {
-                Ok(text) => Ok(vec![terminal.add_source(path, text)]),
+                Ok(text) => Ok(vec![terminal.sources().add(path, text)]),
                 Err(error) => Err(ExitStatus::report_unreadable_input(&error)),
             },
             Self::Loaded(_, sources) => Ok(sources.clone()),
@@ -220,23 +221,25 @@ impl FormsText {
         module_source: SourceId,
     ) -> Result<Vec<Range<usize>>, ExitStatus> {
         let mut scratch = Terminal::reporting_to(terminal.diagnostic_output());
-        let enclosing = scratch.add_source(module, terminal.text_of(module_source));
-        let source = self.add_to(&mut scratch, enclosing, module)?;
-        let forms = scratch.read_source(source)?;
+        let module_text = terminal.source_file(module_source).text().to_string();
+        let mut sources = scratch.sources();
+        let enclosing = sources.add(module, module_text);
+        let source = self.add_to(&mut sources, enclosing, module)?;
+        let forms = sources.read(source)?;
         Ok(forms.iter().map(|form| form.span().range()).collect())
     }
 
     fn add_to(
         &self,
-        scratch: &mut Terminal,
+        sources: &mut SourceLoader<'_>,
         enclosing: SourceId,
         module: &Path,
     ) -> Result<SourceId, ExitStatus> {
         let Some(position) = self.position else {
-            return Ok(scratch.add_named_source(&self.name, &self.text));
+            return Ok(sources.add_named(&self.name, &self.text));
         };
-        scratch
-            .add_source_inside(enclosing, position, &self.text)
+        sources
+            .add_inside(enclosing, position, &self.text)
             .ok_or_else(|| Self::report_misplaced(module, position))
     }
 

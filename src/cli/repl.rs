@@ -122,7 +122,7 @@ impl PromptSession {
         profile: BuildProfile,
         interruption: Interruption,
     ) -> Self {
-        let anchor = terminal.add_named_source(PromptModule::PATH, "");
+        let anchor = terminal.sources().add_named(PromptModule::PATH, "");
         let session = Self {
             module: PromptModule::new(anchor, file),
             profile,
@@ -150,8 +150,9 @@ impl PromptSession {
     }
 
     fn enter(&mut self, terminal: &mut Terminal, text: String) {
-        let whole = terminal.add_named_source(&Self::input_name(self.entered + 1), &text);
-        let Ok(forms) = terminal.read_source(whole) else {
+        let mut sources = terminal.sources();
+        let whole = sources.add_named(&Self::input_name(self.entered + 1), &text);
+        let Ok(forms) = sources.read(whole) else {
             self.entered += 1;
             return;
         };
@@ -171,13 +172,13 @@ impl PromptSession {
 
     fn report_unfinished(&mut self, terminal: &mut Terminal, text: String) {
         let input = self.next_input(terminal, text);
-        terminal.read_source(input.source).ok();
+        terminal.sources().read(input.source).ok();
     }
 
     fn next_input(&mut self, terminal: &mut Terminal, text: String) -> EnteredInput {
         self.entered += 1;
         let name = Self::input_name(self.entered);
-        let source = terminal.add_named_source(&name, &text);
+        let source = terminal.sources().add_named(&name, &text);
         EnteredInput { name, text, source }
     }
 

@@ -1,3 +1,5 @@
+mod source_loader;
+
 use std::env::{self, VarError};
 use std::fmt::Display;
 use std::io::{self, ErrorKind, Write};
@@ -25,12 +27,10 @@ use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::emit::{EmittedCrate, RustEmitter};
 use crate::expand::{BoundName, ClassifiedForm, Expander, ExpansionSession, PreludeState, Program};
 use crate::language::Language;
-use crate::modules::ModuleSources;
-use crate::project::{Project, ProjectReader};
-use crate::reader::{Form, Reader};
 use crate::source::Span;
-use crate::source::{SourceFile, SourceId, SourceMap, TextPosition};
+use crate::source::{SourceFile, SourceId, SourceMap};
 use crate::types::TypedProgram;
+pub use source_loader::SourceLoader;
 
 pub struct BuildOptions {
     pub profile: BuildProfile,
@@ -115,46 +115,12 @@ impl Terminal {
         &self.work
     }
 
-    pub fn load(&mut self, path: &Path) -> Result<SourceId, ExitStatus> {
-        match ModuleSources::read_file(path) {
-            Ok(text) => Ok(self.add_source(path, text)),
-            Err(error) => Err(Self::report_unreadable(path, &error)),
-        }
-    }
-
-    pub fn add_empty_source(&mut self, path: &Path) -> SourceId {
-        self.add_source(path, String::new())
-    }
-
-    pub fn add_source(&mut self, path: &Path, text: String) -> SourceId {
-        self.sources.add(path.display().to_string(), text)
+    pub fn sources(&mut self) -> SourceLoader<'_> {
+        SourceLoader::new(&mut self.sources, self.diagnostics.as_ref())
     }
 
     pub fn source_file(&self, source: SourceId) -> &SourceFile {
         self.sources.file(source)
-    }
-
-    pub fn text_of(&self, source: SourceId) -> String {
-        self.sources.file(source).text().to_string()
-    }
-
-    pub fn add_named_source(&mut self, name: &str, text: &str) -> SourceId {
-        self.sources.add(name, text)
-    }
-
-    pub fn add_source_inside(
-        &mut self,
-        enclosing: SourceId,
-        position: TextPosition,
-        text: &str,
-    ) -> Option<SourceId> {
-        self.sources.add_inside(enclosing, position, text)
-    }
-
-    pub fn read_source(&mut self, source: SourceId) -> Result<Vec<Form>, ExitStatus> {
-        Reader::new(self.sources.file(source))
-            .read()
-            .map_err(|diagnostics| self.report(&diagnostics))
     }
 
     pub fn write_output(&self, output: impl Display) -> ExitStatus {
@@ -168,22 +134,6 @@ impl Terminal {
         let mut standard_output = io::stdout().lock();
         write!(standard_output, "{output}")?;
         standard_output.flush()
-    }
-
-    pub fn load_project(&mut self, path: &Path) -> Result<Project, ExitStatus> {
-        let source = self.load(path)?;
-        self.read_project(source)
-    }
-
-    pub fn read_project_text(&mut self, path: &Path, text: String) -> Result<Project, ExitStatus> {
-        let source = self.add_source(path, text);
-        self.read_project(source)
-    }
-
-    fn read_project(&mut self, source: SourceId) -> Result<Project, ExitStatus> {
-        let forms = self.read_source(source)?;
-        let whole_file = Span::new(source, 0..self.sources.file(source).text().len());
-        ProjectReader::read(&forms, whole_file).map_err(|diagnostics| self.report(&diagnostics))
     }
 
     pub fn build(
@@ -363,18 +313,13 @@ impl Terminal {
     }
 
     pub fn expand(&mut self, file: &ProgramFile) -> Result<Program, ExitStatus> {
-        let entry = self.load(file.path())?;
+        let entry = self.sources().load(file.path())?;
         let program = self
             .expander_rooted(file)
             .expand(file.module_path(), entry)
             .map_err(|diagnostics| self.report(&diagnostics))?;
         self.work.lowered_forms = Some(program.expansion.lowered_forms);
         Ok(program)
-    }
-
-    pub fn read_text(&mut self, name: &str, text: &str) -> Result<Vec<Form>, ExitStatus> {
-        let source = self.sources.add(name, text);
-        self.read_source(source)
     }
 
     pub fn within_session<T>(
@@ -420,7 +365,7 @@ impl Terminal {
             .loaded
             .iter()
             .map(|loaded| ModuleLoader {
-                file: self.source_name(loaded.source).to_string(),
+                file: self.source_file(loaded.source).name().to_string(),
                 input: loaded.input.source(),
             })
             .collect();
@@ -431,10 +376,6 @@ impl Terminal {
             names: survey.names,
             loaders,
         }
-    }
-
-    pub fn source_name(&self, source: SourceId) -> &str {
-        self.sources.file(source).name()
     }
 
     fn check_quietly(program: &Program) -> Diagnostics {
@@ -475,11 +416,7 @@ impl Terminal {
     }
 
     pub fn report(&self, diagnostics: &Diagnostics) -> ExitStatus {
-        if !diagnostics.has_errors() {
-            return ExitStatus::Success;
-        }
-        self.diagnostics.write(&self.sources, diagnostics);
-        ExitStatus::ProgramErrors
+        self.diagnostics.report(&self.sources, diagnostics)
     }
 
     fn report_build(&self, error: BuildError) -> ExitStatus {
@@ -542,14 +479,6 @@ impl Terminal {
 
     fn report_unwritable(error: &io::Error) -> ExitStatus {
         StandardError::write_line(format_args!("error: cannot write standard output: {error}"));
-        ExitStatus::UsageError
-    }
-
-    pub fn report_unreadable(path: &Path, error: &std::io::Error) -> ExitStatus {
-        StandardError::write_line(format_args!(
-            "error: cannot read `{}`: {error}",
-            path.display()
-        ));
         ExitStatus::UsageError
     }
 }

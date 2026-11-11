@@ -50,7 +50,9 @@ impl NewCommand {
             path: root.join(Language::project_file_name()),
             text: format!("({} {})\n", ProjectReader::HEAD, self.name),
         };
-        let project = terminal.read_project_text(&project_file.path, project_file.text.clone())?;
+        let mut sources = terminal.sources();
+        let source = sources.add(&project_file.path, project_file.text.clone());
+        let project = sources.read_project(source)?;
         let entry_file = NewFile {
             path: root.join(&project.entry),
             text: Self::ENTRY_TEXT.to_string(),
@@ -79,7 +81,9 @@ impl NewCommand {
     }
 
     fn check_name(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
-        let source = terminal.add_source(Path::new(Self::NAME_ARGUMENT), self.name.clone());
+        let source = terminal
+            .sources()
+            .add(Path::new(Self::NAME_ARGUMENT), self.name.clone());
         let whole_name = Span::new(source, 0..self.name.len());
         ProjectName::check(&self.name, whole_name).map_err(|problem| {
             let mut problems = Diagnostics::default();
@@ -105,7 +109,7 @@ impl NewCommand {
         file: NewFile,
         lookup: &ModuleLookup,
     ) -> NewFile {
-        let source = terminal.add_source(&file.path, file.text);
+        let source = terminal.sources().add(&file.path, file.text);
         let text = self
             .formatter
             .format(terminal.source_file(source), lookup)

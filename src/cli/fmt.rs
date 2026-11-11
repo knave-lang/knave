@@ -7,7 +7,6 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use super::diagnostic_output::UnreadableFile;
 use super::exit_status::ExitStatus;
 use super::library_walk::CacheOnlyStore;
 use super::located_project::LocatedProject;
@@ -15,6 +14,7 @@ use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use super::unreadable_file::UnreadableFile;
 use crate::format::{FormatFailure, ModuleLookup, SourceFormatter};
 use crate::language::Language;
 use crate::modules::ModuleSources;

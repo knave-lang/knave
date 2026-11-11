@@ -2,7 +2,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use super::diagnostic_output::{StandardErrorMessages, UnreadableFile};
+use super::diagnostic_output::StandardErrorMessages;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
@@ -10,6 +10,7 @@ use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
 use super::terminal::{ModuleOfSources, Terminal};
 use super::tree_bounds::TreeBounds;
+use super::unreadable_file::UnreadableFile;
 use crate::core::ModulePath;
 use crate::diagnostic::Diagnostics;
 use crate::expand::ExpandProblems;

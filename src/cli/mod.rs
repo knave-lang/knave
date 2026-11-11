@@ -65,6 +65,7 @@ mod source_report;
 mod source_walk;
 mod stage_work;
 mod standard_error;
+mod standard_output;
 mod streamed_program;
 mod task;
 mod task_catalog;

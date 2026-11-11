@@ -8,6 +8,7 @@ use super::library_walk::FetchingStore;
 use super::located_project::LocatedProject;
 use super::project_task::{ProjectTask, TaskName};
 use super::standard_error::StandardError;
+use super::standard_output::StandardOutput;
 use super::task_catalog::TaskCatalog;
 use super::task_runners::TaskRunners;
 use super::terminal::Terminal;
@@ -47,7 +48,7 @@ impl TaskCommand {
         let catalog = TaskCatalog::load(&tree, terminal)?;
         let Some(name) = &self.name else {
             let listing = catalog.listing(terminal)?;
-            return Ok(terminal.write_output(listing));
+            return Ok(StandardOutput::locked().write(listing));
         };
         let names: Vec<Rc<str>> = catalog
             .names(terminal)?

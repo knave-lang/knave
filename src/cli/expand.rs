@@ -1,5 +1,6 @@
 use super::entry_argument::EntryArgument;
 use super::exit_status::ExitStatus;
+use super::standard_output::StandardOutput;
 use super::terminal::Terminal;
 use crate::core::CorePrinter;
 
@@ -18,8 +19,8 @@ impl ExpandCommand {
             .locate(terminal)
             .and_then(|program| terminal.expand(program.file()))
         {
-            Ok(program) => terminal
-                .write_output(CorePrinter::new(&program.bindings).module(program.entry_module())),
+            Ok(program) => StandardOutput::locked()
+                .write(CorePrinter::new(&program.bindings).module(program.entry_module())),
             Err(status) => status,
         }
     }

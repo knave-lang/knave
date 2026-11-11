@@ -1,5 +1,6 @@
 use super::entry_argument::EntryArgument;
 use super::exit_status::ExitStatus;
+use super::standard_output::StandardOutput;
 use super::terminal::Terminal;
 
 pub struct EmitCommand {
@@ -17,7 +18,7 @@ impl EmitCommand {
             .locate(terminal)
             .and_then(|program| terminal.emit(program.file()))
         {
-            Ok(emitted) => terminal.write_output(&emitted.code),
+            Ok(emitted) => StandardOutput::locked().write(&emitted.code),
             Err(status) => status,
         }
     }

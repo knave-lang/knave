@@ -1,5 +1,6 @@
 use super::entry_argument::EntryArgument;
 use super::exit_status::ExitStatus;
+use super::standard_output::StandardOutput;
 use super::terminal::Terminal;
 
 pub struct TypesCommand {
@@ -17,7 +18,7 @@ impl TypesCommand {
             .locate(terminal)
             .and_then(|program| terminal.check(program.file()))
         {
-            Ok(program) => terminal.write_output(program.entry_signatures()),
+            Ok(program) => StandardOutput::locked().write(program.entry_signatures()),
             Err(status) => status,
         }
     }

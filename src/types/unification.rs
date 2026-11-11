@@ -1,4 +1,4 @@
-use super::declarations::Declarations;
+use super::declared_types::DeclaredTypes;
 use super::display::TypeDisplay;
 use super::expectation::Expectation;
 use super::peeling::ReferencePeeling;
@@ -13,14 +13,14 @@ use crate::source::Span;
 pub(super) struct Unification<'a> {
     unifier: &'a mut Unifier,
     display: TypeDisplay<'a>,
-    declarations: Declarations<'a>,
+    declarations: DeclaredTypes<'a>,
 }
 
 impl<'a> Unification<'a> {
     pub(super) fn new(
         unifier: &'a mut Unifier,
         display: TypeDisplay<'a>,
-        declarations: Declarations<'a>,
+        declarations: DeclaredTypes<'a>,
     ) -> Self {
         Self {
             unifier,
@@ -119,15 +119,17 @@ mod tests {
     use crate::core::{FieldLabel, FieldSpelling, Literal, PrimitiveType};
     use crate::diagnostic::Diagnostic;
     use crate::source::{SourceId, Span};
-    use crate::types::declarations::Declarations;
+    use crate::types::declared_types::DeclaredTypes;
     use crate::types::display::TypeDisplay;
     use crate::types::expectation::Expectation;
+    use crate::types::type_declarations::TypeDeclarations;
     use crate::types::typed::{TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr};
     use crate::types::unifier::{LiteralKind, Unifier};
     use crate::types::{GenericId, GenericParam, Type, TypedProgram, TypedSource};
 
     struct UnificationFixture {
         program: TypedProgram,
+        types: TypeDeclarations,
         unifier: Unifier,
         generics: FxHashMap<GenericId, GenericParam>,
         span: Span,
@@ -148,8 +150,15 @@ mod tests {
                 name: "T".into(),
                 bounds: Vec::new(),
             };
+            let mut program = TypedSource::expand(Self::SOURCE).typed();
+            let types = TypeDeclarations {
+                structs: std::mem::take(&mut program.structs),
+                rust_types: std::mem::take(&mut program.rust_types),
+                ..TypeDeclarations::default()
+            };
             Self {
-                program: TypedSource::expand(Self::SOURCE).typed(),
+                program,
+                types,
                 unifier: Unifier::default(),
                 generics: FxHashMap::from_iter([(Self::generic(), generic)]),
                 span: Span::new(SourceId::new(0), 0..0),
@@ -158,7 +167,7 @@ mod tests {
 
         fn unification(&mut self) -> Unification<'_> {
             let display = TypeDisplay::new(&self.program.bindings, &self.generics);
-            let declarations = Declarations::new(&self.program.structs, &self.program.rust_types);
+            let declarations = DeclaredTypes::new(&self.types);
             Unification::new(&mut self.unifier, display, declarations)
         }
 

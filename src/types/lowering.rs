@@ -333,7 +333,7 @@ impl TypeChecker {
         arguments
             .iter()
             .map(|argument| {
-                if self.rust_types.is_box(binding) {
+                if self.declarations.types.rust_types.is_box(binding) {
                     self.lower_box_argument(argument, scope)
                 } else {
                     self.lower_type(argument, scope)

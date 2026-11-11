@@ -1,9 +1,7 @@
-use std::collections::BTreeSet;
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use super::boxed_payload::BoxedPayload;
 use super::pattern_placement::PatternFields;
 use super::payload_position::PayloadPosition;
 use super::ty::{GenericId, GenericParam, Type};
@@ -185,80 +183,6 @@ impl EnumTable {
         self.enums
             .iter()
             .map(|(binding, definition)| (*binding, definition))
-    }
-}
-
-#[derive(Clone, Copy)]
-pub(super) struct VariantPayloads<'a> {
-    enums: &'a EnumTable,
-    box_binding: Option<BindingId>,
-    inferred_boxes: &'a BTreeSet<BoxedPayload>,
-}
-
-impl<'a> VariantPayloads<'a> {
-    pub(super) fn new(
-        enums: &'a EnumTable,
-        box_binding: Option<BindingId>,
-        inferred_boxes: &'a BTreeSet<BoxedPayload>,
-    ) -> Self {
-        Self {
-            enums,
-            box_binding,
-            inferred_boxes,
-        }
-    }
-
-    pub(super) fn variant_count(&self, owner: BindingId) -> Option<usize> {
-        self.enums
-            .get(owner)
-            .map(|definition| definition.variants.len())
-    }
-
-    pub(super) fn visible(&self, owner: BindingId, index: usize, arguments: &[Type]) -> Vec<Type> {
-        self.enums
-            .get(owner)
-            .and_then(|definition| definition.instantiated_payload(index, arguments))
-            .unwrap_or_default()
-            .into_iter()
-            .enumerate()
-            .map(|(payload, stored)| {
-                let position = PayloadPosition {
-                    variant: index,
-                    payload,
-                };
-                self.seen_by_pattern(owner, position, stored)
-            })
-            .collect()
-    }
-
-    pub(super) fn seen_by_pattern(
-        &self,
-        owner: BindingId,
-        position: PayloadPosition,
-        stored: Type,
-    ) -> Type {
-        match self.is_inferred_box(owner, position) {
-            true => self
-                .unboxed(stored)
-                .expect("an inferred box has one type argument"),
-            false => stored,
-        }
-    }
-
-    pub(super) fn is_inferred_box(&self, owner: BindingId, position: PayloadPosition) -> bool {
-        self.inferred_boxes
-            .contains(&BoxedPayload { owner, position })
-    }
-
-    fn unboxed(&self, ty: Type) -> Option<Type> {
-        match ty {
-            Type::Named(binding, arguments)
-                if Some(binding) == self.box_binding && arguments.len() == 1 =>
-            {
-                arguments.into_iter().next()
-            }
-            _ => None,
-        }
     }
 }
 

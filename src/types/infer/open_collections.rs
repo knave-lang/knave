@@ -196,7 +196,7 @@ impl TypeChecker {
                 .push((open.collection.clone(), open.span));
             return Ok(());
         }
-        let collection = Collection::of_referent(&resolved, &self.rust_types)
+        let collection = Collection::of_referent(&resolved, &self.declarations.types.rust_types)
             .filter(|collection| !collection.is_map())
             .ok_or_else(|| {
                 TypeProblems::mismatch(

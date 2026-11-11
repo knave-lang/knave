@@ -44,6 +44,8 @@ impl TypeChecker {
         first_label: &FieldLabel,
     ) -> Result<Vec<(Rc<str>, Type)>, Diagnostic> {
         let definition = self
+            .declarations
+            .types
             .enums
             .get(site.info.owner)
             .expect("a variant owner is an enum");

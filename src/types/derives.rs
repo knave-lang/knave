@@ -89,7 +89,9 @@ impl TypeChecker {
                 .map(move |(binding, _)| (*binding, DerivedTrait::Written(derived)))
         });
         let structural = self
-            .structural_traits
+            .declarations
+            .traits
+            .structural
             .iter()
             .map(|structural| (structural.binding, DerivedTrait::Structural));
         written.chain(structural).collect()
@@ -128,10 +130,10 @@ impl TypeChecker {
                         && !self.report_derived_written_impl(*struct_binding, *trait_binding, *span)
                 })
                 .collect();
-            if let Some(definition) = self.structs.get_mut(*struct_binding) {
+            if let Some(definition) = self.declarations.types.structs.get_mut(*struct_binding) {
                 definition.written_derive = Some(item.span);
             }
-            if let Some(definition) = self.enums.get_mut(*struct_binding) {
+            if let Some(definition) = self.declarations.types.enums.get_mut(*struct_binding) {
                 definition.written_derive = Some(item.span);
             }
             written.insert(
@@ -185,7 +187,10 @@ impl TypeChecker {
                     continue;
                 };
                 let implementor = self.derived_implementor(*binding, *arity, *trait_binding);
-                self.traits.add_implementor(*trait_binding, implementor);
+                self.declarations
+                    .traits
+                    .table
+                    .add_implementor(*trait_binding, implementor);
                 candidates.push(DeriveCandidate {
                     binding: *binding,
                     kind: *kind,
@@ -198,7 +203,9 @@ impl TypeChecker {
     }
 
     fn is_rust_enum(&self, binding: BindingId) -> bool {
-        self.enums
+        self.declarations
+            .types
+            .enums
             .get(binding)
             .is_some_and(|definition| definition.rust.is_some())
     }
@@ -238,7 +245,7 @@ impl TypeChecker {
         trait_binding: BindingId,
         head: BindingId,
     ) -> Option<&TypedTraitImpl> {
-        self.trait_impls.iter().find(|implementation| {
+        self.declarations.traits.impls.iter().find(|implementation| {
             implementation.trait_binding == trait_binding
                 && matches!(implementation.implementor, Type::Named(binding, _) if binding == head)
         })
@@ -304,7 +311,9 @@ impl TypeChecker {
                 break;
             }
             for (candidate, field, ty) in blocked {
-                self.traits
+                self.declarations
+                    .traits
+                    .table
                     .remove_struct_implementor(candidate.trait_binding, candidate.binding);
                 candidates.retain(|kept| {
                     (kept.binding, kept.trait_binding)
@@ -359,14 +368,15 @@ impl TypeChecker {
     fn record_inferred_block(&mut self, candidate: DeriveCandidate, field: Rc<str>, ty: Type) {
         match candidate.kind {
             DefinitionKind::Struct => {
-                if let Some(definition) = self.structs.get_mut(candidate.binding) {
+                if let Some(definition) = self.declarations.types.structs.get_mut(candidate.binding)
+                {
                     definition
                         .blocked
                         .push((candidate.trait_binding, field, ty));
                 }
             }
             DefinitionKind::Enum => {
-                if let Some(definition) = self.enums.get_mut(candidate.binding) {
+                if let Some(definition) = self.declarations.types.enums.get_mut(candidate.binding) {
                     definition
                         .blocked
                         .push((candidate.trait_binding, field, ty));
@@ -390,13 +400,16 @@ impl TypeChecker {
                 });
             let (derives, derived_traits) = match candidate.kind {
                 DefinitionKind::Struct => {
-                    let Some(definition) = self.structs.get_mut(candidate.binding) else {
+                    let Some(definition) =
+                        self.declarations.types.structs.get_mut(candidate.binding)
+                    else {
                         continue;
                     };
                     (&mut definition.derives, &mut definition.derived_traits)
                 }
                 DefinitionKind::Enum => {
-                    let Some(definition) = self.enums.get_mut(candidate.binding) else {
+                    let Some(definition) = self.declarations.types.enums.get_mut(candidate.binding)
+                    else {
                         continue;
                     };
                     (&mut definition.derives, &mut definition.derived_traits)
@@ -424,7 +437,7 @@ impl TypeChecker {
         binding: BindingId,
         trait_binding: BindingId,
     ) -> Option<(Rc<str>, Type)> {
-        let definition = self.enums.get(binding)?;
+        let definition = self.declarations.types.enums.get(binding)?;
         let params: Vec<GenericId> = definition.params.iter().map(|param| param.id).collect();
         definition.blocking_variant(&|position, payload| {
             let written = self.written_payload(binding, position, payload, trait_binding);
@@ -455,7 +468,7 @@ impl TypeChecker {
         struct_binding: BindingId,
         trait_binding: BindingId,
     ) -> Option<(Rc<str>, Type)> {
-        let definition = self.structs.get(struct_binding)?;
+        let definition = self.declarations.types.structs.get(struct_binding)?;
         let params: Vec<GenericId> = definition.params.iter().map(|param| param.id).collect();
         definition
             .fields
@@ -477,7 +490,7 @@ impl TypeChecker {
         match field_type {
             Type::Function(..) => self.function_field_trait_allowed(bound.binding),
             Type::Generic(generic) => params.contains(generic),
-            _ => match self.traits.select(bound, field_type) {
+            _ => match self.declarations.traits.table.select(bound, field_type) {
                 Selection::Implemented { requirements, .. } => {
                     requirements.iter().all(|requirement| {
                         self.field_type_satisfies(
@@ -493,9 +506,13 @@ impl TypeChecker {
     }
 
     fn function_field_trait_allowed(&self, trait_binding: BindingId) -> bool {
-        self.traits.get(trait_binding).is_some_and(|rust_trait| {
-            FunctionFieldTraits::ALLOWED.contains(&StructDerives::derive_name(&rust_trait.path))
-        })
+        self.declarations
+            .traits
+            .table
+            .get(trait_binding)
+            .is_some_and(|rust_trait| {
+                FunctionFieldTraits::ALLOWED.contains(&StructDerives::derive_name(&rust_trait.path))
+            })
     }
 
     fn derived_implementor(

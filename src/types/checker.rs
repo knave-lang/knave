@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -9,8 +8,9 @@ use super::assumed_collections::AssumedCollections;
 use super::copy::InferredCopies;
 use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
 use super::declarations::Declarations;
+use super::declared_types::DeclaredTypes;
 use super::display::TypeDisplay;
-use super::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload, VariantPayloads};
+use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
 use super::graph::{Definition, DefinitionGraph, DependencyGraph};
 use super::impl_overlap::ImplementorOverlap;
 use super::infer::OpenCollections;
@@ -24,11 +24,10 @@ use super::pipelines::Pipelines;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
 use super::rust_types::{RustType, RustTypeTable};
 use super::selection::Selection;
-use super::selfless_methods::SelflessMethods;
-use super::structs::{StructDefinition, StructTable};
+use super::structs::StructDefinition;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::templates::TemplateBorrows;
-use super::traits::{Implementor, RustTrait, TraitTable};
+use super::traits::{Implementor, RustTrait};
 use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::typed::{
     PendingModeCheck, ReceiverKind, TraitMethodInfo, TypedConversion, TypedDefinition, TypedExpr,
@@ -36,6 +35,7 @@ use super::typed::{
 };
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
+use super::variant_payloads::VariantPayloads;
 use super::wrapper::FunctionValueWrapper;
 use crate::core::{
     BindingArena, BindingId, BindingKind, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr,
@@ -159,10 +159,7 @@ impl ParameterUsage {
 pub struct TypeChecker {
     pub(super) bindings: BindingArena,
     pub(super) unifier: Unifier,
-    pub(super) structs: StructTable,
-    pub(super) enums: EnumTable,
-    pub(super) rust_types: RustTypeTable,
-    pub(super) traits: TraitTable,
+    pub(super) declarations: Declarations,
     pub(super) generics: FxHashMap<GenericId, GenericParam>,
     pub(super) schemes: FxHashMap<BindingId, Scheme>,
     pub(super) component: FxHashMap<BindingId, Type>,
@@ -203,22 +200,14 @@ pub struct TypeChecker {
     macro_origins: Rc<MacroOrigins>,
     macro_field_reads: FxHashMap<Span, Rc<str>>,
     copy_trait: Option<BindingId>,
-    box_binding: Option<BindingId>,
-    pub(super) inferred_boxes: BTreeSet<super::boxed_payload::BoxedPayload>,
-    pub(super) structural_traits: Vec<super::structural_trait::StructuralTrait>,
     pub(super) structural_uses: super::structural_uses::StructuralUses,
     pub(super) reported_path_clashes: FxHashSet<super::structural_uses::StructuralUse>,
     pub(super) written_parameters: FxHashMap<BindingId, Vec<bool>>,
     pub(super) parameter_call_requests: Vec<ParameterCallRequest>,
     pub(super) pending_mode_checks: Vec<PendingModeCheck>,
-    pub(super) trait_definitions: Vec<TypedTrait>,
-    pub(super) rust_trait_paths: FxHashMap<BindingId, Rc<str>>,
-    pub(super) trait_impls: Vec<TypedTraitImpl>,
     impl_methods: FxHashSet<BindingId>,
     impl_generics: FxHashSet<GenericId>,
     pub(super) conversions: Vec<TypedConversion>,
-    pub(super) trait_methods: FxHashMap<BindingId, TraitMethodInfo>,
-    pub(super) selfless_methods: SelflessMethods,
     pub(super) synthetic_bindings: FxHashSet<BindingId>,
     pub(super) pinned: FxHashMap<BindingId, Type>,
     pub(super) literal_defaults: LiteralDefaults,
@@ -258,10 +247,7 @@ impl TypeChecker {
         Self {
             bindings,
             unifier: Unifier::default(),
-            structs: StructTable::default(),
-            enums: EnumTable::default(),
-            rust_types: RustTypeTable::default(),
-            traits: TraitTable::default(),
+            declarations: Declarations::default(),
             generics: FxHashMap::default(),
             schemes: FxHashMap::default(),
             component: FxHashMap::default(),
@@ -302,22 +288,14 @@ impl TypeChecker {
             macro_origins: Rc::default(),
             macro_field_reads: FxHashMap::default(),
             copy_trait: None,
-            box_binding: None,
-            inferred_boxes: BTreeSet::new(),
-            structural_traits: Vec::new(),
             structural_uses: super::structural_uses::StructuralUses::default(),
             reported_path_clashes: FxHashSet::default(),
             written_parameters: FxHashMap::default(),
             parameter_call_requests: Vec::new(),
             pending_mode_checks: Vec::new(),
-            trait_definitions: Vec::new(),
-            rust_trait_paths: FxHashMap::default(),
-            trait_impls: Vec::new(),
             impl_methods: FxHashSet::default(),
             impl_generics: FxHashSet::default(),
             conversions: Vec::new(),
-            trait_methods: FxHashMap::default(),
-            selfless_methods: SelflessMethods::default(),
             synthetic_bindings: FxHashSet::default(),
             pinned: FxHashMap::default(),
             literal_defaults: LiteralDefaults::default(),
@@ -346,11 +324,11 @@ impl TypeChecker {
         }
         self.share_projections();
         self.check_written_projections();
-        self.box_binding = self.rust_types.box_binding();
-        if let Some(box_binding) = self.box_binding {
-            self.inferred_boxes = super::boxes::BoxPlanner::add_boxes(
-                &mut self.structs,
-                &mut self.enums,
+        self.declarations.types.box_binding = self.declarations.types.rust_types.box_binding();
+        if let Some(box_binding) = self.declarations.types.box_binding {
+            self.declarations.types.inferred_boxes = super::boxes::BoxPlanner::add_boxes(
+                &mut self.declarations.types.structs,
+                &mut self.declarations.types.enums,
                 box_binding,
             );
         }
@@ -359,7 +337,13 @@ impl TypeChecker {
         self.register_derived_traits(modules);
         self.report_supertraits();
         self.check_trait_claims(modules);
-        self.copy_trait = self.traits.with_paths(&[CopyTrait::PATH]).first().copied();
+        self.copy_trait = self
+            .declarations
+            .traits
+            .table
+            .with_paths(&[CopyTrait::PATH])
+            .first()
+            .copied();
         self.record_definition_facts(definitions);
     }
 
@@ -519,7 +503,7 @@ impl TypeChecker {
                 let TypeExprKind::Named(binding, _) = implementor.kind() else {
                     continue;
                 };
-                let Some(definition) = self.structs.get(*binding) else {
+                let Some(definition) = self.declarations.types.structs.get(*binding) else {
                     continue;
                 };
                 if definition
@@ -659,19 +643,24 @@ impl TypeChecker {
     }
 
     pub(super) fn admissible_types(&self) -> AdmissibleTypes<'_> {
-        AdmissibleTypes::new(&self.generics, &self.traits)
+        AdmissibleTypes::new(&self.generics, &self.declarations.traits.table)
     }
 
     pub(super) fn copy_rules(&self) -> super::copy::CopyRules<'_> {
-        super::copy::CopyRules::new(&self.traits, &self.generics, &self.structs, &self.enums)
+        super::copy::CopyRules::new(
+            &self.declarations.traits.table,
+            &self.generics,
+            &self.declarations.types.structs,
+            &self.declarations.types.enums,
+        )
     }
 
     pub(super) fn is_box(&self, ty: &Type) -> bool {
-        matches!(ty, Type::Named(binding, arguments) if Some(*binding) == self.box_binding && arguments.len() == 1)
+        matches!(ty, Type::Named(binding, arguments) if Some(*binding) == self.declarations.types.box_binding && arguments.len() == 1)
     }
 
     pub(super) fn variant_payloads(&self) -> VariantPayloads<'_> {
-        VariantPayloads::new(&self.enums, self.box_binding, &self.inferred_boxes)
+        VariantPayloads::new(&self.declarations.types)
     }
 
     pub(super) fn reference_peeling(&self) -> ReferencePeeling<'_> {
@@ -679,7 +668,7 @@ impl TypeChecker {
     }
 
     pub(super) fn pipelines(&self) -> Pipelines<'_> {
-        Pipelines::new(&self.rust_types)
+        Pipelines::new(&self.declarations.types.rust_types)
     }
 
     pub(super) fn function_value_wrapper(&mut self) -> FunctionValueWrapper<'_> {
@@ -688,8 +677,8 @@ impl TypeChecker {
 
     pub(super) fn unification(&mut self) -> Unification<'_> {
         let display = TypeDisplay::new(&self.bindings, &self.generics)
-            .with_projections(self.traits.projections());
-        let declarations = Declarations::new(&self.structs, &self.rust_types);
+            .with_projections(self.declarations.traits.table.projections());
+        let declarations = DeclaredTypes::new(&self.declarations.types);
         Unification::new(&mut self.unifier, display, declarations)
     }
 
@@ -703,10 +692,10 @@ impl TypeChecker {
     pub(super) fn match_coverage(&self) -> MatchCoverage<'_> {
         let catalog = ConstructorCatalog::new(
             self.reference_peeling(),
-            &self.structs,
+            &self.declarations.types.structs,
             self.variant_payloads(),
         );
-        let text = WitnessText::new(&self.bindings, &self.enums);
+        let text = WitnessText::new(&self.bindings, &self.declarations.types.enums);
         MatchCoverage::new(&self.bindings, catalog, text)
     }
 
@@ -729,7 +718,8 @@ impl TypeChecker {
     }
 
     pub(super) fn display(&self) -> TypeDisplay<'_> {
-        TypeDisplay::new(&self.bindings, &self.generics).with_projections(self.traits.projections())
+        TypeDisplay::new(&self.bindings, &self.generics)
+            .with_projections(self.declarations.traits.table.projections())
     }
 
     pub(super) fn defer_missing_annotation(
@@ -832,7 +822,7 @@ impl TypeChecker {
         if self.is_boxed_trait(implementor, bound.binding) {
             return;
         }
-        match self.traits.select(&bound, implementor) {
+        match self.declarations.traits.table.select(&bound, implementor) {
             Selection::Implemented {
                 requirements,
                 argument,
@@ -1051,7 +1041,7 @@ impl TypeChecker {
         for (index, (target, _)) in clauses.iter().enumerate() {
             let covering = clauses[..index]
                 .iter()
-                .position(|(earlier, _)| earlier.covers(target, &self.traits));
+                .position(|(earlier, _)| earlier.covers(target, &self.declarations.traits.table));
             if let Some(covering) = covering {
                 let clause = template.clauses[index].target.span();
                 let earlier = template.clauses[covering].target.span();
@@ -1269,7 +1259,14 @@ impl TypeChecker {
         };
         let success = self.unifier.shallow(success);
         let open = matches!(success, Type::Var(var) if self.unifier.bounds(var).is_empty());
-        (open && self.enums.get(binding)?.is_result_shaped()).then_some(success)
+        (open
+            && self
+                .declarations
+                .types
+                .enums
+                .get(binding)?
+                .is_result_shaped())
+        .then_some(success)
     }
 
     fn pinnable_vars(&self, members: &[(BindingId, &TypedExpr)]) -> FxHashSet<TypeVar> {
@@ -1403,7 +1400,9 @@ impl TypeChecker {
             .bounds(var)
             .iter()
             .filter(|bound| {
-                self.traits
+                self.declarations
+                    .traits
+                    .table
                     .get(bound.binding)
                     .is_none_or(|rust_trait| rust_trait.associated.is_none())
             })
@@ -1569,7 +1568,7 @@ impl TypeChecker {
             .collect();
         let (lowered, field_spans) = self.lower_fields(fields, &scope)?;
         Self::check_parameters_used(binders, &params, &lowered)?;
-        self.structs.add(
+        self.declarations.types.structs.add(
             binding,
             StructDefinition {
                 lifetimes,
@@ -1621,7 +1620,7 @@ impl TypeChecker {
         }
         self.check_enum_parameters_used(binding, binders, &params, variants)?;
         if let Some(rust) = rust {
-            self.rust_types.add(
+            self.declarations.types.rust_types.add(
                 binding,
                 RustType {
                     template: rust.template.clone(),
@@ -1631,7 +1630,7 @@ impl TypeChecker {
                 },
             );
         }
-        self.enums.add(
+        self.declarations.types.enums.add(
             binding,
             EnumDefinition {
                 lifetimes,
@@ -1769,7 +1768,9 @@ impl TypeChecker {
 
     fn borrow_views(&self, stored: Type) -> Type {
         match stored {
-            view if Self::is_unsized_type(&self.rust_types, &view) => Type::shared(view),
+            view if Self::is_unsized_type(&self.declarations.types.rust_types, &view) => {
+                Type::shared(view)
+            }
             Type::Named(binding, arguments) => {
                 Type::Named(binding, self.borrow_named_arguments(binding, arguments))
             }
@@ -1791,7 +1792,12 @@ impl TypeChecker {
             .into_iter()
             .enumerate()
             .map(|(position, argument)| {
-                if self.rust_types.parameter_may_be_unsized(binding, position) {
+                if self
+                    .declarations
+                    .types
+                    .rust_types
+                    .parameter_may_be_unsized(binding, position)
+                {
                     self.borrow_argument_views(argument)
                 } else {
                     self.borrow_views(argument)
@@ -1818,7 +1824,7 @@ impl TypeChecker {
                 ))
             })
             .collect::<Result<Vec<_>, Diagnostic>>()?;
-        self.rust_types.add(
+        self.declarations.types.rust_types.add(
             binding,
             RustType {
                 template: template.clone(),
@@ -1914,7 +1920,7 @@ impl TypeChecker {
             .iter()
             .map(|bound| self.lower_type_bound(bound, &FxHashMap::default()))
             .collect::<Result<Vec<_>, Diagnostic>>()?;
-        self.traits.add(
+        self.declarations.traits.table.add(
             binding,
             RustTrait {
                 path: rust_name.clone(),
@@ -1928,12 +1934,15 @@ impl TypeChecker {
         for method in methods {
             let receiver = Self::receiver_kind(&method.signature, self_variable);
             let returns_self = Self::trait_method_returns_self(&method.signature, self_variable);
-            self.selfless_methods.record(method, binding, self_variable);
+            self.declarations
+                .traits
+                .selfless_methods
+                .record(method, binding, self_variable);
             self.synthetic_bindings.insert(method.binding);
             if let Some(default) = method.default {
                 self.synthetic_bindings.insert(default);
             }
-            self.trait_methods.insert(
+            self.declarations.traits.methods.insert(
                 method.binding,
                 TraitMethodInfo {
                     trait_binding: binding,
@@ -1948,7 +1957,7 @@ impl TypeChecker {
                 returns_self,
             });
         }
-        self.trait_definitions.push(TypedTrait {
+        self.declarations.traits.definitions.push(TypedTrait {
             binding,
             module,
             rust_name: rust_name.clone(),
@@ -1973,14 +1982,18 @@ impl TypeChecker {
     pub(super) fn check_boxable(&mut self, trait_binding: BindingId, span: Span) {
         let trait_name = self.bindings.get(trait_binding).name().to_string();
         let Some(definition) = self
-            .trait_definitions
+            .declarations
+            .traits
+            .definitions
             .iter()
             .find(|definition| definition.binding == trait_binding)
         else {
             return;
         };
         if let Some(associated) = self
+            .declarations
             .traits
+            .table
             .get(trait_binding)
             .and_then(|rust_trait| rust_trait.associated.clone())
         {
@@ -2095,12 +2108,14 @@ impl TypeChecker {
                 }
                 self.report_unsized_implementor(&implementor, implementor_span, methods);
                 let argument = self
+                    .declarations
                     .traits
+                    .table
                     .get(*trait_binding)
                     .is_some_and(|rust_trait| rust_trait.associated.is_some())
                     .then(|| associated_values.first().map(|(_, value)| value.clone()))
                     .flatten();
-                self.traits.add_implementor(
+                self.declarations.traits.table.add_implementor(
                     *trait_binding,
                     Implementor {
                         scheme: Scheme {
@@ -2116,7 +2131,9 @@ impl TypeChecker {
                     self.synthetic_bindings.insert(method.binding);
                     self.impl_methods.insert(method.binding);
                     let receiver = self
-                        .trait_methods
+                        .declarations
+                        .traits
+                        .methods
                         .get(&method.trait_method)
                         .and_then(|info| info.receiver);
                     typed_methods.push(super::typed::TypedImplMethod {
@@ -2128,7 +2145,9 @@ impl TypeChecker {
                     .into_iter()
                     .map(|(binding, value)| {
                         let name = self
-                            .trait_definitions
+                            .declarations
+                            .traits
+                            .definitions
                             .iter()
                             .find(|trait_definition| trait_definition.binding == *trait_binding)
                             .and_then(|trait_definition| {
@@ -2141,7 +2160,7 @@ impl TypeChecker {
                         (binding, name, value)
                     })
                     .collect();
-                self.trait_impls.push(TypedTraitImpl {
+                self.declarations.traits.impls.push(TypedTraitImpl {
                     trait_binding: *trait_binding,
                     implementor,
                     params,
@@ -2155,7 +2174,7 @@ impl TypeChecker {
     }
 
     fn is_boxed_trait(&self, implementor: &Type, trait_binding: BindingId) -> bool {
-        let Some(box_binding) = self.box_binding else {
+        let Some(box_binding) = self.declarations.types.box_binding else {
             return false;
         };
         matches!(
@@ -2168,7 +2187,9 @@ impl TypeChecker {
 
     fn report_supertraits(&mut self) {
         let implementations: Vec<(BindingId, Type, Span)> = self
-            .trait_impls
+            .declarations
+            .traits
+            .impls
             .iter()
             .map(|implementation| {
                 (
@@ -2189,7 +2210,7 @@ impl TypeChecker {
         implementor: &Type,
         span: Span,
     ) {
-        let Some(rust_trait) = self.traits.get(trait_binding) else {
+        let Some(rust_trait) = self.declarations.traits.table.get(trait_binding) else {
             return;
         };
         let supertraits = rust_trait.supertraits.clone();
@@ -2199,17 +2220,18 @@ impl TypeChecker {
         let trait_name = self.bindings.get(trait_binding).name().to_string();
         let implementor_name = self.display().show(implementor);
         for supertrait in supertraits {
-            if self
-                .traits
-                .satisfies(&supertrait, implementor, &|generic, bound| {
-                    self.unifier.generic_bounds(generic).contains(bound)
-                })
-            {
+            if self.declarations.traits.table.satisfies(
+                &supertrait,
+                implementor,
+                &|generic, bound| self.unifier.generic_bounds(generic).contains(bound),
+            ) {
                 continue;
             }
             let supertrait_name = self.bindings.get(supertrait.binding).name().to_string();
             let help = self
+                .declarations
                 .traits
+                .table
                 .get(supertrait.binding)
                 .and_then(|known| known.help.clone());
             self.diagnostics.push(TypeProblems::missing_supertrait(
@@ -2276,12 +2298,14 @@ impl TypeChecker {
         span: Span,
         methods: &[crate::core::ImplMethod],
     ) {
-        if !Self::is_unsized_type(&self.rust_types, implementor) {
+        if !Self::is_unsized_type(&self.declarations.types.rust_types, implementor) {
             return;
         }
         for method in methods {
             let owned = self
-                .trait_methods
+                .declarations
+                .traits
+                .methods
                 .get(&method.trait_method)
                 .is_some_and(|info| info.receiver == Some(ReceiverKind::Owned));
             if !owned {
@@ -2303,7 +2327,12 @@ impl TypeChecker {
         implementor: &Type,
         span: Span,
     ) -> bool {
-        if !self.rust_trait_paths.contains_key(&trait_binding) || self.is_program_type(implementor)
+        if !self
+            .declarations
+            .traits
+            .rust_paths
+            .contains_key(&trait_binding)
+            || self.is_program_type(implementor)
         {
             return false;
         }
@@ -2333,10 +2362,16 @@ impl TypeChecker {
         implementor: &Type,
         span: Span,
     ) -> bool {
-        let Some(first) = self.trait_impls.iter().find(|implementation| {
-            implementation.trait_binding == trait_binding
-                && ImplementorOverlap::overlaps(&implementation.implementor, implementor)
-        }) else {
+        let Some(first) = self
+            .declarations
+            .traits
+            .impls
+            .iter()
+            .find(|implementation| {
+                implementation.trait_binding == trait_binding
+                    && ImplementorOverlap::overlaps(&implementation.implementor, implementor)
+            })
+        else {
             return false;
         };
         let first = TypeProblems::first_impl(first.implementor_span);
@@ -2355,7 +2390,7 @@ impl TypeChecker {
         matches!(
             implementor,
             Type::Named(binding, _)
-                if self.structs.get(*binding).is_some() || self.enums.get(*binding).is_some()
+                if self.declarations.types.structs.get(*binding).is_some() || self.declarations.types.enums.get(*binding).is_some()
         )
     }
 
@@ -2388,7 +2423,9 @@ impl TypeChecker {
     }
 
     fn leads_back(&self, required: &Bound, declared: BindingId) -> bool {
-        self.traits
+        self.declarations
+            .traits
+            .table
             .brings(required, &|brought| brought.binding == declared)
     }
 
@@ -2398,7 +2435,7 @@ impl TypeChecker {
     ) -> Result<(), Diagnostic> {
         let implementors = self.lower_rust_trait_implementors(declaration)?;
         let supertraits = self.acyclic_requirements(declaration)?;
-        self.traits.add(
+        self.declarations.traits.table.add(
             declaration.binding,
             RustTrait {
                 path: declaration.path.clone(),
@@ -2408,12 +2445,14 @@ impl TypeChecker {
                 associated: None,
             },
         );
-        self.rust_trait_paths
+        self.declarations
+            .traits
+            .rust_paths
             .insert(declaration.binding, Rc::clone(&declaration.path));
         for method in &declaration.methods {
             let receiver = Self::receiver_kind(&method.signature, declaration.self_variable);
             self.synthetic_bindings.insert(method.binding);
-            self.trait_methods.insert(
+            self.declarations.traits.methods.insert(
                 method.binding,
                 TraitMethodInfo {
                     trait_binding: declaration.binding,
@@ -2426,10 +2465,10 @@ impl TypeChecker {
     }
 
     fn absorb_impl_bounds(&mut self, definitions: &FxHashMap<BindingId, TypedDefinition>) {
-        for position in 0..self.trait_impls.len() {
-            let params = self.trait_impls[position].params.clone();
+        for position in 0..self.declarations.traits.impls.len() {
+            let params = self.declarations.traits.impls[position].params.clone();
             let mut found: Vec<Vec<Bound>> = vec![Vec::new(); params.len()];
-            for method in &self.trait_impls[position].methods {
+            for method in &self.declarations.traits.impls[position].methods {
                 let Some(definition) = definitions.get(&method.binding) else {
                     continue;
                 };
@@ -2462,7 +2501,7 @@ impl TypeChecker {
     }
 
     fn store_impl_bounds(&mut self, position: usize, bounds: Vec<Vec<Bound>>) {
-        let mut params = self.trait_impls[position].params.clone();
+        let mut params = self.declarations.traits.impls[position].params.clone();
         for (param, bounds) in params.iter_mut().zip(bounds) {
             param.bounds = bounds;
         }
@@ -2471,10 +2510,10 @@ impl TypeChecker {
             self.unifier
                 .register_generic(param.id, param.bounds.clone());
         }
-        let trait_binding = self.trait_impls[position].trait_binding;
-        let implementor = self.trait_impls[position].implementor.clone();
-        self.trait_impls[position].params = params.clone();
-        self.traits.set_implementor_scheme(
+        let trait_binding = self.declarations.traits.impls[position].trait_binding;
+        let implementor = self.declarations.traits.impls[position].implementor.clone();
+        self.declarations.traits.impls[position].params = params.clone();
+        self.declarations.traits.table.set_implementor_scheme(
             trait_binding,
             &implementor,
             Scheme {
@@ -2555,19 +2594,24 @@ impl TypeChecker {
         match self.admissible_types().of(generic) {
             Admissible::Closed(types) => {
                 !types.is_empty()
-                    && types
-                        .iter()
-                        .all(|candidate| self.traits.satisfies(bound, candidate, &|_, _| false))
+                    && types.iter().all(|candidate| {
+                        self.declarations
+                            .traits
+                            .table
+                            .satisfies(bound, candidate, &|_, _| false)
+                    })
             }
             Admissible::Unbounded | Admissible::Open(_) => false,
         }
     }
 
     fn declared_bound_implies(&self, generic: GenericId, bound: &Bound) -> bool {
-        self.unifier
-            .generic_bounds(generic)
-            .iter()
-            .any(|declared| self.traits.implies(declared, bound, generic))
+        self.unifier.generic_bounds(generic).iter().any(|declared| {
+            self.declarations
+                .traits
+                .table
+                .implies(declared, bound, generic)
+        })
     }
 
     pub(super) fn report_missing_trait(&mut self, bound: &Bound, implementor: &Type, span: Span) {
@@ -2611,7 +2655,7 @@ impl TypeChecker {
         let program_type = matches!(
             implementor,
             Type::Named(binding, _)
-                if self.structs.get(*binding).is_some() || self.enums.get(*binding).is_some()
+                if self.declarations.types.structs.get(*binding).is_some() || self.declarations.types.enums.get(*binding).is_some()
         );
         let diagnostic = match self.unimplemented_box(implementor, bound) {
             Some(boxed) => {
@@ -2631,7 +2675,9 @@ impl TypeChecker {
             return diagnostic;
         }
         match self
+            .declarations
             .traits
+            .table
             .get(bound.binding)
             .and_then(|known| known.help.as_deref())
         {
@@ -2648,11 +2694,15 @@ impl TypeChecker {
         let Type::Named(binding, arguments) = found else {
             return None;
         };
-        if Some(*binding) != self.box_binding {
+        if Some(*binding) != self.declarations.types.box_binding {
             return None;
         }
         let argument = arguments.first()?;
-        let satisfied = self.traits.satisfies(bound, argument, &|_, _| false);
+        let satisfied = self
+            .declarations
+            .traits
+            .table
+            .satisfies(bound, argument, &|_, _| false);
         satisfied.then(|| found.clone())
     }
 
@@ -2661,7 +2711,9 @@ impl TypeChecker {
         trait_binding: BindingId,
         display: &TypeDisplay<'_>,
     ) -> ImplementorList {
-        self.traits
+        self.declarations
+            .traits
+            .table
             .get(trait_binding)
             .map(|rust_trait| self.group_implementors(rust_trait, display))
             .unwrap_or_default()
@@ -2711,13 +2763,17 @@ impl TypeChecker {
 
     fn group_parameter(&self, binding: BindingId) -> String {
         let projected = self
+            .declarations
             .traits
+            .table
             .projections()
             .associated(binding)
             .map(|associated| associated.parameter.to_string());
         projected
             .or_else(|| {
-                self.rust_types
+                self.declarations
+                    .types
+                    .rust_types
                     .get(binding)
                     .and_then(|rust_type| rust_type.params.first())
                     .map(ToString::to_string)
@@ -2735,8 +2791,15 @@ impl TypeChecker {
         let [argument] = arguments.as_slice() else {
             return None;
         };
-        let single_parameter = self.traits.projections().is_projection(*binding)
+        let single_parameter = self
+            .declarations
+            .traits
+            .table
+            .projections()
+            .is_projection(*binding)
             || self
+                .declarations
+                .types
                 .rust_types
                 .get(*binding)
                 .is_some_and(|rust_type| rust_type.params.len() == 1);
@@ -2750,7 +2813,7 @@ impl TypeChecker {
         bound: &Bound,
         display: &TypeDisplay<'_>,
     ) -> Diagnostic {
-        if self.enums.get(binding).is_some() {
+        if self.declarations.types.enums.get(binding).is_some() {
             return self.enum_trait_help(diagnostic, binding, bound, display);
         }
         self.struct_trait_help(diagnostic, binding, bound, display)
@@ -2764,6 +2827,8 @@ impl TypeChecker {
         display: &TypeDisplay<'_>,
     ) -> Diagnostic {
         let definition = self
+            .declarations
+            .types
             .enums
             .get(binding)
             .expect("enum trait help names an enum");
@@ -2826,7 +2891,7 @@ impl TypeChecker {
         bound: &Bound,
         display: &TypeDisplay<'_>,
     ) -> Diagnostic {
-        let Some(definition) = self.structs.get(struct_binding) else {
+        let Some(definition) = self.declarations.types.structs.get(struct_binding) else {
             return diagnostic;
         };
         let struct_name = self.bindings.get(struct_binding).name().to_string();
@@ -2871,7 +2936,9 @@ impl TypeChecker {
     }
 
     fn is_order(&self, trait_binding: BindingId) -> bool {
-        self.traits
+        self.declarations
+            .traits
+            .table
             .get(trait_binding)
             .is_some_and(|rust_trait| rust_trait.path.as_ref() == crate::core::OrderTrait::PATH)
     }
@@ -2933,10 +3000,11 @@ impl TypeChecker {
             .fields
             .iter()
             .find(|(_, ty)| {
-                self.traits
-                    .satisfies(&Bound::plain(trait_binding), ty, &|generic, _| {
-                        params.contains(&generic)
-                    })
+                self.declarations.traits.table.satisfies(
+                    &Bound::plain(trait_binding),
+                    ty,
+                    &|generic, _| params.contains(&generic),
+                )
             })
             .map(|(name, _)| name.as_ref())
     }
@@ -2968,10 +3036,15 @@ impl TypeChecker {
     }
 
     fn is_derivable(&self, bound: BindingId) -> bool {
-        let written = self.traits.get(bound).is_some_and(|rust_trait| {
-            let name = StructDerives::derive_name(&rust_trait.path);
-            StructDerives::DERIVABLE.contains(&name)
-        });
+        let written = self
+            .declarations
+            .traits
+            .table
+            .get(bound)
+            .is_some_and(|rust_trait| {
+                let name = StructDerives::derive_name(&rust_trait.path);
+                StructDerives::DERIVABLE.contains(&name)
+            });
         written || self.is_structural_trait(bound)
     }
 }
@@ -3090,20 +3163,20 @@ impl TypeChecker {
             entry_function: program.entry_function,
             bindings: self.bindings,
             macro_field_reads: self.macro_field_reads,
-            structs: self.structs,
-            enums: self.enums,
-            rust_types: self.rust_types,
-            box_binding: self.box_binding,
-            inferred_boxes: self.inferred_boxes,
-            structural_traits: self.structural_traits,
+            structs: self.declarations.types.structs,
+            enums: self.declarations.types.enums,
+            rust_types: self.declarations.types.rust_types,
+            box_binding: self.declarations.types.box_binding,
+            inferred_boxes: self.declarations.types.inferred_boxes,
+            structural_traits: self.declarations.traits.structural,
             structural_uses: self.structural_uses,
-            traits: self.traits,
-            trait_definitions: self.trait_definitions,
-            rust_trait_paths: self.rust_trait_paths,
-            trait_impls: self.trait_impls,
+            traits: self.declarations.traits.table,
+            trait_definitions: self.declarations.traits.definitions,
+            rust_trait_paths: self.declarations.traits.rust_paths,
+            trait_impls: self.declarations.traits.impls,
             associated_generics: self.associated_generics,
             conversions: self.conversions,
-            trait_methods: self.trait_methods,
+            trait_methods: self.declarations.traits.methods,
             synthetic_bindings: self.synthetic_bindings,
             generics: self.generics,
             implied_bounds: self.implied_bounds,

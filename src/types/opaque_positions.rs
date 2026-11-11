@@ -48,9 +48,9 @@ impl TypeChecker {
         definitions: &FxHashMap<BindingId, TypedDefinition>,
     ) {
         let positions = OpaquePositions {
-            rust_types: &self.rust_types,
-            structs: &self.structs,
-            enums: &self.enums,
+            rust_types: &self.declarations.types.rust_types,
+            structs: &self.declarations.types.structs,
+            enums: &self.declarations.types.enums,
             receivers: MethodReceivers::new(&self.template_borrows),
             definitions,
             closures: &self.closure_types,

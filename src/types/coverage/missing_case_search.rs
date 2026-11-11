@@ -1,3 +1,4 @@
+#[cfg(test)]
 use std::cell::Cell;
 
 use super::constructor::Constructor;
@@ -8,6 +9,7 @@ use crate::types::Type;
 
 pub(super) struct MissingCaseSearch<'c, 'a> {
     catalog: &'c ConstructorCatalog<'a>,
+    #[cfg(test)]
     visited_matrices: Cell<usize>,
 }
 
@@ -15,11 +17,13 @@ impl<'c, 'a> MissingCaseSearch<'c, 'a> {
     pub(super) fn new(catalog: &'c ConstructorCatalog<'a>) -> Self {
         Self {
             catalog,
+            #[cfg(test)]
             visited_matrices: Cell::new(0),
         }
     }
 
     pub(super) fn witnesses(&self, matrix: &PatternMatrix, types: &[Type]) -> Vec<Vec<Witness>> {
+        #[cfg(test)]
         self.visited_matrices.set(self.visited_matrices.get() + 1);
         self.settled_witnesses(matrix, types)
             .unwrap_or_else(|| self.column_witnesses(matrix, types))
@@ -107,6 +111,8 @@ mod tests {
     use crate::types::coverage::search_fixture::SearchFixture;
     use crate::types::coverage::witness::Witness;
 
+    const MOST_MATRICES_FOR_WIDE_ARMS: usize = 100;
+
     #[test]
     fn an_exhaustive_match_misses_no_case() {
         let fixture = SearchFixture::new();
@@ -179,6 +185,9 @@ mod tests {
         let fixture = SearchFixture::new();
         let visited =
             fixture.visited_matrices(SearchFixture::wide_arms(), SearchFixture::wide_type());
-        assert!(visited <= 100, "visited {visited} matrices");
+        assert!(
+            visited <= MOST_MATRICES_FOR_WIDE_ARMS,
+            "visited {visited} matrices"
+        );
     }
 }

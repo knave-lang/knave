@@ -2083,6 +2083,22 @@ fn doc_write_links_a_reexport_to_the_module_that_defines_it() {
 }
 
 #[test]
+fn doc_write_links_a_bracketed_name_that_ends_a_line() {
+    let sandbox = Sandbox::new("doc_write_line_end_link")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file(
+            "src/a.knv",
+            "(export size tally)\n\n(defn size () \"x [zzz]\" 1)\n\n(defn tally () \"see [size]\" 2)\n",
+        );
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    let page = sandbox.contents("doc/a.md");
+    assert!(page.contains("\n\nx [zzz]\n"));
+    assert!(page.contains("\n\nsee [size](#size)\n"));
+}
+
+#[test]
 fn doc_write_reads_a_project_whose_entry_sits_at_its_root() {
     let sandbox = Sandbox::new("doc_write_root_entry")
         .with_file(&Language::project_file_name(), ROOT_ENTRY_PROJECT)

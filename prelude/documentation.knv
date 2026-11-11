@@ -442,8 +442,7 @@
                           false))))
 
 (def fence-line?
-  (fn (line)
-    (bool-not (value-eq (string-strip-prefix line "```") line))))
+  (fn (line) (starts-with? line "```")))
 
 (def blank-line?
   (fn (line)
@@ -467,8 +466,11 @@
 
 (def arrow-line?
   (fn (line)
-    (local trimmed (string-trim-start line))
-    (bool-not (value-eq (string-strip-prefix trimmed "=> ") trimmed))))
+    (starts-with? (string-trim-start line) "=> ")))
+
+(def starts-with?
+  (fn (text prefix)
+    (bool-not (value-eq (string-strip-prefix text prefix) text))))
 
 (def linked-line
   (fn (page line)
@@ -577,9 +579,9 @@
   (fn (name after)
     (if (value-eq name "")
       false
-      (if (value-eq (first-character after) "(")
+      (if (starts-with? after "(")
         false
-        (bool-not (value-eq (first-character after) "["))))))
+        (bool-not (starts-with? after "["))))))
 
 (def bracketed-name
   (fn (text)

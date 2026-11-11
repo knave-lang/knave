@@ -34,7 +34,7 @@ impl<'a> WarnCall<'a> {
         let description = self.description()?;
         let rule = self.rule(&description)?;
         let failure = description.diagnostic(message, culprit, help);
-        Ok(WarningProblems::warned(rule, &failure))
+        Ok(failure.into_warning(rule))
     }
 
     fn expect_count_in_range(&self) -> Result<(), Diagnostic> {

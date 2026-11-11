@@ -53,12 +53,12 @@ mod tests {
     use super::*;
     use crate::interpret::CodeList;
     use crate::reader::{FormKind, Symbol};
-    use crate::scope::ScopeAllocator;
+    use crate::scope::{ScopeKind, Scopes};
     use crate::source::{SourceId, Span};
 
     struct BudgetFixture {
         budget: FormBudget,
-        scopes: ScopeAllocator,
+        scopes: Scopes,
     }
 
     impl BudgetFixture {
@@ -67,20 +67,20 @@ mod tests {
         fn new() -> Self {
             Self {
                 budget: FormBudget::full(),
-                scopes: ScopeAllocator::default(),
+                scopes: Scopes::default(),
             }
         }
 
         fn admits_list_of(&mut self, forms: usize) -> bool {
             let mut list = Self::list_of(forms);
-            let scope = self.scopes.fresh();
+            let scope = self.scopes.fresh(ScopeKind::Introduction);
             self.budget
                 .flip_scope(&mut list, scope, Self::NOTHING_COUNTED)
         }
 
         fn admits_list_counting(&mut self, forms: usize, counted_forms: usize) -> bool {
             let mut list = Self::list_of(forms);
-            let scope = self.scopes.fresh();
+            let scope = self.scopes.fresh(ScopeKind::Introduction);
             self.budget.flip_scope(&mut list, scope, counted_forms)
         }
 

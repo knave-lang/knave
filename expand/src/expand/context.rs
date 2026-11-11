@@ -27,24 +27,24 @@ impl DefinitionContext {
 mod tests {
     use super::DefinitionContext;
     use crate::reader::{Form, FormKind, Symbol};
-    use crate::scope::{Scope, ScopeAllocator, ScopeSet};
+    use crate::scope::{Scope, ScopeKind, ScopeSet, Scopes};
     use crate::source::{SourceId, Span};
 
     struct ContextFixture {
-        scopes: ScopeAllocator,
+        scopes: Scopes,
         context: DefinitionContext,
     }
 
     impl ContextFixture {
         fn new() -> Self {
             Self {
-                scopes: ScopeAllocator::default(),
+                scopes: Scopes::default(),
                 context: DefinitionContext::default(),
             }
         }
 
         fn use_site(&mut self) -> Scope {
-            let scope = self.scopes.fresh();
+            let scope = self.scopes.fresh(ScopeKind::UseSite);
             self.context.record_fresh_use_site(scope);
             scope
         }
@@ -68,7 +68,7 @@ mod tests {
     #[test]
     fn strips_a_recorded_use_site_from_a_binder() {
         let mut fixture = ContextFixture::new();
-        let module = fixture.scopes.fresh();
+        let module = fixture.scopes.fresh(ScopeKind::Module);
         let use_site = fixture.use_site();
         let binder = fixture.stripped_binder(&[module, use_site]);
         assert!(!ContextFixture::carries(&binder, use_site));
@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn keeps_the_scopes_that_no_use_site_recorded() {
         let mut fixture = ContextFixture::new();
-        let module = fixture.scopes.fresh();
+        let module = fixture.scopes.fresh(ScopeKind::Module);
         let use_site = fixture.use_site();
         let binder = fixture.stripped_binder(&[module, use_site]);
         assert!(ContextFixture::carries(&binder, module));

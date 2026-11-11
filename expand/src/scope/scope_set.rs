@@ -9,22 +9,15 @@ use super::scope_chain::{ChainPrefix, SharedScopes};
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
 )]
-pub struct Scope(pub(super) u32);
+pub struct Scope(u32);
 
-#[derive(Default, serde::Serialize, serde::Deserialize)]
-pub struct ScopeAllocator {
-    next: u32,
-}
-
-impl ScopeAllocator {
-    pub fn next_scope(&self) -> Scope {
-        Scope(self.next)
+impl Scope {
+    pub(super) fn numbered(position: usize) -> Self {
+        Self(u32::try_from(position).expect("a program makes fewer than 2^32 scopes"))
     }
 
-    pub fn fresh(&mut self) -> Scope {
-        let scope = Scope(self.next);
-        self.next += 1;
-        scope
+    pub(super) fn position(self) -> usize {
+        usize::try_from(self.0).expect("a scope number fits in usize")
     }
 }
 
@@ -361,10 +354,10 @@ impl SortedScopes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scope::ScopeChain;
+    use crate::scope::{ScopeChain, ScopeKind};
 
     struct Scopes {
-        allocator: ScopeAllocator,
+        allocator: crate::scope::Scopes,
     }
 
     impl Scopes {
@@ -372,12 +365,14 @@ mod tests {
 
         fn new() -> Self {
             Self {
-                allocator: ScopeAllocator::default(),
+                allocator: crate::scope::Scopes::default(),
             }
         }
 
         fn set_of(&mut self, count: usize) -> (ScopeSet, Vec<Scope>) {
-            let scopes: Vec<Scope> = (0..count).map(|_| self.allocator.fresh()).collect();
+            let scopes: Vec<Scope> = (0..count)
+                .map(|_| self.allocator.fresh(ScopeKind::Local))
+                .collect();
             let mut set = ScopeSet::default();
             scopes.iter().for_each(|scope| set.add(*scope));
             (set, scopes)
@@ -385,7 +380,9 @@ mod tests {
 
         fn chain_of(&mut self, count: usize) -> (ScopeChain, Vec<Scope>) {
             let chain = ScopeChain::default();
-            let scopes: Vec<Scope> = (0..count).map(|_| self.allocator.fresh()).collect();
+            let scopes: Vec<Scope> = (0..count)
+                .map(|_| self.allocator.fresh(ScopeKind::Local))
+                .collect();
             scopes.iter().for_each(|scope| chain.push(*scope));
             (chain, scopes)
         }
@@ -431,7 +428,7 @@ mod tests {
     fn finds_no_scope_that_a_shared_set_lacks() {
         let mut fixture = Scopes::new();
         let (set, _) = fixture.shared_set_of(Scopes::SHARED_LENGTH);
-        let absent = fixture.allocator.fresh();
+        let absent = fixture.allocator.fresh(ScopeKind::Local);
         assert!(!set.any(|scope| scope == absent));
     }
 
@@ -519,7 +516,7 @@ mod tests {
         let (chain, held) = scopes.chain_of(3);
         let mut set = ScopeSet::default();
         set.add_prefix(&Scopes::prefix_of(&chain));
-        chain.push(scopes.allocator.fresh());
+        chain.push(scopes.allocator.fresh(ScopeKind::Local));
         assert_eq!(set.iter().collect::<Vec<_>>(), held);
     }
 
@@ -536,9 +533,9 @@ mod tests {
     #[test]
     fn own_scopes_and_shared_scopes_come_back_sorted() {
         let mut scopes = Scopes::new();
-        let older = scopes.allocator.fresh();
+        let older = scopes.allocator.fresh(ScopeKind::Local);
         let (mut set, shared) = scopes.shared_set_of(Scopes::SHARED_LENGTH);
-        let newer = scopes.allocator.fresh();
+        let newer = scopes.allocator.fresh(ScopeKind::Local);
         set.add(newer);
         set.add(older);
         let expected: Vec<Scope> = [older].into_iter().chain(shared).chain([newer]).collect();
@@ -551,7 +548,7 @@ mod tests {
         let (chain, _) = scopes.chain_of(Scopes::SHARED_LENGTH);
         let mut shorter = ScopeSet::default();
         shorter.add_prefix(&Scopes::prefix_of(&chain));
-        chain.push(scopes.allocator.fresh());
+        chain.push(scopes.allocator.fresh(ScopeKind::Local));
         let mut longer = ScopeSet::default();
         longer.add_prefix(&Scopes::prefix_of(&chain));
         assert!(shorter.is_subset_of(&longer));
@@ -571,9 +568,10 @@ mod tests {
     fn a_scope_between_a_prefixs_scopes_is_not_in_the_set() {
         let mut scopes = Scopes::new();
         let chain = ScopeChain::default();
-        chain.push(scopes.allocator.fresh());
-        let between = scopes.allocator.fresh();
-        (1..Scopes::SHARED_LENGTH).for_each(|_| chain.push(scopes.allocator.fresh()));
+        chain.push(scopes.allocator.fresh(ScopeKind::Local));
+        let between = scopes.allocator.fresh(ScopeKind::Local);
+        (1..Scopes::SHARED_LENGTH)
+            .for_each(|_| chain.push(scopes.allocator.fresh(ScopeKind::Local)));
         let mut set = ScopeSet::default();
         set.add_prefix(&Scopes::prefix_of(&chain));
         assert!(!set.contains(between));
@@ -613,7 +611,7 @@ mod tests {
         let mut prefix_alone = ScopeSet::default();
         prefix_alone.add_prefix(&Scopes::prefix_of(&chain));
         let mut with_own_scope = prefix_alone.clone();
-        with_own_scope.add(scopes.allocator.fresh());
+        with_own_scope.add(scopes.allocator.fresh(ScopeKind::Local));
         assert!(!with_own_scope.is_subset_of(&prefix_alone));
     }
 
@@ -629,7 +627,7 @@ mod tests {
     fn a_prefix_older_than_the_set_adds_its_scopes_one_by_one() {
         let mut scopes = Scopes::new();
         let (chain, shared) = scopes.chain_of(Scopes::SHARED_LENGTH);
-        let newer = scopes.allocator.fresh();
+        let newer = scopes.allocator.fresh(ScopeKind::Local);
         let mut set = Scopes::added_one_by_one(&[newer]);
         set.add_prefix(&Scopes::prefix_of(&chain));
         let expected: Vec<Scope> = shared.into_iter().chain([newer]).collect();

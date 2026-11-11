@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use super::binding_table::NameEntries;
-use super::{Scope, ScopeAllocator, ScopeSet};
+use super::{Scope, ScopeSet, Scopes};
 use crate::core::Namespace;
 
 type SavedParts = (
@@ -212,7 +212,7 @@ impl<'de: 'static> serde::Deserialize<'de> for SavedNames {
 
 impl Default for SavedNames {
     fn default() -> Self {
-        let nothing = ScopeAllocator::default().next_scope();
+        let nothing = Scopes::default().next_scope();
         Self {
             prelude_scopes: nothing..nothing,
             slots: &[],
@@ -319,13 +319,13 @@ mod tests {
     use super::{NameSlots, NameTables, SavedNames};
     use crate::core::Namespace;
     use crate::scope::binding_table::NameEntries;
-    use crate::scope::{Scope, ScopeAllocator};
+    use crate::scope::{Scope, Scopes};
 
     struct SavedNamesFixture;
 
     impl SavedNamesFixture {
         fn no_scopes() -> Range<Scope> {
-            let nothing = ScopeAllocator::default().next_scope();
+            let nothing = Scopes::default().next_scope();
             nothing..nothing
         }
 

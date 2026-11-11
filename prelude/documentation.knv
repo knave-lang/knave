@@ -5,8 +5,8 @@
           string-contains? string-drop string-length
           string-lines string-strip-prefix
           string-strip-suffix string-trim-end
-          string-trim-start string?
-          symbol symbol-name symbol? take value-eq warn)
+          string-trim-start string? symbol symbol-name
+          symbol? take value-eq warn)
 
 (use prelude/internal/code require-module)
 
@@ -461,7 +461,8 @@
                        (rest lines)
                        next "")
                 (recur written
-                       (concat paragraph (list (list (first lines) number)))
+                       (concat paragraph
+                               (list (list (first lines) number)))
                        (rest lines)
                        next "")))
             (recur (concat written (list (first lines)))

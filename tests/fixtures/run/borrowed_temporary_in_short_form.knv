@@ -264,6 +264,34 @@
   (println t)
   (println seen))
 
+(def trimmed
+  (rust "str::trim_start({0})"
+    (fn ((ref str)) (ref str))))
+
+(def second
+  (rust "[{0}, {1}][1]"
+    (fn ((ref str) (ref str)) (ref str))))
+
+(defn underscore-ahead ()
+  (local t
+    (trimmed (as-str (announced "underscore"))))
+  (println t))
+
+(defn explicit-underscore-ahead ()
+  (local text (announced "underscore"))
+  (local t (trimmed (as-str text)))
+  (println t))
+
+(defn bracket-ahead ()
+  (local t
+    (second "z" (as-str (announced "bracket"))))
+  (println t))
+
+(defn explicit-bracket-ahead ()
+  (local text (announced "bracket"))
+  (local t (second "z" (as-str text)))
+  (println t))
+
 (defn main ()
   (short-function)
   (explicit-function)
@@ -296,4 +324,8 @@
   (computed-global-callee)
   (explicit-computed-global-callee)
   (deref-ahead)
-  (explicit-deref-ahead))
+  (explicit-deref-ahead)
+  (underscore-ahead)
+  (explicit-underscore-ahead)
+  (bracket-ahead)
+  (explicit-bracket-ahead))

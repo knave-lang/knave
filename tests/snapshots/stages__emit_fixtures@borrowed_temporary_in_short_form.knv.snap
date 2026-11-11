@@ -348,6 +348,30 @@ fn explicit_deref_ahead() {
     println!("{}", seen)
 }
 
+fn underscore_ahead() {
+    let owner = announced("underscore");
+    let t = str::trim_start(owner.as_str());
+    println!("{}", t)
+}
+
+fn explicit_underscore_ahead() {
+    let text = announced("underscore");
+    let t = str::trim_start(text.as_str());
+    println!("{}", t)
+}
+
+fn bracket_ahead() {
+    let owner = announced("bracket");
+    let t = ["z", owner.as_str()][1];
+    println!("{}", t)
+}
+
+fn explicit_bracket_ahead() {
+    let text = announced("bracket");
+    let t = ["z", text.as_str()][1];
+    println!("{}", t)
+}
+
 fn main() {
     crate::rt::restore_default_sigpipe();
     short_function();
@@ -381,7 +405,11 @@ fn main() {
     computed_global_callee();
     explicit_computed_global_callee();
     deref_ahead();
-    explicit_deref_ahead()
+    explicit_deref_ahead();
+    underscore_ahead();
+    explicit_underscore_ahead();
+    bracket_ahead();
+    explicit_bracket_ahead()
 }
 
 mod rt {

@@ -116,6 +116,42 @@ fn in_written_order() {
     println!("{}", shown)
 }
 
+fn make_page(name: &str) -> Page {
+    println!("{}", name);
+    Page {
+        title: format!("{}-m", name),
+    }
+}
+
+fn label_of<'a>(page: &'a &'a Page) -> &'a str {
+    page.title.as_str()
+}
+
+fn field_of_ref(name: &str) {
+    let owner = &make_page(name);
+    let letter = first_letter(owner.title.as_str());
+    println!("{}", letter)
+}
+
+fn field_of_ref_local(name: &str) {
+    let page = make_page(name);
+    let letter = first_letter(page.title.as_str());
+    println!("{}", letter)
+}
+
+fn ref_of_ref_argument(name: &str) {
+    let owner = &make_page(name);
+    let letter = label_of(&owner);
+    println!("{}", letter)
+}
+
+fn explicit_ref_of_ref_argument(name: &str) {
+    let page = make_page(name);
+    let borrowed = &page;
+    let letter = label_of(&borrowed);
+    println!("{}", letter)
+}
+
 fn main() {
     crate::rt::restore_default_sigpipe();
     through_as_str("ada");
@@ -127,7 +163,11 @@ fn main() {
     println!("{}", crate::rt::unwrap_ok(through_try("jo")));
     lent_inside_lifted("kim");
     written_borrow_of_struct("lu");
-    in_written_order()
+    in_written_order();
+    field_of_ref("mo");
+    field_of_ref_local("mo");
+    ref_of_ref_argument("ned");
+    explicit_ref_of_ref_argument("ned")
 }
 
 mod rt {

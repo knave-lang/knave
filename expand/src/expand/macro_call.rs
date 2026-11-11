@@ -184,10 +184,10 @@ impl Expander<'_> {
         let warnings = self.warnings.len();
         let budget_before = self.form_budgets.current().clone();
         let result = self.run_macro(binding, form, None);
-        self.diagnostics.truncate(diagnostics);
+        drop(self.diagnostics.split_off(diagnostics));
         self.recovered_diagnostics.truncate(recovered);
         self.declared_definitions.truncate(declared);
-        self.warnings.truncate(warnings);
+        drop(self.warnings.split_off(warnings));
         if result.is_err() {
             *self.form_budgets.current() = budget_before;
         }
@@ -237,7 +237,7 @@ impl Expander<'_> {
         );
         self.introductions.pop();
         self.expansion_depth -= 1;
-        self.warnings = reported.pointed_at_call(std::mem::take(&mut self.warnings), call_site);
+        reported.point_at_call(&mut self.warnings, call_site);
         let sources = &*self.sources;
         let output = result.map_err(|failure| {
             let failure = ExpansionLimit::at_user_call(failure, call_site, sources);
@@ -477,16 +477,9 @@ struct ReportedWarnings {
 }
 
 impl ReportedWarnings {
-    fn pointed_at_call(&self, warnings: Diagnostics, call_site: Span) -> Diagnostics {
-        let mut position = 0;
-        warnings.map(|warning| {
-            position += 1;
-            if position > self.first {
-                Expander::point_at_call(warning, call_site)
-            } else {
-                warning
-            }
-        })
+    fn point_at_call(&self, warnings: &mut Diagnostics, call_site: Span) {
+        let reported = warnings.split_off(self.first);
+        warnings.extend(reported.map(|warning| Expander::point_at_call(warning, call_site)));
     }
 }
 

@@ -21,7 +21,6 @@ pub struct Code {
     pub fragments: Vec<Fragment>,
     pub precedence: Precedence,
     pub bare_struct_literal: bool,
-    pub preceding_statements: Vec<Fragment>,
 }
 
 impl Code {
@@ -34,7 +33,6 @@ impl Code {
             fragments: vec![Fragment::Text(text.into())],
             precedence,
             bare_struct_literal: false,
-            preceding_statements: Vec::new(),
         }
     }
 
@@ -43,7 +41,6 @@ impl Code {
             fragments: parts.into_iter().flat_map(|part| part.fragments).collect(),
             precedence,
             bare_struct_literal: false,
-            preceding_statements: Vec::new(),
         }
     }
 
@@ -67,7 +64,6 @@ impl Code {
             fragments,
             precedence: Precedence::Block,
             bare_struct_literal: false,
-            preceding_statements: Vec::new(),
         }
     }
 

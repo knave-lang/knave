@@ -4,16 +4,17 @@ use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::EmissionWork;
+use super::binding_value::BindingValue;
 use super::fragment::{Code, Fragment, Precedence};
 use super::lent_temporaries::LentTemporaries;
 use super::let_annotation::LetAnnotation;
-use super::lifted_value::LiftedValue;
 use super::local_closures::LocalClosures;
 use super::locals::LocalNames;
 use super::number_literal::NumberLiteral;
 use super::open_literals::{OpenLiterals, TypeContext};
 use super::operator::{RustOperator, Side};
 use super::plan::{EmitPlan, ItemKind};
+use super::preceded_code::PrecededCode;
 use super::problems::EmitProblems;
 use super::result_borrows::ResultBorrows;
 use super::reused_locals::ReusedLocals;
@@ -1288,7 +1289,11 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn fill_enum_template(&mut self, template: &ParsedTemplate, arguments: Vec<Code>) -> Code {
         Template::new(template.text())
-            .inline_with_types(arguments, &[], &[])
+            .inline_with_types(
+                arguments.into_iter().map(PrecededCode::plain).collect(),
+                &[],
+                &[],
+            )
             .expect("the expansion checked the template")
     }
 
@@ -1473,10 +1478,7 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn let_statement(&mut self, binder: &TypedBinder, value: &TypedExpr) -> Code {
         let binder = &Self::with_written_type(binder, value);
-        let lifted =
-            LentTemporaries::new(self.program).lift(value, |base| self.locals.temporary(base));
-        let statements = Code::block(lifted.statements(|temporary| self.expr(temporary)));
-        let value = self.let_value(binder, &lifted.value);
+        let value = self.preceded(value, |emitter, value| emitter.let_value(binder, value));
         let name = self.locals.bind(
             binder.binding,
             self.program.bindings.get(binder.binding).name(),
@@ -1486,18 +1488,19 @@ impl<'a> ExpressionEmitter<'a> {
         } else {
             String::new()
         };
-        Code::joined(
-            vec![
-                statements,
-                Code::atom(format!(
-                    "{} {name}{annotation} = ",
-                    self.declaration(binder)
-                )),
-                value,
-                Code::atom(";"),
-            ],
-            Precedence::Block,
-        )
+        let mutability = Self::mutability(self.mutable_locals.contains(&binder.binding));
+        Code::block(value.bind(&format!("{mutability}{name}{annotation}")))
+    }
+
+    fn preceded<T: BindingValue>(
+        &mut self,
+        value: &T,
+        emit: impl FnOnce(&mut Self, &T) -> Code,
+    ) -> PrecededCode {
+        let mut names = |base: &str| self.locals.temporary(base);
+        let lifted = LentTemporaries::new(self.program, &mut names).lift(value);
+        let statements = lifted.statements(|temporary| self.expr(temporary));
+        PrecededCode::new(statements, emit(self, lifted.value()))
     }
 
     fn with_written_type(binder: &TypedBinder, value: &TypedExpr) -> TypedBinder {
@@ -1543,14 +1546,6 @@ impl<'a> ExpressionEmitter<'a> {
                     .flows
             }
             _ => FxHashSet::default(),
-        }
-    }
-
-    fn declaration(&self, binder: &TypedBinder) -> &'static str {
-        if self.mutable_locals.contains(&binder.binding) {
-            "let mut"
-        } else {
-            "let"
         }
     }
 
@@ -1617,7 +1612,7 @@ impl<'a> ExpressionEmitter<'a> {
         let parsed = self.with_fresh_template_binders(&parsed);
         let code = match ty {
             Type::Function(_, parameters, _) => self.eta_expanded(&parsed, parameters, types, span),
-            _ => self.inline(&parsed, Vec::new(), types, span),
+            _ => self.inline_with_places(&parsed, Vec::new(), types, &[], span),
         };
         self.locals.leave();
         code
@@ -1638,31 +1633,21 @@ impl<'a> ExpressionEmitter<'a> {
             .zip(parameters)
             .map(|(name, ty)| format!("{name}: {}", self.types().show(ty, TypePosition::Value)))
             .collect();
-        let arguments = names.iter().map(|name| Code::atom(name.clone())).collect();
-        let body = self.inline(template, arguments, types, span);
+        let arguments = names
+            .iter()
+            .map(|name| PrecededCode::plain(Code::atom(name.clone())))
+            .collect();
+        let body = self.inline_with_places(template, arguments, types, &[], span);
         Code::joined(
             vec![Code::atom(format!("|{}| ", parameters.join(", "))), body],
             Precedence::Operator,
         )
     }
 
-    fn inline(
-        &mut self,
-        template: &Template,
-        arguments: Vec<Code>,
-        types: Vec<(String, Code)>,
-        span: Span,
-    ) -> Code {
-        match template.inline_with_types(arguments, &types, &[]) {
-            Ok(code) => code,
-            Err(error) => self.template_problem(error, span),
-        }
-    }
-
     fn inline_with_places(
         &mut self,
         template: &Template,
-        arguments: Vec<Code>,
+        arguments: Vec<PrecededCode>,
         types: Vec<(String, Code)>,
         places: &[bool],
         span: Span,
@@ -1839,14 +1824,11 @@ impl<'a> ExpressionEmitter<'a> {
                 continue;
             }
             let temporary = self.locals.temporary(&format!("call_argument_{position}"));
-            let lifted = LentTemporaries::new(self.program)
-                .lift_argument(argument, |base| self.locals.temporary(base));
-            let value = self.call_argument(callee, position, &lifted.value);
+            let value = self.preceded(argument, |emitter, argument| {
+                emitter.call_argument(callee, position, argument)
+            });
             statements.push(Fragment::Newline);
-            statements.extend(lifted.statements(|temporary| self.expr(temporary)));
-            statements.push(Fragment::Text(format!("let {temporary} = ")));
-            statements.extend(value.fragments);
-            statements.push(Fragment::Text(";".to_string()));
+            statements.extend(value.bind(&temporary));
             codes.push(Code::atom(temporary));
         }
         let call = self.call_code(callee, codes);
@@ -2051,9 +2033,8 @@ impl<'a> ExpressionEmitter<'a> {
             };
             return self.template_call(&rewritten, &compound.arguments, types, span);
         }
-        let mut parsed = Template::new(&template.template);
         self.locals.enter();
-        parsed = self.with_fresh_template_binders(&parsed);
+        let parsed = self.with_fresh_template_binders(&Template::new(&template.template));
         let context = Self::argument_context(arguments);
         let roles: Vec<ArgumentRole> = arguments
             .iter()
@@ -2065,9 +2046,12 @@ impl<'a> ExpressionEmitter<'a> {
             .map(|role| *role == ArgumentRole::MutPlace)
             .collect();
         let compared = self.compares_borrowed_operands(&parsed, &roles);
-        let lent = LentTemporaries::new(self.program);
-        let binds = parsed.binds_arguments(&places);
-        let mut codes: Vec<Code> = arguments
+        let inlined = parsed.without_inlined_calls(arguments.len(), |position, call_arguments| {
+            matches!(&arguments[position].value.kind,
+                TypedExprKind::Fn(lambda) if Self::inlines_call(lambda, call_arguments))
+        });
+        let binds = inlined.template().binds_arguments(&places);
+        let mut codes: Vec<PrecededCode> = arguments
             .iter()
             .zip(&roles)
             .map(|(argument, role)| {
@@ -2076,29 +2060,23 @@ impl<'a> ExpressionEmitter<'a> {
                 } else {
                     0
                 };
-                let lifted = match binds {
-                    true => lent.lift_argument(argument, |base| self.locals.temporary(base)),
-                    false => LiftedValue::unchanged(argument),
+                let emit = |emitter: &mut Self, argument: &TypedArgument| {
+                    emitter.argument_at_depth(argument, context, *role, levels)
                 };
-                let mut code = self.argument_at_depth(&lifted.value, context, *role, levels);
-                code.preceding_statements = lifted.statements(|temporary| self.expr(temporary));
-                code
+                match binds {
+                    true => self.preceded(argument, emit),
+                    false => PrecededCode::plain(emit(self, argument)),
+                }
             })
             .collect();
-        for (position, argument) in arguments.iter().enumerate() {
-            let Some((call_arguments, without)) = parsed.called_argument(position) else {
+        for call in inlined.calls() {
+            let TypedExprKind::Fn(lambda) = &arguments[call.position()].value.kind else {
                 continue;
             };
-            let TypedExprKind::Fn(lambda) = &argument.value.kind else {
-                continue;
-            };
-            if !Self::inlines_call(lambda, &call_arguments) {
-                continue;
-            }
-            codes[position] = self.inlined_closure_body(lambda, &call_arguments);
-            parsed = without;
+            let body = self.inlined_closure_body(lambda, &call.arguments());
+            codes[call.position()] = PrecededCode::plain(body);
         }
-        let code = self.inline_with_places(&parsed, codes, types, &places, span);
+        let code = self.inline_with_places(inlined.template(), codes, types, &places, span);
         self.locals.leave();
         code
     }

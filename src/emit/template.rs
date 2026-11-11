@@ -1,5 +1,6 @@
 use super::fragment::{Code, Fragment, Precedence};
 use super::operator::{RustOperator, RustText, Side};
+use super::preceded_code::PrecededCode;
 use crate::core::{Access, ParsedTemplate, Piece};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -66,9 +67,29 @@ impl Template {
         }
     }
 
-    pub fn called_argument(&self, argument: usize) -> Option<(Vec<&str>, Self)> {
-        let arguments = self.parsed.called_arguments(argument)?;
-        Some((arguments, self.without_call(argument)?))
+    pub fn without_inlined_calls(
+        &self,
+        arguments: usize,
+        mut inlines: impl FnMut(usize, &[&str]) -> bool,
+    ) -> InlinedCalls {
+        let mut template = Self {
+            parsed: self.parsed.clone(),
+        };
+        let mut calls = Vec::new();
+        for position in 0..arguments {
+            let Some(call_arguments) = template.parsed.called_arguments(position) else {
+                continue;
+            };
+            if !inlines(position, &call_arguments) {
+                continue;
+            }
+            let Some(without) = template.without_call(position) else {
+                continue;
+            };
+            calls.push(InlinedCall::new(position, &call_arguments));
+            template = without;
+        }
+        InlinedCalls::new(template, calls)
     }
 
     fn without_call(&self, argument: usize) -> Option<Self> {
@@ -90,7 +111,7 @@ impl Template {
 
     pub fn inline_with_types(
         &self,
-        arguments: Vec<Code>,
+        arguments: Vec<PrecededCode>,
         types: &[(String, Code)],
         places: &[bool],
     ) -> Result<Code, TemplateError> {
@@ -108,11 +129,12 @@ impl Template {
         {
             return Err(TemplateError::MissingTypeArgument(missing.to_string()));
         }
-        if let [Piece::Placeholder { index, .. }] = self.parsed.pieces() {
-            return Ok(arguments[*index].clone());
-        }
-        if self.binds_arguments(places) && !arguments.iter().all(Code::is_plain_name) {
+        if self.binds_arguments(places) && arguments.iter().any(PrecededCode::needs_binding) {
             return self.inline_with_temporaries(arguments, types);
+        }
+        let mut arguments: Vec<Code> = arguments.into_iter().map(PrecededCode::into_code).collect();
+        if let [Piece::Placeholder { index, .. }] = self.parsed.pieces() {
+            return Ok(arguments.swap_remove(*index));
         }
         self.substitute(&arguments, types, places)
     }
@@ -152,7 +174,6 @@ impl Template {
             fragments,
             precedence: self.precedence(),
             bare_struct_literal,
-            preceding_statements: Vec::new(),
         })
     }
 
@@ -315,7 +336,7 @@ impl Template {
 
     fn inline_with_temporaries(
         &self,
-        arguments: Vec<Code>,
+        arguments: Vec<PrecededCode>,
         types: &[(String, Code)],
     ) -> Result<Code, TemplateError> {
         let mut statements = Vec::new();
@@ -323,10 +344,7 @@ impl Template {
         for (index, argument) in arguments.into_iter().enumerate() {
             let temporary = format!("{}{index}", Self::TEMPORARY_PREFIX);
             statements.push(Fragment::Newline);
-            statements.extend(argument.preceding_statements);
-            statements.push(Fragment::Text(format!("let {temporary} = ")));
-            statements.extend(argument.fragments);
-            statements.push(Fragment::Text(";".to_string()));
+            statements.extend(argument.bind(&temporary));
             replaced.push(Code::atom(temporary));
         }
         statements.push(Fragment::Newline);
@@ -340,13 +358,58 @@ impl Template {
     }
 }
 
+pub struct InlinedCalls {
+    template: Template,
+    calls: Vec<InlinedCall>,
+}
+
+pub struct InlinedCall {
+    position: usize,
+    arguments: Vec<String>,
+}
+
+impl InlinedCalls {
+    pub fn new(template: Template, calls: Vec<InlinedCall>) -> Self {
+        Self { template, calls }
+    }
+
+    pub fn template(&self) -> &Template {
+        &self.template
+    }
+
+    pub fn calls(&self) -> &[InlinedCall] {
+        &self.calls
+    }
+}
+
+impl InlinedCall {
+    pub fn new(position: usize, arguments: &[&str]) -> Self {
+        Self {
+            position,
+            arguments: arguments.iter().map(ToString::to_string).collect(),
+        }
+    }
+
+    pub fn position(&self) -> usize {
+        self.position
+    }
+
+    pub fn arguments(&self) -> Vec<&str> {
+        self.arguments.iter().map(String::as_str).collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn inline(template: &str, arguments: Vec<Code>) -> String {
         Template::new(template)
-            .inline_with_types(arguments, &[], &[])
+            .inline_with_types(
+                arguments.into_iter().map(PrecededCode::plain).collect(),
+                &[],
+                &[],
+            )
             .expect("enough arguments")
             .text()
     }
@@ -398,7 +461,7 @@ mod tests {
     #[test]
     fn keeps_a_template_that_is_one_placeholder() {
         let code = Template::new("{0}")
-            .inline_with_types(vec![operator("a + b")], &[], &[])
+            .inline_with_types(vec![PrecededCode::plain(operator("a + b"))], &[], &[])
             .expect("enough arguments");
         assert_eq!(code.text(), "a + b");
     }
@@ -407,7 +470,7 @@ mod tests {
     fn substitutes_a_named_type_placeholder() {
         let code = Template::new("{0}.parse::<{target}>()")
             .inline_with_types(
-                vec![Code::atom("text")],
+                vec![PrecededCode::plain(Code::atom("text"))],
                 &[("target".to_string(), Code::atom("i64"))],
                 &[],
             )
@@ -445,7 +508,7 @@ mod tests {
     #[test]
     fn binds_repeated_complex_arguments_to_temporaries() {
         let code = Template::new("{0} * {0}")
-            .inline_with_types(vec![Code::atom("next()")], &[], &[])
+            .inline_with_types(vec![PrecededCode::plain(Code::atom("next()"))], &[], &[])
             .unwrap();
         assert_eq!(code.precedence, Precedence::Block);
         assert!(code.text().contains("let template_argument_0 = next();"));
@@ -481,7 +544,7 @@ mod tests {
     #[test]
     fn reports_a_missing_argument() {
         let missing = Template::new("{0} + {1}")
-            .inline_with_types(vec![Code::atom("x")], &[], &[])
+            .inline_with_types(vec![PrecededCode::plain(Code::atom("x"))], &[], &[])
             .map(|code| code.text());
         assert_eq!(missing, Err(TemplateError::MissingArgument(1)));
     }
@@ -509,5 +572,83 @@ mod tests {
             error,
             Err(TemplateError::UnresolvedBinder("left".to_string()))
         );
+    }
+
+    #[test]
+    fn removes_each_call_that_is_inlined() {
+        let template = Template::new("{0}.sort_by(|left, right| {1}(left, right).cmp(&0))");
+        let inlined = template.without_inlined_calls(2, |_, _| true);
+        assert_eq!(
+            inlined.template().text(),
+            "{0}.sort_by(|left, right| {1}.cmp(&0))"
+        );
+        let calls: Vec<(usize, Vec<&str>)> = inlined
+            .calls()
+            .iter()
+            .map(|call| (call.position(), call.arguments()))
+            .collect();
+        assert_eq!(calls, [(1, vec!["left", "right"])]);
+    }
+
+    #[test]
+    fn keeps_a_call_that_is_not_inlined() {
+        let template = Template::new("{0}.sort_by(|left, right| {1}(left, right).cmp(&0))");
+        let inlined = template.without_inlined_calls(2, |_, _| false);
+        assert_eq!(inlined.template().text(), template.text());
+        assert!(inlined.calls().is_empty());
+    }
+
+    #[test]
+    fn a_repeated_placeholder_binds_its_arguments() {
+        assert!(Template::new("{0} * {0}").binds_arguments(&[false]));
+    }
+
+    #[test]
+    fn a_mutable_place_is_never_bound() {
+        assert!(!Template::new("{0} = {0} + 1").binds_arguments(&[true]));
+    }
+
+    #[test]
+    fn runs_the_statements_of_an_argument_before_its_binding() {
+        let statements = vec![Fragment::Text("let owner = make();".to_string())];
+        let argument = PrecededCode::new(statements, Code::atom("owner.get()"));
+        let text = Template::new("{0} * {0}")
+            .inline_with_types(vec![argument], &[], &[])
+            .expect("enough arguments")
+            .text();
+        let owner = text.find("let owner = make();").expect("the statement");
+        let binding = text
+            .find("let template_argument_0 = owner.get();")
+            .expect("the binding");
+        assert!(owner < binding);
+    }
+
+    #[test]
+    #[should_panic(expected = "only a binding of the code can run the statements before it")]
+    fn refuses_statements_that_no_binding_would_run() {
+        let statements = vec![Fragment::Text("let owner = make();".to_string())];
+        let argument = PrecededCode::new(statements, Code::atom("owner.get()"));
+        let _ = Template::new("{0}.len()").inline_with_types(vec![argument], &[], &[]);
+    }
+
+    #[test]
+    fn keeps_a_call_it_cannot_remove() {
+        let template = Template::new("{0}(a");
+        let inlined = template.without_inlined_calls(1, |_, _| true);
+        assert_eq!(inlined.template().text(), "{0}(a");
+        assert!(inlined.calls().is_empty());
+    }
+
+    #[test]
+    fn binds_every_argument_when_one_needs_a_binding() {
+        let arguments = vec![
+            PrecededCode::plain(Code::atom("x")),
+            PrecededCode::plain(Code::atom("next()")),
+        ];
+        let text = Template::new("{1} + {0} + {0}")
+            .inline_with_types(arguments, &[], &[])
+            .expect("enough arguments")
+            .text();
+        assert!(text.contains("let template_argument_1 = next();"));
     }
 }

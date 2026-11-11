@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use super::exit_status::ExitStatus;
-use super::library_walk::LibraryStore;
+use super::library_walk::FetchingStore;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
@@ -25,7 +25,7 @@ impl LocatedProgram {
         let project = LocatedProject::search_from(
             &ProgramFile::directory_of(&file),
             terminal,
-            LibraryStore::fetching(),
+            FetchingStore::default(),
         )?;
         let file = match &project {
             Some(project) => project.placement().file_within(file),
@@ -36,7 +36,7 @@ impl LocatedProgram {
 
     fn of_working_directory(terminal: &Terminal) -> Result<Self, ExitStatus> {
         let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
-        match LocatedProject::search_from(working_directory, terminal, LibraryStore::fetching())? {
+        match LocatedProject::search_from(working_directory, terminal, FetchingStore::default())? {
             Some(project) => Ok(Self {
                 file: project.entry(),
                 project: Some(project),

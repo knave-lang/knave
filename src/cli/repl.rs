@@ -9,7 +9,7 @@ use super::eval::{EvalCommand, EvaluationSettings, FormsText, ModuleText};
 use super::evaluation_output::PrintedEvaluation;
 use super::exit_status::ExitStatus;
 use super::interruption::Interruption;
-use super::library_walk::LibraryStore;
+use super::library_walk::FetchingStore;
 use super::located_project::LocatedProject;
 use super::name_records::NameRecords;
 use super::program_file::ProgramFile;
@@ -94,7 +94,7 @@ impl ReplCommand {
     fn prompt_file(&self, terminal: &Terminal) -> Result<ProgramFile, ExitStatus> {
         let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
         let project =
-            LocatedProject::search_from(working_directory, terminal, LibraryStore::fetching())?;
+            LocatedProject::search_from(working_directory, terminal, FetchingStore::default())?;
         if let Some(project) = &project {
             project.refuse_crates(Self::COMMAND, terminal)?;
         }

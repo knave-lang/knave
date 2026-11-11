@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use super::doc_folder::DocFolder;
 use super::doc_pages::{DocumentedModules, EntryProgram};
 use super::exit_status::ExitStatus;
-use super::library_walk::LibraryStore;
+use super::library_walk::FetchingStore;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::source_walk::SourceWalk;
@@ -51,7 +51,7 @@ impl DocWriteCommand {
         let project = LocatedProject::search_from(
             Path::new(Terminal::WORKING_DIRECTORY),
             terminal,
-            LibraryStore::fetching(),
+            FetchingStore::default(),
         )?
         .ok_or_else(LocatedProject::report_no_path)?;
         let folder = self.folder_in(project.root());

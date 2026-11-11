@@ -8,7 +8,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::exit_status::ExitStatus;
-use super::library_walk::LibraryStore;
+use super::library_walk::CacheOnlyStore;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
@@ -321,7 +321,7 @@ impl NearbyProjects {
     fn load(root: &Path, terminal: &Terminal) -> Option<LocatedProject> {
         let warning = Rc::new(ProjectLoadWarning::new(root, terminal.diagnostic_output()));
         let loading = Terminal::reporting_to(warning.clone());
-        let loaded = LocatedProject::search_from(root, &loading, LibraryStore::cache_only());
+        let loaded = LocatedProject::search_from(root, &loading, CacheOnlyStore::default());
         if loaded.is_err() {
             warning.warn_once();
         }

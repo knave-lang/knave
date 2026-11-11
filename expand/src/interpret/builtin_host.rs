@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn a_group_the_host_offers_is_granted() {
-        assert!(BuiltinHostFixture::warnings_granted(PartialHost::offering_warnings()).is_ok());
+        assert!(BuiltinHostFixture::warnings_granted(PartialHost::offering_its_groups()).is_ok());
     }
 
     #[test]

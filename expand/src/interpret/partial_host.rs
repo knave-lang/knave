@@ -1,24 +1,32 @@
 use super::{
     DefinitionQueries, ExpansionCallbacks, GlobalValues, Host, ModuleNotes, ModuleQueries,
-    NameComparison, SourceQueries, Warnings,
+    NameComparison, SourceQueries, Value, Warnings,
 };
+use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
+use crate::source::Span;
 
 pub(super) struct PartialHost {
-    offers_warnings: bool,
+    offers_groups: bool,
 }
 
 impl PartialHost {
     pub(super) fn offering_nothing() -> Self {
         Self {
-            offers_warnings: false,
+            offers_groups: false,
         }
     }
 
-    pub(super) fn offering_warnings() -> Self {
+    pub(super) fn offering_its_groups() -> Self {
         Self {
-            offers_warnings: true,
+            offers_groups: true,
         }
+    }
+}
+
+impl GlobalValues for PartialHost {
+    fn global_value(&mut self, _binding: BindingId, _span: Span) -> Result<Value, Diagnostic> {
+        Ok(Value::Bool(true))
     }
 }
 
@@ -28,7 +36,7 @@ impl Warnings for PartialHost {
 
 impl Host for PartialHost {
     fn global_values(&mut self) -> Option<&mut dyn GlobalValues> {
-        None
+        if self.offers_groups { Some(self) } else { None }
     }
 
     fn module_queries(&mut self) -> Option<&mut dyn ModuleQueries> {
@@ -56,10 +64,6 @@ impl Host for PartialHost {
     }
 
     fn warnings(&mut self) -> Option<&mut dyn Warnings> {
-        if self.offers_warnings {
-            Some(self)
-        } else {
-            None
-        }
+        if self.offers_groups { Some(self) } else { None }
     }
 }

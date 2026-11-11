@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use super::constructor::Constructor;
 use super::constructor_catalog::ConstructorCatalog;
 use super::pattern_matrix::PatternMatrix;
@@ -6,16 +8,26 @@ use crate::types::Type;
 
 pub(super) struct MissingCaseSearch<'c, 'a> {
     catalog: &'c ConstructorCatalog<'a>,
+    visited_matrices: Cell<usize>,
 }
 
 impl<'c, 'a> MissingCaseSearch<'c, 'a> {
     pub(super) fn new(catalog: &'c ConstructorCatalog<'a>) -> Self {
-        Self { catalog }
+        Self {
+            catalog,
+            visited_matrices: Cell::new(0),
+        }
     }
 
     pub(super) fn witnesses(&self, matrix: &PatternMatrix, types: &[Type]) -> Vec<Vec<Witness>> {
+        self.visited_matrices.set(self.visited_matrices.get() + 1);
         self.settled_witnesses(matrix, types)
             .unwrap_or_else(|| self.column_witnesses(matrix, types))
+    }
+
+    #[cfg(test)]
+    pub(super) fn visited_matrices(&self) -> usize {
+        self.visited_matrices.get()
     }
 
     fn settled_witnesses(
@@ -160,5 +172,13 @@ mod tests {
         let fixture = SearchFixture::new();
         let cases = fixture.missing_cases_in(vec![SearchFixture::end()], &[]);
         assert!(cases.is_empty());
+    }
+
+    #[test]
+    fn fields_of_one_type_are_searched_without_expanding_covered_rows() {
+        let fixture = SearchFixture::new();
+        let visited =
+            fixture.visited_matrices(SearchFixture::wide_arms(), SearchFixture::wide_type());
+        assert!(visited <= 100, "visited {visited} matrices");
     }
 }

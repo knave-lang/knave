@@ -3378,6 +3378,18 @@ fn emit_reports_an_entry_without_main() {
 }
 
 #[test]
+fn emit_reads_the_rustfmt_time_limit_before_checking() {
+    let sandbox =
+        Sandbox::new("emit_limit_before_check").with_file("mistyped.knv", OTHER_DEFINITION_FAILS);
+    let emit = sandbox.compiler_with_rustfmt_time_limit_value("soon", &["emit", "mistyped.knv"]);
+    let stderr = emit.assert_exit_code(2).stderr();
+    assert!(
+        stderr.contains(&EmittedFormatting::time_limit_variable()),
+        "{stderr}"
+    );
+}
+
+#[test]
 fn emit_rejects_a_malformed_rustfmt_time_limit_as_a_usage_error() {
     let sandbox =
         Sandbox::new("emit_malformed_rustfmt_time_limit").with_file("greeting.knv", GREETING);

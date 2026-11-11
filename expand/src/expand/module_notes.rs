@@ -14,8 +14,12 @@ pub struct ModuleNotes {
     held_bytes: usize,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct NotesCheckpoint(usize);
+
+impl NotesCheckpoint {
+    pub const START: Self = Self(0);
+}
 
 impl ModuleNotes {
     pub const BYTE_LIMIT: usize = 1 << 28;
@@ -35,12 +39,6 @@ impl ModuleNotes {
         Ok(())
     }
 
-    pub fn holds_any(&self, module: ModuleId) -> bool {
-        self.notes
-            .iter()
-            .any(|((noted_module, _), notes)| *noted_module == module && !notes.is_empty())
-    }
-
     pub fn take_saved(&mut self) -> NoteTables {
         let tables = NoteTables::encode(&self.notes);
         *self = Self::default();
@@ -57,6 +55,21 @@ impl ModuleNotes {
             .or_else(|| self.saved.of(module, key))
             .cloned()
             .unwrap_or_default()
+    }
+
+    pub fn added_since(
+        &self,
+        checkpoint: NotesCheckpoint,
+        module: ModuleId,
+        key: &str,
+    ) -> Vec<Form> {
+        let notes_key = (module, key.to_string());
+        let added = self.added[checkpoint.0..]
+            .iter()
+            .filter(|added_key| **added_key == notes_key)
+            .count();
+        let notes = self.notes.get(&notes_key).map_or(&[][..], Vec::as_slice);
+        notes[notes.len() - added..].to_vec()
     }
 
     #[cfg(test)]

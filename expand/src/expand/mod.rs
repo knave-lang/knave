@@ -84,7 +84,7 @@ use globals::{GlobalTable, LoweredGlobals};
 pub use macro_call::MacroOrigin;
 use macro_call::MacroTable;
 pub use macro_origins::MacroOrigins;
-use module_notes::ModuleNotes;
+use module_notes::{ModuleNotes, NotesCheckpoint};
 pub use module_survey::ModuleSurvey;
 use noted_term::NotedTerm;
 use noted_terms::NotedTerms;
@@ -375,16 +375,20 @@ impl<'s> Expander<'s> {
         )
     }
 
-    fn check_documented_terms(&mut self, module: ModuleId) {
-        for undefined in self.documented_terms(module).undefined() {
+    fn check_documented_terms(&mut self, module: ModuleId, since: NotesCheckpoint) {
+        for undefined in self.documented_terms(module, since).undefined() {
             self.problems.report(undefined);
         }
     }
 
-    fn documented_terms(&mut self, module: ModuleId) -> DocumentedTerms<'_> {
+    fn documented_terms(
+        &mut self,
+        module: ModuleId,
+        since: NotesCheckpoint,
+    ) -> DocumentedTerms<'_> {
         let noted = NotedTerms {
             module,
-            terms: self.noted_terms(module),
+            terms: self.noted_terms(module, since),
         };
         DocumentedTerms::new(self.term_resolver(), &self.duplicate_definitions, noted)
     }
@@ -393,8 +397,8 @@ impl<'s> Expander<'s> {
         TermResolver::new(&self.tables.table, &self.tables.bindings, self.phase)
     }
 
-    fn noted_terms(&mut self, module: ModuleId) -> Vec<NotedTerm> {
-        if self.skips_document_check(module) {
+    fn noted_terms(&mut self, module: ModuleId, since: NotesCheckpoint) -> Vec<NotedTerm> {
+        if self.skips_document_check(module, since) {
             return Vec::new();
         }
         let Some(notes) = self.docstring_notes() else {
@@ -403,16 +407,16 @@ impl<'s> Expander<'s> {
         notes
             .keys()
             .into_iter()
-            .flat_map(|key| self.tables.module_notes.of(module, key))
+            .flat_map(|key| self.tables.module_notes.added_since(since, module, key))
             .collect::<Vec<Form>>()
             .into_iter()
             .filter_map(|note| self.noted_term(&notes.noted_term, note))
             .collect()
     }
 
-    fn skips_document_check(&self, module: ModuleId) -> bool {
+    fn skips_document_check(&self, module: ModuleId, since: NotesCheckpoint) -> bool {
         ModuleSources::is_prelude(self.modules.get(module).path())
-            || !self.tables.module_notes.holds_any(module)
+            || self.tables.module_notes.checkpoint() == since
     }
 
     fn docstring_notes(&mut self) -> Option<DocstringNotes> {

@@ -144,7 +144,9 @@ impl ExpansionSession<'_> {
         scoped: &[Form],
         span: Span,
     ) -> Result<GeneratedEntry, Diagnostics> {
+        let checkpoint = self.expander.tables.module_notes.checkpoint();
         let lowered = self.lower_in(module, |expander| expander.lower_body(scoped));
+        self.expander.check_documented_terms(module, checkpoint);
         let mut body = self.collect_diagnostics(lowered)?;
         body.items.push(Self::unit(span));
         Ok(GeneratedEntry::new(self.entry_binding(span), body, span))

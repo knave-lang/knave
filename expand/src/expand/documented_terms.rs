@@ -89,6 +89,7 @@ mod tests {
     use crate::core::ModulePath;
     use crate::diagnostic::Diagnostic;
     use crate::expand::Expander;
+    use crate::expand::module_notes::NotesCheckpoint;
     use crate::modules::ModuleSources;
     use crate::source::{SourceId, SourceMap, Span};
 
@@ -114,7 +115,9 @@ mod tests {
                 ModuleSources::new(PathBuf::new(), PathBuf::new()),
             );
             let module = expander.load_source_module(ModulePath::new(Self::MODULE), &[entry]);
-            expander.documented_terms(module).undefined()
+            expander
+                .documented_terms(module, NotesCheckpoint::START)
+                .undefined()
         }
 
         fn undefined_names(&mut self) -> Vec<String> {

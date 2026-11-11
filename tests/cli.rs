@@ -176,6 +176,11 @@ const POINTS: &str = "(defstruct point :x i64 :y i64)\n";
 const PROMPT_DEFINITIONS: &str = "(defn square (n) (* n n))\n(defstruct point :x i64 :y i64)\n(->point (square 2) 3)\n(println \"side \" (square 3))\n";
 const PROMPT_DOC: &str =
     "(defn twice (x) \"Doubles a number.\" (* 2 x))\n(doc twice)\n(doc-page twice)\n";
+const DOCUMENTED_ONE: &str = "(use prelude/macros document)\n(defn f () 1)\n";
+const PROMPT_DOCUMENTED_UNBOUND_NAME: &str =
+    "(use prelude/macros document)\n(document (nope) \"Says nothing.\")\n(println 1)\n";
+const PROMPT_DOCUMENT_ABOVE_ITS_DEFINITION: &str =
+    "(use prelude/macros document)\n(document (h) \"Returns three.\")\n(defn h () 3)\n(h)\n";
 const PROMPT_RUNAWAY_MACRO: &str =
     "(defmacro spin () ((fn () (recur))))\n(with-macro-steps 1000 (spin))\n(+ 1 2)\n";
 const PROMPT_INFER: &str = "(defn identity (x) x)\n(infer (vec 1 2))\n(infer identity)\n(infer none)\n(def text (infer identity))\ntext\n";
@@ -4481,6 +4486,28 @@ fn repl_keeps_definitions_and_prints_expressions() {
 fn repl_prints_a_doc_page_as_text() {
     let sandbox = Sandbox::new("repl_doc");
     let repl = sandbox.compiler_reading(PROMPT_DOC, &["repl"]);
+    insta::assert_snapshot!(repl.transcript());
+}
+
+#[test]
+fn eval_reports_a_document_of_a_name_the_module_does_not_define() {
+    let sandbox = Sandbox::new("eval_undefined_documented_term").with_file("e.knv", DOCUMENTED_ONE);
+    let eval = sandbox.compiler(&["eval", "e.knv", "(document (nope) \"Says nothing.\") (f)"]);
+    insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
+    assert_eq!(eval.stdout(), "");
+}
+
+#[test]
+fn repl_reports_a_document_of_an_unbound_name_once() {
+    let sandbox = Sandbox::new("repl_undefined_documented_term");
+    let repl = sandbox.compiler_reading(PROMPT_DOCUMENTED_UNBOUND_NAME, &["repl"]);
+    insta::assert_snapshot!(repl.transcript());
+}
+
+#[test]
+fn repl_reports_a_document_entered_above_its_definition() {
+    let sandbox = Sandbox::new("repl_document_above_its_definition");
+    let repl = sandbox.compiler_reading(PROMPT_DOCUMENT_ABOVE_ITS_DEFINITION, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 

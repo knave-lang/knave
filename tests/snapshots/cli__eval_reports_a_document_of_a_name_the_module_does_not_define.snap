@@ -1,0 +1,11 @@
+---
+source: tests/cli.rs
+expression: eval.assert_exit_code(1).stderr()
+---
+error[L0351]: this module documents `nope` but does not define it
+ --> <eval>:1:12
+  |
+1 | (document (nope) "Says nothing.") (f)
+  |            ^^^^ not defined in this module
+  |
+  = help: define `nope` in this module, or move this `document` to the module that defines it

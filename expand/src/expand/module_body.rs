@@ -7,7 +7,7 @@ use super::problems::ExpandProblems;
 use super::shape::Shape;
 use super::sourced_items::SourcedItems;
 use super::spliced_forms::{SplicedForm, SplicedForms};
-use super::{Expander, TraitMethods};
+use super::{Expander, TraitMethods, module_notes::NotesCheckpoint};
 use crate::core::{
     BindingId, BindingInfo, BindingKind, ControlForm, CoreModule, DefinitionForm, Expr, ExprKind,
     ExpressionForm, FieldLabel, ImplAssociatedType, ImplMethod, Item, ItemKind, KernelForm,
@@ -91,7 +91,7 @@ impl Expander<'_> {
         self.lower_pending_group(module, exports, &budgets, &mut core);
         self.compile_pending_macros();
         self.record_answering_macros(module);
-        self.check_documented_terms(module);
+        self.check_documented_terms(module, NotesCheckpoint::START);
         self.tables.order.push(module);
         self.tables.expanded.insert(module, core);
         self.current_module = outer_module;

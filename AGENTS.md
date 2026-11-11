@@ -87,7 +87,7 @@ The exceptions are:
 - A type that carries behavior keeps its fields private.
 - A type of the core IR, the typed IR, or another plain data structure MAY expose public fields.
 - Put each concept in its own file.
-- A private helper type MAY stay in the file of the type it serves.
+- A helper type that no other file names MAY stay in the file of the type it serves.
 - NEVER write a free function except `main` and `#[test]` functions: Rust requires those to be free.
 - Make each test helper a method of a fixture struct. The stage fixtures share `Fixture` in `tests/support/mod.rs`.
 

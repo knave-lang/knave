@@ -104,9 +104,15 @@ fn written_borrow_of_struct(name: &str) {
 }
 
 fn in_written_order() {
-    let earlier = announced("first").len();
-    let owner = announced("second");
-    let shown = prefix(earlier, owner.as_str());
+    let owner;
+    let shown = prefix(
+        announced("first").len(),
+        {
+            owner = announced("second");
+            &owner
+        }
+        .as_str(),
+    );
     println!("{}", shown)
 }
 

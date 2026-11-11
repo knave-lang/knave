@@ -1,0 +1,130 @@
+(defstruct counter
+  :n i64)
+
+(type first-letter
+  (fn ((ref str)) (ref str)))
+
+(defn first-letter (text) (subs text 0 1))
+
+(type announced (fn ((ref str)) string))
+
+(defn announced (text)
+  (println text)
+  (str text))
+
+(type keep
+  (fn (i64 (ref str)) (ref str)))
+
+(defn keep (n text)
+  (println n)
+  text)
+
+(defn tick! (c)
+  (set! c (+ c 1))
+  (str "tick-" c))
+
+(defn tick-counter! (c)
+  (set! (:n c) (+ (:n c) 1))
+  (str "tick-" (:n c)))
+
+(type chooser
+  (fn () (fn ((ref str)) (ref str))))
+
+(defn chooser ()
+  (println "callee")
+  first-letter)
+
+(type pick-ref
+  (fn ((ref i64)) (ref i64)))
+
+(defn pick-ref (x)
+  (println "picked")
+  x)
+
+(type nums (fn () (vec i64)))
+
+(defn nums ()
+  (println "nums")
+  (vec 1 2 3))
+
+(type first-of
+  (fn ((iterator i64) (ref str))
+    (ref str)))
+
+(defn first-of (items text)
+  (subs text 0 (count items)))
+
+(defn lifted-local ()
+  (local n 1)
+  (local t (keep n (as-str (tick! n))))
+  (println t))
+
+(defn explicit-local ()
+  (local n 1)
+  (local seen n)
+  (local text (tick! n))
+  (local t (keep seen (as-str text)))
+  (println t))
+
+(defn lifted-field ()
+  (local c (->counter :n 1))
+  (local t
+    (keep (:n c) (as-str (tick-counter! c))))
+  (println t))
+
+(defn explicit-field ()
+  (local c (->counter :n 1))
+  (local seen (:n c))
+  (local text (tick-counter! c))
+  (local t (keep seen (as-str text)))
+  (println t))
+
+(defn lifted-callee ()
+  (local t
+    ((chooser)
+     (as-str (announced "argument"))))
+  (println t))
+
+(defn explicit-callee ()
+  (local f (chooser))
+  (local text (announced "argument"))
+  (local t (f (as-str text)))
+  (println t))
+
+(defn lifted-deref ()
+  (local n 3)
+  (local t
+    (keep (deref (pick-ref (ref n)))
+          (as-str (announced "deref"))))
+  (println t))
+
+(defn explicit-deref ()
+  (local n 3)
+  (local seen (deref (pick-ref (ref n))))
+  (local text (announced "deref"))
+  (local t (keep seen (as-str text)))
+  (println t))
+
+(defn lifted-iterator ()
+  (local t
+    (first-of (nums)
+              (as-str (announced "iterated"))))
+  (println t))
+
+(defn explicit-iterator ()
+  (local items (nums))
+  (local text (announced "iterated"))
+  (local t (first-of items (as-str text)))
+  (println t))
+
+(defn main ()
+  (lifted-local)
+  (explicit-local)
+  (lifted-field)
+  (explicit-field)
+  (lifted-callee)
+  (explicit-callee)
+  (lifted-deref)
+  (explicit-deref)
+  (lifted-iterator)
+  (explicit-iterator))

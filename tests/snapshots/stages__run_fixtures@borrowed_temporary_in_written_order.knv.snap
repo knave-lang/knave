@@ -1,0 +1,33 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/borrowed_temporary_in_written_order.knv
+---
+1
+tick-2
+1
+tick-2
+1
+tick-2
+1
+tick-2
+callee
+argument
+a
+callee
+argument
+a
+picked
+deref
+3
+deref
+picked
+deref
+3
+deref
+nums
+iterated
+ite
+nums
+iterated
+ite

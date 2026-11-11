@@ -1,0 +1,85 @@
+(defstruct page
+  :title string)
+
+(type first-letter
+  (fn ((ref str)) (ref str)))
+
+(defn first-letter (text) (subs text 0 1))
+
+(type make-page (fn ((ref str)) page))
+
+(defn make-page (title)
+  (println "made")
+  (->page :title (str title)))
+
+(defn lifted-if (flag name)
+  (local t
+    (if flag
+      (first-letter (as-str (str name "-if")))
+      "none"))
+  (println t))
+
+(defn explicit-if (flag name)
+  (local text (str name "-if"))
+  (local t
+    (if flag (first-letter (as-str text)) "none"))
+  (println t))
+
+(type lifted-match
+  (fn ((option (ref str))) unit))
+
+(defn lifted-match (found)
+  (local t
+    (match found
+      ((some name) (first-letter (as-str (str name "-match"))))
+      (none "none")))
+  (println t))
+
+(type explicit-match
+  (fn ((option (ref str))) unit))
+
+(defn explicit-match (found)
+  (local text (str (unwrap-or found "") "-match"))
+  (local t
+    (match found
+      ((some _) (first-letter (as-str text)))
+      (none "none")))
+  (println t))
+
+(defn lifted-block (name)
+  (local t
+    (do
+      (println "in")
+      (first-letter (as-str (str name "-do")))))
+  (println t))
+
+(defn explicit-block (name)
+  (println "in")
+  (local text (str name "-do"))
+  (local t (first-letter (as-str text)))
+  (println t))
+
+(defn lifted-field ()
+  (local t
+    (first-letter (as-str (:title (make-page "field")))))
+  (println t))
+
+(defn explicit-field ()
+  (local made (make-page "field"))
+  (local t
+    (first-letter (as-str (:title made))))
+  (println t))
+
+(defn main ()
+  (lifted-if true "ann")
+  (explicit-if true "ann")
+  (lifted-if false "bo")
+  (explicit-if false "bo")
+  (lifted-match (some "cy"))
+  (explicit-match (some "cy"))
+  (lifted-match none)
+  (explicit-match none)
+  (lifted-block "dee")
+  (explicit-block "dee")
+  (lifted-field)
+  (explicit-field))

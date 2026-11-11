@@ -2083,6 +2083,24 @@ fn doc_write_links_a_reexport_to_the_module_that_defines_it() {
 }
 
 #[test]
+fn doc_write_keeps_the_defining_module_of_a_name_a_later_module_reexports() {
+    let sandbox = Sandbox::new("doc_write_first_defining_home")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file("src/a.knv", "(use c size)\n\n(export size)\n")
+        .with_file(
+            "src/c.knv",
+            "(export size)\n\n(defn size () \"Counts.\" 1)\n",
+        )
+        .with_file("src/d.knv", "(use c size)\n\n(export size)\n");
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert!(sandbox.contents("doc/c.md").contains("## `size`"));
+    assert!(sandbox.contents("doc/a.md").contains("[`size`](c.md#size)"));
+    assert!(sandbox.contents("doc/d.md").contains("[`size`](c.md#size)"));
+}
+
+#[test]
 fn doc_write_links_a_bracketed_name_that_ends_a_line() {
     let sandbox = Sandbox::new("doc_write_line_end_link")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)

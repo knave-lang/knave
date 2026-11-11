@@ -11,6 +11,10 @@ use crate::source::{SourceMap, TextPosition};
 pub trait DiagnosticOutput {
     fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics);
     fn write_note(&self, sources: &SourceMap, message: &str);
+
+    fn write_error(&self, message: &str) {
+        StandardError::write_line(format_args!("error: {message}"));
+    }
 }
 
 pub struct RenderedDiagnostics {

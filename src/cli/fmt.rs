@@ -1,3 +1,5 @@
+mod project_load_warning;
+
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
@@ -5,18 +7,16 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use super::diagnostic_output::DiagnosticOutput;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
-use crate::diagnostic::Diagnostics;
 use crate::format::{FormatFailure, ModuleLookup, SourceFormatter};
 use crate::language::Language;
 use crate::modules::ModuleSources;
-use crate::source::SourceMap;
+use project_load_warning::ProjectLoadWarning;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum FmtMode {
@@ -41,11 +41,8 @@ struct SourceFiles {
 }
 
 struct NearbyProjects {
-    terminal: Terminal,
     projects: FxHashMap<PathBuf, Option<LocatedProject>>,
 }
-
-struct UnreportedDiagnostics;
 
 impl FmtCommand {
     pub const STANDARD_INPUT: &'static str = "-";
@@ -91,7 +88,7 @@ impl FmtCommand {
             .standard_input_path
             .clone()
             .unwrap_or_else(|| PathBuf::from(Self::STANDARD_INPUT_NAME));
-        let lookup = self.lookups.lookup_for(&name);
+        let lookup = self.lookups.lookup_for(&name, terminal);
         match self.formatted(terminal, &name, text.clone(), &lookup) {
             Ok(formatted) => self.answer_standard_input(terminal, &name, &text, &formatted),
             Err(status) => status,
@@ -155,7 +152,7 @@ impl FmtCommand {
             Ok(text) => text,
             Err(error) => return Terminal::report_unreadable(path, &error),
         };
-        let lookup = self.lookups.lookup_for(path);
+        let lookup = self.lookups.lookup_for(path, terminal);
         match self.formatted(terminal, path, text.clone(), &lookup) {
             Ok(formatted) if formatted == text => ExitStatus::Success,
             Ok(formatted) => self.apply(terminal, path, &formatted),
@@ -288,17 +285,16 @@ impl SourceFiles {
 impl NearbyProjects {
     fn new() -> Self {
         Self {
-            terminal: Terminal::reporting_to(Rc::new(UnreportedDiagnostics)),
             projects: FxHashMap::default(),
         }
     }
 
-    fn lookup_for(&mut self, path: &Path) -> ModuleLookup {
+    fn lookup_for(&mut self, path: &Path, terminal: &Terminal) -> ModuleLookup {
         let directory = Self::absolute_directory_of(path);
         if ProgramFile::is_project_file(path) {
             return ModuleLookup::beside_project_file(&directory);
         }
-        match self.project_around(&directory) {
+        match self.project_around(&directory, terminal) {
             Some(project) => {
                 let file = project.placement().placed_file(path.to_path_buf());
                 ModuleLookup::within_project(file.module_sources(), &directory)
@@ -313,18 +309,21 @@ impl NearbyProjects {
         fs::canonicalize(working_directory.join(&directory)).unwrap_or(directory)
     }
 
-    fn project_around(&mut self, directory: &Path) -> Option<&LocatedProject> {
+    fn project_around(&mut self, directory: &Path, terminal: &Terminal) -> Option<&LocatedProject> {
         let root = LocatedProject::canonical_root(directory)?;
-        let terminal = &self.terminal;
         self.projects
             .entry(root)
-            .or_insert_with_key(|root| LocatedProject::search_from(root, terminal).ok().flatten())
+            .or_insert_with_key(|root| Self::load(root, terminal))
             .as_ref()
     }
-}
 
-impl DiagnosticOutput for UnreportedDiagnostics {
-    fn write(&self, _sources: &SourceMap, _diagnostics: &Diagnostics) {}
-
-    fn write_note(&self, _sources: &SourceMap, _message: &str) {}
+    fn load(root: &Path, terminal: &Terminal) -> Option<LocatedProject> {
+        let warning = Rc::new(ProjectLoadWarning::new(root, terminal.diagnostic_output()));
+        let loading = Terminal::reporting_to(warning.clone());
+        let loaded = LocatedProject::search_from(root, &loading);
+        if loaded.is_err() {
+            warning.warn_once();
+        }
+        loaded.ok().flatten()
+    }
 }

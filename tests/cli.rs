@@ -1532,17 +1532,17 @@ fn fmt_in_a_project_also_finds_a_module_beside_a_parent_directory() {
 }
 
 #[test]
-fn fmt_in_a_project_whose_libraries_cannot_load_lays_out_by_the_directory_search() {
+fn fmt_in_a_project_whose_libraries_cannot_load_warns_and_lays_out_by_the_directory_search() {
     let sandbox = Sandbox::new("fmt_unloadable_project")
         .with_file(
             &Language::project_file_name(),
             "(defproject app (libraries (missing :path \"../missing\")))\n",
         )
         .with_file("src/shapes/loops.knv", LOOP_SHAPE)
-        .with_file("src/main.knv", LOOP_CALL);
-    sandbox
-        .compiler(&["fmt", "src/main.knv"])
-        .assert_silent_success();
+        .with_file("src/main.knv", LOOP_CALL)
+        .with_file("src/other.knv", LOOP_CALL);
+    let fmt = sandbox.compiler(&["fmt", "src/main.knv", "src/other.knv"]);
+    insta::assert_snapshot!(sandbox.masked(&fmt.assert_exit_code(0).transcript()));
     assert_eq!(sandbox.contents("src/main.knv"), LOOP_CALL_SHAPED);
 }
 
@@ -6578,18 +6578,30 @@ fn fmt_check_without_a_path_prints_paths_relative_to_the_working_directory() {
 #[test]
 fn fmt_without_a_path_lays_out_the_whole_project_from_a_subdirectory() {
     let sandbox = Sandbox::new("fmt_project_default")
-        .with_file(&Language::project_file_name(), UNLAID_PROJECT)
-        .with_file("src/twice.knv", UNFORMATTED)
-        .with_file("src/.direnv/limit.knv", UNFORMATTED);
-    sandbox.compiler_in("src", &["fmt"]).assert_silent_success();
+        .with_file(
+            &format!("browser/{}", Language::project_file_name()),
+            UNLAID_PROJECT,
+        )
+        .with_file(
+            &format!("hints/{}", Language::project_file_name()),
+            "(defproject hints)\n",
+        )
+        .with_file("hints/src/lib.knv", "(def hint 1)\n")
+        .with_file("browser/src/twice.knv", UNFORMATTED)
+        .with_file("browser/src/.direnv/limit.knv", UNFORMATTED);
+    sandbox
+        .compiler_in("browser/src", &["fmt"])
+        .assert_silent_success();
     assert_eq!(
         [
-            sandbox.contents("src/twice.knv"),
-            sandbox.contents("src/.direnv/limit.knv"),
+            sandbox.contents("browser/src/twice.knv"),
+            sandbox.contents("browser/src/.direnv/limit.knv"),
         ],
         [FORMATTED, UNFORMATTED].map(String::from)
     );
-    insta::assert_snapshot!(sandbox.contents(&Language::project_file_name()));
+    insta::assert_snapshot!(
+        sandbox.contents(&format!("browser/{}", Language::project_file_name()))
+    );
 }
 
 #[test]
@@ -6986,6 +6998,33 @@ fn a_git_library_without_a_cache_directory_is_an_environment_error() {
         .env_remove("HOME");
     let check = Outcome::of(&mut command);
     insta::assert_snapshot!(check.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn fmt_with_an_unreadable_project_file_warns_after_the_read_error() {
+    let sandbox = Sandbox::new("fmt_unreadable_project")
+        .with_file(&Language::project_file_name(), "(defproject app)\n")
+        .with_file("src/main.knv", LOOP_CALL);
+    let project_file = sandbox.directory.join(Language::project_file_name());
+    fs::set_permissions(
+        &project_file,
+        fs::Permissions::from_mode(Sandbox::NO_ACCESS),
+    )
+    .expect("the sandbox changes permissions");
+    let fmt = sandbox.compiler(&["fmt", "src/main.knv"]);
+    insta::assert_snapshot!(fmt.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn fmt_without_a_cache_directory_warns_before_the_environment_error() {
+    let (sandbox, _) = Sandbox::new("fmt_git_no_cache").with_git_library(None);
+    let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["fmt", "src/main.knv"]);
+    command
+        .current_dir(sandbox.directory.join("git-app"))
+        .env_remove(Sandbox::CACHE_HOME_VARIABLE)
+        .env_remove("HOME");
+    let fmt = Outcome::of(&mut command);
+    insta::assert_snapshot!(fmt.assert_exit_code(0).stderr());
 }
 
 #[test]

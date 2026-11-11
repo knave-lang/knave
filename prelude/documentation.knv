@@ -18,6 +18,10 @@
 
 (def documentation-origin "https://knave-lang.org/docs/")
 
+(def code-fence "```")
+
+(def code-language "knave")
+
 (defmacro documentation-names (path)
   (join-text "\n"
              (map-list (module-exports path) symbol-name)))
@@ -191,10 +195,10 @@
             (symbol-name term)
             "\"></a>\n\n" "## `"
             (symbol-name term)
-            "`\n\n" "```lisp\n"
+            "`\n\n" code-fence code-language "\n"
             (looked-up (quote doc-header) term)
             (type-line page term)
-            "\n```\n\n"
+            "\n" code-fence "\n\n"
             (body-markdown page links (section-body section))
             "\n")))
 
@@ -443,7 +447,9 @@
           (concat written (finished paragraph))
           (if (fence-line? (first lines))
             (recur (concat (concat written (finished paragraph))
-                           (list (first lines)))
+                           (list (if fenced?
+                                   (first lines)
+                                   (tagged-fence (first lines)))))
                    (list)
                    (rest lines)
                    next
@@ -471,7 +477,13 @@
                           0 false))))
 
 (def fence-line?
-  (fn (line) (starts-with? line "```")))
+  (fn (line) (starts-with? line code-fence)))
+
+(def tagged-fence
+  (fn (line)
+    (if (value-eq (string-trim-start line) code-fence)
+      (string line code-language)
+      line)))
 
 (def blank-line?
   (fn (line)
@@ -481,8 +493,8 @@
   (fn (page links docstring paragraph)
     (local lines (map-list paragraph line-text))
     (if (holds-arrow? lines)
-      (concat (concat (list "```lisp") lines)
-              (list "```"))
+      (concat (concat (list (string code-fence code-language)) lines)
+              (list code-fence))
       (map-list paragraph
         (fn (line)
           (linked-line page links (list docstring line)))))))

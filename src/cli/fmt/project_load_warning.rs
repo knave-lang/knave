@@ -40,7 +40,6 @@ impl DiagnosticOutput for ProjectLoadWarning {
     }
 
     fn write_note(&self, sources: &SourceMap, message: &str) {
-        self.warn_once();
         self.output.write_note(sources, message);
     }
 

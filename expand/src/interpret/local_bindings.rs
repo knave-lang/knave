@@ -57,7 +57,7 @@ struct BinderWalk {
 }
 
 impl BinderWalk {
-    fn collect<'e>(&mut self, mut pending: Vec<&'e Expr>) {
+    fn collect(&mut self, mut pending: Vec<&Expr>) {
         while let Some(expr) = pending.pop() {
             self.visit(expr, &mut pending);
         }

@@ -11,7 +11,7 @@ Measures shapes on a grid, as [area](#area) does.
 
 ## `area`
 
-```lisp
+```knave
 (defn area (width height))
 (type area (fn (i64 i64) i64))
 ```
@@ -23,12 +23,12 @@ nothing here, and [missing] names nothing. `[perimeter]` is code,
 [a website](https://example.com) is a link, and [two words], [a][b] and [open
 stay.
 
-```lisp
+```knave
 (area 2 3)
 => 6
 ```
 
-```
+```knave
 (area 1 1)
 ```
 
@@ -36,7 +36,7 @@ stay.
 
 ## `perimeter`
 
-```lisp
+```knave
 (defn perimeter (width height))
 ```
 
@@ -46,11 +46,15 @@ No documentation.
 
 ## `square?`
 
-```lisp
+```knave
 (defn square? (width height))
 ```
 
 Tells whether both sides match, as the private [helper] does not.
+
+```rust
+width == height
+```
 
 ## Re-exported names
 
@@ -62,7 +66,7 @@ Tells whether both sides match, as the private [helper] does not.
 
 ## `double`
 
-```lisp
+```knave
 (defn double (x))
 ```
 
@@ -76,7 +80,7 @@ Measures shapes on a grid, as [area](#area) does.
 
 ## `area`
 
-```lisp
+```knave
 (defn area (width height))
 ```
 
@@ -87,12 +91,12 @@ nothing here, and [missing] names nothing. `[perimeter]` is code,
 [a website](https://example.com) is a link, and [two words], [a][b] and [open
 stay.
 
-```lisp
+```knave
 (area 2 3)
 => 6
 ```
 
-```
+```knave
 (area 1 1)
 ```
 
@@ -100,7 +104,7 @@ stay.
 
 ## `double`
 
-```lisp
+```knave
 (defn double (x))
 ```
 
@@ -110,7 +114,7 @@ Doubles [x], which [area](#area) cannot see.
 
 ## `perimeter`
 
-```lisp
+```knave
 (defn perimeter (width height))
 ```
 
@@ -120,8 +124,12 @@ No documentation.
 
 ## `square?`
 
-```lisp
+```knave
 (defn square? (width height))
 ```
 
 Tells whether both sides match, as the private [helper] does not.
+
+```rust
+width == height
+```

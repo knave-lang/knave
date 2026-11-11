@@ -69,9 +69,9 @@ const DOCUMENTED_MAIN: &str =
     "(module \"Prints a greeting.\")\n\n(export main)\n\n(defn main () (println \"hi\"))\n";
 const DOCUMENTED_AREA: &str = "(export area)\n\n(defn area (width height)\n  \"Multiplies two sides, as [option] does not.\"\n  (* width height))\n";
 const UNMATCHED_LINKS: &str = "(export parse tally)\n\n(module \"Parses text, unlike [zzqx].\")\n\n(defn parse (text)\n  \"Reads the [optoin] from `text`.\n\n  It keeps [parse] linked.\n    Indented [a(b], again.\n  Also [42], [)x] and [helpr].\"\n  text)\n\n(defn tally ()\n  \"\n  Counts like [parze].\"\n  1)\n\n(defn helper () 2)\n";
-const AREA_SECTION: &str = "<a id=\"area\"></a>\n\n## `area`\n\n```lisp\n(defn area (width height))\n(type area (where ((a number)) (fn (a a) a)))\n```\n\nMultiplies two sides, as [option](https://knave-lang.org/docs/prelude/types/#option) does not.\n";
+const AREA_SECTION: &str = "<a id=\"area\"></a>\n\n## `area`\n\n```knave\n(defn area (width height))\n(type area (where ((a number)) (fn (a a) a)))\n```\n\nMultiplies two sides, as [option](https://knave-lang.org/docs/prelude/types/#option) does not.\n";
 const UNTYPED_SHAPES: &str = "(export point twice)\n\n(defstruct point \"A point.\" :x i64)\n\n(defrule twice \"Writes a form twice.\" ((x) (do x x)))\n";
-const UNTYPED_SHAPES_PAGE: &str = "# shapes\n\n<a id=\"point\"></a>\n\n## `point`\n\n```lisp\n(defstruct point)\n```\n\nA point.\n\n<a id=\"twice\"></a>\n\n## `twice`\n\n```lisp\n(defrule twice)\n```\n\nWrites a form twice.\n";
+const UNTYPED_SHAPES_PAGE: &str = "# shapes\n\n<a id=\"point\"></a>\n\n## `point`\n\n```knave\n(defstruct point)\n```\n\nA point.\n\n<a id=\"twice\"></a>\n\n## `twice`\n\n```knave\n(defrule twice)\n```\n\nWrites a form twice.\n";
 const PRELUDE_PAGES: [&str; 23] = [
     "assoc",
     "definers",
@@ -97,7 +97,7 @@ const PRELUDE_PAGES: [&str; 23] = [
     "types",
     "vec",
 ];
-const UNWRAP_OR_SECTION: &str = "<a id=\"unwrap-or\"></a>\n\n## `unwrap-or`\n\n```lisp\n(unwrap-or option default)\n(type unwrap-or (where (a) (fn ((option a) a) a)))\n```\n";
+const UNWRAP_OR_SECTION: &str = "<a id=\"unwrap-or\"></a>\n\n## `unwrap-or`\n\n```knave\n(unwrap-or option default)\n(type unwrap-or (where (a) (fn ((option a) a) a)))\n```\n";
 const PRELUDE_REEXPORT: &str = "## Re-exported names\n\n- [`*`](prelude/number.md#%2A)\n";
 const VEC_REEXPORT: &str = "- [`vec`](../prelude/types.md#vec)\n";
 const GEOMETRY: &str = "(export area)\n\n(defn area (width height) \"Multiplies a width by a height.\" (* width height))\n";

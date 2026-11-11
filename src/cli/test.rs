@@ -56,7 +56,7 @@ impl TestCommand {
     fn test(&self, terminal: &mut Terminal) -> Result<ExitStatus, ExitStatus> {
         let loaded = self.entries.load(terminal)?;
         let program = self.runner_program(terminal, loaded.module)?;
-        let checked = terminal.check_expanded(&program)?;
+        let checked = terminal.checking().check(&program)?;
         let emitted = terminal.emit_checked(&checked)?;
         let marker = ValueMarker::random();
         let outcome = self.build_and_run(terminal, &emitted, loaded.project.as_ref(), &marker)?;

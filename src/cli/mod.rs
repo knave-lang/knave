@@ -4,6 +4,7 @@ mod build_directory;
 mod capped_report;
 mod check;
 mod check_flag;
+mod checking;
 mod checkout_bounds;
 mod color_when;
 mod command;

@@ -8,12 +8,12 @@ use std::time::Duration;
 use anstream::ColorChoice;
 
 use super::build_directory::BuildDirectory;
+use super::checking::Checking;
 use super::diagnostic_output::{DiagnosticOutput, RenderedDiagnostics};
 use super::exit_status::ExitStatus;
 use super::expansion::Expansion;
 use super::interruption::Interruption;
 use super::located_program::LocatedProgram;
-use super::module_of_sources::ModuleOfSources;
 use super::program_file::ProgramFile;
 use super::project_task::ProjectTask;
 use super::source_report::SourceReport;
@@ -23,9 +23,7 @@ use crate::build::{
     BuildError, BuildPlan, BuildProfile, CargoCompiler, CargoTarget, EmittedFormatting,
     FormattingError, RustCompiler,
 };
-use crate::diagnostic::Diagnostic;
 use crate::emit::{EmittedCrate, RustEmitter};
-use crate::expand::Program;
 use crate::language::Language;
 use crate::source::Span;
 use crate::source::{SourceFile, SourceId, SourceMap};
@@ -102,6 +100,13 @@ impl Terminal {
 
     pub fn expansion(&mut self) -> Expansion<'_> {
         Expansion::new(&mut self.sources, &mut self.work, self.diagnostics.as_ref())
+    }
+
+    pub fn checking(&mut self) -> Checking<'_> {
+        Checking::new(
+            SourceReport::new(&self.sources, self.diagnostics.as_ref()),
+            &mut self.work,
+        )
     }
 
     pub fn source_report(&self) -> SourceReport<'_> {
@@ -211,7 +216,7 @@ impl Terminal {
 
     pub fn emit(&mut self, file: &ProgramFile) -> Result<EmittedCrate, ExitStatus> {
         let formatting = Self::formatting()?;
-        let program = self.check(file)?;
+        let program = self.check_file(file)?;
         self.emit_formatted(&program, &formatting)
     }
 
@@ -263,38 +268,10 @@ impl Terminal {
         }
     }
 
-    pub fn check(&mut self, file: &ProgramFile) -> Result<TypedProgram, ExitStatus> {
+    pub fn check_file(&mut self, file: &ProgramFile) -> Result<TypedProgram, ExitStatus> {
         let entry = self.sources().load(file.path())?;
         let program = self.expansion().expand(file, entry)?;
-        self.check_expanded(&program)
-    }
-
-    pub fn check_expanded(&mut self, program: &Program) -> Result<TypedProgram, ExitStatus> {
-        self.check_showing(program, |_| true)
-    }
-
-    pub fn check_showing(
-        &mut self,
-        program: &Program,
-        shown_warning: impl FnMut(&Diagnostic) -> bool,
-    ) -> Result<TypedProgram, ExitStatus> {
-        let mut typed = crate::check::ProgramChecker::check(program)
-            .map_err(|diagnostics| self.source_report().report(&diagnostics))?;
-        self.work.inferred_expressions = Some(typed.checking.inferred_expressions);
-        typed.warnings.retain(shown_warning);
-        self.source_report().print(&typed.warnings);
-        Ok(typed)
-    }
-
-    pub fn check_sources(
-        &mut self,
-        module: &ModuleOfSources,
-        shown_warning: impl FnMut(&Diagnostic) -> bool,
-    ) -> Result<TypedProgram, ExitStatus> {
-        let program = self
-            .expansion()
-            .within_session(module, |session| session.finish())?;
-        self.check_showing(&program, shown_warning)
+        self.checking().check(&program)
     }
 
     fn report_build(&self, error: BuildError) -> ExitStatus {

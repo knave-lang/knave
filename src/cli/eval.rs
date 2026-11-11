@@ -194,8 +194,8 @@ impl ModuleText {
         program: &Program,
     ) -> Result<TypedProgram, ExitStatus> {
         match self {
-            Self::Loaded(..) => terminal.check_showing(program, |_| false),
-            Self::File(_) | Self::StandardInput(_) => terminal.check_expanded(program),
+            Self::Loaded(..) => terminal.checking().check_silently(program),
+            Self::File(_) | Self::StandardInput(_) => terminal.checking().check(program),
         }
     }
 }
@@ -384,7 +384,9 @@ impl ExpandedEvaluation {
             .map(|position| self.form_numbers[*position])
             .collect();
         Ok(CheckedEvaluation {
-            program: terminal.check_showing(&program, |warning| shown.shows(warning))?,
+            program: terminal
+                .checking()
+                .check_showing(&program, |warning| shown.shows(warning))?,
             printed_forms,
         })
     }

@@ -92,7 +92,7 @@ impl TaskCatalog {
             .collect();
         let (block, ranges) = Self::block_of(&lookups);
         let entered = self.entered_program(terminal, &block)?;
-        let typed = terminal.check_expanded(&entered.program)?;
+        let typed = terminal.checking().check(&entered.program)?;
         let texts = Self::texts_by_span(&typed);
         names
             .iter()

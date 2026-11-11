@@ -11,7 +11,7 @@ use super::returned_arguments::ReturnedArguments;
 use super::shape::{Shape, WrittenDefiner};
 use crate::core::{BindingId, BindingKind, DefinitionForm, Expr, KernelForm, Lambda, Namespace};
 use crate::diagnostic::Diagnostic;
-use crate::interpret::{Closure, Env, Interpreter, PassedLimit, Value};
+use crate::interpret::{Closure, Env, Interpreter, LocalBindings, PassedLimit, Value};
 use crate::modules::ModuleSources;
 use crate::reader::Form;
 use crate::scope::{Phase, Scope};
@@ -440,6 +440,7 @@ impl Expander<'_> {
         let compiled = self.lower_macro_lambda(definition).and_then(|lambda| {
             self.check_compile_time(&lambda)?;
             Ok(Rc::new(Closure {
+                locals: Rc::new(LocalBindings::of_lambda(&lambda)),
                 lambda: Rc::new(lambda),
                 env: Env::default(),
             }))

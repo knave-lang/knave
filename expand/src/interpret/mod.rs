@@ -9,6 +9,7 @@ mod limit_problems;
 mod limited_text;
 mod list_item;
 mod list_size;
+mod local_bindings;
 mod notes_too_large;
 mod planned_list;
 mod problems;
@@ -25,6 +26,7 @@ pub use code_list::{
 pub use held_bytes::HeldBytes;
 pub use limit_problems::LimitProblems;
 pub(crate) use limited_text::LimitedText;
+pub use local_bindings::LocalBindings;
 pub use notes_too_large::NotesTooLarge;
 pub(crate) use planned_list::PlannedList;
 pub use problems::InterpretProblems;
@@ -86,6 +88,7 @@ pub struct Interpreter<'h> {
     host: &'h mut dyn CompileTimeHost,
     depth: usize,
     meter: WorkMeter,
+    locals: Rc<LocalBindings>,
 }
 
 impl<'h> Interpreter<'h> {
@@ -96,6 +99,7 @@ impl<'h> Interpreter<'h> {
             host,
             depth: 0,
             meter: WorkMeter::new(steps, call_site),
+            locals: Rc::default(),
         }
     }
 
@@ -114,7 +118,12 @@ impl<'h> Interpreter<'h> {
         }
     }
 
-    pub fn eval(&mut self, expr: &Expr, env: &Env) -> Result<Value, Diagnostic> {
+    pub fn evaluate(&mut self, expr: &Expr) -> Result<Value, Diagnostic> {
+        self.locals = Rc::new(LocalBindings::of_expr(expr));
+        self.eval(expr, &Env::default())
+    }
+
+    fn eval(&mut self, expr: &Expr, env: &Env) -> Result<Value, Diagnostic> {
         match self.step(expr, env)? {
             Step::Value(value) => Ok(value),
             Step::Recur(..) => unreachable!("expansion allows `recur` only inside a function"),
@@ -133,7 +142,7 @@ impl<'h> Interpreter<'h> {
             ExprKind::Call(callee, arguments) => self
                 .eval_call(callee, arguments, env, span)
                 .map(Step::Value),
-            ExprKind::Recur(arguments) => self.eval_recur(arguments, env),
+            ExprKind::Recur(arguments) => self.eval_arguments(arguments, env).map(Step::Recur),
             ExprKind::Borrow(_, value) | ExprKind::Deref(value) => {
                 self.eval(value, env).map(Step::Value)
             }
@@ -146,6 +155,7 @@ impl<'h> Interpreter<'h> {
         Ok(Value::Closure(Rc::new(Closure {
             lambda: Rc::clone(lambda),
             env: env.clone(),
+            locals: Rc::clone(&self.locals),
         })))
     }
 
@@ -195,10 +205,6 @@ impl<'h> Interpreter<'h> {
         self.call(&function, values, span)
     }
 
-    fn eval_recur(&mut self, arguments: &[Expr], env: &Env) -> Result<Step, Diagnostic> {
-        Ok(Step::Recur(self.eval_arguments(arguments, env)?))
-    }
-
     fn eval_arguments(&mut self, arguments: &[Expr], env: &Env) -> Result<Vec<Value>, Diagnostic> {
         let mut values = Vec::with_capacity(arguments.len());
         for argument in arguments {
@@ -226,9 +232,11 @@ impl<'h> Interpreter<'h> {
             return Err(InterpretProblems::too_deep(span));
         }
         let env = Self::bind_arguments(closure, arguments);
+        let caller_locals = std::mem::replace(&mut self.locals, Rc::clone(&closure.locals));
         self.depth += 1;
         let result = self.run_body(closure, env);
         self.depth -= 1;
+        self.locals = caller_locals;
         result
     }
 
@@ -292,8 +300,11 @@ impl<'h> Interpreter<'h> {
     }
 
     fn variable(&mut self, binding: BindingId, env: &Env, span: Span) -> Result<Value, Diagnostic> {
-        match env.lookup(binding) {
-            Some(value) => Ok(value.clone()),
+        match env.lookup_local(binding, &self.locals) {
+            Some(found) => {
+                self.meter.charge(found.depth)?;
+                Ok(found.value.clone())
+            }
             None => self.host.global_value(binding, span),
         }
     }

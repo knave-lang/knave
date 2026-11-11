@@ -9,7 +9,7 @@ use super::recur_check::RecurCheck;
 use super::try_check::TryCheck;
 use crate::core::{BindingId, Declaration, Expr};
 use crate::diagnostic::Diagnostic;
-use crate::interpret::{Env, Interpreter, Value};
+use crate::interpret::{Interpreter, Value};
 use crate::reader::Form;
 use crate::scope::Phase;
 use crate::source::Span;
@@ -221,7 +221,7 @@ impl Expander<'_> {
         }
         let result = self.lowered_global(binding, span).and_then(|expr| {
             let steps = self.form_budgets.current().steps();
-            Interpreter::new(self, span, steps).eval(&expr, &Env::default())
+            Interpreter::new(self, span, steps).evaluate(&expr)
         });
         self.tables.globals.evaluating.remove(&binding);
         let value = result?;

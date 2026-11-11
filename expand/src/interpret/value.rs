@@ -5,6 +5,7 @@ use super::built_value::BuiltValue;
 use super::code_list::{ListTooLarge, PassedLimit};
 use super::list_item::ListItem;
 use super::list_size::ListSize;
+use super::local_bindings::LocalBindings;
 use crate::core::{BindingId, Builtin, Keyword, Lambda};
 use crate::reader::{Form, FormKind, NumberValue, Symbol};
 
@@ -123,6 +124,12 @@ impl Value {
 pub struct Closure {
     pub lambda: Rc<Lambda>,
     pub env: Env,
+    pub locals: Rc<LocalBindings>,
+}
+
+pub struct BoundValue<'e> {
+    pub value: &'e Value,
+    pub depth: usize,
 }
 
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
@@ -222,13 +229,29 @@ impl Env {
         self.0.and_then(|frame| Rc::try_unwrap(frame).ok())
     }
 
-    pub fn lookup(&self, binding: BindingId) -> Option<&Value> {
+    pub fn lookup_local(
+        &self,
+        binding: BindingId,
+        locals: &LocalBindings,
+    ) -> Option<BoundValue<'_>> {
+        locals
+            .binds(binding)
+            .then(|| self.lookup(binding))
+            .flatten()
+    }
+
+    fn lookup(&self, binding: BindingId) -> Option<BoundValue<'_>> {
         let mut current = self.0.as_deref();
+        let mut depth = 0;
         while let Some(frame) = current {
             if frame.binding == binding {
-                return Some(&frame.value);
+                return Some(BoundValue {
+                    value: &frame.value,
+                    depth,
+                });
             }
             current = frame.parent.0.as_deref();
+            depth += 1;
         }
         None
     }
@@ -239,12 +262,15 @@ mod tests {
     use std::rc::Rc;
 
     use super::{Closure, Env, Value};
-    use crate::core::{BindingId, Lambda};
+    use crate::core::{Binder, BindingId, Block, Lambda};
+    use crate::interpret::LocalBindings;
+    use crate::source::{SourceId, Span};
 
     struct ChainFixture;
 
     impl ChainFixture {
         const LONG_CHAIN_LINKS: usize = 1_000_000;
+        const LOCAL: BindingId = BindingId::from_index(1);
 
         fn binding() -> BindingId {
             BindingId::from_index(0)
@@ -255,6 +281,7 @@ mod tests {
             Rc::new(Closure {
                 lambda: Rc::new(lambda),
                 env,
+                locals: Rc::default(),
             })
         }
 
@@ -269,6 +296,20 @@ mod tests {
             (0..links).fold(Env::default(), |env, _| {
                 env.bind(Self::binding(), Value::Unit)
             })
+        }
+
+        fn locals_binding(binding: BindingId) -> LocalBindings {
+            let binder = Binder {
+                binding,
+                annotation: None,
+                span: Span::new(SourceId::new(0), 0..0),
+            };
+            LocalBindings::of_lambda(&Lambda::new(vec![binder], Block::default()))
+        }
+
+        fn local_under(frames: usize) -> Env {
+            let local = Env::default().bind(Self::LOCAL, Value::Bool(true));
+            (0..frames).fold(local, |env, _| env.bind(Self::binding(), Value::Unit))
         }
 
         fn two_branches(links: usize) -> Env {
@@ -305,7 +346,9 @@ mod tests {
         let parent = Env::default().bind(ChainFixture::binding(), Value::Bool(true));
         drop(parent.bind(ChainFixture::binding(), Value::Unit));
         assert!(matches!(
-            parent.lookup(ChainFixture::binding()),
+            parent
+                .lookup(ChainFixture::binding())
+                .map(|found| found.value),
             Some(Value::Bool(true))
         ));
     }
@@ -317,5 +360,33 @@ mod tests {
         let closure = ChainFixture::closure_over(inner);
         drop(Env::default().bind(ChainFixture::binding(), Value::Closure(closure)));
         assert_eq!(Rc::strong_count(&held), 1);
+    }
+
+    #[test]
+    fn a_local_read_finds_its_depth_in_frames_above_it() {
+        let env = ChainFixture::local_under(3);
+        let locals = ChainFixture::locals_binding(ChainFixture::LOCAL);
+        let found = env.lookup_local(ChainFixture::LOCAL, &locals);
+        assert!(matches!(
+            found.map(|found| (found.value, found.depth)),
+            Some((Value::Bool(true), 3))
+        ));
+    }
+
+    #[test]
+    fn a_free_read_skips_the_env() {
+        let env = ChainFixture::local_under(3);
+        let locals = LocalBindings::default();
+        assert!(env.lookup_local(ChainFixture::LOCAL, &locals).is_none());
+    }
+
+    #[test]
+    fn a_local_missing_from_the_env_finds_nothing() {
+        let locals = ChainFixture::locals_binding(ChainFixture::LOCAL);
+        assert!(
+            Env::default()
+                .lookup_local(ChainFixture::LOCAL, &locals)
+                .is_none()
+        );
     }
 }

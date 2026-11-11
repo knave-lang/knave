@@ -67,6 +67,14 @@ impl Diagnostics {
     }
 }
 
+impl FromIterator<Diagnostic> for Diagnostics {
+    fn from_iter<I: IntoIterator<Item = Diagnostic>>(diagnostics: I) -> Self {
+        Self {
+            items: diagnostics.into_iter().collect(),
+        }
+    }
+}
+
 impl From<Diagnostic> for Diagnostics {
     fn from(diagnostic: Diagnostic) -> Self {
         Self {

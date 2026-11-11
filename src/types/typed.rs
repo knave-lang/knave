@@ -13,7 +13,7 @@ use super::templates::TemplateBorrows;
 use super::traits::TraitTable;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
 use super::unifier::LiteralKind;
-use super::{StructuralTrait, StructuralUses};
+use super::{BoxedPayload, StructuralTrait, StructuralUses};
 use crate::core::{
     BindingArena, BindingId, ClosureKind, DefinitionForm, FieldLabel, FieldSpelling, KernelForm,
     Literal, ModuleId, ModulePath, ReferenceKind, RustTemplate,
@@ -431,7 +431,7 @@ pub struct TypedProgram {
     pub enums: EnumTable,
     pub rust_types: RustTypeTable,
     pub box_binding: Option<BindingId>,
-    pub inferred_boxes: BTreeSet<super::boxed_payload::BoxedPayload>,
+    pub inferred_boxes: BTreeSet<BoxedPayload>,
     pub structural_traits: Vec<StructuralTrait>,
     pub structural_uses: StructuralUses,
     pub traits: TraitTable,

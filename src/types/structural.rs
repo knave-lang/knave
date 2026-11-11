@@ -81,7 +81,8 @@ impl TypeChecker {
     }
 
     fn lacks_source_form(&self, ty: &Type) -> bool {
-        let opaque = matches!(ty, Type::Named(binding, _) if self.declarations.types.rust_types.is_opaque(*binding));
+        let rust_types = &self.declarations.types.rust_types;
+        let opaque = matches!(ty, Type::Named(binding, _) if rust_types.is_opaque(*binding));
         opaque
             || matches!(ty, Type::Function(..))
             || ty
@@ -226,10 +227,11 @@ impl TypeChecker {
         trait_binding: BindingId,
         head: BindingId,
     ) -> Option<&TypedTraitImpl> {
-        let path = self.declarations.traits.rust_paths.get(&trait_binding)?;
+        let rust_paths = &self.declarations.traits.rust_paths;
+        let path = rust_paths.get(&trait_binding)?;
         self.declarations.traits.impls.iter().find(|implementation| {
             implementation.trait_binding != trait_binding
-                && self.declarations.traits.rust_paths.get(&implementation.trait_binding) == Some(path)
+                && rust_paths.get(&implementation.trait_binding) == Some(path)
                 && matches!(implementation.implementor, Type::Named(binding, _) if binding == head)
         })
     }

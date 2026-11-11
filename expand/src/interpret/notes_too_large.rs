@@ -4,13 +4,14 @@ use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct TooManyNotes {
+pub struct NotesTooLarge {
+    pub held_forms: usize,
     pub limit: usize,
 }
 
-impl TooManyNotes {
+impl NotesTooLarge {
     pub fn at(self, function: &'static str, span: Span) -> Diagnostic {
         let site = BuiltinSite { function, span };
-        LimitProblems::too_many_module_notes(site, self.limit + 1, self.limit)
+        LimitProblems::module_notes_too_large(site, self.held_forms, self.limit)
     }
 }

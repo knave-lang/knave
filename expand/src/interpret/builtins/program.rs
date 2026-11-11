@@ -1,7 +1,8 @@
 use super::Forms;
 use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::Arguments;
-use crate::interpret::{CompileTimeHost, Value};
+use crate::interpret::list_size::ListSize;
+use crate::interpret::{BuildLimit, CompileTimeHost, PlannedList, Value, WorkMeter};
 use crate::language::Language;
 use crate::reader::{Form, FormKind, Number, NumberValue, Symbol};
 use crate::source::Span;
@@ -54,14 +55,20 @@ impl<'a> ProgramOperations<'a> {
         let literal = self.arguments.form(1)?.span();
         let value = self.arguments.string(1)?;
         let read = host.read_literal_form(literal, value, self.arguments.index(2)?);
-        Forms::list(
-            read.map_or_else(Vec::new, |(mut form, end)| {
-                form.set_scopes(context.scopes());
-                vec![form, self.count_form(end)]
-            }),
-            self.call_site,
-            self.arguments,
-        )
+        let items = read.map_or_else(Vec::new, |(mut form, end)| {
+            form.set_scopes(context.scopes());
+            vec![form, self.count_form(end)]
+        });
+        self.admit_read(&items)?;
+        Forms::list(items, self.call_site, self.arguments)
+    }
+
+    fn admit_read(&self, items: &[Form]) -> Result<(), Diagnostic> {
+        let size = ListSize::of_counts(items.iter().map(Form::form_count));
+        let limit = BuildLimit::of(self.arguments.function(), self.arguments.span());
+        limit.check(PlannedList(size))?;
+        self.arguments
+            .charge(WorkMeter::built_forms_work(size - ListSize::EMPTY))
     }
 
     pub fn located(&self) -> Result<Value, Diagnostic> {

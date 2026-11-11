@@ -31,6 +31,7 @@ impl StepBudget {
     pub const DEFAULT_LIMIT: u64 = 30_000_000;
     pub const BYTES_PER_STEP: usize = 16;
     pub const EXPAND_CALL_WORK: usize = 64;
+    pub const STEPS_PER_BUILT_FORM: usize = 3;
     const UNMETERED_LIMIT: u64 = u64::MAX;
 
     pub fn full() -> Self {

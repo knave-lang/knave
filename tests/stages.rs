@@ -204,6 +204,26 @@ fn a_fixture_past_its_deadline_stops_the_fixtures_still_waiting() {
 }
 
 #[test]
+fn a_fixture_that_panics_stops_the_fixtures_still_waiting() {
+    let started = Arc::new(AtomicUsize::new(0));
+    let starts = Arc::clone(&started);
+    let paths = (0..MORE_FIXTURES_THAN_WORKERS)
+        .map(|index| PathBuf::from(format!("waiting{index}.knv")))
+        .collect();
+    let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
+        FixtureReports::compute_within(SLOW_FIXTURE * 100, paths, move |_| {
+            starts.fetch_add(1, Ordering::SeqCst);
+            thread::sleep(SLOW_FIXTURE);
+            panic!("each report fails")
+        })
+    }));
+    assert!(outcome.is_err(), "the reports panic");
+    let started_by_the_panic = started.load(Ordering::SeqCst);
+    thread::sleep(SLOW_FIXTURE * 3);
+    assert_eq!(started.load(Ordering::SeqCst), started_by_the_panic);
+}
+
+#[test]
 #[should_panic(expected = "the report of broken.knv fails")]
 fn a_fixture_whose_report_panics_fails_with_its_panic() {
     FixtureReports::compute_within(SHORT_DEADLINE, vec![PathBuf::from("broken.knv")], |path| {

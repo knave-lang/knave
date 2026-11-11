@@ -115,6 +115,7 @@ impl QueueState {
 
     fn outcome(&mut self, deadline: Duration) -> Option<Outcome> {
         if let Some(payload) = self.panicked.take() {
+            self.pending.clear();
             return Some(Outcome::Panicked(payload));
         }
         if let Some(path) = self.overdue(deadline) {

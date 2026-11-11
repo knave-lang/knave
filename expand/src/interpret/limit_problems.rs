@@ -17,9 +17,10 @@ impl LimitProblems {
             Label::new(span, format!("this call passed {limit} macro steps")),
         )
         .with_note(format!(
-            "the macro calls in one top-level form run at most {limit} steps: a function call or a `recur` costs one step per expression of the body it runs, an `expand-call` costs {} and one per form it returns, a closure costs one step and one per binding in scope, and a built-in costs one step per list item it copies or reads and one for every {} bytes of text it reads, and `closest-name` one step for each pair of bytes it compares between the name and the candidates",
+            "the macro calls in one top-level form run at most {limit} steps: a function call or a `recur` costs one step per expression of the body it runs, an `expand-call` costs {} and one per form it returns, a closure costs one step and one per binding in scope, and a built-in costs one step per list item it copies or reads and one for every {} bytes of text it reads, `read-form` and `string-lines` {} per form they build, `add-module-note` one per form of its note, and `closest-name` one step for each pair of bytes it compares between the name and the candidates",
             StepBudget::EXPAND_CALL_WORK,
-            StepBudget::BYTES_PER_STEP
+            StepBudget::BYTES_PER_STEP,
+            StepBudget::STEPS_PER_BUILT_FORM
         ))
         .with_help(format!(
             "make the macro stop, or wrap the top-level form in `(with-macro-steps {} ...)`",
@@ -71,11 +72,20 @@ impl LimitProblems {
             .with_help("build a smaller list, or make the macro stop growing it")
     }
 
-    pub fn too_many_module_notes(site: BuiltinSite, notes: usize, limit: usize) -> Diagnostic {
-        let label = format!("`{}` adds module note {notes} here", site.function);
+    pub fn module_notes_too_large(
+        site: BuiltinSite,
+        held_forms: usize,
+        limit: usize,
+    ) -> Diagnostic {
+        let label = format!(
+            "`{}` would make the module notes hold {held_forms} forms here",
+            site.function
+        );
         Self::value_too_large(label, site.span)
-            .with_note(format!("a program holds at most {limit} module notes"))
-            .with_help("add fewer module notes")
+            .with_note(format!(
+                "the module notes of a program hold at most {limit} forms in all"
+            ))
+            .with_help("add fewer or smaller module notes")
     }
 
     fn value_too_large(label: String, span: Span) -> Diagnostic {

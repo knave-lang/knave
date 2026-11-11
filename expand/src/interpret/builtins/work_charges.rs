@@ -120,7 +120,7 @@ fn splitting_lines_charges_each_line_it_builds() {
     let text = "a\nb\nc\nd";
     assert_eq!(
         WorkFixture::string_work(&[WorkFixture::string(text)], |strings| strings.lines()),
-        1 + 4
+        1 + 4 * StepBudget::STEPS_PER_BUILT_FORM as u64
     );
 }
 

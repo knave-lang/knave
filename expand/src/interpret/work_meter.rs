@@ -14,6 +14,10 @@ impl WorkMeter {
         bytes.div_ceil(StepBudget::BYTES_PER_STEP)
     }
 
+    pub fn built_forms_work(forms: usize) -> usize {
+        forms.saturating_mul(StepBudget::STEPS_PER_BUILT_FORM)
+    }
+
     pub fn new(steps: StepBudget, call_site: Span) -> Self {
         Self { steps, call_site }
     }

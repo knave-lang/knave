@@ -100,9 +100,9 @@
 (def page-text
   (fn (page)
     (local terms (module-exports (page-path page)))
-    (local homes (homes-of page terms))
+    (local homed (homed-terms terms (homes-of page terms)))
     (local sections
-      (map-list (owned-terms page terms homes)
+      (map-list (owned-terms page homed)
         (fn (term)
           (list term (written-body term)))))
     (local summary (module-docstring page))
@@ -116,8 +116,7 @@
             (join-text "\n"
                        (map-list sections
                          (fn (section) (term-section linked-page section))))
-            (reexport-list linked-page
-                           (reexported-terms page terms homes)))))
+            (reexport-list linked-page (reexported-terms page homed)))))
 
 (def section-term
   (fn (section) (first section)))
@@ -136,32 +135,36 @@
       ""
       (string (body-markdown page (first summary)) "\n\n"))))
 
-(def owned-terms
-  (fn (page terms homes)
-    (local owned-of
-      (fn (owned terms homes)
+(def homed-terms
+  (fn (terms homes)
+    (local paired
+      (fn (homed terms homes)
         (if (empty? terms)
-          owned
-          (recur (if (own-home? page (first homes))
-                   (concat owned (list (first terms)))
-                   owned)
+          homed
+          (recur (concat homed
+                         (list (list (first terms) (first homes))))
                  (rest terms)
                  (rest homes)))))
-    (owned-of (list) terms homes)))
+    (paired (list) terms homes)))
+
+(def homed-term
+  (fn (homed) (first homed)))
+
+(def homed-home
+  (fn (homed) (nth homed 1)))
+
+(def owned-terms
+  (fn (page homed)
+    (map-list (items-where (fn (term-home)
+                             (own-home? page (homed-home term-home)))
+                           homed)
+              homed-term)))
 
 (def reexported-terms
-  (fn (page terms homes)
-    (local reexported-of
-      (fn (reexported terms homes)
-        (if (empty? terms)
-          reexported
-          (recur (if (own-home? page (first homes))
-                   reexported
-                   (concat reexported
-                           (list (list (first terms) (first homes)))))
-                 (rest terms)
-                 (rest homes)))))
-    (reexported-of (list) terms homes)))
+  (fn (page homed)
+    (items-where (fn (term-home)
+                   (bool-not (own-home? page (homed-home term-home))))
+                 homed)))
 
 (def own-home?
   (fn (page home)
@@ -217,11 +220,12 @@
               (join-text "\n"
                          (map-list reexported
                            (fn (term-home)
-                             (local name (symbol-name (first term-home)))
-                             (string
-                               "- [`" name "`]("
-                               (term-target page (first (nth term-home 1)) name)
-                               ")"))))
+                             (local name (symbol-name (homed-term term-home)))
+                             (string "- [`" name "`]("
+                                     (term-target page
+                                                  (first (homed-home term-home))
+                                                  name)
+                                     ")"))))
               "\n"))))
 
 (def homes-of

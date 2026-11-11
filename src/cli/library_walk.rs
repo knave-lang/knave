@@ -401,7 +401,7 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
     fn report(&self, problem: Diagnostic) -> ExitStatus {
         let mut problems = Diagnostics::default();
         problems.push(problem);
-        self.terminal.report(&problems)
+        self.terminal.source_report().report(&problems)
     }
 
     fn names(project: &Project) -> Vec<String> {

@@ -76,7 +76,7 @@ impl TreeFile {
             ));
         }
         if problems.has_errors() {
-            return Err(terminal.report(&problems));
+            return Err(terminal.source_report().report(&problems));
         }
         Ok(())
     }

@@ -194,7 +194,9 @@ impl FmtCommand {
 
     fn report_failure(terminal: &Terminal, path: &Path, failure: FormatFailure) -> ExitStatus {
         let fault = match failure {
-            FormatFailure::Unreadable(diagnostics) => return terminal.report(&diagnostics),
+            FormatFailure::Unreadable(diagnostics) => {
+                return terminal.source_report().report(&diagnostics);
+            }
             FormatFailure::ChangedMeaning => "its formatted text reads to other forms",
             FormatFailure::Unstable => "formatting its formatted text changes it again",
         };

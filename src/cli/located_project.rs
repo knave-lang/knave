@@ -123,7 +123,7 @@ impl LocatedProject {
         let project = scratch.sources().load_project(&self.project_file())?;
         let mut problems = Diagnostics::default();
         problems.push(self.crate_use(&project, command));
-        Err(scratch.report(&problems))
+        Err(scratch.source_report().report(&problems))
     }
 
     fn crate_use(&self, project: &Project, command: &str) -> Diagnostic {

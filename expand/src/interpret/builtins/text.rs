@@ -390,11 +390,11 @@ mod tests {
     use crate::interpret::arguments::{Arguments, BuiltinSite};
     use crate::interpret::{StepBudget, Value, WorkMeter};
     use crate::reader::{Form, FormKind, Number, NumberValue, Symbol};
-    use crate::scope::{ScopeAllocator, ScopeSet};
+    use crate::scope::{ScopeKind, ScopeSet, Scopes};
     use crate::source::{SourceId, Span};
 
     struct SymbolComparison {
-        scopes: ScopeAllocator,
+        scopes: Scopes,
     }
 
     impl SymbolComparison {
@@ -402,7 +402,7 @@ mod tests {
 
         fn new() -> Self {
             Self {
-                scopes: ScopeAllocator::default(),
+                scopes: Scopes::default(),
             }
         }
 
@@ -431,7 +431,7 @@ mod tests {
 
         fn scoped_symbol(&mut self, name: &str) -> Value {
             let mut scopes = ScopeSet::default();
-            scopes.add(self.scopes.fresh());
+            scopes.add(self.scopes.fresh(ScopeKind::Local));
             let symbol = Symbol::with_scopes(name, scopes);
             Value::Form(Form::new(FormKind::Symbol(symbol), Self::span()))
         }

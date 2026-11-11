@@ -452,12 +452,12 @@ impl LargestCandidates {
 mod tests {
     use super::*;
     use crate::core::{BindingArena, BindingInfo, BindingKind};
-    use crate::scope::{ChainPrefix, Scope, ScopeAllocator, ScopeChain};
+    use crate::scope::{ChainPrefix, Scope, ScopeChain, ScopeKind, Scopes};
 
     struct World {
         table: BindingTable,
         bindings: BindingArena,
-        scopes: ScopeAllocator,
+        scopes: Scopes,
     }
 
     impl World {
@@ -465,16 +465,16 @@ mod tests {
             Self {
                 table: BindingTable::default(),
                 bindings: BindingArena::default(),
-                scopes: ScopeAllocator::default(),
+                scopes: Scopes::default(),
             }
         }
 
         fn scope(&mut self) -> Scope {
-            self.scopes.fresh()
+            self.scopes.fresh(ScopeKind::Local)
         }
 
         fn save_names(&mut self) {
-            let first = ScopeAllocator::default().next_scope();
+            let first = Scopes::default().next_scope();
             self.save_names_from(first);
         }
 
@@ -620,7 +620,7 @@ mod tests {
         let mut world = World::new();
         let scope = world.scope();
         world.define("taken", &[scope], Phase::Runtime);
-        let everything = ScopeAllocator::default().next_scope()..world.scopes.next_scope();
+        let everything = Scopes::default().next_scope()..world.scopes.next_scope();
         world.table.take_saved(everything);
         assert!(world.table.entries.is_empty());
     }

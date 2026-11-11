@@ -160,7 +160,7 @@ impl SharedScopes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scope::ScopeAllocator;
+    use crate::scope::{ScopeKind, Scopes};
 
     #[test]
     fn an_empty_chain_has_no_prefix() {
@@ -170,8 +170,11 @@ mod tests {
     #[test]
     #[should_panic(expected = "a scope chain takes only fresh scopes, in order")]
     fn a_chain_refuses_a_scope_older_than_its_last() {
-        let mut allocator = ScopeAllocator::default();
-        let (older, newer) = (allocator.fresh(), allocator.fresh());
+        let mut allocator = Scopes::default();
+        let (older, newer) = (
+            allocator.fresh(ScopeKind::Local),
+            allocator.fresh(ScopeKind::Local),
+        );
         let chain = ScopeChain::default();
         chain.push(newer);
         chain.push(older);

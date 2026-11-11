@@ -1,38 +1,43 @@
+use super::{Scope, ScopeKind};
 use crate::reader::Form;
-use crate::scope::{Scope, ScopeKind, ScopeKinds};
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
-pub(super) struct Scopes {
-    kinds: ScopeKinds,
+pub(crate) struct Scopes {
+    kinds_in_order_made: Vec<ScopeKind>,
 }
 
 impl Scopes {
-    pub(super) fn fresh(&mut self, kind: ScopeKind) -> Scope {
-        self.kinds.fresh(kind)
+    pub(crate) fn fresh(&mut self, kind: ScopeKind) -> Scope {
+        let scope = self.next_scope();
+        self.kinds_in_order_made.push(kind);
+        scope
     }
 
-    pub(super) fn next_scope(&self) -> Scope {
-        self.kinds.next_scope()
+    pub(crate) fn next_scope(&self) -> Scope {
+        Scope::numbered(self.kinds_in_order_made.len())
     }
 
-    pub(super) fn quoted(&self, datum: &Form) -> Form {
+    pub(crate) fn quoted(&self, datum: &Form) -> Form {
         let mut quoted = datum.clone();
         quoted.retain_scopes(&|scope| !self.is_stripped_by_quote(scope));
         quoted
     }
 
-    pub(super) fn carries_introduction_scope(&self, binder: &Form) -> bool {
+    pub(crate) fn carries_introduction_scope(&self, binder: &Form) -> bool {
         binder.as_symbol().is_some_and(|symbol| {
             symbol
                 .scopes()
-                .any(|scope| self.kinds.kind(scope) == Some(ScopeKind::Introduction))
+                .any(|scope| self.kind(scope).is_some_and(ScopeKind::is_introduction))
         })
     }
 
     fn is_stripped_by_quote(&self, scope: Scope) -> bool {
-        self.kinds
-            .kind(scope)
+        self.kind(scope)
             .is_some_and(ScopeKind::is_stripped_by_quote)
+    }
+
+    fn kind(&self, scope: Scope) -> Option<ScopeKind> {
+        self.kinds_in_order_made.get(scope.position()).copied()
     }
 }
 
@@ -40,7 +45,7 @@ impl Scopes {
 mod tests {
     use super::Scopes;
     use crate::reader::{Form, FormKind, Symbol};
-    use crate::scope::{Scope, ScopeAllocator, ScopeKind, ScopeSet};
+    use crate::scope::{Scope, ScopeKind, ScopeSet};
     use crate::source::{SourceId, Span};
 
     #[derive(Default)]
@@ -103,11 +108,18 @@ mod tests {
     }
 
     #[test]
-    fn a_quote_keeps_a_scope_made_elsewhere() {
+    fn a_quote_keeps_a_scope_with_no_recorded_kind() {
         let fixture = ScopesFixture::default();
-        let elsewhere = ScopeAllocator::default().fresh();
-        let symbol = ScopesFixture::symbol_with_scope(elsewhere);
-        assert!(fixture.keeps_scope_through_a_quote(&symbol, elsewhere));
+        let unrecorded = Scope::numbered(0);
+        let symbol = ScopesFixture::symbol_with_scope(unrecorded);
+        assert!(fixture.keeps_scope_through_a_quote(&symbol, unrecorded));
+    }
+
+    #[test]
+    fn a_scope_keeps_its_own_kind_beside_earlier_scopes() {
+        let mut fixture = ScopesFixture::default();
+        fixture.scopes.fresh(ScopeKind::Module);
+        assert!(!fixture.keeps_through_a_quote(ScopeKind::Local));
     }
 
     #[test]
@@ -129,5 +141,27 @@ mod tests {
         let (symbol, _) = fixture.symbol_with(ScopeKind::Introduction);
         let list = ScopesFixture::form(FormKind::List(vec![symbol]));
         assert!(!fixture.scopes.carries_introduction_scope(&list));
+    }
+
+    #[test]
+    fn each_fresh_scope_is_new() {
+        let mut scopes = Scopes::default();
+        let first = scopes.fresh(ScopeKind::Local);
+        assert_ne!(scopes.fresh(ScopeKind::Local), first);
+    }
+
+    #[test]
+    fn the_next_scope_is_the_one_made_next() {
+        let mut scopes = Scopes::default();
+        scopes.fresh(ScopeKind::Module);
+        let next = scopes.next_scope();
+        assert_eq!(scopes.fresh(ScopeKind::Local), next);
+    }
+
+    #[test]
+    fn the_next_scope_comes_after_the_scopes_made() {
+        let mut scopes = Scopes::default();
+        let made = scopes.fresh(ScopeKind::Module);
+        assert_ne!(scopes.next_scope(), made);
     }
 }

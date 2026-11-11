@@ -1,13 +1,15 @@
-(use code add-module-note concat drop empty? fail first len
-          list nth number-lt prepend rest string string?
-          symbol symbol? take value-eq)
+(use code add-module-note concat distinct-leading-lines drop
+          empty? fail first len list module-notes nth
+          number-lt prepend rest string string? symbol
+          symbol? take value-eq)
 
 (export add-docstring-note docstring-before-body?
         docstring-before-parameters docstrings-key
         documented-body? documented-terms-key joined-chunks
-        kernel-definition note-docstring noted-term
-        term-docstrings-key text-chunk-pieces type-doc-key
-        value-doc-key whole-pairs?)
+        kernel-definition module-docstring-notes
+        note-docstring noted-term term-docstrings-key
+        text-chunk-pieces type-doc-key value-doc-key
+        value-docstring-note whole-pairs?)
 
 (def documented-body?
   (fn (body)
@@ -36,6 +38,30 @@
 (def noted-term
   (fn (note) (nth note 1)))
 
+(def module-docstring-notes
+  (fn (context)
+    (local with-notes-of
+      (fn (notes terms)
+        (if (empty? terms)
+          notes
+          (recur (concat notes
+                         (module-notes context
+                                       (term-docstrings-key (first terms))))
+                 (rest terms)))))
+    (with-notes-of (module-notes context docstrings-key)
+                   (distinct-leading-lines (documented-term-names context)))))
+
+(def documented-term-names
+  (fn (context)
+    (local named
+      (fn (names entries)
+        (if (empty? entries)
+          names
+          (recur (concat names
+                         (list (string (noted-term (first entries)))))
+                 (rest entries)))))
+    (named (list) (module-notes context documented-terms-key))))
+
 (def note-docstring
   (fn (key text)
     (add-docstring-note (concat key (list text)))))
@@ -51,6 +77,35 @@
 
 (def value-doc-key
   (fn (name) (list "value" name)))
+
+(def value-docstring-note
+  (fn (name header text)
+    (concat (value-doc-key name) (list header text))))
+
+(def document-value
+  (macro (form)
+    (local name (nth form 1))
+    (add-docstring-note (value-docstring-note name name (nth form 2)))
+    (quote (do))))
+
+(document-value docstrings-key
+                "Holds the key under which a user definer adds a docstring note.
+
+  A definer's macro passes it to `add-module-note` with a note
+  `(\"value\" name text)`, so the lookups find the docstring of `name`.
+
+  ```
+  (use code add-module-note list)
+  (use prelude/macros docstrings-key)
+
+  (defmacro noted-defn (name text)
+    (add-module-note docstrings-key (list \"value\" name text))
+    (list (quote defn) name (quote (x)) (quote x)))
+
+  (noted-defn twice \"Returns its argument.\")
+  (docstring twice)
+  => \"Returns its argument.\"
+  ```")
 
 (def kernel-definition
   (fn (form)

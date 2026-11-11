@@ -66,14 +66,14 @@ impl Expander<'_> {
     }
 
     fn docstring_notes(&mut self) -> Option<DocstringNotes> {
-        let page_module = self.page_module()?;
-        let key = self.exported_value(page_module, Self::DOCSTRINGS_KEY)?;
-        let documented_terms_key = self.exported_value(page_module, Self::DOCUMENTED_TERMS_KEY)?;
-        let noted_term = self.exported_value(page_module, Self::NOTED_TERM)?;
+        let notes_module = self.notes_module()?;
+        let key = self.exported_value(notes_module, Self::DOCSTRINGS_KEY)?;
+        let documented_terms_key = self.exported_value(notes_module, Self::DOCUMENTED_TERMS_KEY)?;
+        let noted_term = self.exported_value(notes_module, Self::NOTED_TERM)?;
         DocstringNotes::of(&key, &documented_terms_key, noted_term)
     }
 
-    fn page_module(&self) -> Option<ModuleId> {
+    fn notes_module(&self) -> Option<ModuleId> {
         let prelude = self
             .modules
             .find(&ModulePath::new(ModuleSources::PRELUDE))?;
@@ -81,7 +81,12 @@ impl Expander<'_> {
             .modules
             .get(prelude)
             .exported(Self::PAGE_MACRO, Namespace::Value)?;
-        self.definition_module(page_macro)
+        let page_module = self.definition_module(page_macro)?;
+        let key = self
+            .modules
+            .get(page_module)
+            .exported(Self::DOCSTRINGS_KEY, Namespace::Value)?;
+        self.definition_module(key)
     }
 
     fn exported_value(&mut self, module: ModuleId, name: &str) -> Option<Value> {

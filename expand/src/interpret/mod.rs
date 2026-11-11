@@ -4,10 +4,12 @@ mod built_value;
 mod builtin_site;
 mod builtins;
 mod code_list;
-mod compile_time_host;
 mod definition_queries;
 mod expansion_callbacks;
+mod global_values;
 mod held_bytes;
+mod host;
+mod host_problems;
 mod limit_problems;
 mod limited_text;
 mod list_item;
@@ -32,10 +34,12 @@ pub use builtins::BuiltinCall;
 pub use code_list::{
     CodeList, ListConversion, ListNesting, ListTooLarge, NestedTooDeep, PassedLimit,
 };
-pub use compile_time_host::CompileTimeHost;
 pub use definition_queries::DefinitionQueries;
 pub use expansion_callbacks::ExpansionCallbacks;
+pub use global_values::GlobalValues;
 pub use held_bytes::HeldBytes;
+pub use host::Host;
+use host_problems::HostProblems;
 pub use limit_problems::LimitProblems;
 pub(crate) use limited_text::LimitedText;
 pub use local_bindings::LocalBindings;
@@ -65,7 +69,7 @@ enum Step {
 }
 
 pub struct Interpreter<'h> {
-    host: &'h mut dyn CompileTimeHost,
+    host: &'h mut dyn Host,
     depth: usize,
     meter: WorkMeter,
     locals: Rc<LocalBindings>,
@@ -74,7 +78,7 @@ pub struct Interpreter<'h> {
 impl<'h> Interpreter<'h> {
     const MAX_DEPTH: usize = 1000;
 
-    pub fn new(host: &'h mut dyn CompileTimeHost, call_site: Span, steps: StepBudget) -> Self {
+    pub fn new(host: &'h mut dyn Host, call_site: Span, steps: StepBudget) -> Self {
         Self {
             host,
             depth: 0,
@@ -285,7 +289,11 @@ impl<'h> Interpreter<'h> {
                 self.meter.charge(found.depth)?;
                 Ok(found.value.clone())
             }
-            None => self.host.global_value(binding, span),
+            None => self
+                .host
+                .global_values()
+                .ok_or_else(|| HostProblems::missing_group("reading a global", span))?
+                .global_value(binding, span),
         }
     }
 

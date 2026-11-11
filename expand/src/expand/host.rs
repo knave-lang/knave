@@ -8,13 +8,60 @@ use super::problems::ExpandProblems;
 use crate::core::{BindingId, BindingKind, Declaration, ModuleDefinitions, ModulePath, Namespace};
 use crate::diagnostic::Diagnostic;
 use crate::interpret::{
-    DefinitionQueries, ExpansionCallbacks, ModuleNotes, ModuleQueries, NameComparison,
-    NotesTooLarge, SourceQueries, Value, Warnings,
+    DefinitionQueries, ExpansionCallbacks, GlobalValues, Host, ModuleNotes, ModuleQueries,
+    NameComparison, NotesTooLarge, SourceQueries, Value, Warnings,
 };
 use crate::modules::{ModuleRecord, ModuleSources};
 use crate::reader::{Form, LiteralForms, Symbol};
 use crate::scope::{Phase, Resolution, ScopeSet};
 use crate::source::Span;
+
+impl Host for Expander<'_> {
+    fn global_values(&mut self) -> Option<&mut dyn GlobalValues> {
+        Some(self)
+    }
+
+    fn module_queries(&mut self) -> Option<&mut dyn ModuleQueries> {
+        Some(self)
+    }
+
+    fn definition_queries(&mut self) -> Option<&mut dyn DefinitionQueries> {
+        Some(self)
+    }
+
+    fn module_notes(&mut self) -> Option<&mut dyn ModuleNotes> {
+        Some(self)
+    }
+
+    fn name_comparison(&mut self) -> Option<&mut dyn NameComparison> {
+        Some(self)
+    }
+
+    fn expansion_callbacks(&mut self) -> Option<&mut dyn ExpansionCallbacks> {
+        Some(self)
+    }
+
+    fn source_queries(&mut self) -> Option<&mut dyn SourceQueries> {
+        Some(self)
+    }
+
+    fn warnings(&mut self) -> Option<&mut dyn Warnings> {
+        Some(self)
+    }
+}
+
+impl GlobalValues for Expander<'_> {
+    fn global_value(&mut self, binding: BindingId, span: Span) -> Result<Value, Diagnostic> {
+        match self.kind(binding) {
+            BindingKind::CodeBuiltin(builtin) => Ok(Value::Builtin(builtin)),
+            BindingKind::Global(_) => self.evaluate_global(binding, span),
+            _ => Err(ExpandProblems::not_at_compile_time(
+                self.tables.bindings.get(binding).name(),
+                span,
+            )),
+        }
+    }
+}
 
 impl Warnings for Expander<'_> {
     fn report_warning(&mut self, warning: Diagnostic) {
@@ -151,17 +198,6 @@ impl NameComparison for Expander<'_> {
 }
 
 impl ExpansionCallbacks for Expander<'_> {
-    fn global_value(&mut self, binding: BindingId, span: Span) -> Result<Value, Diagnostic> {
-        match self.kind(binding) {
-            BindingKind::CodeBuiltin(builtin) => Ok(Value::Builtin(builtin)),
-            BindingKind::Global(_) => self.evaluate_global(binding, span),
-            _ => Err(ExpandProblems::not_at_compile_time(
-                self.tables.bindings.get(binding).name(),
-                span,
-            )),
-        }
-    }
-
     fn expand_call(&mut self, call: Form) -> Result<Option<Form>, Diagnostic> {
         let Some(binding) = self.macro_head(&call) else {
             return Ok(None);
@@ -283,7 +319,7 @@ mod tests {
     use super::Expander;
     use crate::core::{BindingInfo, BindingKind};
     use crate::diagnostic::{Diagnostic, DiagnosticCode};
-    use crate::interpret::ExpansionCallbacks;
+    use crate::interpret::GlobalValues;
     use crate::modules::ModuleSources;
     use crate::source::{SourceMap, Span};
 
@@ -298,11 +334,15 @@ mod tests {
             }
         }
 
-        fn global_value_of(&mut self, kind: BindingKind, span: Span) -> Result<(), Diagnostic> {
-            let mut expander = Expander::new(
+        fn expander(&mut self) -> Expander<'_> {
+            Expander::new(
                 &mut self.sources,
                 ModuleSources::new(PathBuf::new(), PathBuf::new()),
-            );
+            )
+        }
+
+        fn global_value_of(&mut self, kind: BindingKind, span: Span) -> Result<(), Diagnostic> {
+            let mut expander = self.expander();
             let binding =
                 expander
                     .tables

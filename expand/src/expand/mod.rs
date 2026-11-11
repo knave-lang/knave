@@ -1,3 +1,4 @@
+mod bindings;
 mod budget_arena;
 mod classified_form;
 mod compile_time_check;
@@ -55,7 +56,6 @@ mod string_view;
 mod structural_path_claim;
 mod structural_path_claims;
 mod structural_traits;
-mod term_resolver;
 mod top_level_form;
 mod try_check;
 mod type_expr;
@@ -75,6 +75,7 @@ use crate::modules::{ModuleRegistry, ModuleSources};
 use crate::reader::Form;
 use crate::scope::{BindingTable, Phase, Scope, Scopes};
 use crate::source::{SourceId, SourceMap, Span};
+use bindings::Bindings;
 use budget_arena::BudgetArena;
 pub use classified_form::ClassifiedForm;
 use docstring_notes::DocstringNotes;
@@ -104,7 +105,6 @@ pub use session::ExpansionSession;
 use string_view::StringViewSearch;
 use structural_path_claims::StructuralPathClaims;
 use structural_traits::StructuralTraits;
-use term_resolver::TermResolver;
 use type_note::TypeNote;
 
 pub struct Program {
@@ -389,11 +389,11 @@ impl<'s> Expander<'s> {
         since: NotesCheckpoint,
     ) -> DocumentedTerms<'_> {
         let noted = self.noted_terms(module, since);
-        DocumentedTerms::new(self.term_resolver(), &self.duplicate_definitions, noted)
+        DocumentedTerms::new(self.bindings(), &self.duplicate_definitions, noted)
     }
 
-    fn term_resolver(&self) -> TermResolver<'_> {
-        TermResolver::new(&self.tables.table, &self.tables.bindings, self.phase)
+    fn bindings(&self) -> Bindings<'_> {
+        Bindings::new(&self.tables.table, &self.tables.bindings, self.phase)
     }
 
     fn noted_terms(&mut self, module: ModuleId, since: NotesCheckpoint) -> NotedTerms {

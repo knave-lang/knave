@@ -2,15 +2,15 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashSet;
 
+use super::bindings::Bindings;
 use super::noted_terms::NotedTerms;
 use super::problems::ExpandProblems;
-use super::term_resolver::TermResolver;
 use crate::core::{BindingId, ModuleId, Namespace};
 use crate::diagnostic::{Diagnostic, SimilarName};
 use crate::reader::Symbol;
 
 pub(super) struct DocumentedTerms<'t> {
-    resolver: TermResolver<'t>,
+    bindings: Bindings<'t>,
     duplicates: &'t FxHashSet<(ModuleId, Rc<str>)>,
     noted: NotedTerms,
 }
@@ -19,12 +19,12 @@ impl<'t> DocumentedTerms<'t> {
     const TERM_NAMESPACES: [Namespace; 2] = [Namespace::Value, Namespace::Type];
 
     pub(super) fn new(
-        resolver: TermResolver<'t>,
+        bindings: Bindings<'t>,
         duplicates: &'t FxHashSet<(ModuleId, Rc<str>)>,
         noted: NotedTerms,
     ) -> Self {
         Self {
-            resolver,
+            bindings,
             duplicates,
             noted,
         }
@@ -52,7 +52,7 @@ impl<'t> DocumentedTerms<'t> {
     fn defines(&self, term: &Symbol) -> bool {
         Self::TERM_NAMESPACES
             .into_iter()
-            .filter_map(|namespace| self.resolver.resolve(term, namespace))
+            .filter_map(|namespace| self.bindings.resolve(term, namespace))
             .any(|binding| self.is_own(binding))
     }
 
@@ -62,7 +62,7 @@ impl<'t> DocumentedTerms<'t> {
         }
         let own_names: Vec<Rc<str>> = Self::TERM_NAMESPACES
             .into_iter()
-            .flat_map(|namespace| self.resolver.visible_bindings(term, namespace))
+            .flat_map(|namespace| self.bindings.visible_named_like(term, namespace))
             .filter(|(_, binding)| self.is_own(*binding))
             .map(|(name, _)| name)
             .collect();
@@ -72,12 +72,12 @@ impl<'t> DocumentedTerms<'t> {
     fn resolves(&self, term: &Symbol) -> bool {
         Self::TERM_NAMESPACES
             .into_iter()
-            .any(|namespace| self.resolver.resolve(term, namespace).is_some())
+            .any(|namespace| self.bindings.resolve(term, namespace).is_some())
     }
 
     fn is_own(&self, binding: BindingId) -> bool {
         self.noted
-            .belongs_to(self.resolver.definition_module(binding))
+            .belongs_to(self.bindings.definition_module(binding))
     }
 }
 

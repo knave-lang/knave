@@ -70,7 +70,7 @@ Rules of the form, each checked when the form expands:
 5. **Bound or unbound is decided against the names programs see by default,** the exports of `prelude`, and in the value namespace only. `:clojure (count)` beside `len` lives in `prelude/sequence`, which imports nothing from `prelude/iterator`, but the entry is judged against `prelude`'s exports, so its kind does not depend on the module's imports. A trait such as `eq` or `hash` is in the type namespace, so Common Lisp's `eq` and Racket's `hash` are unbound entries. A user module's entries are judged against that module's own scope.
 6. **A foreign name that equals a definition of the same name in `prelude` and means the same,** such as Python's `len`, is not written. The form states only the names that differ.
 7. **`:help "text"` states a fix that is not a name swap.** It serves two cases:
-   - An entry with no purpose phrase, for a statement or a loop that knave writes as another form. The help shows the text and no replacement:
+   - An entry with no purpose phrase, for a name whose fix is more than a name swap, such as a statement, a loop, or a function that takes other arguments. The help shows the text and no replacement:
 
      ```lisp
      (foreign-names fn :help "a body's last form is its value, so write the value last"
@@ -87,7 +87,7 @@ Rules of the form, each checked when the form expands:
 
    An entry with a purpose phrase and no `:help` always shows the replacement, whatever the count. So `fold`'s entry on `reduce` replaces `(fold v 0 +)` with `(reduce v 0 +)`, although `reduce`'s header, `(reduce items step)`, documents only its two-argument form. The count never turns a replacement into no help.
 
-8. **A definition may carry several `foreign-names` forms.** A foreign name whose arguments come in another order needs its own form with a `:help`, so the replacement of the other languages stays. One foreign name of one language goes in one form only. Entries of several languages that share a spelling and a target merge into one help that names every language, as in ``which JavaScript and Common Lisp call `length` ``, so they must all show the replacement or all carry the same `:help`, and must name the same `:given` type or none. The expander reports a second entry that breaks this, at its form:
+8. **A definition may carry several `foreign-names` forms.** A foreign name whose arguments come in another order needs its own form with a `:help`, so the replacement of the other languages stays. One foreign name of one language goes in one form only. Entries of several languages that share a spelling and a target merge into one help that names every language, as in ``which JavaScript, Common Lisp, Scheme and Racket call `length` ``, so they must all show the replacement or all carry the same `:help`, and must name the same `:given` type or none. The expander reports a second entry that breaks this, at its form:
 
    ```lisp
    (foreign-names any? "test whether any item passes"
@@ -169,7 +169,7 @@ help: to get the length, knave uses `len`, which JavaScript, Common Lisp, Scheme
   |
 ```
 
-Without a purpose phrase the help is ``knave calls JavaScript's `length` `len` ``. A Rust spelling reads ``help: `is_some` is the Rust name of `some?` ``, with the replacement. An entry whose help applies, by rule 7 of option A, shows its text with the language and no replacement:
+Without a purpose phrase the help is ``knave calls Rust's `into-iter` `iter` ``. A Rust spelling reads ``help: `is_some` is the Rust name of `some?` ``, with the replacement. An entry whose help applies, by rule 7 of option A, shows its text with the language and no replacement:
 
 ```text
 error[L0201]: cannot find `return` in this scope
@@ -203,8 +203,8 @@ When rule 1 finds several knave definitions for one foreign name, because two en
 
 **Should a spelling suggestion be dropped when it names a form of a different kind?** In one case, yes, and otherwise no:
 
-- **Drop it where the position rules the candidate out.** A name in a value position that is not the head of a call cannot be a kernel form or a macro without a value form. So `(println retrun)` must never suggest `recur`. The compiler happens not to today, so this rule is preventive: it states the guarantee instead of leaving it to the distance limit. The expander knows both the position and the candidate's kind, so the rule states no name. It keeps the existing namespace filter, which already keeps type candidates out of value positions.
-- **Keep it at the head of a call.** An unbound name has no kind of its own, so at the head of a call the compiler cannot tell that `for` meant iteration rather than a typo of `or`. Any kind rule there would also drop good suggestions, such as `print` for `prnt`. The declared entries handle the common cases, and the first build lists the loop and statement words of each language so that none reaches edit distance.
+- **Drop it where the position rules the candidate out.** A name in a value position that is not the head of a call cannot be a kernel form or a macro without a value form. So `(println return)` must never suggest `recur`, as it does today, and `(println for)` must never suggest `or`. The rule ships in the first build, and the build adds a regression fixture for each of those two calls. The expander knows both the position and the candidate's kind, so the rule states no name. It keeps the existing namespace filter, which already keeps type candidates out of value positions.
+- **Keep it at the head of a call.** An unbound name has no kind of its own, so at the head of a call the compiler cannot tell that `for` meant iteration rather than a typo of `or`. Any kind rule there would also drop good suggestions, such as `print` for `prnt`. The declared entries handle the common cases, and the first build lists the loop and statement words of Rust, Python, JavaScript and Clojure so that none reaches edit distance.
 
 ### A struct name at the head of a call
 
@@ -236,8 +236,8 @@ error[L0301]: no rule of `some` matches this form
 4 |   (some items (fn (x) (> x 1)))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
   |
-  = help: write it as `(some value)`
   = note: `some` wraps a value in an `option`
+  = help: write it as `(some value)`
   = help: JavaScript's and Clojure's `some` is `any?`: write `(any? items test)`, with the items first
 ```
 
@@ -261,7 +261,7 @@ The note is the first sentence of the bound definition's docstring, with its fir
 Two notes on this case:
 
 - **A working call gets no hint.** `(some 3)` and `(map (iter v) f)` are correct knave and show nothing. Under the old prelude, `(count (vec 1 2 3))` was the motivating example. With `count` removed, `count` is an unbound foreign name, and both `(count v)` and `(count v test)` get the `len` entry's hint at `L0201`.
-- **A hint does not replace the error.** The title, the label and any existing help stay, so the reader still learns what failed. The hint is one note and one help at the end.
+- **A hint does not replace the error.** The title, the label and any existing help stay, so the reader still learns what failed. The hint adds one note after the error's notes and one help after its helps, since every note prints before every help.
 
 ### Old knave spellings stay out
 
@@ -298,7 +298,7 @@ Each row recognizes a known form from another language and says the knave form. 
 | | `shape::circle` | `L0201` with the help `shape/circle` | Already right by edit distance. |
 | | `[ ]` parameters, struct fields as pairs, top-level expressions, `defn` in a body, `main` that returns a value | `L0106`, `L0301`, `L0207`, `L0208`, `L0455`, each with help | Already caught. |
 
-Names with no knave way at all today, such as `panic`, `contains?`, `join`, `starts-with?`, `hash-set`, `product`, `inc`, `second` and `pop-front`, are demand for prelude functions, not for hints. A hint that says "knave has no `contains?`" invites the next guess. `return`, `for` and `while` differ: knave has a way to do each, in another form, so they get `:help` entries. The Decision section records which ones knave adds.
+Names with no knave way at all today, such as `panic`, `contains?`, `join`, `starts-with?`, `hash-set`, `product`, `inc`, `second` and `pop-front`, are demand for prelude functions, not for hints. A hint that says "knave has no `contains?`" invites the next guess. `return`, `for` and `while` differ: knave has a way to do each, in another form, so they get `:help` entries. The Decision section records the helpers this RFC depends on. The same decision adds `inc` and `product` under their Clojure and Rust names, so rule 6 gives them no entry.
 
 ## Documentation page for the model guide
 
@@ -328,7 +328,7 @@ Option A, the `foreign-names` form, with the Rust spelling rule beside it.
 - **It keeps old knave spellings out by construction,** because every entry names another language, needs a source, and is spelled as that language writes it.
 - **It removes the wrong helps the probes found,** `or` for `for`, `recur` for `return`, `at` for `#t`, `docstring` for `to-string` and `print` for a struct name, because a declared entry or the struct rule decides before edit distance runs.
 
-The first build ships the form, the Rust spelling rule, the struct rule, the binder rule for `x:` and `,`, the `foreign-names` entries of Appendix C1, and the hint path at `L0201`, at a macro's `L03xx` errors, and at `L0401`, `L0402` and `L0404`, the `:given` clause, the `format-placeholder` warning, the string literal rule, and the `mismatch-help` form with its `(str name)` entry. The other rows of "Other mistakes" are follow-ups, each with its own evidence. Moving `CODE_REPLACEMENTS` into a prelude form beside the `code` module is a follow-up too: it states a fact of the prelude in the compiler today, but it is a phase hint, not a foreign name.
+The first build ships the form, the Rust spelling rule, the struct rule, the binder rule for `x:` and `,`, the position rule, the `foreign-names` entries of Appendix C1, and the hint path at `L0201`, at a macro's `L03xx` errors, and at `L0401`, `L0402` and `L0404`, the `:given` clause, the `format-placeholder` warning, the string literal rule, and the `mismatch-help` form with its `(str name)` entry. The other rows of "Other mistakes" are follow-ups, each with its own evidence. Moving `CODE_REPLACEMENTS` into a prelude form beside the `code` module is a follow-up too: it states a fact of the prelude in the compiler today, but it is a phase hint, not a foreign name.
 
 ## Decision
 
@@ -362,7 +362,7 @@ The owner accepted option A with the Rust spelling rule, and decided each questi
    The checker adds the help to an `L0401` whose expected type is the first type and whose found type is the second, comparing types, never names. Every other conversion, such as an `i64` where an `f64` is expected, waits for a later RFC, which may replace `mismatch-help` with a general form.
 
    **How the rule squares with `AGENTS.md`.** `AGENTS.md` forbids the compiler to emit "a clone or an allocation that the source does not write". A string literal in an owned position writes the allocation: the program wrote a new text where an owned text is wanted, as `(str "ana")` does, and the literal emits it as `String::from("ana")`. The literal is the source writing it. A `(ref str)` variable differs: it names text the program already holds, and turning it into a `string` would copy that text without the source asking, which the rule forbids, so the variable gets a help and no conversion.
-5. **The missing functions are settled by a separate decision on prelude helpers, which its own RFC records.** knave adds `contains?`, `second` on a pair, `join` and `starts-with?` there, and `concat` for iterators, which turns C1's JavaScript `concat` into a **B** entry. Their `foreign-names` entries, such as the membership names of Appendix C2, ship with or after that change. `panic` needs its own decision on what a knave program does on an unrecoverable error, which is larger than a name.
+5. **The missing functions are settled by a separate decision on prelude helpers, which its own RFC records.** knave adds `contains?`, `second` on a vector and on a pair, `join` and `starts-with?` there, and `concat` for iterators, which turns C1's JavaScript `concat` into a **B** entry. Their `foreign-names` entries, such as C2's `contains`, `in`, `includes`, `member` and `memq`, ship with or after that change. `panic` needs its own decision on what a knave program does on an unrecoverable error, which is larger than a name.
 6. **The first build ships Appendix C1.** Each row of Appendix C2 ships later in its own pull request that links its source, as rule 2 requires, and checks its rows against rules 5 and 8 and the prelude signature of each target.
 7. **`count` leaves the prelude, and `len` serves collections and iterators.** This RFC assumes that change and lands its `count` rows after it.
 
@@ -526,7 +526,7 @@ Of these 21 probes, four get a wrong help today and seven get none. The review's
 
 ## Appendix C: Proposed entries by source language
 
-Each row maps a foreign name to a knave definition. **R** means the help shows the replacement: the knave definition takes the same arguments in the same order and means the same. **H** means the entry carries a `:help` text, because the order, the meaning or the form differs, and the text says what to write. **B** marks a foreign name bound in `prelude`, which hints only when its call fails. **E** marks a name from Appendix B.
+Each row maps a foreign name to a knave definition. **R** means the help shows the replacement: the knave definition takes the same arguments in the same order and means the same. **H** means the entry sits in a form with no purpose phrase, so every call gets the `:help` text and no replacement, because the order, the meaning or the form differs. **R, H** means a form with both, where the argument count chooses (rule 7). **B** marks a foreign name bound in `prelude`, which hints only when its call fails. **E** marks a name from Appendix B.
 
 Every row of C1 was checked against the prelude signature of its target, against rule 5 for whether its name is bound, and against rule 8 for entries that share a spelling. C2 lists candidates: each later pull request checks its rows against rules 5 and 8 and its target's signature before it ships them, as Decision 6 says. Names that agree with knave, such as Python's `len` or Clojure's `filter`, are left out by rule 6.
 
@@ -538,7 +538,7 @@ Every row of C1 was checked against the prelude signature of its target, against
 | Rust | `push-str` **E**, `push` **E** | `push!` | R |
 | Rust | `to-string` **E**, `to-owned`, `String/from` | `str` | R |
 | Rust | `format` | `str` | H |
-| Rust | `count` | `len` | R, H with a test |
+| Rust | `count` | `len` | R, H |
 | Rust | `insert` **E** | `assoc` | H: `(assoc map key value)` returns the new map, so bind it |
 | Rust | `into-vec` **E** | `collect` | R |
 | Rust | `fold` | `reduce` | R, the three-argument form |
@@ -557,7 +557,7 @@ Every row of C1 was checked against the prelude signature of its target, against
 | JavaScript | `every` | `every?` | R |
 | JavaScript | `null`, `undefined` | `none` | R |
 | JavaScript | `===`, `!==` | `=`, `not=` | R |
-| Clojure | `count` | `len` | R, H with a test |
+| Clojure | `count` | `len` | R, H |
 | Clojure | `vector` **E** | `vec` | R |
 | Clojure | `when-not` **E**, `if-not` | `unless`; `if` with the branches swapped | R; H |
 | Clojure | `case` **E** | `match` | H |
@@ -589,7 +589,7 @@ The Rust spelling rule covers `is_some`, `is_none`, `is_ok`, `is_err`, `is_empty
 
 **Python.** R: `append` to `push!`, `pop` to `pop!`, `reversed` to `reverse`, `str.strip` written `strip` to `trim`, `upper` and `lower` to `upper-case` and `lower-case`, `dict` to `hash-map`. H: `any` and `all` (they take one iterable of booleans, and `any?` and `every?` take items and a test, so the pull request adds to C1's Rust `any` and `all` forms a `:help` for the one-argument call, `(any? items (fn (b) b))`, which keeps Rust's replacement by rule 7's count), `list` (`(the (vec i64) (collect items))`, because `(vec items)` builds a vector of one iterator), `input` (`(read-line)` takes no prompt and returns `(result (option string) io-error)`, so print the prompt with `print` first), `sorted` (knave's `sort!` changes in place and returns `unit`), `items` (`iter` on a map), `int` and `float` (`(the i64 (unwrap-ok (parse text)))`), `del` (`remove-at!` for a list index), `count` (joins C1's `count` form on `len`, whose `:help` answers `list.count(x)` with `(len (filter items test))`), `print(..., end="")` needs nothing (`print` agrees).
 
-**Rust.** R: `pop` to `pop!`, `remove` to `remove-at!`, `sort` and `sort-unstable` to `sort!`, `sort-by-key` to `sort-by!`, `dedup` to `dedup!`, `to-uppercase` and `to-lowercase` to `upper-case` and `lower-case`, `std/fs/read-to-string` to `slurp`, `std/process/exit` to `exit`, `Box/new` to `box`, `Vec/new` to `vec`, `HashMap/new` to `hash-map`. B, R: `reverse` to `reverse!`; knave's `reverse` returns an iterator, last item first, so a working `(reverse v)` gets no hint. H: `position` (`find` over `(enumerate items)`), `sort-by` (knave sorts by a key, not a comparison), `dbg!` (`prn` prints but returns `unit`).
+**Rust.** R: `pop` to `pop!`, `remove` to `remove-at!`, `sort` and `sort-unstable` to `sort!`, `sort-by-key` to `sort-by!`, `dedup` to `dedup!`, `to-uppercase` and `to-lowercase` to `upper-case` and `lower-case`, `std/fs/read-to-string` to `slurp`, `std/process/exit` to `exit`, `Box/new` to `box`, `Vec/new` to `vec`, `HashMap/new` to `hash-map`. B, R: `reverse` to `reverse!`; knave's `reverse` returns an iterator, last item first, so a working `(reverse v)` gets no hint. H: `position` (`find` over `(enumerate items)`), `sort-by` (knave sorts by a key, not a comparison), `dbg` (`prn` prints but returns `unit`).
 
 **JavaScript.** R: `pop` to `pop!`, `sort` to `sort!`, `forEach` to `for-each`, `toUpperCase` and `toLowerCase` to `upper-case` and `lower-case`, `toString` to `str`, `console.log` to `println`, `console.error` to `eprintln`, `process.exit` to `exit`, `Math.max`, `Math.min`, `Math.sqrt` to `max`, `min`, `sqrt`. B, R: `reverse` to `reverse!`, in the same form as Rust's. H: `slice` and `substring` (`subs` takes byte offsets), `splice` (`remove-at!` for one item), `findIndex` and `indexOf` (`find` over `enumerate`), `parseInt` and `parseFloat` (`parse` with `the`), `Object.keys`, `Object.values`, `Object.entries` (`keys`, `vals`, `iter` on a map).
 

@@ -3703,6 +3703,19 @@ fn eval_prints_a_warning_of_the_module_once_beside_a_warning_of_a_form() {
 }
 
 #[test]
+fn eval_rejects_a_malformed_rustfmt_time_limit_as_a_usage_error() {
+    let sandbox =
+        Sandbox::new("eval_malformed_rustfmt_time_limit").with_file("session.knv", SESSION);
+    let eval =
+        sandbox.compiler_with_rustfmt_time_limit_value("soon", &["eval", "session.knv", "(* 2 3)"]);
+    let stderr = eval.assert_exit_code(2).stderr();
+    assert!(
+        stderr.contains(&EmittedFormatting::time_limit_variable()),
+        "{stderr}"
+    );
+}
+
+#[test]
 fn eval_prints_a_borrowed_value() {
     let sandbox = Sandbox::new("eval_borrowed").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "session.knv", "(as-str (str \"ab\"))"]);

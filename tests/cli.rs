@@ -236,6 +236,7 @@ const LOOP_SHAPE: &str = "(use prelude/macros header-shape)\n\n(export dotimes)\
 const LOOP_CALL: &str = "(use shapes/loops dotimes)\n\n(dotimes (index 10) (println \"first line of the body\") (println index))\n";
 const LOOP_CALL_SHAPED: &str = "(use shapes/loops dotimes)\n\n(dotimes (index 10)\n  (println \"first line of the body\")\n  (println index))\n";
 const LOOP_CALL_AS_CALL: &str = "(use shapes/loops dotimes)\n\n(dotimes (index 10)\n         (println \"first line of the body\")\n         (println index))\n";
+const HEADLESS_LOOP_SHAPE: &str = "(use prelude/macros header-shape)\n\n(export dotimes)\n\n(defrule dotimes ((binding body ...) (do body ...)))\n\n(header-shape (dotimes))\n";
 const LOOPING_LIBRARY_ROOT: &str = "(use shapes/loops dotimes)\n\n(export dotimes)\n";
 const LOOPING_CALL: &str = "(use looping dotimes)\n\n(dotimes (index 10) (println \"first line of the body\") (println index))\n";
 const LOOPING_CALL_SHAPED: &str = "(use looping dotimes)\n\n(dotimes (index 10)\n  (println \"first line of the body\")\n  (println index))\n";
@@ -1579,6 +1580,27 @@ fn fmt_in_a_project_skips_a_module_that_the_compiler_cannot_reach() {
         .compiler(&["fmt", "scripts/loops.knv"])
         .assert_silent_success();
     assert_eq!(sandbox.contents("scripts/loops.knv"), LOOP_CALL_AS_CALL);
+}
+
+#[test]
+fn fmt_lays_out_by_a_library_that_hides_a_local_module() {
+    let sandbox = Sandbox::new("fmt_library_hides_local")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (looping :path \"../looping\")))\n",
+        )
+        .with_file("app/src/main.knv", LOOPING_CALL)
+        .with_file("app/src/looping.knv", HEADLESS_LOOP_SHAPE)
+        .with_file(
+            &format!("looping/{}", Language::project_file_name()),
+            "(defproject looping)\n",
+        )
+        .with_file("looping/src/lib.knv", LOOPING_LIBRARY_ROOT)
+        .with_file("looping/src/shapes/loops.knv", LOOP_SHAPE);
+    sandbox
+        .compiler(&["fmt", "app/src/main.knv"])
+        .assert_silent_success();
+    assert_eq!(sandbox.contents("app/src/main.knv"), LOOPING_CALL_SHAPED);
 }
 
 #[test]

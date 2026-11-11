@@ -20,6 +20,8 @@ mod module_notes;
 mod module_queries;
 mod name_comparison;
 mod notes_too_large;
+#[cfg(test)]
+mod partial_host;
 mod planned_list;
 mod problems;
 mod source_queries;
@@ -308,5 +310,60 @@ impl<'h> Interpreter<'h> {
             }
             Literal::Bool(value) => Value::Bool(*value),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::partial_host::PartialHost;
+    use super::{Interpreter, StepBudget};
+    use crate::core::{BindingArena, BindingInfo, BindingKind, Expr, ExprKind, Leaf, ModuleId};
+    use crate::diagnostic::{Diagnostic, DiagnosticCode};
+    use crate::source::{SourceId, Span};
+
+    struct GlobalReadFixture;
+
+    impl GlobalReadFixture {
+        fn span() -> Span {
+            Span::new(SourceId::new(0), 3..9)
+        }
+
+        fn read_without_global_values() -> Diagnostic {
+            let binding = BindingArena::default().add(BindingInfo::new(
+                "origin".into(),
+                BindingKind::Global(ModuleId::new(0)),
+                None,
+            ));
+            let read = Expr::new(ExprKind::Leaf(Leaf::Var(binding)), Self::span());
+            Interpreter::new(
+                &mut PartialHost::offering_nothing(),
+                Self::span(),
+                StepBudget::full(),
+            )
+            .evaluate(&read)
+            .expect_err("the host offers no global values")
+        }
+    }
+
+    #[test]
+    fn a_global_read_without_global_values_is_refused_at_the_read() {
+        let refusal = GlobalReadFixture::read_without_global_values();
+        assert_eq!(refusal.code(), Some(&DiagnosticCode::MISSING_HOST_GROUP));
+        assert!(
+            refusal
+                .labels()
+                .map(|label| label.span())
+                .eq([GlobalReadFixture::span()])
+        );
+    }
+
+    #[test]
+    fn the_refusal_of_a_global_read_says_what_was_refused() {
+        let refusal = GlobalReadFixture::read_without_global_values();
+        assert!(
+            refusal.title().contains("reading a global"),
+            "{}",
+            refusal.title()
+        );
     }
 }

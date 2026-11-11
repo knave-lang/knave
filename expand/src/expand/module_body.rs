@@ -1895,7 +1895,7 @@ impl Expander<'_> {
         ));
     }
 
-    pub(super) fn trait_binding_with_path(
+    fn trait_binding_with_path(
         &self,
         binding: BindingId,
         name: &Form,

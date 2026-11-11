@@ -14,6 +14,7 @@ mod local_closures;
 mod locals;
 mod method_elisions;
 mod mutable_locals;
+mod number_literal;
 mod opaque_borrows;
 mod open_literals;
 mod operator;

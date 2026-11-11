@@ -31,8 +31,10 @@ impl Diagnostics {
         self.items.retain(keep);
     }
 
-    pub fn truncate(&mut self, len: usize) {
-        self.items.truncate(len);
+    pub fn split_off(&mut self, at: usize) -> Self {
+        Self {
+            items: self.items.split_off(at),
+        }
     }
 
     pub fn map(self, relabel: impl FnMut(Diagnostic) -> Diagnostic) -> Self {

@@ -8,6 +8,11 @@ pub struct InputTerms {
     documented: Vec<Rc<str>>,
 }
 
+pub struct DocumentsLeft {
+    pub replacing: Rc<str>,
+    pub left: Vec<Rc<str>>,
+}
+
 impl InputTerms {
     pub fn binding(bound: Vec<BoundName>) -> Self {
         Self::documenting(bound, Vec::new())
@@ -27,6 +32,23 @@ impl InputTerms {
 
     pub fn binds(&self, name: &BoundName) -> bool {
         self.bound.iter().any(|bound| bound.names_the_same(name))
+    }
+
+    pub fn documents_left_by(&self, later: &InputTerms) -> Option<DocumentsLeft> {
+        let replacing = later
+            .documented
+            .iter()
+            .find(|term| self.documented.contains(term))?;
+        let left: Vec<Rc<str>> = self
+            .documented
+            .iter()
+            .filter(|term| !later.documented.contains(term))
+            .cloned()
+            .collect();
+        Some(DocumentsLeft {
+            replacing: Rc::clone(replacing),
+            left,
+        })
     }
 
     pub fn shares_a_term_with(&self, other: &InputTerms) -> bool {
@@ -96,6 +118,26 @@ mod tests {
         let documenting = TermsFixture::documenting(&["g"]);
         assert!(!binding.shares_a_term_with(&documenting));
         assert!(!documenting.shares_a_term_with(&binding));
+    }
+
+    #[test]
+    fn a_later_document_of_one_term_leaves_the_other_terms_behind() {
+        let earlier = TermsFixture::documenting(&["g", "k"]);
+        let left = earlier
+            .documents_left_by(&TermsFixture::documenting(&["g"]))
+            .expect("the later input documents `g` again");
+        assert_eq!(&*left.replacing, "g");
+        assert_eq!(left.left, [Rc::from("k")]);
+    }
+
+    #[test]
+    fn a_later_document_of_another_term_leaves_nothing() {
+        let earlier = TermsFixture::documenting(&["g"]);
+        assert!(
+            earlier
+                .documents_left_by(&TermsFixture::documenting(&["h"]))
+                .is_none()
+        );
     }
 
     #[test]

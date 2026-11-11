@@ -1,0 +1,21 @@
+---
+source: tests/cli.rs
+expression: repl.transcript()
+---
+exit code: Some(0)
+--- stdout
+(g)
+
+G2
+(defn k ())
+
+No documentation.
+--- stderr
+warning[L0249]: set aside `k` after `<input 5>`
+ --> <input 4>:1:1
+  |
+1 | (do (document (g) "G") (document (k) "K"))
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ set aside
+  |
+  = note: a `document` of `g` replaced the input that documented `k`
+  = help: enter the `document` of `k` again to keep it

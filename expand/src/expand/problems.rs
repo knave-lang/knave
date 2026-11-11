@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::rc::Rc;
 
+use super::set_aside_input::SetAsideInput;
 use crate::core::{
     KernelForm, KernelType, Keyword, ModulePath, Namespace, PassingAspect, PassingDifference,
 };
@@ -483,10 +484,7 @@ impl ExpandProblems {
             input.title(),
             Label::new(span, "set aside"),
         )
-        .with_note(format!(
-            "`{replacing}` replaced the input that defined {}",
-            input.listed_names()
-        ))
+        .with_note(input.replaced_note(replacing))
         .with_help(input.enter_again())
     }
 
@@ -1270,50 +1268,6 @@ impl ExpandProblems {
         match namespace {
             Namespace::Value => "",
             Namespace::Type => "type ",
-        }
-    }
-}
-
-pub struct SetAsideInput<'a> {
-    names: &'a [&'a str],
-    source: &'a str,
-    setter: &'a str,
-}
-
-impl<'a> SetAsideInput<'a> {
-    const LISTED_NAMES: usize = 3;
-
-    pub fn new(names: &'a [&'a str], source: &'a str, setter: &'a str) -> Self {
-        Self {
-            names,
-            source,
-            setter,
-        }
-    }
-
-    fn title(&self) -> String {
-        format!("set aside {} after `{}`", self.listed_names(), self.setter)
-    }
-
-    fn enter_again(&self) -> String {
-        let pronoun = if self.names.len() > 1 { "them" } else { "it" };
-        format!("enter {} again to use {pronoun}", self.listed_names())
-    }
-
-    fn listed_names(&self) -> String {
-        let quoted: Vec<String> = self.names.iter().map(|name| format!("`{name}`")).collect();
-        match quoted.as_slice() {
-            [] => format!("`{}`", self.source),
-            [only] => only.clone(),
-            shown if shown.len() <= Self::LISTED_NAMES => {
-                let (last, rest) = shown.split_last().expect("two names or more");
-                format!("{} and {last}", rest.join(", "))
-            }
-            more => format!(
-                "{} and {} more",
-                more[..Self::LISTED_NAMES].join(", "),
-                more.len() - Self::LISTED_NAMES
-            ),
         }
     }
 }

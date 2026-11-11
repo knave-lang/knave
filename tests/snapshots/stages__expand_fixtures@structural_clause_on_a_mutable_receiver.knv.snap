@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/structural_clause_on_a_mutable_receiver.knv
+---
+error[L0248]: a `structural` clause needs one method that takes `(ref self)`
+  --> expand/structural_clause_on_a_mutable_receiver.knv:8:3
+   |
+ 8 | /   (structural :struct ""
+ 9 | |               :field ""
+10 | |               :variant ""
+11 | |               :part ""
+12 | |               :bare ""))
+   | |_______________________^ this clause fills the body of one method
+   |
+   = help: declare one `(method name (fn ((ref self) ...) result))` in this `rust-trait`

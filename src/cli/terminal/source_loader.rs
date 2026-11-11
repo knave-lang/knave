@@ -22,7 +22,9 @@ impl<'a> SourceLoader<'a> {
     pub fn load(&mut self, path: &Path) -> Result<SourceId, ExitStatus> {
         match ModuleSources::read_file(path) {
             Ok(text) => Ok(self.add(path, text)),
-            Err(error) => Err(UnreadableFile::new(path, &error).report()),
+            Err(error) => Err(self
+                .output
+                .report_unreadable(&UnreadableFile::new(path, &error))),
         }
     }
 

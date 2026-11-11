@@ -2,7 +2,8 @@ use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use crate::cli::diagnostic_output::DiagnosticOutput;
+use crate::cli::diagnostic_output::{DiagnosticOutput, UnreadableFile};
+use crate::cli::exit_status::ExitStatus;
 use crate::cli::standard_error::StandardError;
 use crate::diagnostic::Diagnostics;
 use crate::source::SourceMap;
@@ -46,5 +47,11 @@ impl DiagnosticOutput for ProjectLoadWarning {
     fn write_error(&self, message: &str) {
         self.warn_once();
         self.output.write_error(message);
+    }
+
+    fn report_unreadable(&self, file: &UnreadableFile) -> ExitStatus {
+        self.warn_once();
+        StandardError::write_line(format_args!("warning: {file}"));
+        UnreadableFile::EXIT_STATUS
     }
 }

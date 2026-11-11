@@ -7074,7 +7074,7 @@ fn a_git_library_without_a_cache_directory_is_an_environment_error() {
 }
 
 #[test]
-fn fmt_with_an_unreadable_project_file_warns_after_the_read_error() {
+fn fmt_with_an_unreadable_project_file_warns_that_it_cannot_read_it() {
     let sandbox = Sandbox::new("fmt_unreadable_project")
         .with_file(&Language::project_file_name(), "(defproject app)\n")
         .with_file("src/main.knv", LOOP_CALL);

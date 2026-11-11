@@ -11,13 +11,15 @@ pub struct UnreadableFile<'a> {
 }
 
 impl<'a> UnreadableFile<'a> {
+    pub const EXIT_STATUS: ExitStatus = ExitStatus::UsageError;
+
     pub fn new(path: &'a Path, error: &'a io::Error) -> Self {
         Self { path, error }
     }
 
     pub fn report(&self) -> ExitStatus {
         StandardError::write_line(format_args!("error: {self}"));
-        ExitStatus::UsageError
+        Self::EXIT_STATUS
     }
 }
 

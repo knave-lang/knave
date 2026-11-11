@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::rc::Rc;
 
 use super::Expander;
 use super::expansion_limit::ExpansionLimit;
@@ -141,19 +142,16 @@ impl CompileTimeHost for Expander<'_> {
 
     fn module_definitions(&self, path: &Symbol, span: Span) -> Result<Vec<Symbol>, Diagnostic> {
         let record = self.loaded_module(path, span)?;
-        let defined = self
+        let names = self
             .modules
             .find(record.path())
-            .map_or_else(Vec::new, |module| {
-                ModuleDefinitions::of(&self.tables.bindings, module)
+            .map_or_else(Rc::default, |module| {
+                ModuleDefinitions::sorted_names(&self.tables.bindings, module)
             });
-        let names: BTreeSet<&str> = defined
-            .into_iter()
-            .map(|binding| self.tables.bindings.get(binding).name())
-            .collect();
+        let scopes = record.scopes().set();
         Ok(names
-            .into_iter()
-            .map(|name| Symbol::with_scopes(name, record.scopes().set()))
+            .iter()
+            .map(|name| Symbol::with_scopes(Rc::clone(name), scopes.clone()))
             .collect())
     }
 

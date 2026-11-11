@@ -203,19 +203,35 @@ impl BindingArena {
 pub struct ModuleDefinitions {
     indexed: usize,
     by_module: FxHashMap<ModuleId, BTreeSet<BindingId>>,
+    sorted_names: FxHashMap<ModuleId, Rc<[Rc<str>]>>,
 }
 
 impl ModuleDefinitions {
-    pub fn of(bindings: &BindingArena, module: ModuleId) -> Vec<BindingId> {
+    pub fn sorted_names(bindings: &BindingArena, module: ModuleId) -> Rc<[Rc<str>]> {
         let mut definitions = bindings.definitions.borrow_mut();
         definitions.index_new(bindings);
-        definitions
-            .by_module
-            .get(&module)
-            .into_iter()
-            .flatten()
-            .copied()
-            .collect()
+        definitions.names_of(bindings, module)
+    }
+
+    fn names_of(&mut self, bindings: &BindingArena, module: ModuleId) -> Rc<[Rc<str>]> {
+        let defined = self.by_module.get(&module);
+        let names = self
+            .sorted_names
+            .entry(module)
+            .or_insert_with(|| Self::sort_names(bindings, defined.into_iter().flatten()));
+        Rc::clone(names)
+    }
+
+    fn sort_names<'b>(
+        bindings: &BindingArena,
+        defined: impl Iterator<Item = &'b BindingId>,
+    ) -> Rc<[Rc<str>]> {
+        let mut names: Vec<Rc<str>> = defined
+            .map(|binding| bindings.get(*binding).shared_name())
+            .collect();
+        names.sort_unstable();
+        names.dedup();
+        names.into()
     }
 
     fn index_new(&mut self, bindings: &BindingArena) {
@@ -232,6 +248,7 @@ impl ModuleDefinitions {
         }
         if let Some(module) = bindings.get(binding).kind().defining_module() {
             self.by_module.entry(module).or_default().insert(binding);
+            self.sorted_names.remove(&module);
         }
     }
 
@@ -241,11 +258,12 @@ impl ModuleDefinitions {
     }
 
     fn forget(&mut self, binding: BindingId, kind: BindingKind) {
-        let held = kind
-            .defining_module()
-            .and_then(|module| self.by_module.get_mut(&module));
-        if let Some(definitions) = held {
+        let Some(module) = kind.defining_module() else {
+            return;
+        };
+        if let Some(definitions) = self.by_module.get_mut(&module) {
             definitions.remove(&binding);
+            self.sorted_names.remove(&module);
         }
     }
 }
@@ -255,6 +273,7 @@ mod tests {
     use super::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleDefinitions};
     use crate::core::ModuleId;
     use std::cell::Cell;
+    use std::rc::Rc;
 
     thread_local! {
         static MADE_IDS: Cell<usize> = const { Cell::new(0) };
@@ -295,40 +314,47 @@ mod tests {
             self.bindings.add(BindingInfo::new(name.into(), kind, None))
         }
 
-        fn defined_in(&self, module: ModuleId) -> Vec<BindingId> {
-            ModuleDefinitions::of(&self.bindings, module)
+        fn defined_in(&self, module: ModuleId) -> Vec<String> {
+            self.listing(module)
+                .iter()
+                .map(|name| name.to_string())
+                .collect()
+        }
+
+        fn listing(&self, module: ModuleId) -> Rc<[Rc<str>]> {
+            ModuleDefinitions::sorted_names(&self.bindings, module)
         }
     }
 
     #[test]
     fn a_module_lists_only_the_definitions_it_holds() {
         let mut fixture = DefinitionsFixture::new();
-        let area = fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
+        fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
         fixture.add("red", BindingKind::Global(DefinitionsFixture::colors()));
         fixture.add("width", BindingKind::Local);
-        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), [area]);
+        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), ["area"]);
     }
 
     #[test]
     fn a_definition_added_after_a_listing_joins_the_next_listing() {
         let mut fixture = DefinitionsFixture::new();
-        let area = fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
-        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), [area]);
-        let square = fixture.add("square", BindingKind::Struct(DefinitionsFixture::shapes()));
+        fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
+        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), ["area"]);
+        fixture.add("square", BindingKind::Struct(DefinitionsFixture::shapes()));
         assert_eq!(
             fixture.defined_in(DefinitionsFixture::shapes()),
-            [area, square]
+            ["area", "square"]
         );
     }
 
     #[test]
     fn a_module_leaves_out_the_definitions_a_macro_introduced() {
         let mut fixture = DefinitionsFixture::new();
-        let area = fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
+        fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
         let helper = fixture.add("helper", BindingKind::Global(DefinitionsFixture::shapes()));
         fixture.defined_in(DefinitionsFixture::shapes());
         fixture.bindings.mark_introduced(helper);
-        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), [area]);
+        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), ["area"]);
     }
 
     #[test]
@@ -370,7 +396,28 @@ mod tests {
         );
         fixture.defined_in(DefinitionsFixture::shapes());
         fixture.bindings.take_saved();
-        let red = fixture.add("red", BindingKind::Global(DefinitionsFixture::shapes()));
-        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), [red]);
+        fixture.add("red", BindingKind::Global(DefinitionsFixture::shapes()));
+        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), ["red"]);
+    }
+
+    #[test]
+    fn a_repeat_listing_with_no_change_builds_no_new_list() {
+        let mut fixture = DefinitionsFixture::new();
+        fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
+        let first = fixture.listing(DefinitionsFixture::shapes());
+        let second = fixture.listing(DefinitionsFixture::shapes());
+        assert!(Rc::ptr_eq(&first, &second));
+    }
+
+    #[test]
+    fn a_listing_holds_each_name_once_in_name_order() {
+        let mut fixture = DefinitionsFixture::new();
+        fixture.add("width", BindingKind::Global(DefinitionsFixture::shapes()));
+        fixture.add("square", BindingKind::Struct(DefinitionsFixture::shapes()));
+        fixture.add("square", BindingKind::Global(DefinitionsFixture::shapes()));
+        assert_eq!(
+            fixture.defined_in(DefinitionsFixture::shapes()),
+            ["square", "width"]
+        );
     }
 }

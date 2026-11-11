@@ -79,15 +79,9 @@ impl<'c, 'a> MissingCaseSearch<'c, 'a> {
             Some(owner) if !self.expanding.contains(&owner) => {
                 (Some(owner), self.catalog.constructors(ty))
             }
-            Some(_) => (None, self.covered_constructors(matrix, ty)),
+            Some(_) => (None, self.catalog.constructors_named_by(ty, matrix)),
             None => (None, self.catalog.constructors(ty)),
         }
-    }
-
-    fn covered_constructors(&self, matrix: &PatternMatrix, ty: &Type) -> Option<Vec<Constructor>> {
-        self.catalog
-            .constructors(ty)
-            .filter(|constructors| matrix.heads_cover(constructors))
     }
 
     fn while_expanding<T>(

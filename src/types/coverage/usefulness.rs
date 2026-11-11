@@ -1,8 +1,10 @@
+use super::column_head::ColumnHead;
 use super::constructor::Constructor;
 use super::constructor_catalog::ConstructorCatalog;
 use super::constructor_tag::ConstructorTag;
 use super::pattern_matrix::PatternMatrix;
 use super::query::Query;
+use crate::core::Literal;
 
 pub(super) struct Usefulness<'c, 'a> {
     catalog: &'c ConstructorCatalog<'a>,
@@ -23,23 +25,34 @@ impl<'c, 'a> Usefulness<'c, 'a> {
         if matrix.has_wild_row() {
             return false;
         }
-        let head = query.first_pattern();
-        if head.is_wild() {
-            return self.is_useful_wild(matrix, query);
-        }
-        match head.head_tag() {
-            Some(tag) => self.is_useful_tagged(matrix, query, tag),
-            None => self.is_useful_literal(matrix, query),
+        match query.first_pattern().kind().head() {
+            ColumnHead::Any => self.is_useful_wild(matrix, query),
+            ColumnHead::Constructor(tag) => self.is_useful_tagged(matrix, query, tag),
+            ColumnHead::Literal(literal) => self.is_useful_literal(matrix, query, literal),
         }
     }
 
     fn is_useful_wild(&self, matrix: &PatternMatrix, query: Query) -> bool {
-        match self.catalog.constructors(query.first_type()) {
-            Some(constructors) if matrix.heads_cover(&constructors) => constructors
+        match self
+            .catalog
+            .constructors_named_by(query.first_type(), matrix)
+        {
+            Some(constructors) => constructors
                 .iter()
                 .any(|constructor| self.is_useful_constructor(matrix, query, constructor)),
-            _ => self.is_useful(&matrix.default_rows(), query.rest()),
+            None => self.is_useful(&matrix.default_rows(), query.rest()),
         }
+    }
+
+    fn is_useful_tagged(&self, matrix: &PatternMatrix, query: Query, tag: ConstructorTag) -> bool {
+        self.catalog
+            .constructors(query.first_type())
+            .and_then(|constructors| {
+                constructors
+                    .into_iter()
+                    .find(|constructor| constructor.tag() == tag)
+            })
+            .is_some_and(|constructor| self.is_useful_constructor(matrix, query, &constructor))
     }
 
     fn is_useful_constructor(
@@ -48,40 +61,15 @@ impl<'c, 'a> Usefulness<'c, 'a> {
         query: Query,
         constructor: &Constructor,
     ) -> bool {
-        let expanded = query.expanded(constructor, &constructor.wild_arguments());
-        self.is_useful_specialized(matrix, constructor, expanded.query())
+        let arguments = constructor
+            .arguments_of(query.first_pattern())
+            .expect("a query's first pattern fits each constructor it is searched under");
+        let expanded = query.expanded(constructor, &arguments);
+        self.is_useful(&matrix.specialize(constructor), expanded.query())
     }
 
-    fn is_useful_tagged(&self, matrix: &PatternMatrix, query: Query, tag: ConstructorTag) -> bool {
-        let constructor = self
-            .catalog
-            .constructors(query.first_type())
-            .and_then(|constructors| {
-                constructors
-                    .into_iter()
-                    .find(|constructor| constructor.tag() == tag)
-            });
-        match constructor {
-            Some(constructor) => {
-                let expanded = query.expanded(&constructor, query.first_pattern().arguments());
-                self.is_useful_specialized(matrix, &constructor, expanded.query())
-            }
-            None => false,
-        }
-    }
-
-    fn is_useful_specialized(
-        &self,
-        matrix: &PatternMatrix,
-        constructor: &Constructor,
-        query: Query,
-    ) -> bool {
-        self.is_useful(&matrix.specialize(constructor), query)
-    }
-
-    fn is_useful_literal(&self, matrix: &PatternMatrix, query: Query) -> bool {
-        let specialized = matrix.specialize_literal(query.first_pattern());
-        self.is_useful(&specialized, query.rest())
+    fn is_useful_literal(&self, matrix: &PatternMatrix, query: Query, literal: &Literal) -> bool {
+        self.is_useful(&matrix.specialize_literal(literal), query.rest())
     }
 }
 

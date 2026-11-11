@@ -1,3 +1,4 @@
+mod column_head;
 mod constructor;
 mod constructor_catalog;
 mod constructor_tag;

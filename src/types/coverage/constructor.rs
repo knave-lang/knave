@@ -20,19 +20,12 @@ impl Constructor {
         self.arguments.len()
     }
 
-    pub(super) fn wild_arguments(&self) -> Vec<CoverPattern> {
-        vec![CoverPattern::wild(); self.arity()]
-    }
-
     pub(super) fn columns_with(&self, rest: &[Type]) -> Vec<Type> {
         [&self.arguments[..], rest].concat()
     }
 
     pub(super) fn arguments_of(&self, pattern: &CoverPattern) -> Option<Vec<CoverPattern>> {
-        if pattern.is_wild() {
-            return Some(self.wild_arguments());
-        }
-        (pattern.head_tag() == Some(self.tag)).then(|| pattern.arguments().to_vec())
+        pattern.kind().specialized_by(self.tag, self.arity())
     }
 }
 
@@ -97,13 +90,6 @@ mod tests {
     }
 
     #[test]
-    fn its_wild_arguments_are_one_wildcard_per_argument() {
-        let wild = ConstructorFixture::new().pair().wild_arguments();
-        assert_eq!(wild.len(), 2);
-        assert!(wild.iter().all(CoverPattern::is_wild));
-    }
-
-    #[test]
     fn its_columns_put_its_argument_types_before_the_rest() {
         let rest = [Type::Primitive(PrimitiveType::I64)];
         let columns = ConstructorFixture::new().pair().columns_with(&rest);
@@ -124,7 +110,7 @@ mod tests {
             .arguments_of(&CoverPattern::wild())
             .expect("a wildcard fits every constructor");
         assert_eq!(arguments.len(), 2);
-        assert!(arguments.iter().all(CoverPattern::is_wild));
+        assert!(arguments.iter().all(|argument| argument.kind().is_wild()));
     }
 
     #[test]
@@ -132,8 +118,8 @@ mod tests {
         let fixture = ConstructorFixture::new();
         let arguments = fixture.pair().arguments_of(&fixture.variant_pattern(0));
         let arguments = arguments.expect("the pattern has the constructor's tag");
-        assert!(arguments[0].head_tag() == Some(ConstructorTag::Bool(true)));
-        assert!(arguments[1].is_wild());
+        assert!(arguments[0].kind().names(ConstructorTag::Bool(true)));
+        assert!(arguments[1].kind().is_wild());
     }
 
     #[test]
@@ -179,6 +165,6 @@ mod tests {
             .arguments_of(&pattern)
             .expect("the pattern has the struct's tag");
         assert_eq!(fields.len(), 1);
-        assert!(fields[0].head_tag() == Some(ConstructorTag::Bool(false)));
+        assert!(fields[0].kind().names(ConstructorTag::Bool(false)));
     }
 }

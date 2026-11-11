@@ -128,7 +128,7 @@ impl<'m> BuiltinCall<'m> {
             operations.text.sorted_names()
         }),
         (Builtin::DistinctLeadingLines, |operations, _| {
-            operations.leading_lines.kept_texts()
+            operations.string_builders.leading_lines.kept_texts()
         }),
         (Builtin::Fail, |operations, _| operations.text.fail()),
         (Builtin::Warn, |operations, host| {
@@ -169,25 +169,25 @@ impl<'m> BuiltinCall<'m> {
             operations.text.string_strip_prefix()
         }),
         (Builtin::StringLines, |operations, _| {
-            operations.strings.lines()
+            operations.string_builders.strings.lines()
         }),
         (Builtin::StringTrimStart, |operations, _| {
-            operations.strings.trim_start()
+            operations.string_builders.strings.trim_start()
         }),
         (Builtin::StringTrimEnd, |operations, _| {
-            operations.strings.trim_end()
+            operations.string_builders.strings.trim_end()
         }),
         (Builtin::StringLength, |operations, _| {
-            operations.strings.length()
+            operations.string_builders.strings.length()
         }),
         (Builtin::StringDrop, |operations, _| {
-            operations.strings.drop()
+            operations.string_builders.strings.drop()
         }),
         (Builtin::StringLowercase, |operations, _| {
-            operations.strings.lowercase()
+            operations.string_builders.strings.lowercase()
         }),
         (Builtin::StringContains, |operations, _| {
-            operations.strings.contains()
+            operations.string_builders.strings.contains()
         }),
         (Builtin::AddModuleNote, |operations, host| {
             let group = host.granted(|host| host.module_notes())?;
@@ -259,10 +259,13 @@ impl<'m> BuiltinCall<'m> {
                 .apply(|limit| group.set_macro_step_limit(limit))
         }),
         (Builtin::ProjectFileName, |operations, _| {
-            operations.language_names.project_file_name()
+            operations
+                .string_builders
+                .language_names
+                .project_file_name()
         }),
         (Builtin::LanguageName, |operations, _| {
-            operations.language_names.language_name()
+            operations.string_builders.language_names.language_name()
         }),
         (Builtin::ReadForm, |operations, host| {
             let group = host.granted(|host| host.source_queries())?;
@@ -304,14 +307,12 @@ type Implementation =
     for<'a, 'h> fn(&Operations<'a>, BuiltinHost<'h, 'a>) -> Result<Value, Diagnostic>;
 
 struct Operations<'a> {
-    language_names: LanguageNames<'a>,
     lists: ListOperations<'a>,
     modules: ModuleOperations<'a>,
     numbers: NumberOperations<'a>,
     program: ProgramOperations<'a>,
     step_limit: StepLimitSetting<'a>,
-    strings: StringOperations<'a>,
-    leading_lines: DistinctLeadingLines<'a>,
+    string_builders: StringBuilders<'a>,
     text: TextOperations<'a>,
     warning: WarnCall<'a>,
 }
@@ -319,16 +320,30 @@ struct Operations<'a> {
 impl<'a> Operations<'a> {
     fn new(arguments: &'a Arguments<'a>, call_site: Span) -> Self {
         Self {
-            language_names: LanguageNames::new(arguments, call_site),
             lists: ListOperations::new(arguments, call_site),
             modules: ModuleOperations::new(arguments, call_site),
             numbers: NumberOperations::new(arguments, call_site),
             program: ProgramOperations::new(arguments, call_site),
             step_limit: StepLimitSetting::new(arguments),
-            strings: StringOperations::new(arguments, call_site),
-            leading_lines: DistinctLeadingLines::new(arguments, call_site),
+            string_builders: StringBuilders::new(arguments, call_site),
             text: TextOperations::new(arguments, call_site),
             warning: WarnCall::new(arguments),
+        }
+    }
+}
+
+struct StringBuilders<'a> {
+    strings: StringOperations<'a>,
+    leading_lines: DistinctLeadingLines<'a>,
+    language_names: LanguageNames<'a>,
+}
+
+impl<'a> StringBuilders<'a> {
+    fn new(arguments: &'a Arguments<'a>, call_site: Span) -> Self {
+        Self {
+            strings: StringOperations::new(arguments, call_site),
+            leading_lines: DistinctLeadingLines::new(arguments, call_site),
+            language_names: LanguageNames::new(arguments, call_site),
         }
     }
 }

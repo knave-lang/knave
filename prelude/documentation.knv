@@ -501,8 +501,9 @@
 
 (def tagged-fence
   (fn (line)
-    (if (value-eq (string-trim-start line) code-fence)
-      (string line code-language)
+    (local trimmed (string-trim-end line))
+    (if (value-eq trimmed code-fence)
+      (string trimmed code-language)
       line)))
 
 (def blank-line?

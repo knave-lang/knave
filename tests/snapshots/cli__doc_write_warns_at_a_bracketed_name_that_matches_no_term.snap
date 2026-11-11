@@ -1,0 +1,82 @@
+---
+source: tests/cli.rs
+expression: doc.assert_exit_code(0).stderr()
+---
+warning[L0802]: `zzqx` names no term that this page can link to
+ --> src/a.knv:3:31
+  |
+3 | (module "Parses text, unlike [zzqx].")
+  |                               ^^^^ no term to link to
+  |
+  = help: write the name of a term in the module's scope, or put the brackets inside backticks
+
+warning[L0802]: `a(b` names no term that this page can link to
+  --> src/a.knv:6:3
+   |
+ 6 | /   "Reads the [optoin] from `text`.
+ 7 | |
+ 8 | |   It keeps [parse] linked.
+ 9 | |     Indented [a(b], again.
+10 | |   Also [42], [)x] and [helpr]."
+   | |_______________________________^ no term to link to
+   |
+   = help: write the name of a term in the module's scope, or put the brackets inside backticks
+
+warning[L0802]: `42` names no term that this page can link to
+  --> src/a.knv:6:3
+   |
+ 6 | /   "Reads the [optoin] from `text`.
+ 7 | |
+ 8 | |   It keeps [parse] linked.
+ 9 | |     Indented [a(b], again.
+10 | |   Also [42], [)x] and [helpr]."
+   | |_______________________________^ no term to link to
+   |
+   = help: write the name of a term in the module's scope, or put the brackets inside backticks
+
+warning[L0802]: `)x` names no term that this page can link to
+  --> src/a.knv:6:3
+   |
+ 6 | /   "Reads the [optoin] from `text`.
+ 7 | |
+ 8 | |   It keeps [parse] linked.
+ 9 | |     Indented [a(b], again.
+10 | |   Also [42], [)x] and [helpr]."
+   | |_______________________________^ no term to link to
+   |
+   = help: write the name of a term in the module's scope, or put the brackets inside backticks
+
+warning[L0802]: `optoin` names no term that this page can link to
+ --> src/a.knv:6:15
+  |
+6 |   "Reads the [optoin] from `text`.
+  |               ^^^^^^ no term to link to
+  |
+help: a term with a similar name exists
+  |
+6 -   "Reads the [optoin] from `text`.
+6 +   "Reads the [option] from `text`.
+  |
+
+warning[L0802]: `helpr` names no term that this page can link to
+  --> src/a.knv:10:24
+   |
+10 |   Also [42], [)x] and [helpr]."
+   |                        ^^^^^ no term to link to
+   |
+help: a term with a similar name exists
+   |
+10 |   Also [42], [)x] and [helper]."
+   |                            +
+
+warning[L0802]: `parze` names no term that this page can link to
+  --> src/a.knv:15:16
+   |
+15 |   Counts like [parze]."
+   |                ^^^^^ no term to link to
+   |
+help: a term with a similar name exists
+   |
+15 -   Counts like [parze]."
+15 +   Counts like [parse]."
+   |

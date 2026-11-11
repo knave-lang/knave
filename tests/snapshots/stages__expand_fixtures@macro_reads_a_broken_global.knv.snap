@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/macro_reads_a_broken_global.knv
+---
+error[L0201]: cannot find `missing-a` in this scope
+ --> expand/macro_reads_a_broken_global.knv:4:20
+  |
+4 | (def two-errors (+ missing-a missing-b))
+  |                    ^^^^^^^^^ not found in this scope
+
+error[L0201]: cannot find `missing-b` in this scope
+ --> expand/macro_reads_a_broken_global.knv:4:30
+  |
+4 | (def two-errors (+ missing-a missing-b))
+  |                              ^^^^^^^^^ not found in this scope
+
+error[L0201]: cannot find `missing-c` in this scope
+ --> expand/macro_reads_a_broken_global.knv:6:26
+  |
+6 | (doubled one-error-twice missing-c)
+  |                          ^^^^^^^^^ not found in this scope

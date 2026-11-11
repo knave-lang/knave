@@ -123,13 +123,6 @@ impl Expander<'_> {
             .collect()
     }
 
-    pub(super) fn split_binder(binder: &Form) -> (&Form, Option<&Form>) {
-        match binder.as_list() {
-            Some([name, annotation]) if name.as_symbol().is_some() => (name, Some(annotation)),
-            _ => (binder, None),
-        }
-    }
-
     fn register_definitions(
         &mut self,
         module: ModuleId,
@@ -183,7 +176,10 @@ impl Expander<'_> {
     }
 
     fn report_misplaced_expressions(&mut self, written_span: Span) {
-        for span in self.evaluated_forms.misplaced_expressions(written_span) {
+        if !self.evaluated_forms.is_definition(written_span) {
+            return;
+        }
+        for span in self.evaluated_forms.left_out_within(written_span) {
             self.problems.report(ExpandProblems::not_a_definition(span));
         }
     }

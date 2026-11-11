@@ -1,7 +1,7 @@
 expand/src/core/kernel.rs 518
 expand/src/core/printer.rs 693
 expand/src/expand/expression.rs 1006
-expand/src/expand/module_body.rs 2003
+expand/src/expand/module_body.rs 1999
 expand/src/expand/problems.rs 1352
 expand/src/format/layout.rs 538
 src/emit/expressions.rs 2993

@@ -13,6 +13,13 @@ use crate::scope::ScopeKind;
 use crate::source::Span;
 
 impl Expander<'_> {
+    pub(super) fn split_binder(binder: &Form) -> (&Form, Option<&Form>) {
+        match binder.as_list() {
+            Some([name, annotation]) if name.as_symbol().is_some() => (name, Some(annotation)),
+            _ => (binder, None),
+        }
+    }
+
     pub(super) const DEF_FORM: KernelForm = KernelForm::Definition(DefinitionForm::Def);
     pub(super) const STRUCT_FORM: KernelForm = KernelForm::Definition(DefinitionForm::Struct);
     pub(super) const DO_FORM: KernelForm =

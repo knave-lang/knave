@@ -21,7 +21,8 @@ pub struct SourceWalk {
 impl SourceWalk {
     pub fn of(project: &LocatedProject) -> Self {
         let root = Self::walked_root(project);
-        let left_out = [project.tasks_directory(), project.tests_directory()]
+        let placement = project.placement();
+        let left_out = [placement.tasks_directory(), placement.tests_directory()]
             .iter()
             .filter_map(|directory| ProgramFile::canonical(directory))
             .collect();

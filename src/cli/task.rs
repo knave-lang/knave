@@ -65,8 +65,7 @@ impl TaskCommand {
         let project =
             LocatedProject::search_from(working_directory, terminal, FetchingStore::default())?
                 .ok_or_else(Self::report_no_project)?;
-        let directory = project.tasks_directory();
-        if !directory.is_dir() {
+        if !project.placement().tasks_directory().is_dir() {
             return Err(Self::report_no_tasks_directory());
         }
         Ok(EntryTree::of_tasks(project))

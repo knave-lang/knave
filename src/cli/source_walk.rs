@@ -2,7 +2,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use super::diagnostic_output::UnreadableFile;
+use super::diagnostic_output::{StandardErrorMessages, UnreadableFile};
 use super::entry_tree::TreeFile;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
@@ -36,9 +36,9 @@ impl SourceWalk {
     }
 
     pub fn module_paths(&self, terminal: &mut Terminal) -> Result<Vec<String>, ExitStatus> {
-        let files = self
-            .files()
-            .map_err(|error| UnreadableFile::new(&self.root, &error).report())?;
+        let files = self.files().map_err(|error| {
+            UnreadableFile::new(&self.root, &error).report_to(&StandardErrorMessages)
+        })?;
         if let Some(file) = files.iter().find(|file| file.is_unnamable()) {
             return Err(file.report_unnamable());
         }

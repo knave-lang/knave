@@ -1,3 +1,5 @@
+mod message_output;
+mod standard_error_messages;
 mod unreadable_file;
 
 use std::sync::Arc;
@@ -10,15 +12,13 @@ use super::json_replies::{JsonObject, JsonReplies};
 use super::standard_error::StandardError;
 use crate::diagnostic::{Diagnostic, DiagnosticRenderer, Diagnostics};
 use crate::source::{SourceMap, TextPosition};
+pub use message_output::MessageOutput;
+pub use standard_error_messages::StandardErrorMessages;
 pub use unreadable_file::UnreadableFile;
 
-pub trait DiagnosticOutput {
+pub trait DiagnosticOutput: MessageOutput {
     fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics);
     fn write_note(&self, sources: &SourceMap, message: &str);
-
-    fn write_error(&self, message: &str) {
-        StandardError::write_line(format_args!("error: {message}"));
-    }
 
     fn report(&self, sources: &SourceMap, diagnostics: &Diagnostics) -> ExitStatus {
         if !diagnostics.has_errors() {
@@ -41,6 +41,8 @@ struct JsonDiagnostic<'a> {
     sources: &'a SourceMap,
     renderer: DiagnosticRenderer<'a>,
 }
+
+impl MessageOutput for RenderedDiagnostics {}
 
 impl DiagnosticOutput for RenderedDiagnostics {
     fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics) {
@@ -72,6 +74,8 @@ impl JsonDiagnostics {
         Self { replies }
     }
 }
+
+impl MessageOutput for JsonDiagnostics {}
 
 impl DiagnosticOutput for JsonDiagnostics {
     fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics) {

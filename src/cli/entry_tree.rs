@@ -2,7 +2,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use super::diagnostic_output::UnreadableFile;
+use super::diagnostic_output::{StandardErrorMessages, UnreadableFile};
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
@@ -181,7 +181,9 @@ impl EntryTree {
     fn module_files(&self) -> Result<Vec<TreeFile>, ExitStatus> {
         let mut files = Vec::new();
         self.collect_modules(&self.path, &mut files)
-            .map_err(|error| UnreadableFile::new(&self.path, &error).report())?;
+            .map_err(|error| {
+                UnreadableFile::new(&self.path, &error).report_to(&StandardErrorMessages)
+            })?;
         files.sort();
         match files.iter().find(|file| self.kind.refuses(file)) {
             Some(file) => Err(file.report_unnamable()),

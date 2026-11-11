@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashSet;
 
-use super::diagnostic_output::DiagnosticOutput;
+use super::diagnostic_output::{DiagnosticOutput, MessageOutput};
 use crate::diagnostic::{DiagnosticRenderer, Diagnostics};
 use crate::source::SourceMap;
 
@@ -20,6 +20,8 @@ impl DistinctOutput {
         }
     }
 }
+
+impl MessageOutput for DistinctOutput {}
 
 impl DiagnosticOutput for DistinctOutput {
     fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics) {

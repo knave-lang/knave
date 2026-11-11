@@ -21,7 +21,7 @@ impl<'a> SourceLoader<'a> {
     pub fn load(&mut self, path: &Path) -> Result<SourceId, ExitStatus> {
         match ModuleSources::read_file(path) {
             Ok(text) => Ok(self.add(path, text)),
-            Err(error) => Err(self.report_unreadable(&UnreadableFile::new(path, &error))),
+            Err(error) => Err(UnreadableFile::new(path, &error).report_to(self.output)),
         }
     }
 
@@ -57,11 +57,6 @@ impl<'a> SourceLoader<'a> {
     fn report(&self, diagnostics: &Diagnostics) -> ExitStatus {
         self.output.report(self.sources, diagnostics)
     }
-
-    fn report_unreadable(&self, file: &UnreadableFile) -> ExitStatus {
-        self.output.write_error(&file.to_string());
-        UnreadableFile::EXIT_STATUS
-    }
 }
 
 #[cfg(test)]
@@ -70,7 +65,7 @@ mod tests {
     use std::path::Path;
 
     use super::SourceLoader;
-    use crate::cli::diagnostic_output::DiagnosticOutput;
+    use crate::cli::diagnostic_output::{DiagnosticOutput, MessageOutput};
     use crate::cli::exit_status::ExitStatus;
     use crate::diagnostic::Diagnostics;
     use crate::source::{SourceId, SourceMap, TextPosition};
@@ -90,7 +85,9 @@ mod tests {
         fn write_note(&self, _: &SourceMap, message: &str) {
             self.reports.borrow_mut().push(message.to_string());
         }
+    }
 
+    impl MessageOutput for RecordedOutput {
         fn write_error(&self, message: &str) {
             self.reports.borrow_mut().push(message.to_string());
         }

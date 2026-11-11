@@ -136,7 +136,8 @@ impl Diagnostic {
         self.report.missing_name.as_ref()
     }
 
-    pub fn with_rule(mut self, rule: RuleName) -> Self {
+    pub fn into_warning(mut self, rule: RuleName) -> Self {
+        self.report.severity = Severity::Warning;
         self.report.rule = Some(rule);
         self
     }
@@ -167,5 +168,50 @@ impl Diagnostic {
 
     pub fn helps(&self) -> &[Help] {
         &self.report.helps
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Diagnostic, DiagnosticCode, Label, RuleName, Severity};
+    use crate::source::{SourceId, Span};
+
+    struct WarningFixture;
+
+    impl WarningFixture {
+        const RULE: &str = "unmatched-link";
+        const HELP: &str = "move the van";
+        const EARLIER: &str = "parked before";
+
+        fn warning() -> Diagnostic {
+            let span = Span::new(SourceId::new(0), 0..4);
+            Diagnostic::error(
+                DiagnosticCode::UNMATCHED_LINK,
+                "the van is parked",
+                Label::new(span, "here"),
+            )
+            .with_label(Label::new(span, Self::EARLIER))
+            .with_help(Self::HELP)
+            .into_warning(RuleName::new(Self::RULE))
+        }
+    }
+
+    #[test]
+    fn a_warning_carries_its_lint_rule() {
+        let rule = WarningFixture::warning().rule().cloned();
+        assert_eq!(rule, Some(RuleName::new(WarningFixture::RULE)));
+    }
+
+    #[test]
+    fn a_warning_has_the_warning_severity() {
+        assert_eq!(WarningFixture::warning().severity(), Severity::Warning);
+    }
+
+    #[test]
+    fn a_warning_keeps_the_labels_and_help_it_was_built_with() {
+        let warning = WarningFixture::warning();
+        let labels: Vec<&str> = warning.labels().map(Label::message).collect();
+        assert_eq!(labels, ["here", WarningFixture::EARLIER]);
+        assert_eq!(warning.helps()[0].message(), WarningFixture::HELP);
     }
 }

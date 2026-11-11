@@ -566,15 +566,15 @@
 
 (def printed-listing
   (fn (form)
-    (template (println (unquote (listing-results form))))))
-
-(def listing-results
-  (fn (form)
     (local body
       (expand-call (list (quote doc-body) form)))
     (if (empty? body)
       (template (doc-body (unquote form)))
-      (string-strip-prefix (first body) "\n\n"))))
+      (printed-results (first body)))))
+
+(def printed-results
+  (fn (body)
+    (template (println (unquote (string-strip-prefix body "\n\n"))))))
 
 (document (dir module)
   "Prints the names a module exports, in name order.

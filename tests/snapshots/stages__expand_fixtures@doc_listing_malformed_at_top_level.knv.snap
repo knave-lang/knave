@@ -1,0 +1,60 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/doc_listing_malformed_at_top_level.knv
+---
+error[L0301]: `dir` takes one module name, or nothing
+ --> expand/doc_listing_malformed_at_top_level.knv:1:1
+  |
+1 | (dir a b)
+  | ^^^^^^^^^ not one module name
+  |
+  = help: write `(dir)`, or a module as in `(dir geometry)`
+
+error[L0301]: `dir` takes one module name, or nothing
+ --> expand/doc_listing_malformed_at_top_level.knv:3:1
+  |
+3 | (dir "x")
+  | ^^^^^^^^^ not one module name
+  |
+  = help: write `(dir)`, or a module as in `(dir geometry)`
+
+error[L0301]: `apropos` takes one symbol or string to search for
+ --> expand/doc_listing_malformed_at_top_level.knv:5:1
+  |
+5 | (apropos 1)
+  | ^^^^^^^^^^^ not one search text
+  |
+  = help: write `(apropos sort)`, or `(apropos "sorted map")` for text with spaces
+
+error[L0301]: `apropos` takes one symbol or string to search for
+ --> expand/doc_listing_malformed_at_top_level.knv:7:1
+  |
+7 | (apropos)
+  | ^^^^^^^^^ not one search text
+  |
+  = help: write `(apropos sort)`, or `(apropos "sorted map")` for text with spaces
+
+error[L0301]: `find-doc` takes one symbol or string to search for
+ --> expand/doc_listing_malformed_at_top_level.knv:9:1
+  |
+9 | (find-doc (x))
+  | ^^^^^^^^^^^^^^ not one search text
+  |
+  = help: write `(find-doc sort)`, or `(find-doc "sorted map")` for text with spaces
+
+error[L0301]: `find-doc` takes one symbol or string to search for
+  --> expand/doc_listing_malformed_at_top_level.knv:11:1
+   |
+11 | (find-doc)
+   | ^^^^^^^^^^ not one search text
+   |
+   = help: write `(find-doc sort)`, or `(find-doc "sorted map")` for text with spaces
+
+error[L0301]: `dir` takes one module name, or nothing
+  --> expand/doc_listing_malformed_at_top_level.knv:16:1
+   |
+16 | (m)
+   | ^^^ not one module name
+   |
+   = help: write `(dir)`, or a module as in `(dir geometry)`

@@ -1,0 +1,16 @@
+(dir a b)
+
+(dir "x")
+
+(apropos 1)
+
+(apropos)
+
+(find-doc (x))
+
+(find-doc)
+
+(defmacro m ()
+  (quote (dir (geo/shapes))))
+
+(m)

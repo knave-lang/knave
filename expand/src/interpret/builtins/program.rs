@@ -3,7 +3,6 @@ use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::Arguments;
 use crate::interpret::list_size::ListSize;
 use crate::interpret::{BuildLimit, ModuleQueries, PlannedList, SourceQueries, Value, WorkMeter};
-use crate::language::Language;
 use crate::reader::{Form, FormKind, Number, NumberValue, Symbol};
 use crate::source::Span;
 
@@ -27,12 +26,6 @@ impl<'a> ProgramOperations<'a> {
             FormKind::String(location.into()),
             self.call_site,
         )))
-    }
-
-    pub fn project_file_name(&self) -> Result<Value, Diagnostic> {
-        self.arguments.expect_count(0)?;
-        let name = FormKind::String(Language::project_file_name().into());
-        Ok(Value::Form(Form::new(name, self.call_site)))
     }
 
     pub fn pinned_at(&self) -> Result<Value, Diagnostic> {

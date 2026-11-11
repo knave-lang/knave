@@ -77,13 +77,14 @@ pub enum Builtin {
     RequireModule,
     SetMacroStepLimit,
     ProjectFileName,
+    LanguageName,
     ReadForm,
     Located,
     ProjectModules,
 }
 
 impl Builtin {
-    const NAMES: [(Builtin, &'static str); 73] = [
+    const NAMES: [(Builtin, &'static str); 74] = [
         (Builtin::First, "first"),
         (Builtin::Rest, "rest"),
         (Builtin::List, "list"),
@@ -154,6 +155,7 @@ impl Builtin {
         (Builtin::RequireModule, "require-module"),
         (Builtin::SetMacroStepLimit, "set-macro-step-limit"),
         (Builtin::ProjectFileName, "project-file-name"),
+        (Builtin::LanguageName, "language-name"),
         (Builtin::ReadForm, "read-form"),
         (Builtin::Located, "located"),
         (Builtin::ProjectModules, "project-modules"),

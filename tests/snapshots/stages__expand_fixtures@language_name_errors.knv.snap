@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/language_name_errors.knv
+---
+error[L0311]: `language-name` takes 0 arguments but 1 was given
+ --> expand/language_name_errors.knv:4:17
+  |
+4 |   (macro (form) (language-name 1)))
+  |                 ^^^^^^^^^^^^^^^^^ 1 argument given
+5 |
+6 | (def name (extra-argument))
+  |           ---------------- in this macro call

@@ -1,6 +1,7 @@
 mod code_book;
 mod failure;
 mod joined_parts;
+mod language_names;
 mod leading_lines;
 mod lists;
 mod numbers;
@@ -21,6 +22,7 @@ use crate::core::{Builtin, Declaration};
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Number, NumberValue};
 use crate::source::Span;
+use language_names::LanguageNames;
 use leading_lines::DistinctLeadingLines;
 use lists::ListOperations;
 use numbers::NumberOperations;
@@ -37,7 +39,7 @@ pub struct BuiltinCall<'m> {
 }
 
 impl<'m> BuiltinCall<'m> {
-    const IMPLEMENTATIONS: [(Builtin, Implementation); 73] = [
+    const IMPLEMENTATIONS: [(Builtin, Implementation); 74] = [
         (Builtin::First, |operations, _| operations.lists.first()),
         (Builtin::Rest, |operations, _| operations.lists.rest()),
         (Builtin::List, |operations, _| operations.lists.list()),
@@ -230,7 +232,10 @@ impl<'m> BuiltinCall<'m> {
                 .apply(|limit| host.set_macro_step_limit(limit))
         }),
         (Builtin::ProjectFileName, |operations, _| {
-            operations.program.project_file_name()
+            operations.language_names.project_file_name()
+        }),
+        (Builtin::LanguageName, |operations, _| {
+            operations.language_names.language_name()
         }),
         (Builtin::ReadForm, |operations, host| {
             operations.program.read_form(host)
@@ -270,6 +275,7 @@ type Implementation =
     for<'a> fn(&Operations<'a>, &mut dyn CompileTimeHost) -> Result<Value, Diagnostic>;
 
 struct Operations<'a> {
+    language_names: LanguageNames<'a>,
     lists: ListOperations<'a>,
     modules: ModuleOperations<'a>,
     numbers: NumberOperations<'a>,
@@ -284,6 +290,7 @@ struct Operations<'a> {
 impl<'a> Operations<'a> {
     fn new(arguments: &'a Arguments<'a>, call_site: Span) -> Self {
         Self {
+            language_names: LanguageNames::new(arguments, call_site),
             lists: ListOperations::new(arguments, call_site),
             modules: ModuleOperations::new(arguments, call_site),
             numbers: NumberOperations::new(arguments, call_site),

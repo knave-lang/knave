@@ -1,0 +1,6 @@
+(use code language-name)
+
+(def extra-argument
+  (macro (form) (language-name 1)))
+
+(def name (extra-argument))

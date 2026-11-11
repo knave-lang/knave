@@ -1,16 +1,22 @@
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
+use std::rc::Rc;
 
+use rustc_hash::FxHashMap;
+
+use super::diagnostic_output::DiagnosticOutput;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use crate::diagnostic::Diagnostics;
 use crate::format::{FormatFailure, ModuleLookup, SourceFormatter};
 use crate::language::Language;
 use crate::modules::ModuleSources;
+use crate::source::SourceMap;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum FmtMode {
@@ -23,6 +29,7 @@ pub struct FmtCommand {
     mode: FmtMode,
     standard_input_path: Option<PathBuf>,
     formatter: SourceFormatter,
+    lookups: ModuleLookups,
 }
 
 struct WorstStatus {
@@ -32,6 +39,13 @@ struct WorstStatus {
 struct SourceFiles {
     skipped: SkippedDirectory,
 }
+
+struct ModuleLookups {
+    terminal: Terminal,
+    projects: FxHashMap<PathBuf, Option<LocatedProject>>,
+}
+
+struct UnreportedDiagnostics;
 
 impl FmtCommand {
     pub const STANDARD_INPUT: &'static str = "-";
@@ -43,6 +57,7 @@ impl FmtCommand {
             mode,
             standard_input_path,
             formatter: SourceFormatter::default(),
+            lookups: ModuleLookups::new(),
         }
     }
 
@@ -76,7 +91,7 @@ impl FmtCommand {
             .standard_input_path
             .clone()
             .unwrap_or_else(|| PathBuf::from(Self::STANDARD_INPUT_NAME));
-        let lookup = SourceFiles::lookup_beside(&name);
+        let lookup = self.lookups.lookup_for(&name);
         match self.formatted(terminal, &name, text.clone(), &lookup) {
             Ok(formatted) => self.answer_standard_input(terminal, &name, &text, &formatted),
             Err(status) => status,
@@ -140,7 +155,7 @@ impl FmtCommand {
             Ok(text) => text,
             Err(error) => return Terminal::report_unreadable(path, &error),
         };
-        let lookup = SourceFiles::lookup_beside(path);
+        let lookup = self.lookups.lookup_for(path);
         match self.formatted(terminal, path, text.clone(), &lookup) {
             Ok(formatted) if formatted == text => ExitStatus::Success,
             Ok(formatted) => self.apply(terminal, path, &formatted),
@@ -268,14 +283,56 @@ impl SourceFiles {
         path.extension()
             .is_some_and(|extension| extension == Language::EXTENSION)
     }
+}
 
-    fn lookup_beside(path: &Path) -> ModuleLookup {
-        let directory = ProgramFile::directory_of(path);
-        let absolute = fs::canonicalize(Path::new(Self::CURRENT_DIRECTORY).join(&directory))
-            .unwrap_or(directory);
-        if ProgramFile::is_project_file(path) {
-            return ModuleLookup::beside_project_file(&absolute);
+impl ModuleLookups {
+    fn new() -> Self {
+        Self {
+            terminal: Terminal::reporting_to(Rc::new(UnreportedDiagnostics)),
+            projects: FxHashMap::default(),
         }
-        ModuleLookup::beside(&absolute)
     }
+
+    fn lookup_for(&mut self, path: &Path) -> ModuleLookup {
+        let directory = Self::absolute_directory_of(path);
+        if ProgramFile::is_project_file(path) {
+            return ModuleLookup::beside_project_file(&directory);
+        }
+        match self.project_around(&directory) {
+            Some(project) => {
+                let file = Self::file_as_placed(project, path);
+                ModuleLookup::within_project(file.module_sources(), &directory)
+            }
+            None => ModuleLookup::beside(&directory),
+        }
+    }
+
+    fn file_as_placed(project: &LocatedProject, path: &Path) -> ProgramFile {
+        let file = project.file_within(path.to_path_buf());
+        match ProgramFile::relative_module(path, &project.tests_directory()) {
+            Some(_) => project.test_file(file),
+            None => file,
+        }
+    }
+
+    fn absolute_directory_of(path: &Path) -> PathBuf {
+        let directory = ProgramFile::directory_of(path);
+        let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
+        fs::canonicalize(working_directory.join(&directory)).unwrap_or(directory)
+    }
+
+    fn project_around(&mut self, directory: &Path) -> Option<&LocatedProject> {
+        let root = LocatedProject::canonical_root(directory)?;
+        let terminal = &self.terminal;
+        self.projects
+            .entry(root)
+            .or_insert_with_key(|root| LocatedProject::search_from(root, terminal).ok().flatten())
+            .as_ref()
+    }
+}
+
+impl DiagnosticOutput for UnreportedDiagnostics {
+    fn write(&self, _sources: &SourceMap, _diagnostics: &Diagnostics) {}
+
+    fn write_note(&self, _sources: &SourceMap, _message: &str) {}
 }

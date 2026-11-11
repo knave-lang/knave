@@ -235,6 +235,9 @@ const UNCLOSED: &str = "(defn main ()\n  (println 1)\n";
 const LOOP_SHAPE: &str = "(use prelude/macros header-shape)\n\n(export dotimes)\n\n(defrule dotimes ((binding body ...) (do body ...)))\n\n(header-shape (dotimes binding))\n";
 const LOOP_CALL: &str = "(use shapes/loops dotimes)\n\n(dotimes (index 10) (println \"first line of the body\") (println index))\n";
 const LOOP_CALL_SHAPED: &str = "(use shapes/loops dotimes)\n\n(dotimes (index 10)\n  (println \"first line of the body\")\n  (println index))\n";
+const LOOPING_LIBRARY_ROOT: &str = "(use shapes/loops dotimes)\n\n(export dotimes)\n";
+const LOOPING_CALL: &str = "(use looping dotimes)\n\n(dotimes (index 10) (println \"first line of the body\") (println index))\n";
+const LOOPING_CALL_SHAPED: &str = "(use looping dotimes)\n\n(dotimes (index 10)\n  (println \"first line of the body\")\n  (println index))\n";
 
 const UNBOUND_NAMES_PAST_THE_CAP: usize = 25;
 
@@ -1470,6 +1473,77 @@ fn fmt_of_standard_input_reads_shapes_from_modules_beside_its_stdin_path() {
     );
     formatted.assert_silent_success();
     assert_eq!(formatted.stdout(), LOOP_CALL_SHAPED);
+}
+
+#[test]
+fn fmt_lays_out_a_test_file_by_a_shape_in_the_project_source() {
+    let sandbox = Sandbox::new("fmt_test_file_shapes")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file("src/shapes/loops.knv", LOOP_SHAPE)
+        .with_file("tests/loops-test.knv", LOOP_CALL);
+    sandbox
+        .compiler(&["fmt", "tests/loops-test.knv"])
+        .assert_silent_success();
+    assert_eq!(sandbox.contents("tests/loops-test.knv"), LOOP_CALL_SHAPED);
+}
+
+#[test]
+fn fmt_lays_out_a_task_file_by_a_shape_in_the_project_source() {
+    let sandbox = Sandbox::new("fmt_task_file_shapes")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file("src/shapes/loops.knv", LOOP_SHAPE)
+        .with_file("tasks/demo/loops.knv", LOOP_CALL);
+    sandbox
+        .compiler(&["fmt", "tasks/demo/loops.knv"])
+        .assert_silent_success();
+    assert_eq!(sandbox.contents("tasks/demo/loops.knv"), LOOP_CALL_SHAPED);
+}
+
+#[test]
+fn fmt_lays_out_a_call_by_a_shape_in_a_library_of_the_project() {
+    let sandbox = Sandbox::new("fmt_library_shapes")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (looping :path \"../looping\")))\n",
+        )
+        .with_file("app/src/main.knv", LOOPING_CALL)
+        .with_file(
+            &format!("looping/{}", Language::project_file_name()),
+            "(defproject looping)\n",
+        )
+        .with_file("looping/src/lib.knv", LOOPING_LIBRARY_ROOT)
+        .with_file("looping/src/shapes/loops.knv", LOOP_SHAPE);
+    sandbox
+        .compiler(&["fmt", "app/src/main.knv"])
+        .assert_silent_success();
+    assert_eq!(sandbox.contents("app/src/main.knv"), LOOPING_CALL_SHAPED);
+}
+
+#[test]
+fn fmt_in_a_project_also_finds_a_module_beside_a_parent_directory() {
+    let sandbox = Sandbox::new("fmt_project_parent_shapes")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file("shapes/loops.knv", LOOP_SHAPE)
+        .with_file("scripts/loops.knv", LOOP_CALL);
+    sandbox
+        .compiler(&["fmt", "scripts/loops.knv"])
+        .assert_silent_success();
+    assert_eq!(sandbox.contents("scripts/loops.knv"), LOOP_CALL_SHAPED);
+}
+
+#[test]
+fn fmt_in_a_project_whose_libraries_cannot_load_lays_out_by_the_directory_search() {
+    let sandbox = Sandbox::new("fmt_unloadable_project")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject app (libraries (missing :path \"../missing\")))\n",
+        )
+        .with_file("src/shapes/loops.knv", LOOP_SHAPE)
+        .with_file("src/main.knv", LOOP_CALL);
+    sandbox
+        .compiler(&["fmt", "src/main.knv"])
+        .assert_silent_success();
+    assert_eq!(sandbox.contents("src/main.knv"), LOOP_CALL_SHAPED);
 }
 
 #[test]

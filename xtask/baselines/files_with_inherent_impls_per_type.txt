@@ -1,6 +1,6 @@
 expand/src/expand/mod.rs::Expander 25
 expand/src/expand/mod.rs::Program 2
 src/emit/expressions.rs::ExpressionEmitter 3
-src/types/checker.rs::TypeChecker 13
+src/types/checker.rs::TypeChecker 12
 src/types/typed.rs::TypedExpr 2
 xtask/src/failure.rs::TaskFailure 2

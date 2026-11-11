@@ -8435,6 +8435,14 @@ fn check_without_a_file_checks_every_task() {
 }
 
 #[test]
+fn check_of_a_named_file_skips_the_project_tasks() {
+    let check = Sandbox::with_tasks("check_named_file_skips_tasks")
+        .with_file("tasks/mistyped.knv", MISTYPED_TASK)
+        .compiler(&["check", "src/main.knv"]);
+    check.assert_exit_code(0);
+}
+
+#[test]
 fn check_of_a_task_file_resolves_use_from_the_source_root() {
     let check = Sandbox::with_tasks("check_task_file").compiler(&["check", "tasks/chores.knv"]);
     check.assert_exit_code(0);

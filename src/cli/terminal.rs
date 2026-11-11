@@ -460,18 +460,7 @@ impl Terminal {
     fn expander_rooted(&mut self, file: &ProgramFile) -> Expander<'_> {
         let prelude =
             PreludeState::load(Self::SAVED_PRELUDE).expect("the embedded prelude state loads");
-        Expander::with_prelude(&mut self.sources, Self::module_sources(file), prelude)
-    }
-
-    fn module_sources(file: &ProgramFile) -> ModuleSources {
-        let directory = file.root().to_path_buf();
-        let sources = ModuleSources::new(directory.clone(), directory)
-            .with_libraries(file.libraries().clone())
-            .within(file.scope().clone());
-        match file.fallback_root() {
-            Some(fallback_root) => sources.with_fallback_root(fallback_root.to_path_buf()),
-            None => sources,
-        }
+        Expander::with_prelude(&mut self.sources, file.module_sources(), prelude)
     }
 
     pub fn print_diagnostics(&self, diagnostics: &Diagnostics) {

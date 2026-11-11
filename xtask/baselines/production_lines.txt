@@ -5,7 +5,7 @@ expand/src/expand/module_body.rs 2007
 expand/src/expand/problems.rs 1353
 expand/src/format/layout.rs 538
 src/cli/mod.rs 558
-src/cli/terminal.rs 566
+src/cli/terminal.rs 555
 src/emit/expressions.rs 2993
 src/emit/items.rs 1688
 src/emit/plan.rs 680

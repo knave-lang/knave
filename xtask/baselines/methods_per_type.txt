@@ -16,7 +16,7 @@ expand/src/reader/mod.rs::Reader 26
 expand/src/scope/scope_set.rs::ScopeSet 27
 src/cli/library_walk.rs::LibraryWalk 22
 src/cli/located_project.rs::LocatedProject 23
-src/cli/terminal.rs::Terminal 59
+src/cli/terminal.rs::Terminal 58
 src/emit/expressions.rs::ExpressionEmitter 229
 src/emit/items.rs::ItemEmitter 84
 src/emit/plan.rs::EmitPlan 48

@@ -149,7 +149,7 @@
 (document sequence
   "Marks a type that `len` and `empty?` read.
 
-  [str], [string], a vector, a slice, a map and a reference to any of them
+  `str`, [string], a vector, a slice, a map and a reference to any of them
   implement it.
 
   (infer len)

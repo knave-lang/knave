@@ -766,6 +766,8 @@
   with `(use prelude/macros map-list)`.
 
   ```
+  (use prelude/macros map-list)
+
   (defmacro doubled-sum (x ...)
     (template
       (+ (splice (map-list x (fn (item) (template (* 2 (unquote item)))))))))

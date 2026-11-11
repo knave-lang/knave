@@ -388,10 +388,7 @@ impl<'s> Expander<'s> {
         module: ModuleId,
         since: NotesCheckpoint,
     ) -> DocumentedTerms<'_> {
-        let noted = NotedTerms {
-            module,
-            terms: self.noted_terms(module, since),
-        };
+        let noted = self.noted_terms(module, since);
         DocumentedTerms::new(self.term_resolver(), &self.duplicate_definitions, noted)
     }
 
@@ -399,21 +396,22 @@ impl<'s> Expander<'s> {
         TermResolver::new(&self.tables.table, &self.tables.bindings, self.phase)
     }
 
-    fn noted_terms(&mut self, module: ModuleId, since: NotesCheckpoint) -> Vec<NotedTerm> {
+    fn noted_terms(&mut self, module: ModuleId, since: NotesCheckpoint) -> NotedTerms {
         if self.skips_document_check(module, since) {
-            return Vec::new();
+            return NotedTerms::new(module, Vec::new());
         }
         let Some(notes) = self.docstring_notes() else {
-            return Vec::new();
+            return NotedTerms::new(module, Vec::new());
         };
-        notes
+        let terms = notes
             .keys()
             .into_iter()
             .flat_map(|key| self.tables.module_notes.added_since(since, module, key))
             .collect::<Vec<Form>>()
             .into_iter()
             .filter_map(|note| self.noted_term(&notes.noted_term, note))
-            .collect()
+            .collect();
+        NotedTerms::new(module, terms)
     }
 
     fn skips_document_check(&self, module: ModuleId, since: NotesCheckpoint) -> bool {

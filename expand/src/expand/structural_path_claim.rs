@@ -2,21 +2,21 @@ use crate::core::BindingId;
 use crate::source::Span;
 
 #[derive(Clone, Copy, serde::Serialize, serde::Deserialize)]
-pub struct StructuralPathClaim {
+pub(super) struct StructuralPathClaim {
     owner: BindingId,
     clause: Span,
 }
 
 impl StructuralPathClaim {
-    pub fn new(owner: BindingId, clause: Span) -> Self {
+    pub(super) fn new(owner: BindingId, clause: Span) -> Self {
         Self { owner, clause }
     }
 
-    pub fn owner(self) -> BindingId {
+    pub(super) fn owner(self) -> BindingId {
         self.owner
     }
 
-    pub fn clause(self) -> Span {
+    pub(super) fn clause(self) -> Span {
         self.clause
     }
 }

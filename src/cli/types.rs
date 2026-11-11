@@ -1,20 +1,20 @@
-use std::path::PathBuf;
-
+use super::entry_argument::EntryArgument;
 use super::exit_status::ExitStatus;
-use super::located_program::LocatedProgram;
 use super::terminal::Terminal;
 
 pub struct TypesCommand {
-    file: Option<PathBuf>,
+    entry: EntryArgument,
 }
 
 impl TypesCommand {
-    pub fn new(file: Option<PathBuf>) -> Self {
-        Self { file }
+    pub fn new(entry: EntryArgument) -> Self {
+        Self { entry }
     }
 
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
-        match LocatedProgram::locate(self.file, terminal)
+        match self
+            .entry
+            .locate(terminal)
             .and_then(|program| terminal.check(program.file()))
         {
             Ok(program) => terminal.write_output(program.entry_signatures()),

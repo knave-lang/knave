@@ -59,11 +59,11 @@ pub enum InspectionCommand {
 impl InspectionCommand {
     pub fn execute(self, terminal: &mut Terminal) -> ExitStatus {
         match self {
-            Self::Check { entry } => CheckCommand::new(entry.into_file()).run(terminal),
-            Self::Types { entry } => TypesCommand::new(entry.into_file()).run(terminal),
+            Self::Check { entry } => CheckCommand::new(entry).run(terminal),
+            Self::Types { entry } => TypesCommand::new(entry).run(terminal),
             Self::Doc(arguments) => arguments.run(terminal),
-            Self::Expand { entry } => ExpandCommand::new(entry.into_file()).run(terminal),
-            Self::Emit { entry } => EmitCommand::new(entry.into_file()).run(terminal),
+            Self::Expand { entry } => ExpandCommand::new(entry).run(terminal),
+            Self::Emit { entry } => EmitCommand::new(entry).run(terminal),
             Self::Fmt {
                 paths,
                 check,

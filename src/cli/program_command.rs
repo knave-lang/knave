@@ -101,7 +101,7 @@ impl ProgramCommand {
                 release,
                 output,
             } => BuildCommand::new(
-                entry.into_file(),
+                entry,
                 BuildOptions {
                     profile: release.profile(),
                     output,
@@ -150,7 +150,7 @@ impl ProgramCommand {
                 release,
                 args,
             } => RunCommand::new(
-                entry.into_file(),
+                entry,
                 BuildOptions {
                     profile: release.profile(),
                     output: None,

@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn its_first_column_gives_the_first_pattern_and_type() {
         let fixture = QueryFixture::new();
-        assert!(fixture.query().first_pattern().is_wild());
+        assert!(fixture.query().first_pattern().kind().is_wild());
         assert_eq!(fixture.query().first_type(), &QueryFixture::text());
     }
 
@@ -110,7 +110,11 @@ mod tests {
     fn its_rest_drops_the_first_column() {
         let fixture = QueryFixture::new();
         let rest = fixture.query().rest();
-        assert!(rest.first_pattern().head_tag() == Some(ConstructorTag::Bool(false)));
+        assert!(
+            rest.first_pattern()
+                .kind()
+                .names(ConstructorTag::Bool(false))
+        );
         assert_eq!(rest.first_type(), &QueryFixture::boolean());
         assert!(rest.rest().is_empty());
     }
@@ -124,7 +128,13 @@ mod tests {
             .expanded(&constructor, &[CoverPattern::wild()]);
         let query = expanded.query();
         assert_eq!(query.first_type(), &QueryFixture::unit());
-        assert!(query.rest().first_pattern().head_tag() == Some(ConstructorTag::Bool(false)));
+        assert!(
+            query
+                .rest()
+                .first_pattern()
+                .kind()
+                .names(ConstructorTag::Bool(false))
+        );
         assert_eq!(query.rest().first_type(), &QueryFixture::boolean());
     }
 }

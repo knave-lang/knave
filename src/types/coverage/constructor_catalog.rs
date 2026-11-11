@@ -1,5 +1,6 @@
 use super::constructor::Constructor;
 use super::constructor_tag::ConstructorTag;
+use super::pattern_matrix::PatternMatrix;
 use crate::core::{BindingId, PrimitiveType};
 use crate::types::Type;
 use crate::types::enums::VariantPayloads;
@@ -32,6 +33,15 @@ impl<'a> ConstructorCatalog<'a> {
         let owned =
             self.payloads.variant_count(owner).is_some() || self.structs.get(owner).is_some();
         owned.then_some(owner)
+    }
+
+    pub(super) fn constructors_named_by(
+        &self,
+        ty: &Type,
+        matrix: &PatternMatrix,
+    ) -> Option<Vec<Constructor>> {
+        self.constructors(ty)
+            .filter(|constructors| matrix.heads_cover(constructors))
     }
 
     pub(super) fn constructors(&self, ty: &Type) -> Option<Vec<Constructor>> {

@@ -1,5 +1,6 @@
 use super::constructor::Constructor;
 use super::cover_pattern::CoverPattern;
+use crate::core::Literal;
 
 #[derive(Default)]
 pub(super) struct PatternMatrix {
@@ -24,26 +25,27 @@ impl PatternMatrix {
     pub(super) fn has_wild_row(&self) -> bool {
         self.rows
             .iter()
-            .any(|row| row.iter().all(CoverPattern::is_wild))
+            .any(|row| row.iter().all(|pattern| pattern.kind().is_wild()))
     }
 
     pub(super) fn specialize(&self, constructor: &Constructor) -> Self {
         self.keep_rows(|first| constructor.arguments_of(first))
     }
 
-    pub(super) fn specialize_literal(&self, head: &CoverPattern) -> Self {
-        self.keep_rows(|first| first.covers(head).then(Vec::new))
+    pub(super) fn specialize_literal(&self, literal: &Literal) -> Self {
+        self.keep_rows(|first| first.kind().matches_literal(literal).then(Vec::new))
     }
 
     pub(super) fn default_rows(&self) -> Self {
-        self.keep_rows(|first| first.is_wild().then(Vec::new))
+        self.keep_rows(|first| first.kind().is_wild().then(Vec::new))
     }
 
     pub(super) fn heads_cover(&self, constructors: &[Constructor]) -> bool {
         constructors.iter().all(|constructor| {
-            self.rows
-                .iter()
-                .any(|row| row.first().and_then(CoverPattern::head_tag) == Some(constructor.tag()))
+            self.rows.iter().any(|row| {
+                row.first()
+                    .is_some_and(|first| first.kind().names(constructor.tag()))
+            })
         })
     }
 
@@ -192,7 +194,7 @@ mod tests {
 
     #[test]
     fn specializing_by_a_literal_keeps_the_same_literal_and_wildcards() {
-        let literal = CoverPattern::from(Literal::String("a".into()));
+        let literal = Literal::String("a".into());
         let kept = MatrixFixture::rows(vec![MatrixFixture::text("a")]).specialize_literal(&literal);
         let wild = MatrixFixture::rows(vec![CoverPattern::wild()]).specialize_literal(&literal);
         assert!(!kept.is_empty());
@@ -201,7 +203,7 @@ mod tests {
 
     #[test]
     fn specializing_by_a_literal_drops_another_literal() {
-        let literal = CoverPattern::from(Literal::String("a".into()));
+        let literal = Literal::String("a".into());
         let other =
             MatrixFixture::rows(vec![MatrixFixture::text("b")]).specialize_literal(&literal);
         assert!(other.is_empty());

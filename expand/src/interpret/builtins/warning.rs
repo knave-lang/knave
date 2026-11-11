@@ -45,11 +45,12 @@ impl<'a> WarnCall<'a> {
 
     fn description(&self) -> Result<FailureDescription, Diagnostic> {
         let position = self.description_position();
-        let description = self.arguments.form(position)?;
-        if let FormKind::String(_) = description.kind() {
-            return Err(WarningProblems::missing_lint(description.span()));
+        match self.arguments.value(position) {
+            Value::Form(description) if matches!(description.kind(), FormKind::String(_)) => {
+                Err(WarningProblems::missing_lint(description.span()))
+            }
+            _ => FailureDescription::read(&self.arguments.list_forms(position)?, &CodeBook::LINTS),
         }
-        FailureDescription::read(&self.arguments.list_forms(position)?, &CodeBook::LINTS)
     }
 
     fn rule(&self, description: &FailureDescription) -> Result<RuleName, Diagnostic> {

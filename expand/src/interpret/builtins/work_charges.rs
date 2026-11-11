@@ -2,13 +2,20 @@ use super::leading_lines::DistinctLeadingLines;
 use super::lists::ListOperations;
 use super::strings::StringOperations;
 use super::text::TextOperations;
+use super::warning::WarnCall;
 use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::{Arguments, BuiltinSite};
-use crate::interpret::{CodeList, StepBudget, Value, WorkMeter};
+use crate::interpret::{CodeList, StepBudget, Value, Warnings, WorkMeter};
 use crate::reader::{Form, FormKind, Symbol};
 use crate::source::{SourceId, Span};
 
 struct WorkFixture;
+
+struct IgnoredWarnings;
+
+impl Warnings for IgnoredWarnings {
+    fn report_warning(&mut self, _warning: Diagnostic) {}
+}
 
 impl WorkFixture {
     const MOST_WORK: u64 = 4_096;
@@ -384,4 +391,25 @@ fn dropping_from_a_string_builds_within_the_bound() {
     assert!(WorkFixture::strings_within_bound(&values, |strings| {
         strings.drop()
     }));
+}
+
+#[test]
+fn warn_charges_a_built_description_once() {
+    let description = WorkFixture::built_list(vec![
+        WorkFixture::symbol(":code"),
+        WorkFixture::symbol("unmatched-link"),
+    ]);
+    let values = [
+        WorkFixture::string("parked"),
+        WorkFixture::symbol("van"),
+        description,
+    ];
+    let reading = WorkFixture::work(&values, |arguments| {
+        arguments.string(0)?;
+        arguments.list_forms(2).map(|_| Value::Unit)
+    });
+    let warning = WorkFixture::work(&values, |arguments| {
+        WarnCall::new(arguments).report(&mut IgnoredWarnings)
+    });
+    assert_eq!(warning, reading);
 }

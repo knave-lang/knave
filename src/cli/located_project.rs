@@ -27,7 +27,7 @@ impl LocatedProject {
     pub fn search_from(
         directory: &Path,
         terminal: &Terminal,
-        store: LibraryStore,
+        store: impl LibraryStore,
     ) -> Result<Option<Self>, ExitStatus> {
         let Some(root) = Self::nearest_root(directory)? else {
             return Ok(None);

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use super::evaluation_output::EvaluationOutput;
 use super::exit_status::ExitStatus;
-use super::library_walk::LibraryStore;
+use super::library_walk::FetchingStore;
 use super::located_program::LocatedProgram;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
@@ -118,7 +118,7 @@ impl EvalCommand {
                 let project = LocatedProject::search_from(
                     &ProgramFile::directory_of(&path),
                     terminal,
-                    LibraryStore::fetching(),
+                    FetchingStore::default(),
                 )?;
                 Self::refuse_crates(project.as_ref(), terminal)?;
                 let file = ProgramFile::within(path, root.clone());

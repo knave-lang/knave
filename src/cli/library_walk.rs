@@ -1,4 +1,7 @@
+mod cache_only_store;
+mod fetching_store;
 mod library_store;
+mod user_git_store;
 
 use std::path::{Path, PathBuf};
 
@@ -14,13 +17,15 @@ use crate::project::{
     CrateDependency, CrateSet, LibraryDependency, LibrarySource, Project, ProjectProblems,
 };
 use crate::source::Span;
+pub use cache_only_store::CacheOnlyStore;
+pub use fetching_store::FetchingStore;
 pub use library_store::LibraryStore;
 
-pub struct LibraryWalk<'t> {
+pub struct LibraryWalk<'t, S: LibraryStore> {
     terminal: &'t mut Terminal,
     seen: Vec<SeenLibrary>,
     roots: Vec<LibraryRoot>,
-    store: LibraryStore,
+    store: S,
     crates: CrateSet,
     crate_library: Option<String>,
 }
@@ -59,7 +64,7 @@ struct SeenLibrary {
     span: Span,
 }
 
-impl<'t> LibraryWalk<'t> {
+impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
     const LIB_KEY: &'static str = ":lib";
     const PATH_KEY: &'static str = ":path";
     const GIT_KEY: &'static str = ":git";
@@ -67,7 +72,7 @@ impl<'t> LibraryWalk<'t> {
     pub fn walk(
         terminal: &'t mut Terminal,
         root: &Path,
-        store: LibraryStore,
+        store: S,
     ) -> Result<WalkedLibraries, ExitStatus> {
         let project = terminal.load_project(&root.join(Language::project_file_name()))?;
         let mut walk = Self {

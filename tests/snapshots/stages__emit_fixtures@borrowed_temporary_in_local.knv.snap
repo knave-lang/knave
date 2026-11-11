@@ -128,7 +128,7 @@ fn label_of<'a>(page: &'a &'a Page) -> &'a str {
 }
 
 fn field_of_ref(name: &str) {
-    let owner = &make_page(name);
+    let owner = make_page(name);
     let letter = first_letter(owner.title.as_str());
     println!("{}", letter)
 }

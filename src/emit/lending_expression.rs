@@ -141,8 +141,9 @@ impl<'e> LendingExpression<'e> {
             && Self::is_temporary(&argument.value)
     }
 
-    fn lends_owner(self, owner: &TypedExpr) -> bool {
-        self.expr.ty.is_reference() && Self::is_temporary(owner)
+    fn lends_owner(self, owner: &'e TypedExpr) -> bool {
+        let borrows_a_temporary = Self::new(owner).borrowed_temporary().is_some();
+        self.expr.ty.is_reference() && !borrows_a_temporary && Self::is_temporary(owner)
     }
 
     fn is_temporary(value: &TypedExpr) -> bool {

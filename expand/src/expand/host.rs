@@ -319,7 +319,7 @@ mod tests {
     use super::Expander;
     use crate::core::{BindingInfo, BindingKind};
     use crate::diagnostic::{Diagnostic, DiagnosticCode};
-    use crate::interpret::GlobalValues;
+    use crate::interpret::{GlobalValues, Host};
     use crate::modules::ModuleSources;
     use crate::source::{SourceMap, Span};
 
@@ -367,5 +367,25 @@ mod tests {
         assert_eq!(refusal.code(), Some(&DiagnosticCode::NOT_AT_COMPILE_TIME));
         let spans: Vec<Span> = refusal.labels().map(|label| label.span()).collect();
         assert_eq!(spans, vec![span]);
+    }
+
+    #[test]
+    fn the_expander_offers_every_host_group() {
+        let mut fixture = HostFixture::new();
+        let mut expander = fixture.expander();
+        assert!(expander.global_values().is_some(), "global values");
+        assert!(expander.module_queries().is_some(), "module queries");
+        assert!(
+            expander.definition_queries().is_some(),
+            "definition queries"
+        );
+        assert!(expander.module_notes().is_some(), "module notes");
+        assert!(expander.name_comparison().is_some(), "name comparison");
+        assert!(
+            expander.expansion_callbacks().is_some(),
+            "expansion callbacks"
+        );
+        assert!(expander.source_queries().is_some(), "source queries");
+        assert!(expander.warnings().is_some(), "warnings");
     }
 }

@@ -1,1 +1,1 @@
-(project q :entyr)
+(defproject q :entyr)

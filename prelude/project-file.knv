@@ -1,7 +1,7 @@
 (use prelude/macros document header-shape)
 (use code fail first project-file-name string symbol-name)
 
-(export dependencies dev-dependencies libraries project)
+(export defproject dependencies dev-dependencies libraries)
 
 (def outside-the-project-file
   (fn (form)
@@ -18,7 +18,7 @@
                     :label "not a form of a program"
                     :note "the compiler reads the project file as data, and never expands it")))))
 
-(def project
+(def defproject
   (macro (form) (outside-the-project-file form)))
 
 (def libraries
@@ -30,7 +30,7 @@
 (def dev-dependencies
   (macro (form) (outside-the-project-file form)))
 
-(header-shape (project name) :one-per-line)
+(header-shape (defproject name) :one-per-line)
 
 (header-shape (libraries) :one-per-line)
 
@@ -38,14 +38,14 @@
 
 (header-shape (dev-dependencies) :one-per-line)
 
-(document (project name)
+(document (defproject name)
   "Declares a project in the project file, which the compiler reads as data.
 
   `knave fmt` lays the project file out by this module's shapes. A call in a
   program is an error.
 
   ```
-  (project browser
+  (defproject browser
     :version \"0.1.0\"
     :entry \"src/main.knv\")
   ```")
@@ -55,7 +55,7 @@
   error.
 
   ```
-  (project browser
+  (defproject browser
     (libraries (hints :path \"../hints\")))
   ```")
 
@@ -64,7 +64,7 @@
   error.
 
   ```
-  (project browser
+  (defproject browser
     (dependencies (serde \"1.0\" :features (\"derive\"))))
   ```")
 
@@ -73,6 +73,6 @@
   program is an error.
 
   ```
-  (project browser
+  (defproject browser
     (dev-dependencies (proptest \"1.5\")))
   ```")

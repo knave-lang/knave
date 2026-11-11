@@ -1,1 +1,1 @@
-(project app (libraries (checked :path "../checked")))
+(defproject app (libraries (checked :path "../checked")))

@@ -1,4 +1,4 @@
-(project file-url-outside
+(defproject file-url-outside
   (libraries
     (other :git "file:///nonexistent/other.git"
            :rev "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678")))

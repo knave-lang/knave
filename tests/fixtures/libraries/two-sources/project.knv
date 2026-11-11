@@ -1,4 +1,4 @@
-(project app
+(defproject app
   (libraries
     (hints :path "../hints")
     (keymap :path "../other-keymap")))

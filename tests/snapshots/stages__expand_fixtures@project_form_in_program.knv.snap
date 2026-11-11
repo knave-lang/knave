@@ -3,11 +3,11 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/project_form_in_program.knv
 ---
-error[L0350]: `project` belongs only in `project.knv`
+error[L0350]: `defproject` belongs only in `project.knv`
  --> expand/project_form_in_program.knv:4:1
   |
-4 | (project demo)
-  | ^^^^^^^^^^^^^^ not a form of a program
+4 | (defproject demo)
+  | ^^^^^^^^^^^^^^^^^ not a form of a program
   |
   = note: the compiler reads the project file as data, and never expands it
   = help: move it into `project.knv` at the project root

@@ -1,2 +1,2 @@
-(project crate-outside
+(defproject crate-outside
   (dependencies (answer :path "../answer")))

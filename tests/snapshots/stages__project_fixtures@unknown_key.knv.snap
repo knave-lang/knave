@@ -4,13 +4,13 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/unknown_key.knv
 ---
 error[L0704]: unknown key `:entyr`
- --> project/unknown_key.knv:1:18
+ --> project/unknown_key.knv:1:21
   |
-1 | (project browser :entyr "src/main.knv")
-  |                  ^^^^^^ not a key of this form
+1 | (defproject browser :entyr "src/main.knv")
+  |                     ^^^^^^ not a key of this form
   |
 help: a key with a similar name exists
   |
-1 - (project browser :entyr "src/main.knv")
-1 + (project browser :entry "src/main.knv")
+1 - (defproject browser :entyr "src/main.knv")
+1 + (defproject browser :entry "src/main.knv")
   |

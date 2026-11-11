@@ -4,9 +4,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/unversioned_crate.knv
 ---
 error[L0716]: crate `serde` has no version
- --> project/unversioned_crate.knv:2:25
+ --> project/unversioned_crate.knv:2:28
   |
-2 |          (dependencies (serde :features ("derive"))))
-  |                         ^^^^^ this crate needs a version or a `:path`
+2 |             (dependencies (serde :features ("derive"))))
+  |                            ^^^^^ this crate needs a version or a `:path`
   |
   = help: write the version after the name, as `(serde "1.0")`

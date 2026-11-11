@@ -1,5 +1,5 @@
-(project browser
-         :entry "src/main.knv"
-         :entry "src/app.knv"
-         (dependencies (serde "1.0") (serde "1.1"))
-         (dependencies (itoa "1.0")))
+(defproject browser
+            :entry "src/main.knv"
+            :entry "src/app.knv"
+            (dependencies (serde "1.0") (serde "1.1"))
+            (dependencies (itoa "1.0")))

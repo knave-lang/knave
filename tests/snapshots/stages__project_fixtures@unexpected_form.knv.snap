@@ -4,17 +4,17 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/unexpected_form.knv
 ---
 error[L0708]: expected a key or a section
- --> project/unexpected_form.knv:1:18
+ --> project/unexpected_form.knv:1:21
   |
-1 | (project browser "0.1.0"
-  |                  ^^^^^^^ this is neither a `:key value` pair nor a section
+1 | (defproject browser "0.1.0"
+  |                     ^^^^^^^ this is neither a `:key value` pair nor a section
   |
   = help: give a value after a key, as `:entry "src/main.knv"`
 
 error[L0708]: expected a key
- --> project/unexpected_form.knv:2:37
+ --> project/unexpected_form.knv:2:40
   |
-2 |          (dependencies (serde "1.0" derive)))
-  |                                     ^^^^^^ this is not a `:key value` pair
+2 |             (dependencies (serde "1.0" derive)))
+  |                                        ^^^^^^ this is not a `:key value` pair
   |
   = help: an entry is a name, then an optional version, then `:key value` pairs

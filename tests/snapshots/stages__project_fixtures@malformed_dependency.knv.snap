@@ -4,17 +4,17 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/malformed_dependency.knv
 ---
 error[L0710]: expected a dependency
- --> project/malformed_dependency.knv:1:32
+ --> project/malformed_dependency.knv:1:35
   |
-1 | (project browser (dependencies serde ("1.0")))
-  |                                ^^^^^ a dependency is a list that starts with a name
+1 | (defproject browser (dependencies serde ("1.0")))
+  |                                   ^^^^^ a dependency is a list that starts with a name
   |
   = help: write a dependency as `(serde "1.0")` or `(hints :path "../hints")`
 
 error[L0710]: expected a dependency
- --> project/malformed_dependency.knv:1:38
+ --> project/malformed_dependency.knv:1:41
   |
-1 | (project browser (dependencies serde ("1.0")))
-  |                                      ^^^^^^^ a dependency is a list that starts with a name
+1 | (defproject browser (dependencies serde ("1.0")))
+  |                                         ^^^^^^^ a dependency is a list that starts with a name
   |
   = help: write a dependency as `(serde "1.0")` or `(hints :path "../hints")`

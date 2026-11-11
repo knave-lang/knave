@@ -1,1 +1,1 @@
-(project browser :edition "2026")
+(defproject browser :edition "2026")

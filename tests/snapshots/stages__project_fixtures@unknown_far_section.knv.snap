@@ -4,9 +4,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/unknown_far_section.knv
 ---
 error[L0707]: unknown section `zzz`
- --> project/unknown_far_section.knv:1:13
+ --> project/unknown_far_section.knv:1:16
   |
-1 | (project b (zzz))
-  |             ^^^ not a section of a project
+1 | (defproject b (zzz))
+  |                ^^^ not a section of a project
   |
   = help: the sections are `libraries`, `dependencies` and `dev-dependencies`

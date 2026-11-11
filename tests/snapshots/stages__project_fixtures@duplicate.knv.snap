@@ -4,31 +4,31 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/duplicate.knv
 ---
 error[L0709]: `:entry` is given more than once
- --> project/duplicate.knv:3:10
+ --> project/duplicate.knv:3:13
   |
-2 |          :entry "src/main.knv"
-  |          ------ first given here
-3 |          :entry "src/app.knv"
-  |          ^^^^^^ given again here
+2 |             :entry "src/main.knv"
+  |             ------ first given here
+3 |             :entry "src/app.knv"
+  |             ^^^^^^ given again here
   |
   = help: remove one of them
 
 error[L0709]: `serde` is given more than once
- --> project/duplicate.knv:4:39
+ --> project/duplicate.knv:4:42
   |
-4 |          (dependencies (serde "1.0") (serde "1.1"))
-  |                         -----         ^^^^^ given again here
-  |                         |
-  |                         first given here
+4 |             (dependencies (serde "1.0") (serde "1.1"))
+  |                            -----         ^^^^^ given again here
+  |                            |
+  |                            first given here
   |
   = help: remove one of them
 
 error[L0709]: `dependencies` is given more than once
- --> project/duplicate.knv:5:11
+ --> project/duplicate.knv:5:14
   |
-4 |          (dependencies (serde "1.0") (serde "1.1"))
-  |           ------------ first given here
-5 |          (dependencies (itoa "1.0")))
-  |           ^^^^^^^^^^^^ given again here
+4 |             (dependencies (serde "1.0") (serde "1.1"))
+  |              ------------ first given here
+5 |             (dependencies (itoa "1.0")))
+  |              ^^^^^^^^^^^^ given again here
   |
   = help: remove one of them

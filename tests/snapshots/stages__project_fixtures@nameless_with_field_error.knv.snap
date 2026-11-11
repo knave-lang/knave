@@ -6,19 +6,19 @@ input_file: tests/fixtures/project/nameless_with_field_error.knv
 error[L0703]: the project has no name
  --> project/nameless_with_field_error.knv:1:2
   |
-1 | (project :edition 2025)
-  |  ^^^^^^^ expected a name after `project`
+1 | (defproject :edition 2025)
+  |  ^^^^^^^^^^ expected a name after `defproject`
   |
-  = help: name the project, as `(project my-program)`
+  = help: name the project, as `(defproject my-program)`
 
 error[L0717]: edition 2025 does not exist
- --> project/nameless_with_field_error.knv:1:19
+ --> project/nameless_with_field_error.knv:1:22
   |
-1 | (project :edition 2025)
-  |                   ^^^^ not an edition of this compiler
+1 | (defproject :edition 2025)
+  |                      ^^^^ not an edition of this compiler
   |
 help: the only edition is 2026
   |
-1 - (project :edition 2025)
-1 + (project :edition 2026)
+1 - (defproject :edition 2025)
+1 + (defproject :edition 2026)
   |

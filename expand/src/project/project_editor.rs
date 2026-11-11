@@ -150,113 +150,117 @@ mod tests {
 
     #[test]
     fn adding_to_a_project_without_the_section_creates_it() {
-        let text = edited("(project demo)\n", |editor| {
+        let text = edited("(defproject demo)\n", |editor| {
             Some(editor.with_crate(Section::Dependencies, &entry(&["derive"])))
         });
         assert_eq!(
             text.as_deref(),
-            Some("(project demo\n(dependencies (fake-json \"1.4.2\" :features (\"derive\"))))\n")
+            Some(
+                "(defproject demo\n(dependencies (fake-json \"1.4.2\" :features (\"derive\"))))\n"
+            )
         );
     }
 
     #[test]
     fn adding_to_a_section_appends_the_entry() {
         let text = edited(
-            "(project demo (dependencies (other \"1.0\")))\n",
+            "(defproject demo (dependencies (other \"1.0\")))\n",
             |editor| Some(editor.with_crate(Section::Dependencies, &entry(&[]))),
         );
         assert_eq!(
             text.as_deref(),
-            Some("(project demo (dependencies (other \"1.0\") (fake-json \"1.4.2\")))\n")
+            Some("(defproject demo (dependencies (other \"1.0\") (fake-json \"1.4.2\")))\n")
         );
     }
 
     #[test]
     fn adding_a_listed_crate_replaces_its_entry() {
         let text = edited(
-            "(project demo (dev-dependencies (fake-json \"1.0\")))\n",
+            "(defproject demo (dev-dependencies (fake-json \"1.0\")))\n",
             |editor| Some(editor.with_crate(Section::DevDependencies, &entry(&[]))),
         );
         assert_eq!(
             text.as_deref(),
-            Some("(project demo (dev-dependencies (fake-json \"1.4.2\")))\n")
+            Some("(defproject demo (dev-dependencies (fake-json \"1.4.2\")))\n")
         );
     }
 
     #[test]
     fn removing_one_of_several_entries_keeps_the_section() {
         let text = edited(
-            "(project demo (dependencies (other \"1.0\") (fake-json \"1.4.2\")))\n",
+            "(defproject demo (dependencies (other \"1.0\") (fake-json \"1.4.2\")))\n",
             |editor| editor.without_crate(Section::Dependencies, "fake-json"),
         );
         assert_eq!(
             text.as_deref(),
-            Some("(project demo (dependencies (other \"1.0\")))\n")
+            Some("(defproject demo (dependencies (other \"1.0\")))\n")
         );
     }
 
     #[test]
     fn removing_the_last_entry_removes_the_section() {
         let text = edited(
-            "(project demo (dependencies (fake-json \"1.4.2\")))\n",
+            "(defproject demo (dependencies (fake-json \"1.4.2\")))\n",
             |editor| editor.without_crate(Section::Dependencies, "fake-json"),
         );
-        assert_eq!(text.as_deref(), Some("(project demo)\n"));
+        assert_eq!(text.as_deref(), Some("(defproject demo)\n"));
     }
 
     #[test]
     fn removing_an_entry_after_a_comment_keeps_the_comment() {
         let text = edited(
-            "(project demo\n  (dependencies ; first\n    (other \"1.0\")\n    ; json\n    (fake-json \"1.4.2\")))\n",
+            "(defproject demo\n  (dependencies ; first\n    (other \"1.0\")\n    ; json\n    (fake-json \"1.4.2\")))\n",
             |editor| editor.without_crate(Section::Dependencies, "fake-json"),
         );
         assert_eq!(
             text.as_deref(),
-            Some("(project demo\n  (dependencies ; first\n    (other \"1.0\")\n    ; json\n))\n")
+            Some(
+                "(defproject demo\n  (dependencies ; first\n    (other \"1.0\")\n    ; json\n))\n"
+            )
         );
     }
 
     #[test]
     fn removing_a_section_after_a_comment_keeps_the_comment() {
         let text = edited(
-            "(project demo ; the demo\n  (dependencies (fake-json \"1.4.2\")))\n",
+            "(defproject demo ; the demo\n  (dependencies (fake-json \"1.4.2\")))\n",
             |editor| editor.without_crate(Section::Dependencies, "fake-json"),
         );
-        assert_eq!(text.as_deref(), Some("(project demo ; the demo\n)\n"));
+        assert_eq!(text.as_deref(), Some("(defproject demo ; the demo\n)\n"));
     }
 
     #[test]
     fn removing_the_entry_after_a_section_comment_keeps_the_comment() {
         let text = edited(
-            "(project demo\n  (dependencies ; crates\n    (other \"1.0\")\n    (fake-json \"1.4.2\")))\n",
+            "(defproject demo\n  (dependencies ; crates\n    (other \"1.0\")\n    (fake-json \"1.4.2\")))\n",
             |editor| editor.without_crate(Section::Dependencies, "other"),
         );
         assert_eq!(
             text.as_deref(),
-            Some("(project demo\n  (dependencies ; crates\n    (fake-json \"1.4.2\")))\n")
+            Some("(defproject demo\n  (dependencies ; crates\n    (fake-json \"1.4.2\")))\n")
         );
     }
 
     #[test]
     fn removing_an_entry_on_its_own_line_removes_a_crlf_line() {
         let text = edited(
-            "(project demo\r\n  (dependencies\r\n    (other \"1.0\")\r\n    (fake-json \"1.4.2\")))\r\n",
+            "(defproject demo\r\n  (dependencies\r\n    (other \"1.0\")\r\n    (fake-json \"1.4.2\")))\r\n",
             |editor| editor.without_crate(Section::Dependencies, "other"),
         );
         assert_eq!(
             text.as_deref(),
-            Some("(project demo\r\n  (dependencies\r\n    (fake-json \"1.4.2\")))\r\n")
+            Some("(defproject demo\r\n  (dependencies\r\n    (fake-json \"1.4.2\")))\r\n")
         );
     }
 
     #[test]
     fn removing_an_unlisted_crate_changes_nothing() {
         let text = edited(
-            "(project demo (dependencies (other \"1.0\")))\n",
+            "(defproject demo (dependencies (other \"1.0\")))\n",
             |editor| editor.without_crate(Section::Dependencies, "fake-json"),
         );
         assert_eq!(text, None);
-        let text = edited("(project demo)\n", |editor| {
+        let text = edited("(defproject demo)\n", |editor| {
             editor.without_crate(Section::Dependencies, "fake-json")
         });
         assert_eq!(text, None);

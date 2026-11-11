@@ -1,2 +1,2 @@
-(project browser
-         (dependencies (serde :features ("derive"))))
+(defproject browser
+            (dependencies (serde :features ("derive"))))

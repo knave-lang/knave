@@ -4,9 +4,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/missing_value.knv
 ---
 error[L0705]: `:version` has no value
- --> project/missing_value.knv:1:18
+ --> project/missing_value.knv:1:21
   |
-1 | (project browser :version)
-  |                  ^^^^^^^^ expected a value after this key
+1 | (defproject browser :version)
+  |                     ^^^^^^^^ expected a value after this key
   |
   = help: write the value right after `:version`

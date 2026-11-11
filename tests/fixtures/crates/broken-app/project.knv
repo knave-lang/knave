@@ -1,1 +1,1 @@
-(project app (dependencies (broken :path "../broken")))
+(defproject app (dependencies (broken :path "../broken")))

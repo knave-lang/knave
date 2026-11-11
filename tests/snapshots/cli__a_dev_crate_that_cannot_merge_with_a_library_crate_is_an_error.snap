@@ -8,10 +8,10 @@ error[L0726]: crate `answer` has two requests that cannot merge
 3 |   (dev-dependencies (answer :path "../expected")))
   |                      ^^^^^^ this request
   |
- ::: ../helper/project.knv:1:32
+ ::: ../helper/project.knv:2:18
   |
-1 | (project helper (dependencies (answer :path "../answer")))
-  |                                ------ conflicts with this one
+2 |   (dependencies (answer :path "../answer")))
+  |                  ------ conflicts with this one
   |
   = note: the program builds one copy of each crate, and only plain versions that are semver-compatible merge
   = help: make the `answer` entries ask for compatible plain versions

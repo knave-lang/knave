@@ -1,2 +1,2 @@
-(project app
+(defproject app
   (libraries (main :path "../hints") (hints :path "../hints")))

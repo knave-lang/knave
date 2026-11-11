@@ -1,1 +1,1 @@
-(project inner (libraries (shared :path "../shared")))
+(defproject inner (libraries (shared :path "../shared")))

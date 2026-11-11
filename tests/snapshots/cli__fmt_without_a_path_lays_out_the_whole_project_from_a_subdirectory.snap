@@ -2,7 +2,7 @@
 source: tests/cli.rs
 expression: "sandbox.contents(&Language::project_file_name())"
 ---
-(project browser
+(defproject browser
   :version "0.1.0"
   :entry "src/main.knv"
   (libraries (hints :path "../hints"))

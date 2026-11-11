@@ -1,1 +1,1 @@
-(project :edition 2025)
+(defproject :edition 2025)

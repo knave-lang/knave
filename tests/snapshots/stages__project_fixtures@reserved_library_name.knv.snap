@@ -4,19 +4,19 @@ expression: reports.report(path)
 input_file: tests/fixtures/project/reserved_library_name.knv
 ---
 error[L0720]: `code` cannot name a library
- --> project/reserved_library_name.knv:2:22
+ --> project/reserved_library_name.knv:2:25
   |
-2 |          (libraries (code :path "../code")
-  |                      ^^^^ this name is reserved
+2 |             (libraries (code :path "../code")
+  |                         ^^^^ this name is reserved
   |
   = note: `prelude`, `kernel` and `code` name the compiler's own modules
   = help: give the library another name
 
 error[L0720]: `prelude` cannot name a library
- --> project/reserved_library_name.knv:3:22
+ --> project/reserved_library_name.knv:3:25
   |
-3 |                     (prelude :path "../prelude")))
-  |                      ^^^^^^^ this name is reserved
+3 |                        (prelude :path "../prelude")))
+  |                         ^^^^^^^ this name is reserved
   |
   = note: `prelude`, `kernel` and `code` name the compiler's own modules
   = help: give the library another name

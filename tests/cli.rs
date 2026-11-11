@@ -64,7 +64,7 @@ const BOUND_ENTRY: &str = "(use other/person person)\n\n(rust-trait same \"std::
 
 const TRAIT_SHARED_VECTOR: &str = "(struct odometer (offset i64))\n\n(trait mileage\n  (first-reading (fn ((ref self) (ref (vec i64))) i64)))\n\n(impl mileage odometer\n  (first-reading (o readings) (+ (field o offset) (at readings 0))))\n\n(defn main ()\n  (println (first-reading (new odometer (offset 10)) (vec 1200))))\n";
 const DOCUMENTED_TWICE: &str = "(defn twice (x)\n  \"Doubles a number.\n\n  Handy for widgets.\"\n  (* 2 x))\n\n(defn main () (println (twice 2)))\n";
-const DOCUMENTED_PROJECT: &str = "(project demo)\n";
+const DOCUMENTED_PROJECT: &str = "(defproject demo)\n";
 const DOCUMENTED_MAIN: &str =
     "(module \"Prints a greeting.\")\n\n(export main)\n\n(defn main () (println \"hi\"))\n";
 const DOCUMENTED_AREA: &str = "(export area)\n\n(defn area (width height)\n  \"Multiplies two sides, as [option] does not.\"\n  (* width height))\n";
@@ -595,7 +595,7 @@ exit 101
         } else {
             ""
         };
-        let project = format!("(project compare :entry \"src/{scenario}.knv\"{dependencies})\n");
+        let project = format!("(defproject compare :entry \"src/{scenario}.knv\"{dependencies})\n");
         fs::write(
             self.directory
                 .join("compare")
@@ -643,7 +643,7 @@ exit 101
             self.directory.join("registry").display()
         );
         self.with_file("cargo-home/config.toml", &config)
-            .with_file(&Language::project_file_name(), "(project demo)\n")
+            .with_file(&Language::project_file_name(), "(defproject demo)\n")
             .with_file(
                 &format!("src/main.{}", Language::EXTENSION),
                 "(defn main ()\n  (println \"hi\"))\n",
@@ -714,7 +714,7 @@ exit 101
         let sandbox = self.with_fixture_tree("libraries");
         let commit = sandbox.git_repository("keymap");
         let project = format!(
-            "(project app (libraries (keymap :git \"../keymap.git\" :rev \"{}\")))\n",
+            "(defproject app (libraries (keymap :git \"../keymap.git\" :rev \"{}\")))\n",
             commit_override.unwrap_or(&commit)
         );
         let sandbox = sandbox.with_file(
@@ -758,7 +758,7 @@ exit 101
     fn with_one_git_library_from_tree(self, library: &str, url: &str) -> Self {
         let commit = self.git_repository(library);
         let project =
-            format!("(project app (libraries ({library} :git \"{url}\" :rev \"{commit}\")))\n");
+            format!("(defproject app (libraries ({library} :git \"{url}\" :rev \"{commit}\")))\n");
         self.with_file(
             &format!("git-app/{}", Language::project_file_name()),
             &project,
@@ -2111,7 +2111,7 @@ fn doc_write_leaves_out_a_library_inside_the_project() {
     let sandbox = Sandbox::new("doc_write_inner_library")
         .with_file(&Language::project_file_name(), ROOT_ENTRY_PROJECT)
         .with_file("main.knv", ROOT_ENTRY)
-        .with_file("vendor/hints/project.knv", "(project hints)\n")
+        .with_file("vendor/hints/project.knv", "(defproject hints)\n")
         .with_file(
             "vendor/hints/src/lib.knv",
             "(use labels label)\n\n(export hint)\n\n(def hint label)\n",
@@ -2234,7 +2234,7 @@ fn doc_write_shows_the_type_a_module_gives_its_own_name() {
 #[test]
 fn doc_write_prelude_ignores_a_broken_project_file() {
     let sandbox = Sandbox::new("doc_write_prelude_broken_project")
-        .with_file(&Language::project_file_name(), "(project\n")
+        .with_file(&Language::project_file_name(), "(defproject\n")
         .with_file("src/notes.knv", "");
     sandbox
         .compiler_in("src", &["doc", "--write", "--prelude"])
@@ -6026,10 +6026,10 @@ fn test_lists_the_untested_names_of_a_program_with_no_tests() {
     );
 }
 
-const PROJECT: &str = "(project greeter)\n";
-const PROJECT_WITH_UNKNOWN_KEY: &str = "(project greeter :entyr \"src/main.knv\")\n";
-const UNLAID_PROJECT: &str = "(project browser :version \"0.1.0\" :entry \"src/main.knv\"\n  (libraries (hints :path \"../hints\"))\n\n  (dependencies (cef \"144.0\") (serde \"1.0\" :features (\"derive\"))))\n";
-const BARE_NAMES_PROJECT: &str = "(project demo alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(libraries alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu)\n\n(dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(dev-dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n";
+const PROJECT: &str = "(defproject greeter)\n";
+const PROJECT_WITH_UNKNOWN_KEY: &str = "(defproject greeter :entyr \"src/main.knv\")\n";
+const UNLAID_PROJECT: &str = "(defproject browser :version \"0.1.0\" :entry \"src/main.knv\"\n  (libraries (hints :path \"../hints\"))\n\n  (dependencies (cef \"144.0\") (serde \"1.0\" :features (\"derive\"))))\n";
+const BARE_NAMES_PROJECT: &str = "(defproject demo alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(libraries alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu)\n\n(dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n\n(dev-dependencies alpha beta gamma delta epsilon zeta eta theta iota kappa lambda)\n";
 const MISSING_COMMIT: &str = "0000000000000000000000000000000000000000";
 const SELF_IMPORT: &str = "(use sub/c)\n\n(defn f () 1)\n";
 const PROJECT_ENTRY: &str =
@@ -6919,7 +6919,7 @@ fn a_git_library_with_an_unwritable_cache_is_an_environment_error() {
 fn a_git_scheme_outside_the_allowed_list_is_refused() {
     let (sandbox, commit) = Sandbox::new("git_library_scheme").with_git_library(None);
     let project =
-        format!("(project app (libraries (keymap :git \"ext::true\" :rev \"{commit}\")))\n");
+        format!("(defproject app (libraries (keymap :git \"ext::true\" :rev \"{commit}\")))\n");
     let sandbox = sandbox.with_file(
         &format!("git-app/{}", Language::project_file_name()),
         &project,
@@ -6964,7 +6964,7 @@ fn two_git_libraries_share_one_store() {
     let keymap = sandbox.git_repository("keymap");
     let marks = sandbox.git_repository("marks");
     let project = format!(
-        "(project app (libraries (keymap :git \"../keymap.git\" :rev \"{keymap}\") (marks :git \"../marks.git\" :rev \"{marks}\")))\n"
+        "(defproject app (libraries (keymap :git \"../keymap.git\" :rev \"{keymap}\") (marks :git \"../marks.git\" :rev \"{marks}\")))\n"
     );
     let sandbox = sandbox.with_file(
         &format!("two-git-app/{}", Language::project_file_name()),
@@ -7127,7 +7127,7 @@ fn a_git_library_may_list_another_git_library() {
         ],
     );
     let outer_project = format!(
-        "(project outer-git (libraries (inner-git :git \"inner.bundle\" :rev \"{inner}\")))\n"
+        "(defproject outer-git (libraries (inner-git :git \"inner.bundle\" :rev \"{inner}\")))\n"
     );
     let sandbox = sandbox.with_file(
         &format!("outer-git/{}", Language::project_file_name()),
@@ -7135,7 +7135,7 @@ fn a_git_library_may_list_another_git_library() {
     );
     let outer = sandbox.git_repository("outer-git");
     let project = format!(
-        "(project app (libraries (outer-git :git \"../outer-git.git\" :rev \"{outer}\")))\n"
+        "(defproject app (libraries (outer-git :git \"../outer-git.git\" :rev \"{outer}\")))\n"
     );
     let sandbox = sandbox
         .with_file(
@@ -7342,7 +7342,7 @@ fn a_missing_crate_path_resolves_from_the_project_root() {
         .with_fixture_tree("crates")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
-            "(project app (dependencies (answer :path \"../nowhere\")))\n",
+            "(defproject app (dependencies (answer :path \"../nowhere\")))\n",
         );
     let stderr = sandbox
         .compiler_in("app", &["build"])
@@ -7365,7 +7365,7 @@ fn a_dependency_named_like_the_program_package_is_still_a_dependency() {
     );
     let sandbox = sandbox.with_file(
         &format!("broken-app/{}", Language::project_file_name()),
-        "(project app (dependencies (broken :path \"../knave-program-broken\")))\n",
+        "(defproject app (dependencies (broken :path \"../knave-program-broken\")))\n",
     );
     let stderr = sandbox
         .compiler_in("broken-app", &["build"])
@@ -7462,7 +7462,7 @@ fn add_of_a_crate_cargo_cannot_find_prints_cargo_text() {
         stderr.starts_with("error: the crate `no-such-crate` could not be found"),
         "{stderr}"
     );
-    assert_eq!(sandbox.project_file_text(), "(project demo)\n");
+    assert_eq!(sandbox.project_file_text(), "(defproject demo)\n");
 }
 
 #[test]
@@ -7497,7 +7497,7 @@ fn remove_deletes_the_entry_and_the_emptied_section() {
     sandbox
         .compiler(&["remove", "fake-json"])
         .assert_silent_success();
-    assert_eq!(sandbox.project_file_text(), "(project demo)\n");
+    assert_eq!(sandbox.project_file_text(), "(defproject demo)\n");
 }
 
 #[test]
@@ -7515,7 +7515,7 @@ fn add_with_dev_refuses_a_path_crate_listed_in_dev_dependencies() {
         .with_fake_registry()
         .with_file(
             &Language::project_file_name(),
-            "(project demo (dev-dependencies (fake-json :path \"../fake-json\")))\n",
+            "(defproject demo (dev-dependencies (fake-json :path \"../fake-json\")))\n",
         );
     let stderr = sandbox
         .compiler_with_registry(&["add", "--dev", "fake-json"])
@@ -7533,7 +7533,7 @@ fn add_with_dev_refuses_a_path_crate_listed_in_dependencies() {
         .with_fake_registry()
         .with_file(
             &Language::project_file_name(),
-            "(project demo (dependencies (fake-json :path \"../fake-json\")))\n",
+            "(defproject demo (dependencies (fake-json :path \"../fake-json\")))\n",
         );
     let stderr = sandbox
         .compiler_with_registry(&["add", "--dev", "fake-json"])
@@ -7551,7 +7551,7 @@ fn add_with_dev_keeps_the_features_of_the_dev_entry() {
         .with_fake_registry()
         .with_file(
             &Language::project_file_name(),
-            "(project demo\n  (dependencies (fake-json \"1.0\"))\n  (dev-dependencies (fake-json \"1.0\" :features (\"std\"))))\n",
+            "(defproject demo\n  (dependencies (fake-json \"1.0\"))\n  (dev-dependencies (fake-json \"1.0\" :features (\"std\"))))\n",
         );
     sandbox
         .compiler_with_registry(&["add", "--dev", "fake-json"])
@@ -7565,7 +7565,7 @@ fn remove_of_a_crate_only_the_other_section_lists_names_that_section() {
         .with_fake_registry()
         .with_file(
             &Language::project_file_name(),
-            "(project demo (dev-dependencies (fake-json \"1.0\")))\n",
+            "(defproject demo (dev-dependencies (fake-json \"1.0\")))\n",
         );
     let stderr = sandbox
         .compiler(&["remove", "fake-json"])
@@ -7583,7 +7583,7 @@ fn remove_with_dev_of_a_crate_only_dependencies_list_names_them() {
         .with_fake_registry()
         .with_file(
             &Language::project_file_name(),
-            "(project demo (dependencies (fake-json \"1.0\")))\n",
+            "(defproject demo (dependencies (fake-json \"1.0\")))\n",
         );
     let stderr = sandbox
         .compiler(&["remove", "--dev", "fake-json"])
@@ -7655,14 +7655,14 @@ fn add_of_a_feature_cargo_cannot_find_prints_cargo_text() {
     let add = sandbox.compiler_with_registry(&["add", "fake-json", "--features", "nope"]);
     let stderr = add.assert_exit_code(2).stderr();
     assert!(stderr.contains("nope"), "{stderr}");
-    assert_eq!(sandbox.project_file_text(), "(project demo)\n");
+    assert_eq!(sandbox.project_file_text(), "(defproject demo)\n");
 }
 
 #[test]
 fn remove_keeps_a_comment_before_the_entry() {
     let sandbox = Sandbox::new("remove_after_comment").with_fake_registry().with_file(
         &Language::project_file_name(),
-        "(project demo\n  (dependencies ; first\n    (other \"1.0\")\n    ; json\n    (fake-json \"1.4.2\")))\n",
+        "(defproject demo\n  (dependencies ; first\n    (other \"1.0\")\n    ; json\n    (fake-json \"1.4.2\")))\n",
     );
     sandbox
         .compiler(&["remove", "fake-json"])
@@ -7680,7 +7680,7 @@ fn add_of_a_name_that_is_not_a_crate_name_is_a_usage_error() {
             .stderr();
         assert_eq!(stderr, format!("error: `{name}` is not a crate name\n"));
     }
-    assert_eq!(sandbox.project_file_text(), "(project demo)\n");
+    assert_eq!(sandbox.project_file_text(), "(defproject demo)\n");
 }
 
 #[test]
@@ -7701,7 +7701,7 @@ fn add_of_a_value_that_is_not_a_feature_name_is_a_usage_error() {
 
 #[test]
 fn add_of_a_crate_listed_with_a_path_is_a_usage_error() {
-    let project = "(project demo (dependencies (fake-json :path \"../fake-json\")))\n";
+    let project = "(defproject demo (dependencies (fake-json :path \"../fake-json\")))\n";
     let sandbox = Sandbox::new("add_path_crate")
         .with_fake_registry()
         .with_file(&Language::project_file_name(), project);
@@ -7749,7 +7749,7 @@ fn add_to_a_project_in_a_read_only_directory_reports_the_file() {
         )),
         "{stderr}"
     );
-    assert_eq!(sandbox.project_file_text(), "(project demo)\n");
+    assert_eq!(sandbox.project_file_text(), "(defproject demo)\n");
 }
 
 #[test]
@@ -7760,13 +7760,13 @@ fn add_writes_the_crate_name_cargo_wrote() {
         .assert_silent_success();
     assert_eq!(
         sandbox.project_file_text(),
-        "(project demo (dependencies (fake_json \"1.0.0\")))\n"
+        "(defproject demo (dependencies (fake_json \"1.0.0\")))\n"
     );
 }
 
 #[test]
 fn add_refuses_a_path_crate_listed_under_the_name_cargo_wrote() {
-    let project = "(project demo (dependencies (fake_json :path \"../fake-json\")))\n";
+    let project = "(defproject demo (dependencies (fake_json :path \"../fake-json\")))\n";
     let sandbox = Sandbox::new("add_translated_path_crate")
         .with_fake_registry()
         .with_file(&Language::project_file_name(), project);
@@ -7821,7 +7821,7 @@ fn add_when_cargo_writes_no_version_is_an_environment_error() {
         add.assert_exit_code(2).stderr(),
         "error: cargo added `fake-json` without a version\n"
     );
-    assert_eq!(sandbox.project_file_text(), "(project demo)\n");
+    assert_eq!(sandbox.project_file_text(), "(defproject demo)\n");
 }
 
 #[test]
@@ -8004,10 +8004,10 @@ fn test_checks_the_tests_of_a_library() {
     );
 }
 
-const TASK_PROJECT: &str = "(project chores)\n";
+const TASK_PROJECT: &str = "(defproject chores)\n";
 const CYCLE_FIRST_TASK: &str = "(use second)\n\n(deftask first () (println 1))\n";
 const CYCLE_SECOND_TASK: &str = "(use first)\n\n(deftask second () (println 2))\n";
-const ROOT_ENTRY_PROJECT: &str = "(project chores :entry \"main.knv\")\n";
+const ROOT_ENTRY_PROJECT: &str = "(defproject chores :entry \"main.knv\")\n";
 const ROOT_ENTRY: &str = "(defn main () (println \"m\"))\n";
 const HELPER_TASK: &str = "(export loud)\n\n(defn loud (text) (str text \"!\"))\n\n(deftask shout (who) (println (loud who)))\n";
 const HELPER_TASK_TEST: &str = "(use prelude/test assert deftest)\n(use tasks/build loud)\n\n(deftest louder (assert (= (loud \"a\") \"a!\")))\n";
@@ -8524,7 +8524,7 @@ fn task_cannot_reach_tests_when_the_entry_sits_at_the_root() {
     let sandbox = Sandbox::new("task_root_entry")
         .with_file(
             &Language::project_file_name(),
-            "(project rootreach :entry \"main.knv\")\n",
+            "(defproject rootreach :entry \"main.knv\")\n",
         )
         .with_file(
             "main.knv",
@@ -8786,7 +8786,7 @@ fn task_cannot_reach_tests_through_a_dotted_entry_a_parent_path_or_a_link() {
     let dotted = Sandbox::new("task_tests_dotted")
         .with_file(
             &Language::project_file_name(),
-            "(project dotted :entry \"./main.knv\")\n",
+            "(defproject dotted :entry \"./main.knv\")\n",
         )
         .with_file("main.knv", "(defn main () (println \"m\"))\n")
         .with_file("tests/support.knv", support)
@@ -8871,7 +8871,7 @@ fn task_cannot_reach_another_task_module_through_the_source_root() {
             let sandbox = Sandbox::new(&format!("task_through_source_root_{with_tests}"))
                 .with_file(
                     &Language::project_file_name(),
-                    "(project rootent :entry \"main.knv\")\n",
+                    "(defproject rootent :entry \"main.knv\")\n",
                 )
                 .with_file("main.knv", "(defn main () (println \"m\"))\n")
                 .with_file("tasks/util.knv", "(export h)\n\n(def h \"h\")\n")

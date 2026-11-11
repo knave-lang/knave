@@ -1,1 +1,1 @@
-(project app (libraries (loader :path "../loader")))
+(defproject app (libraries (loader :path "../loader")))

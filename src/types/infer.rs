@@ -15,7 +15,6 @@ use super::enums::{VariantDefinition, VariantPayload};
 use super::expectation::Expectation;
 use super::parameter_call_labels::ParameterCallRequest;
 use super::pattern_placement::{PatternFields, PatternPlacement};
-use super::payload_position::PayloadPosition;
 use super::pending::{DecidedBorrows, PendingBorrow};
 use super::problems::{MismatchContext, TypeProblems};
 use super::rust_types::RustType;
@@ -29,6 +28,7 @@ use super::typed::{
     TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedStructExpr,
 };
 use super::unifier::LiteralKind;
+use super::{BoxedPayload, PayloadPosition};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, Control, Expr, ExprKind, FieldLabel,
     Keyword, Lambda, Leaf, Literal, MapOperation, Pattern, PatternArguments, PatternKind,
@@ -893,10 +893,10 @@ impl TypeChecker {
     ) -> Result<Vec<TypedPattern>, Diagnostic> {
         let mut typed = Vec::with_capacity(patterns.len());
         for (payload, (pattern, storage)) in patterns.iter().zip(storage).enumerate() {
-            let position = PayloadPosition { variant, payload };
+            let boxed = BoxedPayload::at(owner, PayloadPosition { variant, payload });
             let payloads = self.variant_payloads();
-            let inferred = payloads.is_inferred_box(owner, position);
-            let payload = payloads.seen_by_pattern(owner, position, storage.clone());
+            let inferred = payloads.is_inferred_box(boxed);
+            let payload = payloads.seen_by_pattern(boxed, storage.clone());
             let mut value = self.lower_pattern(pattern, &payload, mode)?;
             value.boxed = inferred;
             typed.push(value);

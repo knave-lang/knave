@@ -34,39 +34,38 @@ impl<'a> VariantPayloads<'a> {
                     variant: index,
                     payload,
                 };
-                self.seen_by_pattern(owner, position, stored)
+                self.seen_by_pattern(BoxedPayload::at(owner, position), stored)
             })
             .collect()
     }
 
-    pub(super) fn seen_by_pattern(
-        &self,
-        owner: BindingId,
-        position: PayloadPosition,
-        stored: Type,
-    ) -> Type {
-        match self.is_inferred_box(owner, position) {
-            true => self
-                .unboxed(stored)
-                .expect("an inferred box has one type argument"),
+    pub(super) fn seen_by_pattern(&self, payload: BoxedPayload, stored: Type) -> Type {
+        match self.is_inferred_box(payload) {
+            true => self.unboxed(&stored).clone(),
             false => stored,
         }
     }
 
-    pub(super) fn is_inferred_box(&self, owner: BindingId, position: PayloadPosition) -> bool {
-        self.types
-            .inferred_boxes
-            .contains(&BoxedPayload { owner, position })
+    pub(super) fn written<'p>(&self, payload: BoxedPayload, stored: &'p Type) -> &'p Type {
+        match self.is_inferred_box(payload) {
+            true => self.unboxed(stored),
+            false => stored,
+        }
     }
 
-    fn unboxed(&self, ty: Type) -> Option<Type> {
-        match ty {
-            Type::Named(binding, arguments)
-                if Some(binding) == self.types.box_binding && arguments.len() == 1 =>
-            {
-                arguments.into_iter().next()
+    pub(super) fn is_inferred_box(&self, payload: BoxedPayload) -> bool {
+        self.types.inferred_boxes.contains(&payload)
+    }
+
+    fn unboxed<'p>(&self, inferred_box: &'p Type) -> &'p Type {
+        match inferred_box {
+            Type::Named(binding, arguments) if Some(*binding) == self.types.box_binding => {
+                match arguments.as_slice() {
+                    [argument] => argument,
+                    _ => panic!("an inferred box has one type argument"),
+                }
             }
-            _ => None,
+            _ => panic!("an inferred box is a box"),
         }
     }
 }

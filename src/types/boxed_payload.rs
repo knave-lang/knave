@@ -6,3 +6,9 @@ pub struct BoxedPayload {
     pub owner: BindingId,
     pub position: PayloadPosition,
 }
+
+impl BoxedPayload {
+    pub fn at(owner: BindingId, position: PayloadPosition) -> Self {
+        Self { owner, position }
+    }
+}

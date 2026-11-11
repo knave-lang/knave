@@ -151,11 +151,7 @@ mod tests {
                 bounds: Vec::new(),
             };
             let mut program = TypedSource::expand(Self::SOURCE).typed();
-            let types = TypeDeclarations {
-                structs: std::mem::take(&mut program.structs),
-                rust_types: std::mem::take(&mut program.rust_types),
-                ..TypeDeclarations::default()
-            };
+            let types = TypeDeclarations::taken_from(&mut program);
             Self {
                 program,
                 types,

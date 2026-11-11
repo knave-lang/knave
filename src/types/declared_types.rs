@@ -39,90 +39,45 @@ impl<'a> DeclaredTypes<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::DeclaredTypes;
-    use crate::core::{BindingId, PrimitiveType};
-    use crate::types::type_declarations::TypeDeclarations;
+    use crate::core::PrimitiveType;
+    use crate::types::Type;
+    use crate::types::declarations_fixture::DeclarationsFixture;
     use crate::types::view_coercion::ViewCoercion;
-    use crate::types::{Type, TypedProgram, TypedSource};
 
-    struct DeclarationsFixture {
-        program: TypedProgram,
-        types: TypeDeclarations,
-    }
-
-    impl DeclarationsFixture {
-        const SOURCE: &str = "
-            (struct reading (value i64))
-            (defn readings ((items (vec i64))) items)
-            (defn window ((items (ref (slice u8)))) (len items))
-            (defn main () (println \"Leaf\"))";
-
-        fn new() -> Self {
-            let mut program = TypedSource::expand(Self::SOURCE).typed();
-            let types = TypeDeclarations {
-                structs: std::mem::take(&mut program.structs),
-                rust_types: std::mem::take(&mut program.rust_types),
-                ..TypeDeclarations::default()
-            };
-            Self { program, types }
-        }
-
-        fn declarations(&self) -> DeclaredTypes<'_> {
-            DeclaredTypes::new(&self.types)
-        }
-
-        fn reading(&self) -> BindingId {
-            self.types
-                .structs
-                .iter()
-                .map(|(binding, _)| binding)
-                .find(|binding| self.program.bindings.get(*binding).name() == "reading")
-                .expect("the source declares the struct")
-        }
-
-        fn parameter_referent(&self, function: &str) -> Type {
-            let definition = self
-                .program
-                .modules
-                .iter()
-                .flat_map(|module| &module.definitions)
-                .find(|definition| self.program.bindings.get(definition.binding).name() == function)
-                .expect("the source defines the function");
-            let Type::Function(_, parameters, _) = &definition.scheme.body else {
-                panic!("a defn has a function type");
-            };
-            parameters[0].referent().clone()
-        }
-    }
+    const SOURCE: &str = "
+        (struct reading (value i64))
+        (defn readings ((items (vec i64))) items)
+        (defn window ((items (ref (slice u8)))) (len items))
+        (defn main () (println \"Leaf\"))";
 
     #[test]
     fn a_declared_field_has_its_declared_type() {
-        let fixture = DeclarationsFixture::new();
-        let reading = fixture.reading();
+        let fixture = DeclarationsFixture::new(SOURCE);
+        let reading = fixture.type_named("reading");
         assert_eq!(
-            fixture.declarations().field_type(reading, "value", &[]),
+            fixture.declared_types().field_type(reading, "value", &[]),
             Some(Type::Primitive(PrimitiveType::I64))
         );
     }
 
     #[test]
     fn an_undeclared_field_has_no_type() {
-        let fixture = DeclarationsFixture::new();
-        let reading = fixture.reading();
+        let fixture = DeclarationsFixture::new(SOURCE);
+        let reading = fixture.type_named("reading");
         assert_eq!(
-            fixture.declarations().field_type(reading, "missing", &[]),
+            fixture.declared_types().field_type(reading, "missing", &[]),
             None
         );
     }
 
     #[test]
     fn a_slice_relates_its_items_to_the_elements_of_a_vector() {
-        let fixture = DeclarationsFixture::new();
-        let slice = fixture.parameter_referent("window");
-        let vector = fixture.parameter_referent("readings");
+        let fixture = DeclarationsFixture::new(SOURCE);
+        let slice = fixture.parameter("window").referent().clone();
+        let vector = fixture.parameter("readings").referent().clone();
         assert_eq!(
             fixture
-                .declarations()
+                .declared_types()
                 .viewed_items(ViewCoercion::new(&slice, &vector)),
             Some(vec![(
                 Type::Primitive(PrimitiveType::U8),
@@ -133,34 +88,34 @@ mod tests {
 
     #[test]
     fn a_string_slice_is_unsized() {
-        let fixture = DeclarationsFixture::new();
+        let fixture = DeclarationsFixture::new(SOURCE);
         assert!(
             fixture
-                .declarations()
+                .declared_types()
                 .is_unsized(&Type::Primitive(PrimitiveType::Str))
         );
     }
 
     #[test]
     fn a_slice_is_unsized() {
-        let fixture = DeclarationsFixture::new();
-        let slice = fixture.parameter_referent("window");
-        assert!(fixture.declarations().is_unsized(&slice));
+        let fixture = DeclarationsFixture::new(SOURCE);
+        let slice = fixture.parameter("window").referent().clone();
+        assert!(fixture.declared_types().is_unsized(&slice));
     }
 
     #[test]
     fn a_vector_is_sized() {
-        let fixture = DeclarationsFixture::new();
-        let vector = fixture.parameter_referent("readings");
-        assert!(!fixture.declarations().is_unsized(&vector));
+        let fixture = DeclarationsFixture::new(SOURCE);
+        let vector = fixture.parameter("readings").referent().clone();
+        assert!(!fixture.declared_types().is_unsized(&vector));
     }
 
     #[test]
     fn a_number_is_sized() {
-        let fixture = DeclarationsFixture::new();
+        let fixture = DeclarationsFixture::new(SOURCE);
         assert!(
             !fixture
-                .declarations()
+                .declared_types()
                 .is_unsized(&Type::Primitive(PrimitiveType::I64))
         );
     }

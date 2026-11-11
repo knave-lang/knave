@@ -64,13 +64,11 @@ impl BoxPlanner {
             if let VariantPayload::Named(fields) = payload {
                 fields[target.payload].1 = target.ty;
             }
-            boxed.insert(BoxedPayload {
-                owner: target.binding,
-                position: PayloadPosition {
-                    variant: target.variant,
-                    payload: target.payload,
-                },
-            });
+            let position = PayloadPosition {
+                variant: target.variant,
+                payload: target.payload,
+            };
+            boxed.insert(BoxedPayload::at(target.binding, position));
         }
         boxed
     }

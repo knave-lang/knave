@@ -35,10 +35,7 @@ impl<'a> DeriveBlockers<'a> {
         let definition = self.types.enums.get(binding)?;
         let params: Vec<GenericId> = definition.params.iter().map(|param| param.id).collect();
         definition.blocking_variant(&|position, payload| {
-            let boxed = BoxedPayload {
-                owner: binding,
-                position,
-            };
+            let boxed = BoxedPayload::at(binding, position);
             let written = self.written_payload(boxed, payload, trait_binding);
             self.payload_satisfies(trait_binding, written, &params)
         })
@@ -64,14 +61,9 @@ impl<'a> DeriveBlockers<'a> {
         payload: &'p Type,
         trait_binding: BindingId,
     ) -> &'p Type {
-        let inferred_box = self.payloads.is_inferred_box(boxed.owner, boxed.position);
-        match payload {
-            Type::Named(_, arguments)
-                if inferred_box && self.traits.is_structural(trait_binding) =>
-            {
-                &arguments[0]
-            }
-            _ => payload,
+        match self.traits.is_structural(trait_binding) {
+            true => self.payloads.written(boxed, payload),
+            false => payload,
         }
     }
 

@@ -1,6 +1,6 @@
 use rustc_hash::FxHashSet;
 
-use super::checked_items::CheckedItems;
+use super::checked_program::CheckedProgram;
 use super::display::TypeDisplay;
 use super::method_receivers::MethodReceivers;
 use super::problems::TypeProblems;
@@ -33,7 +33,7 @@ enum FunctionLabels<'f> {
 pub(super) struct OpaquePositions<'c> {
     types: &'c TypeDeclarations,
     receivers: MethodReceivers<'c>,
-    checked: CheckedItems<'c>,
+    checked: CheckedProgram<'c>,
 }
 
 impl UnnameableType {
@@ -53,7 +53,7 @@ impl<'c> OpaquePositions<'c> {
     pub(super) fn new(
         types: &'c TypeDeclarations,
         receivers: MethodReceivers<'c>,
-        checked: CheckedItems<'c>,
+        checked: CheckedProgram<'c>,
     ) -> Self {
         Self {
             types,

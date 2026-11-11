@@ -470,13 +470,14 @@ impl<'a> StructuralImpls<'a> {
             .into_iter()
             .enumerate()
             .map(|(payload, part)| {
-                let boxed = self.program.inferred_boxes.contains(&BoxedPayload {
-                    owner: binding,
-                    position: PayloadPosition {
-                        variant: position,
-                        payload,
-                    },
-                });
+                let position = PayloadPosition {
+                    variant: position,
+                    payload,
+                };
+                let boxed = self
+                    .program
+                    .inferred_boxes
+                    .contains(&BoxedPayload::at(binding, position));
                 let value = if boxed { format!("&**{part}") } else { part };
                 part_template.fill(&TemplateValues {
                     value,

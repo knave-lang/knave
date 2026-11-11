@@ -69,34 +69,30 @@ mod tests {
                      (rust \"std::fmt::Result::Ok(())\" fmt-result)))
         (defn main () (do))";
 
-    fn fixture() -> DeclarationsFixture {
-        DeclarationsFixture::new(SOURCE)
-    }
-
     #[test]
     fn a_trait_rust_derives_is_derivable() {
-        let fixture = fixture();
+        let fixture = DeclarationsFixture::new(SOURCE);
         let debug = fixture.trait_named("debug");
         assert!(fixture.declared_traits().is_derivable(debug));
     }
 
     #[test]
     fn a_trait_rust_cannot_derive_is_not_derivable() {
-        let fixture = fixture();
+        let fixture = DeclarationsFixture::new(SOURCE);
         let display = fixture.trait_named("display");
         assert!(!fixture.declared_traits().is_derivable(display));
     }
 
     #[test]
     fn a_structural_trait_is_derivable() {
-        let fixture = fixture();
+        let fixture = DeclarationsFixture::new(SOURCE);
         let show = fixture.trait_named("show");
         assert!(fixture.declared_traits().is_derivable(show));
     }
 
     #[test]
     fn only_a_trait_with_a_structural_clause_is_structural() {
-        let fixture = fixture();
+        let fixture = DeclarationsFixture::new(SOURCE);
         let traits = fixture.declared_traits();
         assert!(traits.is_structural(fixture.trait_named("show")));
         assert!(!traits.is_structural(fixture.trait_named("debug")));
@@ -104,7 +100,7 @@ mod tests {
 
     #[test]
     fn debug_allows_function_fields_and_equality_does_not() {
-        let fixture = fixture();
+        let fixture = DeclarationsFixture::new(SOURCE);
         let traits = fixture.declared_traits();
         assert!(traits.allows_function_fields(fixture.trait_named("debug")));
         assert!(!traits.allows_function_fields(fixture.trait_named("eq")));
@@ -112,7 +108,7 @@ mod tests {
 
     #[test]
     fn the_written_impl_of_a_trait_for_a_type_is_found() {
-        let fixture = fixture();
+        let fixture = DeclarationsFixture::new(SOURCE);
         let shown = fixture.trait_named("shown");
         let point = fixture.type_named("point");
         let written = fixture.declared_traits().written_impl(shown, point);
@@ -124,7 +120,7 @@ mod tests {
 
     #[test]
     fn a_type_without_a_written_impl_has_none() {
-        let fixture = fixture();
+        let fixture = DeclarationsFixture::new(SOURCE);
         let shown = fixture.trait_named("shown");
         let depot = fixture.type_named("depot");
         assert!(
@@ -137,7 +133,7 @@ mod tests {
 
     #[test]
     fn a_written_impl_of_another_trait_is_not_found() {
-        let fixture = fixture();
+        let fixture = DeclarationsFixture::new(SOURCE);
         let debug = fixture.trait_named("debug");
         let point = fixture.type_named("point");
         assert!(

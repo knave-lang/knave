@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/warn_continues_expansion.knv
+---
+warning[L0802]: the van is parked on a link
+  --> expand/warn_continues_expansion.knv:17:18
+   |
+17 | (def van (parked "blue van"))
+   |                  ^^^^^^^^^^ parked here
+   |
+   = note: vans park on the left
+   = help: move the van
+
+warning[L0802]: the bus has no help
+  --> expand/warn_continues_expansion.knv:19:17
+   |
+19 | (def bus (plain "red bus"))
+   |                 ^^^^^^^^^ here
+
+(def van "blue van")
+(def bus "red bus")

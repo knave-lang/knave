@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/warn_in_discarded_trial.knv
+---
+(def van "expanded")

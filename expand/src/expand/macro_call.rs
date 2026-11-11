@@ -181,11 +181,13 @@ impl Expander<'_> {
         let diagnostics = self.diagnostics.len();
         let recovered = self.recovered_diagnostics.len();
         let declared = self.declared_definitions.len();
+        let warnings = self.warnings.len();
         let budget_before = self.form_budgets.current().clone();
         let result = self.run_macro(binding, form, None);
         self.diagnostics.truncate(diagnostics);
         self.recovered_diagnostics.truncate(recovered);
         self.declared_definitions.truncate(declared);
+        self.warnings.truncate(warnings);
         if result.is_err() {
             *self.form_budgets.current() = budget_before;
         }

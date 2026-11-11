@@ -1,3 +1,4 @@
+mod code_book;
 mod failure;
 mod joined_parts;
 mod leading_lines;
@@ -7,10 +8,9 @@ mod program;
 mod step_limit;
 mod strings;
 mod text;
+mod warning;
 #[cfg(test)]
 mod work_charges;
-
-pub use failure::FailureDescription;
 
 use std::cmp::Ordering;
 
@@ -28,6 +28,7 @@ use program::{ModuleOperations, ProgramOperations};
 use step_limit::StepLimitSetting;
 use strings::StringOperations;
 use text::TextOperations;
+use warning::WarnCall;
 
 pub struct BuiltinCall<'m> {
     builtin: Builtin,
@@ -36,7 +37,7 @@ pub struct BuiltinCall<'m> {
 }
 
 impl<'m> BuiltinCall<'m> {
-    const IMPLEMENTATIONS: [(Builtin, Implementation); 72] = [
+    const IMPLEMENTATIONS: [(Builtin, Implementation); 73] = [
         (Builtin::First, |operations, _| operations.lists.first()),
         (Builtin::Rest, |operations, _| operations.lists.rest()),
         (Builtin::List, |operations, _| operations.lists.list()),
@@ -120,6 +121,9 @@ impl<'m> BuiltinCall<'m> {
             operations.leading_lines.kept_texts()
         }),
         (Builtin::Fail, |operations, _| operations.text.fail()),
+        (Builtin::Warn, |operations, host| {
+            operations.warning.report(host)
+        }),
         (Builtin::NumberAdd, |operations, _| operations.numbers.add()),
         (Builtin::NumberSub, |operations, _| {
             operations.numbers.subtract()
@@ -274,6 +278,7 @@ struct Operations<'a> {
     strings: StringOperations<'a>,
     leading_lines: DistinctLeadingLines<'a>,
     text: TextOperations<'a>,
+    warning: WarnCall<'a>,
 }
 
 impl<'a> Operations<'a> {
@@ -287,6 +292,7 @@ impl<'a> Operations<'a> {
             strings: StringOperations::new(arguments, call_site),
             leading_lines: DistinctLeadingLines::new(arguments, call_site),
             text: TextOperations::new(arguments, call_site),
+            warning: WarnCall::new(arguments),
         }
     }
 }

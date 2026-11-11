@@ -1,0 +1,19 @@
+(use code nth warn)
+
+(def parked
+  (macro (form)
+    (warn "the van is parked on a link"
+      (nth form 1) "move the van"
+      (quote (:code unmatched-link :label "parked here" :note "vans park on the left")))
+    (nth form 1)))
+
+(def plain
+  (macro (form)
+    (warn "the bus has no help"
+      (nth form 1)
+      (quote (:code unmatched-link)))
+    (nth form 1)))
+
+(def van (parked "blue van"))
+
+(def bus (plain "red bus"))

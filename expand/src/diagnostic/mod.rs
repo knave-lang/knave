@@ -1,19 +1,25 @@
 mod code;
+mod code_stage;
 mod collection;
 mod counted;
 mod distinct;
 mod label;
 mod quoted_form;
 mod render;
+mod rule_name;
+mod severity;
 mod similar_name;
 mod source_window;
 
 pub use code::DiagnosticCode;
+pub use code_stage::CodeStage;
 pub use collection::Diagnostics;
 pub use counted::Counted;
 pub use distinct::DistinctDiagnostics;
 pub use label::{Help, Label, Suggestion};
 pub use render::DiagnosticRenderer;
+pub use rule_name::RuleName;
+pub use severity::Severity;
 pub use similar_name::SimilarName;
 
 use std::rc::Rc;
@@ -26,13 +32,6 @@ pub struct Diagnostic {
     report: Box<Report>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Severity {
-    Error,
-    Warning,
-    Note,
-}
-
 #[derive(Clone, Debug)]
 struct Report {
     severity: Severity,
@@ -43,6 +42,7 @@ struct Report {
     notes: Vec<String>,
     helps: Vec<Help>,
     missing_name: Option<MissingName>,
+    rule: Option<RuleName>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -80,6 +80,7 @@ impl Diagnostic {
                 notes: Vec::new(),
                 helps: Vec::new(),
                 missing_name: None,
+                rule: None,
             }),
         }
     }
@@ -88,16 +89,8 @@ impl Diagnostic {
         self.report.severity == Severity::Error
     }
 
-    pub fn is_note(&self) -> bool {
-        self.report.severity == Severity::Note
-    }
-
-    pub fn severity_name(&self) -> &'static str {
-        match self.report.severity {
-            Severity::Error => "error",
-            Severity::Warning => "warning",
-            Severity::Note => "note",
-        }
+    pub fn severity(&self) -> Severity {
+        self.report.severity
     }
 
     pub fn with_label(mut self, label: Label) -> Self {
@@ -117,13 +110,8 @@ impl Diagnostic {
         self
     }
 
-    pub fn with_help(mut self, help: impl Into<String>) -> Self {
-        self.report.helps.push(Help::new(help.into()));
-        self
-    }
-
-    pub fn with_copied_help(mut self, help: Help) -> Self {
-        self.report.helps.push(help);
+    pub fn with_help(mut self, help: impl Into<Help>) -> Self {
+        self.report.helps.push(help.into());
         self
     }
 
@@ -146,6 +134,15 @@ impl Diagnostic {
 
     pub fn missing_name(&self) -> Option<&MissingName> {
         self.report.missing_name.as_ref()
+    }
+
+    pub fn with_rule(mut self, rule: RuleName) -> Self {
+        self.report.rule = Some(rule);
+        self
+    }
+
+    pub fn rule(&self) -> Option<&RuleName> {
+        self.report.rule.as_ref()
     }
 
     pub fn code(&self) -> Option<&DiagnosticCode> {

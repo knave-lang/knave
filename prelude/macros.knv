@@ -25,7 +25,7 @@
           string-strip-suffix string-trim-start string?
           symbol symbol-name symbol? take
           type-definition-call type-definition-symbol
-          value-eq)
+          value-eq warn)
 
 (export defmacro defrule defrule-with-value doc-body
         doc-header doc-page docstring docstrings-key
@@ -756,6 +756,26 @@
   ```")
 
 (header-shape (fail message))
+
+(header-shape (warn message))
+
+(document (warn message form help description)
+  "Reports a warning at `form` and lets expansion continue.
+
+  It takes the arguments of `fail`, but `help` may be left out and
+  `description` must name the warning's lint with `:code`, as in
+  `(:code unmatched-link)`. The lint's name and code go with the warning.
+
+  ```
+  (use code nth warn)
+  (def parked
+    (macro (form)
+      (warn \"the van is parked on a link\" (nth form 1) \"move the van\"
+        (quote (:code unmatched-link)))
+      (nth form 1)))
+  (parked 3)
+  => 3
+  ```")
 
 (defmacro module (text)
   (noted-docstring (fn ()

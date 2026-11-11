@@ -9,12 +9,18 @@ use crate::core::{BindingId, BindingKind, Declaration, ModuleDefinitions, Module
 use crate::diagnostic::Diagnostic;
 use crate::interpret::{
     DefinitionQueries, ExpansionCallbacks, ModuleNotes, ModuleQueries, NameComparison,
-    NotesTooLarge, SourceQueries, Value,
+    NotesTooLarge, SourceQueries, Value, Warnings,
 };
 use crate::modules::{ModuleRecord, ModuleSources};
 use crate::reader::{Form, LiteralForms, Symbol};
 use crate::scope::{Phase, Resolution, ScopeSet};
 use crate::source::Span;
+
+impl Warnings for Expander<'_> {
+    fn report_warning(&mut self, warning: Diagnostic) {
+        self.warnings.push(warning);
+    }
+}
 
 impl ModuleQueries for Expander<'_> {
     fn program_modules(&self) -> Vec<Symbol> {

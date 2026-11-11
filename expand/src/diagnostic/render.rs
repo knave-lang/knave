@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 
 use super::quoted_form::QuotedForm;
 use super::source_window::{LineIndex, SourceWindow};
-use super::{Diagnostic, Diagnostics, Help, Label, Suggestion};
+use super::{Diagnostic, Diagnostics, Help, Label, Severity, Suggestion};
 use crate::source::{SourceId, SourceMap, Span};
 
 pub struct DiagnosticRenderer<'a> {
@@ -109,12 +109,10 @@ impl<'a> DiagnosticRenderer<'a> {
     }
 
     fn level(diagnostic: &Diagnostic) -> Level<'static> {
-        if diagnostic.is_error() {
-            Level::ERROR
-        } else if diagnostic.is_note() {
-            Level::NOTE
-        } else {
-            Level::WARNING
+        match diagnostic.severity() {
+            Severity::Error => Level::ERROR,
+            Severity::Note => Level::NOTE,
+            Severity::Warning => Level::WARNING,
         }
     }
 

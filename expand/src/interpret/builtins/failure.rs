@@ -1,5 +1,6 @@
+use super::code_book::CodeBook;
 use crate::core::Keyword;
-use crate::diagnostic::{Diagnostic, DiagnosticCode, SimilarName, Suggestion};
+use crate::diagnostic::{Diagnostic, DiagnosticCode, Suggestion};
 use crate::interpret::arguments::Arguments;
 use crate::interpret::problems::InterpretProblems;
 use crate::reader::{Form, FormKind};
@@ -43,7 +44,10 @@ impl<'a> FailCall<'a> {
 
     fn description(&self) -> Result<FailureDescription, Diagnostic> {
         if self.has_argument(Self::DESCRIPTION) {
-            FailureDescription::read(&self.arguments.list_forms(Self::DESCRIPTION)?)
+            FailureDescription::read(
+                &self.arguments.list_forms(Self::DESCRIPTION)?,
+                &CodeBook::MACROS,
+            )
         } else {
             Ok(FailureDescription::default())
         }
@@ -63,7 +67,7 @@ impl<'a> FailCall<'a> {
 }
 
 pub struct FailureDescription {
-    code: DiagnosticCode,
+    code: Option<DiagnosticCode>,
     label: Option<String>,
     earlier: Option<Earlier>,
     earlier_label: Option<EarlierLabel>,
@@ -97,16 +101,20 @@ impl FailureDescription {
     const NOTE: &'static str = "note";
     const SUGGEST: &'static str = "suggest";
 
-    fn read(parts: &[Form]) -> Result<Self, Diagnostic> {
+    pub fn read(parts: &[Form], codes: &CodeBook) -> Result<Self, Diagnostic> {
         let mut pairs = parts.chunks_exact(2);
         let lone_part = pairs.remainder().first();
         let description = pairs.try_fold(Self::default(), |description, pair| {
-            description.with_part(&pair[0], &pair[1])
+            description.with_part(&pair[0], &pair[1], codes)
         })?;
         match lone_part {
-            Some(part) => Err(InterpretProblems::malformed_failure_part(part.span())),
+            Some(part) => Err(Self::malformed_part(part)),
             None => description.expect_earlier_label(),
         }
+    }
+
+    pub fn code(&self) -> Option<&DiagnosticCode> {
+        self.code.as_ref()
     }
 
     fn expect_earlier_label(self) -> Result<Self, Diagnostic> {
@@ -123,21 +131,21 @@ impl FailureDescription {
         }
     }
 
-    fn with_part(self, part: &Form, value: &Form) -> Result<Self, Diagnostic> {
+    fn with_part(self, part: &Form, value: &Form, codes: &CodeBook) -> Result<Self, Diagnostic> {
         match Self::part_name(part) {
-            Some(Self::CODE) => self.with_code(value),
+            Some(Self::CODE) => self.with_code(value, codes),
             Some(Self::EARLIER) => Ok(self.with_earlier(part, value)),
             Some(Self::EARLIER_LABEL) => self.with_earlier_label(part, value),
             Some(Self::LABEL) => self.with_label(value),
             Some(Self::NOTE) => self.with_note(value),
             Some(Self::SUGGEST) => self.with_replacement(value),
-            _ => Err(InterpretProblems::malformed_failure_part(part.span())),
+            _ => Err(Self::malformed_part(part)),
         }
     }
 
-    fn with_code(self, value: &Form) -> Result<Self, Diagnostic> {
+    fn with_code(self, value: &Form, codes: &CodeBook) -> Result<Self, Diagnostic> {
         Ok(Self {
-            code: Self::code(value)?,
+            code: Some(codes.code_named(Self::symbol_name(value)?, value.span())?),
             ..self
         })
     }
@@ -188,29 +196,30 @@ impl FailureDescription {
             .and_then(|symbol| Keyword::field_name(symbol.name()))
     }
 
-    fn code(value: &Form) -> Result<DiagnosticCode, Diagnostic> {
-        let name = Self::symbol_name(value)?;
-        DiagnosticCode::macro_stage_named(name).ok_or_else(|| {
-            let similar = SimilarName::closest(name, &DiagnosticCode::macro_stage_names());
-            InterpretProblems::unknown_failure_code(name, value.span(), similar)
-        })
-    }
-
     fn symbol_name(value: &Form) -> Result<&str, Diagnostic> {
         value
             .as_symbol()
             .map(|symbol| symbol.name())
-            .ok_or_else(|| InterpretProblems::malformed_failure_part(value.span()))
+            .ok_or_else(|| Self::malformed_part(value))
     }
 
     fn label_text(value: &Form) -> Result<String, Diagnostic> {
         match value.kind() {
             FormKind::String(text) => Ok(text.to_string()),
-            _ => Err(InterpretProblems::malformed_failure_part(value.span())),
+            _ => Err(Self::malformed_part(value)),
         }
     }
 
-    fn diagnostic(mut self, message: String, culprit: Span, help: Option<String>) -> Diagnostic {
+    fn malformed_part(part: &Form) -> Diagnostic {
+        InterpretProblems::malformed_failure_part(part.span(), &Self::PARTS)
+    }
+
+    pub fn diagnostic(
+        mut self,
+        message: String,
+        culprit: Span,
+        help: Option<String>,
+    ) -> Diagnostic {
         let replacement = self.replacement.take();
         let note = self.note.take();
         let labelled = self.labelled(message, culprit);
@@ -232,14 +241,15 @@ impl FailureDescription {
             .earlier
             .zip(self.earlier_label)
             .map(|(earlier, label)| (earlier.form, label.text));
-        InterpretProblems::failed(self.code, message, culprit, self.label, earlier)
+        let code = self.code.unwrap_or(DiagnosticCode::MACRO_FAILED);
+        InterpretProblems::failed(code, message, culprit, self.label, earlier)
     }
 }
 
 impl Default for FailureDescription {
     fn default() -> Self {
         Self {
-            code: DiagnosticCode::MACRO_FAILED,
+            code: None,
             label: None,
             earlier: None,
             earlier_label: None,

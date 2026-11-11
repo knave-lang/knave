@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use super::problems::TemplateSpelling;
 use crate::core::{DefinitionForm, EnumDefiner, KernelForm};
-use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
+use crate::diagnostic::{Diagnostic, DiagnosticCode, Help, Label};
 use crate::reader::{Form, FormKind, Symbol};
 
 pub struct Shape<'a> {
@@ -155,11 +155,11 @@ impl<'a> Shape<'a> {
         format!("write it as `{}`", self.written_shape())
     }
 
-    pub fn malformed_form_with_help(&self, help: impl Into<String>) -> Diagnostic {
+    pub fn malformed_form_with_help(&self, help: impl Into<Help>) -> Diagnostic {
         self.malformed_with_help(self.form, help)
     }
 
-    pub fn malformed_with_help(&self, part: &Form, help: impl Into<String>) -> Diagnostic {
+    pub fn malformed_with_help(&self, part: &Form, help: impl Into<Help>) -> Diagnostic {
         let name = self.written_name();
         Diagnostic::error(
             DiagnosticCode::MALFORMED_FORM,

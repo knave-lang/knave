@@ -103,7 +103,7 @@ impl<'a> JsonDiagnostic<'a> {
     }
 
     fn of(&self, diagnostic: &Diagnostic) -> JsonObject {
-        let severity = JsonObject::new("severity", diagnostic.severity_name());
+        let severity = JsonObject::new("severity", diagnostic.severity().name());
         let coded = match diagnostic.code() {
             Some(code) => severity.with("code", code.as_str()),
             None => severity,

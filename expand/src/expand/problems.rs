@@ -516,9 +516,8 @@ impl ExpandProblems {
     }
 
     fn with_helps_of(warning: Diagnostic, error: &Diagnostic) -> Diagnostic {
-        error.helps().iter().fold(warning, |warning, help| {
-            warning.with_copied_help(help.clone())
-        })
+        let helps = error.helps().iter().cloned();
+        helps.fold(warning, Diagnostic::with_help)
     }
 
     pub fn unknown_module(path: &ModulePath, span: Span) -> Diagnostic {

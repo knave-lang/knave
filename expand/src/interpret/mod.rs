@@ -23,6 +23,8 @@ mod source_queries;
 mod step_budget;
 mod value;
 mod value_limits;
+mod warning_problems;
+mod warnings;
 mod work_meter;
 
 pub(crate) use build_limit::BuildLimit;
@@ -46,6 +48,7 @@ pub use problems::InterpretProblems;
 pub use source_queries::SourceQueries;
 pub use step_budget::StepBudget;
 pub use value::{Closure, Env, Value};
+pub use warnings::Warnings;
 pub use work_meter::WorkMeter;
 
 use std::rc::Rc;

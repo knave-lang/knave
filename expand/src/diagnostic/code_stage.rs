@@ -3,12 +3,17 @@ use std::rc::Rc;
 use super::DiagnosticCode;
 
 pub struct CodeStage {
-    prefix: &'static str,
+    member: DiagnosticCode,
 }
 
 impl CodeStage {
-    pub const MACROS: Self = Self { prefix: "L03" };
-    pub const LINTS: Self = Self { prefix: "L08" };
+    pub const MACROS: Self = Self {
+        member: DiagnosticCode::MACRO_FAILED,
+    };
+    pub const LINTS: Self = Self {
+        member: DiagnosticCode::UNMATCHED_LINK,
+    };
+    const STAGE_PREFIX_LENGTH: usize = 3;
 
     pub fn code_named(&self, name: &str) -> Option<DiagnosticCode> {
         self.codes()
@@ -30,8 +35,16 @@ impl CodeStage {
 
     fn codes(&self) -> impl Iterator<Item = (String, DiagnosticCode)> {
         DiagnosticCode::named()
-            .filter(|(_, code)| code.as_str().starts_with(self.prefix))
+            .filter(|(_, code)| self.holds(code))
             .map(|(constant, code)| (Self::source_name(constant), code))
+    }
+
+    fn holds(&self, code: &DiagnosticCode) -> bool {
+        Self::stage_prefix(code) == Self::stage_prefix(&self.member)
+    }
+
+    fn stage_prefix(code: &DiagnosticCode) -> &str {
+        &code.as_str()[..Self::STAGE_PREFIX_LENGTH]
     }
 
     fn source_name(constant: &str) -> String {

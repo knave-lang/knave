@@ -127,7 +127,7 @@ impl EvalCommand {
                 Ok(LocatedProject::lend_libraries(project.as_ref(), file))
             }
             None => {
-                let program = LocatedProgram::locate(Some(path), terminal)?;
+                let program = LocatedProgram::of_file(path, terminal)?;
                 Self::refuse_crates(program.project(), terminal)?;
                 Ok(program.into_file())
             }

@@ -1,24 +1,22 @@
-use std::path::PathBuf;
-
+use super::entry_argument::EntryArgument;
 use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
-use super::located_program::LocatedProgram;
 use super::task_catalog::TaskCatalog;
 use super::task_runners::TaskRunners;
 use super::terminal::Terminal;
 
 pub struct CheckCommand {
-    file: Option<PathBuf>,
+    entry: EntryArgument,
 }
 
 impl CheckCommand {
-    pub fn new(file: Option<PathBuf>) -> Self {
-        Self { file }
+    pub fn new(entry: EntryArgument) -> Self {
+        Self { entry }
     }
 
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
-        let checks_tasks = self.file.is_none();
-        let program = match LocatedProgram::locate(self.file, terminal) {
+        let checks_tasks = self.entry.defaults_to_project_entry();
+        let program = match self.entry.locate(terminal) {
             Ok(program) => program,
             Err(status) => return status,
         };

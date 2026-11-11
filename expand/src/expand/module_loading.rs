@@ -10,7 +10,7 @@ use crate::core::{
 };
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
-use crate::modules::{ModuleScopes, ModuleSource, ModuleSources};
+use crate::modules::{LocatedModule, ModuleScopes, ModuleSource, ModuleSources};
 use crate::reader::{Form, Reader, Symbol};
 use crate::scope::{Phase, ScopeSet};
 use crate::source::{SourceId, Span};
@@ -36,10 +36,16 @@ impl Expander<'_> {
         if ModuleSources::is_reserved(path) {
             return Err(ExpandProblems::reserved_module(path, span));
         }
-        match self.module_sources.find(path) {
-            Some(ModuleSource::Builtin(builtin)) => Ok(self.create_builtin(path, builtin)),
-            Some(ModuleSource::Text { name, text }) => {
-                self.note_library_module(path);
+        match self.module_sources.locate(path) {
+            Some(LocatedModule {
+                source: ModuleSource::Builtin(builtin),
+                ..
+            }) => Ok(self.create_builtin(path, builtin)),
+            Some(LocatedModule {
+                source: ModuleSource::Text { name, text },
+                owner,
+            }) => {
+                self.note_library_module(path, owner);
                 let source = self.sources.add(name, text);
                 self.recorded_inputs.note_loaded(source);
                 Ok(DeepRecursion::guard(|| {
@@ -195,9 +201,8 @@ impl Expander<'_> {
         self.reported_hidden_modules.push(shadow.hidden);
     }
 
-    fn note_library_module(&mut self, path: &ModulePath) {
-        if let Some(owner) = self.module_sources.library_owner(path) {
-            let owner = Rc::from(owner);
+    fn note_library_module(&mut self, path: &ModulePath, owner: Option<Rc<str>>) {
+        if let Some(owner) = owner {
             self.library_modules.push((path.clone(), owner));
         }
     }

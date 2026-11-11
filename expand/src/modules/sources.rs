@@ -1,16 +1,14 @@
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
+use std::rc::Rc;
 
 use super::libraries::{LibraryRoot, LibraryTable};
+use super::located_module::LocatedModule;
+use super::module_source::ModuleSource;
 use super::search_scope::SearchScope;
 use crate::core::{BuiltinModule, ModulePath};
 use crate::language::Language;
-
-pub enum ModuleSource {
-    Builtin(BuiltinModule),
-    Text { name: String, text: String },
-}
 
 pub struct LocalModuleClash<'s> {
     pub local: PathBuf,
@@ -134,10 +132,13 @@ impl ModuleSources {
         self.libraries.resolve(owner, written)
     }
 
-    pub fn library_owner<'p>(&self, path: &'p ModulePath) -> Option<&'p str> {
-        self.libraries
+    pub fn locate(&self, path: &ModulePath) -> Option<LocatedModule> {
+        let source = self.find(path)?;
+        let owner = self
+            .libraries
             .owner_of(path)
-            .map(|_| LibraryTable::head(path))
+            .map(|_| Rc::from(LibraryTable::head(path)));
+        Some(LocatedModule { source, owner })
     }
 
     pub fn unlisted_library(&self, owner: Option<&str>, written: &ModulePath) -> Option<&str> {

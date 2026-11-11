@@ -5,7 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::shapes::{ShapeCatalog, ShapeStatement};
 use crate::core::{DefinitionForm, KernelForm, ModulePath};
-use crate::modules::{ModuleSource, ModuleSources};
+use crate::modules::{LocatedModule, ModuleSource, ModuleSources};
 use crate::reader::{Form, Reader};
 use crate::source::SourceMap;
 
@@ -23,12 +23,6 @@ pub struct ShapeReader {
 struct ModuleShapes {
     statements: Vec<ShapeStatement>,
     uses: Vec<ModulePath>,
-}
-
-struct FoundModule {
-    name: String,
-    text: String,
-    owner: Option<String>,
 }
 
 struct CatalogWalk<'r> {
@@ -64,17 +58,10 @@ impl ModuleLookup {
         lookup
     }
 
-    fn find(&self, owner: Option<&str>, written: &ModulePath) -> Option<FoundModule> {
+    fn find(&self, owner: Option<&str>, written: &ModulePath) -> Option<LocatedModule> {
         self.directories.iter().find_map(|sources| {
-            let path = sources.resolve(owner, written);
-            match sources.find(&path)? {
-                ModuleSource::Text { name, text } => Some(FoundModule {
-                    name,
-                    text,
-                    owner: sources.library_owner(&path).map(str::to_string),
-                }),
-                ModuleSource::Builtin(_) => None,
-            }
+            let located = sources.locate(&sources.resolve(owner, written))?;
+            matches!(located.source, ModuleSource::Text { .. }).then_some(located)
         })
     }
 }
@@ -108,12 +95,16 @@ impl ShapeReader {
 
 impl CatalogWalk<'_> {
     fn add_module(&mut self, owner: Option<&str>, written: &ModulePath) {
-        let Some(found) = self.lookup.find(owner, written) else {
+        let Some(LocatedModule {
+            source: ModuleSource::Text { name, text },
+            owner: module_owner,
+        }) = self.lookup.find(owner, written)
+        else {
             return;
         };
-        if self.visited.insert(found.name.clone()) {
-            let module = self.reader.module(found.name, &found.text);
-            self.add_shapes(found.owner.as_deref(), &module);
+        if self.visited.insert(name.clone()) {
+            let module = self.reader.module(name, &text);
+            self.add_shapes(module_owner.as_deref(), &module);
         }
     }
 

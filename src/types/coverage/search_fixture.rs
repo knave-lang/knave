@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use crate::core::{BindingId, Literal, PrimitiveType};
 use crate::source::{SourceId, Span};
 use crate::types::Type;
@@ -11,18 +9,17 @@ use crate::types::coverage::pattern_matrix::PatternMatrix;
 use crate::types::coverage::query::Query;
 use crate::types::coverage::usefulness::Usefulness;
 use crate::types::coverage::witness::Witness;
-use crate::types::enums::{
-    EnumDefinition, EnumTable, VariantDefinition, VariantPayload, VariantPayloads,
-};
+use crate::types::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload};
 use crate::types::peeling::ReferencePeeling;
 use crate::types::structs::{StructDefinition, StructTable};
+use crate::types::type_declarations::TypeDeclarations;
 use crate::types::unifier::Unifier;
+use crate::types::variant_payloads::VariantPayloads;
 
 pub(super) struct SearchFixture {
     unifier: Unifier,
     structs: StructTable,
-    enums: EnumTable,
-    inferred_boxes: BTreeSet<crate::types::BoxedPayload>,
+    types: TypeDeclarations,
 }
 
 impl SearchFixture {
@@ -61,8 +58,10 @@ impl SearchFixture {
         Self {
             unifier: Unifier::default(),
             structs,
-            enums,
-            inferred_boxes: BTreeSet::new(),
+            types: TypeDeclarations {
+                enums,
+                ..TypeDeclarations::default()
+            },
         }
     }
 
@@ -159,7 +158,7 @@ impl SearchFixture {
         ConstructorCatalog::new(
             ReferencePeeling::new(&self.unifier),
             &self.structs,
-            VariantPayloads::new(&self.enums, None, &self.inferred_boxes),
+            VariantPayloads::new(&self.types),
         )
     }
 

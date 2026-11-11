@@ -28,7 +28,7 @@ impl TypeChecker {
             for associated in &declaration.associated {
                 self.type_arities
                     .insert(associated.binding, Self::PROJECTION_ARITY);
-                self.traits.projections_mut().declare(
+                self.declarations.traits.table.projections_mut().declare(
                     associated.binding,
                     AssociatedType {
                         trait_binding: declaration.binding,
@@ -55,7 +55,12 @@ impl TypeChecker {
         declaration: &RustTraitDeclaration,
     ) -> Result<Vec<Implementor>, Diagnostic> {
         let trait_name = self.bindings.get(declaration.binding).name().to_string();
-        let declared = self.traits.projections().declared_by(declaration.binding);
+        let declared = self
+            .declarations
+            .traits
+            .table
+            .projections()
+            .declared_by(declaration.binding);
         declaration
             .implementors
             .iter()
@@ -63,7 +68,7 @@ impl TypeChecker {
                 let (implementor, values) = self.lower_implementor(entry, &trait_name)?;
                 self.check_associated_values(declaration.binding, &declared, entry, &values)?;
                 for value in values {
-                    self.traits.projections_mut().add_rule(
+                    self.declarations.traits.table.projections_mut().add_rule(
                         value.projection,
                         &implementor,
                         value.value,
@@ -107,7 +112,12 @@ impl TypeChecker {
 
     pub(super) fn record_written_projection(&mut self, lowered: &Type, span: Span) {
         if let Type::Named(binding, arguments) = lowered
-            && self.traits.projections().is_projection(*binding)
+            && self
+                .declarations
+                .traits
+                .table
+                .projections()
+                .is_projection(*binding)
         {
             self.written_projections.push(WrittenProjection {
                 projection: *binding,
@@ -118,7 +128,7 @@ impl TypeChecker {
     }
 
     pub(super) fn share_projections(&mut self) {
-        let projections = self.traits.share_projections();
+        let projections = self.declarations.traits.table.share_projections();
         self.unifier.adopt_projections(projections);
     }
 
@@ -145,7 +155,9 @@ impl TypeChecker {
     }
 
     fn projection_trait(&self, projection: BindingId) -> BindingId {
-        self.traits
+        self.declarations
+            .traits
+            .table
             .projections()
             .associated(projection)
             .expect("a written projection names a declared associated type")
@@ -153,7 +165,7 @@ impl TypeChecker {
     }
 
     fn check_written_projection(&self, written: &WrittenProjection) -> Result<(), Diagnostic> {
-        let projections = self.traits.projections();
+        let projections = self.declarations.traits.table.projections();
         let trait_binding = self.projection_trait(written.projection);
         let names = ProjectionNames {
             projection: self.bindings.get(written.projection).name(),

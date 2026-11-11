@@ -87,7 +87,10 @@ impl TypeChecker {
             return None;
         };
         match arguments.as_slice() {
-            [item] if self.rust_types.is_iterator(*binding) && !item.is_reference() => {
+            [item]
+                if self.declarations.types.rust_types.is_iterator(*binding)
+                    && !item.is_reference() =>
+            {
                 Some(item.clone())
             }
             _ => None,
@@ -96,7 +99,9 @@ impl TypeChecker {
 
     fn yields_borrowed(&self, found: &Type, item: &Type) -> bool {
         match self.unifier.resolve(found) {
-            Type::Named(binding, arguments) if self.rust_types.is_iterator(binding) => {
+            Type::Named(binding, arguments)
+                if self.declarations.types.rust_types.is_iterator(binding) =>
+            {
                 matches!(arguments.as_slice(), [Type::Ref(_, borrowed)] if **borrowed == *item)
             }
             _ => false,
@@ -104,7 +109,7 @@ impl TypeChecker {
     }
 
     fn iterator_of(&self, item: Type) -> Option<Type> {
-        let iterator = self.rust_types.iterator_binding()?;
+        let iterator = self.declarations.types.rust_types.iterator_binding()?;
         Some(Type::Named(iterator, vec![item]))
     }
 }

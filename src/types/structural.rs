@@ -39,7 +39,7 @@ impl TypeChecker {
         else {
             return Ok(());
         };
-        self.structural_traits.push(StructuralTrait {
+        self.declarations.traits.structural.push(StructuralTrait {
             binding: declaration.binding,
             method: method.binding,
             parameters: parameters.into_iter().skip(1).collect(),
@@ -66,9 +66,11 @@ impl TypeChecker {
 
     fn blocking_types<'t>(&'t self, implementor: &Type) -> impl Iterator<Item = &'t Type> + 't {
         let blocked = match implementor {
-            Type::Named(binding, _) => match self.structs.get(*binding) {
+            Type::Named(binding, _) => match self.declarations.types.structs.get(*binding) {
                 Some(definition) => definition.blocked.as_slice(),
                 None => self
+                    .declarations
+                    .types
                     .enums
                     .get(*binding)
                     .map_or(&[][..], |definition| definition.blocked.as_slice()),
@@ -79,7 +81,7 @@ impl TypeChecker {
     }
 
     fn lacks_source_form(&self, ty: &Type) -> bool {
-        let opaque = matches!(ty, Type::Named(binding, _) if self.rust_types.is_opaque(*binding));
+        let opaque = matches!(ty, Type::Named(binding, _) if self.declarations.types.rust_types.is_opaque(*binding));
         opaque
             || matches!(ty, Type::Function(..))
             || ty
@@ -111,13 +113,17 @@ impl TypeChecker {
     }
 
     fn declares_methods(&self, trait_binding: BindingId) -> bool {
-        self.trait_methods
+        self.declarations
+            .traits
+            .methods
             .values()
             .any(|method| method.trait_binding == trait_binding)
     }
 
     pub(super) fn is_structural_trait(&self, trait_binding: BindingId) -> bool {
-        self.structural_traits
+        self.declarations
+            .traits
+            .structural
             .iter()
             .any(|structural| structural.binding == trait_binding)
     }
@@ -136,7 +142,7 @@ impl TypeChecker {
     }
 
     fn has_generic_program_impl(&self, trait_binding: BindingId) -> bool {
-        self.trait_impls.iter().any(|implementation| {
+        self.declarations.traits.impls.iter().any(|implementation| {
             implementation.trait_binding == trait_binding && !implementation.params.is_empty()
         })
     }
@@ -149,8 +155,11 @@ impl TypeChecker {
 
     fn record_requirements(&mut self, pending: &ImplBoundUse) {
         let implementor = self.unifier.resolve(&pending.implementor);
-        let Selection::Implemented { requirements, .. } =
-            self.traits.select(&pending.bound, &implementor)
+        let Selection::Implemented { requirements, .. } = self
+            .declarations
+            .traits
+            .table
+            .select(&pending.bound, &implementor)
         else {
             return;
         };
@@ -204,7 +213,7 @@ impl TypeChecker {
         if !self.reported_path_clashes.insert(clash) {
             return;
         }
-        let path = self.rust_trait_paths[&trait_binding].to_string();
+        let path = self.declarations.traits.rust_paths[&trait_binding].to_string();
         let written_trait = self.bindings.get(written_binding).name().to_string();
         let trait_name = self.bindings.get(trait_binding).name().to_string();
         let implementor = self.bindings.get(head).name().to_string();
@@ -224,10 +233,10 @@ impl TypeChecker {
         trait_binding: BindingId,
         head: BindingId,
     ) -> Option<&TypedTraitImpl> {
-        let path = self.rust_trait_paths.get(&trait_binding)?;
-        self.trait_impls.iter().find(|implementation| {
+        let path = self.declarations.traits.rust_paths.get(&trait_binding)?;
+        self.declarations.traits.impls.iter().find(|implementation| {
             implementation.trait_binding != trait_binding
-                && self.rust_trait_paths.get(&implementation.trait_binding) == Some(path)
+                && self.declarations.traits.rust_paths.get(&implementation.trait_binding) == Some(path)
                 && matches!(implementation.implementor, Type::Named(binding, _) if binding == head)
         })
     }

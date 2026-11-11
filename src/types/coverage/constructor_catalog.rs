@@ -3,9 +3,9 @@ use super::constructor_tag::ConstructorTag;
 use super::pattern_matrix::PatternMatrix;
 use crate::core::{BindingId, PrimitiveType};
 use crate::types::Type;
-use crate::types::enums::VariantPayloads;
 use crate::types::peeling::ReferencePeeling;
 use crate::types::structs::StructTable;
+use crate::types::variant_payloads::VariantPayloads;
 
 pub(in crate::types) struct ConstructorCatalog<'a> {
     peeling: ReferencePeeling<'a>,

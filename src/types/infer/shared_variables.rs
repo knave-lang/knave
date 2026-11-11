@@ -539,7 +539,9 @@ impl TypeChecker {
         assignment: &FxHashMap<TypeVar, Type>,
     ) -> bool {
         let bound = bound.substituted_vars(assignment);
-        self.traits
+        self.declarations
+            .traits
+            .table
             .satisfies(&bound, implementor, &|generic, required| {
                 self.unifier.generic_bounds(generic).contains(required)
             })
@@ -548,7 +550,7 @@ impl TypeChecker {
     fn reference_depth_as_written(&mut self, argument: &TypedArgument) -> usize {
         let place = self.unification().place_type(&argument.value);
         let written = self.unifier.resolve(&place);
-        if Self::is_unsized_type(&self.rust_types, &written) {
+        if Self::is_unsized_type(&self.declarations.types.rust_types, &written) {
             return Self::UNSIZED_VALUE_DEPTH;
         }
         written.reference_depth()

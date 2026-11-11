@@ -344,7 +344,12 @@ impl TypeChecker {
     }
 
     fn is_result_ok_variant(&self, owner: BindingId, index: usize) -> bool {
-        let definition = self.enums.get(owner).expect("a variant owner is an enum");
+        let definition = self
+            .declarations
+            .types
+            .enums
+            .get(owner)
+            .expect("a variant owner is an enum");
         definition.is_result_shaped() && definition.holds_parameter(index, 0)
     }
 
@@ -487,7 +492,9 @@ impl TypeChecker {
     ) -> Result<Option<BindingId>, Diagnostic> {
         let (matched, _) = self.reference_peeling().peel(scrutinee);
         match self.unifier.shallow(&matched) {
-            Type::Named(owner, _) if self.enums.get(owner).is_some() => Ok(Some(owner)),
+            Type::Named(owner, _) if self.declarations.types.enums.get(owner).is_some() => {
+                Ok(Some(owner))
+            }
             Type::Var(_) => {
                 let Some(owner) = self.unknown_match_enum(arms)? else {
                     return Ok(None);
@@ -676,7 +683,7 @@ impl TypeChecker {
         span: Span,
     ) -> Result<Option<BindingId>, Diagnostic> {
         if let Type::Named(owner, _) = self.unifier.shallow(matched)
-            && self.enums.get(owner).is_some()
+            && self.declarations.types.enums.get(owner).is_some()
         {
             return Ok(self.find_nullary_variant(owner, name, candidates));
         }
@@ -697,7 +704,7 @@ impl TypeChecker {
         name: &str,
         candidates: &[BindingId],
     ) -> Option<BindingId> {
-        let definition = self.enums.get(owner)?;
+        let definition = self.declarations.types.enums.get(owner)?;
         let variant = definition
             .variants
             .iter()
@@ -776,6 +783,8 @@ impl TypeChecker {
             _ => unreachable!("a qualified pattern names a variant binding"),
         };
         let storage = self
+            .declarations
+            .types
             .enums
             .get(owner)
             .and_then(|definition| definition.instantiated_payload(index, &arguments))
@@ -797,6 +806,8 @@ impl TypeChecker {
     ) -> Result<TypedPatternKind, Diagnostic> {
         let arguments = self.match_arguments(matched, binding, span)?;
         let fields = self
+            .declarations
+            .types
             .structs
             .get(binding)
             .map(|definition| definition.instantiated_fields(&arguments))
@@ -826,6 +837,8 @@ impl TypeChecker {
     ) -> Result<TypedPatternKind, Diagnostic> {
         let (owner, type_arguments) = self.short_pattern_owner(candidates, &matched, span)?;
         let definition = self
+            .declarations
+            .types
             .enums
             .get(owner)
             .expect("a matching enum has a definition");
@@ -845,6 +858,8 @@ impl TypeChecker {
             ));
         };
         let storage = self
+            .declarations
+            .types
             .enums
             .get(owner)
             .and_then(|definition| definition.instantiated_payload(index, &type_arguments))
@@ -857,7 +872,9 @@ impl TypeChecker {
     }
 
     fn payload_pattern_fields(&self, owner: BindingId, variant: usize) -> PatternFields<'_> {
-        self.enums
+        self.declarations
+            .types
+            .enums
             .get(owner)
             .and_then(|definition| definition.variants.get(variant))
             .map_or(
@@ -894,7 +911,7 @@ impl TypeChecker {
         span: Span,
     ) -> Result<(BindingId, Vec<Type>), Diagnostic> {
         if let Type::Named(owner, arguments) = self.unifier.shallow(matched)
-            && self.enums.get(owner).is_some()
+            && self.declarations.types.enums.get(owner).is_some()
         {
             return Ok((owner, arguments));
         }
@@ -1040,7 +1057,7 @@ impl TypeChecker {
         if self.unchecked.contains(&binding) {
             return Err(TypeProblems::compile_time_only(name, span));
         }
-        if let Some(method) = self.selfless_methods.get(binding) {
+        if let Some(method) = self.declarations.traits.selfless_methods.get(binding) {
             return Err(self.selfless_method_call(binding, method, name, span));
         }
         Ok((
@@ -1368,7 +1385,8 @@ impl TypeChecker {
         parameters: &[Type],
         arguments: &[Expr],
     ) -> Result<(TypedExpr, Vec<TypedArgument>), Diagnostic> {
-        let shared = SharedVariables::of(parameters, &self.unifier, &self.traits);
+        let shared =
+            SharedVariables::of(parameters, &self.unifier, &self.declarations.traits.table);
         let mut typed_arguments =
             self.infer_arguments(Some(&callee), parameters, arguments, &shared)?;
         self.pass_shared_arguments(Some(&callee), &shared, &mut typed_arguments)?;
@@ -1427,7 +1445,11 @@ impl TypeChecker {
             });
         }
         let bound = Bound::plain(trait_binding);
-        let satisfied = self.traits.satisfies(&bound, argument, &|_, _| false);
+        let satisfied = self
+            .declarations
+            .traits
+            .table
+            .satisfies(&bound, argument, &|_, _| false);
         if !satisfied {
             self.report_missing_trait(&bound, argument, span);
         }
@@ -1466,7 +1488,11 @@ impl TypeChecker {
             .recur_target
             .clone()
             .expect("expansion checks that `recur` is inside a function");
-        let shared = SharedVariables::of(&target.parameters, &self.unifier, &self.traits);
+        let shared = SharedVariables::of(
+            &target.parameters,
+            &self.unifier,
+            &self.declarations.traits.table,
+        );
         let mut typed_arguments =
             self.infer_arguments(None, &target.parameters, arguments, &shared)?;
         self.pass_shared_arguments(None, &shared, &mut typed_arguments)?;
@@ -1609,7 +1635,7 @@ impl TypeChecker {
         let Type::Named(binding, _) = error else {
             return Err(self.no_conversion(error, source, span));
         };
-        let Some(definition) = self.enums.get(*binding) else {
+        let Some(definition) = self.declarations.types.enums.get(*binding) else {
             return Err(self.no_conversion(error, source, span));
         };
         if definition.rust.is_some() || !definition.params.is_empty() {
@@ -1698,7 +1724,7 @@ impl TypeChecker {
         let Type::Named(binding, arguments) = operand else {
             return None;
         };
-        let definition = self.enums.get(*binding)?;
+        let definition = self.declarations.types.enums.get(*binding)?;
         if definition.is_result_shaped() && arguments.len() == 2 {
             return Some(TrySource {
                 kind: TrySourceKind::Result,
@@ -1857,7 +1883,7 @@ impl TypeChecker {
             _ => resolved.clone(),
         };
         if let Type::Named(binding, arguments) = &collection_type
-            && self.rust_types.is_slice(*binding)
+            && self.declarations.types.rust_types.is_slice(*binding)
         {
             let [element] = arguments.as_slice() else {
                 return None;
@@ -1867,7 +1893,7 @@ impl TypeChecker {
                 collection_type.clone(),
             ));
         }
-        let collection = Collection::of(&collection_type, &self.rust_types)?;
+        let collection = Collection::of(&collection_type, &self.declarations.types.rust_types)?;
         let item = if collection.is_map() {
             let key = self.unifier.resolve(collection.key());
             let entry = self.unifier.resolve(collection.value());
@@ -1881,7 +1907,9 @@ impl TypeChecker {
     fn contains_box_object(&self, ty: &Type) -> bool {
         match self.unifier.resolve(ty) {
             Type::TraitObject(_) => true,
-            Type::Named(binding, arguments) if self.rust_types.is_box(binding) => {
+            Type::Named(binding, arguments)
+                if self.declarations.types.rust_types.is_box(binding) =>
+            {
                 matches!(arguments.as_slice(), [Type::TraitObject(_)])
             }
             Type::Named(_, arguments) => arguments
@@ -2066,11 +2094,13 @@ impl TypeChecker {
         let layers = argument
             .reference_depth()
             .checked_sub(parameter.reference_depth() + 1)?;
-        let holds_view = Self::is_unsized_type(&self.rust_types, argument.innermost_referent())
-            && self
-                .unifier
-                .resolve(&callee.ty)
-                .holds_outside_references(&Type::Var(*variable));
+        let holds_view = Self::is_unsized_type(
+            &self.declarations.types.rust_types,
+            argument.innermost_referent(),
+        ) && self
+            .unifier
+            .resolve(&callee.ty)
+            .holds_outside_references(&Type::Var(*variable));
         holds_view.then_some(layers)
     }
 
@@ -2282,10 +2312,12 @@ impl TypeChecker {
         let Type::Var(_) = found else {
             return found.clone();
         };
-        if !self.rust_types.is_slice(slice) {
+        if !self.declarations.types.rust_types.is_slice(slice) {
             return found.clone();
         }
         let Some(vector) = self
+            .declarations
+            .types
             .rust_types
             .binding_with_template(crate::types::RustType::VECTOR_TEMPLATE)
         else {
@@ -2379,7 +2411,9 @@ impl TypeChecker {
     fn borrowed_view(&self, borrowed: &Type) -> Option<Type> {
         let view = self.unifier.resolve(borrowed);
         match &view {
-            Type::Ref(_, referent) if Self::is_unsized_type(&self.rust_types, referent) => {
+            Type::Ref(_, referent)
+                if Self::is_unsized_type(&self.declarations.types.rust_types, referent) =>
+            {
                 Some(view)
             }
             _ => None,
@@ -2546,9 +2580,13 @@ impl TypeChecker {
 
     fn fails_bounds(&self, var: TypeVar, value: &Type) -> bool {
         self.unifier.bounds(var).iter().any(|bound| {
-            !self.traits.satisfies(bound, value, &|generic, required| {
-                self.unifier.generic_bounds(generic).contains(required)
-            })
+            !self
+                .declarations
+                .traits
+                .table
+                .satisfies(bound, value, &|generic, required| {
+                    self.unifier.generic_bounds(generic).contains(required)
+                })
         })
     }
 
@@ -2664,8 +2702,8 @@ impl TypeChecker {
         let value = self.infer(value)?;
         let value = self.moved_field_base(value);
         let resolved = self.unifier.resolve(&value.ty);
-        if let Some(collection) =
-            Collection::of(&resolved, &self.rust_types).filter(Collection::is_map)
+        if let Some(collection) = Collection::of(&resolved, &self.declarations.types.rust_types)
+            .filter(Collection::is_map)
         {
             return self.infer_map_assoc(value, resolved, collection, keys, item, span);
         }
@@ -2783,7 +2821,9 @@ impl TypeChecker {
                 value.span,
             ));
         };
-        if let Some(collection) = Collection::of(&collection_type, &self.rust_types) {
+        if let Some(collection) =
+            Collection::of(&collection_type, &self.declarations.types.rust_types)
+        {
             if collection.kind() == CollectionKind::Vector {
                 return self.infer_iter_slice(value, span);
             }
@@ -2803,7 +2843,9 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
         let resolved = self.unifier.resolve(&value.ty);
-        match Collection::of_referent(&resolved, &self.rust_types).filter(Collection::is_map) {
+        match Collection::of_referent(&resolved, &self.declarations.types.rust_types)
+            .filter(Collection::is_map)
+        {
             Some(collection) => {
                 self.check_map_key(&collection, value.span);
                 self.infer_map_lookup(value, collection, arguments, span)
@@ -2922,6 +2964,8 @@ impl TypeChecker {
 
     fn vector_of(&self, element: Type) -> Type {
         let vector = self
+            .declarations
+            .types
             .rust_types
             .binding_with_template(RustType::VECTOR_TEMPLATE)
             .expect("the prelude defines a vector type");
@@ -2937,6 +2981,8 @@ impl TypeChecker {
 
     fn slice_of(&self, element: Type) -> Type {
         let slice = self
+            .declarations
+            .types
             .rust_types
             .binding_with_template(RustType::SLICE_TEMPLATE)
             .expect("the prelude defines a slice type");
@@ -2945,7 +2991,7 @@ impl TypeChecker {
 
     fn map_collection(&self, value: &TypedExpr) -> Result<Collection, Diagnostic> {
         let resolved = self.unifier.resolve(&value.ty);
-        Collection::of_referent(&resolved, &self.rust_types)
+        Collection::of_referent(&resolved, &self.declarations.types.rust_types)
             .filter(Collection::is_map)
             .ok_or_else(|| {
                 TypeProblems::mismatch(
@@ -2969,13 +3015,20 @@ impl TypeChecker {
         }
         for path in paths {
             let binding = self
+                .declarations
                 .traits
+                .table
                 .with_paths(&[path])
                 .first()
                 .copied()
                 .expect("the prelude defines the map key traits");
             let bound = Bound::plain(binding);
-            if !self.traits.satisfies(&bound, &key, &|_, _| false) {
+            if !self
+                .declarations
+                .traits
+                .table
+                .satisfies(&bound, &key, &|_, _| false)
+            {
                 self.report_missing_trait(&bound, &key, span);
             }
         }
@@ -3024,13 +3077,20 @@ impl TypeChecker {
             return;
         }
         let binding = self
+            .declarations
             .traits
+            .table
             .with_paths(&["std::borrow::Borrow"])
             .first()
             .copied()
             .expect("the prelude defines borrow");
         let bound = Bound::with_argument(binding, query);
-        if !self.traits.satisfies(&bound, &key, &|_, _| false) {
+        if !self
+            .declarations
+            .traits
+            .table
+            .satisfies(&bound, &key, &|_, _| false)
+        {
             self.report_missing_trait(&bound, &key, span);
         }
     }
@@ -3112,7 +3172,7 @@ impl TypeChecker {
             Type::Var(var) if self.unifier.literal_kind(var).is_none() => {
                 self.unknown_vector(&value.ty, depth, value.span)
             }
-            _ => Collection::of_referent(&resolved, &self.rust_types),
+            _ => Collection::of_referent(&resolved, &self.declarations.types.rust_types),
         };
         collection.ok_or_else(|| {
             TypeProblems::mismatch(
@@ -3128,7 +3188,7 @@ impl TypeChecker {
         let element = self.unifier.fresh();
         let vector = self.nested_vector_type(depth, &element);
         self.unifier.unify(unknown, &vector, span).ok()?;
-        Collection::of(&vector, &self.rust_types)
+        Collection::of(&vector, &self.declarations.types.rust_types)
     }
 
     fn infer_set_at_vector(
@@ -3268,6 +3328,8 @@ impl TypeChecker {
 
     fn option_type(&self, value: Type) -> Type {
         let option = self
+            .declarations
+            .types
             .rust_types
             .option_binding()
             .expect("the prelude defines an option type");
@@ -3276,6 +3338,8 @@ impl TypeChecker {
 
     fn iterator_type(&self, item: Type) -> Type {
         let iterator = self
+            .declarations
+            .types
             .rust_types
             .iterator_binding()
             .expect("the prelude defines an iterator type");
@@ -3284,6 +3348,8 @@ impl TypeChecker {
 
     fn pair_type(&self, first: Type, second: Type) -> Type {
         let pair = self
+            .declarations
+            .types
             .rust_types
             .pair_binding()
             .expect("the prelude defines a pair type");
@@ -3308,7 +3374,7 @@ impl TypeChecker {
     }
 
     fn names_struct(&self, ty: &Type) -> bool {
-        matches!(self.unifier.shallow(ty), Type::Named(binding, _) if self.structs.get(binding).is_some())
+        matches!(self.unifier.shallow(ty), Type::Named(binding, _) if self.declarations.types.structs.get(binding).is_some())
     }
 
     fn assoc_keys(&mut self, keys: &[Expr]) -> Result<Vec<TypedExpr>, Diagnostic> {
@@ -3327,6 +3393,8 @@ impl TypeChecker {
 
     fn nested_vector_type(&self, depth: usize, element: &Type) -> Type {
         let vector = self
+            .declarations
+            .types
             .rust_types
             .binding_with_template(RustType::VECTOR_TEMPLATE)
             .expect("the prelude defines a vector type");
@@ -3382,7 +3450,9 @@ impl TypeChecker {
     ) -> Result<(BindingId, Vec<Type>), Diagnostic> {
         let owner = self.unifier.shallow(&base.ty);
         match owner {
-            Type::Named(binding, arguments) if self.structs.get(binding).is_some() => {
+            Type::Named(binding, arguments)
+                if self.declarations.types.structs.get(binding).is_some() =>
+            {
                 Ok((binding, arguments))
             }
             Type::Var(_) => self.update_owner_from_fields(&owner, fields, span),
@@ -3406,11 +3476,15 @@ impl TypeChecker {
             .first()
             .expect("the expander requires a field in an update");
         let candidates: Vec<BindingId> = self
+            .declarations
+            .types
             .structs
             .with_field(&first.0.name)
             .into_iter()
             .filter(|binding| {
                 let definition = self
+                    .declarations
+                    .types
                     .structs
                     .get(*binding)
                     .expect("a struct with a field has a definition");
@@ -3489,7 +3563,9 @@ impl TypeChecker {
     }
 
     fn instantiated_fields(&self, binding: BindingId, arguments: &[Type]) -> Vec<(Rc<str>, Type)> {
-        self.structs
+        self.declarations
+            .types
+            .structs
             .get(binding)
             .map(|definition| definition.instantiated_fields(arguments))
             .unwrap_or_default()
@@ -3509,12 +3585,16 @@ impl TypeChecker {
         let value = self.infer(value)?;
         let (owner, arguments) = self.field_owner(&value, label)?;
         let declared = self
+            .declarations
+            .types
             .structs
             .get(owner)
             .and_then(|definition| definition.instantiated_field(&label.name, &arguments));
         let Some(ty) = declared else {
             let struct_name = self.bindings.get(owner).name().to_string();
             let names: Vec<Rc<str>> = self
+                .declarations
+                .types
                 .structs
                 .get(owner)
                 .map(|definition| {
@@ -3549,12 +3629,15 @@ impl TypeChecker {
     }
 
     fn declares_function_field(&self, owner: BindingId, field: &str) -> bool {
-        self.structs.get(owner).is_some_and(|definition| {
-            definition
-                .fields
-                .iter()
-                .any(|(name, declared)| &**name == field && matches!(declared, Type::Function(..)))
-        })
+        self.declarations
+            .types
+            .structs
+            .get(owner)
+            .is_some_and(|definition| {
+                definition.fields.iter().any(|(name, declared)| {
+                    &**name == field && matches!(declared, Type::Function(..))
+                })
+            })
     }
 
     fn field_owner(
@@ -3567,7 +3650,9 @@ impl TypeChecker {
             owner = self.unifier.shallow(&inner);
         }
         match owner {
-            Type::Named(binding, arguments) if self.structs.get(binding).is_some() => {
+            Type::Named(binding, arguments)
+                if self.declarations.types.structs.get(binding).is_some() =>
+            {
                 Ok((binding, arguments))
             }
             Type::Var(_) => self.unique_owner(&owner, label),
@@ -3583,7 +3668,13 @@ impl TypeChecker {
         owner: &Type,
         label: &FieldLabel,
     ) -> Result<(BindingId, Vec<Type>), Diagnostic> {
-        match self.structs.with_field(&label.name).as_slice() {
+        match self
+            .declarations
+            .types
+            .structs
+            .with_field(&label.name)
+            .as_slice()
+        {
             [binding] => {
                 let arguments = self.fresh_arguments(*binding);
                 let expected = Type::Named(*binding, arguments.clone());

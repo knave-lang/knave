@@ -1,23 +1,10 @@
 use std::rc::Rc;
 
+use super::pattern_fields::PatternFields;
 use super::problems::TypeProblems;
 use crate::core::{FieldLabel, Pattern, PatternArguments, PatternKind};
 use crate::diagnostic::{Diagnostic, SimilarName};
 use crate::source::Span;
-
-pub enum PatternFields<'a> {
-    Named(Vec<&'a str>),
-    Positional(usize),
-}
-
-impl PatternFields<'_> {
-    fn count(&self) -> usize {
-        match self {
-            Self::Named(names) => names.len(),
-            Self::Positional(count) => *count,
-        }
-    }
-}
 
 pub struct PatternPlacement<'a> {
     written: &'a PatternArguments,

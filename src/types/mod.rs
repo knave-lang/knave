@@ -37,6 +37,7 @@ mod parameter_call_labels;
 mod parameter_call_search;
 mod parameter_copy;
 mod parameter_modes;
+mod pattern_fields;
 mod pattern_placement;
 mod payload_position;
 mod peeling;

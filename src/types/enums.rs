@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use super::pattern_placement::PatternFields;
+use super::pattern_fields::PatternFields;
 use super::payload_position::PayloadPosition;
 use super::ty::{GenericId, GenericParam, Type};
 use crate::core::BindingId;

@@ -14,7 +14,6 @@ use super::collection::{Collection, CollectionKind};
 use super::enums::{VariantDefinition, VariantPayload};
 use super::expectation::Expectation;
 use super::parameter_call_labels::ParameterCallRequest;
-use super::pattern_placement::{PatternFields, PatternPlacement};
 use super::pending::{DecidedBorrows, PendingBorrow};
 use super::problems::{MismatchContext, TypeProblems};
 use super::rust_types::RustType;
@@ -29,6 +28,7 @@ use super::typed::{
 };
 use super::unifier::LiteralKind;
 use super::{BoxedPayload, PayloadPosition};
+use super::{pattern_fields::PatternFields, pattern_placement::PatternPlacement};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, Control, Expr, ExprKind, FieldLabel,
     Keyword, Lambda, Leaf, Literal, MapOperation, Pattern, PatternArguments, PatternKind,

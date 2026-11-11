@@ -1,7 +1,6 @@
 use std::path::Path;
 use std::rc::Rc;
 
-use super::set_aside_input::SetAsideInput;
 use crate::core::{
     KernelForm, KernelType, Keyword, ModulePath, Namespace, PassingAspect, PassingDifference,
 };
@@ -456,42 +455,6 @@ impl ExpandProblems {
         }
     }
 
-    pub fn set_aside(input: &SetAsideInput<'_>, error: &Diagnostic) -> Diagnostic {
-        let primary = error.primary();
-        let warning = Diagnostic::warning(
-            DiagnosticCode::INPUT_SET_ASIDE,
-            input.title(),
-            Label::new(primary.span(), primary.message()),
-        );
-        let labeled = error
-            .labels()
-            .skip(1)
-            .fold(warning, |warning, label| warning.with_label(label.clone()));
-        let noted = error.notes().iter().fold(
-            labeled.with_note(Self::error_line(error)),
-            |warning, note| warning.with_note(note.clone()),
-        );
-        let helped = Self::with_helps_of(noted, error).with_help(input.enter_again());
-        match error.missing_name() {
-            Some(missing) => helped.with_missing_name(missing.clone()),
-            None => helped,
-        }
-    }
-
-    pub fn dropped(input: &SetAsideInput<'_>, replacing: &str, span: Span) -> Diagnostic {
-        Diagnostic::warning(
-            DiagnosticCode::INPUT_SET_ASIDE,
-            input.title(),
-            Label::new(span, "set aside"),
-        )
-        .with_note(input.replaced_note(replacing))
-        .with_help(input.enter_again())
-    }
-
-    pub fn set_aside_reason(replacing: &str, dropped: &str) -> String {
-        format!("`{replacing}` replaced the input that defined `{dropped}`")
-    }
-
     pub fn set_aside_note(setter: &str, name: &str, reason: &str) -> String {
         format!("`{setter}` set aside `{name}`: {reason}")
     }
@@ -506,16 +469,6 @@ impl ExpandProblems {
 
     pub fn checks_no_longer(diagnostic: Diagnostic) -> Diagnostic {
         diagnostic.with_help("enter a definition to set aside the inputs that no longer check")
-    }
-
-    fn error_line(error: &Diagnostic) -> String {
-        let code = error.code().expect("an error has a code");
-        format!("error[{}]: {}", code.as_str(), error.title())
-    }
-
-    fn with_helps_of(warning: Diagnostic, error: &Diagnostic) -> Diagnostic {
-        let helps = error.helps().iter().cloned();
-        helps.fold(warning, Diagnostic::with_help)
     }
 
     pub fn unknown_module(path: &ModulePath, span: Span) -> Diagnostic {
@@ -1306,64 +1259,10 @@ impl ParameterExample<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ExpandProblems, SetAsideInput};
+    use super::ExpandProblems;
     use crate::core::Namespace;
-    use crate::diagnostic::{Diagnostic, DiagnosticCode, Label, MissingName};
+    use crate::diagnostic::MissingName;
     use crate::source::{SourceId, Span};
-
-    struct SetAsideFixture;
-
-    impl SetAsideFixture {
-        fn title(names: &[&str]) -> String {
-            SetAsideInput::new(names, "<input 2>", "<input 4>").title()
-        }
-    }
-
-    #[test]
-    fn an_input_that_bound_no_name_is_named_by_its_source() {
-        assert_eq!(
-            SetAsideFixture::title(&[]),
-            "set aside `<input 2>` after `<input 4>`"
-        );
-    }
-
-    #[test]
-    fn the_title_lists_one_name() {
-        assert_eq!(
-            SetAsideFixture::title(&["karl"]),
-            "set aside `karl` after `<input 4>`"
-        );
-    }
-
-    #[test]
-    fn the_title_lists_three_names() {
-        assert_eq!(
-            SetAsideFixture::title(&["a", "b", "c"]),
-            "set aside `a`, `b` and `c` after `<input 4>`"
-        );
-    }
-
-    #[test]
-    fn the_title_counts_the_names_past_three() {
-        assert_eq!(
-            SetAsideFixture::title(&["a", "b", "c", "d", "e"]),
-            "set aside `a`, `b`, `c` and 2 more after `<input 4>`"
-        );
-    }
-
-    #[test]
-    fn a_set_aside_input_keeps_the_quoted_form_of_a_help() {
-        let span = Span::new(SourceId::new(0), 0..4);
-        let error = Diagnostic::error(
-            DiagnosticCode::UNBOUND_NAME,
-            "a title",
-            Label::new(span, "a label"),
-        )
-        .with_quoting_help("bind it: `{form}`", span);
-        let input = SetAsideInput::new(&["karl"], "<input 2>", "<input 4>");
-        let warning = ExpandProblems::set_aside(&input, &error);
-        assert_eq!(warning.helps()[0].quoted_form(), Some(span));
-    }
 
     #[test]
     fn an_unbound_name_carries_the_name_and_its_namespace() {

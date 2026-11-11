@@ -28,9 +28,9 @@
           value-eq warn)
 
 (export defmacro defrule defrule-with-value doc-body
-        doc-header doc-page docstring docstrings-key
-        document header-shape map-list module template
-        with-macro-steps)
+        doc-header doc-page docstring docstring-form
+        docstrings-key document header-shape map-list module
+        template with-macro-steps)
 
 (def map-count
   (fn (count function)
@@ -828,6 +828,29 @@
   (subs (docstring digit?) 0 7)
   => \"Returns\""
   (documentation-part (quote docstring) term))
+
+(def docstring-form
+  (fn (term)
+    (local docstrings
+      (note-docstrings (if (module-lookup? term)
+                         (module-note (nth term 1))
+                         (term-note term))))
+    (if (empty? docstrings) docstrings (take docstrings 1))))
+
+(document (docstring-form term)
+  "Returns a list that holds a term's docstring as written, with its location
+  in the source, or an empty list for a term without one.
+
+  The term is a name or `(module path)`, as for `docstring`. Macro code calls
+  it to point a diagnostic into a docstring.
+
+  ```
+  (use code first string?)
+  (use prelude/macros defmacro docstring-form)
+  (defmacro documented? (term) (string? (first (docstring-form term))))
+  (documented? digit?)
+  => true
+  ```")
 
 (defmacro doc-header (term)
   "Returns the first line of a term's definition as written.

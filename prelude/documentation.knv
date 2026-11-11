@@ -1,15 +1,16 @@
-(use code bool-not concat empty? expand-call first list
-          module-definitions module-exports module-symbol
-          nth number-add rest same-binding? sorted-names
-          string string-contains? string-drop string-length
+(use code bool-not closest-name concat empty? expand-call
+          first list module-definitions module-exports
+          module-symbol nth number-add number-sub read-form
+          rest same-binding? sorted-names string
+          string-contains? string-drop string-length
           string-lines string-strip-prefix
           string-strip-suffix string-trim-start string?
-          symbol symbol-name value-eq)
+          symbol symbol-name symbol? take value-eq warn)
 
 (use prelude/internal/code require-module)
 
 (use prelude/macros defmacro doc-body doc-header docstring
-                    document map-list module)
+                    docstring-form document map-list module)
 
 (export documentation-names documentation-page)
 
@@ -104,11 +105,14 @@
     (local sections
       (map-list (owned-terms page pairs)
         (fn (term)
-          (list term (written-body term)))))
+          (list term (term-docstring term)))))
     (local summary (module-docstring page))
     (local links
       (link-table page
-                  (concat summary (map-list sections section-body))))
+                  (concat summary
+                          (map-list sections
+                            (fn (section)
+                              (docstring-text (section-body section)))))))
     (string "# "
             (page-path page)
             "\n\n"
@@ -133,7 +137,14 @@
   (fn (page links summary)
     (if (empty? summary)
       ""
-      (string (body-markdown page links (first summary)) "\n\n"))))
+      (string (body-markdown page links
+                             (module-docstring-of page summary))
+              "\n\n"))))
+
+(def module-docstring-of
+  (fn (page summary)
+    (list (first summary)
+          (list (quote module) (page-path page)))))
 
 (def paired-terms
   (fn (terms homes)
@@ -203,6 +214,16 @@
                     name)
         (list (nth (first types) 1))
         (recur (rest types) name)))))
+
+(def term-docstring
+  (fn (term)
+    (list (written-body term) term)))
+
+(def docstring-text
+  (fn (docstring) (first docstring)))
+
+(def docstring-term
+  (fn (docstring) (nth docstring 1)))
 
 (def written-body
   (fn (term)
@@ -411,40 +432,43 @@
           ("}" "%7D"))))
 
 (def body-markdown
-  (fn (page links text)
+  (fn (page links docstring)
+    (local finished
+      (fn (paragraph)
+        (finished-paragraph page links docstring paragraph)))
     (local converted
-      (fn (written paragraph lines fenced?)
+      (fn (written paragraph lines number fenced?)
+        (local next (number-add number 1))
         (if (empty? lines)
-          (concat written (finished-paragraph page links paragraph))
+          (concat written (finished paragraph))
           (if (fence-line? (first lines))
-            (recur (concat (concat written
-                                   (finished-paragraph page links paragraph))
+            (recur (concat (concat written (finished paragraph))
                            (list (first lines)))
                    (list)
                    (rest lines)
+                   next
                    (bool-not fenced?))
             (if fenced?
               (recur (concat written (list (first lines)))
                      paragraph
                      (rest lines)
-                     true)
+                     next true)
               (if (blank-line? (first lines))
-                (recur (concat (concat
-                                 written
-                                 (finished-paragraph page links paragraph))
+                (recur (concat (concat written (finished paragraph))
                                (list ""))
                        (list)
                        (rest lines)
-                       false)
+                       next false)
                 (recur written
-                       (concat paragraph (list (first lines)))
+                       (concat paragraph
+                               (list (list (first lines) number)))
                        (rest lines)
-                       false)))))))
+                       next false)))))))
     (join-text "\n"
                (converted (list)
                           (list)
-                          (string-lines text)
-                          false))))
+                          (string-lines (docstring-text docstring))
+                          0 false))))
 
 (def fence-line?
   (fn (line) (starts-with? line "```")))
@@ -454,12 +478,19 @@
     (value-eq (string-trim-start line) "")))
 
 (def finished-paragraph
-  (fn (page links paragraph)
-    (if (holds-arrow? paragraph)
-      (concat (concat (list "```lisp") paragraph)
+  (fn (page links docstring paragraph)
+    (local lines (map-list paragraph line-text))
+    (if (holds-arrow? lines)
+      (concat (concat (list "```lisp") lines)
               (list "```"))
       (map-list paragraph
-        (fn (line) (linked-line page links line))))))
+        (fn (line)
+          (linked-line page links (list docstring line)))))))
+
+(def line-text (fn (line) (first line)))
+
+(def line-number
+  (fn (line) (nth line 1)))
 
 (def holds-arrow?
   (fn (lines)
@@ -478,18 +509,48 @@
     (bool-not (value-eq (string-strip-prefix text prefix) text))))
 
 (def linked-line
-  (fn (page links line)
-    (if (string-contains? line "[")
+  (fn (page links placed)
+    (local text (placed-text placed))
+    (if (string-contains? text "[")
       (join-text ""
-                 (map-list (line-pieces line)
-                   (fn (piece) (piece-text page links piece))))
-      line)))
+                 (linked-pieces page links placed (line-pieces text)))
+      text)))
+
+(def placed-docstring
+  (fn (placed) (first placed)))
+
+(def placed-line
+  (fn (placed) (nth placed 1)))
+
+(def placed-text
+  (fn (placed)
+    (line-text (placed-line placed))))
+
+(def linked-pieces
+  (fn (page links placed pieces)
+    (local linked-of
+      (fn (texts column pieces)
+        (if (empty? pieces)
+          texts
+          (recur (concat texts
+                         (list (piece-text page links
+                                           (list placed column)
+                                           (first pieces))))
+                 (number-add column (piece-length (first pieces)))
+                 (rest pieces)))))
+    (linked-of (list) 0 pieces)))
+
+(def piece-length
+  (fn (piece)
+    (if (string? piece)
+      (string-length piece)
+      (string-length (bracketed (first piece))))))
 
 (def piece-text
-  (fn (page links piece)
+  (fn (page links spot piece)
     (if (string? piece)
       piece
-      (bracket-link page links (first piece)))))
+      (bracket-link page links spot (first piece)))))
 
 (def line-pieces
   (fn (line)
@@ -603,16 +664,120 @@
       (number-add (string-length name) 2))))
 
 (def bracket-link
-  (fn (page links name)
+  (fn (page links spot name)
     (local home (link-home links name))
     (if (empty? home)
-      (unmatched-link name)
+      (unmatched-link page spot name)
       (string "[" name "]("
               (term-target page (first home) name)
               ")"))))
 
 (def unmatched-link
+  (fn (page spot name)
+    (local source (spot-source spot))
+    (local named (name-form spot source name))
+    (if (empty? named)
+      (warn-unmatched name source (list))
+      (warn-unmatched name
+                      (first named)
+                      (closest-name (first named) (link-candidates page))))
+    (bracketed name)))
+
+(def warn-unmatched
+  (fn (name form closest)
+    (warn (string "`" name
+                  "` names no term that this page can link to")
+      form
+      (if (empty? closest)
+        "write the name of a term in the module's scope, or put the brackets inside backticks"
+        "a term with a similar name exists")
+      (concat (quote (:code unmatched-link :label "no term to link to"))
+              (if (empty? closest)
+                closest
+                (list (quote :suggest) (first closest)))))))
+
+(def bracketed
   (fn (name) (string "[" name "]")))
+
+(def name-form
+  (fn (spot source name)
+    (local read
+      (read-form (quote link)
+                 source
+                 (number-add (spot-offset spot source) 1)))
+    (if (reads-name? read name)
+      (take read 1)
+      (list))))
+
+(def reads-name?
+  (fn (read name)
+    (if (empty? read)
+      false
+      (if (symbol? (first read))
+        (value-eq (symbol-name (first read)) name)
+        false))))
+
+(def link-candidates
+  (fn (page)
+    (local candidates-of
+      (fn (names links)
+        (if (empty? links)
+          names
+          (recur (concat names (linked-names page (first links)))
+                 (rest links)))))
+    (candidates-of (list) (page-links page))))
+
+(def linked-names
+  (fn (page linked)
+    (if (value-eq (linked-path linked) (page-path page))
+      (concat (linked-exports linked) (linked-definitions linked))
+      (linked-exports linked))))
+
+(def spot-source
+  (fn (spot)
+    (first (docstring-form (docstring-term (placed-docstring (spot-placed
+                                                               spot)))))))
+
+(def spot-offset
+  (fn (spot source)
+    (local placed (spot-placed spot))
+    (local text (placed-text placed))
+    (local written-lines (string-lines source))
+    (local number
+      (written-line-number written-lines text
+                           (line-number (placed-line placed))))
+    (number-add (number-add (lines-length (take written-lines number))
+                            (number-sub (string-length (nth written-lines
+                                                            number))
+                                        (string-length text)))
+                (spot-column spot))))
+
+(def spot-placed
+  (fn (spot) (first spot)))
+
+(def spot-column
+  (fn (spot) (nth spot 1)))
+
+(def written-line-number
+  (fn (lines text number)
+    (if (ends-with? (nth lines number) text)
+      number
+      (recur lines text (number-add number 1)))))
+
+(def ends-with?
+  (fn (text suffix)
+    (bool-not (value-eq (string-strip-suffix text suffix) text))))
+
+(def lines-length
+  (fn (lines)
+    (local summed
+      (fn (length lines)
+        (if (empty? lines)
+          length
+          (recur (number-add length
+                             (number-add (string-length (first lines)) 1))
+                 (rest lines)))))
+    (summed 0 lines)))
 
 (def first-character
   (fn (text)

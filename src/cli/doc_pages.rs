@@ -75,13 +75,16 @@ impl DocumentedModules {
         let entry = terminal
             .sources()
             .add(self.file.path().display(), String::new());
-        let texts = terminal.within_session(&self.file, entry, |mut session| {
+        let (texts, warnings) = terminal.within_session(&self.file, entry, |mut session| {
             self.load_written(&mut session)?;
-            self.written
+            let texts = self
+                .written
                 .iter()
                 .map(|module| Self::expand(&mut session, &self.page_call(module, &types)))
-                .collect::<Result<Vec<Expr>, Diagnostics>>()
+                .collect::<Result<Vec<Expr>, Diagnostics>>()?;
+            Ok((texts, session.finish()?.warnings))
         })?;
+        terminal.print_diagnostics(&warnings);
         self.written
             .iter()
             .zip(texts)

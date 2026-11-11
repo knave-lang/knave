@@ -68,6 +68,7 @@ const DOCUMENTED_PROJECT: &str = "(defproject demo)\n";
 const DOCUMENTED_MAIN: &str =
     "(module \"Prints a greeting.\")\n\n(export main)\n\n(defn main () (println \"hi\"))\n";
 const DOCUMENTED_AREA: &str = "(export area)\n\n(defn area (width height)\n  \"Multiplies two sides, as [option] does not.\"\n  (* width height))\n";
+const UNMATCHED_LINKS: &str = "(export parse tally)\n\n(module \"Parses text, unlike [zzqx].\")\n\n(defn parse (text)\n  \"Reads the [optoin] from `text`.\n\n  It keeps [parse] linked.\n    Indented [a(b], again.\n  Also [42], [)x] and [helpr].\"\n  text)\n\n(defn tally ()\n  \"\n  Counts like [parze].\"\n  1)\n\n(defn helper () 2)\n";
 const AREA_SECTION: &str = "<a id=\"area\"></a>\n\n## `area`\n\n```lisp\n(defn area (width height))\n(type area (where ((a number)) (fn (a a) a)))\n```\n\nMultiplies two sides, as [option](https://knave-lang.org/docs/prelude/types/#option) does not.\n";
 const UNTYPED_SHAPES: &str = "(export point twice)\n\n(defstruct point \"A point.\" :x i64)\n\n(defrule twice \"Writes a form twice.\" ((x) (do x x)))\n";
 const UNTYPED_SHAPES_PAGE: &str = "# shapes\n\n<a id=\"point\"></a>\n\n## `point`\n\n```lisp\n(defstruct point)\n```\n\nA point.\n\n<a id=\"twice\"></a>\n\n## `twice`\n\n```lisp\n(defrule twice)\n```\n\nWrites a form twice.\n";
@@ -343,6 +344,12 @@ exit 101
             .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
             .with_file("src/main.knv", DOCUMENTED_MAIN)
             .with_file("src/geometry/area.knv", DOCUMENTED_AREA)
+    }
+
+    fn with_unmatched_links(test_name: &str) -> Self {
+        Self::new(test_name)
+            .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+            .with_file("src/a.knv", UNMATCHED_LINKS)
     }
 
     fn with_unbound_names(self, name: &str, count: usize) -> Self {
@@ -2254,12 +2261,25 @@ fn doc_write_links_a_bracketed_name_that_ends_a_line() {
             "src/a.knv",
             "(export size tally)\n\n(defn size () \"x [zzz]\" 1)\n\n(defn tally () \"see [size]\" 2)\n",
         );
-    sandbox
-        .compiler(&["doc", "--write"])
-        .assert_silent_success();
+    sandbox.compiler(&["doc", "--write"]).assert_exit_code(0);
     let page = sandbox.contents("doc/a.md");
     assert!(page.contains("\n\nx [zzz]\n"));
     assert!(page.contains("\n\nsee [size](#size)\n"));
+}
+
+#[test]
+fn doc_write_keeps_a_bracketed_name_that_matches_no_term_as_written() {
+    let sandbox = Sandbox::with_unmatched_links("doc_write_unmatched_page");
+    sandbox.compiler(&["doc", "--write"]).assert_exit_code(0);
+    let page = sandbox.contents("doc/a.md");
+    assert!(page.contains("\n\nReads the [optoin] from `text`.\n"));
+}
+
+#[test]
+fn doc_write_warns_at_a_bracketed_name_that_matches_no_term() {
+    let sandbox = Sandbox::with_unmatched_links("doc_write_unmatched_warning");
+    let doc = sandbox.compiler(&["doc", "--write"]);
+    insta::assert_snapshot!(doc.assert_exit_code(0).stderr());
 }
 
 #[test]

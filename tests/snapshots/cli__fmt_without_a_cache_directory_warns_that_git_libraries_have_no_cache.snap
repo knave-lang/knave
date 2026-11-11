@@ -3,4 +3,4 @@ source: tests/cli.rs
 expression: fmt.assert_exit_code(0).stderr()
 ---
 warning: cannot load the project around `src/main.knv` with its libraries, so `fmt` reads shapes only beside each file and in its parent directories
-error: no cache directory for git libraries: set `XDG_CACHE_HOME` or `HOME`
+warning: no cache directory for git libraries: set `XDG_CACHE_HOME` or `HOME`

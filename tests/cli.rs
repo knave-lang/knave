@@ -7089,7 +7089,7 @@ fn fmt_with_an_unreadable_project_file_warns_that_it_cannot_read_it() {
 }
 
 #[test]
-fn fmt_without_a_cache_directory_warns_before_the_environment_error() {
+fn fmt_without_a_cache_directory_warns_that_git_libraries_have_no_cache() {
     let (sandbox, _) = Sandbox::new("fmt_git_no_cache").with_git_library(None);
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["fmt", "src/main.knv"]);
     command

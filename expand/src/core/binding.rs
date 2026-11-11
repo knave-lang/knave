@@ -21,7 +21,7 @@ use crate::source::Span;
 pub struct BindingId(u32);
 
 impl BindingId {
-    pub fn from_index(index: u32) -> Self {
+    pub const fn from_index(index: u32) -> Self {
         Self(index)
     }
 

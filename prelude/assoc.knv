@@ -9,7 +9,7 @@
 
 (module "Returns structs and collections with new values at their keys.
 
-  The value itself does not change: each call returns an updated copy.")
+  The call moves the value and returns it with the new values in place.")
 
 (export assoc assoc-in update)
 

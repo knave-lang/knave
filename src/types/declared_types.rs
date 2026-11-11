@@ -25,6 +25,13 @@ impl<'a> DeclaredTypes<'a> {
             .and_then(|definition| definition.instantiated_field(label, arguments))
     }
 
+    pub(super) fn is_unsized(&self, candidate: &Type) -> bool {
+        match candidate {
+            Type::Named(binding, _) => self.types.rust_types.is_slice(*binding),
+            _ => candidate.is_unsized(),
+        }
+    }
+
     pub(super) fn viewed_items(&self, coercion: ViewCoercion) -> Option<Vec<(Type, Type)>> {
         coercion.viewed_items(&self.types.rust_types)
     }

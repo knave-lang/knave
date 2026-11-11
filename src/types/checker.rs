@@ -22,7 +22,7 @@ use super::pending::PendingBorrow;
 use super::pinning::LiteralDefaults;
 use super::pipelines::Pipelines;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
-use super::rust_types::{RustType, RustTypeTable};
+use super::rust_types::RustType;
 use super::selection::Selection;
 use super::structs::StructDefinition;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
@@ -39,8 +39,8 @@ use super::variant_payloads::VariantPayloads;
 use super::wrapper::FunctionValueWrapper;
 use crate::core::{
     BindingArena, BindingId, BindingKind, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr,
-    ExprKind, Item, ItemKind, KernelForm, Leaf, ModuleId, ParsedTemplate, PrimitiveType,
-    ReferenceKind, RustTemplate, StructDerives, StructExpr, TypeBinder, TypeExpr, TypeExprKind,
+    ExprKind, Item, ItemKind, KernelForm, Leaf, ModuleId, ParsedTemplate, ReferenceKind,
+    RustTemplate, StructDerives, StructExpr, TypeBinder, TypeExpr, TypeExprKind,
     VariantDeclaration, VariantPayload as CoreVariantPayload,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
@@ -661,6 +661,10 @@ impl TypeChecker {
 
     pub(super) fn variant_payloads(&self) -> VariantPayloads<'_> {
         VariantPayloads::new(&self.declarations.types)
+    }
+
+    pub(super) fn declared_types(&self) -> DeclaredTypes<'_> {
+        DeclaredTypes::new(&self.declarations.types)
     }
 
     pub(super) fn reference_peeling(&self) -> ReferencePeeling<'_> {
@@ -1768,9 +1772,7 @@ impl TypeChecker {
 
     fn borrow_views(&self, stored: Type) -> Type {
         match stored {
-            view if Self::is_unsized_type(&self.declarations.types.rust_types, &view) => {
-                Type::shared(view)
-            }
+            view if self.declared_types().is_unsized(&view) => Type::shared(view),
             Type::Named(binding, arguments) => {
                 Type::Named(binding, self.borrow_named_arguments(binding, arguments))
             }
@@ -2298,7 +2300,7 @@ impl TypeChecker {
         span: Span,
         methods: &[crate::core::ImplMethod],
     ) {
-        if !Self::is_unsized_type(&self.declarations.types.rust_types, implementor) {
+        if !self.declared_types().is_unsized(implementor) {
             return;
         }
         for method in methods {
@@ -2392,14 +2394,6 @@ impl TypeChecker {
             Type::Named(binding, _)
                 if self.declarations.types.structs.get(*binding).is_some() || self.declarations.types.enums.get(*binding).is_some()
         )
-    }
-
-    pub(super) fn is_unsized_type(rust_types: &RustTypeTable, candidate: &Type) -> bool {
-        match candidate {
-            Type::Primitive(PrimitiveType::Str) => true,
-            Type::Named(binding, _) => rust_types.is_slice(*binding),
-            _ => false,
-        }
     }
 
     fn acyclic_requirements(

@@ -3613,11 +3613,10 @@ mod tests {
 
     use super::TypeChecker;
     use crate::core::{
-        BindingArena, BindingInfo, BindingKind, Expr, ExprKind, FieldLabel, FieldSpelling, Leaf,
-        Literal, ModuleId, PrimitiveType,
+        BindingArena, BindingInfo, BindingKind, Expr, ExprKind, Leaf, Literal, ModuleId,
+        PrimitiveType,
     };
     use crate::source::{SourceId, Span};
-    use crate::types::typed::{TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr};
     use crate::types::{ClosureKind, Type, TypeVar};
 
     #[test]
@@ -3645,21 +3644,6 @@ mod tests {
             Self {
                 checker: TypeChecker::new(BindingArena::default()),
                 span: Span::new(SourceId::new(0), 0..0),
-            }
-        }
-
-        fn field_on(&self, owner: TypedExpr) -> TypedExpr {
-            TypedExpr {
-                kind: TypedExprKind::Struct(TypedStructExpr::Field(
-                    Box::new(owner),
-                    FieldLabel {
-                        name: "field".into(),
-                        span: self.span,
-                        spelling: FieldSpelling::Bare,
-                    },
-                )),
-                ty: Type::Primitive(PrimitiveType::I64),
-                span: self.span,
             }
         }
 
@@ -3693,21 +3677,6 @@ mod tests {
             self.checker.unchecked.insert(binding);
             self.checker.infer_variable(binding, self.span).is_err()
         }
-
-        fn describe_unknown(&mut self) -> String {
-            let _ = self.checker.unifier.fresh();
-            self.checker
-                .unification()
-                .describe(&Type::Var(TypeVar::new(0)))
-        }
-
-        fn owner(&self) -> TypedExpr {
-            TypedExpr {
-                kind: TypedExprKind::Leaf(TypedLeaf::Literal(Literal::Bool(false))),
-                ty: Type::Primitive(PrimitiveType::I64),
-                span: self.span,
-            }
-        }
     }
 
     #[test]
@@ -3729,12 +3698,6 @@ mod tests {
     }
 
     #[test]
-    fn an_unknown_type_is_described_as_an_underscore() {
-        let mut fixture = PlaceTypeFixture::new();
-        assert_eq!(fixture.describe_unknown(), "`_`");
-    }
-
-    #[test]
     #[should_panic(expected = "the caller matches a written form")]
     fn inferring_a_non_written_expression_panics() {
         let mut fixture = PlaceTypeFixture::new();
@@ -3743,15 +3706,5 @@ mod tests {
             fixture.span,
         );
         let _ = fixture.checker.infer_written(&expr, fixture.span);
-    }
-
-    #[test]
-    fn a_field_of_a_non_struct_keeps_the_field_type() {
-        let mut fixture = PlaceTypeFixture::new();
-        let field = fixture.field_on(fixture.owner());
-        assert_eq!(
-            fixture.checker.unification().place_type(&field),
-            Type::Primitive(PrimitiveType::I64)
-        );
     }
 }

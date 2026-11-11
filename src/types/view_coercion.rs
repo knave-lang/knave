@@ -119,4 +119,18 @@ mod tests {
                 .is_none()
         );
     }
+
+    #[test]
+    fn a_str_views_a_string() {
+        let view = Type::Primitive(PrimitiveType::Str);
+        let owned = Type::Primitive(PrimitiveType::String);
+        assert!(ViewCoercion::new(&view, &owned).views_string());
+    }
+
+    #[test]
+    fn a_string_does_not_view_a_str() {
+        let view = Type::Primitive(PrimitiveType::String);
+        let owned = Type::Primitive(PrimitiveType::Str);
+        assert!(!ViewCoercion::new(&view, &owned).views_string());
+    }
 }

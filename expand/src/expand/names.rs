@@ -30,7 +30,7 @@ impl Expander<'_> {
     }
 
     pub(super) fn try_resolve(&self, symbol: &Symbol, namespace: Namespace) -> Option<BindingId> {
-        self.term_resolver().resolve(symbol, namespace)
+        self.bindings().resolve(symbol, namespace)
     }
 
     pub(super) fn kind(&self, binding: BindingId) -> BindingKind {
@@ -150,8 +150,8 @@ impl Expander<'_> {
 
     pub(super) fn unbound(&self, symbol: &Symbol, namespace: Namespace, span: Span) -> Diagnostic {
         let candidates: Vec<_> = self
-            .term_resolver()
-            .visible_bindings(symbol, namespace)
+            .bindings()
+            .visible_named_like(symbol, namespace)
             .into_iter()
             .filter(|(name, binding)| self.is_public(name, namespace, *binding))
             .map(|(name, _)| name)
@@ -178,6 +178,6 @@ impl Expander<'_> {
     }
 
     pub(super) fn definition_module(&self, binding: BindingId) -> Option<ModuleId> {
-        self.term_resolver().definition_module(binding)
+        self.bindings().definition_module(binding)
     }
 }

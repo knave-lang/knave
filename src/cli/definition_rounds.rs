@@ -5,7 +5,7 @@ use super::prompt_module::PromptModule;
 use super::sources_survey::SourcesSurvey;
 use super::terminal::Terminal;
 use crate::diagnostic::{Diagnostic, Diagnostics};
-use crate::expand::{ExpandProblems, SetAsideInput};
+use crate::expand::{SetAsideInput, SetAsideProblems};
 use crate::source::SourceId;
 
 pub struct DefinitionRounds<'a> {
@@ -127,7 +127,7 @@ impl<'a> DefinitionRounds<'a> {
 
     fn set_aside(&mut self, input: &BufferedInput, error: &Diagnostic) {
         let names: Vec<&str> = input.names().iter().map(|name| &*name.name).collect();
-        let warning = ExpandProblems::set_aside(&self.set_aside_input(&names, input), error);
+        let warning = SetAsideProblems::set_aside(&self.set_aside_input(&names, input), error);
         self.warnings.push(warning);
         for name in input.names() {
             self.pending
@@ -142,18 +142,19 @@ impl<'a> DefinitionRounds<'a> {
         let names: Vec<&str> = drop.dropped.iter().map(|name| &*name.name).collect();
         let first = drop.dropped[0].span;
         let input = self.set_aside_input(&names, &drop.input);
-        let warning = ExpandProblems::dropped(&input, &drop.replacing, first);
+        let warning = SetAsideProblems::dropped_definitions(&input, &drop.replacing, first);
         self.warnings.push(warning);
         for name in &drop.dropped {
-            let reason = ExpandProblems::set_aside_reason(&drop.replacing, &name.name);
+            let reason = SetAsideProblems::set_aside_reason(&drop.replacing, &name.name);
             self.pending.set_aside(name, self.entered.name(), &reason);
         }
     }
 
     fn set_aside_documents(&mut self, drop: &DroppedNames) {
         let terms: Vec<&str> = drop.documents.iter().map(|term| &**term).collect();
-        let input = SetAsideInput::documents(&terms, drop.input.name(), self.entered.name());
-        let warning = ExpandProblems::dropped(&input, &drop.replacing, drop.input.span());
+        let input = self.set_aside_input(&terms, &drop.input);
+        let warning =
+            SetAsideProblems::dropped_documents(&input, &drop.replacing, drop.input.span());
         self.warnings.push(warning);
     }
 
@@ -162,7 +163,11 @@ impl<'a> DefinitionRounds<'a> {
         names: &'n [&'n str],
         input: &'n BufferedInput,
     ) -> SetAsideInput<'n> {
-        SetAsideInput::new(names, input.name(), self.entered.name())
+        SetAsideInput {
+            names,
+            source: input.name(),
+            setter: self.entered.name(),
+        }
     }
 
     fn accepted(self, survey: SourcesSurvey, entered_warnings: Diagnostics) -> AcceptedDefinition {

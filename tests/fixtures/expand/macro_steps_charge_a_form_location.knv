@@ -9,5 +9,5 @@
        (quote 1)))
    times))
 
-(with-macro-steps 12500
+(with-macro-steps 11000
                   (defn main () (println (locates 400))))

@@ -19,7 +19,7 @@ error[L0201]: cannot find `length` in this scope
 
 Worse, a short foreign word often lies one or two edits from an unrelated knave name, and the suggestion then points the wrong way: `for` suggests `or`, `return` suggests `recur`, `#t` suggests `at`, `to-string` suggests `docstring`. The reader, or the model, has to search the prelude, and a model often guesses again with a second foreign name. Appendix B lists 35 foreign names that models wrote in recorded sessions. Of their `L0201` reports, only `push`, `String` and `'origin` got a help that named the knave form: `push!`, `string` and `(quote origin)`.
 
-A second case is a foreign name that is also a knave name with another meaning. Clojure's `some` tests whether any item passes a test. knave's `some` wraps a value in an `option`. `(some items (fn (x) (> x 1)))` fails with `L0301` "no rule of `some` matches this form", and the help shows `(some value)`, with no word about `any?`.
+A second case is a foreign name that is also a knave name with another meaning. Clojure's `some` tests whether any item passes a test. knave's `some` wraps a value in an `option`. `(some (fn (x) (> x 1)) items)` fails with `L0301` "no rule of `some` matches this form", and the help shows `(some value)`, with no word about `any?`.
 
 The language cannot solve this today for two reasons:
 
@@ -34,24 +34,35 @@ Every option shares the diagnostics of the Diagnostics section. The options diff
 
 ### A. A `foreign-names` form beside the definition
 
-The prelude states each definition's names in other languages with a form that sits next to the definition, as `header-shape` and `document` do. Every example form in this RFC uses entries of Appendix C1, the list that ships first. The form names the definition, a short purpose phrase, and the names by language:
+The prelude states each definition's names in other languages with a form that sits next to the definition, as `header-shape` and `document` do. Every example form in this RFC uses entries of Appendix C1, the list that ships first, except the one under rule 7 that shows a form with both a purpose phrase and a `:help`, which no C1 row needs. The form names the definition, a short purpose phrase or a `:help` text, and the names by language:
 
 ```lisp
-(foreign-names len "get the length"
-  :help "to count the items that pass a test, write `(len (filter items test))`"
-  :rust (count)
-  :javascript (length size)
-  :clojure (count)
-  :common-lisp (length)
-  :scheme (length vector-length string-length)
-  :racket (length vector-length string-length))
-
 (foreign-names vec "build a vector"
   :clojure (vector)
   :common-lisp (vector)
   :scheme (vector)
   :racket (vector))
+
+(foreign-names len "get the length"
+  :javascript (size)
+  :scheme (vector-length)
+  :racket (vector-length))
+
+(foreign-names len
+  :help "`len` counts the items of a collection and the bytes of a string: write `(len items)`, `(len (chars text))` to count a string's characters, or `(len (filter items test))` to count the items that pass a test"
+  :rust (count)
+  :javascript (length)
+  :clojure (count)
+  :common-lisp (length)
+  :scheme (length)
+  :racket (length))
+
+(foreign-names len :help "`len` counts bytes, so write `(len (chars text))` to count characters"
+  :scheme (string-length)
+  :racket (string-length))
 ```
+
+The `length` and `count` names get a help, not a replacement, because they count a string in another unit. knave's `len` counts a string's bytes, so `(len "héllo")` is 6. JavaScript's `length` counts UTF-16 units, Clojure's `count` counts UTF-16 units, Common Lisp's `length` and Scheme's `string-length` count characters, so a replacement would turn a working call into one that compiles and gives another number. `(len (chars text))` counts characters once `len` serves iterators, which the change that removes `count` brings (see the end of the Problem). Rust's `count` shares the spelling with Clojure's, so rule 8 puts it in the same form. JavaScript's `size` counts a `Map`'s or a `Set`'s items, and `vector-length` a vector's, so those keep the replacement.
 
 The form emits nothing:
 
@@ -59,7 +70,7 @@ The form emits nothing:
 // no Rust: the form adds notes to its module, as `header-shape` does
 ```
 
-The form adds one note per foreign name to its module's notes under `foreign-names`, with `add-module-note`. A note holds the foreign name, the language keyword, the purpose phrase, the optional help, and the symbol of the definition, so the note refers to a binding, not to a spelling. `docs/language.md` gets a section that states the form, as it states `header-shape`.
+The form adds one note per foreign name to its module's notes under `foreign-names`, with `add-module-note`. A note holds the foreign name, the language keyword, the purpose phrase, the optional help, the `:given` type binding, if any, and the symbol of the definition, so the note refers to a binding, not to a spelling. `docs/language.md` gets a section that states the form, as it states `header-shape`.
 
 Rules of the form, each checked when the form expands:
 
@@ -83,11 +94,19 @@ Rules of the form, each checked when the form expands:
        :rust (while) :python (while) :javascript (while))
      ```
 
-   - An entry with both a purpose phrase and a `:help`. The argument count chooses between the two: a call whose count fits the definition's header gets the replacement, and any other call gets the `:help` text. The `len` entry above shows the replacement `len` for `(count items)` and the `:help` text for `(count items test)`, the habit of Rust's `filter(..).count()` and Python's `list.count(x)`. The header is the one `doc-header` returns, with a trailing `...` read as any number. A header that lists no parameters, as the bare name of an undocumented `defrule`, fits every call.
+   - An entry with both a purpose phrase and a `:help`. The argument count chooses between the two: a call whose count fits the definition's header gets the replacement, and any other call gets the `:help` text. No C1 form needs this case. C2's Python `any` and `all` do, because Python's take one iterable of booleans:
+
+     ```lisp
+     (foreign-names any? "test whether any item passes"
+       :help "Python's `any` takes booleans: write `(any? items (fn (b) b))`"
+       :rust (any) :python (any))
+     ```
+
+     `(any items big?)` fits `any?`'s header, `(any? items test)`, and gets the replacement. `(any flags)` does not, and gets the help. The header is the one `doc-header` returns, with a trailing `...` read as any number. A header that lists no parameters, as the bare name of an undocumented `defrule`, fits every call.
 
    An entry with a purpose phrase and no `:help` always shows the replacement, whatever the count. So `fold`'s entry on `reduce` replaces `(fold v 0 +)` with `(reduce v 0 +)`, although `reduce`'s header, `(reduce items step)`, documents only its two-argument form. The count never turns a replacement into no help.
 
-8. **A definition may carry several `foreign-names` forms.** A foreign name whose arguments come in another order needs its own form with a `:help`, so the replacement of the other languages stays. One foreign name of one language goes in one form only. Entries of several languages that share a spelling and a target merge into one help that names every language, as in ``which JavaScript, Common Lisp, Scheme and Racket call `length` ``, so they must all show the replacement or all carry the same `:help`, and must name the same `:given` type or none. The expander reports a second entry that breaks this, at its form:
+8. **A definition may carry several `foreign-names` forms.** A foreign name whose arguments come in another order needs its own form with a `:help`, so the replacement of the other languages stays. One foreign name of one language goes in one form only. Entries of several languages that share a spelling and a target merge into one help that names every language, as in ``which Clojure, Common Lisp, Scheme and Racket call `vector` ``, so they must all show the replacement or all carry the same `:help`, and must name the same `:given` type or none. The expander reports a second entry that breaks this, at its form:
 
    ```lisp
    (foreign-names any? "test whether any item passes"
@@ -156,16 +175,16 @@ The wording follows [docs/diagnostics.md](../docs/diagnostics.md): rustc's layou
 `L0201` keeps its title and label. The help names the purpose, the knave name and the language, and shows the replacement:
 
 ```text
-error[L0201]: cannot find `length` in this scope
- --> src/main.knv:3:12
+error[L0201]: cannot find `vector` in this scope
+ --> src/main.knv:3:13
   |
-3 |   (println (length items))
+3 |   (println (vector 1 2 3))
   |             ^^^^^^ not found in this scope
   |
-help: to get the length, knave uses `len`, which JavaScript, Common Lisp, Scheme and Racket call `length`
+help: to build a vector, knave uses `vec`, which Clojure, Common Lisp, Scheme and Racket call `vector`
   |
-3 -   (println (length items))
-3 +   (println (len items))
+3 -   (println (vector 1 2 3))
+3 +   (println (vec 1 2 3))
   |
 ```
 
@@ -173,7 +192,7 @@ Without a purpose phrase the help is ``knave calls Rust's `into-iter` `iter` ``.
 
 ```text
 error[L0201]: cannot find `return` in this scope
- --> src/main.knv:2:3
+ --> src/main.knv:2:4
   |
 2 |   (return 1))
   |    ^^^^^^ not found in this scope
@@ -197,7 +216,7 @@ A foreign name counts only when its definition is visible where the error is, th
 2. A Rust spelling, because it is an exact match under a stated rule.
 3. The closest name by edit distance, as today.
 
-The first rule that finds a candidate decides, and the others add nothing, so no error shows two competing fixes. This order removes the wrong helps that the probes found: the entries for `for`, `return`, `#t` and `to-string` decide before edit distance offers `or`, `recur`, `at` and `docstring`.
+The first rule that finds a candidate decides, and the others add nothing, so no error shows two competing fixes. This order removes the wrong helps that the probes found: the entries for `for`, `return`, `#t` and `to-string` decide before edit distance offers `or`, `recur`, `at` and `docstring`, and the entries for `==`, `!=`, `any` and `#f` before it offers `<=`, `and` and `if`.
 
 When rule 1 finds several knave definitions for one foreign name, because two entries of different languages share the spelling, the help lists them in name order with no replacement text, each with its language. A replacement shows only when there is one candidate. No row of the first build has two candidates.
 
@@ -222,7 +241,7 @@ The hint is stated in the prelude, beside the definition it points to, by the sa
 
 A misused prelude name often fails before the type stage, and a prelude name is often a macro whose expansion calls another binding. So the hint attaches at two stages, keyed on bindings both times:
 
-1. **When the expander lowers the program,** it reads every `foreign-names` note of the loaded modules once, as `find-doc` reads docstring notes. For each entry whose foreign name is bound, it records `binding -> (target binding, language, purpose, help)` in a `ForeignNameHints` table, keyed by binding identity.
+1. **When the expander lowers the program,** it reads every `foreign-names` note of the loaded modules once, as `find-doc` reads docstring notes. For each entry whose foreign name is bound, it records `binding -> (target binding, language, purpose, help, given type)` in a `ForeignNameHints` table, keyed by binding identity.
 2. **In the expander:** any `L03xx` error that a macro whose binding is in the table reports at its call adds the hint. That covers a `defrule` with no matching rule and a `fail` with no `:code`, which report `L0301`, and a `fail` with its own `:code`, such as `prn`'s `L0352` "`prn` needs a value to print". The stage reads the code's range and the binding, never the message. This is the path of `some`, a `defrule-with-value`, which fails in expansion on two arguments.
 3. **In the type stage:** the expander hands the table to the type stage with the program, as it hands macro origins today. A `MacroOrigin` holds the macro's name, its definition span, the call site and whether it came through the prelude, but no binding (`expand/src/expand/macro_call.rs`). The build records the macro's binding beside the name. When the type stage reports `L0401` mismatched types, `L0402` a wrong argument count or `L0404` a missing trait, and the primary label is on a call or on an argument of a call, it looks up two bindings: the callee's, and the binding of the macro whose expansion wrote the call, if any. Either one in the table adds the hint, subject to the entry's `:given` clause, below. `map` is a plain `def`, so its callee binding finds the entry. A macro such as `->` that writes the call is found through its origin.
 4. **Neither stage compares a name.** Each reads binding identities and the strings of the entry.
@@ -233,7 +252,7 @@ A bound name is usually right, and a failing call of it is usually some other mi
 error[L0301]: no rule of `some` matches this form
  --> src/main.knv:4:3
   |
-4 |   (some items (fn (x) (> x 1)))
+4 |   (some (fn (x) (> x 1)) items)
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
   |
   = note: `some` wraps a value in an `option`
@@ -307,7 +326,7 @@ A page `docs/writing-knave-with-a-language-model.md`, for people who let a model
 1. **What a model gets wrong and why.** One paragraph: it reaches for Rust, Python, JavaScript and Clojure names and forms.
 2. **The loop that works.** Run `knave check` after each change, read the `help:` line of each error before guessing again, and use `knave doc <term>`, `(apropos text)` and `(find-doc text)` to find a name. With this RFC, `find-doc` also searches the `foreign-names` notes, so `(find-doc length)` finds `len`.
 3. **A table of foreign names by language.** Generated from the `foreign-names` notes, as `knave doc --write --prelude` writes the prelude pages, so the page never disagrees with the prelude.
-4. **The syntax differences a model must know**, each with a wrong line and the right line: no `[]`, `{}`, `'` or commas; `(char "a")`; keyword struct fields; `local` for a step and `let` for scoped bindings; no top-level expressions; `main` returns `unit` or a `result`; no format strings.
+4. **The syntax differences a model must know**, each with a wrong line and the right line: no `[]`, `{}`, `'` or commas; `(char "a")`; keyword struct fields; `local` for a step and `let` for scoped bindings; no top-level expressions; `main` returns `unit` or a `result`; no format strings; `len` and `subs` count a string's bytes, where Python counts code points and JavaScript UTF-16 units, so `(len (chars text))` counts characters. Python's `len` keeps its name in knave, so no entry and no error can warn of the unit.
 5. **Argument order.** knave follows Rust's method order: the collection comes first, as in `(map (iter v) f)` and `(reduce v 0 +)`, the opposite of Clojure.
 6. **A snippet to paste into a project's `AGENTS.md` or `CLAUDE.md`** that points the model at `knave check`, `knave doc` and this page.
 
@@ -388,6 +407,7 @@ The owner accepted option A with the Rust spelling rule, and decided each questi
 - [docs/language.md: Docstrings](../docs/language.md#docstrings), whose `find-doc` paragraph gains the search of `foreign-names` notes.
 - [docs/language.md: Bodies](../docs/language.md#bodies), whose note on a type in a value position gains the struct-at-the-head-of-a-call case.
 - [docs/language.md: Literals](../docs/language.md#literals), whose rule "A string literal has type `(ref str)`" becomes the context rule of Decision 4.
+- The docstrings of `string` in `prelude/prelude.knv` and of the map functions in `prelude/assoc.knv`, which state that a string literal is a `(ref str)`, gain the context rule of Decision 4.
 - [docs/diagnostics.md: Tone](../docs/diagnostics.md#tone), whose rule "If a name does not resolve, suggest the closest name" gains the order of the three suggestions, the position rule, the `:help` form of an `L0201` help, the help for a binder written with a trailing `:` or `,`, and the note and help that a foreign name adds to a macro's `L03xx` error and to a type error.
 
 ---
@@ -538,7 +558,7 @@ Every row of C1 was checked against the prelude signature of its target, against
 | Rust | `push-str` **E**, `push` **E** | `push!` | R |
 | Rust | `to-string` **E**, `to-owned`, `String/from` | `str` | R |
 | Rust | `format` | `str` | H |
-| Rust | `count` | `len` | R, H |
+| Rust | `count` | `len` | H: `len` counts a collection's items and a string's bytes; `(len (chars text))` counts characters, `(len (filter items test))` the items that pass |
 | Rust | `insert` **E** | `assoc` | H: `(assoc map key value)` returns the new map, so bind it |
 | Rust | `into-vec` **E** | `collect` | R |
 | Rust | `fold` | `reduce` | R, the three-argument form |
@@ -551,20 +571,21 @@ Every row of C1 was checked against the prelude signature of its target, against
 | Rust, Python, JavaScript | `for` **E**, `while` | `for-each`, `loop` | H |
 | Rust, Python | `%` **E** | `rem` | H: `rem` keeps the sign of the first number, as Rust's `%` does and Python's does not |
 | Python | `None`, `True`, `False` | `none`, `true`, `false` | R |
-| JavaScript | `length` **E**, `size` **E** | `len` | R |
+| JavaScript | `length` **E** | `len` | H, in the same form as Rust's `count`: JavaScript counts a string's UTF-16 units |
+| JavaScript | `size` **E** | `len` | R |
 | JavaScript | `concat` **E** | `str` | H: "to join strings, write `(str a b)`"; an array `concat` has no knave form. **B** once the helpers decision adds `concat` |
 | JavaScript | `some` **B** | `any?` | H, in the same form as Clojure's |
 | JavaScript | `every` | `every?` | R |
 | JavaScript | `null`, `undefined` | `none` | R |
 | JavaScript | `===`, `!==` | `=`, `not=` | R |
-| Clojure | `count` | `len` | R, H |
+| Clojure | `count` | `len` | H, in the same form as Rust's `count` |
 | Clojure | `vector` **E** | `vec` | R |
 | Clojure | `when-not` **E**, `if-not` | `unless`; `if` with the branches swapped | R; H |
 | Clojure | `case` **E** | `match` | H |
 | Clojure | `doseq`, `dotimes` **E** | `for-each` | H |
 | Clojure | `some` **B** | `any?` | H: the test comes second in knave |
 | Clojure | `nil` | `none` | R |
-| Common Lisp | `length` **E** | `len` | R |
+| Common Lisp | `length` **E** | `len` | H, in the same form as Rust's `count`: Common Lisp counts a string's characters |
 | Common Lisp | `defun` | `defn` | R |
 | Common Lisp | `lambda` | `fn` | R |
 | Common Lisp | `progn` | `do` | R |
@@ -573,9 +594,12 @@ Every row of C1 was checked against the prelude signature of its target, against
 | Common Lisp | `setf`, `setq` | `set!` | R |
 | Common Lisp | `vector` **E** | `vec` | R |
 | Common Lisp | `nil`, `t` | `none`, `true` | R |
-| Scheme, Racket | `length` **E**, `vector-length`, `string-length` | `len` | R |
+| Scheme, Racket | `length` **E** | `len` | H, in the same form as Rust's `count` |
+| Scheme, Racket | `vector-length` | `len` | R |
+| Scheme, Racket | `string-length` | `len` | H: "`len` counts bytes, so write `(len (chars text))` to count characters" |
 | Scheme, Racket | `define` | `def` | H: `defn` for a function |
-| Scheme, Racket | `lambda`, `λ` | `fn` | R |
+| Scheme, Racket | `lambda` | `fn` | R |
+| Racket | `λ` | `fn` | R |
 | Scheme, Racket | `begin` | `do` | R |
 | Scheme, Racket | `let*`, `letrec` | `let` | H: `let` takes a flat list, `(let (x 1 y 2) ...)` |
 | Scheme, Racket | `vector` **E** | `vec` | R |
@@ -591,13 +615,13 @@ The Rust spelling rule covers `is_some`, `is_none`, `is_ok`, `is_err`, `is_empty
 
 **Rust.** R: `pop` to `pop!`, `remove` to `remove-at!`, `sort` and `sort-unstable` to `sort!`, `sort-by-key` to `sort-by!`, `dedup` to `dedup!`, `to-uppercase` and `to-lowercase` to `upper-case` and `lower-case`, `std/fs/read-to-string` to `slurp`, `std/process/exit` to `exit`, `Box/new` to `box`, `Vec/new` to `vec`, `HashMap/new` to `hash-map`. B, R: `reverse` to `reverse!`; knave's `reverse` returns an iterator, last item first, so a working `(reverse v)` gets no hint. H: `position` (`find` over `(enumerate items)`), `sort-by` (knave sorts by a key, not a comparison), `dbg` (`prn` prints but returns `unit`).
 
-**JavaScript.** R: `pop` to `pop!`, `sort` to `sort!`, `forEach` to `for-each`, `toUpperCase` and `toLowerCase` to `upper-case` and `lower-case`, `toString` to `str`, `console.log` to `println`, `console.error` to `eprintln`, `process.exit` to `exit`, `Math.max`, `Math.min`, `Math.sqrt` to `max`, `min`, `sqrt`. B, R: `reverse` to `reverse!`, in the same form as Rust's. H: `slice` and `substring` (`subs` takes byte offsets), `splice` (`remove-at!` for one item), `findIndex` and `indexOf` (`find` over `enumerate`), `parseInt` and `parseFloat` (`parse` with `the`), `Object.keys`, `Object.values`, `Object.entries` (`keys`, `vals`, `iter` on a map).
+**JavaScript.** R: `pop` to `pop!`, `sort` to `sort!`, `forEach` to `for-each`, `toUpperCase` and `toLowerCase` to `upper-case` and `lower-case`, `toString` to `str`, `console.log` to `println`, `console.error` to `eprintln`, `process.exit` to `exit`, `Math.max`, `Math.min`, `Math.sqrt` to `max`, `min`, `sqrt`. B, R: `reverse` to `reverse!`, in the same form as Rust's. H: `slice` and `substring` (`subs` takes byte offsets, where JavaScript counts UTF-16 units, and panics on an offset inside a character; on text that is not ASCII, walk the characters with `(chars text)`), `splice` (`remove-at!` for one item), `findIndex` and `indexOf` (`find` over `enumerate`), `parseInt` and `parseFloat` (`parse` with `the`), `Object.keys`, `Object.values`, `Object.entries` (`keys`, `vals`, `iter` on a map).
 
 **Clojure.** R: `nth` to `at`, `peek` to `last` on a vector, `doall` needs nothing. H: `conj` (`push!` changes the vector; `conj` returns a new one), `into` (`collect`, `into-hash-map` or `into-sorted-map` by target), `distinct` and `dedupe` (`dedup!` removes neighbors only), `mod` (`rem` keeps the sign of the first number), `quot` (`/`), `if-let` and `when-let` (`let-match`), `condp` (`cond`), `defrecord` (`defstruct`), `defprotocol` (`deftrait`), `extend-protocol` (`impl`), `defn-` (`defn` without `export`).
 
-**Common Lisp.** R: `elt`, `aref` to `at`, `vector-push-extend` to `push!`, `nreverse` to `reverse!`, `make-hash-table` to `hash-map`, `princ` to `print`, `write-line` to `println`, `string-upcase`, `string-downcase` to `upper-case`, `lower-case`, `/=` to `not=`, `eq` and `equal` to `=`, `null` to `none?`. B, H: `some` (`any?`, in the same form and with the same help as Clojure's `some`), `reduce` (knave's `reduce` takes the items first: `(reduce items f)` or `(reduce items init f)`). H: `remove-duplicates` (`dedup!` removes neighbors only), `string-trim` (`trim`; it takes the characters first), `parse-integer` (`parse` with `the`), `subseq` (`subs`, byte offsets), `gethash` (`(get map key)`, the key comes second), `mapcar` (`(map items f)`, the function comes second), `remove-if-not` (`filter`, test second), `find-if` (`find`, test second), `dolist`, `dotimes` and `loop for` (`for-each`), `format` (`str`).
+**Common Lisp.** R: `elt`, `aref` to `at`, `vector-push-extend` to `push!`, `nreverse` to `reverse!`, `make-hash-table` to `hash-map`, `princ` to `print`, `write-line` to `println`, `string-upcase`, `string-downcase` to `upper-case`, `lower-case`, `/=` to `not=`, `eq` and `equal` to `=`, `null` to `none?`. B, H: `some` (`any?`, in the same form and with the same help as Clojure's `some`), `reduce` (knave's `reduce` takes the items first: `(reduce items f)` or `(reduce items init f)`). H: `remove-duplicates` (`dedup!` removes neighbors only), `string-trim` (`trim`; it takes the characters first), `parse-integer` (`parse` with `the`), `subseq` (`subs` takes byte offsets, where Common Lisp counts characters, and panics on an offset inside a character; walk the characters with `(chars text)`), `gethash` (`(get map key)`, the key comes second), `mapcar` (`(map items f)`, the function comes second), `remove-if-not` (`filter`, test second), `find-if` (`find`, test second), `dolist`, `dotimes` and `loop for` (`for-each`), `format` (`str`).
 
-**Scheme and Racket.** R: `vector-ref`, `list-ref` to `at`, `hash-ref` to `get`, `displayln` to `println`, `number->string` to `str`, `equal?`, `eqv?`, `eq?` to `=`, `null?` to `empty?`, `string-upcase`, `string-downcase` to `upper-case`, `lower-case`. B, R: Racket's `display` to `print`; knave's `display` is a macro that defines how a type prints, so a printing call fails with `L0301` and gets the hint. H: `foldl` and `fold-left` (`(reduce items init f)`, the function comes last), `andmap` and `ormap` (`every?` and `any?`, the function second), `findf` (`find`, the function second), `remove-duplicates` (`dedup!` removes neighbors only), `hash-set!` (`assoc`), `make-hash` and `hash` (`hash-map`), `newline` (`(println)`), `string->number` (`parse` with `the`), `substring` (`subs`, byte offsets), `modulo` (`rem` keeps the sign of the first number).
+**Scheme and Racket.** R: `vector-ref`, `list-ref` to `at`, `hash-ref` to `get`, `displayln` to `println`, `number->string` to `str`, `equal?`, `eqv?`, `eq?` to `=`, `null?` to `empty?`, `string-upcase`, `string-downcase` to `upper-case`, `lower-case`. B, R: Racket's `display` to `print`; knave's `display` is a macro that defines how a type prints, so a printing call fails with `L0301` and gets the hint. H: `foldl` and `fold-left` (`(reduce items init f)`, the function comes last), `andmap` and `ormap` (`every?` and `any?`, the function second), `findf` (`find`, the function second), `remove-duplicates` (`dedup!` removes neighbors only), `hash-set!` (`assoc`), `make-hash` and `hash` (`hash-map`), `newline` (`(println)`), `string->number` (`parse` with `the`), `substring` (`subs` takes byte offsets, where Scheme and Racket count characters, and panics on an offset inside a character; walk the characters with `(chars text)`), `modulo` (`rem` keeps the sign of the first number).
 
 **Membership, which the prelude lacks today.** The names split by what they test:
 

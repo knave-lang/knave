@@ -11,8 +11,9 @@ impl LocalBindings {
 
     pub fn of_lambda(lambda: &Lambda) -> Self {
         let mut walk = BinderWalk::default();
-        let body = walk.bind_lambda(lambda);
-        walk.collect(body);
+        let mut pending = Vec::new();
+        walk.bind_lambda(lambda, &mut pending);
+        walk.collect(pending);
         Self::of_bindings(&walk.binders)
     }
 
@@ -56,34 +57,41 @@ struct BinderWalk {
 }
 
 impl BinderWalk {
-    fn collect(&mut self, mut pending: Vec<&Expr>) {
+    fn collect<'e>(&mut self, mut pending: Vec<&'e Expr>) {
         while let Some(expr) = pending.pop() {
-            let children = self.bind(expr);
-            pending.extend(children);
+            self.visit(expr, &mut pending);
         }
     }
 
-    fn bind<'e>(&mut self, expr: &'e Expr) -> Vec<&'e Expr> {
+    fn visit<'e>(&mut self, expr: &'e Expr, pending: &mut Vec<&'e Expr>) {
         match expr.kind() {
-            ExprKind::Fn(lambda) => self.bind_lambda(lambda),
-            ExprKind::Control(Control::Block(block)) => self.bind_block(block),
-            _ => expr.children(),
+            ExprKind::Leaf(_) => {}
+            ExprKind::Call(callee, arguments) => {
+                pending.push(callee);
+                pending.extend(arguments);
+            }
+            ExprKind::Control(Control::If(test, then, otherwise)) => {
+                pending.extend([test.as_ref(), then.as_ref(), otherwise.as_ref()]);
+            }
+            ExprKind::Fn(lambda) => self.bind_lambda(lambda, pending),
+            ExprKind::Control(Control::Block(block)) => self.bind_block(block, pending),
+            _ => pending.extend(expr.children()),
         }
     }
 
-    fn bind_lambda<'e>(&mut self, lambda: &'e Lambda) -> Vec<&'e Expr> {
+    fn bind_lambda<'e>(&mut self, lambda: &'e Lambda, pending: &mut Vec<&'e Expr>) {
         self.binders
             .extend(lambda.params.iter().map(|param| param.binding));
-        self.bind_block(&lambda.body)
+        self.bind_block(&lambda.body, pending);
     }
 
-    fn bind_block<'e>(&mut self, block: &'e Block) -> Vec<&'e Expr> {
+    fn bind_block<'e>(&mut self, block: &'e Block, pending: &mut Vec<&'e Expr>) {
         self.binders
             .extend(block.items.iter().filter_map(|item| match item {
                 BodyItem::Let(binder, _) => Some(binder.binding),
                 BodyItem::Expr(_) => None,
             }));
-        block.expressions().collect()
+        pending.extend(block.expressions());
     }
 }
 
@@ -138,6 +146,17 @@ mod tests {
             Expr::new(ExprKind::Control(Control::Block(block)), Self::span())
         }
 
+        fn deref_of(value: Expr) -> Expr {
+            Expr::new(ExprKind::Deref(Box::new(value)), Self::span())
+        }
+
+        fn if_of(branch: Expr) -> Expr {
+            let test = Box::new(Self::read(Self::GLOBAL));
+            let otherwise = Box::new(Self::read(Self::GLOBAL));
+            let choice = Control::If(test, Box::new(branch), otherwise);
+            Expr::new(ExprKind::Control(choice), Self::span())
+        }
+
         fn call_of(argument: Expr) -> Expr {
             let callee = Box::new(Self::read(Self::GLOBAL));
             Expr::new(ExprKind::Call(callee, vec![argument]), Self::span())
@@ -153,7 +172,9 @@ mod tests {
             let body = Block {
                 items: vec![
                     BodyItem::Let(Self::binder(Self::LET), Self::read(Self::PARAMETER)),
-                    BodyItem::Expr(Self::call_of(Self::nested_block())),
+                    BodyItem::Expr(Self::call_of(Self::if_of(Self::deref_of(
+                        Self::nested_block(),
+                    )))),
                 ],
             };
             Lambda::new(vec![Self::binder(Self::PARAMETER)], body)

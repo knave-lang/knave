@@ -20,8 +20,9 @@ impl Expander<'_> {
         self.evaluated_forms = EvaluatedForms::new([form]);
         self.recorded_inputs = RecordedInputs::new(vec![form]);
         self.load_source_module(path, sources);
-        if self.evaluated_forms.is_definition(form) {
-            ClassifiedForm::Definition(self.recorded_inputs.bound_by(form))
+        let record = self.recorded_inputs.of(form);
+        if self.evaluated_forms.is_definition(form) || record.adds_notes {
+            ClassifiedForm::Definition(record.bound)
         } else {
             ClassifiedForm::Expression
         }

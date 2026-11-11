@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_exhaustive_over_same_type_columns.knv
+---
+(derive twin clone copy partial-eq eq hash show)
+(derive side clone copy partial-eq eq hash show)
+(type ->twin (fn (side side bool) twin))
+(type pick (fn ((ref twin)) i64))

@@ -25,6 +25,12 @@ struct ModuleShapes {
     uses: Vec<ModulePath>,
 }
 
+struct FoundModule {
+    name: String,
+    text: String,
+    owner: Option<String>,
+}
+
 struct CatalogWalk<'r> {
     reader: &'r mut ShapeReader,
     lookup: &'r ModuleLookup,
@@ -35,12 +41,24 @@ struct CatalogWalk<'r> {
 impl ModuleLookup {
     pub fn beside(directory: &Path) -> Self {
         Self {
-            directories: directory
-                .ancestors()
-                .map(|ancestor| ModuleSources::new(ancestor.to_path_buf(), ancestor.to_path_buf()))
+            directories: Self::ancestor_sources(directory).collect(),
+            shape_modules: Vec::new(),
+        }
+    }
+
+    pub fn within_project(project_sources: ModuleSources, directory: &Path) -> Self {
+        Self {
+            directories: std::iter::once(project_sources)
+                .chain(Self::ancestor_sources(directory))
                 .collect(),
             shape_modules: Vec::new(),
         }
+    }
+
+    fn ancestor_sources(directory: &Path) -> impl Iterator<Item = ModuleSources> + '_ {
+        directory
+            .ancestors()
+            .map(|ancestor| ModuleSources::new(ancestor.to_path_buf(), ancestor.to_path_buf()))
     }
 
     pub fn beside_project_file(directory: &Path) -> Self {
@@ -51,13 +69,18 @@ impl ModuleLookup {
         lookup
     }
 
-    fn find(&self, path: &ModulePath) -> Option<(String, String)> {
-        self.directories
-            .iter()
-            .find_map(|sources| match sources.find(path)? {
-                ModuleSource::Text { name, text } => Some((name, text)),
+    fn find(&self, owner: Option<&str>, written: &ModulePath) -> Option<FoundModule> {
+        self.directories.iter().find_map(|sources| {
+            let path = sources.resolve(owner, written);
+            match sources.find(&path)? {
+                ModuleSource::Text { name, text } => Some(FoundModule {
+                    name,
+                    text,
+                    owner: sources.library_owner(&path).map(str::to_string),
+                }),
                 ModuleSource::Builtin(_) => None,
-            })
+            }
+        })
     }
 }
 
@@ -70,12 +93,12 @@ impl ShapeReader {
             visited: FxHashSet::default(),
             catalog: ShapeCatalog::default(),
         };
-        walk.add_module(&ModulePath::new(ModuleSources::PRELUDE));
+        walk.add_module(None, &ModulePath::new(ModuleSources::PRELUDE));
         lookup
             .shape_modules
             .iter()
-            .for_each(|module| walk.add_module(module));
-        walk.add_shapes(&file);
+            .for_each(|module| walk.add_module(None, module));
+        walk.add_shapes(None, &file);
         walk.catalog
     }
 
@@ -89,19 +112,19 @@ impl ShapeReader {
 }
 
 impl CatalogWalk<'_> {
-    fn add_module(&mut self, path: &ModulePath) {
-        let Some((name, text)) = self.lookup.find(path) else {
+    fn add_module(&mut self, owner: Option<&str>, written: &ModulePath) {
+        let Some(found) = self.lookup.find(owner, written) else {
             return;
         };
-        if self.visited.insert(name.clone()) {
-            let module = self.reader.module(name, &text);
-            self.add_shapes(&module);
+        if self.visited.insert(found.name.clone()) {
+            let module = self.reader.module(found.name, &found.text);
+            self.add_shapes(found.owner.as_deref(), &module);
         }
     }
 
-    fn add_shapes(&mut self, module: &ModuleShapes) {
+    fn add_shapes(&mut self, owner: Option<&str>, module: &ModuleShapes) {
         for path in &module.uses {
-            self.add_module(path);
+            self.add_module(owner, path);
         }
         for statement in &module.statements {
             self.catalog.add(statement);

@@ -106,17 +106,17 @@
         (fn (term)
           (list term (written-body term)))))
     (local summary (module-docstring page))
-    (local linked-page
-      (with-link-homes page
-                       (concat summary (map-list sections section-body))))
+    (local links
+      (link-table page
+                  (concat summary (map-list sections section-body))))
     (string "# "
             (page-path page)
             "\n\n"
-            (module-summary linked-page summary)
+            (module-summary page links summary)
             (join-text "\n"
                        (map-list sections
-                         (fn (section) (term-section linked-page section))))
-            (reexport-list linked-page (reexported-terms page homed)))))
+                         (fn (section) (term-section page links section))))
+            (reexport-list page (reexported-terms page homed)))))
 
 (def section-term
   (fn (section) (first section)))
@@ -130,10 +130,10 @@
                        (list (quote module) (page-path page))))))
 
 (def module-summary
-  (fn (page summary)
+  (fn (page links summary)
     (if (empty? summary)
       ""
-      (string (body-markdown page (first summary)) "\n\n"))))
+      (string (body-markdown page links (first summary)) "\n\n"))))
 
 (def homed-terms
   (fn (terms homes)
@@ -174,7 +174,7 @@
                 (page-path page)))))
 
 (def term-section
-  (fn (page section)
+  (fn (page links section)
     (local term (section-term section))
     (string "<a id=\""
             (symbol-name term)
@@ -184,7 +184,7 @@
             (looked-up (quote doc-header) term)
             (type-line page term)
             "\n```\n\n"
-            (body-markdown page (section-body section))
+            (body-markdown page links (section-body section))
             "\n")))
 
 (def type-line
@@ -412,13 +412,14 @@
           ("}" "%7D"))))
 
 (def body-markdown
-  (fn (page text)
+  (fn (page links text)
     (local converted
       (fn (written paragraph lines fenced?)
         (if (empty? lines)
-          (concat written (finished-paragraph page paragraph))
+          (concat written (finished-paragraph page links paragraph))
           (if (fence-line? (first lines))
-            (recur (concat (concat written (finished-paragraph page paragraph))
+            (recur (concat (concat written
+                                   (finished-paragraph page links paragraph))
                            (list (first lines)))
                    (list)
                    (rest lines)
@@ -429,8 +430,9 @@
                      (rest lines)
                      true)
               (if (blank-line? (first lines))
-                (recur (concat (concat written
-                                       (finished-paragraph page paragraph))
+                (recur (concat (concat
+                                 written
+                                 (finished-paragraph page links paragraph))
                                (list ""))
                        (list)
                        (rest lines)
@@ -453,12 +455,12 @@
     (value-eq (string-trim-start line) "")))
 
 (def finished-paragraph
-  (fn (page paragraph)
+  (fn (page links paragraph)
     (if (holds-arrow? paragraph)
       (concat (concat (list "```lisp") paragraph)
               (list "```"))
       (map-list paragraph
-        (fn (line) (linked-line page line))))))
+        (fn (line) (linked-line page links line))))))
 
 (def holds-arrow?
   (fn (lines)
@@ -477,18 +479,18 @@
     (bool-not (value-eq (string-strip-prefix text prefix) text))))
 
 (def linked-line
-  (fn (page line)
+  (fn (page links line)
     (if (string-contains? line "[")
       (join-text ""
                  (map-list (line-pieces line)
-                   (fn (piece) (piece-text page piece))))
+                   (fn (piece) (piece-text page links piece))))
       line)))
 
 (def piece-text
-  (fn (page piece)
+  (fn (page links piece)
     (if (string? piece)
       piece
-      (bracket-link page (first piece)))))
+      (bracket-link page links (first piece)))))
 
 (def line-pieces
   (fn (line)
@@ -514,13 +516,10 @@
   (fn (pieces run remaining)
     (concat pieces (list (string-strip-suffix run remaining)))))
 
-(def with-link-homes
+(def link-table
   (fn (page texts)
     (local terms (link-terms page texts))
-    (list (page-path page)
-          (page-links page)
-          (page-types page)
-          (list terms (homes-of page terms)))))
+    (homed-terms terms (homes-of page terms))))
 
 (def link-terms
   (fn (page texts)
@@ -558,19 +557,13 @@
               first)))
 
 (def link-home
-  (fn (page name)
-    (local found
-      (fn (terms homes)
-        (if (empty? terms)
-          terms
-          (if (value-eq (symbol-name (first terms)) name)
-            (first homes)
-            (recur (rest terms) (rest homes))))))
-    (local table (page-link-homes page))
-    (found (first table) (nth table 1))))
-
-(def page-link-homes
-  (fn (page) (nth page 3)))
+  (fn (links name)
+    (if (empty? links)
+      links
+      (if (value-eq (symbol-name (homed-term (first links)))
+                    name)
+        (homed-home (first links))
+        (recur (rest links) name)))))
 
 (def bracket-start?
   (fn (text)
@@ -611,8 +604,8 @@
       (number-add (string-length name) 2))))
 
 (def bracket-link
-  (fn (page name)
-    (local home (link-home page name))
+  (fn (page links name)
+    (local home (link-home links name))
     (if (empty? home)
       (unmatched-link name)
       (string "[" name "]("

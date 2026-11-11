@@ -12,6 +12,7 @@ use super::borrowed_items::ArgumentSite;
 use super::checker::{TypeChecker, VariantArmReference};
 use super::collection::{Collection, CollectionKind};
 use super::enums::{PayloadPosition, VariantDefinition, VariantPayload};
+use super::expectation::Expectation;
 use super::parameter_call_labels::ParameterCallRequest;
 use super::pattern_placement::{PatternFields, PatternPlacement};
 use super::pending::{DecidedBorrows, PendingBorrow};
@@ -26,7 +27,7 @@ use super::typed::{
     TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedExpr, TypedExprKind,
     TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedStructExpr,
 };
-use super::unifier::{LiteralKind, UnifyError};
+use super::unifier::LiteralKind;
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, Control, Expr, ExprKind, FieldLabel,
     Keyword, Lambda, Leaf, Literal, MapOperation, Pattern, PatternArguments, PatternKind,
@@ -195,7 +196,7 @@ impl TypeChecker {
                 self.field_place(&value),
             ));
         }
-        let borrowed = self.place_type(&value);
+        let borrowed = self.unification().place_type(&value);
         let ty = match kind {
             ReferenceKind::Shared => Type::shared(borrowed),
             ReferenceKind::Mutable => Type::mutable(borrowed),
@@ -212,13 +213,13 @@ impl TypeChecker {
         let referent = self.unifier.fresh();
         self.require_copy(&referent);
         if let Type::Mut(_, inner) = self.unifier.resolve(&value.ty) {
-            self.expect(&referent, &inner, value.span, MismatchContext::Plain)?;
+            self.unification()
+                .expect(Expectation::plain(&referent), &inner, value.span)?;
         } else {
-            self.expect(
-                &Type::shared(referent.clone()),
+            self.unification().expect(
+                Expectation::plain(&Type::shared(referent.clone())),
                 &value.ty,
                 value.span,
-                MismatchContext::Plain,
             )?;
         }
         Ok(TypedExpr {
@@ -226,23 +227,6 @@ impl TypeChecker {
             ty: referent,
             span,
         })
-    }
-
-    pub(super) fn place_type(&self, value: &TypedExpr) -> Type {
-        let TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) = &value.kind else {
-            return value.ty.clone();
-        };
-        let mut owner = self.unifier.resolve(&owner.ty);
-        while let Type::Ref(_, inner) | Type::Mut(_, inner) = owner {
-            owner = self.unifier.resolve(&inner);
-        }
-        let Type::Named(binding, arguments) = owner else {
-            return value.ty.clone();
-        };
-        self.structs
-            .get(binding)
-            .and_then(|definition| definition.instantiated_field(&label.name, &arguments))
-            .unwrap_or_else(|| value.ty.clone())
     }
 
     fn infer_control(&mut self, control: &Control, span: Span) -> Result<TypedExpr, Diagnostic> {
@@ -457,7 +441,8 @@ impl TypeChecker {
             *result = Some(target);
             return Ok(());
         }
-        self.expect(&first, body_type, span, MismatchContext::Plain)
+        self.unification()
+            .expect(Expectation::plain(&first), body_type, span)
     }
 
     fn copy_target(&mut self, reference: &Type, value: &Type, span: Span) -> Option<Type> {
@@ -499,7 +484,7 @@ impl TypeChecker {
         arms: &[Arm],
         span: Span,
     ) -> Result<Option<BindingId>, Diagnostic> {
-        let (matched, _) = self.peeled_reference(scrutinee);
+        let (matched, _) = self.reference_peeling().peel(scrutinee);
         match self.unifier.shallow(&matched) {
             Type::Named(owner, _) if self.enums.get(owner).is_some() => Ok(Some(owner)),
             Type::Var(_) => {
@@ -507,7 +492,8 @@ impl TypeChecker {
                     return Ok(None);
                 };
                 let expected = Type::Named(owner, self.fresh_arguments(owner));
-                self.expect(&expected, &matched, span, MismatchContext::Plain)?;
+                self.unification()
+                    .expect(Expectation::plain(&expected), &matched, span)?;
                 Ok(Some(owner))
             }
             _ => Ok(None),
@@ -610,7 +596,7 @@ impl TypeChecker {
         expected: &Type,
         inherited: Option<ReferenceKind>,
     ) -> Result<TypedPattern, Diagnostic> {
-        let (matched, own_mode) = self.peeled_reference(expected);
+        let (matched, own_mode) = self.reference_peeling().peel(expected);
         let mode = own_mode.or(inherited);
         let kind = match &pattern.kind {
             PatternKind::Wildcard => Ok(TypedPatternKind::Wildcard),
@@ -699,7 +685,8 @@ impl TypeChecker {
         let owner = self.unique_candidate_owner(candidates, span)?;
         let arguments = self.fresh_arguments(owner);
         let expected = Type::Named(owner, arguments);
-        self.expect(&expected, matched, span, MismatchContext::Plain)?;
+        self.unification()
+            .expect(Expectation::plain(&expected), matched, span)?;
         Ok(self.find_nullary_variant(owner, name, candidates))
     }
 
@@ -741,7 +728,8 @@ impl TypeChecker {
             Literal::String(_) => expected,
             _ => &matched,
         };
-        self.expect(compared, &literal_type, span, MismatchContext::Plain)?;
+        self.unification()
+            .expect(Expectation::plain(compared), &literal_type, span)?;
         Ok(TypedPatternKind::Literal(
             literal.clone(),
             self.unifier.resolve(&literal_type),
@@ -916,7 +904,8 @@ impl TypeChecker {
         };
         let arguments = self.fresh_arguments(owner);
         let expected = Type::Named(owner, arguments.clone());
-        self.expect(&expected, matched, span, MismatchContext::Plain)?;
+        self.unification()
+            .expect(Expectation::plain(&expected), matched, span)?;
         Ok((owner, arguments))
     }
 
@@ -976,19 +965,17 @@ impl TypeChecker {
             Type::Var(_) => {
                 let arguments = self.fresh_arguments(owner);
                 let named = Type::Named(owner, arguments.clone());
-                self.expect(&named, &matched, span, MismatchContext::Plain)?;
+                self.unification()
+                    .expect(Expectation::plain(&named), &matched, span)?;
                 Ok(arguments)
             }
             found => {
                 let expected = Type::Named(owner, self.fresh_arguments(owner));
-                self.expect(&expected, &found, span, MismatchContext::Plain)?;
+                self.unification()
+                    .expect(Expectation::plain(&expected), &found, span)?;
                 Ok(Vec::new())
             }
         }
-    }
-
-    fn peeled_reference(&self, ty: &Type) -> (Type, Option<ReferenceKind>) {
-        self.reference_peeling().peel(ty)
     }
 
     fn binding_mode_type(matched: Type, mode: Option<ReferenceKind>) -> Type {
@@ -1004,80 +991,6 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
         inferred.map(|(kind, ty)| TypedExpr { kind, ty, span })
-    }
-
-    pub(super) fn expect(
-        &mut self,
-        expected: &Type,
-        found: &Type,
-        span: Span,
-        context: MismatchContext,
-    ) -> Result<(), Diagnostic> {
-        if self.coerces(expected, found, span) {
-            return Ok(());
-        }
-        self.unifier
-            .unify(expected, found, span)
-            .map_err(|error| self.unify_problem(error, expected, found, span, context))
-    }
-
-    fn coerces(&mut self, expected: &Type, found: &Type, span: Span) -> bool {
-        match (self.unifier.resolve(expected), self.unifier.resolve(found)) {
-            (Type::Ref(_, shared), Type::Ref(_, owned)) => {
-                Self::views_string(&shared, &owned) || self.coerces(&shared, &owned, span)
-            }
-            (Type::Ref(_, shared), Type::Mut(_, mutable)) => {
-                self.unifier.unify(&shared, &mutable, span).is_ok()
-            }
-            (Type::Mut(_, slice), Type::Mut(_, vector)) => self.coerces(&slice, &vector, span),
-            (view, owned) => self.unifies_viewed_items(&view, &owned, span),
-        }
-    }
-
-    fn unifies_viewed_items(&mut self, view: &Type, owned: &Type, span: Span) -> bool {
-        let Some(items) = Self::viewed_items(&self.rust_types, view, owned) else {
-            return false;
-        };
-        items
-            .iter()
-            .all(|(item, element)| self.unifier.unify(item, element, span).is_ok())
-    }
-
-    fn unify_problem(
-        &self,
-        error: UnifyError,
-        expected: &Type,
-        found: &Type,
-        span: Span,
-        context: MismatchContext,
-    ) -> Diagnostic {
-        let expected = self.unifier.resolve(expected);
-        let found = self.unifier.resolve(found);
-        match (error, &expected) {
-            (UnifyError::Infinite, _) => TypeProblems::infinite(span),
-            (_, Type::Generic(_)) => TypeProblems::generic_mismatch(
-                &self.display().show(&expected),
-                &self.describe(&found),
-                span,
-            ),
-            _ => TypeProblems::mismatch(
-                &self.describe(&expected),
-                &self.describe(&found),
-                span,
-                context,
-            ),
-        }
-    }
-
-    pub(super) fn describe(&self, described: &Type) -> String {
-        match described {
-            Type::Var(var) => match self.unifier.literal_kind(*var) {
-                Some(LiteralKind::Integer) => "an integer".to_string(),
-                Some(LiteralKind::Float) => "a float".to_string(),
-                None => "`_`".to_string(),
-            },
-            other => format!("`{}`", self.display().show(other)),
-        }
     }
 
     fn literal_type(&mut self, literal: &Literal) -> Type {
@@ -1183,7 +1096,8 @@ impl TypeChecker {
     ) -> Result<TypedExpr, Diagnostic> {
         let value = self.infer_expecting(expr, expected, &context)?;
         let value = self.copy_out_of_borrow(value, expected);
-        self.expect(expected, &value.ty, value.span, context)?;
+        self.unification()
+            .expect(Expectation::new(expected, context), &value.ty, value.span)?;
         Ok(value)
     }
 
@@ -1285,7 +1199,8 @@ impl TypeChecker {
         self.try_target = previous_try;
         let (body, found) = inferred?;
         let result_span = Self::block_result_span(&body).unwrap_or(span);
-        self.expect(&result, &found, result_span, context)?;
+        self.unification()
+            .expect(Expectation::new(&result, context), &found, result_span)?;
         let body = self.view_closure_result(body, &result, &found)?;
         let parameter_types = params.iter().map(|param| param.ty.clone()).collect();
         let function = Type::Function(
@@ -1535,9 +1450,12 @@ impl TypeChecker {
         let expected_resolved = self.unifier.resolve(expected);
         if resolved.has_vars()
             && (resolved.shares_head_with(&expected_resolved)
-                || self.coerces(&expected_resolved, &resolved, span))
+                || self
+                    .unification()
+                    .coerces(&expected_resolved, &resolved, span))
         {
-            self.expect(expected, result, span, MismatchContext::Plain)?;
+            self.unification()
+                .expect(Expectation::plain(expected), result, span)?;
         }
         Ok(())
     }
@@ -1582,7 +1500,7 @@ impl TypeChecker {
                 return reported;
             }
             return Err(TypeProblems::try_needs_value(
-                &self.describe(&operand),
+                &self.unification().describe(&operand),
                 span,
             ));
         };
@@ -1672,11 +1590,11 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn try_target_problem(&self, source: &TrySource, returns: &Type, span: Span) -> Diagnostic {
+    fn try_target_problem(&mut self, source: &TrySource, returns: &Type, span: Span) -> Diagnostic {
         let source_name = self.bindings.get(source.binding).name();
         TypeProblems::try_cannot_return(
             &source.kind.needed(source_name),
-            &self.describe(returns),
+            &self.unification().describe(returns),
             span,
         )
     }
@@ -1714,11 +1632,11 @@ impl TypeChecker {
         if candidates.len() > 1 {
             let variants: Vec<(String, String)> = candidates
                 .iter()
-                .map(|(_, name, payload)| (name.to_string(), self.describe(payload)))
+                .map(|(_, name, payload)| (name.to_string(), self.unification().describe(payload)))
                 .collect();
             return Err(TypeProblems::try_ambiguous_conversion(
-                &self.describe(source),
-                &self.describe(error),
+                &self.unification().describe(source),
+                &self.unification().describe(error),
                 &variants,
                 span,
             ));
@@ -1736,8 +1654,12 @@ impl TypeChecker {
         })
     }
 
-    fn no_conversion(&self, error: &Type, source: &Type, span: Span) -> Diagnostic {
-        TypeProblems::try_no_conversion(&self.describe(source), &self.describe(error), span)
+    fn no_conversion(&mut self, error: &Type, source: &Type, span: Span) -> Diagnostic {
+        TypeProblems::try_no_conversion(
+            &self.unification().describe(source),
+            &self.unification().describe(error),
+            span,
+        )
     }
 
     fn could_unify(left: &Type, right: &Type) -> bool {
@@ -1884,7 +1806,8 @@ impl TypeChecker {
         let span = value.span;
         let call =
             self.synthetic_call_with_value(template, parameters, result, value, &[], span)?;
-        self.expect(&expected, &call.ty, span, MismatchContext::Plain)
+        self.unification()
+            .expect(Expectation::plain(&expected), &call.ty, span)
             .map_err(|diagnostic| self.explain_borrowed_items(site, &call.ty, diagnostic))?;
         Ok(call)
     }
@@ -2006,11 +1929,10 @@ impl TypeChecker {
         for param in &wrapped.params {
             self.locals.insert(param.binding, param.ty.clone());
         }
-        self.expect(
-            expected_result.as_ref(),
+        self.unification().expect(
+            Expectation::plain(expected_result.as_ref()),
             found_result.as_ref(),
             wrapped.span(),
-            MismatchContext::Plain,
         )?;
         Ok(wrapped.finish(&expected_result, &found_result))
     }
@@ -2027,8 +1949,9 @@ impl TypeChecker {
         }
         for (position, (expected, found)) in expected.iter().zip(found).enumerate() {
             if !found.is_reference() {
-                let (item, _) = self.peeled_reference(expected);
-                self.expect(&item, found, span, MismatchContext::Plain)
+                let (item, _) = self.reference_peeling().peel(expected);
+                self.unification()
+                    .expect(Expectation::plain(&item), found, span)
                     .map_err(|diagnostic| {
                         self.explain_literal_default(function, position, diagnostic)
                     })?;
@@ -2060,11 +1983,12 @@ impl TypeChecker {
                     parameters.clone(),
                     Box::new(result.clone()),
                 );
-                self.expect(&shape, &callee.ty, callee.span, MismatchContext::Plain)?;
+                self.unification()
+                    .expect(Expectation::plain(&shape), &callee.ty, callee.span)?;
                 Ok((parameters, result))
             }
             other => Err(TypeProblems::not_a_function(
-                &self.describe(&other),
+                &self.unification().describe(&other),
                 callee.span,
             )),
         }
@@ -2264,8 +2188,8 @@ impl TypeChecker {
             (Type::Ref(_, inner), found) if !found.is_reference() => {
                 if let Some(help) = self.string_as_str_help(inner, found, value) {
                     return Err(TypeProblems::mismatch(
-                        &self.describe(inner),
-                        &self.describe(found),
+                        &self.unification().describe(inner),
+                        &self.unification().describe(found),
                         value.span,
                         MismatchContext::Plain,
                     )
@@ -2324,7 +2248,7 @@ impl TypeChecker {
         argument: &Type,
         value: &TypedExpr,
     ) -> Result<Borrow, Diagnostic> {
-        let place = self.place_type(value);
+        let place = self.unification().place_type(value);
         if value.is_place() && !place.is_reference() {
             return self.pass(inner, &place, value.span, Borrow::Mutable);
         }
@@ -2440,7 +2364,8 @@ impl TypeChecker {
         span: Span,
     ) -> Result<Borrow, Diagnostic> {
         let referent = argument.innermost_referent();
-        self.expect(view, referent, span, MismatchContext::Plain)?;
+        self.unification()
+            .expect(Expectation::plain(view), referent, span)?;
         let argument = self.unifier.resolve(argument);
         let parameter = self.unifier.resolve(parameter);
         let extra = argument
@@ -2492,7 +2417,8 @@ impl TypeChecker {
             (expected, Type::Ref(_, _)) if Self::is_known_value(expected) => {
                 let levels = argument.reference_depth();
                 let referent = argument.innermost_referent().clone();
-                self.expect(expected, &referent, span, MismatchContext::Plain)?;
+                self.unification()
+                    .expect(Expectation::plain(expected), &referent, span)?;
                 Ok(self.borrow_of_referent(&referent, levels))
             }
             (Type::Ref(_, _), Type::Ref(_, _)) if self.collapses(parameter, argument) => {
@@ -2505,7 +2431,9 @@ impl TypeChecker {
             (Type::Mut(_, _), Type::Mut(_, _)) => {
                 self.pass(parameter, argument, span, Borrow::Reborrow)
             }
-            (Type::Ref(_, _), Type::Mut(_, _)) if self.coerces(parameter, argument, span) => {
+            (Type::Ref(_, _), Type::Mut(_, _))
+                if self.unification().coerces(parameter, argument, span) =>
+            {
                 self.pass(parameter, argument, span, Borrow::Reborrow)
             }
             (expected, found) => self.pass_value(expected, found, span),
@@ -2637,7 +2565,8 @@ impl TypeChecker {
         span: Span,
         borrow: Borrow,
     ) -> Result<Borrow, Diagnostic> {
-        self.expect(expected, found, span, MismatchContext::Plain)
+        self.unification()
+            .expect(Expectation::plain(expected), found, span)
             .map(|()| borrow)
     }
 
@@ -2654,25 +2583,29 @@ impl TypeChecker {
     ) -> Result<TypedExpr, Diagnostic> {
         let test = self.infer(test)?;
         let expanded_from = self.macro_name(span);
-        self.expect(
-            &Type::bool(),
+        self.unification().expect(
+            Expectation::new(
+                &Type::bool(),
+                MismatchContext::IfTest {
+                    expanded_from: expanded_from.clone(),
+                },
+            ),
             &test.ty,
             test.span,
-            MismatchContext::IfTest {
-                expanded_from: expanded_from.clone(),
-            },
         )?;
         let then = self.infer(then)?;
         let otherwise = self.infer(otherwise)?;
         let first = Self::result_span(&then);
-        self.expect(
-            &then.ty,
+        self.unification().expect(
+            Expectation::new(
+                &then.ty,
+                MismatchContext::IfBranch {
+                    first,
+                    expanded_from,
+                },
+            ),
             &otherwise.ty,
             Self::result_span(&otherwise),
-            MismatchContext::IfBranch {
-                first,
-                expanded_from,
-            },
         )?;
         let ty = then.ty.clone();
         Ok(TypedExpr {
@@ -2751,15 +2684,12 @@ impl TypeChecker {
             return Err(TypeProblems::wrong_argument_count(1, keys.len(), span));
         }
         let key = self.infer(&keys[0])?;
-        self.expect(collection.key(), &key.ty, key.span, MismatchContext::Plain)?;
+        self.unification()
+            .expect(Expectation::plain(collection.key()), &key.ty, key.span)?;
         self.check_map_key(&collection, key.span);
         let item = self.infer(item)?;
-        self.expect(
-            collection.value(),
-            &item.ty,
-            item.span,
-            MismatchContext::Plain,
-        )?;
+        self.unification()
+            .expect(Expectation::plain(collection.value()), &item.ty, item.span)?;
         Ok(TypedExpr {
             kind: TypedExprKind::Assoc(Box::new(value), vec![key], Box::new(item)),
             ty: resolved,
@@ -2777,7 +2707,8 @@ impl TypeChecker {
         let element = self.assoc_element(keys.len(), &value.ty, value.span)?;
         let typed_keys = self.assoc_keys(keys)?;
         let item = self.infer(item)?;
-        self.expect(&element, &item.ty, item.span, MismatchContext::Plain)?;
+        self.unification()
+            .expect(Expectation::plain(&element), &item.ty, item.span)?;
         let ty = self.unifier.resolve(&value.ty);
         Ok(TypedExpr {
             kind: TypedExprKind::Assoc(Box::new(value), typed_keys, Box::new(item)),
@@ -2847,7 +2778,7 @@ impl TypeChecker {
                 return self.infer_iter_slice(value, span);
             }
             return Err(TypeProblems::iter_needs_collection(
-                &self.describe(&resolved),
+                &self.unification().describe(&resolved),
                 value.span,
             ));
         };
@@ -2980,12 +2911,12 @@ impl TypeChecker {
             .map_err(|_| self.string_push_item_problem(item))
     }
 
-    fn string_push_item_problem(&self, item: &TypedExpr) -> Diagnostic {
+    fn string_push_item_problem(&mut self, item: &TypedExpr) -> Diagnostic {
         let found = self.unifier.resolve(&item.ty);
         if found == Type::Primitive(PrimitiveType::String) {
             return TypeProblems::owned_string_push_item(item.span);
         }
-        TypeProblems::string_push_item(&self.describe(&found), item.span)
+        TypeProblems::string_push_item(&self.unification().describe(&found), item.span)
     }
 
     fn vector_of(&self, element: Type) -> Type {
@@ -3210,7 +3141,8 @@ impl TypeChecker {
         let depth = keys.len();
         let item_type = self.unifier.fresh();
         let target = self.set_at_target(depth, &item_type);
-        self.expect(&target, collection.ty(), value.span, MismatchContext::Plain)
+        self.unification()
+            .expect(Expectation::plain(&target), collection.ty(), value.span)
             .map_err(|error| self.point_struct_base_to_fields(error, collection.ty()))?;
         let mut parameters = vec![Type::mutable(target)];
         parameters.extend((0..depth).map(|_| Type::Primitive(PrimitiveType::Usize)));
@@ -3360,7 +3292,8 @@ impl TypeChecker {
     fn assoc_element(&mut self, depth: usize, base: &Type, span: Span) -> Result<Type, Diagnostic> {
         let element = self.unifier.fresh();
         let expected = self.nested_vector_type(depth, &element);
-        self.expect(&expected, base, span, MismatchContext::Plain)
+        self.unification()
+            .expect(Expectation::plain(&expected), base, span)
             .map_err(|error| self.point_struct_base_to_fields(error, base))?;
         Ok(element)
     }
@@ -3381,11 +3314,10 @@ impl TypeChecker {
         let mut typed_keys = Vec::new();
         for key in keys {
             let typed = self.infer(key)?;
-            self.expect(
-                &Type::Primitive(PrimitiveType::Usize),
+            self.unification().expect(
+                Expectation::plain(&Type::Primitive(PrimitiveType::Usize)),
                 &typed.ty,
                 typed.span,
-                MismatchContext::Plain,
             )?;
             typed_keys.push(typed);
         }
@@ -3420,10 +3352,10 @@ impl TypeChecker {
         ))
     }
 
-    fn moved_field_base(&self, base: TypedExpr) -> TypedExpr {
+    fn moved_field_base(&mut self, base: TypedExpr) -> TypedExpr {
         if self.reads_owned_field(&base) {
             TypedExpr {
-                ty: self.place_type(&base),
+                ty: self.unification().place_type(&base),
                 ..base
             }
         } else {
@@ -3491,7 +3423,8 @@ impl TypeChecker {
         };
         let arguments = self.fresh_arguments(*binding);
         let expected = Type::Named(*binding, arguments.clone());
-        self.expect(&expected, owner, span, MismatchContext::Plain)?;
+        self.unification()
+            .expect(Expectation::plain(&expected), owner, span)?;
         Ok((*binding, arguments))
     }
 
@@ -3508,7 +3441,8 @@ impl TypeChecker {
             let position = Self::field_position(&struct_name, &declared, fields, given)?;
             let field_type = &declared[position].1;
             let typed = self.infer_expecting(value, field_type, &MismatchContext::Plain)?;
-            self.expect(field_type, &typed.ty, typed.span, MismatchContext::Plain)?;
+            self.unification()
+                .expect(Expectation::plain(field_type), &typed.ty, typed.span)?;
             typed_fields.push((label.clone(), typed));
         }
         Ok(typed_fields)
@@ -3652,7 +3586,8 @@ impl TypeChecker {
             [binding] => {
                 let arguments = self.fresh_arguments(*binding);
                 let expected = Type::Named(*binding, arguments.clone());
-                self.expect(&expected, owner, label.span, MismatchContext::Plain)?;
+                self.unification()
+                    .expect(Expectation::plain(&expected), owner, label.span)?;
                 Ok((*binding, arguments))
             }
             _ => Err(TypeProblems::ambiguous_field(&label.name, label.span)),
@@ -3761,7 +3696,9 @@ mod tests {
 
         fn describe_unknown(&mut self) -> String {
             let _ = self.checker.unifier.fresh();
-            self.checker.describe(&Type::Var(TypeVar::new(0)))
+            self.checker
+                .unification()
+                .describe(&Type::Var(TypeVar::new(0)))
         }
 
         fn owner(&self) -> TypedExpr {
@@ -3810,10 +3747,10 @@ mod tests {
 
     #[test]
     fn a_field_of_a_non_struct_keeps_the_field_type() {
-        let fixture = PlaceTypeFixture::new();
+        let mut fixture = PlaceTypeFixture::new();
         let field = fixture.field_on(fixture.owner());
         assert_eq!(
-            fixture.checker.place_type(&field),
+            fixture.checker.unification().place_type(&field),
             Type::Primitive(PrimitiveType::I64)
         );
     }

@@ -224,7 +224,6 @@ src/types/derives.rs::TypeChecker::report_listed_block 4
 src/types/derives.rs::TypeChecker::written_payload 4
 src/types/infer.rs::TypeChecker::bind_pattern 4
 src/types/infer.rs::TypeChecker::coerce_box 4
-src/types/infer.rs::TypeChecker::expect 4
 src/types/infer.rs::TypeChecker::explain_assumed_collection 4
 src/types/infer.rs::TypeChecker::field_position 4
 src/types/infer.rs::TypeChecker::finish_call 4
@@ -265,7 +264,6 @@ src/types/infer.rs::TypeChecker::selfless_method_call 4
 src/types/infer.rs::TypeChecker::short_variant_pattern 6
 src/types/infer.rs::TypeChecker::struct_pattern 5
 src/types/infer.rs::TypeChecker::synthetic_call_with_value 6
-src/types/infer.rs::TypeChecker::unify_problem 5
 src/types/infer/labeled_variant.rs::TypeChecker::infer_labeled_variant 4
 src/types/infer/open_collections.rs::OpenCollections::passes_only_sequences 4
 src/types/infer/open_collections.rs::TypeChecker::infer_open_set_at 4

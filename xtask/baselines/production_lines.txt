@@ -13,11 +13,11 @@ src/ownership/kinds.rs 1712
 src/ownership/moves.rs 593
 src/ownership/problems.rs 858
 src/ownership/slices.rs 524
-src/ownership/values.rs 607
+src/ownership/values.rs 606
 src/types/checker.rs 3153
 src/types/derives.rs 522
-src/types/infer.rs 3672
-src/types/infer/shared_variables.rs 577
+src/types/infer.rs 3607
+src/types/infer/shared_variables.rs 572
 src/types/pinning.rs 732
 src/types/problems.rs 1387
 src/types/typed.rs 841

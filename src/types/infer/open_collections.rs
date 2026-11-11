@@ -6,6 +6,7 @@ use crate::expand::Program;
 use crate::source::Span;
 use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
+use crate::types::expectation::Expectation;
 use crate::types::graph::DefinitionGraph;
 use crate::types::pinning::InstantiationReport;
 use crate::types::problems::{MismatchContext, TypeProblems};
@@ -206,16 +207,16 @@ impl TypeChecker {
                 )
             })?;
         let target = self.slice_of(open.item.clone());
-        self.expect(&target, collection.ty(), open.span, MismatchContext::Plain)?;
+        self.unification()
+            .expect(Expectation::plain(&target), collection.ty(), open.span)?;
         self.expect_index(open)
     }
 
     fn expect_index(&mut self, open: &OpenSetAt) -> Result<(), Diagnostic> {
-        self.expect(
-            &Type::Primitive(PrimitiveType::Usize),
+        self.unification().expect(
+            Expectation::plain(&Type::Primitive(PrimitiveType::Usize)),
             &open.key,
             open.span,
-            MismatchContext::Plain,
         )
     }
 

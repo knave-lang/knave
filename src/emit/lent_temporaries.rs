@@ -68,9 +68,7 @@ impl<'p, 'e> TemporarySearch<'p, 'e> {
 
     fn may_lend(expr: &TypedExpr) -> bool {
         match &expr.kind {
-            TypedExprKind::Call(_, arguments) => arguments
-                .iter()
-                .any(|argument| Self::lends_temporary(argument) || Self::may_lend(&argument.value)),
+            TypedExprKind::Call(_, arguments) => arguments.iter().any(Self::argument_may_lend),
             TypedExprKind::Borrow(_, value) => Self::is_temporary(value) || Self::may_lend(value),
             TypedExprKind::Struct(TypedStructExpr::Field(owner, _)) => {
                 Self::lends_owner(expr, owner) || Self::may_lend(owner)
@@ -78,6 +76,10 @@ impl<'p, 'e> TemporarySearch<'p, 'e> {
             TypedExprKind::Control(control) => Self::control_may_lend(control),
             _ => Self::nested_may_lend(expr),
         }
+    }
+
+    fn argument_may_lend(argument: &TypedArgument) -> bool {
+        Self::lends_temporary(argument) || Self::may_lend(&argument.value)
     }
 
     fn nested_may_lend(expr: &TypedExpr) -> bool {

@@ -84,7 +84,7 @@ mod tests {
         let exhaustive = fixture.is_useful(
             SearchFixture::twin_arms(),
             CoverPattern::wild(),
-            SearchFixture::TWIN,
+            SearchFixture::twin_type(),
         );
         assert!(!exhaustive);
     }
@@ -95,7 +95,7 @@ mod tests {
         let exhaustive = fixture.is_useful(
             SearchFixture::chain_arms(),
             CoverPattern::wild(),
-            SearchFixture::CHAIN,
+            SearchFixture::chain_type(),
         );
         assert!(!exhaustive);
     }
@@ -105,7 +105,7 @@ mod tests {
         let fixture = SearchFixture::new();
         let mut arms = SearchFixture::chain_arms();
         arms.remove(2);
-        assert!(fixture.is_useful(arms, CoverPattern::wild(), SearchFixture::CHAIN));
+        assert!(fixture.is_useful(arms, CoverPattern::wild(), SearchFixture::chain_type()));
     }
 
     #[test]
@@ -113,7 +113,7 @@ mod tests {
         let fixture = SearchFixture::new();
         let mut arms = SearchFixture::twin_arms();
         arms.remove(3);
-        assert!(fixture.is_useful(arms, CoverPattern::wild(), SearchFixture::TWIN));
+        assert!(fixture.is_useful(arms, CoverPattern::wild(), SearchFixture::twin_type()));
     }
 
     #[test]
@@ -122,7 +122,11 @@ mod tests {
         let wild = CoverPattern::wild;
         let covered =
             SearchFixture::twin(SearchFixture::side(1), wild(), SearchFixture::flag(true));
-        assert!(!fixture.is_useful(SearchFixture::twin_arms(), covered, SearchFixture::TWIN));
+        assert!(!fixture.is_useful(
+            SearchFixture::twin_arms(),
+            covered,
+            SearchFixture::twin_type()
+        ));
     }
 
     #[test]
@@ -131,6 +135,6 @@ mod tests {
         let wild = CoverPattern::wild;
         let arms = vec![SearchFixture::twin(SearchFixture::side(0), wild(), wild())];
         let new_case = SearchFixture::twin(SearchFixture::side(1), wild(), wild());
-        assert!(fixture.is_useful(arms, new_case, SearchFixture::TWIN));
+        assert!(fixture.is_useful(arms, new_case, SearchFixture::twin_type()));
     }
 }

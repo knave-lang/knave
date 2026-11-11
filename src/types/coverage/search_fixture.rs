@@ -26,9 +26,9 @@ pub(super) struct SearchFixture {
 }
 
 impl SearchFixture {
-    pub(super) const SIDE: u32 = 0;
-    pub(super) const TWIN: u32 = 1;
-    pub(super) const CHAIN: u32 = 2;
+    const SIDE: u32 = 0;
+    const TWIN: u32 = 1;
+    const CHAIN: u32 = 2;
 
     pub(super) fn new() -> Self {
         let mut enums = EnumTable::default();
@@ -60,11 +60,19 @@ impl SearchFixture {
         }
     }
 
+    pub(super) fn twin_type() -> Type {
+        Self::named(Self::TWIN)
+    }
+
+    pub(super) fn chain_type() -> Type {
+        Self::named(Self::CHAIN)
+    }
+
     fn binding(index: u32) -> BindingId {
         BindingId::from_index(index)
     }
 
-    pub(super) fn named(index: u32) -> Type {
+    fn named(index: u32) -> Type {
         Type::Named(Self::binding(index), Vec::new())
     }
 
@@ -118,7 +126,7 @@ impl SearchFixture {
         }
     }
 
-    pub(super) fn catalog(&self) -> ConstructorCatalog<'_> {
+    fn catalog(&self) -> ConstructorCatalog<'_> {
         ConstructorCatalog::new(
             ReferencePeeling::new(&self.unifier),
             &self.structs,
@@ -130,11 +138,11 @@ impl SearchFixture {
         &self,
         arms: Vec<CoverPattern>,
         query: CoverPattern,
-        scrutinee: u32,
+        scrutinee: Type,
     ) -> bool {
         let catalog = self.catalog();
         let matrix: PatternMatrix = arms.into_iter().collect();
-        let types = [Self::named(scrutinee)];
+        let types = [scrutinee];
         Usefulness::new(&catalog).is_useful(&matrix, Query::new(&[query], &types))
     }
 
@@ -193,10 +201,10 @@ impl SearchFixture {
     pub(super) fn missing_cases(
         &self,
         arms: Vec<CoverPattern>,
-        scrutinee: u32,
+        scrutinee: Type,
     ) -> Vec<Vec<Witness>> {
         let catalog = self.catalog();
         let matrix: PatternMatrix = arms.into_iter().collect();
-        MissingCaseSearch::new(&catalog).witnesses(&matrix, &[Self::named(scrutinee)])
+        MissingCaseSearch::new(&catalog).witnesses(&matrix, &[scrutinee])
     }
 }

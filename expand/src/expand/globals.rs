@@ -231,17 +231,17 @@ impl Expander<'_> {
 
     fn lower_global(&mut self, binding: BindingId, form: &Form) -> Result<Rc<Expr>, Diagnostic> {
         let outer_phase = std::mem::replace(&mut self.phase, Phase::Runtime);
-        let errors_before = self.recovered_diagnostics.len();
+        let errors_before = self.recovered.mark();
         let lowered = self.with_fresh_type_note(|expander| expander.lower_expr(form));
         self.phase = outer_phase;
         match lowered {
             Ok(expr) => {
-                if self.recovered_diagnostics.len() > errors_before {
+                if let Some(first_error) = self.recovered.take_first_since(errors_before) {
                     self.tables
                         .globals
                         .states
                         .insert(binding, GlobalState::Failed);
-                    return Err(self.recovered_diagnostics.remove(errors_before));
+                    return Err(first_error);
                 }
                 RecurCheck::outside().value(&expr)?;
                 TryCheck::outside().value(&expr)?;

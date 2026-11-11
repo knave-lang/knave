@@ -199,7 +199,7 @@ impl Expander<'_> {
 
     fn assert_no_problems(&mut self) {
         let mut problems = self.take_diagnostics();
-        problems.extend(std::mem::take(&mut self.warnings));
+        problems.extend(self.problems.take_warnings());
         assert!(
             problems.is_empty(),
             "the prelude expands without problems, but it reports:\n{}",

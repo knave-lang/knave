@@ -18,7 +18,7 @@ use crate::source::Span;
 
 impl Warnings for Expander<'_> {
     fn report_warning(&mut self, warning: Diagnostic) {
-        self.warnings.push(warning);
+        self.problems.report_warning(warning);
     }
 }
 

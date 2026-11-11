@@ -10,7 +10,7 @@ use super::problems::ExpandProblems;
 use super::returned_arguments::ReturnedArguments;
 use super::shape::{Shape, WrittenDefiner};
 use crate::core::{BindingId, BindingKind, DefinitionForm, Expr, KernelForm, Lambda, Namespace};
-use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::diagnostic::Diagnostic;
 use crate::interpret::{Closure, Env, Interpreter, LocalBindings, PassedLimit, Value};
 use crate::modules::ModuleSources;
 use crate::reader::Form;
@@ -178,16 +178,14 @@ impl Expander<'_> {
     }
 
     fn trial_expansion(&mut self, binding: BindingId, form: Form) -> Result<Form, Diagnostic> {
-        let diagnostics = self.diagnostics.len();
-        let recovered = self.recovered_diagnostics.len();
+        let problems = self.problems.mark();
+        let recovered = self.recovered.mark();
         let declared = self.declared_definitions.len();
-        let warnings = self.warnings.len();
         let budget_before = self.form_budgets.current().clone();
         let result = self.run_macro(binding, form, None);
-        drop(self.diagnostics.split_off(diagnostics));
-        self.recovered_diagnostics.truncate(recovered);
+        self.problems.roll_back(problems);
+        self.recovered.roll_back(recovered);
         self.declared_definitions.truncate(declared);
-        drop(self.warnings.split_off(warnings));
         if result.is_err() {
             *self.form_budgets.current() = budget_before;
         }
@@ -227,9 +225,7 @@ impl Expander<'_> {
         self.expansion_depth += 1;
         self.introductions.push(introduction);
         let steps = self.form_budgets.current().steps();
-        let reported = ReportedWarnings {
-            first: self.warnings.len(),
-        };
+        let reported = self.problems.mark();
         let result = Interpreter::new(self, call_site, steps).call(
             &Value::Closure(closure),
             vec![Value::Form(input)],
@@ -237,7 +233,8 @@ impl Expander<'_> {
         );
         self.introductions.pop();
         self.expansion_depth -= 1;
-        reported.point_at_call(&mut self.warnings, call_site);
+        self.problems
+            .relabel_warnings_since(reported, |warning| Self::point_at_call(warning, call_site));
         let sources = &*self.sources;
         let output = result.map_err(|failure| {
             let failure = ExpansionLimit::at_user_call(failure, call_site, sources);
@@ -433,7 +430,7 @@ impl Expander<'_> {
             let compiled =
                 self.within_top_level_form(|expander| expander.compile_macro(binding, &definition));
             if let Err(diagnostic) = compiled {
-                self.diagnostics.push(diagnostic);
+                self.problems.report(diagnostic);
             }
         }
     }
@@ -469,17 +466,6 @@ impl Expander<'_> {
         let lambda = self.lower_lambda(&shape, &items[1], &items[2..]);
         self.phase = outer_phase;
         lambda
-    }
-}
-
-struct ReportedWarnings {
-    first: usize,
-}
-
-impl ReportedWarnings {
-    fn point_at_call(&self, warnings: &mut Diagnostics, call_site: Span) {
-        let reported = warnings.split_off(self.first);
-        warnings.extend(reported.map(|warning| Expander::point_at_call(warning, call_site)));
     }
 }
 

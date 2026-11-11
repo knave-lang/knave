@@ -62,7 +62,6 @@ mod tests {
 
     impl CheckingFixture {
         const MODULE: &str = "geometry.knv";
-        const CLEAN: &str = "(def width (+ 1 2))\n";
         const TWO_WARNINGS: &str = "(enum shape (circle f64) point)\n\n(defn area (s)\n  (match s (_ 0.0) (point 1.0)))\n\n(defn add-one (items) (push! items 1))\n";
 
         fn new() -> Self {
@@ -96,7 +95,7 @@ mod tests {
     #[test]
     fn checks_a_program_and_records_its_inferred_expressions() {
         let mut fixture = CheckingFixture::new();
-        let program = fixture.expanded(CheckingFixture::CLEAN);
+        let program = fixture.expanded(FakePrograms::WITHOUT_MAIN);
         assert!(fixture.checking().check(&program).is_ok());
         assert!(
             fixture

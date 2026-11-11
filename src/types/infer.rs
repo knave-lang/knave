@@ -2094,13 +2094,13 @@ impl TypeChecker {
         let layers = argument
             .reference_depth()
             .checked_sub(parameter.reference_depth() + 1)?;
-        let holds_view = Self::is_unsized_type(
-            &self.declarations.types.rust_types,
-            argument.innermost_referent(),
-        ) && self
-            .unifier
-            .resolve(&callee.ty)
-            .holds_outside_references(&Type::Var(*variable));
+        let holds_view = self
+            .declared_types()
+            .is_unsized(argument.innermost_referent())
+            && self
+                .unifier
+                .resolve(&callee.ty)
+                .holds_outside_references(&Type::Var(*variable));
         holds_view.then_some(layers)
     }
 
@@ -2411,11 +2411,7 @@ impl TypeChecker {
     fn borrowed_view(&self, borrowed: &Type) -> Option<Type> {
         let view = self.unifier.resolve(borrowed);
         match &view {
-            Type::Ref(_, referent)
-                if Self::is_unsized_type(&self.declarations.types.rust_types, referent) =>
-            {
-                Some(view)
-            }
+            Type::Ref(_, referent) if self.declared_types().is_unsized(referent) => Some(view),
             _ => None,
         }
     }

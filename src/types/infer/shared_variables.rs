@@ -550,7 +550,7 @@ impl TypeChecker {
     fn reference_depth_as_written(&mut self, argument: &TypedArgument) -> usize {
         let place = self.unification().place_type(&argument.value);
         let written = self.unifier.resolve(&place);
-        if Self::is_unsized_type(&self.declarations.types.rust_types, &written) {
+        if self.declared_types().is_unsized(&written) {
             return Self::UNSIZED_VALUE_DEPTH;
         }
         written.reference_depth()

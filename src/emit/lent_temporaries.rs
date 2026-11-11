@@ -1,58 +1,36 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use super::lifted_value::{LiftedTemporary, LiftedValue};
+use super::binding_value::BindingValue;
+use super::lifted_temporary::LiftedTemporary;
+use super::lifted_value::LiftedValue;
+use super::tree_position::TreePosition;
 use crate::core::{RustTemplate, TypeExpr, TypeExprKind};
 use crate::types::{
     Borrow, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram, TypedStructExpr,
 };
 
-pub struct LentTemporaries<'a> {
+pub struct LentTemporaries<'a, 'n> {
     program: &'a TypedProgram,
+    names: &'n mut dyn FnMut(&str) -> String,
 }
 
-impl<'a> LentTemporaries<'a> {
-    pub fn new(program: &'a TypedProgram) -> Self {
-        Self { program }
+impl<'a, 'n> LentTemporaries<'a, 'n> {
+    pub fn new(program: &'a TypedProgram, names: &'n mut dyn FnMut(&str) -> String) -> Self {
+        Self { program, names }
     }
 
-    pub fn lift_argument<'v>(
-        &self,
-        argument: &'v TypedArgument,
-        names: impl FnMut(&str) -> String,
-    ) -> LiftedValue<'v, TypedArgument> {
-        let LiftedValue { temporaries, value } = self.lift(&argument.value, names);
-        let argument = match value {
-            Cow::Borrowed(_) => Cow::Borrowed(argument),
-            Cow::Owned(value) => Cow::Owned(TypedArgument {
-                value,
-                borrow: argument.borrow,
-            }),
-        };
-        LiftedValue {
-            temporaries,
-            value: argument,
-        }
-    }
-
-    pub fn lift<'v>(
-        &self,
-        value: &'v TypedExpr,
-        mut names: impl FnMut(&str) -> String,
-    ) -> LiftedValue<'v, TypedExpr> {
-        let lifts = TemporarySearch::new(self.program).lifts(value);
+    pub fn lift<'v, T: BindingValue>(self, value: &'v T) -> LiftedValue<'v, T> {
+        let lifts = TemporarySearch::new(self.program).lifts(value.expression());
         if lifts.is_empty() {
-            return LiftedValue::unchanged(value);
+            return LiftedValue::new(Vec::new(), Cow::Borrowed(value));
         }
-        let mut rewritten = value.clone();
+        let mut rewritten = value.expression().clone();
         let temporaries = lifts
             .iter()
-            .map(|lift| lift.take(&mut rewritten, &mut names))
+            .map(|lift| lift.take(&mut rewritten, &mut *self.names))
             .collect();
-        LiftedValue {
-            temporaries,
-            value: Cow::Owned(rewritten),
-        }
+        LiftedValue::new(temporaries, Cow::Owned(value.with_expression(rewritten)))
     }
 }
 
@@ -78,28 +56,16 @@ impl LiftKind {
 }
 
 struct Lift {
-    path: Vec<usize>,
+    position: TreePosition,
     kind: LiftKind,
 }
 
 impl Lift {
-    fn take(&self, root: &mut TypedExpr, mut names: impl FnMut(&str) -> String) -> LiftedTemporary {
+    fn take(&self, root: &mut TypedExpr, names: &mut dyn FnMut(&str) -> String) -> LiftedTemporary {
         let name = names(self.kind.name());
-        let node = self.node(root);
+        let node = self.position.node_mut(root);
         let named = Self::named(&name, node);
-        LiftedTemporary {
-            value: std::mem::replace(node, named),
-            name,
-        }
-    }
-
-    fn node<'e>(&self, root: &'e mut TypedExpr) -> &'e mut TypedExpr {
-        self.path.iter().fold(root, |node, index| {
-            node.children_mut()
-                .into_iter()
-                .nth(*index)
-                .expect("the search recorded a child of this node")
-        })
+        LiftedTemporary::new(name, std::mem::replace(node, named))
     }
 
     fn named(name: &str, node: &TypedExpr) -> TypedExpr {
@@ -118,18 +84,16 @@ impl Lift {
 
 struct TemporarySearch<'p> {
     program: &'p TypedProgram,
-    path: Vec<usize>,
+    position: TreePosition,
     lifts: Vec<Lift>,
-    evaluated: Vec<Vec<usize>>,
+    evaluated: Vec<TreePosition>,
 }
 
 impl<'p> TemporarySearch<'p> {
-    const FIRST_ARGUMENT: usize = 1;
-
     fn new(program: &'p TypedProgram) -> Self {
         Self {
             program,
-            path: Vec::new(),
+            position: TreePosition::default(),
             lifts: Vec::new(),
             evaluated: Vec::new(),
         }
@@ -145,7 +109,7 @@ impl<'p> TemporarySearch<'p> {
             return;
         }
         match &expr.kind {
-            TypedExprKind::Call(_, arguments) => self.arguments(arguments),
+            TypedExprKind::Call(_, arguments) => self.arguments(expr, arguments),
             TypedExprKind::Borrow(..)
             | TypedExprKind::Struct(TypedStructExpr::New(..))
             | TypedExprKind::Variant(..) => self.operands(expr, scope),
@@ -154,13 +118,12 @@ impl<'p> TemporarySearch<'p> {
         }
     }
 
-    fn arguments(&mut self, arguments: &[TypedArgument]) {
-        for (position, argument) in arguments.iter().enumerate() {
-            let child = position + Self::FIRST_ARGUMENT;
+    fn arguments(&mut self, call: &TypedExpr, arguments: &[TypedArgument]) {
+        for argument in arguments {
             if Self::lends_temporary(argument) {
-                self.lift(child, &argument.value);
+                self.lift(call, &argument.value);
             } else {
-                self.operand(child, &argument.value, TemporaryScope::Statement);
+                self.operand(call, &argument.value, TemporaryScope::Statement);
             }
         }
     }
@@ -172,21 +135,21 @@ impl<'p> TemporarySearch<'p> {
     }
 
     fn operands(&mut self, expr: &TypedExpr, scope: TemporaryScope) {
-        for (child, operand) in expr.children().into_iter().enumerate() {
-            self.operand(child, operand, scope);
+        for operand in expr.children() {
+            self.operand(expr, operand, scope);
         }
     }
 
-    fn operand(&mut self, child: usize, operand: &TypedExpr, scope: TemporaryScope) {
-        self.path.push(child);
+    fn operand(&mut self, parent: &TypedExpr, operand: &TypedExpr, scope: TemporaryScope) {
+        self.position.enter(parent, operand);
         if let Some(value) = Self::borrowed_temporary(operand)
             && scope == TemporaryScope::Statement
         {
-            self.lift(0, value);
+            self.lift(operand, value);
         } else {
             self.evaluate(operand, scope);
         }
-        self.path.pop();
+        self.position.leave();
     }
 
     fn borrowed_temporary(operand: &TypedExpr) -> Option<&TypedExpr> {
@@ -206,24 +169,24 @@ impl<'p> TemporarySearch<'p> {
             self.evaluated.truncate(evaluated_before);
         }
         if !Self::is_pure(operand) {
-            self.evaluated.push(self.path.clone());
+            self.evaluated.push(self.position.clone());
         }
     }
 
-    fn lift(&mut self, child: usize, temporary: &TypedExpr) {
-        let earlier = self.evaluated.drain(..).map(|path| Lift {
-            path,
+    fn lift(&mut self, parent: &TypedExpr, temporary: &TypedExpr) {
+        let earlier = self.evaluated.drain(..).map(|position| Lift {
+            position,
             kind: LiftKind::Earlier,
         });
         self.lifts.extend(earlier);
-        self.path.push(child);
+        self.position.enter(parent, temporary);
         self.visit(temporary, TemporaryScope::Binding);
         self.evaluated.clear();
         self.lifts.push(Lift {
-            path: self.path.clone(),
+            position: self.position.clone(),
             kind: LiftKind::Owner,
         });
-        self.path.pop();
+        self.position.leave();
     }
 
     fn is_temporary(value: &TypedExpr) -> bool {
@@ -372,19 +335,21 @@ mod tests {
         }
 
         fn lifted(&self, function: &str) -> Vec<String> {
-            let lifted = LentTemporaries::new(&self.program)
-                .lift(self.last_let_value(function), |base| base.to_string());
+            let mut names = |base: &str| base.to_string();
+            let lifted =
+                LentTemporaries::new(&self.program, &mut names).lift(self.last_let_value(function));
             lifted
-                .temporaries
+                .temporaries()
                 .iter()
-                .map(|temporary| format!("{} {}", temporary.name, self.text(&temporary.value)))
+                .map(|temporary| format!("{} {}", temporary.name(), self.text(temporary.value())))
                 .collect()
         }
 
         fn rewritten(&self, function: &str) -> String {
-            let lifted = LentTemporaries::new(&self.program)
-                .lift(self.last_let_value(function), |base| base.to_string());
-            Self::named_leaves(&lifted.value).join(" ")
+            let mut names = |base: &str| base.to_string();
+            let lifted =
+                LentTemporaries::new(&self.program, &mut names).lift(self.last_let_value(function));
+            Self::named_leaves(lifted.value()).join(" ")
         }
 
         fn named_leaves(expr: &TypedExpr) -> Vec<String> {

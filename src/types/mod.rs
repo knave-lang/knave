@@ -7,10 +7,12 @@ mod checker;
 mod collection;
 mod copy;
 mod coverage;
+mod declarations;
 mod deferred_definitions;
 mod derives;
 mod display;
 mod enums;
+mod expectation;
 mod finalize;
 mod form_results;
 mod graph;
@@ -52,7 +54,9 @@ mod type_text_writer;
 mod typed;
 #[cfg(test)]
 mod typed_source;
+mod unification;
 mod unifier;
+mod view_coercion;
 mod walk;
 mod wrapper;
 
@@ -89,4 +93,5 @@ pub use typed::{
 };
 #[cfg(test)]
 pub use typed_source::TypedSource;
+pub use view_coercion::ViewCoercion;
 pub use wrapper::{FunctionValueWrapper, PreparedFunctionValue};

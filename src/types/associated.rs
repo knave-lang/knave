@@ -197,9 +197,12 @@ impl TypeChecker {
         self.unifier
             .unify(&deferred.other, &deferred.projected, deferred.span)
             .map_err(|_| {
+                let other = self.unifier.resolve(&deferred.other);
+                let projected = self.unifier.resolve(&deferred.projected);
+                let unification = self.unification();
                 TypeProblems::mismatch(
-                    &self.describe(&self.unifier.resolve(&deferred.other)),
-                    &self.describe(&self.unifier.resolve(&deferred.projected)),
+                    &unification.describe(&other),
+                    &unification.describe(&projected),
                     deferred.span,
                     MismatchContext::Plain,
                 )

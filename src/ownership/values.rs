@@ -8,9 +8,9 @@ use crate::core::{BindingArena, BindingId, FieldLabel};
 use crate::diagnostic::Diagnostic;
 use crate::types::{
     Borrow, CopyRules, FunctionValueWrapper, GenericBinding, GenericId, GenericParam,
-    RustTypeTable, StructTable, Type, TypeChecker, TypeDisplay, TypedArgument, TypedBlock,
-    TypedBodyItem, TypedControl, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf,
-    TypedProgram, TypedStructExpr,
+    RustTypeTable, StructTable, Type, TypeDisplay, TypedArgument, TypedBlock, TypedBodyItem,
+    TypedControl, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
+    TypedStructExpr, ViewCoercion,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -541,10 +541,9 @@ impl<'a> FunctionValueModes<'a> {
             return None;
         };
         let owner = Self::without_references(owner, Self::reference_depth(owner));
-        if TypeChecker::views_string(view, &owner) {
-            return Some(Adjustment::None);
-        }
-        TypeChecker::viewed_items(self.rust_types, view, &owner).map(|_| Adjustment::None)
+        let coercion = ViewCoercion::new(view, &owner);
+        let views = coercion.views_string() || coercion.viewed_items(self.rust_types).is_some();
+        views.then_some(Adjustment::None)
     }
 
     fn added_borrow(&self, expected: &Type, actual: &Type) -> Option<Adjustment> {

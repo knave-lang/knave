@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 use crate::core::ReferenceKind;
 use crate::diagnostic::Diagnostic;
 use crate::types::checker::TypeChecker;
-use crate::types::problems::MismatchContext;
+use crate::types::expectation::Expectation;
 use crate::types::unifier::{LiteralKind, Unifier};
 use crate::types::{Borrow, Bound, Type, TypeVar, TypedArgument, TypedExpr, TypedExprKind};
 
@@ -192,7 +192,8 @@ impl TypeChecker {
         for member in &group.members {
             let span = arguments[member.positions[0]].value.span;
             let found = assignment[&member.var].clone();
-            self.expect(&Type::Var(member.var), &found, span, MismatchContext::Plain)?;
+            self.unification()
+                .expect(Expectation::plain(&Type::Var(member.var)), &found, span)?;
             for position in &member.positions {
                 arguments[*position].borrow = Borrow::None;
             }
@@ -200,7 +201,7 @@ impl TypeChecker {
         Ok(true)
     }
 
-    fn written_depths_agree(&self, group: &SharedGroup, arguments: &[TypedArgument]) -> bool {
+    fn written_depths_agree(&mut self, group: &SharedGroup, arguments: &[TypedArgument]) -> bool {
         let resolved: Vec<Type> = group
             .positions()
             .map(|position| self.unifier.resolve(&arguments[position].value.ty))
@@ -294,12 +295,8 @@ impl TypeChecker {
         let span = arguments[positions[0]].value.span;
         let chosen = Self::with_references(referent, target);
         for member in &group.members {
-            self.expect(
-                &Type::Var(member.var),
-                &chosen,
-                span,
-                MismatchContext::Plain,
-            )?;
+            self.unification()
+                .expect(Expectation::plain(&Type::Var(member.var)), &chosen, span)?;
         }
         for (position, depth) in positions.iter().zip(depths) {
             arguments[*position].borrow = Self::borrow_for_depth(depth, target);
@@ -325,11 +322,10 @@ impl TypeChecker {
             .value
             .span;
         for member in &group.members {
-            self.expect(
-                &Type::Var(root),
+            self.unification().expect(
+                Expectation::plain(&Type::Var(root)),
                 &Type::Var(member.var),
                 span,
-                MismatchContext::Plain,
             )?;
         }
         self.view_borrowed_strings_beside_views(group.positions(), arguments)?;
@@ -378,7 +374,7 @@ impl TypeChecker {
     }
 
     fn dereference_where_rust_borrows(
-        &self,
+        &mut self,
         callee: Option<&TypedExpr>,
         position: usize,
         borrow: Borrow,
@@ -414,12 +410,9 @@ impl TypeChecker {
         place: TypedExpr,
         argument: &mut TypedArgument,
     ) -> Result<(), Diagnostic> {
-        self.expect(
-            shared,
-            &self.place_type(&place),
-            place.span,
-            MismatchContext::Plain,
-        )?;
+        let mut unification = self.unification();
+        let written = unification.place_type(&place);
+        unification.expect(Expectation::plain(shared), &written, place.span)?;
         *argument = TypedArgument {
             value: place,
             borrow: Borrow::Shared,
@@ -480,7 +473,8 @@ impl TypeChecker {
         for (position, argument) in positions.iter().zip(resolved).skip(1) {
             let span = arguments[*position].value.span;
             let found = argument.innermost_referent();
-            self.expect(&referent, found, span, MismatchContext::Plain)?;
+            self.unification()
+                .expect(Expectation::plain(&referent), found, span)?;
         }
         Ok(self.unifier.resolve(&referent))
     }
@@ -551,8 +545,9 @@ impl TypeChecker {
             })
     }
 
-    fn reference_depth_as_written(&self, argument: &TypedArgument) -> usize {
-        let written = self.unifier.resolve(&self.place_type(&argument.value));
+    fn reference_depth_as_written(&mut self, argument: &TypedArgument) -> usize {
+        let place = self.unification().place_type(&argument.value);
+        let written = self.unifier.resolve(&place);
         if Self::is_unsized_type(&self.rust_types, &written) {
             return Self::UNSIZED_VALUE_DEPTH;
         }

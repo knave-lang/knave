@@ -1,7 +1,7 @@
 use super::checker::TypeChecker;
-use super::rust_types::RustTypeTable;
 use super::ty::Type;
 use super::typed::{TypedArgument, TypedBlock, TypedBodyItem, TypedExpr, TypedExprKind, TypedLeaf};
+use super::view_coercion::ViewCoercion;
 use crate::core::{BindingId, PrimitiveType, ReferenceKind};
 use crate::diagnostic::Diagnostic;
 
@@ -49,47 +49,17 @@ impl TypeChecker {
 
     fn is_string_view(&self, value: &Type) -> bool {
         match self.unifier.resolve(value) {
-            Type::Ref(_, view) => Self::views_string(&view, &Self::owned_string()),
+            Type::Ref(_, view) => ViewCoercion::new(&view, &Self::owned_string()).views_string(),
             _ => false,
         }
     }
 
-    fn borrows_string_as_written(&self, value: &TypedExpr) -> bool {
+    fn borrows_string_as_written(&mut self, value: &TypedExpr) -> bool {
         let TypedExprKind::Borrow(ReferenceKind::Shared, place) = &value.kind else {
             return false;
         };
-        self.unifier.resolve(&self.place_type(place)) == Self::owned_string()
-    }
-
-    pub(crate) fn views_string(view: &Type, owned: &Type) -> bool {
-        matches!(
-            (view, owned),
-            (
-                Type::Primitive(PrimitiveType::Str),
-                Type::Primitive(PrimitiveType::String)
-            )
-        )
-    }
-
-    pub(crate) fn viewed_items(
-        rust_types: &RustTypeTable,
-        view: &Type,
-        owned: &Type,
-    ) -> Option<Vec<(Type, Type)>> {
-        match (view, owned) {
-            (Type::Named(slice, items), Type::Named(vector, elements))
-                if rust_types.is_slice(*slice) && rust_types.is_vector(*vector) =>
-            {
-                Some(
-                    items
-                        .iter()
-                        .cloned()
-                        .zip(elements.iter().cloned())
-                        .collect(),
-                )
-            }
-            _ => None,
-        }
+        let borrowed = self.unification().place_type(place);
+        self.unifier.resolve(&borrowed) == Self::owned_string()
     }
 
     fn owned_string() -> Type {
@@ -102,7 +72,9 @@ impl TypeChecker {
 
     fn needs_string_view(&self, result: &Type, found: &Type) -> bool {
         match (self.unifier.resolve(result), self.unifier.resolve(found)) {
-            (Type::Ref(_, view), Type::Ref(_, owned)) => Self::views_string(&view, &owned),
+            (Type::Ref(_, view), Type::Ref(_, owned)) => {
+                ViewCoercion::new(&view, &owned).views_string()
+            }
             _ => false,
         }
     }
@@ -129,84 +101,5 @@ impl TypeChecker {
             ty: result,
             span,
         })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::core::PrimitiveType;
-    use crate::types::{Type, TypeChecker, TypedProgram, TypedSource};
-
-    struct ViewFixture {
-        program: TypedProgram,
-    }
-
-    impl ViewFixture {
-        const SOURCE: &str = "
-            (defn readings ((items (vec i64))) items)
-            (defn window ((items (ref (slice u8)))) (len items))
-            (defn reading ((value (option i64))) value)
-            (defn main () (println \"Leaf\"))";
-
-        fn new() -> Self {
-            Self {
-                program: TypedSource::expand(Self::SOURCE).typed(),
-            }
-        }
-
-        fn viewed_items(&self, view: &Type, owned: &Type) -> Option<Vec<(Type, Type)>> {
-            TypeChecker::viewed_items(&self.program.rust_types, view, owned)
-        }
-
-        fn parameter(&self, function: &str) -> Type {
-            let definition = self
-                .program
-                .modules
-                .iter()
-                .flat_map(|module| &module.definitions)
-                .find(|definition| self.program.bindings.get(definition.binding).name() == function)
-                .expect("the source defines the function");
-            let Type::Function(_, parameters, _) = &definition.scheme.body else {
-                panic!("a defn has a function type");
-            };
-            parameters[0].referent().clone()
-        }
-    }
-
-    #[test]
-    fn a_slice_relates_its_items_to_the_elements_of_a_vector() {
-        let fixture = ViewFixture::new();
-        let items =
-            fixture.viewed_items(&fixture.parameter("window"), &fixture.parameter("readings"));
-        assert_eq!(
-            items,
-            Some(vec![(
-                Type::Primitive(PrimitiveType::U8),
-                Type::Primitive(PrimitiveType::I64)
-            )])
-        );
-    }
-
-    #[test]
-    fn a_type_that_is_not_a_slice_views_no_vector() {
-        let fixture = ViewFixture::new();
-        assert!(
-            fixture
-                .viewed_items(
-                    &fixture.parameter("reading"),
-                    &fixture.parameter("readings")
-                )
-                .is_none()
-        );
-    }
-
-    #[test]
-    fn a_slice_views_no_type_that_is_not_a_vector() {
-        let fixture = ViewFixture::new();
-        assert!(
-            fixture
-                .viewed_items(&fixture.parameter("window"), &fixture.parameter("reading"))
-                .is_none()
-        );
     }
 }

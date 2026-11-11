@@ -6,6 +6,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::assumed_collections::AssumedCollections;
 use super::copy::InferredCopies;
 use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
+use super::declarations::Declarations;
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload, VariantPayloads};
 use super::graph::{Definition, DefinitionGraph, DependencyGraph};
@@ -31,6 +32,7 @@ use super::typed::{
     PendingModeCheck, ReceiverKind, TraitMethodInfo, TypedConversion, TypedDefinition, TypedExpr,
     TypedExprKind, TypedLeaf, TypedTrait, TypedTraitImpl, TypedTraitMethod,
 };
+use super::unification::Unification;
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
 use super::wrapper::FunctionValueWrapper;
 use crate::core::{
@@ -717,6 +719,13 @@ impl TypeChecker {
 
     pub(super) fn function_value_wrapper(&mut self) -> FunctionValueWrapper<'_> {
         FunctionValueWrapper::new(&mut self.bindings)
+    }
+
+    pub(super) fn unification(&mut self) -> Unification<'_> {
+        let display = TypeDisplay::new(&self.bindings, &self.generics)
+            .with_projections(self.traits.projections());
+        let declarations = Declarations::new(&self.structs, &self.rust_types);
+        Unification::new(&mut self.unifier, display, declarations)
     }
 
     pub(super) fn called_parameters<'m>(

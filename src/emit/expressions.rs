@@ -27,10 +27,10 @@ use crate::ownership::StructUpdateOrder;
 use crate::reader::{Number, NumberValue};
 use crate::source::Span;
 use crate::types::{
-    Borrow, Bound, ClosureKind, Collection, FieldOrder, GenericId, Type, TypeChecker,
-    TypedArgument, TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
-    TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
-    TypedProgram, TypedStructExpr, VariantPayload,
+    Borrow, Bound, ClosureKind, Collection, FieldOrder, GenericId, Type, TypedArgument, TypedArm,
+    TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
+    TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedProgram, TypedStructExpr,
+    VariantPayload, ViewCoercion,
 };
 
 mod compound_assignment;
@@ -2145,7 +2145,7 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn depth_allowance(operand: &Type, other: &Type) -> Option<usize> {
-        if TypeChecker::views_string(operand, other) {
+        if ViewCoercion::new(operand, other).views_string() {
             Some(Self::VIEW_DEPTH_ALLOWANCE)
         } else if operand == other {
             Some(0)

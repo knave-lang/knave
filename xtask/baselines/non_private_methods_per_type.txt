@@ -28,7 +28,7 @@ expand/src/scope/scope_chain.rs::SharedScopes 11
 expand/src/scope/scope_set.rs::ScopeSet 17
 src/cli/definition_buffer.rs::DefinitionBuffer 11
 src/cli/located_project.rs::LocatedProject 19
-src/cli/program_file.rs::ProgramFile 20
+src/cli/program_file.rs::ProgramFile 18
 src/cli/terminal.rs::Terminal 41
 src/emit/callee_parameters.rs::OpenCallees 8
 src/emit/expressions.rs::ExpressionEmitter 18

@@ -6,7 +6,7 @@ use super::exit_status::ExitStatus;
 use super::standard_error::StandardError;
 use crate::core::ModulePath;
 use crate::language::Language;
-use crate::modules::{LibraryTable, SearchScope};
+use crate::modules::{LibraryTable, ModuleSources, SearchScope};
 use crate::project::CrateDependency;
 
 #[derive(Clone)]
@@ -58,16 +58,8 @@ impl ProgramFile {
         Self { scope, ..self }
     }
 
-    pub fn scope(&self) -> &SearchScope {
-        &self.scope
-    }
-
     pub fn with_libraries(self, libraries: LibraryTable) -> Self {
         Self { libraries, ..self }
-    }
-
-    pub fn libraries(&self) -> &LibraryTable {
-        &self.libraries
     }
 
     pub fn path(&self) -> &Path {
@@ -78,8 +70,14 @@ impl ProgramFile {
         &self.root
     }
 
-    pub fn fallback_root(&self) -> Option<&Path> {
-        self.fallback_root.as_deref()
+    pub fn module_sources(&self) -> ModuleSources {
+        let sources = ModuleSources::new(self.root.clone(), self.root.clone())
+            .with_libraries(self.libraries.clone())
+            .within(self.scope.clone());
+        match &self.fallback_root {
+            Some(fallback_root) => sources.with_fallback_root(fallback_root.clone()),
+            None => sources,
+        }
     }
 
     pub fn module_path(&self) -> ModulePath {

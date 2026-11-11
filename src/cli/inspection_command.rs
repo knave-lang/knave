@@ -7,7 +7,7 @@ use super::check_flag::CheckFlag;
 use super::doc::DocCommand;
 use super::doc_arguments::DocArguments;
 use super::emit::EmitCommand;
-use super::entry_help::ENTRY_HELP;
+use super::entry_argument::EntryArgument;
 use super::exit_status::ExitStatus;
 use super::expand::ExpandCommand;
 use super::fmt::FmtCommand;
@@ -18,13 +18,13 @@ use super::types::TypesCommand;
 pub enum InspectionCommand {
     #[command(about = "Read, expand and check a program, then print its diagnostics")]
     Check {
-        #[arg(help = ENTRY_HELP)]
-        file: Option<PathBuf>,
+        #[command(flatten)]
+        entry: EntryArgument,
     },
     #[command(about = "Print the inferred signature of each function in a program")]
     Types {
-        #[arg(help = ENTRY_HELP)]
-        file: Option<PathBuf>,
+        #[command(flatten)]
+        entry: EntryArgument,
     },
     #[command(
         name = DocCommand::NAME,
@@ -33,13 +33,13 @@ pub enum InspectionCommand {
     Doc(DocArguments),
     #[command(about = "Print a program as kernel forms after macro expansion")]
     Expand {
-        #[arg(help = ENTRY_HELP)]
-        file: Option<PathBuf>,
+        #[command(flatten)]
+        entry: EntryArgument,
     },
     #[command(about = "Print the Rust code generated for a program")]
     Emit {
-        #[arg(help = ENTRY_HELP)]
-        file: Option<PathBuf>,
+        #[command(flatten)]
+        entry: EntryArgument,
     },
     #[command(about = "Lay out source files in place, or standard input given `-`")]
     Fmt {
@@ -59,11 +59,11 @@ pub enum InspectionCommand {
 impl InspectionCommand {
     pub fn execute(self, terminal: &mut Terminal) -> ExitStatus {
         match self {
-            Self::Check { file } => CheckCommand::new(file).run(terminal),
-            Self::Types { file } => TypesCommand::new(file).run(terminal),
+            Self::Check { entry } => CheckCommand::new(entry.into_file()).run(terminal),
+            Self::Types { entry } => TypesCommand::new(entry.into_file()).run(terminal),
             Self::Doc(arguments) => arguments.run(terminal),
-            Self::Expand { file } => ExpandCommand::new(file).run(terminal),
-            Self::Emit { file } => EmitCommand::new(file).run(terminal),
+            Self::Expand { entry } => ExpandCommand::new(entry.into_file()).run(terminal),
+            Self::Emit { entry } => EmitCommand::new(entry.into_file()).run(terminal),
             Self::Fmt {
                 paths,
                 check,

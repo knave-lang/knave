@@ -1,8 +1,9 @@
 use std::fmt::Display;
 use std::path::Path;
 
-use crate::cli::diagnostic_output::{DiagnosticOutput, UnreadableFile};
+use crate::cli::diagnostic_output::DiagnosticOutput;
 use crate::cli::exit_status::ExitStatus;
+use crate::cli::unreadable_file::UnreadableFile;
 use crate::diagnostic::Diagnostics;
 use crate::modules::ModuleSources;
 use crate::project::{Project, ProjectReader};

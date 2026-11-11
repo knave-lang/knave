@@ -2,7 +2,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
-use super::diagnostic_output::{DiagnosticOutput, StandardErrorMessages, UnreadableFile};
+use super::diagnostic_output::{DiagnosticOutput, StandardErrorMessages};
 use super::doc_folder::DocFolder;
 use super::doc_pages::{DocumentedModules, EntryProgram};
 use super::exit_status::ExitStatus;
@@ -11,6 +11,7 @@ use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::source_walk::SourceWalk;
 use super::terminal::Terminal;
+use super::unreadable_file::UnreadableFile;
 use super::user_label_output::UserLabelOutput;
 use crate::modules::{ModuleSources, PublicPrelude};
 

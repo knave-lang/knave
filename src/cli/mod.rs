@@ -78,6 +78,7 @@ mod test_run;
 mod token_colors;
 mod tree_bounds;
 mod types;
+mod unreadable_file;
 mod user_label_output;
 mod value_marker;
 mod whole_characters;

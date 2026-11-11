@@ -2,7 +2,7 @@ use std::fmt::{self, Display};
 use std::io;
 use std::path::Path;
 
-use super::MessageOutput;
+use super::diagnostic_output::MessageOutput;
 use crate::cli::exit_status::ExitStatus;
 
 pub struct UnreadableFile<'a> {

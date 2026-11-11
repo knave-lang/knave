@@ -1,6 +1,5 @@
 mod message_output;
 mod standard_error_messages;
-mod unreadable_file;
 
 use std::sync::Arc;
 
@@ -14,7 +13,6 @@ use crate::diagnostic::{Diagnostic, DiagnosticRenderer, Diagnostics};
 use crate::source::{SourceMap, TextPosition};
 pub use message_output::MessageOutput;
 pub use standard_error_messages::StandardErrorMessages;
-pub use unreadable_file::UnreadableFile;
 
 pub trait DiagnosticOutput: MessageOutput {
     fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics);

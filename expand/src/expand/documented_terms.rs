@@ -8,6 +8,7 @@ use super::term_resolver::TermResolver;
 use crate::core::{BindingId, ModuleId, Namespace};
 use crate::diagnostic::{Diagnostic, SimilarName};
 use crate::reader::Symbol;
+use crate::source::Span;
 
 pub(super) struct DocumentedTerms<'t> {
     resolver: TermResolver<'t>,
@@ -43,6 +44,15 @@ impl<'t> DocumentedTerms<'t> {
                     self.closest_own_definition(&noted.term),
                 )
             })
+            .collect()
+    }
+
+    pub(super) fn named_within(&self, span: Span) -> Vec<Rc<str>> {
+        self.noted
+            .terms
+            .iter()
+            .filter(|noted| span.contains(noted.span))
+            .map(|noted| noted.term.shared_name())
             .collect()
     }
 
@@ -86,6 +96,7 @@ impl<'t> DocumentedTerms<'t> {
 mod tests {
     use std::path::PathBuf;
 
+    use super::DocumentedTerms;
     use crate::core::ModulePath;
     use crate::diagnostic::Diagnostic;
     use crate::expand::Expander;
@@ -109,15 +120,25 @@ mod tests {
         }
 
         fn undefined(&mut self) -> Vec<Diagnostic> {
+            self.with_terms(|terms| terms.undefined())
+        }
+
+        fn named_within(&mut self, written: &str) -> Vec<String> {
+            let start = self.sources.file(self.entry).text().find(written);
+            let start = start.expect("the program holds the written text");
+            let span = Span::new(self.entry, start..start + written.len());
+            let names = self.with_terms(|terms| terms.named_within(span));
+            names.iter().map(ToString::to_string).collect()
+        }
+
+        fn with_terms<T>(&mut self, read: impl FnOnce(&DocumentedTerms<'_>) -> T) -> T {
             let entry = self.entry;
             let mut expander = Expander::new(
                 &mut self.sources,
                 ModuleSources::new(PathBuf::new(), PathBuf::new()),
             );
             let module = expander.load_source_module(ModulePath::new(Self::MODULE), &[entry]);
-            expander
-                .documented_terms(module, NotesCheckpoint::START)
-                .undefined()
+            read(&expander.documented_terms(module, NotesCheckpoint::START))
         }
 
         fn undefined_names(&mut self) -> Vec<String> {
@@ -182,5 +203,14 @@ mod tests {
         let mut fixture =
             TermsFixture::new("(def docstring (fn () 2))\n(document docstring \"Mine.\")\n");
         assert!(fixture.undefined().is_empty());
+    }
+
+    #[test]
+    fn only_the_terms_documented_within_a_span_are_named_within_it() {
+        let written = "(document (gret) \"Says hi.\")";
+        let mut fixture = TermsFixture::new(&format!(
+            "(defn greet () 1)\n(document (greet) \"Greets.\")\n{written}\n"
+        ));
+        assert_eq!(fixture.named_within(written), ["gret"]);
     }
 }

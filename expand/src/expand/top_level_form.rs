@@ -21,10 +21,15 @@ impl Expander<'_> {
         self.recovered.settle_since(first_recovered, expanded)
     }
 
-    pub(super) fn within_source_run(&mut self, budget: BudgetId, lower: impl FnOnce(&mut Self)) {
+    pub(super) fn within_source_run(
+        &mut self,
+        budget: BudgetId,
+        lower: impl FnOnce(&mut Self) -> Vec<Diagnostic>,
+    ) {
         let first_recovered = self.recovered.mark();
-        self.spending(budget, lower);
-        let _ = self.recovered.settle_since(first_recovered, Ok(()));
+        let failures = self.spending(budget, lower);
+        self.recovered
+            .keep_distinct_since(first_recovered, failures);
     }
 
     pub(super) fn spending<T>(

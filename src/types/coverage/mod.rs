@@ -8,6 +8,8 @@ mod missing_case_search;
 mod pattern_guard;
 mod pattern_matrix;
 mod query;
+#[cfg(test)]
+mod search_fixture;
 mod unreachable_arm;
 mod usefulness;
 mod witness;

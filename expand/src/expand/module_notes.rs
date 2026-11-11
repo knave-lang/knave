@@ -1,4 +1,5 @@
 use crate::core::ModuleId;
+use crate::interpret::TooManyNotes;
 use crate::reader::Form;
 
 use super::saved_notes::{NoteTables, NotesKey, NotesTable, SavedNotes};
@@ -14,17 +15,17 @@ pub struct ModuleNotes {
 #[derive(Clone, Copy)]
 pub struct NotesCheckpoint(usize);
 
-impl NotesCheckpoint {
-    pub fn notes_added(self) -> usize {
-        self.0
-    }
-}
-
 impl ModuleNotes {
-    pub fn add(&mut self, module: ModuleId, key: &str, note: Form) {
+    pub const LIMIT: usize = 1 << 20;
+
+    pub fn add(&mut self, module: ModuleId, key: &str, note: Form) -> Result<(), TooManyNotes> {
+        if self.added.len() == Self::LIMIT {
+            return Err(TooManyNotes { limit: Self::LIMIT });
+        }
         let notes_key = (module, key.to_string());
         self.notes.entry(notes_key.clone()).or_default().push(note);
         self.added.push(notes_key);
+        Ok(())
     }
 
     pub fn holds_any(&self, module: ModuleId) -> bool {

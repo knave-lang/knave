@@ -1,21 +1,32 @@
 mod arguments;
 mod build_limit;
+mod built_value;
+mod builtin_site;
 mod builtins;
 mod code_list;
 mod limit_problems;
+mod limited_text;
+mod list_item;
+mod list_size;
+mod planned_list;
 mod problems;
 mod step_budget;
+mod too_many_notes;
 mod value;
+mod value_limits;
 mod work_meter;
 
-pub(crate) use build_limit::{BuildLimit, HeldNotes, LimitedText, PlannedList};
+pub(crate) use build_limit::BuildLimit;
 pub use builtins::BuiltinCall;
 pub use code_list::{
     CodeList, ListConversion, ListNesting, ListTooLarge, NestedTooDeep, PassedLimit,
 };
 pub use limit_problems::LimitProblems;
+pub(crate) use limited_text::LimitedText;
+pub(crate) use planned_list::PlannedList;
 pub use problems::InterpretProblems;
 pub use step_budget::StepBudget;
+pub use too_many_notes::TooManyNotes;
 pub use value::{Closure, Env, Value};
 pub use work_meter::WorkMeter;
 
@@ -44,8 +55,7 @@ pub trait CompileTimeHost {
     fn type_definition_call(&self, term: &Symbol) -> Option<Form>;
     fn expand_call(&mut self, call: Form) -> Result<Option<Form>, Diagnostic>;
     fn set_macro_step_limit(&mut self, limit: u64);
-    fn add_module_note(&mut self, key: &str, note: Form);
-    fn module_note_count(&self) -> usize;
+    fn add_module_note(&mut self, key: &str, note: Form) -> Result<(), TooManyNotes>;
     fn module_notes(&self, context: &Symbol, key: &str) -> Vec<Form>;
     fn declare_definition(&mut self, name: Form, declaration: Declaration);
     fn form_location(&self, form: &Form) -> String;

@@ -1,7 +1,10 @@
 use std::rc::Rc;
 
 use super::CodeList;
+use super::built_value::BuiltValue;
 use super::code_list::{ListTooLarge, PassedLimit};
+use super::list_item::ListItem;
+use super::list_size::ListSize;
 use crate::core::{BindingId, Builtin, Keyword, Lambda};
 use crate::reader::{Form, FormKind, NumberValue, Symbol};
 
@@ -130,6 +133,16 @@ struct Frame {
     binding: BindingId,
     value: Value,
     parent: Env,
+}
+
+impl ListItem for Value {
+    fn list_size(&self) -> usize {
+        match self {
+            Value::Form(form) => form.list_size(),
+            Value::List(list) => list.built_size(),
+            _ => ListSize::ATOM,
+        }
+    }
 }
 
 impl Drop for Frame {

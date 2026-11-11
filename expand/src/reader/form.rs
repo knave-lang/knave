@@ -1,6 +1,7 @@
 use std::fmt;
 use std::rc::Rc;
 
+use super::form_shape::FormShape;
 use crate::scope::{ChainPrefix, Scope, ScopeSet};
 use crate::source::Span;
 
@@ -19,66 +20,18 @@ impl FormNesting {
     }
 }
 
-pub struct FormCount;
-
-impl FormCount {
-    pub const LARGEST_STORED: usize = FormShape::LARGEST_FORM_COUNT as usize;
-
-    pub fn stored(form: &Form) -> usize {
-        form.shape.stored_form_count()
+impl From<&Form> for FormShape {
+    fn from(form: &Form) -> Self {
+        form.shape
     }
 }
 
-#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
-struct FormShape(u32);
-
-impl FormShape {
-    const NESTING_BITS: u32 = 13;
-    const NESTING_MASK: u32 = (1 << Self::NESTING_BITS) - 1;
-    const LARGEST_FORM_COUNT: u32 = u32::MAX >> Self::NESTING_BITS;
-    const ONE_FORM: usize = 1;
-
-    fn of(kind: &FormKind) -> Self {
+impl From<&FormKind> for FormShape {
+    fn from(kind: &FormKind) -> Self {
         match kind {
-            FormKind::List(items) => Self::of_items(items),
-            FormKind::String(_) | FormKind::Symbol(_) | FormKind::Number(_) => {
-                Self::new(0, Self::ONE_FORM)
-            }
+            FormKind::List(items) => FormShape::of_children(items.iter().map(FormShape::from)),
+            FormKind::String(_) | FormKind::Symbol(_) | FormKind::Number(_) => FormShape::leaf(),
         }
-    }
-
-    fn of_items(items: &[Form]) -> Self {
-        let (deepest, forms) = items
-            .iter()
-            .fold((0, Self::ONE_FORM), |(deepest, forms), item| {
-                let shape = item.shape;
-                (
-                    deepest.max(shape.nesting()),
-                    forms + shape.stored_form_count(),
-                )
-            });
-        Self::new(deepest + 1, forms)
-    }
-
-    fn new(nesting: u32, forms: usize) -> Self {
-        let nesting = nesting.min(Self::NESTING_MASK);
-        let forms = u32::try_from(forms).map_or(Self::LARGEST_FORM_COUNT, |forms| {
-            forms.min(Self::LARGEST_FORM_COUNT)
-        });
-        Self(forms << Self::NESTING_BITS | nesting)
-    }
-
-    fn nesting(self) -> u32 {
-        self.0 & Self::NESTING_MASK
-    }
-
-    fn form_count(self) -> Option<usize> {
-        let forms = self.stored_form_count();
-        (forms < Self::LARGEST_FORM_COUNT as usize).then_some(forms)
-    }
-
-    fn stored_form_count(self) -> usize {
-        (self.0 >> Self::NESTING_BITS) as usize
     }
 }
 
@@ -94,7 +47,7 @@ impl Form {
     pub const NESTING_LIMIT: usize = 1024;
 
     pub fn new(kind: FormKind, span: Span) -> Self {
-        let shape = FormShape::of(&kind);
+        let shape = FormShape::from(&kind);
         Self {
             kind: Rc::new(kind),
             span,
@@ -230,15 +183,17 @@ impl fmt::Display for Form {
             FormKind::Symbol(symbol) => write!(formatter, "{}", symbol.name()),
             FormKind::String(text) => write!(formatter, "{text:?}"),
             FormKind::Number(number) => write!(formatter, "{}", number.text()),
-            FormKind::List(items) => Self::fmt_list(items, formatter),
+            FormKind::List(items) => ListDisplay(items).fmt(formatter),
         }
     }
 }
 
-impl Form {
-    fn fmt_list(items: &[Form], formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+struct ListDisplay<'a>(&'a [Form]);
+
+impl fmt::Display for ListDisplay<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("(")?;
-        for (index, item) in items.iter().enumerate() {
+        for (index, item) in self.0.iter().enumerate() {
             if index > 0 {
                 formatter.write_str(" ")?;
             }
@@ -314,7 +269,8 @@ impl Number {
 
 #[cfg(test)]
 mod tests {
-    use super::{Form, FormCount, FormKind, FormNesting, FormShape, Symbol};
+    use super::{Form, FormKind, FormNesting, Symbol};
+    use crate::reader::FormShape;
     use crate::source::{SourceId, Span};
 
     struct CountedForms;
@@ -352,46 +308,9 @@ mod tests {
 
     #[test]
     fn a_count_past_what_a_form_stores_is_counted_in_full() {
-        let leaves = vec![CountedForms::leaf(); FormShape::LARGEST_FORM_COUNT as usize];
+        let leaves = vec![CountedForms::leaf(); FormShape::LARGEST_STORED];
         let list = CountedForms::list(leaves);
-        assert_eq!(
-            list.form_count(),
-            FormShape::LARGEST_FORM_COUNT as usize + 1
-        );
-    }
-
-    #[test]
-    fn a_stored_count_stops_at_the_largest() {
-        let leaves = vec![CountedForms::leaf(); FormCount::LARGEST_STORED];
-        let list = CountedForms::list(leaves);
-        assert_eq!(FormCount::stored(&list), FormCount::LARGEST_STORED);
-    }
-
-    #[test]
-    fn a_count_past_what_a_form_stores_is_kept_at_the_largest() {
-        let shape = FormShape::new(3, (1 << 32) + 1);
-        assert_eq!(shape.form_count(), None);
-        assert_eq!(shape.nesting(), 3);
-    }
-
-    #[test]
-    fn a_count_that_fits_32_bits_but_not_the_form_is_kept_at_the_largest() {
-        let shape = FormShape::new(3, u32::MAX as usize);
-        assert_eq!(shape.form_count(), None);
-        assert_eq!(shape.nesting(), 3);
-    }
-
-    #[test]
-    fn a_count_below_the_largest_is_stored() {
-        let count = FormShape::LARGEST_FORM_COUNT as usize - 1;
-        assert_eq!(FormShape::new(0, count).form_count(), Some(count));
-    }
-
-    #[test]
-    fn a_nesting_past_what_a_form_stores_is_kept_at_the_largest() {
-        let shape = FormShape::new(u32::MAX, 5);
-        assert_eq!(shape.nesting(), FormShape::NESTING_MASK);
-        assert_eq!(shape.form_count(), Some(5));
+        assert_eq!(list.form_count(), FormShape::LARGEST_STORED + 1);
     }
 
     struct RelocationFixture {

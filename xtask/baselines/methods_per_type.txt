@@ -11,7 +11,6 @@ expand/src/interpret/builtins/text.rs::TextOperations 39
 expand/src/mangle.rs::NameMangler 22
 expand/src/modules/sources.rs::ModuleSources 35
 expand/src/project/problems.rs::ProjectProblems 31
-expand/src/reader/form.rs::Form 21
 expand/src/reader/mod.rs::Reader 26
 expand/src/scope/scope_set.rs::ScopeSet 27
 src/cli/library_walk.rs::LibraryWalk 22

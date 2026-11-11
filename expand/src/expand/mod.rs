@@ -2,6 +2,7 @@ mod budget_arena;
 mod classified_form;
 mod compile_time_check;
 mod context;
+mod declared_trait;
 mod defining_call;
 mod documented_terms;
 mod enclosing_index;
@@ -42,7 +43,8 @@ mod shape;
 mod sourced_items;
 mod spliced_forms;
 mod string_view;
-mod structural_clause;
+mod structural_path_claims;
+mod structural_traits;
 mod top_level_form;
 mod try_check;
 mod type_expr;
@@ -81,6 +83,8 @@ use saved_definitions::{DefinitionSaver, SavedDefinitions, SavedTables};
 use saved_values::SavedValues;
 pub use session::ExpansionSession;
 use string_view::StringViewSearch;
+use structural_path_claims::StructuralPathClaims;
+use structural_traits::StructuralTraits;
 
 pub struct Program {
     pub modules: Vec<CoreModule>,
@@ -203,7 +207,7 @@ struct ExpansionTables {
     introduction_scopes: FxHashSet<Scope>,
     global_macros: Vec<(crate::core::BindingId, Form)>,
     trait_paths: FxHashMap<crate::core::BindingId, Rc<str>>,
-    structural_paths: FxHashMap<Rc<str>, (crate::core::BindingId, Span)>,
+    structural_paths: StructuralPathClaims,
     enum_variants: FxHashMap<crate::core::BindingId, Vec<crate::core::BindingId>>,
     variant_fields: FxHashMap<crate::core::BindingId, Vec<Rc<str>>>,
     trait_methods: FxHashMap<crate::core::BindingId, TraitMethods>,
@@ -351,6 +355,14 @@ impl<'s> Expander<'s> {
                 && !self.tables.use_site_scopes.contains(&scope)
         });
         quoted
+    }
+
+    fn structural_traits(&mut self) -> StructuralTraits<'_> {
+        StructuralTraits::new(
+            &self.tables.bindings,
+            &mut self.tables.structural_paths,
+            &mut self.diagnostics,
+        )
     }
 
     fn take_modules(&mut self) -> Vec<CoreModule> {

@@ -1,19 +1,17 @@
-use super::Expander;
+use super::declared_trait::DeclaredTrait;
 use super::problems::ExpandProblems;
+use super::structural_path_claims::{StructuralPathClaim, StructuralPathClaims};
 use crate::core::{
-    BindingId, ReferenceKind, StructDerives, StructuralClause, StructuralKey, StructuralTemplate,
-    TraitMethod, TypeExpr, TypeExprKind,
+    BindingArena, BindingId, ReferenceKind, StructDerives, StructuralClause, StructuralKey,
+    StructuralTemplate, TypeExpr, TypeExprKind,
 };
-use crate::diagnostic::Diagnostic;
+use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::reader::{Form, FormKind};
 
-pub(super) struct DeclaredTrait<'d> {
-    pub binding: BindingId,
-    pub definer: &'d str,
-    pub name: &'d Form,
-    pub path: &'d str,
-    pub self_variable: BindingId,
-    pub methods: &'d [TraitMethod],
+pub(super) struct StructuralTraits<'t> {
+    bindings: &'t BindingArena,
+    claims: &'t mut StructuralPathClaims,
+    problems: &'t mut Diagnostics,
 }
 
 struct ClauseReading<'f> {
@@ -23,87 +21,90 @@ struct ClauseReading<'f> {
     problems: Vec<Diagnostic>,
 }
 
-impl Expander<'_> {
-    pub(super) fn lower_structural_clause(
+impl<'t> StructuralTraits<'t> {
+    pub(super) fn new(
+        bindings: &'t BindingArena,
+        claims: &'t mut StructuralPathClaims,
+        problems: &'t mut Diagnostics,
+    ) -> Self {
+        Self {
+            bindings,
+            claims,
+            problems,
+        }
+    }
+
+    pub(super) fn lower(
         &mut self,
         clause: &Form,
         declared: &DeclaredTrait,
     ) -> Option<StructuralClause> {
-        let lowered = self
-            .structural_trait_problem(clause, declared)
-            .map_or_else(|| ClauseReading::read(clause, declared), Err);
-        match lowered
-            .and_then(|structural| self.claim_structural_path(clause, declared, structural))
-        {
-            Ok(structural) => Some(structural),
-            Err(problems) => {
+        self.judged(clause, declared)
+            .map_err(|problems| {
                 problems
                     .into_iter()
-                    .for_each(|problem| self.diagnostics.push(problem));
-                None
-            }
-        }
+                    .for_each(|problem| self.problems.push(problem))
+            })
+            .ok()
     }
 
-    fn claim_structural_path(
+    fn judged(
         &mut self,
         clause: &Form,
         declared: &DeclaredTrait,
-        structural: StructuralClause,
     ) -> Result<StructuralClause, Vec<Diagnostic>> {
-        let claimed = self.tables.structural_paths.get(declared.path).copied();
-        let Some((first, first_clause)) = claimed else {
-            self.tables
-                .structural_paths
-                .insert(declared.path.into(), (declared.binding, clause.span()));
-            return Ok(structural);
-        };
-        let bindings = &self.tables.bindings;
-        Err(vec![ExpandProblems::second_structural_path(
-            declared.definer,
-            bindings.get(declared.binding).name(),
-            declared.path,
-            bindings.get(first).name(),
-            clause.span(),
-            first_clause,
-        )])
+        let structural = self
+            .trait_problem(clause, declared)
+            .map_or_else(|| ClauseReading::read(clause, declared), Err)?;
+        self.claim_path(clause, declared)?;
+        Ok(structural)
     }
 
-    fn structural_trait_problem(
-        &self,
+    fn claim_path(
+        &mut self,
         clause: &Form,
         declared: &DeclaredTrait,
-    ) -> Option<Vec<Diagnostic>> {
-        let name = self
-            .tables
-            .bindings
-            .get(declared.binding)
-            .name()
-            .to_string();
+    ) -> Result<(), Vec<Diagnostic>> {
+        let claim = StructuralPathClaim::new(declared.binding, clause.span());
+        self.claims.claim(declared.path, claim).map_err(|first| {
+            vec![ExpandProblems::second_structural_path(
+                declared.definer,
+                self.name(declared.binding),
+                declared.path,
+                self.name(first.owner()),
+                clause.span(),
+                first.clause(),
+            )]
+        })
+    }
+
+    fn trait_problem(&self, clause: &Form, declared: &DeclaredTrait) -> Option<Vec<Diagnostic>> {
+        let name = self.name(declared.binding);
         let problem = if !Self::has_one_self_method(declared) {
             ExpandProblems::structural_clause_needs_one_method(declared.definer, clause.span())
         } else if Self::derive_writes(declared.path) {
             ExpandProblems::structural_clause_on_derived_trait(
                 declared.definer,
-                &name,
+                name,
                 declared.path,
                 clause.span(),
             )
-        } else if let Some(existing) =
-            self.trait_binding_with_path(declared.binding, declared.name, declared.path)
-        {
-            let existing = self.tables.bindings.get(existing).name().to_string();
+        } else if let Some(existing) = declared.path_owner {
             ExpandProblems::structural_clause_on_bound_path(
                 declared.definer,
-                &name,
+                name,
                 declared.path,
-                &existing,
+                self.name(existing),
                 clause.span(),
             )
         } else {
             return None;
         };
         Some(vec![problem])
+    }
+
+    fn name(&self, binding: BindingId) -> &str {
+        self.bindings.get(binding).name()
     }
 
     fn has_one_self_method(declared: &DeclaredTrait) -> bool {

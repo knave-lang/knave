@@ -193,12 +193,14 @@
   (rust "std::convert::identity((*LAZY_EXPLICIT, {0}).1)"
     (fn ((ref str)) (ref str))))
 
-(type alias-short (fn ((ref str)) (ref str)))
+(type alias-short
+  (fn ((ref str)) (ref str)))
 
 (def alias-short
   (if (> (seven) 0) first-letter first-letter))
 
-(type alias-explicit (fn ((ref str)) (ref str)))
+(type alias-explicit
+  (fn ((ref str)) (ref str)))
 
 (def alias-explicit
   (if (> (seven) 0) first-letter first-letter))
@@ -210,7 +212,8 @@
 
 (defn explicit-type-placeholder ()
   (local text (announced "typed"))
-  (local t (first-letter (same (as-str text))))
+  (local t
+    (first-letter (same (as-str text))))
   (println t))
 
 (defn clause-block ()

@@ -135,4 +135,13 @@ mod tests {
         let variant = GuardFixture::typed(fixture.variant_of(vec![GuardFixture::string_literal()]));
         assert!(GuardFixture::is_needed(&variant));
     }
+
+    #[test]
+    fn one_guarded_argument_among_plain_ones_needs_a_guard() {
+        let fixture = GuardFixture::new();
+        let wildcard = GuardFixture::typed(TypedPatternKind::Wildcard);
+        let variant =
+            GuardFixture::typed(fixture.variant_of(vec![wildcard, GuardFixture::string_literal()]));
+        assert!(GuardFixture::is_needed(&variant));
+    }
 }

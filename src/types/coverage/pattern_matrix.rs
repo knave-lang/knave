@@ -236,4 +236,32 @@ mod tests {
                 .is_empty()
         );
     }
+
+    #[test]
+    fn the_default_rows_keep_the_columns_after_the_first() {
+        let fixture = MatrixFixture::new();
+        let mixed = CoverPattern::Variant {
+            owner: fixture.owner,
+            index: 0,
+            arguments: vec![
+                CoverPattern::Wild,
+                CoverPattern::Literal(Literal::Bool(true)),
+            ],
+        };
+        let pair = Constructor::new(
+            ConstructorTag::Variant {
+                owner: fixture.owner,
+                index: 0,
+            },
+            vec![
+                Type::Primitive(PrimitiveType::Bool),
+                Type::Primitive(PrimitiveType::Bool),
+            ],
+        );
+        let default = MatrixFixture::rows(vec![mixed])
+            .specialize(&pair)
+            .default_rows();
+        assert!(!default.is_empty());
+        assert!(!default.has_wild_row());
+    }
 }

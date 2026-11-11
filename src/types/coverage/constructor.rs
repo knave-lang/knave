@@ -1,6 +1,5 @@
 use super::constructor_tag::ConstructorTag;
 use super::cover_pattern::CoverPattern;
-use crate::core::Literal;
 use crate::types::Type;
 
 pub(super) struct Constructor {
@@ -22,7 +21,7 @@ impl Constructor {
     }
 
     pub(super) fn wild_arguments(&self) -> Vec<CoverPattern> {
-        vec![CoverPattern::Wild; self.arity()]
+        vec![CoverPattern::wild(); self.arity()]
     }
 
     pub(super) fn columns_with(&self, rest: &[Type]) -> Vec<Type> {
@@ -30,32 +29,10 @@ impl Constructor {
     }
 
     pub(super) fn arguments_of(&self, pattern: &CoverPattern) -> Option<Vec<CoverPattern>> {
-        match pattern {
-            CoverPattern::Wild => Some(self.wild_arguments()),
-            CoverPattern::Variant {
-                owner,
-                index,
-                arguments,
-            } if self.tag
-                == (ConstructorTag::Variant {
-                    owner: *owner,
-                    index: *index,
-                }) =>
-            {
-                Some(arguments.clone())
-            }
-            CoverPattern::Struct { owner, arguments }
-                if self.tag == ConstructorTag::Struct(*owner) =>
-            {
-                Some(arguments.clone())
-            }
-            CoverPattern::Literal(Literal::Bool(value))
-                if self.tag == ConstructorTag::Bool(*value) =>
-            {
-                Some(Vec::new())
-            }
-            _ => None,
+        if pattern.is_wild() {
+            return Some(self.wild_arguments());
         }
+        (pattern.head_tag() == Some(self.tag)).then(|| pattern.arguments().to_vec())
     }
 }
 
@@ -89,14 +66,16 @@ mod tests {
         }
 
         fn variant_pattern(&self, index: usize) -> CoverPattern {
-            CoverPattern::Variant {
-                owner: self.owner,
-                index,
-                arguments: vec![
-                    CoverPattern::Literal(Literal::Bool(true)),
-                    CoverPattern::Wild,
+            CoverPattern::constructed(
+                ConstructorTag::Variant {
+                    owner: self.owner,
+                    index,
+                },
+                vec![
+                    CoverPattern::from(Literal::Bool(true)),
+                    CoverPattern::wild(),
                 ],
-            }
+            )
         }
 
         fn boolean() -> Type {
@@ -121,10 +100,7 @@ mod tests {
     fn its_wild_arguments_are_one_wildcard_per_argument() {
         let wild = ConstructorFixture::new().pair().wild_arguments();
         assert_eq!(wild.len(), 2);
-        assert!(
-            wild.iter()
-                .all(|pattern| matches!(pattern, CoverPattern::Wild))
-        );
+        assert!(wild.iter().all(CoverPattern::is_wild));
     }
 
     #[test]
@@ -145,24 +121,19 @@ mod tests {
     fn a_wildcard_gives_it_one_wildcard_per_argument() {
         let arguments = ConstructorFixture::new()
             .pair()
-            .arguments_of(&CoverPattern::Wild);
-        assert!(matches!(
-            arguments.as_deref(),
-            Some([CoverPattern::Wild, CoverPattern::Wild])
-        ));
+            .arguments_of(&CoverPattern::wild())
+            .expect("a wildcard fits every constructor");
+        assert_eq!(arguments.len(), 2);
+        assert!(arguments.iter().all(CoverPattern::is_wild));
     }
 
     #[test]
     fn a_pattern_with_its_tag_gives_it_the_pattern_arguments() {
         let fixture = ConstructorFixture::new();
         let arguments = fixture.pair().arguments_of(&fixture.variant_pattern(0));
-        assert!(matches!(
-            arguments.as_deref(),
-            Some([
-                CoverPattern::Literal(Literal::Bool(true)),
-                CoverPattern::Wild
-            ])
-        ));
+        let arguments = arguments.expect("the pattern has the constructor's tag");
+        assert!(arguments[0].head_tag() == Some(ConstructorTag::Bool(true)));
+        assert!(arguments[1].is_wild());
     }
 
     #[test]
@@ -178,14 +149,14 @@ mod tests {
 
     #[test]
     fn a_bool_literal_gives_its_own_value_no_arguments() {
-        let same = CoverPattern::Literal(Literal::Bool(true));
+        let same = CoverPattern::from(Literal::Bool(true));
         let arguments = ConstructorFixture::true_constructor().arguments_of(&same);
-        assert!(matches!(arguments.as_deref(), Some([])));
+        assert!(arguments.is_some_and(|arguments| arguments.is_empty()));
     }
 
     #[test]
     fn a_bool_literal_gives_the_other_value_nothing() {
-        let other = CoverPattern::Literal(Literal::Bool(false));
+        let other = CoverPattern::from(Literal::Bool(false));
         assert!(
             ConstructorFixture::true_constructor()
                 .arguments_of(&other)
@@ -200,13 +171,14 @@ mod tests {
             ConstructorTag::Struct(fixture.owner),
             vec![ConstructorFixture::boolean()],
         );
-        let pattern = CoverPattern::Struct {
-            owner: fixture.owner,
-            arguments: vec![CoverPattern::Literal(Literal::Bool(false))],
-        };
-        assert!(matches!(
-            point.arguments_of(&pattern).as_deref(),
-            Some([CoverPattern::Literal(Literal::Bool(false))])
-        ));
+        let pattern = CoverPattern::constructed(
+            ConstructorTag::Struct(fixture.owner),
+            vec![CoverPattern::from(Literal::Bool(false))],
+        );
+        let fields = point
+            .arguments_of(&pattern)
+            .expect("the pattern has the struct's tag");
+        assert_eq!(fields.len(), 1);
+        assert!(fields[0].head_tag() == Some(ConstructorTag::Bool(false)));
     }
 }

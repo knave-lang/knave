@@ -1,6 +1,5 @@
 use super::constructor::Constructor;
 use super::cover_pattern::CoverPattern;
-use crate::core::Literal;
 
 #[derive(Default)]
 pub(super) struct PatternMatrix {
@@ -23,29 +22,28 @@ impl PatternMatrix {
     }
 
     pub(super) fn has_wild_row(&self) -> bool {
-        self.rows.iter().any(|row| {
-            row.iter()
-                .all(|pattern| matches!(pattern, CoverPattern::Wild))
-        })
+        self.rows
+            .iter()
+            .any(|row| row.iter().all(CoverPattern::is_wild))
     }
 
     pub(super) fn specialize(&self, constructor: &Constructor) -> Self {
         self.keep_rows(|first| constructor.arguments_of(first))
     }
 
-    pub(super) fn specialize_literal(&self, literal: &Literal) -> Self {
-        self.keep_rows(|first| first.matches_literal(literal).then(Vec::new))
+    pub(super) fn specialize_literal(&self, head: &CoverPattern) -> Self {
+        self.keep_rows(|first| first.covers(head).then(Vec::new))
     }
 
     pub(super) fn default_rows(&self) -> Self {
-        self.keep_rows(|first| matches!(first, CoverPattern::Wild).then(Vec::new))
+        self.keep_rows(|first| first.is_wild().then(Vec::new))
     }
 
     pub(super) fn concrete_rows(&self) -> Self {
         Self::of_rows(
             self.rows
                 .iter()
-                .filter(|row| !matches!(row.first(), Some(CoverPattern::Wild)))
+                .filter(|row| !row.first().is_some_and(CoverPattern::is_wild))
                 .cloned()
                 .collect(),
         )
@@ -94,11 +92,13 @@ mod tests {
         }
 
         fn variant(&self, index: usize) -> CoverPattern {
-            CoverPattern::Variant {
-                owner: self.owner,
-                index,
-                arguments: vec![CoverPattern::Literal(Literal::Bool(true))],
-            }
+            CoverPattern::constructed(
+                ConstructorTag::Variant {
+                    owner: self.owner,
+                    index,
+                },
+                vec![CoverPattern::from(Literal::Bool(true))],
+            )
         }
 
         fn first_variant(&self) -> Constructor {
@@ -112,7 +112,7 @@ mod tests {
         }
 
         fn text(text: &str) -> CoverPattern {
-            CoverPattern::Literal(Literal::String(text.into()))
+            CoverPattern::from(Literal::String(text.into()))
         }
     }
 
@@ -124,27 +124,29 @@ mod tests {
     #[test]
     fn a_pushed_row_makes_it_nonempty() {
         let mut matrix = PatternMatrix::default();
-        matrix.push(CoverPattern::Wild);
+        matrix.push(CoverPattern::wild());
         assert!(!matrix.is_empty());
     }
 
     #[test]
     fn a_row_of_wildcards_is_a_wild_row() {
-        let matrix = MatrixFixture::rows(vec![MatrixFixture::text("a"), CoverPattern::Wild]);
+        let matrix = MatrixFixture::rows(vec![MatrixFixture::text("a"), CoverPattern::wild()]);
         assert!(matrix.has_wild_row());
     }
 
     #[test]
     fn a_row_with_a_wildcard_beside_a_value_is_not_a_wild_row() {
         let fixture = MatrixFixture::new();
-        let mixed = CoverPattern::Variant {
-            owner: fixture.owner,
-            index: 0,
-            arguments: vec![
-                CoverPattern::Wild,
-                CoverPattern::Literal(Literal::Bool(true)),
+        let mixed = CoverPattern::constructed(
+            ConstructorTag::Variant {
+                owner: fixture.owner,
+                index: 0,
+            },
+            vec![
+                CoverPattern::wild(),
+                CoverPattern::from(Literal::Bool(true)),
             ],
-        };
+        );
         let pair = Constructor::new(
             ConstructorTag::Variant {
                 owner: fixture.owner,
@@ -186,22 +188,22 @@ mod tests {
     fn specializing_expands_a_wildcard_row_into_wildcards() {
         let fixture = MatrixFixture::new();
         let specialized =
-            MatrixFixture::rows(vec![CoverPattern::Wild]).specialize(&fixture.first_variant());
+            MatrixFixture::rows(vec![CoverPattern::wild()]).specialize(&fixture.first_variant());
         assert!(specialized.has_wild_row());
     }
 
     #[test]
     fn specializing_by_a_literal_keeps_the_same_literal_and_wildcards() {
-        let literal = Literal::String("a".into());
+        let literal = CoverPattern::from(Literal::String("a".into()));
         let kept = MatrixFixture::rows(vec![MatrixFixture::text("a")]).specialize_literal(&literal);
-        let wild = MatrixFixture::rows(vec![CoverPattern::Wild]).specialize_literal(&literal);
+        let wild = MatrixFixture::rows(vec![CoverPattern::wild()]).specialize_literal(&literal);
         assert!(!kept.is_empty());
         assert!(!wild.is_empty());
     }
 
     #[test]
     fn specializing_by_a_literal_drops_another_literal() {
-        let literal = Literal::String("a".into());
+        let literal = CoverPattern::from(Literal::String("a".into()));
         let other =
             MatrixFixture::rows(vec![MatrixFixture::text("b")]).specialize_literal(&literal);
         assert!(other.is_empty());
@@ -211,7 +213,7 @@ mod tests {
     fn the_default_rows_are_the_rows_that_start_with_a_wildcard() {
         let fixture = MatrixFixture::new();
         assert!(
-            !MatrixFixture::rows(vec![CoverPattern::Wild])
+            !MatrixFixture::rows(vec![CoverPattern::wild()])
                 .default_rows()
                 .is_empty()
         );
@@ -226,7 +228,7 @@ mod tests {
     fn the_concrete_rows_are_the_rows_that_start_with_a_value() {
         let fixture = MatrixFixture::new();
         assert!(
-            MatrixFixture::rows(vec![CoverPattern::Wild])
+            MatrixFixture::rows(vec![CoverPattern::wild()])
                 .concrete_rows()
                 .is_empty()
         );
@@ -240,14 +242,16 @@ mod tests {
     #[test]
     fn the_default_rows_keep_the_columns_after_the_first() {
         let fixture = MatrixFixture::new();
-        let mixed = CoverPattern::Variant {
-            owner: fixture.owner,
-            index: 0,
-            arguments: vec![
-                CoverPattern::Wild,
-                CoverPattern::Literal(Literal::Bool(true)),
+        let mixed = CoverPattern::constructed(
+            ConstructorTag::Variant {
+                owner: fixture.owner,
+                index: 0,
+            },
+            vec![
+                CoverPattern::wild(),
+                CoverPattern::from(Literal::Bool(true)),
             ],
-        };
+        );
         let pair = Constructor::new(
             ConstructorTag::Variant {
                 owner: fixture.owner,

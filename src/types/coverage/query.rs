@@ -70,8 +70,8 @@ mod tests {
         fn new() -> Self {
             Self {
                 patterns: vec![
-                    CoverPattern::Wild,
-                    CoverPattern::Literal(Literal::Bool(false)),
+                    CoverPattern::wild(),
+                    CoverPattern::from(Literal::Bool(false)),
                 ],
                 types: vec![Self::text(), Self::boolean()],
             }
@@ -102,10 +102,7 @@ mod tests {
     #[test]
     fn its_first_column_gives_the_first_pattern_and_type() {
         let fixture = QueryFixture::new();
-        assert!(matches!(
-            fixture.query().first_pattern(),
-            CoverPattern::Wild
-        ));
+        assert!(fixture.query().first_pattern().is_wild());
         assert_eq!(fixture.query().first_type(), &QueryFixture::text());
     }
 
@@ -113,10 +110,7 @@ mod tests {
     fn its_rest_drops_the_first_column() {
         let fixture = QueryFixture::new();
         let rest = fixture.query().rest();
-        assert!(matches!(
-            rest.first_pattern(),
-            CoverPattern::Literal(Literal::Bool(false))
-        ));
+        assert!(rest.first_pattern().head_tag() == Some(ConstructorTag::Bool(false)));
         assert_eq!(rest.first_type(), &QueryFixture::boolean());
         assert!(rest.rest().is_empty());
     }
@@ -127,13 +121,10 @@ mod tests {
         let constructor = Constructor::new(ConstructorTag::Bool(true), vec![QueryFixture::unit()]);
         let expanded = fixture
             .query()
-            .expanded(&constructor, &[CoverPattern::Wild]);
+            .expanded(&constructor, &[CoverPattern::wild()]);
         let query = expanded.query();
         assert_eq!(query.first_type(), &QueryFixture::unit());
-        assert!(matches!(
-            query.rest().first_pattern(),
-            CoverPattern::Literal(Literal::Bool(false))
-        ));
+        assert!(query.rest().first_pattern().head_tag() == Some(ConstructorTag::Bool(false)));
         assert_eq!(query.rest().first_type(), &QueryFixture::boolean());
     }
 }

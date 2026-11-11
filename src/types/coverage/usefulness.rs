@@ -1,11 +1,10 @@
 use super::constructor::Constructor;
 use super::constructor_catalog::ConstructorCatalog;
 use super::constructor_tag::ConstructorTag;
-use super::cover_pattern::CoverPattern;
 use super::pattern_matrix::PatternMatrix;
 use super::query::Query;
 use super::witness::Witness;
-use crate::core::{BindingId, Literal};
+use crate::core::BindingId;
 use crate::types::Type;
 
 pub(super) struct Usefulness<'c, 'a> {
@@ -31,19 +30,16 @@ impl<'c, 'a> Usefulness<'c, 'a> {
         if matrix.has_wild_row() {
             return false;
         }
-        match query.first_pattern() {
-            CoverPattern::Wild => self.is_useful_wild(matrix, query),
-            CoverPattern::Variant { owner, index, .. } => {
-                let tag = ConstructorTag::Variant {
-                    owner: *owner,
-                    index: *index,
-                };
+        let head = query.first_pattern();
+        if head.is_wild() {
+            return self.is_useful_wild(matrix, query);
+        }
+        match head.head_tag() {
+            Some(tag @ ConstructorTag::Variant { .. }) => {
                 self.is_useful_variant(matrix, query, tag)
             }
-            CoverPattern::Struct { owner, .. } => {
-                self.is_useful_tagged(matrix, query, ConstructorTag::Struct(*owner))
-            }
-            CoverPattern::Literal(literal) => self.is_useful_literal(matrix, query, literal),
+            Some(tag) => self.is_useful_tagged(matrix, query, tag),
+            None => self.is_useful_literal(matrix, query),
         }
     }
 
@@ -132,13 +128,9 @@ impl<'c, 'a> Usefulness<'c, 'a> {
         self.is_useful(&matrix.specialize(constructor), query)
     }
 
-    fn is_useful_literal(
-        &mut self,
-        matrix: &PatternMatrix,
-        query: Query,
-        literal: &Literal,
-    ) -> bool {
-        self.is_useful(&matrix.specialize_literal(literal), query.rest())
+    fn is_useful_literal(&mut self, matrix: &PatternMatrix, query: Query) -> bool {
+        let specialized = matrix.specialize_literal(query.first_pattern());
+        self.is_useful(&specialized, query.rest())
     }
 
     pub(super) fn witnesses(

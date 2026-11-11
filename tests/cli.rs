@@ -187,6 +187,7 @@ const PROMPT_DOCUMENT_BESIDE_AN_EXPRESSION: &str =
     "(use prelude/macros document)\n(defn g () 2)\n(do (document (g) \"x\") (println 1))\n";
 const PROMPT_DOCUMENT_ENTERED_AGAIN: &str = "(use prelude/macros document)\n(defn g () 2)\n(document (g) \"Returns two.\")\n(document (g) \"Returns seven.\")\n(doc g)\n";
 const PROMPT_DOCUMENT_LEAVING_ANOTHER: &str = "(use prelude/macros document)\n(defn g () 2)\n(defn k () 3)\n(do (document (g) \"G\") (document (k) \"K\"))\n(document (g) \"G2\")\n(doc g)\n(doc k)\n";
+const PROMPT_DOCUMENT_BESIDE_ITS_DEFINITION: &str = "(use prelude/macros document)\n(do (defn g () 2) (document (g) \"A\"))\n(document (g) \"B\")\n(doc g)\n";
 const PROMPT_RUNAWAY_MACRO: &str =
     "(defmacro spin () ((fn () (recur))))\n(with-macro-steps 1000 (spin))\n(+ 1 2)\n";
 const PROMPT_INFER: &str = "(defn identity (x) x)\n(infer (vec 1 2))\n(infer identity)\n(infer none)\n(def text (infer identity))\ntext\n";
@@ -4554,6 +4555,13 @@ fn repl_replaces_an_earlier_document_of_the_same_term() {
 fn repl_reports_a_document_that_a_replacing_document_sets_aside() {
     let sandbox = Sandbox::new("repl_document_leaving_another");
     let repl = sandbox.compiler_reading(PROMPT_DOCUMENT_LEAVING_ANOTHER, &["repl"]);
+    insta::assert_snapshot!(repl.transcript());
+}
+
+#[test]
+fn repl_keeps_a_document_entered_beside_its_definition() {
+    let sandbox = Sandbox::new("repl_document_beside_its_definition");
+    let repl = sandbox.compiler_reading(PROMPT_DOCUMENT_BESIDE_ITS_DEFINITION, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 

@@ -232,8 +232,16 @@ impl SearchFixture {
         arms: Vec<CoverPattern>,
         scrutinee: Type,
     ) -> Vec<Vec<Witness>> {
+        self.missing_cases_in(arms, &[scrutinee])
+    }
+
+    pub(super) fn missing_cases_in(
+        &self,
+        arms: Vec<CoverPattern>,
+        columns: &[Type],
+    ) -> Vec<Vec<Witness>> {
         let catalog = self.catalog();
         let matrix: PatternMatrix = arms.into_iter().collect();
-        MissingCaseSearch::new(&catalog).witnesses(&matrix, &[scrutinee])
+        MissingCaseSearch::new(&catalog).witnesses(&matrix, columns)
     }
 }

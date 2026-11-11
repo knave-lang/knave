@@ -14,12 +14,22 @@ impl<'c, 'a> MissingCaseSearch<'c, 'a> {
     }
 
     pub(super) fn witnesses(&self, matrix: &PatternMatrix, types: &[Type]) -> Vec<Vec<Witness>> {
+        self.settled_witnesses(matrix, types)
+            .unwrap_or_else(|| self.column_witnesses(matrix, types))
+    }
+
+    fn settled_witnesses(
+        &self,
+        matrix: &PatternMatrix,
+        types: &[Type],
+    ) -> Option<Vec<Vec<Witness>>> {
         if matrix.is_empty() {
-            return vec![vec![Witness::Wild; types.len()]];
+            return Some(vec![vec![Witness::Wild; types.len()]]);
         }
-        if types.is_empty() || matrix.has_wild_row() {
-            return Vec::new();
-        }
+        (types.is_empty() || matrix.has_wild_row()).then(Vec::new)
+    }
+
+    fn column_witnesses(&self, matrix: &PatternMatrix, types: &[Type]) -> Vec<Vec<Witness>> {
         let constructors = self.catalog.constructors(&types[0]).unwrap_or_default();
         let named =
             |constructor: &Constructor| matrix.heads_cover(std::slice::from_ref(constructor));
@@ -128,5 +138,27 @@ mod tests {
         assert!(
             matches!(cases[0].as_slice(), [Witness::Struct { arguments, .. }] if arguments.len() == 8)
         );
+    }
+
+    #[test]
+    fn a_match_without_arms_misses_every_value() {
+        let fixture = SearchFixture::new();
+        let cases = fixture.missing_cases(Vec::new(), SearchFixture::twin_type());
+        assert_eq!(cases.len(), 1);
+        assert!(matches!(cases[0].as_slice(), [Witness::Wild]));
+    }
+
+    #[test]
+    fn a_row_of_wildcards_leaves_no_case() {
+        let fixture = SearchFixture::new();
+        let cases = fixture.missing_cases(vec![CoverPattern::wild()], SearchFixture::twin_type());
+        assert!(cases.is_empty());
+    }
+
+    #[test]
+    fn rows_without_columns_leave_no_case() {
+        let fixture = SearchFixture::new();
+        let cases = fixture.missing_cases_in(vec![SearchFixture::end()], &[]);
+        assert!(cases.is_empty());
     }
 }

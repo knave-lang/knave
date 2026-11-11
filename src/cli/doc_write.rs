@@ -51,7 +51,9 @@ impl DocWriteCommand {
             LocatedProject::search_from(Path::new(Terminal::WORKING_DIRECTORY), terminal)?
                 .ok_or_else(LocatedProject::report_no_path)?;
         let folder = self.folder_in(project.root());
-        let file = project.file_within(project.source_root().join(DocumentedModules::CALL_SOURCE));
+        let file = project
+            .placement()
+            .file_within(project.source_root().join(DocumentedModules::CALL_SOURCE));
         let modules = SourceWalk::of(&project).module_paths(terminal)?;
         let entry = project.entry();
         let text = Self::entry_text(entry.path())?;

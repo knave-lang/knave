@@ -23,7 +23,7 @@ impl LocatedProgram {
     fn of_file(file: PathBuf, terminal: &Terminal) -> Result<Self, ExitStatus> {
         let project = LocatedProject::search_from(&ProgramFile::directory_of(&file), terminal)?;
         let file = match &project {
-            Some(project) => project.file_within(file),
+            Some(project) => project.placement().file_within(file),
             None => ProgramFile::beside_itself(file),
         };
         Ok(Self { file, project })

@@ -112,8 +112,8 @@ impl TreeKind {
 
     fn program_file(self, project: &LocatedProject, file: ProgramFile) -> ProgramFile {
         match self {
-            Self::Tests => project.test_file(file),
-            Self::Tasks => project.task_file(file),
+            Self::Tests => project.placement().test_file(file),
+            Self::Tasks => project.placement().task_file(file),
         }
     }
 }
@@ -163,7 +163,10 @@ impl EntryTree {
 
     fn entry_file(&self) -> ProgramFile {
         match &self.project {
-            Some(project) => project.test_file(project.file_within(self.path.clone())),
+            Some(project) => {
+                let placement = project.placement();
+                placement.test_file(placement.file_within(self.path.clone()))
+            }
             None => ProgramFile::beside_itself(self.path.clone()),
         }
     }

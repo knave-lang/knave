@@ -661,7 +661,7 @@ impl TypeChecker {
     }
 
     pub(super) fn is_box(&self, ty: &Type) -> bool {
-        matches!(ty, Type::Named(binding, arguments) if Some(*binding) == self.declarations.types.box_binding && arguments.len() == 1)
+        self.declared_types().is_box(ty)
     }
 
     pub(super) fn variant_payloads(&self) -> VariantPayloads<'_> {
@@ -691,13 +691,11 @@ impl TypeChecker {
     ) {
         let unnameable = self.opaque_positions(modules, definitions).unnameable();
         let display = self.display();
-        let diagnostics: Vec<Diagnostic> = unnameable
+        let diagnostics: Diagnostics = unnameable
             .iter()
             .map(|unnameable| unnameable.diagnostic(&display))
             .collect();
-        for diagnostic in diagnostics {
-            self.unnameable_types.push(diagnostic);
-        }
+        self.unnameable_types.extend(diagnostics);
     }
 
     fn opaque_positions<'c>(
@@ -2436,11 +2434,7 @@ impl TypeChecker {
     }
 
     fn is_program_type(&self, implementor: &Type) -> bool {
-        matches!(
-            implementor,
-            Type::Named(binding, _)
-                if self.declarations.types.structs.get(*binding).is_some() || self.declarations.types.enums.get(*binding).is_some()
-        )
+        matches!(implementor, Type::Named(binding, _) if self.declared_types().declares(*binding))
     }
 
     fn acyclic_requirements(
@@ -2693,11 +2687,7 @@ impl TypeChecker {
     ) -> Diagnostic {
         let trait_name = self.bindings.get(bound.binding).name();
         let found = display.show(implementor);
-        let program_type = matches!(
-            implementor,
-            Type::Named(binding, _)
-                if self.declarations.types.structs.get(*binding).is_some() || self.declarations.types.enums.get(*binding).is_some()
-        );
+        let program_type = self.is_program_type(implementor);
         let diagnostic = match self.unimplemented_box(implementor, bound) {
             Some(boxed) => {
                 TypeProblems::missing_trait_on_box(trait_name, &display.show(&boxed), span)

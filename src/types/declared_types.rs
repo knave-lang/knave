@@ -25,6 +25,23 @@ impl<'a> DeclaredTypes<'a> {
             .and_then(|definition| definition.instantiated_field(label, arguments))
     }
 
+    pub(super) fn declares(&self, binding: BindingId) -> bool {
+        self.is_struct(binding) || self.types.enums.get(binding).is_some()
+    }
+
+    pub(super) fn is_struct(&self, binding: BindingId) -> bool {
+        self.types.structs.get(binding).is_some()
+    }
+
+    pub(super) fn is_box(&self, candidate: &Type) -> bool {
+        match candidate {
+            Type::Named(binding, arguments) => {
+                Some(*binding) == self.types.box_binding && arguments.len() == 1
+            }
+            _ => false,
+        }
+    }
+
     pub(super) fn is_unsized(&self, candidate: &Type) -> bool {
         match candidate {
             Type::Named(binding, _) => self.types.rust_types.is_slice(*binding),

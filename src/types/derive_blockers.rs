@@ -125,6 +125,7 @@ mod tests {
         (enum chain
           end
           (link u32 chain))
+        (enum (slot a) (filled a) empty)
         (defn main () (do))";
 
     struct BlockerFixture {
@@ -215,6 +216,24 @@ mod tests {
             fixture.blocking_payload("reading", "eq"),
             Some(("number".to_string(), Type::Primitive(PrimitiveType::F64)))
         );
+    }
+
+    #[test]
+    fn a_payload_of_a_type_parameter_blocks_nothing() {
+        let fixture = BlockerFixture::new();
+        assert_eq!(fixture.blocking_payload("slot", "copy"), None);
+    }
+
+    #[test]
+    fn an_inferred_box_blocks_a_trait_that_is_not_structural() {
+        let fixture = BlockerFixture::new();
+        let chain = fixture.declarations.type_named("chain");
+        let (variant, payload) = fixture
+            .blocking_payload("chain", "copy")
+            .expect("a box is never copy");
+        assert_eq!(variant, "link");
+        assert!(fixture.declarations.declared_types().is_box(&payload));
+        assert_eq!(payload.parts(), vec![&Type::Named(chain, Vec::new())]);
     }
 
     #[test]

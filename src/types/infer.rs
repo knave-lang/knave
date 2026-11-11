@@ -3370,7 +3370,8 @@ impl TypeChecker {
     }
 
     fn names_struct(&self, ty: &Type) -> bool {
-        matches!(self.unifier.shallow(ty), Type::Named(binding, _) if self.declarations.types.structs.get(binding).is_some())
+        let declared = self.declared_types();
+        matches!(self.unifier.shallow(ty), Type::Named(binding, _) if declared.is_struct(binding))
     }
 
     fn assoc_keys(&mut self, keys: &[Expr]) -> Result<Vec<TypedExpr>, Diagnostic> {
@@ -3446,9 +3447,7 @@ impl TypeChecker {
     ) -> Result<(BindingId, Vec<Type>), Diagnostic> {
         let owner = self.unifier.shallow(&base.ty);
         match owner {
-            Type::Named(binding, arguments)
-                if self.declarations.types.structs.get(binding).is_some() =>
-            {
+            Type::Named(binding, arguments) if self.declared_types().is_struct(binding) => {
                 Ok((binding, arguments))
             }
             Type::Var(_) => self.update_owner_from_fields(&owner, fields, span),
@@ -3646,9 +3645,7 @@ impl TypeChecker {
             owner = self.unifier.shallow(&inner);
         }
         match owner {
-            Type::Named(binding, arguments)
-                if self.declarations.types.structs.get(binding).is_some() =>
-            {
+            Type::Named(binding, arguments) if self.declared_types().is_struct(binding) => {
                 Ok((binding, arguments))
             }
             Type::Var(_) => self.unique_owner(&owner, label),

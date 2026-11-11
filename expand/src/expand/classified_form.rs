@@ -30,7 +30,7 @@ impl Expander<'_> {
             return ClassifiedForm::Expression;
         }
         let documented = self
-            .documented_terms(module, NotesCheckpoint::START)
+            .noted_terms(module, NotesCheckpoint::START)
             .named_within(form);
         ClassifiedForm::Definition(InputTerms {
             bound: record.bound,

@@ -8,7 +8,6 @@ use super::term_resolver::TermResolver;
 use crate::core::{BindingId, ModuleId, Namespace};
 use crate::diagnostic::{Diagnostic, SimilarName};
 use crate::reader::Symbol;
-use crate::source::Span;
 
 pub(super) struct DocumentedTerms<'t> {
     resolver: TermResolver<'t>,
@@ -33,7 +32,6 @@ impl<'t> DocumentedTerms<'t> {
 
     pub(super) fn undefined(&self) -> Vec<Diagnostic> {
         self.noted
-            .terms
             .iter()
             .filter(|noted| !self.defines(&noted.term))
             .filter(|noted| !self.reported_as_duplicate(&noted.term))
@@ -47,18 +45,8 @@ impl<'t> DocumentedTerms<'t> {
             .collect()
     }
 
-    pub(super) fn named_within(&self, span: Span) -> Vec<Rc<str>> {
-        self.noted
-            .terms
-            .iter()
-            .filter(|noted| span.contains(noted.span))
-            .map(|noted| noted.term.shared_name())
-            .collect()
-    }
-
     fn reported_as_duplicate(&self, term: &Symbol) -> bool {
-        self.duplicates
-            .contains(&(self.noted.module, term.shared_name()))
+        self.duplicates.contains(&self.noted.duplicate_key(term))
     }
 
     fn defines(&self, term: &Symbol) -> bool {
@@ -88,7 +76,8 @@ impl<'t> DocumentedTerms<'t> {
     }
 
     fn is_own(&self, binding: BindingId) -> bool {
-        self.resolver.definition_module(binding) == Some(self.noted.module)
+        self.noted
+            .belongs_to(self.resolver.definition_module(binding))
     }
 }
 
@@ -121,14 +110,6 @@ mod tests {
 
         fn undefined(&mut self) -> Vec<Diagnostic> {
             self.with_terms(|terms| terms.undefined())
-        }
-
-        fn named_within(&mut self, written: &str) -> Vec<String> {
-            let start = self.sources.file(self.entry).text().find(written);
-            let start = start.expect("the program holds the written text");
-            let span = Span::new(self.entry, start..start + written.len());
-            let names = self.with_terms(|terms| terms.named_within(span));
-            names.iter().map(ToString::to_string).collect()
         }
 
         fn with_terms<T>(&mut self, read: impl FnOnce(&DocumentedTerms<'_>) -> T) -> T {
@@ -203,14 +184,5 @@ mod tests {
         let mut fixture =
             TermsFixture::new("(def docstring (fn () 2))\n(document docstring \"Mine.\")\n");
         assert!(fixture.undefined().is_empty());
-    }
-
-    #[test]
-    fn only_the_terms_documented_within_a_span_are_named_within_it() {
-        let written = "(document (gret) \"Says hi.\")";
-        let mut fixture = TermsFixture::new(&format!(
-            "(defn greet () 1)\n(document (greet) \"Greets.\")\n{written}\n"
-        ));
-        assert_eq!(fixture.named_within(written), ["gret"]);
     }
 }

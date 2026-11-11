@@ -275,3 +275,57 @@ impl Expander<'_> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::Expander;
+    use crate::core::{BindingInfo, BindingKind};
+    use crate::diagnostic::{Diagnostic, DiagnosticCode};
+    use crate::interpret::ExpansionCallbacks;
+    use crate::modules::ModuleSources;
+    use crate::source::{SourceMap, Span};
+
+    struct HostFixture {
+        sources: SourceMap,
+    }
+
+    impl HostFixture {
+        fn new() -> Self {
+            Self {
+                sources: SourceMap::default(),
+            }
+        }
+
+        fn global_value_of(&mut self, kind: BindingKind, span: Span) -> Result<(), Diagnostic> {
+            let mut expander = Expander::new(
+                &mut self.sources,
+                ModuleSources::new(PathBuf::new(), PathBuf::new()),
+            );
+            let binding =
+                expander
+                    .tables
+                    .bindings
+                    .add(BindingInfo::new("origin".into(), kind, None));
+            expander.global_value(binding, span).map(drop)
+        }
+
+        fn span(&mut self) -> Span {
+            let source = self.sources.add("sample.knv", "origin");
+            Span::new(source, 0..6)
+        }
+    }
+
+    #[test]
+    fn macro_code_cannot_read_a_binding_that_is_no_global() {
+        let mut fixture = HostFixture::new();
+        let span = fixture.span();
+        let refusal = fixture
+            .global_value_of(BindingKind::TypeVariable, span)
+            .expect_err("a type variable has no value");
+        assert_eq!(refusal.code(), Some(&DiagnosticCode::NOT_AT_COMPILE_TIME));
+        let spans: Vec<Span> = refusal.labels().map(|label| label.span()).collect();
+        assert_eq!(spans, vec![span]);
+    }
+}

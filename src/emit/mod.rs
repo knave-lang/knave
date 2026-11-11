@@ -1,7 +1,8 @@
 mod assigned_in_place;
 mod bound_before;
+mod callee_definition;
 mod callee_parameters;
-mod expression_holder;
+mod emitted_value;
 mod expressions;
 mod fragment;
 mod fresh_lifetimes;
@@ -11,6 +12,7 @@ mod generic_positions;
 mod held_borrows;
 mod item_visibilities;
 mod items;
+mod lending_expression;
 mod lent_temporaries;
 mod let_annotation;
 mod let_statement;
@@ -41,6 +43,7 @@ mod stored_arguments;
 mod stored_functions;
 mod structural_impls;
 mod template;
+mod template_arguments;
 mod temporary_scope;
 #[cfg(test)]
 mod test_program;

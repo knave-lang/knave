@@ -33,72 +33,56 @@ impl TreePosition {
 #[cfg(test)]
 mod tests {
     use super::TreePosition;
-    use crate::types::{TypedBodyItem, TypedExpr, TypedExprKind, TypedProgram, TypedSource};
+    use crate::emit::test_program::TestProgram;
+    use crate::types::TypedExpr;
 
     struct PositionFixture {
-        program: TypedProgram,
+        program: TestProgram,
     }
 
     impl PositionFixture {
         const SOURCE: &str = "
             (defn pick (low high) (+ low high))
-            (defn main () (println (pick 1 (pick 2 3))))";
+            (defn main () (local sum (pick 1 (pick 2 3))) (println sum))";
 
         fn new() -> Self {
             Self {
-                program: TypedSource::expand(Self::SOURCE).typed(),
+                program: TestProgram::new(Self::SOURCE),
             }
         }
 
-        fn printed(&self) -> &TypedExpr {
-            let main = self
-                .program
-                .modules
-                .iter()
-                .flat_map(|module| &module.definitions)
-                .find(|definition| self.program.bindings.get(definition.binding).name() == "main")
-                .expect("the fixture defines main");
-            let TypedExprKind::Fn(lambda) = &main.value.kind else {
-                panic!("main is a function");
-            };
-            match lambda.body.items.as_slice() {
-                [TypedBodyItem::Expr(printed)] => printed,
-                _ => panic!("main holds one form"),
-            }
+        fn sum(&self) -> &TypedExpr {
+            self.program.last_let_value("main")
         }
 
         fn last_child(expr: &TypedExpr) -> &TypedExpr {
             expr.children().into_iter().last().expect("a child")
         }
 
-        fn text(expr: &TypedExpr) -> &'static str {
-            &Self::SOURCE[expr.span.range()]
+        fn text(&self, expr: &TypedExpr) -> &'static str {
+            self.program.text(expr)
         }
     }
 
     #[test]
     fn finds_a_nested_child_in_a_copy_of_the_tree() {
         let fixture = PositionFixture::new();
-        let printed = fixture.printed();
-        let outer = PositionFixture::last_child(printed);
-        let inner = PositionFixture::last_child(outer);
-        let position = TreePosition::along(&[printed, outer, inner]);
-        let mut copy = printed.clone();
-        assert_eq!(
-            PositionFixture::text(position.node_mut(&mut copy)),
-            "(pick 2 3)"
-        );
+        let sum = fixture.sum();
+        let outer = PositionFixture::last_child(sum);
+        let position = TreePosition::along(&[sum, outer]);
+        let mut copy = sum.clone();
+        assert_eq!(fixture.text(position.node_mut(&mut copy)), "(pick 2 3)");
     }
 
     #[test]
     fn a_path_of_one_node_names_the_root() {
         let fixture = PositionFixture::new();
-        let printed = fixture.printed();
-        let position = TreePosition::along(&[printed]);
-        let mut copy = printed.clone();
+        let sum = fixture.sum();
+        let position = TreePosition::along(&[sum]);
+        let mut copy = sum.clone();
         assert_eq!(
-            PositionFixture::text(position.node_mut(&mut copy)),
-            "(println (pick 1 (pick 2 3)))"
+            fixture.text(position.node_mut(&mut copy)),
+            "(pick 1 (pick 2 3))"
         );
     }
 }

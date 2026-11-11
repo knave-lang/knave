@@ -25,12 +25,8 @@ impl PrecededCode {
         fragments
     }
 
-    pub fn into_code(self) -> Code {
-        assert!(
-            self.statements.is_empty(),
-            "only a binding of the code can run the statements before it"
-        );
-        self.code
+    pub fn into_name(self) -> Option<Code> {
+        (!self.needs_binding()).then_some(self.code)
     }
 }
 
@@ -73,14 +69,20 @@ mod tests {
     }
 
     #[test]
-    fn gives_back_code_without_statements() {
-        let code = PrecededCode::plain(Code::atom("total")).into_code();
-        assert_eq!(code.text(), "total");
+    fn gives_back_a_plain_name() {
+        let name = PrecededCode::plain(Code::atom("total")).into_name();
+        assert_eq!(
+            name.map(|code| code.text().to_string()),
+            Some("total".to_string())
+        );
     }
 
     #[test]
-    #[should_panic(expected = "only a binding of the code can run the statements before it")]
-    fn refuses_to_drop_its_statements() {
-        PrecededFixture::with_statement("owner").into_code();
+    fn keeps_a_name_with_statements_for_its_binding() {
+        assert!(
+            PrecededFixture::with_statement("owner")
+                .into_name()
+                .is_none()
+        );
     }
 }

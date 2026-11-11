@@ -34,6 +34,14 @@ impl AssignedInPlace {
         }
     }
 
+    #[cfg(test)]
+    pub fn is_assignment(callee: &TypedExpr) -> bool {
+        matches!(&callee.kind, TypedExprKind::Leaf(crate::types::TypedLeaf::Rust(template))
+            if Self::BLOCK
+                .split(Self::OWNER_SLOT)
+                .all(|part| template.template.contains(part)))
+    }
+
     fn assigned(&self, name: &str, site: TypedExpr) -> TypedExpr {
         let (owned, reference) = self.owned_and_reference(site);
         let span = owned.span;
@@ -72,10 +80,6 @@ impl AssignedInPlace {
 impl LiftPlacement for AssignedInPlace {
     fn inner_scope(&self) -> TemporaryScope {
         TemporaryScope::Statement
-    }
-
-    fn settles_inside(&self) -> bool {
-        false
     }
 
     fn take(&self, root: &mut TypedExpr, name: String) -> LiftedTemporary {

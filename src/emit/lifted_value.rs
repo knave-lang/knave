@@ -1,16 +1,16 @@
 use std::borrow::Cow;
 
-use super::expression_holder::ExpressionHolder;
+use super::emitted_value::EmittedValue;
 use super::fragment::{Code, Fragment};
 use super::lifted_temporary::LiftedTemporary;
 use crate::types::TypedExpr;
 
-pub struct LiftedValue<'v, T: ExpressionHolder> {
+pub struct LiftedValue<'v, T: EmittedValue> {
     temporaries: Vec<LiftedTemporary>,
     value: Cow<'v, T>,
 }
 
-impl<'v, T: ExpressionHolder> LiftedValue<'v, T> {
+impl<'v, T: EmittedValue> LiftedValue<'v, T> {
     pub fn new(temporaries: Vec<LiftedTemporary>, value: Cow<'v, T>) -> Self {
         Self { temporaries, value }
     }

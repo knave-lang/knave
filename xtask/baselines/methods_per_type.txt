@@ -15,7 +15,7 @@ expand/src/reader/mod.rs::Reader 26
 expand/src/scope/scope_set.rs::ScopeSet 27
 src/cli/library_walk.rs::LibraryWalk 22
 src/cli/terminal.rs::Terminal 30
-src/emit/expressions.rs::ExpressionEmitter 225
+src/emit/expressions.rs::ExpressionEmitter 224
 src/emit/items.rs::ItemEmitter 84
 src/emit/plan.rs::EmitPlan 46
 src/emit/result_borrows.rs::BodyFlows 30

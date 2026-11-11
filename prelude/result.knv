@@ -61,10 +61,10 @@
         (result b e)))))
 
 (document (ok value)
-  "Wraps a success value in a `result`.
+  "Wraps a success value in a [result].
 
   As a value, it is a function of one argument, as in `(map (iter v) ok)`. In
-  a `match`, `(ok x)` is the pattern that binds the value.
+  a [match], `(ok x)` is the pattern that binds the value.
 
   (unwrap-ok (the (result i64 string) (ok 3)))
   => 3
@@ -75,10 +75,10 @@
   => 4")
 
 (document (err error)
-  "Wraps a failure value in a `result`.
+  "Wraps a failure value in a [result].
 
   As a value, it is a function of one argument, as in `(map (iter v) err)`. In
-  a `match`, `(err x)` is the pattern that binds the value.
+  a [match], `(err x)` is the pattern that binds the value.
 
   (unwrap-err (the (result i64 string) (err (str \"bad\"))))
   => \"bad\"
@@ -89,7 +89,7 @@
   => 3")
 
 (document (ok-or option error)
-  "Turns an `option` into a `result`, with `error` in place of `none`.
+  "Turns an [option] into a [result], with `error` in place of `none`.
 
   `error` runs before the call, whether or not the call uses it. The call
   moves an option that is not `copy`.
@@ -101,7 +101,7 @@
   => (err \"missing\")")
 
 (document (ok? result)
-  "Returns whether a `result` is `ok`.
+  "Returns whether a [result] is [ok].
 
   It borrows the result, which stays usable.
 
@@ -113,7 +113,7 @@
   => \"pear\"")
 
 (document (err? result)
-  "Returns whether a `result` is `err`.
+  "Returns whether a [result] is [err].
 
   It borrows the result, which stays usable.
 
@@ -124,37 +124,37 @@
   => false")
 
 (document (unwrap-ok result)
-  "Returns a `result`'s `ok` value.
+  "Returns a [result]'s [ok] value.
 
-  It panics on `err` with the printed form of the error, so the error type
-  implements `show`. It moves a result that is not `copy`.
+  It panics on [err] with the printed form of the error, so the error type
+  implements [show]. It moves a result that is not `copy`.
 
   (unwrap-ok (the (result i64 string) (ok 4)))
   => 4")
 
 (document (unwrap-err result)
-  "Returns a `result`'s `err` value.
+  "Returns a [result]'s [err] value.
 
-  It panics on `ok` with the printed form of the value, so the value type
-  implements `show`. It moves a result that is not `copy`.
+  It panics on [ok] with the printed form of the value, so the value type
+  implements [show]. It moves a result that is not `copy`.
 
   (unwrap-err (the (result i64 string) (err (str \"bad\"))))
   => \"bad\"")
 
 (document (expect-ok result message)
-  "Returns a `result`'s `ok` value, or panics with a message on `err`.
+  "Returns a [result]'s [ok] value, or panics with a message on [err].
 
   The panic prints `message`, then the printed form of the error, so the error
-  type implements `show`. `message` is a `(ref str)`, so borrow a `string`
+  type implements [show]. `message` is a `(ref str)`, so borrow a `string`
   with `as-str`. The call moves a result that is not `copy`.
 
   (expect-ok (the (result i64 string) (ok 4)) \"a number is ready\")
   => 4")
 
 (document (map-ok result function)
-  "Applies a function to a `result`'s `ok` value.
+  "Applies a function to a [result]'s [ok] value.
 
-  It returns the function's result in an `ok`. For `err` the function does not
+  It returns the function's result in an `ok`. For [err] the function does not
   run, and the error passes through. A keyword such as `:age` reads that
   field. The call moves a result that is not `copy`.
 
@@ -165,9 +165,9 @@
   => (err (str \"bad\"))")
 
 (document (map-err result function)
-  "Applies a function to a `result`'s `err` value.
+  "Applies a function to a [result]'s [err] value.
 
-  It returns the function's result in an `err`. For `ok` the function does not
+  It returns the function's result in an `err`. For [ok] the function does not
   run, and the value passes through. The call moves a result that is not
   `copy`.
 
@@ -178,10 +178,10 @@
   => (ok 2)")
 
 (document (then-ok result function)
-  "Calls a function that returns a `result` on a `result`'s `ok` value.
+  "Calls a function that returns a [result] on a `result`'s [ok] value.
 
   It returns the function's `result` as it is, which has the same error type.
-  For `err` the function does not run, and the error passes through. The call
+  For [err] the function does not run, and the error passes through. The call
   moves a result that is not `copy`.
 
   (then-ok (the (result i64 i64) (ok 4)) (fn (n) (ok (+ n 1))))

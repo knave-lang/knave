@@ -4,7 +4,7 @@ expression: reports.report(path)
 input_file: tests/fixtures/expand/doc_number_pages.knv
 ---
 (def plus-page "(+ number more ...)\n\nAdds its arguments from left to right.\n\nOne argument returns it, and two emit `a + b`. `+` as a value is the function\nof two numbers, so `(reduce (iter v) 0 +)` sums the items.\n\n(+ 1 2 3)\n=> 6\n\n(reduce (iter (vec 1 2 3)) 0 +)\n=> 6")
-(def minus-page "(- number more ...)\n\nSubtracts each later argument from the first.\n\nOne argument negates it with `neg`, and two emit `a - b`. `-` as a value is\nthe function of two numbers, and `neg` is unary minus as a value.\n\n(- 10 3 2)\n=> 5\n\n(- 4)\n=> -4")
-(def pi-page "pi\n\nHolds the ratio of a circle's circumference to its diameter, as an `f64`.\n\nIt emits `std::f64::consts::PI`.\n\n(* 2.0 pi)\n=> 6.283185307179586")
-(def number-page "number\n\nMarks a type that does arithmetic.\n\nEvery integer and float type implements it, and `+`, `-`, `*`, `/` and `rem`\ntake its types.\n\n(infer +)\n=> \"(where ((a number)) (fn (a a) a))\"")
+(def minus-page "(- number more ...)\n\nSubtracts each later argument from the first.\n\nOne argument negates it with [neg], and two emit `a - b`. `-` as a value is\nthe function of two numbers, and `neg` is unary minus as a value.\n\n(- 10 3 2)\n=> 5\n\n(- 4)\n=> -4")
+(def pi-page "pi\n\nHolds the ratio of a circle's circumference to its diameter, as an [f64].\n\nIt emits `std::f64::consts::PI`.\n\n(* 2.0 pi)\n=> 6.283185307179586")
+(def number-page "number\n\nMarks a type that does arithmetic.\n\nEvery integer and float type implements it, and [+], [-], [*], [/] and `rem`\ntake its types.\n\n(infer +)\n=> \"(where ((a number)) (fn (a a) a))\"")
 (def eq-page "eq\n\nMarks a type whose equality is total, as Rust's `Eq` does.\n\nThe float types leave it out, and a key of a `hash-map` implements it.\n\n(infer into-hash-map)\n=> \"(where ((a hash eq) b) (fn ((vec (pair a b))) (hash-map a b)))\"")

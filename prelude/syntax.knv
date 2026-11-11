@@ -46,7 +46,7 @@
 
   Each value sees the names bound before it, and the value of the body
   is the value of its last form. To bind a name for the rest of the
-  enclosing body, write `local`.
+  enclosing body, write [local].
 
   (let (first-part 1
         next-part (+ first-part 1))
@@ -813,7 +813,7 @@
 
   It binds the value with an annotated `let` and returns it, so a literal is
   checked against the type and a value that is not `copy` moves. A value of
-  another type is an error, except that a borrowed `string`, `(ref name)`,
+  another type is an error, except that a borrowed [string], `(ref name)`,
   passes as a `(ref str)`.
 
   (the i64 3)
@@ -826,16 +826,16 @@
 (document (loop (name value
                  ...)
             body ...)
-  "Binds names to values and runs a body that `recur` repeats.
+  "Binds names to values and runs a body that [recur] repeats.
 
-  The list is the binding list of `let`, so each value sees the names bound
+  The list is the binding list of [let], so each value sees the names bound
   before it. A name given twice is an error, because `recur` passes one value
   per name.
 
   `(recur new-value ...)` in tail position runs the body again with each name
   bound to its new value. The call returns the body's last value.
 
-  The body is a function, so `try`, `let-try` and `try->` in it leave the loop
+  The body is a function, so [try], [let-try] and [try->] in it leave the loop
   with the failure, not the enclosing function.
 
   (loop (total 0
@@ -848,10 +848,10 @@
             body ...)
   "Binds each name to the value inside a `result` or an `option`, in order.
 
-  The list is the binding list of `let`.
+  The list is the binding list of [let].
 
-  Each value goes through `try`, so the first `err` or `none` returns from the
-  enclosing function, or leaves the enclosing `loop`. That function must
+  Each value goes through [try], so the first `err` or `none` returns from the
+  enclosing function, or leaves the enclosing [loop]. That function must
   return a `result` or an `option` of the same kind.
 
   (local step (fn ((value (option i64))) (let-try (n value) (some (+ n 1)))))
@@ -866,25 +866,25 @@
             body ...)
   "Binds the names of each pattern to the parts of its value, in order.
 
-  The list is the binding list of `let`, with a `match` pattern in place of
+  The list is the binding list of [let], with a [match] pattern in place of
   each name, so `(let-match ((pair word count) entry) body ...)` binds `word`
   and `count`. Each value sees the names bound before it. Each pattern is a
   one-arm `match`, so a pattern that some value fails, such as `(some x)`, is
   an error that names the missing case. On an owned value, each name moves its
-  part unless the part is `copy`, and `_` leaves its part in place.
+  part unless the part is `copy`, and [_] leaves its part in place.
 
   (let-match ((pair word total) (pair \"pear\" 3))
     (str word total))
   => \"pear3\"")
 
 (document (try-> value function ...)
-  "Calls each function on the result of the one before, through `try`.
+  "Calls each function on the result of the one before, through [try].
 
   `(try-> x f g)` is `(g (try (f x)))`, so the first `err` or `none` returns
-  from the enclosing function, or leaves the enclosing `loop`, and the last
+  from the enclosing function, or leaves the enclosing [loop], and the last
   result is returned as it is. With no function, the call returns the value.
 
-  Unlike `->`, a step takes no extra arguments: a call form is a call whose
+  Unlike [->], a step takes no extra arguments: a call form is a call whose
   result is the function, so `(try-> x (make-step))` is `((make-step) x)`.
 
   (local half (fn ((n i64)) (if (> n 0) (some (/ n 2)) none)))
@@ -929,7 +929,7 @@
   then the flags: each keyword takes a `--name` flag, followed by an optional
   type and an optional literal default, as in `(who :port u16 8000 :loud
   false)`. A flag with no default is required, and a flag whose default is
-  `false` is a switch that `--name` turns on. Each argument parses
+  [false] is a switch that `--name` turns on. Each argument parses
   into its parameter's type. A string before at least one more body form is
   the docstring, whose first line the list of tasks shows.")
 

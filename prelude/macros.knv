@@ -733,7 +733,7 @@
 (document (defrule-with-value name value (pattern template) ...)
   "Defines a macro by rules, which is also a value where it is not called.
 
-  A call takes the rules, as in `defrule`. A bare `name` expands to `value`,
+  A call takes the rules, as in [defrule]. A bare `name` expands to `value`,
   so `+` is a macro whose value is a function of two numbers.
 
   ```
@@ -748,7 +748,7 @@
             body ...)
   "Defines a macro whose body computes the expansion of a call.
 
-  The pattern binds the call's arguments as a `defrule` pattern does, and the
+  The pattern binds the call's arguments as a [defrule] pattern does, and the
   body's last form is the expansion. A docstring may lead the body when
   another form follows it.
 
@@ -1388,7 +1388,7 @@
 
 (defmacro with-macro-steps (count form)
   "Sets the macro step limit of the enclosing top-level form to `count`, then
-  expands to `form`. A function call or a `recur` of macro code costs one
+  expands to `form`. A function call or a [recur] of macro code costs one
   step for each expression of the body it runs. An `expand-call` costs 64
   steps and one for each form it returns. A closure costs one step and one
   for each binding in scope where it is made. A built-in costs one step for

@@ -199,7 +199,7 @@
 (document number
   "Marks a type that does arithmetic.
 
-  Every integer and float type implements it, and `+`, `-`, `*`, `/` and `rem`
+  Every integer and float type implements it, and [+], [-], [*], [/] and `rem`
   take its types.
 
   (infer +)
@@ -208,7 +208,7 @@
 (document signed
   "Marks a number type whose values can be negative.
 
-  The signed integer types and the float types implement it, and `neg` takes
+  The signed integer types and the float types implement it, and [neg] takes
   its types.
 
   (infer neg)
@@ -217,7 +217,7 @@
 (document float
   "Marks a floating-point type.
 
-  `f32` and `f64` implement it.
+  [f32] and [f64] implement it.
 
   ```
   (type halve (where ((n float)) (fn (n) n)))
@@ -239,10 +239,10 @@
   ```")
 
 (document partial-eq
-  "Marks a type whose values `=` and `not=` compare, as Rust's `PartialEq` does.
+  "Marks a type whose values [=] and [not=] compare, as Rust's `PartialEq` does.
 
   A bound may name a second type, as in `(a (partial-eq b))`, so a `string`
-  compares with a `str`.
+  compares with a [str].
 
   (infer =)
   => \"(where ((a (partial-eq b)) b) (fn (a b) bool))\"
@@ -267,9 +267,9 @@
   => \"(where ((a hash eq) b) (fn ((vec (pair a b))) (hash-map a b)))\"")
 
 (document partial-ord
-  "Marks a type whose values `<` and `>` compare, as Rust's `PartialOrd` does.
+  "Marks a type whose values [<] and [>] compare, as Rust's `PartialOrd` does.
 
-  `<=` and `>=` take the same types.
+  [<=] and [>=] take the same types.
 
   (infer <)
   => \"(where ((a partial-ord)) (fn (a a) bool))\"")
@@ -306,7 +306,7 @@
   => (vec -1 -2)")
 
 (document (sqrt value)
-  "Returns the square root of an `f64`.
+  "Returns the square root of an [f64].
 
   It emits `value.sqrt()`.
 
@@ -314,7 +314,7 @@
   => 3.0")
 
 (document pi
-  "Holds the ratio of a circle's circumference to its diameter, as an `f64`.
+  "Holds the ratio of a circle's circumference to its diameter, as an [f64].
 
   It emits `std::f64::consts::PI`.
 
@@ -336,7 +336,7 @@
 (document (- number more ...)
   "Subtracts each later argument from the first.
 
-  One argument negates it with `neg`, and two emit `a - b`. `-` as a value is
+  One argument negates it with [neg], and two emit `a - b`. `-` as a value is
   the function of two numbers, and `neg` is unary minus as a value.
 
   (- 10 3 2)

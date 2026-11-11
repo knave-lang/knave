@@ -50,14 +50,14 @@
 (document (option a)
   "Types a value that may be absent, Rust's `Option<A>`.
 
-  `some` and `none` build one, and `match` reads it with the patterns
+  `some` and `none` build one, and [match] reads it with the patterns
   `(some x)` and `none`.
 
   (the (option i64) (some 3))
   => (some 3)")
 
 (document (option/some value)
-  "Builds the `some` variant of an `option`.
+  "Builds the `some` variant of an [option].
 
   `some` is the macro for this call.
 
@@ -65,7 +65,7 @@
   => (some 3)")
 
 (document option/none
-  "Holds the `none` variant of an `option`.
+  "Holds the `none` variant of an [option].
 
   `none` is the same value.
 
@@ -75,14 +75,14 @@
 (document (result a b)
   "Types a success `a` or a failure `b`, Rust's `Result<A, B>`.
 
-  `ok` and `err` build one, and `match` reads it with the patterns `(ok x)`
+  `ok` and `err` build one, and [match] reads it with the patterns `(ok x)`
   and `(err x)`.
 
   (the (result i64 string) (ok 3))
   => (ok 3)")
 
 (document (result/ok value)
-  "Builds the `ok` variant of a `result`.
+  "Builds the `ok` variant of a [result].
 
   `ok` is the macro for this call.
 
@@ -90,7 +90,7 @@
   => (ok 3)")
 
 (document (result/err error)
-  "Builds the `err` variant of a `result`.
+  "Builds the `err` variant of a [result].
 
   `err` is the macro for this call.
 
@@ -119,7 +119,7 @@
 (document sequence
   "Marks a type that `len` and `empty?` read.
 
-  `str`, `string`, a vector, a slice, a map and a reference to any of them
+  [str], [string], a vector, a slice, a map and a reference to any of them
   implement it.
 
   (infer len)

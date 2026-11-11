@@ -33,7 +33,7 @@
 (header-shape (cond) :arms)
 
 (document (not value)
-  "Returns the opposite of a `bool`.
+  "Returns the opposite of a [bool].
 
   It emits `!value`.
 
@@ -73,7 +73,7 @@
 (document (and value ...)
   "Returns whether every argument is true.
 
-  It stops at the first false argument. With no arguments it is `true`, and
+  It stops at the first false argument. With no arguments it is [true], and
   with one it is that argument.
 
   (and (> 2 1) (< 2 3))
@@ -85,7 +85,7 @@
 (document (or value ...)
   "Returns whether any argument is true.
 
-  It stops at the first true argument. With no arguments it is `false`, and
+  It stops at the first true argument. With no arguments it is [false], and
   with one it is that argument.
 
   (or (> 1 2) (< 1 2))

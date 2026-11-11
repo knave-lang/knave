@@ -89,7 +89,7 @@
 (document (push! target item)
   "Adds an item to a vector or a string.
 
-  A vector takes an element, and a `string` takes a `char` or a
+  A vector takes an element, and a [string] takes a [char] or a
   `(ref str)`. `push!` as a value is the vector push.
 
   (local items (vec 1))
@@ -199,7 +199,7 @@
   "Returns an iterator over borrows of a collection's items.
 
   A vector or a slice yields `(ref a)`, and a map yields
-  `(pair (ref key) (ref value))`. Where a call expects an `iterator`, a vector,
+  `(pair (ref key) (ref value))`. Where a call expects an [iterator], a vector,
   a slice or a map passes without `iter`.
 
   (collect (map (iter (vec 1 2)) str))
@@ -208,7 +208,7 @@
 (document (copied items)
   "Returns an iterator over copies of a slice's items.
 
-  The items implement `copy`. It takes a vector or a slice, not an iterator.
+  The items implement [copy]. It takes a vector or a slice, not an iterator.
 
   (collect (copied (vec 1 2)))
   => (vec 1 2)")
@@ -220,7 +220,7 @@
   => (vec 0 1 2)")
 
 (document (pop! items)
-  "Removes a vector's last item and returns it as an `option`.
+  "Removes a vector's last item and returns it as an [option].
 
   It returns `none` for an empty vector.
 
@@ -234,7 +234,7 @@
 (document (remove-at! items index)
   "Removes the item at an index and returns it.
 
-  `index` is a `usize`, so an `i64` is an error. Each later item moves down by
+  `index` is a [usize], so an [i64] is an error. Each later item moves down by
   one. It panics when `index` is not below the vector's length.
 
   (local items (vec 1 2 3))
@@ -248,10 +248,10 @@
   "Sorts a vector in place, in ascending order.
 
   `(sort! items <)` does the same, and `(sort! items >)` sorts in descending
-  order. Both need items that implement `ord`.
+  order. Both need items that implement [ord].
 
   `(sort! items compare)` orders by a function of two `(ref a)` that returns
-  an `i64`. A negative result puts the first item first, a positive result
+  an [i64]. A negative result puts the first item first, a positive result
   puts it last, and zero keeps the two in order. Rust's `sort_by` may panic
   when `compare` is not a consistent order.
 
@@ -267,7 +267,7 @@
 (document (sort-by! items key)
   "Sorts a vector in place by the key of each item.
 
-  `key` takes a `(ref a)` and returns a value that implements `ord`. Items
+  `key` takes a `(ref a)` and returns a value that implements [ord]. Items
   with equal keys keep their order. A keyword such as `:age` reads that field.
   Rust's `sort_by_key` may panic when `key` is not consistent between calls.
 
@@ -279,7 +279,7 @@
 (document (windows items size)
   "Returns an iterator over each run of `size` neighboring items of a slice.
 
-  Each run is a `(ref (slice a))`. `size` is a `usize`, so an `i64` is an
+  Each run is a `(ref (slice a))`. `size` is a [usize], so an [i64] is an
   error. A slice shorter than `size` gives no run. It panics when `size` is
   zero. A vector passes as its slice.
 
@@ -292,8 +292,8 @@
 (document (at items index)
   "Returns a borrow of the item at an index.
 
-  `index` is a `usize`, so an `i64` is an error. It panics when `index` is not
-  below the length. `get` returns an `option` in place of the panic. A vector
+  `index` is a [usize], so an [i64] is an error. It panics when `index` is not
+  below the length. `get` returns an [option] in place of the panic. A vector
   passes as its slice.
 
   (local items (vec 10 20))
@@ -301,7 +301,7 @@
   => 20")
 
 (document (first items)
-  "Returns a borrow of a slice's first item as an `option`.
+  "Returns a borrow of a slice's first item as an [option].
 
   It returns `none` for an empty slice. A vector passes as its slice.
 
@@ -313,7 +313,7 @@
   => none")
 
 (document (last items)
-  "Returns a borrow of a slice's last item as an `option`.
+  "Returns a borrow of a slice's last item as an [option].
 
   It returns `none` for an empty slice. A vector passes as its slice.
 
@@ -328,7 +328,7 @@
   "Returns an iterator over borrows of a slice's items, last item first.
 
   It takes a vector or a slice, not an iterator, and leaves the items in
-  place. Use `reverse!` to reverse a vector itself.
+  place. Use [reverse!] to reverse a vector itself.
 
   (collect (map (reverse (vec 1 2)) str))
   => (vec (str 2) (str 1))")
@@ -345,7 +345,7 @@
   "Removes from a vector each item equal to the one before it.
 
   Only neighbors count, so sort the vector first to remove every repeat. The
-  items implement `partial-eq`.
+  items implement [partial-eq].
 
   (local items (vec 1 1 2 1))
   (dedup! items)

@@ -51,6 +51,13 @@ fn first_of(items: impl Iterator<Item = i64>, text: &str) -> &str {
     &text[0..items.count()]
 }
 
+fn seven() -> i64 {
+    println!("seven");
+    7
+}
+
+static LAZY_SEVEN: std::sync::LazyLock<i64> = std::sync::LazyLock::new(|| seven() * 2);
+
 fn lifted_local() {
     let mut n: i64 = 1;
     let owner;
@@ -156,6 +163,107 @@ fn explicit_iterator() {
     println!("{}", t)
 }
 
+fn lifted_global() {
+    let owner;
+    let t = keep(
+        *LAZY_SEVEN,
+        {
+            owner = announced("global");
+            &owner
+        }
+        .as_str(),
+    );
+    println!("{}", t)
+}
+
+fn explicit_global() {
+    let seen: i64 = *LAZY_SEVEN;
+    let text = announced("global");
+    let t = keep(seen, text.as_str());
+    println!("{}", t)
+}
+
+fn lifted_rust_global() {
+    let owner;
+    let t = keep(
+        {
+            println!("noisy");
+            7
+        },
+        {
+            owner = announced("rust");
+            &owner
+        }
+        .as_str(),
+    );
+    println!("{}", t)
+}
+
+fn explicit_rust_global() {
+    let seen: i64 = {
+        println!("noisy");
+        7
+    };
+    let text = announced("rust");
+    let t = keep(seen, text.as_str());
+    println!("{}", t)
+}
+
+fn lifted_branching_template() {
+    let owner;
+    let owner_2;
+    let t = if false {
+        first_letter(
+            {
+                owner = announced("skipped");
+                &owner
+            }
+            .as_str(),
+        )
+    } else {
+        first_letter(
+            {
+                owner_2 = announced("taken");
+                &owner_2
+            }
+            .as_str(),
+        )
+    };
+    println!("{}", t)
+}
+
+fn explicit_branching_template() {
+    let text = announced("taken");
+    let t = if false {
+        "s"
+    } else {
+        first_letter(text.as_str())
+    };
+    println!("{}", t)
+}
+
+fn lifted_leading_template() {
+    let owner;
+    let t = {
+        println!("before");
+        first_letter(
+            {
+                owner = announced("after");
+                &owner
+            }
+            .as_str(),
+        )
+    };
+    println!("{}", t)
+}
+
+fn explicit_leading_template() {
+    println!("before");
+    let text = announced("after");
+    let t = first_letter(text.as_str());
+    println!("{}", t)
+}
+
 fn main() {
     crate::rt::restore_default_sigpipe();
     lifted_local();
@@ -167,7 +275,15 @@ fn main() {
     lifted_deref();
     explicit_deref();
     lifted_iterator();
-    explicit_iterator()
+    explicit_iterator();
+    lifted_global();
+    explicit_global();
+    lifted_rust_global();
+    explicit_rust_global();
+    lifted_branching_template();
+    explicit_branching_template();
+    lifted_leading_template();
+    explicit_leading_template()
 }
 
 mod rt {

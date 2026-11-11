@@ -3,15 +3,14 @@ use std::rc::Rc;
 use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::EmissionWork;
-use super::binding_value::BindingValue;
+use super::expression_holder::ExpressionHolder;
 use super::fragment::{Code, Fragment, Precedence};
 use super::lent_temporaries::LentTemporaries;
 use super::let_annotation::LetAnnotation;
 use super::local_closures::LocalClosures;
 use super::locals::LocalNames;
 use super::number_literal::NumberLiteral;
-use super::open_literals::{OpenLiterals, TypeContext};
+use super::open_literals::OpenLiterals;
 use super::operator::{RustOperator, Side};
 use super::plan::{EmitPlan, ItemKind};
 use super::preceded_code::PrecededCode;
@@ -22,6 +21,7 @@ use super::stored_functions::StoredFunctions;
 use super::template::{Template, TemplateError};
 use super::types::{LifetimeScope, RustTypes, TypePosition};
 use super::unsized_parameters::UnsizedParameters;
+use super::{EmissionWork, type_context::TypeContext};
 use crate::core::{
     BindingId, BindingKind, FieldLabel, Literal, ModuleId, ParsedTemplate, PrimitiveType,
     ReferenceKind, RustTemplate, VariantInfo,
@@ -1492,14 +1492,14 @@ impl<'a> ExpressionEmitter<'a> {
         Code::block(value.bind(&format!("{mutability}{name}{annotation}")))
     }
 
-    fn preceded<T: BindingValue>(
+    fn preceded<T: ExpressionHolder>(
         &mut self,
         value: &T,
         emit: impl FnOnce(&mut Self, &T) -> Code,
     ) -> PrecededCode {
         let mut names = |base: &str| self.locals.temporary(base);
         let lifted = LentTemporaries::new(self.program, &mut names).lift(value);
-        let statements = lifted.statements(|temporary| self.expr(temporary));
+        let statements = lifted.statements();
         PrecededCode::new(statements, emit(self, lifted.value()))
     }
 
@@ -2663,7 +2663,7 @@ impl<'a> ExpressionEmitter<'a> {
                 continue;
             }
             let binding = self.bind_parameter(param, TypePosition::Value);
-            let value = self.annotated_binding_value(argument);
+            let value = self.annotated_expression_holder(argument);
             fragments.push(Fragment::Newline);
             fragments.push(Fragment::Text(format!("let {binding} = ")));
             fragments.extend(value.fragments);
@@ -2680,7 +2680,7 @@ impl<'a> ExpressionEmitter<'a> {
         fragments
     }
 
-    fn annotated_binding_value(&mut self, argument: &TypedArgument) -> Code {
+    fn annotated_expression_holder(&mut self, argument: &TypedArgument) -> Code {
         let Some(literal) = Self::bound_literal(&argument.value) else {
             return self.argument(argument, TypeContext::Known, ArgumentRole::Ordinary);
         };

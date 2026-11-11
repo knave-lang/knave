@@ -15,8 +15,12 @@ fn main() {
     let stem = "borrowed_temporary_in_template_argument";
     report(
         &({
-            let owner = format!("{}.txt", stem);
-            let template_argument_0 = owner.as_str();
+            let owner;
+            let template_argument_0 = {
+                owner = format!("{}.txt", stem);
+                &owner
+            }
+            .as_str();
             std::fs::read_to_string(template_argument_0).map_err(|error| {
                 std::io::Error::new(
                     error.kind(),
@@ -27,8 +31,12 @@ fn main() {
     );
     report(
         &({
-            let owner = format!("{}.missing", stem);
-            let template_argument_0 = owner.as_str();
+            let owner;
+            let template_argument_0 = {
+                owner = format!("{}.missing", stem);
+                &owner
+            }
+            .as_str();
             std::fs::read_to_string(template_argument_0).map_err(|error| {
                 std::io::Error::new(
                     error.kind(),
@@ -38,8 +46,12 @@ fn main() {
         }),
     );
     println!("{}", {
-        let owner = format!("{}-x", stem);
-        let template_argument_0 = owner.as_str();
+        let owner;
+        let template_argument_0 = {
+            owner = format!("{}-x", stem);
+            &owner
+        }
+        .as_str();
         template_argument_0.len() + template_argument_0.len()
     })
 }

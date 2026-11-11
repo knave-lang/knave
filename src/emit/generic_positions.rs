@@ -1,5 +1,5 @@
-use super::open_literals::TypeContext;
 use super::type_anchor::{Certainty, TypeAnchor};
+use super::type_context::TypeContext;
 use crate::core::{BindingId, TypeExpr, TypeExprKind};
 use crate::types::{GenericParam, Type};
 

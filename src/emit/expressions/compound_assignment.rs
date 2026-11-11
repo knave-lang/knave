@@ -1,6 +1,7 @@
-use super::{ArgumentRole, ExpressionEmitter, TypeContext};
+use super::{ArgumentRole, ExpressionEmitter};
 use crate::core::{ReferenceKind, RustTemplate};
 use crate::emit::fragment::Code;
+use crate::emit::type_context::TypeContext;
 use crate::source::Span;
 use crate::types::{
     Borrow, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr,

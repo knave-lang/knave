@@ -8,6 +8,20 @@ struct Page {
     title: String,
 }
 
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Entry<'a> {
+    name: String,
+    tag: &'a str,
+}
+
+fn make_entry(name: &str) -> Entry<'_> {
+    println!("entry");
+    Entry {
+        name: format!("{}-name", name),
+        tag: "tag",
+    }
+}
+
 fn first_letter(text: &str) -> &str {
     &text[0..1]
 }
@@ -92,8 +106,15 @@ fn explicit_block(name: &str) {
 }
 
 fn lifted_field() {
-    let owner = make_page("field");
-    let t = first_letter(owner.title.as_str());
+    let owner;
+    let t = first_letter(
+        {
+            owner = make_page("field");
+            &owner
+        }
+        .title
+        .as_str(),
+    );
     println!("{}", t)
 }
 
@@ -101,6 +122,23 @@ fn explicit_field() {
     let made = make_page("field");
     let t = first_letter(made.title.as_str());
     println!("{}", t)
+}
+
+fn lifted_borrowing_field() {
+    let owner;
+    let name = {
+        owner = make_entry("eve");
+        &owner
+    }
+    .name
+    .as_str();
+    println!("{}", name)
+}
+
+fn explicit_borrowing_field() {
+    let made = make_entry("eve");
+    let name = made.name.as_str();
+    println!("{}", name)
 }
 
 fn main() {
@@ -116,7 +154,9 @@ fn main() {
     lifted_block("dee");
     explicit_block("dee");
     lifted_field();
-    explicit_field()
+    explicit_field();
+    lifted_borrowing_field();
+    explicit_borrowing_field()
 }
 
 mod rt {

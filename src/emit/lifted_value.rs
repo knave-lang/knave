@@ -1,16 +1,15 @@
 use std::borrow::Cow;
 
-use super::binding_value::BindingValue;
-use super::fragment::{Code, Fragment};
+use super::expression_holder::ExpressionHolder;
+use super::fragment::Fragment;
 use super::lifted_temporary::LiftedTemporary;
-use crate::types::TypedExpr;
 
-pub struct LiftedValue<'v, T: BindingValue> {
+pub struct LiftedValue<'v, T: ExpressionHolder> {
     temporaries: Vec<LiftedTemporary>,
     value: Cow<'v, T>,
 }
 
-impl<'v, T: BindingValue> LiftedValue<'v, T> {
+impl<'v, T: ExpressionHolder> LiftedValue<'v, T> {
     pub fn new(temporaries: Vec<LiftedTemporary>, value: Cow<'v, T>) -> Self {
         Self { temporaries, value }
     }
@@ -19,15 +18,10 @@ impl<'v, T: BindingValue> LiftedValue<'v, T> {
         &self.value
     }
 
-    pub fn statements(&self, mut emit: impl FnMut(&TypedExpr) -> Code) -> Vec<Fragment> {
+    pub fn statements(&self) -> Vec<Fragment> {
         self.temporaries
             .iter()
-            .flat_map(|temporary| temporary.statement(&mut emit))
+            .flat_map(LiftedTemporary::statement)
             .collect()
-    }
-
-    #[cfg(test)]
-    pub fn temporaries(&self) -> &[LiftedTemporary] {
-        &self.temporaries
     }
 }

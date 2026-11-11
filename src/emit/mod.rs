@@ -1,5 +1,6 @@
-mod binding_value;
+mod assigned_in_place;
 mod callee_parameters;
+mod expression_holder;
 mod expressions;
 mod fragment;
 mod fresh_lifetimes;
@@ -30,12 +31,16 @@ mod result_borrows;
 mod reused_locals;
 mod runtime;
 mod rust_fallback;
+mod rust_leaf;
 mod signature_borrows;
 mod store_sites;
 mod stored_arguments;
 mod stored_functions;
 mod structural_impls;
 mod template;
+mod temporary_scope;
+#[cfg(test)]
+mod test_program;
 mod tree_position;
 mod type_anchor;
 mod type_context;

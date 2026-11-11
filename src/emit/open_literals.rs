@@ -5,7 +5,7 @@ use super::generic_positions::GenericPositions;
 use super::let_annotation::LetAnnotation;
 use super::rust_fallback::RustFallback;
 use super::type_anchor::TypeAnchor;
-pub(super) use super::type_context::TypeContext;
+use super::type_context::TypeContext;
 use crate::core::{BindingId, BindingKind, FieldLabel, Literal, VariantInfo};
 use crate::reader::Number;
 use crate::source::Span;

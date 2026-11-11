@@ -328,6 +328,10 @@ mod tests {
             Span::new(SourceId::new(0), 3..9)
         }
 
+        fn call_site() -> Span {
+            Span::new(SourceId::new(0), 20..26)
+        }
+
         fn read_without_global_values() -> Diagnostic {
             let binding = BindingArena::default().add(BindingInfo::new(
                 "origin".into(),
@@ -337,7 +341,7 @@ mod tests {
             let read = Expr::new(ExprKind::Leaf(Leaf::Var(binding)), Self::span());
             Interpreter::new(
                 &mut PartialHost::offering_nothing(),
-                Self::span(),
+                Self::call_site(),
                 StepBudget::full(),
             )
             .evaluate(&read)

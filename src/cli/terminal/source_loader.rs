@@ -25,12 +25,13 @@ impl<'a> SourceLoader<'a> {
         }
     }
 
-    pub fn add(&mut self, path: &Path, text: String) -> SourceId {
-        self.sources.add(path.display().to_string(), text)
+    pub fn load_project(&mut self, path: &Path) -> Result<Project, ExitStatus> {
+        let source = self.load(path)?;
+        self.read_project(source)
     }
 
-    pub fn add_named(&mut self, name: &str, text: &str) -> SourceId {
-        self.sources.add(name, text)
+    pub fn add(&mut self, name: impl AsRef<Path>, text: impl Into<String>) -> SourceId {
+        self.sources.add(name.as_ref().display().to_string(), text)
     }
 
     pub fn add_inside(
@@ -134,7 +135,7 @@ mod tests {
     #[test]
     fn names_a_named_text_by_its_name() {
         let mut fixture = LoaderFixture::default();
-        let source = fixture.loader().add_named("<input 1>", "(area 2 3)");
+        let source = fixture.loader().add("<input 1>", "(area 2 3)");
         assert_eq!(fixture.sources.file(source).name(), "<input 1>");
     }
 
@@ -154,6 +155,16 @@ mod tests {
         assert_eq!(status.err(), Some(ExitStatus::UsageError));
         let [report] = fixture.reports().try_into().expect("one report");
         assert!(report.starts_with("cannot read `no-such-directory/missing.knv`: "));
+    }
+
+    #[test]
+    fn loads_no_project_from_a_missing_file() {
+        let mut fixture = LoaderFixture::default();
+        let status = fixture
+            .loader()
+            .load_project(Path::new(LoaderFixture::MISSING));
+        assert_eq!(status.err(), Some(ExitStatus::UsageError));
+        assert_eq!(fixture.reports().len(), 1);
     }
 
     #[test]

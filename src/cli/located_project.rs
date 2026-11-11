@@ -120,9 +120,7 @@ impl LocatedProject {
             return Ok(());
         }
         let mut scratch = terminal.scratch();
-        let mut sources = scratch.sources();
-        let source = sources.load(&self.project_file())?;
-        let project = sources.read_project(source)?;
+        let project = scratch.sources().load_project(&self.project_file())?;
         let mut problems = Diagnostics::default();
         problems.push(self.crate_use(&project, command));
         Err(scratch.report(&problems))

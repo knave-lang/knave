@@ -122,7 +122,7 @@ impl PromptSession {
         profile: BuildProfile,
         interruption: Interruption,
     ) -> Self {
-        let anchor = terminal.sources().add_named(PromptModule::PATH, "");
+        let anchor = terminal.sources().add(PromptModule::PATH, "");
         let session = Self {
             module: PromptModule::new(anchor, file),
             profile,
@@ -151,7 +151,7 @@ impl PromptSession {
 
     fn enter(&mut self, terminal: &mut Terminal, text: String) {
         let mut sources = terminal.sources();
-        let whole = sources.add_named(&Self::input_name(self.entered + 1), &text);
+        let whole = sources.add(Self::input_name(self.entered + 1), &text);
         let Ok(forms) = sources.read(whole) else {
             self.entered += 1;
             return;
@@ -178,7 +178,7 @@ impl PromptSession {
     fn next_input(&mut self, terminal: &mut Terminal, text: String) -> EnteredInput {
         self.entered += 1;
         let name = Self::input_name(self.entered);
-        let source = terminal.sources().add_named(&name, &text);
+        let source = terminal.sources().add(&name, &text);
         EnteredInput { name, text, source }
     }
 

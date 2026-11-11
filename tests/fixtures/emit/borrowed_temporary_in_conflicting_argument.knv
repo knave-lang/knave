@@ -1,0 +1,16 @@
+(type first-letter
+  (fn ((ref str)) (ref str)))
+
+(defn first-letter (text) (subs text 0 1))
+
+(type counted!
+  (fn ((mut (vec i64)) (ref str)) usize))
+
+(defn counted! (values letter)
+  (push! values 1)
+  (+ (len values) (len letter)))
+
+(defn main ()
+  (local values (vec 7 8))
+  (println (counted! values
+                     (first-letter (as-str (str (len values)))))))

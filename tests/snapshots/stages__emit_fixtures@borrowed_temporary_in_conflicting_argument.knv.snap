@@ -1,0 +1,40 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/borrowed_temporary_in_conflicting_argument.knv
+---
+fn first_letter(text: &str) -> &str {
+    &text[0..1]
+}
+
+fn counted(values: &mut Vec<i64>, letter: &str) -> usize {
+    values.push(1);
+    values.len() + letter.len()
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut values: Vec<i64> = vec![7_i64, 8_i64];
+    println!("{}", {
+        let owner = values.len().to_string();
+        let call_argument_1 = first_letter(owner.as_str());
+        counted(&mut values, call_argument_1)
+    })
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

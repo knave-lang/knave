@@ -4,7 +4,7 @@ expand/src/expand/expression.rs 1006
 expand/src/expand/module_body.rs 1999
 expand/src/expand/problems.rs 1259
 expand/src/format/layout.rs 538
-src/emit/expressions.rs 2993
+src/emit/expressions.rs 2981
 src/emit/items.rs 1688
 src/emit/plan.rs 649
 src/emit/result_borrows.rs 740

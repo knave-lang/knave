@@ -5,7 +5,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::EmissionWork;
 use super::fragment::{Code, Fragment, Precedence};
+use super::lent_temporaries::LentTemporaries;
 use super::let_annotation::LetAnnotation;
+use super::lifted_value::LiftedValue;
 use super::local_closures::LocalClosures;
 use super::locals::LocalNames;
 use super::number_literal::NumberLiteral;
@@ -1471,7 +1473,10 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn let_statement(&mut self, binder: &TypedBinder, value: &TypedExpr) -> Code {
         let binder = &Self::with_written_type(binder, value);
-        let value = self.let_value(binder, value);
+        let lifted =
+            LentTemporaries::new(self.program).lift(value, |base| self.locals.temporary(base));
+        let statements = Code::block(lifted.statements(|temporary| self.expr(temporary)));
+        let value = self.let_value(binder, &lifted.value);
         let name = self.locals.bind(
             binder.binding,
             self.program.bindings.get(binder.binding).name(),
@@ -1483,6 +1488,7 @@ impl<'a> ExpressionEmitter<'a> {
         };
         Code::joined(
             vec![
+                statements,
                 Code::atom(format!(
                     "{} {name}{annotation} = ",
                     self.declaration(binder)
@@ -1836,8 +1842,11 @@ impl<'a> ExpressionEmitter<'a> {
                 continue;
             }
             let temporary = self.locals.temporary(&format!("call_argument_{position}"));
-            let value = self.call_argument(callee, position, argument);
+            let lifted = LentTemporaries::new(self.program)
+                .lift_argument(argument, |base| self.locals.temporary(base));
+            let value = self.call_argument(callee, position, &lifted.value);
             statements.push(Fragment::Newline);
+            statements.extend(lifted.statements(|temporary| self.expr(temporary)));
             statements.push(Fragment::Text(format!("let {temporary} = ")));
             statements.extend(value.fragments);
             statements.push(Fragment::Text(";".to_string()));
@@ -2059,6 +2068,8 @@ impl<'a> ExpressionEmitter<'a> {
             .map(|role| *role == ArgumentRole::MutPlace)
             .collect();
         let compared = self.compares_borrowed_operands(&parsed, &roles);
+        let lent = LentTemporaries::new(self.program);
+        let binds = parsed.binds_arguments(&places);
         let mut codes: Vec<Code> = arguments
             .iter()
             .zip(&roles)
@@ -2068,7 +2079,13 @@ impl<'a> ExpressionEmitter<'a> {
                 } else {
                     0
                 };
-                self.argument_at_depth(argument, context, *role, levels)
+                let lifted = match binds {
+                    true => lent.lift_argument(argument, |base| self.locals.temporary(base)),
+                    false => LiftedValue::unchanged(argument),
+                };
+                let mut code = self.argument_at_depth(&lifted.value, context, *role, levels);
+                code.preceding_statements = lifted.statements(|temporary| self.expr(temporary));
+                code
             })
             .collect();
         for (position, argument) in arguments.iter().enumerate() {

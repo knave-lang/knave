@@ -2072,7 +2072,7 @@ impl<'a> ExpressionEmitter<'a> {
             })
             .collect();
         for (position, argument) in arguments.iter().enumerate() {
-            let Some(call_arguments) = parsed.called_arguments(position) else {
+            let Some((call_arguments, without)) = parsed.called_argument(position) else {
                 continue;
             };
             let TypedExprKind::Fn(lambda) = &argument.value.kind else {
@@ -2081,9 +2081,6 @@ impl<'a> ExpressionEmitter<'a> {
             if !Self::inlines_call(lambda, &call_arguments) {
                 continue;
             }
-            let Some(without) = parsed.without_call(position) else {
-                continue;
-            };
             codes[position] = self.inlined_closure_body(lambda, &call_arguments);
             parsed = without;
         }

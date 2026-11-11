@@ -66,11 +66,12 @@ impl Template {
         }
     }
 
-    pub fn called_arguments(&self, argument: usize) -> Option<Vec<&str>> {
-        self.parsed.called_arguments(argument)
+    pub fn called_argument(&self, argument: usize) -> Option<(Vec<&str>, Self)> {
+        let arguments = self.parsed.called_arguments(argument)?;
+        Some((arguments, self.without_call(argument)?))
     }
 
-    pub fn without_call(&self, argument: usize) -> Option<Self> {
+    fn without_call(&self, argument: usize) -> Option<Self> {
         let text = self.parsed.text();
         let token = [format!("{{{argument}}}"), format!("{{&{argument}}}")]
             .into_iter()

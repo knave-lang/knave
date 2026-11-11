@@ -160,10 +160,10 @@ impl Expander<'_> {
         context: &mut DefinitionContext,
         pending: &mut Vec<PendingItem>,
     ) -> Result<(), Diagnostic> {
-        let written_span = form.span();
-        let outer = self.recorded_inputs.enter(written_span);
+        let notes = &self.tables.module_notes;
+        let outer = self.recorded_inputs.enter(form.span(), notes);
         let registered = self.register_written_form(module, form, context, pending);
-        self.recorded_inputs.leave(outer);
+        self.recorded_inputs.leave(outer, &self.tables.module_notes);
         registered
     }
 

@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use super::module_notes::{ModuleNotes, NotesCheckpoint};
 use crate::core::Namespace;
 use crate::source::{SourceId, Span};
 
@@ -9,6 +10,17 @@ pub(super) struct RecordedInputs {
     bound: Vec<BoundName>,
     loaded: Vec<LoadedModule>,
     registering: Option<Span>,
+    noting: Vec<Span>,
+}
+
+pub(super) struct Registration {
+    outer: Option<Span>,
+    notes: NotesCheckpoint,
+}
+
+pub(super) struct InputRecord {
+    pub bound: Vec<BoundName>,
+    pub adds_notes: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -44,16 +56,22 @@ impl RecordedInputs {
         }
     }
 
-    pub(super) fn enter(&mut self, written: Span) -> Option<Span> {
+    pub(super) fn enter(&mut self, written: Span, notes: &ModuleNotes) -> Registration {
         let outer = self.registering;
         if self.inputs.contains(&written) {
             self.registering = Some(written);
         }
-        outer
+        Registration {
+            outer,
+            notes: notes.checkpoint(),
+        }
     }
 
-    pub(super) fn leave(&mut self, outer: Option<Span>) {
-        self.registering = outer;
+    pub(super) fn leave(&mut self, registration: Registration, notes: &ModuleNotes) {
+        if registration.notes != notes.checkpoint() {
+            self.noting.extend(self.registering);
+        }
+        self.registering = registration.outer;
     }
 
     pub(super) fn note_loaded(&mut self, source: SourceId) {
@@ -62,12 +80,16 @@ impl RecordedInputs {
         }
     }
 
-    pub(super) fn bound_by(&self, span: Span) -> Vec<BoundName> {
-        self.bound
-            .iter()
-            .filter(|name| span.contains(name.span))
-            .cloned()
-            .collect()
+    pub(super) fn of(&self, span: Span) -> InputRecord {
+        InputRecord {
+            bound: self
+                .bound
+                .iter()
+                .filter(|name| span.contains(name.span))
+                .cloned()
+                .collect(),
+            adds_notes: self.noting.contains(&span),
+        }
     }
 
     pub(super) fn loaded(&self) -> &[LoadedModule] {
@@ -82,6 +104,8 @@ impl RecordedInputs {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::ModuleId;
+    use crate::reader::{Form, FormKind, Symbol};
 
     struct RecordFixture;
 
@@ -101,6 +125,18 @@ mod tests {
             })
         }
 
+        fn noted() -> ModuleNotes {
+            let mut notes = ModuleNotes::default();
+            let note = Form::new(
+                FormKind::Symbol(Symbol::new("note")),
+                Self::span(Self::INPUT),
+            );
+            notes
+                .add(ModuleId::new(0), "key", note)
+                .unwrap_or_else(|_| panic!("one note fits"));
+            notes
+        }
+
         fn recording() -> RecordedInputs {
             RecordedInputs::new(vec![Self::span(Self::INPUT)])
         }
@@ -112,18 +148,38 @@ mod tests {
         let outside = RecordFixture::span(RecordFixture::OUTSIDE);
         recorded.note_bound(outside, || RecordFixture::name(outside));
         let covering = Span::new(SourceId::new(0), 0..RecordFixture::OUTSIDE + 1);
-        assert!(recorded.bound_by(covering).is_empty());
+        assert!(recorded.of(covering).bound.is_empty());
+    }
+
+    #[test]
+    fn an_input_that_adds_a_module_note_is_recorded() {
+        let mut recorded = RecordFixture::recording();
+        let input = RecordFixture::span(RecordFixture::INPUT);
+        let registration = recorded.enter(input, &ModuleNotes::default());
+        recorded.leave(registration, &RecordFixture::noted());
+        assert!(recorded.of(input).adds_notes);
+    }
+
+    #[test]
+    fn an_input_that_adds_no_module_note_is_not_recorded() {
+        let mut recorded = RecordFixture::recording();
+        let input = RecordFixture::span(RecordFixture::INPUT);
+        let unnoted = ModuleNotes::default();
+        let registration = recorded.enter(input, &unnoted);
+        recorded.leave(registration, &unnoted);
+        assert!(!recorded.of(input).adds_notes);
     }
 
     #[test]
     fn a_module_loaded_while_an_input_registers_belongs_to_the_input() {
         let mut recorded = RecordFixture::recording();
         let input = RecordFixture::span(RecordFixture::INPUT);
-        let outer = recorded.enter(input);
-        let nested = recorded.enter(RecordFixture::span(RecordFixture::OUTSIDE));
+        let notes = ModuleNotes::default();
+        let outer = recorded.enter(input, &notes);
+        let nested = recorded.enter(RecordFixture::span(RecordFixture::OUTSIDE), &notes);
         recorded.note_loaded(SourceId::new(1));
-        recorded.leave(nested);
-        recorded.leave(outer);
+        recorded.leave(nested, &notes);
+        recorded.leave(outer, &notes);
         recorded.note_loaded(SourceId::new(2));
         assert_eq!(
             recorded.loaded(),

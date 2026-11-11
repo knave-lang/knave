@@ -220,7 +220,6 @@ src/types/copy.rs::CopyRules::new 4
 src/types/derives.rs::TypeChecker::derive_source 5
 src/types/derives.rs::TypeChecker::listing_span 4
 src/types/derives.rs::TypeChecker::report_listed_block 4
-src/types/derives.rs::TypeChecker::written_payload 4
 src/types/infer.rs::TypeChecker::bind_pattern 4
 src/types/infer.rs::TypeChecker::coerce_box 4
 src/types/infer.rs::TypeChecker::explain_assumed_collection 4

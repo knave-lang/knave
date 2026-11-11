@@ -43,7 +43,7 @@ src/ownership/functions.rs::FunctionTable 8
 src/ownership/moved_values.rs::MovedValues 8
 src/ownership/parameter_uses.rs::ParameterUses 10
 src/ownership/problems.rs::OwnershipProblems 34
-src/types/checker.rs::TypeChecker 71
+src/types/checker.rs::TypeChecker 69
 src/types/collection.rs::Collection 8
 src/types/enums.rs::EnumDefinition 8
 src/types/problems.rs::TypeProblems 103

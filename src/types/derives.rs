@@ -3,13 +3,10 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::checker::TypeChecker;
-use super::payload_position::PayloadPosition;
 use super::problems::TypeProblems;
-use super::selection::Selection;
 use super::traits::Implementor;
-use super::ty::{Bound, GenericId, GenericParam, Scheme, Type};
-use super::typed::TypedTraitImpl;
-use crate::core::{BindingId, CoreModule, FunctionFieldTraits, ItemKind, StructDerives};
+use super::ty::{Bound, GenericParam, Scheme, Type};
+use crate::core::{BindingId, CoreModule, ItemKind, StructDerives};
 use crate::modules::ModuleSources;
 use crate::source::Span;
 
@@ -221,9 +218,11 @@ impl TypeChecker {
         match (written.get(&struct_binding), derived) {
             (Some(derive), _) => Self::listing_span(derive, trait_binding, derived, derivable)
                 .map(DeriveSource::Listed),
-            (None, DerivedTrait::Structural) => (!self
-                .has_written_impl(trait_binding, struct_binding))
-            .then_some(DeriveSource::Inferred),
+            (None, DerivedTrait::Structural) => self
+                .declared_traits()
+                .written_impl(trait_binding, struct_binding)
+                .is_none()
+                .then_some(DeriveSource::Inferred),
             (None, DerivedTrait::Written(name))
                 if name == StructDerives::COPY
                     && self.changed_structs.contains(&struct_binding) =>
@@ -236,28 +235,13 @@ impl TypeChecker {
         }
     }
 
-    fn has_written_impl(&self, trait_binding: BindingId, head: BindingId) -> bool {
-        self.written_impl(trait_binding, head).is_some()
-    }
-
-    pub(super) fn written_impl(
-        &self,
-        trait_binding: BindingId,
-        head: BindingId,
-    ) -> Option<&TypedTraitImpl> {
-        self.declarations.traits.impls.iter().find(|implementation| {
-            implementation.trait_binding == trait_binding
-                && matches!(implementation.implementor, Type::Named(binding, _) if binding == head)
-        })
-    }
-
     fn report_derived_written_impl(
         &mut self,
         head: BindingId,
         trait_binding: BindingId,
         listed: Span,
     ) -> bool {
-        let Some(written) = self.written_impl(trait_binding, head) else {
+        let Some(written) = self.declared_traits().written_impl(trait_binding, head) else {
             return false;
         };
         let trait_name = self.bindings.get(trait_binding).name().to_string();
@@ -427,92 +411,13 @@ impl TypeChecker {
         trait_binding: BindingId,
     ) -> Option<(Rc<str>, Type)> {
         match kind {
-            DefinitionKind::Struct => self.blocking_field(binding, trait_binding),
-            DefinitionKind::Enum => self.blocking_enum_payload(binding, trait_binding),
+            DefinitionKind::Struct => self
+                .derive_blockers()
+                .blocking_field(binding, trait_binding),
+            DefinitionKind::Enum => self
+                .derive_blockers()
+                .blocking_enum_payload(binding, trait_binding),
         }
-    }
-
-    pub(super) fn blocking_enum_payload(
-        &self,
-        binding: BindingId,
-        trait_binding: BindingId,
-    ) -> Option<(Rc<str>, Type)> {
-        let definition = self.declarations.types.enums.get(binding)?;
-        let params: Vec<GenericId> = definition.params.iter().map(|param| param.id).collect();
-        definition.blocking_variant(&|position, payload| {
-            let written = self.written_payload(binding, position, payload, trait_binding);
-            self.payload_satisfies(trait_binding, written, &params)
-        })
-    }
-
-    fn written_payload<'p>(
-        &self,
-        binding: BindingId,
-        position: PayloadPosition,
-        payload: &'p Type,
-        trait_binding: BindingId,
-    ) -> &'p Type {
-        let inferred_box = self.variant_payloads().is_inferred_box(binding, position);
-        match payload {
-            Type::Named(_, arguments)
-                if inferred_box && self.is_structural_trait(trait_binding) =>
-            {
-                &arguments[0]
-            }
-            _ => payload,
-        }
-    }
-
-    pub(super) fn blocking_field(
-        &self,
-        struct_binding: BindingId,
-        trait_binding: BindingId,
-    ) -> Option<(Rc<str>, Type)> {
-        let definition = self.declarations.types.structs.get(struct_binding)?;
-        let params: Vec<GenericId> = definition.params.iter().map(|param| param.id).collect();
-        definition
-            .fields
-            .iter()
-            .find(|(_, ty)| !self.payload_satisfies(trait_binding, ty, &params))
-            .map(|(name, ty)| (name.clone(), ty.clone()))
-    }
-
-    fn payload_satisfies(
-        &self,
-        trait_binding: BindingId,
-        payload: &Type,
-        params: &[GenericId],
-    ) -> bool {
-        self.field_type_satisfies(&Bound::plain(trait_binding), payload, params)
-    }
-
-    fn field_type_satisfies(&self, bound: &Bound, field_type: &Type, params: &[GenericId]) -> bool {
-        match field_type {
-            Type::Function(..) => self.function_field_trait_allowed(bound.binding),
-            Type::Generic(generic) => params.contains(generic),
-            _ => match self.declarations.traits.table.select(bound, field_type) {
-                Selection::Implemented { requirements, .. } => {
-                    requirements.iter().all(|requirement| {
-                        self.field_type_satisfies(
-                            &requirement.bound,
-                            &requirement.implementor,
-                            params,
-                        )
-                    })
-                }
-                Selection::Undecided | Selection::Missing => false,
-            },
-        }
-    }
-
-    fn function_field_trait_allowed(&self, trait_binding: BindingId) -> bool {
-        self.declarations
-            .traits
-            .table
-            .get(trait_binding)
-            .is_some_and(|rust_trait| {
-                FunctionFieldTraits::ALLOWED.contains(&StructDerives::derive_name(&rust_trait.path))
-            })
     }
 
     fn derived_implementor(

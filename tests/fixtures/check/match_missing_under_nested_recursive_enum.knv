@@ -1,0 +1,7 @@
+(enum chain (link chain bool) end)
+
+(defn pick (c)
+  (match c
+    ((link end _) 1)
+    ((link (link _ _) true) 2)
+    ((link _ false) 3)))

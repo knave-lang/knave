@@ -265,4 +265,18 @@ mod tests {
         assert!(!default.is_empty());
         assert!(!default.has_wild_row());
     }
+
+    #[test]
+    fn heads_do_not_cover_a_type_when_one_of_its_constructors_is_missing() {
+        let fixture = MatrixFixture::new();
+        let second = Constructor::new(
+            ConstructorTag::Variant {
+                owner: fixture.owner,
+                index: 1,
+            },
+            Vec::new(),
+        );
+        let matrix = MatrixFixture::rows(vec![fixture.variant(0)]);
+        assert!(!matrix.heads_cover(&[fixture.first_variant(), second]));
+    }
 }

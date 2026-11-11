@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/match_missing_under_nested_recursive_enum.knv
+---
+error[L0433]: non-exhaustive `match`
+ --> check/match_missing_under_nested_recursive_enum.knv:4:3
+  |
+4 | /   (match c
+5 | |     ((link end _) 1)
+6 | |     ((link (link _ _) true) 2)
+7 | |     ((link _ false) 3)))
+  | |_______________________^ this `match` does not cover every value
+  |
+  = note: missing 1 case: `end`
+  = help: add an arm for each missing case

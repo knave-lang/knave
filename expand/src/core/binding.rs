@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::BTreeSet;
 use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -177,6 +178,8 @@ impl BindingArena {
 
     pub fn mark_introduced(&mut self, id: BindingId) {
         self.introduced.insert(id);
+        let kind = self.get(id).kind();
+        self.definitions.get_mut().forget(id, kind);
     }
 
     pub fn is_introduced(&self, id: BindingId) -> bool {
@@ -199,7 +202,7 @@ impl BindingArena {
 #[derive(Clone, Default)]
 pub struct ModuleDefinitions {
     indexed: usize,
-    by_module: FxHashMap<ModuleId, Vec<BindingId>>,
+    by_module: FxHashMap<ModuleId, BTreeSet<BindingId>>,
 }
 
 impl ModuleDefinitions {
@@ -212,7 +215,6 @@ impl ModuleDefinitions {
             .into_iter()
             .flatten()
             .copied()
-            .filter(|binding| !bindings.is_introduced(*binding))
             .collect()
     }
 
@@ -225,8 +227,25 @@ impl ModuleDefinitions {
     }
 
     fn index(&mut self, bindings: &BindingArena, binding: BindingId) {
+        if bindings.is_introduced(binding) {
+            return;
+        }
         if let Some(module) = bindings.get(binding).kind().defining_module() {
-            self.by_module.entry(module).or_default().push(binding);
+            self.by_module.entry(module).or_default().insert(binding);
+        }
+    }
+
+    #[cfg(test)]
+    fn is_empty(&self) -> bool {
+        self.by_module.values().all(BTreeSet::is_empty)
+    }
+
+    fn forget(&mut self, binding: BindingId, kind: BindingKind) {
+        let held = kind
+            .defining_module()
+            .and_then(|module| self.by_module.get_mut(&module));
+        if let Some(definitions) = held {
+            definitions.remove(&binding);
         }
     }
 }
@@ -310,6 +329,24 @@ mod tests {
         fixture.defined_in(DefinitionsFixture::shapes());
         fixture.bindings.mark_introduced(helper);
         assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), [area]);
+    }
+
+    #[test]
+    fn an_introduced_binding_never_enters_the_index() {
+        let mut fixture = DefinitionsFixture::new();
+        let helper = fixture.add("helper", BindingKind::Global(DefinitionsFixture::shapes()));
+        fixture.bindings.mark_introduced(helper);
+        fixture.defined_in(DefinitionsFixture::shapes());
+        assert!(fixture.bindings.definitions.borrow().is_empty());
+    }
+
+    #[test]
+    fn marking_an_indexed_binding_introduced_removes_it_from_the_index() {
+        let mut fixture = DefinitionsFixture::new();
+        let helper = fixture.add("helper", BindingKind::Global(DefinitionsFixture::shapes()));
+        fixture.defined_in(DefinitionsFixture::shapes());
+        fixture.bindings.mark_introduced(helper);
+        assert!(fixture.bindings.definitions.borrow().is_empty());
     }
 
     #[test]

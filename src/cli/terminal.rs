@@ -1,31 +1,29 @@
 mod source_loader;
 
-use std::env::{self, VarError};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::time::Duration;
 
 use anstream::ColorChoice;
 
 use super::build_directory::BuildDirectory;
 use super::checking::Checking;
 use super::diagnostic_output::{DiagnosticOutput, RenderedDiagnostics};
+use super::emission::Emission;
+use super::entry_span::EntrySpan;
 use super::exit_status::ExitStatus;
 use super::expansion::Expansion;
+use super::interruptible_formatting::InterruptibleFormatting;
 use super::interruption::Interruption;
 use super::located_program::LocatedProgram;
 use super::program_file::ProgramFile;
 use super::project_task::ProjectTask;
+use super::rustfmt_time_limit::RustfmtTimeLimit;
 use super::source_report::SourceReport;
 use super::stage_work::StageWork;
 use super::standard_error::StandardError;
-use crate::build::{
-    BuildError, BuildPlan, BuildProfile, CargoCompiler, CargoTarget, EmittedFormatting,
-    FormattingError, RustCompiler,
-};
-use crate::emit::{EmittedCrate, RustEmitter};
+use crate::build::{BuildError, BuildPlan, BuildProfile, CargoCompiler, CargoTarget, RustCompiler};
+use crate::emit::EmittedCrate;
 use crate::language::Language;
-use crate::source::Span;
 use crate::source::{SourceFile, SourceId, SourceMap};
 use crate::types::TypedProgram;
 pub use source_loader::SourceLoader;
@@ -109,6 +107,11 @@ impl Terminal {
         )
     }
 
+    pub fn emission(&mut self) -> Result<Emission<'_>, ExitStatus> {
+        let limit = Self::rustfmt_time_limit()?;
+        Ok(self.emission_within(&limit))
+    }
+
     pub fn source_report(&self) -> SourceReport<'_> {
         SourceReport::new(&self.sources, self.diagnostics.as_ref())
     }
@@ -118,7 +121,7 @@ impl Terminal {
         program: &LocatedProgram,
         options: &BuildOptions,
     ) -> Result<PathBuf, ExitStatus> {
-        let emitted = self.emit(program.file())?;
+        let emitted = self.emit_file(program.file())?;
         let crate_name = Self::crate_name(program.file().path());
         let (directory, output_name) = match program.entry_project() {
             Some(project) => (project.build_directory(), project.name().to_string()),
@@ -184,7 +187,7 @@ impl Terminal {
                 emitted,
                 target.crate_name,
                 target.output,
-                Self::entry_span(),
+                EntrySpan::start(),
             )
             .map_err(|error| self.report_build(self.interrupted_or(error)))
     }
@@ -203,7 +206,7 @@ impl Terminal {
                 .note(&format!("waiting for another build in {target}"));
         };
         CargoCompiler::new(target.directory.clone(), BuildPlan::new(profile), &waiting)
-            .compile(emitted, target, Self::entry_span())
+            .compile(emitted, target, EntrySpan::start())
             .map_err(|error| self.report_build(self.interrupted_or(error)))
     }
 
@@ -214,58 +217,22 @@ impl Terminal {
         error
     }
 
-    pub fn emit(&mut self, file: &ProgramFile) -> Result<EmittedCrate, ExitStatus> {
-        let formatting = Self::formatting()?;
+    pub fn emit_file(&mut self, file: &ProgramFile) -> Result<EmittedCrate, ExitStatus> {
+        let limit = Self::rustfmt_time_limit()?;
         let program = self.check_file(file)?;
-        self.emit_formatted(&program, &formatting)
+        self.emission_within(&limit).emit(&program)
     }
 
-    pub fn emit_checked(&mut self, program: &TypedProgram) -> Result<EmittedCrate, ExitStatus> {
-        let formatting = Self::formatting()?;
-        self.emit_formatted(program, &formatting)
+    fn emission_within(&mut self, limit: &RustfmtTimeLimit) -> Emission<'_> {
+        Emission::new(
+            SourceReport::new(&self.sources, self.diagnostics.as_ref()),
+            &mut self.work,
+            InterruptibleFormatting::new(limit.formatting(), &self.interruption),
+        )
     }
 
-    fn emit_formatted(
-        &mut self,
-        program: &TypedProgram,
-        formatting: &EmittedFormatting,
-    ) -> Result<EmittedCrate, ExitStatus> {
-        let emitted = RustEmitter::emit(program, Self::entry_span())
-            .map_err(|diagnostics| self.source_report().report(&diagnostics))?;
-        self.work.emitted_expressions = Some(emitted.emission.emitted_expressions);
-        let written = match formatting.apply(&emitted) {
-            Ok(formatted) => formatted,
-            Err(FormattingError::Interrupted) => {
-                return Err(self.report_build(BuildError::Interrupted));
-            }
-            Err(_) if self.interruption.caused_a_failure() => {
-                return Err(self.report_build(BuildError::Interrupted));
-            }
-            Err(error) => {
-                StandardError::write_line(format_args!("note: {error}; writing unformatted Rust"));
-                emitted
-            }
-        };
-        self.work.scanned_tokens = written
-            .formatting
-            .map(|formatting| formatting.scanned_tokens);
-        Ok(written)
-    }
-
-    fn formatting() -> Result<EmittedFormatting, ExitStatus> {
-        Self::rustfmt_time_limit().map(EmittedFormatting::within)
-    }
-
-    fn rustfmt_time_limit() -> Result<Duration, ExitStatus> {
-        let variable = EmittedFormatting::time_limit_variable();
-        match env::var(&variable) {
-            Err(VarError::NotPresent) => Ok(EmittedFormatting::TIME_LIMIT),
-            value => value
-                .ok()
-                .and_then(|milliseconds| milliseconds.parse().ok())
-                .map(Duration::from_millis)
-                .ok_or_else(|| Self::report_malformed_variable(&variable)),
-        }
+    fn rustfmt_time_limit() -> Result<RustfmtTimeLimit, ExitStatus> {
+        RustfmtTimeLimit::from_environment().map_err(|malformed| malformed.report())
     }
 
     pub fn check_file(&mut self, file: &ProgramFile) -> Result<TypedProgram, ExitStatus> {
@@ -303,10 +270,6 @@ impl Terminal {
             .map_err(|error| Self::report_unresolvable(directory, &error))
     }
 
-    fn entry_span() -> Span {
-        Span::new(SourceId::new(0), 0..0)
-    }
-
     pub fn crate_name(path: &Path) -> String {
         Self::module_name(path).replace(|character: char| !character.is_ascii_alphanumeric(), "_")
     }
@@ -321,13 +284,6 @@ impl Terminal {
         StandardError::write_line(format_args!(
             "error: cannot resolve `{}`: {error}",
             directory.display()
-        ));
-        ExitStatus::UsageError
-    }
-
-    fn report_malformed_variable(variable: &str) -> ExitStatus {
-        StandardError::write_line(format_args!(
-            "error: `{variable}` must be a whole number of milliseconds"
         ));
         ExitStatus::UsageError
     }

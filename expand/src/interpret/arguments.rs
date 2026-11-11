@@ -1,14 +1,10 @@
+pub use super::builtin_site::BuiltinSite;
 use super::problems::InterpretProblems;
 use super::work_meter::WorkMeter;
 use super::{CodeList, Value};
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, NumberValue, Symbol};
 use crate::source::Span;
-
-pub struct BuiltinSite {
-    pub function: &'static str,
-    pub span: Span,
-}
 
 pub struct Arguments<'m> {
     site: BuiltinSite,

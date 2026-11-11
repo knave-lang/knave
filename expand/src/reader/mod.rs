@@ -1,5 +1,6 @@
 mod cursor;
 mod form;
+mod form_shape;
 mod literal_forms;
 mod number;
 mod problems;
@@ -7,7 +8,8 @@ mod string_literal;
 mod syntax;
 mod token;
 
-pub use form::{Form, FormCount, FormKind, FormNesting, Number, NumberValue, Symbol};
+pub use form::{Form, FormKind, FormNesting, Number, NumberValue, Symbol};
+pub use form_shape::FormShape;
 pub use literal_forms::LiteralForms;
 pub use string_literal::StringLiteral;
 pub use token::{Token, TokenKind, TokenScan};

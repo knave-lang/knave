@@ -3,9 +3,14 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use super::Value;
+use super::built_value::BuiltValue;
+use super::builtin_site::BuiltinSite;
 use super::limit_problems::LimitProblems;
+use super::list_item::ListItem;
+use super::list_size::ListSize;
+use super::value_limits::ValueLimits;
 use crate::diagnostic::Diagnostic;
-use crate::reader::{Form, FormCount, FormKind, FormNesting};
+use crate::reader::{Form, FormKind, FormNesting};
 use crate::source::Span;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -57,7 +62,7 @@ impl ListConversion {
     }
 
     fn form_of_list(&mut self, list: &CodeList) -> Result<Form, ListTooLarge> {
-        self.remaining = self.remaining.checked_sub(1).ok_or(ListTooLarge)?;
+        self.spend(ListSize::EMPTY)?;
         let forms = self.forms_of(list)?;
         Ok(Form::new(FormKind::List(forms), list.span))
     }
@@ -71,11 +76,12 @@ impl ListConversion {
     }
 
     fn charge(&mut self, form: &Form) -> Result<(), ListTooLarge> {
-        self.remaining = self.remaining.checked_sub(1).ok_or(ListTooLarge)?;
-        form.as_list()
-            .unwrap_or_default()
-            .iter()
-            .try_for_each(|item| self.charge(item))
+        self.spend(form.list_size())
+    }
+
+    fn spend(&mut self, forms: usize) -> Result<(), ListTooLarge> {
+        self.remaining = self.remaining.checked_sub(forms).ok_or(ListTooLarge)?;
+        Ok(())
     }
 }
 
@@ -90,16 +96,8 @@ impl ListNesting {
         Ok(Value::Form(list))
     }
 
-    fn with_size_of_items(values: &[Value]) -> Result<(u32, usize), NestedTooDeep> {
-        let (deepest, size) = values
-            .iter()
-            .fold((0, ListSize::EMPTY), |(deepest, size), value| {
-                (
-                    deepest.max(Self::of_value(value)),
-                    size + ListSize::of_value(value),
-                )
-            });
-        Self::admitted(1 + deepest).map(|nesting| (nesting, size))
+    fn of_items(values: &[Value]) -> Result<u32, NestedTooDeep> {
+        Self::admitted(1 + values.iter().map(Self::of_value).max().unwrap_or(0))
     }
 
     fn of_value(value: &Value) -> u32 {
@@ -167,28 +165,6 @@ impl ItemRange {
     }
 }
 
-pub struct ListSize;
-
-impl ListSize {
-    pub const EMPTY: usize = 1;
-
-    pub fn of(list: &CodeList) -> usize {
-        list.size as usize
-    }
-
-    fn of_value(value: &Value) -> usize {
-        match value {
-            Value::Form(form) => FormCount::stored(form),
-            Value::List(list) => Self::of(list),
-            _ => Self::EMPTY,
-        }
-    }
-
-    fn stored(size: usize) -> u32 {
-        u32::try_from(size).unwrap_or(u32::MAX)
-    }
-}
-
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 enum ListItems {
     Read(Form),
@@ -197,10 +173,10 @@ enum ListItems {
 
 impl CodeList {
     pub fn new(values: Vec<Value>, span: Span) -> Result<Self, NestedTooDeep> {
-        let (nesting, size) = ListNesting::with_size_of_items(&values)?;
+        let nesting = ListNesting::of_items(&values)?;
         Ok(Self {
             range: ItemRange::new(0, values.len()),
-            size: ListSize::stored(size),
+            size: ListSize::stored(ListSize::of_items(&values)),
             items: ListItems::Built(Rc::new(RefCell::new(values))),
             span,
             nesting,
@@ -215,7 +191,7 @@ impl CodeList {
             range: ItemRange::new(0, length),
             span: form.span(),
             nesting: FormNesting::of(form),
-            size: ListSize::stored(FormCount::stored(form)),
+            size: ListSize::stored(form.list_size()),
         })
     }
 
@@ -296,9 +272,8 @@ impl CodeList {
         extra: Vec<Value>,
         span: Span,
     ) -> Result<Self, NestedTooDeep> {
-        let (extra_nesting, extra_size) = ListNesting::with_size_of_items(&extra)?;
-        let nesting = list.nesting.max(extra_nesting);
-        let size = ListSize::of(list).saturating_add(extra_size - ListSize::EMPTY);
+        let nesting = list.nesting.max(ListNesting::of_items(&extra)?);
+        let size = ListSize::appended(list.built_size(), &extra);
         buffer.borrow_mut().extend(extra);
         Ok(Self {
             range: ItemRange::new(list.range.start(), buffer.borrow().len()),
@@ -326,12 +301,23 @@ impl CodeList {
     }
 }
 
+impl BuiltValue for CodeList {
+    const LIMIT: usize = ValueLimits::LIST_VALUES;
+
+    fn built_size(&self) -> usize {
+        self.size as usize
+    }
+
+    fn too_large(site: BuiltinSite, size: usize) -> Diagnostic {
+        LimitProblems::built_list_too_large(site, size, Self::LIMIT)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{
-        CodeList, ListConversion, ListNesting, ListSize, ListTooLarge, NestedTooDeep, PassedLimit,
-    };
+    use super::{CodeList, ListConversion, ListNesting, ListTooLarge, NestedTooDeep, PassedLimit};
     use crate::interpret::Value;
+    use crate::interpret::built_value::BuiltValue;
     use crate::reader::{Form, FormKind, Symbol};
     use crate::source::{SourceId, Span};
 
@@ -376,7 +362,7 @@ mod tests {
     fn a_list_counts_itself_and_each_appearance_of_a_list_it_holds() {
         let inner = NestedList::list_of(vec![NestedList::leaf(), NestedList::leaf()]);
         let outer = NestedList::list_of(vec![Value::List(inner.clone()), Value::List(inner)]);
-        assert_eq!(ListSize::of(&outer), 7);
+        assert_eq!(outer.built_size(), 7);
     }
 
     #[test]
@@ -388,12 +374,7 @@ mod tests {
                 NestedList::span(),
             )
             .expect("within the limit");
-        assert_eq!(ListSize::of(&longer), 4);
-    }
-
-    #[test]
-    fn a_size_past_what_a_list_stores_is_kept_at_the_largest() {
-        assert_eq!(ListSize::stored((1 << 32) + 1), u32::MAX);
+        assert_eq!(longer.built_size(), 4);
     }
 
     #[test]
@@ -533,7 +514,7 @@ mod tests {
         let leaf = Form::new(FormKind::Symbol(Symbol::new("leaf")), NestedList::span());
         let form = Form::new(FormKind::List(vec![leaf.clone(), leaf]), NestedList::span());
         let read = CodeList::of_form(&form).expect("a list form");
-        assert_eq!(ListSize::of(&read), 3);
+        assert_eq!(read.built_size(), 3);
     }
 
     #[test]

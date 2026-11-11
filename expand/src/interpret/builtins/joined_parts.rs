@@ -2,7 +2,7 @@ use std::fmt::{self, Write};
 
 use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::Arguments;
-use crate::interpret::build_limit::BuiltValue;
+use crate::interpret::built_value::BuiltValue;
 use crate::interpret::{BuildLimit, LimitedText, WorkMeter};
 use crate::reader::FormKind;
 
@@ -26,7 +26,11 @@ impl<'a> JoinedParts<'a> {
                 break;
             }
         }
-        Ok(BuildLimit::of(self.arguments).check(text)?.into_text())
+        Ok(
+            BuildLimit::of(self.arguments.function(), self.arguments.span())
+                .check(text)?
+                .into_text(),
+        )
     }
 
     fn write_part(&self, text: &mut LimitedText, index: usize) -> Result<fmt::Result, Diagnostic> {

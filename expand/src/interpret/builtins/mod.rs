@@ -15,11 +15,11 @@ pub use failure::FailureDescription;
 use std::cmp::Ordering;
 
 use super::arguments::{Arguments, BuiltinSite};
-use super::code_list::ListSize;
+use super::list_size::ListSize;
 use super::{BuildLimit, CompileTimeHost, ListNesting, PlannedList, Value, WorkMeter};
 use crate::core::{Builtin, Declaration};
 use crate::diagnostic::Diagnostic;
-use crate::reader::{Form, FormCount, FormKind, Number, NumberValue};
+use crate::reader::{Form, FormKind, Number, NumberValue};
 use crate::source::Span;
 use leading_lines::DistinctLeadingLines;
 use lists::ListOperations;
@@ -296,9 +296,14 @@ struct Forms;
 impl Forms {
     fn list(items: Vec<Form>, span: Span, arguments: &Arguments) -> Result<Value, Diagnostic> {
         arguments.charge(items.len())?;
-        let forms = items.iter().map(FormCount::stored).sum::<usize>();
-        BuildLimit::of(arguments).check(PlannedList(ListSize::EMPTY + forms))?;
+        BuildLimit::of(arguments.function(), arguments.span())
+            .check(PlannedList(ListSize::of_items(&items)))?;
         ListNesting::form_list(items, span).map_err(|deep| deep.at(arguments.span()))
+    }
+
+    fn string(text: String, span: Span, arguments: &Arguments) -> Result<Value, Diagnostic> {
+        let text = BuildLimit::of(arguments.function(), arguments.span()).check(text)?;
+        Ok(Value::Form(Form::new(FormKind::String(text.into()), span)))
     }
 
     fn count(count: usize, span: Span) -> Value {
@@ -313,7 +318,8 @@ mod tests {
     use crate::core::Builtin;
     use crate::diagnostic::DiagnosticCode;
     use crate::interpret::arguments::{Arguments, BuiltinSite};
-    use crate::interpret::{BuildLimit, StepBudget, WorkMeter};
+    use crate::interpret::value_limits::ValueLimits;
+    use crate::interpret::{StepBudget, WorkMeter};
     use crate::reader::{Form, FormKind, Symbol};
     use crate::source::{SourceId, Span};
 
@@ -328,7 +334,7 @@ mod tests {
 
         fn tree_past_a_sixteenth_of_the_limit() -> Form {
             let leaf = Form::new(FormKind::Symbol(Symbol::new("leaf")), Self::span());
-            let leaves = vec![leaf; BuildLimit::LIST_SIZE / Self::COPIES];
+            let leaves = vec![leaf; ValueLimits::LIST_VALUES / Self::COPIES];
             Form::new(FormKind::List(leaves), Self::span())
         }
 

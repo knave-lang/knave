@@ -1,10 +1,9 @@
 use super::Forms;
 use crate::diagnostic::Diagnostic;
 use crate::interpret::arguments::Arguments;
-use crate::interpret::code_list::ListSize;
+use crate::interpret::list_size::ListSize;
 use crate::interpret::problems::InterpretProblems;
 use crate::interpret::{BuildLimit, CodeList, PlannedList, Value};
-use crate::reader::{Form, FormKind};
 use crate::source::Span;
 
 pub struct StringOperations<'a> {
@@ -25,9 +24,9 @@ impl<'a> StringOperations<'a> {
     pub fn lines(&self) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
         let text = self.arguments.string(0)?;
-        let limit = BuildLimit::of(self.arguments);
+        let limit = BuildLimit::of(self.arguments.function(), self.arguments.span());
         let line_count = text.matches(Self::LINE_BREAK).count() + 1;
-        limit.check(PlannedList(ListSize::EMPTY + line_count))?;
+        limit.check(PlannedList(ListSize::of_texts(line_count)))?;
         self.arguments.charge(line_count)?;
         let lines = text
             .split(Self::LINE_BREAK)
@@ -87,11 +86,7 @@ impl<'a> StringOperations<'a> {
     }
 
     fn string_value(&self, text: String) -> Result<Value, Diagnostic> {
-        let text = BuildLimit::of(self.arguments).check(text)?;
-        Ok(Value::Form(Form::new(
-            FormKind::String(text.into()),
-            self.call_site,
-        )))
+        Forms::string(text, self.call_site, self.arguments)
     }
 }
 

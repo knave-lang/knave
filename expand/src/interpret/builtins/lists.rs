@@ -92,7 +92,7 @@ impl<'a> ListOperations<'a> {
     }
 
     fn built(&self, list: Result<CodeList, NestedTooDeep>) -> Result<Value, Diagnostic> {
-        let limit = BuildLimit::of(self.arguments);
+        let limit = BuildLimit::of(self.arguments.function(), self.arguments.span());
         let list = list.map_err(|deep| deep.at(limit.span()))?;
         Ok(Value::List(limit.check(list)?))
     }

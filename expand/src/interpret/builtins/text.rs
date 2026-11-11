@@ -6,7 +6,7 @@ use super::joined_parts::JoinedParts;
 use crate::core::Declaration;
 use crate::diagnostic::{Diagnostic, SimilarName};
 use crate::interpret::arguments::Arguments;
-use crate::interpret::{BuildLimit, CompileTimeHost, HeldNotes, StepBudget, Value, WorkMeter};
+use crate::interpret::{CompileTimeHost, StepBudget, Value, WorkMeter};
 use crate::reader::{Form, FormKind, Symbol};
 use crate::source::Span;
 
@@ -179,8 +179,8 @@ impl<'a> TextOperations<'a> {
 
     pub fn add_module_note(&self, host: &mut dyn CompileTimeHost) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(2)?;
-        BuildLimit::of(self.arguments).check(HeldNotes(host.module_note_count() + 1))?;
-        host.add_module_note(self.arguments.symbol(0)?.name(), self.arguments.form(1)?);
+        host.add_module_note(self.arguments.symbol(0)?.name(), self.arguments.form(1)?)
+            .map_err(|too_many| too_many.at(self.arguments.function(), self.arguments.span()))?;
         Ok(Value::Unit)
     }
 
@@ -366,11 +366,7 @@ impl<'a> TextOperations<'a> {
     }
 
     fn string_value(&self, text: String) -> Result<Value, Diagnostic> {
-        let text = BuildLimit::of(self.arguments).check(text)?;
-        Ok(Value::Form(Form::new(
-            FormKind::String(text.into()),
-            self.call_site,
-        )))
+        Forms::string(text, self.call_site, self.arguments)
     }
 }
 

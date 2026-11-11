@@ -6,7 +6,7 @@ use super::failed_definition::DeclaredName;
 use super::problems::ExpandProblems;
 use crate::core::{BindingId, BindingKind, Declaration, ModuleDefinitions, ModulePath, Namespace};
 use crate::diagnostic::Diagnostic;
-use crate::interpret::{CompileTimeHost, Value};
+use crate::interpret::{CompileTimeHost, TooManyNotes, Value};
 use crate::modules::{ModuleRecord, ModuleSources};
 use crate::reader::{Form, LiteralForms, Symbol};
 use crate::scope::{Phase, Resolution, ScopeSet};
@@ -66,15 +66,11 @@ impl CompileTimeHost for Expander<'_> {
         self.form_budgets.current().steps().set_limit(limit);
     }
 
-    fn add_module_note(&mut self, key: &str, note: Form) {
+    fn add_module_note(&mut self, key: &str, note: Form) -> Result<(), TooManyNotes> {
         let module = self
             .current_module
             .expect("macro code runs while a module expands");
-        self.tables.module_notes.add(module, key, note);
-    }
-
-    fn module_note_count(&self) -> usize {
-        self.tables.module_notes.checkpoint().notes_added()
+        self.tables.module_notes.add(module, key, note)
     }
 
     fn module_notes(&self, context: &Symbol, key: &str) -> Vec<Form> {

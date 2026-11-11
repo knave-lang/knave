@@ -181,7 +181,7 @@ impl ModuleText {
         match self {
             Self::File(path) => Ok(vec![terminal.sources().load(path)?]),
             Self::StandardInput(path) => match ModuleSources::read_standard_input() {
-                Ok(text) => Ok(vec![terminal.sources().add(path, text)]),
+                Ok(text) => Ok(vec![terminal.sources().add(path.display(), text)]),
                 Err(error) => Err(ExitStatus::report_unreadable_input(&error)),
             },
             Self::Loaded(_, sources) => Ok(sources.clone()),
@@ -224,7 +224,7 @@ impl FormsText {
         let mut scratch = Terminal::reporting_to(terminal.diagnostic_output());
         let module_text = terminal.source_file(module_source).text().to_string();
         let mut sources = scratch.sources();
-        let enclosing = sources.add(module, module_text);
+        let enclosing = sources.add(module.display(), module_text);
         let source = self.add_to(&mut sources, enclosing, module)?;
         let forms = sources.read(source)?;
         Ok(forms.iter().map(|form| form.span().range()).collect())

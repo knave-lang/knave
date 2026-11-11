@@ -173,7 +173,7 @@ impl FmtCommand {
         text: String,
         lookup: &ModuleLookup,
     ) -> Result<String, ExitStatus> {
-        let source = terminal.sources().add(path, text);
+        let source = terminal.sources().add(path.display(), text);
         self.formatter
             .format(terminal.source_file(source), lookup)
             .map_err(|failure| Self::report_failure(terminal, path, failure))

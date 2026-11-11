@@ -334,7 +334,9 @@ impl DocEnvironment {
 
     fn load(&self, terminal: &mut Terminal) -> Result<SourceId, ExitStatus> {
         match self {
-            Self::Prelude => Ok(terminal.sources().add(self.entry(), String::new())),
+            Self::Prelude => Ok(terminal
+                .sources()
+                .add(self.entry().display(), String::new())),
             Self::Program(path) => terminal.sources().load(path),
         }
     }

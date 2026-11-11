@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::path::Path;
 
 use crate::cli::diagnostic_output::{DiagnosticOutput, UnreadableFile};
@@ -20,7 +21,7 @@ impl<'a> SourceLoader<'a> {
 
     pub fn load(&mut self, path: &Path) -> Result<SourceId, ExitStatus> {
         match ModuleSources::read_file(path) {
-            Ok(text) => Ok(self.add(path, text)),
+            Ok(text) => Ok(self.add(path.display(), text)),
             Err(error) => Err(UnreadableFile::new(path, &error).report_to(self.output)),
         }
     }
@@ -30,8 +31,8 @@ impl<'a> SourceLoader<'a> {
         self.read_project(source)
     }
 
-    pub fn add(&mut self, name: impl AsRef<Path>, text: impl Into<String>) -> SourceId {
-        self.sources.add(name.as_ref().display().to_string(), text)
+    pub fn add(&mut self, name: impl Display, text: impl Into<String>) -> SourceId {
+        self.sources.add(name.to_string(), text)
     }
 
     pub fn add_inside(
@@ -112,7 +113,7 @@ mod tests {
         }
 
         fn added(&mut self, text: &str) -> SourceId {
-            self.loader().add(Path::new(Self::MODULE), text.to_string())
+            self.loader().add(Self::MODULE, text.to_string())
         }
 
         fn written_project_file(directory: &TemporaryDirectory, text: &str) -> PathBuf {

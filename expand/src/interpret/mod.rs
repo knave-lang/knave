@@ -4,15 +4,22 @@ mod built_value;
 mod builtin_site;
 mod builtins;
 mod code_list;
+mod compile_time_host;
+mod definition_queries;
+mod expansion_callbacks;
 mod held_bytes;
 mod limit_problems;
 mod limited_text;
 mod list_item;
 mod list_size;
 mod local_bindings;
+mod module_notes;
+mod module_queries;
+mod name_comparison;
 mod notes_too_large;
 mod planned_list;
 mod problems;
+mod source_queries;
 mod step_budget;
 mod value;
 mod value_limits;
@@ -23,61 +30,31 @@ pub use builtins::BuiltinCall;
 pub use code_list::{
     CodeList, ListConversion, ListNesting, ListTooLarge, NestedTooDeep, PassedLimit,
 };
+pub use compile_time_host::CompileTimeHost;
+pub use definition_queries::DefinitionQueries;
+pub use expansion_callbacks::ExpansionCallbacks;
 pub use held_bytes::HeldBytes;
 pub use limit_problems::LimitProblems;
 pub(crate) use limited_text::LimitedText;
 pub use local_bindings::LocalBindings;
+pub use module_notes::ModuleNotes;
+pub use module_queries::ModuleQueries;
+pub use name_comparison::NameComparison;
 pub use notes_too_large::NotesTooLarge;
 pub(crate) use planned_list::PlannedList;
 pub use problems::InterpretProblems;
+pub use source_queries::SourceQueries;
 pub use step_budget::StepBudget;
 pub use value::{Closure, Env, Value};
 pub use work_meter::WorkMeter;
 
 use std::rc::Rc;
 
-use crate::core::{
-    BindingId, Block, BodyItem, Control, Declaration, Expr, ExprKind, Lambda, Leaf, Literal,
-};
+use crate::core::{BindingId, Block, BodyItem, Control, Expr, ExprKind, Lambda, Leaf, Literal};
 use crate::diagnostic::Diagnostic;
-use crate::reader::{Form, FormKind, Symbol};
+use crate::reader::{Form, FormKind};
 use crate::source::Span;
 use crate::stack::DeepRecursion;
-
-pub trait CompileTimeHost {
-    fn global_value(&mut self, binding: BindingId, span: Span) -> Result<Value, Diagnostic>;
-    fn same_binding(&self, left: &Symbol, right: &Symbol) -> bool;
-    fn is_pattern_head(&self, head: &Symbol) -> bool;
-    fn definition_symbol(
-        &self,
-        term: &Symbol,
-        name: String,
-        span: Span,
-    ) -> Result<Symbol, Diagnostic>;
-    fn type_definition_symbol(&self, term: &Symbol, name: String) -> Symbol;
-    fn definition_call(&self, term: &Symbol, span: Span) -> Result<Option<Form>, Diagnostic>;
-    fn type_definition_call(&self, term: &Symbol) -> Option<Form>;
-    fn expand_call(&mut self, call: Form) -> Result<Option<Form>, Diagnostic>;
-    fn set_macro_step_limit(&mut self, limit: u64);
-    fn add_module_note(&mut self, key: &str, note: Form) -> Result<(), NotesTooLarge>;
-    fn module_notes(&self, context: &Symbol, key: &str) -> Vec<Form>;
-    fn declare_definition(&mut self, name: Form, declaration: Declaration);
-    fn form_location(&self, form: &Form) -> String;
-    fn in_tasks_directory(&self, form: &Form) -> bool;
-    fn program_modules(&self) -> Vec<Symbol>;
-    fn project_modules(&self) -> Vec<Symbol>;
-    fn module_exports(&self, path: &Symbol, span: Span) -> Result<Vec<Symbol>, Diagnostic>;
-    fn module_definitions(&self, path: &Symbol, span: Span) -> Result<Vec<Symbol>, Diagnostic>;
-    fn current_module(&self) -> Symbol;
-    fn module_symbol(&self, path: &Symbol, span: Span) -> Result<Symbol, Diagnostic>;
-    fn require_module(&mut self, path: &Symbol, span: Span) -> Result<Symbol, Diagnostic>;
-    fn read_literal_form(
-        &self,
-        literal: Span,
-        value: &str,
-        character: usize,
-    ) -> Option<(Form, usize)>;
-}
 
 enum Step {
     Value(Value),

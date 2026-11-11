@@ -19,12 +19,11 @@ expand/src/format/measure.rs 2
 expand/src/interpret/arguments.rs 1
 expand/src/interpret/builtins/failure.rs 2
 expand/src/interpret/builtins/lists.rs 1
-expand/src/interpret/builtins/mod.rs 5
-expand/src/interpret/builtins/program.rs 2
+expand/src/interpret/builtins/mod.rs 4
+expand/src/interpret/builtins/program.rs 1
 expand/src/interpret/builtins/strings.rs 1
-expand/src/interpret/builtins/text.rs 2
+expand/src/interpret/builtins/text.rs 1
 expand/src/interpret/code_list.rs 1
-expand/src/interpret/mod.rs 1
 expand/src/interpret/problems.rs 1
 expand/src/interpret/value.rs 1
 expand/src/project/dependency_reader.rs 1

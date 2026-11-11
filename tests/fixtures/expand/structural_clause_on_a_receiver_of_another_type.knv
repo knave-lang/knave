@@ -1,0 +1,12 @@
+(rust-type out "std::fmt::Formatter<'_>")
+
+(rust-type written "std::fmt::Result")
+
+(rust-trait other-receiver "std::fmt::UpperHex"
+  (method write-other-receiver
+    (fn ((ref out) (mut out)) written))
+  (structural :struct ""
+              :field ""
+              :variant ""
+              :part ""
+              :bare ""))

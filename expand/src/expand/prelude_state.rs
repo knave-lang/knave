@@ -337,7 +337,7 @@ mod tests {
         const ALTERNATIVE: &str = " or ";
         const OPTIONAL_PART_END: &str = ")?";
         const OPTIONAL_PART_START: &str = " (";
-        const UNDOCUMENTED_TERM: &str = "noted-term";
+        const UNDOCUMENTED_TERM: &str = "undocumented-term";
         const UNDOCUMENTED_BODY_NAME: &str = "undocumented-body";
 
         fn of_saved_prelude(names: &[&str]) -> Self {
@@ -413,7 +413,7 @@ mod tests {
         fn undocumented_lookup() -> String {
             let term = Self::UNDOCUMENTED_TERM;
             let name = Self::UNDOCUMENTED_BODY_NAME;
-            format!("(use prelude/macros {term})\n(def {name} (doc-body {term}))\n")
+            format!("(def {term} 0)\n(def {name} (doc-body {term}))\n")
         }
 
         fn header_name(index: usize) -> String {

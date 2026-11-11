@@ -1,7 +1,9 @@
 (use prelude/macros document header-shape map-list module
-                    module-docstring-notes template)
+                    template)
 
-(use prelude/internal/macros docstring-before-body?)
+(use prelude/internal/macros docstring-before-body?
+                             module-docstring-notes)
+
 (use prelude/types vec)
 (use prelude/number =)
 (use prelude/vec vec)

@@ -5,9 +5,11 @@
                              docstring-before-parameters
                              docstrings-key documented-body?
                              documented-terms-key
+                             module-docstring-notes
                              note-docstring noted-term
                              term-docstrings-key
-                             type-doc-key value-doc-key)
+                             type-doc-key value-doc-key
+                             value-docstring-note)
 
 (use code add-module-note bool-not closest-name concat
           current-module declare-macro-definition
@@ -27,9 +29,8 @@
 
 (export defmacro defrule defrule-with-value doc-body
         doc-header doc-page docstring docstrings-key
-        document documented-terms-key header-shape
-        listing-part map-list module module-docstring-notes
-        noted-term template with-macro-steps)
+        document header-shape map-list module template
+        with-macro-steps)
 
 (def map-list
   (fn (items function)
@@ -672,8 +673,7 @@
   => \"Doubles a number.\"
   ```"
   (local note
-    (concat (value-doc-key (documented-name header))
-            (list header text)))
+    (value-docstring-note (documented-name header) header text))
   (noted-docstring (fn () (add-docstring-note note))
                    text))
 
@@ -925,16 +925,14 @@
 
 (def listing-page
   (fn (part term)
-    (if (value-eq part (quote results))
-      (listing-text term)
-      (if (value-eq part (quote doc-header))
-        (string term)
-        (if (value-eq part (quote docstring))
-          (undocumented term "a listing has no docstring"
-                        "read its results with `doc-page`")
-          (if (value-eq part (quote doc-body))
-            (string "\n\n" (listing-text term))
-            (string term "\n\n" (listing-text term))))))))
+    (if (value-eq part (quote doc-header))
+      (string term)
+      (if (value-eq part (quote docstring))
+        (undocumented term "a listing has no docstring"
+                      "read its results with `doc-page`")
+        (if (value-eq part (quote doc-body))
+          (string "\n\n" (listing-text term))
+          (string term "\n\n" (listing-text term)))))))
 
 (def listing-text
   (fn (term)
@@ -1175,21 +1173,6 @@
     (if (empty? noted)
       (notes-with-key key (module-notes context docstrings-key))
       noted)))
-
-(def module-docstring-notes
-  (fn (context)
-    (local with-notes-of
-      (fn (notes terms)
-        (if (empty? terms)
-          notes
-          (recur (concat notes
-                         (module-notes context
-                                       (term-docstrings-key (first terms))))
-                 (rest terms)))))
-    (with-notes-of (module-notes context docstrings-key)
-                   (distinct-leading-lines
-                     (map-list (module-notes context documented-terms-key)
-                       (fn (entry) (string (noted-term entry))))))))
 
 (def notes-with-key
   (fn (key notes)

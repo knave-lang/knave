@@ -3,7 +3,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::checker::TypeChecker;
-use super::enums::PayloadPosition;
+use super::payload_position::PayloadPosition;
 use super::problems::TypeProblems;
 use super::selection::Selection;
 use super::traits::Implementor;

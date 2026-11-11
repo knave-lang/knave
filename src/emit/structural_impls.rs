@@ -9,8 +9,8 @@ use super::types::{LifetimeScope, RustTypes, TypePosition};
 use super::unsized_parameters::UnsizedParameters;
 use crate::core::{BindingArena, BindingId, ModuleId, StructuralKey, StructuralValues};
 use crate::types::{
-    Bound, GenericParam, StructuralTrait, StructuralUse, Type, TypedProgram, VariantDefinition,
-    VariantPayload,
+    Bound, BoxedPayload, GenericParam, PayloadPosition, StructuralTrait, StructuralUse, Type,
+    TypedProgram, VariantDefinition, VariantPayload,
 };
 
 #[derive(Default)]
@@ -470,10 +470,13 @@ impl<'a> StructuralImpls<'a> {
             .into_iter()
             .enumerate()
             .map(|(payload, part)| {
-                let boxed = self
-                    .program
-                    .inferred_boxes
-                    .contains(&(binding, position, payload));
+                let boxed = self.program.inferred_boxes.contains(&BoxedPayload {
+                    owner: binding,
+                    position: PayloadPosition {
+                        variant: position,
+                        payload,
+                    },
+                });
                 let value = if boxed { format!("&**{part}") } else { part };
                 part_template.fill(&TemplateValues {
                     value,

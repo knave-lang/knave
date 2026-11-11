@@ -104,7 +104,8 @@ impl<'a> MatchCoverage<'a> {
         matrix: &PatternMatrix,
         scrutinee: Type,
     ) -> Option<Vec<String>> {
-        if !usefulness.is_useful(matrix, Self::single_query(&CoverPattern::Wild, &scrutinee)) {
+        let wild = CoverPattern::wild();
+        if !usefulness.is_useful(matrix, Self::single_query(&wild, &scrutinee)) {
             return None;
         }
         let mut seen = FxHashSet::default();
@@ -130,7 +131,7 @@ impl<'a> MatchCoverage<'a> {
             .collect();
         !usefulness.is_useful(
             &unguarded,
-            Self::single_query(&CoverPattern::Wild, scrutinee),
+            Self::single_query(&CoverPattern::wild(), scrutinee),
         )
     }
 }

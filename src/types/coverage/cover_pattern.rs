@@ -1,41 +1,80 @@
-use crate::core::{BindingArena, BindingId, BindingKind, Literal};
+use super::constructor_tag::ConstructorTag;
+use crate::core::{BindingArena, BindingKind, Literal};
 use crate::types::{TypedPattern, TypedPatternKind};
 
 #[derive(Clone)]
 pub(super) enum CoverPattern {
-    Wild,
-    Variant {
-        owner: BindingId,
-        index: usize,
-        arguments: Vec<CoverPattern>,
-    },
-    Struct {
-        owner: BindingId,
-        arguments: Vec<CoverPattern>,
-    },
-    Literal(Literal),
+    Wild(WildPattern),
+    Constructed(ConstructedPattern),
+    Literal(LiteralPattern),
+}
+
+#[derive(Clone)]
+pub(super) struct WildPattern;
+
+#[derive(Clone)]
+pub(super) struct ConstructedPattern {
+    tag: ConstructorTag,
+    arguments: Vec<CoverPattern>,
+}
+
+#[derive(Clone)]
+pub(super) struct LiteralPattern {
+    literal: Literal,
+}
+
+trait ColumnPattern {
+    fn arguments(&self) -> &[CoverPattern];
+    fn head_tag(&self) -> Option<ConstructorTag>;
+    fn is_wild(&self) -> bool;
+    fn literal(&self) -> Option<&Literal>;
+    fn covers(&self, head: &dyn ColumnPattern) -> bool;
 }
 
 impl CoverPattern {
     pub(super) fn of(pattern: &TypedPattern, bindings: &BindingArena) -> Self {
         match &pattern.kind {
-            TypedPatternKind::Wildcard | TypedPatternKind::Bind(_) => CoverPattern::Wild,
+            TypedPatternKind::Wildcard | TypedPatternKind::Bind(_) => Self::wild(),
             TypedPatternKind::Variant(binding, arguments) => {
                 let BindingKind::Variant(_, info) = bindings.get(*binding).kind() else {
                     unreachable!("a typed variant pattern names a variant binding");
                 };
-                CoverPattern::Variant {
+                let tag = ConstructorTag::Variant {
                     owner: info.owner,
                     index: info.index,
-                    arguments: Self::all_of(arguments, bindings),
-                }
+                };
+                Self::constructed(tag, Self::all_of(arguments, bindings))
             }
-            TypedPatternKind::Struct(binding, arguments) => CoverPattern::Struct {
-                owner: *binding,
-                arguments: Self::all_of(arguments, bindings),
-            },
-            TypedPatternKind::Literal(literal, _) => CoverPattern::Literal(literal.clone()),
+            TypedPatternKind::Struct(binding, arguments) => Self::constructed(
+                ConstructorTag::Struct(*binding),
+                Self::all_of(arguments, bindings),
+            ),
+            TypedPatternKind::Literal(literal, _) => Self::from(literal.clone()),
         }
+    }
+
+    pub(super) fn wild() -> Self {
+        Self::Wild(WildPattern)
+    }
+
+    pub(super) fn constructed(tag: ConstructorTag, arguments: Vec<CoverPattern>) -> Self {
+        Self::Constructed(ConstructedPattern { tag, arguments })
+    }
+
+    pub(super) fn arguments(&self) -> &[CoverPattern] {
+        self.kind().arguments()
+    }
+
+    pub(super) fn head_tag(&self) -> Option<ConstructorTag> {
+        self.kind().head_tag()
+    }
+
+    pub(super) fn is_wild(&self) -> bool {
+        self.kind().is_wild()
+    }
+
+    pub(super) fn covers(&self, head: &CoverPattern) -> bool {
+        self.kind().covers(head.kind())
     }
 
     fn all_of(patterns: &[TypedPattern], bindings: &BindingArena) -> Vec<CoverPattern> {
@@ -45,23 +84,90 @@ impl CoverPattern {
             .collect()
     }
 
-    pub(super) fn arguments(&self) -> &[CoverPattern] {
+    fn kind(&self) -> &dyn ColumnPattern {
         match self {
-            CoverPattern::Variant { arguments, .. } | CoverPattern::Struct { arguments, .. } => {
-                arguments
-            }
-            CoverPattern::Wild | CoverPattern::Literal(_) => &[],
+            Self::Wild(pattern) => pattern,
+            Self::Constructed(pattern) => pattern,
+            Self::Literal(pattern) => pattern,
+        }
+    }
+}
+
+impl From<Literal> for CoverPattern {
+    fn from(literal: Literal) -> Self {
+        Self::Literal(LiteralPattern { literal })
+    }
+}
+
+impl ColumnPattern for WildPattern {
+    fn arguments(&self) -> &[CoverPattern] {
+        &[]
+    }
+
+    fn head_tag(&self) -> Option<ConstructorTag> {
+        None
+    }
+
+    fn is_wild(&self) -> bool {
+        true
+    }
+
+    fn literal(&self) -> Option<&Literal> {
+        None
+    }
+
+    fn covers(&self, _head: &dyn ColumnPattern) -> bool {
+        true
+    }
+}
+
+impl ColumnPattern for ConstructedPattern {
+    fn arguments(&self) -> &[CoverPattern] {
+        &self.arguments
+    }
+
+    fn head_tag(&self) -> Option<ConstructorTag> {
+        Some(self.tag)
+    }
+
+    fn is_wild(&self) -> bool {
+        false
+    }
+
+    fn literal(&self) -> Option<&Literal> {
+        None
+    }
+
+    fn covers(&self, _head: &dyn ColumnPattern) -> bool {
+        false
+    }
+}
+
+impl ColumnPattern for LiteralPattern {
+    fn arguments(&self) -> &[CoverPattern] {
+        &[]
+    }
+
+    fn head_tag(&self) -> Option<ConstructorTag> {
+        match self.literal {
+            Literal::Bool(value) => Some(ConstructorTag::Bool(value)),
+            _ => None,
         }
     }
 
-    pub(super) fn matches_literal(&self, literal: &Literal) -> bool {
-        match (self, literal) {
-            (CoverPattern::Wild, _) => true,
-            (CoverPattern::Literal(Literal::Number(left)), Literal::Number(right)) => {
-                left.value() == right.value()
-            }
-            (CoverPattern::Literal(Literal::String(left)), Literal::String(right)) => left == right,
-            (CoverPattern::Literal(Literal::Bool(left)), Literal::Bool(right)) => left == right,
+    fn is_wild(&self) -> bool {
+        false
+    }
+
+    fn literal(&self) -> Option<&Literal> {
+        Some(&self.literal)
+    }
+
+    fn covers(&self, head: &dyn ColumnPattern) -> bool {
+        match (&self.literal, head.literal()) {
+            (Literal::Number(left), Some(Literal::Number(right))) => left.value() == right.value(),
+            (Literal::String(left), Some(Literal::String(right))) => left == right,
+            (Literal::Bool(left), Some(Literal::Bool(right))) => left == right,
             _ => false,
         }
     }
@@ -76,6 +182,7 @@ mod tests {
     };
     use crate::reader::{Number, NumberValue};
     use crate::source::{SourceId, Span};
+    use crate::types::coverage::constructor_tag::ConstructorTag;
     use crate::types::{Type, TypedBinder, TypedPattern, TypedPatternKind};
 
     struct PatternFixture {
@@ -151,17 +258,18 @@ mod tests {
             &PatternFixture::typed(TypedPatternKind::Wildcard),
             &fixture.bindings,
         );
-        assert!(matches!(pattern, CoverPattern::Wild));
+        assert!(pattern.is_wild());
     }
 
     #[test]
     fn a_variant_covers_with_the_owner_and_index_of_its_binding() {
         let fixture = PatternFixture::new();
         let pattern = fixture.circle_of(TypedPatternKind::Wildcard);
-        assert!(matches!(
-            pattern,
-            CoverPattern::Variant { owner, index: 1, .. } if owner == fixture.owner
-        ));
+        let tag = ConstructorTag::Variant {
+            owner: fixture.owner,
+            index: 1,
+        };
+        assert!(pattern.head_tag() == Some(tag));
     }
 
     #[test]
@@ -169,16 +277,16 @@ mod tests {
         let literal =
             TypedPatternKind::Literal(PatternFixture::text("unit"), PatternFixture::string_type());
         let pattern = PatternFixture::new().circle_of(literal);
-        assert!(matches!(
-            pattern.arguments(),
-            [CoverPattern::Literal(Literal::String(_))]
-        ));
+        let unit = CoverPattern::from(PatternFixture::text("unit"));
+        assert_eq!(pattern.arguments().len(), 1);
+        assert!(pattern.arguments()[0].covers(&unit));
+        assert!(!pattern.arguments()[0].is_wild());
     }
 
     #[test]
     fn a_literal_has_no_arguments() {
         assert!(
-            CoverPattern::Literal(Literal::Bool(true))
+            CoverPattern::from(Literal::Bool(true))
                 .arguments()
                 .is_empty()
         );
@@ -186,27 +294,28 @@ mod tests {
 
     #[test]
     fn a_wildcard_matches_every_literal() {
-        assert!(CoverPattern::Wild.matches_literal(&PatternFixture::text("any")));
+        let any = CoverPattern::from(PatternFixture::text("any"));
+        assert!(CoverPattern::wild().covers(&any));
     }
 
     #[test]
     fn a_string_matches_only_the_same_string() {
-        let pattern = CoverPattern::Literal(PatternFixture::text("north"));
-        assert!(pattern.matches_literal(&PatternFixture::text("north")));
-        assert!(!pattern.matches_literal(&PatternFixture::text("south")));
+        let pattern = CoverPattern::from(PatternFixture::text("north"));
+        assert!(pattern.covers(&CoverPattern::from(PatternFixture::text("north"))));
+        assert!(!pattern.covers(&CoverPattern::from(PatternFixture::text("south"))));
     }
 
     #[test]
     fn a_literal_never_matches_one_of_another_kind() {
-        let pattern = CoverPattern::Literal(Literal::Bool(true));
-        assert!(!pattern.matches_literal(&PatternFixture::text("true")));
+        let pattern = CoverPattern::from(Literal::Bool(true));
+        assert!(!pattern.covers(&CoverPattern::from(PatternFixture::text("true"))));
     }
 
     #[test]
     fn a_binding_covers_as_a_wildcard() {
         let fixture = PatternFixture::new();
         let pattern = CoverPattern::of(&PatternFixture::typed(fixture.binder()), &fixture.bindings);
-        assert!(matches!(pattern, CoverPattern::Wild));
+        assert!(pattern.is_wild());
     }
 
     #[test]
@@ -220,24 +329,22 @@ mod tests {
             &PatternFixture::typed(TypedPatternKind::Struct(fixture.owner, vec![field])),
             &fixture.bindings,
         );
-        assert!(matches!(
-            &pattern,
-            CoverPattern::Struct { owner, arguments } if *owner == fixture.owner
-                && matches!(arguments.as_slice(), [CoverPattern::Literal(Literal::Bool(true))])
-        ));
+        assert!(pattern.head_tag() == Some(ConstructorTag::Struct(fixture.owner)));
+        assert_eq!(pattern.arguments().len(), 1);
+        assert!(pattern.arguments()[0].head_tag() == Some(ConstructorTag::Bool(true)));
     }
 
     #[test]
     fn a_number_matches_only_the_same_number() {
-        let pattern = CoverPattern::Literal(PatternFixture::number(7));
-        assert!(pattern.matches_literal(&PatternFixture::number(7)));
-        assert!(!pattern.matches_literal(&PatternFixture::number(8)));
+        let pattern = CoverPattern::from(PatternFixture::number(7));
+        assert!(pattern.covers(&CoverPattern::from(PatternFixture::number(7))));
+        assert!(!pattern.covers(&CoverPattern::from(PatternFixture::number(8))));
     }
 
     #[test]
     fn a_bool_matches_only_the_same_bool() {
-        let pattern = CoverPattern::Literal(Literal::Bool(true));
-        assert!(pattern.matches_literal(&Literal::Bool(true)));
-        assert!(!pattern.matches_literal(&Literal::Bool(false)));
+        let pattern = CoverPattern::from(Literal::Bool(true));
+        assert!(pattern.covers(&CoverPattern::from(Literal::Bool(true))));
+        assert!(!pattern.covers(&CoverPattern::from(Literal::Bool(false))));
     }
 }

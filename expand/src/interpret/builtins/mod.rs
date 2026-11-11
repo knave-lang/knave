@@ -291,11 +291,7 @@ impl<'m> BuiltinCall<'m> {
 
     pub fn run(self, host: &mut dyn Host) -> Result<Value, Diagnostic> {
         let operations = Operations::new(&self.arguments, self.call_site);
-        let site = BuiltinSite {
-            function: self.arguments.function(),
-            span: self.arguments.span(),
-        };
-        Self::implementation(self.builtin)(&operations, BuiltinHost::new(host, site))
+        Self::implementation(self.builtin)(&operations, BuiltinHost::new(host, &self.arguments))
     }
 
     fn implementation(builtin: Builtin) -> Implementation {
@@ -304,7 +300,8 @@ impl<'m> BuiltinCall<'m> {
     }
 }
 
-type Implementation = for<'a, 'h> fn(&Operations<'a>, BuiltinHost<'h>) -> Result<Value, Diagnostic>;
+type Implementation =
+    for<'a, 'h> fn(&Operations<'a>, BuiltinHost<'h, 'a>) -> Result<Value, Diagnostic>;
 
 struct Operations<'a> {
     language_names: LanguageNames<'a>,

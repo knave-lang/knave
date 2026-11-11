@@ -27,6 +27,12 @@ impl BindingId {
     pub fn index(self) -> u32 {
         self.0
     }
+
+    fn at(index: usize) -> Self {
+        #[cfg(test)]
+        tests::MadeIds::count_one();
+        Self(u32::try_from(index).expect("fewer than 2^32 bindings"))
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -127,9 +133,9 @@ pub struct BindingArena {
 
 impl BindingArena {
     pub fn add(&mut self, info: BindingInfo) -> BindingId {
-        let index = self.saved.count() + self.infos.len();
+        let index = self.count();
         self.infos.push(info);
-        BindingId(u32::try_from(index).expect("fewer than 2^32 bindings"))
+        BindingId::at(index)
     }
 
     pub fn take_saved(&mut self) -> BindingTables {
@@ -148,8 +154,7 @@ impl BindingArena {
     }
 
     pub fn ids(&self) -> impl Iterator<Item = BindingId> {
-        let count = self.saved.count() + self.infos.len();
-        (0..count).map(|index| BindingId(u32::try_from(index).expect("fewer than 2^32 bindings")))
+        (0..self.count()).map(BindingId::at)
     }
 
     pub fn is_saved(&self, id: BindingId) -> bool {
@@ -185,6 +190,10 @@ impl BindingArena {
     pub fn answering_macro(&self, function: BindingId) -> Option<BindingId> {
         self.answering_macros.get(&function).copied()
     }
+
+    fn count(&self) -> usize {
+        self.saved.count() + self.infos.len()
+    }
 }
 
 #[derive(Clone, Default)]
@@ -208,12 +217,16 @@ impl ModuleDefinitions {
     }
 
     fn index_new(&mut self, bindings: &BindingArena) {
-        let added = bindings.ids().skip(self.indexed);
-        for binding in added {
-            if let Some(module) = bindings.get(binding).kind().defining_module() {
-                self.by_module.entry(module).or_default().push(binding);
-            }
-            self.indexed += 1;
+        let count = bindings.count();
+        for binding in (self.indexed..count).map(BindingId::at) {
+            self.index(bindings, binding);
+        }
+        self.indexed = count;
+    }
+
+    fn index(&mut self, bindings: &BindingArena, binding: BindingId) {
+        if let Some(module) = bindings.get(binding).kind().defining_module() {
+            self.by_module.entry(module).or_default().push(binding);
         }
     }
 }
@@ -222,6 +235,23 @@ impl ModuleDefinitions {
 mod tests {
     use super::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleDefinitions};
     use crate::core::ModuleId;
+    use std::cell::Cell;
+
+    thread_local! {
+        static MADE_IDS: Cell<usize> = const { Cell::new(0) };
+    }
+
+    pub struct MadeIds;
+
+    impl MadeIds {
+        pub fn count_one() {
+            MADE_IDS.with(|made| made.set(made.get() + 1));
+        }
+
+        fn total() -> usize {
+            MADE_IDS.with(Cell::get)
+        }
+    }
 
     struct DefinitionsFixture {
         bindings: BindingArena,
@@ -280,6 +310,17 @@ mod tests {
         fixture.defined_in(DefinitionsFixture::shapes());
         fixture.bindings.mark_introduced(helper);
         assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), [area]);
+    }
+
+    #[test]
+    fn a_second_listing_with_no_new_bindings_visits_no_binding() {
+        let mut fixture = DefinitionsFixture::new();
+        fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
+        fixture.add("width", BindingKind::Local);
+        fixture.defined_in(DefinitionsFixture::colors());
+        let made = MadeIds::total();
+        fixture.defined_in(DefinitionsFixture::shapes());
+        assert_eq!(MadeIds::total(), made);
     }
 
     #[test]

@@ -10,8 +10,12 @@ use super::rust_types::RustTypeTable;
 use super::structs::StructTable;
 use super::template_clauses::TemplateClauses;
 use super::templates::TemplateBorrows;
+use super::trait_method_info::TraitMethodInfo;
 use super::traits::TraitTable;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
+use super::typed_trait::TypedTrait;
+use super::typed_trait_impl::TypedTraitImpl;
+use super::typed_trait_method::TypedTraitMethod;
 use super::unifier::LiteralKind;
 use super::{BoxedPayload, StructuralTrait, StructuralUses};
 use crate::core::{
@@ -354,64 +358,6 @@ pub struct TypedModule {
     pub structs: Vec<BindingId>,
     pub enums: Vec<BindingId>,
     pub exports: Vec<BindingId>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ReceiverKind {
-    Owned,
-    Shared,
-    Mutable,
-}
-
-#[derive(Clone)]
-pub struct TypedTraitMethod {
-    pub binding: BindingId,
-    pub receiver: Option<ReceiverKind>,
-    pub default: Option<BindingId>,
-    pub returns_self: bool,
-}
-
-impl TypedTraitMethod {
-    pub fn declaration(&self) -> BindingId {
-        self.default.unwrap_or(self.binding)
-    }
-}
-
-#[derive(Clone)]
-pub struct TypedAssociatedType {
-    pub binding: BindingId,
-    pub name: Rc<str>,
-}
-
-pub struct TypedTrait {
-    pub binding: BindingId,
-    pub module: ModuleId,
-    pub rust_name: Rc<str>,
-    pub supertraits: Vec<Bound>,
-    pub associated: Vec<TypedAssociatedType>,
-    pub methods: Vec<TypedTraitMethod>,
-}
-
-pub struct TraitMethodInfo {
-    pub trait_binding: BindingId,
-    pub rust_name: Rc<str>,
-    pub receiver: Option<ReceiverKind>,
-}
-
-#[derive(Clone, Copy)]
-pub struct TypedImplMethod {
-    pub binding: BindingId,
-    pub receiver: Option<ReceiverKind>,
-}
-
-pub struct TypedTraitImpl {
-    pub trait_binding: BindingId,
-    pub implementor: Type,
-    pub params: Vec<GenericParam>,
-    pub associated: Vec<(BindingId, Rc<str>, Type)>,
-    pub implementor_span: Span,
-    pub module: ModuleId,
-    pub methods: Vec<TypedImplMethod>,
 }
 
 #[derive(Clone)]

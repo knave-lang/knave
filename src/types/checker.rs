@@ -27,21 +27,19 @@ use super::pending::PendingBorrow;
 use super::pinning::LiteralDefaults;
 use super::pipelines::Pipelines;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
-use super::rust_types::RustType;
 use super::selection::Selection;
-use super::structs::StructDefinition;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
-use super::templates::TemplateBorrows;
-use super::traits::{Implementor, RustTrait};
 use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
-use super::typed::{
-    PendingModeCheck, ReceiverKind, TraitMethodInfo, TypedConversion, TypedDefinition, TypedExpr,
-    TypedExprKind, TypedLeaf, TypedTrait, TypedTraitImpl, TypedTraitMethod,
-};
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
 use super::variant_payloads::VariantPayloads;
 use super::wrapper::FunctionValueWrapper;
+use super::{
+    Implementor, PendingModeCheck, ReceiverKind, RustTrait, RustType, StructDefinition,
+    TemplateBorrows, TraitMethodInfo, TypedAssociatedType, TypedConversion, TypedDefinition,
+    TypedExpr, TypedExprKind, TypedImplMethod, TypedLeaf, TypedTrait, TypedTraitImpl,
+    TypedTraitMethod,
+};
 use crate::core::{
     BindingArena, BindingId, BindingKind, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr,
     ExprKind, Item, ItemKind, KernelForm, Leaf, ModuleId, ParsedTemplate, ReferenceKind,
@@ -1953,9 +1951,9 @@ impl TypeChecker {
             associated,
             methods,
         } = declaration;
-        let associated: Vec<super::typed::TypedAssociatedType> = associated
+        let associated: Vec<TypedAssociatedType> = associated
             .iter()
-            .map(|associated| super::typed::TypedAssociatedType {
+            .map(|associated| TypedAssociatedType {
                 binding: associated.binding,
                 name: associated.name.clone(),
             })
@@ -2183,7 +2181,7 @@ impl TypeChecker {
                         .methods
                         .get(&method.trait_method)
                         .and_then(|info| info.receiver);
-                    typed_methods.push(super::typed::TypedImplMethod {
+                    typed_methods.push(TypedImplMethod {
                         binding: method.binding,
                         receiver,
                     });

@@ -6,7 +6,7 @@ use super::selection::Selection;
 use super::structural_trait::StructuralTrait;
 use super::structural_uses::{ImplBoundUse, StructuralUse};
 use super::ty::{Bound, Type};
-use super::typed::TypedTraitImpl;
+use super::typed_trait_impl::TypedTraitImpl;
 use crate::core::{BindingId, CoreModule, ItemKind, RustTraitDeclaration};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;

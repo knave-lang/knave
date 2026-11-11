@@ -235,6 +235,7 @@ const UNCLOSED: &str = "(defn main ()\n  (println 1)\n";
 const LOOP_SHAPE: &str = "(use prelude/macros header-shape)\n\n(export dotimes)\n\n(defrule dotimes ((binding body ...) (do body ...)))\n\n(header-shape (dotimes binding))\n";
 const LOOP_CALL: &str = "(use shapes/loops dotimes)\n\n(dotimes (index 10) (println \"first line of the body\") (println index))\n";
 const LOOP_CALL_SHAPED: &str = "(use shapes/loops dotimes)\n\n(dotimes (index 10)\n  (println \"first line of the body\")\n  (println index))\n";
+const LOOP_CALL_AS_CALL: &str = "(use shapes/loops dotimes)\n\n(dotimes (index 10)\n         (println \"first line of the body\")\n         (println index))\n";
 const LOOPING_LIBRARY_ROOT: &str = "(use shapes/loops dotimes)\n\n(export dotimes)\n";
 const LOOPING_CALL: &str = "(use looping dotimes)\n\n(dotimes (index 10) (println \"first line of the body\") (println index))\n";
 const LOOPING_CALL_SHAPED: &str = "(use looping dotimes)\n\n(dotimes (index 10)\n  (println \"first line of the body\")\n  (println index))\n";
@@ -1569,7 +1570,7 @@ fn fmt_with_a_git_library_at_an_unreachable_host_finishes_at_once() {
 }
 
 #[test]
-fn fmt_in_a_project_also_finds_a_module_beside_a_parent_directory() {
+fn fmt_in_a_project_skips_a_module_that_the_compiler_cannot_reach() {
     let sandbox = Sandbox::new("fmt_project_parent_shapes")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("shapes/loops.knv", LOOP_SHAPE)
@@ -1577,7 +1578,7 @@ fn fmt_in_a_project_also_finds_a_module_beside_a_parent_directory() {
     sandbox
         .compiler(&["fmt", "scripts/loops.knv"])
         .assert_silent_success();
-    assert_eq!(sandbox.contents("scripts/loops.knv"), LOOP_CALL_SHAPED);
+    assert_eq!(sandbox.contents("scripts/loops.knv"), LOOP_CALL_AS_CALL);
 }
 
 #[test]

@@ -41,24 +41,19 @@ struct CatalogWalk<'r> {
 impl ModuleLookup {
     pub fn beside(directory: &Path) -> Self {
         Self {
-            directories: Self::ancestor_sources(directory).collect(),
-            shape_modules: Vec::new(),
-        }
-    }
-
-    pub fn within_project(project_sources: ModuleSources, directory: &Path) -> Self {
-        Self {
-            directories: std::iter::once(project_sources)
-                .chain(Self::ancestor_sources(directory))
+            directories: directory
+                .ancestors()
+                .map(|ancestor| ModuleSources::new(ancestor.to_path_buf(), ancestor.to_path_buf()))
                 .collect(),
             shape_modules: Vec::new(),
         }
     }
 
-    fn ancestor_sources(directory: &Path) -> impl Iterator<Item = ModuleSources> + '_ {
-        directory
-            .ancestors()
-            .map(|ancestor| ModuleSources::new(ancestor.to_path_buf(), ancestor.to_path_buf()))
+    pub fn within_project(project_sources: ModuleSources) -> Self {
+        Self {
+            directories: vec![project_sources],
+            shape_modules: Vec::new(),
+        }
     }
 
     pub fn beside_project_file(directory: &Path) -> Self {

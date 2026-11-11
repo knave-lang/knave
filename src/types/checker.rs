@@ -3,6 +3,8 @@ use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::admissible::Admissible;
+use super::admissible_types::AdmissibleTypes;
 use super::assumed_collections::AssumedCollections;
 use super::copy::InferredCopies;
 use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
@@ -50,12 +52,6 @@ struct ReopenedParameter {
     variable: Type,
     pinned: Type,
     span: Span,
-}
-
-pub(super) enum Admissible {
-    Unbounded,
-    Open(Vec<Type>),
-    Closed(Vec<Type>),
 }
 
 #[derive(Clone, Copy)]
@@ -662,39 +658,8 @@ impl TypeChecker {
             .any(|binding| self.failed_bindings.contains(binding))
     }
 
-    pub(super) fn admissible_types(&self, generic: GenericId) -> Admissible {
-        let traits: Vec<&RustTrait> = self
-            .generics
-            .get(&generic)
-            .map(|param| {
-                param
-                    .bounds
-                    .iter()
-                    .filter_map(|bound| self.traits.get(bound.binding))
-                    .collect()
-            })
-            .unwrap_or_default();
-        let Some((first, others)) = traits.split_first() else {
-            return Admissible::Unbounded;
-        };
-        let mut admissible: Vec<Type> = first
-            .implementors
-            .iter()
-            .map(|implementor| implementor.scheme.body.clone())
-            .collect();
-        for rust_trait in others {
-            admissible.retain(|candidate| {
-                rust_trait
-                    .implementors
-                    .iter()
-                    .any(|implementor| implementor.scheme.body == *candidate)
-            });
-        }
-        if traits.iter().any(|rust_trait| rust_trait.is_open()) {
-            Admissible::Open(admissible)
-        } else {
-            Admissible::Closed(admissible)
-        }
+    pub(super) fn admissible_types(&self) -> AdmissibleTypes<'_> {
+        AdmissibleTypes::new(&self.generics, &self.traits)
     }
 
     pub(super) fn copy_rules(&self) -> super::copy::CopyRules<'_> {
@@ -2587,7 +2552,7 @@ impl TypeChecker {
         if bound.argument.is_some() {
             return false;
         }
-        match self.admissible_types(generic) {
+        match self.admissible_types().of(generic) {
             Admissible::Closed(types) => {
                 !types.is_empty()
                     && types
@@ -3162,12 +3127,10 @@ impl TypeChecker {
 
 #[cfg(test)]
 mod tests {
-    use super::{Admissible, TypeChecker};
-    use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, PrimitiveType};
+    use super::TypeChecker;
+    use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind};
     use crate::source::{SourceId, Span};
-    use crate::types::{
-        Bound, GenericId, GenericParam, Implementor, RustTrait, Scheme, Type, TypeVar,
-    };
+    use crate::types::{Bound, Type, TypeVar};
 
     struct LinkingFixture {
         checker: TypeChecker,
@@ -3222,125 +3185,5 @@ mod tests {
             fixture.checker.unifier.shallow(&Type::Var(var)),
             Type::Var(other)
         );
-    }
-
-    struct AdmissibleFixture {
-        checker: TypeChecker,
-        generic: GenericId,
-    }
-
-    impl AdmissibleFixture {
-        const FIRST_TRAIT: BindingId = BindingId::from_index(0);
-        const SECOND_TRAIT: BindingId = BindingId::from_index(1);
-
-        fn bounded_by_both() -> Self {
-            let mut checker = TypeChecker::new(BindingArena::default());
-            let generic = GenericId::new(0);
-            let bounds = vec![
-                Bound::plain(Self::FIRST_TRAIT),
-                Bound::plain(Self::SECOND_TRAIT),
-            ];
-            checker.generics.insert(
-                generic,
-                GenericParam {
-                    id: generic,
-                    name: "T".into(),
-                    bounds,
-                },
-            );
-            Self { checker, generic }
-        }
-
-        fn implemented_by(mut self, rust_trait: BindingId, implementors: Vec<Implementor>) -> Self {
-            self.checker.traits.add(
-                rust_trait,
-                RustTrait {
-                    path: "Shown".into(),
-                    implementors,
-                    help: None,
-                    supertraits: Vec::new(),
-                    associated: None,
-                },
-            );
-            self
-        }
-
-        fn admissible(&self) -> Admissible {
-            self.checker.admissible_types(self.generic)
-        }
-
-        fn concrete(body: PrimitiveType) -> Implementor {
-            Implementor {
-                scheme: Scheme {
-                    lifetimes: Vec::new(),
-                    params: Vec::new(),
-                    body: Type::Primitive(body),
-                },
-                argument: None,
-            }
-        }
-
-        fn generic_implementor() -> Implementor {
-            let parameter = GenericId::new(1);
-            Implementor {
-                scheme: Scheme {
-                    lifetimes: Vec::new(),
-                    params: vec![GenericParam {
-                        id: parameter,
-                        name: "U".into(),
-                        bounds: Vec::new(),
-                    }],
-                    body: Type::Generic(parameter),
-                },
-                argument: None,
-            }
-        }
-
-        fn closed_over(admissible: Admissible) -> Option<Vec<Type>> {
-            match admissible {
-                Admissible::Closed(types) => Some(types),
-                Admissible::Unbounded | Admissible::Open(_) => None,
-            }
-        }
-    }
-
-    #[test]
-    fn two_bounds_admit_only_the_types_that_implement_both() {
-        let fixture = AdmissibleFixture::bounded_by_both()
-            .implemented_by(
-                AdmissibleFixture::FIRST_TRAIT,
-                vec![
-                    AdmissibleFixture::concrete(PrimitiveType::I64),
-                    AdmissibleFixture::concrete(PrimitiveType::F64),
-                ],
-            )
-            .implemented_by(
-                AdmissibleFixture::SECOND_TRAIT,
-                vec![
-                    AdmissibleFixture::concrete(PrimitiveType::U8),
-                    AdmissibleFixture::concrete(PrimitiveType::I64),
-                ],
-            );
-        assert_eq!(
-            AdmissibleFixture::closed_over(fixture.admissible()),
-            Some(vec![Type::Primitive(PrimitiveType::I64)])
-        );
-    }
-
-    #[test]
-    fn one_bound_with_a_generic_implementor_leaves_the_types_open() {
-        let fixture = AdmissibleFixture::bounded_by_both()
-            .implemented_by(
-                AdmissibleFixture::FIRST_TRAIT,
-                vec![AdmissibleFixture::concrete(PrimitiveType::I64)],
-            )
-            .implemented_by(
-                AdmissibleFixture::SECOND_TRAIT,
-                vec![
-                    AdmissibleFixture::concrete(PrimitiveType::I64),
-                    AdmissibleFixture::generic_implementor(),
-                ],
-            );
-        assert!(matches!(fixture.admissible(), Admissible::Open(_)));
     }
 }

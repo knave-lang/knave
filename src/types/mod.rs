@@ -1,3 +1,5 @@
+mod admissible;
+mod admissible_types;
 mod associated;
 mod assumed_collections;
 mod binding;

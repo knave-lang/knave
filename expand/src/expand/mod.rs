@@ -1,3 +1,4 @@
+mod binder_form;
 mod bindings;
 mod budget_arena;
 mod classified_form;

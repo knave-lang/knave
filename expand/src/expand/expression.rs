@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use super::Expander;
 use super::context::DefinitionContext;
 use super::problems::ExpandProblems;
 use super::recur_check::RecurCheck;
@@ -10,6 +9,7 @@ use super::rust_clauses::ClausedTemplate;
 use super::shape::Shape;
 use super::try_check::TryCheck;
 use super::type_note::TypeNote;
+use super::{Expander, binder_form::BinderForm};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, Control, ControlForm, Expr, ExprKind,
     ExpressionForm, FieldLabel, FieldSpelling, KernelForm, Keyword, Lambda, Leaf, LeafForm,
@@ -586,7 +586,7 @@ impl Expander<'_> {
         form: &Form,
         context: Option<&DefinitionContext>,
     ) -> Result<Binder, Diagnostic> {
-        let (name, annotation) = Self::split_binder(form);
+        let BinderForm { name, annotation } = BinderForm::of(form);
         let annotation = annotation
             .map(|annotation| self.lower_type(annotation))
             .transpose()?;

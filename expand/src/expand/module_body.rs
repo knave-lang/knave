@@ -7,7 +7,7 @@ use super::problems::ExpandProblems;
 use super::shape::Shape;
 use super::sourced_items::SourcedItems;
 use super::spliced_forms::{SplicedForm, SplicedForms};
-use super::{Expander, TraitMethods, module_notes::NotesCheckpoint};
+use super::{Expander, TraitMethods, binder_form::BinderForm, module_notes::NotesCheckpoint};
 use crate::core::{
     BindingId, BindingInfo, BindingKind, ControlForm, CoreModule, DefinitionForm, Expr, ExprKind,
     ExpressionForm, FieldLabel, ImplAssociatedType, ImplMethod, Item, ItemKind, KernelForm,
@@ -548,7 +548,7 @@ impl Expander<'_> {
         context: &DefinitionContext,
     ) -> Result<Option<PendingItem>, Diagnostic> {
         let items = Shape::new(KernelForm::Definition(DefinitionForm::Def), form).exactly(3)?;
-        let (name, annotation) = Self::split_binder(&items[1]);
+        let BinderForm { name, annotation } = BinderForm::of(&items[1]);
         let value = &items[2];
         if self.is_kernel_form(value, KernelForm::Macro) {
             let binding =

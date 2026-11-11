@@ -2,7 +2,8 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashSet;
 
-use super::checker::{Admissible, TypeChecker};
+use super::admissible::Admissible;
+use super::checker::TypeChecker;
 use super::literal_fit::LiteralFit;
 use super::problems::TypeProblems;
 use super::ty::{GenericId, Type, TypeVar};
@@ -261,7 +262,7 @@ impl<'c> Finalizer<'c> {
     fn check_generic_literal(&mut self, number: &Number, generic: GenericId, span: Span) {
         let display = self.checker.display();
         let parameter = display.show(&Type::Generic(generic));
-        let diagnostic = match self.checker.admissible_types(generic) {
+        let diagnostic = match self.checker.admissible_types().of(generic) {
             Admissible::Unbounded => Some(TypeProblems::literal_of_any_type(
                 number.text(),
                 &parameter,

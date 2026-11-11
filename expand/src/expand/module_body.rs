@@ -4,11 +4,11 @@ use super::Expander;
 use super::TraitMethods;
 use super::budget_arena::BudgetId;
 use super::context::DefinitionContext;
+use super::declared_trait::DeclaredTrait;
 use super::problems::ExpandProblems;
 use super::shape::Shape;
 use super::sourced_items::SourcedItems;
 use super::spliced_forms::{SplicedForm, SplicedForms};
-use super::structural_clause::DeclaredTrait;
 use crate::core::{
     BindingId, BindingInfo, BindingKind, ControlForm, CoreModule, DefinitionForm, Expr, ExprKind,
     ExpressionForm, FieldLabel, ImplAssociatedType, ImplMethod, Item, ItemKind, KernelForm,
@@ -1679,17 +1679,15 @@ impl Expander<'_> {
         let self_variable = self.define_binder_variable(&self_form)?;
         let entries = self.lower_rust_trait_entries(&shape, scope, &items[3..])?;
         let structural = entries.structural.as_ref().and_then(|clause| {
-            self.lower_structural_clause(
-                clause,
-                &DeclaredTrait {
-                    binding,
-                    definer: shape.written_name(),
-                    name: &items[1],
-                    path: &path,
-                    self_variable,
-                    methods: &entries.methods,
-                },
-            )
+            let declared = DeclaredTrait {
+                binding,
+                definer: shape.written_name(),
+                path: &path,
+                path_owner: self.trait_binding_with_path(binding, &items[1], &path),
+                self_variable,
+                methods: &entries.methods,
+            };
+            self.structural_traits().lower(clause, &declared)
         });
         self.tables.trait_methods.insert(
             binding,

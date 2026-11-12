@@ -1,0 +1,18 @@
+(use code fail)
+
+(def broken-helper
+  (fn ()
+    (fail "helper is not done"
+      (quote todo)
+      "finish it"
+      (quote (:once-per definition)))))
+
+(defmacro alpha (x) (broken-helper))
+
+(defmacro beta (x) (broken-helper))
+
+(defn main ()
+  (alpha 1)
+  (beta 2)
+  (alpha 3)
+  (beta 4))

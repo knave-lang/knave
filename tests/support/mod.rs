@@ -178,11 +178,7 @@ impl Fixture {
     }
 
     pub fn reported_diagnostics(mut self) -> Vec<ExampleDiagnostic> {
-        let diagnostics = match self.checked() {
-            Ok(program) => program.warnings,
-            Err(diagnostics) => diagnostics,
-        };
-        diagnostics
+        self.first_reporting_stage()
             .in_source_order()
             .into_iter()
             .map(|diagnostic| ExampleDiagnostic {
@@ -192,6 +188,28 @@ impl Fixture {
                 title: diagnostic.title().to_string(),
             })
             .collect()
+    }
+
+    fn first_reporting_stage(&mut self) -> Diagnostics {
+        match self.checked() {
+            Err(diagnostics) => diagnostics,
+            Ok(program) if Self::reports_a_code(&program.warnings) => program.warnings,
+            Ok(program) => self.emit_stage(program),
+        }
+    }
+
+    fn emit_stage(&mut self, program: TypedProgram) -> Diagnostics {
+        match self.emit_program(&program) {
+            Err(diagnostics) => diagnostics,
+            Ok(emitted) => self.compiled(&emitted).err().unwrap_or(program.warnings),
+        }
+    }
+
+    fn reports_a_code(diagnostics: &Diagnostics) -> bool {
+        diagnostics
+            .in_source_order()
+            .into_iter()
+            .any(|diagnostic| diagnostic.code().is_some())
     }
 
     pub fn emit_report(mut self) -> String {
@@ -219,16 +237,21 @@ impl Fixture {
         let emitted = self
             .emit()
             .map_err(|diagnostics| self.render(&diagnostics))?;
+        self.compiled(&emitted)
+            .map_err(|diagnostics| self.render(&diagnostics))
+    }
+
+    fn compiled(&self, emitted: &EmittedCrate) -> Result<PathBuf, Diagnostics> {
         let directory = self.build_directory();
         let binary = directory.join(self.module_name());
         match RustCompiler::new(directory, BuildProfile::Debug).compile(
-            &emitted,
+            emitted,
             "fixture",
             &binary,
             self.entry_span(),
         ) {
             Ok(()) => Ok(binary),
-            Err(BuildError::Program(diagnostics)) => Err(self.render(&diagnostics)),
+            Err(BuildError::Program(diagnostics)) => Err(diagnostics),
             Err(BuildError::Environment(message)) => {
                 panic!("the build environment failed: {message}")
             }
@@ -270,7 +293,11 @@ impl Fixture {
 
     fn emit(&mut self) -> Result<EmittedCrate, Diagnostics> {
         let program = self.checked()?;
-        let emitted = RustEmitter::emit(&program, self.entry_span())?;
+        self.emit_program(&program)
+    }
+
+    fn emit_program(&self, program: &TypedProgram) -> Result<EmittedCrate, Diagnostics> {
+        let emitted = RustEmitter::emit(program, self.entry_span())?;
         Ok(EmittedFormatting::within(EmittedFormatting::TIME_LIMIT)
             .apply(&emitted)
             .expect("rustfmt formats the emitted Rust"))

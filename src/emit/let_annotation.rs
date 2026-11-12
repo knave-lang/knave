@@ -20,7 +20,12 @@ impl<'a> LetAnnotation<'a> {
                 primitive.is_integer() && *primitive != RustFallback::INTEGER
             }
             Type::Named(binding, arguments) => {
-                !self.program.rust_types.is_opaque(*binding)
+                !self
+                    .program
+                    .declarations
+                    .types
+                    .rust_types()
+                    .is_opaque(*binding)
                     && arguments.iter().any(|argument| self.is_needed(argument))
             }
             _ => false,

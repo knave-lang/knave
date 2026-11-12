@@ -89,10 +89,10 @@ impl OwnershipChecker {
         let modes = ModeInference::new(
             &functions,
             CopyRules::new(
-                &program.traits,
+                program.declarations.traits.table(),
                 &program.generics,
-                &program.structs,
-                &program.enums,
+                program.declarations.types.structs(),
+                program.declarations.types.enums(),
             ),
         )
         .run();
@@ -109,10 +109,10 @@ impl OwnershipChecker {
             .map(|selection| selection.run())
             .unwrap_or_default();
         let copy = CopyRules::new(
-            &program.traits,
+            program.declarations.traits.table(),
             &program.generics,
-            &program.structs,
-            &program.enums,
+            program.declarations.types.structs(),
+            program.declarations.types.enums(),
         );
         let mut rewrite = ModeRewrite::new(
             &functions,
@@ -125,10 +125,10 @@ impl OwnershipChecker {
         rewrite.apply(program);
         copied_reads.apply(program, rewrite.function_params());
         let copy = CopyRules::new(
-            &program.traits,
+            program.declarations.traits.table(),
             &program.generics,
-            &program.structs,
-            &program.enums,
+            program.declarations.types.structs(),
+            program.declarations.types.enums(),
         );
         diagnostics.extend(
             PlaceArguments::new(program, &functions, rewrite.function_params(), &copy).check(),
@@ -145,22 +145,22 @@ impl OwnershipChecker {
             .for_each(|diagnostic| diagnostics.push(diagnostic));
         program.borrowing_lambdas = BorrowingLambdas::in_program(program);
         let kinds = ClosureKinds::new(KindSources {
-            traits: &program.traits,
+            traits: program.declarations.traits.table(),
             generics: &program.generics,
-            structs: &program.structs,
-            enums: &program.enums,
+            structs: program.declarations.types.structs(),
+            enums: program.declarations.types.enums(),
             bindings: &program.bindings,
             template_borrows: &program.template_borrows,
             function_parameters: ClosureKinds::function_parameters(program),
             rust_parameter_kinds: ClosureKinds::rust_parameter_kinds(program),
             written_parameter_kinds: ClosureKinds::written_parameter_kinds(program),
             borrowing_lambdas: &program.borrowing_lambdas,
-            pipelines: Pipelines::new(&program.rust_types),
+            pipelines: Pipelines::new(program.declarations.types.rust_types()),
         });
         let report = kinds.run(&mut program.modules);
         Self::apply_kinds(program, report, &mut diagnostics);
         let mut inferred_copies = InferredCopies::default();
-        let pipelines = Pipelines::new(&program.rust_types);
+        let pipelines = Pipelines::new(program.declarations.types.rust_types());
         let stored_definitions = StoredDefinitions::of(program);
         let returned_borrows = ReturnedBorrows::new(program);
         for definition in program
@@ -210,12 +210,12 @@ impl OwnershipChecker {
     ) -> MoveChecker<'a> {
         MoveChecker::new(
             CopyRules::new(
-                &program.traits,
+                program.declarations.traits.table(),
                 &program.generics,
-                &program.structs,
-                &program.enums,
+                program.declarations.types.structs(),
+                program.declarations.types.enums(),
             ),
-            &program.structs,
+            program.declarations.types.structs(),
             &program.bindings,
             &program.template_borrows,
             &program.generics,

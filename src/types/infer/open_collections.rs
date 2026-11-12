@@ -116,7 +116,7 @@ impl<'a> SequenceUses<'a> {
         match ty.referent() {
             Type::Generic(caller_generic) => OpenCollections::owner(self.typed, *caller_generic)
                 .is_some_and(|caller| self.reach_only_sequences(caller, *caller_generic)),
-            passed => Collection::of_referent(passed, &self.typed.rust_types)
+            passed => Collection::of_referent(passed, self.typed.declarations.types.rust_types())
                 .is_some_and(|collection| collection.is_sequence()),
         }
     }

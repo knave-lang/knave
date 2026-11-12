@@ -1744,17 +1744,17 @@ mod tests {
         fn kinds(&self) -> ClosureKinds<'_> {
             let program = self.source.program();
             ClosureKinds::new(KindSources {
-                traits: &program.traits,
+                traits: program.declarations.traits.table(),
                 generics: &program.generics,
-                structs: &program.structs,
-                enums: &program.enums,
+                structs: program.declarations.types.structs(),
+                enums: program.declarations.types.enums(),
                 bindings: &program.bindings,
                 template_borrows: &program.template_borrows,
                 function_parameters: ClosureKinds::function_parameters(program),
                 rust_parameter_kinds: ClosureKinds::rust_parameter_kinds(program),
                 written_parameter_kinds: ClosureKinds::written_parameter_kinds(program),
                 borrowing_lambdas: &program.borrowing_lambdas,
-                pipelines: Pipelines::new(&program.rust_types),
+                pipelines: Pipelines::new(program.declarations.types.rust_types()),
             })
         }
 

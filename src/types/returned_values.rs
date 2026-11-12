@@ -123,7 +123,7 @@ impl<'p> ReturnedValues<'p> {
             Type::Function(..) => true,
             Type::Ref(_, inner) | Type::Mut(_, inner) => self.may_hold_closure(inner),
             Type::Named(_, arguments) => {
-                Pipelines::new(&self.program.rust_types).is_pipeline(ty)
+                Pipelines::new(self.program.declarations.types.rust_types()).is_pipeline(ty)
                     || arguments
                         .iter()
                         .any(|argument| self.may_hold_closure(argument))

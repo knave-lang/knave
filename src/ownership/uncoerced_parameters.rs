@@ -10,7 +10,9 @@ pub struct UncoercedMethodParameters {
 impl UncoercedMethodParameters {
     pub fn of(program: &TypedProgram) -> Self {
         let receiverless_methods: FxHashSet<BindingId> = program
-            .trait_definitions
+            .declarations
+            .traits
+            .definitions()
             .iter()
             .flat_map(|definition| &definition.methods)
             .filter(|method| method.receiver.is_none())

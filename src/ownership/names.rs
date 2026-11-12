@@ -32,7 +32,9 @@ impl ChangingFunctionNames {
             }
         }
         for method in program
-            .trait_definitions
+            .declarations
+            .traits
+            .definitions()
             .iter()
             .flat_map(|definition| &definition.methods)
         {
@@ -45,7 +47,9 @@ impl ChangingFunctionNames {
 
     pub(super) fn impl_methods(program: &TypedProgram) -> FxHashSet<BindingId> {
         program
-            .trait_impls
+            .declarations
+            .traits
+            .impls()
             .iter()
             .flat_map(|implementation| implementation.methods.iter())
             .map(|method| method.binding)
@@ -54,7 +58,9 @@ impl ChangingFunctionNames {
 
     pub(super) fn default_methods(program: &TypedProgram) -> FxHashSet<BindingId> {
         program
-            .trait_definitions
+            .declarations
+            .traits
+            .definitions()
             .iter()
             .flat_map(|definition| definition.methods.iter())
             .filter_map(|method| method.default)
@@ -96,10 +102,10 @@ impl ChangingFunctionNames {
         };
         let name = program.bindings.get(param).name();
         let copy = CopyRules::new(
-            &program.traits,
+            program.declarations.traits.table(),
             &program.generics,
-            &program.structs,
-            &program.enums,
+            program.declarations.types.structs(),
+            program.declarations.types.enums(),
         );
         if copy.is_copy(referent) {
             OwnershipProblems::with_copied_parameter_change(warning, site, name)

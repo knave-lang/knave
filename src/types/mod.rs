@@ -87,6 +87,7 @@ pub use boxed_payload::BoxedPayload;
 pub use checker::TypeChecker;
 pub use collection::{Collection, CollectionKind};
 pub use copy::{CopyRules, InferredCopies};
+pub use declarations::Declarations;
 pub use display::TypeDisplay;
 pub use enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload};
 pub use form_results::{FormResult, FormResults};
@@ -106,9 +107,11 @@ pub use structural_trait::StructuralTrait;
 pub use structural_uses::{StructuralUse, StructuralUses};
 pub use template_clauses::TemplateClauses;
 pub use templates::TemplateBorrows;
+pub use trait_declarations::TraitDeclarations;
 pub use trait_method_info::TraitMethodInfo;
 pub use traits::{Implementor, RustTrait, TraitTable};
 pub use ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type, TypeVar};
+pub use type_declarations::TypeDeclarations;
 pub use typed::{
     Borrow, ClosureType, FieldOrder, FieldPlace, PendingModeCheck, TypedArgument, TypedArm,
     TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedDefinition,

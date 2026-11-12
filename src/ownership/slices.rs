@@ -56,7 +56,9 @@ impl<'a> ShrinkSelection<'a> {
         modes: &'a FxHashMap<BindingId, ParamMode>,
     ) -> Option<Self> {
         let slice = program
-            .rust_types
+            .declarations
+            .types
+            .rust_types()
             .binding_with_template(RustType::SLICE_TEMPLATE)?;
         let mut values = FxHashSet::default();
         let declared: FxHashMap<BindingId, &'a Type> = program
@@ -210,7 +212,14 @@ impl<'a> ShrinkSelection<'a> {
 
     fn slice_shrink(&self, reference: Reference, ty: &Type) -> Option<Shrink> {
         match ty {
-            Type::Named(vector, arguments) if self.program.rust_types.is_vector(*vector) => {
+            Type::Named(vector, arguments)
+                if self
+                    .program
+                    .declarations
+                    .types
+                    .rust_types()
+                    .is_vector(*vector) =>
+            {
                 match arguments.as_slice() {
                     [element] => Some(Shrink::Slice(reference, element.clone())),
                     _ => None,
@@ -334,7 +343,16 @@ impl<'a> ShrinkSelection<'a> {
 
     fn accepts_slice(&self, inner: &Type, element: &Type) -> bool {
         match inner {
-            Type::Named(binding, _) if self.program.rust_types.is_slice(*binding) => true,
+            Type::Named(binding, _)
+                if self
+                    .program
+                    .declarations
+                    .types
+                    .rust_types()
+                    .is_slice(*binding) =>
+            {
+                true
+            }
             Type::Generic(generic) => self.generic_accepts(*generic, &self.slice_of(element)),
             _ => false,
         }
@@ -365,7 +383,9 @@ impl<'a> ShrinkSelection<'a> {
             )
             .all(|bound| {
                 self.program
+                    .declarations
                     .traits
+                    .table()
                     .satisfies(bound, candidate, &|_, _| false)
             })
     }
@@ -574,10 +594,10 @@ mod tests {
             let program = TypedSource::expand(source).typed();
             let functions = FunctionTable::collect(&program);
             let copy = CopyRules::new(
-                &program.traits,
+                program.declarations.traits.table(),
                 &program.generics,
-                &program.structs,
-                &program.enums,
+                program.declarations.types.structs(),
+                program.declarations.types.enums(),
             );
             let modes = ModeInference::new(&functions, copy).run();
             Self {

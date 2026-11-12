@@ -143,11 +143,13 @@ impl<'a> StructuralImpls<'a> {
     }
 
     fn derived_traits(&self, head: BindingId) -> &'a [BindingId] {
-        if let Some(definition) = self.program.structs.get(head) {
+        if let Some(definition) = self.program.declarations.types.structs().get(head) {
             return &definition.derived_traits;
         }
         self.program
-            .enums
+            .declarations
+            .types
+            .enums()
             .get(head)
             .map_or(&[], |definition| &definition.derived_traits)
     }
@@ -161,11 +163,13 @@ impl<'a> StructuralImpls<'a> {
     }
 
     fn payload_types(&self, binding: BindingId) -> Vec<&'a Type> {
-        if let Some(definition) = self.program.structs.get(binding) {
+        if let Some(definition) = self.program.declarations.types.structs().get(binding) {
             return definition.fields.iter().map(|(_, ty)| ty).collect();
         }
         self.program
-            .enums
+            .declarations
+            .types
+            .enums()
             .get(binding)
             .into_iter()
             .flat_map(|definition| &definition.variants)
@@ -197,7 +201,9 @@ impl<'a> StructuralImpls<'a> {
             };
             items.extend(
                 self.program
-                    .structural_traits
+                    .declarations
+                    .traits
+                    .structural()
                     .iter()
                     .filter(|structural| self.needs(structural.binding, binding))
                     .map(|structural| self.implementation(structural, &implemented)),
@@ -214,11 +220,13 @@ impl<'a> StructuralImpls<'a> {
     }
 
     fn type_params(&self, binding: BindingId) -> &'a [GenericParam] {
-        match self.program.structs.get(binding) {
+        match self.program.declarations.types.structs().get(binding) {
             Some(definition) => &definition.params,
             None => self
                 .program
-                .enums
+                .declarations
+                .types
+                .enums()
                 .get(binding)
                 .map_or(&[], |definition| &definition.params),
         }
@@ -336,7 +344,13 @@ impl<'a> StructuralImpls<'a> {
     }
 
     fn body(&self, structural: &StructuralTrait, implemented: &ImplementedType) -> Vec<Fragment> {
-        match self.program.structs.get(implemented.binding) {
+        match self
+            .program
+            .declarations
+            .types
+            .structs()
+            .get(implemented.binding)
+        {
             Some(definition) => vec![
                 Fragment::Newline,
                 Fragment::Text(self.struct_body(structural, implemented, &definition.fields)),
@@ -380,7 +394,9 @@ impl<'a> StructuralImpls<'a> {
     ) -> Vec<Fragment> {
         let variants = self
             .program
-            .enums
+            .declarations
+            .types
+            .enums()
             .get(implemented.binding)
             .map_or(&[][..], |definition| &definition.variants);
         if variants.is_empty() {
@@ -477,8 +493,9 @@ impl<'a> StructuralImpls<'a> {
                 };
                 let boxed = self
                     .program
-                    .inferred_boxes
-                    .contains(&BoxedPayload::at(binding, position));
+                    .declarations
+                    .types
+                    .boxes(&BoxedPayload::at(binding, position));
                 let value = if boxed { format!("&**{part}") } else { part };
                 part_template.fill(&TemplateValues {
                     value,

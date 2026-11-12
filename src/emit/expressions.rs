@@ -661,7 +661,9 @@ impl<'a> ExpressionEmitter<'a> {
                     unreachable!("a typed variant pattern names a variant binding");
                 };
                 self.program
-                    .enums
+                    .declarations
+                    .types
+                    .enums()
                     .get(owner)
                     .is_some_and(|definition| definition.variants.len() == 1)
                     && parts.iter().all(|part| self.sure_pattern(part))
@@ -1055,7 +1057,9 @@ impl<'a> ExpressionEmitter<'a> {
     ) -> PatternShape {
         let fields = self
             .program
-            .structs
+            .declarations
+            .types
+            .structs()
             .get(binding)
             .expect("a reached struct has a definition")
             .fields
@@ -1078,7 +1082,9 @@ impl<'a> ExpressionEmitter<'a> {
         };
         let definition = self
             .program
-            .enums
+            .declarations
+            .types
+            .enums()
             .get(owner)
             .expect("a reached enum has a definition");
         let variant = &definition.variants[index];
@@ -1260,7 +1266,9 @@ impl<'a> ExpressionEmitter<'a> {
         };
         let definition = self
             .program
-            .enums
+            .declarations
+            .types
+            .enums()
             .get(owner)
             .expect("a reached enum has a definition");
         let variant = &definition.variants[index];
@@ -1350,7 +1358,9 @@ impl<'a> ExpressionEmitter<'a> {
     fn trait_object(&mut self, value: &TypedExpr, trait_binding: BindingId) -> Code {
         let box_binding = self
             .program
-            .box_binding
+            .declarations
+            .types
+            .box_binding()
             .expect("a trait object names the prelude's box type");
         let shown = {
             let types = self.types();
@@ -1369,11 +1379,15 @@ impl<'a> ExpressionEmitter<'a> {
     fn box_new(&self, argument: Code) -> Code {
         let binding = self
             .program
-            .box_binding
+            .declarations
+            .types
+            .box_binding()
             .expect("an inferred box names the prelude's box type");
         let rust_type = self
             .program
-            .rust_types
+            .declarations
+            .types
+            .rust_types()
             .get(binding)
             .expect("the prelude's box type is a Rust type");
         Code::joined(
@@ -1434,7 +1448,8 @@ impl<'a> ExpressionEmitter<'a> {
         inner.extend(value_code.fragments);
         inner.push(Fragment::Text(";".to_string()));
         inner.push(Fragment::Newline);
-        if let Some(collection) = Collection::of(&value.ty, &self.program.rust_types)
+        if let Some(collection) =
+            Collection::of(&value.ty, self.program.declarations.types.rust_types())
             && collection.is_map()
         {
             let key_code = self.expr(&keys[0]);
@@ -1578,7 +1593,7 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn global(&mut self, binding: BindingId, ty: &Type, span: Span) -> Code {
-        if let Some(info) = self.program.trait_methods.get(&binding) {
+        if let Some(info) = self.program.declarations.traits.methods().get(&binding) {
             let name = NameMangler::value(self.program.bindings.get(binding).name());
             let path = if self.plan.uses_trait(self.module, info.trait_binding) {
                 info.rust_name.to_string()
@@ -1689,7 +1704,12 @@ impl<'a> ExpressionEmitter<'a> {
             return self.inline_call(lambda, arguments);
         }
         if let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = &callee.kind
-            && self.program.trait_methods.contains_key(binding)
+            && self
+                .program
+                .declarations
+                .traits
+                .methods()
+                .contains_key(binding)
         {
             return self.trait_method_call(*binding, arguments);
         }
@@ -1750,7 +1770,9 @@ impl<'a> ExpressionEmitter<'a> {
     fn trait_method_call(&mut self, binding: BindingId, arguments: &[TypedArgument]) -> Code {
         let info = self
             .program
-            .trait_methods
+            .declarations
+            .traits
+            .methods()
             .get(&binding)
             .expect("a trait method call names a method");
         let name = NameMangler::value(self.program.bindings.get(binding).name());
@@ -2138,7 +2160,9 @@ impl<'a> ExpressionEmitter<'a> {
             return None;
         };
         self.program
-            .structs
+            .declarations
+            .types
+            .structs()
             .get(*binding)?
             .instantiated_field_depth(field, arguments)
     }
@@ -2582,7 +2606,7 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn is_boxed_object_reference(&self, ty: &Type) -> bool {
-        let Some(box_binding) = self.program.box_binding else {
+        let Some(box_binding) = self.program.declarations.types.box_binding() else {
             return false;
         };
         match ty {
@@ -2935,7 +2959,9 @@ impl<'a> ExpressionEmitter<'a> {
             return None;
         };
         self.program
-            .structs
+            .declarations
+            .types
+            .structs()
             .get(*binding)?
             .instantiated_field(&label.name, arguments)
     }

@@ -119,10 +119,6 @@ impl Type {
         }
     }
 
-    pub fn contains_var(&self, var: TypeVar) -> bool {
-        self.any_part(&|part| *part == Type::Var(var))
-    }
-
     pub fn is_unknown(&self) -> bool {
         self.has_vars() || matches!(self, Self::Generic(_))
     }

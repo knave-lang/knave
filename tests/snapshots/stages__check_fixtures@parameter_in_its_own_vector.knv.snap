@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/parameter_in_its_own_vector.knv
+---
+error[L0411]: this value's type would contain itself
+ --> check/parameter_in_its_own_vector.knv:1:27
+  |
+1 | (defn nest (x) (if true x (vec x)))
+  |                           ^^^^^^^ here
+  |
+  = help: a function cannot be called with itself as its own argument type

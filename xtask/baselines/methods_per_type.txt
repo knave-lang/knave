@@ -34,7 +34,7 @@ src/types/checker.rs::TypeChecker 495
 src/types/opaque_positions.rs::OpaquePositions 24
 src/types/pinning.rs::InstantiationReport 26
 src/types/problems.rs::TypeProblems 118
-src/types/ty.rs::Type 32
+src/types/ty.rs::Type 31
 src/types/typed.rs::TypedProgram 32
 src/types/unifier.rs::Unifier 44
 xtask/src/failure.rs::TaskFailure 37

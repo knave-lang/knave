@@ -1,0 +1,1 @@
+(defn nest (x) (do (if true x (vec x))))

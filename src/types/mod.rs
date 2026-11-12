@@ -34,6 +34,7 @@ mod lowering;
 mod main_result;
 mod method_receivers;
 mod missing_annotations;
+mod occurs_check;
 mod opaque_positions;
 mod parameter_call_labels;
 mod parameter_call_search;

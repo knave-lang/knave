@@ -98,7 +98,7 @@ impl RustEmitter {
     pub fn emit(program: &TypedProgram, entry: Span) -> Result<EmittedCrate, Diagnostics> {
         let plan = EmitPlan::build(program, entry)?;
         let unsized_parameters = UnsizedParameters::of(program, &plan);
-        let types = EmittedTypes::new(&program.declarations.types(), &unsized_parameters);
+        let types = EmittedTypes::new(program.declarations.types(), &unsized_parameters);
         let mut items = ItemEmitter::new(program, &plan, types);
         let fragments = items.crate_fragments();
         let emission = items.emission();

@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use crate::finding::Finding;
 use crate::form_reducer::FormReducer;
 use crate::harness::Harness;
@@ -5,6 +7,7 @@ use crate::known_classes::KnownClasses;
 use crate::reduced_finding::ReducedFinding;
 use crate::reduced_findings::ReducedFindings;
 use crate::reducer::Reducer;
+use crate::reported_signatures::ReportedSignatures;
 
 pub struct ReductionPlan {
     reducer: Box<dyn Reducer>,
@@ -29,13 +32,23 @@ impl ReductionPlan {
         }
     }
 
-    pub fn reduce(&self, harness: &Harness, findings: &[Finding]) -> ReducedFindings {
+    pub fn reduce(
+        &self,
+        harness: &Harness,
+        findings: &[Finding],
+        reported: &ReportedSignatures,
+    ) -> ReducedFindings {
         let mut ordered: Vec<&Finding> = findings.iter().collect();
         ordered.sort_by_key(|finding| finding.program.seed);
         let (known, outside): (Vec<&Finding>, Vec<&Finding>) = ordered
             .into_iter()
             .partition(|finding| finding.is_explained_by(self.classes));
-        let outside_known_classes = self.reduced(harness, outside.into_iter().take(self.count));
+        let mut seen = BTreeSet::new();
+        let unreported = outside.into_iter().filter(|finding| {
+            let signature = finding.signature();
+            !reported.contain(&signature) && seen.insert(signature)
+        });
+        let outside_known_classes = self.reduced(harness, unreported.take(self.count));
         let left = self.count.saturating_sub(outside_known_classes.len());
         let known = self.reduced(harness, known.into_iter().take(left));
         ReducedFindings::new(outside_known_classes, known)
@@ -64,6 +77,7 @@ mod tests {
     use std::time::Duration;
 
     use super::ReductionPlan;
+    use crate::finding::Finding;
     use crate::finding_fixture::FindingFixture;
     use crate::harness::Harness;
     use crate::knave_compiler::KnaveCompiler;
@@ -105,8 +119,11 @@ mod tests {
             FindingFixture::seeded(Seed::from(1), &["E0716"]),
             FindingFixture::seeded(Seed::from(0), &["E0502"]),
         ];
-        let reduced =
-            ReductionPlan::before_the_loan_rule(10, 2).reduce(&PlanFixture::harness(), &findings);
+        let reduced = ReductionPlan::before_the_loan_rule(10, 2).reduce(
+            &PlanFixture::harness(),
+            &findings,
+            &ReportedSignatures::default(),
+        );
         let directory = ScratchDirectory::create().expect("a scratch directory");
         reduced
             .record(directory.path())
@@ -116,9 +133,36 @@ mod tests {
             ["seed-0.reduced.knv", "seed-1.reduced.knv"]
         );
         let report = reduced
-            .report_outside_known_classes(&ReportedSignatures::default())
+            .report_outside_known_classes()
             .expect("seed-1 is outside");
         assert!(report.contains("seed-1"));
         assert!(!report.contains("seed-0"));
+    }
+
+    #[test]
+    fn spends_the_budget_on_signatures_not_yet_reported() {
+        let posted = ["E0716", "E0597", "E0515"];
+        let mut findings: Vec<Finding> = posted
+            .iter()
+            .enumerate()
+            .map(|(seed, code)| FindingFixture::seeded(Seed::from(seed as u64), &[code]))
+            .collect();
+        findings.push(FindingFixture::seeded(Seed::from(3), &["E0716"]));
+        findings.push(FindingFixture::seeded(Seed::from(4), &["E0373"]));
+        let markers: String = findings[..posted.len()]
+            .iter()
+            .map(|finding| ReportedSignatures::marker(&finding.signature()) + "\n")
+            .collect();
+        let reported = ReportedSignatures::of_text(&markers);
+        let reduced = ReductionPlan::before_the_loan_rule(10, 2).reduce(
+            &PlanFixture::harness(),
+            &findings,
+            &reported,
+        );
+        let report = reduced
+            .report_outside_known_classes()
+            .expect("seed-4 is new");
+        assert!(report.contains("seed-4"));
+        assert!(!report.contains("seed-0") && !report.contains("seed-3"));
     }
 }

@@ -41,8 +41,11 @@ impl ReductionArguments {
         findings: &[Finding],
         directory: &FindingsDirectory,
     ) -> Result<(), TaskFailure> {
-        let reduced = ReductionPlan::before_the_loan_rule(Self::ATTEMPTS, self.count)
-            .reduce(harness, findings);
+        let reduced = ReductionPlan::before_the_loan_rule(Self::ATTEMPTS, self.count).reduce(
+            harness,
+            findings,
+            &self.reported()?,
+        );
         reduced
             .record(directory.path())
             .map_err(|error| TaskFailure::unwritable(directory.path(), error))?;
@@ -50,10 +53,9 @@ impl ReductionArguments {
     }
 
     fn write_report(&self, reduced: &ReducedFindings) -> Result<(), TaskFailure> {
-        let reported = self.reported()?;
         match &self.report {
             Some(path) => reduced
-                .write_report(path, &reported)
+                .write_report(path)
                 .map_err(|error| TaskFailure::unwritable(path, error)),
             None => Ok(()),
         }

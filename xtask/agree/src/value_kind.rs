@@ -15,17 +15,11 @@ impl ValueKind {
     pub const TAG: Self = Self::printed_as(&["t"], "(:label {source})");
     pub const HELD_BORROWS: Self = Self::printed_as(&["held"], "(at {source} 0)");
     pub const READER: Self = Self::printed_as(&["size-of"], "({source})");
-    pub const CHANGER: Self = Self {
-        names: &["grow-it"],
-        printed_as: None,
-    };
-    pub const SHAPE: Self = Self::printed_as(&["sh", "form"], "(size {source})");
+    pub const CHANGER: Self = Self::unprinted(&["grow-it"]);
+    pub const FIGURE: Self = Self::printed_as(&["fig", "form"], "(size {source})");
     pub const MAP: Self = Self::printed_as(&["table", "index"], "(len {source})");
     pub const MAP_ENTRY: Self = Self::printed_as(&["entry"], "(unwrap-or {source} (ref 0))");
-    pub const BORROWING_CLOSURE: Self = Self {
-        names: &["first-in"],
-        printed_as: None,
-    };
+    pub const BORROWING_CLOSURE: Self = Self::unprinted(&["first-in"]);
     pub const ALL: [Self; 13] = [
         Self::NUMBER,
         Self::NUMBERS,
@@ -36,7 +30,7 @@ impl ValueKind {
         Self::HELD_BORROWS,
         Self::READER,
         Self::CHANGER,
-        Self::SHAPE,
+        Self::FIGURE,
         Self::MAP,
         Self::MAP_ENTRY,
         Self::BORROWING_CLOSURE,
@@ -46,6 +40,13 @@ impl ValueKind {
         Self {
             names,
             printed_as: Some(Shape::of(shape)),
+        }
+    }
+
+    const fn unprinted(names: &'static [&'static str]) -> Self {
+        Self {
+            names,
+            printed_as: None,
         }
     }
 

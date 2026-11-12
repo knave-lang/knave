@@ -10,11 +10,8 @@ pub struct Reading {
 
 impl Reading {
     pub const ELEMENT: Self = Self::of(ValueKind::NUMBERS, "(at {source} 0)");
-    pub const SHAPE_MATCH: Self = Self::of(
-        ValueKind::SHAPE,
-        "(match {source} ((shape/circle r) r) ((shape/square w) w) (shape/point 0))",
-    );
-    pub const SHAPE_TWICE: Self = Self::of(ValueKind::SHAPE, "(twice {source})");
+    pub const FIGURE_MATCH: Self = Self::shaped(ValueKind::FIGURE, Shape::SIZE_BY_VARIANT);
+    pub const FIGURE_TWICE: Self = Self::of(ValueKind::FIGURE, "(twice {source})");
     pub const CAR_SIZE: Self = Self::of(ValueKind::CAR, "(size {source})");
     pub const MAP_ENTRY: Self = Self::of(ValueKind::MAP, "(get {source} 1)");
     pub const MAP_GROWN: Self = Self::of(ValueKind::MAP, "(assoc {source} 3 30)");
@@ -29,10 +26,11 @@ impl Reading {
     pub const PUSHING_CLOSURE: Self = Self::of(ValueKind::NUMBERS, "(fn () (push! {source} 7))");
 
     const fn of(kind: ValueKind, shape: &'static str) -> Self {
-        Self {
-            kind,
-            shape: Shape::of(shape),
-        }
+        Self::shaped(kind, Shape::of(shape))
+    }
+
+    const fn shaped(kind: ValueKind, shape: Shape) -> Self {
+        Self { kind, shape }
     }
 
     pub fn read(&self, state: &mut GeneratorState) -> Option<String> {

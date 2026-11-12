@@ -8,6 +8,15 @@ pub enum HelperArgument {
     Expression,
 }
 
+impl HelperArgument {
+    fn passed_helper(self) -> Option<&'static HelperTemplate> {
+        match self {
+            Self::Function(template) => Some(template),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 struct HelperSignature {
     arguments: &'static [HelperArgument],
@@ -42,7 +51,7 @@ impl HelperTemplate {
     const VECTOR: HelperArgument = HelperArgument::Local(ValueKind::NUMBERS);
     const CAR: HelperArgument = HelperArgument::Local(ValueKind::CAR);
     const NUMBER: HelperArgument = HelperArgument::Expression;
-    const SHAPE: HelperArgument = HelperArgument::Local(ValueKind::SHAPE);
+    const FIGURE: HelperArgument = HelperArgument::Local(ValueKind::FIGURE);
     const BORROWED_MAP: HelperArgument = HelperArgument::Borrowed(ValueKind::MAP);
     const BORROWED_VECTOR: HelperArgument = HelperArgument::Borrowed(ValueKind::NUMBERS);
     const ONE_VECTOR: &'static [HelperArgument] = &[Self::VECTOR];
@@ -116,13 +125,8 @@ impl HelperTemplate {
     );
     const COUNT_DOWN: Self = Self::new(
         "count-down",
-        "(defn count-down (n) (if (> n 0) (count-up (- n 1)) 0))",
-        HelperSignature::returning(&[Self::NUMBER], ValueKind::NUMBER),
-    )
-    .calling(&Self::COUNT_UP);
-    const COUNT_UP: Self = Self::new(
-        "count-up",
-        "(defn count-up (n) (if (> n 0) (+ 1 (count-down (- n 1))) 0))",
+        "(defn count-down (n) (if (> n 0) (count-up (- n 1)) 0))
+(defn count-up (n) (if (> n 0) (+ 1 (count-down (- n 1))) 0))",
         HelperSignature::returning(&[Self::NUMBER], ValueKind::NUMBER),
     );
     const LARGER: Self = Self::new(
@@ -130,10 +134,10 @@ impl HelperTemplate {
         "(defn larger (a b) (if (> a b) a b))",
         HelperSignature::returning(&[Self::NUMBER, Self::NUMBER], ValueKind::NUMBER),
     );
-    const BIGGER_SHAPE: Self = Self::new(
-        "bigger-shape",
-        "(defn bigger-shape (a b) (if (> (size a) (size b)) a b))",
-        HelperSignature::returning(&[Self::SHAPE, Self::SHAPE], ValueKind::SHAPE),
+    const BIGGER_FIGURE: Self = Self::new(
+        "bigger-figure",
+        "(defn bigger-figure (a b) (if (> (size a) (size b)) a b))",
+        HelperSignature::returning(&[Self::FIGURE, Self::FIGURE], ValueKind::FIGURE),
     );
     const ENTRY_OF: Self = Self::new(
         "entry-of",
@@ -175,7 +179,7 @@ impl HelperTemplate {
         &Self::SUM_TO,
         &Self::COUNT_DOWN,
         &Self::LARGER,
-        &Self::BIGGER_SHAPE,
+        &Self::BIGGER_FIGURE,
         &Self::ENTRY_OF,
         &Self::HEAD,
         &Self::APPLY_TO,
@@ -195,6 +199,14 @@ impl HelperTemplate {
             calls: Some(callee),
             ..self
         }
+    }
+
+    pub fn dependencies(&self) -> impl Iterator<Item = &'static HelperTemplate> + '_ {
+        self.calls.into_iter().chain(
+            self.arguments()
+                .iter()
+                .filter_map(|argument| argument.passed_helper()),
+        )
     }
 
     pub fn arguments(&self) -> &'static [HelperArgument] {

@@ -1,4 +1,5 @@
 use crate::helper_template::HelperTemplate;
+use crate::shape::Shape;
 
 pub struct GeneratedMain {
     lines: Vec<String>,
@@ -6,13 +7,14 @@ pub struct GeneratedMain {
 }
 
 impl GeneratedMain {
-    const DECLARATIONS: [&'static str; 6] = [
+    const FIGURE_SIZE_SOURCE: &'static str = "s";
+
+    const DECLARATIONS: [&'static str; 5] = [
         "(defstruct car :make string :year i64)",
         "(defstruct tag :label (ref str))",
-        "(defenum shape (circle i64) (square i64) point)",
+        "(defenum figure (circle i64) (square i64) point)",
         "(deftrait sized\n  (size (fn ((ref self)) i64))\n  (twice (fn ((ref self)) i64) (* 2 (size self))))",
         "(impl sized car\n  (size (c) (:year c)))",
-        "(impl sized shape\n  (size (s) (match s ((shape/circle r) r) ((shape/square w) w) (shape/point 0))))",
     ];
 
     pub fn new(lines: Vec<String>, helpers: Vec<&'static HelperTemplate>) -> Self {
@@ -24,6 +26,7 @@ impl GeneratedMain {
             .iter()
             .map(|text| text.to_string())
             .collect();
+        sections.push(Self::figure_impl());
         sections.extend(
             self.helpers
                 .iter()
@@ -31,5 +34,13 @@ impl GeneratedMain {
         );
         sections.push(format!("(defn main ()\n  {})", self.lines.join("\n  ")));
         sections.join("\n\n") + "\n"
+    }
+
+    fn figure_impl() -> String {
+        format!(
+            "(impl sized figure\n  (size ({}) {}))",
+            Self::FIGURE_SIZE_SOURCE,
+            Shape::SIZE_BY_VARIANT.filled(Self::FIGURE_SIZE_SOURCE)
+        )
     }
 }

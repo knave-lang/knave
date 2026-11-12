@@ -30,6 +30,7 @@ mod dropped_documents;
 mod edited_lines;
 mod emission;
 mod emit;
+mod emit_without_ownership;
 mod enter_key;
 mod entry_argument;
 mod entry_span;

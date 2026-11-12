@@ -7,6 +7,7 @@ use super::check_flag::CheckFlag;
 use super::doc::DocCommand;
 use super::doc_arguments::DocArguments;
 use super::emit::EmitCommand;
+use super::emit_without_ownership::EmitWithoutOwnershipCommand;
 use super::entry_argument::EntryArgument;
 use super::exit_status::ExitStatus;
 use super::expand::ExpandCommand;
@@ -40,6 +41,8 @@ pub enum InspectionCommand {
     Emit {
         #[command(flatten)]
         entry: EntryArgument,
+        #[arg(long, hide = true)]
+        without_ownership_checks: bool,
     },
     #[command(about = "Lay out source files in place, or standard input given `-`")]
     Fmt {
@@ -63,7 +66,14 @@ impl InspectionCommand {
             Self::Types { entry } => TypesCommand::new(entry).run(terminal),
             Self::Doc(arguments) => arguments.run(terminal),
             Self::Expand { entry } => ExpandCommand::new(entry).run(terminal),
-            Self::Emit { entry } => EmitCommand::new(entry).run(terminal),
+            Self::Emit {
+                entry,
+                without_ownership_checks: false,
+            } => EmitCommand::new(entry).run(terminal),
+            Self::Emit {
+                entry,
+                without_ownership_checks: true,
+            } => EmitWithoutOwnershipCommand::new(entry).run(terminal),
             Self::Fmt {
                 paths,
                 check,

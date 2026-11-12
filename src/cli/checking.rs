@@ -2,7 +2,7 @@ use super::exit_status::ExitStatus;
 use super::source_report::SourceReport;
 use super::stage_work::StageWork;
 use crate::check::ProgramChecker;
-use crate::diagnostic::Diagnostic;
+use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::Program;
 use crate::types::TypedProgram;
 
@@ -24,13 +24,27 @@ impl<'a> Checking<'a> {
         self.check_showing(program, |_| false)
     }
 
+    pub fn check_without_ownership(
+        &mut self,
+        program: &Program,
+    ) -> Result<TypedProgram, ExitStatus> {
+        self.reported(ProgramChecker::check_without_ownership(program), |_| true)
+    }
+
     pub fn check_showing(
         &mut self,
         program: &Program,
         shown_warning: impl FnMut(&Diagnostic) -> bool,
     ) -> Result<TypedProgram, ExitStatus> {
-        let mut typed = ProgramChecker::check(program)
-            .map_err(|diagnostics| self.report.report(&diagnostics))?;
+        self.reported(ProgramChecker::check(program), shown_warning)
+    }
+
+    fn reported(
+        &mut self,
+        checked: Result<TypedProgram, Diagnostics>,
+        shown_warning: impl FnMut(&Diagnostic) -> bool,
+    ) -> Result<TypedProgram, ExitStatus> {
+        let mut typed = checked.map_err(|diagnostics| self.report.report(&diagnostics))?;
         self.work.inferred_expressions = Some(typed.checking.inferred_expressions);
         typed.warnings.retain(shown_warning);
         self.report.print(&typed.warnings);

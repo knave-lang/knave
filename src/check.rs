@@ -1,9 +1,11 @@
+use std::marker::PhantomData;
+
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::{BindingId, StructDerives};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::Program;
-use crate::ownership::{InPlaceChanges, OwnershipChecker};
+use crate::ownership::{EnforcedOwnership, InPlaceChanges, OwnershipGate, WaivedOwnership};
 use crate::types::{
     DefinitionGraph, FormResult, FormResults, InferredCopies, InstantiationReport, LiteralDefaults,
     MainResult, Pinning, Type, TypeChecker, TypedProgram,
@@ -14,7 +16,15 @@ pub struct ProgramChecker;
 impl ProgramChecker {
     #[inline(never)]
     pub fn check(program: &Program) -> Result<TypedProgram, Diagnostics> {
-        CheckRuns::new(program).typed().and_then(MainResult::check)
+        CheckRuns::<EnforcedOwnership>::new(program)
+            .typed()
+            .and_then(MainResult::check)
+    }
+
+    pub fn check_without_ownership(program: &Program) -> Result<TypedProgram, Diagnostics> {
+        CheckRuns::<WaivedOwnership>::new(program)
+            .typed()
+            .and_then(MainResult::check)
     }
 
     pub fn form_results(
@@ -40,13 +50,14 @@ impl ProgramChecker {
     }
 }
 
-struct CheckRuns<'a> {
+struct CheckRuns<'a, Gate: OwnershipGate = EnforcedOwnership> {
     program: &'a Program,
     graph: DefinitionGraph<'a>,
     blocked: FxHashSet<BindingId>,
     inferred_copies: InferredCopies,
     pinning: Pinning,
     inferred_expressions: usize,
+    gate: PhantomData<Gate>,
 }
 
 #[derive(Clone, Default)]
@@ -62,7 +73,7 @@ struct CheckedProgram {
     defaulting: DefaultingRule,
 }
 
-impl<'a> CheckRuns<'a> {
+impl<'a, Gate: OwnershipGate> CheckRuns<'a, Gate> {
     fn new(program: &'a Program) -> Self {
         Self {
             program,
@@ -71,6 +82,7 @@ impl<'a> CheckRuns<'a> {
             inferred_copies: InferredCopies::default(),
             pinning: Pinning::default(),
             inferred_expressions: 0,
+            gate: PhantomData,
         }
     }
 
@@ -221,7 +233,7 @@ impl<'a> CheckRuns<'a> {
 
     fn check_ownership(typed: &mut TypedProgram) -> Result<InferredCopies, Diagnostics> {
         let mut diagnostics = std::mem::take(&mut typed.unnameable_types);
-        match OwnershipChecker::check(typed) {
+        match Gate::inferred_copies(typed) {
             Ok(inferred_copies) if diagnostics.is_empty() => return Ok(inferred_copies),
             Ok(_) => {}
             Err(ownership_errors) => diagnostics.extend(ownership_errors),

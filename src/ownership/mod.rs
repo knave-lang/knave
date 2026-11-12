@@ -8,6 +8,7 @@ mod copied_reads;
 mod definitions;
 mod escaping_lambdas;
 mod functions;
+mod gate;
 mod held;
 mod kinds;
 mod lambda_address;
@@ -77,14 +78,37 @@ use uncoerced_parameters::UncoercedMethodParameters;
 use values::FunctionValueModes;
 
 pub use changes::InPlaceChanges;
+pub use gate::{EnforcedOwnership, OwnershipGate, WaivedOwnership};
 pub use mutation::ChangedValues;
 pub use tail_calls::TailCalls;
 pub use update_order::StructUpdateOrder;
 
 pub struct OwnershipChecker;
 
+struct OwnershipFindings {
+    inferred_copies: InferredCopies,
+    refusals: Diagnostics,
+    warnings: Diagnostics,
+}
+
 impl OwnershipChecker {
     pub fn check(program: &mut TypedProgram) -> Result<InferredCopies, Diagnostics> {
+        let mut findings = Self::findings(program);
+        if findings.refusals.has_errors() {
+            findings.refusals.extend(findings.warnings);
+        } else {
+            program.warnings.extend(findings.warnings);
+        }
+        findings.refusals.into_result(findings.inferred_copies)
+    }
+
+    pub fn check_without_refusals(program: &mut TypedProgram) -> InferredCopies {
+        let findings = Self::findings(program);
+        program.warnings.extend(findings.warnings);
+        findings.inferred_copies
+    }
+
+    fn findings(program: &mut TypedProgram) -> OwnershipFindings {
         let functions = FunctionTable::collect(program);
         let modes = ModeInference::new(
             &functions,
@@ -176,13 +200,11 @@ impl OwnershipChecker {
                 .into_iter()
                 .for_each(|diagnostic| diagnostics.push(diagnostic));
         }
-        let warnings = ChangingFunctionNames::check(program);
-        if diagnostics.has_errors() {
-            diagnostics.extend(warnings);
-        } else {
-            program.warnings.extend(warnings);
+        OwnershipFindings {
+            inferred_copies,
+            refusals: diagnostics,
+            warnings: ChangingFunctionNames::check(program),
         }
-        diagnostics.into_result(inferred_copies)
     }
 
     fn move_checker<'a>(

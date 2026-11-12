@@ -7,7 +7,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 use std::time::Duration;
 
-use support::{Fixture, FixtureReports, FormatFailures, HeaderAgreement, SavedPreludeAgreement};
+use support::{
+    ExplanationExamples, Fixture, FixtureReports, FormatFailures, HeaderAgreement,
+    SavedPreludeAgreement,
+};
+
+const BORROW_ACROSS_MOVE_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local grid (vec 1 2))\n  (local first (at grid 0))\n  (local next (assoc grid 0 3))\n  (println (at next 0) \" \" first))\n```\n";
+const FAILING_EXIT_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local empty (the (vec i64) (vec)))\n  (println (at empty 0)))\n```\n";
 
 #[test]
 fn reader_fixtures() {
@@ -238,4 +244,60 @@ fn fixtures_within_their_deadline_keep_their_reports() {
         path.display().to_string()
     });
     assert_eq!(reports.report(&path), "quick.knv");
+}
+
+#[test]
+fn each_erroneous_explanation_example_reports_its_code_first() {
+    for explanation in ExplanationExamples::written() {
+        let examples = explanation.erroneous_errors();
+        assert!(
+            !examples.is_empty(),
+            "{} has no erroneous example",
+            explanation.code()
+        );
+        for errors in examples {
+            let first = errors.first().map(|error| error.code.as_str());
+            assert_eq!(first, Some(explanation.code()));
+        }
+    }
+}
+
+#[test]
+fn each_explanation_fix_builds_and_runs() {
+    for explanation in ExplanationExamples::written() {
+        assert!(
+            explanation.fix_count() > 0,
+            "{} has no fix",
+            explanation.code()
+        );
+        assert_eq!(explanation.fix_failures(), Vec::<String>::new());
+    }
+}
+
+#[test]
+fn an_explanation_fix_that_rustc_refuses_fails_its_run() {
+    let explanation = ExplanationExamples::new("rustc-refusal", BORROW_ACROSS_MOVE_FIX);
+    assert_eq!(explanation.fix_failures().len(), 1);
+}
+
+#[test]
+fn an_explanation_fix_that_exits_nonzero_fails_its_run() {
+    let explanation = ExplanationExamples::new("nonzero-exit", FAILING_EXIT_FIX);
+    assert_eq!(explanation.fix_failures().len(), 1);
+}
+
+#[test]
+fn an_explanation_leaves_the_diagnostic_wording_to_its_problems_type() {
+    for explanation in ExplanationExamples::written() {
+        for errors in explanation.erroneous_errors() {
+            for error in errors {
+                assert!(
+                    !explanation.text().contains(&error.title),
+                    "{} restates `{}`",
+                    explanation.code(),
+                    error.title
+                );
+            }
+        }
+    }
 }

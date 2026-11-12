@@ -1,3 +1,4 @@
+mod explanation_examples;
 mod fixture_queue;
 mod formatting;
 mod headers;
@@ -25,6 +26,7 @@ use knave::source::{SourceId, SourceMap, Span};
 use knave::types::TypedProgram;
 use rustc_hash::FxHashMap;
 
+pub use explanation_examples::{ExampleError, ExplanationExamples};
 pub use formatting::{FormatFailures, ShapeLookup};
 pub use headers::HeaderAgreement;
 pub use reports::FixtureReports;
@@ -38,7 +40,7 @@ pub struct Fixture {
 }
 
 impl Fixture {
-    const FIXTURE_ROOT: &str = "tests/fixtures";
+    pub const FIXTURE_ROOT: &str = "tests/fixtures";
     const RUN_DEADLINE: Duration = Duration::from_secs(10);
     const EXIT_POLL_INTERVAL: Duration = Duration::from_millis(10);
     const PANIC_THREAD: &str = "thread '";
@@ -47,6 +49,10 @@ impl Fixture {
 
     pub fn load(path: &Path) -> Self {
         let text = fs::read_to_string(path).expect("fixture is readable");
+        Self::of_text(path, text)
+    }
+
+    pub fn of_text(path: &Path, text: String) -> Self {
         let mut sources = SourceMap::default();
         let entry = sources.add(Self::display_name(path), text);
         Self {
@@ -152,6 +158,22 @@ impl Fixture {
         }
     }
 
+    pub fn check_errors(mut self) -> Vec<ExampleError> {
+        self.checked().err().map_or_else(Vec::new, |diagnostics| {
+            diagnostics
+                .in_source_order()
+                .into_iter()
+                .filter(|diagnostic| diagnostic.is_error())
+                .map(|diagnostic| ExampleError {
+                    code: diagnostic
+                        .code()
+                        .map_or_else(String::new, |code| code.as_str().to_string()),
+                    title: diagnostic.title().to_string(),
+                })
+                .collect()
+        })
+    }
+
     pub fn emit_report(mut self) -> String {
         match self.emit() {
             Ok(emitted) => emitted.code,
@@ -160,10 +182,23 @@ impl Fixture {
     }
 
     pub fn run_report(mut self) -> String {
-        let emitted = match self.emit() {
-            Ok(emitted) => emitted,
-            Err(diagnostics) => return self.render(&diagnostics),
-        };
+        match self.built_binary() {
+            Ok(binary) => self.report_of(&binary),
+            Err(report) => report,
+        }
+    }
+
+    pub fn run_failure(mut self) -> Option<String> {
+        match self.built_binary() {
+            Ok(binary) => self.failure_of(&binary),
+            Err(report) => Some(report),
+        }
+    }
+
+    fn built_binary(&mut self) -> Result<PathBuf, String> {
+        let emitted = self
+            .emit()
+            .map_err(|diagnostics| self.render(&diagnostics))?;
         let directory = self.build_directory();
         let binary = directory.join(self.module_name());
         match RustCompiler::new(directory, BuildProfile::Debug).compile(
@@ -172,13 +207,19 @@ impl Fixture {
             &binary,
             self.entry_span(),
         ) {
-            Ok(()) => self.report_of(&binary),
-            Err(BuildError::Program(diagnostics)) => self.render(&diagnostics),
+            Ok(()) => Ok(binary),
+            Err(BuildError::Program(diagnostics)) => Err(self.render(&diagnostics)),
             Err(BuildError::Environment(message)) => {
                 panic!("the build environment failed: {message}")
             }
             Err(BuildError::Interrupted) => panic!("rustc was interrupted"),
         }
+    }
+
+    fn failure_of(&self, binary: &Path) -> Option<String> {
+        let output = self.run(binary);
+        let failed = !output.status.success();
+        failed.then(|| String::from_utf8_lossy(&output.stderr).into_owned())
     }
 
     fn build_directory(&self) -> PathBuf {

@@ -2011,6 +2011,47 @@ fn doc_prints_the_call_form_of_template() {
 }
 
 #[test]
+fn doc_prints_the_explanation_of_a_diagnostic_code() {
+    let sandbox = Sandbox::new("doc_code_explanation");
+    let doc = sandbox.compiler(&["doc", "L0501"]);
+    let page = doc.assert_exit_code(0).stdout();
+    assert_eq!(page.lines().next(), Some("L0501: use after move"));
+    assert!(page.contains("## Erroneous example"));
+}
+
+#[test]
+fn doc_looks_up_a_code_name_as_a_term() {
+    let sandbox = Sandbox::new("doc_code_name");
+    let doc = sandbox.compiler(&["doc", "--color", "never", "use-after-move"]);
+    assert!(
+        doc.assert_exit_code(1)
+            .stderr()
+            .starts_with("error[L0201]: cannot find `use-after-move` in this scope")
+    );
+}
+
+#[test]
+fn doc_says_when_a_code_has_no_explanation_yet() {
+    let sandbox = Sandbox::new("doc_code_unexplained");
+    let doc = sandbox.compiler(&["doc", "L0203"]);
+    assert_eq!(
+        doc.assert_exit_code(0).stdout(),
+        "L0203: duplicate definition\n\nNo explanation yet.\n"
+    );
+}
+
+#[test]
+fn doc_looks_up_an_unknown_code_as_a_term() {
+    let sandbox = Sandbox::new("doc_unknown_code");
+    let doc = sandbox.compiler(&["doc", "--color", "never", "L0999"]);
+    assert!(
+        doc.assert_exit_code(1)
+            .stderr()
+            .starts_with("error[L0201]: cannot find `L0999` in this scope")
+    );
+}
+
+#[test]
 fn doc_takes_a_term_that_starts_with_a_hyphen() {
     let sandbox = Sandbox::new("doc_hyphen");
     let doc = sandbox.compiler(&["doc", "->"]);
@@ -2449,6 +2490,35 @@ fn doc_write_shows_the_type_a_module_gives_its_own_name() {
             .contents("doc/geometry/area.md")
             .contains("\n(type square-area (where ((a number)) (fn (a) a)))\n```")
     );
+}
+
+#[test]
+fn doc_write_errors_writes_the_index_and_a_page_per_explained_code() {
+    let sandbox = Sandbox::new("doc_write_errors");
+    sandbox
+        .compiler(&["doc", "--write", "--errors"])
+        .assert_silent_success();
+    let files = sandbox.files_under("doc");
+    assert!(files.contains(&"errors.md".to_string()));
+    assert!(files.contains(&"errors/L0501.md".to_string()));
+    assert!(!files.contains(&"errors/L0203.md".to_string()));
+    assert!(!files.contains(&"prelude.md".to_string()));
+    let index = sandbox.contents("doc/errors.md");
+    assert!(index.contains("| [L0501](errors/L0501.md) | use after move |\n"));
+    assert!(index.contains("| L0203 | duplicate definition, no explanation yet |\n"));
+    let page = sandbox.contents("doc/errors/L0501.md");
+    assert!(page.starts_with("# L0501: use after move\n\n"));
+}
+
+#[test]
+fn doc_write_errors_beside_the_prelude_writes_both() {
+    let sandbox = Sandbox::new("doc_write_errors_prelude");
+    sandbox
+        .compiler(&["doc", "--write", "--prelude", "--errors"])
+        .assert_silent_success();
+    let files = sandbox.files_under("doc");
+    assert!(files.contains(&"prelude.md".to_string()));
+    assert!(files.contains(&"errors.md".to_string()));
 }
 
 #[test]

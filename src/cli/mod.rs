@@ -29,12 +29,14 @@ mod entry_argument;
 mod entry_span;
 mod entry_tree;
 mod error_location;
+mod error_pages;
 mod eval;
 mod evaluation_output;
 mod evaluation_request;
 mod exit_status;
 mod expand;
 mod expansion;
+mod explanation_page;
 #[cfg(test)]
 mod fake_programs;
 mod finished_program;

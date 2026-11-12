@@ -67,8 +67,8 @@ impl GeneratorState {
         if self.helpers.insert(template.name, template).is_some() {
             return;
         }
-        if let Some(callee) = template.calls {
-            self.use_helper(callee);
+        for dependency in template.dependencies() {
+            self.use_helper(dependency);
         }
     }
 

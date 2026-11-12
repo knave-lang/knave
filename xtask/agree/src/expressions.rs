@@ -10,8 +10,8 @@ impl Expressions {
     const NOTHING_TO_PRINT: &'static str = "0";
     const NUMBER_READINGS: [Reading; 4] = [
         Reading::ELEMENT,
-        Reading::SHAPE_MATCH,
-        Reading::SHAPE_TWICE,
+        Reading::FIGURE_MATCH,
+        Reading::FIGURE_TWICE,
         Reading::CAR_SIZE,
     ];
     const NUMBER_KINDS: [ValueKind; 3] =

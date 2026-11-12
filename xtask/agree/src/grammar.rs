@@ -3,7 +3,7 @@ use crate::generator_state::GeneratorState;
 use crate::production::Production;
 use crate::productions::{
     Block, Branch, CallBorrowingClosure, CallChanger, CallHelper, DerivedBinding,
-    FreshBorrowingClosure, FreshCar, FreshMap, FreshNumber, FreshShape, FreshVector, Print, Push,
+    FreshBorrowingClosure, FreshCar, FreshFigure, FreshMap, FreshNumber, FreshVector, Print, Push,
     Repeat, SetYear,
 };
 
@@ -16,7 +16,7 @@ impl Grammar {
         &FreshVector,
         &FreshNumber,
         &FreshCar,
-        &FreshShape,
+        &FreshFigure,
         &FreshMap,
         &FreshBorrowingClosure,
         &DerivedBinding::BORROW_ELEMENT,

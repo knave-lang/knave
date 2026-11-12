@@ -96,6 +96,8 @@ The project owner accepted option A (D108):
 3. The part is spelled `(quote (:once-per definition))`. `definition` is its only value, and any other value is `L0321`.
 4. `fail` keeps its shape, so a description still follows a help. The two prelude errors gain the helps "write `...` after it" and "remove this `...`, or repeat a variable that the pattern repeats".
 5. Every macro may use the part, user macros included.
+6. Marked errors merge when they match in all but their `in this macro call` labels, helps included. A marked `fail` in a helper function that several macros call therefore reports once, at the first call in source order of any of them. The definition that holds the fault is the helper, and fixing it fixes every caller.
+7. The REPL checks each input on its own, so it reports a marked error once per input.
 
 ## Rejected options and why
 

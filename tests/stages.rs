@@ -14,6 +14,7 @@ use support::{
 
 const BORROW_ACROSS_MOVE_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local grid (vec 1 2))\n  (local first (at grid 0))\n  (local next (assoc grid 0 3))\n  (println (at next 0) \" \" first))\n```\n";
 const SECOND_TRAIT_PATH_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n(deftrait printable (rust \"std::fmt::Display\") i64)\n\n(defn main ()\n  (println 1))\n```\n";
+const TITLE_QUOTING_EXPLANATION: &str = "The compiler says cannot find `distnce` in this scope.\n\n## Erroneous example\n\n```lisp\n(defn main ()\n  (println distnce))\n```\n";
 const FAILING_EXIT_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local empty (the (vec i64) (vec)))\n  (println (at empty 0)))\n```\n";
 
 #[test]
@@ -298,15 +299,26 @@ fn an_explanation_fix_that_exits_nonzero_fails_its_run() {
 #[test]
 fn an_explanation_leaves_the_diagnostic_wording_to_its_problems_type() {
     for explanation in ExplanationExamples::written() {
-        for errors in explanation.erroneous_errors() {
-            for error in errors {
-                assert!(
-                    !explanation.text().contains(&error.title),
-                    "{} restates `{}`",
-                    explanation.code(),
-                    error.title
-                );
-            }
-        }
+        assert_eq!(
+            explanation.restated_titles(),
+            Vec::<String>::new(),
+            "{} restates its diagnostic",
+            explanation.code()
+        );
     }
+}
+
+#[test]
+fn an_explanation_that_quotes_its_own_title_restates_it() {
+    let explanation = ExplanationExamples::new("L0201", TITLE_QUOTING_EXPLANATION);
+    assert_eq!(
+        explanation.restated_titles(),
+        vec!["cannot find `distnce` in this scope".to_string()]
+    );
+}
+
+#[test]
+fn an_explanation_may_quote_the_title_of_another_code() {
+    let explanation = ExplanationExamples::new("L0501", TITLE_QUOTING_EXPLANATION);
+    assert_eq!(explanation.restated_titles(), Vec::<String>::new());
 }

@@ -1,6 +1,7 @@
 use super::dropped_definitions::DroppedDefinitions;
 use super::dropped_documents::DroppedDocuments;
 use super::set_aside_drop::SetAsideDrop;
+use super::set_aside_source::SetAsideSource;
 use crate::expand::{BoundName, InputTerms};
 use crate::source::{SourceId, Span};
 
@@ -143,12 +144,15 @@ impl DefinitionBuffer {
     }
 
     fn drop_of(earlier: &BufferedInput, entered: &BufferedInput) -> Option<Box<dyn SetAsideDrop>> {
-        match earlier.terms.documents_left_by(&entered.terms) {
-            Some(documents) => {
-                DroppedDocuments::left_behind(earlier.name(), earlier.span, documents)
-                    .map(|drop| Box::new(drop) as Box<dyn SetAsideDrop>)
-            }
-            None => DroppedDefinitions::left_behind(earlier.name(), &earlier.terms, &entered.terms)
+        let source = SetAsideSource {
+            name: earlier.name().to_string(),
+            span: earlier.span,
+        };
+        let documents =
+            DroppedDocuments::left_behind(source.clone(), &earlier.terms, &entered.terms);
+        match documents {
+            Some(drop) => Some(Box::new(drop) as Box<dyn SetAsideDrop>),
+            None => DroppedDefinitions::left_behind(source, &earlier.terms, &entered.terms)
                 .map(|drop| Box::new(drop) as Box<dyn SetAsideDrop>),
         }
     }

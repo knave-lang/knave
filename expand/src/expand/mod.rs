@@ -89,7 +89,7 @@ use duplicate_definitions::DuplicateDefinitions;
 use evaluated_forms::EvaluatedForms;
 pub use generated_entry::GeneratedEntry;
 use globals::{GlobalTable, LoweredGlobals};
-pub use input_terms::{DocumentsLeft, InputTerms};
+pub use input_terms::InputTerms;
 pub use macro_call::MacroOrigin;
 use macro_call::MacroTable;
 pub use macro_origins::MacroOrigins;

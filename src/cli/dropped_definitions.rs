@@ -2,17 +2,22 @@ use std::rc::Rc;
 
 use super::name_records::NameRecords;
 use super::set_aside_drop::SetAsideDrop;
+use super::set_aside_source::SetAsideSource;
 use crate::diagnostic::Diagnostic;
 use crate::expand::{BoundName, InputTerms, SetAsideInput, SetAsideProblems};
 
 pub struct DroppedDefinitions {
-    source: String,
+    source: SetAsideSource,
     dropped: Vec<BoundName>,
     replacing: Rc<str>,
 }
 
 impl DroppedDefinitions {
-    pub fn left_behind(source: &str, earlier: &InputTerms, entered: &InputTerms) -> Option<Self> {
+    pub fn left_behind(
+        source: SetAsideSource,
+        earlier: &InputTerms,
+        entered: &InputTerms,
+    ) -> Option<Self> {
         let dropped: Vec<BoundName> = earlier
             .bound()
             .iter()
@@ -21,7 +26,7 @@ impl DroppedDefinitions {
             .collect();
         let replacing = entered.bound().iter().find(|bound| earlier.binds(bound))?;
         (!dropped.is_empty()).then(|| Self {
-            source: source.to_string(),
+            source,
             dropped,
             replacing: Rc::clone(&replacing.name),
         })
@@ -33,7 +38,7 @@ impl SetAsideDrop for DroppedDefinitions {
         let names: Vec<&str> = self.dropped.iter().map(|name| &*name.name).collect();
         let input = SetAsideInput {
             names: &names,
-            source: &self.source,
+            source: &self.source.name,
             setter,
         };
         SetAsideProblems::dropped_definitions(&input, &self.replacing, self.dropped[0].span)
@@ -73,9 +78,16 @@ mod tests {
             InputTerms::binding(names.iter().map(|name| Self::name(name)).collect())
         }
 
+        fn source() -> SetAsideSource {
+            SetAsideSource {
+                name: Self::SOURCE.to_string(),
+                span: Span::new(SourceId::new(0), 0..1),
+            }
+        }
+
         fn dropped() -> DroppedDefinitions {
             DroppedDefinitions::left_behind(
-                Self::SOURCE,
+                Self::source(),
                 &Self::terms(&["a", "b"]),
                 &Self::terms(&["b"]),
             )
@@ -86,14 +98,15 @@ mod tests {
     #[test]
     fn a_replacement_that_keeps_every_name_leaves_nothing_behind() {
         let earlier = DefinitionsFixture::terms(&["a"]);
-        let left = DroppedDefinitions::left_behind(DefinitionsFixture::SOURCE, &earlier, &earlier);
+        let left =
+            DroppedDefinitions::left_behind(DefinitionsFixture::source(), &earlier, &earlier);
         assert!(left.is_none());
     }
 
     #[test]
     fn an_input_that_replaces_nothing_leaves_nothing_behind() {
         let left = DroppedDefinitions::left_behind(
-            DefinitionsFixture::SOURCE,
+            DefinitionsFixture::source(),
             &DefinitionsFixture::terms(&["a"]),
             &DefinitionsFixture::terms(&["c"]),
         );

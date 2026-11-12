@@ -1,0 +1,20 @@
+(defenum (reply a)
+  (yes i64)
+  (sized :count i64)
+  no)
+
+(defn short (r)
+  (match r
+    ((yes n) (+ n 1))
+    ((sized :count n) n)
+    (no 0)))
+
+(defn qualified (r)
+  (match r
+    ((reply/yes n) n)
+    ((reply/sized :count n) n)
+    (reply/no 0)))
+
+(defn build () (reply/sized :count 2))
+
+(defn main () (println "ready"))

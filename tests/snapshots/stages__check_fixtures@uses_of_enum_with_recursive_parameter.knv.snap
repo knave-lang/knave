@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/uses_of_enum_with_recursive_parameter.knv
+---
+error[L0439]: type parameter `a` is only used recursively
+ --> check/uses_of_enum_with_recursive_parameter.knv:1:19
+  |
+1 | (defenum (wrapped a)
+  |                   ^ declared here
+2 |   (holds (option (wrapped a)))
+  |                           - first recursive use
+  |
+  = help: use `a` in a payload outside `wrapped`, or remove it

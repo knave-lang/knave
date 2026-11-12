@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/variant_of_enum_with_unused_parameter.knv
+---
+error[L0443]: no payload uses the type parameter `a`
+ --> check/variant_of_enum_with_unused_parameter.knv:1:17
+  |
+1 | (defenum (reply a)
+  |                 ^ declared here
+  |
+  = help: use `a` in a variant payload, or remove it

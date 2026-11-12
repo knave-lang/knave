@@ -1,0 +1,6 @@
+(defenum (reply a)
+  (yes i64)
+  no)
+
+(defn main ()
+  (let (r reply/no) (println "x")))

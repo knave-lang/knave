@@ -1593,7 +1593,7 @@ impl TypeChecker {
             .map(|(binder, param)| (binder.variable, param.id))
             .collect();
         let (lowered, field_spans) = self.lower_fields(fields, &scope)?;
-        Self::check_parameters_used(binders, &params, &lowered)?;
+        let parameters_used = Self::check_parameters_used(binders, &params, &lowered);
         self.declarations.types.structs.add(
             binding,
             StructDefinition {
@@ -1611,7 +1611,7 @@ impl TypeChecker {
                 written_derive: None,
             },
         );
-        Ok(())
+        parameters_used
     }
 
     fn collect_enum(
@@ -1644,7 +1644,7 @@ impl TypeChecker {
                 span: variant.span,
             });
         }
-        self.check_enum_parameters_used(binding, binders, &params, variants)?;
+        let parameters_used = self.check_enum_parameters_used(binding, binders, &params, variants);
         if let Some(rust) = rust {
             self.declarations.types.rust_types.add(
                 binding,
@@ -1670,7 +1670,7 @@ impl TypeChecker {
                 written_derive: None,
             },
         );
-        Ok(())
+        parameters_used
     }
 
     fn lower_variant_payload(

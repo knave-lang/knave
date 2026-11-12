@@ -1,0 +1,10 @@
+(defenum (wrapped a)
+  (holds (option (wrapped a)))
+  empty)
+
+(defn count (w)
+  (match w ((holds _) 1) (empty 0)))
+
+(defn main ()
+  (let (w (wrapped/holds none))
+    (println (count w))))

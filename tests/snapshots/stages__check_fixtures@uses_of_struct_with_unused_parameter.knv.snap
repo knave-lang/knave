@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/uses_of_struct_with_unused_parameter.knv
+---
+error[L0416]: no field uses the type parameter `a`
+ --> check/uses_of_struct_with_unused_parameter.knv:1:18
+  |
+1 | (defstruct (cell a)
+  |                  ^ declared here
+  |
+  = help: use `a` in a field's type, or remove it

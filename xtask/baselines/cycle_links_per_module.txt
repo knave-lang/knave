@@ -9,9 +9,8 @@ expand/src/core/types.rs 2
 expand/src/expand/failed_definition.rs 1
 expand/src/expand/globals.rs 1
 expand/src/expand/macro_call.rs 1
-expand/src/expand/macro_origins.rs 1
-expand/src/expand/mod.rs 5
-expand/src/expand/prelude_state.rs 3
+expand/src/expand/mod.rs 4
+expand/src/expand/prelude_state.rs 2
 expand/src/format/block.rs 1
 expand/src/format/layout.rs 3
 expand/src/format/list_plan.rs 1

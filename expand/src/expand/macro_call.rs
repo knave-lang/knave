@@ -6,6 +6,7 @@ use super::Expander;
 use super::context::DefinitionContext;
 use super::expansion_limit::ExpansionLimit;
 use super::form_budget::FormBudget;
+use super::macro_origin::MacroOrigin;
 use super::problems::ExpandProblems;
 use super::returned_arguments::ReturnedArguments;
 use super::shape::{Shape, WrittenDefiner};
@@ -22,14 +23,6 @@ enum MacroState {
     Pending(Form),
     Ready(Rc<Closure>),
     Failed,
-}
-
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub struct MacroOrigin {
-    pub name: Rc<str>,
-    pub defined: Span,
-    pub call_site: Span,
-    pub through_prelude: bool,
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]

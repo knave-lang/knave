@@ -1,30 +1,27 @@
+use std::ops::Range;
+
 use super::docstring_code::DocstringCode;
 use super::docstring_lines::DocstringLines;
-use super::format_problems::FormatProblems;
 use super::format_rules::FormatRules;
 use super::syntax_tree::{Atom, Entry, ListNode, SyntaxNode, SyntaxTree};
-use crate::diagnostic::Diagnostics;
-use crate::source::{SourceId, Span};
 use crate::stack::DeepRecursion;
 
 pub struct TreeDocstrings<'s> {
     rules: FormatRules<'s>,
-    source: SourceId,
-    warnings: Diagnostics,
+    unreadable: Vec<Range<usize>>,
 }
 
 impl<'s> TreeDocstrings<'s> {
-    pub fn new(rules: FormatRules<'s>, source: SourceId) -> Self {
+    pub fn new(rules: FormatRules<'s>) -> Self {
         Self {
             rules,
-            source,
-            warnings: Diagnostics::default(),
+            unreadable: Vec::new(),
         }
     }
 
-    pub fn lay_out(mut self, tree: &mut SyntaxTree) -> Diagnostics {
+    pub fn lay_out(mut self, tree: &mut SyntaxTree) -> Vec<Range<usize>> {
         self.visit_entries(&mut tree.entries);
-        self.warnings
+        self.unreadable
     }
 
     fn visit_entries(&mut self, entries: &mut [Entry]) {
@@ -50,12 +47,8 @@ impl<'s> TreeDocstrings<'s> {
         let laid_out = DocstringCode::of_docstrings(self.rules).lay_out(lines.lines());
         for line in laid_out.unreadable_lines {
             let range = lines.written_range(line);
-            let span = Span::new(
-                self.source,
-                atom.start + range.start..atom.start + range.end,
-            );
-            self.warnings
-                .push(FormatProblems::unreadable_docstring_code(span));
+            self.unreadable
+                .push(atom.start + range.start..atom.start + range.end);
         }
         atom.text = DocstringLines::token_of(&laid_out.lines);
     }

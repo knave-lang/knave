@@ -2,8 +2,9 @@ use crate::block_writer::BlockWriter;
 use crate::generator_state::GeneratorState;
 use crate::production::Production;
 use crate::productions::{
-    Block, Branch, CallChanger, CallHelper, DerivedBinding, FreshCar, FreshNumber, FreshVector,
-    Print, Push, Repeat, SetYear,
+    Block, Branch, CallBorrowingClosure, CallChanger, CallHelper, DerivedBinding,
+    FreshBorrowingClosure, FreshCar, FreshMap, FreshNumber, FreshShape, FreshVector, Print, Push,
+    Repeat, SetYear,
 };
 
 pub struct Grammar {
@@ -11,10 +12,13 @@ pub struct Grammar {
 }
 
 impl Grammar {
-    const STATEMENTS: [&'static dyn Production; 18] = [
+    const STATEMENTS: [&'static dyn Production; 24] = [
         &FreshVector,
         &FreshNumber,
         &FreshCar,
+        &FreshShape,
+        &FreshMap,
+        &FreshBorrowingClosure,
         &DerivedBinding::BORROW_ELEMENT,
         &DerivedBinding::BORROW_MAKE,
         &DerivedBinding::MOVE_NUMBERS,
@@ -22,11 +26,14 @@ impl Grammar {
         &DerivedBinding::HOLD_BORROWS,
         &DerivedBinding::BIND_READER,
         &DerivedBinding::BIND_CHANGER,
+        &DerivedBinding::BORROW_ENTRY,
+        &DerivedBinding::MOVE_MAP,
         &Push,
         &SetYear,
         &Print,
         &CallChanger,
         &CallHelper,
+        &CallBorrowingClosure,
         &Branch,
         &Repeat,
         &Block,

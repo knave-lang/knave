@@ -64,7 +64,9 @@ impl GeneratorState {
     }
 
     pub fn use_helper(&mut self, template: &'static HelperTemplate) {
-        self.helpers.insert(template.name, template);
+        if self.helpers.insert(template.name, template).is_some() {
+            return;
+        }
         if let Some(callee) = template.calls {
             self.use_helper(callee);
         }

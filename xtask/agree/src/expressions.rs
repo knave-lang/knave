@@ -8,6 +8,12 @@ impl Expressions {
     const REUSE_PERCENT: u64 = 40;
     const LITERALS: [u8; 9] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     const NOTHING_TO_PRINT: &'static str = "0";
+    const NUMBER_READINGS: [Reading; 4] = [
+        Reading::ELEMENT,
+        Reading::SHAPE_MATCH,
+        Reading::SHAPE_TWICE,
+        Reading::CAR_SIZE,
+    ];
     const NUMBER_KINDS: [ValueKind; 3] =
         [ValueKind::NUMBER, ValueKind::ELEMENT_BORROW, ValueKind::CAR];
 
@@ -20,7 +26,11 @@ impl Expressions {
 
     pub fn number(state: &mut GeneratorState) -> String {
         let mut available = Self::printed_locals(state, &Self::NUMBER_KINDS);
-        available.extend(Reading::ELEMENT.read(state));
+        available.extend(
+            Self::NUMBER_READINGS
+                .iter()
+                .filter_map(|reading| reading.read(state)),
+        );
         let reused = state.chance(Self::REUSE_PERCENT);
         match Self::chosen(state, available) {
             Some(value) if reused => value,

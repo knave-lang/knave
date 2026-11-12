@@ -7,11 +7,9 @@
     (where ((whole (holds part)) part)
       (fn ((ref whole) part) bool))))
 
-(defn has? (items item)
-  (holds? items item))
+(defn has? (items item) (holds? items item))
 
-(defn same? (left right)
-  (= left right))
+(defn same? (left right) (= left right))
 
 (defn has-two? ((scores (vec i64)))
   (has? scores 2))

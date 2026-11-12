@@ -6,7 +6,7 @@ input_file: tests/fixtures/emit/trait_argument_two_rows_wait.knv
 fn main() {
     crate::rt::restore_default_sigpipe();
     let scores: Vec<i64> = vec![1_i64];
-    println!("{}", scores.picks(&3))
+    println!("{}", scores.contains(&3))
 }
 
 mod rt {

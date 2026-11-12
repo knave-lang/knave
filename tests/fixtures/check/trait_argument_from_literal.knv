@@ -1,7 +1,8 @@
 (deftrait holds
   (rust "Holds")
   (where (item) (with (vec item) item))
-  (where (item) (with (vec i64) (pair item item))))
+  (where (item)
+    (with (vec i64) (pair item item))))
 
 (def holds?
   (rust "{0}.holds(&{&1})"

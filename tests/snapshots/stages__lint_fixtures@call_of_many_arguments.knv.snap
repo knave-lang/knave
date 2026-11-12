@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/call_of_many_arguments.knv
+---
+warning[L0801]: `unused` is never read
+ --> lint/call_of_many_arguments.knv:2:9
+  |
+2 |   (let (unused 1)
+  |         ^^^^^^ bound here and never read
+  |
+  = help: remove the binding, or name it `_unused` to keep it

@@ -1,0 +1,22 @@
+---
+source: tests/cli.rs
+expression: lint.transcript()
+---
+exit code: Some(0)
+--- stdout
+--- stderr
+warning[L0434]: unreachable `match` arm
+ --> pick.knv:1:32
+  |
+1 | (defn pick (x) (match x (_ 1) (_ 2)))
+  |                          -     ^ this arm can never match
+  |                          |
+  |                          this arm covers it
+
+warning[L0801]: `unused` is never read
+ --> pick.knv:4:9
+  |
+4 |   (let (unused 1)
+  |         ^^^^^^ bound here and never read
+  |
+  = help: remove the binding, or name it `_unused` to keep it

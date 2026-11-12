@@ -1,5 +1,6 @@
 mod support;
 
+use std::collections::BTreeSet;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -7,9 +8,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 use std::time::Duration;
 
+use knave::core::KernelForm;
+use knave::stack::FreshStack;
+
 use support::{
     AgreementReport, ExplanationExamples, Fixture, FixtureReports, FormatFailures, HeaderAgreement,
-    SavedPreludeAgreement,
+    LintFixture, ReadBackAgreement, SavedPreludeAgreement,
 };
 
 const BORROW_ACROSS_MOVE_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local grid (vec 1 2))\n  (local first (at grid 0))\n  (local next (assoc grid 0 3))\n  (println (at next 0) \" \" first))\n```\n";
@@ -108,6 +112,57 @@ fn run_fixtures() {
     insta::glob!(fixtures, |path| {
         insta::assert_snapshot!(reports.report(path));
     });
+}
+
+#[test]
+fn lint_fixtures() {
+    let fixtures = "fixtures/lint/*.knv";
+    let mut paths = Vec::new();
+    insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
+    let reports = FixtureReports::compute(paths, |path| LintFixture::load(path).report());
+    insta::glob!(fixtures, |path| {
+        insta::assert_snapshot!(reports.report(path));
+    });
+}
+
+#[test]
+fn lint_reports_an_unread_binding_in_the_deepest_definition() {
+    let body = (0..GeneratedLint::DEEPEST_NESTING)
+        .fold(String::from("x"), |inner, _| format!("(if true {inner} 0)"));
+    let text = format!(
+        "(defn deep (x)\n  (let (unused 1)\n    {body}))\n\n(defn main () (println (deep 1)))\n"
+    );
+    let report = GeneratedLint::report("deepest_definition.knv", text);
+    assert!(
+        report.contains("warning[L0801]: `unused` is never read"),
+        "{report}"
+    );
+}
+
+#[test]
+fn the_lint_read_back_prints_each_definition_as_knave_expand_does() {
+    let disagreements = ReadBackAgreement::load().disagreements();
+    assert!(
+        disagreements.is_empty(),
+        "the read-back and the printer differ outside {:?}:\n{}",
+        ReadBackAgreement::DELIBERATE_DIFFERENCES,
+        disagreements.join("\n")
+    );
+}
+
+#[test]
+fn the_read_back_agreement_holds_every_kernel_form_a_definition_can_hold() {
+    let held = ReadBackAgreement::load().kernel_heads();
+    let expected: BTreeSet<String> = KernelForm::all()
+        .map(|form| form.name().to_string())
+        .filter(|name| !ReadBackAgreement::is_never_held(name))
+        .collect();
+    assert_eq!(
+        held,
+        expected,
+        "forms no read-back holds: {:?}",
+        ReadBackAgreement::NEVER_HELD
+    );
 }
 
 #[test]
@@ -353,4 +408,18 @@ fn an_explanation_that_quotes_its_warning_title_restates_it() {
 fn an_explanation_may_quote_the_title_of_another_code() {
     let explanation = ExplanationExamples::new("L0501", TITLE_QUOTING_EXPLANATION);
     assert_eq!(explanation.restated_titles(), Vec::<String>::new());
+}
+
+struct GeneratedLint;
+
+impl GeneratedLint {
+    const DEEPEST_NESTING: usize = 1022;
+    const STACK: FreshStack = FreshStack::of(32 * 1024 * 1024);
+
+    fn report(name: &str, text: String) -> String {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/lint")
+            .join(name);
+        Self::STACK.run(|| LintFixture::of_text(&path, text).report())
+    }
 }

@@ -1,0 +1,12 @@
+(use code value-eq)
+
+(defn total-name? (name)
+  (let (total 1)
+    (value-eq name (quote total))))
+
+(defmacro total? (name)
+  (if (total-name? name)
+    (quote true)
+    (quote false)))
+
+(defn main () (println (total? total)))

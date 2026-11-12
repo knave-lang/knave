@@ -78,12 +78,8 @@ impl Expander<'_> {
     pub(super) fn expand_module_body(&mut self, module: ModuleId, forms: Vec<Form>) {
         let outer_module = self.current_module.replace(module);
         let (pending, budgets) = self.register_definitions(module, forms);
-        let mut core = CoreModule {
-            id: module,
-            path: self.modules.get(module).path().clone(),
-            items: Vec::new(),
-            exports: Vec::new(),
-        };
+        let path = self.modules.get(module).path();
+        let mut core = CoreModule::new(module, path.clone(), self.library_of(path));
         let (impls, rest) = pending.partition(|item| matches!(item, PendingItem::Impl(..)));
         let (exports, rest) = rest.partition(|item| matches!(item, PendingItem::Export(..)));
         self.lower_pending_group(module, rest, &budgets, &mut core);

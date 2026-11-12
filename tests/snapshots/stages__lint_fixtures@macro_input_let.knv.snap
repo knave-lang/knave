@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/macro_input_let.knv
+---
+warning[L0801]: `spare` is never read
+ --> lint/macro_input_let.knv:5:15
+  |
+5 |   (with-named spare (* width height)))
+  |               ^^^^^ bound here and never read
+  |
+  = help: remove the binding, or name it `_spare` to keep it

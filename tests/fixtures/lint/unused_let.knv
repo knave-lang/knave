@@ -1,0 +1,5 @@
+(defn area (width height)
+  (let (unused (+ width 1))
+    (* width height)))
+
+(defn main () (println (area 2 3)))

@@ -76,12 +76,13 @@ const UNMATCHED_LINKS: &str = "(export parse tally)\n\n(module \"Parses text, un
 const AREA_SECTION: &str = "<a id=\"area\"></a>\n\n## `area`\n\n```knave\n(defn area (width height))\n(type area\n  (where ((a number)) (fn (a a) a)))\n```\n\nMultiplies two sides, as [option](https://knave-lang.org/docs/prelude/types/#option) does not.\n";
 const UNTYPED_SHAPES: &str = "(export point twice)\n\n(defstruct point \"A point.\" :x i64)\n\n(defrule twice \"Writes a form twice.\" ((x) (do x x)))\n";
 const UNTYPED_SHAPES_PAGE: &str = "# shapes\n\n<a id=\"point\"></a>\n\n## `point`\n\n```knave\n(defstruct point)\n```\n\nA point.\n\n<a id=\"twice\"></a>\n\n## `twice`\n\n```knave\n(defrule twice)\n```\n\nWrites a form twice.\n";
-const PRELUDE_PAGES: [&str; 23] = [
+const PRELUDE_PAGES: [&str; 24] = [
     "assoc",
     "definers",
     "documentation",
     "io",
     "iterator",
+    "lint",
     "logic",
     "macros",
     "map",
@@ -170,6 +171,12 @@ const UNREADABLE_PAGE_FENCE: &str =
 const MULTI_LINE_STRING_FENCE: &str = "(export count-lines)\n\n(defn count-lines (text)\n  \"Counts the lines of a text.\n\n  ```\n  (count-lines   \\\"first\n  second\\\")\n  ```\"\n  (len text))\n";
 const LONG_TYPED_LENGTHS: &str = "(export combine-lengths)\n\n(defn combine-lengths (first-measured-length second-measured-length)\n  \"Adds two lengths.\n\n  ```\n  (combine-lengths   1   2)\n  ```\"\n  (+ first-measured-length second-measured-length))\n";
 const LONG_TYPED_LENGTHS_PAGE: &str = "# lengths\n\n<a id=\"combine-lengths\"></a>\n\n## `combine-lengths`\n\n```knave\n(defn combine-lengths (first-measured-length second-measured-length))\n(type combine-lengths\n  (where ((a number)) (fn (a a) a)))\n```\n\nAdds two lengths.\n\n```knave\n(combine-lengths 1 2)\n```\n";
+const UNREACHABLE_ARM_AND_UNUSED_BINDING: &str = "(defn pick (x) (match x (_ 1) (_ 2)))\n\n(defn main ()\n  (let (unused 1)\n    (println (pick 2))))\n";
+const LIBRARY_WITH_UNUSED_BINDING: &str =
+    "(export helper)\n\n(defn helper ()\n  (let (unread 1)\n    2))\n";
+const LIBRARY_CALL_WITH_UNUSED_BINDING: &str =
+    "(use helping helper)\n\n(defn main ()\n  (let (own 1)\n    (println (helper))))\n";
+const UNUSED_BINDING: &str = "(defn main ()\n  (let (unused 1)\n    (println 2)))\n";
 const AREA_OF_A_STRING: &str = "(defn area (w h) (* w h))\n(defn report () (area 2 \"3\"))\n";
 const TOP_LEVEL_AREA_OF_A_STRING: &str = "(defn area (w h) (* w h))\n(area 2 \"3\")\n";
 const SCRATCH: &str = "(defn f (n) (* 2 n))\n\n(comment (f 1) (exit 3))\n";
@@ -1895,6 +1902,95 @@ fn check_is_silent_on_a_valid_program() {
     assert_eq!(
         (check.stdout(), check.stderr()),
         (String::new(), String::new())
+    );
+}
+
+#[test]
+fn lint_prints_an_unread_binding_and_exits_zero() {
+    let sandbox = Sandbox::new("lint_warning").with_file("unused.knv", UNUSED_BINDING);
+    let lint = sandbox.compiler(&["lint", "unused.knv"]);
+    lint.assert_exit_code(0);
+    assert_eq!(lint.stdout(), "");
+    assert!(
+        lint.stderr()
+            .starts_with("warning[L0801]: `unused` is never read\n --> unused.knv:2:9\n"),
+        "{}",
+        lint.stderr()
+    );
+}
+
+#[test]
+fn lint_exits_as_check_does_on_a_program_with_an_error() {
+    let sandbox = Sandbox::new("lint_error").with_file("area.knv", AREA_OF_A_STRING);
+    let lint = sandbox.compiler(&["lint", "area.knv"]);
+    let check = sandbox.compiler(&["check", "area.knv"]);
+    assert_eq!(
+        (lint.output.status.code(), lint.stderr()),
+        (check.output.status.code(), check.stderr())
+    );
+    assert!(!lint.stderr().contains("L0801"));
+}
+
+#[test]
+fn lint_exits_as_check_does_on_a_project_whose_task_has_an_error() {
+    let sandbox = Sandbox::new("lint_task_error")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file("src/main.knv", UNUSED_BINDING)
+        .with_file("tasks/serve.knv", "(deftask serve () (+ 1 \"2\"))\n");
+    let lint = sandbox.compiler(&["lint"]);
+    let check = sandbox.compiler(&["check"]);
+    assert_eq!(lint.output.status.code(), check.output.status.code());
+    assert_ne!(check.output.status.code(), Some(0));
+}
+
+#[test]
+fn lint_keeps_its_rules_when_a_project_holds_a_prelude_directory() {
+    let sandbox = Sandbox::new("lint_prelude_directory")
+        .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
+        .with_file("src/main.knv", UNUSED_BINDING)
+        .with_file("prelude/lint.knv", "(export rule-names check-rule)\n(def rule-names (quote ()))\n(def check-rule (fn (rule table) (do)))\n");
+    let lint = sandbox.compiler(&["lint"]);
+    lint.assert_exit_code(0);
+    assert!(
+        lint.stderr().contains("warning[L0801]"),
+        "{}",
+        lint.stderr()
+    );
+}
+
+#[test]
+fn lint_prints_the_check_warnings_and_the_lint_warnings_apart() {
+    let sandbox = Sandbox::new("lint_check_warnings")
+        .with_file("pick.knv", UNREACHABLE_ARM_AND_UNUSED_BINDING);
+    let lint = sandbox.compiler(&["lint", "pick.knv"]);
+    insta::assert_snapshot!(lint.transcript());
+}
+
+#[test]
+fn lint_reports_no_binding_of_a_library() {
+    let sandbox = Sandbox::new("lint_library")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (helping :path \"../helping\")))\n",
+        )
+        .with_file("app/src/main.knv", LIBRARY_CALL_WITH_UNUSED_BINDING)
+        .with_file(
+            &format!("helping/{}", Language::project_file_name()),
+            "(defproject helping)\n",
+        )
+        .with_file("helping/src/lib.knv", LIBRARY_WITH_UNUSED_BINDING);
+    let lint = sandbox.compiler_in("app", &["lint"]);
+    lint.assert_exit_code(0);
+    assert_eq!(
+        lint.stderr().matches("warning[L0801]").count(),
+        1,
+        "{}",
+        lint.stderr()
+    );
+    assert!(
+        lint.stderr().contains("`own` is never read"),
+        "{}",
+        lint.stderr()
     );
 }
 

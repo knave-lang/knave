@@ -30,11 +30,12 @@ impl DesignRules {
     const MAXIMUM_FREE_FUNCTIONS: usize = 0;
     const MAXIMUM_CYCLE_LINKS_PER_MODULE: usize = 0;
     const MAXIMUM_LATER_STAGE_DEPENDENCIES_PER_MODULE: usize = 0;
-    const STAGE_ORDER: [Stage; 7] = [
+    const STAGE_ORDER: [Stage; 8] = [
         Stage::new("expand/src", "reader"),
         Stage::new("expand/src", "expand"),
         Stage::new("src", "types"),
         Stage::new("src", "ownership"),
+        Stage::new("src", "lint"),
         Stage::new("src", "emit"),
         Stage::new("src", "build"),
         Stage::new("src", "cli"),

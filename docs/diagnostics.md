@@ -63,7 +63,7 @@ help: a function with a similar name exists
 | `L05xx` | Ownership |
 | `L06xx` | Emitting and building |
 | `L07xx` | The project file |
-| `L08xx` | Lints, which macros report with `warn` |
+| `L08xx` | Lints, which macros and `knave lint` report |
 
 **Keep rustc's own code on an error that rustc reports.** Add `note: reported by rustc` and rewrite every Rust name in the message to the name the user wrote.
 

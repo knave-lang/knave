@@ -1,6 +1,7 @@
 use knave::diagnostic::{Diagnostic, DiagnosticRenderer, Diagnostics};
 use knave::expand::ExpandProblems;
 use knave::interpret::HostProblems;
+use knave::lint::LintProblems;
 use knave::source::{SourceId, SourceMap, Span};
 
 struct DiagnosticFixture {
@@ -46,5 +47,13 @@ fn missing_host_group_of_a_builtin_has_a_snapshot() {
 fn missing_global_values_has_a_snapshot() {
     let fixture = DiagnosticFixture::new();
     let diagnostic = HostProblems::missing_global_values(fixture.span());
+    insta::assert_snapshot!(fixture.render(diagnostic));
+}
+
+#[test]
+fn rule_skipped_has_a_snapshot() {
+    let fixture = DiagnosticFixture::new();
+    let rules = [String::from("unused-binding")];
+    let diagnostic = LintProblems::rule_skipped(&rules, "origin", fixture.span());
     insta::assert_snapshot!(fixture.render(diagnostic));
 }

@@ -1,0 +1,11 @@
+(defenum place
+  (local i64)
+  remote)
+
+(defn where-is (spot)
+  (match spot
+    ((local distance) 0)
+    (remote 1)))
+
+(defn main ()
+  (println (where-is place/remote)))

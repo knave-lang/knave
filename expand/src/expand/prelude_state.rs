@@ -1,9 +1,10 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use super::macro_origins::{OriginTables, SavedOrigins};
+use super::macro_origins::OriginTables;
 use super::saved_definitions::{SavedDefinitions, SavedTables};
 use super::saved_notes::{NoteTables, SavedNotes};
+use super::saved_origins::SavedOrigins;
 use super::saved_values::{SavedValues, ValueTables};
 use super::{Expander, ExpansionTables, LoweredGlobals};
 use crate::core::{BindingTables, SavedBindings};

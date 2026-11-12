@@ -1,5 +1,6 @@
 use super::Expander;
 use super::context::DefinitionContext;
+use super::macro_call_lookup::MacroCallLookup;
 use super::problems::ExpandProblems;
 use super::recorded_inputs::BoundName;
 use crate::core::{BindingId, BindingInfo, BindingKind, ModuleId, Namespace};
@@ -159,7 +160,10 @@ impl Expander<'_> {
         let definition = self.introduced_name(span, symbol.name());
         let primary = definition.unwrap_or(span);
         let diagnostic = ExpandProblems::unbound(symbol.name(), namespace, primary, similar);
-        match (definition, self.tables.macro_origins.get(span)) {
+        match (
+            definition,
+            self.tables.macro_origins.calls().introducing_macro(span),
+        ) {
             (Some(_), Some(origin)) => diagnostic
                 .with_note(format!("in this expansion of `{}`", origin.name))
                 .with_label(ExpandProblems::macro_call(span)),

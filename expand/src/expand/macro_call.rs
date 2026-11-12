@@ -6,6 +6,7 @@ use super::Expander;
 use super::context::DefinitionContext;
 use super::expansion_limit::ExpansionLimit;
 use super::form_budget::FormBudget;
+use super::macro_call_lookup::MacroCallLookup;
 use super::macro_origin::MacroOrigin;
 use super::problems::ExpandProblems;
 use super::returned_arguments::ReturnedArguments;
@@ -150,7 +151,10 @@ impl Expander<'_> {
         let origin = self.macro_origin(binding, call_site);
         self.record_introduced_names(&form, &origin);
         form.relocate_outside(call_site);
-        self.tables.macro_origins.record(call_site, origin);
+        self.tables
+            .macro_origins
+            .calls_mut()
+            .record(call_site, origin);
         form
     }
 
@@ -331,7 +335,7 @@ impl Expander<'_> {
     }
 
     pub(super) fn macro_origin_at(&self, span: Span) -> Option<MacroOrigin> {
-        self.tables.macro_origins.enclosing(span)
+        self.tables.macro_origins.calls().enclosing(span)
     }
 
     pub(super) fn definition_shape<'f>(
@@ -342,7 +346,8 @@ impl Expander<'_> {
         let definer = self
             .tables
             .macro_origins
-            .get(form.span())
+            .calls()
+            .introducing_macro(form.span())
             .map(|origin| WrittenDefiner {
                 name: origin.name,
                 through_prelude: origin.through_prelude,

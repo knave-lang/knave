@@ -1,6 +1,7 @@
 mod binder_form;
 mod bindings;
 mod budget_arena;
+mod call_origins;
 mod classified_form;
 mod compile_time_check;
 mod context;
@@ -22,6 +23,7 @@ mod host;
 mod input_terms;
 mod introduced;
 mod macro_call;
+mod macro_call_lookup;
 mod macro_function;
 mod macro_origin;
 mod macro_origins;
@@ -36,6 +38,8 @@ mod names;
 mod noted_term;
 mod noted_terms;
 mod notes_module;
+mod origin_row;
+mod own_call_origins;
 mod prelude_state;
 mod problem_mark;
 mod problem_report;
@@ -49,9 +53,11 @@ mod result_printer;
 mod returned_arguments;
 mod rust_clauses;
 mod rust_type;
+mod saved_call_origins;
 mod saved_definitions;
 mod saved_index;
 mod saved_notes;
+mod saved_origins;
 mod saved_values;
 mod session;
 mod set_aside_input;
@@ -93,8 +99,9 @@ pub use generated_entry::GeneratedEntry;
 use globals::{GlobalTable, LoweredGlobals};
 pub use input_terms::InputTerms;
 use macro_call::MacroTable;
+pub use macro_call_lookup::MacroCallLookup;
 pub use macro_origin::MacroOrigin;
-pub use macro_origins::MacroOrigins;
+use macro_origins::MacroOrigins;
 use module_notes::{ModuleNotes, NotesCheckpoint};
 pub use module_survey::ModuleSurvey;
 use noted_term::NotedTerm;
@@ -124,7 +131,7 @@ pub struct Program {
     pub entry: ProgramEntry,
     pub bindings: BindingArena,
     pub scopes: ScopeSupply,
-    pub macro_origins: Rc<MacroOrigins>,
+    pub call_origins: Rc<dyn MacroCallLookup>,
     pub macro_helpers: FxHashSet<BindingId>,
     pub string_view: Option<BindingId>,
     pub checked_roots: Vec<BindingId>,
@@ -353,7 +360,6 @@ impl<'s> Expander<'s> {
 
     fn into_program(mut self, entry: ModuleId) -> Result<Program, Diagnostics> {
         let diagnostics = self.take_diagnostics();
-        self.tables.macro_origins.forget_introduced_names();
         let string_view = self
             .tables
             .string_view
@@ -370,7 +376,7 @@ impl<'s> Expander<'s> {
             string_view,
             checked_roots: Vec::new(),
             pending_definitions: PendingDefinitions::new(self.saved_definitions),
-            macro_origins: Rc::new(self.tables.macro_origins),
+            call_origins: Rc::new(std::mem::take(self.tables.macro_origins.calls_mut())),
             warnings: DefinitionErrors::keep_first_calls(self.problems.take_warnings()),
             expansion: self.expansion,
         };

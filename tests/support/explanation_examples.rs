@@ -41,13 +41,19 @@ impl ExplanationExamples {
         &self.code
     }
 
-    pub fn text(&self) -> &str {
-        self.text
-    }
-
-    pub fn erroneous_errors(&self) -> Vec<Vec<ExampleError>> {
+    fn erroneous_errors(&self) -> Vec<Vec<ExampleError>> {
         self.examples_under(Self::ERRONEOUS_HEADING)
             .map(Self::errors_of)
+            .collect()
+    }
+
+    pub fn restated_titles(&self) -> Vec<String> {
+        self.erroneous_errors()
+            .into_iter()
+            .flatten()
+            .filter(|error| error.code == self.code)
+            .map(|error| error.title)
+            .filter(|title| self.text.contains(title.as_str()))
             .collect()
     }
 

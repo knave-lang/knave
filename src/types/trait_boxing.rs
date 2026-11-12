@@ -61,3 +61,88 @@ impl<'a> TraitBoxing<'a> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::declarations_fixture::DeclarationsFixture;
+
+    struct BoxingFixture {
+        declarations: DeclarationsFixture,
+    }
+
+    impl BoxingFixture {
+        const SOURCE: &str = "
+            (trait drawn (draw (fn ((ref self)) i64)))
+            (trait counted (count (fn ((mut self)) i64)))
+            (trait made (make (fn (i64) f64)))
+            (trait consumed (area (fn (self) f64)))
+            (trait copied (copy (fn ((ref self)) self)))
+            (trait listed
+              (type item)
+              (first (fn ((ref self)) item)))
+            (defn main () (do))";
+
+        fn new() -> Self {
+            Self {
+                declarations: DeclarationsFixture::new(Self::SOURCE),
+            }
+        }
+
+        fn blocker(&self, trait_name: &str) -> Option<String> {
+            let trait_binding = self.declarations.trait_named(trait_name);
+            self.declarations
+                .trait_boxing()
+                .blocker(trait_binding)
+                .map(|(blocker, _)| blocker)
+        }
+    }
+
+    #[test]
+    fn a_trait_whose_methods_borrow_self_can_be_boxed() {
+        let fixture = BoxingFixture::new();
+        assert_eq!(fixture.blocker("drawn"), None);
+        assert_eq!(fixture.blocker("counted"), None);
+    }
+
+    #[test]
+    fn a_method_without_a_receiver_blocks_a_box() {
+        let fixture = BoxingFixture::new();
+        assert_eq!(
+            fixture.blocker("made"),
+            Some("`make` has no receiver".to_string())
+        );
+    }
+
+    #[test]
+    fn a_method_taking_self_by_value_blocks_a_box() {
+        let fixture = BoxingFixture::new();
+        assert_eq!(
+            fixture.blocker("consumed"),
+            Some("`area` takes `self` by value".to_string())
+        );
+    }
+
+    #[test]
+    fn a_method_returning_self_blocks_a_box() {
+        let fixture = BoxingFixture::new();
+        assert_eq!(
+            fixture.blocker("copied"),
+            Some("`copy` returns `self` by value".to_string())
+        );
+    }
+
+    #[test]
+    fn an_associated_type_blocks_a_box() {
+        let fixture = BoxingFixture::new();
+        assert_eq!(
+            fixture.blocker("listed"),
+            Some("it declares the associated type `item`".to_string())
+        );
+    }
+
+    #[test]
+    fn a_trait_the_program_does_not_define_has_no_blocker() {
+        let fixture = BoxingFixture::new();
+        assert_eq!(fixture.blocker("debug"), None);
+    }
+}

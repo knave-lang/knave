@@ -58,3 +58,111 @@ impl TypeDeclarations {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::boxed_payload::BoxedPayload;
+    use crate::types::declarations_fixture::DeclarationsFixture;
+    use crate::types::{PayloadPosition, Type};
+
+    struct BoxFixture {
+        declarations: DeclarationsFixture,
+    }
+
+    impl BoxFixture {
+        const SOURCE: &str = "
+            (enum chain end (link u32 chain))
+            (trait drawn (draw (fn ((ref self)) i64)))
+            (trait counted (count (fn ((ref self)) i64)))
+            (defn main () (do))";
+        const LINK: usize = 1;
+        const LINK_NUMBER: usize = 0;
+        const LINK_REST: usize = 1;
+
+        fn new() -> Self {
+            Self {
+                declarations: DeclarationsFixture::new(Self::SOURCE),
+            }
+        }
+
+        fn boxed(&self, payloads: Vec<Type>) -> Type {
+            let box_binding = self
+                .declarations
+                .types()
+                .box_binding()
+                .expect("the prelude declares a box");
+            Type::Named(box_binding, payloads)
+        }
+
+        fn object(&self, trait_name: &str) -> Type {
+            Type::TraitObject(self.declarations.trait_named(trait_name))
+        }
+
+        fn link_payload(&self, payload: usize) -> BoxedPayload {
+            let chain = self.declarations.type_named("chain");
+            BoxedPayload::at(
+                chain,
+                PayloadPosition {
+                    variant: Self::LINK,
+                    payload,
+                },
+            )
+        }
+    }
+
+    #[test]
+    fn a_box_of_one_payload_is_a_box() {
+        let fixture = BoxFixture::new();
+        let boxed = fixture.boxed(vec![fixture.object("drawn")]);
+        assert!(fixture.declarations.types().is_box(&boxed));
+    }
+
+    #[test]
+    fn a_box_without_a_payload_is_not_a_box() {
+        let fixture = BoxFixture::new();
+        assert!(
+            !fixture
+                .declarations
+                .types()
+                .is_box(&fixture.boxed(Vec::new()))
+        );
+    }
+
+    #[test]
+    fn a_box_of_a_trait_object_boxes_that_trait() {
+        let fixture = BoxFixture::new();
+        let boxed = fixture.boxed(vec![fixture.object("drawn")]);
+        let drawn = fixture.declarations.trait_named("drawn");
+        assert!(fixture.declarations.types().is_boxed_trait(&boxed, drawn));
+    }
+
+    #[test]
+    fn a_box_of_another_trait_object_does_not_box_the_trait() {
+        let fixture = BoxFixture::new();
+        let boxed = fixture.boxed(vec![fixture.object("counted")]);
+        let drawn = fixture.declarations.trait_named("drawn");
+        assert!(!fixture.declarations.types().is_boxed_trait(&boxed, drawn));
+    }
+
+    #[test]
+    fn a_trait_object_outside_a_box_is_not_a_boxed_trait() {
+        let fixture = BoxFixture::new();
+        let drawn = fixture.declarations.trait_named("drawn");
+        let object = fixture.object("drawn");
+        assert!(!fixture.declarations.types().is_boxed_trait(&object, drawn));
+    }
+
+    #[test]
+    fn a_recursive_payload_is_an_inferred_box() {
+        let fixture = BoxFixture::new();
+        let rest = fixture.link_payload(BoxFixture::LINK_REST);
+        assert!(fixture.declarations.types().boxes(&rest));
+    }
+
+    #[test]
+    fn a_plain_payload_is_not_an_inferred_box() {
+        let fixture = BoxFixture::new();
+        let number = fixture.link_payload(BoxFixture::LINK_NUMBER);
+        assert!(!fixture.declarations.types().boxes(&number));
+    }
+}

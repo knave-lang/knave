@@ -19,7 +19,14 @@ impl ValueKind {
         names: &["grow-it"],
         printed_as: None,
     };
-    pub const ALL: [Self; 9] = [
+    pub const SHAPE: Self = Self::printed_as(&["sh", "form"], "(size {source})");
+    pub const MAP: Self = Self::printed_as(&["table", "index"], "(len {source})");
+    pub const MAP_ENTRY: Self = Self::printed_as(&["entry"], "(unwrap-or {source} (ref 0))");
+    pub const BORROWING_CLOSURE: Self = Self {
+        names: &["first-in"],
+        printed_as: None,
+    };
+    pub const ALL: [Self; 13] = [
         Self::NUMBER,
         Self::NUMBERS,
         Self::CAR,
@@ -29,6 +36,10 @@ impl ValueKind {
         Self::HELD_BORROWS,
         Self::READER,
         Self::CHANGER,
+        Self::SHAPE,
+        Self::MAP,
+        Self::MAP_ENTRY,
+        Self::BORROWING_CLOSURE,
     ];
 
     const fn printed_as(names: &'static [&'static str], shape: &'static str) -> Self {

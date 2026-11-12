@@ -48,12 +48,6 @@ mod tests {
         fn generator() -> ProgramGenerator {
             ProgramGenerator::new(SeedRange::new(0..Self::SEEDS), Self::STATEMENTS)
         }
-
-        fn is_helper(name: &str) -> bool {
-            HelperTemplate::ALL
-                .iter()
-                .any(|template| template.name == name)
-        }
     }
 
     #[test]
@@ -81,15 +75,27 @@ mod tests {
     }
 
     #[test]
-    fn defines_only_the_helpers_main_calls() {
+    fn defines_exactly_the_helpers_main_names_and_what_they_call() {
         for program in GeneratorFixture::generator().programs() {
-            let census = &program.forms.prelude_names;
-            let defined = census.get("defn").copied().unwrap_or_default();
-            let called = census
-                .keys()
-                .filter(|name| GeneratorFixture::is_helper(name))
-                .count();
-            assert_eq!(defined, called + 1, "{}", program.name);
+            let text = program.entry_text();
+            for template in HelperTemplate::ALL {
+                let defined = text.contains(template.definition);
+                let rest = text.replacen(template.definition, "", 1);
+                let named = rest.contains(&format!("({} ", template.name))
+                    || rest.contains(&format!(" {} ", template.name));
+                assert!(
+                    defined || !named,
+                    "{} calls an undefined `{}`",
+                    program.name,
+                    template.name
+                );
+                assert!(
+                    !defined || named,
+                    "{} defines an unused `{}`",
+                    program.name,
+                    template.name
+                );
+            }
         }
     }
 }

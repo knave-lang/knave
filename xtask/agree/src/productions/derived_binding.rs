@@ -23,6 +23,11 @@ impl DerivedBinding {
     pub const BIND_TAG: Self = Self::of(Reading::TAG_OF_MAKE, ValueKind::TAG);
     pub const HOLD_BORROWS: Self = Self::of(Reading::HOLDING_BORROW, ValueKind::HELD_BORROWS);
     pub const BIND_READER: Self = Self::of(Reading::LENGTH_READER, ValueKind::READER);
+    pub const BORROW_ENTRY: Self = Self::of(Reading::MAP_ENTRY, ValueKind::MAP_ENTRY);
+    pub const MOVE_MAP: Self = Self {
+        percent: Self::MOVE_PERCENT,
+        ..Self::of(Reading::MAP_GROWN, ValueKind::MAP)
+    };
     pub const BIND_CHANGER: Self = Self::of(Reading::PUSHING_CLOSURE, ValueKind::CHANGER);
 
     const fn of(reading: Reading, result: ValueKind) -> Self {

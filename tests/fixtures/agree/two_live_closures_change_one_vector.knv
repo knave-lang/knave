@@ -1,0 +1,7 @@
+(defn main ()
+  (local v (vec 1))
+  (local grow (fn () (push! v 2)))
+  (local grow-again (fn () (push! v 3)))
+  (grow-again)
+  (grow)
+  (println (len v)))

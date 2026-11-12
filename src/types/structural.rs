@@ -153,6 +153,7 @@ impl TypeChecker {
             .declarations
             .traits
             .table
+            .rows(pending.bound.binding)
             .select(&pending.bound, &implementor)
         else {
             return;

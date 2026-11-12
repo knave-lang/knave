@@ -224,7 +224,7 @@ impl<'c> Finalizer<'c> {
     fn report_unresolved(&mut self, var: TypeVar, site: OpenSite, ty: &Type) {
         if !self.inside_operand && self.reported.insert(var) && !self.earlier_errors {
             let problem = self.missing_annotation(site, ty);
-            self.checker.defer_missing_annotation(vec![var], problem);
+            self.checker.missing_annotations.defer(vec![var], problem);
         }
     }
 

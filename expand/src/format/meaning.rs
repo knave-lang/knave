@@ -82,9 +82,10 @@ impl<'s> MeaningComparison<'s> {
         match (left.kind(), right.kind()) {
             (FormKind::Symbol(left), FormKind::Symbol(right)) => left.name() == right.name(),
             (FormKind::Number(left), FormKind::Number(right)) => left.text() == right.text(),
-            (FormKind::String(left), FormKind::String(right)) => {
-                left == right || is_docstring && self.same_docstrings(left, right)
+            (FormKind::String(left), FormKind::String(right)) if is_docstring => {
+                self.same_docstrings(left, right)
             }
+            (FormKind::String(left), FormKind::String(right)) => left == right,
             (FormKind::List(left), FormKind::List(right)) => {
                 DeepRecursion::guard(|| self.same_lists(left, right))
             }
@@ -93,7 +94,7 @@ impl<'s> MeaningComparison<'s> {
     }
 
     fn same_docstrings(&self, left: &str, right: &str) -> bool {
-        self.docstring(left).parts() == self.docstring(right).parts()
+        left == right || self.docstring(left).parts() == self.docstring(right).parts()
     }
 
     fn docstring<'t>(&'t self, text: &'t str) -> Docstring<'t> {

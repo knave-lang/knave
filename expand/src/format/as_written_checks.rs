@@ -2,11 +2,11 @@ use super::docstring_line::DocstringLine;
 use super::docstring_syntax::DocstringSyntax;
 use crate::reader::{TokenKind, TokenScan};
 
-pub struct KeptAsWritten<'s> {
+pub struct AsWrittenChecks<'s> {
     syntax: &'s DocstringSyntax,
 }
 
-impl<'s> KeptAsWritten<'s> {
+impl<'s> AsWrittenChecks<'s> {
     pub fn new(syntax: &'s DocstringSyntax) -> Self {
         Self { syntax }
     }
@@ -34,13 +34,13 @@ impl<'s> KeptAsWritten<'s> {
 
 #[cfg(test)]
 mod tests {
-    use super::KeptAsWritten;
+    use super::AsWrittenChecks;
     use crate::format::docstring_line::DocstringLine;
     use crate::format::docstring_syntax::DocstringSyntaxFixture;
 
-    struct KeptFixture;
+    struct ChecksFixture;
 
-    impl KeptFixture {
+    impl ChecksFixture {
         fn laid_out(text: &str) -> Vec<String> {
             text.split('\n').map(str::to_string).collect()
         }
@@ -49,11 +49,11 @@ mod tests {
     #[test]
     fn a_string_over_two_lines_is_a_multi_line_string() {
         let syntax = DocstringSyntaxFixture::syntax();
-        let kept = KeptAsWritten::new(&syntax);
+        let checks = AsWrittenChecks::new(&syntax);
         assert_eq!(
             (
-                kept.holds_a_multi_line_string(&DocstringLine::split("(f \"a\nb\")")),
-                kept.holds_a_multi_line_string(&DocstringLine::split("(f \"a\")\n(g 1)"))
+                checks.holds_a_multi_line_string(&DocstringLine::split("(f \"a\nb\")")),
+                checks.holds_a_multi_line_string(&DocstringLine::split("(f \"a\")\n(g 1)"))
             ),
             (true, false)
         );
@@ -62,11 +62,11 @@ mod tests {
     #[test]
     fn a_laid_out_line_that_opens_a_fence_writes_a_fence_line() {
         let syntax = DocstringSyntaxFixture::syntax();
-        let kept = KeptAsWritten::new(&syntax);
+        let checks = AsWrittenChecks::new(&syntax);
         assert_eq!(
             (
-                kept.writes_a_fence_line(&KeptFixture::laid_out("(f\n  ~~~)")),
-                kept.writes_a_fence_line(&KeptFixture::laid_out("(f 1)"))
+                checks.writes_a_fence_line(&ChecksFixture::laid_out("(f\n  ~~~)")),
+                checks.writes_a_fence_line(&ChecksFixture::laid_out("(f 1)"))
             ),
             (true, false)
         );
@@ -75,11 +75,11 @@ mod tests {
     #[test]
     fn a_laid_out_line_that_starts_with_the_arrow_writes_an_arrow_line() {
         let syntax = DocstringSyntaxFixture::syntax();
-        let kept = KeptAsWritten::new(&syntax);
+        let checks = AsWrittenChecks::new(&syntax);
         assert_eq!(
             (
-                kept.writes_an_arrow_line(&KeptFixture::laid_out("(f a\n   => b)")),
-                kept.writes_an_arrow_line(&KeptFixture::laid_out("(f a => b)"))
+                checks.writes_an_arrow_line(&ChecksFixture::laid_out("(f a\n   => b)")),
+                checks.writes_an_arrow_line(&ChecksFixture::laid_out("(f a => b)"))
             ),
             (true, false)
         );

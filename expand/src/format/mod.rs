@@ -1,3 +1,4 @@
+mod as_written_checks;
 mod block;
 mod code_chunk;
 mod code_layout;
@@ -16,7 +17,6 @@ mod format_rules;
 mod import_group;
 mod import_join;
 mod import_order;
-mod kept_as_written;
 mod laid_out_token;
 mod layout;
 mod list_plan;

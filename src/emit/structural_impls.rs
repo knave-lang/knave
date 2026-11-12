@@ -3,15 +3,15 @@ use std::rc::Rc;
 
 use knave_expand::mangle::NameMangler;
 
+use super::emitted_types::EmittedTypes;
 use super::fragment::Fragment;
 use super::items::ItemEmitter;
 use super::plan::EmitPlan;
 use super::types::{LifetimeScope, RustTypes, TypePosition};
-use super::unsized_parameters::UnsizedParameters;
 use crate::core::{BindingArena, BindingId, ModuleId, StructuralKey, StructuralValues};
 use crate::types::{
     Bound, BoxedPayload, GenericParam, PayloadPosition, StructuralTrait, StructuralUse, Type,
-    TypeDeclarations, TypedProgram, VariantDefinition, VariantPayload,
+    TypedProgram, VariantDefinition, VariantPayload,
 };
 
 #[derive(Default)]
@@ -90,9 +90,8 @@ impl<'b> ParameterNames<'b> {
 
 pub struct StructuralImpls<'a> {
     program: &'a TypedProgram,
-    types: &'a TypeDeclarations,
+    types: EmittedTypes<'a>,
     plan: &'a EmitPlan<'a>,
-    unsized_parameters: &'a UnsizedParameters,
     needed: BTreeSet<StructuralUse>,
 }
 
@@ -101,16 +100,11 @@ impl<'a> StructuralImpls<'a> {
     const PART_PREFIX: &'static str = "part_";
     const QUALIFIER: &'static str = "/";
 
-    pub fn new(
-        program: &'a TypedProgram,
-        plan: &'a EmitPlan<'a>,
-        unsized_parameters: &'a UnsizedParameters,
-    ) -> Self {
+    pub fn new(program: &'a TypedProgram, plan: &'a EmitPlan<'a>, types: EmittedTypes<'a>) -> Self {
         let mut impls = Self {
             program,
-            types: &program.declarations.types,
+            types,
             plan,
-            unsized_parameters,
             needed: BTreeSet::new(),
         };
         impls.needed = impls.reached_uses();
@@ -231,12 +225,7 @@ impl<'a> StructuralImpls<'a> {
         structural: &StructuralTrait,
         implemented: &ImplementedType,
     ) -> Vec<Fragment> {
-        let types = RustTypes::new(
-            self.program,
-            self.plan,
-            self.unsized_parameters,
-            implemented.module,
-        );
+        let types = RustTypes::new(self.program, self.plan, self.types, implemented.module);
         let trait_path = self.plan.trait_path(structural.binding, implemented.module);
         vec![
             Fragment::Text(format!(

@@ -4,11 +4,11 @@ use std::rc::Rc;
 use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::emitted_types::EmittedTypes;
 use super::fresh_lifetimes::FreshLifetimes;
 use super::function_borrow::FunctionBorrow;
 use super::opaque_borrows::OpaqueBorrows;
 use super::plan::EmitPlan;
-use super::unsized_parameters::UnsizedParameters;
 use crate::core::{BindingId, ModuleId, Piece, PrimitiveType};
 use crate::types::{
     Bound, ClosureKind, GenericId, GenericParam, Lifetime, RustType, TraitTable, Type, TypedProgram,
@@ -134,7 +134,7 @@ pub struct RustTypes<'a> {
     program: &'a TypedProgram,
     traits: &'a TraitTable,
     plan: &'a EmitPlan<'a>,
-    unsized_parameters: &'a UnsizedParameters,
+    types: EmittedTypes<'a>,
     module: ModuleId,
 }
 
@@ -171,14 +171,14 @@ impl<'a> RustTypes<'a> {
     pub fn new(
         program: &'a TypedProgram,
         plan: &'a EmitPlan<'a>,
-        unsized_parameters: &'a UnsizedParameters,
+        types: EmittedTypes<'a>,
         module: ModuleId,
     ) -> Self {
         Self {
             program,
             traits: program.declarations.traits.table(),
             plan,
-            unsized_parameters,
+            types,
             module,
         }
     }
@@ -346,7 +346,7 @@ impl<'a> RustTypes<'a> {
         converts_literals: bool,
     ) -> bool {
         Self::only_behind_references(signature, param.id, false)
-            && self.unsized_parameters.contains(param.id)
+            && self.types.is_unsized(param.id)
             && !converts_literals
             && !self.requires_sized(param)
     }
@@ -468,7 +468,7 @@ impl<'a> RustTypes<'a> {
         if self.traits.projections().is_projection(binding) {
             return self.projection(binding, arguments, position, scope);
         }
-        match self.program.declarations.types.rust_types().get(binding) {
+        match self.types.rust_types().get(binding) {
             Some(rust_type) => self.rust_type(rust_type, arguments, position, scope),
             None => {
                 let mut arguments: Vec<String> = arguments
@@ -576,7 +576,7 @@ impl<'a> RustTypes<'a> {
     }
 
     fn lifetime_parameter_count(&self, binding: BindingId) -> usize {
-        let types = &self.program.declarations.types;
+        let types = self.types;
         let lifetimes = types
             .structs()
             .get(binding)

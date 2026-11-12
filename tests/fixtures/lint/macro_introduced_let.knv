@@ -1,0 +1,7 @@
+(defrule with-scratch
+  ((body) (let (scratch 0) body)))
+
+(defn area (width height)
+  (with-scratch (* width height)))
+
+(defn main () (println (area 2 3)))

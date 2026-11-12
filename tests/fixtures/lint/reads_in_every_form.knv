@@ -1,0 +1,55 @@
+(defstruct point
+  :x i64
+  :y i64)
+
+(defenum shape
+  (circle i64)
+  (labeled :size i64)
+  dot)
+
+(defn sizes (numbers)
+  (let (first-key 0
+        replaced 9
+        pushed 4)
+    (local grown (assoc numbers first-key replaced))
+    (push! grown pushed)
+    grown))
+
+(defn moved (start)
+  (let (step 1
+        base (->point :x 1 :y 2))
+    (local updated (assoc base :x step))
+    (local origin (deref (ref start)))
+    (+ (:x updated) origin)))
+
+(defn area (form)
+  (let (scale 2)
+    (match form
+      ((circle radius) (* radius scale))
+      ((labeled size) size)
+      (dot 0))))
+
+(defn parsed (text)
+  (let (fallback 0)
+    (local number (try (parse text)))
+    (ok (+ number fallback))))
+
+(type parsed
+  (fn ((ref str))
+    (result i64 (parse-error i64))))
+
+(defn countdown (count)
+  (let (step 1)
+    (if (= count 0)
+      count
+      (recur (- count step)))))
+
+(defn main ()
+  (let (kind (infer 1))
+    (println kind)
+    (prn (sizes (vec 1 2)))
+    (println (moved 3))
+    (println (area (shape/circle 2)))
+    (println (area (shape/labeled 2)))
+    (prn (parsed "4"))
+    (println (countdown 3))))

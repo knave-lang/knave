@@ -191,6 +191,7 @@ pub struct CoreModule {
     pub path: ModulePath,
     pub items: Vec<Item>,
     pub exports: Vec<BindingId>,
+    pub library: Option<Rc<str>>,
 }
 
 impl ItemKind {
@@ -206,6 +207,16 @@ impl ItemKind {
 }
 
 impl CoreModule {
+    pub fn new(id: ModuleId, path: ModulePath, library: Option<Rc<str>>) -> Self {
+        Self {
+            id,
+            path,
+            items: Vec::new(),
+            exports: Vec::new(),
+            library,
+        }
+    }
+
     pub fn definitions(&self) -> impl Iterator<Item = (BindingId, &Rc<Expr>)> {
         self.items.iter().filter_map(|item| match &item.kind {
             ItemKind::Def(binding, value) => Some((*binding, value)),

@@ -1,0 +1,126 @@
+(use prelude/macros document module)
+
+(use code bool-not empty? first list? nth rest same-binding?
+          string string-strip-prefix symbol-name symbol?
+          value-eq warn)
+
+(use prelude/internal/code introducing-macro)
+
+(module
+  "Holds the lint rules that `knave lint` runs.")
+
+(export check-rule rule-names)
+
+(document (unused-binding table)
+  "Reports a `local` binding that nothing reads.
+
+  ## Erroneous example
+
+  ```lisp
+  (defn area (width height)
+    (let (unused (+ width 1))
+      (* width height)))
+  ```
+
+  ## Fixes
+
+  Remove the binding:
+
+  ```lisp
+  (defn area (width height)
+    (* width height))
+  ```
+
+  Or start its name with `_` to keep it:
+
+  ```lisp
+  (defn area (width height)
+    (let (_unused (+ width 1))
+      (* width height)))
+  ```
+
+  A binding whose name starts with `_` is allowed. A binding that a macro's expansion introduced is never reported.")
+
+(def rule-names (quote (unused-binding)))
+
+(def check-rule
+  (fn (rule table)
+    (if (value-eq rule (quote unused-binding))
+      (unused-binding table)
+      (do))))
+
+(def ignored-prefix "_")
+
+(def unused-binding
+  (fn (table) (warn-unread table table)))
+
+(def entry-form
+  (fn (entry) (first entry)))
+
+(def entry-parent
+  (fn (entry) (nth entry 1)))
+
+(def entry-role
+  (fn (entry) (nth entry 3)))
+
+(def entry-reads
+  (fn (entry) (nth entry 4)))
+
+(def warn-unread
+  (fn (table entries)
+    (if (empty? entries)
+      (do)
+      (do
+        (warn-if-unread table (first entries))
+        (recur table (rest entries))))))
+
+(def warn-if-unread
+  (fn (table entry)
+    (if (reported? table entry)
+      (warn (string "`"
+                    (symbol-name (entry-form entry))
+                    "` is never read")
+        (entry-form entry)
+        (string "remove the binding, or name it `"
+                ignored-prefix
+                (symbol-name (entry-form entry))
+                "` to keep it")
+        (quote (:code unused-binding :label "bound here and never read")))
+      (do))))
+
+(def reported?
+  (fn (table entry)
+    (if (unread-local? table entry)
+      (if (ignored? (entry-form entry))
+        false
+        (empty? (introducing-macro (entry-form entry))))
+      false)))
+
+(def unread-local?
+  (fn (table entry)
+    (if (value-eq (entry-role entry) (quote binds))
+      (if (value-eq (entry-reads entry) 0)
+        (kernel-form? (entry-form (nth table (entry-parent entry)))
+                      (quote local))
+        false)
+      false)))
+
+(def ignored?
+  (fn (binder)
+    (bool-not (value-eq (string-strip-prefix (symbol-name binder)
+                                             ignored-prefix)
+                        (symbol-name binder)))))
+
+(def kernel-form?
+  (fn (form name)
+    (if (list? form)
+      (if (empty? form)
+        false
+        (kernel-head? (first form) name))
+      false)))
+
+(def kernel-head?
+  (fn (head name)
+    (if (symbol? head)
+      (if (same-binding? head head) false (value-eq head name))
+      false)))

@@ -12,7 +12,7 @@ use crate::interpret::{
     DefinitionQueries, ExpansionCallbacks, GlobalValues, Host, ModuleNotes, ModuleQueries,
     NameComparison, NotesTooLarge, SourceQueries, Value, Warnings,
 };
-use crate::modules::{ModuleRecord, ModuleSources};
+use crate::modules::{ModuleOrigin, ModuleRecord, ModuleSources};
 use crate::reader::{Form, LiteralForms, Symbol};
 use crate::scope::{Phase, Resolution, ScopeSet};
 use crate::source::Span;
@@ -82,8 +82,10 @@ impl ModuleQueries for Expander<'_> {
     fn project_modules(&self) -> Vec<Symbol> {
         self.modules
             .records()
-            .filter(|record| ModuleSources::is_written(record.path()))
-            .filter(|record| !self.is_library_module(record.path()))
+            .filter(|record| {
+                let library = self.library_of(record.path());
+                ModuleOrigin::new(record.path(), library.as_deref()).is_project()
+            })
             .map(ModuleRecord::symbol)
             .collect()
     }

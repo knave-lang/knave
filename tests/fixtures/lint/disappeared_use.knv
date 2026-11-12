@@ -1,0 +1,6 @@
+(defmacro ignore (form) (quote (do)))
+
+(defn area (width)
+  (let (spare 1) (ignore spare) width))
+
+(defn main () (println (area 2)))

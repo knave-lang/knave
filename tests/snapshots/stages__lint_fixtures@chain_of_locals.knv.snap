@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/chain_of_locals.knv
+---
+warning[L0801]: `unused` is never read
+ --> lint/chain_of_locals.knv:2:10
+  |
+2 |   (local unused 0)
+  |          ^^^^^^ bound here and never read
+  |
+  = help: remove the binding, or name it `_unused` to keep it

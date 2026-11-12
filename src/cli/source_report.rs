@@ -13,6 +13,10 @@ impl<'a> SourceReport<'a> {
         Self { sources, output }
     }
 
+    pub fn sources(&self) -> &'a SourceMap {
+        self.sources
+    }
+
     pub fn report(&self, diagnostics: &Diagnostics) -> ExitStatus {
         self.output.report(self.sources, diagnostics)
     }

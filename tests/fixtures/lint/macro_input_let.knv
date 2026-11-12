@@ -1,0 +1,7 @@
+(defrule with-named
+  ((name body) (let (name 0) body)))
+
+(defn area (width height)
+  (with-named spare (* width height)))
+
+(defn main () (println (area 2 3)))

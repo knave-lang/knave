@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/quote_only_let.knv
+---
+warning[L0801]: `total` is never read
+ --> lint/quote_only_let.knv:4:9
+  |
+4 |   (let (total 1)
+  |         ^^^^^ bound here and never read
+  |
+  = help: remove the binding, or name it `_total` to keep it

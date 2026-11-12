@@ -10,6 +10,7 @@ Commands:
   check   Read, expand and check a program, then print its diagnostics
   types   Print the inferred signature of each function in a program
   doc     Print the page of a prelude term, or of a program's term with --file
+  lint    Check a program, then print the warnings of the lint rules
   expand  Print a program as kernel forms after macro expansion
   emit    Print the Rust code generated for a program
   fmt     Lay out source files in place, or standard input given `-`

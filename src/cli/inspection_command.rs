@@ -6,14 +6,14 @@ use super::check::CheckCommand;
 use super::check_flag::CheckFlag;
 use super::doc::DocCommand;
 use super::doc_arguments::DocArguments;
-use super::emit::EmitCommand;
+use super::emit_arguments::EmitArguments;
 use super::entry_argument::EntryArgument;
 use super::exit_status::ExitStatus;
 use super::expand::ExpandCommand;
 use super::fmt::FmtCommand;
+use super::lint::LintCommand;
 use super::terminal::Terminal;
 use super::types::TypesCommand;
-use crate::ownership::{EnforcedOwnership, WaivedOwnership};
 
 #[derive(Subcommand)]
 pub enum InspectionCommand {
@@ -32,18 +32,18 @@ pub enum InspectionCommand {
         about = "Print the page of a prelude term, or of a program's term with --file"
     )]
     Doc(DocArguments),
+    #[command(about = "Check a program, then print the warnings of the lint rules")]
+    Lint {
+        #[command(flatten)]
+        entry: EntryArgument,
+    },
     #[command(about = "Print a program as kernel forms after macro expansion")]
     Expand {
         #[command(flatten)]
         entry: EntryArgument,
     },
     #[command(about = "Print the Rust code generated for a program")]
-    Emit {
-        #[command(flatten)]
-        entry: EntryArgument,
-        #[arg(long, hide = true)]
-        waive_ownership_refusals: bool,
-    },
+    Emit(EmitArguments),
     #[command(about = "Lay out source files in place, or standard input given `-`")]
     Fmt {
         #[arg(help = "The files and directories to lay out [default: the project's root]")]
@@ -65,15 +65,9 @@ impl InspectionCommand {
             Self::Check { entry } => CheckCommand::new(entry).run(terminal),
             Self::Types { entry } => TypesCommand::new(entry).run(terminal),
             Self::Doc(arguments) => arguments.run(terminal),
+            Self::Lint { entry } => LintCommand::new(entry).run(terminal),
             Self::Expand { entry } => ExpandCommand::new(entry).run(terminal),
-            Self::Emit {
-                entry,
-                waive_ownership_refusals: false,
-            } => EmitCommand::<EnforcedOwnership>::new(entry).run(terminal),
-            Self::Emit {
-                entry,
-                waive_ownership_refusals: true,
-            } => EmitCommand::<WaivedOwnership>::new(entry).run(terminal),
+            Self::Emit(arguments) => arguments.run(terminal),
             Self::Fmt {
                 paths,
                 check,

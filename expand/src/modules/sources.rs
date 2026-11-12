@@ -41,6 +41,7 @@ impl ModuleSources {
     pub const PROJECT_SHAPES: &str = "prelude/project-file";
     pub const DOCUMENTATION: &str = "prelude/documentation";
     pub const DOCSTRINGS: &str = "prelude/internal/docstrings";
+    pub const LINT: &str = "prelude/lint";
     const PRELUDE_DIRECTORY: &str = "prelude/";
     const INTERNAL_DIRECTORY: &str = "prelude/internal/";
     const BYTE_ORDER_MARK: char = '\u{feff}';
@@ -100,6 +101,9 @@ impl ModuleSources {
             include_str!("../../prelude/documentation.knv"),
         ),
     ];
+    // A 28th entry in `PRELUDE_FILES` stops LLVM from unrolling its scan, which costs every
+    // command thousands of instructions, so the tool modules live in their own list.
+    const TOOL_FILES: [(&str, &str); 1] = [(Self::LINT, include_str!("../../prelude/lint.knv"))];
 
     pub fn new(root: PathBuf, display_root: PathBuf) -> Self {
         Self {
@@ -257,9 +261,8 @@ impl ModuleSources {
     }
 
     pub fn is_embedded_prelude(path: &ModulePath) -> bool {
-        Self::PRELUDE_FILES
-            .iter()
-            .any(|(module, _)| *module == path.as_str())
+        let is_named = |(module, _): &(&str, &str)| *module == path.as_str();
+        Self::PRELUDE_FILES.iter().any(is_named) || Self::TOOL_FILES.iter().any(is_named)
     }
 
     pub fn is_written(path: &ModulePath) -> bool {
@@ -317,9 +320,11 @@ impl ModuleSources {
     }
 
     fn prelude_file(&self, path: &ModulePath) -> Option<ModuleSource> {
+        let is_named = |(module, _): &&(&str, &str)| *module == path.as_str();
         Self::PRELUDE_FILES
             .iter()
-            .find(|(module, _)| *module == path.as_str())
+            .find(is_named)
+            .or_else(|| Self::TOOL_FILES.iter().find(is_named))
             .map(|(_, text)| ModuleSource::Text {
                 name: Self::file_name(path),
                 text: (*text).to_string(),
@@ -391,6 +396,7 @@ impl PublicPrelude {
     pub fn paths() -> Vec<String> {
         ModuleSources::PRELUDE_FILES
             .iter()
+            .chain(&ModuleSources::TOOL_FILES)
             .map(|(module, _)| *module)
             .filter(|module| !module.starts_with(ModuleSources::INTERNAL_DIRECTORY))
             .map(String::from)
@@ -421,8 +427,9 @@ impl LocalRoot<'_> {
 mod tests {
     use std::path::PathBuf;
 
-    use super::ModuleSources;
+    use super::{ModuleSources, PublicPrelude};
     use crate::core::ModulePath;
+    use crate::modules::ModuleSource;
     use crate::modules::libraries::{LibraryRoot, LibraryTable};
 
     struct TestedApp {
@@ -466,6 +473,18 @@ mod tests {
                 .hidden_source_module(owner, &ModulePath::new(written.to_string()))
                 .map(|shadow| shadow.hidden)
         }
+    }
+
+    #[test]
+    fn every_reader_of_the_embedded_files_sees_the_tool_files() {
+        let lint = ModulePath::new(ModuleSources::LINT);
+        let sources = ModuleSources::new(PathBuf::from("no-such-root"), PathBuf::new());
+        assert!(ModuleSources::is_embedded_prelude(&lint));
+        assert!(matches!(
+            sources.find(&lint),
+            Some(ModuleSource::Text { .. })
+        ));
+        assert!(PublicPrelude::paths().contains(&ModuleSources::LINT.to_string()));
     }
 
     #[test]

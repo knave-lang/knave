@@ -217,19 +217,16 @@ impl Expander<'_> {
         })
     }
 
-    pub(super) fn is_library_module(&self, path: &ModulePath) -> bool {
-        self.library_modules
-            .iter()
-            .any(|(loaded, _)| loaded == path)
-    }
-
-    fn importing_owner(&self) -> Option<Rc<str>> {
-        let module = self.current_module?;
-        let path = self.modules.get(module).path();
+    pub(super) fn library_of(&self, path: &ModulePath) -> Option<Rc<str>> {
         self.library_modules
             .iter()
             .find(|(loaded, _)| loaded == path)
             .map(|(_, owner)| Rc::clone(owner))
+    }
+
+    fn importing_owner(&self) -> Option<Rc<str>> {
+        let module = self.current_module?;
+        self.library_of(self.modules.get(module).path())
     }
 
     fn loaded(&self, id: ModuleId, path: &ModulePath, span: Span) -> Result<ModuleId, Diagnostic> {

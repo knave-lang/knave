@@ -25,16 +25,31 @@ impl<'a> Checking<'a> {
         self.check_showing::<EnforcedOwnership>(program, |_| false)
     }
 
+    pub fn check_keeping_warnings(
+        &mut self,
+        program: &Program,
+    ) -> Result<TypedProgram, ExitStatus> {
+        self.checked::<EnforcedOwnership>(program)
+    }
+
     pub fn check_showing<Gate: OwnershipGate>(
         &mut self,
         program: &Program,
         shown_warning: impl FnMut(&Diagnostic) -> bool,
     ) -> Result<TypedProgram, ExitStatus> {
-        let mut typed = ProgramChecker::check::<Gate>(program)
-            .map_err(|diagnostics| self.report.report(&diagnostics))?;
-        self.work.inferred_expressions = Some(typed.checking.inferred_expressions);
+        let mut typed = self.checked::<Gate>(program)?;
         typed.warnings.retain(shown_warning);
         self.report.print(&typed.warnings);
+        Ok(typed)
+    }
+
+    fn checked<Gate: OwnershipGate>(
+        &mut self,
+        program: &Program,
+    ) -> Result<TypedProgram, ExitStatus> {
+        let typed = ProgramChecker::check::<Gate>(program)
+            .map_err(|diagnostics| self.report.report(&diagnostics))?;
+        self.work.inferred_expressions = Some(typed.checking.inferred_expressions);
         Ok(typed)
     }
 }

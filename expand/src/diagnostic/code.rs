@@ -259,7 +259,9 @@ diagnostic_codes! {
     INVALID_GIT_REPOSITORY = "L0727",
     PATH_OUTSIDE_CHECKOUT = "L0728",
 
+    UNUSED_BINDING = "L0801",
     UNMATCHED_LINK = "L0802",
+    RULE_SKIPPED = "L0805",
 }
 
 impl DiagnosticCode {

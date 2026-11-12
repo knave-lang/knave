@@ -3,6 +3,8 @@ mod explanation_examples;
 mod fixture_queue;
 mod formatting;
 mod headers;
+mod lint_fixture;
+mod read_back_agreement;
 mod reports;
 mod saved_prelude;
 
@@ -34,6 +36,8 @@ pub use agreement::AgreementReport;
 pub use explanation_examples::{ExampleDiagnostic, ExplanationExamples};
 pub use formatting::{FormatFailures, ShapeLookup};
 pub use headers::HeaderAgreement;
+pub use lint_fixture::LintFixture;
+pub use read_back_agreement::ReadBackAgreement;
 pub use reports::FixtureReports;
 pub use saved_prelude::SavedPreludeAgreement;
 
@@ -443,7 +447,7 @@ impl Fixture {
         stem.to_string_lossy().into_owned()
     }
 
-    fn display_name(path: &Path) -> String {
+    pub fn display_name(path: &Path) -> String {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join(Self::FIXTURE_ROOT);
         path.strip_prefix(root)
             .unwrap_or(path)

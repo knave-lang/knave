@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/unused_let.knv
+---
+warning[L0801]: `unused` is never read
+ --> lint/unused_let.knv:2:9
+  |
+2 |   (let (unused (+ width 1))
+  |         ^^^^^^ bound here and never read
+  |
+  = help: remove the binding, or name it `_unused` to keep it

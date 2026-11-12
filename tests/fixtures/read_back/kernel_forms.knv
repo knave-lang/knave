@@ -1,0 +1,43 @@
+(defstruct point
+  :x i64
+  :y i64)
+
+(defenum shape
+  (circle i64)
+  dot)
+
+(def origin 0)
+
+(defn moved (base)
+  (:x (assoc base :x 1)))
+
+(defn made () (->point :x 1 :y 2))
+
+(defn area (form)
+  (match form
+    ((circle radius) radius)
+    (dot 0)))
+
+(defn down (count)
+  (if (= count 0)
+    true
+    (recur (- count 1))))
+
+(defn grown (numbers)
+  (local more (assoc numbers 0 1))
+  (push! more 2)
+  (set! (at more 0) 3)
+  more)
+
+(defn borrowed (text)
+  (deref (ref text)))
+
+(defn changed (items) (mut items))
+
+(defn parsed (input) (try input))
+
+(defn guessed (value) (infer value))
+
+(defn sequenced (first-step) (do first-step origin))
+
+(defn named () (quote total))

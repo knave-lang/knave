@@ -92,7 +92,7 @@ use crate::core::{
 };
 use crate::diagnostic::{DefinitionErrors, Diagnostics};
 use crate::interpret::{Closure, Interpreter, Value};
-use crate::modules::{ModuleRegistry, ModuleSources};
+use crate::modules::{ModuleOrigin, ModuleRegistry, ModuleSources};
 use crate::reader::Form;
 use crate::scope::{BindingTable, Phase, Scope, ScopeSupply, Scopes};
 use crate::source::{SourceId, SourceMap, Span};
@@ -155,6 +155,12 @@ pub struct ExpansionWork {
 
 impl Program {
     pub(super) const WRITTEN_ENTRY_FUNCTION: &str = "main";
+
+    pub fn project_modules(&self) -> impl Iterator<Item = &CoreModule> {
+        self.modules.iter().filter(|module| {
+            ModuleOrigin::new(&module.path, module.library.as_deref()).is_project()
+        })
+    }
 
     pub fn entry_module(&self) -> &CoreModule {
         self.modules

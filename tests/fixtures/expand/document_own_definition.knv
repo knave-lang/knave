@@ -2,7 +2,8 @@
 
 (def greet (fn () 1))
 
-(document (greet) "Says hi.")
+(document (greet)
+  "Says hi.")
 
 (def page (doc-page greet))
 

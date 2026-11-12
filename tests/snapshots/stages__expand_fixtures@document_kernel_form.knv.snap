@@ -6,7 +6,7 @@ input_file: tests/fixtures/expand/document_kernel_form.knv
 error[L0351]: this module documents `if` but does not define it
  --> expand/document_kernel_form.knv:3:12
   |
-3 | (document (if test then) "A user page of if.")
+3 | (document (if test then)
   |            ^^ not defined in this module
   |
   = help: define `if` in this module, or move this `document` to the module that defines it

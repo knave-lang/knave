@@ -1,9 +1,12 @@
 (use prelude/macros document)
 
-(document "str" "A string for a header.")
+(document "str"
+  "A string for a header.")
 
-(document ((a b) c) "A list at the head of a header.")
+(document ((a b) c)
+  "A list at the head of a header.")
 
-(document () "An empty header.")
+(document ()
+  "An empty header.")
 
 (defn main () 1)

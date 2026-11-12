@@ -3,6 +3,7 @@
 
 (def helper (fn () 2))
 
-(document (helper) "Mine.")
+(document (helper)
+  "Mine.")
 
 (defn main () (println (helper)))

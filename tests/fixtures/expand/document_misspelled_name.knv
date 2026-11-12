@@ -5,7 +5,8 @@
 
 (defn helpers () 2)
 
-(document (gret) "Says hi.")
+(document (gret)
+  "Says hi.")
 
 (document (printn)
   "Close only to a name of another module.")

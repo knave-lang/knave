@@ -1,11 +1,13 @@
 (use prelude/test run-tests)
 
-(module "The docstring that counts.
+(module
+  "The docstring that counts.
 
   (+ 1 1)
   => 2")
 
-(module "A second docstring that never counts.
+(module
+  "A second docstring that never counts.
 
   (+ 1 1)
   => 3")

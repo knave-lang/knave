@@ -6,7 +6,7 @@ input_file: tests/fixtures/expand/document_imported_name.knv
 error[L0351]: this module documents `helper` but does not define it
  --> expand/document_imported_name.knv:4:12
   |
-4 | (document (helper) "A page from outside.")
+4 | (document (helper)
   |            ^^^^^^ not defined in this module
   |
   = help: define `helper` in this module, or move this `document` to the module that defines it

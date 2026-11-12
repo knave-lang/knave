@@ -1,4 +1,5 @@
-(module "Shapes on a grid.")
+(module
+  "Shapes on a grid.")
 
 (export area perimeter)
 

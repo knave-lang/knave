@@ -2033,10 +2033,10 @@ fn doc_looks_up_a_code_name_as_a_term() {
 #[test]
 fn doc_says_when_a_code_has_no_explanation_yet() {
     let sandbox = Sandbox::new("doc_code_unexplained");
-    let doc = sandbox.compiler(&["doc", "L0203"]);
+    let doc = sandbox.compiler(&["doc", "L0108"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        "L0203: duplicate definition\n\nNo explanation yet.\n"
+        "L0108: list too deep\n\nNo explanation yet.\n"
     );
 }
 
@@ -2501,11 +2501,11 @@ fn doc_write_errors_writes_the_index_and_a_page_per_explained_code() {
     let files = sandbox.files_under("doc");
     assert!(files.contains(&"errors.md".to_string()));
     assert!(files.contains(&"errors/L0501.md".to_string()));
-    assert!(!files.contains(&"errors/L0203.md".to_string()));
+    assert!(!files.contains(&"errors/L0108.md".to_string()));
     assert!(!files.contains(&"prelude.md".to_string()));
     let index = sandbox.contents("doc/errors.md");
     assert!(index.contains("| [L0501](errors/L0501.md) | use after move |\n"));
-    assert!(index.contains("| L0203 | duplicate definition, no explanation yet |\n"));
+    assert!(index.contains("| L0108 | list too deep, no explanation yet |\n"));
     let page = sandbox.contents("doc/errors/L0501.md");
     assert!(page.starts_with("# L0501: use after move\n\n"));
 }

@@ -167,6 +167,7 @@ const BARE_ARROW_AND_TILDE_FENCE_LAID_OUT: &str = "(export pick)\n\n(defn pick (
 const BARE_ARROW_AND_TILDE_FENCE_PAGE: &str = "# pick\n\n<a id=\"pick\"></a>\n\n## `pick`\n\n```knave\n(defn pick (x))\n(type pick (where (a) (fn (a) a)))\n```\n\nPicks a number.\n\n(pick   1)\n=>\n\n~~~knave\n(pick 2)\n=> 9\n~~~\n";
 const UNREADABLE_PAGE_FENCE: &str =
     "(export pick)\n\n(defn pick (x)\n  \"Picks a number.\n\n  ```\n  (pick   1\n  ```\"\n  x)\n";
+const MULTI_LINE_STRING_FENCE: &str = "(export count-lines)\n\n(defn count-lines (text)\n  \"Counts the lines of a text.\n\n  ```\n  (count-lines   \\\"first\n  second\\\")\n  ```\"\n  (len text))\n";
 const LONG_TYPED_LENGTHS: &str = "(export combine-lengths)\n\n(defn combine-lengths (first-measured-length second-measured-length)\n  \"Adds two lengths.\n\n  ```\n  (combine-lengths   1   2)\n  ```\"\n  (+ first-measured-length second-measured-length))\n";
 const LONG_TYPED_LENGTHS_PAGE: &str = "# lengths\n\n<a id=\"combine-lengths\"></a>\n\n## `combine-lengths`\n\n```knave\n(defn combine-lengths (first-measured-length second-measured-length))\n(type combine-lengths\n  (where ((a number)) (fn (a a) a)))\n```\n\nAdds two lengths.\n\n```knave\n(combine-lengths 1 2)\n```\n";
 const AREA_OF_A_STRING: &str = "(defn area (w h) (* w h))\n(defn report () (area 2 \"3\"))\n";
@@ -2319,6 +2320,20 @@ fn doc_write_warns_of_page_code_that_does_not_read_and_keeps_it() {
         sandbox
             .contents("doc/pick.md")
             .contains("```knave\n(pick   1\n```")
+    );
+}
+
+#[test]
+fn doc_write_keeps_a_fence_that_holds_a_multi_line_string() {
+    let sandbox = Sandbox::with_documented_project("doc_write_multi_line_string")
+        .with_file("src/lines.knv", MULTI_LINE_STRING_FENCE);
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert!(
+        sandbox
+            .contents("doc/lines.md")
+            .contains("```knave\n(count-lines   \"first\nsecond\")\n```")
     );
 }
 

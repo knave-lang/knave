@@ -6,6 +6,7 @@ use super::docstring_line::DocstringLine;
 use super::format_rules::FormatRules;
 use super::region_layout::RegionLayout;
 use super::written_gap::WrittenGap;
+use crate::reader::{TokenKind, TokenScan};
 
 pub struct CodeRegion<'s, 'l> {
     rules: FormatRules<'s>,
@@ -27,11 +28,25 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
     }
 
     pub fn lay_out(mut self) -> RegionLayout {
+        if self.holds_a_multi_line_string() {
+            return RegionLayout::Prose;
+        }
         match self.push_chunks() {
             Ok(()) if self.writes_a_fence_line() => RegionLayout::Prose,
             Ok(()) => RegionLayout::LaidOut(self.laid_out),
             Err(stop) => stop,
         }
+    }
+
+    fn holds_a_multi_line_string(&self) -> bool {
+        let text = self
+            .lines
+            .iter()
+            .map(DocstringLine::text)
+            .collect::<Vec<_>>()
+            .join("\n");
+        TokenScan::new(&text)
+            .any(|token| token.kind == TokenKind::String && text[token.range].contains('\n'))
     }
 
     fn writes_a_fence_line(&self) -> bool {
@@ -209,6 +224,15 @@ mod tests {
                 "(g 2)".to_string(),
                 "=> 2".to_string()
             ])
+        );
+    }
+
+    #[test]
+    fn code_that_holds_a_multi_line_string_is_prose() {
+        let fixture = RegionFixture::new();
+        assert_eq!(
+            fixture.lay_out("  (count   \"first\n  second\")\n  => 2"),
+            RegionLayout::Prose
         );
     }
 

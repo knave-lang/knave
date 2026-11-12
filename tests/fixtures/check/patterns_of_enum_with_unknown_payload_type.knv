@@ -1,0 +1,27 @@
+(defenum reply
+  (yes (vec i64 i64))
+  (sized :count i64)
+  no)
+
+(defn short (r)
+  (match r
+    ((yes _) 1)
+    ((sized :count n) n)
+    (no 0)))
+
+(defn qualified (r)
+  (match r
+    ((reply/yes _) 1)
+    ((reply/sized :count n) n)
+    (reply/no 0)))
+
+(defenum signal
+  (on (vec i64 i64))
+  off)
+
+(defn flip (s)
+  (match s
+    ((signal/on _) 1)
+    (signal/off 0)))
+
+(defn main () (println "ready"))

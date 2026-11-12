@@ -4,23 +4,28 @@
 
 (defenum reply
   (yes (vec i64 i64))
+  (broken :items (vec i64 i64))
   (sized :count i64)
-  (held i64)
   no)
 
 (type short (fn (reply) i64))
 
 (defn short (r)
-  (match r ((yes n) n) (no 0)))
+  (match r
+    ((yes n) n)
+    ((broken :items _) 0)
+    ((sized :count n) n)
+    (no 0)))
 
 (defn qualified (r)
   (match r ((reply/yes n) n) (_ 0)))
 
-(defn build () (reply/sized :count 2))
+(defn build ()
+  (reply/broken :items (vec)))
 
 (defn wrap (text)
   (ok (the reply
-           (reply/held (try (parse text))))))
+           (reply/yes (try (parse text))))))
 
 (defn main ()
   (let (r (reply/yes (vec)))

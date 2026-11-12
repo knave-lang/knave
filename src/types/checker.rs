@@ -1626,7 +1626,7 @@ impl TypeChecker {
         variants: &[VariantDeclaration],
         rust: &Option<crate::core::EnumRust>,
         definer: &Option<crate::core::EnumDefiner>,
-    ) -> Result<Option<Diagnostic>, Diagnostic> {
+    ) -> Result<Vec<Diagnostic>, Diagnostic> {
         let params = self.struct_params(binders)?;
         let lifetimes = Self::lifetime_binders(binders);
         let scope: FxHashMap<BindingId, GenericId> = binders
@@ -1636,20 +1636,25 @@ impl TypeChecker {
             .map(|(binder, param)| (binder.variable, param.id))
             .collect();
         let mut lowered = Vec::new();
-        for variant in variants {
-            let (payload, payload_spans) = self.lower_variant_payload(&variant.payload, &scope)?;
+        let mut problems = Vec::new();
+        let mut unlowered = Vec::new();
+        for (index, variant) in variants.iter().enumerate() {
+            let reported = problems.len();
+            let payload = self.lower_variant_payload(&variant.payload, &scope, &mut problems);
+            unlowered.extend((problems.len() > reported).then_some(index));
+            let type_exprs = Self::payload_type_exprs(&variant.payload);
             lowered.push(VariantDefinition {
                 name: variant.name.clone(),
                 payload,
-                payload_spans,
-                function_spans: Self::payload_type_exprs(&variant.payload)
-                    .into_iter()
-                    .map(Self::function_span)
+                payload_spans: type_exprs
+                    .iter()
+                    .map(|type_expr| type_expr.span())
                     .collect(),
+                function_spans: type_exprs.into_iter().map(Self::function_span).collect(),
                 span: variant.span,
             });
         }
-        let problem = self.check_enum_parameters_used(binding, binders, &params, variants);
+        problems.extend(self.check_enum_parameters_used(binding, binders, &params, variants));
         if let Some(rust) = rust {
             self.declarations.types.rust_types.add(
                 binding,
@@ -1675,43 +1680,50 @@ impl TypeChecker {
                 written_derive: None,
             },
         );
-        Ok(problem)
+        self.declarations
+            .types
+            .enums
+            .mark_unlowered(binding, unlowered);
+        Ok(problems)
     }
 
     fn lower_variant_payload(
         &mut self,
         payload: &CoreVariantPayload,
         scope: &FxHashMap<BindingId, GenericId>,
-    ) -> Result<(VariantPayload, Vec<Span>), Diagnostic> {
+        problems: &mut Vec<Diagnostic>,
+    ) -> VariantPayload {
         match payload {
-            CoreVariantPayload::None => Ok((VariantPayload::None, Vec::new())),
-            CoreVariantPayload::Positional(types) => Ok((
-                VariantPayload::Positional(
-                    types
-                        .iter()
-                        .map(|payload| self.lower_stored_type(payload, scope))
-                        .collect::<Result<Vec<_>, Diagnostic>>()?,
-                ),
-                types.iter().map(TypeExpr::span).collect(),
-            )),
-            CoreVariantPayload::Named(fields) => Ok((
-                VariantPayload::Named(
-                    fields
-                        .iter()
-                        .map(|(label, field_type)| {
-                            Ok((
-                                label.name.clone(),
-                                self.lower_stored_type(field_type, scope)?,
-                            ))
-                        })
-                        .collect::<Result<Vec<_>, Diagnostic>>()?,
-                ),
+            CoreVariantPayload::None => VariantPayload::None,
+            CoreVariantPayload::Positional(types) => VariantPayload::Positional(
+                types
+                    .iter()
+                    .map(|payload| self.lower_payload_type(payload, scope, problems))
+                    .collect(),
+            ),
+            CoreVariantPayload::Named(fields) => VariantPayload::Named(
                 fields
                     .iter()
-                    .map(|(_, field_type)| field_type.span())
+                    .map(|(label, field_type)| {
+                        let lowered = self.lower_payload_type(field_type, scope, problems);
+                        (label.name.clone(), lowered)
+                    })
                     .collect(),
-            )),
+            ),
         }
+    }
+
+    fn lower_payload_type(
+        &mut self,
+        payload: &TypeExpr,
+        scope: &FxHashMap<BindingId, GenericId>,
+        problems: &mut Vec<Diagnostic>,
+    ) -> Type {
+        self.lower_stored_type(payload, scope)
+            .unwrap_or_else(|problem| {
+                problems.push(problem);
+                self.failed_scheme().body
+            })
     }
 
     fn check_enum_parameters_used(

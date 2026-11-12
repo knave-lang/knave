@@ -10,6 +10,7 @@ use crate::check::ProgramChecker;
 use crate::core::{BindingId, Expr, ModulePath};
 use crate::diagnostic::Diagnostics;
 use crate::expand::{ExpansionSession, Program};
+use crate::format::{ModuleLookup, SourceFormatter};
 use crate::modules::{ModuleSources, PublicPrelude};
 use crate::ownership::EnforcedOwnership;
 use crate::reader::{Form, StringLiteral};
@@ -90,13 +91,16 @@ impl DocumentedModules {
             },
         )?;
         terminal.source_report().print(&warnings);
+        let mut formatter = SourceFormatter::default();
+        let lookup = ModuleLookup::within_project(self.file.module_sources());
         self.written
             .iter()
             .zip(texts)
             .map(|(module, text)| {
+                let page = ExpandedPage::string(&text, Self::PAGE_MACRO)?;
                 Ok(WrittenPage {
                     module: module.clone(),
-                    text: ExpandedPage::string(&text, Self::PAGE_MACRO)?,
+                    text: formatter.lay_out_page(&page, module, &lookup),
                 })
             })
             .collect()

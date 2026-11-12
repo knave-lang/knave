@@ -49,7 +49,10 @@ impl SetAsideProblems {
             .with_note(format!(
                 "a `document` of `{replacing}` replaced the input that documented {listed}"
             ))
-            .with_help(format!("enter the `document` of {listed} again to keep it"))
+            .with_help(format!(
+                "enter the `document` of {listed} again to keep {}",
+                Self::pronoun(input)
+            ))
     }
 
     pub fn set_aside_reason(replacing: &str, dropped: &str) -> String {
@@ -73,8 +76,15 @@ impl SetAsideProblems {
     }
 
     fn enter_again(input: &SetAsideInput<'_>) -> String {
-        let pronoun = if input.names.len() > 1 { "them" } else { "it" };
-        format!("enter {} again to use {pronoun}", Self::listed_names(input))
+        format!(
+            "enter {} again to use {}",
+            Self::listed_names(input),
+            Self::pronoun(input)
+        )
+    }
+
+    fn pronoun(input: &SetAsideInput<'_>) -> &'static str {
+        if input.names.len() > 1 { "them" } else { "it" }
     }
 
     fn listed_names(input: &SetAsideInput<'_>) -> String {
@@ -202,6 +212,34 @@ mod tests {
                 "a `document` of `g` replaced the input that documented `k`",
                 "enter the `document` of `k` again to keep it"
             )
+        );
+    }
+
+    #[test]
+    fn several_dropped_documents_are_named_them() {
+        let terms = ["g", "k"];
+        let warning = SetAsideProblems::dropped_documents(
+            &SetAsideFixture::input(&terms),
+            "h",
+            SetAsideFixture::span(),
+        );
+        assert_eq!(
+            SetAsideFixture::note_and_help(&warning).1,
+            "enter the `document` of `g` and `k` again to keep them"
+        );
+    }
+
+    #[test]
+    fn several_dropped_definitions_are_named_them() {
+        let names = ["a", "b"];
+        let warning = SetAsideProblems::dropped_definitions(
+            &SetAsideFixture::input(&names),
+            "c",
+            SetAsideFixture::span(),
+        );
+        assert_eq!(
+            SetAsideFixture::note_and_help(&warning).1,
+            "enter `a` and `b` again to use them"
         );
     }
 

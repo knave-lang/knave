@@ -26,14 +26,15 @@ impl AgreementReport {
             .programs()
             .next()
             .expect("the fixture list holds the fixture");
-        let verdicts = self.harness.verdicts(program, Self::LIMIT);
+        let judgement = self.harness.judge(program, Self::LIMIT);
+        let verdicts = &judgement.verdicts;
         let mut report = String::new();
         for backend in self.harness.backend_names() {
             let verdict = verdicts.of(backend).expect("each backend gave a verdict");
             writeln!(report, "{backend}: {verdict}").expect("a string takes text");
         }
         let outside = Self::outside_the_claim(&verdicts.program);
-        for finding in self.harness.findings(&verdicts) {
+        for finding in &judgement.findings {
             writeln!(
                 report,
                 "finding {}{outside}: {}",

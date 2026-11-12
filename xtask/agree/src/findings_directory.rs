@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::finding::Finding;
 use crate::finding_list::FindingList;
+use crate::subject_program::SubjectProgram;
 
 pub struct FindingsDirectory {
     path: PathBuf,
@@ -12,6 +13,7 @@ pub struct FindingsDirectory {
 impl FindingsDirectory {
     const LIST_FILE: &'static str = "findings.txt";
     const PROGRAM_EXTENSION: &'static str = "knv";
+    const REDUCED: &'static str = "reduced";
 
     pub fn at(path: PathBuf) -> Self {
         Self { path }
@@ -30,6 +32,15 @@ impl FindingsDirectory {
         let list = FindingList::of(findings);
         list.write(&self.path.join(Self::LIST_FILE))?;
         Ok(list)
+    }
+
+    pub fn record_reduced(&self, name: &str, program: &SubjectProgram) -> io::Result<()> {
+        let path = self.path.join(format!(
+            "{name}.{}.{}",
+            Self::REDUCED,
+            Self::PROGRAM_EXTENSION
+        ));
+        fs::write(path, program.entry_text())
     }
 
     fn remove_earlier_programs(&self) -> io::Result<()> {

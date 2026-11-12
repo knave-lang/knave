@@ -423,6 +423,7 @@ pub struct Finding {
     pub program: SubjectProgram,
     pub verdicts: BackendVerdicts,
     pub summary: String,
+    pub evidence: Vec<Rejection>,
 }
 
 pub trait Oracle: Send + Sync {
@@ -449,7 +450,7 @@ pub trait Reducer {
   - `BackendsDisagree`: `CompiledDebug` and `Interpreted` both ran and differ in `stdout`, in `exit`, or in the normalized `stderr`.
   - A `TimedOut` or `Unsupported` verdict in any backend is never a finding. It is counted, so the census shows what the interpreter still lacks.
   - The rustc oracles compare only functions that `main` reaches, read from each `Rejection`'s `function`. A `Rejection` names its function by its Knave name, whichever tool rejected it, and records that tool, so a Knave error without a code never counts as rustc's. Whether `main` reaches the function comes from the expanded program, where the expander has resolved every name, so a local that shares a function's name is not a call.
-- **Reducing.** The reducer keeps a candidate only while the same oracle finds the same codes at the same functions.
+- **Reducing.** The reducer keeps a candidate only while the same oracle finds the same codes at the same functions, read from the rejections the `Finding` cites as its `evidence`. It removes a list form, or puts one of its lists in its place, largest first, and stops after a fixed number of attempts.
 - **Runs.**
   - `cargo xtask agree --seeds <range> --oracle <name>...` runs programs in parallel under a job limit, writes each finding with its seed and its reduced program, and exits nonzero on a finding.
   - Pull requests run a fixed set of seeds, and a scheduled job runs fresh ones.

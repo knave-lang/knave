@@ -2,6 +2,8 @@ use super::macro_origin::MacroOrigin;
 use super::macro_origins::MacroOrigins;
 use super::origin_tables::OriginTables;
 use super::saved_call_origins::SavedCallOrigins;
+use super::saved_introductions::SavedIntroductions;
+use super::saved_origin_rows::SavedOriginRows;
 use super::saved_origins::SavedOrigins;
 use crate::source::{SourceId, Span};
 
@@ -47,7 +49,19 @@ impl OriginsFixture {
     }
 
     pub fn saved_calls() -> SavedCallOrigins {
-        SavedCallOrigins::new(Self::load(Self::saved_program()))
+        SavedCallOrigins::new(Self::saved_rows())
+    }
+
+    pub fn saved_introductions() -> SavedIntroductions {
+        SavedIntroductions::new(Self::saved_rows())
+    }
+
+    pub fn saved_rows() -> SavedOriginRows {
+        Self::load(Self::saved_program())
+    }
+
+    pub fn saved_rows_of(origins: MacroOrigins) -> SavedOriginRows {
+        Self::load(origins)
     }
 
     pub fn name(origin: Option<MacroOrigin>) -> Option<String> {

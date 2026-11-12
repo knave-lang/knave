@@ -30,3 +30,39 @@ impl OriginTables {
         SavedWords::write(&[source, span_start, span_end, start, end], &mut self.rows);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::expand::introduced_names::IntroducedNames;
+    use crate::expand::macro_origins::MacroOrigins;
+    use crate::expand::origins_fixture::OriginsFixture;
+    use crate::expand::saved_introductions::SavedIntroductions;
+
+    #[test]
+    fn a_saved_row_keeps_the_names_introduced_at_its_call_site() {
+        let rows = OriginsFixture::saved_rows();
+        let row = rows.decode(
+            rows.row_at(OriginsFixture::call_site())
+                .expect("a saved row"),
+        );
+        assert_eq!(row.origin.name.as_ref(), "outer");
+        let names: Vec<&str> = row
+            .introduced
+            .iter()
+            .map(|held| held.name.as_str())
+            .collect();
+        assert_eq!(names, ["helper"]);
+    }
+
+    #[test]
+    fn a_name_introduced_where_no_macro_was_called_is_not_saved() {
+        let mut origins = MacroOrigins::default();
+        let call_site = OriginsFixture::call_site();
+        origins
+            .introduced
+            .record(call_site, "x", OriginsFixture::span(1, 1, 2));
+        let saved = SavedIntroductions::new(OriginsFixture::saved_rows_of(origins));
+        let introduced = IntroducedNames::over(saved);
+        assert!(introduced.at(call_site, "x").is_none());
+    }
+}

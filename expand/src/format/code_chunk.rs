@@ -288,4 +288,33 @@ mod tests {
             ])
         );
     }
+
+    #[test]
+    fn a_blank_line_between_two_leading_comments_stays() {
+        let fixture = ChunkFixture::new();
+        assert_eq!(
+            fixture.lay_out("(f 1)\n; first\n\n; second\n(g 2)"),
+            Some(vec![
+                "    (f 1)".to_string(),
+                "    ; first".to_string(),
+                String::new(),
+                "    ; second".to_string(),
+                "    (g 2)".to_string()
+            ])
+        );
+    }
+
+    #[test]
+    fn a_blank_line_before_a_leading_comment_stays() {
+        let fixture = ChunkFixture::new();
+        assert_eq!(
+            fixture.lay_out("(f 1)\n\n; why\n(g 2)"),
+            Some(vec![
+                "    (f 1)".to_string(),
+                String::new(),
+                "    ; why".to_string(),
+                "    (g 2)".to_string()
+            ])
+        );
+    }
 }

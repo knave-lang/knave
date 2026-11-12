@@ -1,0 +1,30 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/format/docstring_shallow_result.knv
+---
+(defn pairs (x)
+  "Pairs a number.
+
+  (pairs   1)
+  => (vec 1
+  1)"
+  x)
+
+---
+(defn pairs (x)
+  "Pairs a number.
+
+  (pairs   1)
+  => (vec 1
+  1)"
+  x)
+
+---
+warning[L0109]: this docstring code does not read, so `fmt` leaves it as written
+ --> format/docstring_shallow_result.knv:6:3
+  |
+6 |   1)"
+  |   ^^ the code from this line on does not read as forms
+  |
+  = help: indent the result's later lines deeper than the code, so they continue the result

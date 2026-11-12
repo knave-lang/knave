@@ -1,0 +1,7 @@
+(defn pairs (x)
+  "Pairs a number.
+
+  (pairs   1)
+  => (vec 1
+  1)"
+  x)

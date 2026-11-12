@@ -26,6 +26,8 @@ mod shapes;
 mod syntax_tree;
 mod top_level_printer;
 mod tree_docstrings;
+mod unreadable_cause;
+mod unreadable_code;
 mod written_gap;
 
 pub use docstring_syntax::DocstringSyntax;
@@ -51,6 +53,7 @@ use shape_reader::ShapeReader;
 use syntax_tree::SyntaxTree;
 use top_level_printer::TopLevelPrinter;
 use tree_docstrings::TreeDocstrings;
+use unreadable_cause::UnreadableCause;
 
 pub struct SourceFormatter {
     shape_reader: ShapeReader,
@@ -72,7 +75,7 @@ pub struct FormattedSource {
 struct FormattedText<'s> {
     rules: FormatRules<'s>,
     text: String,
-    unreadable: Vec<Range<usize>>,
+    unreadable: Vec<(Range<usize>, UnreadableCause)>,
 }
 
 impl SourceFormatter {
@@ -120,9 +123,9 @@ impl SourceFormatter {
         })
         .lay_out(&lines);
         let unreadable = laid_out
-            .unreadable_lines
+            .unreadable
             .into_iter()
-            .map(|line| DocstringLine::written_range(&lines, line));
+            .map(|code| (DocstringLine::written_range(&lines, code.line), code.cause));
         FormattedSource {
             text: laid_out.lines.join("\n"),
             warnings: Self::warnings_of(page, unreadable),
@@ -131,12 +134,12 @@ impl SourceFormatter {
 
     fn warnings_of(
         source: &SourceFile,
-        unreadable: impl IntoIterator<Item = Range<usize>>,
+        unreadable: impl IntoIterator<Item = (Range<usize>, UnreadableCause)>,
     ) -> Diagnostics {
         let mut warnings = Diagnostics::default();
-        for range in unreadable {
+        for (range, cause) in unreadable {
             let span = Span::new(source.id(), range);
-            warnings.push(FormatProblems::unreadable_docstring_code(span));
+            warnings.push(FormatProblems::unreadable_docstring_code(span, cause));
         }
         warnings
     }

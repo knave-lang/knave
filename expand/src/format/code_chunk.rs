@@ -4,6 +4,8 @@ use super::region_layout::RegionLayout;
 use super::shapes::ShapeCatalog;
 use super::syntax_tree::SyntaxTree;
 use super::top_level_printer::TopLevelPrinter;
+use super::unreadable_cause::UnreadableCause;
+use super::unreadable_code::UnreadableCode;
 use crate::reader::{Form, Reader};
 use crate::source::SourceMap;
 
@@ -27,7 +29,10 @@ impl<'s> CodeChunk<'s> {
 
     pub fn lay_out(self, text: &str) -> RegionLayout {
         let Some(forms) = Self::read(text) else {
-            return RegionLayout::Unreadable(Self::FIRST_LINE);
+            return RegionLayout::Unreadable(UnreadableCode {
+                line: Self::FIRST_LINE,
+                cause: UnreadableCause::Code,
+            });
         };
         if self.layout.spacing.needs_a_line_per_form() && !Self::ends_each_line(text, &forms) {
             return RegionLayout::Prose;
@@ -61,7 +66,7 @@ impl<'s> CodeChunk<'s> {
 
 #[cfg(test)]
 mod tests {
-    use super::{CodeChunk, RegionLayout};
+    use super::{CodeChunk, RegionLayout, UnreadableCause, UnreadableCode};
     use crate::format::code_layout::CodeLayout;
     use crate::format::code_spacing::CodeSpacing;
     use crate::format::shapes::ShapeCatalog;
@@ -149,7 +154,10 @@ mod tests {
         let fixture = ChunkFixture::new();
         assert!(matches!(
             fixture.layout("(f 1", CodeSpacing::Written),
-            RegionLayout::Unreadable(0)
+            RegionLayout::Unreadable(UnreadableCode {
+                line: 0,
+                cause: UnreadableCause::Code
+            })
         ));
     }
 

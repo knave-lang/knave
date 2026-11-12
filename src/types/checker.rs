@@ -1437,8 +1437,7 @@ impl TypeChecker {
                 self.declarations
                     .traits
                     .table
-                    .get(bound.binding)
-                    .is_none_or(|rust_trait| rust_trait.associated.is_none())
+                    .links_its_argument(bound.binding)
             })
             .filter_map(|bound| {
                 let argument = bound

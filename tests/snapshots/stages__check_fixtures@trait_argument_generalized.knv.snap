@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/trait_argument_generalized.knv
+---
+(type holds? (where ((whole (holds part)) part) (fn ((ref whole) part) bool)))
+(type has? (where ((a (holds b)) b) (fn ((ref a) b) bool)))
+(type same? (where ((a partial-eq)) (fn (a a) bool)))
+(type has-two? (fn ((vec i64)) bool))
+(type has-ana? (fn ((vec (ref str))) bool))

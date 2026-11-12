@@ -26,6 +26,12 @@ impl RustTrait {
             .iter()
             .any(|implementor| !implementor.scheme.params.is_empty())
     }
+
+    fn relates_a_type_to_itself(&self) -> bool {
+        self.implementors
+            .iter()
+            .any(|implementor| implementor.argument.is_none())
+    }
 }
 
 #[derive(Default)]
@@ -196,6 +202,13 @@ impl TraitTable {
 
     pub fn get(&self, binding: BindingId) -> Option<&RustTrait> {
         self.traits.get(&binding)
+    }
+
+    pub fn links_its_argument(&self, binding: BindingId) -> bool {
+        !self.has_associated_type(binding)
+            && self
+                .get(binding)
+                .is_none_or(RustTrait::relates_a_type_to_itself)
     }
 
     pub fn has_associated_type(&self, binding: BindingId) -> bool {

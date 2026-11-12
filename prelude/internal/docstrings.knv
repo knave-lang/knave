@@ -1,10 +1,10 @@
-(use code add-module-note bool-not empty? first list nth
-          number-add number-lt rest string-drop
-          string-strip-prefix string-trim-end
+(use code add-module-note bool-not empty? first
+          language-name list nth number-add number-lt rest
+          string-drop string-strip-prefix string-trim-end
           string-trim-start value-eq)
 
-(export arrow-line? closes-fence? example-arrow fence-run
-        opening-fence)
+(export arrow-line? closes-fence? example-arrow
+        fence-holds-code? fence-run opening-fence)
 
 (def example-arrow "=> ")
 
@@ -49,6 +49,15 @@
 
 (def fence-run
   (fn (fence) (nth fence 1)))
+
+(def fence-holds-code?
+  (fn (fence line)
+    (local info
+      (string-trim-end (string-trim-start (string-drop (string-trim-start line)
+                                                       (fence-run fence)))))
+    (if (value-eq info "")
+      true
+      (value-eq info (language-name)))))
 
 (def leading-run
   (fn (text mark count)

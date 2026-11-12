@@ -1,5 +1,9 @@
 (use prelude/internal/code set-macro-step-limit)
 
+(use prelude/internal/docstrings arrow-line? closes-fence?
+                                 fence-holds-code?
+                                 opening-fence)
+
 (use prelude/internal/macros add-docstring-note
                              docstring-before-body?
                              docstring-before-parameters
@@ -1352,10 +1356,12 @@
     (local lines (string-lines text))
     (local margin (shared-indentation (rest lines)))
     (local continuation
-      (unindented-lines margin
-                        (rest lines)
-                        (string-open-after? false (first lines))
-                        (list)))
+      (unindented-regions margin
+                          (docstring-regions (rest lines)
+                                             (list)
+                                             (list)
+                                             (list))
+                          (list)))
     (local first-line (string-trim-start (first lines)))
     (without-trailing-newlines
       (join-lines (without-leading-blanks (prepend first-line continuation))))))
@@ -1400,6 +1406,92 @@
 (def unindent
   (fn (margin line)
     (if (blank? line) "" (string-drop line margin))))
+
+(def docstring-regions
+  (fn (lines fence current found)
+    (if (empty? lines)
+      (concat found (open-regions fence current))
+      (if (empty? fence)
+        (if (bool-not (empty? (opening-fence (first lines))))
+          (recur (rest lines)
+                 (list (opening-fence (first lines))
+                       (fence-kind (opening-fence (first lines))
+                                   (first lines)))
+                 (list)
+                 (concat (concat found (paragraph-regions current))
+                         (list (prose-region (first lines)))))
+          (if (blank? (first lines))
+            (recur (rest lines)
+                   fence
+                   (list)
+                   (concat (concat found (paragraph-regions current))
+                           (list (prose-region (first lines)))))
+            (recur (rest lines)
+                   fence
+                   (concat current (list (first lines)))
+                   found)))
+        (if (closes-fence? (first fence) (first lines))
+          (recur (rest lines)
+                 (list)
+                 (list)
+                 (concat (concat found
+                                 (list (list (nth fence 1) current)))
+                         (list (prose-region (first lines)))))
+          (recur (rest lines)
+                 fence
+                 (concat current (list (first lines)))
+                 found))))))
+
+(def open-regions
+  (fn (fence current)
+    (if (empty? fence)
+      (paragraph-regions current)
+      (list (list (quote prose) current)))))
+
+(def paragraph-regions
+  (fn (lines)
+    (if (empty? lines)
+      (list)
+      (list (list (paragraph-kind lines) lines)))))
+
+(def paragraph-kind
+  (fn (lines)
+    (if (holds-arrow-line? lines)
+      (quote code)
+      (quote prose))))
+
+(def fence-kind
+  (fn (fence line)
+    (if (fence-holds-code? fence line)
+      (quote code)
+      (quote prose))))
+
+(def holds-arrow-line?
+  (fn (lines)
+    (if (empty? lines)
+      false
+      (if (arrow-line? (first lines))
+        true
+        (recur (rest lines))))))
+
+(def prose-region
+  (fn (line)
+    (list (quote prose) (list line))))
+
+(def unindented-regions
+  (fn (margin regions done)
+    (if (empty? regions)
+      done
+      (recur margin
+             (rest regions)
+             (concat done (unindented-region margin (first regions)))))))
+
+(def unindented-region
+  (fn (margin region)
+    (if (value-eq (first region) (quote code))
+      (unindented-lines margin (nth region 1) false (list))
+      (map-list (nth region 1)
+        (fn (line) (unindent margin line))))))
 
 (def unindented-lines
   (fn (margin lines in-string done)

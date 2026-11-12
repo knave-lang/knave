@@ -449,7 +449,7 @@ With `(header-shape (my-defn name parameters))`, the same page starts with `(my-
 
 Each of these forms is also a lookup: `(doc-page (apropos sort))` starts with the form as written, then a blank line, then the results, and `knave doc '(apropos sort)'` prints it. `(docstring (dir))` is `L0327`.
 
-A docstring is Markdown. A lookup removes the indentation that every written continuation line shares, as Python's `inspect.cleandoc` does, except on a line that continues a string, which keeps its text as `knave test` reads it, and drops blank lines at both ends. Write docstrings to these rules, which no compile error enforces:
+A docstring is Markdown. A lookup removes the indentation that every written continuation line shares, as Python's `inspect.cleandoc` does, except on a line that continues a string in docstring code, an example paragraph or a `knave` fence, which keeps its text as `knave test` reads it, and drops blank lines at both ends. Write docstrings to these rules, which no compile error enforces:
 
 - The first line is one complete summary sentence.
 - Lines stay within 80 columns.

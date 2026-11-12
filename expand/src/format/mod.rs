@@ -23,6 +23,7 @@ mod list_plan;
 mod markdown_fence;
 mod meaning;
 mod measure;
+mod printed_text;
 mod region_layout;
 mod shape_reader;
 mod shapes;
@@ -159,7 +160,9 @@ impl<'s> FormattedText<'s> {
         ImportSorter::sort(&mut tree);
         let unreadable = TreeDocstrings::new(layouts).lay_out(&mut tree);
         let mut engine = LayoutEngine::new(rules.shapes);
-        let mut text = TopLevelPrinter::new(&mut engine, Self::FILE_LAYOUT).print(&tree);
+        let mut text = TopLevelPrinter::new(&mut engine, Self::FILE_LAYOUT)
+            .print(&tree)
+            .into_string();
         if !text.is_empty() {
             text.push('\n');
         }

@@ -40,12 +40,7 @@ impl<'s> CodeChunk<'s> {
         let mut engine = LayoutEngine::new(self.shapes);
         let printed =
             TopLevelPrinter::new(&mut engine, self.layout).print(&SyntaxTree::build(text));
-        RegionLayout::LaidOut(
-            printed
-                .split('\n')
-                .map(|line| self.with_margin(line))
-                .collect(),
-        )
+        RegionLayout::LaidOut(printed.lines().map(|line| self.with_margin(line)).collect())
     }
 
     fn read(text: &str) -> Option<Vec<Form>> {

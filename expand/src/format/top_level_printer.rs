@@ -3,13 +3,13 @@ use super::code_layout::CodeLayout;
 use super::import_group::ImportGroup;
 use super::import_join::ImportJoin;
 use super::layout::{LaidOut, LayoutEngine};
+use super::printed_text::PrintedText;
 use super::syntax_tree::{Comment, Entry, SyntaxTree};
 
 pub struct TopLevelPrinter<'e, 's> {
     engine: &'e mut LayoutEngine<'s>,
     layout: CodeLayout,
-    text: String,
-    started: bool,
+    printed: PrintedText,
     previous_group: Option<ImportGroup>,
 }
 
@@ -18,18 +18,17 @@ impl<'e, 's> TopLevelPrinter<'e, 's> {
         Self {
             engine,
             layout,
-            text: String::new(),
-            started: false,
+            printed: PrintedText::default(),
             previous_group: None,
         }
     }
 
-    pub fn print(mut self, tree: &SyntaxTree) -> String {
+    pub fn print(mut self, tree: &SyntaxTree) -> PrintedText {
         for (position, entry) in tree.entries.iter().enumerate() {
             self.print_entry(entry, position);
         }
         self.print_closing_comments(&tree.closing_comments);
-        self.text
+        self.printed
     }
 
     fn print_entry(&mut self, entry: &Entry, position: usize) {
@@ -42,11 +41,11 @@ impl<'e, 's> TopLevelPrinter<'e, 's> {
                 .spacing
                 .breaks_before_form(entry.gap_before(), join)
         {
-            self.push_blank_line();
+            self.printed.push_blank_line();
         }
         self.print_comments(&entry.leading_comments);
         if !entry.leading_comments.is_empty() && entry.blank_before_node {
-            self.push_blank_line();
+            self.printed.push_blank_line();
         }
         let mut rendered = String::new();
         block.render_into(&mut rendered);
@@ -73,7 +72,7 @@ impl<'e, 's> TopLevelPrinter<'e, 's> {
     fn print_comments(&mut self, comments: &[Comment]) {
         for (position, comment) in comments.iter().enumerate() {
             if position > 0 && comment.blank_before {
-                self.push_blank_line();
+                self.printed.push_blank_line();
             }
             self.push_rendered(&comment.text);
         }
@@ -88,25 +87,15 @@ impl<'e, 's> TopLevelPrinter<'e, 's> {
                     .breaks_before_form(comment.gap_before(), ImportJoin::Apart),
                 _ => comment.blank_before,
             };
-            if breaks && self.started {
-                self.push_blank_line();
+            if breaks && self.printed.is_started() {
+                self.printed.push_blank_line();
             }
             self.push_rendered(&comment.text);
         }
     }
 
-    fn push_blank_line(&mut self) {
-        self.text.push('\n');
-    }
-
     fn push_rendered(&mut self, rendered: &str) {
-        if self.started {
-            self.text.push('\n');
-        }
-        self.started = true;
-        self.text
-            .extend(std::iter::repeat_n(' ', self.layout.column));
-        self.text.push_str(rendered);
+        self.printed.push_line(self.layout.column, rendered);
     }
 }
 
@@ -136,7 +125,9 @@ mod tests {
                 column: 0,
                 spacing: CodeSpacing::Separated,
             };
-            TopLevelPrinter::new(&mut engine, layout).print(&SyntaxTree::build(text))
+            TopLevelPrinter::new(&mut engine, layout)
+                .print(&SyntaxTree::build(text))
+                .into_string()
         }
     }
 

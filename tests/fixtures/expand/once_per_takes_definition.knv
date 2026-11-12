@@ -6,3 +6,17 @@
     (quote (:once-per call))))
 
 (def value (broken 1))
+
+(defmacro bare (x)
+  (fail "this macro is not finished"
+    x "finish the macro"
+    (quote (:once-per))))
+
+(def bare-value (bare 2))
+
+(defmacro quoted (x)
+  (fail "this macro is not finished"
+    x "finish the macro"
+    (quote (:once-per "definition"))))
+
+(def quoted-value (quoted 3))

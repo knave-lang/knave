@@ -25,6 +25,15 @@
   fn   kept(x: i64) -> i64 { x }
   ```
 
+  ````
+  ```
+  (twice   3)
+  ```
+  ````
+
+  (twice 3) is prose, because a form shares its line
+  => 6
+
   ; a comment makes this paragraph prose
   (twice   3)
   => 6"

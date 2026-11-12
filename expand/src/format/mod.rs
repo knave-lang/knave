@@ -1,4 +1,5 @@
 mod block;
+mod chunk_layout;
 mod code_chunk;
 mod code_layout;
 mod code_lines;
@@ -17,6 +18,7 @@ mod list_plan;
 mod markdown_fence;
 mod meaning;
 mod measure;
+mod region_layout;
 mod shape_reader;
 mod shapes;
 mod syntax_tree;

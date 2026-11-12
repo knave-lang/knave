@@ -12,6 +12,10 @@ impl CodeSpacing {
         }
     }
 
+    pub fn needs_a_line_per_form(self) -> bool {
+        self == Self::Written
+    }
+
     pub fn breaks_after_result(self, written_blank: bool) -> bool {
         match self {
             Self::Written => written_blank,
@@ -30,9 +34,10 @@ mod tests {
             (
                 CodeSpacing::Written.breaks_before_form(true, false),
                 CodeSpacing::Written.breaks_before_form(false, false),
-                CodeSpacing::Written.breaks_after_result(false)
+                CodeSpacing::Written.breaks_after_result(false),
+                CodeSpacing::Written.needs_a_line_per_form()
             ),
-            (true, false, false)
+            (true, false, false, true)
         );
     }
 
@@ -42,9 +47,10 @@ mod tests {
             (
                 CodeSpacing::Separated.breaks_before_form(false, false),
                 CodeSpacing::Separated.breaks_before_form(true, true),
-                CodeSpacing::Separated.breaks_after_result(false)
+                CodeSpacing::Separated.breaks_after_result(false),
+                CodeSpacing::Separated.needs_a_line_per_form()
             ),
-            (true, false, true)
+            (true, false, true, false)
         );
     }
 }

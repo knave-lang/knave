@@ -3,6 +3,7 @@ use super::code_region::CodeRegion;
 use super::code_spacing::CodeSpacing;
 use super::docstring_regions::DocstringRegions;
 use super::list_plan::Arrangement;
+use super::region_layout::RegionLayout;
 use super::shapes::ShapeCatalog;
 
 pub struct DocstringCode<'s> {
@@ -53,11 +54,12 @@ impl<'s> DocstringCode<'s> {
                 spacing: code_lines.spacing,
             };
             match CodeRegion::new(self.shapes, code, layout).lay_out() {
-                Ok(code_lines) => laid_out.lines.extend(code_lines),
-                Err(line) => {
+                RegionLayout::LaidOut(code_lines) => laid_out.lines.extend(code_lines),
+                RegionLayout::Unreadable(line) => {
                     laid_out.unreadable_lines.push(region.start + line);
                     laid_out.lines.extend_from_slice(code);
                 }
+                RegionLayout::Prose => laid_out.lines.extend_from_slice(code),
             }
             copied = region.end;
         }

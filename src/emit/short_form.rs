@@ -73,8 +73,6 @@ struct TemplateShape<'t> {
 impl<'t> TemplateShape<'t> {
     const FORBIDDEN_CHARACTERS: [char; 3] = ['{', '|', ';'];
     const FORBIDDEN_OPERATORS: [&'static str; 2] = ["&&", "?"];
-    const PATH_CHARACTERS: [char; 7] = ['_', ':', '(', '[', ',', ' ', '&'];
-    const TURBOFISH: &'static str = "::";
 
     fn new(template: &'t RustTemplate, arguments: &'t [TypedArgument], lent: usize) -> Self {
         Self {
@@ -118,7 +116,7 @@ impl<'t> TemplateShape<'t> {
     }
 
     fn runs_only_literals_before_the_lent_placeholder(&self, parsed: &ParsedTemplate) -> bool {
-        let mut open_turbofish = 0;
+        let mut prefix = PathPrefix::default();
         parsed
             .pieces()
             .iter()
@@ -126,7 +124,7 @@ impl<'t> TemplateShape<'t> {
                 |piece| !matches!(piece, Piece::Placeholder { index, .. } if *index == self.lent),
             )
             .all(|piece| match piece {
-                Piece::Literal(literal) => Self::is_path(literal, &mut open_turbofish),
+                Piece::Literal(literal) => prefix.extend_with(literal),
                 Piece::Placeholder { index, .. } => self
                     .arguments
                     .get(*index)
@@ -135,27 +133,37 @@ impl<'t> TemplateShape<'t> {
             })
     }
 
-    fn is_path(literal: &str, open_turbofish: &mut usize) -> bool {
-        literal
-            .char_indices()
-            .all(|(at, character)| match character {
-                '<' if literal[..at].ends_with(Self::TURBOFISH) => {
-                    *open_turbofish += 1;
-                    true
-                }
-                '>' if *open_turbofish > 0 => {
-                    *open_turbofish -= 1;
-                    true
-                }
-                _ => character.is_alphanumeric() || Self::PATH_CHARACTERS.contains(&character),
-            })
-    }
-
     fn literals(parsed: &ParsedTemplate) -> impl Iterator<Item = &str> {
         parsed.pieces().iter().filter_map(|piece| match piece {
             Piece::Literal(literal) => Some(literal.as_str()),
             _ => None,
         })
+    }
+}
+
+#[derive(Default)]
+struct PathPrefix {
+    open_generic_lists: usize,
+}
+
+impl PathPrefix {
+    const PATH_CHARACTERS: [char; 7] = ['_', ':', '(', '[', ',', ' ', '&'];
+    const TURBOFISH_OPENER: &'static str = "::";
+
+    fn extend_with(&mut self, literal: &str) -> bool {
+        literal
+            .char_indices()
+            .all(|(at, character)| match character {
+                '<' if literal[..at].ends_with(Self::TURBOFISH_OPENER) => {
+                    self.open_generic_lists += 1;
+                    true
+                }
+                '>' if self.open_generic_lists > 0 => {
+                    self.open_generic_lists -= 1;
+                    true
+                }
+                _ => character.is_alphanumeric() || Self::PATH_CHARACTERS.contains(&character),
+            })
     }
 }
 

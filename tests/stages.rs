@@ -13,6 +13,7 @@ use support::{
 };
 
 const BORROW_ACROSS_MOVE_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local grid (vec 1 2))\n  (local first (at grid 0))\n  (local next (assoc grid 0 3))\n  (println (at next 0) \" \" first))\n```\n";
+const SECOND_TRAIT_PATH_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n(deftrait printable (rust \"std::fmt::Display\") i64)\n\n(defn main ()\n  (println 1))\n```\n";
 const FAILING_EXIT_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local empty (the (vec i64) (vec)))\n  (println (at empty 0)))\n```\n";
 
 #[test]
@@ -249,15 +250,14 @@ fn fixtures_within_their_deadline_keep_their_reports() {
 #[test]
 fn each_erroneous_explanation_example_reports_its_code_first() {
     for explanation in ExplanationExamples::written() {
-        let examples = explanation.erroneous_errors();
+        let first_codes = explanation.erroneous_first_codes();
         assert!(
-            !examples.is_empty(),
+            !first_codes.is_empty(),
             "{} has no erroneous example",
             explanation.code()
         );
-        for errors in examples {
-            let first = errors.first().map(|error| error.code.as_str());
-            assert_eq!(first, Some(explanation.code()));
+        for first in first_codes {
+            assert_eq!(first.as_deref(), Some(explanation.code()));
         }
     }
 }
@@ -272,6 +272,15 @@ fn each_explanation_fix_builds_and_runs() {
         );
         assert_eq!(explanation.fix_failures(), Vec::<String>::new());
     }
+}
+
+#[test]
+fn an_explanation_example_that_only_warns_reports_its_warning_code() {
+    let explanation = ExplanationExamples::new("L0217", SECOND_TRAIT_PATH_EXAMPLE);
+    assert_eq!(
+        explanation.erroneous_first_codes(),
+        vec![Some("L0217".to_string())]
+    );
 }
 
 #[test]

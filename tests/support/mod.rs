@@ -158,6 +158,18 @@ impl Fixture {
         }
     }
 
+    pub fn first_reported_code(mut self) -> Option<String> {
+        let diagnostics = match self.checked() {
+            Ok(program) => program.warnings,
+            Err(diagnostics) => diagnostics,
+        };
+        diagnostics
+            .in_source_order()
+            .into_iter()
+            .find_map(|diagnostic| diagnostic.code())
+            .map(|code| code.as_str().to_string())
+    }
+
     pub fn check_errors(mut self) -> Vec<ExampleError> {
         self.checked().err().map_or_else(Vec::new, |diagnostics| {
             diagnostics

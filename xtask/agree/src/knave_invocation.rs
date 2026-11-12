@@ -75,20 +75,30 @@ impl<'a> KnaveInvocation<'a> {
     fn refused(&self, finished: &Finished, limit: Duration) -> Verdict {
         let stderr = String::from_utf8_lossy(&finished.stderr);
         match finished.status.code() {
-            Some(Self::PROGRAM_ERRORS) => Verdict::Rejected(
-                KnaveStandardError::of(self.program, self.expanded_definitions(limit))
-                    .rejections(&stderr),
-            ),
+            Some(Self::PROGRAM_ERRORS) => self.rejected(&stderr, limit),
             _ => Verdict::Unsupported(format!("knave failed: {stderr}")),
         }
     }
 
-    fn expanded_definitions(&self, limit: Duration) -> TopLevelDefinitions {
-        match self.completion(&[Self::EXPAND], limit) {
-            Ok(Completion::Finished(expanded)) if expanded.status.success() => {
-                TopLevelDefinitions::of_text(&String::from_utf8_lossy(&expanded.stdout))
+    fn rejected(&self, stderr: &str, limit: Duration) -> Verdict {
+        let mut rejections = KnaveStandardError::of(self.program).rejections(stderr);
+        if rejections.iter().any(TopLevelDefinitions::needs_reach) {
+            match self.expanded_definitions(limit) {
+                Ok(expanded) => expanded.mark_reached(&mut rejections),
+                Err(verdict) => return verdict,
             }
-            _ => self.program.definitions(),
+        }
+        Verdict::Rejected(rejections)
+    }
+
+    fn expanded_definitions(&self, limit: Duration) -> Result<TopLevelDefinitions, Verdict> {
+        match self.completion(&[Self::EXPAND], limit) {
+            Ok(Completion::Finished(expanded)) if expanded.status.success() => Ok(
+                TopLevelDefinitions::of_text(&String::from_utf8_lossy(&expanded.stdout)),
+            ),
+            _ => Err(Verdict::Unsupported(
+                "knave cannot expand the program to learn what `main` reaches".to_string(),
+            )),
         }
     }
 }

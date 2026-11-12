@@ -9,7 +9,6 @@ use crate::verdict::{RejectingTool, Rejection};
 pub struct KnaveStandardError<'a> {
     program: &'a SubjectProgram,
     definitions: TopLevelDefinitions,
-    expanded: TopLevelDefinitions,
 }
 
 struct Heading {
@@ -26,11 +25,10 @@ impl<'a> KnaveStandardError<'a> {
     const ERROR: &'static str = "error";
     const LOCATION_ARROW: &'static str = "--> ";
 
-    pub fn of(program: &'a SubjectProgram, expanded: TopLevelDefinitions) -> Self {
+    pub fn of(program: &'a SubjectProgram) -> Self {
         Self {
             program,
             definitions: program.definitions(),
-            expanded,
         }
     }
 
@@ -79,9 +77,7 @@ impl<'a> KnaveStandardError<'a> {
         Rejection {
             tool: RejectingTool::Knave,
             code,
-            reached_from_main: function
-                .as_deref()
-                .is_none_or(|name| self.expanded.reaches(name)),
+            reached_from_main: true,
             function,
             span: offset..offset,
             file: location.file,
@@ -143,8 +139,8 @@ mod tests {
     #[test]
     fn reads_each_error_code_with_its_file_offset_and_function() {
         let fixture = StandardErrorFixture::new();
-        let rejections = KnaveStandardError::of(&fixture.program, fixture.program.definitions())
-            .rejections(StandardErrorFixture::REPORT);
+        let rejections =
+            KnaveStandardError::of(&fixture.program).rejections(StandardErrorFixture::REPORT);
         assert_eq!(rejections.len(), 1);
         assert_eq!(
             rejections[0].code.as_ref().map(|code| code.as_str()),
@@ -162,8 +158,7 @@ mod tests {
     fn skips_warnings_and_keeps_an_error_without_a_code_as_knave_s() {
         let fixture = StandardErrorFixture::new();
         let report = "warning[L0434]: unreachable\n --> moved.knv:1:1\nerror: cannot read\n --> moved.knv:1:2\n";
-        let rejections = KnaveStandardError::of(&fixture.program, fixture.program.definitions())
-            .rejections(report);
+        let rejections = KnaveStandardError::of(&fixture.program).rejections(report);
         assert_eq!(rejections.len(), 1);
         assert_eq!(rejections[0].code, None);
         assert!(!rejections[0].is_rustc());

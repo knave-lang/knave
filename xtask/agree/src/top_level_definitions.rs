@@ -4,6 +4,8 @@ use std::ops::Range;
 use knave_expand::mangle::NameMangler;
 use knave_expand::reader::{Token, TokenKind, TokenScan};
 
+use crate::verdict::Rejection;
+
 pub struct TopLevelDefinitions {
     definitions: Vec<Definition>,
 }
@@ -40,7 +42,23 @@ impl TopLevelDefinitions {
             .map(|definition| definition.name.as_str())
     }
 
-    pub fn reaches(&self, function: &str) -> bool {
+    pub fn needs_reach(rejection: &Rejection) -> bool {
+        rejection
+            .function
+            .as_deref()
+            .is_some_and(|function| function != Self::ENTRY)
+    }
+
+    pub fn mark_reached(&self, rejections: &mut [Rejection]) {
+        for rejection in rejections {
+            rejection.reached_from_main = rejection
+                .function
+                .as_deref()
+                .is_none_or(|function| self.reaches(function));
+        }
+    }
+
+    fn reaches(&self, function: &str) -> bool {
         self.definition_named(function).is_none() || self.reached_from_main().contains(function)
     }
 
@@ -131,11 +149,25 @@ impl DefinitionReader {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::TopLevelDefinitions;
+    use crate::verdict::{RejectingTool, Rejection};
 
     struct DefinitionsFixture;
 
     impl DefinitionsFixture {
+        fn rejection_in(function: &str) -> Rejection {
+            Rejection {
+                tool: RejectingTool::Knave,
+                code: None,
+                file: PathBuf::from("main.knv"),
+                span: 0..0,
+                function: Some(function.to_string()),
+                reached_from_main: true,
+            }
+        }
+
         const TWO_FUNCTIONS: &str =
             "(defn grow! (v) (push! v 1))\n(defn main ()\n  (grow! (vec 1)))\n";
         const UNREACHED: &str = "(defn helper () 1)\n(defn unused () (helper))\n(defn shown () 2)\n(defn main () (map (iter (vec 1)) shown))\n";
@@ -175,5 +207,21 @@ mod tests {
         assert!(definitions.reaches("shown"));
         assert!(definitions.reaches("println"));
         assert!(!definitions.reaches("unused"));
+    }
+
+    #[test]
+    fn marks_only_the_rejections_in_functions_main_does_not_reach() {
+        let definitions = TopLevelDefinitions::of_text(DefinitionsFixture::UNREACHED);
+        let mut rejections = vec![
+            DefinitionsFixture::rejection_in("unused"),
+            DefinitionsFixture::rejection_in("shown"),
+        ];
+        assert!(rejections.iter().all(TopLevelDefinitions::needs_reach));
+        definitions.mark_reached(&mut rejections);
+        assert!(!rejections[0].reached_from_main);
+        assert!(rejections[1].reached_from_main);
+        assert!(!TopLevelDefinitions::needs_reach(
+            &DefinitionsFixture::rejection_in("main")
+        ));
     }
 }

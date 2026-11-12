@@ -12,6 +12,9 @@ use support::{
     SavedPreludeAgreement,
 };
 
+const BORROW_ACROSS_MOVE_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local grid (vec 1 2))\n  (local first (at grid 0))\n  (local next (assoc grid 0 3))\n  (println (at next 0) \" \" first))\n```\n";
+const FAILING_EXIT_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local empty (the (vec i64) (vec)))\n  (println (at empty 0)))\n```\n";
+
 #[test]
 fn reader_fixtures() {
     let fixtures = "fixtures/read/*.knv";
@@ -269,6 +272,18 @@ fn each_explanation_fix_builds_and_runs() {
         );
         assert_eq!(explanation.fix_failures(), Vec::<String>::new());
     }
+}
+
+#[test]
+fn an_explanation_fix_that_rustc_refuses_fails_its_run() {
+    let explanation = ExplanationExamples::new("rustc-refusal", BORROW_ACROSS_MOVE_FIX);
+    assert_eq!(explanation.fix_failures().len(), 1);
+}
+
+#[test]
+fn an_explanation_fix_that_exits_nonzero_fails_its_run() {
+    let explanation = ExplanationExamples::new("nonzero-exit", FAILING_EXIT_FIX);
+    assert_eq!(explanation.fix_failures().len(), 1);
 }
 
 #[test]

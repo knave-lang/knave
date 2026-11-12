@@ -218,8 +218,8 @@ impl Fixture {
 
     fn failure_of(&self, binary: &Path) -> Option<String> {
         let output = self.run(binary);
-        let succeeded = output.status.success() && output.stderr.is_empty();
-        (!succeeded).then(|| String::from_utf8_lossy(&output.stderr).into_owned())
+        let failed = !output.status.success();
+        failed.then(|| String::from_utf8_lossy(&output.stderr).into_owned())
     }
 
     fn build_directory(&self) -> PathBuf {

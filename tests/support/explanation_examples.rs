@@ -22,12 +22,16 @@ impl ExplanationExamples {
     const CLOSING_FENCE: &str = "```\n";
     const EXAMPLE_FILE: &str = "example.knv";
 
+    pub fn new(code: &str, text: &'static str) -> Self {
+        let code = code.to_string();
+        Self { code, text }
+    }
+
     pub fn written() -> Vec<Self> {
         Explanation::all()
             .filter_map(|explanation| {
                 let text = explanation.text()?;
-                let code = explanation.code().as_str().to_string();
-                Some(Self { code, text })
+                Some(Self::new(explanation.code().as_str(), text))
             })
             .collect()
     }

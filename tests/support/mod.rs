@@ -1,3 +1,4 @@
+mod explanation_examples;
 mod fixture_queue;
 mod formatting;
 mod headers;
@@ -25,6 +26,7 @@ use knave::source::{SourceId, SourceMap, Span};
 use knave::types::TypedProgram;
 use rustc_hash::FxHashMap;
 
+pub use explanation_examples::{ExampleError, ExplanationExamples};
 pub use formatting::{FormatFailures, ShapeLookup};
 pub use headers::HeaderAgreement;
 pub use reports::FixtureReports;
@@ -38,7 +40,7 @@ pub struct Fixture {
 }
 
 impl Fixture {
-    const FIXTURE_ROOT: &str = "tests/fixtures";
+    pub const FIXTURE_ROOT: &str = "tests/fixtures";
     const RUN_DEADLINE: Duration = Duration::from_secs(10);
     const EXIT_POLL_INTERVAL: Duration = Duration::from_millis(10);
     const PANIC_THREAD: &str = "thread '";
@@ -47,6 +49,10 @@ impl Fixture {
 
     pub fn load(path: &Path) -> Self {
         let text = fs::read_to_string(path).expect("fixture is readable");
+        Self::of_text(path, text)
+    }
+
+    pub fn of_text(path: &Path, text: String) -> Self {
         let mut sources = SourceMap::default();
         let entry = sources.add(Self::display_name(path), text);
         Self {
@@ -150,6 +156,22 @@ impl Fixture {
             ),
             Err(diagnostics) => self.render(&diagnostics),
         }
+    }
+
+    pub fn check_errors(mut self) -> Vec<ExampleError> {
+        self.checked().err().map_or_else(Vec::new, |diagnostics| {
+            diagnostics
+                .in_source_order()
+                .into_iter()
+                .filter(|diagnostic| diagnostic.is_error())
+                .map(|diagnostic| ExampleError {
+                    code: diagnostic
+                        .code()
+                        .map_or_else(String::new, |code| code.as_str().to_string()),
+                    title: diagnostic.title().to_string(),
+                })
+                .collect()
+        })
     }
 
     pub fn emit_report(mut self) -> String {

@@ -6,8 +6,10 @@ use clap::Args;
 use super::doc::{DocCommand, DocEnvironment, DocPage};
 use super::doc_write::{DocScope, DocWriteCommand};
 use super::exit_status::ExitStatus;
+use super::explanation_page::ExplanationPage;
 use super::term_parser::{SurplusParser, TermParser};
 use super::terminal::Terminal;
+use crate::diagnostic::Explanation;
 
 #[derive(Args)]
 pub struct DocArguments {
@@ -57,7 +59,10 @@ impl DocArguments {
             .term
             .or(self.separated_term)
             .expect("clap requires one term");
-        DocCommand::new(DocEnvironment::new(self.file), term, page).run(terminal)
+        match Explanation::of_code(&term) {
+            Some(explanation) => ExplanationPage::new(explanation).print(),
+            None => DocCommand::new(DocEnvironment::new(self.file), term, page).run(terminal),
+        }
     }
 
     fn scope(&self) -> DocScope {

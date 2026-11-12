@@ -2011,6 +2011,47 @@ fn doc_prints_the_call_form_of_template() {
 }
 
 #[test]
+fn doc_prints_the_explanation_of_a_diagnostic_code() {
+    let sandbox = Sandbox::new("doc_code_explanation");
+    let doc = sandbox.compiler(&["doc", "L0501"]);
+    let page = doc.assert_exit_code(0).stdout();
+    assert_eq!(page.lines().next(), Some("L0501: use after move"));
+    assert!(page.contains("## Erroneous example"));
+}
+
+#[test]
+fn doc_looks_up_a_code_name_as_a_term() {
+    let sandbox = Sandbox::new("doc_code_name");
+    let doc = sandbox.compiler(&["doc", "--color", "never", "use-after-move"]);
+    assert!(
+        doc.assert_exit_code(1)
+            .stderr()
+            .starts_with("error[L0201]: cannot find `use-after-move` in this scope")
+    );
+}
+
+#[test]
+fn doc_says_when_a_code_has_no_explanation_yet() {
+    let sandbox = Sandbox::new("doc_code_unexplained");
+    let doc = sandbox.compiler(&["doc", "L0203"]);
+    assert_eq!(
+        doc.assert_exit_code(0).stdout(),
+        "L0203: duplicate definition\n\nNo explanation yet.\n"
+    );
+}
+
+#[test]
+fn doc_looks_up_an_unknown_code_as_a_term() {
+    let sandbox = Sandbox::new("doc_unknown_code");
+    let doc = sandbox.compiler(&["doc", "--color", "never", "L0999"]);
+    assert!(
+        doc.assert_exit_code(1)
+            .stderr()
+            .starts_with("error[L0201]: cannot find `L0999` in this scope")
+    );
+}
+
+#[test]
 fn doc_takes_a_term_that_starts_with_a_hyphen() {
     let sandbox = Sandbox::new("doc_hyphen");
     let doc = sandbox.compiler(&["doc", "->"]);

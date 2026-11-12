@@ -7,7 +7,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 use std::time::Duration;
 
-use support::{Fixture, FixtureReports, FormatFailures, HeaderAgreement, SavedPreludeAgreement};
+use support::{
+    ExplanationExamples, Fixture, FixtureReports, FormatFailures, HeaderAgreement,
+    SavedPreludeAgreement,
+};
 
 #[test]
 fn reader_fixtures() {
@@ -238,4 +241,53 @@ fn fixtures_within_their_deadline_keep_their_reports() {
         path.display().to_string()
     });
     assert_eq!(reports.report(&path), "quick.knv");
+}
+
+#[test]
+fn each_erroneous_explanation_example_reports_its_code_first() {
+    for explanation in ExplanationExamples::written() {
+        let examples = explanation.erroneous_errors();
+        assert!(
+            !examples.is_empty(),
+            "{} has no erroneous example",
+            explanation.code()
+        );
+        for errors in examples {
+            let first = errors.first().map(|error| error.code.as_str());
+            assert_eq!(first, Some(explanation.code()));
+        }
+    }
+}
+
+#[test]
+fn each_explanation_fix_checks_without_errors() {
+    for explanation in ExplanationExamples::written() {
+        let fixes = explanation.fix_errors();
+        assert!(!fixes.is_empty(), "{} has no fix", explanation.code());
+        for errors in fixes {
+            let codes: Vec<String> = errors.into_iter().map(|error| error.code).collect();
+            assert_eq!(
+                codes,
+                Vec::<String>::new(),
+                "a fix of {}",
+                explanation.code()
+            );
+        }
+    }
+}
+
+#[test]
+fn an_explanation_leaves_the_diagnostic_wording_to_its_problems_type() {
+    for explanation in ExplanationExamples::written() {
+        for errors in explanation.erroneous_errors() {
+            for error in errors {
+                assert!(
+                    !explanation.text().contains(&error.title),
+                    "{} restates `{}`",
+                    explanation.code(),
+                    error.title
+                );
+            }
+        }
+    }
 }

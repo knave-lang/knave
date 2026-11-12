@@ -22,5 +22,4 @@
     (where ((left (adds right)) right)
       (fn (left right) (total left)))))
 
-(defn plus (left right)
-  (add-up left right))
+(defn plus (left right) (add-up left right))

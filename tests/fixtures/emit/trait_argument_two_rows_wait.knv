@@ -4,7 +4,7 @@
   (where () (with (vec i64) i64)))
 
 (def picks?
-  (rust "{0}.picks(&{&1})"
+  (rust "{0}.contains(&{&1})"
     (where ((whole (picks part)) part)
       (fn ((ref whole) part) bool))))
 

@@ -10,6 +10,8 @@ permissions:
 env:
   CACHIX_CACHE: rslisp
   RELEASE_SUBJECT_PREFIX: Release v
+  CRATES: knave-expand knave
+  RELEASE_NOTES: release-notes
   CRATES_IO_API: https://crates.io/api/v1/crates
   CRATES_IO_USER_AGENT: knave-release (https://github.com/knave-lang/knave)
 
@@ -27,7 +29,6 @@ jobs:
       cancel-in-progress: false
     env:
       COMMIT: ${{ github.sha }}
-      PUBLISHED_CRATE: knave
     outputs:
       tag: ${{ steps.push.outputs.pushed == 'true' && steps.tag.outputs.tag || '' }}
     steps:
@@ -40,23 +41,26 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          conclusion=$(gh run list --workflow CI --event push --commit "$COMMIT" --limit 1 --json conclusion --jq '.[0].conclusion')
+          read -r status conclusion < <(gh run list --workflow CI --event push --commit "$COMMIT" --limit 1 \
+            --json status,conclusion --jq '.[0] // {} | "\(.status // "missing") \(.conclusion // "" | if . == "" then "none" else . end)"')
           if [ "$conclusion" != success ]; then
-            echo "::error::CI on $COMMIT concluded ${conclusion:-(no run)}, not success"
+            echo "::error::CI on $COMMIT is $status with conclusion $conclusion, not success"
             exit 1
           fi
       - name: Find the commits since the latest version on crates.io
         id: since
         run: |
           latest=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          published_crate=${CRATES##* }
           published=
           for tag in $(git tag --list 'v*' --sort=-v:refname); do
-            status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
-              --user-agent "$CRATES_IO_USER_AGENT" "$CRATES_IO_API/$PUBLISHED_CRATE/${tag#v}")
+            status=$(curl --silent --show-error --retry 3 --output /dev/null --write-out '%{http_code}' \
+              --user-agent "$CRATES_IO_USER_AGENT" "$CRATES_IO_API/$published_crate/${tag#v}") ||
+              { echo "::error::could not reach crates.io for $published_crate ${tag#v}"; exit 1; }
             case $status in
               200) published=$tag; break ;;
               404) echo "::notice::$tag never reached crates.io" ;;
-              *) echo "::error::crates.io answered $status for $PUBLISHED_CRATE ${tag#v}"; exit 1 ;;
+              *) echo "::error::crates.io answered $status for $published_crate ${tag#v}"; exit 1 ;;
             esac
           done
           if [ -z "$published" ]; then
@@ -91,6 +95,12 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Write the release notes
         run: nix develop .#ci -c cargo xtask release-notes pulls.json > notes.md
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ env.RELEASE_NOTES }}
+          path: notes.md
+          if-no-files-found: error
+          retention-days: 30
       - name: Commit and tag the release
         id: tag
         env:
@@ -112,13 +122,11 @@ jobs:
           git tag "$tag"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Cuts $tag from the pull requests merged since $PUBLISHED." >> "$GITHUB_STEP_SUMMARY"
-      - if: steps.tag.outputs.tag != ''
-        uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
+      - uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
         with:
           ssh-private-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
       - name: Push the release commit and its tag
         id: push
-        if: steps.tag.outputs.tag != ''
         env:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
@@ -129,16 +137,27 @@ jobs:
           fi
           git push --atomic "$remote" HEAD:refs/heads/main "refs/tags/$TAG"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+  github-release:
+    needs: release
+    if: ${{ !cancelled() && needs.release.outputs.tag != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ${{ env.RELEASE_NOTES }}
       - name: Publish the GitHub release
-        if: steps.push.outputs.pushed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.tag.outputs.tag }}
+          TAG: ${{ needs.release.outputs.tag }}
           PUBLISH_ATTEMPTS: 3
           SECONDS_BETWEEN_ATTEMPTS: 15
         run: |
           for _ in $(seq "$PUBLISH_ATTEMPTS"); do
-            gh release create "$TAG" --verify-tag --title "$TAG" --notes-file notes.md && exit 0
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" --notes-file notes.md && exit 0
             sleep "$SECONDS_BETWEEN_ATTEMPTS"
           done
           exit 1
@@ -177,7 +196,6 @@ jobs:
       id-token: write
     env:
       TAG: ${{ needs.release.outputs.tag }}
-      CRATES: knave-expand knave
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -208,8 +226,9 @@ jobs:
           version=${TAG#v}
           missing=()
           for crate in $CRATES; do
-            status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
-              --user-agent "$CRATES_IO_USER_AGENT" "$CRATES_IO_API/$crate/$version")
+            status=$(curl --silent --show-error --retry 3 --output /dev/null --write-out '%{http_code}' \
+              --user-agent "$CRATES_IO_USER_AGENT" "$CRATES_IO_API/$crate/$version") ||
+              { echo "::error::could not reach crates.io for $crate $version"; exit 1; }
             case $status in
               200) echo "::notice::$crate $version is already on crates.io, skipping it" ;;
               404) missing+=("--package=$crate") ;;

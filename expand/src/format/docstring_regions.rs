@@ -1,7 +1,6 @@
 use std::ops::Range;
 
-use super::code_lines::CodeLines;
-use super::code_spacing::CodeSpacing;
+use super::docstring_part::DocstringPart;
 use super::docstring_syntax::DocstringSyntax;
 use super::markdown_fence::MarkdownFence;
 use crate::reader::Syntax;
@@ -9,8 +8,7 @@ use crate::reader::Syntax;
 pub struct DocstringRegions<'l> {
     syntax: &'l DocstringSyntax,
     lines: &'l [String],
-    fence_spacing: CodeSpacing,
-    code: Vec<CodeLines>,
+    code: Vec<DocstringPart>,
     paragraph_start: Option<usize>,
     fence: Option<(MarkdownFence, usize)>,
 }
@@ -18,15 +16,10 @@ pub struct DocstringRegions<'l> {
 impl<'l> DocstringRegions<'l> {
     const SUMMARY_LINE: usize = 0;
 
-    pub fn code_of(
-        syntax: &'l DocstringSyntax,
-        lines: &'l [String],
-        fence_spacing: CodeSpacing,
-    ) -> Vec<CodeLines> {
+    pub fn parts_of(syntax: &'l DocstringSyntax, lines: &'l [String]) -> Vec<DocstringPart> {
         let mut regions = Self {
             syntax,
             lines,
-            fence_spacing,
             code: Vec::new(),
             paragraph_start: None,
             fence: None,
@@ -35,7 +28,7 @@ impl<'l> DocstringRegions<'l> {
             regions.visit(index);
         }
         regions.close_paragraph(lines.len());
-        regions.code
+        regions.with_prose()
     }
 
     fn visit(&mut self, index: usize) {
@@ -62,10 +55,7 @@ impl<'l> DocstringRegions<'l> {
         self.fence = None;
         let inside = opening + 1..index;
         if fence.holds_code() && !inside.is_empty() {
-            self.code.push(CodeLines {
-                range: inside,
-                spacing: self.fence_spacing,
-            });
+            self.code.push(DocstringPart::Fence(inside));
         }
     }
 
@@ -74,10 +64,7 @@ impl<'l> DocstringRegions<'l> {
             return;
         };
         if self.is_example(start..end) {
-            self.code.push(CodeLines {
-                range: start..end,
-                spacing: CodeSpacing::Written,
-            });
+            self.code.push(DocstringPart::Example(start..end));
         }
     }
 
@@ -89,39 +76,44 @@ impl<'l> DocstringRegions<'l> {
                 .iter()
                 .any(|line| line.trim_start().starts_with(Syntax::COMMENT))
     }
+
+    fn with_prose(self) -> Vec<DocstringPart> {
+        let mut parts = Vec::new();
+        let mut covered = 0;
+        for code in self.code {
+            let range = code.range();
+            if covered < range.start {
+                parts.push(DocstringPart::Prose(covered..range.start));
+            }
+            covered = range.end;
+            parts.push(code);
+        }
+        if covered < self.lines.len() {
+            parts.push(DocstringPart::Prose(covered..self.lines.len()));
+        }
+        parts
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::DocstringRegions;
-    use crate::format::code_spacing::CodeSpacing;
+    use super::{DocstringPart, DocstringRegions};
     use crate::format::docstring_syntax::DocstringSyntaxFixture;
 
     struct RegionFixture;
 
     impl RegionFixture {
         fn code_of(text: &str) -> Vec<std::ops::Range<usize>> {
-            let lines: Vec<String> = text.split('\n').map(str::to_string).collect();
-            DocstringRegions::code_of(
-                &DocstringSyntaxFixture::syntax(),
-                &lines,
-                CodeSpacing::Separated,
-            )
-            .into_iter()
-            .map(|code| code.range)
-            .collect()
+            Self::parts_of(text)
+                .into_iter()
+                .filter(|part| !matches!(part, DocstringPart::Prose(_)))
+                .map(|part| part.range())
+                .collect()
         }
 
-        fn spacings_of(text: &str) -> Vec<CodeSpacing> {
+        fn parts_of(text: &str) -> Vec<DocstringPart> {
             let lines: Vec<String> = text.split('\n').map(str::to_string).collect();
-            DocstringRegions::code_of(
-                &DocstringSyntaxFixture::syntax(),
-                &lines,
-                CodeSpacing::Separated,
-            )
-            .into_iter()
-            .map(|code| code.spacing)
-            .collect()
+            DocstringRegions::parts_of(&DocstringSyntaxFixture::syntax(), &lines)
         }
     }
 
@@ -175,10 +167,16 @@ mod tests {
     }
 
     #[test]
-    fn an_example_keeps_its_written_spacing_and_a_fence_takes_the_fence_spacing() {
+    fn prose_examples_and_fences_cover_the_docstring_in_order() {
         assert_eq!(
-            RegionFixture::spacings_of("Doubles.\n\n(twice 3)\n=> 6\n\n```\n(twice 3)\n```"),
-            [CodeSpacing::Written, CodeSpacing::Separated]
+            RegionFixture::parts_of("Doubles.\n\n(twice 3)\n=> 6\n\n```\n(twice 3)\n```"),
+            [
+                DocstringPart::Prose(0..2),
+                DocstringPart::Example(2..4),
+                DocstringPart::Prose(4..6),
+                DocstringPart::Fence(6..7),
+                DocstringPart::Prose(7..8)
+            ]
         );
     }
 }

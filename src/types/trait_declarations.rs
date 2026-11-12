@@ -54,26 +54,34 @@ impl TraitDeclarations {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::declarations_fixture::DeclarationsFixture;
+    use rustc_hash::FxHashSet;
 
-    const SOURCE: &str = "
-        (trait listed
-          (type item)
-          (first (fn ((ref self)) item)))
-        (trait drawn (draw (fn ((ref self)) i64)))
-        (defn main () (do))";
+    use super::TraitDeclarations;
+    use crate::core::BindingId;
 
-    #[test]
-    fn a_trait_with_an_associated_type_takes_an_argument() {
-        let fixture = DeclarationsFixture::new(SOURCE);
-        let listed = fixture.trait_named("listed");
-        assert!(fixture.traits().takes_argument(listed));
+    struct ArgumentFixture;
+
+    impl ArgumentFixture {
+        const LISTED: BindingId = BindingId::from_index(0);
+        const DRAWN: BindingId = BindingId::from_index(1);
+
+        fn traits() -> TraitDeclarations {
+            TraitDeclarations {
+                arguments: FxHashSet::from_iter([Self::LISTED]),
+                ..TraitDeclarations::default()
+            }
+        }
     }
 
     #[test]
-    fn a_trait_without_an_associated_type_takes_no_argument() {
-        let fixture = DeclarationsFixture::new(SOURCE);
-        let drawn = fixture.trait_named("drawn");
-        assert!(!fixture.traits().takes_argument(drawn));
+    fn a_trait_recorded_with_an_argument_takes_one() {
+        let traits = ArgumentFixture::traits();
+        assert!(traits.takes_argument(ArgumentFixture::LISTED));
+    }
+
+    #[test]
+    fn a_trait_recorded_without_an_argument_takes_none() {
+        let traits = ArgumentFixture::traits();
+        assert!(!traits.takes_argument(ArgumentFixture::DRAWN));
     }
 }

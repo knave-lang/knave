@@ -3112,7 +3112,7 @@ impl TypeChecker {
             entry_function: program.entry.function,
             bindings: self.bindings,
             macro_field_reads: self.macro_field_reads,
-            declarations: self.declarations,
+            declarations: self.declarations.without_checking_facts(),
             structural_uses: self.structural_uses,
             associated_generics: self.associated_generics,
             conversions: self.conversions,

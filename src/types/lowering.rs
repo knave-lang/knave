@@ -171,7 +171,7 @@ impl TypeChecker {
     }
 
     fn check_trait_argument(&self, binding: BindingId, span: Span) -> Result<(), Diagnostic> {
-        if self.declarations.traits.takes_argument(binding) {
+        if self.checking_facts.takes_argument(binding) {
             return Ok(());
         }
         Err(TypeProblems::trait_takes_no_argument(

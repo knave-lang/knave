@@ -6,6 +6,7 @@ use super::admissible::Admissible;
 use super::admissible_types::AdmissibleTypes;
 use super::assumed_collections::AssumedCollections;
 use super::checked_program::CheckedProgram;
+use super::checking_facts::CheckingFacts;
 use super::copy::InferredCopies;
 use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
 use super::declarations::Declarations;
@@ -28,7 +29,6 @@ use super::pinning::LiteralDefaults;
 use super::pipelines::Pipelines;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
 use super::selection::Selection;
-use super::signature_declarations::SignatureDeclarations;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_boxing::TraitBoxing;
 use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
@@ -186,7 +186,7 @@ pub struct TypeChecker {
     pub(super) written_projections: Vec<super::associated::WrittenProjection>,
     pub(super) checked_projections: usize,
     signatures: FxHashMap<BindingId, (TypeExpr, Span)>,
-    pub(super) declared_signatures: SignatureDeclarations,
+    pub(super) checking_facts: CheckingFacts,
     monomorphic: Vec<Type>,
     pub(super) implied_bounds: FxHashMap<GenericId, Vec<Bound>>,
     pub(super) associated_generics: FxHashMap<GenericId, std::rc::Rc<str>>,
@@ -272,7 +272,7 @@ impl TypeChecker {
             written_projections: Vec::new(),
             checked_projections: 0,
             signatures: FxHashMap::default(),
-            declared_signatures: SignatureDeclarations::default(),
+            checking_facts: CheckingFacts::default(),
             monomorphic: Vec::new(),
             implied_bounds: FxHashMap::default(),
             associated_generics: FxHashMap::default(),
@@ -354,8 +354,7 @@ impl TypeChecker {
             .filter(|module| ModuleSources::is_prelude(&module.path))
             .flat_map(CoreModule::definitions)
             .map(|(binding, _)| binding);
-        self.declared_signatures.prelude_definitions =
-            defined.chain(saved.saved_bindings()).collect();
+        self.checking_facts.prelude_definitions = defined.chain(saved.saved_bindings()).collect();
     }
 
     fn record_definition_facts(&mut self, definitions: &[Definition]) {
@@ -386,7 +385,7 @@ impl TypeChecker {
                     })
             })
             .collect();
-        self.declared_signatures
+        self.checking_facts
             .written_parameters
             .insert(binding, written);
     }
@@ -472,9 +471,8 @@ impl TypeChecker {
                 .iter()
                 .any(|entry| Self::entry_uses_with(&entry.implementor))
             {
-                self.declarations
-                    .traits
-                    .arguments
+                self.checking_facts
+                    .trait_arguments
                     .insert(declaration.binding);
             }
         }
@@ -1948,7 +1946,7 @@ impl TypeChecker {
             })
             .collect();
         if !associated.is_empty() {
-            self.declarations.traits.arguments.insert(binding);
+            self.checking_facts.trait_arguments.insert(binding);
         }
         let supertraits = supertraits
             .iter()
@@ -1968,8 +1966,7 @@ impl TypeChecker {
         for method in methods {
             let receiver = Self::receiver_kind(&method.signature, self_variable);
             let returns_self = Self::trait_method_returns_self(&method.signature, self_variable);
-            self.declarations
-                .traits
+            self.checking_facts
                 .selfless_methods
                 .record(method, binding, self_variable);
             self.synthetic_bindings.insert(method.binding);

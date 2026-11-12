@@ -15,6 +15,7 @@ use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
 use super::standard_output::StandardOutput;
 use super::terminal::Terminal;
+use super::terminal_settings::TerminalSettings;
 use super::unreadable_file::UnreadableFile;
 use super::working_directory::WorkingDirectory;
 use crate::format::{FormatFailure, ModuleLookup, SourceFormatter};
@@ -329,7 +330,7 @@ impl NearbyProjects {
 
     fn load(root: &Path, path: &Path, terminal: &Terminal) -> Option<LocatedProject> {
         let warning = Rc::new(ProjectLoadWarning::new(path, terminal.diagnostic_output()));
-        let loading = Terminal::reporting_to(warning.clone());
+        let loading = Terminal::new(TerminalSettings::reporting_to(warning.clone()));
         let loaded = LocatedProject::search_from(root, &loading, CacheOnlyStore::default());
         if loaded.is_err() {
             warning.warn_once();

@@ -229,7 +229,7 @@ impl FormsText {
         module: &Path,
         module_source: SourceId,
     ) -> Result<Vec<Range<usize>>, ExitStatus> {
-        let mut scratch = Terminal::reporting_to(terminal.diagnostic_output());
+        let mut scratch = terminal.scratch();
         let module_text = terminal.source_file(module_source).text().to_string();
         let mut sources = scratch.sources();
         let enclosing = sources.add(module.display(), module_text);

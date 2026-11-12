@@ -2,20 +2,18 @@ mod source_loader;
 
 use std::rc::Rc;
 
-use anstream::ColorChoice;
-
 use super::checking::Checking;
 use super::crate_build::CrateBuild;
-use super::diagnostic_output::{DiagnosticOutput, RenderedDiagnostics};
+use super::diagnostic_output::DiagnosticOutput;
 use super::emission::Emission;
 use super::exit_status::ExitStatus;
 use super::expansion::Expansion;
 use super::interruptible_formatting::InterruptibleFormatting;
-use super::interruption::Interruption;
 use super::program_file::ProgramFile;
 use super::rustfmt_time_limit::RustfmtTimeLimit;
 use super::source_report::SourceReport;
 use super::stage_work::StageWork;
+use super::terminal_settings::TerminalSettings;
 use crate::emit::EmittedCrate;
 use crate::source::{SourceFile, SourceId, SourceMap};
 use crate::types::TypedProgram;
@@ -24,38 +22,28 @@ pub use source_loader::SourceLoader;
 pub struct Terminal {
     sources: SourceMap,
     work: StageWork,
-    diagnostics: Rc<dyn DiagnosticOutput>,
-    interruption: Interruption,
+    settings: TerminalSettings,
 }
 
 impl Terminal {
-    pub fn new(standard_error: ColorChoice) -> Self {
-        Self::reporting_to(Rc::new(RenderedDiagnostics::new(standard_error)))
-    }
-
-    pub fn scratch(&self) -> Self {
-        Self::reporting_to(self.diagnostic_output())
-    }
-
-    pub fn reporting_to(diagnostics: Rc<dyn DiagnosticOutput>) -> Self {
+    pub fn new(settings: TerminalSettings) -> Self {
         Self {
             sources: SourceMap::default(),
             work: StageWork::default(),
-            diagnostics,
-            interruption: Interruption::default(),
+            settings,
         }
     }
 
-    pub fn stop_before_rustc_on(&mut self, interruption: Interruption) {
-        self.interruption = interruption;
+    pub fn scratch(&self) -> Self {
+        Self::new(TerminalSettings::reporting_to(self.diagnostic_output()))
     }
 
-    pub fn report_diagnostics_to(&mut self, diagnostics: Rc<dyn DiagnosticOutput>) {
-        self.diagnostics = diagnostics;
+    pub fn configure(&mut self, change: impl FnOnce(&TerminalSettings) -> TerminalSettings) {
+        self.settings = change(&self.settings);
     }
 
     pub fn diagnostic_output(&self) -> Rc<dyn DiagnosticOutput> {
-        Rc::clone(&self.diagnostics)
+        Rc::clone(self.settings.diagnostics())
     }
 
     pub fn work(&self) -> &StageWork {
@@ -63,7 +51,7 @@ impl Terminal {
     }
 
     pub fn sources(&mut self) -> SourceLoader<'_> {
-        SourceLoader::new(&mut self.sources, self.diagnostics.as_ref())
+        SourceLoader::new(&mut self.sources, self.settings.diagnostics().as_ref())
     }
 
     pub fn source_file(&self, source: SourceId) -> &SourceFile {
@@ -71,12 +59,16 @@ impl Terminal {
     }
 
     pub fn expansion(&mut self) -> Expansion<'_> {
-        Expansion::new(&mut self.sources, &mut self.work, self.diagnostics.as_ref())
+        Expansion::new(
+            &mut self.sources,
+            &mut self.work,
+            self.settings.diagnostics().as_ref(),
+        )
     }
 
     pub fn checking(&mut self) -> Checking<'_> {
         Checking::new(
-            SourceReport::new(&self.sources, self.diagnostics.as_ref()),
+            SourceReport::new(&self.sources, self.settings.diagnostics().as_ref()),
             &mut self.work,
         )
     }
@@ -87,11 +79,11 @@ impl Terminal {
     }
 
     pub fn source_report(&self) -> SourceReport<'_> {
-        SourceReport::new(&self.sources, self.diagnostics.as_ref())
+        SourceReport::new(&self.sources, self.settings.diagnostics().as_ref())
     }
 
     pub fn crate_build(&self) -> CrateBuild<'_> {
-        CrateBuild::new(self.source_report(), &self.interruption)
+        CrateBuild::new(self.source_report(), self.settings.interruption())
     }
 
     pub fn emit_file(&mut self, file: &ProgramFile) -> Result<EmittedCrate, ExitStatus> {
@@ -102,9 +94,9 @@ impl Terminal {
 
     fn emission_within(&mut self, limit: &RustfmtTimeLimit) -> Emission<'_> {
         Emission::new(
-            SourceReport::new(&self.sources, self.diagnostics.as_ref()),
+            SourceReport::new(&self.sources, self.settings.diagnostics().as_ref()),
             &mut self.work,
-            InterruptibleFormatting::new(limit.formatting(), &self.interruption),
+            InterruptibleFormatting::new(limit.formatting(), self.settings.interruption()),
         )
     }
 

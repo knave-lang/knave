@@ -6,7 +6,10 @@ use crate::types::{TypedExpr, TypedExprKind, TypedLeaf};
 
 pub enum CalleeDefinition<'c> {
     Function,
-    Template(&'c Rc<RustTemplate>),
+    Template {
+        template: &'c Rc<RustTemplate>,
+        binding: Option<BindingId>,
+    },
     Unknown,
 }
 
@@ -25,7 +28,10 @@ impl<'p> CalleeDefinitions<'p> {
         'p: 'c,
     {
         match &callee.kind {
-            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => CalleeDefinition::Template(template),
+            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => CalleeDefinition::Template {
+                template,
+                binding: None,
+            },
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => self.of_definition(*binding),
             _ => CalleeDefinition::Unknown,
         }
@@ -38,9 +44,10 @@ impl<'p> CalleeDefinitions<'p> {
             .map(|definition| &definition.value.kind)
         {
             Some(TypedExprKind::Fn(_)) => CalleeDefinition::Function,
-            Some(TypedExprKind::Leaf(TypedLeaf::Rust(template))) => {
-                CalleeDefinition::Template(template)
-            }
+            Some(TypedExprKind::Leaf(TypedLeaf::Rust(template))) => CalleeDefinition::Template {
+                template,
+                binding: Some(binding),
+            },
             _ => CalleeDefinition::Unknown,
         }
     }
@@ -79,7 +86,7 @@ mod tests {
             let callee = TestProgram::callee(self.program.last_let_value(function));
             match CalleeDefinitions::new(&plan).of(callee) {
                 CalleeDefinition::Function => "function",
-                CalleeDefinition::Template(_) => "template",
+                CalleeDefinition::Template { .. } => "template",
                 CalleeDefinition::Unknown => "unknown",
             }
         }

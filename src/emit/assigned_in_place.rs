@@ -3,6 +3,8 @@ use super::lifted_temporary::LiftedTemporary;
 use super::rust_leaf::RustLeaf;
 use super::temporary_scope::TemporaryScope;
 use super::tree_position::TreePosition;
+#[cfg(test)]
+use crate::types::TypedLeaf;
 use crate::types::{Borrow, ClosureKind, Lifetime, Type, TypedArgument, TypedExpr, TypedExprKind};
 
 pub struct AssignedInPlace {
@@ -36,7 +38,7 @@ impl AssignedInPlace {
 
     #[cfg(test)]
     pub fn is_assignment(callee: &TypedExpr) -> bool {
-        matches!(&callee.kind, TypedExprKind::Leaf(crate::types::TypedLeaf::Rust(template))
+        matches!(&callee.kind, TypedExprKind::Leaf(TypedLeaf::Rust(template))
             if Self::BLOCK
                 .split(Self::OWNER_SLOT)
                 .all(|part| template.template.contains(part)))

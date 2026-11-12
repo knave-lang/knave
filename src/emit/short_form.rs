@@ -56,7 +56,7 @@ impl<'p> ShortForm<'p> {
     fn admits_callee(&self, callee: &TypedExpr, arguments: &[TypedArgument], lent: usize) -> bool {
         match self.callees.of(callee) {
             CalleeDefinition::Function => true,
-            CalleeDefinition::Template(template) => {
+            CalleeDefinition::Template { template, .. } => {
                 TemplateShape::new(template, arguments, lent).runs_nothing_ahead()
             }
             CalleeDefinition::Unknown => false,

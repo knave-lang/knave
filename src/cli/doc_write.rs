@@ -29,7 +29,7 @@ pub enum DocScope {
 }
 
 enum PageSet {
-    Modules(DocumentedModules),
+    Modules(Box<DocumentedModules>),
     Errors,
 }
 
@@ -93,7 +93,7 @@ impl DocWriteCommand {
         let text = Self::entry_text(entry.path())?;
         let entry = EntryProgram::new(entry, text);
         let modules = DocumentedModules::new(file, entry, modules);
-        Ok((folder, vec![PageSet::Modules(modules)]))
+        Ok((folder, vec![PageSet::Modules(Box::new(modules))]))
     }
 
     fn entry_text(path: &Path) -> Result<String, ExitStatus> {
@@ -113,11 +113,8 @@ impl DocWriteCommand {
     fn prelude_modules() -> PageSet {
         let file = ProgramFile::beside_itself(PathBuf::from(DocumentedModules::CALL_SOURCE));
         let empty_entry = EntryProgram::new(file.clone(), String::new());
-        PageSet::Modules(DocumentedModules::new(
-            file,
-            empty_entry,
-            PublicPrelude::paths(),
-        ))
+        let modules = DocumentedModules::new(file, empty_entry, PublicPrelude::paths());
+        PageSet::Modules(Box::new(modules))
     }
 
     fn folder_in(&self, root: &Path) -> PathBuf {

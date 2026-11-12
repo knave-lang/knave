@@ -458,6 +458,20 @@ mod tests {
     }
 
     #[test]
+    fn a_joined_saved_origin_stays_joined_beside_an_unjoined_program_origin() {
+        let call_site = OriginsFixture::call_site();
+        let mut prelude = MacroOrigins::default();
+        let mut joined = OriginsFixture::origin("outer", call_site);
+        joined.through_prelude = true;
+        prelude.record(call_site, joined);
+        let mut origins = MacroOrigins::default();
+        origins.adopt_saved(OriginsFixture::saved(&mut prelude));
+        origins.record(call_site, OriginsFixture::origin("own", call_site));
+        let found = origins.get(call_site).expect("the call site is saved");
+        assert!(found.through_prelude);
+    }
+
+    #[test]
     fn a_saved_origin_stays_unjoined_without_a_program_origin() {
         let origins = OriginsFixture::with_saved_origins();
         let found = origins

@@ -44,37 +44,41 @@ impl RuntimePart {
         "eprintln!(",
         "std::io::stderr(",
     ];
-    const ALL: [(RuntimePart, &'static [&'static str]); 27] = [
-        (RuntimePart::Number, &["crate::rt::Number"]),
+    const RUNTIME_PATH: &'static str = "crate::rt::";
+    const NAMED: [(&'static str, RuntimePart); 24] = [
+        ("Number", RuntimePart::Number),
+        ("Signed", RuntimePart::Signed),
+        ("Float", RuntimePart::Float),
+        ("Integer", RuntimePart::Integer),
+        ("Sequence", RuntimePart::Sequence),
+        ("read_line", RuntimePart::Io),
+        ("exit", RuntimePart::Exit),
+        ("Source", RuntimePart::Source),
+        ("lines", RuntimePart::Lines),
+        ("Show", RuntimePart::Show),
+        ("Shown", RuntimePart::Show),
+        ("unwrap_ok", RuntimePart::UnwrapOk),
+        ("unwrap_err", RuntimePart::UnwrapErr),
+        ("expect_ok", RuntimePart::ExpectOk),
+        ("check_true", RuntimePart::CheckTrue),
+        ("check_equal", RuntimePart::CheckEqual),
+        ("check_true_with", RuntimePart::CheckTrueWith),
+        ("check_equal_with", RuntimePart::CheckEqualWith),
+        ("note_untested", RuntimePart::NoteUntested),
+        ("run_marker", RuntimePart::RunMarker),
+        ("start_run", RuntimePart::TestRun),
+        ("run_test", RuntimePart::RunTest),
+        ("max", RuntimePart::Max),
+        ("min", RuntimePart::Min),
+    ];
+    const SCANNED: [(RuntimePart, &'static [&'static str]); 4] = [
         (RuntimePart::FromLiteral, &["::from_literal("]),
         (RuntimePart::FromFloatLiteral, &["::from_float_literal("]),
-        (RuntimePart::Signed, &["crate::rt::Signed"]),
-        (RuntimePart::Float, &["crate::rt::Float"]),
-        (RuntimePart::Integer, &["crate::rt::Integer"]),
-        (RuntimePart::Sequence, &["crate::rt::Sequence"]),
-        (RuntimePart::MapSequence, &["std::collections::BTreeMap"]),
-        (RuntimePart::Io, &["crate::rt::read_line"]),
-        (RuntimePart::Exit, &["crate::rt::exit("]),
-        (RuntimePart::Source, &["crate::rt::Source"]),
-        (RuntimePart::Lines, &["crate::rt::lines("]),
-        (RuntimePart::Signal, Self::STANDARD_STREAM_MARKERS),
-        (RuntimePart::Show, &["crate::rt::Show"]),
-        (RuntimePart::UnwrapOk, &["crate::rt::unwrap_ok("]),
-        (RuntimePart::UnwrapErr, &["crate::rt::unwrap_err("]),
-        (RuntimePart::ExpectOk, &["crate::rt::expect_ok("]),
-        (RuntimePart::CheckTrue, &["crate::rt::check_true("]),
-        (RuntimePart::CheckEqual, &["crate::rt::check_equal("]),
-        (RuntimePart::CheckTrueWith, &["crate::rt::check_true_with("]),
         (
-            RuntimePart::CheckEqualWith,
-            &["crate::rt::check_equal_with("],
+            RuntimePart::MapSequence,
+            &["std::collections::BTreeMap", "std::collections::HashMap"],
         ),
-        (RuntimePart::NoteUntested, &["crate::rt::note_untested("]),
-        (RuntimePart::RunMarker, &["crate::rt::run_marker("]),
-        (RuntimePart::TestRun, &["crate::rt::start_run("]),
-        (RuntimePart::RunTest, &["crate::rt::run_test("]),
-        (RuntimePart::Max, &["crate::rt::max("]),
-        (RuntimePart::Min, &["crate::rt::min("]),
+        (RuntimePart::Signal, Self::STANDARD_STREAM_MARKERS),
     ];
 
     const REQUIRED: [(RuntimePart, &'static [RuntimePart]); 18] = [
@@ -111,17 +115,27 @@ impl RuntimePart {
         ),
     ];
 
-    fn present(self, code: &str) -> bool {
-        let markers = Self::ALL
+    fn named_in(code: &str) -> BTreeSet<RuntimePart> {
+        code.match_indices(Self::RUNTIME_PATH)
+            .filter_map(|(start, path)| Self::named(&code[start + path.len()..]))
+            .collect()
+    }
+
+    fn named(rest: &str) -> Option<RuntimePart> {
+        let end = rest
+            .find(|character: char| !(character.is_alphanumeric() || character == '_'))
+            .unwrap_or(rest.len());
+        Self::NAMED
             .iter()
-            .find(|(part, _)| *part == self)
-            .map(|(_, markers)| *markers)
-            .expect("every runtime part has markers");
+            .find(|(name, _)| *name == &rest[..end])
+            .map(|(_, part)| *part)
+    }
+
+    fn scanned_in(self, markers: &[&str], code: &str, named: &BTreeSet<RuntimePart>) -> bool {
         match self {
             Self::MapSequence => {
-                (code.contains("std::collections::BTreeMap")
-                    || code.contains("std::collections::HashMap"))
-                    && code.contains("crate::rt::Sequence")
+                named.contains(&Self::Sequence)
+                    && markers.iter().any(|marker| code.contains(marker))
             }
             Self::Signal => markers
                 .iter()
@@ -235,11 +249,13 @@ impl RuntimeModule {
     const IMPLEMENTATION_INDENT: &'static str = "            ";
 
     pub fn of(code: &str) -> Option<RuntimeModule> {
-        let mut parts: BTreeSet<RuntimePart> = RuntimePart::ALL
+        let named = RuntimePart::named_in(code);
+        let mut parts: BTreeSet<RuntimePart> = RuntimePart::SCANNED
             .into_iter()
+            .filter(|(part, markers)| part.scanned_in(markers, code, &named))
             .map(|(part, _)| part)
-            .filter(|part| part.present(code))
             .collect();
+        parts.extend(named);
         let mut unchecked: Vec<RuntimePart> = parts.iter().copied().collect();
         while let Some(part) = unchecked.pop() {
             for required in part.required() {
@@ -368,5 +384,22 @@ mod tests {
         let module =
             RuntimeModule::of("crate::rt::exit(3_i32)").expect("the code needs the runtime");
         assert!(module.source().contains("pub fn exit(code: i32)"));
+    }
+
+    #[test]
+    fn a_runtime_name_brings_its_part_only_when_whole() {
+        let shown = RuntimeModule::of("crate::rt::Shown(value).to_string()")
+            .expect("the code needs the runtime");
+        assert!(shown.source().contains("pub trait Show"));
+        assert!(RuntimeModule::of("crate::rt::exit_code").is_none());
+    }
+
+    #[test]
+    fn a_map_brings_the_map_sequence_only_beside_a_sequence() {
+        let map_alone = "std::collections::BTreeMap::new()";
+        let measured = "<std::collections::HashMap<i64, i64> as crate::rt::Sequence>::len(&m)";
+        assert!(RuntimeModule::of(map_alone).is_none());
+        let module = RuntimeModule::of(measured).expect("the code needs the runtime");
+        assert!(module.source().contains("HashMap"));
     }
 }

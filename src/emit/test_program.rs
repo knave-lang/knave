@@ -1,4 +1,4 @@
-use super::callee_definition::CalleeDefinitions;
+use super::callee_definitions::CalleeDefinitions;
 use super::plan::EmitPlan;
 use super::short_form::ShortForm;
 use crate::source::{SourceId, Span};

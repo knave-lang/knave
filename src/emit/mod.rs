@@ -1,6 +1,6 @@
 mod assigned_in_place;
 mod bound_before;
-mod callee_definition;
+mod callee_definitions;
 mod callee_parameters;
 mod emitted_value;
 mod expressions;
@@ -20,6 +20,7 @@ mod lift_placement;
 mod lifted_temporary;
 mod lifted_value;
 mod literal_generics;
+mod loan;
 mod local_closures;
 mod locals;
 mod method_elisions;

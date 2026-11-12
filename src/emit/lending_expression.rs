@@ -1,27 +1,11 @@
 use std::convert::Infallible;
 use std::ops::ControlFlow;
 
+use super::loan::Loan;
 use super::temporary_scope::TemporaryScope;
 use crate::types::{
     Borrow, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedStructExpr,
 };
-
-pub enum Loan<'e> {
-    Temporary(&'e TypedExpr),
-    Operand(&'e TypedExpr, TemporaryScope),
-}
-
-impl Loan<'_> {
-    fn may_lend(&self) -> bool {
-        match self {
-            Loan::Temporary(_) => true,
-            Loan::Operand(operand, _) => {
-                let operand = LendingExpression::new(operand);
-                operand.borrowed_temporary().is_some() || operand.may_lend()
-            }
-        }
-    }
-}
 
 #[derive(Clone, Copy)]
 pub struct LendingExpression<'e> {
@@ -35,13 +19,23 @@ impl<'e> LendingExpression<'e> {
 
     pub fn may_lend(self) -> bool {
         self.try_each_loan(TemporaryScope::Statement, &mut |loan| {
-            if loan.may_lend() {
+            if Self::loan_may_lend(&loan) {
                 ControlFlow::Break(())
             } else {
                 ControlFlow::Continue(())
             }
         })
         .is_break()
+    }
+
+    fn loan_may_lend(loan: &Loan<'e>) -> bool {
+        match loan {
+            Loan::Temporary(_) => true,
+            Loan::Operand(operand, _) => {
+                let operand = Self::new(operand);
+                operand.borrowed_temporary().is_some() || operand.may_lend()
+            }
+        }
     }
 
     pub fn for_each_loan(self, scope: TemporaryScope, mut lend: impl FnMut(Loan<'e>)) {

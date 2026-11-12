@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::cli::diagnostic_output::{DiagnosticOutput, MessageOutput};
 use crate::cli::standard_error::StandardError;
-use crate::diagnostic::Diagnostics;
+use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::source::SourceMap;
 
 pub struct ProjectLoadWarning {
@@ -36,7 +36,8 @@ impl ProjectLoadWarning {
 impl DiagnosticOutput for ProjectLoadWarning {
     fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics) {
         self.warn_once();
-        self.output.write(sources, diagnostics);
+        let warnings = diagnostics.clone().map(Diagnostic::into_warning);
+        self.output.write(sources, &warnings);
     }
 
     fn write_note(&self, sources: &SourceMap, message: &str) {

@@ -1672,6 +1672,17 @@ fn fmt_in_a_project_whose_libraries_cannot_load_warns_and_lays_out_by_the_direct
 }
 
 #[test]
+fn fmt_prints_an_unknown_project_key_as_a_warning() {
+    let sandbox = Sandbox::new("fmt_unknown_project_key_warning")
+        .with_file(&Language::project_file_name(), PROJECT_WITH_UNKNOWN_KEY)
+        .with_file("src/main.knv", FORMATTED);
+    let fmt = sandbox.compiler(&["fmt", "src/main.knv"]);
+    let stderr = fmt.assert_exit_code(0).stderr();
+    assert!(stderr.contains("warning[L0704]"), "{stderr}");
+    assert!(!stderr.contains("error["), "{stderr}");
+}
+
+#[test]
 fn fmt_formats_every_source_file_under_a_directory() {
     let sandbox = Sandbox::new("fmt_directory")
         .with_file("project/twice.knv", UNFORMATTED)

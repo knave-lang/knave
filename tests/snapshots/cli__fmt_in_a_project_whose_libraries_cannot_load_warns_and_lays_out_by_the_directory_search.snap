@@ -6,7 +6,7 @@ exit code: Some(0)
 --- stdout
 --- stderr
 warning: cannot load the project around `src/main.knv` with its libraries, so `fmt` reads shapes only beside each file and in its parent directories
-error[L0723]: library `missing` has no project file at `../missing/project.knv`
+warning[L0723]: library `missing` has no project file at `../missing/project.knv`
  --> project.knv:1:29
   |
 1 | (defproject app (libraries (missing :path "../missing")))

@@ -1,11 +1,12 @@
 mod code_book;
 mod failure;
+mod host_queries;
 mod joined_parts;
 mod language_names;
 mod leading_lines;
 mod lists;
 mod numbers;
-mod program;
+mod placement;
 mod step_limit;
 mod strings;
 mod text;
@@ -23,11 +24,12 @@ use crate::core::{Builtin, Declaration};
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Number, NumberValue};
 use crate::source::Span;
+use host_queries::{ModuleOperations, SourceOperations};
 use language_names::LanguageNames;
 use leading_lines::DistinctLeadingLines;
 use lists::ListOperations;
 use numbers::NumberOperations;
-use program::{ModuleOperations, ProgramOperations};
+use placement::PlacementOperations;
 use step_limit::StepLimitSetting;
 use strings::StringOperations;
 use text::TextOperations;
@@ -215,14 +217,14 @@ impl<'m> BuiltinCall<'m> {
         }),
         (Builtin::FormLocation, |operations, host| {
             let group = host.granted(|host| host.source_queries())?;
-            operations.program.form_location(group)
+            operations.sources.form_location(group)
         }),
         (Builtin::InTasksDirectory, |operations, host| {
             let group = host.granted(|host| host.source_queries())?;
-            operations.program.in_tasks_directory(group)
+            operations.sources.in_tasks_directory(group)
         }),
         (Builtin::PinnedAt, |operations, _| {
-            operations.program.pinned_at()
+            operations.placement.pinned_at()
         }),
         (Builtin::ProgramModules, |operations, host| {
             let group = host.granted(|host| host.module_queries())?;
@@ -269,10 +271,10 @@ impl<'m> BuiltinCall<'m> {
         }),
         (Builtin::ReadForm, |operations, host| {
             let group = host.granted(|host| host.source_queries())?;
-            operations.program.read_form(group)
+            operations.sources.read_form(group)
         }),
         (Builtin::Located, |operations, _| {
-            operations.program.located()
+            operations.placement.located()
         }),
         (Builtin::ProjectModules, |operations, host| {
             let group = host.granted(|host| host.module_queries())?;
@@ -310,7 +312,8 @@ struct Operations<'a> {
     lists: ListOperations<'a>,
     modules: ModuleOperations<'a>,
     numbers: NumberOperations<'a>,
-    program: ProgramOperations<'a>,
+    placement: PlacementOperations<'a>,
+    sources: SourceOperations<'a>,
     step_limit: StepLimitSetting<'a>,
     string_builders: StringBuilders<'a>,
     text: TextOperations<'a>,
@@ -323,7 +326,8 @@ impl<'a> Operations<'a> {
             lists: ListOperations::new(arguments, call_site),
             modules: ModuleOperations::new(arguments, call_site),
             numbers: NumberOperations::new(arguments, call_site),
-            program: ProgramOperations::new(arguments, call_site),
+            placement: PlacementOperations::new(arguments),
+            sources: SourceOperations::new(arguments, call_site),
             step_limit: StepLimitSetting::new(arguments),
             string_builders: StringBuilders::new(arguments, call_site),
             text: TextOperations::new(arguments, call_site),

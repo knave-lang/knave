@@ -151,10 +151,7 @@ impl Expander<'_> {
         let origin = self.macro_origin(binding, call_site);
         self.record_introduced_names(&form, &origin);
         form.relocate_outside(call_site);
-        self.tables
-            .macro_origins
-            .calls_mut()
-            .record(call_site, origin);
+        self.tables.macro_origins.calls.record(call_site, origin);
         form
     }
 
@@ -335,7 +332,7 @@ impl Expander<'_> {
     }
 
     pub(super) fn macro_origin_at(&self, span: Span) -> Option<MacroOrigin> {
-        self.tables.macro_origins.calls().enclosing(span)
+        self.tables.macro_origins.calls.enclosing(span)
     }
 
     pub(super) fn definition_shape<'f>(
@@ -346,7 +343,7 @@ impl Expander<'_> {
         let definer = self
             .tables
             .macro_origins
-            .calls()
+            .calls
             .introducing_macro(form.span())
             .map(|origin| WrittenDefiner {
                 name: origin.name,
@@ -356,14 +353,14 @@ impl Expander<'_> {
     }
 
     pub(super) fn introduced_name(&self, call_site: Span, name: &str) -> Option<Span> {
-        self.tables.macro_origins.introduced(call_site, name)
+        self.tables.macro_origins.introduced.at(call_site, name)
     }
 
     fn record_introduced_names(&mut self, form: &Form, origin: &MacroOrigin) {
         if let Some(symbol) = form.as_symbol()
             && !origin.call_site.contains(form.span())
         {
-            self.tables.macro_origins.record_introduced(
+            self.tables.macro_origins.introduced.record(
                 origin.call_site,
                 symbol.name(),
                 form.span(),

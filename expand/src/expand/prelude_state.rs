@@ -1,7 +1,7 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use super::macro_origins::OriginTables;
+use super::origin_tables::OriginTables;
 use super::saved_definitions::{SavedDefinitions, SavedTables};
 use super::saved_notes::{NoteTables, SavedNotes};
 use super::saved_origins::SavedOrigins;
@@ -161,7 +161,7 @@ impl PreludeState {
         expander.tables.module_notes.adopt(tables.notes);
         expander.tables.bindings.adopt_saved(tables.bindings);
         expander.tables.table.adopt_saved(tables.names);
-        expander.tables.macro_origins.adopt_saved(tables.origins);
+        expander.tables.macro_origins = tables.origins.into_macro_origins();
         expander
             .tables
             .restore_lowered_globals(&self.lowered_globals);
@@ -191,7 +191,8 @@ impl Expander<'_> {
         let binding_tables = self.tables.bindings.take_saved();
         let prelude_scopes = first_scope..self.tables.scopes.next_scope();
         let name_tables = self.tables.table.take_saved(prelude_scopes);
-        let origin_tables = self.tables.macro_origins.take_saved();
+        let origin_tables =
+            OriginTables::of_own_layers(std::mem::take(&mut self.tables.macro_origins));
         let note_tables = self.tables.module_notes.take_saved();
         PreludeState {
             first_source,
@@ -617,7 +618,9 @@ mod tests {
     #[test]
     fn a_saved_state_keeps_its_macro_origins_only_in_the_saved_bytes() {
         let state = PreludeState::build();
-        assert!(state.tables().macro_origins.holds_no_own_origin());
+        let origins = &state.tables().macro_origins;
+        assert!(origins.calls.holds_no_own_origin());
+        assert!(origins.introduced.holds_no_own_name());
     }
 
     #[test]

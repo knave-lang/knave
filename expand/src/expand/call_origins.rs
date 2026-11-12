@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use super::macro_call_lookup::MacroCallLookup;
 use super::macro_origin::MacroOrigin;
 use super::own_call_origins::OwnCallOrigins;
@@ -31,17 +29,11 @@ impl CallOrigins {
 
     #[cfg(test)]
     pub fn holds_no_own_origin(&self) -> bool {
-        self.own.origins().is_empty()
+        self.own.is_empty()
     }
 
     fn call_site_length(origin: &MacroOrigin) -> usize {
         origin.call_site.range().len()
-    }
-}
-
-impl dyn MacroCallLookup {
-    pub fn empty() -> Rc<dyn MacroCallLookup> {
-        Rc::new(CallOrigins::default())
     }
 }
 
@@ -166,14 +158,6 @@ mod tests {
             .expect("the call site encloses the span");
         assert_eq!(found.name.as_ref(), "inner");
         assert!(found.through_prelude);
-    }
-
-    #[test]
-    fn an_empty_lookup_names_no_macro() {
-        let lookup = <dyn MacroCallLookup>::empty();
-        let call_site = OriginsFixture::call_site();
-        assert!(lookup.introducing_macro(call_site).is_none());
-        assert!(lookup.enclosing(call_site).is_none());
     }
 
     #[test]

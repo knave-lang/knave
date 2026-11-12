@@ -253,7 +253,7 @@ impl SourceQueries for Expander<'_> {
         let origin = self
             .tables
             .macro_origins
-            .calls()
+            .calls
             .introducing_macro(form.span())?;
         Some(origin.name)
     }
@@ -403,7 +403,7 @@ mod tests {
             expander
                 .tables
                 .macro_origins
-                .calls_mut()
+                .calls
                 .record(call_site, origin);
             expander
         }

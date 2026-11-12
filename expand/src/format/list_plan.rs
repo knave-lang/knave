@@ -56,7 +56,7 @@ impl ListPlan {
         let kind = ListKind::of(head, shape);
         let header_length = shape.map_or(0, |shape| shape.header_length);
         let units = UnitGrouping::new(&list.entries, header_length).units();
-        let docstring_entry = Self::docstring_entry(list, head, shapes);
+        let docstring_entry = shapes.docstring_entry(list);
         let fills_atom_runs = !shape.is_some_and(|shape| shape.one_per_line);
         let body_forms = list.entries.len().saturating_sub(header_length + 1);
         let definer = shape.is_some_and(|shape| shape.docstring == DocstringPlace::BeforeBody);
@@ -128,16 +128,6 @@ impl ListPlan {
             .as_atom()
             .is_some_and(|atom| !atom.is_multi_line());
         single_line_atom && docstring_entry != Some(entry)
-    }
-
-    pub fn docstring_entry(
-        list: &ListNode,
-        head: Option<&str>,
-        shapes: &ShapeCatalog,
-    ) -> Option<usize> {
-        let position = shapes.docstring_position(head?, list.entries.len())?;
-        let is_string = list.entries.get(position)?.node.as_atom()?.is_string();
-        is_string.then_some(position)
     }
 }
 

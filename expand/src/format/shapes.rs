@@ -1,6 +1,7 @@
 use rustc_hash::FxHashMap;
 
 use super::docstring_place::DocstringPlace;
+use super::syntax_tree::ListNode;
 use crate::core::Keyword;
 use crate::reader::Form;
 
@@ -79,6 +80,12 @@ impl ShapeCatalog {
 
     pub fn of(&self, form_name: &str) -> Option<Shape> {
         self.shapes.get(form_name).copied()
+    }
+
+    pub fn docstring_entry(&self, list: &ListNode) -> Option<usize> {
+        let position = self.docstring_position(list.head_name()?, list.entries.len())?;
+        let is_string = list.entries.get(position)?.node.as_atom()?.is_string();
+        is_string.then_some(position)
     }
 
     pub fn docstring_position(&self, form_name: &str, item_count: usize) -> Option<usize> {

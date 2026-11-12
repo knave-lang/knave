@@ -2,7 +2,6 @@ use super::docstring_code::DocstringCode;
 use super::docstring_lines::DocstringLines;
 use super::format_problems::FormatProblems;
 use super::format_rules::FormatRules;
-use super::list_plan::ListPlan;
 use super::syntax_tree::{Atom, Entry, ListNode, SyntaxNode, SyntaxTree};
 use crate::diagnostic::Diagnostics;
 use crate::source::{SourceId, Span};
@@ -37,7 +36,7 @@ impl<'s> DocstringPass<'s> {
     }
 
     fn visit_list(&mut self, list: &mut ListNode) {
-        let docstring = ListPlan::docstring_entry(list, list.head_name(), self.rules.shapes);
+        let docstring = self.rules.shapes.docstring_entry(list);
         if let Some(SyntaxNode::Atom(atom)) = docstring.map(|entry| &mut list.entries[entry].node) {
             self.lay_out_docstring(atom);
         }

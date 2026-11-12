@@ -1,3 +1,4 @@
+use super::docstring_line::DocstringLine;
 use super::docstring_part::DocstringPart;
 use super::docstring_regions::DocstringRegions;
 use super::docstring_syntax::DocstringSyntax;
@@ -129,20 +130,29 @@ impl<'s> MeaningComparison<'s> {
 
 impl Docstring<'_> {
     fn parts(&self) -> Vec<ComparedPart> {
-        let lines: Vec<String> = self.dedented().split('\n').map(str::to_string).collect();
+        let lines = DocstringLine::split(&self.dedented());
         DocstringRegions::parts_of(self.syntax, &lines)
             .into_iter()
             .flat_map(|part| match part {
                 DocstringPart::Prose(range) => lines[range]
                     .iter()
-                    .cloned()
-                    .map(ComparedPart::Prose)
+                    .map(|line| ComparedPart::Prose(line.text().to_string()))
                     .collect(),
                 DocstringPart::Example(range) | DocstringPart::Fence(range) => {
-                    vec![ComparedPart::Code(Self::tokens(&lines[range].join("\n")))]
+                    vec![ComparedPart::Code(Self::tokens(&Self::joined(
+                        &lines[range],
+                    )))]
                 }
             })
             .collect()
+    }
+
+    fn joined(lines: &[DocstringLine]) -> String {
+        lines
+            .iter()
+            .map(DocstringLine::text)
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn tokens(code: &str) -> Vec<String> {

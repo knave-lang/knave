@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use super::docstring_line::DocstringLine;
 use super::docstring_part::DocstringPart;
 use super::docstring_syntax::DocstringSyntax;
 use super::markdown_fence::MarkdownFence;
@@ -7,7 +8,7 @@ use crate::reader::Syntax;
 
 pub struct DocstringRegions<'l> {
     syntax: &'l DocstringSyntax,
-    lines: &'l [String],
+    lines: &'l [DocstringLine],
     code: Vec<DocstringPart>,
     paragraph_start: Option<usize>,
     fence: Option<(MarkdownFence, usize)>,
@@ -16,7 +17,7 @@ pub struct DocstringRegions<'l> {
 impl<'l> DocstringRegions<'l> {
     const SUMMARY_LINE: usize = 0;
 
-    pub fn parts_of(syntax: &'l DocstringSyntax, lines: &'l [String]) -> Vec<DocstringPart> {
+    pub fn parts_of(syntax: &'l DocstringSyntax, lines: &'l [DocstringLine]) -> Vec<DocstringPart> {
         let mut regions = Self {
             syntax,
             lines,
@@ -35,12 +36,12 @@ impl<'l> DocstringRegions<'l> {
         let line = &self.lines[index];
         match self.fence {
             Some(fence) => self.visit_fenced(index, fence),
-            None => match self.syntax.opening_fence(line) {
+            None => match self.syntax.opening_fence(line.text()) {
                 Some(fence) => {
                     self.close_paragraph(index);
                     self.fence = Some((fence, index));
                 }
-                None if line.trim().is_empty() => self.close_paragraph(index),
+                None if line.is_blank() => self.close_paragraph(index),
                 None => {
                     self.paragraph_start.get_or_insert(index);
                 }
@@ -49,7 +50,7 @@ impl<'l> DocstringRegions<'l> {
     }
 
     fn visit_fenced(&mut self, index: usize, (fence, opening): (MarkdownFence, usize)) {
-        if !fence.is_closed_by(&self.lines[index]) {
+        if !fence.is_closed_by(self.lines[index].text()) {
             return;
         }
         self.fence = None;
@@ -71,10 +72,12 @@ impl<'l> DocstringRegions<'l> {
     fn is_example(&self, paragraph: Range<usize>) -> bool {
         let lines = &self.lines[paragraph.clone()];
         paragraph.start != Self::SUMMARY_LINE
-            && lines.iter().any(|line| self.syntax.is_arrow_line(line))
+            && lines
+                .iter()
+                .any(|line| self.syntax.is_arrow_line(line.text()))
             && !lines
                 .iter()
-                .any(|line| line.trim_start().starts_with(Syntax::COMMENT))
+                .any(|line| line.text().trim_start().starts_with(Syntax::COMMENT))
     }
 
     fn with_prose(self) -> Vec<DocstringPart> {
@@ -97,7 +100,7 @@ impl<'l> DocstringRegions<'l> {
 
 #[cfg(test)]
 mod tests {
-    use super::{DocstringPart, DocstringRegions};
+    use super::{DocstringLine, DocstringPart, DocstringRegions};
     use crate::format::docstring_syntax::DocstringSyntaxFixture;
 
     struct RegionFixture;
@@ -112,7 +115,7 @@ mod tests {
         }
 
         fn parts_of(text: &str) -> Vec<DocstringPart> {
-            let lines: Vec<String> = text.split('\n').map(str::to_string).collect();
+            let lines = DocstringLine::split(text);
             DocstringRegions::parts_of(&DocstringSyntaxFixture::syntax(), &lines)
         }
     }

@@ -1,6 +1,7 @@
 use super::code_layout::CodeLayout;
 use super::code_region::CodeRegion;
 use super::code_spacing::CodeSpacing;
+use super::docstring_line::DocstringLine;
 use super::docstring_part::DocstringPart;
 use super::docstring_regions::DocstringRegions;
 use super::format_rules::FormatRules;
@@ -35,9 +36,9 @@ impl<'s> DocstringCode<'s> {
         }
     }
 
-    pub fn lay_out(&self, lines: &[String]) -> LaidOutDocstring {
+    pub fn lay_out(&self, lines: &[DocstringLine]) -> LaidOutDocstring {
         let continuation = lines.get(Self::CONTINUATION_START..).unwrap_or_default();
-        let shared = CodeRegion::least_indentation(continuation);
+        let shared = DocstringLine::least_indentation(continuation);
         let mut laid_out = LaidOutDocstring {
             lines: Vec::new(),
             unreadable_lines: Vec::new(),
@@ -46,10 +47,10 @@ impl<'s> DocstringCode<'s> {
             let range = part.range();
             let code = &lines[range.clone()];
             let Some(spacing) = self.spacing_of(&part) else {
-                laid_out.lines.extend_from_slice(code);
+                laid_out.copy(code);
                 continue;
             };
-            let indent = CodeRegion::least_indentation(code);
+            let indent = DocstringLine::least_indentation(code);
             let layout = CodeLayout {
                 column: Self::LEFT_EDGE + indent.saturating_sub(shared),
                 spacing,
@@ -70,21 +71,26 @@ impl<'s> DocstringCode<'s> {
 }
 
 impl LaidOutDocstring {
-    fn add_region(&mut self, start: usize, code: &[String], region: RegionLayout) {
+    fn add_region(&mut self, start: usize, code: &[DocstringLine], region: RegionLayout) {
         match region {
             RegionLayout::LaidOut(code_lines) => self.lines.extend(code_lines),
             RegionLayout::Unreadable(line) => {
                 self.unreadable_lines.push(start + line);
-                self.lines.extend_from_slice(code);
+                self.copy(code);
             }
-            RegionLayout::Prose => self.lines.extend_from_slice(code),
+            RegionLayout::Prose => self.copy(code),
         }
+    }
+
+    fn copy(&mut self, lines: &[DocstringLine]) {
+        self.lines
+            .extend(lines.iter().map(|line| line.text().to_string()));
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::DocstringCode;
+    use super::{DocstringCode, DocstringLine};
     use crate::format::docstring_syntax::{DocstringSyntax, DocstringSyntaxFixture};
     use crate::format::format_rules::FormatRules;
     use crate::format::shapes::ShapeCatalog;
@@ -110,7 +116,7 @@ mod tests {
         }
 
         fn lay_out(&self, text: &str) -> (String, Vec<usize>) {
-            let lines: Vec<String> = text.split('\n').map(str::to_string).collect();
+            let lines = DocstringLine::split(text);
             let laid_out = DocstringCode::of_docstrings(self.rules()).lay_out(&lines);
             (laid_out.lines.join("\n"), laid_out.unreadable_lines)
         }
@@ -119,9 +125,7 @@ mod tests {
     #[test]
     fn a_page_fence_keeps_its_written_spacing() {
         let fixture = DocstringFixture::new();
-        let lines: Vec<String> = ["# page", "", "```knave", "(f   1)", "(g 2)", "```"]
-            .map(str::to_string)
-            .to_vec();
+        let lines = DocstringLine::split("# page\n\n```knave\n(f   1)\n(g 2)\n```");
         let laid_out = DocstringCode::of_pages(fixture.rules()).lay_out(&lines);
         assert_eq!(
             laid_out.lines,

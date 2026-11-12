@@ -4,6 +4,7 @@ use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::callee_definitions::{CalleeDefinition, CalleeDefinitions};
+use super::clause_choice::ClauseChoice;
 use super::emitted_value::EmittedValue;
 use super::fragment::{Code, Fragment, Precedence};
 use super::lent_temporaries::LentTemporaries;
@@ -34,7 +35,7 @@ use crate::ownership::StructUpdateOrder;
 use crate::reader::{Number, NumberValue};
 use crate::source::Span;
 use crate::types::{
-    Borrow, Bound, ClosureKind, Collection, FieldOrder, GenericId, Type, TypedArgument, TypedArm,
+    Borrow, ClosureKind, Collection, FieldOrder, GenericId, Type, TypedArgument, TypedArm,
     TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
     TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedProgram, TypedStructExpr,
     VariantPayload, ViewCoercion,
@@ -1885,11 +1886,9 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn called_template(&self, callee: &TypedExpr) -> Option<Rc<RustTemplate>> {
         match CalleeDefinitions::new(self.plan).of(callee) {
-            CalleeDefinition::Template {
-                template,
-                binding: Some(binding),
-            } => Some(self.with_chosen_clause(binding, template, &callee.ty)),
-            CalleeDefinition::Template { template, .. } => Some(Rc::clone(template)),
+            CalleeDefinition::Template { template, binding } => {
+                Some(self.with_chosen_clause(binding, template, &callee.ty))
+            }
             _ => None,
         }
     }
@@ -1901,7 +1900,7 @@ impl<'a> ExpressionEmitter<'a> {
     ) -> Option<Rc<RustTemplate>> {
         match CalleeDefinitions::new(self.plan).of_definition(binding) {
             CalleeDefinition::Template { template, .. } => {
-                Some(self.with_chosen_clause(binding, template, instantiated))
+                Some(self.with_chosen_clause(Some(binding), template, instantiated))
             }
             _ => None,
         }
@@ -1909,39 +1908,23 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn with_chosen_clause(
         &self,
-        binding: BindingId,
+        binding: Option<BindingId>,
         template: &Rc<RustTemplate>,
         instantiated: &Type,
     ) -> Rc<RustTemplate> {
-        let type_bindings = self.definition_type_bindings(binding, instantiated);
-        let chosen = type_bindings.first().and_then(|(_, parameter)| {
-            let implements = |bound: &Bound| {
-                self.program
-                    .traits
-                    .satisfies(bound, parameter, &|generic, required| {
-                        self.generic_declares(generic, required)
-                    })
-            };
-            self.program
-                .template_clauses
-                .chosen(binding, parameter, &implements)
+        let parameter = binding.and_then(|binding| {
+            let (_, parameter) = self
+                .definition_type_bindings(binding, instantiated)
+                .into_iter()
+                .next()?;
+            Some((binding, parameter))
         });
-        match chosen {
-            Some(clause) => Rc::new(RustTemplate {
-                template: Rc::clone(clause),
-                ..RustTemplate::clone(template)
-            }),
+        match parameter {
+            Some((binding, parameter)) => {
+                ClauseChoice::new(self.program).applied(template, binding, &parameter)
+            }
             None => Rc::clone(template),
         }
-    }
-
-    fn generic_declares(&self, generic: GenericId, required: &Bound) -> bool {
-        self.program.generics.get(&generic).is_some_and(|param| {
-            param
-                .bounds
-                .iter()
-                .any(|declared| self.program.traits.implies(declared, required, generic))
-        })
     }
 
     fn callee_type_arguments(&self, callee: &TypedExpr) -> Vec<(String, Code)> {

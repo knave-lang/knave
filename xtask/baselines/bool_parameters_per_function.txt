@@ -1,6 +1,5 @@
 expand/src/core/template.rs::ParsedTemplate::access 1
 expand/src/diagnostic/render.rs::DiagnosticRenderer::annotation 1
-expand/src/format/document.rs::DocumentPrinter::separate 1
 expand/src/format/layout.rs::ListAssembly::opens_run 1
 expand/src/format/layout.rs::ListAssembly::position 1
 expand/src/format/meaning.rs::MeaningComparison::same_form 1

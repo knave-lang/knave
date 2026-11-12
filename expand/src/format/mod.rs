@@ -10,7 +10,6 @@ mod docstring_lines;
 mod docstring_pass;
 mod docstring_regions;
 mod docstring_syntax;
-mod document;
 mod format_problems;
 mod format_rules;
 mod import_group;
@@ -25,6 +24,7 @@ mod region_layout;
 mod shape_reader;
 mod shapes;
 mod syntax_tree;
+mod top_level_printer;
 mod written_gap;
 
 pub use docstring_syntax::DocstringSyntax;
@@ -35,15 +35,17 @@ use crate::core::{DefinitionForm, KernelForm};
 use crate::diagnostic::Diagnostics;
 use crate::reader::{Form, Reader};
 use crate::source::{SourceFile, SourceId, SourceMap};
+use code_layout::CodeLayout;
+use code_spacing::CodeSpacing;
 use docstring_code::DocstringCode;
 use docstring_pass::DocstringPass;
-use document::DocumentPrinter;
 use format_rules::FormatRules;
 use import_order::ImportSorter;
 use layout::LayoutEngine;
 use meaning::MeaningComparison;
 use shape_reader::ShapeReader;
 use syntax_tree::SyntaxTree;
+use top_level_printer::TopLevelPrinter;
 
 pub struct SourceFormatter {
     shape_reader: ShapeReader,
@@ -126,12 +128,22 @@ impl SourceFormatter {
 }
 
 impl<'s> FormattedText<'s> {
+    const FILE_LAYOUT: CodeLayout = CodeLayout {
+        column: 0,
+        spacing: CodeSpacing::Separated,
+    };
+
     fn lay_out(rules: FormatRules<'s>, text: &str, source: SourceId) -> Self {
         let mut tree = SyntaxTree::build(text);
         ImportSorter::sort(&mut tree);
         let warnings = DocstringPass::new(rules, source).lay_out_docstrings(&mut tree);
         let mut engine = LayoutEngine::new(rules.shapes);
-        let text = DocumentPrinter::new(&mut engine).print(&tree);
+        let mut text = TopLevelPrinter::new(&mut engine, Self::FILE_LAYOUT)
+            .print(&tree)
+            .join("\n");
+        if !text.is_empty() {
+            text.push('\n');
+        }
         Self {
             rules,
             text,

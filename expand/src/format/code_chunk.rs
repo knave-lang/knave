@@ -1,11 +1,9 @@
-use super::block::Block;
 use super::chunk_layout::ChunkLayout;
 use super::code_layout::CodeLayout;
-use super::import_group::ImportGroup;
-use super::import_join::ImportJoin;
-use super::layout::{LaidOut, LayoutEngine};
+use super::layout::LayoutEngine;
 use super::shapes::ShapeCatalog;
-use super::syntax_tree::{Comment, Entry, SyntaxTree};
+use super::syntax_tree::SyntaxTree;
+use super::top_level_printer::TopLevelPrinter;
 use crate::reader::{Form, Reader};
 use crate::source::SourceMap;
 
@@ -13,8 +11,6 @@ pub struct CodeChunk<'s> {
     shapes: &'s ShapeCatalog,
     indent: usize,
     layout: CodeLayout,
-    lines: Vec<String>,
-    previous_group: Option<ImportGroup>,
 }
 
 impl<'s> CodeChunk<'s> {
@@ -25,24 +21,19 @@ impl<'s> CodeChunk<'s> {
             shapes,
             indent,
             layout,
-            lines: Vec::new(),
-            previous_group: None,
         }
     }
 
-    pub fn lay_out(mut self, text: &str) -> ChunkLayout {
+    pub fn lay_out(self, text: &str) -> ChunkLayout {
         let Some(forms) = Self::read(text) else {
             return ChunkLayout::Unreadable;
         };
         if self.layout.spacing.needs_a_line_per_form() && !Self::ends_each_line(text, &forms) {
             return ChunkLayout::Prose;
         }
-        let tree = SyntaxTree::build(text);
-        for (position, entry) in tree.entries.iter().enumerate() {
-            self.push_entry(entry, position);
-        }
-        self.push_closing_comments(&tree.closing_comments);
-        ChunkLayout::LaidOut(self.lines)
+        let mut engine = LayoutEngine::new(self.shapes);
+        let lines = TopLevelPrinter::new(&mut engine, self.layout).print(&SyntaxTree::build(text));
+        ChunkLayout::LaidOut(lines.iter().map(|line| self.with_margin(line)).collect())
     }
 
     fn read(text: &str) -> Option<Vec<Form>> {
@@ -58,77 +49,12 @@ impl<'s> CodeChunk<'s> {
         })
     }
 
-    fn push_entry(&mut self, entry: &Entry, position: usize) {
-        let block = self.block_of(entry);
-        let group = ImportGroup::of(entry, &block);
-        let comments_first = !entry.leading_comments.is_empty();
-        let join = if group.is_some() && group == self.previous_group && !comments_first {
-            ImportJoin::JoinsGroup
-        } else {
-            ImportJoin::Apart
-        };
-        if position > 0
-            && self
-                .layout
-                .spacing
-                .breaks_before_form(entry.gap_before(), join)
-        {
-            self.lines.push(String::new());
+    fn with_margin(&self, line: &str) -> String {
+        if line.is_empty() {
+            return String::new();
         }
-        self.push_leading_comments(&entry.leading_comments);
-        if comments_first && entry.blank_before_node {
-            self.lines.push(String::new());
-        }
-        let mut rendered = String::new();
-        block.render_into(&mut rendered);
-        self.push_rendered(&rendered);
-        self.previous_group = group;
-    }
-
-    fn block_of(&self, entry: &Entry) -> Block {
-        let mut block: Block =
-            LayoutEngine::new(self.shapes).node(&entry.node, self.layout.column, 0);
-        if let Some(comment) = &entry.trailing_comment {
-            block.add_trailing_comment(comment);
-        }
-        block
-    }
-
-    fn push_leading_comments(&mut self, comments: &[Comment]) {
-        for (position, comment) in comments.iter().enumerate() {
-            if position > 0 && comment.blank_before {
-                self.lines.push(String::new());
-            }
-            self.push_rendered(&comment.text);
-        }
-    }
-
-    fn push_closing_comments(&mut self, comments: &[Comment]) {
-        for (position, comment) in comments.iter().enumerate() {
-            let breaks = match position {
-                0 => self
-                    .layout
-                    .spacing
-                    .breaks_before_form(comment.gap_before(), ImportJoin::Apart),
-                _ => comment.blank_before,
-            };
-            if breaks && !self.lines.is_empty() {
-                self.lines.push(String::new());
-            }
-            self.push_rendered(&comment.text);
-        }
-    }
-
-    fn push_rendered(&mut self, rendered: &str) {
-        let margin = " ".repeat(self.indent);
-        for (index, line) in rendered.split('\n').enumerate() {
-            let text = if index == 0 {
-                line
-            } else {
-                line.get(self.layout.column..).unwrap_or(line.trim_start())
-            };
-            self.lines.push(format!("{margin}{text}"));
-        }
+        let text = line.get(self.layout.column..).unwrap_or(line.trim_start());
+        format!("{}{text}", " ".repeat(self.indent))
     }
 }
 

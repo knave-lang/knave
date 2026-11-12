@@ -1,7 +1,10 @@
+use std::fs;
 use std::path::PathBuf;
 
 use clap::Args;
-use knave_agree::{Finding, FindingsDirectory, Harness, ReducedFindings, ReductionPlan};
+use knave_agree::{
+    Finding, FindingsDirectory, Harness, ReducedFindings, ReductionPlan, ReportedSignatures,
+};
 
 use crate::failure::TaskFailure;
 
@@ -20,6 +23,13 @@ pub struct ReductionArguments {
         help = "Write the reduced findings outside the known classes to this Markdown file, if there are any"
     )]
     report: Option<PathBuf>,
+    #[arg(
+        long,
+        value_name = "FILE",
+        requires = "report",
+        help = "Leave out of the report each finding whose signature this file, such as earlier issue comments, already holds"
+    )]
+    already_reported: Option<PathBuf>,
 }
 
 impl ReductionArguments {
@@ -40,11 +50,21 @@ impl ReductionArguments {
     }
 
     fn write_report(&self, reduced: &ReducedFindings) -> Result<(), TaskFailure> {
+        let reported = self.reported()?;
         match &self.report {
             Some(path) => reduced
-                .write_report(path)
+                .write_report(path, &reported)
                 .map_err(|error| TaskFailure::unwritable(path, error)),
             None => Ok(()),
+        }
+    }
+
+    fn reported(&self) -> Result<ReportedSignatures, TaskFailure> {
+        match &self.already_reported {
+            Some(path) => fs::read_to_string(path)
+                .map(|text| ReportedSignatures::of_text(&text))
+                .map_err(|error| TaskFailure::unreadable(path, error)),
+            None => Ok(ReportedSignatures::default()),
         }
     }
 }

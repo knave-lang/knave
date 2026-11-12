@@ -34,6 +34,17 @@ pub struct CitedPlace {
     function: Option<String>,
 }
 
+impl fmt::Display for CitedPlace {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "{}@{}",
+            self.code.as_deref().unwrap_or(Rejection::UNCODED),
+            self.function.as_deref().unwrap_or("")
+        )
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RunOutcome {
     pub stdout: Vec<u8>,

@@ -103,9 +103,9 @@ impl<'s> MeaningComparison<'s> {
 
     fn docstring_position(&self, items: &[Form]) -> Option<usize> {
         let head = items.first()?.as_symbol()?;
-        let position = self.shapes.docstring_position(head.name())?;
+        let position = self.shapes.docstring_position(head.name(), items.len())?;
         let is_string = matches!(items.get(position)?.kind(), FormKind::String(_));
-        (is_string && items.len() > position + 1).then_some(position)
+        is_string.then_some(position)
     }
 }
 

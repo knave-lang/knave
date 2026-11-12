@@ -1,0 +1,24 @@
+(use prelude/macros document)
+
+(module "Halves numbers.")
+
+(module "Halves numbers, written on the head's line.
+
+  Its later lines keep their indentation relative to each other:
+
+    indented four columns in the docstring.")
+
+(module
+  "Halves numbers, already on a line of its own.
+
+  Nothing moves.")
+
+(defn halve (x) (/ x 2))
+
+(document (halve x) "Halves a number.")
+
+(document   (halve x)   "Halves a number.
+                         Its later lines move to the docstring's column.")
+
+(def greeting   "A string that no docstring position holds.
+                 Its later lines stay where they are.")

@@ -70,7 +70,7 @@ impl ListPlan {
             arrangements: kind.arrangements(),
             docstring_entry,
             binding_list_entry: Self::binding_list_entry(shape),
-            one_line_allowed: !definer || body_forms <= 1,
+            one_line_allowed: docstring_entry.is_none() && (!definer || body_forms <= 1),
             first_arm_entry: shape.filter(|shape| shape.arms).map(|_| header_length + 1),
         }
     }
@@ -134,10 +134,9 @@ impl ListPlan {
         head: Option<&str>,
         shapes: &ShapeCatalog,
     ) -> Option<usize> {
-        let position = shapes.docstring_position(head?)?;
+        let position = shapes.docstring_position(head?, list.entries.len())?;
         let is_string = list.entries.get(position)?.node.as_atom()?.is_string();
-        let followed = list.entries.len() > position + 1;
-        (is_string && followed).then_some(position)
+        is_string.then_some(position)
     }
 }
 

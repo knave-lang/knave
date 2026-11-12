@@ -59,8 +59,8 @@ Its lines start at column 0."
 
 (defn uneven (x)
   "Doc line.
-Less indented.
-    Code block."
+  Less indented.
+      Code block."
   (g x))
 
 (defn poem-text ()

@@ -7,6 +7,7 @@ use crate::reader::Form;
 pub struct Shape {
     pub header_length: usize,
     pub takes_docstring: bool,
+    pub docstring_only: bool,
     pub one_per_line: bool,
     pub arms: bool,
     pub bindings: bool,
@@ -26,6 +27,7 @@ pub struct ShapeCatalog {
 impl ShapeStatement {
     pub const STATING_FORM: &'static str = "header-shape";
     pub const DOCSTRING_MARKER: &'static str = "docstring";
+    pub const DOCSTRING_ONLY_MARKER: &'static str = "docstring-only";
     pub const ONE_PER_LINE_MARKER: &'static str = "one-per-line";
     pub const ARMS_MARKER: &'static str = "arms";
     pub const BINDINGS_MARKER: &'static str = "bindings";
@@ -43,6 +45,7 @@ impl ShapeStatement {
             shape: Shape {
                 header_length: header.len(),
                 takes_docstring: Self::has_marker(markers, Self::DOCSTRING_MARKER),
+                docstring_only: Self::has_marker(markers, Self::DOCSTRING_ONLY_MARKER),
                 one_per_line: Self::has_marker(markers, Self::ONE_PER_LINE_MARKER),
                 arms: Self::has_marker(markers, Self::ARMS_MARKER),
                 bindings: Self::has_marker(markers, Self::BINDINGS_MARKER),
@@ -69,10 +72,18 @@ impl ShapeCatalog {
         self.shapes.get(form_name).copied()
     }
 
-    pub fn docstring_position(&self, form_name: &str) -> Option<usize> {
-        self.of(form_name)
-            .filter(|shape| shape.takes_docstring)
-            .map(|shape| shape.header_length + 1)
+    pub fn docstring_position(&self, form_name: &str, item_count: usize) -> Option<usize> {
+        self.of(form_name)?.docstring_position(item_count)
+    }
+}
+
+impl Shape {
+    fn docstring_position(self, item_count: usize) -> Option<usize> {
+        let position = self.header_length + 1;
+        let followed = item_count > position + 1;
+        let last = item_count == position + 1;
+        let documents = (self.takes_docstring && followed) || (self.docstring_only && last);
+        documents.then_some(position)
     }
 }
 
@@ -107,6 +118,7 @@ mod tests {
             Some(Shape {
                 header_length: 2,
                 takes_docstring: false,
+                docstring_only: false,
                 one_per_line: false,
                 arms: false,
                 bindings: false
@@ -122,6 +134,27 @@ mod tests {
     }
 
     #[test]
+    fn a_docstring_only_marker_states_a_docstring_that_ends_the_form() {
+        let statement =
+            StatementFixture::statement("(header-shape (document header) :docstring-only)");
+        let shape = statement.expect("the statement states a shape").shape;
+        assert_eq!(
+            (shape.docstring_position(3), shape.docstring_position(4)),
+            (Some(2), None)
+        );
+    }
+
+    #[test]
+    fn a_docstring_marker_states_a_docstring_that_another_form_follows() {
+        let statement = StatementFixture::statement("(header-shape (def name) :docstring)");
+        let shape = statement.expect("the statement states a shape").shape;
+        assert_eq!(
+            (shape.docstring_position(3), shape.docstring_position(4)),
+            (None, Some(2))
+        );
+    }
+
+    #[test]
     fn a_one_per_line_marker_states_no_docstring() {
         let statement = StatementFixture::statement("(header-shape (enum name) :one-per-line)");
         assert_eq!(
@@ -129,6 +162,7 @@ mod tests {
             Some(Shape {
                 header_length: 1,
                 takes_docstring: false,
+                docstring_only: false,
                 one_per_line: true,
                 arms: false,
                 bindings: false
@@ -144,6 +178,7 @@ mod tests {
             Some(Shape {
                 header_length: 1,
                 takes_docstring: false,
+                docstring_only: false,
                 one_per_line: false,
                 arms: true,
                 bindings: false
@@ -159,6 +194,7 @@ mod tests {
             Some(Shape {
                 header_length: 1,
                 takes_docstring: false,
+                docstring_only: false,
                 one_per_line: false,
                 arms: false,
                 bindings: true

@@ -122,7 +122,8 @@ mod tests {
     use crate::language::Language;
 
     struct ProgramBinaryFixture {
-        root: TemporaryDirectory,
+        _directory: TemporaryDirectory,
+        root: PathBuf,
         terminal: Terminal,
     }
 
@@ -133,17 +134,19 @@ mod tests {
         const CHOSEN_OUTPUT: &str = "chosen";
 
         fn new() -> Self {
-            let root = TemporaryDirectory::create().expect("a temporary directory");
-            fs::write(
-                root.path().join(Language::project_file_name()),
-                Self::PROJECT_FILE,
-            )
-            .expect("the project file is written");
-            let entry = root.path().join(Self::ENTRY);
+            let directory = TemporaryDirectory::create().expect("a temporary directory");
+            let root = directory
+                .path()
+                .canonicalize()
+                .expect("the temporary directory resolves");
+            fs::write(root.join(Language::project_file_name()), Self::PROJECT_FILE)
+                .expect("the project file is written");
+            let entry = root.join(Self::ENTRY);
             fs::create_dir_all(entry.parent().expect("the entry has a directory"))
                 .expect("the source directory is created");
             fs::write(&entry, FakePrograms::PRINTS_A_SUM).expect("the entry is written");
             Self {
+                _directory: directory,
                 root,
                 terminal: Terminal::new(TerminalSettings::reporting_to(Rc::new(
                     RecordedOutput::default(),
@@ -152,9 +155,8 @@ mod tests {
         }
 
         fn build(&self, output: Option<PathBuf>) -> PathBuf {
-            let program =
-                LocatedProgram::of_file(self.root.path().join(Self::ENTRY), &self.terminal)
-                    .expect("the entry is located");
+            let program = LocatedProgram::of_file(self.root.join(Self::ENTRY), &self.terminal)
+                .expect("the entry is located");
             let options = BuildOptions {
                 profile: BuildProfile::Debug,
                 output,
@@ -169,14 +171,13 @@ mod tests {
 
         fn project_binary(&self) -> PathBuf {
             self.root
-                .path()
                 .join(BuildDirectory::root())
                 .join(Self::PROJECT)
                 .join(Self::PROJECT)
         }
 
         fn chosen_output(&self) -> PathBuf {
-            self.root.path().join(Self::CHOSEN_OUTPUT)
+            self.root.join(Self::CHOSEN_OUTPUT)
         }
     }
 
@@ -184,8 +185,9 @@ mod tests {
     fn builds_a_project_entry_under_the_project_build_directory() {
         let fixture = ProgramBinaryFixture::new();
         let binary = fixture.build(None);
-        assert_eq!(binary, fixture.project_binary());
         assert!(binary.is_file());
+        let resolved = binary.canonicalize().expect("the built binary resolves");
+        assert_eq!(resolved, fixture.project_binary());
     }
 
     #[test]

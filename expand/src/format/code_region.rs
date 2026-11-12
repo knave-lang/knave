@@ -287,6 +287,18 @@ mod tests {
     }
 
     #[test]
+    fn unreadable_code_after_a_result_that_opens_as_many_lists_as_it_closes_is_unreadable_code() {
+        let fixture = RegionFixture::new();
+        assert_eq!(
+            fixture.lay_out("(f 1)\n=> 1\n(g 2)) (h\n=> 2"),
+            RegionLayout::Unreadable(UnreadableCode {
+                line: 2,
+                cause: UnreadableCause::Code
+            })
+        );
+    }
+
+    #[test]
     fn code_that_holds_a_multi_line_string_is_prose() {
         let fixture = RegionFixture::new();
         assert_eq!(

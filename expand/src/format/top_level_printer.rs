@@ -105,3 +105,43 @@ impl<'e, 's> TopLevelPrinter<'e, 's> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::TopLevelPrinter;
+    use crate::format::code_layout::CodeLayout;
+    use crate::format::code_spacing::CodeSpacing;
+    use crate::format::layout::LayoutEngine;
+    use crate::format::shapes::ShapeCatalog;
+    use crate::format::syntax_tree::SyntaxTree;
+
+    struct PrinterFixture {
+        shapes: ShapeCatalog,
+    }
+
+    impl PrinterFixture {
+        fn new() -> Self {
+            Self {
+                shapes: ShapeCatalog::default(),
+            }
+        }
+
+        fn print(&self, text: &str) -> Vec<String> {
+            let mut engine = LayoutEngine::new(&self.shapes);
+            let layout = CodeLayout {
+                column: 0,
+                spacing: CodeSpacing::Separated,
+            };
+            TopLevelPrinter::new(&mut engine, layout).print(&SyntaxTree::build(text))
+        }
+    }
+
+    #[test]
+    fn closing_comments_keep_the_blank_lines_written_between_them() {
+        let fixture = PrinterFixture::new();
+        assert_eq!(
+            fixture.print("(f 1)\n; first\n; second\n\n; third"),
+            ["(f 1)", "", "; first", "; second", "", "; third"]
+        );
+    }
+}

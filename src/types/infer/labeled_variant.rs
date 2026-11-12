@@ -20,7 +20,7 @@ impl TypeChecker {
     ) -> Result<TypedExpr, Diagnostic> {
         let variant_name = self.bindings.get(binding).name().to_string();
         let site = self.variant_site(binding, expected);
-        let declared = self.declared_fields(&site, &variant_name, &fields[0].0)?;
+        let declared = self.declared_fields(&site, &variant_name, fields)?;
         let mut typed = Vec::new();
         let mut order = Vec::new();
         for (given, (_, value)) in fields.iter().enumerate() {
@@ -41,18 +41,16 @@ impl TypeChecker {
         &self,
         site: &VariantSite,
         variant_name: &str,
-        first_label: &FieldLabel,
+        given: &[(FieldLabel, Expr)],
     ) -> Result<Vec<(Rc<str>, Type)>, Diagnostic> {
-        let definition = self
-            .declarations
-            .types
-            .enums
-            .get(site.info.owner)
-            .expect("a variant owner is an enum");
+        let given_labels = given.iter().map(|(label, _)| label.name.clone());
+        let Some(definition) = self.declarations.types.enums.get(site.info.owner) else {
+            return Ok(given_labels.zip(site.payload.iter().cloned()).collect());
+        };
         let VariantPayload::Named(fields) = &definition.variants[site.info.index].payload else {
             return Err(TypeProblems::label_on_positional_payload(
                 variant_name,
-                first_label,
+                &given[0].0,
                 site.info.arity,
             ));
         };

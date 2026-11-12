@@ -308,9 +308,10 @@ impl TypeChecker {
             }
             _ => self.fresh_arguments(info.owner),
         };
-        let payload = self
+        let mut payload = self
             .variant_payloads()
             .visible(info.owner, info.index, &type_arguments);
+        payload.resize_with(info.arity, || self.unifier.fresh());
         VariantSite {
             info,
             type_arguments,
@@ -344,13 +345,13 @@ impl TypeChecker {
     }
 
     fn is_result_ok_variant(&self, owner: BindingId, index: usize) -> bool {
-        let definition = self
-            .declarations
+        self.declarations
             .types
             .enums
             .get(owner)
-            .expect("a variant owner is an enum");
-        definition.is_result_shaped() && definition.holds_parameter(index, 0)
+            .is_some_and(|definition| {
+                definition.is_result_shaped() && definition.holds_parameter(index, 0)
+            })
     }
 
     fn infer_match(
@@ -570,7 +571,7 @@ impl TypeChecker {
         };
         let owners: Vec<BindingId> = candidates
             .iter()
-            .map(|binding| self.variant_owner(*binding))
+            .map(|binding| self.variant_info(*binding).owner)
             .collect();
         *fitting = Some(match fitting.take() {
             Some(current) => current
@@ -582,9 +583,9 @@ impl TypeChecker {
         first.get_or_insert_with(|| (name.into(), pattern.span));
     }
 
-    fn variant_owner(&self, binding: BindingId) -> BindingId {
+    fn variant_info(&self, binding: BindingId) -> VariantInfo {
         match self.bindings.get(binding).kind() {
-            BindingKind::Variant(_, info) => info.owner,
+            BindingKind::Variant(_, info) => info,
             _ => unreachable!("a variant pattern names a variant binding"),
         }
     }
@@ -776,23 +777,20 @@ impl TypeChecker {
         mode: Option<ReferenceKind>,
         span: Span,
     ) -> Result<TypedPatternKind, Diagnostic> {
-        let owner = self.variant_owner(binding);
-        let arguments = self.match_arguments(matched, owner, span)?;
-        let index = match self.bindings.get(binding).kind() {
-            BindingKind::Variant(_, info) => info.index,
-            _ => unreachable!("a qualified pattern names a variant binding"),
-        };
-        let storage = self
+        let info = self.variant_info(binding);
+        let arguments = self.match_arguments(matched, info.owner, span)?;
+        let mut storage = self
             .declarations
             .types
             .enums
-            .get(owner)
-            .and_then(|definition| definition.instantiated_payload(index, &arguments))
+            .get(info.owner)
+            .and_then(|definition| definition.instantiated_payload(info.index, &arguments))
             .unwrap_or_default();
+        storage.resize_with(info.arity, || self.unifier.fresh());
         let placement = PatternPlacement::new(written, span);
-        let fields = self.payload_pattern_fields(owner, index);
+        let fields = self.payload_pattern_fields(binding);
         let placed = placement.place(self.variant_name(binding), &fields)?;
-        let typed = self.lower_payload_patterns(owner, index, &placed, &storage, mode)?;
+        let typed = self.lower_payload_patterns(info.owner, info.index, &placed, &storage, mode)?;
         Ok(TypedPatternKind::Variant(binding, typed))
     }
 
@@ -836,12 +834,14 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedPatternKind, Diagnostic> {
         let (owner, type_arguments) = self.short_pattern_owner(candidates, &matched, span)?;
-        let definition = self
-            .declarations
-            .types
-            .enums
-            .get(owner)
-            .expect("a matching enum has a definition");
+        let Some(definition) = self.declarations.types.enums.get(owner) else {
+            let variant = candidates
+                .iter()
+                .copied()
+                .find(|candidate| self.variant_info(*candidate).owner == owner)
+                .unwrap_or(candidates[0]);
+            return self.named_variant_pattern(variant, written, matched, mode, span);
+        };
         let Some(index) = definition
             .variants
             .iter()
@@ -857,28 +857,25 @@ impl TypeChecker {
                 enum_name, name, &variants, span,
             ));
         };
-        let storage = self
-            .declarations
-            .types
-            .enums
-            .get(owner)
-            .and_then(|definition| definition.instantiated_payload(index, &type_arguments))
+        let storage = definition
+            .instantiated_payload(index, &type_arguments)
             .unwrap_or_default();
         let binding = self.candidate_binding(candidates, owner, index);
         let placement = PatternPlacement::new(written, span);
-        let placed = placement.place(name, &self.payload_pattern_fields(owner, index))?;
+        let placed = placement.place(name, &self.payload_pattern_fields(binding))?;
         let typed = self.lower_payload_patterns(owner, index, &placed, &storage, mode)?;
         Ok(TypedPatternKind::Variant(binding, typed))
     }
 
-    fn payload_pattern_fields(&self, owner: BindingId, variant: usize) -> PatternFields<'_> {
+    fn payload_pattern_fields(&self, variant: BindingId) -> PatternFields<'_> {
+        let info = self.variant_info(variant);
         self.declarations
             .types
             .enums
-            .get(owner)
-            .and_then(|definition| definition.variants.get(variant))
+            .get(info.owner)
+            .and_then(|definition| definition.variants.get(info.index))
             .map_or(
-                PatternFields::Positional(0),
+                PatternFields::Positional(info.arity),
                 VariantDefinition::pattern_fields,
             )
     }
@@ -911,7 +908,8 @@ impl TypeChecker {
         span: Span,
     ) -> Result<(BindingId, Vec<Type>), Diagnostic> {
         if let Type::Named(owner, arguments) = self.unifier.shallow(matched)
-            && self.declarations.types.enums.get(owner).is_some()
+            && (self.declarations.types.enums.get(owner).is_some()
+                || self.candidate_owners(candidates).contains(&owner))
         {
             return Ok((owner, arguments));
         }
@@ -930,7 +928,7 @@ impl TypeChecker {
     fn candidate_owners(&self, candidates: &[BindingId]) -> Vec<BindingId> {
         let mut owners: Vec<BindingId> = candidates
             .iter()
-            .map(|binding| self.variant_owner(*binding))
+            .map(|binding| self.variant_info(*binding).owner)
             .collect();
         owners.sort();
         owners.dedup();

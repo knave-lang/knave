@@ -12,8 +12,9 @@ impl ErrorPages {
     const UNWRITTEN_MARK: &'static str = "no explanation yet";
 
     pub fn pages() -> Vec<WrittenPage> {
-        let explanations: Vec<ExplanationPage> =
+        let mut explanations: Vec<ExplanationPage> =
             Explanation::all().map(ExplanationPage::new).collect();
+        explanations.sort_by(|left, right| left.code().cmp(right.code()));
         let written = explanations.iter().filter_map(Self::code_page);
         [Self::index(&explanations)]
             .into_iter()
@@ -49,5 +50,27 @@ impl ErrorPages {
             module: format!("{}/{}", Self::INDEX, page.code()),
             text: page.markdown()?,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ErrorPages;
+
+    #[test]
+    fn the_index_lists_the_codes_in_order() {
+        let pages = ErrorPages::pages();
+        let codes: Vec<&str> = pages[0]
+            .text
+            .lines()
+            .filter_map(|row| row.strip_prefix("| "))
+            .filter_map(|row| row.split([' ', ']']).next())
+            .map(|code| code.trim_start_matches('['))
+            .filter(|code| code.starts_with('L'))
+            .collect();
+        let mut sorted = codes.clone();
+        sorted.sort_unstable();
+        assert!(codes.len() > 1);
+        assert_eq!(codes, sorted);
     }
 }

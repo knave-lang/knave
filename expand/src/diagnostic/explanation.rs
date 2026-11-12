@@ -68,6 +68,13 @@ mod tests {
     }
 
     #[test]
+    fn every_written_explanation_names_a_code_of_the_table() {
+        for (code, _) in Explanation::WRITTEN {
+            assert!(Explanation::of_code(code).is_some(), "{code} is not a code");
+        }
+    }
+
+    #[test]
     fn a_code_outside_the_table_has_no_explanation() {
         assert!(Explanation::of_code("L0999").is_none());
     }

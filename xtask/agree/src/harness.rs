@@ -44,13 +44,20 @@ impl Harness {
                 .iter()
                 .any(|oracle| oracle.name() == name.as_str())
         }) {
-            return Err(format!("no oracle is named `{unknown}`"));
+            return Err(format!(
+                "no oracle is named `{unknown}`; the oracles are {}",
+                self.oracle_names().join(", ")
+            ));
         }
         if !names.is_empty() {
             self.oracles
                 .retain(|oracle| names.iter().any(|name| name == oracle.name()));
         }
         Ok(self)
+    }
+
+    pub fn oracle_names(&self) -> Vec<&'static str> {
+        self.oracles.iter().map(|oracle| oracle.name()).collect()
     }
 
     pub fn jobs(&self) -> usize {
@@ -90,10 +97,6 @@ mod tests {
         fn harness() -> Harness {
             Harness::new(KnaveCompiler::at(PathBuf::from("knave")), Self::JOBS)
         }
-
-        fn oracle_count(harness: &Harness) -> usize {
-            harness.oracles.len()
-        }
     }
 
     #[test]
@@ -101,7 +104,10 @@ mod tests {
         let harness = HarnessFixture::harness()
             .keeping_oracles(&[])
             .expect("no names");
-        assert_eq!(HarnessFixture::oracle_count(&harness), 2);
+        assert_eq!(
+            harness.oracle_names(),
+            ["CheckAcceptsRustcRejects", "FalseOwnershipError"]
+        );
         assert_eq!(harness.jobs(), HarnessFixture::JOBS);
     }
 
@@ -111,13 +117,18 @@ mod tests {
         let harness = HarnessFixture::harness()
             .keeping_oracles(&names)
             .expect("a known name");
-        assert_eq!(HarnessFixture::oracle_count(&harness), 1);
+        assert_eq!(harness.oracle_names(), ["FalseOwnershipError"]);
     }
 
     #[test]
     fn refuses_an_unknown_oracle_name() {
         let names = ["Telepathy".to_string()];
         let refusal = HarnessFixture::harness().keeping_oracles(&names).err();
-        assert_eq!(refusal.as_deref(), Some("no oracle is named `Telepathy`"));
+        assert_eq!(
+            refusal.as_deref(),
+            Some(
+                "no oracle is named `Telepathy`; the oracles are CheckAcceptsRustcRejects, FalseOwnershipError"
+            )
+        );
     }
 }

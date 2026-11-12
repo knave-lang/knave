@@ -1,13 +1,15 @@
 use std::fmt;
 
+use crate::finding_line::FindingLine;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct FindingChanges {
-    new: Vec<String>,
-    gone: Vec<String>,
+    new: Vec<FindingLine>,
+    gone: Vec<FindingLine>,
 }
 
 impl FindingChanges {
-    pub fn new(new: Vec<String>, gone: Vec<String>) -> Self {
+    pub(crate) fn new(new: Vec<FindingLine>, gone: Vec<FindingLine>) -> Self {
         Self { new, gone }
     }
 

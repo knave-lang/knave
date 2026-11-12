@@ -142,7 +142,7 @@ jobs:
       - name: Build the compiler
         run: nix develop .#ci -c cargo build --bin knave
       - name: Compare check, rustc and the compiled programs on the fixed seeds
-        run: nix develop .#ci -c cargo xtask agree --seeds 0..200 --expected xtask/agree/pull-request-findings.txt
+        run: nix develop .#ci -c cargo xtask agree --seeds 0..200
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:

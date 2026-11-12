@@ -5,32 +5,24 @@ use std::path::Path;
 
 use crate::finding::Finding;
 use crate::finding_changes::FindingChanges;
-use crate::seed::{Seed, SeedRange};
+use crate::finding_line::FindingLine;
+use crate::seed::SeedRange;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FindingList {
-    lines: BTreeSet<String>,
+    lines: BTreeSet<FindingLine>,
 }
 
 impl FindingList {
     pub fn of(findings: &[Finding]) -> Self {
         Self {
-            lines: findings.iter().map(Finding::to_string).collect(),
+            lines: findings.iter().map(Finding::line).collect(),
         }
     }
 
     pub fn read(path: &Path) -> io::Result<Self> {
-        Ok(Self::of_text(&fs::read_to_string(path)?))
-    }
-
-    pub fn of_text(text: &str) -> Self {
-        Self {
-            lines: text
-                .lines()
-                .filter(|line| !line.is_empty())
-                .map(str::to_string)
-                .collect(),
-        }
+        Self::of_text(&fs::read_to_string(path)?)
+            .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))
     }
 
     pub fn write(&self, path: &Path) -> io::Result<()> {
@@ -46,14 +38,10 @@ impl FindingList {
             lines: self
                 .lines
                 .iter()
-                .filter(|line| Self::seed_of(line).is_some_and(|seed| seeds.contains(seed)))
+                .filter(|line| line.seed().is_some_and(|seed| seeds.contains(seed)))
                 .cloned()
                 .collect(),
         }
-    }
-
-    fn seed_of(line: &str) -> Option<Seed> {
-        line.split(' ').next()?.parse().ok()
     }
 
     pub fn changes_from(&self, expected: &FindingList) -> FindingChanges {
@@ -62,6 +50,16 @@ impl FindingList {
             expected.lines.difference(&self.lines).cloned().collect(),
         )
     }
+
+    pub(crate) fn of_text(text: &str) -> Result<Self, String> {
+        Ok(Self {
+            lines: text
+                .lines()
+                .filter(|line| !line.is_empty())
+                .map(str::parse)
+                .collect::<Result<_, _>>()?,
+        })
+    }
 }
 
 #[cfg(test)]
@@ -69,23 +67,36 @@ mod tests {
     use super::FindingList;
     use crate::seed::SeedRange;
 
+    struct FindingListFixture;
+
+    impl FindingListFixture {
+        fn of(text: &str) -> FindingList {
+            FindingList::of_text(text).expect("the fixture lists findings")
+        }
+    }
+
+    #[test]
+    fn refuses_a_line_without_a_judgement() {
+        assert!(FindingList::of_text("lonely\n").is_err());
+    }
+
     #[test]
     fn keeps_each_line_once_in_order_without_blank_lines() {
-        let list = FindingList::of_text("seed-2 a: x\n\nseed-1 b: y\nseed-2 a: x\n");
+        let list = FindingListFixture::of("seed-2 a: x\n\nseed-1 b: y\nseed-2 a: x\n");
         assert_eq!(list.text(), "seed-1 b: y\nseed-2 a: x\n");
     }
 
     #[test]
     fn keeps_only_the_findings_of_a_seed_range() {
-        let list = FindingList::of_text("seed-1 a: x\nseed-25 a: y\nfixture a: z\n");
+        let list = FindingListFixture::of("seed-1 a: x\nseed-25 a: y\nfixture a: z\n");
         let within = list.within(&SeedRange::new(0..20));
         assert_eq!(within.text(), "seed-1 a: x\n");
     }
 
     #[test]
     fn names_the_new_and_the_gone_findings() {
-        let found = FindingList::of_text("seed-1 a: x\nseed-3 a: z\n");
-        let expected = FindingList::of_text("seed-1 a: x\nseed-2 a: y\n");
+        let found = FindingListFixture::of("seed-1 a: x\nseed-3 a: z\n");
+        let expected = FindingListFixture::of("seed-1 a: x\nseed-2 a: y\n");
         let changes = found.changes_from(&expected);
         assert!(!changes.is_empty());
         assert_eq!(

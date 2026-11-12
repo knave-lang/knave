@@ -2,25 +2,36 @@ use std::rc::Rc;
 
 use super::name_records::NameRecords;
 use super::set_aside_drop::SetAsideDrop;
+use super::set_aside_source::SetAsideSource;
 use crate::diagnostic::Diagnostic;
-use crate::expand::{DocumentsLeft, SetAsideInput, SetAsideProblems};
-use crate::source::Span;
+use crate::expand::{InputTerms, SetAsideInput, SetAsideProblems};
 
 pub struct DroppedDocuments {
-    source: String,
-    span: Span,
+    source: SetAsideSource,
     documents: Vec<Rc<str>>,
     replacing: Rc<str>,
 }
 
 impl DroppedDocuments {
-    pub fn left_behind(source: &str, span: Span, documents: DocumentsLeft) -> Option<Self> {
-        let (replacing, left) = documents.into_parts();
+    pub fn left_behind(
+        source: SetAsideSource,
+        earlier: &InputTerms,
+        entered: &InputTerms,
+    ) -> Option<Self> {
+        let again = entered.documented();
+        let replacing = again
+            .iter()
+            .find(|term| earlier.documented().contains(term))?;
+        let left: Vec<Rc<str>> = earlier
+            .documented()
+            .iter()
+            .filter(|term| !again.contains(term))
+            .cloned()
+            .collect();
         (!left.is_empty()).then(|| Self {
-            source: source.to_string(),
-            span,
+            source,
             documents: left,
-            replacing,
+            replacing: Rc::clone(replacing),
         })
     }
 }
@@ -30,10 +41,10 @@ impl SetAsideDrop for DroppedDocuments {
         let terms: Vec<&str> = self.documents.iter().map(|term| &**term).collect();
         let input = SetAsideInput {
             names: &terms,
-            source: &self.source,
+            source: &self.source.name,
             setter,
         };
-        SetAsideProblems::dropped_documents(&input, &self.replacing, self.span)
+        SetAsideProblems::dropped_documents(&input, &self.replacing, self.source.span)
     }
 
     fn record(&self, _records: &mut NameRecords, _setter: &str) {}
@@ -46,7 +57,7 @@ mod tests {
     use crate::core::Namespace;
     use crate::diagnostic::MissingName;
     use crate::expand::InputTerms;
-    use crate::source::SourceId;
+    use crate::source::{SourceId, Span};
 
     struct DocumentsFixture;
 
@@ -66,11 +77,31 @@ mod tests {
         }
 
         fn left_behind(earlier: &[&str], later: &[&str]) -> Option<DroppedDocuments> {
-            let documents = Self::documenting(earlier)
-                .documents_left_by(&Self::documenting(later))
-                .expect("the later input documents a term again");
-            DroppedDocuments::left_behind(Self::SOURCE, Self::span(), documents)
+            let source = SetAsideSource {
+                name: Self::SOURCE.to_string(),
+                span: Self::span(),
+            };
+            DroppedDocuments::left_behind(
+                source,
+                &Self::documenting(earlier),
+                &Self::documenting(later),
+            )
         }
+    }
+
+    #[test]
+    fn a_document_of_another_term_drops_nothing() {
+        assert!(DocumentsFixture::left_behind(&["g"], &["h"]).is_none());
+    }
+
+    #[test]
+    fn the_replacing_term_is_the_one_documented_again() {
+        let dropped = DocumentsFixture::left_behind(&["g", "k"], &["h", "g"]).expect("`k` is left");
+        let warning = dropped.warning(DocumentsFixture::SETTER);
+        assert_eq!(
+            warning.notes(),
+            ["a `document` of `g` replaced the input that documented `k`"]
+        );
     }
 
     #[test]

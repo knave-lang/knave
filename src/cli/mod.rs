@@ -73,6 +73,7 @@ mod repl;
 mod run;
 mod rustfmt_time_limit;
 mod set_aside_drop;
+mod set_aside_source;
 mod skipped_directory;
 mod source_report;
 mod source_walk;

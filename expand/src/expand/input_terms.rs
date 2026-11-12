@@ -8,17 +8,6 @@ pub struct InputTerms {
     documented: Vec<Rc<str>>,
 }
 
-pub struct DocumentsLeft {
-    replacing: Rc<str>,
-    left: Vec<Rc<str>>,
-}
-
-impl DocumentsLeft {
-    pub fn into_parts(self) -> (Rc<str>, Vec<Rc<str>>) {
-        (self.replacing, self.left)
-    }
-}
-
 impl InputTerms {
     pub fn binding(bound: Vec<BoundName>) -> Self {
         Self::documenting(bound, Vec::new())
@@ -40,21 +29,8 @@ impl InputTerms {
         self.bound.iter().any(|bound| bound.names_the_same(name))
     }
 
-    pub fn documents_left_by(&self, later: &InputTerms) -> Option<DocumentsLeft> {
-        let replacing = later
-            .documented
-            .iter()
-            .find(|term| self.documented.contains(term))?;
-        let left: Vec<Rc<str>> = self
-            .documented
-            .iter()
-            .filter(|term| !later.documented.contains(term))
-            .cloned()
-            .collect();
-        Some(DocumentsLeft {
-            replacing: Rc::clone(replacing),
-            left,
-        })
+    pub fn documented(&self) -> &[Rc<str>] {
+        &self.documented
     }
 
     pub fn shares_a_term_with(&self, other: &InputTerms) -> bool {
@@ -127,24 +103,10 @@ mod tests {
     }
 
     #[test]
-    fn a_later_document_of_one_term_leaves_the_other_terms_behind() {
-        let earlier = TermsFixture::documenting(&["g", "k"]);
-        let left = earlier
-            .documents_left_by(&TermsFixture::documenting(&["g"]))
-            .expect("the later input documents `g` again");
-        let (replacing, left) = left.into_parts();
-        assert_eq!(&*replacing, "g");
-        assert_eq!(left, [Rc::from("k")]);
-    }
-
-    #[test]
-    fn a_later_document_of_another_term_leaves_nothing() {
-        let earlier = TermsFixture::documenting(&["g"]);
-        assert!(
-            earlier
-                .documents_left_by(&TermsFixture::documenting(&["h"]))
-                .is_none()
-        );
+    fn documenting_terms_list_what_they_document() {
+        let terms = TermsFixture::documenting(&["g", "k"]);
+        assert_eq!(terms.documented(), [Rc::from("g"), Rc::from("k")]);
+        assert!(TermsFixture::binding(&["g"]).documented().is_empty());
     }
 
     #[test]

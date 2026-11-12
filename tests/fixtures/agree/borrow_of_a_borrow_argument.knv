@@ -1,0 +1,10 @@
+(defstruct page
+  :title string)
+
+(defn label-of ((p (ref (ref page))))
+  (as-str (:title p)))
+
+(defn main ()
+  (local p (->page :title (str "Leaf")))
+  (local label (label-of (ref (ref p))))
+  (println label))

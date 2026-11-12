@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/agree/name_bound_again_after_push.knv
+---
+Checker: accepted
+CheckerWithoutOwnership: accepted
+CompiledDebug: ran: Code(0), stdout "1\n5\n", stderr ""

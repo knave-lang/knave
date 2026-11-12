@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/agree/borrow_of_a_borrowed_parameter_returned.knv
+---
+Checker: accepted
+CheckerWithoutOwnership: rejected: E0515 in `greeting`
+CompiledDebug: rejected: E0515 in `greeting`
+finding CheckAcceptsRustcRejects: check accepts and rustc rejects: E0515 in `greeting`

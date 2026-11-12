@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/agree/inferred_mut_beside_a_borrow_of_it.knv
+---
+Checker: accepted
+CheckerWithoutOwnership: accepted
+CompiledDebug: ran: Code(0), stdout "22\n", stderr ""

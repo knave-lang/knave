@@ -186,6 +186,7 @@ cargo test <narrowest test>
 | one stage's fixtures | `--test stages <stage>_fixtures` |
 | the project file's reader | `--test stages project_fixtures` |
 | a corpus entry | `--test stages corpus_fixtures` |
+| the harness of RFC 0065, or a known shape under `tests/fixtures/agree/` | `-p knave-agree`, then `--test stages agree_fixtures` |
 | a CLI command | `--test cli <test name>` |
 | a diagnostic code | `--test diagnostic_codes --test diagnostic_snapshots` |
 | `xtask/` | `-p xtask` |

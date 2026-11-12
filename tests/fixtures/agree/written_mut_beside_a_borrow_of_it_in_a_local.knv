@@ -1,0 +1,12 @@
+(defn first-letter ((s (ref str))) s)
+
+(defn counted! (values (letter (ref str)))
+  (push! values (len letter))
+  (len values))
+
+(defn main ()
+  (local values (vec 1))
+  (local n
+    (counted! (mut values)
+              (first-letter (as-str (str (len values))))))
+  (println n (len values)))

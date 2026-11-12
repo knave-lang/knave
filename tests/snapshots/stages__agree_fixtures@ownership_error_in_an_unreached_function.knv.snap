@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/agree/ownership_error_in_an_unreached_function.knv
+---
+Checker: rejected: L0501 in `unused`
+CheckerWithoutOwnership: accepted
+CompiledDebug: rejected: L0501 in `unused`

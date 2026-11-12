@@ -1,3 +1,4 @@
+mod agreement;
 mod explanation_examples;
 mod fixture_queue;
 mod formatting;
@@ -27,6 +28,7 @@ use knave::source::{SourceId, SourceMap, Span};
 use knave::types::TypedProgram;
 use rustc_hash::FxHashMap;
 
+pub use agreement::AgreementReport;
 pub use explanation_examples::{ExampleDiagnostic, ExplanationExamples};
 pub use formatting::{FormatFailures, ShapeLookup};
 pub use headers::HeaderAgreement;

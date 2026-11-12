@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/agree/use_after_move.knv
+---
+Checker: rejected: L0501 in `main`
+CheckerWithoutOwnership: rejected: E0382 in `main`
+CompiledDebug: rejected: L0501 in `main`

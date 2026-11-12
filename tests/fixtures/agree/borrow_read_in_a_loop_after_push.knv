@@ -1,0 +1,10 @@
+(defn main ()
+  (local v (vec 1 2))
+  (loop (n 0)
+    (if (< n 2)
+      (do
+        (push! v 9)
+        (local r (at v 0))
+        (println r)
+        (recur (+ n 1)))
+      (do))))

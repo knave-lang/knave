@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/agree/borrow_of_a_borrow_argument.knv
+---
+Checker: accepted
+CheckerWithoutOwnership: rejected: E0716 in `main`
+CompiledDebug: rejected: E0716 in `main`
+finding CheckAcceptsRustcRejects: check accepts and rustc rejects: E0716 in `main`

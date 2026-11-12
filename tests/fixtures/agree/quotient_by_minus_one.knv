@@ -1,0 +1,3 @@
+(defn quotient () (ref (/ 7 -1)))
+
+(defn main () (println (quotient)))

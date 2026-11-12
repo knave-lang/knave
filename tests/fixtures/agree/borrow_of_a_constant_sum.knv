@@ -1,0 +1,3 @@
+(defn three () (ref (+ 1 2)))
+
+(defn main () (println (three)))

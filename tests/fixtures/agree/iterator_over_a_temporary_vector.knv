@@ -1,0 +1,6 @@
+(defn numbers () (vec 1 2))
+
+(defn main ()
+  (local doubled
+    (map (iter (numbers)) (fn (x) (* x 2))))
+  (println (sum doubled)))

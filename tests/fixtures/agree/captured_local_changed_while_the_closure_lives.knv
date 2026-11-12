@@ -1,0 +1,5 @@
+(defn main ()
+  (local base 10)
+  (local show (fn () base))
+  (set! base 20)
+  (println (show) " " base))

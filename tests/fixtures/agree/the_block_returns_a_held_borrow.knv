@@ -1,0 +1,11 @@
+(defn announced (text)
+  (print text "|")
+  (str text))
+
+(defn first-letter ((s (ref str))) s)
+
+(defn main ()
+  (local t
+    (the (ref str)
+         (first-letter (as-str (announced "ab")))))
+  (println t))

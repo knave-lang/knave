@@ -1,0 +1,15 @@
+(defn announced (text)
+  (print text "|")
+  (str text))
+
+(defn first-letter ((s (ref str))) s)
+
+(def last-of
+  (rust "{{ let mut last = \"\"; for _ in 0..{0} {{ last = {1}; }} last }}"
+    (fn (i64 (ref str)) (ref str))))
+
+(defn main ()
+  (local t
+    (last-of 2
+             (first-letter (as-str (announced "a")))))
+  (println t))

@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/agree/panics_past_the_end_of_a_vector.knv
+---
+Checker: accepted
+CheckerWithoutOwnership: accepted
+CompiledDebug: ran: Panic("index out of bounds: the len is 0 but the index is 0"), stdout "", stderr "reading\n"

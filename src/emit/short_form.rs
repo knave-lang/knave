@@ -73,7 +73,8 @@ struct TemplateShape<'t> {
 impl<'t> TemplateShape<'t> {
     const FORBIDDEN_CHARACTERS: [char; 3] = ['{', '|', ';'];
     const FORBIDDEN_OPERATORS: [&'static str; 2] = ["&&", "?"];
-    const PATH_CHARACTERS: [char; 9] = ['_', ':', '(', '[', ',', ' ', '&', '<', '>'];
+    const PATH_CHARACTERS: [char; 7] = ['_', ':', '(', '[', ',', ' ', '&'];
+    const TURBOFISH: &'static str = "::";
 
     fn new(template: &'t RustTemplate, arguments: &'t [TypedArgument], lent: usize) -> Self {
         Self {
@@ -117,6 +118,7 @@ impl<'t> TemplateShape<'t> {
     }
 
     fn runs_only_literals_before_the_lent_placeholder(&self, parsed: &ParsedTemplate) -> bool {
+        let mut open_turbofish = 0;
         parsed
             .pieces()
             .iter()
@@ -124,7 +126,7 @@ impl<'t> TemplateShape<'t> {
                 |piece| !matches!(piece, Piece::Placeholder { index, .. } if *index == self.lent),
             )
             .all(|piece| match piece {
-                Piece::Literal(literal) => Self::is_path(literal),
+                Piece::Literal(literal) => Self::is_path(literal, &mut open_turbofish),
                 Piece::Placeholder { index, .. } => self
                     .arguments
                     .get(*index)
@@ -133,10 +135,20 @@ impl<'t> TemplateShape<'t> {
             })
     }
 
-    fn is_path(literal: &str) -> bool {
-        literal.chars().all(|character| {
-            character.is_alphanumeric() || Self::PATH_CHARACTERS.contains(&character)
-        })
+    fn is_path(literal: &str, open_turbofish: &mut usize) -> bool {
+        literal
+            .char_indices()
+            .all(|(at, character)| match character {
+                '<' if literal[..at].ends_with(Self::TURBOFISH) => {
+                    *open_turbofish += 1;
+                    true
+                }
+                '>' if *open_turbofish > 0 => {
+                    *open_turbofish -= 1;
+                    true
+                }
+                _ => character.is_alphanumeric() || Self::PATH_CHARACTERS.contains(&character),
+            })
     }
 
     fn literals(parsed: &ParsedTemplate) -> impl Iterator<Item = &str> {
@@ -188,6 +200,12 @@ mod tests {
             (defenum labeled (tagged i64 (ref str)))
             (defn variant-ahead (n) (local t (labeled/tagged n (as-str (announced \"a\")))) t)
             (def braced (rust \"{0}.trim_start_matches({{ ' ' }})\" (fn ((ref str)) (ref str))))
+            (def compared (rust \"std::convert::identity((1 < 2, {0}).1)\" (fn ((ref str)) (ref str))))
+            (def greater (rust \"std::convert::identity((2 > 1, {0}).1)\" (fn ((ref str)) (ref str))))
+            (def turbofish (rust \"std::convert::identity::<&str>({0})\" (fn ((ref str)) (ref str))))
+            (defn template-less-than () (local t (compared (as-str (announced \"a\")))) t)
+            (defn template-greater-than () (local t (greater (as-str (announced \"a\")))) t)
+            (defn template-turbofish () (local t (turbofish (as-str (announced \"a\")))) t)
             (defn template-braces () (local t (braced (as-str (announced \"a\")))) t)
             (defn template-callee () (local t ((rust \"std::convert::identity({0})\" (fn ((ref str)) (ref str))) (as-str (announced \"a\")))) t)
             (defn template-reordered () (local t (swapped (as-str (announced \"a\")) (seven))) t)
@@ -327,6 +345,21 @@ mod tests {
     #[test]
     fn refuses_a_placeholder_written_ahead_that_is_not_a_literal() {
         assert!(!ShortFixture::new().admits("template-reordered", &[0, 0]));
+    }
+
+    #[test]
+    fn admits_a_turbofish_ahead() {
+        assert!(ShortFixture::new().admits("template-turbofish", &[0, 0]));
+    }
+
+    #[test]
+    fn refuses_a_less_than_ahead() {
+        assert!(!ShortFixture::new().admits("template-less-than", &[0, 0]));
+    }
+
+    #[test]
+    fn refuses_a_greater_than_ahead() {
+        assert!(!ShortFixture::new().admits("template-greater-than", &[0, 0]));
     }
 
     #[test]

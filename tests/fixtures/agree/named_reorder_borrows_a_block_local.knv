@@ -1,0 +1,14 @@
+(defn seven () 7)
+
+(defn announced (text)
+  (print text "|")
+  (str text))
+
+(defn cut (:text (ref str) :n i64)
+  (if (> n 0) text text))
+
+(defn main ()
+  (local t
+    (cut :n (seven)
+         :text (as-str (announced "a"))))
+  (println t))

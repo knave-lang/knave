@@ -1,0 +1,6 @@
+(defn greeting ((text (ref string)))
+  (ref text))
+
+(defn main ()
+  (local name (str "Leaf"))
+  (println (greeting (ref name))))

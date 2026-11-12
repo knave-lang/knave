@@ -1,0 +1,4 @@
+(defn main ()
+  (local empty (the (vec i64) (vec)))
+  (eprintln "reading")
+  (println (at empty 0)))

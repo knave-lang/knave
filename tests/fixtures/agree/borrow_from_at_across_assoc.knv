@@ -1,0 +1,5 @@
+(defn main ()
+  (local grid (vec 1 2))
+  (local first (at grid 0))
+  (local next (assoc grid 0 3))
+  (println (at next 0) " " first))

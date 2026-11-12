@@ -1,0 +1,8 @@
+(defn bump! (x) (set! x (+ x 1)))
+
+(defn apply-to (f n) (f n))
+
+(defn main ()
+  (local total 1)
+  (apply-to (fn (n) (bump! total)) total)
+  (println total))

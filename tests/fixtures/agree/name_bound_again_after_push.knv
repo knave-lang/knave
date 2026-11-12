@@ -1,0 +1,8 @@
+(defn main ()
+  (local v (vec 1 2))
+  (local w (vec 5))
+  (local r (at v 0))
+  (println r)
+  (push! v 9)
+  (local r (at w 0))
+  (println r))

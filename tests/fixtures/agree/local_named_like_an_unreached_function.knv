@@ -1,0 +1,8 @@
+(defn w ()
+  (local v (vec 1))
+  (local x v)
+  (println (len v) (len x)))
+
+(defn main ()
+  (local w 3)
+  (println w))

@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/agree/quotient_by_minus_one.knv
+---
+Checker: accepted
+CheckerWithoutOwnership: accepted
+CompiledDebug: ran: Code(0), stdout "-7\n", stderr ""

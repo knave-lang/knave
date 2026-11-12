@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/agree/field_changed_while_another_is_borrowed.knv
+---
+Checker: accepted
+CheckerWithoutOwnership: accepted
+CompiledDebug: ran: Code(0), stdout "Leaf 2021\n", stderr ""

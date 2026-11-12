@@ -1,0 +1,4 @@
+(defn main ()
+  (local letters
+    (chars (as-str (str "ab"))))
+  (println (count letters)))

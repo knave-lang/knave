@@ -1,0 +1,7 @@
+(defn grow! (left right)
+  (push! left (len right)))
+
+(defn main ()
+  (local scores (vec 0))
+  (grow! scores scores)
+  (println (len scores)))

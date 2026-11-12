@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/agree/local_named_like_an_unreached_function.knv
+---
+Checker: rejected: L0501 in `w`
+CheckerWithoutOwnership: accepted
+CompiledDebug: rejected: L0501 in `w`

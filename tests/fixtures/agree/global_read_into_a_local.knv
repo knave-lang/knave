@@ -1,0 +1,5 @@
+(def greeting (str "hi"))
+
+(defn main ()
+  (local g greeting)
+  (println g))

@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/agree/helper_changes_with_its_own_length.knv
+---
+Checker: accepted
+CheckerWithoutOwnership: accepted
+CompiledDebug: ran: Code(0), stdout "3\n", stderr ""

@@ -1,0 +1,6 @@
+(defn greeting ()
+  (local text (str "Leaf"))
+  (local view (ref text))
+  view)
+
+(defn main () (println (greeting)))

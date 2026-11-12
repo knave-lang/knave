@@ -1,0 +1,16 @@
+(defn announced (text)
+  (print text "|")
+  (str text))
+
+(defn first-letter ((s (ref str))) s)
+
+(def or-else
+  (rust "{0}.unwrap_or_else(|| {1})"
+    (fn ((option (ref str)) (ref str))
+      (ref str))))
+
+(defn main ()
+  (local t
+    (or-else none
+             (first-letter (as-str (announced "a")))))
+  (println t))

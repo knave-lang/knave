@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/agree/user_template_runs_a_borrow_in_a_loop.knv
+---
+Checker: accepted
+CheckerWithoutOwnership: rejected: E0384 in `main`
+CompiledDebug: rejected: E0384 in `main`
+finding CheckAcceptsRustcRejects (outside the claim: the program writes a `rust` template): check accepts and rustc rejects: E0384 in `main`

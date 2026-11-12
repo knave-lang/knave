@@ -8,7 +8,7 @@ use std::thread;
 use std::time::Duration;
 
 use support::{
-    ExplanationExamples, Fixture, FixtureReports, FormatFailures, HeaderAgreement,
+    AgreementReport, ExplanationExamples, Fixture, FixtureReports, FormatFailures, HeaderAgreement,
     SavedPreludeAgreement,
 };
 
@@ -115,6 +115,18 @@ fn corpus_fixtures() {
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).run_report());
+    insta::glob!(fixtures, |path| {
+        insta::assert_snapshot!(reports.report(path));
+    });
+}
+
+#[test]
+fn agree_fixtures() {
+    let fixtures = "fixtures/agree/*.knv";
+    let mut paths = Vec::new();
+    insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
+    let agreement = AgreementReport::new();
+    let reports = FixtureReports::compute(paths, move |path| agreement.of(path));
     insta::glob!(fixtures, |path| {
         insta::assert_snapshot!(reports.report(path));
     });

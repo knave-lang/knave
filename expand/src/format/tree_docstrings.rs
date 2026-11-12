@@ -1,21 +1,20 @@
-use super::docstring_memo::DocstringMemo;
+use super::docstring_layouts::DocstringLayouts;
 use super::format_rules::FormatRules;
-use super::laid_out_token::LaidOutToken;
 use super::syntax_tree::{Atom, Entry, ListNode, SyntaxNode, SyntaxTree};
 use super::unreadable_span::UnreadableSpan;
 use crate::stack::DeepRecursion;
 
 pub struct TreeDocstrings<'s, 'm> {
     rules: FormatRules<'s>,
-    memo: &'m mut DocstringMemo,
+    layouts: &'m mut DocstringLayouts<'s>,
     unreadable: Vec<UnreadableSpan>,
 }
 
 impl<'s, 'm> TreeDocstrings<'s, 'm> {
-    pub fn new(rules: FormatRules<'s>, memo: &'m mut DocstringMemo) -> Self {
+    pub fn new(layouts: &'m mut DocstringLayouts<'s>) -> Self {
         Self {
-            rules,
-            memo,
+            rules: layouts.rules(),
+            layouts,
             unreadable: Vec::new(),
         }
     }
@@ -42,10 +41,7 @@ impl<'s, 'm> TreeDocstrings<'s, 'm> {
     }
 
     fn lay_out_docstring(&mut self, atom: &mut Atom) {
-        let rules = self.rules;
-        let laid_out = self
-            .memo
-            .laid_out(&atom.text, || LaidOutToken::of(rules, &atom.text));
+        let laid_out = self.layouts.of_token(&atom.text);
         for span in &laid_out.unreadable {
             self.unreadable.push(span.after(atom.start));
         }

@@ -1,8 +1,9 @@
 use std::collections::BTreeSet;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use knave_expand::mangle::NameMangler;
+use rustc_hash::FxHashMap;
 
-use super::mangle::NameMangler;
+use super::item_visibilities::{ItemVisibilities, Visibility};
 use super::problems::EmitProblems;
 use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::{Diagnostic, Diagnostics};
@@ -20,23 +21,6 @@ pub enum ItemKind {
     Enum,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Visibility {
-    Private,
-    Crate,
-    Public,
-}
-
-impl Visibility {
-    pub fn keyword(self) -> &'static str {
-        match self {
-            Visibility::Private => "",
-            Visibility::Crate => "pub(crate) ",
-            Visibility::Public => "pub ",
-        }
-    }
-}
-
 pub struct ItemInfo {
     pub module: ModuleId,
     pub name: String,
@@ -50,9 +34,8 @@ pub struct EmitPlan<'p> {
     main_body: Option<String>,
     definitions: FxHashMap<BindingId, (&'p TypedDefinition, ModuleId)>,
     type_modules: FxHashMap<BindingId, ModuleId>,
-    exported: FxHashSet<BindingId>,
     reached: Vec<BindingId>,
-    crate_visible: FxHashSet<BindingId>,
+    visibilities: ItemVisibilities,
     items: FxHashMap<BindingId, ItemInfo>,
     used_rust_types: BTreeSet<BindingId>,
     trait_uses: FxHashMap<ModuleId, BTreeSet<BindingId>>,
@@ -83,13 +66,14 @@ impl<'p> EmitPlan<'p> {
                         .map(move |binding| (*binding, module.id))
                 })
                 .collect(),
-            exported: program
-                .modules
-                .iter()
-                .flat_map(|module| module.exports.iter().copied())
-                .collect(),
             reached: Vec::new(),
-            crate_visible: FxHashSet::default(),
+            visibilities: ItemVisibilities::new(
+                program
+                    .modules
+                    .iter()
+                    .flat_map(|module| module.exports.iter().copied())
+                    .collect(),
+            ),
             items: FxHashMap::default(),
             used_rust_types: BTreeSet::new(),
             trait_uses: FxHashMap::default(),
@@ -446,7 +430,7 @@ impl<'p> EmitPlan<'p> {
         let Some(owner) = self.type_modules.get(&binding).copied() else {
             return;
         };
-        self.note_visibility(binding, owner, from);
+        self.visibilities.note_use(binding, owner, from);
         if self.reached.contains(&binding) {
             return;
         }
@@ -466,7 +450,7 @@ impl<'p> EmitPlan<'p> {
         let Some(owner) = self.type_modules.get(&binding).copied() else {
             return;
         };
-        self.note_visibility(binding, owner, from);
+        self.visibilities.note_use(binding, owner, from);
         if self.reached.contains(&binding) {
             return;
         }
@@ -490,15 +474,9 @@ impl<'p> EmitPlan<'p> {
 
     fn reference(&mut self, binding: BindingId, from: ModuleId) {
         if let Some((_, owner)) = self.definitions.get(&binding).copied() {
-            self.note_visibility(binding, owner, from);
+            self.visibilities.note_use(binding, owner, from);
         }
         self.visit_definition(binding);
-    }
-
-    fn note_visibility(&mut self, binding: BindingId, owner: ModuleId, from: ModuleId) {
-        if owner != from && !self.exported.contains(&binding) {
-            self.crate_visible.insert(binding);
-        }
     }
 
     fn assign_items(&mut self) -> Result<(), Diagnostics> {
@@ -600,7 +578,7 @@ impl<'p> EmitPlan<'p> {
             module,
             name: rust_name,
             kind,
-            visibility: self.visibility(binding),
+            visibility: self.visibilities.of(binding),
         }
     }
 
@@ -649,16 +627,6 @@ impl<'p> EmitPlan<'p> {
         let calls_something =
             Self::MACRO_CALLS.iter().any(|call| text.contains(call)) || text.contains(['.', '(']);
         is_plain_value || !calls_something
-    }
-
-    fn visibility(&self, binding: BindingId) -> Visibility {
-        if self.exported.contains(&binding) {
-            Visibility::Public
-        } else if self.crate_visible.contains(&binding) {
-            Visibility::Crate
-        } else {
-            Visibility::Private
-        }
     }
 
     fn collision(&self, rust_name: &str, first: BindingId, second: BindingId) -> Diagnostic {

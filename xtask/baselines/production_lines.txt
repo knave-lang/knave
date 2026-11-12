@@ -6,9 +6,9 @@ expand/src/expand/problems.rs 1352
 expand/src/format/layout.rs 538
 src/emit/expressions.rs 2993
 src/emit/items.rs 1688
-src/emit/plan.rs 680
+src/emit/plan.rs 648
 src/emit/result_borrows.rs 740
-src/emit/types.rs 819
+src/emit/types.rs 811
 src/ownership/kinds.rs 1712
 src/ownership/moves.rs 593
 src/ownership/problems.rs 858

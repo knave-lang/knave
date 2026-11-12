@@ -2,7 +2,6 @@ expand/src/expand/mod.rs::Expander 25
 expand/src/expand/mod.rs::ExpansionTables 16
 expand/src/expand/mod.rs::Program 11
 src/emit/expressions.rs::ExpressionEmitter 16
-src/emit/plan.rs::EmitPlan 11
 src/ownership/kinds.rs::ClosureKinds 21
 src/ownership/kinds.rs::KindSources 11
 src/ownership/moves.rs::MoveChecker 18

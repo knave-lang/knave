@@ -5,6 +5,7 @@ use std::path::Path;
 
 use crate::finding::Finding;
 use crate::finding_changes::FindingChanges;
+use crate::seed::{Seed, SeedRange};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct FindingList {
@@ -40,6 +41,21 @@ impl FindingList {
         self.lines.iter().map(|line| format!("{line}\n")).collect()
     }
 
+    pub fn within(&self, seeds: &SeedRange) -> Self {
+        Self {
+            lines: self
+                .lines
+                .iter()
+                .filter(|line| Self::seed_of(line).is_some_and(|seed| seeds.contains(seed)))
+                .cloned()
+                .collect(),
+        }
+    }
+
+    fn seed_of(line: &str) -> Option<Seed> {
+        line.split(' ').next()?.parse().ok()
+    }
+
     pub fn changes_from(&self, expected: &FindingList) -> FindingChanges {
         FindingChanges::new(
             self.lines.difference(&expected.lines).cloned().collect(),
@@ -51,11 +67,19 @@ impl FindingList {
 #[cfg(test)]
 mod tests {
     use super::FindingList;
+    use crate::seed::SeedRange;
 
     #[test]
     fn keeps_each_line_once_in_order_without_blank_lines() {
         let list = FindingList::of_text("seed-2 a: x\n\nseed-1 b: y\nseed-2 a: x\n");
         assert_eq!(list.text(), "seed-1 b: y\nseed-2 a: x\n");
+    }
+
+    #[test]
+    fn keeps_only_the_findings_of_a_seed_range() {
+        let list = FindingList::of_text("seed-1 a: x\nseed-25 a: y\nfixture a: z\n");
+        let within = list.within(&SeedRange::new(0..20));
+        assert_eq!(within.text(), "seed-1 a: x\n");
     }
 
     #[test]

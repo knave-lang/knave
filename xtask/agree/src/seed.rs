@@ -13,8 +13,21 @@ pub struct SeedRange {
 }
 
 impl Seed {
+    const PREFIX: &'static str = "seed-";
+
     pub fn random(self) -> SeededRandom {
         SeededRandom::starting_at(self.0)
+    }
+}
+
+impl FromStr for Seed {
+    type Err = String;
+
+    fn from_str(text: &str) -> Result<Self, String> {
+        text.strip_prefix(Self::PREFIX)
+            .and_then(|number| number.parse().ok())
+            .map(Self)
+            .ok_or_else(|| format!("`{text}` does not name a seed"))
     }
 }
 
@@ -26,7 +39,7 @@ impl From<u64> for Seed {
 
 impl fmt::Display for Seed {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "seed-{}", self.0)
+        write!(formatter, "{}{}", Self::PREFIX, self.0)
     }
 }
 
@@ -35,6 +48,10 @@ impl SeedRange {
 
     pub fn new(seeds: Range<u64>) -> Self {
         Self { seeds }
+    }
+
+    pub fn contains(&self, seed: Seed) -> bool {
+        self.seeds.contains(&seed.0)
     }
 
     pub fn seeds(&self) -> impl Iterator<Item = Seed> + '_ {
@@ -71,6 +88,14 @@ mod tests {
         let range: SeedRange = "2..4".parse().expect("a seed range");
         let seeds: Vec<Seed> = range.seeds().collect();
         assert_eq!(seeds, [Seed::from(2), Seed::from(3)]);
+    }
+
+    #[test]
+    fn reads_back_the_name_it_writes() {
+        assert_eq!("seed-12".parse::<Seed>(), Ok(Seed::from(12)));
+        assert!("main".parse::<Seed>().is_err());
+        assert!(SeedRange::new(10..13).contains(Seed::from(12)));
+        assert!(!SeedRange::new(10..12).contains(Seed::from(12)));
     }
 
     #[test]

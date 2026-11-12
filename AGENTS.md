@@ -187,7 +187,7 @@ cargo test <narrowest test>
 | the project file's reader | `--test stages project_fixtures` |
 | a corpus entry | `--test stages corpus_fixtures` |
 | the harness of RFC 0065, or a known shape under `tests/fixtures/agree/` | `-p knave-agree`, then `--test stages agree_fixtures` |
-| the program generator or `cargo xtask agree` | `-p knave-agree`, then `cargo build --bin knave` and `cargo xtask agree`, which runs seeds 0 to 19 |
+| the program generator or `cargo xtask agree` | `-p knave-agree`, then `cargo build --bin knave` and `cargo xtask agree`, which runs seeds 0 to 19 and compares their findings with the recorded list |
 | a CLI command | `--test cli <test name>` |
 | a diagnostic code | `--test diagnostic_codes --test diagnostic_snapshots` |
 | `xtask/` | `-p xtask` |

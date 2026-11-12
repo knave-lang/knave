@@ -1,4 +1,3 @@
-use std::fs;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -7,8 +6,8 @@ use std::time::{Duration, Instant};
 
 use clap::Args;
 use knave_agree::{
-    AgreementRun, FindingList, Harness, KnaveCompiler, ProgramGenerator, ProgramSource, RunResults,
-    Seed, SeedRange,
+    AgreementRun, FindingList, FindingsDirectory, Harness, KnaveCompiler, ProgramGenerator,
+    ProgramSource, RunResults, Seed, SeedRange,
 };
 
 use crate::failure::TaskFailure;
@@ -38,7 +37,7 @@ pub struct AgreeTask {
     #[arg(
         long,
         value_name = "FILE",
-        help = "Pass when the findings are exactly this file's lines, not when there are none"
+        help = "Pass when the findings are exactly this file's lines for the seeds that ran [default: xtask/agree/pull-request-findings.txt]"
     )]
     expected: Option<PathBuf>,
     #[arg(
@@ -59,7 +58,7 @@ impl AgreeTask {
     const STEP_LIMIT: Duration = Duration::from_secs(60);
     const DEFAULT_COMPILER: &str = "target/debug/knave";
     const FINDINGS_DIRECTORY: &str = "target/agree";
-    const FINDINGS_FILE: &str = "findings.txt";
+    const RECORDED_FINDINGS: &str = "xtask/agree/pull-request-findings.txt";
 
     pub fn run(self, workspace_root: &Path) -> ExitCode {
         let outcome = match self.print {
@@ -91,7 +90,8 @@ impl AgreeTask {
             harness.jobs()
         );
         let found = Self::write_findings(workspace_root, &results)?;
-        let changes = found.changes_from(&self.expected_findings()?);
+        let expected = self.expected_findings(workspace_root)?.within(&self.seeds);
+        let changes = found.changes_from(&expected);
         eprint!("{changes}");
         Ok(if changes.is_empty() {
             ExitCode::SUCCESS
@@ -128,29 +128,19 @@ impl AgreeTask {
         workspace_root: &Path,
         results: &RunResults,
     ) -> Result<FindingList, TaskFailure> {
-        let directory = workspace_root.join(Self::FINDINGS_DIRECTORY);
-        fs::create_dir_all(&directory)
-            .map_err(|error| TaskFailure::unwritable(&directory, error))?;
-        for finding in &results.findings {
-            finding
-                .write_program(&directory)
-                .map_err(|error| TaskFailure::unwritable(&directory, error))?;
-        }
-        let found = FindingList::of(&results.findings);
-        let summary = directory.join(Self::FINDINGS_FILE);
-        found
-            .write(&summary)
-            .map_err(|error| TaskFailure::unwritable(&summary, error))?;
+        let directory = FindingsDirectory::at(workspace_root.join(Self::FINDINGS_DIRECTORY));
+        let found = directory
+            .record(&results.findings)
+            .map_err(|error| TaskFailure::unwritable(directory.path(), error))?;
         print!("{}", found.text());
         Ok(found)
     }
 
-    fn expected_findings(&self) -> Result<FindingList, TaskFailure> {
-        match &self.expected {
-            Some(path) => {
-                FindingList::read(path).map_err(|error| TaskFailure::unreadable(path, error))
-            }
-            None => Ok(FindingList::default()),
-        }
+    fn expected_findings(&self, workspace_root: &Path) -> Result<FindingList, TaskFailure> {
+        let path = self
+            .expected
+            .clone()
+            .unwrap_or_else(|| workspace_root.join(Self::RECORDED_FINDINGS));
+        FindingList::read(&path).map_err(|error| TaskFailure::unreadable(&path, error))
     }
 }

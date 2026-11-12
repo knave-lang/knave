@@ -1,18 +1,15 @@
 use std::collections::BTreeSet;
 
-use crate::verdict::Rejection;
+use crate::verdict::CitedPlace;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FindingSignature {
     oracle: &'static str,
-    cited: BTreeSet<String>,
+    cited: BTreeSet<CitedPlace>,
 }
 
 impl FindingSignature {
-    pub fn new(oracle: &'static str, evidence: &[Rejection]) -> Self {
-        Self {
-            oracle,
-            cited: evidence.iter().map(Rejection::to_string).collect(),
-        }
+    pub fn new(oracle: &'static str, cited: BTreeSet<CitedPlace>) -> Self {
+        Self { oracle, cited }
     }
 }

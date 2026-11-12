@@ -1,12 +1,6 @@
-use crate::backend::Backend;
-use crate::oracle::Oracle;
+use crate::finding_probe::FindingProbe;
 use crate::subject_program::SubjectProgram;
 
-pub trait Reducer {
-    fn shrink(
-        &self,
-        program: SubjectProgram,
-        oracle: &dyn Oracle,
-        backends: &[&dyn Backend],
-    ) -> SubjectProgram;
+pub trait Reducer: Sync {
+    fn shrink(&self, program: SubjectProgram, probe: &FindingProbe) -> SubjectProgram;
 }

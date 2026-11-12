@@ -28,6 +28,12 @@ pub struct Rejection {
     pub reached_from_main: bool,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CitedPlace {
+    code: Option<String>,
+    function: Option<String>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RunOutcome {
     pub stdout: Vec<u8>,
@@ -72,6 +78,13 @@ impl Rejection {
                 .code
                 .as_ref()
                 .is_some_and(|code| CodeStage::OWNERSHIP.contains(code))
+    }
+
+    pub fn place(&self) -> CitedPlace {
+        CitedPlace {
+            code: self.code.as_ref().map(|code| code.as_str().to_string()),
+            function: self.function.clone(),
+        }
     }
 
     pub fn is_rustc(&self) -> bool {

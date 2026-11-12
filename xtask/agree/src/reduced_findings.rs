@@ -1,78 +1,72 @@
+use std::fs;
 use std::io;
+use std::path::Path;
 
-use crate::finding::Finding;
-use crate::findings_directory::FindingsDirectory;
-use crate::harness::Harness;
-use crate::known_classes::KnownClasses;
-use crate::reduction_plan::ReductionPlan;
-use crate::subject_program::SubjectProgram;
+use crate::reduced_finding::ReducedFinding;
 
 pub struct ReducedFindings {
-    reduced: Vec<(Finding, SubjectProgram)>,
-    classes: &'static KnownClasses,
+    outside_known_classes: Vec<ReducedFinding>,
+    known: Vec<ReducedFinding>,
 }
 
 impl ReducedFindings {
-    pub fn of(harness: &Harness, findings: &[Finding], plan: &ReductionPlan) -> Self {
-        let mut ordered: Vec<&Finding> = findings.iter().collect();
-        ordered.sort_by_key(|finding| plan.classes().explain(finding));
+    pub fn new(outside_known_classes: Vec<ReducedFinding>, known: Vec<ReducedFinding>) -> Self {
         Self {
-            reduced: ordered
-                .into_iter()
-                .take(plan.count())
-                .map(|finding| (finding.clone(), harness.reduced(finding, plan.reducer())))
-                .collect(),
-            classes: plan.classes(),
+            outside_known_classes,
+            known,
         }
     }
 
-    pub fn record(&self, directory: &FindingsDirectory) -> io::Result<()> {
-        self.reduced.iter().try_for_each(|(finding, program)| {
-            directory.record_reduced(&finding.program.name, program)
-        })
+    pub fn record(&self, directory: &Path) -> io::Result<()> {
+        self.outside_known_classes
+            .iter()
+            .chain(&self.known)
+            .try_for_each(|reduced| reduced.record(directory))
+    }
+
+    pub fn write_report(&self, path: &Path) -> io::Result<()> {
+        match self.report_outside_known_classes() {
+            Some(report) => fs::write(path, report),
+            None => Ok(()),
+        }
     }
 
     pub fn report_outside_known_classes(&self) -> Option<String> {
         let sections: Vec<String> = self
-            .reduced
+            .outside_known_classes
             .iter()
-            .filter(|(finding, _)| !self.classes.explain(finding))
-            .map(|(finding, program)| Self::section(finding, program))
+            .map(ReducedFinding::section)
             .collect();
         (!sections.is_empty()).then(|| sections.join("\n"))
-    }
-
-    fn section(finding: &Finding, program: &SubjectProgram) -> String {
-        format!(
-            "### `{}`\n\n{}\n\n```lisp\n{}```\n",
-            finding.program.name,
-            finding.line(),
-            program.entry_text()
-        )
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::ReducedFindings;
     use crate::finding_fixture::FindingFixture;
-    use crate::known_classes::KnownClasses;
+    use crate::reduced_finding::ReducedFinding;
+    use crate::scratch_directory::ScratchDirectory;
+
+    struct ReducedFixture;
+
+    impl ReducedFixture {
+        fn reduced(name: &str, code: &str, text: &str) -> ReducedFinding {
+            ReducedFinding::new(
+                FindingFixture::citing(name, &[code]),
+                FindingFixture::program(name, text),
+            )
+        }
+    }
 
     #[test]
     fn reports_only_the_reduced_findings_outside_the_known_classes() {
-        let reduced = ReducedFindings {
-            reduced: vec![
-                (
-                    FindingFixture::citing("seed-1", &["E0502"]),
-                    FindingFixture::program("seed-1", "(bad)\n"),
-                ),
-                (
-                    FindingFixture::citing("seed-2", &["E0716"]),
-                    FindingFixture::program("seed-2", "(worse)\n"),
-                ),
-            ],
-            classes: &KnownClasses::BEFORE_THE_LOAN_RULE,
-        };
+        let reduced = ReducedFindings::new(
+            vec![ReducedFixture::reduced("seed-2", "E0716", "(worse)\n")],
+            vec![ReducedFixture::reduced("seed-1", "E0502", "(bad)\n")],
+        );
         let report = reduced
             .report_outside_known_classes()
             .expect("one finding is new");
@@ -82,14 +76,33 @@ mod tests {
     }
 
     #[test]
+    fn writes_a_report_file_only_when_a_finding_is_outside_the_known_classes() {
+        let directory = ScratchDirectory::create().expect("a scratch directory");
+        let path = directory.path().join("report.md");
+        let quiet = ReducedFindings::new(
+            Vec::new(),
+            vec![ReducedFixture::reduced("seed-1", "E0502", "(bad)\n")],
+        );
+        quiet.write_report(&path).expect("nothing to write");
+        assert!(!path.exists());
+        let loud = ReducedFindings::new(
+            vec![ReducedFixture::reduced("seed-2", "E0716", "(worse)\n")],
+            Vec::new(),
+        );
+        loud.write_report(&path).expect("the report writes");
+        assert!(
+            fs::read_to_string(&path)
+                .expect("the report reads")
+                .contains("E0716")
+        );
+    }
+
+    #[test]
     fn reports_nothing_when_every_reduced_finding_is_known() {
-        let reduced = ReducedFindings {
-            reduced: vec![(
-                FindingFixture::citing("seed-1", &["E0502"]),
-                FindingFixture::program("seed-1", "(bad)\n"),
-            )],
-            classes: &KnownClasses::BEFORE_THE_LOAN_RULE,
-        };
+        let reduced = ReducedFindings::new(
+            Vec::new(),
+            vec![ReducedFixture::reduced("seed-1", "E0502", "(bad)\n")],
+        );
         assert_eq!(reduced.report_outside_known_classes(), None);
     }
 }

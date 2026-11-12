@@ -33,7 +33,7 @@ impl ChangingFunctionNames {
         }
         for method in program
             .declarations
-            .traits
+            .traits()
             .definitions()
             .iter()
             .flat_map(|definition| &definition.methods)
@@ -48,7 +48,7 @@ impl ChangingFunctionNames {
     pub(super) fn impl_methods(program: &TypedProgram) -> FxHashSet<BindingId> {
         program
             .declarations
-            .traits
+            .traits()
             .impls()
             .iter()
             .flat_map(|implementation| implementation.methods.iter())
@@ -59,7 +59,7 @@ impl ChangingFunctionNames {
     pub(super) fn default_methods(program: &TypedProgram) -> FxHashSet<BindingId> {
         program
             .declarations
-            .traits
+            .traits()
             .definitions()
             .iter()
             .flat_map(|definition| definition.methods.iter())

@@ -149,7 +149,7 @@ impl<'p> ReturnedBorrows<'p> {
                 if self
                     .program
                     .declarations
-                    .types
+                    .types()
                     .rust_types()
                     .is_slice(*slice) =>
             {
@@ -166,7 +166,7 @@ impl<'p> ReturnedBorrows<'p> {
     fn vector(&self) -> Option<BindingId> {
         self.program
             .declarations
-            .types
+            .types()
             .rust_types()
             .binding_with_template(RustType::VECTOR_TEMPLATE)
     }

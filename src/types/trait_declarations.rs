@@ -47,7 +47,7 @@ impl TraitDeclarations {
         &self.structural
     }
 
-    pub fn takes_argument(&self, trait_binding: BindingId) -> bool {
+    pub(super) fn takes_argument(&self, trait_binding: BindingId) -> bool {
         self.arguments.contains(&trait_binding)
     }
 }

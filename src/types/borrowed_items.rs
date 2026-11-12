@@ -29,11 +29,7 @@ impl TypeChecker {
     fn borrowing_help(&self, site: &ArgumentSite<'_>, found: &Type) -> Option<String> {
         let callee = site.callee?;
         let function = Self::called_function(callee)?;
-        if self
-            .declarations
-            .signatures
-            .written_at(function, site.position)
-        {
+        if self.declared_signatures.written_at(function, site.position) {
             return None;
         }
         let signature = self.borrowing_signature(callee, function, site.position, found)?;
@@ -78,7 +74,7 @@ impl TypeChecker {
         borrowed: &Type,
     ) {
         for (position, parameter) in parameters.iter_mut().enumerate() {
-            if !self.declarations.signatures.written_at(function, position)
+            if !self.declared_signatures.written_at(function, position)
                 && self.owned_iterator_item(parameter).as_ref() == Some(item)
             {
                 *parameter = borrowed.clone();

@@ -142,7 +142,7 @@ impl OwnershipChecker {
         let report = kinds.run(&mut program.modules);
         Self::apply_kinds(program, report, &mut diagnostics);
         let mut inferred_copies = InferredCopies::default();
-        let pipelines = Pipelines::new(program.declarations.types.rust_types());
+        let pipelines = Pipelines::new(program.declarations.types().rust_types());
         let stored_definitions = StoredDefinitions::of(program);
         let returned_borrows = ReturnedBorrows::new(program);
         for definition in program
@@ -192,7 +192,7 @@ impl OwnershipChecker {
     ) -> MoveChecker<'a> {
         MoveChecker::new(
             CopyRules::new(&program.declarations, &program.generics),
-            program.declarations.types.structs(),
+            program.declarations.types().structs(),
             &program.bindings,
             &program.template_borrows,
             &program.generics,

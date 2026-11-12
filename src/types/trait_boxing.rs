@@ -16,12 +16,12 @@ impl<'a> TraitBoxing<'a> {
     pub(super) fn blocker(&self, trait_binding: BindingId) -> Option<(String, &'static str)> {
         let definition = self
             .traits
-            .definitions
+            .definitions()
             .iter()
             .find(|definition| definition.binding == trait_binding)?;
         if let Some(associated) = self
             .traits
-            .table
+            .table()
             .get(trait_binding)
             .and_then(|rust_trait| rust_trait.associated.clone())
         {

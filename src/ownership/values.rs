@@ -78,8 +78,8 @@ impl<'a> FunctionValueModes<'a> {
         let mut values = Self {
             bindings: &mut program.bindings,
             generics: &program.generics,
-            structs: program.declarations.types.structs(),
-            rust_types: program.declarations.types.rust_types(),
+            structs: program.declarations.types().structs(),
+            rust_types: program.declarations.types().rust_types(),
             function_params,
             copied_reads,
             constructor_fields,
@@ -679,7 +679,7 @@ mod tests {
             FunctionValueModes {
                 bindings: &mut self.bindings,
                 generics: &self.generics,
-                structs: self.declarations.types.structs(),
+                structs: self.declarations.types().structs(),
                 rust_types: &self.rust_types,
                 function_params: &self.function_params,
                 copied_reads: &self.copied_reads,

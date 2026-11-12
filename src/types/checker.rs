@@ -28,6 +28,7 @@ use super::pinning::LiteralDefaults;
 use super::pipelines::Pipelines;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
 use super::selection::Selection;
+use super::signature_declarations::SignatureDeclarations;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_boxing::TraitBoxing;
 use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
@@ -185,6 +186,7 @@ pub struct TypeChecker {
     pub(super) written_projections: Vec<super::associated::WrittenProjection>,
     pub(super) checked_projections: usize,
     signatures: FxHashMap<BindingId, (TypeExpr, Span)>,
+    pub(super) declared_signatures: SignatureDeclarations,
     monomorphic: Vec<Type>,
     pub(super) implied_bounds: FxHashMap<GenericId, Vec<Bound>>,
     pub(super) associated_generics: FxHashMap<GenericId, std::rc::Rc<str>>,
@@ -270,6 +272,7 @@ impl TypeChecker {
             written_projections: Vec::new(),
             checked_projections: 0,
             signatures: FxHashMap::default(),
+            declared_signatures: SignatureDeclarations::default(),
             monomorphic: Vec::new(),
             implied_bounds: FxHashMap::default(),
             associated_generics: FxHashMap::default(),
@@ -351,7 +354,7 @@ impl TypeChecker {
             .filter(|module| ModuleSources::is_prelude(&module.path))
             .flat_map(CoreModule::definitions)
             .map(|(binding, _)| binding);
-        self.declarations.signatures.prelude_definitions =
+        self.declared_signatures.prelude_definitions =
             defined.chain(saved.saved_bindings()).collect();
     }
 
@@ -383,8 +386,7 @@ impl TypeChecker {
                     })
             })
             .collect();
-        self.declarations
-            .signatures
+        self.declared_signatures
             .written_parameters
             .insert(binding, written);
     }
@@ -3112,7 +3114,7 @@ impl TypeChecker {
             entry_function: program.entry.function,
             bindings: self.bindings,
             macro_field_reads: self.macro_field_reads,
-            declarations: self.declarations.without_checking_facts(),
+            declarations: self.declarations,
             structural_uses: self.structural_uses,
             associated_generics: self.associated_generics,
             conversions: self.conversions,

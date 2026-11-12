@@ -110,7 +110,7 @@ impl<'p> EmitPlan<'p> {
 
     fn choose_main_body_name(&self) -> Option<String> {
         self.definition(self.main)?
-            .result_error(self.program.declarations.types.enums())?;
+            .result_error(self.program.declarations.types().enums())?;
         let taken: BTreeSet<String> = self
             .reached
             .iter()
@@ -156,7 +156,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     pub fn trait_path(&self, binding: BindingId, from: ModuleId) -> String {
-        let traits = &self.program.declarations.traits;
+        let traits = &self.program.declarations.traits();
         if let Some(path) = traits.rust_paths().get(&binding) {
             return path.to_string();
         }
@@ -175,7 +175,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     pub fn trait_module(&self, binding: BindingId) -> Option<ModuleId> {
-        let traits = &self.program.declarations.traits;
+        let traits = &self.program.declarations.traits();
         traits
             .definitions()
             .iter()
@@ -219,7 +219,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn collect_hidden_trait_uses(&self, module: ModuleId, uses: &mut BTreeSet<BindingId>) {
-        let traits = &self.program.declarations.traits;
+        let traits = &self.program.declarations.traits();
         let impl_methods = traits
             .impls()
             .iter()
@@ -246,7 +246,7 @@ impl<'p> EmitPlan<'p> {
     ) {
         if let TypedExprKind::Call(callee, _) = &expr.kind
             && let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = &callee.kind
-            && let Some(info) = program.declarations.traits.methods().get(binding)
+            && let Some(info) = program.declarations.traits().methods().get(binding)
             && info.receiver.is_some()
         {
             uses.insert(info.trait_binding);
@@ -310,7 +310,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn reach_trait_defaults(&mut self) {
-        let traits = &self.program.declarations.traits;
+        let traits = &self.program.declarations.traits();
         let defaults: Vec<BindingId> = traits
             .definitions()
             .iter()
@@ -323,7 +323,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn reach_implementations(&mut self) {
-        let traits = &self.program.declarations.traits;
+        let traits = &self.program.declarations.traits();
         let implementations: Vec<(Type, ModuleId, Vec<BindingId>)> = traits
             .impls()
             .iter()
@@ -418,7 +418,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn reach_named(&mut self, binding: BindingId, from: ModuleId) {
-        let types = &self.program.declarations.types;
+        let types = &self.program.declarations.types();
         if types.rust_types().get(binding).is_some() {
             self.used_rust_types.insert(binding);
         } else if types.enums().get(binding).is_some() {
@@ -437,7 +437,7 @@ impl<'p> EmitPlan<'p> {
             return;
         }
         self.reached.push(binding);
-        let types = &self.program.declarations.types;
+        let types = &self.program.declarations.types();
         let payloads: Vec<Type> = types
             .enums()
             .get(binding)
@@ -457,7 +457,7 @@ impl<'p> EmitPlan<'p> {
             return;
         }
         self.reached.push(binding);
-        let types = &self.program.declarations.types;
+        let types = &self.program.declarations.types();
         let fields: Vec<Type> = types
             .structs()
             .get(binding)
@@ -553,7 +553,7 @@ impl<'p> EmitPlan<'p> {
 
     fn shadowed_rust_type(&self, info: &ItemInfo) -> Option<BindingId> {
         let is_type = matches!(info.kind, ItemKind::Struct | ItemKind::Enum);
-        let rust_types = self.program.declarations.types.rust_types();
+        let rust_types = self.program.declarations.types().rust_types();
         self.used_rust_types.iter().copied().find(|binding| {
             is_type
                 && rust_types
@@ -584,7 +584,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn named_type_kind(&self, binding: BindingId) -> ItemKind {
-        match self.program.declarations.types.enums().get(binding) {
+        match self.program.declarations.types().enums().get(binding) {
             Some(_) => ItemKind::Enum,
             None => ItemKind::Struct,
         }

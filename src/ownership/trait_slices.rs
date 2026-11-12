@@ -56,7 +56,7 @@ impl<'a> TraitSlotCollector<'a> {
     pub fn slots(&self) -> Vec<TraitSlot> {
         self.program
             .declarations
-            .traits
+            .traits()
             .definitions()
             .iter()
             .flat_map(|definition| {

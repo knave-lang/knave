@@ -60,7 +60,7 @@ impl TraitMethodElisions {
     pub fn new(program: &TypedProgram) -> Self {
         let implemented_traits = program
             .declarations
-            .traits
+            .traits()
             .impls()
             .iter()
             .flat_map(|implementation| {
@@ -248,7 +248,7 @@ impl<'r, 'a> MethodElisions<'r, 'a> {
     fn trait_of(&self, method: BindingId) -> Option<BindingId> {
         self.program
             .declarations
-            .traits
+            .traits()
             .methods()
             .get(&method)
             .map(|info| info.trait_binding)

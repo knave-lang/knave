@@ -1,20 +1,19 @@
-use super::signature_declarations::SignatureDeclarations;
 use super::trait_declarations::TraitDeclarations;
 use super::type_declarations::TypeDeclarations;
 
 #[derive(Default)]
 pub struct Declarations {
-    pub types: TypeDeclarations,
-    pub traits: TraitDeclarations,
-    pub signatures: SignatureDeclarations,
+    pub(super) types: TypeDeclarations,
+    pub(super) traits: TraitDeclarations,
 }
 
 impl Declarations {
-    pub(super) fn without_checking_facts(mut self) -> Self {
-        std::mem::take(&mut self.traits.arguments);
-        std::mem::take(&mut self.traits.selfless_methods);
-        std::mem::take(&mut self.signatures);
-        self
+    pub fn types(&self) -> &TypeDeclarations {
+        &self.types
+    }
+
+    pub fn traits(&self) -> &TraitDeclarations {
+        &self.traits
     }
 }
 

@@ -11,7 +11,7 @@ impl UncoercedMethodParameters {
     pub fn of(program: &TypedProgram) -> Self {
         let receiverless_methods: FxHashSet<BindingId> = program
             .declarations
-            .traits
+            .traits()
             .definitions()
             .iter()
             .flat_map(|definition| &definition.methods)

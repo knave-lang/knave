@@ -1573,7 +1573,7 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn global(&mut self, binding: BindingId, ty: &Type, span: Span) -> Code {
-        if let Some(info) = self.program.declarations.traits.methods().get(&binding) {
+        if let Some(info) = self.program.declarations.traits().methods().get(&binding) {
             let name = NameMangler::value(self.program.bindings.get(binding).name());
             let path = if self.plan.uses_trait(self.module, info.trait_binding) {
                 info.rust_name.to_string()
@@ -1683,7 +1683,7 @@ impl<'a> ExpressionEmitter<'a> {
         {
             return self.inline_call(lambda, arguments);
         }
-        let trait_methods = self.program.declarations.traits.methods();
+        let trait_methods = self.program.declarations.traits().methods();
         if let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = &callee.kind
             && trait_methods.contains_key(binding)
         {
@@ -1744,7 +1744,7 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn trait_method_call(&mut self, binding: BindingId, arguments: &[TypedArgument]) -> Code {
-        let methods = self.program.declarations.traits.methods();
+        let methods = self.program.declarations.traits().methods();
         let info = methods
             .get(&binding)
             .expect("a trait method call names a method");

@@ -355,12 +355,12 @@ The generated programs that check rustc against `check` (RFC 0065, "Testing the 
 
 ```rust
 pub trait ProgramSource {
-    fn programs(&self, seeds: Range<u64>) -> Box<dyn Iterator<Item = SubjectProgram> + '_>;
+    fn programs(&self) -> Box<dyn Iterator<Item = SubjectProgram> + '_>;
 }
 
 pub struct SubjectProgram {
     pub name: String,
-    pub seed: Option<u64>,
+    pub seed: Option<Seed>,
     pub files: Vec<(PathBuf, String)>,
     pub entry: PathBuf,
     pub arguments: Vec<String>,
@@ -435,7 +435,7 @@ pub trait Reducer {
 }
 ```
 
-- **Sources.** The generator of RFC 0065 implements `ProgramSource` over seeds. A reader of fixtures implements it over the indexes of a fixed list, so every run fixture and every corpus entry goes through the same oracles. `FormCensus` records which forms a program uses, so a report can say which forms the claim covers.
+- **Sources.** The generator of RFC 0065 implements `ProgramSource` over the range of seeds it is given, and a `Seed` names its program, such as `seed-3`. A reader of fixtures implements it over a fixed list of paths, so every run fixture and every corpus entry goes through the same oracles. `FormCensus` records which forms a program uses, so a report can say which forms the claim covers.
 - **Backends.**
   - `Checker` runs `check` and returns `Accepted` or `Rejected`.
   - `CheckerWithoutOwnership` emits with the hidden flag that skips the ownership checks.

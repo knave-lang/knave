@@ -1,5 +1,4 @@
 use std::fs;
-use std::ops::Range;
 use std::path::{Path, PathBuf};
 
 use crate::program_source::ProgramSource;
@@ -41,11 +40,7 @@ impl FixtureList {
 }
 
 impl ProgramSource for FixtureList {
-    fn programs(&self, indexes: Range<u64>) -> Box<dyn Iterator<Item = SubjectProgram> + '_> {
-        Box::new(
-            indexes
-                .filter_map(|index| self.paths.get(usize::try_from(index).ok()?))
-                .map(|path| Self::program(path)),
-        )
+    fn programs(&self) -> Box<dyn Iterator<Item = SubjectProgram> + '_> {
+        Box::new(self.paths.iter().map(|path| Self::program(path)))
     }
 }

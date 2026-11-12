@@ -4,13 +4,14 @@ use std::path::{Path, PathBuf};
 
 use crate::form_census::FormCensus;
 use crate::scratch_directory::ScratchDirectory;
+use crate::seed::Seed;
 use crate::top_level_definitions::TopLevelDefinitions;
 use crate::verdict::Verdict;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SubjectProgram {
     pub name: String,
-    pub seed: Option<u64>,
+    pub seed: Option<Seed>,
     pub files: Vec<(PathBuf, String)>,
     pub entry: PathBuf,
     pub arguments: Vec<String>,
@@ -29,6 +30,13 @@ impl SubjectProgram {
             arguments: Vec::new(),
             stdin: Vec::new(),
             forms,
+        }
+    }
+
+    pub fn generated(seed: Seed, entry: PathBuf, text: String) -> Self {
+        Self {
+            seed: Some(seed),
+            ..Self::of_entry(seed.to_string(), entry, text)
         }
     }
 

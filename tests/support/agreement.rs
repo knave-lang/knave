@@ -23,7 +23,7 @@ impl AgreementReport {
 
     pub fn of(&self, path: &Path) -> String {
         let program = FixtureList::new(vec![path.to_path_buf()])
-            .programs(0..1)
+            .programs()
             .next()
             .expect("the fixture list holds the fixture");
         let verdicts = self.harness.verdicts(program, Self::LIMIT);

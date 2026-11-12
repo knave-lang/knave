@@ -5,6 +5,7 @@ use crate::helper_template::HelperTemplate;
 use crate::local_scopes::LocalScopes;
 use crate::seed::Seed;
 use crate::seeded_random::SeededRandom;
+use crate::shape::Shape;
 use crate::value_kind::ValueKind;
 
 pub struct GeneratorState {
@@ -75,7 +76,8 @@ impl GeneratorState {
                 self.locals
                     .visible(kind)
                     .into_iter()
-                    .filter_map(|name| kind.print_of(name)),
+                    .filter_map(|name| kind.printed(name))
+                    .map(|value| Shape::PRINTED.filled(&value)),
             );
         }
         GeneratedMain::new(lines, self.helpers.into_values().collect())

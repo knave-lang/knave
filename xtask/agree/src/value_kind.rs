@@ -1,20 +1,20 @@
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+use crate::shape::Shape;
+
+#[derive(Clone, Copy, Debug)]
 pub struct ValueKind {
     names: &'static [&'static str],
-    printed_as: Option<&'static str>,
+    printed_as: Option<Shape>,
 }
 
 impl ValueKind {
-    const NAME: &'static str = "{name}";
-
-    pub const NUMBER: Self = Self::printed(&["n", "k"], "{name}");
-    pub const NUMBERS: Self = Self::printed(&["v", "w", "u"], "(len {name})");
-    pub const CAR: Self = Self::printed(&["c", "d"], "(:year {name})");
-    pub const ELEMENT_BORROW: Self = Self::printed(&["r", "s"], "{name}");
-    pub const MAKE_BORROW: Self = Self::printed(&["m", "label"], "{name}");
-    pub const TAG: Self = Self::printed(&["t"], "(:label {name})");
-    pub const HELD_BORROWS: Self = Self::printed(&["held"], "(at {name} 0)");
-    pub const READER: Self = Self::printed(&["size-of"], "({name})");
+    pub const NUMBER: Self = Self::printed_as(&["n", "k"], "{source}");
+    pub const NUMBERS: Self = Self::printed_as(&["v", "w", "u"], "(len {source})");
+    pub const CAR: Self = Self::printed_as(&["c", "d"], "(:year {source})");
+    pub const ELEMENT_BORROW: Self = Self::printed_as(&["r", "s"], "{source}");
+    pub const MAKE_BORROW: Self = Self::printed_as(&["m", "label"], "{source}");
+    pub const TAG: Self = Self::printed_as(&["t"], "(:label {source})");
+    pub const HELD_BORROWS: Self = Self::printed_as(&["held"], "(at {source} 0)");
+    pub const READER: Self = Self::printed_as(&["size-of"], "({source})");
     pub const CHANGER: Self = Self {
         names: &["grow-it"],
         printed_as: None,
@@ -31,10 +31,10 @@ impl ValueKind {
         Self::CHANGER,
     ];
 
-    const fn printed(names: &'static [&'static str], shape: &'static str) -> Self {
+    const fn printed_as(names: &'static [&'static str], shape: &'static str) -> Self {
         Self {
             names,
-            printed_as: Some(shape),
+            printed_as: Some(Shape::of(shape)),
         }
     }
 
@@ -42,11 +42,18 @@ impl ValueKind {
         self.names
     }
 
-    pub fn print_of(self, name: &str) -> Option<String> {
-        self.printed_as
-            .map(|shape| format!("(println {})", shape.replace(Self::NAME, name)))
+    pub fn printed(self, name: &str) -> Option<String> {
+        self.printed_as.map(|shape| shape.filled(name))
     }
 }
+
+impl PartialEq for ValueKind {
+    fn eq(&self, other: &Self) -> bool {
+        self.names == other.names
+    }
+}
+
+impl Eq for ValueKind {}
 
 #[cfg(test)]
 mod tests {
@@ -54,15 +61,12 @@ mod tests {
 
     #[test]
     fn prints_a_local_by_its_kind_and_never_calls_a_changer() {
-        assert_eq!(
-            ValueKind::TAG.print_of("t"),
-            Some("(println (:label t))".to_string())
-        );
-        assert_eq!(ValueKind::CHANGER.print_of("grow-it"), None);
+        assert_eq!(ValueKind::TAG.printed("t"), Some("(:label t)".to_string()));
+        assert_eq!(ValueKind::CHANGER.printed("grow-it"), None);
     }
 
     #[test]
-    fn no_two_kinds_share_a_name() {
+    fn each_kind_is_told_apart_by_its_names() {
         let mut names: Vec<&str> = ValueKind::ALL
             .iter()
             .flat_map(|kind| kind.names())
@@ -72,5 +76,6 @@ mod tests {
         names.sort_unstable();
         names.dedup();
         assert_eq!(names.len(), count);
+        assert_ne!(ValueKind::NUMBER, ValueKind::ELEMENT_BORROW);
     }
 }

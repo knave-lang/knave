@@ -43,6 +43,7 @@ mod rustc;
 mod scratch_directory;
 mod seed;
 mod seeded_random;
+mod shape;
 mod subject_program;
 mod timed_command;
 mod tool_run;

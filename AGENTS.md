@@ -25,7 +25,7 @@ This file and the reference files it names are the living reference for working 
 - User experience covers the emitted Rust, diagnostics, run output, compile speed and the predictability of the language's rules.
 - NEVER accept worse output because it is easier to build, such as a confusing page or a doubled diagnostic.
 - A language exception costs the user too: PREFER a uniform rule that gives the better output OVER a special case.
-- If work can run once when `knave` is built, such as in the prelude state that `build.rs` builds, run it there.
+- If work can run once when `knave` is built, run it there, as in the prelude state.
 - Do work in a user's command only when it depends on the user's program or the user's machine.
 - NEVER write a cache of the compiler's own work on a user's machine. `knave` MUST stay fast with no such cache.
 - The shared Cargo target and the git store hold the user's builds and checkouts, not the compiler's own work.

@@ -25,8 +25,8 @@ impl PrecededCode {
         fragments
     }
 
-    pub fn into_name(self) -> Option<Code> {
-        (!self.needs_binding()).then_some(self.code)
+    pub fn into_plain_code(self) -> Code {
+        self.code
     }
 }
 
@@ -69,20 +69,8 @@ mod tests {
     }
 
     #[test]
-    fn gives_back_a_plain_name() {
-        let name = PrecededCode::plain(Code::atom("total")).into_name();
-        assert_eq!(
-            name.map(|code| code.text().to_string()),
-            Some("total".to_string())
-        );
-    }
-
-    #[test]
-    fn keeps_a_name_with_statements_for_its_binding() {
-        assert!(
-            PrecededFixture::with_statement("owner")
-                .into_name()
-                .is_none()
-        );
+    fn gives_back_its_plain_code() {
+        let code = PrecededCode::plain(Code::atom("total")).into_plain_code();
+        assert_eq!(code.text(), "total");
     }
 }

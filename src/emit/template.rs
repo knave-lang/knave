@@ -1,6 +1,7 @@
 use super::fragment::{Code, Fragment, Precedence};
 use super::operator::{RustOperator, RustText, Side};
 use super::preceded_code::PrecededCode;
+use super::substitution::Substitution;
 use super::template_arguments::TemplateArguments;
 use crate::core::{Access, ParsedTemplate, Piece};
 
@@ -134,9 +135,9 @@ impl Template {
         } else {
             arguments
         };
-        let mut arguments = match arguments.into_substituted() {
-            Ok(codes) => codes,
-            Err(bound) => return self.inline_with_temporaries(bound, types),
+        let mut arguments = match arguments.into_substitution() {
+            Substitution::Inline(codes) => codes,
+            Substitution::Bind(bound) => return self.inline_with_temporaries(bound, types),
         };
         if let [Piece::Placeholder { index, .. }] = self.parsed.pieces() {
             return Ok(arguments.swap_remove(*index));

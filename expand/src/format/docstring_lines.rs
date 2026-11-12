@@ -18,7 +18,7 @@ impl DocstringLines {
         let mut written_ranges = Vec::new();
         let mut start = Self::QUOTE.len_utf8();
         for written in contents.split('\n') {
-            lines.push(DocstringLine::new(Self::unescaped(written)?));
+            lines.push(DocstringLine::from(Self::unescaped(written)?));
             written_ranges.push(start..start + written.len());
             start += written.len() + 1;
         }

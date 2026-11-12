@@ -79,7 +79,7 @@ help: a function with a similar name exists
 
 **Point an unreadable example at its code.** A docstring example whose result does not read as one form is `L0354`, with its primary label on the example's code and a help that names the fenced code block.
 
-**Point unreadable docstring code at its first line.** Docstring code that does not read is the warning `L0109`, which `knave fmt` reports with its primary label on the first line of the code and a help that names the fence's language. The formatter leaves that code as written, and the warning does not change the exit status.
+**Point unreadable docstring code at its first line.** Docstring code that does not read is the warning `L0109`, which `knave fmt` and `knave doc --write` report with the primary label on the first line of the code and a help that names the fence's language. The formatter and the doc writer leave that code as written, and the warning does not change the exit status.
 
 **Point a partly labeled call at the argument outside a pair.** `L0338` puts its primary label on the first argument that no `:field value` pair holds, with "this argument has no label" on a value and "this label has no value" on a keyword.
 

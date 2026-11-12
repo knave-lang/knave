@@ -32,7 +32,7 @@ pub use docstring_syntax::DocstringSyntax;
 pub use shape_reader::ModuleLookup;
 pub use shapes::{Shape, ShapeCatalog, ShapeStatement};
 
-use crate::core::{DefinitionForm, KernelForm};
+use crate::core::ModulePath;
 use std::ops::Range;
 
 use crate::diagnostic::Diagnostics;
@@ -77,7 +77,6 @@ struct FormattedText<'s> {
 
 impl SourceFormatter {
     const FORMATTED_SOURCE: &'static str = "<formatted>";
-    const PAGE_SOURCE: &'static str = "<page>";
 
     pub fn new(syntax: DocstringSyntax) -> Self {
         Self {
@@ -101,41 +100,45 @@ impl SourceFormatter {
         };
         let formatted = FormattedText::lay_out(rules, source.text());
         formatted.verify(&written, source.text())?;
-        let mut warnings = Diagnostics::default();
-        for range in formatted.unreadable {
-            warnings.push(FormatProblems::unreadable_docstring_code(Span::new(
-                source.id(),
-                range,
-            )));
-        }
         Ok(FormattedSource {
             text: formatted.text,
-            warnings,
+            warnings: Self::warnings_of(source, formatted.unreadable),
         })
     }
 
-    pub fn lay_out_page(&mut self, page: &str, module: &str, lookup: &ModuleLookup) -> String {
-        let shapes = self.shape_reader.catalog(&Self::use_of(module), lookup);
-        let lines = DocstringLine::split(page);
-        DocstringCode::of_pages(FormatRules {
+    pub fn lay_out_page(
+        &mut self,
+        page: &SourceFile,
+        module: &ModulePath,
+        lookup: &ModuleLookup,
+    ) -> FormattedSource {
+        let shapes = self.shape_reader.catalog_of_module(module, lookup);
+        let lines = DocstringLine::split(page.text());
+        let laid_out = DocstringCode::of_pages(FormatRules {
             shapes: &shapes,
             syntax: &self.syntax,
         })
-        .lay_out(&lines)
-        .lines
-        .join("\n")
+        .lay_out(&lines);
+        let unreadable = laid_out
+            .unreadable_lines
+            .into_iter()
+            .map(|line| DocstringLine::written_range(&lines, line));
+        FormattedSource {
+            text: laid_out.lines.join("\n"),
+            warnings: Self::warnings_of(page, unreadable),
+        }
     }
 
-    fn use_of(module: &str) -> Vec<Form> {
-        let mut sources = SourceMap::default();
-        let source = sources.add(
-            Self::PAGE_SOURCE,
-            format!(
-                "({} {module})",
-                KernelForm::Definition(DefinitionForm::Use).name()
-            ),
-        );
-        Reader::new(sources.file(source)).read().unwrap_or_default()
+    fn warnings_of(
+        source: &SourceFile,
+        unreadable: impl IntoIterator<Item = Range<usize>>,
+    ) -> Diagnostics {
+        let mut warnings = Diagnostics::default();
+        for range in unreadable {
+            let span = Span::new(source.id(), range);
+            warnings.push(FormatProblems::unreadable_docstring_code(span));
+        }
+        warnings
     }
 }
 

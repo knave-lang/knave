@@ -99,9 +99,16 @@ impl DocumentedModules {
             .zip(texts)
             .map(|(module, text)| {
                 let page = ExpandedPage::string(&text, Self::PAGE_MACRO)?;
+                let source = terminal.sources().add(WrittenPage::file_name(module), page);
+                let laid_out = formatter.lay_out_page(
+                    terminal.source_file(source),
+                    &ModulePath::new(module.as_str()),
+                    &lookup,
+                );
+                terminal.source_report().print(&laid_out.warnings);
                 Ok(WrittenPage {
                     module: module.clone(),
-                    text: formatter.lay_out_page(&page, module, &lookup),
+                    text: laid_out.text,
                 })
             })
             .collect()

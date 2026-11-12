@@ -165,6 +165,8 @@ const GEOMETRY_DEFINITIONS: &str = "(defn area (w h) (* w h))\n(defn report ()\n
 const BARE_ARROW_AND_TILDE_FENCE: &str = "(export pick)\n\n(defn pick (x)\n  \"Picks a number.\n\n  (pick   1)\n  =>\n\n  ~~~\n  (pick   2)\n  => 9\n  ~~~\"\n  x)\n";
 const BARE_ARROW_AND_TILDE_FENCE_LAID_OUT: &str = "(export pick)\n\n(defn pick (x)\n  \"Picks a number.\n\n  (pick   1)\n  =>\n\n  ~~~\n  (pick 2)\n  => 9\n  ~~~\"\n  x)\n";
 const BARE_ARROW_AND_TILDE_FENCE_PAGE: &str = "# pick\n\n<a id=\"pick\"></a>\n\n## `pick`\n\n```knave\n(defn pick (x))\n(type pick (where (a) (fn (a) a)))\n```\n\nPicks a number.\n\n(pick   1)\n=>\n\n~~~knave\n(pick 2)\n=> 9\n~~~\n";
+const UNREADABLE_PAGE_FENCE: &str =
+    "(export pick)\n\n(defn pick (x)\n  \"Picks a number.\n\n  ```\n  (pick   1\n  ```\"\n  x)\n";
 const LONG_TYPED_LENGTHS: &str = "(export combine-lengths)\n\n(defn combine-lengths (first-measured-length second-measured-length)\n  \"Adds two lengths.\n\n  ```\n  (combine-lengths   1   2)\n  ```\"\n  (+ first-measured-length second-measured-length))\n";
 const LONG_TYPED_LENGTHS_PAGE: &str = "# lengths\n\n<a id=\"combine-lengths\"></a>\n\n## `combine-lengths`\n\n```knave\n(defn combine-lengths (first-measured-length second-measured-length))\n(type combine-lengths\n  (where ((a number)) (fn (a a) a)))\n```\n\nAdds two lengths.\n\n```knave\n(combine-lengths 1 2)\n```\n";
 const AREA_OF_A_STRING: &str = "(defn area (w h) (* w h))\n(defn report () (area 2 \"3\"))\n";
@@ -2303,6 +2305,20 @@ fn doc_write_reads_a_bare_arrow_as_prose_and_a_tilde_block_as_a_fence() {
     assert_eq!(
         sandbox.contents("doc/pick.md"),
         BARE_ARROW_AND_TILDE_FENCE_PAGE
+    );
+}
+
+#[test]
+fn doc_write_warns_of_page_code_that_does_not_read_and_keeps_it() {
+    let sandbox = Sandbox::with_documented_project("doc_write_unreadable_page_code")
+        .with_file("src/pick.knv", UNREADABLE_PAGE_FENCE);
+    let write = sandbox.compiler(&["doc", "--write"]);
+    write.assert_exit_code(0);
+    assert!(write.stderr().contains("warning[L0109]"));
+    assert!(
+        sandbox
+            .contents("doc/pick.md")
+            .contains("```knave\n(pick   1\n```")
     );
 }
 

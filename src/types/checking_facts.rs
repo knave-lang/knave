@@ -1,14 +1,21 @@
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::selfless_methods::SelflessMethods;
 use crate::core::{BindingArena, BindingId};
 
 #[derive(Default)]
-pub(super) struct SignatureDeclarations {
+pub(super) struct CheckingFacts {
     pub(super) prelude_definitions: Vec<BindingId>,
     pub(super) written_parameters: FxHashMap<BindingId, Vec<bool>>,
+    pub(super) trait_arguments: FxHashSet<BindingId>,
+    pub(super) selfless_methods: SelflessMethods,
 }
 
-impl SignatureDeclarations {
+impl CheckingFacts {
+    pub(super) fn takes_argument(&self, trait_binding: BindingId) -> bool {
+        self.trait_arguments.contains(&trait_binding)
+    }
+
     pub(super) fn prelude_defines_value(&self, name: &str, bindings: &BindingArena) -> bool {
         self.prelude_definitions
             .iter()
@@ -30,14 +37,14 @@ impl SignatureDeclarations {
 
 #[cfg(test)]
 mod tests {
-    use rustc_hash::FxHashMap;
+    use rustc_hash::{FxHashMap, FxHashSet};
 
-    use super::SignatureDeclarations;
+    use super::CheckingFacts;
     use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleId};
 
     struct SignatureFixture {
         bindings: BindingArena,
-        signatures: SignatureDeclarations,
+        facts: CheckingFacts,
     }
 
     impl SignatureFixture {
@@ -50,14 +57,12 @@ mod tests {
             let mut bindings = BindingArena::default();
             let sum = Self::global(&mut bindings, Self::PRELUDE_VALUE);
             let pick = Self::global(&mut bindings, Self::USER_VALUE);
-            let signatures = SignatureDeclarations {
+            let facts = CheckingFacts {
                 prelude_definitions: vec![sum],
                 written_parameters: FxHashMap::from_iter([(pick, vec![true, false])]),
+                ..CheckingFacts::default()
             };
-            Self {
-                bindings,
-                signatures,
-            }
+            Self { bindings, facts }
         }
 
         fn global(bindings: &mut BindingArena, name: &str) -> BindingId {
@@ -89,7 +94,7 @@ mod tests {
         let fixture = SignatureFixture::new();
         assert!(
             fixture
-                .signatures
+                .facts
                 .written_at(fixture.pick(), SignatureFixture::WRITTEN)
         );
     }
@@ -99,7 +104,7 @@ mod tests {
         let fixture = SignatureFixture::new();
         assert!(
             !fixture
-                .signatures
+                .facts
                 .written_at(fixture.pick(), SignatureFixture::UNWRITTEN)
         );
     }
@@ -109,7 +114,7 @@ mod tests {
         let fixture = SignatureFixture::new();
         assert!(
             fixture
-                .signatures
+                .facts
                 .written_at(fixture.sum(), SignatureFixture::WRITTEN)
         );
     }
@@ -117,10 +122,7 @@ mod tests {
     #[test]
     fn the_written_parameters_are_counted() {
         let fixture = SignatureFixture::new();
-        assert_eq!(
-            fixture.signatures.written_parameter_count(fixture.pick()),
-            2
-        );
+        assert_eq!(fixture.facts.written_parameter_count(fixture.pick()), 2);
     }
 
     #[test]
@@ -128,7 +130,7 @@ mod tests {
         let fixture = SignatureFixture::new();
         assert!(
             fixture
-                .signatures
+                .facts
                 .prelude_defines_value(SignatureFixture::PRELUDE_VALUE, &fixture.bindings)
         );
     }
@@ -138,8 +140,34 @@ mod tests {
         let fixture = SignatureFixture::new();
         assert!(
             !fixture
-                .signatures
+                .facts
                 .prelude_defines_value(SignatureFixture::USER_VALUE, &fixture.bindings)
         );
+    }
+
+    struct ArgumentFixture;
+
+    impl ArgumentFixture {
+        const LISTED: BindingId = BindingId::from_index(0);
+        const DRAWN: BindingId = BindingId::from_index(1);
+
+        fn facts() -> CheckingFacts {
+            CheckingFacts {
+                trait_arguments: FxHashSet::from_iter([Self::LISTED]),
+                ..CheckingFacts::default()
+            }
+        }
+    }
+
+    #[test]
+    fn a_trait_recorded_with_an_argument_takes_one() {
+        let facts = ArgumentFixture::facts();
+        assert!(facts.takes_argument(ArgumentFixture::LISTED));
+    }
+
+    #[test]
+    fn a_trait_recorded_without_an_argument_takes_none() {
+        let facts = ArgumentFixture::facts();
+        assert!(!facts.takes_argument(ArgumentFixture::DRAWN));
     }
 }

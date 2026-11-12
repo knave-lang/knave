@@ -1057,7 +1057,7 @@ impl TypeChecker {
         if self.unchecked.contains(&binding) {
             return Err(TypeProblems::compile_time_only(name, span));
         }
-        if let Some(method) = self.declarations.traits.selfless_methods.get(binding) {
+        if let Some(method) = self.checking_facts.selfless_methods.get(binding) {
             return Err(self.selfless_method_call(binding, method, name, span));
         }
         Ok((
@@ -1575,8 +1575,8 @@ impl TypeChecker {
             .iter()
             .map(|binding| self.bindings.get(*binding).name().to_string())
             .collect();
-        let signatures = &self.declared_signatures;
-        let hides_prelude = signatures.prelude_defines_value(called_name, &self.bindings);
+        let facts = &self.checking_facts;
+        let hides_prelude = facts.prelude_defines_value(called_name, &self.bindings);
         Some(Err(TypeProblems::try_needs_unknown_recursive(
             called_name,
             &names,
@@ -2047,7 +2047,7 @@ impl TypeChecker {
             _ => return self.pass_argument(parameter, value),
         };
         if let TypedExprKind::Borrow(kind, _) = &value.kind
-            && !self.declared_signatures.written_at(call, position)
+            && !self.checking_facts.written_at(call, position)
             && !self.unifier.shallow(parameter).is_reference()
             && let Type::Ref(_, referent) | Type::Mut(_, referent) = &value.ty
         {
@@ -2140,7 +2140,7 @@ impl TypeChecker {
     }
 
     fn signature_with_parameter(&self, callee: BindingId, position: usize, found: &Type) -> String {
-        let count = self.declared_signatures.written_parameter_count(callee);
+        let count = self.checking_facts.written_parameter_count(callee);
         let shown = self.display().show(&self.unifier.resolve(found));
         let parameters: Vec<&str> = (0..count)
             .map(|index| {
@@ -2196,7 +2196,7 @@ impl TypeChecker {
         diagnostic: &Diagnostic,
     ) -> bool {
         diagnostic.code() == Some(&DiagnosticCode::MISMATCHED_TYPES)
-            && !self.declared_signatures.written_at(function, position)
+            && !self.checking_facts.written_at(function, position)
             && !matches!(self.unifier.shallow(found), Type::Function(..))
     }
 

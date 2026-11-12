@@ -30,6 +30,7 @@ mod tree_docstrings;
 mod unreadable_cause;
 mod unreadable_code;
 mod unreadable_span;
+mod written_code_guard;
 mod written_gap;
 
 pub use docstring_syntax::DocstringSyntax;

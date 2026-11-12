@@ -7,11 +7,13 @@ use super::format_rules::FormatRules;
 use super::region_layout::RegionLayout;
 use super::unreadable_cause::UnreadableCause;
 use super::unreadable_code::UnreadableCode;
+use super::written_code_guard::WrittenCodeGuard;
 use super::written_gap::WrittenGap;
 use crate::reader::{TokenKind, TokenScan};
 
 pub struct CodeRegion<'s, 'l> {
     rules: FormatRules<'s>,
+    guard: WrittenCodeGuard<'s>,
     lines: &'l [DocstringLine],
     indent: usize,
     layout: CodeLayout,
@@ -22,6 +24,7 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
     pub fn new(rules: FormatRules<'s>, lines: &'l [DocstringLine], layout: CodeLayout) -> Self {
         Self {
             rules,
+            guard: WrittenCodeGuard::new(rules.syntax),
             lines,
             indent: DocstringLine::least_indentation(lines),
             layout,
@@ -30,31 +33,14 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
     }
 
     pub fn lay_out(mut self) -> RegionLayout {
-        if self.holds_a_multi_line_string() {
+        if self.guard.holds_a_multi_line_string(self.lines) {
             return RegionLayout::Prose;
         }
         match self.push_chunks() {
-            Ok(()) if self.writes_a_fence_line() => RegionLayout::Prose,
+            Ok(()) if self.guard.writes_a_fence_line(&self.laid_out) => RegionLayout::Prose,
             Ok(()) => RegionLayout::LaidOut(self.laid_out),
             Err(stop) => stop,
         }
-    }
-
-    fn holds_a_multi_line_string(&self) -> bool {
-        let text = self
-            .lines
-            .iter()
-            .map(DocstringLine::text)
-            .collect::<Vec<_>>()
-            .join("\n");
-        TokenScan::new(&text)
-            .any(|token| token.kind == TokenKind::String && text[token.range].contains('\n'))
-    }
-
-    fn writes_a_fence_line(&self) -> bool {
-        self.laid_out
-            .iter()
-            .any(|line| self.rules.syntax.opening_fence(line).is_some())
     }
 
     fn push_chunks(&mut self) -> Result<(), RegionLayout> {
@@ -90,7 +76,7 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
             .collect::<Vec<_>>()
             .join("\n");
         match CodeChunk::new(self.rules.shapes, self.indent, self.layout).lay_out(text.trim_end()) {
-            RegionLayout::LaidOut(lines) if self.writes_an_arrow_line(&lines) => {
+            RegionLayout::LaidOut(lines) if self.guard.writes_an_arrow_line(&lines) => {
                 Err(RegionLayout::Prose)
             }
             RegionLayout::LaidOut(lines) => {
@@ -121,12 +107,6 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
             _ => balance,
         });
         balance < 0
-    }
-
-    fn writes_an_arrow_line(&self, lines: &[String]) -> bool {
-        lines
-            .iter()
-            .any(|line| self.rules.syntax.is_arrow_line(line))
     }
 
     fn push_result(&mut self, arrow: usize) -> usize {

@@ -1,11 +1,11 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
+use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::fresh_lifetimes::FreshLifetimes;
 use super::function_borrow::FunctionBorrow;
-use super::mangle::NameMangler;
 use super::opaque_borrows::OpaqueBorrows;
 use super::plan::EmitPlan;
 use super::unsized_parameters::UnsizedParameters;

@@ -1,6 +1,6 @@
+use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::mangle::NameMangler;
 use crate::core::BindingId;
 
 pub struct LocalNames {

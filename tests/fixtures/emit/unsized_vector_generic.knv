@@ -1,0 +1,6 @@
+(defn measure (value) (len value))
+
+(defn main ()
+  (local numbers (vec 1 2 3))
+  (println (measure (ref numbers)))
+  (println (measure (str "abc"))))

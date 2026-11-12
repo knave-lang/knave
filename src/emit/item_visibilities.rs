@@ -1,23 +1,7 @@
 use rustc_hash::FxHashSet;
 
+use super::visibility::Visibility;
 use crate::core::{BindingId, ModuleId};
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Visibility {
-    Private,
-    Crate,
-    Public,
-}
-
-impl Visibility {
-    pub fn keyword(self) -> &'static str {
-        match self {
-            Visibility::Private => "",
-            Visibility::Crate => "pub(crate) ",
-            Visibility::Public => "pub ",
-        }
-    }
-}
 
 pub struct ItemVisibilities {
     exported: FxHashSet<BindingId>,
@@ -53,8 +37,9 @@ impl ItemVisibilities {
 mod tests {
     use rustc_hash::FxHashSet;
 
-    use super::{ItemVisibilities, Visibility};
+    use super::ItemVisibilities;
     use crate::core::{BindingId, ModuleId};
+    use crate::emit::visibility::Visibility;
 
     struct VisibilityFixture;
 

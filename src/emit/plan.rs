@@ -3,8 +3,9 @@ use std::collections::BTreeSet;
 use knave_expand::mangle::NameMangler;
 use rustc_hash::FxHashMap;
 
-use super::item_visibilities::{ItemVisibilities, Visibility};
+use super::item_visibilities::ItemVisibilities;
 use super::problems::EmitProblems;
+use super::visibility::Visibility;
 use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::source::Span;

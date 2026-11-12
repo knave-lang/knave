@@ -12,7 +12,6 @@ mod let_annotation;
 mod literal_generics;
 mod local_closures;
 mod locals;
-pub(crate) use knave_expand::mangle;
 mod method_elisions;
 mod mutable_locals;
 mod opaque_borrows;
@@ -35,6 +34,7 @@ mod types;
 mod unlent_parameters;
 mod unsized_parameters;
 mod untied_borrows;
+mod visibility;
 mod writer;
 
 pub use runtime::RuntimeModule;

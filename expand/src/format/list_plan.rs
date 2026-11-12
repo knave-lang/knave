@@ -1,15 +1,8 @@
-use super::body_lists::BodyLists;
-use super::list_role::ListRole;
-use super::method_entries::MethodEntries;
-use super::shapes::{Shape, ShapeCatalog};
+use super::nested_lists::NestedLists;
+use super::shapes::Shape;
 use super::syntax_tree::{Entry, ListNode};
+use super::unit::Unit;
 use crate::core::{DefinitionForm, ExpressionForm, KernelForm, Keyword};
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Unit {
-    Single(usize),
-    Pair(usize, usize),
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LaterIndent {
@@ -28,11 +21,9 @@ pub struct ListPlan {
     pub arrangements: Vec<Arrangement>,
     pub docstring_entry: Option<usize>,
     pub fillable_units: Vec<bool>,
-    binding_list_entry: Option<usize>,
-    methods: MethodEntries,
+    nested: NestedLists,
     preferred_arrangement: Option<Arrangement>,
     one_line_allowed: bool,
-    first_arm_entry: Option<usize>,
 }
 
 impl Arrangement {
@@ -52,11 +43,11 @@ impl Arrangement {
 }
 
 impl ListPlan {
-    pub fn new(list: &ListNode, shape: Option<Shape>, shapes: &ShapeCatalog) -> Self {
+    pub fn new(list: &ListNode, shape: Option<Shape>, nested: NestedLists) -> Self {
         let kind = ListKind::of(list.head_name(), shape);
         let header_length = shape.map_or(0, |shape| shape.header_length);
         let units = UnitGrouping::new(&list.entries, header_length).units();
-        let docstring_entry = shapes.docstring_entry(list);
+        let docstring_entry = shape.and_then(|shape| shape.docstring_entry(list));
         let fills_atom_runs = !shape.is_some_and(|shape| shape.one_per_line);
         let one_line_body = shape.is_none_or(|shape| shape.allows_one_line(list.entries.len()));
         let preferred_arrangement = kind.trailing_fn_arrangement(list, &units);
@@ -69,12 +60,8 @@ impl ListPlan {
             preferred_arrangement,
             arrangements: kind.arrangements(),
             docstring_entry,
-            binding_list_entry: Self::binding_list_entry(shape),
-            methods: MethodEntries::of(list, shape, shapes),
+            nested,
             one_line_allowed: docstring_entry.is_none() && one_line_body,
-            first_arm_entry: shape
-                .filter(|shape| shape.body_lists == BodyLists::Arms)
-                .map(|_| header_length + 1),
         }
     }
 
@@ -88,35 +75,14 @@ impl ListPlan {
                 later_indent: LaterIndent::Past(Arrangement::UNDER_HEAD_INDENT),
             }],
             docstring_entry: None,
-            binding_list_entry: None,
-            methods: MethodEntries::default(),
+            nested: NestedLists::default(),
             preferred_arrangement: None,
             one_line_allowed: list.entries.len() <= BindingPairs::PAIR_LENGTH,
-            first_arm_entry: None,
         }
     }
 
-    fn binding_list_entry(shape: Option<Shape>) -> Option<usize> {
-        shape
-            .filter(|shape| shape.bindings)
-            .map(|shape| shape.header_length)
-    }
-
-    pub fn nested_roles(&self) -> impl Iterator<Item = (usize, ListRole)> + '_ {
-        let binding_list = self
-            .binding_list_entry
-            .map(|entry| (entry, ListRole::BindingList));
-        let methods = self
-            .methods
-            .entries()
-            .iter()
-            .map(|entry| (*entry, ListRole::Method));
-        let arms = self.arm_entries().map(|entry| (entry, ListRole::Arm));
-        binding_list.into_iter().chain(methods).chain(arms)
-    }
-
     pub fn takes_blank_line_before(&self, entry: usize) -> bool {
-        self.methods.takes_blank_line(entry)
+        self.nested.takes_blank_line_before(entry)
     }
 
     pub fn arrangements_at(&self, column: usize, width: usize) -> &[Arrangement] {
@@ -126,14 +92,6 @@ impl ListPlan {
         } else {
             &self.arrangements[last..]
         }
-    }
-
-    fn arm_entries(&self) -> impl Iterator<Item = usize> + '_ {
-        let first_arm = self.first_arm_entry;
-        self.units.iter().filter_map(move |unit| match unit {
-            Unit::Single(entry) if first_arm.is_some_and(|first| *entry >= first) => Some(*entry),
-            _ => None,
-        })
     }
 
     pub fn preferred_arrangement(&self) -> Option<Arrangement> {
@@ -292,27 +250,5 @@ impl BindingPairs {
         } else {
             Unit::Single(name)
         }
-    }
-}
-
-impl Unit {
-    pub fn first_entry(self) -> usize {
-        match self {
-            Unit::Single(entry) | Unit::Pair(entry, _) => entry,
-        }
-    }
-
-    pub fn last_entry(self) -> usize {
-        match self {
-            Unit::Single(entry) | Unit::Pair(_, entry) => entry,
-        }
-    }
-
-    pub fn entries(self) -> impl Iterator<Item = usize> {
-        self.first_entry()..=self.last_entry()
-    }
-
-    fn entry_count(self) -> usize {
-        self.last_entry() - self.first_entry() + 1
     }
 }

@@ -3,11 +3,12 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::block::Block;
-use super::list_plan::{Arrangement, LaterIndent, ListPlan, Unit};
+use super::list_plan::{Arrangement, LaterIndent, ListPlan};
 use super::list_roles::ListRoles;
 use super::measure::Measure;
 use super::shapes::ShapeCatalog;
 use super::syntax_tree::{Entry, ListNode, SyntaxNode};
+use super::unit::Unit;
 use crate::stack::DeepRecursion;
 
 pub trait LaidOut: Sized {
@@ -217,12 +218,11 @@ impl<'s> LayoutEngine<'s> {
     }
 
     fn plan(&mut self, list: &ListNode) -> Rc<ListPlan> {
-        if let Some(plan) = self.plans.get(&list.id) {
-            return Rc::clone(plan);
-        }
-        let plan = Rc::new(self.roles.plan(list, self.shapes));
-        self.plans.insert(list.id, Rc::clone(&plan));
-        plan
+        let plan = self
+            .plans
+            .entry(list.id)
+            .or_insert_with(|| Rc::new(self.roles.plan(list, self.shapes)));
+        Rc::clone(plan)
     }
 }
 

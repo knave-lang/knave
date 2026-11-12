@@ -27,14 +27,18 @@ mod markdown_fence;
 mod meaning;
 mod measure;
 mod method_entries;
+mod nested_lists;
 mod one_line_rule;
 mod printed_text;
 mod region_layout;
+#[cfg(test)]
+mod shape_catalog_fixture;
 mod shape_reader;
 mod shapes;
 mod syntax_tree;
 mod top_level_printer;
 mod tree_docstrings;
+mod unit;
 mod unreadable_cause;
 mod unreadable_code;
 mod unreadable_span;
@@ -209,7 +213,7 @@ impl<'s> FormattedText<'s> {
 mod tests {
     use super::{DocstringLayouts, FormatFailure, FormatRules, FormattedText, ShapeCatalog};
     use crate::format::docstring_syntax::{DocstringSyntax, DocstringSyntaxFixture};
-    use crate::format::shapes::ShapeCatalogFixture;
+    use crate::format::shape_catalog_fixture::ShapeCatalogFixture;
     use crate::reader::{Form, Reader};
     use crate::source::SourceMap;
 

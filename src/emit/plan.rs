@@ -156,13 +156,11 @@ impl<'p> EmitPlan<'p> {
     }
 
     pub fn trait_path(&self, binding: BindingId, from: ModuleId) -> String {
-        if let Some(path) = self.program.declarations.traits.rust_paths().get(&binding) {
+        let traits = &self.program.declarations.traits;
+        if let Some(path) = traits.rust_paths().get(&binding) {
             return path.to_string();
         }
-        let definition = self
-            .program
-            .declarations
-            .traits
+        let definition = traits
             .definitions()
             .iter()
             .find(|trait_definition| trait_definition.binding == binding)
@@ -177,9 +175,8 @@ impl<'p> EmitPlan<'p> {
     }
 
     pub fn trait_module(&self, binding: BindingId) -> Option<ModuleId> {
-        self.program
-            .declarations
-            .traits
+        let traits = &self.program.declarations.traits;
+        traits
             .definitions()
             .iter()
             .find(|trait_definition| trait_definition.binding == binding)
@@ -222,19 +219,14 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn collect_hidden_trait_uses(&self, module: ModuleId, uses: &mut BTreeSet<BindingId>) {
-        let impl_methods = self
-            .program
-            .declarations
-            .traits
+        let traits = &self.program.declarations.traits;
+        let impl_methods = traits
             .impls()
             .iter()
             .filter(|implementation| implementation.module == module)
             .flat_map(|implementation| implementation.methods.iter())
             .map(|method| method.binding);
-        let defaults = self
-            .program
-            .declarations
-            .traits
+        let defaults = traits
             .definitions()
             .iter()
             .filter(|trait_definition| trait_definition.module == module)
@@ -318,10 +310,8 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn reach_trait_defaults(&mut self) {
-        let defaults: Vec<BindingId> = self
-            .program
-            .declarations
-            .traits
+        let traits = &self.program.declarations.traits;
+        let defaults: Vec<BindingId> = traits
             .definitions()
             .iter()
             .flat_map(|trait_definition| trait_definition.methods.iter())
@@ -333,10 +323,8 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn reach_implementations(&mut self) {
-        let implementations: Vec<(Type, ModuleId, Vec<BindingId>)> = self
-            .program
-            .declarations
-            .traits
+        let traits = &self.program.declarations.traits;
+        let implementations: Vec<(Type, ModuleId, Vec<BindingId>)> = traits
             .impls()
             .iter()
             .map(|implementation| {
@@ -430,23 +418,10 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn reach_named(&mut self, binding: BindingId, from: ModuleId) {
-        if self
-            .program
-            .declarations
-            .types
-            .rust_types()
-            .get(binding)
-            .is_some()
-        {
+        let types = &self.program.declarations.types;
+        if types.rust_types().get(binding).is_some() {
             self.used_rust_types.insert(binding);
-        } else if self
-            .program
-            .declarations
-            .types
-            .enums()
-            .get(binding)
-            .is_some()
-        {
+        } else if types.enums().get(binding).is_some() {
             self.reach_enum(binding, from);
         } else {
             self.reach_struct(binding, from);
@@ -462,10 +437,8 @@ impl<'p> EmitPlan<'p> {
             return;
         }
         self.reached.push(binding);
-        let payloads: Vec<Type> = self
-            .program
-            .declarations
-            .types
+        let types = &self.program.declarations.types;
+        let payloads: Vec<Type> = types
             .enums()
             .get(binding)
             .map(|definition| definition.payload_types().cloned().collect())
@@ -484,10 +457,8 @@ impl<'p> EmitPlan<'p> {
             return;
         }
         self.reached.push(binding);
-        let fields: Vec<Type> = self
-            .program
-            .declarations
-            .types
+        let types = &self.program.declarations.types;
+        let fields: Vec<Type> = types
             .structs()
             .get(binding)
             .map(|definition| {
@@ -582,13 +553,10 @@ impl<'p> EmitPlan<'p> {
 
     fn shadowed_rust_type(&self, info: &ItemInfo) -> Option<BindingId> {
         let is_type = matches!(info.kind, ItemKind::Struct | ItemKind::Enum);
+        let rust_types = self.program.declarations.types.rust_types();
         self.used_rust_types.iter().copied().find(|binding| {
             is_type
-                && self
-                    .program
-                    .declarations
-                    .types
-                    .rust_types()
+                && rust_types
                     .get(*binding)
                     .is_some_and(|rust_type| rust_type.leading_name() == info.name)
         })
@@ -616,17 +584,9 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn named_type_kind(&self, binding: BindingId) -> ItemKind {
-        if self
-            .program
-            .declarations
-            .types
-            .enums()
-            .get(binding)
-            .is_some()
-        {
-            ItemKind::Enum
-        } else {
-            ItemKind::Struct
+        match self.program.declarations.types.enums().get(binding) {
+            Some(_) => ItemKind::Enum,
+            None => ItemKind::Struct,
         }
     }
 

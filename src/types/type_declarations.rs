@@ -46,16 +46,14 @@ impl TypeDeclarations {
         }
     }
 
-    pub fn is_boxed_trait(&self, implementor: &Type, trait_binding: BindingId) -> bool {
-        let Some(box_binding) = self.box_binding else {
-            return false;
-        };
-        matches!(
-            implementor,
-            Type::Named(binding, arguments)
-                if *binding == box_binding
-                    && matches!(arguments.as_slice(), [Type::TraitObject(object)] if *object == trait_binding)
-        )
+    pub fn boxed_object(&self, candidate: &Type) -> Option<BindingId> {
+        match candidate {
+            Type::Named(_, arguments) if self.is_box(candidate) => match arguments.as_slice() {
+                [Type::TraitObject(object)] => Some(*object),
+                _ => None,
+            },
+            _ => None,
+        }
     }
 }
 
@@ -73,7 +71,6 @@ mod tests {
         const SOURCE: &str = "
             (enum chain end (link u32 chain))
             (trait drawn (draw (fn ((ref self)) i64)))
-            (trait counted (count (fn ((ref self)) i64)))
             (defn main () (do))";
         const LINK: usize = 1;
         const LINK_NUMBER: usize = 0;
@@ -129,27 +126,45 @@ mod tests {
     }
 
     #[test]
-    fn a_box_of_a_trait_object_boxes_that_trait() {
+    fn a_box_of_two_payloads_is_not_a_box() {
+        let fixture = BoxFixture::new();
+        let object = fixture.object("drawn");
+        let boxed = fixture.boxed(vec![object.clone(), object]);
+        assert!(!fixture.declarations.types().is_box(&boxed));
+    }
+
+    #[test]
+    fn a_box_of_a_trait_object_holds_that_trait() {
         let fixture = BoxFixture::new();
         let boxed = fixture.boxed(vec![fixture.object("drawn")]);
         let drawn = fixture.declarations.trait_named("drawn");
-        assert!(fixture.declarations.types().is_boxed_trait(&boxed, drawn));
+        assert_eq!(
+            fixture.declarations.types().boxed_object(&boxed),
+            Some(drawn)
+        );
     }
 
     #[test]
-    fn a_box_of_another_trait_object_does_not_box_the_trait() {
+    fn a_box_of_a_plain_type_holds_no_trait_object() {
         let fixture = BoxFixture::new();
-        let boxed = fixture.boxed(vec![fixture.object("counted")]);
-        let drawn = fixture.declarations.trait_named("drawn");
-        assert!(!fixture.declarations.types().is_boxed_trait(&boxed, drawn));
+        let chain = Type::Named(fixture.declarations.type_named("chain"), Vec::new());
+        let boxed = fixture.boxed(vec![chain]);
+        assert_eq!(fixture.declarations.types().boxed_object(&boxed), None);
     }
 
     #[test]
-    fn a_trait_object_outside_a_box_is_not_a_boxed_trait() {
+    fn a_trait_object_outside_a_box_is_not_boxed() {
         let fixture = BoxFixture::new();
-        let drawn = fixture.declarations.trait_named("drawn");
         let object = fixture.object("drawn");
-        assert!(!fixture.declarations.types().is_boxed_trait(&object, drawn));
+        assert_eq!(fixture.declarations.types().boxed_object(&object), None);
+    }
+
+    #[test]
+    fn a_trait_object_in_another_named_type_is_not_boxed() {
+        let fixture = BoxFixture::new();
+        let chain = fixture.declarations.type_named("chain");
+        let wrapped = Type::Named(chain, vec![fixture.object("drawn")]);
+        assert_eq!(fixture.declarations.types().boxed_object(&wrapped), None);
     }
 
     #[test]

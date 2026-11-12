@@ -2577,18 +2577,8 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn is_boxed_object_reference(&self, ty: &Type) -> bool {
-        let Some(box_binding) = self.types.box_binding() else {
-            return false;
-        };
-        match ty {
-            Type::Ref(_, inner) | Type::Mut(_, inner) => matches!(
-                inner.as_ref(),
-                Type::Named(binding, arguments)
-                    if *binding == box_binding
-                        && matches!(arguments.as_slice(), [Type::TraitObject(_)])
-            ),
-            _ => false,
-        }
+        let declared = self.program.declarations.types();
+        matches!(ty, Type::Ref(_, inner) | Type::Mut(_, inner) if declared.boxed_object(inner).is_some())
     }
 
     fn closure_body(&mut self, lambda: &TypedLambda, annotated: bool) -> Code {

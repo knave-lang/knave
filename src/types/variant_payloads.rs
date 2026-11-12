@@ -59,13 +59,8 @@ impl<'a> VariantPayloads<'a> {
 
     fn unboxed<'p>(&self, inferred_box: &'p Type) -> &'p Type {
         match inferred_box {
-            Type::Named(binding, arguments) if Some(*binding) == self.types.box_binding => {
-                match arguments.as_slice() {
-                    [argument] => argument,
-                    _ => panic!("an inferred box has one type argument"),
-                }
-            }
-            _ => panic!("an inferred box is a box"),
+            Type::Named(_, arguments) if self.types.is_box(inferred_box) => &arguments[0],
+            _ => panic!("an inferred box is a box of one type"),
         }
     }
 }

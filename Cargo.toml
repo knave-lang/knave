@@ -13,7 +13,7 @@ readme = "README.md"
 include = ["/build.rs", "/src/", "/prelude/runtime/", "/README.md", "/LICENSE"]
 
 [workspace]
-members = ["expand", "xtask"]
+members = ["expand", "xtask", "xtask/agree"]
 
 [workspace.package]
 version = "0.14.23"
@@ -46,6 +46,7 @@ knave-expand = { workspace = true }
 
 [dev-dependencies]
 insta = { version = "1", features = ["glob"] }
+knave-agree = { path = "xtask/agree" }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]

@@ -373,7 +373,7 @@ pub struct FormCensus {
     pub prelude_names: BTreeMap<String, usize>,
 }
 
-pub trait Backend {
+pub trait Backend: Send + Sync {
     fn name(&self) -> &'static str;
     fn verdict(&self, program: &SubjectProgram, limit: Duration) -> Verdict;
 }
@@ -385,11 +385,18 @@ pub enum Verdict {
     Unsupported(String),
 }
 
+pub enum RejectingTool {
+    Knave,
+    Rustc,
+}
+
 pub struct Rejection {
-    pub code: DiagnosticCode,
+    pub tool: RejectingTool,
+    pub code: Option<DiagnosticCode>,
     pub file: PathBuf,
     pub span: Range<usize>,
     pub function: Option<String>,
+    pub reached_from_main: bool,
 }
 
 pub struct RunOutcome {
@@ -418,7 +425,7 @@ pub struct Finding {
     pub summary: String,
 }
 
-pub trait Oracle {
+pub trait Oracle: Send + Sync {
     fn name(&self) -> &'static str;
     fn judge(&self, verdicts: &BackendVerdicts) -> Option<Finding>;
 }
@@ -441,7 +448,7 @@ pub trait Reducer {
   - `FalseOwnershipError`: `Checker` rejects with an ownership code and `CheckerWithoutOwnership` compiles.
   - `BackendsDisagree`: `CompiledDebug` and `Interpreted` both ran and differ in `stdout`, in `exit`, or in the normalized `stderr`.
   - A `TimedOut` or `Unsupported` verdict in any backend is never a finding. It is counted, so the census shows what the interpreter still lacks.
-  - The rustc oracles compare only functions that `main` reaches, read from each `Rejection`'s `function`.
+  - The rustc oracles compare only functions that `main` reaches, read from each `Rejection`'s `function`. A `Rejection` names its function by its Knave name, whichever tool rejected it, and records that tool, so a Knave error without a code never counts as rustc's. Whether `main` reaches the function comes from the expanded program, where the expander has resolved every name, so a local that shares a function's name is not a call.
 - **Reducing.** The reducer keeps a candidate only while the same oracle finds the same codes at the same functions.
 - **Runs.**
   - `cargo xtask agree --seeds <range> --oracle <name>...` runs programs in parallel under a job limit, writes each finding with its seed and its reduced program, and exits nonzero on a finding.

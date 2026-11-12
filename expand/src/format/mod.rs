@@ -16,6 +16,7 @@ mod format_rules;
 mod import_group;
 mod import_join;
 mod import_order;
+mod laid_out_token;
 mod layout;
 mod list_plan;
 mod markdown_fence;

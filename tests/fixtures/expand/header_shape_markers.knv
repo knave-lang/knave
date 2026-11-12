@@ -40,3 +40,7 @@
 (header-shape (my-defn name parameters)
               :bindings :arms
               :docstring)
+
+(header-shape (my-defn name parameters) :method)
+
+(header-shape (my-defn name parameters) :methods :methods)

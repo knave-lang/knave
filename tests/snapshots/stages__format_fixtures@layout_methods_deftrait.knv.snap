@@ -1,0 +1,40 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/format/layout_methods_deftrait.knv
+---
+(deftrait shape
+  "A figure with an area."
+  (area (fn ((ref self)) f64)) (perimeter (fn ((ref self)) f64))
+  (describe (fn ((ref self)) string) (str "a shape of area " (area self) " and perimeter " (perimeter self)))
+  (twin (fn (self) self) self) (scale! (fn ((mut self) f64) unit)))
+
+(deftrait octal (rust "std::fmt::Octal")
+  (method fmt (fn ((ref self) (mut octal-out)) octal-result))
+  (help "an octal number is an integer") i64 (where ((a octal)) (ref a)) (where ((a octal) (b octal)) (pair a b)))
+
+---
+(deftrait shape
+  "A figure with an area."
+  (area (fn ((ref self)) f64))
+  (perimeter (fn ((ref self)) f64))
+
+  (describe (fn ((ref self)) string)
+    (str "a shape of area "
+         (area self)
+         " and perimeter "
+         (perimeter self)))
+
+  (twin (fn (self) self) self)
+
+  (scale! (fn ((mut self) f64) unit)))
+
+(deftrait octal
+  (rust "std::fmt::Octal")
+  (method fmt
+    (fn ((ref self) (mut octal-out))
+      octal-result))
+  (help "an octal number is an integer")
+  i64
+  (where ((a octal)) (ref a))
+  (where ((a octal) (b octal)) (pair a b)))

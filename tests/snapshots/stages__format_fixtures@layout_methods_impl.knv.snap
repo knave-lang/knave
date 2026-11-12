@@ -1,0 +1,68 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/format/layout_methods_impl.knv
+---
+(deftrait mailbox
+  (fetch-labels! (fn ((mut self)) (vec string)))
+  (count-unread (fn ((ref self)) i64))
+  (label-count (fn ((ref self)) i64)))
+
+(defstruct gmail-mailbox :labels (vec string) :unread i64)
+
+(impl mailbox gmail-mailbox (fetch-labels! (box) (let (labels (:labels box) first-label (first labels) more (rest labels)) (prepend first-label more))) (count-unread (box) (:unread box))
+  ;; counts each label once
+  (label-count (box) (len (:labels box))))
+
+(impl mailbox (vec string) (fetch-labels! (labels) (print "fetching every label") labels) (count-unread (labels) 0)
+
+  (label-count (labels) (len labels)))
+
+(deftrait sized (type item) (size (fn ((ref self)) i64)))
+
+(impl sized (vec a) (type item a) (size (items) (len items)))
+
+(impl sized string (type item char) (size (text) (len text)))
+
+---
+(deftrait mailbox
+  (fetch-labels! (fn ((mut self)) (vec string)))
+  (count-unread (fn ((ref self)) i64))
+  (label-count (fn ((ref self)) i64)))
+
+(defstruct gmail-mailbox
+  :labels (vec string)
+  :unread i64)
+
+(impl mailbox gmail-mailbox
+  (fetch-labels! (box)
+    (let (labels (:labels box)
+          first-label (first labels)
+          more (rest labels))
+      (prepend first-label more)))
+
+  (count-unread (box) (:unread box))
+
+  ;; counts each label once
+  (label-count (box) (len (:labels box))))
+
+(impl mailbox (vec string)
+  (fetch-labels! (labels)
+    (print "fetching every label")
+    labels)
+
+  (count-unread (labels) 0)
+
+  (label-count (labels) (len labels)))
+
+(deftrait sized
+  (type item)
+  (size (fn ((ref self)) i64)))
+
+(impl sized (vec a)
+  (type item a)
+  (size (items) (len items)))
+
+(impl sized string
+  (type item char)
+  (size (text) (len text)))

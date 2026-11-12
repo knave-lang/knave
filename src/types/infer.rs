@@ -1575,7 +1575,8 @@ impl TypeChecker {
             .iter()
             .map(|binding| self.bindings.get(*binding).name().to_string())
             .collect();
-        let hides_prelude = self.prelude_defines_value(called_name);
+        let signatures = &self.declarations.signatures;
+        let hides_prelude = signatures.prelude_defines_value(called_name, &self.bindings);
         Some(Err(TypeProblems::try_needs_unknown_recursive(
             called_name,
             &names,
@@ -2048,7 +2049,7 @@ impl TypeChecker {
             _ => return self.pass_argument(parameter, value),
         };
         if let TypedExprKind::Borrow(kind, _) = &value.kind
-            && !self.parameter_is_written(call, position)
+            && !self.declarations.signatures.written_at(call, position)
             && !self.unifier.shallow(parameter).is_reference()
             && let Type::Ref(_, referent) | Type::Mut(_, referent) = &value.ty
         {
@@ -2141,7 +2142,7 @@ impl TypeChecker {
     }
 
     fn signature_with_parameter(&self, callee: BindingId, position: usize, found: &Type) -> String {
-        let count = self.written_parameters.get(&callee).map_or(0, Vec::len);
+        let count = self.declarations.signatures.written_parameter_count(callee);
         let shown = self.display().show(&self.unifier.resolve(found));
         let parameters: Vec<&str> = (0..count)
             .map(|index| {
@@ -2197,16 +2198,8 @@ impl TypeChecker {
         diagnostic: &Diagnostic,
     ) -> bool {
         diagnostic.code() == Some(&DiagnosticCode::MISMATCHED_TYPES)
-            && !self.parameter_is_written(function, position)
+            && !self.declarations.signatures.written_at(function, position)
             && !matches!(self.unifier.shallow(found), Type::Function(..))
-    }
-
-    pub(super) fn parameter_is_written(&self, callee: BindingId, position: usize) -> bool {
-        self.written_parameters
-            .get(&callee)
-            .and_then(|written| written.get(position))
-            .copied()
-            .unwrap_or(true)
     }
 
     fn pass_argument(&mut self, parameter: &Type, value: &TypedExpr) -> Result<Borrow, Diagnostic> {

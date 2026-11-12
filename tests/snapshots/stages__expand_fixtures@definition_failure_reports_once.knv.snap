@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/definition_failure_reports_once.knv
+---
+error[L0301]: this macro is not finished
+  --> expand/definition_failure_reports_once.knv:5:12
+   |
+ 5 |     (quote todo)
+   |            ^^^^ here
+...
+10 |   (always-broken 1)
+   |   ----------------- in this macro call
+   |
+   = help: finish the macro

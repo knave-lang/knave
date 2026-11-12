@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/definition_warning_reports_once.knv
+---
+warning[L0802]: the van is parked on a link
+  --> expand/definition_warning_reports_once.knv:6:14
+   |
+ 6 |       (quote van)
+   |              ^^^ here
+...
+10 | (def first-van (parked "blue van"))
+   |                ------------------- in this macro call
+
+(def first-van "blue van")
+(def second-van "red van")

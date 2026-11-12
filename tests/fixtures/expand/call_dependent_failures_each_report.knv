@@ -1,0 +1,11 @@
+(use code fail symbol?)
+
+(defmacro needs-symbol (x)
+  (if (symbol? x)
+    x
+    (fail "expected a symbol" (quote here))))
+
+(defn main ()
+  (needs-symbol 1)
+  (needs-symbol "text")
+  (needs-symbol a))

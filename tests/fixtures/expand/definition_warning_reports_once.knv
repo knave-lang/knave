@@ -1,0 +1,12 @@
+(use code nth warn)
+
+(def parked
+  (macro (form)
+    (warn "the van is parked on a link"
+      (quote van)
+      (quote (:code unmatched-link :once-per definition)))
+    (nth form 1)))
+
+(def first-van (parked "blue van"))
+
+(def second-van (parked "red van"))

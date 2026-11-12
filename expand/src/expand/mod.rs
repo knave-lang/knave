@@ -76,7 +76,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::core::{
     BindingArena, BindingId, BindingKind, CoreModule, ModuleId, ModulePath, Namespace, References,
 };
-use crate::diagnostic::Diagnostics;
+use crate::diagnostic::{DefinitionErrors, Diagnostics};
 use crate::interpret::{Closure, Interpreter, Value};
 use crate::modules::{ModuleRegistry, ModuleSources};
 use crate::reader::Form;
@@ -371,7 +371,7 @@ impl<'s> Expander<'s> {
             checked_roots: Vec::new(),
             pending_definitions: PendingDefinitions::new(self.saved_definitions),
             macro_origins: Rc::new(self.tables.macro_origins),
-            warnings: self.problems.take_warnings(),
+            warnings: DefinitionErrors::keep_first_calls(self.problems.take_warnings()),
             expansion: self.expansion,
         };
         program.restore_reached();
@@ -381,7 +381,7 @@ impl<'s> Expander<'s> {
 
     fn take_diagnostics(&mut self) -> Diagnostics {
         self.recovered.hand_over(&mut self.problems);
-        self.problems.take_errors()
+        DefinitionErrors::keep_first_calls(self.problems.take_errors())
     }
 
     fn structural_traits(&mut self) -> StructuralTraits<'_> {

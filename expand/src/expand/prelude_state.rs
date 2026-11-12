@@ -12,6 +12,7 @@ use crate::core::{ModuleId, ModulePath};
 use crate::diagnostic::DiagnosticRenderer;
 use crate::interpret::{Closure, Value};
 use crate::modules::{ModuleRecord, ModuleSource, ModuleSources};
+use crate::reader::Form;
 use crate::scope::{NameTables, SavedNames};
 use crate::source::{SourceId, SourceMap, Span};
 
@@ -129,6 +130,18 @@ impl PreludeState {
             definitions: PreludeDefinitions::Loaded(tables),
             ..state
         })
+    }
+
+    pub fn module_note(&self, path: &ModulePath, key: &str) -> Option<&[Form]> {
+        let PreludeDefinitions::Loaded(tables) = &self.definitions else {
+            panic!("only a loaded prelude state holds readable notes")
+        };
+        let position = self
+            .modules
+            .iter()
+            .position(|record| record.path() == path)?;
+        let module = ModuleId::new(self.prelude.index() + position);
+        tables.notes.of(module, key).map(Vec::as_slice)
     }
 
     pub(super) fn install(self, expander: &mut Expander<'_>) -> ModuleId {
@@ -579,6 +592,14 @@ mod tests {
         let copy = bindings.clone();
         copy.get(first);
         assert!(bindings.is_decoded(first));
+    }
+
+    #[test]
+    fn a_loaded_state_reads_a_note_of_a_prelude_module() {
+        let state = UserProgram::loaded_state();
+        let module = ModulePath::new(ModuleSources::DOCSTRINGS);
+        assert!(state.module_note(&module, "docstring-syntax").is_some());
+        assert!(state.module_note(&module, "no-such-note").is_none());
     }
 
     #[test]

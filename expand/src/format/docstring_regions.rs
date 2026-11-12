@@ -2,9 +2,12 @@ use std::ops::Range;
 
 use super::code_lines::CodeLines;
 use super::code_spacing::CodeSpacing;
+use super::docstring_syntax::DocstringSyntax;
 use super::markdown_fence::MarkdownFence;
+use crate::reader::Syntax;
 
 pub struct DocstringRegions<'l> {
+    syntax: &'l DocstringSyntax,
     lines: &'l [String],
     fence_spacing: CodeSpacing,
     code: Vec<CodeLines>,
@@ -13,12 +16,15 @@ pub struct DocstringRegions<'l> {
 }
 
 impl<'l> DocstringRegions<'l> {
-    pub const ARROW: &'static str = "=>";
-    const COMMENT: &'static str = ";";
     const SUMMARY_LINE: usize = 0;
 
-    pub fn code_of(lines: &'l [String], fence_spacing: CodeSpacing) -> Vec<CodeLines> {
+    pub fn code_of(
+        syntax: &'l DocstringSyntax,
+        lines: &'l [String],
+        fence_spacing: CodeSpacing,
+    ) -> Vec<CodeLines> {
         let mut regions = Self {
+            syntax,
             lines,
             fence_spacing,
             code: Vec::new(),
@@ -32,17 +38,11 @@ impl<'l> DocstringRegions<'l> {
         regions.code
     }
 
-    pub fn is_arrow_line(line: &str) -> bool {
-        let text = line.trim_start();
-        text.strip_prefix(Self::ARROW)
-            .is_some_and(|rest| rest.is_empty() || rest.starts_with(' '))
-    }
-
     fn visit(&mut self, index: usize) {
         let line = &self.lines[index];
         match self.fence {
             Some(fence) => self.visit_fenced(index, fence),
-            None => match MarkdownFence::opening(line) {
+            None => match self.syntax.opening_fence(line) {
                 Some(fence) => {
                     self.close_paragraph(index);
                     self.fence = Some((fence, index));
@@ -84,10 +84,10 @@ impl<'l> DocstringRegions<'l> {
     fn is_example(&self, paragraph: Range<usize>) -> bool {
         let lines = &self.lines[paragraph.clone()];
         paragraph.start != Self::SUMMARY_LINE
-            && lines.iter().any(|line| Self::is_arrow_line(line))
+            && lines.iter().any(|line| self.syntax.is_arrow_line(line))
             && !lines
                 .iter()
-                .any(|line| line.trim_start().starts_with(Self::COMMENT))
+                .any(|line| line.trim_start().starts_with(Syntax::COMMENT))
     }
 }
 
@@ -95,24 +95,33 @@ impl<'l> DocstringRegions<'l> {
 mod tests {
     use super::DocstringRegions;
     use crate::format::code_spacing::CodeSpacing;
+    use crate::format::docstring_syntax::DocstringSyntaxFixture;
 
     struct RegionFixture;
 
     impl RegionFixture {
         fn code_of(text: &str) -> Vec<std::ops::Range<usize>> {
             let lines: Vec<String> = text.split('\n').map(str::to_string).collect();
-            DocstringRegions::code_of(&lines, CodeSpacing::Separated)
-                .into_iter()
-                .map(|code| code.range)
-                .collect()
+            DocstringRegions::code_of(
+                &DocstringSyntaxFixture::syntax(),
+                &lines,
+                CodeSpacing::Separated,
+            )
+            .into_iter()
+            .map(|code| code.range)
+            .collect()
         }
 
         fn spacings_of(text: &str) -> Vec<CodeSpacing> {
             let lines: Vec<String> = text.split('\n').map(str::to_string).collect();
-            DocstringRegions::code_of(&lines, CodeSpacing::Separated)
-                .into_iter()
-                .map(|code| code.spacing)
-                .collect()
+            DocstringRegions::code_of(
+                &DocstringSyntaxFixture::syntax(),
+                &lines,
+                CodeSpacing::Separated,
+            )
+            .into_iter()
+            .map(|code| code.spacing)
+            .collect()
         }
     }
 
@@ -153,14 +162,15 @@ mod tests {
     }
 
     #[test]
-    fn an_arrow_needs_a_space_or_the_end_of_its_line() {
+    fn a_bare_arrow_is_prose() {
+        assert!(RegionFixture::code_of("Doubles.\n\n(twice 3)\n=>").is_empty());
+    }
+
+    #[test]
+    fn the_inside_of_a_tilde_fence_is_code() {
         assert_eq!(
-            (
-                DocstringRegions::is_arrow_line("  => 6"),
-                DocstringRegions::is_arrow_line("=>"),
-                DocstringRegions::is_arrow_line("=>6")
-            ),
-            (true, true, false)
+            RegionFixture::code_of("Doubles.\n\n~~~\n(twice 3)\n~~~"),
+            vec![3..4]
         );
     }
 

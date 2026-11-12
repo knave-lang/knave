@@ -3,6 +3,7 @@
                     module template with-macro-steps)
 
 (use prelude/internal/macros kernel-definition)
+(use prelude/internal/docstrings)
 (use prelude/logic and cond not or unless when)
 
 (use prelude/syntax -> ->> assert comment defn deftask

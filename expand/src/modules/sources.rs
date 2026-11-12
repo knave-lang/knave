@@ -40,10 +40,11 @@ impl ModuleSources {
     pub const TASK: &str = "prelude/task";
     pub const PROJECT_SHAPES: &str = "prelude/project-file";
     pub const DOCUMENTATION: &str = "prelude/documentation";
+    pub const DOCSTRINGS: &str = "prelude/internal/docstrings";
     const PRELUDE_DIRECTORY: &str = "prelude/";
     const INTERNAL_DIRECTORY: &str = "prelude/internal/";
     const BYTE_ORDER_MARK: char = '\u{feff}';
-    const PRELUDE_FILES: [(&str, &str); 26] = [
+    const PRELUDE_FILES: [(&str, &str); 27] = [
         ("prelude", include_str!("../../prelude/prelude.knv")),
         (
             "prelude/internal/macros",
@@ -83,6 +84,10 @@ impl ModuleSources {
         (
             "prelude/sequence",
             include_str!("../../prelude/sequence.knv"),
+        ),
+        (
+            "prelude/internal/docstrings",
+            include_str!("../../prelude/internal/docstrings.knv"),
         ),
         ("prelude/test", include_str!("../../prelude/test.knv")),
         ("prelude/task", include_str!("../../prelude/task.knv")),

@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use super::crate_section::CrateSection;
+use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
 use super::library_walk::FetchingStore;
 use super::located_project::LocatedProject;
@@ -9,7 +10,7 @@ use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
 use super::working_directory::WorkingDirectory;
-use crate::format::{ModuleLookup, SourceFormatter};
+use crate::format::ModuleLookup;
 use crate::language::Language;
 use crate::project::{CrateDependency, ProjectEditor};
 
@@ -71,7 +72,7 @@ impl ProjectFileEdit {
         let directory = ProgramFile::directory_of(path);
         let root = ProgramFile::canonical(&directory).unwrap_or(directory);
         let source = scratch.sources().add(path.display(), text);
-        SourceFormatter::default()
+        EmbeddedPrelude::source_formatter()
             .format(
                 scratch.source_file(source),
                 &ModuleLookup::beside_project_file(&root),

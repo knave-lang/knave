@@ -14,11 +14,12 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use knave::build::{BuildError, BuildProfile, EmittedFormatting, RustCompiler};
+use knave::cli::EmbeddedPrelude;
 use knave::core::{BindingArena, CorePrinter, ExprKind, Item, ItemKind, Leaf, Literal, ModulePath};
 use knave::diagnostic::{DiagnosticRenderer, Diagnostics};
 use knave::emit::{EmittedCrate, RustEmitter};
 use knave::expand::{Expander, PreludeState, Program};
-use knave::format::{FormatFailure, SourceFormatter};
+use knave::format::FormatFailure;
 use knave::language::Language;
 use knave::modules::ModuleSources;
 use knave::ownership::EnforcedOwnership;
@@ -101,7 +102,7 @@ impl Fixture {
     pub fn format_report(&self) -> String {
         let input = self.sources.file(self.entry);
         let lookup = ShapeLookup::beside(&self.path);
-        match SourceFormatter::default().format(input, &lookup) {
+        match EmbeddedPrelude::source_formatter().format(input, &lookup) {
             Ok(formatted) if formatted.warnings.is_empty() => {
                 format!("{}\n---\n{}", input.text(), formatted.text)
             }

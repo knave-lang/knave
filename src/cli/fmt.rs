@@ -7,6 +7,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
 use super::library_walk::CacheOnlyStore;
 use super::located_project::LocatedProject;
@@ -58,7 +59,7 @@ impl FmtCommand {
             paths,
             mode,
             standard_input_path,
-            formatter: SourceFormatter::default(),
+            formatter: EmbeddedPrelude::source_formatter(),
             lookups: NearbyProjects::new(),
         }
     }

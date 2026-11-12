@@ -1,4 +1,5 @@
 use super::diagnostic_output::DiagnosticOutput;
+use super::embedded_prelude::EmbeddedPrelude;
 use super::error_location::ModuleLoader;
 use super::evaluation_request::EvaluationRequest;
 use super::exit_status::ExitStatus;
@@ -7,7 +8,7 @@ use super::program_file::ProgramFile;
 use super::sources_survey::SourcesSurvey;
 use super::stage_work::StageWork;
 use crate::diagnostic::Diagnostics;
-use crate::expand::{ClassifiedForm, Expander, ExpansionSession, PreludeState, Program};
+use crate::expand::{ClassifiedForm, Expander, ExpansionSession, Program};
 use crate::source::{SourceId, SourceMap, Span};
 
 pub struct Expansion<'a> {
@@ -17,8 +18,6 @@ pub struct Expansion<'a> {
 }
 
 impl<'a> Expansion<'a> {
-    const SAVED_PRELUDE: &'static [u8] = include_bytes!(env!("PRELUDE_STATE"));
-
     pub fn new(
         sources: &'a mut SourceMap,
         work: &'a mut StageWork,
@@ -85,9 +84,11 @@ impl<'a> Expansion<'a> {
     }
 
     fn expander(&mut self, file: &ProgramFile) -> Expander<'_> {
-        let prelude =
-            PreludeState::load(Self::SAVED_PRELUDE).expect("the embedded prelude state loads");
-        Expander::with_prelude(self.sources, file.module_sources(), prelude)
+        Expander::with_prelude(
+            self.sources,
+            file.module_sources(),
+            EmbeddedPrelude::state(),
+        )
     }
 
     fn report(&self, diagnostics: &Diagnostics) -> ExitStatus {

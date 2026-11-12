@@ -162,6 +162,9 @@ const POINT_TYPE: &str = "(type point (fn () point))";
 const SESSION: &str = "(defn square (n) (* n n))\n(defstruct point :x i64 :y i64)\n(defn main () (println \"written main\"))\n";
 const EVALUATED_GEOMETRY: &str = "(defn area (w h) (* w h))\n(area 2 3)\n(defn report ()\n  (println (area 4 5)))\n(do (defn twice (n) (* 2 n)))\n";
 const GEOMETRY_DEFINITIONS: &str = "(defn area (w h) (* w h))\n(defn report ()\n  (println (area 4 5)))\n(do (defn twice (n) (* 2 n)))\n";
+const BARE_ARROW_AND_TILDE_FENCE: &str = "(export pick)\n\n(defn pick (x)\n  \"Picks a number.\n\n  (pick   1)\n  =>\n\n  ~~~\n  (pick   2)\n  => 9\n  ~~~\"\n  x)\n";
+const BARE_ARROW_AND_TILDE_FENCE_LAID_OUT: &str = "(export pick)\n\n(defn pick (x)\n  \"Picks a number.\n\n  (pick   1)\n  =>\n\n  ~~~\n  (pick 2)\n  => 9\n  ~~~\"\n  x)\n";
+const BARE_ARROW_AND_TILDE_FENCE_PAGE: &str = "# pick\n\n<a id=\"pick\"></a>\n\n## `pick`\n\n```knave\n(defn pick (x))\n(type pick (where (a) (fn (a) a)))\n```\n\nPicks a number.\n\n(pick   1)\n=>\n\n~~~knave\n(pick 2)\n=> 9\n~~~\n";
 const LONG_TYPED_LENGTHS: &str = "(export combine-lengths)\n\n(defn combine-lengths (first-measured-length second-measured-length)\n  \"Adds two lengths.\n\n  ```\n  (combine-lengths   1   2)\n  ```\"\n  (+ first-measured-length second-measured-length))\n";
 const LONG_TYPED_LENGTHS_PAGE: &str = "# lengths\n\n<a id=\"combine-lengths\"></a>\n\n## `combine-lengths`\n\n```knave\n(defn combine-lengths (first-measured-length second-measured-length))\n(type combine-lengths\n  (where ((a number)) (fn (a a) a)))\n```\n\nAdds two lengths.\n\n```knave\n(combine-lengths 1 2)\n```\n";
 const AREA_OF_A_STRING: &str = "(defn area (w h) (* w h))\n(defn report () (area 2 \"3\"))\n";
@@ -2270,6 +2273,37 @@ fn doc_write_lays_out_the_code_blocks_of_a_page() {
         .compiler(&["doc", "--write"])
         .assert_silent_success();
     assert_eq!(sandbox.contents("doc/lengths.md"), LONG_TYPED_LENGTHS_PAGE);
+}
+
+#[test]
+fn fmt_reads_a_bare_arrow_as_prose_and_a_tilde_block_as_a_fence() {
+    let sandbox = Sandbox::new("fmt_bare_arrow_tilde_fence")
+        .with_file("pick.knv", BARE_ARROW_AND_TILDE_FENCE);
+    sandbox.compiler(&["fmt", "pick.knv"]).assert_exit_code(0);
+    assert_eq!(
+        sandbox.contents("pick.knv"),
+        BARE_ARROW_AND_TILDE_FENCE_LAID_OUT
+    );
+}
+
+#[test]
+fn test_reads_a_bare_arrow_as_prose_and_a_tilde_block_as_a_fence() {
+    let sandbox = Sandbox::new("test_bare_arrow_tilde_fence")
+        .with_file("pick.knv", BARE_ARROW_AND_TILDE_FENCE);
+    sandbox.compiler(&["test", "pick.knv"]).assert_exit_code(0);
+}
+
+#[test]
+fn doc_write_reads_a_bare_arrow_as_prose_and_a_tilde_block_as_a_fence() {
+    let sandbox = Sandbox::with_documented_project("doc_write_bare_arrow_tilde_fence")
+        .with_file("src/pick.knv", BARE_ARROW_AND_TILDE_FENCE);
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.contents("doc/pick.md"),
+        BARE_ARROW_AND_TILDE_FENCE_PAGE
+    );
 }
 
 #[test]

@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::doc_write::DocWriteCommand;
+use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
@@ -31,7 +32,7 @@ impl NewCommand {
     pub fn new(name: String) -> Self {
         Self {
             name,
-            formatter: SourceFormatter::default(),
+            formatter: EmbeddedPrelude::source_formatter(),
         }
     }
 

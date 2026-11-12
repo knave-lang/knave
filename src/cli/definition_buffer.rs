@@ -150,11 +150,17 @@ impl DefinitionBuffer {
         };
         let documents =
             DroppedDocuments::left_behind(source.clone(), &earlier.terms, &entered.terms);
-        match documents {
-            Some(drop) => Some(Box::new(drop) as Box<dyn SetAsideDrop>),
-            None => DroppedDefinitions::left_behind(source, &earlier.terms, &entered.terms)
-                .map(|drop| Box::new(drop) as Box<dyn SetAsideDrop>),
-        }
+        Self::boxed(documents).or_else(|| {
+            Self::boxed(DroppedDefinitions::left_behind(
+                source,
+                &earlier.terms,
+                &entered.terms,
+            ))
+        })
+    }
+
+    fn boxed(drop: Option<impl SetAsideDrop + 'static>) -> Option<Box<dyn SetAsideDrop>> {
+        drop.map(|drop| Box::new(drop) as Box<dyn SetAsideDrop>)
     }
 }
 

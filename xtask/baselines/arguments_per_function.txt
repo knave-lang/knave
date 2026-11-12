@@ -257,7 +257,6 @@ src/types/infer.rs::TypeChecker::request_parameter_call_label 4
 src/types/infer.rs::TypeChecker::require_every_field 4
 src/types/infer.rs::TypeChecker::rust_template 4
 src/types/infer.rs::TypeChecker::selfless_method_call 4
-src/types/infer.rs::TypeChecker::short_variant_pattern 6
 src/types/infer.rs::TypeChecker::struct_pattern 5
 src/types/infer.rs::TypeChecker::synthetic_call_with_value 6
 src/types/infer/labeled_variant.rs::TypeChecker::infer_labeled_variant 4

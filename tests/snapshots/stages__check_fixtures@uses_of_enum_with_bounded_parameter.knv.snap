@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/uses_of_enum_with_bounded_parameter.knv
+---
+error[L0417]: the type parameter `a` cannot require traits here
+ --> check/uses_of_enum_with_bounded_parameter.knv:5:17
+  |
+5 | (defenum (reply (a display))
+  |                 ^^^^^^^^^^^ traits given here
+  |
+  = help: write `a` alone, and require the traits in the `where` of each function that needs them

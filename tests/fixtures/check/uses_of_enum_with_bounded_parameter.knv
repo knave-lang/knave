@@ -1,0 +1,24 @@
+(defenum answer
+  (yes i64)
+  never)
+
+(defenum (reply (a display))
+  (yes a)
+  (sized :count i64)
+  (held i64)
+  no)
+
+(defn short (r)
+  (match r ((yes n) n) (no 0)))
+
+(defn qualified (r)
+  (match r ((reply/yes n) n) (_ 0)))
+
+(defn build () (reply/sized :count 2))
+
+(defn wrap (text)
+  (ok (the (reply i64)
+           (reply/held (try (parse text))))))
+
+(defn main ()
+  (let (r (reply/yes 1)) (println "x")))

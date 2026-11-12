@@ -15,6 +15,7 @@ use super::declared_types::DeclaredTypes;
 use super::derive_blockers::DeriveBlockers;
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
+use super::field_parameters::FieldParameters;
 use super::graph::{Definition, DefinitionGraph, DependencyGraph};
 use super::impl_overlap::ImplementorOverlap;
 use super::infer::OpenCollections;
@@ -421,10 +422,14 @@ impl TypeChecker {
     fn collect_type_item(&mut self, module: ModuleId, item: &Item) -> Result<(), Diagnostic> {
         let kind = &item.kind;
         if let ItemKind::Struct(binding, params, fields) = kind {
-            return self.collect_struct(*binding, params, fields);
+            let problem = self.collect_struct(*binding, params, fields)?;
+            self.diagnostics.extend(problem.into_iter().collect());
+            return Ok(());
         }
         if let ItemKind::Enum(binding, params, variants, rust, definer) = kind {
-            return self.collect_enum(*binding, params, variants, rust, definer);
+            let problem = self.collect_enum(*binding, params, variants, rust, definer)?;
+            self.diagnostics.extend(problem.into_iter().collect());
+            return Ok(());
         }
         if let ItemKind::RustTrait(declaration) = kind {
             return self.collect_rust_trait(declaration);
@@ -1583,7 +1588,7 @@ impl TypeChecker {
         binding: BindingId,
         binders: &[TypeBinder],
         fields: &[(crate::core::FieldLabel, TypeExpr)],
-    ) -> Result<(), Diagnostic> {
+    ) -> Result<Option<Diagnostic>, Diagnostic> {
         let params = self.struct_params(binders)?;
         let lifetimes = Self::lifetime_binders(binders);
         let scope: FxHashMap<BindingId, GenericId> = binders
@@ -1593,7 +1598,7 @@ impl TypeChecker {
             .map(|(binder, param)| (binder.variable, param.id))
             .collect();
         let (lowered, field_spans) = self.lower_fields(fields, &scope)?;
-        let parameters_used = Self::check_parameters_used(binders, &params, &lowered);
+        let problem = FieldParameters::new(binders, &params).unused_in(&lowered);
         self.declarations.types.structs.add(
             binding,
             StructDefinition {
@@ -1611,7 +1616,7 @@ impl TypeChecker {
                 written_derive: None,
             },
         );
-        parameters_used
+        Ok(problem)
     }
 
     fn collect_enum(
@@ -1621,7 +1626,7 @@ impl TypeChecker {
         variants: &[VariantDeclaration],
         rust: &Option<crate::core::EnumRust>,
         definer: &Option<crate::core::EnumDefiner>,
-    ) -> Result<(), Diagnostic> {
+    ) -> Result<Option<Diagnostic>, Diagnostic> {
         let params = self.struct_params(binders)?;
         let lifetimes = Self::lifetime_binders(binders);
         let scope: FxHashMap<BindingId, GenericId> = binders
@@ -1644,7 +1649,7 @@ impl TypeChecker {
                 span: variant.span,
             });
         }
-        let parameters_used = self.check_enum_parameters_used(binding, binders, &params, variants);
+        let problem = self.check_enum_parameters_used(binding, binders, &params, variants);
         if let Some(rust) = rust {
             self.declarations.types.rust_types.add(
                 binding,
@@ -1670,7 +1675,7 @@ impl TypeChecker {
                 written_derive: None,
             },
         );
-        parameters_used
+        Ok(problem)
     }
 
     fn lower_variant_payload(
@@ -1715,7 +1720,7 @@ impl TypeChecker {
         binders: &[TypeBinder],
         params: &[GenericParam],
         variants: &[VariantDeclaration],
-    ) -> Result<(), Diagnostic> {
+    ) -> Option<Diagnostic> {
         let enum_name = self.bindings.get(enum_binding).name();
         let problem = binders
             .iter()
@@ -1739,7 +1744,7 @@ impl TypeChecker {
                     )),
                 }
             });
-        problem.map_or(Ok(()), Err)
+        problem
     }
 
     fn lower_fields(
@@ -1888,29 +1893,6 @@ impl TypeChecker {
         match binders.iter().find(|binder| !binder.bounds.is_empty()) {
             Some(binder) => Err(TypeProblems::bounded_type_parameter(
                 self.bindings.get(binder.variable).name(),
-                binder.span,
-            )),
-            None => Ok(()),
-        }
-    }
-
-    fn check_parameters_used(
-        binders: &[TypeBinder],
-        params: &[GenericParam],
-        fields: &[(std::rc::Rc<str>, Type)],
-    ) -> Result<(), Diagnostic> {
-        let unused = binders
-            .iter()
-            .filter(|binder| !binder.lifetime)
-            .zip(params)
-            .find(|(_, param)| {
-                !fields
-                    .iter()
-                    .any(|(_, field_type)| field_type.mentions(param.id))
-            });
-        match unused {
-            Some((binder, param)) => Err(TypeProblems::unused_type_parameter(
-                &param.name,
                 binder.span,
             )),
             None => Ok(()),

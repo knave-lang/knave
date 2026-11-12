@@ -3,14 +3,14 @@ use std::rc::Rc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::display::TypeDisplay;
-use super::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload};
+use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
 use super::parameter_modes::ParameterModes;
 use super::template_clauses::TemplateClauses;
 use super::templates::TemplateBorrows;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
 use super::typed_trait_method::TypedTraitMethod;
 use super::unifier::LiteralKind;
-use super::{Declarations, StructuralUses};
+use super::{Declarations, EnumTable, StructuralUses};
 use crate::core::{
     BindingArena, BindingId, ClosureKind, DefinitionForm, FieldLabel, FieldSpelling, KernelForm,
     Literal, ModuleId, ModulePath, ReferenceKind, RustTemplate,

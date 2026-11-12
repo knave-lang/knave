@@ -1,6 +1,6 @@
 use super::witness::Witness;
 use crate::core::{BindingArena, BindingId};
-use crate::types::enums::EnumTable;
+use crate::types::enum_table::EnumTable;
 
 pub(in crate::types) struct WitnessText<'a> {
     bindings: &'a BindingArena,
@@ -56,7 +56,8 @@ mod tests {
     use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleId};
     use crate::source::{SourceId, Span};
     use crate::types::coverage::witness::Witness;
-    use crate::types::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload};
+    use crate::types::enum_table::EnumTable;
+    use crate::types::enums::{EnumDefinition, VariantDefinition, VariantPayload};
 
     struct TextFixture {
         bindings: BindingArena,

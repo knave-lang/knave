@@ -4,11 +4,8 @@ use crate::core::{BindingId, Expr, FieldLabel};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::checker::TypeChecker;
-use crate::types::enums::VariantPayload;
 use crate::types::problems::{MismatchContext, TypeProblems};
 use crate::types::{FieldOrder, Type, TypedExpr, TypedExprKind};
-
-use super::VariantSite;
 
 impl TypeChecker {
     pub(super) fn infer_labeled_variant(
@@ -20,7 +17,23 @@ impl TypeChecker {
     ) -> Result<TypedExpr, Diagnostic> {
         let variant_name = self.bindings.get(binding).name().to_string();
         let site = self.variant_site(binding, expected);
-        let declared = self.declared_fields(&site, &variant_name, fields)?;
+        let labels = self
+            .declarations
+            .types
+            .enums
+            .variant_shape(site.info)
+            .field_labels(fields)
+            .ok_or_else(|| {
+                TypeProblems::label_on_positional_payload(
+                    &variant_name,
+                    &fields[0].0,
+                    site.info.arity,
+                )
+            })?;
+        let declared: Vec<(Rc<str>, Type)> = labels
+            .into_iter()
+            .zip(site.payload.iter().cloned())
+            .collect();
         let mut typed = Vec::new();
         let mut order = Vec::new();
         for (given, (_, value)) in fields.iter().enumerate() {
@@ -35,26 +48,5 @@ impl TypeChecker {
             ty: Type::Named(site.info.owner, site.type_arguments),
             span,
         })
-    }
-
-    fn declared_fields(
-        &self,
-        site: &VariantSite,
-        variant_name: &str,
-        given: &[(FieldLabel, Expr)],
-    ) -> Result<Vec<(Rc<str>, Type)>, Diagnostic> {
-        let given_labels = given.iter().map(|(label, _)| label.name.clone());
-        let Some(definition) = self.declarations.types.enums.get(site.info.owner) else {
-            return Ok(given_labels.zip(site.payload.iter().cloned()).collect());
-        };
-        let VariantPayload::Named(fields) = &definition.variants[site.info.index].payload else {
-            return Err(TypeProblems::label_on_positional_payload(
-                variant_name,
-                &given[0].0,
-                site.info.arity,
-            ));
-        };
-        let labels = fields.iter().map(|(label, _)| label.clone());
-        Ok(labels.zip(site.payload.iter().cloned()).collect())
     }
 }

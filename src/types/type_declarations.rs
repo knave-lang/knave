@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use super::boxed_payload::BoxedPayload;
-use super::enums::EnumTable;
+use super::enum_table::EnumTable;
 use super::rust_types::RustTypeTable;
 use super::structs::StructTable;
 use super::ty::Type;

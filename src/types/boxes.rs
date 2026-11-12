@@ -3,7 +3,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use rustc_hash::FxHashMap;
 
 use super::boxed_payload::BoxedPayload;
-use super::enums::{EnumTable, VariantPayload};
+use super::enum_table::EnumTable;
+use super::enums::VariantPayload;
 use super::payload_position::PayloadPosition;
 use super::structs::StructTable;
 use super::ty::{GenericId, GenericParam, Type};

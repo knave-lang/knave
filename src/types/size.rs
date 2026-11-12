@@ -1,6 +1,6 @@
 use std::mem::{align_of, size_of};
 
-use super::enums::EnumTable;
+use super::enum_table::EnumTable;
 use super::structs::StructTable;
 use super::ty::Type;
 use crate::core::{BindingId, PrimitiveType};
@@ -164,7 +164,8 @@ mod tests {
     use super::TypeSizes;
     use crate::core::{BindingArena, BindingInfo, BindingKind, ModuleId, PrimitiveType};
     use crate::types::Type;
-    use crate::types::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload};
+    use crate::types::enum_table::EnumTable;
+    use crate::types::enums::{EnumDefinition, VariantDefinition, VariantPayload};
     use crate::types::structs::{StructDefinition, StructTable};
 
     struct Sizes {

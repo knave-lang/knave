@@ -22,11 +22,22 @@ impl<'a> VariantPayloads<'a> {
     }
 
     pub(super) fn visible(&self, owner: BindingId, index: usize, arguments: &[Type]) -> Vec<Type> {
-        self.types
+        let stored = self
+            .types
             .enums
             .get(owner)
             .and_then(|definition| definition.instantiated_payload(index, arguments))
-            .unwrap_or_default()
+            .unwrap_or_default();
+        self.seen_by_patterns(owner, index, stored)
+    }
+
+    pub(super) fn seen_by_patterns(
+        &self,
+        owner: BindingId,
+        index: usize,
+        stored: Vec<Type>,
+    ) -> Vec<Type> {
+        stored
             .into_iter()
             .enumerate()
             .map(|(payload, stored)| {

@@ -25,6 +25,13 @@ pub struct VariantDefinition {
 }
 
 impl VariantDefinition {
+    pub fn field_labels(&self) -> Option<Vec<Rc<str>>> {
+        let VariantPayload::Named(fields) = &self.payload else {
+            return None;
+        };
+        Some(fields.iter().map(|(label, _)| label.clone()).collect())
+    }
+
     pub fn pattern_fields(&self) -> PatternFields<'_> {
         match &self.payload {
             VariantPayload::None => PatternFields::Positional(0),
@@ -158,31 +165,6 @@ impl EnumDefinition {
             .map(|param| param.id)
             .zip(arguments.iter().cloned())
             .collect()
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct EnumTable {
-    enums: FxHashMap<BindingId, EnumDefinition>,
-}
-
-impl EnumTable {
-    pub fn add(&mut self, binding: BindingId, definition: EnumDefinition) {
-        self.enums.insert(binding, definition);
-    }
-
-    pub fn get(&self, binding: BindingId) -> Option<&EnumDefinition> {
-        self.enums.get(&binding)
-    }
-
-    pub fn get_mut(&mut self, binding: BindingId) -> Option<&mut EnumDefinition> {
-        self.enums.get_mut(&binding)
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (BindingId, &EnumDefinition)> {
-        self.enums
-            .iter()
-            .map(|(binding, definition)| (*binding, definition))
     }
 }
 

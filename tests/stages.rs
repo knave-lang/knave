@@ -16,6 +16,7 @@ const BORROW_ACROSS_MOVE_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (loc
 const SECOND_TRAIT_PATH_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n(deftrait printable (rust \"std::fmt::Display\") i64)\n\n(defn main ()\n  (println 1))\n```\n";
 const TITLE_QUOTING_EXPLANATION: &str = "The compiler says cannot find `distnce` in this scope.\n\n## Erroneous example\n\n```lisp\n(defn main ()\n  (println distnce))\n```\n";
 const WARNING_TITLE_QUOTING_EXPLANATION: &str = "The compiler says `printable` binds a Rust path that `display` already binds.\n\n## Erroneous example\n\n```lisp\n(deftrait printable (rust \"std::fmt::Display\") i64)\n\n(defn main ()\n  (println 1))\n```\n";
+const MISSING_MAIN_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n(defn helper () 1)\n```\n";
 const FAILING_EXIT_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local empty (the (vec i64) (vec)))\n  (println (at empty 0)))\n```\n";
 
 #[test]
@@ -294,6 +295,15 @@ fn an_explanation_example_that_only_warns_reports_its_warning_code() {
     assert_eq!(
         explanation.erroneous_first_codes(),
         vec![Some("L0217".to_string())]
+    );
+}
+
+#[test]
+fn an_explanation_example_that_only_emit_rejects_reports_the_emit_code() {
+    let explanation = ExplanationExamples::new("L0601", MISSING_MAIN_EXAMPLE);
+    assert_eq!(
+        explanation.erroneous_first_codes(),
+        vec![Some("L0601".to_string())]
     );
 }
 

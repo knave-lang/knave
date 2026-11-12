@@ -2,6 +2,7 @@ use super::block::Block;
 use super::chunk_layout::ChunkLayout;
 use super::code_layout::CodeLayout;
 use super::import_group::ImportGroup;
+use super::import_join::ImportJoin;
 use super::layout::{LaidOut, LayoutEngine};
 use super::shapes::ShapeCatalog;
 use super::syntax_tree::{Comment, Entry, SyntaxTree};
@@ -61,16 +62,16 @@ impl<'s> CodeChunk<'s> {
         let block = self.block_of(entry);
         let group = ImportGroup::of(entry, &block);
         let comments_first = !entry.leading_comments.is_empty();
-        let joins_group = group.is_some() && group == self.previous_group && !comments_first;
-        let written_blank = entry
-            .leading_comments
-            .first()
-            .map_or(entry.blank_before_node, |comment| comment.blank_before);
+        let join = if group.is_some() && group == self.previous_group && !comments_first {
+            ImportJoin::JoinsGroup
+        } else {
+            ImportJoin::Apart
+        };
         if position > 0
             && self
                 .layout
                 .spacing
-                .breaks_before_form(written_blank, joins_group)
+                .breaks_before_form(entry.gap_before(), join)
         {
             self.lines.push(String::new());
         }
@@ -108,7 +109,7 @@ impl<'s> CodeChunk<'s> {
                 0 => self
                     .layout
                     .spacing
-                    .breaks_before_form(comment.blank_before, false),
+                    .breaks_before_form(comment.gap_before(), ImportJoin::Apart),
                 _ => comment.blank_before,
             };
             if breaks && !self.lines.is_empty() {

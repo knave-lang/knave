@@ -4,7 +4,7 @@ use std::ops::Range;
 use rustc_hash::FxHashMap;
 
 use super::enclosing_index::EnclosingIndex;
-use super::macro_call::MacroOrigin;
+use super::macro_origin::MacroOrigin;
 use super::saved_index::SavedWords;
 use crate::source::{SourceId, Span};
 
@@ -246,7 +246,7 @@ impl SavedOrigins {
 #[cfg(test)]
 mod tests {
     use super::{MacroOrigins, OriginTables, SavedOrigins};
-    use crate::expand::macro_call::MacroOrigin;
+    use crate::expand::macro_origin::MacroOrigin;
     use crate::source::{SourceId, Span};
 
     struct OriginsFixture;

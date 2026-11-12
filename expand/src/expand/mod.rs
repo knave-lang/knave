@@ -23,6 +23,7 @@ mod input_terms;
 mod introduced;
 mod macro_call;
 mod macro_function;
+mod macro_origin;
 mod macro_origins;
 #[cfg(test)]
 mod macro_value_limits;
@@ -91,8 +92,8 @@ use evaluated_forms::EvaluatedForms;
 pub use generated_entry::GeneratedEntry;
 use globals::{GlobalTable, LoweredGlobals};
 pub use input_terms::InputTerms;
-pub use macro_call::MacroOrigin;
 use macro_call::MacroTable;
+pub use macro_origin::MacroOrigin;
 pub use macro_origins::MacroOrigins;
 use module_notes::{ModuleNotes, NotesCheckpoint};
 pub use module_survey::ModuleSurvey;

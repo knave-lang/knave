@@ -325,7 +325,7 @@ mod tests {
     use super::Expander;
     use crate::core::{BindingInfo, BindingKind, Builtin};
     use crate::diagnostic::{Diagnostic, DiagnosticCode};
-    use crate::expand::macro_call::MacroOrigin;
+    use crate::expand::macro_origin::MacroOrigin;
     use crate::interpret::{GlobalValues, Host, Interpreter, SourceQueries, StepBudget, Value};
     use crate::modules::ModuleSources;
     use crate::reader::{Form, FormKind, Symbol};

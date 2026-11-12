@@ -106,9 +106,7 @@ impl ShapeCatalog {
     }
 
     pub fn docstring_entry(&self, list: &ListNode) -> Option<usize> {
-        let position = self.docstring_position(list.head_name()?, list.entries.len())?;
-        let is_string = list.entries.get(position)?.node.as_atom()?.is_string();
-        is_string.then_some(position)
+        self.of(list.head_name()?)?.docstring_entry(list)
     }
 
     pub fn docstring_position(&self, form_name: &str, item_count: usize) -> Option<usize> {
@@ -130,28 +128,14 @@ impl Shape {
         self.one_line.allows(self.header_length, item_count)
     }
 
+    pub fn docstring_entry(self, list: &ListNode) -> Option<usize> {
+        let position = self.docstring_position(list.entries.len())?;
+        let is_string = list.entries.get(position)?.node.as_atom()?.is_string();
+        is_string.then_some(position)
+    }
+
     fn docstring_position(self, item_count: usize) -> Option<usize> {
         self.docstring.position(self.header_length, item_count)
-    }
-}
-
-#[cfg(test)]
-pub struct ShapeCatalogFixture;
-
-#[cfg(test)]
-impl ShapeCatalogFixture {
-    pub fn stated(text: &str) -> ShapeCatalog {
-        let mut sources = crate::source::SourceMap::default();
-        let source = sources.add("shapes", text);
-        let forms = crate::reader::Reader::new(sources.file(source))
-            .read()
-            .unwrap_or_else(|_| panic!("the shape statements read"));
-        let mut shapes = ShapeCatalog::default();
-        forms
-            .iter()
-            .filter_map(ShapeStatement::of)
-            .for_each(|statement| shapes.add(&statement));
-        shapes
     }
 }
 

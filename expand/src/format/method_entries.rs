@@ -3,7 +3,7 @@ use super::shapes::{Shape, ShapeCatalog};
 use super::syntax_tree::{Entry, ListNode};
 use super::written_gap::WrittenGap;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct MethodEntries {
     methods: Vec<usize>,
     separated: Vec<usize>,
@@ -67,7 +67,8 @@ impl MethodEntries {
 #[cfg(test)]
 mod tests {
     use super::MethodEntries;
-    use crate::format::shapes::{ShapeCatalog, ShapeCatalogFixture};
+    use crate::format::shape_catalog_fixture::ShapeCatalogFixture;
+    use crate::format::shapes::ShapeCatalog;
     use crate::format::syntax_tree::SyntaxTree;
 
     struct MethodsFixture {

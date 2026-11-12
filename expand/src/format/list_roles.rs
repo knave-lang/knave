@@ -2,6 +2,7 @@ use rustc_hash::FxHashMap;
 
 use super::list_plan::ListPlan;
 use super::list_role::ListRole;
+use super::nested_lists::NestedLists;
 use super::shapes::{Shape, ShapeCatalog};
 use super::syntax_tree::ListNode;
 
@@ -12,28 +13,38 @@ pub struct ListRoles {
 
 impl ListRoles {
     pub fn plan(&mut self, list: &ListNode, shapes: &ShapeCatalog) -> ListPlan {
-        let plan = self.fresh_plan(list, shapes);
-        self.mark_nested_lists(list, &plan);
-        plan
+        match self.roles.get(&list.id).copied() {
+            Some(ListRole::BindingList) => ListPlan::binding_list(list),
+            Some(ListRole::Method) => self.shaped_plan(list, Some(Shape::METHOD), shapes),
+            Some(ListRole::Arm) | None => {
+                let shape = list.head_name().and_then(|name| shapes.of(name));
+                self.shaped_plan(list, shape, shapes)
+            }
+        }
     }
 
     pub fn is_arm(&self, list: &ListNode) -> bool {
         self.roles.get(&list.id) == Some(&ListRole::Arm)
     }
 
-    fn fresh_plan(&self, list: &ListNode, shapes: &ShapeCatalog) -> ListPlan {
-        match self.roles.get(&list.id) {
-            Some(ListRole::BindingList) => ListPlan::binding_list(list),
-            Some(ListRole::Method) => ListPlan::new(list, Some(Shape::METHOD), shapes),
-            Some(ListRole::Arm) | None => {
-                let shape = list.head_name().and_then(|name| shapes.of(name));
-                ListPlan::new(list, shape, shapes)
-            }
-        }
+    fn shaped_plan(
+        &mut self,
+        list: &ListNode,
+        shape: Option<Shape>,
+        shapes: &ShapeCatalog,
+    ) -> ListPlan {
+        let nested = NestedLists::of(list, shape, shapes);
+        let plan = ListPlan::new(list, shape, nested.clone());
+        self.mark_nested_lists(list, nested.roles(&plan.units));
+        plan
     }
 
-    fn mark_nested_lists(&mut self, list: &ListNode, plan: &ListPlan) {
-        for (entry, role) in plan.nested_roles() {
+    fn mark_nested_lists(
+        &mut self,
+        list: &ListNode,
+        roles: impl Iterator<Item = (usize, ListRole)>,
+    ) {
+        for (entry, role) in roles {
             if let Some(nested) = list
                 .entries
                 .get(entry)
@@ -48,7 +59,8 @@ impl ListRoles {
 #[cfg(test)]
 mod tests {
     use super::ListRoles;
-    use crate::format::shapes::{ShapeCatalog, ShapeCatalogFixture};
+    use crate::format::shape_catalog_fixture::ShapeCatalogFixture;
+    use crate::format::shapes::ShapeCatalog;
     use crate::format::syntax_tree::{ListNode, SyntaxTree};
 
     struct RolesFixture {

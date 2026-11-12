@@ -1,7 +1,6 @@
-use super::docstring_code::DocstringCode;
-use super::docstring_lines::DocstringLines;
-use super::docstring_memo::{DocstringMemo, LaidOutToken};
+use super::docstring_memo::DocstringMemo;
 use super::format_rules::FormatRules;
+use super::laid_out_token::LaidOutToken;
 use super::syntax_tree::{Atom, Entry, ListNode, SyntaxNode, SyntaxTree};
 use super::unreadable_span::UnreadableSpan;
 use crate::stack::DeepRecursion;
@@ -46,28 +45,10 @@ impl<'s, 'm> TreeDocstrings<'s, 'm> {
         let rules = self.rules;
         let laid_out = self
             .memo
-            .laid_out(&atom.text, || Self::lay_out_token(rules, &atom.text));
+            .laid_out(&atom.text, || LaidOutToken::of(rules, &atom.text));
         for span in &laid_out.unreadable {
             self.unreadable.push(span.after(atom.start));
         }
         atom.text = laid_out.text.clone();
-    }
-
-    fn lay_out_token(rules: FormatRules<'_>, token: &str) -> LaidOutToken {
-        let Some(lines) = DocstringLines::of_token(token) else {
-            return LaidOutToken {
-                text: token.to_string(),
-                unreadable: Vec::new(),
-            };
-        };
-        let laid_out = DocstringCode::of_docstrings(rules).lay_out(lines.lines());
-        LaidOutToken {
-            text: DocstringLines::token_of(&laid_out.lines),
-            unreadable: laid_out
-                .unreadable
-                .iter()
-                .map(|code| code.spanning(lines.written_range(code.line)))
-                .collect(),
-        }
     }
 }

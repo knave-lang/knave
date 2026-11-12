@@ -1,16 +1,10 @@
 use rustc_hash::FxHashMap;
 
-use super::unreadable_span::UnreadableSpan;
+use super::laid_out_token::LaidOutToken;
 
 #[derive(Default)]
 pub struct DocstringMemo {
     tokens: FxHashMap<String, LaidOutToken>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LaidOutToken {
-    pub text: String,
-    pub unreadable: Vec<UnreadableSpan>,
 }
 
 impl DocstringMemo {

@@ -15,9 +15,9 @@ use crate::core::{BindingArena, BindingId, FieldLabel, ReferenceKind};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::{
-    Borrow, ClosureKind, CopyRules, FieldPlace, Pipelines, StructTable, TemplateBorrows, Type,
-    TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedDefinition,
-    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedModule, TypedProgram, TypedStructExpr,
+    Borrow, ClosureKind, CopyRules, FieldPlace, Pipelines, TemplateBorrows, Type, TypedArgument,
+    TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedDefinition, TypedExpr,
+    TypedExprKind, TypedLambda, TypedLeaf, TypedModule, TypedProgram, TypedStructExpr,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -110,17 +110,14 @@ pub struct KindReport {
 }
 
 pub struct KindSources<'a> {
-    pub traits: &'a crate::types::TraitTable,
+    pub declarations: &'a crate::types::Declarations,
     pub generics: &'a FxHashMap<crate::types::GenericId, crate::types::GenericParam>,
-    pub structs: &'a StructTable,
-    pub enums: &'a crate::types::EnumTable,
     pub bindings: &'a BindingArena,
     pub template_borrows: &'a TemplateBorrows,
     pub function_parameters: FxHashMap<BindingId, Vec<BindingId>>,
     pub rust_parameter_kinds: FxHashMap<BindingId, Vec<ClosureKind>>,
     pub written_parameter_kinds: FxHashMap<BindingId, ClosureKind>,
     pub borrowing_lambdas: &'a FxHashMap<BindingId, FxHashSet<BindingId>>,
-    pub pipelines: Pipelines<'a>,
 }
 
 pub struct ClosureKinds<'a> {
@@ -213,13 +210,8 @@ impl<'a> ClosureKinds<'a> {
 
     pub fn new(sources: KindSources<'a>) -> Self {
         Self {
-            copy: CopyRules::new(
-                sources.traits,
-                sources.generics,
-                sources.structs,
-                sources.enums,
-            ),
-            structs: sources.structs,
+            copy: CopyRules::new(sources.declarations, sources.generics),
+            structs: sources.declarations.types.structs(),
             bindings: sources.bindings,
             template_borrows: sources.template_borrows,
             parameter_kinds: FxHashMap::default(),
@@ -228,7 +220,7 @@ impl<'a> ClosureKinds<'a> {
             value_parameters: FxHashMap::default(),
             returned_closures: FxHashMap::default(),
             borrowing_lambdas: sources.borrowing_lambdas,
-            pipelines: sources.pipelines,
+            pipelines: Pipelines::new(sources.declarations.types.rust_types()),
             function_parameters: sources.function_parameters,
             pass_edges: FxHashMap::default(),
             cycle_peers: FxHashMap::default(),
@@ -1715,7 +1707,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::rc::Rc;
 
-    use super::{CaptureReport, ClosureKinds, KindSources, Pipelines};
+    use super::{CaptureReport, ClosureKinds, KindSources};
     use crate::core::BindingId;
     use crate::ownership::lambda_address::LambdaAddress;
     use crate::ownership::lambda_source::LambdaSource;
@@ -1744,17 +1736,14 @@ mod tests {
         fn kinds(&self) -> ClosureKinds<'_> {
             let program = self.source.program();
             ClosureKinds::new(KindSources {
-                traits: program.declarations.traits.table(),
+                declarations: &program.declarations,
                 generics: &program.generics,
-                structs: program.declarations.types.structs(),
-                enums: program.declarations.types.enums(),
                 bindings: &program.bindings,
                 template_borrows: &program.template_borrows,
                 function_parameters: ClosureKinds::function_parameters(program),
                 rust_parameter_kinds: ClosureKinds::rust_parameter_kinds(program),
                 written_parameter_kinds: ClosureKinds::written_parameter_kinds(program),
                 borrowing_lambdas: &program.borrowing_lambdas,
-                pipelines: Pipelines::new(program.declarations.types.rust_types()),
             })
         }
 

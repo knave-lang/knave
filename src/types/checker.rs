@@ -650,12 +650,7 @@ impl TypeChecker {
     }
 
     pub(super) fn copy_rules(&self) -> super::copy::CopyRules<'_> {
-        super::copy::CopyRules::new(
-            &self.declarations.traits.table,
-            &self.generics,
-            &self.declarations.types.structs,
-            &self.declarations.types.enums,
-        )
+        super::copy::CopyRules::new(&self.declarations, &self.generics)
     }
 
     pub(super) fn is_box(&self, ty: &Type) -> bool {

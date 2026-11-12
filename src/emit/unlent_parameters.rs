@@ -86,12 +86,7 @@ impl<'a> UnlentParameters<'a> {
     }
 
     fn copy_rules(&self) -> CopyRules<'_> {
-        CopyRules::new(
-            self.program.declarations.traits.table(),
-            &self.program.generics,
-            self.program.declarations.types.structs(),
-            self.program.declarations.types.enums(),
-        )
+        CopyRules::new(&self.program.declarations, &self.program.generics)
     }
 
     fn parameter(&self, binding: BindingId) -> &TypedBinder {

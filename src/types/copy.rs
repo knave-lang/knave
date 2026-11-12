@@ -1,8 +1,7 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::enums::EnumTable;
+use super::declarations::Declarations;
 use super::size::TypeSizes;
-use super::structs::StructTable;
 use super::traits::TraitTable;
 use super::ty::{Bound, GenericId, GenericParam, Type};
 use crate::core::{BindingArena, BindingId, CopyTrait};
@@ -39,15 +38,14 @@ pub struct CopyRules<'a> {
 
 impl<'a> CopyRules<'a> {
     pub fn new(
-        traits: &'a TraitTable,
+        declarations: &'a Declarations,
         generics: &'a FxHashMap<GenericId, GenericParam>,
-        structs: &'a StructTable,
-        enums: &'a EnumTable,
     ) -> Self {
+        let traits = &declarations.traits.table;
         Self {
             traits,
             generics,
-            sizes: TypeSizes::new(structs, enums),
+            sizes: TypeSizes::new(&declarations.types.structs, &declarations.types.enums),
             copy_traits: traits.with_paths(&[CopyTrait::PATH]),
         }
     }
@@ -109,14 +107,11 @@ mod tests {
     use super::CopyRules;
     use crate::core::{BindingArena, BindingInfo, BindingKind, ModuleId, PrimitiveType};
     use crate::types::Type;
-    use crate::types::structs::StructTable;
     use crate::types::traits::{Implementor, RustTrait, TraitTable};
     use crate::types::ty::Scheme;
 
     struct CopyTraitFixture {
-        traits: TraitTable,
-        structs: StructTable,
-        enums: crate::types::EnumTable,
+        declarations: crate::types::Declarations,
         generics: FxHashMap<crate::types::GenericId, crate::types::GenericParam>,
         bound: crate::core::BindingId,
     }
@@ -144,16 +139,14 @@ mod tests {
                 },
             );
             Self {
-                traits,
-                structs: StructTable::default(),
-                enums: crate::types::EnumTable::default(),
+                declarations: crate::types::Declarations::with_traits(traits),
                 generics: FxHashMap::default(),
                 bound,
             }
         }
 
         fn rules(&self) -> CopyRules<'_> {
-            CopyRules::new(&self.traits, &self.generics, &self.structs, &self.enums)
+            CopyRules::new(&self.declarations, &self.generics)
         }
     }
 

@@ -42,7 +42,7 @@ after the fence ran
 <record>(test "doc_examples/doc:bare-local" "Reads a `local` back by its bare name.")
 <record>(ok)
 <record>(test "doc_examples/doc:wrong-bare-name" "Fails on a bare name whose result is wrong.")
-<record>(fail-equal "doc_examples.knv:236:3" "answer => 7" "42" "7")
+<record>(fail-equal "doc_examples.knv:240:3" "answer => 7" "42" "7")
 <record>(test "doc_examples/doc:doc_examples" "Module docstrings run too.")
 <record>(ok)
 <record>(done)

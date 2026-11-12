@@ -71,11 +71,12 @@
   (exit 17)
   => 7
 
-  ```
+  ```text
   (exit 1)
 
   (exit 2)
   => 7
+
   ```"
   x)
 
@@ -99,9 +100,10 @@
 (defn multi-line (x)
   "Reads a form and a result over several lines.
 
-  (multi-line 3)
-  => (+ 1
-        2)"
+  (multi-line (+ 100000000000 200000000000 300000000000
+                 400000000000 500000000000))
+  => (+ 1000000000000
+        500000000000)"
   x)
 
 (defn multi-line-unchecked (x)
@@ -143,9 +145,11 @@
 (defn fenced-blocks (x)
   "Follows Markdown's fences.
 
-  ~~~
+  ~~~text
+
   (exit 11)
   => 7
+
   ~~~
 
   ````

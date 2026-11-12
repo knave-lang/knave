@@ -16,7 +16,9 @@ impl Diagnostics {
     }
 
     pub fn has_errors(&self) -> bool {
-        self.items.iter().any(Diagnostic::is_error)
+        self.items
+            .iter()
+            .any(|diagnostic| diagnostic.severity().is_error())
     }
 
     pub fn is_empty(&self) -> bool {

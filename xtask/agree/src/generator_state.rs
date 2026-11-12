@@ -55,7 +55,7 @@ impl GeneratorState {
         }
         self.locals.open();
         if let Some(variable) = loop_variable {
-            self.locals.bind(variable, ValueKind::Number);
+            self.locals.bind(variable, ValueKind::NUMBER);
         }
         let written = write(self);
         self.locals.close();
@@ -70,8 +70,13 @@ impl GeneratorState {
     }
 
     pub fn closing_main(self, mut lines: Vec<String>) -> GeneratedMain {
-        for numbers in self.locals.visible(ValueKind::Numbers) {
-            lines.push(format!("(println (len {numbers}))"));
+        for kind in ValueKind::ALL {
+            lines.extend(
+                self.locals
+                    .visible(kind)
+                    .into_iter()
+                    .filter_map(|name| kind.print_of(name)),
+            );
         }
         GeneratedMain::new(lines, self.helpers.into_values().collect())
     }
@@ -90,6 +95,6 @@ mod tests {
             outer.in_block(None, |inner| inner.in_block(None, |_| ()))
         });
         assert_eq!(nested, Some(Some(None)));
-        assert_eq!(state.some(ValueKind::Number), None);
+        assert_eq!(state.some(ValueKind::NUMBER), None);
     }
 }

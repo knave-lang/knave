@@ -58,13 +58,13 @@ mod tests {
     #[test]
     fn a_closed_scope_hides_its_locals_and_the_root_never_closes() {
         let mut scopes = LocalScopes::new();
-        scopes.bind("v", ValueKind::Numbers);
+        scopes.bind("v", ValueKind::NUMBERS);
         scopes.open();
-        scopes.bind("w", ValueKind::Numbers);
-        assert_eq!(scopes.visible(ValueKind::Numbers), ["v", "w"]);
+        scopes.bind("w", ValueKind::NUMBERS);
+        assert_eq!(scopes.visible(ValueKind::NUMBERS), ["v", "w"]);
         scopes.close();
         scopes.close();
-        assert_eq!(scopes.visible(ValueKind::Numbers), ["v"]);
+        assert_eq!(scopes.visible(ValueKind::NUMBERS), ["v"]);
         assert_eq!(scopes.depth(), 0);
     }
 }

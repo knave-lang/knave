@@ -10,24 +10,24 @@ pub struct Reading {
 impl Reading {
     const SOURCE: &'static str = "{source}";
 
-    pub const ELEMENT: Self = Self::of(ValueKind::Numbers, "(at {source} 0)");
-    pub const LENGTH: Self = Self::of(ValueKind::Numbers, "(len {source})");
-    pub const MAKE: Self = Self::of(ValueKind::Car, "(:make {source})");
-    pub const YEAR: Self = Self::of(ValueKind::Car, "(:year {source})");
-    pub const NUMBER: Self = Self::of(ValueKind::Number, "{source}");
-    pub const BORROWED_ELEMENT: Self = Self::of(ValueKind::ElementBorrow, "{source}");
-    pub const BORROWED_MAKE: Self = Self::of(ValueKind::MakeBorrow, "{source}");
-    pub const LABEL: Self = Self::of(ValueKind::Tag, "(:label {source})");
-    pub const HELD_BORROW: Self = Self::of(ValueKind::HeldBorrows, "(at {source} 0)");
-    pub const READER_CALL: Self = Self::of(ValueKind::Reader, "({source})");
-    pub const CHANGER_CALL: Self = Self::of(ValueKind::Changer, "({source})");
-    pub const VECTOR: Self = Self::of(ValueKind::Numbers, "{source}");
-    pub const CAR: Self = Self::of(ValueKind::Car, "{source}");
+    pub const ELEMENT: Self = Self::of(ValueKind::NUMBERS, "(at {source} 0)");
+    pub const LENGTH: Self = Self::of(ValueKind::NUMBERS, "(len {source})");
+    pub const MAKE: Self = Self::of(ValueKind::CAR, "(:make {source})");
+    pub const YEAR: Self = Self::of(ValueKind::CAR, "(:year {source})");
+    pub const NUMBER: Self = Self::of(ValueKind::NUMBER, "{source}");
+    pub const BORROWED_ELEMENT: Self = Self::of(ValueKind::ELEMENT_BORROW, "{source}");
+    pub const BORROWED_MAKE: Self = Self::of(ValueKind::MAKE_BORROW, "{source}");
+    pub const LABEL: Self = Self::of(ValueKind::TAG, "(:label {source})");
+    pub const HELD_BORROW: Self = Self::of(ValueKind::HELD_BORROWS, "(at {source} 0)");
+    pub const READER_CALL: Self = Self::of(ValueKind::READER, "({source})");
+    pub const CHANGER_CALL: Self = Self::of(ValueKind::CHANGER, "({source})");
+    pub const VECTOR: Self = Self::of(ValueKind::NUMBERS, "{source}");
+    pub const CAR: Self = Self::of(ValueKind::CAR, "{source}");
     pub const TAG_OF_MAKE: Self =
-        Self::of(ValueKind::Car, "(->tag :label (as-str (:make {source})))");
-    pub const HOLDING_BORROW: Self = Self::of(ValueKind::ElementBorrow, "(vec {source})");
-    pub const LENGTH_READER: Self = Self::of(ValueKind::Numbers, "(fn () (len {source}))");
-    pub const PUSHING_CLOSURE: Self = Self::of(ValueKind::Numbers, "(fn () (push! {source} 7))");
+        Self::of(ValueKind::CAR, "(->tag :label (as-str (:make {source})))");
+    pub const HOLDING_BORROW: Self = Self::of(ValueKind::ELEMENT_BORROW, "(vec {source})");
+    pub const LENGTH_READER: Self = Self::of(ValueKind::NUMBERS, "(fn () (len {source}))");
+    pub const PUSHING_CLOSURE: Self = Self::of(ValueKind::NUMBERS, "(fn () (push! {source} 7))");
 
     const fn of(kind: ValueKind, shape: &'static str) -> Self {
         Self { kind, shape }

@@ -14,16 +14,16 @@ impl DerivedBinding {
     const ALWAYS: u64 = 100;
     const MOVE_PERCENT: u64 = 25;
 
-    pub const BORROW_ELEMENT: Self = Self::of(Reading::ELEMENT, ValueKind::ElementBorrow);
-    pub const BORROW_MAKE: Self = Self::of(Reading::MAKE, ValueKind::MakeBorrow);
+    pub const BORROW_ELEMENT: Self = Self::of(Reading::ELEMENT, ValueKind::ELEMENT_BORROW);
+    pub const BORROW_MAKE: Self = Self::of(Reading::MAKE, ValueKind::MAKE_BORROW);
     pub const MOVE_NUMBERS: Self = Self {
         percent: Self::MOVE_PERCENT,
-        ..Self::of(Reading::VECTOR, ValueKind::Numbers)
+        ..Self::of(Reading::VECTOR, ValueKind::NUMBERS)
     };
-    pub const BIND_TAG: Self = Self::of(Reading::TAG_OF_MAKE, ValueKind::Tag);
-    pub const HOLD_BORROWS: Self = Self::of(Reading::HOLDING_BORROW, ValueKind::HeldBorrows);
-    pub const BIND_READER: Self = Self::of(Reading::LENGTH_READER, ValueKind::Reader);
-    pub const BIND_CHANGER: Self = Self::of(Reading::PUSHING_CLOSURE, ValueKind::Changer);
+    pub const BIND_TAG: Self = Self::of(Reading::TAG_OF_MAKE, ValueKind::TAG);
+    pub const HOLD_BORROWS: Self = Self::of(Reading::HOLDING_BORROW, ValueKind::HELD_BORROWS);
+    pub const BIND_READER: Self = Self::of(Reading::LENGTH_READER, ValueKind::READER);
+    pub const BIND_CHANGER: Self = Self::of(Reading::PUSHING_CLOSURE, ValueKind::CHANGER);
 
     const fn of(reading: Reading, result: ValueKind) -> Self {
         Self {
@@ -72,12 +72,12 @@ mod tests {
             DerivedBinding::BORROW_ELEMENT.write(&NoBlocks, &mut state),
             None
         );
-        state.bind_local(ValueKind::Numbers, "(vec 1)".to_string());
-        let vector = state.some(ValueKind::Numbers).expect("a vector is visible");
+        state.bind_local(ValueKind::NUMBERS, "(vec 1)".to_string());
+        let vector = state.some(ValueKind::NUMBERS).expect("a vector is visible");
         let borrow = DerivedBinding::BORROW_ELEMENT
             .write(&NoBlocks, &mut state)
             .expect("a vector is visible");
         assert!(borrow.ends_with(&format!("(at {vector} 0))")));
-        assert!(state.some(ValueKind::ElementBorrow).is_some());
+        assert!(state.some(ValueKind::ELEMENT_BORROW).is_some());
     }
 }

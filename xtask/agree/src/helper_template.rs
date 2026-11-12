@@ -37,8 +37,8 @@ impl HelperSignature {
 }
 
 impl HelperTemplate {
-    const VECTOR: HelperArgument = HelperArgument::Local(ValueKind::Numbers);
-    const CAR: HelperArgument = HelperArgument::Local(ValueKind::Car);
+    const VECTOR: HelperArgument = HelperArgument::Local(ValueKind::NUMBERS);
+    const CAR: HelperArgument = HelperArgument::Local(ValueKind::CAR);
     const NUMBER: HelperArgument = HelperArgument::Expression;
     const ONE_VECTOR: &'static [HelperArgument] = &[Self::VECTOR];
     const TWO_VECTORS_AND_A_NUMBER: &'static [HelperArgument] =
@@ -48,53 +48,56 @@ impl HelperTemplate {
     const FIRST_OF: Self = Self::new(
         "first-of",
         "(defn first-of (v) (at v 0))",
-        HelperSignature::returning(Self::ONE_VECTOR, ValueKind::ElementBorrow),
+        HelperSignature::returning(Self::ONE_VECTOR, ValueKind::ELEMENT_BORROW),
     );
     const EITHER: Self = Self::new(
         "either",
         "(defn either (a b k) (if (> k 0) (at a 0) (at b 0)))",
-        HelperSignature::returning(Self::TWO_VECTORS_AND_A_NUMBER, ValueKind::ElementBorrow),
+        HelperSignature::returning(Self::TWO_VECTORS_AND_A_NUMBER, ValueKind::ELEMENT_BORROW),
     );
     const EITHER_SWAPPED: Self = Self::new(
         "either-swapped",
         "(defn either-swapped (a b k) (either b a k))",
-        HelperSignature::returning(Self::TWO_VECTORS_AND_A_NUMBER, ValueKind::ElementBorrow),
+        HelperSignature::returning(Self::TWO_VECTORS_AND_A_NUMBER, ValueKind::ELEMENT_BORROW),
     )
     .calling(&Self::EITHER);
     const MAKE_OF: Self = Self::new(
         "make-of",
         "(defn make-of (c) (:make c))",
-        HelperSignature::returning(&[Self::CAR], ValueKind::MakeBorrow),
+        HelperSignature::returning(&[Self::CAR], ValueKind::MAKE_BORROW),
     );
     const MAKE_WHEN: Self = Self::new(
         "make-when",
         "(defn make-when (c d k) (if (> k 0) (:make c) (:make d)))",
-        HelperSignature::returning(&[Self::CAR, Self::CAR, Self::NUMBER], ValueKind::MakeBorrow),
+        HelperSignature::returning(
+            &[Self::CAR, Self::CAR, Self::NUMBER],
+            ValueKind::MAKE_BORROW,
+        ),
     );
     const HELD_FIRST: Self = Self::new(
         "held-first",
         "(defn held-first (v)\n  (local r (at v 0))\n  r)",
-        HelperSignature::returning(Self::ONE_VECTOR, ValueKind::ElementBorrow),
+        HelperSignature::returning(Self::ONE_VECTOR, ValueKind::ELEMENT_BORROW),
     );
     const LOOP_FIRST: Self = Self::new(
         "loop-first",
         "(defn loop-first (v)\n  (loop (i 0) (if (< i 1) (recur (+ i 1)) (at v 0))))",
-        HelperSignature::returning(Self::ONE_VECTOR, ValueKind::ElementBorrow),
+        HelperSignature::returning(Self::ONE_VECTOR, ValueKind::ELEMENT_BORROW),
     );
     const GROW_THEN_FIRST: Self = Self::new(
         "grow-then-first!",
         "(defn grow-then-first! (v k)\n  (if (> k 0) (push! v k) (do))\n  (at v 0))",
-        HelperSignature::returning(Self::VECTOR_AND_NUMBER, ValueKind::ElementBorrow),
+        HelperSignature::returning(Self::VECTOR_AND_NUMBER, ValueKind::ELEMENT_BORROW),
     );
     const READ_THEN_GROW: Self = Self::new(
         "read-then-grow!",
         "(defn read-then-grow! (v)\n  (local r (at v 0))\n  (local x (deref r))\n  (if (> x 0) (push! v 1) (do))\n  x)",
-        HelperSignature::returning(Self::ONE_VECTOR, ValueKind::Number),
+        HelperSignature::returning(Self::ONE_VECTOR, ValueKind::NUMBER),
     );
     const GROW_THEN_READ: Self = Self::new(
         "grow-then-read!",
         "(defn grow-then-read! (v)\n  (local r (at v 0))\n  (loop (i 0) (if (< i 1) (do (push! v 1) (recur (+ i 1))) (do)))\n  (deref r))",
-        HelperSignature::returning(Self::ONE_VECTOR, ValueKind::Number),
+        HelperSignature::returning(Self::ONE_VECTOR, ValueKind::NUMBER),
     );
     const GROW: Self = Self::new(
         "grow!",

@@ -11,6 +11,6 @@ impl FreshCar {
 
 impl Production for FreshCar {
     fn write(&self, _blocks: &dyn BlockWriter, state: &mut GeneratorState) -> Option<String> {
-        Some(state.bind_local(ValueKind::Car, Self::CAR.to_string()))
+        Some(state.bind_local(ValueKind::CAR, Self::CAR.to_string()))
     }
 }

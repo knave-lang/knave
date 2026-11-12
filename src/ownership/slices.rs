@@ -40,6 +40,7 @@ struct ShrinkableSlot {
 
 pub struct ShrinkSelection<'a> {
     program: &'a TypedProgram,
+    rust_types: &'a crate::types::RustTypeTable,
     functions: &'a FunctionTable,
     modes: &'a FxHashMap<BindingId, ParamMode>,
     declared: FxHashMap<BindingId, &'a Type>,
@@ -55,11 +56,8 @@ impl<'a> ShrinkSelection<'a> {
         functions: &'a FunctionTable,
         modes: &'a FxHashMap<BindingId, ParamMode>,
     ) -> Option<Self> {
-        let slice = program
-            .declarations
-            .types
-            .rust_types()
-            .binding_with_template(RustType::SLICE_TEMPLATE)?;
+        let rust_types = program.declarations.types.rust_types();
+        let slice = rust_types.binding_with_template(RustType::SLICE_TEMPLATE)?;
         let mut values = FxHashSet::default();
         let declared: FxHashMap<BindingId, &'a Type> = program
             .modules
@@ -78,6 +76,7 @@ impl<'a> ShrinkSelection<'a> {
         trait_methods.extend(ChangingFunctionNames::default_methods(program));
         let mut selection = Self {
             program,
+            rust_types,
             functions,
             modes,
             declared,
@@ -212,14 +211,7 @@ impl<'a> ShrinkSelection<'a> {
 
     fn slice_shrink(&self, reference: Reference, ty: &Type) -> Option<Shrink> {
         match ty {
-            Type::Named(vector, arguments)
-                if self
-                    .program
-                    .declarations
-                    .types
-                    .rust_types()
-                    .is_vector(*vector) =>
-            {
+            Type::Named(vector, arguments) if self.rust_types.is_vector(*vector) => {
                 match arguments.as_slice() {
                     [element] => Some(Shrink::Slice(reference, element.clone())),
                     _ => None,
@@ -343,16 +335,7 @@ impl<'a> ShrinkSelection<'a> {
 
     fn accepts_slice(&self, inner: &Type, element: &Type) -> bool {
         match inner {
-            Type::Named(binding, _)
-                if self
-                    .program
-                    .declarations
-                    .types
-                    .rust_types()
-                    .is_slice(*binding) =>
-            {
-                true
-            }
+            Type::Named(binding, _) if self.rust_types.is_slice(*binding) => true,
             Type::Generic(generic) => self.generic_accepts(*generic, &self.slice_of(element)),
             _ => false,
         }
@@ -369,6 +352,7 @@ impl<'a> ShrinkSelection<'a> {
     }
 
     fn generic_accepts(&self, generic: GenericId, candidate: &Type) -> bool {
+        let traits = self.program.declarations.traits.table();
         self.program
             .generics
             .get(&generic)
@@ -381,13 +365,7 @@ impl<'a> ShrinkSelection<'a> {
                     .into_iter()
                     .flatten(),
             )
-            .all(|bound| {
-                self.program
-                    .declarations
-                    .traits
-                    .table()
-                    .satisfies(bound, candidate, &|_, _| false)
-            })
+            .all(|bound| traits.satisfies(bound, candidate, &|_, _| false))
     }
 
     fn scan(expr: &TypedExpr, callee: bool, values: &mut FxHashSet<BindingId>) {

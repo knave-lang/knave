@@ -637,16 +637,8 @@ impl LiteralSignature<'_> {
             .filter(|primitive| literal.accepts(*primitive))
             .map(Type::Primitive)
             .collect();
-        Some(Bound {
-            binding: self
-                .typed
-                .declarations
-                .traits
-                .table()
-                .implemented_exactly_by(&accepted)?,
-            argument: None,
-            origins: Vec::new(),
-        })
+        let traits = self.typed.declarations.traits.table();
+        traits.implemented_exactly_by(&accepted).map(Bound::plain)
     }
 
     fn shown_type(&self, shown: &Type) -> String {

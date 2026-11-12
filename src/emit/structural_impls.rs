@@ -11,7 +11,7 @@ use super::unsized_parameters::UnsizedParameters;
 use crate::core::{BindingArena, BindingId, ModuleId, StructuralKey, StructuralValues};
 use crate::types::{
     Bound, BoxedPayload, GenericParam, PayloadPosition, StructuralTrait, StructuralUse, Type,
-    TypedProgram, VariantDefinition, VariantPayload,
+    TypeDeclarations, TypedProgram, VariantDefinition, VariantPayload,
 };
 
 #[derive(Default)]
@@ -90,6 +90,7 @@ impl<'b> ParameterNames<'b> {
 
 pub struct StructuralImpls<'a> {
     program: &'a TypedProgram,
+    types: &'a TypeDeclarations,
     plan: &'a EmitPlan<'a>,
     unsized_parameters: &'a UnsizedParameters,
     needed: BTreeSet<StructuralUse>,
@@ -107,6 +108,7 @@ impl<'a> StructuralImpls<'a> {
     ) -> Self {
         let mut impls = Self {
             program,
+            types: &program.declarations.types,
             plan,
             unsized_parameters,
             needed: BTreeSet::new(),
@@ -143,12 +145,10 @@ impl<'a> StructuralImpls<'a> {
     }
 
     fn derived_traits(&self, head: BindingId) -> &'a [BindingId] {
-        if let Some(definition) = self.program.declarations.types.structs().get(head) {
+        if let Some(definition) = self.types.structs().get(head) {
             return &definition.derived_traits;
         }
-        self.program
-            .declarations
-            .types
+        self.types
             .enums()
             .get(head)
             .map_or(&[], |definition| &definition.derived_traits)
@@ -163,12 +163,10 @@ impl<'a> StructuralImpls<'a> {
     }
 
     fn payload_types(&self, binding: BindingId) -> Vec<&'a Type> {
-        if let Some(definition) = self.program.declarations.types.structs().get(binding) {
+        if let Some(definition) = self.types.structs().get(binding) {
             return definition.fields.iter().map(|(_, ty)| ty).collect();
         }
-        self.program
-            .declarations
-            .types
+        self.types
             .enums()
             .get(binding)
             .into_iter()
@@ -188,6 +186,7 @@ impl<'a> StructuralImpls<'a> {
 
     pub fn of_module(&self, module: ModuleId) -> Vec<Vec<Fragment>> {
         let mut items = Vec::new();
+        let structural = self.program.declarations.traits.structural();
         for binding in self.plan.items_of(module) {
             let info = self
                 .plan
@@ -200,10 +199,7 @@ impl<'a> StructuralImpls<'a> {
                 params: self.type_params(binding),
             };
             items.extend(
-                self.program
-                    .declarations
-                    .traits
-                    .structural()
+                structural
                     .iter()
                     .filter(|structural| self.needs(structural.binding, binding))
                     .map(|structural| self.implementation(structural, &implemented)),
@@ -220,11 +216,9 @@ impl<'a> StructuralImpls<'a> {
     }
 
     fn type_params(&self, binding: BindingId) -> &'a [GenericParam] {
-        match self.program.declarations.types.structs().get(binding) {
+        match self.types.structs().get(binding) {
             Some(definition) => &definition.params,
             None => self
-                .program
-                .declarations
                 .types
                 .enums()
                 .get(binding)
@@ -344,13 +338,7 @@ impl<'a> StructuralImpls<'a> {
     }
 
     fn body(&self, structural: &StructuralTrait, implemented: &ImplementedType) -> Vec<Fragment> {
-        match self
-            .program
-            .declarations
-            .types
-            .structs()
-            .get(implemented.binding)
-        {
+        match self.types.structs().get(implemented.binding) {
             Some(definition) => vec![
                 Fragment::Newline,
                 Fragment::Text(self.struct_body(structural, implemented, &definition.fields)),
@@ -393,8 +381,6 @@ impl<'a> StructuralImpls<'a> {
         implemented: &ImplementedType,
     ) -> Vec<Fragment> {
         let variants = self
-            .program
-            .declarations
             .types
             .enums()
             .get(implemented.binding)
@@ -491,11 +477,7 @@ impl<'a> StructuralImpls<'a> {
                     variant: position,
                     payload,
                 };
-                let boxed = self
-                    .program
-                    .declarations
-                    .types
-                    .boxes(&BoxedPayload::at(binding, position));
+                let boxed = self.types.boxes(&BoxedPayload::at(binding, position));
                 let value = if boxed { format!("&**{part}") } else { part };
                 part_template.fill(&TemplateValues {
                     value,

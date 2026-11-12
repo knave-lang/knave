@@ -42,7 +42,8 @@ impl DocWriteCommand {
     }
 
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
-        terminal.report_diagnostics_to(Self::user_output(terminal.diagnostic_output()));
+        let output = Self::user_output(terminal.diagnostic_output());
+        terminal.configure(|settings| settings.rerouted_to(output));
         match self.write(terminal) {
             Ok(status) | Err(status) => status,
         }

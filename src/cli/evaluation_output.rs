@@ -94,7 +94,8 @@ impl JsonEvaluation {
 
 impl EvaluationOutput for JsonEvaluation {
     fn attach(&self, terminal: &mut Terminal) {
-        terminal.report_diagnostics_to(Rc::new(JsonDiagnostics::new(Arc::clone(&self.replies))));
+        let output = Rc::new(JsonDiagnostics::new(Arc::clone(&self.replies)));
+        terminal.configure(|settings| settings.rerouted_to(output));
     }
 
     fn printer(&self, session: &mut ExpansionSession<'_>) -> Result<ResultPrinter, Diagnostics> {

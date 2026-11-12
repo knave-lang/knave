@@ -117,6 +117,7 @@ mod tests {
     use crate::cli::recorded_output::RecordedOutput;
     use crate::cli::temporary_directory::TemporaryDirectory;
     use crate::cli::terminal::Terminal;
+    use crate::cli::terminal_settings::TerminalSettings;
     use crate::language::Language;
 
     struct ProgramBinaryFixture {
@@ -143,7 +144,9 @@ mod tests {
             fs::write(&entry, FakePrograms::PRINTS_A_SUM).expect("the entry is written");
             Self {
                 root,
-                terminal: Terminal::reporting_to(Rc::new(RecordedOutput::default())),
+                terminal: Terminal::new(TerminalSettings::reporting_to(Rc::new(
+                    RecordedOutput::default(),
+                ))),
             }
         }
 

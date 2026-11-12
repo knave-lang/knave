@@ -36,7 +36,8 @@ impl TaskCommand {
     }
 
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
-        terminal.report_diagnostics_to(TaskCatalog::user_output(terminal.diagnostic_output()));
+        let output = TaskCatalog::user_output(terminal.diagnostic_output());
+        terminal.configure(|settings| settings.rerouted_to(output));
         match self.execute(terminal) {
             Ok(status) | Err(status) => status,
         }

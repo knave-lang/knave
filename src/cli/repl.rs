@@ -69,7 +69,6 @@ impl ReplCommand {
         let interruption = lines
             .catch_interrupts()
             .unwrap_or_else(|error| Self::note_uncaught_interrupts(terminal, &error));
-        terminal.stop_before_rustc_on(interruption.clone());
         let session = PromptSession::new(terminal, file, self.profile, interruption);
         Self::answer(&mut lines, session, terminal)
     }
@@ -152,7 +151,11 @@ impl PromptSession {
     fn annotate_diagnostics(&self, terminal: &mut Terminal) {
         let annotated =
             PromptDiagnostics::new(terminal.diagnostic_output(), Rc::clone(&self.annotations));
-        terminal.report_diagnostics_to(Rc::new(annotated));
+        terminal.configure(|settings| {
+            settings
+                .rerouted_to(Rc::new(annotated))
+                .stopping_on(self.interruption.clone())
+        });
     }
 
     fn enter(&mut self, terminal: &mut Terminal, text: String) {

@@ -102,6 +102,7 @@ mod task_runners;
 mod temporary_directory;
 mod term_parser;
 mod terminal;
+mod terminal_settings;
 mod test;
 mod test_binary;
 mod test_entries;
@@ -133,6 +134,7 @@ use counter_report::CounterReport;
 use doc::DocCommand;
 use front_end_stack::FrontEndStack;
 use terminal::Terminal;
+use terminal_settings::TerminalSettings;
 
 #[derive(Parser)]
 #[command(
@@ -182,7 +184,9 @@ impl Cli {
 
     fn run_on_this_stack(self, allocator: Option<&CountingAllocator>) -> ExitCode {
         anstream::ColorChoice::from(self.color).write_global();
-        let mut terminal = Terminal::new(AutoStream::choice(&io::stderr()));
+        let mut terminal = Terminal::new(TerminalSettings::rendered(AutoStream::choice(
+            &io::stderr(),
+        )));
         let command = self.command.unwrap_or_else(Command::prompt);
         let status = command.execute(&mut terminal);
         if self.counters {

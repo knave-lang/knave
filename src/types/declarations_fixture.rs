@@ -2,9 +2,7 @@ use super::declarations::Declarations;
 use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::derive_blockers::DeriveBlockers;
-use super::signature_declarations::SignatureDeclarations;
 use super::trait_boxing::TraitBoxing;
-use super::trait_declarations::TraitDeclarations;
 use super::type_declarations::TypeDeclarations;
 use super::variant_payloads::VariantPayloads;
 use super::{Type, TypedProgram, TypedSource};
@@ -29,20 +27,8 @@ impl DeclarationsFixture {
         &self.declarations.types
     }
 
-    pub(super) fn traits(&self) -> &TraitDeclarations {
-        &self.declarations.traits
-    }
-
-    pub(super) fn signatures(&self) -> &SignatureDeclarations {
-        &self.declarations.signatures
-    }
-
     pub(super) fn trait_boxing(&self) -> TraitBoxing<'_> {
         TraitBoxing::new(&self.declarations.traits, &self.program.bindings)
-    }
-
-    pub(super) fn bindings(&self) -> &crate::core::BindingArena {
-        &self.program.bindings
     }
 
     pub(super) fn declared_types(&self) -> DeclaredTypes<'_> {
@@ -71,16 +57,6 @@ impl DeclarationsFixture {
         let types = &self.declarations.types;
         self.binding_named(name, &|binding| {
             types.structs.get(binding).is_some() || types.enums.get(binding).is_some()
-        })
-    }
-
-    pub(super) fn function_named(&self, name: &str) -> BindingId {
-        self.binding_named(name, &|binding| {
-            self.program
-                .modules
-                .iter()
-                .flat_map(|module| &module.definitions)
-                .any(|definition| definition.binding == binding)
         })
     }
 

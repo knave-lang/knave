@@ -30,80 +30,116 @@ impl SignatureDeclarations {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::declarations_fixture::DeclarationsFixture;
+    use rustc_hash::FxHashMap;
 
-    struct SignatureFixture;
+    use super::SignatureDeclarations;
+    use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleId};
+
+    struct SignatureFixture {
+        bindings: BindingArena,
+        signatures: SignatureDeclarations,
+    }
 
     impl SignatureFixture {
-        const SOURCE: &str = "
-            (defn pick ((left i64) right) left)
-            (defn main () (do))";
         const WRITTEN: usize = 0;
         const UNWRITTEN: usize = 1;
-        const PARAMETERS: usize = 2;
         const PRELUDE_VALUE: &str = "sum";
+        const USER_VALUE: &str = "pick";
+
+        fn new() -> Self {
+            let mut bindings = BindingArena::default();
+            let sum = Self::global(&mut bindings, Self::PRELUDE_VALUE);
+            let pick = Self::global(&mut bindings, Self::USER_VALUE);
+            let signatures = SignatureDeclarations {
+                prelude_definitions: vec![sum],
+                written_parameters: FxHashMap::from_iter([(pick, vec![true, false])]),
+            };
+            Self {
+                bindings,
+                signatures,
+            }
+        }
+
+        fn global(bindings: &mut BindingArena, name: &str) -> BindingId {
+            bindings.add(BindingInfo::new(
+                name.into(),
+                BindingKind::Global(ModuleId::new(0)),
+                None,
+            ))
+        }
+
+        fn pick(&self) -> BindingId {
+            self.named(Self::USER_VALUE)
+        }
+
+        fn sum(&self) -> BindingId {
+            self.named(Self::PRELUDE_VALUE)
+        }
+
+        fn named(&self, name: &str) -> BindingId {
+            self.bindings
+                .ids()
+                .find(|binding| self.bindings.get(*binding).name() == name)
+                .expect("the fixture adds the name")
+        }
     }
 
     #[test]
     fn a_parameter_with_a_written_type_is_written() {
-        let fixture = DeclarationsFixture::new(SignatureFixture::SOURCE);
-        let pick = fixture.function_named("pick");
+        let fixture = SignatureFixture::new();
         assert!(
             fixture
-                .signatures()
-                .written_at(pick, SignatureFixture::WRITTEN)
+                .signatures
+                .written_at(fixture.pick(), SignatureFixture::WRITTEN)
         );
     }
 
     #[test]
     fn a_parameter_without_a_written_type_is_not_written() {
-        let fixture = DeclarationsFixture::new(SignatureFixture::SOURCE);
-        let pick = fixture.function_named("pick");
+        let fixture = SignatureFixture::new();
         assert!(
             !fixture
-                .signatures()
-                .written_at(pick, SignatureFixture::UNWRITTEN)
+                .signatures
+                .written_at(fixture.pick(), SignatureFixture::UNWRITTEN)
         );
     }
 
     #[test]
     fn a_function_with_no_recorded_parameters_counts_them_as_written() {
-        let fixture = DeclarationsFixture::new(SignatureFixture::SOURCE);
-        let main = fixture.function_named("main");
+        let fixture = SignatureFixture::new();
         assert!(
             fixture
-                .signatures()
-                .written_at(main, SignatureFixture::WRITTEN)
+                .signatures
+                .written_at(fixture.sum(), SignatureFixture::WRITTEN)
         );
     }
 
     #[test]
     fn the_written_parameters_are_counted() {
-        let fixture = DeclarationsFixture::new(SignatureFixture::SOURCE);
-        let pick = fixture.function_named("pick");
+        let fixture = SignatureFixture::new();
         assert_eq!(
-            fixture.signatures().written_parameter_count(pick),
-            SignatureFixture::PARAMETERS
+            fixture.signatures.written_parameter_count(fixture.pick()),
+            2
         );
     }
 
     #[test]
     fn the_prelude_defines_its_values() {
-        let fixture = DeclarationsFixture::new(SignatureFixture::SOURCE);
+        let fixture = SignatureFixture::new();
         assert!(
             fixture
-                .signatures()
-                .prelude_defines_value(SignatureFixture::PRELUDE_VALUE, fixture.bindings())
+                .signatures
+                .prelude_defines_value(SignatureFixture::PRELUDE_VALUE, &fixture.bindings)
         );
     }
 
     #[test]
     fn the_prelude_does_not_define_a_user_value() {
-        let fixture = DeclarationsFixture::new(SignatureFixture::SOURCE);
+        let fixture = SignatureFixture::new();
         assert!(
             !fixture
-                .signatures()
-                .prelude_defines_value("pick", fixture.bindings())
+                .signatures
+                .prelude_defines_value(SignatureFixture::USER_VALUE, &fixture.bindings)
         );
     }
 }

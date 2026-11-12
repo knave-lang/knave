@@ -109,7 +109,7 @@ impl SharedVariables {
         let mut links = VariableLinks::default();
         for var in whole.iter().flatten() {
             for bound in unifier.bounds(*var) {
-                if traits.has_associated_type(bound.binding) {
+                if !traits.links_its_argument(bound.binding) {
                     continue;
                 }
                 let argument = bound

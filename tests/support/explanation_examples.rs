@@ -51,6 +51,12 @@ impl ExplanationExamples {
             .collect()
     }
 
+    pub fn erroneous_first_codes(&self) -> Vec<Option<String>> {
+        self.examples_under(Self::ERRONEOUS_HEADING)
+            .map(|example| Self::fixture_of(example).first_reported_code())
+            .collect()
+    }
+
     pub fn fix_count(&self) -> usize {
         self.examples_under(Self::FIXES_HEADING).count()
     }
@@ -99,7 +105,11 @@ impl ExplanationExamples {
     }
 
     fn errors_of(example: &str) -> Vec<ExampleError> {
+        Self::fixture_of(example).check_errors()
+    }
+
+    fn fixture_of(example: &str) -> Fixture {
         let path = PathBuf::from(Fixture::FIXTURE_ROOT).join(Self::EXAMPLE_FILE);
-        Fixture::of_text(&path, example.to_string()).check_errors()
+        Fixture::of_text(&path, example.to_string())
     }
 }

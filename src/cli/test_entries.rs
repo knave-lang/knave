@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
@@ -7,6 +7,7 @@ use super::located_project::LocatedProject;
 use super::module_of_sources::ModuleOfSources;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use super::working_directory::WorkingDirectory;
 use crate::modules::SearchScope;
 
 pub struct TestEntries {
@@ -41,7 +42,7 @@ impl TestEntries {
     }
 
     fn of_working_project(terminal: &Terminal) -> Result<EntryTree, ExitStatus> {
-        let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
+        let working_directory = WorkingDirectory::path();
         let project =
             LocatedProject::search_from(working_directory, terminal, FetchingStore::default())?
                 .ok_or_else(LocatedProject::report_no_path)?;

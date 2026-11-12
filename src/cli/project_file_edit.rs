@@ -8,6 +8,7 @@ use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use super::working_directory::WorkingDirectory;
 use crate::format::{ModuleLookup, SourceFormatter};
 use crate::language::Language;
 use crate::project::{CrateDependency, ProjectEditor};
@@ -20,7 +21,7 @@ impl ProjectFileEdit {
     const STAGED_SUFFIX: &str = ".tmp";
 
     pub fn of_working_directory(terminal: &Terminal, command: &str) -> Result<Self, ExitStatus> {
-        let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
+        let working_directory = WorkingDirectory::path();
         match LocatedProject::search_from(working_directory, terminal, FetchingStore::default())? {
             Some(project) => Ok(Self { project }),
             None => Err(Self::report_no_project(command)),

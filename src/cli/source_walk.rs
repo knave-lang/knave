@@ -11,6 +11,7 @@ use super::skipped_directory::SkippedDirectory;
 use super::terminal::Terminal;
 use super::tree_bounds::TreeBounds;
 use super::unreadable_file::UnreadableFile;
+use super::working_directory::WorkingDirectory;
 use crate::language::Language;
 
 pub struct SourceWalk {
@@ -50,7 +51,7 @@ impl SourceWalk {
     fn walked_root(project: &LocatedProject) -> PathBuf {
         let source_root = project.source_root();
         if source_root.as_os_str().is_empty() {
-            PathBuf::from(Terminal::WORKING_DIRECTORY)
+            WorkingDirectory::path().to_path_buf()
         } else {
             source_root
         }

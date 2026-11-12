@@ -16,6 +16,7 @@ use super::standard_error::StandardError;
 use super::standard_output::StandardOutput;
 use super::terminal::Terminal;
 use super::unreadable_file::UnreadableFile;
+use super::working_directory::WorkingDirectory;
 use crate::format::{FormatFailure, ModuleLookup, SourceFormatter};
 use crate::language::Language;
 use crate::modules::ModuleSources;
@@ -118,7 +119,7 @@ impl FmtCommand {
         if !paths.is_empty() {
             return Ok(paths);
         }
-        let working_directory = Terminal::canonical(Path::new(Terminal::WORKING_DIRECTORY))?;
+        let working_directory = WorkingDirectory::resolved()?;
         let root = LocatedProject::canonical_root(&working_directory)
             .ok_or_else(LocatedProject::report_no_path)?;
         Ok(vec![Self::upward_path(&working_directory, &root)])
@@ -309,7 +310,7 @@ impl NearbyProjects {
 
     fn absolute_directory_of(path: &Path) -> PathBuf {
         let directory = ProgramFile::directory_of(path);
-        let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
+        let working_directory = WorkingDirectory::path();
         fs::canonicalize(working_directory.join(&directory)).unwrap_or(directory)
     }
 

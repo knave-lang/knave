@@ -29,7 +29,10 @@ impl<'c> TaskRunners<'c> {
         let entered = self.catalog.entered_program(terminal, &runner)?;
         let checked = terminal.checking().check(&entered.program)?;
         let emitted = terminal.emission()?.emit(&checked)?;
-        terminal.build_task(&emitted, task, profile)
+        terminal
+            .crate_build()
+            .compile(&emitted, task.route().as_ref(), profile)?;
+        Ok(task.binary().to_path_buf())
     }
 
     pub fn check(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {

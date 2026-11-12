@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
+use super::build_directory::BuildDirectory;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
-use super::terminal::Terminal;
 
 pub struct SkippedDirectory {
     build_parent: Option<PathBuf>,
@@ -15,7 +15,7 @@ impl SkippedDirectory {
         let build_base =
             LocatedProject::canonical_root(walk_root).or_else(|| ProgramFile::canonical(walk_root));
         Self {
-            build_parent: build_base.map(|base| base.join(Terminal::BUILD_PARENT)),
+            build_parent: build_base.map(|base| base.join(BuildDirectory::PARENT)),
         }
     }
 

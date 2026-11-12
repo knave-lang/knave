@@ -1,7 +1,10 @@
 use std::path::{Path, PathBuf};
 
+use super::build_route::BuildRoute;
+use super::build_routes::BuildRoutes;
+use super::crate_name::CrateName;
 use super::located_project::LocatedProject;
-use super::terminal::{BuildRoute, BuildTarget, Terminal};
+use super::rustc_route::RustcRoute;
 use crate::modules::SearchScope;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -21,7 +24,7 @@ pub struct ProjectTask<'p> {
     project: &'p LocatedProject,
     name: TaskName,
     binary: PathBuf,
-    crate_name: String,
+    crate_name: CrateName,
 }
 
 impl<'p> ProjectTask<'p> {
@@ -32,7 +35,7 @@ impl<'p> ProjectTask<'p> {
         Self {
             project,
             binary: directory.join(name.as_str()),
-            crate_name: Terminal::crate_name(Path::new(name.as_str())),
+            crate_name: CrateName::of(Path::new(name.as_str())),
             name,
         }
     }
@@ -60,7 +63,7 @@ impl<'p> ProjectTask<'p> {
         self.project.root()
     }
 
-    pub fn route(&self) -> BuildRoute<'_> {
+    pub fn route(&self) -> Box<dyn BuildRoute + '_> {
         let bin_stem = format!(
             "{}-{}-{}",
             self.project.name(),
@@ -72,13 +75,7 @@ impl<'p> ProjectTask<'p> {
             self.build_directory(),
             self.binary.clone(),
         );
-        if let Some(target) = cargo {
-            return BuildRoute::Cargo(target);
-        }
-        BuildRoute::Rustc(BuildTarget {
-            directory: self.build_directory(),
-            crate_name: &self.crate_name,
-            output: &self.binary,
-        })
+        let rustc = RustcRoute::new(self.build_directory(), &self.crate_name, &self.binary);
+        BuildRoutes::default().preferring_cargo(cargo, rustc)
     }
 }

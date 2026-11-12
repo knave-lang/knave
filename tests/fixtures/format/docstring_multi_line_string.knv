@@ -1,0 +1,12 @@
+(defn count-lines (text)
+  "Counts the lines of a text.
+
+  (count-lines   \"first
+  second\")
+  => 2
+
+  ```
+  (count-lines   \"first
+    second\")
+  ```"
+  (len (lines text)))

@@ -1,0 +1,31 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/format/docstring_multi_line_string.knv
+---
+(defn count-lines (text)
+  "Counts the lines of a text.
+
+  (count-lines   \"first
+  second\")
+  => 2
+
+  ```
+  (count-lines   \"first
+    second\")
+  ```"
+  (len (lines text)))
+
+---
+(defn count-lines (text)
+  "Counts the lines of a text.
+
+  (count-lines   \"first
+  second\")
+  => 2
+
+  ```
+  (count-lines   \"first
+    second\")
+  ```"
+  (len (lines text)))

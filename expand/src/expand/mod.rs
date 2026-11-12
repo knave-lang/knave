@@ -79,7 +79,7 @@ use crate::diagnostic::Diagnostics;
 use crate::interpret::{Closure, Interpreter, Value};
 use crate::modules::{ModuleRegistry, ModuleSources};
 use crate::reader::Form;
-use crate::scope::{BindingTable, Phase, Scope, Scopes};
+use crate::scope::{BindingTable, Phase, Scope, ScopeSupply, Scopes};
 use crate::source::{SourceId, SourceMap, Span};
 use bindings::Bindings;
 use budget_arena::BudgetArena;
@@ -122,6 +122,7 @@ pub struct Program {
     pub modules: Vec<CoreModule>,
     pub entry: ProgramEntry,
     pub bindings: BindingArena,
+    pub scopes: ScopeSupply,
     pub macro_origins: Rc<MacroOrigins>,
     pub macro_helpers: FxHashSet<BindingId>,
     pub string_view: Option<BindingId>,
@@ -363,6 +364,7 @@ impl<'s> Expander<'s> {
                 function: None,
             },
             bindings: self.tables.bindings,
+            scopes: self.tables.scopes.into_supply(),
             macro_helpers: self.tables.globals.macro_helpers(),
             string_view,
             checked_roots: Vec::new(),

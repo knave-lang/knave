@@ -369,9 +369,13 @@ mod tests {
             (def one (macro (form) (do (map-list (rest form) (fn (item) item)) 1)))
             (defn main () (println (one a b)))";
 
+        fn state() -> PreludeState {
+            PreludeState::load(PreludeState::build().save().leak())
+                .expect("the saved prelude loads")
+        }
+
         fn expand(text: &str) -> Program {
-            let state = PreludeState::load(PreludeState::build().save().leak())
-                .expect("the saved prelude loads");
+            let state = Self::state();
             let mut sources = SourceMap::default();
             let entry = sources.add(Self::FILE, text);
             let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
@@ -549,6 +553,13 @@ mod tests {
         let helper = LoadedProgram::defined_binding(&program, "helper");
         assert!(program.macro_helpers.contains(&helper));
         assert!(!program.prelude_macro_helpers().contains(&helper));
+    }
+
+    #[test]
+    fn a_supplied_scope_follows_every_scope_of_the_prelude() {
+        let prelude_end = LoadedProgram::state().tables().scopes.next_scope();
+        let mut program = LoadedProgram::expand(LoadedProgram::MACRO_INTRODUCING_A_NAME);
+        assert!(program.scopes.fresh() > prelude_end);
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use super::{Scope, ScopeKind};
+use super::{Scope, ScopeKind, ScopeSupply};
 use crate::reader::Form;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -15,6 +15,10 @@ impl Scopes {
 
     pub(crate) fn next_scope(&self) -> Scope {
         Scope::numbered(self.kinds_in_order_made.len())
+    }
+
+    pub(crate) fn into_supply(self) -> ScopeSupply {
+        ScopeSupply::starting_at(self.next_scope())
     }
 
     pub(crate) fn quoted(&self, datum: &Form) -> Form {

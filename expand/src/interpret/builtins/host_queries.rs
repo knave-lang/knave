@@ -6,12 +6,12 @@ use crate::interpret::{BuildLimit, ModuleQueries, PlannedList, SourceQueries, Va
 use crate::reader::{Form, FormKind, Number, NumberValue, Symbol};
 use crate::source::Span;
 
-pub struct ProgramOperations<'a> {
+pub struct SourceOperations<'a> {
     arguments: &'a Arguments<'a>,
     call_site: Span,
 }
 
-impl<'a> ProgramOperations<'a> {
+impl<'a> SourceOperations<'a> {
     pub fn new(arguments: &'a Arguments<'a>, call_site: Span) -> Self {
         Self {
             arguments,
@@ -26,13 +26,6 @@ impl<'a> ProgramOperations<'a> {
             FormKind::String(location.into()),
             self.call_site,
         )))
-    }
-
-    pub fn pinned_at(&self) -> Result<Value, Diagnostic> {
-        self.arguments.expect_count(2)?;
-        let place = self.arguments.form(0)?.span();
-        let pinned = Span::new(place.source().pinned(), place.range());
-        Ok(Value::Form(self.arguments.form(1)?.located_at(pinned)))
     }
 
     pub fn in_tasks_directory(&self, sources: &dyn SourceQueries) -> Result<Value, Diagnostic> {
@@ -62,12 +55,6 @@ impl<'a> ProgramOperations<'a> {
         limit.check(PlannedList(size))?;
         self.arguments
             .charge(WorkMeter::built_forms_work(size - ListSize::EMPTY))
-    }
-
-    pub fn located(&self) -> Result<Value, Diagnostic> {
-        self.arguments.expect_count(2)?;
-        let place = self.arguments.form(0)?.span();
-        Ok(Value::Form(self.arguments.form(1)?.located_at(place)))
     }
 
     fn count_form(&self, count: usize) -> Form {

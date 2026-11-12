@@ -1,0 +1,6 @@
+(defn arrows (x)
+  "Takes an arrow as an argument.
+
+  (arrows (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 1) => bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb (c 2))
+  => 1"
+  x)

@@ -88,6 +88,9 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
             .collect::<Vec<_>>()
             .join("\n");
         match CodeChunk::new(self.rules.shapes, self.indent, self.layout).lay_out(text.trim_end()) {
+            RegionLayout::LaidOut(lines) if self.writes_an_arrow_line(&lines) => {
+                Err(RegionLayout::Prose)
+            }
             RegionLayout::LaidOut(lines) => {
                 self.laid_out.extend(lines);
                 Ok(())
@@ -95,6 +98,12 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
             RegionLayout::Unreadable(line) => Err(RegionLayout::Unreadable(first + line)),
             RegionLayout::Prose => Err(RegionLayout::Prose),
         }
+    }
+
+    fn writes_an_arrow_line(&self, lines: &[String]) -> bool {
+        lines
+            .iter()
+            .any(|line| self.rules.syntax.is_arrow_line(line))
     }
 
     fn push_result(&mut self, arrow: usize) -> usize {
@@ -232,6 +241,16 @@ mod tests {
         let fixture = RegionFixture::new();
         assert_eq!(
             fixture.lay_out("  (count   \"first\n  second\")\n  => 2"),
+            RegionLayout::Prose
+        );
+    }
+
+    #[test]
+    fn code_that_would_start_a_line_with_an_arrow_is_prose() {
+        let fixture = RegionFixture::new();
+        let (first, second) = ("a".repeat(36), "b".repeat(36));
+        assert_eq!(
+            fixture.lay_out(&format!("(arrows ({first} 1) => {second} (c 2))\n=> 1")),
             RegionLayout::Prose
         );
     }

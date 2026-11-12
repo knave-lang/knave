@@ -1,0 +1,19 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/format/docstring_arrow_argument.knv
+---
+(defn arrows (x)
+  "Takes an arrow as an argument.
+
+  (arrows (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 1) => bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb (c 2))
+  => 1"
+  x)
+
+---
+(defn arrows (x)
+  "Takes an arrow as an argument.
+
+  (arrows (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 1) => bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb (c 2))
+  => 1"
+  x)

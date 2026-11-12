@@ -27,7 +27,8 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
-      issues: write
+    env:
+      CARGO_PROFILE_DEV_OPT_LEVEL: 1
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -48,13 +49,27 @@ jobs:
           name: fresh-agreement-findings
           path: target/agree/
           retention-days: 30
+
+  comment:
+    needs: fresh-seeds
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: fresh-agreement-findings
+          path: findings
       - name: Post the reduced findings outside the known classes
-        if: hashFiles('target/agree/report.md') != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          test -f findings/report.md || exit 0
           issue=$(gh issue list --state open --search "in:title \"$ISSUE_TITLE\"" --json number,title \
             --jq "map(select(.title == env.ISSUE_TITLE)) | .[0].number")
-          { echo "Run: $RUN_URL"; echo; cat "$REPORT"; } > target/agree/comment.md
-          gh issue comment "$issue" --body-file target/agree/comment.md
+          { echo "Run: $RUN_URL"; echo; cat findings/report.md; } > comment.md
+          gh issue comment "$issue" --body-file comment.md

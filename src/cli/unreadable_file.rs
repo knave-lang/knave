@@ -18,7 +18,7 @@ impl<'a> UnreadableFile<'a> {
     }
 
     pub fn report_to(&self, output: &dyn MessageOutput) -> ExitStatus {
-        output.write_error(&self.to_string());
+        output.write_unreadable(self.path, &self.to_string());
         Self::EXIT_STATUS
     }
 }

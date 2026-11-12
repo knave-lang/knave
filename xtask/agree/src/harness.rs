@@ -17,6 +17,7 @@ pub struct Harness {
     backends: Vec<Box<dyn Backend>>,
     oracles: Vec<Box<dyn Oracle>>,
     slots: JobSlots,
+    jobs: usize,
 }
 
 impl Harness {
@@ -32,7 +33,28 @@ impl Harness {
                 Box::new(FalseOwnershipError),
             ],
             slots: JobSlots::new(jobs),
+            jobs: jobs.max(1),
         }
+    }
+
+    pub fn keeping_oracles(mut self, names: &[String]) -> Result<Self, String> {
+        if let Some(unknown) = names.iter().find(|name| {
+            !self
+                .oracles
+                .iter()
+                .any(|oracle| oracle.name() == name.as_str())
+        }) {
+            return Err(format!("no oracle is named `{unknown}`"));
+        }
+        if !names.is_empty() {
+            self.oracles
+                .retain(|oracle| names.iter().any(|name| name == oracle.name()));
+        }
+        Ok(self)
+    }
+
+    pub fn jobs(&self) -> usize {
+        self.jobs
     }
 
     pub fn backend_names(&self) -> impl Iterator<Item = &'static str> + '_ {

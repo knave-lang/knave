@@ -1,3 +1,4 @@
+mod agree;
 mod badge;
 mod baseline_raises;
 mod bench;
@@ -34,6 +35,7 @@ use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand};
 
+use agree::AgreeTask;
 use bench::BenchTask;
 use design::DesignRules;
 use failure::TaskFailure;
@@ -54,6 +56,10 @@ struct Tasks {
 
 #[derive(Subcommand)]
 enum Task {
+    #[command(
+        about = "Generate programs from seeds and report where check, rustc and the compiled program disagree"
+    )]
+    Agree(AgreeTask),
     #[command(
         about = "Run the tests with coverage, then check the coverage floor, the CRAP limit, the README badge and the emitted Rust's lints"
     )]
@@ -153,6 +159,7 @@ impl Task {
         let manifest_directory = Path::new(env!("CARGO_MANIFEST_DIR"));
         let workspace_root = manifest_directory.parent().unwrap_or(manifest_directory);
         match self {
+            Task::Agree(agree) => agree.run(workspace_root),
             Task::Coverage(coverage) => coverage.run(workspace_root),
             Task::FileSizes(sizes) => sizes
                 .check_file_sizes(workspace_root)

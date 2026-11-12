@@ -45,6 +45,16 @@ pub enum ExitKind {
 }
 
 impl Verdict {
+    pub fn outcome_name(&self) -> &'static str {
+        match self {
+            Self::Accepted => "accepted",
+            Self::Rejected(_) => "rejected",
+            Self::Ran(outcome) if outcome.exit == ExitKind::TimedOut => "timed out",
+            Self::Ran(_) => "ran",
+            Self::Unsupported(_) => "unsupported",
+        }
+    }
+
     pub fn rejections(&self) -> &[Rejection] {
         match self {
             Self::Rejected(rejections) => rejections,
@@ -68,7 +78,7 @@ impl Rejection {
         self.tool == RejectingTool::Rustc
     }
 
-    fn code_text(&self) -> &str {
+    pub(crate) fn code_text(&self) -> &str {
         self.code
             .as_ref()
             .map_or(Self::UNCODED, DiagnosticCode::as_str)

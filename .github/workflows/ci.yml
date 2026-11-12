@@ -123,6 +123,33 @@ jobs:
       - name: Lint the emitted Rust
         run: nix develop .#ci -c cargo xtask coverage emitted-lints
 
+  agreement:
+    name: agreement
+    needs: release-check
+    if: ${{ !cancelled() && needs.release-check.outputs.release != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
+    env:
+      CARGO_PROFILE_DEV_OPT_LEVEL: 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/dev-shell
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          build-cache: coverage
+      - name: Build the compiler
+        run: nix develop .#ci -c cargo build --bin knave
+      - name: Compare check, rustc and the compiled programs on the fixed seeds
+        run: nix develop .#ci -c cargo xtask agree --seeds 0..200 --expected xtask/agree/pull-request-findings.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: agreement-findings
+          path: target/agree/
+          retention-days: 7
+
   # A skipped required check counts as passing, so this job runs after a failed need and fails itself.
   cargo-gate:
     name: cargo (ubuntu-latest)

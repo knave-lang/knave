@@ -187,6 +187,7 @@ cargo test <narrowest test>
 | the project file's reader | `--test stages project_fixtures` |
 | a corpus entry | `--test stages corpus_fixtures` |
 | the harness of RFC 0065, or a known shape under `tests/fixtures/agree/` | `-p knave-agree`, then `--test stages agree_fixtures` |
+| the program generator or `cargo xtask agree` | `-p knave-agree`, then `cargo build --bin knave` and `cargo xtask agree`, which runs seeds 0 to 19 |
 | a CLI command | `--test cli <test name>` |
 | a diagnostic code | `--test diagnostic_codes --test diagnostic_snapshots` |
 | `xtask/` | `-p xtask` |
@@ -194,6 +195,8 @@ cargo test <narrowest test>
 - To run one fixture of a stage, prefix the stage's command with `INSTA_GLOB_FILTER='**/<fixture file name>'`.
 
 **If a change touches a Rust file under `src/`, `expand/src/` or `xtask/src/`, run `cargo xtask file-sizes` and `cargo xtask design-rules`.** If either command fails, do what its message says for each item it names.
+
+**If a change alters what the generator writes or what a backend reports, update `xtask/agree/pull-request-findings.txt` from `target/agree/findings.txt` after `cargo xtask agree --seeds 0..200`, and read each changed line.** CI's `agreement` job fails when the findings of seeds 0 to 199 differ from that file.
 
 **CI posts the front end's instruction counts on each ready pull request and uploads its callgrind profiles.** If a ready pull request carries the change, read them from CI as `docs/pull-requests.md` says, and NEVER run `cargo xtask bench measure`. Otherwise, you MAY measure them on Linux with `cargo xtask bench measure`. To compare two checkouts, measure each with `--workspace <checkout> --save <file>`, then run `cargo xtask bench compare <before> <after>`.
 

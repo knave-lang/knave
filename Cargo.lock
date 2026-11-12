@@ -726,6 +726,7 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "knave-agree",
  "proc-macro2",
  "quote",
  "serde_json",

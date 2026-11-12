@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::fmt;
 
 use knave_expand::core::{ExpressionForm, KernelForm, LeafForm};
 use knave_expand::reader::{TokenKind, TokenScan};
@@ -22,6 +23,11 @@ impl FormCensus {
         census
     }
 
+    pub fn add(&mut self, other: &FormCensus) {
+        Self::add_counts(&mut self.kernel_forms, &other.kernel_forms);
+        Self::add_counts(&mut self.prelude_names, &other.prelude_names);
+    }
+
     pub fn uses_rust_templates(&self) -> bool {
         let template = KernelForm::Expression(ExpressionForm::Leaf(LeafForm::Rust));
         self.kernel_forms.contains_key(template.name())
@@ -38,6 +44,21 @@ impl FormCensus {
 
     fn is_kernel_form(head: &str) -> bool {
         KernelForm::all().any(|form| form.name() == head)
+    }
+
+    fn add_counts(total: &mut BTreeMap<String, usize>, more: &BTreeMap<String, usize>) {
+        for (name, count) in more {
+            *total.entry(name.clone()).or_default() += count;
+        }
+    }
+}
+
+impl fmt::Display for FormCensus {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let kernel: Vec<&str> = self.kernel_forms.keys().map(String::as_str).collect();
+        writeln!(formatter, "  kernel forms: {}", kernel.join(" "))?;
+        let prelude: Vec<&str> = self.prelude_names.keys().map(String::as_str).collect();
+        writeln!(formatter, "  prelude names: {}", prelude.join(" "))
     }
 }
 
@@ -60,5 +81,13 @@ mod tests {
         let census = FormCensus::of_text("; (if)\n(println \"(do)\")");
         assert!(census.kernel_forms.is_empty());
         assert_eq!(census.prelude_names.get("println"), Some(&1));
+    }
+
+    #[test]
+    fn adds_the_counts_of_another_census() {
+        let mut census = FormCensus::of_text("(println 1)");
+        census.add(&FormCensus::of_text("(println 2) (if a b c)"));
+        assert_eq!(census.prelude_names.get("println"), Some(&2));
+        assert_eq!(census.kernel_forms.get("if"), Some(&1));
     }
 }

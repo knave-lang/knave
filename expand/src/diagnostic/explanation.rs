@@ -10,7 +10,13 @@ macro_rules! written_explanations {
 }
 
 written_explanations! {
+    "L0101",
+    "L0102",
+    "L0103",
+    "L0104",
+    "L0105",
     "L0106",
+    "L0107",
     "L0201",
     "L0208",
     "L0210",

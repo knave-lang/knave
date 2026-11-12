@@ -1,7 +1,9 @@
 use std::ops::Range;
 
+use super::docstring_line::DocstringLine;
+
 pub struct DocstringLines {
-    lines: Vec<String>,
+    lines: Vec<DocstringLine>,
     written_ranges: Vec<Range<usize>>,
 }
 
@@ -16,7 +18,7 @@ impl DocstringLines {
         let mut written_ranges = Vec::new();
         let mut start = Self::QUOTE.len_utf8();
         for written in contents.split('\n') {
-            lines.push(Self::unescaped(written)?);
+            lines.push(DocstringLine::new(Self::unescaped(written)?));
             written_ranges.push(start..start + written.len());
             start += written.len() + 1;
         }
@@ -26,14 +28,13 @@ impl DocstringLines {
         })
     }
 
-    pub fn lines(&self) -> &[String] {
+    pub fn lines(&self) -> &[DocstringLine] {
         &self.lines
     }
 
     pub fn written_range(&self, line: usize) -> Range<usize> {
         let range = self.written_ranges[line].clone();
-        let indentation = self.lines[line].len() - self.lines[line].trim_start().len();
-        range.start + indentation..range.end
+        range.start + self.lines[line].indentation()..range.end
     }
 
     pub fn token_of(lines: &[String]) -> String {
@@ -73,13 +74,16 @@ impl DocstringLines {
 
 #[cfg(test)]
 mod tests {
-    use super::DocstringLines;
+    use super::{DocstringLine, DocstringLines};
 
     #[test]
     fn a_token_reads_to_lines_without_its_quote_and_backslash_escapes() {
         let lines =
             DocstringLines::of_token("\"Pads.\n  (pad \\\"a\\\\b\\\")\"").expect("it reads");
-        assert_eq!(lines.lines(), ["Pads.", "  (pad \"a\\b\")"]);
+        assert_eq!(
+            lines.lines(),
+            DocstringLine::split("Pads.\n  (pad \"a\\b\")")
+        );
     }
 
     #[test]
@@ -91,7 +95,12 @@ mod tests {
     fn lines_write_back_to_the_token_they_read_from() {
         let token = "\"Pads.\n  (pad \\\"a\\\\b\\\")\"";
         let lines = DocstringLines::of_token(token).expect("it reads");
-        assert_eq!(DocstringLines::token_of(lines.lines()), token);
+        let texts: Vec<String> = lines
+            .lines()
+            .iter()
+            .map(|line| line.text().to_string())
+            .collect();
+        assert_eq!(DocstringLines::token_of(&texts), token);
     }
 
     #[test]

@@ -5,6 +5,7 @@ mod code_layout;
 mod code_region;
 mod code_spacing;
 mod docstring_code;
+mod docstring_line;
 mod docstring_lines;
 mod docstring_part;
 mod docstring_pass;
@@ -39,6 +40,7 @@ use crate::source::{SourceFile, SourceId, SourceMap};
 use code_layout::CodeLayout;
 use code_spacing::CodeSpacing;
 use docstring_code::DocstringCode;
+use docstring_line::DocstringLine;
 use docstring_pass::DocstringPass;
 use format_rules::FormatRules;
 use import_order::ImportSorter;
@@ -105,7 +107,7 @@ impl SourceFormatter {
 
     pub fn lay_out_page(&mut self, page: &str, module: &str, lookup: &ModuleLookup) -> String {
         let shapes = self.shape_reader.catalog(&Self::use_of(module), lookup);
-        let lines: Vec<String> = page.split('\n').map(str::to_string).collect();
+        let lines = DocstringLine::split(page);
         DocstringCode::of_pages(FormatRules {
             shapes: &shapes,
             syntax: &self.syntax,

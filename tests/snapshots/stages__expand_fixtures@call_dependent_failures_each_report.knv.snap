@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/call_dependent_failures_each_report.knv
+---
+error[L0301]: expected a symbol
+  --> expand/call_dependent_failures_each_report.knv:6:38
+   |
+ 6 |     (fail "expected a symbol" (quote here))))
+   |                                      ^^^^ here
+...
+10 |   (needs-symbol "text")
+   |   --------------------- in this macro call
+
+error[L0301]: expected a symbol
+ --> expand/call_dependent_failures_each_report.knv:6:38
+  |
+6 |     (fail "expected a symbol" (quote here))))
+  |                                      ^^^^ here
+...
+9 |   (needs-symbol 1)
+  |   ---------------- in this macro call
+
+error[L0201]: cannot find `a` in this scope
+  --> expand/call_dependent_failures_each_report.knv:11:17
+   |
+11 |   (needs-symbol a))
+   |                 ^ not found in this scope

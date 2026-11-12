@@ -1,0 +1,11 @@
+(use code fail)
+
+(defmacro always-broken (x)
+  (fail "this macro is not finished"
+    (quote todo)
+    "finish the macro"
+    (quote (:once-per definition))))
+
+(defn main ()
+  (always-broken 1)
+  (always-broken 2))

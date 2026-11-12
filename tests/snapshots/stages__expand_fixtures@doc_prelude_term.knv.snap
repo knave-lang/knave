@@ -3,6 +3,6 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/doc_prelude_term.knv
 ---
-(def defn-page "(defmacro defn (name parameters body ...))\n\nDefines a function: (defn name (parameter ...) body ...).\n\nA string before at least one more body form is the docstring.\n\n```\n(defn twice (x) \"Doubles a number.\" (* 2 x))\n(twice 4)\n=> 8\n```")
+(def defn-page "(defmacro defn (name parameters body ...))\n\nDefines a function: (defn name (parameter ...) body ...).\n\nA string before at least one more body form is the docstring.\n\n```\n(defn twice (x)\n  \"Doubles a number.\"\n  (* 2 x))\n\n(twice 4)\n=> 8\n```")
 (def threading-docstring "Threads a value through each form as its first argument.\n\n`(-> 3 (- 10) (* 2))` is `(* (- 3 10) 2)`. A bare name in place of a form is\ncalled with the value alone.\n\n(-> 3 (- 10) (* 2))\n=> -14\n\n(-> 3 (- 10) neg)\n=> 7")
 (def doc-macro-header "(defmacro doc (term))")

@@ -1,6 +1,7 @@
 (use prelude/macros defrule document header-shape module)
 
-(module "Combines booleans and runs code on a condition.")
+(module
+  "Combines booleans and runs code on a condition.")
 
 (export and cond not or unless when)
 
@@ -102,5 +103,8 @@
   A last clause `(else body ...)` runs when no test is true. Without one,
   every body must return unit, and so does the call.
 
-  (cond ((> 7 9) \"high\") ((> 7 5) \"middle\") (else \"low\"))
+  (cond
+    ((> 7 9) \"high\")
+    ((> 7 5) \"middle\")
+    (else \"low\"))
   => \"middle\"")

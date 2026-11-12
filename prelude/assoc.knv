@@ -7,7 +7,8 @@
           number-sub prepend rest string symbol symbol?
           value-eq)
 
-(module "Returns structs and collections with new values at their keys.
+(module
+  "Returns structs and collections with new values at their keys.
 
   A collection moves into the call and comes back with the new values in place.
   A struct comes back as a new struct, which takes each field the call does not
@@ -208,10 +209,13 @@
 
   A path of only index or map key steps moves the collection.
 
-  (assoc-in (vec (vec 1 2) (vec 3)) (1 0) 7)
+  (assoc-in (vec (vec 1 2) (vec 3))
+            (1 0)
+            7)
   => (vec (vec 1 2) (vec 7))
 
-  (local scores (assoc-in (sorted-map \"ana\" 1) (\"bo\") 7))
+  (local scores
+    (assoc-in (sorted-map \"ana\" 1) (\"bo\") 7))
   (get scores \"bo\")
   => (some (ref 7))"
   (local root (read-root value))
@@ -296,10 +300,15 @@
   a [string] key takes `(str \"name\")`, and a `(ref str)` key takes
   `(as-str name)`.
 
-  (local scores (update (sorted-map \"ana\" 1) \"ana\" (fn (n) (+ n 1)) 0))
+  (local scores
+    (update (sorted-map \"ana\" 1)
+            \"ana\"
+            (fn (n) (+ n 1))
+            0))
   (get scores \"ana\")
   => (some (ref 2))
 
-  (local more (update scores \"bo\" (fn (n) (+ n 1)) 0))
+  (local more
+    (update scores \"bo\" (fn (n) (+ n 1)) 0))
   (get more \"bo\")
   => (some (ref 1))")

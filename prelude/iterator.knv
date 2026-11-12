@@ -12,7 +12,8 @@
 (use code empty? first list list? prepend rest same-binding?
           symbol?)
 
-(module "Builds, transforms and consumes lazy iterators.
+(module
+  "Builds, transforms and consumes lazy iterators.
 
   A step such as [map] or [filter] runs only when a call such as [reduce],
   [for-each] or `collect` reads its items. A vector or a map passes as its
@@ -226,7 +227,8 @@
   `test` takes a `(ref a)`. It is lazy: the test runs when a later call reads
   the item. A vector or a map passes as its [iter].
 
-  (collect (filter (range 0 4) (fn (x) (> (deref x) 1))))
+  (collect (filter (range 0 4)
+             (fn (x) (> (deref x) 1))))
   => (vec 2 3)")
 
 (document (reduce items step)
@@ -252,7 +254,8 @@
   passes as its [iter].
 
   (local total 0)
-  (for-each (range 1 4) (fn (x) (set! total (+ total x))))
+  (for-each (range 1 4)
+    (fn (x) (set! total (+ total x))))
   (= total 6)
   => true")
 
@@ -328,7 +331,8 @@
   passes as its [iter]. A keyword such as `:age` reads that field.
 
   (local words (vec \"pear\" \"kiwi\" \"fig\"))
-  (max-by-key (copied words) (fn (word) (len (deref word))))
+  (max-by-key (copied words)
+    (fn (word) (len (deref word))))
   => (some \"kiwi\")")
 
 (document (any? items test)
@@ -361,10 +365,12 @@
   It returns `none` when no item passes. `test` takes a `(ref a)`. A vector or
   a map passes as its [iter].
 
-  (find (range 0 5) (fn (x) (> (deref x) 2)))
+  (find (range 0 5)
+    (fn (x) (> (deref x) 2)))
   => (some 3)
 
-  (find (range 0 5) (fn (x) (> (deref x) 9)))
+  (find (range 0 5)
+    (fn (x) (> (deref x) 9)))
   => none")
 
 (document (take items limit)
@@ -381,5 +387,6 @@
 
   `test` takes a `(ref a)`. A vector or a map passes as its [iter].
 
-  (collect (take-while (copied (vec 1 5 2)) (fn (x) (< (deref x) 3))))
+  (collect (take-while (copied (vec 1 5 2))
+             (fn (x) (< (deref x) 3))))
   => (vec 1)")

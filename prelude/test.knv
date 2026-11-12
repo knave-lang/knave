@@ -5,7 +5,8 @@
                              module-docstring-notes)
 
 (use prelude/internal/docstrings arrow-line? closes-fence?
-                                 example-arrow opening-fence)
+                                 example-arrow
+                                 opening-fence)
 
 (use prelude/types vec)
 (use prelude/number =)
@@ -26,7 +27,8 @@
 
 (use prelude/syntax assert deftest run-tests)
 
-(module "Runs tests and docstring examples under `knave test`.")
+(module
+  "Runs tests and docstring examples under `knave test`.")
 
 (export assert check-library-examples deftest doctest
         run-tests)
@@ -605,7 +607,8 @@
 (def result-offset
   (fn (line)
     (number-add (line-offset line)
-                (number-add (line-indent line) (string-length example-arrow)))))
+                (number-add (line-indent line)
+                            (string-length example-arrow)))))
 
 (def line-indent
   (fn (line)

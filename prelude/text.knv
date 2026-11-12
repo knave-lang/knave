@@ -19,7 +19,8 @@
 
 (use prelude/io io-error)
 
-(module "Builds, prints, parses and splits strings.
+(module
+  "Builds, prints, parses and splits strings.
 
   It also holds the lookups that print documentation, such as [doc], [dir]
   and [apropos].")
@@ -708,8 +709,17 @@
   `display` is also the trait, Rust's `Display`, that a `print` part needs.
 
   ```
-  (defstruct point :x i64 :y i64)
-  (display point (p) \"(\" (:x p) \", \" (:y p) \")\")
+  (defstruct point
+    :x i64
+    :y i64)
+
+  (display point (p)
+    \"(\"
+    (:x p)
+    \", \"
+    (:y p)
+    \")\")
+
   (str (->point :x 1 :y 2))
   => \"(1, 2)\"
   ```
@@ -857,8 +867,12 @@
   trait that [prn] and [pr-str] need.
 
   ```
-  (defstruct money :cents i64)
-  (show money (m) (->money :cents (:cents m)))
+  (defstruct money
+    :cents i64)
+
+  (show money (m)
+    (->money :cents (:cents m)))
+
   (pr-str (->money :cents 1200))
   => \"(->money :cents 1200)\"
   ```
@@ -881,7 +895,9 @@
   [derive] adds it to a struct or an enum of the program.
 
   ```
-  (defstruct point :x i64)
+  (defstruct point
+    :x i64)
+
   (derive point debug)
   ```")
 
@@ -899,7 +915,8 @@
   It is the associated type of [from-str], as `Err` is in Rust, so
   `(parse-error i64)` is [parse-int-error].
 
-  (unwrap-ok (the (result i64 (parse-error i64)) (parse \"12\")))
+  (unwrap-ok (the (result i64 (parse-error i64))
+                  (parse \"12\")))
   => 12")
 
 (document parse-bool-error
@@ -1106,9 +1123,12 @@
   it.
 
   ```
-  (defstruct label :text string)
+  (defstruct label
+    :text string)
+
   (impl display label
     (fmt (self out) (fmt (:text self) out)))
+
   (str (->label :text (str \"pear\")))
   => \"pear\"
   ```")
@@ -1119,9 +1139,13 @@
   It is the method of the [show] trait, and the `show` macro implements it.
 
   ```
-  (defstruct label :text string)
+  (defstruct label
+    :text string)
+
   (impl show label
-    (write-form (self out) (write-form (:text self) out)))
+    (write-form (self out)
+                (write-form (:text self) out)))
+
   (pr-str (->label :text (str \"pear\")))
   => \"\\\"pear\\\"\"
   ```")

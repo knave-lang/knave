@@ -308,7 +308,10 @@
   A string before at least one more body form is the docstring.
 
   ```
-  (defn twice (x) \"Doubles a number.\" (* 2 x))
+  (defn twice (x)
+    \"Doubles a number.\"
+    (* 2 x))
+
   (twice 4)
   => 8
   ```"
@@ -842,8 +845,10 @@
   with the failure, not the enclosing function.
 
   (loop (total 0
-        n 3)
-    (if (> n 0) (recur (+ total n) (- n 1)) total))
+         n 3)
+    (if (> n 0)
+      (recur (+ total n) (- n 1))
+      total))
   => 6")
 
 (document (let-try (name value
@@ -857,7 +862,9 @@
   enclosing function, or leaves the enclosing [loop]. That function must
   return a `result` or an `option` of the same kind.
 
-  (local step (fn ((value (option i64))) (let-try (n value) (some (+ n 1)))))
+  (local step
+    (fn ((value (option i64)))
+      (let-try (n value) (some (+ n 1)))))
   (step (some 1))
   => (some 2)
 
@@ -890,8 +897,11 @@
   Unlike [->], a step takes no extra arguments: a call form is a call whose
   result is the function, so `(try-> x (make-step))` is `((make-step) x)`.
 
-  (local half (fn ((n i64)) (if (> n 0) (some (/ n 2)) none)))
-  (local twice-halved (fn ((n i64)) (try-> n half half)))
+  (local half
+    (fn ((n i64))
+      (if (> n 0) (some (/ n 2)) none)))
+  (local twice-halved
+    (fn ((n i64)) (try-> n half half)))
   (twice-halved 8)
   => (some 2)
 

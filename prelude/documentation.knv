@@ -10,15 +10,16 @@
 
 (use prelude/internal/code require-module)
 
-(use prelude/internal/docstrings arrow-line? closes-fence? fence-run
-                                 opening-fence)
+(use prelude/internal/docstrings arrow-line? closes-fence?
+                                 fence-run opening-fence)
 
 (use prelude/macros defmacro doc-body doc-header docstring
                     docstring-form document map-list module)
 
 (export documentation-names documentation-page)
 
-(module "Writes the Markdown pages of `knave doc --write`.")
+(module
+  "Writes the Markdown pages of `knave doc --write`.")
 
 (def documentation-origin "https://knave-lang.org/docs/")
 
@@ -462,12 +463,14 @@
                                (list ""))
                        (list)
                        (rest lines)
-                       next (list))
+                       next
+                       (list))
                 (recur written
                        (concat paragraph
                                (list (list (first lines) number)))
                        (rest lines)
-                       next (list))))
+                       next
+                       (list))))
             (recur (concat written (list (first lines)))
                    paragraph
                    (rest lines)
@@ -477,10 +480,12 @@
                (converted (list)
                           (list)
                           (string-lines (docstring-text docstring))
-                          0 (list)))))
+                          0
+                          (list)))))
 
 (def fence-line?
-  (fn (line) (bool-not (empty? (opening-fence line)))))
+  (fn (line)
+    (bool-not (empty? (opening-fence line)))))
 
 (def fence-after
   (fn (fence line)
@@ -495,7 +500,8 @@
 
 (def bare-fence?
   (fn (fence line)
-    (value-eq (string-drop (string-trim-start line) (fence-run fence)) "")))
+    (value-eq (string-drop (string-trim-start line) (fence-run fence))
+              "")))
 
 (def blank-line?
   (fn (line)

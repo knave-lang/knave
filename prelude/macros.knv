@@ -514,6 +514,7 @@
 
   ```
   (use prelude/macros header-shape)
+
   (header-shape (twice x))
   ```"
   (if (header-shape? shape)
@@ -668,8 +669,12 @@
 
   ```
   (use prelude/macros document)
+
   (def twice (fn (x) (* 2 x)))
-  (document (twice x) \"Doubles a number.\")
+
+  (document (twice x)
+    \"Doubles a number.\")
+
   (docstring twice)
   => \"Doubles a number.\"
   ```"
@@ -723,6 +728,7 @@
 
   ```
   (defrule swap ((a b) (pair b a)))
+
   (swap 1 2)
   => (pair 2 1)
   ```")
@@ -735,8 +741,10 @@
 
   ```
   (use prelude/macros defrule-with-value)
+
   (defrule-with-value twice (fn (x) (* 2 x))
     ((x) (* 2 x)))
+
   (twice 4)
   => 8
   ```")
@@ -751,7 +759,10 @@
 
   ```
   (use code list)
-  (defmacro twice (x) (list (quote *) 2 x))
+
+  (defmacro twice (x)
+    (list (quote *) 2 x))
+
   (twice 4)
   => 8
   ```")
@@ -764,7 +775,9 @@
   `(template (def (unquote name) (splice body)))`.
 
   ```
-  (defmacro twice (x) (template (* 2 (unquote x))))
+  (defmacro twice (x)
+    (template (* 2 (unquote x))))
+
   (twice 4)
   => 8
   ```")
@@ -782,11 +795,15 @@
 
   ```
   (use code nth warn)
+
   (def parked
     (macro (form)
-      (warn \"the van is parked on a link\" (nth form 1) \"move the van\"
+      (warn \"the van is parked on a link\"
+        (nth form 1)
+        \"move the van\"
         (quote (:code unmatched-link)))
       (nth form 1)))
+
   (parked 3)
   => 3
   ```")
@@ -807,10 +824,12 @@
   first `module` of a file wins.
 
   ```
-  (module \"Shapes on a grid.\")
+  (module
+    \"Shapes on a grid.\")
   ```")
 
-(module "Defines macros, and documents and looks up terms.
+(module
+  "Defines macros, and documents and looks up terms.
 
   It holds the definers of macros, the docstring lookups, and the helpers
   that macro code builds forms with, such as [template] and [map-list].")
@@ -825,7 +844,8 @@
   (dir), (dir module), (apropos text) or (find-doc text), whose page is the
   form and its results.
 
-  (= (doc-page digit?) (str (doc-header digit?) (doc-body digit?)))
+  (= (doc-page digit?)
+     (str (doc-header digit?) (doc-body digit?)))
   => true"
   (documentation-part (quote page) term))
 
@@ -863,7 +883,10 @@
   ```
   (use code first string?)
   (use prelude/macros defmacro docstring-form)
-  (defmacro documented? (term) (string? (first (docstring-form term))))
+
+  (defmacro documented? (term)
+    (string? (first (docstring-form term))))
+
   (documented? digit?)
   => true
   ```")

@@ -19,7 +19,8 @@
           keyword? list list? nth prepend rest string symbol
           symbol-name symbol?)
 
-(module "Defines structs and their keyword constructors.")
+(module
+  "Defines structs and their keyword constructors.")
 
 (export defstruct)
 
@@ -114,7 +115,10 @@
   Write (defstruct name :field type ...).
 
   ```
-  (defstruct point :x i64 :y i64)
+  (defstruct point
+    :x i64
+    :y i64)
+
   (:x (->point :x 1 :y 2))
   => 1
   ```"

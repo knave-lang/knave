@@ -9,9 +9,9 @@ error[L0306]: `+` belongs to the program, so macro code cannot run it
   4 |   (local n (+ (len forms) 1))
     |            ^^^^^^^^^^^^^^^^^ macro code runs this
     |
-   ::: prelude/number.knv:135:21
+   ::: prelude/number.knv:136:21
     |
-135 | (defrule-with-value + add
+136 | (defrule-with-value + add
     |                     - `+` expands to Rust code that runs in the program
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`

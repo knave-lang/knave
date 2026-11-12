@@ -10,7 +10,8 @@
 (use code concat empty? len list number-add number-lt
           number-sub prepend rest string symbol?)
 
-(module "Builds, reads and reorders vectors.")
+(module
+  "Builds, reads and reorders vectors.")
 
 (export at collect copied dedup! first iter last pop! push!
         remove-at! reverse reverse! sort! sort-by! vec
@@ -272,7 +273,8 @@
   Rust's `sort_by_key` may panic when `key` is not consistent between calls.
 
   (local words (vec \"pear\" \"fig\" \"kiwi\"))
-  (sort-by! words (fn (word) (len (deref word))))
+  (sort-by! words
+    (fn (word) (len (deref word))))
   (clone words)
   => (vec \"fig\" \"pear\" \"kiwi\")")
 

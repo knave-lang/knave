@@ -17,7 +17,8 @@
 
 (use prelude/internal/code pinned-at)
 
-(module "Runs the tasks of a project and lists them for `knave task`.")
+(module
+  "Runs the tasks of a project and lists them for `knave task`.")
 
 (export deftask run-task task-listing task-names
         task-signature)

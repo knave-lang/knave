@@ -1,7 +1,8 @@
 (use prelude/macros document header-shape module)
 (use code fail first project-file-name string symbol-name)
 
-(module "Holds the forms of the project file, which the compiler reads as data.
+(module
+  "Holds the forms of the project file, which the compiler reads as data.
 
   A project file opens with [defproject], whose sections [libraries],
   [dependencies] and [dev-dependencies] list what the project uses. A call of
@@ -51,9 +52,7 @@
   program is an error.
 
   ```
-  (defproject browser
-    :version \"0.1.0\"
-    :entry \"src/main.knv\")
+  (defproject browser :version \"0.1.0\" :entry \"src/main.knv\")
   ```")
 
 (document (libraries)
@@ -61,8 +60,7 @@
   error.
 
   ```
-  (defproject browser
-    (libraries (hints :path \"../hints\")))
+  (defproject browser (libraries (hints :path \"../hints\")))
   ```")
 
 (document (dependencies)
@@ -79,6 +77,5 @@
   program is an error.
 
   ```
-  (defproject browser
-    (dev-dependencies (proptest \"1.5\")))
+  (defproject browser (dev-dependencies (proptest \"1.5\")))
   ```")

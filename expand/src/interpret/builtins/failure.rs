@@ -1,6 +1,6 @@
 use super::code_book::CodeBook;
 use crate::core::Keyword;
-use crate::diagnostic::{Diagnostic, DiagnosticCode, Suggestion};
+use crate::diagnostic::{Diagnostic, DiagnosticCode, Label, Suggestion};
 use crate::interpret::arguments::Arguments;
 use crate::interpret::problems::InterpretProblems;
 use crate::reader::{Form, FormKind};
@@ -74,6 +74,7 @@ pub struct FailureDescription {
     earlier_label: Option<EarlierLabel>,
     replacement: Option<String>,
     note: Option<String>,
+    once_per_definition: bool,
 }
 
 struct Earlier {
@@ -87,12 +88,13 @@ struct EarlierLabel {
 }
 
 impl FailureDescription {
-    pub const PARTS: [&'static str; 6] = [
+    pub const PARTS: [&'static str; 7] = [
         Self::CODE,
         Self::EARLIER,
         Self::EARLIER_LABEL,
         Self::LABEL,
         Self::NOTE,
+        Self::ONCE_PER,
         Self::SUGGEST,
     ];
     const CODE: &'static str = "code";
@@ -100,6 +102,8 @@ impl FailureDescription {
     const EARLIER_LABEL: &'static str = "earlier-label";
     const LABEL: &'static str = "label";
     const NOTE: &'static str = "note";
+    const ONCE_PER: &'static str = "once-per";
+    const DEFINITION: &'static str = "definition";
     const SUGGEST: &'static str = "suggest";
 
     pub fn read(parts: &[Form], codes: &CodeBook) -> Result<Self, Diagnostic> {
@@ -139,6 +143,7 @@ impl FailureDescription {
             Some(Self::EARLIER_LABEL) => self.with_earlier_label(part, value),
             Some(Self::LABEL) => self.with_label(value),
             Some(Self::NOTE) => self.with_note(value),
+            Some(Self::ONCE_PER) => self.with_once_per(value),
             Some(Self::SUGGEST) => self.with_replacement(value),
             _ => Err(Self::malformed_part(part)),
         }
@@ -183,6 +188,16 @@ impl FailureDescription {
             note: Some(Self::label_text(value)?),
             ..self
         })
+    }
+
+    fn with_once_per(self, value: &Form) -> Result<Self, Diagnostic> {
+        match Self::symbol_name(value)? {
+            Self::DEFINITION => Ok(Self {
+                once_per_definition: true,
+                ..self
+            }),
+            _ => Err(Self::malformed_part(value)),
+        }
     }
 
     fn with_replacement(self, value: &Form) -> Result<Self, Diagnostic> {
@@ -238,11 +253,25 @@ impl FailureDescription {
     }
 
     fn labelled(self, message: String, culprit: Span) -> Diagnostic {
+        let primary = self.primary_label(culprit);
         let earlier = self
             .earlier
             .zip(self.earlier_label)
             .map(|(earlier, label)| (earlier.form, label.text));
         let code = self.code.unwrap_or(DiagnosticCode::MACRO_FAILED);
-        InterpretProblems::failed(code, message, culprit, self.label, earlier)
+        InterpretProblems::failed(code, message, primary, earlier)
+    }
+
+    fn primary_label(&self, culprit: Span) -> Label {
+        let text = self
+            .label
+            .as_deref()
+            .unwrap_or(InterpretProblems::UNLABELLED_FAILURE);
+        let label = Label::new(culprit, text);
+        if self.once_per_definition {
+            label.in_a_definition()
+        } else {
+            label
+        }
     }
 }

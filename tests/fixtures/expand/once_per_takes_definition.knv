@@ -1,0 +1,8 @@
+(use code fail)
+
+(defmacro broken (x)
+  (fail "this macro is not finished"
+    x "finish the macro"
+    (quote (:once-per call))))
+
+(def value (broken 1))

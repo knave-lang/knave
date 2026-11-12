@@ -1,6 +1,7 @@
-use super::docstring_place::DocstringPlace;
+use super::body_lists::BodyLists;
 use super::shapes::{Shape, ShapeCatalog};
 use super::syntax_tree::{Entry, ListNode};
+use super::written_gap::WrittenGap;
 
 #[derive(Default)]
 pub struct MethodEntries {
@@ -9,17 +10,8 @@ pub struct MethodEntries {
 }
 
 impl MethodEntries {
-    pub const SHAPE: Shape = Shape {
-        header_length: 1,
-        docstring: DocstringPlace::Absent,
-        one_per_line: false,
-        arms: false,
-        bindings: false,
-        methods: false,
-    };
-
     pub fn of(list: &ListNode, shape: Option<Shape>, shapes: &ShapeCatalog) -> Self {
-        let Some(shape) = shape.filter(|shape| shape.methods) else {
+        let Some(shape) = shape.filter(|shape| shape.body_lists == BodyLists::Methods) else {
             return Self::default();
         };
         let methods: Vec<usize> = (shape.header_length + 1..list.entries.len())
@@ -46,7 +38,8 @@ impl MethodEntries {
         let either_has_body = [earlier, later]
             .iter()
             .any(|entry| Self::has_body(&list.entries[*entry]));
-        neighbors && either_has_body && !list.entries[later].opens_with_blank_line()
+        let written_blank_line = list.entries[later].gap_before() == WrittenGap::BlankLine;
+        neighbors && either_has_body && !written_blank_line
     }
 
     fn is_method(entry: &Entry, shapes: &ShapeCatalog) -> bool {
@@ -63,7 +56,7 @@ impl MethodEntries {
     }
 
     fn has_body(entry: &Entry) -> bool {
-        let header_end = Self::SHAPE.header_length + 1;
+        let header_end = Shape::METHOD.header_length + 1;
         entry
             .node
             .as_list()
@@ -74,10 +67,8 @@ impl MethodEntries {
 #[cfg(test)]
 mod tests {
     use super::MethodEntries;
-    use crate::format::shapes::{ShapeCatalog, ShapeStatement};
+    use crate::format::shapes::{ShapeCatalog, ShapeCatalogFixture};
     use crate::format::syntax_tree::SyntaxTree;
-    use crate::reader::Reader;
-    use crate::source::SourceMap;
 
     struct MethodsFixture {
         shapes: ShapeCatalog,
@@ -90,17 +81,9 @@ mod tests {
              (header-shape (where parameters))";
 
         fn new() -> Self {
-            let mut sources = SourceMap::default();
-            let source = sources.add("shapes", Self::SHAPES);
-            let forms = Reader::new(sources.file(source))
-                .read()
-                .unwrap_or_else(|_| panic!("the shapes read"));
-            let mut shapes = ShapeCatalog::default();
-            forms
-                .iter()
-                .filter_map(ShapeStatement::of)
-                .for_each(|statement| shapes.add(&statement));
-            Self { shapes }
+            Self {
+                shapes: ShapeCatalogFixture::stated(Self::SHAPES),
+            }
         }
 
         fn methods(&self, text: &str) -> MethodEntries {

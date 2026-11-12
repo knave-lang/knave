@@ -1,6 +1,8 @@
 use rustc_hash::FxHashMap;
 
+use super::body_lists::BodyLists;
 use super::docstring_place::DocstringPlace;
+use super::one_line_rule::OneLineRule;
 use super::syntax_tree::ListNode;
 use crate::core::Keyword;
 use crate::reader::Form;
@@ -9,10 +11,10 @@ use crate::reader::Form;
 pub struct Shape {
     pub header_length: usize,
     pub docstring: DocstringPlace,
+    pub one_line: OneLineRule,
     pub one_per_line: bool,
-    pub arms: bool,
+    pub body_lists: BodyLists,
     pub bindings: bool,
-    pub methods: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -48,10 +50,10 @@ impl ShapeStatement {
             shape: Shape {
                 header_length: header.len(),
                 docstring: Self::docstring_place(markers),
+                one_line: Self::one_line_rule(markers),
                 one_per_line: Self::has_marker(markers, Self::ONE_PER_LINE_MARKER),
-                arms: Self::has_marker(markers, Self::ARMS_MARKER),
+                body_lists: Self::body_lists(markers),
                 bindings: Self::has_marker(markers, Self::BINDINGS_MARKER),
-                methods: Self::has_marker(markers, Self::METHODS_MARKER),
             },
         })
     }
@@ -63,6 +65,24 @@ impl ShapeStatement {
             DocstringPlace::Last
         } else {
             DocstringPlace::Absent
+        }
+    }
+
+    fn one_line_rule(markers: &[Form]) -> OneLineRule {
+        if Self::has_marker(markers, Self::DOCSTRING_MARKER) {
+            OneLineRule::OneBodyForm
+        } else {
+            OneLineRule::AnyBody
+        }
+    }
+
+    fn body_lists(markers: &[Form]) -> BodyLists {
+        if Self::has_marker(markers, Self::ARMS_MARKER) {
+            BodyLists::Arms
+        } else if Self::has_marker(markers, Self::METHODS_MARKER) {
+            BodyLists::Methods
+        } else {
+            BodyLists::Forms
         }
     }
 
@@ -97,14 +117,47 @@ impl ShapeCatalog {
 }
 
 impl Shape {
+    pub const METHOD: Shape = Shape {
+        header_length: 1,
+        docstring: DocstringPlace::Absent,
+        one_line: OneLineRule::OneBodyForm,
+        one_per_line: false,
+        body_lists: BodyLists::Forms,
+        bindings: false,
+    };
+
+    pub fn allows_one_line(self, item_count: usize) -> bool {
+        self.one_line.allows(self.header_length, item_count)
+    }
+
     fn docstring_position(self, item_count: usize) -> Option<usize> {
         self.docstring.position(self.header_length, item_count)
     }
 }
 
 #[cfg(test)]
+pub struct ShapeCatalogFixture;
+
+#[cfg(test)]
+impl ShapeCatalogFixture {
+    pub fn stated(text: &str) -> ShapeCatalog {
+        let mut sources = crate::source::SourceMap::default();
+        let source = sources.add("shapes", text);
+        let forms = crate::reader::Reader::new(sources.file(source))
+            .read()
+            .unwrap_or_else(|_| panic!("the shape statements read"));
+        let mut shapes = ShapeCatalog::default();
+        forms
+            .iter()
+            .filter_map(ShapeStatement::of)
+            .for_each(|statement| shapes.add(&statement));
+        shapes
+    }
+}
+
+#[cfg(test)]
 mod tests {
-    use super::{DocstringPlace, Shape, ShapeStatement};
+    use super::{BodyLists, DocstringPlace, OneLineRule, Shape, ShapeStatement};
     use crate::reader::{Form, Reader};
     use crate::source::SourceMap;
 
@@ -133,10 +186,10 @@ mod tests {
             Some(Shape {
                 header_length: 2,
                 docstring: DocstringPlace::Absent,
+                one_line: OneLineRule::AnyBody,
                 one_per_line: false,
-                arms: false,
-                bindings: false,
-                methods: false
+                body_lists: BodyLists::Forms,
+                bindings: false
             })
         );
     }
@@ -148,6 +201,26 @@ mod tests {
         assert!(
             statement
                 .is_some_and(|statement| statement.shape.docstring == DocstringPlace::BeforeBody)
+        );
+    }
+
+    #[test]
+    fn a_docstring_marker_keeps_a_call_on_one_line_only_with_one_body_form() {
+        let statement =
+            StatementFixture::statement("(header-shape (defn name parameters) :docstring)");
+        assert!(
+            statement.is_some_and(|statement| statement.shape.one_line == OneLineRule::OneBodyForm)
+        );
+    }
+
+    #[test]
+    fn a_method_keeps_its_name_and_signature_as_its_header() {
+        assert_eq!(
+            (
+                Shape::METHOD.allows_one_line(3),
+                Shape::METHOD.allows_one_line(4)
+            ),
+            (true, false)
         );
     }
 
@@ -180,10 +253,10 @@ mod tests {
             Some(Shape {
                 header_length: 1,
                 docstring: DocstringPlace::Absent,
+                one_line: OneLineRule::AnyBody,
                 one_per_line: true,
-                arms: false,
-                bindings: false,
-                methods: false
+                body_lists: BodyLists::Forms,
+                bindings: false
             })
         );
     }
@@ -196,10 +269,10 @@ mod tests {
             Some(Shape {
                 header_length: 1,
                 docstring: DocstringPlace::Absent,
+                one_line: OneLineRule::AnyBody,
                 one_per_line: false,
-                arms: true,
-                bindings: false,
-                methods: false
+                body_lists: BodyLists::Arms,
+                bindings: false
             })
         );
     }
@@ -212,10 +285,10 @@ mod tests {
             Some(Shape {
                 header_length: 1,
                 docstring: DocstringPlace::Absent,
+                one_line: OneLineRule::AnyBody,
                 one_per_line: false,
-                arms: false,
-                bindings: true,
-                methods: false
+                body_lists: BodyLists::Forms,
+                bindings: true
             })
         );
     }
@@ -228,10 +301,10 @@ mod tests {
             Some(Shape {
                 header_length: 2,
                 docstring: DocstringPlace::Absent,
+                one_line: OneLineRule::AnyBody,
                 one_per_line: false,
-                arms: false,
-                bindings: false,
-                methods: true
+                body_lists: BodyLists::Methods,
+                bindings: false
             })
         );
     }

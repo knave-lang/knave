@@ -1,58 +1,55 @@
-use rustc_hash::FxHashSet;
+use rustc_hash::FxHashMap;
 
 use super::list_plan::ListPlan;
-use super::shapes::ShapeCatalog;
+use super::list_role::ListRole;
+use super::shapes::{Shape, ShapeCatalog};
 use super::syntax_tree::ListNode;
 
 #[derive(Default)]
 pub struct ListRoles {
-    binding_lists: FxHashSet<usize>,
-    methods: FxHashSet<usize>,
+    roles: FxHashMap<usize, ListRole>,
 }
 
 impl ListRoles {
     pub fn plan(&mut self, list: &ListNode, shapes: &ShapeCatalog) -> ListPlan {
         let plan = self.fresh_plan(list, shapes);
-        self.mark_entries(list, &plan);
+        self.mark_nested_lists(list, &plan);
         plan
     }
 
+    pub fn is_arm(&self, list: &ListNode) -> bool {
+        self.roles.get(&list.id) == Some(&ListRole::Arm)
+    }
+
     fn fresh_plan(&self, list: &ListNode, shapes: &ShapeCatalog) -> ListPlan {
-        if self.binding_lists.contains(&list.id) {
-            ListPlan::binding_list(list)
-        } else if self.methods.contains(&list.id) {
-            ListPlan::method(list)
-        } else {
-            ListPlan::new(list, shapes)
+        match self.roles.get(&list.id) {
+            Some(ListRole::BindingList) => ListPlan::binding_list(list),
+            Some(ListRole::Method) => ListPlan::new(list, Some(Shape::METHOD), shapes),
+            Some(ListRole::Arm) | None => {
+                let shape = list.head_name().and_then(|name| shapes.of(name));
+                ListPlan::new(list, shape, shapes)
+            }
         }
     }
 
-    fn mark_entries(&mut self, list: &ListNode, plan: &ListPlan) {
-        let binding_list = plan
-            .binding_list_entry
-            .and_then(|entry| Self::list_at(list, entry));
-        self.binding_lists
-            .extend(binding_list.map(|binding_list| binding_list.id));
-        let methods = plan.methods.entries().iter();
-        self.methods.extend(
-            methods
-                .filter_map(|entry| Self::list_at(list, *entry))
-                .map(|method| method.id),
-        );
-    }
-
-    fn list_at(list: &ListNode, entry: usize) -> Option<&ListNode> {
-        list.entries.get(entry)?.node.as_list()
+    fn mark_nested_lists(&mut self, list: &ListNode, plan: &ListPlan) {
+        for (entry, role) in plan.nested_roles() {
+            if let Some(nested) = list
+                .entries
+                .get(entry)
+                .and_then(|entry| entry.node.as_list())
+            {
+                self.roles.insert(nested.id, role);
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::ListRoles;
-    use crate::format::shapes::{ShapeCatalog, ShapeStatement};
+    use crate::format::shapes::{ShapeCatalog, ShapeCatalogFixture};
     use crate::format::syntax_tree::{ListNode, SyntaxTree};
-    use crate::reader::Reader;
-    use crate::source::SourceMap;
 
     struct RolesFixture {
         shapes: ShapeCatalog,
@@ -60,19 +57,12 @@ mod tests {
     }
 
     impl RolesFixture {
-        const SHAPE: &'static str = "(header-shape (impl trait type) :methods)";
+        const SHAPES: &'static str =
+            "(header-shape (impl trait type) :methods) (header-shape (match value) :arms)";
 
         fn new(text: &str) -> Self {
-            let mut sources = SourceMap::default();
-            let source = sources.add("shape", Self::SHAPE);
-            let form = Reader::new(sources.file(source))
-                .read()
-                .unwrap_or_else(|_| panic!("the shape reads"))
-                .remove(0);
-            let mut shapes = ShapeCatalog::default();
-            shapes.add(&ShapeStatement::of(&form).expect("the shape states a shape"));
             Self {
-                shapes,
+                shapes: ShapeCatalogFixture::stated(Self::SHAPES),
                 tree: SyntaxTree::build(text),
             }
         }
@@ -99,6 +89,17 @@ mod tests {
                 .allows_one_line()
         }
 
+        fn arms_after_planning_the_parent(&self) -> Vec<bool> {
+            let mut roles = ListRoles::default();
+            roles.plan(self.list(), &self.shapes);
+            self.list()
+                .entries
+                .iter()
+                .filter_map(|entry| entry.node.as_list())
+                .map(|nested| roles.is_arm(nested))
+                .collect()
+        }
+
         fn allows_one_line_alone(&self, entry: usize) -> bool {
             let mut roles = ListRoles::default();
             roles
@@ -117,6 +118,24 @@ mod tests {
     fn a_method_with_one_body_form_may_stay_on_one_line() {
         let fixture = RolesFixture::new("(impl t x (m (s) s))");
         assert!(fixture.allows_one_line_after_its_parent(3));
+    }
+
+    #[test]
+    fn a_list_after_the_header_of_a_form_with_arms_is_an_arm() {
+        let fixture = RolesFixture::new("(match v (a b) (c d))");
+        assert_eq!(fixture.arms_after_planning_the_parent(), vec![true, true]);
+    }
+
+    #[test]
+    fn a_header_list_of_a_form_with_arms_is_no_arm() {
+        let fixture = RolesFixture::new("(match (v w) (a b))");
+        assert_eq!(fixture.arms_after_planning_the_parent(), vec![false, true]);
+    }
+
+    #[test]
+    fn a_keyword_value_is_no_arm() {
+        let fixture = RolesFixture::new("(match v :key (a b) (c d))");
+        assert_eq!(fixture.arms_after_planning_the_parent(), vec![false, true]);
     }
 
     #[test]

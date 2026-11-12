@@ -122,3 +122,19 @@ error[L0331]: unexpected form after a header shape
    |                                                  ^^^^^^^^ not expected here
    |
    = help: remove it: only `:docstring`, `:docstring-only`, `:one-per-line`, `:arms`, `:bindings` and `:methods` may follow a header shape, each once
+
+error[L0331]: unexpected form after a header shape
+  --> expand/header_shape_markers.knv:48:47
+   |
+48 | (header-shape (my-defn name parameters) :arms :methods)
+   |                                               ^^^^^^^^ `:arms` and `:methods` exclude each other
+   |
+   = help: keep one: `:arms` and `:methods` each state what every list after the header is
+
+error[L0331]: unexpected form after a header shape
+  --> expand/header_shape_markers.knv:51:35
+   |
+51 |               :methods :docstring :arms)
+   |                                   ^^^^^ `:arms` and `:methods` exclude each other
+   |
+   = help: keep one: `:arms` and `:methods` each state what every list after the header is

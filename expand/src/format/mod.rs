@@ -1,5 +1,6 @@
 mod as_written_checks;
 mod block;
+mod body_lists;
 mod code_chunk;
 mod code_layout;
 mod code_region;
@@ -20,11 +21,13 @@ mod import_order;
 mod laid_out_token;
 mod layout;
 mod list_plan;
+mod list_role;
 mod list_roles;
 mod markdown_fence;
 mod meaning;
 mod measure;
 mod method_entries;
+mod one_line_rule;
 mod printed_text;
 mod region_layout;
 mod shape_reader;
@@ -204,10 +207,9 @@ impl<'s> FormattedText<'s> {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        DocstringLayouts, FormatFailure, FormatRules, FormattedText, ShapeCatalog, ShapeStatement,
-    };
+    use super::{DocstringLayouts, FormatFailure, FormatRules, FormattedText, ShapeCatalog};
     use crate::format::docstring_syntax::{DocstringSyntax, DocstringSyntaxFixture};
+    use crate::format::shapes::ShapeCatalogFixture;
     use crate::reader::{Form, Reader};
     use crate::source::SourceMap;
 
@@ -218,14 +220,10 @@ mod tests {
 
     impl CheckFixture {
         fn with_docstring_shape() -> Self {
-            let mut shapes = ShapeCatalog::default();
-            let statement = ShapeStatement::of(
-                &Self::forms("(header-shape (defn name parameters) :docstring)")[0],
-            )
-            .expect("the statement states a shape");
-            shapes.add(&statement);
             Self {
-                shapes,
+                shapes: ShapeCatalogFixture::stated(
+                    "(header-shape (defn name parameters) :docstring)",
+                ),
                 syntax: DocstringSyntaxFixture::syntax(),
             }
         }

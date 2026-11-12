@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::thread;
 
 use knave::diagnostic::Explanation;
 
@@ -45,10 +46,28 @@ impl ExplanationExamples {
             .collect()
     }
 
-    pub fn fix_errors(&self) -> Vec<Vec<ExampleError>> {
-        self.examples_under(Self::FIXES_HEADING)
-            .map(Self::errors_of)
-            .collect()
+    pub fn fix_count(&self) -> usize {
+        self.examples_under(Self::FIXES_HEADING).count()
+    }
+
+    pub fn fix_failures(&self) -> Vec<String> {
+        thread::scope(|scope| {
+            let runs: Vec<_> = self
+                .examples_under(Self::FIXES_HEADING)
+                .enumerate()
+                .map(|(index, fix)| scope.spawn(move || self.failure_of_fix(index, fix)))
+                .collect();
+            runs.into_iter()
+                .filter_map(|run| run.join().expect("a fix run ends"))
+                .collect()
+        })
+    }
+
+    fn failure_of_fix(&self, index: usize, fix: &str) -> Option<String> {
+        let file = format!("{}-fix-{index}.knv", self.code.to_lowercase());
+        let path = PathBuf::from(Fixture::FIXTURE_ROOT).join(file);
+        let failure = Fixture::of_text(&path, fix.to_string()).run_failure()?;
+        Some(format!("fix {index} of {}:\n{failure}", self.code))
     }
 
     fn examples_under(&self, heading: &str) -> impl Iterator<Item = &'static str> {

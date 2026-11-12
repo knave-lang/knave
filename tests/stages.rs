@@ -260,19 +260,14 @@ fn each_erroneous_explanation_example_reports_its_code_first() {
 }
 
 #[test]
-fn each_explanation_fix_checks_without_errors() {
+fn each_explanation_fix_builds_and_runs() {
     for explanation in ExplanationExamples::written() {
-        let fixes = explanation.fix_errors();
-        assert!(!fixes.is_empty(), "{} has no fix", explanation.code());
-        for errors in fixes {
-            let codes: Vec<String> = errors.into_iter().map(|error| error.code).collect();
-            assert_eq!(
-                codes,
-                Vec::<String>::new(),
-                "a fix of {}",
-                explanation.code()
-            );
-        }
+        assert!(
+            explanation.fix_count() > 0,
+            "{} has no fix",
+            explanation.code()
+        );
+        assert_eq!(explanation.fix_failures(), Vec::<String>::new());
     }
 }
 

@@ -182,10 +182,23 @@ impl Fixture {
     }
 
     pub fn run_report(mut self) -> String {
-        let emitted = match self.emit() {
-            Ok(emitted) => emitted,
-            Err(diagnostics) => return self.render(&diagnostics),
-        };
+        match self.built_binary() {
+            Ok(binary) => self.report_of(&binary),
+            Err(report) => report,
+        }
+    }
+
+    pub fn run_failure(mut self) -> Option<String> {
+        match self.built_binary() {
+            Ok(binary) => self.failure_of(&binary),
+            Err(report) => Some(report),
+        }
+    }
+
+    fn built_binary(&mut self) -> Result<PathBuf, String> {
+        let emitted = self
+            .emit()
+            .map_err(|diagnostics| self.render(&diagnostics))?;
         let directory = self.build_directory();
         let binary = directory.join(self.module_name());
         match RustCompiler::new(directory, BuildProfile::Debug).compile(
@@ -194,13 +207,19 @@ impl Fixture {
             &binary,
             self.entry_span(),
         ) {
-            Ok(()) => self.report_of(&binary),
-            Err(BuildError::Program(diagnostics)) => self.render(&diagnostics),
+            Ok(()) => Ok(binary),
+            Err(BuildError::Program(diagnostics)) => Err(self.render(&diagnostics)),
             Err(BuildError::Environment(message)) => {
                 panic!("the build environment failed: {message}")
             }
             Err(BuildError::Interrupted) => panic!("rustc was interrupted"),
         }
+    }
+
+    fn failure_of(&self, binary: &Path) -> Option<String> {
+        let output = self.run(binary);
+        let succeeded = output.status.success() && output.stderr.is_empty();
+        (!succeeded).then(|| String::from_utf8_lossy(&output.stderr).into_owned())
     }
 
     fn build_directory(&self) -> PathBuf {

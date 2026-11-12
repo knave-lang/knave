@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/derives_of_enum_with_unknown_payload_type.knv
+---
+error[L0415]: `vec` takes 1 type argument but 2 were given
+ --> check/derives_of_enum_with_unknown_payload_type.knv:2:8
+  |
+2 |   (yes (vec i64 i64))
+  |        ^^^^^^^^^^^^^ expected 1 type argument
+
+error[L0415]: `vec` takes 1 type argument but 2 were given
+ --> check/derives_of_enum_with_unknown_payload_type.knv:3:17
+  |
+3 |   (sized :count (vec i64 i64))
+  |                 ^^^^^^^^^^^^^ expected 1 type argument
+
+error[L0415]: `vec` takes 1 type argument but 2 were given
+ --> check/derives_of_enum_with_unknown_payload_type.knv:9:7
+  |
+9 |   (on (vec i64 i64))
+  |       ^^^^^^^^^^^^^ expected 1 type argument

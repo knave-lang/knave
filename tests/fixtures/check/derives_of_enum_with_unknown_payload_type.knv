@@ -1,0 +1,17 @@
+(defenum reply
+  (yes (vec i64 i64))
+  (sized :count (vec i64 i64))
+  no)
+
+(derive reply clone debug partial-eq eq)
+
+(defenum flag
+  (on (vec i64 i64))
+  off)
+
+(derive flag clone copy)
+
+(defn same (left right) (= left right))
+
+(defn main ()
+  (println (same reply/no reply/no)))

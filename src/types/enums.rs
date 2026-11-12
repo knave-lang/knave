@@ -149,6 +149,7 @@ impl EnumDefinition {
         self.variants
             .iter()
             .enumerate()
+            .filter(|(_, variant)| variant.lowering == PayloadLowering::Complete)
             .find_map(|(variant_position, variant)| {
                 variant
                     .payload_types()

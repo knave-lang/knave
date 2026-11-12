@@ -178,7 +178,7 @@ pub struct TypeChecker {
     bindings_after_errors: FxHashSet<BindingId>,
     pub(super) diagnostics: Diagnostics,
     pub(super) warnings: Diagnostics,
-    missing_annotations: super::missing_annotations::MissingAnnotations,
+    pub(super) missing_annotations: super::missing_annotations::MissingAnnotations,
     pub(super) unnameable_types: Diagnostics,
     pub(super) closure_types: Vec<super::typed::ClosureType>,
     pub(super) type_texts: super::type_text::TypeTexts,
@@ -702,6 +702,10 @@ impl TypeChecker {
         ReferencePeeling::new(&self.unifier)
     }
 
+    pub(super) fn literal_settlement(&self) -> LiteralSettlement<'_> {
+        LiteralSettlement::new(&self.unifier, &self.declarations.traits.table)
+    }
+
     pub(super) fn pipelines(&self) -> Pipelines<'_> {
         Pipelines::new(&self.declarations.types.rust_types)
     }
@@ -755,14 +759,6 @@ impl TypeChecker {
     pub(super) fn display(&self) -> TypeDisplay<'_> {
         TypeDisplay::new(&self.bindings, &self.generics)
             .with_projections(self.declarations.traits.table.projections())
-    }
-
-    pub(super) fn defer_missing_annotation(
-        &mut self,
-        open_vars: Vec<TypeVar>,
-        diagnostic: Diagnostic,
-    ) {
-        self.missing_annotations.defer(open_vars, diagnostic);
     }
 
     fn resolve_missing_annotations(&mut self) {
@@ -857,9 +853,7 @@ impl TypeChecker {
         if self.declarations.types.boxed_object(implementor) == Some(bound.binding) {
             return;
         }
-        let selection = LiteralSettlement::new(&self.unifier, &self.declarations.traits.table)
-            .select(&bound, implementor);
-        match selection {
+        match self.literal_settlement().select(&bound, implementor) {
             Selection::Implemented {
                 requirements,
                 argument,
@@ -925,7 +919,8 @@ impl TypeChecker {
         }
         let site = obligation.site;
         let label_span = site.bound_site.unwrap_or(site.span);
-        self.defer_missing_annotation(open_vars, TypeProblems::cannot_infer_bound(label_span));
+        self.missing_annotations
+            .defer(open_vars, TypeProblems::cannot_infer_bound(label_span));
     }
 
     fn check_component(&mut self, members: &[&Definition]) -> Vec<(BindingId, TypedDefinition)> {
@@ -1436,9 +1431,7 @@ impl TypeChecker {
         self.unifier
             .bounds(var)
             .iter()
-            .filter(|bound| {
-                RustTrait::links_argument_of(&self.declarations.traits.table, bound.binding)
-            })
+            .filter(|bound| self.declarations.traits.table.links_argument(bound.binding))
             .filter_map(|bound| {
                 let argument = bound
                     .argument

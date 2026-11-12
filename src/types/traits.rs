@@ -27,18 +27,10 @@ impl RustTrait {
             .any(|implementor| !implementor.scheme.params.is_empty())
     }
 
-    pub fn links_argument_of(table: &TraitTable, binding: BindingId) -> bool {
-        table
-            .get(binding)
-            .is_none_or(|rust_trait| rust_trait.links_its_argument(binding, table.projections()))
-    }
-
-    fn links_its_argument(&self, binding: BindingId, projections: &ProjectionTable) -> bool {
-        projections.declared_by(binding).is_empty()
-            && self
-                .implementors
-                .iter()
-                .any(|implementor| implementor.argument.is_none())
+    fn has_unargued_row(&self) -> bool {
+        self.implementors
+            .iter()
+            .any(|implementor| implementor.argument.is_none())
     }
 }
 
@@ -87,50 +79,18 @@ impl TraitTable {
         self.traits.insert(binding, rust_trait);
     }
 
-    pub fn select(&self, bound: &Bound, implementor: &Type) -> Selection {
-        let normalized = self.projections.normalize_deep(implementor);
-        self.traits.get(&bound.binding).map_or_else(
-            || Selection::Missing,
-            |rust_trait| {
-                self.rows(bound.binding, rust_trait)
-                    .map(|known| {
-                        ImplementorMatch::select(
-                            known,
-                            bound,
-                            &normalized,
-                            rust_trait.associated.is_some(),
-                        )
-                    })
-                    .fold(Selection::Missing, Selection::best)
-            },
+    pub fn rows(&self, binding: BindingId) -> TraitRows<'_> {
+        TraitRows::new(
+            self.traits.get(&binding),
+            self.normalized_implementors(binding),
+            &self.projections,
         )
     }
 
-    pub fn settle_lone_row(&self, bound: &Bound, implementor: &Type) -> Option<Selection> {
-        let rust_trait = self.traits.get(&bound.binding)?;
-        let normalized = self.projections.normalize_deep(implementor);
-        let mut open = self.rows(bound.binding, rust_trait).filter(|known| {
-            !matches!(
-                ImplementorMatch::select(known, bound, &normalized, false),
-                Selection::Missing
-            )
-        });
-        let only = open.next()?;
-        if open.next().is_some() {
-            return None;
-        }
-        ImplementorMatch::settle(only, bound, &normalized)
-    }
-
-    fn rows<'t>(
-        &'t self,
-        binding: BindingId,
-        rust_trait: &'t RustTrait,
-    ) -> impl Iterator<Item = &'t Implementor> {
-        rust_trait
-            .implementors
-            .iter()
-            .chain(self.normalized_implementors(binding))
+    pub fn links_argument(&self, binding: BindingId) -> bool {
+        self.get(binding).is_none_or(|rust_trait| {
+            self.projections.declared_by(binding).is_empty() && rust_trait.has_unargued_row()
+        })
     }
 
     fn normalized_implementors(&self, binding: BindingId) -> &[Implementor] {
@@ -149,7 +109,7 @@ impl TraitTable {
         if let Type::Generic(generic) = candidate {
             return generic_satisfies(*generic, bound);
         }
-        match self.select(bound, candidate) {
+        match self.rows(bound.binding).select(bound, candidate) {
             Selection::Implemented { requirements, .. } => requirements.iter().all(|requirement| {
                 self.satisfies(
                     &requirement.bound,
@@ -248,6 +208,56 @@ impl TraitTable {
     }
 }
 
+pub struct TraitRows<'t> {
+    rust_trait: Option<&'t RustTrait>,
+    normalized: &'t [Implementor],
+    projections: &'t ProjectionTable,
+}
+
+impl<'t> TraitRows<'t> {
+    pub fn new(
+        rust_trait: Option<&'t RustTrait>,
+        normalized: &'t [Implementor],
+        projections: &'t ProjectionTable,
+    ) -> Self {
+        Self {
+            rust_trait,
+            normalized,
+            projections,
+        }
+    }
+
+    pub fn select(&self, bound: &Bound, target: &Type) -> Selection {
+        let Some(rust_trait) = self.rust_trait else {
+            return Selection::Missing;
+        };
+        let normalized = self.projections.normalize_deep(target);
+        let associated = rust_trait.associated.is_some();
+        self.rows(rust_trait)
+            .map(|row| ImplementorMatch::select(row, bound, &normalized, associated))
+            .fold(Selection::Missing, Selection::best)
+    }
+
+    pub fn settle_lone_row(&self, bound: &Bound, target: &Type) -> Option<Selection> {
+        let normalized = self.projections.normalize_deep(target);
+        let mut open = self.rows(self.rust_trait?).filter(|row| {
+            !matches!(
+                ImplementorMatch::select(row, bound, &normalized, false),
+                Selection::Missing
+            )
+        });
+        let only = open.next()?;
+        if open.next().is_some() {
+            return None;
+        }
+        ImplementorMatch::settle(only, bound, &normalized)
+    }
+
+    fn rows(&self, rust_trait: &'t RustTrait) -> impl Iterator<Item = &'t Implementor> + use<'t> {
+        rust_trait.implementors.iter().chain(self.normalized)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleId, PrimitiveType};
@@ -319,6 +329,7 @@ mod tests {
             let bound = Bound::with_argument(binding, Type::Var(TypeVar::new(0)));
             match self
                 .traits
+                .rows(binding)
                 .settle_lone_row(&bound, &Type::Primitive(PrimitiveType::I64))
             {
                 Some(Selection::Implemented { argument, .. }) => argument,
@@ -355,6 +366,33 @@ mod tests {
         let mut fixture = TraitsFixture::new();
         let holds = fixture.add_seconds("Holds", &[PrimitiveType::U8, PrimitiveType::I64]);
         assert_eq!(fixture.settles_an_open_second(holds), None);
+    }
+
+    #[test]
+    fn rows_select_the_row_of_a_closed_second_type() {
+        let mut fixture = TraitsFixture::new();
+        let holds = fixture.add_seconds("Holds", &[PrimitiveType::U8, PrimitiveType::I64]);
+        let implementor = Type::Primitive(PrimitiveType::I64);
+        let wanted = Bound::with_argument(holds, Type::Primitive(PrimitiveType::U8));
+        let unwanted = Bound::with_argument(holds, Type::Primitive(PrimitiveType::Bool));
+        let rows = fixture.traits.rows(holds);
+        assert!(matches!(
+            rows.select(&wanted, &implementor),
+            Selection::Implemented { .. }
+        ));
+        assert!(matches!(
+            rows.select(&unwanted, &implementor),
+            Selection::Missing
+        ));
+    }
+
+    #[test]
+    fn a_trait_with_a_row_of_no_second_type_links_its_argument() {
+        let mut fixture = TraitsFixture::new();
+        let comparable = fixture.add("Comparable", &[PrimitiveType::I64]);
+        let holds = fixture.add_seconds("Holds", &[PrimitiveType::U8]);
+        assert!(fixture.traits.links_argument(comparable));
+        assert!(!fixture.traits.links_argument(holds));
     }
 
     #[test]

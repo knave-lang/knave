@@ -42,7 +42,10 @@ impl<'a> DeclaredTraits<'a> {
     }
 
     pub(super) fn select(&self, bound: &Bound, implementor: &Type) -> Selection {
-        self.traits.table.select(bound, implementor)
+        self.traits
+            .table
+            .rows(bound.binding)
+            .select(bound, implementor)
     }
 
     fn derive_name_is_one_of(&self, trait_binding: BindingId, names: &[&str]) -> bool {

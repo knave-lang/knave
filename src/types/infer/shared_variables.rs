@@ -4,7 +4,6 @@ use crate::core::ReferenceKind;
 use crate::diagnostic::Diagnostic;
 use crate::types::checker::TypeChecker;
 use crate::types::expectation::Expectation;
-use crate::types::traits::RustTrait;
 use crate::types::unifier::{LiteralKind, Unifier};
 use crate::types::{Borrow, Bound, Type, TypeVar, TypedArgument, TypedExpr, TypedExprKind};
 
@@ -115,7 +114,7 @@ impl SharedVariables {
                     .as_ref()
                     .map(|argument| unifier.shallow(argument));
                 if let Some(Type::Var(linked)) = argument
-                    && RustTrait::links_argument_of(traits, bound.binding)
+                    && traits.links_argument(bound.binding)
                 {
                     links.link(*var, linked);
                 }

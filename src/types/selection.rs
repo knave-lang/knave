@@ -41,8 +41,8 @@ pub struct ImplementorMatch<'s> {
 }
 
 impl<'s> ImplementorMatch<'s> {
-    // Called out of line, the hot selection loop costs about 80M more instructions
-    // on the larger corpus programs, and `#[inline]` alone does not keep it inline.
+    // Called out of line, the hot selection loop costs tens of millions more
+    // instructions on the corpus, and `#[inline]` alone does not keep it inline.
     #[inline(always)]
     pub fn select(
         implementor: &'s Implementor,
@@ -63,10 +63,7 @@ impl<'s> ImplementorMatch<'s> {
 
     pub fn settle(implementor: &'s Implementor, bound: &Bound, target: &Type) -> Option<Selection> {
         let mut matcher = Self::new(implementor);
-        let pattern_argument = implementor
-            .argument
-            .as_ref()
-            .unwrap_or(&implementor.scheme.body);
+        let pattern_argument = matcher.pattern_argument();
         let target_argument = bound.argument.as_ref()?;
         let settles = matcher.matches(&implementor.scheme.body, target)
             && matcher.matches(pattern_argument, target_argument);
@@ -82,6 +79,13 @@ impl<'s> ImplementorMatch<'s> {
             bindings: FxHashMap::default(),
             undecided: false,
         }
+    }
+
+    fn pattern_argument(&self) -> &'s Type {
+        self.implementor
+            .argument
+            .as_ref()
+            .unwrap_or(&self.implementor.scheme.body)
     }
 
     pub fn match_pattern(
@@ -101,12 +105,7 @@ impl<'s> ImplementorMatch<'s> {
         if self.undecided {
             return Selection::Undecided;
         }
-        let argument = self
-            .implementor
-            .argument
-            .as_ref()
-            .unwrap_or(&self.implementor.scheme.body)
-            .substitute(&self.bindings);
+        let argument = self.pattern_argument().substitute(&self.bindings);
         if let Some(expected) = &bound.argument
             && !matches!(expected, Type::Var(_))
             && !matches!(argument, Type::Var(_))
@@ -121,11 +120,7 @@ impl<'s> ImplementorMatch<'s> {
     }
 
     fn parameter(&mut self, bound: &Bound, target: &Type) -> Selection {
-        let pattern_argument = self
-            .implementor
-            .argument
-            .as_ref()
-            .unwrap_or(&self.implementor.scheme.body);
+        let pattern_argument = self.pattern_argument();
         let target_argument = bound.argument.as_ref().unwrap_or(target);
         if !self.matches(pattern_argument, target_argument) {
             return Selection::Missing;
@@ -224,17 +219,25 @@ mod tests {
 
     struct Shapes {
         pair: BindingId,
+        option: BindingId,
+        vec: BindingId,
     }
 
     impl Shapes {
         fn new() -> Self {
             let mut bindings = BindingArena::default();
-            let pair = bindings.add(BindingInfo::new(
-                "pair".into(),
-                BindingKind::TypeVariable,
-                None,
-            ));
-            Self { pair }
+            let mut add = |name: &str| {
+                bindings.add(BindingInfo::new(
+                    name.into(),
+                    BindingKind::TypeVariable,
+                    None,
+                ))
+            };
+            Self {
+                pair: add("pair"),
+                option: add("option"),
+                vec: add("vec"),
+            }
         }
 
         fn pair(&self, left: Type, right: Type) -> Type {
@@ -292,47 +295,60 @@ mod tests {
     }
 
     #[test]
-    fn an_open_part_could_equal_a_type_of_the_same_shape() {
+    fn an_open_part_waits_for_a_type_of_the_same_shape() {
         let shapes = Shapes::new();
-        let i64 = Shapes::primitive(PrimitiveType::I64);
         let u32 = Shapes::primitive(PrimitiveType::U32);
-        assert!(ImplementorMatch::could_equal(
-            &shapes.pair(Shapes::open(), u32.clone()),
-            &shapes.pair(i64, u32),
+        let target = shapes.pair(
+            shapes.pair(Shapes::open(), u32.clone()),
+            shapes.pair(Shapes::primitive(PrimitiveType::I64), u32),
+        );
+        assert!(matches!(
+            shapes.matches_row(&target),
+            PatternMatch::Undecided
         ));
     }
 
     #[test]
-    fn another_shape_never_equals_a_type_with_an_open_part() {
+    fn another_shape_never_meets_a_type_with_an_open_part() {
         let shapes = Shapes::new();
         let i64 = Shapes::primitive(PrimitiveType::I64);
-        assert!(!ImplementorMatch::could_equal(
-            &i64,
-            &shapes.pair(Shapes::open(), i64.clone()),
-        ));
+        let target = shapes.pair(i64.clone(), shapes.pair(Shapes::open(), i64));
+        assert!(matches!(shapes.matches_row(&target), PatternMatch::Missing));
     }
 
     #[test]
-    fn a_borrow_could_equal_a_borrow_of_an_open_type() {
+    fn a_borrow_waits_only_for_a_borrow_of_an_open_type() {
+        let shapes = Shapes::new();
         let i64 = Shapes::primitive(PrimitiveType::I64);
-        assert!(ImplementorMatch::could_equal(
-            &Type::shared(Shapes::open()),
-            &Type::shared(i64.clone()),
+        let borrows = shapes.pair(Type::shared(Shapes::open()), Type::shared(i64.clone()));
+        let borrow_and_value = shapes.pair(Type::shared(Shapes::open()), i64);
+        assert!(matches!(
+            shapes.matches_row(&borrows),
+            PatternMatch::Undecided
         ));
-        assert!(!ImplementorMatch::could_equal(
-            &Type::shared(Shapes::open()),
-            &i64,
+        assert!(matches!(
+            shapes.matches_row(&borrow_and_value),
+            PatternMatch::Missing
         ));
     }
 
     #[test]
     fn a_closed_part_that_differs_keeps_two_shapes_apart() {
         let shapes = Shapes::new();
-        let bool = Shapes::primitive(PrimitiveType::Bool);
-        let text = Shapes::primitive(PrimitiveType::Str);
-        assert!(!ImplementorMatch::could_equal(
-            &shapes.pair(Shapes::open(), bool),
-            &shapes.pair(Shapes::open(), text),
-        ));
+        let target = shapes.pair(
+            shapes.pair(Shapes::open(), Shapes::primitive(PrimitiveType::Bool)),
+            shapes.pair(Shapes::open(), Shapes::primitive(PrimitiveType::Str)),
+        );
+        assert!(matches!(shapes.matches_row(&target), PatternMatch::Missing));
+    }
+
+    #[test]
+    fn two_heads_of_one_part_never_meet() {
+        let shapes = Shapes::new();
+        let target = shapes.pair(
+            Type::Named(shapes.option, vec![Shapes::open()]),
+            Type::Named(shapes.vec, vec![Shapes::primitive(PrimitiveType::I64)]),
+        );
+        assert!(matches!(shapes.matches_row(&target), PatternMatch::Missing));
     }
 }

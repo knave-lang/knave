@@ -51,3 +51,29 @@ impl TraitDeclarations {
         self.arguments.contains(&trait_binding)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::declarations_fixture::DeclarationsFixture;
+
+    const SOURCE: &str = "
+        (trait listed
+          (type item)
+          (first (fn ((ref self)) item)))
+        (trait drawn (draw (fn ((ref self)) i64)))
+        (defn main () (do))";
+
+    #[test]
+    fn a_trait_with_an_associated_type_takes_an_argument() {
+        let fixture = DeclarationsFixture::new(SOURCE);
+        let listed = fixture.trait_named("listed");
+        assert!(fixture.traits().takes_argument(listed));
+    }
+
+    #[test]
+    fn a_trait_without_an_associated_type_takes_no_argument() {
+        let fixture = DeclarationsFixture::new(SOURCE);
+        let drawn = fixture.trait_named("drawn");
+        assert!(!fixture.traits().takes_argument(drawn));
+    }
+}

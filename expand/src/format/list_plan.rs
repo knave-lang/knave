@@ -1,4 +1,5 @@
 use super::block::Block;
+use super::docstring_place::DocstringPlace;
 use super::shapes::{Shape, ShapeCatalog};
 use super::syntax_tree::{Entry, ListNode};
 use crate::core::{DefinitionForm, ExpressionForm, KernelForm, Keyword};
@@ -58,7 +59,7 @@ impl ListPlan {
         let docstring_entry = Self::docstring_entry(list, head, shapes);
         let fills_atom_runs = !shape.is_some_and(|shape| shape.one_per_line);
         let body_forms = list.entries.len().saturating_sub(header_length + 1);
-        let definer = shape.is_some_and(|shape| shape.takes_docstring);
+        let definer = shape.is_some_and(|shape| shape.docstring == DocstringPlace::BeforeBody);
         let preferred_arrangement = kind.trailing_fn_arrangement(list, &units);
         Self {
             fillable_units: units

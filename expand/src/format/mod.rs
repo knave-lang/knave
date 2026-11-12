@@ -8,6 +8,7 @@ mod code_spacing;
 mod docstring_code;
 mod docstring_lines;
 mod docstring_pass;
+mod docstring_place;
 mod docstring_regions;
 mod docstring_syntax;
 mod format_problems;

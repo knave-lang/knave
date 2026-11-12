@@ -85,3 +85,37 @@ impl SavedOriginRows {
         [Self::word(row, 0), Self::word(row, 1), Self::word(row, 2)]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::expand::origins_fixture::OriginsFixture;
+    use crate::source::SourceId;
+
+    #[test]
+    fn the_rows_of_a_source_hold_only_its_call_sites() {
+        let rows = OriginsFixture::saved_rows();
+        let call_sites: Vec<_> = rows
+            .rows_of_source(SourceId::new(1))
+            .map(|row| rows.call_site(row))
+            .collect();
+        assert_eq!(
+            call_sites,
+            [OriginsFixture::call_site(), OriginsFixture::span(1, 12, 15)]
+        );
+    }
+
+    #[test]
+    fn a_span_that_is_no_saved_call_site_has_no_row() {
+        let rows = OriginsFixture::saved_rows();
+        assert!(rows.row_at(OriginsFixture::span(1, 10, 21)).is_none());
+    }
+
+    #[test]
+    fn a_row_decodes_to_the_origin_saved_at_its_call_site() {
+        let rows = OriginsFixture::saved_rows();
+        let row = rows
+            .row_at(OriginsFixture::span(2, 10, 20))
+            .expect("a saved row");
+        assert_eq!(rows.decode(row).origin.name.as_ref(), "elsewhere");
+    }
+}

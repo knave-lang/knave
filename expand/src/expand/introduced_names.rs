@@ -86,4 +86,15 @@ mod tests {
         origins.introduced.record(call_site, "own", own);
         assert_eq!(origins.introduced.at(call_site, "own"), Some(own));
     }
+
+    #[test]
+    fn its_own_layer_keeps_what_it_recorded_and_not_the_saved_layer() {
+        let mut origins = OriginsFixture::with_saved_origins();
+        let call_site = OriginsFixture::span(5, 1, 2);
+        let own = OriginsFixture::span(1, 1, 2);
+        origins.introduced.record(call_site, "own", own);
+        let kept = origins.introduced.into_own();
+        assert_eq!(kept.at(call_site, "own"), Some(own));
+        assert!(kept.at(OriginsFixture::call_site(), "helper").is_none());
+    }
 }

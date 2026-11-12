@@ -126,4 +126,19 @@ mod tests {
         assert_eq!(kept.name.as_ref(), "first");
         assert!(kept.through_prelude);
     }
+
+    #[test]
+    fn its_rows_come_in_call_site_order() {
+        let mut fixture = OwnFixture::new();
+        fixture.record("late", 30, 40);
+        fixture.record("early", 10, 20);
+        fixture.record("first", 1, 2);
+        let names: Vec<String> = fixture
+            .own
+            .into_rows()
+            .into_iter()
+            .map(|(_, origin)| origin.name.to_string())
+            .collect();
+        assert_eq!(names, ["first", "early", "late"]);
+    }
 }

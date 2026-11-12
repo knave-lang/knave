@@ -7,6 +7,7 @@ use super::docstring_regions::DocstringRegions;
 use super::format_rules::FormatRules;
 use super::list_plan::Arrangement;
 use super::region_layout::RegionLayout;
+use super::unreadable_code::UnreadableCode;
 
 pub struct DocstringCode<'s> {
     rules: FormatRules<'s>,
@@ -15,7 +16,7 @@ pub struct DocstringCode<'s> {
 
 pub struct LaidOutDocstring {
     pub lines: Vec<String>,
-    pub unreadable_lines: Vec<usize>,
+    pub unreadable: Vec<UnreadableCode>,
 }
 
 impl<'s> DocstringCode<'s> {
@@ -41,7 +42,7 @@ impl<'s> DocstringCode<'s> {
         let shared = DocstringLine::least_indentation(continuation);
         let mut laid_out = LaidOutDocstring {
             lines: Vec::new(),
-            unreadable_lines: Vec::new(),
+            unreadable: Vec::new(),
         };
         for part in DocstringRegions::parts_of(self.rules.syntax, lines) {
             let range = part.range();
@@ -74,8 +75,11 @@ impl LaidOutDocstring {
     fn add_region(&mut self, start: usize, code: &[DocstringLine], region: RegionLayout) {
         match region {
             RegionLayout::LaidOut(code_lines) => self.lines.extend(code_lines),
-            RegionLayout::Unreadable(line) => {
-                self.unreadable_lines.push(start + line);
+            RegionLayout::Unreadable(unreadable) => {
+                self.unreadable.push(UnreadableCode {
+                    line: start + unreadable.line,
+                    cause: unreadable.cause,
+                });
                 self.copy(code);
             }
             RegionLayout::Prose => self.copy(code),
@@ -118,7 +122,10 @@ mod tests {
         fn lay_out(&self, text: &str) -> (String, Vec<usize>) {
             let lines = DocstringLine::split(text);
             let laid_out = DocstringCode::of_docstrings(self.rules()).lay_out(&lines);
-            (laid_out.lines.join("\n"), laid_out.unreadable_lines)
+            (
+                laid_out.lines.join("\n"),
+                laid_out.unreadable.iter().map(|code| code.line).collect(),
+            )
         }
     }
 

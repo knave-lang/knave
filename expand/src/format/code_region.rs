@@ -5,6 +5,8 @@ use super::code_layout::CodeLayout;
 use super::docstring_line::DocstringLine;
 use super::format_rules::FormatRules;
 use super::region_layout::RegionLayout;
+use super::unreadable_cause::UnreadableCause;
+use super::unreadable_code::UnreadableCode;
 use super::written_gap::WrittenGap;
 use crate::reader::{TokenKind, TokenScan};
 
@@ -95,9 +97,30 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
                 self.laid_out.extend(lines);
                 Ok(())
             }
-            RegionLayout::Unreadable(line) => Err(RegionLayout::Unreadable(first + line)),
+            RegionLayout::Unreadable(code) => Err(RegionLayout::Unreadable(UnreadableCode {
+                line: first + code.line,
+                cause: self.cause_of(chunk.start, &text, code.cause),
+            })),
             RegionLayout::Prose => Err(RegionLayout::Prose),
         }
+    }
+
+    fn cause_of(&self, chunk_start: usize, text: &str, cause: UnreadableCause) -> UnreadableCause {
+        let follows_a_result = chunk_start > 0 && !self.is_blank(chunk_start);
+        if follows_a_result && Self::closes_more_than_it_opens(text) {
+            UnreadableCause::ShallowResult
+        } else {
+            cause
+        }
+    }
+
+    fn closes_more_than_it_opens(text: &str) -> bool {
+        let balance = TokenScan::new(text).fold(0, |balance: isize, token| match token.kind {
+            TokenKind::Open => balance + 1,
+            TokenKind::Close => balance - 1,
+            _ => balance,
+        });
+        balance < 0
     }
 
     fn writes_an_arrow_line(&self, lines: &[String]) -> bool {
@@ -130,7 +153,7 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
 
 #[cfg(test)]
 mod tests {
-    use super::{CodeRegion, DocstringLine, RegionLayout};
+    use super::{CodeRegion, DocstringLine, RegionLayout, UnreadableCause, UnreadableCode};
     use crate::format::code_layout::CodeLayout;
     use crate::format::code_spacing::CodeSpacing;
     use crate::format::docstring_syntax::{DocstringSyntax, DocstringSyntaxFixture};
@@ -208,7 +231,10 @@ mod tests {
         let fixture = RegionFixture::new();
         assert_eq!(
             fixture.lay_out("(f 1)\n=> 1\n\n(g 2\n=> 2"),
-            RegionLayout::Unreadable(3)
+            RegionLayout::Unreadable(UnreadableCode {
+                line: 3,
+                cause: UnreadableCause::Code
+            })
         );
     }
 
@@ -233,6 +259,30 @@ mod tests {
                 "(g 2)".to_string(),
                 "=> 2".to_string()
             ])
+        );
+    }
+
+    #[test]
+    fn a_result_line_no_deeper_than_its_code_is_a_shallow_result() {
+        let fixture = RegionFixture::new();
+        assert_eq!(
+            fixture.lay_out("(pairs   1)\n=> (vec 1\n2)"),
+            RegionLayout::Unreadable(UnreadableCode {
+                line: 2,
+                cause: UnreadableCause::ShallowResult
+            })
+        );
+    }
+
+    #[test]
+    fn code_after_a_blank_line_that_does_not_read_is_unreadable_code() {
+        let fixture = RegionFixture::new();
+        assert_eq!(
+            fixture.lay_out("(f 1)\n=> 1\n\n2)\n=> 2"),
+            RegionLayout::Unreadable(UnreadableCode {
+                line: 3,
+                cause: UnreadableCause::Code
+            })
         );
     }
 

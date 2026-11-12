@@ -4,11 +4,12 @@ use super::docstring_code::DocstringCode;
 use super::docstring_lines::DocstringLines;
 use super::format_rules::FormatRules;
 use super::syntax_tree::{Atom, Entry, ListNode, SyntaxNode, SyntaxTree};
+use super::unreadable_cause::UnreadableCause;
 use crate::stack::DeepRecursion;
 
 pub struct TreeDocstrings<'s> {
     rules: FormatRules<'s>,
-    unreadable: Vec<Range<usize>>,
+    unreadable: Vec<(Range<usize>, UnreadableCause)>,
 }
 
 impl<'s> TreeDocstrings<'s> {
@@ -19,7 +20,7 @@ impl<'s> TreeDocstrings<'s> {
         }
     }
 
-    pub fn lay_out(mut self, tree: &mut SyntaxTree) -> Vec<Range<usize>> {
+    pub fn lay_out(mut self, tree: &mut SyntaxTree) -> Vec<(Range<usize>, UnreadableCause)> {
         self.visit_entries(&mut tree.entries);
         self.unreadable
     }
@@ -45,10 +46,10 @@ impl<'s> TreeDocstrings<'s> {
             return;
         };
         let laid_out = DocstringCode::of_docstrings(self.rules).lay_out(lines.lines());
-        for line in laid_out.unreadable_lines {
-            let range = lines.written_range(line);
+        for code in laid_out.unreadable {
+            let range = lines.written_range(code.line);
             self.unreadable
-                .push(atom.start + range.start..atom.start + range.end);
+                .push((atom.start + range.start..atom.start + range.end, code.cause));
         }
         atom.text = DocstringLines::token_of(&laid_out.lines);
     }

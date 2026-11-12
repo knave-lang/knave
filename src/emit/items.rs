@@ -274,7 +274,9 @@ impl<'a> ItemEmitter<'a> {
             .expect("a used conversion names a planned enum");
         let definition = self
             .program
-            .enums
+            .declarations
+            .types
+            .enums()
             .get(conversion.enum_binding)
             .expect("a conversion names an enum");
         let variant = &definition.variants[conversion.variant];
@@ -339,7 +341,9 @@ impl<'a> ItemEmitter<'a> {
     fn traits(&mut self, module: ModuleId) -> Vec<Vec<Fragment>> {
         let definitions: Vec<TraitHeader> = self
             .program
-            .trait_definitions
+            .declarations
+            .traits
+            .definitions()
             .iter()
             .filter(|trait_definition| trait_definition.module == module)
             .map(|trait_definition| TraitHeader {
@@ -595,17 +599,25 @@ impl<'a> ItemEmitter<'a> {
 
     fn trait_impls(&mut self, module: ModuleId) -> Vec<Vec<Fragment>> {
         let mut items = Vec::new();
-        for position in 0..self.program.trait_impls.len() {
-            if self.program.trait_impls[position].module != module {
+        for position in 0..self.program.declarations.traits.impls().len() {
+            if self.program.declarations.traits.impls()[position].module != module {
                 continue;
             }
-            let trait_binding = self.program.trait_impls[position].trait_binding;
-            let implementor = self.program.trait_impls[position].implementor.clone();
-            let associated = self.program.trait_impls[position].associated.clone();
-            let methods = self.program.trait_impls[position].methods.clone();
+            let trait_binding = self.program.declarations.traits.impls()[position].trait_binding;
+            let implementor = self.program.declarations.traits.impls()[position]
+                .implementor
+                .clone();
+            let associated = self.program.declarations.traits.impls()[position]
+                .associated
+                .clone();
+            let methods = self.program.declarations.traits.impls()[position]
+                .methods
+                .clone();
             let trait_path = self.plan.trait_path(trait_binding, module);
             let lifetime = self.implementor_lifetime(&implementor);
-            let params = self.program.trait_impls[position].params.clone();
+            let params = self.program.declarations.traits.impls()[position]
+                .params
+                .clone();
             let (type_name, generics) = {
                 let types =
                     RustTypes::new(self.program, self.plan, self.unsized_parameters, module);
@@ -1131,7 +1143,9 @@ impl<'a> ItemEmitter<'a> {
         let visibility = info.visibility.keyword();
         let definition = self
             .program
-            .structs
+            .declarations
+            .types
+            .structs()
             .get(binding)
             .expect("a reached struct has a definition");
         let inferred = (definition.lifetimes.is_empty()
@@ -1186,7 +1200,9 @@ impl<'a> ItemEmitter<'a> {
         let visibility = info.visibility.keyword();
         let definition = self
             .program
-            .enums
+            .declarations
+            .types
+            .enums()
             .get(binding)
             .expect("a reached enum has a definition");
         let inferred = (definition.lifetimes.is_empty()
@@ -1612,11 +1628,13 @@ impl<'a> ItemEmitter<'a> {
         if !program.has_lifetime_parameter(*binding) {
             return None;
         }
-        let written = if let Some(definition) = program.structs.get(*binding) {
+        let written = if let Some(definition) = program.declarations.types.structs().get(*binding) {
             definition.lifetimes.first().copied()
         } else {
             program
-                .enums
+                .declarations
+                .types
+                .enums()
                 .get(*binding)
                 .and_then(|definition| definition.lifetimes.first().copied())
         };

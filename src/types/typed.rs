@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -6,18 +5,12 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, EnumTable, VariantDefinition, VariantPayload};
 use super::parameter_modes::ParameterModes;
-use super::rust_types::RustTypeTable;
-use super::structs::StructTable;
 use super::template_clauses::TemplateClauses;
 use super::templates::TemplateBorrows;
-use super::trait_method_info::TraitMethodInfo;
-use super::traits::TraitTable;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
-use super::typed_trait::TypedTrait;
-use super::typed_trait_impl::TypedTraitImpl;
 use super::typed_trait_method::TypedTraitMethod;
 use super::unifier::LiteralKind;
-use super::{BoxedPayload, StructuralTrait, StructuralUses};
+use super::{Declarations, StructuralUses};
 use crate::core::{
     BindingArena, BindingId, ClosureKind, DefinitionForm, FieldLabel, FieldSpelling, KernelForm,
     Literal, ModuleId, ModulePath, ReferenceKind, RustTemplate,
@@ -373,19 +366,9 @@ pub struct TypedProgram {
     pub entry_function: Option<BindingId>,
     pub bindings: BindingArena,
     pub macro_field_reads: FxHashMap<Span, Rc<str>>,
-    pub structs: StructTable,
-    pub enums: EnumTable,
-    pub rust_types: RustTypeTable,
-    pub box_binding: Option<BindingId>,
-    pub inferred_boxes: BTreeSet<BoxedPayload>,
-    pub structural_traits: Vec<StructuralTrait>,
+    pub declarations: Declarations,
     pub structural_uses: StructuralUses,
-    pub traits: TraitTable,
-    pub trait_definitions: Vec<TypedTrait>,
-    pub rust_trait_paths: FxHashMap<BindingId, Rc<str>>,
-    pub trait_impls: Vec<TypedTraitImpl>,
     pub conversions: Vec<TypedConversion>,
-    pub trait_methods: FxHashMap<BindingId, TraitMethodInfo>,
     pub synthetic_bindings: FxHashSet<BindingId>,
     pub generics: FxHashMap<GenericId, GenericParam>,
     pub implied_bounds: FxHashMap<GenericId, Vec<Bound>>,
@@ -418,7 +401,9 @@ impl TypedProgram {
         trait_binding: BindingId,
         name: &str,
     ) -> Option<&TypedTraitMethod> {
-        self.trait_definitions
+        self.declarations
+            .traits
+            .definitions()
             .iter()
             .filter(|definition| definition.binding == trait_binding)
             .flat_map(|definition| &definition.methods)
@@ -429,7 +414,9 @@ impl TypedProgram {
         let default = self
             .declared_trait_method(trait_binding, name)
             .and_then(|declared| declared.default);
-        self.trait_impls
+        self.declarations
+            .traits
+            .impls()
             .iter()
             .filter(|implementation| implementation.trait_binding == trait_binding)
             .flat_map(|implementation| &implementation.methods)
@@ -440,7 +427,7 @@ impl TypedProgram {
     }
 
     pub fn is_box(&self, ty: &Type) -> bool {
-        matches!(ty, Type::Named(binding, arguments) if Some(*binding) == self.box_binding && arguments.len() == 1)
+        self.declarations.types.is_box(ty)
     }
 
     pub fn entry_module(&self) -> &TypedModule {
@@ -459,11 +446,11 @@ impl TypedProgram {
         binding: BindingId,
         visiting: &mut FxHashSet<BindingId>,
     ) -> bool {
-        if let Some(definition) = self.structs.get(binding) {
+        if let Some(definition) = self.declarations.types.structs().get(binding) {
             return !definition.lifetimes.is_empty()
                 || self.definition_holds_borrow_with(binding, visiting);
         }
-        if let Some(definition) = self.enums.get(binding) {
+        if let Some(definition) = self.declarations.types.enums().get(binding) {
             return definition.rust.is_none()
                 && (!definition.lifetimes.is_empty()
                     || self.definition_holds_borrow_with(binding, visiting));
@@ -575,12 +562,12 @@ impl TypedProgram {
         if !visiting.insert(binding) {
             return false;
         }
-        let holds = if let Some(definition) = self.structs.get(binding) {
+        let holds = if let Some(definition) = self.declarations.types.structs().get(binding) {
             definition
                 .fields
                 .iter()
                 .any(|(_, field)| self.type_holds_borrow_with(field, visiting))
-        } else if let Some(definition) = self.enums.get(binding) {
+        } else if let Some(definition) = self.declarations.types.enums().get(binding) {
             definition.rust.is_none()
                 && definition
                     .payload_types()
@@ -677,7 +664,8 @@ impl TypedProgram {
     }
 
     fn type_display(&self) -> TypeDisplay<'_> {
-        TypeDisplay::new(&self.bindings, &self.generics).with_projections(self.traits.projections())
+        TypeDisplay::new(&self.bindings, &self.generics)
+            .with_projections(self.declarations.traits.table().projections())
     }
 
     fn writable_name(&self, binding: BindingId) -> Option<&str> {
@@ -689,7 +677,7 @@ impl TypedProgram {
     }
 
     fn inferred_enum_box_line(&self, binding: BindingId) -> Option<String> {
-        let definition = self.enums.get(binding)?;
+        let definition = self.declarations.types.enums().get(binding)?;
         if !definition
             .payload_types()
             .any(|payload| self.is_box(payload))
@@ -758,7 +746,7 @@ impl TypedProgram {
     }
 
     fn inferred_enum_derive_line(&self, binding: BindingId) -> Option<String> {
-        let definition = self.enums.get(binding)?;
+        let definition = self.declarations.types.enums().get(binding)?;
         if definition.rust.is_some() || definition.written_derive.is_some() {
             return None;
         }
@@ -772,7 +760,7 @@ impl TypedProgram {
     }
 
     fn inferred_derive_line(&self, binding: BindingId) -> Option<String> {
-        let definition = self.structs.get(binding)?;
+        let definition = self.declarations.types.structs().get(binding)?;
         if definition.written_derive.is_some() {
             return None;
         }

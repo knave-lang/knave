@@ -365,7 +365,9 @@ impl<'a> RustTypes<'a> {
 
     fn bound_requires_sized(&self, bound: &Bound) -> bool {
         self.program
+            .declarations
             .traits
+            .table()
             .get(bound.binding)
             .is_some_and(|rust_trait| {
                 Self::SIZED_TRAITS.contains(&rust_trait.path.as_ref())
@@ -380,7 +382,12 @@ impl<'a> RustTypes<'a> {
             .filter(|bound| {
                 !param.bounds.iter().any(|other| {
                     other.binding != bound.binding
-                        && self.program.traits.implies(other, bound, param.id)
+                        && self
+                            .program
+                            .declarations
+                            .traits
+                            .table()
+                            .implies(other, bound, param.id)
                 })
             })
             .filter_map(|bound| self.trait_path(bound))
@@ -395,11 +402,13 @@ impl<'a> RustTypes<'a> {
             .cloned()
             .unwrap_or_default();
         for implied in &implied {
-            if param
-                .bounds
-                .iter()
-                .any(|bound| self.program.traits.implies(bound, implied, param.id))
-            {
+            if param.bounds.iter().any(|bound| {
+                self.program
+                    .declarations
+                    .traits
+                    .table()
+                    .implies(bound, implied, param.id)
+            }) {
                 continue;
             }
             if let Some(path) = self.trait_path(implied)
@@ -411,7 +420,12 @@ impl<'a> RustTypes<'a> {
     }
 
     fn trait_path(&self, bound: &Bound) -> Option<String> {
-        let rust_trait = self.program.traits.get(bound.binding)?;
+        let rust_trait = self
+            .program
+            .declarations
+            .traits
+            .table()
+            .get(bound.binding)?;
         let path = rust_trait.path.to_string();
         Some(match (&bound.argument, &rust_trait.associated) {
             (Some(argument), Some(associated)) => format!(
@@ -467,10 +481,17 @@ impl<'a> RustTypes<'a> {
         position: TypePosition,
         scope: &LifetimeScope,
     ) -> String {
-        if self.program.traits.projections().is_projection(binding) {
+        if self
+            .program
+            .declarations
+            .traits
+            .table()
+            .projections()
+            .is_projection(binding)
+        {
             return self.projection(binding, arguments, position, scope);
         }
-        match self.program.rust_types.get(binding) {
+        match self.program.declarations.types.rust_types().get(binding) {
             Some(rust_type) => self.rust_type(rust_type, arguments, position, scope),
             None => {
                 let mut arguments: Vec<String> = arguments
@@ -493,7 +514,7 @@ impl<'a> RustTypes<'a> {
         position: TypePosition,
         scope: &LifetimeScope,
     ) -> String {
-        let projections = self.program.traits.projections();
+        let projections = self.program.declarations.traits.table().projections();
         let projected = Type::Named(binding, arguments.to_vec());
         if let Some(normalized) = projections.normalize(&projected) {
             return self.show_in(&normalized, position, scope);
@@ -580,12 +601,16 @@ impl<'a> RustTypes<'a> {
     fn lifetime_parameter_count(&self, binding: BindingId) -> usize {
         let lifetimes = self
             .program
-            .structs
+            .declarations
+            .types
+            .structs()
             .get(binding)
             .map(|definition| &definition.lifetimes)
             .or_else(|| {
                 self.program
-                    .enums
+                    .declarations
+                    .types
+                    .enums()
                     .get(binding)
                     .map(|definition| &definition.lifetimes)
             });

@@ -469,7 +469,7 @@ pub struct LiteralDefault {
 impl LiteralDefaults {
     pub fn of(report: &InstantiationReport, typed: &TypedProgram) -> Self {
         let display = TypeDisplay::new(&typed.bindings, &typed.generics)
-            .with_projections(typed.traits.projections());
+            .with_projections(typed.declarations.traits.table().projections());
         let mut defaults = Self::default();
         for definition in typed.modules.iter().flat_map(|module| &module.definitions) {
             defaults.collect(report, typed, definition, &display);
@@ -638,7 +638,12 @@ impl LiteralSignature<'_> {
             .map(Type::Primitive)
             .collect();
         Some(Bound {
-            binding: self.typed.traits.implemented_exactly_by(&accepted)?,
+            binding: self
+                .typed
+                .declarations
+                .traits
+                .table()
+                .implemented_exactly_by(&accepted)?,
             argument: None,
             origins: Vec::new(),
         })

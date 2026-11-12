@@ -33,19 +33,19 @@ impl<'p> ClauseChoice<'p> {
     }
 
     fn satisfies(&self, bound: &Bound, parameter: &Type) -> bool {
-        self.program
-            .traits
-            .satisfies(bound, parameter, &|generic, required| {
-                self.declares(generic, required)
-            })
+        let traits = self.program.declarations.traits.table();
+        traits.satisfies(bound, parameter, &|generic, required| {
+            self.declares(generic, required)
+        })
     }
 
     fn declares(&self, generic: GenericId, required: &Bound) -> bool {
+        let traits = self.program.declarations.traits.table();
         self.program.generics.get(&generic).is_some_and(|param| {
             param
                 .bounds
                 .iter()
-                .any(|declared| self.program.traits.implies(declared, required, generic))
+                .any(|declared| traits.implies(declared, required, generic))
         })
     }
 }

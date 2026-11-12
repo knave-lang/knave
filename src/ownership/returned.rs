@@ -145,7 +145,14 @@ impl<'p> ReturnedBorrows<'p> {
     fn owned_view(&self, viewed: &Type) -> Option<Type> {
         match viewed {
             Type::Primitive(PrimitiveType::Str) => Some(Type::Primitive(PrimitiveType::String)),
-            Type::Named(slice, elements) if self.program.rust_types.is_slice(*slice) => {
+            Type::Named(slice, elements)
+                if self
+                    .program
+                    .declarations
+                    .types
+                    .rust_types()
+                    .is_slice(*slice) =>
+            {
                 Some(Type::Named(self.vector()?, self.owned_types(elements)?))
             }
             other => self.owned_type(other),
@@ -158,7 +165,9 @@ impl<'p> ReturnedBorrows<'p> {
 
     fn vector(&self) -> Option<BindingId> {
         self.program
-            .rust_types
+            .declarations
+            .types
+            .rust_types()
             .binding_with_template(RustType::VECTOR_TEMPLATE)
     }
 

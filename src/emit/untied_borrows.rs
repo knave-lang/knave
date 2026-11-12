@@ -220,7 +220,7 @@ mod tests {
         }
 
         fn implementation(&self) -> &TypedTraitImpl {
-            &self.program.trait_impls[0]
+            &self.program.declarations.traits.impls()[0]
         }
 
         fn declaration(&self, trait_binding: BindingId, name: &str) -> &TypedDefinition {

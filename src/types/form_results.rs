@@ -58,7 +58,9 @@ impl<'a> FormResults<'a> {
         let missing = self.printer_bounds.iter().find(|bound| {
             !self
                 .program
+                .declarations
                 .traits
+                .table()
                 .satisfies(bound, argument, &|_, _| false)
         });
         match missing {
@@ -80,7 +82,7 @@ impl<'a> FormResults<'a> {
 
     fn display(&self) -> TypeDisplay<'a> {
         TypeDisplay::new(&self.program.bindings, &self.program.generics)
-            .with_projections(self.program.traits.projections())
+            .with_projections(self.program.declarations.traits.table().projections())
     }
 
     fn definition(program: &TypedProgram, binding: BindingId) -> Option<&TypedDefinition> {

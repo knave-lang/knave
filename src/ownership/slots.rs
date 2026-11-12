@@ -22,7 +22,7 @@ impl<'p> DeclaredSlots<'p> {
     }
 
     pub fn field(&self, owner: BindingId, label: &FieldLabel) -> Option<DeclaredSlot<'p>> {
-        let definition = self.program.structs.get(owner)?;
+        let definition = self.program.declarations.types.structs().get(owner)?;
         let index = definition
             .fields
             .iter()
@@ -62,7 +62,14 @@ impl<'p> DeclaredSlots<'p> {
         else {
             return None;
         };
-        let definition = self.program.enums.get(owner)?.variants.get(index)?;
+        let definition = self
+            .program
+            .declarations
+            .types
+            .enums()
+            .get(owner)?
+            .variants
+            .get(index)?;
         Some((owner, definition))
     }
 }

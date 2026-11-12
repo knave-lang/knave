@@ -138,10 +138,10 @@ mod tests {
 
         fn seeded_order(&self) -> Vec<BindingId> {
             let copy = CopyRules::new(
-                &self.program.traits,
+                self.program.declarations.traits.table(),
                 &self.program.generics,
-                &self.program.structs,
-                &self.program.enums,
+                self.program.declarations.types.structs(),
+                self.program.declarations.types.enums(),
             );
             let mut seed = ModeInference::new(&self.functions, copy).seed();
             std::iter::from_fn(|| seed.pop()).collect()

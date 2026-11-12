@@ -34,12 +34,7 @@ impl<'a> DeclaredTypes<'a> {
     }
 
     pub(super) fn is_box(&self, candidate: &Type) -> bool {
-        match candidate {
-            Type::Named(binding, arguments) => {
-                Some(*binding) == self.types.box_binding && arguments.len() == 1
-            }
-            _ => false,
-        }
+        self.types.is_box(candidate)
     }
 
     pub(super) fn is_unsized(&self, candidate: &Type) -> bool {

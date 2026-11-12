@@ -4,10 +4,11 @@ use super::boxed_payload::BoxedPayload;
 use super::enums::EnumTable;
 use super::rust_types::RustTypeTable;
 use super::structs::StructTable;
+use super::ty::Type;
 use crate::core::BindingId;
 
 #[derive(Default)]
-pub(super) struct TypeDeclarations {
+pub struct TypeDeclarations {
     pub(super) structs: StructTable,
     pub(super) enums: EnumTable,
     pub(super) rust_types: RustTypeTable,
@@ -15,15 +16,33 @@ pub(super) struct TypeDeclarations {
     pub(super) inferred_boxes: BTreeSet<BoxedPayload>,
 }
 
-#[cfg(test)]
 impl TypeDeclarations {
-    pub(super) fn taken_from(program: &mut super::TypedProgram) -> Self {
-        Self {
-            structs: std::mem::take(&mut program.structs),
-            enums: std::mem::take(&mut program.enums),
-            rust_types: std::mem::take(&mut program.rust_types),
-            box_binding: program.box_binding,
-            inferred_boxes: std::mem::take(&mut program.inferred_boxes),
+    pub fn structs(&self) -> &StructTable {
+        &self.structs
+    }
+
+    pub fn enums(&self) -> &EnumTable {
+        &self.enums
+    }
+
+    pub fn rust_types(&self) -> &RustTypeTable {
+        &self.rust_types
+    }
+
+    pub fn box_binding(&self) -> Option<BindingId> {
+        self.box_binding
+    }
+
+    pub fn boxes(&self, payload: &BoxedPayload) -> bool {
+        self.inferred_boxes.contains(payload)
+    }
+
+    pub fn is_box(&self, candidate: &Type) -> bool {
+        match candidate {
+            Type::Named(binding, arguments) => {
+                Some(*binding) == self.box_binding && arguments.len() == 1
+            }
+            _ => false,
         }
     }
 }

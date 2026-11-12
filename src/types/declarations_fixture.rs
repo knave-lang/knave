@@ -2,8 +2,6 @@ use super::declarations::Declarations;
 use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::derive_blockers::DeriveBlockers;
-use super::trait_declarations::TraitDeclarations;
-use super::type_declarations::TypeDeclarations;
 use super::variant_payloads::VariantPayloads;
 use super::{Type, TypedProgram, TypedSource};
 use crate::core::BindingId;
@@ -16,11 +14,10 @@ pub(super) struct DeclarationsFixture {
 impl DeclarationsFixture {
     pub(super) fn new(source: &str) -> Self {
         let mut program = TypedSource::expand(source).typed();
-        let types = TypeDeclarations::taken_from(&mut program);
-        let traits = TraitDeclarations::taken_from(&mut program);
+        let declarations = std::mem::take(&mut program.declarations);
         Self {
             program,
-            declarations: Declarations { types, traits },
+            declarations,
         }
     }
 

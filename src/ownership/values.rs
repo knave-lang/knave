@@ -74,17 +74,17 @@ impl<'a> FunctionValueModes<'a> {
         copied_reads: &'a CopiedMutReads,
     ) -> Vec<Diagnostic> {
         let copy = CopyRules::new(
-            &program.traits,
+            program.declarations.traits.table(),
             &program.generics,
-            &program.structs,
-            &program.enums,
+            program.declarations.types.structs(),
+            program.declarations.types.enums(),
         );
         let constructor_fields = Self::constructor_fields(program);
         let mut values = Self {
             bindings: &mut program.bindings,
             generics: &program.generics,
-            structs: &program.structs,
-            rust_types: &program.rust_types,
+            structs: program.declarations.types.structs(),
+            rust_types: program.declarations.types.rust_types(),
             function_params,
             copied_reads,
             constructor_fields,

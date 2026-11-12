@@ -234,13 +234,24 @@ impl<'a> CheckRuns<'a> {
         InPlaceChanges::of(typed)
             .into_iter()
             .filter(|binding| {
-                typed.structs.get(*binding).is_some_and(|definition| {
-                    definition.written_derive.is_none()
-                        && definition.derives.contains(&StructDerives::COPY)
-                }) || typed.enums.get(*binding).is_some_and(|definition| {
-                    definition.written_derive.is_none()
-                        && definition.derives.contains(&StructDerives::COPY)
-                })
+                typed
+                    .declarations
+                    .types
+                    .structs()
+                    .get(*binding)
+                    .is_some_and(|definition| {
+                        definition.written_derive.is_none()
+                            && definition.derives.contains(&StructDerives::COPY)
+                    })
+                    || typed
+                        .declarations
+                        .types
+                        .enums()
+                        .get(*binding)
+                        .is_some_and(|definition| {
+                            definition.written_derive.is_none()
+                                && definition.derives.contains(&StructDerives::COPY)
+                        })
             })
             .collect()
     }

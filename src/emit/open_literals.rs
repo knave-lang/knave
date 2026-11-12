@@ -219,7 +219,9 @@ impl OpenLiteralSearch<'_> {
     ) {
         let definition = self
             .program
-            .structs
+            .declarations
+            .types
+            .structs()
             .get(binding)
             .expect("a constructed struct has a definition");
         let declared = fields.iter().map(|(label, _)| {
@@ -241,7 +243,9 @@ impl OpenLiteralSearch<'_> {
         };
         let definition = self
             .program
-            .enums
+            .declarations
+            .types
+            .enums()
             .get(owner)
             .expect("a reached enum has a definition");
         let declared = definition.variants[index].payload_types().into_iter();

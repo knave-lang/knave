@@ -64,7 +64,7 @@ impl<'a> HeldBorrows<'a> {
     fn may_hold_borrow(&self, ty: &Type) -> bool {
         matches!(ty, Type::Function(..))
             || self.program.type_holds_borrow(ty)
-            || Pipelines::new(&self.program.rust_types).is_pipeline(ty)
+            || Pipelines::new(self.program.declarations.types.rust_types()).is_pipeline(ty)
     }
 }
 

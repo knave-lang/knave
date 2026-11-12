@@ -87,10 +87,10 @@ impl<'a> UnlentParameters<'a> {
 
     fn copy_rules(&self) -> CopyRules<'_> {
         CopyRules::new(
-            &self.program.traits,
+            self.program.declarations.traits.table(),
             &self.program.generics,
-            &self.program.structs,
-            &self.program.enums,
+            self.program.declarations.types.structs(),
+            self.program.declarations.types.enums(),
         )
     }
 

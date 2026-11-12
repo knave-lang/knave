@@ -83,7 +83,7 @@ impl UnsizedParameters {
     fn is_unsized(program: &TypedProgram, ty: &Type, found: &FxHashSet<GenericId>) -> bool {
         match ty {
             Type::Primitive(PrimitiveType::Str) => true,
-            Type::Named(binding, _) => program.rust_types.is_slice(*binding),
+            Type::Named(binding, _) => program.declarations.types.rust_types().is_slice(*binding),
             Type::Generic(generic) => found.contains(generic),
             _ => false,
         }

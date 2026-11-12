@@ -11,7 +11,7 @@ use super::typed_trait_impl::TypedTraitImpl;
 use crate::core::BindingId;
 
 #[derive(Default)]
-pub(super) struct TraitDeclarations {
+pub struct TraitDeclarations {
     pub(super) table: TraitTable,
     pub(super) definitions: Vec<TypedTrait>,
     pub(super) impls: Vec<TypedTraitImpl>,
@@ -21,14 +21,28 @@ pub(super) struct TraitDeclarations {
     pub(super) selfless_methods: SelflessMethods,
 }
 
-#[cfg(test)]
 impl TraitDeclarations {
-    pub(super) fn taken_from(program: &mut super::TypedProgram) -> Self {
-        Self {
-            table: std::mem::take(&mut program.traits),
-            impls: std::mem::take(&mut program.trait_impls),
-            structural: std::mem::take(&mut program.structural_traits),
-            ..Self::default()
-        }
+    pub fn table(&self) -> &TraitTable {
+        &self.table
+    }
+
+    pub fn definitions(&self) -> &[TypedTrait] {
+        &self.definitions
+    }
+
+    pub fn impls(&self) -> &[TypedTraitImpl] {
+        &self.impls
+    }
+
+    pub fn methods(&self) -> &FxHashMap<BindingId, TraitMethodInfo> {
+        &self.methods
+    }
+
+    pub fn rust_paths(&self) -> &FxHashMap<BindingId, Rc<str>> {
+        &self.rust_paths
+    }
+
+    pub fn structural(&self) -> &[StructuralTrait] {
+        &self.structural
     }
 }

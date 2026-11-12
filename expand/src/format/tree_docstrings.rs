@@ -66,10 +66,7 @@ impl<'s, 'm> TreeDocstrings<'s, 'm> {
             unreadable: laid_out
                 .unreadable
                 .iter()
-                .map(|code| UnreadableSpan {
-                    range: lines.written_range(code.line),
-                    cause: code.cause,
-                })
+                .map(|code| code.spanning(lines.written_range(code.line)))
                 .collect(),
         }
     }

@@ -124,10 +124,10 @@ impl SourceFormatter {
             syntax: &self.syntax,
         })
         .lay_out(&lines);
-        let unreadable = laid_out.unreadable.into_iter().map(|code| UnreadableSpan {
-            range: DocstringLine::page_range(&lines, code.line),
-            cause: code.cause,
-        });
+        let unreadable = laid_out
+            .unreadable
+            .into_iter()
+            .map(|code| code.spanning(DocstringLine::page_range(&lines, code.line)));
         FormattedSource {
             text: laid_out.lines.join("\n"),
             warnings: Self::warnings_of(page, unreadable),

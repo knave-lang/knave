@@ -7,11 +7,15 @@ use crate::source::{SourceId, Span};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UnreadableSpan {
-    pub range: Range<usize>,
-    pub cause: UnreadableCause,
+    range: Range<usize>,
+    cause: UnreadableCause,
 }
 
 impl UnreadableSpan {
+    pub fn new(range: Range<usize>, cause: UnreadableCause) -> Self {
+        Self { range, cause }
+    }
+
     pub fn after(&self, start: usize) -> Self {
         Self {
             range: start + self.range.start..start + self.range.end,
@@ -30,10 +34,10 @@ mod tests {
 
     #[test]
     fn a_span_after_a_start_moves_both_ends() {
-        let span = UnreadableSpan {
-            range: 2..5,
-            cause: UnreadableCause::Code,
-        };
-        assert_eq!(span.after(10).range, 12..15);
+        let span = UnreadableSpan::new(2..5, UnreadableCause::Code);
+        assert_eq!(
+            span.after(10),
+            UnreadableSpan::new(12..15, UnreadableCause::Code)
+        );
     }
 }

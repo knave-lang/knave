@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/trait_argument_closed_waits.knv
+---
+error[L0404]: `(vec a)` does not implement `holds`
+  --> check/trait_argument_closed_waits.knv:12:11
+   |
+12 |   (holds? items (the i64 3))
+   |           ^^^^^ this needs `holds`
+   |
+   = note: `holds` is implemented for: (with (vec i64) i64)

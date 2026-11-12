@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/trait_argument_two_rows.knv
+---
+(type holds? (where ((whole (holds part)) part) (fn ((ref whole) part) bool)))
+(type has-three? (fn ((vec i64)) bool))
+(type add-up (where ((left (adds right)) right) (fn (left right) (total left))))
+(type plus (where ((a (adds b)) b) (fn (a b) (total a))))

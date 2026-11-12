@@ -1,6 +1,7 @@
 (deftrait holds
   (rust "Holds")
-  (where (item) (with (vec item) item)))
+  (where (item) (with (vec item) item))
+  (where (item) (with (vec i64) (pair item item))))
 
 (def holds?
   (rust "{0}.holds(&{&1})"
@@ -12,3 +13,30 @@
 
 (defn has-half? ((weights (vec f64)))
   (holds? weights 0.5))
+
+(defn borrowed-has-three? ((scores (ref (vec i64))))
+  (holds? scores 3))
+
+(defn byte-has-three? ((bytes (vec u8)))
+  (holds? bytes 3))
+
+(defn byte-has-sum? ((bytes (vec u8)))
+  (holds? bytes (+ 1 2)))
+
+(defn single-has-three? ((singles (vec f32)))
+  (holds? singles 3))
+
+(defn single-has-half? ((singles (vec f32)))
+  (holds? singles 0.5))
+
+(defn has-some-three? ((options (vec (option u8))))
+  (holds? options (some 3)))
+
+(defn has-row? ((rows (vec (vec u16))))
+  (holds? rows (vec 1 2)))
+
+(defn literal-first? ((scores (vec i64)) (x u32))
+  (holds? scores (pair 3 x)))
+
+(defn literal-second? ((scores (vec i64)) (x u32))
+  (holds? scores (pair x 3)))

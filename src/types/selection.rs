@@ -41,17 +41,16 @@ pub struct ImplementorMatch<'s> {
 }
 
 impl<'s> ImplementorMatch<'s> {
+    // Called out of line, the hot selection loop costs about 80M more instructions
+    // on the larger corpus programs, and `#[inline]` alone does not keep it inline.
+    #[inline(always)]
     pub fn select(
         implementor: &'s Implementor,
         bound: &Bound,
         target: &Type,
         associated: bool,
     ) -> Selection {
-        let mut matcher = Self {
-            implementor,
-            bindings: FxHashMap::default(),
-            undecided: false,
-        };
+        let mut matcher = Self::new(implementor);
         if !matcher.matches(&implementor.scheme.body, target) {
             return Selection::Missing;
         }
@@ -62,16 +61,35 @@ impl<'s> ImplementorMatch<'s> {
         }
     }
 
+    pub fn settle(implementor: &'s Implementor, bound: &Bound, target: &Type) -> Option<Selection> {
+        let mut matcher = Self::new(implementor);
+        let pattern_argument = implementor
+            .argument
+            .as_ref()
+            .unwrap_or(&implementor.scheme.body);
+        let target_argument = bound.argument.as_ref()?;
+        let settles = matcher.matches(&implementor.scheme.body, target)
+            && matcher.matches(pattern_argument, target_argument);
+        settles.then(|| Selection::Implemented {
+            requirements: matcher.requirements(),
+            argument: Some(pattern_argument.substitute(&matcher.bindings)),
+        })
+    }
+
+    fn new(implementor: &'s Implementor) -> Self {
+        Self {
+            implementor,
+            bindings: FxHashMap::default(),
+            undecided: false,
+        }
+    }
+
     pub fn match_pattern(
         implementor: &'s Implementor,
         pattern: &Type,
         target: &Type,
     ) -> PatternMatch {
-        let mut matcher = Self {
-            implementor,
-            bindings: FxHashMap::default(),
-            undecided: false,
-        };
+        let mut matcher = Self::new(implementor);
         match (matcher.matches(pattern, target), matcher.undecided) {
             (false, _) => PatternMatch::Missing,
             (true, true) => PatternMatch::Undecided,
@@ -155,14 +173,30 @@ impl<'s> ImplementorMatch<'s> {
     }
 
     fn bind(&mut self, generic: GenericId, target: &Type) -> bool {
-        match self.bindings.get(&generic) {
-            None => {
-                self.bindings.insert(generic, target.clone());
-                true
+        let bound = self
+            .bindings
+            .entry(generic)
+            .or_insert_with(|| target.clone());
+        if bound == target {
+            return true;
+        }
+        Self::could_equal(bound, target) && self.leave_undecided()
+    }
+
+    fn could_equal(left: &Type, right: &Type) -> bool {
+        match (left, right) {
+            (Type::Var(_), _) | (_, Type::Var(_)) => true,
+            (Type::Named(left_head, left_arguments), Type::Named(right_head, right_arguments)) => {
+                left_head == right_head
+                    && left_arguments.len() == right_arguments.len()
+                    && left_arguments
+                        .iter()
+                        .zip(right_arguments)
+                        .all(|(left, right)| Self::could_equal(left, right))
             }
-            Some(bound) if bound == target => true,
-            Some(_) if matches!(target, Type::Var(_)) => self.leave_undecided(),
-            Some(_) => false,
+            (Type::Ref(_, left), Type::Ref(_, right))
+            | (Type::Mut(_, left), Type::Mut(_, right)) => Self::could_equal(left, right),
+            _ => left == right,
         }
     }
 
@@ -179,5 +213,126 @@ impl<'s> ImplementorMatch<'s> {
                 })
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, PrimitiveType};
+    use crate::types::ty::{GenericParam, Scheme, TypeVar};
+
+    struct Shapes {
+        pair: BindingId,
+    }
+
+    impl Shapes {
+        fn new() -> Self {
+            let mut bindings = BindingArena::default();
+            let pair = bindings.add(BindingInfo::new(
+                "pair".into(),
+                BindingKind::TypeVariable,
+                None,
+            ));
+            Self { pair }
+        }
+
+        fn pair(&self, left: Type, right: Type) -> Type {
+            Type::Named(self.pair, vec![left, right])
+        }
+
+        fn pair_of_one_parameter(&self) -> Implementor {
+            let item = GenericId::new(0);
+            Implementor {
+                scheme: Scheme {
+                    lifetimes: Vec::new(),
+                    params: vec![GenericParam {
+                        id: item,
+                        name: "item".into(),
+                        bounds: Vec::new(),
+                    }],
+                    body: self.pair(Type::Generic(item), Type::Generic(item)),
+                },
+                argument: None,
+            }
+        }
+
+        fn matches_row(&self, target: &Type) -> PatternMatch {
+            let row = self.pair_of_one_parameter();
+            ImplementorMatch::match_pattern(&row, &row.scheme.body, target)
+        }
+
+        fn open() -> Type {
+            Type::Var(TypeVar::new(0))
+        }
+
+        fn primitive(primitive: PrimitiveType) -> Type {
+            Type::Primitive(primitive)
+        }
+    }
+
+    #[test]
+    fn a_row_that_gives_one_parameter_two_closed_types_is_missing() {
+        let shapes = Shapes::new();
+        let target = shapes.pair(
+            Shapes::primitive(PrimitiveType::I64),
+            Shapes::primitive(PrimitiveType::U32),
+        );
+        assert!(matches!(shapes.matches_row(&target), PatternMatch::Missing));
+    }
+
+    #[test]
+    fn a_row_that_gives_one_parameter_an_open_type_waits() {
+        let shapes = Shapes::new();
+        let target = shapes.pair(Shapes::open(), Shapes::primitive(PrimitiveType::U32));
+        assert!(matches!(
+            shapes.matches_row(&target),
+            PatternMatch::Undecided
+        ));
+    }
+
+    #[test]
+    fn an_open_part_could_equal_a_type_of_the_same_shape() {
+        let shapes = Shapes::new();
+        let i64 = Shapes::primitive(PrimitiveType::I64);
+        let u32 = Shapes::primitive(PrimitiveType::U32);
+        assert!(ImplementorMatch::could_equal(
+            &shapes.pair(Shapes::open(), u32.clone()),
+            &shapes.pair(i64, u32),
+        ));
+    }
+
+    #[test]
+    fn another_shape_never_equals_a_type_with_an_open_part() {
+        let shapes = Shapes::new();
+        let i64 = Shapes::primitive(PrimitiveType::I64);
+        assert!(!ImplementorMatch::could_equal(
+            &i64,
+            &shapes.pair(Shapes::open(), i64.clone()),
+        ));
+    }
+
+    #[test]
+    fn a_borrow_could_equal_a_borrow_of_an_open_type() {
+        let i64 = Shapes::primitive(PrimitiveType::I64);
+        assert!(ImplementorMatch::could_equal(
+            &Type::shared(Shapes::open()),
+            &Type::shared(i64.clone()),
+        ));
+        assert!(!ImplementorMatch::could_equal(
+            &Type::shared(Shapes::open()),
+            &i64,
+        ));
+    }
+
+    #[test]
+    fn a_closed_part_that_differs_keeps_two_shapes_apart() {
+        let shapes = Shapes::new();
+        let bool = Shapes::primitive(PrimitiveType::Bool);
+        let text = Shapes::primitive(PrimitiveType::Str);
+        assert!(!ImplementorMatch::could_equal(
+            &shapes.pair(Shapes::open(), bool),
+            &shapes.pair(Shapes::open(), text),
+        ));
     }
 }

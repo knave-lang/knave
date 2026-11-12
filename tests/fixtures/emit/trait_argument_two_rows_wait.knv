@@ -1,0 +1,13 @@
+(deftrait picks
+  (rust "Picks")
+  (where () (with (vec i64) u8))
+  (where () (with (vec i64) i64)))
+
+(def picks?
+  (rust "{0}.picks(&{&1})"
+    (where ((whole (picks part)) part)
+      (fn ((ref whole) part) bool))))
+
+(defn main ()
+  (local scores (the (vec i64) (vec 1)))
+  (println (picks? scores 3)))

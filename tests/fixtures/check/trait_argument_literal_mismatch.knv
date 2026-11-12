@@ -9,3 +9,20 @@
 
 (defn has-half? ((scores (vec i64)))
   (holds? scores 0.5))
+
+(defn names-three? ((names (vec string)))
+  (holds? names 3))
+
+(defn has-some-half? ((options (vec (option u8))))
+  (holds? options (some 0.5)))
+
+(defn has-pair? ((scores (vec i64)))
+  (holds? scores (pair 3 4)))
+
+(defn has-flag? ((rows (vec (pair u8 string))))
+  (holds? rows (pair 3 true)))
+
+(defn names-later? ()
+  (local names (vec))
+  (holds? names 3)
+  (push! names (str "ana")))

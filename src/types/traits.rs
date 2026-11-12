@@ -27,10 +27,18 @@ impl RustTrait {
             .any(|implementor| !implementor.scheme.params.is_empty())
     }
 
-    fn relates_a_type_to_itself(&self) -> bool {
-        self.implementors
-            .iter()
-            .any(|implementor| implementor.argument.is_none())
+    pub fn links_argument_of(table: &TraitTable, binding: BindingId) -> bool {
+        table
+            .get(binding)
+            .is_none_or(|rust_trait| rust_trait.links_its_argument(binding, table.projections()))
+    }
+
+    fn links_its_argument(&self, binding: BindingId, projections: &ProjectionTable) -> bool {
+        projections.declared_by(binding).is_empty()
+            && self
+                .implementors
+                .iter()
+                .any(|implementor| implementor.argument.is_none())
     }
 }
 
@@ -84,10 +92,7 @@ impl TraitTable {
         self.traits.get(&bound.binding).map_or_else(
             || Selection::Missing,
             |rust_trait| {
-                rust_trait
-                    .implementors
-                    .iter()
-                    .chain(self.normalized_implementors(bound.binding))
+                self.rows(bound.binding, rust_trait)
                     .map(|known| {
                         ImplementorMatch::select(
                             known,
@@ -99,6 +104,33 @@ impl TraitTable {
                     .fold(Selection::Missing, Selection::best)
             },
         )
+    }
+
+    pub fn settle_lone_row(&self, bound: &Bound, implementor: &Type) -> Option<Selection> {
+        let rust_trait = self.traits.get(&bound.binding)?;
+        let normalized = self.projections.normalize_deep(implementor);
+        let mut open = self.rows(bound.binding, rust_trait).filter(|known| {
+            !matches!(
+                ImplementorMatch::select(known, bound, &normalized, false),
+                Selection::Missing
+            )
+        });
+        let only = open.next()?;
+        if open.next().is_some() {
+            return None;
+        }
+        ImplementorMatch::settle(only, bound, &normalized)
+    }
+
+    fn rows<'t>(
+        &'t self,
+        binding: BindingId,
+        rust_trait: &'t RustTrait,
+    ) -> impl Iterator<Item = &'t Implementor> {
+        rust_trait
+            .implementors
+            .iter()
+            .chain(self.normalized_implementors(binding))
     }
 
     fn normalized_implementors(&self, binding: BindingId) -> &[Implementor] {
@@ -204,21 +236,6 @@ impl TraitTable {
         self.traits.get(&binding)
     }
 
-    pub fn links_its_argument(&self, binding: BindingId) -> bool {
-        !self.has_associated_type(binding)
-            && self
-                .get(binding)
-                .is_none_or(RustTrait::relates_a_type_to_itself)
-    }
-
-    pub fn has_associated_type(&self, binding: BindingId) -> bool {
-        let declares_projection = !self.projections.declared_by(binding).is_empty();
-        declares_projection
-            || self
-                .get(binding)
-                .is_some_and(|rust_trait| rust_trait.associated.is_some())
-    }
-
     pub fn set_implementor_scheme(&mut self, binding: BindingId, body: &Type, scheme: Scheme) {
         if let Some(rust_trait) = self.traits.get_mut(&binding)
             && let Some(implementor) = rust_trait
@@ -234,7 +251,10 @@ impl TraitTable {
 #[cfg(test)]
 mod tests {
     use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleId, PrimitiveType};
-    use crate::types::{Bound, GenericId, Implementor, RustTrait, Scheme, TraitTable, Type};
+    use crate::types::selection::Selection;
+    use crate::types::{
+        Bound, GenericId, Implementor, RustTrait, Scheme, TraitTable, Type, TypeVar,
+    };
 
     struct TraitsFixture {
         bindings: BindingArena,
@@ -274,6 +294,38 @@ mod tests {
             binding
         }
 
+        fn add_seconds(&mut self, name: &str, seconds: &[PrimitiveType]) -> BindingId {
+            let binding = self.add(name, &[]);
+            self.traits.add(
+                binding,
+                RustTrait {
+                    path: std::rc::Rc::from(name),
+                    implementors: seconds
+                        .iter()
+                        .map(|second| Implementor {
+                            scheme: Scheme::monomorphic(Type::Primitive(PrimitiveType::I64)),
+                            argument: Some(Type::Primitive(*second)),
+                        })
+                        .collect(),
+                    help: None,
+                    supertraits: Vec::new(),
+                    associated: None,
+                },
+            );
+            binding
+        }
+
+        fn settles_an_open_second(&self, binding: BindingId) -> Option<Type> {
+            let bound = Bound::with_argument(binding, Type::Var(TypeVar::new(0)));
+            match self
+                .traits
+                .settle_lone_row(&bound, &Type::Primitive(PrimitiveType::I64))
+            {
+                Some(Selection::Implemented { argument, .. }) => argument,
+                _ => None,
+            }
+        }
+
         fn require(&mut self, binding: BindingId, required: BindingId) {
             self.traits.add(
                 binding,
@@ -286,6 +338,23 @@ mod tests {
                 },
             );
         }
+    }
+
+    #[test]
+    fn a_lone_row_settles_an_open_second_type() {
+        let mut fixture = TraitsFixture::new();
+        let holds = fixture.add_seconds("Holds", &[PrimitiveType::U8]);
+        assert_eq!(
+            fixture.settles_an_open_second(holds),
+            Some(Type::Primitive(PrimitiveType::U8))
+        );
+    }
+
+    #[test]
+    fn two_rows_leave_an_open_second_type_open() {
+        let mut fixture = TraitsFixture::new();
+        let holds = fixture.add_seconds("Holds", &[PrimitiveType::U8, PrimitiveType::I64]);
+        assert_eq!(fixture.settles_an_open_second(holds), None);
     }
 
     #[test]

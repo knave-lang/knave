@@ -29,6 +29,7 @@ mod graph;
 mod impl_overlap;
 mod infer;
 mod literal_fit;
+mod literal_settlement;
 mod lowering;
 mod main_result;
 mod method_receivers;

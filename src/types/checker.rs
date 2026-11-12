@@ -18,6 +18,7 @@ use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
 use super::graph::{Definition, DefinitionGraph, DependencyGraph};
 use super::impl_overlap::ImplementorOverlap;
 use super::infer::OpenCollections;
+use super::literal_settlement::LiteralSettlement;
 use super::method_receivers::MethodReceivers;
 use super::opaque_positions::OpaquePositions;
 use super::parameter_call_labels::ParameterCallRequest;
@@ -856,7 +857,9 @@ impl TypeChecker {
         if self.declarations.types.boxed_object(implementor) == Some(bound.binding) {
             return;
         }
-        match self.declarations.traits.table.select(&bound, implementor) {
+        let selection = LiteralSettlement::new(&self.unifier, &self.declarations.traits.table)
+            .select(&bound, implementor);
+        match selection {
             Selection::Implemented {
                 requirements,
                 argument,
@@ -1434,10 +1437,7 @@ impl TypeChecker {
             .bounds(var)
             .iter()
             .filter(|bound| {
-                self.declarations
-                    .traits
-                    .table
-                    .links_its_argument(bound.binding)
+                RustTrait::links_argument_of(&self.declarations.traits.table, bound.binding)
             })
             .filter_map(|bound| {
                 let argument = bound

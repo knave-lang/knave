@@ -7,13 +7,13 @@ use crate::diagnostic::Diagnostics;
 use crate::source::{SourceId, Span};
 use crate::stack::DeepRecursion;
 
-pub struct DocstringPass<'s> {
+pub struct TreeDocstrings<'s> {
     rules: FormatRules<'s>,
     source: SourceId,
     warnings: Diagnostics,
 }
 
-impl<'s> DocstringPass<'s> {
+impl<'s> TreeDocstrings<'s> {
     pub fn new(rules: FormatRules<'s>, source: SourceId) -> Self {
         Self {
             rules,
@@ -22,7 +22,7 @@ impl<'s> DocstringPass<'s> {
         }
     }
 
-    pub fn lay_out_docstrings(mut self, tree: &mut SyntaxTree) -> Diagnostics {
+    pub fn lay_out(mut self, tree: &mut SyntaxTree) -> Diagnostics {
         self.visit_entries(&mut tree.entries);
         self.warnings
     }

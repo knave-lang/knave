@@ -1,6 +1,6 @@
-use super::chunk_layout::ChunkLayout;
 use super::code_layout::CodeLayout;
 use super::layout::LayoutEngine;
+use super::region_layout::RegionLayout;
 use super::shapes::ShapeCatalog;
 use super::syntax_tree::SyntaxTree;
 use super::top_level_printer::TopLevelPrinter;
@@ -15,6 +15,7 @@ pub struct CodeChunk<'s> {
 
 impl<'s> CodeChunk<'s> {
     const SOURCE_NAME: &'static str = "<docstring code>";
+    const FIRST_LINE: usize = 0;
 
     pub fn new(shapes: &'s ShapeCatalog, indent: usize, layout: CodeLayout) -> Self {
         Self {
@@ -24,16 +25,16 @@ impl<'s> CodeChunk<'s> {
         }
     }
 
-    pub fn lay_out(self, text: &str) -> ChunkLayout {
+    pub fn lay_out(self, text: &str) -> RegionLayout {
         let Some(forms) = Self::read(text) else {
-            return ChunkLayout::Unreadable;
+            return RegionLayout::Unreadable(Self::FIRST_LINE);
         };
         if self.layout.spacing.needs_a_line_per_form() && !Self::ends_each_line(text, &forms) {
-            return ChunkLayout::Prose;
+            return RegionLayout::Prose;
         }
         let mut engine = LayoutEngine::new(self.shapes);
         let lines = TopLevelPrinter::new(&mut engine, self.layout).print(&SyntaxTree::build(text));
-        ChunkLayout::LaidOut(lines.iter().map(|line| self.with_margin(line)).collect())
+        RegionLayout::LaidOut(lines.iter().map(|line| self.with_margin(line)).collect())
     }
 
     fn read(text: &str) -> Option<Vec<Form>> {
@@ -60,7 +61,7 @@ impl<'s> CodeChunk<'s> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ChunkLayout, CodeChunk};
+    use super::{CodeChunk, RegionLayout};
     use crate::format::code_layout::CodeLayout;
     use crate::format::code_spacing::CodeSpacing;
     use crate::format::shapes::ShapeCatalog;
@@ -82,12 +83,12 @@ mod tests {
 
         fn lay_out_spaced(&self, text: &str, spacing: CodeSpacing) -> Option<Vec<String>> {
             match self.layout(text, spacing) {
-                ChunkLayout::LaidOut(lines) => Some(lines),
-                ChunkLayout::Unreadable | ChunkLayout::Prose => None,
+                RegionLayout::LaidOut(lines) => Some(lines),
+                RegionLayout::Unreadable(_) | RegionLayout::Prose => None,
             }
         }
 
-        fn layout(&self, text: &str, spacing: CodeSpacing) -> ChunkLayout {
+        fn layout(&self, text: &str, spacing: CodeSpacing) -> RegionLayout {
             let layout = CodeLayout { column: 2, spacing };
             CodeChunk::new(&self.shapes, 4, layout).lay_out(text)
         }
@@ -148,7 +149,7 @@ mod tests {
         let fixture = ChunkFixture::new();
         assert!(matches!(
             fixture.layout("(f 1", CodeSpacing::Written),
-            ChunkLayout::Unreadable
+            RegionLayout::Unreadable(0)
         ));
     }
 
@@ -157,7 +158,7 @@ mod tests {
         let fixture = ChunkFixture::new();
         assert!(matches!(
             fixture.layout("(see below) and more", CodeSpacing::Written),
-            ChunkLayout::Prose
+            RegionLayout::Prose
         ));
     }
 

@@ -1,0 +1,26 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/marked_failures_with_different_helps.knv
+---
+error[L0301]: this macro is not finished
+  --> expand/marked_failures_with_different_helps.knv:5:12
+   |
+ 5 |     (quote todo)
+   |            ^^^^ here
+...
+12 |   (unfinished "text"))
+   |   ------------------- in this macro call
+   |
+   = help: finish the other case
+
+error[L0301]: this macro is not finished
+  --> expand/marked_failures_with_different_helps.knv:5:12
+   |
+ 5 |     (quote todo)
+   |            ^^^^ here
+...
+11 |   (unfinished 1)
+   |   -------------- in this macro call
+   |
+   = help: finish the number case

@@ -1,0 +1,12 @@
+(use code fail number?)
+
+(defmacro unfinished (x)
+  (fail "this macro is not finished"
+    (quote todo)
+    (if (number? x)
+      "finish the number case" "finish the other case")
+    (quote (:once-per definition))))
+
+(defn main ()
+  (unfinished 1)
+  (unfinished "text"))

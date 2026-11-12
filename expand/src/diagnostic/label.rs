@@ -49,7 +49,7 @@ impl Label {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Edit {
     span: Span,
     replacement: String,
@@ -65,7 +65,7 @@ impl Edit {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Suggestion {
     edits: Vec<Edit>,
 }
@@ -100,7 +100,7 @@ impl Suggestion {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Help {
     message: String,
     suggestion: Option<Suggestion>,

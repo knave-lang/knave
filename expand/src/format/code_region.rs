@@ -1,6 +1,5 @@
 use std::ops::Range;
 
-use super::chunk_layout::ChunkLayout;
 use super::code_chunk::CodeChunk;
 use super::code_layout::CodeLayout;
 use super::docstring_line::DocstringLine;
@@ -74,12 +73,12 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
             .collect::<Vec<_>>()
             .join("\n");
         match CodeChunk::new(self.rules.shapes, self.indent, self.layout).lay_out(text.trim_end()) {
-            ChunkLayout::LaidOut(lines) => {
+            RegionLayout::LaidOut(lines) => {
                 self.laid_out.extend(lines);
                 Ok(())
             }
-            ChunkLayout::Unreadable => Err(RegionLayout::Unreadable(first)),
-            ChunkLayout::Prose => Err(RegionLayout::Prose),
+            RegionLayout::Unreadable(line) => Err(RegionLayout::Unreadable(first + line)),
+            RegionLayout::Prose => Err(RegionLayout::Prose),
         }
     }
 

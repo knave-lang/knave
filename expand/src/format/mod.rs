@@ -1,5 +1,4 @@
 mod block;
-mod chunk_layout;
 mod code_chunk;
 mod code_layout;
 mod code_region;
@@ -8,7 +7,6 @@ mod docstring_code;
 mod docstring_line;
 mod docstring_lines;
 mod docstring_part;
-mod docstring_pass;
 mod docstring_place;
 mod docstring_regions;
 mod docstring_syntax;
@@ -27,6 +25,7 @@ mod shape_reader;
 mod shapes;
 mod syntax_tree;
 mod top_level_printer;
+mod tree_docstrings;
 mod written_gap;
 
 pub use docstring_syntax::DocstringSyntax;
@@ -41,7 +40,6 @@ use code_layout::CodeLayout;
 use code_spacing::CodeSpacing;
 use docstring_code::DocstringCode;
 use docstring_line::DocstringLine;
-use docstring_pass::DocstringPass;
 use format_rules::FormatRules;
 use import_order::ImportSorter;
 use layout::LayoutEngine;
@@ -49,6 +47,7 @@ use meaning::MeaningComparison;
 use shape_reader::ShapeReader;
 use syntax_tree::SyntaxTree;
 use top_level_printer::TopLevelPrinter;
+use tree_docstrings::TreeDocstrings;
 
 pub struct SourceFormatter {
     shape_reader: ShapeReader,
@@ -139,7 +138,7 @@ impl<'s> FormattedText<'s> {
     fn lay_out(rules: FormatRules<'s>, text: &str, source: SourceId) -> Self {
         let mut tree = SyntaxTree::build(text);
         ImportSorter::sort(&mut tree);
-        let warnings = DocstringPass::new(rules, source).lay_out_docstrings(&mut tree);
+        let warnings = TreeDocstrings::new(rules, source).lay_out(&mut tree);
         let mut engine = LayoutEngine::new(rules.shapes);
         let mut text = TopLevelPrinter::new(&mut engine, Self::FILE_LAYOUT)
             .print(&tree)

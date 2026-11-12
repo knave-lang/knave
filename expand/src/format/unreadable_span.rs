@@ -2,6 +2,7 @@ use std::ops::Range;
 
 use super::format_problems::FormatProblems;
 use super::unreadable_cause::UnreadableCause;
+use super::unreadable_code::UnreadableCode;
 use crate::diagnostic::Diagnostic;
 use crate::source::{SourceId, Span};
 
@@ -14,6 +15,10 @@ pub struct UnreadableSpan {
 impl UnreadableSpan {
     pub fn new(range: Range<usize>, cause: UnreadableCause) -> Self {
         Self { range, cause }
+    }
+
+    pub fn of_code(code: UnreadableCode, range: Range<usize>) -> Self {
+        Self::new(range, code.cause)
     }
 
     pub fn after(&self, start: usize) -> Self {

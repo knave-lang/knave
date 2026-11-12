@@ -23,7 +23,7 @@ impl LaidOutToken {
             unreadable: laid_out
                 .unreadable
                 .iter()
-                .map(|code| code.spanning(lines.written_range(code.line)))
+                .map(|code| UnreadableSpan::of_code(*code, lines.written_range(code.line)))
                 .collect(),
         }
     }

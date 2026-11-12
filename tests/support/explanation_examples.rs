@@ -4,6 +4,7 @@ use std::thread;
 use knave::diagnostic::Explanation;
 
 use super::Fixture;
+use super::project_example::ProjectExample;
 
 pub struct ExplanationExamples {
     code: String,
@@ -53,13 +54,13 @@ impl ExplanationExamples {
 
     fn erroneous_diagnostics(&self) -> Vec<Vec<ExampleDiagnostic>> {
         self.examples_under(Self::ERRONEOUS_HEADING)
-            .map(|example| Self::fixture_of(example).reported_diagnostics())
+            .map(Self::diagnostics_of)
             .collect()
     }
 
     pub fn erroneous_first_codes(&self) -> Vec<Option<String>> {
         self.examples_under(Self::ERRONEOUS_HEADING)
-            .map(|example| Self::fixture_of(example).first_reported_code())
+            .map(Self::first_code_of)
             .collect()
     }
 
@@ -91,10 +92,17 @@ impl ExplanationExamples {
     }
 
     fn failure_of_fix(&self, index: usize, fix: &str) -> Option<String> {
+        let failure = match ProjectExample::parse(fix) {
+            Some(project) => project.failure(),
+            None => self.single_file_failure(index, fix),
+        }?;
+        Some(format!("fix {index} of {}:\n{failure}", self.code))
+    }
+
+    fn single_file_failure(&self, index: usize, fix: &str) -> Option<String> {
         let file = format!("{}-fix-{index}.knv", self.code.to_lowercase());
         let path = PathBuf::from(Fixture::FIXTURE_ROOT).join(file);
-        let failure = Fixture::of_text(&path, fix.to_string()).run_failure()?;
-        Some(format!("fix {index} of {}:\n{failure}", self.code))
+        Fixture::of_text(&path, fix.to_string()).run_failure()
     }
 
     fn examples_under(&self, heading: &str) -> impl Iterator<Item = &'static str> {
@@ -108,6 +116,24 @@ impl ExplanationExamples {
     fn section(&self, heading: &str) -> &'static str {
         let after_heading = self.text.split_once(heading).map_or("", |(_, rest)| rest);
         after_heading.split("\n## ").next().unwrap_or(after_heading)
+    }
+
+    fn first_code_of(example: &str) -> Option<String> {
+        match ProjectExample::parse(example) {
+            Some(project) => project
+                .reported_diagnostics()
+                .into_iter()
+                .map(|diagnostic| diagnostic.code)
+                .find(|code| !code.is_empty()),
+            None => Self::fixture_of(example).first_reported_code(),
+        }
+    }
+
+    fn diagnostics_of(example: &str) -> Vec<ExampleDiagnostic> {
+        match ProjectExample::parse(example) {
+            Some(project) => project.reported_diagnostics(),
+            None => Self::fixture_of(example).reported_diagnostics(),
+        }
     }
 
     fn fixture_of(example: &str) -> Fixture {

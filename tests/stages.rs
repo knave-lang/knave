@@ -21,6 +21,9 @@ const SECOND_TRAIT_PATH_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n(deftr
 const TITLE_QUOTING_EXPLANATION: &str = "The compiler says cannot find `distnce` in this scope.\n\n## Erroneous example\n\n```lisp\n(defn main ()\n  (println distnce))\n```\n";
 const WARNING_TITLE_QUOTING_EXPLANATION: &str = "The compiler says `printable` binds a Rust path that `display` already binds.\n\n## Erroneous example\n\n```lisp\n(deftrait printable (rust \"std::fmt::Display\") i64)\n\n(defn main ()\n  (println 1))\n```\n";
 const MISSING_MAIN_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n(defn helper () 1)\n```\n";
+const PROJECT_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n;; project.knv\n(libraries)\n;; src/main.knv\n(defn main () (println 1))\n```\n";
+const REPL_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n;; knave repl\n(defstruct point :x i64)\n(defn ->point (x) x)\n```\n";
+const COMMENTED_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n;; knave keeps this note\n;; total.knv holds the sum\n(defn main () (println totl))\n```\n";
 const FAILING_EXIT_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local empty (the (vec i64) (vec)))\n  (println (at empty 0)))\n```\n";
 
 #[test]
@@ -359,6 +362,33 @@ fn an_explanation_example_that_only_emit_rejects_reports_the_emit_code() {
     assert_eq!(
         explanation.erroneous_first_codes(),
         vec![Some("L0601".to_string())]
+    );
+}
+
+#[test]
+fn an_explanation_example_labeled_with_files_runs_as_a_project() {
+    let explanation = ExplanationExamples::new("L0701", PROJECT_EXAMPLE);
+    assert_eq!(
+        explanation.erroneous_first_codes(),
+        vec![Some("L0701".to_string())]
+    );
+}
+
+#[test]
+fn an_explanation_example_labeled_with_a_command_runs_it() {
+    let explanation = ExplanationExamples::new("L0249", REPL_EXAMPLE);
+    assert_eq!(
+        explanation.erroneous_first_codes(),
+        vec![Some("L0249".to_string())]
+    );
+}
+
+#[test]
+fn an_explanation_example_with_ordinary_comments_reads_as_one_file() {
+    let explanation = ExplanationExamples::new("L0201", COMMENTED_EXAMPLE);
+    assert_eq!(
+        explanation.erroneous_first_codes(),
+        vec![Some("L0201".to_string())]
     );
 }
 

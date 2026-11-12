@@ -12,6 +12,7 @@ mod docstring_regions;
 mod document;
 mod format_problems;
 mod import_group;
+mod import_join;
 mod import_order;
 mod layout;
 mod list_plan;
@@ -22,6 +23,7 @@ mod region_layout;
 mod shape_reader;
 mod shapes;
 mod syntax_tree;
+mod written_gap;
 
 pub use shape_reader::ModuleLookup;
 pub use shapes::{Shape, ShapeCatalog, ShapeStatement};

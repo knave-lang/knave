@@ -7,6 +7,7 @@ use super::docstring_regions::DocstringRegions;
 use super::markdown_fence::MarkdownFence;
 use super::region_layout::RegionLayout;
 use super::shapes::ShapeCatalog;
+use super::written_gap::WrittenGap;
 
 pub struct CodeRegion<'s, 'l> {
     shapes: &'s ShapeCatalog,
@@ -69,8 +70,12 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
         let Some(first) = chunk.clone().find(|line| !self.is_blank(*line)) else {
             return Ok(());
         };
-        let written_blank = first > chunk.start;
-        if !self.laid_out.is_empty() && self.layout.spacing.breaks_after_result(written_blank) {
+        let written = if first > chunk.start {
+            WrittenGap::BlankLine
+        } else {
+            WrittenGap::LineBreak
+        };
+        if !self.laid_out.is_empty() && self.layout.spacing.breaks_after_result(written) {
             self.laid_out.push(String::new());
         }
         let text = self.lines[first..chunk.end]

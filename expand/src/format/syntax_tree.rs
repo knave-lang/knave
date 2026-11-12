@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use super::written_gap::WrittenGap;
 use crate::reader::{Token, TokenKind, TokenScan};
 use crate::stack::DeepRecursion;
 
@@ -105,7 +106,25 @@ impl ListNode {
     }
 }
 
+impl Comment {
+    pub fn gap_before(&self) -> WrittenGap {
+        if self.blank_before {
+            WrittenGap::BlankLine
+        } else {
+            WrittenGap::LineBreak
+        }
+    }
+}
+
 impl Entry {
+    pub fn gap_before(&self) -> WrittenGap {
+        match self.leading_comments.first() {
+            Some(comment) => comment.gap_before(),
+            None if self.blank_before_node => WrittenGap::BlankLine,
+            None => WrittenGap::LineBreak,
+        }
+    }
+
     pub fn breaks_line(&self, index: usize) -> bool {
         self.trailing_comment.is_some() || self.interrupts_line(index)
     }

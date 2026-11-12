@@ -10,8 +10,16 @@ macro_rules! written_explanations {
 }
 
 written_explanations! {
+    "L0106",
     "L0201",
+    "L0208",
+    "L0210",
+    "L0351",
+    "L0401",
+    "L0402",
+    "L0433",
     "L0501",
+    "L0514",
 }
 
 pub struct Explanation {

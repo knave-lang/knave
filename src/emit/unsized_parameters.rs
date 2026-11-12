@@ -89,3 +89,56 @@ impl UnsizedParameters {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::emit::RustEmitter;
+    use crate::ownership::OwnershipChecker;
+    use crate::source::{SourceId, Span};
+    use crate::types::TypedSource;
+
+    struct MeasureFixture;
+
+    impl MeasureFixture {
+        const MEASURE: &str = "
+            (def first-slice
+              (rust \"{0}.as_slice()\"
+                (where (a) (fn ((ref (vec a))) (ref (slice a))))))
+            (defn measure (value) (len value))";
+
+        fn measure_signature(main: &str) -> String {
+            let mut program = TypedSource::expand(&format!("{}\n{main}", Self::MEASURE)).typed();
+            OwnershipChecker::check(&mut program).expect("the fixture checks");
+            let emitted = RustEmitter::emit(&program, Span::new(SourceId::new(0), 0..0))
+                .unwrap_or_else(|_| panic!("the fixture emits"))
+                .code;
+            emitted
+                .lines()
+                .find(|line| line.starts_with("fn measure"))
+                .expect("the fixture emits measure")
+                .to_string()
+        }
+    }
+
+    #[test]
+    fn a_generic_instantiated_with_a_slice_is_unsized() {
+        let signature = MeasureFixture::measure_signature(
+            "(defn main ()
+               (local numbers (vec 1 2 3))
+               (println (measure (first-slice numbers)))
+               (println (measure (str \"abc\"))))",
+        );
+        assert!(signature.contains("?Sized"), "{signature}");
+    }
+
+    #[test]
+    fn a_generic_instantiated_with_a_vector_stays_sized() {
+        let signature = MeasureFixture::measure_signature(
+            "(defn main ()
+               (local numbers (vec 1 2 3))
+               (println (measure (ref numbers)))
+               (println (measure (str \"abc\"))))",
+        );
+        assert!(!signature.contains("?Sized"), "{signature}");
+    }
+}

@@ -141,10 +141,17 @@ impl FailureDescription {
             Some(Self::CODE) => self.with_code(value, codes),
             Some(Self::EARLIER) => Ok(self.with_earlier(part, value)),
             Some(Self::EARLIER_LABEL) => self.with_earlier_label(part, value),
-            Some(Self::LABEL) => self.with_label(value),
-            Some(Self::NOTE) => self.with_note(value),
-            Some(Self::ONCE_PER) => self.with_once_per(value),
-            Some(Self::SUGGEST) => self.with_replacement(value),
+            Some(name) => self.with_value_part(name, part, value),
+            None => Err(Self::malformed_part(part)),
+        }
+    }
+
+    fn with_value_part(self, name: &str, part: &Form, value: &Form) -> Result<Self, Diagnostic> {
+        match name {
+            Self::LABEL => self.with_label(value),
+            Self::NOTE => self.with_note(value),
+            Self::ONCE_PER => self.with_once_per(value),
+            Self::SUGGEST => self.with_replacement(value),
             _ => Err(Self::malformed_part(part)),
         }
     }

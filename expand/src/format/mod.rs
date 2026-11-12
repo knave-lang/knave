@@ -33,13 +33,16 @@ pub use shape_reader::ModuleLookup;
 pub use shapes::{Shape, ShapeCatalog, ShapeStatement};
 
 use crate::core::{DefinitionForm, KernelForm};
+use std::ops::Range;
+
 use crate::diagnostic::Diagnostics;
 use crate::reader::{Form, Reader};
-use crate::source::{SourceFile, SourceId, SourceMap};
+use crate::source::{SourceFile, SourceMap, Span};
 use code_layout::CodeLayout;
 use code_spacing::CodeSpacing;
 use docstring_code::DocstringCode;
 use docstring_line::DocstringLine;
+use format_problems::FormatProblems;
 use format_rules::FormatRules;
 use import_order::ImportSorter;
 use layout::LayoutEngine;
@@ -69,7 +72,7 @@ pub struct FormattedSource {
 struct FormattedText<'s> {
     rules: FormatRules<'s>,
     text: String,
-    warnings: Diagnostics,
+    unreadable: Vec<Range<usize>>,
 }
 
 impl SourceFormatter {
@@ -96,11 +99,18 @@ impl SourceFormatter {
             shapes: &shapes,
             syntax: &self.syntax,
         };
-        let formatted = FormattedText::lay_out(rules, source.text(), source.id());
+        let formatted = FormattedText::lay_out(rules, source.text());
         formatted.verify(&written, source.text())?;
+        let mut warnings = Diagnostics::default();
+        for range in formatted.unreadable {
+            warnings.push(FormatProblems::unreadable_docstring_code(Span::new(
+                source.id(),
+                range,
+            )));
+        }
         Ok(FormattedSource {
             text: formatted.text,
-            warnings: formatted.warnings,
+            warnings,
         })
     }
 
@@ -135,10 +145,10 @@ impl<'s> FormattedText<'s> {
         spacing: CodeSpacing::Separated,
     };
 
-    fn lay_out(rules: FormatRules<'s>, text: &str, source: SourceId) -> Self {
+    fn lay_out(rules: FormatRules<'s>, text: &str) -> Self {
         let mut tree = SyntaxTree::build(text);
         ImportSorter::sort(&mut tree);
-        let warnings = TreeDocstrings::new(rules, source).lay_out(&mut tree);
+        let unreadable = TreeDocstrings::new(rules).lay_out(&mut tree);
         let mut engine = LayoutEngine::new(rules.shapes);
         let mut text = TopLevelPrinter::new(&mut engine, Self::FILE_LAYOUT)
             .print(&tree)
@@ -149,7 +159,7 @@ impl<'s> FormattedText<'s> {
         Self {
             rules,
             text,
-            warnings,
+            unreadable,
         }
     }
 
@@ -162,7 +172,7 @@ impl<'s> FormattedText<'s> {
         if !keeps_meaning {
             return Err(FormatFailure::ChangedMeaning);
         }
-        let again = Self::lay_out(self.rules, &self.text, SourceId::new(0));
+        let again = Self::lay_out(self.rules, &self.text);
         if again.text != self.text {
             return Err(FormatFailure::Unstable);
         }
@@ -179,7 +189,6 @@ impl<'s> FormattedText<'s> {
 #[cfg(test)]
 mod tests {
     use super::{FormatFailure, FormatRules, FormattedText, ShapeCatalog, ShapeStatement};
-    use crate::diagnostic::Diagnostics;
     use crate::format::docstring_syntax::{DocstringSyntax, DocstringSyntaxFixture};
     use crate::reader::{Form, Reader};
     use crate::source::SourceMap;
@@ -210,7 +219,7 @@ mod tests {
                     syntax: &self.syntax,
                 },
                 text: formatted.to_string(),
-                warnings: Diagnostics::default(),
+                unreadable: Vec::new(),
             }
             .verify(&Self::forms(written), written)
         }

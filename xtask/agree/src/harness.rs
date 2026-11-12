@@ -74,3 +74,50 @@ impl Harness {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::Harness;
+    use crate::knave_compiler::KnaveCompiler;
+
+    struct HarnessFixture;
+
+    impl HarnessFixture {
+        const JOBS: usize = 2;
+
+        fn harness() -> Harness {
+            Harness::new(KnaveCompiler::at(PathBuf::from("knave")), Self::JOBS)
+        }
+
+        fn oracle_count(harness: &Harness) -> usize {
+            harness.oracles.len()
+        }
+    }
+
+    #[test]
+    fn keeps_every_oracle_when_none_is_named() {
+        let harness = HarnessFixture::harness()
+            .keeping_oracles(&[])
+            .expect("no names");
+        assert_eq!(HarnessFixture::oracle_count(&harness), 2);
+        assert_eq!(harness.jobs(), HarnessFixture::JOBS);
+    }
+
+    #[test]
+    fn keeps_only_the_named_oracle() {
+        let names = ["FalseOwnershipError".to_string()];
+        let harness = HarnessFixture::harness()
+            .keeping_oracles(&names)
+            .expect("a known name");
+        assert_eq!(HarnessFixture::oracle_count(&harness), 1);
+    }
+
+    #[test]
+    fn refuses_an_unknown_oracle_name() {
+        let names = ["Telepathy".to_string()];
+        let refusal = HarnessFixture::harness().keeping_oracles(&names).err();
+        assert_eq!(refusal.as_deref(), Some("no oracle is named `Telepathy`"));
+    }
+}

@@ -119,3 +119,38 @@ impl fmt::Display for RunOutcome {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{ExitKind, RunOutcome, Verdict};
+
+    struct VerdictFixture;
+
+    impl VerdictFixture {
+        fn ran(exit: ExitKind) -> Verdict {
+            Verdict::Ran(RunOutcome {
+                stdout: Vec::new(),
+                stderr: Vec::new(),
+                exit,
+            })
+        }
+    }
+
+    #[test]
+    fn names_each_outcome_and_tells_a_timeout_from_a_run() {
+        let names: Vec<&str> = [
+            Verdict::Accepted,
+            Verdict::Rejected(Vec::new()),
+            VerdictFixture::ran(ExitKind::TimedOut),
+            VerdictFixture::ran(ExitKind::Code(0)),
+            Verdict::Unsupported("crate".to_string()),
+        ]
+        .iter()
+        .map(Verdict::outcome_name)
+        .collect();
+        assert_eq!(
+            names,
+            ["accepted", "rejected", "timed out", "ran", "unsupported"]
+        );
+    }
+}

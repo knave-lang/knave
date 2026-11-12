@@ -8,7 +8,8 @@ use super::syntax_tree::{Comment, Entry, SyntaxTree};
 pub struct TopLevelPrinter<'e, 's> {
     engine: &'e mut LayoutEngine<'s>,
     layout: CodeLayout,
-    lines: Vec<String>,
+    text: String,
+    started: bool,
     previous_group: Option<ImportGroup>,
 }
 
@@ -17,17 +18,18 @@ impl<'e, 's> TopLevelPrinter<'e, 's> {
         Self {
             engine,
             layout,
-            lines: Vec::new(),
+            text: String::new(),
+            started: false,
             previous_group: None,
         }
     }
 
-    pub fn print(mut self, tree: &SyntaxTree) -> Vec<String> {
+    pub fn print(mut self, tree: &SyntaxTree) -> String {
         for (position, entry) in tree.entries.iter().enumerate() {
             self.print_entry(entry, position);
         }
         self.print_closing_comments(&tree.closing_comments);
-        self.lines
+        self.text
     }
 
     fn print_entry(&mut self, entry: &Entry, position: usize) {
@@ -40,11 +42,11 @@ impl<'e, 's> TopLevelPrinter<'e, 's> {
                 .spacing
                 .breaks_before_form(entry.gap_before(), join)
         {
-            self.lines.push(String::new());
+            self.push_blank_line();
         }
         self.print_comments(&entry.leading_comments);
         if !entry.leading_comments.is_empty() && entry.blank_before_node {
-            self.lines.push(String::new());
+            self.push_blank_line();
         }
         let mut rendered = String::new();
         block.render_into(&mut rendered);
@@ -71,7 +73,7 @@ impl<'e, 's> TopLevelPrinter<'e, 's> {
     fn print_comments(&mut self, comments: &[Comment]) {
         for (position, comment) in comments.iter().enumerate() {
             if position > 0 && comment.blank_before {
-                self.lines.push(String::new());
+                self.push_blank_line();
             }
             self.push_rendered(&comment.text);
         }
@@ -86,23 +88,25 @@ impl<'e, 's> TopLevelPrinter<'e, 's> {
                     .breaks_before_form(comment.gap_before(), ImportJoin::Apart),
                 _ => comment.blank_before,
             };
-            if breaks && !self.lines.is_empty() {
-                self.lines.push(String::new());
+            if breaks && self.started {
+                self.push_blank_line();
             }
             self.push_rendered(&comment.text);
         }
     }
 
+    fn push_blank_line(&mut self) {
+        self.text.push('\n');
+    }
+
     fn push_rendered(&mut self, rendered: &str) {
-        let indent = " ".repeat(self.layout.column);
-        for (index, line) in rendered.split('\n').enumerate() {
-            let text = if index == 0 {
-                format!("{indent}{line}")
-            } else {
-                line.to_string()
-            };
-            self.lines.push(text);
+        if self.started {
+            self.text.push('\n');
         }
+        self.started = true;
+        self.text
+            .extend(std::iter::repeat_n(' ', self.layout.column));
+        self.text.push_str(rendered);
     }
 }
 
@@ -126,7 +130,7 @@ mod tests {
             }
         }
 
-        fn print(&self, text: &str) -> Vec<String> {
+        fn print(&self, text: &str) -> String {
             let mut engine = LayoutEngine::new(&self.shapes);
             let layout = CodeLayout {
                 column: 0,
@@ -141,7 +145,7 @@ mod tests {
         let fixture = PrinterFixture::new();
         assert_eq!(
             fixture.print("(f 1)\n; first\n; second\n\n; third"),
-            ["(f 1)", "", "; first", "; second", "", "; third"]
+            "(f 1)\n\n; first\n; second\n\n; third"
         );
     }
 }

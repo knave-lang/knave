@@ -159,9 +159,7 @@ impl<'s> FormattedText<'s> {
         ImportSorter::sort(&mut tree);
         let unreadable = TreeDocstrings::new(rules, memo).lay_out(&mut tree);
         let mut engine = LayoutEngine::new(rules.shapes);
-        let mut text = TopLevelPrinter::new(&mut engine, Self::FILE_LAYOUT)
-            .print(&tree)
-            .join("\n");
+        let mut text = TopLevelPrinter::new(&mut engine, Self::FILE_LAYOUT).print(&tree);
         if !text.is_empty() {
             text.push('\n');
         }

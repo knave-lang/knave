@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/empty_repetition_rule_reports_once.knv
+---
+error[L0301]: nothing before this `...` repeats
+ --> expand/empty_repetition_rule_reports_once.knv:1:31
+  |
+1 | (defrule ones (((a ...)) (vec 1 ...)))
+  |                               ^ here
+...
+4 |   (ones (1))
+  |   ---------- in this macro call
+  |
+  = help: remove this `...`, or repeat a variable that the pattern repeats

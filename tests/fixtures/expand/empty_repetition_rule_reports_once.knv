@@ -1,0 +1,5 @@
+(defrule ones (((a ...)) (vec 1 ...)))
+
+(defn main ()
+  (ones (1))
+  (ones (2)))

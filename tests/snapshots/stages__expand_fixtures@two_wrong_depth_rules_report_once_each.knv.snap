@@ -1,0 +1,26 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/two_wrong_depth_rules_report_once_each.knv
+---
+error[L0301]: this pattern variable needs `...` after it
+ --> expand/two_wrong_depth_rules_report_once_each.knv:2:33
+  |
+2 |   (((quote first) (a ...)) (vec a))
+  |                                 ^ here
+...
+6 |   (pick first (1))
+  |   ---------------- in this macro call
+  |
+  = help: write `...` after it
+
+error[L0301]: this pattern variable needs `...` after it
+ --> expand/two_wrong_depth_rules_report_once_each.knv:3:34
+  |
+3 |   (((quote second) (b ...)) (vec b)))
+  |                                  ^ here
+...
+7 |   (pick second (2))
+  |   ----------------- in this macro call
+  |
+  = help: write `...` after it

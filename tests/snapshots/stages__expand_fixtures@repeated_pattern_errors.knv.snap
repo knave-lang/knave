@@ -11,6 +11,8 @@ error[L0301]: this pattern variable needs `...` after it
 ...
 9 | (def a (fn () (flat 1 2)))
   |               ---------- in this macro call
+  |
+  = help: write `...` after it
 
 error[L0301]: this pattern variable needs `...` after it
   --> expand/repeated_pattern_errors.knv:4:27
@@ -20,6 +22,8 @@ error[L0301]: this pattern variable needs `...` after it
 ...
 11 | (def b (fn () (flat-pairs (1 2))))
    |               ------------------ in this macro call
+   |
+   = help: write `...` after it
 
 error[L0301]: nothing before this `...` repeats
   --> expand/repeated_pattern_errors.knv:7:19
@@ -29,3 +33,5 @@ error[L0301]: nothing before this `...` repeats
 ...
 13 | (def c (fn () (empty-repeat 1 2)))
    |               ------------------ in this macro call
+   |
+   = help: remove this `...`, or repeat a variable that the pattern repeats

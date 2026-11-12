@@ -1,0 +1,5 @@
+(defrule once (((a ...)) (vec a)))
+
+(defrule never (((b ...)) (vec b)))
+
+(defn main () (once (1)))

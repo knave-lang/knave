@@ -1,0 +1,9 @@
+(defrule pick
+  (((quote first) (a ...)) (vec a))
+  (((quote second) (b ...)) (vec b)))
+
+(defn main ()
+  (pick first (1))
+  (pick second (2))
+  (pick first (3))
+  (pick second (4)))

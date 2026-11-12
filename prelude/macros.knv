@@ -222,7 +222,9 @@
     (if (entry-kind? entry (quote one))
       (nth entry 2)
       (if (repeated-entry? entry)
-        (fail "this pattern variable needs `...` after it" template)
+        (fail "this pattern variable needs `...` after it"
+          template "write `...` after it"
+          (quote (:once-per definition)))
         template))))
 
 (def fill-list
@@ -240,7 +242,10 @@
     (local entries
       (repeated-entries (template-variables template) bindings))
     (if (empty? entries)
-      (fail "nothing before this `...` repeats" template)
+      (fail "nothing before this `...` repeats"
+        template
+        "remove this `...`, or repeat a variable that the pattern repeats"
+        (quote (:once-per definition)))
       (if (lone-slice? template (first entries))
         (nth (first entries) 2)
         (do

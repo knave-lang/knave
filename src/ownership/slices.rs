@@ -593,12 +593,7 @@ mod tests {
         fn new(source: &str) -> Self {
             let program = TypedSource::expand(source).typed();
             let functions = FunctionTable::collect(&program);
-            let copy = CopyRules::new(
-                program.declarations.traits.table(),
-                &program.generics,
-                program.declarations.types.structs(),
-                program.declarations.types.enums(),
-            );
+            let copy = CopyRules::new(&program.declarations, &program.generics);
             let modes = ModeInference::new(&functions, copy).run();
             Self {
                 program,

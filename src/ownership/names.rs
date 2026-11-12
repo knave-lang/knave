@@ -101,12 +101,7 @@ impl ChangingFunctionNames {
             return warning;
         };
         let name = program.bindings.get(param).name();
-        let copy = CopyRules::new(
-            program.declarations.traits.table(),
-            &program.generics,
-            program.declarations.types.structs(),
-            program.declarations.types.enums(),
-        );
+        let copy = CopyRules::new(&program.declarations, &program.generics);
         if copy.is_copy(referent) {
             OwnershipProblems::with_copied_parameter_change(warning, site, name)
         } else {

@@ -73,12 +73,7 @@ impl<'a> FunctionValueModes<'a> {
         function_params: &'a FxHashMap<BindingId, Vec<Type>>,
         copied_reads: &'a CopiedMutReads,
     ) -> Vec<Diagnostic> {
-        let copy = CopyRules::new(
-            program.declarations.traits.table(),
-            &program.generics,
-            program.declarations.types.structs(),
-            program.declarations.types.enums(),
-        );
+        let copy = CopyRules::new(&program.declarations, &program.generics);
         let constructor_fields = Self::constructor_fields(program);
         let mut values = Self {
             bindings: &mut program.bindings,
@@ -613,12 +608,10 @@ mod tests {
     struct Adjustments {
         bindings: BindingArena,
         generics: FxHashMap<GenericId, GenericParam>,
-        structs: StructTable,
-        enums: crate::types::EnumTable,
         rust_types: crate::types::RustTypeTable,
         function_params: FxHashMap<BindingId, Vec<Type>>,
         copied_reads: CopiedMutReads,
-        traits: TraitTable,
+        declarations: crate::types::Declarations,
     }
 
     impl Adjustments {
@@ -646,12 +639,10 @@ mod tests {
             Self {
                 bindings,
                 generics: FxHashMap::default(),
-                structs: StructTable::default(),
-                enums: crate::types::EnumTable::default(),
                 rust_types: crate::types::RustTypeTable::default(),
                 function_params: FxHashMap::default(),
                 copied_reads: CopiedMutReads::default(),
-                traits,
+                declarations: crate::types::Declarations::with_traits(traits),
             }
         }
 
@@ -684,11 +675,11 @@ mod tests {
         }
 
         fn values(&mut self) -> FunctionValueModes<'_> {
-            let copy = CopyRules::new(&self.traits, &self.generics, &self.structs, &self.enums);
+            let copy = CopyRules::new(&self.declarations, &self.generics);
             FunctionValueModes {
                 bindings: &mut self.bindings,
                 generics: &self.generics,
-                structs: &self.structs,
+                structs: self.declarations.types.structs(),
                 rust_types: &self.rust_types,
                 function_params: &self.function_params,
                 copied_reads: &self.copied_reads,

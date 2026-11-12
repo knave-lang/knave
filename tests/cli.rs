@@ -62,6 +62,10 @@ const COUNT_INPUT_LINES: &str = "(defn main ()\n  (println (count (take (line-se
 const STRUCTS: &str = "(defstruct person :name string :age i64)\n(defstruct ticket :id u32)\n(derive ticket debug)\n\n(defn main () (do))\n";
 const BOUND_ENTRY: &str = "(use other/person person)\n\n(rust-trait same \"std::ops::Add\" i64 (with i64 person))\n\n(type matches (where ((a (same person))) (fn (a) bool)))\n(defn matches (x) true)\n\n(defn main () (println (matches 1)))\n";
 
+const MOVED_VECTOR: &str =
+    "(defn main ()\n  (local v (vec 1 2))\n  (local w v)\n  (println (len v) (len w)))\n";
+const MISTYPED_SUM: &str = "(defn main () (println (+ 1 \"two\")))\n";
+
 const TRAIT_SHARED_VECTOR: &str = "(struct odometer (offset i64))\n\n(trait mileage\n  (first-reading (fn ((ref self) (ref (vec i64))) i64)))\n\n(impl mileage odometer\n  (first-reading (o readings) (+ (field o offset) (at readings 0))))\n\n(defn main ()\n  (println (first-reading (new odometer (offset 10)) (vec 1200))))\n";
 const DOCUMENTED_TWICE: &str = "(defn twice (x)\n  \"Doubles a number.\n\n  Handy for widgets.\"\n  (* 2 x))\n\n(defn main () (println (twice 2)))\n";
 const DOCUMENTED_PROJECT: &str = "(defproject demo)\n";
@@ -3128,6 +3132,30 @@ fn emit_qualifies_a_struct_named_in_a_bound() {
     let stdout = emitted.assert_exit_code(0).stdout();
     assert!(stdout.contains("std::ops::Add<crate::other::person::Person>"));
     assert!(stdout.contains("struct Person"));
+}
+
+#[test]
+fn emit_without_ownership_checks_writes_the_rust_of_a_refused_move() {
+    let sandbox = Sandbox::new("emit_unowned_move").with_file("moved.knv", MOVED_VECTOR);
+    sandbox
+        .compiler(&["check", "moved.knv"])
+        .assert_exit_code(1);
+    let emitted = sandbox.compiler(&["emit", "--without-ownership-checks", "moved.knv"]);
+    let stdout = emitted.assert_exit_code(0).stdout();
+    assert!(stdout.contains("let w: Vec<i64> = v;"));
+}
+
+#[test]
+fn emit_without_ownership_checks_still_reports_a_type_error() {
+    let sandbox = Sandbox::new("emit_unowned_mistyped").with_file("sum.knv", MISTYPED_SUM);
+    let emitted = sandbox.compiler(&["emit", "--without-ownership-checks", "sum.knv"]);
+    assert!(emitted.assert_exit_code(1).stdout().is_empty());
+}
+
+#[test]
+fn emit_help_hides_the_flag_without_ownership_checks() {
+    let help = Sandbox::new("emit_help_hidden").compiler(&["emit", "--help"]);
+    assert!(!help.assert_exit_code(0).stdout().contains("ownership"));
 }
 
 #[test]

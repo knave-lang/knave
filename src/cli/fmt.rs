@@ -1,3 +1,4 @@
+mod formatted_files;
 mod project_load_warning;
 
 use std::fs;
@@ -22,6 +23,7 @@ use super::working_directory::WorkingDirectory;
 use crate::format::{FormatFailure, ModuleLookup, SourceFormatter};
 use crate::language::Language;
 use crate::modules::ModuleSources;
+use formatted_files::FormattedFiles;
 use project_load_warning::ProjectLoadWarning;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -35,7 +37,6 @@ pub struct FmtCommand {
     mode: FmtMode,
     standard_input_path: Option<PathBuf>,
     formatter: SourceFormatter,
-    lookups: NearbyProjects,
 }
 
 struct WorstStatus {
@@ -48,6 +49,7 @@ struct SourceFiles {
 
 struct NearbyProjects {
     projects: FxHashMap<PathBuf, Option<LocatedProject>>,
+    formatted_files: Rc<FormattedFiles>,
 }
 
 impl FmtCommand {
@@ -60,7 +62,6 @@ impl FmtCommand {
             mode,
             standard_input_path,
             formatter: EmbeddedPrelude::source_formatter(),
-            lookups: NearbyProjects::new(),
         }
     }
 
@@ -94,7 +95,8 @@ impl FmtCommand {
             .standard_input_path
             .clone()
             .unwrap_or_else(|| PathBuf::from(Self::STANDARD_INPUT_NAME));
-        let lookup = self.lookups.lookup_for(&name, terminal);
+        let mut lookups = NearbyProjects::new(FormattedFiles::none());
+        let lookup = lookups.lookup_for(&name, terminal);
         match self.formatted(terminal, &name, text.clone(), &lookup) {
             Ok(formatted) => self.answer_standard_input(&name, &text, &formatted),
             Err(status) => status,
@@ -136,27 +138,36 @@ impl FmtCommand {
 
     fn format_walked(&mut self, terminal: &mut Terminal, paths: Vec<PathBuf>) -> ExitStatus {
         let mut worst = WorstStatus::new();
+        let mut files = Vec::new();
         for path in paths {
             match SourceFiles::under(&path) {
-                Ok(files) => files
-                    .iter()
-                    .for_each(|file| worst.record(self.format_file(terminal, file))),
+                Ok(walked) => files.extend(walked),
                 Err(error) => worst.record(
                     UnreadableFile::new(&path, &error).report_to(&*terminal.diagnostic_output()),
                 ),
             }
         }
+        files.sort_by_key(|file| !ProgramFile::is_project_file(file));
+        let mut lookups = NearbyProjects::new(FormattedFiles::of(&files));
+        for file in &files {
+            worst.record(self.format_file(terminal, file, &mut lookups));
+        }
         worst.status
     }
 
-    fn format_file(&mut self, terminal: &mut Terminal, path: &Path) -> ExitStatus {
+    fn format_file(
+        &mut self,
+        terminal: &mut Terminal,
+        path: &Path,
+        lookups: &mut NearbyProjects,
+    ) -> ExitStatus {
         let text = match ModuleSources::read_file(path) {
             Ok(text) => text,
             Err(error) => {
                 return UnreadableFile::new(path, &error).report_to(&*terminal.diagnostic_output());
             }
         };
-        let lookup = self.lookups.lookup_for(path, terminal);
+        let lookup = lookups.lookup_for(path, terminal);
         match self.formatted(terminal, path, text.clone(), &lookup) {
             Ok(formatted) if formatted == text => ExitStatus::Success,
             Ok(formatted) => self.apply(path, &formatted),
@@ -293,9 +304,10 @@ impl SourceFiles {
 }
 
 impl NearbyProjects {
-    fn new() -> Self {
+    fn new(formatted_files: FormattedFiles) -> Self {
         Self {
             projects: FxHashMap::default(),
+            formatted_files: Rc::new(formatted_files),
         }
     }
 
@@ -326,14 +338,18 @@ impl NearbyProjects {
         terminal: &Terminal,
     ) -> Option<&LocatedProject> {
         let root = LocatedProject::canonical_root(directory)?;
+        let formatted_files = &self.formatted_files;
         self.projects
             .entry(root)
-            .or_insert_with_key(|root| Self::load(root, path, terminal))
+            .or_insert_with_key(|root| {
+                let output = terminal.diagnostic_output();
+                let files = Rc::clone(formatted_files);
+                Self::load(root, &Rc::new(ProjectLoadWarning::new(path, output, files)))
+            })
             .as_ref()
     }
 
-    fn load(root: &Path, path: &Path, terminal: &Terminal) -> Option<LocatedProject> {
-        let warning = Rc::new(ProjectLoadWarning::new(path, terminal.diagnostic_output()));
+    fn load(root: &Path, warning: &Rc<ProjectLoadWarning>) -> Option<LocatedProject> {
         let loading = Terminal::new(TerminalSettings::reporting_to(warning.clone()));
         let loaded = LocatedProject::search_from(root, &loading, CacheOnlyStore::default());
         if loaded.is_err() {

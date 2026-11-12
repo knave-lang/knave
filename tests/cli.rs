@@ -1693,6 +1693,83 @@ fn fmt_prints_an_unknown_project_key_as_a_warning() {
 }
 
 #[test]
+fn fmt_reports_an_unclosed_project_file_it_formats_once() {
+    let sandbox = Sandbox::new("fmt_unclosed_project_file_once")
+        .with_file(&Language::project_file_name(), "(defproject app\n")
+        .with_file("src/main.knv", FORMATTED);
+    let fmt = sandbox.compiler(&["fmt", "."]);
+    let stderr = fmt.assert_exit_code(1).stderr();
+    assert_eq!(
+        stderr.matches("this list is never closed").count(),
+        1,
+        "{stderr}"
+    );
+    assert!(!stderr.ends_with("\n\n"), "{stderr}");
+    insta::assert_snapshot!(sandbox.masked(&fmt.transcript()));
+}
+
+#[test]
+fn fmt_reports_why_a_project_does_not_load_before_the_load_warning() {
+    let sandbox = Sandbox::new("fmt_project_reason_first")
+        .with_file(&Language::project_file_name(), "(defproject app\n")
+        .with_file("app.knv", FORMATTED);
+    let fmt = sandbox.compiler(&["fmt", "--check", "."]);
+    let stderr = fmt.assert_exit_code(1).stderr();
+    let reason = stderr
+        .find("this list is never closed")
+        .expect("the reason prints");
+    let warning = stderr
+        .find("cannot load the project")
+        .expect("the warning prints");
+    assert!(reason < warning, "{stderr}");
+}
+
+#[test]
+fn fmt_reports_an_unreadable_project_file_it_formats_once() {
+    let sandbox =
+        Sandbox::new("fmt_unreadable_project_file_once").with_file("src/main.knv", FORMATTED);
+    fs::write(
+        sandbox.directory.join(Language::project_file_name()),
+        b"(defproject app)\n\xff\n",
+    )
+    .expect("the sandbox accepts a project file");
+    let fmt = sandbox.compiler(&["fmt", "."]);
+    let stderr = fmt.assert_exit_code(2).stderr();
+    assert_eq!(stderr.matches("cannot read").count(), 1, "{stderr}");
+}
+
+#[test]
+fn fmt_reports_an_unclosed_library_project_file_it_formats_once() {
+    let sandbox = Sandbox::new("fmt_unclosed_library_project_file_once")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject app (libraries (shapes :path \"shapes\")))\n",
+        )
+        .with_file(
+            &format!("shapes/{}", Language::project_file_name()),
+            "(defproject shapes\n",
+        )
+        .with_file("src/main.knv", FORMATTED);
+    let fmt = sandbox.compiler(&["fmt", "."]);
+    let stderr = fmt.assert_exit_code(1).stderr();
+    assert_eq!(
+        stderr.matches("this list is never closed").count(),
+        1,
+        "{stderr}"
+    );
+}
+
+#[test]
+fn fmt_of_a_project_file_that_reads_keeps_its_load_warning() {
+    let sandbox = Sandbox::new("fmt_formatted_project_file_load_warning")
+        .with_file(&Language::project_file_name(), PROJECT_WITH_UNKNOWN_KEY)
+        .with_file("src/main.knv", FORMATTED);
+    let fmt = sandbox.compiler(&["fmt", "."]);
+    let stderr = fmt.assert_exit_code(0).stderr();
+    assert_eq!(stderr.matches("warning[L0704]").count(), 1, "{stderr}");
+}
+
+#[test]
 fn fmt_formats_every_source_file_under_a_directory() {
     let sandbox = Sandbox::new("fmt_directory")
         .with_file("project/twice.knv", UNFORMATTED)

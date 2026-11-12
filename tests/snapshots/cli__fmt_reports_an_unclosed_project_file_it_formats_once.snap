@@ -1,0 +1,15 @@
+---
+source: tests/cli.rs
+expression: sandbox.masked(&fmt.transcript())
+---
+exit code: Some(1)
+--- stdout
+--- stderr
+error[L0101]: this list is never closed
+ --> ./project.knv:1:1
+  |
+1 | (defproject app
+  | ^ this `(` has no matching `)`
+  |
+  = help: add a `)` where the list ends
+warning: cannot load the project around `./src/main.knv` with its libraries, so `fmt` reads shapes only beside each file and in its parent directories

@@ -29,6 +29,7 @@ mod top_level_printer;
 mod tree_docstrings;
 mod unreadable_cause;
 mod unreadable_code;
+mod unreadable_span;
 mod written_gap;
 
 pub use docstring_syntax::DocstringSyntax;
@@ -36,17 +37,14 @@ pub use shape_reader::ModuleLookup;
 pub use shapes::{Shape, ShapeCatalog, ShapeStatement};
 
 use crate::core::ModulePath;
-use std::ops::Range;
-
 use crate::diagnostic::Diagnostics;
 use crate::reader::{Form, Reader};
-use crate::source::{SourceFile, SourceMap, Span};
+use crate::source::{SourceFile, SourceMap};
 use code_layout::CodeLayout;
 use code_spacing::CodeSpacing;
 use docstring_code::DocstringCode;
 use docstring_line::DocstringLine;
 use docstring_memo::DocstringMemo;
-use format_problems::FormatProblems;
 use format_rules::FormatRules;
 use import_order::ImportSorter;
 use layout::LayoutEngine;
@@ -55,7 +53,7 @@ use shape_reader::ShapeReader;
 use syntax_tree::SyntaxTree;
 use top_level_printer::TopLevelPrinter;
 use tree_docstrings::TreeDocstrings;
-use unreadable_cause::UnreadableCause;
+use unreadable_span::UnreadableSpan;
 
 pub struct SourceFormatter {
     shape_reader: ShapeReader,
@@ -77,7 +75,7 @@ pub struct FormattedSource {
 struct FormattedText<'s> {
     rules: FormatRules<'s>,
     text: String,
-    unreadable: Vec<(Range<usize>, UnreadableCause)>,
+    unreadable: Vec<UnreadableSpan>,
 }
 
 impl SourceFormatter {
@@ -125,10 +123,10 @@ impl SourceFormatter {
             syntax: &self.syntax,
         })
         .lay_out(&lines);
-        let unreadable = laid_out
-            .unreadable
-            .into_iter()
-            .map(|code| (DocstringLine::written_range(&lines, code.line), code.cause));
+        let unreadable = laid_out.unreadable.into_iter().map(|code| UnreadableSpan {
+            range: DocstringLine::written_range(&lines, code.line),
+            cause: code.cause,
+        });
         FormattedSource {
             text: laid_out.lines.join("\n"),
             warnings: Self::warnings_of(page, unreadable),
@@ -137,12 +135,11 @@ impl SourceFormatter {
 
     fn warnings_of(
         source: &SourceFile,
-        unreadable: impl IntoIterator<Item = (Range<usize>, UnreadableCause)>,
+        unreadable: impl IntoIterator<Item = UnreadableSpan>,
     ) -> Diagnostics {
         let mut warnings = Diagnostics::default();
-        for (range, cause) in unreadable {
-            let span = Span::new(source.id(), range);
-            warnings.push(FormatProblems::unreadable_docstring_code(span, cause));
+        for span in unreadable {
+            warnings.push(span.warning_in(source.id()));
         }
         warnings
     }

@@ -1,8 +1,6 @@
-use std::ops::Range;
-
 use rustc_hash::FxHashMap;
 
-use super::unreadable_cause::UnreadableCause;
+use super::unreadable_span::UnreadableSpan;
 
 #[derive(Default)]
 pub struct DocstringMemo {
@@ -12,7 +10,7 @@ pub struct DocstringMemo {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LaidOutToken {
     pub text: String,
-    pub unreadable: Vec<(Range<usize>, UnreadableCause)>,
+    pub unreadable: Vec<UnreadableSpan>,
 }
 
 impl DocstringMemo {

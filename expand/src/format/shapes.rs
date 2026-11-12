@@ -1,13 +1,13 @@
 use rustc_hash::FxHashMap;
 
+use super::docstring_place::DocstringPlace;
 use crate::core::Keyword;
 use crate::reader::Form;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Shape {
     pub header_length: usize,
-    pub takes_docstring: bool,
-    pub docstring_only: bool,
+    pub docstring: DocstringPlace,
     pub one_per_line: bool,
     pub arms: bool,
     pub bindings: bool,
@@ -44,13 +44,22 @@ impl ShapeStatement {
             form_name: form_name.as_symbol()?.name().to_string(),
             shape: Shape {
                 header_length: header.len(),
-                takes_docstring: Self::has_marker(markers, Self::DOCSTRING_MARKER),
-                docstring_only: Self::has_marker(markers, Self::DOCSTRING_ONLY_MARKER),
+                docstring: Self::docstring_place(markers),
                 one_per_line: Self::has_marker(markers, Self::ONE_PER_LINE_MARKER),
                 arms: Self::has_marker(markers, Self::ARMS_MARKER),
                 bindings: Self::has_marker(markers, Self::BINDINGS_MARKER),
             },
         })
+    }
+
+    fn docstring_place(markers: &[Form]) -> DocstringPlace {
+        if Self::has_marker(markers, Self::DOCSTRING_MARKER) {
+            DocstringPlace::BeforeBody
+        } else if Self::has_marker(markers, Self::DOCSTRING_ONLY_MARKER) {
+            DocstringPlace::Last
+        } else {
+            DocstringPlace::Absent
+        }
     }
 
     fn has_marker(markers: &[Form], marker: &str) -> bool {
@@ -79,17 +88,13 @@ impl ShapeCatalog {
 
 impl Shape {
     fn docstring_position(self, item_count: usize) -> Option<usize> {
-        let position = self.header_length + 1;
-        let followed = item_count > position + 1;
-        let last = item_count == position + 1;
-        let documents = (self.takes_docstring && followed) || (self.docstring_only && last);
-        documents.then_some(position)
+        self.docstring.position(self.header_length, item_count)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Shape, ShapeStatement};
+    use super::{DocstringPlace, Shape, ShapeStatement};
     use crate::reader::{Form, Reader};
     use crate::source::SourceMap;
 
@@ -117,8 +122,7 @@ mod tests {
             statement.map(|statement| statement.shape),
             Some(Shape {
                 header_length: 2,
-                takes_docstring: false,
-                docstring_only: false,
+                docstring: DocstringPlace::Absent,
                 one_per_line: false,
                 arms: false,
                 bindings: false
@@ -130,7 +134,10 @@ mod tests {
     fn a_marker_after_the_shape_states_a_docstring() {
         let statement =
             StatementFixture::statement("(header-shape (defn name parameters) :docstring)");
-        assert!(statement.is_some_and(|statement| statement.shape.takes_docstring));
+        assert!(
+            statement
+                .is_some_and(|statement| statement.shape.docstring == DocstringPlace::BeforeBody)
+        );
     }
 
     #[test]
@@ -161,8 +168,7 @@ mod tests {
             statement.map(|statement| statement.shape),
             Some(Shape {
                 header_length: 1,
-                takes_docstring: false,
-                docstring_only: false,
+                docstring: DocstringPlace::Absent,
                 one_per_line: true,
                 arms: false,
                 bindings: false
@@ -177,8 +183,7 @@ mod tests {
             statement.map(|statement| statement.shape),
             Some(Shape {
                 header_length: 1,
-                takes_docstring: false,
-                docstring_only: false,
+                docstring: DocstringPlace::Absent,
                 one_per_line: false,
                 arms: true,
                 bindings: false
@@ -193,8 +198,7 @@ mod tests {
             statement.map(|statement| statement.shape),
             Some(Shape {
                 header_length: 1,
-                takes_docstring: false,
-                docstring_only: false,
+                docstring: DocstringPlace::Absent,
                 one_per_line: false,
                 arms: false,
                 bindings: true

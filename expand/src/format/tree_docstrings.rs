@@ -45,13 +45,10 @@ impl<'s, 'm> TreeDocstrings<'s, 'm> {
     }
 
     fn lay_out_docstring(&mut self, atom: &mut Atom) {
-        let Some(lines) = DocstringLines::of_token(&atom.text) else {
-            return;
-        };
         let rules = self.rules;
         let laid_out = self
             .memo
-            .laid_out(&atom.text, || Self::lay_out_lines(rules, &lines));
+            .laid_out(&atom.text, || Self::lay_out_token(rules, &atom.text));
         for (range, cause) in &laid_out.unreadable {
             self.unreadable
                 .push((atom.start + range.start..atom.start + range.end, *cause));
@@ -59,7 +56,13 @@ impl<'s, 'm> TreeDocstrings<'s, 'm> {
         atom.text = laid_out.text.clone();
     }
 
-    fn lay_out_lines(rules: FormatRules<'_>, lines: &DocstringLines) -> LaidOutToken {
+    fn lay_out_token(rules: FormatRules<'_>, token: &str) -> LaidOutToken {
+        let Some(lines) = DocstringLines::of_token(token) else {
+            return LaidOutToken {
+                text: token.to_string(),
+                unreadable: Vec::new(),
+            };
+        };
         let laid_out = DocstringCode::of_docstrings(rules).lay_out(lines.lines());
         LaidOutToken {
             text: DocstringLines::token_of(&laid_out.lines),

@@ -1,10 +1,10 @@
 use std::ops::Range;
 
+use super::as_written_checks::AsWrittenChecks;
 use super::code_chunk::CodeChunk;
 use super::code_layout::CodeLayout;
 use super::docstring_line::DocstringLine;
 use super::format_rules::FormatRules;
-use super::kept_as_written::KeptAsWritten;
 use super::region_layout::RegionLayout;
 use super::unreadable_cause::UnreadableCause;
 use super::unreadable_code::UnreadableCode;
@@ -13,7 +13,7 @@ use crate::reader::{TokenKind, TokenScan};
 
 pub struct CodeRegion<'s, 'l> {
     rules: FormatRules<'s>,
-    kept: KeptAsWritten<'s>,
+    checks: AsWrittenChecks<'s>,
     lines: &'l [DocstringLine],
     indent: usize,
     layout: CodeLayout,
@@ -24,7 +24,7 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
     pub fn new(rules: FormatRules<'s>, lines: &'l [DocstringLine], layout: CodeLayout) -> Self {
         Self {
             rules,
-            kept: KeptAsWritten::new(rules.syntax),
+            checks: AsWrittenChecks::new(rules.syntax),
             lines,
             indent: DocstringLine::least_indentation(lines),
             layout,
@@ -33,11 +33,11 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
     }
 
     pub fn lay_out(mut self) -> RegionLayout {
-        if self.kept.holds_a_multi_line_string(self.lines) {
+        if self.checks.holds_a_multi_line_string(self.lines) {
             return RegionLayout::Prose;
         }
         match self.push_chunks() {
-            Ok(()) if self.kept.writes_a_fence_line(&self.laid_out) => RegionLayout::Prose,
+            Ok(()) if self.checks.writes_a_fence_line(&self.laid_out) => RegionLayout::Prose,
             Ok(()) => RegionLayout::LaidOut(self.laid_out),
             Err(stop) => stop,
         }
@@ -76,7 +76,7 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
             .collect::<Vec<_>>()
             .join("\n");
         match CodeChunk::new(self.rules.shapes, self.indent, self.layout).lay_out(text.trim_end()) {
-            RegionLayout::LaidOut(lines) if self.kept.writes_an_arrow_line(&lines) => {
+            RegionLayout::LaidOut(lines) if self.checks.writes_an_arrow_line(&lines) => {
                 Err(RegionLayout::Prose)
             }
             RegionLayout::LaidOut(lines) => {

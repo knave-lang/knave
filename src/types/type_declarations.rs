@@ -45,4 +45,16 @@ impl TypeDeclarations {
             _ => false,
         }
     }
+
+    pub fn is_boxed_trait(&self, implementor: &Type, trait_binding: BindingId) -> bool {
+        let Some(box_binding) = self.box_binding else {
+            return false;
+        };
+        matches!(
+            implementor,
+            Type::Named(binding, arguments)
+                if *binding == box_binding
+                    && matches!(arguments.as_slice(), [Type::TraitObject(object)] if *object == trait_binding)
+        )
+    }
 }

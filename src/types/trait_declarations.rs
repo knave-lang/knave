@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::selfless_methods::SelflessMethods;
 use super::structural_trait::StructuralTrait;
@@ -19,6 +19,7 @@ pub struct TraitDeclarations {
     pub(super) rust_paths: FxHashMap<BindingId, Rc<str>>,
     pub(super) structural: Vec<StructuralTrait>,
     pub(super) selfless_methods: SelflessMethods,
+    pub(super) arguments: FxHashSet<BindingId>,
 }
 
 impl TraitDeclarations {
@@ -44,5 +45,9 @@ impl TraitDeclarations {
 
     pub fn structural(&self) -> &[StructuralTrait] {
         &self.structural
+    }
+
+    pub fn takes_argument(&self, trait_binding: BindingId) -> bool {
+        self.arguments.contains(&trait_binding)
     }
 }

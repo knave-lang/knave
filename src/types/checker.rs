@@ -29,6 +29,7 @@ use super::pipelines::Pipelines;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
 use super::selection::Selection;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
+use super::trait_boxing::TraitBoxing;
 use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
@@ -183,7 +184,6 @@ pub struct TypeChecker {
     pub(super) type_arities: FxHashMap<BindingId, usize>,
     pub(super) written_projections: Vec<super::associated::WrittenProjection>,
     pub(super) checked_projections: usize,
-    trait_arguments: FxHashSet<BindingId>,
     signatures: FxHashMap<BindingId, (TypeExpr, Span)>,
     monomorphic: Vec<Type>,
     pub(super) implied_bounds: FxHashMap<GenericId, Vec<Bound>>,
@@ -205,7 +205,6 @@ pub struct TypeChecker {
     copy_trait: Option<BindingId>,
     pub(super) structural_uses: super::structural_uses::StructuralUses,
     pub(super) reported_path_clashes: FxHashSet<super::structural_uses::StructuralUse>,
-    pub(super) written_parameters: FxHashMap<BindingId, Vec<bool>>,
     pub(super) parameter_call_requests: Vec<ParameterCallRequest>,
     pub(super) pending_mode_checks: Vec<PendingModeCheck>,
     impl_methods: FxHashSet<BindingId>,
@@ -220,7 +219,6 @@ pub struct TypeChecker {
     pub(super) recursive_group: Vec<BindingId>,
     reopened_parameters: Vec<ReopenedParameter>,
     pub(super) reported_unknown_try_groups: FxHashSet<BindingId>,
-    prelude_definitions: Vec<BindingId>,
     pub(super) string_view: Option<BindingId>,
     pub(super) checking: super::typed::CheckWork,
 }
@@ -271,7 +269,6 @@ impl TypeChecker {
             type_arities: FxHashMap::default(),
             written_projections: Vec::new(),
             checked_projections: 0,
-            trait_arguments: FxHashSet::default(),
             signatures: FxHashMap::default(),
             monomorphic: Vec::new(),
             implied_bounds: FxHashMap::default(),
@@ -293,7 +290,6 @@ impl TypeChecker {
             copy_trait: None,
             structural_uses: super::structural_uses::StructuralUses::default(),
             reported_path_clashes: FxHashSet::default(),
-            written_parameters: FxHashMap::default(),
             parameter_call_requests: Vec::new(),
             pending_mode_checks: Vec::new(),
             impl_methods: FxHashSet::default(),
@@ -308,7 +304,6 @@ impl TypeChecker {
             recursive_group: Vec::new(),
             reopened_parameters: Vec::new(),
             reported_unknown_try_groups: FxHashSet::default(),
-            prelude_definitions: Vec::new(),
             string_view: None,
             checking: super::typed::CheckWork::default(),
         }
@@ -356,13 +351,8 @@ impl TypeChecker {
             .filter(|module| ModuleSources::is_prelude(&module.path))
             .flat_map(CoreModule::definitions)
             .map(|(binding, _)| binding);
-        self.prelude_definitions = defined.chain(saved.saved_bindings()).collect();
-    }
-
-    pub(super) fn prelude_defines_value(&self, name: &str) -> bool {
-        self.prelude_definitions
-            .iter()
-            .any(|binding| self.bindings.get(*binding).name() == name)
+        self.declarations.signatures.prelude_definitions =
+            defined.chain(saved.saved_bindings()).collect();
     }
 
     fn record_definition_facts(&mut self, definitions: &[Definition]) {
@@ -393,7 +383,10 @@ impl TypeChecker {
                     })
             })
             .collect();
-        self.written_parameters.insert(binding, written);
+        self.declarations
+            .signatures
+            .written_parameters
+            .insert(binding, written);
     }
 
     fn signature_parameter_is_written(signature: &TypeExpr, position: usize) -> bool {
@@ -477,7 +470,10 @@ impl TypeChecker {
                 .iter()
                 .any(|entry| Self::entry_uses_with(&entry.implementor))
             {
-                self.trait_arguments.insert(declaration.binding);
+                self.declarations
+                    .traits
+                    .arguments
+                    .insert(declaration.binding);
             }
         }
     }
@@ -488,10 +484,6 @@ impl TypeChecker {
             TypeExprKind::Where(_, inner) => Self::entry_uses_with(inner),
             _ => false,
         }
-    }
-
-    pub(super) fn trait_takes_argument(&self, binding: BindingId) -> bool {
-        self.trait_arguments.contains(&binding)
     }
 
     fn check_trait_claims(&mut self, modules: &[CoreModule]) {
@@ -861,7 +853,11 @@ impl TypeChecker {
         site: ObligationSite,
         pass: ObligationPass,
     ) {
-        if self.is_boxed_trait(implementor, bound.binding) {
+        if self
+            .declarations
+            .types
+            .is_boxed_trait(implementor, bound.binding)
+        {
             return;
         }
         match self.declarations.traits.table.select(&bound, implementor) {
@@ -1954,7 +1950,7 @@ impl TypeChecker {
             })
             .collect();
         if !associated.is_empty() {
-            self.trait_arguments.insert(binding);
+            self.declarations.traits.arguments.insert(binding);
         }
         let supertraits = supertraits
             .iter()
@@ -2020,63 +2016,12 @@ impl TypeChecker {
     }
 
     pub(super) fn check_boxable(&mut self, trait_binding: BindingId, span: Span) {
-        let trait_name = self.bindings.get(trait_binding).name().to_string();
-        let Some(definition) = self
-            .declarations
-            .traits
-            .definitions
-            .iter()
-            .find(|definition| definition.binding == trait_binding)
-        else {
-            return;
-        };
-        if let Some(associated) = self
-            .declarations
-            .traits
-            .table
-            .get(trait_binding)
-            .and_then(|rust_trait| rust_trait.associated.clone())
-        {
-            self.diagnostics.push(TypeProblems::not_boxable(
-                &trait_name,
-                format!("it declares the associated type `{associated}`"),
-                "a trait with an associated type cannot be a trait object",
-                span,
-            ));
-            return;
-        }
-        if let Some((blocker, help)) = self.box_blocker(definition) {
+        let boxing = TraitBoxing::new(&self.declarations.traits, &self.bindings);
+        if let Some((blocker, help)) = boxing.blocker(trait_binding) {
+            let trait_name = self.bindings.get(trait_binding).name();
             self.diagnostics
-                .push(TypeProblems::not_boxable(&trait_name, blocker, help, span));
+                .push(TypeProblems::not_boxable(trait_name, blocker, help, span));
         }
-    }
-
-    fn box_blocker(&self, definition: &TypedTrait) -> Option<(String, &'static str)> {
-        for method in &definition.methods {
-            let name = self.bindings.get(method.binding).name().to_string();
-            if method.returns_self {
-                return Some((
-                    format!("`{name}` returns `self` by value"),
-                    "return a reference or another type, not the implementor's own type",
-                ));
-            }
-            match method.receiver {
-                Some(ReceiverKind::Shared | ReceiverKind::Mutable) => continue,
-                Some(ReceiverKind::Owned) => {
-                    return Some((
-                        format!("`{name}` takes `self` by value"),
-                        "take the receiver by reference, as `(ref self)` or `(mut self)`",
-                    ));
-                }
-                None => {
-                    return Some((
-                        format!("`{name}` has no receiver"),
-                        "give the method a `(ref self)` or `(mut self)` receiver",
-                    ));
-                }
-            }
-        }
-        None
     }
 
     fn receiver_kind(signature: &TypeExpr, self_variable: BindingId) -> Option<ReceiverKind> {
@@ -2211,18 +2156,6 @@ impl TypeChecker {
                 });
             }
         }
-    }
-
-    fn is_boxed_trait(&self, implementor: &Type, trait_binding: BindingId) -> bool {
-        let Some(box_binding) = self.declarations.types.box_binding else {
-            return false;
-        };
-        matches!(
-            implementor,
-            Type::Named(binding, arguments)
-                if *binding == box_binding
-                    && matches!(arguments.as_slice(), [Type::TraitObject(object)] if *object == trait_binding)
-        )
     }
 
     fn report_supertraits(&mut self) {

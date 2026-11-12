@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use super::block::Block;
 use super::list_plan::{Arrangement, LaterIndent, ListPlan, Unit};
@@ -31,7 +31,6 @@ pub struct LayoutEngine<'s> {
     plans: FxHashMap<usize, Rc<ListPlan>>,
     one_line_texts: FxHashMap<usize, Option<Rc<str>>>,
     choices: FxHashMap<Placement, Choice>,
-    arms: FxHashSet<usize>,
     roles: ListRoles,
 }
 
@@ -85,7 +84,6 @@ impl<'s> LayoutEngine<'s> {
             plans: FxHashMap::default(),
             one_line_texts: FxHashMap::default(),
             choices: FxHashMap::default(),
-            arms: FxHashSet::default(),
             roles: ListRoles::default(),
         }
     }
@@ -94,12 +92,6 @@ impl<'s> LayoutEngine<'s> {
         match node {
             SyntaxNode::Atom(atom) => L::text(&atom.text, column),
             SyntaxNode::List(list) => L::list(self, list, column, trailing),
-        }
-    }
-
-    pub fn mark_arm(&mut self, node: &SyntaxNode) {
-        if let SyntaxNode::List(list) = node {
-            self.arms.insert(list.id);
         }
     }
 
@@ -160,7 +152,7 @@ impl<'s> LayoutEngine<'s> {
                 layout: ChosenLayout::Arranged(arrangement),
             };
         }
-        Self::arrangements_at(&plan, column)
+        plan.arrangements_at(column, Block::WIDTH)
             .iter()
             .map(|arrangement| Choice {
                 measure: assembly.assemble(self, *arrangement),
@@ -173,15 +165,6 @@ impl<'s> LayoutEngine<'s> {
                 )
             })
             .expect("every list has an arrangement")
-    }
-
-    fn arrangements_at(plan: &ListPlan, column: usize) -> &[Arrangement] {
-        let last = plan.arrangements.len() - 1;
-        if column < Block::WIDTH {
-            &plan.arrangements
-        } else {
-            &plan.arrangements[last..]
-        }
     }
 
     fn fitting_one_line(
@@ -199,7 +182,7 @@ impl<'s> LayoutEngine<'s> {
     fn is_short(&self, list: &ListNode, length: usize) -> bool {
         let sparse = length <= Self::SPARSE_LIST_LIMIT
             && list.nested_lists <= Self::SPARSE_LIST_NESTED_LISTS;
-        let short_arm = length <= Block::FILL_WIDTH && self.arms.contains(&list.id);
+        let short_arm = length <= Block::FILL_WIDTH && self.roles.is_arm(list);
         length <= Self::SHORT_LIST_LIMIT || sparse || short_arm
     }
 
@@ -405,7 +388,7 @@ impl<'l> ListAssembly<'l> {
         unit: Unit,
     ) {
         let indent = state.indent(self.column);
-        if self.plan.methods.takes_blank_line(unit.first_entry()) {
+        if self.plan.takes_blank_line_before(unit.first_entry()) {
             state.laid_out.push_blank();
         }
         let comments = unit
@@ -461,10 +444,6 @@ impl<'l> ListAssembly<'l> {
             }
             Some(atom) if self.fits_nowhere(&atom.text, trailing) => {
                 Self::excused_atom(&atom.text, start, trailing)
-            }
-            _ if self.plan.is_arm(entry) => {
-                engine.mark_arm(node);
-                engine.node(node, start, trailing)
             }
             _ => engine.node(node, start, trailing),
         }

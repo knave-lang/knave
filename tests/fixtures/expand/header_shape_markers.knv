@@ -44,3 +44,8 @@
 (header-shape (my-defn name parameters) :method)
 
 (header-shape (my-defn name parameters) :methods :methods)
+
+(header-shape (my-defn name parameters) :arms :methods)
+
+(header-shape (my-defn name parameters)
+              :methods :docstring :arms)

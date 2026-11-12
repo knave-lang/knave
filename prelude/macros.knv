@@ -593,9 +593,28 @@
     (if (known-shape-marker? marker shape-marker-names)
       (if (holds-marker? seen (keyword-name marker))
         (extra-header-shape-marker marker)
-        (check-shape-markers more (prepend marker seen)))
+        (if (body-list-markers-clash? marker seen)
+          (clashing-header-shape-marker marker)
+          (check-shape-markers more (prepend marker seen))))
       (unknown-header-shape-marker marker
                                    (sole-marker? more seen)))))
+
+(def body-list-markers-clash?
+  (fn (marker seen)
+    (if (marker-named? marker "arms")
+      (holds-marker? seen "methods")
+      (if (marker-named? marker "methods")
+        (holds-marker? seen "arms")
+        false))))
+
+(def clashing-header-shape-marker
+  (fn (marker)
+    (fail unexpected-header-shape-marker-title
+      marker
+      (string "keep one: `:arms` and `:methods` each state what every list "
+              "after the header is")
+      (quote (:code unexpected-header-shape-marker
+                    :label "`:arms` and `:methods` exclude each other")))))
 
 (def sole-marker?
   (fn (more seen)

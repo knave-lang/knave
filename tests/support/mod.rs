@@ -26,7 +26,7 @@ use knave::source::{SourceId, SourceMap, Span};
 use knave::types::TypedProgram;
 use rustc_hash::FxHashMap;
 
-pub use explanation_examples::{ExampleError, ExplanationExamples};
+pub use explanation_examples::{ExampleDiagnostic, ExplanationExamples};
 pub use formatting::{FormatFailures, ShapeLookup};
 pub use headers::HeaderAgreement;
 pub use reports::FixtureReports;
@@ -158,7 +158,14 @@ impl Fixture {
         }
     }
 
-    pub fn first_reported_code(mut self) -> Option<String> {
+    pub fn first_reported_code(self) -> Option<String> {
+        self.reported_diagnostics()
+            .into_iter()
+            .map(|diagnostic| diagnostic.code)
+            .find(|code| !code.is_empty())
+    }
+
+    pub fn reported_diagnostics(mut self) -> Vec<ExampleDiagnostic> {
         let diagnostics = match self.checked() {
             Ok(program) => program.warnings,
             Err(diagnostics) => diagnostics,
@@ -166,24 +173,13 @@ impl Fixture {
         diagnostics
             .in_source_order()
             .into_iter()
-            .find_map(|diagnostic| diagnostic.code())
-            .map(|code| code.as_str().to_string())
-    }
-
-    pub fn check_errors(mut self) -> Vec<ExampleError> {
-        self.checked().err().map_or_else(Vec::new, |diagnostics| {
-            diagnostics
-                .in_source_order()
-                .into_iter()
-                .filter(|diagnostic| diagnostic.is_error())
-                .map(|diagnostic| ExampleError {
-                    code: diagnostic
-                        .code()
-                        .map_or_else(String::new, |code| code.as_str().to_string()),
-                    title: diagnostic.title().to_string(),
-                })
-                .collect()
-        })
+            .map(|diagnostic| ExampleDiagnostic {
+                code: diagnostic
+                    .code()
+                    .map_or_else(String::new, |code| code.as_str().to_string()),
+                title: diagnostic.title().to_string(),
+            })
+            .collect()
     }
 
     pub fn emit_report(mut self) -> String {

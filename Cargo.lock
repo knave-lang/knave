@@ -340,12 +340,21 @@ dependencies = [
  "clap",
  "ctrlc",
  "insta",
+ "knave-agree",
  "knave-expand",
  "libc",
  "rustc-hash",
  "rustyline",
  "serde_json",
  "similar",
+]
+
+[[package]]
+name = "knave-agree"
+version = "0.1.0"
+dependencies = [
+ "knave-expand",
+ "serde_json",
 ]
 
 [[package]]

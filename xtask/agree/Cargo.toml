@@ -1,0 +1,9 @@
+[package]
+name = "knave-agree"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+knave-expand = { workspace = true }
+serde_json = "1"

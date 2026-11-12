@@ -26,6 +26,7 @@ impl PrecededCode {
     }
 
     pub fn into_plain_code(self) -> Code {
+        debug_assert!(self.statements.is_empty());
         self.code
     }
 }

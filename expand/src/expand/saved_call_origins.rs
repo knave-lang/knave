@@ -1,23 +1,29 @@
 use super::macro_origin::MacroOrigin;
-use super::saved_origins::SavedOrigins;
+use super::saved_origin_rows::SavedOriginRows;
 use crate::source::Span;
 
 #[derive(Default)]
 pub struct SavedCallOrigins {
-    saved: SavedOrigins,
+    rows: SavedOriginRows,
 }
 
 impl SavedCallOrigins {
-    pub fn new(saved: SavedOrigins) -> Self {
-        Self { saved }
+    pub fn new(rows: SavedOriginRows) -> Self {
+        Self { rows }
     }
 
     pub fn at(&self, call_site: Span) -> Option<MacroOrigin> {
-        self.saved.origin_at(call_site)
+        let row = self.rows.row_at(call_site)?;
+        Some(self.rows.decode(row).origin)
     }
 
     pub fn enclosing(&self, span: Span) -> Option<MacroOrigin> {
-        self.saved.enclosing(span)
+        let containing = self
+            .rows
+            .rows_of_source(span.source())
+            .filter(|row| self.rows.call_site(*row).contains(span));
+        let smallest = containing.min_by_key(|row| self.rows.call_site(*row).range().len());
+        smallest.map(|row| self.rows.decode(row).origin)
     }
 }
 

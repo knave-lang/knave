@@ -22,6 +22,8 @@ mod globals;
 mod host;
 mod input_terms;
 mod introduced;
+mod introduced_name;
+mod introduced_names;
 mod macro_call;
 mod macro_call_lookup;
 mod macro_function;
@@ -39,9 +41,11 @@ mod noted_term;
 mod noted_terms;
 mod notes_module;
 mod origin_row;
+mod origin_tables;
 #[cfg(test)]
 mod origins_fixture;
 mod own_call_origins;
+mod own_introductions;
 mod prelude_state;
 mod problem_mark;
 mod problem_report;
@@ -58,7 +62,9 @@ mod rust_type;
 mod saved_call_origins;
 mod saved_definitions;
 mod saved_index;
+mod saved_introductions;
 mod saved_notes;
+mod saved_origin_rows;
 mod saved_origins;
 mod saved_values;
 mod session;
@@ -378,7 +384,7 @@ impl<'s> Expander<'s> {
             string_view,
             checked_roots: Vec::new(),
             pending_definitions: PendingDefinitions::new(self.saved_definitions),
-            call_origins: Rc::new(std::mem::take(self.tables.macro_origins.calls_mut())),
+            call_origins: Rc::new(std::mem::take(&mut self.tables.macro_origins.calls)),
             warnings: DefinitionErrors::keep_first_calls(self.problems.take_warnings()),
             expansion: self.expansion,
         };

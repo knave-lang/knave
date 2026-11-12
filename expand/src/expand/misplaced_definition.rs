@@ -42,7 +42,7 @@ impl Expander<'_> {
     }
 
     pub(super) fn misplaced_definition(&self, kernel: KernelForm, span: Span) -> Diagnostic {
-        let origin = self.tables.macro_origins.calls().introducing_macro(span);
+        let origin = self.tables.macro_origins.calls.introducing_macro(span);
         let written_definer = origin.as_ref().map_or(kernel.name(), |origin| &origin.name);
         ExpandProblems::module_level_only(written_definer, span)
     }

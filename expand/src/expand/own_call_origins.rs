@@ -4,6 +4,7 @@ use rustc_hash::FxHashMap;
 
 use super::enclosing_index::EnclosingIndex;
 use super::macro_origin::MacroOrigin;
+use super::saved_origin_rows::SavedOriginRows;
 use crate::source::Span;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
@@ -33,8 +34,15 @@ impl OwnCallOrigins {
             .or_insert(origin);
     }
 
-    pub fn origins(&self) -> &FxHashMap<Span, MacroOrigin> {
-        &self.origins
+    pub fn into_rows(self) -> Vec<(Span, MacroOrigin)> {
+        let mut rows: Vec<(Span, MacroOrigin)> = self.origins.into_iter().collect();
+        rows.sort_by_key(|(call_site, _)| SavedOriginRows::key_of(*call_site));
+        rows
+    }
+
+    #[cfg(test)]
+    pub fn is_empty(&self) -> bool {
+        self.origins.is_empty()
     }
 }
 

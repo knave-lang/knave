@@ -619,7 +619,7 @@
 
   It prints:
 
-  ```
+  ```text
   (find-doc text)
       Prints the header and summary of each term that holds a text.
   (sort! items)

@@ -6,6 +6,7 @@ use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::EmissionWork;
+use super::emitted_types::EmittedTypes;
 use super::expressions::ExpressionEmitter;
 use super::fragment::{Code, Fragment};
 use super::fresh_lifetimes::FreshLifetimes;
@@ -25,7 +26,6 @@ use super::signature_borrows::SignatureBorrows;
 use super::structural_impls::StructuralImpls;
 use super::types::{LifetimeScope, RustTypes, TypePosition};
 use super::unlent_parameters::UnlentParameters;
-use super::unsized_parameters::UnsizedParameters;
 use super::untied_borrows::{ShownMethod, UntiedBorrows};
 use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::Diagnostic;
@@ -93,7 +93,7 @@ impl ModuleTree {
 pub struct ItemEmitter<'a> {
     program: &'a TypedProgram,
     plan: &'a EmitPlan<'a>,
-    unsized_parameters: &'a UnsizedParameters,
+    types: EmittedTypes<'a>,
     result_borrows: ResultBorrows<'a>,
     trait_method_elisions: TraitMethodElisions,
     generic_callees: GenericCallees<'a>,
@@ -117,19 +117,15 @@ impl<'a> ItemEmitter<'a> {
     const MAIN_HEADER: &'static str = "fn main() {";
     const SIZED_SELF: &'static str = " where Self: Sized";
 
-    pub fn new(
-        program: &'a TypedProgram,
-        plan: &'a EmitPlan<'a>,
-        unsized_parameters: &'a UnsizedParameters,
-    ) -> Self {
+    pub fn new(program: &'a TypedProgram, plan: &'a EmitPlan<'a>, types: EmittedTypes<'a>) -> Self {
         Self {
             program,
             plan,
-            unsized_parameters,
+            types,
             result_borrows: ResultBorrows::new(program, plan),
             trait_method_elisions: TraitMethodElisions::new(program),
             generic_callees: GenericCallees::new(plan),
-            structural_impls: StructuralImpls::new(program, plan, unsized_parameters),
+            structural_impls: StructuralImpls::new(program, plan, types),
             problems: Vec::new(),
             names: Vec::new(),
             emission: EmissionWork::default(),
@@ -273,19 +269,12 @@ impl<'a> ItemEmitter<'a> {
             .item(conversion.enum_binding)
             .expect("a used conversion names a planned enum");
         let definition = self
-            .program
-            .declarations
             .types
             .enums()
             .get(conversion.enum_binding)
             .expect("a conversion names an enum");
         let variant = &definition.variants[conversion.variant];
-        let types = RustTypes::new(
-            self.program,
-            self.plan,
-            self.unsized_parameters,
-            info.module,
-        );
+        let types = RustTypes::new(self.program, self.plan, self.types, info.module);
         let error = types.show(&conversion.error, TypePosition::Signature);
         let variant_name = NameMangler::variant_name(&variant.name);
         vec![
@@ -417,12 +406,7 @@ impl<'a> ItemEmitter<'a> {
         };
         let self_generic = Self::self_generic(&definition.scheme);
         let bound = Self::sized_self_bound(method, &definition.scheme.body, self_generic);
-        let types = RustTypes::new(
-            self.program,
-            self.plan,
-            self.unsized_parameters,
-            self.program.entry,
-        );
+        let types = RustTypes::new(self.program, self.plan, self.types, self.program.entry);
         let lifetimes = self.method_elisions().lifetimes(method.binding);
         let inferred = self
             .shared_method_lifetime(&definition.scheme.lifetimes, &lifetimes, None)
@@ -619,8 +603,7 @@ impl<'a> ItemEmitter<'a> {
                 .params
                 .clone();
             let (type_name, generics) = {
-                let types =
-                    RustTypes::new(self.program, self.plan, self.unsized_parameters, module);
+                let types = RustTypes::new(self.program, self.plan, self.types, module);
                 let scope = LifetimeScope::default().with_elided(lifetime.clone());
                 let type_name = types.show_in(&implementor, TypePosition::Signature, &scope);
                 let declared = types.generics(&params, &implementor, &FxHashSet::default());
@@ -628,8 +611,7 @@ impl<'a> ItemEmitter<'a> {
                 (type_name, Self::with_lifetimes(&lifetimes, declared))
             };
             let associated_lines: Vec<String> = {
-                let types =
-                    RustTypes::new(self.program, self.plan, self.unsized_parameters, module);
+                let types = RustTypes::new(self.program, self.plan, self.types, module);
                 let scope = LifetimeScope::default().with_elided(lifetime.clone());
                 associated
                     .iter()
@@ -1134,16 +1116,9 @@ impl<'a> ItemEmitter<'a> {
     }
 
     fn structure(&mut self, binding: BindingId, info: &ItemInfo) -> Vec<Fragment> {
-        let types = RustTypes::new(
-            self.program,
-            self.plan,
-            self.unsized_parameters,
-            info.module,
-        );
+        let types = RustTypes::new(self.program, self.plan, self.types, info.module);
         let visibility = info.visibility.keyword();
         let definition = self
-            .program
-            .declarations
             .types
             .structs()
             .get(binding)
@@ -1191,16 +1166,9 @@ impl<'a> ItemEmitter<'a> {
     }
 
     fn enumeration(&mut self, binding: BindingId, info: &ItemInfo) -> Vec<Fragment> {
-        let types = RustTypes::new(
-            self.program,
-            self.plan,
-            self.unsized_parameters,
-            info.module,
-        );
+        let types = RustTypes::new(self.program, self.plan, self.types, info.module);
         let visibility = info.visibility.keyword();
         let definition = self
-            .program
-            .declarations
             .types
             .enums()
             .get(binding)
@@ -1668,7 +1636,7 @@ impl<'a> ItemEmitter<'a> {
         ExpressionEmitter::new(
             self.program,
             self.plan,
-            self.unsized_parameters,
+            self.types,
             module,
             LocalNames::new(reserved.collect::<Vec<String>>()),
         )

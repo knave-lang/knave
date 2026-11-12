@@ -3,6 +3,7 @@ mod bound_before;
 mod callee_definitions;
 mod callee_parameters;
 mod clause_choice;
+mod emitted_types;
 mod emitted_value;
 mod expressions;
 mod fragment;
@@ -66,6 +67,7 @@ pub use writer::SpanMap;
 use crate::diagnostic::Diagnostics;
 use crate::source::Span;
 use crate::types::TypedProgram;
+use emitted_types::EmittedTypes;
 use items::ItemEmitter;
 use plan::EmitPlan;
 use unsized_parameters::UnsizedParameters;
@@ -96,7 +98,8 @@ impl RustEmitter {
     pub fn emit(program: &TypedProgram, entry: Span) -> Result<EmittedCrate, Diagnostics> {
         let plan = EmitPlan::build(program, entry)?;
         let unsized_parameters = UnsizedParameters::of(program, &plan);
-        let mut items = ItemEmitter::new(program, &plan, &unsized_parameters);
+        let types = EmittedTypes::new(&program.declarations.types, &unsized_parameters);
+        let mut items = ItemEmitter::new(program, &plan, types);
         let fragments = items.crate_fragments();
         let emission = items.emission();
         let mut problems = Diagnostics::default();

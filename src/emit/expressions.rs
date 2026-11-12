@@ -5,6 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::callee_definitions::{CalleeDefinition, CalleeDefinitions};
 use super::clause_choice::ClauseChoice;
+use super::emitted_types::EmittedTypes;
 use super::emitted_value::EmittedValue;
 use super::fragment::{Code, Fragment, Precedence};
 use super::lent_temporaries::LentTemporaries;
@@ -24,7 +25,6 @@ use super::stored_functions::StoredFunctions;
 use super::template::{Template, TemplateError};
 use super::template_arguments::TemplateArguments;
 use super::types::{LifetimeScope, RustTypes, TypePosition};
-use super::unsized_parameters::UnsizedParameters;
 use super::{EmissionWork, type_context::TypeContext};
 use crate::core::{
     BindingId, BindingKind, FieldLabel, Literal, ModuleId, ParsedTemplate, PrimitiveType,
@@ -177,7 +177,7 @@ impl ArgumentRole {
 pub struct ExpressionEmitter<'a> {
     program: &'a TypedProgram,
     plan: &'a EmitPlan<'a>,
-    unsized_parameters: &'a UnsizedParameters,
+    types: EmittedTypes<'a>,
     module: ModuleId,
     pub locals: LocalNames,
     pub problems: Vec<Diagnostic>,
@@ -206,14 +206,14 @@ impl<'a> ExpressionEmitter<'a> {
     pub fn new(
         program: &'a TypedProgram,
         plan: &'a EmitPlan<'a>,
-        unsized_parameters: &'a UnsizedParameters,
+        types: EmittedTypes<'a>,
         module: ModuleId,
         locals: LocalNames,
     ) -> Self {
         Self {
             program,
             plan,
-            unsized_parameters,
+            types,
             module,
             locals,
             problems: Vec::new(),
@@ -264,12 +264,7 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     pub fn types(&self) -> RustTypes<'a> {
-        RustTypes::new(
-            self.program,
-            self.plan,
-            self.unsized_parameters,
-            self.module,
-        )
+        RustTypes::new(self.program, self.plan, self.types, self.module)
     }
 
     pub fn bind_parameter(&mut self, param: &TypedBinder, position: TypePosition) -> String {
@@ -660,9 +655,7 @@ impl<'a> ExpressionEmitter<'a> {
                 else {
                     unreachable!("a typed variant pattern names a variant binding");
                 };
-                self.program
-                    .declarations
-                    .types
+                self.types
                     .enums()
                     .get(owner)
                     .is_some_and(|definition| definition.variants.len() == 1)
@@ -1056,8 +1049,6 @@ impl<'a> ExpressionEmitter<'a> {
         guard_box: GuardBox,
     ) -> PatternShape {
         let fields = self
-            .program
-            .declarations
             .types
             .structs()
             .get(binding)
@@ -1081,8 +1072,6 @@ impl<'a> ExpressionEmitter<'a> {
             unreachable!("a typed variant pattern names a variant binding");
         };
         let definition = self
-            .program
-            .declarations
             .types
             .enums()
             .get(owner)
@@ -1265,8 +1254,6 @@ impl<'a> ExpressionEmitter<'a> {
             unreachable!("a typed variant expression names a variant binding");
         };
         let definition = self
-            .program
-            .declarations
             .types
             .enums()
             .get(owner)
@@ -1357,8 +1344,6 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn trait_object(&mut self, value: &TypedExpr, trait_binding: BindingId) -> Code {
         let box_binding = self
-            .program
-            .declarations
             .types
             .box_binding()
             .expect("a trait object names the prelude's box type");
@@ -1378,14 +1363,10 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn box_new(&self, argument: Code) -> Code {
         let binding = self
-            .program
-            .declarations
             .types
             .box_binding()
             .expect("an inferred box names the prelude's box type");
         let rust_type = self
-            .program
-            .declarations
             .types
             .rust_types()
             .get(binding)
@@ -1448,8 +1429,7 @@ impl<'a> ExpressionEmitter<'a> {
         inner.extend(value_code.fragments);
         inner.push(Fragment::Text(";".to_string()));
         inner.push(Fragment::Newline);
-        if let Some(collection) =
-            Collection::of(&value.ty, self.program.declarations.types.rust_types())
+        if let Some(collection) = Collection::of(&value.ty, self.types.rust_types())
             && collection.is_map()
         {
             let key_code = self.expr(&keys[0]);
@@ -1703,13 +1683,9 @@ impl<'a> ExpressionEmitter<'a> {
         {
             return self.inline_call(lambda, arguments);
         }
+        let trait_methods = self.program.declarations.traits.methods();
         if let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = &callee.kind
-            && self
-                .program
-                .declarations
-                .traits
-                .methods()
-                .contains_key(binding)
+            && trait_methods.contains_key(binding)
         {
             return self.trait_method_call(*binding, arguments);
         }
@@ -1768,11 +1744,8 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn trait_method_call(&mut self, binding: BindingId, arguments: &[TypedArgument]) -> Code {
-        let info = self
-            .program
-            .declarations
-            .traits
-            .methods()
+        let methods = self.program.declarations.traits.methods();
+        let info = methods
             .get(&binding)
             .expect("a trait method call names a method");
         let name = NameMangler::value(self.program.bindings.get(binding).name());
@@ -2159,9 +2132,7 @@ impl<'a> ExpressionEmitter<'a> {
         let Type::Named(binding, arguments) = owner_type else {
             return None;
         };
-        self.program
-            .declarations
-            .types
+        self.types
             .structs()
             .get(*binding)?
             .instantiated_field_depth(field, arguments)
@@ -2606,7 +2577,7 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn is_boxed_object_reference(&self, ty: &Type) -> bool {
-        let Some(box_binding) = self.program.declarations.types.box_binding() else {
+        let Some(box_binding) = self.types.box_binding() else {
             return false;
         };
         match ty {
@@ -2958,9 +2929,7 @@ impl<'a> ExpressionEmitter<'a> {
         let Type::Named(binding, arguments) = owner else {
             return None;
         };
-        self.program
-            .declarations
-            .types
+        self.types
             .structs()
             .get(*binding)?
             .instantiated_field(&label.name, arguments)

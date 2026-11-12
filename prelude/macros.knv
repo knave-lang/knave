@@ -538,9 +538,15 @@
 
 (def note-docstring-form
   (fn (form-name markers)
-    (if (holds-marker? markers "docstring")
+    (if (documents-form? markers)
       (add-module-note (quote docstring-forms) form-name)
       (do))))
+
+(def documents-form?
+  (fn (markers)
+    (if (holds-marker? markers "docstring")
+      true
+      (holds-marker? markers "docstring-only"))))
 
 (def holds-marker?
   (fn (markers name)
@@ -567,7 +573,7 @@
                     :label "not a list that starts with a name")))))
 
 (def shape-marker-names
-  (quote (docstring one-per-line arms bindings)))
+  (quote (docstring docstring-only one-per-line arms bindings)))
 
 (def check-shape-markers
   (fn (markers seen)
@@ -630,20 +636,23 @@
   (fn (name)
     (if (value-eq (symbol-name name) "docstring")
       "write `:docstring` to state that the form takes a docstring"
-      (if (value-eq (symbol-name name) "arms")
-        "write `:arms` to state that each list after the header is an arm"
-        (if (value-eq (symbol-name name) "bindings")
-          (string "write `:bindings` to state that the header's last form "
-                  "is a binding list")
-          (string "write `:one-per-line` to state that a call of the form "
-                  "does not fill runs of atoms"))))))
+      (if (value-eq (symbol-name name) "docstring-only")
+        "write `:docstring-only` to state that the form's last form is a docstring"
+        (if (value-eq (symbol-name name) "arms")
+          "write `:arms` to state that each list after the header is an arm"
+          (if (value-eq (symbol-name name) "bindings")
+            (string "write `:bindings` to state that the header's last form "
+                    "is a binding list")
+            (string "write `:one-per-line` to state that a call of the form "
+                    "does not fill runs of atoms")))))))
 
 (def extra-header-shape-marker
   (fn (marker)
     (fail unexpected-header-shape-marker-title
       marker
-      (string "remove it: only `:docstring`, `:one-per-line`, `:arms` "
-              "and `:bindings` may follow a header shape, each once")
+      (string "remove it: only `:docstring`, `:docstring-only`, "
+              "`:one-per-line`, `:arms` and `:bindings` may follow a "
+              "header shape, each once")
       (quote (:code unexpected-header-shape-marker
                     :label "not expected here")))))
 
@@ -695,7 +704,7 @@
   (fn (form)
     (if (list? form) (empty? form) false)))
 
-(header-shape (document header) :docstring)
+(header-shape (document header) :docstring-only)
 
 (header-shape (defrule name) :docstring :arms)
 
@@ -786,6 +795,8 @@
   (noted-docstring (fn ()
                      (add-module-note (quote module-docstrings) text))
                    text))
+
+(header-shape (module) :docstring-only)
 
 (document (module text)
   "Documents the module it is written in.

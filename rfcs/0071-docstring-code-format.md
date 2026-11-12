@@ -159,6 +159,15 @@ The project owner decided on 2026-11-11 (D107):
 - **Q-d.** The header block of a doc page keeps the usage line and the type line together, with no blank line.
 - **Q-e.** `(header-shape (module) :docstring-only)` covers module docstrings.
 
+The build checked Q-e first, as the owner asked: with the shape alone, 13 of the prelude's 20 `module` forms moved wrongly, because a docstring's later lines followed its first line from column 8 to column 2 and reached column 0. The owner then decided (D109) that a `:docstring-only` docstring always takes a line of its own at column 2, a one-line docstring too, and that a docstring's later lines keep their indentation relative to each other: the least indented later line moves to the column of the docstring's opening quote. The rule holds for every docstring, so no docstring's later lines reach column 0. Every `module` form of the prelude takes this shape:
+
+```lisp
+(module
+  "Builds and reads values that may be absent.
+
+  An [option] holds a value as [some] or no value as [none].")
+```
+
 ## Rejected options and why
 
 - **On by default, with a narrower width for examples:** a second width is a second number for every reader to learn, and only a long call reaches the 80-column width. It stays open if knave-lang.org's narrower docs column needs it.

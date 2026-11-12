@@ -28,7 +28,6 @@ pub enum SyntaxNode {
 pub struct Atom {
     pub text: String,
     pub kind: TokenKind,
-    pub written_column: usize,
 }
 
 pub struct ListNode {
@@ -89,16 +88,13 @@ impl Atom {
     }
 
     pub fn docstring_shift(&self, column: usize) -> isize {
-        let shift = column as isize - self.written_column as isize;
-        let least_indentation = self
-            .text
+        self.text
             .split('\n')
             .skip(1)
             .filter(|line| !line.trim().is_empty())
             .map(|line| line.len() - line.trim_start_matches(' ').len())
             .min()
-            .unwrap_or(0);
-        shift.max(-(least_indentation as isize))
+            .map_or(0, |least| column as isize - least as isize)
     }
 }
 
@@ -216,11 +212,9 @@ impl<'a> TreeBuilder<'a> {
     }
 
     fn atom(&self, kind: TokenKind, range: Range<usize>) -> Atom {
-        let line_start = self.text[..range.start].rfind('\n').map_or(0, |at| at + 1);
         Atom {
-            text: self.text[range.clone()].to_string(),
+            text: self.text[range].to_string(),
             kind,
-            written_column: self.text[line_start..range.start].chars().count(),
         }
     }
 
@@ -304,9 +298,23 @@ mod tests {
     }
 
     #[test]
-    fn an_atom_keeps_its_text_and_its_written_column() {
+    fn an_atom_keeps_its_written_text() {
         let fixture = TreeFixture::of("(a\n   1_000)");
         let atom = fixture.list_entries()[1].node.as_atom().expect("an atom");
-        assert_eq!((atom.text.as_str(), atom.written_column), ("1_000", 3));
+        assert_eq!(atom.text, "1_000");
+    }
+
+    #[test]
+    fn a_docstring_moves_its_least_indented_later_line_to_its_column() {
+        let fixture = TreeFixture::of("(f \"a\n\n      b\n        c\")");
+        let atom = fixture.list_entries()[1].node.as_atom().expect("an atom");
+        assert_eq!(atom.docstring_shift(2), -4);
+    }
+
+    #[test]
+    fn a_docstring_of_one_line_does_not_move() {
+        let fixture = TreeFixture::of("(f \"a\")");
+        let atom = fixture.list_entries()[1].node.as_atom().expect("an atom");
+        assert_eq!(atom.docstring_shift(2), 0);
     }
 }

@@ -169,6 +169,8 @@ const UNREADABLE_PAGE_FENCE: &str =
     "(export pick)\n\n(defn pick (x)\n  \"Picks a number.\n\n  ```\n  (pick   1\n  ```\"\n  x)\n";
 const MULTI_LINE_STRING_FENCE: &str = "(export count-lines)\n\n(defn count-lines (text)\n  \"Counts the lines of a text.\n\n  ```\n  (count-lines   \\\"first\n  second\\\")\n  ```\"\n  (len text))\n";
 const MULTI_LINE_STRING_EXAMPLE: &str = "(export count-lines)\n\n(defn count-lines (text)\n  \"Counts the lines of a text.\n\n  (count-lines \\\"a\n    b\\\")\n  => 2\"\n  (len text))\n";
+const QUOTES_OUTSIDE_CODE: &str = "(export wrap)\n\n(defn wrap (text)\n  \"Wraps a text in a \\\" mark.\n\n  Each wrapped \\\" line\n  starts at the margin.\n\n  ```rust\n  let quote = '\\\"';\n  let mark = 1;\n  ```\n\n  After the fence.\n\n  (wrap \\\"a\n    b\\\"\n        1)\n  => 1\n\n  The end.\"\n  text)\n";
+const QUOTES_OUTSIDE_CODE_BODY: &str = "Wraps a text in a \" mark.\n\nEach wrapped \" line\nstarts at the margin.\n\n```rust\nlet quote = '\"';\nlet mark = 1;\n```\n\nAfter the fence.\n\n```knave\n(wrap \"a\n    b\"\n      1)\n=> 1\n```\n\nThe end.\n";
 const LONG_TYPED_LENGTHS: &str = "(export combine-lengths)\n\n(defn combine-lengths (first-measured-length second-measured-length)\n  \"Adds two lengths.\n\n  ```\n  (combine-lengths   1   2)\n  ```\"\n  (+ first-measured-length second-measured-length))\n";
 const LONG_TYPED_LENGTHS_PAGE: &str = "# lengths\n\n<a id=\"combine-lengths\"></a>\n\n## `combine-lengths`\n\n```knave\n(defn combine-lengths (first-measured-length second-measured-length))\n(type combine-lengths\n  (where ((a number)) (fn (a a) a)))\n```\n\nAdds two lengths.\n\n```knave\n(combine-lengths 1 2)\n```\n";
 const AREA_OF_A_STRING: &str = "(defn area (w h) (* w h))\n(defn report () (area 2 \"3\"))\n";
@@ -2360,6 +2362,20 @@ fn doc_write_keeps_the_text_of_a_multi_line_string_in_an_example() {
         sandbox
             .contents("doc/lines.md")
             .contains("```knave\n(count-lines \"a\n    b\")\n=> 2\n```")
+    );
+}
+
+#[test]
+fn doc_write_tracks_strings_only_in_docstring_code() {
+    let sandbox = Sandbox::with_documented_project("doc_write_quotes_outside_code")
+        .with_file("src/wrap.knv", QUOTES_OUTSIDE_CODE);
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert!(
+        sandbox
+            .contents("doc/wrap.md")
+            .ends_with(QUOTES_OUTSIDE_CODE_BODY)
     );
 }
 

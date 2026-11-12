@@ -15,7 +15,9 @@
 
 ## Release labels
 
-**The labels of a pull request set the version that its merge releases.**
+**A merge to `main` releases nothing.** The project owner cuts a release with the Release workflow's `Run workflow` button on `main`.
+
+**The release takes the largest bump among the labels of the pull requests merged since the last version on crates.io.**
 
 | Label | The change | Example |
 | --- | --- | --- |

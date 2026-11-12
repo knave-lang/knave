@@ -1,18 +1,7 @@
 name: Release
 
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
-  push:
-    tags: ['v*']
   workflow_dispatch:
-    inputs:
-      tag:
-        description: The release tag to publish to crates.io, such as v0.9.3
-        required: true
-        type: string
 
 permissions:
   contents: write
@@ -21,6 +10,8 @@ permissions:
 env:
   CACHIX_CACHE: rslisp
   RELEASE_SUBJECT_PREFIX: Release v
+  CRATES_IO_API: https://crates.io/api/v1/crates
+  CRATES_IO_USER_AGENT: knave-release (https://github.com/knave-lang/knave)
 
 defaults:
   run:
@@ -28,45 +19,62 @@ defaults:
 
 jobs:
   release:
-    if: >-
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main' &&
-      !startsWith(github.event.workflow_run.head_commit.message, 'Release v')
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     concurrency:
       group: release
       cancel-in-progress: false
     env:
-      COMMIT: ${{ github.event.workflow_run.head_sha }}
+      COMMIT: ${{ github.sha }}
+      PUBLISHED_CRATE: knave
     outputs:
       tag: ${{ steps.push.outputs.pushed == 'true' && steps.tag.outputs.tag || '' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
-      - name: Find the commits since the latest release
-        id: since
+      - name: Require a passing CI run on the commit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          latest=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
-          main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
-          if [ -n "$(git tag --points-at "$COMMIT" --list 'v*')" ]; then
-            echo "$COMMIT is already a release"
-          elif [ "$main" != "$COMMIT" ]; then
-            echo "main moved to $main, whose run releases $COMMIT"
-          else
-            echo "latest=$latest" >> "$GITHUB_OUTPUT"
-            echo "commits=$(git rev-list --reverse --first-parent "$latest..$COMMIT" | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+          conclusion=$(gh run list --workflow CI --event push --commit "$COMMIT" --limit 1 --json conclusion --jq '.[0].conclusion')
+          if [ "$conclusion" != success ]; then
+            echo "::error::CI on $COMMIT concluded ${conclusion:-(no run)}, not success"
+            exit 1
           fi
+      - name: Find the commits since the latest version on crates.io
+        id: since
+        run: |
+          latest=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          published=
+          for tag in $(git tag --list 'v*' --sort=-v:refname); do
+            status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --user-agent "$CRATES_IO_USER_AGENT" "$CRATES_IO_API/$PUBLISHED_CRATE/${tag#v}")
+            case $status in
+              200) published=$tag; break ;;
+              404) echo "::notice::$tag never reached crates.io" ;;
+              *) echo "::error::crates.io answered $status for $PUBLISHED_CRATE ${tag#v}"; exit 1 ;;
+            esac
+          done
+          if [ -z "$published" ]; then
+            echo "::error::no v* tag has its version on crates.io"
+            exit 1
+          fi
+          commits=$(git rev-list --reverse --first-parent "$published..$COMMIT" | tr '\n' ' ')
+          if [ -z "$commits" ]; then
+            echo "::error::$COMMIT holds nothing since $published"
+            exit 1
+          fi
+          {
+            echo "latest=$latest"
+            echo "published=$published"
+            echo "commits=$commits"
+          } >> "$GITHUB_OUTPUT"
       - name: Collect their pull requests
         id: pulls
-        if: steps.since.outputs.latest != ''
         env:
           GH_TOKEN: ${{ github.token }}
           COMMITS: ${{ steps.since.outputs.commits }}
@@ -76,21 +84,18 @@ jobs:
               --jq '.[] | {number, title, labels: [.labels[].name]}' || exit 1
           done | jq -s 'unique_by(.number)' > pulls.json
           echo "labels=$(jq -r '[.[].labels[]] | unique | join(" ")' pulls.json)" >> "$GITHUB_OUTPUT"
-      - if: steps.since.outputs.latest != ''
-        uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
-      - if: steps.since.outputs.latest != ''
-        uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
+      - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
+      - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:
           name: ${{ env.CACHIX_CACHE }}
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Write the release notes
-        if: steps.since.outputs.latest != ''
         run: nix develop .#ci -c cargo xtask release-notes pulls.json > notes.md
       - name: Commit and tag the release
         id: tag
-        if: steps.since.outputs.latest != ''
         env:
           LATEST: ${{ steps.since.outputs.latest }}
+          PUBLISHED: ${{ steps.since.outputs.published }}
           LABELS: ${{ steps.pulls.outputs.labels }}
         run: |
           read -ra labels <<< "$LABELS"
@@ -106,6 +111,7 @@ jobs:
           git commit --quiet -m "$RELEASE_SUBJECT_PREFIX${tag#v}" -- Cargo.toml Cargo.lock
           git tag "$tag"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Cuts $tag from the pull requests merged since $PUBLISHED." >> "$GITHUB_STEP_SUMMARY"
       - if: steps.tag.outputs.tag != ''
         uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
         with:
@@ -118,8 +124,8 @@ jobs:
         run: |
           remote="git@github.com:$GITHUB_REPOSITORY.git"
           if [ "$(git ls-remote "$remote" refs/heads/main | cut -f1)" != "$COMMIT" ]; then
-            echo "main moved past $COMMIT, whose run releases it"
-            exit 0
+            echo "::error::main moved past $COMMIT, dispatch the release again"
+            exit 1
           fi
           git push --atomic "$remote" HEAD:refs/heads/main "refs/tags/$TAG"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
@@ -139,7 +145,7 @@ jobs:
 
   binary:
     needs: release
-    if: ${{ !cancelled() && github.event_name == 'workflow_run' && needs.release.outputs.tag != '' }}
+    if: ${{ !cancelled() && needs.release.outputs.tag != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -158,9 +164,10 @@ jobs:
         run: nix build --no-link .#default
 
   crates:
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !github.event.deleted
+    needs: release
+    if: ${{ !cancelled() && needs.release.outputs.tag != '' }}
     concurrency:
-      group: crates-${{ inputs.tag || github.ref_name }}
+      group: crates-${{ needs.release.outputs.tag }}
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -169,15 +176,13 @@ jobs:
       contents: read
       id-token: write
     env:
-      TAG: ${{ inputs.tag || github.ref_name }}
+      TAG: ${{ needs.release.outputs.tag }}
       CRATES: knave-expand knave
-      CRATES_IO_API: https://crates.io/api/v1/crates
-      CRATES_IO_USER_AGENT: knave-release (https://github.com/knave-lang/knave)
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          ref: refs/tags/${{ needs.release.outputs.tag }}
       - uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
       - uses: cachix/cachix-action@38b082610b782e7e93e209c35fd730d399dee866 # v17
         with:

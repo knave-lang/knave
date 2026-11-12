@@ -333,7 +333,7 @@ mod tests {
         }
 
         fn save_definitions(&mut self) -> SavedDefinitions {
-            let entry = self.program.entry;
+            let entry = self.program.entry.module;
             let mut saver = DefinitionSaver::new(&self.program.bindings, None);
             let module = self
                 .program

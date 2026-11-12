@@ -71,7 +71,7 @@ impl GeneratedEntry {
 
 impl Program {
     pub fn enter(&mut self, entry: &GeneratedEntry) {
-        let entry_module = self.entry;
+        let entry_module = self.entry.module;
         let module = self
             .modules
             .iter_mut()
@@ -81,7 +81,7 @@ impl Program {
             |item| !matches!(item.kind, ItemKind::Def(binding, _) if entry.defines(binding)),
         );
         module.items.extend(entry.items());
-        self.entry_function = Some(entry.binding);
+        self.entry.function = Some(entry.binding);
         self.restore_reached();
     }
 }

@@ -1,5 +1,6 @@
 use super::fragment::Code;
 use super::preceded_code::PrecededCode;
+use super::substitution::Substitution;
 
 pub enum TemplateArguments {
     Written(Vec<Code>),
@@ -34,14 +35,18 @@ impl TemplateArguments {
         }
     }
 
-    pub fn into_substituted(self) -> Result<Vec<Code>, Vec<PrecededCode>> {
+    pub fn into_substitution(self) -> Substitution {
         match self {
-            Self::Written(codes) => Ok(codes),
-            Self::Bound(codes) if codes.iter().any(PrecededCode::needs_binding) => Err(codes),
-            Self::Bound(codes) => Ok(codes
-                .into_iter()
-                .filter_map(PrecededCode::into_name)
-                .collect()),
+            Self::Written(codes) => Substitution::Inline(codes),
+            Self::Bound(codes) if codes.iter().any(PrecededCode::needs_binding) => {
+                Substitution::Bind(codes)
+            }
+            Self::Bound(codes) => Substitution::Inline(
+                codes
+                    .into_iter()
+                    .map(PrecededCode::into_plain_code)
+                    .collect(),
+            ),
         }
     }
 }
@@ -51,6 +56,7 @@ mod tests {
     use super::TemplateArguments;
     use crate::emit::fragment::{Code, Fragment};
     use crate::emit::preceded_code::PrecededCode;
+    use crate::emit::substitution::Substitution;
 
     struct ArgumentsFixture;
 
@@ -77,8 +83,12 @@ mod tests {
         }
 
         fn substituted(arguments: TemplateArguments) -> Option<Vec<String>> {
-            let codes = arguments.into_substituted().ok()?;
-            Some(codes.iter().map(|code| code.text().to_string()).collect())
+            match arguments.into_substitution() {
+                Substitution::Inline(codes) => {
+                    Some(codes.iter().map(|code| code.text().to_string()).collect())
+                }
+                Substitution::Bind(_) => None,
+            }
         }
     }
 

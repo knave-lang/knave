@@ -42,6 +42,7 @@ mod store_sites;
 mod stored_arguments;
 mod stored_functions;
 mod structural_impls;
+mod substitution;
 mod template;
 mod template_arguments;
 mod temporary_scope;

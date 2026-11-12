@@ -4,6 +4,7 @@ use std::rc::Rc;
 use super::Expander;
 use super::expansion_limit::ExpansionLimit;
 use super::failed_definition::DeclaredName;
+use super::macro_call_lookup::MacroCallLookup;
 use super::problems::ExpandProblems;
 use crate::core::{BindingId, BindingKind, Declaration, ModuleDefinitions, ModulePath, Namespace};
 use crate::diagnostic::Diagnostic;
@@ -249,7 +250,11 @@ impl SourceQueries for Expander<'_> {
     }
 
     fn introducing_macro(&self, form: &Form) -> Option<Rc<str>> {
-        let origin = self.tables.macro_origins.get(form.span())?;
+        let origin = self
+            .tables
+            .macro_origins
+            .calls()
+            .introducing_macro(form.span())?;
         Some(origin.name)
     }
 
@@ -387,7 +392,11 @@ mod tests {
                 call_site,
                 through_prelude: false,
             };
-            expander.tables.macro_origins.record(call_site, origin);
+            expander
+                .tables
+                .macro_origins
+                .calls_mut()
+                .record(call_site, origin);
             expander
         }
 

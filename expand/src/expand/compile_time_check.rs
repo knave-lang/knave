@@ -1,5 +1,6 @@
 use super::Expander;
 use super::globals::CompileTimeCheck;
+use super::macro_call_lookup::MacroCallLookup;
 use super::problems::ExpandProblems;
 use crate::core::{BindingId, BindingKind, Control, Expr, ExprKind, Lambda, Leaf};
 use crate::diagnostic::{Diagnostic, Label};
@@ -36,7 +37,7 @@ impl Expander<'_> {
     }
 
     fn macro_program_only(&self, span: Span) -> Option<Diagnostic> {
-        let origin = self.tables.macro_origins.get(span)?;
+        let origin = self.tables.macro_origins.calls().introducing_macro(span)?;
         Some(ExpandProblems::macro_program_only(
             &origin.name,
             span,

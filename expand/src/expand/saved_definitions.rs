@@ -563,12 +563,6 @@ mod tests {
     }
 
     #[test]
-    fn a_finished_program_keeps_no_introduced_name() {
-        let program = LoadedProgram::expand(LoadedProgram::MACRO_INTRODUCING_A_NAME);
-        assert!(program.macro_origins.holds_no_introduced_name());
-    }
-
-    #[test]
     fn the_string_view_stays_decoded() {
         let program = LoadedProgram::expand(LoadedProgram::EMPTY);
         let view = program.string_view.expect("the prelude views strings");

@@ -15,9 +15,9 @@ expand/src/format/block.rs 1
 expand/src/format/layout.rs 3
 expand/src/format/list_plan.rs 1
 expand/src/format/measure.rs 2
+expand/src/interpret/builtins/host_queries.rs 1
 expand/src/interpret/builtins/lists.rs 1
 expand/src/interpret/builtins/mod.rs 4
-expand/src/interpret/builtins/host_queries.rs 1
 expand/src/interpret/builtins/strings.rs 1
 expand/src/interpret/builtins/text.rs 1
 expand/src/interpret/code_list.rs 1

@@ -9,7 +9,7 @@ use super::rust_clauses::ClausedTemplate;
 use super::shape::Shape;
 use super::try_check::TryCheck;
 use super::type_note::TypeNote;
-use super::{Expander, binder_form::BinderForm};
+use super::{Expander, MacroCallLookup, binder_form::BinderForm};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, Control, ControlForm, Expr, ExprKind,
     ExpressionForm, FieldLabel, FieldSpelling, KernelForm, Keyword, Lambda, Leaf, LeafForm,
@@ -36,7 +36,7 @@ impl Expander<'_> {
     }
 
     pub(super) fn nests_too_deep(&self, span: Span) -> Diagnostic {
-        let origin = self.tables.macro_origins.get(span);
+        let origin = self.tables.macro_origins.calls().introducing_macro(span);
         let expansion = origin.as_ref().map(|origin| &*origin.name);
         ExpandProblems::expansion_nests_too_deep(span, Form::NESTING_LIMIT, expansion)
     }

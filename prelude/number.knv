@@ -4,7 +4,8 @@
 (use prelude/syntax let)
 (use prelude/types box option result vec)
 
-(module "Does arithmetic and comparison, and names the number traits.")
+(module
+  "Does arithmetic and comparison, and names the number traits.")
 
 (export * + - / < <= = > >= eq float hash integer neg not=
         number ord partial-eq partial-ord pi rem signed
@@ -222,8 +223,11 @@
   [f32] and [f64] implement it.
 
   ```
-  (type halve (where ((n float)) (fn (n) n)))
+  (type halve
+    (where ((n float)) (fn (n) n)))
+
   (defn halve (x) (/ x 2.0))
+
   (halve 5.0)
   => 2.5
   ```")
@@ -234,8 +238,11 @@
   Every signed and unsigned integer type implements it.
 
   ```
-  (type last-digit (where ((n integer)) (fn (n) n)))
+  (type last-digit
+    (where ((n integer)) (fn (n) n)))
+
   (defn last-digit (x) (rem x 10))
+
   (last-digit 127)
   => 7
   ```")

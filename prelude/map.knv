@@ -7,7 +7,8 @@
 (use prelude/pair pair)
 (use prelude/number eq hash ord)
 
-(module "Builds and reads hash maps and sorted maps.
+(module
+  "Builds and reads hash maps and sorted maps.
 
   A [sorted-map] yields its keys in order, and a [hash-map] yields them in no
   order that a program may rely on.")
@@ -178,7 +179,8 @@
   `pairs` is a `(vec (pair key value))`, and the call moves it. Keys implement
   [ord], and the last pair of a repeated key wins.
 
-  (local prices (into-sorted-map (vec (pair \"pear\" 3) (pair \"pear\" 5))))
+  (local prices
+    (into-sorted-map (vec (pair \"pear\" 3) (pair \"pear\" 5))))
   (get prices \"pear\")
   => (some (ref 5))")
 
@@ -188,6 +190,7 @@
   `pairs` is a `(vec (pair key value))`, and the call moves it. Keys implement
   [hash] and [eq], and the last pair of a repeated key wins.
 
-  (local prices (into-hash-map (vec (pair \"pear\" 3) (pair \"pear\" 5))))
+  (local prices
+    (into-hash-map (vec (pair \"pear\" 3) (pair \"pear\" 5))))
   (get prices \"pear\")
   => (some (ref 5))")

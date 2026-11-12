@@ -1,6 +1,7 @@
 (use code add-module-note bool-not empty? first list nth
-          number-add number-lt rest string-drop string-strip-prefix
-          string-trim-end string-trim-start value-eq)
+          number-add number-lt rest string-drop
+          string-strip-prefix string-trim-end
+          string-trim-start value-eq)
 
 (export arrow-line? closes-fence? example-arrow fence-run
         opening-fence)
@@ -14,9 +15,12 @@
 (def noted-docstring-syntax
   (macro (form)
     (add-module-note (quote docstring-syntax)
-                     (list (quote :arrow) example-arrow
-                           (quote :fence-marks) fence-marks
-                           (quote :fence-length) minimum-fence-length))
+                     (list (quote :arrow)
+                           example-arrow
+                           (quote :fence-marks)
+                           fence-marks
+                           (quote :fence-length)
+                           minimum-fence-length))
     (quote (do))))
 
 (noted-docstring-syntax)

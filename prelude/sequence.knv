@@ -1,7 +1,8 @@
 (use prelude/macros document module)
 (use prelude/types sequence)
 
-(module "Measures collections: their length and whether they are empty.")
+(module
+  "Measures collections: their length and whether they are empty.")
 
 (export empty? len)
 

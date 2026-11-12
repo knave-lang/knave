@@ -2,7 +2,8 @@
 (use prelude/types box option result vec)
 (use prelude/pair pair)
 
-(module "Copies values that would otherwise move.")
+(module
+  "Copies values that would otherwise move.")
 
 (export clone copy)
 

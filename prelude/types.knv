@@ -124,7 +124,8 @@
 
   `err` is the macro for this call.
 
-  (the (result i64 string) (result/err (str \"bad\")))
+  (the (result i64 string)
+       (result/err (str \"bad\")))
   => (err (str \"bad\"))")
 
 (document (iterator a)

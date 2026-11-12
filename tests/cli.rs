@@ -1993,7 +1993,7 @@ fn doc_prints_the_page_of_a_prelude_term() {
     let doc = sandbox.compiler(&["doc", "defn"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        "(defmacro defn (name parameters body ...))\n\nDefines a function: (defn name (parameter ...) body ...).\n\nA string before at least one more body form is the docstring.\n\n```\n(defn twice (x) \"Doubles a number.\" (* 2 x))\n(twice 4)\n=> 8\n```\n"
+        "(defmacro defn (name parameters body ...))\n\nDefines a function: (defn name (parameter ...) body ...).\n\nA string before at least one more body form is the docstring.\n\n```\n(defn twice (x)\n  \"Doubles a number.\"\n  (* 2 x))\n\n(twice 4)\n=> 8\n```\n"
     );
 }
 
@@ -2013,7 +2013,7 @@ fn doc_prints_the_page_of_a_kernel_form() {
     let doc = sandbox.compiler(&["doc", "match"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        "(match value (pattern body ...) ...)\n\nEvaluates the body of the first arm whose pattern matches the value.\n\nAn arm's body is a [do], so its last form is the arm's value.\n\nA pattern is [_], a literal, a bare name, `(variant pattern ...)`,\n`(variant :field pattern ...)`, `(type-name pattern ...)` or\n`(type-name :field pattern ...)`. It emits a Rust `match`.\n\n(match 3\n  (0 \"zero\")\n  (_ \"other\"))\n=> \"other\"\n\n(match (pair 1 2)\n  ((pair left _) left))\n=> 1\n"
+        "(match value (pattern body ...) ...)\n\nEvaluates the body of the first arm whose pattern matches the value.\n\nAn arm's body is a [do], so its last form is the arm's value.\n\nA pattern is [_], a literal, a bare name, `(variant pattern ...)`,\n`(variant :field pattern ...)`, `(type-name pattern ...)` or\n`(type-name :field pattern ...)`. It emits a Rust `match`.\n\n(match 3 (0 \"zero\") (_ \"other\"))\n=> \"other\"\n\n(match (pair 1 2) ((pair left _) left))\n=> 1\n"
     );
 }
 
@@ -2040,7 +2040,7 @@ fn doc_prints_the_call_form_of_template() {
     let doc = sandbox.compiler(&["doc", "template"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        "(template form)\n\nBuilds a form from a quoted form with holes in it.\n\n`(unquote x)` puts the value of `x` in place, and `(splice xs)` puts each\nform of the list `xs` in place, as in\n`(template (def (unquote name) (splice body)))`.\n\n```\n(defmacro twice (x) (template (* 2 (unquote x))))\n(twice 4)\n=> 8\n```\n"
+        "(template form)\n\nBuilds a form from a quoted form with holes in it.\n\n`(unquote x)` puts the value of `x` in place, and `(splice xs)` puts each\nform of the list `xs` in place, as in\n`(template (def (unquote name) (splice body)))`.\n\n```\n(defmacro twice (x)\n  (template (* 2 (unquote x))))\n\n(twice 4)\n=> 8\n```\n"
     );
 }
 

@@ -2,7 +2,8 @@
 (use prelude/types option result)
 (use prelude/text show)
 
-(module "Builds and reads the results of calls that can fail.
+(module
+  "Builds and reads the results of calls that can fail.
 
   A [result] holds a success as [ok] or a failure as [err].")
 
@@ -84,10 +85,12 @@
   As a value, it is a function of one argument, as in `(map (iter v) err)`. In
   a [match], `(err x)` is the pattern that binds the value.
 
-  (unwrap-err (the (result i64 string) (err (str \"bad\"))))
+  (unwrap-err (the (result i64 string)
+                   (err (str \"bad\"))))
   => \"bad\"
 
-  (match (the (result i64 string) (err (str \"bad\")))
+  (match (the (result i64 string)
+              (err (str \"bad\")))
     ((ok _) 0)
     ((err message) (len message)))
   => 3")
@@ -109,7 +112,8 @@
 
   It borrows the result, which stays usable.
 
-  (local outcome (ok-or (some (str \"pear\")) \"missing\"))
+  (local outcome
+    (ok-or (some (str \"pear\")) \"missing\"))
   (ok? outcome)
   => true
 
@@ -121,7 +125,8 @@
 
   It borrows the result, which stays usable.
 
-  (err? (the (result i64 string) (err (str \"bad\"))))
+  (err? (the (result i64 string)
+             (err (str \"bad\"))))
   => true
 
   (err? (the (result i64 string) (ok 1)))
@@ -142,7 +147,8 @@
   It panics on [ok] with the printed form of the value, so the value type
   implements [show]. It moves a result that is not `copy`.
 
-  (unwrap-err (the (result i64 string) (err (str \"bad\"))))
+  (unwrap-err (the (result i64 string)
+                   (err (str \"bad\"))))
   => \"bad\"")
 
 (document (expect-ok result message)
@@ -152,7 +158,8 @@
   type implements [show]. `message` is a `(ref str)`, so borrow a `string`
   with `as-str`. The call moves a result that is not `copy`.
 
-  (expect-ok (the (result i64 string) (ok 4)) \"a number is ready\")
+  (expect-ok (the (result i64 string) (ok 4))
+             \"a number is ready\")
   => 4")
 
 (document (map-ok result function)
@@ -162,10 +169,13 @@
   run, and the error passes through. A keyword such as `:age` reads that
   field. The call moves a result that is not `copy`.
 
-  (map-ok (the (result i64 string) (ok 2)) (fn (n) (* n 10)))
+  (map-ok (the (result i64 string) (ok 2))
+    (fn (n) (* n 10)))
   => (ok 20)
 
-  (map-ok (the (result i64 string) (err (str \"bad\"))) (fn (n) (* n 10)))
+  (map-ok (the (result i64 string)
+               (err (str \"bad\")))
+          (fn (n) (* n 10)))
   => (err (str \"bad\"))")
 
 (document (map-err result function)
@@ -175,10 +185,12 @@
   run, and the value passes through. The call moves a result that is not
   `copy`.
 
-  (map-err (the (result i64 i64) (err 2)) (fn (code) (+ code 1)))
+  (map-err (the (result i64 i64) (err 2))
+    (fn (code) (+ code 1)))
   => (err 3)
 
-  (map-err (the (result i64 i64) (ok 2)) (fn (code) (+ code 1)))
+  (map-err (the (result i64 i64) (ok 2))
+    (fn (code) (+ code 1)))
   => (ok 2)")
 
 (document (then-ok result function)
@@ -188,8 +200,10 @@
   For [err] the function does not run, and the error passes through. The call
   moves a result that is not `copy`.
 
-  (then-ok (the (result i64 i64) (ok 4)) (fn (n) (ok (+ n 1))))
+  (then-ok (the (result i64 i64) (ok 4))
+    (fn (n) (ok (+ n 1))))
   => (ok 5)
 
-  (then-ok (the (result i64 i64) (ok 4)) (fn (n) (if (> n 9) (ok n) (err n))))
+  (then-ok (the (result i64 i64) (ok 4))
+    (fn (n) (if (> n 9) (ok n) (err n))))
   => (err 4)")

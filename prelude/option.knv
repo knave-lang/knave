@@ -1,7 +1,8 @@
 (use prelude/macros defrule-with-value document module)
 (use prelude/types option)
 
-(module "Builds and reads values that may be absent.
+(module
+  "Builds and reads values that may be absent.
 
   An [option] holds a value as [some] or no value as [none].")
 
@@ -136,7 +137,8 @@
   (map-some (some 2) (fn (n) (* n 10)))
   => (some 20)
 
-  (map-some (the (option i64) none) (fn (n) (* n 10)))
+  (map-some (the (option i64) none)
+    (fn (n) (* n 10)))
   => none")
 
 (document (then-some option function)
@@ -146,8 +148,10 @@
   not run, and the call returns `none`. The call moves an option that is not
   `copy`.
 
-  (then-some (some 4) (fn (n) (some (+ n 1))))
+  (then-some (some 4)
+    (fn (n) (some (+ n 1))))
   => (some 5)
 
-  (then-some (some 4) (fn (n) (if (> n 9) (some n) none)))
+  (then-some (some 4)
+    (fn (n) (if (> n 9) (some n) none)))
   => none")

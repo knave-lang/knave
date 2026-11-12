@@ -154,6 +154,7 @@
 
   ```
   (def max-retries 3)
+
   (+ max-retries 1)
   => 4
   ```")
@@ -192,7 +193,9 @@
 
   ```
   (type twice (fn (i64) i64))
+
   (def twice (fn (x) (* 2 x)))
+
   (twice 4)
   => 8
   ```")
@@ -205,6 +208,7 @@
 
   ```
   (struct point (x i64) (y i64))
+
   (field (new point (x 1) (y 2)) x)
   => 1
   ```")
@@ -218,6 +222,7 @@
 
   ```
   (enum shape (circle f64) square)
+
   (match (shape/circle 1.0)
     ((circle radius) radius)
     (square 0.0))
@@ -231,6 +236,7 @@
 
   ```
   (struct mark (x i64))
+
   (derive mark debug)
   ```")
 
@@ -243,13 +249,10 @@
   `(variant :field pattern ...)`, `(type-name pattern ...)` or
   `(type-name :field pattern ...)`. It emits a Rust `match`.
 
-  (match 3
-    (0 \"zero\")
-    (_ \"other\"))
+  (match 3 (0 \"zero\") (_ \"other\"))
   => \"other\"
 
-  (match (pair 1 2)
-    ((pair left _) left))
+  (match (pair 1 2) ((pair left _) left))
   => 1")
 
 (document (assoc-at value (key ...) item)
@@ -289,7 +292,9 @@
 
   ```
   (struct point (x i64) (y i64))
+
   (local start (new point (x 1) (y 2)))
+
   (field (new _ start (x 9)) x)
   => 9
   ```")
@@ -301,6 +306,7 @@
 
   ```
   (struct point (x i64) (y i64))
+
   (field (new point (x 1) (y 2)) y)
   => 2
   ```")
@@ -341,7 +347,10 @@
 
   ```
   (use code list)
-  (defmacro twice (x) (list (quote *) 2 x))
+
+  (defmacro twice (x)
+    (list (quote *) 2 x))
+
   (twice 4)
   => 8
   ```")
@@ -354,7 +363,11 @@
 
   ```
   (use code list nth)
-  (def twice (macro (form) (list (quote *) 2 (nth form 1))))
+
+  (def twice
+    (macro (form)
+      (list (quote *) 2 (nth form 1))))
+
   (twice 4)
   => 8
   ```")
@@ -407,7 +420,9 @@
 
   It emits `expression?`.
 
-  (local step (fn ((value (option i64))) (some (+ (try value) 1))))
+  (local step
+    (fn ((value (option i64)))
+      (some (+ (try value) 1))))
   (step (some 1))
   => (some 2)
 
@@ -433,7 +448,8 @@
   A method's first parameter may be `self`, `(ref self)` or `(mut self)`.
 
   ```
-  (trait greet (hello (fn ((ref self)) string)))
+  (trait greet
+    (hello (fn ((ref self)) string)))
   ```")
 
 (document (impl trait type (method (parameter ...) body ...) ...)
@@ -443,9 +459,14 @@
   `impl`.
 
   ```
-  (trait greet (hello (fn ((ref self)) string)))
+  (trait greet
+    (hello (fn ((ref self)) string)))
+
   (struct dog (name string))
-  (impl greet dog (hello (self) (str \"woof \" (field self name))))
+
+  (impl greet dog
+    (hello (self)
+           (str \"woof \" (field self name))))
   ```")
 
 (document (use module name ...)
@@ -466,6 +487,7 @@
 
   ```
   (export twice)
+
   (def twice (fn (x) (* 2 x)))
   ```")
 
@@ -476,7 +498,8 @@
   exact, while a plain [fn] leaves the kind to inference.
 
   (local total 0)
-  (for-each (range 1 4) (fn (x) (set! total (+ total x))))
+  (for-each (range 1 4)
+    (fn (x) (set! total (+ total x))))
   (= total 6)
   => true")
 
@@ -519,8 +542,7 @@
   (the (vec _) (vec 1))
   => (vec 1)
 
-  (match 3
-    (_ \"any\"))
+  (match 3 (_ \"any\"))
   => \"any\"")
 
 (document bool

@@ -13,7 +13,8 @@
 
 (export defenum deftrait deftype)
 
-(module "Defines enums and traits, and names Rust types and traits.")
+(module
+  "Defines enums and traits, and names Rust types and traits.")
 
 (defmacro defenum (head body ...)
   "Defines an enum, or names a Rust enum with a `rust` clause.
@@ -23,7 +24,10 @@
   docstring makes the enum the named Rust type.
 
   ```
-  (defenum shape (circle f64) square)
+  (defenum shape
+    (circle f64)
+    square)
+
   (match (shape/circle 1.0)
     ((circle radius) radius)
     (square 0.0))
@@ -44,7 +48,8 @@
   that implement it.
 
   ```
-  (deftrait greet (hello (fn ((ref self)) string)))
+  (deftrait greet
+    (hello (fn ((ref self)) string)))
   ```"
   (check-head "deftrait" head)
   (declare-type-definition (head-name head))

@@ -1,0 +1,66 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/unsized_vector_generic.knv
+---
+fn measure<A: crate::rt::Sequence>(value: &A) -> usize {
+    value.len()
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let numbers: Vec<i64> = vec![1_i64, 2_i64, 3_i64];
+    println!("{}", measure(&numbers));
+    println!("{}", measure(&"abc".to_string()))
+}
+
+mod rt {
+    pub trait Sequence {
+        fn len(&self) -> usize;
+    }
+
+    impl Sequence for String {
+        fn len(&self) -> usize {
+            self.as_str().len()
+        }
+    }
+
+    impl Sequence for str {
+        fn len(&self) -> usize {
+            str::len(self)
+        }
+    }
+
+    impl<T> Sequence for Vec<T> {
+        fn len(&self) -> usize {
+            Vec::len(self)
+        }
+    }
+
+    impl<T> Sequence for [T] {
+        fn len(&self) -> usize {
+            <[T]>::len(self)
+        }
+    }
+
+    impl<T: Sequence + ?Sized> Sequence for &T {
+        fn len(&self) -> usize {
+            T::len(self)
+        }
+    }
+
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

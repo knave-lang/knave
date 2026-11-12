@@ -1,9 +1,10 @@
 use std::collections::BTreeSet;
 use std::rc::Rc;
 
+use knave_expand::mangle::NameMangler;
+
 use super::fragment::Fragment;
 use super::items::ItemEmitter;
-use super::mangle::NameMangler;
 use super::plan::EmitPlan;
 use super::types::{LifetimeScope, RustTypes, TypePosition};
 use super::unsized_parameters::UnsizedParameters;

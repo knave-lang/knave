@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::hash::Hash;
 use std::rc::Rc;
 
+use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::EmissionWork;
@@ -12,7 +13,6 @@ use super::generic_callees::GenericCallees;
 use super::literal_generics::LiteralGenerics;
 use super::local_closures::LocalClosures;
 use super::locals::LocalNames;
-use super::mangle::NameMangler;
 use super::method_elisions::{MethodElisions, MethodLifetimes, TraitMethodElisions};
 use super::mutable_locals::MutableLocals;
 use super::opaque_borrows::OpaqueBorrows;

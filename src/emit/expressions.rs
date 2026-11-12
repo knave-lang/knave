@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::EmissionWork;
@@ -7,7 +8,6 @@ use super::fragment::{Code, Fragment, Precedence};
 use super::let_annotation::LetAnnotation;
 use super::local_closures::LocalClosures;
 use super::locals::LocalNames;
-use super::mangle::NameMangler;
 use super::open_literals::{OpenLiterals, TypeContext};
 use super::operator::{RustOperator, Side};
 use super::plan::{EmitPlan, ItemKind};

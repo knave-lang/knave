@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use super::definition_buffer::{BufferedInput, DefinitionBuffer, Replacement};
@@ -18,6 +18,7 @@ use super::prompt_lines::{EnteredText, PromptLines};
 use super::prompt_module::PromptModule;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use super::working_directory::WorkingDirectory;
 use crate::build::BuildProfile;
 use crate::diagnostic::Diagnostics;
 use crate::expand::ClassifiedForm;
@@ -92,7 +93,7 @@ impl ReplCommand {
     }
 
     fn prompt_file(&self, terminal: &Terminal) -> Result<ProgramFile, ExitStatus> {
-        let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
+        let working_directory = WorkingDirectory::path();
         let project =
             LocatedProject::search_from(working_directory, terminal, FetchingStore::default())?;
         if let Some(project) = &project {

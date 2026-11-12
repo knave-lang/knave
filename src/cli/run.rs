@@ -1,7 +1,9 @@
+use super::build_options::BuildOptions;
 use super::entry_argument::EntryArgument;
 use super::exit_status::ExitStatus;
 use super::finished_program::FinishedProgram;
-use super::terminal::{BuildOptions, Terminal};
+use super::program_binary::ProgramBinary;
+use super::terminal::Terminal;
 
 pub struct RunCommand {
     entry: EntryArgument,
@@ -22,7 +24,7 @@ impl RunCommand {
         match self
             .entry
             .locate(terminal)
-            .and_then(|program| terminal.build(&program, &self.options))
+            .and_then(|program| ProgramBinary::new(&program, &self.options).build(terminal))
         {
             Ok(binary) => FinishedProgram::run_with(&binary, &self.arguments).status(),
             Err(status) => status,

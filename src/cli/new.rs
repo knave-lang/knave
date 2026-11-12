@@ -6,6 +6,7 @@ use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use super::working_directory::WorkingDirectory;
 use crate::diagnostic::Diagnostics;
 use crate::format::{ModuleLookup, SourceFormatter};
 use crate::language::Language;
@@ -24,7 +25,6 @@ struct NewFile {
 
 impl NewCommand {
     const ENTRY_TEXT: &str = "(defn main ()\n  (println \"hello\"))\n";
-    const WORKING_DIRECTORY: &str = ".";
     const NAME_ARGUMENT: &str = "<name argument>";
     const IGNORE_FILE: &str = ".gitignore";
 
@@ -57,7 +57,7 @@ impl NewCommand {
             path: root.join(&project.entry),
             text: Self::ENTRY_TEXT.to_string(),
         };
-        let working_directory = Path::new(Self::WORKING_DIRECTORY);
+        let working_directory = WorkingDirectory::path();
         Ok([
             self.formatted(
                 terminal,

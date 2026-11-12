@@ -14,6 +14,7 @@ use super::source_walk::SourceWalk;
 use super::terminal::Terminal;
 use super::unreadable_file::UnreadableFile;
 use super::user_label_output::UserLabelOutput;
+use super::working_directory::WorkingDirectory;
 use crate::modules::{ModuleSources, PublicPrelude};
 
 pub struct DocWriteCommand {
@@ -79,7 +80,7 @@ impl DocWriteCommand {
         terminal: &mut Terminal,
     ) -> Result<(PathBuf, Vec<PageSet>), ExitStatus> {
         let project = LocatedProject::search_from(
-            Path::new(Terminal::WORKING_DIRECTORY),
+            WorkingDirectory::path(),
             terminal,
             FetchingStore::default(),
         )?
@@ -105,8 +106,7 @@ impl DocWriteCommand {
     }
 
     fn reference_folder(&self) -> PathBuf {
-        let root = LocatedProject::canonical_root(Path::new(Terminal::WORKING_DIRECTORY))
-            .unwrap_or_default();
+        let root = LocatedProject::canonical_root(WorkingDirectory::path()).unwrap_or_default();
         self.folder_in(&root)
     }
 

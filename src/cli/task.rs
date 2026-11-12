@@ -1,4 +1,3 @@
-use std::path::Path;
 use std::rc::Rc;
 
 use super::entry_tree::EntryTree;
@@ -12,6 +11,7 @@ use super::standard_output::StandardOutput;
 use super::task_catalog::TaskCatalog;
 use super::task_runners::TaskRunners;
 use super::terminal::Terminal;
+use super::working_directory::WorkingDirectory;
 use crate::build::BuildProfile;
 use crate::diagnostic::SimilarName;
 use crate::language::Language;
@@ -62,7 +62,7 @@ impl TaskCommand {
     }
 
     fn task_tree(terminal: &Terminal) -> Result<EntryTree, ExitStatus> {
-        let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
+        let working_directory = WorkingDirectory::path();
         let project =
             LocatedProject::search_from(working_directory, terminal, FetchingStore::default())?
                 .ok_or_else(Self::report_no_project)?;

@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use super::exit_status::ExitStatus;
 use super::library_walk::FetchingStore;
@@ -6,6 +6,7 @@ use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use super::working_directory::WorkingDirectory;
 use crate::language::Language;
 
 pub struct LocatedProgram {
@@ -28,7 +29,7 @@ impl LocatedProgram {
     }
 
     pub fn of_working_directory(terminal: &Terminal) -> Result<Self, ExitStatus> {
-        let working_directory = Path::new(Terminal::WORKING_DIRECTORY);
+        let working_directory = WorkingDirectory::path();
         match LocatedProject::search_from(working_directory, terminal, FetchingStore::default())? {
             Some(project) => Ok(Self {
                 file: project.entry(),

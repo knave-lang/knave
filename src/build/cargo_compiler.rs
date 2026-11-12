@@ -18,7 +18,7 @@ use crate::emit::EmittedCrate;
 use crate::source::Span;
 
 pub struct CargoCompiler<'w> {
-    directory: PathBuf,
+    shared_target: Option<PathBuf>,
     plan: BuildPlan,
     waiting: &'w dyn Fn(&str),
 }
@@ -55,9 +55,9 @@ impl<'w> CargoCompiler<'w> {
     const COMPILER_ARTIFACT: &'static str = "compiler-artifact";
     const ERROR_LEVEL: &'static str = "error";
 
-    pub fn new(directory: PathBuf, plan: BuildPlan, waiting: &'w dyn Fn(&str)) -> Self {
+    pub fn new(shared_target: Option<PathBuf>, plan: BuildPlan, waiting: &'w dyn Fn(&str)) -> Self {
         Self {
-            directory,
+            shared_target,
             plan,
             waiting,
         }
@@ -69,10 +69,10 @@ impl<'w> CargoCompiler<'w> {
         target: &CargoTarget<'_>,
         entry: Span,
     ) -> Result<(), BuildError> {
-        let _lock = self.lock_crate()?;
+        let _lock = self.lock_crate(&target.directory)?;
         self.write_crate(emitted, target)
             .map_err(|error| Self::environment("write the generated crate", &error))?;
-        let output = self.run_cargo(&target.manifest)?;
+        let output = self.run_cargo(target)?;
         if InterruptSignal::stopped(output.status) {
             return Err(BuildError::Interrupted);
         }
@@ -83,22 +83,22 @@ impl<'w> CargoCompiler<'w> {
         }
     }
 
-    fn lock_crate(&self) -> Result<CrateLock, BuildError> {
-        let waiting = || (self.waiting)(&format!("`{}`", self.directory.display()));
-        CrateLock::acquire(&self.directory, waiting)
+    fn lock_crate(&self, directory: &Path) -> Result<CrateLock, BuildError> {
+        let waiting = || (self.waiting)(&format!("`{}`", directory.display()));
+        CrateLock::acquire(directory, waiting)
             .map_err(|error| Self::environment("lock the generated crate", &error))
     }
 
     fn write_crate(&self, emitted: &EmittedCrate, target: &CargoTarget<'_>) -> io::Result<()> {
-        let source = self.directory.join(Self::SOURCE);
-        fs::create_dir_all(source.parent().unwrap_or(&self.directory))?;
+        let source = target.directory.join(Self::SOURCE);
+        fs::create_dir_all(source.parent().unwrap_or(&target.directory))?;
         Self::write_if_changed(
-            &self.directory.join(Self::MANIFEST),
+            &target.directory.join(Self::MANIFEST),
             &target.manifest.render(&self.plan),
         )?;
         Self::write_if_changed(&source, &emitted.code)?;
         if target.lock_file.is_file() {
-            fs::copy(&target.lock_file, self.directory.join(Self::LOCK_FILE))?;
+            fs::copy(&target.lock_file, target.directory.join(Self::LOCK_FILE))?;
         }
         Ok(())
     }
@@ -110,23 +110,22 @@ impl<'w> CargoCompiler<'w> {
         fs::write(path, text)
     }
 
-    fn run_cargo(&self, manifest: &CargoManifest<'_>) -> Result<Output, BuildError> {
+    fn run_cargo(&self, target: &CargoTarget<'_>) -> Result<Output, BuildError> {
         let mut command = Command::new(Self::CARGO);
         command
             .arg("rustc")
-            .args(manifest.target_arguments())
+            .args(target.manifest.target_arguments())
             .arg("--message-format=json")
             .args(self.plan.cargo_flags())
             .arg("--")
             .args(self.plan.lint_flags())
-            .current_dir(&self.directory)
+            .current_dir(&target.directory)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        let shared_target = Self::shared_target();
-        if let Some(target) = &shared_target {
+        if let Some(target) = &self.shared_target {
             command.env(Self::TARGET_VARIABLE, target);
         }
-        self.watched(&mut command, shared_target)
+        self.watched(&mut command, self.shared_target.clone())
             .map_err(|error| Self::environment(Self::CARGO_USE, &error))
     }
 
@@ -171,7 +170,7 @@ impl<'w> CargoCompiler<'w> {
         )
     }
 
-    fn shared_target() -> Option<PathBuf> {
+    pub fn shared_target() -> Option<PathBuf> {
         let user_target = Self::USER_TARGET_VARIABLES
             .iter()
             .any(|name| UserCache::variable_path(name).is_some());
@@ -192,7 +191,7 @@ impl<'w> CargoCompiler<'w> {
         }
         fs::copy(executable, &target.output)
             .map_err(|error| Self::environment("copy the built program", &error))?;
-        fs::copy(self.directory.join(Self::LOCK_FILE), &target.lock_file)
+        fs::copy(target.directory.join(Self::LOCK_FILE), &target.lock_file)
             .map_err(|error| Self::environment("copy `Cargo.lock` back", &error))?;
         Ok(())
     }

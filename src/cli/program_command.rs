@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{Args, Subcommand};
 
 use super::build::BuildCommand;
+use super::build_options::BuildOptions;
 use super::entry_argument::EntryArgument;
 use super::eval::{EvalCommand, EvaluationSettings, FormsText, ModuleText};
 use super::evaluation_output::{EvaluationOutput, JsonEvaluation, PrintedEvaluation};
@@ -10,7 +11,7 @@ use super::exit_status::ExitStatus;
 use super::release_flag::ReleaseFlag;
 use super::repl::ReplCommand;
 use super::run::RunCommand;
-use super::terminal::{BuildOptions, Terminal};
+use super::terminal::Terminal;
 use super::test::{TestCommand, TestSelection};
 use crate::source::TextPosition;
 

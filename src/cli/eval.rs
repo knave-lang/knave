@@ -1,6 +1,7 @@
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 
+use super::crate_name::CrateName;
 use super::evaluation_output::EvaluationOutput;
 use super::evaluation_request::EvaluationRequest;
 use super::exit_status::ExitStatus;
@@ -9,9 +10,10 @@ use super::located_program::LocatedProgram;
 use super::located_project::LocatedProject;
 use super::module_of_sources::ModuleOfSources;
 use super::program_file::ProgramFile;
+use super::rustc_route::RustcRoute;
 use super::standard_error::StandardError;
 use super::temporary_directory::TemporaryDirectory;
-use super::terminal::{BuildRoute, BuildTarget, SourceLoader, Terminal};
+use super::terminal::{SourceLoader, Terminal};
 use crate::build::BuildProfile;
 use crate::check::ProgramChecker;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Diagnostics};
@@ -159,14 +161,12 @@ impl EvalCommand {
         printed_forms: Vec<usize>,
     ) -> Result<ExitStatus, ExitStatus> {
         let directory = TemporaryDirectory::create().map_err(Self::report_no_build_directory)?;
-        let crate_name = Terminal::crate_name(self.module.path());
-        let binary = directory.path().join(&crate_name);
-        let target = BuildTarget {
-            directory: directory.path().to_path_buf(),
-            crate_name: &crate_name,
-            output: &binary,
-        };
-        terminal.compile_into(emitted, &BuildRoute::Rustc(target), self.profile)?;
+        let crate_name = CrateName::of(self.module.path());
+        let binary = crate_name.path_in(directory.path());
+        let route = RustcRoute::new(directory.path().to_path_buf(), &crate_name, &binary);
+        terminal
+            .crate_build()
+            .compile(emitted, &route, self.profile)?;
         Ok(self.output.run(&binary, printed_forms).status())
     }
 

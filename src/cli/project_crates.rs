@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
+use super::build_directory::BuildDirectory;
 use super::program_file::ProgramFile;
-use super::terminal::Terminal;
 use crate::build::{CargoManifest, CargoTarget, CargoTargetKind};
 use crate::project::CrateDependency;
 
@@ -59,7 +59,7 @@ impl ProjectCrates {
     }
 
     pub fn build_directory(&self) -> PathBuf {
-        self.root.join(Terminal::build_root()).join(&self.name)
+        self.root.join(BuildDirectory::root()).join(&self.name)
     }
 
     fn manifest(&self, kind: CargoTargetKind, name_stem: &str) -> CargoManifest<'_> {

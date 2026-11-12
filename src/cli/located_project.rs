@@ -9,6 +9,7 @@ use super::program_file::ProgramFile;
 use super::project_crates::ProjectCrates;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use super::working_directory::WorkingDirectory;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::modules::LibraryTable;
@@ -66,7 +67,7 @@ impl LocatedProject {
     }
 
     fn shown(root: &Path) -> Result<PathBuf, ExitStatus> {
-        let working_directory = Terminal::canonical(Path::new(Terminal::WORKING_DIRECTORY))?;
+        let working_directory = WorkingDirectory::resolved()?;
         Ok(root
             .strip_prefix(&working_directory)
             .unwrap_or(root)

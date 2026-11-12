@@ -1,11 +1,14 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
+use super::build_routes::BuildRoutes;
+use super::crate_name::CrateName;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
+use super::rustc_route::RustcRoute;
 use super::standard_error::StandardError;
 use super::temporary_directory::TemporaryDirectory;
-use super::terminal::{BuildRoute, BuildTarget, Terminal};
+use super::terminal::Terminal;
 use crate::build::BuildProfile;
 use crate::emit::EmittedCrate;
 
@@ -15,7 +18,7 @@ pub struct TestBinary {
 }
 
 impl TestBinary {
-    const CRATE_NAME: &'static str = "tests";
+    const CRATE_STEM: &'static str = "tests";
 
     pub fn build(
         terminal: &Terminal,
@@ -24,9 +27,17 @@ impl TestBinary {
         profile: BuildProfile,
     ) -> Result<Self, ExitStatus> {
         let directory = TemporaryDirectory::create().map_err(Self::report_no_build_directory)?;
-        let path = directory.path().join(Self::CRATE_NAME);
-        let build = Self::route(project, &directory, &path);
-        terminal.compile_into(emitted, &build, profile)?;
+        let crate_name = CrateName::of(Path::new(Self::CRATE_STEM));
+        let path = crate_name.path_in(directory.path());
+        let cargo = project.and_then(|project| project.crates().test_target(path.clone()));
+        let rustc = RustcRoute::new(directory.path().to_path_buf(), &crate_name, &path);
+        terminal.crate_build().compile(
+            emitted,
+            BuildRoutes::default()
+                .preferring_cargo(cargo, rustc)
+                .as_ref(),
+            profile,
+        )?;
         Ok(Self {
             path,
             _directory: directory,
@@ -35,22 +46,6 @@ impl TestBinary {
 
     pub fn path(&self) -> &Path {
         &self.path
-    }
-
-    fn route<'b>(
-        project: Option<&'b LocatedProject>,
-        directory: &TemporaryDirectory,
-        path: &'b Path,
-    ) -> BuildRoute<'b> {
-        let cargo = project.and_then(|project| project.crates().test_target(path.to_path_buf()));
-        match cargo {
-            Some(target) => BuildRoute::Cargo(target),
-            None => BuildRoute::Rustc(BuildTarget {
-                directory: directory.path().to_path_buf(),
-                crate_name: Self::CRATE_NAME,
-                output: path,
-            }),
-        }
     }
 
     fn report_no_build_directory(error: io::Error) -> ExitStatus {

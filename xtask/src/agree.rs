@@ -1,4 +1,3 @@
-use std::fs;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -7,12 +6,12 @@ use std::time::{Duration, Instant};
 
 use clap::Args;
 use knave_agree::{
-    AgreementRun, FindingList, FindingsDirectory, FormReducer, Harness, KnaveCompiler,
-    KnownClasses, ProgramGenerator, ProgramSource, ReducedFindings, ReductionPlan, RunResults,
-    Seed, SeedRange,
+    AgreementRun, FindingList, FindingsDirectory, Harness, KnaveCompiler, ProgramGenerator,
+    ProgramSource, RunResults, Seed, SeedRange,
 };
 
 use crate::failure::TaskFailure;
+use crate::reduction_arguments::ReductionArguments;
 
 #[derive(Args)]
 pub struct AgreeTask {
@@ -53,25 +52,13 @@ pub struct AgreeTask {
         help = "Print the program of this seed and run nothing"
     )]
     print: Option<u64>,
-    #[arg(
-        long,
-        value_name = "COUNT",
-        default_value_t = 0,
-        help = "Shrink up to this many findings, those outside the known classes first, and write each as `<seed>.reduced.knv`"
-    )]
-    reduce: usize,
-    #[arg(
-        long,
-        value_name = "FILE",
-        help = "Write the reduced findings outside the known classes to this Markdown file, if there are any"
-    )]
-    report: Option<PathBuf>,
+    #[command(flatten)]
+    reduction: ReductionArguments,
 }
 
 impl AgreeTask {
     const STATEMENTS: usize = 14;
     const STEP_LIMIT: Duration = Duration::from_secs(60);
-    const REDUCTION_ATTEMPTS: usize = 400;
     const DEFAULT_COMPILER: &str = "target/debug/knave";
     const FINDINGS_DIRECTORY: &str = "target/agree";
     const RECORDED_FINDINGS: &str = "xtask/agree/pull-request-findings.txt";
@@ -93,12 +80,12 @@ impl AgreeTask {
         let harness = Harness::new(
             KnaveCompiler::at(self.compiler(workspace_root)?),
             self.jobs(),
+            Self::STEP_LIMIT,
         )
         .keeping_oracles(&self.oracles)
         .map_err(TaskFailure::new)?;
         let started = Instant::now();
-        let results =
-            AgreementRun::new(&harness, Self::STEP_LIMIT).run(self.generator().programs());
+        let results = AgreementRun::new(&harness).run(self.generator().programs());
         println!("{}", results.tally);
         println!(
             "{} seconds, {} jobs",
@@ -107,7 +94,8 @@ impl AgreeTask {
         );
         let directory = FindingsDirectory::at(workspace_root.join(Self::FINDINGS_DIRECTORY));
         let found = Self::write_findings(&directory, &results)?;
-        self.reduce(&harness, &results, &directory)?;
+        self.reduction
+            .run(&harness, &results.findings, &directory)?;
         let expected = self.expected_findings(workspace_root)?.within(&self.seeds);
         let changes = found.changes_from(&expected);
         eprint!("{changes}");
@@ -140,29 +128,6 @@ impl AgreeTask {
     fn jobs(&self) -> usize {
         self.jobs
             .unwrap_or_else(|| thread::available_parallelism().map_or(1, NonZeroUsize::get))
-    }
-
-    fn reduce(
-        &self,
-        harness: &Harness,
-        results: &RunResults,
-        directory: &FindingsDirectory,
-    ) -> Result<(), TaskFailure> {
-        let plan = ReductionPlan::new(
-            FormReducer::new(Self::STEP_LIMIT, Self::REDUCTION_ATTEMPTS),
-            &KnownClasses::BEFORE_THE_LOAN_RULE,
-            self.reduce,
-        );
-        let reduced = ReducedFindings::of(harness, &results.findings, &plan);
-        reduced
-            .record(directory)
-            .map_err(|error| TaskFailure::unwritable(directory.path(), error))?;
-        match (&self.report, reduced.report_outside_known_classes()) {
-            (Some(path), Some(report)) => {
-                fs::write(path, report).map_err(|error| TaskFailure::unwritable(path, error))
-            }
-            _ => Ok(()),
-        }
     }
 
     fn write_findings(

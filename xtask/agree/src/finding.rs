@@ -6,16 +6,15 @@ use crate::backend_verdicts::BackendVerdicts;
 use crate::citation::Citation;
 use crate::finding_line::FindingLine;
 use crate::finding_signature::FindingSignature;
+use crate::known_classes::KnownClasses;
 use crate::subject_program::SubjectProgram;
-use crate::verdict::Rejection;
 
 #[derive(Clone, Debug)]
 pub struct Finding {
     pub oracle: &'static str,
     pub program: SubjectProgram,
     pub verdicts: BackendVerdicts,
-    pub summary: String,
-    pub evidence: Vec<Rejection>,
+    citation: Citation,
 }
 
 impl Finding {
@@ -26,19 +25,26 @@ impl Finding {
             oracle,
             program: verdicts.program.clone(),
             verdicts: verdicts.clone(),
-            summary: citation.summary(),
-            evidence: citation.into_rejections(),
+            citation,
         }
     }
 
+    pub fn summary(&self) -> String {
+        self.citation.summary()
+    }
+
     pub fn signature(&self) -> FindingSignature {
-        FindingSignature::new(self.oracle, &self.evidence)
+        self.citation.signature(self.oracle)
+    }
+
+    pub fn is_explained_by(&self, classes: &KnownClasses) -> bool {
+        self.citation.is_explained_by(classes)
     }
 
     pub fn line(&self) -> FindingLine {
         FindingLine::new(
             self.program.name.clone(),
-            format!("{}: {}", self.oracle, self.summary),
+            format!("{}: {}", self.oracle, self.summary()),
         )
     }
 

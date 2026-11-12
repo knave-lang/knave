@@ -1,5 +1,8 @@
+use crate::finding_signature::FindingSignature;
+use crate::known_classes::KnownClasses;
 use crate::verdict::Rejection;
 
+#[derive(Clone, Debug)]
 pub struct Citation {
     judgement: &'static str,
     rejections: Vec<Rejection>,
@@ -18,7 +21,16 @@ impl Citation {
         format!("{}: {}", self.judgement, cited.join(", "))
     }
 
-    pub fn into_rejections(self) -> Vec<Rejection> {
+    pub fn signature(&self, oracle: &'static str) -> FindingSignature {
+        FindingSignature::new(
+            oracle,
+            self.rejections.iter().map(Rejection::place).collect(),
+        )
+    }
+
+    pub fn is_explained_by(&self, classes: &KnownClasses) -> bool {
         self.rejections
+            .iter()
+            .all(|rejection| classes.know(rejection.code.as_ref()))
     }
 }

@@ -12,6 +12,12 @@ struct ListSpan {
     children: Vec<Range<usize>>,
 }
 
+impl ListSpan {
+    fn replacements<'a>(&'a self, text: &'a str) -> impl Iterator<Item = &'a str> + 'a {
+        std::iter::once("").chain(self.children.iter().map(|child| &text[child.clone()]))
+    }
+}
+
 impl ReductionCandidates {
     pub fn of(text: &str) -> Self {
         let mut lists = Self::lists(text);
@@ -24,11 +30,8 @@ impl ReductionCandidates {
 
     pub fn texts(&self) -> impl Iterator<Item = String> + '_ {
         self.lists.iter().flat_map(move |list| {
-            std::iter::once(self.replaced(&list.range, "")).chain(
-                list.children
-                    .iter()
-                    .map(|child| self.replaced(&list.range, &self.text[child.clone()])),
-            )
+            list.replacements(&self.text)
+                .map(move |by| self.replaced(&list.range, by))
         })
     }
 

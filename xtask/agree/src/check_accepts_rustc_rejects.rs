@@ -61,7 +61,7 @@ mod tests {
             .judge(&verdicts)
             .expect("a finding");
         assert_eq!(
-            finding.summary,
+            finding.summary(),
             "check accepts and rustc rejects: E0502 in `main`"
         );
     }

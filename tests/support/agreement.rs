@@ -17,6 +17,7 @@ impl AgreementReport {
             harness: Harness::new(
                 KnaveCompiler::at(PathBuf::from(env!("CARGO_BIN_EXE_knave"))),
                 Self::JOBS,
+                Self::LIMIT,
             ),
         }
     }
@@ -26,7 +27,7 @@ impl AgreementReport {
             .programs()
             .next()
             .expect("the fixture list holds the fixture");
-        let judgement = self.harness.judge(program, Self::LIMIT);
+        let judgement = self.harness.judge(program);
         let verdicts = &judgement.verdicts;
         let mut report = String::new();
         for backend in self.harness.backend_names() {
@@ -38,7 +39,8 @@ impl AgreementReport {
             writeln!(
                 report,
                 "finding {}{outside}: {}",
-                finding.oracle, finding.summary
+                finding.oracle,
+                finding.summary()
             )
             .expect("a string takes text");
         }

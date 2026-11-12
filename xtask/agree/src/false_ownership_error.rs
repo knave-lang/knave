@@ -56,7 +56,7 @@ mod tests {
         ]);
         let finding = FalseOwnershipError.judge(&verdicts).expect("a finding");
         assert_eq!(
-            finding.summary,
+            finding.summary(),
             "rustc compiles what check refuses: L0518 in `main`"
         );
     }

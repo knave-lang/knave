@@ -1,17 +1,15 @@
-use std::ops::Range;
-
 use super::docstring_code::DocstringCode;
 use super::docstring_lines::DocstringLines;
 use super::docstring_memo::{DocstringMemo, LaidOutToken};
 use super::format_rules::FormatRules;
 use super::syntax_tree::{Atom, Entry, ListNode, SyntaxNode, SyntaxTree};
-use super::unreadable_cause::UnreadableCause;
+use super::unreadable_span::UnreadableSpan;
 use crate::stack::DeepRecursion;
 
 pub struct TreeDocstrings<'s, 'm> {
     rules: FormatRules<'s>,
     memo: &'m mut DocstringMemo,
-    unreadable: Vec<(Range<usize>, UnreadableCause)>,
+    unreadable: Vec<UnreadableSpan>,
 }
 
 impl<'s, 'm> TreeDocstrings<'s, 'm> {
@@ -23,7 +21,7 @@ impl<'s, 'm> TreeDocstrings<'s, 'm> {
         }
     }
 
-    pub fn lay_out(mut self, tree: &mut SyntaxTree) -> Vec<(Range<usize>, UnreadableCause)> {
+    pub fn lay_out(mut self, tree: &mut SyntaxTree) -> Vec<UnreadableSpan> {
         self.visit_entries(&mut tree.entries);
         self.unreadable
     }
@@ -49,9 +47,8 @@ impl<'s, 'm> TreeDocstrings<'s, 'm> {
         let laid_out = self
             .memo
             .laid_out(&atom.text, || Self::lay_out_token(rules, &atom.text));
-        for (range, cause) in &laid_out.unreadable {
-            self.unreadable
-                .push((atom.start + range.start..atom.start + range.end, *cause));
+        for span in &laid_out.unreadable {
+            self.unreadable.push(span.after(atom.start));
         }
         atom.text = laid_out.text.clone();
     }
@@ -69,7 +66,10 @@ impl<'s, 'm> TreeDocstrings<'s, 'm> {
             unreadable: laid_out
                 .unreadable
                 .iter()
-                .map(|code| (lines.written_range(code.line), code.cause))
+                .map(|code| UnreadableSpan {
+                    range: lines.written_range(code.line),
+                    cause: code.cause,
+                })
                 .collect(),
         }
     }

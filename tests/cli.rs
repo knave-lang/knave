@@ -2493,6 +2493,35 @@ fn doc_write_shows_the_type_a_module_gives_its_own_name() {
 }
 
 #[test]
+fn doc_write_errors_writes_the_index_and_a_page_per_explained_code() {
+    let sandbox = Sandbox::new("doc_write_errors");
+    sandbox
+        .compiler(&["doc", "--write", "--errors"])
+        .assert_silent_success();
+    let files = sandbox.files_under("doc");
+    assert!(files.contains(&"errors.md".to_string()));
+    assert!(files.contains(&"errors/L0501.md".to_string()));
+    assert!(!files.contains(&"errors/L0203.md".to_string()));
+    assert!(!files.contains(&"prelude.md".to_string()));
+    let index = sandbox.contents("doc/errors.md");
+    assert!(index.contains("| [L0501](errors/L0501.md) | use after move |\n"));
+    assert!(index.contains("| L0203 | duplicate definition, no explanation yet |\n"));
+    let page = sandbox.contents("doc/errors/L0501.md");
+    assert!(page.starts_with("# L0501: use after move\n\n"));
+}
+
+#[test]
+fn doc_write_errors_beside_the_prelude_writes_both() {
+    let sandbox = Sandbox::new("doc_write_errors_prelude");
+    sandbox
+        .compiler(&["doc", "--write", "--prelude", "--errors"])
+        .assert_silent_success();
+    let files = sandbox.files_under("doc");
+    assert!(files.contains(&"prelude.md".to_string()));
+    assert!(files.contains(&"errors.md".to_string()));
+}
+
+#[test]
 fn doc_write_prelude_ignores_a_broken_project_file() {
     let sandbox = Sandbox::new("doc_write_prelude_broken_project")
         .with_file(&Language::project_file_name(), "(defproject\n")

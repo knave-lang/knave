@@ -46,6 +46,12 @@ pub struct DocArguments {
         help = "Write the pages of the prelude's modules instead of the project's"
     )]
     prelude: bool,
+    #[arg(
+        long,
+        requires = "write",
+        help = "Write the pages of the diagnostic codes instead of the project's"
+    )]
+    errors: bool,
 }
 
 impl DocArguments {
@@ -66,10 +72,11 @@ impl DocArguments {
     }
 
     fn scope(&self) -> DocScope {
-        if self.prelude {
-            DocScope::Prelude
-        } else {
-            DocScope::Project
+        match (self.prelude, self.errors) {
+            (false, false) => DocScope::Project,
+            (true, false) => DocScope::Prelude,
+            (false, true) => DocScope::Errors,
+            (true, true) => DocScope::PreludeAndErrors,
         }
     }
 

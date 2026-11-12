@@ -3,6 +3,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::pattern_fields::PatternFields;
+use super::payload_lowering::PayloadLowering;
 use super::payload_position::PayloadPosition;
 use super::ty::{GenericId, GenericParam, Type};
 use crate::core::BindingId;
@@ -22,9 +23,14 @@ pub struct VariantDefinition {
     pub payload_spans: Vec<Span>,
     pub function_spans: Vec<Span>,
     pub span: Span,
+    pub lowering: PayloadLowering,
 }
 
 impl VariantDefinition {
+    pub fn arity(&self) -> usize {
+        self.pattern_fields().count()
+    }
+
     pub fn field_labels(&self) -> Option<Vec<Rc<str>>> {
         let VariantPayload::Named(fields) = &self.payload else {
             return None;
@@ -170,7 +176,7 @@ impl EnumDefinition {
 
 #[cfg(test)]
 mod tests {
-    use super::{EnumDefinition, VariantDefinition, VariantPayload};
+    use super::{EnumDefinition, PayloadLowering, VariantDefinition, VariantPayload};
     use crate::core::PrimitiveType;
     use crate::source::{SourceId, Span};
     use crate::types::ty::{GenericId, GenericParam, Type};
@@ -193,6 +199,7 @@ mod tests {
                 payload_spans: Vec::new(),
                 function_spans: Vec::new(),
                 span: self.span,
+                lowering: PayloadLowering::Complete,
             }
         }
 

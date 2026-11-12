@@ -11,6 +11,7 @@ use crate::types::coverage::usefulness::Usefulness;
 use crate::types::coverage::witness::Witness;
 use crate::types::enum_table::EnumTable;
 use crate::types::enums::{EnumDefinition, VariantDefinition, VariantPayload};
+use crate::types::payload_lowering::PayloadLowering;
 use crate::types::peeling::ReferencePeeling;
 use crate::types::structs::{StructDefinition, StructTable};
 use crate::types::type_declarations::TypeDeclarations;
@@ -19,7 +20,6 @@ use crate::types::variant_payloads::VariantPayloads;
 
 pub(super) struct SearchFixture {
     unifier: Unifier,
-    structs: StructTable,
     types: TypeDeclarations,
 }
 
@@ -58,9 +58,9 @@ impl SearchFixture {
         );
         Self {
             unifier: Unifier::default(),
-            structs,
             types: TypeDeclarations {
                 enums,
+                structs,
                 ..TypeDeclarations::default()
             },
         }
@@ -126,6 +126,7 @@ impl SearchFixture {
                     payload_spans: Vec::new(),
                     function_spans: Vec::new(),
                     span: Self::span(),
+                    lowering: PayloadLowering::Complete,
                 })
                 .collect(),
             rust: None,
@@ -158,7 +159,7 @@ impl SearchFixture {
     fn catalog(&self) -> ConstructorCatalog<'_> {
         ConstructorCatalog::new(
             ReferencePeeling::new(&self.unifier),
-            &self.structs,
+            &self.types,
             VariantPayloads::new(&self.types),
         )
     }

@@ -20,6 +20,7 @@ use super::graph::{Definition, DefinitionGraph, DependencyGraph};
 use super::impl_overlap::ImplementorOverlap;
 use super::infer::OpenCollections;
 use super::literal_settlement::LiteralSettlement;
+use super::lowered_payload::LoweredPayload;
 use super::method_receivers::MethodReceivers;
 use super::opaque_positions::OpaquePositions;
 use super::parameter_call_labels::ParameterCallRequest;
@@ -736,7 +737,7 @@ impl TypeChecker {
     pub(super) fn match_coverage(&self) -> MatchCoverage<'_> {
         let catalog = ConstructorCatalog::new(
             self.reference_peeling(),
-            &self.declarations.types.structs,
+            &self.declarations.types,
             self.variant_payloads(),
         );
         let text = WitnessText::new(&self.bindings, &self.declarations.types.enums);
@@ -1637,15 +1638,15 @@ impl TypeChecker {
             .collect();
         let mut lowered = Vec::new();
         let mut problems = Vec::new();
-        let mut unlowered = Vec::new();
-        for (index, variant) in variants.iter().enumerate() {
-            let reported = problems.len();
-            let payload = self.lower_variant_payload(&variant.payload, &scope, &mut problems);
-            unlowered.extend((problems.len() > reported).then_some(index));
+        for variant in variants {
+            let payload = self.lower_variant_payload(&variant.payload, &scope);
+            let lowering = payload.lowering();
+            problems.extend(payload.problems);
             let type_exprs = Self::payload_type_exprs(&variant.payload);
             lowered.push(VariantDefinition {
                 name: variant.name.clone(),
-                payload,
+                payload: payload.payload,
+                lowering,
                 payload_spans: type_exprs
                     .iter()
                     .map(|type_expr| type_expr.span())
@@ -1680,10 +1681,6 @@ impl TypeChecker {
                 written_derive: None,
             },
         );
-        self.declarations
-            .types
-            .enums
-            .mark_unlowered(binding, unlowered);
         Ok(problems)
     }
 
@@ -1691,39 +1688,28 @@ impl TypeChecker {
         &mut self,
         payload: &CoreVariantPayload,
         scope: &FxHashMap<BindingId, GenericId>,
-        problems: &mut Vec<Diagnostic>,
-    ) -> VariantPayload {
-        match payload {
+    ) -> LoweredPayload {
+        let mut problems = Vec::new();
+        let mut lower = |type_expr: &TypeExpr| {
+            self.lower_stored_type(type_expr, scope)
+                .unwrap_or_else(|problem| {
+                    problems.push(problem);
+                    self.failed_scheme().body
+                })
+        };
+        let payload = match payload {
             CoreVariantPayload::None => VariantPayload::None,
-            CoreVariantPayload::Positional(types) => VariantPayload::Positional(
-                types
-                    .iter()
-                    .map(|payload| self.lower_payload_type(payload, scope, problems))
-                    .collect(),
-            ),
+            CoreVariantPayload::Positional(types) => {
+                VariantPayload::Positional(types.iter().map(&mut lower).collect())
+            }
             CoreVariantPayload::Named(fields) => VariantPayload::Named(
                 fields
                     .iter()
-                    .map(|(label, field_type)| {
-                        let lowered = self.lower_payload_type(field_type, scope, problems);
-                        (label.name.clone(), lowered)
-                    })
+                    .map(|(label, field_type)| (label.name.clone(), lower(field_type)))
                     .collect(),
             ),
-        }
-    }
-
-    fn lower_payload_type(
-        &mut self,
-        payload: &TypeExpr,
-        scope: &FxHashMap<BindingId, GenericId>,
-        problems: &mut Vec<Diagnostic>,
-    ) -> Type {
-        self.lower_stored_type(payload, scope)
-            .unwrap_or_else(|problem| {
-                problems.push(problem);
-                self.failed_scheme().body
-            })
+        };
+        LoweredPayload { payload, problems }
     }
 
     fn check_enum_parameters_used(

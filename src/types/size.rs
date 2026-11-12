@@ -166,6 +166,7 @@ mod tests {
     use crate::types::Type;
     use crate::types::enum_table::EnumTable;
     use crate::types::enums::{EnumDefinition, VariantDefinition, VariantPayload};
+    use crate::types::payload_lowering::PayloadLowering;
     use crate::types::structs::{StructDefinition, StructTable};
 
     struct Sizes {
@@ -222,6 +223,7 @@ mod tests {
                         payload_spans: Vec::new(),
                         function_spans: Vec::new(),
                         span: crate::source::Span::new(crate::source::SourceId::new(0), 0..0),
+                        lowering: PayloadLowering::Complete,
                     }],
                     rust: None,
                     definer: None,
@@ -266,6 +268,7 @@ mod tests {
                         payload_spans: Vec::new(),
                         function_spans: Vec::new(),
                         span: crate::source::Span::new(crate::source::SourceId::new(0), 0..0),
+                        lowering: PayloadLowering::Complete,
                     }],
                     rust: None,
                     definer: None,

@@ -4,24 +4,24 @@ use super::pattern_matrix::PatternMatrix;
 use crate::core::{BindingId, PrimitiveType};
 use crate::types::Type;
 use crate::types::peeling::ReferencePeeling;
-use crate::types::structs::StructTable;
+use crate::types::type_declarations::TypeDeclarations;
 use crate::types::variant_payloads::VariantPayloads;
 
 pub(in crate::types) struct ConstructorCatalog<'a> {
     peeling: ReferencePeeling<'a>,
-    structs: &'a StructTable,
+    types: &'a TypeDeclarations,
     payloads: VariantPayloads<'a>,
 }
 
 impl<'a> ConstructorCatalog<'a> {
     pub(in crate::types) fn new(
         peeling: ReferencePeeling<'a>,
-        structs: &'a StructTable,
+        types: &'a TypeDeclarations,
         payloads: VariantPayloads<'a>,
     ) -> Self {
         Self {
             peeling,
-            structs,
+            types,
             payloads,
         }
     }
@@ -74,16 +74,20 @@ impl<'a> ConstructorCatalog<'a> {
     ) -> Vec<Constructor> {
         (0..count)
             .map(|index| {
-                Constructor::new(
-                    ConstructorTag::Variant { owner, index },
-                    self.payloads.visible(owner, index, arguments),
-                )
+                let stored = self
+                    .types
+                    .enums
+                    .get(owner)
+                    .and_then(|definition| definition.instantiated_payload(index, arguments))
+                    .unwrap_or_default();
+                let payload = self.payloads.seen_by_patterns(owner, index, stored);
+                Constructor::new(ConstructorTag::Variant { owner, index }, payload)
             })
             .collect()
     }
 
     fn struct_constructor(&self, owner: BindingId, arguments: &[Type]) -> Option<Constructor> {
-        let definition = self.structs.get(owner)?;
+        let definition = self.types.structs.get(owner)?;
         let fields = definition
             .instantiated_fields(arguments)
             .into_iter()

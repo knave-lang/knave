@@ -58,6 +58,7 @@ mod tests {
     use crate::types::coverage::witness::Witness;
     use crate::types::enum_table::EnumTable;
     use crate::types::enums::{EnumDefinition, VariantDefinition, VariantPayload};
+    use crate::types::payload_lowering::PayloadLowering;
 
     struct TextFixture {
         bindings: BindingArena,
@@ -110,6 +111,7 @@ mod tests {
                 payload_spans: Vec::new(),
                 function_spans: Vec::new(),
                 span: Span::new(SourceId::new(0), 0..0),
+                lowering: PayloadLowering::Complete,
             }
         }
 

@@ -873,30 +873,8 @@ impl TypeChecker {
                     arguments,
                 ));
             }
-            if let Some(definition) = self.declarations.types.enums.get(owner) {
-                let Some(index) = definition
-                    .variants
-                    .iter()
-                    .position(|variant| variant.name.as_ref() == short.name)
-                else {
-                    let variants: Vec<Rc<str>> = definition
-                        .variants
-                        .iter()
-                        .map(|variant| variant.name.clone())
-                        .collect();
-                    let enum_name = self.bindings.get(owner).name();
-                    return Err(TypeProblems::unknown_variant(
-                        enum_name, short.name, &variants, short.span,
-                    ));
-                };
-                let arity = definition.variants[index].pattern_fields().count();
-                let binding = self.candidate_binding(short.candidates, owner, index);
-                let info = VariantInfo {
-                    owner,
-                    index,
-                    arity,
-                };
-                return Ok(VariantTarget::new(binding, info, arguments));
+            if let Some(target) = self.declared_short_target(short, owner, arguments) {
+                return target;
             }
         }
         let binding = if matches!(self.unifier.shallow(matched), Type::Var(_)) {
@@ -910,6 +888,26 @@ impl TypeChecker {
         self.unification()
             .expect(Expectation::plain(&expected), matched, short.span)?;
         Ok(VariantTarget::new(binding, info, arguments))
+    }
+
+    fn declared_short_target(
+        &self,
+        short: &ShortPattern<'_>,
+        owner: BindingId,
+        arguments: Vec<Type>,
+    ) -> Option<Result<VariantTarget, Diagnostic>> {
+        let definition = self.declarations.types.enums.get(owner)?;
+        let index = short.variant_index(definition, self.bindings.get(owner).name());
+        Some(index.map(|index| {
+            let arity = definition.variants[index].arity();
+            let binding = self.candidate_binding(short.candidates, owner, index);
+            let info = VariantInfo {
+                owner,
+                index,
+                arity,
+            };
+            VariantTarget::new(binding, info, arguments)
+        }))
     }
 
     fn candidates_by_owner(&self, candidates: &[BindingId]) -> Vec<BindingId> {

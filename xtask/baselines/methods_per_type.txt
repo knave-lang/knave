@@ -17,12 +17,12 @@ src/cli/library_walk.rs::LibraryWalk 22
 src/cli/terminal.rs::Terminal 30
 src/emit/expressions.rs::ExpressionEmitter 229
 src/emit/items.rs::ItemEmitter 84
-src/emit/plan.rs::EmitPlan 48
+src/emit/plan.rs::EmitPlan 46
 src/emit/result_borrows.rs::BodyFlows 30
 src/emit/result_borrows.rs::ResultBorrows 23
 src/emit/structural_impls.rs::StructuralImpls 26
 src/emit/template.rs::Template 30
-src/emit/types.rs::RustTypes 50
+src/emit/types.rs::RustTypes 49
 src/ownership/kinds.rs::ClosureKinds 103
 src/ownership/local_borrows.rs::LocalBorrows 23
 src/ownership/moves.rs::MoveChecker 51

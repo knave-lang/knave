@@ -6,6 +6,7 @@ mod function_borrow;
 mod generic_callees;
 mod generic_positions;
 mod held_borrows;
+mod item_visibilities;
 mod items;
 mod let_annotation;
 mod literal_generics;

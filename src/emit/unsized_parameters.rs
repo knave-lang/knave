@@ -1,7 +1,6 @@
 use rustc_hash::FxHashSet;
 
 use super::plan::EmitPlan;
-use super::types::RustTypes;
 use crate::core::{BindingId, PrimitiveType};
 use crate::types::{
     GenericBinding, GenericId, Type, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf,
@@ -84,9 +83,7 @@ impl UnsizedParameters {
     fn is_unsized(program: &TypedProgram, ty: &Type, found: &FxHashSet<GenericId>) -> bool {
         match ty {
             Type::Primitive(PrimitiveType::Str) => true,
-            Type::Named(binding, _) => {
-                RustTypes::is_rust_type(program, *binding, RustTypes::SLICE_TYPE)
-            }
+            Type::Named(binding, _) => program.rust_types.is_slice(*binding),
             Type::Generic(generic) => found.contains(generic),
             _ => false,
         }

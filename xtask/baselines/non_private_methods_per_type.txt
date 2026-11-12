@@ -38,7 +38,7 @@ src/emit/plan.rs::EmitPlan 15
 src/emit/problems.rs::EmitProblems 8
 src/emit/template.rs::Template 12
 src/emit/types.rs::LifetimeScope 12
-src/emit/types.rs::RustTypes 15
+src/emit/types.rs::RustTypes 14
 src/ownership/functions.rs::FunctionTable 8
 src/ownership/moved_values.rs::MovedValues 8
 src/ownership/parameter_uses.rs::ParameterUses 10

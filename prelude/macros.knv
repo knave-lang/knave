@@ -22,10 +22,10 @@
           prepend program-modules rest same-binding?
           sorted-names string string-contains? string-drop
           string-length string-lines string-lowercase
-          string-strip-suffix string-trim-start string?
-          symbol symbol-name symbol? take
-          type-definition-call type-definition-symbol
-          value-eq warn)
+          string-strip-prefix string-strip-suffix
+          string-trim-start string? symbol symbol-name
+          symbol? take type-definition-call
+          type-definition-symbol value-eq warn)
 
 (export defmacro defrule defrule-with-value doc-body
         doc-header doc-page docstring docstring-form
@@ -1352,8 +1352,10 @@
     (local lines (string-lines text))
     (local margin (shared-indentation (rest lines)))
     (local continuation
-      (map-list (rest lines)
-        (fn (line) (unindent margin line))))
+      (unindented-lines margin
+                        (rest lines)
+                        (string-open-after? false (first lines))
+                        (list)))
     (local first-line (string-trim-start (first lines)))
     (without-trailing-newlines
       (join-lines (without-leading-blanks (prepend first-line continuation))))))
@@ -1398,6 +1400,43 @@
 (def unindent
   (fn (margin line)
     (if (blank? line) "" (string-drop line margin))))
+
+(def unindented-lines
+  (fn (margin lines in-string done)
+    (if (empty? lines)
+      done
+      (recur margin
+             (rest lines)
+             (string-open-after? in-string (first lines))
+             (concat done
+                     (list (if in-string
+                             (first lines)
+                             (unindent margin (first lines)))))))))
+
+(def string-open-after?
+  (fn (in-string line)
+    (if (string-contains? line string-quote)
+      (string-open-after-text? in-string line)
+      in-string)))
+
+(def string-open-after-text?
+  (fn (in-string text)
+    (if (value-eq text "")
+      in-string
+      (if (starts-with-escape? text)
+        (recur in-string (string-drop text 2))
+        (recur (if (value-eq (string-strip-prefix text string-quote) text)
+                 in-string
+                 (bool-not in-string))
+               (string-drop text 1))))))
+
+(def starts-with-escape?
+  (fn (text)
+    (bool-not (value-eq (string-strip-prefix text string-escape) text))))
+
+(def string-quote "\"")
+
+(def string-escape "\\")
 
 (def without-leading-blanks
   (fn (lines)

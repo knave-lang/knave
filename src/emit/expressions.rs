@@ -1884,11 +1884,12 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn called_template(&self, callee: &TypedExpr) -> Option<Rc<RustTemplate>> {
-        match (CalleeDefinitions::new(self.plan).of(callee), &callee.kind) {
-            (CalleeDefinition::Template(_), TypedExprKind::Leaf(TypedLeaf::Global(binding))) => {
-                self.definition_template(*binding, &callee.ty)
-            }
-            (CalleeDefinition::Template(template), _) => Some(Rc::clone(template)),
+        match CalleeDefinitions::new(self.plan).of(callee) {
+            CalleeDefinition::Template {
+                template,
+                binding: Some(binding),
+            } => Some(self.with_chosen_clause(binding, template, &callee.ty)),
+            CalleeDefinition::Template { template, .. } => Some(Rc::clone(template)),
             _ => None,
         }
     }
@@ -1898,35 +1899,40 @@ impl<'a> ExpressionEmitter<'a> {
         binding: BindingId,
         instantiated: &Type,
     ) -> Option<Rc<RustTemplate>> {
-        let CalleeDefinition::Template(template) =
-            CalleeDefinitions::new(self.plan).of_definition(binding)
-        else {
-            return None;
-        };
-        let chosen = self
-            .definition_type_bindings(binding, instantiated)
-            .first()
-            .and_then(|(_, parameter)| self.chosen_clause(binding, parameter));
-        Some(match chosen {
+        match CalleeDefinitions::new(self.plan).of_definition(binding) {
+            CalleeDefinition::Template { template, .. } => {
+                Some(self.with_chosen_clause(binding, template, instantiated))
+            }
+            _ => None,
+        }
+    }
+
+    fn with_chosen_clause(
+        &self,
+        binding: BindingId,
+        template: &Rc<RustTemplate>,
+        instantiated: &Type,
+    ) -> Rc<RustTemplate> {
+        let type_bindings = self.definition_type_bindings(binding, instantiated);
+        let chosen = type_bindings.first().and_then(|(_, parameter)| {
+            let implements = |bound: &Bound| {
+                self.program
+                    .traits
+                    .satisfies(bound, parameter, &|generic, required| {
+                        self.generic_declares(generic, required)
+                    })
+            };
+            self.program
+                .template_clauses
+                .chosen(binding, parameter, &implements)
+        });
+        match chosen {
             Some(clause) => Rc::new(RustTemplate {
                 template: Rc::clone(clause),
                 ..RustTemplate::clone(template)
             }),
             None => Rc::clone(template),
-        })
-    }
-
-    fn chosen_clause(&self, binding: BindingId, parameter: &Type) -> Option<&Rc<str>> {
-        let implements = |bound: &Bound| {
-            self.program
-                .traits
-                .satisfies(bound, parameter, &|generic, required| {
-                    self.generic_declares(generic, required)
-                })
-        };
-        self.program
-            .template_clauses
-            .chosen(binding, parameter, &implements)
+        }
     }
 
     fn generic_declares(&self, generic: GenericId, required: &Bound) -> bool {

@@ -21,6 +21,7 @@ impl ExplanationExamples {
     const EXAMPLE_FENCE: &str = "```lisp\n";
     const CLOSING_FENCE: &str = "```\n";
     const EXAMPLE_FILE: &str = "example.knv";
+    const MAXIMUM_PARALLEL_FIX_BUILDS: usize = 4;
 
     pub fn new(code: &str, text: &'static str) -> Self {
         let code = code.to_string();
@@ -55,11 +56,21 @@ impl ExplanationExamples {
     }
 
     pub fn fix_failures(&self) -> Vec<String> {
+        let fixes: Vec<(usize, &str)> = self
+            .examples_under(Self::FIXES_HEADING)
+            .enumerate()
+            .collect();
+        fixes
+            .chunks(Self::MAXIMUM_PARALLEL_FIX_BUILDS)
+            .flat_map(|batch| self.failures_of_batch(batch))
+            .collect()
+    }
+
+    fn failures_of_batch(&self, batch: &[(usize, &str)]) -> Vec<String> {
         thread::scope(|scope| {
-            let runs: Vec<_> = self
-                .examples_under(Self::FIXES_HEADING)
-                .enumerate()
-                .map(|(index, fix)| scope.spawn(move || self.failure_of_fix(index, fix)))
+            let runs: Vec<_> = batch
+                .iter()
+                .map(|&(index, fix)| scope.spawn(move || self.failure_of_fix(index, fix)))
                 .collect();
             runs.into_iter()
                 .filter_map(|run| run.join().expect("a fix run ends"))

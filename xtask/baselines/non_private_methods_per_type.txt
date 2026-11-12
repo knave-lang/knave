@@ -50,7 +50,7 @@ src/types/problems.rs::TypeProblems 103
 src/types/projection.rs::ProjectionTable 9
 src/types/rust_types.rs::RustTypeTable 15
 src/types/traits.rs::TraitTable 15
-src/types/ty.rs::Type 29
+src/types/ty.rs::Type 28
 src/types/typed.rs::TypedExpr 16
 src/types/typed.rs::TypedProgram 15
 src/types/unifier.rs::Unifier 19

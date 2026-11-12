@@ -4,6 +4,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::occurs_check::OccursCheck;
 use super::projection::ProjectionTable;
 use super::ty::{Bound, GenericId, Type, TypeVar};
 use crate::core::{BindingId, PrimitiveType};
@@ -429,7 +430,7 @@ impl Unifier {
     }
 
     fn bind_checked(&mut self, var: TypeVar, value: Type, span: Span) -> Result<(), UnifyError> {
-        if value.contains_var(var) {
+        if OccursCheck::new(var, |part: &Type| self.shallow(part)).finds_in(&value) {
             return Err(UnifyError::Infinite);
         }
         if let Some(literal) = self.vars[var.index()].literal {

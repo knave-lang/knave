@@ -27,6 +27,7 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
+      issues: read
     env:
       CARGO_PROFILE_DEV_OPT_LEVEL: 1
     steps:
@@ -39,11 +40,20 @@ jobs:
           build-cache: coverage
       - name: Build the compiler
         run: nix develop .#ci -c cargo build --bin knave
+      - name: Read the findings already reported
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          issue=$(gh issue list --state open --search "in:title \"$ISSUE_TITLE\"" --json number,title \
+            --jq "map(select(.title == env.ISSUE_TITLE)) | .[0].number")
+          gh api "repos/$GH_REPO/issues/$issue/comments" --paginate --jq '.[].body' > "$RUNNER_TEMP/reported.md"
       - name: Run and reduce fresh seeds
         run: |
           first=$((FIRST_FRESH_SEED + GITHUB_RUN_NUMBER * SEEDS_PER_RUN))
           nix develop .#ci -c cargo xtask agree --seeds "$first..$((first + SEEDS_PER_RUN))" \
-            --reduce "$REDUCED_PER_RUN" --report "$REPORT" || test -f target/agree/findings.txt
+            --reduce "$REDUCED_PER_RUN" --report "$REPORT" --already-reported "$RUNNER_TEMP/reported.md" \
+            || test -f target/agree/findings.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: fresh-agreement-findings

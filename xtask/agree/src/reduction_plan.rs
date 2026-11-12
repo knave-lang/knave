@@ -67,6 +67,7 @@ mod tests {
     use crate::finding_fixture::FindingFixture;
     use crate::harness::Harness;
     use crate::knave_compiler::KnaveCompiler;
+    use crate::reported_signatures::ReportedSignatures;
     use crate::scratch_directory::ScratchDirectory;
     use crate::seed::Seed;
 
@@ -115,7 +116,7 @@ mod tests {
             ["seed-0.reduced.knv", "seed-1.reduced.knv"]
         );
         let report = reduced
-            .report_outside_known_classes()
+            .report_outside_known_classes(&ReportedSignatures::default())
             .expect("seed-1 is outside");
         assert!(report.contains("seed-1"));
         assert!(!report.contains("seed-0"));

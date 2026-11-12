@@ -194,6 +194,12 @@ written_explanations! {
     "L0515",
     "L0516",
     "L0517",
+    "L0601",
+    "L0602",
+    "L0603",
+    "L0604",
+    "L0605",
+    "L0606",
 }
 
 pub struct Explanation {

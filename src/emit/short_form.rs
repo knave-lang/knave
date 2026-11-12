@@ -1,4 +1,4 @@
-use super::callee_definition::{CalleeDefinition, CalleeDefinitions};
+use super::callee_definitions::{CalleeDefinition, CalleeDefinitions};
 use crate::core::{ParsedTemplate, Piece, RustTemplate};
 use crate::types::{TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr};
 

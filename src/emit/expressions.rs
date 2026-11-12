@@ -3,7 +3,7 @@ use std::rc::Rc;
 use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::callee_definition::{CalleeDefinition, CalleeDefinitions};
+use super::callee_definitions::{CalleeDefinition, CalleeDefinitions};
 use super::emitted_value::EmittedValue;
 use super::fragment::{Code, Fragment, Precedence};
 use super::lent_temporaries::LentTemporaries;

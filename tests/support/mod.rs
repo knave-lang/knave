@@ -10,6 +10,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, ExitStatus, Output, Stdio};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -266,8 +267,10 @@ impl Fixture {
     }
 
     fn build_directory(&self) -> PathBuf {
+        static NEXT_BUILD: AtomicUsize = AtomicUsize::new(0);
+        let build = NEXT_BUILD.fetch_add(1, Ordering::Relaxed);
         std::env::temp_dir().join(format!(
-            "{}-run-{}-{}-{}",
+            "{}-run-{}-{}-{}-{build}",
             Language::NAME,
             std::process::id(),
             self.stage_name(),

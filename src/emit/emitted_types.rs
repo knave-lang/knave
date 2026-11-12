@@ -50,7 +50,7 @@ mod tests {
     use crate::emit::unsized_parameters::UnsizedParameters;
     use crate::ownership::OwnershipChecker;
     use crate::source::{SourceId, Span};
-    use crate::types::{GenericId, Type, TypedProgram, TypedSource};
+    use crate::types::{BoxedPayload, GenericId, PayloadPosition, Type, TypedProgram, TypedSource};
 
     struct MeasureFixture {
         program: TypedProgram,
@@ -61,7 +61,8 @@ mod tests {
             (def first-slice
               (rust \"{0}.as_slice()\"
                 (where (a) (fn ((ref (vec a))) (ref (slice a))))))
-            (defn measure (value) (len value))";
+            (defn measure (value) (len value))
+            (enum chain end (link u32 chain))";
         const SLICE_CALL: &str = "
             (defn main ()
               (local numbers (vec 1 2 3))
@@ -70,6 +71,9 @@ mod tests {
             (defn main ()
               (local numbers (vec 1 2 3))
               (println (measure (ref numbers))))";
+        const LINK: usize = 1;
+        const LINK_NUMBER: usize = 0;
+        const LINK_REST: usize = 1;
 
         fn calling(main: &str) -> Self {
             let source = format!("{}\n{main}", Self::MEASURE);
@@ -97,11 +101,29 @@ mod tests {
             }
         }
 
+        fn emitted_boxes(&self, payload: usize) -> bool {
+            let chain = self
+                .program
+                .bindings
+                .ids()
+                .find(|binding| self.program.bindings.get(*binding).name() == "chain")
+                .expect("the fixture declares chain");
+            let link = PayloadPosition {
+                variant: Self::LINK,
+                payload,
+            };
+            let plan = EmitPlan::build(&self.program, Span::new(SourceId::new(0), 0..0))
+                .unwrap_or_else(|_| panic!("the fixture plans"));
+            let unsized_parameters = UnsizedParameters::of(&self.program, &plan);
+            EmittedTypes::new(self.program.declarations.types(), &unsized_parameters)
+                .boxes(&BoxedPayload::at(chain, link))
+        }
+
         fn measured_generic_is_unsized(&self) -> bool {
             let plan = EmitPlan::build(&self.program, Span::new(SourceId::new(0), 0..0))
                 .unwrap_or_else(|_| panic!("the fixture plans"));
             let unsized_parameters = UnsizedParameters::of(&self.program, &plan);
-            EmittedTypes::new(&self.program.declarations.types(), &unsized_parameters)
+            EmittedTypes::new(self.program.declarations.types(), &unsized_parameters)
                 .is_unsized(self.measured_generic())
         }
     }
@@ -116,5 +138,17 @@ mod tests {
     fn a_generic_instantiated_with_a_vector_reference_stays_sized() {
         let fixture = MeasureFixture::calling(MeasureFixture::VECTOR_CALL);
         assert!(!fixture.measured_generic_is_unsized());
+    }
+
+    #[test]
+    fn a_recursive_payload_is_emitted_boxed() {
+        let fixture = MeasureFixture::calling(MeasureFixture::VECTOR_CALL);
+        assert!(fixture.emitted_boxes(MeasureFixture::LINK_REST));
+    }
+
+    #[test]
+    fn a_plain_payload_is_emitted_unboxed() {
+        let fixture = MeasureFixture::calling(MeasureFixture::VECTOR_CALL);
+        assert!(!fixture.emitted_boxes(MeasureFixture::LINK_NUMBER));
     }
 }

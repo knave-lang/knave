@@ -855,11 +855,7 @@ impl TypeChecker {
         site: ObligationSite,
         pass: ObligationPass,
     ) {
-        if self
-            .declarations
-            .types
-            .is_boxed_trait(implementor, bound.binding)
-        {
+        if self.declarations.types.boxed_object(implementor) == Some(bound.binding) {
             return;
         }
         match self.declarations.traits.table.select(&bound, implementor) {
@@ -2650,12 +2646,12 @@ impl TypeChecker {
         while let Type::Ref(_, inner) | Type::Mut(_, inner) = found {
             found = inner;
         }
-        let Type::Named(binding, arguments) = found else {
-            return None;
-        };
-        if Some(*binding) != self.declarations.types.box_binding {
+        if !self.declarations.types.is_box(found) {
             return None;
         }
+        let Type::Named(_, arguments) = found else {
+            return None;
+        };
         let argument = arguments.first()?;
         let satisfied = self
             .declarations

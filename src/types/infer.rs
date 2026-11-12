@@ -1908,10 +1908,8 @@ impl TypeChecker {
     fn contains_box_object(&self, ty: &Type) -> bool {
         match self.unifier.resolve(ty) {
             Type::TraitObject(_) => true,
-            Type::Named(binding, arguments)
-                if self.declarations.types.rust_types.is_box(binding) =>
-            {
-                matches!(arguments.as_slice(), [Type::TraitObject(_)])
+            resolved if self.declarations.types.is_box(&resolved) => {
+                self.declarations.types.boxed_object(&resolved).is_some()
             }
             Type::Named(_, arguments) => arguments
                 .iter()

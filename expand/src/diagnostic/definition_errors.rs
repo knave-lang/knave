@@ -1,6 +1,6 @@
 use rustc_hash::FxHashMap;
 
-use super::{Diagnostic, DiagnosticCode, Diagnostics, Label};
+use super::{Diagnostic, DiagnosticCode, Diagnostics, Help, Label};
 
 pub struct DefinitionErrors {
     first_calls: FxHashMap<DefinitionKey, CallPosition>,
@@ -12,6 +12,7 @@ struct DefinitionKey {
     title: String,
     labels: Vec<Label>,
     notes: Vec<String>,
+    helps: Vec<Help>,
 }
 
 type CallPosition = Option<(usize, usize)>;
@@ -68,6 +69,7 @@ impl DefinitionKey {
                 .cloned()
                 .collect(),
             notes: diagnostic.notes().to_vec(),
+            helps: diagnostic.helps().to_vec(),
         }
     }
 }

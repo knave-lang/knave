@@ -73,7 +73,7 @@ const DOCUMENTED_MAIN: &str =
     "(module \"Prints a greeting.\")\n\n(export main)\n\n(defn main () (println \"hi\"))\n";
 const DOCUMENTED_AREA: &str = "(export area)\n\n(defn area (width height)\n  \"Multiplies two sides, as [option] does not.\"\n  (* width height))\n";
 const UNMATCHED_LINKS: &str = "(export parse tally)\n\n(module \"Parses text, unlike [zzqx].\")\n\n(defn parse (text)\n  \"Reads the [optoin] from `text`.\n\n  It keeps [parse] linked.\n    Indented [a(b], again.\n  Also [42], [)x] and [helpr].\"\n  text)\n\n(defn tally ()\n  \"\n  Counts like [parze].\"\n  1)\n\n(defn helper () 2)\n";
-const AREA_SECTION: &str = "<a id=\"area\"></a>\n\n## `area`\n\n```knave\n(defn area (width height))\n(type area (where ((a number)) (fn (a a) a)))\n```\n\nMultiplies two sides, as [option](https://knave-lang.org/docs/prelude/types/#option) does not.\n";
+const AREA_SECTION: &str = "<a id=\"area\"></a>\n\n## `area`\n\n```knave\n(defn area (width height))\n(type area\n  (where ((a number)) (fn (a a) a)))\n```\n\nMultiplies two sides, as [option](https://knave-lang.org/docs/prelude/types/#option) does not.\n";
 const UNTYPED_SHAPES: &str = "(export point twice)\n\n(defstruct point \"A point.\" :x i64)\n\n(defrule twice \"Writes a form twice.\" ((x) (do x x)))\n";
 const UNTYPED_SHAPES_PAGE: &str = "# shapes\n\n<a id=\"point\"></a>\n\n## `point`\n\n```knave\n(defstruct point)\n```\n\nA point.\n\n<a id=\"twice\"></a>\n\n## `twice`\n\n```knave\n(defrule twice)\n```\n\nWrites a form twice.\n";
 const PRELUDE_PAGES: [&str; 23] = [
@@ -101,7 +101,7 @@ const PRELUDE_PAGES: [&str; 23] = [
     "types",
     "vec",
 ];
-const UNWRAP_OR_SECTION: &str = "<a id=\"unwrap-or\"></a>\n\n## `unwrap-or`\n\n```knave\n(unwrap-or option default)\n(type unwrap-or (where (a) (fn ((option a) a) a)))\n```\n";
+const UNWRAP_OR_SECTION: &str = "<a id=\"unwrap-or\"></a>\n\n## `unwrap-or`\n\n```knave\n(unwrap-or option default)\n(type unwrap-or\n  (where (a) (fn ((option a) a) a)))\n```\n";
 const PRELUDE_REEXPORT: &str = "## Re-exported names\n\n- [`*`](prelude/number.md#%2A)\n";
 const VEC_REEXPORT: &str = "- [`vec`](../prelude/types.md#vec)\n";
 const GEOMETRY: &str = "(export area)\n\n(defn area (width height) \"Multiplies a width by a height.\" (* width height))\n";
@@ -162,6 +162,8 @@ const POINT_TYPE: &str = "(type point (fn () point))";
 const SESSION: &str = "(defn square (n) (* n n))\n(defstruct point :x i64 :y i64)\n(defn main () (println \"written main\"))\n";
 const EVALUATED_GEOMETRY: &str = "(defn area (w h) (* w h))\n(area 2 3)\n(defn report ()\n  (println (area 4 5)))\n(do (defn twice (n) (* 2 n)))\n";
 const GEOMETRY_DEFINITIONS: &str = "(defn area (w h) (* w h))\n(defn report ()\n  (println (area 4 5)))\n(do (defn twice (n) (* 2 n)))\n";
+const LONG_TYPED_LENGTHS: &str = "(export combine-lengths)\n\n(defn combine-lengths (first-measured-length second-measured-length)\n  \"Adds two lengths.\n\n  ```\n  (combine-lengths   1   2)\n  ```\"\n  (+ first-measured-length second-measured-length))\n";
+const LONG_TYPED_LENGTHS_PAGE: &str = "# lengths\n\n<a id=\"combine-lengths\"></a>\n\n## `combine-lengths`\n\n```knave\n(defn combine-lengths (first-measured-length second-measured-length))\n(type combine-lengths\n  (where ((a number)) (fn (a a) a)))\n```\n\nAdds two lengths.\n\n```knave\n(combine-lengths 1 2)\n```\n";
 const AREA_OF_A_STRING: &str = "(defn area (w h) (* w h))\n(defn report () (area 2 \"3\"))\n";
 const TOP_LEVEL_AREA_OF_A_STRING: &str = "(defn area (w h) (* w h))\n(area 2 \"3\")\n";
 const SCRATCH: &str = "(defn f (n) (* 2 n))\n\n(comment (f 1) (exit 3))\n";
@@ -2261,6 +2263,16 @@ fn doc_write_reports_a_folder_it_cannot_write() {
 }
 
 #[test]
+fn doc_write_lays_out_the_code_blocks_of_a_page() {
+    let sandbox = Sandbox::with_documented_project("doc_write_code_layout")
+        .with_file("src/lengths.knv", LONG_TYPED_LENGTHS);
+    sandbox
+        .compiler(&["doc", "--write"])
+        .assert_silent_success();
+    assert_eq!(sandbox.contents("doc/lengths.md"), LONG_TYPED_LENGTHS_PAGE);
+}
+
+#[test]
 fn doc_write_shows_no_type_for_a_macro_or_a_struct() {
     let sandbox = Sandbox::with_documented_project("doc_write_untyped")
         .with_file("src/shapes.knv", UNTYPED_SHAPES);
@@ -2514,7 +2526,7 @@ fn doc_write_shows_the_type_a_module_gives_its_own_name() {
     assert!(
         sandbox
             .contents("doc/geometry/area.md")
-            .contains("\n(type square-area (where ((a number)) (fn (a) a)))\n```")
+            .contains("\n(type square-area\n  (where ((a number)) (fn (a) a)))\n```")
     );
 }
 

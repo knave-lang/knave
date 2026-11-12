@@ -24,9 +24,11 @@ mod syntax_tree;
 pub use shape_reader::ModuleLookup;
 pub use shapes::{Shape, ShapeCatalog, ShapeStatement};
 
+use crate::core::{DefinitionForm, KernelForm};
 use crate::diagnostic::Diagnostics;
 use crate::reader::{Form, Reader};
 use crate::source::{SourceFile, SourceId, SourceMap};
+use docstring_code::DocstringCode;
 use docstring_pass::DocstringPass;
 use document::DocumentPrinter;
 use import_order::ImportSorter;
@@ -60,6 +62,7 @@ struct FormattedText<'s> {
 
 impl SourceFormatter {
     const FORMATTED_SOURCE: &'static str = "<formatted>";
+    const PAGE_SOURCE: &'static str = "<page>";
 
     pub fn format(
         &mut self,
@@ -76,6 +79,27 @@ impl SourceFormatter {
             text: formatted.text,
             warnings: formatted.warnings,
         })
+    }
+
+    pub fn lay_out_page(&mut self, page: &str, module: &str, lookup: &ModuleLookup) -> String {
+        let shapes = self.shape_reader.catalog(&Self::use_of(module), lookup);
+        let lines: Vec<String> = page.split('\n').map(str::to_string).collect();
+        DocstringCode::of_pages(&shapes)
+            .lay_out(&lines)
+            .lines
+            .join("\n")
+    }
+
+    fn use_of(module: &str) -> Vec<Form> {
+        let mut sources = SourceMap::default();
+        let source = sources.add(
+            Self::PAGE_SOURCE,
+            format!(
+                "({} {module})",
+                KernelForm::Definition(DefinitionForm::Use).name()
+            ),
+        );
+        Reader::new(sources.file(source)).read().unwrap_or_default()
     }
 }
 

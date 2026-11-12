@@ -26,6 +26,13 @@ impl<'s> DocstringCode<'s> {
         }
     }
 
+    pub fn of_pages(shapes: &'s ShapeCatalog) -> Self {
+        Self {
+            shapes,
+            fence_spacing: CodeSpacing::Written,
+        }
+    }
+
     pub fn lay_out(&self, lines: &[String]) -> LaidOutDocstring {
         let continuation = lines.get(Self::CONTINUATION_START..).unwrap_or_default();
         let shared = CodeRegion::least_indentation(continuation);
@@ -80,6 +87,19 @@ mod tests {
             let laid_out = DocstringCode::of_docstrings(&self.shapes).lay_out(&lines);
             (laid_out.lines.join("\n"), laid_out.unreadable_lines)
         }
+    }
+
+    #[test]
+    fn a_page_fence_keeps_its_written_spacing() {
+        let shapes = ShapeCatalog::default();
+        let lines: Vec<String> = ["# page", "", "```knave", "(f   1)", "(g 2)", "```"]
+            .map(str::to_string)
+            .to_vec();
+        let laid_out = DocstringCode::of_pages(&shapes).lay_out(&lines);
+        assert_eq!(
+            laid_out.lines,
+            ["# page", "", "```knave", "(f 1)", "(g 2)", "```"]
+        );
     }
 
     #[test]

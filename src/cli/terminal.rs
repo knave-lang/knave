@@ -15,6 +15,7 @@ use super::source_report::SourceReport;
 use super::stage_work::StageWork;
 use super::terminal_settings::TerminalSettings;
 use crate::emit::EmittedCrate;
+use crate::ownership::OwnershipGate;
 use crate::source::{SourceFile, SourceId, SourceMap};
 use crate::types::TypedProgram;
 pub use source_loader::SourceLoader;
@@ -86,9 +87,12 @@ impl Terminal {
         CrateBuild::new(self.source_report(), self.settings.interruption())
     }
 
-    pub fn emit_file(&mut self, file: &ProgramFile) -> Result<EmittedCrate, ExitStatus> {
+    pub fn emit_file<Gate: OwnershipGate>(
+        &mut self,
+        file: &ProgramFile,
+    ) -> Result<EmittedCrate, ExitStatus> {
         let limit = Self::rustfmt_time_limit()?;
-        let program = self.check_file(file)?;
+        let program = self.check_file::<Gate>(file)?;
         self.emission_within(&limit).emit(&program)
     }
 
@@ -104,9 +108,12 @@ impl Terminal {
         RustfmtTimeLimit::from_environment().map_err(|malformed| malformed.report())
     }
 
-    pub fn check_file(&mut self, file: &ProgramFile) -> Result<TypedProgram, ExitStatus> {
+    pub fn check_file<Gate: OwnershipGate>(
+        &mut self,
+        file: &ProgramFile,
+    ) -> Result<TypedProgram, ExitStatus> {
         let entry = self.sources().load(file.path())?;
         let program = self.expansion().expand(file, entry)?;
-        self.checking().check(&program)
+        self.checking().check_showing::<Gate>(&program, |_| true)
     }
 }

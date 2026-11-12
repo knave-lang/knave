@@ -12,6 +12,7 @@ use super::rustc_route::RustcRoute;
 use super::terminal::Terminal;
 use super::working_directory::WorkingDirectory;
 use crate::emit::EmittedCrate;
+use crate::ownership::EnforcedOwnership;
 
 pub struct ProgramBinary<'p> {
     program: &'p LocatedProgram,
@@ -29,7 +30,7 @@ impl<'p> ProgramBinary<'p> {
     }
 
     pub fn build(&self, terminal: &mut Terminal) -> Result<PathBuf, ExitStatus> {
-        let emitted = terminal.emit_file(self.program.file())?;
+        let emitted = terminal.emit_file::<EnforcedOwnership>(self.program.file())?;
         self.compile(&emitted, terminal)
     }
 

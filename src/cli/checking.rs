@@ -2,8 +2,9 @@ use super::exit_status::ExitStatus;
 use super::source_report::SourceReport;
 use super::stage_work::StageWork;
 use crate::check::ProgramChecker;
-use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::diagnostic::Diagnostic;
 use crate::expand::Program;
+use crate::ownership::{EnforcedOwnership, OwnershipGate};
 use crate::types::TypedProgram;
 
 pub struct Checking<'a> {
@@ -17,34 +18,20 @@ impl<'a> Checking<'a> {
     }
 
     pub fn check(&mut self, program: &Program) -> Result<TypedProgram, ExitStatus> {
-        self.check_showing(program, |_| true)
+        self.check_showing::<EnforcedOwnership>(program, |_| true)
     }
 
     pub fn check_silently(&mut self, program: &Program) -> Result<TypedProgram, ExitStatus> {
-        self.check_showing(program, |_| false)
+        self.check_showing::<EnforcedOwnership>(program, |_| false)
     }
 
-    pub fn check_without_ownership(
-        &mut self,
-        program: &Program,
-    ) -> Result<TypedProgram, ExitStatus> {
-        self.reported(ProgramChecker::check_without_ownership(program), |_| true)
-    }
-
-    pub fn check_showing(
+    pub fn check_showing<Gate: OwnershipGate>(
         &mut self,
         program: &Program,
         shown_warning: impl FnMut(&Diagnostic) -> bool,
     ) -> Result<TypedProgram, ExitStatus> {
-        self.reported(ProgramChecker::check(program), shown_warning)
-    }
-
-    fn reported(
-        &mut self,
-        checked: Result<TypedProgram, Diagnostics>,
-        shown_warning: impl FnMut(&Diagnostic) -> bool,
-    ) -> Result<TypedProgram, ExitStatus> {
-        let mut typed = checked.map_err(|diagnostics| self.report.report(&diagnostics))?;
+        let mut typed = ProgramChecker::check::<Gate>(program)
+            .map_err(|diagnostics| self.report.report(&diagnostics))?;
         self.work.inferred_expressions = Some(typed.checking.inferred_expressions);
         typed.warnings.retain(shown_warning);
         self.report.print(&typed.warnings);
@@ -62,6 +49,7 @@ mod tests {
     use crate::cli::source_report::SourceReport;
     use crate::cli::stage_work::StageWork;
     use crate::diagnostic::{Diagnostic, DiagnosticCode};
+    use crate::ownership::{EnforcedOwnership, WaivedOwnership};
     use crate::source::SourceMap;
 
     struct CheckingFixture {
@@ -72,6 +60,9 @@ mod tests {
 
     impl CheckingFixture {
         const TWO_WARNINGS: &str = "(enum shape (circle f64) point)\n\n(defn area (s)\n  (match s (_ 0.0) (point 1.0)))\n\n(defn add-one (items) (push! items 1))\n";
+
+        const MOVED_THEN_READ: &str =
+            "(defn main ()\n  (local v (vec 1))\n  (local w v)\n  (println (len v) (len w)))\n";
 
         fn new() -> Self {
             Self {
@@ -133,7 +124,7 @@ mod tests {
         let program = FakeStages::expanded(CheckingFixture::TWO_WARNINGS);
         let typed = fixture
             .checking()
-            .check_showing(&program, CheckingFixture::is_unreachable_arm)
+            .check_showing::<EnforcedOwnership>(&program, CheckingFixture::is_unreachable_arm)
             .expect("the program checks");
         let codes: Vec<&str> = typed
             .warnings
@@ -155,5 +146,18 @@ mod tests {
             .expect("the program checks");
         assert!(typed.warnings.is_empty());
         assert!(fixture.output.writes().is_empty());
+    }
+
+    #[test]
+    fn a_waived_gate_checks_a_program_that_ownership_refuses() {
+        let mut fixture = CheckingFixture::new();
+        let program = FakeStages::expanded(CheckingFixture::MOVED_THEN_READ);
+        assert!(fixture.checking().check(&program).is_err());
+        assert!(
+            fixture
+                .checking()
+                .check_showing::<WaivedOwnership>(&program, |_| true)
+                .is_ok()
+        );
     }
 }

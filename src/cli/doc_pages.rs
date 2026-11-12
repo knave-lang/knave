@@ -11,6 +11,7 @@ use crate::core::{BindingId, Expr, ModulePath};
 use crate::diagnostic::Diagnostics;
 use crate::expand::{ExpansionSession, Program};
 use crate::modules::{ModuleSources, PublicPrelude};
+use crate::ownership::EnforcedOwnership;
 use crate::reader::{Form, StringLiteral};
 use crate::types::TypedProgram;
 
@@ -142,7 +143,8 @@ impl DocumentedModules {
                 Ok((Self::checked_also(session.finish()?, &named), named))
             },
         )?;
-        Ok(ProgramChecker::check(&program).map(|typed| Self::typed_names(&typed, named)))
+        Ok(ProgramChecker::check::<EnforcedOwnership>(&program)
+            .map(|typed| Self::typed_names(&typed, named)))
     }
 
     fn entry_program_types(&self, terminal: &mut Terminal) -> Result<ModuleTypes, ExitStatus> {

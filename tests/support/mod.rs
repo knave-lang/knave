@@ -20,6 +20,7 @@ use knave::expand::{Expander, PreludeState, Program};
 use knave::format::{FormatFailure, SourceFormatter};
 use knave::language::Language;
 use knave::modules::ModuleSources;
+use knave::ownership::EnforcedOwnership;
 use knave::project::ProjectReader;
 use knave::reader::Reader;
 use knave::source::{SourceId, SourceMap, Span};
@@ -266,7 +267,7 @@ impl Fixture {
 
     fn checked(&mut self) -> Result<TypedProgram, Diagnostics> {
         let program = self.expand()?;
-        knave::check::ProgramChecker::check(&program)
+        knave::check::ProgramChecker::check::<EnforcedOwnership>(&program)
     }
 
     fn entry_span(&self) -> Span {

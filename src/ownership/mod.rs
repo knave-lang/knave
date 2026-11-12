@@ -91,21 +91,29 @@ struct OwnershipFindings {
     warnings: Diagnostics,
 }
 
-impl OwnershipChecker {
-    pub fn check(program: &mut TypedProgram) -> Result<InferredCopies, Diagnostics> {
-        let mut findings = Self::findings(program);
-        if findings.refusals.has_errors() {
-            findings.refusals.extend(findings.warnings);
+impl OwnershipFindings {
+    fn enforced(mut self, program: &mut TypedProgram) -> Result<InferredCopies, Diagnostics> {
+        if self.refusals.has_errors() {
+            self.refusals.extend(self.warnings);
         } else {
-            program.warnings.extend(findings.warnings);
+            program.warnings.extend(self.warnings);
         }
-        findings.refusals.into_result(findings.inferred_copies)
+        self.refusals.into_result(self.inferred_copies)
     }
 
-    pub fn check_without_refusals(program: &mut TypedProgram) -> InferredCopies {
-        let findings = Self::findings(program);
-        program.warnings.extend(findings.warnings);
-        findings.inferred_copies
+    fn waived(self, program: &mut TypedProgram) -> InferredCopies {
+        program.warnings.extend(self.warnings);
+        self.inferred_copies
+    }
+}
+
+impl OwnershipChecker {
+    pub fn check(program: &mut TypedProgram) -> Result<InferredCopies, Diagnostics> {
+        Self::findings(program).enforced(program)
+    }
+
+    pub fn waived(program: &mut TypedProgram) -> InferredCopies {
+        Self::findings(program).waived(program)
     }
 
     fn findings(program: &mut TypedProgram) -> OwnershipFindings {

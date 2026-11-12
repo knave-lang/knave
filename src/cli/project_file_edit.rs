@@ -79,6 +79,7 @@ impl ProjectFileEdit {
             .unwrap_or_else(|failure| {
                 unreachable!("the formatter reads and keeps an edited project file: {failure:?}")
             })
+            .text
     }
 
     fn report_no_project(command: &str) -> ExitStatus {

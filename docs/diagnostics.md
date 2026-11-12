@@ -79,6 +79,8 @@ help: a function with a similar name exists
 
 **Point an unreadable example at its code.** A docstring example whose result does not read as one form is `L0354`, with its primary label on the example's code and a help that names the fenced code block.
 
+**Point unreadable docstring code at its first line.** Docstring code that does not read is the warning `L0109`, which `knave fmt` reports with its primary label on the first line of the code and a help that names the fence's language. The formatter leaves that code as written, and the warning does not change the exit status.
+
 **Point a partly labeled call at the argument outside a pair.** `L0338` puts its primary label on the first argument that no `:field value` pair holds, with "this argument has no label" on a value and "this label has no value" on a keyword.
 
 **Report each error once.** A macro can copy one form of its input into several places of its output, so the expander drops a recovered error, or an error of a form that a top-level `do` splices, that repeats an earlier error of the same top-level form with the same code, title, labels and notes. Of the copies, it keeps the one with the most helps. An error or a warning whose description holds `:once-per definition` reports once per program, at its first call in source order, because its cause lies in the macro's definition. The type stage does the same for the diagnostics of a whole program: a macro's output can give two forms one location, so two errors can match exactly.

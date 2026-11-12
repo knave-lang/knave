@@ -1,3 +1,5 @@
+use super::code_spacing::CodeSpacing;
+use super::docstring_regions::DocstringRegions;
 use super::import_order::ImportList;
 use super::shapes::ShapeCatalog;
 use crate::reader::{Form, FormKind, TokenKind, TokenScan};
@@ -9,6 +11,12 @@ pub struct MeaningComparison<'s> {
 
 struct Docstring<'t> {
     text: &'t str,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum DocstringPart {
+    Prose(String),
+    Code(Vec<String>),
 }
 
 impl<'s> MeaningComparison<'s> {
@@ -71,7 +79,7 @@ impl<'s> MeaningComparison<'s> {
             (FormKind::Symbol(left), FormKind::Symbol(right)) => left.name() == right.name(),
             (FormKind::Number(left), FormKind::Number(right)) => left.text() == right.text(),
             (FormKind::String(left), FormKind::String(right)) if is_docstring => {
-                Docstring { text: left }.dedented() == Docstring { text: right }.dedented()
+                Docstring { text: left }.parts() == Docstring { text: right }.parts()
             }
             (FormKind::String(left), FormKind::String(right)) => left == right,
             (FormKind::List(left), FormKind::List(right)) => {
@@ -110,6 +118,33 @@ impl<'s> MeaningComparison<'s> {
 }
 
 impl Docstring<'_> {
+    fn parts(&self) -> Vec<DocstringPart> {
+        let lines: Vec<String> = self.dedented().split('\n').map(str::to_string).collect();
+        let mut parts = Vec::new();
+        let mut copied = 0;
+        for code in DocstringRegions::code_of(&lines, CodeSpacing::Separated) {
+            let region = code.range;
+            parts.extend(
+                lines[copied..region.start]
+                    .iter()
+                    .cloned()
+                    .map(DocstringPart::Prose),
+            );
+            parts.push(DocstringPart::Code(Self::tokens(
+                &lines[region.clone()].join("\n"),
+            )));
+            copied = region.end;
+        }
+        parts.extend(lines[copied..].iter().cloned().map(DocstringPart::Prose));
+        parts
+    }
+
+    fn tokens(code: &str) -> Vec<String> {
+        TokenScan::new(code)
+            .map(|token| code[token.range].to_string())
+            .collect()
+    }
+
     fn dedented(&self) -> String {
         let mut lines = self.text.split('\n');
         let first = lines.next().unwrap_or_default();
@@ -143,7 +178,7 @@ impl Docstring<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::Docstring;
+    use super::{Docstring, DocstringPart};
 
     #[test]
     fn dedenting_removes_the_indentation_that_later_lines_share() {
@@ -151,5 +186,39 @@ mod tests {
             text: "Doubles.\n\n    Works on\n      any number.",
         };
         assert_eq!(docstring.dedented(), "Doubles.\n\nWorks on\n  any number.");
+    }
+
+    #[test]
+    fn laid_out_code_keeps_the_parts_of_a_docstring() {
+        let written = Docstring {
+            text: "Pads.\n\n  (pad   1)\n  => 1",
+        };
+        let laid_out = Docstring {
+            text: "Pads.\n\n  (pad 1)\n  => 1",
+        };
+        assert_eq!(written.parts(), laid_out.parts());
+    }
+
+    #[test]
+    fn moved_prose_changes_the_parts_of_a_docstring() {
+        let written = Docstring {
+            text: "Pads.\n\n  Some   prose.",
+        };
+        let laid_out = Docstring {
+            text: "Pads.\n\n  Some prose.",
+        };
+        assert_ne!(written.parts(), laid_out.parts());
+    }
+
+    #[test]
+    fn changed_code_changes_the_parts_of_a_docstring() {
+        let written = Docstring {
+            text: "Pads.\n\n  (pad 1)\n  => 1",
+        };
+        let laid_out = Docstring {
+            text: "Pads.\n\n  (pad 2)\n  => 1",
+        };
+        assert_ne!(written.parts(), laid_out.parts());
+        assert!(matches!(written.parts()[2], DocstringPart::Code(_)));
     }
 }

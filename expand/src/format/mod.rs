@@ -1,8 +1,20 @@
 mod block;
+mod code_chunk;
+mod code_layout;
+mod code_lines;
+mod code_region;
+mod code_spacing;
+mod docstring_code;
+mod docstring_lines;
+mod docstring_pass;
+mod docstring_regions;
 mod document;
+mod format_problems;
+mod import_group;
 mod import_order;
 mod layout;
 mod list_plan;
+mod markdown_fence;
 mod meaning;
 mod measure;
 mod shape_reader;
@@ -14,7 +26,8 @@ pub use shapes::{Shape, ShapeCatalog, ShapeStatement};
 
 use crate::diagnostic::Diagnostics;
 use crate::reader::{Form, Reader};
-use crate::source::{SourceFile, SourceMap};
+use crate::source::{SourceFile, SourceId, SourceMap};
+use docstring_pass::DocstringPass;
 use document::DocumentPrinter;
 use import_order::ImportSorter;
 use layout::LayoutEngine;
@@ -34,9 +47,15 @@ pub enum FormatFailure {
     Unstable,
 }
 
+pub struct FormattedSource {
+    pub text: String,
+    pub warnings: Diagnostics,
+}
+
 struct FormattedText<'s> {
     shapes: &'s ShapeCatalog,
     text: String,
+    warnings: Diagnostics,
 }
 
 impl SourceFormatter {
@@ -46,24 +65,32 @@ impl SourceFormatter {
         &mut self,
         source: &SourceFile,
         lookup: &ModuleLookup,
-    ) -> Result<String, FormatFailure> {
+    ) -> Result<FormattedSource, FormatFailure> {
         let written = Reader::new(source)
             .read()
             .map_err(FormatFailure::Unreadable)?;
         let shapes = self.shape_reader.catalog(&written, lookup);
-        let formatted = FormattedText::lay_out(&shapes, source.text());
+        let formatted = FormattedText::lay_out(&shapes, source.text(), source.id());
         formatted.verify(&written, source.text())?;
-        Ok(formatted.text)
+        Ok(FormattedSource {
+            text: formatted.text,
+            warnings: formatted.warnings,
+        })
     }
 }
 
 impl<'s> FormattedText<'s> {
-    fn lay_out(shapes: &'s ShapeCatalog, text: &str) -> Self {
+    fn lay_out(shapes: &'s ShapeCatalog, text: &str, source: SourceId) -> Self {
         let mut tree = SyntaxTree::build(text);
         ImportSorter::sort(&mut tree);
+        let warnings = DocstringPass::new(shapes, source).lay_out_docstrings(&mut tree);
         let mut engine = LayoutEngine::new(shapes);
         let text = DocumentPrinter::new(&mut engine).print(&tree);
-        Self { shapes, text }
+        Self {
+            shapes,
+            text,
+            warnings,
+        }
     }
 
     fn verify(&self, written: &[Form], written_text: &str) -> Result<(), FormatFailure> {
@@ -75,7 +102,8 @@ impl<'s> FormattedText<'s> {
         if !keeps_meaning {
             return Err(FormatFailure::ChangedMeaning);
         }
-        if Self::lay_out(self.shapes, &self.text).text != self.text {
+        let again = Self::lay_out(self.shapes, &self.text, SourceId::new(0));
+        if again.text != self.text {
             return Err(FormatFailure::Unstable);
         }
         Ok(())
@@ -91,6 +119,7 @@ impl<'s> FormattedText<'s> {
 #[cfg(test)]
 mod tests {
     use super::{FormatFailure, FormattedText, ShapeCatalog, ShapeStatement};
+    use crate::diagnostic::Diagnostics;
     use crate::reader::{Form, Reader};
     use crate::source::SourceMap;
 
@@ -113,6 +142,7 @@ mod tests {
             FormattedText {
                 shapes: &self.shapes,
                 text: formatted.to_string(),
+                warnings: Diagnostics::default(),
             }
             .verify(&Self::forms(written), written)
         }

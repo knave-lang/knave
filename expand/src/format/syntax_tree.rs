@@ -28,6 +28,7 @@ pub enum SyntaxNode {
 pub struct Atom {
     pub text: String,
     pub kind: TokenKind,
+    pub start: usize,
 }
 
 pub struct ListNode {
@@ -213,8 +214,9 @@ impl<'a> TreeBuilder<'a> {
 
     fn atom(&self, kind: TokenKind, range: Range<usize>) -> Atom {
         Atom {
-            text: self.text[range].to_string(),
+            text: self.text[range.clone()].to_string(),
             kind,
+            start: range.start,
         }
     }
 

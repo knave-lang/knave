@@ -1,0 +1,145 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/format/docstring_code.knv
+---
+(use prelude/macros document)
+
+(defn twice (x)
+  "Doubles a number.
+
+  Prose   keeps   its spacing, even (unbalanced.
+
+  (local prices (into-sorted-map (vec (pair \"pear\" 3) (pair \"pear\" 5)))) ; why
+  =>   (some  (ref 5))
+  (twice   (twice 3))
+  => 12
+  (vec 1
+  2)
+  => (vec 1
+          2)
+
+  ```
+  (defn pad (text width) (str text (repeat \" \" (number-sub width (len text)))))
+  (pad   \"a\" 3)
+
+  => \"a  \"
+  ```
+
+  ```rust
+  fn   kept(x: i64) -> i64 { x }
+  ```
+
+  ; a comment makes this paragraph prose
+  (twice   3)
+  => 6"
+  (* 2 x))
+
+(document (halve x)
+  "Halves a number.
+
+  (halve   (halve 8))
+  => 2")
+
+(defn unreadable ()
+  "Shows code that does not read.
+
+  ```
+  (missing   close
+  ```
+
+  (twice   3
+  => 6"
+  1)
+
+(def greeting "A greeting.
+
+  (twice   3)
+  => 6")
+
+(def escaped "Escapes.\t
+
+  (twice   3)
+  => 6" 1)
+
+---
+(use prelude/macros document)
+
+(defn twice (x)
+  "Doubles a number.
+
+  Prose   keeps   its spacing, even (unbalanced.
+
+  (local prices
+    (into-sorted-map (vec (pair \"pear\" 3) (pair \"pear\" 5)))) ; why
+  =>   (some  (ref 5))
+  (twice (twice 3))
+  => 12
+  (vec 1 2)
+  => (vec 1
+          2)
+
+  ```
+  (defn pad (text width)
+    (str text
+         (repeat \" \" (number-sub width (len text)))))
+
+  (pad \"a\" 3)
+  => \"a  \"
+  ```
+
+  ```rust
+  fn   kept(x: i64) -> i64 { x }
+  ```
+
+  ; a comment makes this paragraph prose
+  (twice   3)
+  => 6"
+  (* 2 x))
+
+(document (halve x)
+  "Halves a number.
+
+  (halve (halve 8))
+  => 2")
+
+(defn unreadable ()
+  "Shows code that does not read.
+
+  ```
+  (missing   close
+  ```
+
+  (twice   3
+  => 6"
+  1)
+
+(def greeting
+  "A greeting.
+
+  (twice   3)
+  => 6")
+
+(def escaped
+  "Escapes.\t
+
+  (twice   3)
+  => 6"
+  1)
+
+---
+warning[L0109]: this docstring code does not read, so `fmt` leaves it as written
+  --> format/docstring_code.knv:43:3
+   |
+43 |   (missing   close
+   |   ^^^^^^^^^^^^^^^^ the code from this line on does not read as forms
+   |
+   = help: close each list and string, or name the code's language after the fence's backticks, as in ```rust
+
+warning[L0109]: this docstring code does not read, so `fmt` leaves it as written
+  --> format/docstring_code.knv:46:3
+   |
+46 |   (twice   3
+   |   ^^^^^^^^^^ the code from this line on does not read as forms
+   |
+   = help: close each list and string, or name the code's language after the fence's backticks, as in ```rust

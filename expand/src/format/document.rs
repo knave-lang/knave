@@ -1,18 +1,12 @@
 use super::block::Block;
+use super::import_group::ImportGroup;
 use super::layout::{LaidOut, LayoutEngine};
-use super::syntax_tree::{Comment, Entry, SyntaxNode, SyntaxTree};
-use crate::core::{DefinitionForm, KernelForm};
+use super::syntax_tree::{Comment, Entry, SyntaxTree};
 
 pub struct DocumentPrinter<'e, 's> {
     engine: &'e mut LayoutEngine<'s>,
     output: String,
     previous_group: Option<ImportGroup>,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum ImportGroup {
-    Use,
-    Export,
 }
 
 impl<'e, 's> DocumentPrinter<'e, 's> {
@@ -84,26 +78,5 @@ impl<'e, 's> DocumentPrinter<'e, 's> {
         self.separate(false);
         self.print_comments(comments);
         self.output.pop();
-    }
-}
-
-impl ImportGroup {
-    fn of(entry: &Entry, block: &Block) -> Option<Self> {
-        let SyntaxNode::List(list) = &entry.node else {
-            return None;
-        };
-        let head = list.entries.first()?.node.symbol_name()?;
-        (block.line_count() == 1).then_some(())?;
-        [Self::Use, Self::Export]
-            .into_iter()
-            .find(|group| group.form_name() == head)
-    }
-
-    fn form_name(self) -> &'static str {
-        let form = match self {
-            Self::Use => DefinitionForm::Use,
-            Self::Export => DefinitionForm::Export,
-        };
-        KernelForm::Definition(form).name()
     }
 }

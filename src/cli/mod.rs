@@ -74,6 +74,7 @@ mod program_stream;
 mod project_command;
 mod project_crates;
 mod project_file_edit;
+mod project_inspection;
 mod project_task;
 mod prompt_diagnostics;
 mod prompt_history;

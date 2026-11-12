@@ -10,7 +10,7 @@ pub struct ExplanationExamples {
     text: &'static str,
 }
 
-pub struct ExampleError {
+pub struct ExampleDiagnostic {
     pub code: String,
     pub title: String,
 }
@@ -41,19 +41,19 @@ impl ExplanationExamples {
         &self.code
     }
 
-    fn erroneous_errors(&self) -> Vec<Vec<ExampleError>> {
-        self.examples_under(Self::ERRONEOUS_HEADING)
-            .map(Self::errors_of)
+    pub fn restated_titles(&self) -> Vec<String> {
+        self.erroneous_diagnostics()
+            .into_iter()
+            .flatten()
+            .filter(|diagnostic| diagnostic.code == self.code)
+            .map(|diagnostic| diagnostic.title)
+            .filter(|title| self.text.contains(title.as_str()))
             .collect()
     }
 
-    pub fn restated_titles(&self) -> Vec<String> {
-        self.erroneous_errors()
-            .into_iter()
-            .flatten()
-            .filter(|error| error.code == self.code)
-            .map(|error| error.title)
-            .filter(|title| self.text.contains(title.as_str()))
+    fn erroneous_diagnostics(&self) -> Vec<Vec<ExampleDiagnostic>> {
+        self.examples_under(Self::ERRONEOUS_HEADING)
+            .map(|example| Self::fixture_of(example).reported_diagnostics())
             .collect()
     }
 
@@ -108,10 +108,6 @@ impl ExplanationExamples {
     fn section(&self, heading: &str) -> &'static str {
         let after_heading = self.text.split_once(heading).map_or("", |(_, rest)| rest);
         after_heading.split("\n## ").next().unwrap_or(after_heading)
-    }
-
-    fn errors_of(example: &str) -> Vec<ExampleError> {
-        Self::fixture_of(example).check_errors()
     }
 
     fn fixture_of(example: &str) -> Fixture {

@@ -15,6 +15,7 @@ use support::{
 const BORROW_ACROSS_MOVE_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local grid (vec 1 2))\n  (local first (at grid 0))\n  (local next (assoc grid 0 3))\n  (println (at next 0) \" \" first))\n```\n";
 const SECOND_TRAIT_PATH_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n(deftrait printable (rust \"std::fmt::Display\") i64)\n\n(defn main ()\n  (println 1))\n```\n";
 const TITLE_QUOTING_EXPLANATION: &str = "The compiler says cannot find `distnce` in this scope.\n\n## Erroneous example\n\n```lisp\n(defn main ()\n  (println distnce))\n```\n";
+const WARNING_TITLE_QUOTING_EXPLANATION: &str = "The compiler says `printable` binds a Rust path that `display` already binds.\n\n## Erroneous example\n\n```lisp\n(deftrait printable (rust \"std::fmt::Display\") i64)\n\n(defn main ()\n  (println 1))\n```\n";
 const FAILING_EXIT_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local empty (the (vec i64) (vec)))\n  (println (at empty 0)))\n```\n";
 
 #[test]
@@ -314,6 +315,15 @@ fn an_explanation_that_quotes_its_own_title_restates_it() {
     assert_eq!(
         explanation.restated_titles(),
         vec!["cannot find `distnce` in this scope".to_string()]
+    );
+}
+
+#[test]
+fn an_explanation_that_quotes_its_warning_title_restates_it() {
+    let explanation = ExplanationExamples::new("L0217", WARNING_TITLE_QUOTING_EXPLANATION);
+    assert_eq!(
+        explanation.restated_titles(),
+        vec!["`printable` binds a Rust path that `display` already binds".to_string()]
     );
 }
 

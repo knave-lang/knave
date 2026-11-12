@@ -29,7 +29,7 @@ use super::typed::{
     TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedStructExpr,
 };
 use super::unifier::LiteralKind;
-use super::{BoxedPayload, PayloadPosition};
+use super::{BoxedPayload, PayloadPosition, variant_names::VariantNames};
 use super::{pattern_fields::PatternFields, pattern_placement::PatternPlacement};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, Control, Expr, ExprKind, FieldLabel,
@@ -897,14 +897,14 @@ impl TypeChecker {
         arguments: Vec<Type>,
     ) -> Option<Result<VariantTarget, Diagnostic>> {
         let definition = self.declarations.types.enums.get(owner)?;
-        let index = short.variant_index(definition, self.bindings.get(owner).name());
+        let enum_name = self.bindings.get(owner).name();
+        let index = VariantNames::of(definition).index_of(short.name, enum_name, short.span);
         Some(index.map(|index| {
-            let arity = definition.variants[index].arity();
             let binding = self.candidate_binding(short.candidates, owner, index);
             let info = VariantInfo {
                 owner,
                 index,
-                arity,
+                arity: definition.variants[index].arity(),
             };
             VariantTarget::new(binding, info, arguments)
         }))

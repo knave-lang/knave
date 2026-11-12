@@ -20,7 +20,6 @@ use super::graph::{Definition, DefinitionGraph, DependencyGraph};
 use super::impl_overlap::ImplementorOverlap;
 use super::infer::OpenCollections;
 use super::literal_settlement::LiteralSettlement;
-use super::lowered_payload::LoweredPayload;
 use super::method_receivers::MethodReceivers;
 use super::opaque_positions::OpaquePositions;
 use super::parameter_call_labels::ParameterCallRequest;
@@ -45,6 +44,7 @@ use super::{
     TypedExpr, TypedExprKind, TypedImplMethod, TypedLeaf, TypedTrait, TypedTraitImpl,
     TypedTraitMethod,
 };
+use super::{lowered_payload::LoweredPayload, payload_lowering::PayloadLowering};
 use crate::core::{
     BindingArena, BindingId, BindingKind, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr,
     ExprKind, Item, ItemKind, KernelForm, Leaf, ModuleId, ParsedTemplate, ReferenceKind,
@@ -1640,7 +1640,7 @@ impl TypeChecker {
         let mut problems = Vec::new();
         for variant in variants {
             let payload = self.lower_variant_payload(&variant.payload, &scope);
-            let lowering = payload.lowering();
+            let lowering = PayloadLowering::of(&payload.problems);
             problems.extend(payload.problems);
             let type_exprs = Self::payload_type_exprs(&variant.payload);
             lowered.push(VariantDefinition {

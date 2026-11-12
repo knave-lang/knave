@@ -87,6 +87,7 @@ mod undeclared_variant;
 mod unification;
 mod unifier;
 mod unlowered_variant;
+mod variant_names;
 mod variant_payloads;
 mod variant_shape;
 mod view_coercion;

@@ -1,15 +1,31 @@
 (use prelude/macros document module)
-(use prelude/types sequence)
+(use prelude/number partial-eq)
+(use prelude/types sequence slice vec)
 
 (module
   "Measures collections: their length and whether they are empty.")
 
-(export empty? len)
+(export contains? empty? len)
 
 (def empty?
   (rust "{0}.is_empty()"
     (where ((collection sequence))
       (fn ((ref collection)) bool))))
+
+(rust-trait contains "crate::rt::Contains"
+  (with str (ref str))
+  (with string (ref str))
+  (where ((item partial-eq))
+    (with (vec item) item))
+  (where ((item partial-eq))
+    (with (slice item) item))
+  (where ((whole (contains part)) part)
+    (with (ref whole) part)))
+
+(def contains?
+  (rust "{0}.contains(&{&1})"
+    (where ((whole (contains part)) part)
+      (fn ((ref whole) part) bool))))
 
 (def len
   (rust "{0}.len()"
@@ -26,6 +42,19 @@
   => true
 
   (empty? (vec 1))
+  => false")
+
+(document (contains? collection item)
+  "Returns whether a collection holds an item.
+
+  A [string] or a `str` looks for a `(ref str)` part. A vector or a slice
+  looks for an equal item, which implements [partial-eq]. Neither argument
+  moves.
+
+  (contains? \"pear\" \"ea\")
+  => true
+
+  (contains? (vec 1 2) 3)
   => false")
 
 (document (len collection)

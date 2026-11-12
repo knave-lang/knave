@@ -1,3 +1,14 @@
 (use prelude/test doctest)
 
 (doctest prelude/sequence)
+
+(deftest contains-finds-a-part-of-text
+  (assert (contains? "pear" "ea"))
+  (assert (contains? (str "pear") "pe"))
+  (assert (not (contains? "pear" "z"))))
+
+(deftest contains-finds-an-item-of-a-vector
+  (local scores (the (vec i64) (vec 1 2)))
+  (assert (contains? scores 2))
+  (assert (not (contains? scores 3)))
+  (assert (contains? (vec "ana" "bo") "bo")))

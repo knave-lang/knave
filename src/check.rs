@@ -5,7 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::core::{BindingId, StructDerives};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::Program;
-use crate::ownership::{EnforcedOwnership, InPlaceChanges, OwnershipGate, WaivedOwnership};
+use crate::ownership::{InPlaceChanges, OwnershipGate};
 use crate::types::{
     DefinitionGraph, FormResult, FormResults, InferredCopies, InstantiationReport, LiteralDefaults,
     MainResult, Pinning, Type, TypeChecker, TypedProgram,
@@ -15,14 +15,8 @@ pub struct ProgramChecker;
 
 impl ProgramChecker {
     #[inline(never)]
-    pub fn check(program: &Program) -> Result<TypedProgram, Diagnostics> {
-        CheckRuns::<EnforcedOwnership>::new(program)
-            .typed()
-            .and_then(MainResult::check)
-    }
-
-    pub fn check_without_ownership(program: &Program) -> Result<TypedProgram, Diagnostics> {
-        CheckRuns::<WaivedOwnership>::new(program)
+    pub fn check<Gate: OwnershipGate>(program: &Program) -> Result<TypedProgram, Diagnostics> {
+        CheckRuns::<Gate>::new(program)
             .typed()
             .and_then(MainResult::check)
     }
@@ -50,7 +44,7 @@ impl ProgramChecker {
     }
 }
 
-struct CheckRuns<'a, Gate: OwnershipGate = EnforcedOwnership> {
+struct CheckRuns<'a, Gate: OwnershipGate> {
     program: &'a Program,
     graph: DefinitionGraph<'a>,
     blocked: FxHashSet<BindingId>,
@@ -274,6 +268,7 @@ mod tests {
     use super::{CheckRuns, CheckedProgram, ProgramChecker};
     use crate::core::BindingId;
     use crate::modules::ModuleSources;
+    use crate::ownership::EnforcedOwnership;
     use crate::types::{LiteralDefaults, TypedSource};
 
     struct RunsFixture {
@@ -340,15 +335,15 @@ mod tests {
             }
         }
 
-        fn runs(&self) -> CheckRuns<'_> {
+        fn runs(&self) -> CheckRuns<'_, EnforcedOwnership> {
             CheckRuns::new(self.source.program())
         }
 
-        fn open_run(&self, runs: &mut CheckRuns) -> CheckedProgram {
+        fn open_run(&self, runs: &mut CheckRuns<EnforcedOwnership>) -> CheckedProgram {
             runs.open_run().expect("the source checks")
         }
 
-        fn learned_runs(&self) -> (CheckRuns<'_>, CheckedProgram) {
+        fn learned_runs(&self) -> (CheckRuns<'_, EnforcedOwnership>, CheckedProgram) {
             let mut runs = self.runs();
             let first = self.open_run(&mut runs);
             runs.learn_from(&first);
@@ -533,7 +528,7 @@ mod tests {
         for binding in RunsFixture::prelude_definitions(&source) {
             source.check_also(binding);
         }
-        assert!(ProgramChecker::check(source.program()).is_ok());
+        assert!(ProgramChecker::check::<EnforcedOwnership>(source.program()).is_ok());
     }
 
     #[test]

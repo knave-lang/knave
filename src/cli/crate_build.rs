@@ -67,6 +67,7 @@ mod tests {
     use crate::cli::recorded_output::RecordedOutput;
     use crate::cli::source_report::SourceReport;
     use crate::emit::EmittedCrate;
+    use crate::ownership::EnforcedOwnership;
     use crate::source::SourceMap;
 
     struct FakeRoute {
@@ -128,7 +129,7 @@ mod tests {
 
         fn program_error() -> BuildError {
             let program = FakeStages::expanded(FakePrograms::MISTYPED);
-            let errors = ProgramChecker::check(&program)
+            let errors = ProgramChecker::check::<EnforcedOwnership>(&program)
                 .err()
                 .expect("the mistyped program fails to check");
             BuildError::Program(errors)

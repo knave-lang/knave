@@ -19,6 +19,6 @@ impl OwnershipGate for EnforcedOwnership {
 
 impl OwnershipGate for WaivedOwnership {
     fn inferred_copies(program: &mut TypedProgram) -> Result<InferredCopies, Diagnostics> {
-        Ok(OwnershipChecker::check_without_refusals(program))
+        Ok(OwnershipChecker::waived(program))
     }
 }

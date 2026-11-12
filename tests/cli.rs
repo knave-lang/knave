@@ -3135,25 +3135,25 @@ fn emit_qualifies_a_struct_named_in_a_bound() {
 }
 
 #[test]
-fn emit_without_ownership_checks_writes_the_rust_of_a_refused_move() {
+fn emit_waiving_ownership_refusals_writes_the_rust_of_a_refused_move() {
     let sandbox = Sandbox::new("emit_unowned_move").with_file("moved.knv", MOVED_VECTOR);
     sandbox
         .compiler(&["check", "moved.knv"])
         .assert_exit_code(1);
-    let emitted = sandbox.compiler(&["emit", "--without-ownership-checks", "moved.knv"]);
+    let emitted = sandbox.compiler(&["emit", "--waive-ownership-refusals", "moved.knv"]);
     let stdout = emitted.assert_exit_code(0).stdout();
     assert!(stdout.contains("let w: Vec<i64> = v;"));
 }
 
 #[test]
-fn emit_without_ownership_checks_still_reports_a_type_error() {
+fn emit_waiving_ownership_refusals_still_reports_a_type_error() {
     let sandbox = Sandbox::new("emit_unowned_mistyped").with_file("sum.knv", MISTYPED_SUM);
-    let emitted = sandbox.compiler(&["emit", "--without-ownership-checks", "sum.knv"]);
+    let emitted = sandbox.compiler(&["emit", "--waive-ownership-refusals", "sum.knv"]);
     assert!(emitted.assert_exit_code(1).stdout().is_empty());
 }
 
 #[test]
-fn emit_help_hides_the_flag_without_ownership_checks() {
+fn emit_help_hides_the_flag_that_waives_ownership_refusals() {
     let help = Sandbox::new("emit_help_hidden").compiler(&["emit", "--help"]);
     assert!(!help.assert_exit_code(0).stdout().contains("ownership"));
 }

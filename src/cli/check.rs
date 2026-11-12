@@ -4,6 +4,7 @@ use super::exit_status::ExitStatus;
 use super::task_catalog::TaskCatalog;
 use super::task_runners::TaskRunners;
 use super::terminal::Terminal;
+use crate::ownership::EnforcedOwnership;
 
 pub struct CheckCommand {
     entry: EntryArgument,
@@ -22,7 +23,9 @@ impl CheckCommand {
         };
         let output = TaskCatalog::user_output(terminal.diagnostic_output());
         terminal.configure(|settings| settings.rerouted_to(output));
-        let entry = terminal.check_file(program.file()).map(|_| ());
+        let entry = terminal
+            .check_file::<EnforcedOwnership>(program.file())
+            .map(|_| ());
         let tasks = match program.into_project().filter(|_| checks_tasks) {
             Some(project) => Self::check_tasks(terminal, EntryTree::of_tasks(project)),
             None => Ok(()),

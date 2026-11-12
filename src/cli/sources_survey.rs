@@ -2,6 +2,7 @@ use super::error_location::ModuleLoader;
 use crate::check::ProgramChecker;
 use crate::diagnostic::Diagnostics;
 use crate::expand::{BoundName, Program};
+use crate::ownership::EnforcedOwnership;
 
 pub struct SourcesSurvey {
     diagnostics: Diagnostics,
@@ -36,7 +37,7 @@ impl SourcesSurvey {
     }
 
     fn check_quietly(program: &Program) -> Diagnostics {
-        match ProgramChecker::check(program) {
+        match ProgramChecker::check::<EnforcedOwnership>(program) {
             Ok(typed) => typed.warnings,
             Err(diagnostics) => diagnostics,
         }

@@ -20,6 +20,7 @@ use crate::diagnostic::{Diagnostic, DiagnosticCode, Diagnostics};
 use crate::emit::EmittedCrate;
 use crate::expand::{ExpandProblems, ExpansionSession, GeneratedEntry, Program, ResultPrinter};
 use crate::modules::ModuleSources;
+use crate::ownership::EnforcedOwnership;
 use crate::reader::Form;
 use crate::source::{SourceId, Span, TextPosition};
 use crate::types::{FormResult, TypedProgram};
@@ -394,7 +395,7 @@ impl ExpandedEvaluation {
         Ok(CheckedEvaluation {
             program: terminal
                 .checking()
-                .check_showing(&program, |warning| shown.shows(warning))?,
+                .check_showing::<EnforcedOwnership>(&program, |warning| shown.shows(warning))?,
             printed_forms,
         })
     }

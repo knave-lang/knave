@@ -6,7 +6,7 @@ input_file: tests/fixtures/expand/document_unbound_name.knv
 error[L0351]: this module documents `missing` but does not define it
  --> expand/document_unbound_name.knv:3:11
   |
-3 | (document missing "A page of nothing.")
+3 | (document missing
   |           ^^^^^^^ not defined in this module
   |
   = help: define `missing` in this module, or move this `document` to the module that defines it

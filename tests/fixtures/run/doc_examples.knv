@@ -1,6 +1,7 @@
 (use prelude/test run-tests)
 
-(module "Module docstrings run too.
+(module
+  "Module docstrings run too.
 
   (+ 1 1)
   => 2")
@@ -75,7 +76,6 @@
 
   (exit 2)
   => 7
-
   ```"
   x)
 
@@ -99,8 +99,7 @@
 (defn multi-line (x)
   "Reads a form and a result over several lines.
 
-  (multi-line
-    3)
+  (multi-line 3)
   => (+ 1
         2)"
   x)
@@ -145,10 +144,8 @@
   "Follows Markdown's fences.
 
   ~~~
-
   (exit 11)
   => 7
-
   ~~~
 
   ````

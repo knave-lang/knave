@@ -2,7 +2,8 @@
 
 (def twice (fn (x) (* 2 x)))
 
-(document twice "Doubles a number: `(twice x)`.")
+(document twice
+  "Doubles a number: `(twice x)`.")
 
 (def twice-page (doc-page twice))
 

@@ -2,7 +2,8 @@
 
 (export area double perimeter square?)
 
-(module "Measures shapes on a grid, as [area] does.")
+(module
+  "Measures shapes on a grid, as [area] does.")
 
 (defn area (width height)
   "Multiplies two sides, as [perimeter] adds them.

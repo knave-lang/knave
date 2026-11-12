@@ -1,4 +1,5 @@
-(module "Looks itself up.")
+(module
+  "Looks itself up.")
 
 (export main)
 

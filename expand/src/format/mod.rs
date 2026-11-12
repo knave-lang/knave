@@ -9,8 +9,10 @@ mod docstring_code;
 mod docstring_lines;
 mod docstring_pass;
 mod docstring_regions;
+mod docstring_syntax;
 mod document;
 mod format_problems;
+mod format_rules;
 mod import_group;
 mod import_join;
 mod import_order;
@@ -25,6 +27,7 @@ mod shapes;
 mod syntax_tree;
 mod written_gap;
 
+pub use docstring_syntax::DocstringSyntax;
 pub use shape_reader::ModuleLookup;
 pub use shapes::{Shape, ShapeCatalog, ShapeStatement};
 
@@ -35,15 +38,16 @@ use crate::source::{SourceFile, SourceId, SourceMap};
 use docstring_code::DocstringCode;
 use docstring_pass::DocstringPass;
 use document::DocumentPrinter;
+use format_rules::FormatRules;
 use import_order::ImportSorter;
 use layout::LayoutEngine;
 use meaning::MeaningComparison;
 use shape_reader::ShapeReader;
 use syntax_tree::SyntaxTree;
 
-#[derive(Default)]
 pub struct SourceFormatter {
     shape_reader: ShapeReader,
+    syntax: DocstringSyntax,
 }
 
 #[derive(Debug)]
@@ -59,7 +63,7 @@ pub struct FormattedSource {
 }
 
 struct FormattedText<'s> {
-    shapes: &'s ShapeCatalog,
+    rules: FormatRules<'s>,
     text: String,
     warnings: Diagnostics,
 }
@@ -67,6 +71,13 @@ struct FormattedText<'s> {
 impl SourceFormatter {
     const FORMATTED_SOURCE: &'static str = "<formatted>";
     const PAGE_SOURCE: &'static str = "<page>";
+
+    pub fn new(syntax: DocstringSyntax) -> Self {
+        Self {
+            shape_reader: ShapeReader::default(),
+            syntax,
+        }
+    }
 
     pub fn format(
         &mut self,
@@ -77,7 +88,11 @@ impl SourceFormatter {
             .read()
             .map_err(FormatFailure::Unreadable)?;
         let shapes = self.shape_reader.catalog(&written, lookup);
-        let formatted = FormattedText::lay_out(&shapes, source.text(), source.id());
+        let rules = FormatRules {
+            shapes: &shapes,
+            syntax: &self.syntax,
+        };
+        let formatted = FormattedText::lay_out(rules, source.text(), source.id());
         formatted.verify(&written, source.text())?;
         Ok(FormattedSource {
             text: formatted.text,
@@ -88,10 +103,13 @@ impl SourceFormatter {
     pub fn lay_out_page(&mut self, page: &str, module: &str, lookup: &ModuleLookup) -> String {
         let shapes = self.shape_reader.catalog(&Self::use_of(module), lookup);
         let lines: Vec<String> = page.split('\n').map(str::to_string).collect();
-        DocstringCode::of_pages(&shapes)
-            .lay_out(&lines)
-            .lines
-            .join("\n")
+        DocstringCode::of_pages(FormatRules {
+            shapes: &shapes,
+            syntax: &self.syntax,
+        })
+        .lay_out(&lines)
+        .lines
+        .join("\n")
     }
 
     fn use_of(module: &str) -> Vec<Form> {
@@ -108,21 +126,21 @@ impl SourceFormatter {
 }
 
 impl<'s> FormattedText<'s> {
-    fn lay_out(shapes: &'s ShapeCatalog, text: &str, source: SourceId) -> Self {
+    fn lay_out(rules: FormatRules<'s>, text: &str, source: SourceId) -> Self {
         let mut tree = SyntaxTree::build(text);
         ImportSorter::sort(&mut tree);
-        let warnings = DocstringPass::new(shapes, source).lay_out_docstrings(&mut tree);
-        let mut engine = LayoutEngine::new(shapes);
+        let warnings = DocstringPass::new(rules, source).lay_out_docstrings(&mut tree);
+        let mut engine = LayoutEngine::new(rules.shapes);
         let text = DocumentPrinter::new(&mut engine).print(&tree);
         Self {
-            shapes,
+            rules,
             text,
             warnings,
         }
     }
 
     fn verify(&self, written: &[Form], written_text: &str) -> Result<(), FormatFailure> {
-        let comparison = MeaningComparison::new(self.shapes);
+        let comparison = MeaningComparison::new(self.rules.shapes, self.rules.syntax);
         let keeps_meaning = comparison.same_comments(written_text, &self.text)
             && self
                 .read()
@@ -130,7 +148,7 @@ impl<'s> FormattedText<'s> {
         if !keeps_meaning {
             return Err(FormatFailure::ChangedMeaning);
         }
-        let again = Self::lay_out(self.shapes, &self.text, SourceId::new(0));
+        let again = Self::lay_out(self.rules, &self.text, SourceId::new(0));
         if again.text != self.text {
             return Err(FormatFailure::Unstable);
         }
@@ -146,13 +164,15 @@ impl<'s> FormattedText<'s> {
 
 #[cfg(test)]
 mod tests {
-    use super::{FormatFailure, FormattedText, ShapeCatalog, ShapeStatement};
+    use super::{FormatFailure, FormatRules, FormattedText, ShapeCatalog, ShapeStatement};
     use crate::diagnostic::Diagnostics;
+    use crate::format::docstring_syntax::{DocstringSyntax, DocstringSyntaxFixture};
     use crate::reader::{Form, Reader};
     use crate::source::SourceMap;
 
     struct CheckFixture {
         shapes: ShapeCatalog,
+        syntax: DocstringSyntax,
     }
 
     impl CheckFixture {
@@ -163,12 +183,18 @@ mod tests {
             )
             .expect("the statement states a shape");
             shapes.add(&statement);
-            Self { shapes }
+            Self {
+                shapes,
+                syntax: DocstringSyntaxFixture::syntax(),
+            }
         }
 
         fn verify(&self, written: &str, formatted: &str) -> Result<(), FormatFailure> {
             FormattedText {
-                shapes: &self.shapes,
+                rules: FormatRules {
+                    shapes: &self.shapes,
+                    syntax: &self.syntax,
+                },
                 text: formatted.to_string(),
                 warnings: Diagnostics::default(),
             }

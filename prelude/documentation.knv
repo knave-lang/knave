@@ -10,6 +10,9 @@
 
 (use prelude/internal/code require-module)
 
+(use prelude/internal/docstrings arrow-line? closes-fence? fence-run
+                                 opening-fence)
+
 (use prelude/macros defmacro doc-body doc-header docstring
                     docstring-form document map-list module)
 
@@ -442,69 +445,57 @@
       (fn (paragraph)
         (finished-paragraph page links docstring paragraph)))
     (local converted
-      (fn (written paragraph lines number opener)
+      (fn (written paragraph lines number fence)
         (local next (number-add number 1))
         (if (empty? lines)
           (concat written (finished paragraph))
-          (if (value-eq opener "")
+          (if (empty? fence)
             (if (fence-line? (first lines))
               (recur (concat (concat written (finished paragraph))
                              (list (tagged-fence (first lines))))
                      (list)
                      (rest lines)
                      next
-                     (backtick-run (first lines)))
+                     (opening-fence (first lines)))
               (if (blank-line? (first lines))
                 (recur (concat (concat written (finished paragraph))
                                (list ""))
                        (list)
                        (rest lines)
-                       next "")
+                       next (list))
                 (recur written
                        (concat paragraph
                                (list (list (first lines) number)))
                        (rest lines)
-                       next "")))
+                       next (list))))
             (recur (concat written (list (first lines)))
                    paragraph
                    (rest lines)
                    next
-                   (open-fence-after opener (first lines)))))))
+                   (fence-after fence (first lines)))))))
     (join-text "\n"
                (converted (list)
                           (list)
                           (string-lines (docstring-text docstring))
-                          0 ""))))
+                          0 (list)))))
 
 (def fence-line?
-  (fn (line) (starts-with? line code-fence)))
+  (fn (line) (bool-not (empty? (opening-fence line)))))
 
-(def open-fence-after
-  (fn (opener line)
-    (if (closing-fence? opener line) "" opener)))
-
-(def closing-fence?
-  (fn (opener line)
-    (local trimmed (string-trim-end line))
-    (if (value-eq (backtick-run trimmed) trimmed)
-      (starts-with? trimmed opener)
-      false)))
-
-(def backtick-run
-  (fn (line)
-    (local counted
-      (fn (run remaining)
-        (if (starts-with? remaining "`")
-          (recur (string run "`") (string-drop remaining 1))
-          run)))
-    (counted "" line)))
+(def fence-after
+  (fn (fence line)
+    (if (closes-fence? fence line) (list) fence)))
 
 (def tagged-fence
   (fn (line)
     (local trimmed (string-trim-end line))
-    (if (value-eq trimmed code-fence)
+    (if (bare-fence? (opening-fence line) trimmed)
       (string trimmed code-language)
       line)))
+
+(def bare-fence?
+  (fn (fence line)
+    (value-eq (string-drop (string-trim-start line) (fence-run fence)) "")))
 
 (def blank-line?
   (fn (line)
@@ -532,10 +523,6 @@
       (if (arrow-line? (first lines))
         true
         (recur (rest lines))))))
-
-(def arrow-line?
-  (fn (line)
-    (starts-with? (string-trim-start line) "=> ")))
 
 (def starts-with?
   (fn (text prefix)

@@ -1,0 +1,67 @@
+(use code add-module-note bool-not empty? first list nth
+          number-add number-lt rest string-drop string-strip-prefix
+          string-trim-end string-trim-start value-eq)
+
+(export arrow-line? closes-fence? example-arrow fence-run
+        opening-fence)
+
+(def example-arrow "=> ")
+
+(def fence-marks (list "`" "~"))
+
+(def minimum-fence-length 3)
+
+(def noted-docstring-syntax
+  (macro (form)
+    (add-module-note (quote docstring-syntax)
+                     (list (quote :arrow) example-arrow
+                           (quote :fence-marks) fence-marks
+                           (quote :fence-length) minimum-fence-length))
+    (quote (do))))
+
+(noted-docstring-syntax)
+
+(def arrow-line?
+  (fn (line)
+    (starts-with? (string-trim-start line) example-arrow)))
+
+(def opening-fence
+  (fn (line) (fence-among fence-marks line)))
+
+(def fence-among
+  (fn (marks line)
+    (if (empty? marks)
+      (list)
+      (if (empty? (fence-of line (first marks)))
+        (recur (rest marks) line)
+        (fence-of line (first marks))))))
+
+(def fence-of
+  (fn (line mark)
+    (local run (leading-run (string-trim-start line) mark 0))
+    (if (number-lt run minimum-fence-length)
+      (list)
+      (list mark run))))
+
+(def fence-run
+  (fn (fence) (nth fence 1)))
+
+(def leading-run
+  (fn (text mark count)
+    (if (value-eq (string-strip-prefix text mark) text)
+      count
+      (recur (string-strip-prefix text mark)
+             mark
+             (number-add count 1)))))
+
+(def closes-fence?
+  (fn (fence line)
+    (local text (string-trim-start line))
+    (local run (leading-run text (first fence) 0))
+    (if (number-lt run (fence-run fence))
+      false
+      (value-eq (string-trim-end (string-drop text run)) ""))))
+
+(def starts-with?
+  (fn (text prefix)
+    (bool-not (value-eq (string-strip-prefix text prefix) text))))

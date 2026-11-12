@@ -12,6 +12,7 @@ pub use form::{Form, FormKind, FormNesting, Number, NumberValue, Symbol};
 pub use form_shape::FormShape;
 pub use literal_forms::LiteralForms;
 pub use string_literal::StringLiteral;
+pub use syntax::Syntax;
 pub use token::{Token, TokenKind, TokenScan};
 
 use std::ops::Range;
@@ -22,7 +23,6 @@ use cursor::Cursor;
 use number::{NumberError, NumberLiteral};
 use problems::ReadProblems;
 use string_literal::{StringLiteralReader, StringProblem};
-use syntax::Syntax;
 
 pub struct Reader<'a> {
     source: &'a SourceFile,

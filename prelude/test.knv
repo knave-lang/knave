@@ -4,6 +4,9 @@
 (use prelude/internal/macros docstring-before-body?
                              module-docstring-notes)
 
+(use prelude/internal/docstrings arrow-line? closes-fence?
+                                 example-arrow opening-fence)
+
 (use prelude/types vec)
 (use prelude/number =)
 (use prelude/vec vec)
@@ -422,35 +425,6 @@
       (opening-fence line)
       (if (closes-fence? fence line) (list) fence))))
 
-(def opening-fence
-  (fn (line)
-    (concat (fence-of line "`") (fence-of line "~"))))
-
-(def fence-of
-  (fn (line mark)
-    (local run (leading-run (string-trim-start line) mark 0))
-    (if (number-lt run minimum-fence-length)
-      (list)
-      (list mark run))))
-
-(def minimum-fence-length 3)
-
-(def leading-run
-  (fn (text mark count)
-    (if (value-eq (string-strip-prefix text mark) text)
-      count
-      (recur (string-strip-prefix text mark)
-             mark
-             (number-add count 1)))))
-
-(def closes-fence?
-  (fn (fence line)
-    (local text (string-trim-start line))
-    (local run (leading-run text (first fence) 0))
-    (if (number-lt run (nth fence 1))
-      false
-      (value-eq (string-trim-end (string-drop text run)) ""))))
-
 (def starts-with?
   (fn (line prefix)
     (bool-not (value-eq (string-strip-prefix (string-trim-start line) prefix)
@@ -602,17 +576,15 @@
 
 (def next-step
   (fn (context text lines steps code)
-    (if (arrow-line? lines)
+    (if (arrow-first? lines)
       (read-example context text lines steps code)
       (list lines (concat steps (list code))))))
 
-(def arrow-line?
+(def arrow-first?
   (fn (lines)
     (if (empty? lines)
       false
-      (starts-with? (line-text (first lines)) arrow))))
-
-(def arrow "=> ")
+      (arrow-line? (line-text (first lines))))))
 
 (def read-example
   (fn (context text lines steps code)
@@ -633,7 +605,7 @@
 (def result-offset
   (fn (line)
     (number-add (line-offset line)
-                (number-add (line-indent line) (string-length arrow)))))
+                (number-add (line-indent line) (string-length example-arrow)))))
 
 (def line-indent
   (fn (line)

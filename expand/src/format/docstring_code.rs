@@ -2,12 +2,12 @@ use super::code_layout::CodeLayout;
 use super::code_region::CodeRegion;
 use super::code_spacing::CodeSpacing;
 use super::docstring_regions::DocstringRegions;
+use super::format_rules::FormatRules;
 use super::list_plan::Arrangement;
 use super::region_layout::RegionLayout;
-use super::shapes::ShapeCatalog;
 
 pub struct DocstringCode<'s> {
-    shapes: &'s ShapeCatalog,
+    rules: FormatRules<'s>,
     fence_spacing: CodeSpacing,
 }
 
@@ -20,16 +20,16 @@ impl<'s> DocstringCode<'s> {
     const LEFT_EDGE: usize = Arrangement::BODY_INDENT;
     const CONTINUATION_START: usize = 1;
 
-    pub fn of_docstrings(shapes: &'s ShapeCatalog) -> Self {
+    pub fn of_docstrings(rules: FormatRules<'s>) -> Self {
         Self {
-            shapes,
+            rules,
             fence_spacing: CodeSpacing::Separated,
         }
     }
 
-    pub fn of_pages(shapes: &'s ShapeCatalog) -> Self {
+    pub fn of_pages(rules: FormatRules<'s>) -> Self {
         Self {
-            shapes,
+            rules,
             fence_spacing: CodeSpacing::Written,
         }
     }
@@ -42,7 +42,7 @@ impl<'s> DocstringCode<'s> {
             unreadable_lines: Vec::new(),
         };
         let mut copied = 0;
-        for code_lines in DocstringRegions::code_of(lines, self.fence_spacing) {
+        for code_lines in DocstringRegions::code_of(self.rules.syntax, lines, self.fence_spacing) {
             let region = code_lines.range;
             laid_out
                 .lines
@@ -53,7 +53,7 @@ impl<'s> DocstringCode<'s> {
                 column: Self::LEFT_EDGE + indent.saturating_sub(shared),
                 spacing: code_lines.spacing,
             };
-            match CodeRegion::new(self.shapes, code, layout).lay_out() {
+            match CodeRegion::new(self.rules, code, layout).lay_out() {
                 RegionLayout::LaidOut(code_lines) => laid_out.lines.extend(code_lines),
                 RegionLayout::Unreadable(line) => {
                     laid_out.unreadable_lines.push(region.start + line);
@@ -71,33 +71,44 @@ impl<'s> DocstringCode<'s> {
 #[cfg(test)]
 mod tests {
     use super::DocstringCode;
+    use crate::format::docstring_syntax::{DocstringSyntax, DocstringSyntaxFixture};
+    use crate::format::format_rules::FormatRules;
     use crate::format::shapes::ShapeCatalog;
 
     struct DocstringFixture {
         shapes: ShapeCatalog,
+        syntax: DocstringSyntax,
     }
 
     impl DocstringFixture {
         fn new() -> Self {
             Self {
                 shapes: ShapeCatalog::default(),
+                syntax: DocstringSyntaxFixture::syntax(),
+            }
+        }
+
+        fn rules(&self) -> FormatRules<'_> {
+            FormatRules {
+                shapes: &self.shapes,
+                syntax: &self.syntax,
             }
         }
 
         fn lay_out(&self, text: &str) -> (String, Vec<usize>) {
             let lines: Vec<String> = text.split('\n').map(str::to_string).collect();
-            let laid_out = DocstringCode::of_docstrings(&self.shapes).lay_out(&lines);
+            let laid_out = DocstringCode::of_docstrings(self.rules()).lay_out(&lines);
             (laid_out.lines.join("\n"), laid_out.unreadable_lines)
         }
     }
 
     #[test]
     fn a_page_fence_keeps_its_written_spacing() {
-        let shapes = ShapeCatalog::default();
+        let fixture = DocstringFixture::new();
         let lines: Vec<String> = ["# page", "", "```knave", "(f   1)", "(g 2)", "```"]
             .map(str::to_string)
             .to_vec();
-        let laid_out = DocstringCode::of_pages(&shapes).lay_out(&lines);
+        let laid_out = DocstringCode::of_pages(fixture.rules()).lay_out(&lines);
         assert_eq!(
             laid_out.lines,
             ["# page", "", "```knave", "(f 1)", "(g 2)", "```"]

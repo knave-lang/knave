@@ -2,6 +2,7 @@ use rustc_hash::FxHashMap;
 
 use super::doc::ExpandedPage;
 use super::doc_folder::WrittenPage;
+use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
 use super::module_of_sources::ModuleOfSources;
 use super::program_file::ProgramFile;
@@ -10,7 +11,7 @@ use crate::check::ProgramChecker;
 use crate::core::{BindingId, Expr, ModulePath};
 use crate::diagnostic::Diagnostics;
 use crate::expand::{ExpansionSession, Program};
-use crate::format::{ModuleLookup, SourceFormatter};
+use crate::format::ModuleLookup;
 use crate::modules::{ModuleSources, PublicPrelude};
 use crate::ownership::EnforcedOwnership;
 use crate::reader::{Form, StringLiteral};
@@ -91,7 +92,7 @@ impl DocumentedModules {
             },
         )?;
         terminal.source_report().print(&warnings);
-        let mut formatter = SourceFormatter::default();
+        let mut formatter = EmbeddedPrelude::source_formatter();
         let lookup = ModuleLookup::within_project(self.file.module_sources());
         self.written
             .iter()

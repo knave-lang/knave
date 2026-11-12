@@ -3,14 +3,12 @@ use std::ops::Range;
 use super::chunk_layout::ChunkLayout;
 use super::code_chunk::CodeChunk;
 use super::code_layout::CodeLayout;
-use super::docstring_regions::DocstringRegions;
-use super::markdown_fence::MarkdownFence;
+use super::format_rules::FormatRules;
 use super::region_layout::RegionLayout;
-use super::shapes::ShapeCatalog;
 use super::written_gap::WrittenGap;
 
 pub struct CodeRegion<'s, 'l> {
-    shapes: &'s ShapeCatalog,
+    rules: FormatRules<'s>,
     lines: &'l [String],
     indent: usize,
     layout: CodeLayout,
@@ -18,9 +16,9 @@ pub struct CodeRegion<'s, 'l> {
 }
 
 impl<'s, 'l> CodeRegion<'s, 'l> {
-    pub fn new(shapes: &'s ShapeCatalog, lines: &'l [String], layout: CodeLayout) -> Self {
+    pub fn new(rules: FormatRules<'s>, lines: &'l [String], layout: CodeLayout) -> Self {
         Self {
-            shapes,
+            rules,
             lines,
             indent: Self::least_indentation(lines),
             layout,
@@ -48,14 +46,14 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
     fn writes_a_fence_line(&self) -> bool {
         self.laid_out
             .iter()
-            .any(|line| MarkdownFence::opening(line).is_some())
+            .any(|line| self.rules.syntax.opening_fence(line).is_some())
     }
 
     fn push_chunks(&mut self) -> Result<(), RegionLayout> {
         let mut chunk_start = 0;
         let mut index = 0;
         while index < self.lines.len() {
-            if DocstringRegions::is_arrow_line(&self.lines[index]) {
+            if self.rules.syntax.is_arrow_line(&self.lines[index]) {
                 self.push_chunk(chunk_start..index)?;
                 index = self.push_result(index);
                 chunk_start = index;
@@ -83,7 +81,7 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
             .map(|line| line.get(self.indent..).unwrap_or_default())
             .collect::<Vec<_>>()
             .join("\n");
-        match CodeChunk::new(self.shapes, self.indent, self.layout).lay_out(text.trim_end()) {
+        match CodeChunk::new(self.rules.shapes, self.indent, self.layout).lay_out(text.trim_end()) {
             ChunkLayout::LaidOut(lines) => {
                 self.laid_out.extend(lines);
                 Ok(())
@@ -106,7 +104,7 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
     fn continues_result(&self, index: usize) -> bool {
         let line = &self.lines[index];
         let indentation = line.len() - line.trim_start().len();
-        !self.is_blank(index) && indentation > self.indent && !DocstringRegions::is_arrow_line(line)
+        !self.is_blank(index) && indentation > self.indent && !self.rules.syntax.is_arrow_line(line)
     }
 
     fn is_blank(&self, index: usize) -> bool {
@@ -119,16 +117,20 @@ mod tests {
     use super::{CodeRegion, RegionLayout};
     use crate::format::code_layout::CodeLayout;
     use crate::format::code_spacing::CodeSpacing;
+    use crate::format::docstring_syntax::{DocstringSyntax, DocstringSyntaxFixture};
+    use crate::format::format_rules::FormatRules;
     use crate::format::shapes::ShapeCatalog;
 
     struct RegionFixture {
         shapes: ShapeCatalog,
+        syntax: DocstringSyntax,
     }
 
     impl RegionFixture {
         fn new() -> Self {
             Self {
                 shapes: ShapeCatalog::default(),
+                syntax: DocstringSyntaxFixture::syntax(),
             }
         }
 
@@ -138,7 +140,12 @@ mod tests {
 
         fn lay_out_spaced(&self, text: &str, spacing: CodeSpacing) -> RegionLayout {
             let lines: Vec<String> = text.split('\n').map(str::to_string).collect();
-            CodeRegion::new(&self.shapes, &lines, CodeLayout { column: 2, spacing }).lay_out()
+            let layout = CodeLayout { column: 2, spacing };
+            let rules = FormatRules {
+                shapes: &self.shapes,
+                syntax: &self.syntax,
+            };
+            CodeRegion::new(rules, &lines, layout).lay_out()
         }
     }
 

@@ -1,5 +1,6 @@
 use super::code_spacing::CodeSpacing;
 use super::docstring_regions::DocstringRegions;
+use super::docstring_syntax::DocstringSyntax;
 use super::import_order::ImportList;
 use super::shapes::ShapeCatalog;
 use crate::reader::{Form, FormKind, TokenKind, TokenScan};
@@ -7,9 +8,11 @@ use crate::stack::DeepRecursion;
 
 pub struct MeaningComparison<'s> {
     shapes: &'s ShapeCatalog,
+    syntax: &'s DocstringSyntax,
 }
 
 struct Docstring<'t> {
+    syntax: &'t DocstringSyntax,
     text: &'t str,
 }
 
@@ -20,8 +23,8 @@ enum DocstringPart {
 }
 
 impl<'s> MeaningComparison<'s> {
-    pub fn new(shapes: &'s ShapeCatalog) -> Self {
-        Self { shapes }
+    pub fn new(shapes: &'s ShapeCatalog, syntax: &'s DocstringSyntax) -> Self {
+        Self { shapes, syntax }
     }
 
     pub fn same_forms(&self, written: &[Form], formatted: &[Form]) -> bool {
@@ -79,13 +82,20 @@ impl<'s> MeaningComparison<'s> {
             (FormKind::Symbol(left), FormKind::Symbol(right)) => left.name() == right.name(),
             (FormKind::Number(left), FormKind::Number(right)) => left.text() == right.text(),
             (FormKind::String(left), FormKind::String(right)) if is_docstring => {
-                Docstring { text: left }.parts() == Docstring { text: right }.parts()
+                self.docstring(left).parts() == self.docstring(right).parts()
             }
             (FormKind::String(left), FormKind::String(right)) => left == right,
             (FormKind::List(left), FormKind::List(right)) => {
                 DeepRecursion::guard(|| self.same_lists(left, right))
             }
             _ => false,
+        }
+    }
+
+    fn docstring<'t>(&'t self, text: &'t str) -> Docstring<'t> {
+        Docstring {
+            syntax: self.syntax,
+            text,
         }
     }
 
@@ -122,7 +132,7 @@ impl Docstring<'_> {
         let lines: Vec<String> = self.dedented().split('\n').map(str::to_string).collect();
         let mut parts = Vec::new();
         let mut copied = 0;
-        for code in DocstringRegions::code_of(&lines, CodeSpacing::Separated) {
+        for code in DocstringRegions::code_of(self.syntax, &lines, CodeSpacing::Separated) {
             let region = code.range;
             parts.extend(
                 lines[copied..region.start]
@@ -179,45 +189,55 @@ impl Docstring<'_> {
 #[cfg(test)]
 mod tests {
     use super::{Docstring, DocstringPart};
+    use crate::format::docstring_syntax::{DocstringSyntax, DocstringSyntaxFixture};
+
+    struct DocstringFixture {
+        syntax: DocstringSyntax,
+    }
+
+    impl DocstringFixture {
+        fn new() -> Self {
+            Self {
+                syntax: DocstringSyntaxFixture::syntax(),
+            }
+        }
+
+        fn docstring<'t>(&'t self, text: &'t str) -> Docstring<'t> {
+            Docstring {
+                syntax: &self.syntax,
+                text,
+            }
+        }
+    }
 
     #[test]
     fn dedenting_removes_the_indentation_that_later_lines_share() {
-        let docstring = Docstring {
-            text: "Doubles.\n\n    Works on\n      any number.",
-        };
+        let fixture = DocstringFixture::new();
+        let docstring = fixture.docstring("Doubles.\n\n    Works on\n      any number.");
         assert_eq!(docstring.dedented(), "Doubles.\n\nWorks on\n  any number.");
     }
 
     #[test]
     fn laid_out_code_keeps_the_parts_of_a_docstring() {
-        let written = Docstring {
-            text: "Pads.\n\n  (pad   1)\n  => 1",
-        };
-        let laid_out = Docstring {
-            text: "Pads.\n\n  (pad 1)\n  => 1",
-        };
+        let fixture = DocstringFixture::new();
+        let written = fixture.docstring("Pads.\n\n  (pad   1)\n  => 1");
+        let laid_out = fixture.docstring("Pads.\n\n  (pad 1)\n  => 1");
         assert_eq!(written.parts(), laid_out.parts());
     }
 
     #[test]
     fn moved_prose_changes_the_parts_of_a_docstring() {
-        let written = Docstring {
-            text: "Pads.\n\n  Some   prose.",
-        };
-        let laid_out = Docstring {
-            text: "Pads.\n\n  Some prose.",
-        };
+        let fixture = DocstringFixture::new();
+        let written = fixture.docstring("Pads.\n\n  Some   prose.");
+        let laid_out = fixture.docstring("Pads.\n\n  Some prose.");
         assert_ne!(written.parts(), laid_out.parts());
     }
 
     #[test]
     fn changed_code_changes_the_parts_of_a_docstring() {
-        let written = Docstring {
-            text: "Pads.\n\n  (pad 1)\n  => 1",
-        };
-        let laid_out = Docstring {
-            text: "Pads.\n\n  (pad 2)\n  => 1",
-        };
+        let fixture = DocstringFixture::new();
+        let written = fixture.docstring("Pads.\n\n  (pad 1)\n  => 1");
+        let laid_out = fixture.docstring("Pads.\n\n  (pad 2)\n  => 1");
         assert_ne!(written.parts(), laid_out.parts());
         assert!(matches!(written.parts()[2], DocstringPart::Code(_)));
     }

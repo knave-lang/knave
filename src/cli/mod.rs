@@ -28,6 +28,7 @@ mod doc_write;
 mod dropped_definitions;
 mod dropped_documents;
 mod edited_lines;
+mod embedded_prelude;
 mod emission;
 mod emit;
 mod enter_key;
@@ -117,6 +118,8 @@ mod user_label_output;
 mod value_marker;
 mod whole_characters;
 mod working_directory;
+
+pub use embedded_prelude::EmbeddedPrelude;
 
 use std::env;
 use std::ffi::OsString;

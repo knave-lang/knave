@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use knave::cli::EmbeddedPrelude;
 use knave::format::{FormatFailure, ModuleLookup, SourceFormatter};
 use knave::language::Language;
 use knave::source::SourceMap;
@@ -32,7 +33,7 @@ impl FormatFailures {
             root: PathBuf::from(env!("CARGO_MANIFEST_DIR")),
         };
         let started = Instant::now();
-        let mut formatter = SourceFormatter::default();
+        let mut formatter = EmbeddedPrelude::source_formatter();
         let paths = sources.files(&sources.root);
         let failed = paths
             .iter()

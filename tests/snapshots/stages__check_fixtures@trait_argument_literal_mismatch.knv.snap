@@ -10,3 +10,43 @@ error[L0404]: `(vec i64)` does not implement `holds`
    |           ^^^^^^ this needs `holds`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
+
+error[L0404]: `(vec string)` does not implement `holds`
+  --> check/trait_argument_literal_mismatch.knv:14:11
+   |
+14 |   (holds? names 3))
+   |           ^^^^^ this needs `holds`
+   |
+   = note: `holds` is implemented for: (with (where (item) (vec item)) item)
+
+error[L0404]: `(vec (option u8))` does not implement `holds`
+  --> check/trait_argument_literal_mismatch.knv:17:11
+   |
+17 |   (holds? options (some 0.5)))
+   |           ^^^^^^^ this needs `holds`
+   |
+   = note: `holds` is implemented for: (with (where (item) (vec item)) item)
+
+error[L0404]: `(vec i64)` does not implement `holds`
+  --> check/trait_argument_literal_mismatch.knv:20:11
+   |
+20 |   (holds? scores (pair 3 4)))
+   |           ^^^^^^ this needs `holds`
+   |
+   = note: `holds` is implemented for: (with (where (item) (vec item)) item)
+
+error[L0404]: `(vec (pair u8 string))` does not implement `holds`
+  --> check/trait_argument_literal_mismatch.knv:23:11
+   |
+23 |   (holds? rows (pair 3 true)))
+   |           ^^^^ this needs `holds`
+   |
+   = note: `holds` is implemented for: (with (where (item) (vec item)) item)
+
+error[L0404]: `(vec string)` does not implement `holds`
+  --> check/trait_argument_literal_mismatch.knv:27:11
+   |
+27 |   (holds? names 3)
+   |           ^^^^^ this needs `holds`
+   |
+   = note: `holds` is implemented for: (with (where (item) (vec item)) item)

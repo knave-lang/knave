@@ -1,0 +1,26 @@
+(deftrait holds
+  (rust "Holds")
+  (where () (with (vec i64) i64))
+  (where () (with (vec i64) u8)))
+
+(def holds?
+  (rust "{0}.holds(&{&1})"
+    (where ((whole (holds part)) part)
+      (fn ((ref whole) part) bool))))
+
+(defn has-three? ((scores (vec i64)))
+  (holds? scores 3))
+
+(deftrait adds
+  (rust "std::ops::Add")
+  (associated (total left) "Output")
+  (where () i64 (total i64))
+  (where () (with i64 f64) (total f64)))
+
+(def add-up
+  (rust "{0} + {1}"
+    (where ((left (adds right)) right)
+      (fn (left right) (total left)))))
+
+(defn plus (left right)
+  (add-up left right))

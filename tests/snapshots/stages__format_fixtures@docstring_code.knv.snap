@@ -30,6 +30,15 @@ input_file: tests/fixtures/format/docstring_code.knv
   fn   kept(x: i64) -> i64 { x }
   ```
 
+  ````
+  ```
+  (twice   3)
+  ```
+  ````
+
+  (twice 3) is prose, because a form shares its line
+  => 6
+
   ; a comment makes this paragraph prose
   (twice   3)
   => 6"
@@ -92,6 +101,15 @@ input_file: tests/fixtures/format/docstring_code.knv
   fn   kept(x: i64) -> i64 { x }
   ```
 
+  ````
+  ```
+  (twice   3)
+  ```
+  ````
+
+  (twice 3) is prose, because a form shares its line
+  => 6
+
   ; a comment makes this paragraph prose
   (twice   3)
   => 6"
@@ -129,17 +147,17 @@ input_file: tests/fixtures/format/docstring_code.knv
 
 ---
 warning[L0109]: this docstring code does not read, so `fmt` leaves it as written
-  --> format/docstring_code.knv:43:3
+  --> format/docstring_code.knv:52:3
    |
-43 |   (missing   close
+52 |   (missing   close
    |   ^^^^^^^^^^^^^^^^ the code from this line on does not read as forms
    |
    = help: close each list and string, or name the code's language after the fence's backticks, as in ```rust
 
 warning[L0109]: this docstring code does not read, so `fmt` leaves it as written
-  --> format/docstring_code.knv:46:3
+  --> format/docstring_code.knv:55:3
    |
-46 |   (twice   3
+55 |   (twice   3
    |   ^^^^^^^^^^ the code from this line on does not read as forms
    |
    = help: close each list and string, or name the code's language after the fence's backticks, as in ```rust

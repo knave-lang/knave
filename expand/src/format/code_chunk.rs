@@ -1,10 +1,11 @@
 use super::block::Block;
+use super::chunk_layout::ChunkLayout;
 use super::code_layout::CodeLayout;
 use super::import_group::ImportGroup;
 use super::layout::{LaidOut, LayoutEngine};
 use super::shapes::ShapeCatalog;
 use super::syntax_tree::{Comment, Entry, SyntaxTree};
-use crate::reader::Reader;
+use crate::reader::{Form, Reader};
 use crate::source::SourceMap;
 
 pub struct CodeChunk<'s> {
@@ -28,20 +29,32 @@ impl<'s> CodeChunk<'s> {
         }
     }
 
-    pub fn lay_out(mut self, text: &str) -> Option<Vec<String>> {
-        Self::reads(text).then_some(())?;
+    pub fn lay_out(mut self, text: &str) -> ChunkLayout {
+        let Some(forms) = Self::read(text) else {
+            return ChunkLayout::Unreadable;
+        };
+        if self.layout.spacing.needs_a_line_per_form() && !Self::ends_each_line(text, &forms) {
+            return ChunkLayout::Prose;
+        }
         let tree = SyntaxTree::build(text);
         for (position, entry) in tree.entries.iter().enumerate() {
             self.push_entry(entry, position);
         }
         self.push_closing_comments(&tree.closing_comments);
-        Some(self.lines)
+        ChunkLayout::LaidOut(self.lines)
     }
 
-    fn reads(text: &str) -> bool {
+    fn read(text: &str) -> Option<Vec<Form>> {
         let mut sources = SourceMap::default();
         let source = sources.add(Self::SOURCE_NAME, text);
-        Reader::new(sources.file(source)).read().is_ok()
+        Reader::new(sources.file(source)).read().ok()
+    }
+
+    fn ends_each_line(text: &str, forms: &[Form]) -> bool {
+        forms.windows(2).all(|pair| {
+            let between = pair[0].span().range().end..pair[1].span().range().start;
+            text[between].contains('\n')
+        })
     }
 
     fn push_entry(&mut self, entry: &Entry, position: usize) {
@@ -120,7 +133,7 @@ impl<'s> CodeChunk<'s> {
 
 #[cfg(test)]
 mod tests {
-    use super::CodeChunk;
+    use super::{ChunkLayout, CodeChunk};
     use crate::format::code_layout::CodeLayout;
     use crate::format::code_spacing::CodeSpacing;
     use crate::format::shapes::ShapeCatalog;
@@ -141,6 +154,13 @@ mod tests {
         }
 
         fn lay_out_spaced(&self, text: &str, spacing: CodeSpacing) -> Option<Vec<String>> {
+            match self.layout(text, spacing) {
+                ChunkLayout::LaidOut(lines) => Some(lines),
+                ChunkLayout::Unreadable | ChunkLayout::Prose => None,
+            }
+        }
+
+        fn layout(&self, text: &str, spacing: CodeSpacing) -> ChunkLayout {
             let layout = CodeLayout { column: 2, spacing };
             CodeChunk::new(&self.shapes, 4, layout).lay_out(text)
         }
@@ -150,7 +170,7 @@ mod tests {
     fn each_form_takes_its_own_lines_at_the_chunk_indent() {
         let fixture = ChunkFixture::new();
         assert_eq!(
-            fixture.lay_out("(f   1)  (g 2) ; why"),
+            fixture.lay_out("(f   1)\n(g 2) ; why"),
             Some(vec!["    (f 1)".to_string(), "    (g 2) ; why".to_string()])
         );
     }
@@ -197,8 +217,34 @@ mod tests {
     }
 
     #[test]
-    fn code_that_does_not_read_lays_out_to_nothing() {
-        assert_eq!(ChunkFixture::new().lay_out("(f 1"), None);
+    fn code_that_does_not_read_is_unreadable() {
+        let fixture = ChunkFixture::new();
+        assert!(matches!(
+            fixture.layout("(f 1", CodeSpacing::Written),
+            ChunkLayout::Unreadable
+        ));
+    }
+
+    #[test]
+    fn an_example_with_two_forms_on_a_line_is_prose() {
+        let fixture = ChunkFixture::new();
+        assert!(matches!(
+            fixture.layout("(see below) and more", CodeSpacing::Written),
+            ChunkLayout::Prose
+        ));
+    }
+
+    #[test]
+    fn a_fence_with_two_forms_on_a_line_lays_them_out() {
+        let fixture = ChunkFixture::new();
+        assert_eq!(
+            fixture.lay_out_spaced("(f 1) (g 2)", CodeSpacing::Separated),
+            Some(vec![
+                "    (f 1)".to_string(),
+                String::new(),
+                "    (g 2)".to_string()
+            ])
+        );
     }
 
     #[test]

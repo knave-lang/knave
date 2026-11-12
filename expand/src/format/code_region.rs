@@ -1,8 +1,11 @@
 use std::ops::Range;
 
+use super::chunk_layout::ChunkLayout;
 use super::code_chunk::CodeChunk;
 use super::code_layout::CodeLayout;
 use super::docstring_regions::DocstringRegions;
+use super::markdown_fence::MarkdownFence;
+use super::region_layout::RegionLayout;
 use super::shapes::ShapeCatalog;
 
 pub struct CodeRegion<'s, 'l> {
@@ -33,7 +36,21 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
             .unwrap_or(0)
     }
 
-    pub fn lay_out(mut self) -> Result<Vec<String>, usize> {
+    pub fn lay_out(mut self) -> RegionLayout {
+        match self.push_chunks() {
+            Ok(()) if self.writes_a_fence_line() => RegionLayout::Prose,
+            Ok(()) => RegionLayout::LaidOut(self.laid_out),
+            Err(stop) => stop,
+        }
+    }
+
+    fn writes_a_fence_line(&self) -> bool {
+        self.laid_out
+            .iter()
+            .any(|line| MarkdownFence::opening(line).is_some())
+    }
+
+    fn push_chunks(&mut self) -> Result<(), RegionLayout> {
         let mut chunk_start = 0;
         let mut index = 0;
         while index < self.lines.len() {
@@ -45,11 +62,10 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
                 index += 1;
             }
         }
-        self.push_chunk(chunk_start..self.lines.len())?;
-        Ok(self.laid_out)
+        self.push_chunk(chunk_start..self.lines.len())
     }
 
-    fn push_chunk(&mut self, chunk: Range<usize>) -> Result<(), usize> {
+    fn push_chunk(&mut self, chunk: Range<usize>) -> Result<(), RegionLayout> {
         let Some(first) = chunk.clone().find(|line| !self.is_blank(*line)) else {
             return Ok(());
         };
@@ -62,11 +78,14 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
             .map(|line| line.get(self.indent..).unwrap_or_default())
             .collect::<Vec<_>>()
             .join("\n");
-        let laid_out = CodeChunk::new(self.shapes, self.indent, self.layout)
-            .lay_out(text.trim_end())
-            .ok_or(first)?;
-        self.laid_out.extend(laid_out);
-        Ok(())
+        match CodeChunk::new(self.shapes, self.indent, self.layout).lay_out(text.trim_end()) {
+            ChunkLayout::LaidOut(lines) => {
+                self.laid_out.extend(lines);
+                Ok(())
+            }
+            ChunkLayout::Unreadable => Err(RegionLayout::Unreadable(first)),
+            ChunkLayout::Prose => Err(RegionLayout::Prose),
+        }
     }
 
     fn push_result(&mut self, arrow: usize) -> usize {
@@ -92,7 +111,7 @@ impl<'s, 'l> CodeRegion<'s, 'l> {
 
 #[cfg(test)]
 mod tests {
-    use super::CodeRegion;
+    use super::{CodeRegion, RegionLayout};
     use crate::format::code_layout::CodeLayout;
     use crate::format::code_spacing::CodeSpacing;
     use crate::format::shapes::ShapeCatalog;
@@ -108,11 +127,11 @@ mod tests {
             }
         }
 
-        fn lay_out(&self, text: &str) -> Result<Vec<String>, usize> {
+        fn lay_out(&self, text: &str) -> RegionLayout {
             self.lay_out_spaced(text, CodeSpacing::Written)
         }
 
-        fn lay_out_spaced(&self, text: &str, spacing: CodeSpacing) -> Result<Vec<String>, usize> {
+        fn lay_out_spaced(&self, text: &str, spacing: CodeSpacing) -> RegionLayout {
             let lines: Vec<String> = text.split('\n').map(str::to_string).collect();
             CodeRegion::new(&self.shapes, &lines, CodeLayout { column: 2, spacing }).lay_out()
         }
@@ -123,7 +142,7 @@ mod tests {
         let fixture = RegionFixture::new();
         assert_eq!(
             fixture.lay_out("  (f   1)\n\n  =>   (some  1)"),
-            Ok(vec!["  (f 1)".to_string(), "  =>   (some  1)".to_string()])
+            RegionLayout::LaidOut(vec!["  (f 1)".to_string(), "  =>   (some  1)".to_string()])
         );
     }
 
@@ -132,7 +151,7 @@ mod tests {
         let fixture = RegionFixture::new();
         assert_eq!(
             fixture.lay_out("(f 1)\n=> (vec 1\n        2)\n(g  2)\n=> 3"),
-            Ok(vec![
+            RegionLayout::LaidOut(vec![
                 "(f 1)".to_string(),
                 "=> (vec 1".to_string(),
                 "        2)".to_string(),
@@ -147,7 +166,7 @@ mod tests {
         let fixture = RegionFixture::new();
         assert_eq!(
             fixture.lay_out("(f 1)\n=> 1\n\n(g 2)"),
-            Ok(vec![
+            RegionLayout::LaidOut(vec![
                 "(f 1)".to_string(),
                 "=> 1".to_string(),
                 String::new(),
@@ -159,7 +178,19 @@ mod tests {
     #[test]
     fn code_that_does_not_read_names_its_first_line() {
         let fixture = RegionFixture::new();
-        assert_eq!(fixture.lay_out("(f 1)\n=> 1\n\n(g 2\n=> 2"), Err(3));
+        assert_eq!(
+            fixture.lay_out("(f 1)\n=> 1\n\n(g 2\n=> 2"),
+            RegionLayout::Unreadable(3)
+        );
+    }
+
+    #[test]
+    fn an_example_whose_form_shares_its_line_is_prose() {
+        let fixture = RegionFixture::new();
+        assert_eq!(
+            fixture.lay_out("(see below) and more\n=> 7"),
+            RegionLayout::Prose
+        );
     }
 
     #[test]
@@ -167,13 +198,22 @@ mod tests {
         let fixture = RegionFixture::new();
         assert_eq!(
             fixture.lay_out_spaced("(f 1)\n=> 1\n(g 2)\n\n=> 2", CodeSpacing::Separated),
-            Ok(vec![
+            RegionLayout::LaidOut(vec![
                 "(f 1)".to_string(),
                 "=> 1".to_string(),
                 String::new(),
                 "(g 2)".to_string(),
                 "=> 2".to_string()
             ])
+        );
+    }
+
+    #[test]
+    fn code_that_writes_a_fence_line_is_prose() {
+        let fixture = RegionFixture::new();
+        assert_eq!(
+            fixture.lay_out_spaced("~~~\n(exit 1)\n=> 7", CodeSpacing::Separated),
+            RegionLayout::Prose
         );
     }
 }

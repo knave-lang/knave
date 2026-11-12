@@ -16,6 +16,7 @@ mod format_rules;
 mod import_group;
 mod import_join;
 mod import_order;
+mod kept_as_written;
 mod laid_out_token;
 mod layout;
 mod list_plan;
@@ -31,7 +32,6 @@ mod tree_docstrings;
 mod unreadable_cause;
 mod unreadable_code;
 mod unreadable_span;
-mod written_code_guard;
 mod written_gap;
 
 pub use docstring_syntax::DocstringSyntax;

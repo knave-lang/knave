@@ -165,4 +165,22 @@ mod tests {
         assert!(report.contains("seed-4"));
         assert!(!report.contains("seed-0") && !report.contains("seed-3"));
     }
+
+    #[test]
+    fn reduces_one_finding_per_signature_within_a_run() {
+        let findings = [
+            FindingFixture::seeded(Seed::from(0), &["E0716"]),
+            FindingFixture::seeded(Seed::from(1), &["E0716"]),
+        ];
+        let reduced = ReductionPlan::before_the_loan_rule(10, 10).reduce(
+            &PlanFixture::harness(),
+            &findings,
+            &ReportedSignatures::default(),
+        );
+        let report = reduced
+            .report_outside_known_classes()
+            .expect("seed-0 is new");
+        assert!(report.contains("seed-0"));
+        assert!(!report.contains("seed-1"));
+    }
 }

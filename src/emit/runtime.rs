@@ -11,6 +11,8 @@ enum RuntimePart {
     Float,
     Integer,
     Sequence,
+    Contains,
+    Join,
     MapSequence,
     Io,
     Exit,
@@ -44,12 +46,14 @@ impl RuntimePart {
         "eprintln!(",
         "std::io::stderr(",
     ];
-    const NAMED: [(&'static str, RuntimePart); 24] = [
+    const NAMED: [(&'static str, RuntimePart); 26] = [
         ("Number", RuntimePart::Number),
         ("Signed", RuntimePart::Signed),
         ("Float", RuntimePart::Float),
         ("Integer", RuntimePart::Integer),
         ("Sequence", RuntimePart::Sequence),
+        ("Contains", RuntimePart::Contains),
+        ("Join", RuntimePart::Join),
         ("read_line", RuntimePart::Io),
         ("exit", RuntimePart::Exit),
         ("Source", RuntimePart::Source),
@@ -227,6 +231,8 @@ impl RuntimeModule {
     const FLOAT: &'static str = include_str!("../../prelude/runtime/float.rs");
     const INTEGER: &'static str = include_str!("../../prelude/runtime/integer.rs");
     const SEQUENCE: &'static str = include_str!("../../prelude/runtime/sequence.rs");
+    const CONTAINS: &'static str = include_str!("../../prelude/runtime/contains.rs");
+    const JOIN: &'static str = include_str!("../../prelude/runtime/join.rs");
     const MAP_SEQUENCE: &'static str = include_str!("../../prelude/runtime/map_sequence.rs");
     const IO: &'static str = include_str!("../../prelude/runtime/io.rs");
     const EXIT: &'static str = include_str!("../../prelude/runtime/exit.rs");
@@ -251,11 +257,13 @@ impl RuntimeModule {
     const MAX: &'static str = include_str!("../../prelude/runtime/max.rs");
     const MIN: &'static str = include_str!("../../prelude/runtime/min.rs");
     const START_UP_CALL: &'static str = "crate::rt::restore_default_sigpipe();";
-    const FIXED_PARTS: [(RuntimePart, &'static str); 26] = [
+    const FIXED_PARTS: [(RuntimePart, &'static str); 28] = [
         (RuntimePart::Signed, Self::SIGNED),
         (RuntimePart::Float, Self::FLOAT),
         (RuntimePart::Integer, Self::INTEGER),
         (RuntimePart::Sequence, Self::SEQUENCE),
+        (RuntimePart::Contains, Self::CONTAINS),
+        (RuntimePart::Join, Self::JOIN),
         (RuntimePart::MapSequence, Self::MAP_SEQUENCE),
         (RuntimePart::Io, Self::IO),
         (RuntimePart::Exit, Self::EXIT),

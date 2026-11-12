@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/join_vectors_of_text.knv
+---
+a-b-c
+ana, bo
+2
+x+y
+a|b

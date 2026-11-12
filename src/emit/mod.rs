@@ -2,6 +2,7 @@ mod assigned_in_place;
 mod bound_before;
 mod callee_definitions;
 mod callee_parameters;
+mod clause_choice;
 mod emitted_value;
 mod expressions;
 mod fragment;

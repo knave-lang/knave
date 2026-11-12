@@ -44,7 +44,11 @@ mod expand;
 mod expansion;
 mod explanation_page;
 #[cfg(test)]
+mod fake_crates;
+#[cfg(test)]
 mod fake_programs;
+#[cfg(test)]
+mod fake_stages;
 mod finished_program;
 mod fmt;
 mod front_end_stack;

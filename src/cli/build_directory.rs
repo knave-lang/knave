@@ -43,3 +43,32 @@ impl BuildDirectory {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::BuildDirectory;
+    use crate::cli::crate_name::CrateName;
+    use crate::language::Language;
+
+    #[test]
+    fn roots_builds_in_a_language_directory_under_the_build_parent() {
+        assert_eq!(
+            BuildDirectory::root(),
+            Path::new(BuildDirectory::PARENT).join(Language::NAME)
+        );
+    }
+
+    #[test]
+    fn mirrors_an_entry_directory_under_the_root() {
+        let directory = BuildDirectory::new(BuildDirectory::root(), "/work".into());
+        assert_eq!(
+            directory.for_entry(
+                Path::new("/work/shapes"),
+                &CrateName::of(Path::new("geometry"))
+            ),
+            BuildDirectory::root().join("shapes").join("geometry")
+        );
+    }
+}

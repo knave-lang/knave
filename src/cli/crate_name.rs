@@ -26,3 +26,21 @@ impl CrateName {
             .unwrap_or_default()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::CrateName;
+
+    #[test]
+    fn replaces_each_character_rust_rejects_in_the_file_stem() {
+        let name = CrateName::of(Path::new("shapes/two-dimensional.knv"));
+        assert_eq!(name.as_str(), "two_dimensional");
+    }
+
+    #[test]
+    fn is_empty_for_a_path_without_a_file_stem() {
+        assert_eq!(CrateName::of(Path::new("")).as_str(), "");
+    }
+}

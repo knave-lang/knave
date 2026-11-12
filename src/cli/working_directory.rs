@@ -32,3 +32,29 @@ impl WorkingDirectory {
         ExitStatus::UsageError
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::WorkingDirectory;
+    use crate::cli::exit_status::ExitStatus;
+    use crate::cli::temporary_directory::TemporaryDirectory;
+
+    #[test]
+    fn resolves_a_directory_to_its_absolute_path() {
+        let directory = TemporaryDirectory::create().expect("a temporary directory");
+        let resolved = WorkingDirectory::resolve(directory.path());
+        assert!(resolved.is_ok_and(|resolved| resolved.is_absolute()));
+    }
+
+    #[test]
+    fn rejects_a_missing_directory_as_a_usage_error() {
+        let directory = TemporaryDirectory::create().expect("a temporary directory");
+        let missing = directory.path().join("missing");
+        assert_eq!(
+            WorkingDirectory::resolve(Path::new(&missing)),
+            Err(ExitStatus::UsageError)
+        );
+    }
+}

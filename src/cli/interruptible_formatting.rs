@@ -35,49 +35,23 @@ impl<'a> InterruptibleFormatting<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
     use std::time::Duration;
 
     use super::InterruptibleFormatting;
     use crate::build::EmittedFormatting;
-    use crate::cli::checking::Checking;
-    use crate::cli::entry_span::EntrySpan;
-    use crate::cli::expansion::Expansion;
     use crate::cli::fake_programs::FakePrograms;
+    use crate::cli::fake_stages::FakeStages;
     use crate::cli::interruption::Interruption;
-    use crate::cli::program_file::ProgramFile;
-    use crate::cli::recorded_output::RecordedOutput;
-    use crate::cli::source_report::SourceReport;
-    use crate::cli::stage_work::StageWork;
-    use crate::emit::{EmittedCrate, RustEmitter};
-    use crate::source::SourceMap;
 
     struct FormattingFixture {
         interruption: Interruption,
     }
 
     impl FormattingFixture {
-        const MODULE: &str = "geometry.knv";
-
         fn new() -> Self {
             Self {
                 interruption: Interruption::default(),
             }
-        }
-
-        fn emitted() -> EmittedCrate {
-            let mut sources = SourceMap::default();
-            let mut work = StageWork::default();
-            let output = RecordedOutput::default();
-            let file = ProgramFile::beside_itself(PathBuf::from(Self::MODULE));
-            let entry = sources.add(Self::MODULE, FakePrograms::PRINTS_A_SUM);
-            let program = Expansion::new(&mut sources, &mut work, &output)
-                .expand(&file, entry)
-                .expect("the fake program expands");
-            let checked = Checking::new(SourceReport::new(&sources, &output), &mut work)
-                .check(&program)
-                .expect("the fake program checks");
-            RustEmitter::emit(&checked, EntrySpan::start()).expect("the fake program emits")
         }
 
         fn formatting(&self, limit: Duration) -> InterruptibleFormatting<'_> {
@@ -90,7 +64,7 @@ mod tests {
         let fixture = FormattingFixture::new();
         let written = fixture
             .formatting(EmittedFormatting::TIME_LIMIT)
-            .format_or_keep_unformatted(FormattingFixture::emitted());
+            .format_or_keep_unformatted(FakeStages::emitted(FakePrograms::PRINTS_A_SUM));
         assert!(written.is_ok_and(|written| written.formatting.is_some()));
     }
 
@@ -99,7 +73,7 @@ mod tests {
         let fixture = FormattingFixture::new();
         let written = fixture
             .formatting(Duration::ZERO)
-            .format_or_keep_unformatted(FormattingFixture::emitted());
+            .format_or_keep_unformatted(FakeStages::emitted(FakePrograms::PRINTS_A_SUM));
         assert!(written.is_ok_and(|written| written.formatting.is_none()));
     }
 }

@@ -100,3 +100,96 @@ impl BinaryPlace {
         self.directory
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+    use std::rc::Rc;
+
+    use super::ProgramBinary;
+    use crate::build::BuildProfile;
+    use crate::cli::build_directory::BuildDirectory;
+    use crate::cli::build_options::BuildOptions;
+    use crate::cli::fake_programs::FakePrograms;
+    use crate::cli::fake_stages::FakeStages;
+    use crate::cli::located_program::LocatedProgram;
+    use crate::cli::recorded_output::RecordedOutput;
+    use crate::cli::temporary_directory::TemporaryDirectory;
+    use crate::cli::terminal::Terminal;
+    use crate::language::Language;
+
+    struct ProgramBinaryFixture {
+        root: TemporaryDirectory,
+        terminal: Terminal,
+    }
+
+    impl ProgramBinaryFixture {
+        const PROJECT: &str = "geometry";
+        const PROJECT_FILE: &str = "(defproject geometry)\n";
+        const ENTRY: &str = "src/main.knv";
+        const CHOSEN_OUTPUT: &str = "chosen";
+
+        fn new() -> Self {
+            let root = TemporaryDirectory::create().expect("a temporary directory");
+            fs::write(
+                root.path().join(Language::project_file_name()),
+                Self::PROJECT_FILE,
+            )
+            .expect("the project file is written");
+            let entry = root.path().join(Self::ENTRY);
+            fs::create_dir_all(entry.parent().expect("the entry has a directory"))
+                .expect("the source directory is created");
+            fs::write(&entry, FakePrograms::PRINTS_A_SUM).expect("the entry is written");
+            Self {
+                root,
+                terminal: Terminal::reporting_to(Rc::new(RecordedOutput::default())),
+            }
+        }
+
+        fn build(&self, output: Option<PathBuf>) -> PathBuf {
+            let program =
+                LocatedProgram::of_file(self.root.path().join(Self::ENTRY), &self.terminal)
+                    .expect("the entry is located");
+            let options = BuildOptions {
+                profile: BuildProfile::Debug,
+                output,
+            };
+            ProgramBinary::new(&program, &options)
+                .compile(
+                    &FakeStages::emitted(FakePrograms::PRINTS_A_SUM),
+                    &self.terminal,
+                )
+                .expect("the entry builds")
+        }
+
+        fn project_binary(&self) -> PathBuf {
+            self.root
+                .path()
+                .join(BuildDirectory::root())
+                .join(Self::PROJECT)
+                .join(Self::PROJECT)
+        }
+
+        fn chosen_output(&self) -> PathBuf {
+            self.root.path().join(Self::CHOSEN_OUTPUT)
+        }
+    }
+
+    #[test]
+    fn builds_a_project_entry_under_the_project_build_directory() {
+        let fixture = ProgramBinaryFixture::new();
+        let binary = fixture.build(None);
+        assert_eq!(binary, fixture.project_binary());
+        assert!(binary.is_file());
+    }
+
+    #[test]
+    fn builds_the_program_at_the_chosen_output() {
+        let fixture = ProgramBinaryFixture::new();
+        let chosen = fixture.chosen_output();
+        let binary = fixture.build(Some(chosen.clone()));
+        assert_eq!(binary, chosen);
+        assert!(chosen.is_file());
+    }
+}

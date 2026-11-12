@@ -12,6 +12,7 @@ pub struct Shape {
     pub one_per_line: bool,
     pub arms: bool,
     pub bindings: bool,
+    pub methods: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -32,6 +33,7 @@ impl ShapeStatement {
     pub const ONE_PER_LINE_MARKER: &'static str = "one-per-line";
     pub const ARMS_MARKER: &'static str = "arms";
     pub const BINDINGS_MARKER: &'static str = "bindings";
+    pub const METHODS_MARKER: &'static str = "methods";
 
     pub fn of(form: &Form) -> Option<Self> {
         let [head, stated, markers @ ..] = form.as_list()? else {
@@ -49,6 +51,7 @@ impl ShapeStatement {
                 one_per_line: Self::has_marker(markers, Self::ONE_PER_LINE_MARKER),
                 arms: Self::has_marker(markers, Self::ARMS_MARKER),
                 bindings: Self::has_marker(markers, Self::BINDINGS_MARKER),
+                methods: Self::has_marker(markers, Self::METHODS_MARKER),
             },
         })
     }
@@ -132,7 +135,8 @@ mod tests {
                 docstring: DocstringPlace::Absent,
                 one_per_line: false,
                 arms: false,
-                bindings: false
+                bindings: false,
+                methods: false
             })
         );
     }
@@ -178,7 +182,8 @@ mod tests {
                 docstring: DocstringPlace::Absent,
                 one_per_line: true,
                 arms: false,
-                bindings: false
+                bindings: false,
+                methods: false
             })
         );
     }
@@ -193,7 +198,8 @@ mod tests {
                 docstring: DocstringPlace::Absent,
                 one_per_line: false,
                 arms: true,
-                bindings: false
+                bindings: false,
+                methods: false
             })
         );
     }
@@ -208,7 +214,24 @@ mod tests {
                 docstring: DocstringPlace::Absent,
                 one_per_line: false,
                 arms: false,
-                bindings: true
+                bindings: true,
+                methods: false
+            })
+        );
+    }
+
+    #[test]
+    fn a_methods_marker_states_methods_alone() {
+        let statement = StatementFixture::statement("(header-shape (impl trait type) :methods)");
+        assert_eq!(
+            statement.map(|statement| statement.shape),
+            Some(Shape {
+                header_length: 2,
+                docstring: DocstringPlace::Absent,
+                one_per_line: false,
+                arms: false,
+                bindings: false,
+                methods: true
             })
         );
     }

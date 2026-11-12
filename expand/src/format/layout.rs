@@ -4,6 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::block::Block;
 use super::list_plan::{Arrangement, LaterIndent, ListPlan, Unit};
+use super::list_roles::ListRoles;
 use super::measure::Measure;
 use super::shapes::ShapeCatalog;
 use super::syntax_tree::{Entry, ListNode, SyntaxNode};
@@ -31,7 +32,7 @@ pub struct LayoutEngine<'s> {
     one_line_texts: FxHashMap<usize, Option<Rc<str>>>,
     choices: FxHashMap<Placement, Choice>,
     arms: FxHashSet<usize>,
-    binding_lists: FxHashSet<usize>,
+    roles: ListRoles,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -85,7 +86,7 @@ impl<'s> LayoutEngine<'s> {
             one_line_texts: FxHashMap::default(),
             choices: FxHashMap::default(),
             arms: FxHashSet::default(),
-            binding_lists: FxHashSet::default(),
+            roles: ListRoles::default(),
         }
     }
 
@@ -159,7 +160,7 @@ impl<'s> LayoutEngine<'s> {
                 layout: ChosenLayout::Arranged(arrangement),
             };
         }
-        plan.arrangements_at(column)
+        Self::arrangements_at(&plan, column)
             .iter()
             .map(|arrangement| Choice {
                 measure: assembly.assemble(self, *arrangement),
@@ -172,6 +173,15 @@ impl<'s> LayoutEngine<'s> {
                 )
             })
             .expect("every list has an arrangement")
+    }
+
+    fn arrangements_at(plan: &ListPlan, column: usize) -> &[Arrangement] {
+        let last = plan.arrangements.len() - 1;
+        if column < Block::WIDTH {
+            &plan.arrangements
+        } else {
+            &plan.arrangements[last..]
+        }
     }
 
     fn fitting_one_line(
@@ -227,28 +237,9 @@ impl<'s> LayoutEngine<'s> {
         if let Some(plan) = self.plans.get(&list.id) {
             return Rc::clone(plan);
         }
-        let plan = Rc::new(self.fresh_plan(list));
-        self.mark_binding_list(list, &plan);
+        let plan = Rc::new(self.roles.plan(list, self.shapes));
         self.plans.insert(list.id, Rc::clone(&plan));
         plan
-    }
-
-    fn fresh_plan(&self, list: &ListNode) -> ListPlan {
-        if self.binding_lists.contains(&list.id) {
-            ListPlan::binding_list(list)
-        } else {
-            ListPlan::new(list, self.shapes)
-        }
-    }
-
-    fn mark_binding_list(&mut self, list: &ListNode, plan: &ListPlan) {
-        let binding_list = plan
-            .binding_list_entry
-            .and_then(|entry| list.entries.get(entry))
-            .and_then(|entry| entry.node.as_list());
-        if let Some(binding_list) = binding_list {
-            self.binding_lists.insert(binding_list.id);
-        }
     }
 }
 
@@ -414,6 +405,9 @@ impl<'l> ListAssembly<'l> {
         unit: Unit,
     ) {
         let indent = state.indent(self.column);
+        if self.plan.methods.takes_blank_line(unit.first_entry()) {
+            state.laid_out.push_blank();
+        }
         let comments = unit
             .entries()
             .flat_map(|entry| &self.list.entries[entry].leading_comments);

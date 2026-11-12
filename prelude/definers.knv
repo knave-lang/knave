@@ -55,7 +55,7 @@
   (declare-type-definition (head-name head))
   (trait-definition head (after-docstring head body)))
 
-(header-shape (deftrait name) :docstring)
+(header-shape (deftrait name) :docstring :methods)
 
 (defmacro deftype (head body ...)
   "Names a Rust type by a template.

@@ -148,6 +148,12 @@ impl Entry {
         }
     }
 
+    pub fn opens_with_blank_line(&self) -> bool {
+        self.leading_comments
+            .first()
+            .map_or(self.blank_before_node, |comment| comment.blank_before)
+    }
+
     pub fn keeps_blank_line(&self, index: usize) -> bool {
         index > 0 && self.blank_before_node
     }

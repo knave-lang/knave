@@ -1,5 +1,5 @@
-use super::block::Block;
 use super::docstring_place::DocstringPlace;
+use super::method_entries::MethodEntries;
 use super::shapes::{Shape, ShapeCatalog};
 use super::syntax_tree::{Entry, ListNode};
 use crate::core::{DefinitionForm, ExpressionForm, KernelForm, Keyword};
@@ -28,6 +28,7 @@ pub struct ListPlan {
     pub docstring_entry: Option<usize>,
     pub fillable_units: Vec<bool>,
     pub binding_list_entry: Option<usize>,
+    pub methods: MethodEntries,
     preferred_arrangement: Option<Arrangement>,
     one_line_allowed: bool,
     first_arm_entry: Option<usize>,
@@ -51,15 +52,30 @@ impl Arrangement {
 
 impl ListPlan {
     pub fn new(list: &ListNode, shapes: &ShapeCatalog) -> Self {
-        let head = list.head_name();
-        let shape = head.and_then(|name| shapes.of(name));
-        let kind = ListKind::of(head, shape);
+        let shape = list.head_name().and_then(|name| shapes.of(name));
+        let docstring_entry = shapes.docstring_entry(list);
+        let definer = shape.is_some_and(|shape| shape.docstring == DocstringPlace::BeforeBody);
+        let one_line_body = !definer || Self::has_one_body_form(list, shape);
+        Self {
+            one_line_allowed: docstring_entry.is_none() && one_line_body,
+            methods: MethodEntries::of(list, shape, shapes),
+            ..Self::shaped(list, shape, docstring_entry)
+        }
+    }
+
+    pub fn method(list: &ListNode) -> Self {
+        let shape = Some(MethodEntries::SHAPE);
+        Self {
+            one_line_allowed: Self::has_one_body_form(list, shape),
+            ..Self::shaped(list, shape, None)
+        }
+    }
+
+    fn shaped(list: &ListNode, shape: Option<Shape>, docstring_entry: Option<usize>) -> Self {
+        let kind = ListKind::of(list.head_name(), shape);
         let header_length = shape.map_or(0, |shape| shape.header_length);
         let units = UnitGrouping::new(&list.entries, header_length).units();
-        let docstring_entry = shapes.docstring_entry(list);
         let fills_atom_runs = !shape.is_some_and(|shape| shape.one_per_line);
-        let body_forms = list.entries.len().saturating_sub(header_length + 1);
-        let definer = shape.is_some_and(|shape| shape.docstring == DocstringPlace::BeforeBody);
         let preferred_arrangement = kind.trailing_fn_arrangement(list, &units);
         Self {
             fillable_units: units
@@ -71,9 +87,15 @@ impl ListPlan {
             arrangements: kind.arrangements(),
             docstring_entry,
             binding_list_entry: Self::binding_list_entry(shape),
-            one_line_allowed: docstring_entry.is_none() && (!definer || body_forms <= 1),
+            methods: MethodEntries::default(),
+            one_line_allowed: true,
             first_arm_entry: shape.filter(|shape| shape.arms).map(|_| header_length + 1),
         }
+    }
+
+    fn has_one_body_form(list: &ListNode, shape: Option<Shape>) -> bool {
+        let header_length = shape.map_or(0, |shape| shape.header_length);
+        list.entries.len().saturating_sub(header_length + 1) <= 1
     }
 
     pub fn binding_list(list: &ListNode) -> Self {
@@ -87,6 +109,7 @@ impl ListPlan {
             }],
             docstring_entry: None,
             binding_list_entry: None,
+            methods: MethodEntries::default(),
             preferred_arrangement: None,
             one_line_allowed: list.entries.len() <= BindingPairs::PAIR_LENGTH,
             first_arm_entry: None,
@@ -109,14 +132,6 @@ impl ListPlan {
 
     pub fn allows_one_line(&self) -> bool {
         self.one_line_allowed
-    }
-
-    pub fn arrangements_at(&self, column: usize) -> &[Arrangement] {
-        if column < Block::WIDTH {
-            &self.arrangements
-        } else {
-            &self.arrangements[self.arrangements.len() - 1..]
-        }
     }
 
     fn is_fillable(list: &ListNode, unit: Unit, docstring_entry: Option<usize>) -> bool {

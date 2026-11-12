@@ -3,7 +3,7 @@ expand/src/core/printer.rs 693
 expand/src/expand/expression.rs 1006
 expand/src/expand/module_body.rs 1995
 expand/src/expand/problems.rs 1259
-expand/src/format/layout.rs 538
+expand/src/format/layout.rs 532
 src/emit/expressions.rs 2927
 src/emit/items.rs 1675
 src/emit/plan.rs 648

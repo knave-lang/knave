@@ -1,6 +1,7 @@
 use crate::backend_verdicts::BackendVerdicts;
 use crate::checker::Checker;
 use crate::checker_without_ownership::CheckerWithoutOwnership;
+use crate::citation::Citation;
 use crate::finding::Finding;
 use crate::oracle::Oracle;
 use crate::verdict::{Rejection, Verdict};
@@ -17,12 +18,12 @@ impl Oracle for FalseOwnershipError {
     }
 
     fn judge(&self, verdicts: &BackendVerdicts) -> Option<Finding> {
-        let ownership_errors: Vec<String> = verdicts
+        let ownership_errors: Vec<Rejection> = verdicts
             .of(Checker::NAME)?
             .rejections()
             .iter()
             .filter(|rejection| rejection.is_ownership() && rejection.reached_from_main)
-            .map(Rejection::to_string)
+            .cloned()
             .collect();
         let Some(Verdict::Accepted) = verdicts.of(CheckerWithoutOwnership::NAME) else {
             return None;
@@ -33,10 +34,7 @@ impl Oracle for FalseOwnershipError {
         Some(Finding::of(
             Self::NAME,
             verdicts,
-            format!(
-                "rustc compiles what check refuses: {}",
-                ownership_errors.join(", ")
-            ),
+            Citation::new("rustc compiles what check refuses", ownership_errors),
         ))
     }
 }

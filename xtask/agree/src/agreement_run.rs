@@ -35,13 +35,12 @@ impl<'a> AgreementRun<'a> {
         results: &Mutex<RunResults>,
     ) {
         while let Some(program) = Self::next(queue) {
-            let verdicts = self.harness.verdicts(program, self.limit);
-            let findings = self.harness.findings(&verdicts);
+            let judgement = self.harness.judge(program, self.limit);
             let mut results = results
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            results.tally.count(&verdicts);
-            results.findings.extend(findings);
+            results.tally.count(&judgement.verdicts);
+            results.findings.extend(judgement.findings);
         }
     }
 

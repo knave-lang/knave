@@ -1,5 +1,6 @@
 use crate::backend_verdicts::BackendVerdicts;
 use crate::checker::Checker;
+use crate::citation::Citation;
 use crate::compiled_debug::CompiledDebug;
 use crate::finding::Finding;
 use crate::oracle::Oracle;
@@ -20,12 +21,12 @@ impl Oracle for CheckAcceptsRustcRejects {
         let Some(Verdict::Accepted) = verdicts.of(Checker::NAME) else {
             return None;
         };
-        let rustc_errors: Vec<String> = verdicts
+        let rustc_errors: Vec<Rejection> = verdicts
             .of(CompiledDebug::NAME)?
             .rejections()
             .iter()
             .filter(|rejection| rejection.is_rustc() && rejection.reached_from_main)
-            .map(Rejection::to_string)
+            .cloned()
             .collect();
         if rustc_errors.is_empty() {
             return None;
@@ -33,10 +34,7 @@ impl Oracle for CheckAcceptsRustcRejects {
         Some(Finding::of(
             Self::NAME,
             verdicts,
-            format!(
-                "check accepts and rustc rejects: {}",
-                rustc_errors.join(", ")
-            ),
+            Citation::new("check accepts and rustc rejects", rustc_errors),
         ))
     }
 }

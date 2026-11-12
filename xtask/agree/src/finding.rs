@@ -3,8 +3,11 @@ use std::io;
 use std::path::Path;
 
 use crate::backend_verdicts::BackendVerdicts;
+use crate::citation::Citation;
 use crate::finding_line::FindingLine;
+use crate::finding_signature::FindingSignature;
 use crate::subject_program::SubjectProgram;
+use crate::verdict::Rejection;
 
 #[derive(Clone, Debug)]
 pub struct Finding {
@@ -12,18 +15,24 @@ pub struct Finding {
     pub program: SubjectProgram,
     pub verdicts: BackendVerdicts,
     pub summary: String,
+    pub evidence: Vec<Rejection>,
 }
 
 impl Finding {
     const PROGRAM_EXTENSION: &'static str = "knv";
 
-    pub fn of(oracle: &'static str, verdicts: &BackendVerdicts, summary: String) -> Self {
+    pub fn of(oracle: &'static str, verdicts: &BackendVerdicts, citation: Citation) -> Self {
         Self {
             oracle,
             program: verdicts.program.clone(),
             verdicts: verdicts.clone(),
-            summary,
+            summary: citation.summary(),
+            evidence: citation.into_rejections(),
         }
+    }
+
+    pub fn signature(&self) -> FindingSignature {
+        FindingSignature::new(self.oracle, &self.evidence)
     }
 
     pub fn line(&self) -> FindingLine {

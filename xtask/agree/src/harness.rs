@@ -9,8 +9,10 @@ use crate::compiled_debug::CompiledDebug;
 use crate::false_ownership_error::FalseOwnershipError;
 use crate::finding::Finding;
 use crate::job_slots::JobSlots;
+use crate::judgement::Judgement;
 use crate::knave_compiler::KnaveCompiler;
 use crate::oracle::Oracle;
+use crate::reducer::Reducer;
 use crate::subject_program::SubjectProgram;
 
 pub struct Harness {
@@ -68,17 +70,35 @@ impl Harness {
         self.backends.iter().map(|backend| backend.name())
     }
 
-    pub fn verdicts(&self, program: SubjectProgram, limit: Duration) -> BackendVerdicts {
+    pub fn judge(&self, program: SubjectProgram, limit: Duration) -> Judgement {
         let _slot = self.slots.take();
-        let backends: Vec<&dyn Backend> = self.backends.iter().map(Box::as_ref).collect();
-        BackendVerdicts::collect(program, &backends, limit)
+        let verdicts = BackendVerdicts::collect(program, &self.backend_list(), limit);
+        let findings = self
+            .oracles
+            .iter()
+            .filter_map(|oracle| oracle.judge(&verdicts))
+            .collect();
+        Judgement { verdicts, findings }
     }
 
-    pub fn findings(&self, verdicts: &BackendVerdicts) -> Vec<Finding> {
-        self.oracles
+    pub fn reduced(&self, finding: &Finding, reducer: &dyn Reducer) -> SubjectProgram {
+        let _slot = self.slots.take();
+        match self
+            .oracles
             .iter()
-            .filter_map(|oracle| oracle.judge(verdicts))
-            .collect()
+            .find(|oracle| oracle.name() == finding.oracle)
+        {
+            Some(oracle) => reducer.shrink(
+                finding.program.clone(),
+                oracle.as_ref(),
+                &self.backend_list(),
+            ),
+            None => finding.program.clone(),
+        }
+    }
+
+    fn backend_list(&self) -> Vec<&dyn Backend> {
+        self.backends.iter().map(Box::as_ref).collect()
     }
 }
 

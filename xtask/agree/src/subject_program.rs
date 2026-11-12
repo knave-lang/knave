@@ -40,6 +40,22 @@ impl SubjectProgram {
         }
     }
 
+    pub fn with_entry_text(&self, text: String) -> Self {
+        let files = self
+            .files
+            .iter()
+            .map(|(path, old)| {
+                let kept = if path == &self.entry { &text } else { old };
+                (path.clone(), kept.clone())
+            })
+            .collect();
+        Self {
+            files,
+            forms: FormCensus::of_text(&text),
+            ..self.clone()
+        }
+    }
+
     pub fn judged_in_scratch(
         &self,
         judgement: impl FnOnce(&ScratchDirectory) -> Verdict,

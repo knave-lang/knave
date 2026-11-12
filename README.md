@@ -3,7 +3,6 @@
 [![CI](https://github.com/knave-lang/knave/actions/workflows/ci.yml/badge.svg)](https://github.com/knave-lang/knave/actions/workflows/ci.yml)
 [![release](https://img.shields.io/github/v/release/knave-lang/knave)](https://github.com/knave-lang/knave/releases/latest)
 ![line coverage](https://img.shields.io/badge/line%20coverage-99%25-brightgreen)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Nix flake](https://img.shields.io/badge/nix-flake-5277C3?logo=nixos&logoColor=white)](#develop)
 [![Rust 2024](https://img.shields.io/badge/rust-2024-B7410E?logo=rust&logoColor=white)](https://doc.rust-lang.org/edition-guide/rust-2024/)
 

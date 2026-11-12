@@ -125,7 +125,7 @@ impl SourceFormatter {
         })
         .lay_out(&lines);
         let unreadable = laid_out.unreadable.into_iter().map(|code| UnreadableSpan {
-            range: DocstringLine::written_range(&lines, code.line),
+            range: DocstringLine::page_range(&lines, code.line),
             cause: code.cause,
         });
         FormattedSource {

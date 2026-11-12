@@ -23,7 +23,7 @@ impl DocstringLine {
             .unwrap_or(0)
     }
 
-    pub fn written_range(lines: &[Self], index: usize) -> std::ops::Range<usize> {
+    pub fn page_range(lines: &[Self], index: usize) -> std::ops::Range<usize> {
         let start: usize = lines[..index].iter().map(|line| line.0.len() + 1).sum();
         let line = &lines[index];
         start + line.indentation()..start + line.0.len()
@@ -57,9 +57,9 @@ mod tests {
     }
 
     #[test]
-    fn a_written_range_covers_a_line_after_its_indentation() {
+    fn a_page_range_covers_a_line_after_its_indentation() {
         let lines = DocstringLine::split("first\n  (f 1)\nlast");
-        assert_eq!(DocstringLine::written_range(&lines, 1), 8..13);
+        assert_eq!(DocstringLine::page_range(&lines, 1), 8..13);
     }
 
     #[test]

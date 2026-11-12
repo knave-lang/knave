@@ -136,6 +136,16 @@ mod tests {
     }
 
     #[test]
+    fn recording_an_introduced_name_twice_keeps_the_first() {
+        let mut origins = MacroOrigins::default();
+        let call_site = OriginsFixture::call_site();
+        let first = OriginsFixture::span(1, 1, 2);
+        origins.record_introduced(call_site, "x", first);
+        origins.record_introduced(call_site, "x", OriginsFixture::span(1, 3, 4));
+        assert_eq!(origins.introduced(call_site, "x"), Some(first));
+    }
+
+    #[test]
     fn a_program_introduced_name_alone_is_found() {
         let mut origins = OriginsFixture::with_saved_origins();
         let call_site = OriginsFixture::span(5, 1, 2);

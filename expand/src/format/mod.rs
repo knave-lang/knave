@@ -4,9 +4,9 @@ mod code_layout;
 mod code_region;
 mod code_spacing;
 mod docstring_code;
+mod docstring_layouts;
 mod docstring_line;
 mod docstring_lines;
-mod docstring_memo;
 mod docstring_part;
 mod docstring_place;
 mod docstring_regions;
@@ -45,8 +45,8 @@ use crate::source::{SourceFile, SourceMap};
 use code_layout::CodeLayout;
 use code_spacing::CodeSpacing;
 use docstring_code::DocstringCode;
+use docstring_layouts::DocstringLayouts;
 use docstring_line::DocstringLine;
-use docstring_memo::DocstringMemo;
 use format_rules::FormatRules;
 use import_order::ImportSorter;
 use layout::LayoutEngine;
@@ -103,9 +103,9 @@ impl SourceFormatter {
             shapes: &shapes,
             syntax: &self.syntax,
         };
-        let mut memo = DocstringMemo::default();
-        let formatted = FormattedText::lay_out(rules, source.text(), &mut memo);
-        formatted.verify(&written, source.text(), &mut memo)?;
+        let mut layouts = DocstringLayouts::new(rules);
+        let formatted = FormattedText::lay_out(source.text(), &mut layouts);
+        formatted.verify(&written, source.text(), &mut layouts)?;
         Ok(FormattedSource {
             text: formatted.text,
             warnings: Self::warnings_of(source, formatted.unreadable),
@@ -153,10 +153,11 @@ impl<'s> FormattedText<'s> {
         spacing: CodeSpacing::Separated,
     };
 
-    fn lay_out(rules: FormatRules<'s>, text: &str, memo: &mut DocstringMemo) -> Self {
+    fn lay_out(text: &str, layouts: &mut DocstringLayouts<'s>) -> Self {
+        let rules = layouts.rules();
         let mut tree = SyntaxTree::build(text);
         ImportSorter::sort(&mut tree);
-        let unreadable = TreeDocstrings::new(rules, memo).lay_out(&mut tree);
+        let unreadable = TreeDocstrings::new(layouts).lay_out(&mut tree);
         let mut engine = LayoutEngine::new(rules.shapes);
         let mut text = TopLevelPrinter::new(&mut engine, Self::FILE_LAYOUT).print(&tree);
         if !text.is_empty() {
@@ -173,7 +174,7 @@ impl<'s> FormattedText<'s> {
         &self,
         written: &[Form],
         written_text: &str,
-        memo: &mut DocstringMemo,
+        layouts: &mut DocstringLayouts<'s>,
     ) -> Result<(), FormatFailure> {
         let comparison = MeaningComparison::new(self.rules.shapes, self.rules.syntax);
         let keeps_meaning = comparison.same_comments(written_text, &self.text)
@@ -183,7 +184,7 @@ impl<'s> FormattedText<'s> {
         if !keeps_meaning {
             return Err(FormatFailure::ChangedMeaning);
         }
-        let again = Self::lay_out(self.rules, &self.text, memo);
+        let again = Self::lay_out(&self.text, layouts);
         if again.text != self.text {
             return Err(FormatFailure::Unstable);
         }
@@ -200,7 +201,7 @@ impl<'s> FormattedText<'s> {
 #[cfg(test)]
 mod tests {
     use super::{
-        DocstringMemo, FormatFailure, FormatRules, FormattedText, ShapeCatalog, ShapeStatement,
+        DocstringLayouts, FormatFailure, FormatRules, FormattedText, ShapeCatalog, ShapeStatement,
     };
     use crate::format::docstring_syntax::{DocstringSyntax, DocstringSyntaxFixture};
     use crate::reader::{Form, Reader};
@@ -226,18 +227,19 @@ mod tests {
         }
 
         fn verify(&self, written: &str, formatted: &str) -> Result<(), FormatFailure> {
+            let rules = FormatRules {
+                shapes: &self.shapes,
+                syntax: &self.syntax,
+            };
             FormattedText {
-                rules: FormatRules {
-                    shapes: &self.shapes,
-                    syntax: &self.syntax,
-                },
+                rules,
                 text: formatted.to_string(),
                 unreadable: Vec::new(),
             }
             .verify(
                 &Self::forms(written),
                 written,
-                &mut DocstringMemo::default(),
+                &mut DocstringLayouts::new(rules),
             )
         }
 

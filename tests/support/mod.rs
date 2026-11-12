@@ -4,6 +4,7 @@ mod fixture_queue;
 mod formatting;
 mod headers;
 mod lint_fixture;
+mod project_example;
 mod read_back_agreement;
 mod reports;
 mod saved_prelude;

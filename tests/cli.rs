@@ -3140,6 +3140,9 @@ fn emit_waiving_ownership_refusals_writes_the_rust_of_a_refused_move() {
     sandbox
         .compiler(&["check", "moved.knv"])
         .assert_exit_code(1);
+    sandbox
+        .compiler(&["emit", "moved.knv"])
+        .assert_exit_code(1);
     let emitted = sandbox.compiler(&["emit", "--waive-ownership-refusals", "moved.knv"]);
     let stdout = emitted.assert_exit_code(0).stdout();
     assert!(stdout.contains("let w: Vec<i64> = v;"));

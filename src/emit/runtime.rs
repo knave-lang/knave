@@ -44,7 +44,6 @@ impl RuntimePart {
         "eprintln!(",
         "std::io::stderr(",
     ];
-    const RUNTIME_PATH: &'static str = "crate::rt::";
     const NAMED: [(&'static str, RuntimePart); 24] = [
         ("Number", RuntimePart::Number),
         ("Signed", RuntimePart::Signed),
@@ -71,14 +70,23 @@ impl RuntimePart {
         ("max", RuntimePart::Max),
         ("min", RuntimePart::Min),
     ];
-    const SCANNED: [(RuntimePart, &'static [&'static str]); 4] = [
-        (RuntimePart::FromLiteral, &["::from_literal("]),
-        (RuntimePart::FromFloatLiteral, &["::from_float_literal("]),
-        (
-            RuntimePart::MapSequence,
-            &["std::collections::BTreeMap", "std::collections::HashMap"],
-        ),
-        (RuntimePart::Signal, Self::STANDARD_STREAM_MARKERS),
+    const SCANNED: [ScannedPart; 4] = [
+        ScannedPart {
+            part: RuntimePart::FromLiteral,
+            markers: &["::from_literal("],
+        },
+        ScannedPart {
+            part: RuntimePart::FromFloatLiteral,
+            markers: &["::from_float_literal("],
+        },
+        ScannedPart {
+            part: RuntimePart::MapSequence,
+            markers: &["std::collections::BTreeMap", "std::collections::HashMap"],
+        },
+        ScannedPart {
+            part: RuntimePart::Signal,
+            markers: Self::STANDARD_STREAM_MARKERS,
+        },
     ];
 
     const REQUIRED: [(RuntimePart, &'static [RuntimePart]); 18] = [
@@ -115,45 +123,11 @@ impl RuntimePart {
         ),
     ];
 
-    fn named_in(code: &str) -> BTreeSet<RuntimePart> {
-        code.match_indices(Self::RUNTIME_PATH)
-            .filter_map(|(start, path)| Self::named(&code[start + path.len()..]))
-            .collect()
-    }
-
-    fn named(rest: &str) -> Option<RuntimePart> {
-        let end = rest
-            .find(|character: char| !(character.is_alphanumeric() || character == '_'))
-            .unwrap_or(rest.len());
+    fn named(name: &str) -> Option<RuntimePart> {
         Self::NAMED
             .iter()
-            .find(|(name, _)| *name == &rest[..end])
+            .find(|(known, _)| *known == name)
             .map(|(_, part)| *part)
-    }
-
-    fn scanned_in(self, markers: &[&str], code: &str, named: &BTreeSet<RuntimePart>) -> bool {
-        match self {
-            Self::MapSequence => {
-                named.contains(&Self::Sequence)
-                    && markers.iter().any(|marker| code.contains(marker))
-            }
-            Self::Signal => markers
-                .iter()
-                .any(|marker| Self::contains_unprefixed(code, marker)),
-            _ => markers.iter().any(|marker| code.contains(marker)),
-        }
-    }
-
-    fn contains_unprefixed(code: &str, marker: &str) -> bool {
-        code.match_indices(marker)
-            .any(|(start, _)| !Self::continues_identifier(&code[..start]))
-    }
-
-    fn continues_identifier(preceding: &str) -> bool {
-        preceding
-            .chars()
-            .next_back()
-            .is_some_and(|character| character.is_alphanumeric() || character == '_')
     }
 
     fn required(self) -> &'static [RuntimePart] {
@@ -161,6 +135,80 @@ impl RuntimePart {
             .iter()
             .find(|(part, _)| *part == self)
             .map_or(&[], |(_, required)| *required)
+    }
+}
+
+struct ScannedPart {
+    part: RuntimePart,
+    markers: &'static [&'static str],
+}
+
+impl ScannedPart {
+    fn found_in(&self, code: &EmittedCode, named: &BTreeSet<RuntimePart>) -> bool {
+        match self.part {
+            RuntimePart::MapSequence => {
+                named.contains(&RuntimePart::Sequence)
+                    && self.any_marker(|marker| code.contains(marker))
+            }
+            RuntimePart::Signal => self.any_marker(|marker| code.contains_unprefixed(marker)),
+            _ => self.any_marker(|marker| code.contains(marker)),
+        }
+    }
+
+    fn any_marker(&self, found: impl Fn(&str) -> bool) -> bool {
+        self.markers.iter().any(|marker| found(marker))
+    }
+
+    fn part(&self) -> RuntimePart {
+        self.part
+    }
+}
+
+struct EmittedCode<'a> {
+    text: &'a str,
+}
+
+impl<'a> EmittedCode<'a> {
+    const RUNTIME_PATH: &'static str = "crate::rt::";
+
+    fn new(text: &'a str) -> Self {
+        Self { text }
+    }
+
+    fn named_parts(&self) -> BTreeSet<RuntimePart> {
+        self.text
+            .match_indices(Self::RUNTIME_PATH)
+            .filter_map(|(start, path)| RuntimePart::named(self.identifier_at(start + path.len())))
+            .collect()
+    }
+
+    fn identifier_at(&self, start: usize) -> &'a str {
+        let rest = &self.text[start..];
+        let end = rest
+            .find(|character| !Self::is_identifier_character(character))
+            .unwrap_or(rest.len());
+        &rest[..end]
+    }
+
+    fn contains(&self, marker: &str) -> bool {
+        self.text.contains(marker)
+    }
+
+    fn contains_unprefixed(&self, marker: &str) -> bool {
+        self.text
+            .match_indices(marker)
+            .any(|(start, _)| !self.continues_identifier(start))
+    }
+
+    fn continues_identifier(&self, start: usize) -> bool {
+        self.text[..start]
+            .chars()
+            .next_back()
+            .is_some_and(Self::is_identifier_character)
+    }
+
+    fn is_identifier_character(character: char) -> bool {
+        character.is_alphanumeric() || character == '_'
     }
 }
 
@@ -249,11 +297,12 @@ impl RuntimeModule {
     const IMPLEMENTATION_INDENT: &'static str = "            ";
 
     pub fn of(code: &str) -> Option<RuntimeModule> {
-        let named = RuntimePart::named_in(code);
+        let code = EmittedCode::new(code);
+        let named = code.named_parts();
         let mut parts: BTreeSet<RuntimePart> = RuntimePart::SCANNED
-            .into_iter()
-            .filter(|(part, markers)| part.scanned_in(markers, code, &named))
-            .map(|(part, _)| part)
+            .iter()
+            .filter(|scanned| scanned.found_in(&code, &named))
+            .map(ScannedPart::part)
             .collect();
         parts.extend(named);
         let mut unchecked: Vec<RuntimePart> = parts.iter().copied().collect();

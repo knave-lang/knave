@@ -187,7 +187,7 @@ impl<'a> DefinitionRounds<'a> {
 
 impl LocatedDiagnostics {
     fn add(&mut self, location: Location, diagnostic: &Diagnostic) {
-        match (location, diagnostic.is_error()) {
+        match (location, diagnostic.severity().is_error()) {
             (Location::Entered, true) => self.entered_errors.push(diagnostic.clone()),
             (Location::Entered, false) => self.entered_warnings.push(diagnostic.clone()),
             (Location::Buffered(source), true) => self.add_buffered_error(source, diagnostic),

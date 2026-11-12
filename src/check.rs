@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::{BindingId, StructDerives};
-use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::diagnostic::Diagnostics;
 use crate::expand::Program;
 use crate::ownership::{InPlaceChanges, OwnershipGate};
 use crate::types::{
@@ -39,7 +39,7 @@ impl ProgramChecker {
     }
 
     fn errors_only(mut diagnostics: Diagnostics) -> Diagnostics {
-        diagnostics.retain(Diagnostic::is_error);
+        diagnostics.retain(|diagnostic| diagnostic.severity().is_error());
         diagnostics
     }
 }

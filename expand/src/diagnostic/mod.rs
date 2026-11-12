@@ -89,10 +89,6 @@ impl Diagnostic {
         }
     }
 
-    pub fn is_error(&self) -> bool {
-        self.report.severity == Severity::Error
-    }
-
     pub fn severity(&self) -> Severity {
         self.report.severity
     }
@@ -140,9 +136,14 @@ impl Diagnostic {
         self.report.missing_name.as_ref()
     }
 
-    pub fn into_warning(mut self, rule: RuleName) -> Self {
+    pub fn into_lint_warning(self, rule: RuleName) -> Self {
+        let mut warning = self.into_warning();
+        warning.report.rule = Some(rule);
+        warning
+    }
+
+    pub fn into_warning(mut self) -> Self {
         self.report.severity = Severity::Warning;
-        self.report.rule = Some(rule);
         self
     }
 
@@ -184,26 +185,28 @@ mod tests {
 
     impl WarningFixture {
         const RULE: &str = "unmatched-link";
+        const TITLE: &str = "the van is parked";
         const HELP: &str = "move the van";
         const EARLIER: &str = "parked before";
 
         fn warning() -> Diagnostic {
+            Self::error().into_warning()
+        }
+
+        fn lint_warning() -> Diagnostic {
+            Self::error().into_lint_warning(RuleName::new(Self::RULE))
+        }
+
+        fn error() -> Diagnostic {
             let span = Span::new(SourceId::new(0), 0..4);
             Diagnostic::error(
                 DiagnosticCode::UNMATCHED_LINK,
-                "the van is parked",
+                Self::TITLE,
                 Label::new(span, "here"),
             )
             .with_label(Label::new(span, Self::EARLIER))
             .with_help(Self::HELP)
-            .into_warning(RuleName::new(Self::RULE))
         }
-    }
-
-    #[test]
-    fn a_warning_carries_its_lint_rule() {
-        let rule = WarningFixture::warning().rule().cloned();
-        assert_eq!(rule, Some(RuleName::new(WarningFixture::RULE)));
     }
 
     #[test]
@@ -212,10 +215,23 @@ mod tests {
     }
 
     #[test]
-    fn a_warning_keeps_the_labels_and_help_it_was_built_with() {
+    fn a_warning_keeps_the_code_message_labels_and_help_it_was_built_with() {
         let warning = WarningFixture::warning();
+        assert_eq!(warning.code(), Some(&DiagnosticCode::UNMATCHED_LINK));
+        assert_eq!(warning.title(), WarningFixture::TITLE);
         let labels: Vec<&str> = warning.labels().map(Label::message).collect();
         assert_eq!(labels, ["here", WarningFixture::EARLIER]);
         assert_eq!(warning.helps()[0].message(), WarningFixture::HELP);
+    }
+
+    #[test]
+    fn a_warning_carries_no_lint_rule() {
+        assert!(WarningFixture::warning().rule().is_none());
+    }
+
+    #[test]
+    fn a_lint_warning_carries_its_lint_rule() {
+        let rule = WarningFixture::lint_warning().rule().cloned();
+        assert_eq!(rule, Some(RuleName::new(WarningFixture::RULE)));
     }
 }

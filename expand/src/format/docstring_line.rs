@@ -1,11 +1,13 @@
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DocstringLine(String);
 
-impl DocstringLine {
-    pub fn new(text: String) -> Self {
+impl From<String> for DocstringLine {
+    fn from(text: String) -> Self {
         Self(text)
     }
+}
 
+impl DocstringLine {
     pub fn split(text: &str) -> Vec<Self> {
         text.split('\n')
             .map(|line| Self(line.to_string()))
@@ -19,6 +21,12 @@ impl DocstringLine {
             .map(Self::indentation)
             .min()
             .unwrap_or(0)
+    }
+
+    pub fn written_range(lines: &[Self], index: usize) -> std::ops::Range<usize> {
+        let start: usize = lines[..index].iter().map(|line| line.0.len() + 1).sum();
+        let line = &lines[index];
+        start + line.indentation()..start + line.0.len()
     }
 
     pub fn text(&self) -> &str {
@@ -46,6 +54,12 @@ mod tests {
     fn the_least_indentation_skips_blank_lines() {
         let lines = DocstringLine::split("    deep\n\n  shallow\n ");
         assert_eq!(DocstringLine::least_indentation(&lines), 2);
+    }
+
+    #[test]
+    fn a_written_range_covers_a_line_after_its_indentation() {
+        let lines = DocstringLine::split("first\n  (f 1)\nlast");
+        assert_eq!(DocstringLine::written_range(&lines, 1), 8..13);
     }
 
     #[test]

@@ -69,6 +69,22 @@ impl ModuleLookup {
 impl ShapeReader {
     pub fn catalog(&mut self, forms: &[Form], lookup: &ModuleLookup) -> ShapeCatalog {
         let file = ModuleShapes::of(forms);
+        self.walk(lookup, |walk| walk.add_shapes(None, &file))
+    }
+
+    pub fn catalog_of_module(
+        &mut self,
+        module: &ModulePath,
+        lookup: &ModuleLookup,
+    ) -> ShapeCatalog {
+        self.walk(lookup, |walk| walk.add_module(None, module))
+    }
+
+    fn walk(
+        &mut self,
+        lookup: &ModuleLookup,
+        add_own_shapes: impl FnOnce(&mut CatalogWalk<'_>),
+    ) -> ShapeCatalog {
         let mut walk = CatalogWalk {
             reader: self,
             lookup,
@@ -80,7 +96,7 @@ impl ShapeReader {
             .shape_modules
             .iter()
             .for_each(|module| walk.add_module(None, module));
-        walk.add_shapes(None, &file);
+        add_own_shapes(&mut walk);
         walk.catalog
     }
 

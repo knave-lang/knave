@@ -20,6 +20,14 @@ pub struct WrittenPage {
     pub text: String,
 }
 
+impl WrittenPage {
+    const EXTENSION: &'static str = "md";
+
+    pub fn file_name(module: &str) -> String {
+        format!("{module}.{}", Self::EXTENSION)
+    }
+}
+
 enum Preparation {
     Create,
     Keep,
@@ -70,8 +78,6 @@ impl DocFolder {
 }
 
 impl WritableFolder {
-    const PAGE_EXTENSION: &'static str = "md";
-
     pub fn replace_pages(&self, pages: &[WrittenPage]) -> ExitStatus {
         match self.prepared().and_then(|()| self.write_pages(pages)) {
             Ok(()) => ExitStatus::Success,
@@ -105,9 +111,7 @@ impl WritableFolder {
     }
 
     fn write_page(&self, page: &WrittenPage) -> io::Result<()> {
-        let path = self
-            .path
-            .join(format!("{}.{}", page.module, Self::PAGE_EXTENSION));
+        let path = self.path.join(WrittenPage::file_name(&page.module));
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }

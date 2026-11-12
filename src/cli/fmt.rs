@@ -171,9 +171,12 @@ impl FmtCommand {
         lookup: &ModuleLookup,
     ) -> Result<String, ExitStatus> {
         let source = terminal.sources().add(path.display(), text);
-        self.formatter
+        let formatted = self
+            .formatter
             .format(terminal.source_file(source), lookup)
-            .map_err(|failure| Self::report_failure(terminal, path, failure))
+            .map_err(|failure| Self::report_failure(terminal, path, failure))?;
+        terminal.source_report().print(&formatted.warnings);
+        Ok(formatted.text)
     }
 
     fn apply(&self, path: &Path, formatted: &str) -> ExitStatus {

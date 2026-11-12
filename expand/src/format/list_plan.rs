@@ -129,7 +129,7 @@ impl ListPlan {
         single_line_atom && docstring_entry != Some(entry)
     }
 
-    fn docstring_entry(
+    pub fn docstring_entry(
         list: &ListNode,
         head: Option<&str>,
         shapes: &ShapeCatalog,

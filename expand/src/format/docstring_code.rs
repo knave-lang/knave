@@ -1,0 +1,118 @@
+use super::code_layout::CodeLayout;
+use super::code_region::CodeRegion;
+use super::code_spacing::CodeSpacing;
+use super::docstring_regions::DocstringRegions;
+use super::list_plan::Arrangement;
+use super::shapes::ShapeCatalog;
+
+pub struct DocstringCode<'s> {
+    shapes: &'s ShapeCatalog,
+    fence_spacing: CodeSpacing,
+}
+
+pub struct LaidOutDocstring {
+    pub lines: Vec<String>,
+    pub unreadable_lines: Vec<usize>,
+}
+
+impl<'s> DocstringCode<'s> {
+    const LEFT_EDGE: usize = Arrangement::BODY_INDENT;
+    const CONTINUATION_START: usize = 1;
+
+    pub fn of_docstrings(shapes: &'s ShapeCatalog) -> Self {
+        Self {
+            shapes,
+            fence_spacing: CodeSpacing::Separated,
+        }
+    }
+
+    pub fn lay_out(&self, lines: &[String]) -> LaidOutDocstring {
+        let continuation = lines.get(Self::CONTINUATION_START..).unwrap_or_default();
+        let shared = CodeRegion::least_indentation(continuation);
+        let mut laid_out = LaidOutDocstring {
+            lines: Vec::new(),
+            unreadable_lines: Vec::new(),
+        };
+        let mut copied = 0;
+        for code_lines in DocstringRegions::code_of(lines, self.fence_spacing) {
+            let region = code_lines.range;
+            laid_out
+                .lines
+                .extend_from_slice(&lines[copied..region.start]);
+            let code = &lines[region.clone()];
+            let indent = CodeRegion::least_indentation(code);
+            let layout = CodeLayout {
+                column: Self::LEFT_EDGE + indent.saturating_sub(shared),
+                spacing: code_lines.spacing,
+            };
+            match CodeRegion::new(self.shapes, code, layout).lay_out() {
+                Ok(code_lines) => laid_out.lines.extend(code_lines),
+                Err(line) => {
+                    laid_out.unreadable_lines.push(region.start + line);
+                    laid_out.lines.extend_from_slice(code);
+                }
+            }
+            copied = region.end;
+        }
+        laid_out.lines.extend_from_slice(&lines[copied..]);
+        laid_out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DocstringCode;
+    use crate::format::shapes::ShapeCatalog;
+
+    struct DocstringFixture {
+        shapes: ShapeCatalog,
+    }
+
+    impl DocstringFixture {
+        fn new() -> Self {
+            Self {
+                shapes: ShapeCatalog::default(),
+            }
+        }
+
+        fn lay_out(&self, text: &str) -> (String, Vec<usize>) {
+            let lines: Vec<String> = text.split('\n').map(str::to_string).collect();
+            let laid_out = DocstringCode::of_docstrings(&self.shapes).lay_out(&lines);
+            (laid_out.lines.join("\n"), laid_out.unreadable_lines)
+        }
+    }
+
+    #[test]
+    fn prose_stays_and_code_lays_out() {
+        let fixture = DocstringFixture::new();
+        assert_eq!(
+            fixture.lay_out("Pads   it.\n\n  Some   prose.\n\n  (pad   1)\n  => 1"),
+            (
+                "Pads   it.\n\n  Some   prose.\n\n  (pad 1)\n  => 1".to_string(),
+                vec![]
+            )
+        );
+    }
+
+    #[test]
+    fn code_that_does_not_read_stays_and_names_its_line() {
+        let fixture = DocstringFixture::new();
+        assert_eq!(
+            fixture.lay_out("Pads.\n\n  ```\n  (pad   1\n  ```"),
+            ("Pads.\n\n  ```\n  (pad   1\n  ```".to_string(), vec![3])
+        );
+    }
+
+    #[test]
+    fn code_lays_out_as_if_the_docstring_sat_at_the_body_indent() {
+        let fixture = DocstringFixture::new();
+        let atom = "a".repeat(72);
+        let (laid_out, _) = fixture.lay_out(&format!(
+            "Calls.\n\n      ```\n      (call {atom})\n      ```"
+        ));
+        assert_eq!(
+            laid_out.split('\n').skip(3).take(2).collect::<Vec<_>>(),
+            ["      (call", &format!("        {atom})")]
+        );
+    }
+}

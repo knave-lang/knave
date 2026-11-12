@@ -115,7 +115,8 @@ impl NewCommand {
             .format(terminal.source_file(source), lookup)
             .unwrap_or_else(|failure| {
                 unreachable!("the formatter reads and keeps a new project's files: {failure:?}")
-            });
+            })
+            .text;
         NewFile {
             path: file.path,
             text,

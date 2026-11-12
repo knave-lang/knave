@@ -102,7 +102,15 @@ impl Fixture {
         let input = self.sources.file(self.entry);
         let lookup = ShapeLookup::beside(&self.path);
         match SourceFormatter::default().format(input, &lookup) {
-            Ok(formatted) => format!("{}\n---\n{formatted}", input.text()),
+            Ok(formatted) if formatted.warnings.is_empty() => {
+                format!("{}\n---\n{}", input.text(), formatted.text)
+            }
+            Ok(formatted) => format!(
+                "{}\n---\n{}\n---\n{}",
+                input.text(),
+                formatted.text,
+                self.render(&formatted.warnings)
+            ),
             Err(FormatFailure::Unreadable(diagnostics)) => self.render(&diagnostics),
             Err(failure) => panic!(
                 "formatting {} fails its check: {failure:?}",

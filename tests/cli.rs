@@ -1473,6 +1473,28 @@ fn fmt_check_prints_each_file_that_would_change_and_writes_nothing() {
 }
 
 #[test]
+fn fmt_check_lists_a_file_whose_docstring_code_is_not_laid_out() {
+    let sandbox = Sandbox::new("fmt_check_docstring_code").with_file(
+        "twice.knv",
+        "(defn twice (x)\n  \"Doubles.\n\n  (twice   3)\n  => 6\"\n  (* 2 x))\n",
+    );
+    let check = sandbox.compiler(&["fmt", "--check", "twice.knv"]);
+    check.assert_exit_code(1);
+    assert_eq!(check.stdout(), "twice.knv\n");
+}
+
+#[test]
+fn fmt_check_warns_of_docstring_code_that_does_not_read_and_still_exits_0() {
+    let sandbox = Sandbox::new("fmt_check_unreadable_docstring_code").with_file(
+        "twice.knv",
+        "(defn twice (x)\n  \"Doubles.\n\n  (twice   3\n  => 6\"\n  (* 2 x))\n",
+    );
+    let check = sandbox.compiler(&["fmt", "--check", "twice.knv"]);
+    check.assert_exit_code(0);
+    assert!(check.stderr().contains("warning[L0109]"));
+}
+
+#[test]
 fn fmt_check_exits_0_when_every_file_is_formatted() {
     let sandbox = Sandbox::new("fmt_check_formatted").with_file("done.knv", FORMATTED);
     let check = sandbox.compiler(&["fmt", "--check", "done.knv"]);

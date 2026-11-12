@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/contains_text_and_vectors.knv
+---
+true
+true
+true
+bo
+false
+true
+true
+true

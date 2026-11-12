@@ -1,0 +1,13 @@
+(defn listed ((names (ref (vec string))))
+  (join names ", "))
+
+(defn glued (parts) (join parts "+"))
+
+(defn main ()
+  (local names
+    (vec (str "ana") (str "bo")))
+  (println (join (vec "a" "b" "c") "-"))
+  (println (listed (ref names)))
+  (println (len names))
+  (println (glued (vec "x" "y")))
+  (println (join (collect (split "a b" " ")) "|")))

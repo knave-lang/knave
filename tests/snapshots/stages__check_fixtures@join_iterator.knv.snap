@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/join_iterator.knv
+---
+error[L0404]: `(iterator (ref str))` does not implement `joinable`
+ --> check/join_iterator.knv:2:9
+  |
+2 |   (join (split text " ") ", "))
+  |         ^^^^^^^^^^^^^^^^ this needs `joinable`
+  |
+  = note: `joinable` is implemented for: (where ((text (borrow str))) (vec text)), (where ((text (borrow str))) (slice text))
+  = help: `join` takes a vector or a slice: collect an iterator first, as in `(join (collect items) ", ")`, which allocates the vector

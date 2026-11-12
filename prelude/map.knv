@@ -16,14 +16,6 @@
 (export get hash-map into-hash-map into-sorted-map keys
         sorted-map vals)
 
-(rust-trait borrow "std::borrow::Borrow"
-  bool char
-  (ref str)
-  string i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize
-  f32 f64
-  (with string str)
-  (with (ref str) str))
-
 (def map-inserts
   (fn (index count)
     (if (number-lt index count)

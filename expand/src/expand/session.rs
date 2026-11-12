@@ -410,7 +410,7 @@ mod tests {
         }
 
         fn first_entry_form(program: &Program) -> &Expr {
-            let entry = program.entry_function.expect("the program has an entry");
+            let entry = program.entry.function.expect("the program has an entry");
             let (_, value) = program
                 .entry_module()
                 .definitions()
@@ -478,7 +478,7 @@ mod tests {
         let entries = program
             .entry_module()
             .definitions()
-            .filter(|(binding, _)| Some(*binding) == program.entry_function)
+            .filter(|(binding, _)| Some(*binding) == program.entry.function)
             .count();
         assert_eq!(entries, 1);
     }

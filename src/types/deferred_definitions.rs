@@ -12,7 +12,7 @@ impl DeferredDefinitions {
         program
             .modules
             .iter()
-            .filter(|module| module.id != program.entry)
+            .filter(|module| module.id != program.entry.module)
             .filter(|module| ModuleSources::is_embedded_prelude(&module.path))
             .flat_map(|module| module.definitions())
             .map(|(binding, _)| binding)

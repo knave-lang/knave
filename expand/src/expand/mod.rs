@@ -39,6 +39,7 @@ mod prelude_state;
 mod problem_mark;
 mod problem_report;
 mod problems;
+mod program_entry;
 mod recorded_inputs;
 mod recovered_errors;
 mod recur_check;
@@ -101,6 +102,7 @@ use notes_module::NotesModule;
 pub use prelude_state::{PreludeState, UnreadablePrelude};
 use problem_report::ProblemReport;
 pub use problems::ExpandProblems;
+pub use program_entry::ProgramEntry;
 use recorded_inputs::RecordedInputs;
 pub use recorded_inputs::{BoundName, LoadedModule};
 use recovered_errors::RecoveredErrors;
@@ -118,8 +120,7 @@ use type_note::TypeNote;
 
 pub struct Program {
     pub modules: Vec<CoreModule>,
-    pub entry: ModuleId,
-    pub entry_function: Option<BindingId>,
+    pub entry: ProgramEntry,
     pub bindings: BindingArena,
     pub macro_origins: Rc<MacroOrigins>,
     pub macro_helpers: FxHashSet<BindingId>,
@@ -141,7 +142,7 @@ impl Program {
     pub fn entry_module(&self) -> &CoreModule {
         self.modules
             .iter()
-            .find(|module| module.id == self.entry)
+            .find(|module| module.id == self.entry.module)
             .expect("the entry module is expanded")
     }
 
@@ -357,8 +358,10 @@ impl<'s> Expander<'s> {
             .or_else(|| self.tables.find_string_view());
         let mut program = Program {
             modules: self.take_modules(),
-            entry,
-            entry_function: None,
+            entry: ProgramEntry {
+                module: entry,
+                function: None,
+            },
             bindings: self.tables.bindings,
             macro_helpers: self.tables.globals.macro_helpers(),
             string_view,
@@ -369,7 +372,7 @@ impl<'s> Expander<'s> {
             expansion: self.expansion,
         };
         program.restore_reached();
-        program.entry_function = program.written_entry_function();
+        program.entry.function = program.written_entry_function();
         diagnostics.into_result(program)
     }
 

@@ -3114,7 +3114,7 @@ impl TypeChecker {
     ) -> Result<(super::typed::TypedProgram, OpenCollections), Diagnostics> {
         self.record_prelude_definitions(&program.modules, &program.pending_definitions);
         self.collect_declarations(&program.modules, graph.definitions());
-        let mut definitions = self.check_definitions(program.entry_function, graph);
+        let mut definitions = self.check_definitions(program.entry.function, graph);
         let mut finalizer = super::finalize::Finalizer::new(&mut self);
         for binding in graph.order() {
             if let Some(definition) = definitions.get_mut(&binding) {
@@ -3180,8 +3180,8 @@ impl TypeChecker {
         }
         Ok(super::typed::TypedProgram {
             modules,
-            entry: program.entry,
-            entry_function: program.entry_function,
+            entry: program.entry.module,
+            entry_function: program.entry.function,
             bindings: self.bindings,
             macro_field_reads: self.macro_field_reads,
             structs: self.declarations.types.structs,

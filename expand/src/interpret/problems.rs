@@ -8,6 +8,7 @@ pub struct InterpretProblems;
 
 impl InterpretProblems {
     pub const RETURN_AS_CODE_HELP: &'static str = "to compute this in the program, return it as code from the macro, for example with `quote`";
+    pub const UNLABELLED_FAILURE: &'static str = "here";
 
     pub fn wrong_argument(
         function: &str,
@@ -130,12 +131,10 @@ impl InterpretProblems {
     pub fn failed(
         code: DiagnosticCode,
         message: String,
-        culprit: Span,
-        label: Option<String>,
+        primary: Label,
         earlier: Option<(Span, String)>,
     ) -> Diagnostic {
-        let label = label.unwrap_or_else(|| "here".to_owned());
-        let failure = Diagnostic::error(code, message, Label::new(culprit, label));
+        let failure = Diagnostic::error(code, message, primary);
         match earlier {
             Some((span, label)) => failure.with_label(Label::new(span, label)),
             None => failure,

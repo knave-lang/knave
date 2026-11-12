@@ -67,7 +67,7 @@ expand/src/interpret/mod.rs::Interpreter::eval_call 4
 expand/src/interpret/mod.rs::Interpreter::step_if 4
 expand/src/interpret/problems.rs::InterpretProblems::argument_count 4
 expand/src/interpret/problems.rs::InterpretProblems::builtin_argument_count 4
-expand/src/interpret/problems.rs::InterpretProblems::failed 5
+expand/src/interpret/problems.rs::InterpretProblems::failed 4
 expand/src/interpret/problems.rs::InterpretProblems::wrong_argument 5
 expand/src/modules/libraries.rs::LibraryRoot::new 5
 expand/src/project/fields.rs::FieldScanner::add_field 4

@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/once_per_takes_definition.knv
+---
+error[L0321]: a failure description takes `:part value` pairs
+ --> expand/once_per_takes_definition.knv:6:23
+  |
+6 |     (quote (:once-per call))))
+  |                       ^^^^ not a `:part value` pair
+7 |
+8 | (def value (broken 1))
+  |            ---------- in this macro call
+  |
+  = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:once-per`, `:suggest`

@@ -5,6 +5,7 @@ pub struct Label {
     span: Span,
     message: String,
     marks_a_macro_call: bool,
+    marks_a_definition: bool,
 }
 
 impl Label {
@@ -13,6 +14,7 @@ impl Label {
             span,
             message: message.into(),
             marks_a_macro_call: false,
+            marks_a_definition: false,
         }
     }
 
@@ -25,6 +27,17 @@ impl Label {
 
     pub fn marks_a_macro_call(&self) -> bool {
         self.marks_a_macro_call
+    }
+
+    pub fn in_a_definition(self) -> Self {
+        Self {
+            marks_a_definition: true,
+            ..self
+        }
+    }
+
+    pub fn marks_a_definition(&self) -> bool {
+        self.marks_a_definition
     }
 
     pub fn span(&self) -> Span {

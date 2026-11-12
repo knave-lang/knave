@@ -230,13 +230,14 @@ The interpreter's size is not yet known. The prototype is about 780 lines, and t
 | match settings and use `resolver = "1"` | no second copy, if `dev`'s build script also takes `debug = "line-tables-only"`; `build.rs` about 1.5 to 3 s | no second copy; `build.rs` under 0.5 s, because the checker and the interpreter are optimized | fat LTO compiles normal units differently, so the opt-level 0 copy stays, in CI builds only |
 | a smaller crate | already applied: the crate holds only the type, ownership and interpreter stages, not emission, the CLI or the build stage. Prelude expansion needs all three, so a smaller crate would mean splitting a stage | | |
 
-**Recommendation.** Use the crate of the type, ownership and interpreter stages alone, set `resolver = "1"`, and give each profile's build script the profile's own settings, so the crate compiles once in `dev` and `local`. Keep the release profile's default build-script settings, so CI's release build pays one unoptimized copy, about 20 s. Pull request 12 measures `dev` and `local` before and after. It keeps the change only if `cargo tree -e features` shows the same features with both resolvers and each crate then compiles once. Otherwise it keeps today's settings, which cost about 17 to 20 s per `dev` rebuild and 20 to 23 s per `local` rebuild.
+**Recommendation.** Use the crate of the type, ownership and interpreter stages alone, set `resolver = "1"`, and give each profile's build script the profile's own settings, so the crate compiles once in `dev` and `local`. Keep the release profile's default build-script settings, so CI's release build pays one unoptimized copy, about 20 to 23 s. Pull request 12 measures `dev` and `local` before and after. It keeps the change only if `cargo tree -e features` shows the same features with both resolvers and each crate then compiles once. Otherwise it keeps today's settings, which cost about 17 to 20 s per `dev` rebuild and 20 to 23 s per `local` rebuild.
 
 ### Where the checked prelude macro groups are saved
 
 `PreludeState` lives in `knave-expand`, and checked macro groups are values of the type stage, which `knave-expand` may not name. So the checked groups go in a second embedded file that the new crate owns:
 
-- `build.rs` builds the prelude state through the driver: it runs `PreludeState::build` with the crate's `MacroRuntime`, which checks each prelude macro group and runs it during expansion.
+- The `MacroRuntime` implementation lives in the new crate of the type, ownership and interpreter stages, because `build.rs` cannot depend on its own package's `src/`. `build.rs` and the CLI in `src/` both use that one implementation.
+- `build.rs` builds the prelude state with it: it runs `PreludeState::build` with the new crate's `MacroRuntime`, which checks each prelude macro group and runs it during expansion.
 - It writes two files to `OUT_DIR`: `prelude-state.bin`, the expander's state as today, and `prelude-macros.bin`, the checked groups, keyed by the binding of each macro and global.
 - The expander's saved state refers to a compiled macro by its binding only. The `MacroRuntime` resolves that binding in `prelude-macros.bin` when the macro first runs in a session.
 - Both files are embedded with `include_bytes!`, so both stay in the binary's shared read-only pages.
@@ -265,7 +266,7 @@ Macro code is written against one kind of datum. The design types it that way:
 | `fail` | `(fn (form form ...) never)`, with the optional help and labels |
 | `template` | a kernel form whose value is `form` |
 
-The table covers the built-ins macro code uses most, about 20 of the roughly 60 in `docs/language.md`. The rest are as easy to type and pull request 13 covers them all: those that return `unit`, such as `add-module-note`, the `declare-` built-ins and `warn`; `set-macro-step-limit`, which returns `bool`; and `read-form`, which returns `form`.
+The table covers the built-ins macro code uses most, about 20 of the 75 in `expand/src/core/builtin.rs`. The rest are as easy to type and pull request 13 covers them all: those that return `unit`, such as `add-module-note`, the `declare-` built-ins and `warn`; `set-macro-step-limit`, which returns `bool`; and `read-form`, which returns `form`.
 
 **The census.** Repeat it with `census/macro_census.py`, which finds every macro and every helper reachable from it, quoted symbols included, because generated macros call helpers.
 
@@ -464,7 +465,7 @@ The interpreter trusts `check`, so it comes after the RFC 0065 work in that RFC'
 | 9 | `cargo xtask footprint`, with its CI job for CPU time and peak memory | `xtask/` |
 | 10 | `knave test`, `run`, `eval` and `task` interpret by default, with `--compiled`; inputs that reach a crate or a user's template take the compile path with a note. A task then writes nothing under `target/knave/<project>/tasks/`. It merges only when the footprint targets are met | `src/cli/`, `docs/language.md`, `tests/cli.rs` |
 | 11 | The prompt replays its buffer through the interpreter (decision 5) | `src/cli/` |
-| 12 | A `MacroRuntime` trait in the expander, which the driver implements, and, by decision 2, the type, ownership and interpreter stages in a crate that `build.rs` can use, with the build-cost measure that the section on build cost recommends. No behaviour changes | `expand/src/expand/`, `src/`, new crate, `build.rs`, `Cargo.toml`, `xtask/src/design.rs` |
+| 12 | A `MacroRuntime` trait in the expander, implemented in the new crate of the type, ownership and interpreter stages, and, by decision 2, the type, ownership and interpreter stages in a crate that `build.rs` can use, with the build-cost measure that the section on build cost recommends. No behaviour changes | `expand/src/expand/`, `src/`, new crate, `build.rs`, `Cargo.toml`, `xtask/src/design.rs` |
 | 13 | The `code` module gets its types, and the prelude macro code is rewritten to check: about 50 to 65 lines, and the record of closures in `internal/syntax.knv` by decision 9. The dynamic interpreter still runs macros, and a test checks every prelude macro group | `expand/src/core/`, `src/types/`, `prelude/` |
 | 14 | Macro groups are checked in dependency order and run in the interpreter. The step costs are restated, and `build.rs` writes the checked prelude macro groups to their own embedded file. The dynamic interpreter and `CompileTimeCheck` are deleted, and its limits move | `expand/src/`, `src/run/`, `src/cli/`, `build.rs`, `docs/language.md`, the snapshots listed above |
 | 15 | `definition-type`; `run-task` moves to it, and the first check of the task tree is deleted | `prelude/task.knv`, `src/cli/task_*.rs`, `docs/language.md`, `rfcs/0066-project-tasks.md` |
@@ -473,19 +474,19 @@ The interpreter trusts `check`, so it comes after the RFC 0065 work in that RFC'
 **How pull request 16 bridges `form` and prelude values.** The prelude functions do not take forms, so the bridge is built first:
 
 - **Traits on `form`.** `form` implements `partial-eq`, whose native is today's recursive comparison of `value-eq` in Rust. It also implements the prelude's `sequence` trait for a list form, so `len` and `empty?` work on it.
-- **Conversions.** Six new compile-time built-ins stay, because only compile time has forms. All but `items-form` fail the macro on any other kind of form, with the message that `first` gives today.
+- **Conversions.** Six new compile-time built-ins stay, because only compile time has forms. `form-integer`, `form-text` and `form-items` fail the macro on any other kind of form, with the message that `first` gives today, and `form-integer` also fails on a negative number or one too large for `usize`.
 
   | Built-in | Type | Converts |
   |---|---|---|
-  | `form-integer` | `(fn (form) i64)` | a number form to an integer |
-  | `integer-form` | `(fn (i64) form)` | an integer to a number form |
+  | `form-integer` | `(fn (form) usize)` | a number form to a count or an index |
+  | `integer-form` | `(fn (usize) form)` | a count or an index to a number form |
   | `form-text` | `(fn (form) string)` | a string form to a `string` |
   | `text-form` | `(fn ((ref str)) form)` | a string to a string form |
   | `form-items` | `(fn (form) (vec form))` | a list form to a vector of its forms |
   | `items-form` | `(fn ((ref (slice form))) form)` | a vector of forms to a list form |
 
 - **Lists that are not lists.** `len`, `empty?` and `form-items` on a form that is not a list fail the macro as `first` does today. A macro that takes a bare symbol apart still fails, so the rule for a macro's name in value position keeps its error (`docs/language.md`, Macros). `=` never fails.
-- **Counts and indexes.** Macro code keeps counts and indexes as `usize`, as `len` returns them and `at` takes them, and converts a number written in source with `form-integer`.
+- **Counts and indexes.** Macro code keeps counts and indexes as `usize`, as `len` returns them and `at` takes them. A number written in source becomes a `usize` with `form-integer`, and a count becomes a number form with `integer-form`, so `(number-add (string-length name) 2)` becomes `(integer-form (+ (char-count (form-text name)) 2))`. Subtracting past zero panics, which is a macro failure at the call; no prelude caller needs a negative count today.
 
 **The deleted built-ins.** The number of uses is the count of call sites in the prelude, so it gives the size of each part's rewrite:
 
@@ -499,8 +500,10 @@ The interpreter trusts `check`, so it comes after the RFC 0065 work in that RFC'
 | 16b | `len` | 79 | `len`, through `sequence` on `form`, returning `usize` | yes |
 | 16b | `nth` | 226 | `at` on `(form-items form)` | yes |
 | 16c, text | `string` | 147 | `str`, then `text-form` where a form is needed | yes |
-| 16c | `string-length`, `string-lines` | 25 | `len`, `lines` on `form-text` | yes |
-| 16c | `string-contains?`, `string-drop`, `string-lowercase`, `string-strip-prefix`, `string-strip-suffix`, `string-trim-end`, `string-trim-start` | 59 | `contains?`, `drop-chars`, `lowercase`, `strip-prefix`, `strip-suffix`, `trim-end`, `trim-start` on `str` | no: 16c adds each to `prelude/text` with a native and a Rust template, so programs get them too |
+| 16c | `string-length` | 16 | `char-count` on `form-text`, which counts characters as `string-length` does; prelude `len` counts bytes | no: 16c adds `char-count`, `{0}.chars().count()` |
+| 16c | `string-lines` | 9 | `split` with `"\n"` on `form-text`, then `text-form` and `items-form`; like `string-lines` it keeps a final empty line and any `\r`, where prelude `lines` drops them | yes |
+| 16c | `string-lowercase` | 4 | `lower-case` | yes |
+| 16c | `string-contains?`, `string-drop`, `string-strip-prefix`, `string-strip-suffix`, `string-trim-end`, `string-trim-start` | 55 | `contains?`, `drop-chars`, `strip-prefix`, `strip-suffix`, `trim-end`, `trim-start` on `str` | no: 16c adds each to `prelude/text` with a native and a Rust template, so programs get them too |
 | 16d, lists | `first` | 411 | `at` with index 0 on `(form-items form)` | yes |
 | 16d | `rest`, `take`, `drop` | 283 | `skip` and `take` on `(iter (form-items form))`, then `collect` and `items-form` | `take` and `collect` yes; `skip` no, 16d adds it |
 | 16d | `concat` | 105 | `concat` on vectors of forms, then `items-form` | no: 16d adds `concat` for vectors |
@@ -527,7 +530,7 @@ A panic in macro code, such as `at` past the end of a list, is a macro failure a
    - B: the interpreter recognizes template texts and a fixed set of template shapes, as the prototype does. Nothing in the prelude changes.
    - C: prelude macros stop building templates, and `println` expands to calls of named definitions. This changes the emitted Rust.
    - Recommendation: A. The prelude states each fact once and the interpreter reads it. B is less work now, but the interpreter then depends on how the prelude spells each template, and every prelude change can break it quietly. C writes worse Rust for every program to make the interpreter easier.
-2. **Where the prelude's macro groups are checked.** Every option has the expander define a `MacroRuntime` trait that the driver implements with the checker and the interpreter, which keeps stage order. They differ in where the checked prelude macro code comes from. The checker alone, without reading and expansion, runs at 27,000 to 71,000 lines a second on the corpus (`results/r-check-only.json`: `call_chain`'s 2,000 lines in 0.073 s, `generic_types`' 1,801 lines in 0.025 s). The prelude macro code is 5,648 lines, and a program with tests reaches about 3,000 of them.
+2. **Where the prelude's macro groups are checked.** Every option has the expander define a `MacroRuntime` trait, implemented in the crate of the type, ownership and interpreter stages, which keeps stage order. They differ in where the checked prelude macro code comes from. The checker alone, without reading and expansion, runs at 27,000 to 71,000 lines a second on the corpus (`results/r-check-only.json`: `call_chain`'s 2,000 lines in 0.073 s, `generic_types`' 1,801 lines in 0.025 s). The prelude macro code is 5,648 lines, and a program with tests reaches about 3,000 of them.
    - A: build time. The type, ownership and interpreter stages move into a crate that `build.rs` uses, and the saved prelude holds checked macro code. No session pays. The compiler's own builds pay: `src/types` and `src/ownership`, 34,265 lines, and the interpreter become build dependencies of `build.rs`. Today an incremental `--profile local` rebuild after an edit in `src/types` takes 173 s of CPU. Under A it also rebuilds those crates for the build script wherever the build script's profile differs from the target's, and in `release` it always does, because fat LTO cannot match a build override. It also reruns `build.rs`, which takes 0.38 s today.
    - B: each session checks the groups it reaches, at first use in each command: about 0.04 to 0.11 s for 3,000 lines and 0.08 to 0.21 s for all of them. That is 1 to 2.5 times a whole `knave check` of `warehouse` (0.043 s), spent on every command in every session, against a 0.25 s cycle target.
    - C: the user cache. The first command after a `knave` install checks the prelude's macro groups, which takes 0.08 to 0.21 s once, and writes the result under the user cache, keyed by the version and commit identifier embedded in the binary at build time, beside the shared Cargo target and the git store. The file is estimated at 1 to 2 MB: macro code is 53% of the prelude's 10,729 lines, the embedded state for the whole prelude is 1.1 MB, and the types on each node may double or triple that share. Later commands in every session and worktree map the file read-only, so its pages are shared across processes as the embedded prelude's are, and decode only the groups the command reaches into the heap. That decoded part is private and counts against the 4 MB private heap target: a program with tests reaches about 3,000 lines, an estimated 0.5 to 1 MB. Nothing is written per worktree, and no build-script dependency is added. It costs a cache file that the CLI must write atomically, because 30 sessions may race to write it first, and must ignore when it is unreadable, falling back to B.

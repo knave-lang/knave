@@ -154,7 +154,9 @@ impl PathPrefix {
         literal
             .char_indices()
             .all(|(at, character)| match character {
-                '<' if literal[..at].ends_with(Self::TURBOFISH_OPENER) => {
+                '<' if self.open_generic_lists > 0
+                    || literal[..at].ends_with(Self::TURBOFISH_OPENER) =>
+                {
                     self.open_generic_lists += 1;
                     true
                 }
@@ -213,6 +215,10 @@ mod tests {
             (def turbofish (rust \"std::convert::identity::<&str>({0})\" (fn ((ref str)) (ref str))))
             (defn template-less-than () (local t (compared (as-str (announced \"a\")))) t)
             (defn template-greater-than () (local t (greater (as-str (announced \"a\")))) t)
+            (def closed-turbofish (rust \"std::convert::identity((Vec::<i64>::new, 2 > 1, {0}).2)\" (fn ((ref str)) (ref str))))
+            (def nested-turbofish (rust \"std::convert::identity::<Option<&str>>(Some({0})).unwrap()\" (fn ((ref str)) (ref str))))
+            (defn template-closed-turbofish () (local t (closed-turbofish (as-str (announced \"a\")))) t)
+            (defn template-nested-turbofish () (local t (nested-turbofish (as-str (announced \"a\")))) t)
             (defn template-turbofish () (local t (turbofish (as-str (announced \"a\")))) t)
             (defn template-braces () (local t (braced (as-str (announced \"a\")))) t)
             (defn template-callee () (local t ((rust \"std::convert::identity({0})\" (fn ((ref str)) (ref str))) (as-str (announced \"a\")))) t)
@@ -358,6 +364,16 @@ mod tests {
     #[test]
     fn admits_a_turbofish_ahead() {
         assert!(ShortFixture::new().admits("template-turbofish", &[0, 0]));
+    }
+
+    #[test]
+    fn admits_a_nested_generic_inside_a_turbofish_ahead() {
+        assert!(ShortFixture::new().admits("template-nested-turbofish", &[0, 0]));
+    }
+
+    #[test]
+    fn refuses_a_greater_than_after_a_closed_turbofish() {
+        assert!(!ShortFixture::new().admits("template-closed-turbofish", &[0, 0]));
     }
 
     #[test]

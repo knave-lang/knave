@@ -331,7 +331,7 @@ impl<'a> ItemEmitter<'a> {
         let definitions: Vec<TraitHeader> = self
             .program
             .declarations
-            .traits
+            .traits()
             .definitions()
             .iter()
             .filter(|trait_definition| trait_definition.module == module)
@@ -583,23 +583,23 @@ impl<'a> ItemEmitter<'a> {
 
     fn trait_impls(&mut self, module: ModuleId) -> Vec<Vec<Fragment>> {
         let mut items = Vec::new();
-        for position in 0..self.program.declarations.traits.impls().len() {
-            if self.program.declarations.traits.impls()[position].module != module {
+        for position in 0..self.program.declarations.traits().impls().len() {
+            if self.program.declarations.traits().impls()[position].module != module {
                 continue;
             }
-            let trait_binding = self.program.declarations.traits.impls()[position].trait_binding;
-            let implementor = self.program.declarations.traits.impls()[position]
+            let trait_binding = self.program.declarations.traits().impls()[position].trait_binding;
+            let implementor = self.program.declarations.traits().impls()[position]
                 .implementor
                 .clone();
-            let associated = self.program.declarations.traits.impls()[position]
+            let associated = self.program.declarations.traits().impls()[position]
                 .associated
                 .clone();
-            let methods = self.program.declarations.traits.impls()[position]
+            let methods = self.program.declarations.traits().impls()[position]
                 .methods
                 .clone();
             let trait_path = self.plan.trait_path(trait_binding, module);
             let lifetime = self.implementor_lifetime(&implementor);
-            let params = self.program.declarations.traits.impls()[position]
+            let params = self.program.declarations.traits().impls()[position]
                 .params
                 .clone();
             let (type_name, generics) = {
@@ -1596,12 +1596,13 @@ impl<'a> ItemEmitter<'a> {
         if !program.has_lifetime_parameter(*binding) {
             return None;
         }
-        let written = if let Some(definition) = program.declarations.types.structs().get(*binding) {
+        let written = if let Some(definition) = program.declarations.types().structs().get(*binding)
+        {
             definition.lifetimes.first().copied()
         } else {
             program
                 .declarations
-                .types
+                .types()
                 .enums()
                 .get(*binding)
                 .and_then(|definition| definition.lifetimes.first().copied())

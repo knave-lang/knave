@@ -17,8 +17,13 @@ impl InPlaceChanges {
             Self::expression(&definition.value, &mut changed);
         }
         changed.retain(|binding| {
-            program.declarations.types.structs().get(*binding).is_some()
-                || program.declarations.types.enums().get(*binding).is_some()
+            program
+                .declarations
+                .types()
+                .structs()
+                .get(*binding)
+                .is_some()
+                || program.declarations.types().enums().get(*binding).is_some()
         });
         changed
     }

@@ -176,7 +176,7 @@ impl<'a> RustTypes<'a> {
     ) -> Self {
         Self {
             program,
-            traits: program.declarations.traits.table(),
+            traits: program.declarations.traits().table(),
             plan,
             types,
             module,

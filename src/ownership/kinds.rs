@@ -211,7 +211,7 @@ impl<'a> ClosureKinds<'a> {
     pub fn new(sources: KindSources<'a>) -> Self {
         Self {
             copy: CopyRules::new(sources.declarations, sources.generics),
-            structs: sources.declarations.types.structs(),
+            structs: sources.declarations.types().structs(),
             bindings: sources.bindings,
             template_borrows: sources.template_borrows,
             parameter_kinds: FxHashMap::default(),
@@ -220,7 +220,7 @@ impl<'a> ClosureKinds<'a> {
             value_parameters: FxHashMap::default(),
             returned_closures: FxHashMap::default(),
             borrowing_lambdas: sources.borrowing_lambdas,
-            pipelines: Pipelines::new(sources.declarations.types.rust_types()),
+            pipelines: Pipelines::new(sources.declarations.types().rust_types()),
             function_parameters: sources.function_parameters,
             pass_edges: FxHashMap::default(),
             cycle_peers: FxHashMap::default(),

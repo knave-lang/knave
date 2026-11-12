@@ -101,7 +101,7 @@ mod tests {
             let plan = EmitPlan::build(&self.program, Span::new(SourceId::new(0), 0..0))
                 .unwrap_or_else(|_| panic!("the fixture plans"));
             let unsized_parameters = UnsizedParameters::of(&self.program, &plan);
-            EmittedTypes::new(&self.program.declarations.types, &unsized_parameters)
+            EmittedTypes::new(&self.program.declarations.types(), &unsized_parameters)
                 .is_unsized(self.measured_generic())
         }
     }

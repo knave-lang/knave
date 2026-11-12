@@ -65,7 +65,7 @@ impl<'a> OpaqueBorrows<'a> {
     fn is_opaque(&self, binding: BindingId) -> bool {
         self.program
             .declarations
-            .types
+            .types()
             .rust_types()
             .get(binding)
             .is_some_and(RustType::is_opaque)

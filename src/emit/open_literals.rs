@@ -220,7 +220,7 @@ impl OpenLiteralSearch<'_> {
         let definition = self
             .program
             .declarations
-            .types
+            .types()
             .structs()
             .get(binding)
             .expect("a constructed struct has a definition");
@@ -244,7 +244,7 @@ impl OpenLiteralSearch<'_> {
         let definition = self
             .program
             .declarations
-            .types
+            .types()
             .enums()
             .get(owner)
             .expect("a reached enum has a definition");

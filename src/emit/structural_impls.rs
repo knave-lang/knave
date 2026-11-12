@@ -180,7 +180,7 @@ impl<'a> StructuralImpls<'a> {
 
     pub fn of_module(&self, module: ModuleId) -> Vec<Vec<Fragment>> {
         let mut items = Vec::new();
-        let structural = self.program.declarations.traits.structural();
+        let structural = self.program.declarations.traits().structural();
         for binding in self.plan.items_of(module) {
             let info = self
                 .plan

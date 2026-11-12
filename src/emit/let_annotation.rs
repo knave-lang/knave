@@ -23,7 +23,7 @@ impl<'a> LetAnnotation<'a> {
                 !self
                     .program
                     .declarations
-                    .types
+                    .types()
                     .rust_types()
                     .is_opaque(*binding)
                     && arguments.iter().any(|argument| self.is_needed(argument))

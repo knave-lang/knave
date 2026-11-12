@@ -236,7 +236,7 @@ impl<'a> CheckRuns<'a> {
             .filter(|binding| {
                 typed
                     .declarations
-                    .types
+                    .types()
                     .structs()
                     .get(*binding)
                     .is_some_and(|definition| {
@@ -245,7 +245,7 @@ impl<'a> CheckRuns<'a> {
                     })
                     || typed
                         .declarations
-                        .types
+                        .types()
                         .enums()
                         .get(*binding)
                         .is_some_and(|definition| {

@@ -56,7 +56,7 @@ impl<'a> ShrinkSelection<'a> {
         functions: &'a FunctionTable,
         modes: &'a FxHashMap<BindingId, ParamMode>,
     ) -> Option<Self> {
-        let rust_types = program.declarations.types.rust_types();
+        let rust_types = program.declarations.types().rust_types();
         let slice = rust_types.binding_with_template(RustType::SLICE_TEMPLATE)?;
         let mut values = FxHashSet::default();
         let declared: FxHashMap<BindingId, &'a Type> = program
@@ -352,7 +352,7 @@ impl<'a> ShrinkSelection<'a> {
     }
 
     fn generic_accepts(&self, generic: GenericId, candidate: &Type) -> bool {
-        let traits = self.program.declarations.traits.table();
+        let traits = self.program.declarations.traits().table();
         self.program
             .generics
             .get(&generic)

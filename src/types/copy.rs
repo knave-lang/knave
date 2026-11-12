@@ -41,11 +41,11 @@ impl<'a> CopyRules<'a> {
         declarations: &'a Declarations,
         generics: &'a FxHashMap<GenericId, GenericParam>,
     ) -> Self {
-        let traits = &declarations.traits.table;
+        let traits = declarations.traits().table();
         Self {
             traits,
             generics,
-            sizes: TypeSizes::new(&declarations.types.structs, &declarations.types.enums),
+            sizes: TypeSizes::new(declarations.types().structs(), declarations.types().enums()),
             copy_traits: traits.with_paths(&[CopyTrait::PATH]),
         }
     }

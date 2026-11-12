@@ -38,8 +38,14 @@ impl<'s> CodeChunk<'s> {
             return RegionLayout::Prose;
         }
         let mut engine = LayoutEngine::new(self.shapes);
-        let lines = TopLevelPrinter::new(&mut engine, self.layout).print(&SyntaxTree::build(text));
-        RegionLayout::LaidOut(lines.iter().map(|line| self.with_margin(line)).collect())
+        let printed =
+            TopLevelPrinter::new(&mut engine, self.layout).print(&SyntaxTree::build(text));
+        RegionLayout::LaidOut(
+            printed
+                .split('\n')
+                .map(|line| self.with_margin(line))
+                .collect(),
+        )
     }
 
     fn read(text: &str) -> Option<Vec<Form>> {

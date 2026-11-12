@@ -19,6 +19,11 @@ impl Interruption {
         Ok(Self::raised_by(raised))
     }
 
+    #[cfg(test)]
+    pub fn raised() -> Self {
+        Self::raised_by(Arc::new(AtomicBool::new(true)))
+    }
+
     fn raised_by(raised: Arc<AtomicBool>) -> Self {
         Self {
             raised: Some(raised),

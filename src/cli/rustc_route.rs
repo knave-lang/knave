@@ -38,3 +38,64 @@ impl BuildRoute for RustcRoute<'_> {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+
+    use super::RustcRoute;
+    use crate::build::{BuildError, BuildProfile};
+    use crate::cli::build_route::BuildRoute;
+    use crate::cli::crate_name::CrateName;
+    use crate::cli::fake_programs::FakePrograms;
+    use crate::cli::fake_stages::FakeStages;
+    use crate::cli::recorded_output::RecordedOutput;
+    use crate::cli::source_report::SourceReport;
+    use crate::cli::temporary_directory::TemporaryDirectory;
+    use crate::source::SourceMap;
+
+    struct RustcFixture {
+        directory: TemporaryDirectory,
+        crate_name: CrateName,
+        sources: SourceMap,
+        output: RecordedOutput,
+    }
+
+    impl RustcFixture {
+        const CRATE_STEM: &str = "geometry";
+
+        fn new() -> Self {
+            Self {
+                directory: TemporaryDirectory::create().expect("a temporary directory"),
+                crate_name: CrateName::of(Path::new(Self::CRATE_STEM)),
+                sources: SourceMap::default(),
+                output: RecordedOutput::default(),
+            }
+        }
+
+        fn binary(&self) -> PathBuf {
+            self.crate_name.path_in(self.directory.path())
+        }
+
+        fn compile(&self, text: &str) -> Result<(), BuildError> {
+            let binary = self.binary();
+            RustcRoute::new(
+                self.directory.path().to_path_buf(),
+                &self.crate_name,
+                &binary,
+            )
+            .compile(
+                &FakeStages::emitted(text),
+                BuildProfile::Debug,
+                &SourceReport::new(&self.sources, &self.output),
+            )
+        }
+    }
+
+    #[test]
+    fn compiles_the_emitted_crate_into_its_output() {
+        let fixture = RustcFixture::new();
+        assert!(fixture.compile(FakePrograms::PRINTS_A_SUM).is_ok());
+        assert!(fixture.binary().is_file());
+    }
+}

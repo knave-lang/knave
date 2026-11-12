@@ -1720,7 +1720,7 @@ impl TypeChecker {
         variants: &[VariantDeclaration],
     ) -> Option<Diagnostic> {
         let enum_name = self.bindings.get(enum_binding).name();
-        let problem = binders
+        binders
             .iter()
             .filter(|binder| !binder.lifetime)
             .zip(params)
@@ -1741,8 +1741,7 @@ impl TypeChecker {
                         binder.span,
                     )),
                 }
-            });
-        problem
+            })
     }
 
     fn lower_fields(

@@ -1,6 +1,7 @@
 use super::code_layout::CodeLayout;
 use super::code_region::CodeRegion;
 use super::code_spacing::CodeSpacing;
+use super::docstring_part::DocstringPart;
 use super::docstring_regions::DocstringRegions;
 use super::format_rules::FormatRules;
 use super::list_plan::Arrangement;
@@ -41,30 +42,43 @@ impl<'s> DocstringCode<'s> {
             lines: Vec::new(),
             unreadable_lines: Vec::new(),
         };
-        let mut copied = 0;
-        for code_lines in DocstringRegions::code_of(self.rules.syntax, lines, self.fence_spacing) {
-            let region = code_lines.range;
-            laid_out
-                .lines
-                .extend_from_slice(&lines[copied..region.start]);
-            let code = &lines[region.clone()];
+        for part in DocstringRegions::parts_of(self.rules.syntax, lines) {
+            let range = part.range();
+            let code = &lines[range.clone()];
+            let Some(spacing) = self.spacing_of(&part) else {
+                laid_out.lines.extend_from_slice(code);
+                continue;
+            };
             let indent = CodeRegion::least_indentation(code);
             let layout = CodeLayout {
                 column: Self::LEFT_EDGE + indent.saturating_sub(shared),
-                spacing: code_lines.spacing,
+                spacing,
             };
-            match CodeRegion::new(self.rules, code, layout).lay_out() {
-                RegionLayout::LaidOut(code_lines) => laid_out.lines.extend(code_lines),
-                RegionLayout::Unreadable(line) => {
-                    laid_out.unreadable_lines.push(region.start + line);
-                    laid_out.lines.extend_from_slice(code);
-                }
-                RegionLayout::Prose => laid_out.lines.extend_from_slice(code),
-            }
-            copied = region.end;
+            let region = CodeRegion::new(self.rules, code, layout).lay_out();
+            laid_out.add_region(range.start, code, region);
         }
-        laid_out.lines.extend_from_slice(&lines[copied..]);
         laid_out
+    }
+
+    fn spacing_of(&self, part: &DocstringPart) -> Option<CodeSpacing> {
+        match part {
+            DocstringPart::Prose(_) => None,
+            DocstringPart::Example(_) => Some(CodeSpacing::Written),
+            DocstringPart::Fence(_) => Some(self.fence_spacing),
+        }
+    }
+}
+
+impl LaidOutDocstring {
+    fn add_region(&mut self, start: usize, code: &[String], region: RegionLayout) {
+        match region {
+            RegionLayout::LaidOut(code_lines) => self.lines.extend(code_lines),
+            RegionLayout::Unreadable(line) => {
+                self.unreadable_lines.push(start + line);
+                self.lines.extend_from_slice(code);
+            }
+            RegionLayout::Prose => self.lines.extend_from_slice(code),
+        }
     }
 }
 

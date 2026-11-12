@@ -1,4 +1,4 @@
-use super::code_spacing::CodeSpacing;
+use super::docstring_part::DocstringPart;
 use super::docstring_regions::DocstringRegions;
 use super::docstring_syntax::DocstringSyntax;
 use super::import_order::ImportList;
@@ -17,7 +17,7 @@ struct Docstring<'t> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum DocstringPart {
+enum ComparedPart {
     Prose(String),
     Code(Vec<String>),
 }
@@ -128,25 +128,21 @@ impl<'s> MeaningComparison<'s> {
 }
 
 impl Docstring<'_> {
-    fn parts(&self) -> Vec<DocstringPart> {
+    fn parts(&self) -> Vec<ComparedPart> {
         let lines: Vec<String> = self.dedented().split('\n').map(str::to_string).collect();
-        let mut parts = Vec::new();
-        let mut copied = 0;
-        for code in DocstringRegions::code_of(self.syntax, &lines, CodeSpacing::Separated) {
-            let region = code.range;
-            parts.extend(
-                lines[copied..region.start]
+        DocstringRegions::parts_of(self.syntax, &lines)
+            .into_iter()
+            .flat_map(|part| match part {
+                DocstringPart::Prose(range) => lines[range]
                     .iter()
                     .cloned()
-                    .map(DocstringPart::Prose),
-            );
-            parts.push(DocstringPart::Code(Self::tokens(
-                &lines[region.clone()].join("\n"),
-            )));
-            copied = region.end;
-        }
-        parts.extend(lines[copied..].iter().cloned().map(DocstringPart::Prose));
-        parts
+                    .map(ComparedPart::Prose)
+                    .collect(),
+                DocstringPart::Example(range) | DocstringPart::Fence(range) => {
+                    vec![ComparedPart::Code(Self::tokens(&lines[range].join("\n")))]
+                }
+            })
+            .collect()
     }
 
     fn tokens(code: &str) -> Vec<String> {
@@ -188,7 +184,7 @@ impl Docstring<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Docstring, DocstringPart};
+    use super::{ComparedPart, Docstring};
     use crate::format::docstring_syntax::{DocstringSyntax, DocstringSyntaxFixture};
 
     struct DocstringFixture {
@@ -239,6 +235,6 @@ mod tests {
         let written = fixture.docstring("Pads.\n\n  (pad 1)\n  => 1");
         let laid_out = fixture.docstring("Pads.\n\n  (pad 2)\n  => 1");
         assert_ne!(written.parts(), laid_out.parts());
-        assert!(matches!(written.parts()[2], DocstringPart::Code(_)));
+        assert!(matches!(written.parts()[2], ComparedPart::Code(_)));
     }
 }

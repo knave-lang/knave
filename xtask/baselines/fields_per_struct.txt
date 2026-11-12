@@ -3,7 +3,6 @@ expand/src/expand/mod.rs::ExpansionTables 16
 expand/src/expand/mod.rs::Program 11
 src/emit/expressions.rs::ExpressionEmitter 16
 src/ownership/kinds.rs::ClosureKinds 21
-src/ownership/kinds.rs::KindSources 11
 src/ownership/moves.rs::MoveChecker 18
-src/types/checker.rs::TypeChecker 63
-src/types/typed.rs::TypedProgram 36
+src/types/checker.rs::TypeChecker 60
+src/types/typed.rs::TypedProgram 26

@@ -11,7 +11,7 @@ use super::plan::EmitPlan;
 use super::unsized_parameters::UnsizedParameters;
 use crate::core::{BindingId, ModuleId, Piece, PrimitiveType};
 use crate::types::{
-    Bound, ClosureKind, GenericId, GenericParam, Lifetime, RustType, Type, TypedProgram,
+    Bound, ClosureKind, GenericId, GenericParam, Lifetime, RustType, TraitTable, Type, TypedProgram,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -132,6 +132,7 @@ impl LifetimeScope {
 
 pub struct RustTypes<'a> {
     program: &'a TypedProgram,
+    traits: &'a TraitTable,
     plan: &'a EmitPlan<'a>,
     unsized_parameters: &'a UnsizedParameters,
     module: ModuleId,
@@ -175,6 +176,7 @@ impl<'a> RustTypes<'a> {
     ) -> Self {
         Self {
             program,
+            traits: program.declarations.traits.table(),
             plan,
             unsized_parameters,
             module,
@@ -364,15 +366,10 @@ impl<'a> RustTypes<'a> {
     }
 
     fn bound_requires_sized(&self, bound: &Bound) -> bool {
-        self.program
-            .declarations
-            .traits
-            .table()
-            .get(bound.binding)
-            .is_some_and(|rust_trait| {
-                Self::SIZED_TRAITS.contains(&rust_trait.path.as_ref())
-                    || Self::supertraits(&rust_trait.path).contains(&"Copy")
-            })
+        self.traits.get(bound.binding).is_some_and(|rust_trait| {
+            Self::SIZED_TRAITS.contains(&rust_trait.path.as_ref())
+                || Self::supertraits(&rust_trait.path).contains(&"Copy")
+        })
     }
 
     fn declared_bounds(&self, param: &GenericParam) -> Vec<String> {
@@ -381,13 +378,7 @@ impl<'a> RustTypes<'a> {
             .iter()
             .filter(|bound| {
                 !param.bounds.iter().any(|other| {
-                    other.binding != bound.binding
-                        && self
-                            .program
-                            .declarations
-                            .traits
-                            .table()
-                            .implies(other, bound, param.id)
+                    other.binding != bound.binding && self.traits.implies(other, bound, param.id)
                 })
             })
             .filter_map(|bound| self.trait_path(bound))
@@ -402,13 +393,11 @@ impl<'a> RustTypes<'a> {
             .cloned()
             .unwrap_or_default();
         for implied in &implied {
-            if param.bounds.iter().any(|bound| {
-                self.program
-                    .declarations
-                    .traits
-                    .table()
-                    .implies(bound, implied, param.id)
-            }) {
+            if param
+                .bounds
+                .iter()
+                .any(|bound| self.traits.implies(bound, implied, param.id))
+            {
                 continue;
             }
             if let Some(path) = self.trait_path(implied)
@@ -420,12 +409,7 @@ impl<'a> RustTypes<'a> {
     }
 
     fn trait_path(&self, bound: &Bound) -> Option<String> {
-        let rust_trait = self
-            .program
-            .declarations
-            .traits
-            .table()
-            .get(bound.binding)?;
+        let rust_trait = self.traits.get(bound.binding)?;
         let path = rust_trait.path.to_string();
         Some(match (&bound.argument, &rust_trait.associated) {
             (Some(argument), Some(associated)) => format!(
@@ -481,14 +465,7 @@ impl<'a> RustTypes<'a> {
         position: TypePosition,
         scope: &LifetimeScope,
     ) -> String {
-        if self
-            .program
-            .declarations
-            .traits
-            .table()
-            .projections()
-            .is_projection(binding)
-        {
+        if self.traits.projections().is_projection(binding) {
             return self.projection(binding, arguments, position, scope);
         }
         match self.program.declarations.types.rust_types().get(binding) {
@@ -514,7 +491,7 @@ impl<'a> RustTypes<'a> {
         position: TypePosition,
         scope: &LifetimeScope,
     ) -> String {
-        let projections = self.program.declarations.traits.table().projections();
+        let projections = self.traits.projections();
         let projected = Type::Named(binding, arguments.to_vec());
         if let Some(normalized) = projections.normalize(&projected) {
             return self.show_in(&normalized, position, scope);
@@ -599,17 +576,13 @@ impl<'a> RustTypes<'a> {
     }
 
     fn lifetime_parameter_count(&self, binding: BindingId) -> usize {
-        let lifetimes = self
-            .program
-            .declarations
-            .types
+        let types = &self.program.declarations.types;
+        let lifetimes = types
             .structs()
             .get(binding)
             .map(|definition| &definition.lifetimes)
             .or_else(|| {
-                self.program
-                    .declarations
-                    .types
+                types
                     .enums()
                     .get(binding)
                     .map(|definition| &definition.lifetimes)

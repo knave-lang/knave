@@ -39,6 +39,8 @@ mod noted_term;
 mod noted_terms;
 mod notes_module;
 mod origin_row;
+#[cfg(test)]
+mod origins_fixture;
 mod own_call_origins;
 mod prelude_state;
 mod problem_mark;

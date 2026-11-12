@@ -370,18 +370,26 @@ mod tests {
         }
 
         fn introducing_macro_at(&mut self, call_site: Span, binder: Span) -> Option<Rc<str>> {
+            let hidden = self.hidden(binder);
             let expander = self.expander_with_origin_at(call_site);
-            expander.introducing_macro(&Self::hidden(binder))
+            expander.introducing_macro(&hidden)
         }
 
-        fn called_introducing_macro_at(&mut self, call_site: Span) -> Option<String> {
-            let builtin = Builtin::all().find(|builtin| builtin.name() == "introducing-macro")?;
+        fn called_introducing_macro_at(&mut self, call_site: Span) -> Result<String, Diagnostic> {
+            let builtin = Builtin::all()
+                .find(|builtin| builtin.name() == "introducing-macro")
+                .expect("the introducing-macro built-in exists");
+            let hidden = Value::Form(self.hidden(call_site));
             let mut expander = self.expander_with_origin_at(call_site);
-            let hidden = Value::Form(Self::hidden(call_site));
-            let names = Interpreter::new(&mut expander, call_site, StepBudget::full())
-                .call(&Value::Builtin(builtin), vec![hidden], call_site)
-                .ok()?;
-            names.as_form().map(Form::to_string)
+            let names = Interpreter::new(&mut expander, call_site, StepBudget::full()).call(
+                &Value::Builtin(builtin),
+                vec![hidden],
+                call_site,
+            )?;
+            Ok(names
+                .as_form()
+                .map(Form::to_string)
+                .expect("the built-in returns a form"))
         }
 
         fn expander_with_origin_at(&mut self, call_site: Span) -> Expander<'_> {
@@ -400,7 +408,7 @@ mod tests {
             expander
         }
 
-        fn hidden(binder: Span) -> Form {
+        fn hidden(&self, binder: Span) -> Form {
             Form::new(FormKind::Symbol(Symbol::new("hidden")), binder)
         }
     }
@@ -409,10 +417,8 @@ mod tests {
     fn the_introducing_macro_built_in_names_the_macro_at_its_call() {
         let mut fixture = HostFixture::new();
         let call_site = fixture.span();
-        assert_eq!(
-            fixture.called_introducing_macro_at(call_site).as_deref(),
-            Some("(hide-a-name)")
-        );
+        let names = fixture.called_introducing_macro_at(call_site);
+        assert!(matches!(names.as_deref(), Ok("(hide-a-name)")), "{names:?}");
     }
 
     #[test]

@@ -262,7 +262,7 @@ diagnostic_codes! {
 }
 
 impl DiagnosticCode {
-    pub fn from_rustc(code: String) -> Self {
+    pub fn from_text(code: String) -> Self {
         Self(Cow::Owned(code))
     }
 

@@ -67,7 +67,7 @@ impl<'a> RustcDiagnosticMapper<'a> {
         let code = message["code"]["code"]
             .as_str()
             .map_or(DiagnosticCode::RUST_ERROR, |code| {
-                DiagnosticCode::from_rustc(code.to_string())
+                DiagnosticCode::from_text(code.to_string())
             });
         let (span, label) = self.primary_span(message);
         let diagnostic = Diagnostic::error(

@@ -11,6 +11,12 @@ use super::project_example::ProjectExample;
 pub struct ExplanationExamples {
     code: String,
     text: String,
+    source: ExplanationSource,
+}
+
+enum ExplanationSource {
+    MarkdownFile,
+    Docstring,
 }
 
 #[derive(Default)]
@@ -39,9 +45,13 @@ impl ExplanationExamples {
     const FIX_PLACE: &str = "fix";
 
     pub fn new(code: &str, text: &str) -> Self {
+        Self::from_source(code, text, ExplanationSource::MarkdownFile)
+    }
+
+    fn from_source(code: &str, text: &str, source: ExplanationSource) -> Self {
         let code = code.to_string();
         let text = text.to_string();
-        Self { code, text }
+        Self { code, text, source }
     }
 
     pub fn written() -> Vec<Self> {
@@ -51,15 +61,6 @@ impl ExplanationExamples {
             .filter_map(|explanation| match explanation.text() {
                 Some(text) => Some(Self::new(explanation.code().as_str(), text)),
                 None => Self::of_error_page(&explanation, &pages),
-            })
-            .collect()
-    }
-
-    pub fn of_markdown() -> Vec<Self> {
-        Explanation::all()
-            .filter_map(|explanation| {
-                let text = explanation.text()?;
-                Some(Self::new(explanation.code().as_str(), text))
             })
             .collect()
     }
@@ -76,7 +77,8 @@ impl ExplanationExamples {
             explained.is_some() || !shown,
             "{code} is a lint without a Markdown file, and no docstring explains it"
         );
-        explained.map(|(_, docstring)| Self::new(code, docstring))
+        explained
+            .map(|(_, docstring)| Self::from_source(code, docstring, ExplanationSource::Docstring))
     }
 
     pub fn code(&self) -> &str {
@@ -126,7 +128,7 @@ impl ExplanationExamples {
             let runs: Vec<_> = examples
                 .iter()
                 .map(|(place, example)| {
-                    scope.spawn(move || (place, *example, Self::layout_of(example).laid_out()))
+                    scope.spawn(move || (place, *example, self.layout_of(example).laid_out()))
                 })
                 .collect();
             runs.into_iter()
@@ -157,10 +159,10 @@ impl ExplanationExamples {
             .map(move |(index, example)| (format!("{place} {index} of {}", self.code), example))
     }
 
-    fn layout_of(example: &str) -> ExampleLayout {
-        match ProjectExample::parse(example) {
-            Some(project) => project.layout(),
-            None => ExampleLayout::of_single_file(example),
+    fn layout_of(&self, example: &str) -> ExampleLayout {
+        match (&self.source, ProjectExample::parse(example)) {
+            (ExplanationSource::MarkdownFile, Some(project)) => project.layout(),
+            _ => ExampleLayout::of_single_file(example),
         }
     }
 

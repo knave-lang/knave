@@ -1,0 +1,10 @@
+(use modules/shapes shape)
+
+(export width)
+
+(defn width (form)
+  (match form
+    ((circle r) r)
+    ((square s) s)))
+
+(defn main () (println 1))

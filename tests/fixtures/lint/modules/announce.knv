@@ -1,0 +1,4 @@
+(export announce)
+
+(defmacro announce (x)
+  (template (println (unquote x))))

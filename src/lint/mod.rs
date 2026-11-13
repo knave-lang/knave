@@ -1,9 +1,14 @@
+mod binding_owners;
 mod binding_symbols;
 mod bound_names;
 mod composite_forms;
 mod core_forms;
+mod definition_reach;
 mod form_reader;
+mod linted_module;
 mod linter;
+mod module_table;
+mod module_use;
 mod pattern_forms;
 mod problems;
 mod read_back;
@@ -18,6 +23,7 @@ mod rule_global;
 mod rule_host;
 mod rule_names;
 mod rule_program;
+mod rule_target;
 mod spanned_forms;
 
 pub use linter::Linter;

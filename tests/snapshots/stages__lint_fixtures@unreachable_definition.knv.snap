@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/unreachable_definition.knv
+---
+warning[L0807]: `helper` is never used
+ --> lint/unreachable_definition.knv:1:7
+  |
+1 | (defn helper (x) (* x 2))
+  |       ^^^^^^ never used
+  |
+  = help: remove the definition, or export it if another module needs it
+  = note: run `knave doc L0807` for an explanation

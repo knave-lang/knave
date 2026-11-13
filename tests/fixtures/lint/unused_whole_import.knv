@@ -1,0 +1,3 @@
+(use modules/format pad-left shout)
+
+(defn main () (println 1))

@@ -1,0 +1,11 @@
+(defstruct box
+  :side i64)
+
+(trait measured
+  (measure (fn ((ref self)) i64)))
+
+(impl measured box
+  (measure (b) (:side b)))
+
+(defn main ()
+  (println (measure (->box :side 2))))

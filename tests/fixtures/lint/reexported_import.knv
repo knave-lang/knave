@@ -1,0 +1,5 @@
+(use modules/format shout)
+
+(export shout)
+
+(defn main () (println 1))

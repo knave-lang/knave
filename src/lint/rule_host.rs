@@ -54,10 +54,21 @@ impl<'h> RuleHost<'h> {
         let span = call.span;
         let budget = StepBudget::full();
         budget.set_limit(call.step_limit);
-        let check = self.global_value(self.rules.entries().check, span)?;
+        let check = self.global_value(call.entry, span)?;
         Interpreter::new(self, span, budget)
             .call(&check, vec![Value::Form(call.rule), call.table], span)
             .map(|_| ())
+    }
+
+    pub fn is_kept(&mut self, binder: Form) -> Result<bool, Diagnostic> {
+        let span = binder.span();
+        let kept = self.global_value(self.rules.entries().kept, span)?;
+        let answer = Interpreter::new(self, span, StepBudget::full()).call(
+            &kept,
+            vec![Value::Form(binder)],
+            span,
+        )?;
+        Ok(matches!(answer, Value::Bool(true)))
     }
 
     fn evaluate(&mut self, binding: BindingId, span: Span) -> Result<Value, Diagnostic> {
@@ -358,6 +369,14 @@ mod tests {
             .rule_names(fixture.source.span_of(HostFixture::CALL))
             .expect("the rule names evaluate");
         let written: Vec<String> = names.iter().map(Form::to_string).collect();
-        assert_eq!(written, ["unused-binding", "unused-parameter"]);
+        assert_eq!(
+            written,
+            [
+                "unused-binding",
+                "unused-parameter",
+                "unreachable-definition",
+                "unused-import"
+            ]
+        );
     }
 }

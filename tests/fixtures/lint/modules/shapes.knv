@@ -1,0 +1,15 @@
+(export origin point shape sized)
+
+(defstruct point
+  :x i64)
+
+(defenum shape
+  (circle i64)
+  (square i64))
+
+(trait sized
+  (size (fn ((ref self)) i64)))
+
+(impl sized point (size (p) (:x p)))
+
+(defn origin () (->point :x 0))

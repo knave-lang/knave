@@ -1,0 +1,25 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/unreachable_chain.knv
+---
+warning[L0807]: `inner` is read only by definitions that nothing reachable reads
+ --> lint/unreachable_chain.knv:1:7
+  |
+1 | (defn inner (x) (* x 2))
+  |       ^^^^^ read only by definitions that nothing reachable reads
+2 |
+3 | (defn outer (x) (inner x))
+  |       ----- read by this definition, which nothing reachable reads
+  |
+  = help: remove it together with `outer`, which is reported too
+  = note: run `knave doc L0807` for an explanation
+
+warning[L0807]: `outer` is never used
+ --> lint/unreachable_chain.knv:3:7
+  |
+3 | (defn outer (x) (inner x))
+  |       ^^^^^ never used
+  |
+  = help: remove the definition, or export it if another module needs it
+  = note: run `knave doc L0807` for an explanation

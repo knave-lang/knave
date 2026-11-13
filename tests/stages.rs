@@ -1,6 +1,7 @@
 mod support;
 
 use std::collections::BTreeSet;
+use std::fs;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -193,7 +194,7 @@ fn lint_reports_the_one_unread_parameter_of_a_wide_function() {
         .map(|index| format!("p{index}"))
         .collect();
     let text = format!(
-        "(defn wide (unused {})\n  (vec {}))\n\n(defn main ())\n",
+        "(export wide)\n\n(defn wide (unused {})\n  (vec {}))\n\n(defn main ())\n",
         parameters.join(" "),
         parameters.join(" ")
     );
@@ -201,6 +202,46 @@ fn lint_reports_the_one_unread_parameter_of_a_wide_function() {
     assert_eq!(report.matches("warning[").count(), 1, "{report}");
     assert!(
         report.contains("warning[L0806]: parameter `unused` is never read"),
+        "{report}"
+    );
+}
+
+#[test]
+fn lint_reaches_a_long_chain_of_private_definitions() {
+    let chain: String = (0..GeneratedLint::LONGEST_CHAIN)
+        .map(|index| format!("(defn link{index} (n) (link{} n))\n", index + 1))
+        .collect();
+    let text = format!(
+        "{chain}(defn link{} (n) n)\n(defn spare () 1)\n(defn main () (println (link0 1)))\n",
+        GeneratedLint::LONGEST_CHAIN
+    );
+    let report = GeneratedLint::report("long_chain.knv", text);
+    assert_eq!(report.matches("warning[").count(), 1, "{report}");
+    assert!(
+        report.contains("warning[L0807]: `spare` is never used"),
+        "{report}"
+    );
+}
+
+#[test]
+fn lint_finds_the_one_unused_name_of_a_wide_use() {
+    let names: Vec<String> = (0..GeneratedLint::WIDEST_USE)
+        .map(|index| format!("name{index}"))
+        .collect();
+    let definitions: String = names
+        .iter()
+        .map(|name| format!("(defn {name} () 1)\n"))
+        .collect();
+    let module = format!("(export {})\n{definitions}", names.join(" "));
+    let reads: String = names[1..].iter().map(|name| format!(" ({name})")).collect();
+    let text = format!(
+        "(use wide/names {})\n(defn main () (prn (vec{reads})))\n",
+        names.join(" ")
+    );
+    let report = GeneratedLint::report_beside("wide_use.knv", text, ("wide/names.knv", module));
+    assert_eq!(report.matches("warning[").count(), 1, "{report}");
+    assert!(
+        report.contains("warning[L0808]: `name0` is imported but never used"),
         "{report}"
     );
 }
@@ -653,12 +694,25 @@ struct GeneratedLint;
 impl GeneratedLint {
     const DEEPEST_NESTING: usize = 1022;
     const WIDEST_PARAMETERS: usize = 3_999;
+    const LONGEST_CHAIN: usize = 3_999;
+    const WIDEST_USE: usize = 4_000;
     const STACK: FreshStack = FreshStack::of(32 * 1024 * 1024);
 
     fn report(name: &str, text: String) -> String {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests/fixtures/lint")
             .join(name);
+        Self::STACK.run(|| LintFixture::of_text(&path, text).report())
+    }
+
+    fn report_beside(name: &str, text: String, module: (&str, String)) -> String {
+        let (module_path, module_text) = module;
+        let directory = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("generated_lint");
+        let module_file = directory.join(module_path);
+        fs::create_dir_all(module_file.parent().expect("a module has a directory"))
+            .expect("the generated directory is writable");
+        fs::write(&module_file, module_text).expect("the generated module is writable");
+        let path = directory.join(name);
         Self::STACK.run(|| LintFixture::of_text(&path, text).report())
     }
 }

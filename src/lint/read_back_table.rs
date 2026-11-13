@@ -4,7 +4,7 @@ use super::row_index::RowIndex;
 use super::spanned_forms::SpannedForms;
 use crate::core::BindingId;
 use crate::interpret::{ListNesting, NestedTooDeep, Value};
-use crate::reader::{Form, FormKind, Number, NumberValue};
+use crate::reader::Form;
 use crate::source::Span;
 
 #[derive(Default)]
@@ -59,6 +59,13 @@ impl ReadBackTable {
         self.push(Some(form.clone()), SymbolRole::Reads, Some(binding));
     }
 
+    pub fn references(&self) -> impl Iterator<Item = BindingId> + '_ {
+        self.rows
+            .iter()
+            .filter(|row| row.role == SymbolRole::Reads)
+            .filter_map(|row| row.binding)
+    }
+
     pub fn into_value(self, span: Span) -> Result<Value, NestedTooDeep> {
         let reads = self.read_counts();
         let entries = self
@@ -90,12 +97,7 @@ impl ReadBackTable {
 
     fn read_counts(&self) -> FxHashMap<BindingId, usize> {
         let mut reads = FxHashMap::default();
-        let read_bindings = self
-            .rows
-            .iter()
-            .filter(|row| row.role == SymbolRole::Reads)
-            .filter_map(|row| row.binding);
-        for binding in read_bindings {
+        for binding in self.references() {
             *reads.entry(binding).or_insert(0) += 1;
         }
         reads
@@ -113,17 +115,12 @@ impl ReadBackTable {
             .map_or(Self::NO_PARENT, |parent| parent.position() as i128);
         let parts = vec![
             form,
-            Self::number(parent, span),
-            Self::number(row.depth as i128, span),
+            SpannedForms::number(parent, span),
+            SpannedForms::number(row.depth as i128, span),
             row.role.symbol(span),
-            Self::number(read_count as i128, span),
+            SpannedForms::number(read_count as i128, span),
         ];
         SpannedForms::list(parts, span)
-    }
-
-    fn number(value: i128, span: Span) -> Form {
-        let number = Number::new(value.to_string(), NumberValue::Integer(value));
-        Form::new(FormKind::Number(number), span)
     }
 }
 

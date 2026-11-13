@@ -1,0 +1,6 @@
+(export twice-of)
+
+(defn double (x) (* 2 x))
+
+(defmacro twice-of (x)
+  (template (double (unquote x))))

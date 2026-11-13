@@ -1,14 +1,21 @@
+use rustc_hash::FxHashMap;
+
 use super::bound_names::BoundNames;
+use super::definition_reach::DefinitionReach;
+use super::linted_module::LintedModule;
+use super::module_table::ModuleTable;
 use super::problems::LintProblems;
 use super::read_back_definition::ReadBackDefinition;
-use super::rule_call::RuleCall;
 use super::rule_failure::RuleFailure;
 use super::rule_host::{ProgramFacts, RuleHost};
 use super::rule_program::RuleProgram;
+use super::rule_target::RuleTarget;
+use super::spanned_forms::SpannedForms;
+use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Diagnostics};
 use crate::expand::Program;
-use crate::interpret::{StepBudget, Value, Warnings};
-use crate::source::{SourceMap, Span};
+use crate::interpret::{StepBudget, Warnings};
+use crate::source::SourceMap;
 
 pub struct Linter<'p> {
     program: &'p Program,
@@ -32,12 +39,26 @@ impl<'p> Linter<'p> {
 
     pub fn lint(&self, rules: &mut RuleProgram) -> Result<Diagnostics, RuleFailure> {
         let mut read_back = rules.read_back(&self.program.bindings);
-        let definitions = read_back.definitions(self.program.project_modules());
+        let modules: Vec<LintedModule<'_>> = self
+            .program
+            .project_modules()
+            .map(|module| LintedModule::new(module, read_back.definitions(std::iter::once(module))))
+            .collect();
         let names = read_back.into_names();
         let rules = &*rules;
         let mut host = RuleHost::new(rules, self.facts(&names));
-        for definition in definitions {
-            self.check_definition(rules, &mut host, definition)?;
+        let candidates = self.unkept_candidates(rules, &mut host)?;
+        let table = ModuleTable::new(self.program, DefinitionReach::of(self.program, candidates));
+        for linted in modules {
+            let target = table
+                .target(&linted)
+                .map_err(|failure| rules.failure(failure))?;
+            for definition in linted.into_definitions() {
+                self.check_definition(rules, &mut host, definition)?;
+            }
+            if let Some(target) = target {
+                self.check_target(rules, &mut host, target)?;
+            }
         }
         Ok(host.into_warnings())
     }
@@ -51,6 +72,31 @@ impl<'p> Linter<'p> {
         }
     }
 
+    fn unkept_candidates(
+        &self,
+        rules: &RuleProgram,
+        host: &mut RuleHost<'_>,
+    ) -> Result<FxHashMap<BindingId, ModuleId>, RuleFailure> {
+        let mut candidates = DefinitionReach::candidates(self.program);
+        let mut kept = Vec::new();
+        for binding in candidates.keys() {
+            let info = self.program.bindings.get(*binding);
+            let Some(span) = info.span() else {
+                continue;
+            };
+            if host
+                .is_kept(SpannedForms::symbol(info.name(), span))
+                .map_err(|failure| rules.failure(failure))?
+            {
+                kept.push(*binding);
+            }
+        }
+        for binding in kept {
+            candidates.remove(&binding);
+        }
+        Ok(candidates)
+    }
+
     fn check_definition(
         &self,
         rules: &RuleProgram,
@@ -62,29 +108,35 @@ impl<'p> Linter<'p> {
             .table
             .into_value(span)
             .map_err(|deep| rules.failure(deep.at(span)))?;
+        let target = RuleTarget::for_definition(table, definition.name, span);
+        self.check_target(rules, host, target)
+    }
+
+    fn check_target(
+        &self,
+        rules: &RuleProgram,
+        host: &mut RuleHost<'_>,
+        target: RuleTarget,
+    ) -> Result<(), RuleFailure> {
         let skipped = self
-            .skipped_rules(host, &table, span)
+            .skipped_rules(rules, host, &target)
             .map_err(|failure| rules.failure(failure))?;
         if !skipped.is_empty() {
-            host.report_warning(LintProblems::rule_skipped(&skipped, &definition.name, span));
+            let warning = LintProblems::rule_skipped(&skipped, target.name(), target.span());
+            host.report_warning(warning);
         }
         Ok(())
     }
 
     fn skipped_rules(
         &self,
+        rules: &RuleProgram,
         host: &mut RuleHost<'_>,
-        table: &Value,
-        span: Span,
+        target: &RuleTarget,
     ) -> Result<Vec<String>, Diagnostic> {
         let mut skipped = Vec::new();
-        for rule in host.rule_names(span)? {
-            let call = RuleCall {
-                rule: rule.clone(),
-                table: table.clone(),
-                span,
-                step_limit: self.step_limit,
-            };
+        for rule in host.rule_names(target.span())? {
+            let call = target.call(rule.clone(), rules.entries(), self.step_limit);
             match host.check_rule(call) {
                 Ok(()) => {}
                 Err(failure) if Self::passed_budget(&failure) => skipped.push(rule.to_string()),
@@ -115,7 +167,7 @@ mod tests {
                 .map(|index| format!(" (local v{index} (+ v{} 1))", index - 1))
                 .collect();
             ExpandedSource::expand(&format!(
-                "(defn area (width) (let (unused 1) width))\n\
+                "(export area chain)\n(defn area (width) (let (unused 1) width))\n\
                  (def chain (fn (v0){locals} v{}))",
                 Self::CHAIN_LENGTH
             ))
@@ -124,20 +176,23 @@ mod tests {
 
     #[test]
     fn an_unread_local_is_reported() {
-        let source = ExpandedSource::expand("(defn area (width) (let (unused 1) width))");
+        let source =
+            ExpandedSource::expand("(export area)\n(defn area (width) (let (unused 1) width))");
         assert_eq!(source.warning_titles(), vec!["`unused` is never read"]);
     }
 
     #[test]
     fn a_read_local_is_not_reported() {
-        let source = ExpandedSource::expand("(defn area (width) (let (used 1) (+ used width)))");
+        let source = ExpandedSource::expand(
+            "(export area)\n(defn area (width) (let (used 1) (+ used width)))",
+        );
         assert!(source.warning_titles().is_empty());
     }
 
     #[test]
     fn a_read_in_a_closure_counts() {
         let source = ExpandedSource::expand(
-            "(defn scaled (numbers) (let (offset 1) (map (iter numbers) (fn (number) (* number offset)))))",
+            "(export scaled)\n(defn scaled (numbers) (let (offset 1) (map (iter numbers) (fn (number) (* number offset)))))",
         );
         assert!(source.warning_titles().is_empty());
     }
@@ -145,17 +200,24 @@ mod tests {
     #[test]
     fn a_local_of_a_macro_is_not_reported() {
         let source = ExpandedSource::expand(
-            "(defrule with-scratch ((body) (let (scratch 0) body)))\n(defn area (width) (with-scratch width))",
+            "(export area)\n(defrule with-scratch ((body) (let (scratch 0) body)))\n(defn area (width) (with-scratch width))",
         );
         assert!(source.warning_titles().is_empty());
     }
 
     #[test]
     fn a_rule_past_its_budget_is_reported_as_skipped() {
-        let source = ExpandedSource::expand("(defn area (width) (let (unused 1) width))");
+        let source =
+            ExpandedSource::expand("(export area)\n(defn area (width) (let (unused 1) width))");
+        let titles = source.warning_titles_within(LinterFixture::TINY_STEP_LIMIT);
         assert_eq!(
-            source.warning_titles_within(LinterFixture::TINY_STEP_LIMIT),
-            vec!["`unused-binding`, `unused-parameter` were not checked in `area`"]
+            source.warning_codes_within(LinterFixture::TINY_STEP_LIMIT),
+            vec!["L0805", "L0805"]
+        );
+        assert!(titles[0].ends_with("not checked in `area`"), "{titles:?}");
+        assert!(
+            titles[1].ends_with("not checked in `fixture`"),
+            "{titles:?}"
         );
     }
 
@@ -174,11 +236,9 @@ mod tests {
         let titles = source.warning_titles_within(LinterFixture::TINY_STEP_LIMIT);
         assert_eq!(
             source.warning_codes_within(LinterFixture::TINY_STEP_LIMIT),
-            vec!["L0805"]
+            vec!["L0805", "L0805"]
         );
-        assert!(
-            titles.iter().all(|title| title.ends_with("in `main`")),
-            "{titles:?}"
-        );
+        assert!(titles[0].ends_with("in `main`"), "{titles:?}");
+        assert!(titles[1].ends_with("in `fixture`"), "{titles:?}");
     }
 }

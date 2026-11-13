@@ -1,0 +1,3 @@
+(use modules/doubling)
+
+(defn main () (println 1))

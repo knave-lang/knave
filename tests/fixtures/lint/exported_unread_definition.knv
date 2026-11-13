@@ -1,0 +1,5 @@
+(export area)
+
+(defn area (w h) (* w h))
+
+(defn main () (println 1))

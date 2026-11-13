@@ -23,6 +23,8 @@ pub struct RuleProgram {
 
 impl RuleProgram {
     const CHECK: &str = "check-rule";
+    const CHECK_MODULE: &str = "check-module";
+    const KEPT: &str = "kept-definition?";
     pub(super) const RULES: &str = "rule-names";
     const LOADER: &str = "lint-rules";
 
@@ -47,9 +49,11 @@ impl RuleProgram {
     fn loader_sources() -> (SourceMap, SourceId) {
         let mut sources = SourceMap::default();
         let uses = format!(
-            "(use {} {} {})",
+            "(use {} {} {} {} {})",
             ModuleSources::LINT,
             Self::CHECK,
+            Self::CHECK_MODULE,
+            Self::KEPT,
             Self::RULES
         );
         let loader = sources.add(Self::LOADER, uses);
@@ -79,6 +83,8 @@ impl RuleProgram {
             .collect();
         let entries = RuleEntries {
             check: Self::export_named(&program, Self::CHECK),
+            check_module: Self::export_named(&program, Self::CHECK_MODULE),
+            kept: Self::export_named(&program, Self::KEPT),
             names: Self::export_named(&program, Self::RULES),
         };
         Self {

@@ -8,6 +8,7 @@ mod module;
 mod printer;
 mod references;
 mod saved_bindings;
+mod saved_value;
 mod structural;
 mod template;
 mod template_operation;
@@ -42,6 +43,7 @@ pub use module::{
 pub use printer::CorePrinter;
 pub use references::References;
 pub use saved_bindings::{BindingTables, SavedBindings};
+pub use saved_value::SavedValue;
 pub use structural::{
     StructuralClause, StructuralKey, StructuralPiece, StructuralTemplate, StructuralValues,
     UnfilledPlaceholder,

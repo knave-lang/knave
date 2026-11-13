@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use super::result_ties::ResultTies;
+use super::registered_template::RegisteredTemplate;
 use super::ty::Scheme;
 use super::typed::{TypedExpr, TypedExprKind, TypedLeaf};
 use crate::core::{BindingId, Conversion, ParsedTemplate, Piece, ReferenceKind};
@@ -12,31 +12,18 @@ pub type Conversions = Rc<[(usize, Conversion)]>;
 
 #[derive(Default)]
 pub struct TemplateBorrows {
-    templates: FxHashMap<BindingId, ParsedTemplate>,
+    templates: FxHashMap<BindingId, RegisteredTemplate>,
     conversions: FxHashMap<BindingId, Conversions>,
-    result_ties: FxHashMap<BindingId, ResultTies>,
-    inline: RefCell<FxHashMap<Rc<str>, Option<ParsedTemplate>>>,
+    inline: RefCell<FxHashMap<Rc<str>, Option<RegisteredTemplate>>>,
 }
 
 impl TemplateBorrows {
     pub fn register(&mut self, binding: BindingId, template: &str, scheme: &Scheme) {
-        if let Ok(parsed) = ParsedTemplate::parse(template) {
-            if let Some(conversions) = Self::written_conversions(&parsed) {
+        if let Some(registered) = RegisteredTemplate::parse(template, Some(scheme)) {
+            if let Some(conversions) = Self::written_conversions(registered.parsed()) {
                 self.conversions.insert(binding, conversions);
             }
-            self.templates.insert(binding, parsed);
-        }
-        if let Some(ties) = ResultTies::of(scheme) {
-            self.result_ties.insert(binding, ties);
-        }
-    }
-
-    pub fn result_ties(&self, callee: &TypedExpr) -> Option<&[usize]> {
-        match &callee.kind {
-            TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
-                self.result_ties.get(binding).map(ResultTies::parameters)
-            }
-            _ => None,
+            self.templates.insert(binding, registered);
         }
     }
 
@@ -56,7 +43,9 @@ impl TemplateBorrows {
         if !Conversion::may_be_written_in(template) {
             return None;
         }
-        self.read_template(callee, None, Self::written_conversions)
+        self.read_template(callee, None, |registered| {
+            Self::written_conversions(registered.parsed())
+        })
     }
 
     fn written_conversions(parsed: &ParsedTemplate) -> Option<Conversions> {
@@ -65,7 +54,9 @@ impl TemplateBorrows {
     }
 
     pub fn borrows(&self, callee: &TypedExpr, position: usize) -> bool {
-        self.read_template(callee, false, |parsed| parsed.borrows(position))
+        self.read_template(callee, false, |template| {
+            template.parsed().borrows(position)
+        })
     }
 
     pub fn is_template(&self, callee: &TypedExpr) -> bool {
@@ -73,7 +64,9 @@ impl TemplateBorrows {
     }
 
     pub fn receives(&self, callee: &TypedExpr, position: usize) -> bool {
-        self.read_template(callee, false, |parsed| parsed.receives(position))
+        self.read_template(callee, false, |template| {
+            template.parsed().receives(position)
+        })
     }
 
     pub fn reference(&self, callee: &TypedExpr, position: usize) -> Option<ReferenceKind> {
@@ -85,7 +78,7 @@ impl TemplateBorrows {
         &self,
         callee: &TypedExpr,
         absent: T,
-        read: impl Fn(&ParsedTemplate) -> T,
+        read: impl Fn(&RegisteredTemplate) -> T,
     ) -> T {
         match &callee.kind {
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
@@ -95,7 +88,7 @@ impl TemplateBorrows {
                 let mut inline = self.inline.borrow_mut();
                 let parsed = inline
                     .entry(template.template.clone())
-                    .or_insert_with(|| ParsedTemplate::parse(&template.template).ok());
+                    .or_insert_with(|| RegisteredTemplate::parse(&template.template, None));
                 parsed.as_ref().map(read).unwrap_or(absent)
             }
             _ => absent,

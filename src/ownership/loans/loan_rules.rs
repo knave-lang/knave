@@ -23,8 +23,12 @@ impl<'p> LoanRules<'p> {
             .read_template(callee, false, |_| true)
     }
 
-    pub fn result_ties(&self, callee: &TypedExpr) -> Option<&'p [usize]> {
-        self.program.template_borrows.result_ties(callee)
+    pub fn result_ties(&self, callee: &TypedExpr) -> Option<Vec<usize>> {
+        self.program
+            .template_borrows
+            .read_template(callee, None, |template| {
+                template.tied_parameters().map(<[usize]>::to_vec)
+            })
     }
 
     pub fn receives(&self, callee: &TypedExpr, position: usize) -> bool {

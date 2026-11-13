@@ -168,7 +168,10 @@ impl ProjectExample {
             .args(Self::PLAIN_OUTPUT)
             .args(command)
             .current_dir(directory)
-            .env(Self::CACHE_HOME_VARIABLE, directory.join(Self::CACHE_FOLDER))
+            .env(
+                Self::CACHE_HOME_VARIABLE,
+                directory.join(Self::CACHE_FOLDER),
+            )
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

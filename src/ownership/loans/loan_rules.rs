@@ -24,13 +24,6 @@ impl<'p> LoanRules<'p> {
     }
 
     pub fn holds_a_borrow(&self, ty: &Type) -> bool {
-        match ty {
-            Type::Ref(..) | Type::Mut(..) => true,
-            Type::Named(binding, _) if self.program.has_lifetime_parameter(*binding) => true,
-            other => other
-                .parts()
-                .into_iter()
-                .any(|part| self.holds_a_borrow(part)),
-        }
+        self.program.type_holds_borrow(ty)
     }
 }

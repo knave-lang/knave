@@ -1,0 +1,19 @@
+(defn main ()
+  (local v (vec 1 2))
+  (local r (at v 0))
+  (loop (xs v
+         n 0)
+    (if (< n 1)
+      (recur xs (+ n 1))
+      (println (len xs))))
+  (println r)
+  (local w (vec 5))
+  (local u (vec 1))
+  (loop (i 0
+         e (at w 0))
+    (if (< i 3)
+      (do
+        (push! u i)
+        (println e)
+        (recur (+ i 1) (at u 0)))
+      (println (len u)))))

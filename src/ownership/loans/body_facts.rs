@@ -5,6 +5,7 @@ use super::holdings::Holdings;
 use super::live_loan::LiveLoan;
 use super::live_values::LiveValues;
 use super::loan_holder::LoanHolder;
+use super::loan_id::LoanId;
 use super::loan_table::LoanTable;
 use super::point_id::PointId;
 use super::program_point::PointFacts;
@@ -57,10 +58,14 @@ impl<'w> BodyFacts<'w> {
             .points()
             .flat_map(|(point, facts)| {
                 let loans = self.live_loans(point, &facts, &liveness);
-                facts
-                    .accesses()
-                    .iter()
-                    .map(move |access| AccessFacts::new(access, loans.clone()))
+                facts.accesses().iter().map(move |access| {
+                    let others = loans
+                        .iter()
+                        .filter(|(loan, _)| !access.is_lent_as(*loan))
+                        .map(|(loan, holder)| LiveLoan::new(self.loans.loan(*loan), *holder))
+                        .collect();
+                    AccessFacts::new(access, others)
+                })
             })
             .collect()
     }
@@ -70,7 +75,7 @@ impl<'w> BodyFacts<'w> {
         point: PointId,
         facts: &PointFacts<'_>,
         liveness: &Liveness,
-    ) -> Vec<LiveLoan<'_>> {
+    ) -> Vec<(LoanId, LoanHolder)> {
         let mut values: Vec<_> = liveness.values.before(point).iter().copied().collect();
         values.sort_unstable();
         let held = values.into_iter().flat_map(|value| {
@@ -86,10 +91,6 @@ impl<'w> BodyFacts<'w> {
             .result
             .live_at(point)
             .map(|loan| (loan, LoanHolder::Result));
-        held.chain(received)
-            .chain(returned)
-            .filter(|(loan, _)| self.loans.loan(*loan).made_at() != point)
-            .map(|(loan, holder)| LiveLoan::new(self.loans.loan(loan), holder))
-            .collect()
+        held.chain(received).chain(returned).collect()
     }
 }

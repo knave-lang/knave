@@ -1144,7 +1144,7 @@
 
   (impl show label
     (write-form (self out)
-                (write-form (:text self) out)))
+      (write-form (:text self) out)))
 
   (pr-str (->label :text (str \"pear\")))
   => \"\\\"pear\\\"\"

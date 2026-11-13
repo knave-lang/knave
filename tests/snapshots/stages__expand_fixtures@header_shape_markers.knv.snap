@@ -132,9 +132,9 @@ error[L0331]: unexpected form after a header shape
    = help: keep one: `:arms` and `:methods` each state what every list after the header is
 
 error[L0331]: unexpected form after a header shape
-  --> expand/header_shape_markers.knv:51:35
+  --> expand/header_shape_markers.knv:52:15
    |
-51 |               :methods :docstring :arms)
-   |                                   ^^^^^ `:arms` and `:methods` exclude each other
+52 |               :arms)
+   |               ^^^^^ `:arms` and `:methods` exclude each other
    |
    = help: keep one: `:arms` and `:methods` each state what every list after the header is

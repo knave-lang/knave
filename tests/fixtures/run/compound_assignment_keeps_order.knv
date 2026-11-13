@@ -6,8 +6,8 @@
 
 (impl bumper tally
   (bump-hits! (self)
-              (set! (:hits self) (+ (:hits self) 10))
-              1))
+    (set! (:hits self) (+ (:hits self) 10))
+    1))
 
 (defn hit! (t)
   (set! (:hits t) (+ (:hits t) 10))

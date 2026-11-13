@@ -580,7 +580,8 @@
                     :label "not a list that starts with a name")))))
 
 (def shape-marker-names
-  (quote (docstring docstring-only one-per-line arms bindings methods)))
+  (quote (docstring docstring-only one-per-line arms
+                    bindings methods)))
 
 (def check-shape-markers
   (fn (markers seen)

@@ -6,7 +6,7 @@
 
 (impl mileage odometer
   (total (o readings)
-         (+ (:offset o) (at readings 0))))
+    (+ (:offset o) (at readings 0))))
 
 (defn apply-total (measure o readings) (measure o readings))
 

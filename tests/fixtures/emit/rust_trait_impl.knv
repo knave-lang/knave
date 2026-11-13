@@ -10,7 +10,7 @@
 
 (impl shown point
   (write-str (p _text)
-             (rust "std::fmt::Result::Ok(())" fmt-result)))
+    (rust "std::fmt::Result::Ok(())" fmt-result)))
 
 (defn main ()
   (local _point (new point)))

@@ -12,12 +12,16 @@
 (impl shape circle
   (type part i64)
   (area (c) (* (:radius c) (:radius c)))
+
   (same-area (left right)
-             (= (area left) (area right)))
+    (= (area left) (area right)))
+
   (holds (c value) (= value (:radius c)))
+
   (fits (limit c) (> limit (area c)))
+
   (exceeds (limit c)
-           (> (deref limit) (:radius c))))
+    (> (deref limit) (:radius c))))
 
 (def radius-of
   (rust "{0}.radius"

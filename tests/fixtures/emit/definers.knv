@@ -24,8 +24,9 @@
 (deftrait area-of
   "Shapes with an area."
   (area (fn ((ref self)) f64))
+
   (doubled (fn ((ref self)) f64)
-           (* (area self) 2.0)))
+    (* (area self) 2.0)))
 
 (deftrait (named-area (area-of))
   (title (fn ((ref self)) string)))
@@ -51,16 +52,16 @@
 
 (impl area-of shape
   (area (self)
-        (match self
-          ((circle r) (* (* r r) 3.0))
-          ((labeled _ size) (* (deref size) (deref size)))
-          (dot 0.0))))
+    (match self
+      ((circle r) (* (* r r) 3.0))
+      ((labeled _ size) (* (deref size) (deref size)))
+      (dot 0.0))))
 
 (impl named-area shape
   (title (self)
-         (match self
-           ((labeled text _) (clone text))
-           (_ (str "plain")))))
+    (match self
+      ((labeled text _) (clone text))
+      (_ (str "plain")))))
 
 (impl quiet shape)
 

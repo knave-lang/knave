@@ -39,9 +39,13 @@
 
 (impl dealer car
   (greet (c name) (second c name))
+
   (call-out (c name) (shout c name))
+
   (shout (c name) name)
+
   (offer (c name) (some (pick c name)))
+
   (wave (c name) ((fn (x) name) c)))
 
 (trait valet
@@ -49,14 +53,14 @@
 
 (impl valet ride
   (park (r name)
-        (match r ((cab m) name) (bike name))))
+    (match r ((cab m) name) (bike name))))
 
 (impl valet car
   (park (c name)
-        (local held (some c))
-        (match (some (:model c))
-          ((some m) (match held ((some d) name) ((none) name)))
-          ((none) name))))
+    (local held (some c))
+    (match (some (:model c))
+      ((some m) (match held ((some d) name) ((none) name)))
+      ((none) name))))
 
 (defn main ()
   (local leaf (->car "Leaf" 2024))

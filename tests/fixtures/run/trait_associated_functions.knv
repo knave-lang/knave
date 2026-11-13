@@ -10,10 +10,12 @@
 
 (impl parking garage
   (build (spots) (->garage spots))
+
   (add (extra g) (+ extra (:spots g))))
 
 (impl parking lot
   (build (spots) (->lot spots))
+
   (add (extra l) (* extra (:spots l))))
 
 (defn main ()

@@ -10,11 +10,14 @@
 
 (impl garage car
   (newer (c other)
-         (if (> (:year c) (:year other)) c other))
+    (if (> (:year c) (:year other)) c other))
+
   (relabel (label c)
-           (->car label (:year c)))
+    (->car label (:year c)))
+
   (badge (year c)
-         (if (> year (:year c)) "old" (:model c)))
+    (if (> year (:year c)) "old" (:model c)))
+
   (model-of (c) (:model c)))
 
 (defn main ()

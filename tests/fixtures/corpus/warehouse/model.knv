@@ -37,8 +37,8 @@
 
 (impl valued item
   (value-cents (i)
-               (* (widen (:quantity i))
-                  (:unit-cents i))))
+    (* (widen (:quantity i))
+       (:unit-cents i))))
 
 (def widen
   (rust "u64::from({0})" (fn (u32) u64)))

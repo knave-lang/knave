@@ -13,10 +13,16 @@
 (impl garage car
   (type part i64)
   (twin (c) c)
+
   (fleet (c) (vec c c))
-  (rename (c label) (println label) c)
+
+  (rename (c label)
+    (println label)
+    c)
+
   (newer (c other)
-         (if (> (:year c) (:year other)) c other))
+    (if (> (:year c) (:year other)) c other))
+
   (swap (c year) (->car (:model c) year)))
 
 (defn main ()

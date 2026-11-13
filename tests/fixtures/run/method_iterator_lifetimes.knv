@@ -9,9 +9,10 @@
 
 (impl counter depot
   (tally (lot names)
-         (+ (:size lot) (count names)))
+    (+ (:size lot) (count names)))
+
   (total (names lot)
-         (+ (:size lot) (count names))))
+    (+ (:size lot) (count names))))
 
 (defn main ()
   (local lot (->depot 1))

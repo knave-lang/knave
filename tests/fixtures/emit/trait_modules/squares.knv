@@ -6,8 +6,9 @@
 
 (impl shape square
   (area (s)
-        (* (field s side) (field s side)))
+    (* (field s side) (field s side)))
+
   (scale! (s factor)
-          (do
-            (local _side (field s side))
-            (local _factor factor))))
+    (do
+      (local _side (field s side))
+      (local _factor factor))))

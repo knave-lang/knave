@@ -452,7 +452,10 @@
     (hello (fn ((ref self)) string)))
   ```")
 
-(document (impl trait type (method (parameter ...) body ...) ...)
+(document (impl trait type
+            (method (parameter ...)
+              body ...)
+            ...)
   "Implements a trait for a struct or an enum.
 
   Each method gives its name, its parameters and its body. It emits a Rust
@@ -466,7 +469,7 @@
 
   (impl greet dog
     (hello (self)
-           (str \"woof \" (field self name))))
+      (str \"woof \" (field self name))))
   ```")
 
 (document (use module name ...)

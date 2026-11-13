@@ -11,11 +11,11 @@
 
 (impl survey depot
   (tally (lot counter)
-         (counter (iter (:years lot)))))
+    (counter (iter (:years lot)))))
 
 (impl survey garage
   (tally (lot counter)
-         (counter (iter (:years lot)))))
+    (counter (iter (:years lot)))))
 
 (trait census
   (counter (fn ((ref self))

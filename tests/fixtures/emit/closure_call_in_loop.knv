@@ -8,7 +8,8 @@
 (impl container (queue a)
   (type item a)
   (put (q value)
-       (push! (mut (field q items)) value))
+    (push! (mut (field q items)) value))
+
   (take (q) (pop! (mut (field q items)))))
 
 (type move!

@@ -6,7 +6,7 @@
 
 (impl mileage odometer
   (reset! (o readings)
-          (set! (at readings 0) (:offset o))))
+    (set! (at readings 0) (:offset o))))
 
 (defn reset-odometer! (readings)
   (reset! (->odometer 10) readings))

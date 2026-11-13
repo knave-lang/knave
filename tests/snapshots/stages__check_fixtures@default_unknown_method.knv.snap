@@ -4,7 +4,7 @@ expression: reports.report(path)
 input_file: tests/fixtures/check/default_unknown_method.knv
 ---
 error[L0201]: cannot find `perimeter` in this scope
- --> check/default_unknown_method.knv:4:14
+ --> check/default_unknown_method.knv:5:6
   |
-4 |             (perimeter self)))
-  |              ^^^^^^^^^ not found in this scope
+5 |     (perimeter self)))
+  |      ^^^^^^^^^ not found in this scope

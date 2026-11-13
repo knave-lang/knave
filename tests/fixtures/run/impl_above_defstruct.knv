@@ -3,11 +3,11 @@
 
 (impl described car
   (describe (c)
-            (str (:make c)
-                 " "
-                 (:model c)
-                 " "
-                 (:year c))))
+    (str (:make c)
+         " "
+         (:model c)
+         " "
+         (:year c))))
 
 (defstruct car
   :make str

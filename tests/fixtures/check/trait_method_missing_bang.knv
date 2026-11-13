@@ -5,7 +5,7 @@
 
 (impl container bag
   (put (b value)
-       (push! (mut (field b items)) value)))
+    (push! (mut (field b items)) value)))
 
 (defn main ()
   (local b (new bag (items (vec))))

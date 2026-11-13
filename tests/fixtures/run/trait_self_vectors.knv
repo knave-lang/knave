@@ -7,7 +7,8 @@
 
 (impl fleet car
   (newest (c others)
-          (+ (:year c) (:year (at others 0))))
+    (+ (:year c) (:year (at others 0))))
+
   (pair (c) (vec c c)))
 
 (defn main ()

@@ -6,7 +6,7 @@
 
 (impl tally counter
   (reset! (c counts)
-          (push! counts (:step c))))
+    (push! counts (:step c))))
 
 (defn reset-counter! (counts)
   (reset! (->counter 1) counts))

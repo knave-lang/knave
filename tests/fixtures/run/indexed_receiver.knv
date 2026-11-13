@@ -10,7 +10,7 @@
 
 (impl labeled car
   (label (self)
-         (str (:model self) " " (:range self))))
+    (str (:model self) " " (:range self))))
 
 (type shout-first
   (fn ((ref (vec string))) string))

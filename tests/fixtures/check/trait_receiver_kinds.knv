@@ -10,10 +10,15 @@
 
 (impl sample point
   (by-value (p) (field p x))
+
   (by-ref (p) (field p x))
+
   (bump! (p value) (do))
+
   (free (value) value)
+
   (borrowed (value) (deref value))
+
   (other (p) (field p x)))
 
 (defn main ()

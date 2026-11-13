@@ -441,8 +441,9 @@
 
 (trait labeled
   (label (fn ((ref self)) string))
+
   (shout (fn ((ref self)) string)
-         (upper-case (as-str (label self)))))
+    (upper-case (as-str (label self)))))
 
 (trait (cargo (measured) (labeled))
   (fragile? (fn ((ref self)) bool)))
@@ -512,12 +513,12 @@
 
 (impl labeled parcel-1
   (label (item)
-         (str "parcel-1 #" (:serial item))))
+    (str "parcel-1 #" (:serial item))))
 
 (impl cargo parcel-1
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 0.0))))
+    (and (:sealed item)
+         (> (:mass item) 0.0))))
 
 (defstruct parcel-2
   :serial u32
@@ -529,12 +530,12 @@
 
 (impl labeled parcel-2
   (label (item)
-         (str "parcel-2 #" (:serial item))))
+    (str "parcel-2 #" (:serial item))))
 
 (impl cargo parcel-2
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 1.0))))
+    (and (:sealed item)
+         (> (:mass item) 1.0))))
 
 (defstruct parcel-3
   :serial u32
@@ -546,12 +547,12 @@
 
 (impl labeled parcel-3
   (label (item)
-         (str "parcel-3 #" (:serial item))))
+    (str "parcel-3 #" (:serial item))))
 
 (impl cargo parcel-3
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 2.0))))
+    (and (:sealed item)
+         (> (:mass item) 2.0))))
 
 (defstruct parcel-4
   :serial u32
@@ -563,12 +564,12 @@
 
 (impl labeled parcel-4
   (label (item)
-         (str "parcel-4 #" (:serial item))))
+    (str "parcel-4 #" (:serial item))))
 
 (impl cargo parcel-4
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 3.0))))
+    (and (:sealed item)
+         (> (:mass item) 3.0))))
 
 (defstruct parcel-5
   :serial u32
@@ -580,12 +581,12 @@
 
 (impl labeled parcel-5
   (label (item)
-         (str "parcel-5 #" (:serial item))))
+    (str "parcel-5 #" (:serial item))))
 
 (impl cargo parcel-5
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 4.0))))
+    (and (:sealed item)
+         (> (:mass item) 4.0))))
 
 (defstruct parcel-6
   :serial u32
@@ -597,12 +598,12 @@
 
 (impl labeled parcel-6
   (label (item)
-         (str "parcel-6 #" (:serial item))))
+    (str "parcel-6 #" (:serial item))))
 
 (impl cargo parcel-6
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 0.0))))
+    (and (:sealed item)
+         (> (:mass item) 0.0))))
 
 (defstruct parcel-7
   :serial u32
@@ -614,12 +615,12 @@
 
 (impl labeled parcel-7
   (label (item)
-         (str "parcel-7 #" (:serial item))))
+    (str "parcel-7 #" (:serial item))))
 
 (impl cargo parcel-7
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 1.0))))
+    (and (:sealed item)
+         (> (:mass item) 1.0))))
 
 (defstruct parcel-8
   :serial u32
@@ -631,12 +632,12 @@
 
 (impl labeled parcel-8
   (label (item)
-         (str "parcel-8 #" (:serial item))))
+    (str "parcel-8 #" (:serial item))))
 
 (impl cargo parcel-8
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 2.0))))
+    (and (:sealed item)
+         (> (:mass item) 2.0))))
 
 (defstruct parcel-9
   :serial u32
@@ -648,12 +649,12 @@
 
 (impl labeled parcel-9
   (label (item)
-         (str "parcel-9 #" (:serial item))))
+    (str "parcel-9 #" (:serial item))))
 
 (impl cargo parcel-9
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 3.0))))
+    (and (:sealed item)
+         (> (:mass item) 3.0))))
 
 (defstruct parcel-10
   :serial u32
@@ -665,12 +666,12 @@
 
 (impl labeled parcel-10
   (label (item)
-         (str "parcel-10 #" (:serial item))))
+    (str "parcel-10 #" (:serial item))))
 
 (impl cargo parcel-10
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 4.0))))
+    (and (:sealed item)
+         (> (:mass item) 4.0))))
 
 (defstruct parcel-11
   :serial u32
@@ -682,12 +683,12 @@
 
 (impl labeled parcel-11
   (label (item)
-         (str "parcel-11 #" (:serial item))))
+    (str "parcel-11 #" (:serial item))))
 
 (impl cargo parcel-11
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 0.0))))
+    (and (:sealed item)
+         (> (:mass item) 0.0))))
 
 (defstruct parcel-12
   :serial u32
@@ -699,12 +700,12 @@
 
 (impl labeled parcel-12
   (label (item)
-         (str "parcel-12 #" (:serial item))))
+    (str "parcel-12 #" (:serial item))))
 
 (impl cargo parcel-12
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 1.0))))
+    (and (:sealed item)
+         (> (:mass item) 1.0))))
 
 (defstruct parcel-13
   :serial u32
@@ -716,12 +717,12 @@
 
 (impl labeled parcel-13
   (label (item)
-         (str "parcel-13 #" (:serial item))))
+    (str "parcel-13 #" (:serial item))))
 
 (impl cargo parcel-13
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 2.0))))
+    (and (:sealed item)
+         (> (:mass item) 2.0))))
 
 (defstruct parcel-14
   :serial u32
@@ -733,12 +734,12 @@
 
 (impl labeled parcel-14
   (label (item)
-         (str "parcel-14 #" (:serial item))))
+    (str "parcel-14 #" (:serial item))))
 
 (impl cargo parcel-14
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 3.0))))
+    (and (:sealed item)
+         (> (:mass item) 3.0))))
 
 (defstruct parcel-15
   :serial u32
@@ -750,12 +751,12 @@
 
 (impl labeled parcel-15
   (label (item)
-         (str "parcel-15 #" (:serial item))))
+    (str "parcel-15 #" (:serial item))))
 
 (impl cargo parcel-15
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 4.0))))
+    (and (:sealed item)
+         (> (:mass item) 4.0))))
 
 (defstruct parcel-16
   :serial u32
@@ -767,12 +768,12 @@
 
 (impl labeled parcel-16
   (label (item)
-         (str "parcel-16 #" (:serial item))))
+    (str "parcel-16 #" (:serial item))))
 
 (impl cargo parcel-16
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 0.0))))
+    (and (:sealed item)
+         (> (:mass item) 0.0))))
 
 (defstruct parcel-17
   :serial u32
@@ -784,12 +785,12 @@
 
 (impl labeled parcel-17
   (label (item)
-         (str "parcel-17 #" (:serial item))))
+    (str "parcel-17 #" (:serial item))))
 
 (impl cargo parcel-17
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 1.0))))
+    (and (:sealed item)
+         (> (:mass item) 1.0))))
 
 (defstruct parcel-18
   :serial u32
@@ -801,12 +802,12 @@
 
 (impl labeled parcel-18
   (label (item)
-         (str "parcel-18 #" (:serial item))))
+    (str "parcel-18 #" (:serial item))))
 
 (impl cargo parcel-18
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 2.0))))
+    (and (:sealed item)
+         (> (:mass item) 2.0))))
 
 (defstruct parcel-19
   :serial u32
@@ -818,12 +819,12 @@
 
 (impl labeled parcel-19
   (label (item)
-         (str "parcel-19 #" (:serial item))))
+    (str "parcel-19 #" (:serial item))))
 
 (impl cargo parcel-19
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 3.0))))
+    (and (:sealed item)
+         (> (:mass item) 3.0))))
 
 (defstruct parcel-20
   :serial u32
@@ -835,12 +836,12 @@
 
 (impl labeled parcel-20
   (label (item)
-         (str "parcel-20 #" (:serial item))))
+    (str "parcel-20 #" (:serial item))))
 
 (impl cargo parcel-20
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 4.0))))
+    (and (:sealed item)
+         (> (:mass item) 4.0))))
 
 (defstruct parcel-21
   :serial u32
@@ -852,12 +853,12 @@
 
 (impl labeled parcel-21
   (label (item)
-         (str "parcel-21 #" (:serial item))))
+    (str "parcel-21 #" (:serial item))))
 
 (impl cargo parcel-21
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 0.0))))
+    (and (:sealed item)
+         (> (:mass item) 0.0))))
 
 (defstruct parcel-22
   :serial u32
@@ -869,12 +870,12 @@
 
 (impl labeled parcel-22
   (label (item)
-         (str "parcel-22 #" (:serial item))))
+    (str "parcel-22 #" (:serial item))))
 
 (impl cargo parcel-22
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 1.0))))
+    (and (:sealed item)
+         (> (:mass item) 1.0))))
 
 (defstruct parcel-23
   :serial u32
@@ -886,12 +887,12 @@
 
 (impl labeled parcel-23
   (label (item)
-         (str "parcel-23 #" (:serial item))))
+    (str "parcel-23 #" (:serial item))))
 
 (impl cargo parcel-23
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 2.0))))
+    (and (:sealed item)
+         (> (:mass item) 2.0))))
 
 (defstruct parcel-24
   :serial u32
@@ -903,12 +904,12 @@
 
 (impl labeled parcel-24
   (label (item)
-         (str "parcel-24 #" (:serial item))))
+    (str "parcel-24 #" (:serial item))))
 
 (impl cargo parcel-24
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 3.0))))
+    (and (:sealed item)
+         (> (:mass item) 3.0))))
 
 (defstruct parcel-25
   :serial u32
@@ -920,12 +921,12 @@
 
 (impl labeled parcel-25
   (label (item)
-         (str "parcel-25 #" (:serial item))))
+    (str "parcel-25 #" (:serial item))))
 
 (impl cargo parcel-25
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 4.0))))
+    (and (:sealed item)
+         (> (:mass item) 4.0))))
 
 (defstruct parcel-26
   :serial u32
@@ -937,12 +938,12 @@
 
 (impl labeled parcel-26
   (label (item)
-         (str "parcel-26 #" (:serial item))))
+    (str "parcel-26 #" (:serial item))))
 
 (impl cargo parcel-26
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 0.0))))
+    (and (:sealed item)
+         (> (:mass item) 0.0))))
 
 (defstruct parcel-27
   :serial u32
@@ -954,12 +955,12 @@
 
 (impl labeled parcel-27
   (label (item)
-         (str "parcel-27 #" (:serial item))))
+    (str "parcel-27 #" (:serial item))))
 
 (impl cargo parcel-27
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 1.0))))
+    (and (:sealed item)
+         (> (:mass item) 1.0))))
 
 (defstruct parcel-28
   :serial u32
@@ -971,12 +972,12 @@
 
 (impl labeled parcel-28
   (label (item)
-         (str "parcel-28 #" (:serial item))))
+    (str "parcel-28 #" (:serial item))))
 
 (impl cargo parcel-28
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 2.0))))
+    (and (:sealed item)
+         (> (:mass item) 2.0))))
 
 (defstruct parcel-29
   :serial u32
@@ -988,12 +989,12 @@
 
 (impl labeled parcel-29
   (label (item)
-         (str "parcel-29 #" (:serial item))))
+    (str "parcel-29 #" (:serial item))))
 
 (impl cargo parcel-29
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 3.0))))
+    (and (:sealed item)
+         (> (:mass item) 3.0))))
 
 (defstruct parcel-30
   :serial u32
@@ -1005,12 +1006,12 @@
 
 (impl labeled parcel-30
   (label (item)
-         (str "parcel-30 #" (:serial item))))
+    (str "parcel-30 #" (:serial item))))
 
 (impl cargo parcel-30
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 4.0))))
+    (and (:sealed item)
+         (> (:mass item) 4.0))))
 
 (defstruct parcel-31
   :serial u32
@@ -1022,12 +1023,12 @@
 
 (impl labeled parcel-31
   (label (item)
-         (str "parcel-31 #" (:serial item))))
+    (str "parcel-31 #" (:serial item))))
 
 (impl cargo parcel-31
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 0.0))))
+    (and (:sealed item)
+         (> (:mass item) 0.0))))
 
 (defstruct parcel-32
   :serial u32
@@ -1039,12 +1040,12 @@
 
 (impl labeled parcel-32
   (label (item)
-         (str "parcel-32 #" (:serial item))))
+    (str "parcel-32 #" (:serial item))))
 
 (impl cargo parcel-32
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 1.0))))
+    (and (:sealed item)
+         (> (:mass item) 1.0))))
 
 (defstruct parcel-33
   :serial u32
@@ -1056,12 +1057,12 @@
 
 (impl labeled parcel-33
   (label (item)
-         (str "parcel-33 #" (:serial item))))
+    (str "parcel-33 #" (:serial item))))
 
 (impl cargo parcel-33
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 2.0))))
+    (and (:sealed item)
+         (> (:mass item) 2.0))))
 
 (defstruct parcel-34
   :serial u32
@@ -1073,12 +1074,12 @@
 
 (impl labeled parcel-34
   (label (item)
-         (str "parcel-34 #" (:serial item))))
+    (str "parcel-34 #" (:serial item))))
 
 (impl cargo parcel-34
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 3.0))))
+    (and (:sealed item)
+         (> (:mass item) 3.0))))
 
 (defstruct parcel-35
   :serial u32
@@ -1090,12 +1091,12 @@
 
 (impl labeled parcel-35
   (label (item)
-         (str "parcel-35 #" (:serial item))))
+    (str "parcel-35 #" (:serial item))))
 
 (impl cargo parcel-35
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 4.0))))
+    (and (:sealed item)
+         (> (:mass item) 4.0))))
 
 (defstruct parcel-36
   :serial u32
@@ -1107,12 +1108,12 @@
 
 (impl labeled parcel-36
   (label (item)
-         (str "parcel-36 #" (:serial item))))
+    (str "parcel-36 #" (:serial item))))
 
 (impl cargo parcel-36
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 0.0))))
+    (and (:sealed item)
+         (> (:mass item) 0.0))))
 
 (defstruct parcel-37
   :serial u32
@@ -1124,12 +1125,12 @@
 
 (impl labeled parcel-37
   (label (item)
-         (str "parcel-37 #" (:serial item))))
+    (str "parcel-37 #" (:serial item))))
 
 (impl cargo parcel-37
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 1.0))))
+    (and (:sealed item)
+         (> (:mass item) 1.0))))
 
 (defstruct parcel-38
   :serial u32
@@ -1141,12 +1142,12 @@
 
 (impl labeled parcel-38
   (label (item)
-         (str "parcel-38 #" (:serial item))))
+    (str "parcel-38 #" (:serial item))))
 
 (impl cargo parcel-38
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 2.0))))
+    (and (:sealed item)
+         (> (:mass item) 2.0))))
 
 (defstruct parcel-39
   :serial u32
@@ -1158,12 +1159,12 @@
 
 (impl labeled parcel-39
   (label (item)
-         (str "parcel-39 #" (:serial item))))
+    (str "parcel-39 #" (:serial item))))
 
 (impl cargo parcel-39
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 3.0))))
+    (and (:sealed item)
+         (> (:mass item) 3.0))))
 
 (defstruct parcel-40
   :serial u32
@@ -1175,12 +1176,12 @@
 
 (impl labeled parcel-40
   (label (item)
-         (str "parcel-40 #" (:serial item))))
+    (str "parcel-40 #" (:serial item))))
 
 (impl cargo parcel-40
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 4.0))))
+    (and (:sealed item)
+         (> (:mass item) 4.0))))
 
 (defstruct parcel-41
   :serial u32
@@ -1192,12 +1193,12 @@
 
 (impl labeled parcel-41
   (label (item)
-         (str "parcel-41 #" (:serial item))))
+    (str "parcel-41 #" (:serial item))))
 
 (impl cargo parcel-41
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 0.0))))
+    (and (:sealed item)
+         (> (:mass item) 0.0))))
 
 (defstruct parcel-42
   :serial u32
@@ -1209,12 +1210,12 @@
 
 (impl labeled parcel-42
   (label (item)
-         (str "parcel-42 #" (:serial item))))
+    (str "parcel-42 #" (:serial item))))
 
 (impl cargo parcel-42
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 1.0))))
+    (and (:sealed item)
+         (> (:mass item) 1.0))))
 
 (defstruct parcel-43
   :serial u32
@@ -1226,12 +1227,12 @@
 
 (impl labeled parcel-43
   (label (item)
-         (str "parcel-43 #" (:serial item))))
+    (str "parcel-43 #" (:serial item))))
 
 (impl cargo parcel-43
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 2.0))))
+    (and (:sealed item)
+         (> (:mass item) 2.0))))
 
 (defstruct parcel-44
   :serial u32
@@ -1243,12 +1244,12 @@
 
 (impl labeled parcel-44
   (label (item)
-         (str "parcel-44 #" (:serial item))))
+    (str "parcel-44 #" (:serial item))))
 
 (impl cargo parcel-44
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 3.0))))
+    (and (:sealed item)
+         (> (:mass item) 3.0))))
 
 (defstruct parcel-45
   :serial u32
@@ -1260,12 +1261,12 @@
 
 (impl labeled parcel-45
   (label (item)
-         (str "parcel-45 #" (:serial item))))
+    (str "parcel-45 #" (:serial item))))
 
 (impl cargo parcel-45
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 4.0))))
+    (and (:sealed item)
+         (> (:mass item) 4.0))))
 
 (defstruct parcel-46
   :serial u32
@@ -1277,12 +1278,12 @@
 
 (impl labeled parcel-46
   (label (item)
-         (str "parcel-46 #" (:serial item))))
+    (str "parcel-46 #" (:serial item))))
 
 (impl cargo parcel-46
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 0.0))))
+    (and (:sealed item)
+         (> (:mass item) 0.0))))
 
 (defstruct parcel-47
   :serial u32
@@ -1294,12 +1295,12 @@
 
 (impl labeled parcel-47
   (label (item)
-         (str "parcel-47 #" (:serial item))))
+    (str "parcel-47 #" (:serial item))))
 
 (impl cargo parcel-47
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 1.0))))
+    (and (:sealed item)
+         (> (:mass item) 1.0))))
 
 (defstruct parcel-48
   :serial u32
@@ -1311,12 +1312,12 @@
 
 (impl labeled parcel-48
   (label (item)
-         (str "parcel-48 #" (:serial item))))
+    (str "parcel-48 #" (:serial item))))
 
 (impl cargo parcel-48
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 2.0))))
+    (and (:sealed item)
+         (> (:mass item) 2.0))))
 
 (defstruct parcel-49
   :serial u32
@@ -1328,12 +1329,12 @@
 
 (impl labeled parcel-49
   (label (item)
-         (str "parcel-49 #" (:serial item))))
+    (str "parcel-49 #" (:serial item))))
 
 (impl cargo parcel-49
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 3.0))))
+    (and (:sealed item)
+         (> (:mass item) 3.0))))
 
 (defstruct parcel-50
   :serial u32
@@ -1345,12 +1346,12 @@
 
 (impl labeled parcel-50
   (label (item)
-         (str "parcel-50 #" (:serial item))))
+    (str "parcel-50 #" (:serial item))))
 
 (impl cargo parcel-50
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 4.0))))
+    (and (:sealed item)
+         (> (:mass item) 4.0))))
 
 (defstruct parcel-51
   :serial u32
@@ -1362,12 +1363,12 @@
 
 (impl labeled parcel-51
   (label (item)
-         (str "parcel-51 #" (:serial item))))
+    (str "parcel-51 #" (:serial item))))
 
 (impl cargo parcel-51
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 0.0))))
+    (and (:sealed item)
+         (> (:mass item) 0.0))))
 
 (defstruct parcel-52
   :serial u32
@@ -1379,12 +1380,12 @@
 
 (impl labeled parcel-52
   (label (item)
-         (str "parcel-52 #" (:serial item))))
+    (str "parcel-52 #" (:serial item))))
 
 (impl cargo parcel-52
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 1.0))))
+    (and (:sealed item)
+         (> (:mass item) 1.0))))
 
 (defstruct parcel-53
   :serial u32
@@ -1396,12 +1397,12 @@
 
 (impl labeled parcel-53
   (label (item)
-         (str "parcel-53 #" (:serial item))))
+    (str "parcel-53 #" (:serial item))))
 
 (impl cargo parcel-53
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 2.0))))
+    (and (:sealed item)
+         (> (:mass item) 2.0))))
 
 (defstruct parcel-54
   :serial u32
@@ -1413,12 +1414,12 @@
 
 (impl labeled parcel-54
   (label (item)
-         (str "parcel-54 #" (:serial item))))
+    (str "parcel-54 #" (:serial item))))
 
 (impl cargo parcel-54
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 3.0))))
+    (and (:sealed item)
+         (> (:mass item) 3.0))))
 
 (defstruct parcel-55
   :serial u32
@@ -1430,12 +1431,12 @@
 
 (impl labeled parcel-55
   (label (item)
-         (str "parcel-55 #" (:serial item))))
+    (str "parcel-55 #" (:serial item))))
 
 (impl cargo parcel-55
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 4.0))))
+    (and (:sealed item)
+         (> (:mass item) 4.0))))
 
 (defstruct parcel-56
   :serial u32
@@ -1447,12 +1448,12 @@
 
 (impl labeled parcel-56
   (label (item)
-         (str "parcel-56 #" (:serial item))))
+    (str "parcel-56 #" (:serial item))))
 
 (impl cargo parcel-56
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 0.0))))
+    (and (:sealed item)
+         (> (:mass item) 0.0))))
 
 (defstruct parcel-57
   :serial u32
@@ -1464,12 +1465,12 @@
 
 (impl labeled parcel-57
   (label (item)
-         (str "parcel-57 #" (:serial item))))
+    (str "parcel-57 #" (:serial item))))
 
 (impl cargo parcel-57
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 1.0))))
+    (and (:sealed item)
+         (> (:mass item) 1.0))))
 
 (defstruct parcel-58
   :serial u32
@@ -1481,12 +1482,12 @@
 
 (impl labeled parcel-58
   (label (item)
-         (str "parcel-58 #" (:serial item))))
+    (str "parcel-58 #" (:serial item))))
 
 (impl cargo parcel-58
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 2.0))))
+    (and (:sealed item)
+         (> (:mass item) 2.0))))
 
 (defstruct parcel-59
   :serial u32
@@ -1498,12 +1499,12 @@
 
 (impl labeled parcel-59
   (label (item)
-         (str "parcel-59 #" (:serial item))))
+    (str "parcel-59 #" (:serial item))))
 
 (impl cargo parcel-59
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 3.0))))
+    (and (:sealed item)
+         (> (:mass item) 3.0))))
 
 (defstruct parcel-60
   :serial u32
@@ -1515,12 +1516,12 @@
 
 (impl labeled parcel-60
   (label (item)
-         (str "parcel-60 #" (:serial item))))
+    (str "parcel-60 #" (:serial item))))
 
 (impl cargo parcel-60
   (fragile? (item)
-            (and (:sealed item)
-                 (> (:mass item) 4.0))))
+    (and (:sealed item)
+         (> (:mass item) 4.0))))
 
 (enum parcel-1-group
   (parcel-1 parcel-1)
@@ -1530,15 +1531,15 @@
 
 (impl labeled parcel-1-group
   (label (entry)
-         (match entry
-           ((parcel-1-group/parcel-1 item) (label item))
-           ((parcel-1-group/parcel-2 item) (label item))
-           ((parcel-1-group/parcel-3 item) (label item))
-           ((parcel-1-group/parcel-4 item) (label item)))))
+    (match entry
+      ((parcel-1-group/parcel-1 item) (label item))
+      ((parcel-1-group/parcel-2 item) (label item))
+      ((parcel-1-group/parcel-3 item) (label item))
+      ((parcel-1-group/parcel-4 item) (label item)))))
 
 (impl summary parcel-1-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-5-group
   (parcel-5 parcel-5)
@@ -1548,15 +1549,15 @@
 
 (impl labeled parcel-5-group
   (label (entry)
-         (match entry
-           ((parcel-5-group/parcel-5 item) (label item))
-           ((parcel-5-group/parcel-6 item) (label item))
-           ((parcel-5-group/parcel-7 item) (label item))
-           ((parcel-5-group/parcel-8 item) (label item)))))
+    (match entry
+      ((parcel-5-group/parcel-5 item) (label item))
+      ((parcel-5-group/parcel-6 item) (label item))
+      ((parcel-5-group/parcel-7 item) (label item))
+      ((parcel-5-group/parcel-8 item) (label item)))))
 
 (impl summary parcel-5-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-9-group
   (parcel-9 parcel-9)
@@ -1566,15 +1567,15 @@
 
 (impl labeled parcel-9-group
   (label (entry)
-         (match entry
-           ((parcel-9-group/parcel-9 item) (label item))
-           ((parcel-9-group/parcel-10 item) (label item))
-           ((parcel-9-group/parcel-11 item) (label item))
-           ((parcel-9-group/parcel-12 item) (label item)))))
+    (match entry
+      ((parcel-9-group/parcel-9 item) (label item))
+      ((parcel-9-group/parcel-10 item) (label item))
+      ((parcel-9-group/parcel-11 item) (label item))
+      ((parcel-9-group/parcel-12 item) (label item)))))
 
 (impl summary parcel-9-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-13-group
   (parcel-13 parcel-13)
@@ -1584,15 +1585,15 @@
 
 (impl labeled parcel-13-group
   (label (entry)
-         (match entry
-           ((parcel-13-group/parcel-13 item) (label item))
-           ((parcel-13-group/parcel-14 item) (label item))
-           ((parcel-13-group/parcel-15 item) (label item))
-           ((parcel-13-group/parcel-16 item) (label item)))))
+    (match entry
+      ((parcel-13-group/parcel-13 item) (label item))
+      ((parcel-13-group/parcel-14 item) (label item))
+      ((parcel-13-group/parcel-15 item) (label item))
+      ((parcel-13-group/parcel-16 item) (label item)))))
 
 (impl summary parcel-13-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-17-group
   (parcel-17 parcel-17)
@@ -1602,15 +1603,15 @@
 
 (impl labeled parcel-17-group
   (label (entry)
-         (match entry
-           ((parcel-17-group/parcel-17 item) (label item))
-           ((parcel-17-group/parcel-18 item) (label item))
-           ((parcel-17-group/parcel-19 item) (label item))
-           ((parcel-17-group/parcel-20 item) (label item)))))
+    (match entry
+      ((parcel-17-group/parcel-17 item) (label item))
+      ((parcel-17-group/parcel-18 item) (label item))
+      ((parcel-17-group/parcel-19 item) (label item))
+      ((parcel-17-group/parcel-20 item) (label item)))))
 
 (impl summary parcel-17-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-21-group
   (parcel-21 parcel-21)
@@ -1620,15 +1621,15 @@
 
 (impl labeled parcel-21-group
   (label (entry)
-         (match entry
-           ((parcel-21-group/parcel-21 item) (label item))
-           ((parcel-21-group/parcel-22 item) (label item))
-           ((parcel-21-group/parcel-23 item) (label item))
-           ((parcel-21-group/parcel-24 item) (label item)))))
+    (match entry
+      ((parcel-21-group/parcel-21 item) (label item))
+      ((parcel-21-group/parcel-22 item) (label item))
+      ((parcel-21-group/parcel-23 item) (label item))
+      ((parcel-21-group/parcel-24 item) (label item)))))
 
 (impl summary parcel-21-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-25-group
   (parcel-25 parcel-25)
@@ -1638,15 +1639,15 @@
 
 (impl labeled parcel-25-group
   (label (entry)
-         (match entry
-           ((parcel-25-group/parcel-25 item) (label item))
-           ((parcel-25-group/parcel-26 item) (label item))
-           ((parcel-25-group/parcel-27 item) (label item))
-           ((parcel-25-group/parcel-28 item) (label item)))))
+    (match entry
+      ((parcel-25-group/parcel-25 item) (label item))
+      ((parcel-25-group/parcel-26 item) (label item))
+      ((parcel-25-group/parcel-27 item) (label item))
+      ((parcel-25-group/parcel-28 item) (label item)))))
 
 (impl summary parcel-25-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-29-group
   (parcel-29 parcel-29)
@@ -1656,15 +1657,15 @@
 
 (impl labeled parcel-29-group
   (label (entry)
-         (match entry
-           ((parcel-29-group/parcel-29 item) (label item))
-           ((parcel-29-group/parcel-30 item) (label item))
-           ((parcel-29-group/parcel-31 item) (label item))
-           ((parcel-29-group/parcel-32 item) (label item)))))
+    (match entry
+      ((parcel-29-group/parcel-29 item) (label item))
+      ((parcel-29-group/parcel-30 item) (label item))
+      ((parcel-29-group/parcel-31 item) (label item))
+      ((parcel-29-group/parcel-32 item) (label item)))))
 
 (impl summary parcel-29-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-33-group
   (parcel-33 parcel-33)
@@ -1674,15 +1675,15 @@
 
 (impl labeled parcel-33-group
   (label (entry)
-         (match entry
-           ((parcel-33-group/parcel-33 item) (label item))
-           ((parcel-33-group/parcel-34 item) (label item))
-           ((parcel-33-group/parcel-35 item) (label item))
-           ((parcel-33-group/parcel-36 item) (label item)))))
+    (match entry
+      ((parcel-33-group/parcel-33 item) (label item))
+      ((parcel-33-group/parcel-34 item) (label item))
+      ((parcel-33-group/parcel-35 item) (label item))
+      ((parcel-33-group/parcel-36 item) (label item)))))
 
 (impl summary parcel-33-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-37-group
   (parcel-37 parcel-37)
@@ -1692,15 +1693,15 @@
 
 (impl labeled parcel-37-group
   (label (entry)
-         (match entry
-           ((parcel-37-group/parcel-37 item) (label item))
-           ((parcel-37-group/parcel-38 item) (label item))
-           ((parcel-37-group/parcel-39 item) (label item))
-           ((parcel-37-group/parcel-40 item) (label item)))))
+    (match entry
+      ((parcel-37-group/parcel-37 item) (label item))
+      ((parcel-37-group/parcel-38 item) (label item))
+      ((parcel-37-group/parcel-39 item) (label item))
+      ((parcel-37-group/parcel-40 item) (label item)))))
 
 (impl summary parcel-37-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-41-group
   (parcel-41 parcel-41)
@@ -1710,15 +1711,15 @@
 
 (impl labeled parcel-41-group
   (label (entry)
-         (match entry
-           ((parcel-41-group/parcel-41 item) (label item))
-           ((parcel-41-group/parcel-42 item) (label item))
-           ((parcel-41-group/parcel-43 item) (label item))
-           ((parcel-41-group/parcel-44 item) (label item)))))
+    (match entry
+      ((parcel-41-group/parcel-41 item) (label item))
+      ((parcel-41-group/parcel-42 item) (label item))
+      ((parcel-41-group/parcel-43 item) (label item))
+      ((parcel-41-group/parcel-44 item) (label item)))))
 
 (impl summary parcel-41-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-45-group
   (parcel-45 parcel-45)
@@ -1728,15 +1729,15 @@
 
 (impl labeled parcel-45-group
   (label (entry)
-         (match entry
-           ((parcel-45-group/parcel-45 item) (label item))
-           ((parcel-45-group/parcel-46 item) (label item))
-           ((parcel-45-group/parcel-47 item) (label item))
-           ((parcel-45-group/parcel-48 item) (label item)))))
+    (match entry
+      ((parcel-45-group/parcel-45 item) (label item))
+      ((parcel-45-group/parcel-46 item) (label item))
+      ((parcel-45-group/parcel-47 item) (label item))
+      ((parcel-45-group/parcel-48 item) (label item)))))
 
 (impl summary parcel-45-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-49-group
   (parcel-49 parcel-49)
@@ -1746,15 +1747,15 @@
 
 (impl labeled parcel-49-group
   (label (entry)
-         (match entry
-           ((parcel-49-group/parcel-49 item) (label item))
-           ((parcel-49-group/parcel-50 item) (label item))
-           ((parcel-49-group/parcel-51 item) (label item))
-           ((parcel-49-group/parcel-52 item) (label item)))))
+    (match entry
+      ((parcel-49-group/parcel-49 item) (label item))
+      ((parcel-49-group/parcel-50 item) (label item))
+      ((parcel-49-group/parcel-51 item) (label item))
+      ((parcel-49-group/parcel-52 item) (label item)))))
 
 (impl summary parcel-49-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-53-group
   (parcel-53 parcel-53)
@@ -1764,15 +1765,15 @@
 
 (impl labeled parcel-53-group
   (label (entry)
-         (match entry
-           ((parcel-53-group/parcel-53 item) (label item))
-           ((parcel-53-group/parcel-54 item) (label item))
-           ((parcel-53-group/parcel-55 item) (label item))
-           ((parcel-53-group/parcel-56 item) (label item)))))
+    (match entry
+      ((parcel-53-group/parcel-53 item) (label item))
+      ((parcel-53-group/parcel-54 item) (label item))
+      ((parcel-53-group/parcel-55 item) (label item))
+      ((parcel-53-group/parcel-56 item) (label item)))))
 
 (impl summary parcel-53-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (enum parcel-57-group
   (parcel-57 parcel-57)
@@ -1782,15 +1783,15 @@
 
 (impl labeled parcel-57-group
   (label (entry)
-         (match entry
-           ((parcel-57-group/parcel-57 item) (label item))
-           ((parcel-57-group/parcel-58 item) (label item))
-           ((parcel-57-group/parcel-59 item) (label item))
-           ((parcel-57-group/parcel-60 item) (label item)))))
+    (match entry
+      ((parcel-57-group/parcel-57 item) (label item))
+      ((parcel-57-group/parcel-58 item) (label item))
+      ((parcel-57-group/parcel-59 item) (label item))
+      ((parcel-57-group/parcel-60 item) (label item)))))
 
 (impl summary parcel-57-group
   (headline (entry)
-            (str "group " (shout entry))))
+    (str "group " (shout entry))))
 
 (type total-weight
   (fn ((ref (vec (box measured)))) f64))

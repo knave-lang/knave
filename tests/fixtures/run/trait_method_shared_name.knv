@@ -5,7 +5,7 @@
 
 (impl garage car
   (newer (c other)
-         (if (> (:year c) (:year other)) c other)))
+    (if (> (:year c) (:year other)) c other)))
 
 (defn main ()
   (local leaf (->car "Leaf" 2024))

@@ -1,4 +1,6 @@
-(defstruct car :make string :year i64)
+(defstruct car
+  :make string
+  :year i64)
 
 (defn larger (a b) (if (> a b) a b))
 

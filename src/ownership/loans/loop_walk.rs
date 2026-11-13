@@ -30,11 +30,12 @@ impl<'c, 'w> LoopWalk<'c, 'w> {
     }
 
     pub fn recur(mut self, arguments: &'w [TypedArgument], at: PointId) -> Walked {
-        if let Some(parameters) = self.walk.builder().loops().innermost_parameters() {
-            let again = self.bound(parameters, arguments, at);
-            self.walk.builder().loops().return_to_innermost(again);
-        }
-        Walked::at(self.walk.builder().join(&[]))
+        let Some(parameters) = self.walk.builder().loops().innermost_parameters() else {
+            return Walked::at(at);
+        };
+        let again = self.bound(parameters, arguments, at);
+        self.walk.builder().loops().return_to_innermost(again);
+        Walked::at(again)
     }
 
     fn bound(

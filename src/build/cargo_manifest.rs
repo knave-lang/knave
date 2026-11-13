@@ -36,8 +36,8 @@ impl CargoTargetKind {
         name_part: "-tests",
     };
 
-    pub fn target_name(self, name_stem: &str, root_hash: &str) -> String {
-        format!("{name_stem}{}-{root_hash}", self.shape().name_part)
+    pub fn target_name(self, name_stem: &str, directory_hash: &str) -> String {
+        format!("{name_stem}{}-{directory_hash}", self.shape().name_part)
     }
 
     fn shape(self) -> &'static TargetShape {
@@ -197,7 +197,7 @@ mod tests {
     }
 
     #[test]
-    fn a_target_name_joins_the_project_and_the_root_hash() {
+    fn a_target_name_joins_the_project_and_the_directory_hash() {
         assert_eq!(
             CargoTargetKind::Bin.target_name("demo", "0000abcd"),
             "demo-0000abcd"

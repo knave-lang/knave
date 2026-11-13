@@ -1,7 +1,6 @@
-use std::path::PathBuf;
+use std::path::{self, Path, PathBuf};
 
 use super::build_directory::BuildDirectory;
-use super::program_file::ProgramFile;
 use crate::build::{CargoManifest, CargoTarget, CargoTargetKind};
 use crate::project::CrateDependency;
 
@@ -44,7 +43,7 @@ impl ProjectCrates {
         output: PathBuf,
     ) -> Option<CargoTarget<'_>> {
         self.has_crates().then(|| {
-            let manifest = self.manifest(CargoTargetKind::Bin, name_stem);
+            let manifest = self.manifest(CargoTargetKind::Bin, name_stem, &directory);
             self.target(manifest, directory, output)
         })
     }
@@ -53,7 +52,7 @@ impl ProjectCrates {
         let directory = self.build_directory().join(Self::TEST_CRATE_DIRECTORY);
         let tests_use_crates = self.has_crates() || !self.dev_crates.is_empty();
         tests_use_crates.then(|| {
-            let manifest = self.manifest(CargoTargetKind::Test, &self.name);
+            let manifest = self.manifest(CargoTargetKind::Test, &self.name, &directory);
             self.target(manifest, directory, output)
         })
     }
@@ -62,10 +61,15 @@ impl ProjectCrates {
         self.root.join(BuildDirectory::root()).join(&self.name)
     }
 
-    fn manifest(&self, kind: CargoTargetKind, name_stem: &str) -> CargoManifest<'_> {
+    fn manifest(
+        &self,
+        kind: CargoTargetKind,
+        name_stem: &str,
+        directory: &Path,
+    ) -> CargoManifest<'_> {
         CargoManifest::new(
             kind,
-            kind.target_name(name_stem, &self.root_hash()),
+            kind.target_name(name_stem, &Self::directory_hash(directory)),
             &self.crates,
             &self.dev_crates,
         )
@@ -85,9 +89,9 @@ impl ProjectCrates {
         }
     }
 
-    fn root_hash(&self) -> String {
-        let root = ProgramFile::canonical(&self.root).unwrap_or(self.root.clone());
-        let hash = root
+    fn directory_hash(directory: &Path) -> String {
+        let absolute = path::absolute(directory).unwrap_or_else(|_| directory.to_path_buf());
+        let hash = absolute
             .as_os_str()
             .as_encoded_bytes()
             .iter()

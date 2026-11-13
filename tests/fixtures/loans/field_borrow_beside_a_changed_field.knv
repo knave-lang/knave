@@ -1,0 +1,9 @@
+(defstruct car
+  :make string
+  :year i64)
+
+(defn main ()
+  (local c (->car :make (str "Leaf") :year 2020))
+  (local m (:make c))
+  (set! (:year c) 2021)
+  (println m))

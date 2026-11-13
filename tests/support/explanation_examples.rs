@@ -19,7 +19,7 @@ pub struct ExampleDiagnostic {
 impl ExplanationExamples {
     const ERRONEOUS_HEADING: &str = "## Erroneous example";
     const FIXES_HEADING: &str = "## Fixes";
-    const EXAMPLE_FENCE: &str = "```lisp\n";
+    const EXAMPLE_FENCE: &str = "```knave\n";
     const CLOSING_FENCE: &str = "```\n";
     const EXAMPLE_FILE: &str = "example.knv";
     const MAXIMUM_PARALLEL_FIX_BUILDS: usize = 4;

@@ -125,6 +125,7 @@ impl Passing for Holds {
 #[cfg(test)]
 mod tests {
     use super::{PassedArgument, Passing};
+    use crate::core::BindingId;
     use crate::ownership::lambda_source::LambdaSource;
     use crate::ownership::loans::control_flow_graph::ControlFlowGraph;
     use crate::ownership::loans::holdings::Holdings;
@@ -149,7 +150,7 @@ mod tests {
     }
 
     impl PassingFixture {
-        fn binding_of(argument: &TypedArgument) -> crate::core::BindingId {
+        fn binding_of(argument: &TypedArgument) -> BindingId {
             match argument.value.kind {
                 TypedExprKind::Leaf(TypedLeaf::Local(binding)) => binding,
                 _ => unreachable!("the fixture passes locals"),
@@ -177,6 +178,21 @@ mod tests {
                 },
                 borrow,
             }
+        }
+
+        fn passes_the_holdings_of_a_value_that_is_no_place(&self, borrow: Borrow) -> bool {
+            let argument = TypedArgument {
+                value: self.source.bound("n").clone(),
+                borrow,
+            };
+            let rules = LoanRules::of(self.source.program());
+            let passing = <dyn Passing>::of(&argument, None, &rules);
+            let mut graph = ControlFlowGraph::new();
+            let mut loans = LoanTable::default();
+            let mut lender = Lender::new(&mut graph, &mut loans, PointId::ENTRY);
+            let held = Holdings::of_value(self.source.binder("v").binding);
+            let passed = passing.pass(PassedArgument::new(&argument, held), &mut lender);
+            passed.values().next().is_some()
         }
 
         fn outcome(&self, local: &str, borrow: Borrow, parameter: Option<&Type>) -> Outcome {
@@ -227,6 +243,12 @@ mod tests {
     }
 
     #[test]
+    fn a_lent_value_that_is_no_place_still_passes_what_it_holds() {
+        let fixture = PassingFixture::new();
+        assert!(fixture.passes_the_holdings_of_a_value_that_is_no_place(Borrow::Shared));
+    }
+
+    #[test]
     fn a_dereference_copies_and_passes_nothing() {
         let copied = PassingFixture::new().outcome("r", Borrow::Deref(1), None);
         assert!(!copied.takes_the_place && !copied.passes_a_loan);
@@ -264,7 +286,7 @@ mod tests {
     fn an_unadjusted_value_moves_unless_it_is_copy() {
         let fixture = PassingFixture::new();
         let moved = fixture.outcome("v", Borrow::None, None);
-        assert!(moved.takes_the_place);
+        assert!(moved.takes_the_place && moved.passes_its_own_holdings);
         assert_eq!(moved.accesses, ["move `v`"]);
         assert!(fixture.outcome("n", Borrow::None, None).accesses.is_empty());
     }

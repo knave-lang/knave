@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+assertion_line: 107
+expression: reports.report(path)
+input_file: tests/fixtures/loans/change_inside_a_match_scrutinee.knv
+---
+main
+  3:16 borrow `v`: no live loan
+  4:16 change `v`: `v` lent at 3:16, held by `r`
+  5:24 borrow `s`: `v` lent at 3:16, held by `r`

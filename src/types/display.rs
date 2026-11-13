@@ -150,6 +150,23 @@ impl<'a> TypeDisplay<'a> {
         format!("({} {})", param.name, bounds.join(" "))
     }
 
+    pub(super) fn needed(
+        &self,
+        binding: BindingId,
+        argument: Option<Type>,
+        implementor: &Type,
+    ) -> NeededTrait<'a> {
+        let name = self.bindings.get(binding).name();
+        let named = argument.filter(|argument| !argument.has_vars() && argument != implementor);
+        NeededTrait {
+            name,
+            bound: match named {
+                Some(argument) => format!("({name} {})", self.show(&argument)),
+                None => name.to_string(),
+            },
+        }
+    }
+
     fn bound(&self, bound: &Bound) -> String {
         let name = self.bindings.get(bound.binding).name();
         match &bound.argument {
@@ -157,4 +174,9 @@ impl<'a> TypeDisplay<'a> {
             None => name.to_string(),
         }
     }
+}
+
+pub struct NeededTrait<'a> {
+    pub name: &'a str,
+    pub bound: String,
 }

@@ -1,0 +1,5 @@
+(defn main ()
+  (local word (str "pear"))
+  (println (starts-with? "pear" "pe"))
+  (println (starts-with? (as-str word) "ar"))
+  (println (starts-with? "pear" "")))

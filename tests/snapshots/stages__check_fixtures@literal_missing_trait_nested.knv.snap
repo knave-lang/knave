@@ -8,21 +8,15 @@ error[L0404]: `i64` does not implement `named`
    |
 14 |   (println (option-named? (some 1)))
    |             ^^^^^^^^^^^^^ this needs `named`
-   |
-   = note: `named` is implemented for: 
 
 error[L0404]: `i64` does not implement `named`
   --> check/literal_missing_trait_nested.knv:17:17
    |
 17 |       (println (mutable-named? (mut value)))
    |                 ^^^^^^^^^^^^^^ this needs `named`
-   |
-   = note: `named` is implemented for: 
 
 error[L0404]: `i64` does not implement `named`
   --> check/literal_missing_trait_nested.knv:20:21
    |
 20 |     (fn (function) (function (some 1))))
    |                     ^^^^^^^^ this needs `named`
-   |
-   = note: `named` is implemented for:

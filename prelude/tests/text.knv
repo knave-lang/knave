@@ -2,3 +2,16 @@
 (use prelude/text print-form)
 
 (doctest prelude/text)
+
+(deftest join-puts-the-separator-between-items
+  (assert (= (join (vec "ana" "bo") ", ") "ana, bo"))
+  (assert (= (join (vec (str "a") (str "b")) "")
+             "ab"))
+  (assert (= (join (the (vec string) (vec)) ",")
+             "")))
+
+(deftest starts-with-tests-a-prefix
+  (assert (starts-with? "pear" "pe"))
+  (assert (starts-with? "pear" ""))
+  (assert (not (starts-with? "pear" "ar")))
+  (assert (starts-with? (str "pear") "pe")))

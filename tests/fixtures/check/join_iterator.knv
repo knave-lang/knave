@@ -1,0 +1,2 @@
+(defn spaced (text)
+  (join (split text " ") ", "))

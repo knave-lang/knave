@@ -2569,33 +2569,29 @@ impl TypeChecker {
         span: Span,
         display: &TypeDisplay<'_>,
     ) -> Diagnostic {
-        let trait_name = self.bindings.get(bound.binding).name();
+        let argument = (bound.argument.as_ref()).map(|argument| self.unifier.resolve(argument));
+        let needed = display.needed(bound.binding, argument, implementor);
         let found = display.show(implementor);
         let program_type = self.is_program_type(implementor);
         let diagnostic = match self.unimplemented_box(implementor, bound) {
             Some(boxed) => {
-                TypeProblems::missing_trait_on_box(trait_name, &display.show(&boxed), span)
+                TypeProblems::missing_trait_on_box(needed.name, &display.show(&boxed), span)
             }
             None => match implementor {
                 Type::Named(binding, _) if program_type => {
-                    TypeProblems::missing_trait_on_struct(trait_name, &found, span)
+                    TypeProblems::missing_trait_on_struct(&needed, &found, span)
                 }
                 _ => {
                     let implementors = self.implementor_names(bound.binding, display);
-                    TypeProblems::missing_trait(trait_name, &found, span, implementors)
+                    TypeProblems::missing_trait(needed, &found, span, implementors)
                 }
             },
         };
         if !self.shows_trait_help(bound.binding, implementor, program_type) {
             return diagnostic;
         }
-        match self
-            .declarations
-            .traits
-            .table
-            .get(bound.binding)
-            .and_then(|known| known.help.as_deref())
-        {
+        let known = self.declarations.traits.table.get(bound.binding);
+        match known.and_then(|known| known.help.as_deref()) {
             Some(help) => diagnostic.with_help(help),
             None => diagnostic,
         }

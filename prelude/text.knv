@@ -27,11 +27,11 @@
 
 (export alphanumeric? apropos as-str char chars debug digit?
         dir display doc eprint eprintln find-doc from-str
-        infallible lines lower-case parse parse-bool-error
-        parse-char-error parse-error parse-float-error
-        parse-int-error pr-str print print-form println prn
-        show split split-when str subs trim upper-case
-        whitespace?)
+        infallible join lines lower-case parse
+        parse-bool-error parse-char-error parse-error
+        parse-float-error parse-int-error pr-str print
+        print-form println prn show split split-when
+        starts-with? str subs trim upper-case whitespace?)
 
 (rust-type formatter "std::fmt::Formatter<'_>")
 
@@ -214,6 +214,27 @@
   (rust "{0}.split({1})"
     (fn ((ref str) (ref str))
       (iterator (ref str)))))
+
+(rust-trait joinable "crate::rt::Join"
+  (help "`join` takes a vector or a slice of `string` or `(ref str)` items: collect an iterator first, as in `(join (collect items) \", \")`, which allocates the vector")
+  (vec string)
+  (vec (ref str))
+  (slice string)
+  (slice (ref str)))
+
+(def join
+  (rust "{0}.join({1})"
+    (where ((items joinable))
+      (fn ((ref items) (ref str)) string))))
+
+(rust-trait prefixed "crate::rt::StartsWith"
+  str string
+  (where ((text prefixed)) (ref text)))
+
+(def starts-with?
+  (rust "{0}.starts_with({1})"
+    (where ((text prefixed))
+      (fn ((ref text) (ref str)) bool))))
 
 (def trim
   (rust "{0}.trim()"
@@ -1023,6 +1044,32 @@
 
   (collect (split-when \"a1b\" digit?))
   => (vec \"a\" \"b\")")
+
+(document (join items separator)
+  "Joins a vector or a slice of strings into one [string], with `separator`
+  between items.
+
+  Each item is a [string] or a `(ref str)`. The call borrows `items`, so it
+  stays usable. An iterator is an error: collect it first with
+  `(join (collect items) separator)`, which allocates the vector.
+
+  (join (vec \"ana\" \"bo\") \", \")
+  => \"ana, bo\"
+
+  (join (collect (split \"a b\" \" \")) \"+\")
+  => \"a+b\"")
+
+(document (starts-with? text prefix)
+  "Returns whether a string begins with `prefix`.
+
+  The text is a [string] or a `(ref str)`, and the call moves neither
+  argument.
+
+  (starts-with? \"pear\" \"pe\")
+  => true
+
+  (starts-with? \"pear\" \"ar\")
+  => false")
 
 (document (trim text)
   "Returns a string without its leading and trailing whitespace.

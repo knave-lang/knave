@@ -2,8 +2,8 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (53 of 235): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display enum eprint eprintln eq exit export field float fmt fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
-running 207 tests
+untested in prelude (53 of 238): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display enum eprint eprintln eq exit export field float fmt fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
+running 214 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -11,6 +11,10 @@ test option/unwrap-or-falls-back-on-none ... ok
 test option/expect-takes-the-value ... ok
 test option/map-some-changes-the-value ... ok
 test option/then-some-chains-an-optional-step ... ok
+test sequence/contains-finds-a-part-of-text ... ok
+test sequence/contains-finds-an-item-of-a-vector ... ok
+test text/join-puts-the-separator-between-items ... ok
+test text/starts-with-tests-a-prefix ... ok
 test prelude/assoc/doc:assoc ... ok
 test prelude/assoc/doc:assoc-in ... ok
 test prelude/assoc/doc:update ... ok
@@ -138,6 +142,7 @@ test prelude/result/doc:map-ok ... ok
 test prelude/result/doc:map-err ... ok
 test prelude/result/doc:then-ok ... ok
 test prelude/sequence/doc:empty? ... ok
+test prelude/sequence/doc:contains? ... ok
 test prelude/sequence/doc:len ... ok
 test prelude/syntax/doc:let ... ok
 test prelude/syntax/doc:->> ... ok
@@ -193,6 +198,8 @@ test prelude/text/doc:chars ... ok
 test prelude/text/doc:lines ... ok
 test prelude/text/doc:split ... ok
 test prelude/text/doc:split-when ... ok
+test prelude/text/doc:join ... ok
+test prelude/text/doc:starts-with? ... ok
 test prelude/text/doc:trim ... ok
 test prelude/text/doc:as-str ... ok
 test prelude/text/doc:parse ... ok
@@ -231,4 +238,4 @@ test prelude/vec/doc:last ... ok
 test prelude/vec/doc:reverse ... ok
 test prelude/vec/doc:reverse! ... ok
 test prelude/vec/doc:dedup! ... ok
-207 passed, 0 failed
+214 passed, 0 failed

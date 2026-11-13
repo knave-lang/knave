@@ -8,5 +8,3 @@ error[L0404]: `i64` does not implement `named`
    |
 10 | (defn main () (println (show-name 1)))
    |                         ^^^^^^^^^ this needs `named`
-   |
-   = note: `named` is implemented for:

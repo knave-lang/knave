@@ -8,5 +8,3 @@ error[L0404]: `i64` does not implement `named`
    |
 11 |       (if true (g (named? (ref v)) w) (+ v 1))))
    |                    ^^^^^^ this needs `named`
-   |
-   = note: `named` is implemented for:

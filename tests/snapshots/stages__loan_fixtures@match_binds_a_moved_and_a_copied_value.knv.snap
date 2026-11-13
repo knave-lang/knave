@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+assertion_line: 107
+expression: reports.report(path)
+input_file: tests/fixtures/loans/match_binds_a_moved_and_a_copied_value.knv
+---
+main
+  7:17 borrow `e`: no live loan
+  8:10 move `e`: `e` lent at 7:17, held by `r`
+  9:32 borrow `s`: `e` lent at 7:17, held by `r`; `n` lent at 9:34, passed to the call
+  9:34 borrow `n`: `e` lent at 7:17, held by `r`; `s` lent at 9:32, passed to the call

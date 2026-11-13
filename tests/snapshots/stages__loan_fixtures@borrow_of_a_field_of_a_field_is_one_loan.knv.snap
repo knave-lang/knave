@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+assertion_line: 107
+expression: reports.report(path)
+input_file: tests/fixtures/loans/borrow_of_a_field_of_a_field_is_one_loan.knv
+---
+main
+  12:17 borrow `c.engine.name`: no live loan
+  13:9 change `c.year`: `c.engine.name` lent at 12:17, held by `r`

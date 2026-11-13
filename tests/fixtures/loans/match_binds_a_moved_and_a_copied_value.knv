@@ -1,0 +1,13 @@
+(defenum entry
+  (pair string i64)
+  empty)
+
+(defn main ()
+  (local e (entry/pair (str "a") 1))
+  (local r (ref e))
+  (match e
+    ((entry/pair s n) (println s n))
+    (entry/empty (println 0)))
+  (match r
+    ((entry/pair t _) (println t))
+    (entry/empty (println 1))))

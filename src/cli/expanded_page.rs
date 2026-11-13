@@ -17,6 +17,10 @@ impl PageText {
         Self { header, body }
     }
 
+    pub fn body(&self) -> &str {
+        &self.body
+    }
+
     pub fn painted(&self, colors: TokenColors) -> String {
         format!("{}{}", colors.paint(&self.header), self.body)
     }

@@ -2995,6 +2995,23 @@ fn doc_write_errors_writes_the_index_and_a_page_per_explained_code() {
 }
 
 #[test]
+fn doc_write_errors_writes_a_lint_rule_s_docstring_as_its_code_page() {
+    let sandbox = Sandbox::new("doc_write_errors_rule");
+    sandbox
+        .compiler(&["doc", "--write", "--errors"])
+        .assert_silent_success();
+    let index = sandbox.contents("doc/errors.md");
+    assert!(index.contains("| [L0801](errors/L0801.md) | unused binding |\n"));
+    let page = sandbox.contents("doc/errors/L0801.md");
+    assert!(
+        page.starts_with(
+            "# L0801: unused binding\n\nReports a `let` binding that nothing reads.\n"
+        )
+    );
+    assert!(page.contains("## Erroneous example"));
+}
+
+#[test]
 fn doc_write_errors_beside_the_prelude_writes_both() {
     let sandbox = Sandbox::new("doc_write_errors_prelude");
     sandbox

@@ -66,14 +66,14 @@ impl DocCommand {
     }
 }
 
-struct DocOutput {
+pub struct DocOutput {
     type_line: Option<String>,
     page: PageText,
     status: ExitStatus,
 }
 
 impl DocOutput {
-    fn page(page: PageText) -> Self {
+    pub fn page(page: PageText) -> Self {
         Self {
             type_line: None,
             page,
@@ -94,7 +94,7 @@ impl DocOutput {
         }
     }
 
-    fn print(&self) -> ExitStatus {
+    pub fn print(&self) -> ExitStatus {
         let colors = TokenColors::deciding(AutoStream::choice(&io::stdout()));
         match StandardOutput::locked().write(self.text(colors)) {
             ExitStatus::Success => self.status,
@@ -143,14 +143,7 @@ impl<'t> DocLookup<'t> {
         expanded.text()
     }
 
-    pub fn print_lint_page(&mut self, name: &str) -> Option<ExitStatus> {
-        match self.describe_lint(name) {
-            Ok(page) => Some(DocOutput::page(page?).print()),
-            Err(status) => Some(status),
-        }
-    }
-
-    fn describe_lint(&mut self, name: &str) -> Result<Option<PageText>, ExitStatus> {
+    pub fn describe_lint(&mut self, name: &str) -> Result<Option<PageText>, ExitStatus> {
         let environment = DocEnvironment::Prelude;
         let entry = environment.load(self.terminal)?;
         let expanded = self.terminal.expansion().within_session(

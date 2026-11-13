@@ -1,5 +1,8 @@
 use super::doc_folder::WrittenPage;
+use super::exit_status::ExitStatus;
+use super::explanation_lookup::ExplanationLookup;
 use super::explanation_page::ExplanationPage;
+use super::terminal::Terminal;
 use crate::diagnostic::Explanation;
 use crate::language::Language;
 
@@ -11,14 +14,26 @@ impl ErrorPages {
     const TABLE_HEAD: &'static str = "| Code | Name |\n| --- | --- |\n";
     const UNWRITTEN_MARK: &'static str = "no explanation yet";
 
-    pub fn pages() -> Vec<WrittenPage> {
-        let mut explanations: Vec<ExplanationPage> =
-            Explanation::all().map(ExplanationPage::new).collect();
+    pub fn pages(terminal: &mut Terminal) -> Result<Vec<WrittenPage>, ExitStatus> {
+        Ok(Self::of(Self::explanations(terminal)?))
+    }
+
+    fn of(mut explanations: Vec<ExplanationPage>) -> Vec<WrittenPage> {
         explanations.sort_by(|left, right| left.code().cmp(right.code()));
         let written = explanations.iter().filter_map(Self::code_page);
         [Self::index(&explanations)]
             .into_iter()
             .chain(written)
+            .collect()
+    }
+
+    fn explanations(terminal: &mut Terminal) -> Result<Vec<ExplanationPage>, ExitStatus> {
+        let mut lookup = ExplanationLookup::new(terminal);
+        Explanation::all()
+            .map(|explanation| {
+                let docstring = lookup.docstring_page(&explanation)?;
+                Ok(ExplanationPage::new(explanation).with_docstring(docstring))
+            })
             .collect()
     }
 
@@ -56,10 +71,12 @@ impl ErrorPages {
 #[cfg(test)]
 mod tests {
     use super::ErrorPages;
+    use crate::cli::explanation_page::ExplanationPage;
+    use crate::diagnostic::Explanation;
 
     #[test]
     fn the_index_lists_the_codes_in_order() {
-        let pages = ErrorPages::pages();
+        let pages = ErrorPages::of(Explanation::all().map(ExplanationPage::new).collect());
         let codes: Vec<&str> = pages[0]
             .text
             .lines()

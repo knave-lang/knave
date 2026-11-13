@@ -1,16 +1,26 @@
 use super::exit_status::ExitStatus;
+use super::expanded_page::PageText;
 use super::standard_output::StandardOutput;
 use crate::diagnostic::Explanation;
 
 pub struct ExplanationPage {
     explanation: Explanation,
+    docstring: Option<String>,
 }
 
 impl ExplanationPage {
     const UNWRITTEN: &'static str = "No explanation yet.";
 
     pub fn new(explanation: Explanation) -> Self {
-        Self { explanation }
+        Self {
+            explanation,
+            docstring: None,
+        }
+    }
+
+    pub fn with_docstring(self, page: Option<PageText>) -> Self {
+        let docstring = page.map(|page| page.body().trim_start().to_string());
+        Self { docstring, ..self }
     }
 
     pub fn print(&self) -> ExitStatus {
@@ -18,7 +28,7 @@ impl ExplanationPage {
     }
 
     pub fn markdown(&self) -> Option<String> {
-        let body = self.explanation.text()?.trim_end();
+        let body = self.written()?.trim_end();
         Some(format!("# {}\n\n{body}\n", self.header()))
     }
 
@@ -31,7 +41,11 @@ impl ExplanationPage {
     }
 
     pub fn is_written(&self) -> bool {
-        self.explanation.text().is_some()
+        self.written().is_some()
+    }
+
+    fn written(&self) -> Option<&str> {
+        self.explanation.text().or(self.docstring.as_deref())
     }
 
     fn text(&self) -> String {
@@ -42,9 +56,7 @@ impl ExplanationPage {
         format!("{}: {}", self.code(), self.display_name())
     }
 
-    fn body(&self) -> &'static str {
-        self.explanation
-            .text()
-            .map_or(Self::UNWRITTEN, str::trim_end)
+    fn body(&self) -> &str {
+        self.written().map_or(Self::UNWRITTEN, str::trim_end)
     }
 }

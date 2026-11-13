@@ -3,13 +3,14 @@ use std::path::PathBuf;
 
 use clap::Args;
 
-use super::doc::{DocCommand, DocEnvironment, DocLookup, DocPage};
+use super::doc::{DocCommand, DocEnvironment, DocOutput, DocPage};
 use super::doc_write::{DocScope, DocWriteCommand};
 use super::exit_status::ExitStatus;
+use super::explanation_lookup::ExplanationLookup;
 use super::explanation_page::ExplanationPage;
 use super::term_parser::{SurplusParser, TermParser};
 use super::terminal::Terminal;
-use crate::diagnostic::{CodeStage, Explanation};
+use crate::diagnostic::Explanation;
 
 #[derive(Args)]
 pub struct DocArguments {
@@ -72,16 +73,13 @@ impl DocArguments {
     }
 
     fn explain(explanation: Explanation, terminal: &mut Terminal) -> ExitStatus {
-        Self::docstring_explained_lint(&explanation)
-            .and_then(|lint| DocLookup::new(terminal).print_lint_page(&lint))
-            .unwrap_or_else(|| ExplanationPage::new(explanation).print())
-    }
-
-    fn docstring_explained_lint(explanation: &Explanation) -> Option<String> {
-        if explanation.text().is_some() {
-            return None;
-        }
-        CodeStage::LINTS.name_of(explanation.code())
+        ExplanationLookup::new(terminal)
+            .docstring_page(&explanation)
+            .map(|docstring| match docstring {
+                Some(page) => DocOutput::page(page).print(),
+                None => ExplanationPage::new(explanation).print(),
+            })
+            .unwrap_or_else(|status| status)
     }
 
     fn scope(&self) -> DocScope {

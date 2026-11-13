@@ -45,6 +45,7 @@ mod exit_status;
 mod expand;
 mod expanded_page;
 mod expansion;
+mod explanation_lookup;
 mod explanation_page;
 #[cfg(test)]
 mod fake_crates;

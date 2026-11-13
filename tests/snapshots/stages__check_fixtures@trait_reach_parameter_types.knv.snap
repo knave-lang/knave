@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/trait_reach_parameter_types.knv
+---
+(type reasons (fn ((vec parse-int-error)) (vec parse-int-error)))
+(type make-reason (fn ((fn () parse-int-error)) unit))
+(type borrow-reason (fn ((ref parse-int-error)) unit))

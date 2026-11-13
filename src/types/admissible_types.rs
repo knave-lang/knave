@@ -1,7 +1,8 @@
 use rustc_hash::FxHashMap;
 
 use super::admissible::Admissible;
-use super::traits::{RustTrait, TraitTable};
+use super::rust_trait::RustTrait;
+use super::traits::TraitTable;
 use super::ty::{GenericId, GenericParam, Type};
 
 pub(super) struct AdmissibleTypes<'a> {
@@ -23,19 +24,21 @@ impl<'a> AdmissibleTypes<'a> {
             return Admissible::Unbounded;
         };
         let mut admissible: Vec<Type> = first
-            .implementors
+            .rows()
+            .implementors()
             .iter()
             .map(|implementor| implementor.scheme.body.clone())
             .collect();
         for rust_trait in others {
             admissible.retain(|candidate| {
                 rust_trait
-                    .implementors
+                    .rows()
+                    .implementors()
                     .iter()
                     .any(|implementor| implementor.scheme.body == *candidate)
             });
         }
-        if traits.iter().any(|rust_trait| rust_trait.is_open()) {
+        if traits.iter().any(|rust_trait| rust_trait.rows().is_open()) {
             Admissible::Open(admissible)
         } else {
             Admissible::Closed(admissible)
@@ -64,7 +67,8 @@ mod tests {
     use crate::core::{BindingId, PrimitiveType};
     use crate::types::admissible::Admissible;
     use crate::types::{
-        Bound, GenericId, GenericParam, Implementor, RustTrait, Scheme, TraitTable, Type,
+        Bound, GenericId, GenericParam, Implementor, LoweredRows, RustTrait, Scheme, TraitTable,
+        Type,
     };
 
     struct AdmissibleFixture {
@@ -100,13 +104,11 @@ mod tests {
         fn implemented_by(mut self, rust_trait: BindingId, implementors: Vec<Implementor>) -> Self {
             self.traits.add(
                 rust_trait,
-                RustTrait {
-                    path: "Shown".into(),
-                    implementors,
-                    help: None,
-                    supertraits: Vec::new(),
-                    associated: None,
-                },
+                RustTrait::written(
+                    "Shown".into(),
+                    None,
+                    LoweredRows::new(implementors, Vec::new()),
+                ),
             );
             self
         }

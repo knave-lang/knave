@@ -49,7 +49,7 @@ impl<'c> LiteralSettlement<'c> {
 mod tests {
     use super::*;
     use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleId, PrimitiveType};
-    use crate::types::traits::{Implementor, RustTrait};
+    use crate::types::rust_trait::{Implementor, LoweredRows, RustTrait};
     use crate::types::ty::Scheme;
     use crate::types::unifier::LiteralKind;
 
@@ -91,19 +91,19 @@ mod tests {
             ];
             self.traits.add(
                 self.holds,
-                RustTrait {
-                    path: "Holds".into(),
-                    implementors: rows
-                        .into_iter()
-                        .map(|(implementor, second)| Implementor {
-                            scheme: Scheme::monomorphic(Type::Primitive(implementor)),
-                            argument: Some(second),
-                        })
-                        .collect(),
-                    help: None,
-                    supertraits: Vec::new(),
-                    associated: None,
-                },
+                RustTrait::written(
+                    "Holds".into(),
+                    None,
+                    LoweredRows::new(
+                        rows.into_iter()
+                            .map(|(implementor, second)| Implementor {
+                                scheme: Scheme::monomorphic(Type::Primitive(implementor)),
+                                argument: Some(second),
+                            })
+                            .collect(),
+                        Vec::new(),
+                    ),
+                ),
             );
         }
 

@@ -1,6 +1,6 @@
 use rustc_hash::FxHashMap;
 
-use super::traits::Implementor;
+use super::rust_trait::Implementor;
 use super::ty::{Bound, GenericId, Type};
 pub struct Requirement {
     pub bound: Bound,

@@ -1,4 +1,4 @@
-expand/src/core/kernel.rs 518
+expand/src/core/kernel.rs 506
 expand/src/core/printer.rs 693
 expand/src/expand/expression.rs 1006
 expand/src/expand/module_body.rs 1995

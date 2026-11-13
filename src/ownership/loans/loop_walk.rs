@@ -2,7 +2,7 @@ use super::argument_passing::Passing;
 use super::argument_values::ArgumentValues;
 use super::expression_walk::ExpressionWalk;
 use super::holdings::Holdings;
-use super::loop_heads::LoopHead;
+use super::loop_nest::LoopNest;
 use super::point_id::PointId;
 use super::walked::Walked;
 use crate::types::{TypedArgument, TypedBinder, TypedLambda};
@@ -23,22 +23,19 @@ impl<'c, 'w> LoopWalk<'c, 'w> {
         at: PointId,
     ) -> Walked {
         let started = self.bound(&lambda.params, arguments, at);
-        let head = self.walk.join(&[started]);
-        self.walk.loops().enter(LoopHead {
-            head,
-            parameters: &lambda.params,
-        });
+        let head = self.walk.builder().join(&[started]);
+        self.walk.builder().enter_loop(head, &lambda.params);
         let body = self.walk.block(&lambda.body, head);
-        self.walk.loops().leave();
+        self.walk.builder().leave_loop();
         body
     }
 
     pub fn recur(mut self, arguments: &'w [TypedArgument], at: PointId) -> Walked {
-        if let Some(innermost) = self.walk.loops().innermost() {
-            let again = self.bound(innermost.parameters, arguments, at);
-            self.walk.link(again, innermost.head);
+        if let Some(parameters) = self.walk.builder().innermost_loop_parameters() {
+            let again = self.bound(parameters, arguments, at);
+            self.walk.builder().return_to_innermost_loop(again);
         }
-        Walked::at(self.walk.join(&[]))
+        Walked::at(self.walk.builder().join(&[]))
     }
 
     fn bound(
@@ -55,10 +52,11 @@ impl<'c, 'w> LoopWalk<'c, 'w> {
             .collect();
         let values = ArgumentValues::new(arguments, passings);
         let evaluated = values.evaluate(self.walk, at);
-        let point = self.walk.join(&[evaluated.end]);
-        let passed: Vec<Holdings> = values.pass(evaluated.held, &mut self.walk.lender(point));
+        let builder = self.walk.builder();
+        let point = builder.join(&[evaluated.end]);
+        let passed: Vec<Holdings> = values.pass(evaluated.held, &mut builder.lender(point));
         for (parameter, held) in parameters.iter().zip(passed) {
-            self.walk.define(point, parameter, &held);
+            builder.define(point, parameter, &held);
         }
         point
     }

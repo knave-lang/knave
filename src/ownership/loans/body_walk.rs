@@ -1,35 +1,28 @@
 use super::access::Move;
+use super::body_builder::BodyBuilder;
 use super::body_facts::BodyFacts;
 use super::call_site::CallSite;
 use super::call_walk::CallWalk;
 use super::closure::Closure;
-use super::control_flow_graph::ControlFlowGraph;
 use super::expression_walk::ExpressionWalk;
 use super::holdings::Holdings;
-use super::lender::Lender;
 use super::lending::Lending;
 use super::loan_kind::LoanKind;
 use super::loan_place::LoanPlace;
 use super::loan_rules::LoanRules;
-use super::loan_table::LoanTable;
-use super::loop_heads::LoopHeads;
 use super::loop_walk::LoopWalk;
 use super::place_access::PlaceAccess;
 use super::point_id::PointId;
-use super::value_regions::ValueRegions;
 use super::walked::Walked;
 use crate::core::ReferenceKind;
 use crate::types::{
-    TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
-    TypedLeaf, TypedMatch, TypedStructExpr,
+    TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
+    TypedMatch, TypedStructExpr,
 };
 
 pub struct BodyWalk<'w> {
     rules: &'w LoanRules<'w>,
-    graph: ControlFlowGraph,
-    loans: LoanTable,
-    regions: ValueRegions,
-    loops: LoopHeads<'w>,
+    builder: BodyBuilder<'w>,
     closures: Vec<Closure<'w>>,
 }
 
@@ -37,31 +30,24 @@ impl<'w> BodyWalk<'w> {
     pub fn new(rules: &'w LoanRules<'w>) -> Self {
         Self {
             rules,
-            graph: ControlFlowGraph::new(),
-            loans: LoanTable::default(),
-            regions: ValueRegions::default(),
-            loops: LoopHeads::default(),
+            builder: BodyBuilder::default(),
             closures: Vec::new(),
         }
     }
 
     pub fn walk(mut self, lambda: &'w TypedLambda) -> BodyFacts<'w> {
         for parameter in &lambda.params {
-            self.graph
-                .point_mut(PointId::ENTRY)
-                .define(parameter.binding);
+            self.builder
+                .define(PointId::ENTRY, parameter, &Holdings::default());
         }
         let tail = self.block(&lambda.body, PointId::ENTRY);
-        BodyFacts::new(self.graph, self.loans, self.regions)
-            .returning(tail.held)
-            .with_closures(self.closures)
+        self.builder.into_facts(tail.held, self.closures)
     }
 
     fn expr_holding(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
         match &expr.kind {
             TypedExprKind::Leaf(TypedLeaf::Local(binding)) => {
-                let point = self.graph.join(&[at]);
-                self.graph.point_mut(point).using(*binding);
+                let point = self.builder.read(at, *binding);
                 Walked::holding(point, Holdings::of_value(*binding))
             }
             TypedExprKind::Fn(lambda) => {
@@ -131,9 +117,9 @@ impl<'w> BodyWalk<'w> {
             .arms
             .iter()
             .map(|arm| {
-                let bound = self.graph.join(&[value.end]);
+                let bound = self.builder.join(&[value.end]);
                 for binder in arm.pattern.binders() {
-                    self.define(bound, binder, &value.held);
+                    self.builder.define(bound, binder, &value.held);
                 }
                 self.block(&arm.body, bound)
             })
@@ -146,7 +132,7 @@ impl<'w> BodyWalk<'w> {
             .into_iter()
             .map(|branch| (branch.end, branch.held))
             .unzip();
-        let joined = self.graph.join(&ends);
+        let joined = self.builder.join(&ends);
         Walked::holding(
             joined,
             held.into_iter().fold(Holdings::default(), Holdings::merged),
@@ -157,8 +143,8 @@ impl<'w> BodyWalk<'w> {
         let read = self.expr(owner, at);
         match lending {
             Some(lending) => {
-                let point = self.graph.join(&[read.end]);
-                let lent = self.lender(point).lend(lending);
+                let point = self.builder.join(&[read.end]);
+                let lent = self.builder.lender(point).lend(lending);
                 Walked::holding(point, read.held.merged(lent))
             }
             None => read,
@@ -176,18 +162,6 @@ impl<'w> ExpressionWalk<'w> for BodyWalk<'w> {
         }
     }
 
-    fn join(&mut self, before: &[PointId]) -> PointId {
-        self.graph.join(before)
-    }
-
-    fn lender(&mut self, point: PointId) -> Lender<'_> {
-        Lender::new(&mut self.graph, &mut self.loans, point)
-    }
-
-    fn rules(&self) -> &'w LoanRules<'w> {
-        self.rules
-    }
-
     fn block(&mut self, block: &'w TypedBlock, at: PointId) -> Walked {
         block
             .items
@@ -195,29 +169,24 @@ impl<'w> ExpressionWalk<'w> for BodyWalk<'w> {
             .fold(Walked::at(at), |walked, item| match item {
                 TypedBodyItem::Let(binder, value) => {
                     let bound = self.expr(value, walked.end);
-                    let defined = self.graph.join(&[bound.end]);
+                    let defined = self.builder.join(&[bound.end]);
                     if let Some(place) = LoanPlace::of(value).filter(|_| self.rules.moves(value)) {
                         let moved = PlaceAccess::new(place, &Move, value.span);
-                        self.lender(defined).access(moved);
+                        self.builder.lender(defined).access(moved);
                     }
-                    self.define(defined, binder, &bound.held);
+                    self.builder.define(defined, binder, &bound.held);
                     Walked::at(defined)
                 }
                 TypedBodyItem::Expr(value) => self.expr(value, walked.end),
             })
     }
 
-    fn define(&mut self, point: PointId, binder: &TypedBinder, held: &Holdings) {
-        self.graph.point_mut(point).define(binder.binding);
-        self.regions.flow_into(binder.binding, held);
+    fn rules(&self) -> &'w LoanRules<'w> {
+        self.rules
     }
 
-    fn link(&mut self, before: PointId, after: PointId) {
-        self.graph.link(before, after);
-    }
-
-    fn loops(&mut self) -> &mut LoopHeads<'w> {
-        &mut self.loops
+    fn builder(&mut self) -> &mut BodyBuilder<'w> {
+        &mut self.builder
     }
 }
 

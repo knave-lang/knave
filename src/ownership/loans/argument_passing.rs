@@ -1,11 +1,9 @@
-use super::access::Move;
 use super::holdings::Holdings;
 use super::lender::Lender;
 use super::lending::Lending;
 use super::loan_kind::{LoanKind, MutableLoan, SharedLoan};
 use super::loan_place::LoanPlace;
 use super::loan_rules::LoanRules;
-use super::place_access::PlaceAccess;
 use crate::source::Span;
 use crate::types::{Borrow, Type, TypedArgument};
 
@@ -96,7 +94,7 @@ impl Passing for Moves {
 
     fn pass(&self, argument: PassedArgument, lender: &mut Lender<'_>) -> Holdings {
         if let Some(place) = argument.place {
-            lender.access(PlaceAccess::new(place, &Move, argument.span));
+            lender.move_out(place, argument.span);
         }
         argument.held
     }

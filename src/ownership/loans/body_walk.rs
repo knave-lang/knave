@@ -1,4 +1,3 @@
-use super::access::Move;
 use super::body_builder::BodyBuilder;
 use super::body_facts::BodyFacts;
 use super::call_site::CallSite;
@@ -11,7 +10,6 @@ use super::loan_kind::LoanKind;
 use super::loan_place::LoanPlace;
 use super::loan_rules::LoanRules;
 use super::loop_walk::LoopWalk;
-use super::place_access::PlaceAccess;
 use super::point_id::PointId;
 use super::walked::Walked;
 use crate::core::ReferenceKind;
@@ -116,8 +114,9 @@ impl<'w> BodyWalk<'w> {
         let value = self.expr(&matched.value, at);
         let decided = self.builder.join(&[value.end]);
         if let Some(place) = self.moved_scrutinee(matched) {
-            let moved = PlaceAccess::new(place, &Move, matched.value.span);
-            self.builder.lender(decided).access(moved);
+            self.builder
+                .lender(decided)
+                .move_out(place, matched.value.span);
         }
         let arms: Vec<Walked> = matched
             .arms
@@ -182,8 +181,7 @@ impl<'w> ExpressionWalk<'w> for BodyWalk<'w> {
                     if let Some(place) =
                         LoanPlace::of(value).filter(|_| self.rules.moves(&value.ty))
                     {
-                        let moved = PlaceAccess::new(place, &Move, value.span);
-                        self.builder.lender(defined).access(moved);
+                        self.builder.lender(defined).move_out(place, value.span);
                     }
                     self.builder.define(defined, binder, &bound.held);
                     Walked::at(defined)

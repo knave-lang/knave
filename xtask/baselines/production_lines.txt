@@ -5,7 +5,7 @@ expand/src/expand/module_body.rs 1995
 expand/src/expand/problems.rs 1259
 expand/src/format/layout.rs 511
 src/emit/expressions.rs 2927
-src/emit/items.rs 1675
+src/emit/items.rs 1619
 src/emit/plan.rs 648
 src/emit/result_borrows.rs 740
 src/emit/types.rs 809

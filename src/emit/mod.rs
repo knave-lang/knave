@@ -26,6 +26,7 @@ mod loan;
 mod local_closures;
 mod locals;
 mod method_elisions;
+mod module_tree;
 mod mutable_locals;
 mod number_literal;
 mod opaque_borrows;

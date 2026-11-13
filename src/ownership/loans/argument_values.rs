@@ -3,8 +3,7 @@ use super::expression_walk::ExpressionWalk;
 use super::holdings::Holdings;
 use super::lender::Lender;
 use super::point_id::PointId;
-use super::walked::Walked;
-use crate::types::{TypedArgument, TypedExpr, TypedExprKind, TypedStructExpr};
+use crate::types::TypedArgument;
 
 pub struct ArgumentValues<'w> {
     arguments: &'w [TypedArgument],
@@ -32,7 +31,7 @@ impl<'w> ArgumentValues<'w> {
         for (position, argument) in self.arguments.iter().enumerate() {
             let walked = match self.passings.get(position) {
                 Some(passing) if passing.takes_the_place() => {
-                    Self::place_root(walk, &argument.value, evaluated.end)
+                    walk.place_root(&argument.value, evaluated.end)
                 }
                 _ => walk.expr(&argument.value, evaluated.end),
             };
@@ -53,14 +52,5 @@ impl<'w> ArgumentValues<'w> {
                 passed
             })
             .collect()
-    }
-
-    fn place_root(walk: &mut dyn ExpressionWalk<'w>, place: &'w TypedExpr, at: PointId) -> Walked {
-        match &place.kind {
-            TypedExprKind::Struct(TypedStructExpr::Field(owner, _)) => {
-                Self::place_root(walk, owner, at)
-            }
-            _ => walk.expr(place, at),
-        }
     }
 }

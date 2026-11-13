@@ -75,17 +75,23 @@ impl<'w> BodyWalk<'w> {
     }
 
     fn borrowed(&mut self, kind: ReferenceKind, inner: &'w TypedExpr, at: PointId) -> Walked {
-        let lending = LoanPlace::of(inner)
-            .map(|place| Lending::new(place, <dyn LoanKind>::of(kind), inner.span));
-        self.lent_from(inner, lending, at)
+        match LoanPlace::of(inner) {
+            Some(place) => {
+                let read = self.place_root(inner, at);
+                let lending = Lending::new(place, <dyn LoanKind>::of(kind), inner.span);
+                self.lend_after(read, lending)
+            }
+            None => self.expr(inner, at),
+        }
     }
 
     fn field_read(&mut self, expr: &'w TypedExpr, owner: &'w TypedExpr, at: PointId) -> Walked {
+        let read = self.expr(owner, at);
         let shared = <dyn LoanKind>::of(ReferenceKind::Shared);
-        let lending = LoanPlace::of(expr)
-            .filter(|_| expr.ty.is_reference())
-            .map(|place| Lending::new(place, shared, expr.span));
-        self.lent_from(owner, lending, at)
+        match LoanPlace::of(expr).filter(|_| expr.ty.is_reference()) {
+            Some(place) => self.lend_after(read, Lending::new(place, shared, expr.span)),
+            None => read,
+        }
     }
 
     fn sequence(&mut self, values: impl Iterator<Item = &'w TypedExpr>, at: PointId) -> Walked {
@@ -138,16 +144,10 @@ impl<'w> BodyWalk<'w> {
         )
     }
 
-    fn lent_from(&mut self, owner: &'w TypedExpr, lending: Option<Lending>, at: PointId) -> Walked {
-        let read = self.expr(owner, at);
-        match lending {
-            Some(lending) => {
-                let point = self.builder.join(&[read.end]);
-                let lent = self.builder.lender(point).lend(lending);
-                Walked::holding(point, read.held.merged(lent))
-            }
-            None => read,
-        }
+    fn lend_after(&mut self, read: Walked, lending: Lending) -> Walked {
+        let point = self.builder.join(&[read.end]);
+        let lent = self.builder.lender(point).lend(lending);
+        Walked::holding(point, read.held.merged(lent))
     }
 }
 

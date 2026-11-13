@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/float_bound_suggests_floating.knv
+---
+error[L0212]: expected a trait, found `float`
+ --> expand/float_bound_suggests_floating.knv:4:14
+  |
+4 |   (where ((n float)) (fn (n) n)))
+  |              ^^^^^ not a trait
+  |
+  = help: write `floating` to accept every floating-point type, or `number` to accept every number
+
+error[L0212]: expected a trait, found `f64`
+ --> expand/float_bound_suggests_floating.knv:9:14
+  |
+9 |   (where ((n f64)) (fn (n) n)))
+  |              ^^^ not a trait
+  |
+  = help: write `floating` to accept every floating-point type, or `number` to accept every number
+
+error[L0212]: expected a trait, found `f32`
+  --> expand/float_bound_suggests_floating.knv:14:14
+   |
+14 |   (where ((n f32)) (fn (n) n)))
+   |              ^^^ not a trait
+   |
+   = help: write `floating` to accept every floating-point type, or `number` to accept every number

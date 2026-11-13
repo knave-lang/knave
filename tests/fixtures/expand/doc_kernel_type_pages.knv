@@ -1,5 +1,9 @@
 (def i64-page (doc-page i64))
 
+(def float-page (doc-page float))
+
+(def f64-page (doc-page f64))
+
 (def true-page (doc-page true))
 
 (def where-page (doc-page where))

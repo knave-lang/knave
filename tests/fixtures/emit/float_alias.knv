@@ -1,0 +1,14 @@
+(defstruct measurement
+  :value float
+  :offset f64)
+
+(defn adjust ((value float) (offset f64))
+  (+ value offset))
+
+(defn main ()
+  (local (scale float) 2.0)
+  (local (bias f64) 0.5)
+  (println (adjust scale bias))
+  (println (:value (->measurement :value scale :offset bias)))
+  (println (the f64 1.5))
+  (println (the float 2.5)))

@@ -21,7 +21,7 @@ src/emit/result_borrows.rs::BodyFlows 30
 src/emit/result_borrows.rs::ResultBorrows 23
 src/emit/structural_impls.rs::StructuralImpls 26
 src/emit/template.rs::Template 30
-src/emit/types.rs::RustTypes 49
+src/emit/types.rs::RustTypes 48
 src/ownership/kinds.rs::ClosureKinds 103
 src/ownership/local_borrows.rs::LocalBorrows 23
 src/ownership/moves.rs::MoveChecker 51

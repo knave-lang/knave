@@ -9,4 +9,4 @@ error[L0404]: `point` does not implement `eq`
 11 |   (println (same? (->point 0 0) (->point 1 1))))
    |                   ^^^^^^^^^^^^^ this needs `eq`
    |
-   = note: `point` cannot derive `eq`: field `x` is `f64`
+   = note: `point` cannot derive `eq`: field `x` is `float`

@@ -42,7 +42,7 @@ help: a function with a similar name exists
 
 **If a fix exists, give it in `help:`.** If the fix is an edit, show the replacement text.
 
-**Use the names the user wrote.** Never show a Rust name such as `make_point` in place of `make-point`.
+**Use the names the user wrote.** Never show a Rust name such as `make_point` in place of `make-point`. A primitive type prints by its canonical name, `float`, except in a trait implementor list, which names the concrete primitive `f32` or `f64`.
 
 **If a name does not resolve, suggest the closest name.** Rank candidates by edit distance. If no candidate is within a third of the name's length, leave out the suggestion.
 

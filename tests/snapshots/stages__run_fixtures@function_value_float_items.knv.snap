@@ -7,7 +7,7 @@ error[L0401]: mismatched types
  --> run/function_value_float_items.knv:7:41
   |
 7 |   (println (count (filter (iter ratios) small?))))
-  |                                         ^^^^^^ expected `f32`, found `f64`
+  |                                         ^^^^^^ expected `f32`, found `float`
   |
-  = note: `x` defaulted to `f64`, because `small?` is called with `f64` and passed as a value with `f32`
-  = help: give `small?` a type parameter with a `type` signature, such as `(type small? (where ((a partial-ord float)) (fn (a) bool)))`, so that each use takes its own type
+  = note: `x` defaulted to `float`, because `small?` is called with `float` and passed as a value with `f32`
+  = help: give `small?` a type parameter with a `type` signature, such as `(type small? (where ((a partial-ord floating)) (fn (a) bool)))`, so that each use takes its own type

@@ -11,7 +11,7 @@ error[L0349]: this field has no type
   |
   = help: write a type after it, as in :size i64
 
-error[L0342]: a `deftrait` method is a name and a type, as `(area (fn ((ref self)) f64))`
+error[L0342]: a `deftrait` method is a name and a type, as `(area (fn ((ref self)) float))`
   --> expand/failed_definer_names.knv:22:3
    |
 22 |   3)
@@ -27,7 +27,7 @@ error[L0341]: a `rust` clause on `deftrait` holds one string
    |
    = help: write it as `(rust "Path")`
 
-error[L0342]: a `deftrait` method is a name and a type, as `(area (fn ((ref self)) f64))`
+error[L0342]: a `deftrait` method is a name and a type, as `(area (fn ((ref self)) float))`
   --> expand/failed_definer_names.knv:32:3
    |
 32 |   3)

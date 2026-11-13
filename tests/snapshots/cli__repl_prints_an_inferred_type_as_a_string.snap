@@ -7,5 +7,6 @@ exit code: Some(0)
 "(vec i64)"
 "(where (a) (fn (a) a))"
 "(where (a) (option a))"
+"float"
 "(where (a) (fn (a) a))"
 --- stderr

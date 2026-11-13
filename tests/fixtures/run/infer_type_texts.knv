@@ -8,7 +8,7 @@
 (defstruct (holder a)
   :item a)
 
-(enum shape empty (circle f64))
+(enum shape empty (circle float))
 
 (type greet
   (where ('a)

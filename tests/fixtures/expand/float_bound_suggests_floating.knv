@@ -1,0 +1,14 @@
+(defn from-float (x) x)
+
+(type from-float
+  (where ((n float)) (fn (n) n)))
+
+(defn from-f64 (x) x)
+
+(type from-f64
+  (where ((n f64)) (fn (n) n)))
+
+(defn from-f32 (x) x)
+
+(type from-f32
+  (where ((n f32)) (fn (n) n)))

@@ -1,4 +1,4 @@
-use super::kernel::PrimitiveType;
+use super::primitive::PrimitiveType;
 use super::template::Piece;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

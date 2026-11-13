@@ -1,5 +1,5 @@
 (type mix
-  (where ((a number float) b)
+  (where ((a number floating) b)
     (fn (a (ref b)) a)))
 
 (defn mix (acc x) (+ acc (* 2.5 0)))

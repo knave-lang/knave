@@ -9,7 +9,7 @@ error[L0404]: `float-key` does not implement `hash`
 6 |     (hash-map (new float-key (value 1.5)) 1))
   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `hash`
   |
-  = note: `float-key` cannot derive `hash`: field `value` is `f64`
+  = note: `float-key` cannot derive `hash`: field `value` is `float`
 
 error[L0404]: `float-key` does not implement `eq`
  --> check/hash_map_key_not_hash.knv:6:15
@@ -17,4 +17,4 @@ error[L0404]: `float-key` does not implement `eq`
 6 |     (hash-map (new float-key (value 1.5)) 1))
   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `eq`
   |
-  = note: `float-key` cannot derive `eq`: field `value` is `f64`
+  = note: `float-key` cannot derive `eq`: field `value` is `float`

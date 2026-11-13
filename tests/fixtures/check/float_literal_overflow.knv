@@ -1,1 +1,3 @@
-(defn main () (println 1e400))
+(defn main ()
+  (println 1e400)
+  (println (the f64 1e400)))

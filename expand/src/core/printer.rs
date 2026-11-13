@@ -31,12 +31,7 @@ impl<'a> CorePrinter<'a> {
     pub fn module(&mut self, module: &CoreModule) -> String {
         let mut lines: Vec<String> = Vec::new();
         if !module.exports.is_empty() {
-            let exports: Vec<String> = module
-                .exports
-                .iter()
-                .map(|binding| self.name(*binding))
-                .collect();
-            lines.push(Self::list("export", exports));
+            lines.push(Self::list("export", module.export_names(self.bindings)));
         }
         lines.extend(
             module

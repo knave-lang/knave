@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).expand_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/expand/same_binding_types.knv
 ---
-(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) true) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_2 display)) (fn ((ref part-type-0_2)) unit))) false)))
+(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) true) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_2 display)) (fn ((ref part-type-0_2)) unit))) false) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_3 display)) (fn ((ref part-type-0_3)) unit))) true) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_4 display)) (fn ((ref part-type-0_4)) unit))) true) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_5 display)) (fn ((ref part-type-0_5)) unit))) false)))

@@ -17,7 +17,7 @@ error[L0301]: a field must start with `:`
 6 |   make str)
   |   ^^^^ here
   |
-  = help: write each field as `:name type`, as in (defstruct point :x f64 :y f64)
+  = help: write each field as `:name type`, as in (defstruct point :x float :y float)
 
 error[L0301]: this field has no type
  --> expand/defstruct_errors.knv:9:3

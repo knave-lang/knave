@@ -2645,7 +2645,7 @@ impl TypeChecker {
             let Some((binding, argument)) = self.grouped_implementor(known) else {
                 continue;
             };
-            let shown = display.show(argument);
+            let shown = display.show_implementor(argument);
             match grouped.iter_mut().find(|(group, _)| *group == binding) {
                 Some((_, entries)) => entries.push((position, shown)),
                 None => grouped.push((binding, vec![(position, shown)])),
@@ -2930,9 +2930,9 @@ impl TypeChecker {
     }
 
     fn show_implementor(display: &TypeDisplay<'_>, implementor: &Implementor) -> String {
-        let body = display.scheme(&implementor.scheme);
+        let body = display.scheme_implementor(&implementor.scheme);
         match &implementor.argument {
-            Some(argument) => format!("(with {body} {})", display.show(argument)),
+            Some(argument) => format!("(with {body} {})", display.show_implementor(argument)),
             None => body,
         }
     }
@@ -3034,7 +3034,7 @@ impl TypeChecker {
             definitions: Vec::new(),
             structs: Vec::new(),
             enums: Vec::new(),
-            exports: module.exports.clone(),
+            exports: module.exports.iter().map(|export| export.binding).collect(),
         };
         for item in &module.items {
             match &item.kind {

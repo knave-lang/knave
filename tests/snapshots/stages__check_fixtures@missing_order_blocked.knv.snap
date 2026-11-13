@@ -10,5 +10,5 @@ error[L0404]: `score` does not implement `ord`
   |          ^^^^^^ this needs `ord`
   |
   = note: `ord` is never inferred for a struct, so the struct needs a written `derive`
-  = note: `score` cannot derive `ord`: field `points` is `f64`
+  = note: `score` cannot derive `ord`: field `points` is `float`
   = help: to sort by one field instead, use `sort-by!` with the field keyword `:name`

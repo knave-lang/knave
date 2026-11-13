@@ -1,8 +1,8 @@
 use super::Expander;
 use super::problems::ExpandProblems;
 use crate::core::{
-    AssociatedValue, BindingId, BindingKind, ClosureKind, KernelType, Namespace, ReferenceKind,
-    RustTraitImplementor, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
+    AssociatedValue, BindingId, BindingKind, ClosureKind, KernelType, Namespace, PrimitiveType,
+    ReferenceKind, RustTraitImplementor, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
 };
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Symbol};
@@ -301,6 +301,17 @@ impl Expander<'_> {
         })?;
         let binding = self.resolve(symbol, Namespace::Type, bound.span())?;
         if !matches!(self.kind(binding), BindingKind::Trait(_)) {
+            if matches!(
+                self.kind(binding),
+                BindingKind::KernelType(KernelType::Primitive(
+                    PrimitiveType::F32 | PrimitiveType::F64
+                ))
+            ) {
+                return Err(ExpandProblems::floating_type_is_not_a_trait(
+                    symbol.name(),
+                    bound.span(),
+                ));
+            }
             return Err(ExpandProblems::wrong_namespace(
                 symbol.name(),
                 "a trait",

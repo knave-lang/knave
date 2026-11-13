@@ -223,7 +223,7 @@ const PROMPT_DOCUMENT_LEAVING_ANOTHER: &str = "(use prelude/macros document)\n(d
 const PROMPT_DOCUMENT_BESIDE_ITS_DEFINITION: &str = "(use prelude/macros document)\n(do (defn g () 2) (document (g) \"A\"))\n(document (g) \"B\")\n(doc g)\n";
 const PROMPT_RUNAWAY_MACRO: &str =
     "(defmacro spin () ((fn () (recur))))\n(with-macro-steps 1000 (spin))\n(+ 1 2)\n";
-const PROMPT_INFER: &str = "(defn identity (x) x)\n(infer (vec 1 2))\n(infer identity)\n(infer none)\n(def text (infer identity))\ntext\n";
+const PROMPT_INFER: &str = "(defn identity (x) x)\n(infer (vec 1 2))\n(infer identity)\n(infer none)\n(infer 1.5)\n(def text (infer identity))\ntext\n";
 const PROMPT_REDEFINITION: &str = "(defn square (n) (* n n))\n(defn cube (n) (* n (square n)))\n(cube 3)\n(defn square (n) (+ n n))\n(cube 3)\n";
 const PROMPT_DROPPING_REPLACEMENT: &str = "(defstruct point :x i64 :y i64)
 (defn ->point (x y) (vec x y))
@@ -2177,6 +2177,19 @@ fn types_prints_inferred_struct_derives() {
 }
 
 #[test]
+fn types_prints_a_written_f64_as_float() {
+    let sandbox = Sandbox::new("types_float_name").with_file(
+        "rates.knv",
+        "(type adjust (fn (f64) float))\n(defn adjust (value) value)\n(defn main () (do))\n",
+    );
+    let types = sandbox.compiler(&["types", "rates.knv"]);
+    assert_eq!(
+        types.assert_exit_code(0).stdout(),
+        "(type adjust (fn (float) float))\n(type main (fn () unit))\n"
+    );
+}
+
+#[test]
 fn signatures_is_an_unknown_command() {
     let sandbox = Sandbox::new("signatures_unknown").with_file("greeting.knv", GREETING);
     let signatures = sandbox.compiler(&["signatures", "greeting.knv"]);
@@ -2292,6 +2305,18 @@ fn doc_prints_the_page_of_a_kernel_type() {
         doc.assert_exit_code(0).stdout(),
         "i64\n\nHolds a signed 64-bit integer, as Rust's `i64` does.\n\nAn integer literal whose type stays open defaults to `i64`.\n\n(the i64 3)\n=> 3\n\n(infer 1)\n=> \"i64\"\n"
     );
+}
+
+#[test]
+fn doc_of_an_alias_prints_the_canonical_page() {
+    let sandbox = Sandbox::new("doc_float_alias");
+    let alias = sandbox.compiler(&["doc", "f64"]);
+    let canonical = sandbox.compiler(&["doc", "float"]);
+    assert_eq!(
+        alias.assert_exit_code(0).stdout(),
+        canonical.assert_exit_code(0).stdout()
+    );
+    assert!(alias.assert_exit_code(0).stdout().starts_with("float\n\n"));
 }
 
 #[test]

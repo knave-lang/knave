@@ -749,6 +749,12 @@ impl ExpandProblems {
         )
     }
 
+    pub fn floating_type_is_not_a_trait(name: &str, span: Span) -> Diagnostic {
+        Self::wrong_namespace(name, "a trait", span).with_help(
+            "write `floating` to accept every floating-point type, or `number` to accept every number",
+        )
+    }
+
     pub fn recur_outside_tail(span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::RECUR_OUTSIDE_TAIL,
@@ -906,7 +912,7 @@ impl ExpandProblems {
             Label::new(span, "this mixes the two"),
         )
         .with_help(
-            "write the payload as types, as in `(circle f64)`, or as one struct body, as in `(labeled (struct (text string)))`",
+            "write the payload as types, as in `(circle float)`, or as one struct body, as in `(labeled (struct (text string)))`",
         )
     }
 

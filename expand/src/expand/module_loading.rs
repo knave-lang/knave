@@ -1,12 +1,14 @@
 use std::rc::Rc;
 
+use rustc_hash::FxHashMap;
+
 use super::Expander;
 use super::context::DefinitionContext;
 use super::problems::{ExpandProblems, MissingExportRemedy};
 use super::shape::Shape;
 use crate::core::{
     BindingId, BindingInfo, BindingKind, Builtin, BuiltinModule, DefinitionForm, KernelConstants,
-    KernelForm, KernelType, ModuleId, ModulePath, Namespace,
+    KernelForm, KernelType, ModuleId, ModulePath, Namespace, PrimitiveType,
 };
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
@@ -428,11 +430,23 @@ impl Expander<'_> {
             self.tables.scopes.fresh(ScopeKind::Module),
         );
         let id = self.modules.register(path.clone(), scopes);
+        let mut primitive_bindings: FxHashMap<PrimitiveType, BindingId> = FxHashMap::default();
         for (name, namespace, kind) in Self::builtin_exports(builtin) {
-            let binding = self
-                .tables
-                .bindings
-                .add(BindingInfo::new(name.into(), kind, None));
+            let binding = match kind {
+                BindingKind::KernelType(KernelType::Primitive(primitive)) => {
+                    *primitive_bindings.entry(primitive).or_insert_with(|| {
+                        self.tables.bindings.add(BindingInfo::new(
+                            primitive.name().into(),
+                            kind,
+                            None,
+                        ))
+                    })
+                }
+                _ => self
+                    .tables
+                    .bindings
+                    .add(BindingInfo::new(name.into(), kind, None)),
+            };
             self.modules
                 .get_mut(id)
                 .export(name.into(), namespace, binding);
@@ -452,6 +466,17 @@ impl Expander<'_> {
                         BindingKind::KernelType(kernel_type),
                     )
                 }))
+                .chain(
+                    PrimitiveType::ALIASES
+                        .into_iter()
+                        .map(|(alias, primitive)| {
+                            (
+                                alias,
+                                Namespace::Type,
+                                BindingKind::KernelType(KernelType::Primitive(primitive)),
+                            )
+                        }),
+                )
                 .chain(
                     KernelConstants::BOOLEANS
                         .map(|(name, value)| (name, Namespace::Value, BindingKind::Boolean(value))),

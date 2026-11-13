@@ -1,0 +1,9 @@
+(def words-of
+  (rust "{0}.split_whitespace()"
+    (where ('a)
+      (fn ((ref 'a str))
+        (iterator (ref 'a str))))))
+
+(defn main ()
+  (for-each (words-of "a b")
+    (fn (part) (println part))))

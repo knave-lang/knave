@@ -300,7 +300,14 @@ impl TypeChecker {
                 self.unifier.set_bounds(*var, bounds, span);
             }
         }
-        scheme.body.substitute(&replacements)
+        if scheme.lifetimes.is_empty() {
+            scheme.body.substitute(&replacements)
+        } else {
+            scheme
+                .body
+                .without_written_lifetimes()
+                .substitute(&replacements)
+        }
     }
 
     fn fresh_instance(&mut self, generic: GenericId) -> Type {

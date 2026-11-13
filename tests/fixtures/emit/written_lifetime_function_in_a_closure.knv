@@ -1,0 +1,10 @@
+(type parts-of
+  (where ('a)
+    (fn ((ref 'a str))
+      (iterator (ref 'a str)))))
+
+(defn parts-of (text) (lines text))
+
+(defn main ()
+  (for-each (parts-of "a\nb")
+    (fn (part) (println part))))

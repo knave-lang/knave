@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+assertion_line: 107
+expression: reports.report(path)
+input_file: tests/fixtures/loans/two_arguments_borrow_one_vector.knv
+---
+grow!
+  1:36 borrow `ys`: no live loan
+  1:28 change `xs`: no live loan
+main
+  5:10 change `v`: `v` lent at 5:12, passed to the call
+  5:12 borrow `v`: mut `v` lent at 5:10, passed to the call
+  6:17 borrow `v`: no live loan

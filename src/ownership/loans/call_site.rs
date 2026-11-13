@@ -40,14 +40,7 @@ impl<'c> CallSite<'c> {
         }
         passed
             .into_iter()
-            .enumerate()
-            .filter(|(position, _)| self.lends_through(*position, rules))
-            .fold(Holdings::default(), |held, (_, lent)| held.merged(lent))
-    }
-
-    fn lends_through(&self, position: usize, rules: &LoanRules<'_>) -> bool {
-        self.parameter(position)
-            .is_none_or(|parameter| rules.holds_a_borrow(parameter))
+            .fold(Holdings::default(), Holdings::merged)
     }
 }
 

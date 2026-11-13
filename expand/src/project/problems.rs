@@ -1,36 +1,62 @@
+use std::fmt;
+
 use super::LibrarySource;
-use crate::diagnostic::{Diagnostic, DiagnosticCode, Label, Suggestion};
+use super::vocabulary::ProjectVocabulary;
+use crate::diagnostic::{Diagnostic, DiagnosticCode, Label, SimilarName, Suggestion};
 use crate::language::Language;
 use crate::source::Span;
 
 pub struct ProjectProblems;
 
-impl ProjectProblems {
-    const PROJECT_EXAMPLE: &str = "(defproject my-program)";
+struct SectionList<'v> {
+    vocabulary: &'v ProjectVocabulary,
+}
 
-    pub fn missing_project_form(span: Span) -> Diagnostic {
+impl fmt::Display for SectionList<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let names = self.vocabulary.section_names();
+        let (last, earlier) = names.split_last().expect("a project has sections");
+        let quoted: Vec<String> = earlier.iter().map(|name| format!("`{name}`")).collect();
+        write!(formatter, "{} and `{last}`", quoted.join(", "))
+    }
+}
+
+struct ProjectExample<'h> {
+    head: &'h str,
+}
+
+impl fmt::Display for ProjectExample<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "({} my-program)", self.head)
+    }
+}
+
+impl ProjectProblems {
+    pub fn missing_project_form(span: Span, head: &str) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::MISSING_PROJECT_FORM,
             format!(
-                "`{}` must hold a `defproject` form",
+                "`{}` must hold a `{head}` form",
                 Language::project_file_name()
             ),
-            Label::new(span, "expected `(defproject <name> ...)` here"),
+            Label::new(span, format!("expected `({head} <name> ...)` here")),
         )
-        .with_help(format!("start the file with `{}`", Self::PROJECT_EXAMPLE))
+        .with_help(format!("start the file with `{}`", ProjectExample { head }))
     }
 
-    pub fn extra_project_form(extra: Span, project: Span) -> Diagnostic {
+    pub fn extra_project_form(extra: Span, project: Span, head: &str) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::EXTRA_PROJECT_FORM,
             format!(
-                "`{}` holds a form after its `defproject` form",
+                "`{}` holds a form after its `{head}` form",
                 Language::project_file_name()
             ),
-            Label::new(extra, "this form is outside the `defproject` form"),
+            Label::new(extra, format!("this form is outside the `{head}` form")),
         )
-        .with_label(Label::new(project, "the `defproject` form ends here"))
-        .with_help("move this form inside the `defproject` form, or remove it")
+        .with_label(Label::new(project, format!("the `{head}` form ends here")))
+        .with_help(format!(
+            "move this form inside the `{head}` form, or remove it"
+        ))
     }
 
     pub fn invalid_project_name(name: &str, span: Span) -> Diagnostic {
@@ -162,13 +188,16 @@ impl ProjectProblems {
         .with_help("use `build`, `run` or `test` for a program with crates for now")
     }
 
-    pub fn missing_project_name(span: Span) -> Diagnostic {
+    pub fn missing_project_name(span: Span, head: &str) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::MISSING_PROJECT_NAME,
             "the project has no name",
-            Label::new(span, "expected a name after `defproject`"),
+            Label::new(span, format!("expected a name after `{head}`")),
         )
-        .with_help(format!("name the project, as `{}`", Self::PROJECT_EXAMPLE))
+        .with_help(format!(
+            "name the project, as `{}`",
+            ProjectExample { head }
+        ))
     }
 
     pub fn unknown_key(key: &str, span: Span, closest: Option<&str>) -> Diagnostic {
@@ -215,19 +244,24 @@ impl ProjectProblems {
         )
     }
 
-    pub fn unknown_section(section: &str, span: Span, closest: Option<&str>) -> Diagnostic {
+    pub fn unknown_section(
+        section: &str,
+        span: Span,
+        vocabulary: &ProjectVocabulary,
+    ) -> Diagnostic {
         let diagnostic = Diagnostic::error(
             DiagnosticCode::UNKNOWN_PROJECT_SECTION,
             format!("unknown section `{section}`"),
             Label::new(span, "not a section of a project"),
         );
-        match closest {
+        match SimilarName::closest(section, &vocabulary.section_names()) {
             Some(closest) => diagnostic.with_suggestion(
                 "a section with a similar name exists",
-                Suggestion::new(span, closest),
+                Suggestion::new(span, &*closest),
             ),
-            None => diagnostic
-                .with_help("the sections are `libraries`, `dependencies` and `dev-dependencies`"),
+            None => {
+                diagnostic.with_help(format!("the sections are {}", SectionList { vocabulary }))
+            }
         }
     }
 

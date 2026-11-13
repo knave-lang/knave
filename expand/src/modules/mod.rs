@@ -6,6 +6,7 @@ mod module_source;
 mod registry;
 mod search_scope;
 mod sources;
+mod unlisted_library;
 
 pub use libraries::{LibraryFile, LibraryRoot, LibraryTable};
 pub use located_module::LocatedModule;
@@ -15,3 +16,4 @@ pub use module_source::ModuleSource;
 pub use registry::{ModuleRecord, ModuleRegistry};
 pub use search_scope::SearchScope;
 pub use sources::{HiddenSourceModule, LocalModuleClash, ModuleSources, PublicPrelude};
+pub use unlisted_library::UnlistedLibrary;

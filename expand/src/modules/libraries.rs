@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use super::unlisted_library::UnlistedLibrary;
 use crate::core::ModulePath;
 use crate::language::Language;
 
@@ -18,6 +19,7 @@ pub struct LibraryRoot {
 pub struct LibraryTable {
     program_visible: Vec<String>,
     libraries: Vec<LibraryRoot>,
+    library_section: String,
 }
 
 pub struct LibraryFile {
@@ -75,10 +77,15 @@ impl LibraryRoot {
 impl LibraryTable {
     const SEPARATOR: char = '/';
 
-    pub fn new(program_visible: Vec<String>, libraries: Vec<LibraryRoot>) -> Self {
+    pub fn new(
+        program_visible: Vec<String>,
+        libraries: Vec<LibraryRoot>,
+        library_section: String,
+    ) -> Self {
         Self {
             program_visible,
             libraries,
+            library_section,
         }
     }
 
@@ -95,12 +102,16 @@ impl LibraryTable {
         &self,
         owner: Option<&str>,
         written: &ModulePath,
-    ) -> Option<&LibraryRoot> {
+    ) -> Option<UnlistedLibrary<'_>> {
         if owner.is_some() {
             return None;
         }
-        let library = self.owner_of(written)?;
-        (!self.sees_library(None, written)).then_some(library)
+        let root = self.owner_of(written)?;
+        (!self.sees_library(None, written)).then_some(UnlistedLibrary {
+            name: root.name(),
+            lister: root.lister(),
+            section: &self.library_section,
+        })
     }
 
     pub fn names_library(&self, owner: Option<&str>, written: &ModulePath) -> bool {

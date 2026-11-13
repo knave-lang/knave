@@ -9,7 +9,7 @@ use super::remove::RemoveCommand;
 use super::task::TaskCommand;
 use super::terminal::Terminal;
 
-const DEV_HELP: &str = "Edit `dev-dependencies`, which only `test` builds with";
+const DEV_HELP: &str = "Edit the crates that only tests build with";
 
 #[derive(Subcommand)]
 pub enum ProjectCommand {

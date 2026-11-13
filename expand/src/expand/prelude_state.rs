@@ -63,7 +63,7 @@ impl Default for PreludeDefinitions {
 }
 
 #[derive(Debug)]
-pub struct UnreadablePrelude(bincode::Error);
+pub struct UnreadablePrelude(pub(super) bincode::Error);
 
 impl fmt::Display for UnreadablePrelude {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -101,7 +101,8 @@ impl Fixture {
         let file = self.sources.file(self.entry);
         let whole_file = Span::new(self.entry, 0..file.text().len());
         let read = Reader::new(file).read();
-        match read.and_then(|forms| ProjectReader::read(&forms, whole_file)) {
+        let reader = ProjectReader::new(EmbeddedPrelude::project_vocabulary());
+        match read.and_then(|forms| reader.read(&forms, whole_file)) {
             Ok(project) => format!("{project:#?}\n"),
             Err(diagnostics) => self.render(&diagnostics),
         }

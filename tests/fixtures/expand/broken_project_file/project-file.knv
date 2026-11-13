@@ -1,0 +1,9 @@
+(project-role defproject project-head)
+
+(def project-role
+  (macro (form) (quote (do))))
+
+(def defproject
+  (macro (form) (quote (do))))
+
+(export defproject)

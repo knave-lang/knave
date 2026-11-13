@@ -1,7 +1,7 @@
-use std::path::{self, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use super::build_directory::BuildDirectory;
-use crate::build::{CargoManifest, CargoTarget, CargoTargetKind};
+use crate::build::{CargoManifest, CargoTarget, CargoTargetKind, DirectoryHash};
 use crate::project::CrateDependency;
 
 pub struct ProjectCrates {
@@ -14,9 +14,6 @@ pub struct ProjectCrates {
 impl ProjectCrates {
     const TEST_CRATE_DIRECTORY: &str = "test_runner";
     const LOCK_FILE: &str = "Cargo.lock";
-    const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-    const FNV_PRIME: u64 = 0x0100_0000_01b3;
-    const SHORT_HASH_MASK: u64 = 0xffff_ffff;
 
     pub fn new(
         root: PathBuf,
@@ -69,7 +66,7 @@ impl ProjectCrates {
     ) -> CargoManifest<'_> {
         CargoManifest::new(
             kind,
-            kind.target_name(name_stem, &Self::directory_hash(directory)),
+            kind.target_name(name_stem, &DirectoryHash::of(directory)),
             &self.crates,
             &self.dev_crates,
         )
@@ -87,17 +84,5 @@ impl ProjectCrates {
             lock_file: self.root.join(Self::LOCK_FILE),
             output,
         }
-    }
-
-    fn directory_hash(directory: &Path) -> String {
-        let absolute = path::absolute(directory).unwrap_or_else(|_| directory.to_path_buf());
-        let hash = absolute
-            .as_os_str()
-            .as_encoded_bytes()
-            .iter()
-            .fold(Self::FNV_OFFSET, |hash, byte| {
-                (hash ^ u64::from(*byte)).wrapping_mul(Self::FNV_PRIME)
-            });
-        format!("{:08x}", hash & Self::SHORT_HASH_MASK)
     }
 }

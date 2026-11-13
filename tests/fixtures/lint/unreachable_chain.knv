@@ -1,0 +1,5 @@
+(defn inner (x) (* x 2))
+
+(defn outer (x) (inner x))
+
+(defn main () (println 1))

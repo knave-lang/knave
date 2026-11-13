@@ -1,0 +1,5 @@
+(use modules/doubling twice-of)
+
+(defn spare () (twice-of 1))
+
+(defn main () (println 1))

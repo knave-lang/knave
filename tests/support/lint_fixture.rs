@@ -67,7 +67,10 @@ impl LintFixture {
             .to_path_buf();
         Expander::new(
             &mut self.sources,
-            ModuleSources::new(directory.clone(), directory),
+            ModuleSources::new(
+                directory.clone(),
+                PathBuf::from(Fixture::display_name(&directory)),
+            ),
         )
         .expand(
             ModulePath::new(stem.to_string_lossy().into_owned()),

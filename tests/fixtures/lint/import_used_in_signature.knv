@@ -1,0 +1,9 @@
+(use modules/shapes point)
+
+(type origin-x (fn ((ref point)) i64))
+
+(export origin-x)
+
+(defn origin-x (_p) 0)
+
+(defn main () (println 1))

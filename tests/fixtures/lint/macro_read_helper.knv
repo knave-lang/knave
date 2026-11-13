@@ -1,0 +1,3 @@
+(use modules/doubling twice-of)
+
+(defn main () (println (twice-of 3)))

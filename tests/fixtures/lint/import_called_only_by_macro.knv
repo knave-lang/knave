@@ -1,0 +1,6 @@
+(use code symbol symbol-name)
+
+(defmacro renamed (form)
+  (symbol (symbol-name form)))
+
+(defn main () (println 1))

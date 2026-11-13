@@ -1,0 +1,3 @@
+(use modules/shapes origin size)
+
+(defn main () (println (size (origin))))

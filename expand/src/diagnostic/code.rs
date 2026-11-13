@@ -275,6 +275,8 @@ diagnostic_codes! {
     MISSING_BANG = "L0804",
     RULE_SKIPPED = "L0805",
     UNUSED_PARAMETER = "L0806",
+    UNREACHABLE_DEFINITION = "L0807",
+    UNUSED_IMPORT = "L0808",
 }
 
 impl DiagnosticCode {

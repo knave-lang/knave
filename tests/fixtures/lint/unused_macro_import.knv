@@ -1,0 +1,3 @@
+(use modules/announce announce)
+
+(defn main () (println 1))

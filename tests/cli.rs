@@ -208,6 +208,9 @@ const LIBRARY_WITH_UNUSED_BINDING: &str =
 const LIBRARY_CALL_WITH_UNUSED_BINDING: &str =
     "(use helping helper)\n\n(defn main ()\n  (let (own 1)\n    (println (helper))))\n";
 const MISSING_BANG: &str = "(defn clamp (x)\n  (if (> x 10) (set! x 10) (do))\n  (println x))\n\n(defn main ()\n  (local total 12)\n  (clamp total))\n";
+const UNREACHABLE_DEFINITION: &str = "(defn helper (x) (* x 2))\n\n(defn main () (println 1))\n";
+const UNUSED_IMPORT: &str =
+    "(use format pad-left shout)\n\n(defn main () (println (pad-left \"a\")))\n";
 const UNUSED_BINDING: &str = "(defn main ()\n  (let (unused 1)\n    (println 2)))\n";
 const AREA_OF_A_STRING: &str = "(defn area (w h) (* w h))\n(defn report () (area 2 \"3\"))\n";
 const TOP_LEVEL_AREA_OF_A_STRING: &str = "(defn area (w h) (* w h))\n(area 2 \"3\")\n";
@@ -2115,13 +2118,39 @@ fn lint_of_a_program_whose_only_warning_is_no_lint_exits_zero() {
 }
 
 #[test]
+fn lint_exits_one_on_an_unreachable_definition() {
+    let sandbox =
+        Sandbox::new("lint_unreachable_definition").with_file("helper.knv", UNREACHABLE_DEFINITION);
+    let stderr = sandbox
+        .compiler(&["lint", "helper.knv"])
+        .assert_exit_code(1)
+        .stderr();
+    assert!(stderr.starts_with("warning[L0807]: "), "{stderr}");
+}
+
+#[test]
+fn lint_exits_one_on_an_unused_import() {
+    let sandbox = Sandbox::new("lint_unused_import")
+        .with_file(
+            "format.knv",
+            "(export pad-left shout)\n\n(defn pad-left (s) s)\n\n(defn shout (s) s)\n",
+        )
+        .with_file("main.knv", UNUSED_IMPORT);
+    let stderr = sandbox
+        .compiler(&["lint", "main.knv"])
+        .assert_exit_code(1)
+        .stderr();
+    assert!(stderr.starts_with("warning[L0808]: "), "{stderr}");
+}
+
+#[test]
 fn lint_exits_one_on_an_unreachable_arm() {
     let sandbox = Sandbox::new("lint_unreachable_arm").with_file("pick.knv", UNREACHABLE_ARM);
     let stderr = sandbox
         .compiler(&["lint", "pick.knv"])
         .assert_exit_code(1)
         .stderr();
-    assert!(stderr.starts_with("warning[L0803]: "), "{stderr}");
+    assert!(stderr.contains("warning[L0803]: "), "{stderr}");
 }
 
 #[test]

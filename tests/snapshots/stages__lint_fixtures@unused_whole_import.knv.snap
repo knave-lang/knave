@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/unused_whole_import.knv
+---
+warning[L0808]: nothing this `use` brings in is used
+ --> lint/unused_whole_import.knv:1:1
+  |
+1 | (use modules/format pad-left shout)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ nothing this brings in is used
+  |
+  = help: remove the `use`
+  = note: run `knave doc L0808` for an explanation

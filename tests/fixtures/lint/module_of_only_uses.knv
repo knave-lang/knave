@@ -1,0 +1,3 @@
+(use modules/reexport pad-left)
+
+(defn main () (println (pad-left "a")))

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/recursive_unreachable_definition.knv
+---
+warning[L0807]: `countdown` is never used
+ --> lint/recursive_unreachable_definition.knv:1:7
+  |
+1 | (defn countdown (n)
+  |       ^^^^^^^^^ never used
+  |
+  = help: remove the definition, or export it if another module needs it
+  = note: run `knave doc L0807` for an explanation

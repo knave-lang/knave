@@ -1,0 +1,7 @@
+(use modules/shapes point)
+
+(export x-of)
+
+(defn x-of ((_p point)) 1)
+
+(defn main () (println 1))

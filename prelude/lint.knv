@@ -1,15 +1,16 @@
-(use prelude/macros document module)
+(use prelude/macros document module template)
 
-(use code bool-not empty? first list? nth number-sub rest
-          same-binding? string string-strip-prefix
-          symbol-name symbol? value-eq warn)
+(use code bool-not empty? first len list list? nth
+          number-sub prepend rest same-binding? string
+          string-strip-prefix symbol-name symbol? value-eq
+          warn)
 
 (use prelude/internal/code introducing-macro)
 
 (module
   "Holds the lint rules that `knave lint` runs.")
 
-(export check-rule rule-names)
+(export check-module check-rule kept-definition? rule-names)
 
 (document (unused-binding table)
   "Reports a local binding that nothing reads: a name of a `let` or a `local`, or a parameter of a `fn` applied where it is written, as `loop` writes one.
@@ -115,13 +116,122 @@
   (defn main () (println (area 2 3)))
   ```")
 
+(document (unreachable-definition module)
+  "Reports a private top-level definition that nothing reachable reads.
+
+  The rule reports each definition that no `export` lists and that no
+  reachable definition reads, at its name. A definition is reachable when
+  an `export` lists it, when it is `main` of the entry module, when a macro
+  or the compiler wrote it, when the compiler ran it while expanding a
+  macro, when another module reads it, or when a reachable definition reads
+  it. A definition that a macro's body names counts as reachable too, even
+  when no module calls the macro. A definition that only unreachable
+  definitions read is reported too, and its help names the definitions that
+  read it, which are reported too. A name that starts with `_` is kept on
+  purpose: it is never reported, and the definitions it reads are reached.
+
+  Only `knave lint` runs the rule, and it exits with status 1 when the rule
+  reports a definition, unless the project's `lints` section gives the rule
+  another level. `knave check`, `knave build` and `knave run` do not run
+  it. A project allows the rule everywhere with
+  `(lints (unreachable-definition allow))` in its project file.
+
+  ## Erroneous example
+
+  ```
+  ;; knave lint main.knv
+  ;; main.knv
+  (defn double (n) (* n 2))
+
+  (defn main () (println 1))
+  ```
+
+  ## Fixes
+
+  Remove the definition:
+
+  ```
+  ;; knave lint main.knv
+  ;; main.knv
+  (defn main () (println 1))
+  ```
+
+  Or export it, if another module needs it:
+
+  ```
+  ;; knave lint main.knv
+  ;; main.knv
+  (export double)
+
+  (defn double (n) (* n 2))
+
+  (defn main () (println 1))
+  ```")
+
+(document (unused-import module)
+  "Reports a name that a `use` brings in and the module never refers to.
+
+  The rule reports each name of a `use` that no definition, signature,
+  type, pattern or `export` of the module refers to, at the name, or the
+  whole `use` when none of its names is used. A use of a constructor or a
+  method that a name brought in counts for the name, and so does a call or
+  a template symbol in a macro's body. A `use` that lists no
+  name is left out, and so is a name that brings in only a macro, a name
+  that starts with `_` and a `use` that a macro's expansion wrote.
+
+  Only `knave lint` runs the rule, and it exits with status 1 when the rule
+  reports a name, unless the project's `lints` section gives the rule
+  another level. `knave check`, `knave build` and `knave run` do not run
+  it. A project allows the rule everywhere with
+  `(lints (unused-import allow))` in its project file.
+
+  ## Erroneous example
+
+  ```
+  ;; knave lint main.knv
+  ;; text/format.knv
+  (export pad-left shout)
+
+  (defn pad-left (text) text)
+
+  (defn shout (text) text)
+
+  ;; main.knv
+  (use text/format pad-left shout)
+
+  (defn main () (println (pad-left \"a\")))
+  ```
+
+  ## Fixes
+
+  Remove the name from the `use`:
+
+  ```
+  ;; knave lint main.knv
+  ;; text/format.knv
+  (export pad-left shout)
+
+  (defn pad-left (text) text)
+
+  (defn shout (text) text)
+
+  ;; main.knv
+  (use text/format pad-left)
+
+  (defn main () (println (pad-left \"a\")))
+  ```")
+
 (document rule-names
   "Lists the name of each lint rule, as a symbol.
 
-  `knave lint` runs each listed rule over each definition of the program's
-  own modules, and `knave doc` finds a rule's page by a listed name.")
+  `knave lint` runs each listed rule over each definition and over each of
+  the program's own modules, and `knave doc` finds a rule's page by a
+  listed name.")
 
-(def rule-names (quote (unused-binding unused-parameter)))
+(def rule-names
+  (quote (unused-binding unused-parameter
+                         unreachable-definition
+                         unused-import)))
 
 (document (check-rule rule table)
   "Runs the lint rule that `rule` names over `table`, which holds one
@@ -202,9 +312,7 @@
 (def reported?
   (fn (table entry chosen?)
     (if (chosen? table entry)
-      (if (ignored? (entry-form entry))
-        false
-        (empty? (introducing-macro (entry-form entry))))
+      (written-name? (entry-form entry))
       false)))
 
 (def unread-binder?
@@ -277,3 +385,158 @@
     (if (symbol? head)
       (bool-not (same-binding? head head))
       false)))
+
+(document (check-module rule module)
+  "Runs the lint rule that `rule` names over `module`, which holds the
+  facts of one of the program's own modules: its private definitions that
+  nothing reachable reads, each with the unreachable definitions that read
+  it, and each `use` with its names that the module never refers to.
+
+  The rule reports what it finds with `warn`. A name that [rule-names] does
+  not list, or a rule that reads one definition at a time, runs nothing.
+  `knave lint` calls it once for each rule and each module.")
+
+(def check-module
+  (fn (rule module)
+    (if (value-eq rule (quote unreachable-definition))
+      (unreachable-definition (first module))
+      (if (value-eq rule (quote unused-import))
+        (unused-import (nth module 1))
+        (do)))))
+
+(document (kept-definition? name)
+  "Answers whether the private top-level definition that `name` names is
+  kept on purpose, so that `unreachable-definition` treats it as reachable
+  and reaches what it reads. A name that starts with `_` is kept.
+
+  `knave lint` asks it about each private definition of the program's own
+  modules before it looks for unreachable ones.")
+
+(def kept-definition?
+  (fn (name) (ignored? name)))
+
+(def unreachable-definition
+  (fn (entries)
+    (if (empty? entries)
+      (do)
+      (do
+        (warn-if-unreachable (first entries))
+        (recur (rest entries))))))
+
+(def warn-if-unreachable
+  (fn (entry)
+    (if (empty? (nth entry 1))
+      (warn-unused-definition (first entry))
+      (warn-definition-only-unused-read (first entry)
+                                        (nth entry 1)))))
+
+(def warn-unused-definition
+  (fn (binder)
+    (warn (string "`" (symbol-name binder) "` is never used")
+      binder
+      "remove the definition, or export it if another module needs it"
+      (quote (:code unreachable-definition :label "never used")))))
+
+(def warn-definition-only-unused-read
+  (fn (binder readers)
+    (warn (string "`"
+                  (symbol-name binder)
+                  "` is read only by definitions that nothing reachable reads")
+      binder
+      (string "remove it together with "
+              (names-in-prose readers)
+              (if (empty? (rest readers))
+                ", which is reported too"
+                ", which are reported too"))
+      (template
+        (:code
+          unreachable-definition
+          :label "read only by definitions that nothing reachable reads"
+          :earlier (unquote (first readers))
+          :earlier-label "read by this definition, which nothing reachable reads")))))
+
+(def names-in-prose
+  (fn (forms)
+    (joined-names (rest forms)
+                  (quoted-name (first forms)))))
+
+(def joined-names
+  (fn (forms text)
+    (if (empty? forms)
+      text
+      (if (empty? (rest forms))
+        (string text " and " (quoted-name (first forms)))
+        (recur (rest forms)
+               (string text ", " (quoted-name (first forms))))))))
+
+(def quoted-name
+  (fn (form)
+    (string "`" (symbol-name form) "`")))
+
+(def unused-import
+  (fn (entries)
+    (if (empty? entries)
+      (do)
+      (do
+        (warn-unused-names (first entries))
+        (recur (rest entries))))))
+
+(def warn-unused-names
+  (fn (entry)
+    (warn-reported-names entry
+                         (written-names (nth entry 2) (list)))))
+
+(def warn-reported-names
+  (fn (entry names)
+    (if (empty? names)
+      (do)
+      (if (value-eq (len names) (nth entry 1))
+        (warn-unused-use (first entry))
+        (warn-each-unused-name names)))))
+
+(def written-names
+  (fn (names kept)
+    (if (empty? names)
+      kept
+      (recur (rest names)
+             (if (reported-name? (first names))
+               (prepend (first (first names)) kept)
+               kept)))))
+
+(def reported-name?
+  (fn (entry)
+    (if (value-eq (nth entry 1) (quote macro))
+      false
+      (written-name? (first entry)))))
+
+(def warn-unused-use
+  (fn (form)
+    (if (written-name? form)
+      (warn "nothing this `use` brings in is used"
+        form "remove the `use`"
+        (quote (:code unused-import
+                      :label "nothing this brings in is used")))
+      (do))))
+
+(def warn-each-unused-name
+  (fn (names)
+    (if (empty? names)
+      (do)
+      (do
+        (warn-unused-name (first names))
+        (recur (rest names))))))
+
+(def warn-unused-name
+  (fn (name)
+    (warn (string "`"
+                  (symbol-name name)
+                  "` is imported but never used")
+      name
+      (string "remove `" (symbol-name name) "` from this `use`")
+      (quote (:code unused-import :label "never used")))))
+
+(def written-name?
+  (fn (form)
+    (if (ignored? form)
+      false
+      (empty? (introducing-macro form)))))

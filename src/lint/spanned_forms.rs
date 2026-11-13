@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::core::{ExpressionForm, KernelForm, Literal};
-use crate::reader::{Form, FormKind, Symbol};
+use crate::reader::{Form, FormKind, Number, NumberValue, Symbol};
 use crate::source::Span;
 
 pub struct SpannedForms;
@@ -29,6 +29,11 @@ impl SpannedForms {
 
     pub fn symbol(name: &str, span: Span) -> Form {
         Form::new(FormKind::Symbol(Symbol::new(name)), span)
+    }
+
+    pub fn number(value: i128, span: Span) -> Form {
+        let number = Number::new(value.to_string(), NumberValue::Integer(value));
+        Form::new(FormKind::Number(number), span)
     }
 
     pub fn list(parts: Vec<Form>, span: Span) -> Form {

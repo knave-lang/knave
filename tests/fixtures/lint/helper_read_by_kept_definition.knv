@@ -1,0 +1,5 @@
+(defn helper (n) (* n 2))
+
+(defn _keep () (helper 1))
+
+(defn main () (println 1))

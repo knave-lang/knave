@@ -1,5 +1,6 @@
 use super::holdings::Holdings;
 use super::loan_rules::LoanRules;
+use super::passed_holdings::PassedHoldings;
 use crate::types::{Type, TypedArgument, TypedExpr, TypedExprKind, TypedLambda};
 
 pub struct CallSite<'c> {
@@ -8,8 +9,6 @@ pub struct CallSite<'c> {
 }
 
 impl<'c> CallSite<'c> {
-    const RECEIVER: usize = 0;
-
     pub fn new(callee: &'c TypedExpr, arguments: &'c [TypedArgument]) -> Self {
         Self { callee, arguments }
     }
@@ -36,35 +35,22 @@ impl<'c> CallSite<'c> {
         }
     }
 
-    pub fn result_holdings(&self, passed: Vec<Holdings>, rules: &LoanRules<'_>) -> Holdings {
-        if !rules.is_template(self.callee) {
+    pub fn result_holdings(&self, passed: Vec<PassedHoldings>, rules: &LoanRules<'_>) -> Holdings {
+        let Some(ties) = rules.ties(self.callee) else {
             return Holdings::default();
-        }
-        let tied = match rules.result_ties(self.callee) {
-            Some(declared) => declared,
-            None => self.elided_ties(rules),
         };
         passed
             .into_iter()
             .enumerate()
-            .filter(|(position, _)| tied.contains(position))
-            .fold(Holdings::default(), |held, (_, lent)| held.merged(lent))
-    }
-
-    fn elided_ties(&self, rules: &LoanRules<'_>) -> Vec<usize> {
-        if rules.receives(self.callee, Self::RECEIVER) {
-            return vec![Self::RECEIVER];
-        }
-        let borrowed: Vec<usize> = (0..self.arguments.len())
-            .filter(|position| {
-                self.parameter(*position)
-                    .is_some_and(|parameter| rules.holds_a_borrow(parameter))
+            .fold(Holdings::default(), |held, (position, passed)| {
+                if ties.lends_through(position) {
+                    held.merged(passed.all())
+                } else if ties.holds_through(position) {
+                    held.merged(passed.held().clone())
+                } else {
+                    held
+                }
             })
-            .collect();
-        match borrowed.as_slice() {
-            [only] => vec![*only],
-            _ => Vec::new(),
-        }
     }
 }
 

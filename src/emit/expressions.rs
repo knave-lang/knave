@@ -36,10 +36,10 @@ use crate::ownership::StructUpdateOrder;
 use crate::reader::{Number, NumberValue};
 use crate::source::Span;
 use crate::types::{
-    Borrow, ClauseChoice, ClosureKind, Collection, FieldOrder, SchemeBindings, Type, TypedArgument,
-    TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
-    TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedProgram,
-    TypedStructExpr, VariantPayload, ViewCoercion,
+    Borrow, ClauseChoice, ClosureKind, Collection, FieldOrder, SchemeBindings, SyntheticTemplate,
+    Type, TypedArgument, TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
+    TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
+    TypedProgram, TypedStructExpr, VariantPayload, ViewCoercion,
 };
 
 mod compound_assignment;
@@ -177,7 +177,6 @@ impl<'a> ExpressionEmitter<'a> {
     const ETA_PARAMETER: &'static str = "argument_";
     const STRING_GUARD_BINDING: &'static str = "text";
     const BOX_BINDING: &'static str = "inner";
-    const MAP_UPDATE_TEMPLATE: &'static str = "@map-update";
     const COMPARED_OPERANDS: usize = 2;
     const VIEW_DEPTH_ALLOWANCE: usize = 1;
     const INTEGER_CONVERSION: &'static str = "from_literal";
@@ -1923,7 +1922,7 @@ impl<'a> ExpressionEmitter<'a> {
         types: Vec<(String, Code)>,
         span: Span,
     ) -> Code {
-        if template.template.as_ref() == Self::MAP_UPDATE_TEMPLATE {
+        if template.template.as_ref() == SyntheticTemplate::MAP_UPDATE.text() {
             return self.map_update_call(arguments);
         }
         if let Some(compound) = self.compound_assignment(template, arguments, &types, span) {

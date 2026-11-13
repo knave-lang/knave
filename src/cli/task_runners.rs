@@ -5,6 +5,7 @@ use super::project_task::{ProjectTask, TaskName};
 use super::task_catalog::TaskCatalog;
 use super::terminal::Terminal;
 use crate::build::BuildProfile;
+use crate::diagnostic::Diagnostics;
 use crate::reader::StringLiteral;
 
 pub struct TaskRunners<'c> {
@@ -35,7 +36,7 @@ impl<'c> TaskRunners<'c> {
         Ok(task.binary().to_path_buf())
     }
 
-    pub fn check(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
+    pub fn check(&self, terminal: &mut Terminal) -> Result<Diagnostics, ExitStatus> {
         let names = self.catalog.names(terminal)?;
         let signatures = self.catalog.signatures(terminal, &names)?;
         let runners: Vec<String> = names
@@ -45,7 +46,10 @@ impl<'c> TaskRunners<'c> {
             .collect();
         let (block, _) = TaskCatalog::block_of(&runners);
         let entered = self.catalog.entered_program(terminal, &block)?;
-        terminal.checking().check(&entered.program).map(|_| ())
+        let checked = terminal
+            .checking()
+            .check_keeping_warnings(&entered.program)?;
+        Ok(checked.warnings)
     }
 
     fn runner(name: &TaskName, signature: &str) -> String {

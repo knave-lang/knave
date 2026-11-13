@@ -132,6 +132,15 @@ const DEFN_HEADER: &str = "(defmacro defn (name parameters body ...))";
 const SEPARATOR_TIP: &str = "write `knave doc -- <term>`";
 const UNKNOWN_FLAG_ERROR: &str = "error: unexpected argument '--typo' found";
 const ARITHMETIC: &str = include_str!("fixtures/emit/arithmetic.knv");
+const SECOND_TRAIT_PATH: &str = include_str!("fixtures/check/second_trait_path.knv");
+const TASK_WITH_A_PLACEHOLDER_LINK: &str = "(use code warn)
+
+(defmacro placeholder (page)
+  (warn \"this link is a placeholder\" page (quote (:code unmatched-link)))
+  page)
+
+(deftask sweep () (println (placeholder \"home\")))
+";
 const EMPTY_MAIN: &str = "(def main (fn () (do)))\n";
 const ONE_BRANCH: &str = "(def main (fn () (if true (do) (do))))\n";
 
@@ -1986,10 +1995,10 @@ fn check_is_silent_on_a_valid_program() {
 }
 
 #[test]
-fn lint_prints_an_unread_binding_and_exits_zero() {
+fn lint_prints_an_unread_binding_and_exits_one() {
     let sandbox = Sandbox::new("lint_warning").with_file("unused.knv", UNUSED_BINDING);
     let lint = sandbox.compiler(&["lint", "unused.knv"]);
-    lint.assert_exit_code(0);
+    lint.assert_exit_code(1);
     assert_eq!(lint.stdout(), "");
     assert!(
         lint.stderr()
@@ -1997,6 +2006,45 @@ fn lint_prints_an_unread_binding_and_exits_zero() {
         "{}",
         lint.stderr()
     );
+}
+
+#[test]
+fn lint_of_a_program_with_no_warning_exits_zero() {
+    let sandbox = Sandbox::new("lint_clean").with_file("greeting.knv", GREETING);
+    let lint = sandbox.compiler(&["lint", "greeting.knv"]);
+    lint.assert_exit_code(0);
+    assert_eq!(lint.stderr(), "");
+}
+
+#[test]
+fn lint_of_a_program_whose_only_warning_is_no_lint_exits_zero() {
+    let sandbox = Sandbox::new("lint_no_lint_warning").with_file("shows.knv", SECOND_TRAIT_PATH);
+    let lint = sandbox.compiler(&["lint", "shows.knv"]);
+    let stderr = lint.assert_exit_code(0).stderr();
+    assert!(stderr.starts_with("warning[L0217]: "), "{stderr}");
+    assert!(!stderr.contains("[L08"), "{stderr}");
+}
+
+#[test]
+fn lint_exits_one_on_a_lint_that_the_task_tree_prints() {
+    let sandbox = Sandbox::new("lint_task_lint")
+        .with_file(&Language::project_file_name(), "(defproject chores)\n")
+        .with_file("src/main.knv", "(defn main () (println 1))\n")
+        .with_file("tasks/chores.knv", TASK_WITH_A_PLACEHOLDER_LINK);
+    let lint = sandbox.compiler(&["lint"]);
+    let stderr = lint.assert_exit_code(1).stderr();
+    assert!(stderr.contains("warning[L0802]"), "{stderr}");
+}
+
+#[test]
+fn check_exits_zero_on_a_lint_that_the_task_tree_prints() {
+    let sandbox = Sandbox::new("check_task_lint")
+        .with_file(&Language::project_file_name(), "(defproject chores)\n")
+        .with_file("src/main.knv", "(defn main () (println 1))\n")
+        .with_file("tasks/chores.knv", TASK_WITH_A_PLACEHOLDER_LINK);
+    let check = sandbox.compiler(&["check"]);
+    let stderr = check.assert_exit_code(0).stderr();
+    assert!(stderr.contains("warning[L0802]"), "{stderr}");
 }
 
 #[test]
@@ -2030,7 +2078,7 @@ fn lint_keeps_its_rules_when_a_project_holds_a_prelude_directory() {
         .with_file("src/main.knv", UNUSED_BINDING)
         .with_file("prelude/lint.knv", "(export rule-names check-rule)\n(def rule-names (quote ()))\n(def check-rule (fn (rule table) (do)))\n");
     let lint = sandbox.compiler(&["lint"]);
-    lint.assert_exit_code(0);
+    lint.assert_exit_code(1);
     assert!(
         lint.stderr().contains("warning[L0801]"),
         "{}",
@@ -2060,7 +2108,7 @@ fn lint_reports_no_binding_of_a_library() {
         )
         .with_file("helping/src/lib.knv", LIBRARY_WITH_UNUSED_BINDING);
     let lint = sandbox.compiler_in("app", &["lint"]);
-    lint.assert_exit_code(0);
+    lint.assert_exit_code(1);
     assert_eq!(
         lint.stderr().matches("warning[L0801]").count(),
         1,

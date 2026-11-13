@@ -2,7 +2,7 @@
 source: tests/cli.rs
 expression: lint.transcript()
 ---
-exit code: Some(0)
+exit code: Some(1)
 --- stdout
 --- stderr
 warning[L0434]: unreachable `match` arm

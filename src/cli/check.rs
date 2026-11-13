@@ -14,8 +14,11 @@ impl CheckCommand {
     }
 
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
-        ProjectInspection::new(self.entry).run(terminal, |terminal, file| {
-            terminal.check_file::<EnforcedOwnership>(file).map(|_| ())
-        })
+        let inspected = ProjectInspection::new(self.entry).run(terminal, |terminal, file| {
+            terminal
+                .check_file::<EnforcedOwnership>(file)
+                .map(|typed| typed.warnings)
+        });
+        ExitStatus::of(inspected)
     }
 }

@@ -10,12 +10,12 @@ use super::spliced_forms::{SplicedForm, SplicedForms};
 use super::{Expander, TraitMethods, binder_form::BinderForm, module_notes::NotesCheckpoint};
 use crate::core::{
     BindingId, BindingInfo, BindingKind, ControlForm, CoreModule, DefinitionForm, Expr, ExprKind,
-    ExpressionForm, FieldLabel, ImplAssociatedType, ImplMethod, Item, ItemKind, KernelForm,
-    Keyword, Leaf, ModuleId, Namespace, RUST_TRAIT_ASSOCIATED_MARKER, RUST_TRAIT_HELP_MARKER,
-    RUST_TRAIT_METHOD_MARKER, RUST_TRAIT_REQUIRES_MARKER, RUST_TRAIT_STRUCTURAL_MARKER,
-    RequiredTrait, RustTemplate, RustTraitAssociatedType, RustTraitDeclaration,
-    RustTraitImplementor, TraitAssociatedType, TraitMethod, TypeBinder, TypeBound, TypeExpr,
-    TypeExprKind, VariantDeclaration, VariantInfo, VariantPayload,
+    ExpressionForm, FieldLabel, ImplAssociatedType, ImplMethod, ImplementorRows, Item, ItemKind,
+    KernelForm, Keyword, Leaf, ModuleId, Namespace, RUST_TRAIT_ASSOCIATED_MARKER,
+    RUST_TRAIT_HELP_MARKER, RUST_TRAIT_METHOD_MARKER, RUST_TRAIT_REQUIRES_MARKER,
+    RUST_TRAIT_STRUCTURAL_MARKER, RequiredTrait, RustTemplate, RustTraitAssociatedType,
+    RustTraitDeclaration, RustTraitImplementor, TraitAssociatedType, TraitMethod, TypeBinder,
+    TypeBound, TypeExpr, TypeExprKind, VariantDeclaration, VariantInfo, VariantPayload,
 };
 use crate::diagnostic::{Counted, Diagnostic, DistinctDiagnostics};
 use crate::interpret::Warnings;
@@ -1705,7 +1705,7 @@ impl Expander<'_> {
                 requires: entries.requires,
                 structural,
                 associated: entries.associated,
-                implementors: crate::core::ImplementorRows::new(entries.implementors),
+                implementors: ImplementorRows::new(entries.implementors),
             }),
             span: form.span(),
             hidden: false,

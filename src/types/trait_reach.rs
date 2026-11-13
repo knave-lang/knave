@@ -111,7 +111,7 @@ impl<'p> TraitReach<'p> {
     fn roots(&mut self, modules: &[CoreModule]) {
         self.reach_declared(|declaration| {
             ConsultedTraits::PATHS.contains(&declaration.path.as_ref())
-                || declaration.implementors.only_primitives()
+                || declaration.implementors.all_rows_primitive()
         });
         let mut writes_a_type = false;
         for module in modules {
@@ -672,8 +672,8 @@ mod tests {
             let rows = &declaration.implementors;
             let rebuilt = ImplementorRows::new(rows.get().to_vec());
             assert_eq!(
-                rows.only_primitives(),
-                rebuilt.only_primitives(),
+                rows.all_rows_primitive(),
+                rebuilt.all_rows_primitive(),
                 "{}",
                 declaration.path
             );

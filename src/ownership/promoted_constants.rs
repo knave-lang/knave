@@ -51,7 +51,7 @@ impl<'p> PromotedConstants<'p> {
                 .program
                 .template_borrows
                 .read_template(callee, false, |template| {
-                    self.promotes_template(template, arguments)
+                    self.promotes_template(template.parsed(), arguments)
                 })
     }
 
@@ -187,7 +187,9 @@ impl<'p> PromotedConstants<'p> {
         let negates = self
             .program
             .template_borrows
-            .read_template(callee, false, |template| template.operation().is_negation());
+            .read_template(callee, false, |template| {
+                template.parsed().operation().is_negation()
+            });
         arguments
             .first()
             .filter(|_| negates)

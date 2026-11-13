@@ -8,6 +8,25 @@ use crate::shape::Shape;
 pub struct CallHelper;
 
 impl CallHelper {
+    fn callable(state: &GeneratorState) -> Vec<&'static HelperTemplate> {
+        HelperTemplate::ALL
+            .into_iter()
+            .filter(|template| {
+                template
+                    .arguments()
+                    .iter()
+                    .all(|argument| Self::can_pass(state, *argument))
+            })
+            .collect()
+    }
+
+    fn can_pass(state: &GeneratorState, argument: HelperArgument) -> bool {
+        match argument {
+            HelperArgument::Local(kind) | HelperArgument::Borrowed(kind) => state.holds(kind),
+            HelperArgument::Function(_) | HelperArgument::Expression => true,
+        }
+    }
+
     fn argument(state: &mut GeneratorState, argument: HelperArgument) -> Option<String> {
         match argument {
             HelperArgument::Local(kind) => state.some(kind).map(str::to_string),
@@ -22,7 +41,8 @@ impl CallHelper {
 
 impl Production for CallHelper {
     fn write(&self, _blocks: &dyn BlockWriter, state: &mut GeneratorState) -> Option<String> {
-        let template: &'static HelperTemplate = state.pick(&HelperTemplate::ALL)?;
+        let callable = Self::callable(state);
+        let template = state.pick(&callable)?;
         let arguments = template
             .arguments()
             .iter()

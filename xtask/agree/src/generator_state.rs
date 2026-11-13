@@ -40,6 +40,10 @@ impl GeneratorState {
         self.random.pick(&visible)
     }
 
+    pub fn holds(&self, kind: ValueKind) -> bool {
+        !self.locals.visible(kind).is_empty()
+    }
+
     pub fn bind_local(&mut self, kind: ValueKind, value: String) -> String {
         let name = self.random.pick(kind.names()).expect("each kind has names");
         self.locals.bind(name, kind);

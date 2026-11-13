@@ -31,6 +31,8 @@ const MISLAID_EXAMPLE: &str =
 const MISLAID_PROJECT_EXAMPLE: &str = "## Erroneous example\n\n```knave\n;; knave check\n;; project.knv\n(defproject  greeter)\n;; src/main.knv\n(defn main ()  (println 1))\n```\n";
 const MISLAID_REPL_EXAMPLE: &str =
     "## Erroneous example\n\n```knave\n;; knave repl\n(def   total 1)\n(+ total  1)\n```\n";
+const DESCRIBED_EXAMPLE: &str =
+    "## Described example\n\n```text\n(((( … ))))\n```\n\n```knave\n(def deep (vec))\n```\n";
 const UNREADABLE_EXAMPLE: &str = "## Erroneous example\n\n```knave\n(defn main (\n```\n";
 const FAILING_EXIT_FIX: &str = "## Fixes\n\n```knave\n(defn main ()\n  (local empty (the (vec i64) (vec)))\n  (println (at empty 0)))\n```\n";
 
@@ -348,7 +350,10 @@ fn fixtures_within_their_deadline_keep_their_reports() {
 
 #[test]
 fn each_erroneous_explanation_example_reports_its_code_first() {
-    for explanation in ExplanationExamples::written() {
+    let shown = ExplanationExamples::written()
+        .into_iter()
+        .filter(|explanation| !explanation.is_described());
+    for explanation in shown {
         let first_codes = explanation.erroneous_first_codes();
         assert!(
             !first_codes.is_empty(),
@@ -365,12 +370,31 @@ fn each_erroneous_explanation_example_reports_its_code_first() {
 fn each_explanation_fix_builds_and_runs() {
     for explanation in ExplanationExamples::written() {
         assert!(
-            explanation.fix_count() > 0,
+            explanation.fix_count() > 0 || explanation.is_described(),
             "{} has no fix",
             explanation.code()
         );
         assert_eq!(explanation.fix_failures(), Vec::<String>::new());
     }
+}
+
+#[test]
+fn each_described_example_holds_no_example_that_looks_runnable() {
+    for explanation in ExplanationExamples::written() {
+        assert_eq!(
+            explanation.described_fence_count(),
+            0,
+            "{} describes its example, so the tests do not run it: tag its fences `text`",
+            explanation.code()
+        );
+    }
+}
+
+#[test]
+fn a_knave_fence_under_a_described_example_counts_as_runnable() {
+    let explanation = ExplanationExamples::new("L0108", DESCRIBED_EXAMPLE);
+    assert!(explanation.is_described());
+    assert_eq!(explanation.described_fence_count(), 1);
 }
 
 #[test]

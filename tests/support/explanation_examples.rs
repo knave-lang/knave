@@ -33,11 +33,11 @@ pub struct ExampleDiagnostic {
 impl ExplanationExamples {
     const ERRONEOUS_HEADING: &str = "## Erroneous example";
     const FIXES_HEADING: &str = "## Fixes";
+    const DESCRIBED_HEADING: &str = "## Described example";
     const EXAMPLE_FENCE: &str = "```knave\n";
     const CLOSING_FENCE: &str = "```\n";
     const ERROR_PAGES_COMMAND: [&str; 3] = ["doc", "--write", "--errors"];
     const ERROR_PAGES_FOLDER: &str = "doc/errors";
-    const LINTS_NO_EXAMPLE_CAN_SHOW: [&str; 1] = ["L0805"];
     const PAGE_BREAK: &str = "\n\n";
     const EXAMPLE_FILE: &str = "example.knv";
     const MAXIMUM_PARALLEL_FIX_BUILDS: usize = 4;
@@ -71,11 +71,12 @@ impl ExplanationExamples {
         let explained = page
             .as_deref()
             .and_then(|page| page.split_once(Self::PAGE_BREAK));
-        let shown = CodeStage::LINTS.contains(explanation.code())
-            && !Self::LINTS_NO_EXAMPLE_CAN_SHOW.contains(&code);
+        let lint = CodeStage::LINTS.contains(explanation.code());
         assert!(
-            explained.is_some() || !shown,
-            "{code} is a lint without a Markdown file, and no docstring explains it"
+            explained.is_some() || !lint,
+            "every diagnostic points to its explanation, so a new code needs one in the same pull \
+             request. {code} has none: write expand/src/diagnostic/explanations/{code}.md, or, for \
+             a lint that a prelude rule reports, the docstring of the rule's definition"
         );
         explained
             .map(|(_, docstring)| Self::from_source(code, docstring, ExplanationSource::Docstring))
@@ -99,6 +100,14 @@ impl ExplanationExamples {
         self.examples_under(Self::ERRONEOUS_HEADING)
             .map(Self::diagnostics_of)
             .collect()
+    }
+
+    pub fn is_described(&self) -> bool {
+        self.text.contains(Self::DESCRIBED_HEADING)
+    }
+
+    pub fn described_fence_count(&self) -> usize {
+        self.examples_under(Self::DESCRIBED_HEADING).count()
     }
 
     pub fn erroneous_first_codes(&self) -> Vec<Option<String>> {

@@ -250,6 +250,7 @@ pub struct Explanation {
 }
 
 impl Explanation {
+    pub const LOOKUP_COMMAND: &str = "doc";
     const CONSTANT_WORD_SEPARATOR: char = '_';
     const DISPLAY_WORD_SEPARATOR: &str = " ";
 
@@ -282,6 +283,8 @@ impl Explanation {
 #[cfg(test)]
 mod tests {
     use super::Explanation;
+    use crate::diagnostic::CodeStage;
+    use crate::language::Language;
 
     #[test]
     fn the_display_name_spells_the_constant_in_lowercase_words() {
@@ -299,5 +302,23 @@ mod tests {
     #[test]
     fn a_code_outside_the_table_has_no_explanation() {
         assert!(Explanation::of_code("L0999").is_none());
+    }
+
+    #[test]
+    fn every_code_outside_the_lints_has_a_written_explanation() {
+        let unexplained: Vec<String> = Explanation::all()
+            .filter(|explanation| !CodeStage::LINTS.contains(explanation.code()))
+            .filter(|explanation| explanation.text().is_none())
+            .map(|explanation| explanation.code().as_str().to_string())
+            .collect();
+        assert!(
+            unexplained.is_empty(),
+            "every diagnostic points to `{} {} <code>`, so a new code needs its explanation \
+             in the same pull request. Write expand/src/diagnostic/explanations/<code>.md, as \
+             docs/language.md states, and list it in `written_explanations!`, for: {}",
+            Language::NAME,
+            Explanation::LOOKUP_COMMAND,
+            unexplained.join(", ")
+        );
     }
 }

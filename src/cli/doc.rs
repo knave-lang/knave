@@ -13,7 +13,7 @@ use super::standard_output::StandardOutput;
 use super::terminal::Terminal;
 use super::token_colors::TokenColors;
 use crate::core::BindingId;
-use crate::diagnostic::Diagnostics;
+use crate::diagnostic::{Diagnostics, Explanation};
 use crate::expand::{ExpansionSession, Program};
 use crate::language::Language;
 use crate::reader::Form;
@@ -32,7 +32,7 @@ pub enum DocPage {
 }
 
 impl DocCommand {
-    pub const NAME: &'static str = "doc";
+    pub const NAME: &'static str = Explanation::LOOKUP_COMMAND;
     const SEPARATOR: &'static str = "--";
 
     pub fn usage() -> String {

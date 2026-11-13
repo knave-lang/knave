@@ -9,5 +9,6 @@ error[L0404]: `(iterator (ref str))` does not implement `joinable`
 2 |   (join (split text " ") ", "))
   |         ^^^^^^^^^^^^^^^^ this needs `joinable`
   |
-  = note: `joinable` is implemented for: (where ((text (borrow str))) (vec text)), (where ((text (borrow str))) (slice text))
-  = help: `join` takes a vector or a slice: collect an iterator first, as in `(join (collect items) ", ")`, which allocates the vector
+  = note: `joinable` is implemented for `(vec item)` for each `item` in: string, (ref str)
+  = note: `joinable` is implemented for `(slice item)` for each `item` in: string, (ref str)
+  = help: `join` takes a vector or a slice of `string` or `(ref str)` items: collect an iterator first, as in `(join (collect items) ", ")`, which allocates the vector

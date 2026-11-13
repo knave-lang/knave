@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
 untested in prelude (53 of 238): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display enum eprint eprintln eq exit export field float fmt fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
-running 215 tests
+running 214 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -221,7 +221,6 @@ test prelude/types/doc:result/ok ... ok
 test prelude/types/doc:result/err ... ok
 test prelude/types/doc:iterator ... ok
 test prelude/types/doc:slice ... ok
-test prelude/types/doc:borrow ... ok
 test prelude/types/doc:sequence ... ok
 test prelude/vec/doc:vec ... ok
 test prelude/vec/doc:push! ... ok
@@ -239,4 +238,4 @@ test prelude/vec/doc:last ... ok
 test prelude/vec/doc:reverse ... ok
 test prelude/vec/doc:reverse! ... ok
 test prelude/vec/doc:dedup! ... ok
-215 passed, 0 failed
+214 passed, 0 failed

@@ -13,4 +13,5 @@
 (deftest starts-with-tests-a-prefix
   (assert (starts-with? "pear" "pe"))
   (assert (starts-with? "pear" ""))
-  (assert (not (starts-with? "pear" "ar"))))
+  (assert (not (starts-with? "pear" "ar")))
+  (assert (starts-with? (str "pear") "pe")))

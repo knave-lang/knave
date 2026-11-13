@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/text_helpers_from_generic_code.knv
+---
+true
+true
+true
+true
+false
+true
+a+b
+c+d
+c+d
+ana, bo
+true
+false

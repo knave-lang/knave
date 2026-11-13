@@ -174,6 +174,9 @@ impl TypeChecker {
         if self.checking_facts.takes_argument(binding) {
             return Ok(());
         }
+        if let Some(rust_trait) = self.declarations.traits.table.get(binding) {
+            rust_trait.assert_reached();
+        }
         Err(TypeProblems::trait_takes_no_argument(
             self.bindings.get(binding).name(),
             span,

@@ -39,10 +39,10 @@ use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
 use super::variant_payloads::VariantPayloads;
 use super::wrapper::FunctionValueWrapper;
 use super::{
-    Implementor, PendingModeCheck, ReceiverKind, RustTrait, RustType, StructDefinition,
-    TemplateBorrows, TraitMethodInfo, TypedAssociatedType, TypedConversion, TypedDefinition,
-    TypedExpr, TypedExprKind, TypedImplMethod, TypedLeaf, TypedTrait, TypedTraitImpl,
-    TypedTraitMethod,
+    Implementor, LoweredRows, PendingModeCheck, ReceiverKind, RustTrait, RustType,
+    StructDefinition, TemplateBorrows, TraitMethodInfo, TypedAssociatedType, TypedConversion,
+    TypedDefinition, TypedExpr, TypedExprKind, TypedImplMethod, TypedLeaf, TypedTrait,
+    TypedTraitImpl, TypedTraitMethod,
 };
 use super::{lowered_payload::LoweredPayload, payload_lowering::PayloadLowering};
 use crate::core::{
@@ -315,13 +315,19 @@ impl TypeChecker {
         }
     }
 
-    fn collect_declarations(&mut self, modules: &[CoreModule], definitions: &[Definition]) {
+    fn collect_declarations(&mut self, modules: &[CoreModule], graph: &DefinitionGraph) {
         self.record_type_arities(modules);
         self.record_projections(modules);
         self.record_trait_arguments(modules);
+        let reached = graph.reach().traits();
         for module in modules {
             for item in &module.items {
-                if let Err(diagnostic) = self.collect_item(module.id, item) {
+                let collected = if let ItemKind::RustTrait(declaration) = &item.kind {
+                    self.collect_rust_trait(declaration, reached)
+                } else {
+                    self.collect_item(module.id, item)
+                };
+                if let Err(diagnostic) = collected {
                     self.diagnostics.push(diagnostic);
                 }
             }
@@ -348,7 +354,7 @@ impl TypeChecker {
             .with_paths(&[CopyTrait::PATH])
             .first()
             .copied();
-        self.record_definition_facts(definitions);
+        self.record_definition_facts(graph.definitions());
     }
 
     fn record_prelude_definitions(&mut self, modules: &[CoreModule], saved: &PendingDefinitions) {
@@ -431,9 +437,6 @@ impl TypeChecker {
             let problem = self.collect_enum(*binding, params, variants, rust, definer)?;
             self.diagnostics.extend(problem.into_iter().collect());
             return Ok(());
-        }
-        if let ItemKind::RustTrait(declaration) = kind {
-            return self.collect_rust_trait(declaration);
         }
         if let ItemKind::RustType(binding, binders, unsized_parameters, template, clauses) = kind {
             return self.collect_rust_type(
@@ -580,7 +583,7 @@ impl TypeChecker {
         let dependencies = graph.dependencies();
         self.unchecked = dependencies.unchecked(entry_function.as_slice());
         self.entry_function = entry_function;
-        self.unreached_prelude = graph.unreached();
+        self.unreached_prelude = graph.reach().unreached();
         let by_binding: FxHashMap<BindingId, &Definition> = graph
             .definitions()
             .iter()
@@ -1925,13 +1928,11 @@ impl TypeChecker {
             .collect::<Result<Vec<_>, Diagnostic>>()?;
         self.declarations.traits.table.add(
             binding,
-            RustTrait {
-                path: rust_name.clone(),
-                implementors: Vec::new(),
-                help: None,
-                supertraits: supertraits.clone(),
-                associated: associated.first().map(|associated| associated.name.clone()),
-            },
+            RustTrait::written(
+                rust_name.clone(),
+                associated.first().map(|associated| associated.name.clone()),
+                LoweredRows::new(Vec::new(), supertraits.clone()),
+            ),
         );
         let mut typed_methods = Vec::new();
         for method in methods {
@@ -2152,7 +2153,7 @@ impl TypeChecker {
         let Some(rust_trait) = self.declarations.traits.table.get(trait_binding) else {
             return;
         };
-        let supertraits = rust_trait.supertraits.clone();
+        let supertraits = rust_trait.rows().supertraits().to_vec();
         if supertraits.is_empty() {
             return;
         }
@@ -2359,19 +2360,17 @@ impl TypeChecker {
     fn collect_rust_trait(
         &mut self,
         declaration: &crate::core::RustTraitDeclaration,
+        reached: &super::trait_reach::ReachedTraits,
     ) -> Result<(), Diagnostic> {
-        let implementors = self.lower_rust_trait_implementors(declaration)?;
-        let supertraits = self.acyclic_requirements(declaration)?;
-        self.declarations.traits.table.add(
-            declaration.binding,
-            RustTrait {
-                path: declaration.path.clone(),
-                implementors,
-                help: declaration.help.clone(),
-                supertraits,
-                associated: None,
-            },
-        );
+        let rust_trait = if reached.reaches(declaration.binding) {
+            let implementors = self.lower_rust_trait_implementors(declaration)?;
+            let supertraits = self.acyclic_requirements(declaration)?;
+            RustTrait::lowered(declaration, LoweredRows::new(implementors, supertraits))
+        } else {
+            RustTrait::unreached(declaration)
+        };
+        let table = &mut self.declarations.traits.table;
+        table.add(declaration.binding, rust_trait);
         self.declarations
             .traits
             .rust_paths
@@ -2648,7 +2647,7 @@ impl TypeChecker {
         display: &TypeDisplay<'_>,
     ) -> ImplementorList {
         let mut grouped: Vec<(BindingId, Vec<(usize, String)>)> = Vec::new();
-        for (position, known) in rust_trait.implementors.iter().enumerate() {
+        for (position, known) in rust_trait.rows().implementors().iter().enumerate() {
             let Some((binding, argument)) = self.grouped_implementor(known) else {
                 continue;
             };
@@ -2667,7 +2666,8 @@ impl TypeChecker {
             .flat_map(|(_, entries)| entries.iter().map(|(position, _)| *position))
             .collect();
         let entries = rust_trait
-            .implementors
+            .rows()
+            .implementors()
             .iter()
             .enumerate()
             .filter(|(position, _)| !grouped_positions.contains(position))
@@ -3007,7 +3007,7 @@ impl TypeChecker {
         graph: &DefinitionGraph,
     ) -> Result<(super::typed::TypedProgram, OpenCollections), Diagnostics> {
         self.record_prelude_definitions(&program.modules, &program.pending_definitions);
-        self.collect_declarations(&program.modules, graph.definitions());
+        self.collect_declarations(&program.modules, graph);
         let mut definitions = self.check_definitions(program.entry.function, graph);
         let mut finalizer = super::finalize::Finalizer::new(&mut self);
         for binding in graph.order() {

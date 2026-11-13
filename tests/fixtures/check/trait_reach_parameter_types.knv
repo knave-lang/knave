@@ -1,0 +1,8 @@
+(defn reasons ((failures (vec (parse-error i64))))
+  failures)
+
+(defn make-reason ((make (fn () (parse-error i64))))
+  (do))
+
+(defn borrow-reason ((failure (ref (parse-error i64))))
+  (do))

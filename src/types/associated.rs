@@ -1,7 +1,7 @@
 use super::checker::TypeChecker;
 use super::problems::{MismatchContext, ProjectionNames, TypeProblems};
 use super::projection::AssociatedType;
-use super::traits::Implementor;
+use super::rust_trait::Implementor;
 use super::ty::{GenericId, Type};
 use super::unifier::DeferredEquality;
 use crate::core::{BindingId, CoreModule, ItemKind, RustTraitDeclaration, RustTraitImplementor};

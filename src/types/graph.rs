@@ -3,6 +3,7 @@ use std::rc::Rc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::deferred_definitions::DeferredDefinitions;
+use super::trait_reach::{ReachedTraits, TraitReach};
 use crate::core::{BindingArena, BindingId, Expr, ItemKind, References};
 use crate::expand::Program;
 use crate::source::Span;
@@ -17,7 +18,22 @@ pub struct DefinitionGraph<'p> {
     definitions: Vec<Definition<'p>>,
     dependencies: DependencyGraph,
     components: Vec<Vec<BindingId>>,
+    reach: ProgramReach,
+}
+
+pub struct ProgramReach {
     unreached: Rc<FxHashSet<BindingId>>,
+    traits: ReachedTraits,
+}
+
+impl ProgramReach {
+    pub fn unreached(&self) -> Rc<FxHashSet<BindingId>> {
+        Rc::clone(&self.unreached)
+    }
+
+    pub fn traits(&self) -> &ReachedTraits {
+        &self.traits
+    }
 }
 
 impl<'p> DefinitionGraph<'p> {
@@ -37,6 +53,7 @@ impl<'p> DefinitionGraph<'p> {
         let walked =
             ReferenceWalk::new(&program.bindings, &deferred).run(Self::definitions_in(program));
         deferred.retain(|binding| !walked.contains_key(binding));
+        let reached_traits = TraitReach::of(&program.modules, walked.values());
         let mut definitions = Vec::with_capacity(Self::item_count(program));
         definitions.extend(
             Self::definitions_in(program)
@@ -52,7 +69,10 @@ impl<'p> DefinitionGraph<'p> {
             definitions,
             dependencies,
             components,
-            unreached: Rc::new(deferred),
+            reach: ProgramReach {
+                unreached: Rc::new(deferred),
+                traits: reached_traits,
+            },
         }
     }
 
@@ -83,8 +103,8 @@ impl<'p> DefinitionGraph<'p> {
         &self.definitions
     }
 
-    pub fn unreached(&self) -> Rc<FxHashSet<BindingId>> {
-        Rc::clone(&self.unreached)
+    pub fn reach(&self) -> &ProgramReach {
+        &self.reach
     }
 
     pub fn dependencies(&self) -> &DependencyGraph {
@@ -565,7 +585,7 @@ mod tests {
         graph
             .components
             .retain(|component| !component.contains(&sum));
-        graph.unreached = Rc::new(FxHashSet::from_iter([sum]));
+        graph.reach.unreached = Rc::new(FxHashSet::from_iter([sum]));
         source.check(&graph);
     }
 
@@ -577,6 +597,7 @@ mod tests {
         let undecoded = undecoded.expect("an empty program leaves definitions undecoded");
         assert!(
             DefinitionGraph::of(program)
+                .reach()
                 .unreached()
                 .contains(&undecoded)
         );
@@ -588,6 +609,7 @@ mod tests {
         let sum = PreludeFixture::prelude_definition(source.program(), "sum");
         assert!(
             DefinitionGraph::of(source.program())
+                .reach()
                 .unreached()
                 .contains(&sum)
         );
@@ -599,6 +621,7 @@ mod tests {
         let sum = PreludeFixture::prelude_definition(source.program(), "sum");
         assert!(
             !DefinitionGraph::of(source.program())
+                .reach()
                 .unreached()
                 .contains(&sum)
         );

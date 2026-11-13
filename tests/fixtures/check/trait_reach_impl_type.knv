@@ -1,0 +1,5 @@
+(trait named-reason
+  (reason-name (fn ((ref self)) string)))
+
+(impl named-reason (parse-error i64)
+  (reason-name (failure) (str "a reason")))

@@ -53,10 +53,7 @@ src/types/infer.rs 4
 src/types/infer/open_collections.rs 1
 src/types/infer/shared_variables.rs 1
 src/types/parameter_call_labels.rs 1
-src/types/projection.rs 2
-src/types/selection.rs 1
 src/types/templates.rs 1
-src/types/traits.rs 2
 src/types/type_text.rs 1
 src/types/type_text_writer.rs 1
 src/types/typed.rs 2

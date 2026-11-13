@@ -603,7 +603,7 @@ impl<'a> FunctionValueModes<'a> {
 mod tests {
     use super::*;
     use crate::core::{BindingInfo, BindingKind, ModuleId, PrimitiveType};
-    use crate::types::{Implementor, RustTrait, Scheme, TraitTable};
+    use crate::types::{Implementor, LoweredRows, RustTrait, Scheme, TraitTable};
 
     struct Adjustments {
         bindings: BindingArena,
@@ -625,16 +625,17 @@ mod tests {
             ));
             traits.add(
                 copy,
-                RustTrait {
-                    path: std::rc::Rc::from("Copy"),
-                    implementors: vec![Implementor {
-                        scheme: Scheme::monomorphic(Type::Primitive(PrimitiveType::I64)),
-                        argument: None,
-                    }],
-                    help: None,
-                    supertraits: Vec::new(),
-                    associated: None,
-                },
+                RustTrait::written(
+                    std::rc::Rc::from("Copy"),
+                    None,
+                    LoweredRows::new(
+                        vec![Implementor {
+                            scheme: Scheme::monomorphic(Type::Primitive(PrimitiveType::I64)),
+                            argument: None,
+                        }],
+                        Vec::new(),
+                    ),
+                ),
             );
             Self {
                 bindings,

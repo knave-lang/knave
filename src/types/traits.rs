@@ -3,36 +3,10 @@ use std::rc::Rc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::projection::ProjectionTable;
+use super::rust_trait::{Implementor, LoweredRows, RustTrait};
 use super::selection::{ImplementorMatch, Selection};
 use super::ty::{Bound, GenericId, Scheme, Type};
 use crate::core::BindingId;
-
-pub struct Implementor {
-    pub scheme: Scheme,
-    pub argument: Option<Type>,
-}
-
-pub struct RustTrait {
-    pub path: Rc<str>,
-    pub implementors: Vec<Implementor>,
-    pub help: Option<Rc<str>>,
-    pub supertraits: Vec<Bound>,
-    pub associated: Option<Rc<str>>,
-}
-
-impl RustTrait {
-    pub fn is_open(&self) -> bool {
-        self.implementors
-            .iter()
-            .any(|implementor| !implementor.scheme.params.is_empty())
-    }
-
-    fn has_unargued_row(&self) -> bool {
-        self.implementors
-            .iter()
-            .any(|implementor| implementor.argument.is_none())
-    }
-}
 
 #[derive(Default)]
 pub struct TraitTable {
@@ -48,8 +22,11 @@ impl TraitTable {
 
     pub fn share_projections(&mut self) -> Rc<ProjectionTable> {
         for (binding, rust_trait) in &self.traits {
-            let normalized: Vec<Implementor> = rust_trait
-                .implementors
+            let Some(rows) = rust_trait.lowered_rows() else {
+                continue;
+            };
+            let normalized: Vec<Implementor> = rows
+                .implementors()
                 .iter()
                 .filter_map(|implementor| Self::normalized(&self.projections, implementor))
                 .collect();
@@ -89,7 +66,9 @@ impl TraitTable {
 
     pub fn links_argument(&self, binding: BindingId) -> bool {
         self.get(binding).is_none_or(|rust_trait| {
-            self.projections.declared_by(binding).is_empty() && rust_trait.has_unargued_row()
+            let rows = rust_trait.rows().implementors();
+            self.projections.declared_by(binding).is_empty()
+                && rows.iter().any(|row| row.argument.is_none())
         })
     }
 
@@ -141,7 +120,8 @@ impl TraitTable {
         visited.insert(declared.binding)
             && self.get(declared.binding).is_some_and(|rust_trait| {
                 rust_trait
-                    .supertraits
+                    .rows()
+                    .supertraits()
                     .iter()
                     .any(|supertrait| self.brings_unvisited(supertrait, wanted, visited))
             })
@@ -151,17 +131,17 @@ impl TraitTable {
         let mut matching = self
             .traits
             .iter()
-            .filter(|(_, rust_trait)| Self::implementors_are(rust_trait, types))
+            .filter_map(|(binding, rust_trait)| Some((binding, rust_trait.lowered_rows()?)))
+            .filter(|(_, rows)| Self::implementors_are(rows, types))
             .map(|(binding, _)| *binding);
         let found = matching.next()?;
         matching.next().is_none().then_some(found)
     }
 
-    fn implementors_are(rust_trait: &RustTrait, types: &[Type]) -> bool {
-        rust_trait.implementors.len() == types.len()
+    fn implementors_are(rows: &LoweredRows, types: &[Type]) -> bool {
+        rows.implementors().len() == types.len()
             && types.iter().all(|ty| {
-                rust_trait
-                    .implementors
+                rows.implementors()
                     .iter()
                     .any(|implementor| implementor.scheme.body == *ty)
             })
@@ -180,15 +160,13 @@ impl TraitTable {
 
     pub fn add_implementor(&mut self, binding: BindingId, implementor: Implementor) {
         if let Some(rust_trait) = self.traits.get_mut(&binding) {
-            rust_trait.implementors.push(implementor);
+            rust_trait.rows_mut().add(implementor);
         }
     }
 
     pub fn remove_struct_implementor(&mut self, binding: BindingId, struct_binding: BindingId) {
         if let Some(rust_trait) = self.traits.get_mut(&binding) {
-            rust_trait.implementors.retain(|implementor| {
-                !matches!(implementor.scheme.body, Type::Named(named, _) if named == struct_binding)
-            });
+            rust_trait.rows_mut().remove_struct(struct_binding);
         }
     }
 
@@ -197,13 +175,8 @@ impl TraitTable {
     }
 
     pub fn set_implementor_scheme(&mut self, binding: BindingId, body: &Type, scheme: Scheme) {
-        if let Some(rust_trait) = self.traits.get_mut(&binding)
-            && let Some(implementor) = rust_trait
-                .implementors
-                .iter_mut()
-                .find(|implementor| implementor.scheme.body == *body)
-        {
-            implementor.scheme = scheme;
+        if let Some(rust_trait) = self.traits.get_mut(&binding) {
+            rust_trait.rows_mut().set_scheme(body, scheme);
         }
     }
 }
@@ -254,7 +227,11 @@ impl<'t> TraitRows<'t> {
     }
 
     fn rows(&self, rust_trait: &'t RustTrait) -> impl Iterator<Item = &'t Implementor> + use<'t> {
-        rust_trait.implementors.iter().chain(self.normalized)
+        rust_trait
+            .rows()
+            .implementors()
+            .iter()
+            .chain(self.normalized)
     }
 }
 
@@ -263,7 +240,7 @@ mod tests {
     use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleId, PrimitiveType};
     use crate::types::selection::Selection;
     use crate::types::{
-        Bound, GenericId, Implementor, RustTrait, Scheme, TraitTable, Type, TypeVar,
+        Bound, GenericId, Implementor, LoweredRows, RustTrait, Scheme, TraitTable, Type, TypeVar,
     };
 
     struct TraitsFixture {
@@ -287,19 +264,20 @@ mod tests {
             ));
             self.traits.add(
                 binding,
-                RustTrait {
-                    path: std::rc::Rc::from(name),
-                    implementors: implementors
-                        .iter()
-                        .map(|primitive| Implementor {
-                            scheme: Scheme::monomorphic(Type::Primitive(*primitive)),
-                            argument: None,
-                        })
-                        .collect(),
-                    help: None,
-                    supertraits: Vec::new(),
-                    associated: None,
-                },
+                RustTrait::written(
+                    std::rc::Rc::from(name),
+                    None,
+                    LoweredRows::new(
+                        implementors
+                            .iter()
+                            .map(|primitive| Implementor {
+                                scheme: Scheme::monomorphic(Type::Primitive(*primitive)),
+                                argument: None,
+                            })
+                            .collect(),
+                        Vec::new(),
+                    ),
+                ),
             );
             binding
         }
@@ -308,19 +286,20 @@ mod tests {
             let binding = self.add(name, &[]);
             self.traits.add(
                 binding,
-                RustTrait {
-                    path: std::rc::Rc::from(name),
-                    implementors: seconds
-                        .iter()
-                        .map(|second| Implementor {
-                            scheme: Scheme::monomorphic(Type::Primitive(PrimitiveType::I64)),
-                            argument: Some(Type::Primitive(*second)),
-                        })
-                        .collect(),
-                    help: None,
-                    supertraits: Vec::new(),
-                    associated: None,
-                },
+                RustTrait::written(
+                    std::rc::Rc::from(name),
+                    None,
+                    LoweredRows::new(
+                        seconds
+                            .iter()
+                            .map(|second| Implementor {
+                                scheme: Scheme::monomorphic(Type::Primitive(PrimitiveType::I64)),
+                                argument: Some(Type::Primitive(*second)),
+                            })
+                            .collect(),
+                        Vec::new(),
+                    ),
+                ),
             );
             binding
         }
@@ -340,13 +319,11 @@ mod tests {
         fn require(&mut self, binding: BindingId, required: BindingId) {
             self.traits.add(
                 binding,
-                RustTrait {
-                    path: std::rc::Rc::from("Cycled"),
-                    implementors: Vec::new(),
-                    help: None,
-                    supertraits: vec![Bound::plain(required)],
-                    associated: None,
-                },
+                RustTrait::written(
+                    std::rc::Rc::from("Cycled"),
+                    None,
+                    LoweredRows::new(Vec::new(), vec![Bound::plain(required)]),
+                ),
             );
         }
     }

@@ -32,12 +32,12 @@ use super::unifier::LiteralKind;
 use super::{BoxedPayload, PayloadPosition, variant_names::VariantNames};
 use super::{pattern_fields::PatternFields, pattern_placement::PatternPlacement};
 use crate::core::{
-    Arm, Binder, BindingId, BindingKind, Block, BodyItem, Control, Expr, ExprKind, FieldLabel,
-    Keyword, Lambda, Leaf, Literal, MapOperation, Pattern, PatternArguments, PatternKind,
-    PrimitiveType, ReferenceKind, RustTemplate, StructExpr, TypeExpr, TypeExprKind, VariantInfo,
+    Arm, Binder, BindingId, BindingKind, Block, BodyItem, BorrowTrait, Control, EqualityTrait,
+    Expr, ExprKind, FieldLabel, HashTrait, Keyword, Lambda, Leaf, Literal, MapOperation,
+    OrderTrait, Pattern, PatternArguments, PatternKind, PrimitiveType, ReferenceKind, RustTemplate,
+    StructExpr, TypeExpr, TypeExprKind, VariantInfo,
 };
-use crate::diagnostic::SimilarName;
-use crate::diagnostic::{Diagnostic, DiagnosticCode};
+use crate::diagnostic::{Diagnostic, DiagnosticCode, SimilarName};
 use crate::reader::NumberValue;
 use crate::source::Span;
 use shared_variables::SharedVariables;
@@ -2973,9 +2973,9 @@ impl TypeChecker {
 
     fn check_map_key(&mut self, collection: &Collection, span: Span) {
         let paths: &[&str] = if collection.kind() == CollectionKind::SortedMap {
-            &["Ord"]
+            &[OrderTrait::PATH]
         } else {
-            &["std::hash::Hash", "Eq"]
+            &[HashTrait::PATH, EqualityTrait::PATH]
         };
         let key = self.unifier.resolve(collection.key());
         if key.is_unknown() {
@@ -3048,7 +3048,7 @@ impl TypeChecker {
             .declarations
             .traits
             .table
-            .with_paths(&["std::borrow::Borrow"])
+            .with_paths(&[BorrowTrait::PATH])
             .first()
             .copied()
             .expect("the prelude defines borrow");

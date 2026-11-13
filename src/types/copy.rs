@@ -84,7 +84,8 @@ impl<'a> CopyRules<'a> {
         self.bound_allows_only_copy(bound)
             && self.traits.get(bound).is_some_and(|rust_trait| {
                 rust_trait
-                    .implementors
+                    .rows()
+                    .implementors()
                     .iter()
                     .all(|implementor| !implementor.scheme.body.is_reference())
             })
@@ -92,8 +93,9 @@ impl<'a> CopyRules<'a> {
 
     fn bound_allows_only_copy(&self, bound: BindingId) -> bool {
         self.traits.get(bound).is_some_and(|rust_trait| {
-            !rust_trait.implementors.is_empty()
-                && rust_trait.implementors.iter().all(|implementor| {
+            let implementors = rust_trait.rows().implementors();
+            !implementors.is_empty()
+                && implementors.iter().all(|implementor| {
                     implementor.scheme.params.is_empty() && self.is_copy(&implementor.scheme.body)
                 })
         })
@@ -107,7 +109,8 @@ mod tests {
     use super::CopyRules;
     use crate::core::{BindingArena, BindingInfo, BindingKind, ModuleId, PrimitiveType};
     use crate::types::Type;
-    use crate::types::traits::{Implementor, RustTrait, TraitTable};
+    use crate::types::rust_trait::{Implementor, LoweredRows, RustTrait};
+    use crate::types::traits::TraitTable;
     use crate::types::ty::Scheme;
 
     struct CopyTraitFixture {
@@ -127,16 +130,17 @@ mod tests {
             let mut traits = TraitTable::default();
             traits.add(
                 bound,
-                RustTrait {
-                    path: "Copy".into(),
-                    implementors: vec![Implementor {
-                        scheme: Scheme::monomorphic(Type::Primitive(PrimitiveType::I64)),
-                        argument: None,
-                    }],
-                    help: None,
-                    supertraits: Vec::new(),
-                    associated: None,
-                },
+                RustTrait::written(
+                    "Copy".into(),
+                    None,
+                    LoweredRows::new(
+                        vec![Implementor {
+                            scheme: Scheme::monomorphic(Type::Primitive(PrimitiveType::I64)),
+                            argument: None,
+                        }],
+                        Vec::new(),
+                    ),
+                ),
             );
             Self {
                 declarations: crate::types::Declarations::with_traits(traits),

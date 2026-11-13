@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 use super::associated::LoweredAssociatedValue;
 use super::checker::TypeChecker;
 use super::problems::TypeProblems;
-use super::traits::Implementor;
+use super::rust_trait::Implementor;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
 use crate::core::ClosureKind;
 use crate::core::{

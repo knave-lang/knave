@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/trait_reach_signature_types.knv
+---
+(type reason (fn (parse-int-error) unit))
+(type shout (where ((a debug)) (fn (a) unit)))

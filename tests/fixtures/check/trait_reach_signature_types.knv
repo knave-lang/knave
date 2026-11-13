@@ -1,0 +1,9 @@
+(type reason
+  (fn ((parse-error i64)) unit))
+
+(defn reason (failure) (do))
+
+(type shout
+  (where ((a debug)) (fn (a) unit)))
+
+(defn shout (value) (do))

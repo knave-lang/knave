@@ -464,18 +464,6 @@ impl KernelConstants {
     pub const BOOLEANS: [(&'static str, bool); 2] = [("true", true), ("false", false)];
 }
 
-pub struct CopyTrait;
-
-impl CopyTrait {
-    pub const PATH: &'static str = "Copy";
-}
-
-pub struct OrderTrait;
-
-impl OrderTrait {
-    pub const PATH: &'static str = "Ord";
-}
-
 pub struct FunctionFieldTraits;
 
 impl FunctionFieldTraits {

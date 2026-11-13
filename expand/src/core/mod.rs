@@ -1,5 +1,6 @@
 mod binding;
 mod builtin;
+mod consulted_traits;
 mod expr;
 mod kernel;
 mod keyword;
@@ -11,21 +12,24 @@ mod structural;
 mod template;
 mod template_operation;
 mod types;
+mod written_types;
 
 pub use binding::{
     BindingArena, BindingId, BindingInfo, BindingKind, Declaration, ModuleDefinitions, Namespace,
     VariantInfo,
 };
 pub use builtin::{Builtin, BuiltinModule};
+pub use consulted_traits::{
+    BorrowTrait, ConsultedTraits, CopyTrait, EqualityTrait, HashTrait, OrderTrait,
+};
 pub use expr::{
     Arm, Binder, Block, BodyItem, Control, Expr, ExprKind, FieldLabel, FieldSpelling, Lambda, Leaf,
     Literal, MapOperation, Pattern, PatternArguments, PatternKind, PatternPart, RustClause,
     RustTemplate, StructExpr,
 };
 pub use kernel::{
-    ControlForm, CopyTrait, DefinitionForm, ExpressionForm, FunctionFieldTraits, KernelConstants,
-    KernelForm, KernelType, LeafForm, OrderTrait, PrimitiveType, ReferenceKind, StructDerives,
-    StructForm,
+    ControlForm, DefinitionForm, ExpressionForm, FunctionFieldTraits, KernelConstants, KernelForm,
+    KernelType, LeafForm, PrimitiveType, ReferenceKind, StructDerives, StructForm,
 };
 pub use keyword::Keyword;
 pub use module::{
@@ -47,3 +51,4 @@ pub use template::{
 };
 pub use template_operation::{Division, Operand, TemplateOperation};
 pub use types::{ClosureKind, TypeBinder, TypeBound, TypeExpr, TypeExprKind};
+pub use written_types::WrittenTypes;

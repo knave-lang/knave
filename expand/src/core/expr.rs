@@ -230,6 +230,13 @@ pub struct Lambda {
 }
 
 impl Lambda {
+    pub fn annotations(&self) -> impl Iterator<Item = &TypeExpr> {
+        self.params
+            .iter()
+            .filter_map(|param| param.annotation.as_ref())
+            .chain(self.body.annotations())
+    }
+
     pub fn new(params: Vec<Binder>, body: Block) -> Self {
         let body_size = body.expressions_run();
         Self {
@@ -348,6 +355,13 @@ impl StructExpr {
 }
 
 impl Block {
+    pub fn annotations(&self) -> impl Iterator<Item = &TypeExpr> {
+        self.items.iter().filter_map(|item| match item {
+            BodyItem::Let(binder, _) => binder.annotation.as_ref(),
+            BodyItem::Expr(_) => None,
+        })
+    }
+
     pub fn expressions_run(&self) -> usize {
         let mut pending: Vec<&Expr> = self.expressions().collect();
         let mut count = 0;

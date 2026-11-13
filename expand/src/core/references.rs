@@ -1,10 +1,12 @@
 use rustc_hash::FxHashMap;
 
+use super::written_types::WrittenTypes;
 use super::{BindingArena, BindingId, BindingKind, Control, Expr, ExprKind, Leaf, Pattern};
 
 #[derive(Default)]
 pub struct References {
     globals: Vec<BindingId>,
+    written: WrittenTypes,
     uses_compile_time_code: bool,
     arm_outers: FxHashMap<BindingId, BindingId>,
 }
@@ -20,6 +22,10 @@ impl References {
         &self.globals
     }
 
+    pub fn written_types(&self) -> &WrittenTypes {
+        &self.written
+    }
+
     pub fn into_globals(self) -> Vec<BindingId> {
         self.globals
     }
@@ -29,6 +35,7 @@ impl References {
     }
 
     fn collect(&mut self, expr: &Expr, bindings: &BindingArena) {
+        self.written.note(expr);
         match expr.kind() {
             ExprKind::Leaf(Leaf::Var(binding)) => self.note_read(*binding, bindings),
             ExprKind::Leaf(Leaf::Quote(_)) => self.uses_compile_time_code = true,

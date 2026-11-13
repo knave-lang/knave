@@ -1,8 +1,9 @@
-use std::cell::OnceCell;
 use std::fmt;
 
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+
+use super::SavedValue;
 
 pub trait ImplementorRow {
     fn is_primitive(&self) -> bool;
@@ -10,31 +11,34 @@ pub trait ImplementorRow {
 
 #[derive(Clone)]
 pub struct ImplementorRows<R> {
-    decoded: OnceCell<Vec<R>>,
-    saved: &'static [u8],
+    rows: Rows<R>,
     only_primitives: bool,
+}
+
+#[derive(Clone)]
+enum Rows<R> {
+    Built(Vec<R>),
+    Saved(SavedValue<Vec<R>>),
 }
 
 impl<R: ImplementorRow + Serialize + DeserializeOwned> ImplementorRows<R> {
     pub fn new(rows: Vec<R>) -> Self {
         let only_primitives = !rows.is_empty() && rows.iter().all(ImplementorRow::is_primitive);
         Self {
-            decoded: OnceCell::from(rows),
-            saved: &[],
+            rows: Rows::Built(rows),
             only_primitives,
         }
     }
 
     pub fn get(&self) -> &[R] {
-        self.decoded.get_or_init(|| self.decode())
+        match &self.rows {
+            Rows::Built(rows) => rows,
+            Rows::Saved(saved) => saved.decoded(),
+        }
     }
 
     pub fn only_primitives(&self) -> bool {
         self.only_primitives
-    }
-
-    fn decode(&self) -> Vec<R> {
-        bincode::deserialize(self.saved).expect("saved rows decode")
     }
 
     fn encoded(&self) -> Vec<u8> {
@@ -56,12 +60,11 @@ impl<R: ImplementorRow + Serialize + DeserializeOwned> Serialize for Implementor
     }
 }
 
-impl<'de: 'static, R> serde::Deserialize<'de> for ImplementorRows<R> {
+impl<'de: 'static, R: DeserializeOwned> serde::Deserialize<'de> for ImplementorRows<R> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let (only_primitives, saved) = <(bool, &'static [u8])>::deserialize(deserializer)?;
         Ok(Self {
-            decoded: OnceCell::new(),
-            saved,
+            rows: Rows::Saved(SavedValue::borrowing(saved)),
             only_primitives,
         })
     }

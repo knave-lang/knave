@@ -12,7 +12,7 @@ pub trait ImplementorRow {
 #[derive(Clone)]
 pub struct ImplementorRows<R> {
     rows: Rows<R>,
-    only_primitives: bool,
+    all_rows_primitive: bool,
 }
 
 #[derive(Clone)]
@@ -23,10 +23,10 @@ enum Rows<R> {
 
 impl<R: ImplementorRow + Serialize + DeserializeOwned> ImplementorRows<R> {
     pub fn new(rows: Vec<R>) -> Self {
-        let only_primitives = !rows.is_empty() && rows.iter().all(ImplementorRow::is_primitive);
+        let all_rows_primitive = !rows.is_empty() && rows.iter().all(ImplementorRow::is_primitive);
         Self {
             rows: Rows::Built(rows),
-            only_primitives,
+            all_rows_primitive,
         }
     }
 
@@ -37,8 +37,8 @@ impl<R: ImplementorRow + Serialize + DeserializeOwned> ImplementorRows<R> {
         }
     }
 
-    pub fn only_primitives(&self) -> bool {
-        self.only_primitives
+    pub fn all_rows_primitive(&self) -> bool {
+        self.all_rows_primitive
     }
 
     fn encoded(&self) -> Vec<u8> {
@@ -56,16 +56,16 @@ impl<R: ImplementorRow + Serialize + DeserializeOwned + fmt::Debug> fmt::Debug
 
 impl<R: ImplementorRow + Serialize + DeserializeOwned> Serialize for ImplementorRows<R> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        (self.only_primitives, self.encoded().as_slice()).serialize(serializer)
+        (self.all_rows_primitive, self.encoded().as_slice()).serialize(serializer)
     }
 }
 
 impl<'de: 'static, R: DeserializeOwned> serde::Deserialize<'de> for ImplementorRows<R> {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let (only_primitives, saved) = <(bool, &'static [u8])>::deserialize(deserializer)?;
+        let (all_rows_primitive, saved) = <(bool, &'static [u8])>::deserialize(deserializer)?;
         Ok(Self {
             rows: Rows::Saved(SavedValue::borrowing(saved)),
-            only_primitives,
+            all_rows_primitive,
         })
     }
 }
@@ -120,8 +120,8 @@ mod tests {
         let mixed =
             ImplementorRows::new(vec![RowsFixture::row(1, true), RowsFixture::row(2, false)]);
         let empty = ImplementorRows::<NamedRow>::new(Vec::new());
-        assert!(RowsFixture::reloaded(&primitives).only_primitives());
-        assert!(!RowsFixture::reloaded(&mixed).only_primitives());
-        assert!(!RowsFixture::reloaded(&empty).only_primitives());
+        assert!(RowsFixture::reloaded(&primitives).all_rows_primitive());
+        assert!(!RowsFixture::reloaded(&mixed).all_rows_primitive());
+        assert!(!RowsFixture::reloaded(&empty).all_rows_primitive());
     }
 }

@@ -159,7 +159,7 @@
   "Marks a type that lends a view of another, Rust's `std::borrow::Borrow`.
 
   A [string] and a `(ref str)` lend a `str`, so a `str` key reads a map of
-  [string] keys and [join] takes either item.
+  [string] keys and `join` takes either item.
 
   (join (vec (str \"a\") (str \"b\")) \",\")
   => \"a,b\"")

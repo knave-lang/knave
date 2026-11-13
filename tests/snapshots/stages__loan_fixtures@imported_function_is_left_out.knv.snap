@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+assertion_line: 107
+expression: reports.report(path)
+input_file: tests/fixtures/loans/imported_function_is_left_out.knv
+---
+main
+  5:21 change `v`: no live loan
+  6:17 borrow `v`: no live loan

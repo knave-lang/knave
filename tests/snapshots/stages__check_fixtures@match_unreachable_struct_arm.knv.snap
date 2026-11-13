@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/match_unreachable_struct_arm.knv
 ---
-warning[L0434]: unreachable `match` arm
+warning[L0803]: unreachable `match` arm
  --> check/match_unreachable_struct_arm.knv:8:6
   |
 7 |     ((range start end) (- end start))

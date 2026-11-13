@@ -12,7 +12,7 @@ error[L0433]: non-exhaustive `match`
   = note: missing 1 case: `_`
   = help: add an arm for each missing case
 
-warning[L0434]: unreachable `match` arm
+warning[L0803]: unreachable `match` arm
  --> check/match_unreachable_literals.knv:2:25
   |
 2 |   (match n (0 0) (1 1) (1 2)))
@@ -29,7 +29,7 @@ error[L0433]: non-exhaustive `match`
   = note: missing 1 case: `_`
   = help: add an arm for each missing case
 
-warning[L0434]: unreachable `match` arm
+warning[L0803]: unreachable `match` arm
  --> check/match_unreachable_literals.knv:5:29
   |
 5 |   (match s ("a" 1) ("b" 2) ("a" 3)))
@@ -37,7 +37,7 @@ warning[L0434]: unreachable `match` arm
   |             |
   |             this arm covers it
 
-warning[L0434]: unreachable `match` arm
+warning[L0803]: unreachable `match` arm
  --> check/match_unreachable_literals.knv:8:32
   |
 8 |   (match b (true 1) (false 2) (true 3)))

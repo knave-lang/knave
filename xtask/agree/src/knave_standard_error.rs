@@ -157,7 +157,7 @@ mod tests {
     #[test]
     fn skips_warnings_and_keeps_an_error_without_a_code_as_knave_s() {
         let fixture = StandardErrorFixture::new();
-        let report = "warning[L0434]: unreachable\n --> moved.knv:1:1\nerror: cannot read\n --> moved.knv:1:2\n";
+        let report = "warning[L0803]: unreachable\n --> moved.knv:1:1\nerror: cannot read\n --> moved.knv:1:2\n";
         let rejections = KnaveStandardError::of(&fixture.program).rejections(report);
         assert_eq!(rejections.len(), 1);
         assert_eq!(rejections[0].code, None);

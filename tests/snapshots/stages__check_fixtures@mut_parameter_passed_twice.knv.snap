@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/mut_parameter_passed_twice.knv
 ---
-warning[L0504]: `add-one` changes an argument, so its name should end with `!`
+warning[L0804]: `add-one` changes an argument, so its name should end with `!`
  --> check/mut_parameter_passed_twice.knv:1:7
   |
 1 | (defn add-one (stack) (push! stack 1))
@@ -11,7 +11,7 @@ warning[L0504]: `add-one` changes an argument, so its name should end with `!`
   |
   = help: rename it `add-one!`
 
-warning[L0504]: `add-two` changes an argument, so its name should end with `!`
+warning[L0804]: `add-two` changes an argument, so its name should end with `!`
  --> check/mut_parameter_passed_twice.knv:3:7
   |
 3 | (defn add-two (stack)

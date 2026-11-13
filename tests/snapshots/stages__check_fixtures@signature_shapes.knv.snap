@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/signature_shapes.knv
 ---
-warning[L0504]: `bump` changes an argument, so its name should end with `!`
+warning[L0804]: `bump` changes an argument, so its name should end with `!`
  --> check/signature_shapes.knv:5:7
   |
 5 | (defn bump (target) (do))
@@ -11,7 +11,7 @@ warning[L0504]: `bump` changes an argument, so its name should end with `!`
   |
   = help: rename it `bump!`
 
-warning[L0504]: `touch` changes an argument, so its name should end with `!`
+warning[L0804]: `touch` changes an argument, so its name should end with `!`
   --> check/signature_shapes.knv:10:7
    |
 10 | (defn touch (value) (do))
@@ -19,7 +19,7 @@ warning[L0504]: `touch` changes an argument, so its name should end with `!`
    |
    = help: rename it `touch!`
 
-warning[L0504]: `touch-counter` changes an argument, so its name should end with `!`
+warning[L0804]: `touch-counter` changes an argument, so its name should end with `!`
   --> check/signature_shapes.knv:12:7
    |
 12 | (defn touch-counter (target) (touch target))

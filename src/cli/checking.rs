@@ -141,13 +141,13 @@ mod tests {
             .checking()
             .check_showing::<EnforcedOwnership>(&program, CheckingFixture::is_unreachable_arm)
             .expect("the program checks");
-        let codes: Vec<&str> = typed
+        let codes: Vec<&DiagnosticCode> = typed
             .warnings
             .in_source_order()
             .into_iter()
-            .filter_map(|warning| warning.code().map(DiagnosticCode::as_str))
+            .filter_map(|warning| warning.code())
             .collect();
-        assert_eq!(codes, ["L0434"]);
+        assert_eq!(codes, [&DiagnosticCode::UNREACHABLE_ARM]);
         assert_eq!(fixture.output.writes(), ["1 diagnostics"]);
     }
 

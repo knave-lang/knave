@@ -4,7 +4,6 @@ use super::call_site::CallSite;
 use super::call_walk::CallWalk;
 use super::closure::Closure;
 use super::control_flow_graph::ControlFlowGraph;
-use super::expr_parts::ExprParts;
 use super::expression_walk::ExpressionWalk;
 use super::holdings::Holdings;
 use super::lender::Lender;
@@ -77,7 +76,8 @@ impl<'w> BodyWalk<'w> {
                 self.lent(expr, at)
             }
             TypedExprKind::Control(control) => self.control(control, at),
-            _ => self.sequence(ExprParts::of(expr).into_iter(), at),
+            TypedExprKind::Infer(value) => self.expr(value, at),
+            _ => self.sequence(expr.children().into_iter(), at),
         }
     }
 

@@ -42,13 +42,21 @@ impl dyn Passing {
     ) -> &'static dyn Passing {
         match argument.borrow {
             Borrow::Shared => &Lends::SHARED,
-            Borrow::Mutable | Borrow::Reborrow => &Lends::MUTABLE,
+            Borrow::Mutable => &Lends::MUTABLE,
+            Borrow::Reborrow => <dyn Passing>::reborrowed(parameter),
             Borrow::Deref(_) => &Copies,
             Borrow::Passthrough | Borrow::Collapse(_) if argument.value.ty.is_reference() => {
                 <dyn Passing>::through_reference(parameter)
             }
             Borrow::None if rules.moves(&argument.value.ty) => &Moves,
             _ => &Holds,
+        }
+    }
+
+    fn reborrowed(parameter: Option<&Type>) -> &'static dyn Passing {
+        match parameter {
+            Some(Type::Ref(..)) => &Lends::SHARED,
+            _ => &Lends::MUTABLE,
         }
     }
 
@@ -235,6 +243,9 @@ mod tests {
         let fixture = PassingFixture::new();
         let shared = fixture.outcome("v", Borrow::Shared, None);
         let changed = fixture.outcome("v", Borrow::Reborrow, None);
+        let reading = Type::shared(Type::unit());
+        let read = fixture.outcome("v", Borrow::Reborrow, Some(&reading));
+        assert_eq!(read.accesses, ["borrow `v`"]);
         assert!(shared.takes_the_place && shared.passes_a_loan);
         assert_eq!(shared.accesses, ["borrow `v`"]);
         assert_eq!(changed.accesses, ["change `v`"]);

@@ -1,0 +1,6 @@
+(use imported/growth grow-from-first!)
+
+(defn main ()
+  (local v (vec 1 2))
+  (grow-from-first! v)
+  (println (len v)))

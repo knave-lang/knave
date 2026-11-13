@@ -335,6 +335,71 @@ mod tests {
     }
 
     #[test]
+    fn a_borrow_read_only_through_a_copy_stays_live_until_that_read() {
+        let line = WalkFixture::change_of_v_in(
+            "  (local r (at v 0))\n  (push! v 4)\n  (println (+ (deref r) 1))",
+        );
+        assert!(line.ends_with("`v` lent at 3:16, held by `r`"), "{line}");
+    }
+
+    #[test]
+    fn a_written_ref_lends_its_place() {
+        let line =
+            WalkFixture::change_of_v_in("  (local r (ref v))\n  (push! v 4)\n  (println (len r))");
+        assert!(line.ends_with("`v` lent at 3:17, held by `r`"), "{line}");
+    }
+
+    #[test]
+    fn a_struct_holds_the_loans_of_every_field_and_an_update_and_a_variant_hold_theirs() {
+        let source = LoanSource::new(
+            "(defstruct both :a (ref i64) :b (ref i64))\n\n(defn main ()\n  (local v (vec 1 2))\n  (local w (vec 3))\n  (local p (->both :a (at v 0) :b (at w 0)))\n  (local q (assoc p :b (at v 1)))\n  (local o (some (at w 0)))\n  (push! v 4)\n  (println (:a p) (:b q) (unwrap-or o (at v 0))))",
+        );
+        let line = source.line_of("change `v`");
+        assert!(line.contains("`v` lent at 6:27, held by `p`"), "{line}");
+        assert!(line.contains("`v` lent at 7:28, held by `q`"), "{line}");
+        assert!(line.contains("`w` lent at 8:22, held by `o`"), "{line}");
+    }
+
+    #[test]
+    fn a_match_binder_holds_the_loans_of_the_matched_value() {
+        let line = WalkFixture::change_of_v_in(
+            "  (match (first v)\n    ((some x) (do (push! v 1) (println x)))\n    (none (println 0)))",
+        );
+        assert!(line.ends_with("`v` lent at 3:17, held by `x`"), "{line}");
+    }
+
+    #[test]
+    fn a_field_read_through_a_value_holding_a_borrow_keeps_that_borrow() {
+        let source = LoanSource::new(
+            "(defstruct tag :label (ref string))\n\n(defn main ()\n  (local v (vec (str \"a\")))\n  (local t (->tag :label (at v 0)))\n  (local l (:label t))\n  (push! v (str \"b\"))\n  (println l))",
+        );
+        assert!(
+            source
+                .line_of("change `v`")
+                .contains("`v` lent at 5:30, held by `l`")
+        );
+    }
+
+    #[test]
+    fn a_borrowed_place_moved_into_a_call_is_a_move() {
+        let source = LoanSource::new(
+            "(defn keep (xs) xs)\n\n(defn main ()\n  (local v (vec 1 2))\n  (local r (at v 0))\n  (local k (keep v))\n  (println r (len k)))",
+        );
+        assert_eq!(
+            source.line_of("move `v`"),
+            "6:18 move `v`: `v` lent at 5:16, held by `r`"
+        );
+    }
+
+    #[test]
+    fn a_local_moved_into_another_is_not_live_at_its_own_move() {
+        let source = LoanSource::new(
+            "(defstruct tag :label (ref string) :note string)\n\n(defn main ()\n  (local v (vec (str \"a\")))\n  (local t (->tag :label (at v 0) :note (str \"n\")))\n  (local u t)\n  (println (:label u)))",
+        );
+        assert!(source.line_of("move `t`").ends_with("no live loan"));
+    }
+
+    #[test]
     fn a_helper_result_holds_no_loan() {
         let source = LoanSource::new(
             "(defn first-of (v) (at v 0))\n\n(defn main ()\n  (local v (vec 1 2))\n  (local r (first-of v))\n  (push! v 4)\n  (println r))",

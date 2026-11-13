@@ -1,9 +1,7 @@
-use std::cell::OnceCell;
-
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::core::ModuleId;
+use crate::core::{ModuleId, SavedValue};
 use crate::reader::Form;
 
 pub type NotesKey = (ModuleId, String);
@@ -38,7 +36,7 @@ impl NoteTables {
 
 #[derive(Default)]
 pub struct SavedNotes {
-    modules: FxHashMap<ModuleId, SavedModuleNotes>,
+    modules: FxHashMap<ModuleId, SavedValue<ModuleTable>>,
 }
 
 impl<'de: 'static> Deserialize<'de> for SavedNotes {
@@ -46,7 +44,7 @@ impl<'de: 'static> Deserialize<'de> for SavedNotes {
         let modules: Vec<(ModuleId, &'static [u8])> = Deserialize::deserialize(deserializer)?;
         let modules = modules
             .into_iter()
-            .map(|(module, encoded)| (module, SavedModuleNotes::borrowing(encoded)))
+            .map(|(module, encoded)| (module, SavedValue::borrowing(encoded)))
             .collect();
         Ok(Self { modules })
     }
@@ -59,31 +57,7 @@ impl SavedNotes {
 
     #[cfg(test)]
     pub fn decoded_nothing(&self) -> bool {
-        self.modules.values().all(SavedModuleNotes::decoded_nothing)
-    }
-}
-
-struct SavedModuleNotes {
-    encoded: &'static [u8],
-    decoded: OnceCell<ModuleTable>,
-}
-
-impl SavedModuleNotes {
-    fn borrowing(encoded: &'static [u8]) -> Self {
-        Self {
-            encoded,
-            decoded: OnceCell::new(),
-        }
-    }
-
-    #[cfg(test)]
-    fn decoded_nothing(&self) -> bool {
-        self.decoded.get().is_none()
-    }
-
-    fn decoded(&self) -> &ModuleTable {
-        self.decoded
-            .get_or_init(|| bincode::deserialize(self.encoded).expect("the saved notes decode"))
+        self.modules.values().all(|notes| !notes.is_decoded())
     }
 }
 
@@ -138,7 +112,7 @@ mod tests {
         let table = SavedTable::new();
         let bytes: &'static [u8] = table.encoded().leak();
         let saved: SavedNotes = bincode::deserialize(bytes).expect("saved notes deserialize");
-        let encoded = saved.modules[&table.noted_module].encoded.as_ptr_range();
+        let encoded = saved.modules[&table.noted_module].encoded().as_ptr_range();
         let held = bytes.as_ptr_range();
         assert!(held.start <= encoded.start && encoded.end <= held.end);
     }
@@ -171,6 +145,6 @@ mod tests {
         let saved = table.saved();
         saved.of(table.noted_module, SavedTable::KEY);
         let other = &saved.modules[&table.other_noted_module];
-        assert!(other.decoded_nothing());
+        assert!(!other.is_decoded());
     }
 }

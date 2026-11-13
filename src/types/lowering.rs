@@ -392,3 +392,77 @@ impl TypeChecker {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::core::{
+        BindingArena, BindingId, BindingInfo, BindingKind, ImplementorRows, RustTraitDeclaration,
+    };
+    use crate::source::{SourceId, Span};
+    use crate::types::checker::TypeChecker;
+    use crate::types::{LoweredRows, RustTrait};
+
+    struct ArgumentCheckFixture {
+        checker: TypeChecker,
+        declared: BindingId,
+    }
+
+    impl ArgumentCheckFixture {
+        fn new() -> Self {
+            let mut checker = TypeChecker::new(BindingArena::default());
+            let declared = checker.bindings.add(BindingInfo::new(
+                "shown".into(),
+                BindingKind::TypeVariable,
+                None,
+            ));
+            Self { checker, declared }
+        }
+
+        fn declaration(&self) -> RustTraitDeclaration {
+            RustTraitDeclaration {
+                binding: self.declared,
+                path: "Shown".into(),
+                self_variable: self.declared,
+                methods: Vec::new(),
+                help: None,
+                requires: Vec::new(),
+                structural: None,
+                associated: Vec::new(),
+                implementors: ImplementorRows::new(Vec::new()),
+            }
+        }
+
+        fn holding(mut self, rust_trait: impl FnOnce(&RustTraitDeclaration) -> RustTrait) -> Self {
+            let rust_trait = rust_trait(&self.declaration());
+            self.checker
+                .declarations
+                .traits
+                .table
+                .add(self.declared, rust_trait);
+            self
+        }
+
+        fn checks_an_argument(&self) -> bool {
+            let span = Span::new(SourceId::new(0), 0..0);
+            self.checker
+                .check_trait_argument(self.declared, span)
+                .is_ok()
+        }
+    }
+
+    #[test]
+    fn a_reached_trait_without_argument_rows_takes_no_argument() {
+        let fixture = ArgumentCheckFixture::new().holding(|declaration| {
+            RustTrait::lowered(declaration, LoweredRows::new(Vec::new(), Vec::new()))
+        });
+        assert!(!fixture.checks_an_argument());
+    }
+
+    #[test]
+    #[should_panic(expected = "the trait reach left out a trait the program uses")]
+    fn an_argument_on_an_unreached_trait_fails_loudly() {
+        ArgumentCheckFixture::new()
+            .holding(RustTrait::unreached)
+            .checks_an_argument();
+    }
+}

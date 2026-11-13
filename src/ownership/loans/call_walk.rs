@@ -31,6 +31,6 @@ impl<'c, 'w> CallWalk<'c, 'w> {
         let evaluated = values.evaluate(self.walk, called.end);
         let point = self.walk.join(&[evaluated.end]);
         let passed = values.pass(evaluated.held, &mut self.walk.lender(point));
-        Walked::holding(point, rules.result_of(&self.site, passed))
+        Walked::holding(point, self.site.result_holdings(passed, rules))
     }
 }

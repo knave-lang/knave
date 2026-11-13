@@ -1,8 +1,7 @@
-use super::call_site::CallSite;
-use super::holdings::Holdings;
-use crate::types::{CopyRules, TemplateBorrows, TypedExpr, TypedProgram};
+use crate::types::{CopyRules, TemplateBorrows, Type, TypedExpr, TypedProgram};
 
 pub struct LoanRules<'p> {
+    program: &'p TypedProgram,
     templates: &'p TemplateBorrows,
     copy: CopyRules<'p>,
 }
@@ -10,6 +9,7 @@ pub struct LoanRules<'p> {
 impl<'p> LoanRules<'p> {
     pub fn of(program: &'p TypedProgram) -> Self {
         Self {
+            program,
             templates: &program.template_borrows,
             copy: CopyRules::new(&program.declarations, &program.generics),
         }
@@ -19,7 +19,18 @@ impl<'p> LoanRules<'p> {
         !self.copy.is_copy(&value.ty)
     }
 
-    pub fn result_of(&self, site: &CallSite<'_>, passed: Vec<Holdings>) -> Holdings {
-        site.result_holdings(passed, self.templates)
+    pub fn is_template(&self, callee: &TypedExpr) -> bool {
+        self.templates.read_template(callee, false, |_| true)
+    }
+
+    pub fn holds_a_borrow(&self, ty: &Type) -> bool {
+        match ty {
+            Type::Ref(..) | Type::Mut(..) => true,
+            Type::Named(binding, _) if self.program.has_lifetime_parameter(*binding) => true,
+            other => other
+                .parts()
+                .into_iter()
+                .any(|part| self.holds_a_borrow(part)),
+        }
     }
 }

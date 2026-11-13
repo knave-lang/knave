@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::hash::Hash;
 use std::rc::Rc;
 
@@ -15,6 +14,7 @@ use super::literal_generics::LiteralGenerics;
 use super::local_closures::LocalClosures;
 use super::locals::LocalNames;
 use super::method_elisions::{MethodElisions, MethodLifetimes, TraitMethodElisions};
+use super::module_tree::ModuleTree;
 use super::mutable_locals::MutableLocals;
 use super::opaque_borrows::OpaqueBorrows;
 use super::open_literals::OpenLiterals;
@@ -48,46 +48,6 @@ struct TraitHeader {
     supertraits: Vec<Bound>,
     associated: Vec<TypedAssociatedType>,
     methods: Vec<TypedTraitMethod>,
-}
-
-#[derive(Default)]
-struct ModuleTree {
-    items: Vec<Vec<Fragment>>,
-    children: BTreeMap<String, ModuleTree>,
-}
-
-impl ModuleTree {
-    fn insert(&mut self, segments: &[String], items: Vec<Vec<Fragment>>) {
-        match segments.split_first() {
-            Some((first, rest)) => self
-                .children
-                .entry(first.clone())
-                .or_default()
-                .insert(rest, items),
-            None => self.items.extend(items),
-        }
-    }
-
-    fn fragments(&self, name: &str, keyword: &str) -> Vec<Fragment> {
-        let mut inner = ItemEmitter::separated(self.items.clone());
-        for (child, tree) in &self.children {
-            inner.push(Fragment::Newline);
-            inner.push(Fragment::Newline);
-            inner.extend(tree.fragments(child, "pub(crate) mod"));
-        }
-        vec![
-            Fragment::Text(format!("{keyword} {name} {{")),
-            Fragment::Indented(Self::leading_newline(inner)),
-            Fragment::Newline,
-            Fragment::Text("}".to_string()),
-        ]
-    }
-
-    fn leading_newline(fragments: Vec<Fragment>) -> Vec<Fragment> {
-        let mut with_newline = vec![Fragment::Newline];
-        with_newline.extend(fragments);
-        with_newline
-    }
 }
 
 pub struct ItemEmitter<'a> {
@@ -143,7 +103,7 @@ impl<'a> ItemEmitter<'a> {
         if let Some(call) = runtime.as_ref().and_then(RuntimeModule::start_up_call) {
             Self::start_main_with(&mut entry_items[entry_function], call);
         }
-        let mut fragments = Self::separated(entry_items);
+        let mut fragments = ModuleTree::separated(entry_items);
         fragments.extend(modules);
         if let Some(runtime) = runtime {
             fragments.extend([Fragment::Newline, Fragment::Newline]);
@@ -175,12 +135,7 @@ impl<'a> ItemEmitter<'a> {
                 }
             }
         }
-        let mut fragments = Vec::new();
-        for (name, child) in &tree.children {
-            fragments.extend([Fragment::Newline, Fragment::Newline]);
-            fragments.extend(child.fragments(name, "mod"));
-        }
-        fragments
+        tree.top_modules()
     }
 
     fn text_of(entry_items: &[Vec<Fragment>], modules: &[Fragment]) -> String {
@@ -205,17 +160,6 @@ impl<'a> ItemEmitter<'a> {
         main_body
             .expect("the entry item holds the main function")
             .splice(0..0, [Fragment::Newline, Fragment::Text(call.to_string())]);
-    }
-
-    pub fn separated(items: Vec<Vec<Fragment>>) -> Vec<Fragment> {
-        let mut fragments = Vec::new();
-        for (position, item) in items.into_iter().enumerate() {
-            if position > 0 {
-                fragments.extend([Fragment::Newline, Fragment::Newline]);
-            }
-            fragments.extend(item);
-        }
-        fragments
     }
 
     fn module_items(&mut self, module: ModuleId) -> Vec<Vec<Fragment>> {

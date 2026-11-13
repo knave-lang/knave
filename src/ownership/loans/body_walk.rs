@@ -305,6 +305,19 @@ mod tests {
     }
 
     #[test]
+    fn a_borrowed_key_s_own_loans_stay_out_of_a_map_lookup() {
+        let source = LoanSource::new(
+            "(defn main ()\n  (local m (hash-map (str \"k\") 1))\n  (local k (str \"k\"))\n  (local key (as-str k))\n  (local r (get m key))\n  (set! k (str \"j\"))\n  (println (unwrap r)))",
+        );
+        let line = source.line_of("change `k`");
+        assert!(
+            line.split("; ")
+                .all(|loan| !(loan.contains("`k` lent") && loan.ends_with("held by `r`"))),
+            "{line}"
+        );
+    }
+
+    #[test]
     fn a_prelude_call_with_two_borrowed_parameters_holds_both_loans() {
         let line = WalkFixture::change_of_v_in(
             "  (local d 0)\n  (local e (unwrap-or (first v) (ref d)))\n  (push! v 4)\n  (println e)",

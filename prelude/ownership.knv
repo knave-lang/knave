@@ -9,7 +9,7 @@
 
 (rust-trait clone "Clone"
   bool char string i8 i16 i32 i64 i128 isize u8 u16 u32 u64
-  u128 usize f32 f64
+  u128 usize f32 float
   (where (a) (ref a))
   (where ((a clone)) (vec a))
   (where ((a clone)) (option a))
@@ -21,7 +21,7 @@
 (rust-trait copy "Copy"
   (requires clone)
   bool char unit i8 i16 i32 i64 i128 isize u8 u16 u32 u64
-  u128 usize f32 f64
+  u128 usize f32 float
   (where (a) (ref a))
   (where ((a copy)) (option a))
   (where ((a copy) (b copy)) (result a b))

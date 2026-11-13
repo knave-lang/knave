@@ -253,7 +253,7 @@ mod tests {
     use super::*;
     use crate::core::{
         BindingArena, BindingKind, ExprKind, Item, ItemKind, KernelConstants, KernelForm,
-        KernelType, Leaf, Literal, Namespace,
+        KernelType, Leaf, Literal, Namespace, PrimitiveType,
     };
 
     struct UserProgram {
@@ -390,6 +390,13 @@ mod tests {
             let prelude = Self::module(&state, ModuleSources::PRELUDE);
             KernelType::all()
                 .map(|kernel_type| (kernel_type.name(), kernel_type.shape()))
+                .chain(
+                    PrimitiveType::ALIASES
+                        .into_iter()
+                        .map(|(alias, primitive)| {
+                            (alias, KernelType::Primitive(primitive).shape())
+                        }),
+                )
                 .filter(|(name, _)| prelude.exported(name, Namespace::Value).is_none())
                 .chain(KernelConstants::BOOLEANS.map(|(name, _)| (name, name)))
                 .collect()

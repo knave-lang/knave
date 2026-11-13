@@ -1,0 +1,3 @@
+(export f64 float)
+
+(defn main () (do))

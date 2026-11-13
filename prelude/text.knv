@@ -45,7 +45,7 @@
   bool char str string
   (ref str)
   io-error i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128
-  usize f32 f64
+  usize f32 float
   (parse-error bool)
   (parse-error char)
   (parse-error string)
@@ -62,12 +62,12 @@
   (parse-error u128)
   (parse-error usize)
   (parse-error f32)
-  (parse-error f64)
+  (parse-error float)
   (where ((a display)) (ref a)))
 
 (rust-trait debug "std::fmt::Debug"
   bool char str string io-error i8 i16 i32 i64 i128 isize u8
-  u16 u32 u64 u128 usize f32 f64
+  u16 u32 u64 u128 usize f32 float
   (parse-error bool)
   (parse-error char)
   (parse-error string)
@@ -84,7 +84,7 @@
   (parse-error u128)
   (parse-error usize)
   (parse-error f32)
-  (parse-error f64)
+  (parse-error float)
   (where ((a debug)) (ref a))
   (where ((a debug)) (vec a))
   (where ((a debug)) (option a))
@@ -105,7 +105,7 @@
     :bare "{1}.write_str(\"{name}\")")
   (help "a closure, an iterator or a function has no printed form")
   bool char str string unit io-error i8 i16 i32 i64 i128
-  isize u8 u16 u32 u64 u128 usize f32 f64
+  isize u8 u16 u32 u64 u128 usize f32 float
   (parse-error bool)
   (parse-error char)
   (parse-error string)
@@ -122,7 +122,7 @@
   (parse-error u128)
   (parse-error usize)
   (parse-error f32)
-  (parse-error f64)
+  (parse-error float)
   (where ((a show)) (ref a))
   (where ((a show)) (vec a))
   (where ((a show)) (slice a))
@@ -200,7 +200,7 @@
   (where () u128 (parse-error parse-int-error))
   (where () usize (parse-error parse-int-error))
   (where () f32 (parse-error parse-float-error))
-  (where () f64 (parse-error parse-float-error)))
+  (where () float (parse-error parse-float-error)))
 
 (def chars
   (rust "{0}.chars()"
@@ -940,7 +940,7 @@
 (document parse-float-error
   "Names the error of parsing a float, Rust's `ParseFloatError`.
 
-  (err? (the (result f64 parse-float-error) (parse \"x\")))
+  (err? (the (result float parse-float-error) (parse \"x\")))
   => true")
 
 (document infallible

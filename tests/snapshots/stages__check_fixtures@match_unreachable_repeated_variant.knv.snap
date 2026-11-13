@@ -13,4 +13,4 @@ warning[L0803]: unreachable `match` arm
   |      ^^^^^^^^^^ this arm can never match
 
 (derive shape clone copy partial-eq show)
-(type area (fn (shape) f64))
+(type area (fn (shape) float))

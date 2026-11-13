@@ -1,0 +1,6 @@
+(defn main ()
+  (println (infer 1.5))
+  (println (infer (the float 1.5)))
+  (println (infer (the f64 1.5)))
+  (println (infer (+ (the float 1.5) (the f64 2.5))))
+  (println (+ (the float 1.5) (the f64 2.5))))

@@ -1,9 +1,9 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).expand_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/expand/traits.knv
 ---
-(struct circle (radius f64))
-(trait shape (area (fn ((ref self)) f64)) (scale! (fn ((mut self) f64) unit)))
+(struct circle (radius float))
+(trait shape (area (fn ((ref self)) float)) (scale! (fn ((mut self) float) unit)))
 (def area-of (fn (c) (area c)))
 (impl shape circle (area (c_2) (mul (mul 3.0 (field c_2 radius)) (field c_2 radius))) (scale! (c_3 factor) (do)))

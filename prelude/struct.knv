@@ -64,7 +64,7 @@
       (fail "a field must start with `:`"
         form
         (string "write each field as `:name type`, as in "
-                "(defstruct point :x f64 :y f64)")))))
+                "(defstruct point :x float :y float)")))))
 
 (def defaults-without-key
   (fn (defaults keys)

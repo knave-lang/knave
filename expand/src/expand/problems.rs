@@ -906,7 +906,7 @@ impl ExpandProblems {
             Label::new(span, "this mixes the two"),
         )
         .with_help(
-            "write the payload as types, as in `(circle f64)`, or as one struct body, as in `(labeled (struct (text string)))`",
+            "write the payload as types, as in `(circle float)`, or as one struct body, as in `(labeled (struct (text string)))`",
         )
     }
 

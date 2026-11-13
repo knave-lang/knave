@@ -82,7 +82,7 @@ These forms are the compiler's complete vocabulary. Every other form is a macro 
 | `use` | `(use module name...)` | path | module: module path. names: binders. |
 | `export` | `(export name...)` | `pub` | names: references in every namespace. |
 
-In type positions, the kernel provides `fn`, `fn-mut`, `fn-once`, `ref`, `mut`, `where`, `with`, `_`, and the primitive types `bool char str string unit i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32 f64`.
+In type positions, the kernel provides `fn`, `fn-mut`, `fn-once`, `ref`, `mut`, `where`, `with`, `_`, and the primitive types `bool char str string unit i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32 float f64`. `float` and `f64` name the same type, and the compiler prints `float`.
 
 In expression positions, the kernel provides `ref`, `mut` and `deref`, and the constants `true` and `false`. The constants are kernel constants, not prelude definitions. Macro code and program code then see the same booleans, so `if`, `and` and `or` work in both.
 
@@ -161,25 +161,25 @@ A struct or enum whose fields or payloads store a borrow gets one inferred lifet
 (type identity (where (a) (fn (a) a)))
 (defn identity (x) x)
 
-(type scale (fn (f64 _) _))
+(type scale (fn (float _) _))
 ```
 
 Inference is Hindley-Milner with trait bounds. When a definition is generalized, a two-type bound whose second type is another still-unknown variable unifies the two, so the scheme has one parameter with a plain bound. Top-level functions generalize to Rust generics. Mutually recursive functions generalize together, so each one declares the type parameters its type mentions. Local `local` bindings stay monomorphic, because Rust closures cannot be generic.
 
 After inference, a function whose every use outside its own recursive group gives each type parameter the same concrete type emits those types in place of the parameters, as `is_alive(grid: &[Vec<bool>], x: usize, y: usize) -> bool` does. A function used at two or more types stays generic, and so does a function used at a type that holds another function's type parameter, as `(apply thunk)` inside a generic function is. A written `type` signature stays exactly as written.
 
-A type parameter satisfies a trait when its `where` names the trait, or when every type its traits allow implements the trait. `(n float)` therefore satisfies `number` and `display`. The emitted Rust names any such bound that the runtime traits' supertraits do not already give.
+A type parameter satisfies a trait when its `where` names the trait, or when every type its traits allow implements the trait. `(n floating)` therefore satisfies `number` and `display`. The emitted Rust names any such bound that the runtime traits' supertraits do not already give.
 
 ### Literals
 
 - An integer literal can become any number type, so `(->point 1 2)` emits `make_point(1.0, 2.0)`.
-- A float literal can become `f32` or `f64`.
+- A float literal can become `f32` or `float`.
 - Every literal is checked against the range of its type. A float literal too large for its type, such as `1e400` or `(the f32 1e39)`, is an error, and one too small, such as `1e-400`, rounds to zero, as in Rust.
 - A call pins a literal parameter the way it pins any inferred parameter, so a helper called once with a `usize` keeps `usize` in its parameter and its literals.
 - A use pins a literal in a function's result the same way, so `(defn port () 8080)` passed only where a `u16` is expected emits `fn port() -> u16`.
 - A pin passes through other unannotated functions. `(defn other () (port))` used only where a `u16` is expected pins both `other` and `port`, a wrapper `(defn wrap (y) (build y))` takes the `u16` that `build` gives `y`, and `(build-with ->car)` pins the `2025` that `(defn build-with (constructor) (constructor "Nissan" 2025))` passes to its function parameter. Two uses that want different types leave the literal open, and the default then fails at the first use that disagrees.
 - A literal at a trait's second type takes its type from the trait's one row that fits the rest of the bound. With a row `(with (vec item) item)` and `bytes : (vec u8)`, a call whose bound pairs `bytes` with `3` makes `3` a `u8`, and `(pair 3 x)` and `(some 3)` take their parts' types the same way. When two rows fit, the literal waits for its default, and the bound is checked again.
-- A literal whose type is still open after pinning defaults to `i64` or `f64`. The emitted literal carries a suffix (`3_i64`) wherever rustc would otherwise infer a different type. An argument at a type parameter is such a place: `(twice 3000000000)` emits `twice(3000000000_i64)` when `twice` is generic. A branch or a block in that place carries the suffix too. So does a payload, a field or a closure result. A literal keeps no suffix where a written type, another argument or the rustc default already fixes its type. So `(larger 1 odometer)` emits `larger(1, odometer)`.
+- A literal whose type is still open after pinning defaults to `i64` or `float`, which emits `f64`. The emitted literal carries a suffix (`3_i64`) wherever rustc would otherwise infer a different type. An argument at a type parameter is such a place: `(twice 3000000000)` emits `twice(3000000000_i64)` when `twice` is generic. A branch or a block in that place carries the suffix too. So does a payload, a field or a closure result. A literal keeps no suffix where a written type, another argument or the rustc default already fixes its type. So `(larger 1 odometer)` emits `larger(1, odometer)`.
 - A block that binds a literal to a name and returns that name emits the literal alone, with its type's suffix, so `(the u16 0)` emits `0_u16`.
 - Without a signature, a literal never makes a function generic: `(defn increment (x) (+ x 1))` has type `(fn (i64) i64)`.
 - A signature's type parameter opts in. A literal can take the parameter's type if it fits every type the parameter's traits allow, which are the implementors those traits share:
@@ -188,7 +188,7 @@ A type parameter satisfies a trait when its `where` names the trait, or when eve
   (type increment (where ((n number)) (fn (n) n)))
   (defn increment (x) (+ x 1))        ; emits x + N::from_literal(1)
 
-  (type halve (where ((n float)) (fn (n) n)))
+  (type halve (where ((n floating)) (fn (n) n)))
   (defn halve (x) (* x 0.5))          ; emits x * N::from_float_literal(0.5)
   ```
 
@@ -280,7 +280,7 @@ A `main` whose inferred type is a `result` emits an inner function for its body 
 
 ## Structs
 
-Programs write structs with the prelude's `defstruct`, which takes flat fields. `(defstruct point :x f64 :y f64)` declares each field as a keyword followed by one type form, so `:tags (vec str)` is one field. It expands to the kernel `struct` form and defines one constructor, `->point`. A field keyword whose name ends with `:` is `L0332`. `(defstruct user :name str :email: str)` gets help that writes `:email`, and a keyword made only of `:` characters, such as `::`, gets help that asks for a name.
+Programs write structs with the prelude's `defstruct`, which takes flat fields. `(defstruct point :x float :y float)` declares each field as a keyword followed by one type form, so `:tags (vec str)` is one field. It expands to the kernel `struct` form and defines one constructor, `->point`. A field keyword whose name ends with `:` is `L0332`. `(defstruct user :name str :email: str)` gets help that writes `:email`, and a keyword made only of `:` characters, such as `::`, gets help that asks for a name.
 
 The constructor `->point` is a macro, and it reads a call in this order:
 
@@ -490,7 +490,7 @@ A module's `export` lists expand after its `def` values, because exporting a tra
 
 **`prelude/documentation` writes a module's page as Markdown.** `(documentation-page path written-modules prelude-modules types)` expands to the page of the module at `path` as a string, and `(documentation-names path)` to the names it exports, one per line. A page opens with `# path`, then the module docstring. Each exported name that the module defines gets a section: an anchor `<a id="name"></a>` with the raw name, a `## ` heading, a fenced block that holds the name's header and, when `types` holds a `(name "type line")` entry for it, the type line, then the docstring. A name the module only re-exports, from a module in either list, goes to a closing `## Re-exported names` list that links each name to its home page instead. The header block and a paragraph of docstring examples get a `knave` fence. A fenced block that the docstring writes stays as written, except that an opening fence with no language gets `knave`. Before it writes a page, `knave doc --write` lays out the code of each `knave` fence as `fmt` lays out docstring code (see Source formatting), with the shapes of the page's module, except that a fence keeps the written separation of its forms and adds no blank line: the header block keeps its usage line and its type line together, a fenced example paragraph stays tight, and a fence from a docstring keeps the blank lines that `fmt` gave it ([RFC 0071](../rfcs/0071-docstring-code-format.md)). Code of a `knave` fence that does not read stays as written on the page, and the command warns `L0109` at its line of the page.
 
-**A docstring links to a term with brackets, as Go does: `Returns an [option]'s value`.** The name between the brackets resolves in the scope of the page's module, and links to the module that defines it, or else the first listed module that exports it. A link between two pages of `written-modules` is relative, such as `../geometry/area.md#area`. A link to a module of `prelude-modules` alone points at `https://knave-lang.org/docs/<module path>/`. The fragment percent-encodes each character other than a letter, a digit, `-`, `.`, `_` and `~`, so a link to `>=` ends in `#%3E%3D`. A name that resolves to no listed module's term, a name with a space, a bracket followed by `(` or `[`, and brackets inside backticks or a fence stay as written. `knave doc --write` warns of each name that resolves to no listed module's term with `L0802`, labeled at the name in its docstring and with the closest term name as a suggestion. A name that does not read back as one symbol, such as `[a(b]`, labels the whole docstring. The command prints the warnings of the expansion that writes the pages, which loads every written module, and it still writes the pages. `knave doc` prints the brackets as written.
+**A docstring links to a term with brackets, as Go does: `Returns an [option]'s value`.** The name between the brackets resolves in the scope of the page's module, and links to the module that defines it, or else the first listed module that exports it. A link between two pages of `written-modules` is relative, such as `../geometry/area.md#area`. A link to a module of `prelude-modules` alone points at `https://knave-lang.org/docs/<module path>/`. The fragment percent-encodes each character other than a letter, a digit, `-`, `.`, `_` and `~`, so a link to `>=` ends in `#%3E%3D`. A name that resolves to no listed module's term, a name with a space, a bracket followed by `(` or `[`, and brackets inside backticks or a fence stay as written. `knave doc --write` warns of each name that resolves to no listed module's term with `L0802`, labeled at the name in its docstring and with the closest term name as a suggestion. A name that does not read back as one symbol, such as `[a(b]`, labels the whole docstring. The command prints the warnings of the expansion that writes the pages, which loads every written module, and it still writes the pages. `knave doc` prints the brackets as written. An alias shows its type's page, so `(doc f64)` prints the page of `float`.
 
 **`knave doc --write [--output <dir>]` writes one page per module of the project, into `doc/` at the project root or into `<dir>`.** It reads every `.knv` file under the source root as a module, whether or not the entry uses it, and leaves out the project's `tasks/` and `tests/` folders, hidden folders, the build folder, any folder that holds a project file, such as a library's folder, and any folder that leads out of the source root. A file whose module path cannot be written is a usage error, and one that takes a compiler module's path is `L0257`. It passes the written modules and the public prelude modules to `documentation-page`, one page per call, so each page has its own macro step budget. The page of `geometry/area` goes to `doc/geometry/area.md`. The type line of each name is the line that `knave doc --types --file <its own file>` prints for it: each module is checked on its own, so a call from a module that imports it does not narrow the type, and the command prints no warning of that check. When a module's own check reports an error, such as a `(def nothing none)` that only a caller's use fixes, the command types that module from one check of the entry's program instead, as `knave check` checks it, and when that check fails, the command reports its errors, as `knave check` does. A missing entry counts as an empty program, and an entry it cannot read for another reason is an error. The other names of a module that falls back show the types its callers give them. A module that neither its own check nor the entry's program can type is an error, even when the entry does not use it. The command writes a marker file, `.knave-doc`, into the folder. Before it writes, it empties a folder that holds the marker, so the page of a deleted module goes away. It creates a missing folder and writes into an empty one. A folder that holds files and no marker is a usage error that names the folder, and the command writes nothing. A folder it cannot read or write is an environment error. `--write` takes no term, and outside a project it is a usage error. `knave doc --write --prelude` writes the pages of the public prelude modules instead, `prelude/internal/` left out, into `doc/` at the root of the nearest folder that holds a project file, which it does not read, or in the working directory when there is none. The `prelude` page then holds full sections for the names `prelude` defines itself, and lists each name it re-exports with a link to its home page. `knave doc --write --errors` writes the pages of the diagnostic codes instead, into the same folder as `--prelude`, and with `--prelude` it writes both sets. They are `errors.md`, a table with one row per code that links each explained code to its page and marks each code without an explanation, and `errors/<code>.md` per explanation, which holds `# ` and the code's header, as in `L0501: use after move`, then the explanation. A lint explained by a docstring counts as explained, and its page holds the docstring, so `errors/L0801.md` holds the docstring of `unused-binding`.
 
@@ -580,7 +580,7 @@ A `rust` template's own binders are hygienic too. A name written as `{!name}` ta
 `(symbol context part...)` builds a symbol with the scopes of `context`. It is the one deliberate way to introduce a name the user can see:
 
 ```lisp
-(defstruct point :x f64 :y f64)   ; defines ->point
+(defstruct point :x float :y float)   ; defines ->point
 ```
 
 Field names are not hygienic. They are looked up through the struct type.
@@ -983,7 +983,7 @@ A non-empty untested list does not change the exit code. `prelude/tests/` holds 
 `rust` binds a name to a piece of Rust:
 
 ```lisp
-(deftrait number (rust "crate::rt::Number") i8 i16 i32 i64 u8 u16 u32 u64 f32 f64)
+(deftrait number (rust "crate::rt::Number") i8 i16 i32 i64 u8 u16 u32 u64 f32 float)
 (def add (rust "{0} + {1}" (where ((n number)) (fn (n n) n))))
 (def not (rust "!{0}" (fn (bool) bool)))
 ```
@@ -1007,9 +1007,9 @@ A program names a Rust type with the prelude's `deftype` and a Rust trait with t
 
 | Mistake | Report |
 | --- | --- |
-| `(deftype meters f64)`, a `deftype` without the clause | `L0345` |
+| `(deftype meters float)`, a `deftype` without the clause | `L0345` |
 | `(deftrait number i8 i16)`, a method that is not a name and a type, or a `(method name type)` entry without the clause | `L0342` |
-| `(deftrait number (rust "Copy") (area (fn ((ref self)) f64)))`, a method that is not written `(method name type)` | `L0343` |
+| `(deftrait number (rust "Copy") (area (fn ((ref self)) float)))`, a method that is not written `(method name type)` | `L0343` |
 | `(deftrait number i8 (rust "Copy"))`, a clause in a later place | `L0340` |
 | `(rust "Copy" "Clone")`, a clause of two strings, or a `defenum` clause other than `(rust "Path")` or `(rust "Path" bare)` | `L0341` |
 | `(deftrait (number (clone)) (rust "Copy") i8)`, supertraits on a Rust trait | `L0344` |
@@ -1300,9 +1300,9 @@ A template clause fills its placeholders from the enum's type arguments and from
 ```lisp
 (defenum shape
   "A shape."
-  (circle f64)
-  (rect f64 f64)
-  (labeled :text string :size f64)
+  (circle float)
+  (rect float float)
+  (labeled :text string :size float)
   point)
 ```
 
@@ -1416,8 +1416,8 @@ The parts follow `println`: a string is literal text, any other form prints with
 
 ```lisp
 (deftrait shape
-  (area (fn ((ref self)) f64))
-  (scale! (fn ((mut self) f64) unit)))
+  (area (fn ((ref self)) float))
+  (scale! (fn ((mut self) float) unit)))
 
 (impl shape circle
   (area (c) (* 3.0 (field c radius) (field c radius)))

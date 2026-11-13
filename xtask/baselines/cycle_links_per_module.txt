@@ -1,10 +1,10 @@
 expand/src/core/binding.rs 3
 expand/src/core/expr.rs 3
 expand/src/core/kernel.rs 1
-expand/src/core/module.rs 4
+expand/src/core/module.rs 3
 expand/src/core/saved_bindings.rs 1
 expand/src/core/template.rs 1
-expand/src/core/template_operation.rs 2
+expand/src/core/template_operation.rs 1
 expand/src/core/types.rs 2
 expand/src/expand/failed_definition.rs 1
 expand/src/expand/globals.rs 1

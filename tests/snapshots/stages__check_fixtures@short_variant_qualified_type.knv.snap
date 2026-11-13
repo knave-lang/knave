@@ -5,6 +5,6 @@ input_file: tests/fixtures/check/short_variant_qualified_type.knv
 ---
 (derive geo/circle clone copy partial-eq show)
 (derive shape clone copy partial-eq show)
-(type ->geo/circle (fn (f64) geo/circle))
-(type area (fn (shape) f64))
+(type ->geo/circle (fn (float) geo/circle))
+(type area (fn (shape) float))
 (type main (fn () unit))

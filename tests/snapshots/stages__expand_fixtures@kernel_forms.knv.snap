@@ -4,9 +4,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/expand/kernel_forms.knv
 ---
 (export area origin)
-(struct point (x f64) (y f64))
+(struct point (x float) (y float))
 (def origin (new point (x 0) (y 0)))
-(type area (fn (f64 f64) f64))
+(type area (fn (float float) float))
 (def area (fn (width height) (local doubled (do width)) (if doubled height (field origin x))))
 (type identity (where (item) (fn (item) item)))
 (def identity (fn ((value i64)) value))

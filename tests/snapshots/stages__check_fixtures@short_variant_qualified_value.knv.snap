@@ -6,5 +6,5 @@ input_file: tests/fixtures/check/short_variant_qualified_value.knv
 (derive shape clone copy partial-eq show)
 (type geometry/circle i64)
 (type geometry/point i64)
-(type radius (fn (shape) f64))
+(type radius (fn (shape) float))
 (type main (fn () unit))

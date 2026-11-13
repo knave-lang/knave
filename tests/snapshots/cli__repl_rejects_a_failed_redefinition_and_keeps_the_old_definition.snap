@@ -12,4 +12,4 @@ error[L0301]: a field must start with `:`
 1 | (defstruct user (name str))
   |                 ^^^^^^^^^^ here
   |
-  = help: write each field as `:name type`, as in (defstruct point :x f64 :y f64)
+  = help: write each field as `:name type`, as in (defstruct point :x float :y float)

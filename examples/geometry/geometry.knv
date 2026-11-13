@@ -1,8 +1,8 @@
 (export ->point distance point)
 
 (defstruct point
-  :x f64
-  :y f64)
+  :x float
+  :y float)
 
 (defn distance (a b)
   (local dx (- (:x a) (:x b)))

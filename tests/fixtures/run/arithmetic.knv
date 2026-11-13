@@ -1,6 +1,6 @@
 (defstruct point
-  :x f64
-  :y f64)
+  :x float
+  :y float)
 
 (defn distance-squared (a b)
   (local dx (- (:x a) (:x b)))

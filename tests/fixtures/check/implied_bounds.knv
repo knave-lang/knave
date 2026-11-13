@@ -1,10 +1,10 @@
 (type square-float
-  (where ((n float)) (fn (n) n)))
+  (where ((n floating)) (fn (n) n)))
 
 (defn square-float (x) (* x x))
 
 (type show-float
-  (where ((n float)) (fn (n) string)))
+  (where ((n floating)) (fn (n) string)))
 
 (defn show-float (x) (str x))
 

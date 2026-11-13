@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/float_alias_exports.knv
+---
+(export f64 float)
+(def main (fn () (do)))

@@ -7,18 +7,18 @@
 (module
   "Does arithmetic and comparison, and names the number traits.")
 
-(export * + - / < <= = > >= eq float hash integer neg not=
-        number ord partial-eq partial-ord pi rem signed
+(export * + - / < <= = > >= eq floating hash integer neg
+        not= number ord partial-eq partial-ord pi rem signed
         sqrt)
 
 (rust-trait number "crate::rt::Number"
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32
-  f64)
+  float)
 
 (rust-trait signed "crate::rt::Signed"
-  i8 i16 i32 i64 i128 isize f32 f64)
+  i8 i16 i32 i64 i128 isize f32 float)
 
-(rust-trait float "crate::rt::Float" f32 f64)
+(rust-trait floating "crate::rt::Float" f32 float)
 
 (rust-trait integer "crate::rt::Integer"
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize)
@@ -27,7 +27,7 @@
   bool char str string
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32
-  f64
+  float
   (with string str)
   (with str string)
   (with string (ref str))
@@ -68,7 +68,7 @@
   char str string
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32
-  f64
+  float
   (where ((a partial-ord)) (ref a))
   (where ((a partial-ord)) (box a))
   (where ((a partial-ord) (b partial-ord))
@@ -217,14 +217,14 @@
   (infer neg)
   => \"(where ((a number signed)) (fn (a) a))\"")
 
-(document float
+(document floating
   "Marks a floating-point type.
 
-  [f32] and [f64] implement it.
+  [f32] and [float] implement it.
 
   ```
   (type halve
-    (where ((n float)) (fn (n) n)))
+    (where ((n floating)) (fn (n) n)))
 
   (defn halve (x) (/ x 2.0))
 

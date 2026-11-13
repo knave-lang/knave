@@ -32,7 +32,7 @@
 (defn bounded-partial-min (left right) (min left right))
 
 (type bounded-float
-  (where ((a float)) (fn (a a) a)))
+  (where ((a floating)) (fn (a a) a)))
 
 (defn bounded-float (left right) (max left right))
 

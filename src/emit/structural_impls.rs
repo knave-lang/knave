@@ -82,7 +82,7 @@ impl<'b> ParameterNames<'b> {
     fn type_name(&self, parameter: &Type) -> String {
         match parameter {
             Type::Named(binding, _) => NameMangler::value(self.bindings.get(*binding).name()),
-            Type::Primitive(primitive) => primitive.name().to_string(),
+            Type::Primitive(primitive) => primitive.rust_name().to_string(),
             _ => Self::UNNAMED.to_string(),
         }
     }

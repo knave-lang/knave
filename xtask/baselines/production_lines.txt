@@ -1,4 +1,3 @@
-expand/src/core/kernel.rs 506
 expand/src/core/printer.rs 689
 expand/src/expand/expression.rs 1006
 expand/src/expand/module_body.rs 1993
@@ -8,7 +7,7 @@ src/emit/expressions.rs 2927
 src/emit/items.rs 1629
 src/emit/plan.rs 648
 src/emit/result_borrows.rs 740
-src/emit/types.rs 809
+src/emit/types.rs 801
 src/ownership/kinds.rs 1704
 src/ownership/moves.rs 593
 src/ownership/problems.rs 858

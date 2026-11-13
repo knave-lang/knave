@@ -7,6 +7,6 @@ error[L0423]: `point` cannot derive `eq`
  --> check/blocked_written_derive.knv:5:15
   |
 5 | (derive point eq)
-  |               ^^ field `x` is `f64`, which is not `eq`
+  |               ^^ field `x` is `float`, which is not `eq`
   |
   = help: change the type of field `x`, or leave this trait out of the `derive`

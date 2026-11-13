@@ -8,6 +8,7 @@ use super::shape::Shape;
 use super::sourced_items::SourcedItems;
 use super::spliced_forms::{SplicedForm, SplicedForms};
 use super::{Expander, TraitMethods, binder_form::BinderForm, module_notes::NotesCheckpoint};
+use crate::core::CoreExport;
 use crate::core::{
     BinderOrigin, BindingId, BindingInfo, BindingKind, ControlForm, CoreModule, DefinitionForm,
     Expr, ExprKind, ExpressionForm, FieldLabel, ImplAssociatedType, ImplMethod, ImplementorRows,
@@ -1929,7 +1930,8 @@ impl Expander<'_> {
                 self.modules
                     .get_mut(module)
                     .export(symbol.shared_name(), namespace, binding);
-                core.exports.push(binding);
+                core.exports
+                    .push(CoreExport::new(symbol.shared_name(), binding));
                 found = true;
             }
         }
@@ -1959,11 +1961,10 @@ impl Expander<'_> {
             .map(|(binding, _)| *binding)
             .collect();
         for method in methods {
-            let name = self.tables.bindings.get(method).name().to_string();
-            self.modules
-                .get_mut(module)
-                .export(name.into(), Namespace::Value, method);
-            core.exports.push(method);
+            let name: Rc<str> = self.tables.bindings.get(method).shared_name();
+            let record = self.modules.get_mut(module);
+            record.export(Rc::clone(&name), Namespace::Value, method);
+            core.exports.push(CoreExport::new(name, method));
         }
     }
 
@@ -1983,11 +1984,10 @@ impl Expander<'_> {
             return;
         };
         for constructor in constructors {
-            let name = self.tables.bindings.get(constructor).name().to_string();
-            self.modules
-                .get_mut(module)
-                .export(name.into(), Namespace::Value, constructor);
-            core.exports.push(constructor);
+            let name: Rc<str> = self.tables.bindings.get(constructor).shared_name();
+            let record = self.modules.get_mut(module);
+            record.export(Rc::clone(&name), Namespace::Value, constructor);
+            core.exports.push(CoreExport::new(name, constructor));
         }
     }
 }

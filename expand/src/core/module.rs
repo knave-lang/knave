@@ -196,11 +196,24 @@ pub enum VariantPayload {
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(bound(deserialize = "'de: 'static"))]
+pub struct CoreExport {
+    pub name: Rc<str>,
+    pub binding: BindingId,
+}
+
+impl CoreExport {
+    pub fn new(name: Rc<str>, binding: BindingId) -> Self {
+        Self { name, binding }
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(bound(deserialize = "'de: 'static"))]
 pub struct CoreModule {
     pub id: ModuleId,
     pub path: ModulePath,
     pub items: Vec<Item>,
-    pub exports: Vec<BindingId>,
+    pub exports: Vec<CoreExport>,
     pub library: Option<Rc<str>>,
 }
 

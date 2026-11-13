@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/run/infer_literals.knv
 ---
-i64 f64
+i64 float
 u8
 u16
 n

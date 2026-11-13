@@ -1,0 +1,48 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/float_alias.knv
+---
+#[derive(Clone, Copy, PartialEq)]
+struct Measurement {
+    value: f64,
+    offset: f64,
+}
+
+fn adjust(value: f64, offset: f64) -> f64 {
+    value + offset
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let scale: f64 = 2.0;
+    let bias: f64 = 0.5;
+    println!("{}", adjust(scale, bias));
+    println!(
+        "{}",
+        Measurement {
+            value: scale,
+            offset: bias
+        }
+        .value
+    );
+    println!("{}", 1.5_f64);
+    println!("{}", 2.5_f64)
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

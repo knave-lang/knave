@@ -1248,9 +1248,24 @@
       (notes-with-key key
                       (module-notes context
                                     (term-docstrings-key (noted-term key)))))
-    (if (empty? noted)
+    (local alias
+      (if (empty? noted)
+        (alias-docstring-notes context key)
+        noted))
+    (if (empty? alias)
       (notes-with-key key (module-notes context docstrings-key))
-      noted)))
+      alias)))
+
+(def alias-docstring-notes
+  (fn (context key)
+    (local entries
+      (items-where (fn (note) (same-doc-key? key note))
+                   (module-notes context documented-terms-key)))
+    (if (empty? entries)
+      (list)
+      (notes-with-key key
+                      (module-notes context
+                                    (term-docstrings-key (noted-term (first entries))))))))
 
 (def notes-with-key
   (fn (key notes)

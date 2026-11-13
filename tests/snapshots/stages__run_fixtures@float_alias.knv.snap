@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/float_alias.knv
+---
+float
+float
+float
+float
+4

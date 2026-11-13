@@ -1,11 +1,11 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/literals.knv
 ---
 (type answer i64)
-(type ratio f64)
+(type ratio float)
 (type increment (fn (i64) i64))
-(type halve (fn (f64) f64))
-(type mixed f64)
+(type halve (fn (float) float))
+(type mixed float)
 (type compare (fn (i64 i64) bool))

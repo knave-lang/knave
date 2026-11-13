@@ -1,4 +1,5 @@
 use rustc_hash::FxHashMap;
+use std::collections::BTreeSet;
 
 use super::{
     Arm, Binder, BindingArena, BindingId, Block, BodyItem, ClosureKind, Control, CoreModule, Expr,
@@ -31,12 +32,11 @@ impl<'a> CorePrinter<'a> {
     pub fn module(&mut self, module: &CoreModule) -> String {
         let mut lines: Vec<String> = Vec::new();
         if !module.exports.is_empty() {
-            let exports: Vec<String> = module
-                .exports
-                .iter()
-                .map(|binding| self.name(*binding))
-                .collect();
-            lines.push(Self::list("export", exports));
+            let names: BTreeSet<&str> = module.exports.iter().map(|export| &*export.name).collect();
+            lines.push(Self::list(
+                "export",
+                names.into_iter().map(String::from).collect(),
+            ));
         }
         lines.extend(
             module

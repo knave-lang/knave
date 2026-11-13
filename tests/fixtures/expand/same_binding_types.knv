@@ -1,5 +1,8 @@
-(use same_binding_types/checks string-type?)
+(use same_binding_types/checks float-type? string-type?)
 
 (defn main ()
   (println (string-type? string))
-  (println (string-type? i64)))
+  (println (string-type? i64))
+  (println (float-type? float))
+  (println (float-type? f64))
+  (println (float-type? f32)))

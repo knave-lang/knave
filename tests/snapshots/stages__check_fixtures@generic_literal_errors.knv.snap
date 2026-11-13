@@ -18,7 +18,7 @@ error[L0441]: `300` does not fit every type `n` can be
 8 | (defn bump (x) (+ x 300))
   |                     ^^^ `n` can be `i8`, which cannot hold this value
   |
-  = note: `n` can be any of: i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+  = note: `n` can be any of: i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, float
   = help: narrow `n` with a trait whose types all hold this value
 
 error[L0441]: `0.5` does not fit every type `n` can be
@@ -27,7 +27,7 @@ error[L0441]: `0.5` does not fit every type `n` can be
 13 | (defn half (x) (* x 0.5))
    |                     ^^^ `n` can be `i8`, which cannot hold this value
    |
-   = note: `n` can be any of: i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+   = note: `n` can be any of: i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, float
    = help: narrow `n` with a trait whose types all hold this value
 
 error[L0441]: `10` does not fit every type `a` can be
@@ -36,5 +36,5 @@ error[L0441]: `10` does not fit every type `a` can be
 18 | (defn below-ten (x) (< x 10))
    |                          ^^ `a` can be `char`, which cannot hold this value
    |
-   = note: `a` can be any of: char, str, string, (ref str), i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, (ref a), (box a), (pair a b)
+   = note: `a` can be any of: char, str, string, (ref str), i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, (ref a), (box a), (pair a b)
    = help: narrow `a` with a trait whose types all hold this value

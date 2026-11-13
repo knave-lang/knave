@@ -9,7 +9,7 @@ use super::fresh_lifetimes::FreshLifetimes;
 use super::function_borrow::FunctionBorrow;
 use super::opaque_borrows::OpaqueBorrows;
 use super::plan::EmitPlan;
-use crate::core::{BindingId, ModuleId, Piece, PrimitiveType};
+use crate::core::{BindingId, ModuleId, Piece};
 use crate::types::{
     Bound, ClosureKind, GenericId, GenericParam, Lifetime, RustType, TraitTable, Type, TypedProgram,
 };
@@ -210,7 +210,7 @@ impl<'a> RustTypes<'a> {
 
     fn composite(&self, shown: &Type, position: TypePosition, scope: &LifetimeScope) -> String {
         match shown {
-            Type::Primitive(primitive) => Self::primitive(*primitive).to_string(),
+            Type::Primitive(primitive) => primitive.rust_name().to_string(),
             Type::Named(binding, arguments) => self.named(*binding, arguments, position, scope),
             Type::Function(kind, parameters, result) => {
                 self.function(*kind, parameters, result, position, scope)
@@ -796,14 +796,6 @@ impl<'a> RustTypes<'a> {
         match self.plan.item(binding) {
             Some(_) => self.plan.path_to(binding, self.module),
             None => NameMangler::type_name(self.program.bindings.get(binding).name()),
-        }
-    }
-
-    fn primitive(primitive: PrimitiveType) -> &'static str {
-        match primitive {
-            PrimitiveType::String => "String",
-            PrimitiveType::Unit => "()",
-            other => other.name(),
         }
     }
 }

@@ -17,7 +17,7 @@ impl<'n> NumberLiteral<'n> {
         let digits = self.digits();
         match (self.ty, context) {
             (Type::Primitive(primitive), TypeContext::Unknown) => {
-                Self::signed(format!("{digits}_{}", primitive.name()))
+                Self::signed(format!("{digits}_{}", primitive.rust_name()))
             }
             _ => Self::signed(digits),
         }
@@ -93,6 +93,18 @@ mod tests {
                 .code(TypeContext::Unknown)
                 .text(),
             "7_u8"
+        );
+    }
+
+    #[test]
+    fn suffixes_the_rust_name_of_a_float() {
+        let number = NumberFixture::integer("7");
+        let ty = NumberFixture::primitive(PrimitiveType::F64);
+        assert_eq!(
+            NumberLiteral::new(&number, &ty)
+                .code(TypeContext::Unknown)
+                .text(),
+            "7.0_f64"
         );
     }
 

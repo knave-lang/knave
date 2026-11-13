@@ -134,6 +134,15 @@ impl HelperTemplate {
         "(defn larger (a b) (if (> a b) a b))",
         HelperSignature::returning(&[Self::NUMBER, Self::NUMBER], ValueKind::NUMBER),
     );
+    const LARGER_MAKE: Self = Self::new(
+        "larger-make",
+        "(defn larger-make (c d k)\n  (if (> (larger k 0) 0) (larger (:make c) (:make d)) (larger (:make d) (:make c))))",
+        HelperSignature::returning(
+            &[Self::CAR, Self::CAR, Self::NUMBER],
+            ValueKind::MAKE_BORROW,
+        ),
+    )
+    .calling(&Self::LARGER);
     const BIGGER_FIGURE: Self = Self::new(
         "bigger-figure",
         "(defn bigger-figure (a b) (if (> (size a) (size b)) a b))",
@@ -163,7 +172,7 @@ impl HelperTemplate {
         HelperSignature::changing(&[Self::VECTOR, Self::CAR]),
     );
 
-    pub const ALL: [&'static HelperTemplate; 19] = [
+    pub const ALL: [&'static HelperTemplate; 20] = [
         &Self::FIRST_OF,
         &Self::EITHER,
         &Self::EITHER_SWAPPED,
@@ -179,6 +188,7 @@ impl HelperTemplate {
         &Self::SUM_TO,
         &Self::COUNT_DOWN,
         &Self::LARGER,
+        &Self::LARGER_MAKE,
         &Self::BIGGER_FIGURE,
         &Self::ENTRY_OF,
         &Self::HEAD,

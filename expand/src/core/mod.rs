@@ -17,6 +17,7 @@ mod lint_facts;
 mod module;
 mod module_id;
 mod module_path;
+mod named_types;
 mod pair_position;
 mod passing_allowance;
 mod passing_relaxation;
@@ -71,6 +72,7 @@ pub use module::{
 };
 pub use module_id::ModuleId;
 pub use module_path::ModulePath;
+pub use named_types::NamedTypes;
 pub use pair_position::PairPosition;
 pub use passing_allowance::PassingAllowance;
 pub use primitive::PrimitiveType;

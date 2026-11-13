@@ -2,8 +2,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::reached_traits::ReachedTraits;
 use crate::core::{
-    BindingId, ConsultedTraits, CoreModule, ItemKind, References, RustTraitDeclaration, TypeBound,
-    TypeExpr, VariantPayload,
+    BindingId, ConsultedTraits, CoreModule, ItemKind, NamedTypes, References, RustTraitDeclaration,
+    TypeBound, TypeExpr,
 };
 use crate::modules::ModuleSources;
 
@@ -105,49 +105,7 @@ impl<'p> TraitReach<'p> {
     }
 
     fn reach_item(&mut self, kind: &ItemKind) {
-        match kind {
-            ItemKind::Signature(_, signature) => self.type_expr(signature),
-            ItemKind::Struct(_, _, fields) => {
-                self.types(fields.iter().map(|(_, field)| field));
-            }
-            ItemKind::Enum(_, _, variants, ..) => {
-                self.types(
-                    variants
-                        .iter()
-                        .flat_map(|variant| Self::payload(&variant.payload)),
-                );
-            }
-            ItemKind::Derive(_, _, derived) => {
-                self.reach_all(derived.iter().map(|(binding, _)| *binding));
-            }
-            _ => self.reach_declaration(kind),
-        }
-    }
-
-    fn reach_declaration(&mut self, kind: &ItemKind) {
-        match kind {
-            ItemKind::Trait(_, _, _, supertraits, _, methods) => {
-                self.bounds(supertraits.iter());
-                self.types(methods.iter().map(|method| &method.signature));
-            }
-            ItemKind::Impl(trait_binding, implementor, associated, _) => {
-                self.reach(*trait_binding);
-                self.type_expr(implementor);
-                self.types(associated.iter().map(|value| &value.value));
-            }
-            ItemKind::RustType(_, _, _, _, clauses) => {
-                self.types(clauses.iter().map(|(target, _)| target));
-            }
-            _ => {}
-        }
-    }
-
-    fn payload(payload: &VariantPayload) -> Vec<&TypeExpr> {
-        match payload {
-            VariantPayload::None => Vec::new(),
-            VariantPayload::Positional(fields) => fields.iter().collect(),
-            VariantPayload::Named(fields) => fields.iter().map(|(_, field)| field).collect(),
-        }
+        NamedTypes::of(kind).visit(&mut |binding| self.reach(binding));
     }
 
     fn close(&mut self) {

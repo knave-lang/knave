@@ -1,9 +1,9 @@
 (defstruct badge
-  :label string
+  :label str
   :size u16)
 
 (defstruct garage
-  :owner string
+  :owner str
   :tag badge
   :badge badge)
 

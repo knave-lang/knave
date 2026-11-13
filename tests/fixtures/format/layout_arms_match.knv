@@ -4,4 +4,5 @@
     ((msg/decrement fruit) (no-effect (change model fruit -1)))
     (msg/reset (no-effect (init)))
     (msg/load (pair model (load-apples)))
-    ((msg/loaded result) (no-effect (apply-loaded model result)))))
+    ((msg/loaded result)
+     (no-effect (apply-loaded model result)))))

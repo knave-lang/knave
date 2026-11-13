@@ -454,7 +454,11 @@ impl<'a> RustTypes<'a> {
                 .iter()
                 .chain(std::iter::once(result.as_ref()))
                 .all(|part| Self::only_behind_references(part, generic, false)),
-            Type::Var(_) | Type::Generic(_) | Type::Primitive(_) | Type::TraitObject(_) => true,
+            Type::Var(_)
+            | Type::Text(_)
+            | Type::Generic(_)
+            | Type::Primitive(_)
+            | Type::TraitObject(_) => true,
         }
     }
 

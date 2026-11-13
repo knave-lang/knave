@@ -1,5 +1,5 @@
 (enum held
-  (both (struct (first string) (second string))))
+  (both (struct (first str) (second str))))
 
 (enum view
   (counted (struct (count i64) (text (ref str)))))

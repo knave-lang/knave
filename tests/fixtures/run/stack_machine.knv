@@ -4,8 +4,7 @@
                             million-steps underflowing)
 
 (type report
-  (fn ((ref str) (result i64 string))
-    unit))
+  (fn ((ref str) (result i64 str)) unit))
 
 (defn report (name outcome)
   (match outcome

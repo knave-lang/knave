@@ -1,4 +1,4 @@
-(defn consume ((text string)) text)
+(defn consume ((text str)) text)
 
 (defn wrap (x)
   (println (infer (str x)))

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/mixed_variant_payload.knv
+---
+error[L0230]: a variant's payload is either types or one `struct` body
+ --> check/mixed_variant_payload.knv:2:3
+  |
+2 |   (value (struct (text str)) i64))
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this mixes the two
+  |
+  = help: write the payload as types, as in `(circle f64)`, or as one struct body, as in `(labeled (struct (text string)))`

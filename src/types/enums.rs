@@ -225,6 +225,7 @@ mod tests {
         let parameter = GenericParam {
             id: GenericId::new(0),
             name: "a".into(),
+            text: false,
             bounds: Vec::new(),
         };
         let definition = EnumDefinition {

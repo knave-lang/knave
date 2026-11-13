@@ -89,7 +89,7 @@
     r))
 
 (type parse-level
-  (fn ((ref str)) (result i64 string)))
+  (fn ((ref str)) (result i64 str)))
 
 (defn parse-level (text)
   (map-err (parse text)
@@ -97,7 +97,7 @@
 
 (type sum-levels
   (fn ((ref str) (ref str))
-    (result i64 string)))
+    (result i64 str)))
 
 (defn sum-levels (left right)
   (let-try (first-level (parse-level left)

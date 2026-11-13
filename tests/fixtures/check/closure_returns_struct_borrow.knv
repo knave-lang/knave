@@ -6,14 +6,14 @@
   (local assemble
     (fn ()
       (local make (str "Nissan"))
-      (->car :make (as-str make) :year year)))
+      (->car :make make :year year)))
   (assemble))
 
 (defn build-maybe (year)
   (local assemble
     (fn ()
       (local make (str "Nissan"))
-      (some (->car :make (as-str make) :year year))))
+      (some (->car :make make :year year))))
   (assemble))
 
 (defn main ()

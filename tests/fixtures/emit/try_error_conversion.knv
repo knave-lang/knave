@@ -7,7 +7,7 @@
 
 (defn read-number (path)
   (local text (try (slurp path)))
-  (ok (try (parse (as-str text)))))
+  (ok (try (parse text))))
 
 (defn main ()
   (match (read-number "number.txt")

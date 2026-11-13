@@ -7,7 +7,7 @@
 (display matrix (m) (matrix-text m))
 
 (type matrix-text
-  (fn ((ref matrix)) string))
+  (fn ((ref matrix)) str))
 
 (defn matrix-text (m)
   (reduce (iter (:rows m)) (str "")
@@ -15,7 +15,7 @@
       (str text "[" (row-text row) "]"))))
 
 (type row-text
-  (fn ((ref (vec f64))) string))
+  (fn ((ref (vec f64))) str))
 
 (defn row-text (row)
   (reduce (enumerate (iter row)) (str "")

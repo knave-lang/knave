@@ -1,5 +1,5 @@
 (trait shape
   (area (fn ((ref self)) f64))
 
-  (describe (fn ((ref self)) string)
+  (describe (fn ((ref self)) str)
     (perimeter self)))

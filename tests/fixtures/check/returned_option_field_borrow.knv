@@ -3,6 +3,6 @@
 
 (defn build (line)
   (local model (str line))
-  (->car :model (some (as-str model))))
+  (->car :model (some model)))
 
 (defn main () (build "Leaf"))

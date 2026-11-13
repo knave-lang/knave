@@ -1,7 +1,7 @@
 (use prelude/test assert deftest)
 
 (defstruct operation
-  :name string
+  :name str
   :op (fn (i64) i64))
 
 (defn twice (x) (* 2 x))

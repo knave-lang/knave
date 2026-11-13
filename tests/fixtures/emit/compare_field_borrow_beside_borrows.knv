@@ -1,7 +1,7 @@
 (defstruct car
-  :model string)
+  :model str)
 
-(defn same-model? ((leaf (ref car)) (model (ref string)))
+(defn same-model? ((leaf (ref car)) (model (ref str)))
   (= (ref (:model leaf)) model))
 
 (defn main ()

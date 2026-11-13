@@ -2,7 +2,7 @@
 
 (defn build ()
   (local text (str "Leaf"))
-  (label/named (as-str text)))
+  (label/named text))
 
 (defn main ()
   (match (build)

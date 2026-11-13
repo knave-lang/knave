@@ -2,19 +2,19 @@
 
 (enum token
   (number i64)
-  (name string)
-  (symbol string))
+  (name str)
+  (symbol str))
 
 (type tokenize
   (fn ((ref str))
-    (result (vec token) string)))
+    (result (vec token) str)))
 
 (defn tokenize (source)
   (scan (collect (chars source)) 0 (vec)))
 
 (type scan
   (fn ((ref (vec char)) usize (vec token))
-    (result (vec token) string)))
+    (result (vec token) str)))
 
 (defn scan (characters position tokens)
   (if (>= position (len characters))
@@ -42,7 +42,7 @@
 (defn scan-number (characters start tokens)
   (local end (span-end characters start digit?))
   (local text (slice-text characters start end))
-  (match (parse (as-str text))
+  (match (parse text)
     ((ok value)
      (scan characters end (append tokens (token/number value))))
     ((err problem) (err (str "bad number " text ": " problem)))))
@@ -107,5 +107,4 @@
 
 (def slice-text
   (rust "{0}[{1}..{2}].iter().collect::<String>()"
-    (fn ((ref (vec char)) usize usize)
-      string)))
+    (fn ((ref (vec char)) usize usize) str)))

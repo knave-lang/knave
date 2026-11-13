@@ -1,0 +1,24 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/update_cloned_field.knv
+---
+error[L0503]: this value is borrowed, but its use needs to own it
+ --> check/update_cloned_field.knv:7:8
+  |
+7 |     (prn (update (->item :name (str "plum"))
+  |  ________^
+8 | |                :name (fn ((name (ref str)))
+9 | |                        (take-name (clone name))))))
+  | |_________________________________________________^ only a borrowed text value is available here
+  |
+  = help: build owned text with `(str value)` or `(clone value)`
+
+error[L0404]: `str` does not implement `clone`
+ --> check/update_cloned_field.knv:9:42
+  |
+9 |                        (take-name (clone name))))))
+  |                                          ^^^^ this needs `clone`
+  |
+  = note: `clone` is implemented for: bool, char, str, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, (where (a) (ref a)), (where ((a clone)) (vec a)), (where ((a clone)) (option a)), (where ((a clone) (b clone)) (result a b)), (where ((a clone)) (box a)), (where ((a clone) (b clone)) (pair a b)), item

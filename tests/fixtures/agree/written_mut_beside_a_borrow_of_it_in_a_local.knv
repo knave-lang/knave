@@ -8,5 +8,5 @@
   (local values (vec 1))
   (local n
     (counted! (mut values)
-              (first-letter (as-str (str (len values))))))
+              (first-letter (str (len values)))))
   (println n (len values)))

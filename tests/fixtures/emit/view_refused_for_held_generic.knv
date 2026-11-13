@@ -1,6 +1,6 @@
 (type tagged
   (where ((a display))
-    (fn ((ref a) a) string)))
+    (fn ((ref a) a) str)))
 
 (defn tagged (expected actual) (str expected actual))
 

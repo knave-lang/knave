@@ -1,6 +1,6 @@
 (defstruct garage
-  :name string
-  :city string
+  :name str
+  :city str
   :size u16)
 
 (defn twice (make)

@@ -2,7 +2,7 @@
   :text (ref str))
 
 (defstruct page
-  :title string)
+  :title str)
 
 (type checked
   (fn ((ref str))
@@ -18,10 +18,9 @@
 (type title-of
   (fn ((ref page)) (ref str)))
 
-(defn title-of (page)
-  (as-str (:title page)))
+(defn title-of (page) (:title page))
 
-(type announced (fn ((ref str)) string))
+(type announced (fn ((ref str)) str))
 
 (defn announced (text)
   (println text)
@@ -33,8 +32,7 @@
 (defn prefix (size text) (subs text 0 size))
 
 (defn through-as-str (name)
-  (local letter
-    (first-letter (as-str (str name "-a"))))
+  (local letter (first-letter (str name "-a")))
   (println letter))
 
 (defn through-borrowed-argument (name)
@@ -48,18 +46,16 @@
   (println letter))
 
 (defn through-field (name)
-  (local tag
-    (->label :text (as-str (str name "-d"))))
+  (local tag (->label :text (str name "-d")))
   (println (:text tag)))
 
 (defn through-variant (name)
-  (local found
-    (some (as-str (str name "-e"))))
+  (local found (some (str name "-e")))
   (println (unwrap found)))
 
 (defn through-nested-str (name)
   (local letter
-    (first-letter (as-str (str (as-str (str name "-f")) "-g"))))
+    (first-letter (str (as-str (str name "-f")) "-g")))
   (println letter))
 
 (type through-try
@@ -67,7 +63,7 @@
 
 (defn through-try (name)
   (local letter
-    (try (checked (as-str (str name "-j")))))
+    (try (checked (str name "-j"))))
   (ok (len letter)))
 
 (type label-text
@@ -77,18 +73,18 @@
 
 (defn lent-inside-lifted (name)
   (local text
-    (label-text (ref (->label :text (as-str (str name "-k"))))))
+    (label-text (ref (->label :text (str name "-k")))))
   (println text))
 
 (defn written-borrow-of-struct (name)
   (local tag
-    (ref (->label :text (as-str (str name "-l")))))
+    (ref (->label :text (str name "-l"))))
   (println (:text tag)))
 
 (defn in-written-order ()
   (local shown
     (prefix (len (announced "first"))
-            (as-str (announced "second"))))
+            (announced "second")))
   (println shown))
 
 (type make-page (fn ((ref str)) page))
@@ -100,18 +96,17 @@
 (type label-of
   (fn ((ref (ref page))) (ref str)))
 
-(defn label-of (page)
-  (as-str (:title page)))
+(defn label-of (page) (:title page))
 
 (defn field-of-ref (name)
   (local letter
-    (first-letter (as-str (:title (ref (make-page name))))))
+    (first-letter (:title (ref (make-page name)))))
   (println letter))
 
 (defn field-of-ref-local (name)
   (local page (make-page name))
   (local letter
-    (first-letter (as-str (:title (ref page)))))
+    (first-letter (:title (ref page))))
   (println letter))
 
 (defn ref-of-ref-argument (name)

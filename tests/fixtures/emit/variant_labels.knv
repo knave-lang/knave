@@ -1,5 +1,5 @@
 (enum shape
-  (labeled (struct (text string) (size f64))))
+  (labeled (struct (text str) (size f64))))
 
 (enum (tagged item)
   (entry (struct (key str) (value item))))

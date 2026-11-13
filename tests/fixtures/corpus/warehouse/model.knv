@@ -2,8 +2,8 @@
         ledger-error value-cents valued widen)
 
 (defstruct item
-  :sku string
-  :name string
+  :sku str
+  :name str
   :quantity u32
   :unit-cents u64
   :reorder-at u32
@@ -11,25 +11,25 @@
 
 (defstruct entry
   :sequence usize
-  :sku string
+  :sku str
   :delta i64
   :balance u32)
 
 (enum event
-  (receive string u32)
-  (ship string u32)
-  (adjust string i64)
-  (reprice string u64))
+  (receive str u32)
+  (ship str u32)
+  (adjust str i64)
+  (reprice str u64))
 
 (enum ledger-error
-  (unknown-sku string)
-  (short-stock (struct (sku string)
+  (unknown-sku str)
+  (short-stock (struct (sku str)
                        (wanted u32)
                        (available u32)))
-  (negative-count (struct (sku string)
+  (negative-count (struct (sku str)
                           (removed u32)
                           (available u32)))
-  (bad-line (struct (line usize) (reason string)))
+  (bad-line (struct (line usize) (reason str)))
   (bad-number parse-int-error))
 
 (trait valued
@@ -80,7 +80,7 @@
        "."
        (pad-cents (rem cents 100))))
 
-(type pad-cents (fn (u64) string))
+(type pad-cents (fn (u64) str))
 
 (defn pad-cents (cents)
   (if (< cents 10)
@@ -92,7 +92,7 @@
     (str "+" delta)
     (str delta)))
 
-(type category (fn ((ref str)) string))
+(type category (fn ((ref str)) str))
 
 (defn category (sku)
   (match (first (collect (split sku "-")))

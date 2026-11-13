@@ -1,5 +1,5 @@
 (defstruct crate-label
-  :name string
+  :name str
   :weight i64)
 
 (defn main ()

@@ -1,13 +1,15 @@
 use rustc_hash::FxHashMap;
 
+use super::declarations::Declarations;
 use super::projection::ProjectionTable;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
-use crate::core::{BindingArena, BindingId};
+use crate::core::{BindingArena, BindingId, PrimitiveType};
 
 pub struct TypeDisplay<'a> {
     bindings: &'a BindingArena,
     generics: &'a FxHashMap<GenericId, GenericParam>,
     projections: Option<&'a ProjectionTable>,
+    hidden_text: FxHashMap<BindingId, usize>,
 }
 
 impl<'a> TypeDisplay<'a> {
@@ -21,7 +23,29 @@ impl<'a> TypeDisplay<'a> {
             bindings,
             generics,
             projections: None,
+            hidden_text: FxHashMap::default(),
         }
+    }
+
+    pub fn with_hidden_text_map(mut self, hidden_text: FxHashMap<BindingId, usize>) -> Self {
+        self.hidden_text = hidden_text;
+        self
+    }
+
+    pub fn with_hidden_text(mut self, declarations: &Declarations) -> Self {
+        for (binding, definition) in declarations.types.structs().iter() {
+            let hidden = definition.params.iter().filter(|param| param.text).count();
+            if hidden > 0 {
+                self.hidden_text.insert(binding, hidden);
+            }
+        }
+        for (binding, definition) in declarations.types.enums().iter() {
+            let hidden = definition.params.iter().filter(|param| param.text).count();
+            if hidden > 0 {
+                self.hidden_text.insert(binding, hidden);
+            }
+        }
+        self
     }
 
     pub fn with_projections(self, projections: &'a ProjectionTable) -> Self {
@@ -44,10 +68,18 @@ impl<'a> TypeDisplay<'a> {
     fn show_unprojected(&self, shown: &Type) -> String {
         match shown {
             Type::Var(_) => Self::UNKNOWN.to_string(),
-            Type::Generic(generic) => self
-                .generics
-                .get(generic)
-                .map_or_else(|| Self::UNKNOWN.to_string(), |param| param.name.to_string()),
+            Type::Text(_) => "str".to_string(),
+            Type::Generic(generic) => self.generics.get(generic).map_or_else(
+                || Self::UNKNOWN.to_string(),
+                |param| {
+                    if param.text {
+                        "str".to_string()
+                    } else {
+                        param.name.to_string()
+                    }
+                },
+            ),
+            Type::Primitive(PrimitiveType::String) => "str".to_string(),
             Type::Primitive(primitive) => primitive.name().to_string(),
             Type::Named(binding, arguments) => self.named(*binding, arguments),
             Type::Function(_, parameters, result) => self.function(parameters, result),
@@ -60,10 +92,12 @@ impl<'a> TypeDisplay<'a> {
 
     fn named(&self, binding: BindingId, arguments: &[Type]) -> String {
         let name = self.bindings.get(binding).name().to_string();
-        if arguments.is_empty() {
+        let hidden = self.hidden_text.get(&binding).copied().unwrap_or_default();
+        let visible = arguments.len().saturating_sub(hidden);
+        if visible == 0 {
             return name;
         }
-        let arguments: Vec<String> = arguments
+        let arguments: Vec<String> = arguments[..visible]
             .iter()
             .map(|argument| self.show(argument))
             .collect();
@@ -101,7 +135,13 @@ impl<'a> TypeDisplay<'a> {
             .iter()
             .map(|binding| self.bindings.get(*binding).name().to_string())
             .collect();
-        declared.extend(scheme.params.iter().map(|param| self.param(param)));
+        declared.extend(
+            scheme
+                .params
+                .iter()
+                .filter(|param| !param.text)
+                .map(|param| self.param(param)),
+        );
         if declared.is_empty() {
             return self.show(&scheme.body);
         }

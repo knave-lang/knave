@@ -4357,7 +4357,7 @@ fn eval_rejects_a_malformed_rustfmt_time_limit_as_a_usage_error() {
 #[test]
 fn eval_prints_a_borrowed_value() {
     let sandbox = Sandbox::new("eval_borrowed").with_file("session.knv", SESSION);
-    let eval = sandbox.compiler(&["eval", "session.knv", "(as-str (str \"ab\"))"]);
+    let eval = sandbox.compiler(&["eval", "session.knv", "(str \"ab\")"]);
     assert_eq!(eval.assert_silent_success().stdout(), "\"ab\"\n");
 }
 
@@ -4558,7 +4558,7 @@ fn eval_json_runs_a_form_sent_from_inside_a_comment() {
 #[test]
 fn eval_json_prints_a_value_that_borrows_a_temporary() {
     let sandbox = Sandbox::new("eval_json_temporary").with_file("session.knv", SESSION);
-    let forms = "(trim (as-str (str \" a\" \"b \")))";
+    let forms = "(trim (str \" a\" \"b \"))";
     let eval = sandbox.compiler(&["eval", "--json", "session.knv", forms]);
     assert_eq!(
         eval.assert_silent_success().json_replies()[0],
@@ -9006,7 +9006,7 @@ const TASKS: &str = "(use main greeting)
   (println limit))
 
 (deftask paint (:color :coats 2)
-  (println (as-str color) \" \" (+ coats 1)))
+  (println color \" \" (+ coats 1)))
 
 (deftask clean-up2 (:label \"none\" :shown true)
   (println label \" \" shown))

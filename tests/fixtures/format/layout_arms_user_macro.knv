@@ -13,9 +13,12 @@
 (defn shows-both (value)
   (when-kind value
     ((kind/first part) (keep (show (rendered part)) (other)))
-    :label (keep (show (rendered part)) (other (and (a (lot (more))))))
+    :label (keep (show (rendered part))
+                 (other (and (a (lot (more))))))
     (_ 0))
   (without-arms value
-    ((kind/first part) (keep (show (rendered part)) (other)))
-    :label (keep (show (rendered part)) (other (and (a (lot (more))))))
+    ((kind/first part)
+     (keep (show (rendered part)) (other)))
+    :label (keep (show (rendered part))
+                 (other (and (a (lot (more))))))
     (_ 0)))

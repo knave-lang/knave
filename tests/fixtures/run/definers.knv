@@ -12,7 +12,7 @@
 (defenum shape
   "A shape on a page."
   (circle f64)
-  (labeled :text string :size f64)
+  (labeled :text str :size f64)
   dot)
 
 (defenum (outcome value)
@@ -29,7 +29,7 @@
     (* (area self) 2.0)))
 
 (deftrait (named-area (area-of))
-  (title (fn ((ref self)) string)))
+  (title (fn ((ref self)) str)))
 
 (deftrait quiet "A trait with no methods.")
 

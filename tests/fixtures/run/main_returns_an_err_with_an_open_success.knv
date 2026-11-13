@@ -2,7 +2,7 @@
   (err (str "stopped early")))
 
 (defn counted ()
-  (the (result i64 string) (stop-early)))
+  (the (result i64 str) (stop-early)))
 
 (defn main ()
   (try (counted))

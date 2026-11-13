@@ -1,5 +1,5 @@
 (type shout-all
-  (fn ((iterator string)) usize))
+  (fn ((iterator str)) usize))
 
 (defn shout-all (models) (count models))
 

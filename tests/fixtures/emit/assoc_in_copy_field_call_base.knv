@@ -3,7 +3,7 @@
   :y i64)
 
 (defstruct sticker
-  :text string
+  :text str
   :at point)
 
 (defn make-badge ()

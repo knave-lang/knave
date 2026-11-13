@@ -1,11 +1,11 @@
 (defstruct point
   :x i64
   :y i64
-  :label string)
+  :label str)
 
 (enum shape
   (circle f64)
-  (labeled (struct (text string) (size f64)))
+  (labeled (struct (text str) (size f64)))
   dot)
 
 (enum wrapper (wrapped point) empty)
@@ -22,7 +22,7 @@
     ((point :label text :x _ :y y) (println text y))))
 
 (type label-of
-  (fn ((ref point)) (ref string)))
+  (fn ((ref point)) (ref str)))
 
 (defn label-of (p)
   (match p ((point :label text) text)))

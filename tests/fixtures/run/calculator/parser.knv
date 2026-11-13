@@ -19,7 +19,7 @@
   (local next (:next left))
   (match (get tokens next)
     ((some (symbol text))
-     (match (as-str text)
+     (match text
        ("+"
         (parse-sums tokens
                     (combine left (parse-term tokens (+ next 1)) +)))
@@ -36,7 +36,7 @@
   (local next (:next left))
   (match (get tokens next)
     ((some (symbol text))
-     (match (as-str text)
+     (match text
        ("*"
         (parse-products tokens
                         (combine left (parse-factor tokens (+ next 1)) *)))
@@ -49,7 +49,7 @@
 (defn parse-factor (tokens position)
   (match (get tokens position)
     ((some (symbol text))
-     (match (as-str text)
+     (match text
        ("("
         (skip-close-paren (parse-expression tokens (+ position 1))))
        (_ (->parsed 0 (+ position 1)))))
@@ -67,5 +67,5 @@
 
 (defn number-value (text)
   (local (parsed (result i64 _))
-    (parse (as-str text)))
+    (parse text))
   (if (ok? parsed) (unwrap-ok parsed) 0))

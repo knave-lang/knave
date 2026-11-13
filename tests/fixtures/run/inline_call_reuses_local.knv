@@ -2,13 +2,13 @@
   ((value body) ((fn (n) body) value)))
 
 (type tried-count
-  (fn () (result i64 string)))
+  (fn () (result i64 str)))
 
 (defn tried-count ()
   (local n 0)
   ((fn (n)
      (if (< n
-            (try (the (result i64 string) (ok 3))))
+            (try (the (result i64 str) (ok 3))))
        (recur (+ n 1))
        (ok n)))
    n))

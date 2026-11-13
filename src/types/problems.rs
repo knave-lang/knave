@@ -671,6 +671,27 @@ impl TypeProblems {
         ))
     }
 
+    pub fn needs_owned_text(span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::NEEDS_OWNERSHIP,
+            "this value is borrowed, but its use needs to own it",
+            Label::new(span, "only a borrowed text value is available here"),
+        )
+        .with_help("build owned text with `(str value)` or `(clone value)`")
+    }
+
+    pub fn text_literal(literal: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::MISMATCHED_TYPES,
+            "mismatched types",
+            Label::new(
+                span,
+                format!("expected `str`, found the number literal `{literal}`"),
+            ),
+        )
+        .with_help(format!("write the number as text with `(str {literal})`"))
+    }
+
     pub fn literal_misfit(
         literal: &str,
         parameter: &str,

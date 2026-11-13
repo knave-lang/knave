@@ -2,18 +2,18 @@
 
 (export token tokenize)
 
-(enum token (symbol string) (number string))
+(enum token (symbol str) (number str))
 
 (type tokenize
   (fn ((ref str))
-    (result (vec token) string)))
+    (result (vec token) str)))
 
 (defn tokenize (source)
   (scan (collect (chars source)) 0 (vec)))
 
 (type scan
   (fn ((ref (vec char)) usize (vec token))
-    (result (vec token) string)))
+    (result (vec token) str)))
 
 (defn scan (characters position tokens)
   (if (>= position (len characters))

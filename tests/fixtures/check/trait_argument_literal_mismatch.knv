@@ -10,7 +10,7 @@
 (defn has-half? ((scores (vec i64)))
   (holds? scores 0.5))
 
-(defn names-three? ((names (vec string)))
+(defn names-three? ((names (vec str)))
   (holds? names 3))
 
 (defn has-some-half? ((options (vec (option u8))))
@@ -19,7 +19,7 @@
 (defn has-pair? ((scores (vec i64)))
   (holds? scores (pair 3 4)))
 
-(defn has-flag? ((rows (vec (pair u8 string))))
+(defn has-flag? ((rows (vec (pair u8 str))))
   (holds? rows (pair 3 true)))
 
 (defn names-later? ()

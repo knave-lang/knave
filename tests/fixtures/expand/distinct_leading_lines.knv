@@ -1,4 +1,4 @@
-(use code distinct-leading-lines list string)
+(use code distinct-leading-lines list str)
 
 (defmacro kept-texts ()
   (string (distinct-leading-lines (list "area\n    Measures."

@@ -7,5 +7,5 @@
 (defn main ()
   (local t
     (the (ref str)
-         (first-letter (as-str (announced "ab")))))
+         (first-letter (announced "ab"))))
   (println t))

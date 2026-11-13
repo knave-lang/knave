@@ -2,4 +2,4 @@
 
 (defn main ()
   (println (word-between "abcdefg"))
-  (println (subs (as-str (str "0123456")) 1 4)))
+  (println (subs (str "0123456") 1 4)))

@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/enum_construct.knv
+---
+(derive marker clone copy partial-eq eq hash show)
+(derive shape clone copy partial-eq show)
+(type main (fn () unit))

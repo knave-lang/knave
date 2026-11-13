@@ -1899,7 +1899,7 @@ impl TypeChecker {
             Type::Function(_, parameters, result) => {
                 self.function_contains_box_object(&parameters, &result)
             }
-            Type::Var(_) | Type::Generic(_) | Type::Primitive(_) => false,
+            Type::Var(_) | Type::Text(_) | Type::Generic(_) | Type::Primitive(_) => false,
         }
     }
 
@@ -2188,16 +2188,15 @@ impl TypeChecker {
             return self.pass(&parameter, &argument, value.span, Borrow::None);
         }
         match (&parameter, &argument) {
+            (Type::Ref(_, inner), found)
+                if !found.is_reference()
+                    && matches!(inner.as_ref(), Type::Primitive(PrimitiveType::Str))
+                    && (matches!(found, Type::Primitive(PrimitiveType::String))
+                        || found.is_text()) =>
+            {
+                Ok(Borrow::Shared)
+            }
             (Type::Ref(_, inner), found) if !found.is_reference() => {
-                if let Some(help) = self.string_as_str_help(inner, found, value) {
-                    return Err(TypeProblems::mismatch(
-                        &self.unification().describe(inner),
-                        &self.unification().describe(found),
-                        value.span,
-                        MismatchContext::Plain,
-                    )
-                    .with_help(help));
-                }
                 self.pass(inner, found, value.span, Borrow::Shared)
             }
             (Type::Mut(_, inner), _) => self.pass_mut_argument(inner, &parameter, &argument, value),
@@ -2227,21 +2226,6 @@ impl TypeChecker {
     fn dereference_result_unknown(&self, value: &TypedExpr) -> bool {
         matches!(value.kind, TypedExprKind::Deref(_))
             && self.referent_unknown(&self.unifier.resolve(&value.ty))
-    }
-
-    fn string_as_str_help(
-        &self,
-        expected: &Type,
-        found: &Type,
-        value: &TypedExpr,
-    ) -> Option<String> {
-        if !matches!(expected, Type::Primitive(PrimitiveType::Str))
-            || !matches!(found, Type::Primitive(PrimitiveType::String))
-        {
-            return None;
-        }
-        let place = self.local_place(value)?;
-        Some(format!("borrow it as a `str` with `(as-str {place})`"))
     }
 
     fn pass_mut_argument(
@@ -2416,6 +2400,13 @@ impl TypeChecker {
         argument: &Type,
         span: Span,
     ) -> Result<Borrow, Diagnostic> {
+        if matches!(
+            (self.unifier.resolve(parameter), argument),
+            (Type::Primitive(PrimitiveType::String), Type::Ref(_, inner))
+                if matches!(inner.as_ref(), Type::Primitive(PrimitiveType::Str))
+        ) {
+            return Err(TypeProblems::needs_owned_text(span));
+        }
         match (parameter, argument) {
             (expected, Type::Ref(_, _)) if Self::is_known_value(expected) => {
                 let levels = argument.reference_depth();
@@ -3540,7 +3531,14 @@ impl TypeChecker {
 
     fn fresh_arguments(&mut self, binding: BindingId) -> Vec<Type> {
         let count = self.type_arities.get(&binding).copied().unwrap_or_default();
-        (0..count).map(|_| self.unifier.fresh()).collect()
+        let hidden = self
+            .hidden_text_counts
+            .get(&binding)
+            .copied()
+            .unwrap_or_default();
+        let mut arguments: Vec<Type> = (0..count).map(|_| self.unifier.fresh()).collect();
+        arguments.extend((0..hidden).map(|_| self.unifier.fresh_text()));
+        arguments
     }
 
     fn infer_field(

@@ -1,9 +1,9 @@
-(use code nth same-binding? string)
+(use code nth same-binding? str)
 
 (export string-type?)
 
 (def string-type?
   (macro (form)
-    (if (same-binding? (nth form 1) (quote string))
+    (if (same-binding? (nth form 1) (quote str))
       (quote true)
       (quote false))))

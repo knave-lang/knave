@@ -13,4 +13,4 @@
 (defn main ()
   (local values (vec 7 8))
   (println (counted! values
-                     (first-letter (as-str (str (len values)))))))
+                     (first-letter (str (len values))))))

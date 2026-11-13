@@ -1,2 +1,7 @@
-(defn classify (n) (if (< n 0) (println "a negative number was given") (println "a number that is zero or more")))
-(defn short (n) (if (< n 0) "negative" "positive"))
+(defn classify (n)
+  (if (< n 0)
+    (println "a negative number was given")
+    (println "a number that is zero or more")))
+
+(defn short (n)
+  (if (< n 0) "negative" "positive"))

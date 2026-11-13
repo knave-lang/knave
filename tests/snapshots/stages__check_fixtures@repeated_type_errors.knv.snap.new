@@ -1,0 +1,38 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/repeated_type_errors.knv
+---
+error[L0404]: `operation` does not implement `show`
+  --> check/repeated_type_errors.knv:12:3
+   |
+12 |   (assert (= (deref borrowed) (deref borrowed))))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `show`
+   |
+   = note: `operation` cannot derive `show`: field `op` is `(fn (i64) i64)`
+   = help: a closure, an iterator or a function has no printed form
+
+error[L0404]: `operation` does not implement `partial-eq`
+  --> check/repeated_type_errors.knv:12:3
+   |
+12 |   (assert (= (deref borrowed) (deref borrowed))))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `partial-eq`
+   |
+   = note: `operation` cannot derive `partial-eq`: field `op` is `(fn (i64) i64)`
+
+error[L0404]: `str` does not implement `copy`
+  --> check/repeated_type_errors.knv:12:21
+   |
+12 |   (assert (= (deref borrowed) (deref borrowed))))
+   |                     ^^^^^^^^ this needs `copy`
+   |
+   = note: `copy` is implemented for: bool, char, unit, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, (where (a) (ref a)), (where ((a copy)) (option a)), (where ((a copy) (b copy)) (result a b)), (where ((a copy) (b copy)) (pair a b)), operation
+
+error[L0404]: `str` does not implement `copy`
+  --> check/repeated_type_errors.knv:12:38
+   |
+12 |   (assert (= (deref borrowed) (deref borrowed))))
+   |                                      ^^^^^^^^ this needs `copy`
+   |
+   = note: `copy` is implemented for: bool, char, unit, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, (where (a) (ref a)), (where ((a copy)) (option a)), (where ((a copy) (b copy)) (result a b)), (where ((a copy) (b copy)) (pair a b)), operation

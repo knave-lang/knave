@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/value_parameter_through_references.knv
+---
+error[L0503]: this value is borrowed, but the call needs to own it
+  --> check/value_parameter_through_references.knv:16:41
+   |
+16 |                     (fn (person) (high? person)))))
+   |                                         ^^^^^^ only a borrow is available here
+   |
+   = help: pass a copy with `(clone ...)`

@@ -9,7 +9,7 @@
 
 (defn build-twice (constructor)
   (local make (str "Nissan"))
-  (local owned (constructor (as-str make) 2011))
+  (local owned (constructor make 2011))
   (local built (build-with constructor))
   (println (:make built))
   (+ (:year owned) (:year built)))

@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/projection_without_implementor.knv
+---
+(type read-name (fn ((ref str)) (result i64 (parse-error str))))
+(type main (fn () unit))

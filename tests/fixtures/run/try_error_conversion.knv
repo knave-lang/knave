@@ -7,16 +7,13 @@
 
 (defn read-number (path)
   (local text (try (slurp path)))
-  (ok (try (parse (as-str text)))))
+  (ok (try (parse text))))
 
 (defn main ()
   (local arguments (command-line-args))
-  (local good
-    (as-str (unwrap (get arguments 0))))
-  (local bad
-    (as-str (unwrap (get arguments 1))))
-  (local missing
-    (as-str (unwrap (get arguments 2))))
+  (local good (unwrap (get arguments 0)))
+  (local bad (unwrap (get arguments 1)))
+  (local missing (unwrap (get arguments 2)))
   (match (read-number good)
     ((ok number) (println number))
     ((err (app-error/io _reason)) (println "cannot read"))

@@ -165,7 +165,7 @@ mod tests {
             (defn first-letter (text) (subs text 0 1))
             (type announced (fn ((ref str)) string))
             (defn announced (text) (str text))
-            (defn lent-argument () (local t (first-letter (as-str (announced \"a\")))) t)
+            (defn lent-argument () (local t (first-letter (announced \"a\"))) t)
             (defn named-argument (text) (local t (first-letter text)) t)
             (defn scrutinee-borrow () (local t (match (ref (announced \"ab\")) (x (first-letter x)))) t)
             (defn written-borrow () (local t (ref (announced \"a\"))) t)

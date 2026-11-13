@@ -1,4 +1,4 @@
-(enum thing (of i64) (other string))
+(enum thing (of i64) (other str))
 
 (defn describe (entry)
   (match entry

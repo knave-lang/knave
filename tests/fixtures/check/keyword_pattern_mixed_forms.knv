@@ -3,7 +3,7 @@
   :y i64)
 
 (enum shape
-  (labeled (struct (text string) (size f64)))
+  (labeled (struct (text str) (size f64)))
   dot)
 
 (defn struct-position-first (p)

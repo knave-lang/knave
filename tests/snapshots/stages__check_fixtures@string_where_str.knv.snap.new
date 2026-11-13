@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/string_where_str.knv
+---
+(type shout (fn ((ref str)) unit))
+(type from-local (fn () unit))
+(type from-call (fn () unit))

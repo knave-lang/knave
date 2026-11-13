@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/string_vector_field_borrows_local.knv
+---
+(derive car clone partial-eq eq hash show)
+(type ->car (fn ((vec str)) car))
+(type build (fn ((ref str)) car))
+(type main (fn () unit))

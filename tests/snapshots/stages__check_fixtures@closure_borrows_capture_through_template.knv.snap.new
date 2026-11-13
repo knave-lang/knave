@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/closure_borrows_capture_through_template.knv
+---
+(type twice (fn ((fn () unit)) unit))
+(type later (fn (str) unit))
+(type main (fn () unit))

@@ -1,5 +1,5 @@
 (defstruct person
-  :name string
+  :name str
   :age i64)
 
 (def origin (vec 1 2))

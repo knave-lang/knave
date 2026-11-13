@@ -1,5 +1,5 @@
 (defstruct page
-  :file string)
+  :file str)
 
 (defstruct (holder a)
   :item a)
@@ -23,7 +23,7 @@
     (fn (h) (= (:item h) "a"))))
 
 (defn holds-file? (h p)
-  (= (:item h) (as-str (:file p))))
+  (= (:item h) (:file p)))
 
 (defn holds-zero? (h) (= (:item h) 0))
 
@@ -31,7 +31,7 @@
   (same? (:file p) (at names 0)))
 
 (type first-ref-named?
-  (fn ((ref (vec (ref string))) (ref page))
+  (fn ((ref (vec (ref str))) (ref page))
     bool))
 
 (defn first-ref-named? (refs p)

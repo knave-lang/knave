@@ -1,6 +1,6 @@
 (use prelude/macros header-shape)
 
-(use code definition-symbol first len module-notes string
+(use code definition-symbol first len module-notes str
           value-eq)
 
 (defrule documented-defn

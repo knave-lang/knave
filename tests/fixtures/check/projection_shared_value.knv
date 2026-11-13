@@ -3,7 +3,7 @@
 (defn show-count (count) (println count))
 
 (type show-error
-  (fn ((parse-error i64)) string))
+  (fn ((parse-error i64)) str))
 
 (defn show-error (reason) (str reason))
 

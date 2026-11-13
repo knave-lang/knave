@@ -1,9 +1,9 @@
 (defstruct badge
-  :text string
+  :text str
   :size u16)
 
 (defstruct garage
-  :name string
+  :name str
   :badge badge)
 
 (defn main ()

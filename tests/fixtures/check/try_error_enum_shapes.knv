@@ -4,10 +4,9 @@
   (io io-error)
   (unknown)
   (pair io-error io-error)
-  (named (struct (detail string))))
+  (named (struct (detail str))))
 
-(type source
-  (fn () (result i64 string)))
+(type source (fn () (result i64 str)))
 
 (defn source () (ok 1))
 

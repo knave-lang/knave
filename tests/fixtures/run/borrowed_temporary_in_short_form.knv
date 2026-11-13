@@ -3,7 +3,7 @@
 
 (defn first-letter (text) (subs text 0 1))
 
-(type announced (fn ((ref str)) string))
+(type announced (fn ((ref str)) str))
 
 (defn announced (text)
   (println text)
@@ -49,126 +49,117 @@
     (fn ((ref str)) (ref str))))
 
 (defn short-function ()
-  (local t
-    (first-letter (as-str (announced "function"))))
+  (local t (first-letter (announced "function")))
   (println t))
 
 (defn explicit-function ()
   (local text (announced "function"))
-  (local t (first-letter (as-str text)))
+  (local t (first-letter text))
   (println t))
 
 (defn short-literal-ahead ()
-  (local t
-    (keep 1 (as-str (announced "literal"))))
+  (local t (keep 1 (announced "literal")))
   (println t))
 
 (defn explicit-literal-ahead ()
   (local text (announced "literal"))
-  (local t (keep 1 (as-str text)))
+  (local t (keep 1 text))
   (println t))
 
 (defn short-template ()
-  (local t
-    (paired 1 (as-str (announced "template"))))
+  (local t (paired 1 (announced "template")))
   (println t))
 
 (defn explicit-template ()
   (local text (announced "template"))
-  (local t (paired 1 (as-str text)))
+  (local t (paired 1 text))
   (println t))
 
 (defn local-ahead ()
   (local n 2)
-  (local t
-    (keep n (as-str (announced "local"))))
+  (local t (keep n (announced "local")))
   (println t))
 
 (defn explicit-local-ahead ()
   (local n 2)
   (local text (announced "local"))
-  (local t (keep n (as-str text)))
+  (local t (keep n text))
   (println t))
 
 (defn global-ahead ()
-  (local t
-    (keep lazy-seven (as-str (announced "global"))))
+  (local t (keep lazy-seven (announced "global")))
   (println t))
 
 (defn explicit-global-ahead ()
   (local seen lazy-seven)
   (local text (announced "global"))
-  (local t (keep seen (as-str text)))
+  (local t (keep seen text))
   (println t))
 
 (defn closure-ahead ()
   (local t
     (applied (fn (x) (+ x 1))
-             (as-str (announced "closure"))))
+             (announced "closure")))
   (println t))
 
 (defn explicit-closure-ahead ()
   (local text (announced "closure"))
   (local t
-    (applied (fn (x) (+ x 1)) (as-str text)))
+    (applied (fn (x) (+ x 1)) text))
   (println t))
 
 (defn call-ahead-in-template ()
   (local t
-    (paired (seven)
-            (as-str (announced "call"))))
+    (paired (seven) (announced "call")))
   (println t))
 
 (defn explicit-call-ahead-in-template ()
   (local seen (seven))
   (local text (announced "call"))
-  (local t (paired seen (as-str text)))
+  (local t (paired seen text))
   (println t))
 
 (defn local-callee ()
   (local f first-letter)
-  (local t
-    (f (as-str (announced "callee"))))
+  (local t (f (announced "callee")))
   (println t))
 
 (defn explicit-local-callee ()
   (local f first-letter)
   (local text (announced "callee"))
-  (local t (f (as-str text)))
+  (local t (f text))
   (println t))
 
 (defn block-template ()
   (local t
-    (logged (first-letter (as-str (announced "block")))))
+    (logged (first-letter (announced "block"))))
   (println t))
 
 (defn explicit-block-template ()
   (println "before")
   (local text (announced "block"))
-  (local t (first-letter (as-str text)))
+  (local t (first-letter text))
   (println t))
 
 (defn code-ahead-template ()
-  (local t
-    (after-call (as-str (announced "code"))))
+  (local t (after-call (announced "code")))
   (println t))
 
 (defn explicit-code-ahead-template ()
   (local text (announced "code"))
-  (local t (after-call (as-str text)))
+  (local t (after-call text))
   (println t))
 
 (defn repeated-template ()
-  (local t
-    (larger (as-str (announced "repeated"))))
+  (local t (larger (announced "repeated")))
   (println t))
 
 (defn explicit-repeated-template ()
   (local text (announced "repeated"))
-  (local t (larger (as-str text)))
+  (local t (larger text))
   (println t))
 
-(rust-trait textual "AsRef<str>" str string)
+(rust-trait textual "AsRef<str>" str str)
 
 (def shown
   (rust "std::convert::identity({0}.as_ref())"
@@ -207,60 +198,56 @@
 
 (defn short-type-placeholder ()
   (local t
-    (first-letter (same (as-str (announced "typed")))))
+    (first-letter (same (announced "typed"))))
   (println t))
 
 (defn explicit-type-placeholder ()
   (local text (announced "typed"))
-  (local t
-    (first-letter (same (as-str text))))
+  (local t (first-letter (same text)))
   (println t))
 
 (defn clause-block ()
-  (local t
-    (shown (as-str (announced "clause"))))
+  (local t (shown (announced "clause")))
   (println t))
 
 (defn explicit-clause-block ()
   (println "before")
   (local text (announced "clause"))
-  (local t (as-str text))
+  (local t text)
   (println t))
 
 (defn inline-block-callee ()
   (local t
     ((rust "{{ println!(\"before\"); {0} }}"
        (fn ((ref str)) (ref str)))
-     (as-str (announced "inline"))))
+     (announced "inline")))
   (println t))
 
 (defn explicit-inline-block-callee ()
   (println "before")
   (local text (announced "inline"))
-  (local t (as-str text))
+  (local t text)
   (println t))
 
 (defn computed-global-callee ()
-  (local t
-    (alias-short (as-str (announced "alias"))))
+  (local t (alias-short (announced "alias")))
   (println t))
 
 (defn explicit-computed-global-callee ()
   (local f alias-explicit)
   (local text (announced "alias"))
-  (local t (f (as-str text)))
+  (local t (f text))
   (println t))
 
 (defn deref-ahead ()
-  (local t
-    (peek-short (as-str (announced "deref"))))
+  (local t (peek-short (announced "deref")))
   (println t)
   (println lazy-short))
 
 (defn explicit-deref-ahead ()
   (local seen lazy-explicit)
   (local text (announced "deref"))
-  (local t (peek-explicit (as-str text)))
+  (local t (peek-explicit text))
   (println t)
   (println seen))
 
@@ -273,23 +260,21 @@
     (fn ((ref str) (ref str)) (ref str))))
 
 (defn underscore-ahead ()
-  (local t
-    (trimmed (as-str (announced "underscore"))))
+  (local t (trimmed (announced "underscore")))
   (println t))
 
 (defn explicit-underscore-ahead ()
   (local text (announced "underscore"))
-  (local t (trimmed (as-str text)))
+  (local t (trimmed text))
   (println t))
 
 (defn bracket-ahead ()
-  (local t
-    (second "z" (as-str (announced "bracket"))))
+  (local t (second "z" (announced "bracket")))
   (println t))
 
 (defn explicit-bracket-ahead ()
   (local text (announced "bracket"))
-  (local t (second "z" (as-str text)))
+  (local t (second "z" text))
   (println t))
 
 (defn main ()

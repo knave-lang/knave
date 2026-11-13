@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/clone_bounds.knv
+---
+(type duplicate (where ((a clone)) (fn ((ref a)) a)))
+(type duplicate-text (fn (str) str))

@@ -1,4 +1,4 @@
-(type make (fn () (fn-mut () string)))
+(type make (fn () (fn-mut () str)))
 
 (defn make () (fn () (str "Leaf")))
 

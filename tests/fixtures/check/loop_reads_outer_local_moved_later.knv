@@ -1,5 +1,5 @@
 (defstruct garage
-  :owner string
+  :owner str
   :spots u16)
 
 (defn main ()

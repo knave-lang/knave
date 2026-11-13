@@ -3,7 +3,7 @@
   :y i64)
 
 (defstruct badge
-  :text string
+  :text str
   :at point)
 
 (defstruct garage

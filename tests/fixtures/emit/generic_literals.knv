@@ -9,7 +9,7 @@
 (defn halve (x) (* x 0.5))
 
 (type describe-half
-  (where ((n float)) (fn (n) string)))
+  (where ((n float)) (fn (n) str)))
 
 (defn describe-half (x)
   (str "half is " (halve x)))

@@ -248,8 +248,22 @@ impl<'c> Finalizer<'c> {
                 let diagnostic = TypeProblems::out_of_range(number.text(), widest, span);
                 self.checker.diagnostics.push(diagnostic);
             }
+            Type::Text(_) => {
+                let diagnostic = TypeProblems::text_literal(number.text(), span);
+                self.checker.diagnostics.push(diagnostic);
+            }
             Type::Generic(generic) if !self.checker.literal_generics.contains_key(generic) => {
-                self.check_generic_literal(number, *generic, span);
+                if self
+                    .checker
+                    .generics
+                    .get(generic)
+                    .is_some_and(|param| param.text)
+                {
+                    let diagnostic = TypeProblems::text_literal(number.text(), span);
+                    self.checker.diagnostics.push(diagnostic);
+                } else {
+                    self.check_generic_literal(number, *generic, span);
+                }
             }
             Type::Primitive(primitive) if !LiteralFit::fits(number.value(), ty) => {
                 let diagnostic = TypeProblems::out_of_range(number.text(), primitive.name(), span);

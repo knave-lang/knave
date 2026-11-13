@@ -4,7 +4,7 @@
 
 (defn build (year)
   (local make (str "Nissan"))
-  (->car :make (as-str make) :year year))
+  (->car :make make :year year))
 
 (defn main ()
   (println (:year (build 2024))))

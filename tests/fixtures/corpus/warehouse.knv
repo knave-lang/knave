@@ -105,15 +105,11 @@
   (ok (apply-all stock (ref events))))
 
 (defn main ()
-  (report "morning"
-          (load (as-str stock-text) (as-str morning-events)))
+  (report "morning" (load stock-text morning-events))
   (report "full day"
-          (load (as-str stock-text)
-                (as-str (str morning-events "\n" afternoon-events))))
-  (report "broken events"
-          (load (as-str stock-text) (as-str broken-events)))
-  (report "broken stock"
-          (load (as-str broken-stock) (as-str morning-events))))
+          (load stock-text (str morning-events "\n" afternoon-events)))
+  (report "broken events" (load stock-text broken-events))
+  (report "broken stock" (load broken-stock morning-events)))
 
 (type report
   (fn ((ref str) (result book ledger-error))

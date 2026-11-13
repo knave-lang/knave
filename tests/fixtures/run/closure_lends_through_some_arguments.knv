@@ -3,7 +3,7 @@
 
 (defn label ((other (ref str)))
   (local name (str "Ariya"))
-  (left other (as-str name)))
+  (left other name))
 
 (defn main ()
   (local pick

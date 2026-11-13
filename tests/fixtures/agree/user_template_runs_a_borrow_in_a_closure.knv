@@ -11,6 +11,5 @@
 
 (defn main ()
   (local t
-    (or-else none
-             (first-letter (as-str (announced "a")))))
+    (or-else none (first-letter (announced "a"))))
   (println t))

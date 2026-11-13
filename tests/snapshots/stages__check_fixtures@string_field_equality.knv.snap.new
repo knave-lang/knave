@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/string_field_equality.knv
+---
+error[L0401]: mismatched types
+ --> check/string_field_equality.knv:8:18
+  |
+8 |   (println (ana? (->person (str "Ana") 30))))
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `person`, found `person`

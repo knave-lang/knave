@@ -1,5 +1,5 @@
 (defstruct person
-  :name string)
+  :name str)
 
 (defn main ()
   (local p (->person (str "Ana")))

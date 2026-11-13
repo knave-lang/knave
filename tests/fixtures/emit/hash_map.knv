@@ -1,6 +1,6 @@
 (defn main ()
   (local empty
-    (the (hash-map string i64) (hash-map)))
+    (the (hash-map str i64) (hash-map)))
   (local built (hash-map "b" 2 "a" 1))
   (local added (assoc built "c" 3))
   (local changed (assoc added "a" 10))

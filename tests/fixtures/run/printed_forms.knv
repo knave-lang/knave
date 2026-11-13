@@ -5,7 +5,7 @@
 (enum shape
   (circle f64)
   empty
-  (labeled (struct (text string) (size f64))))
+  (labeled (struct (text str) (size f64))))
 
 (enum (tree a)
   leaf
@@ -13,7 +13,7 @@
 
 (defstruct holder
   :item (option point)
-  :label string)
+  :label str)
 
 (defn main ()
   (prn 42)
@@ -34,9 +34,8 @@
   (prn (do))
   (prn (some 3))
   (prn (the (option i64) none))
-  (prn (the (result i64 string) (ok 1)))
-  (prn (the (result i64 string)
-            (err (str "bad"))))
+  (prn (the (result i64 str) (ok 1)))
+  (prn (the (result i64 str) (err (str "bad"))))
   (prn (pair 1 "a"))
   (prn (vec 1 2 3))
   (prn (the (vec i64) (vec)))

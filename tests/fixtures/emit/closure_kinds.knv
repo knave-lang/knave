@@ -38,7 +38,7 @@
   (fn () (push! items 2)))
 
 (type returns-once
-  (fn () (fn-once () string)))
+  (fn () (fn-once () str)))
 
 (defn returns-once ()
   (local text (str "written"))

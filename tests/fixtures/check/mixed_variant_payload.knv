@@ -1,2 +1,2 @@
 (enum bad
-  (value (struct (text string)) i64))
+  (value (struct (text str)) i64))

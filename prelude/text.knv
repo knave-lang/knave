@@ -25,8 +25,8 @@
   It also holds the lookups that print documentation, such as [doc], [dir]
   and [apropos].")
 
-(export alphanumeric? apropos as-str char chars debug digit?
-        dir display doc eprint eprintln find-doc from-str
+(export alphanumeric? apropos char chars debug digit? dir
+        display doc eprint eprintln find-doc from-str
         infallible lines lower-case parse parse-bool-error
         parse-char-error parse-error parse-float-error
         parse-int-error pr-str print print-form println prn
@@ -219,7 +219,7 @@
   (rust "{0}.trim()"
     (fn ((ref str)) (ref str))))
 
-(def as-str
+(def text-view
   (rust "{0}.as_str()"
     (fn ((ref string)) (ref str))))
 
@@ -1033,15 +1033,6 @@
 
   (trim \"  pear\\n\")
   => \"pear\"")
-
-(document (as-str text)
-  "Borrows a [string] as a `(ref str)`.
-
-  It emits `text.as_str()`.
-
-  (local word (str \"pear\"))
-  (upper-case (as-str word))
-  => \"PEAR\"")
 
 (document (parse text)
   "Parses a string into the type that the call's result takes.

@@ -6,5 +6,5 @@
 
 (defn main ()
   (local name (str "Leaf"))
-  (println (apply-one show (as-str name)))
+  (println (apply-one show name))
   (println (apply-one show 7)))

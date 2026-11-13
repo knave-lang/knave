@@ -1,4 +1,4 @@
-(use code number-gt number-sub string)
+(use code number-gt number-sub str)
 
 (defmacro doubles (times)
   ((fn (text remaining)

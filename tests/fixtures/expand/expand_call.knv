@@ -1,5 +1,5 @@
 (use code add-module-note definition-symbol expand-call
-          module-notes nth string)
+          module-notes nth str)
 
 (def expanded
   (macro (form)

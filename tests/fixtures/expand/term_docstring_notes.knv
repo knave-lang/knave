@@ -1,4 +1,4 @@
-(use code len module-notes string symbol)
+(use code len module-notes str symbol)
 
 (defn quokka (x)
   "Counts the animals."

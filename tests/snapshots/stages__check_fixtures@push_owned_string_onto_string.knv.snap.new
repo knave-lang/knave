@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/push_owned_string_onto_string.knv
+---
+(type main (fn () unit))

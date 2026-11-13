@@ -3,7 +3,6 @@
 
 (defn main ()
   (println (unwrap-ok (the (result i64 failure) (ok 1))))
-  (println (unwrap-err (the (result i64 string)
-                            (err (str "e")))))
-  (println (expect-ok (the (result i64 string) (ok 2))
+  (println (unwrap-err (the (result i64 str) (err (str "e")))))
+  (println (expect-ok (the (result i64 str) (ok 2))
                       "needs two")))

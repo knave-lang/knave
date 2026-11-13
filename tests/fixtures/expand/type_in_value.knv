@@ -8,7 +8,7 @@
 
 (defn two-forms ()
   (local year i64)
-  (local count string)
+  (local count str)
   year)
 
 (defn macro-name (numbers) (map char numbers))
@@ -22,7 +22,7 @@
 
 (def first-module-value i64)
 
-(def second-module-value string)
+(def second-module-value str)
 
 (defstruct point
   :x i64

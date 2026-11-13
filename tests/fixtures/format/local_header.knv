@@ -1,3 +1,5 @@
 (defn report (sightings)
-  (local summary (str "the first sighting of the season came from the northern ridge" sightings))
+  (local summary
+    (str "the first sighting of the season came from the northern ridge"
+         sightings))
   (println summary))

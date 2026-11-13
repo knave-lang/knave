@@ -1,8 +1,8 @@
 (trait named
-  (name (fn ((ref self)) string)))
+  (name (fn ((ref self)) str)))
 
 (type show-name
-  (where ((a named)) (fn (a) string)))
+  (where ((a named)) (fn (a) str)))
 
 (defn show-name (value)
   (name (ref value)))

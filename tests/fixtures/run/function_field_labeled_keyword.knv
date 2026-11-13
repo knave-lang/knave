@@ -1,9 +1,9 @@
 (defstruct user
-  :name string
+  :name str
   :age u16)
 
 (defstruct sorter
-  :key (fn ((ref user)) (ref string))
+  :key (fn ((ref user)) (ref str))
   :label str)
 
 (defn main ()

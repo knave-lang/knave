@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/update_owning_function.knv
+---
+error[L0401]: mismatched types
+ --> check/update_owning_function.knv:7:8
+  |
+7 |   (prn (update (->item :name (str "plum")) :name take-name))
+  |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `str`, found `(ref str)`

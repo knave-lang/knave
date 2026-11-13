@@ -1,5 +1,5 @@
 (defstruct named
-  :name string
+  :name str
   :size usize)
 
 (defn main ()

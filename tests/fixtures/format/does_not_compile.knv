@@ -1,2 +1,5 @@
-(defn main () (println (str "value: " (undefined-function missing-name (another-missing 1 2)))))
+(defn main ()
+  (println (str "value: "
+                (undefined-function missing-name (another-missing 1 2)))))
+
 (def broken (fn))

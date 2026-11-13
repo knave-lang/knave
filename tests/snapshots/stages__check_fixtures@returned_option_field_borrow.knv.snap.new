@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/returned_option_field_borrow.knv
+---
+error[L0455]: `main` returns a value of type `car`
+ --> check/returned_option_field_borrow.knv:8:15
+  |
+8 | (defn main () (build "Leaf"))
+  |               ^^^^^^^^^^^^^^ this `car` is returned from `main`
+  |
+  = note: `main` returns `unit` or a `result`
+  = help: end the body of `main` with a print, such as `(println value)`, or return a `result`

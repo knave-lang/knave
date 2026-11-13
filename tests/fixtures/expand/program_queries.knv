@@ -1,6 +1,4 @@
-(use code form-location module-exports program-modules
-          string)
-
+(use code form-location module-exports program-modules str)
 (use queried/stock restock)
 
 (def located

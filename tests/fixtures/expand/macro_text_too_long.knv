@@ -1,4 +1,4 @@
-(use code string)
+(use code str)
 
 (defmacro grow ()
   ((fn (text) (recur (string text text)))

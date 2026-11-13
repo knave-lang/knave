@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/associated_deferred_argument.knv
+---
+(type describe-error (where ((target display from-str)) (fn ((parse-error target) target) str)))
+(type main (fn () unit))

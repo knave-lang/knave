@@ -3,8 +3,7 @@
 (defn size ((items (vec i64)))
   (len items))
 
-(defn shout ((word string))
-  (str word "!"))
+(defn shout ((word str)) (str word "!"))
 
 (defn apply-one (f a) (f a))
 

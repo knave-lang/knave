@@ -2,13 +2,13 @@
 
 (enum expr
   (literal i64)
-  (variable string)
-  (binary string expr expr)
+  (variable str)
+  (binary str expr expr)
   (negate expr)
   (choice expr expr expr)
-  (call string (vec expr)))
+  (call str (vec expr)))
 
-(enum statement (binding string expr) (show expr))
+(enum statement (binding str expr) (show expr))
 
 (display expr (e)
   (match e

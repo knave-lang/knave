@@ -1,0 +1,18 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/returned_borrow_forms.knv
+---
+error[L0510]: cannot return a borrow of a local value
+  --> check/returned_borrow_forms.knv:26:14
+   |
+10 |   :at (ref point))
+   |       ----------- declared as a borrow here
+...
+25 |   (local origin (->point 0 0))
+   |          ------ this local is dropped when the function returns
+26 |   (->pin :at (ref origin)))
+   |              ^^^^^^^^^^^^ this borrows a local value
+   |
+   = help: the field `at` of `pin` borrows its data, so give it the owned type `point`

@@ -1,3 +1,3 @@
-(derive string clone)
+(derive str clone)
 
 (defn main () (do))

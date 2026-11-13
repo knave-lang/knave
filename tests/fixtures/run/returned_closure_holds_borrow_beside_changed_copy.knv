@@ -53,7 +53,7 @@
   (set! name (str "pear"))
   (local v (some "none"))
   (when (> (len name) 0)
-    (set! v (some (as-str name))))
+    (set! v (some name)))
   (fn ()
     (match v ((some s) (len s)) (none 0))))
 
@@ -76,7 +76,7 @@
 (defn pushed! (name)
   (set! name (str "plum"))
   (local views (vec "none"))
-  (push! views (as-str name))
+  (push! views name)
   (fn () (len views)))
 
 (defn sizer! (items)

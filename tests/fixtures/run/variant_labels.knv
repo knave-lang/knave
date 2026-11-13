@@ -1,6 +1,6 @@
 (enum shape
   (circle f64)
-  (labeled (struct (text string) (size f64)))
+  (labeled (struct (text str) (size f64)))
   dot)
 
 (enum (tagged item)

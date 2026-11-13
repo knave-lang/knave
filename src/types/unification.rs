@@ -7,6 +7,7 @@ use super::ty::Type;
 use super::typed::{TypedExpr, TypedExprKind, TypedStructExpr};
 use super::unifier::{LiteralKind, Unifier, UnifyError};
 use super::view_coercion::ViewCoercion;
+use crate::core::PrimitiveType;
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 
@@ -35,18 +36,44 @@ impl<'a> Unification<'a> {
         found: &Type,
         span: Span,
     ) -> Result<(), Diagnostic> {
+        let expected_resolved = self.unifier.resolve(expectation.expected);
+        let found_resolved = self.unifier.resolve(found);
+        if matches!(expected_resolved, Type::Primitive(PrimitiveType::String)) {
+            let borrowed = match &found_resolved {
+                Type::Primitive(PrimitiveType::Str) => true,
+                Type::Ref(_, inner) => {
+                    matches!(inner.as_ref(), Type::Primitive(PrimitiveType::Str))
+                }
+                _ => false,
+            };
+            if borrowed {
+                return Err(TypeProblems::needs_owned_text(span));
+            }
+        }
+        if let Type::Ref(_, inner) = &expected_resolved
+            && matches!(inner.as_ref(), Type::Primitive(PrimitiveType::Str))
+            && matches!(found_resolved, Type::Primitive(PrimitiveType::String))
+        {
+            return Ok(());
+        }
         if self.coerces(expectation.expected, found, span) {
             return Ok(());
         }
         match self.unifier.unify(expectation.expected, found, span) {
             Ok(()) => Ok(()),
             Err(UnifyError::Infinite) => Err(TypeProblems::infinite(span)),
+            Err(UnifyError::NeedsOwnership) => Err(TypeProblems::needs_owned_text(span)),
             Err(_) => Err(self.mismatch(expectation, found, span)),
         }
     }
 
     pub(super) fn coerces(&mut self, expected: &Type, found: &Type, span: Span) -> bool {
         match (self.unifier.resolve(expected), self.unifier.resolve(found)) {
+            (Type::Ref(_, shared), Type::Primitive(PrimitiveType::String))
+                if matches!(shared.as_ref(), Type::Primitive(PrimitiveType::Str)) =>
+            {
+                true
+            }
             (Type::Ref(_, shared), Type::Ref(_, owned)) => {
                 ViewCoercion::new(&shared, &owned).views_string()
                     || self.coerces(&shared, &owned, span)
@@ -148,6 +175,7 @@ mod tests {
             let generic = GenericParam {
                 id: Self::generic(),
                 name: "T".into(),
+                text: false,
                 bounds: Vec::new(),
             };
             let mut program = TypedSource::expand(Self::SOURCE).typed();

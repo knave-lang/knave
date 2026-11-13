@@ -3,11 +3,11 @@
 (defenum keyword-variant :circle)
 
 (defenum struct-payload
-  (labeled (struct (text string))))
+  (labeled (struct (text str))))
 
-(defenum field-after-type (labeled string :size f64))
+(defenum field-after-type (labeled str :size f64))
 
-(defenum type-after-field (labeled :text string f64))
+(defenum type-after-field (labeled :text str f64))
 
 (defenum field-without-type (labeled :text :size f64))
 

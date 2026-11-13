@@ -6,7 +6,7 @@
 
 (defstruct user
   :name str
-  :tags (vec string))
+  :tags (vec str))
 
 (defn main ()
   (local leaf (->car "Nissan" "Leaf" 2024 true))

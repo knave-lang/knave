@@ -100,6 +100,7 @@ mod tests {
                 GenericParam {
                     id: generic,
                     name: "T".into(),
+                    text: false,
                     bounds,
                 },
             );
@@ -135,6 +136,7 @@ mod tests {
             let param = GenericParam {
                 id: parameter,
                 name: "U".into(),
+                text: false,
                 bounds: Vec::new(),
             };
             Self::implementor(vec![param], Type::Generic(parameter))

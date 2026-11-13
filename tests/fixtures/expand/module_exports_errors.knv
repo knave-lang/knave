@@ -1,4 +1,4 @@
-(use code module-exports string)
+(use code module-exports str)
 
 (def exported-names
   (macro (form)

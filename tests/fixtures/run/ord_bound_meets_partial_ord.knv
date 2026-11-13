@@ -15,8 +15,8 @@
     (partial-ord "{{ let _ = {0}; \"partial-ord\" }}")))
 
 (type compared
-  (where ((a ord (partial-eq string)))
-    (fn (a string) bool)))
+  (where ((a ord (partial-eq str)))
+    (fn (a str) bool)))
 
 (defn compared (left right) (= left right))
 

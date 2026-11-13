@@ -4,7 +4,7 @@
 
 (defn apply (pick)
   (local owned (str "Leaf"))
-  (if (= (pick (as-str owned)) "Leaf")
+  (if (= (pick owned) "Leaf")
     (pick "Nissan")
     "none"))
 

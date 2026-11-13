@@ -1,5 +1,5 @@
 (defstruct car
-  :model string)
+  :model str)
 
 (defn main ()
   (local model (str "Leaf"))

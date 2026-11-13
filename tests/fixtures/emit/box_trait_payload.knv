@@ -14,7 +14,7 @@
   (outcome/made (box (new circle (radius 1.0)))))
 
 (type parse
-  (fn (str) (result (box shape) string)))
+  (fn (str) (result (box shape) str)))
 
 (defn parse (text)
   (ok (box (new circle (radius 1.0)))))

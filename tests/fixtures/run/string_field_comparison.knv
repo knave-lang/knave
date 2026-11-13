@@ -1,8 +1,8 @@
 (defstruct box
-  :name string)
+  :name str)
 
 (type same-name
-  (fn ((ref box) (ref string)) bool))
+  (fn ((ref box) (ref str)) bool))
 
 (defn same-name (b name)
   (= (field b name) name))

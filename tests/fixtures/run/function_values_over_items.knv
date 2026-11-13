@@ -1,5 +1,5 @@
 (defstruct car
-  :model string
+  :model str
   :year i64)
 
 (defn double (y) (* y 2))
@@ -7,10 +7,9 @@
 (defn big? (y) (> y 2))
 
 (defn shout (word)
-  (len (upper-case (as-str word))))
+  (len (upper-case word)))
 
-(defn long? (word)
-  (> (len (as-str word)) 3))
+(defn long? (word) (> (len word) 3))
 
 (defn model-length (c) (len (:model c)))
 

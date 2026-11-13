@@ -1,4 +1,4 @@
-(enum app-error (bad-input string) (missing))
+(enum app-error (bad-input str) (missing))
 
 (display app-error (error)
   (match error

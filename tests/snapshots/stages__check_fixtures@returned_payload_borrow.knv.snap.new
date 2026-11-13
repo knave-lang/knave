@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/check/returned_payload_borrow.knv
+---
+(derive label clone copy partial-eq eq hash show)
+(type build (fn () label))
+(type main (fn () unit))

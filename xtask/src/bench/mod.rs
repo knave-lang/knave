@@ -1,3 +1,4 @@
+mod allocator_share;
 mod benchmark_profile;
 mod callgrind;
 mod change;
@@ -18,6 +19,7 @@ mod method;
 mod output_file;
 mod profile;
 mod results;
+mod stage_costs;
 mod table;
 
 use std::collections::BTreeSet;

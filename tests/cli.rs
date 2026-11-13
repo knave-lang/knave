@@ -617,6 +617,44 @@ exit 101
         self
     }
 
+    fn with_loose_crate_programs(test_name: &str) -> Self {
+        let answer = "(def answer\n  (rust \"answer::answer()\" (fn () i64)))\n\n";
+        Self::new(test_name)
+            .with_fixture_tree("crates")
+            .with_file(
+                "app/scratch/answer.knv",
+                &format!("{answer}(defn main () (println (answer)))\n"),
+            )
+            .with_file(
+                "app/scratch/next.knv",
+                &format!("{answer}(defn main () (println (+ (answer) 1)))\n"),
+            )
+            .with_file(
+                "app/scratch/dangling.knv",
+                "(defstruct person :name string)\n\n\
+                 (defn dangling-name ()\n  (let (someone (->person (str \"Ada\")))\n    (:name someone)))\n\n\
+                 (defn main () (println (dangling-name)))\n",
+            )
+    }
+
+    fn crate_fingerprints(&self, crate_name: &str) -> usize {
+        let fingerprints = self
+            .directory
+            .join(Self::CACHE_DIRECTORY)
+            .join(Language::NAME)
+            .join("target/debug/.fingerprint");
+        fs::read_dir(fingerprints)
+            .expect("the shared target holds fingerprints")
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(&format!("{crate_name}-"))
+            })
+            .count()
+    }
+
     fn copy_tree(from: &Path, to: &Path) {
         fs::create_dir_all(to).expect("the sandbox accepts directories");
         for entry in fs::read_dir(from).expect("the fixture tree is readable") {
@@ -8188,6 +8226,38 @@ fn run_of_another_file_in_a_project_with_crates_builds_through_cargo() {
     let sandbox = Sandbox::new("crate_other_file").with_fixture_tree("crates");
     let run = sandbox.compiler_in("app", &["run", "src/tools/next.knv"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "43\n");
+}
+
+#[test]
+fn run_of_a_loose_file_in_a_project_with_crates_never_runs_another_file_program() {
+    let sandbox = Sandbox::with_loose_crate_programs("crate_loose_stale");
+    let run = |file| sandbox.compiler_in("app/scratch", &["run", file]);
+    run("answer.knv").assert_exit_code(0);
+    run("next.knv").assert_exit_code(0);
+    assert_eq!(run("answer.knv").assert_exit_code(0).stdout(), "42\n");
+}
+
+#[test]
+fn run_of_a_loose_file_that_fails_in_rustc_after_another_build_reports_the_error() {
+    let sandbox = Sandbox::with_loose_crate_programs("crate_loose_failed");
+    let run = |file| sandbox.compiler_in("app/scratch", &["run", file]);
+    run("dangling.knv").assert_exit_code(1);
+    run("answer.knv").assert_exit_code(0);
+    let rerun = run("dangling.knv");
+    assert_eq!(rerun.stdout(), "");
+    let stderr = rerun.assert_exit_code(1).stderr();
+    assert!(stderr.starts_with("error[E0515]"), "{stderr}");
+}
+
+#[test]
+fn loose_files_in_a_project_with_crates_share_the_built_crates() {
+    let sandbox = Sandbox::with_loose_crate_programs("crate_loose_shared");
+    for file in ["answer.knv", "next.knv"] {
+        sandbox
+            .compiler_in("app/scratch", &["run", file])
+            .assert_exit_code(0);
+    }
+    assert_eq!(sandbox.crate_fingerprints("answer"), 1);
 }
 
 #[test]

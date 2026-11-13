@@ -1,0 +1,11 @@
+(trait tagged
+  (tag (fn ((ref self)) i64)
+    (do (quote hello) 1)))
+
+(defstruct car
+  :year i64)
+
+(impl tagged car)
+
+(defn main ()
+  (println (tag (->car :year 1))))

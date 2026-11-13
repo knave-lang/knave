@@ -1,10 +1,12 @@
 use super::trait_declarations::TraitDeclarations;
 use super::type_declarations::TypeDeclarations;
+use super::written_bodies::WrittenBodies;
 
 #[derive(Default)]
 pub struct Declarations {
     pub(super) types: TypeDeclarations,
     pub(super) traits: TraitDeclarations,
+    pub(super) written: WrittenBodies,
 }
 
 impl Declarations {
@@ -14,6 +16,10 @@ impl Declarations {
 
     pub fn traits(&self) -> &TraitDeclarations {
         &self.traits
+    }
+
+    pub fn written_bodies(&self) -> &WrittenBodies {
+        &self.written
     }
 }
 

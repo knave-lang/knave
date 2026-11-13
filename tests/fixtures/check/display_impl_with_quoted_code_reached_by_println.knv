@@ -1,0 +1,7 @@
+(defstruct p
+  :x i64)
+
+(display p (v)
+  (do (+ 1 "a") (quote hello) "x"))
+
+(defn main () (println (->p :x 1)))

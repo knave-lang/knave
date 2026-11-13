@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/display_impl_with_quoted_code_reached_by_println.knv
+---
+error[L0401]: mismatched types
+ --> check/display_impl_with_quoted_code_reached_by_println.knv:5:12
+  |
+5 |   (do (+ 1 "a") (quote hello) "x"))
+  |            ^^^ expected an integer, found `str`

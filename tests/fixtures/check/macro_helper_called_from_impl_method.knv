@@ -1,0 +1,15 @@
+(use prelude/macros map-list)
+
+(deftrait greet
+  (hi (fn ((ref self)) i64)))
+
+(defstruct p
+  :x i64)
+
+(impl greet p
+  (hi (s)
+    (do
+      (map-list (vec 1) (fn (item) item))
+      1)))
+
+(defn main () (println "ok"))

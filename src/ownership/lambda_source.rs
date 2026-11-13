@@ -25,7 +25,7 @@ impl LambdaSource {
     }
 
     pub fn lambda(&self, name: &str) -> &TypedLambda {
-        match &self.bound_value(name).kind {
+        match &self.bound(name).kind {
             TypedExprKind::Fn(lambda) => lambda,
             _ => panic!("`{name}` is bound to a lambda"),
         }
@@ -39,7 +39,7 @@ impl LambdaSource {
         bindings.iter().map(|binding| self.name(*binding)).collect()
     }
 
-    fn bound_value(&self, name: &str) -> &TypedExpr {
+    pub fn bound(&self, name: &str) -> &TypedExpr {
         self.let_bound(name).1
     }
 

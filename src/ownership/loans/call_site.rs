@@ -8,6 +8,8 @@ pub struct CallSite<'c> {
 }
 
 impl<'c> CallSite<'c> {
+    const RECEIVER: usize = 0;
+
     pub fn new(callee: &'c TypedExpr, arguments: &'c [TypedArgument]) -> Self {
         Self { callee, arguments }
     }
@@ -50,8 +52,8 @@ impl<'c> CallSite<'c> {
     }
 
     fn elided_ties(&self, rules: &LoanRules<'_>) -> Vec<usize> {
-        if rules.receives(self.callee, 0) {
-            return vec![0];
+        if rules.receives(self.callee, Self::RECEIVER) {
+            return vec![Self::RECEIVER];
         }
         let borrowed: Vec<usize> = (0..self.arguments.len())
             .filter(|position| {

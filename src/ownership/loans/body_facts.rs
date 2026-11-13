@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use super::access_facts::AccessFacts;
 use super::closure::Closure;
 use super::control_flow_graph::ControlFlowGraph;
@@ -91,6 +93,10 @@ impl<'w> BodyFacts<'w> {
             .result
             .live_at(point)
             .map(|loan| (loan, LoanHolder::Result));
-        held.chain(received).chain(returned).collect()
+        let mut listed = BTreeSet::new();
+        held.chain(received)
+            .chain(returned)
+            .filter(|(loan, _)| listed.insert(*loan))
+            .collect()
     }
 }

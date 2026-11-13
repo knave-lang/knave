@@ -1,4 +1,6 @@
 mod agreement;
+mod example_folder;
+mod example_layout;
 mod explanation_examples;
 mod fixture_queue;
 mod formatting;

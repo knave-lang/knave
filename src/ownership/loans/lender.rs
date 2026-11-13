@@ -21,8 +21,10 @@ impl<'l> Lender<'l> {
     }
 
     pub fn lend(&mut self, lending: Lending) -> Holdings {
-        self.access(lending.access());
-        Holdings::of_loan(self.loans.record(lending, self.point))
+        let access = lending.access();
+        let loan = self.loans.record(lending, self.point);
+        self.access(access.lending(loan));
+        Holdings::of_loan(loan)
     }
 
     pub fn access(&mut self, access: PlaceAccess) {

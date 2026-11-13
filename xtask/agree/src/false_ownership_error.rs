@@ -25,6 +25,8 @@ impl Oracle for FalseOwnershipError {
             .filter(|rejection| rejection.is_ownership() && rejection.reached_from_main)
             .cloned()
             .collect();
+        // TODO(#503): any rustc error confirms a refusal, so an aliasing error masks a false
+        // refusal. Match the refusal's rustc codes once the loan rule refuses aliasing in check.
         let Some(Verdict::Accepted) = verdicts.of(CheckerWithoutOwnership::NAME) else {
             return None;
         };

@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+assertion_line: 132
+expression: reports.report(path)
+input_file: tests/fixtures/agree/lent_borrow_beside_a_held_element.knv
+---
+Checker: rejected: L0512 in `main`
+CheckerWithoutOwnership: rejected: E0502 in `main`, E0597 in `main`
+CompiledDebug: rejected: L0512 in `main`

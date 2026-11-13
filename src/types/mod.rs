@@ -95,6 +95,7 @@ mod variant_shape;
 mod view_coercion;
 mod walk;
 mod wrapper;
+mod written_bodies;
 
 pub use crate::core::ClosureKind;
 pub use binding::GenericBinding;

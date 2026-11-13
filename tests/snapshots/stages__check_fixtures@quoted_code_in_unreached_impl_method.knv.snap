@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/quoted_code_in_unreached_impl_method.knv
+---
+error[L0442]: quoted code only exists at compile time
+ --> check/quoted_code_in_unreached_impl_method.knv:8:15
+  |
+8 |   (hi (s) (do (quote hello) (str "x"))))
+  |               ^^^^^^^^^^^^^ used in code that runs in the program
+  |
+  = help: use `quote` inside macros, or write a string if you want text

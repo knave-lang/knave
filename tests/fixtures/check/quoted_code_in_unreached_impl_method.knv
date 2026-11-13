@@ -1,0 +1,10 @@
+(deftrait greet
+  (hi (fn ((ref self)) string)))
+
+(defstruct p
+  :x i64)
+
+(impl greet p
+  (hi (s) (do (quote hello) (str "x"))))
+
+(defn main () (println "ok"))

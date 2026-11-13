@@ -4,6 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::deferred_definitions::DeferredDefinitions;
 use super::trait_reach::{ReachedTraits, TraitReach};
+use super::written_bodies::WrittenBodies;
 use crate::core::{BindingArena, BindingId, Expr, ItemKind, References};
 use crate::expand::Program;
 use crate::source::Span;
@@ -24,6 +25,7 @@ pub struct DefinitionGraph<'p> {
 pub struct ProgramReach {
     unreached: Rc<FxHashSet<BindingId>>,
     traits: ReachedTraits,
+    written: WrittenBodies,
 }
 
 impl ProgramReach {
@@ -34,13 +36,17 @@ impl ProgramReach {
     pub fn traits(&self) -> &ReachedTraits {
         &self.traits
     }
+
+    pub fn written_bodies(&self) -> &WrittenBodies {
+        &self.written
+    }
 }
 
 impl<'p> DefinitionGraph<'p> {
     pub fn of(program: &'p Program) -> Self {
         Self::deferring(
             program,
-            DeferredDefinitions::of(program),
+            DeferredDefinitions::of(program, &WrittenBodies::of(&program.modules)),
             program.prelude_macro_helpers(),
         )
     }
@@ -59,7 +65,8 @@ impl<'p> DefinitionGraph<'p> {
             Self::definitions_in(program)
                 .filter(|definition| walked.contains_key(&definition.binding)),
         );
-        let dependencies = DependencyGraph::build(walked, macro_helpers);
+        let written = WrittenBodies::of(&program.modules);
+        let dependencies = DependencyGraph::build(walked, macro_helpers, &written);
         let order: Vec<BindingId> = definitions
             .iter()
             .map(|definition| definition.binding)
@@ -72,6 +79,7 @@ impl<'p> DefinitionGraph<'p> {
             reach: ProgramReach {
                 unreached: Rc::new(deferred),
                 traits: reached_traits,
+                written,
             },
         }
     }
@@ -181,6 +189,7 @@ impl<'a, 'p> ReferenceWalk<'a, 'p> {
 
 pub struct DependencyGraph {
     edges: FxHashMap<BindingId, Vec<BindingId>>,
+    always_emitted: FxHashSet<BindingId>,
     compile_time_only: FxHashSet<BindingId>,
     macro_helpers: FxHashSet<BindingId>,
 }
@@ -189,6 +198,7 @@ impl DependencyGraph {
     fn build(
         walked: FxHashMap<BindingId, References>,
         macro_helpers: FxHashSet<BindingId>,
+        written: &WrittenBodies,
     ) -> Self {
         let mut edges = FxHashMap::with_capacity_and_hasher(walked.len(), Default::default());
         let mut direct_compile_time = FxHashSet::default();
@@ -209,6 +219,7 @@ impl DependencyGraph {
         let mut graph = Self {
             macro_helpers,
             edges,
+            always_emitted: written.iter().collect(),
             compile_time_only: direct_compile_time,
         };
         graph.spread_compile_time();
@@ -220,8 +231,9 @@ impl DependencyGraph {
     }
 
     pub fn unchecked(&self, mains: &[BindingId]) -> FxHashSet<BindingId> {
-        let runtime = self.reachable_from(mains);
-        let checked_helpers = self.reachable_from(&self.runtime_roots(mains));
+        let roots: Vec<BindingId> = mains.iter().chain(&self.always_emitted).copied().collect();
+        let runtime = self.reachable_from(&roots);
+        let checked_helpers = self.reachable_from(&self.runtime_roots(&roots));
         self.edges
             .keys()
             .filter(|binding| {
@@ -371,6 +383,7 @@ mod tests {
     struct CallGraph {
         bindings: BindingArena,
         edges: FxHashMap<BindingId, Vec<BindingId>>,
+        always_emitted: FxHashSet<BindingId>,
         compile_time_code: FxHashSet<BindingId>,
         macro_helpers: FxHashSet<BindingId>,
     }
@@ -380,6 +393,7 @@ mod tests {
             Self {
                 bindings: BindingArena::default(),
                 edges: FxHashMap::default(),
+                always_emitted: FxHashSet::default(),
                 compile_time_code: FxHashSet::default(),
                 macro_helpers: FxHashSet::default(),
             }
@@ -388,6 +402,12 @@ mod tests {
         fn compile_time_function(&mut self, name: &str, callees: &[BindingId]) -> BindingId {
             let binding = self.function(name, callees);
             self.compile_time_code.insert(binding);
+            binding
+        }
+
+        fn written_body(&mut self, name: &str, callees: &[BindingId]) -> BindingId {
+            let binding = self.compile_time_function(name, callees);
+            self.always_emitted.insert(binding);
             binding
         }
 
@@ -407,6 +427,7 @@ mod tests {
         fn dependencies(self) -> DependencyGraph {
             DependencyGraph {
                 edges: self.edges,
+                always_emitted: self.always_emitted,
                 compile_time_only: self.compile_time_code,
                 macro_helpers: self.macro_helpers,
             }
@@ -447,6 +468,32 @@ mod tests {
         let items = program.modules.iter().flat_map(|module| &module.items);
         let graph = DefinitionGraph::of(program);
         assert_eq!(graph.definitions.capacity(), items.count());
+    }
+
+    #[test]
+    fn an_unreached_compile_time_body_that_emit_writes_is_checked() {
+        let mut graph = CallGraph::new();
+        let body = graph.written_body("greet-method", &[]);
+        let main = graph.function("main", &[]);
+        assert!(!graph.dependencies().unchecked(&[main]).contains(&body));
+    }
+
+    #[test]
+    fn compile_time_code_that_a_written_body_calls_is_checked() {
+        let mut graph = CallGraph::new();
+        let helper = graph.compile_time_function("quoted-name", &[]);
+        graph.written_body("greet-method", &[helper]);
+        let main = graph.function("main", &[]);
+        assert!(!graph.dependencies().unchecked(&[main]).contains(&helper));
+    }
+
+    #[test]
+    fn a_macro_helper_that_only_a_written_body_calls_is_checked() {
+        let mut graph = CallGraph::new();
+        let helper = graph.macro_helper("record-name");
+        graph.written_body("greet-method", &[helper]);
+        let main = graph.function("main", &[]);
+        assert!(!graph.dependencies().unchecked(&[main]).contains(&helper));
     }
 
     #[test]

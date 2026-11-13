@@ -1,5 +1,6 @@
 use rustc_hash::FxHashSet;
 
+use super::written_bodies::WrittenBodies;
 use crate::core::BindingId;
 use crate::expand::Program;
 use crate::modules::ModuleSources;
@@ -7,8 +8,8 @@ use crate::modules::ModuleSources;
 pub struct DeferredDefinitions;
 
 impl DeferredDefinitions {
-    pub fn of(program: &Program) -> FxHashSet<BindingId> {
-        let always_checked = Self::always_checked(program);
+    pub fn of(program: &Program, written: &WrittenBodies) -> FxHashSet<BindingId> {
+        let always_checked = Self::always_checked(program, written);
         program
             .modules
             .iter()
@@ -21,13 +22,9 @@ impl DeferredDefinitions {
             .collect()
     }
 
-    fn always_checked(program: &Program) -> FxHashSet<BindingId> {
-        let methods = program
-            .modules
+    fn always_checked(program: &Program, written: &WrittenBodies) -> FxHashSet<BindingId> {
+        written
             .iter()
-            .flat_map(|module| &module.items)
-            .flat_map(|item| item.kind.method_bodies());
-        methods
             .chain(program.string_view)
             .chain(program.checked_roots.iter().copied())
             .collect()
@@ -41,6 +38,7 @@ mod tests {
     use crate::expand::Program;
     use crate::modules::ModuleSources;
     use crate::types::TypedSource;
+    use crate::types::written_bodies::WrittenBodies;
 
     struct PreludeModuleFixture {
         source: TypedSource,
@@ -94,7 +92,8 @@ mod tests {
         }
 
         fn defers_binding(&self, binding: BindingId) -> bool {
-            DeferredDefinitions::of(self.program()).contains(&binding)
+            DeferredDefinitions::of(self.program(), &WrittenBodies::of(&self.program().modules))
+                .contains(&binding)
         }
 
         fn methods(&self) -> Vec<BindingId> {
@@ -134,7 +133,10 @@ mod tests {
             .map(|(binding, _)| binding)
             .next()
             .expect("the module defines a function");
-        assert!(!DeferredDefinitions::of(program).contains(&helper));
+        assert!(
+            !DeferredDefinitions::of(program, &WrittenBodies::of(&program.modules))
+                .contains(&helper)
+        );
     }
 
     #[test]
@@ -158,6 +160,8 @@ mod tests {
         let source = TypedSource::expand("(defn main ())");
         let program = source.program();
         let view = program.string_view.expect("the prelude views strings");
-        assert!(!DeferredDefinitions::of(program).contains(&view));
+        assert!(
+            !DeferredDefinitions::of(program, &WrittenBodies::of(&program.modules)).contains(&view)
+        );
     }
 }

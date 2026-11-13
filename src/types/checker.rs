@@ -3008,6 +3008,7 @@ impl TypeChecker {
     ) -> Result<(super::typed::TypedProgram, OpenCollections), Diagnostics> {
         self.record_prelude_definitions(&program.modules, &program.pending_definitions);
         self.collect_declarations(&program.modules, graph);
+        self.declarations.written = graph.reach().written_bodies().clone();
         let mut definitions = self.check_definitions(program.entry.function, graph);
         let mut finalizer = super::finalize::Finalizer::new(&mut self);
         for binding in graph.order() {
@@ -3028,8 +3029,7 @@ impl TypeChecker {
             .iter()
             .map(|module| Self::typed_module(module, &mut definitions))
             .collect();
-        let typed = self.into_program(typed_modules, program)?;
-        Ok((typed, open_collections))
+        Ok((self.into_program(typed_modules, program)?, open_collections))
     }
 
     fn typed_module(

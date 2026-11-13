@@ -341,10 +341,13 @@ impl<'a> ItemEmitter<'a> {
     }
 
     fn trait_method(&mut self, module: ModuleId, method: &TypedTraitMethod) -> Vec<Fragment> {
-        let definition = self
-            .plan
-            .definition(method.declaration())
-            .expect("a trait method has a definition");
+        let definition = match method.default {
+            Some(body) => self.written_definition(body),
+            None => self
+                .plan
+                .definition(method.binding)
+                .expect("a trait method has a definition"),
+        };
         let Type::Function(_, parameters, result) = &definition.scheme.body else {
             unreachable!("a trait method has a function type")
         };
@@ -613,6 +616,16 @@ impl<'a> ItemEmitter<'a> {
         fragments
     }
 
+    fn written_definition(&self, body: BindingId) -> &'a TypedDefinition {
+        assert!(
+            self.program.declarations.written_bodies().contains(body),
+            "emit writes only the method bodies that `WrittenBodies` lists"
+        );
+        self.plan
+            .definition(body)
+            .expect("the checker checks every method body that emit writes")
+    }
+
     fn impl_method(
         &mut self,
         method: TypedImplMethod,
@@ -621,10 +634,7 @@ impl<'a> ItemEmitter<'a> {
     ) -> Vec<Fragment> {
         let TypedImplMethod { binding, receiver } = method;
         let reserved_lifetime = implemented.implementor_lifetime;
-        let definition = self
-            .plan
-            .definition(binding)
-            .expect("an implementation method has a definition");
+        let definition = self.written_definition(binding);
         let TypedExprKind::Fn(lambda) = &definition.value.kind else {
             unreachable!("an implementation method is a function")
         };

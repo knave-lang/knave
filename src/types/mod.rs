@@ -110,6 +110,7 @@ mod projection;
 mod projections_builder;
 mod reached_traits;
 mod receiver_kind;
+mod result_ties;
 mod returned_let;
 mod returned_values;
 mod rust_trait;

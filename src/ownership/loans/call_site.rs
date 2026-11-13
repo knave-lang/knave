@@ -38,9 +38,31 @@ impl<'c> CallSite<'c> {
         if !rules.is_template(self.callee) {
             return Holdings::default();
         }
+        let tied = match rules.result_ties(self.callee) {
+            Some(declared) => declared.to_vec(),
+            None => self.elided_ties(rules),
+        };
         passed
             .into_iter()
-            .fold(Holdings::default(), Holdings::merged)
+            .enumerate()
+            .filter(|(position, _)| tied.contains(position))
+            .fold(Holdings::default(), |held, (_, lent)| held.merged(lent))
+    }
+
+    fn elided_ties(&self, rules: &LoanRules<'_>) -> Vec<usize> {
+        if rules.receives(self.callee, 0) {
+            return vec![0];
+        }
+        let borrowed: Vec<usize> = (0..self.arguments.len())
+            .filter(|position| {
+                self.parameter(*position)
+                    .is_some_and(|parameter| rules.holds_a_borrow(parameter))
+            })
+            .collect();
+        match borrowed.as_slice() {
+            [only] => vec![*only],
+            _ => Vec::new(),
+        }
     }
 }
 

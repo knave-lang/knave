@@ -276,6 +276,19 @@ mod tests {
     }
 
     #[test]
+    fn a_map_lookup_holds_the_map_and_not_the_key() {
+        let source = LoanSource::new(
+            "(defn main ()\n  (local m (hash-map (str \"k\") 1))\n  (local k (str \"k\"))\n  (local r (get m k))\n  (set! k (str \"j\"))\n  (set! m (hash-map (str \"j\") 2))\n  (println (unwrap r) k))",
+        );
+        assert!(!source.line_of("5:9 change").contains("`k` lent"));
+        assert!(
+            source
+                .line_of("6:9 change")
+                .contains("`m` lent at 4:17, held by `r`")
+        );
+    }
+
+    #[test]
     fn a_prelude_call_with_two_borrowed_parameters_holds_both_loans() {
         let line = WalkFixture::change_of_v_in(
             "  (local d 0)\n  (local e (unwrap-or (first v) (ref d)))\n  (push! v 4)\n  (println e)",

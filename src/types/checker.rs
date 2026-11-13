@@ -950,8 +950,6 @@ impl TypeChecker {
         let ExprKind::Leaf(Leaf::Rust(template)) = member.value.kind() else {
             return false;
         };
-        self.template_borrows
-            .register(member.binding, &template.template);
         let scheme = match self.written_schemes().lower_scheme(&template.type_expr) {
             Ok(scheme) => scheme,
             Err(diagnostic) => {
@@ -960,6 +958,8 @@ impl TypeChecker {
             }
         };
         self.collect_clauses(member.binding, template, &scheme);
+        self.template_borrows
+            .register(member.binding, &template.template, &scheme);
         self.schemes.insert(member.binding, scheme);
         true
     }

@@ -36,6 +36,10 @@ impl LocalScopes {
         }
     }
 
+    pub fn holds(&self, kind: ValueKind) -> bool {
+        self.scopes.iter().flatten().any(|local| local.kind == kind)
+    }
+
     pub fn visible(&self, kind: ValueKind) -> Vec<&'static str> {
         let mut names: Vec<&'static str> = self
             .scopes
@@ -66,5 +70,16 @@ mod tests {
         scopes.close();
         assert_eq!(scopes.visible(ValueKind::NUMBERS), ["v"]);
         assert_eq!(scopes.depth(), 0);
+    }
+
+    #[test]
+    fn holds_a_kind_only_while_a_local_of_it_is_visible() {
+        let mut scopes = LocalScopes::new();
+        scopes.open();
+        scopes.bind("m", ValueKind::MAP);
+        assert!(scopes.holds(ValueKind::MAP));
+        assert!(!scopes.holds(ValueKind::FIGURE));
+        scopes.close();
+        assert!(!scopes.holds(ValueKind::MAP));
     }
 }

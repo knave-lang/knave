@@ -40,10 +40,6 @@ impl GeneratorState {
         self.random.pick(&visible)
     }
 
-    pub fn holds(&self, kind: ValueKind) -> bool {
-        !self.locals.visible(kind).is_empty()
-    }
-
     pub fn bind_local(&mut self, kind: ValueKind, value: String) -> String {
         let name = self.random.pick(kind.names()).expect("each kind has names");
         self.locals.bind(name, kind);
@@ -67,13 +63,14 @@ impl GeneratorState {
         Some(written)
     }
 
-    pub fn use_helper(&mut self, template: &'static HelperTemplate) {
-        if self.helpers.insert(template.name, template).is_some() {
-            return;
-        }
-        for dependency in template.dependencies() {
-            self.use_helper(dependency);
-        }
+    pub fn include_callable_helper(&mut self) -> Option<&'static HelperTemplate> {
+        let callable: Vec<&'static HelperTemplate> = HelperTemplate::ALL
+            .into_iter()
+            .filter(|template| template.is_callable_from(&self.locals))
+            .collect();
+        let template = self.random.pick(&callable)?;
+        self.include_helper(template);
+        Some(template)
     }
 
     pub fn closing_main(self, mut lines: Vec<String>) -> GeneratedMain {
@@ -87,6 +84,15 @@ impl GeneratorState {
             );
         }
         GeneratedMain::new(lines, self.helpers.into_values().collect())
+    }
+
+    fn include_helper(&mut self, template: &'static HelperTemplate) {
+        if self.helpers.insert(template.name, template).is_some() {
+            return;
+        }
+        for dependency in template.dependencies() {
+            self.include_helper(dependency);
+        }
     }
 }
 

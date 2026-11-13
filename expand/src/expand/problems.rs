@@ -749,6 +749,12 @@ impl ExpandProblems {
         )
     }
 
+    pub fn floating_type_is_not_a_trait(name: &str, span: Span) -> Diagnostic {
+        Self::wrong_namespace(name, "a trait", span).with_help(
+            "write `floating` to accept every floating-point type, or `number` to accept every number",
+        )
+    }
+
     pub fn recur_outside_tail(span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::RECUR_OUTSIDE_TAIL,

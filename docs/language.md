@@ -168,7 +168,7 @@ Inference is Hindley-Milner with trait bounds. When a definition is generalized,
 
 After inference, a function whose every use outside its own recursive group gives each type parameter the same concrete type emits those types in place of the parameters, as `is_alive(grid: &[Vec<bool>], x: usize, y: usize) -> bool` does. A function used at two or more types stays generic, and so does a function used at a type that holds another function's type parameter, as `(apply thunk)` inside a generic function is. A written `type` signature stays exactly as written.
 
-A type parameter satisfies a trait when its `where` names the trait, or when every type its traits allow implements the trait. `(n floating)` therefore satisfies `number` and `display`. The emitted Rust names any such bound that the runtime traits' supertraits do not already give.
+A type parameter satisfies a trait when its `where` names the trait, or when every type its traits allow implements the trait. A bound names a trait, so a float bound writes `floating`, not `float`. `(n floating)` therefore satisfies `number` and `display`. The emitted Rust names any such bound that the runtime traits' supertraits do not already give.
 
 ### Literals
 

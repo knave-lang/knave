@@ -107,6 +107,12 @@ The prelude cannot define this alias itself: `def` binds a value and `deftype`
 names a Rust type, not another type. The kernel table is therefore the smallest
 place that makes `float` a pure alias of `f64` rather than a new type.
 
+## Migration
+
+`f64` stays a legal spelling. A program that used `float` as a trait bound
+moves it to `floating`, and the `L0212` help names that fix. The rename is a
+breaking change and takes the `release:minor` label.
+
 ## Decision
 
 Pending the project owner's decision.
@@ -141,7 +147,8 @@ The pull request carrying this RFC contains the complete implementation:
 - The prelude uses `float` where it used `f64` before. The concrete primitive
   stays `f64` in the alias table, and trait implementor lists name it `f64`.
 - Regression tests pin the shared binding, shared page, named exports, canonical
-  `infer` text, diagnostics, implementor names, prompt output and emit text.
+  `infer` text, diagnostics, implementor names, the `floating` migration help,
+  prompt output and emit text.
 
 The prototype does not change the Rust runtime, the emitted Rust, or the
 generator's findings.

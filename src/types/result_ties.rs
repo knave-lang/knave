@@ -44,14 +44,22 @@ mod tests {
             Type::Generic(GenericId::new(0))
         }
 
+        fn other_generic() -> Type {
+            Type::Generic(GenericId::new(1))
+        }
+
+        fn param(index: usize, name: &str) -> GenericParam {
+            GenericParam {
+                id: GenericId::new(index),
+                name: Rc::from(name),
+                bounds: Vec::new(),
+            }
+        }
+
         fn scheme(parameters: Vec<Type>, result: Type) -> Scheme {
             Scheme {
                 lifetimes: Vec::new(),
-                params: vec![GenericParam {
-                    id: GenericId::new(0),
-                    name: Rc::from("a"),
-                    bounds: Vec::new(),
-                }],
+                params: vec![Self::param(0, "a"), Self::param(1, "b")],
                 body: Type::Function(ClosureKind::Fn, parameters, Box::new(result)),
             }
         }
@@ -74,6 +82,18 @@ mod tests {
         );
         assert_eq!(at, Some(vec![0]));
         assert_eq!(either, Some(vec![0, 1]));
+    }
+
+    #[test]
+    fn a_parameter_with_only_another_type_variable_is_not_tied() {
+        let lookup = TiesFixture::ties(
+            vec![
+                Type::shared(TiesFixture::generic()),
+                Type::shared(TiesFixture::other_generic()),
+            ],
+            Type::shared(TiesFixture::generic()),
+        );
+        assert_eq!(lookup, Some(vec![0]));
     }
 
     #[test]

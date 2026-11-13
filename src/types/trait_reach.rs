@@ -20,16 +20,24 @@ impl ReachedTraits {
     pub fn declarations<'m>(
         &self,
         modules: &'m [CoreModule],
-    ) -> impl Iterator<Item = (Span, &'m RustTraitDeclaration)> {
+    ) -> impl Iterator<Item = ReachedDeclaration<'m>> {
         modules
             .iter()
             .flat_map(|module| &module.items)
             .filter_map(|item| match &item.kind {
-                ItemKind::RustTrait(declaration) => Some((item.span, declaration)),
+                ItemKind::RustTrait(declaration) => Some(ReachedDeclaration {
+                    span: item.span,
+                    declaration,
+                }),
                 _ => None,
             })
-            .filter(|(_, declaration)| self.reaches(declaration.binding))
+            .filter(|reached| self.reaches(reached.declaration.binding))
     }
+}
+
+pub struct ReachedDeclaration<'m> {
+    pub span: Span,
+    pub declaration: &'m RustTraitDeclaration,
 }
 
 pub struct TraitReach<'p> {

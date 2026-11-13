@@ -33,7 +33,7 @@ use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypePr
 use super::selection::Selection;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_boxing::TraitBoxing;
-use super::trait_reach::ReachedTraits;
+use super::trait_reach::{ReachedDeclaration, ReachedTraits};
 use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
@@ -473,7 +473,7 @@ impl TypeChecker {
     }
 
     fn record_trait_arguments(&mut self, modules: &[CoreModule], reached: &ReachedTraits) {
-        for (_, declaration) in reached.declarations(modules) {
+        for ReachedDeclaration { declaration, .. } in reached.declarations(modules) {
             if (declaration.implementors.get().iter())
                 .any(|entry| Self::entry_uses_with(&entry.implementor))
             {
@@ -493,7 +493,7 @@ impl TypeChecker {
     }
 
     fn check_trait_claims(&mut self, modules: &[CoreModule], reached: &ReachedTraits) {
-        for (span, declaration) in reached.declarations(modules) {
+        for ReachedDeclaration { span, declaration } in reached.declarations(modules) {
             let trait_binding = &declaration.binding;
             let path = &declaration.path;
             for implementor in declaration.implementors.get() {

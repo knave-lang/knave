@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/loans/returned_borrow_lives_to_every_exit.knv
+---
+pick!
+  2:16 borrow `v`: no live loan
+  3:28 change `v`: `v` lent at 2:16, returned
+  3:37 borrow `v`: `v` lent at 2:16, returned
+main
+  7:19 change `v`: no live loan

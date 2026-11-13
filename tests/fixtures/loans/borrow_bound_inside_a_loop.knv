@@ -1,0 +1,10 @@
+(defn main ()
+  (local w (vec 1))
+  (loop (i 0)
+    (if (< i 2)
+      (do
+        (local e (at w 0))
+        (push! w 1)
+        (println e)
+        (recur (+ i 1)))
+      (do))))

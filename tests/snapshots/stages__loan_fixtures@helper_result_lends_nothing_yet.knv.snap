@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/loans/helper_result_lends_nothing_yet.knv
+---
+first-of
+  1:24 borrow `v`: no live loan
+main
+  5:22 borrow `v`: no live loan
+  6:10 change `v`: no live loan

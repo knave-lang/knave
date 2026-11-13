@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/loans/closure_body_has_its_own_loans.knv
+---
+closure at 4:5
+  5:24 borrow `years`: no live loan
+  6:14 change `years`: `years` lent at 5:24, held by `first`

@@ -1,0 +1,5 @@
+(defn main ()
+  (local v (vec 1 2))
+  (local held (at v 0))
+  (local moved v)
+  (println held (len moved)))

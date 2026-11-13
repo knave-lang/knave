@@ -1,0 +1,5 @@
+(defn grow-from-first! (v)
+  (local r (at v 0))
+  (push! v (deref r)))
+
+(export grow-from-first!)

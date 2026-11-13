@@ -55,6 +55,7 @@ mod pipelines;
 mod problems;
 mod projection;
 mod receiver_kind;
+mod result_ties;
 mod returned_values;
 mod rust_trait;
 mod rust_types;

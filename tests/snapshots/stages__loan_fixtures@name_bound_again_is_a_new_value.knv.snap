@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/loans/name_bound_again_is_a_new_value.knv
+---
+main
+  3:16 borrow `v`: no live loan
+  6:10 change `v`: no live loan
+  7:12 borrow `r`: no live loan

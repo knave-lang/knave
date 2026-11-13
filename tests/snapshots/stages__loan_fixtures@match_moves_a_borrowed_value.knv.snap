@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+assertion_line: 107
+expression: reports.report(path)
+input_file: tests/fixtures/loans/match_moves_a_borrowed_value.knv
+---
+main
+  3:17 borrow `o`: no live loan
+  4:10 move `o`: `o` lent at 3:17, held by `r`
+  5:24 borrow `s`: `o` lent at 3:17, held by `r`

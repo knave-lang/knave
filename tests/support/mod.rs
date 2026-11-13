@@ -20,6 +20,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use knave::build::{BuildError, BuildProfile, EmittedFormatting, RustCompiler};
+use knave::check::ProgramChecker;
 use knave::cli::EmbeddedPrelude;
 use knave::core::{BindingArena, CorePrinter, ExprKind, Item, ItemKind, Leaf, Literal, ModulePath};
 use knave::diagnostic::{DiagnosticRenderer, Diagnostics};
@@ -28,7 +29,7 @@ use knave::expand::{Expander, PreludeState, Program};
 use knave::format::FormatFailure;
 use knave::language::Language;
 use knave::modules::ModuleSources;
-use knave::ownership::EnforcedOwnership;
+use knave::ownership::{EnforcedOwnership, LoanFacts, WaivedOwnership};
 use knave::project::ProjectReader;
 use knave::reader::Reader;
 use knave::source::{SourceId, SourceMap, Span};
@@ -178,6 +179,16 @@ impl Fixture {
         }
     }
 
+    pub fn loan_report(mut self) -> String {
+        let checked = self
+            .expand()
+            .and_then(|program| ProgramChecker::check::<WaivedOwnership>(&program));
+        match checked {
+            Ok(program) => LoanFacts::of(&program).report(&self.sources),
+            Err(diagnostics) => self.render(&diagnostics),
+        }
+    }
+
     pub fn first_reported_code(self) -> Option<String> {
         self.reported_diagnostics()
             .into_iter()
@@ -315,7 +326,7 @@ impl Fixture {
 
     fn checked(&mut self) -> Result<TypedProgram, Diagnostics> {
         let program = self.expand()?;
-        knave::check::ProgramChecker::check::<EnforcedOwnership>(&program)
+        ProgramChecker::check::<EnforcedOwnership>(&program)
     }
 
     fn entry_span(&self) -> Span {

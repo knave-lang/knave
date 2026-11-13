@@ -1,0 +1,12 @@
+(defn main ()
+  (local v (vec (str "a")))
+  (loop (i 0
+         r (at v 0))
+    (if (< i 2)
+      (do
+        (loop (j 0)
+          (if (< j 1) (recur (+ j 1)) (println j)))
+        (push! v (str "b"))
+        (println r)
+        (recur (+ i 1) (at v 0)))
+      (println (len v)))))

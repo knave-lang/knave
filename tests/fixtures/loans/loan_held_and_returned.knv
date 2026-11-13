@@ -1,0 +1,8 @@
+(defn head-or-push! (v)
+  (local r (at v 0))
+  (push! v 9)
+  r)
+
+(defn main ()
+  (local v (vec 1 2))
+  (println (head-or-push! v)))

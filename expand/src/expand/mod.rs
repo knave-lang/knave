@@ -249,6 +249,7 @@ pub struct Expander<'s> {
 }
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
+#[serde(bound(deserialize = "'de: 'static"))]
 struct ExpansionTables {
     scopes: Scopes,
     table: BindingTable,

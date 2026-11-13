@@ -63,6 +63,7 @@ impl TypeChecker {
             .declared_by(declaration.binding);
         declaration
             .implementors
+            .get()
             .iter()
             .map(|entry| {
                 let (implementor, values) = self.lower_implementor(entry, &trait_name)?;

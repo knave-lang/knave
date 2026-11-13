@@ -665,12 +665,8 @@ impl<'a> CorePrinter<'a> {
                 associated.rust_name
             )
         }));
-        parts.extend(
-            declaration
-                .implementors
-                .iter()
-                .map(|implementor| self.rust_trait_implementor(implementor)),
-        );
+        let rows = declaration.implementors.get();
+        parts.extend(rows.iter().map(|row| self.rust_trait_implementor(row)));
         Self::list("rust-trait", parts)
     }
 

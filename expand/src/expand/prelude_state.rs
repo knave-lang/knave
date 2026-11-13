@@ -17,6 +17,7 @@ use crate::scope::{NameTables, SavedNames};
 use crate::source::{SourceId, SourceMap, Span};
 
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(bound(deserialize = "'de: 'static"))]
 pub struct PreludeState {
     first_source: SourceId,
     prelude: ModuleId,

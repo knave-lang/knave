@@ -33,6 +33,7 @@ use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypePr
 use super::selection::Selection;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_boxing::TraitBoxing;
+use super::trait_reach::ReachedTraits;
 use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
@@ -318,8 +319,8 @@ impl TypeChecker {
     fn collect_declarations(&mut self, modules: &[CoreModule], graph: &DefinitionGraph) {
         self.record_type_arities(modules);
         self.record_projections(modules);
-        self.record_trait_arguments(modules);
         let reached = graph.reach().traits();
+        self.record_trait_arguments(modules, reached);
         for module in modules {
             for item in &module.items {
                 let collected = if let ItemKind::RustTrait(declaration) = &item.kind {
@@ -346,7 +347,7 @@ impl TypeChecker {
         self.record_structural_traits(modules);
         self.register_derived_traits(modules);
         self.report_supertraits();
-        self.check_trait_claims(modules);
+        self.check_trait_claims(modules, reached);
         self.copy_trait = self
             .declarations
             .traits
@@ -471,14 +472,9 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn record_trait_arguments(&mut self, modules: &[CoreModule]) {
-        for item in modules.iter().flat_map(|module| &module.items) {
-            let ItemKind::RustTrait(declaration) = &item.kind else {
-                continue;
-            };
-            if declaration
-                .implementors
-                .iter()
+    fn record_trait_arguments(&mut self, modules: &[CoreModule], reached: &ReachedTraits) {
+        for (_, declaration) in reached.declarations(modules) {
+            if (declaration.implementors.get().iter())
                 .any(|entry| Self::entry_uses_with(&entry.implementor))
             {
                 self.checking_facts
@@ -496,14 +492,11 @@ impl TypeChecker {
         }
     }
 
-    fn check_trait_claims(&mut self, modules: &[CoreModule]) {
-        for item in modules.iter().flat_map(|module| &module.items) {
-            let ItemKind::RustTrait(declaration) = &item.kind else {
-                continue;
-            };
+    fn check_trait_claims(&mut self, modules: &[CoreModule], reached: &ReachedTraits) {
+        for (span, declaration) in reached.declarations(modules) {
             let trait_binding = &declaration.binding;
             let path = &declaration.path;
-            for implementor in &declaration.implementors {
+            for implementor in declaration.implementors.get() {
                 let implementor = Self::implemented_type(&implementor.implementor);
                 let TypeExprKind::Named(binding, _) = implementor.kind() else {
                     continue;
@@ -520,7 +513,7 @@ impl TypeChecker {
                 }
                 let struct_name = self.bindings.get(*binding).name().to_string();
                 let trait_name = self.bindings.get(*trait_binding).name().to_string();
-                let definer = self.macro_name(item.span);
+                let definer = self.macro_name(span);
                 self.diagnostics.push(TypeProblems::trait_claim_on_struct(
                     definer
                         .as_deref()
@@ -2360,7 +2353,7 @@ impl TypeChecker {
     fn collect_rust_trait(
         &mut self,
         declaration: &crate::core::RustTraitDeclaration,
-        reached: &super::trait_reach::ReachedTraits,
+        reached: &ReachedTraits,
     ) -> Result<(), Diagnostic> {
         let rust_trait = if reached.reaches(declaration.binding) {
             let implementors = self.lower_rust_trait_implementors(declaration)?;

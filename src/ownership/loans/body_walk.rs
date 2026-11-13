@@ -307,6 +307,7 @@ mod tests {
             "  (local d 0)\n  (local e (unwrap-or (first v) (ref d)))\n  (push! v 4)\n  (println e)",
         );
         assert!(line.contains("`v` lent at 4:30, held by `e`"), "{line}");
+        assert!(line.contains("`d` lent at 4:38, held by `e`"), "{line}");
     }
 
     #[test]
@@ -409,6 +410,34 @@ mod tests {
             "  (local o (ref (first v)))\n  (push! v 3)\n  (println (unwrap (deref o)))",
         );
         assert!(line.ends_with("held by `o`"), "{line}");
+    }
+
+    #[test]
+    fn a_template_with_one_borrowed_parameter_lends_it() {
+        let source = LoanSource::new(
+            "(defn main ()\n  (local s (str \"abc\"))\n  (local t (subs (as-str s) 0 1))\n  (set! s (str \"x\"))\n  (println t))",
+        );
+        assert!(
+            source
+                .line_of("change `s`")
+                .ends_with("`s` lent at 3:26, held by `t`")
+        );
+    }
+
+    #[test]
+    fn a_copy_struct_read_from_a_field_keeps_its_borrow() {
+        let source = LoanSource::new(
+            "(defstruct tag :label (ref string))\n(defstruct holder :tag tag)\n\n(defn main ()\n  (local v (vec (str \"a\")))\n  (local b (->holder :tag (->tag :label (at v 0))))\n  (local t (:tag b))\n  (push! v (str \"b\"))\n  (println (:label t)))",
+        );
+        assert!(source.line_of("change `v`").ends_with("held by `t`"));
+    }
+
+    #[test]
+    fn a_match_that_binds_only_copies_moves_nothing() {
+        let source = LoanSource::new(
+            "(defenum entry (pair string i64) empty)\n\n(defn main ()\n  (local e (entry/pair (str \"a\") 1))\n  (local r (ref e))\n  (match e\n    ((entry/pair _ n) (println n))\n    (entry/empty (println 0)))\n  (match r ((entry/pair s _) (println s)) (entry/empty (println 1))))",
+        );
+        assert!(!source.report().contains("move `e`"), "{}", source.report());
     }
 
     #[test]

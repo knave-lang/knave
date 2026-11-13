@@ -90,7 +90,21 @@
 
   A parameter whose name starts with `_` is allowed. A parameter that a macro's expansion introduced, or that the compiler named, as in a trait's default method, is never reported. A parameter of a `fn` applied where it is written is a local binding, which `unused-binding` reports. The rule covers every other function, closures and `impl` methods included, so its help offers only the `_` name, which never changes how the function is called.")
 
+(document rule-names
+  "Lists the name of each lint rule, as a symbol.
+
+  `knave lint` runs each listed rule over each definition of the program's
+  own modules, and `knave doc` finds a rule's page by a listed name.")
+
 (def rule-names (quote (unused-binding unused-parameter)))
+
+(document (check-rule rule table)
+  "Runs the lint rule that `rule` names over `table`, which holds one
+  definition read back as kernel forms.
+
+  The rule reports what it finds with `warn`. A name that [rule-names] does
+  not list runs nothing. `knave lint` calls it once for each rule and each
+  definition.")
 
 (def check-rule
   (fn (rule table)

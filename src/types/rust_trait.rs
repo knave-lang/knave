@@ -52,6 +52,10 @@ impl RustTrait {
         self.lowered_rows().expect(Self::LEFT_OUT)
     }
 
+    pub fn assert_reached(&self) {
+        assert!(self.lowered_rows().is_some(), "{}", Self::LEFT_OUT);
+    }
+
     pub fn lowered_rows(&self) -> Option<&LoweredRows> {
         match &self.rows {
             TraitRowsLowering::Unreached => None,
@@ -112,5 +116,41 @@ impl LoweredRows {
         self.implementors
             .iter()
             .any(|implementor| !implementor.scheme.params.is_empty())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LoweredRows, RustTrait};
+    use crate::core::{BindingId, ImplementorRows, RustTraitDeclaration};
+
+    struct DeclaredTrait;
+
+    impl DeclaredTrait {
+        fn declaration() -> RustTraitDeclaration {
+            RustTraitDeclaration {
+                binding: BindingId::from_index(0),
+                path: "Shown".into(),
+                self_variable: BindingId::from_index(1),
+                methods: Vec::new(),
+                help: None,
+                requires: Vec::new(),
+                structural: None,
+                associated: Vec::new(),
+                implementors: ImplementorRows::new(Vec::new()),
+            }
+        }
+    }
+
+    #[test]
+    fn a_lowered_trait_passes_the_reach_assertion() {
+        let declaration = DeclaredTrait::declaration();
+        RustTrait::lowered(&declaration, LoweredRows::new(Vec::new(), Vec::new())).assert_reached();
+    }
+
+    #[test]
+    #[should_panic(expected = "the trait reach left out a trait the program uses")]
+    fn an_unreached_trait_fails_the_reach_assertion() {
+        RustTrait::unreached(&DeclaredTrait::declaration()).assert_reached();
     }
 }

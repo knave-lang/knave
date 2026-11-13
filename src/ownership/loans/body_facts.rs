@@ -1,29 +1,34 @@
-use super::access_facts::{AccessFacts, LiveLoan, LoanHolder};
-use super::body_graph::BodyGraph;
+use super::access_facts::AccessFacts;
+use super::closure::Closure;
+use super::control_flow_graph::ControlFlowGraph;
 use super::holdings::Holdings;
+use super::live_loan::LiveLoan;
 use super::live_values::LiveValues;
+use super::loan_holder::LoanHolder;
+use super::loan_table::LoanTable;
 use super::point_id::PointId;
 use super::program_point::PointFacts;
 use super::result_loans::ResultLoans;
 use super::value_regions::ValueRegions;
-use crate::types::TypedExpr;
 
 struct Liveness {
     values: LiveValues,
     result: ResultLoans,
 }
 
-pub struct WalkedBody<'w> {
-    graph: BodyGraph,
+pub struct BodyFacts<'w> {
+    graph: ControlFlowGraph,
+    loans: LoanTable,
     regions: ValueRegions,
     returned: Holdings,
-    closures: Vec<&'w TypedExpr>,
+    closures: Vec<Closure<'w>>,
 }
 
-impl<'w> WalkedBody<'w> {
-    pub fn new(graph: BodyGraph, regions: ValueRegions) -> Self {
+impl<'w> BodyFacts<'w> {
+    pub fn new(graph: ControlFlowGraph, loans: LoanTable, regions: ValueRegions) -> Self {
         Self {
             graph,
+            loans,
             regions: regions.resolved(),
             returned: Holdings::default(),
             closures: Vec::new(),
@@ -34,18 +39,19 @@ impl<'w> WalkedBody<'w> {
         Self { returned, ..self }
     }
 
-    pub fn with_closures(self, closures: Vec<&'w TypedExpr>) -> Self {
+    pub fn with_closures(self, closures: Vec<Closure<'w>>) -> Self {
         Self { closures, ..self }
     }
 
-    pub fn closures(&self) -> &[&'w TypedExpr] {
+    pub fn closures(&self) -> &[Closure<'w>] {
         &self.closures
     }
 
     pub fn accesses(&self) -> Vec<AccessFacts<'_>> {
+        let returned = self.regions.of_holdings(&self.returned);
         let liveness = Liveness {
             values: LiveValues::of(&self.graph),
-            result: ResultLoans::of(&self.graph, &self.regions.of_holdings(&self.returned)),
+            result: ResultLoans::of(&self.graph, &self.loans, &returned),
         };
         self.graph
             .points()
@@ -82,8 +88,8 @@ impl<'w> WalkedBody<'w> {
             .map(|loan| (loan, LoanHolder::Result));
         held.chain(received)
             .chain(returned)
-            .filter(|(loan, _)| self.graph.loan(*loan).made_at() != point)
-            .map(|(loan, holder)| LiveLoan::new(self.graph.loan(loan), holder))
+            .filter(|(loan, _)| self.loans.loan(*loan).made_at() != point)
+            .map(|(loan, holder)| LiveLoan::new(self.loans.loan(loan), holder))
             .collect()
     }
 }

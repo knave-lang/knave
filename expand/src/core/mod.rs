@@ -13,6 +13,7 @@ mod implementor_rows;
 mod kernel;
 mod keyword;
 mod lexeme;
+mod lint_facts;
 mod module;
 mod module_id;
 mod module_path;
@@ -60,6 +61,7 @@ pub use kernel::{
     KernelType, LeafForm, ReferenceKind, StructDerives, StructForm,
 };
 pub use keyword::Keyword;
+pub use lint_facts::{Import, ImportedName, LintFacts};
 pub use module::{
     AssociatedValue, CoreModule, EnumDefiner, EnumRust, ImplAssociatedType, ImplMethod, Item,
     ItemKind, RUST_TRAIT_ASSOCIATED_MARKER, RUST_TRAIT_HELP_MARKER, RUST_TRAIT_METHOD_MARKER,

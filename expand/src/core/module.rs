@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use super::{
-    BindingArena, BindingId, Expr, FieldLabel, ImplementorRow, ImplementorRows, Lambda, ModuleId,
-    ModulePath, ParsedTemplate, PrimitiveType, StructuralClause, TypeBinder, TypeBound, TypeExpr,
-    TypeExprKind,
+    BindingArena, BindingId, Expr, FieldLabel, ImplementorRow, ImplementorRows, Lambda, LintFacts,
+    ModuleId, ModulePath, ParsedTemplate, PrimitiveType, StructuralClause, TypeBinder, TypeBound,
+    TypeExpr, TypeExprKind,
 };
 use crate::rust_trait_path::RustTraitPath;
 use crate::source::Span;
@@ -175,6 +175,8 @@ pub struct CoreModule {
     pub items: Vec<Item>,
     exports: ModuleExports,
     pub library: Option<Rc<str>>,
+    #[serde(skip)]
+    pub lint_facts: LintFacts,
 }
 
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
@@ -209,6 +211,7 @@ impl CoreModule {
             items: Vec::new(),
             exports: ModuleExports::default(),
             library,
+            lint_facts: LintFacts::default(),
         }
     }
 

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::Subcommand;
 
-use super::check::CheckCommand;
+use super::check_arguments::CheckArguments;
 use super::check_flag::CheckFlag;
 use super::doc::DocCommand;
 use super::doc_arguments::DocArguments;
@@ -18,10 +18,7 @@ use super::types::TypesCommand;
 #[derive(Subcommand)]
 pub enum InspectionCommand {
     #[command(about = "Read, expand and check a program, then print its diagnostics")]
-    Check {
-        #[command(flatten)]
-        entry: EntryArgument,
-    },
+    Check(CheckArguments),
     #[command(about = "Print the inferred signature of each function in a program")]
     Types {
         #[command(flatten)]
@@ -62,7 +59,7 @@ pub enum InspectionCommand {
 impl InspectionCommand {
     pub fn execute(self, terminal: &mut Terminal) -> ExitStatus {
         match self {
-            Self::Check { entry } => CheckCommand::new(entry).run(terminal),
+            Self::Check(arguments) => arguments.run(terminal),
             Self::Types { entry } => TypesCommand::new(entry).run(terminal),
             Self::Doc(arguments) => arguments.run(terminal),
             Self::Lint { entry } => LintCommand::new(entry).run(terminal),

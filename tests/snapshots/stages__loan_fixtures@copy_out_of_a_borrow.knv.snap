@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/loans/copy_out_of_a_borrow.knv
+---
+main
+  3:16 borrow `v`: no live loan
+  3:10 change `v`: no live loan
+  4:16 borrow `v`: no live loan
+  5:10 change `v`: no live loan
+  6:17 borrow `v`: no live loan

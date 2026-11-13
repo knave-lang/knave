@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/loans/call_receives_a_borrow_of_the_changed_value.knv
+---
+relabel!
+  6:9 change `c.make`: no live loan
+main
+  10:15 borrow `c.make`: no live loan
+  10:13 change `c`: `c.make` lent at 10:15, passed to the call
+  11:12 borrow `c.make`: no live loan

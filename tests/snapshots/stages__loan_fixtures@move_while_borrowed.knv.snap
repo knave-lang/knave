@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/loans/move_while_borrowed.knv
+---
+main
+  3:19 borrow `v`: no live loan
+  4:16 move `v`: `v` lent at 3:19, held by `held`
+  5:22 borrow `moved`: `v` lent at 3:19, held by `held`

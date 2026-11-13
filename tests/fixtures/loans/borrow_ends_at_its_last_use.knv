@@ -1,0 +1,6 @@
+(defn main ()
+  (local v (vec 1 2))
+  (local r (at v 0))
+  (println r)
+  (push! v 4)
+  (println (len v)))

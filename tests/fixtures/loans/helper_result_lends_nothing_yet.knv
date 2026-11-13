@@ -1,0 +1,7 @@
+(defn first-of (v) (at v 0))
+
+(defn main ()
+  (local v (vec 1 2))
+  (local r (first-of v))
+  (push! v 4)
+  (println r))

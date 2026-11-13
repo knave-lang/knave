@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/loans/borrow_used_on_one_branch.knv
+---
+main
+  3:16 borrow `v`: no live loan
+  4:10 change `v`: `v` lent at 3:16, held by `r`
+  5:15 borrow `v`: `v` lent at 3:16, held by `r`

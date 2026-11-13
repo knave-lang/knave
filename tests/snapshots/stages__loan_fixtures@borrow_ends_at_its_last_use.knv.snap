@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/loans/borrow_ends_at_its_last_use.knv
+---
+main
+  3:16 borrow `v`: no live loan
+  5:10 change `v`: no live loan
+  6:17 borrow `v`: no live loan

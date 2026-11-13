@@ -1,42 +1,17 @@
-use std::fs;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-use knave::language::Language;
+use std::process::Output;
 
 use super::ExampleDiagnostic;
+use super::example_folder::{ExampleFile, ExampleFolder};
+use super::example_layout::ExampleLayout;
 
 pub struct ProjectExample {
+    command_line: Option<String>,
     command: Option<Vec<String>>,
     files: Vec<ExampleFile>,
     input: String,
 }
 
-struct ExampleFolder {
-    path: PathBuf,
-}
-
-impl ExampleFolder {
-    fn path(&self) -> &Path {
-        &self.path
-    }
-}
-
-impl Drop for ExampleFolder {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.path);
-    }
-}
-
-struct ExampleFile {
-    path: String,
-    text: String,
-}
-
 impl ProjectExample {
-    const COMPILER: &str = env!("CARGO_BIN_EXE_knave");
     const LABEL: &str = ";; ";
     const FILE_EXTENSION: &str = ".knv";
     const COMPILER_NAME: &str = "knave";
@@ -44,21 +19,17 @@ impl ProjectExample {
         "check", "types", "doc", "expand", "emit", "fmt", "build", "eval", "repl", "test", "run",
         "add", "remove", "task", "new",
     ];
-    const PLAIN_OUTPUT: [&str; 2] = ["--color", "never"];
     const CHECK: &str = "check";
     const BUILD: &str = "build";
     const RUN: &str = "run";
     const DIAGNOSTIC_LEVELS: [&str; 2] = ["error[", "warning["];
-    const CACHE_HOME_VARIABLE: &str = "XDG_CACHE_HOME";
-    const CACHE_FOLDER: &str = ".cache";
 
     pub fn parse(block: &str) -> Option<Self> {
         let mut lines = block.lines().peekable();
-        let command = lines
-            .next_if(|line| Self::command_of(line).is_some())
-            .and_then(Self::command_of);
+        let command_line = lines.next_if(|line| Self::command_of(line).is_some());
         let mut example = Self {
-            command,
+            command_line: command_line.map(str::to_string),
+            command: command_line.and_then(Self::command_of),
             files: Vec::new(),
             input: String::new(),
         };
@@ -71,14 +42,14 @@ impl ProjectExample {
     }
 
     pub fn reported_diagnostics(&self) -> Vec<ExampleDiagnostic> {
-        let folder = self.written_folder();
+        let folder = ExampleFolder::holding(&self.files);
         let stages: Vec<Vec<String>> = match &self.command {
             Some(command) => vec![command.clone()],
             None => vec![vec![Self::CHECK.to_string()], vec![Self::BUILD.to_string()]],
         };
         stages
             .iter()
-            .map(|command| Self::diagnostics_in(&self.run(folder.path(), command)))
+            .map(|command| Self::diagnostics_in(&folder.run(command, &self.input)))
             .find(|diagnostics| {
                 diagnostics
                     .iter()
@@ -88,15 +59,30 @@ impl ProjectExample {
     }
 
     pub fn failure(&self) -> Option<String> {
-        let folder = self.written_folder();
+        let folder = ExampleFolder::holding(&self.files);
         let command = self
             .command
             .clone()
             .unwrap_or_else(|| vec![Self::RUN.to_string()]);
-        let output = self.run(folder.path(), &command);
+        let output = folder.run(&command, &self.input);
         let reports_a_code = !Self::diagnostics_in(&output).is_empty();
         let failed = !output.status.success() || reports_a_code;
         failed.then(|| String::from_utf8_lossy(&output.stderr).into_owned())
+    }
+
+    pub fn layout(self) -> ExampleLayout {
+        let mut layout = ExampleLayout::default();
+        if let Some(command_line) = self.command_line {
+            layout.keep_line(command_line);
+        }
+        if self.files.is_empty() {
+            layout.lay_out_inputs(&self.input);
+        }
+        for file in self.files {
+            layout.keep_line(format!("{}{}", Self::LABEL, file.path));
+            layout.lay_out_file(file);
+        }
+        layout
     }
 
     fn refuse_text_above_the_first_file(&self) {
@@ -143,47 +129,6 @@ impl ProjectExample {
         };
         target.push_str(line);
         target.push('\n');
-    }
-
-    fn written_folder(&self) -> ExampleFolder {
-        static NEXT_EXAMPLE: AtomicUsize = AtomicUsize::new(0);
-        let example = NEXT_EXAMPLE.fetch_add(1, Ordering::Relaxed);
-        let directory = std::env::temp_dir().join(format!(
-            "{}-example-{}-{example}",
-            Language::NAME,
-            std::process::id()
-        ));
-        for file in &self.files {
-            let path = directory.join(&file.path);
-            fs::create_dir_all(path.parent().expect("a file lies in a folder"))
-                .expect("the example folder is writable");
-            fs::write(path, &file.text).expect("the example file is writable");
-        }
-        fs::create_dir_all(&directory).expect("the example folder is writable");
-        ExampleFolder { path: directory }
-    }
-
-    fn run(&self, directory: &Path, command: &[String]) -> Output {
-        let mut child = Command::new(Self::COMPILER)
-            .args(Self::PLAIN_OUTPUT)
-            .args(command)
-            .current_dir(directory)
-            .env(
-                Self::CACHE_HOME_VARIABLE,
-                directory.join(Self::CACHE_FOLDER),
-            )
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .expect("the compiler starts");
-        child
-            .stdin
-            .take()
-            .expect("the compiler's input is piped")
-            .write_all(self.input.as_bytes())
-            .expect("the compiler reads its input");
-        child.wait_with_output().expect("the compiler finishes")
     }
 
     fn diagnostics_in(output: &Output) -> Vec<ExampleDiagnostic> {

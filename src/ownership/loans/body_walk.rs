@@ -36,10 +36,6 @@ impl<'w> BodyWalk<'w> {
     }
 
     pub fn walk(mut self, lambda: &'w TypedLambda) -> BodyFacts<'w> {
-        for parameter in &lambda.params {
-            self.builder
-                .define(PointId::ENTRY, parameter, &Holdings::default());
-        }
         let tail = self.block(&lambda.body, PointId::ENTRY);
         self.builder.into_facts(tail.held, self.closures)
     }

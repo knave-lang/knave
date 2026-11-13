@@ -376,7 +376,7 @@ fn each_explanation_fix_builds_and_runs() {
 #[test]
 fn each_explanation_example_is_laid_out() {
     let mut mislaid = Vec::new();
-    for explanation in ExplanationExamples::written() {
+    for explanation in ExplanationExamples::of_markdown() {
         let layouts = explanation.layouts();
         for skipped in layouts.skipped {
             eprintln!("not laid out, because `knave fmt` refuses it: {skipped}");

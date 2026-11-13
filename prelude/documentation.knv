@@ -743,8 +743,73 @@
               ")"))))
 
 (document (unmatched-link page spot name)
-  "Reports a bracketed name in a docstring that names no term the page can
-  link to.")
+  "Reports a bracketed name in a docstring that `knave doc --write` cannot
+  link to any term.
+
+  `knave doc --write` reads a name between brackets in a docstring that a
+  page shows, the module's own or that of a name the module exports, as a
+  link to a term in the scope of the page's module. This warning reports a
+  name that resolves to no term of a module that the command lists, with the
+  closest term name when one is near. The command still writes the page,
+  keeps the brackets as written, and exits with status 0.
+
+  A macro may report the same warning, with `warn` and
+  `(quote (:code unmatched-link))`. Then every command that expands the
+  macro reports it, among them `knave check`, `knave build`, `knave run` and
+  `knave lint`, and only `knave lint` exits with status 1 because of it.
+
+  ## Erroneous example
+
+  ```
+  ;; knave doc --write
+  ;; project.knv
+  (defproject shelf)
+
+  ;; src/main.knv
+  (export shelf-count)
+
+  (defn shelf-count ()
+    \"Counts the shelves, as [shelf-total] does.\"
+    3)
+
+  (defn main () (println (shelf-count)))
+  ```
+
+  ## Fixes
+
+  Name a term in the scope of the module:
+
+  ```
+  ;; knave doc --write
+  ;; project.knv
+  (defproject shelf)
+
+  ;; src/main.knv
+  (export shelf-count)
+
+  (defn shelf-count ()
+    \"Counts the shelves, as [len] counts items.\"
+    3)
+
+  (defn main () (println (shelf-count)))
+  ```
+
+  Or put the brackets inside backticks, to show them as code:
+
+  ```
+  ;; knave doc --write
+  ;; project.knv
+  (defproject shelf)
+
+  ;; src/main.knv
+  (export shelf-count)
+
+  (defn shelf-count ()
+    \"Counts the shelves, as `[shelf-total]` does.\"
+    3)
+
+  (defn main () (println (shelf-count)))
+  ```")
 
 (def unmatched-link
   (fn (page spot name)

@@ -45,12 +45,18 @@ impl ExplanationExamples {
 
     pub fn written() -> Vec<Self> {
         Explanation::all()
+            .filter_map(|explanation| match explanation.text() {
+                Some(text) => Some(Self::new(explanation.code().as_str(), text)),
+                None => Self::of_docstring(&explanation),
+            })
+            .collect()
+    }
+
+    pub fn of_markdown() -> Vec<Self> {
+        Explanation::all()
             .filter_map(|explanation| {
-                let code = explanation.code().as_str();
-                match explanation.text() {
-                    Some(text) => Some(Self::new(code, text)),
-                    None => Self::of_docstring(&explanation),
-                }
+                let text = explanation.text()?;
+                Some(Self::new(explanation.code().as_str(), text))
             })
             .collect()
     }

@@ -2367,6 +2367,7 @@ fn doc_explains_a_lint_code_by_the_docstring_where_its_wording_lives() {
     let doc = sandbox.compiler(&["doc", "--color", "never", "L0802"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some("(unmatched-link page spot name)"));
+    assert!(page.contains("## Erroneous example"));
 }
 
 #[test]
@@ -2375,6 +2376,7 @@ fn doc_explains_a_lint_of_the_compiler_by_its_code_page() {
     let doc = sandbox.compiler(&["doc", "L0803"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some("L0803: unreachable arm"));
+    assert!(page.contains("## Erroneous example"));
 }
 
 #[test]

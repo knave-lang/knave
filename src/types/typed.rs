@@ -669,7 +669,7 @@ impl TypedProgram {
     }
 
     fn writable_name(&self, binding: BindingId) -> Option<&str> {
-        if !self.bindings.is_introduced(binding) {
+        if !self.bindings.origin(binding).is_introduced() {
             return Some(self.bindings.get(binding).name());
         }
         let answering = self.bindings.answering_macro(binding)?;

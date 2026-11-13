@@ -151,6 +151,24 @@ fn lint_reports_an_unread_binding_in_the_deepest_definition() {
 }
 
 #[test]
+fn lint_reports_the_one_unread_parameter_of_a_wide_function() {
+    let parameters: Vec<String> = (0..GeneratedLint::WIDEST_PARAMETERS)
+        .map(|index| format!("p{index}"))
+        .collect();
+    let text = format!(
+        "(defn wide (unused {})\n  (vec {}))\n\n(defn main ())\n",
+        parameters.join(" "),
+        parameters.join(" ")
+    );
+    let report = GeneratedLint::report("wide_function.knv", text);
+    assert_eq!(report.matches("warning[").count(), 1, "{report}");
+    assert!(
+        report.contains("warning[L0806]: parameter `unused` is never read"),
+        "{report}"
+    );
+}
+
+#[test]
 fn the_lint_read_back_prints_each_definition_as_knave_expand_does() {
     let disagreements = ReadBackAgreement::load().disagreements();
     assert!(
@@ -519,6 +537,7 @@ struct GeneratedLint;
 
 impl GeneratedLint {
     const DEEPEST_NESTING: usize = 1022;
+    const WIDEST_PARAMETERS: usize = 3_999;
     const STACK: FreshStack = FreshStack::of(32 * 1024 * 1024);
 
     fn report(name: &str, text: String) -> String {

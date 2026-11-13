@@ -1,8 +1,8 @@
 (use prelude/macros document module)
 
-(use code bool-not empty? first list? nth rest same-binding?
-          string string-strip-prefix symbol-name symbol?
-          value-eq warn)
+(use code bool-not empty? first list? nth number-sub rest
+          same-binding? string string-strip-prefix
+          symbol-name symbol? value-eq warn)
 
 (use prelude/internal/code introducing-macro)
 
@@ -12,7 +12,7 @@
 (export check-rule rule-names)
 
 (document (unused-binding table)
-  "Reports a `local` binding that nothing reads.
+  "Reports a local binding that nothing reads: a `local`, or a parameter of a `fn` applied where it is written, as `loop` writes one.
 
   ## Erroneous example
 
@@ -41,18 +41,54 @@
 
   A binding whose name starts with `_` is allowed. A binding that a macro's expansion introduced is never reported.")
 
-(def rule-names (quote (unused-binding)))
+(document (unused-parameter table)
+  "Reports a function parameter that nothing in its body reads.
+
+  ## Erroneous example
+
+  ```lisp
+  (defn area (width height)
+    (* width 2))
+  ```
+
+  ## Fixes
+
+  Remove the parameter:
+
+  ```lisp
+  (defn area (width)
+    (* width 2))
+  ```
+
+  Or start its name with `_` to keep it:
+
+  ```lisp
+  (defn area (width _height)
+    (* width 2))
+  ```
+
+  A parameter whose name starts with `_` is allowed. A parameter that a macro's expansion introduced, or that the compiler named, as in a trait's default method, is never reported. A parameter of a `fn` applied where it is written is a local binding, which `unused-binding` reports. The rule covers every other function, closures and `impl` methods included, so its help offers only the `_` name, which never changes how the function is called.")
+
+(def rule-names (quote (unused-binding unused-parameter)))
 
 (def check-rule
   (fn (rule table)
     (if (value-eq rule (quote unused-binding))
       (unused-binding table)
-      (do))))
+      (if (value-eq rule (quote unused-parameter))
+        (unused-parameter table)
+        (do)))))
 
 (def ignored-prefix "_")
 
 (def unused-binding
-  (fn (table) (warn-unread table table)))
+  (fn (table)
+    (warn-each table table unread-local? warn-unread-local)))
+
+(def unused-parameter
+  (fn (table)
+    (warn-each table table unread-parameter?
+               warn-unread-parameter)))
 
 (def entry-form
   (fn (entry) (first entry)))
@@ -66,44 +102,95 @@
 (def entry-reads
   (fn (entry) (nth entry 4)))
 
-(def warn-unread
-  (fn (table entries)
+(def parent-entry
+  (fn (table entry)
+    (nth table (entry-parent entry))))
+
+(def warn-each
+  (fn (table entries chosen? report)
     (if (empty? entries)
       (do)
       (do
-        (warn-if-unread table (first entries))
-        (recur table (rest entries))))))
+        (if (reported? table (first entries) chosen?)
+          (report (entry-form (first entries)))
+          (do))
+        (recur table (rest entries) chosen? report)))))
 
-(def warn-if-unread
-  (fn (table entry)
-    (if (reported? table entry)
-      (warn (string "`"
-                    (symbol-name (entry-form entry))
-                    "` is never read")
-        (entry-form entry)
-        (string "remove the binding, or name it `"
-                ignored-prefix
-                (symbol-name (entry-form entry))
-                "` to keep it")
-        (quote (:code unused-binding :label "bound here and never read")))
-      (do))))
+(def warn-unread-local
+  (fn (binder)
+    (warn (string "`" (symbol-name binder) "` is never read")
+      binder
+      (string "if the binding must stay, name it `"
+              ignored-prefix
+              (symbol-name binder)
+              "`")
+      (quote (:code unused-binding :label "bound here and never read")))))
+
+(def warn-unread-parameter
+  (fn (binder)
+    (warn (string "parameter `"
+                  (symbol-name binder)
+                  "` is never read")
+      binder
+      (string "if the parameter must stay, name it `"
+              ignored-prefix
+              (symbol-name binder)
+              "`")
+      (quote (:code unused-parameter
+                    :label "this parameter is never read")))))
 
 (def reported?
-  (fn (table entry)
-    (if (unread-local? table entry)
+  (fn (table entry chosen?)
+    (if (chosen? table entry)
       (if (ignored? (entry-form entry))
         false
         (empty? (introducing-macro (entry-form entry))))
       false)))
 
+(def unread-binder?
+  (fn (entry)
+    (if (value-eq (entry-role entry) (quote binds))
+      (value-eq (entry-reads entry) 0)
+      false)))
+
 (def unread-local?
   (fn (table entry)
-    (if (value-eq (entry-role entry) (quote binds))
-      (if (value-eq (entry-reads entry) 0)
-        (kernel-form? (entry-form (nth table (entry-parent entry)))
+    (if (unread-binder? entry)
+      (local-binder? table entry)
+      false)))
+
+(def local-binder?
+  (fn (table entry)
+    (if (kernel-form? (entry-form (parent-entry table entry))
                       (quote local))
+      true
+      (applied-parameter? table entry))))
+
+(def unread-parameter?
+  (fn (table entry)
+    (if (unread-binder? entry)
+      (if (parameter-list? table (parent-entry table entry))
+        (bool-not (applied-fn? table (parent-entry table entry)))
         false)
       false)))
+
+(def applied-parameter?
+  (fn (table entry)
+    (if (parameter-list? table (parent-entry table entry))
+      (applied-fn? table (parent-entry table entry))
+      false)))
+
+(def applied-fn?
+  (fn (table parameters)
+    (value-eq (entry-parent (nth table (entry-parent parameters)))
+              (number-sub (entry-parent parameters) 1))))
+
+(def parameter-list?
+  (fn (table entry)
+    (if (kernel-headed? (entry-form entry))
+      false
+      (kernel-form? (entry-form (parent-entry table entry))
+                    (quote fn)))))
 
 (def ignored?
   (fn (binder)
@@ -111,16 +198,22 @@
                                              ignored-prefix)
                         (symbol-name binder)))))
 
-(def kernel-form?
-  (fn (form name)
+(def kernel-headed?
+  (fn (form)
     (if (list? form)
       (if (empty? form)
         false
-        (kernel-head? (first form) name))
+        (kernel-symbol? (first form)))
       false)))
 
-(def kernel-head?
-  (fn (head name)
+(def kernel-form?
+  (fn (form name)
+    (if (kernel-headed? form)
+      (value-eq (first form) name)
+      false)))
+
+(def kernel-symbol?
+  (fn (head)
     (if (symbol? head)
-      (if (same-binding? head head) false (value-eq head name))
+      (bool-not (same-binding? head head))
       false)))

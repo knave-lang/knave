@@ -46,6 +46,12 @@ impl<'w, 's> ReadBackWriter<'w, 's> {
         form
     }
 
+    pub fn unjudged_binder(&mut self, binding: BindingId, span: Span) -> Form {
+        let form = self.symbol(binding, None, span);
+        self.table.leaf(&form);
+        form
+    }
+
     pub fn reference(&mut self, binding: BindingId, written: Option<&str>, span: Span) -> Form {
         let form = self.symbol(binding, written, span);
         self.table.reference(&form, binding);

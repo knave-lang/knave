@@ -1,0 +1,7 @@
+(defrule constantly
+  ((value) (fn (ignored) value)))
+
+(defn ones (numbers)
+  (collect (map (iter numbers) (constantly 1))))
+
+(defn main () (prn (ones (vec 1 2 3))))

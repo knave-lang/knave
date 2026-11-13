@@ -1,11 +1,13 @@
 use super::Expander;
-use crate::core::{BindingId, BindingKind, ModuleId, Namespace};
+use crate::core::{BinderOrigin, BindingId, BindingKind, ModuleId, Namespace};
 use crate::reader::Form;
 
 impl Expander<'_> {
     pub(super) fn note_global(&mut self, binding: BindingId, binder: &Form) {
         if self.tables.scopes.carries_introduction_scope(binder) {
-            self.tables.bindings.mark_introduced(binding);
+            self.tables
+                .bindings
+                .set_origin(binding, BinderOrigin::Introduced);
         }
         if matches!(self.kind(binding), BindingKind::Macro(_)) {
             self.tables.global_macros.push((binding, binder.clone()));
@@ -43,7 +45,8 @@ impl Expander<'_> {
         let function = self.try_resolve(expansion.as_symbol()?, Namespace::Value)?;
         self.tables
             .bindings
-            .is_introduced(function)
+            .origin(function)
+            .is_introduced()
             .then_some(function)
     }
 }

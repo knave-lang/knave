@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/impl_method_parameter.knv
+---
+warning[L0806]: parameter `scale` is never read
+ --> lint/impl_method_parameter.knv:8:12
+  |
+8 |   (area (c scale) (:radius c)))
+  |            ^^^^^ this parameter is never read
+  |
+  = help: if the parameter must stay, name it `_scale`

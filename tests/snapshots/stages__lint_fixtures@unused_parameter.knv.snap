@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/unused_parameter.knv
+---
+warning[L0806]: parameter `height` is never read
+ --> lint/unused_parameter.knv:1:19
+  |
+1 | (defn area (width height) (* width 2))
+  |                   ^^^^^^ this parameter is never read
+  |
+  = help: if the parameter must stay, name it `_height`

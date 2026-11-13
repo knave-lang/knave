@@ -1,0 +1,4 @@
+(defn ticks (numbers)
+  (collect (map (iter numbers) (fn (number) 1))))
+
+(defn main () (prn (ticks (vec 1 2 3))))

@@ -9,4 +9,4 @@ warning[L0801]: `spare` is never read
 5 |   (with-named spare (* width height)))
   |               ^^^^^ bound here and never read
   |
-  = help: remove the binding, or name it `_spare` to keep it
+  = help: if the binding must stay, name it `_spare`

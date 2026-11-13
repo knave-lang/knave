@@ -1,0 +1,3 @@
+(defn area (width height) (* width 2))
+
+(defn main () (println (area 2 3)))

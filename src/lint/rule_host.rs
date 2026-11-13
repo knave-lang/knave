@@ -358,6 +358,6 @@ mod tests {
             .rule_names(fixture.source.span_of(HostFixture::CALL))
             .expect("the rule names evaluate");
         let written: Vec<String> = names.iter().map(Form::to_string).collect();
-        assert_eq!(written, ["unused-binding"]);
+        assert_eq!(written, ["unused-binding", "unused-parameter"]);
     }
 }

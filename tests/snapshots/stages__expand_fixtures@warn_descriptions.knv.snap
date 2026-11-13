@@ -36,6 +36,12 @@ error[L0322]: no lint is named `repeated-parameter`
 ...
 33 | (def cab (macro-stage-code "yellow cab"))
    |          ------------------------------- in this macro call
+   |
+help: a lint with a similar name exists
+   |
+21 -       (quote (:code repeated-parameter)))
+21 +       (quote (:code unused-parameter)))
+   |
 
 error[L0311]: `warn` takes 3 arguments but 2 were given
   --> expand/warn_descriptions.knv:26:5

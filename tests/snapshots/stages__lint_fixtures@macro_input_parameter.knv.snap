@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/macro_input_parameter.knv
+---
+warning[L0806]: parameter `spare` is never read
+ --> lint/macro_input_parameter.knv:5:43
+  |
+5 |   (collect (map (iter numbers) (lambda-of spare 1))))
+  |                                           ^^^^^ this parameter is never read
+  |
+  = help: if the parameter must stay, name it `_spare`

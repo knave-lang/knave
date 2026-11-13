@@ -155,7 +155,7 @@ mod tests {
         let source = ExpandedSource::expand("(defn area (width) (let (unused 1) width))");
         assert_eq!(
             source.warning_titles_within(LinterFixture::TINY_STEP_LIMIT),
-            vec!["`unused-binding` was not checked in `area`"]
+            vec!["`unused-binding`, `unused-parameter` were not checked in `area`"]
         );
     }
 
@@ -171,6 +171,14 @@ mod tests {
     #[test]
     fn a_prelude_module_is_not_linted() {
         let source = ExpandedSource::expand("(defn main ())");
-        assert!(source.warning_titles().is_empty());
+        let titles = source.warning_titles_within(LinterFixture::TINY_STEP_LIMIT);
+        assert_eq!(
+            source.warning_codes_within(LinterFixture::TINY_STEP_LIMIT),
+            vec!["L0805"]
+        );
+        assert!(
+            titles.iter().all(|title| title.ends_with("in `main`")),
+            "{titles:?}"
+        );
     }
 }

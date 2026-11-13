@@ -1,0 +1,6 @@
+(defn count-down (start)
+  (loop (n start
+         spare 0)
+    (if (= n 0) n (recur (- n 1) 0))))
+
+(defn main () (println (count-down 3)))

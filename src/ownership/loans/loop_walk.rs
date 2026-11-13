@@ -2,7 +2,6 @@ use super::argument_passing::Passing;
 use super::argument_values::ArgumentValues;
 use super::expression_walk::ExpressionWalk;
 use super::holdings::Holdings;
-use super::loop_nest::LoopNest;
 use super::point_id::PointId;
 use super::walked::Walked;
 use crate::types::{TypedArgument, TypedBinder, TypedLambda};
@@ -24,16 +23,16 @@ impl<'c, 'w> LoopWalk<'c, 'w> {
     ) -> Walked {
         let started = self.bound(&lambda.params, arguments, at);
         let head = self.walk.builder().join(&[started]);
-        self.walk.builder().enter_loop(head, &lambda.params);
+        self.walk.builder().loops().enter(head, &lambda.params);
         let body = self.walk.block(&lambda.body, head);
-        self.walk.builder().leave_loop();
+        self.walk.builder().loops().leave();
         body
     }
 
     pub fn recur(mut self, arguments: &'w [TypedArgument], at: PointId) -> Walked {
-        if let Some(parameters) = self.walk.builder().innermost_loop_parameters() {
+        if let Some(parameters) = self.walk.builder().loops().innermost_parameters() {
             let again = self.bound(parameters, arguments, at);
-            self.walk.builder().return_to_innermost_loop(again);
+            self.walk.builder().loops().return_to_innermost(again);
         }
         Walked::at(self.walk.builder().join(&[]))
     }

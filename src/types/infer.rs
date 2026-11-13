@@ -20,6 +20,7 @@ use super::pending::{DecidedBorrows, PendingBorrow};
 use super::problems::{MismatchContext, TypeProblems};
 use super::rust_types::RustType;
 use super::selfless_methods::SelflessMethod;
+use super::synthetic_template::SyntheticTemplate;
 use super::ty::Bound;
 use super::ty::Type;
 use super::ty::TypeVar;
@@ -1824,9 +1825,9 @@ impl TypeChecker {
     fn iteration(&self, expected: &Type, item: Type) -> (&'static str, Type) {
         match item {
             Type::Ref(_, element) if self.expects_copied_items(expected, &element) => {
-                ("{0}.iter().copied()", *element)
+                (SyntheticTemplate::ITERATE_COPIED.text(), *element)
             }
-            item => ("{0}.iter()", item),
+            item => (SyntheticTemplate::ITERATE.text(), item),
         }
     }
 
@@ -2799,9 +2800,9 @@ impl TypeChecker {
                 self.check_map_key(&collection, value.span);
             }
         }
-        let result = self.iterator_type(item);
+        let (template, result) = (SyntheticTemplate::ITERATE.text(), self.iterator_type(item));
         let parameters = vec![Type::shared(collection_type)];
-        self.synthetic_call_with_value("{0}.iter()", parameters, result, value, arguments, span)
+        self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
     }
 
     fn infer_get(
@@ -2838,7 +2839,8 @@ impl TypeChecker {
             Type::Primitive(PrimitiveType::Usize),
         ];
         let result = self.option_type(element);
-        self.synthetic_call_with_value("{0}.get({1})", parameters, result, value, arguments, span)
+        let template = SyntheticTemplate::LOOK_UP.text();
+        self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
     }
 
     fn infer_push(
@@ -2858,7 +2860,7 @@ impl TypeChecker {
         let element = self.unifier.fresh();
         let parameters = vec![Type::mutable(self.vector_of(element.clone())), element];
         self.synthetic_call_with_value(
-            "{0}.push({1})",
+            SyntheticTemplate::PUSH.text(),
             parameters,
             Type::unit(),
             value,
@@ -2890,9 +2892,9 @@ impl TypeChecker {
     ) -> Result<TypedExpr, Diagnostic> {
         let character = Type::Primitive(PrimitiveType::Char);
         let (template, parameter) = if self.unifier.resolve(&item.ty) == character {
-            ("{0}.push({1})", character)
+            (SyntheticTemplate::PUSH.text(), character)
         } else {
-            ("{0}.push_str({1})", Type::str_ref())
+            (SyntheticTemplate::PUSH_TEXT.text(), Type::str_ref())
         };
         let parameters = vec![
             Type::mutable(Type::Primitive(PrimitiveType::String)),
@@ -2941,10 +2943,10 @@ impl TypeChecker {
     }
 
     fn infer_iter_slice(&mut self, value: TypedExpr, span: Span) -> Result<TypedExpr, Diagnostic> {
-        let element = self.unifier.fresh();
+        let (template, element) = (SyntheticTemplate::ITERATE.text(), self.unifier.fresh());
         let parameter = Type::shared(self.slice_of(element.clone()));
         let result = self.iterator_type(Type::shared(element));
-        self.synthetic_call_with_value("{0}.iter()", vec![parameter], result, value, &[], span)
+        self.synthetic_call_with_value(template, vec![parameter], result, value, &[], span)
     }
 
     fn slice_of(&self, element: Type) -> Type {
@@ -3019,7 +3021,7 @@ impl TypeChecker {
         ];
         let result = self.option_type(collection.value().clone());
         let call = self.synthetic_call_with_value(
-            "{0}.get({1})",
+            SyntheticTemplate::LOOK_UP.text(),
             parameters,
             result,
             value,
@@ -3074,14 +3076,11 @@ impl TypeChecker {
         if !arguments.is_empty() {
             return Err(TypeProblems::wrong_argument_count(0, arguments.len(), span));
         }
-        let result = match iterator {
-            MapIterator::Keys => self.iterator_type(Type::shared(collection.key().clone())),
-            MapIterator::Vals => self.iterator_type(Type::shared(collection.value().clone())),
+        let (item, template) = match iterator {
+            MapIterator::Keys => (collection.key(), SyntheticTemplate::KEYS.text()),
+            MapIterator::Vals => (collection.value(), SyntheticTemplate::VALUES.text()),
         };
-        let template = match iterator {
-            MapIterator::Keys => "{0}.keys()",
-            MapIterator::Vals => "{0}.values()",
-        };
+        let result = self.iterator_type(Type::shared(item.clone()));
         let parameters = vec![Type::shared(collection.ty().clone())];
         self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
     }
@@ -3109,7 +3108,8 @@ impl TypeChecker {
             value_type,
         ];
         let result = collection.ty().clone();
-        self.synthetic_call_with_value("@map-update", parameters, result, value, arguments, span)
+        let template = SyntheticTemplate::MAP_UPDATE.text();
+        self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
     }
 
     fn infer_set_at(

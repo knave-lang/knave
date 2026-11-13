@@ -212,8 +212,9 @@
 
 (def split
   (rust "{0}.split({1})"
-    (fn ((ref str) (ref str))
-      (iterator (ref str)))))
+    (where ('a)
+      (fn ((ref 'a str) (ref 'a str))
+        (iterator (ref 'a str))))))
 
 (def trim
   (rust "{0}.trim()"

@@ -2,6 +2,7 @@ use super::argument_passing::{PassedArgument, Passing};
 use super::expression_walk::ExpressionWalk;
 use super::holdings::Holdings;
 use super::lender::Lender;
+use super::passed_holdings::PassedHoldings;
 use super::point_id::PointId;
 use crate::types::TypedArgument;
 
@@ -41,14 +42,14 @@ impl<'w> ArgumentValues<'w> {
         evaluated
     }
 
-    pub fn pass(&self, held: Vec<Holdings>, lender: &mut Lender<'_>) -> Vec<Holdings> {
+    pub fn pass(&self, held: Vec<Holdings>, lender: &mut Lender<'_>) -> Vec<PassedHoldings> {
         self.arguments
             .iter()
             .zip(&self.passings)
             .zip(held)
             .map(|((argument, passing), held)| {
                 let passed = passing.pass(PassedArgument::new(argument, held), lender);
-                lender.receive(&passed);
+                lender.receive(&passed.all());
                 passed
             })
             .collect()

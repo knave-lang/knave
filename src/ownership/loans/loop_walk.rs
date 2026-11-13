@@ -1,7 +1,6 @@
 use super::argument_passing::Passing;
 use super::argument_values::ArgumentValues;
 use super::expression_walk::ExpressionWalk;
-use super::holdings::Holdings;
 use super::point_id::PointId;
 use super::walked::Walked;
 use crate::types::{TypedArgument, TypedBinder, TypedLambda};
@@ -54,9 +53,9 @@ impl<'c, 'w> LoopWalk<'c, 'w> {
         let evaluated = values.evaluate(self.walk, at);
         let builder = self.walk.builder();
         let point = builder.join(&[evaluated.end]);
-        let passed: Vec<Holdings> = values.pass(evaluated.held, &mut builder.lender(point));
-        for (parameter, held) in parameters.iter().zip(passed) {
-            builder.define(point, parameter, &held);
+        let passed = values.pass(evaluated.held, &mut builder.lender(point));
+        for (parameter, passed) in parameters.iter().zip(passed) {
+            builder.define(point, parameter, &passed.all());
         }
         point
     }

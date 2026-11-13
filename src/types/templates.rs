@@ -15,10 +15,17 @@ pub struct TemplateBorrows {
 }
 
 impl TemplateBorrows {
-    pub fn register(&mut self, binding: BindingId, template: &str, scheme: &Scheme) {
-        if let Some(registered) = RegisteredTemplate::parse(template, Some(scheme)) {
+    pub fn register(&mut self, binding: BindingId, template: &Rc<str>, scheme: &Scheme) {
+        if let Some(registered) =
+            RegisteredTemplate::parse(Rc::clone(template), Some(scheme.clone()))
+        {
             self.templates.insert(binding, registered);
         }
+    }
+
+    #[cfg(test)]
+    pub fn registered(&self) -> impl Iterator<Item = (&BindingId, &RegisteredTemplate)> {
+        self.templates.iter()
     }
 
     pub fn borrows(&self, callee: &TypedExpr, position: usize) -> bool {
@@ -54,12 +61,59 @@ impl TemplateBorrows {
             }
             TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
                 let mut inline = self.inline.borrow_mut();
-                let parsed = inline
-                    .entry(template.template.clone())
-                    .or_insert_with(|| RegisteredTemplate::parse(&template.template, None));
+                let parsed = inline.entry(template.template.clone()).or_insert_with(|| {
+                    RegisteredTemplate::parse(Rc::clone(&template.template), None)
+                });
                 parsed.as_ref().map(read).unwrap_or(absent)
             }
             _ => absent,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::core::{ExprKind, Leaf};
+    use crate::types::{SyntheticTemplate, TypedSource};
+
+    struct PreludeTemplates;
+
+    impl PreludeTemplates {
+        fn unsettled() -> (usize, usize, Vec<String>) {
+            let mut source = TypedSource::expand("(defn main () (println 1))");
+            let templates: Vec<_> = source
+                .program()
+                .modules
+                .iter()
+                .flat_map(|module| module.definitions())
+                .filter(|(_, value)| matches!(value.kind(), ExprKind::Leaf(Leaf::Rust(_))))
+                .map(|(binding, _)| binding)
+                .collect();
+            for binding in &templates {
+                source.check_also(*binding);
+            }
+            let program = source.typed();
+            let mut unsettled: Vec<String> = program
+                .template_borrows
+                .registered()
+                .filter(|(_, template)| template.ties().is_none())
+                .map(|(binding, _)| program.bindings.get(*binding).name().to_string())
+                .collect();
+            unsettled.sort_unstable();
+            let registered = program.template_borrows.registered().count();
+            (templates.len(), registered, unsettled)
+        }
+    }
+
+    #[test]
+    fn every_prelude_template_and_synthetic_template_settles_its_ties() {
+        let (defined, registered, unsettled) = PreludeTemplates::unsettled();
+        assert_eq!(registered, defined);
+        assert_eq!(unsettled, Vec::<String>::new());
+        assert!(
+            SyntheticTemplate::ALL
+                .into_iter()
+                .all(|template| SyntheticTemplate::named(template.text()).is_some())
+        );
     }
 }

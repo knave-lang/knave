@@ -1,4 +1,4 @@
-use crate::types::{CopyRules, Type, TypedExpr, TypedProgram};
+use crate::types::{CopyRules, TemplateTies, Type, TypedExpr, TypedProgram};
 
 pub struct LoanRules<'p> {
     program: &'p TypedProgram,
@@ -17,22 +17,10 @@ impl<'p> LoanRules<'p> {
         !self.copy.is_copy(ty)
     }
 
-    pub fn is_template(&self, callee: &TypedExpr) -> bool {
+    pub fn ties(&self, callee: &TypedExpr) -> Option<TemplateTies> {
         self.program
             .template_borrows
-            .read_template(callee, false, |_| true)
-    }
-
-    pub fn result_ties(&self, callee: &TypedExpr) -> Option<Vec<usize>> {
-        self.program
-            .template_borrows
-            .read_template(callee, None, |template| {
-                template.tied_parameters().map(<[usize]>::to_vec)
-            })
-    }
-
-    pub fn receives(&self, callee: &TypedExpr, position: usize) -> bool {
-        self.program.template_borrows.receives(callee, position)
+            .read_template(callee, None, |template| template.ties())
     }
 
     pub fn holds_a_borrow(&self, ty: &Type) -> bool {

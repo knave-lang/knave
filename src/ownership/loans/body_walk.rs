@@ -444,6 +444,24 @@ mod tests {
     }
 
     #[test]
+    fn a_split_holds_the_loans_of_the_text_and_the_pattern() {
+        let source = LoanSource::new(
+            "(defn main ()\n  (local s (str \"a,b\"))\n  (local p (str \",\"))\n  (local it (split (as-str s) (as-str p)))\n  (set! p (str \";\"))\n  (println (count it)))",
+        );
+        let line = source.line_of("change `p`");
+        assert!(line.contains("`p` lent at 4:39, held by `it`"), "{line}");
+        assert!(line.contains("`s` lent at 4:28, held by `it`"), "{line}");
+    }
+
+    #[test]
+    fn a_popped_value_holds_what_the_vector_held_and_not_the_vector() {
+        let source = LoanSource::new(
+            "(defn main ()\n  (local s (str \"a\"))\n  (local v (vec (as-str s)))\n  (local x (pop! v))\n  (push! v (as-str s))\n  (println (unwrap x) (len v)))",
+        );
+        assert!(!source.line_of("5:10 change").contains("mut `v`"));
+    }
+
+    #[test]
     fn a_helper_result_holds_no_loan() {
         let source = LoanSource::new(
             "(defn first-of (v) (at v 0))\n\n(defn main ()\n  (local v (vec 1 2))\n  (local r (first-of v))\n  (push! v 4)\n  (println r))",

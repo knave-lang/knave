@@ -4,13 +4,14 @@ use super::lending::Lending;
 use super::loan_kind::{LoanKind, MutableLoan, SharedLoan};
 use super::loan_place::LoanPlace;
 use super::loan_rules::LoanRules;
+use super::passed_holdings::PassedHoldings;
 use crate::source::Span;
 use crate::types::{Borrow, Type, TypedArgument};
 
 pub trait Passing {
     fn takes_the_place(&self) -> bool;
 
-    fn pass(&self, argument: PassedArgument, lender: &mut Lender<'_>) -> Holdings;
+    fn pass(&self, argument: PassedArgument, lender: &mut Lender<'_>) -> PassedHoldings;
 }
 
 pub struct PassedArgument {
@@ -84,13 +85,13 @@ impl Passing for Lends {
         true
     }
 
-    fn pass(&self, argument: PassedArgument, lender: &mut Lender<'_>) -> Holdings {
+    fn pass(&self, argument: PassedArgument, lender: &mut Lender<'_>) -> PassedHoldings {
         match argument.place {
             Some(place) => {
                 let lent = lender.lend(Lending::new(place, self.kind, argument.span));
-                argument.held.merged(lent)
+                PassedHoldings::lending(argument.held, lent)
             }
-            None => argument.held,
+            None => PassedHoldings::kept(argument.held),
         }
     }
 }
@@ -100,11 +101,11 @@ impl Passing for Moves {
         true
     }
 
-    fn pass(&self, argument: PassedArgument, lender: &mut Lender<'_>) -> Holdings {
+    fn pass(&self, argument: PassedArgument, lender: &mut Lender<'_>) -> PassedHoldings {
         if let Some(place) = argument.place {
             lender.move_out(place, argument.span);
         }
-        argument.held
+        PassedHoldings::kept(argument.held)
     }
 }
 
@@ -113,8 +114,8 @@ impl Passing for Copies {
         false
     }
 
-    fn pass(&self, _argument: PassedArgument, _lender: &mut Lender<'_>) -> Holdings {
-        Holdings::default()
+    fn pass(&self, _argument: PassedArgument, _lender: &mut Lender<'_>) -> PassedHoldings {
+        PassedHoldings::kept(Holdings::default())
     }
 }
 
@@ -123,8 +124,8 @@ impl Passing for Holds {
         false
     }
 
-    fn pass(&self, argument: PassedArgument, _lender: &mut Lender<'_>) -> Holdings {
-        argument.held
+    fn pass(&self, argument: PassedArgument, _lender: &mut Lender<'_>) -> PassedHoldings {
+        PassedHoldings::kept(argument.held)
     }
 }
 
@@ -198,7 +199,7 @@ mod tests {
             let mut lender = Lender::new(&mut graph, &mut loans, PointId::ENTRY);
             let held = Holdings::of_value(self.source.binder("v").binding);
             let passed = passing.pass(PassedArgument::new(&argument, held), &mut lender);
-            passed.values().next().is_some()
+            passed.all().values().next().is_some()
         }
 
         fn outcome(&self, local: &str, borrow: Borrow, parameter: Option<&Type>) -> Outcome {
@@ -232,8 +233,8 @@ mod tests {
             Outcome {
                 takes_the_place: passing.takes_the_place(),
                 accesses,
-                passes_a_loan: passed.loans().next().is_some(),
-                passes_its_own_holdings: passed.values().next().is_some(),
+                passes_a_loan: passed.all().loans().next().is_some(),
+                passes_its_own_holdings: passed.all().values().next().is_some(),
             }
         }
     }

@@ -262,6 +262,7 @@ diagnostic_codes! {
     UNREACHABLE_ARM = "L0803",
     MISSING_BANG = "L0804",
     RULE_SKIPPED = "L0805",
+    UNUSED_PARAMETER = "L0806",
 }
 
 impl DiagnosticCode {

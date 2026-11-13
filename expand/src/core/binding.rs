@@ -2,8 +2,9 @@ use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::rc::Rc;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
+use super::binder_origin::BinderOrigin;
 use super::saved_bindings::{BindingTables, SavedBindings};
 use super::{Builtin, KernelForm, KernelType, ModuleId};
 
@@ -126,7 +127,7 @@ pub struct BindingArena {
     #[serde(skip)]
     saved: Rc<SavedBindings>,
     infos: Vec<BindingInfo>,
-    introduced: FxHashSet<BindingId>,
+    origins: FxHashMap<BindingId, BinderOrigin>,
     answering_macros: FxHashMap<BindingId, BindingId>,
     #[serde(skip)]
     definitions: RefCell<ModuleDefinitions>,
@@ -176,14 +177,26 @@ impl BindingArena {
         }
     }
 
-    pub fn mark_introduced(&mut self, id: BindingId) {
-        self.introduced.insert(id);
-        let kind = self.get(id).kind();
-        self.definitions.get_mut().forget(id, kind);
+    pub fn set_origin(&mut self, id: BindingId, origin: BinderOrigin) {
+        if origin == BinderOrigin::Written {
+            self.origins.remove(&id);
+        } else {
+            self.origins.insert(id, origin);
+        }
+        if origin.is_introduced() {
+            let kind = self.get(id).kind();
+            self.definitions.get_mut().forget(id, kind);
+        } else {
+            let arena: &Self = self;
+            arena.definitions.borrow_mut().remember(arena, id);
+        }
     }
 
-    pub fn is_introduced(&self, id: BindingId) -> bool {
-        self.introduced.contains(&id)
+    pub fn origin(&self, id: BindingId) -> BinderOrigin {
+        self.origins
+            .get(&id)
+            .copied()
+            .unwrap_or(BinderOrigin::Written)
     }
 
     pub fn record_answering_macro(&mut self, function: BindingId, answering: BindingId) {
@@ -243,12 +256,18 @@ impl ModuleDefinitions {
     }
 
     fn index(&mut self, bindings: &BindingArena, binding: BindingId) {
-        if bindings.is_introduced(binding) {
+        if bindings.origin(binding).is_introduced() {
             return;
         }
         if let Some(module) = bindings.get(binding).kind().defining_module() {
             self.by_module.entry(module).or_default().insert(binding);
             self.sorted_names.remove(&module);
+        }
+    }
+
+    fn remember(&mut self, bindings: &BindingArena, binding: BindingId) {
+        if (binding.0 as usize) < self.indexed {
+            self.index(bindings, binding);
         }
     }
 
@@ -270,7 +289,9 @@ impl ModuleDefinitions {
 
 #[cfg(test)]
 mod tests {
-    use super::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleDefinitions};
+    use super::{
+        BinderOrigin, BindingArena, BindingId, BindingInfo, BindingKind, ModuleDefinitions,
+    };
     use crate::core::ModuleId;
     use std::cell::Cell;
     use std::rc::Rc;
@@ -348,12 +369,45 @@ mod tests {
     }
 
     #[test]
+    fn a_fresh_binding_was_written() {
+        let mut fixture = DefinitionsFixture::new();
+        let area = fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
+        assert_eq!(fixture.bindings.origin(area), BinderOrigin::Written);
+    }
+
+    #[test]
+    fn setting_a_binding_written_again_forgets_its_rarer_origin() {
+        let mut fixture = DefinitionsFixture::new();
+        let area = fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
+        fixture
+            .bindings
+            .set_origin(area, BinderOrigin::NamedByCompiler);
+        fixture.bindings.set_origin(area, BinderOrigin::Written);
+        assert_eq!(fixture.bindings.origin(area), BinderOrigin::Written);
+        assert!(fixture.bindings.origins.is_empty());
+    }
+
+    #[test]
+    fn a_binding_introduced_then_written_returns_to_the_index() {
+        let mut fixture = DefinitionsFixture::new();
+        let helper = fixture.add("helper", BindingKind::Global(DefinitionsFixture::shapes()));
+        fixture.defined_in(DefinitionsFixture::shapes());
+        fixture
+            .bindings
+            .set_origin(helper, BinderOrigin::Introduced);
+        fixture.bindings.set_origin(helper, BinderOrigin::Written);
+        assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), ["helper"]);
+    }
+
+    #[test]
     fn a_module_leaves_out_the_definitions_a_macro_introduced() {
         let mut fixture = DefinitionsFixture::new();
         fixture.add("area", BindingKind::Global(DefinitionsFixture::shapes()));
         let helper = fixture.add("helper", BindingKind::Global(DefinitionsFixture::shapes()));
         fixture.defined_in(DefinitionsFixture::shapes());
-        fixture.bindings.mark_introduced(helper);
+        fixture
+            .bindings
+            .set_origin(helper, BinderOrigin::Introduced);
         assert_eq!(fixture.defined_in(DefinitionsFixture::shapes()), ["area"]);
     }
 
@@ -361,7 +415,9 @@ mod tests {
     fn an_introduced_binding_never_enters_the_index() {
         let mut fixture = DefinitionsFixture::new();
         let helper = fixture.add("helper", BindingKind::Global(DefinitionsFixture::shapes()));
-        fixture.bindings.mark_introduced(helper);
+        fixture
+            .bindings
+            .set_origin(helper, BinderOrigin::Introduced);
         fixture.defined_in(DefinitionsFixture::shapes());
         assert!(fixture.bindings.definitions.borrow().is_empty());
     }
@@ -371,7 +427,9 @@ mod tests {
         let mut fixture = DefinitionsFixture::new();
         let helper = fixture.add("helper", BindingKind::Global(DefinitionsFixture::shapes()));
         fixture.defined_in(DefinitionsFixture::shapes());
-        fixture.bindings.mark_introduced(helper);
+        fixture
+            .bindings
+            .set_origin(helper, BinderOrigin::Introduced);
         assert!(fixture.bindings.definitions.borrow().is_empty());
     }
 

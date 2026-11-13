@@ -1,0 +1,6 @@
+(defn scaled (numbers factor)
+  (map (iter numbers)
+    (fn (number) (* number factor))))
+
+(defn main ()
+  (prn (collect (scaled (vec 1 2 3) 2))))

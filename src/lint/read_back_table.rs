@@ -150,9 +150,17 @@ mod tests {
     impl TableFixture {
         const ROLE_FROM_END: usize = 1;
         const READS_FROM_END: usize = 0;
+        const PARENT_FROM_END: usize = 3;
 
         fn rows(source: &str) -> Vec<String> {
             ExpandedSource::expand(source).table_rows("area")
+        }
+
+        fn parent_of(row: &str) -> usize {
+            row.rsplit(' ')
+                .nth(Self::PARENT_FROM_END)
+                .and_then(|parent| parent.parse().ok())
+                .expect("a row names its parent's index")
         }
 
         fn row_of<'r>(rows: &'r [String], form: &str) -> Vec<&'r str> {
@@ -206,6 +214,20 @@ mod tests {
     fn a_kernel_head_is_neither() {
         let rows = TableFixture::rows("(defn area (width) width)");
         assert_eq!(TableFixture::row_of(&rows, "fn"), ["none"]);
+    }
+
+    #[test]
+    fn a_call_s_callee_row_follows_the_call_row() {
+        let rows = TableFixture::rows("(defn area (width) ((fn (x) x) width))");
+        let callee = rows
+            .iter()
+            .position(|row| row.starts_with("(fn (x) x) "))
+            .expect("the callee has a row");
+        assert!(
+            rows[callee - 1].starts_with("((fn (x) x) width) "),
+            "{rows:?}"
+        );
+        assert_eq!(TableFixture::parent_of(&rows[callee]), callee - 1);
     }
 
     #[test]

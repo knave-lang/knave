@@ -504,7 +504,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn yields_name(&self, binding: BindingId, holder: BindingId) -> bool {
-        holder == self.main || self.program.bindings.is_introduced(binding)
+        holder == self.main || self.program.bindings.origin(binding).is_introduced()
     }
 
     fn entry_and_written_items_first(&self) -> Vec<BindingId> {
@@ -514,7 +514,7 @@ impl<'p> EmitPlan<'p> {
             .copied()
             .filter(|binding| *binding != self.main)
             .filter(|binding| !self.program.synthetic_bindings.contains(binding))
-            .partition(|binding| self.program.bindings.is_introduced(*binding));
+            .partition(|binding| self.program.bindings.origin(*binding).is_introduced());
         std::iter::once(self.main)
             .chain(written)
             .chain(introduced)

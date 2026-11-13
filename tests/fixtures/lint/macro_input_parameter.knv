@@ -1,0 +1,7 @@
+(defrule lambda-of
+  ((name body) (fn (name) body)))
+
+(defn ones (numbers)
+  (collect (map (iter numbers) (lambda-of spare 1))))
+
+(defn main () (prn (ones (vec 1 2 3))))

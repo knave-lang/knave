@@ -117,12 +117,21 @@ impl<'a, 's> CoreForms<'a, 's> {
         let parameters = lambda
             .params
             .iter()
-            .map(|parameter| self.writer().binder(parameter.binding, parameter.span))
+            .map(|parameter| self.parameter(parameter))
             .collect();
         let parameters = self.writer().close(parameters_row, parameters, span);
         let mut parts = vec![head, parameters];
         parts.extend(self.block_items(&lambda.body));
         self.writer().close(row, parts, span)
+    }
+
+    fn parameter(&mut self, parameter: &Binder) -> Form {
+        if self.arena.origin(parameter.binding).is_named_by_compiler() {
+            self.writer()
+                .unjudged_binder(parameter.binding, parameter.span)
+        } else {
+            self.writer().binder(parameter.binding, parameter.span)
+        }
     }
 
     fn control(&mut self, control: &Control, span: Span) -> Form {

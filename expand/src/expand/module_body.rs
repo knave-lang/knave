@@ -9,9 +9,9 @@ use super::sourced_items::SourcedItems;
 use super::spliced_forms::{SplicedForm, SplicedForms};
 use super::{Expander, TraitMethods, binder_form::BinderForm, module_notes::NotesCheckpoint};
 use crate::core::{
-    BindingId, BindingInfo, BindingKind, ControlForm, CoreModule, DefinitionForm, Expr, ExprKind,
-    ExpressionForm, FieldLabel, ImplAssociatedType, ImplMethod, ImplementorRows, Item, ItemKind,
-    KernelForm, Keyword, Leaf, ModuleId, Namespace, RUST_TRAIT_ASSOCIATED_MARKER,
+    BinderOrigin, BindingId, BindingInfo, BindingKind, ControlForm, CoreModule, DefinitionForm,
+    Expr, ExprKind, ExpressionForm, FieldLabel, ImplAssociatedType, ImplMethod, ImplementorRows,
+    Item, ItemKind, KernelForm, Keyword, Leaf, ModuleId, Namespace, RUST_TRAIT_ASSOCIATED_MARKER,
     RUST_TRAIT_HELP_MARKER, RUST_TRAIT_METHOD_MARKER, RUST_TRAIT_REQUIRES_MARKER,
     RUST_TRAIT_STRUCTURAL_MARKER, RequiredTrait, RustTemplate, RustTraitAssociatedType,
     RustTraitDeclaration, RustTraitImplementor, TraitAssociatedType, TraitMethod, TypeBinder,
@@ -1200,32 +1200,30 @@ impl Expander<'_> {
             .iter()
             .enumerate()
             .map(|(position, parameter)| {
-                let name = if position == 0 && Self::is_receiver(parameter, lowering.self_variable)
-                {
-                    "self".to_string()
-                } else {
-                    format!("argument-{position}")
+                let name = match position {
+                    0 if Self::is_receiver(parameter, lowering.self_variable) => "self".to_string(),
+                    _ => format!("argument-{position}"),
                 };
                 Form::new(FormKind::Symbol(Symbol::new(name)), parameter.span())
             })
             .collect();
         let params = Form::new(FormKind::List(parameter_forms), method.span());
         let lambda = self.lower_lambda(lowering.shape, &params, body)?;
-        let binding = self.tables.bindings.add(BindingInfo::new(
-            self.tables.bindings.get(lowering.binding).name().into(),
-            BindingKind::Local,
-            Some(method.span()),
-        ));
+        let bindings = &mut self.tables.bindings;
+        for parameter in &lambda.params {
+            bindings.set_origin(parameter.binding, BinderOrigin::NamedByCompiler);
+        }
+        let name = bindings.get(lowering.binding).shared_name();
+        let span = Some(method.span());
+        let binding = bindings.add(BindingInfo::new(name, BindingKind::Local, span));
         core.items.push(Item {
             kind: ItemKind::Signature(binding, scheme.clone()),
             span: method.span(),
             hidden: true,
         });
+        let value = Rc::new(Expr::new(ExprKind::Fn(Rc::new(lambda)), method.span()));
         core.items.push(Item {
-            kind: ItemKind::Def(
-                binding,
-                Rc::new(Expr::new(ExprKind::Fn(Rc::new(lambda)), method.span())),
-            ),
+            kind: ItemKind::Def(binding, value),
             span: method.span(),
             hidden: true,
         });

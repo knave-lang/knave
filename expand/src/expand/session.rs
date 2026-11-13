@@ -2,8 +2,8 @@ use super::generated_entry::GeneratedEntry;
 use super::result_printer::GeneratedFunction;
 use super::{Expander, Program};
 use crate::core::{
-    BindingId, BindingInfo, BindingKind, Block, BodyItem, Control, Expr, ExprKind, ModuleId,
-    ModulePath, Namespace,
+    BinderOrigin, BindingId, BindingInfo, BindingKind, Block, BodyItem, Control, Expr, ExprKind,
+    ModuleId, ModulePath, Namespace,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::modules::{ModuleRecord, ModuleSources};
@@ -262,7 +262,7 @@ impl ExpansionSession<'_> {
         let info = BindingInfo::new(name.into(), BindingKind::Global(self.entry), Some(span));
         let bindings = &mut self.expander.tables.bindings;
         let binding = bindings.add(info);
-        bindings.mark_introduced(binding);
+        bindings.set_origin(binding, BinderOrigin::Introduced);
         binding
     }
 
@@ -481,6 +481,24 @@ mod tests {
             .filter(|(binding, _)| Some(*binding) == program.entry.function)
             .count();
         assert_eq!(entries, 1);
+    }
+
+    #[test]
+    fn a_generated_entry_function_counts_as_introduced() {
+        let mut fixture = SessionFixture::new(SessionFixture::DOUBLING);
+        let call = fixture.list(SessionFixture::DEFINED_NAME);
+        let span = fixture.span();
+        let mut session = fixture.session();
+        let entry = session
+            .generated_entry(&[call], span)
+            .unwrap_or_else(|_| panic!("the call lowers"));
+        let mut program = SessionFixture::finished(session);
+        program.enter(&entry);
+        let function = program
+            .entry
+            .function
+            .expect("the entry names its function");
+        assert!(program.bindings.origin(function).is_introduced());
     }
 
     #[test]

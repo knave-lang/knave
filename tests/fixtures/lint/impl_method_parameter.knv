@@ -1,0 +1,11 @@
+(defstruct circle
+  :radius i64)
+
+(trait shape
+  (area (fn ((ref self) i64) i64)))
+
+(impl shape circle
+  (area (c scale) (:radius c)))
+
+(defn main ()
+  (println (area (->circle :radius 2) 3)))

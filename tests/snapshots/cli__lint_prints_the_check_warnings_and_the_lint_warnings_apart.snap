@@ -19,4 +19,4 @@ warning[L0801]: `unused` is never read
 4 |   (let (unused 1)
   |         ^^^^^^ bound here and never read
   |
-  = help: remove the binding, or name it `_unused` to keep it
+  = help: if the binding must stay, name it `_unused`

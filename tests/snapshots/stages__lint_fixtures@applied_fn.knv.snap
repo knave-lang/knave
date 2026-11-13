@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/applied_fn.knv
+---
+warning[L0801]: `x` is never read
+ --> lint/applied_fn.knv:1:30
+  |
+1 | (defn main () (println ((fn (x) 1) 2)))
+  |                              ^ bound here and never read
+  |
+  = help: if the binding must stay, name it `_x`

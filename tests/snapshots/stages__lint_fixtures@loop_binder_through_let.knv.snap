@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/loop_binder_through_let.knv
+---
+warning[L0801]: `spare` is never read
+ --> lint/loop_binder_through_let.knv:3:10
+  |
+3 |          spare n)
+  |          ^^^^^ bound here and never read
+  |
+  = help: if the binding must stay, name it `_spare`

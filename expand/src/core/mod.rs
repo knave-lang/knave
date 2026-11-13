@@ -1,3 +1,4 @@
+mod binder_origin;
 mod binding;
 mod builtin;
 mod consulted_traits;
@@ -16,6 +17,7 @@ mod template_operation;
 mod types;
 mod written_types;
 
+pub use binder_origin::BinderOrigin;
 pub use binding::{
     BindingArena, BindingId, BindingInfo, BindingKind, Declaration, ModuleDefinitions, Namespace,
     VariantInfo,

@@ -1,5 +1,7 @@
 (use prelude/macros document header-shape module)
-(use code fail first project-file-name string symbol-name)
+
+(use code add-module-note fail first project-file-name rest
+          string symbol-name)
 
 (module
   "Holds the forms of the project file, which the compiler reads as data.
@@ -25,6 +27,11 @@
                     :label "not a form of a program"
                     :note "the compiler reads the project file as data, and never expands it")))))
 
+(def project-role
+  (macro (form)
+    (add-module-note (quote project-roles) (rest form))
+    (quote (do))))
+
 (def defproject
   (macro (form) (outside-the-project-file form)))
 
@@ -39,11 +46,19 @@
 
 (header-shape (defproject name) :one-per-line)
 
+(project-role defproject project-head)
+
 (header-shape (libraries) :one-per-line)
+
+(project-role libraries library-section)
 
 (header-shape (dependencies) :one-per-line)
 
+(project-role dependencies crate-section)
+
 (header-shape (dev-dependencies) :one-per-line)
+
+(project-role dev-dependencies test-crate-section)
 
 (document (defproject name)
   "Declares a project in the project file, which the compiler reads as data.

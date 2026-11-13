@@ -1,3 +1,4 @@
+use super::embedded_prelude::EmbeddedPrelude;
 use crate::language::Language;
 use crate::project::{CrateDependency, Project, Section};
 
@@ -34,7 +35,7 @@ impl CrateSection {
     }
 
     pub fn name(self) -> &'static str {
-        self.section().name()
+        EmbeddedPrelude::project_vocabulary().section_name(self.section())
     }
 
     pub fn listed(self, project: &Project) -> &[CrateDependency] {

@@ -4,18 +4,12 @@ use super::fields::{FieldScanner, Fields};
 use super::name::ProjectName;
 use super::problems::ProjectProblems;
 use super::reader::SectionTable;
+use super::section::Section;
 use super::{CrateDependency, LibraryDependency, LibrarySource};
 use crate::diagnostic::Diagnostics;
 use crate::modules::ModuleSources;
 use crate::reader::{Form, FormKind};
 use crate::source::Span;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Section {
-    Libraries,
-    Dependencies,
-    DevDependencies,
-}
 
 pub struct DependencyReader<'p> {
     section: Section,
@@ -33,35 +27,6 @@ struct EntryParts<'f> {
 struct Version<'f> {
     text: &'f str,
     span: Span,
-}
-
-impl Section {
-    pub const ALL: [Section; 3] = [
-        Section::Libraries,
-        Section::Dependencies,
-        Section::DevDependencies,
-    ];
-    const LIBRARY_KEYS: &[&str] = &["path", "git", "rev"];
-    const CRATE_KEYS: &[&str] = &["features", "path"];
-
-    pub fn named(name: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|section| section.name() == name)
-    }
-
-    pub fn name(self) -> &'static str {
-        match self {
-            Section::Libraries => "libraries",
-            Section::Dependencies => "dependencies",
-            Section::DevDependencies => "dev-dependencies",
-        }
-    }
-
-    fn keys(self) -> &'static [&'static str] {
-        match self {
-            Section::Libraries => Self::LIBRARY_KEYS,
-            Section::Dependencies | Section::DevDependencies => Self::CRATE_KEYS,
-        }
-    }
 }
 
 impl<'p> DependencyReader<'p> {

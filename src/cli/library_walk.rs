@@ -6,6 +6,7 @@ mod user_git_store;
 use std::path::{Path, PathBuf};
 
 use super::checkout_bounds::{CheckoutBounds, RepositoryAddress};
+use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
 use super::terminal::Terminal;
@@ -14,7 +15,7 @@ use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::modules::{LibraryRoot, LibraryTable};
 use crate::project::{
-    CrateDependency, CrateSet, LibraryDependency, LibrarySource, Project, ProjectProblems,
+    CrateDependency, CrateSet, LibraryDependency, LibrarySource, Project, ProjectProblems, Section,
 };
 use crate::source::Span;
 pub use cache_only_store::CacheOnlyStore;
@@ -89,7 +90,13 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
         walk.visit_all(root, &project, Listing::PROGRAM)?;
         let dev_crates = walk.dev_crates(root, &project)?;
         Ok(WalkedLibraries {
-            table: LibraryTable::new(Self::names(&project), walk.roots),
+            table: LibraryTable::new(
+                Self::names(&project),
+                walk.roots,
+                EmbeddedPrelude::project_vocabulary()
+                    .section_name(Section::Libraries)
+                    .to_string(),
+            ),
             project,
             dev_crates,
             crates: walk.crates.into_crates(),

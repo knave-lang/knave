@@ -11,7 +11,7 @@ use super::working_directory::WorkingDirectory;
 use crate::diagnostic::Diagnostics;
 use crate::format::{ModuleLookup, SourceFormatter};
 use crate::language::Language;
-use crate::project::{ProjectName, ProjectReader};
+use crate::project::ProjectName;
 use crate::source::Span;
 
 pub struct NewCommand {
@@ -49,7 +49,11 @@ impl NewCommand {
         Self::refuse_existing(root)?;
         let project_file = NewFile {
             path: root.join(Language::project_file_name()),
-            text: format!("({} {})\n", ProjectReader::HEAD, self.name),
+            text: format!(
+                "({} {})\n",
+                EmbeddedPrelude::project_vocabulary().head(),
+                self.name
+            ),
         };
         let mut sources = terminal.sources();
         let source = sources.add(project_file.path.display(), project_file.text.clone());

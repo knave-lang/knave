@@ -7,6 +7,7 @@ use crate::core::{
 use crate::diagnostic::{Counted, Diagnostic, DiagnosticCode, Label, MissingName, Suggestion};
 use crate::interpret::InterpretProblems;
 use crate::language::Language;
+use crate::modules::UnlistedLibrary;
 use crate::modules::{HiddenSourceModule, LibraryTable, LocalModuleClash, SearchScope};
 use crate::reader::Form;
 use crate::source::Span;
@@ -540,16 +541,15 @@ impl ExpandProblems {
         .with_help("remove this `use`")
     }
 
-    pub fn unlisted_library(library: &str, span: Span) -> Diagnostic {
+    pub fn unlisted_library(unlisted: &UnlistedLibrary, span: Span) -> Diagnostic {
+        let (library, section) = (unlisted.root.name(), unlisted.section);
+        let file = Language::project_file_name();
         Diagnostic::error(
             DiagnosticCode::UNLISTED_LIBRARY,
             format!("this project does not list library `{library}`"),
             Label::new(span, "a library that another library uses"),
         )
-        .with_help(format!(
-            "add `{library}` to the `libraries` of `{}`",
-            Language::project_file_name()
-        ))
+        .with_help(format!("add `{library}` to the `{section}` of `{file}`"))
     }
 
     pub fn library_hides_local_module(

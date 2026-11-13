@@ -70,7 +70,7 @@ impl<'w> BodyWalk<'w> {
                 Walked::at(at)
             }
             TypedExprKind::Call(callee, arguments) => {
-                self.call(CallSite::new(expr, callee, arguments), at)
+                self.call(CallSite::new(callee, arguments), at)
             }
             TypedExprKind::Recur(arguments) => LoopWalk::new(self).recur(arguments, at),
             TypedExprKind::Borrow(..) | TypedExprKind::Struct(TypedStructExpr::Field(..)) => {

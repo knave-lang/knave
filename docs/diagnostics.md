@@ -52,7 +52,7 @@ help: a function with a similar name exists
 
 ## Codes
 
-**Give each diagnostic its own code with the `L` prefix.** The first digit groups codes by stage:
+**Give each diagnostic its own code with the `L` prefix.** The first digit groups codes by stage, except that a lint takes an `L08xx` code whatever stage reports it:
 
 | Range | Stage |
 |---|---|
@@ -63,7 +63,7 @@ help: a function with a similar name exists
 | `L05xx` | Ownership |
 | `L06xx` | Emitting and building |
 | `L07xx` | The project file |
-| `L08xx` | Lints, which macros and `knave lint` report |
+| `L08xx` | Lints, whatever reports them |
 
 **Keep rustc's own code on an error that rustc reports.** Add `note: reported by rustc` and rewrite every Rust name in the message to the name the user wrote.
 

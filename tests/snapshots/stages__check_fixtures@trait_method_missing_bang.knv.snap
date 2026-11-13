@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: "Fixture::load(path).check_report()"
 input_file: tests/fixtures/check/trait_method_missing_bang.knv
 ---
-warning[L0504]: `put` changes an argument, so its name should end with `!`
+warning[L0804]: `put` changes an argument, so its name should end with `!`
  --> check/trait_method_missing_bang.knv:2:4
   |
 2 |   (put (fn ((mut self) i64) unit)))

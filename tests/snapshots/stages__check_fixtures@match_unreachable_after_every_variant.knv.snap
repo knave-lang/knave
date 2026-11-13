@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: "Fixture::load(path).check_report()"
 input_file: tests/fixtures/check/match_unreachable_after_every_variant.knv
 ---
-warning[L0434]: unreachable `match` arm
+warning[L0803]: unreachable `match` arm
   --> check/match_unreachable_after_every_variant.knv:13:6
    |
 13 |     (_ 0.0)))

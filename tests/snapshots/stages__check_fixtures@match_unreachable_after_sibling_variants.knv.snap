@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/match_unreachable_after_sibling_variants.knv
 ---
-warning[L0434]: unreachable `match` arm
+warning[L0803]: unreachable `match` arm
   --> check/match_unreachable_after_sibling_variants.knv:18:6
    |
 18 |     ((pick _ side/left) 8)))

@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/missing_bang_on_set_parameter.knv
 ---
-warning[L0504]: `clamp` changes an argument, so its name should end with `!`
+warning[L0804]: `clamp` changes an argument, so its name should end with `!`
  --> check/missing_bang_on_set_parameter.knv:1:7
   |
 1 | (defn clamp (x)
@@ -14,7 +14,7 @@ warning[L0504]: `clamp` changes an argument, so its name should end with `!`
   = help: rename it `clamp!`
   = help: to change only this function's copy, start the body with `(local x x)`
 
-warning[L0504]: `rename` changes an argument, so its name should end with `!`
+warning[L0804]: `rename` changes an argument, so its name should end with `!`
  --> check/missing_bang_on_set_parameter.knv:5:7
   |
 5 | (defn rename (name)

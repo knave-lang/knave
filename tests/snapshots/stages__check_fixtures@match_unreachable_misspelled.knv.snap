@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/match_unreachable_misspelled.knv
 ---
-warning[L0434]: unreachable `match` arm
+warning[L0803]: unreachable `match` arm
  --> check/match_unreachable_misspelled.knv:4:25
   |
 4 |   (match s (piont 0.0) (point 1.0)))

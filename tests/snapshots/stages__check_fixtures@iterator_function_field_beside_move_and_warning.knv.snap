@@ -12,7 +12,7 @@ error[L0458]: Rust cannot name the type `(iterator (ref i64))` here
   = note: Rust names this type only as the type of a function's own parameter or result
   = help: pass a value whose type Rust can name instead, such as the collection the items come from
 
-warning[L0434]: unreachable `match` arm
+warning[L0803]: unreachable `match` arm
  --> check/iterator_function_field_beside_move_and_warning.knv:7:21
   |
 7 |   (match s (_ 0.0) (point 1.0)))

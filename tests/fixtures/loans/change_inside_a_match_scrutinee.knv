@@ -1,0 +1,6 @@
+(defn main ()
+  (local v (vec (str "a")))
+  (local r (at v 0))
+  (match (pop! v)
+    ((some s) (println s r))
+    (none (println 0))))

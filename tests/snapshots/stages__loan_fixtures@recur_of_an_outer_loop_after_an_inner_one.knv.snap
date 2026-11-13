@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+assertion_line: 107
+expression: reports.report(path)
+input_file: tests/fixtures/loans/recur_of_an_outer_loop_after_an_inner_one.knv
+---
+main
+  4:16 borrow `v`: no live loan
+  8:48 borrow `j`: `v` lent at 4:16, held by `r`; `v` lent at 11:28, held by `r`
+  9:16 change `v`: `v` lent at 4:16, held by `r`; `v` lent at 11:28, held by `r`
+  10:18 borrow `r`: `v` lent at 4:16, held by `r`; `v` lent at 11:28, held by `r`
+  11:28 borrow `v`: no live loan
+  12:21 borrow `v`: no live loan

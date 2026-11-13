@@ -1,9 +1,12 @@
+use super::access::Move;
 use super::control_flow_graph::ControlFlowGraph;
 use super::holdings::Holdings;
 use super::lending::Lending;
+use super::loan_place::LoanPlace;
 use super::loan_table::LoanTable;
 use super::place_access::PlaceAccess;
 use super::point_id::PointId;
+use crate::source::Span;
 
 pub struct Lender<'l> {
     graph: &'l mut ControlFlowGraph,
@@ -27,7 +30,11 @@ impl<'l> Lender<'l> {
         Holdings::of_loan(loan)
     }
 
-    pub fn access(&mut self, access: PlaceAccess) {
+    pub fn move_out(&mut self, place: LoanPlace, span: Span) {
+        self.access(PlaceAccess::new(place, &Move, span));
+    }
+
+    fn access(&mut self, access: PlaceAccess) {
         self.graph.point_mut(self.point).access(access);
     }
 

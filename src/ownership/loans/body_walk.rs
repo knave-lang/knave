@@ -40,14 +40,7 @@ impl<'w> BodyWalk<'w> {
 
     fn expr_holding(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
         match &expr.kind {
-            TypedExprKind::Leaf(TypedLeaf::Local(binding)) => {
-                let point = self.builder.read(at, *binding);
-                Walked::holding(point, Holdings::of_value(*binding))
-            }
-            TypedExprKind::Fn(lambda) => {
-                self.closures.push(Closure::new(lambda, expr.span));
-                Walked::at(at)
-            }
+            TypedExprKind::Leaf(_) | TypedExprKind::Fn(_) => self.value(expr, at),
             TypedExprKind::Call(callee, arguments) => {
                 self.call(CallSite::new(callee, arguments), at)
             }
@@ -58,6 +51,20 @@ impl<'w> BodyWalk<'w> {
             }
             TypedExprKind::Control(control) => self.control(control, at),
             _ => self.sequence(expr.children().into_iter(), at),
+        }
+    }
+
+    fn value(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
+        match &expr.kind {
+            TypedExprKind::Leaf(TypedLeaf::Local(binding)) => {
+                let point = self.builder.read(at, *binding);
+                Walked::holding(point, Holdings::of_value(*binding))
+            }
+            TypedExprKind::Fn(lambda) => {
+                self.closures.push(Closure::new(lambda, expr.span));
+                Walked::at(at)
+            }
+            _ => Walked::at(at),
         }
     }
 

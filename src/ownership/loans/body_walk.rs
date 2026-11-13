@@ -311,11 +311,11 @@ mod tests {
     }
 
     #[test]
-    fn a_prelude_call_with_two_borrowed_parameters_lends_nothing() {
+    fn a_prelude_call_with_two_borrowed_parameters_holds_both_loans() {
         let line = WalkFixture::change_of_v_in(
             "  (local d 0)\n  (local e (unwrap-or (first v) (ref d)))\n  (push! v 4)\n  (println e)",
         );
-        assert!(line.ends_with("no live loan"), "{line}");
+        assert!(line.contains("`v` lent at 4:30, held by `e`"), "{line}");
     }
 
     #[test]

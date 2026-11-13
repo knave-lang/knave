@@ -18,6 +18,7 @@ mod lambda_parameters;
 #[cfg(test)]
 mod lambda_source;
 mod lent_borrows;
+mod loans;
 mod local_borrows;
 mod modes;
 mod moved_place;
@@ -88,6 +89,7 @@ use values::FunctionValueModes;
 
 pub use changes::InPlaceChanges;
 pub use gate::{EnforcedOwnership, OwnershipGate, WaivedOwnership};
+pub use loans::LoanFacts;
 pub use mutation::ChangedValues;
 pub use tail_calls::TailCalls;
 pub use update_order::StructUpdateOrder;

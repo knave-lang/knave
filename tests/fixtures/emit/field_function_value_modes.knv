@@ -1,6 +1,6 @@
 (rust-type mark "std::cell::Cell<i64>")
 
-(struct person (name string) (age u32))
+(struct person (name str) (age u32))
 
 (struct handler
         (callback (fn (person) bool))

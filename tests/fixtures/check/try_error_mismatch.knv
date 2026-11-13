@@ -1,5 +1,4 @@
-(type source
-  (fn () (result i64 string)))
+(type source (fn () (result i64 str)))
 
 (defn source () (ok 1))
 

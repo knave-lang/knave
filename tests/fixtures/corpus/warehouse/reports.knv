@@ -5,8 +5,7 @@
         print-summary print-top-value)
 
 (type print-summary
-  (fn ((ref (sorted-map string item)))
-    unit))
+  (fn ((ref (sorted-map str item))) unit))
 
 (defn print-summary (stock)
   (local units
@@ -23,8 +22,7 @@
                 (dollars worth))))
 
 (type print-low-stock
-  (fn ((ref (sorted-map string item)))
-    unit))
+  (fn ((ref (sorted-map str item))) unit))
 
 (defn print-low-stock (stock)
   (local low
@@ -44,15 +42,14 @@
                     (:reorder-at current))))))
 
 (type print-categories
-  (fn ((ref (sorted-map string item)))
-    unit))
+  (fn ((ref (sorted-map str item))) unit))
 
 (defn print-categories (stock)
   (local totals
     (reduce (vals stock) (sorted-map)
       (fn (totals current)
         (update totals
-                (category (as-str (:sku current)))
+                (category (:sku current))
                 (fn (sum) (+ sum (value-cents current)))
                 0))))
   (for-each (iter totals)
@@ -61,7 +58,7 @@
         (println (str "  " name ": " (dollars (deref worth))))))))
 
 (type print-top-value
-  (fn ((ref (sorted-map string item)) usize)
+  (fn ((ref (sorted-map str item)) usize)
     unit))
 
 (defn print-top-value (stock limit)

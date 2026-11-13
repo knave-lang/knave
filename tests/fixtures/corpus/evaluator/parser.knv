@@ -15,7 +15,7 @@
 
 (type parse-program
   (fn ((ref (vec token)))
-    (result (vec statement) string)))
+    (result (vec statement) str)))
 
 (defn parse-program (tokens)
   (parse-statements tokens 0 (vec)))
@@ -24,7 +24,7 @@
   (fn ((ref (vec token))
        usize
        (vec statement))
-    (result (vec statement) string)))
+    (result (vec statement) str)))
 
 (defn parse-statements (tokens position statements)
   (if (>= position (len tokens))
@@ -39,7 +39,7 @@
 
 (type skip-separator
   (fn ((ref (vec token)) usize)
-    (result usize string)))
+    (result usize str)))
 
 (defn skip-separator (tokens position)
   (cond
@@ -49,7 +49,7 @@
 
 (type parse-statement
   (fn ((ref (vec token)) usize)
-    (result parsed-statement string)))
+    (result parsed-statement str)))
 
 (defn parse-statement (tokens position)
   (if (name-at? tokens position "let")
@@ -61,7 +61,7 @@
 
 (type parse-binding
   (fn ((ref (vec token)) usize)
-    (result parsed-statement string)))
+    (result parsed-statement str)))
 
 (defn parse-binding (tokens position)
   (local name (try (expect-name tokens position)))
@@ -73,7 +73,7 @@
 
 (type parse-expression
   (fn ((ref (vec token)) usize)
-    (result parsed string)))
+    (result parsed str)))
 
 (defn parse-expression (tokens position)
   (if (name-at? tokens position "if")
@@ -82,7 +82,7 @@
 
 (type parse-choice
   (fn ((ref (vec token)) usize)
-    (result parsed string)))
+    (result parsed str)))
 
 (defn parse-choice (tokens position)
   (local test (try (parse-expression tokens position)))
@@ -101,7 +101,7 @@
 
 (type parse-comparison
   (fn ((ref (vec token)) usize)
-    (result parsed string)))
+    (result parsed str)))
 
 (defn parse-comparison (tokens position)
   (local left (try (parse-sum tokens position)))
@@ -115,7 +115,7 @@
 
 (type parse-sum
   (fn ((ref (vec token)) usize)
-    (result parsed string)))
+    (result parsed str)))
 
 (defn parse-sum (tokens position)
   (local left (try (parse-product tokens position)))
@@ -123,7 +123,7 @@
 
 (type parse-sums
   (fn ((ref (vec token)) parsed)
-    (result parsed string)))
+    (result parsed str)))
 
 (defn parse-sums (tokens left)
   (match (operator-at tokens (:next left) (vec "+" "-"))
@@ -136,7 +136,7 @@
 
 (type parse-product
   (fn ((ref (vec token)) usize)
-    (result parsed string)))
+    (result parsed str)))
 
 (defn parse-product (tokens position)
   (local left (try (parse-unary tokens position)))
@@ -144,7 +144,7 @@
 
 (type parse-products
   (fn ((ref (vec token)) parsed)
-    (result parsed string)))
+    (result parsed str)))
 
 (defn parse-products (tokens left)
   (match (operator-at tokens (:next left) (vec "*" "/" "%"))
@@ -157,7 +157,7 @@
 
 (type parse-unary
   (fn ((ref (vec token)) usize)
-    (result parsed string)))
+    (result parsed str)))
 
 (defn parse-unary (tokens position)
   (if (symbol-at? tokens position "-")
@@ -170,7 +170,7 @@
 
 (type parse-primary
   (fn ((ref (vec token)) usize)
-    (result parsed string)))
+    (result parsed str)))
 
 (defn parse-primary (tokens position)
   (match (get tokens position)
@@ -180,14 +180,14 @@
     ((some (name text))
      (parse-name tokens position (clone text)))
     ((some (symbol text))
-     (if (= (as-str text) "(")
+     (if (= text "(")
        (parse-group tokens (+ position 1))
        (err (str "unexpected `" text "` at token " position))))
     (none (err (str "unexpected end of input at token " position)))))
 
 (type parse-name
-  (fn ((ref (vec token)) usize string)
-    (result parsed string)))
+  (fn ((ref (vec token)) usize str)
+    (result parsed str)))
 
 (defn parse-name (tokens position text)
   (local next (+ position 1))
@@ -196,10 +196,8 @@
     (ok (->parsed (expr/variable text) next))))
 
 (type parse-arguments
-  (fn ((ref (vec token))
-       usize string
-       (vec expr))
-    (result parsed string)))
+  (fn ((ref (vec token)) usize str (vec expr))
+    (result parsed str)))
 
 (defn parse-arguments (tokens position function arguments)
   (if (symbol-at? tokens position ")")
@@ -214,7 +212,7 @@
 
 (type skip-argument-separator
   (fn ((ref (vec token)) usize)
-    (result usize string)))
+    (result usize str)))
 
 (defn skip-argument-separator (tokens position)
   (cond
@@ -224,7 +222,7 @@
 
 (type parse-group
   (fn ((ref (vec token)) usize)
-    (result parsed string)))
+    (result parsed str)))
 
 (defn parse-group (tokens position)
   (local inner (try (parse-expression tokens position)))
@@ -241,21 +239,21 @@
   (fn ((ref (vec token))
        usize
        (ref (vec (ref str))))
-    (option string)))
+    (option str)))
 
 (defn operator-at (tokens position operators)
   (match (get tokens position)
     ((some (symbol text))
      (if (any? (iter operators)
            (fn (operator)
-             (= (deref operator) (as-str text))))
+             (= (deref operator) text)))
        (some (clone text))
        none))
     (_ none)))
 
 (type expect-name
   (fn ((ref (vec token)) usize)
-    (result string string)))
+    (result str str)))
 
 (defn expect-name (tokens position)
   (match (get tokens position)
@@ -264,7 +262,7 @@
 
 (type expect-symbol
   (fn ((ref (vec token)) usize (ref str))
-    (result unit string)))
+    (result unit str)))
 
 (defn expect-symbol (tokens position expected)
   (if (symbol-at? tokens position expected)
@@ -273,7 +271,7 @@
 
 (type expect-keyword
   (fn ((ref (vec token)) usize (ref str))
-    (result unit string)))
+    (result unit str)))
 
 (defn expect-keyword (tokens position expected)
   (if (name-at? tokens position expected)
@@ -282,10 +280,10 @@
 
 (defn symbol-at? (tokens position expected)
   (match (get tokens position)
-    ((some (symbol text)) (= (as-str text) expected))
+    ((some (symbol text)) (= text expected))
     (_ false)))
 
 (defn name-at? (tokens position expected)
   (match (get tokens position)
-    ((some (name text)) (= (as-str text) expected))
+    ((some (name text)) (= text expected))
     (_ false)))

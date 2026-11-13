@@ -3,7 +3,7 @@
   :y f64)
 
 (defstruct person
-  :name string
+  :name str
   :age u32)
 
 (defn main ()

@@ -79,9 +79,11 @@ impl<'a> OpaqueBorrows<'a> {
                 .iter()
                 .chain(std::iter::once(result.as_ref()))
                 .collect(),
-            Type::Var(_) | Type::Generic(_) | Type::Primitive(_) | Type::TraitObject(_) => {
-                Vec::new()
-            }
+            Type::Var(_)
+            | Type::Text(_)
+            | Type::Generic(_)
+            | Type::Primitive(_)
+            | Type::TraitObject(_) => Vec::new(),
         }
     }
 }

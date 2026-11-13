@@ -2,7 +2,5 @@
   (local path (str "input_output/data.txt"))
   (let-try (text (slurp path))
     (do
-      (println path ": "
-               (count (lines (as-str text)))
-               " lines")
+      (println path ": " (count (lines text)) " lines")
       (ok (do)))))

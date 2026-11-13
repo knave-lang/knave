@@ -1,4 +1,4 @@
-(defn greeting ((text (ref string)))
+(defn greeting ((text (ref str)))
   (ref text))
 
 (defn main ()

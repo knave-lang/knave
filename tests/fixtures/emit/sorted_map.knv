@@ -2,7 +2,7 @@
 
 (defn main ()
   (local empty
-    (the (sorted-map string i64) (sorted-map)))
+    (the (sorted-map str i64) (sorted-map)))
   (local built (sorted-map "b" 2 "a" 1))
   (local added (assoc built "c" 3))
   (local changed (assoc added "a" 10))

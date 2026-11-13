@@ -1,7 +1,7 @@
 (use prelude/test assert deftest run-tests)
 
 (defstruct box-of
-  :label string
+  :label str
   :count i64)
 
 (defn noisy-count ()
@@ -47,7 +47,7 @@
 
 (deftest string-beside-a-view
   (local name (str "a"))
-  (assert (= name (as-str name))))
+  (assert (= name name)))
 
 (deftest borrowed-item-beside-a-literal
   (for-each (iter (vec 1 1))

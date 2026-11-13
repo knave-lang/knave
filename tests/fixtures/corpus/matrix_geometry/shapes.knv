@@ -17,7 +17,7 @@
 (trait shape
   (area (fn ((ref self)) f64))
   (perimeter (fn ((ref self)) f64))
-  (title (fn ((ref self)) string)))
+  (title (fn ((ref self)) str)))
 
 (defstruct circle
   :center point

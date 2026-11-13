@@ -156,7 +156,16 @@ impl Expander<'_> {
             .filter(|(name, binding)| self.is_public(name, namespace, *binding))
             .map(|(name, _)| name)
             .collect();
-        let similar = SimilarName::closest(symbol.name(), &candidates);
+        let similar = if namespace == Namespace::Type
+            && symbol.name() == "string"
+            && candidates
+                .iter()
+                .any(|candidate| candidate.as_ref() == "str")
+        {
+            Some(std::rc::Rc::from("str"))
+        } else {
+            SimilarName::closest(symbol.name(), &candidates)
+        };
         let definition = self.introduced_name(span, symbol.name());
         let primary = definition.unwrap_or(span);
         let diagnostic = ExpandProblems::unbound(symbol.name(), namespace, primary, similar);

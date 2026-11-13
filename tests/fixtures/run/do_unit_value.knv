@@ -1,5 +1,4 @@
-(type check
-  (fn () (result unit string)))
+(type check (fn () (result unit str)))
 
 (defn check () (ok (do)))
 

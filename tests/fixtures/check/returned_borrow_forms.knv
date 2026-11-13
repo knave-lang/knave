@@ -19,9 +19,7 @@
 
 (defn grouped (year)
   (local make (str "Nissan"))
-  (new car
-    (make (as-str make))
-    (year year)))
+  (new car (make make) (year year)))
 
 (defn pinned ()
   (local origin (->point 0 0))
@@ -29,15 +27,15 @@
 
 (defn titled (year)
   (local title (str "Leaf"))
-  (badge/titled (as-str title) year))
+  (badge/titled title year))
 
 (defn held ()
   (local make (str "Nissan"))
-  (new holder (held (as-str make))))
+  (new holder (held make)))
 
 (defn stamped (year)
   (local make (str "Nissan"))
-  (plaque/engraved (as-str make) year))
+  (plaque/engraved make year))
 
 (defn main ()
   (println (:year (grouped 2024))))

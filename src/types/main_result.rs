@@ -83,6 +83,7 @@ impl<'a> MainResult<'a> {
 
     fn display(&self) -> TypeDisplay<'a> {
         TypeDisplay::new(&self.program.bindings, &self.program.generics)
+            .with_hidden_text(&self.program.declarations)
             .with_projections(self.program.declarations.traits.table().projections())
     }
 

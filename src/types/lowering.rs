@@ -7,8 +7,8 @@ use super::trait_rows_reach::Implementor;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
 use crate::core::ClosureKind;
 use crate::core::{
-    AssociatedValue, BindingId, BindingKind, ReferenceKind, RustTraitImplementor, TypeBinder,
-    TypeBound, TypeExpr, TypeExprKind,
+    AssociatedValue, BindingId, BindingKind, PrimitiveType, ReferenceKind, RustTraitImplementor,
+    TypeBinder, TypeBound, TypeExpr, TypeExprKind,
 };
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
@@ -89,13 +89,19 @@ impl TypeChecker {
         type_expr: &TypeExpr,
         scope: &FxHashMap<BindingId, GenericId>,
     ) -> Result<(Type, Option<Type>), Diagnostic> {
-        if let TypeExprKind::With(implementor, argument) = type_expr.kind() {
-            let body = self.lower_type(implementor, scope)?;
-            let argument = self.lower_type(argument, scope)?;
-            Ok((body, Some(argument)))
-        } else {
-            Ok((self.lower_type(type_expr, scope)?, None))
-        }
+        let outer = self.lowering_representation;
+        self.lowering_representation = true;
+        let lowered = (|| {
+            if let TypeExprKind::With(implementor, argument) = type_expr.kind() {
+                let body = self.lower_type(implementor, scope)?;
+                let argument = self.lower_type(argument, scope)?;
+                Ok((body, Some(argument)))
+            } else {
+                Ok((self.lower_type(type_expr, scope)?, None))
+            }
+        })();
+        self.lowering_representation = outer;
+        lowered
     }
 
     fn reject_bare_implementor(
@@ -218,6 +224,10 @@ impl TypeChecker {
         scope: &FxHashMap<BindingId, GenericId>,
     ) -> Result<Type, Diagnostic> {
         match kind {
+            TypeExprKind::Primitive(PrimitiveType::Str) if self.lowering_representation => {
+                Ok(Type::Primitive(PrimitiveType::Str))
+            }
+            TypeExprKind::Primitive(PrimitiveType::Str) => Ok(self.unifier.fresh_text()),
             TypeExprKind::Primitive(primitive) => Ok(Type::Primitive(*primitive)),
             TypeExprKind::Named(binding, arguments) => {
                 self.lower_named(*binding, arguments, type_expr.span(), scope)
@@ -272,10 +282,21 @@ impl TypeChecker {
         scope: &FxHashMap<BindingId, GenericId>,
     ) -> Result<Type, Diagnostic> {
         let lifetime = lifetime.map_or(Lifetime::Elided, Lifetime::written);
-        let inner = Box::new(self.lower_type(inner, scope)?);
+        let inner_type = match inner.kind() {
+            TypeExprKind::Primitive(PrimitiveType::Str) => Type::Primitive(PrimitiveType::Str),
+            _ => self.lower_type(inner, scope)?,
+        };
+        let inner = Box::new(inner_type);
         Ok(match kind {
             ReferenceKind::Shared => Type::Ref(lifetime, inner),
-            ReferenceKind::Mutable => Type::Mut(lifetime, inner),
+            ReferenceKind::Mutable => Type::Mut(
+                lifetime,
+                if matches!(inner.as_ref(), Type::Primitive(PrimitiveType::Str)) {
+                    Box::new(Type::Primitive(PrimitiveType::String))
+                } else {
+                    inner
+                },
+            ),
         })
     }
 
@@ -292,7 +313,7 @@ impl TypeChecker {
             .map(|(param, value)| (param.id, value.clone()))
             .collect();
         for (param, value) in scheme.params.iter().zip(&fresh) {
-            if let Type::Var(var) = value {
+            if let Type::Var(var) | Type::Text(var) = value {
                 let implied = self.implied_bounds.get(&param.id).into_iter().flatten();
                 let bounds = param
                     .bounds
@@ -307,6 +328,9 @@ impl TypeChecker {
     }
 
     fn fresh_instance(&mut self, generic: GenericId) -> Type {
+        if self.unifier.is_text_generic(generic) {
+            return self.unifier.fresh_text();
+        }
         match self.literal_generics.get(&generic) {
             Some(literal) => self.unifier.fresh_literal(*literal),
             None => self.unifier.fresh(),
@@ -351,12 +375,33 @@ impl TypeChecker {
         arguments: Vec<Type>,
         scope: &FxHashMap<BindingId, GenericId>,
     ) -> Type {
+        if self
+            .declarations
+            .types
+            .rust_types
+            .get(binding)
+            .is_some_and(|rust_type| rust_type.has_template("String"))
+        {
+            return Type::Primitive(PrimitiveType::String);
+        }
         match (self.bindings.get(binding).kind(), scope.get(&binding)) {
             (BindingKind::TypeVariable | BindingKind::AssociatedType, Some(generic)) => {
                 Type::Generic(*generic)
             }
             (BindingKind::TypeVariable, None) => self.unifier.fresh(),
-            _ => Type::Named(binding, arguments),
+            _ => {
+                let hidden = if self.current_type == Some(binding) {
+                    0
+                } else {
+                    self.hidden_text_counts
+                        .get(&binding)
+                        .copied()
+                        .unwrap_or_default()
+                };
+                let mut arguments = arguments;
+                arguments.extend((0..hidden).map(|_| self.unifier.fresh_text()));
+                Type::Named(binding, arguments)
+            }
         }
     }
 
@@ -366,6 +411,7 @@ impl TypeChecker {
         scope: &FxHashMap<BindingId, GenericId>,
     ) -> Result<Type, Diagnostic> {
         match argument.kind() {
+            TypeExprKind::Primitive(PrimitiveType::Str) => Ok(Type::Primitive(PrimitiveType::Str)),
             TypeExprKind::Trait(binding) => {
                 self.check_boxable(*binding, argument.span());
                 Ok(Type::TraitObject(*binding))

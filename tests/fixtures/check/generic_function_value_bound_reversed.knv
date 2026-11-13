@@ -7,4 +7,4 @@
 
 (defn main ()
   (local name (str "Leaf"))
-  (println (apply-two pick (as-str name) (as-str name))))
+  (println (apply-two pick name name)))

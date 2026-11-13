@@ -440,10 +440,10 @@
   (weight (fn ((ref self)) f64)))
 
 (trait labeled
-  (label (fn ((ref self)) string))
+  (label (fn ((ref self)) str))
 
-  (shout (fn ((ref self)) string)
-    (upper-case (as-str (label self)))))
+  (shout (fn ((ref self)) str)
+    (upper-case (label self))))
 
 (trait (cargo (measured) (labeled))
   (fragile? (fn ((ref self)) bool)))
@@ -463,7 +463,7 @@
 
 (type heaviest-label
   (where ((a cargo))
-    (fn ((ref (crate a))) string)))
+    (fn ((ref (crate a))) str)))
 
 (defn heaviest-label (crate)
   (match (max-by-key (iter (:items crate))
@@ -481,7 +481,7 @@
 
 (type describe
   (where ((a cargo))
-    (fn ((ref (crate a))) string)))
+    (fn ((ref (crate a))) str)))
 
 (defn describe (crate)
   (str (:name crate)
@@ -501,7 +501,7 @@
   (rust "{0} as i64" (fn (f64) i64)))
 
 (trait (summary (labeled))
-  (headline (fn ((ref self)) string)))
+  (headline (fn ((ref self)) str)))
 
 (defstruct parcel-1
   :serial u32

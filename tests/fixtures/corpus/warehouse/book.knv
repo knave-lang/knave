@@ -3,12 +3,12 @@
 (export apply-all book)
 
 (defstruct book
-  :stock (sorted-map string item)
+  :stock (sorted-map str item)
   :entries (vec entry)
-  :rejected (vec string))
+  :rejected (vec str))
 
 (type apply-all
-  (fn ((sorted-map string item)
+  (fn ((sorted-map str item)
        (ref (vec event)))
     book))
 
@@ -50,7 +50,7 @@
     (->book stock entries growing)))
 
 (type step
-  (fn ((ref (sorted-map string item))
+  (fn ((ref (sorted-map str item))
        (ref event))
     (result item ledger-error)))
 
@@ -74,21 +74,19 @@
          (reprice current (deref cents)))))))
 
 (type find-item
-  (fn ((ref (sorted-map string item))
-       (ref string))
+  (fn ((ref (sorted-map str item)) (ref str))
     (result (ref item) ledger-error)))
 
 (defn find-item (stock sku)
-  (ok-or (get stock (as-str sku))
+  (ok-or (get stock sku)
          (ledger-error/unknown-sku (clone sku))))
 
 (type quantity-of
-  (fn ((ref (sorted-map string item))
-       (ref string))
+  (fn ((ref (sorted-map str item)) (ref str))
     u32))
 
 (defn quantity-of (stock sku)
-  (match (get stock (as-str sku))
+  (match (get stock sku)
     ((some current) (:quantity current))
     (none 0)))
 

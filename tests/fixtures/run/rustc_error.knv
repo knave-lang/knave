@@ -1,5 +1,5 @@
 (defstruct pair
-  :left string
+  :left str
   :right f64)
 
 (defn main ()

@@ -1,7 +1,7 @@
 (enum shape
   (circle f64)
   (rect f64 f64)
-  (labeled (struct (text string) (size f64)))
+  (labeled (struct (text str) (size f64)))
   point)
 
 (type area (fn ((ref shape)) f64))

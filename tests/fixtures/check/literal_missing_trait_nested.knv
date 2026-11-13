@@ -1,5 +1,5 @@
 (trait named
-  (name (fn ((ref self)) string)))
+  (name (fn ((ref self)) str)))
 
 (def option-named?
   (rust "true"

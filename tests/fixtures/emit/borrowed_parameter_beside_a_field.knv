@@ -1,6 +1,6 @@
 (defstruct page
-  :file string
-  :tags (vec string))
+  :file str
+  :tags (vec str))
 
 (defn holds? (pages target)
   (any? (iter pages)
@@ -10,14 +10,14 @@
   (= (:file p) target))
 
 (defn views? (p target)
-  (= (as-str (:file p)) target))
+  (= (:file p) target))
 
 (defn labeled (p target)
   (str (:file p) ": " target))
 
 (defn printed? (p target)
   (println (:file p) target)
-  (= (as-str (:file p)) target))
+  (= (:file p) target))
 
 (defn reversed? (p target)
   (= target (:file p)))
@@ -116,7 +116,7 @@
   (println (named-a? (at items 0)))
   (println (held-file? (at items 0)))
   (local title (str "a"))
-  (println (titled? (->window "a") (as-str title)))
+  (println (titled? (->window "a") title))
   (local windows (vec (->window "b")))
   (push! windows (->window "a"))
   (println (titled-a? windows))

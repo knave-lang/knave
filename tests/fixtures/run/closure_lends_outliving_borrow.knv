@@ -24,4 +24,4 @@
   (println (longer "Nissan" "Leaf"))
   (println (second years))
   (println (year-at 2))
-  (println (tagged fallback-years (as-str name))))
+  (println (tagged fallback-years name)))

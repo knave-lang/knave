@@ -1,5 +1,5 @@
 (type show-twice
-  (fn ((fn () (fn-once () string))) unit))
+  (fn ((fn () (fn-once () str))) unit))
 
 (defn show-twice (make)
   (local getter (make))

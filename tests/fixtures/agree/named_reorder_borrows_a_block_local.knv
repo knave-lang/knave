@@ -9,6 +9,5 @@
 
 (defn main ()
   (local t
-    (cut :n (seven)
-         :text (as-str (announced "a"))))
+    (cut :n (seven) :text (announced "a")))
   (println t))

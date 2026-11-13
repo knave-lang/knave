@@ -1,14 +1,22 @@
 (use prelude/macros header-shape)
 
-(defrule bind ((bindings body ...) (do body ...)))
+(defrule bind
+  ((bindings body ...) (do body ...)))
 
 (header-shape (bind bindings) :bindings)
 
 (defn one () (bind (x 5) (+ x 1)))
 
-(defn two () (bind (x 5 y 7) (+ y x)))
+(defn two ()
+  (bind (x 5
+         y 7)
+    (+ y x)))
 
-(defn three-on-one-line () (bind (x 5 y 7 z 9) z))
+(defn three-on-one-line ()
+  (bind (x 5
+         y 7
+         z 9)
+    z))
 
 (defn empty () (bind () 1))
 

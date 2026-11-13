@@ -1,6 +1,6 @@
 (defenum shape
   (circle f64)
-  (labeled :text string :size)
+  (labeled :text str :size)
   dot)
 
 (defn describe (s)

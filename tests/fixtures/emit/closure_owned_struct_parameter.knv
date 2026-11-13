@@ -1,5 +1,5 @@
 (defstruct user
-  :name string
+  :name str
   :age i64)
 
 (defn main ()

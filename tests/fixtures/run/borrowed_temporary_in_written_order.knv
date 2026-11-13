@@ -6,7 +6,7 @@
 
 (defn first-letter (text) (subs text 0 1))
 
-(type announced (fn ((ref str)) string))
+(type announced (fn ((ref str)) str))
 
 (defn announced (text)
   (println text)
@@ -75,111 +75,106 @@
 
 (defn lifted-local ()
   (local n 1)
-  (local t (keep n (as-str (tick! n))))
+  (local t (keep n (tick! n)))
   (println t))
 
 (defn explicit-local ()
   (local n 1)
   (local seen n)
   (local text (tick! n))
-  (local t (keep seen (as-str text)))
+  (local t (keep seen text))
   (println t))
 
 (defn lifted-field ()
   (local c (->counter :n 1))
   (local t
-    (keep (:n c) (as-str (tick-counter! c))))
+    (keep (:n c) (tick-counter! c)))
   (println t))
 
 (defn explicit-field ()
   (local c (->counter :n 1))
   (local seen (:n c))
   (local text (tick-counter! c))
-  (local t (keep seen (as-str text)))
+  (local t (keep seen text))
   (println t))
 
 (defn lifted-callee ()
   (local t
-    ((chooser)
-     (as-str (announced "argument"))))
+    ((chooser) (announced "argument")))
   (println t))
 
 (defn explicit-callee ()
   (local f (chooser))
   (local text (announced "argument"))
-  (local t (f (as-str text)))
+  (local t (f text))
   (println t))
 
 (defn lifted-deref ()
   (local n 3)
   (local t
     (keep (deref (pick-ref (ref n)))
-          (as-str (announced "deref"))))
+          (announced "deref")))
   (println t))
 
 (defn explicit-deref ()
   (local n 3)
   (local seen (deref (pick-ref (ref n))))
   (local text (announced "deref"))
-  (local t (keep seen (as-str text)))
+  (local t (keep seen text))
   (println t))
 
 (defn lifted-iterator ()
   (local t
-    (first-of (nums)
-              (as-str (announced "iterated"))))
+    (first-of (nums) (announced "iterated")))
   (println t))
 
 (defn explicit-iterator ()
   (local items (nums))
   (local text (announced "iterated"))
-  (local t (first-of items (as-str text)))
+  (local t (first-of items text))
   (println t))
 
 (defn lifted-global ()
-  (local t
-    (keep lazy-seven (as-str (announced "global"))))
+  (local t (keep lazy-seven (announced "global")))
   (println t))
 
 (defn explicit-global ()
   (local seen lazy-seven)
   (local text (announced "global"))
-  (local t (keep seen (as-str text)))
+  (local t (keep seen text))
   (println t))
 
 (defn lifted-rust-global ()
-  (local t
-    (keep noisy (as-str (announced "rust"))))
+  (local t (keep noisy (announced "rust")))
   (println t))
 
 (defn explicit-rust-global ()
   (local seen noisy)
   (local text (announced "rust"))
-  (local t (keep seen (as-str text)))
+  (local t (keep seen text))
   (println t))
 
 (defn lifted-branching-template ()
   (local t
     (pick false
-          (first-letter (as-str (announced "skipped")))
-          (first-letter (as-str (announced "taken")))))
+          (first-letter (announced "skipped"))
+          (first-letter (announced "taken"))))
   (println t))
 
 (defn explicit-branching-template ()
   (local text (announced "taken"))
-  (local t
-    (pick false "s" (first-letter (as-str text))))
+  (local t (pick false "s" (first-letter text)))
   (println t))
 
 (defn lifted-leading-template ()
   (local t
-    (logged (first-letter (as-str (announced "after")))))
+    (logged (first-letter (announced "after"))))
   (println t))
 
 (defn explicit-leading-template ()
   (println "before")
   (local text (announced "after"))
-  (local t (first-letter (as-str text)))
+  (local t (first-letter text))
   (println t))
 
 (defn main ()

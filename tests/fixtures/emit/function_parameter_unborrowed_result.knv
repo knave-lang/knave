@@ -11,8 +11,7 @@
   (local model (str "Nissan"))
   (local borrowing
     (fn (make year)
-      (->car :make (as-str model)
-             :year (if (= make "Leaf") year 0))))
+      (->car :make model :year (if (= make "Leaf") year 0))))
   (println (measure (fn (make year)
                       (->car :make (trim make) :year year))))
   (println (year-of borrowing))

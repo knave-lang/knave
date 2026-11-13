@@ -1,11 +1,11 @@
 (export holder picker)
 
-(struct holder (name string))
+(struct holder (name str))
 
 (trait picker
-  (label (fn ((ref self)) (ref string)))
+  (label (fn ((ref self)) (ref str)))
   (pick (fn ((ref holder) (ref holder))
-          (ref string))))
+          (ref str))))
 
 (impl picker holder
   (label (someone) (field someone name))

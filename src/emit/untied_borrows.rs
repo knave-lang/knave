@@ -146,7 +146,9 @@ impl<'a> UntiedBorrows<'a> {
     }
 
     fn show(&self, shown: &Type) -> String {
-        TypeDisplay::new(&self.program.bindings, &self.program.generics).show(shown)
+        TypeDisplay::new(&self.program.bindings, &self.program.generics)
+            .with_hidden_text(&self.program.declarations)
+            .show(shown)
     }
 }
 

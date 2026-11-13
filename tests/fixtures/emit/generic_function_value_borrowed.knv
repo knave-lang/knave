@@ -6,4 +6,4 @@
 (defn main ()
   (local name (str "Leaf"))
   (local count 3)
-  (println (apply-two label (as-str name) count)))
+  (println (apply-two label name count)))

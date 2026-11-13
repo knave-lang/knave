@@ -1,6 +1,6 @@
 (defstruct score
   :points i64
-  :name string)
+  :name str)
 
 (defn main ()
   (local scores

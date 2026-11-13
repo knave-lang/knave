@@ -63,6 +63,7 @@ pub struct FunctionValueModes<'a> {
     function_params: &'a FxHashMap<BindingId, Vec<Type>>,
     copied_reads: &'a CopiedMutReads,
     constructor_fields: FxHashMap<BindingId, Vec<Option<Rc<str>>>>,
+    hidden_text: FxHashMap<BindingId, usize>,
     copy: CopyRules<'a>,
     diagnostics: Vec<Diagnostic>,
 }
@@ -75,6 +76,19 @@ impl<'a> FunctionValueModes<'a> {
     ) -> Vec<Diagnostic> {
         let copy = CopyRules::new(&program.declarations, &program.generics);
         let constructor_fields = Self::constructor_fields(program);
+        let mut hidden_text = FxHashMap::default();
+        for (binding, definition) in program.declarations.types().structs().iter() {
+            let hidden = definition.params.iter().filter(|param| param.text).count();
+            if hidden > 0 {
+                hidden_text.insert(binding, hidden);
+            }
+        }
+        for (binding, definition) in program.declarations.types().enums().iter() {
+            let hidden = definition.params.iter().filter(|param| param.text).count();
+            if hidden > 0 {
+                hidden_text.insert(binding, hidden);
+            }
+        }
         let mut values = Self {
             bindings: &mut program.bindings,
             generics: &program.generics,
@@ -83,6 +97,7 @@ impl<'a> FunctionValueModes<'a> {
             function_params,
             copied_reads,
             constructor_fields,
+            hidden_text,
             copy,
             diagnostics: Vec::new(),
         };
@@ -423,7 +438,8 @@ impl<'a> FunctionValueModes<'a> {
         parameter: usize,
     ) -> bool {
         let (expected, found) = {
-            let display = TypeDisplay::new(self.bindings, self.generics);
+            let display = TypeDisplay::new(self.bindings, self.generics)
+                .with_hidden_text_map(self.hidden_text.clone());
             (display.show(expected), display.show(actual))
         };
         self.diagnostics
@@ -452,7 +468,8 @@ impl<'a> FunctionValueModes<'a> {
 
     fn changing_value(&mut self, value: &mut TypedExpr, lost: LostChange) -> bool {
         let by_value = Self::with_parameter_by_value(lost.actual, lost.position);
-        let display = TypeDisplay::new(self.bindings, self.generics);
+        let display = TypeDisplay::new(self.bindings, self.generics)
+            .with_hidden_text_map(self.hidden_text.clone());
         let Type::Function(_, actual_parameters, _) = lost.actual else {
             unreachable!("a function value has a function type")
         };
@@ -685,6 +702,7 @@ mod tests {
                 function_params: &self.function_params,
                 copied_reads: &self.copied_reads,
                 constructor_fields: FxHashMap::default(),
+                hidden_text: FxHashMap::default(),
                 copy,
                 diagnostics: Vec::new(),
             }

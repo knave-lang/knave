@@ -2,5 +2,5 @@
 
 (defn main ()
   (local word (str "hello"))
-  (println (size-of (as-str word)))
+  (println (size-of word))
   (println (size-of word)))

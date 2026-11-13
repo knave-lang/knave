@@ -1,10 +1,10 @@
 (trait label
-  (label (fn ((ref self)) string)))
+  (label (fn ((ref self)) str)))
 
 (impl label i64
   (label (number) (str number)))
 
-(impl label string
+(impl label str
   (label (text) (str text)))
 
 (impl label (vec i64)

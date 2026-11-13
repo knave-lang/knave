@@ -1,5 +1,5 @@
 (defstruct car
-  :make string
+  :make str
   :year u16)
 
 (defn later? (year) (> year 2020))

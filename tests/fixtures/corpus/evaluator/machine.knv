@@ -4,7 +4,7 @@
 
 (type execute
   (fn ((ref (vec statement)))
-    (result (sorted-map string i64) string)))
+    (result (sorted-map str i64) str)))
 
 (defn execute (statements)
   (execute-from statements 0 (sorted-map)))
@@ -12,8 +12,8 @@
 (type execute-from
   (fn ((ref (vec statement))
        usize
-       (sorted-map string i64))
-    (result (sorted-map string i64) string)))
+       (sorted-map str i64))
+    (result (sorted-map str i64) str)))
 
 (defn execute-from (statements index names)
   (match (get statements index)
@@ -32,9 +32,8 @@
     (none (ok names))))
 
 (type evaluate
-  (fn ((ref expr)
-       (ref (sorted-map string i64)))
-    (result i64 string)))
+  (fn ((ref expr) (ref (sorted-map str i64)))
+    (result i64 str)))
 
 (defn evaluate (e names)
   (match e
@@ -56,21 +55,20 @@
        (apply-function function values)))))
 
 (type look-up
-  (fn ((ref (sorted-map string i64))
-       (ref string))
-    (result i64 string)))
+  (fn ((ref (sorted-map str i64)) (ref str))
+    (result i64 str)))
 
 (defn look-up (names name)
-  (match (get names (as-str name))
+  (match (get names name)
     ((some value) (ok (deref value)))
     (none (err (str "unknown name `" name "`")))))
 
 (type evaluate-all
   (fn ((ref (vec expr))
-       (ref (sorted-map string i64))
+       (ref (sorted-map str i64))
        usize
        (vec i64))
-    (result (vec i64) string)))
+    (result (vec i64) str)))
 
 (defn evaluate-all (arguments names index values)
   (match (get arguments index)
@@ -83,11 +81,11 @@
     (none (ok values))))
 
 (type apply-operator
-  (fn ((ref string) i64 i64)
-    (result i64 string)))
+  (fn ((ref str) i64 i64)
+    (result i64 str)))
 
 (defn apply-operator (operator left right)
-  (match (as-str operator)
+  (match operator
     ("+" (ok (+ left right)))
     ("-" (ok (- left right)))
     ("*" (ok (* left right)))
@@ -108,11 +106,11 @@
     (_ (err (str "unknown operator `" operator "`")))))
 
 (type apply-function
-  (fn ((ref string) (vec i64))
-    (result i64 string)))
+  (fn ((ref str) (vec i64))
+    (result i64 str)))
 
 (defn apply-function (function numbers)
-  (match (as-str function)
+  (match function
     ("max"
      (ok-or (max (copied numbers))
             (str "max needs an argument")))

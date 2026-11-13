@@ -4,7 +4,7 @@
 
 (type parse-stock
   (fn ((ref str))
-    (result (sorted-map string item) ledger-error)))
+    (result (sorted-map str item) ledger-error)))
 
 (defn parse-stock (text)
   (parse-stock-lines (collect (lines text))
@@ -14,8 +14,8 @@
 (type parse-stock-lines
   (fn ((ref (vec (ref str)))
        usize
-       (sorted-map string item))
-    (result (sorted-map string item) ledger-error)))
+       (sorted-map str item))
+    (result (sorted-map str item) ledger-error)))
 
 (defn parse-stock-lines (rows index stock)
   (match (get rows index)
@@ -88,7 +88,7 @@
                                 (str "expected 3 words in `" row "`")))))
 
 (type event-of
-  (fn (usize (ref str) string (ref str))
+  (fn (usize (ref str) str (ref str))
     (result event ledger-error)))
 
 (defn event-of (line verb sku amount)

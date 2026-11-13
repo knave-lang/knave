@@ -1,4 +1,4 @@
-(type make (fn () (fn-once () string)))
+(type make (fn () (fn-once () str)))
 
 (defn make () (fn () (str "Leaf")))
 

@@ -2,7 +2,7 @@
 
 (struct rect (width f64) (height f64))
 
-(struct labeled (text string) (size f64))
+(struct labeled (text str) (size f64))
 
 (struct point)
 

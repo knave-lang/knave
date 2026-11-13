@@ -1,5 +1,5 @@
 (defstruct car
-  :model string
+  :model str
   :year u16)
 
 (defn main ()

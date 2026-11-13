@@ -6,7 +6,7 @@
       (fn ((ref a) (ref a)) bool))))
 
 (defstruct employee
-  :name string
+  :name str
   :score u32)
 
 (defn main ()

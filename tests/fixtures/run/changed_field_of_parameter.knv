@@ -3,7 +3,7 @@
 
 (defstruct tally
   :count i64
-  :label string)
+  :label str)
 
 (defn bump-count! (t)
   (bump! (field t count)))

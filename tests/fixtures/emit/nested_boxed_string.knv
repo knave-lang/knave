@@ -1,6 +1,6 @@
 (enum (expr)
-  (call (expr) string)
-  (name string))
+  (call (expr) str)
+  (name str))
 
 (defn call-label (expr)
   (match expr

@@ -42,6 +42,7 @@ impl Lifetime {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
     Var(TypeVar),
+    Text(TypeVar),
     Generic(GenericId),
     Primitive(PrimitiveType),
     Named(BindingId, Vec<Type>),
@@ -81,6 +82,17 @@ impl Type {
 
     pub fn is_unsized(&self) -> bool {
         matches!(self, Type::Primitive(PrimitiveType::Str))
+    }
+
+    pub fn is_text(&self) -> bool {
+        matches!(self, Type::Text(_))
+    }
+
+    pub fn text_var(&self) -> Option<TypeVar> {
+        match self {
+            Type::Text(var) => Some(*var),
+            _ => None,
+        }
     }
 
     pub fn is_reference(&self) -> bool {
@@ -138,11 +150,11 @@ impl Type {
     }
 
     pub fn is_concrete(&self) -> bool {
-        !self.any_part(&|part| matches!(part, Type::Var(_) | Type::Generic(_)))
+        !self.any_part(&|part| matches!(part, Type::Var(_) | Type::Text(_) | Type::Generic(_)))
     }
 
     pub fn has_vars(&self) -> bool {
-        self.any_part(&|part| matches!(part, Type::Var(_)))
+        self.any_part(&|part| matches!(part, Type::Var(_) | Type::Text(_)))
     }
 
     pub fn mentions(&self, generic: GenericId) -> bool {
@@ -186,7 +198,7 @@ impl Type {
 
     pub fn substitute_vars(&self, replacements: &FxHashMap<TypeVar, Type>) -> Type {
         match self {
-            Type::Var(var) => replacements
+            Type::Var(var) | Type::Text(var) => replacements
                 .get(var)
                 .cloned()
                 .unwrap_or_else(|| self.clone()),
@@ -235,7 +247,9 @@ impl Type {
             Type::Mut(lifetime, inner) => {
                 Type::Mut(*lifetime, Box::new(inner.substitute(replacements)))
             }
-            Type::Var(_) | Type::Primitive(_) | Type::TraitObject(_) => self.clone(),
+            Type::Var(_) | Type::Text(_) | Type::Primitive(_) | Type::TraitObject(_) => {
+                self.clone()
+            }
         }
     }
 
@@ -289,9 +303,11 @@ impl Type {
                 .chain(std::iter::once(result.as_ref()))
                 .collect(),
             Type::Ref(_, inner) | Type::Mut(_, inner) => vec![inner],
-            Type::Var(_) | Type::Generic(_) | Type::Primitive(_) | Type::TraitObject(_) => {
-                Vec::new()
-            }
+            Type::Var(_)
+            | Type::Text(_)
+            | Type::Generic(_)
+            | Type::Primitive(_)
+            | Type::TraitObject(_) => Vec::new(),
         }
     }
 
@@ -305,9 +321,14 @@ impl Type {
     pub fn shares_head_with(&self, other: &Type) -> bool {
         let same_constructor = match (self, other) {
             (Type::Named(left, _), Type::Named(right, _)) => left == right,
-            (Type::Var(_) | Type::Generic(_) | Type::Primitive(_) | Type::TraitObject(_), _) => {
-                self == other
-            }
+            (
+                Type::Var(_)
+                | Type::Text(_)
+                | Type::Generic(_)
+                | Type::Primitive(_)
+                | Type::TraitObject(_),
+                _,
+            ) => self == other,
             _ => std::mem::discriminant(self) == std::mem::discriminant(other),
         };
         same_constructor && self.parts().len() == other.parts().len()
@@ -399,6 +420,7 @@ pub enum BoundOrigin {
 pub struct GenericParam {
     pub id: GenericId,
     pub name: Rc<str>,
+    pub text: bool,
     pub bounds: Vec<Bound>,
 }
 

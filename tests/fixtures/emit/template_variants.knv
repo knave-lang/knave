@@ -16,8 +16,7 @@
   (ok (try (parse text))))
 
 (type read-file
-  (fn ((ref str))
-    (result string app-error)))
+  (fn ((ref str)) (result str app-error)))
 
 (defn read-file (path)
   (local text (try (slurp path)))
@@ -32,9 +31,8 @@
     (none (println "none"))))
 
 (defn choose ()
-  (local (value (result i64 string))
-    (ok 1))
-  (local (bad (result i64 string))
+  (local (value (result i64 str)) (ok 1))
+  (local (bad (result i64 str))
     (err (str "bad")))
   (match value
     ((ok n) (println n))

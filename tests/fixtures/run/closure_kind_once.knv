@@ -1,5 +1,4 @@
 (defn main ()
-  (local (value (result i64 string))
-    (ok 1))
+  (local (value (result i64 str)) (ok 1))
   (local text (str "moved"))
   (println (unwrap-ok (then-ok value (fn (ignored) (ok text))))))

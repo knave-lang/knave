@@ -10,5 +10,4 @@
 
 (defn main ()
   (local model (str "Leaf"))
-  (describe (fn ()
-              (->car :make "Nissan" :model (as-str model)))))
+  (describe (fn () (->car :make "Nissan" :model model))))

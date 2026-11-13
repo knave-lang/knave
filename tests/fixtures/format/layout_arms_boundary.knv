@@ -1,7 +1,8 @@
 (defn arm-of-sixty-columns-and-arm-of-sixty-one (value)
   (match value
     ((long-pattern xx) (first (second (third (fourth (item))))))
-    ((long-pattern yyy) (first (second (third (fourth (item))))))
+    ((long-pattern yyy)
+     (first (second (third (fourth (item))))))
     ((long-pattern xx) (first (second (third (fourth (item))))))))
 
 (defn short-arm-past-the-line-width (a b c d e f g)
@@ -18,9 +19,11 @@
                  (match f
                    ((g-arm)
                     (match g
-                      ((deep-patternxx) (first (second (third (fourth (fifth))))))
+                      ((deep-patternxx)
+                       (first (second (third (fourth (fifth))))))
                       bare-atom-arm))))))))))))))
 
 (defn matched-value-is-no-arm (value)
-  (match (pick-one (first-part (inner)) (second-part (other-inner)))
+  (match (pick-one (first-part (inner))
+                   (second-part (other-inner)))
     (_ 0)))

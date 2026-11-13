@@ -1,4 +1,4 @@
-(enum token (symbol string) (number string))
+(enum token (symbol str) (number str))
 
 (defn classify (tokens)
   (match (get tokens 0)

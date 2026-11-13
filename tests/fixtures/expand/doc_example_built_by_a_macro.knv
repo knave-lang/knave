@@ -1,4 +1,4 @@
-(use code string)
+(use code str)
 (use prelude/macros template)
 (use prelude/test run-tests)
 

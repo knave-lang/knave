@@ -1,7 +1,7 @@
 (defstruct item
-  :name string)
+  :name str)
 
-(defn take-name ((name string)) name)
+(defn take-name ((name str)) name)
 
 (defn main ()
   (prn (update (->item :name (str "plum")) :name take-name))

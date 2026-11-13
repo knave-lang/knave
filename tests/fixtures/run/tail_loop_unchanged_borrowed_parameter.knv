@@ -1,5 +1,5 @@
 (defstruct counter
-  :label string
+  :label str
   :count i64)
 
 (defn count-to (limit state steps)

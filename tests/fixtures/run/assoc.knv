@@ -1,7 +1,7 @@
 (defstruct point
   :x i64
   :y i64
-  :label string)
+  :label str)
 
 (defn bump-x (p) (assoc p :x 1))
 

@@ -276,7 +276,7 @@ impl InstantiationReport {
             Type::Primitive(primitive) => {
                 matches!(actual, Type::Primitive(other) if primitive == other)
             }
-            Type::Var(_) | Type::TraitObject(_) => false,
+            Type::Var(_) | Type::Text(_) | Type::TraitObject(_) => false,
         }
     }
 
@@ -469,6 +469,7 @@ pub struct LiteralDefault {
 impl LiteralDefaults {
     pub fn of(report: &InstantiationReport, typed: &TypedProgram) -> Self {
         let display = TypeDisplay::new(&typed.bindings, &typed.generics)
+            .with_hidden_text(&typed.declarations)
             .with_projections(typed.declarations.traits.table().projections());
         let mut defaults = Self::default();
         for definition in typed.modules.iter().flat_map(|module| &module.definitions) {

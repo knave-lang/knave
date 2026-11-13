@@ -183,7 +183,8 @@ impl TypeChecker {
                 else {
                     continue;
                 };
-                let implementor = self.derived_implementor(*binding, *arity, *trait_binding);
+                let _ = arity;
+                let implementor = self.derived_implementor(*binding, *trait_binding);
                 self.declarations
                     .traits
                     .table
@@ -420,15 +421,35 @@ impl TypeChecker {
         }
     }
 
-    fn derived_implementor(
-        &mut self,
-        binding: BindingId,
-        arity: usize,
-        derived: BindingId,
-    ) -> Implementor {
-        let params: Vec<GenericParam> = (0..arity)
-            .map(|position| {
-                self.new_generic(&Self::parameter_name(position), vec![Bound::plain(derived)])
+    fn derived_implementor(&mut self, binding: BindingId, derived: BindingId) -> Implementor {
+        let declared: Vec<GenericParam> = self
+            .declarations
+            .types
+            .structs()
+            .get(binding)
+            .map(|definition| definition.params.clone())
+            .or_else(|| {
+                self.declarations
+                    .types
+                    .enums()
+                    .get(binding)
+                    .map(|definition| definition.params.clone())
+            })
+            .unwrap_or_default();
+        let params: Vec<GenericParam> = declared
+            .iter()
+            .enumerate()
+            .map(|(position, declared)| {
+                let name = if declared.name.is_empty() {
+                    Self::parameter_name(position)
+                } else {
+                    declared.name.to_string()
+                };
+                if declared.text {
+                    self.new_text_generic(&name, vec![Bound::plain(derived)])
+                } else {
+                    self.new_generic(&name, vec![Bound::plain(derived)])
+                }
             })
             .collect();
         let arguments = params.iter().map(|param| Type::Generic(param.id)).collect();

@@ -1,5 +1,5 @@
 (defstruct item
-  :name string
+  :name str
   :count i64)
 
 (defstruct shelf

@@ -1,4 +1,4 @@
-(enum result (ok i64) (err string))
+(enum result (ok i64) (err str))
 
 (type settle (fn (result) i64))
 

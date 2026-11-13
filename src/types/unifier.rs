@@ -48,6 +48,7 @@ pub enum UnifyError {
     Mismatch,
     Infinite,
     NotNumeric,
+    NeedsOwnership,
 }
 
 #[derive(Clone, Copy)]
@@ -74,6 +75,7 @@ struct VarState {
     binding: Option<Type>,
     shortcut: Cell<Option<TypeVar>>,
     literal: Option<LiteralKind>,
+    text: bool,
     bounds: Vec<Bound>,
     bound_site: Option<BoundSiteId>,
 }
@@ -87,6 +89,7 @@ pub struct Unifier {
     bound_sites: Vec<Span>,
     obligations: Vec<Obligation>,
     generic_bounds: FxHashMap<GenericId, Vec<Bound>>,
+    text_generics: rustc_hash::FxHashSet<GenericId>,
     projections: Rc<ProjectionTable>,
     deferred: Vec<DeferredEquality>,
     inside_operand: bool,
@@ -109,8 +112,42 @@ impl Unifier {
         self.fresh_with(Some(kind), Vec::new())
     }
 
+    pub fn fresh_text(&mut self) -> Type {
+        let Type::Var(var) = self.fresh_with(None, Vec::new()) else {
+            unreachable!("a fresh variable is a variable")
+        };
+        self.vars[var.index()].text = true;
+        Type::Text(var)
+    }
+
+    pub fn is_text_var(&self, var: TypeVar) -> bool {
+        self.vars[self.last_var(var).index()].text
+    }
+
+    pub fn binds_no_value(&self, var: TypeVar) -> bool {
+        self.vars[self.last_var(var).index()].binding.is_none()
+    }
+
+    pub fn default_text(&mut self) {
+        for index in 0..self.vars.len() {
+            let var = TypeVar::new(index);
+            if !self.vars[var.index()].text || self.vars[var.index()].binding.is_some() {
+                continue;
+            }
+            self.bind(var, Type::str_ref());
+        }
+    }
+
     pub fn register_generic(&mut self, generic: GenericId, bounds: Vec<Bound>) {
         self.generic_bounds.insert(generic, bounds);
+    }
+
+    pub fn mark_text_generic(&mut self, generic: GenericId) {
+        self.text_generics.insert(generic);
+    }
+
+    pub fn is_text_generic(&self, generic: GenericId) -> bool {
+        self.text_generics.contains(&generic)
     }
 
     pub fn generic_bounds(&self, generic: GenericId) -> &[Bound] {
@@ -223,13 +260,19 @@ impl Unifier {
     }
 
     pub fn shallow(&self, value: &Type) -> Type {
-        let Type::Var(start) = value else {
-            return value.clone();
+        let (start, text) = match value {
+            Type::Var(start) => {
+                let last = self.last_var(*start);
+                (*start, self.vars[last.index()].text)
+            }
+            Type::Text(start) => (*start, true),
+            _ => return value.clone(),
         };
-        let last = self.last_var(*start);
-        self.shorten_chain(*start, last);
+        let last = self.last_var(start);
+        self.shorten_chain(start, last);
         match &self.vars[last.index()].binding {
             Some(bound) => bound.clone(),
+            None if text => Type::Text(last),
             None => Type::Var(last),
         }
     }
@@ -253,19 +296,38 @@ impl Unifier {
     fn next_var(&self, var: TypeVar) -> Option<TypeVar> {
         let state = &self.vars[var.index()];
         state.shortcut.get().or(match &state.binding {
-            Some(Type::Var(next)) => Some(*next),
+            Some(Type::Var(next) | Type::Text(next)) => Some(*next),
             _ => None,
         })
     }
 
     pub fn unify(&mut self, expected: &Type, found: &Type, span: Span) -> Result<(), UnifyError> {
         match (self.shallow(expected), self.shallow(found)) {
+            (Type::Var(left), Type::Text(right)) | (Type::Text(right), Type::Var(left)) => {
+                self.bind(left, Type::Text(right));
+                Ok(())
+            }
+            (Type::Text(left), Type::Text(right)) => {
+                self.unify_vars(left, right);
+                Ok(())
+            }
+            (Type::Text(var), other) | (other, Type::Text(var)) => self.bind_text(var, other),
             (Type::Var(left), Type::Var(right)) => {
                 self.unify_vars(left, right);
                 Ok(())
             }
             (Type::Var(var), other) | (other, Type::Var(var)) => {
                 self.bind_checked(var, other, span)
+            }
+            (Type::Primitive(PrimitiveType::String), Type::Ref(_, inner))
+                if matches!(inner.as_ref(), Type::Primitive(PrimitiveType::Str)) =>
+            {
+                Err(UnifyError::NeedsOwnership)
+            }
+            (Type::Ref(_, inner), Type::Primitive(PrimitiveType::String))
+                if matches!(inner.as_ref(), Type::Primitive(PrimitiveType::Str)) =>
+            {
+                Ok(())
             }
             (
                 Type::Function(_, left_parameters, left_result),
@@ -409,6 +471,7 @@ impl Unifier {
             binding: None,
             shortcut: Cell::new(None),
             literal,
+            text: false,
             bounds,
             bound_site: None,
         });
@@ -422,11 +485,39 @@ impl Unifier {
             self.vars[into.index()].literal,
         );
         self.vars[into.index()].literal = literal;
+        self.vars[into.index()].text |= self.vars[from.index()].text;
+        let text = self.vars[into.index()].text;
         let bound_site = self.vars[from.index()].bound_site;
         moved_bounds
             .into_iter()
             .for_each(|bound| self.add_bound_from(into, bound, bound_site));
-        self.bind(from, Type::Var(into));
+        self.bind(
+            from,
+            if text {
+                Type::Text(into)
+            } else {
+                Type::Var(into)
+            },
+        );
+    }
+
+    fn bind_text(&mut self, var: TypeVar, other: Type) -> Result<(), UnifyError> {
+        if Self::is_text_representation(&other)
+            || matches!(other, Type::Generic(generic) if self.is_text_generic(generic))
+        {
+            self.bind(var, other);
+            Ok(())
+        } else {
+            Err(UnifyError::Mismatch)
+        }
+    }
+
+    fn is_text_representation(value: &Type) -> bool {
+        match value {
+            Type::Primitive(PrimitiveType::String | PrimitiveType::Str) => true,
+            Type::Ref(_, inner) => matches!(inner.as_ref(), Type::Primitive(PrimitiveType::Str)),
+            _ => false,
+        }
     }
 
     fn bind_checked(&mut self, var: TypeVar, value: Type, span: Span) -> Result<(), UnifyError> {

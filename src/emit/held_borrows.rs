@@ -279,7 +279,7 @@ mod tests {
             (defn same-len (s n) (= (len s) (deref n)))
             (defn checked! (x name)
               (set! x (+ x 1))
-              (local s (as-str name))
+              (local s name)
               (println (same-len s (ref x)))
               (fn () (len s)))
             (defn framed! (items other)

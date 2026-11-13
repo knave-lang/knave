@@ -1,4 +1,4 @@
-(enum failure (message string usize) (empty usize))
+(enum failure (message str usize) (empty usize))
 
 (defn column (failure)
   (match failure

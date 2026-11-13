@@ -7,5 +7,5 @@
 (defn main ()
   (local values (vec 1))
   (counted! (mut values)
-            (first-letter (as-str (str (len values)))))
+            (first-letter (str (len values))))
   (println (len values)))

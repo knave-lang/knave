@@ -1,9 +1,8 @@
 (defn main ()
   (local (value (option i64)) (some 1))
   (local (nothing (option i64)) none)
-  (local (answer (result i64 string))
-    (ok 1))
-  (local (bad (result i64 string))
+  (local (answer (result i64 str)) (ok 1))
+  (local (bad (result i64 str))
     (err (str "bad")))
   (println (none? nothing))
   (match value

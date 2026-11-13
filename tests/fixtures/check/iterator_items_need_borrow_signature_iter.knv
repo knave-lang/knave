@@ -1,5 +1,5 @@
 (defstruct user
-  :name string
+  :name str
   :age u16)
 
 (defn adult-ages (users)

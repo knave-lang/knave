@@ -128,7 +128,11 @@ impl<'p> ReturnedValues<'p> {
                         .iter()
                         .any(|argument| self.may_hold_closure(argument))
             }
-            Type::Var(_) | Type::Generic(_) | Type::Primitive(_) | Type::TraitObject(_) => false,
+            Type::Var(_)
+            | Type::Text(_)
+            | Type::Generic(_)
+            | Type::Primitive(_)
+            | Type::TraitObject(_) => false,
         }
     }
 }

@@ -1,7 +1,18 @@
 (use prelude/macros header-shape)
-(defrule unless-zero ((value body ...) (unless (= value 0) body ...)))
+
+(defrule unless-zero
+  ((value body ...) (unless (= value 0) body ...)))
+
 (header-shape (unless-zero value))
-(defrule repeat-twice ((body ...) (do body ... body ...)))
+
+(defrule repeat-twice
+  ((body ...) (do body ... body ...)))
+
 (defn report (hits)
-  (unless-zero hits (println (str "hits: " hits)) (println "done reporting the hits")))
-(defn twice-report (hits) (repeat-twice (println (str "hits: " hits)) (println "twice")))
+  (unless-zero hits
+    (println (str "hits: " hits))
+    (println "done reporting the hits")))
+
+(defn twice-report (hits)
+  (repeat-twice (println (str "hits: " hits))
+                (println "twice")))

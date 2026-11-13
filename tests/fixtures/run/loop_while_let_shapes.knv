@@ -36,7 +36,7 @@
       (none (do (local done (println "end")))))))
 
 (type guarded!
-  (fn ((mut (vec string))) unit))
+  (fn ((mut (vec str))) unit))
 
 (defn guarded! (items)
   (loop ()

@@ -526,7 +526,11 @@ impl TypedProgram {
                         .sum::<usize>()
             }
             Type::TraitObject(_) => 0,
-            Type::Function(..) | Type::Var(_) | Type::Generic(_) | Type::Primitive(_) => 0,
+            Type::Function(..)
+            | Type::Var(_)
+            | Type::Text(_)
+            | Type::Generic(_)
+            | Type::Primitive(_) => 0,
         }
     }
 
@@ -546,7 +550,11 @@ impl TypedProgram {
                     .any(|argument| self.type_holds_borrow_with(argument, visiting))
                     || self.definition_holds_borrow_with(*binding, visiting)
             }
-            Type::Var(_) | Type::Generic(_) | Type::Primitive(_) | Type::TraitObject(_) => false,
+            Type::Var(_)
+            | Type::Text(_)
+            | Type::Generic(_)
+            | Type::Primitive(_)
+            | Type::TraitObject(_) => false,
         }
     }
 
@@ -594,6 +602,7 @@ impl TypedProgram {
             Type::Ref(..)
             | Type::Mut(..)
             | Type::Var(_)
+            | Type::Text(_)
             | Type::Generic(_)
             | Type::Primitive(_)
             | Type::TraitObject(_) => false,
@@ -665,6 +674,7 @@ impl TypedProgram {
 
     fn type_display(&self) -> TypeDisplay<'_> {
         TypeDisplay::new(&self.bindings, &self.generics)
+            .with_hidden_text(&self.declarations)
             .with_projections(self.declarations.traits.table().projections())
     }
 

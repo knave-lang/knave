@@ -1,31 +1,31 @@
 (defstruct car
-  :model string
+  :model str
   :range u16)
 
 (defstruct garage
-  :models (vec string))
+  :models (vec str))
 
 (trait labeled
-  (label (fn ((ref self)) string)))
+  (label (fn ((ref self)) str)))
 
 (impl labeled car
   (label (self)
     (str (:model self) " " (:range self))))
 
 (type shout-first
-  (fn ((ref (vec string))) string))
+  (fn ((ref (vec str))) str))
 
 (defn shout-first (names)
   (upper-case (at names 0)))
 
 (type trimmed-length
-  (fn ((ref (vec string))) usize))
+  (fn ((ref (vec str))) usize))
 
 (defn trimmed-length (names)
   (len (trim (at names 0))))
 
 (type shout-corner
-  (fn ((ref (vec (vec string)))) string))
+  (fn ((ref (vec (vec str)))) str))
 
 (defn shout-corner (grid)
   (upper-case (at (at grid 0) 1)))

@@ -18,6 +18,7 @@
                    sorted-map vec)
 
 (use prelude/io io-error)
+(use prelude/internal/text owned-text)
 
 (module
   "Builds, prints, parses and splits strings.
@@ -25,8 +26,8 @@
   It also holds the lookups that print documentation, such as [doc], [dir]
   and [apropos].")
 
-(export alphanumeric? apropos as-str char chars debug digit?
-        dir display doc eprint eprintln find-doc from-str
+(export alphanumeric? apropos char chars debug digit? dir
+        display doc eprint eprintln find-doc from-str
         infallible lines lower-case parse parse-bool-error
         parse-char-error parse-error parse-float-error
         parse-int-error pr-str print print-form println prn
@@ -42,13 +43,13 @@
     (fn ((ref self) (mut formatter))
       fmt-result))
   (help "write `(display type (value) ...)`, or print the value with `prn`")
-  bool char str string
+  bool char str owned-text
   (ref str)
   io-error i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128
   usize f32 f64
   (parse-error bool)
   (parse-error char)
-  (parse-error string)
+  (parse-error owned-text)
   (parse-error i8)
   (parse-error i16)
   (parse-error i32)
@@ -66,11 +67,11 @@
   (where ((a display)) (ref a)))
 
 (rust-trait debug "std::fmt::Debug"
-  bool char str string io-error i8 i16 i32 i64 i128 isize u8
+  bool char str owned-text io-error i8 i16 i32 i64 i128 isize u8
   u16 u32 u64 u128 usize f32 f64
   (parse-error bool)
   (parse-error char)
-  (parse-error string)
+  (parse-error owned-text)
   (parse-error i8)
   (parse-error i16)
   (parse-error i32)
@@ -104,11 +105,11 @@
     :part ".part({value})"
     :bare "{1}.write_str(\"{name}\")")
   (help "a closure, an iterator or a function has no printed form")
-  bool char str string unit io-error i8 i16 i32 i64 i128
+  bool char str owned-text unit io-error i8 i16 i32 i64 i128
   isize u8 u16 u32 u64 u128 usize f32 f64
   (parse-error bool)
   (parse-error char)
-  (parse-error string)
+  (parse-error owned-text)
   (parse-error i8)
   (parse-error i16)
   (parse-error i32)
@@ -138,7 +139,7 @@
 (def display-string
   (rust "{0}.to_string()"
     (where ((a display))
-      (fn ((ref a)) string))))
+      (fn ((ref a)) owned-text))))
 
 (def print-form
   (rust "println!(\"{{}}\", crate::rt::Shown({0}))"
@@ -170,7 +171,7 @@
 
 (def pr-str
   (rust "crate::rt::Shown({0}).to_string()"
-    (where ((a show)) (fn ((ref a)) string))))
+    (where ((a show)) (fn ((ref a)) owned-text))))
 
 (rust-type parse-bool-error "std::str::ParseBoolError")
 
@@ -186,7 +187,7 @@
   (associated (parse-error target) "Err")
   (where () bool (parse-error parse-bool-error))
   (where () char (parse-error parse-char-error))
-  (where () string (parse-error infallible))
+  (where () owned-text (parse-error infallible))
   (where () i8 (parse-error parse-int-error))
   (where () i16 (parse-error parse-int-error))
   (where () i32 (parse-error parse-int-error))
@@ -219,9 +220,9 @@
   (rust "{0}.trim()"
     (fn ((ref str)) (ref str))))
 
-(def as-str
+(def text-view
   (rust "{0}.as_str()"
-    (fn ((ref string)) (ref str))))
+    (fn ((ref owned-text)) (ref str))))
 
 (def parse
   (rust "{0}.parse::<{target}>()"
@@ -466,11 +467,11 @@
                      (format-template "format!"
                                       (nth formatted 0)
                                       (nth formatted 4))
-                     (format-type (quote string) variables))
+                     (format-type (quote owned-text) variables))
                (nth formatted 1))
       (list (list (quote rust)
                   (string "\"" (nth formatted 0) "\".to_string()")
-                  (format-type (quote string) variables))))))
+                  (format-type (quote owned-text) variables))))))
 
 (def str
   (macro (form)
@@ -755,11 +756,11 @@
 
 (def lower-case
   (rust "{0}.to_lowercase()"
-    (fn ((ref str)) string)))
+    (fn ((ref str)) owned-text)))
 
 (def upper-case
   (rust "{0}.to_uppercase()"
-    (fn ((ref str)) string)))
+    (fn ((ref str)) owned-text)))
 
 (def alphanumeric?
   (rust "{0}.is_alphanumeric()" (fn (char) bool)))
@@ -1033,15 +1034,6 @@
 
   (trim \"  pear\\n\")
   => \"pear\"")
-
-(document (as-str text)
-  "Borrows a [string] as a `(ref str)`.
-
-  It emits `text.as_str()`.
-
-  (local word (str \"pear\"))
-  (upper-case (as-str word))
-  => \"PEAR\"")
 
 (document (parse text)
   "Parses a string into the type that the call's result takes.

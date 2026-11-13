@@ -1,5 +1,5 @@
 (type first-even
-  (fn ((vec i64)) (result i64 string)))
+  (fn ((vec i64)) (result i64 str)))
 
 (defn first-even (numbers)
   (local found

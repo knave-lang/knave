@@ -1,7 +1,7 @@
 (defstruct item
-  :name string)
+  :name str)
 
-(defn take-name ((name string)) name)
+(defn take-name ((name str)) name)
 
 (defrule take-field
   ((value) (take-name (:name value))))

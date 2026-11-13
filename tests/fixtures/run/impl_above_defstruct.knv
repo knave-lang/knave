@@ -1,5 +1,5 @@
 (trait described
-  (describe (fn ((ref self)) string)))
+  (describe (fn ((ref self)) str)))
 
 (impl described car
   (describe (c)

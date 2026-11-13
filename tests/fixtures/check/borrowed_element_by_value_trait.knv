@@ -1,5 +1,5 @@
 (defstruct car
-  :model string
+  :model str
   :range u16)
 
 (trait retire (scrap (fn (self) u16)))

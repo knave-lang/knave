@@ -1,5 +1,5 @@
 (defstruct tag
-  :label string
+  :label str
   :uses i64)
 
 (defn wrap! (t g)

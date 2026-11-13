@@ -26,7 +26,7 @@
   :run (fn (u32) u32))
 
 (defstruct named
-  :label string)
+  :label str)
 
 (derive named octal)
 

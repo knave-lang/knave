@@ -55,8 +55,7 @@
      (println (str name " solution:" (joined (ref values)))))
     (none (println (str name " has no single solution")))))
 
-(type joined
-  (fn ((ref (vec f64))) string))
+(type joined (fn ((ref (vec f64))) str))
 
 (defn joined (values)
   (reduce (iter values) (str "")

@@ -1,10 +1,10 @@
 (defstruct car
   :make str
-  :model string
+  :model str
   :year u16)
 
 (defstruct garage
-  :name string
+  :name str
   :bays (vec car))
 
 (defn main ()

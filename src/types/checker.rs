@@ -48,8 +48,8 @@ use super::{
 use super::{lowered_payload::LoweredPayload, payload_lowering::PayloadLowering};
 use crate::core::{
     BindingArena, BindingId, BindingKind, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr,
-    ExprKind, Item, ItemKind, KernelForm, Leaf, ModuleId, ParsedTemplate, ReferenceKind,
-    RustTemplate, StructDerives, StructExpr, TypeBinder, TypeExpr, TypeExprKind,
+    ExprKind, Item, ItemKind, KernelForm, Leaf, ModuleId, ParsedTemplate, PrimitiveType,
+    ReferenceKind, RustTemplate, StructDerives, StructExpr, TypeBinder, TypeExpr, TypeExprKind,
     VariantDeclaration, VariantPayload as CoreVariantPayload,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
@@ -227,6 +227,9 @@ pub struct TypeChecker {
     pub(super) reported_unknown_try_groups: FxHashSet<BindingId>,
     pub(super) string_view: Option<BindingId>,
     pub(super) checking: super::typed::CheckWork,
+    pub(super) lowering_representation: bool,
+    pub(super) hidden_text_counts: FxHashMap<BindingId, usize>,
+    pub(super) current_type: Option<BindingId>,
 }
 
 struct UserTrait<'a> {
@@ -313,10 +316,14 @@ impl TypeChecker {
             reported_unknown_try_groups: FxHashSet::default(),
             string_view: None,
             checking: super::typed::CheckWork::default(),
+            lowering_representation: false,
+            hidden_text_counts: FxHashMap::default(),
+            current_type: None,
         }
     }
 
     fn collect_declarations(&mut self, modules: &[CoreModule], graph: &DefinitionGraph) {
+        self.hidden_text_counts = Self::count_hidden_text_parameters(modules);
         self.record_type_arities(modules);
         self.record_projections(modules);
         let reached = graph.reach().traits();
@@ -718,6 +725,7 @@ impl TypeChecker {
 
     pub(super) fn unification(&mut self) -> Unification<'_> {
         let display = TypeDisplay::new(&self.bindings, &self.generics)
+            .with_hidden_text(&self.declarations)
             .with_projections(self.declarations.traits.table.projections());
         let declarations = DeclaredTypes::new(&self.declarations.types);
         Unification::new(&mut self.unifier, display, declarations)
@@ -760,6 +768,7 @@ impl TypeChecker {
 
     pub(super) fn display(&self) -> TypeDisplay<'_> {
         TypeDisplay::new(&self.bindings, &self.generics)
+            .with_hidden_text(&self.declarations)
             .with_projections(self.declarations.traits.table.projections())
     }
 
@@ -772,6 +781,9 @@ impl TypeChecker {
     }
 
     fn open_roots(&self, var: TypeVar) -> Vec<TypeVar> {
+        if self.unifier.is_text_var(var) && !self.unifier.binds_no_value(var) {
+            return Vec::new();
+        }
         let roots = self.free_vars(&Type::Var(var));
         if roots.is_empty() { vec![var] } else { roots }
     }
@@ -794,11 +806,56 @@ impl TypeChecker {
         let param = GenericParam {
             id,
             name: name.into(),
+            text: false,
             bounds: bounds.clone(),
         };
         self.generics.insert(id, param.clone());
         self.unifier.register_generic(id, bounds);
         param
+    }
+
+    pub(super) fn new_text_generic(&mut self, name: &str, bounds: Vec<Bound>) -> GenericParam {
+        let mut bounds = bounds;
+        for bound in self.text_bounds() {
+            if !bounds.contains(&bound) {
+                bounds.push(bound);
+            }
+        }
+        let mut param = self.new_generic(name, bounds);
+        param.text = true;
+        self.generics.insert(param.id, param.clone());
+        self.unifier.mark_text_generic(param.id);
+        param
+    }
+
+    fn text_bounds(&self) -> Vec<Bound> {
+        self.declarations
+            .traits
+            .table()
+            .with_paths(&[
+                "std::fmt::Display",
+                "std::fmt::Debug",
+                "crate::rt::Show",
+                "crate::rt::Sequence",
+                "Clone",
+                "PartialEq",
+                "Eq",
+                "std::hash::Hash",
+                "PartialOrd",
+                "Ord",
+                "crate::rt::Source",
+                "std::borrow::Borrow",
+            ])
+            .into_iter()
+            .filter(|binding| {
+                self.declarations
+                    .traits
+                    .table()
+                    .get(*binding)
+                    .is_some_and(|rust_trait| rust_trait.rows().get().is_some())
+            })
+            .map(Bound::plain)
+            .collect()
     }
 
     fn discharge_obligations(&mut self, pass: ObligationPass) {
@@ -1268,7 +1325,17 @@ impl TypeChecker {
         self.link_bounded_vars(&vars, span);
         self.settle_entry_success(members, span);
         let pinnable_vars = self.pinnable_vars(members);
-        self.generalize_vars(vars, start, span, &pinnable_vars);
+        let result_vars: FxHashSet<TypeVar> = members
+            .iter()
+            .flat_map(|(_, value)| {
+                let resolved = self.unifier.resolve(&value.ty);
+                match resolved {
+                    Type::Function(_, _, result) => self.free_vars(&result),
+                    other => self.free_vars(&other),
+                }
+            })
+            .collect();
+        self.generalize_vars(vars, start, span, &pinnable_vars, &result_vars);
         self.discharge_obligations(ObligationPass::Deferring);
     }
 
@@ -1387,11 +1454,12 @@ impl TypeChecker {
         start: usize,
         span: Span,
         pinnable_vars: &FxHashSet<TypeVar>,
+        result_vars: &FxHashSet<TypeVar>,
     ) {
         let mut position = start;
         for var in vars {
             if self
-                .generalize_var(var, position, span, pinnable_vars)
+                .generalize_var(var, position, span, pinnable_vars, result_vars)
                 .is_some()
             {
                 position += 1;
@@ -1448,7 +1516,7 @@ impl TypeChecker {
     }
 
     fn is_unbound(&self, var: TypeVar) -> bool {
-        matches!(self.unifier.shallow(&Type::Var(var)), Type::Var(current) if current == var)
+        self.unifier.binds_no_value(var)
     }
 
     fn mentioned_generics(&self, inferred: &Type) -> Vec<GenericParam> {
@@ -1479,8 +1547,13 @@ impl TypeChecker {
         position: usize,
         span: Span,
         pinnable_vars: &FxHashSet<TypeVar>,
+        result_vars: &FxHashSet<TypeVar>,
     ) -> Option<GenericParam> {
         if !self.is_unbound(var) {
+            return None;
+        }
+        if self.unifier.is_text_var(var) && !result_vars.contains(&var) {
+            self.unifier.bind(var, Type::str_ref());
             return None;
         }
         let literal = self.unifier.literal_kind(var);
@@ -1492,7 +1565,11 @@ impl TypeChecker {
         }
         let name = Self::parameter_name(position);
         let bounds = self.self_plain_bounds(var);
-        let param = self.new_generic(&name, bounds);
+        let param = if self.unifier.is_text_var(var) {
+            self.new_text_generic(&name, bounds)
+        } else {
+            self.new_generic(&name, bounds)
+        };
         self.unifier.bind(var, Type::Generic(param.id));
         if let Some(literal) = literal {
             self.literal_generics.insert(param.id, literal);
@@ -1548,7 +1625,7 @@ impl TypeChecker {
 
     fn collect_vars(value: &Type, vars: &mut Vec<TypeVar>) {
         match value {
-            Type::Var(var) if !vars.contains(var) => vars.push(*var),
+            Type::Var(var) | Type::Text(var) if !vars.contains(var) => vars.push(*var),
             Type::Function(_, parameters, result) => {
                 parameters
                     .iter()
@@ -1580,13 +1657,203 @@ impl TypeChecker {
         }
     }
 
+    fn count_hidden_text_parameters(modules: &[CoreModule]) -> FxHashMap<BindingId, usize> {
+        let mut fields: FxHashMap<BindingId, Vec<&TypeExpr>> = FxHashMap::default();
+        let mut rust: FxHashSet<BindingId> = FxHashSet::default();
+        for item in modules.iter().flat_map(|module| &module.items) {
+            match &item.kind {
+                ItemKind::Struct(binding, _, struct_fields) => {
+                    for (_, field) in struct_fields {
+                        fields_entry(&mut fields, *binding).push(field);
+                    }
+                }
+                ItemKind::Enum(binding, _, variants, rust_enum, _) => {
+                    if rust_enum.is_some() {
+                        rust.insert(*binding);
+                        continue;
+                    }
+                    for variant in variants {
+                        for payload in variant_payload_exprs(variant) {
+                            fields_entry(&mut fields, *binding).push(payload);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        fn fields_entry<'a, 'b>(
+            all: &'b mut FxHashMap<BindingId, Vec<&'a TypeExpr>>,
+            binding: BindingId,
+        ) -> &'b mut Vec<&'a TypeExpr> {
+            all.entry(binding).or_default()
+        }
+        fn variant_payload_exprs<'a>(variant: &'a VariantDeclaration) -> Vec<&'a TypeExpr> {
+            match &variant.payload {
+                crate::core::VariantPayload::None => Vec::new(),
+                crate::core::VariantPayload::Positional(types) => types.iter().collect(),
+                crate::core::VariantPayload::Named(fields) => {
+                    fields.iter().map(|(_, field)| field).collect()
+                }
+            }
+        }
+        fn count_expr(
+            expr: &TypeExpr,
+            visiting: &mut FxHashSet<BindingId>,
+            fields: &FxHashMap<BindingId, Vec<&TypeExpr>>,
+            rust: &FxHashSet<BindingId>,
+        ) -> usize {
+            match expr.kind() {
+                TypeExprKind::Primitive(PrimitiveType::Str) => 1,
+                TypeExprKind::Reference(_, _, inner) => {
+                    if matches!(inner.kind(), TypeExprKind::Primitive(PrimitiveType::Str)) {
+                        0
+                    } else {
+                        count_expr(inner, visiting, fields, rust) + 0
+                    }
+                }
+                TypeExprKind::Named(binding, arguments) => {
+                    let nested = if rust.contains(binding) {
+                        0
+                    } else if !visiting.insert(*binding) {
+                        0
+                    } else {
+                        let count = fields
+                            .get(binding)
+                            .into_iter()
+                            .flatten()
+                            .map(|field| count_expr(field, visiting, fields, rust))
+                            .sum();
+                        visiting.remove(binding);
+                        count
+                    };
+                    nested
+                        + arguments
+                            .iter()
+                            .map(|argument| count_expr(argument, visiting, fields, rust))
+                            .sum::<usize>()
+                }
+                TypeExprKind::Function(_, parameters, result) => {
+                    0 + parameters
+                        .iter()
+                        .map(|parameter| count_expr(parameter, visiting, fields, rust))
+                        .sum::<usize>()
+                        + count_expr(result, visiting, fields, rust)
+                }
+                TypeExprKind::Where(_, inner) => count_expr(inner, visiting, fields, rust),
+                _ => 0,
+            }
+        }
+        let mut counts = FxHashMap::default();
+        for binding in fields.keys() {
+            let mut visiting = FxHashSet::default();
+            let count = fields
+                .get(binding)
+                .into_iter()
+                .flatten()
+                .map(|field| count_expr(field, &mut visiting, &fields, &rust))
+                .sum();
+            if count > 0 {
+                counts.insert(*binding, count);
+            }
+        }
+        counts
+    }
+
+    fn next_parameter_name(&self, params: &[GenericParam]) -> String {
+        let mut position = params.len();
+        loop {
+            let name = Self::parameter_name(position);
+            if !params.iter().any(|param| param.name.as_ref() == name) {
+                return name;
+            }
+            position += 1;
+        }
+    }
+
+    fn collect_text_vars(value: &Type, vars: &mut Vec<TypeVar>) {
+        match value {
+            Type::Text(var) if !vars.contains(var) => vars.push(*var),
+            Type::Function(_, parameters, result) => {
+                parameters
+                    .iter()
+                    .for_each(|parameter| Self::collect_text_vars(parameter, vars));
+                Self::collect_text_vars(result, vars);
+            }
+            Type::Named(_, arguments) => arguments
+                .iter()
+                .for_each(|argument| Self::collect_text_vars(argument, vars)),
+            Type::Ref(_, inner) | Type::Mut(_, inner) => Self::collect_text_vars(inner, vars),
+            _ => {}
+        }
+    }
+
+    fn add_hidden_text_parameters(
+        &mut self,
+        binding: BindingId,
+        mut types: Vec<Type>,
+        params: &mut Vec<GenericParam>,
+    ) -> Vec<Type> {
+        let mut vars = Vec::new();
+        for ty in &types {
+            let resolved = self.unifier.resolve(ty);
+            Self::collect_text_vars(&resolved, &mut vars);
+        }
+        vars.sort_by_key(|var| var.index());
+        vars.dedup();
+        let mut text_params = Vec::new();
+        for var in vars {
+            if !self.unifier.binds_no_value(var) {
+                continue;
+            }
+            let name = self.next_parameter_name(params);
+            let param = self.new_text_generic(&name, Vec::new());
+            self.unifier.bind(var, Type::Generic(param.id));
+            text_params.push(param.id);
+            params.push(param);
+        }
+        for ty in &mut types {
+            *ty = self.unifier.resolve(ty);
+            Self::pad_recursive_text_arguments(ty, binding, &text_params);
+        }
+        types
+    }
+
+    fn pad_recursive_text_arguments(
+        value: &mut Type,
+        binding: BindingId,
+        text_params: &[GenericId],
+    ) {
+        match value {
+            Type::Named(owner, arguments) => {
+                if *owner == binding {
+                    for generic in text_params {
+                        arguments.push(Type::Generic(*generic));
+                    }
+                }
+                for argument in arguments {
+                    Self::pad_recursive_text_arguments(argument, binding, text_params);
+                }
+            }
+            Type::Function(_, parameters, result) => {
+                for parameter in parameters {
+                    Self::pad_recursive_text_arguments(parameter, binding, text_params);
+                }
+                Self::pad_recursive_text_arguments(result, binding, text_params);
+            }
+            Type::Ref(_, inner) | Type::Mut(_, inner) => {
+                Self::pad_recursive_text_arguments(inner, binding, text_params);
+            }
+            _ => {}
+        }
+    }
+
     fn collect_struct(
         &mut self,
         binding: BindingId,
         binders: &[TypeBinder],
         fields: &[(crate::core::FieldLabel, TypeExpr)],
     ) -> Result<Option<Diagnostic>, Diagnostic> {
-        let params = self.struct_params(binders)?;
+        let mut params = self.struct_params(binders)?;
         let lifetimes = Self::lifetime_binders(binders);
         let scope: FxHashMap<BindingId, GenericId> = binders
             .iter()
@@ -1594,8 +1861,19 @@ impl TypeChecker {
             .zip(&params)
             .map(|(binder, param)| (binder.variable, param.id))
             .collect();
-        let (lowered, field_spans) = self.lower_fields(fields, &scope)?;
+        let outer_type = self.current_type;
+        self.current_type = Some(binding);
+        let (mut lowered, field_spans) = self.lower_fields(fields, &scope)?;
+        self.current_type = outer_type;
         let problem = FieldParameters::new(binders, &params).unused_in(&lowered);
+        let field_types = lowered
+            .iter()
+            .map(|(_, field_type)| field_type.clone())
+            .collect();
+        let resolved = self.add_hidden_text_parameters(binding, field_types, &mut params);
+        for ((_, field_type), resolved) in lowered.iter_mut().zip(resolved) {
+            *field_type = resolved;
+        }
         self.declarations.types.structs.add(
             binding,
             StructDefinition {
@@ -1624,7 +1902,7 @@ impl TypeChecker {
         rust: &Option<crate::core::EnumRust>,
         definer: &Option<crate::core::EnumDefiner>,
     ) -> Result<Vec<Diagnostic>, Diagnostic> {
-        let params = self.struct_params(binders)?;
+        let mut params = self.struct_params(binders)?;
         let lifetimes = Self::lifetime_binders(binders);
         let scope: FxHashMap<BindingId, GenericId> = binders
             .iter()
@@ -1634,6 +1912,8 @@ impl TypeChecker {
             .collect();
         let mut lowered = Vec::new();
         let mut problems = Vec::new();
+        let outer_type = self.current_type;
+        self.current_type = Some(binding);
         for variant in variants {
             let payload = self.lower_variant_payload(&variant.payload, &scope);
             let lowering = PayloadLowering::of(&payload.problems);
@@ -1651,7 +1931,31 @@ impl TypeChecker {
                 span: variant.span,
             });
         }
+        self.current_type = outer_type;
         problems.extend(self.check_enum_parameters_used(binding, binders, &params, variants));
+        if rust.is_none() {
+            let payload_types: Vec<Type> = lowered
+                .iter()
+                .flat_map(|variant| variant.payload_types().into_iter().cloned())
+                .collect();
+            let resolved = self.add_hidden_text_parameters(binding, payload_types, &mut params);
+            let mut resolved = resolved.into_iter();
+            for variant in &mut lowered {
+                match &mut variant.payload {
+                    VariantPayload::None => {}
+                    VariantPayload::Positional(types) => {
+                        for ty in types {
+                            *ty = resolved.next().expect("every payload was collected");
+                        }
+                    }
+                    VariantPayload::Named(fields) => {
+                        for (_, ty) in fields {
+                            *ty = resolved.next().expect("every payload was collected");
+                        }
+                    }
+                }
+            }
+        }
         if let Some(rust) = rust {
             self.declarations.types.rust_types.add(
                 binding,
@@ -3012,6 +3316,7 @@ impl TypeChecker {
         self.record_uses_through_impls();
         self.discharge_obligations(ObligationPass::Final);
         self.check_written_projections();
+        self.unifier.default_text();
         self.resolve_missing_annotations();
         self.label_parameter_calls(&program.modules);
         self.check_opaque_positions(&program.modules, &definitions);

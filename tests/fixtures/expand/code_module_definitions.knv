@@ -1,5 +1,5 @@
 (use code current-module list module-definitions
-          sorted-names string)
+          sorted-names str)
 
 (use code_module_definitions/source shown)
 

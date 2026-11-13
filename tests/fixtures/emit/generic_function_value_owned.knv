@@ -1,4 +1,4 @@
-(defn label ((name string) (count u16))
+(defn label ((name str) (count u16))
   (str name count))
 
 (defn apply-two (f a b) (f a b))

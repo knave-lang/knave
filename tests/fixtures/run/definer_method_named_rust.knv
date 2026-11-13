@@ -2,7 +2,7 @@
   :age i64)
 
 (deftrait spoken
-  (rust (fn ((ref self)) string)))
+  (rust (fn ((ref self)) str)))
 
 (impl spoken crab
   (rust (self) (str "crab")))

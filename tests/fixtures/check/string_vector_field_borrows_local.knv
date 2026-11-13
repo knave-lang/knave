@@ -3,7 +3,7 @@
 
 (defn build (line)
   (local model (str line))
-  (->car :models (vec (as-str model))))
+  (->car :models (vec model)))
 
 (defn main ()
   (println (len (:models (build "Leaf")))))

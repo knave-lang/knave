@@ -8,7 +8,7 @@
 
 (defrecord point (x i64) (y i64))
 
-(defrecord pet (name string) (legs u32))
+(defrecord pet (name str) (legs u32))
 
 (defn double (n) (* n 2))
 

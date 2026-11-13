@@ -3,7 +3,7 @@
   :y i64)
 
 (defstruct user
-  :name string)
+  :name str)
 
 (defstruct (holder a)
   :item a)

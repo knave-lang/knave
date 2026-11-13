@@ -1,5 +1,5 @@
 (defn count-words (text)
-  (reduce (split (as-str text) " ") (sorted-map)
+  (reduce (split text " ") (sorted-map)
     (fn (counts word)
       (update counts
               (str word)

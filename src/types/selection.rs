@@ -252,6 +252,7 @@ mod tests {
                     params: vec![GenericParam {
                         id: item,
                         name: "item".into(),
+                        text: false,
                         bounds: Vec::new(),
                     }],
                     body: self.pair(Type::Generic(item), Type::Generic(item)),

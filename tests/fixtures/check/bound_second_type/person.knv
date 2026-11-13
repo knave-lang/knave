@@ -1,4 +1,4 @@
 (export person)
 
 (defstruct person
-  :name string)
+  :name str)

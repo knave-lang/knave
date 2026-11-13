@@ -1,5 +1,5 @@
 (defn count-words (text)
-  (reduce (split (as-str text) " ") (hash-map)
+  (reduce (split text " ") (hash-map)
     (fn (counts word)
       (update counts
               (str word)

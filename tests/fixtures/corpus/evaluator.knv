@@ -30,7 +30,7 @@
 
 (type evaluate-script
   (fn ((ref str))
-    (result (sorted-map string i64) string)))
+    (result (sorted-map str i64) str)))
 
 (defn evaluate-script (source)
   (local tokens (try (tokenize source)))
@@ -39,8 +39,7 @@
   (execute (ref statements)))
 
 (type report-names
-  (fn ((ref (sorted-map string i64)))
-    unit))
+  (fn ((ref (sorted-map str i64))) unit))
 
 (defn report-names (names)
   (for-each (iter names)

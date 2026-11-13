@@ -1,5 +1,5 @@
 (defstruct shelf
-  :label string
+  :label str
   :items (vec i64))
 
 (defn stock ()

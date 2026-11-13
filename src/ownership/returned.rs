@@ -177,6 +177,7 @@ impl<'p> ReturnedBorrows<'p> {
 
     fn display(&self) -> TypeDisplay<'p> {
         TypeDisplay::new(&self.program.bindings, &self.program.generics)
+            .with_hidden_text(&self.program.declarations)
     }
 }
 

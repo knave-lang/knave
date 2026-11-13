@@ -24,7 +24,7 @@
 
 (deftrait cloned-trait
   (rust "Clone")
-  (method mark (fn ((ref self)) string))
+  (method mark (fn ((ref self)) str))
   (structural :struct ""
               :field ""
               :variant ""
@@ -33,7 +33,7 @@
 
 (deftrait repeated-clause
   (rust "crate::rt::Repeated")
-  (method trace (fn ((ref self)) string))
+  (method trace (fn ((ref self)) str))
   (structural :struct ""
               :field ""
               :variant ""
@@ -48,7 +48,7 @@
 (deftrait number-again
   (rust "crate::rt::Number")
   (method mark-number
-    (fn ((ref self)) string))
+    (fn ((ref self)) str))
   (structural :struct ""
               :field ""
               :variant ""
@@ -58,7 +58,7 @@
 (deftrait first-octal
   (rust "std::fmt::Octal")
   (method write-first
-    (fn ((ref self)) string))
+    (fn ((ref self)) str))
   (structural :struct ""
               :field ""
               :variant ""
@@ -68,7 +68,7 @@
 (deftrait second-octal
   (rust "std::fmt::Octal")
   (method write-second
-    (fn ((ref self)) string))
+    (fn ((ref self)) str))
   (structural :struct ""
               :field ""
               :variant ""

@@ -4,4 +4,4 @@
   :content item
   :count i64)
 
-(struct query (where string))
+(struct query (where str))

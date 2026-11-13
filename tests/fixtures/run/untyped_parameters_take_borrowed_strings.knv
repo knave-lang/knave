@@ -3,7 +3,7 @@
 
 (defn announce ((make (ref str)))
   (local model (str "Leaf"))
-  (println (longer make (as-str model))))
+  (println (longer make model)))
 
 (defn main ()
   (announce "Nissan")

@@ -10,6 +10,5 @@
 
 (defn main ()
   (local t
-    (last-of 2
-             (first-letter (as-str (announced "a")))))
+    (last-of 2 (first-letter (announced "a"))))
   (println t))

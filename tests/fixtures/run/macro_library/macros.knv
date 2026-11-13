@@ -1,6 +1,6 @@
 (use code concat empty? field-keyword first len list nth
-          number-add prepend rest same-binding? string
-          symbol symbol-name symbol? value-eq)
+          number-add prepend rest same-binding? str symbol
+          symbol-name symbol? value-eq)
 
 (use prelude/macros map-list)
 
@@ -115,8 +115,7 @@
     (and (symbol? field-type)
          (value-eq (symbol-name field-type) "string"))))
 
-(defn text= (left right)
-  (= (as-str left) (as-str right)))
+(defn text= (left right) (= left right))
 
 (def field-texts
   (fn (fields record)

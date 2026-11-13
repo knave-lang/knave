@@ -26,6 +26,6 @@
   (fill! (mut spare) (mut years) "filled" 3)
   (println (len spare) " " (len years))
   (local model (str "Leaf"))
-  (println (alternate "Nissan" (as-str model) 3))
-  (println (settle "Nissan" (as-str model) 2))
+  (println (alternate "Nissan" model 3))
+  (println (settle "Nissan" model 2))
   (println (swap-years 2019 2024 3)))

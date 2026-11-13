@@ -19,7 +19,7 @@
   (println (the f64 2.5))
   (println (describe (the bool true)
                      (the (ref str) "Leaf")))
-  (println (the string (str "Leaf")))
+  (println (the str (str "Leaf")))
   (println (zero))
   (println (pick false))
   (println (count-down 3))

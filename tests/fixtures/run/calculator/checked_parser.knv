@@ -17,7 +17,7 @@
 
 (type parse-expression
   (fn ((ref (vec token)) usize)
-    (result parsed string)))
+    (result parsed str)))
 
 (defn parse-expression (tokens position)
   (then-ok (parse-term tokens position)
@@ -27,7 +27,7 @@
   (local next (:next left))
   (match (get tokens next)
     ((some (symbol text))
-     (match (as-str text)
+     (match text
        ("+"
         (then-ok (parse-term tokens (+ next 1))
           (fn (right)
@@ -47,7 +47,7 @@
   (local next (:next left))
   (match (get tokens next)
     ((some (symbol text))
-     (match (as-str text)
+     (match text
        ("*"
         (then-ok (parse-factor tokens (+ next 1))
           (fn (right)
@@ -66,7 +66,7 @@
 (defn parse-factor (tokens position)
   (match (get tokens position)
     ((some (symbol text))
-     (match (as-str text)
+     (match text
        ("("
         (then-ok (parse-expression tokens (+ position 1))
           (fn (inner) (expect-close tokens inner))))
@@ -79,7 +79,7 @@
   (local next (:next inner))
   (match (get tokens next)
     ((some (symbol text))
-     (match (as-str text)
+     (match text
        (")" (ok (->parsed (:value inner) (+ next 1))))
        (_ (err (str "expected `)` at token " next)))))
     (_ (err (str "expected `)` at token " next)))))
@@ -90,5 +90,5 @@
 
 (defn number-value (text)
   (local (parsed (result i64 _))
-    (parse (as-str text)))
+    (parse text))
   (if (ok? parsed) (unwrap-ok parsed) 0))

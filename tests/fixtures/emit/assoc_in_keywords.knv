@@ -7,11 +7,11 @@
   :end point)
 
 (defstruct badge
-  :text string
+  :text str
   :at point)
 
 (defstruct garage
-  :name string
+  :name str
   :badge badge)
 
 (defn load-line ()

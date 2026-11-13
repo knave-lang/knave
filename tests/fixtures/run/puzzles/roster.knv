@@ -3,8 +3,8 @@
 (export solve-roster)
 
 (defstruct employee
-  :name string
-  :dept string
+  :name str
+  :dept str
   :score u32)
 
 (def roster
@@ -45,7 +45,7 @@
 (defn departments (people)
   (local names
     (collect (map (iter people)
-               (fn (person) (as-str (:dept person))))))
+               (fn (person) (:dept person)))))
   (sort! names)
   (dedup! names)
   names)
@@ -59,16 +59,13 @@
                 (:name (expect best "every department has a member")))))
 
 (defn in-dept? (person dept)
-  (= (as-str (:dept person)) dept))
+  (= (:dept person) dept))
 
 (defn present? (people name)
   (any? (iter people)
-    (fn (person)
-      (= (as-str (:name person)) name))))
+    (fn (person) (= (:name person) name))))
 
 (defn same-employee? (left right)
-  (and (= (as-str (:name left))
-          (as-str (:name right)))
-       (= (as-str (:dept left))
-          (as-str (:dept right)))
+  (and (= (:name left) (:name right))
+       (= (:dept left) (:dept right))
        (= (:score left) (:score right))))

@@ -19,8 +19,7 @@ impl Reading {
     pub const CHANGER_CALL: Self = Self::of(ValueKind::CHANGER, "({source})");
     pub const VECTOR: Self = Self::of(ValueKind::NUMBERS, "{source}");
     pub const CAR: Self = Self::of(ValueKind::CAR, "{source}");
-    pub const TAG_OF_MAKE: Self =
-        Self::of(ValueKind::CAR, "(->tag :label (as-str (:make {source})))");
+    pub const TAG_OF_MAKE: Self = Self::of(ValueKind::CAR, "(->tag :label (:make {source}))");
     pub const HOLDING_BORROW: Self = Self::of(ValueKind::ELEMENT_BORROW, "(vec {source})");
     pub const LENGTH_READER: Self = Self::of(ValueKind::NUMBERS, "(fn () (len {source}))");
     pub const PUSHING_CLOSURE: Self = Self::of(ValueKind::NUMBERS, "(fn () (push! {source} 7))");

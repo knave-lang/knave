@@ -268,7 +268,7 @@ struct PrimitiveRow {
 }
 
 impl PrimitiveType {
-    const ROWS: [PrimitiveRow; 19] = [
+    const ROWS: [PrimitiveRow; 18] = [
         PrimitiveRow {
             primitive: PrimitiveType::Bool,
             name: "bool",
@@ -282,11 +282,6 @@ impl PrimitiveType {
         PrimitiveRow {
             primitive: PrimitiveType::Str,
             name: "str",
-            integer_range: None,
-        },
-        PrimitiveRow {
-            primitive: PrimitiveType::String,
-            name: "string",
             integer_range: None,
         },
         PrimitiveRow {
@@ -371,11 +366,17 @@ impl PrimitiveType {
     }
 
     pub fn name(self) -> &'static str {
-        self.row().name
+        match self {
+            PrimitiveType::String => "str",
+            other => other.row().name,
+        }
     }
 
     pub fn integer_range(self) -> Option<(i128, i128)> {
-        self.row().integer_range
+        match self {
+            PrimitiveType::String => None,
+            other => other.row().integer_range,
+        }
     }
 
     pub fn is_integer(self) -> bool {

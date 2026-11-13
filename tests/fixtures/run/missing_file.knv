@@ -1,4 +1,4 @@
 (defn main ()
-  (match (slurp (as-str (unwrap (get (command-line-args) 0))))
-    ((ok text) (println (count (lines (as-str text)))))
+  (match (slurp (unwrap (get (command-line-args) 0)))
+    ((ok text) (println (count (lines text))))
     ((err error) (println (str "cannot read: " error)))))

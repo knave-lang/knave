@@ -1,8 +1,8 @@
 (defstruct page
-  :title string)
+  :title str)
 
 (defstruct entry
-  :name string
+  :name str
   :tag (ref str))
 
 (type make-entry (fn ((ref str)) entry))
@@ -24,15 +24,12 @@
 
 (defn lifted-if (flag name)
   (local t
-    (if flag
-      (first-letter (as-str (str name "-if")))
-      "none"))
+    (if flag (first-letter (str name "-if")) "none"))
   (println t))
 
 (defn explicit-if (flag name)
   (local text (str name "-if"))
-  (local t
-    (if flag (first-letter (as-str text)) "none"))
+  (local t (if flag (first-letter text) "none"))
   (println t))
 
 (type lifted-match
@@ -41,7 +38,7 @@
 (defn lifted-match (found)
   (local t
     (match found
-      ((some name) (first-letter (as-str (str name "-match"))))
+      ((some name) (first-letter (str name "-match")))
       (none "none")))
   (println t))
 
@@ -52,7 +49,7 @@
   (local text (str (unwrap-or found "") "-match"))
   (local t
     (match found
-      ((some _) (first-letter (as-str text)))
+      ((some _) (first-letter text))
       (none "none")))
   (println t))
 
@@ -60,27 +57,26 @@
   (local t
     (do
       (println "in")
-      (first-letter (as-str (str name "-do")))))
+      (first-letter (str name "-do"))))
   (println t))
 
 (defn explicit-block (name)
   (println "in")
   (local text (str name "-do"))
-  (local t (first-letter (as-str text)))
+  (local t (first-letter text))
   (println t))
 
 (defn lifted-field ()
   (local t
-    (first-letter (as-str (:title (make-page "field")))))
+    (first-letter (:title (make-page "field"))))
   (println t))
 
 (defn explicit-field ()
   (local made (make-page "field"))
-  (local t
-    (first-letter (as-str (:title made))))
+  (local t (first-letter (:title made)))
   (println t))
 
-(type announced (fn ((ref str)) string))
+(type announced (fn ((ref str)) str))
 
 (defn announced (text)
   (println text)
@@ -89,14 +85,13 @@
 (defn lifted-else ()
   (local t
     (if false
-      (first-letter (as-str (announced "then")))
-      (first-letter (as-str (announced "else")))))
+      (first-letter (announced "then"))
+      (first-letter (announced "else"))))
   (println t))
 
 (defn explicit-else ()
   (local text (announced "else"))
-  (local t
-    (if false "t" (first-letter (as-str text))))
+  (local t (if false "t" (first-letter text)))
   (println t))
 
 (defn lifted-scrutinee ()
@@ -113,13 +108,12 @@
   (println t))
 
 (defn lifted-borrowing-field ()
-  (local name
-    (as-str (:name (make-entry "eve"))))
+  (local name (:name (make-entry "eve")))
   (println name))
 
 (defn explicit-borrowing-field ()
   (local made (make-entry "eve"))
-  (local name (as-str (:name made)))
+  (local name (:name made))
   (println name))
 
 (defn main ()

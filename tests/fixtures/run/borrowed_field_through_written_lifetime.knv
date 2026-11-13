@@ -11,7 +11,7 @@
 
 (defn build ((make (ref str)) year)
   (local other (str "Leaf"))
-  (->car :make (first make (as-str other)) :year year))
+  (->car :make (first make other) :year year))
 
 (defn main ()
   (println (:make (build "Nissan" 2024))))

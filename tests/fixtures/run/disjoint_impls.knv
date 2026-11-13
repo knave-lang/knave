@@ -1,5 +1,5 @@
 (trait describe
-  (describe-it (fn ((ref self)) string)))
+  (describe-it (fn ((ref self)) str)))
 
 (defstruct (duo a b)
   :l a

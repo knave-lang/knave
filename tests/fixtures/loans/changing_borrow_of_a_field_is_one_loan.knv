@@ -1,0 +1,9 @@
+(defstruct car
+  :make string
+  :year i64)
+
+(defn main ()
+  (local c (->car :make (str "a") :year 1))
+  (local r (mut (:make c)))
+  (println (:year c))
+  (println r))

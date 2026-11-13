@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+assertion_line: 107
+expression: reports.report(path)
+input_file: tests/fixtures/loans/changing_borrow_of_a_field_is_one_loan.knv
+---
+main
+  7:17 change `c.make`: no live loan
+  8:12 borrow `c.year`: mut `c.make` lent at 7:17, held by `r`
+  9:12 change `r`: mut `c.make` lent at 7:17, held by `r`

@@ -13,8 +13,8 @@ impl<'p> LoanRules<'p> {
         }
     }
 
-    pub fn moves(&self, value: &TypedExpr) -> bool {
-        !self.copy.is_copy(&value.ty)
+    pub fn moves(&self, ty: &Type) -> bool {
+        !self.copy.is_copy(ty)
     }
 
     pub fn is_template(&self, callee: &TypedExpr) -> bool {

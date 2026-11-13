@@ -118,11 +118,16 @@ impl<'w> BodyWalk<'w> {
 
     fn matched(&mut self, matched: &'w TypedMatch, at: PointId) -> Walked {
         let value = self.expr(&matched.value, at);
+        let decided = self.builder.join(&[value.end]);
+        if let Some(place) = self.moved_scrutinee(matched) {
+            let moved = PlaceAccess::new(place, &Move, matched.value.span);
+            self.builder.lender(decided).access(moved);
+        }
         let arms: Vec<Walked> = matched
             .arms
             .iter()
             .map(|arm| {
-                let bound = self.builder.join(&[value.end]);
+                let bound = self.builder.join(&[decided]);
                 for binder in arm.pattern.binders() {
                     self.builder.define(bound, binder, &value.held);
                 }
@@ -130,6 +135,16 @@ impl<'w> BodyWalk<'w> {
             })
             .collect();
         self.joined(arms)
+    }
+
+    fn moved_scrutinee(&self, matched: &'w TypedMatch) -> Option<LoanPlace> {
+        let takes_a_value = matched
+            .arms
+            .iter()
+            .flat_map(|arm| arm.pattern.binders())
+            .any(|binder| self.rules.moves(&binder.ty));
+        LoanPlace::of(&matched.value)
+            .filter(|_| takes_a_value && self.rules.moves(&matched.value.ty))
     }
 
     fn joined(&mut self, branches: impl IntoIterator<Item = Walked>) -> Walked {
@@ -169,7 +184,9 @@ impl<'w> ExpressionWalk<'w> for BodyWalk<'w> {
                 TypedBodyItem::Let(binder, value) => {
                     let bound = self.expr(value, walked.end);
                     let defined = self.builder.join(&[bound.end]);
-                    if let Some(place) = LoanPlace::of(value).filter(|_| self.rules.moves(value)) {
+                    if let Some(place) =
+                        LoanPlace::of(value).filter(|_| self.rules.moves(&value.ty))
+                    {
                         let moved = PlaceAccess::new(place, &Move, value.span);
                         self.builder.lender(defined).access(moved);
                     }

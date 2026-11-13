@@ -49,7 +49,7 @@ impl dyn Passing {
             Borrow::Passthrough | Borrow::Collapse(_) if argument.value.ty.is_reference() => {
                 <dyn Passing>::through_reference(parameter)
             }
-            Borrow::None if rules.moves(&argument.value) => &Moves,
+            Borrow::None if rules.moves(&argument.value.ty) => &Moves,
             _ => &Holds,
         }
     }

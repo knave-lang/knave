@@ -1,8 +1,0 @@
----
-source: tests/stages.rs
-assertion_line: 102
-expression: reports.report(path)
-input_file: tests/fixtures/check/closure_moves_capture.knv
----
-(type apply (fn ((fn (i64) str)) str))
-(type main (fn () unit))

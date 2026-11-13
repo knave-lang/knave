@@ -3,6 +3,8 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::result_ties::ResultTies;
+use super::ty::Scheme;
 use super::typed::{TypedExpr, TypedExprKind, TypedLeaf};
 use crate::core::{BindingId, Conversion, ParsedTemplate, Piece, ReferenceKind};
 
@@ -12,16 +14,29 @@ pub type Conversions = Rc<[(usize, Conversion)]>;
 pub struct TemplateBorrows {
     templates: FxHashMap<BindingId, ParsedTemplate>,
     conversions: FxHashMap<BindingId, Conversions>,
+    result_ties: FxHashMap<BindingId, ResultTies>,
     inline: RefCell<FxHashMap<Rc<str>, Option<ParsedTemplate>>>,
 }
 
 impl TemplateBorrows {
-    pub fn register(&mut self, binding: BindingId, template: &str) {
+    pub fn register(&mut self, binding: BindingId, template: &str, scheme: &Scheme) {
         if let Ok(parsed) = ParsedTemplate::parse(template) {
             if let Some(conversions) = Self::written_conversions(&parsed) {
                 self.conversions.insert(binding, conversions);
             }
             self.templates.insert(binding, parsed);
+        }
+        if let Some(ties) = ResultTies::of(scheme) {
+            self.result_ties.insert(binding, ties);
+        }
+    }
+
+    pub fn result_ties(&self, callee: &TypedExpr) -> Option<&[usize]> {
+        match &callee.kind {
+            TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
+                self.result_ties.get(binding).map(ResultTies::parameters)
+            }
+            _ => None,
         }
     }
 

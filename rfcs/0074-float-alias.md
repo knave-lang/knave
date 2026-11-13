@@ -71,6 +71,8 @@ Both names bind `KernelType::Primitive(F64)`, but each has its own `BindingId`.
   `expand`.
 - One canonical documentation page serves both names: `(doc f64)` shows the
   `float` page.
+- A trait implementor list names the concrete primitive `f64`, because it
+  enumerates the types a trait accepts rather than printing an inferred type.
 
 This is the recommended option.
 
@@ -133,7 +135,7 @@ The pull request carrying this RFC contains the complete implementation:
   alias. The doc lookup falls back from an alias to the note of the term with
   the same binding, so `f64` resolves to the same page without a second one.
 - Regression tests pin the shared binding, shared page, named exports, canonical
-  `infer` text, diagnostics, prompt output and emit text.
+  `infer` text, diagnostics, implementor names, prompt output and emit text.
 
 The prototype does not change the Rust runtime, the emitted Rust, or the
 generator's findings.

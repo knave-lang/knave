@@ -8,7 +8,7 @@ error[L0404]: `(vec i64)` does not implement `from-str`
 5 | (deftask total ((xs (vec i64))) (println (len xs)))
   |                  ^^ this needs `from-str`
   |
-  = note: `from-str` is implemented for: bool, char, string, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, float
+  = note: `from-str` is implemented for: bool, char, string, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
 ---
 error[L0404]: `(ref str)` does not implement `from-str`
  --> tasks/hi.knv:5:14
@@ -16,7 +16,7 @@ error[L0404]: `(ref str)` does not implement `from-str`
 5 | (deftask hi (who) (greet-text who))
   |              ^^^ this needs `from-str`
   |
-  = note: `from-str` is implemented for: bool, char, string, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, float
+  = note: `from-str` is implemented for: bool, char, string, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
 ---
 error[L0404]: `i64` does not implement `task-outcome`
  --> tasks/add.knv:5:10
@@ -47,4 +47,4 @@ error[L0404]: `string` does not implement `number`
 5 | (deftask area (side) (println (square side)))
   |                ^^^^ this needs `number`
   |
-  = note: `number` is implemented for: i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, float
+  = note: `number` is implemented for: i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64

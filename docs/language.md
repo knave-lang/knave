@@ -82,7 +82,7 @@ These forms are the compiler's complete vocabulary. Every other form is a macro 
 | `use` | `(use module name...)` | path | module: module path. names: binders. |
 | `export` | `(export name...)` | `pub` | names: references in every namespace. |
 
-In type positions, the kernel provides `fn`, `fn-mut`, `fn-once`, `ref`, `mut`, `where`, `with`, `_`, and the primitive types `bool char str string unit i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32 float f64`. `float` and `f64` name the same type, and the compiler prints `float`.
+In type positions, the kernel provides `fn`, `fn-mut`, `fn-once`, `ref`, `mut`, `where`, `with`, `_`, and the primitive types `bool char str string unit i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32 float f64`. `float` and `f64` name the same type. The compiler prints `float` in type text, while a trait implementor list names the concrete primitive `f64`.
 
 In expression positions, the kernel provides `ref`, `mut` and `deref`, and the constants `true` and `false`. The constants are kernel constants, not prelude definitions. Macro code and program code then see the same booleans, so `if`, `and` and `or` work in both.
 

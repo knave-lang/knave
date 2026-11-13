@@ -2,7 +2,7 @@ use rustc_hash::FxHashMap;
 
 use super::projection::ProjectionTable;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
-use crate::core::{BindingArena, BindingId};
+use crate::core::{BindingArena, BindingId, PrimitiveType};
 
 pub struct TypeDisplay<'a> {
     bindings: &'a BindingArena,
@@ -29,6 +29,23 @@ impl<'a> TypeDisplay<'a> {
             projections: Some(projections),
             ..self
         }
+    }
+
+    pub fn show_implementor(&self, shown: &Type) -> String {
+        match shown {
+            Type::Primitive(PrimitiveType::F64) => "f64".to_string(),
+            _ => self.show(shown),
+        }
+    }
+
+    pub fn scheme_implementor(&self, scheme: &Scheme) -> String {
+        if scheme.params.is_empty()
+            && scheme.lifetimes.is_empty()
+            && matches!(scheme.body, Type::Primitive(PrimitiveType::F64))
+        {
+            return "f64".to_string();
+        }
+        self.scheme(scheme)
     }
 
     pub fn show(&self, shown: &Type) -> String {

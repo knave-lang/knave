@@ -54,7 +54,7 @@ struct RustTraitEntries {
     implementors: Vec<RustTraitImplementor>,
 }
 
-enum PendingItem {
+pub(super) enum PendingItem {
     Def {
         binding: BindingId,
         annotation: Option<Form>,
@@ -69,6 +69,7 @@ enum PendingItem {
     Trait(BindingId, Form),
     Impl(crate::scope::Scope, Form),
     Export(Form),
+    Use(crate::core::Import),
 }
 
 impl Expander<'_> {
@@ -281,19 +282,6 @@ impl Expander<'_> {
                 self.register_module_definition(definition, form, context)
             }
             _ => unreachable!("the caller matches another definition form"),
-        }
-    }
-
-    fn register_module_definition(
-        &mut self,
-        definition: DefinitionForm,
-        form: Form,
-        context: &mut DefinitionContext,
-    ) -> Result<Option<PendingItem>, Diagnostic> {
-        match definition {
-            DefinitionForm::Use => self.import(&form, context).map(|()| None),
-            DefinitionForm::Export => Ok(Some(PendingItem::Export(form))),
-            _ => unreachable!("only `use` and `export` reach this helper"),
         }
     }
 
@@ -593,6 +581,10 @@ impl Expander<'_> {
             PendingItem::Struct(binding, form) => self.lower_struct(binding, &form, core),
             PendingItem::RustTrait(binding, form) => self.lower_rust_trait(binding, &form, core),
             PendingItem::RustType(binding, form) => self.lower_rust_type(binding, &form, core),
+            PendingItem::Use(import) => {
+                core.lint_facts.record_import(import);
+                Ok(())
+            }
             other => self.lower_other_pending(module, other, core),
         }
     }

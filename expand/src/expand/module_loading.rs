@@ -5,14 +5,15 @@ use super::builtin_export::BuiltinExport;
 use super::context::DefinitionContext;
 use super::imported_members::{ImportedMembers, MemberTables};
 use super::local_file_diagnosis::LocalFileDiagnosis;
+use super::module_body::PendingItem;
 use super::module_load_site::ModuleLoadSite;
 use super::problems::{ExpandProblems, MissingExportRemedy};
 use super::shape::Shape;
 use super::text_module_load::TextModuleLoad;
 use super::text_module_record::TextModuleRecord;
 use crate::core::{
-    BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, KernelConstants, KernelForm,
-    KernelType, ModuleId, ModulePath, Namespace, UnnamedPartPath,
+    BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, Import, ImportedName,
+    KernelConstants, KernelForm, KernelType, ModuleId, ModulePath, Namespace, UnnamedPartPath,
 };
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
@@ -25,6 +26,19 @@ use crate::stack::DeepRecursion;
 
 impl Expander<'_> {
     const NAMESPACES: [Namespace; 2] = [Namespace::Value, Namespace::Type];
+
+    pub(super) fn register_module_definition(
+        &mut self,
+        definition: DefinitionForm,
+        form: Form,
+        context: &mut DefinitionContext,
+    ) -> Result<Option<PendingItem>, Diagnostic> {
+        match definition {
+            DefinitionForm::Use => Ok(self.import(&form, context)?.map(PendingItem::Use)),
+            DefinitionForm::Export => Ok(Some(PendingItem::Export(form))),
+            _ => unreachable!("only `use` and `export` reach this helper"),
+        }
+    }
 
     pub(super) fn load_module(
         &mut self,
@@ -131,11 +145,11 @@ impl Expander<'_> {
         self.modules.register(path, scopes)
     }
 
-    pub(super) fn import(
+    fn import(
         &mut self,
         form: &Form,
         context: &DefinitionContext,
-    ) -> Result<(), Diagnostic> {
+    ) -> Result<Option<Import>, Diagnostic> {
         let shape = Shape::new(KernelForm::Definition(DefinitionForm::Use), form);
         let items = shape.at_least(2)?;
         let written =
@@ -145,7 +159,12 @@ impl Expander<'_> {
             })?;
         let path = self.resolve_use(&written, items[1].span())?;
         let target = self.load_module(&path, items[1].span())?;
-        self.import_names(target, &path, &items[2..], &shape, context)
+        let names = self.import_names(target, &path, &items[2..], &shape, context)?;
+        let records_imports = self
+            .current_module
+            .is_some_and(|module| ModuleSources::is_written(self.modules.get(module).path()));
+        let span = form.span();
+        Ok(records_imports.then_some(Import { span, names }))
     }
 
     fn import_names(
@@ -155,16 +174,22 @@ impl Expander<'_> {
         names: &[Form],
         shape: &Shape<'_>,
         context: &DefinitionContext,
-    ) -> Result<(), Diagnostic> {
+    ) -> Result<Vec<ImportedName>, Diagnostic> {
+        let mut imported = Vec::with_capacity(names.len());
         for name in names {
             let mut binder = name.clone();
             context.strip_use_sites(&mut binder);
             let symbol = binder.as_symbol().ok_or_else(|| shape.malformed(name))?;
-            if let Err(diagnostic) = self.import_name(target, path, symbol, name.span()) {
-                self.problems.report(diagnostic);
+            match self.import_name(target, path, symbol, name.span()) {
+                Ok(bindings) => imported.push(ImportedName {
+                    name: symbol.shared_name(),
+                    span: name.span(),
+                    bindings,
+                }),
+                Err(diagnostic) => self.problems.report(diagnostic),
             }
         }
-        Ok(())
+        Ok(imported)
     }
 
     fn resolve_use(&mut self, written: &ModulePath, span: Span) -> Result<ModulePath, Diagnostic> {
@@ -309,11 +334,13 @@ impl Expander<'_> {
         path: &ModulePath,
         symbol: &Symbol,
         span: Span,
-    ) -> Result<(), Diagnostic> {
-        if !self.bind_exported_namespaces(target, symbol, span)? {
+    ) -> Result<Vec<BindingId>, Diagnostic> {
+        let bindings = self.bind_exported_namespaces(target, symbol, span)?;
+        if bindings.is_empty() {
             return Err(self.missing_export(target, path, symbol, span));
         }
-        self.import_members(target, symbol, span)
+        self.import_members(target, symbol, span)?;
+        Ok(bindings)
     }
 
     fn bind_exported_namespaces(
@@ -321,15 +348,15 @@ impl Expander<'_> {
         target: ModuleId,
         symbol: &Symbol,
         span: Span,
-    ) -> Result<bool, Diagnostic> {
-        let mut found = false;
+    ) -> Result<Vec<BindingId>, Diagnostic> {
+        let mut bindings = Vec::new();
         for namespace in Self::NAMESPACES {
             if let Some(binding) = self.modules.get(target).exported(symbol.name(), namespace) {
                 self.bind_import(symbol, namespace, binding, span)?;
-                found = true;
+                bindings.push(binding);
             }
         }
-        Ok(found)
+        Ok(bindings)
     }
 
     fn import_members(
@@ -445,5 +472,43 @@ impl Expander<'_> {
                 })
                 .collect(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::core::ModulePath;
+    use crate::expand::{Expander, Program};
+    use crate::modules::ModuleSources;
+    use crate::source::SourceMap;
+
+    struct ImportFixture;
+
+    impl ImportFixture {
+        const MODULE: &str = "fixture";
+
+        fn expand(text: &str) -> Program {
+            let mut sources = SourceMap::default();
+            let entry = sources.add(Self::MODULE, text);
+            let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
+            Expander::new(&mut sources, module_sources)
+                .expand(ModulePath::new(Self::MODULE), entry)
+                .unwrap_or_else(|_| panic!("the program expands"))
+        }
+    }
+
+    #[test]
+    fn a_written_module_records_its_imports_and_the_prelude_none() {
+        let program = ImportFixture::expand("(use code value-eq)\n(defn main () (println 1))");
+        assert_eq!(program.entry_module().lint_facts.imports().len(), 1);
+        assert!(
+            program
+                .modules
+                .iter()
+                .filter(|module| ModuleSources::is_embedded_prelude(&module.path))
+                .all(|module| module.lint_facts.imports().is_empty())
+        );
     }
 }

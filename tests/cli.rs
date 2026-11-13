@@ -2357,7 +2357,9 @@ fn doc_explains_the_code_of_a_lint_rule_by_the_rule_s_docstring() {
     let sandbox = Sandbox::new("doc_rule_code");
     let doc = sandbox.compiler(&["doc", "--color", "never", "L0801"]);
     let page = doc.assert_exit_code(0).stdout();
-    assert!(page.starts_with("L0801: unused binding\n\nReports a name that a `local` binds"));
+    assert!(
+        page.starts_with("L0801: unused binding\n\nReports a local binding that nothing reads")
+    );
     assert!(page.contains("## Erroneous example\n\n```knave\n"));
 }
 
@@ -2385,6 +2387,17 @@ fn doc_finds_a_lint_rule_by_its_name() {
     let doc = sandbox.compiler(&["doc", "--color", "never", "unused-binding"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some("(unused-binding table)"));
+}
+
+#[test]
+fn doc_explains_each_lint_rule_s_code_and_finds_it_by_its_name() {
+    let sandbox = Sandbox::new("doc_parameter_rule");
+    let code_page = sandbox.compiler(&["doc", "--color", "never", "L0806"]);
+    let page = code_page.assert_exit_code(0).stdout();
+    assert!(page.starts_with("L0806: unused parameter\n\nReports a function parameter"));
+    let name_page = sandbox.compiler(&["doc", "--color", "never", "unused-parameter"]);
+    let page = name_page.assert_exit_code(0).stdout();
+    assert_eq!(page.lines().next(), Some("(unused-parameter table)"));
 }
 
 #[test]
@@ -3011,7 +3024,9 @@ fn doc_write_errors_writes_a_lint_rule_s_docstring_as_its_code_page() {
     let index = sandbox.contents("doc/errors.md");
     assert!(index.contains("| [L0801](errors/L0801.md) | unused binding |\n"));
     let page = sandbox.contents("doc/errors/L0801.md");
-    assert!(page.starts_with("# L0801: unused binding\n\nReports a name that a `local` binds"));
+    assert!(
+        page.starts_with("# L0801: unused binding\n\nReports a local binding that nothing reads")
+    );
     assert!(page.contains("## Erroneous example\n\n```knave\n"));
 }
 

@@ -1,40 +1,28 @@
 use std::rc::Rc;
 
-use super::ty::{Bound, Scheme, Type};
-use crate::core::{BindingId, RustTraitDeclaration};
-
-pub struct Implementor {
-    pub scheme: Scheme,
-    pub argument: Option<Type>,
-}
+use super::trait_rows_reach::{LoweredRows, TraitRowsReach};
+use crate::core::RustTraitDeclaration;
 
 pub struct RustTrait {
     pub path: Rc<str>,
     pub help: Option<Rc<str>>,
     pub associated: Option<Rc<str>>,
-    rows: TraitRowsLowering,
-}
-
-enum TraitRowsLowering {
-    Unreached,
-    Lowered(LoweredRows),
+    rows: TraitRowsReach,
 }
 
 impl RustTrait {
-    const LEFT_OUT: &'static str = "the trait reach left out a trait the program uses";
-
     pub fn unreached(declaration: &RustTraitDeclaration) -> Self {
         Self {
             path: Rc::clone(&declaration.path),
             help: declaration.help.clone(),
             associated: None,
-            rows: TraitRowsLowering::Unreached,
+            rows: TraitRowsReach::unreached(),
         }
     }
 
     pub fn lowered(declaration: &RustTraitDeclaration, rows: LoweredRows) -> Self {
         Self {
-            rows: TraitRowsLowering::Lowered(rows),
+            rows: TraitRowsReach::lowered(rows),
             ..Self::unreached(declaration)
         }
     }
@@ -44,113 +32,15 @@ impl RustTrait {
             path,
             help: None,
             associated,
-            rows: TraitRowsLowering::Lowered(rows),
+            rows: TraitRowsReach::lowered(rows),
         }
     }
 
-    pub fn rows(&self) -> &LoweredRows {
-        self.lowered_rows().expect(Self::LEFT_OUT)
+    pub fn rows(&self) -> &TraitRowsReach {
+        &self.rows
     }
 
-    pub fn assert_reached(&self) {
-        assert!(self.lowered_rows().is_some(), "{}", Self::LEFT_OUT);
-    }
-
-    pub fn lowered_rows(&self) -> Option<&LoweredRows> {
-        match &self.rows {
-            TraitRowsLowering::Unreached => None,
-            TraitRowsLowering::Lowered(rows) => Some(rows),
-        }
-    }
-
-    pub fn rows_mut(&mut self) -> &mut LoweredRows {
-        match &mut self.rows {
-            TraitRowsLowering::Unreached => panic!("{}", Self::LEFT_OUT),
-            TraitRowsLowering::Lowered(rows) => rows,
-        }
-    }
-}
-
-pub struct LoweredRows {
-    implementors: Vec<Implementor>,
-    supertraits: Vec<Bound>,
-}
-
-impl LoweredRows {
-    pub fn new(implementors: Vec<Implementor>, supertraits: Vec<Bound>) -> Self {
-        Self {
-            implementors,
-            supertraits,
-        }
-    }
-
-    pub fn implementors(&self) -> &[Implementor] {
-        &self.implementors
-    }
-
-    pub fn add(&mut self, implementor: Implementor) {
-        self.implementors.push(implementor);
-    }
-
-    pub fn remove_struct(&mut self, struct_binding: BindingId) {
-        self.implementors.retain(|implementor| {
-            !matches!(implementor.scheme.body, Type::Named(named, _) if named == struct_binding)
-        });
-    }
-
-    pub fn set_scheme(&mut self, body: &Type, scheme: Scheme) {
-        if let Some(implementor) = self
-            .implementors
-            .iter_mut()
-            .find(|implementor| implementor.scheme.body == *body)
-        {
-            implementor.scheme = scheme;
-        }
-    }
-
-    pub fn supertraits(&self) -> &[Bound] {
-        &self.supertraits
-    }
-
-    pub fn is_open(&self) -> bool {
-        self.implementors
-            .iter()
-            .any(|implementor| !implementor.scheme.params.is_empty())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{LoweredRows, RustTrait};
-    use crate::core::{BindingId, ImplementorRows, RustTraitDeclaration};
-
-    struct DeclaredTrait;
-
-    impl DeclaredTrait {
-        fn declaration() -> RustTraitDeclaration {
-            RustTraitDeclaration {
-                binding: BindingId::from_index(0),
-                path: "Shown".into(),
-                self_variable: BindingId::from_index(1),
-                methods: Vec::new(),
-                help: None,
-                requires: Vec::new(),
-                structural: None,
-                associated: Vec::new(),
-                implementors: ImplementorRows::new(Vec::new()),
-            }
-        }
-    }
-
-    #[test]
-    fn a_lowered_trait_passes_the_reach_assertion() {
-        let declaration = DeclaredTrait::declaration();
-        RustTrait::lowered(&declaration, LoweredRows::new(Vec::new(), Vec::new())).assert_reached();
-    }
-
-    #[test]
-    #[should_panic(expected = "the trait reach left out a trait the program uses")]
-    fn an_unreached_trait_fails_the_reach_assertion() {
-        RustTrait::unreached(&DeclaredTrait::declaration()).assert_reached();
+    pub fn rows_mut(&mut self) -> &mut TraitRowsReach {
+        &mut self.rows
     }
 }

@@ -3,8 +3,9 @@ use std::rc::Rc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::projection::ProjectionTable;
-use super::rust_trait::{Implementor, LoweredRows, RustTrait};
+use super::rust_trait::RustTrait;
 use super::selection::{ImplementorMatch, Selection};
+use super::trait_rows_reach::{Implementor, LoweredRows};
 use super::ty::{Bound, GenericId, Scheme, Type};
 use crate::core::BindingId;
 
@@ -22,7 +23,7 @@ impl TraitTable {
 
     pub fn share_projections(&mut self) -> Rc<ProjectionTable> {
         for (binding, rust_trait) in &self.traits {
-            let Some(rows) = rust_trait.lowered_rows() else {
+            let Some(rows) = rust_trait.rows().get() else {
                 continue;
             };
             let normalized: Vec<Implementor> = rows
@@ -66,7 +67,7 @@ impl TraitTable {
 
     pub fn links_argument(&self, binding: BindingId) -> bool {
         self.get(binding).is_none_or(|rust_trait| {
-            let rows = rust_trait.rows().implementors();
+            let rows = rust_trait.rows().reached().implementors();
             self.projections.declared_by(binding).is_empty()
                 && rows.iter().any(|row| row.argument.is_none())
         })
@@ -121,6 +122,7 @@ impl TraitTable {
             && self.get(declared.binding).is_some_and(|rust_trait| {
                 rust_trait
                     .rows()
+                    .reached()
                     .supertraits()
                     .iter()
                     .any(|supertrait| self.brings_unvisited(supertrait, wanted, visited))
@@ -131,7 +133,7 @@ impl TraitTable {
         let mut matching = self
             .traits
             .iter()
-            .filter_map(|(binding, rust_trait)| Some((binding, rust_trait.lowered_rows()?)))
+            .filter_map(|(binding, rust_trait)| Some((binding, rust_trait.rows().get()?)))
             .filter(|(_, rows)| Self::implementors_are(rows, types))
             .map(|(binding, _)| *binding);
         let found = matching.next()?;
@@ -160,13 +162,16 @@ impl TraitTable {
 
     pub fn add_implementor(&mut self, binding: BindingId, implementor: Implementor) {
         if let Some(rust_trait) = self.traits.get_mut(&binding) {
-            rust_trait.rows_mut().add(implementor);
+            rust_trait.rows_mut().reached_mut().add(implementor);
         }
     }
 
     pub fn remove_struct_implementor(&mut self, binding: BindingId, struct_binding: BindingId) {
         if let Some(rust_trait) = self.traits.get_mut(&binding) {
-            rust_trait.rows_mut().remove_struct(struct_binding);
+            rust_trait
+                .rows_mut()
+                .reached_mut()
+                .remove_struct(struct_binding);
         }
     }
 
@@ -176,7 +181,7 @@ impl TraitTable {
 
     pub fn set_implementor_scheme(&mut self, binding: BindingId, body: &Type, scheme: Scheme) {
         if let Some(rust_trait) = self.traits.get_mut(&binding) {
-            rust_trait.rows_mut().set_scheme(body, scheme);
+            rust_trait.rows_mut().reached_mut().set_scheme(body, scheme);
         }
     }
 }
@@ -229,6 +234,7 @@ impl<'t> TraitRows<'t> {
     fn rows(&self, rust_trait: &'t RustTrait) -> impl Iterator<Item = &'t Implementor> + use<'t> {
         rust_trait
             .rows()
+            .reached()
             .implementors()
             .iter()
             .chain(self.normalized)

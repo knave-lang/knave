@@ -30,10 +30,10 @@ use super::pending::PendingBorrow;
 use super::pinning::LiteralDefaults;
 use super::pipelines::Pipelines;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
+use super::reached_traits::{ReachedDeclaration, ReachedTraits};
 use super::selection::Selection;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_boxing::TraitBoxing;
-use super::trait_reach::{ReachedDeclaration, ReachedTraits};
 use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
@@ -2146,7 +2146,7 @@ impl TypeChecker {
         let Some(rust_trait) = self.declarations.traits.table.get(trait_binding) else {
             return;
         };
-        let supertraits = rust_trait.rows().supertraits().to_vec();
+        let supertraits = rust_trait.rows().reached().supertraits().to_vec();
         if supertraits.is_empty() {
             return;
         }
@@ -2639,8 +2639,9 @@ impl TypeChecker {
         rust_trait: &RustTrait,
         display: &TypeDisplay<'_>,
     ) -> ImplementorList {
+        let implementors = rust_trait.rows().reached().implementors();
         let mut grouped: Vec<(BindingId, Vec<(usize, String)>)> = Vec::new();
-        for (position, known) in rust_trait.rows().implementors().iter().enumerate() {
+        for (position, known) in implementors.iter().enumerate() {
             let Some((binding, argument)) = self.grouped_implementor(known) else {
                 continue;
             };
@@ -2658,9 +2659,7 @@ impl TypeChecker {
             .iter()
             .flat_map(|(_, entries)| entries.iter().map(|(position, _)| *position))
             .collect();
-        let entries = rust_trait
-            .rows()
-            .implementors()
+        let entries = implementors
             .iter()
             .enumerate()
             .filter(|(position, _)| !grouped_positions.contains(position))

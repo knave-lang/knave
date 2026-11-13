@@ -25,6 +25,7 @@ impl<'a> AdmissibleTypes<'a> {
         };
         let mut admissible: Vec<Type> = first
             .rows()
+            .reached()
             .implementors()
             .iter()
             .map(|implementor| implementor.scheme.body.clone())
@@ -33,12 +34,16 @@ impl<'a> AdmissibleTypes<'a> {
             admissible.retain(|candidate| {
                 rust_trait
                     .rows()
+                    .reached()
                     .implementors()
                     .iter()
                     .any(|implementor| implementor.scheme.body == *candidate)
             });
         }
-        if traits.iter().any(|rust_trait| rust_trait.rows().is_open()) {
+        if traits
+            .iter()
+            .any(|rust_trait| rust_trait.rows().reached().is_open())
+        {
             Admissible::Open(admissible)
         } else {
             Admissible::Closed(admissible)

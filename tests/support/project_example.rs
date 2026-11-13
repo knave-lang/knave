@@ -49,6 +49,8 @@ impl ProjectExample {
     const BUILD: &str = "build";
     const RUN: &str = "run";
     const DIAGNOSTIC_LEVELS: [&str; 2] = ["error[", "warning["];
+    const CACHE_HOME_VARIABLE: &str = "XDG_CACHE_HOME";
+    const CACHE_FOLDER: &str = ".cache";
 
     pub fn parse(block: &str) -> Option<Self> {
         let mut lines = block.lines().peekable();
@@ -166,6 +168,7 @@ impl ProjectExample {
             .args(Self::PLAIN_OUTPUT)
             .args(command)
             .current_dir(directory)
+            .env(Self::CACHE_HOME_VARIABLE, directory.join(Self::CACHE_FOLDER))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

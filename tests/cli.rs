@@ -638,20 +638,21 @@ exit 101
             )
     }
 
-    fn crate_fingerprints(&self, crate_name: &str) -> usize {
-        let fingerprints = self
-            .directory
+    fn shared_target(&self) -> PathBuf {
+        self.directory
             .join(Self::CACHE_DIRECTORY)
             .join(Language::NAME)
-            .join("target/debug/.fingerprint");
-        fs::read_dir(fingerprints)
-            .expect("the shared target holds fingerprints")
+            .join("target")
+    }
+
+    fn built_libraries_of(&self, crate_name: &str) -> usize {
+        let deps = self.shared_target().join("debug/deps");
+        fs::read_dir(deps)
+            .expect("the shared target holds the built crates")
             .filter_map(Result::ok)
             .filter(|entry| {
-                entry
-                    .file_name()
-                    .to_string_lossy()
-                    .starts_with(&format!("{crate_name}-"))
+                let name = entry.file_name().to_string_lossy().into_owned();
+                name.starts_with(&format!("lib{crate_name}-")) && name.ends_with(".rlib")
             })
             .count()
     }
@@ -7089,11 +7090,7 @@ fn a_second_test_run_through_cargo_rewrites_and_relinks_nothing() {
         sandbox
             .compiler_in("dev-only-app", &["test"])
             .assert_exit_code(0);
-        let deps = sandbox
-            .directory
-            .join(Sandbox::CACHE_DIRECTORY)
-            .join(Language::NAME)
-            .join("target/debug/deps");
+        let deps = sandbox.shared_target().join("debug/deps");
         let binary = fs::read_dir(&deps)
             .expect("the shared target holds the built crates")
             .map(|entry| entry.expect("the target lists its files").path())
@@ -8380,7 +8377,7 @@ fn loose_files_in_a_project_with_crates_share_the_built_crates() {
             .compiler_in("app/scratch", &["run", file])
             .assert_exit_code(0);
     }
-    assert_eq!(sandbox.crate_fingerprints("answer"), 1);
+    assert_eq!(sandbox.built_libraries_of("answer"), 1);
 }
 
 #[test]
@@ -8875,12 +8872,7 @@ fn add_when_cargo_writes_no_version_is_an_environment_error() {
 fn a_crate_build_puts_cargo_output_in_the_shared_target() {
     let sandbox = Sandbox::new("crate_shared_target").with_fixture_tree("crates");
     sandbox.compiler_in("app", &["build"]).assert_exit_code(0);
-    let shared = sandbox
-        .directory
-        .join(Sandbox::CACHE_DIRECTORY)
-        .join(Language::NAME)
-        .join("target");
-    assert!(shared.join("debug").is_dir());
+    assert!(sandbox.shared_target().join("debug").is_dir());
     let build_directory = sandbox
         .directory
         .join("app/target")
@@ -8900,14 +8892,7 @@ fn a_user_cargo_target_dir_wins_over_the_shared_target() {
     );
     Outcome::of(&mut command).assert_exit_code(0);
     assert!(sandbox.directory.join("own-target/debug").is_dir());
-    assert!(
-        !sandbox
-            .directory
-            .join(Sandbox::CACHE_DIRECTORY)
-            .join(Language::NAME)
-            .join("target")
-            .exists()
-    );
+    assert!(!sandbox.shared_target().exists());
 }
 
 #[test]
@@ -8942,14 +8927,7 @@ fn a_user_cargo_build_target_dir_wins_over_the_shared_target() {
     );
     Outcome::of(&mut command).assert_exit_code(0);
     assert!(sandbox.directory.join("own-target/debug").is_dir());
-    assert!(
-        !sandbox
-            .directory
-            .join(Sandbox::CACHE_DIRECTORY)
-            .join(Language::NAME)
-            .join("target")
-            .exists()
-    );
+    assert!(!sandbox.shared_target().exists());
 }
 
 #[test]

@@ -15,10 +15,8 @@ pub struct TemplateBorrows {
 }
 
 impl TemplateBorrows {
-    pub fn register(&mut self, binding: BindingId, template: &Rc<str>, scheme: &Scheme) {
-        if let Some(registered) =
-            RegisteredTemplate::parse(Rc::clone(template), Some(scheme.clone()))
-        {
+    pub fn register(&mut self, binding: BindingId, template: &str, scheme: &Scheme) {
+        if let Some(registered) = RegisteredTemplate::parse(template, Some(scheme)) {
             self.templates.insert(binding, registered);
         }
     }
@@ -61,9 +59,9 @@ impl TemplateBorrows {
             }
             TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
                 let mut inline = self.inline.borrow_mut();
-                let parsed = inline.entry(template.template.clone()).or_insert_with(|| {
-                    RegisteredTemplate::parse(Rc::clone(&template.template), None)
-                });
+                let parsed = inline
+                    .entry(template.template.clone())
+                    .or_insert_with(|| RegisteredTemplate::parse(&template.template, None));
                 parsed.as_ref().map(read).unwrap_or(absent)
             }
             _ => absent,

@@ -113,14 +113,22 @@ mod tests {
             Type::Ref(Lifetime::written(BindingId::from_index(7)), Box::new(inner))
         }
 
+        fn other_generic() -> Type {
+            Type::Generic(GenericId::new(1))
+        }
+
+        fn param(index: usize, name: &str) -> GenericParam {
+            GenericParam {
+                id: GenericId::new(index),
+                name: Rc::from(name),
+                bounds: Vec::new(),
+            }
+        }
+
         fn ties(parameters: Vec<Type>, result: Type) -> Option<TemplateTies> {
             TemplateTies::of(&Scheme {
                 lifetimes: Vec::new(),
-                params: vec![GenericParam {
-                    id: GenericId::new(0),
-                    name: Rc::from("a"),
-                    bounds: Vec::new(),
-                }],
+                params: vec![Self::param(0, "a"), Self::param(1, "b")],
                 body: Type::Function(ClosureKind::Fn, parameters, Box::new(result)),
             })
         }
@@ -162,6 +170,15 @@ mod tests {
         );
         assert_eq!(pop, Some(TemplateTies::new(&[], &[0])));
         assert_eq!(either, Some(TemplateTies::new(&[], &[0, 1])));
+    }
+
+    #[test]
+    fn a_parameter_with_only_a_type_variable_the_result_lacks_holds_nothing_for_it() {
+        let lookup = TiesFixture::ties(
+            vec![TiesFixture::generic(), TiesFixture::other_generic()],
+            TiesFixture::generic(),
+        );
+        assert_eq!(lookup, Some(TemplateTies::new(&[], &[0])));
     }
 
     #[test]

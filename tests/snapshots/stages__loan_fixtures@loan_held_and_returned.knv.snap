@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+assertion_line: 107
+expression: reports.report(path)
+input_file: tests/fixtures/loans/loan_held_and_returned.knv
+---
+head-or-push!
+  2:16 borrow `v`: no live loan
+  3:10 change `v`: `v` lent at 2:16, held by `r`
+main
+  8:27 change `v`: no live loan

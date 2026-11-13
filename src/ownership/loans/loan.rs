@@ -1,7 +1,6 @@
 use super::lending::Lending;
+use super::loan_names::LoanNames;
 use super::point_id::PointId;
-use crate::core::BindingArena;
-use crate::source::Span;
 
 pub struct Loan {
     lending: Lending,
@@ -17,11 +16,7 @@ impl Loan {
         self.made_at
     }
 
-    pub fn span(&self) -> Span {
-        self.lending.span()
-    }
-
-    pub fn written(&self, bindings: &BindingArena) -> String {
-        self.lending.written(bindings)
+    pub fn written(&self, names: &LoanNames<'_>) -> String {
+        self.lending.written(names)
     }
 }

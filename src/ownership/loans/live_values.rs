@@ -1,6 +1,6 @@
 use rustc_hash::FxHashSet;
 
-use super::body_graph::BodyGraph;
+use super::control_flow_graph::ControlFlowGraph;
 use super::point_id::PointId;
 use crate::core::BindingId;
 
@@ -9,7 +9,7 @@ pub struct LiveValues {
 }
 
 impl LiveValues {
-    pub fn of(graph: &BodyGraph) -> Self {
+    pub fn of(graph: &ControlFlowGraph) -> Self {
         let mut live = Self {
             live_before: graph.points().map(|_| FxHashSet::default()).collect(),
         };
@@ -21,18 +21,14 @@ impl LiveValues {
         &self.live_before[point.index()]
     }
 
-    fn grow(&mut self, graph: &BodyGraph) -> bool {
+    fn grow(&mut self, graph: &ControlFlowGraph) -> bool {
         let mut grew = false;
         for (point, facts) in graph.points().rev() {
-            let mut live: FxHashSet<BindingId> = facts
+            let live_after: FxHashSet<BindingId> = facts
                 .successors()
-                .iter()
                 .flat_map(|successor| self.live_before[successor.index()].iter().copied())
                 .collect();
-            for defined in facts.defined() {
-                live.remove(defined);
-            }
-            live.extend(facts.used().iter().copied());
+            let live = facts.live_before(live_after);
             if live.len() != self.live_before[point.index()].len() {
                 grew = true;
                 self.live_before[point.index()] = live;
@@ -46,13 +42,13 @@ impl LiveValues {
 mod tests {
     use super::LiveValues;
     use crate::core::BindingId;
-    use crate::ownership::loans::body_graph::BodyGraph;
+    use crate::ownership::loans::control_flow_graph::ControlFlowGraph;
     use crate::ownership::loans::point_id::PointId;
 
     #[test]
     fn a_value_is_live_from_its_definition_to_its_last_use_and_around_a_loop() {
         let value = BindingId::from_index(7);
-        let mut graph = BodyGraph::new();
+        let mut graph = ControlFlowGraph::new();
         let defined = graph.join(&[PointId::ENTRY]);
         graph.point_mut(defined).define(value);
         let head = graph.join(&[defined]);

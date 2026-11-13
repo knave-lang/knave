@@ -1,35 +1,29 @@
+use super::access::Access;
+use super::loan_names::LoanNames;
 use super::loan_place::LoanPlace;
-use crate::core::BindingArena;
 use crate::source::Span;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AccessKind {
-    Change,
-    Move,
-    Borrow,
-}
 
 pub struct PlaceAccess {
     place: LoanPlace,
-    kind: AccessKind,
+    access: &'static dyn Access,
     span: Span,
 }
 
 impl PlaceAccess {
-    pub fn new(place: LoanPlace, kind: AccessKind, span: Span) -> Self {
-        Self { place, kind, span }
+    pub fn new(place: LoanPlace, access: &'static dyn Access, span: Span) -> Self {
+        Self {
+            place,
+            access,
+            span,
+        }
     }
 
-    pub fn span(&self) -> Span {
-        self.span
-    }
-
-    pub fn written(&self, bindings: &BindingArena) -> String {
-        let verb = match self.kind {
-            AccessKind::Change => "change",
-            AccessKind::Move => "move",
-            AccessKind::Borrow => "borrow",
-        };
-        format!("{verb} `{}`", self.place.written(bindings))
+    pub fn written(&self, names: &LoanNames<'_>) -> String {
+        format!(
+            "{} {} `{}`",
+            names.position(self.span),
+            self.access.verb(),
+            self.place.written(names)
+        )
     }
 }

@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
-use crate::core::{BindingArena, BindingId};
+use super::loan_names::LoanNames;
+use crate::core::BindingId;
 use crate::types::TypedExpr;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -18,9 +19,8 @@ impl LoanPlace {
         })
     }
 
-    pub fn written(&self, bindings: &BindingArena) -> String {
-        let root = bindings.get(self.root).name();
-        let mut written = String::from(root);
+    pub fn written(&self, names: &LoanNames<'_>) -> String {
+        let mut written = String::from(names.name(self.root));
         for field in &self.fields {
             written.push('.');
             written.push_str(field);
@@ -33,6 +33,8 @@ impl LoanPlace {
 mod tests {
     use super::LoanPlace;
     use crate::ownership::lambda_source::LambdaSource;
+    use crate::ownership::loans::loan_names::LoanNames;
+    use crate::source::SourceMap;
 
     #[test]
     fn a_field_read_is_a_place_written_from_its_root_and_a_call_is_not() {
@@ -41,7 +43,9 @@ mod tests {
         );
         let field = source.bound("m");
         let place = LoanPlace::of(field).expect("a field read is a place");
-        assert_eq!(place.written(&source.program().bindings), "c.make");
+        let sources = SourceMap::default();
+        let names = LoanNames::new(&source.program().bindings, &sources);
+        assert_eq!(place.written(&names), "c.make");
         assert_eq!(LoanPlace::of(source.bound("n")), None);
     }
 }

@@ -1,4 +1,4 @@
-use crate::core::BindingArena;
+use crate::core::{BindingArena, BindingId};
 use crate::source::{SourceMap, Span, TextPosition};
 
 pub struct LoanNames<'n> {
@@ -11,8 +11,8 @@ impl<'n> LoanNames<'n> {
         Self { bindings, sources }
     }
 
-    pub fn bindings(&self) -> &'n BindingArena {
-        self.bindings
+    pub fn name(&self, binding: BindingId) -> &'n str {
+        self.bindings.get(binding).name()
     }
 
     pub fn position(&self, span: Span) -> TextPosition {

@@ -1,19 +1,19 @@
 use super::body_walk::BodyWalk;
-use super::loan_context::LoanContext;
 use super::loan_names::LoanNames;
+use super::loan_rules::LoanRules;
 use crate::source::SourceMap;
 use crate::types::{TypedExprKind, TypedLambda, TypedProgram};
 
 pub struct LoanFacts<'p> {
     program: &'p TypedProgram,
-    context: LoanContext<'p>,
+    rules: LoanRules<'p>,
 }
 
 impl<'p> LoanFacts<'p> {
     pub fn of(program: &'p TypedProgram) -> Self {
         Self {
             program,
-            context: LoanContext::of(program),
+            rules: LoanRules::of(program),
         }
     }
 
@@ -26,10 +26,9 @@ impl<'p> LoanFacts<'p> {
 
     fn functions(&self) -> impl Iterator<Item = (&'p str, &'p TypedLambda)> + '_ {
         self.program
-            .modules
+            .entry_module()
+            .definitions
             .iter()
-            .filter(|module| module.id == self.program.entry)
-            .flat_map(|module| &module.definitions)
             .filter_map(|definition| match &definition.value.kind {
                 TypedExprKind::Fn(lambda) => Some((
                     self.program.bindings.get(definition.binding).name(),
@@ -45,22 +44,16 @@ impl<'p> LoanFacts<'p> {
         lambda: &'p TypedLambda,
         names: &LoanNames<'_>,
     ) -> String {
-        let walked = BodyWalk::new(&self.context).walk(lambda);
-        let accesses: String = walked
+        let facts = BodyWalk::new(&self.rules).walk(lambda);
+        let accesses: String = facts
             .accesses()
             .iter()
             .map(|access| format!("  {}\n", access.written(names)))
             .collect();
-        let closures: String = walked
+        let closures: String = facts
             .closures()
             .iter()
-            .filter_map(|closure| match &closure.kind {
-                TypedExprKind::Fn(lambda) => {
-                    let heading = format!("closure at {}", names.position(closure.span));
-                    Some(self.body_report(heading, lambda, names))
-                }
-                _ => None,
-            })
+            .map(|closure| self.body_report(closure.heading(names), closure.lambda(), names))
             .collect();
         let own = if accesses.is_empty() {
             String::new()

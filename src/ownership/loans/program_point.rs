@@ -1,3 +1,5 @@
+use rustc_hash::FxHashSet;
+
 use super::loan_id::LoanId;
 use super::place_access::PlaceAccess;
 use super::point_id::PointId;
@@ -43,12 +45,12 @@ pub struct PointFacts<'p> {
 }
 
 impl<'p> PointFacts<'p> {
-    pub fn defined(&self) -> &'p [BindingId] {
-        &self.point.defined
-    }
-
-    pub fn used(&self) -> &'p [BindingId] {
-        &self.point.used
+    pub fn live_before(&self, mut live: FxHashSet<BindingId>) -> FxHashSet<BindingId> {
+        for defined in &self.point.defined {
+            live.remove(defined);
+        }
+        live.extend(self.point.used.iter().copied());
+        live
     }
 
     pub fn received(&self) -> &'p [LoanId] {
@@ -59,7 +61,7 @@ impl<'p> PointFacts<'p> {
         &self.point.accesses
     }
 
-    pub fn successors(&self) -> &'p [PointId] {
-        &self.point.successors
+    pub fn successors(&self) -> impl Iterator<Item = PointId> + 'p {
+        self.point.successors.iter().copied()
     }
 }

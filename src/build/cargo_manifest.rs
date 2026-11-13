@@ -1,4 +1,5 @@
 use super::build_plan::BuildPlan;
+use super::directory_hash::DirectoryHash;
 use crate::language::Language;
 use crate::project::CrateDependency;
 
@@ -36,8 +37,8 @@ impl CargoTargetKind {
         name_part: "-tests",
     };
 
-    pub fn target_name(self, name_stem: &str, directory_hash: &str) -> String {
-        format!("{name_stem}{}-{directory_hash}", self.shape().name_part)
+    pub fn target_name(self, name_stem: &str, directory: &DirectoryHash) -> String {
+        format!("{name_stem}{}-{directory}", self.shape().name_part)
     }
 
     fn shape(self) -> &'static TargetShape {
@@ -143,9 +144,9 @@ impl CargoManifest<'_> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
-    use super::{CargoManifest, CargoTargetKind};
+    use super::{CargoManifest, CargoTargetKind, DirectoryHash};
     use crate::build::{BuildPlan, BuildProfile};
     use crate::project::CrateDependency;
     use crate::source::{SourceMap, Span};
@@ -198,13 +199,14 @@ mod tests {
 
     #[test]
     fn a_target_name_joins_the_project_and_the_directory_hash() {
+        let hash = DirectoryHash::of(Path::new("/work/target/knave/demo"));
         assert_eq!(
-            CargoTargetKind::Bin.target_name("demo", "0000abcd"),
-            "demo-0000abcd"
+            CargoTargetKind::Bin.target_name("demo", &hash),
+            format!("demo-{hash}")
         );
         assert_eq!(
-            CargoTargetKind::Test.target_name("demo", "0000abcd"),
-            "demo-tests-0000abcd"
+            CargoTargetKind::Test.target_name("demo", &hash),
+            format!("demo-tests-{hash}")
         );
     }
 

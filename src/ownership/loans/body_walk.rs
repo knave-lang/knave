@@ -139,8 +139,7 @@ impl<'w> BodyWalk<'w> {
             .iter()
             .flat_map(|arm| arm.pattern.binders())
             .any(|binder| self.rules.moves(&binder.ty));
-        LoanPlace::of(&matched.value)
-            .filter(|_| takes_a_value && self.rules.moves(&matched.value.ty))
+        LoanPlace::of(&matched.value).filter(|_| takes_a_value)
     }
 
     fn joined(&mut self, branches: impl IntoIterator<Item = Walked>) -> Walked {

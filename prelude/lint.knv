@@ -14,62 +14,118 @@
 (document (unused-binding table)
   "Reports a local binding that nothing reads: a `local`, or a parameter of a `fn` applied where it is written, as `loop` writes one.
 
+  The rule reports each name that a `local` binds and that no form of the
+  definition reads, at the name. A `let` binds its names with `local`, so
+  its names count, and a `loop` binds its names as the parameters of a `fn`
+  applied where it is written, so they count too. A read inside a closure
+  counts. A read that a macro discards, such as `(ignore unused)` with a
+  macro `ignore` that expands to `(do)`, is no read, because the program
+  that runs never reads the binding. A name that starts with `_` is left
+  out, and so is a name that a macro's expansion writes, such as `scratch`
+  in a macro that expands to `(let (scratch 0) body)`.
+
+  Only `knave lint` runs the rule, and it exits with status 1 when the rule
+  reports a binding. `knave check`, `knave build` and `knave run` do not run
+  it.
+
   ## Erroneous example
 
-  ```lisp
+  ```
+  ;; knave lint main.knv
+  ;; main.knv
   (defn area (width height)
     (let (unused (+ width 1))
       (* width height)))
+
+  (defn main () (println (area 2 3)))
   ```
 
   ## Fixes
 
   Remove the binding:
 
-  ```lisp
-  (defn area (width height)
-    (* width height))
+  ```
+  ;; knave lint main.knv
+  ;; main.knv
+  (defn area (width height) (* width height))
+
+  (defn main () (println (area 2 3)))
   ```
 
-  Or start its name with `_` to keep it:
+  Or start its name with `_`, to keep the binding:
 
-  ```lisp
+  ```
+  ;; knave lint main.knv
+  ;; main.knv
   (defn area (width height)
     (let (_unused (+ width 1))
       (* width height)))
-  ```
 
-  A binding whose name starts with `_` is allowed. A binding that a macro's expansion introduced is never reported.")
+  (defn main () (println (area 2 3)))
+  ```")
 
 (document (unused-parameter table)
   "Reports a function parameter that nothing in its body reads.
 
+  The rule reports each parameter of a `fn` that no form of its body reads,
+  at the parameter, whether the `fn` is a `defn` or a closure. A read inside
+  a nested closure counts. A name that starts with `_` is left out, and so is
+  a parameter that a macro's expansion introduced, or that the compiler
+  names, such as one of a trait's default method. A `fn` applied where it is
+  written, as a `loop` writes one, binds locals instead, which
+  `unused-binding` reports.
+
+  Only `knave lint` runs the rule, and it exits with status 1 when the rule
+  reports a parameter. `knave check`, `knave build` and `knave run` do not
+  run it.
+
   ## Erroneous example
 
-  ```lisp
-  (defn area (width height)
-    (* width 2))
+  ```
+  ;; knave lint main.knv
+  ;; main.knv
+  (defn area (width height) (* width 2))
+
+  (defn main () (println (area 2 3)))
   ```
 
   ## Fixes
 
-  Remove the parameter:
+  Remove the parameter, and the argument of each call:
 
-  ```lisp
-  (defn area (width)
-    (* width 2))
+  ```
+  ;; knave lint main.knv
+  ;; main.knv
+  (defn area (width) (* width 2))
+
+  (defn main () (println (area 2)))
   ```
 
-  Or start its name with `_` to keep it:
+  Or start its name with `_`, to keep the parameter:
 
-  ```lisp
-  (defn area (width _height)
-    (* width 2))
   ```
+  ;; knave lint main.knv
+  ;; main.knv
+  (defn area (width _height) (* width 2))
 
-  A parameter whose name starts with `_` is allowed. A parameter that a macro's expansion introduced, or that the compiler named, as in a trait's default method, is never reported. A parameter of a `fn` applied where it is written is a local binding, which `unused-binding` reports. The rule covers every other function, closures and `impl` methods included, so its help offers only the `_` name, which never changes how the function is called.")
+  (defn main () (println (area 2 3)))
+  ```")
+
+(document rule-names
+  "Lists the name of each lint rule, as a symbol.
+
+  `knave lint` runs each listed rule over each definition of the program's
+  own modules, and `knave doc` finds a rule's page by a listed name.")
 
 (def rule-names (quote (unused-binding unused-parameter)))
+
+(document (check-rule rule table)
+  "Runs the lint rule that `rule` names over `table`, which holds one
+  definition read back as kernel forms.
+
+  The rule reports what it finds with `warn`. A name that [rule-names] does
+  not list runs nothing. `knave lint` calls it once for each rule and each
+  definition.")
 
 (def check-rule
   (fn (rule table)

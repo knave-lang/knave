@@ -15,9 +15,9 @@ impl ProjectExample {
     const LABEL: &str = ";; ";
     const FILE_EXTENSION: &str = ".knv";
     const COMPILER_NAME: &str = "knave";
-    const SUBCOMMANDS: [&str; 15] = [
+    const SUBCOMMANDS: [&str; 16] = [
         "check", "types", "doc", "expand", "emit", "fmt", "build", "eval", "repl", "test", "run",
-        "add", "remove", "task", "new",
+        "add", "remove", "task", "new", "lint",
     ];
     const CHECK: &str = "check";
     const BUILD: &str = "build";

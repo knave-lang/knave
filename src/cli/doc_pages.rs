@@ -1,9 +1,9 @@
 use rustc_hash::FxHashMap;
 
-use super::doc::ExpandedPage;
 use super::doc_folder::WrittenPage;
 use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
+use super::expanded_page::ExpandedPage;
 use super::module_of_sources::ModuleOfSources;
 use super::program_file::ProgramFile;
 use super::terminal::Terminal;

@@ -1,15 +1,22 @@
 use std::path::PathBuf;
 use std::thread;
 
-use knave::diagnostic::Explanation;
+use knave::diagnostic::{CodeStage, Explanation};
 
 use super::Fixture;
+use super::example_folder::ExampleFolder;
 use super::example_layout::ExampleLayout;
 use super::project_example::ProjectExample;
 
 pub struct ExplanationExamples {
     code: String,
-    text: &'static str,
+    text: String,
+    source: ExplanationSource,
+}
+
+enum ExplanationSource {
+    MarkdownFile,
+    Docstring,
 }
 
 #[derive(Default)]
@@ -28,23 +35,50 @@ impl ExplanationExamples {
     const FIXES_HEADING: &str = "## Fixes";
     const EXAMPLE_FENCE: &str = "```knave\n";
     const CLOSING_FENCE: &str = "```\n";
+    const ERROR_PAGES_COMMAND: [&str; 3] = ["doc", "--write", "--errors"];
+    const ERROR_PAGES_FOLDER: &str = "doc/errors";
+    const LINTS_NO_EXAMPLE_CAN_SHOW: [&str; 1] = ["L0805"];
+    const PAGE_BREAK: &str = "\n\n";
     const EXAMPLE_FILE: &str = "example.knv";
     const MAXIMUM_PARALLEL_FIX_BUILDS: usize = 4;
     const ERRONEOUS_PLACE: &str = "erroneous example";
     const FIX_PLACE: &str = "fix";
 
-    pub fn new(code: &str, text: &'static str) -> Self {
+    pub fn new(code: &str, text: &str) -> Self {
+        Self::from_source(code, text, ExplanationSource::MarkdownFile)
+    }
+
+    fn from_source(code: &str, text: &str, source: ExplanationSource) -> Self {
         let code = code.to_string();
-        Self { code, text }
+        let text = text.to_string();
+        Self { code, text, source }
     }
 
     pub fn written() -> Vec<Self> {
+        let pages = ExampleFolder::holding([]);
+        pages.run(&Self::ERROR_PAGES_COMMAND.map(String::from), "");
         Explanation::all()
-            .filter_map(|explanation| {
-                let text = explanation.text()?;
-                Some(Self::new(explanation.code().as_str(), text))
+            .filter_map(|explanation| match explanation.text() {
+                Some(text) => Some(Self::new(explanation.code().as_str(), text)),
+                None => Self::of_error_page(&explanation, &pages),
             })
             .collect()
+    }
+
+    fn of_error_page(explanation: &Explanation, pages: &ExampleFolder) -> Option<Self> {
+        let code = explanation.code().as_str();
+        let page = pages.contents(&format!("{}/{code}.md", Self::ERROR_PAGES_FOLDER));
+        let explained = page
+            .as_deref()
+            .and_then(|page| page.split_once(Self::PAGE_BREAK));
+        let shown = CodeStage::LINTS.contains(explanation.code())
+            && !Self::LINTS_NO_EXAMPLE_CAN_SHOW.contains(&code);
+        assert!(
+            explained.is_some() || !shown,
+            "{code} is a lint without a Markdown file, and no docstring explains it"
+        );
+        explained
+            .map(|(_, docstring)| Self::from_source(code, docstring, ExplanationSource::Docstring))
     }
 
     pub fn code(&self) -> &str {
@@ -94,7 +128,7 @@ impl ExplanationExamples {
             let runs: Vec<_> = examples
                 .iter()
                 .map(|(place, example)| {
-                    scope.spawn(move || (place, *example, Self::layout_of(example).laid_out()))
+                    scope.spawn(move || (place, *example, self.layout_of(example).laid_out()))
                 })
                 .collect();
             runs.into_iter()
@@ -108,7 +142,7 @@ impl ExplanationExamples {
         layouts
     }
 
-    fn placed_examples(&self) -> Vec<(String, &'static str)> {
+    fn placed_examples(&self) -> Vec<(String, &str)> {
         let erroneous = self.examples_placed(Self::ERRONEOUS_HEADING, Self::ERRONEOUS_PLACE);
         erroneous
             .chain(self.examples_placed(Self::FIXES_HEADING, Self::FIX_PLACE))
@@ -119,16 +153,16 @@ impl ExplanationExamples {
         &'e self,
         heading: &'e str,
         place: &'e str,
-    ) -> impl Iterator<Item = (String, &'static str)> + 'e {
+    ) -> impl Iterator<Item = (String, &'e str)> + 'e {
         self.examples_under(heading)
             .enumerate()
             .map(move |(index, example)| (format!("{place} {index} of {}", self.code), example))
     }
 
-    fn layout_of(example: &str) -> ExampleLayout {
-        match ProjectExample::parse(example) {
-            Some(project) => project.layout(),
-            None => ExampleLayout::of_single_file(example),
+    fn layout_of(&self, example: &str) -> ExampleLayout {
+        match (&self.source, ProjectExample::parse(example)) {
+            (ExplanationSource::MarkdownFile, Some(project)) => project.layout(),
+            _ => ExampleLayout::of_single_file(example),
         }
     }
 
@@ -158,7 +192,7 @@ impl ExplanationExamples {
         Fixture::of_text(&path, fix.to_string()).run_failure()
     }
 
-    fn examples_under(&self, heading: &str) -> impl Iterator<Item = &'static str> {
+    fn examples_under<'e>(&'e self, heading: &str) -> impl Iterator<Item = &'e str> {
         let section = self.section(heading);
         section
             .split(Self::EXAMPLE_FENCE)
@@ -166,7 +200,7 @@ impl ExplanationExamples {
             .filter_map(|rest| rest.split(Self::CLOSING_FENCE).next())
     }
 
-    fn section(&self, heading: &str) -> &'static str {
+    fn section(&self, heading: &str) -> &str {
         let after_heading = self.text.split_once(heading).map_or("", |(_, rest)| rest);
         after_heading.split("\n## ").next().unwrap_or(after_heading)
     }

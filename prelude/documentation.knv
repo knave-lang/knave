@@ -13,6 +13,8 @@
 (use prelude/internal/docstrings arrow-line? closes-fence?
                                  fence-run opening-fence)
 
+(use prelude/lint rule-names)
+
 (use prelude/macros defmacro doc-body doc-header docstring
                     docstring-form document map-list module)
 
@@ -47,6 +49,62 @@
   between two of them is relative. A link to a term of a module in
   `prelude-modules` alone points at the Knave website. `types` holds a
   `(name \"type line\")` entry for each name that has a type.")
+
+(defmacro rule-page-part (part name)
+  (local rules
+    (items-where (fn (rule) (same-name? rule name))
+                 rule-names))
+  (if (empty? rules)
+    ""
+    (looked-up part (first rules))))
+
+(defmacro lint-explanation (name paths)
+  (local found (documented-definition name paths))
+  (if (empty? found)
+    ""
+    (fence-tagged (written-body (first found)))))
+
+(def documented-definition
+  (fn (name paths)
+    (if (empty? paths)
+      paths
+      (do
+        (local found (documented-definitions (first paths) name))
+        (if (empty? found)
+          (recur name (rest paths))
+          found)))))
+
+(def documented-definitions
+  (fn (path name)
+    (require-module path)
+    (items-where (fn (term)
+                   (if (same-name? term name)
+                     (bool-not (empty? (docstring-form term)))
+                     false))
+                 (module-definitions path))))
+
+(def fence-tagged
+  (fn (text)
+    (local tagged-from
+      (fn (written lines fence)
+        (if (empty? lines)
+          written
+          (if (empty? fence)
+            (recur (concat written
+                           (list (fence-line-tagged (first lines))))
+                   (rest lines)
+                   (opening-fence (first lines)))
+            (recur (concat written (list (first lines)))
+                   (rest lines)
+                   (fence-after fence (first lines)))))))
+    (join-text "\n"
+               (tagged-from (list)
+                            (string-lines text)
+                            (list)))))
+
+(def fence-line-tagged
+  (fn (line)
+    (if (fence-line? line) (tagged-fence line) line)))
 
 (def page-path (fn (page) (first page)))
 
@@ -697,6 +755,78 @@
       (string "[" name "]("
               (term-target page (first home) name)
               ")"))))
+
+(document (unmatched-link page spot name)
+  "Reports a bracketed name in a docstring that `knave doc --write` cannot
+  link to any term.
+
+  `knave doc --write` reads a name between brackets in a docstring that a
+  page shows, the module's own or that of a name the module exports, as a
+  link to a term in the scope of the page's module. This warning reports a
+  name that resolves to no term of a module that the command lists, with the
+  closest term name when one is near. The command still writes the page,
+  keeps the brackets as written, and exits with status 0.
+
+  A macro may report the same warning, with `warn` and
+  `(quote (:code unmatched-link))`. Then every command that checks the
+  program reports it: `knave check`, `knave build`, `knave run`,
+  `knave emit`, `knave types`, `knave test`, `knave repl`, `knave lint` and
+  `knave doc --types`, and so does `knave doc --write`. `knave expand` and
+  `knave doc` without `--types` do not. Only `knave lint` exits with status 1
+  because of it.
+
+  ## Erroneous example
+
+  ```
+  ;; knave doc --write
+  ;; project.knv
+  (defproject shelf)
+
+  ;; src/main.knv
+  (export shelf-count)
+
+  (defn shelf-count ()
+    \"Counts the shelves, as [shelf-total] does.\"
+    3)
+
+  (defn main () (println (shelf-count)))
+  ```
+
+  ## Fixes
+
+  Name a term in the scope of the module:
+
+  ```
+  ;; knave doc --write
+  ;; project.knv
+  (defproject shelf)
+
+  ;; src/main.knv
+  (export shelf-count)
+
+  (defn shelf-count ()
+    \"Counts the shelves, as [len] counts items.\"
+    3)
+
+  (defn main () (println (shelf-count)))
+  ```
+
+  Or put the brackets inside backticks, to show them as code:
+
+  ```
+  ;; knave doc --write
+  ;; project.knv
+  (defproject shelf)
+
+  ;; src/main.knv
+  (export shelf-count)
+
+  (defn shelf-count ()
+    \"Counts the shelves, as `[shelf-total]` does.\"
+    3)
+
+  (defn main () (println (shelf-count)))
+  ```")
 
 (def unmatched-link
   (fn (page spot name)

@@ -129,7 +129,7 @@ impl PageSet {
     fn pages(self, terminal: &mut Terminal) -> Result<Vec<WrittenPage>, ExitStatus> {
         match self {
             Self::Modules(modules) => modules.pages(terminal),
-            Self::Errors => Ok(ErrorPages::pages()),
+            Self::Errors => ErrorPages::pages(terminal),
         }
     }
 }

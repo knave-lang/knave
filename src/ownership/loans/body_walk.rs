@@ -72,8 +72,9 @@ impl<'w> BodyWalk<'w> {
                 self.call(CallSite::new(callee, arguments), at)
             }
             TypedExprKind::Recur(arguments) => LoopWalk::new(self).recur(arguments, at),
-            TypedExprKind::Borrow(..) | TypedExprKind::Struct(TypedStructExpr::Field(..)) => {
-                self.lent(expr, at)
+            TypedExprKind::Borrow(kind, inner) => self.borrowed(*kind, inner, at),
+            TypedExprKind::Struct(TypedStructExpr::Field(owner, _)) => {
+                self.field_read(expr, owner, at)
             }
             TypedExprKind::Control(control) => self.control(control, at),
             TypedExprKind::Infer(value) => self.expr(value, at),
@@ -88,22 +89,18 @@ impl<'w> BodyWalk<'w> {
         }
     }
 
-    fn lent(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
-        match &expr.kind {
-            TypedExprKind::Borrow(kind, inner) => {
-                let lending = LoanPlace::of(inner)
-                    .map(|place| Lending::new(place, <dyn LoanKind>::of(*kind), inner.span));
-                self.lent_from(inner, lending, at)
-            }
-            TypedExprKind::Struct(TypedStructExpr::Field(owner, _)) => {
-                let shared = <dyn LoanKind>::of(ReferenceKind::Shared);
-                let lending = LoanPlace::of(expr)
-                    .filter(|_| expr.ty.is_reference())
-                    .map(|place| Lending::new(place, shared, expr.span));
-                self.lent_from(owner, lending, at)
-            }
-            _ => self.expr(expr, at),
-        }
+    fn borrowed(&mut self, kind: ReferenceKind, inner: &'w TypedExpr, at: PointId) -> Walked {
+        let lending = LoanPlace::of(inner)
+            .map(|place| Lending::new(place, <dyn LoanKind>::of(kind), inner.span));
+        self.lent_from(inner, lending, at)
+    }
+
+    fn field_read(&mut self, expr: &'w TypedExpr, owner: &'w TypedExpr, at: PointId) -> Walked {
+        let shared = <dyn LoanKind>::of(ReferenceKind::Shared);
+        let lending = LoanPlace::of(expr)
+            .filter(|_| expr.ty.is_reference())
+            .map(|place| Lending::new(place, shared, expr.span));
+        self.lent_from(owner, lending, at)
     }
 
     fn sequence(&mut self, values: impl Iterator<Item = &'w TypedExpr>, at: PointId) -> Walked {

@@ -9,7 +9,6 @@ error[L0404]: `i64` does not implement `named`
 14 |   (println (option-named? (some 1)))
    |             ^^^^^^^^^^^^^ this needs `named`
    |
-   = note: `named` is implemented for: 
    = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `i64` does not implement `named`
@@ -18,7 +17,6 @@ error[L0404]: `i64` does not implement `named`
 17 |       (println (mutable-named? (mut value)))
    |                 ^^^^^^^^^^^^^^ this needs `named`
    |
-   = note: `named` is implemented for: 
    = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `i64` does not implement `named`
@@ -27,5 +25,4 @@ error[L0404]: `i64` does not implement `named`
 20 |     (fn (function) (function (some 1))))
    |                     ^^^^^^^^ this needs `named`
    |
-   = note: `named` is implemented for: 
    = note: run `knave doc L0404` for an explanation

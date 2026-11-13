@@ -3,8 +3,8 @@
 (module
   "Names the prelude's generic types, such as [option], [result] and [vec].")
 
-(export borrow box hash-map iterator option result sequence
-        slice sorted-map vec)
+(export box hash-map iterator option result sequence slice
+        sorted-map vec)
 
 (rust-type (vec item) "Vec<{0}>")
 
@@ -33,14 +33,6 @@
 (rust-type (iterator item) "impl Iterator<Item = {0}>")
 
 (rust-type (slice item) "[{0}]")
-
-(rust-trait borrow "std::borrow::Borrow"
-  bool char
-  (ref str)
-  string i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize
-  f32 f64
-  (with string str)
-  (with (ref str) str))
 
 (rust-trait sequence "crate::rt::Sequence"
   str string
@@ -154,15 +146,6 @@
   (local items (vec 1 2))
   (len (the (ref (slice i64)) (ref items)))
   => 2")
-
-(document borrow
-  "Marks a type that lends a view of another, Rust's `std::borrow::Borrow`.
-
-  A [string] and a `(ref str)` lend a `str`, so a `str` key reads a map of
-  [string] keys and `join` takes either item.
-
-  (join (vec (str \"a\") (str \"b\")) \",\")
-  => \"a,b\"")
 
 (document sequence
   "Marks a type that `len` and `empty?` read.

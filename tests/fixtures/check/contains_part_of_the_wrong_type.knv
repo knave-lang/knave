@@ -1,0 +1,5 @@
+(defn has-char? ((text (ref str)))
+  (contains? text (char "e")))
+
+(defn has-owned? ((text (ref str)) (part string))
+  (contains? text part))

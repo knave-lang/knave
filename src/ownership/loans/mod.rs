@@ -27,6 +27,7 @@ mod loan_rules;
 mod loan_source;
 mod loan_table;
 mod loop_heads;
+mod loop_walk;
 mod place_access;
 mod point_id;
 mod program_point;

@@ -21,7 +21,8 @@
   counts. A read that a macro discards, such as `(ignore unused)` with a
   macro `ignore` that expands to `(do)`, is no read, because the program
   that runs never reads the binding. A name that starts with `_` is left
-  out, and so is a name that a macro's expansion binds.
+  out, and so is a name that a macro's expansion writes, such as `scratch`
+  in a macro that expands to `(let (scratch 0) body)`.
 
   Only `knave lint` runs the rule, and it exits with status 1 when the rule
   reports a binding. `knave check`, `knave build` and `knave run` do not run
@@ -69,7 +70,8 @@
   The rule reports each parameter of a `fn` that no form of its body reads,
   at the parameter, whether the `fn` is a `defn` or a closure. A read inside
   a nested closure counts. A name that starts with `_` is left out, and so is
-  a parameter that a macro's expansion introduced. A `fn` applied where it is
+  a parameter that a macro's expansion introduced, or that the compiler
+  names, such as one of a trait's default method. A `fn` applied where it is
   written, as a `loop` writes one, binds locals instead, which
   `unused-binding` reports.
 

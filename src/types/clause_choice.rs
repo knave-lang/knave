@@ -44,7 +44,7 @@ impl<'p> ClauseChoice<'p> {
             None => self
                 .program
                 .template_borrows
-                .read_template(callee, absent, read),
+                .read_template(callee, absent, |template| read(template.parsed())),
         }
     }
 

@@ -39,7 +39,7 @@ impl<'c> CallSite<'c> {
             return Holdings::default();
         }
         let tied = match rules.result_ties(self.callee) {
-            Some(declared) => declared.to_vec(),
+            Some(declared) => declared,
             None => self.elided_ties(rules),
         };
         passed

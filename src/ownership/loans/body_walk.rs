@@ -63,7 +63,6 @@ impl<'w> BodyWalk<'w> {
                 self.field_read(expr, owner, at)
             }
             TypedExprKind::Control(control) => self.control(control, at),
-            TypedExprKind::Infer(value) => self.expr(value, at),
             _ => self.sequence(expr.children().into_iter(), at),
         }
     }

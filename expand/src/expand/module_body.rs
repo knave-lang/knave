@@ -1705,7 +1705,7 @@ impl Expander<'_> {
                 requires: entries.requires,
                 structural,
                 associated: entries.associated,
-                implementors: entries.implementors,
+                implementors: crate::core::ImplementorRows::new(entries.implementors),
             }),
             span: form.span(),
             hidden: false,

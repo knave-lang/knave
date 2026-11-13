@@ -1,9 +1,10 @@
+use std::cell::OnceCell;
 use std::fmt;
 use std::rc::Rc;
 
 use super::{
     BindingId, Expr, FieldLabel, Lambda, ParsedTemplate, StructuralClause, TypeBinder, TypeBound,
-    TypeExpr,
+    TypeExpr, TypeExprKind,
 };
 use crate::source::Span;
 
@@ -40,6 +41,7 @@ impl fmt::Display for ModulePath {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(bound(deserialize = "'de: 'static"))]
 pub struct Item {
     pub kind: ItemKind,
     pub span: Span,
@@ -72,6 +74,66 @@ pub struct RustTraitImplementor {
     pub associated: Vec<AssociatedValue>,
 }
 
+#[derive(Clone)]
+pub struct ImplementorRows {
+    decoded: OnceCell<Vec<RustTraitImplementor>>,
+    saved: &'static [u8],
+    only_primitives: bool,
+}
+
+impl ImplementorRows {
+    pub fn new(rows: Vec<RustTraitImplementor>) -> Self {
+        let only_primitives = !rows.is_empty()
+            && rows
+                .iter()
+                .all(|row| matches!(row.implementor.kind(), TypeExprKind::Primitive(_)));
+        Self {
+            decoded: OnceCell::from(rows),
+            saved: &[],
+            only_primitives,
+        }
+    }
+
+    pub fn get(&self) -> &[RustTraitImplementor] {
+        self.decoded.get_or_init(|| self.decode())
+    }
+
+    pub fn only_primitives(&self) -> bool {
+        self.only_primitives
+    }
+
+    fn decode(&self) -> Vec<RustTraitImplementor> {
+        bincode::deserialize(self.saved).expect("saved rows decode")
+    }
+
+    fn encoded(&self) -> Vec<u8> {
+        bincode::serialize(self.get()).expect("rows encode")
+    }
+}
+
+impl fmt::Debug for ImplementorRows {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.debug_list().entries(self.get()).finish()
+    }
+}
+
+impl serde::Serialize for ImplementorRows {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        (self.only_primitives, self.encoded().as_slice()).serialize(serializer)
+    }
+}
+
+impl<'de: 'static> serde::Deserialize<'de> for ImplementorRows {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let (only_primitives, saved) = <(bool, &'static [u8])>::deserialize(deserializer)?;
+        Ok(Self {
+            decoded: OnceCell::new(),
+            saved,
+            only_primitives,
+        })
+    }
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct RequiredTrait {
     pub bound: TypeBound,
@@ -79,6 +141,7 @@ pub struct RequiredTrait {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(bound(deserialize = "'de: 'static"))]
 pub struct RustTraitDeclaration {
     pub binding: BindingId,
     pub path: Rc<str>,
@@ -88,7 +151,7 @@ pub struct RustTraitDeclaration {
     pub requires: Vec<RequiredTrait>,
     pub structural: Option<StructuralClause>,
     pub associated: Vec<RustTraitAssociatedType>,
-    pub implementors: Vec<RustTraitImplementor>,
+    pub implementors: ImplementorRows,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -98,6 +161,7 @@ pub struct EnumDefiner {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(bound(deserialize = "'de: 'static"))]
 pub enum ItemKind {
     Def(BindingId, Rc<Expr>),
     Signature(BindingId, TypeExpr),
@@ -186,6 +250,7 @@ pub enum VariantPayload {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(bound(deserialize = "'de: 'static"))]
 pub struct CoreModule {
     pub id: ModuleId,
     pub path: ModulePath,
@@ -222,5 +287,76 @@ impl CoreModule {
             ItemKind::Def(binding, value) => Some((*binding, value)),
             _ => None,
         })
+    }
+}
+
+#[cfg(test)]
+mod implementor_rows_tests {
+    use super::ImplementorRows;
+    use crate::core::{BindingId, PrimitiveType, RustTraitImplementor, TypeExpr, TypeExprKind};
+    use crate::source::{SourceId, Span};
+
+    struct RowsFixture;
+
+    impl RowsFixture {
+        fn row(kind: TypeExprKind) -> RustTraitImplementor {
+            RustTraitImplementor {
+                implementor: TypeExpr::new(kind, Span::new(SourceId::new(0), 0..0)),
+                associated: Vec::new(),
+            }
+        }
+
+        fn named(index: u32) -> RustTraitImplementor {
+            Self::row(TypeExprKind::Named(
+                BindingId::from_index(index),
+                Vec::new(),
+            ))
+        }
+
+        fn primitive() -> RustTraitImplementor {
+            Self::row(TypeExprKind::Primitive(PrimitiveType::I64))
+        }
+
+        fn reloaded(rows: &ImplementorRows) -> ImplementorRows {
+            let saved = bincode::serialize(rows).expect("the rows encode");
+            bincode::deserialize(saved.leak()).expect("the rows decode")
+        }
+
+        fn implemented(rows: &ImplementorRows) -> Vec<u32> {
+            rows.get()
+                .iter()
+                .map(|row| match row.implementor.kind() {
+                    TypeExprKind::Named(binding, _) => binding.index(),
+                    _ => u32::MAX,
+                })
+                .collect()
+        }
+    }
+
+    #[test]
+    fn saved_rows_decode_to_the_rows_written() {
+        let rows = ImplementorRows::new(vec![RowsFixture::named(3), RowsFixture::named(5)]);
+        assert_eq!(
+            RowsFixture::implemented(&RowsFixture::reloaded(&rows)),
+            vec![3, 5]
+        );
+    }
+
+    #[test]
+    fn loaded_rows_save_the_same_bytes_again() {
+        let rows = ImplementorRows::new(vec![RowsFixture::named(7)]);
+        let saved = bincode::serialize(&rows).expect("the rows encode");
+        let resaved = bincode::serialize(&RowsFixture::reloaded(&rows)).expect("the rows encode");
+        assert_eq!(resaved, saved);
+    }
+
+    #[test]
+    fn rows_of_primitives_only_say_so_without_decoding() {
+        let primitives = ImplementorRows::new(vec![RowsFixture::primitive()]);
+        let mixed = ImplementorRows::new(vec![RowsFixture::primitive(), RowsFixture::named(1)]);
+        let empty = ImplementorRows::new(Vec::new());
+        assert!(RowsFixture::reloaded(&primitives).only_primitives());
+        assert!(!RowsFixture::reloaded(&mixed).only_primitives());
+        assert!(!RowsFixture::reloaded(&empty).only_primitives());
     }
 }

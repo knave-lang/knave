@@ -2,9 +2,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::{
     BindingId, ConsultedTraits, CoreModule, ItemKind, References, RustTraitDeclaration, TypeBound,
-    TypeExpr, TypeExprKind, VariantPayload,
+    TypeExpr, VariantPayload,
 };
 use crate::modules::ModuleSources;
+use crate::source::Span;
 
 #[derive(Clone)]
 pub struct ReachedTraits {
@@ -14,6 +15,20 @@ pub struct ReachedTraits {
 impl ReachedTraits {
     pub fn reaches(&self, trait_binding: BindingId) -> bool {
         self.traits.contains(&trait_binding)
+    }
+
+    pub fn declarations<'m>(
+        &self,
+        modules: &'m [CoreModule],
+    ) -> impl Iterator<Item = (Span, &'m RustTraitDeclaration)> {
+        modules
+            .iter()
+            .flat_map(|module| &module.items)
+            .filter_map(|item| match &item.kind {
+                ItemKind::RustTrait(declaration) => Some((item.span, declaration)),
+                _ => None,
+            })
+            .filter(|(_, declaration)| self.reaches(declaration.binding))
     }
 }
 
@@ -88,7 +103,7 @@ impl<'p> TraitReach<'p> {
     fn roots(&mut self, modules: &[CoreModule]) {
         self.reach_declared(|declaration| {
             ConsultedTraits::PATHS.contains(&declaration.path.as_ref())
-                || Self::lists_only_primitives(declaration)
+                || declaration.implementors.only_primitives()
         });
         let mut writes_a_type = false;
         for module in modules {
@@ -104,14 +119,6 @@ impl<'p> TraitReach<'p> {
         if writes_a_type {
             self.reach_declared(|declaration| declaration.structural.is_some());
         }
-    }
-
-    fn lists_only_primitives(declaration: &RustTraitDeclaration) -> bool {
-        let rows = &declaration.implementors;
-        !rows.is_empty()
-            && rows
-                .iter()
-                .all(|row| matches!(row.implementor.kind(), TypeExprKind::Primitive(_)))
     }
 
     fn reach_written(&mut self, kind: &ItemKind) {
@@ -177,7 +184,7 @@ impl<'p> TraitReach<'p> {
             };
             self.bounds(declaration.requires.iter().map(|required| &required.bound));
             self.types(declaration.methods.iter().map(|method| &method.signature));
-            let rows = declaration.implementors.iter();
+            let rows = declaration.implementors.get().iter();
             self.types(rows.flat_map(|row| {
                 std::iter::once(&row.implementor)
                     .chain(row.associated.iter().map(|value| &value.value))
@@ -222,10 +229,10 @@ mod tests {
 
     use crate::core::{
         AssociatedValue, BindingArena, BindingId, BindingInfo, BindingKind, CoreModule, Expr,
-        ExprKind, FieldLabel, FieldSpelling, ImplAssociatedType, Item, ItemKind, Leaf, ModuleId,
-        ModulePath, ParsedTemplate, PrimitiveType, References, RustTraitAssociatedType,
-        RustTraitDeclaration, RustTraitImplementor, TraitMethod, TypeBinder, TypeBound, TypeExpr,
-        TypeExprKind, VariantDeclaration, VariantPayload,
+        ExprKind, FieldLabel, FieldSpelling, ImplAssociatedType, ImplementorRows, Item, ItemKind,
+        Leaf, ModuleId, ModulePath, ParsedTemplate, PrimitiveType, References,
+        RustTraitAssociatedType, RustTraitDeclaration, RustTraitImplementor, TraitMethod,
+        TypeBinder, TypeBound, TypeExpr, TypeExprKind, VariantDeclaration, VariantPayload,
     };
     use crate::source::{SourceId, Span};
     use crate::types::TypedSource;
@@ -353,7 +360,7 @@ mod tests {
                 requires: Vec::new(),
                 structural: None,
                 associated: Vec::new(),
-                implementors: Vec::new(),
+                implementors: ImplementorRows::new(Vec::new()),
             }
         }
 
@@ -442,14 +449,14 @@ mod tests {
         let declaring = traits.add(declaring);
         let mut giving = traits.declare("giving");
         let given = traits.binding("given");
-        giving.implementors.push(RustTraitImplementor {
+        giving.implementors = ImplementorRows::new(vec![RustTraitImplementor {
             implementor: DeclaredTraits::named(given),
             associated: vec![AssociatedValue {
                 binding: given,
                 value: DeclaredTraits::named(projection),
                 span: DeclaredTraits::span(),
             }],
-        });
+        }]);
         let giving = traits.add(giving);
         let reached = traits.reached_from(&[giving]);
         assert!(reached.reaches(declaring));
@@ -625,18 +632,45 @@ mod tests {
     fn a_trait_whose_rows_are_all_primitives_is_reached_unnamed() {
         let mut traits = DeclaredTraits::new();
         let mut numeric = traits.declare("numeric");
-        numeric.implementors.push(RustTraitImplementor {
+        numeric.implementors = ImplementorRows::new(vec![RustTraitImplementor {
             implementor: TypeExpr::new(
                 TypeExprKind::Primitive(PrimitiveType::I64),
                 DeclaredTraits::span(),
             ),
             associated: Vec::new(),
-        });
+        }]);
         let numeric = traits.add(numeric);
         let unrelated = traits.declare("unrelated");
         let unrelated = traits.add(unrelated);
         let reached = traits.reached_from(&[]);
         assert!(reached.reaches(numeric));
         assert!(!reached.reaches(unrelated));
+    }
+
+    #[test]
+    fn every_prelude_trait_saves_whether_its_rows_are_all_primitives() {
+        let source = TypedSource::expand_on_a_loaded_prelude(ReachFixture::EMPTY_PROGRAM);
+        let declarations = source
+            .program()
+            .modules
+            .iter()
+            .flat_map(|module| &module.items)
+            .filter_map(|item| match &item.kind {
+                ItemKind::RustTrait(declaration) => Some(declaration),
+                _ => None,
+            });
+        for declaration in declarations {
+            let rows = declaration.implementors.get();
+            let primitives = !rows.is_empty()
+                && rows
+                    .iter()
+                    .all(|row| matches!(row.implementor.kind(), TypeExprKind::Primitive(_)));
+            assert_eq!(
+                declaration.implementors.only_primitives(),
+                primitives,
+                "{}",
+                declaration.path
+            );
+        }
     }
 }

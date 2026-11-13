@@ -1,6 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
+use super::allocator_share::AllocatorShare;
 use super::measurement::Measurement;
+use super::stage_costs::StageCosts;
 use crate::failure::TaskFailure;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -55,6 +57,21 @@ impl<'a> ProfileReader<'a> {
             .iter()
             .map(|crate_name| format!("{crate_name}::{path}"))
             .collect()
+    }
+
+    fn allocator_share_of_call(&self, caller: &str, callee: &str) -> Option<String> {
+        if !AllocatorShare::is_allocator_call(callee) || !self.is_entry_point(caller) {
+            return None;
+        }
+        self.module_of(caller).map(str::to_string)
+    }
+
+    fn is_entry_point(&self, function: &str) -> bool {
+        Self::STAGE_ENTRY_POINTS.iter().any(|entry_point| {
+            self.in_each_crate(entry_point)
+                .iter()
+                .any(|name| name == function)
+        })
     }
 
     fn stage_of_call(&self, caller: &str, callee: &str) -> Option<String> {
@@ -114,7 +131,7 @@ struct ProfileScan<'reader, 'text> {
     caller: &'text str,
     callee: &'text str,
     call_cost_follows: bool,
-    stages: BTreeMap<String, u64>,
+    costs: StageCosts,
     entered: BTreeSet<&'text str>,
 }
 
@@ -129,7 +146,7 @@ impl<'reader, 'text> ProfileScan<'reader, 'text> {
             caller: "",
             callee: "",
             call_cost_follows: false,
-            stages: BTreeMap::new(),
+            costs: StageCosts::default(),
             entered: BTreeSet::new(),
         }
     }
@@ -151,15 +168,21 @@ impl<'reader, 'text> ProfileScan<'reader, 'text> {
     }
 
     fn record_call(&mut self, cost_line: &str) {
-        let (Some(stage), Some(column)) = (
-            self.reader.stage_of_call(self.caller, self.callee),
-            self.instruction_column,
-        ) else {
+        let Some(column) = self.instruction_column else {
             return;
         };
         let counts = Self::counts(cost_line.split_once(' ').map_or("", |(_, counts)| counts));
-        *self.stages.entry(stage).or_default() += Self::count_at(&counts, column);
-        self.entered.insert(self.callee);
+        let cost = Self::count_at(&counts, column);
+        if let Some(stage) = self.reader.stage_of_call(self.caller, self.callee) {
+            self.costs.add_inclusive(stage, cost);
+            self.entered.insert(self.callee);
+        }
+        if let Some(stage) = self
+            .reader
+            .allocator_share_of_call(self.caller, self.callee)
+        {
+            self.costs.add_allocator(stage, cost);
+        }
     }
 
     fn finish(self) -> Result<Measurement, TaskFailure> {
@@ -173,7 +196,7 @@ impl<'reader, 'text> ProfileScan<'reader, 'text> {
             return Err(TaskFailure::stage_entry_missing(&candidates));
         }
         Ok(Measurement::new(
-            self.stages,
+            self.costs.into_rows()?,
             Self::count_at(&summary, column),
         ))
     }
@@ -216,6 +239,35 @@ mod tests {
             ("other", 130),
             ("total", 1000),
         ];
+        const BUILD_CALLS: &'static str = "\nfn=compiler::build::formatting::EmittedFormatting::apply\n\
+             0 4\n\
+             cfn=__rustc::__rust_alloc_zeroed\n\
+             calls=1 0\n\
+             0 5\n\
+             cfn=alloc::raw_vec::RawVecInner<A>::reserve::do_reserve_and_handle\n\
+             calls=1 0\n\
+             0 3\n\
+             cfn=compiler::build::token_alignment::RustTokens::scan\n\
+             calls=1 0\n\
+             0 8\n\
+             \n\
+             fn=compiler::build::token_alignment::RustTokens::scan\n\
+             0 6\n\
+             cfn=__rustc::__rust_alloc\n\
+             calls=1 0\n\
+             0 2\n";
+
+        const EMIT_CALL_UNDER_BUILD: &'static str = "\nfn=compiler::build::formatting::EmittedFormatting::apply\n\
+             0 4\n\
+             cfn=compiler::emit::writer::SpanMap::moved\n\
+             calls=1 0\n\
+             0 7\n\
+             \n\
+             fn=compiler::emit::writer::SpanMap::moved\n\
+             0 4\n\
+             cfn=__rustc::__rust_alloc\n\
+             calls=1 0\n\
+             0 3\n";
 
         fn read(
             profile: &str,
@@ -271,6 +323,41 @@ mod tests {
             ProfileFixture::rows(&measurement),
             ProfileFixture::stage_rows()
         );
+    }
+
+    #[test]
+    fn moves_the_allocator_calls_of_a_stage_s_entry_point_to_its_allocator_row() {
+        let profile = format!(
+            "{}{}",
+            ProfileFixture::ONE_CRATE,
+            ProfileFixture::BUILD_CALLS
+        );
+        let measurement = ProfileFixture::read(
+            &profile,
+            &ProfileFixture::COMPILER,
+            EntryPointCheck::Enforced,
+        )
+        .unwrap();
+        assert_eq!(measurement.instructions_of("build allocator"), Some(8));
+        assert_eq!(measurement.instructions_of("build"), Some(12));
+    }
+
+    #[test]
+    fn charges_allocation_to_the_stage_that_runs_it_not_the_module_that_defines_it() {
+        let profile = format!(
+            "{}{}",
+            ProfileFixture::ONE_CRATE,
+            ProfileFixture::EMIT_CALL_UNDER_BUILD
+        );
+        let measurement = ProfileFixture::read(
+            &profile,
+            &ProfileFixture::COMPILER,
+            EntryPointCheck::Enforced,
+        )
+        .unwrap();
+        assert_eq!(measurement.instructions_of("emit allocator"), None);
+        assert_eq!(measurement.instructions_of("emit"), Some(50));
+        assert_eq!(measurement.instructions_of("build"), Some(20));
     }
 
     #[test]

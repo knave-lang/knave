@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use super::allocator_share::AllocatorShare;
 use super::counter_gate::CounterGate;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -23,6 +24,11 @@ impl Measurement {
              A stage is the inclusive cost of the calls the command-line module makes into one \
              compiler module. `{other}` holds the rest: process startup, argument parsing, \
              reading the entry file, printing, and dropping each stage's result. \
+             A stage's `{allocator_row}` row holds the calls its entry function makes itself \
+             into the allocator, the functions whose names start with {allocator_prefixes}, and the \
+             stage's own row leaves them out. Their cost swings when an earlier stage changes how it leaves \
+             the heap, so an allocator row never rises notably: the allocation counters catch \
+             allocation that really grows. \
              `rustfmt` runs as a child process that callgrind does not trace, so the `build` stage \
              counts only the compiler's side of formatting.\n\n\
              The compiler hashes with a fixed seed, so its hash maps lay out the same way in \
@@ -38,6 +44,10 @@ impl Measurement {
              `{peak}` rises more than {tolerance}% above the base commit, unless a commit of \
              the pull request names the program in a `Counters-Accepted:` trailer.\n",
             other = Self::OTHER,
+            allocator_row = AllocatorShare::row_of("<stage>"),
+            allocator_prefixes = AllocatorShare::CALLEE_PREFIXES
+                .map(|prefix| format!("`{prefix}`"))
+                .join(" or "),
             allocated = CounterGate::GATED_COUNTERS[0],
             peak = CounterGate::GATED_COUNTERS[1],
             tolerance = CounterGate::TOLERANCE_PERCENT,

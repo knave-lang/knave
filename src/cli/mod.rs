@@ -43,6 +43,7 @@ mod evaluation_output;
 mod evaluation_request;
 mod exit_status;
 mod expand;
+mod expanded_page;
 mod expansion;
 mod explanation_page;
 #[cfg(test)]
@@ -61,6 +62,7 @@ mod interruption;
 mod json_replies;
 mod library_walk;
 mod lint;
+mod lint_pages;
 mod located_program;
 mod located_project;
 mod module_of_sources;

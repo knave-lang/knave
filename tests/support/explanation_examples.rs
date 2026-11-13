@@ -1,15 +1,16 @@
 use std::path::PathBuf;
 use std::thread;
 
-use knave::diagnostic::Explanation;
+use knave::diagnostic::{CodeStage, Explanation};
 
 use super::Fixture;
+use super::example_folder::ExampleFolder;
 use super::example_layout::ExampleLayout;
 use super::project_example::ProjectExample;
 
 pub struct ExplanationExamples {
     code: String,
-    text: &'static str,
+    text: String,
 }
 
 #[derive(Default)]
@@ -28,21 +29,59 @@ impl ExplanationExamples {
     const FIXES_HEADING: &str = "## Fixes";
     const EXAMPLE_FENCE: &str = "```knave\n";
     const CLOSING_FENCE: &str = "```\n";
+    const UNTAGGED_FENCE: &str = "```";
+    const DOC_COMMAND: &str = "doc";
+    const PAGE_BREAK: &str = "\n\n";
     const EXAMPLE_FILE: &str = "example.knv";
     const MAXIMUM_PARALLEL_FIX_BUILDS: usize = 4;
     const ERRONEOUS_PLACE: &str = "erroneous example";
     const FIX_PLACE: &str = "fix";
 
-    pub fn new(code: &str, text: &'static str) -> Self {
+    pub fn new(code: &str, text: &str) -> Self {
         let code = code.to_string();
+        let text = text.to_string();
         Self { code, text }
     }
 
     pub fn written() -> Vec<Self> {
         Explanation::all()
             .filter_map(|explanation| {
-                let text = explanation.text()?;
-                Some(Self::new(explanation.code().as_str(), text))
+                let code = explanation.code().as_str();
+                match explanation.text() {
+                    Some(text) => Some(Self::new(code, text)),
+                    None => Self::of_docstring(&explanation),
+                }
+            })
+            .collect()
+    }
+
+    fn of_docstring(explanation: &Explanation) -> Option<Self> {
+        let code = explanation.code();
+        if !CodeStage::LINTS.contains(code) {
+            return None;
+        }
+        let command = [Self::DOC_COMMAND.to_string(), code.as_str().to_string()];
+        let output = ExampleFolder::holding([]).run(&command, "");
+        let page = String::from_utf8_lossy(&output.stdout).into_owned();
+        let (header, docstring) = page.split_once(Self::PAGE_BREAK)?;
+        let code_header = format!("{}: {}", code.as_str(), explanation.display_name());
+        (header != code_header).then(|| Self::new(code.as_str(), &Self::tagged(docstring)))
+    }
+
+    fn tagged(docstring: &str) -> String {
+        let mut inside_a_fence = false;
+        docstring
+            .lines()
+            .map(|line| {
+                let opens = !inside_a_fence && line == Self::UNTAGGED_FENCE;
+                if line.starts_with(Self::UNTAGGED_FENCE) {
+                    inside_a_fence = !inside_a_fence;
+                }
+                if opens {
+                    Self::EXAMPLE_FENCE.to_string()
+                } else {
+                    format!("{line}\n")
+                }
             })
             .collect()
     }
@@ -108,7 +147,7 @@ impl ExplanationExamples {
         layouts
     }
 
-    fn placed_examples(&self) -> Vec<(String, &'static str)> {
+    fn placed_examples(&self) -> Vec<(String, &str)> {
         let erroneous = self.examples_placed(Self::ERRONEOUS_HEADING, Self::ERRONEOUS_PLACE);
         erroneous
             .chain(self.examples_placed(Self::FIXES_HEADING, Self::FIX_PLACE))
@@ -119,7 +158,7 @@ impl ExplanationExamples {
         &'e self,
         heading: &'e str,
         place: &'e str,
-    ) -> impl Iterator<Item = (String, &'static str)> + 'e {
+    ) -> impl Iterator<Item = (String, &'e str)> + 'e {
         self.examples_under(heading)
             .enumerate()
             .map(move |(index, example)| (format!("{place} {index} of {}", self.code), example))
@@ -158,7 +197,7 @@ impl ExplanationExamples {
         Fixture::of_text(&path, fix.to_string()).run_failure()
     }
 
-    fn examples_under(&self, heading: &str) -> impl Iterator<Item = &'static str> {
+    fn examples_under<'e>(&'e self, heading: &str) -> impl Iterator<Item = &'e str> {
         let section = self.section(heading);
         section
             .split(Self::EXAMPLE_FENCE)
@@ -166,7 +205,7 @@ impl ExplanationExamples {
             .filter_map(|rest| rest.split(Self::CLOSING_FENCE).next())
     }
 
-    fn section(&self, heading: &str) -> &'static str {
+    fn section(&self, heading: &str) -> &str {
         let after_heading = self.text.split_once(heading).map_or("", |(_, rest)| rest);
         after_heading.split("\n## ").next().unwrap_or(after_heading)
     }

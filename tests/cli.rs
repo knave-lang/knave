@@ -25,6 +25,7 @@ const UNWRAPPED_FAILURE: &str = "(defstruct failure :line i64)
   (println (unwrap-ok (the (result i64 failure) (err (->failure 3))))))
 ";
 const UNBOUND_NAME: &str = "(defn main ()\n  (println greeting))\n";
+const PROJECT_LINT_RULES: &str = "(use prelude/macros document)\n\n(export check-rule rule-names)\n\n(document (fake-rule table)\n  \"Reports nothing.\")\n\n(def rule-names (quote (fake-rule)))\n\n(def fake-rule (fn (table) table))\n\n(def check-rule (fn (rule table) table))\n";
 const ECHO: &str = "(def first-argument (rust \"std::env::args().nth(1).unwrap_or_default()\" string))\n\n(defn main ()\n  (println first-argument))\n";
 const EXIT_THREE: &str =
     "(def exit (rust \"std::process::exit({0})\" (fn (i32) unit)))\n\n(defn main ()\n  (exit 3))\n";
@@ -2349,6 +2350,90 @@ fn doc_looks_up_an_unknown_code_as_a_term() {
             .stderr()
             .starts_with("error[L0201]: cannot find `L0999` in this scope")
     );
+}
+
+#[test]
+fn doc_explains_the_code_of_a_lint_rule_by_the_rule_s_page() {
+    let sandbox = Sandbox::new("doc_rule_code");
+    let doc = sandbox.compiler(&["doc", "--color", "never", "L0801"]);
+    let page = doc.assert_exit_code(0).stdout();
+    assert_eq!(page.lines().next(), Some("(unused-binding table)"));
+    assert!(page.contains("## Erroneous example"));
+}
+
+#[test]
+fn doc_explains_a_lint_code_by_the_docstring_where_its_wording_lives() {
+    let sandbox = Sandbox::new("doc_link_code");
+    let doc = sandbox.compiler(&["doc", "--color", "never", "L0802"]);
+    let page = doc.assert_exit_code(0).stdout();
+    assert_eq!(page.lines().next(), Some("(unmatched-link page spot name)"));
+}
+
+#[test]
+fn doc_explains_a_lint_of_the_compiler_by_its_code_page() {
+    let sandbox = Sandbox::new("doc_compiler_lint_code");
+    let doc = sandbox.compiler(&["doc", "L0803"]);
+    let page = doc.assert_exit_code(0).stdout();
+    assert_eq!(page.lines().next(), Some("L0803: unreachable arm"));
+}
+
+#[test]
+fn doc_finds_a_lint_rule_by_its_name() {
+    let sandbox = Sandbox::new("doc_rule_name");
+    let doc = sandbox.compiler(&["doc", "--color", "never", "unused-binding"]);
+    let page = doc.assert_exit_code(0).stdout();
+    assert_eq!(page.lines().next(), Some("(unused-binding table)"));
+}
+
+#[test]
+fn doc_looks_up_the_name_of_a_lint_of_the_compiler_as_a_term() {
+    let sandbox = Sandbox::new("doc_compiler_lint_name");
+    let doc = sandbox.compiler(&["doc", "--color", "never", "unreachable-arm"]);
+    assert!(
+        doc.assert_exit_code(1)
+            .stderr()
+            .starts_with("error[L0201]: cannot find `unreachable-arm` in this scope")
+    );
+}
+
+#[test]
+fn doc_prefers_a_program_s_own_name_to_a_lint_rule() {
+    let sandbox = Sandbox::new("doc_rule_name_taken").with_file(
+        "shelf.knv",
+        "(defn unused-binding ()\n  \"Counts the shelves.\"\n  3)\n",
+    );
+    let doc = sandbox.compiler(&[
+        "doc",
+        "--color",
+        "never",
+        "--file",
+        "shelf.knv",
+        "unused-binding",
+    ]);
+    assert_eq!(
+        doc.assert_exit_code(0).stdout(),
+        "(defn unused-binding ())\n\nCounts the shelves.\n"
+    );
+}
+
+#[test]
+fn doc_reads_the_lint_rules_of_the_compiler_s_own_prelude() {
+    let sandbox = Sandbox::new("doc_rule_of_project_prelude")
+        .with_file(&Language::project_file_name(), "(defproject shelf)\n")
+        .with_file("src/main.knv", "(defn main () (println 1))\n")
+        .with_file("prelude/lint.knv", PROJECT_LINT_RULES);
+    let doc_of = |term: &str| {
+        let arguments = ["doc", "--color", "never", "--file", "src/main.knv", term];
+        sandbox.compiler(&arguments)
+    };
+    assert!(
+        doc_of("fake-rule")
+            .assert_exit_code(1)
+            .stderr()
+            .starts_with("error[L0201]: cannot find `fake-rule` in this scope")
+    );
+    let page = doc_of("unused-binding").assert_exit_code(0).stdout();
+    assert_eq!(page.lines().next(), Some("(unused-binding table)"));
 }
 
 #[test]

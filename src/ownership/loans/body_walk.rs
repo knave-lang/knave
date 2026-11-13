@@ -5,6 +5,7 @@ use super::call_site::CallSite;
 use super::call_walk::CallWalk;
 use super::closure::Closure;
 use super::control_flow_graph::ControlFlowGraph;
+use super::expr_parts::ExprParts;
 use super::expression_walk::ExpressionWalk;
 use super::holdings::Holdings;
 use super::lender::Lender;
@@ -64,29 +65,36 @@ impl<'w> BodyWalk<'w> {
                 self.graph.point_mut(point).using(*binding);
                 Walked::holding(point, Holdings::of_value(*binding))
             }
-            TypedExprKind::Leaf(_) => Walked::at(at),
             TypedExprKind::Fn(lambda) => {
                 self.closures.push(Closure::new(lambda, expr.span));
                 Walked::at(at)
             }
             TypedExprKind::Call(callee, arguments) => {
-                let site = CallSite::new(expr, callee, arguments);
-                match site.repeated_lambda() {
-                    Some(lambda) => self.repeated(lambda, arguments, at),
-                    None => CallWalk::new(self, site).walk(at),
-                }
+                self.call(CallSite::new(expr, callee, arguments), at)
             }
             TypedExprKind::Recur(arguments) => self.recur(arguments, at),
-            TypedExprKind::Try { value, .. }
-            | TypedExprKind::Infer(value)
-            | TypedExprKind::Deref(value)
-            | TypedExprKind::TraitObject(value, _) => self.expr(value, at),
+            TypedExprKind::Borrow(..) | TypedExprKind::Struct(TypedStructExpr::Field(..)) => {
+                self.lent(expr, at)
+            }
+            TypedExprKind::Control(control) => self.control(control, at),
+            _ => self.sequence(ExprParts::of(expr).into_iter(), at),
+        }
+    }
+
+    fn call(&mut self, site: CallSite<'w>, at: PointId) -> Walked {
+        match site.repeated_lambda() {
+            Some(lambda) => self.repeated(lambda, site.arguments(), at),
+            None => CallWalk::new(self, site).walk(at),
+        }
+    }
+
+    fn lent(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
+        match &expr.kind {
             TypedExprKind::Borrow(kind, inner) => {
                 let lending = LoanPlace::of(inner)
                     .map(|place| Lending::new(place, <dyn LoanKind>::of(*kind), inner.span));
                 self.lent_from(inner, lending, at)
             }
-            TypedExprKind::Control(control) => self.control(control, at),
             TypedExprKind::Struct(TypedStructExpr::Field(owner, _)) => {
                 let shared = <dyn LoanKind>::of(ReferenceKind::Shared);
                 let lending = LoanPlace::of(expr)
@@ -94,20 +102,7 @@ impl<'w> BodyWalk<'w> {
                     .map(|place| Lending::new(place, shared, expr.span));
                 self.lent_from(owner, lending, at)
             }
-            TypedExprKind::Struct(TypedStructExpr::New(_, fields)) => {
-                self.sequence(fields.iter().map(|(_, value)| value), at)
-            }
-            TypedExprKind::Struct(TypedStructExpr::Update(_, base, fields)) => self.sequence(
-                std::iter::once(base.as_ref()).chain(fields.iter().map(|(_, value)| value)),
-                at,
-            ),
-            TypedExprKind::Variant(_, values, _) => self.sequence(values.iter(), at),
-            TypedExprKind::Assoc(map, keys, value) => self.sequence(
-                std::iter::once(map.as_ref())
-                    .chain(keys)
-                    .chain(std::iter::once(value.as_ref())),
-                at,
-            ),
+            _ => self.expr(expr, at),
         }
     }
 

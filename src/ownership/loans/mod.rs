@@ -8,6 +8,7 @@ mod call_site;
 mod call_walk;
 mod closure;
 mod control_flow_graph;
+mod expr_parts;
 mod expression_walk;
 mod holdings;
 mod lender;

@@ -3,6 +3,7 @@
 (use prelude/logic and)
 (use prelude/syntax let)
 (use prelude/types box option result vec)
+(use prelude/internal/text owned-text)
 
 (module
   "Does arithmetic and comparison, and names the number traits.")
@@ -24,14 +25,14 @@
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize)
 
 (rust-trait partial-eq "PartialEq"
-  bool char str string
+  bool char str owned-text
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32
   f64
-  (with string str)
-  (with str string)
-  (with string (ref str))
-  (with (ref str) string)
+  (with owned-text str)
+  (with str owned-text)
+  (with owned-text (ref str))
+  (with (ref str) owned-text)
   (where ((a (partial-eq b)) b)
     (with (ref a) (ref b)))
   (where ((a partial-eq)) (vec a))
@@ -44,7 +45,7 @@
 
 (rust-trait eq "Eq"
   (requires partial-eq)
-  bool char str string
+  bool char str owned-text
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize
   (where ((a eq)) (vec a))
@@ -54,7 +55,7 @@
   (where ((a eq) (b eq)) (pair a b)))
 
 (rust-trait hash "std::hash::Hash"
-  bool char str string
+  bool char str owned-text
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize
   (where ((a hash)) (vec a))
@@ -65,7 +66,7 @@
 
 (rust-trait partial-ord "PartialOrd"
   (requires partial-eq)
-  char str string
+  char str owned-text
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32
   f64
@@ -192,7 +193,7 @@
 
 (rust-trait ord "Ord"
   (requires eq partial-ord)
-  char string
+  char owned-text
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize
   (where ((a ord)) (ref a))

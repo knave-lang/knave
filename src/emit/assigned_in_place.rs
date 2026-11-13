@@ -108,7 +108,7 @@ mod tests {
 
     impl AssignedFixture {
         const SOURCE: &str = "
-            (defstruct page :title string)
+            (defstruct page :title str)
             (type first-letter (fn ((ref str)) (ref str)))
             (defn first-letter (text) (subs text 0 1))
             (type title-of (fn ((ref page)) (ref str)))

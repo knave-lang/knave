@@ -103,12 +103,12 @@ mod tests {
     use crate::types::declarations_fixture::DeclarationsFixture;
 
     const SOURCE: &str = "
-        (struct ticket (id u32) (owner string))
+        (struct ticket (id u32) (owner str))
         (struct (holder a) (value a))
         (struct locker (opener (fn () i64)))
-        (struct shelf (labels (vec string)))
+        (struct shelf (labels (vec str)))
         (struct toolbox (openers (vec (fn () i64))))
-        (enum reading (text string) (number f64))
+        (enum reading (text str) (number f64))
         (rust-type octal-out \"std::fmt::Formatter<'_>\")
         (rust-type octal-result \"std::fmt::Result\")
         (rust-trait octal \"std::fmt::Octal\"

@@ -1,4 +1,5 @@
 (use prelude/macros document module)
+(use prelude/internal/text owned-text)
 
 (module
   "Names the prelude's generic types, such as [option], [result] and [vec].")
@@ -35,7 +36,7 @@
 (rust-type (slice item) "[{0}]")
 
 (rust-trait sequence "crate::rt::Sequence"
-  str string
+  str owned-text
   (where ((item sequence)) (ref item))
   (where (item) (vec item))
   (where (item) (slice item))

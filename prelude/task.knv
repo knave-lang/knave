@@ -16,6 +16,7 @@
           symbol symbol-name symbol? value-eq)
 
 (use prelude/internal/code pinned-at)
+(use prelude/internal/text owned-text)
 
 (module
   "Runs the tasks of a project and lists them for `knave task`.")
@@ -499,7 +500,7 @@
                        (position-of parameter ordered 0)))
     (located-deeply (parameter-place parameter)
                     (if open
-                      (template (the string (unquote value)))
+                      (template (the str (unquote value)))
                       value))))
 
 (def located-deeply
@@ -688,12 +689,12 @@
          (ref str)
          (ref str)
          (ref str))
-      (vec (option string)))))
+      (vec (option owned-text)))))
 
 (def task-value
   (rust "match &({0})[{1}] {{ Some(text) => text.parse::<{target}>().unwrap_or_else(|_| {{ eprintln!(\"error: task `{{}}` cannot read `{{}}` as `{{}}`\", {2}, text, {3}); std::process::exit(2) }}), None => {{ eprintln!(\"error: task `{{}}` needs `{{}}`\\nusage: {{}}\", {2}, {3}, {4}); std::process::exit(2) }} }}"
     (where ((target from-str))
-      (fn ((ref (vec (option string)))
+      (fn ((ref (vec (option owned-text)))
            usize
            (ref str)
            (ref str)
@@ -703,7 +704,7 @@
 (def task-value-or
   (rust "match &({0})[{1}] {{ Some(text) => text.parse::<{target}>().unwrap_or_else(|_| {{ eprintln!(\"error: task `{{}}` cannot read `{{}}` as `{{}}`\", {2}, text, {3}); std::process::exit(2) }}), None => {4} }}"
     (where ((target from-str))
-      (fn ((ref (vec (option string)))
+      (fn ((ref (vec (option owned-text)))
            usize
            (ref str)
            (ref str)
@@ -728,7 +729,7 @@
 
 (def task-switch
   (rust "({0})[{1}].is_some()"
-    (fn ((ref (vec (option string))) usize)
+    (fn ((ref (vec (option owned-text))) usize)
       bool)))
 
 (def task-names

@@ -182,7 +182,7 @@ mod tests {
         const SOURCE: &str = "
             (type first-letter (fn ((ref str)) (ref str)))
             (defn first-letter (text) (subs text 0 1))
-            (type announced (fn ((ref str)) string))
+            (type announced (fn ((ref str)) str))
             (defn announced (text) (str text))
             (type keep (fn (i64 (ref str)) (ref str)))
             (defn keep (n text) text)
@@ -203,7 +203,7 @@ mod tests {
             (defn template-try () (local t (tried (announced \"a\"))) t)
             (defn template-closure () (local t (closed (announced \"a\"))) t)
             (defn template-semicolon () (local t (repeated (announced \"a\"))) t)
-            (defstruct page :title string)
+            (defstruct page :title str)
             (defstruct card :page (ref page) :text (ref str))
             (def swapped (rust \"std::convert::identity(({1}, {0}).0)\" (fn ((ref str) i64) (ref str))))
             (defn struct-ahead (held) (local t (->card :page (ref held) :text (announced \"a\"))) t)

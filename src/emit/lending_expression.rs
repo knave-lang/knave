@@ -163,7 +163,7 @@ mod tests {
             (defstruct label :text (ref str))
             (type first-letter (fn ((ref str)) (ref str)))
             (defn first-letter (text) (subs text 0 1))
-            (type announced (fn ((ref str)) string))
+            (type announced (fn ((ref str)) str))
             (defn announced (text) (str text))
             (defn lent-argument () (local t (first-letter (announced \"a\"))) t)
             (defn named-argument (text) (local t (first-letter text)) t)

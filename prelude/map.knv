@@ -6,6 +6,7 @@
 (use prelude/types hash-map option slice sorted-map vec)
 (use prelude/pair pair)
 (use prelude/number eq hash ord)
+(use prelude/internal/text owned-text)
 
 (module
   "Builds and reads hash maps and sorted maps.
@@ -19,9 +20,9 @@
 (rust-trait borrow "std::borrow::Borrow"
   bool char
   (ref str)
-  string i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize
+  owned-text i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize
   f32 f64
-  (with string str)
+  (with owned-text str)
   (with (ref str) str))
 
 (def map-inserts

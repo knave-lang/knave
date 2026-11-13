@@ -287,8 +287,8 @@ mod tests {
     fn only_a_trait_with_a_generic_program_impl_waits_for_its_bounds() {
         let source = TypedSource::expand(
             r#"
-            (trait describe (describe-it (fn ((ref self)) string)))
-            (trait label (label-it (fn ((ref self)) string)))
+            (trait describe (describe-it (fn ((ref self)) str)))
+            (trait label (label-it (fn ((ref self)) str)))
             (impl describe (vec a) (describe-it (v) (pr-str v)))
             (impl label i64 (label-it (n) (str n)))
             (defn main () (println (describe-it (vec 1)) (label-it 2)))"#,

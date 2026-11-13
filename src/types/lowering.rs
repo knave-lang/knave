@@ -375,6 +375,15 @@ impl TypeChecker {
         arguments: Vec<Type>,
         scope: &FxHashMap<BindingId, GenericId>,
     ) -> Type {
+        if self
+            .declarations
+            .types
+            .rust_types
+            .get(binding)
+            .is_some_and(|rust_type| rust_type.has_template("String"))
+        {
+            return Type::Primitive(PrimitiveType::String);
+        }
         match (self.bindings.get(binding).kind(), scope.get(&binding)) {
             (BindingKind::TypeVariable | BindingKind::AssociatedType, Some(generic)) => {
                 Type::Generic(*generic)

@@ -88,7 +88,7 @@
         reverse! run-tests rust rust-trait rust-type
         sequence set! set-at show signed slice slurp some
         some? sort! sort-by! sorted-map source split
-        split-when sqrt stdin str str string struct subs sum
+        split-when sqrt stdin str struct subs sum
         take take-while template the then-ok then-some trait
         trim true try try-> type u128 u16 u32 u64 u8 unit
         unless unwrap unwrap-err unwrap-ok unwrap-or update
@@ -552,14 +552,6 @@
 
   (the bool true)
   => true")
-
-(document string
-  "Holds owned text that can grow, as Rust's `String` does.
-
-  A string literal is a `(ref str)`, and [str] builds a `string` from parts.
-
-  (the string (str \"pear\"))
-  => \"pear\"")
 
 (document unit
   "Holds no information, as Rust's `()` does.

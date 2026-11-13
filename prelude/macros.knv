@@ -912,8 +912,7 @@
   ```
   (use code first string?)
   (use prelude/macros defmacro docstring-form)
-
-  (defmacro documented? (term)
+(defmacro documented? (term)
     (string? (first (docstring-form term))))
 
   (documented? digit?)

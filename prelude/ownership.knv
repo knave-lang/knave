@@ -1,6 +1,7 @@
 (use prelude/macros document module)
 (use prelude/types box option result vec)
 (use prelude/pair pair)
+(use prelude/internal/text owned-text)
 
 (module
   "Copies values that would otherwise move.")
@@ -8,7 +9,7 @@
 (export clone copy)
 
 (rust-trait clone "Clone"
-  bool char string i8 i16 i32 i64 i128 isize u8 u16 u32 u64
+  bool char owned-text i8 i16 i32 i64 i128 isize u8 u16 u32 u64
   u128 usize f32 f64
   (where (a) (ref a))
   (where ((a clone)) (vec a))

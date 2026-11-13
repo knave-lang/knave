@@ -248,7 +248,7 @@ impl TypeProblems {
     }
 
     pub fn owned_string_push_item(span: Span) -> Diagnostic {
-        Self::string_push_mismatch("`string`", span).with_help("borrow the item with `(ref ...)`")
+        Self::string_push_mismatch("`str`", span).with_help("borrow the item with `(ref ...)`")
     }
 
     fn string_push_mismatch(found: &str, span: Span) -> Diagnostic {
@@ -664,7 +664,7 @@ impl TypeProblems {
             Label::new(span, format!("this literal has type `{parameter}`")),
         )
         .with_note(format!(
-            "`{parameter}` has no trait, so it can be any type, including `string`"
+            "`{parameter}` has no trait, so it can be any type, including `str`"
         ))
         .with_help(format!(
             "give `{parameter}` a numeric trait in the signature"
@@ -1123,7 +1123,7 @@ impl TypeProblems {
             "quoted code only exists at compile time",
             Label::new(span, "used in code that runs in the program"),
         )
-        .with_help("use `quote` inside macros, or write a string if you want text")
+        .with_help("use `quote` inside macros, or write a str if you want text")
     }
 
     pub fn wrong_type_argument_count(

@@ -1,0 +1,9 @@
+(use prelude/definers deftype)
+(use prelude/macros module)
+
+(module
+  "Names the owned text representation. Internal to the prelude.")
+
+(export owned-text)
+
+(deftype owned-text (rust "String"))

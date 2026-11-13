@@ -264,7 +264,7 @@ mod tests {
             Type::Primitive(PrimitiveType::Bool)
         }
 
-        fn string() -> Type {
+        fn str() -> Type {
             Type::Primitive(PrimitiveType::String)
         }
 
@@ -277,7 +277,7 @@ mod tests {
     fn a_borrowed_string_fits_a_string_view() {
         let mut fixture = UnificationFixture::new();
         let view = Type::shared(UnificationFixture::text());
-        let borrowed = Type::shared(UnificationFixture::string());
+        let borrowed = Type::shared(UnificationFixture::str());
         assert!(fixture.expect(&view, &borrowed).is_ok());
     }
 
@@ -285,7 +285,7 @@ mod tests {
     fn a_string_view_does_not_fit_a_borrowed_string() {
         let mut fixture = UnificationFixture::new();
         let view = Type::shared(UnificationFixture::text());
-        let borrowed = Type::shared(UnificationFixture::string());
+        let borrowed = Type::shared(UnificationFixture::str());
         assert!(fixture.expect(&borrowed, &view).is_err());
     }
 
@@ -293,7 +293,7 @@ mod tests {
     fn a_string_borrowed_twice_fits_a_borrowed_view() {
         let mut fixture = UnificationFixture::new();
         let view = Type::shared(Type::shared(UnificationFixture::text()));
-        let borrowed = Type::shared(Type::shared(UnificationFixture::string()));
+        let borrowed = Type::shared(Type::shared(UnificationFixture::str()));
         assert!(fixture.expect(&view, &borrowed).is_ok());
     }
 

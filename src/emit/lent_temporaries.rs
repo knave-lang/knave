@@ -143,12 +143,12 @@ mod tests {
     impl LiftFixture {
         const SOURCE: &str = "
             (defstruct label :text (ref str))
-            (defstruct page :title string)
+            (defstruct page :title str)
             (type first-letter (fn ((ref str)) (ref str)))
             (defn first-letter (text) (subs text 0 1))
             (type title-of (fn ((ref page)) (ref str)))
             (defn title-of (page) (:title page))
-            (type announced (fn ((ref str)) string))
+            (type announced (fn ((ref str)) str))
             (defn announced (text) (str text))
             (type prefix (fn (usize (ref str)) (ref str)))
             (defn prefix (size text) (subs text 0 size))

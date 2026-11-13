@@ -43,15 +43,11 @@ impl<'c> CallSite<'c> {
         if !self.returns_a_borrow() || !is_template {
             return Holdings::default();
         }
-        let mut lent = passed
+        passed
             .into_iter()
             .enumerate()
             .filter(|(position, _)| self.lends_through(*position))
-            .map(|(_, held)| held);
-        match (lent.next(), lent.next()) {
-            (Some(only), None) => only,
-            _ => Holdings::default(),
-        }
+            .fold(Holdings::default(), |held, (_, lent)| held.merged(lent))
     }
 
     fn lends_through(&self, position: usize) -> bool {

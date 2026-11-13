@@ -1,0 +1,8 @@
+(defstruct tag
+  :label (ref string))
+
+(defn main ()
+  (local v (vec (str "a")))
+  (local t (->tag :label (at v 0)))
+  (push! v (str "b"))
+  (println (:label t)))

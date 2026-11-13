@@ -172,7 +172,7 @@ impl<'w> BodyWalk<'w> {
 impl<'w> ExpressionWalk<'w> for BodyWalk<'w> {
     fn expr(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
         let walked = self.expr_holding(expr, at);
-        if expr.ty.holds_reference() {
+        if self.rules.holds_a_borrow(&expr.ty) {
             walked
         } else {
             Walked::at(walked.end)

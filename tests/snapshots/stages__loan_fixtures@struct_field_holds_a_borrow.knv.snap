@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+assertion_line: 107
+expression: reports.report(path)
+input_file: tests/fixtures/loans/struct_field_holds_a_borrow.knv
+---
+main
+  6:30 borrow `v`: no live loan
+  7:10 change `v`: `v` lent at 6:30, held by `t`
+  8:12 borrow `t.label`: `v` lent at 6:30, held by `t`

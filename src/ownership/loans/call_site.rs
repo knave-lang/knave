@@ -1,5 +1,6 @@
 use super::holdings::Holdings;
-use crate::types::{TemplateBorrows, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLambda};
+use super::loan_rules::LoanRules;
+use crate::types::{Type, TypedArgument, TypedExpr, TypedExprKind, TypedLambda};
 
 pub struct CallSite<'c> {
     callee: &'c TypedExpr,
@@ -33,20 +34,20 @@ impl<'c> CallSite<'c> {
         }
     }
 
-    pub fn result_holdings(&self, passed: Vec<Holdings>, templates: &TemplateBorrows) -> Holdings {
-        if !templates.read_template(self.callee, false, |_| true) {
+    pub fn result_holdings(&self, passed: Vec<Holdings>, rules: &LoanRules<'_>) -> Holdings {
+        if !rules.is_template(self.callee) {
             return Holdings::default();
         }
         passed
             .into_iter()
             .enumerate()
-            .filter(|(position, _)| self.lends_through(*position))
+            .filter(|(position, _)| self.lends_through(*position, rules))
             .fold(Holdings::default(), |held, (_, lent)| held.merged(lent))
     }
 
-    fn lends_through(&self, position: usize) -> bool {
+    fn lends_through(&self, position: usize, rules: &LoanRules<'_>) -> bool {
         self.parameter(position)
-            .is_none_or(|parameter| parameter.holds_reference())
+            .is_none_or(|parameter| rules.holds_a_borrow(parameter))
     }
 }
 

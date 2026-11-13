@@ -19,32 +19,40 @@
 
 (impl garage car
   (label (c name)
-         (pair (->car (:model c) (:year c)) name))
+    (pair (->car (:model c) (:year c)) name))
+
   (newer-model (c other)
-               (if (> (:year c) (:year other))
-                 (:model c)
-                 (:model other)))
+    (if (> (:year c) (:year other))
+      (:model c)
+      (:model other)))
+
   (echo (c name) name)
+
   (badge (year c)
-         (if (> year (:year c)) "old" "new"))
+    (if (> year (:year c)) "old" "new"))
+
   (newest (c other)
-          (if (> (:year c) (:year other))
-            c
-            (deref other))))
+    (if (> (:year c) (:year other))
+      c
+      (deref other))))
 
 (impl garage truck
   (label (t name)
-         (pair (->truck (:load t)) name))
+    (pair (->truck (:load t)) name))
+
   (newer-model (t other)
-               (if (> (:load t) (:load other))
-                 "this" "that"))
+    (if (> (:load t) (:load other))
+      "this" "that"))
+
   (echo (t name) name)
+
   (badge (load t)
-         (if (> load (:load t)) "heavy" "light"))
+    (if (> load (:load t)) "heavy" "light"))
+
   (newest (t other)
-          (if (> (:load t) (:load other))
-            t
-            (deref other))))
+    (if (> (:load t) (:load other))
+      t
+      (deref other))))
 
 (trait lot
   (pick (fn ((ref self) (ref self)) (ref self)))
@@ -52,9 +60,10 @@
 
 (impl lot van
   (pick (v other)
-        (if (> (:year v) (:year other)) v other))
+    (if (> (:year v) (:year other)) v other))
+
   (stamp! (v label)
-          (if (> (:year v) 2020) label "classic")))
+    (if (> (:year v) 2020) label "classic")))
 
 (defn main ()
   (local leaf (->car "Leaf" 2024))

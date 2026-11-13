@@ -12,7 +12,8 @@
 
 (impl garage depot
   (build (constructor lot)
-         (constructor "Nissan" (:size lot)))
+    (constructor "Nissan" (:size lot)))
+
   (restock (lot constructor) (constructor)))
 
 (defn main ()

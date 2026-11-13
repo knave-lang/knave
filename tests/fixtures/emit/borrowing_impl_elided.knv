@@ -9,11 +9,13 @@
 
 (impl badged car
   (badge (year c)
-         (if (> year 2020) (:make c) "classic"))
+    (if (> year 2020) (:make c) "classic"))
+
   (pick (fallback c)
-        (if (> (:year c) 2020)
-          (:make c)
-          fallback))
+    (if (> (:year c) 2020)
+      (:make c)
+      fallback))
+
   (make (self) (:make self)))
 
 (defn main ()

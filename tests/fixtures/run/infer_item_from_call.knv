@@ -7,7 +7,7 @@
 (impl container (stack a)
   (type item a)
   (put (s value)
-       (push! (mut (field s items)) value)))
+    (push! (mut (field s items)) value)))
 
 (defn main ()
   (local words (new stack (items (vec))))

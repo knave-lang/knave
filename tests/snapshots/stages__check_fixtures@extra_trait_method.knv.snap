@@ -4,9 +4,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/check/extra_trait_method.knv
 ---
 error[L0240]: `area` is implemented more than once
- --> check/extra_trait_method.knv:9:4
-  |
-9 |   (area (c)
-  |    ^^^^ defined again here
-  |
-  = help: remove one of the definitions
+  --> check/extra_trait_method.knv:10:4
+   |
+10 |   (area (c)
+   |    ^^^^ defined again here
+   |
+   = help: remove one of the definitions

@@ -3,7 +3,7 @@
 
 (impl described car
   (describe (c)
-            (str (:make c) " " (:model c))))
+    (str (:make c) " " (:model c))))
 
 (defn main ()
   (println (describe (->car :make "Nissan" :model "Leaf"))))

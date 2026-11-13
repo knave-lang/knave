@@ -5,7 +5,7 @@
 
 (impl mileage odometer
   (reset-first! (o readings)
-                (set! (at readings 0) (field o offset))))
+    (set! (at readings 0) (field o offset))))
 
 (defn main ()
   (local readings (vec 1200 3400))

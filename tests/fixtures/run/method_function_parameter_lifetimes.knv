@@ -13,12 +13,14 @@
 
 (impl garage depot
   (park (constructor lot)
-        (+ (:size lot)
-           (:year (constructor "Nissan" 2024))))
+    (+ (:size lot)
+       (:year (constructor "Nissan" 2024))))
+
   (restock (constructor lot)
-           (+ (:size lot) (:year (constructor))))
+    (+ (:size lot) (:year (constructor))))
+
   (inspect (lot constructor)
-           (+ (:size lot) (:year (constructor)))))
+    (+ (:size lot) (:year (constructor)))))
 
 (defstruct yard
   :rows u16)
@@ -29,14 +31,14 @@
 
 (impl builder depot
   (assemble (constructor lot)
-            (+ (:size lot)
-               (:year (constructor "Nissan" 2024)))))
+    (+ (:size lot)
+       (:year (constructor "Nissan" 2024)))))
 
 (impl builder yard
   (assemble (constructor lot)
-            (local make (str "Nissan"))
-            (+ (:rows lot)
-               (:year (constructor (as-str make) 2025)))))
+    (local make (str "Nissan"))
+    (+ (:rows lot)
+       (:year (constructor (as-str make) 2025)))))
 
 (defn main ()
   (local model (str "Leaf"))

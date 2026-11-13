@@ -4,16 +4,20 @@
 (trait matcher
   (type item)
   (matches (fn (i64 (ref self)) bool))
+
   (matches-next (fn (i64 (ref self)) bool)
-                (matches (+ argument-0 1) argument-1))
+    (matches (+ argument-0 1) argument-1))
+
   (held-by (fn ((ref item) (ref self)) bool))
   (deep-size (fn ((ref (ref self))) i64)))
 
 (impl matcher sized-thing
   (type item i64)
   (matches (n thing) (= n (:size thing)))
+
   (held-by (value thing)
-           (= value (:size thing)))
+    (= value (:size thing)))
+
   (deep-size (thing) (:size thing)))
 
 (defn main ()

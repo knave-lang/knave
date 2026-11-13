@@ -3,7 +3,7 @@
 
 (trait (shape (area-trait))
   (describe (fn ((ref self)) string)
-            (str "area " (area self))))
+    (str "area " (area self))))
 
 (struct circle (radius f64))
 

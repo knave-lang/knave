@@ -9,15 +9,15 @@
 
 (trait mileage
   (record! (fn ((ref self) (mut (vec i64))) unit)
-           (push! argument-1 9)))
+    (push! argument-1 9)))
 
 (impl mileage odometer
   (record! (o readings)
-           (set! (at readings 0) (:offset o))))
+    (set! (at readings 0) (:offset o))))
 
 (impl mileage meter
   (record! (m readings)
-           (set! (at readings 1) (:scale m))))
+    (set! (at readings 1) (:scale m))))
 
 (impl mileage gauge)
 

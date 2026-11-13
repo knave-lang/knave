@@ -34,27 +34,33 @@
 
 (impl shape circle
   (area (c)
-        (* pi (:radius c) (:radius c)))
+    (* pi (:radius c) (:radius c)))
+
   (perimeter (c) (* 2.0 pi (:radius c)))
+
   (title (c)
-         (str "circle at " (:center c))))
+    (str "circle at " (:center c))))
 
 (impl shape rect
   (area (r) (* (:width r) (:height r)))
+
   (perimeter (r)
-             (* 2.0 (+ (:width r) (:height r))))
+    (* 2.0 (+ (:width r) (:height r))))
+
   (title (r) (str "rect at " (:corner r))))
 
 (impl shape polygon
   (area (p)
-        (magnitude (/ (shoelace (:corners p)) 2.0)))
+    (magnitude (/ (shoelace (:corners p)) 2.0)))
+
   (perimeter (p)
-             (edge-length (:corners p)))
+    (edge-length (:corners p)))
+
   (title (p)
-         (str (:name p)
-              " with "
-              (len (:corners p))
-              " corners")))
+    (str (:name p)
+         " with "
+         (len (:corners p))
+         " corners")))
 
 (type shoelace
   (fn ((ref (vec point))) f64))

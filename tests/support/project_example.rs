@@ -14,6 +14,22 @@ pub struct ProjectExample {
     input: String,
 }
 
+struct ExampleFolder {
+    path: PathBuf,
+}
+
+impl ExampleFolder {
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for ExampleFolder {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
+
 struct ExampleFile {
     path: String,
     text: String,
@@ -47,19 +63,20 @@ impl ProjectExample {
         for line in lines {
             example.take_line(line);
         }
+        example.refuse_text_above_the_first_file();
         let marked = example.command.is_some() || !example.files.is_empty();
         marked.then_some(example)
     }
 
     pub fn reported_diagnostics(&self) -> Vec<ExampleDiagnostic> {
-        let directory = self.written_directory();
+        let folder = self.written_folder();
         let stages: Vec<Vec<String>> = match &self.command {
             Some(command) => vec![command.clone()],
             None => vec![vec![Self::CHECK.to_string()], vec![Self::BUILD.to_string()]],
         };
         stages
             .iter()
-            .map(|command| Self::diagnostics_in(&self.run(&directory, command)))
+            .map(|command| Self::diagnostics_in(&self.run(folder.path(), command)))
             .find(|diagnostics| {
                 diagnostics
                     .iter()
@@ -69,15 +86,24 @@ impl ProjectExample {
     }
 
     pub fn failure(&self) -> Option<String> {
-        let directory = self.written_directory();
+        let folder = self.written_folder();
         let command = self
             .command
             .clone()
             .unwrap_or_else(|| vec![Self::RUN.to_string()]);
-        let output = self.run(&directory, &command);
+        let output = self.run(folder.path(), &command);
         let reports_a_code = !Self::diagnostics_in(&output).is_empty();
         let failed = !output.status.success() || reports_a_code;
         failed.then(|| String::from_utf8_lossy(&output.stderr).into_owned())
+    }
+
+    fn refuse_text_above_the_first_file(&self) {
+        let text_above = self.input.lines().any(|line| !line.trim().is_empty());
+        assert!(
+            self.files.is_empty() || !text_above,
+            "an explanation example has text above its first file label:\n{}",
+            self.input
+        );
     }
 
     fn take_line(&mut self, line: &str) {
@@ -117,7 +143,7 @@ impl ProjectExample {
         target.push('\n');
     }
 
-    fn written_directory(&self) -> PathBuf {
+    fn written_folder(&self) -> ExampleFolder {
         static NEXT_EXAMPLE: AtomicUsize = AtomicUsize::new(0);
         let example = NEXT_EXAMPLE.fetch_add(1, Ordering::Relaxed);
         let directory = std::env::temp_dir().join(format!(
@@ -132,7 +158,7 @@ impl ProjectExample {
             fs::write(path, &file.text).expect("the example file is writable");
         }
         fs::create_dir_all(&directory).expect("the example folder is writable");
-        directory
+        ExampleFolder { path: directory }
     }
 
     fn run(&self, directory: &Path, command: &[String]) -> Output {

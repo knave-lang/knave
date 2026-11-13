@@ -24,6 +24,8 @@ const MISSING_MAIN_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n(defn helpe
 const PROJECT_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n;; project.knv\n(libraries)\n;; src/main.knv\n(defn main () (println 1))\n```\n";
 const REPL_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n;; knave repl\n(defstruct point :x i64)\n(defn ->point (x) x)\n```\n";
 const COMMENTED_EXAMPLE: &str = "## Erroneous example\n\n```lisp\n;; knave keeps this note\n;; total.knv holds the sum\n(defn main () (println totl))\n```\n";
+const TEXT_ABOVE_FILES_EXAMPLE: &str =
+    "## Erroneous example\n\n```lisp\n(def stray 1)\n;; project.knv\n(libraries)\n```\n";
 const FAILING_EXIT_FIX: &str = "## Fixes\n\n```lisp\n(defn main ()\n  (local empty (the (vec i64) (vec)))\n  (println (at empty 0)))\n```\n";
 
 #[test]
@@ -381,6 +383,12 @@ fn an_explanation_example_labeled_with_a_command_runs_it() {
         explanation.erroneous_first_codes(),
         vec![Some("L0249".to_string())]
     );
+}
+
+#[test]
+#[should_panic(expected = "text above its first file label")]
+fn an_explanation_example_with_text_above_its_first_file_label_is_refused() {
+    ExplanationExamples::new("L0701", TEXT_ABOVE_FILES_EXAMPLE).erroneous_first_codes();
 }
 
 #[test]

@@ -1,6 +1,8 @@
 (defn main ()
   (local years (vec 1990 1995))
-  (local first (fn ((items (ref (vec i64)))) (at items 0)))
+  (local first
+    (fn ((items (ref (vec i64))))
+      (at items 0)))
   (local held (at years 0))
   (push! years 2000)
   (println held)

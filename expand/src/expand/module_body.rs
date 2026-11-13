@@ -8,7 +8,6 @@ use super::shape::Shape;
 use super::sourced_items::SourcedItems;
 use super::spliced_forms::{SplicedForm, SplicedForms};
 use super::{Expander, TraitMethods, binder_form::BinderForm, module_notes::NotesCheckpoint};
-use crate::core::CoreExport;
 use crate::core::{
     BinderOrigin, BindingId, BindingInfo, BindingKind, ControlForm, CoreModule, DefinitionForm,
     Expr, ExprKind, ExpressionForm, FieldLabel, ImplAssociatedType, ImplMethod, ImplementorRows,
@@ -1930,8 +1929,7 @@ impl Expander<'_> {
                 self.modules
                     .get_mut(module)
                     .export(symbol.shared_name(), namespace, binding);
-                core.exports
-                    .push(CoreExport::new(symbol.shared_name(), binding));
+                core.push_export(binding, symbol.shared_name(), &self.tables.bindings);
                 found = true;
             }
         }
@@ -1964,7 +1962,7 @@ impl Expander<'_> {
             let name: Rc<str> = self.tables.bindings.get(method).shared_name();
             let record = self.modules.get_mut(module);
             record.export(Rc::clone(&name), Namespace::Value, method);
-            core.exports.push(CoreExport::new(name, method));
+            core.push_export(method, name, &self.tables.bindings);
         }
     }
 
@@ -1987,7 +1985,7 @@ impl Expander<'_> {
             let name: Rc<str> = self.tables.bindings.get(constructor).shared_name();
             let record = self.modules.get_mut(module);
             record.export(Rc::clone(&name), Namespace::Value, constructor);
-            core.exports.push(CoreExport::new(name, constructor));
+            core.push_export(constructor, name, &self.tables.bindings);
         }
     }
 }

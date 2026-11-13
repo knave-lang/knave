@@ -1,6 +1,6 @@
-expand/src/core/printer.rs 689
+expand/src/core/printer.rs 684
 expand/src/expand/expression.rs 1006
-expand/src/expand/module_body.rs 1993
+expand/src/expand/module_body.rs 1991
 expand/src/expand/problems.rs 1259
 expand/src/format/layout.rs 511
 src/emit/expressions.rs 2927

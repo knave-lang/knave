@@ -383,6 +383,7 @@ mod tests {
                     path: ModulePath::new("prelude/traits"),
                     items: self.prelude.clone(),
                     exports: Vec::new(),
+                    aliases: Vec::new(),
                     library: None,
                 },
                 CoreModule {
@@ -390,6 +391,7 @@ mod tests {
                     path: ModulePath::new("main"),
                     items: self.written.clone(),
                     exports: Vec::new(),
+                    aliases: Vec::new(),
                     library: None,
                 },
             ];

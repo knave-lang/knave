@@ -2,8 +2,8 @@ use std::fmt;
 use std::rc::Rc;
 
 use super::{
-    BindingId, Expr, FieldLabel, ImplementorRow, ImplementorRows, Lambda, ParsedTemplate,
-    StructuralClause, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
+    BindingArena, BindingId, Expr, FieldLabel, ImplementorRow, ImplementorRows, Lambda,
+    ParsedTemplate, StructuralClause, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
 };
 use crate::source::Span;
 
@@ -195,15 +195,19 @@ pub enum VariantPayload {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-#[serde(bound(deserialize = "'de: 'static"))]
 pub struct CoreExport {
-    pub name: Rc<str>,
     pub binding: BindingId,
+    pub alias: u32,
 }
 
 impl CoreExport {
-    pub fn new(name: Rc<str>, binding: BindingId) -> Self {
-        Self { name, binding }
+    const CANONICAL: u32 = 0;
+
+    pub fn name<'a>(&self, aliases: &'a [Rc<str>], bindings: &'a BindingArena) -> &'a str {
+        match self.alias {
+            Self::CANONICAL => bindings.get(self.binding).name(),
+            index => &aliases[index as usize - 1],
+        }
     }
 }
 
@@ -214,6 +218,7 @@ pub struct CoreModule {
     pub path: ModulePath,
     pub items: Vec<Item>,
     pub exports: Vec<CoreExport>,
+    pub aliases: Vec<Rc<str>>,
     pub library: Option<Rc<str>>,
 }
 
@@ -230,12 +235,34 @@ impl ItemKind {
 }
 
 impl CoreModule {
+    pub fn export_names(&self, bindings: &BindingArena) -> Vec<String> {
+        let mut names: Vec<&str> = self
+            .exports
+            .iter()
+            .map(|export| export.name(&self.aliases, bindings))
+            .collect();
+        names.sort_unstable();
+        names.dedup();
+        names.into_iter().map(String::from).collect()
+    }
+
+    pub fn push_export(&mut self, binding: BindingId, name: Rc<str>, bindings: &BindingArena) {
+        let alias = if name.as_ref() == bindings.get(binding).name() {
+            CoreExport::CANONICAL
+        } else {
+            self.aliases.push(name);
+            u32::try_from(self.aliases.len()).expect("fewer than 2^32 alias names")
+        };
+        self.exports.push(CoreExport { binding, alias });
+    }
+
     pub fn new(id: ModuleId, path: ModulePath, library: Option<Rc<str>>) -> Self {
         Self {
             id,
             path,
             items: Vec::new(),
             exports: Vec::new(),
+            aliases: Vec::new(),
             library,
         }
     }

@@ -94,9 +94,9 @@ impl RuleProgram {
             .modules
             .iter()
             .filter(|module| module.path.as_str() == ModuleSources::LINT)
-            .flat_map(|module| module.exports.iter())
-            .find(|export| &*export.name == name)
-            .map(|export| export.binding)
+            .flat_map(|module| module.exports.iter().map(move |export| (module, export)))
+            .find(|(module, export)| export.name(&module.aliases, &program.bindings) == name)
+            .map(|(_, export)| export.binding)
             .expect("the lint module exports its entries")
     }
 

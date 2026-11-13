@@ -103,6 +103,10 @@ The implementation separates three pieces of knowledge that are one today:
 `PrimitiveType::ALIASES` is the single table that will carry later aliases,
 such as `int` for `i64`, so this does not need a second design.
 
+The prelude cannot define this alias itself: `def` binds a value and `deftype`
+names a Rust type, not another type. The kernel table is therefore the smallest
+place that makes `float` a pure alias of `f64` rather than a new type.
+
 ## Decision
 
 Pending the project owner's decision.
@@ -134,6 +138,8 @@ The pull request carrying this RFC contains the complete implementation:
 - The prelude trait is `floating`, and the canonical `float` page explains the
   alias. The doc lookup falls back from an alias to the note of the term with
   the same binding, so `f64` resolves to the same page without a second one.
+- The prelude uses `float` where it used `f64` before. The concrete primitive
+  stays `f64` in the alias table, and trait implementor lists name it `f64`.
 - Regression tests pin the shared binding, shared page, named exports, canonical
   `infer` text, diagnostics, implementor names, prompt output and emit text.
 

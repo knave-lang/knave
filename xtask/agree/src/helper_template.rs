@@ -1,3 +1,4 @@
+use crate::local_scopes::LocalScopes;
 use crate::value_kind::ValueKind;
 
 #[derive(Clone, Copy, Debug)]
@@ -9,6 +10,13 @@ pub enum HelperArgument {
 }
 
 impl HelperArgument {
+    fn is_passable_from(self, locals: &LocalScopes) -> bool {
+        match self {
+            Self::Local(kind) | Self::Borrowed(kind) => locals.holds(kind),
+            Self::Function(_) | Self::Expression => true,
+        }
+    }
+
     fn passed_helper(self) -> Option<&'static HelperTemplate> {
         match self {
             Self::Function(template) => Some(template),
@@ -219,11 +227,46 @@ impl HelperTemplate {
         )
     }
 
+    pub fn is_callable_from(&self, locals: &LocalScopes) -> bool {
+        self.arguments()
+            .iter()
+            .all(|argument| argument.is_passable_from(locals))
+    }
+
     pub fn arguments(&self) -> &'static [HelperArgument] {
         self.signature.arguments
     }
 
     pub fn result(&self) -> Option<ValueKind> {
         self.signature.result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::HelperTemplate;
+    use crate::local_scopes::LocalScopes;
+    use crate::value_kind::ValueKind;
+
+    struct HelperFixture;
+
+    impl HelperFixture {
+        fn callable_from(locals: &LocalScopes) -> Vec<&'static str> {
+            HelperTemplate::ALL
+                .into_iter()
+                .filter(|template| template.is_callable_from(locals))
+                .map(|template| template.name)
+                .collect()
+        }
+    }
+
+    #[test]
+    fn calls_a_helper_only_when_a_local_of_each_argument_kind_is_in_scope() {
+        let mut locals = LocalScopes::new();
+        let without_a_map = HelperFixture::callable_from(&locals);
+        assert!(without_a_map.contains(&"sum-to"));
+        assert!(!without_a_map.contains(&"entry-of"));
+        locals.bind("m", ValueKind::MAP);
+        assert!(HelperFixture::callable_from(&locals).contains(&"entry-of"));
     }
 }

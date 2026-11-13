@@ -247,7 +247,14 @@ mod tests {
         const EMPTY_PROGRAM: &str = "(defn main ())";
 
         fn of(program: &str) -> Self {
-            let source = TypedSource::expand(program);
+            Self::reaching(TypedSource::expand(program))
+        }
+
+        fn loaded(program: &str) -> Self {
+            Self::reaching(TypedSource::expand_on_a_loaded_prelude(program))
+        }
+
+        fn reaching(source: TypedSource) -> Self {
             let reached = DefinitionGraph::of(source.program())
                 .reach()
                 .traits()
@@ -255,22 +262,25 @@ mod tests {
             Self { source, reached }
         }
 
-        fn reaches(&self, trait_name: &str) -> bool {
-            let program = self.source.program();
-            let binding = program
+        fn declared_traits(&self) -> impl Iterator<Item = &RustTraitDeclaration> {
+            self.source
+                .program()
                 .modules
                 .iter()
                 .flat_map(|module| &module.items)
-                .find_map(|item| match &item.kind {
-                    ItemKind::RustTrait(declaration)
-                        if program.bindings.get(declaration.binding).name() == trait_name =>
-                    {
-                        Some(declaration.binding)
-                    }
+                .filter_map(|item| match &item.kind {
+                    ItemKind::RustTrait(declaration) => Some(declaration),
                     _ => None,
                 })
+        }
+
+        fn reaches(&self, trait_name: &str) -> bool {
+            let bindings = &self.source.program().bindings;
+            let declaration = self
+                .declared_traits()
+                .find(|declaration| bindings.get(declaration.binding).name() == trait_name)
                 .expect("the program declares the trait");
-            self.reached.reaches(binding)
+            self.reached.reaches(declaration.binding)
         }
     }
 
@@ -649,25 +659,13 @@ mod tests {
 
     #[test]
     fn every_prelude_trait_saves_whether_its_rows_are_all_primitives() {
-        let source = TypedSource::expand_on_a_loaded_prelude(ReachFixture::EMPTY_PROGRAM);
-        let declarations = source
-            .program()
-            .modules
-            .iter()
-            .flat_map(|module| &module.items)
-            .filter_map(|item| match &item.kind {
-                ItemKind::RustTrait(declaration) => Some(declaration),
-                _ => None,
-            });
-        for declaration in declarations {
-            let rows = declaration.implementors.get();
-            let primitives = !rows.is_empty()
-                && rows
-                    .iter()
-                    .all(|row| matches!(row.implementor.kind(), TypeExprKind::Primitive(_)));
+        let fixture = ReachFixture::loaded(ReachFixture::EMPTY_PROGRAM);
+        for declaration in fixture.declared_traits() {
+            let rows = &declaration.implementors;
+            let rebuilt = ImplementorRows::new(rows.get().to_vec());
             assert_eq!(
-                declaration.implementors.only_primitives(),
-                primitives,
+                rows.only_primitives(),
+                rebuilt.only_primitives(),
                 "{}",
                 declaration.path
             );

@@ -1,0 +1,14 @@
+(defstruct engine
+  :name string
+  :size i64)
+
+(defstruct car
+  :engine engine
+  :year i64)
+
+(defn main ()
+  (local c
+    (->car :engine (->engine :name (str "v8") :size 8) :year 1))
+  (local r (ref (:name (:engine c))))
+  (set! (:year c) 2)
+  (println r))

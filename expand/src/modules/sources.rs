@@ -3,10 +3,11 @@ use std::io;
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 
-use super::libraries::{LibraryRoot, LibraryTable};
+use super::libraries::LibraryTable;
 use super::located_module::LocatedModule;
 use super::module_source::ModuleSource;
 use super::search_scope::SearchScope;
+use super::unlisted_library::UnlistedLibrary;
 use crate::core::{BuiltinModule, ModulePath};
 use crate::language::Language;
 
@@ -150,10 +151,12 @@ impl ModuleSources {
         Some(LocatedModule { source, owner })
     }
 
-    pub fn unlisted_library(&self, owner: Option<&str>, written: &ModulePath) -> Option<&str> {
-        self.libraries
-            .unlisted_library(owner, written)
-            .map(LibraryRoot::name)
+    pub fn unlisted_library(
+        &self,
+        owner: Option<&str>,
+        written: &ModulePath,
+    ) -> Option<UnlistedLibrary<'_>> {
+        self.libraries.unlisted_library(owner, written)
     }
 
     pub fn local_module_beside_library(
@@ -164,8 +167,8 @@ impl ModuleSources {
         let library = self.libraries.unlisted_library(owner, written)?;
         Some(LocalModuleClash {
             local: self.local_module(written)?,
-            library: library.name(),
-            lister: library.lister()?,
+            library: library.name,
+            lister: library.lister?,
         })
     }
 
@@ -438,6 +441,7 @@ mod tests {
 
     impl TestedApp {
         const LIBRARY: &str = "greeting";
+        const LIBRARY_SECTION: &str = "books";
 
         fn new() -> Self {
             Self {
@@ -459,7 +463,8 @@ mod tests {
                 "main".to_string(),
                 Vec::new(),
             );
-            let table = LibraryTable::new(vec![Self::LIBRARY.to_string()], vec![library]);
+            let section = Self::LIBRARY_SECTION.to_string();
+            let table = LibraryTable::new(vec![Self::LIBRARY.to_string()], vec![library], section);
             self.sources().with_libraries(table)
         }
 

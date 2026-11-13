@@ -1,18 +1,20 @@
 use std::path::PathBuf;
-use std::rc::Rc;
 
 use super::Project;
-use super::dependency_reader::{DependencyReader, Section};
+use super::dependency_reader::DependencyReader;
 use super::fields::{FieldScanner, Fields};
 use super::name::ProjectName;
 use super::problems::ProjectProblems;
-use crate::diagnostic::{Diagnostics, SimilarName};
+use super::section::Section;
+use super::vocabulary::ProjectVocabulary;
+use crate::diagnostic::Diagnostics;
 use crate::language::Language;
 use crate::reader::Form;
 use crate::source::Span;
 
-pub struct ProjectReader {
+pub struct ProjectReader<'v> {
     problems: Diagnostics,
+    vocabulary: &'v ProjectVocabulary,
 }
 
 struct ProjectForm<'f> {
@@ -21,21 +23,24 @@ struct ProjectForm<'f> {
     body: &'f [Form],
 }
 
-impl ProjectReader {
-    pub const HEAD: &str = "defproject";
-    const KEYS: &[&str] = &["version", "entry", "lib", "edition"];
-    const DEFAULT_VERSION: &str = "0.1.0";
-    const DEFAULT_ENTRY: &str = "src/main";
-    const DEFAULT_LIBRARY_ROOT: &str = "src/lib";
+impl<'v> ProjectReader<'v> {
+    const KEYS: &'static [&'static str] = &["version", "entry", "lib", "edition"];
+    const DEFAULT_VERSION: &'static str = "0.1.0";
+    const DEFAULT_ENTRY: &'static str = "src/main";
+    const DEFAULT_LIBRARY_ROOT: &'static str = "src/lib";
 
-    pub fn read(forms: &[Form], file: Span) -> Result<Project, Diagnostics> {
-        let mut reader = Self {
+    pub fn new(vocabulary: &'v ProjectVocabulary) -> Self {
+        Self {
             problems: Diagnostics::default(),
-        };
-        let project = reader.project(forms, file);
+            vocabulary,
+        }
+    }
+
+    pub fn read(mut self, forms: &[Form], file: Span) -> Result<Project, Diagnostics> {
+        let project = self.project(forms, file);
         match project {
-            Some(project) => reader.problems.into_result(project),
-            None => Err(reader.problems),
+            Some(project) => self.problems.into_result(project),
+            None => Err(self.problems),
         }
     }
 
@@ -53,20 +58,25 @@ impl ProjectReader {
 
     fn project_form<'f>(&mut self, forms: &'f [Form], file: Span) -> Option<ProjectForm<'f>> {
         let Some(first) = forms.first() else {
-            self.problems
-                .push(ProjectProblems::missing_project_form(file.start()));
+            self.problems.push(ProjectProblems::missing_project_form(
+                file.start(),
+                self.vocabulary.head(),
+            ));
             return None;
         };
         if let Some(extra) = forms.get(1) {
             self.problems.push(ProjectProblems::extra_project_form(
                 extra.span(),
                 first.span(),
+                self.vocabulary.head(),
             ));
         }
-        let form = ProjectForm::of(first);
+        let form = ProjectForm::of(first, self.vocabulary.head());
         if form.is_none() {
-            self.problems
-                .push(ProjectProblems::missing_project_form(first.span()));
+            self.problems.push(ProjectProblems::missing_project_form(
+                first.span(),
+                self.vocabulary.head(),
+            ));
         }
         form
     }
@@ -74,8 +84,10 @@ impl ProjectReader {
     fn name(&mut self, form: &ProjectForm<'_>) -> Option<String> {
         let span = form.name.unwrap_or(form.head).span();
         let Some(name) = form.name.and_then(DependencyReader::bare_name) else {
-            self.problems
-                .push(ProjectProblems::missing_project_name(span));
+            self.problems.push(ProjectProblems::missing_project_name(
+                span,
+                self.vocabulary.head(),
+            ));
             return None;
         };
         if let Err(problem) = ProjectName::check(name, span) {
@@ -96,7 +108,7 @@ impl ProjectReader {
         };
         if let Some(first) = sections.heads.iter().find(|seen| seen.section == section) {
             return self.problems.push(ProjectProblems::duplicate_entry(
-                section.name(),
+                self.vocabulary.section_name(section),
                 head.span(),
                 first.span,
             ));
@@ -119,17 +131,12 @@ impl ProjectReader {
             .as_symbol()
             .map(|symbol| symbol.name())
             .unwrap_or_default();
-        let section = Section::named(name);
+        let section = self.vocabulary.section_named(name);
         if section.is_none() {
-            let candidates: Vec<Rc<str>> = Section::ALL
-                .iter()
-                .map(|section| Rc::from(section.name()))
-                .collect();
-            let closest = SimilarName::closest(name, &candidates);
             self.problems.push(ProjectProblems::unknown_section(
                 name,
                 head.span(),
-                closest.as_deref(),
+                self.vocabulary,
             ));
         }
         section
@@ -179,9 +186,9 @@ impl ProjectReader {
 }
 
 impl<'f> ProjectForm<'f> {
-    fn of(form: &'f Form) -> Option<Self> {
+    fn of(form: &'f Form, project_head: &str) -> Option<Self> {
         let (head, parts) = form.as_list()?.split_first()?;
-        if head.as_symbol()?.name() != ProjectReader::HEAD {
+        if head.as_symbol()?.name() != project_head {
             return None;
         }
         let name = parts

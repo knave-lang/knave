@@ -4,16 +4,22 @@ mod fields;
 mod name;
 mod problems;
 mod project_editor;
+mod project_roles;
 mod reader;
+mod section;
+mod section_names;
+mod vocabulary;
 
 use std::path::PathBuf;
 
 pub use crate_set::CrateSet;
-pub use dependency_reader::Section;
 pub use name::ProjectName;
 pub use problems::ProjectProblems;
 pub use project_editor::{CrateEntry, ProjectEditor};
+pub(crate) use project_roles::ProjectRoles;
 pub use reader::ProjectReader;
+pub use section::Section;
+pub use vocabulary::ProjectVocabulary;
 
 use crate::source::Span;
 

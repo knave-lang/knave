@@ -61,6 +61,10 @@ impl ExampleFolder {
         child.wait_with_output().expect("the compiler finishes")
     }
 
+    pub fn contents(&self, path: &str) -> Option<String> {
+        fs::read_to_string(self.path.join(path)).ok()
+    }
+
     pub fn text_of(&self, file: &ExampleFile) -> String {
         fs::read_to_string(self.path.join(&file.path)).expect("the example file is readable")
     }

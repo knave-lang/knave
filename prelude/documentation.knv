@@ -18,8 +18,7 @@
 (use prelude/macros defmacro doc-body doc-header docstring
                     docstring-form document map-list module)
 
-(export definition-page-part documentation-names
-        documentation-page rule-page-part)
+(export documentation-names documentation-page)
 
 (module
   "Writes the Markdown pages of `knave doc --write`.")
@@ -59,29 +58,21 @@
     ""
     (looked-up part (first rules))))
 
-(document (rule-page-part part name)
-  "Returns the `part` of the page of the lint rule `name`, where `part` is
-  `doc-header` or `doc-body`, or an empty string when `prelude/lint` has no
-  rule of that name.")
+(defmacro lint-explanation (name paths)
+  (local found (documented-definition name paths))
+  (if (empty? found)
+    ""
+    (fence-tagged (written-body (first found)))))
 
-(defmacro definition-page-part (part name paths)
-  (definition-part part name paths))
-
-(document (definition-page-part part name paths)
-  "Returns the `part` of the page of the first definition named `name` that
-  has a docstring, in the modules at `paths` in their order, where `part` is
-  `doc-header` or `doc-body`, or an empty string when none of the modules
-  defines one.")
-
-(def definition-part
-  (fn (part name paths)
+(def documented-definition
+  (fn (name paths)
     (if (empty? paths)
-      ""
+      paths
       (do
         (local found (documented-definitions (first paths) name))
         (if (empty? found)
-          (recur part name (rest paths))
-          (looked-up part (first found)))))))
+          (recur name (rest paths))
+          found)))))
 
 (def documented-definitions
   (fn (path name)
@@ -91,6 +82,29 @@
                      (bool-not (empty? (docstring-form term)))
                      false))
                  (module-definitions path))))
+
+(def fence-tagged
+  (fn (text)
+    (local tagged-from
+      (fn (written lines fence)
+        (if (empty? lines)
+          written
+          (if (empty? fence)
+            (recur (concat written
+                           (list (fence-line-tagged (first lines))))
+                   (rest lines)
+                   (opening-fence (first lines)))
+            (recur (concat written (list (first lines)))
+                   (rest lines)
+                   (fence-after fence (first lines)))))))
+    (join-text "\n"
+               (tagged-from (list)
+                            (string-lines text)
+                            (list)))))
+
+(def fence-line-tagged
+  (fn (line)
+    (if (fence-line? line) (tagged-fence line) line)))
 
 (def page-path (fn (page) (first page)))
 
@@ -754,9 +768,12 @@
   keeps the brackets as written, and exits with status 0.
 
   A macro may report the same warning, with `warn` and
-  `(quote (:code unmatched-link))`. Then every command that expands the
-  macro reports it, among them `knave check`, `knave build`, `knave run` and
-  `knave lint`, and only `knave lint` exits with status 1 because of it.
+  `(quote (:code unmatched-link))`. Then every command that checks the
+  program reports it: `knave check`, `knave build`, `knave run`,
+  `knave emit`, `knave types`, `knave test`, `knave repl`, `knave lint` and
+  `knave doc --types`, and so does `knave doc --write`. `knave expand` and
+  `knave doc` without `--types` do not. Only `knave lint` exits with status 1
+  because of it.
 
   ## Erroneous example
 

@@ -31,7 +31,7 @@ impl ErrorPages {
         let mut lookup = ExplanationLookup::new(terminal);
         Explanation::all()
             .map(|explanation| {
-                let docstring = lookup.docstring_page(&explanation)?;
+                let docstring = lookup.docstring(&explanation)?;
                 Ok(ExplanationPage::new(explanation).with_docstring(docstring))
             })
             .collect()

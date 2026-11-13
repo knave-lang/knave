@@ -29,8 +29,9 @@ impl ExplanationExamples {
     const FIXES_HEADING: &str = "## Fixes";
     const EXAMPLE_FENCE: &str = "```knave\n";
     const CLOSING_FENCE: &str = "```\n";
-    const UNTAGGED_FENCE: &str = "```";
-    const DOC_COMMAND: &str = "doc";
+    const ERROR_PAGES_COMMAND: [&str; 3] = ["doc", "--write", "--errors"];
+    const ERROR_PAGES_FOLDER: &str = "doc/errors";
+    const LINTS_NO_EXAMPLE_CAN_SHOW: [&str; 1] = ["L0805"];
     const PAGE_BREAK: &str = "\n\n";
     const EXAMPLE_FILE: &str = "example.knv";
     const MAXIMUM_PARALLEL_FIX_BUILDS: usize = 4;
@@ -44,10 +45,12 @@ impl ExplanationExamples {
     }
 
     pub fn written() -> Vec<Self> {
+        let pages = ExampleFolder::holding([]);
+        pages.run(&Self::ERROR_PAGES_COMMAND.map(String::from), "");
         Explanation::all()
             .filter_map(|explanation| match explanation.text() {
                 Some(text) => Some(Self::new(explanation.code().as_str(), text)),
-                None => Self::of_docstring(&explanation),
+                None => Self::of_error_page(&explanation, &pages),
             })
             .collect()
     }
@@ -61,35 +64,19 @@ impl ExplanationExamples {
             .collect()
     }
 
-    fn of_docstring(explanation: &Explanation) -> Option<Self> {
-        let code = explanation.code();
-        if !CodeStage::LINTS.contains(code) {
-            return None;
-        }
-        let command = [Self::DOC_COMMAND.to_string(), code.as_str().to_string()];
-        let output = ExampleFolder::holding([]).run(&command, "");
-        let page = String::from_utf8_lossy(&output.stdout).into_owned();
-        let (header, docstring) = page.split_once(Self::PAGE_BREAK)?;
-        let code_header = format!("{}: {}", code.as_str(), explanation.display_name());
-        (header != code_header).then(|| Self::new(code.as_str(), &Self::tagged(docstring)))
-    }
-
-    fn tagged(docstring: &str) -> String {
-        let mut inside_a_fence = false;
-        docstring
-            .lines()
-            .map(|line| {
-                let opens = !inside_a_fence && line == Self::UNTAGGED_FENCE;
-                if line.starts_with(Self::UNTAGGED_FENCE) {
-                    inside_a_fence = !inside_a_fence;
-                }
-                if opens {
-                    Self::EXAMPLE_FENCE.to_string()
-                } else {
-                    format!("{line}\n")
-                }
-            })
-            .collect()
+    fn of_error_page(explanation: &Explanation, pages: &ExampleFolder) -> Option<Self> {
+        let code = explanation.code().as_str();
+        let page = pages.contents(&format!("{}/{code}.md", Self::ERROR_PAGES_FOLDER));
+        let explained = page
+            .as_deref()
+            .and_then(|page| page.split_once(Self::PAGE_BREAK));
+        let shown = CodeStage::LINTS.contains(explanation.code())
+            && !Self::LINTS_NO_EXAMPLE_CAN_SHOW.contains(&code);
+        assert!(
+            explained.is_some() || !shown,
+            "{code} is a lint without a Markdown file, and no docstring explains it"
+        );
+        explained.map(|(_, docstring)| Self::new(code, docstring))
     }
 
     pub fn code(&self) -> &str {

@@ -66,14 +66,14 @@ impl DocCommand {
     }
 }
 
-pub struct DocOutput {
+struct DocOutput {
     type_line: Option<String>,
     page: PageText,
     status: ExitStatus,
 }
 
 impl DocOutput {
-    pub fn page(page: PageText) -> Self {
+    fn page(page: PageText) -> Self {
         Self {
             type_line: None,
             page,
@@ -94,7 +94,7 @@ impl DocOutput {
         }
     }
 
-    pub fn print(&self) -> ExitStatus {
+    fn print(&self) -> ExitStatus {
         let colors = TokenColors::deciding(AutoStream::choice(&io::stdout()));
         match StandardOutput::locked().write(self.text(colors)) {
             ExitStatus::Success => self.status,
@@ -134,23 +134,19 @@ impl<'t> DocLookup<'t> {
             &ModuleOfSources::single(environment.file(), entry),
             |mut session| {
                 let source = session.add_source(Self::TERM_SOURCE, term);
-                match LintPages::new(&mut session).unbound_rule_page(&read)? {
-                    Some(rule_page) => Ok(rule_page),
-                    None => ExpandedPage::expand(&mut session, &read, source),
-                }
+                LintPages::new(&mut session).term_page(&read, source)
             },
         )?;
         expanded.text()
     }
 
-    pub fn describe_lint(&mut self, name: &str) -> Result<Option<PageText>, ExitStatus> {
+    pub fn lint_explanation(&mut self, name: &str) -> Result<Option<String>, ExitStatus> {
         let environment = DocEnvironment::Prelude;
         let entry = environment.load(self.terminal)?;
-        let expanded = self.terminal.expansion().within_session(
+        self.terminal.expansion().within_session(
             &ModuleOfSources::single(environment.file(), entry),
-            |mut session| LintPages::new(&mut session).documented_page(name),
-        )?;
-        expanded.as_ref().map(ExpandedPage::text).transpose()
+            |mut session| LintPages::new(&mut session).documented_explanation(name),
+        )
     }
 
     fn describe_with_type(
@@ -231,7 +227,7 @@ impl<'s> TypedLookup<'s> {
     }
 
     fn expand_page(&mut self, term: &Form) -> Result<ExpandedPage, Diagnostics> {
-        ExpandedPage::expand(&mut self.session, term, self.source)
+        LintPages::new(&mut self.session).term_page(term, self.source)
     }
 }
 

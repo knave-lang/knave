@@ -2353,12 +2353,12 @@ fn doc_looks_up_an_unknown_code_as_a_term() {
 }
 
 #[test]
-fn doc_explains_the_code_of_a_lint_rule_by_the_rule_s_page() {
+fn doc_explains_the_code_of_a_lint_rule_by_the_rule_s_docstring() {
     let sandbox = Sandbox::new("doc_rule_code");
     let doc = sandbox.compiler(&["doc", "--color", "never", "L0801"]);
     let page = doc.assert_exit_code(0).stdout();
-    assert_eq!(page.lines().next(), Some("(unused-binding table)"));
-    assert!(page.contains("## Erroneous example"));
+    assert!(page.starts_with("L0801: unused binding\n\nReports a name that a `local` binds"));
+    assert!(page.contains("## Erroneous example\n\n```knave\n"));
 }
 
 #[test]
@@ -2366,7 +2366,7 @@ fn doc_explains_a_lint_code_by_the_docstring_where_its_wording_lives() {
     let sandbox = Sandbox::new("doc_link_code");
     let doc = sandbox.compiler(&["doc", "--color", "never", "L0802"]);
     let page = doc.assert_exit_code(0).stdout();
-    assert_eq!(page.lines().next(), Some("(unmatched-link page spot name)"));
+    assert_eq!(page.lines().next(), Some("L0802: unmatched link"));
     assert!(page.contains("## Erroneous example"));
 }
 
@@ -2383,6 +2383,14 @@ fn doc_explains_a_lint_of_the_compiler_by_its_code_page() {
 fn doc_finds_a_lint_rule_by_its_name() {
     let sandbox = Sandbox::new("doc_rule_name");
     let doc = sandbox.compiler(&["doc", "--color", "never", "unused-binding"]);
+    let page = doc.assert_exit_code(0).stdout();
+    assert_eq!(page.lines().next(), Some("(unused-binding table)"));
+}
+
+#[test]
+fn doc_types_finds_a_lint_rule_by_its_name() {
+    let sandbox = Sandbox::new("doc_types_rule_name");
+    let doc = sandbox.compiler(&["doc", "--color", "never", "--types", "unused-binding"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some("(unused-binding table)"));
 }
@@ -3003,12 +3011,8 @@ fn doc_write_errors_writes_a_lint_rule_s_docstring_as_its_code_page() {
     let index = sandbox.contents("doc/errors.md");
     assert!(index.contains("| [L0801](errors/L0801.md) | unused binding |\n"));
     let page = sandbox.contents("doc/errors/L0801.md");
-    assert!(
-        page.starts_with(
-            "# L0801: unused binding\n\nReports a `let` binding that nothing reads.\n"
-        )
-    );
-    assert!(page.contains("## Erroneous example"));
+    assert!(page.starts_with("# L0801: unused binding\n\nReports a name that a `local` binds"));
+    assert!(page.contains("## Erroneous example\n\n```knave\n"));
 }
 
 #[test]

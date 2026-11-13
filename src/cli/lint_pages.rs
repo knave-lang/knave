@@ -4,6 +4,7 @@ use crate::diagnostic::Diagnostics;
 use crate::expand::ExpansionSession;
 use crate::modules::{ModuleSources, PublicPrelude};
 use crate::reader::Form;
+use crate::source::SourceId;
 
 pub struct LintPages<'a, 's> {
     session: &'a mut ExpansionSession<'s>,
@@ -12,13 +13,24 @@ pub struct LintPages<'a, 's> {
 impl<'a, 's> LintPages<'a, 's> {
     const CALL_SOURCE: &'static str = "<lint page>";
     const RULE_MACRO: &'static str = "rule-page-part";
-    const DEFINITION_MACRO: &'static str = "definition-page-part";
+    const EXPLANATION_MACRO: &'static str = "lint-explanation";
 
     pub fn new(session: &'a mut ExpansionSession<'s>) -> Self {
         Self { session }
     }
 
-    pub fn unbound_rule_page(&mut self, term: &Form) -> Result<Option<ExpandedPage>, Diagnostics> {
+    pub fn term_page(
+        &mut self,
+        term: &Form,
+        source: SourceId,
+    ) -> Result<ExpandedPage, Diagnostics> {
+        match self.unbound_rule_page(term)? {
+            Some(rule_page) => Ok(rule_page),
+            None => ExpandedPage::expand(self.session, term, source),
+        }
+    }
+
+    fn unbound_rule_page(&mut self, term: &Form) -> Result<Option<ExpandedPage>, Diagnostics> {
         let unbound = self.session.binding(term).is_none();
         match term.as_symbol().filter(|_| unbound) {
             Some(name) => {
@@ -28,9 +40,13 @@ impl<'a, 's> LintPages<'a, 's> {
         }
     }
 
-    pub fn documented_page(&mut self, name: &str) -> Result<Option<ExpandedPage>, Diagnostics> {
+    pub fn documented_explanation(&mut self, name: &str) -> Result<Option<String>, Diagnostics> {
         let paths = PublicPrelude::paths().join(" ");
-        self.page(|part| format!("({} {part} {name} ({paths}))", Self::DEFINITION_MACRO))
+        let call = format!("({} {name} ({paths}))", Self::EXPLANATION_MACRO);
+        let explanation = self.expand(&call)?;
+        Ok(ExpandedPage::literal(&explanation)
+            .filter(|text| !text.is_empty())
+            .map(str::to_string))
     }
 
     fn page(&mut self, call: impl Fn(&str) -> String) -> Result<Option<ExpandedPage>, Diagnostics> {

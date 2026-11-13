@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use clap::Args;
 
-use super::doc::{DocCommand, DocEnvironment, DocOutput, DocPage};
+use super::doc::{DocCommand, DocEnvironment, DocPage};
 use super::doc_write::{DocScope, DocWriteCommand};
 use super::exit_status::ExitStatus;
 use super::explanation_lookup::ExplanationLookup;
@@ -74,10 +74,11 @@ impl DocArguments {
 
     fn explain(explanation: Explanation, terminal: &mut Terminal) -> ExitStatus {
         ExplanationLookup::new(terminal)
-            .docstring_page(&explanation)
-            .map(|docstring| match docstring {
-                Some(page) => DocOutput::page(page).print(),
-                None => ExplanationPage::new(explanation).print(),
+            .docstring(&explanation)
+            .map(|docstring| {
+                ExplanationPage::new(explanation)
+                    .with_docstring(docstring)
+                    .print()
             })
             .unwrap_or_else(|status| status)
     }

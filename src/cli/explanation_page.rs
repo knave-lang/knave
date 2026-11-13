@@ -1,5 +1,4 @@
 use super::exit_status::ExitStatus;
-use super::expanded_page::PageText;
 use super::standard_output::StandardOutput;
 use crate::diagnostic::Explanation;
 
@@ -18,8 +17,7 @@ impl ExplanationPage {
         }
     }
 
-    pub fn with_docstring(self, page: Option<PageText>) -> Self {
-        let docstring = page.map(|page| page.body().trim_start().to_string());
+    pub fn with_docstring(self, docstring: Option<String>) -> Self {
         Self { docstring, ..self }
     }
 

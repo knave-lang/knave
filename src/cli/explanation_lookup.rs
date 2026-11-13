@@ -1,6 +1,5 @@
 use super::doc::DocLookup;
 use super::exit_status::ExitStatus;
-use super::expanded_page::PageText;
 use super::terminal::Terminal;
 use crate::diagnostic::{CodeStage, Explanation};
 
@@ -15,12 +14,9 @@ impl<'t> ExplanationLookup<'t> {
         }
     }
 
-    pub fn docstring_page(
-        &mut self,
-        explanation: &Explanation,
-    ) -> Result<Option<PageText>, ExitStatus> {
+    pub fn docstring(&mut self, explanation: &Explanation) -> Result<Option<String>, ExitStatus> {
         match Self::docstring_explained_lint(explanation) {
-            Some(lint) => self.lookup.describe_lint(&lint),
+            Some(lint) => self.lookup.lint_explanation(&lint),
             None => Ok(None),
         }
     }

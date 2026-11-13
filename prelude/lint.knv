@@ -14,8 +14,9 @@
 (document (unused-binding table)
   "Reports a local binding that nothing reads: a `local`, or a parameter of a `fn` applied where it is written, as `loop` writes one.
 
-  The rule reports each name that a `let` binds and that no form of the
-  definition reads, at the name. A read inside a closure counts. A read that
+  The rule reports each name that a `local` binds and that no form of the
+  definition reads, at the name. A `let` binds its names with `local`, so
+  its names count. A read inside a closure counts. A read that
   a macro discards, such as `(ignore unused)` with a macro `ignore` that
   expands to `(do)`, is no read, because the program that runs never reads
   the binding. A name that starts with `_` is left out, and so is a name that

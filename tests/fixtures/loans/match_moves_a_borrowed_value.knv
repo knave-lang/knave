@@ -1,0 +1,9 @@
+(defn main ()
+  (local o (some (str "a")))
+  (local r (ref o))
+  (match o
+    ((some s) (println s))
+    (none (println 0)))
+  (match r
+    ((some t) (println t))
+    (none (println 1))))

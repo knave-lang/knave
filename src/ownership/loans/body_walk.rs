@@ -395,6 +395,27 @@ mod tests {
     }
 
     #[test]
+    fn a_written_mut_lends_its_place_mutably() {
+        let source = LoanSource::new(
+            "(defn main ()\n  (local v (vec 1 2))\n  (local m (mut v))\n  (push! m 3)\n  (println (len v)))",
+        );
+        assert_eq!(source.line_of("3:17"), "3:17 change `v`: no live loan");
+        assert!(
+            source
+                .line_of("4:10")
+                .contains("mut `v` lent at 3:17, held by `m`")
+        );
+    }
+
+    #[test]
+    fn a_borrow_of_a_call_result_keeps_the_call_s_loans() {
+        let line = WalkFixture::change_of_v_in(
+            "  (local o (ref (first v)))\n  (push! v 3)\n  (println (unwrap (deref o)))",
+        );
+        assert!(line.ends_with("held by `o`"), "{line}");
+    }
+
+    #[test]
     fn a_helper_result_holds_no_loan() {
         let source = LoanSource::new(
             "(defn first-of (v) (at v 0))\n\n(defn main ()\n  (local v (vec 1 2))\n  (local r (first-of v))\n  (push! v 4)\n  (println r))",

@@ -1,7 +1,8 @@
 use std::ops::Range;
 
-use super::dependency_reader::{DependencyReader, Section};
-use super::reader::ProjectReader;
+use super::dependency_reader::DependencyReader;
+use super::section::Section;
+use super::vocabulary::ProjectVocabulary;
 use crate::reader::Form;
 
 pub struct CrateEntry {
@@ -13,6 +14,7 @@ pub struct CrateEntry {
 pub struct ProjectEditor<'t> {
     text: &'t str,
     project: &'t Form,
+    vocabulary: &'t ProjectVocabulary,
 }
 
 impl CrateEntry {
@@ -36,16 +38,24 @@ impl<'t> ProjectEditor<'t> {
     const NEWLINE: char = '\n';
     const LINE_BREAKS: [&'static str; 2] = ["\r\n", "\n"];
 
-    pub fn of(text: &'t str, forms: &'t [Form]) -> Option<Self> {
+    pub fn of(text: &'t str, forms: &'t [Form], vocabulary: &'t ProjectVocabulary) -> Option<Self> {
         let project = forms
             .iter()
-            .find(|form| Self::head_named(form, ProjectReader::HEAD))?;
-        Some(Self { text, project })
+            .find(|form| Self::head_named(form, vocabulary.head()))?;
+        Some(Self {
+            text,
+            project,
+            vocabulary,
+        })
     }
 
     pub fn with_crate(&self, section: Section, entry: &CrateEntry) -> String {
         let Some(section_form) = self.section(section) else {
-            let new_section = format!("\n({} {})", section.name(), entry.text());
+            let new_section = format!(
+                "\n({} {})",
+                self.vocabulary.section_name(section),
+                entry.text()
+            );
             return self.splice(Self::before_close(self.project), &new_section);
         };
         match Self::entry_named(section_form, &entry.name) {
@@ -68,7 +78,7 @@ impl<'t> ProjectEditor<'t> {
     fn section(&self, section: Section) -> Option<&'t Form> {
         Self::entries(self.project)
             .iter()
-            .find(|form| Self::head_named(form, section.name()))
+            .find(|form| Self::head_named(form, self.vocabulary.section_name(section)))
     }
 
     fn entry_named<'f>(section_form: &'f Form, name: &str) -> Option<&'f Form> {
@@ -127,7 +137,8 @@ impl<'t> ProjectEditor<'t> {
 #[cfg(test)]
 mod tests {
     use super::{CrateEntry, ProjectEditor};
-    use crate::project::Section;
+    use crate::project::vocabulary::SectionNames;
+    use crate::project::{ProjectVocabulary, Section};
     use crate::reader::Reader;
     use crate::source::SourceMap;
 
@@ -137,7 +148,13 @@ mod tests {
         let forms = Reader::new(sources.file(source))
             .read()
             .expect("the text reads");
-        edit(&ProjectEditor::of(text, &forms).expect("the text holds a project"))
+        let sections = SectionNames {
+            libraries: "libraries".to_string(),
+            dependencies: "dependencies".to_string(),
+            dev_dependencies: "dev-dependencies".to_string(),
+        };
+        let vocabulary = ProjectVocabulary::new("defproject".to_string(), sections);
+        edit(&ProjectEditor::of(text, &forms, &vocabulary).expect("the text holds a project"))
     }
 
     fn entry(features: &[&str]) -> CrateEntry {

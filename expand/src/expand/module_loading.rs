@@ -156,8 +156,8 @@ impl Expander<'_> {
         {
             return Err(ExpandProblems::local_module_beside_library(&clash, span));
         }
-        if let Some(library) = self.module_sources.unlisted_library(owner, written) {
-            return Err(ExpandProblems::unlisted_library(library, span));
+        if let Some(unlisted) = self.module_sources.unlisted_library(owner, written) {
+            return Err(ExpandProblems::unlisted_library(&unlisted, span));
         }
         self.report_hidden_local_module(owner, written, span);
         self.report_hidden_source_module(owner, written, span);

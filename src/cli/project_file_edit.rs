@@ -43,8 +43,8 @@ impl ProjectFileEdit {
         let source = scratch.sources().load(&path)?;
         let text = scratch.source_file(source).text().to_string();
         let forms = scratch.sources().read(source)?;
-        let editor =
-            ProjectEditor::of(&text, &forms).expect("a loaded project file holds a project form");
+        let editor = ProjectEditor::of(&text, &forms, EmbeddedPrelude::project_vocabulary())
+            .expect("a loaded project file holds a project form");
         let Some(edited) = edit(&editor) else {
             return Ok(false);
         };

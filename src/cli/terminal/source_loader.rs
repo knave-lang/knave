@@ -2,6 +2,7 @@ use std::fmt::Display;
 use std::path::Path;
 
 use crate::cli::diagnostic_output::DiagnosticOutput;
+use crate::cli::embedded_prelude::EmbeddedPrelude;
 use crate::cli::exit_status::ExitStatus;
 use crate::cli::unreadable_file::UnreadableFile;
 use crate::diagnostic::Diagnostics;
@@ -54,7 +55,9 @@ impl<'a> SourceLoader<'a> {
     pub fn read_project(&self, source: SourceId) -> Result<Project, ExitStatus> {
         let forms = self.read(source)?;
         let whole_file = Span::new(source, 0..self.sources.file(source).text().len());
-        ProjectReader::read(&forms, whole_file).map_err(|diagnostics| self.report(&diagnostics))
+        ProjectReader::new(EmbeddedPrelude::project_vocabulary())
+            .read(&forms, whole_file)
+            .map_err(|diagnostics| self.report(&diagnostics))
     }
 
     fn report(&self, diagnostics: &Diagnostics) -> ExitStatus {

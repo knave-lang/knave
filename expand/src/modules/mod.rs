@@ -7,7 +7,7 @@ mod registry;
 mod search_scope;
 mod sources;
 
-pub use libraries::{LibraryFile, LibraryRoot, LibraryTable};
+pub use libraries::{LibraryFile, LibraryRoot, LibraryTable, UnlistedLibrary};
 pub use located_module::LocatedModule;
 pub use module_origin::ModuleOrigin;
 pub use module_scopes::ModuleScopes;

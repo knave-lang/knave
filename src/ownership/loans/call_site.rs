@@ -2,18 +2,13 @@ use super::holdings::Holdings;
 use crate::types::{TemplateBorrows, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLambda};
 
 pub struct CallSite<'c> {
-    call: &'c TypedExpr,
     callee: &'c TypedExpr,
     arguments: &'c [TypedArgument],
 }
 
 impl<'c> CallSite<'c> {
-    pub fn new(call: &'c TypedExpr, callee: &'c TypedExpr, arguments: &'c [TypedArgument]) -> Self {
-        Self {
-            call,
-            callee,
-            arguments,
-        }
+    pub fn new(callee: &'c TypedExpr, arguments: &'c [TypedArgument]) -> Self {
+        Self { callee, arguments }
     }
 
     pub fn repeated_lambda(&self) -> Option<&'c TypedLambda> {
@@ -39,8 +34,7 @@ impl<'c> CallSite<'c> {
     }
 
     pub fn result_holdings(&self, passed: Vec<Holdings>, templates: &TemplateBorrows) -> Holdings {
-        let is_template = templates.read_template(self.callee, false, |_| true);
-        if !self.returns_a_borrow() || !is_template {
+        if !templates.read_template(self.callee, false, |_| true) {
             return Holdings::default();
         }
         passed
@@ -53,10 +47,6 @@ impl<'c> CallSite<'c> {
     fn lends_through(&self, position: usize) -> bool {
         self.parameter(position)
             .is_none_or(|parameter| parameter.holds_reference())
-    }
-
-    fn returns_a_borrow(&self) -> bool {
-        self.call.ty.holds_reference()
     }
 }
 
@@ -71,9 +61,7 @@ mod tests {
     impl SiteFixture {
         fn with_site<T>(call: &TypedExpr, read: impl FnOnce(CallSite<'_>) -> T) -> T {
             match &call.kind {
-                TypedExprKind::Call(callee, arguments) => {
-                    read(CallSite::new(call, callee, arguments))
-                }
+                TypedExprKind::Call(callee, arguments) => read(CallSite::new(callee, arguments)),
                 _ => panic!("the value is a call"),
             }
         }
@@ -85,7 +73,6 @@ mod tests {
             "(defn main ()\n  (local v (vec 1))\n  (local r (at v 0))\n  (local n (len v))\n  (println r n))",
         );
         SiteFixture::with_site(source.bound("r"), |site| {
-            assert!(site.returns_a_borrow());
             assert!(
                 site.parameter(0)
                     .is_some_and(|parameter| parameter.is_reference())

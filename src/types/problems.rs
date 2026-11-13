@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use super::assumed_collections::CollectionAssumption;
+use super::display::NeededTrait;
 use super::parameter_call_search::ParameterCall;
 use super::pinning::LiteralDefault;
 use crate::core::{FieldLabel, Keyword};
@@ -353,26 +354,21 @@ impl TypeProblems {
     }
 
     pub fn missing_trait(
-        trait_name: &str,
+        needed: NeededTrait<'_>,
         found: &str,
         span: Span,
         implementors: ImplementorList,
     ) -> Diagnostic {
-        let diagnostic = Diagnostic::error(
-            DiagnosticCode::MISSING_TRAIT,
-            format!("`{found}` does not implement `{trait_name}`"),
-            Label::new(span, format!("this needs `{trait_name}`")),
-        )
-        .with_note(format!(
-            "`{trait_name}` is implemented for: {}",
-            implementors.entries.join(", ")
-        ));
-        implementors
-            .groups
+        let entries = implementors.entries.join(", ");
+        let listed = (!entries.is_empty())
+            .then(|| format!("`{}` is implemented for: {entries}", needed.name));
+        let grouped = (implementors.groups.iter())
+            .map(|group| Self::implementor_group_note(needed.name, group));
+        let diagnostic = Self::missing_trait_on_struct(&needed, found, span);
+        listed
             .into_iter()
-            .fold(diagnostic, |diagnostic, group| {
-                diagnostic.with_note(Self::implementor_group_note(trait_name, &group))
-            })
+            .chain(grouped)
+            .fold(diagnostic, Diagnostic::with_note)
     }
 
     fn implementor_group_note(trait_name: &str, group: &ImplementorGroup) -> String {
@@ -540,11 +536,15 @@ impl TypeProblems {
         }
     }
 
-    pub fn missing_trait_on_struct(trait_name: &str, found: &str, span: Span) -> Diagnostic {
+    pub fn missing_trait_on_struct(
+        needed: &NeededTrait<'_>,
+        found: &str,
+        span: Span,
+    ) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::MISSING_TRAIT,
-            format!("`{found}` does not implement `{trait_name}`"),
-            Label::new(span, format!("this needs `{trait_name}`")),
+            format!("`{found}` does not implement `{}`", needed.bound),
+            Label::new(span, format!("this needs `{}`", needed.bound)),
         )
     }
 

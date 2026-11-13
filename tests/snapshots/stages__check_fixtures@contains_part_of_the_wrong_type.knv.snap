@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/contains_part_of_the_wrong_type.knv
+---
+error[L0404]: `str` does not implement `(contains char)`
+ --> check/contains_part_of_the_wrong_type.knv:2:14
+  |
+2 |   (contains? text (char "e")))
+  |              ^^^^ this needs `(contains char)`
+  |
+  = note: `contains` is implemented for: (with str (ref str)), (with string (ref str)), (with (where ((item partial-eq)) (vec item)) item), (with (where ((item partial-eq)) (slice item)) item), (with (where ((whole (contains part)) part) (ref whole)) part)
+
+error[L0404]: `str` does not implement `(contains string)`
+ --> check/contains_part_of_the_wrong_type.knv:5:14
+  |
+5 |   (contains? text part))
+  |              ^^^^ this needs `(contains string)`
+  |
+  = note: `contains` is implemented for: (with str (ref str)), (with string (ref str)), (with (where ((item partial-eq)) (vec item)) item), (with (where ((item partial-eq)) (slice item)) item), (with (where ((whole (contains part)) part) (ref whole)) part)

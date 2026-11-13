@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/join_items_not_text.knv
+---
+error[L0404]: `(vec i64)` does not implement `joinable`
+ --> check/join_items_not_text.knv:2:18
+  |
+2 |   (println (join (vec 1 2) ",")))
+  |                  ^^^^^^^^^ this needs `joinable`
+  |
+  = note: `joinable` is implemented for `(vec item)` for each `item` in: string, (ref str)
+  = note: `joinable` is implemented for `(slice item)` for each `item` in: string, (ref str)
+  = help: `join` takes a vector or a slice of `string` or `(ref str)` items: collect an iterator first, as in `(join (collect items) ", ")`, which allocates the vector

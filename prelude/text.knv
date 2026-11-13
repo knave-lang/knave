@@ -14,8 +14,8 @@
           string-strip-prefix string-strip-suffix string?
           symbol symbol-name symbol? take value-eq)
 
-(use prelude/types borrow box hash-map iterator option
-                   result slice sorted-map vec)
+(use prelude/types box hash-map iterator option result slice
+                   sorted-map vec)
 
 (use prelude/io io-error)
 
@@ -216,19 +216,25 @@
       (iterator (ref str)))))
 
 (rust-trait joinable "crate::rt::Join"
-  (help "`join` takes a vector or a slice: collect an iterator first, as in `(join (collect items) \", \")`, which allocates the vector")
-  (where ((text (borrow str))) (vec text))
-  (where ((text (borrow str)))
-    (slice text)))
+  (help "`join` takes a vector or a slice of `string` or `(ref str)` items: collect an iterator first, as in `(join (collect items) \", \")`, which allocates the vector")
+  (vec string)
+  (vec (ref str))
+  (slice string)
+  (slice (ref str)))
 
 (def join
   (rust "{0}.join({1})"
     (where ((items joinable))
       (fn ((ref items) (ref str)) string))))
 
+(rust-trait prefixed "crate::rt::StartsWith"
+  str string
+  (where ((text prefixed)) (ref text)))
+
 (def starts-with?
   (rust "{0}.starts_with({1})"
-    (fn ((ref str) (ref str)) bool)))
+    (where ((text prefixed))
+      (fn ((ref text) (ref str)) bool))))
 
 (def trim
   (rust "{0}.trim()"
@@ -1056,7 +1062,8 @@
 (document (starts-with? text prefix)
   "Returns whether a string begins with `prefix`.
 
-  It takes a `(ref str)`, so borrow a [string] with [as-str].
+  The text is a [string] or a `(ref str)`, and the call moves neither
+  argument.
 
   (starts-with? \"pear\" \"pe\")
   => true

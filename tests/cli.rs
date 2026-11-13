@@ -64,6 +64,8 @@ const BOUND_ENTRY: &str = "(use other/person person)\n\n(rust-trait same \"std::
 
 const MOVED_VECTOR: &str =
     "(defn main ()\n  (local v (vec 1 2))\n  (local w v)\n  (println (len v) (len w)))\n";
+const HELD_ACROSS_PUSH: &str =
+    "(defn main ()\n  (local v (vec 1 2))\n  (local r (at v 0))\n  (push! v 4)\n  (println r))\n";
 const MISTYPED_SUM: &str = "(defn main () (println (+ 1 \"two\")))\n";
 
 const TRAIT_SHARED_VECTOR: &str = "(struct odometer (offset i64))\n\n(trait mileage\n  (first-reading (fn ((ref self) (ref (vec i64))) i64)))\n\n(impl mileage odometer\n  (first-reading (o readings) (+ (field o offset) (at readings 0))))\n\n(defn main ()\n  (println (first-reading (new odometer (offset 10)) (vec 1200))))\n";
@@ -3471,6 +3473,29 @@ fn emit_waiving_ownership_refusals_still_reports_a_type_error() {
 fn emit_help_hides_the_flag_that_waives_ownership_refusals() {
     let help = Sandbox::new("emit_help_hidden").compiler(&["emit", "--help"]);
     assert!(!help.assert_exit_code(0).stdout().contains("ownership"));
+}
+
+#[test]
+fn check_printing_loans_lists_the_loans_live_at_each_change() {
+    let sandbox = Sandbox::new("check_loans").with_file("held.knv", HELD_ACROSS_PUSH);
+    let checked = sandbox.compiler(&["check", "--print-loans", "held.knv"]);
+    assert_eq!(
+        checked.assert_exit_code(0).stdout(),
+        "main\n  3:16 borrow `v`: no live loan\n  4:10 change `v`: `v` lent at 3:16, held by `r`\n"
+    );
+}
+
+#[test]
+fn check_printing_loans_still_reports_a_type_error() {
+    let sandbox = Sandbox::new("check_loans_mistyped").with_file("sum.knv", MISTYPED_SUM);
+    let checked = sandbox.compiler(&["check", "--print-loans", "sum.knv"]);
+    assert!(checked.assert_exit_code(1).stdout().is_empty());
+}
+
+#[test]
+fn check_help_hides_the_flag_that_prints_loans() {
+    let help = Sandbox::new("check_help_hidden").compiler(&["check", "--help"]);
+    assert!(!help.assert_exit_code(0).stdout().contains("loans"));
 }
 
 #[test]

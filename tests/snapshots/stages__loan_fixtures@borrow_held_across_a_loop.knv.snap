@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+assertion_line: 102
+expression: reports.report(path)
+input_file: tests/fixtures/loans/borrow_held_across_a_loop.knv
+---
+main
+  3:16 borrow `w`: no live loan
+  6:18 change `w`: `w` lent at 3:16, held by `e`

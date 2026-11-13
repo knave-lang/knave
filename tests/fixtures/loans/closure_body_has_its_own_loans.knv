@@ -1,0 +1,8 @@
+(defn main ()
+  (local years (vec 1))
+  (local grow
+    (fn ()
+      (local first (at years 0))
+      (push! years 2)
+      (println first)))
+  (grow))

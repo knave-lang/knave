@@ -1,0 +1,7 @@
+(defn pick! (v)
+  (local r (at v 0))
+  (if (> r 0) r (do (push! v 1) (at v 0))))
+
+(defn main ()
+  (local v (vec 1 2))
+  (println (pick! v)))

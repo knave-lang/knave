@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+assertion_line: 107
+expression: reports.report(path)
+input_file: tests/fixtures/loans/match_moves_only_in_the_arm_that_binds.knv
+---
+main
+  3:17 borrow `o`: no live loan
+  4:10 move `o`: no live loan
+  5:24 borrow `s`: no live loan

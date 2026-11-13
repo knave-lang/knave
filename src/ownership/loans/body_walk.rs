@@ -14,8 +14,8 @@ use super::point_id::PointId;
 use super::walked::Walked;
 use crate::core::ReferenceKind;
 use crate::types::{
-    TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
-    TypedMatch, TypedStructExpr,
+    TypedArm, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
+    TypedLeaf, TypedMatch, TypedStructExpr,
 };
 
 pub struct BodyWalk<'w> {
@@ -119,17 +119,16 @@ impl<'w> BodyWalk<'w> {
 
     fn matched(&mut self, matched: &'w TypedMatch, at: PointId) -> Walked {
         let value = self.expr(&matched.value, at);
-        let decided = self.builder.join(&[value.end]);
-        if let Some(place) = self.moved_scrutinee(matched) {
-            self.builder
-                .lender(decided)
-                .move_out(place, matched.value.span);
-        }
         let arms: Vec<Walked> = matched
             .arms
             .iter()
             .map(|arm| {
-                let bound = self.builder.join(&[decided]);
+                let bound = self.builder.join(&[value.end]);
+                if let Some(place) = self.moved_by(arm, &matched.value) {
+                    self.builder
+                        .lender(bound)
+                        .move_out(place, matched.value.span);
+                }
                 for binder in arm.pattern.binders() {
                     self.builder.define(bound, binder, &value.held);
                 }
@@ -139,13 +138,13 @@ impl<'w> BodyWalk<'w> {
         self.joined(arms)
     }
 
-    fn moved_scrutinee(&self, matched: &'w TypedMatch) -> Option<LoanPlace> {
-        let takes_a_value = matched
-            .arms
-            .iter()
-            .flat_map(|arm| arm.pattern.binders())
+    fn moved_by(&self, arm: &'w TypedArm, scrutinee: &'w TypedExpr) -> Option<LoanPlace> {
+        let takes_a_value = arm
+            .pattern
+            .binders()
+            .into_iter()
             .any(|binder| self.rules.moves(&binder.ty));
-        LoanPlace::of(&matched.value).filter(|_| takes_a_value)
+        LoanPlace::of(scrutinee).filter(|_| takes_a_value)
     }
 
     fn joined(&mut self, branches: impl IntoIterator<Item = Walked>) -> Walked {

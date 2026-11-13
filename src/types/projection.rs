@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use super::rust_trait::Implementor;
 use super::selection::{ImplementorMatch, PatternMatch};
+use super::trait_rows_reach::Implementor;
 use super::ty::Type;
 use crate::core::BindingId;
 

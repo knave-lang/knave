@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 use super::associated::LoweredAssociatedValue;
 use super::checker::TypeChecker;
 use super::problems::TypeProblems;
-use super::rust_trait::Implementor;
+use super::trait_rows_reach::Implementor;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
 use crate::core::ClosureKind;
 use crate::core::{
@@ -175,7 +175,7 @@ impl TypeChecker {
             return Ok(());
         }
         if let Some(rust_trait) = self.declarations.traits.table.get(binding) {
-            rust_trait.assert_reached();
+            rust_trait.rows().assert_reached();
         }
         Err(TypeProblems::trait_takes_no_argument(
             self.bindings.get(binding).name(),

@@ -4,7 +4,7 @@ use rustc_hash::FxHashMap;
 
 use super::checker::TypeChecker;
 use super::problems::TypeProblems;
-use super::rust_trait::Implementor;
+use super::trait_rows_reach::Implementor;
 use super::ty::{Bound, GenericParam, Scheme, Type};
 use crate::core::{BindingId, CoreModule, ItemKind, StructDerives};
 use crate::modules::ModuleSources;

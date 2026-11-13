@@ -1,44 +1,11 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::reached_traits::ReachedTraits;
 use crate::core::{
     BindingId, ConsultedTraits, CoreModule, ItemKind, References, RustTraitDeclaration, TypeBound,
     TypeExpr, VariantPayload,
 };
 use crate::modules::ModuleSources;
-use crate::source::Span;
-
-#[derive(Clone)]
-pub struct ReachedTraits {
-    traits: FxHashSet<BindingId>,
-}
-
-impl ReachedTraits {
-    pub fn reaches(&self, trait_binding: BindingId) -> bool {
-        self.traits.contains(&trait_binding)
-    }
-
-    pub fn declarations<'m>(
-        &self,
-        modules: &'m [CoreModule],
-    ) -> impl Iterator<Item = ReachedDeclaration<'m>> {
-        modules
-            .iter()
-            .flat_map(|module| &module.items)
-            .filter_map(|item| match &item.kind {
-                ItemKind::RustTrait(declaration) => Some(ReachedDeclaration {
-                    span: item.span,
-                    declaration,
-                }),
-                _ => None,
-            })
-            .filter(|reached| self.reaches(reached.declaration.binding))
-    }
-}
-
-pub struct ReachedDeclaration<'m> {
-    pub span: Span,
-    pub declaration: &'m RustTraitDeclaration,
-}
 
 pub struct TraitReach<'p> {
     declarations: FxHashMap<BindingId, &'p RustTraitDeclaration>,
@@ -64,9 +31,7 @@ impl<'p> TraitReach<'p> {
             }
         }
         reach.close();
-        ReachedTraits {
-            traits: reach.reached,
-        }
+        ReachedTraits::new(reach.reached)
     }
 
     fn new(modules: &'p [CoreModule]) -> Self {
@@ -232,7 +197,8 @@ impl<'p> TraitReach<'p> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ReachedTraits, TraitReach};
+    use super::TraitReach;
+    use crate::types::reached_traits::ReachedTraits;
     use std::rc::Rc;
 
     use crate::core::{

@@ -3,7 +3,8 @@ use std::rc::Rc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::deferred_definitions::DeferredDefinitions;
-use super::trait_reach::{ReachedTraits, TraitReach};
+use super::reached_traits::ReachedTraits;
+use super::trait_reach::TraitReach;
 use super::written_bodies::WrittenBodies;
 use crate::core::{BindingArena, BindingId, Expr, ItemKind, References};
 use crate::expand::Program;

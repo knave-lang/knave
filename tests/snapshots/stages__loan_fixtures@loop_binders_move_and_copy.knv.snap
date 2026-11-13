@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+assertion_line: 107
+expression: reports.report(path)
+input_file: tests/fixtures/loans/loop_binders_move_and_copy.knv
+---
+main
+  3:16 borrow `v`: no live loan
+  4:13 move `v`: `v` lent at 3:16, held by `r`
+  7:14 move `xs`: `v` lent at 3:16, held by `r`
+  8:21 borrow `xs`: `v` lent at 3:16, held by `r`
+  13:16 borrow `w`: no live loan
+  16:16 change `u`: no live loan
+  17:18 borrow `e`: no live loan
+  18:28 borrow `u`: no live loan
+  19:21 borrow `u`: no live loan

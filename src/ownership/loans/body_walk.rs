@@ -1,5 +1,4 @@
 use super::access::Move;
-use super::argument_values::ArgumentValues;
 use super::body_facts::BodyFacts;
 use super::call_site::CallSite;
 use super::call_walk::CallWalk;
@@ -14,15 +13,16 @@ use super::loan_kind::LoanKind;
 use super::loan_place::LoanPlace;
 use super::loan_rules::LoanRules;
 use super::loan_table::LoanTable;
-use super::loop_heads::{LoopHead, LoopHeads};
+use super::loop_heads::LoopHeads;
+use super::loop_walk::LoopWalk;
 use super::place_access::PlaceAccess;
 use super::point_id::PointId;
 use super::value_regions::ValueRegions;
 use super::walked::Walked;
 use crate::core::ReferenceKind;
 use crate::types::{
-    TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
-    TypedLambda, TypedLeaf, TypedMatch, TypedStructExpr,
+    TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
+    TypedLeaf, TypedMatch, TypedStructExpr,
 };
 
 pub struct BodyWalk<'w> {
@@ -72,7 +72,7 @@ impl<'w> BodyWalk<'w> {
             TypedExprKind::Call(callee, arguments) => {
                 self.call(CallSite::new(expr, callee, arguments), at)
             }
-            TypedExprKind::Recur(arguments) => self.recur(arguments, at),
+            TypedExprKind::Recur(arguments) => LoopWalk::new(self).recur(arguments, at),
             TypedExprKind::Borrow(..) | TypedExprKind::Struct(TypedStructExpr::Field(..)) => {
                 self.lent(expr, at)
             }
@@ -83,7 +83,7 @@ impl<'w> BodyWalk<'w> {
 
     fn call(&mut self, site: CallSite<'w>, at: PointId) -> Walked {
         match site.repeated_lambda() {
-            Some(lambda) => self.repeated(lambda, site.arguments(), at),
+            Some(lambda) => LoopWalk::new(self).repeated(lambda, site.arguments(), at),
             None => CallWalk::new(self, site).walk(at),
         }
     }
@@ -156,30 +156,6 @@ impl<'w> BodyWalk<'w> {
         )
     }
 
-    fn block(&mut self, block: &'w TypedBlock, at: PointId) -> Walked {
-        block
-            .items
-            .iter()
-            .fold(Walked::at(at), |walked, item| match item {
-                TypedBodyItem::Let(binder, value) => {
-                    let bound = self.expr(value, walked.end);
-                    let defined = self.graph.join(&[bound.end]);
-                    if let Some(place) = LoanPlace::of(value).filter(|_| self.rules.moves(value)) {
-                        let moved = PlaceAccess::new(place, &Move, value.span);
-                        self.lender(defined).access(moved);
-                    }
-                    self.define(defined, binder, &bound.held);
-                    Walked::at(defined)
-                }
-                TypedBodyItem::Expr(value) => self.expr(value, walked.end),
-            })
-    }
-
-    fn define(&mut self, point: PointId, binder: &TypedBinder, held: &Holdings) {
-        self.graph.point_mut(point).define(binder.binding);
-        self.regions.flow_into(binder.binding, held);
-    }
-
     fn lent_from(&mut self, owner: &'w TypedExpr, lending: Option<Lending>, at: PointId) -> Walked {
         let read = self.expr(owner, at);
         match lending {
@@ -189,41 +165,6 @@ impl<'w> BodyWalk<'w> {
                 Walked::holding(point, read.held.merged(lent))
             }
             None => read,
-        }
-    }
-
-    fn repeated(
-        &mut self,
-        lambda: &'w TypedLambda,
-        arguments: &'w [TypedArgument],
-        at: PointId,
-    ) -> Walked {
-        let evaluated = ArgumentValues::new(arguments, Vec::new()).evaluate(self, at);
-        let started = self.graph.join(&[evaluated.end]);
-        self.bind_parameters(started, &lambda.params, evaluated.held);
-        let head = self.graph.join(&[started]);
-        self.loops.enter(LoopHead {
-            head,
-            parameters: &lambda.params,
-        });
-        let body = self.block(&lambda.body, head);
-        self.loops.leave();
-        body
-    }
-
-    fn recur(&mut self, arguments: &'w [TypedArgument], at: PointId) -> Walked {
-        let evaluated = ArgumentValues::new(arguments, Vec::new()).evaluate(self, at);
-        let again = self.graph.join(&[evaluated.end]);
-        if let Some(innermost) = self.loops.innermost() {
-            self.bind_parameters(again, innermost.parameters, evaluated.held);
-            self.graph.link(again, innermost.head);
-        }
-        Walked::at(self.graph.join(&[]))
-    }
-
-    fn bind_parameters(&mut self, point: PointId, parameters: &[TypedBinder], held: Vec<Holdings>) {
-        for (parameter, held) in parameters.iter().zip(held) {
-            self.define(point, parameter, &held);
         }
     }
 }
@@ -248,6 +189,38 @@ impl<'w> ExpressionWalk<'w> for BodyWalk<'w> {
 
     fn rules(&self) -> &'w LoanRules<'w> {
         self.rules
+    }
+
+    fn block(&mut self, block: &'w TypedBlock, at: PointId) -> Walked {
+        block
+            .items
+            .iter()
+            .fold(Walked::at(at), |walked, item| match item {
+                TypedBodyItem::Let(binder, value) => {
+                    let bound = self.expr(value, walked.end);
+                    let defined = self.graph.join(&[bound.end]);
+                    if let Some(place) = LoanPlace::of(value).filter(|_| self.rules.moves(value)) {
+                        let moved = PlaceAccess::new(place, &Move, value.span);
+                        self.lender(defined).access(moved);
+                    }
+                    self.define(defined, binder, &bound.held);
+                    Walked::at(defined)
+                }
+                TypedBodyItem::Expr(value) => self.expr(value, walked.end),
+            })
+    }
+
+    fn define(&mut self, point: PointId, binder: &TypedBinder, held: &Holdings) {
+        self.graph.point_mut(point).define(binder.binding);
+        self.regions.flow_into(binder.binding, held);
+    }
+
+    fn link(&mut self, before: PointId, after: PointId) {
+        self.graph.link(before, after);
+    }
+
+    fn loops(&mut self) -> &mut LoopHeads<'w> {
+        &mut self.loops
     }
 }
 

@@ -1,0 +1,12 @@
+(defstruct car :make string :year i64)
+
+(defn larger (a b) (if (> a b) a b))
+
+(defn larger-make (c d)
+  (larger (:make c) (:make d)))
+
+(defn main ()
+  (local first (->car (str "Ford") 1990))
+  (local second (->car (str "Saab") 1995))
+  (println (larger 3 4))
+  (println (larger-make first second)))

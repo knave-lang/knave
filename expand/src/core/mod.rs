@@ -2,6 +2,7 @@ mod binding;
 mod builtin;
 mod consulted_traits;
 mod expr;
+mod implementor_rows;
 mod kernel;
 mod keyword;
 mod module;
@@ -28,17 +29,18 @@ pub use expr::{
     Literal, MapOperation, Pattern, PatternArguments, PatternKind, PatternPart, RustClause,
     RustTemplate, StructExpr,
 };
+pub use implementor_rows::{ImplementorRow, ImplementorRows};
 pub use kernel::{
     ControlForm, DefinitionForm, ExpressionForm, FunctionFieldTraits, KernelConstants, KernelForm,
     KernelType, LeafForm, PrimitiveType, ReferenceKind, StructDerives, StructForm,
 };
 pub use keyword::Keyword;
 pub use module::{
-    AssociatedValue, CoreModule, EnumDefiner, EnumRust, ImplAssociatedType, ImplMethod,
-    ImplementorRows, Item, ItemKind, ModuleId, ModulePath, RUST_TRAIT_ASSOCIATED_MARKER,
-    RUST_TRAIT_HELP_MARKER, RUST_TRAIT_METHOD_MARKER, RUST_TRAIT_REQUIRES_MARKER,
-    RUST_TRAIT_STRUCTURAL_MARKER, RequiredTrait, RustTraitAssociatedType, RustTraitDeclaration,
-    RustTraitImplementor, TraitAssociatedType, TraitMethod, VariantDeclaration, VariantPayload,
+    AssociatedValue, CoreModule, EnumDefiner, EnumRust, ImplAssociatedType, ImplMethod, Item,
+    ItemKind, ModuleId, ModulePath, RUST_TRAIT_ASSOCIATED_MARKER, RUST_TRAIT_HELP_MARKER,
+    RUST_TRAIT_METHOD_MARKER, RUST_TRAIT_REQUIRES_MARKER, RUST_TRAIT_STRUCTURAL_MARKER,
+    RequiredTrait, RustTraitAssociatedType, RustTraitDeclaration, RustTraitImplementor,
+    TraitAssociatedType, TraitMethod, VariantDeclaration, VariantPayload,
 };
 pub use printer::CorePrinter;
 pub use references::References;

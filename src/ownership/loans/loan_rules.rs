@@ -23,6 +23,14 @@ impl<'p> LoanRules<'p> {
             .read_template(callee, false, |_| true)
     }
 
+    pub fn result_ties(&self, callee: &TypedExpr) -> Option<&'p [usize]> {
+        self.program.template_borrows.result_ties(callee)
+    }
+
+    pub fn receives(&self, callee: &TypedExpr, position: usize) -> bool {
+        self.program.template_borrows.receives(callee, position)
+    }
+
     pub fn holds_a_borrow(&self, ty: &Type) -> bool {
         self.program.type_holds_borrow(ty)
     }

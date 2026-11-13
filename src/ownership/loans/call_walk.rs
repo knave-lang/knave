@@ -29,8 +29,8 @@ impl<'c, 'w> CallWalk<'c, 'w> {
             .collect();
         let values = ArgumentValues::new(self.site.arguments(), passings);
         let evaluated = values.evaluate(self.walk, called.end);
-        let point = self.walk.join(&[evaluated.end]);
-        let passed = values.pass(evaluated.held, &mut self.walk.lender(point));
+        let point = self.walk.builder().join(&[evaluated.end]);
+        let passed = values.pass(evaluated.held, &mut self.walk.builder().lender(point));
         Walked::holding(point, self.site.result_holdings(passed, rules))
     }
 }

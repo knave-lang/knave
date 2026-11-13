@@ -7,6 +7,12 @@ pub struct ControlFlowGraph {
     points: Vec<ProgramPoint>,
 }
 
+impl Default for ControlFlowGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ControlFlowGraph {
     pub fn new() -> Self {
         Self {

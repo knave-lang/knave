@@ -7,28 +7,32 @@ pub struct LoopHeads<'w> {
 }
 
 #[derive(Clone, Copy)]
-pub struct LoopHead<'w> {
-    pub head: PointId,
-    pub parameters: &'w [TypedBinder],
+struct LoopHead<'w> {
+    head: PointId,
+    parameters: &'w [TypedBinder],
 }
 
 impl<'w> LoopHeads<'w> {
-    pub fn enter(&mut self, head: LoopHead<'w>) {
-        self.heads.push(head);
+    pub fn enter(&mut self, head: PointId, parameters: &'w [TypedBinder]) {
+        self.heads.push(LoopHead { head, parameters });
     }
 
     pub fn leave(&mut self) {
         self.heads.pop();
     }
 
-    pub fn innermost(&self) -> Option<LoopHead<'w>> {
-        self.heads.last().copied()
+    pub fn innermost_head(&self) -> Option<PointId> {
+        self.heads.last().map(|innermost| innermost.head)
+    }
+
+    pub fn innermost_parameters(&self) -> Option<&'w [TypedBinder]> {
+        self.heads.last().map(|innermost| innermost.parameters)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{LoopHead, LoopHeads};
+    use super::LoopHeads;
     use crate::ownership::loans::point_id::PointId;
 
     #[test]
@@ -36,18 +40,14 @@ mod tests {
         let mut loops = LoopHeads::default();
         let outer = PointId::new(1);
         let inner = PointId::new(2);
-        loops.enter(LoopHead {
-            head: outer,
-            parameters: &[],
-        });
-        loops.enter(LoopHead {
-            head: inner,
-            parameters: &[],
-        });
-        assert_eq!(loops.innermost().map(|head| head.head), Some(inner));
+        loops.enter(outer, &[]);
+        loops.enter(inner, &[]);
+        assert_eq!(loops.innermost_head(), Some(inner));
         loops.leave();
-        assert_eq!(loops.innermost().map(|head| head.head), Some(outer));
+        assert_eq!(loops.innermost_head(), Some(outer));
+        assert_eq!(loops.innermost_parameters().map(<[_]>::len), Some(0));
         loops.leave();
-        assert!(loops.innermost().is_none());
+        assert!(loops.innermost_head().is_none());
+        assert!(loops.innermost_parameters().is_none());
     }
 }

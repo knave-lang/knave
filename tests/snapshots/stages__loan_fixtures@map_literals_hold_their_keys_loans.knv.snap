@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/map_literals_hold_their_keys_loans.knv
+---
+main
+  4:35 borrow `s`: no live loan
+  5:37 borrow `t`: `s` lent at 4:35, held by `hashed`
+  6:9 change `s`: `s` lent at 4:35, held by `hashed`; `t` lent at 5:37, held by `sorted`
+  7:9 change `t`: `s` lent at 4:35, held by `hashed`; `t` lent at 5:37, held by `sorted`
+  8:20 borrow `hashed`: `s` lent at 4:35, held by `hashed`; `t` lent at 5:37, held by `sorted`
+  8:33 borrow `sorted`: `t` lent at 5:37, held by `sorted`

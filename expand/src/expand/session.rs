@@ -1,4 +1,5 @@
 use super::generated_entry::GeneratedEntry;
+use super::recur_check::RecurCheck;
 use super::result_printer::GeneratedFunction;
 use super::{Expander, Program};
 use crate::core::{
@@ -84,7 +85,7 @@ impl ExpansionSession<'_> {
 
     pub fn task_runner_entry(&mut self, source: SourceId) -> Result<GeneratedEntry, Diagnostics> {
         let runner = self.runner_forms(ModuleSources::TASK, source)?;
-        let lowered = self.lower_in(runner.module, |expander| expander.lower_body(&runner.forms));
+        let lowered = self.lower_body_in(runner.module, &runner.forms);
         let body = self.collect_diagnostics(lowered)?;
         Ok(GeneratedEntry::new(
             self.entry_binding(runner.span),
@@ -145,7 +146,7 @@ impl ExpansionSession<'_> {
         span: Span,
     ) -> Result<GeneratedEntry, Diagnostics> {
         let checkpoint = self.expander.tables.module_notes.checkpoint();
-        let lowered = self.lower_in(module, |expander| expander.lower_body(scoped));
+        let lowered = self.lower_body_in(module, scoped);
         let lowered = self.collect_diagnostics(lowered)?;
         self.expander.check_documented_terms(module, checkpoint);
         let mut body = self.collect_diagnostics(Ok(lowered))?;
@@ -234,6 +235,14 @@ impl ExpansionSession<'_> {
     fn add_module_scopes(module: &ModuleRecord, form: &mut Form) {
         form.add_scope(module.scopes().base());
         form.add_scope(module.scopes().body());
+    }
+
+    fn lower_body_in(&mut self, module: ModuleId, forms: &[Form]) -> Result<Block, Diagnostic> {
+        self.lower_in(module, |expander| {
+            let body = expander.lower_body(forms)?;
+            RecurCheck::outside().block(&body)?;
+            Ok(body)
+        })
     }
 
     fn lower_in_entry<T>(

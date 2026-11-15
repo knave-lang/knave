@@ -1,0 +1,11 @@
+---
+source: tests/cli.rs
+expression: eval.assert_exit_code(1).stderr()
+---
+error[L0216]: `recur` is not inside a function
+ --> <eval>:1:1
+  |
+1 | (recur 1)
+  | ^^^^^^^^^ there is no function here for `recur` to jump back to
+  |
+  = help: write `recur` inside a `fn` body

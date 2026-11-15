@@ -528,7 +528,7 @@ impl LiteralDefaults {
                 (definition.binding, position),
                 LiteralDefault {
                     parameter: typed.bindings.get(binder.binding).name().to_string(),
-                    default: default.name().to_string(),
+                    default: default.names().shown().to_string(),
                     calls: Self::kind_types(entry, generic_index, UseKind::Call, display),
                     values: Self::kind_types(entry, generic_index, UseKind::Value, display),
                     generic_signature: signature.generic(),
@@ -654,7 +654,7 @@ impl LiteralSignature<'_> {
         LiteralDefaults::distinct_use_types(self.entry, generic_index, self.display)
             .first()
             .cloned()
-            .unwrap_or_else(|| literal.default_type().name().to_string())
+            .unwrap_or_else(|| literal.default_type().names().shown().to_string())
     }
 }
 

@@ -8,6 +8,7 @@ mod kernel;
 mod keyword;
 mod module;
 mod primitive;
+mod primitive_names;
 mod printer;
 mod references;
 mod saved_bindings;
@@ -47,6 +48,7 @@ pub use module::{
     TraitAssociatedType, TraitMethod, VariantDeclaration, VariantPayload,
 };
 pub use primitive::PrimitiveType;
+pub use primitive_names::PrimitiveNames;
 pub use printer::CorePrinter;
 pub use references::References;
 pub use saved_bindings::{BindingTables, SavedBindings};

@@ -17,7 +17,7 @@ impl<'n> NumberLiteral<'n> {
         let digits = self.digits();
         match (self.ty, context) {
             (Type::Primitive(primitive), TypeContext::Unknown) => {
-                Self::signed(format!("{digits}_{}", primitive.name()))
+                Self::signed(format!("{digits}_{}", primitive.names().rust()))
             }
             _ => Self::signed(digits),
         }

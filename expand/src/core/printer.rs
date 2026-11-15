@@ -369,7 +369,7 @@ impl<'a> CorePrinter<'a> {
 
     fn type_expr(&mut self, type_expr: &TypeExpr) -> String {
         match type_expr.kind() {
-            TypeExprKind::Primitive(primitive) => primitive.name().to_string(),
+            TypeExprKind::Primitive(primitive) => primitive.names().shown().to_string(),
             TypeExprKind::Hole => "_".to_string(),
             TypeExprKind::Trait(binding) => self.name(*binding),
             _ => self.composite_type(type_expr),

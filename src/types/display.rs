@@ -48,7 +48,7 @@ impl<'a> TypeDisplay<'a> {
                 .generics
                 .get(generic)
                 .map_or_else(|| Self::UNKNOWN.to_string(), |param| param.name.to_string()),
-            Type::Primitive(primitive) => primitive.name().to_string(),
+            Type::Primitive(primitive) => primitive.names().shown().to_string(),
             Type::Named(binding, arguments) => self.named(*binding, arguments),
             Type::Function(_, parameters, result) => self.function(parameters, result),
             Type::Ref(lifetime, inner) | Type::Mut(lifetime, inner) => {

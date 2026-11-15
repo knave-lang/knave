@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use super::Expander;
 use super::problems::{ExpandProblems, ParameterExample};
+use super::rust_type_clause_problems::RustTypeClauseProblems;
 use super::shape::Shape;
 use crate::core::{
     BindingId, CoreModule, DefinitionForm, EnumRust, Item, ItemKind, ParsedTemplate, TypeBinder,
@@ -12,6 +13,7 @@ use crate::reader::{Form, FormKind};
 
 impl Expander<'_> {
     const RUST_TYPE_PARTS: usize = 3;
+    const CLAUSE_TYPE_PARAMETERS: usize = 1;
     const RUST_CLAUSE: &'static str = "rust";
     const BARE_WORD: &'static str = "bare";
     const RUST_CLAUSE_HELP: &'static str =
@@ -112,7 +114,7 @@ impl Expander<'_> {
         if items.len() <= Self::RUST_TYPE_PARTS {
             return Ok(Vec::new());
         }
-        if parameters != 1 {
+        if parameters != Self::CLAUSE_TYPE_PARAMETERS {
             let name = shape.symbol(self.head_name(shape, &items[1])?)?;
             return Err(ExpandProblems::rust_type_clauses_need_one_parameter(
                 shape.written_name(),
@@ -133,13 +135,22 @@ impl Expander<'_> {
         form: &Form,
         clause: &Form,
     ) -> Result<(TypeExpr, Rc<ParsedTemplate>), Diagnostic> {
-        let Some([target, template]) = clause.as_list() else {
+        let Some([target, template_form]) = clause.as_list() else {
             return Err(shape.malformed(form));
         };
-        Ok((
-            self.lower_type(target)?,
-            Rc::new(Self::type_template(shape, template)?),
-        ))
+        let target = self.lower_type(target)?;
+        let template = Self::type_template(shape, template_form)?;
+        if let Some(index) = template
+            .placeholders()
+            .find(|index| *index >= Self::CLAUSE_TYPE_PARAMETERS)
+        {
+            return Err(RustTypeClauseProblems::placeholder_without_parameter(
+                index,
+                Self::CLAUSE_TYPE_PARAMETERS,
+                template_form.span(),
+            ));
+        }
+        Ok((target, Rc::new(template)))
     }
 
     pub(super) fn starts_rust_clause(form: &Form) -> bool {

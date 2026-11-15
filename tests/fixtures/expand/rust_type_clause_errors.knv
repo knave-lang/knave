@@ -5,3 +5,7 @@
 (rust-type (named a) "{a}")
 
 (rust-type (broken a) "{0}" (i64))
+
+(deftype (twin item)
+  (rust "({0}, {0})")
+  (u8 "[{1}; 2]"))

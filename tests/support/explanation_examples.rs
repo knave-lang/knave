@@ -65,6 +65,11 @@ impl ExplanationExamples {
             .collect()
     }
 
+    pub fn without_an_error_page(code: &str) -> Option<Self> {
+        let explanation = Explanation::of_code(code).expect("the code is in the table");
+        Self::of_error_page(&explanation, &ExampleFolder::holding([]))
+    }
+
     fn of_error_page(explanation: &Explanation, pages: &ExampleFolder) -> Option<Self> {
         let code = explanation.code().as_str();
         let page = pages.contents(&format!("{}/{code}.md", Self::ERROR_PAGES_FOLDER));

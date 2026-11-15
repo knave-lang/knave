@@ -155,8 +155,9 @@ mod tests {
         }
 
         fn build(&self, output: Option<PathBuf>) -> PathBuf {
-            let program = LocatedProgram::of_file(self.root.join(Self::ENTRY), &self.terminal)
-                .expect("the entry is located");
+            let program =
+                LocatedProgram::of_file(self.root.join(Self::ENTRY), &mut self.terminal.scratch())
+                    .expect("the entry is located");
             let options = BuildOptions {
                 profile: BuildProfile::Debug,
                 output,

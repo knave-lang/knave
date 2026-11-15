@@ -1,6 +1,6 @@
 # RFC 0073: the lint exit code and the `lints` section
 
-**Status:** Accepted
+**Status:** Accepted. The `lints` section is built, and `docs/language.md` (Projects, Lints) states it.
 **Date:** 2026-11-13
 
 ## Problem

@@ -36,16 +36,16 @@ impl TestEntries {
         })
     }
 
-    fn at(path: PathBuf, terminal: &Terminal) -> Result<EntryTree, ExitStatus> {
-        let project = LocatedProject::search_from(&path, terminal, FetchingStore::default())?;
+    fn at(path: PathBuf, terminal: &mut Terminal) -> Result<EntryTree, ExitStatus> {
+        let project = LocatedProject::enter_from(&path, terminal, FetchingStore::default())?;
         Ok(EntryTree::of_tests(path, project))
     }
 
-    fn of_working_project(terminal: &Terminal) -> Result<EntryTree, ExitStatus> {
+    fn of_working_project(terminal: &mut Terminal) -> Result<EntryTree, ExitStatus> {
         let working_directory = WorkingDirectory::path();
         let project =
-            LocatedProject::search_from(working_directory, terminal, FetchingStore::default())?
-                .ok_or_else(LocatedProject::report_no_path)?;
+            LocatedProject::enter_from(working_directory, terminal, FetchingStore::default())?
+                .ok_or_else(WorkingDirectory::report_no_project)?;
         let path = project.placement().tests_directory().to_path_buf();
         if !path.is_dir() {
             return Err(Self::report_no_tests_directory(&project));

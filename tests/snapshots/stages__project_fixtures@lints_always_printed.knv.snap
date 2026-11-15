@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/lints_always_printed.knv
+---
+error[L0729]: unknown lint `second-trait-path`
+ --> project/lints_always_printed.knv:1:29
+  |
+1 | (defproject browser (lints (second-trait-path allow)))
+  |                             ^^^^^^^^^^^^^^^^^ not the name of a lint
+  |
+  = note: `L0217`, `L0249`, `L0251` and `L0256` always print and have no level
+  = help: the lints are `unused-binding`, `unmatched-link`, `unreachable-arm`, `missing-bang`, `rule-skipped` and `unused-parameter`
+  = note: run `knave doc L0729` for an explanation

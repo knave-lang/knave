@@ -25,6 +25,17 @@ pub trait DiagnosticOutput: MessageOutput {
         self.write(sources, diagnostics);
         ExitStatus::ProgramErrors
     }
+
+    fn print(&self, sources: &SourceMap, diagnostics: &Diagnostics) -> ExitStatus {
+        if diagnostics.is_empty() {
+            return ExitStatus::Success;
+        }
+        self.write(sources, diagnostics);
+        match diagnostics.has_errors() {
+            true => ExitStatus::ProgramErrors,
+            false => ExitStatus::Success,
+        }
+    }
 }
 
 pub struct RenderedDiagnostics {

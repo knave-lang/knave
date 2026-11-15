@@ -39,7 +39,7 @@ impl<'a> Checking<'a> {
     ) -> Result<TypedProgram, ExitStatus> {
         let mut typed = self.checked::<Gate>(program)?;
         typed.warnings.retain(shown_warning);
-        self.report.print(&typed.warnings);
+        self.report.print(&typed.warnings).passed()?;
         Ok(typed)
     }
 
@@ -60,6 +60,7 @@ mod tests {
     use crate::cli::exit_status::ExitStatus;
     use crate::cli::fake_programs::FakePrograms;
     use crate::cli::fake_stages::FakeStages;
+    use crate::cli::lint_levels::LintLevels;
     use crate::cli::recorded_output::RecordedOutput;
     use crate::cli::source_report::SourceReport;
     use crate::cli::stage_work::StageWork;
@@ -71,6 +72,7 @@ mod tests {
         sources: SourceMap,
         work: StageWork,
         output: RecordedOutput,
+        levels: LintLevels,
     }
 
     impl CheckingFixture {
@@ -84,6 +86,7 @@ mod tests {
                 sources: SourceMap::default(),
                 work: StageWork::default(),
                 output: RecordedOutput::default(),
+                levels: LintLevels::default(),
             }
         }
 
@@ -93,7 +96,7 @@ mod tests {
 
         fn checking(&mut self) -> Checking<'_> {
             Checking::new(
-                SourceReport::new(&self.sources, &self.output),
+                SourceReport::new(&self.sources, &self.output, &self.levels),
                 &mut self.work,
             )
         }

@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::cli::diagnostic_output::{DiagnosticOutput, MessageOutput};
 use crate::cli::fmt::formatted_files::FormattedFiles;
 use crate::cli::standard_error::StandardError;
-use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::diagnostic::{Diagnostics, Severity};
 use crate::source::SourceMap;
 
 pub struct ProjectLoadWarning {
@@ -43,7 +43,9 @@ impl ProjectLoadWarning {
 impl DiagnosticOutput for ProjectLoadWarning {
     fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics) {
         self.warn_once();
-        let warnings = diagnostics.clone().map(Diagnostic::into_warning);
+        let warnings = diagnostics
+            .clone()
+            .map(|diagnostic| diagnostic.into_severity(Severity::Warning));
         let warnings = self.formatted_files.without_unreadable(sources, warnings);
         if !warnings.is_empty() {
             self.output.write(sources, &warnings);

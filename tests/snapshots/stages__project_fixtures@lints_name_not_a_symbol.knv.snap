@@ -1,0 +1,48 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/lints_name_not_a_symbol.knv
+---
+error[L0735]: a lint's name is a symbol
+ --> project/lints_name_not_a_symbol.knv:2:21
+  |
+2 |             (lints ("unused-binding" allow)
+  |                     ^^^^^^^^^^^^^^^^ not a symbol
+  |
+help: write the lint's name without quotes
+  |
+2 -             (lints ("unused-binding" allow)
+2 +             (lints (unused-binding allow)
+  |
+  = note: run `knave doc L0735` for an explanation
+
+error[L0735]: a lint's name is a symbol
+ --> project/lints_name_not_a_symbol.knv:3:21
+  |
+3 |                    ("L0803" deny)
+  |                     ^^^^^^^ not a symbol
+  |
+help: `L0803` is the lint's code; write its name
+  |
+3 -                    ("L0803" deny)
+3 +                    (unreachable-arm deny)
+  |
+  = note: run `knave doc L0735` for an explanation
+
+error[L0735]: a lint's name is a symbol
+ --> project/lints_name_not_a_symbol.knv:4:21
+  |
+4 |                    ("zzzz" warn)
+  |                     ^^^^^^ not a symbol
+  |
+  = help: write the lint's name bare: the name that `knave doc <code>` shows for an `L08xx` code, with dashes in place of its spaces
+  = note: run `knave doc L0735` for an explanation
+
+error[L0735]: a lint's name is a symbol
+ --> project/lints_name_not_a_symbol.knv:5:21
+  |
+5 |                    (7 deny)))
+  |                     ^ not a symbol
+  |
+  = help: write the lint's name bare: the name that `knave doc <code>` shows for an `L08xx` code, with dashes in place of its spaces
+  = note: run `knave doc L0735` for an explanation

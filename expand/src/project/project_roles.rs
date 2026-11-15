@@ -1,98 +1,50 @@
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 
+use super::level_words::LevelWords;
+use super::role_book::RoleBook;
+use super::role_note::RoleNote;
+use super::role_problem::RoleProblem;
 use super::section_names::SectionNames;
 use super::vocabulary::ProjectVocabulary;
 use crate::reader::Form;
 
 pub(crate) struct ProjectRoles<'m> {
     macros: &'m FxHashSet<String>,
-    name_of_role: FxHashMap<String, String>,
-    names_with_a_role: FxHashSet<String>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) enum RoleProblem {
-    Missing(&'static str),
-    Repeated(String),
-    Unknown(String),
-    TwoRoles(String),
-    NoMacro(String),
-    Malformed,
 }
 
 impl<'m> ProjectRoles<'m> {
     pub(crate) const NOTE: &'static str = "project-roles";
 
     pub(crate) fn new(macros: &'m FxHashSet<String>) -> Self {
-        Self {
-            macros,
-            name_of_role: FxHashMap::default(),
-            names_with_a_role: FxHashSet::default(),
-        }
+        Self { macros }
     }
 
-    pub(crate) fn read(mut self, notes: &[Form]) -> Result<ProjectVocabulary, RoleProblem> {
-        self.add_all(notes)?;
-        let vocabulary = ProjectVocabulary::new(self.taken("project-head")?, self.sections()?);
-        self.unknown_left_over()?;
-        Ok(vocabulary)
+    pub(crate) fn read(
+        self,
+        notes: &[Form],
+        levels: LevelWords,
+    ) -> Result<ProjectVocabulary, RoleProblem> {
+        let mut book = RoleBook::of(notes, |note| self.admits(note))?;
+        let head = book.taken("project-head")?;
+        let sections = Self::sections(&mut book)?;
+        book.finish()?;
+        Ok(ProjectVocabulary::new(head, sections, levels))
     }
 
-    fn add_all(&mut self, notes: &[Form]) -> Result<(), RoleProblem> {
-        for note in notes {
-            let (name, role) = Self::parts(note)?;
-            self.add(name, role)?;
-        }
-        Ok(())
-    }
-
-    fn sections(&mut self) -> Result<SectionNames, RoleProblem> {
+    fn sections(book: &mut RoleBook) -> Result<SectionNames, RoleProblem> {
         Ok(SectionNames {
-            libraries: self.taken("library-section")?,
-            dependencies: self.taken("crate-section")?,
-            dev_dependencies: self.taken("test-crate-section")?,
+            libraries: book.taken("library-section")?,
+            dependencies: book.taken("crate-section")?,
+            dev_dependencies: book.taken("test-crate-section")?,
+            lints: book.taken("lint-section")?,
         })
     }
 
-    fn add(&mut self, name: String, role: String) -> Result<(), RoleProblem> {
-        self.check_name(&name)?;
-        if self.name_of_role.contains_key(&role) {
-            return Err(RoleProblem::Repeated(role));
+    fn admits(&self, note: &RoleNote) -> Result<(), RoleProblem> {
+        if self.macros.contains(&note.name) {
+            return Ok(());
         }
-        self.names_with_a_role.insert(name.clone());
-        self.name_of_role.insert(role, name);
-        Ok(())
-    }
-
-    fn check_name(&self, name: &str) -> Result<(), RoleProblem> {
-        if !self.macros.contains(name) {
-            return Err(RoleProblem::NoMacro(name.to_string()));
-        }
-        if self.names_with_a_role.contains(name) {
-            return Err(RoleProblem::TwoRoles(name.to_string()));
-        }
-        Ok(())
-    }
-
-    fn taken(&mut self, role: &'static str) -> Result<String, RoleProblem> {
-        self.name_of_role
-            .remove(role)
-            .ok_or(RoleProblem::Missing(role))
-    }
-
-    fn unknown_left_over(&self) -> Result<(), RoleProblem> {
-        match self.name_of_role.keys().next() {
-            Some(role) => Err(RoleProblem::Unknown(role.clone())),
-            None => Ok(()),
-        }
-    }
-
-    fn parts(note: &Form) -> Result<(String, String), RoleProblem> {
-        let Some([name, role]) = note.as_list() else {
-            return Err(RoleProblem::Malformed);
-        };
-        let symbol = |form: &Form| form.as_symbol().map(|symbol| symbol.name().to_string());
-        symbol(name).zip(symbol(role)).ok_or(RoleProblem::Malformed)
+        Err(RoleProblem::NoMacro(note.name.clone()))
     }
 }
 
@@ -100,19 +52,30 @@ impl<'m> ProjectRoles<'m> {
 mod tests {
     use rustc_hash::FxHashSet;
 
-    use super::{ProjectRoles, RoleProblem};
-    use crate::project::ProjectVocabulary;
+    use super::ProjectRoles;
+    use crate::project::LevelKeys;
+    use crate::project::role_problem::RoleProblem;
+    use crate::project::{ProjectVocabulary, Section};
     use crate::reader::{Form, Reader};
     use crate::source::SourceMap;
 
     struct RolesFixture;
 
     impl RolesFixture {
-        const MACROS: [&str; 5] = ["opening", "books", "crates", "test-crates", "spare"];
+        const MACROS: [&str; 6] = [
+            "opening",
+            "books",
+            "crates",
+            "test-crates",
+            "rules",
+            "spare",
+        ];
         const ROLES: &str = "(opening project-head)\n\
              (books library-section)\n\
              (crates crate-section)\n\
-             (test-crates test-crate-section)\n";
+             (test-crates test-crate-section)\n\
+             (rules lint-section)\n";
+        const LEVELS: &str = "(hush silent-level) (note warning-level) (stop error-level)";
 
         fn notes(text: &str) -> Vec<Form> {
             let mut sources = SourceMap::default();
@@ -125,7 +88,9 @@ mod tests {
         fn read(roles: &str) -> Result<ProjectVocabulary, RoleProblem> {
             let macros: FxHashSet<String> =
                 Self::MACROS.iter().map(|name| name.to_string()).collect();
-            ProjectRoles::new(&macros).read(&Self::notes(roles))
+            let levels =
+                LevelKeys::read(&Self::notes(Self::LEVELS)).expect("every key is stated once");
+            ProjectRoles::new(&macros).read(&Self::notes(roles), levels)
         }
 
         fn with(extra: &str) -> Result<ProjectVocabulary, RoleProblem> {
@@ -139,6 +104,7 @@ mod tests {
             RolesFixture::read(RolesFixture::ROLES).expect("every role is stated once");
         assert_eq!(vocabulary.head(), "opening");
         assert_eq!(vocabulary.section_named("crates").map(|_| ()), Some(()));
+        assert_eq!(vocabulary.section_named("rules"), Some(Section::Lints));
     }
 
     #[test]

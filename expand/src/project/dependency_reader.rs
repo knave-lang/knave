@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
+use super::dependency_section::DependencySection;
 use super::fields::{FieldScanner, Fields};
 use super::name::ProjectName;
 use super::problems::ProjectProblems;
 use super::reader::SectionTable;
-use super::section::Section;
 use super::{CrateDependency, LibraryDependency, LibrarySource};
 use crate::diagnostic::Diagnostics;
 use crate::modules::ModuleSources;
@@ -12,7 +12,7 @@ use crate::reader::{Form, FormKind};
 use crate::source::Span;
 
 pub struct DependencyReader<'p> {
-    section: Section,
+    section: DependencySection,
     problems: &'p mut Diagnostics,
     names: Vec<(String, Span)>,
 }
@@ -32,7 +32,7 @@ struct Version<'f> {
 impl<'p> DependencyReader<'p> {
     const OPTION_PREFIX: char = '-';
 
-    pub fn new(section: Section, problems: &'p mut Diagnostics) -> Self {
+    pub fn new(section: DependencySection, problems: &'p mut Diagnostics) -> Self {
         Self {
             section,
             problems,
@@ -104,9 +104,13 @@ impl<'p> DependencyReader<'p> {
         }
         self.names.push((parts.name.to_string(), parts.name_span));
         match self.section {
-            Section::Libraries => table.libraries.extend(self.library(parts)),
-            Section::Dependencies => table.dependencies.push(self.crate_dependency(parts)),
-            Section::DevDependencies => table.dev_dependencies.push(self.crate_dependency(parts)),
+            DependencySection::Libraries => table.libraries.extend(self.library(parts)),
+            DependencySection::Dependencies => {
+                table.dependencies.push(self.crate_dependency(parts))
+            }
+            DependencySection::DevDependencies => {
+                table.dev_dependencies.push(self.crate_dependency(parts))
+            }
         }
     }
 

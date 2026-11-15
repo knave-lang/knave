@@ -1,0 +1,2 @@
+(defproject browser
+            (lints (unused-binding) unreachable-arm))

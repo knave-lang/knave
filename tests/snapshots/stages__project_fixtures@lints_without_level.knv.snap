@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/lints_without_level.knv
+---
+error[L0732]: a lint entry gives no level
+ --> project/lints_without_level.knv:2:20
+  |
+2 |             (lints (unused-binding) unreachable-arm))
+  |                    ^^^^^^^^^^^^^^^^ expected a lint's name, then its level
+  |
+  = help: give the lint one of the levels `allow`, `warn` and `deny`
+  = note: run `knave doc L0732` for an explanation
+
+error[L0732]: a lint entry gives no level
+ --> project/lints_without_level.knv:2:37
+  |
+2 |             (lints (unused-binding) unreachable-arm))
+  |                                     ^^^^^^^^^^^^^^^ expected a lint's name, then its level
+  |
+  = help: give the lint one of the levels `allow`, `warn` and `deny`
+  = note: run `knave doc L0732` for an explanation

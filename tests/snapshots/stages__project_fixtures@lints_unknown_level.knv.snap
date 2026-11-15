@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/lints_unknown_level.knv
+---
+error[L0730]: unknown lint level `quiet`
+ --> project/lints_unknown_level.knv:1:44
+  |
+1 | (defproject browser (lints (unused-binding quiet)))
+  |                                            ^^^^^ not a level
+  |
+  = help: the levels are `allow`, `warn` and `deny`
+  = note: run `knave doc L0730` for an explanation

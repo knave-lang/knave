@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/lints_code_as_name.knv
+---
+error[L0729]: unknown lint `L0801`
+ --> project/lints_code_as_name.knv:1:29
+  |
+1 | (defproject browser (lints (L0801 allow)))
+  |                             ^^^^^ not the name of a lint
+  |
+help: `L0801` is the lint's code; write its name
+  |
+1 - (defproject browser (lints (L0801 allow)))
+1 + (defproject browser (lints (unused-binding allow)))
+  |
+  = note: run `knave doc L0729` for an explanation

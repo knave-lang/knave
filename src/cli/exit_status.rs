@@ -19,6 +19,13 @@ pub enum ExitStatus {
 impl ExitStatus {
     pub const SIGNAL_BASE: u8 = 128;
 
+    pub fn passed(self) -> Result<(), ExitStatus> {
+        match self {
+            ExitStatus::Success => Ok(()),
+            failure => Err(failure),
+        }
+    }
+
     pub fn of<T>(outcome: Result<T, ExitStatus>) -> Self {
         match outcome {
             Ok(_) => ExitStatus::Success,

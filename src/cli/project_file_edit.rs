@@ -21,9 +21,12 @@ pub struct ProjectFileEdit {
 impl ProjectFileEdit {
     const STAGED_SUFFIX: &str = ".tmp";
 
-    pub fn of_working_directory(terminal: &Terminal, command: &str) -> Result<Self, ExitStatus> {
+    pub fn of_working_directory(
+        terminal: &mut Terminal,
+        command: &str,
+    ) -> Result<Self, ExitStatus> {
         let working_directory = WorkingDirectory::path();
-        match LocatedProject::search_from(working_directory, terminal, FetchingStore::default())? {
+        match LocatedProject::enter_from(working_directory, terminal, FetchingStore::default())? {
             Some(project) => Ok(Self { project }),
             None => Err(Self::report_no_project(command)),
         }

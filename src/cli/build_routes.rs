@@ -47,6 +47,7 @@ mod tests {
     use crate::cli::fake_crates::FakeCrates;
     use crate::cli::fake_programs::FakePrograms;
     use crate::cli::fake_stages::FakeStages;
+    use crate::cli::lint_levels::LintLevels;
     use crate::cli::project_crates::ProjectCrates;
     use crate::cli::recorded_output::RecordedOutput;
     use crate::cli::rustc_route::RustcRoute;
@@ -60,6 +61,7 @@ mod tests {
         crate_name: CrateName,
         sources: SourceMap,
         output: RecordedOutput,
+        levels: LintLevels,
     }
 
     impl BuildRoutesFixture {
@@ -77,6 +79,7 @@ mod tests {
                 crate_name: CrateName::of(Path::new(FakeCrates::PROJECT)),
                 sources: SourceMap::default(),
                 output: RecordedOutput::default(),
+                levels: LintLevels::default(),
             }
         }
 
@@ -103,7 +106,7 @@ mod tests {
                 .compile(
                     &FakeStages::emitted(FakePrograms::PRINTS_A_SUM),
                     BuildProfile::Debug,
-                    &SourceReport::new(&self.sources, &self.output),
+                    &SourceReport::new(&self.sources, &self.output, &self.levels),
                 )
         }
 

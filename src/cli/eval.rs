@@ -83,7 +83,10 @@ impl EvalCommand {
         let ranges = self.forms.ranges(terminal, self.module.path(), anchor)?;
         let expanded = self.expand(terminal, module, &ranges)?;
         let module_warnings = self.module.check(terminal, &expanded.program)?.warnings;
-        terminal.source_report().print(&expanded.definition_notes());
+        terminal
+            .source_report()
+            .print(&expanded.definition_notes())
+            .passed()?;
         let Some(entry) = expanded.entry(terminal)? else {
             return Ok(ExitStatus::Success);
         };
@@ -128,7 +131,7 @@ impl EvalCommand {
         let path = self.module.path().to_path_buf();
         match &self.root {
             Some(root) => {
-                let project = LocatedProject::search_from(
+                let project = LocatedProject::enter_from(
                     &ProgramFile::directory_of(&path),
                     terminal,
                     FetchingStore::default(),
@@ -385,7 +388,8 @@ impl ExpandedEvaluation {
             .map_err(|diagnostics| terminal.source_report().report(&diagnostics))?;
         terminal
             .source_report()
-            .print(&Self::result_notes(&results));
+            .print(&Self::result_notes(&results))
+            .passed()?;
         let printed = Self::printed(&results);
         program.enter(&entry.printing(&self.printer, &printed));
         let printed_forms = printed

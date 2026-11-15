@@ -80,12 +80,12 @@ impl DocWriteCommand {
         &self,
         terminal: &mut Terminal,
     ) -> Result<(PathBuf, Vec<PageSet>), ExitStatus> {
-        let project = LocatedProject::search_from(
+        let project = LocatedProject::enter_from(
             WorkingDirectory::path(),
             terminal,
             FetchingStore::default(),
         )?
-        .ok_or_else(LocatedProject::report_no_path)?;
+        .ok_or_else(WorkingDirectory::report_no_project)?;
         let folder = self.folder_in(project.root());
         let file = project
             .placement()

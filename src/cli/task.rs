@@ -62,10 +62,10 @@ impl TaskCommand {
         Ok(FinishedProgram::run_in(&binary, &self.arguments, task.root()).status())
     }
 
-    fn task_tree(terminal: &Terminal) -> Result<EntryTree, ExitStatus> {
+    fn task_tree(terminal: &mut Terminal) -> Result<EntryTree, ExitStatus> {
         let working_directory = WorkingDirectory::path();
         let project =
-            LocatedProject::search_from(working_directory, terminal, FetchingStore::default())?
+            LocatedProject::enter_from(working_directory, terminal, FetchingStore::default())?
                 .ok_or_else(Self::report_no_project)?;
         if !project.placement().tasks_directory().is_dir() {
             return Err(Self::report_no_tasks_directory());

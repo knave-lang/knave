@@ -1,5 +1,8 @@
 use std::rc::Rc;
 
+use super::dependency_section::DependencySection;
+use super::level_words::LevelWords;
+use super::lint_level::LintLevel;
 use super::section::Section;
 use super::section_names::SectionNames;
 
@@ -7,11 +10,16 @@ use super::section_names::SectionNames;
 pub struct ProjectVocabulary {
     head: String,
     sections: SectionNames,
+    levels: LevelWords,
 }
 
 impl ProjectVocabulary {
-    pub(super) fn new(head: String, sections: SectionNames) -> Self {
-        Self { head, sections }
+    pub(super) fn new(head: String, sections: SectionNames, levels: LevelWords) -> Self {
+        Self {
+            head,
+            sections,
+            levels,
+        }
     }
 
     pub fn head(&self) -> &str {
@@ -20,10 +28,21 @@ impl ProjectVocabulary {
 
     pub fn section_name(&self, section: Section) -> &str {
         match section {
-            Section::Libraries => &self.sections.libraries,
-            Section::Dependencies => &self.sections.dependencies,
-            Section::DevDependencies => &self.sections.dev_dependencies,
+            Section::Dependency(DependencySection::Libraries) => &self.sections.libraries,
+            Section::Dependency(DependencySection::Dependencies) => &self.sections.dependencies,
+            Section::Dependency(DependencySection::DevDependencies) => {
+                &self.sections.dev_dependencies
+            }
+            Section::Lints => &self.sections.lints,
         }
+    }
+
+    pub(super) fn level_named(&self, word: &str) -> Option<LintLevel> {
+        self.levels.level_named(word)
+    }
+
+    pub(super) fn level_words(&self) -> Vec<Rc<str>> {
+        self.levels.words()
     }
 
     pub(super) fn section_named(&self, name: &str) -> Option<Section> {
@@ -43,8 +62,10 @@ impl ProjectVocabulary {
 #[cfg(test)]
 mod tests {
     use super::ProjectVocabulary;
-    use crate::project::Section;
+    use crate::project::LintLevel;
+    use crate::project::level_words::LevelWords;
     use crate::project::section_names::SectionNames;
+    use crate::project::{DependencySection, Section};
 
     struct VocabularyFixture;
 
@@ -54,8 +75,16 @@ mod tests {
                 libraries: "books".to_string(),
                 dependencies: "crates".to_string(),
                 dev_dependencies: "test-crates".to_string(),
+                lints: "rules".to_string(),
             };
-            ProjectVocabulary::new("opening".to_string(), sections)
+            let levels = LevelWords::new(
+                LintLevel::ALL
+                    .into_iter()
+                    .zip(["hush", "note", "stop"])
+                    .map(|(level, word)| (level, word.to_string()))
+                    .collect(),
+            );
+            ProjectVocabulary::new("opening".to_string(), sections, levels)
         }
     }
 
@@ -66,13 +95,16 @@ mod tests {
             .iter()
             .map(|section| vocabulary.section_name(*section))
             .collect();
-        assert_eq!(names, ["books", "crates", "test-crates"]);
+        assert_eq!(names, ["books", "crates", "test-crates", "rules"]);
     }
 
     #[test]
     fn a_section_name_finds_its_section() {
         let found = VocabularyFixture::vocabulary().section_named("crates");
-        assert_eq!(found, Some(Section::Dependencies));
+        assert_eq!(
+            found,
+            Some(Section::Dependency(DependencySection::Dependencies))
+        );
     }
 
     #[test]

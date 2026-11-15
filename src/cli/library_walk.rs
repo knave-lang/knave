@@ -15,7 +15,8 @@ use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::modules::{LibraryRoot, LibraryTable};
 use crate::project::{
-    CrateDependency, CrateSet, LibraryDependency, LibrarySource, Project, ProjectProblems, Section,
+    CrateDependency, CrateSet, DependencySection, LibraryDependency, LibrarySource, Project,
+    ProjectProblems, Section,
 };
 use crate::source::Span;
 pub use cache_only_store::CacheOnlyStore;
@@ -94,7 +95,7 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
                 Self::names(&project),
                 walk.roots,
                 EmbeddedPrelude::project_vocabulary()
-                    .section_name(Section::Libraries)
+                    .section_name(Section::Dependency(DependencySection::Libraries))
                     .to_string(),
             ),
             project,

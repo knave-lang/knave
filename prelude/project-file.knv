@@ -7,10 +7,12 @@
   "Holds the forms of the project file, which the compiler reads as data.
 
   A project file opens with [defproject], whose sections [libraries],
-  [dependencies] and [dev-dependencies] list what the project uses. A call of
-  any of these forms in a program is an error.")
+  [dependencies] and [dev-dependencies] list what the project uses, and whose
+  section [lints] sets the level of each lint. A call of any of these forms in
+  a program is an error.")
 
-(export defproject dependencies dev-dependencies libraries)
+(export defproject dependencies dev-dependencies libraries
+        lints)
 
 (def outside-the-project-file
   (fn (form)
@@ -32,6 +34,11 @@
     (add-module-note (quote project-roles) (rest form))
     (quote (do))))
 
+(def lint-level
+  (macro (form)
+    (add-module-note (quote lint-levels) (rest form))
+    (quote (do))))
+
 (def defproject
   (macro (form) (outside-the-project-file form)))
 
@@ -42,6 +49,9 @@
   (macro (form) (outside-the-project-file form)))
 
 (def dev-dependencies
+  (macro (form) (outside-the-project-file form)))
+
+(def lints
   (macro (form) (outside-the-project-file form)))
 
 (header-shape (defproject name) :one-per-line)
@@ -59,6 +69,16 @@
 (header-shape (dev-dependencies) :one-per-line)
 
 (project-role dev-dependencies test-crate-section)
+
+(header-shape (lints) :one-per-line)
+
+(project-role lints lint-section)
+
+(lint-level allow silent-level)
+
+(lint-level warn warning-level)
+
+(lint-level deny error-level)
 
 (document (defproject name)
   "Declares a project in the project file, which the compiler reads as data.
@@ -93,4 +113,15 @@
 
   ```
   (defproject browser (dev-dependencies (proptest \"1.5\")))
+  ```")
+
+(document (lints)
+  "Sets the level of each lint in the project file: `allow` silences it,
+  `warn` prints it without failing `knave lint`, and `deny` prints it as an
+  error in every command. A lint with no level prints, and fails `knave lint`
+  only. A call in a program is an error.
+
+  ```
+  (defproject browser
+    (lints (unused-binding allow) (unreachable-arm deny)))
   ```")

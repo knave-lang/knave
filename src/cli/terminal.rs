@@ -68,10 +68,7 @@ impl Terminal {
     }
 
     pub fn checking(&mut self) -> Checking<'_> {
-        Checking::new(
-            SourceReport::new(&self.sources, self.settings.diagnostics().as_ref()),
-            &mut self.work,
-        )
+        Checking::new(self.settings.source_report(&self.sources), &mut self.work)
     }
 
     pub fn emission(&mut self) -> Result<Emission<'_>, ExitStatus> {
@@ -80,7 +77,7 @@ impl Terminal {
     }
 
     pub fn source_report(&self) -> SourceReport<'_> {
-        SourceReport::new(&self.sources, self.settings.diagnostics().as_ref())
+        self.settings.source_report(&self.sources)
     }
 
     pub fn crate_build(&self) -> CrateBuild<'_> {
@@ -98,7 +95,7 @@ impl Terminal {
 
     fn emission_within(&mut self, limit: &RustfmtTimeLimit) -> Emission<'_> {
         Emission::new(
-            SourceReport::new(&self.sources, self.settings.diagnostics().as_ref()),
+            self.settings.source_report(&self.sources),
             &mut self.work,
             InterruptibleFormatting::new(limit.formatting(), self.settings.interruption()),
         )

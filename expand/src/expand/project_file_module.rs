@@ -6,13 +6,14 @@ use super::Expander;
 use crate::core::{BindingArena, BindingKind, ModuleId, ModulePath};
 use crate::diagnostic::{DiagnosticRenderer, Diagnostics};
 use crate::modules::ModuleSources;
-use crate::project::{ProjectRoles, ProjectVocabulary};
+use crate::project::{LevelKeys, ProjectRoles, ProjectVocabulary};
 use crate::reader::Form;
 use crate::source::{SourceMap, Span};
 
 pub struct ProjectFileModule {
     macros: FxHashSet<String>,
     roles: Vec<Form>,
+    levels: Vec<Form>,
 }
 
 impl ProjectFileModule {
@@ -31,8 +32,8 @@ impl ProjectFileModule {
     }
 
     pub fn vocabulary(&self) -> ProjectVocabulary {
-        ProjectRoles::new(&self.macros)
-            .read(&self.roles)
+        LevelKeys::read(&self.levels)
+            .and_then(|levels| ProjectRoles::new(&self.macros).read(&self.roles, levels))
             .unwrap_or_else(|problem| {
                 panic!("prelude/project-file states its project roles wrongly: {problem:?}")
             })
@@ -58,6 +59,7 @@ impl ProjectFileModule {
         problems.into_result(Self {
             macros: Self::macros_of(&expander.tables.bindings, module),
             roles: expander.tables.module_notes.of(module, ProjectRoles::NOTE),
+            levels: expander.tables.module_notes.of(module, LevelKeys::NOTE),
         })
     }
 

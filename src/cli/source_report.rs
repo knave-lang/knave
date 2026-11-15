@@ -1,16 +1,27 @@
 use super::diagnostic_output::DiagnosticOutput;
 use super::exit_status::ExitStatus;
+use super::leveled_diagnostics::LeveledDiagnostics;
+use super::lint_levels::LintLevels;
 use crate::diagnostic::Diagnostics;
 use crate::source::SourceMap;
 
 pub struct SourceReport<'a> {
     sources: &'a SourceMap,
     output: &'a dyn DiagnosticOutput,
+    lint_levels: &'a LintLevels,
 }
 
 impl<'a> SourceReport<'a> {
-    pub fn new(sources: &'a SourceMap, output: &'a dyn DiagnosticOutput) -> Self {
-        Self { sources, output }
+    pub fn new(
+        sources: &'a SourceMap,
+        output: &'a dyn DiagnosticOutput,
+        lint_levels: &'a LintLevels,
+    ) -> Self {
+        Self {
+            sources,
+            output,
+            lint_levels,
+        }
     }
 
     pub fn sources(&self) -> &'a SourceMap {
@@ -18,14 +29,27 @@ impl<'a> SourceReport<'a> {
     }
 
     pub fn report(&self, diagnostics: &Diagnostics) -> ExitStatus {
-        self.output.report(self.sources, diagnostics)
+        let leveled = LeveledDiagnostics::new(diagnostics, self.lint_levels);
+        self.output.report(self.sources, &leveled.shown())
     }
 
-    pub fn print(&self, diagnostics: &Diagnostics) {
-        if diagnostics.is_empty() {
-            return;
+    #[must_use]
+    pub fn print(&self, diagnostics: &Diagnostics) -> ExitStatus {
+        let leveled = LeveledDiagnostics::new(diagnostics, self.lint_levels);
+        self.output.print(self.sources, &leveled.shown())
+    }
+
+    #[must_use]
+    pub fn print_lints(&self, diagnostics: &Diagnostics) -> ExitStatus {
+        let leveled = LeveledDiagnostics::new(diagnostics, self.lint_levels);
+        match self.output.print(self.sources, &leveled.shown()) {
+            ExitStatus::Success if leveled.fails_lint() => ExitStatus::ProgramErrors,
+            printed => printed,
         }
-        self.output.write(self.sources, diagnostics);
+    }
+
+    pub fn denied_lints(&self, diagnostics: &Diagnostics) -> Option<Diagnostics> {
+        LeveledDiagnostics::new(diagnostics, self.lint_levels).denied()
     }
 
     pub fn note(&self, message: &str) {
@@ -37,8 +61,10 @@ impl<'a> SourceReport<'a> {
 mod tests {
     use super::SourceReport;
     use crate::cli::exit_status::ExitStatus;
+    use crate::cli::lint_levels::LintLevels;
     use crate::cli::recorded_output::RecordedOutput;
-    use crate::diagnostic::{Diagnostic, Diagnostics, Label};
+    use crate::diagnostic::{Diagnostic, DiagnosticCode, Diagnostics, Label};
+    use crate::project::LintLevel;
     use crate::reader::Reader;
     use crate::source::{SourceId, SourceMap, Span};
 
@@ -46,6 +72,7 @@ mod tests {
         sources: SourceMap,
         output: RecordedOutput,
         source: SourceId,
+        levels: LintLevels,
     }
 
     impl ReportFixture {
@@ -53,23 +80,47 @@ mod tests {
         const UNCLOSED: &str = "(area 2 3";
 
         fn new() -> Self {
+            Self::leveling_unused_bindings(&[])
+        }
+
+        fn leveling_unused_bindings(level: &[LintLevel]) -> Self {
             let mut sources = SourceMap::default();
             let source = sources.add(Self::MODULE, Self::UNCLOSED);
+            let levels = level
+                .iter()
+                .map(|level| (DiagnosticCode::UNUSED_BINDING, *level))
+                .collect();
             Self {
                 sources,
                 output: RecordedOutput::default(),
                 source,
+                levels,
             }
         }
 
         fn report(&self) -> SourceReport<'_> {
-            SourceReport::new(&self.sources, &self.output)
+            SourceReport::new(&self.sources, &self.output, &self.levels)
+        }
+
+        fn unused_binding(&self) -> Diagnostics {
+            let start = Span::new(self.source, 0..0);
+            Diagnostics::from(Diagnostic::warning(
+                DiagnosticCode::UNUSED_BINDING,
+                "a fake unused binding",
+                Label::new(start, "here"),
+            ))
         }
 
         fn errors(&self) -> Diagnostics {
             Reader::new(self.sources.file(self.source))
                 .read()
                 .expect_err("an unclosed list does not read")
+        }
+
+        fn errors_and_an_unused_binding(&self) -> Diagnostics {
+            let mut diagnostics = self.errors();
+            diagnostics.extend(self.unused_binding());
+            diagnostics
         }
 
         fn notes(&self) -> Diagnostics {
@@ -89,6 +140,38 @@ mod tests {
     }
 
     #[test]
+    fn reports_no_allowed_lint_beside_an_error() {
+        let fixture = ReportFixture::leveling_unused_bindings(&[LintLevel::Allow]);
+        let status = fixture
+            .report()
+            .report(&fixture.errors_and_an_unused_binding());
+        assert_eq!(status, ExitStatus::ProgramErrors);
+        assert_eq!(fixture.output.writes(), ["1 diagnostics"]);
+    }
+
+    #[test]
+    fn prints_a_lint_with_no_level_as_a_failure_of_knave_lint() {
+        let fixture = ReportFixture::new();
+        let status = fixture.report().print_lints(&fixture.unused_binding());
+        assert_eq!(status, ExitStatus::ProgramErrors);
+        assert_eq!(fixture.output.writes(), ["1 diagnostics"]);
+    }
+
+    #[test]
+    fn prints_a_warned_lint_as_a_pass_of_knave_lint() {
+        let fixture = ReportFixture::leveling_unused_bindings(&[LintLevel::Warn]);
+        let status = fixture.report().print_lints(&fixture.unused_binding());
+        assert_eq!(status, ExitStatus::Success);
+    }
+
+    #[test]
+    fn prints_a_lint_with_no_level_as_a_pass_of_every_other_command() {
+        let fixture = ReportFixture::new();
+        let status = fixture.report().print(&fixture.unused_binding());
+        assert_eq!(status, ExitStatus::Success);
+    }
+
+    #[test]
     fn reports_diagnostics_without_errors_as_success_and_writes_nothing() {
         let fixture = ReportFixture::new();
         let status = fixture.report().report(&fixture.notes());
@@ -99,14 +182,16 @@ mod tests {
     #[test]
     fn prints_diagnostics_that_are_not_errors() {
         let fixture = ReportFixture::new();
-        fixture.report().print(&fixture.notes());
+        let status = fixture.report().print(&fixture.notes());
+        assert_eq!(status, ExitStatus::Success);
         assert_eq!(fixture.output.writes(), ["1 diagnostics"]);
     }
 
     #[test]
     fn prints_nothing_for_no_diagnostics() {
         let fixture = ReportFixture::new();
-        fixture.report().print(&Diagnostics::default());
+        let status = fixture.report().print(&Diagnostics::default());
+        assert_eq!(status, ExitStatus::Success);
         assert!(fixture.output.writes().is_empty());
     }
 

@@ -1,0 +1,5 @@
+(defproject browser
+            (lints ("unused-binding" allow)
+                   ("L0803" deny)
+                   ("zzzz" warn)
+                   (7 deny)))

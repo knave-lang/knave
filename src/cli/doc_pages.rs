@@ -75,6 +75,33 @@ impl DocumentedModules {
     }
 
     pub fn pages(&self, terminal: &mut Terminal) -> Result<Vec<WrittenPage>, ExitStatus> {
+        let texts = self.expanded_pages(terminal)?;
+        let mut formatter = EmbeddedPrelude::source_formatter();
+        let lookup = ModuleLookup::within_project(self.file.module_sources());
+        self.written
+            .iter()
+            .zip(texts)
+            .map(|(module, text)| {
+                let page = ExpandedPage::string(&text, Self::PAGE_MACRO)?;
+                let source = terminal.sources().add(WrittenPage::file_name(module), page);
+                let laid_out = formatter.lay_out_page(
+                    terminal.source_file(source),
+                    &ModulePath::new(module.as_str()),
+                    &lookup,
+                );
+                terminal
+                    .source_report()
+                    .print(&laid_out.warnings)
+                    .passed()?;
+                Ok(WrittenPage {
+                    module: module.clone(),
+                    text: laid_out.text,
+                })
+            })
+            .collect()
+    }
+
+    fn expanded_pages(&self, terminal: &mut Terminal) -> Result<Vec<Expr>, ExitStatus> {
         let types = self.types(terminal)?;
         let entry = terminal
             .sources()
@@ -91,27 +118,8 @@ impl DocumentedModules {
                 Ok((texts, session.finish()?.warnings))
             },
         )?;
-        terminal.source_report().print(&warnings);
-        let mut formatter = EmbeddedPrelude::source_formatter();
-        let lookup = ModuleLookup::within_project(self.file.module_sources());
-        self.written
-            .iter()
-            .zip(texts)
-            .map(|(module, text)| {
-                let page = ExpandedPage::string(&text, Self::PAGE_MACRO)?;
-                let source = terminal.sources().add(WrittenPage::file_name(module), page);
-                let laid_out = formatter.lay_out_page(
-                    terminal.source_file(source),
-                    &ModulePath::new(module.as_str()),
-                    &lookup,
-                );
-                terminal.source_report().print(&laid_out.warnings);
-                Ok(WrittenPage {
-                    module: module.clone(),
-                    text: laid_out.text,
-                })
-            })
-            .collect()
+        terminal.source_report().print(&warnings).passed()?;
+        Ok(texts)
     }
 
     fn types(&self, terminal: &mut Terminal) -> Result<Vec<TypedName>, ExitStatus> {

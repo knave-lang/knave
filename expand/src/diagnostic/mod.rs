@@ -137,13 +137,13 @@ impl Diagnostic {
     }
 
     pub fn into_lint_warning(self, rule: RuleName) -> Self {
-        let mut warning = self.into_warning();
+        let mut warning = self.into_severity(Severity::Warning);
         warning.report.rule = Some(rule);
         warning
     }
 
-    pub fn into_warning(mut self) -> Self {
-        self.report.severity = Severity::Warning;
+    pub fn into_severity(mut self, severity: Severity) -> Self {
+        self.report.severity = severity;
         self
     }
 
@@ -190,7 +190,7 @@ mod tests {
         const EARLIER: &str = "parked before";
 
         fn warning() -> Diagnostic {
-            Self::error().into_warning()
+            Self::error().into_severity(Severity::Warning)
         }
 
         fn lint_warning() -> Diagnostic {

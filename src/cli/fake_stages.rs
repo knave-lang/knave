@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use super::checking::Checking;
 use super::entry_span::EntrySpan;
 use super::expansion::Expansion;
+use super::lint_levels::LintLevels;
 use super::program_file::ProgramFile;
 use super::recorded_output::RecordedOutput;
 use super::source_report::SourceReport;
@@ -16,6 +17,7 @@ pub struct FakeStages {
     sources: SourceMap,
     work: StageWork,
     output: RecordedOutput,
+    levels: LintLevels,
 }
 
 impl FakeStages {
@@ -29,7 +31,7 @@ impl FakeStages {
         let mut stages = Self::new();
         let program = stages.expand(text);
         Checking::new(
-            SourceReport::new(&stages.sources, &stages.output),
+            SourceReport::new(&stages.sources, &stages.output, &stages.levels),
             &mut stages.work,
         )
         .check(&program)
@@ -45,6 +47,7 @@ impl FakeStages {
             sources: SourceMap::default(),
             work: StageWork::default(),
             output: RecordedOutput::default(),
+            levels: LintLevels::default(),
         }
     }
 

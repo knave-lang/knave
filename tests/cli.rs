@@ -2118,6 +2118,199 @@ fn check_exits_zero_on_a_lint_that_the_task_tree_prints() {
     assert!(stderr.contains("warning[L0802]"), "{stderr}");
 }
 
+struct LintsFixture;
+
+impl LintsFixture {
+    const PICKS: &str =
+        "(defn pick (x) (match x (_ 1) (_ 2)))\n\n(defn main () (println (pick 2)))\n";
+
+    fn project(name: &str, lint: &str, level: Option<&str>, main: &str) -> Sandbox {
+        let project_file = match level {
+            Some(level) => format!("(defproject demo (lints ({lint} {level})))\n"),
+            None => DOCUMENTED_PROJECT.to_string(),
+        };
+        Sandbox::new(name)
+            .with_file(&Language::project_file_name(), &project_file)
+            .with_file("src/main.knv", main)
+    }
+
+    fn lint(level: Option<&str>) -> (Option<i32>, String) {
+        let name = format!("lints_lint_{}", level.unwrap_or("default"));
+        let sandbox = Self::project(&name, "unused-binding", level, UNUSED_BINDING);
+        let lint = sandbox.compiler(&["lint"]);
+        (lint.output.status.code(), lint.stderr())
+    }
+
+    fn check(level: Option<&str>) -> (Option<i32>, String) {
+        let name = format!("lints_check_{}", level.unwrap_or("default"));
+        let sandbox = Self::project(&name, "unreachable-arm", level, Self::PICKS);
+        let check = sandbox.compiler(&["check"]);
+        (check.output.status.code(), check.stderr())
+    }
+
+    const PICK_THEN_CALL: &str = "(defn pick (x) (match x (_ 41) (_ 2)))\n(pick 7)\n";
+
+    const REPLACE_A_CALLED_FUNCTION: &str = "(defn f () 1)\n(defn g () (+ (f) 1))\n(defn f () (match 3 (_ \"s\") (_ \"t\")))\n(g)\n(f)\n";
+
+    fn repl(level: Option<&str>) -> (String, String) {
+        let name = format!("lints_repl_{}", level.unwrap_or("default"));
+        Self::repl_reading(&name, level, Self::PICK_THEN_CALL)
+    }
+
+    fn repl_reading(name: &str, level: Option<&str>, input: &str) -> (String, String) {
+        let main = "(defn main () (println 0))\n";
+        let sandbox = Self::project(name, "unreachable-arm", level, main);
+        let repl = sandbox.compiler_reading(input, &["repl"]);
+        (repl.stdout(), repl.stderr())
+    }
+
+    fn doc_write(level: &str) -> (Option<i32>, String) {
+        let sandbox = Sandbox::new(&format!("lints_doc_write_{level}"))
+            .with_file(
+                &Language::project_file_name(),
+                &format!("(defproject demo (lints (unmatched-link {level})))\n"),
+            )
+            .with_file(
+                "src/a.knv",
+                "(export size)\n\n(defn size () \"x [zzz]\" 1)\n",
+            );
+        let doc = sandbox.compiler(&["doc", "--write"]);
+        (doc.output.status.code(), doc.stderr())
+    }
+}
+
+#[test]
+fn repl_accepts_a_definition_with_a_lint_of_no_level_and_prints_it() {
+    let (stdout, stderr) = LintsFixture::repl(None);
+    assert!(stderr.contains("warning[L0803]"), "{stderr}");
+    assert!(stdout.contains("41"), "{stdout}");
+}
+
+#[test]
+fn repl_accepts_a_definition_with_a_warned_lint_and_prints_it() {
+    let (stdout, stderr) = LintsFixture::repl(Some("warn"));
+    assert!(stderr.contains("warning[L0803]"), "{stderr}");
+    assert!(stdout.contains("41"), "{stdout}");
+}
+
+#[test]
+fn repl_accepts_a_definition_with_an_allowed_lint_and_prints_nothing() {
+    let (stdout, stderr) = LintsFixture::repl(Some("allow"));
+    assert!(!stderr.contains("L0803"), "{stderr}");
+    assert!(stdout.contains("41"), "{stdout}");
+}
+
+#[test]
+fn repl_rejects_a_definition_with_a_denied_lint() {
+    let (stdout, stderr) = LintsFixture::repl(Some("deny"));
+    assert!(stderr.contains("error[L0803]"), "{stderr}");
+    assert!(!stdout.contains("41"), "{stdout}");
+}
+
+#[test]
+fn repl_keeps_the_buffer_and_sets_nothing_aside_on_a_denied_lint() {
+    let (stdout, stderr) = LintsFixture::repl_reading(
+        "lints_repl_deny_replacing",
+        Some("deny"),
+        LintsFixture::REPLACE_A_CALLED_FUNCTION,
+    );
+    assert!(stderr.contains("error[L0803]"), "{stderr}");
+    assert!(!stderr.contains("L0249"), "{stderr}");
+    assert_eq!(stdout, "2\n1\n", "{stderr}");
+}
+
+#[test]
+fn doc_write_fails_on_a_denied_unmatched_link() {
+    let (code, stderr) = LintsFixture::doc_write("deny");
+    assert_eq!(code, Some(1), "{stderr}");
+    assert!(stderr.contains("error[L0802]"), "{stderr}");
+}
+
+#[test]
+fn lint_fails_on_a_lint_with_no_level() {
+    let (code, stderr) = LintsFixture::lint(None);
+    assert_eq!(code, Some(1), "{stderr}");
+    assert!(stderr.contains("warning[L0801]"), "{stderr}");
+}
+
+#[test]
+fn lint_passes_on_a_warned_lint_and_prints_it() {
+    let (code, stderr) = LintsFixture::lint(Some("warn"));
+    assert_eq!(code, Some(0), "{stderr}");
+    assert!(stderr.contains("warning[L0801]"), "{stderr}");
+}
+
+#[test]
+fn lint_passes_on_an_allowed_lint_and_prints_nothing() {
+    let (code, stderr) = LintsFixture::lint(Some("allow"));
+    assert_eq!(code, Some(0), "{stderr}");
+    assert!(!stderr.contains("L0801"), "{stderr}");
+}
+
+#[test]
+fn lint_fails_on_a_denied_lint_and_prints_it_as_an_error() {
+    let (code, stderr) = LintsFixture::lint(Some("deny"));
+    assert_eq!(code, Some(1), "{stderr}");
+    assert!(stderr.contains("error[L0801]"), "{stderr}");
+}
+
+#[test]
+fn check_passes_on_a_lint_with_no_level() {
+    let (code, stderr) = LintsFixture::check(None);
+    assert_eq!(code, Some(0), "{stderr}");
+    assert!(stderr.contains("warning[L0803]"), "{stderr}");
+}
+
+#[test]
+fn check_passes_on_a_warned_lint_and_prints_it() {
+    let (code, stderr) = LintsFixture::check(Some("warn"));
+    assert_eq!(code, Some(0), "{stderr}");
+    assert!(stderr.contains("warning[L0803]"), "{stderr}");
+}
+
+#[test]
+fn check_passes_on_an_allowed_lint_and_prints_nothing() {
+    let (code, stderr) = LintsFixture::check(Some("allow"));
+    assert_eq!(code, Some(0), "{stderr}");
+    assert!(!stderr.contains("L0803"), "{stderr}");
+}
+
+#[test]
+fn check_fails_on_a_denied_lint_and_prints_it_as_an_error() {
+    let (code, stderr) = LintsFixture::check(Some("deny"));
+    assert_eq!(code, Some(1), "{stderr}");
+    assert!(stderr.contains("error[L0803]"), "{stderr}");
+}
+
+#[test]
+fn doc_write_prints_no_allowed_unmatched_link() {
+    let (code, stderr) = LintsFixture::doc_write("allow");
+    assert_eq!(code, Some(0), "{stderr}");
+    assert!(!stderr.contains("L0802"), "{stderr}");
+}
+
+#[test]
+fn lint_ignores_the_lints_section_of_a_library() {
+    let sandbox = Sandbox::new("lints_library_section")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (helping :path \"../helping\")))\n",
+        )
+        .with_file("app/src/main.knv", UNUSED_BINDING)
+        .with_file(
+            &format!("helping/{}", Language::project_file_name()),
+            "(defproject helping (lints (unused-binding allow)))\n",
+        )
+        .with_file("helping/src/lib.knv", "(export help)\n\n(defn help () 1)\n");
+    let lint = sandbox.compiler_in("app", &["lint"]);
+    assert_eq!(lint.output.status.code(), Some(1), "{}", lint.stderr());
+    assert!(
+        lint.stderr().contains("warning[L0801]"),
+        "{}",
+        lint.stderr()
+    );
+}
+
 #[test]
 fn lint_exits_as_check_does_on_a_program_with_an_error() {
     let sandbox = Sandbox::new("lint_error").with_file("area.knv", AREA_OF_A_STRING);

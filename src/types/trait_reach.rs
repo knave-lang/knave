@@ -376,22 +376,16 @@ mod tests {
             }
         }
 
+        fn core_module(index: usize, path: &str, items: &[Item]) -> CoreModule {
+            let mut module = CoreModule::new(ModuleId::new(index), ModulePath::new(path), None);
+            module.items = items.to_vec();
+            module
+        }
+
         fn reached_from(&self, names: &[BindingId]) -> ReachedTraits {
             let modules = [
-                CoreModule {
-                    id: ModuleId::new(0),
-                    path: ModulePath::new("prelude/traits"),
-                    items: self.prelude.clone(),
-                    exports: Vec::new(),
-                    library: None,
-                },
-                CoreModule {
-                    id: ModuleId::new(1),
-                    path: ModulePath::new("main"),
-                    items: self.written.clone(),
-                    exports: Vec::new(),
-                    library: None,
-                },
+                Self::core_module(0, "prelude/traits", &self.prelude),
+                Self::core_module(1, "main", &self.written),
             ];
             let calls: Vec<Expr> = names
                 .iter()

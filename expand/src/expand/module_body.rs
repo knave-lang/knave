@@ -1927,7 +1927,7 @@ impl Expander<'_> {
                 self.modules
                     .get_mut(module)
                     .export(symbol.shared_name(), namespace, binding);
-                core.exports.push(binding);
+                core.push_export(binding, &symbol.shared_name(), &self.tables.bindings);
                 found = true;
             }
         }
@@ -1957,11 +1957,11 @@ impl Expander<'_> {
             .map(|(binding, _)| *binding)
             .collect();
         for method in methods {
-            let name = self.tables.bindings.get(method).name().to_string();
+            let name = self.tables.bindings.get(method).shared_name();
             self.modules
                 .get_mut(module)
-                .export(name.into(), Namespace::Value, method);
-            core.exports.push(method);
+                .export(Rc::clone(&name), Namespace::Value, method);
+            core.push_export(method, &name, &self.tables.bindings);
         }
     }
 
@@ -1981,11 +1981,11 @@ impl Expander<'_> {
             return;
         };
         for constructor in constructors {
-            let name = self.tables.bindings.get(constructor).name().to_string();
+            let name = self.tables.bindings.get(constructor).shared_name();
             self.modules
                 .get_mut(module)
-                .export(name.into(), Namespace::Value, constructor);
-            core.exports.push(constructor);
+                .export(Rc::clone(&name), Namespace::Value, constructor);
+            core.push_export(constructor, &name, &self.tables.bindings);
         }
     }
 }

@@ -33,4 +33,4 @@ error[L0225]: `{1}` names no type parameter
 11 |   (u8 "[{1}; 2]"))
    |       ^^^^^^^^^^ this type has 1 type parameter
    |
-   = help: a clause template names the type's one parameter as `{0}`
+   = help: write the placeholder as `{0}`

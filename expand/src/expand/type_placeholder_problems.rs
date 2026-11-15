@@ -26,7 +26,7 @@ impl TypePlaceholderProblems {
 
     pub fn in_clause(&self) -> Diagnostic {
         self.without_parameter()
-            .with_help("a clause template names the type's one parameter as `{0}`")
+            .with_help("write the placeholder as `{0}`")
     }
 
     fn without_parameter(&self) -> Diagnostic {

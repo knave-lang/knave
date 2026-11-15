@@ -27,6 +27,13 @@ impl TemplateTies {
         })
     }
 
+    pub fn union(&self, other: &Self) -> Self {
+        Self {
+            lifetime: Self::merged(&self.lifetime, &other.lifetime),
+            held: Self::merged(&self.held, &other.held),
+        }
+    }
+
     pub fn lends_through(&self, position: usize) -> bool {
         self.lifetime.contains(&position)
     }
@@ -47,6 +54,11 @@ impl TemplateTies {
             .filter(|(_, parameter)| shared.iter().any(|generic| parameter.mentions(*generic)))
             .map(|(position, _)| position)
             .collect()
+    }
+
+    fn merged(mine: &[usize], theirs: &[usize]) -> Vec<usize> {
+        let positions: BTreeSet<usize> = mine.iter().chain(theirs).copied().collect();
+        positions.into_iter().collect()
     }
 
     fn lifetime_ties(parameters: &[Type], result: &Type) -> Option<Vec<usize>> {
@@ -126,11 +138,12 @@ mod tests {
         }
 
         fn ties(parameters: Vec<Type>, result: Type) -> Option<TemplateTies> {
-            TemplateTies::of(&Scheme {
+            let scheme = Scheme {
                 lifetimes: Vec::new(),
                 params: vec![Self::param(0, "a"), Self::param(1, "b")],
                 body: Type::Function(ClosureKind::Fn, parameters, Box::new(result)),
-            })
+            };
+            TemplateTies::of(&scheme)
         }
     }
 

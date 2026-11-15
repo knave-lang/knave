@@ -1,0 +1,8 @@
+(defn main ()
+  (local s (str "k"))
+  (local t (str "j"))
+  (local hashed (hash-map (as-str s) 1))
+  (local sorted (sorted-map (as-str t) 2))
+  (set! s (str "a"))
+  (set! t (str "b"))
+  (println (+ (len hashed) (len sorted))))

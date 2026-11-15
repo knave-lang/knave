@@ -1,6 +1,5 @@
 use super::synthetic_template::SyntheticTemplate;
 use super::template_ties::TemplateTies;
-use super::ty::Scheme;
 use crate::core::ParsedTemplate;
 
 pub struct RegisteredTemplate {
@@ -9,13 +8,23 @@ pub struct RegisteredTemplate {
 }
 
 impl RegisteredTemplate {
-    pub fn parse(text: &str, scheme: Option<&Scheme>) -> Option<Self> {
+    pub fn declared(text: &str, ties: Option<TemplateTies>) -> Option<Self> {
         let parsed = ParsedTemplate::parse(text).ok()?;
-        let ties = match scheme {
-            Some(scheme) => TemplateTies::of(scheme),
-            None => SyntheticTemplate::named(text).map(SyntheticTemplate::ties),
-        };
         Some(Self { parsed, ties })
+    }
+
+    pub fn synthetic(text: &str) -> Option<Self> {
+        Self::declared(
+            text,
+            SyntheticTemplate::named(text).map(SyntheticTemplate::ties),
+        )
+    }
+
+    pub fn widen(&mut self, ties: Option<TemplateTies>) {
+        self.ties = match (&self.ties, ties) {
+            (Some(known), Some(other)) => Some(known.union(&other)),
+            _ => None,
+        };
     }
 
     pub fn parsed(&self) -> &ParsedTemplate {
@@ -60,17 +69,33 @@ mod tests {
     #[test]
     fn a_declared_template_keeps_the_ties_of_its_scheme() {
         let scheme = RegisteredFixture::at_scheme();
-        let declared =
-            RegisteredTemplate::parse("&{0}[0]", Some(&scheme)).expect("the text parses");
+        let ties = TemplateTies::of(&scheme);
+        let declared = RegisteredTemplate::declared("&{0}[0]", ties).expect("the text parses");
         assert_eq!(declared.ties(), Some(&TemplateTies::new(&[0], &[0])));
     }
 
     #[test]
-    fn an_inline_template_takes_the_ties_of_its_synthetic_record_or_none() {
+    fn an_undeclared_template_takes_the_ties_of_its_synthetic_record_or_none() {
         let look_up = SyntheticTemplate::LOOK_UP.text();
-        let synthetic = RegisteredTemplate::parse(look_up, None).expect("the text parses");
-        let unknown = RegisteredTemplate::parse("&{0}[0]", None).expect("the text parses");
+        let synthetic = RegisteredTemplate::synthetic(look_up).expect("the text parses");
+        let unknown = RegisteredTemplate::synthetic("&{0}[0]").expect("the text parses");
         assert_eq!(synthetic.ties(), Some(&SyntheticTemplate::LOOK_UP.ties()));
         assert_eq!(unknown.ties(), None);
+    }
+
+    #[test]
+    fn a_template_seen_with_two_types_keeps_the_ties_of_both() {
+        let mut first = RegisteredTemplate::declared("{0}", Some(TemplateTies::new(&[0], &[])))
+            .expect("the text parses");
+        first.widen(Some(TemplateTies::new(&[], &[0])));
+        assert_eq!(first.ties(), Some(&TemplateTies::new(&[0], &[0])));
+    }
+
+    #[test]
+    fn a_template_unsettled_at_one_type_is_unsettled() {
+        let mut first = RegisteredTemplate::declared("{0}", Some(TemplateTies::new(&[0], &[])))
+            .expect("the text parses");
+        first.widen(None);
+        assert_eq!(first.ties(), None);
     }
 }

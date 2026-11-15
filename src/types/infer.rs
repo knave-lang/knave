@@ -113,7 +113,7 @@ impl TrySourceKind {
 }
 
 impl TypeChecker {
-    pub(super) fn infer(&mut self, expr: &Expr) -> Result<TypedExpr, Diagnostic> {
+    fn infer(&mut self, expr: &Expr) -> Result<TypedExpr, Diagnostic> {
         self.checking.inferred_expressions += 1;
         let span = expr.span();
         match expr.kind() {
@@ -3620,6 +3620,8 @@ impl TypeChecker {
         span: Span,
     ) -> Result<(TypedExprKind, Type), Diagnostic> {
         let scheme = self.written_schemes().lower_scheme(&template.type_expr)?;
+        self.template_borrows
+            .register_inline(&template.template, &scheme);
         let ty = self.instantiation().instantiate(&scheme, span);
         Ok((TypedExprKind::Leaf(TypedLeaf::Rust(template.clone())), ty))
     }

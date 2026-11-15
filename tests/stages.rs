@@ -379,6 +379,17 @@ fn each_explanation_fix_builds_and_runs() {
 }
 
 #[test]
+#[should_panic(expected = "L0801 has none")]
+fn a_lint_without_an_explanation_fails_the_error_page_check() {
+    ExplanationExamples::without_an_error_page("L0801");
+}
+
+#[test]
+fn a_code_outside_the_lints_needs_no_error_page_docstring() {
+    assert!(ExplanationExamples::without_an_error_page("L0108").is_none());
+}
+
+#[test]
 fn each_described_example_holds_no_example_that_looks_runnable() {
     for explanation in ExplanationExamples::written() {
         assert_eq!(

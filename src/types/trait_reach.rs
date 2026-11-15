@@ -3,7 +3,6 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::reached_traits::ReachedTraits;
 use crate::core::{
     BindingId, ConsultedTraits, CoreModule, ItemKind, NamedTypes, References, RustTraitDeclaration,
-    TypeBound, TypeExpr,
 };
 use crate::modules::ModuleSources;
 
@@ -113,19 +112,7 @@ impl<'p> TraitReach<'p> {
             let Some(declaration) = self.declarations.get(&binding).copied() else {
                 continue;
             };
-            self.bounds(declaration.requires.iter().map(|required| &required.bound));
-            self.types(declaration.methods.iter().map(|method| &method.signature));
-            let rows = declaration.implementors.get().iter();
-            self.types(rows.flat_map(|row| {
-                std::iter::once(&row.implementor)
-                    .chain(row.associated.iter().map(|value| &value.value))
-            }));
-        }
-    }
-
-    fn reach_all(&mut self, bindings: impl Iterator<Item = BindingId>) {
-        for binding in bindings {
-            self.reach(binding);
+            NamedTypes::of_declaration(declaration).visit(&mut |named| self.reach(named));
         }
     }
 
@@ -133,22 +120,6 @@ impl<'p> TraitReach<'p> {
         let owner = self.owners.get(&binding).copied().unwrap_or(binding);
         if self.declarations.contains_key(&owner) && self.reached.insert(owner) {
             self.waiting.push(owner);
-        }
-    }
-
-    fn type_expr(&mut self, type_expr: &TypeExpr) {
-        self.reach_all(type_expr.named_bindings().into_iter());
-    }
-
-    fn types<'t>(&mut self, written: impl Iterator<Item = &'t TypeExpr>) {
-        for type_expr in written {
-            self.type_expr(type_expr);
-        }
-    }
-
-    fn bounds<'b>(&mut self, bounds: impl Iterator<Item = &'b TypeBound>) {
-        for bound in bounds {
-            self.reach_all(bound.named_bindings().into_iter());
         }
     }
 }

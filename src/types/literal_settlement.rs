@@ -1,6 +1,8 @@
+use rustc_hash::FxHashMap;
+
 use super::selection::Selection;
 use super::traits::TraitTable;
-use super::ty::{Bound, Type};
+use super::ty::{Bound, Type, TypeVar};
 use super::unifier::Unifier;
 
 pub struct LiteralSettlement<'c> {
@@ -32,6 +34,28 @@ impl<'c> LiteralSettlement<'c> {
             .rows(bound.binding)
             .settle_lone_row(bound, implementor)
             .unwrap_or(Selection::Undecided)
+    }
+
+    pub fn shown_argument(&self, bound: &Bound) -> Option<Type> {
+        (bound.argument.as_ref()).map(|argument| self.at_defaults(argument))
+    }
+
+    fn at_defaults(&self, value: &Type) -> Type {
+        let resolved = self.unifier.resolve(value);
+        let mut defaults = FxHashMap::default();
+        self.collect_defaults(&resolved, &mut defaults);
+        resolved.substitute_vars(&defaults)
+    }
+
+    fn collect_defaults(&self, value: &Type, defaults: &mut FxHashMap<TypeVar, Type>) {
+        if let Type::Var(var) = value
+            && let Some(literal) = self.unifier.literal_kind(*var)
+        {
+            defaults.insert(*var, Type::Primitive(literal.default_type()));
+        }
+        for part in value.parts() {
+            self.collect_defaults(part, defaults);
+        }
     }
 
     fn admits_only_literals(&self, value: &Type) -> bool {

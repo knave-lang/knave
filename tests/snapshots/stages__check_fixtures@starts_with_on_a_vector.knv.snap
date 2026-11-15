@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/starts_with_on_a_vector.knv
+---
+error[L0404]: `(vec (ref str))` does not implement `prefixed`
+ --> check/starts_with_on_a_vector.knv:2:26
+  |
+2 |   (println (starts-with? (vec "a") "a")))
+  |                          ^^^^^^^^^ this needs `prefixed`
+  |
+  = note: `prefixed` is implemented for: str, string, (where ((text prefixed)) (ref text))

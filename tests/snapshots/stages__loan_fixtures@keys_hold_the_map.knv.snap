@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/keys_hold_the_map.knv
+---
+main
+  3:19 borrow `m`: no live loan
+  4:9 change `m`: `m` lent at 3:19, held by `ks`
+  5:19 move `ks`: `m` lent at 3:19, held by `ks`

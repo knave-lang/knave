@@ -1,0 +1,5 @@
+(defn main ()
+  (local m (hash-map (str "k") 1))
+  (local ks (keys m))
+  (set! m (hash-map (str "j") 2))
+  (println (count ks)))

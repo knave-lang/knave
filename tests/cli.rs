@@ -8370,6 +8370,24 @@ fn run_of_a_loose_file_that_fails_in_rustc_after_another_build_reports_the_error
 }
 
 #[test]
+fn two_copies_of_a_project_with_crates_each_run_their_own_program() {
+    let sandbox = Sandbox::new("crate_project_copies").with_fixture_tree("crates");
+    Sandbox::copy_tree(
+        &sandbox.directory.join("app"),
+        &sandbox.directory.join("app-copy"),
+    );
+    let sandbox = sandbox.with_file(
+        "app-copy/src/main.knv",
+        "(def answer\n  (rust \"answer::answer()\" (fn () i64)))\n\n\
+         (defn main () (println (+ (answer) 1000)))\n",
+    );
+    let run = |project| sandbox.compiler_in(project, &["run"]);
+    run("app").assert_exit_code(0);
+    run("app-copy").assert_exit_code(0);
+    assert_eq!(run("app").assert_exit_code(0).stdout(), "42\n");
+}
+
+#[test]
 fn loose_files_in_a_project_with_crates_share_the_built_crates() {
     let sandbox = Sandbox::with_loose_crate_programs("crate_loose_shared");
     for file in ["answer.knv", "next.knv"] {

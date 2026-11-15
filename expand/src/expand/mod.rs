@@ -79,6 +79,7 @@ mod string_view;
 mod structural_path_claim;
 mod structural_path_claims;
 mod structural_traits;
+mod top_level_check;
 mod top_level_form;
 mod try_check;
 mod type_expr;

@@ -1,6 +1,6 @@
 use super::generated_entry::GeneratedEntry;
-use super::recur_check::RecurCheck;
 use super::result_printer::GeneratedFunction;
+use super::top_level_check::TopLevelCheck;
 use super::{Expander, Program};
 use crate::core::{
     BinderOrigin, BindingId, BindingInfo, BindingKind, Block, BodyItem, Control, Expr, ExprKind,
@@ -148,7 +148,7 @@ impl ExpansionSession<'_> {
         let checkpoint = self.expander.tables.module_notes.checkpoint();
         let lowered = self.lower_in(module, |expander| {
             let body = expander.lower_body(scoped)?;
-            RecurCheck::outside().block(&body)?;
+            TopLevelCheck.block(&body)?;
             Ok(body)
         });
         let lowered = self.collect_diagnostics(lowered)?;

@@ -5,8 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::Expander;
 use super::budget_arena::BudgetId;
 use super::problems::ExpandProblems;
-use super::recur_check::RecurCheck;
-use super::try_check::TryCheck;
+use super::top_level_check::TopLevelCheck;
 use crate::core::{BindingId, Declaration, Expr};
 use crate::diagnostic::Diagnostic;
 use crate::interpret::{Interpreter, Value};
@@ -243,8 +242,7 @@ impl Expander<'_> {
                         .insert(binding, GlobalState::Failed);
                     return Err(first_error);
                 }
-                RecurCheck::outside().value(&expr)?;
-                TryCheck::outside().value(&expr)?;
+                TopLevelCheck.value(&expr)?;
                 let expr = Rc::new(expr);
                 self.tables
                     .globals

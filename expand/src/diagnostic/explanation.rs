@@ -17,6 +17,8 @@ written_explanations! {
     "L0105",
     "L0106",
     "L0107",
+    "L0108",
+    "L0109",
     "L0201",
     "L0202",
     "L0203",
@@ -69,6 +71,7 @@ written_explanations! {
     "L0251",
     "L0252",
     "L0253",
+    "L0254",
     "L0255",
     "L0256",
     "L0257",
@@ -81,6 +84,7 @@ written_explanations! {
     "L0307",
     "L0308",
     "L0309",
+    "L0310",
     "L0311",
     "L0312",
     "L0313",
@@ -133,6 +137,7 @@ written_explanations! {
     "L0361",
     "L0362",
     "L0363",
+    "L0364",
     "L0401",
     "L0402",
     "L0403",
@@ -240,8 +245,10 @@ written_explanations! {
     "L0725",
     "L0726",
     "L0727",
+    "L0728",
     "L0803",
     "L0804",
+    "L0805",
 }
 
 pub struct Explanation {

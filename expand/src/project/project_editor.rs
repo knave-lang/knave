@@ -1,6 +1,7 @@
 use std::ops::Range;
 
 use super::dependency_reader::DependencyReader;
+use super::dependency_section::DependencySection;
 use super::section::Section;
 use super::vocabulary::ProjectVocabulary;
 use crate::reader::Form;
@@ -49,11 +50,11 @@ impl<'t> ProjectEditor<'t> {
         })
     }
 
-    pub fn with_crate(&self, section: Section, entry: &CrateEntry) -> String {
+    pub fn with_crate(&self, section: DependencySection, entry: &CrateEntry) -> String {
         let Some(section_form) = self.section(section) else {
             let new_section = format!(
                 "\n({} {})",
-                self.vocabulary.section_name(section),
+                self.vocabulary.section_name(Section::Dependency(section)),
                 entry.text()
             );
             return self.splice(Self::before_close(self.project), &new_section);
@@ -67,7 +68,7 @@ impl<'t> ProjectEditor<'t> {
         }
     }
 
-    pub fn without_crate(&self, section: Section, name: &str) -> Option<String> {
+    pub fn without_crate(&self, section: DependencySection, name: &str) -> Option<String> {
         let section_form = self.section(section)?;
         let listed = Self::entry_named(section_form, name)?;
         let only_entry = Self::entries(section_form).len() == 1;
@@ -75,10 +76,11 @@ impl<'t> ProjectEditor<'t> {
         Some(self.splice(self.with_leading_space(removed), ""))
     }
 
-    fn section(&self, section: Section) -> Option<&'t Form> {
+    fn section(&self, section: DependencySection) -> Option<&'t Form> {
+        let name = self.vocabulary.section_name(Section::Dependency(section));
         Self::entries(self.project)
             .iter()
-            .find(|form| Self::head_named(form, self.vocabulary.section_name(section)))
+            .find(|form| Self::head_named(form, name))
     }
 
     fn entry_named<'f>(section_form: &'f Form, name: &str) -> Option<&'f Form> {
@@ -137,8 +139,10 @@ impl<'t> ProjectEditor<'t> {
 #[cfg(test)]
 mod tests {
     use super::{CrateEntry, ProjectEditor};
+    use crate::project::LintLevel;
+    use crate::project::level_words::LevelWords;
     use crate::project::section_names::SectionNames;
-    use crate::project::{ProjectVocabulary, Section};
+    use crate::project::{DependencySection, ProjectVocabulary};
     use crate::reader::Reader;
     use crate::source::SourceMap;
 
@@ -152,8 +156,16 @@ mod tests {
             libraries: "libraries".to_string(),
             dependencies: "dependencies".to_string(),
             dev_dependencies: "dev-dependencies".to_string(),
+            lints: "lints".to_string(),
         };
-        let vocabulary = ProjectVocabulary::new("defproject".to_string(), sections);
+        let levels = LevelWords::new(
+            LintLevel::ALL
+                .into_iter()
+                .zip(["allow", "warn", "deny"])
+                .map(|(level, word)| (level, word.to_string()))
+                .collect(),
+        );
+        let vocabulary = ProjectVocabulary::new("defproject".to_string(), sections, levels);
         edit(&ProjectEditor::of(text, &forms, &vocabulary).expect("the text holds a project"))
     }
 
@@ -168,7 +180,7 @@ mod tests {
     #[test]
     fn adding_to_a_project_without_the_section_creates_it() {
         let text = edited("(defproject demo)\n", |editor| {
-            Some(editor.with_crate(Section::Dependencies, &entry(&["derive"])))
+            Some(editor.with_crate(DependencySection::Dependencies, &entry(&["derive"])))
         });
         assert_eq!(
             text.as_deref(),
@@ -182,7 +194,7 @@ mod tests {
     fn adding_to_a_section_appends_the_entry() {
         let text = edited(
             "(defproject demo (dependencies (other \"1.0\")))\n",
-            |editor| Some(editor.with_crate(Section::Dependencies, &entry(&[]))),
+            |editor| Some(editor.with_crate(DependencySection::Dependencies, &entry(&[]))),
         );
         assert_eq!(
             text.as_deref(),
@@ -194,7 +206,7 @@ mod tests {
     fn adding_a_listed_crate_replaces_its_entry() {
         let text = edited(
             "(defproject demo (dev-dependencies (fake-json \"1.0\")))\n",
-            |editor| Some(editor.with_crate(Section::DevDependencies, &entry(&[]))),
+            |editor| Some(editor.with_crate(DependencySection::DevDependencies, &entry(&[]))),
         );
         assert_eq!(
             text.as_deref(),
@@ -206,7 +218,7 @@ mod tests {
     fn removing_one_of_several_entries_keeps_the_section() {
         let text = edited(
             "(defproject demo (dependencies (other \"1.0\") (fake-json \"1.4.2\")))\n",
-            |editor| editor.without_crate(Section::Dependencies, "fake-json"),
+            |editor| editor.without_crate(DependencySection::Dependencies, "fake-json"),
         );
         assert_eq!(
             text.as_deref(),
@@ -218,7 +230,7 @@ mod tests {
     fn removing_the_last_entry_removes_the_section() {
         let text = edited(
             "(defproject demo (dependencies (fake-json \"1.4.2\")))\n",
-            |editor| editor.without_crate(Section::Dependencies, "fake-json"),
+            |editor| editor.without_crate(DependencySection::Dependencies, "fake-json"),
         );
         assert_eq!(text.as_deref(), Some("(defproject demo)\n"));
     }
@@ -227,7 +239,7 @@ mod tests {
     fn removing_an_entry_after_a_comment_keeps_the_comment() {
         let text = edited(
             "(defproject demo\n  (dependencies ; first\n    (other \"1.0\")\n    ; json\n    (fake-json \"1.4.2\")))\n",
-            |editor| editor.without_crate(Section::Dependencies, "fake-json"),
+            |editor| editor.without_crate(DependencySection::Dependencies, "fake-json"),
         );
         assert_eq!(
             text.as_deref(),
@@ -241,7 +253,7 @@ mod tests {
     fn removing_a_section_after_a_comment_keeps_the_comment() {
         let text = edited(
             "(defproject demo ; the demo\n  (dependencies (fake-json \"1.4.2\")))\n",
-            |editor| editor.without_crate(Section::Dependencies, "fake-json"),
+            |editor| editor.without_crate(DependencySection::Dependencies, "fake-json"),
         );
         assert_eq!(text.as_deref(), Some("(defproject demo ; the demo\n)\n"));
     }
@@ -250,7 +262,7 @@ mod tests {
     fn removing_the_entry_after_a_section_comment_keeps_the_comment() {
         let text = edited(
             "(defproject demo\n  (dependencies ; crates\n    (other \"1.0\")\n    (fake-json \"1.4.2\")))\n",
-            |editor| editor.without_crate(Section::Dependencies, "other"),
+            |editor| editor.without_crate(DependencySection::Dependencies, "other"),
         );
         assert_eq!(
             text.as_deref(),
@@ -262,7 +274,7 @@ mod tests {
     fn removing_an_entry_on_its_own_line_removes_a_crlf_line() {
         let text = edited(
             "(defproject demo\r\n  (dependencies\r\n    (other \"1.0\")\r\n    (fake-json \"1.4.2\")))\r\n",
-            |editor| editor.without_crate(Section::Dependencies, "other"),
+            |editor| editor.without_crate(DependencySection::Dependencies, "other"),
         );
         assert_eq!(
             text.as_deref(),
@@ -274,11 +286,11 @@ mod tests {
     fn removing_an_unlisted_crate_changes_nothing() {
         let text = edited(
             "(defproject demo (dependencies (other \"1.0\")))\n",
-            |editor| editor.without_crate(Section::Dependencies, "fake-json"),
+            |editor| editor.without_crate(DependencySection::Dependencies, "fake-json"),
         );
         assert_eq!(text, None);
         let text = edited("(defproject demo)\n", |editor| {
-            editor.without_crate(Section::Dependencies, "fake-json")
+            editor.without_crate(DependencySection::Dependencies, "fake-json")
         });
         assert_eq!(text, None);
     }

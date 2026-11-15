@@ -1,0 +1,26 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/lints_level_not_a_symbol.knv
+---
+error[L0734]: a lint's level is a symbol
+ --> project/lints_level_not_a_symbol.knv:2:36
+  |
+2 |             (lints (unused-binding "allow")
+  |                                    ^^^^^^^ not a symbol
+  |
+help: write the level without quotes
+  |
+2 -             (lints (unused-binding "allow")
+2 +             (lints (unused-binding allow)
+  |
+  = note: run `knave doc L0734` for an explanation
+
+error[L0734]: a lint's level is a symbol
+ --> project/lints_level_not_a_symbol.knv:3:37
+  |
+3 |                    (unreachable-arm (deny))))
+  |                                     ^^^^^^ not a symbol
+  |
+  = help: the levels are `allow`, `warn` and `deny`
+  = note: run `knave doc L0734` for an explanation

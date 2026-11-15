@@ -58,4 +58,7 @@ Project {
         },
     ],
     dev_dependencies: [],
+    lints: LintTable {
+        entries: [],
+    },
 }

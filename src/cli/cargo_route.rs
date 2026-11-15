@@ -49,6 +49,7 @@ mod tests {
     use crate::cli::fake_crates::FakeCrates;
     use crate::cli::fake_programs::FakePrograms;
     use crate::cli::fake_stages::FakeStages;
+    use crate::cli::lint_levels::LintLevels;
     use crate::cli::project_crates::ProjectCrates;
     use crate::cli::recorded_output::RecordedOutput;
     use crate::cli::source_report::SourceReport;
@@ -60,6 +61,7 @@ mod tests {
         crates: ProjectCrates,
         sources: SourceMap,
         output: RecordedOutput,
+        levels: LintLevels,
     }
 
     impl CargoRouteFixture {
@@ -73,6 +75,7 @@ mod tests {
                 crates,
                 sources: SourceMap::default(),
                 output: RecordedOutput::default(),
+                levels: LintLevels::default(),
             }
         }
 
@@ -96,7 +99,7 @@ mod tests {
             CargoRoute::new(target, Some(self.shared_target())).compile(
                 &FakeStages::emitted(text),
                 BuildProfile::Debug,
-                &SourceReport::new(&self.sources, &self.output),
+                &SourceReport::new(&self.sources, &self.output, &self.levels),
             )
         }
     }

@@ -64,6 +64,7 @@ mod tests {
     use crate::cli::fake_programs::FakePrograms;
     use crate::cli::fake_stages::FakeStages;
     use crate::cli::interruption::Interruption;
+    use crate::cli::lint_levels::LintLevels;
     use crate::cli::recorded_output::RecordedOutput;
     use crate::cli::source_report::SourceReport;
     use crate::emit::EmittedCrate;
@@ -106,6 +107,7 @@ mod tests {
     struct BuildFixture {
         sources: SourceMap,
         output: RecordedOutput,
+        levels: LintLevels,
         interruption: Interruption,
     }
 
@@ -114,6 +116,7 @@ mod tests {
             Self {
                 sources: SourceMap::default(),
                 output: RecordedOutput::default(),
+                levels: LintLevels::default(),
                 interruption,
             }
         }
@@ -121,7 +124,7 @@ mod tests {
         fn compile(&self, route: &FakeRoute) -> Result<(), ExitStatus> {
             let emitted = FakeStages::emitted(FakePrograms::PRINTS_A_SUM);
             CrateBuild::new(
-                SourceReport::new(&self.sources, &self.output),
+                SourceReport::new(&self.sources, &self.output, &self.levels),
                 &self.interruption,
             )
             .compile(&emitted, route, BuildProfile::Debug)

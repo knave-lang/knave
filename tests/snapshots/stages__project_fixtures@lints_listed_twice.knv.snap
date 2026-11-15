@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/lints_listed_twice.knv
+---
+error[L0731]: lint `unused-binding` is listed twice
+ --> project/lints_listed_twice.knv:2:44
+  |
+2 |             (lints (unused-binding allow) (unused-binding deny)))
+  |                     --------------         ^^^^^^^^^^^^^^ listed again here
+  |                     |
+  |                     first listed here
+  |
+  = help: keep one entry for each lint
+  = note: run `knave doc L0731` for an explanation

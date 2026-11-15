@@ -33,7 +33,7 @@ impl AddCommand {
         }
     }
 
-    fn add(&self, terminal: &Terminal) -> Result<(), ExitStatus> {
+    fn add(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
         self.check_names()?;
         let edit = ProjectFileEdit::of_working_directory(terminal, Self::COMMAND)?;
         Self::refuse_path(&edit, &self.name)?;

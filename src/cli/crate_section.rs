@@ -1,6 +1,6 @@
 use super::embedded_prelude::EmbeddedPrelude;
 use crate::language::Language;
-use crate::project::{CrateDependency, Project, Section};
+use crate::project::{CrateDependency, DependencySection, Project, Section};
 
 #[derive(Clone, Copy)]
 pub enum CrateSection {
@@ -20,10 +20,10 @@ impl CrateSection {
         }
     }
 
-    pub fn section(self) -> Section {
+    pub fn section(self) -> DependencySection {
         match self {
-            Self::Dependencies => Section::Dependencies,
-            Self::DevDependencies => Section::DevDependencies,
+            Self::Dependencies => DependencySection::Dependencies,
+            Self::DevDependencies => DependencySection::DevDependencies,
         }
     }
 
@@ -35,7 +35,7 @@ impl CrateSection {
     }
 
     pub fn name(self) -> &'static str {
-        EmbeddedPrelude::project_vocabulary().section_name(self.section())
+        EmbeddedPrelude::project_vocabulary().section_name(Section::Dependency(self.section()))
     }
 
     pub fn listed(self, project: &Project) -> &[CrateDependency] {

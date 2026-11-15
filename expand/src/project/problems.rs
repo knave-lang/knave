@@ -1,6 +1,7 @@
 use std::fmt;
 
 use super::LibrarySource;
+use super::quoted_list::QuotedList;
 use super::vocabulary::ProjectVocabulary;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label, SimilarName, Suggestion};
 use crate::language::Language;
@@ -15,9 +16,7 @@ struct SectionList<'v> {
 impl fmt::Display for SectionList<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         let names = self.vocabulary.section_names();
-        let (last, earlier) = names.split_last().expect("a project has sections");
-        let quoted: Vec<String> = earlier.iter().map(|name| format!("`{name}`")).collect();
-        write!(formatter, "{} and `{last}`", quoted.join(", "))
+        formatter.write_str(&QuotedList::of(&names))
     }
 }
 

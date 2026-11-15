@@ -61,9 +61,12 @@ mod inspection_command;
 mod interruptible_formatting;
 mod interruption;
 mod json_replies;
+mod leveled_diagnostics;
 mod library_walk;
 mod lint;
+mod lint_levels;
 mod lint_pages;
+mod lint_setting;
 mod located_program;
 mod located_project;
 mod module_of_sources;
@@ -133,6 +136,7 @@ use std::env;
 use std::ffi::OsString;
 use std::io;
 use std::process::ExitCode;
+use std::rc::Rc;
 
 use anstream::AutoStream;
 use clap::{CommandFactory, FromArgMatches, Parser};
@@ -142,6 +146,7 @@ use crate::language::Language;
 use color_when::ColorWhen;
 use command::Command;
 use counter_report::CounterReport;
+use diagnostic_output::RenderedDiagnostics;
 use doc::DocCommand;
 use front_end_stack::FrontEndStack;
 use terminal::Terminal;
@@ -195,9 +200,8 @@ impl Cli {
 
     fn run_on_this_stack(self, allocator: Option<&CountingAllocator>) -> ExitCode {
         anstream::ColorChoice::from(self.color).write_global();
-        let mut terminal = Terminal::new(TerminalSettings::rendered(AutoStream::choice(
-            &io::stderr(),
-        )));
+        let rendered = RenderedDiagnostics::new(AutoStream::choice(&io::stderr()));
+        let mut terminal = Terminal::new(TerminalSettings::reporting_to(Rc::new(rendered)));
         let command = self.command.unwrap_or_else(Command::prompt);
         let status = command.execute(&mut terminal);
         if self.counters {

@@ -125,7 +125,7 @@ impl FmtCommand {
         }
         let working_directory = WorkingDirectory::resolved()?;
         let root = LocatedProject::canonical_root(&working_directory)
-            .ok_or_else(LocatedProject::report_no_path)?;
+            .ok_or_else(WorkingDirectory::report_no_project)?;
         Ok(vec![Self::upward_path(&working_directory, &root)])
     }
 
@@ -187,7 +187,10 @@ impl FmtCommand {
             .formatter
             .format(terminal.source_file(source), lookup)
             .map_err(|failure| Self::report_failure(terminal, path, failure))?;
-        terminal.source_report().print(&formatted.warnings);
+        terminal
+            .source_report()
+            .print(&formatted.warnings)
+            .passed()?;
         Ok(formatted.text)
     }
 
@@ -350,8 +353,8 @@ impl NearbyProjects {
     }
 
     fn load(root: &Path, warning: &Rc<ProjectLoadWarning>) -> Option<LocatedProject> {
-        let loading = Terminal::new(TerminalSettings::reporting_to(warning.clone()));
-        let loaded = LocatedProject::search_from(root, &loading, CacheOnlyStore::default());
+        let mut loading = Terminal::new(TerminalSettings::reporting_to(warning.clone()));
+        let loaded = LocatedProject::enter_from(root, &mut loading, CacheOnlyStore::default());
         if loaded.is_err() {
             warning.warn_once();
         }

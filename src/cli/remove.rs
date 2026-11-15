@@ -23,7 +23,7 @@ impl RemoveCommand {
         }
     }
 
-    fn remove(&self, terminal: &Terminal) -> Result<(), ExitStatus> {
+    fn remove(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
         let edit = ProjectFileEdit::of_working_directory(terminal, Self::COMMAND)?;
         let removed = edit.apply(terminal, |editor| {
             editor.without_crate(self.section.section(), &self.name)

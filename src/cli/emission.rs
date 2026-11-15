@@ -46,6 +46,7 @@ mod tests {
     use crate::cli::fake_stages::FakeStages;
     use crate::cli::interruptible_formatting::InterruptibleFormatting;
     use crate::cli::interruption::Interruption;
+    use crate::cli::lint_levels::LintLevels;
     use crate::cli::recorded_output::RecordedOutput;
     use crate::cli::source_report::SourceReport;
     use crate::cli::stage_work::StageWork;
@@ -55,6 +56,7 @@ mod tests {
         sources: SourceMap,
         work: StageWork,
         output: RecordedOutput,
+        levels: LintLevels,
         interruption: Interruption,
     }
 
@@ -64,6 +66,7 @@ mod tests {
                 sources: SourceMap::default(),
                 work: StageWork::default(),
                 output: RecordedOutput::default(),
+                levels: LintLevels::default(),
                 interruption: Interruption::default(),
             }
         }
@@ -71,7 +74,7 @@ mod tests {
         fn emission(&mut self) -> Emission<'_> {
             let formatting = EmittedFormatting::within(EmittedFormatting::TIME_LIMIT);
             Emission::new(
-                SourceReport::new(&self.sources, &self.output),
+                SourceReport::new(&self.sources, &self.output, &self.levels),
                 &mut self.work,
                 InterruptibleFormatting::new(formatting, &self.interruption),
             )

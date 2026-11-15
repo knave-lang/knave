@@ -606,7 +606,11 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
     (serde "1.0" :features ("derive")))
 
   (dev-dependencies
-    (proptest "1.5")))
+    (proptest "1.5"))
+
+  (lints
+    (unused-binding allow)
+    (unreachable-arm deny)))
 ```
 
 - The name follows `defproject` and is the only required part. It is kebab-case: words of lowercase letters and digits, joined by single dashes, starting with a letter.
@@ -615,6 +619,7 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 - A crate dependency takes a version or a `:path`, and MAY take `:features`.
 - A library takes `:path`, or `:git` with `:rev`, and no version. `:rev` is a full 40-digit commit hash.
 - An unknown key or section is an error that suggests the closest name. A key, a section or a dependency given twice is an error.
+- The `lints` section sets the level of each lint, an `L08xx` code, by its name: `allow`, `warn` or `deny` (see Lints). An unknown lint, `L0729`, suggests the closest lint's name, or the lint's name when the entry gives its code; an unknown level is `L0730`; a lint listed twice is `L0731`; an entry with no level is `L0732`; a number, which would set a rule's threshold, is `L0733`, because no rule takes one yet; a level written as a string or a list is `L0734`; and a name written as a string, a number or a list is `L0735`. Only the root project's section applies: a library's section is read and checked, but sets no level.
 - The compiler reads and checks `dependencies` and `dev-dependencies`. Only the program that `knave test` builds can use a project's `dev-dependencies`, and a library's `dev-dependencies` never join a dependent's manifest. Until the rest of RFC 0061 lands, `eval` and `repl` in a project that uses crates are an error, `L0719`, labeled on the project's first crate, or on the library entry that adds crates. An empty section is allowed.
 
 **`knave new <name>` creates a project in a new directory of that name.** It writes `(defproject <name>)`, an entry at `src/main.knv` whose `main` prints `hello`, and a `.gitignore` that lists `/doc/`, the folder of `knave doc --write`. The name argument is checked first: a name that is not kebab-case is `L0718`, labeled on the argument. A path that already exists, or a file that cannot be written, is a usage error, and a failed write removes what `new` wrote.
@@ -794,7 +799,7 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 2. Otherwise the error is located at the input of its outermost `in this macro call` label, then at the input of its primary label, then at the earliest input whose `use` reaches the file of its primary label.
 3. An error located at no input, as one in the prelude, is the new input's. Secondary labels never decide.
 
-If an error is located at the new input, the prompt rejects the input, prints those errors, and keeps the buffer as it was. If errors are located at earlier inputs, the prompt sets each of those inputs aside and checks again. A round removes at least one input, so the check ends. Once the buffer checks, the new input joins it, and the prompt prints one `L0249` for each input set aside, for each replaced input that binds a name the new input does not, and for each replaced input that documents a term a new lone `document` does not, with the new input's own warnings, as one report.
+If an error is located at the new input, the prompt rejects the input, prints those errors, and keeps the buffer as it was. If errors are located at earlier inputs, the prompt sets each of those inputs aside and checks again. A round removes at least one input, so the check ends. Once the buffer checks, the new input joins it, and the prompt prints one `L0249` for each input set aside, for each replaced input that binds a name the new input does not, and for each replaced input that documents a term a new lone `document` does not, with the new input's own warnings, as one report. A lint whose level in the project's `lints` section is `deny` rejects the input as an error does: the prompt prints the denied lints alone and keeps the buffer as it was.
 
 `L0249` names the input's names, at most three and then `and N more`, or the input's source when it bound none. It carries the error that set the input aside as its own label, a note and helps, or for a dropped name the note that the new input replaced it, and ends with the help to enter the names again. For a dropped document it names the terms left behind, notes that a `document` of the replacing term replaced the input that documented them, and ends with the help to enter the `document` of those terms again to keep it.
 
@@ -1081,7 +1086,16 @@ The emitted Rust is formatted by `rustfmt` when `knave emit`, `knave build` or `
 
 ## Lints
 
-**`knave lint [file]` checks a program as `knave check` does, then runs the lint rules over each definition of the program's own modules and prints their warnings** ([RFC 0069](../rfcs/0069-lint.md)). It prints the warnings of `knave check` first. A program with an error prints its errors, runs no rule and exits as `knave check` does. It exits 1 when it prints a lint, a warning with an `L08xx` code, whether `knave check` or a rule reports it, and 0 when it prints none ([RFC 0073](../rfcs/0073-lint-exit-and-lints-section.md)). A warning that is no lint, such as `L0217`, leaves the exit code at 0. The project file's `lints` section will let a project opt out per lint; it is not built yet. The rules are knave code in `prelude/lint`, which `prelude.knv` never imports and only `knave lint` loads, and each rule's docstring explains it. A file of a project's own `prelude/` directory never replaces `prelude/lint`. `knave check` and `knave build` run no rule of `prelude/lint`.
+**`knave lint [file]` checks a program as `knave check` does, then runs the lint rules over each definition of the program's own modules and prints their warnings** ([RFC 0069](../rfcs/0069-lint.md)). It prints the warnings of `knave check` first. A program with an error prints its errors, runs no rule and exits as `knave check` does. It exits 1 when it prints a lint, a warning with an `L08xx` code, whether `knave check` or a rule reports it, and 0 when it prints none ([RFC 0073](../rfcs/0073-lint-exit-and-lints-section.md)). A warning that is no lint, such as `L0217`, leaves the exit code at 0. The project file's `lints` section sets each lint's level, and the level holds in every command that prints the lint:
+
+| Level | Prints | `knave lint` exit | `check`, `build`, `run` exit |
+| --- | --- | --- | --- |
+| none written | yes | 1 | 0 |
+| `warn` | yes | 0 | 0 |
+| `allow` | no | 0 | 0 |
+| `deny` | yes, as an error | 1 | 1 |
+
+`L0217`, `L0249`, `L0251` and `L0256` have no level: they always print and never change the exit code. The rules are knave code in `prelude/lint`, which `prelude.knv` never imports and only `knave lint` loads, and each rule's docstring explains it. A file of a project's own `prelude/` directory never replaces `prelude/lint`. `knave check` and `knave build` run no rule of `prelude/lint`.
 
 A rule reads each definition read back as kernel forms, with each symbol that names a binding referring to the binding that expansion resolved, and a kernel form's head referring to none. The read-back drops the scopes that expansion gave each symbol and gives each binding one fresh scope, numbered after every scope of the expansion of `prelude/lint`, so no symbol that a rule writes can name a binding of the program. A rule's table holds each definition as `knave expand` prints it, except that a Rust template keeps only its text, a parameter keeps only its binder, and a repeated name keeps its spelling instead of an `_N` suffix. A `quote` holds its datum as written, so a name inside it reads no binding. The table's entries run in the order `knave expand` prints their forms, each list's entry before the entries of its parts, so the head of a list, such as a call's callee, is the entry right after the list's. Each rule runs once per definition under the macro step limit of one top-level form, `StepBudget::DEFAULT_LIMIT`.
 

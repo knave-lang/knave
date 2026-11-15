@@ -1,0 +1,1 @@
+(defproject browser (lints (second-trait-path allow)))

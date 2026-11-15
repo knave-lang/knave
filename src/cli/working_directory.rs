@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use super::exit_status::ExitStatus;
 use super::standard_error::StandardError;
+use crate::language::Language;
 
 pub struct WorkingDirectory;
 
@@ -22,6 +23,15 @@ impl WorkingDirectory {
             .join(directory)
             .canonicalize()
             .map_err(|error| Self::report_unresolvable(directory, &error))
+    }
+
+    pub fn report_no_project() -> ExitStatus {
+        StandardError::write_line(format_args!(
+            "error: no path given, and no `{}` in this directory or a parent\n\
+             help: name a path, or run the command inside a project",
+            Language::project_file_name()
+        ));
+        ExitStatus::UsageError
     }
 
     fn report_unresolvable(directory: &Path, error: &io::Error) -> ExitStatus {

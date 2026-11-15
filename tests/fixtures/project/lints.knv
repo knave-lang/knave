@@ -1,0 +1,4 @@
+(defproject browser
+            (lints (unused-binding allow)
+                   (unreachable-arm deny)
+                   (missing-bang warn)))

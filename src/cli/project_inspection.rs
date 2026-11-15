@@ -2,10 +2,13 @@ use super::entry_argument::EntryArgument;
 use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
+use super::source_report::SourceReport;
 use super::task_catalog::TaskCatalog;
 use super::task_runners::TaskRunners;
 use super::terminal::Terminal;
 use crate::diagnostic::Diagnostics;
+
+pub type WarningPrinter = dyn Fn(&SourceReport<'_>, &Diagnostics) -> ExitStatus;
 
 pub struct ProjectInspection {
     entry: EntryArgument,
@@ -19,29 +22,37 @@ impl ProjectInspection {
     pub fn run(
         self,
         terminal: &mut Terminal,
-        inspect_entry: impl FnOnce(&mut Terminal, &ProgramFile) -> Result<Diagnostics, ExitStatus>,
-    ) -> Result<Diagnostics, ExitStatus> {
+        print_warnings: &WarningPrinter,
+        inspect_entry: impl FnOnce(
+            &mut Terminal,
+            &ProgramFile,
+            &WarningPrinter,
+        ) -> Result<(), ExitStatus>,
+    ) -> Result<(), ExitStatus> {
         let checks_tasks = self.entry.defaults_to_project_entry();
         let program = self.entry.locate(terminal)?;
         let output = TaskCatalog::user_output(terminal.diagnostic_output());
         terminal.configure(|settings| settings.rerouted_to(output));
-        let entry = inspect_entry(terminal, program.file());
+        let entry = inspect_entry(terminal, program.file(), print_warnings);
         let tasks = match program.into_project().filter(|_| checks_tasks) {
-            Some(project) => Self::check_tasks(terminal, EntryTree::of_tasks(project)),
-            None => Ok(Diagnostics::default()),
+            Some(project) => {
+                Self::check_tasks(terminal, EntryTree::of_tasks(project), print_warnings)
+            }
+            None => Ok(()),
         };
-        let (mut printed, task_warnings) = (entry?, tasks?);
-        printed.extend(task_warnings);
-        Ok(printed)
+        entry.and(tasks)
     }
 
-    fn check_tasks(terminal: &mut Terminal, tree: EntryTree) -> Result<Diagnostics, ExitStatus> {
+    fn check_tasks(
+        terminal: &mut Terminal,
+        tree: EntryTree,
+        print_warnings: &WarningPrinter,
+    ) -> Result<(), ExitStatus> {
         if !tree.path().is_dir() {
-            return Ok(Diagnostics::default());
+            return Ok(());
         }
         let catalog = TaskCatalog::load(&tree, terminal)?;
         let warnings = TaskRunners::new(&catalog).check(terminal)?;
-        terminal.source_report().print(&warnings);
-        Ok(warnings)
+        print_warnings(&terminal.source_report(), &warnings).passed()
     }
 }

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/lints_threshold.knv
+---
+error[L0733]: no rule takes a threshold yet
+ --> project/lints_threshold.knv:1:44
+  |
+1 | (defproject browser (lints (unused-binding 20)))
+  |                                            ^^ a threshold
+  |
+  = help: remove the number, and give the lint a level
+  = note: run `knave doc L0733` for an explanation

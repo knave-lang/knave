@@ -15,8 +15,8 @@ pub struct LocatedProgram {
 }
 
 impl LocatedProgram {
-    pub fn of_file(file: PathBuf, terminal: &Terminal) -> Result<Self, ExitStatus> {
-        let project = LocatedProject::search_from(
+    pub fn of_file(file: PathBuf, terminal: &mut Terminal) -> Result<Self, ExitStatus> {
+        let project = LocatedProject::enter_from(
             &ProgramFile::directory_of(&file),
             terminal,
             FetchingStore::default(),
@@ -28,9 +28,9 @@ impl LocatedProgram {
         Ok(Self { file, project })
     }
 
-    pub fn of_working_directory(terminal: &Terminal) -> Result<Self, ExitStatus> {
+    pub fn of_working_directory(terminal: &mut Terminal) -> Result<Self, ExitStatus> {
         let working_directory = WorkingDirectory::path();
-        match LocatedProject::search_from(working_directory, terminal, FetchingStore::default())? {
+        match LocatedProject::enter_from(working_directory, terminal, FetchingStore::default())? {
             Some(project) => Ok(Self {
                 file: project.entry(),
                 project: Some(project),

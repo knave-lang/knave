@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/lints_two_levels.knv
+---
+error[L0709]: a lint entry gives two levels
+ --> project/lints_two_levels.knv:1:50
+  |
+1 | (defproject browser (lints (unused-binding allow deny)))
+  |                                            ----- ^^^^ a second level
+  |                                            |
+  |                                            the first level
+  |
+  = help: keep one level for each lint
+  = note: run `knave doc L0709` for an explanation

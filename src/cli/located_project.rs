@@ -5,9 +5,9 @@ use std::path::{Path, PathBuf};
 use super::crate_section::CrateSection;
 use super::exit_status::ExitStatus;
 use super::library_walk::{LibraryStore, LibraryWalk};
+use super::lint_levels::LintLevels;
 use super::program_file::ProgramFile;
 use super::project_crates::ProjectCrates;
-use super::standard_error::StandardError;
 use super::terminal::Terminal;
 use super::working_directory::WorkingDirectory;
 use crate::diagnostic::{Diagnostic, Diagnostics};
@@ -25,7 +25,20 @@ pub struct LocatedProject {
 }
 
 impl LocatedProject {
-    pub fn search_from(
+    pub fn enter_from(
+        directory: &Path,
+        terminal: &mut Terminal,
+        store: impl LibraryStore,
+    ) -> Result<Option<Self>, ExitStatus> {
+        let located = Self::search_from(directory, terminal, store)?;
+        if let Some(entered) = &located {
+            let levels = LintLevels::of(&entered.project.lints);
+            terminal.configure(|settings| settings.leveling_lints_by(levels));
+        }
+        Ok(located)
+    }
+
+    fn search_from(
         directory: &Path,
         terminal: &Terminal,
         store: impl LibraryStore,
@@ -72,15 +85,6 @@ impl LocatedProject {
             .strip_prefix(&working_directory)
             .unwrap_or(root)
             .to_path_buf())
-    }
-
-    pub fn report_no_path() -> ExitStatus {
-        StandardError::write_line(format_args!(
-            "error: no path given, and no `{}` in this directory or a parent\n\
-             help: name a path, or run the command inside a project",
-            Language::project_file_name()
-        ));
-        ExitStatus::UsageError
     }
 
     pub fn lend_libraries(project: Option<&Self>, file: ProgramFile) -> ProgramFile {

@@ -43,7 +43,7 @@ mod tests {
     use super::SavedPrelude;
     use crate::expand::PreludeState;
     use crate::expand::project_file_module::ProjectFileModule;
-    use crate::project::Section;
+    use crate::project::{DependencySection, Section};
 
     #[test]
     fn the_saved_prelude_reads_back_its_vocabulary_and_its_state() {
@@ -64,11 +64,15 @@ mod tests {
         let vocabulary = ProjectFileModule::expanded().vocabulary();
         assert_eq!(vocabulary.head(), "defproject");
         let sections = [
-            Section::Libraries,
-            Section::Dependencies,
-            Section::DevDependencies,
+            Section::Dependency(DependencySection::Libraries),
+            Section::Dependency(DependencySection::Dependencies),
+            Section::Dependency(DependencySection::DevDependencies),
+            Section::Lints,
         ];
         let names = sections.map(|section| vocabulary.section_name(section));
-        assert_eq!(names, ["libraries", "dependencies", "dev-dependencies"]);
+        assert_eq!(
+            names,
+            ["libraries", "dependencies", "dev-dependencies", "lints"]
+        );
     }
 }

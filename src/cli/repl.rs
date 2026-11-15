@@ -91,10 +91,10 @@ impl ReplCommand {
         }
     }
 
-    fn prompt_file(&self, terminal: &Terminal) -> Result<ProgramFile, ExitStatus> {
+    fn prompt_file(&self, terminal: &mut Terminal) -> Result<ProgramFile, ExitStatus> {
         let working_directory = WorkingDirectory::path();
         let project =
-            LocatedProject::search_from(working_directory, terminal, FetchingStore::default())?;
+            LocatedProject::enter_from(working_directory, terminal, FetchingStore::default())?;
         if let Some(project) = &project {
             project.refuse_crates(Self::COMMAND, terminal)?;
         }
@@ -237,12 +237,15 @@ impl PromptSession {
     }
 
     fn accept(&mut self, terminal: &Terminal, accepted: AcceptedDefinition) {
+        if let Some(denied) = terminal.source_report().denied_lints(&accepted.report) {
+            return self.reject(terminal, &denied, accepted.records);
+        }
         self.annotations
             .borrow_mut()
             .commit(accepted.records, accepted.buffer.bound_names());
         self.buffer = accepted.buffer;
         self.loaders = accepted.loaders;
-        terminal.source_report().print(&accepted.report);
+        let _undenied = terminal.source_report().print(&accepted.report);
     }
 
     fn reject(&self, terminal: &Terminal, errors: &Diagnostics, pending: NameRecords) {

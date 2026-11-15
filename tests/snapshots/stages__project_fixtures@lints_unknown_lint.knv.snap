@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/lints_unknown_lint.knv
+---
+error[L0729]: unknown lint `unused-bindings`
+ --> project/lints_unknown_lint.knv:1:29
+  |
+1 | (defproject browser (lints (unused-bindings allow)))
+  |                             ^^^^^^^^^^^^^^^ not the name of a lint
+  |
+help: a lint with a similar name exists
+  |
+1 - (defproject browser (lints (unused-bindings allow)))
+1 + (defproject browser (lints (unused-binding allow)))
+  |
+  = note: run `knave doc L0729` for an explanation

@@ -1,24 +1,23 @@
 use std::rc::Rc;
 
-use anstream::ColorChoice;
-
-use super::diagnostic_output::{DiagnosticOutput, RenderedDiagnostics};
+use super::diagnostic_output::DiagnosticOutput;
 use super::interruption::Interruption;
+use super::lint_levels::LintLevels;
+use super::source_report::SourceReport;
+use crate::source::SourceMap;
 
 pub struct TerminalSettings {
     diagnostics: Rc<dyn DiagnosticOutput>,
     interruption: Interruption,
+    lint_levels: LintLevels,
 }
 
 impl TerminalSettings {
-    pub fn rendered(standard_error: ColorChoice) -> Self {
-        Self::reporting_to(Rc::new(RenderedDiagnostics::new(standard_error)))
-    }
-
     pub fn reporting_to(diagnostics: Rc<dyn DiagnosticOutput>) -> Self {
         Self {
             diagnostics,
             interruption: Interruption::default(),
+            lint_levels: LintLevels::default(),
         }
     }
 
@@ -33,7 +32,20 @@ impl TerminalSettings {
         Self {
             diagnostics,
             interruption: self.interruption.clone(),
+            lint_levels: self.lint_levels.clone(),
         }
+    }
+
+    pub fn leveling_lints_by(&self, levels: LintLevels) -> Self {
+        Self {
+            diagnostics: Rc::clone(&self.diagnostics),
+            interruption: self.interruption.clone(),
+            lint_levels: levels,
+        }
+    }
+
+    pub fn source_report<'a>(&'a self, sources: &'a SourceMap) -> SourceReport<'a> {
+        SourceReport::new(sources, self.diagnostics.as_ref(), &self.lint_levels)
     }
 
     pub fn diagnostics(&self) -> &Rc<dyn DiagnosticOutput> {
@@ -48,8 +60,6 @@ impl TerminalSettings {
 #[cfg(test)]
 mod tests {
     use std::rc::Rc;
-
-    use anstream::ColorChoice;
 
     use super::TerminalSettings;
     use crate::cli::diagnostic_output::DiagnosticOutput;
@@ -86,11 +96,6 @@ mod tests {
     fn stops_on_nothing_until_told() {
         let fixture = SettingsFixture::new();
         assert!(!fixture.reporting().interruption().is_raised());
-        assert!(
-            !TerminalSettings::rendered(ColorChoice::Never)
-                .interruption()
-                .is_raised()
-        );
     }
 
     #[test]

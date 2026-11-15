@@ -1,11 +1,23 @@
 mod crate_set;
 mod dependency_reader;
+mod dependency_section;
 mod fields;
+mod level_keys;
+mod level_words;
+mod lint_level;
+mod lint_level_problems;
+mod lint_name_problems;
+mod lint_reader;
+mod lint_table;
 mod name;
 mod problems;
 mod project_editor;
 mod project_roles;
+mod quoted_list;
 mod reader;
+mod role_book;
+mod role_note;
+mod role_problem;
 mod section;
 mod section_names;
 mod vocabulary;
@@ -13,6 +25,10 @@ mod vocabulary;
 use std::path::PathBuf;
 
 pub use crate_set::CrateSet;
+pub use dependency_section::DependencySection;
+pub(crate) use level_keys::LevelKeys;
+pub use lint_level::LintLevel;
+pub use lint_table::LintTable;
 pub use name::ProjectName;
 pub use problems::ProjectProblems;
 pub use project_editor::{CrateEntry, ProjectEditor};
@@ -33,6 +49,7 @@ pub struct Project {
     pub libraries: Vec<LibraryDependency>,
     pub dependencies: Vec<CrateDependency>,
     pub dev_dependencies: Vec<CrateDependency>,
+    pub lints: LintTable,
 }
 
 #[derive(Debug)]

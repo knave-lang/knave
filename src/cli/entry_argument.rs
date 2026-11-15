@@ -13,7 +13,7 @@ pub struct EntryArgument {
 }
 
 impl EntryArgument {
-    pub fn locate(self, terminal: &Terminal) -> Result<LocatedProgram, ExitStatus> {
+    pub fn locate(self, terminal: &mut Terminal) -> Result<LocatedProgram, ExitStatus> {
         match self.file {
             Some(file) => LocatedProgram::of_file(file, terminal),
             None => LocatedProgram::of_working_directory(terminal),

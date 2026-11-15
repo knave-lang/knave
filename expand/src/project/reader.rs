@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use super::Project;
 use super::dependency_reader::DependencyReader;
 use super::fields::{FieldScanner, Fields};
+use super::lint_reader::LintReader;
 use super::name::ProjectName;
 use super::problems::ProjectProblems;
 use super::section::Section;
@@ -117,7 +118,13 @@ impl<'v> ProjectReader<'v> {
             section,
             span: head.span(),
         });
-        DependencyReader::new(section, &mut self.problems).read(entries, sections);
+        match section {
+            Section::Lints => LintReader::new(self.vocabulary, &mut self.problems)
+                .read(entries, &mut sections.lints),
+            Section::Dependency(kind) => {
+                DependencyReader::new(kind, &mut self.problems).read(entries, sections)
+            }
+        }
     }
 
     fn section_parts(form: &Form) -> Option<(&Form, &[Form])> {
@@ -163,6 +170,7 @@ impl<'v> ProjectReader<'v> {
             libraries: sections.libraries,
             dependencies: sections.dependencies,
             dev_dependencies: sections.dev_dependencies,
+            lints: sections.lints,
         })
     }
 
@@ -210,4 +218,5 @@ pub struct SectionTable {
     pub libraries: Vec<super::LibraryDependency>,
     pub dependencies: Vec<super::CrateDependency>,
     pub dev_dependencies: Vec<super::CrateDependency>,
+    pub lints: super::LintTable,
 }

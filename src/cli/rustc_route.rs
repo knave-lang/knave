@@ -49,6 +49,7 @@ mod tests {
     use crate::cli::crate_name::CrateName;
     use crate::cli::fake_programs::FakePrograms;
     use crate::cli::fake_stages::FakeStages;
+    use crate::cli::lint_levels::LintLevels;
     use crate::cli::recorded_output::RecordedOutput;
     use crate::cli::source_report::SourceReport;
     use crate::cli::temporary_directory::TemporaryDirectory;
@@ -59,6 +60,7 @@ mod tests {
         crate_name: CrateName,
         sources: SourceMap,
         output: RecordedOutput,
+        levels: LintLevels,
     }
 
     impl RustcFixture {
@@ -70,6 +72,7 @@ mod tests {
                 crate_name: CrateName::of(Path::new(Self::CRATE_STEM)),
                 sources: SourceMap::default(),
                 output: RecordedOutput::default(),
+                levels: LintLevels::default(),
             }
         }
 
@@ -87,7 +90,7 @@ mod tests {
             .compile(
                 &FakeStages::emitted(text),
                 BuildProfile::Debug,
-                &SourceReport::new(&self.sources, &self.output),
+                &SourceReport::new(&self.sources, &self.output, &self.levels),
             )
         }
     }

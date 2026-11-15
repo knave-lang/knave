@@ -4,30 +4,20 @@ use crate::diagnostic::Explanation;
 
 pub struct ExplanationPage {
     explanation: Explanation,
-    docstring: Option<String>,
+    text: String,
 }
 
 impl ExplanationPage {
-    const UNWRITTEN: &'static str = "No explanation yet.";
-
-    pub fn new(explanation: Explanation) -> Self {
-        Self {
-            explanation,
-            docstring: None,
-        }
-    }
-
-    pub fn with_docstring(self, docstring: Option<String>) -> Self {
-        Self { docstring, ..self }
+    pub fn new(explanation: Explanation, text: String) -> Self {
+        Self { explanation, text }
     }
 
     pub fn print(&self) -> ExitStatus {
-        StandardOutput::locked().write(self.text())
+        StandardOutput::locked().write(format!("{}\n\n{}\n", self.header(), self.body()))
     }
 
-    pub fn markdown(&self) -> Option<String> {
-        let body = self.written()?.trim_end();
-        Some(format!("# {}\n\n{body}\n", self.header()))
+    pub fn markdown(&self) -> String {
+        format!("# {}\n\n{}\n", self.header(), self.body())
     }
 
     pub fn code(&self) -> &str {
@@ -38,23 +28,11 @@ impl ExplanationPage {
         self.explanation.display_name()
     }
 
-    pub fn is_written(&self) -> bool {
-        self.written().is_some()
-    }
-
-    fn written(&self) -> Option<&str> {
-        self.explanation.text().or(self.docstring.as_deref())
-    }
-
-    fn text(&self) -> String {
-        format!("{}\n\n{}\n", self.header(), self.body())
-    }
-
     fn header(&self) -> String {
         format!("{}: {}", self.code(), self.display_name())
     }
 
     fn body(&self) -> &str {
-        self.written().map_or(Self::UNWRITTEN, str::trim_end)
+        self.text.trim_end()
     }
 }

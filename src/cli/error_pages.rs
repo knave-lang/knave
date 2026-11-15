@@ -12,7 +12,6 @@ impl ErrorPages {
     const INDEX: &'static str = "errors";
     const INDEX_TITLE: &'static str = "Diagnostic codes";
     const TABLE_HEAD: &'static str = "| Code | Name |\n| --- | --- |\n";
-    const UNWRITTEN_MARK: &'static str = "no explanation yet";
 
     pub fn pages(terminal: &mut Terminal) -> Result<Vec<WrittenPage>, ExitStatus> {
         Ok(Self::of(Self::explanations(terminal)?))
@@ -20,7 +19,7 @@ impl ErrorPages {
 
     fn of(mut explanations: Vec<ExplanationPage>) -> Vec<WrittenPage> {
         explanations.sort_by(|left, right| left.code().cmp(right.code()));
-        let written = explanations.iter().filter_map(Self::code_page);
+        let written = explanations.iter().map(Self::code_page);
         [Self::index(&explanations)]
             .into_iter()
             .chain(written)
@@ -31,8 +30,8 @@ impl ErrorPages {
         let mut lookup = ExplanationLookup::new(terminal);
         Explanation::all()
             .map(|explanation| {
-                let docstring = lookup.docstring(&explanation)?;
-                Ok(ExplanationPage::new(explanation).with_docstring(docstring))
+                let text = lookup.text(&explanation)?;
+                Ok(ExplanationPage::new(explanation, text))
             })
             .collect()
     }
@@ -53,18 +52,14 @@ impl ErrorPages {
     fn index_row(page: &ExplanationPage) -> String {
         let code = page.code();
         let name = page.display_name();
-        if page.is_written() {
-            format!("| [{code}]({}/{code}.md) | {name} |\n", Self::INDEX)
-        } else {
-            format!("| {code} | {name}, {} |\n", Self::UNWRITTEN_MARK)
-        }
+        format!("| [{code}]({}/{code}.md) | {name} |\n", Self::INDEX)
     }
 
-    fn code_page(page: &ExplanationPage) -> Option<WrittenPage> {
-        Some(WrittenPage {
+    fn code_page(page: &ExplanationPage) -> WrittenPage {
+        WrittenPage {
             module: format!("{}/{}", Self::INDEX, page.code()),
-            text: page.markdown()?,
-        })
+            text: page.markdown(),
+        }
     }
 }
 
@@ -74,9 +69,12 @@ mod tests {
     use crate::cli::explanation_page::ExplanationPage;
     use crate::diagnostic::Explanation;
 
+    const EXPLANATION_TEXT: &str = "An explanation.";
+
     #[test]
     fn the_index_lists_the_codes_in_order() {
-        let pages = ErrorPages::of(Explanation::all().map(ExplanationPage::new).collect());
+        let explained = |explanation| ExplanationPage::new(explanation, EXPLANATION_TEXT.into());
+        let pages = ErrorPages::of(Explanation::all().map(explained).collect());
         let codes: Vec<&str> = pages[0]
             .text
             .lines()

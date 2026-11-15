@@ -2,7 +2,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::reached_traits::ReachedTraits;
 use crate::core::{
-    BindingId, ConsultedTraits, CoreModule, ItemKind, NamedTypes, References, RustTraitDeclaration,
+    BindingId, ConsultedTraits, CoreModule, ItemKind, MemberOwners, NamedTypes, References,
+    RustTraitDeclaration,
 };
 use crate::modules::ModuleSources;
 
@@ -42,16 +43,12 @@ impl<'p> TraitReach<'p> {
                 _ => None,
             })
             .collect();
-        let owners = declarations
-            .values()
-            .flat_map(|declaration| {
-                let methods = declaration.methods.iter().map(|method| method.binding);
-                let associated = declaration.associated.iter().map(|value| value.binding);
-                methods
-                    .chain(associated)
-                    .map(|owned| (owned, declaration.binding))
-            })
-            .collect();
+        let mut owners = FxHashMap::default();
+        for item in modules.iter().flat_map(|module| &module.items) {
+            MemberOwners::of(&item.kind).visit(&mut |member, owner| {
+                owners.insert(member, owner);
+            });
+        }
         Self {
             declarations,
             owners,

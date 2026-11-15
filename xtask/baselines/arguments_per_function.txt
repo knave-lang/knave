@@ -38,7 +38,6 @@ expand/src/expand/names.rs::Expander::define_unrecorded_global 4
 expand/src/expand/problems.rs::ExpandProblems::missing_associated_type 4
 expand/src/expand/problems.rs::ExpandProblems::missing_export 5
 expand/src/expand/problems.rs::ExpandProblems::missing_method 4
-expand/src/expand/problems.rs::ExpandProblems::placeholder_without_parameter 4
 expand/src/expand/problems.rs::ExpandProblems::rust_type_clauses_need_one_parameter 4
 expand/src/expand/problems.rs::ExpandProblems::second_structural_path 6
 expand/src/expand/problems.rs::ExpandProblems::second_trait_path 4

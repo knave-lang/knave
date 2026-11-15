@@ -60,7 +60,6 @@ mod result_printer;
 mod returned_arguments;
 mod rust_clauses;
 mod rust_type;
-mod rust_type_clause_problems;
 mod saved_call_origins;
 mod saved_definitions;
 mod saved_index;
@@ -86,6 +85,7 @@ mod try_check;
 mod type_expr;
 mod type_note;
 mod type_parameters;
+mod type_placeholder_problems;
 
 use std::rc::Rc;
 

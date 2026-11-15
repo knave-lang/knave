@@ -38,6 +38,7 @@ mod lowering;
 mod main_result;
 mod method_receivers;
 mod missing_annotations;
+mod needed_trait;
 mod occurs_check;
 mod opaque_positions;
 mod parameter_call_labels;

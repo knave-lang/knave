@@ -27,11 +27,12 @@ impl TemplateTies {
         })
     }
 
-    pub fn union(&self, other: &Self) -> Self {
-        Self {
-            lifetime: Self::merged(&self.lifetime, &other.lifetime),
-            held: Self::merged(&self.held, &other.held),
-        }
+    pub fn widened(known: Option<Self>, other: Option<Self>) -> Option<Self> {
+        let (known, other) = (known?, other?);
+        Some(Self {
+            lifetime: Self::merged(&known.lifetime, &other.lifetime),
+            held: Self::merged(&known.held, &other.held),
+        })
     }
 
     pub fn lends_through(&self, position: usize) -> bool {
@@ -203,5 +204,21 @@ mod tests {
         );
         let ties = TiesFixture::ties(vec![Type::str_ref(), callback], Type::str_ref());
         assert_eq!(ties, Some(TemplateTies::new(&[0], &[])));
+    }
+
+    #[test]
+    fn a_template_seen_at_two_types_keeps_the_ties_of_both() {
+        let lent = Some(TemplateTies::new(&[0], &[]));
+        let held = Some(TemplateTies::new(&[], &[0]));
+        assert_eq!(
+            TemplateTies::widened(lent, held),
+            Some(TemplateTies::new(&[0], &[0]))
+        );
+    }
+
+    #[test]
+    fn a_template_unsettled_at_one_type_is_unsettled() {
+        let lent = Some(TemplateTies::new(&[0], &[]));
+        assert_eq!(TemplateTies::widened(lent, None), None);
     }
 }

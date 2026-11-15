@@ -20,13 +20,6 @@ impl RegisteredTemplate {
         )
     }
 
-    pub fn widen(&mut self, ties: Option<TemplateTies>) {
-        self.ties = match (&self.ties, ties) {
-            (Some(known), Some(other)) => Some(known.union(&other)),
-            _ => None,
-        };
-    }
-
     pub fn parsed(&self) -> &ParsedTemplate {
         &self.parsed
     }
@@ -81,21 +74,5 @@ mod tests {
         let unknown = RegisteredTemplate::synthetic("&{0}[0]").expect("the text parses");
         assert_eq!(synthetic.ties(), Some(&SyntheticTemplate::LOOK_UP.ties()));
         assert_eq!(unknown.ties(), None);
-    }
-
-    #[test]
-    fn a_template_seen_with_two_types_keeps_the_ties_of_both() {
-        let mut first = RegisteredTemplate::declared("{0}", Some(TemplateTies::new(&[0], &[])))
-            .expect("the text parses");
-        first.widen(Some(TemplateTies::new(&[], &[0])));
-        assert_eq!(first.ties(), Some(&TemplateTies::new(&[0], &[0])));
-    }
-
-    #[test]
-    fn a_template_unsettled_at_one_type_is_unsettled() {
-        let mut first = RegisteredTemplate::declared("{0}", Some(TemplateTies::new(&[0], &[])))
-            .expect("the text parses");
-        first.widen(None);
-        assert_eq!(first.ties(), None);
     }
 }

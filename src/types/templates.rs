@@ -16,6 +16,7 @@ pub struct TemplateBorrows {
     templates: FxHashMap<BindingId, RegisteredTemplate>,
     conversions: FxHashMap<BindingId, Conversions>,
     inline: RefCell<FxHashMap<Rc<str>, Option<RegisteredTemplate>>>,
+    inline_ties: FxHashMap<Rc<str>, Option<TemplateTies>>,
 }
 
 impl TemplateBorrows {
@@ -56,14 +57,10 @@ impl TemplateBorrows {
 
     pub fn register_inline(&mut self, template: &Rc<str>, scheme: &Scheme) {
         let ties = TemplateTies::of(scheme);
-        match self.inline.get_mut().get_mut(template) {
-            Some(Some(registered)) => registered.widen(ties),
-            Some(None) => {}
+        match self.inline_ties.get_mut(template) {
+            Some(known) => *known = TemplateTies::widened(known.take(), ties),
             None => {
-                let registered = RegisteredTemplate::declared(template, ties);
-                self.inline
-                    .get_mut()
-                    .insert(Rc::clone(template), registered);
+                self.inline_ties.insert(Rc::clone(template), ties);
             }
         }
     }
@@ -75,10 +72,10 @@ impl TemplateBorrows {
 
     #[cfg(test)]
     pub fn unsettled_inline(&self) -> Vec<Rc<str>> {
-        let inline = self.inline.borrow();
-        let mut unsettled: Vec<Rc<str>> = inline
+        let mut unsettled: Vec<Rc<str>> = self
+            .inline_ties
             .iter()
-            .filter(|(_, template)| template.as_ref().is_none_or(|it| it.ties().is_none()))
+            .filter(|(_, ties)| ties.is_none())
             .map(|(text, _)| Rc::clone(text))
             .collect();
         unsettled.sort_unstable();
@@ -87,7 +84,7 @@ impl TemplateBorrows {
 
     #[cfg(test)]
     pub fn inline_count(&self) -> usize {
-        self.inline.borrow().len()
+        self.inline_ties.len()
     }
 
     pub fn borrows(&self, callee: &TypedExpr, position: usize) -> bool {
@@ -125,7 +122,12 @@ impl TemplateBorrows {
                 let mut inline = self.inline.borrow_mut();
                 let parsed = inline
                     .entry(template.template.clone())
-                    .or_insert_with(|| RegisteredTemplate::synthetic(&template.template));
+                    .or_insert_with(|| match self.inline_ties.get(&template.template) {
+                        Some(ties) => {
+                            RegisteredTemplate::declared(&template.template, ties.clone())
+                        }
+                        None => RegisteredTemplate::synthetic(&template.template),
+                    });
                 parsed.as_ref().map(read).unwrap_or(absent)
             }
             _ => absent,

@@ -35,7 +35,7 @@ impl SyntheticTemplate {
         Self {
             text,
             lifetime: &[0],
-            held: &[0],
+            held: &[],
         }
     }
 

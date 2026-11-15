@@ -2,8 +2,8 @@ use std::fmt;
 use std::rc::Rc;
 
 use super::{
-    BindingId, Expr, FieldLabel, ImplementorRow, ImplementorRows, Lambda, ParsedTemplate,
-    StructuralClause, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
+    BindingArena, BindingId, Expr, FieldLabel, ImplementorRow, ImplementorRows, Lambda,
+    ParsedTemplate, StructuralClause, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
 };
 use crate::source::Span;
 
@@ -200,8 +200,20 @@ pub struct CoreModule {
     pub id: ModuleId,
     pub path: ModulePath,
     pub items: Vec<Item>,
-    pub exports: Vec<BindingId>,
+    exports: ModuleExports,
     pub library: Option<Rc<str>>,
+}
+
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+pub struct ModuleExports {
+    bindings: Vec<BindingId>,
+    written: Vec<WrittenExport>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+struct WrittenExport {
+    position: usize,
+    name: Rc<str>,
 }
 
 impl ItemKind {
@@ -222,9 +234,17 @@ impl CoreModule {
             id,
             path,
             items: Vec::new(),
-            exports: Vec::new(),
+            exports: ModuleExports::default(),
             library,
         }
+    }
+
+    pub fn exports(&self) -> &ModuleExports {
+        &self.exports
+    }
+
+    pub fn push_export(&mut self, binding: BindingId, written: &Rc<str>, arena: &BindingArena) {
+        self.exports.push(binding, written, arena);
     }
 
     pub fn definitions(&self) -> impl Iterator<Item = (BindingId, &Rc<Expr>)> {
@@ -232,5 +252,139 @@ impl CoreModule {
             ItemKind::Def(binding, value) => Some((*binding, value)),
             _ => None,
         })
+    }
+}
+
+impl ModuleExports {
+    pub fn push(&mut self, binding: BindingId, written: &Rc<str>, arena: &BindingArena) {
+        if arena.get(binding).name() != written.as_ref() {
+            self.written.push(WrittenExport {
+                position: self.bindings.len(),
+                name: Rc::clone(written),
+            });
+        }
+        self.bindings.push(binding);
+    }
+
+    pub fn bindings(&self) -> impl Iterator<Item = BindingId> + '_ {
+        self.bindings.iter().copied()
+    }
+
+    pub fn contains(&self, binding: BindingId) -> bool {
+        self.bindings.contains(&binding)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.bindings.is_empty()
+    }
+
+    pub fn names(&self, mut binding_name: impl FnMut(BindingId) -> String) -> Vec<String> {
+        self.bindings
+            .iter()
+            .enumerate()
+            .map(|(position, binding)| match self.written_name(position) {
+                Some(written) => written.to_string(),
+                None => binding_name(*binding),
+            })
+            .collect()
+    }
+
+    pub fn binding_named(&self, name: &str, arena: &BindingArena) -> Option<BindingId> {
+        self.bindings
+            .iter()
+            .enumerate()
+            .find(|(position, binding)| {
+                self.written_name(*position)
+                    .unwrap_or_else(|| arena.get(**binding).name())
+                    == name
+            })
+            .map(|(_, binding)| *binding)
+    }
+
+    fn written_name(&self, position: usize) -> Option<&str> {
+        self.written
+            .iter()
+            .find(|written| written.position == position)
+            .map(|written| written.name.as_ref())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::rc::Rc;
+
+    use super::ModuleExports;
+    use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind};
+
+    struct ExportsFixture {
+        arena: BindingArena,
+        exports: ModuleExports,
+    }
+
+    impl ExportsFixture {
+        fn new() -> Self {
+            Self {
+                arena: BindingArena::default(),
+                exports: ModuleExports::default(),
+            }
+        }
+
+        fn binding(&mut self, name: &str) -> BindingId {
+            self.arena
+                .add(BindingInfo::new(name.into(), BindingKind::Local, None))
+        }
+
+        fn export_as(&mut self, binding: BindingId, written: &str) {
+            let written: Rc<str> = written.into();
+            self.exports.push(binding, &written, &self.arena);
+        }
+
+        fn names(&self) -> Vec<String> {
+            self.exports
+                .names(|binding| self.arena.get(binding).name().to_string())
+        }
+
+        fn exported(&self, name: &str) -> Option<BindingId> {
+            self.exports.binding_named(name, &self.arena)
+        }
+    }
+
+    #[test]
+    fn an_export_under_its_binding_name_prints_that_name() {
+        let mut fixture = ExportsFixture::new();
+        let binding = fixture.binding("int");
+        fixture.export_as(binding, "int");
+        assert_eq!(fixture.names(), ["int"]);
+    }
+
+    #[test]
+    fn one_binding_exported_under_two_names_prints_both() {
+        let mut fixture = ExportsFixture::new();
+        let binding = fixture.binding("int");
+        fixture.export_as(binding, "int");
+        fixture.export_as(binding, "i64");
+        assert_eq!(fixture.names(), ["int", "i64"]);
+    }
+
+    #[test]
+    fn an_export_is_contained() {
+        let mut fixture = ExportsFixture::new();
+        let binding = fixture.binding("point");
+        assert!(fixture.exports.is_empty());
+        fixture.export_as(binding, "point");
+        assert!(fixture.exports.contains(binding));
+        assert_eq!(fixture.exports.bindings().collect::<Vec<_>>(), [binding]);
+    }
+
+    #[test]
+    fn a_written_name_finds_its_binding() {
+        let mut fixture = ExportsFixture::new();
+        let shown = fixture.binding("int");
+        let other = fixture.binding("bool");
+        fixture.export_as(other, "bool");
+        fixture.export_as(shown, "i64");
+        assert_eq!(fixture.exported("i64"), Some(shown));
+        assert_eq!(fixture.exported("bool"), Some(other));
+        assert_eq!(fixture.exported("int"), None);
     }
 }

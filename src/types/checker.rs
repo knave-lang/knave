@@ -3034,7 +3034,7 @@ impl TypeChecker {
             definitions: Vec::new(),
             structs: Vec::new(),
             enums: Vec::new(),
-            exports: module.exports.clone(),
+            exports: module.exports().bindings().collect(),
         };
         for item in &module.items {
             match &item.kind {

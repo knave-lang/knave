@@ -326,29 +326,6 @@ impl ExpandProblems {
         .with_help("write the placeholder as `{0}`")
     }
 
-    pub fn placeholder_without_parameter(
-        index: usize,
-        parameters: usize,
-        example: &ParameterExample<'_>,
-        span: Span,
-    ) -> Diagnostic {
-        Diagnostic::error(
-            DiagnosticCode::PLACEHOLDER_WITHOUT_PARAMETER,
-            format!("`{{{index}}}` names no type parameter"),
-            Label::new(
-                span,
-                format!(
-                    "this type has {}",
-                    Counted::noun(parameters, "type parameter")
-                ),
-            ),
-        )
-        .with_help(format!(
-            "declare the type parameters on the name, as in `{}`",
-            example.definition()
-        ))
-    }
-
     pub fn unused_type_placeholder(index: usize, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::UNUSED_TYPE_PLACEHOLDER,
@@ -1240,7 +1217,7 @@ pub struct ParameterExample<'e> {
 }
 
 impl ParameterExample<'_> {
-    fn definition(&self) -> String {
+    pub fn definition(&self) -> String {
         let head = format!("({} {})", self.name, self.parameter_names().join(" "));
         let body = match self.spelling {
             TemplateSpelling::KernelString => format!("\"{}\"", self.template),

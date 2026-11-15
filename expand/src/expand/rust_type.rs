@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use super::Expander;
 use super::problems::{ExpandProblems, ParameterExample};
-use super::rust_type_clause_problems::RustTypeClauseProblems;
 use super::shape::Shape;
+use super::type_placeholder_problems::TypePlaceholderProblems;
 use crate::core::{
     BindingId, CoreModule, DefinitionForm, EnumRust, Item, ItemKind, ParsedTemplate, TypeBinder,
     TypeExpr,
@@ -144,11 +144,12 @@ impl Expander<'_> {
             .placeholders()
             .find(|index| *index >= Self::CLAUSE_TYPE_PARAMETERS)
         {
-            return Err(RustTypeClauseProblems::placeholder_without_parameter(
+            return Err(TypePlaceholderProblems::new(
                 index,
                 Self::CLAUSE_TYPE_PARAMETERS,
                 template_form.span(),
-            ));
+            )
+            .in_clause());
         }
         Ok((target, Rc::new(template)))
     }
@@ -277,12 +278,10 @@ impl Expander<'_> {
                 template: template.text(),
                 placeholders,
             };
-            return Err(ExpandProblems::placeholder_without_parameter(
-                index,
-                binders.len(),
-                &example,
-                template_form.span(),
-            ));
+            return Err(
+                TypePlaceholderProblems::new(index, binders.len(), template_form.span())
+                    .declared_on_name(&example),
+            );
         }
         let unused = binders.iter().enumerate().find(|(index, _)| {
             !template

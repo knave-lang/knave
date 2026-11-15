@@ -1,0 +1,5 @@
+(defn main ()
+  (local v (vec (str "a")))
+  (local it (map v (fn (x) (as-str x))))
+  (set! v (vec (str "b")))
+  (println (count it)))

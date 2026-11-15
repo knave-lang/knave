@@ -107,6 +107,13 @@ impl ExplanationExamples {
             .collect()
     }
 
+    pub fn example_heading_count(&self) -> usize {
+        [Self::ERRONEOUS_HEADING, Self::DESCRIBED_HEADING]
+            .iter()
+            .filter(|heading| self.text.contains(*heading))
+            .count()
+    }
+
     pub fn is_described(&self) -> bool {
         self.text.contains(Self::DESCRIBED_HEADING)
     }

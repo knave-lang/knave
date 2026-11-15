@@ -390,6 +390,25 @@ fn a_code_outside_the_lints_needs_no_error_page_docstring() {
 }
 
 #[test]
+fn each_explanation_holds_one_example_heading() {
+    for explanation in ExplanationExamples::written() {
+        assert_eq!(
+            explanation.example_heading_count(),
+            1,
+            "{} must hold exactly one of `## Erroneous example` and `## Described example`",
+            explanation.code()
+        );
+    }
+}
+
+#[test]
+fn an_explanation_with_both_example_headings_counts_two() {
+    let both = format!("{REPL_EXAMPLE}\n{DESCRIBED_EXAMPLE}");
+    let explanation = ExplanationExamples::new("L0249", &both);
+    assert_eq!(explanation.example_heading_count(), 2);
+}
+
+#[test]
 fn each_described_example_holds_no_example_that_looks_runnable() {
     for explanation in ExplanationExamples::written() {
         assert_eq!(

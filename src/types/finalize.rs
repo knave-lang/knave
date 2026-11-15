@@ -244,7 +244,7 @@ impl<'c> Finalizer<'c> {
     fn check_range(&mut self, number: &Number, ty: &Type, span: Span) {
         match ty {
             _ if !LiteralFit::is_representable(number.value()) => {
-                let widest = PrimitiveType::F64.name();
+                let widest = PrimitiveType::F64.names().shown();
                 let diagnostic = TypeProblems::out_of_range(number.text(), widest, span);
                 self.checker.diagnostics.push(diagnostic);
             }
@@ -252,7 +252,8 @@ impl<'c> Finalizer<'c> {
                 self.check_generic_literal(number, *generic, span);
             }
             Type::Primitive(primitive) if !LiteralFit::fits(number.value(), ty) => {
-                let diagnostic = TypeProblems::out_of_range(number.text(), primitive.name(), span);
+                let diagnostic =
+                    TypeProblems::out_of_range(number.text(), primitive.names().shown(), span);
                 self.checker.diagnostics.push(diagnostic);
             }
             _ => {}

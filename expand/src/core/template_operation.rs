@@ -322,7 +322,7 @@ impl<'t> TemplateOperation<'t> {
     fn integer_value(text: &str) -> Option<i128> {
         let digits = PrimitiveType::all()
             .filter(|primitive| primitive.is_integer())
-            .find_map(|primitive| text.strip_suffix(primitive.name()))
+            .find_map(|primitive| text.strip_suffix(primitive.names().rust()))
             .unwrap_or(text);
         digits.replace(Self::UNDERSCORE, "").parse().ok()
     }

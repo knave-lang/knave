@@ -255,6 +255,7 @@ mod tests {
         BindingArena, BindingKind, ExprKind, Item, ItemKind, KernelConstants, KernelForm,
         KernelType, Leaf, Literal, Namespace,
     };
+    use crate::expand::builtin_export::BuiltinExport;
 
     struct UserProgram {
         name: &'static str,
@@ -389,7 +390,11 @@ mod tests {
             let state = UserProgram::loaded_state();
             let prelude = Self::module(&state, ModuleSources::PRELUDE);
             KernelType::all()
-                .map(|kernel_type| (kernel_type.name(), kernel_type.shape()))
+                .flat_map(|kernel_type| {
+                    BuiltinExport::kernel_type(kernel_type)
+                        .names()
+                        .map(move |name| (name, kernel_type.shape()))
+                })
                 .filter(|(name, _)| prelude.exported(name, Namespace::Value).is_none())
                 .chain(KernelConstants::BOOLEANS.map(|(name, _)| (name, name)))
                 .collect()

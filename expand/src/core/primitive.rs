@@ -1,3 +1,5 @@
+use super::PrimitiveNames;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum PrimitiveType {
     Bool,
@@ -23,7 +25,7 @@ pub enum PrimitiveType {
 
 struct PrimitiveRow {
     primitive: PrimitiveType,
-    name: &'static str,
+    names: PrimitiveNames,
     integer_range: Option<(i128, i128)>,
 }
 
@@ -31,97 +33,97 @@ impl PrimitiveType {
     const ROWS: [PrimitiveRow; 19] = [
         PrimitiveRow {
             primitive: PrimitiveType::Bool,
-            name: "bool",
+            names: PrimitiveNames::same("bool"),
             integer_range: None,
         },
         PrimitiveRow {
             primitive: PrimitiveType::Char,
-            name: "char",
+            names: PrimitiveNames::same("char"),
             integer_range: None,
         },
         PrimitiveRow {
             primitive: PrimitiveType::Str,
-            name: "str",
+            names: PrimitiveNames::same("str"),
             integer_range: None,
         },
         PrimitiveRow {
             primitive: PrimitiveType::String,
-            name: "string",
+            names: PrimitiveNames::same("string").emitted_as("String"),
             integer_range: None,
         },
         PrimitiveRow {
             primitive: PrimitiveType::Unit,
-            name: "unit",
+            names: PrimitiveNames::same("unit").emitted_as("()"),
             integer_range: None,
         },
         PrimitiveRow {
             primitive: PrimitiveType::I8,
-            name: "i8",
+            names: PrimitiveNames::same("i8"),
             integer_range: Some((i8::MIN as i128, i8::MAX as i128)),
         },
         PrimitiveRow {
             primitive: PrimitiveType::I16,
-            name: "i16",
+            names: PrimitiveNames::same("i16"),
             integer_range: Some((i16::MIN as i128, i16::MAX as i128)),
         },
         PrimitiveRow {
             primitive: PrimitiveType::I32,
-            name: "i32",
+            names: PrimitiveNames::same("i32"),
             integer_range: Some((i32::MIN as i128, i32::MAX as i128)),
         },
         PrimitiveRow {
             primitive: PrimitiveType::I64,
-            name: "i64",
+            names: PrimitiveNames::same("i64"),
             integer_range: Some((i64::MIN as i128, i64::MAX as i128)),
         },
         PrimitiveRow {
             primitive: PrimitiveType::I128,
-            name: "i128",
+            names: PrimitiveNames::same("i128"),
             integer_range: Some((i128::MIN, i128::MAX)),
         },
         PrimitiveRow {
             primitive: PrimitiveType::Isize,
-            name: "isize",
+            names: PrimitiveNames::same("isize"),
             integer_range: Some((i64::MIN as i128, i64::MAX as i128)),
         },
         PrimitiveRow {
             primitive: PrimitiveType::U8,
-            name: "u8",
+            names: PrimitiveNames::same("u8"),
             integer_range: Some((0, u8::MAX as i128)),
         },
         PrimitiveRow {
             primitive: PrimitiveType::U16,
-            name: "u16",
+            names: PrimitiveNames::same("u16"),
             integer_range: Some((0, u16::MAX as i128)),
         },
         PrimitiveRow {
             primitive: PrimitiveType::U32,
-            name: "u32",
+            names: PrimitiveNames::same("u32"),
             integer_range: Some((0, u32::MAX as i128)),
         },
         PrimitiveRow {
             primitive: PrimitiveType::U64,
-            name: "u64",
+            names: PrimitiveNames::same("u64"),
             integer_range: Some((0, u64::MAX as i128)),
         },
         PrimitiveRow {
             primitive: PrimitiveType::U128,
-            name: "u128",
+            names: PrimitiveNames::same("u128"),
             integer_range: Some((0, i128::MAX)),
         },
         PrimitiveRow {
             primitive: PrimitiveType::Usize,
-            name: "usize",
+            names: PrimitiveNames::same("usize"),
             integer_range: Some((0, u64::MAX as i128)),
         },
         PrimitiveRow {
             primitive: PrimitiveType::F32,
-            name: "f32",
+            names: PrimitiveNames::same("f32"),
             integer_range: None,
         },
         PrimitiveRow {
             primitive: PrimitiveType::F64,
-            name: "f64",
+            names: PrimitiveNames::same("f64"),
             integer_range: None,
         },
     ];
@@ -130,8 +132,8 @@ impl PrimitiveType {
         Self::ROWS.iter().map(|row| row.primitive)
     }
 
-    pub fn name(self) -> &'static str {
-        self.row().name
+    pub fn names(self) -> PrimitiveNames {
+        self.row().names
     }
 
     pub fn integer_range(self) -> Option<(i128, i128)> {

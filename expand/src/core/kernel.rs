@@ -298,7 +298,14 @@ impl KernelType {
             KernelType::Where => "where",
             KernelType::With => "with",
             KernelType::Hole => "_",
-            KernelType::Primitive(primitive) => primitive.name(),
+            KernelType::Primitive(primitive) => primitive.names().shown(),
+        }
+    }
+
+    pub fn differing_spelling(self) -> Option<&'static str> {
+        match self {
+            KernelType::Primitive(primitive) => primitive.names().differing_spelling(),
+            _ => None,
         }
     }
 }

@@ -1,12 +1,13 @@
 use std::rc::Rc;
 
 use super::Expander;
+use super::builtin_export::BuiltinExport;
 use super::context::DefinitionContext;
 use super::problems::{ExpandProblems, MissingExportRemedy};
 use super::shape::Shape;
 use crate::core::{
-    BindingId, BindingInfo, BindingKind, Builtin, BuiltinModule, DefinitionForm, KernelConstants,
-    KernelForm, KernelType, ModuleId, ModulePath, Namespace,
+    BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, KernelConstants, KernelForm,
+    KernelType, ModuleId, ModulePath, Namespace,
 };
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
@@ -428,43 +429,33 @@ impl Expander<'_> {
             self.tables.scopes.fresh(ScopeKind::Module),
         );
         let id = self.modules.register(path.clone(), scopes);
-        for (name, namespace, kind) in Self::builtin_exports(builtin) {
-            let binding = self
-                .tables
-                .bindings
-                .add(BindingInfo::new(name.into(), kind, None));
-            self.modules
-                .get_mut(id)
-                .export(name.into(), namespace, binding);
+        for export in Self::builtin_exports(builtin) {
+            let binding = self.tables.bindings.add(export.binding());
+            for name in export.names() {
+                self.modules
+                    .get_mut(id)
+                    .export(name.into(), export.namespace(), binding);
+            }
         }
         self.modules.finish_loading(id);
         id
     }
 
-    fn builtin_exports(builtin: BuiltinModule) -> Vec<(&'static str, Namespace, BindingKind)> {
+    fn builtin_exports(builtin: BuiltinModule) -> Vec<BuiltinExport> {
         match builtin {
-            BuiltinModule::Kernel => KernelForm::all()
-                .map(|form| (form.name(), Namespace::Value, BindingKind::KernelForm(form)))
-                .chain(KernelType::all().map(|kernel_type| {
-                    (
-                        kernel_type.name(),
-                        Namespace::Type,
-                        BindingKind::KernelType(kernel_type),
-                    )
-                }))
-                .chain(
-                    KernelConstants::BOOLEANS
-                        .map(|(name, value)| (name, Namespace::Value, BindingKind::Boolean(value))),
-                )
-                .collect(),
+            BuiltinModule::Kernel => {
+                KernelForm::all()
+                    .map(|form| BuiltinExport::value(form.name(), BindingKind::KernelForm(form)))
+                    .chain(KernelType::all().map(BuiltinExport::kernel_type))
+                    .chain(KernelConstants::BOOLEANS.map(|(name, value)| {
+                        BuiltinExport::value(name, BindingKind::Boolean(value))
+                    }))
+                    .collect()
+            }
             BuiltinModule::Code | BuiltinModule::PreludeCode => Builtin::all()
                 .filter(|each| each.module() == builtin)
                 .map(|builtin| {
-                    (
-                        builtin.name(),
-                        Namespace::Value,
-                        BindingKind::CodeBuiltin(builtin),
-                    )
+                    BuiltinExport::value(builtin.name(), BindingKind::CodeBuiltin(builtin))
                 })
                 .collect(),
         }

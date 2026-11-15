@@ -82,7 +82,7 @@ impl<'b> ParameterNames<'b> {
     fn type_name(&self, parameter: &Type) -> String {
         match parameter {
             Type::Named(binding, _) => NameMangler::value(self.bindings.get(*binding).name()),
-            Type::Primitive(primitive) => primitive.name().to_string(),
+            Type::Primitive(primitive) => primitive.names().spelling().to_string(),
             _ => Self::UNNAMED.to_string(),
         }
     }
@@ -532,6 +532,15 @@ mod tests {
         assert_eq!(
             fixture.names(&parameters),
             vec!["formatter_1", "i64_2", "parameter_3"]
+        );
+    }
+
+    #[test]
+    fn a_text_parameter_takes_its_kernel_spelling() {
+        let fixture = NamingFixture::new();
+        assert_eq!(
+            fixture.names(&[Type::Primitive(PrimitiveType::String)]),
+            vec!["string"]
         );
     }
 }

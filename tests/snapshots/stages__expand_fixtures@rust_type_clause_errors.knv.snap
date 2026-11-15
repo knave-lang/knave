@@ -26,3 +26,11 @@ error[L0210]: malformed `rust-type`
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this does not fit the shape of `rust-type`
   |
   = help: write it as `(rust-type (name parameter ...) "template" (type "template") ...)`
+
+error[L0225]: `{1}` names no type parameter
+  --> expand/rust_type_clause_errors.knv:11:7
+   |
+11 |   (u8 "[{1}; 2]"))
+   |       ^^^^^^^^^^ this type has 1 type parameter
+   |
+   = help: a clause template names the type's one parameter as `{0}`

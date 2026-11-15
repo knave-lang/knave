@@ -60,6 +60,7 @@ mod result_printer;
 mod returned_arguments;
 mod rust_clauses;
 mod rust_type;
+mod rust_type_clause_problems;
 mod saved_call_origins;
 mod saved_definitions;
 mod saved_index;

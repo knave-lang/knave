@@ -7,6 +7,7 @@ mod implementor_rows;
 mod kernel;
 mod keyword;
 mod module;
+mod primitive;
 mod printer;
 mod references;
 mod saved_bindings;
@@ -35,7 +36,7 @@ pub use expr::{
 pub use implementor_rows::{ImplementorRow, ImplementorRows};
 pub use kernel::{
     ControlForm, DefinitionForm, ExpressionForm, FunctionFieldTraits, KernelConstants, KernelForm,
-    KernelType, LeafForm, PrimitiveType, ReferenceKind, StructDerives, StructForm,
+    KernelType, LeafForm, ReferenceKind, StructDerives, StructForm,
 };
 pub use keyword::Keyword;
 pub use module::{
@@ -45,6 +46,7 @@ pub use module::{
     RequiredTrait, RustTraitAssociatedType, RustTraitDeclaration, RustTraitImplementor,
     TraitAssociatedType, TraitMethod, VariantDeclaration, VariantPayload,
 };
+pub use primitive::PrimitiveType;
 pub use printer::CorePrinter;
 pub use references::References;
 pub use saved_bindings::{BindingTables, SavedBindings};

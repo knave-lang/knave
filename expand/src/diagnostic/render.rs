@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 
 use super::quoted_form::QuotedForm;
 use super::source_window::{LineIndex, SourceWindow};
-use super::{Diagnostic, Diagnostics, Help, Label, Severity, Suggestion};
+use super::{Diagnostic, Diagnostics, Explanation, Help, Label, Severity, Suggestion};
 use crate::source::{SourceId, SourceMap, Span};
 
 pub struct DiagnosticRenderer<'a> {
@@ -54,7 +54,15 @@ impl<'a> DiagnosticRenderer<'a> {
         let (leading, trailing) = Self::split_helps(diagnostic.helps());
         let mut report = vec![self.main_group(diagnostic, leading)];
         report.extend(trailing.iter().map(|help| self.help_group(help)));
+        if let Some(pointer) = diagnostic.code().and_then(Explanation::pointer_to) {
+            Self::end_with_note(&mut report, pointer);
+        }
         self.renderer.render(&report)
+    }
+
+    fn end_with_note(report: &mut Vec<Group<'_>>, note: String) {
+        let last = report.pop().expect("a report holds its main group");
+        report.push(last.element(Level::NOTE.message(note)));
     }
 
     fn split_helps(helps: &[Help]) -> (&[Help], &[Help]) {
@@ -199,10 +207,51 @@ impl<'a> DiagnosticRenderer<'a> {
 #[cfg(test)]
 mod tests {
     use super::DiagnosticRenderer;
-    use crate::diagnostic::{Diagnostic, DiagnosticCode, Diagnostics, Label, Suggestion};
+    use crate::diagnostic::{
+        Diagnostic, DiagnosticCode, Diagnostics, Explanation, Label, Suggestion,
+    };
+    use crate::language::Language;
     use crate::source::{SourceMap, Span};
 
     const ESCAPE: char = '\u{1b}';
+
+    struct PointerFixture {
+        sources: SourceMap,
+        span: Span,
+    }
+
+    impl PointerFixture {
+        const SOURCE: &str = "(prnt 1)";
+
+        fn new() -> Self {
+            let mut sources = SourceMap::default();
+            let source = sources.add("sample.knv", Self::SOURCE);
+            Self {
+                sources,
+                span: Span::new(source, 1..5),
+            }
+        }
+
+        fn label(&self) -> Label {
+            Label::new(self.span, "a label")
+        }
+
+        fn rendered(&self, diagnostic: &Diagnostic) -> String {
+            DiagnosticRenderer::plain(&self.sources).render(diagnostic)
+        }
+
+        fn pointer(code: &str) -> String {
+            format!(
+                "  = note: run `{} {} {code}` for an explanation",
+                Language::NAME,
+                Explanation::LOOKUP_COMMAND
+            )
+        }
+
+        fn last_line(rendered: &str) -> &str {
+            rendered.lines().last().expect("a report has lines")
+        }
+    }
 
     #[test]
     fn styled_rendering_colors_the_report() {
@@ -240,6 +289,86 @@ mod tests {
             .expect("the suggestion renders");
         let last = rendered.find("last help").expect("the last help renders");
         assert!(first < suggestion && suggestion < last, "{rendered}");
+    }
+
+    #[test]
+    fn the_pointer_follows_a_plain_help() {
+        let fixture = PointerFixture::new();
+        let diagnostic =
+            Diagnostic::error(DiagnosticCode::UNBOUND_NAME, "a title", fixture.label())
+                .with_help("a help");
+        let rendered = fixture.rendered(&diagnostic);
+        assert!(rendered.contains("= help: a help\n"), "{rendered}");
+        assert_eq!(
+            PointerFixture::last_line(&rendered),
+            PointerFixture::pointer("L0201")
+        );
+    }
+
+    #[test]
+    fn the_pointer_follows_a_suggestion_group_and_a_later_help() {
+        let fixture = PointerFixture::new();
+        let diagnostic =
+            Diagnostic::error(DiagnosticCode::UNBOUND_NAME, "a title", fixture.label())
+                .with_suggestion("a suggestion", Suggestion::new(fixture.span, "prn"))
+                .with_help("a later help");
+        let rendered = fixture.rendered(&diagnostic);
+        assert!(rendered.contains("a later help"), "{rendered}");
+        assert_eq!(
+            PointerFixture::last_line(&rendered),
+            PointerFixture::pointer("L0201")
+        );
+    }
+
+    #[test]
+    fn a_warning_points_to_its_explanation() {
+        let fixture = PointerFixture::new();
+        let warning =
+            Diagnostic::warning(DiagnosticCode::UNUSED_BINDING, "a title", fixture.label());
+        assert_eq!(
+            PointerFixture::last_line(&fixture.rendered(&warning)),
+            PointerFixture::pointer("L0801")
+        );
+    }
+
+    #[test]
+    fn the_pointer_follows_the_expansion_note_of_a_macro_call() {
+        let fixture = PointerFixture::new();
+        let diagnostic =
+            Diagnostic::error(DiagnosticCode::UNBOUND_NAME, "a title", fixture.label())
+                .with_note("in this expansion of `twice`");
+        let rendered = fixture.rendered(&diagnostic);
+        let lines: Vec<&str> = rendered.lines().rev().take(2).collect();
+        assert_eq!(
+            lines,
+            vec![
+                PointerFixture::pointer("L0201").as_str(),
+                "  = note: in this expansion of `twice`"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_rustc_code_points_to_no_explanation() {
+        let fixture = PointerFixture::new();
+        let rustc_code = DiagnosticCode::from_text("E0515".to_string());
+        let diagnostic = Diagnostic::error(rustc_code, "a title", fixture.label());
+        assert!(!fixture.rendered(&diagnostic).contains("for an explanation"));
+    }
+
+    #[test]
+    fn a_code_outside_the_table_points_to_no_explanation() {
+        let fixture = PointerFixture::new();
+        let unknown = DiagnosticCode::from_text("L0999".to_string());
+        let diagnostic = Diagnostic::error(unknown, "a title", fixture.label());
+        assert!(!fixture.rendered(&diagnostic).contains("for an explanation"));
+    }
+
+    #[test]
+    fn a_note_without_a_code_points_to_no_explanation() {
+        let fixture = PointerFixture::new();
+        let note = Diagnostic::note("a note", fixture.label());
+        assert!(!fixture.rendered(&note).contains("for an explanation"));
     }
 
     #[test]

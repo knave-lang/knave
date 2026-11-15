@@ -14,6 +14,9 @@ This guide covers every error the compiler prints. A diagnostic uses rustc's lay
 | Secondary labels | Other forms that explain the error, such as the earlier definition of a duplicate name | no |
 | Notes | `note:` lines that state facts the reader needs | no |
 | Help | `help:` lines that state a fix | yes, if a fix exists |
+| Pointer | `= note: run `knave doc <code>` for an explanation`, the last line | yes, for a code of the code table |
+
+**`DiagnosticRenderer::render` adds the pointer, never a stage's problems type.** It follows the code, not the severity, so a warning gets it too. A rustc code, a note-severity diagnostic, which has no code, and a code outside `expand/src/diagnostic/code.rs` get none. Every code of the table has an explanation, and a test checks it.
 
 A warning does not stop the build: the compiler prints it and continues.
 
@@ -32,6 +35,7 @@ help: a function with a similar name exists
   |
 4 |   (print (distance origin target))
   |           ~~~~~~~~
+  = note: run `knave doc L0201` for an explanation
 ```
 
 ## Tone

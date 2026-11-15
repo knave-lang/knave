@@ -8,23 +8,27 @@ pub struct ExplanationLookup<'t> {
 }
 
 impl<'t> ExplanationLookup<'t> {
+    const EVERY_CODE_EXPLAINED: &'static str =
+        "the explanation tests give every code a Markdown file or a lint docstring";
+
     pub fn new(terminal: &'t mut Terminal) -> Self {
         Self {
             lookup: DocLookup::new(terminal),
         }
     }
 
-    pub fn docstring(&mut self, explanation: &Explanation) -> Result<Option<String>, ExitStatus> {
-        match Self::docstring_explained_lint(explanation) {
-            Some(lint) => self.lookup.lint_explanation(&lint),
-            None => Ok(None),
+    pub fn text(&mut self, explanation: &Explanation) -> Result<String, ExitStatus> {
+        match explanation.text() {
+            Some(text) => Ok(text.to_string()),
+            None => self.lint_docstring(explanation),
         }
     }
 
-    fn docstring_explained_lint(explanation: &Explanation) -> Option<String> {
-        if explanation.text().is_some() {
-            return None;
-        }
-        CodeStage::LINTS.name_of(explanation.code())
+    fn lint_docstring(&mut self, explanation: &Explanation) -> Result<String, ExitStatus> {
+        let lint = CodeStage::LINTS
+            .name_of(explanation.code())
+            .expect(Self::EVERY_CODE_EXPLAINED);
+        let docstring = self.lookup.lint_explanation(&lint)?;
+        Ok(docstring.expect(Self::EVERY_CODE_EXPLAINED))
     }
 }

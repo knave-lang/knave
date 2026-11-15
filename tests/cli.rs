@@ -2371,16 +2371,6 @@ fn doc_looks_up_a_code_name_as_a_term() {
 }
 
 #[test]
-fn doc_says_when_a_code_has_no_explanation_yet() {
-    let sandbox = Sandbox::new("doc_code_unexplained");
-    let doc = sandbox.compiler(&["doc", "L0108"]);
-    assert_eq!(
-        doc.assert_exit_code(0).stdout(),
-        "L0108: list too deep\n\nNo explanation yet.\n"
-    );
-}
-
-#[test]
 fn doc_looks_up_an_unknown_code_as_a_term() {
     let sandbox = Sandbox::new("doc_unknown_code");
     let doc = sandbox.compiler(&["doc", "--color", "never", "L0999"]);
@@ -3037,7 +3027,7 @@ fn doc_write_shows_the_type_a_module_gives_its_own_name() {
 }
 
 #[test]
-fn doc_write_errors_writes_the_index_and_a_page_per_explained_code() {
+fn doc_write_errors_writes_the_index_and_a_page_per_code() {
     let sandbox = Sandbox::new("doc_write_errors");
     sandbox
         .compiler(&["doc", "--write", "--errors"])
@@ -3045,11 +3035,11 @@ fn doc_write_errors_writes_the_index_and_a_page_per_explained_code() {
     let files = sandbox.files_under("doc");
     assert!(files.contains(&"errors.md".to_string()));
     assert!(files.contains(&"errors/L0501.md".to_string()));
-    assert!(!files.contains(&"errors/L0108.md".to_string()));
+    assert!(files.contains(&"errors/L0108.md".to_string()));
     assert!(!files.contains(&"prelude.md".to_string()));
     let index = sandbox.contents("doc/errors.md");
     assert!(index.contains("| [L0501](errors/L0501.md) | use after move |\n"));
-    assert!(index.contains("| L0108 | list too deep, no explanation yet |\n"));
+    assert!(index.contains("| [L0108](errors/L0108.md) | list too deep |\n"));
     let page = sandbox.contents("doc/errors/L0501.md");
     assert!(page.starts_with("# L0501: use after move\n\n"));
 }

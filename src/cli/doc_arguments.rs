@@ -74,12 +74,8 @@ impl DocArguments {
 
     fn explain(explanation: Explanation, terminal: &mut Terminal) -> ExitStatus {
         ExplanationLookup::new(terminal)
-            .docstring(&explanation)
-            .map(|docstring| {
-                ExplanationPage::new(explanation)
-                    .with_docstring(docstring)
-                    .print()
-            })
+            .text(&explanation)
+            .map(|text| ExplanationPage::new(explanation, text).print())
             .unwrap_or_else(|status| status)
     }
 

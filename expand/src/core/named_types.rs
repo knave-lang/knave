@@ -1,16 +1,36 @@
-use super::{BindingId, ItemKind, TypeBound, TypeExpr, VariantPayload};
+use super::{BindingId, ItemKind, RustTraitDeclaration, TypeBound, TypeExpr, VariantPayload};
 
 pub struct NamedTypes<'i> {
-    kind: &'i ItemKind,
+    written: WrittenTypes<'i>,
+}
+
+enum WrittenTypes<'i> {
+    Item(&'i ItemKind),
+    RustTrait(&'i RustTraitDeclaration),
 }
 
 impl<'i> NamedTypes<'i> {
     pub fn of(kind: &'i ItemKind) -> Self {
-        Self { kind }
+        Self {
+            written: WrittenTypes::Item(kind),
+        }
+    }
+
+    pub fn of_declaration(declaration: &'i RustTraitDeclaration) -> Self {
+        Self {
+            written: WrittenTypes::RustTrait(declaration),
+        }
     }
 
     pub fn visit(&self, visit: &mut dyn FnMut(BindingId)) {
-        match self.kind {
+        match self.written {
+            WrittenTypes::Item(kind) => Self::visit_item(kind, visit),
+            WrittenTypes::RustTrait(declaration) => Self::visit_rust_trait(declaration, visit),
+        }
+    }
+
+    fn visit_item(kind: &ItemKind, visit: &mut dyn FnMut(BindingId)) {
+        match kind {
             ItemKind::Signature(_, signature) => Self::types([signature].into_iter(), visit),
             ItemKind::Struct(_, _, fields) => {
                 Self::types(fields.iter().map(|(_, field)| field), visit);
@@ -24,12 +44,12 @@ impl<'i> NamedTypes<'i> {
             ItemKind::Derive(_, _, derived) => {
                 derived.iter().for_each(|(binding, _)| visit(*binding));
             }
-            _ => self.visit_declaration(visit),
+            _ => Self::visit_declaration(kind, visit),
         }
     }
 
-    fn visit_declaration(&self, visit: &mut dyn FnMut(BindingId)) {
-        match self.kind {
+    fn visit_declaration(kind: &ItemKind, visit: &mut dyn FnMut(BindingId)) {
+        match kind {
             ItemKind::Trait(_, _, _, supertraits, _, methods) => {
                 Self::bounds(supertraits.iter(), visit);
                 Self::types(methods.iter().map(|method| &method.signature), visit);
@@ -44,6 +64,25 @@ impl<'i> NamedTypes<'i> {
             }
             _ => {}
         }
+    }
+
+    fn visit_rust_trait(declaration: &RustTraitDeclaration, visit: &mut dyn FnMut(BindingId)) {
+        Self::bounds(
+            declaration.requires.iter().map(|required| &required.bound),
+            visit,
+        );
+        Self::types(
+            declaration.methods.iter().map(|method| &method.signature),
+            visit,
+        );
+        let rows = declaration.implementors.get().iter();
+        Self::types(
+            rows.flat_map(|row| {
+                std::iter::once(&row.implementor)
+                    .chain(row.associated.iter().map(|value| &value.value))
+            }),
+            visit,
+        );
     }
 
     fn payload(payload: &VariantPayload) -> Vec<&TypeExpr> {
@@ -94,6 +133,26 @@ mod tests {
             for item in &program.entry_module().items {
                 if kind(&item.kind) {
                     NamedTypes::of(&item.kind).visit(&mut |binding| {
+                        named.push(program.bindings.get(binding).name().to_string())
+                    });
+                }
+            }
+            named
+        }
+
+        fn named_by_rust_trait(text: &str, name: &str) -> Vec<String> {
+            let mut sources = SourceMap::default();
+            let entry = sources.add(Self::MODULE, format!("{}{text}", Self::POINT));
+            let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
+            let program = Expander::new(&mut sources, module_sources)
+                .expand(ModulePath::new(Self::MODULE), entry)
+                .unwrap_or_else(|_| panic!("the program expands"));
+            let mut named = Vec::new();
+            for item in &program.entry_module().items {
+                if let ItemKind::RustTrait(declaration) = &item.kind
+                    && program.bindings.get(declaration.binding).name() == name
+                {
+                    NamedTypes::of_declaration(declaration).visit(&mut |binding| {
                         named.push(program.bindings.get(binding).name().to_string())
                     });
                 }
@@ -170,5 +229,15 @@ mod tests {
             |kind| matches!(kind, ItemKind::RustType(..)),
         );
         assert!(named.contains(&"ord".to_string()), "{named:?}");
+    }
+
+    #[test]
+    fn a_rust_trait_names_its_required_traits_and_implementors() {
+        let named = NamedTypesFixture::named_by_rust_trait(
+            "(rust-trait ranked \"Ord\" (requires ord) point)",
+            "ranked",
+        );
+        assert!(named.contains(&"ord".to_string()), "{named:?}");
+        assert!(named.contains(&"point".to_string()), "{named:?}");
     }
 }

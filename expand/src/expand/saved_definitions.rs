@@ -417,9 +417,8 @@ mod tests {
 
         fn encoded_macro_helpers(program: &Program) -> Vec<BindingId> {
             program
-                .macro_helpers
-                .iter()
-                .copied()
+                .compile_time_roots
+                .ran()
                 .filter(|helper| !program.bindings.is_decoded(*helper))
                 .collect()
         }
@@ -551,7 +550,7 @@ mod tests {
     fn a_program_helper_is_not_a_prelude_macro_helper() {
         let program = LoadedProgram::expand(LoadedProgram::MACRO_WITH_HELPER);
         let helper = LoadedProgram::defined_binding(&program, "helper");
-        assert!(program.macro_helpers.contains(&helper));
+        assert!(program.compile_time_roots.ran().any(|ran| ran == helper));
         assert!(!program.prelude_macro_helpers().contains(&helper));
     }
 

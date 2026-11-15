@@ -2574,16 +2574,14 @@ impl TypeChecker {
         let found = display.show(implementor);
         let program_type = self.is_program_type(implementor);
         let diagnostic = match self.unimplemented_box(implementor, bound) {
-            Some(boxed) => {
-                TypeProblems::missing_trait_on_box(needed.name, &display.show(&boxed), span)
-            }
+            Some(boxed) => TypeProblems::missing_trait_on_box(&needed, &display.show(&boxed), span),
             None => match implementor {
                 Type::Named(binding, _) if program_type => {
                     TypeProblems::missing_trait_on_struct(&needed, &found, span)
                 }
                 _ => {
                     let implementors = self.implementor_names(bound.binding, display);
-                    TypeProblems::missing_trait(needed, &found, span, implementors)
+                    TypeProblems::missing_trait(&needed, &found, span, implementors)
                 }
             },
         };

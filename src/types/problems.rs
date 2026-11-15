@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::assumed_collections::CollectionAssumption;
-use super::display::NeededTrait;
+use super::needed_trait::NeededTrait;
 use super::parameter_call_search::ParameterCall;
 use super::pinning::LiteralDefault;
 use crate::core::{FieldLabel, Keyword};
@@ -354,17 +354,17 @@ impl TypeProblems {
     }
 
     pub fn missing_trait(
-        needed: NeededTrait<'_>,
+        needed: &NeededTrait<'_>,
         found: &str,
         span: Span,
         implementors: ImplementorList,
     ) -> Diagnostic {
         let entries = implementors.entries.join(", ");
         let listed = (!entries.is_empty())
-            .then(|| format!("`{}` is implemented for: {entries}", needed.name));
+            .then(|| format!("`{}` is implemented for: {entries}", needed.name()));
         let grouped = (implementors.groups.iter())
-            .map(|group| Self::implementor_group_note(needed.name, group));
-        let diagnostic = Self::missing_trait_on_struct(&needed, found, span);
+            .map(|group| Self::implementor_group_note(needed.name(), group));
+        let diagnostic = Self::missing_trait_on_struct(needed, found, span);
         listed
             .into_iter()
             .chain(grouped)
@@ -543,18 +543,14 @@ impl TypeProblems {
     ) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::MISSING_TRAIT,
-            format!("`{found}` does not implement `{}`", needed.bound),
-            Label::new(span, format!("this needs `{}`", needed.bound)),
+            format!("`{found}` does not implement `{}`", needed.bound()),
+            Label::new(span, format!("this needs `{}`", needed.bound())),
         )
     }
 
-    pub fn missing_trait_on_box(trait_name: &str, found: &str, span: Span) -> Diagnostic {
-        Diagnostic::error(
-            DiagnosticCode::MISSING_TRAIT,
-            format!("`{found}` does not implement `{trait_name}`"),
-            Label::new(span, format!("this needs `{trait_name}`")),
-        )
-        .with_help(format!(
+    pub fn missing_trait_on_box(needed: &NeededTrait<'_>, found: &str, span: Span) -> Diagnostic {
+        let trait_name = needed.bound();
+        Self::missing_trait_on_struct(needed, found, span).with_help(format!(
             "write the type `(box {trait_name})` where the box is made, such as `(local (shapes (vec (box {trait_name}))) ...)`"
         ))
     }

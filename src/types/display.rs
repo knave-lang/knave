@@ -1,5 +1,6 @@
 use rustc_hash::FxHashMap;
 
+use super::needed_trait::NeededTrait;
 use super::projection::ProjectionTable;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
 use crate::core::{BindingArena, BindingId};
@@ -156,15 +157,12 @@ impl<'a> TypeDisplay<'a> {
         argument: Option<Type>,
         implementor: &Type,
     ) -> NeededTrait<'a> {
-        let name = self.bindings.get(binding).name();
-        let named = argument.filter(|argument| !argument.has_vars() && argument != implementor);
-        NeededTrait {
-            name,
-            bound: match named {
-                Some(argument) => format!("({name} {})", self.show(&argument)),
-                None => name.to_string(),
-            },
-        }
+        let shown = Bound {
+            binding,
+            argument: argument.filter(|argument| !argument.has_vars() && argument != implementor),
+            origins: Vec::new(),
+        };
+        NeededTrait::new(self.bindings.get(binding).name(), self.bound(&shown))
     }
 
     fn bound(&self, bound: &Bound) -> String {
@@ -174,9 +172,4 @@ impl<'a> TypeDisplay<'a> {
             None => name.to_string(),
         }
     }
-}
-
-pub struct NeededTrait<'a> {
-    pub name: &'a str,
-    pub bound: String,
 }

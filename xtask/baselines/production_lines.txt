@@ -14,9 +14,9 @@ src/ownership/moves.rs 593
 src/ownership/problems.rs 858
 src/ownership/slices.rs 522
 src/ownership/values.rs 601
-src/types/checker.rs 3093
+src/types/checker.rs 3091
 src/types/infer.rs 3664
 src/types/infer/shared_variables.rs 573
 src/types/pinning.rs 729
-src/types/problems.rs 1387
+src/types/problems.rs 1383
 src/types/typed.rs 775

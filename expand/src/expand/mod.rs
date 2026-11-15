@@ -35,6 +35,7 @@ mod introduced;
 mod introduced_name;
 mod introduced_names;
 mod introducing_macros;
+mod lint_records;
 mod loaded_text_modules;
 mod local_file_diagnosis;
 mod macro_call;
@@ -132,6 +133,7 @@ use evaluated_forms::EvaluatedForms;
 pub use generated_entry::GeneratedEntry;
 use globals::{GlobalTable, LoweredGlobals};
 pub use input_terms::InputTerms;
+use lint_records::{CompileTimeRoots, LintHandOff, MacroReferences};
 use loaded_text_modules::LoadedTextModules;
 use macro_call::MacroTable;
 pub use macro_call_lookup::MacroCallLookup;
@@ -169,7 +171,7 @@ pub struct Program {
     pub bindings: BindingArena,
     pub scopes: ScopeSupply,
     pub call_origins: Rc<dyn MacroCallLookup>,
-    pub macro_helpers: FxHashSet<BindingId>,
+    pub compile_time_roots: CompileTimeRoots,
     pub string_view: Option<BindingId>,
     pub checked_roots: Vec<BindingId>,
     pub pending_definitions: PendingDefinitions,
@@ -209,9 +211,8 @@ impl Program {
             matches!(self.bindings.get(binding).kind(),
                 BindingKind::Global(module) if prelude.contains(&module))
         };
-        self.macro_helpers
-            .iter()
-            .copied()
+        self.compile_time_roots
+            .ran()
             .filter(|binding| self.bindings.is_saved(*binding) || is_prelude_global(*binding))
             .collect()
     }
@@ -399,15 +400,18 @@ impl<'s> Expander<'s> {
             .tables
             .string_view
             .or_else(|| self.tables.find_string_view());
+        let modules = self.take_modules();
+        let references = MacroReferences::new(&self.tables.table, &self.tables.bindings);
+        let named = LintHandOff::new(references, self.tables.macros.ready()).hand_to(&modules);
         let mut program = Program {
-            modules: self.take_modules(),
+            modules,
             entry: ProgramEntry {
                 module: entry,
                 function: None,
             },
             bindings: self.tables.bindings,
             scopes: self.tables.scopes.into_supply(),
-            macro_helpers: self.tables.globals.macro_helpers(),
+            compile_time_roots: CompileTimeRoots::new(self.tables.globals.macro_helpers(), named),
             string_view,
             checked_roots: Vec::new(),
             pending_definitions: PendingDefinitions::new(self.saved_definitions),

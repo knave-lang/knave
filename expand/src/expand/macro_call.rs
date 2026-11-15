@@ -53,6 +53,15 @@ impl MacroTable {
         ready
     }
 
+    pub fn ready(&self) -> impl Iterator<Item = (BindingId, &Closure)> {
+        self.states
+            .iter()
+            .filter_map(|(binding, state)| match state {
+                MacroState::Ready(closure) => Some((*binding, closure.as_ref())),
+                _ => None,
+            })
+    }
+
     #[cfg(test)]
     pub fn holds_ready(&self, binding: BindingId) -> bool {
         matches!(self.states.get(&binding), Some(MacroState::Ready(_)))

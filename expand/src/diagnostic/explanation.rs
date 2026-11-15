@@ -1,4 +1,5 @@
 use super::DiagnosticCode;
+use crate::language::Language;
 
 macro_rules! written_explanations {
     ($($code:literal,)*) => {
@@ -263,6 +264,19 @@ impl Explanation {
 
     pub fn of_code(code: &str) -> Option<Self> {
         Self::all().find(|explanation| explanation.code.as_str() == code)
+    }
+
+    pub fn pointer_to(code: &DiagnosticCode) -> Option<String> {
+        Self::of_code(code.as_str()).map(|explanation| explanation.pointer())
+    }
+
+    fn pointer(&self) -> String {
+        format!(
+            "run `{} {} {}` for an explanation",
+            Language::NAME,
+            Self::LOOKUP_COMMAND,
+            self.code.as_str()
+        )
     }
 
     pub fn all() -> impl Iterator<Item = Self> {

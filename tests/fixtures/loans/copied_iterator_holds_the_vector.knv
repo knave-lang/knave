@@ -1,0 +1,6 @@
+(defn main ()
+  (local v (vec 1 2))
+  (local it
+    (the (iterator i64) (take v 1)))
+  (set! v (vec 3))
+  (println (count it)))

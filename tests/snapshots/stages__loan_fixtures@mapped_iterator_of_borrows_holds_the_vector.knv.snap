@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/mapped_iterator_of_borrows_holds_the_vector.knv
+---
+main
+  3:18 borrow `v`: no live loan
+  4:9 change `v`: `v` lent at 3:18, held by `it`
+  5:19 move `it`: `v` lent at 3:18, held by `it`

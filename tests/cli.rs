@@ -4177,6 +4177,13 @@ fn eval_reports_a_diagnostic_of_the_module_and_runs_nothing() {
 }
 
 #[test]
+fn eval_reports_a_recur_outside_a_function() {
+    let sandbox = Sandbox::new("eval_recur_outside_function").with_file("empty.knv", "");
+    let eval = sandbox.compiler(&["eval", "empty.knv", "(recur 1)"]);
+    insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn eval_reports_a_diagnostic_of_a_form_at_its_own_line() {
     let sandbox =
         Sandbox::new("eval_form_error").with_file("geometry.knv", TOP_LEVEL_AREA_OF_A_STRING);

@@ -1,10 +1,13 @@
-(type parts-of
+(type lines-longer-than
   (where ('a)
-    (fn ((ref 'a str))
+    (fn ((ref 'a str) (ref str))
       (iterator (ref 'a str)))))
 
-(defn parts-of (text) (lines text))
+(defn lines-longer-than (text shortest)
+  (filter (lines text)
+    (fn (line)
+      (> (len line) (len shortest)))))
 
 (defn main ()
-  (for-each (parts-of "a\nb")
+  (for-each (lines-longer-than "ab\nb" "b")
     (fn (part) (println part))))

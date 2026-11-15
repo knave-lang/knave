@@ -3,56 +3,56 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/trait_argument_literal_mismatch.knv
 ---
-error[L0404]: `(vec i64)` does not implement `holds`
+error[L0404]: `(vec i64)` does not implement `(holds f64)`
   --> check/trait_argument_literal_mismatch.knv:11:11
    |
 11 |   (holds? scores 0.5))
-   |           ^^^^^^ this needs `holds`
+   |           ^^^^^^ this needs `(holds f64)`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
    = note: run `knave doc L0404` for an explanation
 
-error[L0404]: `(vec string)` does not implement `holds`
+error[L0404]: `(vec string)` does not implement `(holds i64)`
   --> check/trait_argument_literal_mismatch.knv:14:11
    |
 14 |   (holds? names 3))
-   |           ^^^^^ this needs `holds`
+   |           ^^^^^ this needs `(holds i64)`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
    = note: run `knave doc L0404` for an explanation
 
-error[L0404]: `(vec (option u8))` does not implement `holds`
+error[L0404]: `(vec (option u8))` does not implement `(holds (option f64))`
   --> check/trait_argument_literal_mismatch.knv:17:11
    |
 17 |   (holds? options (some 0.5)))
-   |           ^^^^^^^ this needs `holds`
+   |           ^^^^^^^ this needs `(holds (option f64))`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
    = note: run `knave doc L0404` for an explanation
 
-error[L0404]: `(vec i64)` does not implement `holds`
+error[L0404]: `(vec i64)` does not implement `(holds (pair i64 i64))`
   --> check/trait_argument_literal_mismatch.knv:20:11
    |
 20 |   (holds? scores (pair 3 4)))
-   |           ^^^^^^ this needs `holds`
+   |           ^^^^^^ this needs `(holds (pair i64 i64))`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
    = note: run `knave doc L0404` for an explanation
 
-error[L0404]: `(vec (pair u8 string))` does not implement `holds`
+error[L0404]: `(vec (pair u8 string))` does not implement `(holds (pair i64 bool))`
   --> check/trait_argument_literal_mismatch.knv:23:11
    |
 23 |   (holds? rows (pair 3 true)))
-   |           ^^^^ this needs `holds`
+   |           ^^^^ this needs `(holds (pair i64 bool))`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
    = note: run `knave doc L0404` for an explanation
 
-error[L0404]: `(vec string)` does not implement `holds`
+error[L0404]: `(vec string)` does not implement `(holds i64)`
   --> check/trait_argument_literal_mismatch.knv:27:11
    |
 27 |   (holds? names 3)
-   |           ^^^^^ this needs `holds`
+   |           ^^^^^ this needs `(holds i64)`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
    = note: run `knave doc L0404` for an explanation

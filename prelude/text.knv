@@ -216,7 +216,7 @@
       (iterator (ref str)))))
 
 (rust-trait joinable "crate::rt::Join"
-  (help "`join` takes a vector or a slice of `string` or `(ref str)` items: collect an iterator first, as in `(join (collect items) \", \")`, which allocates the vector")
+  (help "`join` takes a vector or a slice of `string` or `(ref str)` items: turn other items into text first, as in `(join (collect (map (iter items) str)) \", \")`, and collect an iterator, as in `(join (collect items) \", \")`; both allocate the vector")
   (vec string)
   (vec (ref str))
   (slice string)

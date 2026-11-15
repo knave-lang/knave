@@ -2569,7 +2569,7 @@ impl TypeChecker {
         span: Span,
         display: &TypeDisplay<'_>,
     ) -> Diagnostic {
-        let argument = (bound.argument.as_ref()).map(|argument| self.unifier.resolve(argument));
+        let argument = self.literal_settlement().shown_argument(bound);
         let needed = display.needed(bound.binding, argument, implementor);
         let found = display.show(implementor);
         let program_type = self.is_program_type(implementor);

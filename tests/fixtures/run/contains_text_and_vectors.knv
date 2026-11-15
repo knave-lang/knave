@@ -15,7 +15,8 @@
   (println (has-three? (ref (vec 3 4))))
   (println (has? (vec 1 2) 2))
   (println (has? "fig" "i"))
-  (local owned-names (vec (str "a") (str "b")))
+  (local owned-names
+    (vec (str "a") (str "b")))
   (local owned-wanted (str "b"))
   (println (contains? owned-names owned-wanted))
   (println owned-wanted))

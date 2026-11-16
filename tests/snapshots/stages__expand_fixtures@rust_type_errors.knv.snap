@@ -65,3 +65,12 @@ error[L0224]: a type template cannot borrow a placeholder
    |
    = help: write the placeholder as `{0}`
    = note: run `knave doc L0224` for an explanation
+
+error[L0213]: this type template has a malformed placeholder
+  --> expand/rust_type_errors.knv:15:24
+   |
+15 | (rust-type stray-close "Hold}er")
+   |                        ^^^^^^^^^ a placeholder is `{`, a number and `}`
+   |
+   = help: write a literal brace as `{{` or `}}`
+   = note: run `knave doc L0213` for an explanation

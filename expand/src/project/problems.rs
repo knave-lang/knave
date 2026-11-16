@@ -3,8 +3,10 @@ use std::fmt;
 use super::LibrarySource;
 use super::quoted_list::QuotedList;
 use super::vocabulary::ProjectVocabulary;
+use crate::core::ModulePath;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label, SimilarName, Suggestion};
 use crate::language::Language;
+use crate::modules::ModuleSources;
 use crate::source::Span;
 
 pub struct ProjectProblems;
@@ -69,7 +71,7 @@ impl ProjectProblems {
     }
 
     pub fn reserved_library_name(name: &str, span: Span) -> Diagnostic {
-        let reason = if name == Language::PROJECT_FILE_STEM {
+        let reason = if ModuleSources::is_reserved(&ModulePath::new(name)) {
             format!(
                 "`(use {name})` names the project file, so the library's root module could never load"
             )

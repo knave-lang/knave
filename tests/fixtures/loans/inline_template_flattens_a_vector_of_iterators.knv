@@ -1,0 +1,9 @@
+(defn main ()
+  (local v (vec 1 2))
+  (local it
+    ((rust "{0}.into_iter().flatten()"
+       (fn ((vec (iterator i64)))
+         (iterator i64)))
+     (vec (the (iterator i64) (take v 1)))))
+  (set! v (vec 3))
+  (println (count it)))

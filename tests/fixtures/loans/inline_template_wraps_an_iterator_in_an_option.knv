@@ -1,0 +1,9 @@
+(defn main ()
+  (local v (vec 1 2))
+  (local it
+    ((rust "Some({0})"
+       (fn ((iterator i64))
+         (option (iterator i64))))
+     (the (iterator i64) (take v 1))))
+  (set! v (vec 3))
+  (println (some? (ref it))))

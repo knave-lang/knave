@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/inline_template_flattens_a_vector_of_iterators.knv
+---
+main
+  7:37 borrow `v`: no live loan
+  8:9 change `v`: `v` lent at 7:37, held by `it`
+  9:19 move `it`: `v` lent at 7:37, held by `it`

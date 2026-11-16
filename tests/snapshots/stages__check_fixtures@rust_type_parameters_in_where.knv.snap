@@ -9,5 +9,4 @@ error[L0219]: `rust-type` names its type parameters on its name
 1 | (rust-type boxed (where (item) "Box<{0}>"))
   |                   ^^^^^ this `where` names them in the body
   |
-  = help: write `(rust-type (boxed item) "Box<{0}>")`
   = note: run `knave doc L0219` for an explanation

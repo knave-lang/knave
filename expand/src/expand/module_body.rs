@@ -688,14 +688,12 @@ impl Expander<'_> {
         let shape = Shape::new(KernelForm::Definition(DefinitionForm::Struct), form);
         let items = shape.at_least(2)?;
         let body = items[2..].to_vec();
-        if let Some(where_items) = self.old_parameters(&body) {
-            let span = where_items[0].span();
+        if let Some(span) = self.misplaced_where(&body) {
             let origin = self.macro_origin_at(span);
             let kind = origin
                 .as_ref()
                 .map_or("struct", |origin| origin.name.as_ref());
-            let replacement = self.old_head_replacement(kind, &items[1], where_items);
-            return Err(ExpandProblems::parameters_on_name(kind, &replacement, span));
+            return Err(ExpandProblems::parameters_on_name(kind, span));
         }
         let parameterized = self.lower_head(&shape, &items[1], body)?;
         let fields = parameterized
@@ -721,11 +719,11 @@ impl Expander<'_> {
         let items = shape.at_least(2)?;
         let first_variant = Self::first_enum_variant(items);
         let body = items[first_variant..].to_vec();
-        if let Some(where_items) = self.old_parameters(&body) {
-            let span = where_items[0].span();
-            let kind = shape.written_name();
-            let replacement = self.old_head_replacement(kind, &items[1], where_items);
-            return Err(ExpandProblems::parameters_on_name(kind, &replacement, span));
+        if let Some(span) = self.misplaced_where(&body) {
+            return Err(ExpandProblems::parameters_on_name(
+                shape.written_name(),
+                span,
+            ));
         }
         let enum_name = self.head_name(&shape, &items[1])?;
         let parameterized = self.lower_head(&shape, &items[1], body)?;

@@ -5,6 +5,7 @@ use crate::core::{BindingKind, KernelType, Namespace, TypeBinder};
 use crate::diagnostic::Diagnostic;
 use crate::reader::Form;
 use crate::scope::ScopeKind;
+use crate::source::Span;
 
 pub(super) struct Parameterized {
     pub binders: Vec<TypeBinder>,
@@ -14,10 +15,10 @@ pub(super) struct Parameterized {
 impl Expander<'_> {
     const PARAMETERIZED_PARTS: usize = 3;
 
-    pub(super) fn old_parameters<'f>(&self, body: &'f [Form]) -> Option<&'f [Form]> {
+    pub(super) fn misplaced_where(&self, body: &[Form]) -> Option<Span> {
         let items = body.first()?.as_list()?;
         let opens_with_where = items.first().is_some_and(|head| self.is_where(head));
-        (items.len() >= Self::PARAMETERIZED_PARTS && opens_with_where).then_some(items)
+        (items.len() >= Self::PARAMETERIZED_PARTS && opens_with_where).then(|| items[0].span())
     }
 
     pub(super) fn head_name<'f>(
@@ -36,27 +37,6 @@ impl Expander<'_> {
     ) -> Result<Parameterized, Diagnostic> {
         let (_, binders) = Self::head_parts(shape, head)?;
         self.lower_parameterized(binders, body)
-    }
-
-    pub(super) fn old_head_replacement(
-        &self,
-        kind: &str,
-        head: &Form,
-        where_items: &[Form],
-    ) -> String {
-        let name = head
-            .as_symbol()
-            .map_or_else(|| head.to_string(), |symbol| symbol.name().to_string());
-        let parameters = where_items[1].as_list().unwrap_or_default();
-        let head = if parameters.is_empty() {
-            name
-        } else {
-            let rendered: Vec<String> = parameters.iter().map(Form::to_string).collect();
-            format!("({name} {})", rendered.join(" "))
-        };
-        let mut parts = vec![kind.to_string(), head];
-        parts.extend(where_items[2..].iter().map(Form::to_string));
-        format!("({})", parts.join(" "))
     }
 
     pub(super) fn lower_parameters(

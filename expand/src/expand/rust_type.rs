@@ -94,14 +94,13 @@ impl Expander<'_> {
         shape: &Shape<'_>,
         items: &[Form],
     ) -> Result<(), Diagnostic> {
-        let body = vec![items[2].clone()];
-        let Some(where_items) = self.old_parameters(&body) else {
-            return Ok(());
-        };
-        let span = where_items[0].span();
-        let kind = shape.written_name();
-        let replacement = self.old_head_replacement(kind, &items[1], where_items);
-        Err(ExpandProblems::parameters_on_name(kind, &replacement, span))
+        match self.misplaced_where(&items[2..]) {
+            Some(span) => Err(ExpandProblems::parameters_on_name(
+                shape.written_name(),
+                span,
+            )),
+            None => Ok(()),
+        }
     }
 
     fn lower_rust_type_clauses(

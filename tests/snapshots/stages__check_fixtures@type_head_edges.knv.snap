@@ -18,5 +18,4 @@ error[L0219]: `struct` names its type parameters on its name
 3 | (struct empty (where () (x i64)))
   |                ^^^^^ this `where` names them in the body
   |
-  = help: write `(struct empty (x i64))`
   = note: run `knave doc L0219` for an explanation

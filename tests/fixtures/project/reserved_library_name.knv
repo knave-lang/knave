@@ -1,3 +1,4 @@
 (defproject app
             (libraries (code :path "../code")
-                       (prelude :path "../prelude")))
+                       (prelude :path "../prelude")
+                       (project :path "../project")))

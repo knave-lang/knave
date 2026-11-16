@@ -1,3 +1,5 @@
+use crate::rust_prelude::RustPrelude;
+
 pub struct NameMangler;
 
 impl NameMangler {
@@ -47,42 +49,6 @@ impl NameMangler {
         "unsized", "virtual", "yield",
     ];
     const NON_RAW_KEYWORDS: [&str; 4] = ["self", "Self", "super", "crate"];
-    const PRELUDE_NAMES: [&str; 34] = [
-        "AsMut",
-        "AsRef",
-        "Box",
-        "Clone",
-        "Copy",
-        "Default",
-        "DoubleEndedIterator",
-        "Drop",
-        "Eq",
-        "ExactSizeIterator",
-        "Extend",
-        "Fn",
-        "FnMut",
-        "FnOnce",
-        "From",
-        "FromIterator",
-        "Into",
-        "IntoIterator",
-        "Iterator",
-        "Option",
-        "Ord",
-        "PartialEq",
-        "PartialOrd",
-        "Result",
-        "Send",
-        "Sized",
-        "String",
-        "Sync",
-        "ToOwned",
-        "ToString",
-        "TryFrom",
-        "TryInto",
-        "Unpin",
-        "Vec",
-    ];
     const PRELUDE_SUFFIX: char = '2';
 
     pub fn local(name: &str) -> String {
@@ -138,7 +104,7 @@ impl NameMangler {
 
     pub fn type_name(name: &str) -> String {
         let name = Self::variant_name(name);
-        if Self::PRELUDE_NAMES.contains(&name.as_str()) {
+        if RustPrelude::holds(&name) {
             format!("{name}{}", Self::PRELUDE_SUFFIX)
         } else {
             name

@@ -266,7 +266,7 @@ struct ExpansionTables {
     macros: MacroTable,
     macro_origins: MacroOrigins,
     global_macros: Vec<(crate::core::BindingId, Form)>,
-    trait_paths: FxHashMap<crate::core::BindingId, Rc<str>>,
+    trait_paths: FxHashMap<crate::core::BindingId, rust_trait_path::RustTraitPath>,
     structural_path_claims: StructuralPathClaims,
     enum_variants: FxHashMap<crate::core::BindingId, Vec<crate::core::BindingId>>,
     variant_fields: FxHashMap<crate::core::BindingId, Vec<Rc<str>>>,

@@ -60,14 +60,13 @@ impl<'h> RuleHost<'h> {
             .map(|_| ())
     }
 
-    pub fn is_kept(&mut self, binder: Form) -> Result<bool, Diagnostic> {
+    pub fn is_kept(&mut self, binder: Form, step_limit: u64) -> Result<bool, Diagnostic> {
         let span = binder.span();
+        let budget = StepBudget::full();
+        budget.set_limit(step_limit);
         let kept = self.global_value(self.rules.entries().kept, span)?;
-        let answer = Interpreter::new(self, span, StepBudget::full()).call(
-            &kept,
-            vec![Value::Form(binder)],
-            span,
-        )?;
+        let answer =
+            Interpreter::new(self, span, budget).call(&kept, vec![Value::Form(binder)], span)?;
         Ok(matches!(answer, Value::Bool(true)))
     }
 
@@ -187,12 +186,13 @@ mod tests {
     use super::{ProgramFacts, RuleHost};
     use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleId};
     use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
-    use crate::interpret::{Host, NameComparison, SourceQueries, Warnings};
+    use crate::interpret::{Host, NameComparison, SourceQueries, StepBudget, Warnings};
     use crate::lint::binding_symbols::BindingSymbols;
     use crate::lint::bound_names::BoundNames;
     use crate::lint::expanded_source::ExpandedSource;
     use crate::lint::rule_program::RuleProgram;
     use crate::reader::{Form, FormKind, Symbol};
+    use crate::source::{SourceId, Span};
 
     struct HostFixture {
         rules: RuleProgram,
@@ -378,5 +378,21 @@ mod tests {
                 "unused-import"
             ]
         );
+    }
+
+    #[test]
+    fn asks_the_kept_test_under_its_step_limit() {
+        let fixture = HostFixture::new();
+        let mut host = fixture.host();
+        let span = Span::new(SourceId::new(0), 0..0);
+        let binder = Form::new(FormKind::Symbol(Symbol::new("_kept")), span);
+        assert!(matches!(
+            host.is_kept(binder.clone(), StepBudget::DEFAULT_LIMIT),
+            Ok(true)
+        ));
+        let failure = host
+            .is_kept(binder, 1)
+            .expect_err("one step cannot finish the kept test");
+        assert_eq!(failure.code(), Some(&DiagnosticCode::MACRO_STEP_LIMIT));
     }
 }

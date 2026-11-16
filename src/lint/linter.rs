@@ -1,5 +1,3 @@
-use rustc_hash::FxHashMap;
-
 use super::bound_names::BoundNames;
 use super::definition_reach::DefinitionReach;
 use super::linted_module::LintedModule;
@@ -11,11 +9,11 @@ use super::rule_host::{ProgramFacts, RuleHost};
 use super::rule_program::RuleProgram;
 use super::rule_target::RuleTarget;
 use super::spanned_forms::SpannedForms;
-use crate::core::{BindingId, ModuleId};
+use crate::core::BindingId;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Diagnostics};
 use crate::expand::Program;
 use crate::interpret::{StepBudget, Warnings};
-use crate::source::SourceMap;
+use crate::source::{SourceMap, Span};
 
 pub struct Linter<'p> {
     program: &'p Program,
@@ -47,12 +45,8 @@ impl<'p> Linter<'p> {
         let names = read_back.into_names();
         let rules = &*rules;
         let mut host = RuleHost::new(rules, self.facts(&names));
-        let candidates = self.unkept_candidates(rules, &mut host)?;
-        let table = ModuleTable::new(
-            self.program,
-            self.sources,
-            DefinitionReach::of(self.program, candidates),
-        );
+        let reach = self.reach(rules, &mut host)?;
+        let table = ModuleTable::new(self.program, self.sources, reach);
         for linted in modules {
             let target = table
                 .target(&linted)
@@ -67,6 +61,30 @@ impl<'p> Linter<'p> {
         Ok(host.into_warnings())
     }
 
+    fn reach(
+        &self,
+        rules: &RuleProgram,
+        host: &mut RuleHost<'_>,
+    ) -> Result<DefinitionReach, RuleFailure> {
+        DefinitionReach::of(self.program, &mut |binding, span| {
+            self.is_kept(host, binding, span)
+        })
+        .map_err(|failure| rules.failure(failure))
+    }
+
+    fn is_kept(
+        &self,
+        host: &mut RuleHost<'_>,
+        binding: BindingId,
+        span: Span,
+    ) -> Result<bool, Diagnostic> {
+        let name = self.program.bindings.get(binding).name();
+        match host.is_kept(SpannedForms::symbol(name, span), self.step_limit) {
+            Err(failure) if Self::passed_budget(&failure) => Ok(true),
+            answer => answer,
+        }
+    }
+
     fn facts<'n>(&'n self, names: &'n BoundNames) -> ProgramFacts<'n> {
         ProgramFacts {
             names,
@@ -74,31 +92,6 @@ impl<'p> Linter<'p> {
             origins: self.program.call_origins.as_ref(),
             sources: self.sources,
         }
-    }
-
-    fn unkept_candidates(
-        &self,
-        rules: &RuleProgram,
-        host: &mut RuleHost<'_>,
-    ) -> Result<FxHashMap<BindingId, ModuleId>, RuleFailure> {
-        let mut candidates = DefinitionReach::candidates(self.program);
-        let mut kept = Vec::new();
-        for binding in candidates.keys() {
-            let info = self.program.bindings.get(*binding);
-            let Some(span) = info.span() else {
-                continue;
-            };
-            if host
-                .is_kept(SpannedForms::symbol(info.name(), span))
-                .map_err(|failure| rules.failure(failure))?
-            {
-                kept.push(*binding);
-            }
-        }
-        for binding in kept {
-            candidates.remove(&binding);
-        }
-        Ok(candidates)
     }
 
     fn check_definition(
@@ -157,6 +150,7 @@ impl<'p> Linter<'p> {
 
 #[cfg(test)]
 mod tests {
+    use crate::interpret::StepBudget;
     use crate::lint::expanded_source::ExpandedSource;
 
     struct LinterFixture;
@@ -244,5 +238,22 @@ mod tests {
         );
         assert!(titles[0].ends_with("in `main`"), "{titles:?}");
         assert!(titles[1].ends_with("in `fixture`"), "{titles:?}");
+    }
+
+    #[test]
+    fn a_definition_whose_kept_test_passes_its_budget_is_kept() {
+        let source =
+            ExpandedSource::expand("(export area)\n(defn helper () 1)\n(defn area (width) width)");
+        let unreachable = "L0807".to_string();
+        assert!(
+            source
+                .warning_codes_within(StepBudget::DEFAULT_LIMIT)
+                .contains(&unreachable)
+        );
+        assert!(
+            !source
+                .warning_codes_within(LinterFixture::TINY_STEP_LIMIT)
+                .contains(&unreachable)
+        );
     }
 }

@@ -1,7 +1,11 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::{BindingId, CoreModule, Item, ItemKind, ModuleId, References};
+use crate::diagnostic::Diagnostic;
 use crate::expand::Program;
+use crate::source::Span;
+
+pub type KeptTest<'k> = dyn FnMut(BindingId, Span) -> Result<bool, Diagnostic> + 'k;
 
 pub struct DefinitionReach {
     unreached: FxHashMap<ModuleId, Vec<UnreachedDefinition>>,
@@ -19,7 +23,8 @@ struct ReferenceGraph {
 }
 
 impl DefinitionReach {
-    pub fn of(program: &Program, candidates: FxHashMap<BindingId, ModuleId>) -> Self {
+    pub fn of(program: &Program, kept: &mut KeptTest<'_>) -> Result<Self, Diagnostic> {
+        let candidates = Self::unkept_candidates(program, kept)?;
         let graph = ReferenceGraph::of(program);
         let roots =
             graph.reads.keys().copied().filter(|binding| {
@@ -37,30 +42,32 @@ impl DefinitionReach {
                 unreached.entry(*module).or_default().push(definition);
             }
         }
-        Self { unreached }
+        Ok(Self { unreached })
     }
 
     pub fn unreached_in(&self, module: ModuleId) -> &[UnreachedDefinition] {
         self.unreached.get(&module).map_or(&[], Vec::as_slice)
     }
 
-    pub fn candidates(program: &Program) -> FxHashMap<BindingId, ModuleId> {
-        program
-            .project_modules()
-            .flat_map(|module| {
-                module
-                    .items
-                    .iter()
-                    .filter_map(move |item| Self::candidate(program, module, item))
-            })
-            .collect()
+    fn unkept_candidates(
+        program: &Program,
+        kept: &mut KeptTest<'_>,
+    ) -> Result<FxHashMap<BindingId, ModuleId>, Diagnostic> {
+        let mut unkept = FxHashMap::default();
+        for module in program.project_modules() {
+            for item in &module.items {
+                if let Some(binding) = Self::candidate(program, module, item) {
+                    let span = program.bindings.get(binding).span().unwrap_or(item.span);
+                    if !kept(binding, span)? {
+                        unkept.insert(binding, module.id);
+                    }
+                }
+            }
+        }
+        Ok(unkept)
     }
 
-    fn candidate(
-        program: &Program,
-        module: &CoreModule,
-        item: &Item,
-    ) -> Option<(BindingId, ModuleId)> {
+    fn candidate(program: &Program, module: &CoreModule, item: &Item) -> Option<BindingId> {
         let ItemKind::Def(binding, _) = item.kind else {
             return None;
         };
@@ -72,7 +79,7 @@ impl DefinitionReach {
         let written = !program.bindings.origin(binding).is_introduced()
             && Some(binding) != entry_function
             && !program.compile_time_roots.contains(binding);
-        (private && written).then_some((binding, module.id))
+        (private && written).then_some(binding)
     }
 }
 
@@ -129,7 +136,7 @@ impl ReferenceGraph {
 #[cfg(test)]
 mod tests {
     use super::DefinitionReach;
-    use crate::core::BindingId;
+    use crate::diagnostic::{Diagnostic, Label};
     use crate::expand::Program;
     use crate::lint::expanded_source::ExpandedSource;
 
@@ -139,8 +146,7 @@ mod tests {
         fn unreached(text: &str) -> Vec<String> {
             let source = ExpandedSource::expand(text);
             let program = source.program();
-            let candidates = DefinitionReach::candidates(program);
-            let mut names: Vec<String> = DefinitionReach::of(program, candidates)
+            let mut names: Vec<String> = Self::reach(program)
                 .unreached_in(program.entry.module)
                 .iter()
                 .map(|definition| program.bindings.get(definition.binding).name().to_string())
@@ -149,44 +155,34 @@ mod tests {
             names
         }
 
-        fn defined(program: &Program, name: &str) -> BindingId {
-            program
-                .modules
-                .iter()
-                .flat_map(|module| module.definitions())
-                .map(|(binding, _)| binding)
-                .find(|binding| program.bindings.get(*binding).name() == name)
-                .expect("the program defines the name")
+        fn reach(program: &Program) -> DefinitionReach {
+            DefinitionReach::of(program, &mut |_, _| Ok(false)).expect("no candidate is kept")
         }
     }
 
     #[test]
-    fn a_private_definition_read_from_another_project_module_is_reached() {
+    fn a_kept_candidate_is_a_root() {
         let source = ExpandedSource::expand(
-            "(use tests/fixtures/lint/modules/doubling twice-of)\n(defn main () (println (twice-of 3)))",
+            "(defn helper () 1)\n(defn keeper () (helper))\n(defn main () (println 1))",
         );
         let program = source.program();
-        let double = ReachFixture::defined(program, "double");
-        let mut candidates = DefinitionReach::candidates(program);
-        candidates.insert(
-            double,
-            program
-                .bindings
-                .get(double)
-                .kind()
-                .defining_module()
-                .expect("a global"),
-        );
-        let reach = DefinitionReach::of(program, candidates);
-        let unreached = program
-            .modules
-            .iter()
-            .flat_map(|module| reach.unreached_in(module.id));
-        assert!(
-            unreached
-                .map(|definition| definition.binding)
-                .all(|binding| binding != double)
-        );
+        let reach = DefinitionReach::of(program, &mut |binding, _| {
+            Ok(program.bindings.get(binding).name() == "keeper")
+        })
+        .expect("the kept test answers");
+        assert!(reach.unreached_in(program.entry.module).is_empty());
+    }
+
+    #[test]
+    fn a_failing_kept_test_fails_the_reach() {
+        let source = ExpandedSource::expand("(defn helper () 1)\n(defn main () (println 1))");
+        let reach = DefinitionReach::of(source.program(), &mut |_, span| {
+            Err(Diagnostic::note(
+                "the kept test failed",
+                Label::new(span, "here"),
+            ))
+        });
+        assert!(reach.is_err());
     }
 
     #[test]

@@ -1,7 +1,14 @@
+(defstruct point
+  :x int
+  :y i64)
+
 (defn add ((x i64) (y int)) (+ x y))
 
 (defn main ()
-  (let (total (add 1 2))
+  (let (total (add 1 2)
+        corner (->point 3 4))
     (println total)
+    (println (add (:x corner) (:y corner)))
     (println (infer total))
-    (println (infer add))))
+    (println (infer add))
+    (println (infer corner))))

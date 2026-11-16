@@ -2797,6 +2797,7 @@ fn doc_write_prelude_gives_two_names_of_one_type_one_section() {
         .assert_silent_success();
     let page = sandbox.contents("doc/prelude.md");
     assert!(page.contains("<a id=\"int\"></a>\n<a id=\"i64\"></a>\n\n## `int`\n"));
+    assert!(page.contains("```\n\nAlso written `i64`.\n\n"));
     assert!(!page.contains("## `i64`"));
 }
 

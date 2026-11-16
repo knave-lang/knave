@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/int_exports_both_spellings.knv
+---
+(export i64 int twice)
+(def twice (fn ((x int)) (mul 2 x)))

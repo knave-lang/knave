@@ -288,8 +288,20 @@
             (looked-up (quote doc-header) term)
             (type-line page term)
             "\n" code-fence "\n\n"
+            (other-names-line (section-other-names section))
             (body-markdown page links (section-body section))
             "\n")))
+
+(def other-names-line
+  (fn (names)
+    (if (empty? names)
+      ""
+      (string "Also written "
+              (join-text ", "
+                         (map-list names
+                           (fn (name)
+                             (string "`" (symbol-name name) "`"))))
+              ".\n\n"))))
 
 (def anchor
   (fn (term)

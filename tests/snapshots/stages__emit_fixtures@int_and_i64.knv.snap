@@ -3,6 +3,16 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/int_and_i64.knv
 ---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Point {
+    x: i64,
+    y: i64,
+}
+
+fn make_point(x: i64, y: i64) -> Point {
+    Point { x, y }
+}
+
 fn add(x: i64, y: i64) -> i64 {
     x + y
 }
@@ -10,9 +20,12 @@ fn add(x: i64, y: i64) -> i64 {
 fn main() {
     crate::rt::restore_default_sigpipe();
     let total: i64 = add(1, 2);
+    let corner = make_point(3, 4);
     println!("{}", total);
+    println!("{}", add(corner.x, corner.y));
     println!("{}", "int");
-    println!("{}", "(fn (int int) int)")
+    println!("{}", "(fn (int int) int)");
+    println!("{}", "point")
 }
 
 mod rt {

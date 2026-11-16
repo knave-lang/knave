@@ -1,0 +1,8 @@
+(use modules/every_kind shape)
+(use modules/dot dot)
+
+(defn pick ((s shape))
+  (match s (dot (dot)) (_ 0)))
+
+(defn main ()
+  (println (pick shape/dot)))

@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/name_a_macro_finds_to_be_a_struct_pattern_head.knv
+---
+

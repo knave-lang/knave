@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/import_called_in_an_arm_its_pattern_names.knv
+---
+

@@ -1,0 +1,13 @@
+---
+source: tests/cli.rs
+expression: test.assert_exit_code(1).stderr()
+---
+error[L0257]: this file's module path `kernel` belongs to the compiler
+ --> tests/kernel.knv:1:1
+  |
+1 | (use prelude/test deftest assert)
+  | ^ this file never loads
+  |
+  = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so this file would never run
+  = help: rename the file
+  = note: run `knave doc L0257` for an explanation

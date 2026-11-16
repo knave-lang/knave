@@ -24,7 +24,7 @@ impl TakenModuleProblems {
             format!("library `{library}` takes this file's module path `{path}`"),
             Label::new(span, "this file never loads"),
         )
-        .with_note("a library's name takes precedence over a local module of the same name, so this file would never run")
+        .with_note("a module path that starts with a library's name loads from the library, so this file would never run")
         .with_help(format!(
             "rename the file, or rename the library in `{}`",
             Language::project_file_name()

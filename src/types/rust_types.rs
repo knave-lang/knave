@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 use super::ty::Type;
@@ -56,10 +56,16 @@ impl RustType {
 #[derive(Default)]
 pub struct RustTypeTable {
     types: BTreeMap<BindingId, RustType>,
+    iterators: BTreeSet<BindingId>,
 }
 
 impl RustTypeTable {
     pub fn add(&mut self, binding: BindingId, rust_type: RustType) {
+        if rust_type.has_template(RustType::ITERATOR_TEMPLATE) {
+            self.iterators.insert(binding);
+        } else {
+            self.iterators.remove(&binding);
+        }
         self.types.insert(binding, rust_type);
     }
 
@@ -97,7 +103,7 @@ impl RustTypeTable {
     }
 
     pub fn is_iterator(&self, binding: BindingId) -> bool {
-        self.has_template(binding, RustType::ITERATOR_TEMPLATE)
+        self.iterators.contains(&binding)
     }
 
     pub fn option_binding(&self) -> Option<BindingId> {
@@ -105,7 +111,7 @@ impl RustTypeTable {
     }
 
     pub fn iterator_binding(&self) -> Option<BindingId> {
-        self.binding_with_template(RustType::ITERATOR_TEMPLATE)
+        self.iterators.first().copied()
     }
 
     pub fn pair_binding(&self) -> Option<BindingId> {

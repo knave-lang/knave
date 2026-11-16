@@ -6,6 +6,7 @@ use super::list_role::ListRole;
 use super::nested_lists::NestedLists;
 use super::shapes::{Shape, ShapeCatalog};
 use super::syntax_tree::ListNode;
+use super::unit::Unit;
 use crate::core::{DefinitionForm, KernelForm};
 
 #[derive(Default)]
@@ -17,7 +18,6 @@ impl ListRoles {
     const SHORT_LIST_LIMIT: usize = 40;
     const SPARSE_LIST_LIMIT: usize = 60;
     const SPARSE_LIST_NESTED_LISTS: usize = 2;
-    const SEPARATOR: &'static str = " ";
 
     pub fn plan(&mut self, list: &ListNode, shapes: &ShapeCatalog) -> ListPlan {
         match self.roles.get(&list.id).copied() {
@@ -30,31 +30,27 @@ impl ListRoles {
         }
     }
 
-    pub fn is_short(&self, list: &ListNode, written_length: usize) -> bool {
-        let length = self.length_as_declared(list, written_length);
+    pub fn is_short(&self, list: &ListNode, length: usize) -> bool {
         let sparse = length <= Self::SPARSE_LIST_LIMIT
             && list.nested_lists <= Self::SPARSE_LIST_NESTED_LISTS;
         let short_arm = length <= FillWidth::COLUMNS && self.is_arm(list);
         length <= Self::SHORT_LIST_LIMIT || sparse || short_arm
     }
 
-    fn length_as_declared(&self, list: &ListNode, length: usize) -> usize {
-        let is_method = self.roles.get(&list.id) == Some(&ListRole::Method);
-        let lone_header = list.entries.len() <= Shape::METHOD.header_length + 1;
-        if is_method && lone_header {
-            let type_form = KernelForm::Definition(DefinitionForm::Type).name();
-            return length + type_form.len() + Self::SEPARATOR.len();
-        }
-        length
-    }
-
-    pub fn is_arm(&self, list: &ListNode) -> bool {
+    fn is_arm(&self, list: &ListNode) -> bool {
         self.roles.get(&list.id) == Some(&ListRole::Arm)
     }
 
+    fn type_declaration_prefix() -> usize {
+        KernelForm::Definition(DefinitionForm::Type).name().len() + Unit::SEPARATOR.len()
+    }
+
     fn method_plan(&mut self, list: &ListNode, shapes: &ShapeCatalog) -> ListPlan {
-        self.shaped_plan(list, Some(Shape::METHOD), shapes)
-            .with_lone_header_below()
+        let plan = self.shaped_plan(list, Some(Shape::METHOD), shapes);
+        if Shape::METHOD.holds_only_header(list) {
+            return plan.declared_as(Self::type_declaration_prefix());
+        }
+        plan
     }
 
     fn shaped_plan(

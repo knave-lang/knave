@@ -1,8 +1,4 @@
-mod allocator_share;
 mod benchmark_profile;
-mod call;
-mod call_graph;
-mod call_record;
 mod callgrind;
 mod change;
 mod collection_toggles;
@@ -24,9 +20,6 @@ mod method;
 mod output_file;
 mod profile;
 mod results;
-mod stage_costs;
-mod stage_entry;
-mod stage_reach;
 mod table;
 
 use std::collections::BTreeSet;

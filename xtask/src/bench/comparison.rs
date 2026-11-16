@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use super::allocator_share::AllocatorShare;
 use super::change::Change;
 use super::counter_comparison::CounterComparison;
 use super::measurement::Measurement;
@@ -235,9 +234,7 @@ impl<'a> StageChange<'a> {
     }
 
     fn rises_notably(&self) -> bool {
-        !AllocatorShare::is_row(self.stage)
-            && self.instructions.exceeds_notable_rise()
-            && self.share() >= Self::MINIMUM_NOTABLE_SHARE
+        self.instructions.exceeds_notable_rise() && self.share() >= Self::MINIMUM_NOTABLE_SHARE
     }
 
     fn share(&self) -> f64 {
@@ -329,17 +326,6 @@ mod tests {
              - `inventory` `expand`: +2.00%\n\
              - `orders` was not measured before\n"
         ));
-    }
-
-    #[test]
-    fn never_bolds_or_lists_a_rise_of_an_allocator_row() {
-        let before = ComparisonFixture::measured_only(&[("build allocator", 250_000)]);
-        let after = ComparisonFixture::measured_only(&[("build allocator", 2_000_000)]);
-        let report = ComparisonFixture::report(&before, &after);
-        assert!(
-            report.contains("| inventory | build allocator | 250,000 | 2,000,000 | +700.00% |")
-        );
-        assert!(report.contains("No stage of any program rose notably."));
     }
 
     #[test]

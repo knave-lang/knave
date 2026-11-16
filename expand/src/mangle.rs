@@ -268,6 +268,12 @@ mod tests {
     }
 
     #[test]
+    fn the_futures_of_the_2024_prelude_get_a_suffix() {
+        assert_eq!(NameMangler::type_name("future"), "Future2");
+        assert_eq!(NameMangler::type_name("into-future"), "IntoFuture2");
+    }
+
+    #[test]
     fn punctuation_is_spelled_out() {
         assert_eq!(NameMangler::value("+"), "plus");
         assert_eq!(NameMangler::value("->string"), "to_string");

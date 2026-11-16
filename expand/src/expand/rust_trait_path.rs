@@ -10,8 +10,12 @@ pub(super) struct RustTraitPath {
 impl From<&str> for RustTraitPath {
     fn from(written: &str) -> Self {
         let path = written.strip_prefix(Self::GLOBAL_PREFIX).unwrap_or(written);
-        let named = RustPrelude::trait_path(path)
-            .map_or_else(|| Self::standard_path(path), |full| full.to_string());
+        let (name, arguments) =
+            path.split_at(path.find(Self::ARGUMENT_OPENERS).unwrap_or(path.len()));
+        let named = RustPrelude::trait_path(name).map_or_else(
+            || Self::standard_path(path),
+            |full| format!("{full}{arguments}"),
+        );
         Self {
             named: named.into(),
         }
@@ -22,6 +26,7 @@ impl RustTraitPath {
     const STANDARD_ROOT: &'static str = "std::";
     const STANDARD_ALIASES: [&'static str; 2] = ["core::", "alloc::"];
     const GLOBAL_PREFIX: &'static str = "::";
+    const ARGUMENT_OPENERS: [char; 2] = ['<', '('];
 
     fn standard_path(path: &str) -> String {
         Self::STANDARD_ALIASES
@@ -77,10 +82,28 @@ mod tests {
     }
 
     #[test]
+    fn an_alloc_path_matches_its_std_path() {
+        let pair = PathPair {
+            written: "alloc::string::ToString",
+            other: "std::string::ToString",
+        };
+        assert!(pair.names_same_trait());
+    }
+
+    #[test]
+    fn a_rust_prelude_name_with_arguments_matches_its_full_path() {
+        let pair = PathPair {
+            written: "AsRef<str>",
+            other: "std::convert::AsRef<str>",
+        };
+        assert!(pair.names_same_trait());
+    }
+
+    #[test]
     fn a_crate_trait_does_not_match_a_prelude_name() {
         let pair = PathPair {
-            written: "crate::rt::Show",
-            other: "Show",
+            written: "crate::rt::Clone",
+            other: "Clone",
         };
         assert!(!pair.names_same_trait());
     }

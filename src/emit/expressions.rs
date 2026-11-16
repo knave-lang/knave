@@ -352,23 +352,7 @@ impl<'a> ExpressionEmitter<'a> {
             fragments.extend(self.loop_expression(block, LoopExit::Return));
             return fragments;
         }
-        let Some((TypedBodyItem::Expr(tail), leading)) = block.items.split_last() else {
-            return self.statements(block);
-        };
-        let TypedExprKind::Fn(lambda) = &tail.kind else {
-            return self.statements(block);
-        };
-        let mut fragments = self.leading_statements(leading);
-        fragments.push(Fragment::Newline);
-        fragments.extend(
-            Code::joined(
-                vec![Code::atom("move "), self.closure(lambda, &tail.ty)],
-                Precedence::Operator,
-            )
-            .spanned(tail.span)
-            .fragments,
-        );
-        fragments
+        self.statements(block)
     }
 
     pub fn statements(&mut self, block: &TypedBlock) -> Vec<Fragment> {
@@ -439,6 +423,10 @@ impl<'a> ExpressionEmitter<'a> {
         self.emission.emitted_expressions += 1;
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, expr, context),
+            TypedExprKind::Fn(lambda) if lambda.facts.returned => Code::joined(
+                vec![Code::atom("move "), self.closure(lambda, &expr.ty)],
+                Precedence::Operator,
+            ),
             TypedExprKind::Fn(lambda) => self.closure(lambda, &expr.ty),
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments, expr.span),
             TypedExprKind::Recur(_) => {

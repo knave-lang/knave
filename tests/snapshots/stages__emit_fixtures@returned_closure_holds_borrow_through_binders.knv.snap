@@ -6,13 +6,13 @@ input_file: tests/fixtures/emit/returned_closure_holds_borrow_through_binders.kn
 fn looped(items: &mut Vec<i64>) -> impl FnOnce() -> usize {
     items.push(1);
     let it = items.iter();
-    || it.count()
+    move || it.count()
 }
 
 fn matched(items: &mut Vec<i64>) -> impl FnOnce() -> usize {
     items.push(1);
     let it = items.iter();
-    || it.count()
+    move || it.count()
 }
 
 fn main() {

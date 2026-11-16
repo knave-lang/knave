@@ -1,0 +1,4 @@
+(defn adder (x)
+  (let (value x) (fn (y) (+ value y))))
+
+(defn main () (println ((adder 2) 3)))

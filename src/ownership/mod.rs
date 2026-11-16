@@ -30,6 +30,7 @@ mod refusals;
 mod repeats;
 mod returned;
 mod returned_closure_uses;
+mod returned_lambdas;
 mod rewrite;
 mod shrunk_parameters;
 mod slices;
@@ -70,6 +71,7 @@ use place_arguments::PlaceArguments;
 use problems::OwnershipProblems;
 use returned::ReturnedBorrows;
 use returned_closure_uses::ReturnedClosureUses;
+use returned_lambdas::ReturnedLambdas;
 use rewrite::ModeRewrite;
 use slices::ShrinkSelection;
 use stored::StoredClosures;
@@ -156,6 +158,7 @@ impl OwnershipChecker {
         FunctionValueModes::apply(program, rewrite.function_params(), &copied_reads)
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));
+        ReturnedLambdas::mark(program);
         program.escaping_lambdas = EscapingLambdas::in_program(program);
         StoredClosures::check(program)
             .into_iter()

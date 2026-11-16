@@ -9,15 +9,12 @@ use super::module_of_sources::ModuleOfSources;
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
+use super::taken_module_paths::TakenModulePaths;
 use super::terminal::Terminal;
 use super::tree_bounds::TreeBounds;
 use super::unreadable_file::UnreadableFile;
 use crate::core::ModulePath;
-use crate::diagnostic::{Diagnostic, Diagnostics};
-use crate::expand::TakenModuleProblems;
 use crate::language::Language;
-use crate::modules::ModuleSources;
-use crate::source::Span;
 
 pub struct EntryTree {
     path: PathBuf,
@@ -64,50 +61,12 @@ impl TreeFile {
         ExitStatus::UsageError
     }
 
-    pub fn refuse_taken_modules(
-        files: &[TreeFile],
-        project: Option<&LocatedProject>,
-        terminal: &mut Terminal,
-    ) -> Result<(), ExitStatus> {
-        let mut problems = Diagnostics::default();
-        for file in files {
-            if let Some(owner) = file.taken_by(project) {
-                let start = Span::new(terminal.sources().load(&file.path)?, 0..0);
-                problems.push(owner.problem(&file.module_path(), start));
-            }
-        }
-        if problems.has_errors() {
-            return Err(terminal.source_report().report(&problems));
-        }
-        Ok(())
-    }
-
-    fn taken_by(&self, project: Option<&LocatedProject>) -> Option<ModuleOwner> {
-        let path = self.module_path();
-        if !ModuleSources::is_written(&path) {
-            return Some(ModuleOwner::Compiler);
-        }
-        project
-            .filter(|project| project.placement().library_takes(&path))
-            .map(|_| ModuleOwner::Library)
-    }
-
-    fn module_path(&self) -> ModulePath {
+    pub fn module_path(&self) -> ModulePath {
         ModulePath::new(self.module.as_str())
     }
-}
 
-enum ModuleOwner {
-    Compiler,
-    Library,
-}
-
-impl ModuleOwner {
-    fn problem(&self, path: &ModulePath, start: Span) -> Diagnostic {
-        match self {
-            Self::Compiler => TakenModuleProblems::file_takes_compiler_module(path, start),
-            Self::Library => TakenModuleProblems::file_takes_library_module(path, start),
-        }
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 }
 
@@ -217,7 +176,7 @@ impl EntryTree {
 
     fn load_directory(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
         let files = self.module_files()?;
-        TreeFile::refuse_taken_modules(&files, self.project.as_ref(), terminal)?;
+        self.taken_module_paths().refuse(&files, terminal)?;
         let uses: Vec<String> = files
             .iter()
             .map(|file| format!("(use {})", file.module))
@@ -229,6 +188,13 @@ impl EntryTree {
             file: self.directory_file(),
             sources: vec![source],
         })
+    }
+
+    fn taken_module_paths(&self) -> TakenModulePaths<'_> {
+        match &self.project {
+            Some(project) => project.placement().taken_module_paths(),
+            None => TakenModulePaths::by_the_compiler(),
+        }
     }
 
     fn directory_file(&self) -> ProgramFile {

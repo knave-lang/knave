@@ -8,6 +8,7 @@ use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
+use super::taken_module_paths::TakenModulePaths;
 use super::terminal::Terminal;
 use super::tree_bounds::TreeBounds;
 use super::unreadable_file::UnreadableFile;
@@ -44,7 +45,7 @@ impl SourceWalk {
         if let Some(file) = files.iter().find(|file| file.is_unnamable()) {
             return Err(file.report_unnamable());
         }
-        TreeFile::refuse_taken_modules(&files, None, terminal)?;
+        TakenModulePaths::by_the_compiler().refuse(&files, terminal)?;
         Ok(files.into_iter().map(TreeFile::into_module).collect())
     }
 

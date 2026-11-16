@@ -27,10 +27,11 @@ impl ValueRegions {
         self
     }
 
-    pub fn of(&self, binding: BindingId) -> impl Iterator<Item = LoanId> + '_ {
+    pub fn of(&self, binding: BindingId) -> BTreeSet<LoanId> {
         Layer::BOTH
             .into_iter()
-            .flat_map(move |layer| self.in_layer((binding, layer)))
+            .flat_map(|layer| self.in_layer((binding, layer)))
+            .collect()
     }
 
     pub fn of_holdings(&self, held: &Holdings) -> BTreeSet<LoanId> {
@@ -91,7 +92,7 @@ mod tests {
         }
 
         fn loans_of(regions: &ValueRegions, index: u32) -> Vec<LoanId> {
-            regions.of(Self::value(index)).collect()
+            regions.of(Self::value(index)).into_iter().collect()
         }
     }
 

@@ -1,4 +1,5 @@
 use super::nested_lists::NestedLists;
+use super::one_line_measure::OneLineMeasure;
 use super::shapes::Shape;
 use super::syntax_tree::{Entry, ListNode};
 use super::unit::Unit;
@@ -17,14 +18,13 @@ pub struct Arrangement {
 }
 
 pub struct ListPlan {
-    pub declared_prefix: usize,
     pub units: Vec<Unit>,
     pub arrangements: Vec<Arrangement>,
     pub docstring_entry: Option<usize>,
     pub fillable_units: Vec<bool>,
     nested: NestedLists,
     preferred_arrangement: Option<Arrangement>,
-    one_line_allowed: bool,
+    one_line: OneLineMeasure,
 }
 
 impl Arrangement {
@@ -62,8 +62,9 @@ impl ListPlan {
             arrangements: kind.arrangements(),
             docstring_entry,
             nested,
-            one_line_allowed: docstring_entry.is_none() && one_line_body,
-            declared_prefix: 0,
+            one_line: (docstring_entry.is_none() && one_line_body)
+                .then(OneLineMeasure::allowed)
+                .unwrap_or_else(OneLineMeasure::refused),
         }
     }
 
@@ -79,8 +80,9 @@ impl ListPlan {
             docstring_entry: None,
             nested: NestedLists::default(),
             preferred_arrangement: None,
-            one_line_allowed: list.entries.len() <= BindingPairs::PAIR_LENGTH,
-            declared_prefix: 0,
+            one_line: (list.entries.len() <= BindingPairs::PAIR_LENGTH)
+                .then(OneLineMeasure::allowed)
+                .unwrap_or_else(OneLineMeasure::refused),
         }
     }
 
@@ -90,7 +92,7 @@ impl ListPlan {
                 first_line_units: 1,
                 later_indent: Arrangement::body(),
             }],
-            declared_prefix,
+            one_line: self.one_line.declared_by(declared_prefix),
             ..self
         }
     }
@@ -112,8 +114,8 @@ impl ListPlan {
         self.preferred_arrangement
     }
 
-    pub fn allows_one_line(&self) -> bool {
-        self.one_line_allowed
+    pub fn one_line(&self) -> OneLineMeasure {
+        self.one_line
     }
 
     fn is_fillable(list: &ListNode, unit: Unit, docstring_entry: Option<usize>) -> bool {

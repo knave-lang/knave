@@ -41,16 +41,16 @@ impl ListRoles {
         self.roles.get(&list.id) == Some(&ListRole::Arm)
     }
 
-    fn type_declaration_prefix() -> usize {
-        KernelForm::Definition(DefinitionForm::Type).name().len() + Unit::SEPARATOR.len()
-    }
-
     fn method_plan(&mut self, list: &ListNode, shapes: &ShapeCatalog) -> ListPlan {
         let plan = self.shaped_plan(list, Some(Shape::METHOD), shapes);
         if Shape::METHOD.holds_only_header(list) {
             return plan.declared_as(Self::type_declaration_prefix());
         }
         plan
+    }
+
+    fn type_declaration_prefix() -> usize {
+        KernelForm::Definition(DefinitionForm::Type).name().len() + Unit::SEPARATOR.len()
     }
 
     fn shaped_plan(
@@ -124,7 +124,8 @@ mod tests {
             roles.plan(self.list(), &self.shapes);
             roles
                 .plan(self.entry(entry), &self.shapes)
-                .allows_one_line()
+                .one_line()
+                .is_allowed()
         }
 
         fn arms_after_planning_the_parent(&self) -> Vec<bool> {
@@ -142,7 +143,8 @@ mod tests {
             let mut roles = ListRoles::default();
             roles
                 .plan(self.entry(entry), &self.shapes)
-                .allows_one_line()
+                .one_line()
+                .is_allowed()
         }
     }
 

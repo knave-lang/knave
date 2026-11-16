@@ -29,6 +29,7 @@ mod meaning;
 mod measure;
 mod method_entries;
 mod nested_lists;
+mod one_line_measure;
 mod one_line_rule;
 mod printed_text;
 mod region_layout;

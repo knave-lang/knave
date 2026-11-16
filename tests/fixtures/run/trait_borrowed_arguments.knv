@@ -17,11 +17,13 @@
   (newer-model
     (fn ((ref self) self) (ref str)))
 
-  (echo (fn (self (ref str)) (ref str)))
+  (echo
+    (fn (self (ref str)) (ref str)))
 
   (badge (fn (i64 self) (ref str)))
 
-  (newest (fn (self (ref self)) self)))
+  (newest
+    (fn (self (ref self)) self)))
 
 (impl garage car
   (label (c name)

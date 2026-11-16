@@ -2,7 +2,8 @@
   (type item)
   (put (fn ((mut self) item) unit))
 
-  (take (fn ((mut self)) (option item))))
+  (take
+    (fn ((mut self)) (option item))))
 
 (struct (queue a) (items (vec a)))
 

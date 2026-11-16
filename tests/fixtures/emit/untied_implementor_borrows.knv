@@ -5,7 +5,8 @@
 (trait garage
   (newer (fn (self car) self))
 
-  (relabel (fn ((ref str) self) self))
+  (relabel
+    (fn ((ref str) self) self))
 
   (badge (fn (i64 self) (ref str)))
 

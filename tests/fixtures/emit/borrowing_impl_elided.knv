@@ -3,7 +3,8 @@
   :year u16)
 
 (trait badged
-  (badge (fn (i64 (ref self)) (ref str)))
+  (badge
+    (fn (i64 (ref self)) (ref str)))
 
   (pick
     (fn ((ref str) (ref self)) (ref str)))

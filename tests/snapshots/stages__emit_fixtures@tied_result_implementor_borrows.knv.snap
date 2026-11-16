@@ -4,9 +4,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/emit/tied_result_implementor_borrows.knv
 ---
 error[L0605]: `echo` returns a borrow that cannot come from `c`
-  --> emit/tied_result_implementor_borrows.knv:32:10
+  --> emit/tied_result_implementor_borrows.knv:35:10
    |
-32 |   (echo (c name) (:model c))
+35 |   (echo (c name) (:model c))
    |          ^ the result borrows from this value
    |
    = note: the trait's signature lets the result borrow only from its reference parameters
@@ -14,9 +14,9 @@ error[L0605]: `echo` returns a borrow that cannot come from `c`
    = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `tag` returns a borrow that cannot come from `c`
-  --> emit/tied_result_implementor_borrows.knv:34:14
+  --> emit/tied_result_implementor_borrows.knv:37:14
    |
-34 |   (tag (name c) (:model c))
+37 |   (tag (name c) (:model c))
    |              ^ the result borrows from this value
    |
    = note: the trait's signature lets the result borrow only from its reference parameters
@@ -24,9 +24,9 @@ error[L0605]: `tag` returns a borrow that cannot come from `c`
    = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `maybe` returns a borrow that cannot come from `c`
-  --> emit/tied_result_implementor_borrows.knv:36:11
+  --> emit/tied_result_implementor_borrows.knv:39:11
    |
-36 |   (maybe (c name) (some (:model c)))
+39 |   (maybe (c name) (some (:model c)))
    |           ^ the result borrows from this value
    |
    = note: the trait's signature lets the result borrow only from its reference parameters
@@ -34,9 +34,9 @@ error[L0605]: `maybe` returns a borrow that cannot come from `c`
    = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `brand` returns a borrow that cannot come from `c`
-  --> emit/tied_result_implementor_borrows.knv:38:11
+  --> emit/tied_result_implementor_borrows.knv:41:11
    |
-38 |   (brand (c name) (model-of c))
+41 |   (brand (c name) (model-of c))
    |           ^ the result borrows from this value
    |
    = note: the trait's signature lets the result borrow only from its reference parameters
@@ -44,9 +44,9 @@ error[L0605]: `brand` returns a borrow that cannot come from `c`
    = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `stamp` returns a borrow that cannot come from `c`
-  --> emit/tied_result_implementor_borrows.knv:40:16
+  --> emit/tied_result_implementor_borrows.knv:43:16
    |
-40 |   (stamp (year c)
+43 |   (stamp (year c)
    |                ^ the result borrows from this value
    |
    = note: no parameter of the trait's signature holds a borrow, so the result takes the `'static` lifetime
@@ -54,9 +54,9 @@ error[L0605]: `stamp` returns a borrow that cannot come from `c`
    = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `swap` returns a `car`, which cannot hold the borrow in `other`
-  --> emit/tied_result_implementor_borrows.knv:43:12
+  --> emit/tied_result_implementor_borrows.knv:46:12
    |
-43 |   (swap (c other) ((fn (x) x) other))
+46 |   (swap (c other) ((fn (x) x) other))
    |            ^^^^^ this borrow reaches the result
    |
    = note: a trait signature cannot name the lifetime that `car` holds
@@ -64,9 +64,9 @@ error[L0605]: `swap` returns a `car`, which cannot hold the borrow in `other`
    = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `trade` returns a `car`, which cannot hold the borrow in `other`
-  --> emit/tied_result_implementor_borrows.knv:45:13
+  --> emit/tied_result_implementor_borrows.knv:48:13
    |
-45 |   (trade (c other)
+48 |   (trade (c other)
    |             ^^^^^ this borrow reaches the result
    |
    = note: a trait signature cannot name the lifetime that `car` holds
@@ -74,9 +74,9 @@ error[L0605]: `trade` returns a `car`, which cannot hold the borrow in `other`
    = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `echo` returns a borrow that cannot come from `v`
-  --> emit/tied_result_implementor_borrows.knv:51:10
+  --> emit/tied_result_implementor_borrows.knv:54:10
    |
-51 |   (echo (v label)
+54 |   (echo (v label)
    |          ^ the result borrows from this value
    |
    = note: the trait's signature lets the result borrow only from its reference parameters
@@ -84,9 +84,9 @@ error[L0605]: `echo` returns a borrow that cannot come from `v`
    = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `park` returns a borrow that cannot come from `r`
-  --> emit/tied_result_implementor_borrows.knv:71:10
+  --> emit/tied_result_implementor_borrows.knv:75:10
    |
-71 |   (park (r name)
+75 |   (park (r name)
    |          ^ the result borrows from this value
    |
    = note: the trait's signature lets the result borrow only from its reference parameters

@@ -4,16 +4,11 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::phase::Phase;
 use super::saved_names::{NameTables, SavedNames};
 use super::{Scope, ScopeSet};
 use crate::core::{BindingId, Namespace};
 use crate::reader::Symbol;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum Phase {
-    Runtime,
-    CompileTime,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Resolution {

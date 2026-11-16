@@ -3,6 +3,6 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/closure_item_through_generic_call_signed.knv
 ---
-(type apply (fn ((fn () (option i64))) (option i64)))
-(type later (fn ((iterator i64)) (option i64)))
+(type apply (fn ((fn () (option int))) (option int)))
+(type later (fn ((iterator int)) (option int)))
 (type main (fn () unit))

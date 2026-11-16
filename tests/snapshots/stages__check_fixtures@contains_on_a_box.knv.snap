@@ -3,11 +3,11 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/contains_on_a_box.knv
 ---
-error[L0404]: `(box (vec i64))` does not implement `(contains i64)`
+error[L0404]: `(box (vec int))` does not implement `(contains int)`
  --> check/contains_on_a_box.knv:2:23
   |
 2 |   (println (contains? (box (vec 1 2)) 1)))
-  |                       ^^^^^^^^^^^^^^^ this needs `(contains i64)`
+  |                       ^^^^^^^^^^^^^^^ this needs `(contains int)`
   |
   = note: `contains` is implemented for: (with str (ref str)), (with string (ref str)), (with (where ((item partial-eq)) (vec item)) item), (with (where ((item partial-eq)) (slice item)) item), (with (where ((whole (contains part)) part) (ref whole)) part)
   = help: `contains?` looks for a `(ref str)` part in text and for an item of the element type in a vector or a slice: write `(as-str part)` to look for a `string` in text, or `(str part)` to look for text in a vector of `string`

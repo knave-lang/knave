@@ -10,7 +10,7 @@ error[L0401]: mismatched types
   | ------------------------- expected because of this signature
 4 |
 5 | (defn answer () "forty-two")
-  |                 ^^^^^^^^^^^ expected `i64`, found `(ref str)`
+  |                 ^^^^^^^^^^^ expected `int`, found `(ref str)`
   |
   = note: run `knave doc L0401` for an explanation
 
@@ -18,7 +18,7 @@ error[L0401]: mismatched types
  --> check/mismatch_contexts.knv:8:22
   |
 8 |   (local (total i64) "text")
-  |                 ---  ^^^^^^ expected `i64`, found `(ref str)`
+  |                 ---  ^^^^^^ expected `int`, found `(ref str)`
   |                 |
   |                 expected because of this annotation
   |
@@ -28,7 +28,7 @@ error[L0401]: mismatched types
   --> check/mismatch_contexts.knv:12:23
    |
 12 |   (new counter (count "many")))
-   |                       ^^^^^^ expected `i64`, found `(ref str)`
+   |                       ^^^^^^ expected `int`, found `(ref str)`
    |
    = note: run `knave doc L0401` for an explanation
 
@@ -71,7 +71,7 @@ error[L0401]: mismatched types
 26 |   (local (pick (fn (i64) i64))
    |                -------------- expected because of this annotation
 27 |     (fn (left right) left))
-   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `(fn (i64) i64)`, found `(fn (_ _) _)`
+   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `(fn (int) int)`, found `(fn (_ _) _)`
    |
    = note: run `knave doc L0401` for an explanation
 
@@ -82,6 +82,6 @@ error[L0401]: mismatched types
    | -------------------------------- expected because of this signature
 31 |
 32 | (defn ends-with-let () (local unused 1))
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i64`, found `unit`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `int`, found `unit`
    |
    = note: run `knave doc L0401` for an explanation

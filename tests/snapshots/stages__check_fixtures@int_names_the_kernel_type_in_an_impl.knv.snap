@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/int_names_the_kernel_type_in_an_impl.knv
+---
+error[L0404]: `(vec (ref str))` does not implement `sized`
+ --> check/int_names_the_kernel_type_in_an_impl.knv:9:18
+  |
+9 |   (println (size (vec "a" "b"))))
+  |                  ^^^^^^^^^^^^^ this needs `sized`
+  |
+  = note: `sized` is implemented for: (vec int)
+  = note: run `knave doc L0404` for an explanation

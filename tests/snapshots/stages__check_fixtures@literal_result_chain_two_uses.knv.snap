@@ -7,6 +7,6 @@ error[L0401]: mismatched types
   --> check/literal_result_chain_two_uses.knv:10:18
    |
 10 |   (println (code (other)))
-   |                  ^^^^^^^ expected `u16`, found `i64`
+   |                  ^^^^^^^ expected `u16`, found `int`
    |
    = note: run `knave doc L0401` for an explanation

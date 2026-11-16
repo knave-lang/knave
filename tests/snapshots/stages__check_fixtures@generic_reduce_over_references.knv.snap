@@ -3,5 +3,5 @@ source: tests/stages.rs
 expression: "Fixture::load(path).check_report()"
 input_file: tests/fixtures/check/generic_reduce_over_references.knv
 ---
-(type total (fn ((ref (slice i64))) i64))
+(type total (fn ((ref (slice int))) int))
 (type main (fn () unit))

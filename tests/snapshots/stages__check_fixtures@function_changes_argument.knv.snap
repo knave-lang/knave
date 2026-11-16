@@ -12,5 +12,5 @@ warning[L0804]: `add-one` changes an argument, so its name should end with `!`
   = help: rename it `add-one!`
   = note: run `knave doc L0804` for an explanation
 
-(type add-one (fn ((mut (vec i64))) unit))
+(type add-one (fn ((mut (vec int))) unit))
 (type main (fn () unit))

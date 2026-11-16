@@ -3,5 +3,5 @@ source: tests/stages.rs
 expression: "Fixture::load(path).check_report()"
 input_file: tests/fixtures/check/written_mut_parameter_twice.knv
 ---
-(type fill! (fn ((mut (vec i64))) unit))
+(type fill! (fn ((mut (vec int))) unit))
 (type main (fn () unit))

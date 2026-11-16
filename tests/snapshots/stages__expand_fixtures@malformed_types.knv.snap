@@ -9,7 +9,7 @@ error[L0234]: expected a type
 1 | (type text-type "text")
   |                 ^^^^^^ this is not a type
   |
-  = help: a type is a name such as `i64`, or a form such as `(fn (i64) i64)` or `(ref str)`
+  = help: a type is a name such as `int`, or a form such as `(fn (int) int)` or `(ref str)`
   = note: run `knave doc L0234` for an explanation
 
 error[L0228]: malformed `ref` type

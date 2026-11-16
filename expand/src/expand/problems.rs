@@ -647,7 +647,7 @@ impl ExpandProblems {
     pub fn type_in_value_note(name: &str) -> String {
         format!(
             "`{name}` is a type; a type goes beside a name in a binding, as in \
-             `(local (year i64) 2025)`, or in a `type` signature"
+             `(local (year int) 2025)`, or in a `type` signature"
         )
     }
 
@@ -832,7 +832,7 @@ impl ExpandProblems {
             Label::new(span, "this is not a type"),
         )
         .with_help(
-            "a type is a name such as `i64`, or a form such as `(fn (i64) i64)` or `(ref str)`",
+            "a type is a name such as `int`, or a form such as `(fn (int) int)` or `(ref str)`",
         )
     }
 

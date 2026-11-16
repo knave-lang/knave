@@ -5,4 +5,4 @@ input_file: tests/fixtures/check/match_exhaustive_under_nested_recursive_enum.kn
 ---
 (derive chain clone partial-eq eq hash show)
 (enum chain (link (box chain) bool) end)
-(type pick (fn ((ref chain)) i64))
+(type pick (fn ((ref chain)) int))

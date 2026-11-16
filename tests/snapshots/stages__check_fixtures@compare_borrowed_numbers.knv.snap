@@ -3,5 +3,5 @@ source: tests/stages.rs
 expression: "Fixture::load(path).check_report()"
 input_file: tests/fixtures/check/compare_borrowed_numbers.knv
 ---
-(type big? (fn ((ref (slice i64))) bool))
+(type big? (fn ((ref (slice int))) bool))
 (type main (fn () unit))

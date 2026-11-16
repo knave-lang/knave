@@ -166,7 +166,7 @@ const SHADOWING_SUM: &str =
     "(defn sum (left right) (+ left right))\n(defn main () (println (sum 1 2)))\n";
 const NUMBERS: &str = "(export twice)\n\n(defn twice (x) \"Doubles a number.\" (* 2 x))\n";
 const NUMBERS_ENTRY: &str = "(use lib/numbers twice)\n\n(defn main () (println (twice 21)))\n";
-const TWICE_TYPE: &str = "(type twice (fn (i64) i64))";
+const TWICE_TYPE: &str = "(type twice (fn (int) int))";
 const TWICE_PAGE: &str = "(defn twice (x))\n\nDoubles a number.\n";
 const POINT_TYPE: &str = "(type point (fn () point))";
 
@@ -2326,10 +2326,21 @@ fn doc_prints_the_page_of_a_kernel_form() {
 #[test]
 fn doc_prints_the_page_of_a_kernel_type() {
     let sandbox = Sandbox::new("doc_kernel_type");
-    let doc = sandbox.compiler(&["doc", "i64"]);
+    let doc = sandbox.compiler(&["doc", "int"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        "i64\n\nHolds a signed 64-bit integer, as Rust's `i64` does.\n\nAn integer literal whose type stays open defaults to `i64`.\n\n(the i64 3)\n=> 3\n\n(infer 1)\n=> \"i64\"\n"
+        "int\n\nHolds an integer, Knave's default: a signed 64-bit integer, as Rust's\n`i64` is.\n\n`i64` is another name for this type. Write it where the width is the\npoint, as in a Rust template. A large collection of small numbers can\nuse [u8], [u16] or [i32] to save memory.\n\nAn integer literal whose type stays open defaults to `int`.\n\n(the int 3)\n=> 3\n\n(infer 1)\n=> \"int\"\n"
+    );
+}
+
+#[test]
+fn doc_of_another_name_of_a_kernel_type_prints_its_page() {
+    let sandbox = Sandbox::new("doc_kernel_type_other_name");
+    let other = sandbox.compiler(&["doc", "i64"]);
+    let shown = sandbox.compiler(&["doc", "int"]);
+    assert_eq!(
+        other.assert_exit_code(0).stdout(),
+        shown.assert_exit_code(0).stdout()
     );
 }
 
@@ -2779,6 +2790,17 @@ fn doc_write_shows_no_type_for_a_macro_or_a_struct() {
 }
 
 #[test]
+fn doc_write_prelude_gives_two_names_of_one_type_one_section() {
+    let sandbox = Sandbox::new("doc_write_prelude_int");
+    sandbox
+        .compiler(&["doc", "--write", "--prelude"])
+        .assert_silent_success();
+    let page = sandbox.contents("doc/prelude.md");
+    assert!(page.contains("<a id=\"int\"></a>\n<a id=\"i64\"></a>\n\n## `int`\n"));
+    assert!(!page.contains("## `i64`"));
+}
+
+#[test]
 fn doc_write_prelude_writes_a_page_per_public_prelude_module() {
     let sandbox = Sandbox::new("doc_write_prelude");
     sandbox
@@ -2995,7 +3017,7 @@ fn doc_write_gives_each_page_the_type_of_its_own_name() {
     assert!(
         sandbox
             .contents("doc/a.md")
-            .contains("\n(type size (fn () i64))\n```")
+            .contains("\n(type size (fn () int))\n```")
     );
     assert!(
         sandbox
@@ -3097,7 +3119,7 @@ fn doc_write_types_a_module_from_the_whole_program_when_its_own_check_fails() {
     assert!(
         sandbox
             .contents("doc/lib.md")
-            .contains("\n(def nothing)\n(type nothing (option i64))\n```")
+            .contains("\n(def nothing)\n(type nothing (option int))\n```")
     );
     assert!(
         sandbox
@@ -3537,7 +3559,7 @@ fn doc_types_prints_the_type_of_a_struct_constructor() {
     let sandbox = Sandbox::new("doc_types_constructor").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "->point"]),
-        "(type ->point (fn (i64 i64) point))\n(defstruct point)\n\nNo documentation.\n"
+        "(type ->point (fn (int int) point))\n(defstruct point)\n\nNo documentation.\n"
     );
 }
 
@@ -3546,7 +3568,7 @@ fn doc_types_prints_the_type_of_a_function_with_keyword_parameters() {
     let sandbox = Sandbox::new("doc_types_keyword").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "area"]),
-        "(type area (fn (i64 i64) i64))\n(defn area (:width i64 :height i64))\n\nNo documentation.\n"
+        "(type area (fn (int int) int))\n(defn area (:width i64 :height i64))\n\nNo documentation.\n"
     );
 }
 
@@ -3555,7 +3577,7 @@ fn doc_types_prints_the_type_of_a_plain_definition() {
     let sandbox = Sandbox::new("doc_types_plain").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "limit"]),
-        "(type limit i64)\n(def limit)\n\nNo documentation.\n"
+        "(type limit int)\n(def limit)\n\nNo documentation.\n"
     );
 }
 
@@ -3611,7 +3633,7 @@ fn doc_types_prints_the_type_of_an_undocumented_def_beside_a_struct() {
         .with_file("prog.knv", UNDOCUMENTED_DEF_BESIDE_A_STRUCT);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "point"]),
-        "(type point i64)\n(def point)\n\nNo documentation.\n"
+        "(type point int)\n(def point)\n\nNo documentation.\n"
     );
 }
 
@@ -3648,7 +3670,7 @@ fn doc_types_prints_the_type_of_the_definition_that_shadows_a_prelude_name() {
     let sandbox = Sandbox::new("doc_types_shadowing").with_file("main.knv", SHADOWING_SUM);
     assert_eq!(
         sandbox.typed_page(&["--file", "main.knv", "sum"]),
-        "(type sum (fn (i64 i64) i64))\n(defn sum (left right))\n\nNo documentation.\n"
+        "(type sum (fn (int int) int))\n(defn sum (left right))\n\nNo documentation.\n"
     );
 }
 
@@ -4615,7 +4637,7 @@ fn eval_json_carries_an_inferred_type_as_a_string_value() {
     let eval = sandbox.compiler(&["eval", "--json", "session.knv", "(infer (vec 1 2))"]);
     assert_eq!(
         eval.assert_silent_success().json_replies()[0],
-        json!({"value": "\"(vec i64)\"", "form": 1})
+        json!({"value": "\"(vec int)\"", "form": 1})
     );
 }
 

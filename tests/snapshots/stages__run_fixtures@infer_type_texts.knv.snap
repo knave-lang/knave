@@ -5,13 +5,13 @@ input_file: tests/fixtures/run/infer_type_texts.knv
 ---
 bool char unit
 (ref str) string
-(vec i64) (pair i64 (ref str))
-(option f64) (sorted-map (ref str) i64)
+(vec int) (pair int (ref str))
+(option f64) (sorted-map (ref str) int)
 point shape
-(holder i64)
+(holder int)
 (ref point) (mut string)
 (ref string)
-(iterator (ref i64))
-(fn (i64) i64)
+(iterator (ref int))
+(fn (int) int)
 (ref 'a str)
 "Leaf"

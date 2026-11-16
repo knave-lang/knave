@@ -321,7 +321,7 @@ mod tests {
             &UnificationFixture::integer(),
             &UnificationFixture::boolean(),
         );
-        assert_eq!(label, "expected `i64`, found `bool`");
+        assert_eq!(label, "expected `int`, found `bool`");
     }
 
     #[test]
@@ -332,7 +332,7 @@ mod tests {
             .expect(&settled, &UnificationFixture::integer())
             .expect("an open variable fits");
         let label = fixture.mismatch_label(&settled, &UnificationFixture::boolean());
-        assert_eq!(label, "expected `i64`, found `bool`");
+        assert_eq!(label, "expected `int`, found `bool`");
     }
 
     #[test]
@@ -390,7 +390,7 @@ mod tests {
     #[test]
     fn a_known_type_is_described_in_backticks() {
         let mut fixture = UnificationFixture::new();
-        assert_eq!(fixture.describe(&UnificationFixture::integer()), "`i64`");
+        assert_eq!(fixture.describe(&UnificationFixture::integer()), "`int`");
     }
 
     #[test]

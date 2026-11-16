@@ -13,5 +13,5 @@ error[L0456]: cannot choose which implementor of `parking` runs `park`
    |                                            ^^^^ no type here picks an implementor of `parking`
    |
    = note: a call picks an implementor from the type of a parameter or result that is `self`
-   = help: add `(ref self)` as the first parameter of `park`, as in `(fn ((ref self) i64) i64)`
+   = help: add `(ref self)` as the first parameter of `park`, as in `(fn ((ref self) int) int)`
    = note: run `knave doc L0456` for an explanation

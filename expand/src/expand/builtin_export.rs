@@ -47,21 +47,17 @@ mod tests {
     use crate::core::{BindingKind, KernelType, Namespace, PrimitiveType};
 
     #[test]
-    fn a_type_with_a_differing_spelling_exports_both_names() {
-        let export = BuiltinExport {
-            name: "int",
-            differing_spelling: Some("i64"),
-            ..BuiltinExport::kernel_type(KernelType::Primitive(PrimitiveType::I64))
-        };
+    fn the_default_integer_is_one_binding_named_int_and_exported_as_both_names() {
+        let export = BuiltinExport::kernel_type(KernelType::Primitive(PrimitiveType::I64));
         assert_eq!(export.names().collect::<Vec<_>>(), ["int", "i64"]);
+        assert_eq!(export.binding().name(), "int");
+        assert_eq!(export.namespace(), Namespace::Type);
     }
 
     #[test]
-    fn a_kernel_type_exports_its_shown_name_in_the_type_namespace() {
-        let export = BuiltinExport::kernel_type(KernelType::Primitive(PrimitiveType::I64));
-        assert_eq!(export.names().collect::<Vec<_>>(), ["i64"]);
-        assert_eq!(export.namespace(), Namespace::Type);
-        assert_eq!(export.binding().name(), "i64");
+    fn a_kernel_type_shown_by_its_spelling_exports_one_name() {
+        let export = BuiltinExport::kernel_type(KernelType::Primitive(PrimitiveType::I32));
+        assert_eq!(export.names().collect::<Vec<_>>(), ["i32"]);
     }
 
     #[test]

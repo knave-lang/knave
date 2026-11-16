@@ -4,7 +4,7 @@ expression: repl.transcript()
 ---
 exit code: Some(0)
 --- stdout
-"(vec i64)"
+"(vec int)"
 "(where (a) (fn (a) a))"
 "(where (a) (option a))"
 "(where (a) (fn (a) a))"

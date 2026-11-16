@@ -8,7 +8,7 @@ input_file: tests/fixtures/expand/doc_find_doc.knv
 (def quokka-both (fn (x_3) x_3))
 (enum shade light dark)
 (def gadget (fn (x_4) x_4))
-(struct pen (size i64))
+(struct pen (size int))
 (def make-pen (fn (size) (new pen (size size))))
 (def by-name-then-body "(find-doc quokka)\n\n(defn quokka-both (x))\n    Holds a quokka.\n(defn quokka-count (x))\n    Counts the animals.\n(defn quokka-plain (x))\n(defn gadget (x))\n    Fixes a gadget.")
 (def in-any-case "(find-doc \"QUOKKA-COUNT\")\n\n(defn quokka-count (x))\n    Counts the animals.")

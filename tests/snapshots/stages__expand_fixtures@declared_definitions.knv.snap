@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/declared_definitions.knv
 ---
-(struct clicks (count i64))
+(struct clicks (count int))
 (def make-clicks (fn (count) (new clicks (count count))))
 (def clicks_2 (fn () 0))
 (def reset (fn ((counter clicks)) (field counter count)))

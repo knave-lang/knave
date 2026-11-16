@@ -4,7 +4,7 @@ expression: reports.report(path)
 input_file: tests/fixtures/emit/infer_parameter_mode.knv
 ---
 fn total(v: &[i64]) -> i64 {
-    println!("{}", "(vec i64)");
+    println!("{}", "(vec int)");
     v.iter().fold(0, |sum: i64, n: &i64| sum + *n)
 }
 

@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/join_items_not_text.knv
 ---
-error[L0404]: `(vec i64)` does not implement `joinable`
+error[L0404]: `(vec int)` does not implement `joinable`
  --> check/join_items_not_text.knv:2:18
   |
 2 |   (println (join (vec 1 2) ",")))

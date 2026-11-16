@@ -45,7 +45,7 @@ error[L0404]: `(ref str)` does not implement `number`
 9 | (defn adds-text () (+ "a" "b"))
   |                       ^^^ this needs `number`
   |
-  = note: `number` is implemented for: i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+  = note: `number` is implemented for: i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
   = note: run `knave doc L0404` for an explanation
 
 error[L0408]: `point` has no field `z`
@@ -88,5 +88,5 @@ error[L0404]: `u8` does not implement `signed`
 32 |   (neg (the u8 1)))
    |        ^^^^^^^^^^ this needs `signed`
    |
-   = note: `signed` is implemented for: i8, i16, i32, i64, i128, isize, f32, f64
+   = note: `signed` is implemented for: i8, i16, i32, int, i128, isize, f32, f64
    = note: run `knave doc L0404` for an explanation

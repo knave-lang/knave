@@ -4,12 +4,12 @@ expression: reports.report(path)
 input_file: tests/fixtures/run/infer_unresolved_operand.knv
 ---
 usize
-i64
+int
 bool
-i64
-i64
-i64
+int
+int
+int
 bool
-i64
+int
 (ref str)
-i64
+int

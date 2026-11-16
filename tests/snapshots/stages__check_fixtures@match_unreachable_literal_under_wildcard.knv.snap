@@ -14,5 +14,5 @@ warning[L0803]: unreachable `match` arm
   = note: run `knave doc L0803` for an explanation
 
 (derive point clone copy partial-eq eq hash show)
-(type ->point (fn (i64 i64) point))
-(type place (fn (point) i64))
+(type ->point (fn (int int) point))
+(type place (fn (point) int))

@@ -12,7 +12,7 @@ fn main() {
     crate::rt::restore_default_sigpipe();
     let v: Vec<i64> = Vec::new();
     println!("{}", "unit");
-    println!("{}", "(vec i64)");
+    println!("{}", "(vec int)");
     println!("{}", crate::rt::Shown(&wrap(1_i64)));
     println!("{}", crate::rt::Shown(&wrap("a")))
 }

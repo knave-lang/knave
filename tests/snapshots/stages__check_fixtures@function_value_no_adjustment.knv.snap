@@ -7,7 +7,7 @@ error[L0507]: mismatched function type
  --> check/function_value_no_adjustment.knv:8:29
   |
 8 | (defn main () (takes-shared change!))
-  |                             ^^^^^^^ expected `(fn ((ref (vec i64))) unit)`, found `(fn ((mut (vec i64))) unit)`
+  |                             ^^^^^^^ expected `(fn ((ref (vec int))) unit)`, found `(fn ((mut (vec int))) unit)`
   |
   = note: no adjustment makes parameter 1 match
   = help: change the parameter's ownership in a `type` signature, or pass a function that matches

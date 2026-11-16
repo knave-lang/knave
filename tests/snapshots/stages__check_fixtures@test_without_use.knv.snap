@@ -3,5 +3,5 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/test_without_use.knv
 ---
-(type twice (fn (i64) i64))
+(type twice (fn (int) int))
 (type main (fn () unit))

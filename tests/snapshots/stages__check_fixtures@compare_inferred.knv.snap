@@ -3,5 +3,5 @@ source: tests/stages.rs
 expression: "Fixture::load(path).check_report()"
 input_file: tests/fixtures/check/compare_inferred.knv
 ---
-(type same? (fn (i64 i64) bool))
+(type same? (fn (int int) bool))
 (type main (fn () unit))

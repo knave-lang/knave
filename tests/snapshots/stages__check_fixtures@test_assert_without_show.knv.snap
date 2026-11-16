@@ -10,7 +10,7 @@ error[L0404]: `operation` does not implement `partial-eq`
 11 | |              (->operation :name (str "add") :op twice))))
    | |________________________________________________________^ this needs `partial-eq`
    |
-   = note: `operation` cannot derive `partial-eq`: field `op` is `(fn (i64) i64)`
+   = note: `operation` cannot derive `partial-eq`: field `op` is `(fn (int) int)`
    = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `operation` does not implement `show`
@@ -19,7 +19,7 @@ error[L0404]: `operation` does not implement `show`
 10 |   (assert (= (->operation :name (str "add") :op twice)
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `show`
    |
-   = note: `operation` cannot derive `show`: field `op` is `(fn (i64) i64)`
+   = note: `operation` cannot derive `show`: field `op` is `(fn (int) int)`
    = help: a closure, an iterator or a function has no printed form
    = note: run `knave doc L0404` for an explanation
 
@@ -29,7 +29,7 @@ error[L0404]: `operation` does not implement `show`
 11 |              (->operation :name (str "add") :op twice))))
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `show`
    |
-   = note: `operation` cannot derive `show`: field `op` is `(fn (i64) i64)`
+   = note: `operation` cannot derive `show`: field `op` is `(fn (int) int)`
    = help: a closure, an iterator or a function has no printed form
    = note: run `knave doc L0404` for an explanation
 
@@ -41,7 +41,7 @@ error[L0404]: `operation` does not implement `partial-eq`
 16 | |              (->operation :name (str "a") :op twice))))
    | |______________________________________________________^ this needs `partial-eq`
    |
-   = note: `operation` cannot derive `partial-eq`: field `op` is `(fn (i64) i64)`
+   = note: `operation` cannot derive `partial-eq`: field `op` is `(fn (int) int)`
    = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `operation` does not implement `show`
@@ -52,7 +52,7 @@ error[L0404]: `operation` does not implement `show`
 15 | |                 (->operation :name (str "a") :op twice)))
    | |_________________________________________________________^ this needs `show`
    |
-   = note: `operation` cannot derive `show`: field `op` is `(fn (i64) i64)`
+   = note: `operation` cannot derive `show`: field `op` is `(fn (int) int)`
    = help: a closure, an iterator or a function has no printed form
    = note: run `knave doc L0404` for an explanation
 
@@ -62,6 +62,6 @@ error[L0404]: `operation` does not implement `show`
 16 |              (->operation :name (str "a") :op twice))))
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `show`
    |
-   = note: `operation` cannot derive `show`: field `op` is `(fn (i64) i64)`
+   = note: `operation` cannot derive `show`: field `op` is `(fn (int) int)`
    = help: a closure, an iterator or a function has no printed form
    = note: run `knave doc L0404` for an explanation

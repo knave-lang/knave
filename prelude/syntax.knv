@@ -397,7 +397,7 @@
       (fail "a parameter must start with `:`"
         form
         (string "write each parameter as `:name type` or `:name`, as in "
-                "(defn add (:x i64 :y i64) (+ x y))")))))
+                "(defn add (:x int :y int) (+ x y))")))))
 
 (def parameter-width
   (fn (more)

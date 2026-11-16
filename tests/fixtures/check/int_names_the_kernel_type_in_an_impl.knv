@@ -1,0 +1,9 @@
+(trait sized
+  (size (fn ((ref self)) usize)))
+
+(impl sized (vec int)
+  (size (items) (len items)))
+
+(defn main ()
+  (println (size (vec 1 2)))
+  (println (size (vec "a" "b"))))

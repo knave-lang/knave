@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/keyword_patterns.knv
 ---
-(struct point (x i64) (y i64))
+(struct point (x int) (y int))
 (def make-point (fn (x y) (new point (x x) (y y))))
 (enum shape (labeled (struct (text string) (size f64))) dot)
 (def y-of (fn (p) (match p ((point :y found) found))))

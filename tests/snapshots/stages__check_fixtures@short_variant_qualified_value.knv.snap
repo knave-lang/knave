@@ -4,7 +4,7 @@ expression: reports.report(path)
 input_file: tests/fixtures/check/short_variant_qualified_value.knv
 ---
 (derive shape clone copy partial-eq show)
-(type geometry/circle i64)
-(type geometry/point i64)
+(type geometry/circle int)
+(type geometry/point int)
 (type radius (fn (shape) f64))
 (type main (fn () unit))

@@ -7,7 +7,7 @@ error[L0428]: `try` cannot return from this function
  --> check/try_option_in_result_function.knv:3:16
   |
 3 | (defn stray () (try (some 1)))
-  |                ^^^^^^^^^^^^^^ this function returns `(result i64 string)`
+  |                ^^^^^^^^^^^^^^ this function returns `(result int string)`
   |
   = note: `try` here needs a function that returns `option`
   = help: make the function return the value `try` needs, or handle this value without `try`

@@ -7,6 +7,6 @@ error[L0401]: mismatched types
  --> check/match_pattern_on_non_enum.knv:8:13
   |
 8 |   (match n ((circle _) 0)))
-  |             ^^^^^^^^^^ expected `shape`, found `i64`
+  |             ^^^^^^^^^^ expected `shape`, found `int`
   |
   = note: run `knave doc L0401` for an explanation

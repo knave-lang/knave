@@ -9,5 +9,5 @@ error[L0404]: `handler` does not implement `partial-eq`
 6 |   (= (->handler (fn (value) value) 1)
   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `partial-eq`
   |
-  = note: `handler` cannot derive `partial-eq`: field `callback` is `(fn (i64) i64)`
+  = note: `handler` cannot derive `partial-eq`: field `callback` is `(fn (int) int)`
   = note: run `knave doc L0404` for an explanation

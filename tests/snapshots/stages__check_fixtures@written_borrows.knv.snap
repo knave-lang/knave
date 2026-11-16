@@ -7,7 +7,7 @@ error[L0401]: mismatched types
   --> check/written_borrows.knv:11:12
    |
 11 |   (add-one (ref n)))
-   |            ^^^^^^^ expected `i64`, found `(ref _)`
+   |            ^^^^^^^ expected `int`, found `(ref _)`
    |
    = note: run `knave doc L0401` for an explanation
 
@@ -15,6 +15,6 @@ error[L0401]: mismatched types
   --> check/written_borrows.knv:15:9
    |
 15 |   (peek (deref (ref n))))
-   |         ^^^^^^^^^^^^^^^ expected `(ref i64)`, found an integer
+   |         ^^^^^^^^^^^^^^^ expected `(ref int)`, found an integer
    |
    = note: run `knave doc L0401` for an explanation

@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/int_and_i64.knv
+---
+3
+int
+(fn (int int) int)

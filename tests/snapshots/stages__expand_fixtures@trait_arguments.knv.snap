@@ -13,5 +13,5 @@ warning[L0217]: `comparable` binds a Rust path that `partial-eq` already binds
   = help: use `partial-eq`, or give `comparable` a different Rust path
   = note: run `knave doc L0217` for an explanation
 
-(rust-trait comparable "PartialEq" i64 (with i64 i64) (where ((a (comparable b)) b) (with (ref a) (ref b))))
+(rust-trait comparable "PartialEq" int (with int int) (where ((a (comparable b)) b) (with (ref a) (ref b))))
 (def compare-with (rust "{&0} == {&1}" (where ((a_2 (comparable b_2)) b_2) (fn (a_2 b_2) bool))))

@@ -19,7 +19,7 @@ error[L0404]: `str` does not implement `shown`
 13 | (defn borrowed-text (text) (describe text))
    |                                      ^^^^ this needs `shown`
    |
-   = note: `shown` is implemented for: i64, (where ((a shown)) (ref a))
+   = note: `shown` is implemented for: int, (where ((a shown)) (ref a))
    = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `unit` does not implement `clone`
@@ -28,7 +28,7 @@ error[L0404]: `unit` does not implement `clone`
 20 |   (clone (->pair (do) 1)))
    |          ^^^^^^^^^^^^^^^ this needs `clone`
    |
-   = note: `clone` is implemented for: bool, char, string, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, (where (a) (ref a)), (where ((a clone)) (vec a)), (where ((a clone)) (option a)), (where ((a clone) (b clone)) (result a b)), (where ((a clone)) (box a)), (where ((a clone) (b clone)) (pair a b)), (where ((a clone) (b clone)) (pair a b))
+   = note: `clone` is implemented for: bool, char, string, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, (where (a) (ref a)), (where ((a clone)) (vec a)), (where ((a clone)) (option a)), (where ((a clone) (b clone)) (result a b)), (where ((a clone)) (box a)), (where ((a clone) (b clone)) (pair a b)), (where ((a clone) (b clone)) (pair a b))
    = note: run `knave doc L0404` for an explanation
 
 error[L0441]: `1` does not fit every type `n` can be
@@ -37,7 +37,7 @@ error[L0441]: `1` does not fit every type `n` can be
 25 | (defn one (value) 1)
    |                   ^ `n` can be `(ref a)`, which cannot hold this value
    |
-   = note: `n` can be any of: i64, (ref a)
+   = note: `n` can be any of: int, (ref a)
    = help: narrow `n` with a trait whose types all hold this value
    = note: run `knave doc L0441` for an explanation
 

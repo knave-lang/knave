@@ -7,6 +7,6 @@ error[L0401]: mismatched types
   --> check/literal_function_parameter_two_uses.knv:12:31
    |
 12 |   (println (:year (build-with ->car)))
-   |                               ^^^^^ expected `(fn ((ref str) i64) _)`, found `(fn ((ref str) u16) car)`
+   |                               ^^^^^ expected `(fn ((ref str) int) _)`, found `(fn ((ref str) u16) car)`
    |
    = note: run `knave doc L0401` for an explanation

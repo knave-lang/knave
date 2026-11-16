@@ -18,7 +18,7 @@ error[L0301]: a parameter must start with `:`
 5 | (defn untyped-start (:x i64 i64) x)
   |                             ^^^ here
   |
-  = help: write each parameter as `:name type` or `:name`, as in (defn add (:x i64 :y i64) (+ x y))
+  = help: write each parameter as `:name type` or `:name`, as in (defn add (:x int :y int) (+ x y))
   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a function takes one `defaults` clause, after its parameters

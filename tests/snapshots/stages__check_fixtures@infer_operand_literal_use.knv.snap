@@ -7,6 +7,6 @@ error[L0401]: mismatched types
  --> check/infer_operand_literal_use.knv:7:11
   |
 7 |   (listen (port)))
-  |           ^^^^^^ expected `u16`, found `i64`
+  |           ^^^^^^ expected `u16`, found `int`
   |
   = note: run `knave doc L0401` for an explanation

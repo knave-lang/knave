@@ -1,0 +1,6 @@
+(defn add ((x i64) (y int)) (+ x y))
+
+(defn main ()
+  (println (add 1 2))
+  (println (add 1 "two"))
+  (println (the i64 "three")))

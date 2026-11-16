@@ -3,12 +3,12 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/box_missing_exported_trait.knv
 ---
-error[L0404]: `(box i64)` does not implement `display`
+error[L0404]: `(box int)` does not implement `display`
  --> check/box_missing_exported_trait.knv:3:31
   |
 3 | (defn main () (println (shown (box 5))))
   |                               ^^^^^^^ this needs `display`
   |
-  = note: `display` is implemented for: bool, char, str, string, (ref str), io-error, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, (where ((a display)) (ref a))
-  = note: `display` is implemented for `(parse-error target)` for each `target` in: bool, char, string, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+  = note: `display` is implemented for: bool, char, str, string, (ref str), io-error, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, (where ((a display)) (ref a))
+  = note: `display` is implemented for `(parse-error target)` for each `target` in: bool, char, string, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
   = note: run `knave doc L0404` for an explanation

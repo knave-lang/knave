@@ -7,6 +7,6 @@ string
 string
 unit
 unit
-(vec i64)
+(vec int)
 string
 (some 2)

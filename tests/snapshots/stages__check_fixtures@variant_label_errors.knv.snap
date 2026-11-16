@@ -97,6 +97,6 @@ error[L0401]: mismatched types
   --> check/variant_label_errors.knv:38:33
    |
 38 |   (tagged/entry :key "k" :value "text"))
-   |                                 ^^^^^^ expected `i64`, found `(ref str)`
+   |                                 ^^^^^^ expected `int`, found `(ref str)`
    |
    = note: run `knave doc L0401` for an explanation

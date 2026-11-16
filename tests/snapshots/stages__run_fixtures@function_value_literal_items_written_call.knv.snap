@@ -7,8 +7,8 @@ error[L0401]: mismatched types
  --> run/function_value_literal_items_written_call.knv:6:20
   |
 6 |   (println (small? (the u16 5)))
-  |                    ^^^^^^^^^^^ expected `i64`, found `u16`
+  |                    ^^^^^^^^^^^ expected `int`, found `u16`
   |
-  = note: `b` defaulted to `i64`, because `small?` is called with `u16` and passed as a value with `u8`
+  = note: `b` defaulted to `int`, because `small?` is called with `u16` and passed as a value with `u8`
   = help: give `small?` a type parameter with a `type` signature, such as `(type small? (where ((a partial-ord number)) (fn (a) bool)))`, so that each use takes its own type
   = note: run `knave doc L0401` for an explanation

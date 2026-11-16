@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/written_i64_prints_int.knv
+---
+error[L0401]: mismatched types
+ --> check/written_i64_prints_int.knv:5:19
+  |
+5 |   (println (add 1 "two"))
+  |                   ^^^^^ expected `int`, found `str`
+  |
+  = note: run `knave doc L0401` for an explanation

@@ -3,5 +3,5 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/associated_parse_int.knv
 ---
-(type read-count (fn ((ref str)) (result i64 parse-int-error)))
+(type read-count (fn ((ref str)) (result int parse-int-error)))
 (type main (fn () unit))

@@ -9,5 +9,5 @@ error[L0210]: malformed `impl`
 4 | (impl labelled (ref i64)
   |                ^^^^^^^^^ this does not fit the shape of `impl`
   |
-  = help: write a concrete type such as `i64`, `string` or `(vec i64)`
+  = help: write a concrete type such as `int`, `string` or `(vec int)`
   = note: run `knave doc L0210` for an explanation

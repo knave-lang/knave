@@ -73,7 +73,7 @@ impl PrimitiveType {
         },
         PrimitiveRow {
             primitive: PrimitiveType::I64,
-            names: PrimitiveNames::same("i64"),
+            names: PrimitiveNames::same("i64").shown_as("int"),
             integer_range: Some((i64::MIN as i128, i64::MAX as i128)),
         },
         PrimitiveRow {

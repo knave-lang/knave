@@ -4,5 +4,5 @@ expression: reports.report(path)
 input_file: tests/fixtures/check/generic_add.knv
 ---
 (type add-values (where ((a (addable b)) b) (fn (a b) (output a))))
-(type add-one (where ((a (addable i64))) (fn (a) (output a))))
+(type add-one (where ((a (addable int))) (fn (a) (output a))))
 (type main (fn () unit))

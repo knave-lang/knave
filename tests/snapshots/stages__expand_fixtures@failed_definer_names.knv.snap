@@ -9,7 +9,7 @@ error[L0349]: this field has no type
 3 |   (labeled :text string :size)
   |                         ^^^^^ here
   |
-  = help: write a type after it, as in :size i64
+  = help: write a type after it, as in :size int
   = note: run `knave doc L0349` for an explanation
 
 error[L0342]: a `deftrait` method is a name and a type, as `(area (fn ((ref self)) f64))`

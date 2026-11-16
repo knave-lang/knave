@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/literal_missing_trait_nested.knv
 ---
-error[L0404]: `i64` does not implement `named`
+error[L0404]: `int` does not implement `named`
   --> check/literal_missing_trait_nested.knv:14:13
    |
 14 |   (println (option-named? (some 1)))
@@ -11,7 +11,7 @@ error[L0404]: `i64` does not implement `named`
    |
    = note: run `knave doc L0404` for an explanation
 
-error[L0404]: `i64` does not implement `named`
+error[L0404]: `int` does not implement `named`
   --> check/literal_missing_trait_nested.knv:17:17
    |
 17 |       (println (mutable-named? (mut value)))
@@ -19,7 +19,7 @@ error[L0404]: `i64` does not implement `named`
    |
    = note: run `knave doc L0404` for an explanation
 
-error[L0404]: `i64` does not implement `named`
+error[L0404]: `int` does not implement `named`
   --> check/literal_missing_trait_nested.knv:20:21
    |
 20 |     (fn (function) (function (some 1))))

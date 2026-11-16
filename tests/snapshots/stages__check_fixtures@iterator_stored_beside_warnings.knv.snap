@@ -3,11 +3,11 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/iterator_stored_beside_warnings.knv
 ---
-error[L0458]: Rust cannot name the type `(iterator i64)` here
+error[L0458]: Rust cannot name the type `(iterator int)` here
  --> check/iterator_stored_beside_warnings.knv:2:10
   |
 2 |   :items (iterator i64)
-  |          ^^^^^^^^^^^^^^ this stores `(iterator i64)`
+  |          ^^^^^^^^^^^^^^ this stores `(iterator int)`
   |
   = note: Rust names this type only as the type of a function's own parameter or result
   = help: store the collection the items come from instead, and call `iter` on it where the items are used

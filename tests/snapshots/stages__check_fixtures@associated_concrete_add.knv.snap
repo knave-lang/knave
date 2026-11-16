@@ -4,5 +4,5 @@ expression: reports.report(path)
 input_file: tests/fixtures/check/associated_concrete_add.knv
 ---
 (type add-values (where ((a (addable b)) b) (fn (a b) (output a))))
-(type total (fn (i64 i64) i64))
+(type total (fn (int int) int))
 (type main (fn () unit))

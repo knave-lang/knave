@@ -4,5 +4,5 @@ expression: reports.report(path)
 input_file: tests/fixtures/check/short_variant_payload_name_binds.knv
 ---
 (derive shape clone copy partial-eq show)
-(type rename (fn (i64) i64))
+(type rename (fn (int) int))
 (type main (fn () unit))

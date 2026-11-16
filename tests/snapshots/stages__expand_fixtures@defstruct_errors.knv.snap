@@ -9,7 +9,7 @@ error[L0301]: this field has no type
 3 |   :year)
   |   ^^^^^ here
   |
-  = help: write a type after it, as in :year i64
+  = help: write a type after it, as in :year int
   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a field must start with `:`
@@ -27,5 +27,5 @@ error[L0301]: this field has no type
 9 |   :seats :doors
   |   ^^^^^^ here
   |
-  = help: write a type after it, as in :seats i64
+  = help: write a type after it, as in :seats int
   = note: run `knave doc L0301` for an explanation

@@ -53,7 +53,7 @@
         keyword
         (string "write a type after it, as in "
                 (symbol-name keyword)
-                " i64"))
+                " int"))
       (first more))))
 
 (def field-start-error

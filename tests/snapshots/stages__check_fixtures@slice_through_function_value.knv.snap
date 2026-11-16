@@ -3,5 +3,5 @@ source: tests/stages.rs
 expression: "Fixture::load(path).check_report()"
 input_file: tests/fixtures/check/slice_through_function_value.knv
 ---
-(type apply-reader (fn ((fn ((ref (vec i64))) i64) (ref (vec i64))) i64))
+(type apply-reader (fn ((fn ((ref (vec int))) int) (ref (vec int))) int))
 (type main (fn () unit))

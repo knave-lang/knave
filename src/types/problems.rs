@@ -391,7 +391,7 @@ impl TypeProblems {
             ),
         )
         .with_help(format!(
-            "end the entry with `({projection} type)`, as in `(where () i64 ({projection} type))`"
+            "end the entry with `({projection} type)`, as in `(where () int ({projection} type))`"
         ))
     }
 
@@ -698,7 +698,7 @@ impl TypeProblems {
             Label::new(span, "cannot infer the type of this value"),
         )
         .with_help(
-            "write the type with `the`, as in `(the (vec i64) (vec))`, or add a `type` signature",
+            "write the type with `the`, as in `(the (vec int) (vec))`, or add a `type` signature",
         )
     }
 

@@ -1341,7 +1341,7 @@ impl Expander<'_> {
         }
         Err(shape.malformed_with_help(
             form,
-            "write a concrete type such as `i64`, `string` or `(vec i64)`",
+            "write a concrete type such as `int`, `string` or `(vec int)`",
         ))
     }
 

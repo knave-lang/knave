@@ -4,4 +4,4 @@ expression: reports.report(path)
 input_file: tests/fixtures/expand/local_binding.knv
 ---
 (def rate 3)
-(def scale (fn (n) (local doubled (mul n 2)) (local (factor i64) rate) (mul doubled factor)))
+(def scale (fn (n) (local doubled (mul n 2)) (local (factor int) rate) (mul doubled factor)))

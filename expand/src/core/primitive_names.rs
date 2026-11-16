@@ -14,6 +14,10 @@ impl PrimitiveNames {
         }
     }
 
+    pub const fn shown_as(self, shown: &'static str) -> Self {
+        Self { shown, ..self }
+    }
+
     pub const fn emitted_as(self, rust: &'static str) -> Self {
         Self { rust, ..self }
     }
@@ -40,21 +44,12 @@ mod tests {
     use super::PrimitiveNames;
     use crate::core::PrimitiveType;
 
-    struct NamesFixture;
-
-    impl NamesFixture {
-        fn shown_as(spelling: &'static str, shown: &'static str) -> PrimitiveNames {
-            PrimitiveNames {
-                shown,
-                ..PrimitiveNames::same(spelling)
-            }
-        }
-    }
-
     #[test]
     fn names_shown_by_another_name_offer_a_differing_spelling() {
         assert_eq!(
-            NamesFixture::shown_as("i64", "int").differing_spelling(),
+            PrimitiveNames::same("i64")
+                .shown_as("int")
+                .differing_spelling(),
             Some("i64")
         );
     }
@@ -83,7 +78,13 @@ mod tests {
     }
 
     #[test]
-    fn a_number_shows_its_spelling() {
-        assert_eq!(PrimitiveType::I64.names().shown(), "i64");
+    fn the_default_integer_shows_as_int() {
+        assert_eq!(PrimitiveType::I64.names().shown(), "int");
+        assert_eq!(PrimitiveType::I64.names().spelling(), "i64");
+    }
+
+    #[test]
+    fn another_number_shows_its_spelling() {
+        assert_eq!(PrimitiveType::I32.names().shown(), "i32");
     }
 }

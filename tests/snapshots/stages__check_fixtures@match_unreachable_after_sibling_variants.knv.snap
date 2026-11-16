@@ -16,4 +16,4 @@ warning[L0803]: unreachable `match` arm
 (derive side clone copy partial-eq eq hash show)
 (derive wrap clone copy partial-eq eq hash show)
 (type ->pick (fn (wrap side) pick))
-(type score (fn ((ref pick)) i64))
+(type score (fn ((ref pick)) int))

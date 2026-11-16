@@ -450,7 +450,7 @@ mod tests {
     #[test]
     fn the_defaulting_run_changes_the_open_literal_signature() {
         let fixture = RunsFixture::new(RunsFixture::UNUSED_OPEN_LITERAL);
-        let defaulted = "(type triple (fn (i64) i64))";
+        let defaulted = "(type triple (fn (int) int))";
         assert!(!fixture.open_signatures().contains(defaulted));
         assert!(fixture.checked_signatures().contains(defaulted));
     }
@@ -512,7 +512,7 @@ mod tests {
         assert!(
             fixture
                 .checked_signatures()
-                .contains("(type wrap (fn (i64) (option i64)))")
+                .contains("(type wrap (fn (int) (option int)))")
         );
     }
 

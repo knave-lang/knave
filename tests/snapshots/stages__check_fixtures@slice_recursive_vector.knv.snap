@@ -3,6 +3,6 @@ source: tests/stages.rs
 expression: "Fixture::load(path).check_report()"
 input_file: tests/fixtures/check/slice_recursive_vector.knv
 ---
-(type sum-vec (fn ((ref (vec i64))) i64))
-(type walk (fn ((ref (vec i64))) i64))
+(type sum-vec (fn ((ref (vec int))) int))
+(type walk (fn ((ref (vec int))) int))
 (type main (fn () unit))

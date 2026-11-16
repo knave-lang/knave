@@ -1,0 +1,7 @@
+(defn add ((x i64) (y int)) (+ x y))
+
+(defn main ()
+  (let (total (add 1 2))
+    (println total)
+    (println (infer total))
+    (println (infer add))))

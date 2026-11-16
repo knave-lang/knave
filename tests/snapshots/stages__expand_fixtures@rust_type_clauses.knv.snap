@@ -3,5 +3,5 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/rust_type_clauses.knv
 ---
-(rust-type (parse-error target) "<{0} as std::str::FromStr>::Err" (i64 "std::num::ParseIntError"))
+(rust-type (parse-error target) "<{0} as std::str::FromStr>::Err" (int "std::num::ParseIntError"))
 (rust-type (shared item) "std::rc::Rc<{0}>" (str "std::rc::Rc<{0}>"))

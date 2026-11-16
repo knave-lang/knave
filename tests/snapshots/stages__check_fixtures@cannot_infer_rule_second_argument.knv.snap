@@ -9,5 +9,5 @@ error[L0407]: type annotations needed
 5 |   (local held (with-open (+ 1 2)))
   |               ^^^^^^^^^^^^^^^^^^^ cannot infer the type of this value
   |
-  = help: write the type with `the`, as in `(the (vec i64) (vec))`, or add a `type` signature
+  = help: write the type with `the`, as in `(the (vec int) (vec))`, or add a `type` signature
   = note: run `knave doc L0407` for an explanation

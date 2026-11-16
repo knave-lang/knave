@@ -16,6 +16,6 @@ input_file: tests/fixtures/check/inferred_box.knv
 (enum (wrapped a) (holds (box (option (wrapped a))) a) empty)
 (enum (boxed-tree a) (branch (box (holder (boxed-tree a))) a) tip)
 (enum (right a) (make-right (box (left a))) (stop-right a))
-(type total (fn ((ref (tree i64))) i64))
-(type holder-value (fn ((ref (boxed-tree i64))) i64))
+(type total (fn ((ref (tree int))) int))
+(type holder-value (fn ((ref (boxed-tree int))) int))
 (type main (fn () unit))

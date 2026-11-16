@@ -27,6 +27,6 @@ warning[L0804]: `rename` changes an argument, so its name should end with `!`
   = help: to change only this function's copy, start the body with `(local name (clone name))`
   = note: run `knave doc L0804` for an explanation
 
-(type clamp (fn ((mut i64)) unit))
+(type clamp (fn ((mut int)) unit))
 (type rename (fn ((mut string)) unit))
 (type main (fn () unit))

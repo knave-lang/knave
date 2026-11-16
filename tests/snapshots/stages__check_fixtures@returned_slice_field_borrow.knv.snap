@@ -14,5 +14,5 @@ error[L0510]: cannot return a borrow of a local value
 7 |   (->report :title title :scores (ref scores)))
   |                                  ^^^^^^^^^^^^ this borrows a local value
   |
-  = help: the field `scores` of `report` borrows its data, so give it the owned type `(vec i64)`
+  = help: the field `scores` of `report` borrows its data, so give it the owned type `(vec int)`
   = note: run `knave doc L0510` for an explanation

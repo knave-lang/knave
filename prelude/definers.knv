@@ -283,7 +283,7 @@
         keyword
         (string "write a type after it, as in "
                 (symbol-name keyword)
-                " i64")
+                " int")
         (template (:code variant-field-without-type)))
       (first more))))
 

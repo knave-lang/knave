@@ -3,6 +3,6 @@ source: tests/cli.rs
 expression: types.assert_exit_code(0).stdout()
 ---
 (derive person clone partial-eq eq hash show)
-(type ->person (fn (string i64) person))
+(type ->person (fn (string int) person))
 (type ->ticket (fn (u32) ticket))
 (type main (fn () unit))

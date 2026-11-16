@@ -14,5 +14,5 @@ warning[L0217]: `partial-eq` binds `PartialEq` again
   = note: run `knave doc L0217` for an explanation
 
 (derive point clone copy partial-eq eq hash show)
-(type ->point (fn (i64 i64) point))
+(type ->point (fn (int int) point))
 (type main (fn () unit))

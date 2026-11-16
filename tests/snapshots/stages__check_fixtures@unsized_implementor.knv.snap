@@ -12,11 +12,11 @@ error[L0444]: `str` has no size, so `take` cannot take `self` by value
   = help: take the receiver by reference, as in `(fn ((ref self)) ...)`
   = note: run `knave doc L0444` for an explanation
 
-error[L0444]: `(slice i64)` has no size, so `take` cannot take `self` by value
+error[L0444]: `(slice int)` has no size, so `take` cannot take `self` by value
  --> check/unsized_implementor.knv:5:16
   |
 5 | (impl consumed (slice i64)
-  |                ^^^^^^^^^^^ `(slice i64)` has no size
+  |                ^^^^^^^^^^^ `(slice int)` has no size
   |
   = help: take the receiver by reference, as in `(fn ((ref self)) ...)`
   = note: run `knave doc L0444` for an explanation

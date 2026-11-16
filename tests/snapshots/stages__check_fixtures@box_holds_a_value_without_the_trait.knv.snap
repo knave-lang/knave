@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/box_holds_a_value_without_the_trait.knv
 ---
-error[L0404]: `(box i64)` does not implement `shape`
+error[L0404]: `(box int)` does not implement `shape`
   --> check/box_holds_a_value_without_the_trait.knv:14:19
    |
 14 |   (println (total (vec (box 5)))))

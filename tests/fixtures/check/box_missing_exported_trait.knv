@@ -1,0 +1,3 @@
+(defn shown (value) (str value))
+
+(defn main () (println (shown (box 5))))

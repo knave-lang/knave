@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/box_missing_exported_trait.knv
+---
+error[L0404]: `(box i64)` does not implement `display`
+ --> check/box_missing_exported_trait.knv:4:19
+  |
+4 |   (println (shown (box 5))))
+  |                   ^^^^^^^ this needs `display`
+  |
+  = help: write the type `(box display)` where the box is made, such as `(local (shapes (vec (box display))) ...)`

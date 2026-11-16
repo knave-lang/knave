@@ -324,7 +324,7 @@ impl TypeChecker {
         for module in modules {
             for item in &module.items {
                 let collected = if let ItemKind::RustTrait(declaration) = &item.kind {
-                    self.collect_rust_trait(declaration, reached)
+                    self.collect_rust_trait(module, declaration, reached)
                 } else {
                     self.collect_item(module.id, item)
                 };
@@ -2352,6 +2352,7 @@ impl TypeChecker {
 
     fn collect_rust_trait(
         &mut self,
+        module: &CoreModule,
         declaration: &crate::core::RustTraitDeclaration,
         reached: &ReachedTraits,
     ) -> Result<(), Diagnostic> {
@@ -2362,12 +2363,12 @@ impl TypeChecker {
         } else {
             RustTrait::unreached(declaration)
         };
-        let table = &mut self.declarations.traits.table;
-        table.add(declaration.binding, rust_trait);
-        self.declarations
-            .traits
+        let traits = &mut self.declarations.traits;
+        traits.table.add(declaration.binding, rust_trait);
+        traits
             .rust_paths
             .insert(declaration.binding, Rc::clone(&declaration.path));
+        traits.prelude_internal.record(module, declaration.binding);
         for method in &declaration.methods {
             let receiver = Self::receiver_kind(&method.signature, declaration.self_variable);
             self.synthetic_bindings.insert(method.binding);
@@ -2600,15 +2601,12 @@ impl TypeChecker {
         while let Type::Ref(_, inner) | Type::Mut(_, inner) = found {
             found = inner;
         }
-        if !self.declarations.types.is_box(found) {
-            return None;
-        }
         let Type::Named(_, arguments) = found else {
             return None;
         };
-        let argument = arguments.first()?;
+        let argument = (arguments.first()).filter(|_| self.declarations.types.is_box(found))?;
         let traits = &self.declarations.traits;
-        let boxable = TraitBoxing::new(traits, &self.bindings).boxes(bound.binding);
+        let boxable = TraitBoxing::new(traits, &self.bindings).suggests_box(bound.binding);
         (boxable && traits.table.satisfies(bound, argument, &|_, _| false)).then(|| found.clone())
     }
 

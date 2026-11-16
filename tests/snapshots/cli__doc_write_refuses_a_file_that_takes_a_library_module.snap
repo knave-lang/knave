@@ -1,0 +1,13 @@
+---
+source: tests/cli.rs
+expression: write.assert_exit_code(1).stderr()
+---
+error[L0258]: library `hints` takes this file's module path `hints`
+ --> src/hints.knv:1:1
+  |
+1 | (export shadowed)
+  | ^ this file never loads
+  |
+  = note: a module path that starts with a library's name loads from the library, so this file would never run
+  = help: rename the file, or rename the library in `project.knv`
+  = note: run `knave doc L0258` for an explanation

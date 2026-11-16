@@ -2,8 +2,8 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (53 of 240): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display enum eprint eprintln eq exit export field floating fmt fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
-running 214 tests
+untested in prelude (54 of 240): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display enum eprint eprintln eq exit export field floating fmt fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord pattern quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
+running 213 tests
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -197,7 +197,6 @@ test prelude/text/doc:pr-str ... ok
 test prelude/text/doc:chars ... ok
 test prelude/text/doc:lines ... ok
 test prelude/text/doc:split ... ok
-test prelude/text/doc:split-when ... ok
 test prelude/text/doc:join ... ok
 test prelude/text/doc:starts-with? ... ok
 test prelude/text/doc:trim ... ok
@@ -238,4 +237,4 @@ test prelude/vec/doc:last ... ok
 test prelude/vec/doc:reverse ... ok
 test prelude/vec/doc:reverse! ... ok
 test prelude/vec/doc:dedup! ... ok
-214 passed, 0 failed
+213 passed, 0 failed

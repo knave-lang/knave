@@ -131,8 +131,8 @@ impl Expander<'_> {
 
     pub(super) fn macro_head(&self, form: &Form) -> Option<BindingId> {
         let head = form.as_list()?.first()?.as_symbol()?;
-        let binding = self.try_resolve(head, Namespace::Value)?;
-        (matches!(self.kind(binding), BindingKind::Macro(_))).then_some(binding)
+        let lookup = self.bindings().lookup(head, Namespace::Value);
+        lookup.bound_where(|binding| matches!(self.kind(binding), BindingKind::Macro(_)))
     }
 
     pub(super) fn apply_macro(

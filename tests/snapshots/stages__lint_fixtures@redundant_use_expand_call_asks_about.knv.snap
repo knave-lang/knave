@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/redundant_use_expand_call_asks_about.knv
+---
+warning[L0808]: nothing this `use` brings in is used
+ --> lint/redundant_use_expand_call_asks_about.knv:2:1
+  |
+2 | (use prelude/sequence len)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ nothing this brings in is used
+  |
+  = help: remove the `use`
+  = note: run `knave doc L0808` for an explanation

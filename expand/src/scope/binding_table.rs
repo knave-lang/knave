@@ -8,22 +8,15 @@ use rustc_hash::FxHashMap;
 use super::ImportedCounts;
 use super::Scope;
 use super::name_entries::NameEntries;
-use super::name_entry::NameEntry;
 use super::phase::Phase;
 use super::prelude_names::PreludeNames;
 use super::qualified_names::QualifiedNames;
+use super::resolution::Resolution;
 use super::saved_exports::SavedExports;
 use super::saved_names::{NameTables, SavedNames};
 use super::visible_names::VisibleNames;
 use crate::core::{BindingId, ModuleId, Namespace};
 use crate::reader::Symbol;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Resolution {
-    Bound(BindingId),
-    Unbound,
-    Ambiguous(Vec<BindingId>),
-}
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct BindingTable {
@@ -75,13 +68,18 @@ impl BindingTable {
         all.any(|entries| entries.holds(binding))
     }
 
+    #[cfg(test)]
     pub fn resolve(&self, symbol: &Symbol, namespace: Namespace, phase: Phase) -> Resolution {
-        let mut largest = LargestCandidates::default();
-        let key = (symbol.shared_name(), namespace);
-        self.visible_names()
-            .visit_entries_named(symbol.scopes(), &key, &mut |entries| {
-                entries.visit_visible(symbol.scopes(), phase, |entry| largest.consider(entry));
-            });
+        let names = self.visible_names();
+        names
+            .largest_candidates(symbol, namespace, phase)
+            .resolution()
+    }
+
+    pub fn resolve_use(&self, symbol: &Symbol, namespace: Namespace, phase: Phase) -> Resolution {
+        let names = self.visible_names();
+        let largest = names.largest_candidates(symbol, namespace, phase);
+        largest.mark_bound_winner();
         largest.resolution()
     }
 
@@ -109,51 +107,6 @@ impl BindingTable {
             .into_iter()
             .map(|((name, namespace), entries)| (name, namespace, entries));
         NameTables::of(keyed.collect(), prelude_scopes)
-    }
-}
-
-#[derive(Default)]
-struct LargestCandidates {
-    size: usize,
-    first: Option<BindingId>,
-    others: Vec<BindingId>,
-}
-
-impl LargestCandidates {
-    fn consider(&mut self, entry: &NameEntry) {
-        let size = entry.scopes().len();
-        match self.first {
-            Some(_) if size < self.size => {}
-            Some(first) if size == self.size => self.add_equal(first, entry.binding()),
-            _ => self.replace(size, entry.binding()),
-        }
-    }
-
-    fn add_equal(&mut self, first: BindingId, binding: BindingId) {
-        if binding != first {
-            self.others.push(binding);
-        }
-    }
-
-    fn replace(&mut self, size: usize, binding: BindingId) {
-        self.size = size;
-        self.first = Some(binding);
-        self.others.clear();
-    }
-
-    fn resolution(self) -> Resolution {
-        match self.first {
-            None => Resolution::Unbound,
-            Some(binding) if self.others.is_empty() => Resolution::Bound(binding),
-            Some(binding) => Resolution::Ambiguous(Self::distinct(binding, self.others)),
-        }
-    }
-
-    fn distinct(first: BindingId, mut others: Vec<BindingId>) -> Vec<BindingId> {
-        others.push(first);
-        others.sort();
-        others.dedup();
-        others
     }
 }
 
@@ -528,6 +481,57 @@ pub(super) mod tests {
         world.define("x", &[module, right], Phase::Runtime);
         let resolution = world.resolve("x", &[module, left, right], Phase::Runtime);
         assert!(matches!(resolution, Resolution::Ambiguous(_)));
+    }
+
+    #[test]
+    fn an_ambiguous_use_marks_neither_candidate() {
+        let mut world = World::new();
+        let (module, left, right) = (world.scope(), world.scope(), world.scope());
+        let candidates = [
+            world.define("x", &[module, left], Phase::Runtime),
+            world.define("x", &[module, right], Phase::Runtime),
+        ];
+        let written = World::symbol("x", &[module, left, right]);
+        world
+            .table
+            .resolve_use(&written, Namespace::Value, Phase::Runtime);
+        let names = world.table.visible_names();
+        let marks =
+            candidates.map(|binding| names.use_of(Rc::from("x"), written.scopes(), binding));
+        assert_eq!(marks, [Some(false), Some(false)]);
+    }
+
+    #[test]
+    fn a_larger_entry_visited_before_a_smaller_macro_hides_it() {
+        let mut world = World::new();
+        let (left, right, module) = (world.scope(), world.scope(), world.scope());
+        world.define("x", &[left, right], Phase::Runtime);
+        let hidden = world.define("x", &[module], Phase::Runtime);
+        let written = World::symbol("x", &[left, right, module]);
+        let names = world.table.visible_names();
+        assert!(names.hides_a_macro(&written, Phase::Runtime, |binding| binding == hidden));
+    }
+
+    #[test]
+    fn a_larger_entry_visited_after_a_smaller_macro_hides_it() {
+        let mut world = World::new();
+        let (module, inner) = (world.scope(), world.scope());
+        let hidden = world.define("x", &[module], Phase::Runtime);
+        world.define("x", &[module, inner], Phase::Runtime);
+        let written = World::symbol("x", &[module, inner]);
+        let names = world.table.visible_names();
+        assert!(names.hides_a_macro(&written, Phase::Runtime, |binding| binding == hidden));
+    }
+
+    #[test]
+    fn a_hidden_entry_that_binds_no_macro_hides_no_macro() {
+        let mut world = World::new();
+        let (module, inner) = (world.scope(), world.scope());
+        let hidden = world.define("x", &[module], Phase::Runtime);
+        world.define("x", &[module, inner], Phase::Runtime);
+        let written = World::symbol("x", &[module, inner]);
+        let names = world.table.visible_names();
+        assert!(!names.hides_a_macro(&written, Phase::Runtime, |binding| binding != hidden));
     }
 
     #[test]

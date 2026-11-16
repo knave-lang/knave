@@ -88,7 +88,7 @@ impl ImportedNames {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use std::rc::Rc;
 
     use crate::core::{BindingId, ModuleId, Namespace};
@@ -96,18 +96,18 @@ mod tests {
     use crate::scope::binding_table::tests::World;
     use crate::scope::{ExportBytes, Phase, Resolution, SavedExports, Scope, ScopeSet};
 
-    struct ImportFixture {
-        world: World,
-        module: Scope,
+    pub(in crate::scope) struct ImportFixture {
+        pub(in crate::scope) world: World,
+        pub(in crate::scope) module: Scope,
     }
 
     impl ImportFixture {
-        const MAP: BindingId = BindingId::from_index(3);
+        pub(in crate::scope) const MAP: BindingId = BindingId::from_index(3);
         const SOME: BindingId = BindingId::from_index(5);
         const VEC: BindingId = BindingId::from_index(8);
         const FILTER: BindingId = BindingId::from_index(11);
 
-        fn new() -> Self {
+        pub(in crate::scope) fn new() -> Self {
             let mut world = World::new();
             let module = world.scope();
             world
@@ -200,6 +200,47 @@ mod tests {
     }
 
     #[test]
+    fn an_own_entry_that_ties_with_a_shared_entry_takes_the_mark() {
+        let mut fixture = ImportFixture::new();
+        let beside = fixture.world.scope();
+        let table = &mut fixture.world.table;
+        let own = World::symbol("map", &[beside]);
+        let bound = table.bind(&own, Namespace::Value, ImportFixture::MAP, Phase::Runtime);
+        assert_eq!(bound, Ok(()));
+        let written = World::symbol("map", &[fixture.module, beside]);
+        table.resolve_use(&written, Namespace::Value, Phase::Runtime);
+        let marked =
+            table
+                .visible_names()
+                .use_of(Rc::from("map"), own.scopes(), ImportFixture::MAP);
+        assert_eq!(marked, Some(true));
+    }
+
+    #[test]
+    fn a_written_use_of_an_imported_name_holds_its_own_mark() {
+        let mut fixture = ImportFixture::new();
+        let body = fixture.world.scope();
+        let other_module = fixture.import_into_new_module();
+        let written = World::symbol("map", &[fixture.module, body]);
+        let table = &mut fixture.world.table;
+        let bound = table.bind(
+            &written,
+            Namespace::Value,
+            ImportFixture::MAP,
+            Phase::Runtime,
+        );
+        assert_eq!(bound, Ok(()));
+        table.resolve_use(&written, Namespace::Value, Phase::Runtime);
+        let names = table.visible_names();
+        let marked = |scopes: &[Scope]| {
+            let scopes = World::symbol("map", scopes).scopes().clone();
+            names.use_of(Rc::from("map"), &scopes, ImportFixture::MAP)
+        };
+        assert_eq!(marked(&[fixture.module, body]), Some(true));
+        assert_eq!(marked(&[other_module]), Some(false));
+    }
+
+    #[test]
     fn a_binding_under_a_scope_no_module_imports_does_not_clash() {
         let mut fixture = ImportFixture::new();
         let elsewhere = fixture.world.scope();
@@ -288,12 +329,15 @@ mod tests {
         let last_segment = World::symbol("some", &[fixture.module]);
         let map = World::symbol("map", &[fixture.module]);
         assert_eq!(
-            names.qualified_bindings_ending_in(&last_segment, Namespace::Value, Phase::Runtime),
+            names
+                .qualified_entries_ending_in(&last_segment, Namespace::Value, Phase::Runtime)
+                .bindings(),
             [ImportFixture::SOME]
         );
         assert!(
             names
-                .qualified_bindings_ending_in(&map, Namespace::Value, Phase::Runtime)
+                .qualified_entries_ending_in(&map, Namespace::Value, Phase::Runtime)
+                .bindings()
                 .is_empty()
         );
     }

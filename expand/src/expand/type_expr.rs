@@ -29,7 +29,7 @@ impl Expander<'_> {
     }
 
     fn lower_type_name(&self, symbol: &Symbol, span: Span) -> Result<TypeExprKind, Diagnostic> {
-        let binding = self.resolve(symbol, Namespace::Type, span)?;
+        let binding = self.resolve_use(symbol, Namespace::Type, span)?;
         self.lower_type_binding(binding, symbol.name(), span)
     }
 
@@ -105,7 +105,7 @@ impl Expander<'_> {
         let symbol = head
             .as_symbol()
             .ok_or_else(|| ExpandProblems::not_a_type(head.span()))?;
-        let binding = self.resolve(symbol, Namespace::Type, head.span())?;
+        let binding = self.resolve_use(symbol, Namespace::Type, head.span())?;
         Ok((head, binding))
     }
 
@@ -155,7 +155,7 @@ impl Expander<'_> {
                     return Err(malformed());
                 }
                 (
-                    Some(self.resolve(symbol, Namespace::Type, lifetime.span())?),
+                    Some(self.resolve_use(symbol, Namespace::Type, lifetime.span())?),
                     inner,
                 )
             }
@@ -225,7 +225,7 @@ impl Expander<'_> {
             .as_symbol()
             .ok_or_else(|| Self::malformed_associated_value(clause))?;
         Ok(AssociatedValue {
-            binding: self.resolve(symbol, Namespace::Type, name.span())?,
+            binding: self.resolve_use(symbol, Namespace::Type, name.span())?,
             value: self.lower_type(value)?,
             span: clause.span(),
         })
@@ -301,7 +301,7 @@ impl Expander<'_> {
         let symbol = name.as_symbol().ok_or_else(|| {
             NamespaceProblems::wrong_namespace(&bound.to_string(), "a trait", bound.span())
         })?;
-        let binding = self.resolve(symbol, Namespace::Type, bound.span())?;
+        let binding = self.resolve_use(symbol, Namespace::Type, bound.span())?;
         if !matches!(self.kind(binding), BindingKind::Trait(_)) {
             let numeric =
                 NumericBound::of_kind(self.kind(binding), &self.modules, &self.tables.expanded);

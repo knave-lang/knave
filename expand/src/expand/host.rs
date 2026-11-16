@@ -14,7 +14,7 @@ use crate::interpret::{
 };
 use crate::modules::{ModuleOrigin, ModuleRecord, ModuleSources};
 use crate::reader::{Form, LiteralForms, Symbol};
-use crate::scope::{Phase, Resolution, ScopeSet};
+use crate::scope::{LargestCandidates, Phase, Resolution, ScopeSet, VisibleNames};
 use crate::source::Span;
 
 impl Host for Expander<'_> {
@@ -180,33 +180,33 @@ impl ModuleNotes for Expander<'_> {
 
 impl NameComparison for Expander<'_> {
     fn same_binding(&self, left: &Symbol, right: &Symbol) -> bool {
-        let pairs: Vec<(Resolution, Resolution)> = [Namespace::Value, Namespace::Type]
-            .into_iter()
-            .map(|namespace| {
-                (
-                    self.tables.table.resolve(left, namespace, Phase::Runtime),
-                    self.tables.table.resolve(right, namespace, Phase::Runtime),
-                )
-            })
-            .collect();
-        let bound_together = pairs.iter().any(|pair| {
-            matches!(pair, (Resolution::Bound(left_binding), Resolution::Bound(right_binding))
-                if left_binding == right_binding)
-        });
-        let unbound_everywhere = pairs
-            .iter()
-            .all(|pair| matches!(pair, (Resolution::Unbound, Resolution::Unbound)));
-        bound_together || (unbound_everywhere && left.name() == right.name())
+        let compared = ComparedNames::of(self.tables.table.visible_names(), left, right);
+        if compared.mark_pair_bound_together() {
+            return true;
+        }
+        left.name() == right.name() && compared.mark_bound_sides_of_equal_names()
     }
 
     fn is_pattern_head(&self, head: &Symbol) -> bool {
-        self.names_pattern_head(head)
+        self.resolve_pattern_head_use(head)
     }
 }
 
 impl ExpansionCallbacks for Expander<'_> {
     fn expand_call(&mut self, call: Form) -> Result<Option<Form>, Diagnostic> {
         let Some(binding) = self.macro_head(&call) else {
+            let head = call
+                .as_list()
+                .and_then(|items| items.first())
+                .and_then(Form::as_symbol);
+            let is_macro = |binding| matches!(self.kind(binding), BindingKind::Macro(_));
+            let names = self.tables.table.visible_names();
+            if let Some(head) = head.filter(|head| names.hides_a_macro(head, self.phase, is_macro))
+            {
+                self.bindings()
+                    .lookup(head, Namespace::Value)
+                    .mark_bound_winner();
+            }
             return Ok(None);
         };
         match self.discarded_expansion(binding, call) {
@@ -321,10 +321,45 @@ impl Expander<'_> {
         term: &Symbol,
         namespace: Namespace,
     ) -> Option<BindingId> {
-        match self.tables.table.resolve(term, namespace, Phase::Runtime) {
+        match self
+            .tables
+            .table
+            .resolve_use(term, namespace, Phase::Runtime)
+        {
             Resolution::Bound(binding) => Some(binding),
             _ => None,
         }
+    }
+}
+
+struct ComparedNames<'t> {
+    lookups: [[LargestCandidates<'t>; 2]; 2],
+}
+
+impl<'t> ComparedNames<'t> {
+    fn of(names: VisibleNames<'t>, left: &Symbol, right: &Symbol) -> Self {
+        let lookups = [Namespace::Value, Namespace::Type].map(|namespace| {
+            [left, right].map(|symbol| names.largest_candidates(symbol, namespace, Phase::Runtime))
+        });
+        Self { lookups }
+    }
+
+    fn mark_pair_bound_together(&self) -> bool {
+        let Some(pair) = self.lookups.iter().find(|[left, right]| {
+            let left_binding = left.bound();
+            left_binding.is_some() && left_binding == right.bound()
+        }) else {
+            return false;
+        };
+        pair.iter().for_each(LargestCandidates::mark_bound_winner);
+        true
+    }
+
+    fn mark_bound_sides_of_equal_names(&self) -> bool {
+        let sides = self.lookups.iter().flatten();
+        let unbound_everywhere = sides.clone().all(LargestCandidates::is_unbound);
+        sides.for_each(LargestCandidates::mark_bound_winner);
+        unbound_everywhere
     }
 }
 

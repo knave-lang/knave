@@ -35,7 +35,9 @@ impl Expander<'_> {
         if first.as_symbol()?.name() != left.name() || second.as_symbol()?.name() != right.name() {
             return None;
         }
-        let binding = self.try_resolve(head.as_symbol()?, Namespace::Value)?;
+        let binding = self
+            .bindings()
+            .resolve(head.as_symbol()?, Namespace::Value)?;
         matches!(self.kind(binding), BindingKind::Global(_)).then_some(binding)
     }
 
@@ -45,7 +47,9 @@ impl Expander<'_> {
         match self
             .tables
             .table
-            .resolve(&candidate, Namespace::Value, self.phase)
+            .visible_names()
+            .largest_candidates(&candidate, Namespace::Value, self.phase)
+            .resolution()
         {
             Resolution::Bound(resolved) if resolved == function => Some(function),
             _ => None,

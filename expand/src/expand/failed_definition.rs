@@ -51,7 +51,7 @@ impl Expander<'_> {
             return None;
         }
         let head = form.as_list()?.first()?.as_symbol()?;
-        let binding = self.try_resolve(head, Namespace::Value)?;
+        let binding = self.bindings().resolve(head, Namespace::Value)?;
         self.tables
             .globals
             .is_failed_macro_definition(binding)
@@ -72,7 +72,7 @@ impl Expander<'_> {
 
     fn is_unbound_name(&self, form: &Form) -> bool {
         form.as_symbol()
-            .is_some_and(|symbol| self.try_resolve(symbol, Namespace::Value).is_none())
+            .is_some_and(|symbol| self.bindings().resolve(symbol, Namespace::Value).is_none())
     }
 
     pub(super) fn bind_over_failed(

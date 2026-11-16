@@ -42,11 +42,8 @@ impl Expander<'_> {
 
     fn answered_function(&mut self, answering: BindingId, name: Form) -> Option<BindingId> {
         let expansion = self.discarded_expansion(answering, name).ok()?;
-        let function = self.try_resolve(expansion.as_symbol()?, Namespace::Value)?;
-        self.tables
-            .bindings
-            .origin(function)
-            .is_introduced()
-            .then_some(function)
+        let symbol = expansion.as_symbol()?;
+        let lookup = self.bindings().lookup(symbol, Namespace::Value);
+        lookup.bound_where(|function| self.tables.bindings.origin(function).is_introduced())
     }
 }

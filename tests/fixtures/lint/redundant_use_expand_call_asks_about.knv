@@ -1,0 +1,8 @@
+(use code empty? expand-call)
+(use prelude/sequence len)
+
+(defmacro macro-call? (x)
+  (if (empty? (expand-call x)) 0 1))
+
+(defn main ()
+  (println (macro-call? (len "a"))))

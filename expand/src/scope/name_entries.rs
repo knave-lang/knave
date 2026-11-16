@@ -225,15 +225,9 @@ mod tests {
                 .collect();
             let binding = BindingId::from_index(index as u32);
             self.entries
-                .bind(&Self::scope_set(&subset), binding, Phase::Runtime)
+                .bind(&ScopeSet::of(&subset), binding, Phase::Runtime)
                 .expect("each subset is bound once");
             self.bound.push((subset, binding));
-        }
-
-        fn scope_set(scopes: &[Scope]) -> ScopeSet {
-            let mut set = ScopeSet::default();
-            scopes.iter().for_each(|scope| set.add(*scope));
-            set
         }
 
         fn reference(&self) -> Vec<Scope> {
@@ -243,7 +237,7 @@ mod tests {
         fn visible(&self, reference: &[Scope]) -> Vec<BindingId> {
             let mut visible: Vec<BindingId> = self
                 .entries
-                .visible(&Self::scope_set(reference), Phase::Runtime)
+                .visible(&ScopeSet::of(reference), Phase::Runtime)
                 .into_iter()
                 .map(|entry| entry.binding())
                 .collect();

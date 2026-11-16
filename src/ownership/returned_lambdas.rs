@@ -2,10 +2,11 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashSet;
 
-use crate::types::{ReturnedValues, TypedExpr, TypedExprKind, TypedLambda, TypedProgram};
+use super::lambda_address::LambdaAddress;
+use crate::types::{ReturnedValues, TypedExpr, TypedExprKind, TypedProgram};
 
 pub struct ReturnedLambdas {
-    lambdas: FxHashSet<*const TypedLambda>,
+    lambdas: FxHashSet<LambdaAddress>,
 }
 
 impl ReturnedLambdas {
@@ -35,7 +36,7 @@ impl ReturnedLambdas {
             })
             .flat_map(|function| values.closures(function))
             .filter_map(|closure| match &closure.kind {
-                TypedExprKind::Fn(lambda) => Some(Rc::as_ptr(lambda)),
+                TypedExprKind::Fn(lambda) => Some(LambdaAddress::of(lambda)),
                 _ => None,
             })
             .collect();
@@ -44,7 +45,7 @@ impl ReturnedLambdas {
 
     fn mark_expr(&self, expr: &mut TypedExpr) {
         if let TypedExprKind::Fn(lambda) = &mut expr.kind
-            && self.lambdas.contains(&Rc::as_ptr(lambda))
+            && self.lambdas.contains(&LambdaAddress::of(lambda))
         {
             Rc::make_mut(lambda).facts.returned = true;
         }

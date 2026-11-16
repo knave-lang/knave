@@ -70,7 +70,7 @@
 
   (let (items (vec 1 2))
     (set! (at items 0) 9)
-    (clone items))
+    items)
   => (vec 9 2)
 
   ```

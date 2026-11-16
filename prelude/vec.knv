@@ -95,12 +95,12 @@
 
   (let (items (vec 1))
     (push! items 2)
-    (clone items))
+    items)
   => (vec 1 2)
 
   (let (word (str \"pe\"))
     (push! word (char \"a\"))
-    (clone word))
+    word)
   => \"pea\"")
 
 (def vec-push!
@@ -244,7 +244,7 @@
 
   (let (items (vec 1 2 3))
     (remove-at! items 0)
-    (clone items))
+    items)
   => (vec 2 3)")
 
 (document (sort! items)
@@ -260,12 +260,12 @@
 
   (let (items (vec 3 1 2))
     (sort! items)
-    (clone items))
+    items)
   => (vec 1 2 3)
 
   (let (items (vec 3 1 2))
     (sort! items >)
-    (clone items))
+    items)
   => (vec 3 2 1)")
 
 (document (sort-by! items key)
@@ -278,7 +278,7 @@
   (let (words (vec \"pear\" \"fig\" \"kiwi\"))
     (sort-by! words
       (fn (word) (len (deref word))))
-    (clone words))
+    words)
   => (vec \"fig\" \"pear\" \"kiwi\")")
 
 (document (windows items size)
@@ -341,7 +341,7 @@
 
   (let (items (vec 1 2))
     (reverse! items)
-    (clone items))
+    items)
   => (vec 2 1)")
 
 (document (dedup! items)
@@ -352,5 +352,5 @@
 
   (let (items (vec 1 1 2 1))
     (dedup! items)
-    (clone items))
+    items)
   => (vec 1 2 1)")

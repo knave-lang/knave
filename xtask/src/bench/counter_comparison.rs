@@ -210,7 +210,7 @@ mod tests {
         ]);
         let report = CounterComparisonFixture::report(&before, &after, &[]);
         assert!(report.starts_with(
-            "No program's `allocator.allocated_bytes` or `allocator.peak_live_bytes` rose more than 1%.\n\n<details>"
+            "No program's `allocator.allocated_bytes`, `allocator.allocations` or `allocator.peak_live_bytes` rose more than 1%.\n\n<details>"
         ));
     }
 

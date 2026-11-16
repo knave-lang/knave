@@ -172,11 +172,20 @@ mod tests {
 
     impl GateFixture {
         const ALLOCATED_BYTES: &'static str = "allocator.allocated_bytes";
+        const ALLOCATIONS: &'static str = "allocator.allocations";
 
         fn results(program: &str, allocated_bytes: u64) -> ResultSet {
+            Self::counted(program, Self::ALLOCATED_BYTES, allocated_bytes)
+        }
+
+        fn allocations(program: &str, allocations: u64) -> ResultSet {
+            Self::counted(program, Self::ALLOCATIONS, allocations)
+        }
+
+        fn counted(program: &str, counter: &str, count: u64) -> ResultSet {
             ResultSet::new(vec![Self::program(
                 program,
-                Counters::from([(Self::ALLOCATED_BYTES.to_string(), allocated_bytes)]),
+                Counters::from([(counter.to_string(), count)]),
             )])
         }
 
@@ -335,5 +344,41 @@ mod tests {
         let message = failure.to_string();
         assert!(message.contains("`warehouse`"), "{message}");
         assert!(message.contains("`allocator.allocated_bytes`"), "{message}");
+    }
+
+    #[test]
+    fn the_check_fails_a_rise_in_allocations_above_the_tolerance() {
+        let message = GateFixture::check(
+            &GateFixture::allocations("warehouse", 1_000),
+            &GateFixture::allocations("warehouse", 1_011),
+            &["orders"],
+        )
+        .err()
+        .map(|failure| failure.to_string())
+        .unwrap_or_default();
+        assert!(
+            message.contains("- `warehouse` `allocator.allocations`: 1,000 to 1,011 (+1.10%)"),
+            "{message}"
+        );
+    }
+
+    #[test]
+    fn the_check_passes_an_accepted_rise_in_allocations() {
+        let checked = GateFixture::check(
+            &GateFixture::allocations("warehouse", 1_000),
+            &GateFixture::allocations("warehouse", 1_011),
+            &["warehouse"],
+        );
+        assert!(checked.is_ok());
+    }
+
+    #[test]
+    fn the_check_passes_a_rise_in_allocations_of_exactly_the_tolerance() {
+        let checked = GateFixture::check(
+            &GateFixture::allocations("warehouse", 1_000),
+            &GateFixture::allocations("warehouse", 1_010),
+            &[],
+        );
+        assert!(checked.is_ok());
     }
 }

@@ -72,7 +72,7 @@ pub enum BenchTask {
         accepted: Vec<String>,
     },
     #[command(
-        about = "Fail when a program's allocated bytes, allocation count or peak live bytes rose past the tolerance, unless `--accepted` names the program"
+        about = "Fail when a gated counter of a program rose past the tolerance, unless `--accepted` names the program"
     )]
     CheckCounters {
         baseline: PathBuf,

@@ -43,6 +43,10 @@ pub enum Namespace {
     Type,
 }
 
+impl Namespace {
+    pub const IMPORTED: [Self; 2] = [Self::Value, Self::Type];
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Declaration {
     Value,
@@ -287,10 +291,41 @@ impl ModuleDefinitions {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct ImportedBindings {
+    first: BindingId,
+    second: Option<BindingId>,
+}
+
+impl ImportedBindings {
+    pub fn new(first: BindingId) -> Self {
+        Self {
+            first,
+            second: None,
+        }
+    }
+
+    pub fn and(self, second: BindingId) -> Self {
+        debug_assert!(
+            self.second.is_none(),
+            "a use binds at most one binding per namespace"
+        );
+        Self {
+            second: Some(second),
+            ..self
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = BindingId> + use<> {
+        std::iter::once(self.first).chain(self.second)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        BinderOrigin, BindingArena, BindingId, BindingInfo, BindingKind, ModuleDefinitions,
+        BinderOrigin, BindingArena, BindingId, BindingInfo, BindingKind, ImportedBindings,
+        ModuleDefinitions,
     };
     use crate::core::ModuleId;
     use std::cell::Cell;
@@ -477,5 +512,32 @@ mod tests {
             fixture.defined_in(DefinitionsFixture::shapes()),
             ["square", "width"]
         );
+    }
+
+    #[test]
+    fn a_name_that_binds_one_namespace_holds_one_binding() {
+        let bindings = ImportedBindings::new(BindingId::from_index(3));
+        assert_eq!(
+            bindings.iter().collect::<Vec<_>>(),
+            [BindingId::from_index(3)]
+        );
+    }
+
+    #[test]
+    fn a_name_that_binds_both_namespaces_holds_both_in_order() {
+        let bindings =
+            ImportedBindings::new(BindingId::from_index(3)).and(BindingId::from_index(5));
+        assert_eq!(
+            bindings.iter().collect::<Vec<_>>(),
+            [BindingId::from_index(3), BindingId::from_index(5)]
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "a use binds at most one binding per namespace")]
+    fn a_third_binding_is_refused() {
+        ImportedBindings::new(BindingId::from_index(3))
+            .and(BindingId::from_index(5))
+            .and(BindingId::from_index(7));
     }
 }

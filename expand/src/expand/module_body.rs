@@ -1691,7 +1691,7 @@ impl Expander<'_> {
                 defaults: rustc_hash::FxHashSet::default(),
             },
         );
-        self.tables.trait_paths.insert(binding, path.clone());
+        self.tables.trait_paths.insert(binding, (*path).into());
         core.items.push(Item {
             kind: ItemKind::RustTrait(RustTraitDeclaration {
                 binding,
@@ -1894,12 +1894,11 @@ impl Expander<'_> {
                 .table
                 .visible_bindings(symbol.scopes(), Namespace::Type, self.phase);
         visible.sort();
+        let path = RustTraitPath::from(path);
         visible.into_iter().find(|existing| {
             *existing != binding
                 && matches!(self.kind(*existing), BindingKind::Trait(_))
-                && self.tables.trait_paths.get(existing).is_some_and(|known| {
-                    RustTraitPath::new(known).names_same_trait(&RustTraitPath::new(path))
-                })
+                && self.tables.trait_paths.get(existing) == Some(&path)
         })
     }
 

@@ -1,12 +1,11 @@
-use std::rc::Rc;
-
 use rustc_hash::FxHashMap;
 
+use super::rust_trait_path::RustTraitPath;
 use super::structural_path_claim::StructuralPathClaim;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub(super) struct StructuralPathClaims {
-    claims: FxHashMap<Rc<str>, StructuralPathClaim>,
+    claims: FxHashMap<RustTraitPath, StructuralPathClaim>,
 }
 
 impl StructuralPathClaims {
@@ -15,10 +14,11 @@ impl StructuralPathClaims {
         path: &str,
         claim: StructuralPathClaim,
     ) -> Result<(), StructuralPathClaim> {
-        match self.claims.get(path) {
+        let path = RustTraitPath::from(path);
+        match self.claims.get(&path) {
             Some(first) => Err(*first),
             None => {
-                self.claims.insert(path.into(), claim);
+                self.claims.insert(path, claim);
                 Ok(())
             }
         }

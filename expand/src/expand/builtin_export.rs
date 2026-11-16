@@ -55,6 +55,13 @@ mod tests {
     }
 
     #[test]
+    fn the_default_float_is_one_binding_named_float_and_exported_as_both_names() {
+        let export = BuiltinExport::kernel_type(KernelType::Primitive(PrimitiveType::F64));
+        assert_eq!(export.names().collect::<Vec<_>>(), ["float", "f64"]);
+        assert_eq!(export.binding().name(), "float");
+    }
+
+    #[test]
     fn a_kernel_type_shown_by_its_spelling_exports_one_name() {
         let export = BuiltinExport::kernel_type(KernelType::Primitive(PrimitiveType::I32));
         assert_eq!(export.names().collect::<Vec<_>>(), ["i32"]);

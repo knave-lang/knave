@@ -1,0 +1,46 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/float_and_f64.knv
+---
+#[derive(Clone, Copy, PartialEq)]
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+fn make_point(x: f64, y: f64) -> Point {
+    Point { x, y }
+}
+
+fn add(x: f64, y: f64) -> f64 {
+    x + y
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let total = add(1.5, 2.0);
+    let corner = make_point(3.0, 4.5);
+    println!("{}", total);
+    println!("{}", add(corner.x, corner.y));
+    println!("{}", "float");
+    println!("{}", "(fn (float float) float)");
+    println!("{}", "float")
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

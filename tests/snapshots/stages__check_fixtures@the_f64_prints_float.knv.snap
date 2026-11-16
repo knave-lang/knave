@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/the_f64_prints_float.knv
+---
+error[L0401]: mismatched types
+ --> check/the_f64_prints_float.knv:1:33
+  |
+1 | (defn main () (println (the f64 "x")))
+  |                             --- ^^^ expected `float`, found `(ref str)`
+  |                             |
+  |                             expected because of this annotation
+  |
+  = note: run `knave doc L0401` for an explanation

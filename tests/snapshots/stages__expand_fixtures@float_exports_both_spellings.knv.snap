@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/float_exports_both_spellings.knv
+---
+(export f64 float half)
+(def half (fn ((x float)) (div x 2.0)))

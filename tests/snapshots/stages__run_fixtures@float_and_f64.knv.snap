@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/float_and_f64.knv
+---
+3.5
+7.5
+float
+(fn (float float) float)
+float

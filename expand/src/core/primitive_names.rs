@@ -84,6 +84,12 @@ mod tests {
     }
 
     #[test]
+    fn the_default_float_shows_as_float() {
+        assert_eq!(PrimitiveType::F64.names().shown(), "float");
+        assert_eq!(PrimitiveType::F64.names().spelling(), "f64");
+    }
+
+    #[test]
     fn another_number_shows_its_spelling() {
         assert_eq!(PrimitiveType::I32.names().shown(), "i32");
     }

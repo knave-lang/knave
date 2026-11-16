@@ -4,6 +4,6 @@ expression: "Fixture::load(path).check_report()"
 input_file: tests/fixtures/check/generic_literals.knv
 ---
 (type increment (where ((n number)) (fn (n) n)))
-(type halve (where ((n float)) (fn (n) n)))
+(type halve (where ((n floating)) (fn (n) n)))
 (type nudge (where ((n signed)) (fn (n) n)))
 (type plain-increment (fn (int) int))

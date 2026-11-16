@@ -123,7 +123,7 @@ impl PrimitiveType {
         },
         PrimitiveRow {
             primitive: PrimitiveType::F64,
-            names: PrimitiveNames::same("f64"),
+            names: PrimitiveNames::same("f64").shown_as("float"),
             integer_range: None,
         },
     ];

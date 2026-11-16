@@ -35,7 +35,7 @@
 (use prelude/result err err? expect-ok map-err map-ok ok
                     ok-or ok? then-ok unwrap-err unwrap-ok)
 
-(use prelude/number * + - / < <= = > >= eq float hash
+(use prelude/number * + - / < <= = > >= eq floating hash
                     integer neg not= number ord partial-eq
                     partial-ord pi rem signed sqrt)
 
@@ -74,28 +74,28 @@
         doc-page docstring empty? enum enumerate eprint
         eprintln eq err err? every? exit expect expect-ok
         export f32 f64 false field filter find find-doc
-        first float fn fn-mut fn-once for-each from-str get
-        hash hash-map i128 i16 i32 i64 i8 if impl infallible
-        infer int integer into-hash-map into-sorted-map
-        io-error isize iter iterator join keys last len let
-        let-match let-try line-seq lines local loop
-        lower-case macro map map-at map-err map-ok map-some
-        match max max-by-key min module mut neg new none
-        none? not not= number ok ok-or ok? option or ord
-        pair parse parse-bool-error parse-char-error
-        parse-error parse-float-error parse-int-error
-        partial-eq partial-ord pi pop! pr-str print println
-        prn push! quote range read-line recur reduce ref rem
-        remove-at! result reverse reverse! run-tests rust
-        rust-trait rust-type sequence set! set-at show
-        signed slice slurp some some? sort! sort-by!
-        sorted-map source split split-when sqrt starts-with?
-        stdin str str string struct subs sum take take-while
-        template the then-ok then-some trait trim true try
-        try-> type u128 u16 u32 u64 u8 unit unless unwrap
-        unwrap-err unwrap-ok unwrap-or update upper-case use
-        usize vals vec when where whitespace? windows with
-        with-macro-steps zip)
+        first float floating fn fn-mut fn-once for-each
+        from-str get hash hash-map i128 i16 i32 i64 i8 if
+        impl infallible infer int integer into-hash-map
+        into-sorted-map io-error isize iter iterator join
+        keys last len let let-match let-try line-seq lines
+        local loop lower-case macro map map-at map-err
+        map-ok map-some match max max-by-key min module mut
+        neg new none none? not not= number ok ok-or ok?
+        option or ord pair parse parse-bool-error
+        parse-char-error parse-error parse-float-error
+        parse-int-error partial-eq partial-ord pi pop!
+        pr-str print println prn push! quote range read-line
+        recur reduce ref rem remove-at! result reverse
+        reverse! run-tests rust rust-trait rust-type
+        sequence set! set-at show signed slice slurp some
+        some? sort! sort-by! sorted-map source split
+        split-when sqrt starts-with? stdin str str string
+        struct subs sum take take-while template the then-ok
+        then-some trait trim true try try-> type u128 u16
+        u32 u64 u8 unit unless unwrap unwrap-err unwrap-ok
+        unwrap-or update upper-case use usize vals vec when
+        where whitespace? windows with with-macro-steps zip)
 
 (def def
   (macro (form) (kernel-definition form)))
@@ -658,16 +658,21 @@
   (the f32 1.5)
   => 1.5")
 
-(document f64
-  "Holds a 64-bit floating-point number, as Rust's `f64` does.
+(document float
+  "Holds a floating-point number, Knave's default: a 64-bit one, as Rust's
+  `f64` is.
 
-  A float literal whose type stays open defaults to `f64`.
+  `f64` is another name for this type. Write it where the width is the
+  point, as in a Rust template. A large collection of floats can use [f32]
+  to save memory.
 
-  (the f64 1.5)
+  A float literal whose type stays open defaults to `float`.
+
+  (the float 1.5)
   => 1.5
 
   (infer 1.5)
-  => \"f64\"")
+  => \"float\"")
 
 (document true
   "Is the [bool] value true.

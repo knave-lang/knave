@@ -13,4 +13,4 @@ warning[L0803]: unreachable `match` arm
    = note: run `knave doc L0803` for an explanation
 
 (derive shape clone partial-eq show)
-(type area (fn ((ref shape)) f64))
+(type area (fn ((ref shape)) float))

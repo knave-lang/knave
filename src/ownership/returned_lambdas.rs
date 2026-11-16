@@ -1,49 +1,55 @@
 use std::rc::Rc;
 
-use crate::types::{
-    TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedProgram,
-};
+use rustc_hash::FxHashSet;
 
-pub struct ReturnedLambdas;
+use crate::types::{ReturnedValues, TypedExpr, TypedExprKind, TypedLambda, TypedProgram};
+
+pub struct ReturnedLambdas {
+    lambdas: FxHashSet<*const TypedLambda>,
+}
 
 impl ReturnedLambdas {
     pub fn mark(program: &mut TypedProgram) {
+        let returned = Self::of(program);
+        if returned.lambdas.is_empty() {
+            return;
+        }
         for definition in program
             .modules
             .iter_mut()
             .flat_map(|module| &mut module.definitions)
         {
-            if let TypedExprKind::Fn(function) = &mut definition.value.kind {
-                Self::mark_block(&mut Rc::make_mut(function).body);
-            }
+            returned.mark_expr(&mut definition.value);
         }
     }
 
-    fn mark_block(block: &mut TypedBlock) {
-        if let Some(TypedBodyItem::Expr(tail)) = block.items.last_mut() {
-            Self::mark_value(tail);
-        }
+    fn of(program: &TypedProgram) -> Self {
+        let values = ReturnedValues::new(program);
+        let lambdas = program
+            .modules
+            .iter()
+            .flat_map(|module| &module.definitions)
+            .filter_map(|definition| match &definition.value.kind {
+                TypedExprKind::Fn(function) => Some(function),
+                _ => None,
+            })
+            .flat_map(|function| values.closures(function))
+            .filter_map(|closure| match &closure.kind {
+                TypedExprKind::Fn(lambda) => Some(Rc::as_ptr(lambda)),
+                _ => None,
+            })
+            .collect();
+        Self { lambdas }
     }
 
-    fn mark_value(value: &mut TypedExpr) {
-        match &mut value.kind {
-            TypedExprKind::Fn(lambda) => Rc::make_mut(lambda).facts.returned = true,
-            TypedExprKind::Control(TypedControl::Block(block)) => Self::mark_block(block),
-            TypedExprKind::Control(TypedControl::If(_, then, otherwise)) => {
-                Self::mark_value(then);
-                Self::mark_value(otherwise);
-            }
-            TypedExprKind::Control(TypedControl::Match(matched)) => {
-                for arm in &mut matched.arms {
-                    Self::mark_block(&mut arm.body);
-                }
-            }
-            TypedExprKind::Call(callee, _) => {
-                if let TypedExprKind::Fn(inlined) = &mut callee.kind {
-                    Self::mark_block(&mut Rc::make_mut(inlined).body);
-                }
-            }
-            _ => {}
+    fn mark_expr(&self, expr: &mut TypedExpr) {
+        if let TypedExprKind::Fn(lambda) = &mut expr.kind
+            && self.lambdas.contains(&Rc::as_ptr(lambda))
+        {
+            Rc::make_mut(lambda).facts.returned = true;
+        }
+        for child in expr.children_mut() {
+            self.mark_expr(child);
         }
     }
 }

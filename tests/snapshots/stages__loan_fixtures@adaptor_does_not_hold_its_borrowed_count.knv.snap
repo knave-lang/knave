@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/adaptor_does_not_hold_its_borrowed_count.knv
+---
+main
+  8:32 borrow `v`: no live loan
+  9:14 borrow `s`: `v` lent at 8:32, held by `result`
+  10:9 change `s`: `v` lent at 8:32, held by `it`
+  11:19 move `it`: `v` lent at 8:32, held by `it`

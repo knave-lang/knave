@@ -24,15 +24,16 @@ impl Measurement {
              On each thread, callgrind collects only inside the thread's entry function, \
              `{thread_entry}`, and nothing inside Rust's allocator functions, `{rust_allocator}`. \
              The one exception is the allocator work that std's thread setup and teardown start \
-             outside every entry function, which counts in `{other}`.\n\n\
+             outside every entry function. It counts in `{other}` and is nearly the same in every \
+             run.\n\n\
              A stage is the inclusive cost of the calls the command-line module makes into one \
              compiler module. `{other}` holds the rest: argument parsing, \
-             reading the entry file, printing, and dropping each stage's result. \
+             reading the entry file, printing, dropping each stage's result, and the threads \
+             that read `rustfmt`'s output. \
              `rustfmt` runs as a child process that callgrind does not trace, so the `build` stage \
              counts only the compiler's side of formatting.\n\n\
              The compiler hashes with a fixed seed, so its hash maps lay out the same way in \
-             every run. Identical runs still differ by up to about 1,400 instructions, from \
-             glibc's setup and teardown of the threads that read `rustfmt`'s output.\n\n\
+             every run. Identical runs still differ by a few hundred instructions at most.\n\n\
              The compiler runs with glibc's fastbins turned off \
              (`GLIBC_TUNABLES=glibc.malloc.mxfast=0`), so glibc merges freed memory when it is \
              freed, and no stage pays to merge memory that an earlier stage freed.\n\n\

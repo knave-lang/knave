@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/deref_of_an_element_lets_the_vector_change.knv
+---
+main
+  3:29 borrow `s`: no live loan
+  4:27 borrow `names`: `s` lent at 3:29, held by `names`
+  5:10 change `names`: `s` lent at 3:29, held by `names`
+  6:28 borrow `names`: `s` lent at 3:29, held by `names`

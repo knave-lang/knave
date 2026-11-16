@@ -89,7 +89,7 @@ impl Passing for Lends {
         match argument.place {
             Some(place) => {
                 let lent = lender.lend(Lending::new(place, self.kind, argument.span));
-                PassedHoldings::lending(argument.held, lent)
+                PassedHoldings::lending(argument.held.within(), lent)
             }
             None => PassedHoldings::kept(argument.held),
         }
@@ -135,7 +135,7 @@ mod tests {
     use crate::core::BindingId;
     use crate::ownership::lambda_source::LambdaSource;
     use crate::ownership::loans::control_flow_graph::ControlFlowGraph;
-    use crate::ownership::loans::holdings::Holdings;
+    use crate::ownership::loans::holdings::{Holdings, Layer};
     use crate::ownership::loans::lender::Lender;
     use crate::ownership::loans::loan_names::LoanNames;
     use crate::ownership::loans::loan_rules::LoanRules;
@@ -199,7 +199,9 @@ mod tests {
             let mut lender = Lender::new(&mut graph, &mut loans, PointId::ENTRY);
             let held = Holdings::of_value(self.source.binder("v").binding);
             let passed = passing.pass(PassedArgument::new(&argument, held), &mut lender);
-            passed.all().values().next().is_some()
+            Layer::BOTH
+                .into_iter()
+                .any(|layer| passed.all().layer(layer).values().next().is_some())
         }
 
         fn outcome(&self, local: &str, borrow: Borrow, parameter: Option<&Type>) -> Outcome {
@@ -233,8 +235,12 @@ mod tests {
             Outcome {
                 takes_the_place: passing.takes_the_place(),
                 accesses,
-                passes_a_loan: passed.all().loans().next().is_some(),
-                passes_its_own_holdings: passed.all().values().next().is_some(),
+                passes_a_loan: Layer::BOTH
+                    .into_iter()
+                    .any(|layer| passed.all().layer(layer).loans().next().is_some()),
+                passes_its_own_holdings: Layer::BOTH
+                    .into_iter()
+                    .any(|layer| passed.all().layer(layer).values().next().is_some()),
             }
         }
     }

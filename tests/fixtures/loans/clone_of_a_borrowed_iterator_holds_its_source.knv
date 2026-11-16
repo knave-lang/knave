@@ -1,0 +1,11 @@
+(defn main ()
+  (local v (vec 1 2))
+  (local it
+    (the (iterator i64) (take v 2)))
+  (local c
+    ((rust "{0}.clone()"
+       (fn ((ref (iterator i64)))
+         (iterator i64)))
+     (ref it)))
+  (set! v (vec 3))
+  (println (count c)))

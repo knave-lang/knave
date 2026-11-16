@@ -7,6 +7,7 @@ use super::ty::{GenericId, Lifetime, Scheme, Type};
 pub struct TemplateTies {
     lifetime: Vec<usize>,
     held: Vec<usize>,
+    beneath: Vec<usize>,
 }
 
 impl TemplateTies {
@@ -14,6 +15,15 @@ impl TemplateTies {
         Self {
             lifetime: lifetime.to_vec(),
             held: held.to_vec(),
+            beneath: Vec::new(),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn beneath(self, positions: &[usize]) -> Self {
+        Self {
+            beneath: positions.to_vec(),
+            ..self
         }
     }
 
@@ -22,20 +32,34 @@ impl TemplateTies {
             return Some(Self::default());
         };
         let generics: Vec<GenericId> = scheme.params.iter().map(|param| param.id).collect();
+        let held = Self::merged(
+            &Self::held_ties(parameters, result, &generics),
+            &Self::adapted_iterators(parameters, result, pipelines),
+        );
+        let beneath = held
+            .iter()
+            .copied()
+            .filter(|position| matches!(parameters[*position], Type::Ref(..) | Type::Mut(..)))
+            .collect();
         Some(Self {
             lifetime: Self::lifetime_ties(parameters, result)?,
-            held: Self::merged(
-                &Self::held_ties(parameters, result, &generics),
-                &Self::adapted_iterators(parameters, result, pipelines),
-            ),
+            held,
+            beneath,
         })
     }
 
     pub fn widened(known: Option<Self>, other: Option<Self>) -> Option<Self> {
         let (known, other) = (known?, other?);
+        let held = Self::merged(&known.held, &other.held);
+        let beneath = held
+            .iter()
+            .copied()
+            .filter(|position| known.reads_beneath(*position) && other.reads_beneath(*position))
+            .collect();
         Some(Self {
             lifetime: Self::merged(&known.lifetime, &other.lifetime),
-            held: Self::merged(&known.held, &other.held),
+            held,
+            beneath,
         })
     }
 
@@ -45,6 +69,14 @@ impl TemplateTies {
 
     pub fn holds_through(&self, position: usize) -> bool {
         self.held.contains(&position)
+    }
+
+    pub fn holds_beneath(&self, position: usize) -> bool {
+        self.beneath.contains(&position)
+    }
+
+    fn reads_beneath(&self, position: usize) -> bool {
+        !self.holds_through(position) || self.holds_beneath(position)
     }
 
     fn held_ties(parameters: &[Type], result: &Type, generics: &[GenericId]) -> Vec<usize> {
@@ -173,7 +205,7 @@ mod tests {
             vec![Type::shared(TiesFixture::generic()), index],
             Type::shared(TiesFixture::generic()),
         );
-        assert_eq!(at, Some(TemplateTies::new(&[0], &[0])));
+        assert_eq!(at, Some(TemplateTies::new(&[0], &[0]).beneath(&[0])));
     }
 
     #[test]
@@ -200,7 +232,7 @@ mod tests {
             vec![TiesFixture::generic(), TiesFixture::generic()],
             TiesFixture::generic(),
         );
-        assert_eq!(pop, Some(TemplateTies::new(&[], &[0])));
+        assert_eq!(pop, Some(TemplateTies::new(&[], &[0]).beneath(&[0])));
         assert_eq!(either, Some(TemplateTies::new(&[], &[0, 1])));
     }
 
@@ -238,5 +270,20 @@ mod tests {
     fn a_template_unsettled_at_one_type_is_unsettled() {
         let lent = Some(TemplateTies::new(&[0], &[]));
         assert_eq!(TemplateTies::widened(lent, None), None);
+    }
+
+    #[test]
+    fn a_widened_tie_reads_beneath_a_reference_only_when_every_type_does() {
+        let behind = Some(TemplateTies::new(&[], &[0]).beneath(&[0]));
+        let plain = Some(TemplateTies::new(&[], &[0]));
+        let untied = Some(TemplateTies::new(&[], &[]));
+        assert_eq!(
+            TemplateTies::widened(behind.clone(), plain),
+            Some(TemplateTies::new(&[], &[0]))
+        );
+        assert_eq!(
+            TemplateTies::widened(behind, untied),
+            Some(TemplateTies::new(&[], &[0]).beneath(&[0]))
+        );
     }
 }

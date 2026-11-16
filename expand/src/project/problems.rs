@@ -74,7 +74,10 @@ impl ProjectProblems {
             format!("`{name}` cannot name a library"),
             Label::new(span, "this name is reserved"),
         )
-        .with_note("`prelude`, `kernel` and `code` name the compiler's own modules")
+        .with_note(format!(
+            "`prelude`, `kernel` and `code` name the compiler's own modules, and `{}` at the root is the project file",
+            Language::project_file_name()
+        ))
         .with_help("give the library another name")
     }
 

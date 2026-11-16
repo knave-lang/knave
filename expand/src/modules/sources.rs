@@ -274,6 +274,7 @@ impl ModuleSources {
 
     pub fn is_reserved_library(name: &str) -> bool {
         [Self::PRELUDE, Self::KERNEL, Self::CODE].contains(&name)
+            || Self::is_reserved(&ModulePath::new(name))
     }
 
     pub fn is_reserved(path: &ModulePath) -> bool {

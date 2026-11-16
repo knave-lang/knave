@@ -4,6 +4,7 @@ use super::budget_arena::BudgetId;
 use super::context::DefinitionContext;
 use super::declared_trait::DeclaredTrait;
 use super::problems::ExpandProblems;
+use super::rust_trait_path::RustTraitPath;
 use super::shape::Shape;
 use super::sourced_items::SourcedItems;
 use super::spliced_forms::{SplicedForm, SplicedForms};
@@ -1896,11 +1897,9 @@ impl Expander<'_> {
         visible.into_iter().find(|existing| {
             *existing != binding
                 && matches!(self.kind(*existing), BindingKind::Trait(_))
-                && self
-                    .tables
-                    .trait_paths
-                    .get(existing)
-                    .is_some_and(|known| known.as_ref() == path)
+                && self.tables.trait_paths.get(existing).is_some_and(|known| {
+                    RustTraitPath::new(known).names_same_trait(&RustTraitPath::new(path))
+                })
         })
     }
 

@@ -1437,10 +1437,14 @@ The parts follow `println`: a string is literal text, any other form prints with
 ```lisp
 (deftrait shape
   (area (fn ((ref self)) float))
-  (scale! (fn ((mut self) float) unit)))
+
+  (scale!
+    (fn ((mut self) float) unit)))
 
 (impl shape circle
-  (area (c) (* 3.0 (field c radius) (field c radius)))
+  (area (c)
+    (* 3.0 (field c radius) (field c radius)))
+
   (scale! (c factor) (do)))
 ```
 

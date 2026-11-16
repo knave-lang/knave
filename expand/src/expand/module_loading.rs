@@ -12,8 +12,9 @@ use super::shape::Shape;
 use super::text_module_load::TextModuleLoad;
 use super::text_module_record::TextModuleRecord;
 use crate::core::{
-    BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, Import, ImportedName,
-    KernelConstants, KernelForm, KernelType, ModuleId, ModulePath, Namespace, UnnamedPartPath,
+    BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, Import, ImportedBindings,
+    ImportedName, KernelConstants, KernelForm, KernelType, ModuleId, ModulePath, Namespace,
+    UnnamedPartPath,
 };
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
@@ -25,8 +26,6 @@ use crate::source::{SourceId, Span};
 use crate::stack::DeepRecursion;
 
 impl Expander<'_> {
-    const NAMESPACES: [Namespace; 2] = [Namespace::Value, Namespace::Type];
-
     pub(super) fn register_module_definition(
         &mut self,
         definition: DefinitionForm,
@@ -163,7 +162,7 @@ impl Expander<'_> {
         let records_imports = self
             .current_module
             .is_some_and(|module| ModuleSources::is_written(self.modules.get(module).path()));
-        let span = form.span();
+        let (span, names) = (form.span(), names.into_boxed_slice());
         Ok(records_imports.then_some(Import { span, names }))
     }
 
@@ -182,7 +181,6 @@ impl Expander<'_> {
             let symbol = binder.as_symbol().ok_or_else(|| shape.malformed(name))?;
             match self.import_name(target, path, symbol, name.span()) {
                 Ok(bindings) => imported.push(ImportedName {
-                    name: symbol.shared_name(),
                     span: name.span(),
                     bindings,
                 }),
@@ -334,11 +332,10 @@ impl Expander<'_> {
         path: &ModulePath,
         symbol: &Symbol,
         span: Span,
-    ) -> Result<Vec<BindingId>, Diagnostic> {
-        let bindings = self.bind_exported_namespaces(target, symbol, span)?;
-        if bindings.is_empty() {
+    ) -> Result<ImportedBindings, Diagnostic> {
+        let Some(bindings) = self.bind_exported_namespaces(target, symbol, span)? else {
             return Err(self.missing_export(target, path, symbol, span));
-        }
+        };
         self.import_members(target, symbol, span)?;
         Ok(bindings)
     }
@@ -348,12 +345,14 @@ impl Expander<'_> {
         target: ModuleId,
         symbol: &Symbol,
         span: Span,
-    ) -> Result<Vec<BindingId>, Diagnostic> {
-        let mut bindings = Vec::new();
-        for namespace in Self::NAMESPACES {
+    ) -> Result<Option<ImportedBindings>, Diagnostic> {
+        let mut bindings: Option<ImportedBindings> = None;
+        for namespace in Namespace::IMPORTED {
             if let Some(binding) = self.modules.get(target).exported(symbol.name(), namespace) {
                 self.bind_import(symbol, namespace, binding, span)?;
-                bindings.push(binding);
+                bindings = Some(
+                    bindings.map_or(ImportedBindings::new(binding), |found| found.and(binding)),
+                );
             }
         }
         Ok(bindings)

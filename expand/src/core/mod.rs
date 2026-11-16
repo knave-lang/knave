@@ -42,8 +42,8 @@ pub use access::Access;
 pub use argument_positions::ArgumentPositions;
 pub use binder_origin::BinderOrigin;
 pub use binding::{
-    BindingArena, BindingId, BindingInfo, BindingKind, Declaration, ModuleDefinitions, Namespace,
-    VariantInfo,
+    BindingArena, BindingId, BindingInfo, BindingKind, Declaration, ImportedBindings,
+    ModuleDefinitions, Namespace, VariantInfo,
 };
 pub use builtin::{Builtin, BuiltinModule};
 pub use clause_comparison::ClauseComparison;

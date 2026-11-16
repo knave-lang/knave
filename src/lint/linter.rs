@@ -48,7 +48,11 @@ impl<'p> Linter<'p> {
         let rules = &*rules;
         let mut host = RuleHost::new(rules, self.facts(&names));
         let candidates = self.unkept_candidates(rules, &mut host)?;
-        let table = ModuleTable::new(self.program, DefinitionReach::of(self.program, candidates));
+        let table = ModuleTable::new(
+            self.program,
+            self.sources,
+            DefinitionReach::of(self.program, candidates),
+        );
         for linted in modules {
             let target = table
                 .target(&linted)

@@ -1,6 +1,4 @@
-use std::rc::Rc;
-
-use super::BindingId;
+use super::ImportedBindings;
 use crate::source::Span;
 
 #[derive(Clone, Debug, Default)]
@@ -28,14 +26,13 @@ impl LintFacts {
 #[derive(Clone, Debug)]
 pub struct Import {
     pub span: Span,
-    pub names: Vec<ImportedName>,
+    pub names: Box<[ImportedName]>,
 }
 
 #[derive(Clone, Debug)]
 pub struct ImportedName {
-    pub name: Rc<str>,
     pub span: Span,
-    pub bindings: Vec<BindingId>,
+    pub bindings: ImportedBindings,
 }
 
 #[cfg(test)]

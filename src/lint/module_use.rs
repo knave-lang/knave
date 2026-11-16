@@ -40,23 +40,21 @@ impl<'p> ModuleUse<'p> {
 
     pub fn refers_to(&self, name: &ImportedName) -> bool {
         name.bindings.iter().any(|binding| {
-            self.used.contains(binding) || self.compile_time_roots.is_named_by_a_macro(*binding)
+            self.used.contains(&binding) || self.compile_time_roots.is_named_by_a_macro(binding)
         })
     }
 
     pub fn brings_only_macros(&self, name: &ImportedName) -> bool {
-        !name.bindings.is_empty()
-            && name
-                .bindings
-                .iter()
-                .all(|binding| matches!(self.bindings.get(*binding).kind(), BindingKind::Macro(_)))
+        name.bindings
+            .iter()
+            .all(|binding| matches!(self.bindings.get(binding).kind(), BindingKind::Macro(_)))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::ModuleUse;
-    use crate::core::{BindingId, ImportedName};
+    use crate::core::{BindingId, ImportedBindings, ImportedName};
     use crate::lint::binding_owners::BindingOwners;
     use crate::lint::expanded_source::ExpandedSource;
     use crate::lint::linted_module::LintedModule;
@@ -81,9 +79,8 @@ mod tests {
                 .last()
                 .expect("the program binds the name");
             ImportedName {
-                name: name.into(),
                 span: Span::new(SourceId::new(0), 0..0),
-                bindings: vec![binding],
+                bindings: ImportedBindings::new(binding),
             }
         }
 

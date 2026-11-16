@@ -9,10 +9,11 @@ use crate::diagnostic::Diagnostic;
 use crate::expand::Program;
 use crate::interpret::ListNesting;
 use crate::reader::Form;
-use crate::source::Span;
+use crate::source::{SourceMap, Span};
 
 pub struct ModuleTable<'p> {
     program: &'p Program,
+    sources: &'p SourceMap,
     owners: BindingOwners,
     reach: DefinitionReach,
 }
@@ -21,9 +22,10 @@ impl<'p> ModuleTable<'p> {
     const MACRO_ONLY: &'static str = "macro";
     const VALUE: &'static str = "value";
 
-    pub fn new(program: &'p Program, reach: DefinitionReach) -> Self {
+    pub fn new(program: &'p Program, sources: &'p SourceMap, reach: DefinitionReach) -> Self {
         Self {
             program,
+            sources,
             owners: BindingOwners::of(program),
             reach,
         }
@@ -45,7 +47,7 @@ impl<'p> ModuleTable<'p> {
             .collect();
         let imports = recorded
             .iter()
-            .map(|import| Self::import(import, &used))
+            .map(|import| self.import(import, &used))
             .collect();
         let parts = vec![
             SpannedForms::list(definitions, span),
@@ -74,13 +76,13 @@ impl<'p> ModuleTable<'p> {
         )
     }
 
-    fn import(import: &Import, used: &ModuleUse) -> Form {
+    fn import(&self, import: &Import, used: &ModuleUse) -> Form {
         let span = import.span;
         let unread = import
             .names
             .iter()
             .filter(|name| !used.refers_to(name))
-            .map(|name| Self::unread_name(name, used))
+            .map(|name| self.unread_name(name, used))
             .collect();
         let parts = vec![
             SpannedForms::kernel_head(KernelForm::Definition(DefinitionForm::Use), span),
@@ -90,7 +92,7 @@ impl<'p> ModuleTable<'p> {
         SpannedForms::list(parts, span)
     }
 
-    fn unread_name(name: &ImportedName, used: &ModuleUse) -> Form {
+    fn unread_name(&self, name: &ImportedName, used: &ModuleUse) -> Form {
         let brings = if used.brings_only_macros(name) {
             Self::MACRO_ONLY
         } else {
@@ -98,11 +100,15 @@ impl<'p> ModuleTable<'p> {
         };
         SpannedForms::list(
             vec![
-                SpannedForms::symbol(&name.name, name.span),
+                SpannedForms::symbol(self.written(name.span), name.span),
                 SpannedForms::symbol(brings, name.span),
             ],
             name.span,
         )
+    }
+
+    fn written(&self, span: Span) -> &str {
+        &self.sources.file(span.source()).text()[span.range()]
     }
 
     fn binder(&self, binding: BindingId, span: Span) -> Form {

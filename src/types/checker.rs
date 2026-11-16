@@ -2607,12 +2607,9 @@ impl TypeChecker {
             return None;
         };
         let argument = arguments.first()?;
-        let satisfied = self
-            .declarations
-            .traits
-            .table
-            .satisfies(bound, argument, &|_, _| false);
-        satisfied.then(|| found.clone())
+        let boxable = self.declared_traits().is_written(bound.binding);
+        let table = &self.declarations.traits.table;
+        (boxable && table.satisfies(bound, argument, &|_, _| false)).then(|| found.clone())
     }
 
     fn implementor_names(

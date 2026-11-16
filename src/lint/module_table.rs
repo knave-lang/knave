@@ -20,7 +20,6 @@ pub struct ModuleTable<'p> {
 
 impl<'p> ModuleTable<'p> {
     const MACRO_ONLY: &'static str = "macro";
-    const VALUE: &'static str = "value";
 
     pub fn new(program: &'p Program, sources: &'p SourceMap, reach: DefinitionReach) -> Self {
         Self {
@@ -93,18 +92,11 @@ impl<'p> ModuleTable<'p> {
     }
 
     fn unread_name(&self, name: &ImportedName, used: &ModuleUse) -> Form {
-        let brings = if used.brings_only_macros(name) {
-            Self::MACRO_ONLY
-        } else {
-            Self::VALUE
-        };
-        SpannedForms::list(
-            vec![
-                SpannedForms::symbol(self.written(name.span), name.span),
-                SpannedForms::symbol(brings, name.span),
-            ],
-            name.span,
-        )
+        let mut parts = vec![SpannedForms::symbol(self.written(name.span), name.span)];
+        if used.brings_only_macros(name) {
+            parts.push(SpannedForms::symbol(Self::MACRO_ONLY, name.span));
+        }
+        SpannedForms::list(parts, name.span)
     }
 
     fn written(&self, span: Span) -> &str {

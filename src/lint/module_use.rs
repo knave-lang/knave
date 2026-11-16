@@ -2,8 +2,11 @@ use rustc_hash::FxHashSet;
 
 use super::binding_owners::BindingOwners;
 use super::linted_module::LintedModule;
-use crate::core::{BindingArena, BindingId, BindingKind, ImportedName, NamedTypes, References};
+use crate::core::{
+    BindingArena, BindingId, BindingKind, CoreModule, ImportedName, NamedTypes, References,
+};
 use crate::expand::Program;
+use crate::source::Span;
 
 pub struct ModuleUse<'p> {
     bindings: &'p BindingArena,
@@ -24,6 +27,7 @@ impl<'p> ModuleUse<'p> {
         for named in program.compile_time_roots.named_by_macros_in(module.id) {
             used.extend([named, owners.owner(named, bindings)]);
         }
+        used.extend(Self::called_macros(program, module));
         for item in &module.items {
             NamedTypes::of(&item.kind).visit(&mut |binding| {
                 used.insert(binding);
@@ -34,6 +38,29 @@ impl<'p> ModuleUse<'p> {
             used.extend(references.written_types().named().iter().copied());
         }
         Self { bindings, used }
+    }
+
+    fn called_macros(program: &Program, module: &CoreModule) -> Vec<BindingId> {
+        let recorded = module.lint_facts.imports();
+        let Some(first) = recorded.first() else {
+            return Vec::new();
+        };
+        let called: FxHashSet<Span> = program
+            .call_origins
+            .macros_called_in(first.span.source())
+            .into_iter()
+            .collect();
+        let imported = recorded
+            .iter()
+            .flat_map(|import| &import.names)
+            .flat_map(|name| name.bindings.iter());
+        imported
+            .filter(|binding| {
+                let info = program.bindings.get(*binding);
+                matches!(info.kind(), BindingKind::Macro(_))
+                    && info.span().is_some_and(|span| called.contains(&span))
+            })
+            .collect()
     }
 
     pub fn refers_to(&self, name: &ImportedName) -> bool {

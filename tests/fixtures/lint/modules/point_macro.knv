@@ -1,0 +1,6 @@
+(export pt)
+
+(defstruct pt
+  :x i64)
+
+(defmacro pt (x) x)

@@ -2,7 +2,7 @@ use super::macro_call_lookup::MacroCallLookup;
 use super::macro_origin::MacroOrigin;
 use super::own_call_origins::OwnCallOrigins;
 use super::saved_call_origins::SavedCallOrigins;
-use crate::source::Span;
+use crate::source::{SourceId, Span};
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct CallOrigins {
@@ -57,14 +57,22 @@ impl MacroCallLookup for CallOrigins {
             .min_by_key(Self::call_site_length)?;
         self.introducing_macro(smallest.call_site)
     }
+
+    fn macros_called_in(&self, source: SourceId) -> Vec<Span> {
+        self.saved
+            .macros_called_in(source)
+            .chain(self.own.macros_called_in(source))
+            .collect()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::CallOrigins;
     use crate::expand::macro_call_lookup::MacroCallLookup;
+    use crate::expand::macro_origin::MacroOrigin;
     use crate::expand::origins_fixture::OriginsFixture;
-    use crate::source::Span;
+    use crate::source::{SourceId, Span};
 
     struct CallOriginsFixture {
         origins: CallOrigins,
@@ -171,5 +179,28 @@ mod tests {
             Some("own".to_string())
         );
         assert!(own.at(OriginsFixture::call_site()).is_none());
+    }
+
+    #[test]
+    fn the_macros_called_in_a_source_come_from_saved_and_own_calls() {
+        let mut fixture = CallOriginsFixture::over_saved();
+        let own_call = OriginsFixture::span(3, 0, 4);
+        let defined = OriginsFixture::span(4, 0, 9);
+        let origin = MacroOrigin {
+            defined,
+            ..OriginsFixture::origin("own", own_call)
+        };
+        fixture.origins.record(own_call, origin);
+        assert_eq!(fixture.origins.macros_called_in(SourceId::new(1)).len(), 2);
+        assert_eq!(
+            fixture.origins.macros_called_in(SourceId::new(3)),
+            [defined]
+        );
+        assert!(
+            fixture
+                .origins
+                .macros_called_in(SourceId::new(5))
+                .is_empty()
+        );
     }
 }

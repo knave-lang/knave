@@ -1,0 +1,3 @@
+(use modules/point_macro pt)
+
+(defn main () (println (pt 1)))

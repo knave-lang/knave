@@ -172,12 +172,13 @@
   "Reports a name that a `use` brings in and the module never refers to.
 
   The rule reports each name of a `use` that no definition, signature,
-  type, pattern or `export` of the module refers to, at the name, or the
-  whole `use` when none of its names is used. A use of a constructor or a
-  method that a name brought in counts for the name, and so does a call or
-  a template symbol in a macro's body. A `use` that lists no
-  name is left out, and so is a name that brings in only a macro, a name
-  that starts with `_` and a `use` that a macro's expansion wrote.
+  type, pattern, macro call or `export` of the module refers to, at the
+  name, or the whole `use` when none of its names is used. A use of a
+  constructor, a variant or a method that a name brought in counts for the
+  name, and so does any name that a macro's body calls or writes in a
+  template. A `use` that lists no name is left out, and so is a name that
+  brings in only a macro, a name that starts with `_` and a `use` that a
+  macro's expansion wrote.
 
   Only `knave lint` runs the rule, and it exits with status 1 when the rule
   reports a name, unless the project's `lints` section gives the rule
@@ -505,9 +506,9 @@
 
 (def reported-name?
   (fn (entry)
-    (if (value-eq (nth entry 1) (quote macro))
-      false
-      (written-name? (first entry)))))
+    (if (empty? (rest entry))
+      (written-name? (first entry))
+      false)))
 
 (def warn-unused-use
   (fn (form)

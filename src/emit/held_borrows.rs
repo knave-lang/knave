@@ -2,7 +2,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::BindingId;
 use crate::types::{
-    Pipelines, ReturnedValues, Type, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem,
+    BorrowingTypes, ReturnedValues, Type, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem,
     TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedProgram,
     TypedStructExpr,
 };
@@ -62,9 +62,7 @@ impl<'a> HeldBorrows<'a> {
     }
 
     fn may_hold_borrow(&self, ty: &Type) -> bool {
-        matches!(ty, Type::Function(..))
-            || self.program.type_holds_borrow(ty)
-            || Pipelines::new(self.program.declarations.types().rust_types()).is_pipeline(ty)
+        matches!(ty, Type::Function(..)) || BorrowingTypes::of(self.program).keeps_borrow(ty)
     }
 }
 

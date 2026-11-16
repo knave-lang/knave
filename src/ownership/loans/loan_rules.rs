@@ -1,9 +1,8 @@
-use crate::types::{CopyRules, Pipelines, TemplateTies, Type, TypedExpr, TypedProgram};
+use crate::types::{BorrowingTypes, CopyRules, TemplateTies, Type, TypedExpr, TypedProgram};
 
 pub struct LoanRules<'p> {
     program: &'p TypedProgram,
     copy: CopyRules<'p>,
-    pipelines: Pipelines<'p>,
 }
 
 impl<'p> LoanRules<'p> {
@@ -11,7 +10,6 @@ impl<'p> LoanRules<'p> {
         Self {
             program,
             copy: CopyRules::new(&program.declarations, &program.generics),
-            pipelines: Pipelines::new(program.declarations.types().rust_types()),
         }
     }
 
@@ -26,6 +24,6 @@ impl<'p> LoanRules<'p> {
     }
 
     pub fn holds_a_borrow(&self, ty: &Type) -> bool {
-        self.program.type_holds_borrow(ty) || self.pipelines.is_pipeline(ty)
+        BorrowingTypes::of(self.program).keeps_borrow(ty)
     }
 }

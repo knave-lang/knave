@@ -29,9 +29,9 @@
         dir display doc eprint eprintln find-doc from-str
         infallible join lines lower-case parse
         parse-bool-error parse-char-error parse-error
-        parse-float-error parse-int-error pr-str print
-        print-form println prn show split split-when
-        starts-with? str subs trim upper-case whitespace?)
+        parse-float-error parse-int-error pattern pr-str
+        print print-form println prn show split starts-with?
+        str subs trim upper-case whitespace?)
 
 (rust-type formatter "std::fmt::Formatter<'_>")
 
@@ -210,10 +210,19 @@
   (rust "{0}.lines()"
     (fn ((ref str)) (iterator (ref str)))))
 
+(rust-trait pattern "crate::rt::Separator"
+  (help "`split` takes a `(ref str)`, a `char` or a `(fn (char) bool)` separator: borrow a `string` with `(as-str separator)`")
+  (ref str)
+  char
+  (fn (char) bool))
+
 (def split
-  (rust "{0}.split({1})"
-    (fn ((ref str) (ref str))
-      (iterator (ref str)))))
+  (rust "crate::rt::Separator::split({1}, {0})"
+    (where ((p pattern))
+      (fn ((ref str) p) (iterator (ref str))))
+    ((ref str) "{0}.split({1})")
+    (char "{0}.split({1})")
+    ((fn (char) bool) "{0}.split({1})")))
 
 (rust-trait joinable "crate::rt::Join"
   (help "`join` takes a vector or a slice of `string` or `(ref str)` items: turn other items into text first, as in `(join (collect (map (iter items) str)) \", \")`, and collect an iterator, as in `(join (collect items) \", \")`; both allocate the vector")
@@ -769,11 +778,6 @@
         (string "'" (escape-char text) "'")
         (quote char)))
 
-(def split-when
-  (rust "{0}.split({1})"
-    (fn ((ref str) (fn (char) bool))
-      (iterator (ref str)))))
-
 (def lower-case
   (rust "{0}.to_lowercase()"
     (fn ((ref str)) string)))
@@ -1026,24 +1030,23 @@
 (document (split text separator)
   "Returns an iterator over the parts of a string between separators.
 
-  Two separators in a row give an empty part, and an empty string gives one
-  empty part. Both arguments are a `(ref str)`.
+  `separator` is a `(ref str)`, a [char], or a function from a `char` to a
+  [bool], such as [digit?]: any type of the [pattern] trait. Two separators
+  in a row give an empty part, and an empty string gives one empty part.
+  `text` is a `(ref str)`, so borrow a [string] with [as-str].
 
   (collect (split \"a,b\" \",\"))
   => (vec \"a\" \"b\")
 
   (collect (split \"a,,b\" \",\"))
-  => (vec \"a\" \"\" \"b\")")
+  => (vec \"a\" \"\" \"b\")
 
-(document (split-when text test)
-  "Returns an iterator over the parts of a string between matching [char]s.
-
-  `test` is a function from a `char` to a [bool], such as [digit?].
-
-  It takes a `(ref str)`, so borrow a [string] with [as-str].
-
-  (collect (split-when \"a1b\" digit?))
+  (collect (split \"a1b\" digit?))
   => (vec \"a\" \"b\")")
+
+(document pattern
+  "Marks a separator that [split] can split a string on: a `(ref str)`, a
+  [char], or a function from a `char` to a [bool].")
 
 (document (join items separator)
   "Joins a vector or a slice of strings into one [string], with `separator`

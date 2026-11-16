@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/split_owned_separator.knv
+---
+error[L0404]: `string` does not implement `pattern`
+ --> check/split_owned_separator.knv:3:32
+  |
+3 |   (println (count (split "a,b" separator))))
+  |                                ^^^^^^^^^ this needs `pattern`
+  |
+  = note: `pattern` is implemented for: (ref str), char, (fn (char) bool)
+  = help: `split` takes a `(ref str)`, a `char` or a `(fn (char) bool)` separator: borrow a `string` with `(as-str separator)`
+  = note: run `knave doc L0404` for an explanation

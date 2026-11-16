@@ -1,0 +1,14 @@
+(type part-count
+  (where ((p pattern))
+    (fn ((ref str) p) usize)))
+
+(defn part-count (text separator)
+  (count (split text separator)))
+
+(defn main ()
+  (println (part-count "a,b,c" ","))
+  (println (part-count "a b" (char "x")))
+  (println (part-count "a1b2c" digit?))
+  (println (count (split "a,b" ",")))
+  (println (count (split "a b" (char " "))))
+  (println (count (split "a1b" digit?))))

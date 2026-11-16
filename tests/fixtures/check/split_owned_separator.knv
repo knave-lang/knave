@@ -1,0 +1,3 @@
+(defn main ()
+  (local separator (str ","))
+  (println (count (split "a,b" separator))))

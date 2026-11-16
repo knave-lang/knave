@@ -18,6 +18,7 @@ enum RuntimePart {
     Io,
     Exit,
     Source,
+    Separator,
     Lines,
     Signal,
     Show,
@@ -47,7 +48,7 @@ impl RuntimePart {
         "eprintln!(",
         "std::io::stderr(",
     ];
-    const NAMED: [(&'static str, RuntimePart); 27] = [
+    const NAMED: [(&'static str, RuntimePart); 28] = [
         ("Number", RuntimePart::Number),
         ("Signed", RuntimePart::Signed),
         ("Float", RuntimePart::Float),
@@ -59,6 +60,7 @@ impl RuntimePart {
         ("read_line", RuntimePart::Io),
         ("exit", RuntimePart::Exit),
         ("Source", RuntimePart::Source),
+        ("Separator", RuntimePart::Separator),
         ("lines", RuntimePart::Lines),
         ("Show", RuntimePart::Show),
         ("Shown", RuntimePart::Show),
@@ -240,6 +242,7 @@ impl RuntimeModule {
     const IO: &'static str = include_str!("../../prelude/runtime/io.rs");
     const EXIT: &'static str = include_str!("../../prelude/runtime/exit.rs");
     const SOURCE: &'static str = include_str!("../../prelude/runtime/source.rs");
+    const SEPARATOR: &'static str = include_str!("../../prelude/runtime/separator.rs");
     const LINES: &'static str = include_str!("../../prelude/runtime/lines.rs");
     const SIGNAL: &'static str = include_str!("../../prelude/runtime/signal.rs");
     const SHOW: &'static str = include_str!("../../prelude/runtime/show.rs");
@@ -260,7 +263,7 @@ impl RuntimeModule {
     const MAX: &'static str = include_str!("../../prelude/runtime/max.rs");
     const MIN: &'static str = include_str!("../../prelude/runtime/min.rs");
     const START_UP_CALL: &'static str = "crate::rt::restore_default_sigpipe();";
-    const FIXED_PARTS: [(RuntimePart, &'static str); 29] = [
+    const FIXED_PARTS: [(RuntimePart, &'static str); 30] = [
         (RuntimePart::Signed, Self::SIGNED),
         (RuntimePart::Float, Self::FLOAT),
         (RuntimePart::Integer, Self::INTEGER),
@@ -272,6 +275,7 @@ impl RuntimeModule {
         (RuntimePart::Io, Self::IO),
         (RuntimePart::Exit, Self::EXIT),
         (RuntimePart::Source, Self::SOURCE),
+        (RuntimePart::Separator, Self::SEPARATOR),
         (RuntimePart::Lines, Self::LINES),
         (RuntimePart::Signal, Self::SIGNAL),
         (RuntimePart::Show, Self::SHOW),

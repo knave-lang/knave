@@ -26,6 +26,10 @@ impl<'a> DeclaredTraits<'a> {
             .any(|structural| structural.binding == trait_binding)
     }
 
+    pub(super) fn is_written(&self, trait_binding: BindingId) -> bool {
+        (self.traits.definitions.iter()).any(|written| written.binding == trait_binding)
+    }
+
     pub(super) fn allows_function_fields(&self, trait_binding: BindingId) -> bool {
         self.derive_name_is_one_of(trait_binding, &FunctionFieldTraits::ALLOWED)
     }

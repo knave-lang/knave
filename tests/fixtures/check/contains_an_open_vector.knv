@@ -1,0 +1,3 @@
+(defn main ()
+  (local found (vec))
+  (println (contains? "abc" found)))

@@ -1,0 +1,2 @@
+(defn main ()
+  (println (contains? (box (vec 1 2)) 1)))

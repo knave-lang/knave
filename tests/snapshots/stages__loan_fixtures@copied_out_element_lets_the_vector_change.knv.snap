@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/copied_out_element_lets_the_vector_change.knv
+---
+main
+  3:29 borrow `s`: no live loan
+  5:35 borrow `names`: `s` lent at 3:29, held by `names`
+  6:10 change `names`: `s` lent at 3:29, held by `names`
+  7:22 borrow `other`: `s` lent at 3:29, held by `names`
+  8:22 borrow `names`: `s` lent at 3:29, held by `names`

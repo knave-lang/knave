@@ -1,0 +1,8 @@
+(defn main ()
+  (local s (str "a"))
+  (local names (vec (as-str s)))
+  (local other
+    (the (vec (ref str)) (vec (at names 0))))
+  (push! names "b")
+  (println (len (ref other))
+           (len (ref names))))

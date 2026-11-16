@@ -21,6 +21,7 @@ use super::positional_read::PositionalRead;
 use super::problems::{MismatchContext, TypeProblems};
 use super::selfless_method::SelflessMethod;
 use super::synthetic_template::SyntheticTemplate;
+use super::templates::TemplateName;
 use super::ty::{Bound, BoundOrigin, Type, TypeVar};
 use super::typed::{
     Borrow, FieldOrder, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm, TypedBinder,
@@ -3620,8 +3621,8 @@ impl TypeChecker {
         span: Span,
     ) -> Result<(TypedExprKind, Type), Diagnostic> {
         let scheme = self.written_schemes().lower_scheme(&template.type_expr)?;
-        self.template_borrows
-            .register_inline(&template.template, &scheme);
+        let name = TemplateName::Inline(&template.template);
+        self.template_borrows.register(name, &scheme);
         let ty = self.instantiation().instantiate(&scheme, span);
         Ok((TypedExprKind::Leaf(TypedLeaf::Rust(template.clone())), ty))
     }

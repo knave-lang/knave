@@ -22,7 +22,7 @@ impl<'p> LoanRules<'p> {
     pub fn ties(&self, callee: &TypedExpr) -> Option<TemplateTies> {
         self.program
             .template_borrows
-            .read_template(callee, None, |template| template.ties().cloned())
+            .read_template(callee, None, |_, ties| ties.cloned())
     }
 
     pub fn holds_a_borrow(&self, ty: &Type) -> bool {

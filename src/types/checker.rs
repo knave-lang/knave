@@ -958,8 +958,8 @@ impl TypeChecker {
             }
         };
         self.collect_clauses(member.binding, template, &scheme);
-        self.template_borrows
-            .register(member.binding, &template.template, &scheme);
+        let name = super::TemplateName::Declared(member.binding, &template.template);
+        self.template_borrows.register(name, &scheme);
         self.schemes.insert(member.binding, scheme);
         true
     }

@@ -1,8 +1,8 @@
-use std::cell::RefCell;
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::inline_templates::InlineTemplates;
 use super::registered_template::RegisteredTemplate;
 use super::template_ties::TemplateTies;
 use super::ty::Scheme;
@@ -11,21 +11,32 @@ use crate::core::{BindingId, Conversion, ParsedTemplate, Piece, ReferenceKind};
 
 pub type Conversions = Rc<[(usize, Conversion)]>;
 
+pub enum TemplateName<'a> {
+    Declared(BindingId, &'a Rc<str>),
+    Inline(&'a Rc<str>),
+}
+
 #[derive(Default)]
 pub struct TemplateBorrows {
-    templates: FxHashMap<BindingId, RegisteredTemplate>,
+    declared: FxHashMap<BindingId, RegisteredTemplate>,
     conversions: FxHashMap<BindingId, Conversions>,
-    inline: RefCell<FxHashMap<Rc<str>, Option<RegisteredTemplate>>>,
-    inline_ties: FxHashMap<Rc<str>, Option<TemplateTies>>,
+    inline: InlineTemplates,
 }
 
 impl TemplateBorrows {
-    pub fn register(&mut self, binding: BindingId, template: &str, scheme: &Scheme) {
-        if let Some(registered) = RegisteredTemplate::declared(template, TemplateTies::of(scheme)) {
-            if let Some(conversions) = Self::written_conversions(registered.parsed()) {
-                self.conversions.insert(binding, conversions);
+    pub fn register(&mut self, name: TemplateName<'_>, scheme: &Scheme) {
+        let ties = TemplateTies::of(scheme);
+        match name {
+            TemplateName::Declared(binding, text) => {
+                let registered = RegisteredTemplate::declared(text, ties);
+                let conversions =
+                    registered.read(None, |parsed, _| Self::written_conversions(parsed));
+                if let Some(conversions) = conversions {
+                    self.conversions.insert(binding, conversions);
+                }
+                self.declared.insert(binding, registered);
             }
-            self.templates.insert(binding, registered);
+            TemplateName::Inline(text) => self.inline.register(text, ties),
         }
     }
 
@@ -45,9 +56,7 @@ impl TemplateBorrows {
         if !Conversion::may_be_written_in(template) {
             return None;
         }
-        self.read_template(callee, None, |registered| {
-            Self::written_conversions(registered.parsed())
-        })
+        self.read_template(callee, None, |parsed, _| Self::written_conversions(parsed))
     }
 
     fn written_conversions(parsed: &ParsedTemplate) -> Option<Conversions> {
@@ -55,52 +64,26 @@ impl TemplateBorrows {
         conversions.peek().is_some().then(|| conversions.collect())
     }
 
-    pub fn register_inline(&mut self, template: &Rc<str>, scheme: &Scheme) {
-        let ties = TemplateTies::of(scheme);
-        match self.inline_ties.get_mut(template) {
-            Some(known) => *known = TemplateTies::widened(known.take(), ties),
-            None => {
-                self.inline_ties.insert(Rc::clone(template), ties);
-            }
-        }
-    }
-
     #[cfg(test)]
     pub fn registered(&self) -> impl Iterator<Item = (&BindingId, &RegisteredTemplate)> {
-        self.templates.iter()
+        self.declared.iter()
     }
 
     #[cfg(test)]
-    pub fn unsettled_inline(&self) -> Vec<Rc<str>> {
-        let mut unsettled: Vec<Rc<str>> = self
-            .inline_ties
-            .iter()
-            .filter(|(_, ties)| ties.is_none())
-            .map(|(text, _)| Rc::clone(text))
-            .collect();
-        unsettled.sort_unstable();
-        unsettled
-    }
-
-    #[cfg(test)]
-    pub fn inline_count(&self) -> usize {
-        self.inline_ties.len()
+    pub fn inline(&self) -> &InlineTemplates {
+        &self.inline
     }
 
     pub fn borrows(&self, callee: &TypedExpr, position: usize) -> bool {
-        self.read_template(callee, false, |template| {
-            template.parsed().borrows(position)
-        })
+        self.read_template(callee, false, |parsed, _| parsed.borrows(position))
     }
 
     pub fn is_template(&self, callee: &TypedExpr) -> bool {
-        self.read_template(callee, false, |_| true)
+        self.read_template(callee, false, |_, _| true)
     }
 
     pub fn receives(&self, callee: &TypedExpr, position: usize) -> bool {
-        self.read_template(callee, false, |template| {
-            template.parsed().receives(position)
-        })
+        self.read_template(callee, false, |parsed, _| parsed.receives(position))
     }
 
     pub fn reference(&self, callee: &TypedExpr, position: usize) -> Option<ReferenceKind> {
@@ -112,24 +95,16 @@ impl TemplateBorrows {
         &self,
         callee: &TypedExpr,
         absent: T,
-        read: impl Fn(&RegisteredTemplate) -> T,
+        read: impl FnOnce(&ParsedTemplate, Option<&TemplateTies>) -> T,
     ) -> T {
         match &callee.kind {
-            TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
-                self.templates.get(binding).map(read).unwrap_or(absent)
-            }
-            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
-                let mut inline = self.inline.borrow_mut();
-                let parsed = inline
-                    .entry(template.template.clone())
-                    .or_insert_with(|| match self.inline_ties.get(&template.template) {
-                        Some(ties) => {
-                            RegisteredTemplate::declared(&template.template, ties.clone())
-                        }
-                        None => RegisteredTemplate::synthetic(&template.template),
-                    });
-                parsed.as_ref().map(read).unwrap_or(absent)
-            }
+            TypedExprKind::Leaf(TypedLeaf::Global(binding)) => match self.declared.get(binding) {
+                Some(template) => template.read(absent, read),
+                None => absent,
+            },
+            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => self
+                .inline
+                .read(template, |registered| registered.read(absent, read)),
             _ => absent,
         }
     }
@@ -197,10 +172,13 @@ mod tests {
                (println (+ (len hashed) (len sorted) (len none)) shown))",
         )
         .typed();
-        assert!(program.template_borrows.inline_count() >= 8);
-        assert_eq!(
-            program.template_borrows.unsettled_inline(),
-            Vec::<std::rc::Rc<str>>::new()
-        );
+        let written: Vec<_> = program.template_borrows.inline().written().collect();
+        let unsettled: Vec<&str> = written
+            .iter()
+            .filter(|(_, template)| template.ties().is_none())
+            .map(|(text, _)| text.as_ref())
+            .collect();
+        assert!(written.len() >= 8);
+        assert_eq!(unsettled, Vec::<&str>::new());
     }
 }

@@ -1,0 +1,53 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/returned_closure_tails.knv
+---
+fn direct_adder(x: i64) -> impl Fn(i64) -> i64 {
+    let value: i64 = x;
+    move |y: i64| value + y
+}
+
+fn let_adder(x: i64) -> impl Fn(i64) -> i64 {
+    let value: i64 = x;
+    move |y: i64| value + y
+}
+
+fn called_adder(x: i64) -> impl Fn(i64) -> i64 {
+    let value: i64 = x;
+    move |y: i64| value + y
+}
+
+fn picked_adder(x: i64, flag: bool) -> impl Fn(i64) -> i64 {
+    let value: i64 = x;
+    if flag {
+        move |y: i64| value + y
+    } else {
+        move |y: i64| value - y
+    }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", direct_adder(2)(3));
+    println!("{}", let_adder(2)(3));
+    println!("{}", called_adder(2)(3));
+    println!("{}", picked_adder(2, true)(3))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

@@ -5,4 +5,5 @@ use crate::source::Span;
 pub struct ClosureFacts {
     pub moved_capture: Option<(BindingId, Span)>,
     pub changed_capture: Option<(BindingId, Span)>,
+    pub returned: bool,
 }

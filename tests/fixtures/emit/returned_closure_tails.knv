@@ -1,0 +1,21 @@
+(defn direct-adder (x)
+  (local value x)
+  (fn (y) (+ value y)))
+
+(defn let-adder (x)
+  (let (value x) (fn (y) (+ value y))))
+
+(defn called-adder (x)
+  ((fn (value) (fn (y) (+ value y))) x))
+
+(defn picked-adder (x flag)
+  (let (value x)
+    (if flag
+      (fn (y) (+ value y))
+      (fn (y) (- value y)))))
+
+(defn main ()
+  (println ((direct-adder 2) 3))
+  (println ((let-adder 2) 3))
+  (println ((called-adder 2) 3))
+  (println ((picked-adder 2 true) 3)))

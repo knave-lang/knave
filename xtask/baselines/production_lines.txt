@@ -4,7 +4,7 @@ expand/src/expand/expression.rs 1006
 expand/src/expand/module_body.rs 1991
 expand/src/expand/problems.rs 1225
 expand/src/format/layout.rs 511
-src/emit/expressions.rs 2927
+src/emit/expressions.rs 2915
 src/emit/items.rs 1629
 src/emit/plan.rs 648
 src/emit/result_borrows.rs 740
@@ -15,7 +15,7 @@ src/ownership/problems.rs 858
 src/ownership/slices.rs 522
 src/ownership/values.rs 601
 src/types/checker.rs 3084
-src/types/infer.rs 3664
+src/types/infer.rs 3663
 src/types/infer/shared_variables.rs 573
 src/types/pinning.rs 729
 src/types/problems.rs 1383

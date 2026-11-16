@@ -90,3 +90,27 @@ error[L0339]: `defenum` needs a name
    |          ^ here
    |
    = help: write a name, as in (defenum shape ...)
+
+error[L0222]: a `defenum` template cannot name `item`
+  --> expand/defenum_errors.knv:35:9
+   |
+35 |   (rust "Holder<{item}>")
+   |         ^^^^^^^^^^^^^^^^ `defenum` templates name their parameters by number
+   |
+   = help: write the placeholder as `{0}`
+
+error[L0222]: a `defenum` template cannot name `name`
+  --> expand/defenum_errors.knv:39:9
+   |
+39 |   (rust "{name}")
+   |         ^^^^^^^^ `defenum` templates name their parameters by number
+   |
+   = help: write the placeholder as `{0}`
+
+error[L0213]: this type template has a malformed placeholder
+  --> expand/defenum_errors.knv:43:9
+   |
+43 |   (rust "Hold{er")
+   |         ^^^^^^^^^ a placeholder is `{`, a number and `}`
+   |
+   = help: write a literal brace as `{{` or `}}`

@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/clone_of_a_lent_struct_holds_its_text.knv
+---
+main
+  6:34 borrow `s`: no live loan
+  7:19 borrow `t`: `s` lent at 6:34, held by `t`
+  8:9 change `s`: `s` lent at 6:34, held by `c`
+  9:12 borrow `c.label`: `s` lent at 6:34, held by `c`

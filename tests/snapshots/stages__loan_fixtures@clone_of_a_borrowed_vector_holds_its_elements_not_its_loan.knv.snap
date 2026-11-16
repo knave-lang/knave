@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/clone_of_a_borrowed_vector_holds_its_elements_not_its_loan.knv
+---
+main
+  3:26 borrow `s`: no live loan
+  4:24 borrow `vs`: `s` lent at 3:26, held by `vs`
+  5:16 move `vs`: `s` lent at 3:26, held by `c`
+  6:22 borrow `c`: `s` lent at 3:26, held by `c`
+  7:22 borrow `moved`: `s` lent at 3:26, held by `moved`

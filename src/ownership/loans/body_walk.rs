@@ -50,6 +50,10 @@ impl<'w> BodyWalk<'w> {
                 self.field_read(expr, owner, at)
             }
             TypedExprKind::Control(control) => self.control(control, at),
+            TypedExprKind::Deref(inner) => {
+                let read = self.expr(inner, at);
+                Walked::holding(read.end, read.held.referent())
+            }
             _ => self.sequence(expr.children().into_iter(), at),
         }
     }
@@ -162,7 +166,7 @@ impl<'w> BodyWalk<'w> {
     fn lend_after(&mut self, read: Walked, lending: Lending) -> Walked {
         let point = self.builder.join(&[read.end]);
         let lent = self.builder.lender(point).lend(lending);
-        Walked::holding(point, read.held.merged(lent))
+        Walked::holding(point, read.held.within().merged(lent))
     }
 }
 

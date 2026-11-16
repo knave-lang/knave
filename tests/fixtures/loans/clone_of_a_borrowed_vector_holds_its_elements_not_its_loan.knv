@@ -1,0 +1,7 @@
+(defn main ()
+  (local s (str "a"))
+  (local vs (vec (as-str s)))
+  (local c (clone (ref vs)))
+  (local moved vs)
+  (println (len (ref c))
+           (len (ref moved))))

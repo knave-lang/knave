@@ -1,0 +1,6 @@
+(defn main ()
+  (local s (str "a"))
+  (local t (as-str s))
+  (local c (clone (ref t)))
+  (set! s (str "b"))
+  (println c))

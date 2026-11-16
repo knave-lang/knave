@@ -2,6 +2,7 @@ mod binding_table;
 mod name_entries;
 mod name_entry;
 mod phase;
+mod qualified_names;
 mod saved_names;
 mod scope_chain;
 mod scope_kind;

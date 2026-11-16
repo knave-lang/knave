@@ -2,7 +2,6 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use super::prelude_internal_traits::PreludeInternalTraits;
 use super::structural_trait::StructuralTrait;
 use super::trait_method_info::TraitMethodInfo;
 use super::traits::TraitTable;
@@ -18,7 +17,6 @@ pub struct TraitDeclarations {
     pub(super) methods: FxHashMap<BindingId, TraitMethodInfo>,
     pub(super) rust_paths: FxHashMap<BindingId, Rc<str>>,
     pub(super) structural: Vec<StructuralTrait>,
-    pub(super) prelude_internal: PreludeInternalTraits,
 }
 
 impl TraitDeclarations {

@@ -16,6 +16,7 @@ impl Expander<'_> {
     const CLAUSE_TYPE_PARAMETERS: usize = 1;
     const RUST_CLAUSE: &'static str = "rust";
     const BARE_WORD: &'static str = "bare";
+    const TEMPLATE_BRACES: [char; 2] = ['{', '}'];
     const RUST_CLAUSE_HELP: &'static str =
         "write it as `(rust \"Path\")` or `(rust \"Path\" bare)`";
 
@@ -176,7 +177,7 @@ impl Expander<'_> {
         let FormKind::String(text) = path.kind() else {
             return Err(Self::malformed_rust_clause(shape, clause));
         };
-        if ParsedTemplate::parse(text).is_ok_and(|parsed| parsed.placeholders().next().is_some()) {
+        if text.contains(Self::TEMPLATE_BRACES) {
             if bare {
                 return Err(Self::malformed_rust_clause(shape, clause));
             }

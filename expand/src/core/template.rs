@@ -1,3 +1,4 @@
+use super::template_braces::TemplateBraces;
 use super::template_operation::TemplateOperation;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -96,11 +97,12 @@ impl ParsedTemplate {
         let mut characters = text.chars().peekable();
         while let Some(character) = characters.next() {
             match (character, characters.peek()) {
-                ('{', Some('{')) | ('}', Some('}')) => {
+                (TemplateBraces::OPEN, Some(&TemplateBraces::OPEN))
+                | (TemplateBraces::CLOSE, Some(&TemplateBraces::CLOSE)) => {
                     characters.next();
                     literal.push(character);
                 }
-                ('{', _) => {
+                (TemplateBraces::OPEN, _) => {
                     let placeholder = Self::placeholder(&mut characters)?;
                     pieces.push(Piece::Literal(std::mem::take(&mut literal)));
                     pieces.push(placeholder);
@@ -153,7 +155,7 @@ impl ParsedTemplate {
     ) -> Result<String, MalformedPlaceholder> {
         let mut name = String::new();
         for next in characters {
-            if next == '}' {
+            if next == TemplateBraces::CLOSE {
                 return if name.is_empty() {
                     Err(MalformedPlaceholder)
                 } else {

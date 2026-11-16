@@ -15,6 +15,10 @@ fn main() {
         "{}",
         part_count("a1b2c", |argument_0: char| argument_0.is_ascii_digit())
     );
+    vec![";".to_string()].iter().for_each(|separator: &String| {
+        println!("{}", part_count("a;b", separator));
+        println!("{}", "a;b;c".split(separator).count())
+    });
     println!("{}", "a,b".split(",").count());
     println!("{}", "a b".split(' ').count());
     println!(
@@ -34,6 +38,14 @@ mod rt {
 
     impl<'s> Separator for &'s str {
         type Parts<'a> = std::str::Split<'a, &'s str>;
+
+        fn split<'a>(self, text: &'a str) -> Self::Parts<'a> {
+            text.split(self)
+        }
+    }
+
+    impl<'s> Separator for &'s String {
+        type Parts<'a> = std::str::Split<'a, &'s String>;
 
         fn split<'a>(self, text: &'a str) -> Self::Parts<'a> {
             text.split(self)

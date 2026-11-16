@@ -1101,4 +1101,65 @@ mod tests {
         );
         assert_eq!(duplicate, Err(first));
     }
+
+    #[test]
+    fn a_compile_time_name_is_listed_only_for_a_compile_time_lookup() {
+        let mut world = World::new();
+        let scope = world.scope();
+        let helper = world.define("helper", &[scope], Phase::CompileTime);
+        let symbol = World::symbol("helper", &[scope]);
+        let listed = |phase| {
+            world
+                .table
+                .visible_name_bindings(&symbol, Namespace::Value, phase)
+                .into_iter()
+                .map(|(_, binding)| binding)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(listed(Phase::CompileTime), [helper]);
+        assert!(listed(Phase::Runtime).is_empty());
+    }
+
+    #[test]
+    fn a_compile_time_binding_is_visible_only_to_a_compile_time_lookup() {
+        let mut world = World::new();
+        let scope = world.scope();
+        let helper = world.define("helper", &[scope], Phase::CompileTime);
+        let scopes = World::scope_set(&[scope]);
+        let visible = |phase| {
+            world
+                .table
+                .visible_bindings(&scopes, Namespace::Value, phase)
+        };
+        assert_eq!(visible(Phase::CompileTime), [helper]);
+        assert!(visible(Phase::Runtime).is_empty());
+    }
+
+    #[test]
+    fn a_compile_time_qualified_binding_is_found_only_by_a_compile_time_lookup() {
+        let mut world = World::new();
+        let scope = world.scope();
+        let helper = world.define("tools/helper", &[scope], Phase::CompileTime);
+        let last_segment = World::symbol("helper", &[scope]);
+        let found = |phase| {
+            world
+                .table
+                .visible_qualified_bindings_ending_in(&last_segment, Namespace::Value, phase)
+        };
+        assert_eq!(found(Phase::CompileTime), [helper]);
+        assert!(found(Phase::Runtime).is_empty());
+    }
+
+    #[test]
+    fn a_type_lookup_sees_only_the_programs_own_type_bindings() {
+        let mut world = World::new();
+        let scope = world.scope();
+        world.define("shape", &[scope], Phase::Runtime);
+        let shape_type = world.define_type("shape", &[scope]);
+        let scopes = World::scope_set(&[scope]);
+        let visible = world
+            .table
+            .visible_bindings(&scopes, Namespace::Type, Phase::Runtime);
+        assert_eq!(visible, [shape_type]);
+    }
 }

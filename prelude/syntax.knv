@@ -277,7 +277,7 @@
     (if (empty? (drop form 3))
       (string "to bind `"
               (symbol-name (nth form 1))
-              "` for the rest of the body, wrap it in `"
+              "` for the rest of the body, wrap the rest of the body in `"
               (elided-call form (flat-pair form))
               "`; to define it for the module, write `"
               (prepend (quote def) (flat-pair form))

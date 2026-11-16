@@ -14,6 +14,9 @@ pub(super) struct NameEntries {
 impl NameEntries {
     const SHORT_LIST_LENGTH: usize = 16;
 
+    #[cfg(test)]
+    pub(super) const LONG_LIST_LENGTH: usize = Self::SHORT_LIST_LENGTH + 4;
+
     pub(super) fn bind(
         &mut self,
         scopes: &ScopeSet,
@@ -259,7 +262,7 @@ mod tests {
 
     #[test]
     fn a_long_binding_list_finds_what_a_full_scan_finds() {
-        let fixture = NameEntriesFixture::bound_under_subsets(NameEntries::SHORT_LIST_LENGTH + 4);
+        let fixture = NameEntriesFixture::bound_under_subsets(NameEntries::LONG_LIST_LENGTH);
         let reference = fixture.reference();
         assert_eq!(fixture.visible(&reference), fixture.scanned(&reference));
     }

@@ -154,8 +154,6 @@ pub(super) mod tests {
     }
 
     impl World {
-        const LONG_LIST_LENGTH: usize = 20;
-
         pub(in crate::scope) fn new() -> Self {
             Self {
                 table: BindingTable::default(),
@@ -568,7 +566,7 @@ pub(super) mod tests {
     fn a_long_binding_list_resolves_to_its_exact_subset() {
         let mut world = World::new();
         let scopes: Vec<Scope> = (0..5).map(|_| world.scope()).collect();
-        let entries = world.define_under_subsets("x", &scopes, World::LONG_LIST_LENGTH);
+        let entries = world.define_under_subsets("x", &scopes, NameEntries::LONG_LIST_LENGTH);
         let reference = [scopes[0], scopes[1], scopes[4]];
         let (_, exact) = entries
             .iter()

@@ -25,6 +25,7 @@ mod input_terms;
 mod introduced;
 mod introduced_name;
 mod introduced_names;
+mod kernel_type_shadow;
 mod local_file_diagnosis;
 mod macro_call;
 mod macro_call_lookup;

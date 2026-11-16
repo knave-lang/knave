@@ -27,6 +27,36 @@ impl NamespaceProblems {
         }
     }
 
+    pub fn kernel_type_defined(written: &str, shown: &str, span: Span) -> Diagnostic {
+        let label = Label::new(
+            span,
+            format!("this binds `{written}` in place of the kernel type"),
+        );
+        Self::kernel_type_hidden(written, shown, label)
+            .with_help(format!("rename this `{written}`"))
+    }
+
+    pub fn kernel_type_imported(written: &str, shown: &str, span: Span) -> Diagnostic {
+        let label = Label::new(
+            span,
+            format!("this imports `{written}` in place of the kernel type"),
+        );
+        Self::kernel_type_hidden(written, shown, label).with_help(format!(
+            "leave `{written}` out of this `use`, or rename it in the module that defines it"
+        ))
+    }
+
+    fn kernel_type_hidden(written: &str, shown: &str, label: Label) -> Diagnostic {
+        Diagnostic::warning(
+            DiagnosticCode::KERNEL_TYPE_HIDDEN,
+            format!("`{written}` hides the kernel type `{shown}`"),
+            label,
+        )
+        .with_note(format!(
+            "in this scope, a type written `{written}` names this binding, while a printed `{shown}` is the kernel type"
+        ))
+    }
+
     fn alternatives(first: &str, others: &[Rc<str>]) -> String {
         match others.split_last() {
             None => format!("`{first}`"),

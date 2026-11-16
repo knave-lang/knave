@@ -7,8 +7,9 @@ use crate::source::Span;
 pub(super) struct LintNameProblems;
 
 impl LintNameProblems {
-    const ALWAYS_PRINTED: [DiagnosticCode; 4] = [
+    const ALWAYS_PRINTED: [DiagnosticCode; 5] = [
         DiagnosticCode::SECOND_TRAIT_PATH,
+        DiagnosticCode::KERNEL_TYPE_HIDDEN,
         DiagnosticCode::INPUT_SET_ASIDE,
         DiagnosticCode::LIBRARY_HIDES_LOCAL_MODULE,
         DiagnosticCode::TEST_MODULE_HIDES_SOURCE_MODULE,

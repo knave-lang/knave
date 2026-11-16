@@ -1,0 +1,62 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/kernel_type_names.knv
+---
+warning[L0259]: `float` hides the kernel type `float`
+ --> expand/kernel_type_names.knv:1:22
+  |
+1 | (use shadowing/money float ->float)
+  |                      ^^^^^ this imports `float` in place of the kernel type
+  |
+  = note: in this scope, a type written `float` names this binding, while a printed `float` is the kernel type
+  = help: leave `float` out of this `use`, or rename it in the module that defines it
+  = note: run `knave doc L0259` for an explanation
+
+warning[L0259]: `string` hides the kernel type `string`
+ --> expand/kernel_type_names.knv:4:12
+  |
+4 | (defstruct string :text (vec u8))
+  |            ^^^^^^ this binds `string` in place of the kernel type
+  |
+  = note: in this scope, a type written `string` names this binding, while a printed `string` is the kernel type
+  = help: rename this `string`
+  = note: run `knave doc L0259` for an explanation
+
+warning[L0259]: `f64` hides the kernel type `float`
+ --> expand/kernel_type_names.knv:6:20
+  |
+6 | (defstruct (holder f64) :item f64)
+  |                    ^^^ this binds `f64` in place of the kernel type
+  |
+  = note: in this scope, a type written `f64` names this binding, while a printed `float` is the kernel type
+  = help: rename this `f64`
+  = note: run `knave doc L0259` for an explanation
+
+warning[L0259]: `int` hides the kernel type `int`
+ --> expand/kernel_type_names.knv:8:20
+  |
+8 | (type pick (where (int) (fn (int) int)))
+  |                    ^^^ this binds `int` in place of the kernel type
+  |
+  = note: in this scope, a type written `int` names this binding, while a printed `int` is the kernel type
+  = help: rename this `int`
+  = note: run `knave doc L0259` for an explanation
+
+warning[L0259]: `float` hides the kernel type `float`
+ --> expand/shadowing/money.knv:3:12
+  |
+3 | (defstruct float :whole i32 :fraction u32)
+  |            ^^^^^ this binds `float` in place of the kernel type
+  |
+  = note: in this scope, a type written `float` names this binding, while a printed `float` is the kernel type
+  = help: rename this `float`
+  = note: run `knave doc L0259` for an explanation
+
+(struct string (text (vec u8)))
+(def make-string (fn (text) (new string (text text))))
+(struct (holder f64) (item f64))
+(def make-holder (fn (item) (new holder (item item))))
+(type pick (where (int) (fn (int) int)))
+(def pick (fn (x) x))
+(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) (field (make-float 3 14) whole)) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_2 display)) (fn ((ref part-type-0_2)) unit))) (pick 1))))

@@ -237,7 +237,7 @@ The prelude binds these Rust types, the traits that abstract them, and the funct
 
 `unwrap-ok`, `unwrap-err` and `expect-ok` panic with the printed form of the other side, as in `called unwrap-ok on (err (->failure :line 3))`, so they need `show` of it. `option`'s `unwrap` and `expect` need no bound.
 
-`prn` prints the printed forms of one or more values, separated by a space, and a newline, so `(prn 1 "a")` prints `1 "a"`. `(prn)` is `L0352`. `prn` as a value is `print-form`, the one-value function that `prelude/text` exports and `knave doc "(module prelude/text)"` lists. `pr-str` returns a printed form as a `string`, and a `(pr-str x)` part of `print`, `println`, `eprint`, `eprintln`, `str` or `display` prints it in place. All three need the `show` trait, backed by `Show` in the runtime. A printed form uses only atoms and lists, and where the source can build the value, it is the source that builds an equal value, so a printed result pastes back into a program:
+`prn` prints the printed forms of one or more values, separated by a space, and a newline, so `(prn 1 "a")` prints `1 "a"`. `(prn)` is `L0352`. `prn` as a value is a one-value function, and `eval` and the prompt print each result with it. `pr-str` returns a printed form as a `string`, and a `(pr-str x)` part of `print`, `println`, `eprint`, `eprintln`, `str` or `display` prints it in place. All three need the `show` trait, backed by `Show` in the runtime. A printed form uses only atoms and lists, and where the source can build the value, it is the source that builds an equal value, so a printed result pastes back into a program:
 
 | Value | Prints as |
 |---|---|
@@ -722,7 +722,7 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 | Result | Output |
 | --- | --- |
 | `unit` | nothing |
-| a type that the parameter of `print-form` in `prelude/text` accepts | the value, as `prn` prints it |
+| a type that `prn` accepts | the value, as `prn` prints it |
 | any other type, such as a closure or an `iterator` | a `note` on standard error that names the type and the trait it lacks |
 | a type still open after inference, such as `none` | `L0407` on the innermost open value, with a fix that wraps that value in `the` |
 

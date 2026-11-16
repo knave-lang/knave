@@ -30,8 +30,8 @@
         infallible join lines lower-case parse
         parse-bool-error parse-char-error parse-error
         parse-float-error parse-int-error pattern pr-str
-        print print-form println prn show split starts-with?
-        str subs trim upper-case whitespace?)
+        print println prn show split starts-with? str subs
+        trim upper-case whitespace?)
 
 (rust-type formatter "std::fmt::Formatter<'_>")
 
@@ -140,14 +140,14 @@
     (where ((a display))
       (fn ((ref a)) string))))
 
-(def print-form
+(def print-printed-form
   (rust "println!(\"{{}}\", crate::rt::Shown({0}))"
     (where ((a show)) (fn ((ref a)) unit))))
 
 (def prn
   (macro (form)
     (if (symbol? form)
-      (quote print-form)
+      (quote print-printed-form)
       (printed-forms-call form))))
 
 (def printed-forms-call
@@ -985,20 +985,11 @@
 
   Each value's type implements [show], and a [string] prints quoted. A space
   separates two printed forms, so the line reads back as the values. `prn`
-  as a value is the one-value function [print-form], which
-  `knave doc \"(module prelude/text)\"` lists.
+  as a value is a one-value function, and `eval` and the prompt print each
+  result with it.
 
   (prn \"pear\" 3)
   => \"pear\" 3 ...")
-
-(document (print-form value)
-  "Prints the printed form of a value and a newline to standard output.
-
-  It is [prn] as a value, and the printer of a result in `eval` and at the
-  prompt. The value's type implements [show].
-
-  (print-form \"pear\")
-  => \"pear\" ...")
 
 (document (pr-str value)
   "Returns the printed form of a value as a [string].

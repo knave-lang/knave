@@ -10,7 +10,7 @@ pub struct ValueMarker {
 }
 
 impl ValueMarker {
-    const VALUE_TEXT: &'static str = "pr-str";
+    pub const VALUE_TEXT: &'static str = "pr-str";
     const VALUE_PRINTER: &'static str = "print-value";
     const VALUE_PRINTER_SOURCE: &'static str = "<value printer>";
     const RECORD_SEPARATOR: char = '\u{1e}';

@@ -41,7 +41,7 @@ impl<'a> CounterComparison<'a> {
         if rises.is_empty() {
             return format!(
                 "No program's {} rose more than {}%.\n",
-                Self::gated_names(),
+                CounterGate::gated_names(),
                 CounterGate::TOLERANCE_PERCENT
             );
         }
@@ -50,12 +50,6 @@ impl<'a> CounterComparison<'a> {
             "These counters rose more than {}%:\n\n{list}",
             CounterGate::TOLERANCE_PERCENT
         )
-    }
-
-    fn gated_names() -> String {
-        CounterGate::GATED_COUNTERS
-            .map(|counter| format!("`{counter}`"))
-            .join(" or ")
     }
 
     fn rise_line(&self, rise: &CounterRise) -> String {

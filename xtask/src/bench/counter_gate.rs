@@ -19,6 +19,12 @@ impl<'a> CounterGate<'a> {
     pub const NO_BASELINE_COUNTERS: &'static str =
         "The base has no counters, so no counter is checked for growth.\n";
 
+    pub fn gated_names() -> String {
+        Self::GATED_COUNTERS
+            .map(|counter| format!("`{counter}`"))
+            .join(" or ")
+    }
+
     pub fn new(
         baseline: &'a ResultSet,
         candidate: &'a ResultSet,

@@ -30,6 +30,8 @@ pub struct Copies;
 
 pub struct Holds;
 
+pub struct Collapses;
+
 impl Lends {
     const SHARED: Self = Self { kind: &SharedLoan };
     const MUTABLE: Self = Self { kind: &MutableLoan };
@@ -47,10 +49,17 @@ impl dyn Passing {
             Borrow::Reborrow => <dyn Passing>::reborrowed(parameter),
             Borrow::Deref(_) => &Copies,
             Borrow::Passthrough | Borrow::Collapse(_) if argument.value.ty.is_reference() => {
-                <dyn Passing>::through_reference(parameter)
+                <dyn Passing>::of_reference(argument.borrow, parameter)
             }
             Borrow::None if rules.moves(&argument.value.ty) => &Moves,
             _ => &Holds,
+        }
+    }
+
+    fn of_reference(borrow: Borrow, parameter: Option<&Type>) -> &'static dyn Passing {
+        match borrow {
+            Borrow::Collapse(_) => &Collapses,
+            _ => <dyn Passing>::through_reference(parameter),
         }
     }
 
@@ -116,6 +125,16 @@ impl Passing for Copies {
 
     fn pass(&self, _argument: PassedArgument, _lender: &mut Lender<'_>) -> PassedHoldings {
         PassedHoldings::kept(Holdings::default())
+    }
+}
+
+impl Passing for Collapses {
+    fn takes_the_place(&self) -> bool {
+        false
+    }
+
+    fn pass(&self, argument: PassedArgument, _lender: &mut Lender<'_>) -> PassedHoldings {
+        PassedHoldings::kept(argument.held.referent())
     }
 }
 

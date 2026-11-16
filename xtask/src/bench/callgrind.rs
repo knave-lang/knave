@@ -8,6 +8,7 @@ use std::process::{Command, ExitStatus, Output, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
+use super::collection_toggles::CollectionToggles;
 use super::compiler::BuiltCompiler;
 use super::measurement::Measurement;
 use super::profile::{EntryPointCheck, ProfileReader};
@@ -151,6 +152,7 @@ impl Callgrind {
             )
             .env(Self::ALLOCATOR_TUNING, Self::NO_FASTBINS)
             .args(Self::OPTIONS)
+            .args(CollectionToggles::options())
             .arg(format!("--callgrind-out-file={}", profile.display()))
             .arg(&self.compiler.executable)
             .arg(Self::FRONT_END_COMMAND)
@@ -217,6 +219,20 @@ mod tests {
         const PROGRAM: &'static str = "/checkout/corpus/inventory";
         const PROFILE: &'static str = "/profiles/inventory.callgrind";
 
+        fn arguments_starting_with(prefix: &str) -> Vec<String> {
+            Self::arguments()
+                .into_iter()
+                .filter(|argument| argument.starts_with(prefix))
+                .collect()
+        }
+
+        fn arguments() -> Vec<String> {
+            Self::command()
+                .get_args()
+                .map(|argument| argument.to_string_lossy().into_owned())
+                .collect()
+        }
+
         fn command() -> Command {
             Self::callgrind().command(Path::new(Self::PROGRAM), Path::new(Self::PROFILE))
         }
@@ -242,6 +258,25 @@ mod tests {
             .find(|(variable, _)| *variable == OsStr::new(Callgrind::ALLOCATOR_TUNING))
             .and_then(|(_, value)| value);
         assert_eq!(tuning, Some(OsStr::new("glibc.malloc.mxfast=0")));
+    }
+
+    #[test]
+    fn toggles_collection_only_at_each_thread_s_entry_and_rust_s_allocator() {
+        assert_eq!(
+            CallgrindFixture::arguments_starting_with("--toggle-collect="),
+            [
+                "--toggle-collect=std::sys::backtrace::__rust_begin_short_backtrace",
+                "--toggle-collect=__rustc::__rust_*",
+            ]
+        );
+    }
+
+    #[test]
+    fn leaves_collection_off_at_the_start_of_each_thread() {
+        assert_eq!(
+            CallgrindFixture::arguments_starting_with("--collect-atstart"),
+            Vec::<String>::new()
+        );
     }
 
     struct RunOutcomeFixture;

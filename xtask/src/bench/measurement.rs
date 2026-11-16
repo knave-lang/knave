@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use super::allocator_share::AllocatorShare;
+use super::collection_toggles::CollectionToggles;
 use super::gated_counters::GatedCounters;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -20,9 +21,13 @@ impl Measurement {
     pub fn method() -> String {
         format!(
             "Callgrind counts each corpus program under the compiler's `emit` command, which reads, expands, checks, \
-             emits and formats the program but never runs `rustc`.\n\n\
+             emits and formats the program but never runs `rustc`. \
+             On each thread, callgrind collects only inside the thread's entry function, \
+             `{thread_entry}`, and nothing inside Rust's allocator functions, `{rust_allocator}`. \
+             The one exception is the allocator work that std's thread setup and teardown start \
+             outside every entry function, which counts in `{other}`.\n\n\
              A stage is the inclusive cost of the calls the command-line module makes into one \
-             compiler module. `{other}` holds the rest: process startup, argument parsing, \
+             compiler module. `{other}` holds the rest: argument parsing, \
              reading the entry file, printing, and dropping each stage's result. \
              A stage's `{allocator_row}` row holds the calls into an allocator function, one \
              whose name starts with {allocator_prefixes}, made by the stage's entry function or by \
@@ -46,6 +51,8 @@ impl Measurement {
              than {tolerance}% above the base commit, unless a commit of \
              the pull request names the program in a `Counters-Accepted:` trailer.\n",
             other = Self::OTHER,
+            thread_entry = CollectionToggles::THREAD_ENTRY,
+            rust_allocator = CollectionToggles::RUST_ALLOCATOR,
             allocator_row = AllocatorShare::row_of("<stage>"),
             allocator_prefixes = AllocatorShare::CALLEE_PREFIXES
                 .map(|prefix| format!("`{prefix}`"))
@@ -84,6 +91,16 @@ impl Measurement {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn names_both_toggled_functions_in_the_method() {
+        let method = Measurement::method();
+        assert!(method.contains(CollectionToggles::THREAD_ENTRY), "{method}");
+        assert!(
+            method.contains(CollectionToggles::RUST_ALLOCATOR),
+            "{method}"
+        );
+    }
 
     #[test]
     fn charges_the_unstaged_remainder_to_other() {

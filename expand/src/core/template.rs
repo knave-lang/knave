@@ -59,7 +59,7 @@ struct ArgumentPassing<'t> {
 }
 
 impl ArgumentPassing<'_> {
-    fn as_shared_reference(self) -> Self {
+    fn without_receiver(self) -> Self {
         Self {
             receives: false,
             ..self
@@ -406,7 +406,7 @@ impl ParsedTemplate {
             .find_map(|argument| {
                 let (template, clause) = (self.passing(argument), clause.passing(argument));
                 let (template, clause) = if shared_references.holds(argument) {
-                    (template.as_shared_reference(), clause.as_shared_reference())
+                    (template.without_receiver(), clause.without_receiver())
                 } else {
                     (template, clause)
                 };

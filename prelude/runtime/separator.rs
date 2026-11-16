@@ -20,6 +20,14 @@ impl<'s> Separator for &'s String {
     }
 }
 
+impl<'s, 't> Separator for &'s &'t str {
+    type Parts<'a> = std::str::Split<'a, &'s &'t str>;
+
+    fn split<'a>(self, text: &'a str) -> Self::Parts<'a> {
+        text.split(self)
+    }
+}
+
 impl Separator for char {
     type Parts<'a> = std::str::Split<'a, char>;
 

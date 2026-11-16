@@ -3,10 +3,13 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::ScopeSet;
+use super::largest_candidates::LargestCandidates;
 use super::name_entries::NameEntries;
+use super::name_entry::NameEntry;
 use super::name_key::NameKey;
 use super::phase::Phase;
 use super::prelude_names::PreludeNames;
+use super::qualified_entries::QualifiedEntries;
 use super::qualified_names::QualifiedNames;
 use crate::core::{BindingId, Namespace};
 use crate::reader::Symbol;
@@ -69,12 +72,76 @@ impl<'t> VisibleNames<'t> {
             .collect()
     }
 
-    pub fn qualified_bindings_ending_in(
+    pub fn qualified_entries_ending_in(
         &self,
         last_segment: &Symbol,
         namespace: Namespace,
         phase: Phase,
-    ) -> Vec<BindingId> {
+    ) -> QualifiedEntries<'t> {
+        QualifiedEntries::new(self.qualified_entries(last_segment, namespace, phase))
+    }
+
+    #[inline(always)]
+    pub fn largest_candidates(
+        &self,
+        symbol: &Symbol,
+        namespace: Namespace,
+        phase: Phase,
+    ) -> LargestCandidates<'t> {
+        let mut largest = LargestCandidates::default();
+        let key = (symbol.shared_name(), namespace);
+        self.visit_entries_named(symbol.scopes(), &key, &mut |entries| {
+            entries.visit_visible(symbol.scopes(), phase, |entry| largest.consider(entry));
+        });
+        largest
+    }
+
+    pub fn hides_a_macro(
+        &self,
+        symbol: &Symbol,
+        phase: Phase,
+        is_macro: impl Fn(BindingId) -> bool,
+    ) -> bool {
+        let mut visible = Vec::new();
+        let key = (symbol.shared_name(), Namespace::Value);
+        self.visit_entries_named(symbol.scopes(), &key, &mut |entries| {
+            entries.visit_visible(symbol.scopes(), phase, |entry| {
+                visible.push((entry.scopes().len(), entry.binding()));
+            });
+        });
+        let Some(&(largest, winner)) = visible.iter().max_by_key(|(size, _)| *size) else {
+            return false;
+        };
+        visible
+            .iter()
+            .any(|&(size, binding)| size < largest && binding != winner && is_macro(binding))
+    }
+
+    pub fn use_of(&self, name: Rc<str>, scopes: &ScopeSet, binding: BindingId) -> Option<bool> {
+        let mut used = None;
+        for namespace in Namespace::IMPORTED {
+            if used == Some(true) {
+                break;
+            }
+            let key = (Rc::clone(&name), namespace);
+            self.visit_entries_named(scopes, &key, &mut |entries| {
+                entries.visit_visible(scopes, Phase::CompileTime, |entry| {
+                    if entry.binding() == binding {
+                        let marked = entry.use_mark().is_marked();
+                        used = Some(used.unwrap_or(false) || marked);
+                    }
+                });
+            });
+        }
+        used
+    }
+
+    fn qualified_entries(
+        &self,
+        last_segment: &Symbol,
+        namespace: Namespace,
+        phase: Phase,
+    ) -> Vec<&'t NameEntry> {
         let mut visible = Vec::new();
         let own = self
             .qualified_names
@@ -85,16 +152,14 @@ impl<'t> VisibleNames<'t> {
         for name in own.iter().chain(prelude) {
             let key = (Rc::clone(name), namespace);
             self.visit_entries_named(last_segment.scopes(), &key, &mut |entries| {
-                entries.visit_visible(last_segment.scopes(), phase, |entry| {
-                    visible.push(entry.binding());
-                });
+                entries.visit_visible(last_segment.scopes(), phase, |entry| visible.push(entry));
             });
         }
         visible
     }
 
     #[inline(always)]
-    pub(super) fn visit_entries_named(
+    fn visit_entries_named(
         &self,
         scopes: &ScopeSet,
         key: &(Rc<str>, Namespace),
@@ -114,6 +179,7 @@ mod tests {
     use std::rc::Rc;
 
     use super::super::binding_table::tests::World;
+    use super::super::imported_names::tests::ImportFixture;
     use super::super::{Phase, Scope, ScopeSet};
     use crate::core::{BindingId, Namespace};
 
@@ -168,11 +234,12 @@ mod tests {
                 .world
                 .table
                 .visible_names()
-                .qualified_bindings_ending_in(
+                .qualified_entries_ending_in(
                     &World::symbol(last_segment, scopes),
                     Namespace::Value,
                     phase,
-                );
+                )
+                .bindings();
             found.sort();
             found
         }
@@ -351,5 +418,24 @@ mod tests {
                 .qualified_ending_in("helper", &[scope], Phase::Runtime)
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn own_entries_are_visited_before_the_shared_prelude_entries() {
+        let mut fixture = ImportFixture::new();
+        let body = fixture.world.scope();
+        let own = BindingId::from_index(20);
+        let written = World::symbol("map", &[fixture.module, body]);
+        let table = &mut fixture.world.table;
+        let bound = table.bind(&written, Namespace::Value, own, Phase::Runtime);
+        assert_eq!(bound, Ok(()));
+        let key = (Rc::from("map"), Namespace::Value);
+        let mut holds_own = Vec::new();
+        table
+            .visible_names()
+            .visit_entries_named(written.scopes(), &key, &mut |entries| {
+                holds_own.push(entries.holds(own));
+            });
+        assert_eq!(holds_own, [true, false]);
     }
 }

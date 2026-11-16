@@ -1,0 +1,8 @@
+(use code empty? expand-call)
+(use modules/format pad-left)
+
+(defmacro macro-call? (x)
+  (if (empty? (expand-call x)) 0 1))
+
+(defn main ()
+  (println (macro-call? (pad-left "a"))))

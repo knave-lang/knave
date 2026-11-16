@@ -1,0 +1,8 @@
+(use code empty? expand-call)
+(use modules/hiding_sum sum)
+
+(defmacro macro-call? (x)
+  (if (empty? (expand-call x)) 0 1))
+
+(defn main ()
+  (println (macro-call? (sum 1))))

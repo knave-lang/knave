@@ -94,10 +94,11 @@ impl Expander<'_> {
 
     pub(super) fn kernel_head(&self, form: &Form) -> Option<KernelForm> {
         let head = form.as_list()?.first()?.as_symbol()?;
-        match self.kind(self.try_resolve(head, Namespace::Value)?) {
+        let lookup = self.bindings().lookup(head, Namespace::Value);
+        lookup.bound_then(|binding| match self.kind(binding) {
             BindingKind::KernelForm(kernel) => Some(kernel),
             _ => None,
-        }
+        })
     }
 
     fn lower_symbol(&mut self, symbol: &Symbol, form: &Form) -> Result<Expr, Diagnostic> {
@@ -106,7 +107,7 @@ impl Expander<'_> {
             return Ok(Expr::new(self.lower_field_reader(field_name, span), span));
         }
         let binding = self
-            .resolve(symbol, Namespace::Value, span)
+            .resolve_use(symbol, Namespace::Value, span)
             .map_err(|unbound| self.noted_if_type(unbound, symbol))?;
         if matches!(self.kind(binding), BindingKind::Macro(_)) {
             return self.lower_macro_value(binding, symbol, form);
@@ -115,7 +116,10 @@ impl Expander<'_> {
     }
 
     fn noted_if_type(&mut self, unbound: Diagnostic, symbol: &Symbol) -> Diagnostic {
-        let type_name = self.try_resolve(symbol, Namespace::Type).map(|_| symbol);
+        let type_name = self
+            .bindings()
+            .resolve(symbol, Namespace::Type)
+            .map(|_| symbol);
         self.type_note.noted(unbound, type_name)
     }
 
@@ -224,7 +228,7 @@ impl Expander<'_> {
 
     fn names_struct(&self, head: &Form) -> bool {
         head.as_symbol()
-            .and_then(|symbol| self.try_resolve(symbol, Namespace::Type))
+            .and_then(|symbol| self.bindings().resolve(symbol, Namespace::Type))
             .is_some_and(|binding| matches!(self.kind(binding), BindingKind::Struct(_)))
     }
 
@@ -316,13 +320,14 @@ impl Expander<'_> {
     fn variant_head(&self, form: &Form) -> Option<BindingId> {
         let items = form.as_list()?;
         let head = items.first()?.as_symbol()?;
-        let binding = self.try_resolve(head, Namespace::Value)?;
-        matches!(
-            self.kind(binding),
-            BindingKind::Variant(_, VariantInfo { arity, .. })
-                if arity > 0 || self.reads_labels(binding, &items[1..])
-        )
-        .then_some(binding)
+        let lookup = self.bindings().lookup(head, Namespace::Value);
+        lookup.bound_where(|binding| {
+            matches!(
+                self.kind(binding),
+                BindingKind::Variant(_, VariantInfo { arity, .. })
+                    if arity > 0 || self.reads_labels(binding, &items[1..])
+            )
+        })
     }
 
     pub(super) fn lower_recovered(&mut self, form: &Form) -> Result<Expr, Diagnostic> {
@@ -636,7 +641,7 @@ impl Expander<'_> {
     fn lower_new_construction(&mut self, shape: &Shape) -> Result<ExprKind, Diagnostic> {
         let items = shape.at_least(2)?;
         let name = shape.symbol(&items[1])?;
-        let binding = self.resolve(name, Namespace::Type, items[1].span())?;
+        let binding = self.resolve_use(name, Namespace::Type, items[1].span())?;
         if !matches!(self.kind(binding), BindingKind::Struct(_)) {
             return Err(NamespaceProblems::wrong_namespace(
                 name.name(),
@@ -779,8 +784,12 @@ impl Expander<'_> {
         if let Some(kind) = self.named_symbol_pattern(form, symbol)? {
             return Ok(kind);
         }
-        let outer = self.try_resolve(symbol, Namespace::Value);
-        let candidates = self.nullary_variant_candidates(symbol);
+        let candidates = self
+            .bindings()
+            .resolve_variants_ending_in(symbol, |info| info.arity == 0);
+        let outer = (!candidates.is_empty())
+            .then(|| self.try_resolve_use(symbol, Namespace::Value))
+            .flatten();
         let binding = self.define_local(form, Namespace::Value, BindingKind::Local, None)?;
         if candidates.is_empty() {
             return Ok(PatternKind::Bind(binding));
@@ -798,10 +807,8 @@ impl Expander<'_> {
         form: &Form,
         symbol: &Symbol,
     ) -> Result<Option<PatternKind>, Diagnostic> {
-        let Some(binding) = self.try_resolve(symbol, Namespace::Value) else {
-            return Ok(None);
-        };
-        match self.kind(binding) {
+        let lookup = self.bindings().lookup(symbol, Namespace::Value);
+        let pattern = |binding| match self.kind(binding) {
             BindingKind::Boolean(value) => Ok(Some(PatternKind::Literal(Literal::Bool(value)))),
             BindingKind::Variant(_, info) if info.arity == 0 => Ok(Some(PatternKind::Variant(
                 binding,
@@ -809,7 +816,10 @@ impl Expander<'_> {
             ))),
             BindingKind::Variant(_, _) => Err(ExpandProblems::not_a_pattern(form.span())),
             _ => Ok(None),
-        }
+        };
+        lookup
+            .bound_then(|binding| pattern(binding).transpose())
+            .transpose()
     }
 
     fn lower_list_pattern(
@@ -829,21 +839,27 @@ impl Expander<'_> {
         self.short_variant_pattern(head, &items[1..], span)
     }
 
-    pub(super) fn names_pattern_head(&self, head: &Symbol) -> bool {
-        self.variant_pattern_head(head).is_some()
-            || self.struct_pattern_head(head).is_some()
-            || !self.variant_candidates(head).is_empty()
+    pub(super) fn resolve_pattern_head_use(&self, head: &Symbol) -> bool {
+        if self.variant_pattern_head(head).is_some() || self.struct_pattern_head(head).is_some() {
+            return true;
+        }
+        !self
+            .bindings()
+            .resolve_variants_ending_in(head, |_| true)
+            .is_empty()
     }
 
     fn variant_pattern_head(&self, head: &Symbol) -> Option<BindingId> {
-        let binding = self.try_resolve(head, Namespace::Value)?;
-        let is_variant = matches!(self.kind(binding), BindingKind::Variant(_, _));
-        (is_variant || self.tables.globals.is_failed_definition(binding)).then_some(binding)
+        let lookup = self.bindings().lookup(head, Namespace::Value);
+        lookup.bound_where(|binding| {
+            matches!(self.kind(binding), BindingKind::Variant(_, _))
+                || self.tables.globals.is_failed_definition(binding)
+        })
     }
 
     fn struct_pattern_head(&self, head: &Symbol) -> Option<BindingId> {
-        let binding = self.try_resolve(head, Namespace::Type)?;
-        matches!(self.kind(binding), BindingKind::Struct(_)).then_some(binding)
+        let lookup = self.bindings().lookup(head, Namespace::Type);
+        lookup.bound_where(|binding| matches!(self.kind(binding), BindingKind::Struct(_)))
     }
 
     fn variant_pattern(
@@ -874,7 +890,7 @@ impl Expander<'_> {
         arguments: &[Form],
         span: Span,
     ) -> Result<PatternKind, Diagnostic> {
-        let candidates = self.variant_candidates(head);
+        let candidates = self.bindings().resolve_variants_ending_in(head, |_| true);
         if candidates.is_empty() {
             return Err(ExpandProblems::not_a_pattern(span));
         }
@@ -913,32 +929,6 @@ impl Expander<'_> {
             }
             _ => Ok((PatternPart::Labeled(label, None), rest)),
         }
-    }
-
-    fn variant_candidates(&self, symbol: &Symbol) -> Vec<BindingId> {
-        self.visible_variants_ending_in(symbol, |_| true)
-    }
-
-    fn nullary_variant_candidates(&self, symbol: &Symbol) -> Vec<BindingId> {
-        self.visible_variants_ending_in(symbol, |info| info.arity == 0)
-    }
-
-    fn visible_variants_ending_in(
-        &self,
-        symbol: &Symbol,
-        accepts: impl Fn(VariantInfo) -> bool,
-    ) -> Vec<BindingId> {
-        let names = self.tables.table.visible_names();
-        let mut variants: Vec<BindingId> = names
-            .qualified_bindings_ending_in(symbol, Namespace::Value, self.phase)
-            .into_iter()
-            .filter(|binding| {
-                matches!(self.kind(*binding), BindingKind::Variant(_, info) if accepts(info))
-            })
-            .collect();
-        variants.sort();
-        variants.dedup();
-        variants
     }
 
     fn lower_rust(&mut self, shape: &Shape) -> Result<ExprKind, Diagnostic> {

@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
-use crate::core::{BindingArena, BindingId, ModuleId, Namespace};
+use crate::core::{BindingArena, BindingId, BindingKind, ModuleId, Namespace, VariantInfo};
 use crate::reader::Symbol;
-use crate::scope::{BindingTable, Phase, Resolution};
+use crate::scope::{BindingTable, LargestCandidates, Phase, QualifiedEntries, Resolution};
 
 #[derive(Clone, Copy)]
 pub(super) struct Bindings<'t> {
@@ -21,7 +21,48 @@ impl<'t> Bindings<'t> {
     }
 
     pub(super) fn resolve(&self, symbol: &Symbol, namespace: Namespace) -> Option<BindingId> {
-        match self.table.resolve(symbol, namespace, self.phase) {
+        self.lookup(symbol, namespace).bound()
+    }
+
+    #[inline(always)]
+    pub(super) fn lookup(&self, symbol: &Symbol, namespace: Namespace) -> LargestCandidates<'t> {
+        self.table
+            .visible_names()
+            .largest_candidates(symbol, namespace, self.phase)
+    }
+
+    pub(super) fn resolve_use(&self, symbol: &Symbol, namespace: Namespace) -> Option<BindingId> {
+        Self::bound(self.table.resolve_use(symbol, namespace, self.phase))
+    }
+
+    pub(super) fn resolve_variants_ending_in(
+        &self,
+        symbol: &Symbol,
+        accepts: impl Fn(VariantInfo) -> bool,
+    ) -> Vec<BindingId> {
+        let variants = self.variant_entries(symbol, accepts);
+        variants.mark_uses();
+        variants.bindings()
+    }
+
+    fn variant_entries(
+        &self,
+        symbol: &Symbol,
+        accepts: impl Fn(VariantInfo) -> bool,
+    ) -> QualifiedEntries<'t> {
+        let mut variants = self.table.visible_names().qualified_entries_ending_in(
+            symbol,
+            Namespace::Value,
+            self.phase,
+        );
+        variants.retain(|binding| {
+            matches!(self.bindings.get(binding).kind(), BindingKind::Variant(_, info) if accepts(info))
+        });
+        variants
+    }
+
+    fn bound(resolution: Resolution) -> Option<BindingId> {
+        match resolution {
             Resolution::Bound(binding) => Some(binding),
             Resolution::Unbound | Resolution::Ambiguous(_) => None,
         }

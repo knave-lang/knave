@@ -156,7 +156,7 @@ impl Expander<'_> {
                 self.local_file_diagnosis()
                     .unnamed_part_use(&unnamed, items[1].span())
             })?;
-        let path = self.resolve_use(&written, items[1].span())?;
+        let path = self.use_path(&written, items[1].span())?;
         let target = self.load_module(&path, items[1].span())?;
         let names = self.import_names(target, &path, &items[2..], &shape, context)?;
         let records_imports = self
@@ -190,7 +190,7 @@ impl Expander<'_> {
         Ok(imported)
     }
 
-    fn resolve_use(&mut self, written: &ModulePath, span: Span) -> Result<ModulePath, Diagnostic> {
+    fn use_path(&mut self, written: &ModulePath, span: Span) -> Result<ModulePath, Diagnostic> {
         if ModuleSources::is_internal(written) && !self.importing_from_prelude() {
             return Err(ExpandProblems::internal_module(written, span));
         }

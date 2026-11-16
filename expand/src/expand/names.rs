@@ -15,13 +15,13 @@ use crate::scope::{Phase, Resolution};
 use crate::source::Span;
 
 impl Expander<'_> {
-    pub(super) fn resolve(
+    pub(super) fn resolve_use(
         &self,
         symbol: &Symbol,
         namespace: Namespace,
         span: Span,
     ) -> Result<BindingId, Diagnostic> {
-        match self.tables.table.resolve(symbol, namespace, self.phase) {
+        match self.tables.table.resolve_use(symbol, namespace, self.phase) {
             Resolution::Bound(binding) => Ok(binding),
             Resolution::Unbound => Err(self.unbound(symbol, namespace, span)),
             Resolution::Ambiguous(bindings) => {
@@ -34,8 +34,12 @@ impl Expander<'_> {
         }
     }
 
-    pub(super) fn try_resolve(&self, symbol: &Symbol, namespace: Namespace) -> Option<BindingId> {
-        self.bindings().resolve(symbol, namespace)
+    pub(super) fn try_resolve_use(
+        &self,
+        symbol: &Symbol,
+        namespace: Namespace,
+    ) -> Option<BindingId> {
+        self.bindings().resolve_use(symbol, namespace)
     }
 
     pub(super) fn kind(&self, binding: BindingId) -> BindingKind {

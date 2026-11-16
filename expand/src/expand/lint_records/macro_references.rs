@@ -59,7 +59,7 @@ impl<'t> MacroReferences<'t> {
             FormKind::Symbol(symbol) => {
                 for namespace in Namespace::IMPORTED {
                     if let Resolution::Bound(binding) =
-                        self.table.resolve(symbol, namespace, Phase::Runtime)
+                        self.table.resolve_use(symbol, namespace, Phase::Runtime)
                     {
                         self.note(binding, named);
                     }

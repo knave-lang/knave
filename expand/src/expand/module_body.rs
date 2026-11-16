@@ -511,7 +511,7 @@ impl Expander<'_> {
             .and_then(<[Form]>::first)
             .ok_or_else(not_a_definition)?;
         let symbol = head.as_symbol().ok_or_else(not_a_definition)?;
-        match self.kind(self.resolve(symbol, Namespace::Value, head.span())?) {
+        match self.kind(self.resolve_use(symbol, Namespace::Value, head.span())?) {
             BindingKind::KernelForm(kernel) => Ok(kernel),
             _ => Err(not_a_definition()),
         }
@@ -659,7 +659,7 @@ impl Expander<'_> {
         shape: &Shape,
         name: &Form,
     ) -> Result<BindingId, Diagnostic> {
-        let written = self.resolve(shape.symbol(name)?, Namespace::Value, name.span())?;
+        let written = self.resolve_use(shape.symbol(name)?, Namespace::Value, name.span())?;
         let binding = self
             .answered_global(module, written, name)
             .unwrap_or(written);
@@ -872,7 +872,7 @@ impl Expander<'_> {
             format!("{}/{}", enum_symbol.name(), variant.name()),
             enum_symbol.scopes().clone(),
         );
-        self.resolve(&constructor, Namespace::Value, span)
+        self.resolve_use(&constructor, Namespace::Value, span)
     }
 
     fn lower_variant_payload(
@@ -926,16 +926,16 @@ impl Expander<'_> {
         form: &Form,
         core: &mut CoreModule,
     ) -> Result<(), Diagnostic> {
-        let _ = module;
         let shape = Shape::new(KernelForm::Definition(DefinitionForm::Derive), form);
         let items = shape.at_least(2)?;
-        let binding = self.resolve(shape.symbol(&items[1])?, Namespace::Type, items[1].span())?;
+        let target =
+            self.resolve_use(shape.symbol(&items[1])?, Namespace::Type, items[1].span())?;
         if !matches!(
-            self.kind(binding),
+            self.kind(target),
             BindingKind::Struct(owner) | BindingKind::Enum(owner) if owner == module
         ) {
             return Err(ExpandProblems::derive_target(
-                self.tables.bindings.get(binding).name(),
+                self.tables.bindings.get(target).name(),
                 items[1].span(),
             ));
         }
@@ -944,7 +944,7 @@ impl Expander<'_> {
             .map(|item| self.derived_trait(&shape, item))
             .collect::<Result<Vec<(BindingId, Span)>, Diagnostic>>()?;
         core.items.push(Item {
-            kind: ItemKind::Derive(binding, items[1].span(), traits),
+            kind: ItemKind::Derive(target, items[1].span(), traits),
             span: form.span(),
             hidden: false,
         });
@@ -956,7 +956,7 @@ impl Expander<'_> {
         shape: &Shape,
         item: &Form,
     ) -> Result<(BindingId, Span), Diagnostic> {
-        let binding = self.resolve(shape.symbol(item)?, Namespace::Type, item.span())?;
+        let binding = self.resolve_use(shape.symbol(item)?, Namespace::Type, item.span())?;
         if !matches!(self.kind(binding), BindingKind::Trait(_)) {
             return Err(ExpandProblems::derive_trait(
                 self.tables.bindings.get(binding).name(),
@@ -1126,8 +1126,8 @@ impl Expander<'_> {
             .ok_or_else(|| lowering.shape.malformed(method))?;
         let method_name = &method_items[0];
         let signature_form = &method_items[1];
-        let method_symbol = lowering.shape.symbol(method_name)?;
-        let method_binding = self.resolve(method_symbol, Namespace::Value, method_name.span())?;
+        let symbol = lowering.shape.symbol(method_name)?;
+        let method_binding = self.resolve_use(symbol, Namespace::Value, method_name.span())?;
         let mut signature_form = signature_form.clone();
         signature_form.add_scope(lowering.scope);
         let signature = self.lower_type(&signature_form)?;
@@ -1145,7 +1145,7 @@ impl Expander<'_> {
             template: Rc::from(format!(
                 "{}::{}",
                 lowering.rust_name,
-                NameMangler::value(method_symbol.name())
+                NameMangler::value(symbol.name())
             )),
             type_expr: scheme.clone(),
             clauses: Vec::new(),
@@ -1311,7 +1311,7 @@ impl Expander<'_> {
     }
 
     fn impl_trait(&mut self, shape: &Shape, form: &Form) -> Result<BindingId, Diagnostic> {
-        let binding = self.resolve(shape.symbol(form)?, Namespace::Type, form.span())?;
+        let binding = self.resolve_use(shape.symbol(form)?, Namespace::Type, form.span())?;
         if matches!(self.kind(binding), BindingKind::Trait(_)) {
             return Ok(binding);
         }
@@ -1404,13 +1404,13 @@ impl Expander<'_> {
         let items = form.as_list()?;
         let (head, arguments) = items.split_first()?;
         let symbol = head.as_symbol()?;
-        self.try_resolve(symbol, Namespace::Type)?;
+        self.bindings().resolve(symbol, Namespace::Type)?;
         Some(arguments)
     }
 
     fn is_type_variable(&self, symbol: &Symbol) -> bool {
-        self.try_resolve(symbol, Namespace::Type).is_none()
-            && self.try_resolve(symbol, Namespace::Value).is_none()
+        self.bindings().resolve(symbol, Namespace::Type).is_none()
+            && self.bindings().resolve(symbol, Namespace::Value).is_none()
     }
 
     fn lower_impl_associated(
@@ -1793,7 +1793,7 @@ impl Expander<'_> {
         };
         let symbol = shape.symbol(name)?;
         Ok(RustTraitAssociatedType {
-            binding: self.resolve(symbol, Namespace::Type, name.span())?,
+            binding: self.resolve_use(symbol, Namespace::Type, name.span())?,
             parameter: shape.symbol(parameter)?.name().into(),
             rust_name: shape.string(rust_name)?.into(),
         })
@@ -1810,7 +1810,7 @@ impl Expander<'_> {
             return Err(shape.malformed(entry));
         };
         let symbol = shape.symbol(name)?;
-        let binding = self.resolve(symbol, Namespace::Value, name.span())?;
+        let binding = self.resolve_use(symbol, Namespace::Value, name.span())?;
         let mut lowered = signature.clone();
         lowered.add_scope(scope);
         let lowered = self.lower_type(&lowered)?;
@@ -1910,7 +1910,7 @@ impl Expander<'_> {
         let symbol = shape.symbol(name)?;
         let mut found = false;
         for namespace in [Namespace::Value, Namespace::Type] {
-            if let Some(binding) = self.try_resolve(symbol, namespace) {
+            if let Some(binding) = self.try_resolve_use(symbol, namespace) {
                 self.modules
                     .get_mut(module)
                     .export(symbol.shared_name(), namespace, binding);
@@ -1923,13 +1923,13 @@ impl Expander<'_> {
             self.export_trait_methods(module, symbol, core);
             Ok(())
         } else {
-            self.resolve(symbol, Namespace::Value, name.span())
+            self.resolve_use(symbol, Namespace::Value, name.span())
                 .map(|_| ())
         }
     }
 
     fn export_trait_methods(&mut self, module: ModuleId, symbol: &Symbol, core: &mut CoreModule) {
-        let Some(trait_binding) = self.try_resolve(symbol, Namespace::Type) else {
+        let Some(trait_binding) = self.try_resolve_use(symbol, Namespace::Type) else {
             return;
         };
         if !matches!(self.kind(trait_binding), BindingKind::Trait(_)) {
@@ -1958,7 +1958,7 @@ impl Expander<'_> {
         symbol: &Symbol,
         core: &mut CoreModule,
     ) {
-        let Some(enum_binding) = self.try_resolve(symbol, Namespace::Type) else {
+        let Some(enum_binding) = self.try_resolve_use(symbol, Namespace::Type) else {
             return;
         };
         if !matches!(self.kind(enum_binding), BindingKind::Enum(_)) {

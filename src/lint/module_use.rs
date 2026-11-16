@@ -3,11 +3,10 @@ use rustc_hash::FxHashSet;
 use super::binding_owners::BindingOwners;
 use super::linted_module::LintedModule;
 use crate::core::{BindingArena, BindingId, BindingKind, ImportedName, NamedTypes, References};
-use crate::expand::{CompileTimeRoots, Program};
+use crate::expand::Program;
 
 pub struct ModuleUse<'p> {
     bindings: &'p BindingArena,
-    compile_time_roots: &'p CompileTimeRoots,
     used: FxHashSet<BindingId>,
 }
 
@@ -22,6 +21,9 @@ impl<'p> ModuleUse<'p> {
                 .map(|binding| owners.owner(binding, bindings)),
         );
         used.extend(linted.reads());
+        for named in program.compile_time_roots.named_by_macros_in(module.id) {
+            used.extend([named, owners.owner(named, bindings)]);
+        }
         for item in &module.items {
             NamedTypes::of(&item.kind).visit(&mut |binding| {
                 used.insert(binding);
@@ -31,17 +33,13 @@ impl<'p> ModuleUse<'p> {
             let references = References::of(value, bindings);
             used.extend(references.written_types().named().iter().copied());
         }
-        Self {
-            bindings,
-            compile_time_roots: &program.compile_time_roots,
-            used,
-        }
+        Self { bindings, used }
     }
 
     pub fn refers_to(&self, name: &ImportedName) -> bool {
-        name.bindings.iter().any(|binding| {
-            self.used.contains(&binding) || self.compile_time_roots.is_named_by_a_macro(binding)
-        })
+        name.bindings
+            .iter()
+            .any(|binding| self.used.contains(&binding))
     }
 
     pub fn brings_only_macros(&self, name: &ImportedName) -> bool {

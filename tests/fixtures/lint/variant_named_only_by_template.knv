@@ -1,0 +1,7 @@
+(use modules/circle_maker as-circle)
+
+(export made)
+
+(defn made () (as-circle 2))
+
+(defn main () (println 1))

@@ -1,7 +1,7 @@
 use rustc_hash::FxHashSet;
 
 use super::macro_references::MacroReferences;
-use crate::core::{BindingId, CoreModule};
+use crate::core::{BindingId, CoreModule, ModuleId};
 use crate::interpret::Closure;
 
 pub(in crate::expand) struct LintHandOff<'e, Macros> {
@@ -17,7 +17,10 @@ where
         Self { references, macros }
     }
 
-    pub(in crate::expand) fn hand_to(self, modules: &[CoreModule]) -> FxHashSet<BindingId> {
+    pub(in crate::expand) fn hand_to(
+        self,
+        modules: &[CoreModule],
+    ) -> FxHashSet<(ModuleId, BindingId)> {
         self.references.named_by(self.macros, modules)
     }
 }

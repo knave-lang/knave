@@ -1,0 +1,6 @@
+(use modules/shapes shape)
+
+(export as-circle)
+
+(defmacro as-circle (x)
+  (template (shape/circle (unquote x))))

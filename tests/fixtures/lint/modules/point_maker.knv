@@ -1,0 +1,6 @@
+(use modules/shapes point)
+
+(export as-point)
+
+(defmacro as-point (x)
+  (template (the point (unquote x))))

@@ -10,6 +10,7 @@ mod conversion;
 mod dropped_borrows;
 mod expr;
 mod implementor_rows;
+mod imported_bindings;
 mod kernel;
 mod keyword;
 mod lexeme;
@@ -42,8 +43,8 @@ pub use access::Access;
 pub use argument_positions::ArgumentPositions;
 pub use binder_origin::BinderOrigin;
 pub use binding::{
-    BindingArena, BindingId, BindingInfo, BindingKind, Declaration, ImportedBindings,
-    ModuleDefinitions, Namespace, VariantInfo,
+    BindingArena, BindingId, BindingInfo, BindingKind, Declaration, ModuleDefinitions, Namespace,
+    VariantInfo,
 };
 pub use builtin::{Builtin, BuiltinModule};
 pub use clause_comparison::ClauseComparison;
@@ -58,6 +59,7 @@ pub use expr::{
     RustTemplate, StructExpr,
 };
 pub use implementor_rows::{ImplementorRow, ImplementorRows};
+pub use imported_bindings::ImportedBindings;
 pub use kernel::{
     ControlForm, DefinitionForm, ExpressionForm, FunctionFieldTraits, KernelConstants, KernelForm,
     KernelType, LeafForm, ReferenceKind, StructDerives, StructForm,

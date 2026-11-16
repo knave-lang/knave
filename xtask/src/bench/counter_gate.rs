@@ -381,4 +381,24 @@ mod tests {
         );
         assert!(checked.is_ok());
     }
+
+    #[test]
+    fn the_check_passes_a_rise_in_allocations_under_the_tolerance() {
+        let checked = GateFixture::check(
+            &GateFixture::allocations("warehouse", 1_000),
+            &GateFixture::allocations("warehouse", 1_005),
+            &[],
+        );
+        assert!(checked.is_ok());
+    }
+
+    #[test]
+    fn the_check_passes_a_fall_in_allocations() {
+        let checked = GateFixture::check(
+            &GateFixture::allocations("warehouse", 1_000),
+            &GateFixture::allocations("warehouse", 500),
+            &[],
+        );
+        assert!(checked.is_ok());
+    }
 }

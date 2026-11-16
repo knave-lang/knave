@@ -105,7 +105,7 @@ mod tests {
                 .expect("the program binds the name");
             ImportedName {
                 span: Span::new(SourceId::new(0), 0..0),
-                bindings: ImportedBindings::new(binding),
+                bindings: ImportedBindings::one(binding),
             }
         }
 

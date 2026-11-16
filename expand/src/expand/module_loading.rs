@@ -346,16 +346,14 @@ impl Expander<'_> {
         symbol: &Symbol,
         span: Span,
     ) -> Result<Option<ImportedBindings>, Diagnostic> {
-        let mut bindings: Option<ImportedBindings> = None;
-        for namespace in Namespace::IMPORTED {
-            if let Some(binding) = self.modules.get(target).exported(symbol.name(), namespace) {
+        let found = Namespace::IMPORTED
+            .map(|namespace| self.modules.get(target).exported(symbol.name(), namespace));
+        for (namespace, binding) in Namespace::IMPORTED.into_iter().zip(found) {
+            if let Some(binding) = binding {
                 self.bind_import(symbol, namespace, binding, span)?;
-                bindings = Some(
-                    bindings.map_or(ImportedBindings::new(binding), |found| found.and(binding)),
-                );
             }
         }
-        Ok(bindings)
+        Ok(ImportedBindings::found(found))
     }
 
     fn import_members(

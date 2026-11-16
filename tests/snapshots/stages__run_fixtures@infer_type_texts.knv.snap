@@ -6,7 +6,7 @@ input_file: tests/fixtures/run/infer_type_texts.knv
 bool char unit
 (ref str) string
 (vec int) (pair int (ref str))
-(option f64) (sorted-map (ref str) int)
+(option float) (sorted-map (ref str) int)
 point shape
 (holder int)
 (ref point) (mut string)

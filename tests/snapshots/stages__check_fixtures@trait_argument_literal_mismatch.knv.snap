@@ -3,11 +3,11 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/trait_argument_literal_mismatch.knv
 ---
-error[L0404]: `(vec int)` does not implement `(holds f64)`
+error[L0404]: `(vec int)` does not implement `(holds float)`
   --> check/trait_argument_literal_mismatch.knv:11:11
    |
 11 |   (holds? scores 0.5))
-   |           ^^^^^^ this needs `(holds f64)`
+   |           ^^^^^^ this needs `(holds float)`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
    = note: run `knave doc L0404` for an explanation
@@ -21,11 +21,11 @@ error[L0404]: `(vec string)` does not implement `(holds int)`
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
    = note: run `knave doc L0404` for an explanation
 
-error[L0404]: `(vec (option u8))` does not implement `(holds (option f64))`
+error[L0404]: `(vec (option u8))` does not implement `(holds (option float))`
   --> check/trait_argument_literal_mismatch.knv:17:11
    |
 17 |   (holds? options (some 0.5)))
-   |           ^^^^^^^ this needs `(holds (option f64))`
+   |           ^^^^^^^ this needs `(holds (option float))`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
    = note: run `knave doc L0404` for an explanation

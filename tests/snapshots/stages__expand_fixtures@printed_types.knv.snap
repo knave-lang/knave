@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: "Fixture::load(path).expand_report()"
 input_file: tests/fixtures/expand/printed_types.knv
 ---
-(rust-trait shape "Shape" int f64)
+(rust-trait shape "Shape" int float)
 (type pick (where (a (b shape)) (fn (a b) _)))
 (def pick (fn (x y) x))
 (struct pair (left int))

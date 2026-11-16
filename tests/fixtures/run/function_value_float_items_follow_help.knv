@@ -1,5 +1,5 @@
 (type small?
-  (where ((a partial-ord float))
+  (where ((a partial-ord floating))
     (fn (a) bool)))
 
 (defn small? (x) (< x 10.5))

@@ -4,7 +4,7 @@
 (defn increment (x) (+ x 1))
 
 (type halve
-  (where ((n float)) (fn (n) n)))
+  (where ((n floating)) (fn (n) n)))
 
 (defn halve (x) (* x 0.5))
 

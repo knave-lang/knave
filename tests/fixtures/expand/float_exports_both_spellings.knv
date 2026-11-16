@@ -1,0 +1,3 @@
+(export f64 float half)
+
+(defn half ((x float)) (/ x 2.0))

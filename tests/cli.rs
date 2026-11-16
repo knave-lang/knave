@@ -2527,6 +2527,31 @@ fn doc_prints_the_page_of_a_kernel_type() {
 }
 
 #[test]
+fn doc_of_f64_prints_the_page_of_float() {
+    let sandbox = Sandbox::new("doc_float_other_name");
+    let other = sandbox.compiler(&["doc", "f64"]);
+    let shown = sandbox.compiler(&["doc", "float"]);
+    assert_eq!(
+        other.assert_exit_code(0).stdout(),
+        shown.assert_exit_code(0).stdout()
+    );
+    assert!(shown.assert_exit_code(0).stdout().starts_with("float\n\n"));
+}
+
+#[test]
+fn types_prints_a_written_f64_as_float() {
+    let sandbox = Sandbox::new("types_float_name").with_file(
+        "rates.knv",
+        "(type adjust (fn (f64) float))\n(defn adjust (value) value)\n(defn main () (do))\n",
+    );
+    let types = sandbox.compiler(&["types", "rates.knv"]);
+    assert_eq!(
+        types.assert_exit_code(0).stdout(),
+        "(type adjust (fn (float) float))\n(type main (fn () unit))\n"
+    );
+}
+
+#[test]
 fn doc_of_another_name_of_a_kernel_type_prints_its_page() {
     let sandbox = Sandbox::new("doc_kernel_type_other_name");
     let other = sandbox.compiler(&["doc", "i64"]);

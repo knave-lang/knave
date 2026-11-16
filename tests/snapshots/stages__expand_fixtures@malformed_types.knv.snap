@@ -70,6 +70,7 @@ error[L0212]: expected a trait, found `i64`
 32 |   (where ((t i64)) (fn (t) t)))
    |              ^^^ not a trait
    |
+   = help: write a trait that every integer type implements, such as `integer` or `number`
    = note: run `knave doc L0212` for an explanation
 
 error[L0228]: malformed `mut` type

@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 use std::fmt;
 
 use super::change::Change;
+use super::gated_counters::GatedCounters;
 use super::results::{ProgramResult, ResultSet};
 use super::table::GroupedCount;
 use crate::failure::TaskFailure;
@@ -13,17 +14,8 @@ pub struct CounterGate<'a> {
 }
 
 impl<'a> CounterGate<'a> {
-    pub const GATED_COUNTERS: [&'static str; 2] =
-        ["allocator.allocated_bytes", "allocator.peak_live_bytes"];
-    pub const TOLERANCE_PERCENT: u64 = 1;
     pub const NO_BASELINE_COUNTERS: &'static str =
         "The base has no counters, so no counter is checked for growth.\n";
-
-    pub fn gated_names() -> String {
-        Self::GATED_COUNTERS
-            .map(|counter| format!("`{counter}`"))
-            .join(" or ")
-    }
 
     pub fn new(
         baseline: &'a ResultSet,
@@ -51,10 +43,10 @@ impl<'a> CounterGate<'a> {
         match unaccepted.is_empty() {
             true => Ok(format!(
                 "No gated counter rose more than {}% without a `Counters-Accepted:` trailer that names its program.\n",
-                Self::TOLERANCE_PERCENT
+                GatedCounters::TOLERANCE_PERCENT
             )),
             false => Err(TaskFailure::counters_rose(
-                Self::TOLERANCE_PERCENT,
+                GatedCounters::TOLERANCE_PERCENT,
                 &unaccepted,
             )),
         }
@@ -70,7 +62,7 @@ impl<'a> CounterGate<'a> {
     pub fn missing_gated_counter(&self) -> Option<MissingGatedCounter<'a>> {
         self.candidate.programs().iter().find_map(|candidate| {
             let baseline = self.baseline.find(&candidate.program)?;
-            Self::GATED_COUNTERS
+            GatedCounters::NAMES
                 .into_iter()
                 .find(|counter| {
                     baseline.counters.contains_key(*counter)
@@ -106,7 +98,7 @@ impl<'a> CounterGate<'a> {
         let Some(baseline) = self.baseline.find(&candidate.program) else {
             return Vec::new();
         };
-        Self::GATED_COUNTERS
+        GatedCounters::NAMES
             .into_iter()
             .filter_map(|counter| CounterRise::of(counter, baseline, candidate))
             .filter(|rise| rise.exceeds_tolerance())
@@ -152,7 +144,7 @@ impl<'a> CounterRise<'a> {
 
     fn exceeds_tolerance(&self) -> bool {
         self.change()
-            .rises_more_than_percent(CounterGate::TOLERANCE_PERCENT)
+            .rises_more_than_percent(GatedCounters::TOLERANCE_PERCENT)
     }
 
     pub fn describe(&self) -> String {

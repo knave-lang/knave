@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use super::allocator_share::AllocatorShare;
-use super::counter_gate::CounterGate;
+use super::gated_counters::GatedCounters;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Measurement {
@@ -50,8 +50,8 @@ impl Measurement {
             allocator_prefixes = AllocatorShare::CALLEE_PREFIXES
                 .map(|prefix| format!("`{prefix}`"))
                 .join(" or "),
-            gated = CounterGate::gated_names(),
-            tolerance = CounterGate::TOLERANCE_PERCENT,
+            gated = GatedCounters::listed(),
+            tolerance = GatedCounters::TOLERANCE_PERCENT,
         )
     }
 

@@ -17,6 +17,7 @@ use super::enums::VariantPayload;
 use super::expectation::Expectation;
 use super::parameter_call_labels::ParameterCallRequest;
 use super::pending::{DecidedBorrows, PendingBorrow};
+use super::pipelines::Pipelines;
 use super::positional_read::PositionalRead;
 use super::problems::{MismatchContext, TypeProblems};
 use super::selfless_method::SelflessMethod;
@@ -3621,8 +3622,9 @@ impl TypeChecker {
         span: Span,
     ) -> Result<(TypedExprKind, Type), Diagnostic> {
         let scheme = self.written_schemes().lower_scheme(&template.type_expr)?;
+        let pipelines = Pipelines::new(&self.declarations.types().rust_types);
         let name = TemplateName::Inline(&template.template);
-        self.template_borrows.register(name, &scheme);
+        self.template_borrows.register(name, &scheme, pipelines);
         let ty = self.instantiation().instantiate(&scheme, span);
         Ok((TypedExprKind::Leaf(TypedLeaf::Rust(template.clone())), ty))
     }

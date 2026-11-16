@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use super::pipelines::Pipelines;
 use super::ty::{GenericId, Lifetime, Scheme, Type};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -16,14 +17,17 @@ impl TemplateTies {
         }
     }
 
-    pub fn of(scheme: &Scheme) -> Option<Self> {
+    pub fn of(scheme: &Scheme, pipelines: Pipelines) -> Option<Self> {
         let Type::Function(_, parameters, result) = &scheme.body else {
             return Some(Self::default());
         };
         let generics: Vec<GenericId> = scheme.params.iter().map(|param| param.id).collect();
         Some(Self {
             lifetime: Self::lifetime_ties(parameters, result)?,
-            held: Self::held_ties(parameters, result, &generics),
+            held: Self::merged(
+                &Self::held_ties(parameters, result, &generics),
+                &Self::adapted_iterators(parameters, result, pipelines),
+            ),
         })
     }
 
@@ -53,6 +57,18 @@ impl TemplateTies {
             .iter()
             .enumerate()
             .filter(|(_, parameter)| shared.iter().any(|generic| parameter.mentions(*generic)))
+            .map(|(position, _)| position)
+            .collect()
+    }
+
+    fn adapted_iterators(parameters: &[Type], result: &Type, pipelines: Pipelines) -> Vec<usize> {
+        if !pipelines.is_pipeline(result) {
+            return Vec::new();
+        }
+        parameters
+            .iter()
+            .enumerate()
+            .filter(|(_, parameter)| pipelines.is_pipeline(parameter))
             .map(|(position, _)| position)
             .collect()
     }
@@ -113,6 +129,8 @@ mod tests {
 
     use super::TemplateTies;
     use crate::core::{BindingId, ClosureKind, PrimitiveType};
+    use crate::types::pipelines::Pipelines;
+    use crate::types::rust_types::RustTypeTable;
     use crate::types::ty::{GenericId, GenericParam, Lifetime, Scheme, Type};
 
     struct TiesFixture;
@@ -144,7 +162,7 @@ mod tests {
                 params: vec![Self::param(0, "a"), Self::param(1, "b")],
                 body: Type::Function(ClosureKind::Fn, parameters, Box::new(result)),
             };
-            TemplateTies::of(&scheme)
+            TemplateTies::of(&scheme, Pipelines::new(&RustTypeTable::default()))
         }
     }
 

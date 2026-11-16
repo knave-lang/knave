@@ -28,8 +28,4 @@ impl<'p> LoanRules<'p> {
     pub fn holds_a_borrow(&self, ty: &Type) -> bool {
         self.program.type_holds_borrow(ty) || self.pipelines.is_pipeline(ty)
     }
-
-    pub fn adapts(&self, parameter: &Type, result: &Type) -> bool {
-        self.pipelines.is_pipeline(parameter) && self.pipelines.is_pipeline(result)
-    }
 }

@@ -30,7 +30,7 @@ expand/src/scope/scope_set.rs::ScopeSet 27
 
 src/cli/library_walk.rs::LibraryWalk 22
 
-src/emit/expressions.rs::ExpressionEmitter 219
+src/emit/expressions.rs::ExpressionEmitter 217
 
 src/emit/items.rs::ItemEmitter 84
 

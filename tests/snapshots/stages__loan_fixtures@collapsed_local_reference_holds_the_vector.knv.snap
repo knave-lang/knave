@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/collapsed_local_reference_holds_the_vector.knv
+---
+main
+  3:29 borrow `s`: no live loan
+  4:16 borrow `names`: `s` lent at 3:29, held by `names`
+  7:10 change `names`: `s` lent at 3:29, held by `names`; `names` lent at 4:16, held by `other`
+  8:22 borrow `other`: `s` lent at 3:29, held by `names`; `names` lent at 4:16, held by `other`
+  9:22 borrow `names`: `s` lent at 3:29, held by `names`

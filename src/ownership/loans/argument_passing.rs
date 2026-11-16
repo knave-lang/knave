@@ -49,16 +49,21 @@ impl dyn Passing {
             Borrow::Reborrow => <dyn Passing>::reborrowed(parameter),
             Borrow::Deref(_) => &Copies,
             Borrow::Passthrough | Borrow::Collapse(_) if argument.value.ty.is_reference() => {
-                <dyn Passing>::of_reference(argument.borrow, parameter)
+                <dyn Passing>::of_reference(argument, parameter, rules)
             }
             Borrow::None if rules.moves(&argument.value.ty) => &Moves,
             _ => &Holds,
         }
     }
 
-    fn of_reference(borrow: Borrow, parameter: Option<&Type>) -> &'static dyn Passing {
-        match borrow {
-            Borrow::Collapse(_) => &Collapses,
+    fn of_reference(
+        argument: &TypedArgument,
+        parameter: Option<&Type>,
+        rules: &LoanRules<'_>,
+    ) -> &'static dyn Passing {
+        match argument.borrow {
+            Borrow::Collapse(levels) if rules.copies_out(&argument.value, levels) => &Collapses,
+            Borrow::Collapse(_) => &Holds,
             _ => <dyn Passing>::through_reference(parameter),
         }
     }

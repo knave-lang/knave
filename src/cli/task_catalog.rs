@@ -80,8 +80,7 @@ impl TaskCatalog {
         self.names(terminal)?;
         let lookup = self.expanded(terminal, Self::LISTING)?;
         terminal.source_report().print(&lookup.warnings).passed()?;
-        let listing = Self::literal(&lookup.expression)
-            .ok_or_else(|| Self::report_no_string(Self::LISTING))?;
+        let listing = lookup.text(Self::LISTING)?;
         Ok(if listing.is_empty() {
             listing
         } else {
@@ -175,8 +174,7 @@ impl TaskCatalog {
     }
 
     fn expanded_text(&self, terminal: &mut Terminal, lookup: &str) -> Result<String, ExitStatus> {
-        let expanded = self.expanded(terminal, lookup)?;
-        Self::literal(&expanded.expression).ok_or_else(|| Self::report_no_string(lookup))
+        self.expanded(terminal, lookup)?.text(lookup)
     }
 
     fn expanded(&self, terminal: &mut Terminal, lookup: &str) -> Result<TaskLookup, ExitStatus> {
@@ -201,6 +199,20 @@ impl TaskCatalog {
         })
     }
 
+    fn report_no_signature(name: &TaskName) -> ExitStatus {
+        StandardError::write_line(format_args!(
+            "error: internal: the signature of task `{}` is not at its lookup",
+            name.as_str()
+        ));
+        ExitStatus::ProgramErrors
+    }
+}
+
+impl TaskLookup {
+    fn text(&self, lookup: &str) -> Result<String, ExitStatus> {
+        Self::literal(&self.expression).ok_or_else(|| Self::report_no_string(lookup))
+    }
+
     fn literal(expanded: &Expr) -> Option<String> {
         match expanded.kind() {
             ExprKind::Leaf(Leaf::Literal(Literal::String(text))) => Some(text.to_string()),
@@ -210,14 +222,6 @@ impl TaskCatalog {
 
     fn report_no_string(lookup: &str) -> ExitStatus {
         StandardError::write_line(format_args!("error: `{lookup}` did not expand to a string"));
-        ExitStatus::ProgramErrors
-    }
-
-    fn report_no_signature(name: &TaskName) -> ExitStatus {
-        StandardError::write_line(format_args!(
-            "error: internal: the signature of task `{}` is not at its lookup",
-            name.as_str()
-        ));
         ExitStatus::ProgramErrors
     }
 }

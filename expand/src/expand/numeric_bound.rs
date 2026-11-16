@@ -3,8 +3,8 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use crate::core::{
-    BindingId, BindingKind, CoreModule, ItemKind, KernelType, ModuleId, ModulePath, Namespace,
-    PrimitiveType, RustTraitDeclaration, TypeExprKind,
+    BindingId, BindingKind, CoreModule, ItemKind, KernelType, ModuleId, ModulePath, PrimitiveType,
+    RustTraitDeclaration, TypeExprKind,
 };
 use crate::modules::{ModuleRecord, ModuleRegistry, ModuleSources};
 
@@ -39,7 +39,8 @@ impl NumberFamily {
 
 pub(super) struct NumericBound {
     family: NumberFamily,
-    traits: Vec<Rc<str>>,
+    first: Rc<str>,
+    others: Vec<Rc<str>>,
 }
 
 impl NumericBound {
@@ -55,16 +56,25 @@ impl NumericBound {
         let prelude = modules.get(modules.find(&ModulePath::new(ModuleSources::PRELUDE))?);
         let mut traits = Self::covering_traits(family, prelude, &Self::declarations(expanded));
         traits.sort();
-        let traits: Vec<Rc<str>> = traits.into_iter().map(|(_, name)| name).collect();
-        (!traits.is_empty()).then_some(Self { family, traits })
+        let mut names = traits.into_iter().map(|(_, name)| name);
+        let first = names.next()?;
+        Some(Self {
+            family,
+            first,
+            others: names.collect(),
+        })
     }
 
     pub fn family(&self) -> &'static str {
         self.family.description()
     }
 
-    pub fn traits(&self) -> &[Rc<str>] {
-        &self.traits
+    pub fn first(&self) -> &str {
+        &self.first
+    }
+
+    pub fn others(&self) -> &[Rc<str>] {
+        &self.others
     }
 
     fn declarations(
@@ -87,7 +97,6 @@ impl NumericBound {
     ) -> Vec<(usize, Rc<str>)> {
         prelude
             .exports()
-            .filter(|(_, namespace, _)| *namespace == Namespace::Type)
             .filter_map(|(name, _, binding)| {
                 let rows = Self::covered_rows(family, declarations.get(&binding)?)?;
                 Some((rows, Rc::clone(name)))
@@ -160,7 +169,6 @@ mod tests {
         }
 
         fn integer_trait(&mut self, name: &str) {
-            self.private_integer_trait();
             let declaration = self.declarations.rows_of(NumberFamily::Integer.members());
             self.modules.get_mut(self.prelude).export(
                 name.into(),
@@ -190,7 +198,12 @@ mod tests {
         fn traits_for(&self, primitive: PrimitiveType) -> Option<Vec<String>> {
             let kind = BindingKind::KernelType(KernelType::Primitive(primitive));
             let bound = NumericBound::of_kind(kind, &self.modules, &self.expanded)?;
-            Some(bound.traits().iter().map(|name| name.to_string()).collect())
+            let others = bound.others().iter().map(|name| name.to_string());
+            Some(
+                std::iter::once(bound.first().to_string())
+                    .chain(others)
+                    .collect(),
+            )
         }
     }
 
@@ -280,10 +293,30 @@ mod tests {
     }
 
     #[test]
-    fn a_trait_that_also_holds_a_text_type_covers_no_family() {
+    fn a_trait_that_also_holds_a_non_number_covers_no_family() {
         let mut fixture = DeclarationFixture::new();
         let rows = NumberFamily::Integer.members().chain([PrimitiveType::Bool]);
         let declaration = fixture.rows_of(rows);
+        assert_eq!(
+            NumericBound::covered_rows(NumberFamily::Integer, &declaration),
+            None
+        );
+    }
+
+    #[test]
+    fn a_trait_that_also_holds_a_type_with_arguments_covers_no_family() {
+        let mut fixture = DeclarationFixture::new();
+        let mut declaration = fixture.rows_of(NumberFamily::Integer.members());
+        let vector = fixture.binding("vec");
+        let mut rows = declaration.implementors.get().to_vec();
+        rows.push(RustTraitImplementor {
+            implementor: TypeExpr::new(
+                TypeExprKind::Named(vector, Vec::new()),
+                DeclarationFixture::span(),
+            ),
+            associated: Vec::new(),
+        });
+        declaration.implementors = ImplementorRows::new(rows);
         assert_eq!(
             NumericBound::covered_rows(NumberFamily::Integer, &declaration),
             None

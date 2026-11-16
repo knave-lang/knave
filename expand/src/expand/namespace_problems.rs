@@ -21,18 +21,22 @@ impl NamespaceProblems {
             Some(bound) => diagnostic.with_help(format!(
                 "write a trait that every {} type implements, such as {}",
                 bound.family(),
-                Self::alternatives(bound.traits())
+                Self::alternatives(bound.first(), bound.others())
             )),
             None => diagnostic,
         }
     }
 
-    fn alternatives(names: &[Rc<str>]) -> String {
-        let quoted: Vec<String> = names.iter().map(|name| format!("`{name}`")).collect();
-        match quoted.split_last() {
-            Some((last, [])) => last.clone(),
-            Some((last, rest)) => format!("{} or {last}", rest.join(", ")),
-            None => String::new(),
+    fn alternatives(first: &str, others: &[Rc<str>]) -> String {
+        match others.split_last() {
+            None => format!("`{first}`"),
+            Some((last, middle)) => {
+                let leading: Vec<String> = std::iter::once(first)
+                    .chain(middle.iter().map(|name| name.as_ref()))
+                    .map(|name| format!("`{name}`"))
+                    .collect();
+                format!("{} or `{last}`", leading.join(", "))
+            }
         }
     }
 }
@@ -46,21 +50,21 @@ mod tests {
     struct NamesFixture;
 
     impl NamesFixture {
-        fn joined(names: &[&str]) -> String {
-            let names: Vec<Rc<str>> = names.iter().map(|name| Rc::from(*name)).collect();
-            NamespaceProblems::alternatives(&names)
+        fn joined(first: &str, others: &[&str]) -> String {
+            let others: Vec<Rc<str>> = others.iter().map(|name| Rc::from(*name)).collect();
+            NamespaceProblems::alternatives(first, &others)
         }
     }
 
     #[test]
     fn one_trait_is_named_alone() {
-        assert_eq!(NamesFixture::joined(&["integer"]), "`integer`");
+        assert_eq!(NamesFixture::joined("integer", &[]), "`integer`");
     }
 
     #[test]
     fn two_traits_join_with_or() {
         assert_eq!(
-            NamesFixture::joined(&["integer", "number"]),
+            NamesFixture::joined("integer", &["number"]),
             "`integer` or `number`"
         );
     }
@@ -68,7 +72,7 @@ mod tests {
     #[test]
     fn three_traits_join_with_commas_then_or() {
         assert_eq!(
-            NamesFixture::joined(&["floating", "signed", "number"]),
+            NamesFixture::joined("floating", &["signed", "number"]),
             "`floating`, `signed` or `number`"
         );
     }

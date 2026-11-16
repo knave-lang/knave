@@ -14,6 +14,7 @@ mod kernel;
 mod keyword;
 mod lexeme;
 mod module;
+mod module_id;
 mod module_path;
 mod pair_position;
 mod passing_allowance;
@@ -61,11 +62,12 @@ pub use kernel::{
 pub use keyword::Keyword;
 pub use module::{
     AssociatedValue, CoreModule, EnumDefiner, EnumRust, ImplAssociatedType, ImplMethod, Item,
-    ItemKind, ModuleId, RUST_TRAIT_ASSOCIATED_MARKER, RUST_TRAIT_HELP_MARKER,
-    RUST_TRAIT_METHOD_MARKER, RUST_TRAIT_REQUIRES_MARKER, RUST_TRAIT_STRUCTURAL_MARKER,
-    RequiredTrait, RustTraitAssociatedType, RustTraitDeclaration, RustTraitImplementor,
-    TraitAssociatedType, TraitMethod, VariantDeclaration, VariantPayload,
+    ItemKind, RUST_TRAIT_ASSOCIATED_MARKER, RUST_TRAIT_HELP_MARKER, RUST_TRAIT_METHOD_MARKER,
+    RUST_TRAIT_REQUIRES_MARKER, RUST_TRAIT_STRUCTURAL_MARKER, RequiredTrait,
+    RustTraitAssociatedType, RustTraitDeclaration, RustTraitImplementor, TraitAssociatedType,
+    TraitMethod, VariantDeclaration, VariantPayload,
 };
+pub use module_id::ModuleId;
 pub use module_path::ModulePath;
 pub use pair_position::PairPosition;
 pub use passing_allowance::PassingAllowance;

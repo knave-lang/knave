@@ -161,6 +161,24 @@ mod tests {
     }
 
     #[test]
+    fn a_private_definition_read_from_another_module_is_reached_even_when_its_reader_is_not() {
+        let source = ExpandedSource::expand(
+            "(use tests/fixtures/lint/modules/built_name call-helper)\n\
+             (defn spare () (call-helper))\n(defn main () (println 1))",
+        );
+        let program = source.program();
+        let reach = ReachFixture::reach(program);
+        let mut unreached: Vec<&str> = program
+            .modules
+            .iter()
+            .flat_map(|module| reach.unreached_in(module.id))
+            .map(|definition| program.bindings.get(definition.binding).name())
+            .collect();
+        unreached.sort();
+        assert_eq!(unreached, ["spare"]);
+    }
+
+    #[test]
     fn a_kept_candidate_is_a_root() {
         let source = ExpandedSource::expand(
             "(defn helper () 1)\n(defn keeper () (helper))\n(defn main () (println 1))",

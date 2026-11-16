@@ -1,0 +1,5 @@
+(use modules/built_name call-helper)
+
+(defn spare () (call-helper))
+
+(defn main () (println 1))

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/helper_read_only_through_a_built_name.knv
+---
+warning[L0807]: `spare` is never used
+ --> lint/helper_read_only_through_a_built_name.knv:3:7
+  |
+3 | (defn spare () (call-helper))
+  |       ^^^^^ never used
+  |
+  = help: remove the definition, or export it if another module needs it
+  = note: run `knave doc L0807` for an explanation

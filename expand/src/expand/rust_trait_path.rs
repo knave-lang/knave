@@ -100,6 +100,15 @@ mod tests {
     }
 
     #[test]
+    fn a_rust_prelude_function_trait_matches_its_full_path() {
+        let pair = PathPair {
+            written: "Fn(i64) -> i64",
+            other: "std::ops::Fn(i64) -> i64",
+        };
+        assert!(pair.names_same_trait());
+    }
+
+    #[test]
     fn a_crate_trait_does_not_match_a_prelude_name() {
         let pair = PathPair {
             written: "crate::rt::Clone",

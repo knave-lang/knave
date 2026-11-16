@@ -1,0 +1,73 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/split_on_any_pattern.knv
+---
+fn part_count<P: crate::rt::Separator>(text: &str, separator: P) -> usize {
+    crate::rt::Separator::split(separator, text).count()
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", part_count("a,b,c", ","));
+    println!("{}", part_count("a b", 'x'));
+    println!(
+        "{}",
+        part_count("a1b2c", |argument_0: char| argument_0.is_ascii_digit())
+    );
+    println!("{}", "a,b".split(",").count());
+    println!("{}", "a b".split(' ').count());
+    println!(
+        "{}",
+        "a1b"
+            .split(|argument_0: char| argument_0.is_ascii_digit())
+            .count()
+    )
+}
+
+mod rt {
+    pub trait Separator: Sized {
+        type Parts<'a>: Iterator<Item = &'a str>;
+
+        fn split<'a>(self, text: &'a str) -> Self::Parts<'a>;
+    }
+
+    impl<'s> Separator for &'s str {
+        type Parts<'a> = std::str::Split<'a, &'s str>;
+
+        fn split<'a>(self, text: &'a str) -> Self::Parts<'a> {
+            text.split(self)
+        }
+    }
+
+    impl Separator for char {
+        type Parts<'a> = std::str::Split<'a, char>;
+
+        fn split<'a>(self, text: &'a str) -> Self::Parts<'a> {
+            text.split(self)
+        }
+    }
+
+    impl<F: FnMut(char) -> bool> Separator for F {
+        type Parts<'a> = std::str::Split<'a, F>;
+
+        fn split<'a>(self, text: &'a str) -> Self::Parts<'a> {
+            text.split(self)
+        }
+    }
+
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

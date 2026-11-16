@@ -13,6 +13,7 @@ mod printer;
 mod references;
 mod saved_bindings;
 mod saved_value;
+mod shared_references;
 mod structural;
 mod template;
 mod template_braces;
@@ -53,6 +54,7 @@ pub use printer::CorePrinter;
 pub use references::References;
 pub use saved_bindings::{BindingTables, SavedBindings};
 pub use saved_value::SavedValue;
+pub use shared_references::SharedReferences;
 pub use structural::{
     StructuralClause, StructuralKey, StructuralPiece, StructuralTemplate, StructuralValues,
     UnfilledPlaceholder,

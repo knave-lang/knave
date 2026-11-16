@@ -1,3 +1,4 @@
+use super::shared_references::SharedReferences;
 use super::template_braces::TemplateBraces;
 use super::template_operation::TemplateOperation;
 
@@ -58,6 +59,13 @@ struct ArgumentPassing<'t> {
 }
 
 impl ArgumentPassing<'_> {
+    fn as_shared_reference(self) -> Self {
+        Self {
+            receives: false,
+            ..self
+        }
+    }
+
     fn differing_aspect(&self, clause: &ArgumentPassing) -> Option<PassingAspect> {
         [
             (
@@ -385,15 +393,25 @@ impl ParsedTemplate {
         TemplateOperation::of(&self.pieces)
     }
 
-    pub fn passing_difference(&self, clause: &ParsedTemplate) -> Option<PassingDifference> {
+    pub fn passing_difference(
+        &self,
+        clause: &ParsedTemplate,
+        shared_references: &SharedReferences,
+    ) -> Option<PassingDifference> {
         let mut arguments: Vec<usize> = self.placeholders().chain(clause.placeholders()).collect();
         arguments.sort_unstable();
         arguments.dedup();
         arguments
             .into_iter()
             .find_map(|argument| {
-                self.passing(argument)
-                    .differing_aspect(&clause.passing(argument))
+                let (template, clause) = (self.passing(argument), clause.passing(argument));
+                let (template, clause) = if shared_references.holds(argument) {
+                    (template.as_shared_reference(), clause.as_shared_reference())
+                } else {
+                    (template, clause)
+                };
+                template
+                    .differing_aspect(&clause)
                     .map(|aspect| PassingDifference::Argument(argument, aspect))
             })
             .or_else(|| self.call_difference(clause))

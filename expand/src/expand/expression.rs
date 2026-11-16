@@ -947,12 +947,7 @@ impl Expander<'_> {
         let template = Self::parse_rust_template(text, items[1].span())?;
         let type_expr = self.lower_type(&items[2])?;
         self.check_template_type_placeholders(&template, &type_expr, items[1].span())?;
-        let claused = ClausedTemplate {
-            parsed: &template,
-            span: items[1].span(),
-            type_expr: &type_expr,
-            type_span: items[2].span(),
-        };
+        let claused = ClausedTemplate::of(&template, &type_expr, items);
         let clauses = self.lower_rust_clauses(shape, &claused, &items[Self::RUST_PARTS..])?;
         Ok(ExprKind::Leaf(Leaf::Rust(Rc::new(RustTemplate {
             template: text.into(),

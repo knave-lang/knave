@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/rust_clause_shared_receiver.knv
+---
+(def measure (rust "measure({0})" (where ((s sequence)) (fn ((ref s)) usize)) (str "{0}.len()")))

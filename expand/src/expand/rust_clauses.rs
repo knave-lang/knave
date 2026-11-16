@@ -1,16 +1,31 @@
 use super::Expander;
 use super::problems::ExpandProblems;
 use super::shape::Shape;
-use crate::core::{ParsedTemplate, RustClause, TypeBinder, TypeExpr, TypeExprKind};
+use crate::core::{
+    ParsedTemplate, RustClause, SharedReferences, TypeBinder, TypeExpr, TypeExprKind,
+};
 use crate::diagnostic::Diagnostic;
 use crate::reader::Form;
 use crate::source::Span;
 
 pub(super) struct ClausedTemplate<'t> {
-    pub parsed: &'t ParsedTemplate,
-    pub span: Span,
-    pub type_expr: &'t TypeExpr,
-    pub type_span: Span,
+    parsed: &'t ParsedTemplate,
+    span: Span,
+    type_expr: &'t TypeExpr,
+    type_span: Span,
+    shared_references: SharedReferences,
+}
+
+impl<'t> ClausedTemplate<'t> {
+    pub(super) fn of(parsed: &'t ParsedTemplate, type_expr: &'t TypeExpr, items: &[Form]) -> Self {
+        Self {
+            parsed,
+            span: items[1].span(),
+            type_expr,
+            type_span: items[2].span(),
+            shared_references: type_expr.shared_reference_parameters(),
+        }
+    }
 }
 
 impl Expander<'_> {
@@ -54,7 +69,10 @@ impl Expander<'_> {
     ) -> Result<RustClause, Diagnostic> {
         let parsed = Self::parse_rust_template(shape.string(text)?, text.span())?;
         self.check_template_type_placeholders(&parsed, template.type_expr, text.span())?;
-        if let Some(difference) = template.parsed.passing_difference(&parsed) {
+        if let Some(difference) = template
+            .parsed
+            .passing_difference(&parsed, &template.shared_references)
+        {
             return Err(ExpandProblems::clause_passes_arguments_unlike_template(
                 difference,
                 text.span(),

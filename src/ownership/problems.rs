@@ -75,22 +75,6 @@ impl BorrowedStorage {
     }
 }
 
-struct MoveLabels {
-    used: &'static str,
-    moved: &'static str,
-}
-
-impl MoveLabels {
-    const SAME_PASS: Self = Self {
-        used: "value used here after it moved",
-        moved: "value moved here",
-    };
-    const EARLIER_PASS: Self = Self {
-        used: "value used here after an earlier pass of the loop moved it",
-        moved: "value moved here, in an earlier pass of the loop",
-    };
-}
-
 pub struct LentParameter<'n> {
     pub span: Span,
     pub closure: &'n str,
@@ -121,51 +105,6 @@ impl OwnershipProblems {
     const BORROWED_ARGUMENT_TITLE: &'static str =
         "this value is borrowed, but the call needs to own it";
 
-    pub fn use_after_move(name: &str, used: Span, moved: Span) -> Diagnostic {
-        Self::moved_value(
-            DiagnosticCode::USE_AFTER_MOVE,
-            name,
-            used,
-            moved,
-            &MoveLabels::SAME_PASS,
-        )
-    }
-
-    pub fn use_after_earlier_pass_move(name: &str, used: Span, moved: Span) -> Diagnostic {
-        Self::moved_value(
-            DiagnosticCode::USE_AFTER_MOVE,
-            name,
-            used,
-            moved,
-            &MoveLabels::EARLIER_PASS,
-        )
-    }
-
-    fn moved_value(
-        code: DiagnosticCode,
-        name: &str,
-        used: Span,
-        moved: Span,
-        labels: &MoveLabels,
-    ) -> Diagnostic {
-        let diagnostic = Diagnostic::error(
-            code,
-            format!("use of moved value `{name}`"),
-            Label::new(used, labels.used),
-        );
-        if used == moved {
-            return diagnostic;
-        }
-        diagnostic.with_label(Label::new(moved, labels.moved))
-    }
-
-    pub fn clone_suggestion(diagnostic: Diagnostic, name: &str, moved: Span) -> Diagnostic {
-        diagnostic.with_suggestion(
-            "clone the value if both places need it",
-            Suggestion::new(moved, format!("(clone {name})")),
-        )
-    }
-
     pub fn pipeline_help(diagnostic: Diagnostic, name: &str) -> Diagnostic {
         Self::pipeline_wording(diagnostic, &format!("`{name}`"), name)
     }
@@ -191,28 +130,6 @@ impl OwnershipProblems {
 
     pub fn recursive_parameter_help(diagnostic: Diagnostic) -> Diagnostic {
         diagnostic.with_help("write the parameter as a borrow in a `type` signature: `(ref ...)`")
-    }
-
-    pub fn missing_copy_bound(
-        name: &str,
-        parameter: &str,
-        copy_trait: &str,
-        used: Span,
-        moved: Span,
-    ) -> Diagnostic {
-        Self::moved_value(
-            DiagnosticCode::MISSING_COPY_BOUND,
-            name,
-            used,
-            moved,
-            &MoveLabels::SAME_PASS,
-        )
-            .with_note(format!(
-                "the signature writes `{parameter}` without `{copy_trait}`, and a written signature is exact"
-            ))
-            .with_help(format!(
-                "add a `{copy_trait}` bound to the signature: `({parameter} {copy_trait})`"
-            ))
     }
 
     pub fn written_mode_mismatch(

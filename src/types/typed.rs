@@ -94,7 +94,7 @@ impl FieldPlace<'_> {
         self.path.iter().fold(root, Self::field_text)
     }
 
-    fn field_text(owner: String, label: &&FieldLabel) -> String {
+    pub fn field_text(owner: String, label: &&FieldLabel) -> String {
         let field = label.spelled(&label.name);
         match label.spelling {
             FieldSpelling::Keyword | FieldSpelling::Pair(_) => format!("({field} {owner})"),

@@ -50,9 +50,9 @@ src/ownership/kinds.rs::ClosureKinds 103
 
 src/ownership/local_borrows.rs::LocalBorrows 23
 
-src/ownership/moves.rs::MoveChecker 50
+src/ownership/moves.rs::MoveChecker 49
 
-src/ownership/problems.rs::OwnershipProblems 55
+src/ownership/problems.rs::OwnershipProblems 50
 
 src/ownership/rewrite.rs::ModeRewrite 29
 

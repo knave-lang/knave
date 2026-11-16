@@ -4,7 +4,8 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use super::name_entries::{Entry, NameEntries};
+use super::name_entries::NameEntries;
+use super::name_entry::NameEntry;
 use super::phase::Phase;
 use super::saved_names::{NameTables, SavedNames};
 use super::{Scope, ScopeSet};
@@ -197,8 +198,8 @@ struct LargestCandidates {
 }
 
 impl LargestCandidates {
-    fn consider(&mut self, entry: &Entry) {
-        let size = entry.scope_count();
+    fn consider(&mut self, entry: &NameEntry) {
+        let size = entry.scopes().len();
         match self.first {
             Some(_) if size < self.size => {}
             Some(first) if size == self.size => self.add_equal(first, entry.binding()),

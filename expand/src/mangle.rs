@@ -274,6 +274,12 @@ mod tests {
     }
 
     #[test]
+    fn the_async_closure_traits_get_a_suffix() {
+        assert_eq!(NameMangler::type_name("async-fn"), "AsyncFn2");
+        assert_eq!(NameMangler::type_name("async-fn-once"), "AsyncFnOnce2");
+    }
+
+    #[test]
     fn punctuation_is_spelled_out() {
         assert_eq!(NameMangler::value("+"), "plus");
         assert_eq!(NameMangler::value("->string"), "to_string");

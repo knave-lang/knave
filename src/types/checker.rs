@@ -2364,9 +2364,7 @@ impl TypeChecker {
         };
         let traits = &mut self.declarations.traits;
         traits.table.add(declaration.binding, rust_trait);
-        traits
-            .rust_paths
-            .insert(declaration.binding, Rc::clone(&declaration.path));
+        traits.record_rust_path(declaration.binding, &declaration.path);
         for method in &declaration.methods {
             let receiver = Self::receiver_kind(&method.signature, declaration.self_variable);
             self.synthetic_bindings.insert(method.binding);

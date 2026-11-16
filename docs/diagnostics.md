@@ -44,7 +44,7 @@ help: a function with a similar name exists
 
 **Point the primary label at the smallest form that is wrong.** A label on a whole function hides the fault.
 
-**If a fix exists, give it in `help:`.** If the fix is an edit, show the replacement text.
+**If a fix exists, give it in `help:`.** If the fix is an edit, show the replacement text. A help that only points at an old spelling of a form or a name is a migration aid, which `AGENTS.md` forbids.
 
 **Use the names the user wrote.** Never show a Rust name such as `make_point` in place of `make-point`.
 

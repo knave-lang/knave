@@ -35,6 +35,8 @@ This file and the reference files it names are the living reference for working 
 - The reader treats only `(`, `)`, `"`, `;` and whitespace specially.
 - NEVER add a character that the reader treats specially without the project owner's approval.
 - If a feature needs an exception to a rule of the syntax, redesign the feature or leave it out.
+- Before 1.0, a breaking change carries no migration aid.
+- NEVER add a help, a note, a label, an alias, a deprecation period or doc text whose only purpose is to point at an old spelling or ease a change for existing code.
 
 ### Small compiler, big prelude
 

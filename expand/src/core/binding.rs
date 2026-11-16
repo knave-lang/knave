@@ -95,6 +95,14 @@ impl BindingKind {
             _ => None,
         }
     }
+
+    pub fn is_importable(self) -> bool {
+        self.defining_module().is_some()
+            || matches!(
+                self,
+                Self::KernelForm(_) | Self::KernelType(_) | Self::Boolean(_) | Self::CodeBuiltin(_)
+            )
+    }
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -327,7 +335,7 @@ mod tests {
         BinderOrigin, BindingArena, BindingId, BindingInfo, BindingKind, ImportedBindings,
         ModuleDefinitions,
     };
-    use crate::core::ModuleId;
+    use crate::core::{Builtin, KernelForm, KernelType, ModuleId};
     use std::cell::Cell;
     use std::rc::Rc;
 
@@ -539,5 +547,33 @@ mod tests {
         ImportedBindings::new(BindingId::from_index(3))
             .and(BindingId::from_index(5))
             .and(BindingId::from_index(7));
+    }
+
+    #[test]
+    fn a_kernel_form_type_or_boolean_is_importable() {
+        for kind in [
+            BindingKind::KernelForm(KernelForm::Macro),
+            BindingKind::KernelType(KernelType::Hole),
+            BindingKind::Boolean(true),
+        ] {
+            assert!(kind.is_importable(), "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn a_global_or_code_builtin_is_importable() {
+        for kind in [
+            BindingKind::Global(ModuleId::new(0)),
+            BindingKind::CodeBuiltin(Builtin::MakeSymbol),
+        ] {
+            assert!(kind.is_importable(), "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn a_local_or_type_variable_is_not_importable() {
+        for kind in [BindingKind::Local, BindingKind::TypeVariable] {
+            assert!(!kind.is_importable(), "{kind:?}");
+        }
     }
 }

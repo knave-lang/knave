@@ -1,4 +1,6 @@
 use super::Expander;
+use super::namespace_problems::NamespaceProblems;
+use super::numeric_bound::NumericBound;
 use super::problems::ExpandProblems;
 use crate::core::{
     AssociatedValue, BindingId, BindingKind, ClosureKind, KernelType, Namespace, ReferenceKind,
@@ -62,7 +64,7 @@ impl Expander<'_> {
             | BindingKind::TypeVariable
             | BindingKind::AssociatedType => Ok(TypeExprKind::Named(binding, Vec::new())),
             BindingKind::Trait(_) => Ok(TypeExprKind::Trait(binding)),
-            _ => Err(ExpandProblems::wrong_namespace(name, "a type", span)),
+            _ => Err(NamespaceProblems::wrong_namespace(name, "a type", span)),
         }
     }
 
@@ -84,7 +86,7 @@ impl Expander<'_> {
             BindingKind::Struct(_) | BindingKind::Enum(_) | BindingKind::RustType(_) => {
                 self.lower_named_application(binding, items)
             }
-            _ => Err(ExpandProblems::wrong_namespace(
+            _ => Err(NamespaceProblems::wrong_namespace(
                 &head.to_string(),
                 "a type constructor",
                 head.span(),
@@ -297,13 +299,15 @@ impl Expander<'_> {
             _ => (bound, None),
         };
         let symbol = name.as_symbol().ok_or_else(|| {
-            ExpandProblems::wrong_namespace(&bound.to_string(), "a trait", bound.span())
+            NamespaceProblems::wrong_namespace(&bound.to_string(), "a trait", bound.span())
         })?;
         let binding = self.resolve(symbol, Namespace::Type, bound.span())?;
         if !matches!(self.kind(binding), BindingKind::Trait(_)) {
-            return Err(ExpandProblems::wrong_namespace(
+            let numeric =
+                NumericBound::of_kind(self.kind(binding), &self.modules, &self.tables.expanded);
+            return Err(NamespaceProblems::not_a_trait(
                 symbol.name(),
-                "a trait",
+                numeric,
                 bound.span(),
             ));
         }

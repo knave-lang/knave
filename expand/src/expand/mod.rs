@@ -38,9 +38,11 @@ mod module_loading;
 mod module_notes;
 mod module_survey;
 mod names;
+mod namespace_problems;
 mod noted_term;
 mod noted_terms;
 mod notes_module;
+mod numeric_bound;
 mod origin_row;
 mod origin_tables;
 #[cfg(test)]

@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use super::context::DefinitionContext;
 use super::problems::ExpandProblems;
 use super::recur_check::RecurCheck;
 use super::rest_of_body::RestOfBody;
@@ -10,6 +9,7 @@ use super::shape::Shape;
 use super::try_check::TryCheck;
 use super::type_note::TypeNote;
 use super::{Expander, MacroCallLookup, binder_form::BinderForm};
+use super::{context::DefinitionContext, namespace_problems::NamespaceProblems};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, Control, ControlForm, Expr, ExprKind,
     ExpressionForm, FieldLabel, FieldSpelling, KernelForm, Keyword, Lambda, Leaf, LeafForm,
@@ -638,7 +638,7 @@ impl Expander<'_> {
         let name = shape.symbol(&items[1])?;
         let binding = self.resolve(name, Namespace::Type, items[1].span())?;
         if !matches!(self.kind(binding), BindingKind::Struct(_)) {
-            return Err(ExpandProblems::wrong_namespace(
+            return Err(NamespaceProblems::wrong_namespace(
                 name.name(),
                 "a struct",
                 items[1].span(),

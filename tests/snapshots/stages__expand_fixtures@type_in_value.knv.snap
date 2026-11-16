@@ -9,7 +9,7 @@ error[L0201]: cannot find `i64` in this scope
 2 |   (let (year i64) 2025))
   |              ^^^ not found in this scope
   |
-  = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year int) 2025)`, or in a `type` signature
+  = note: `i64` is a type; a type goes beside a name in a binding, as in `(let ((year int) 2025) ...)`, or in a `type` signature
   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `option` in this scope
@@ -18,7 +18,7 @@ error[L0201]: cannot find `option` in this scope
 5 |   (let (parsed (option i64)) parsed))
   |                 ^^^^^^ not found in this scope
   |
-  = note: `option` is a type; a type goes beside a name in a binding, as in `(local (year int) 2025)`, or in a `type` signature
+  = note: `option` is a type; a type goes beside a name in a binding, as in `(let ((year int) 2025) ...)`, or in a `type` signature
   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
@@ -35,7 +35,7 @@ error[L0201]: cannot find `i64` in this scope
 7 | (defn type-in-argument (text) (parse text i64))
   |                                           ^^^ not found in this scope
   |
-  = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year int) 2025)`, or in a `type` signature
+  = note: `i64` is a type; a type goes beside a name in a binding, as in `(let ((year int) 2025) ...)`, or in a `type` signature
   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
@@ -44,7 +44,7 @@ error[L0201]: cannot find `i64` in this scope
 10 |   (local year i64)
    |               ^^^ not found in this scope
    |
-   = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year int) 2025)`, or in a `type` signature
+   = note: `i64` is a type; a type goes beside a name in a binding, as in `(let ((year int) 2025) ...)`, or in a `type` signature
    = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `string` in this scope
@@ -53,7 +53,7 @@ error[L0201]: cannot find `string` in this scope
 11 |   (local count string)
    |                ^^^^^^ not found in this scope
    |
-   = note: `string` is a type; a type goes beside a name in a binding, as in `(local (year int) 2025)`, or in a `type` signature
+   = note: `string` is a type; a type goes beside a name in a binding, as in `(let ((year int) 2025) ...)`, or in a `type` signature
 help: a name with a similar spelling exists
    |
 11 -   (local count string)
@@ -88,7 +88,7 @@ error[L0201]: cannot find `i64` in this scope
 21 |   (+ totl i64))
    |           ^^^ not found in this scope
    |
-   = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year int) 2025)`, or in a `type` signature
+   = note: `i64` is a type; a type goes beside a name in a binding, as in `(let ((year int) 2025) ...)`, or in a `type` signature
    = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
@@ -97,7 +97,7 @@ error[L0201]: cannot find `i64` in this scope
 23 | (def first-module-value i64)
    |                         ^^^ not found in this scope
    |
-   = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year int) 2025)`, or in a `type` signature
+   = note: `i64` is a type; a type goes beside a name in a binding, as in `(let ((year int) 2025) ...)`, or in a `type` signature
    = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `string` in this scope
@@ -106,7 +106,7 @@ error[L0201]: cannot find `string` in this scope
 25 | (def second-module-value string)
    |                          ^^^^^^ not found in this scope
    |
-   = note: `string` is a type; a type goes beside a name in a binding, as in `(local (year int) 2025)`, or in a `type` signature
+   = note: `string` is a type; a type goes beside a name in a binding, as in `(let ((year int) 2025) ...)`, or in a `type` signature
 help: a name with a similar spelling exists
    |
 25 - (def second-module-value string)
@@ -133,7 +133,7 @@ error[L0201]: cannot find `i64` in this scope
 31 | (defn struct-as-callee () (point 0 i64))
    |                                    ^^^ not found in this scope
    |
-   = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year int) 2025)`, or in a `type` signature
+   = note: `i64` is a type; a type goes beside a name in a binding, as in `(let ((year int) 2025) ...)`, or in a `type` signature
    = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
@@ -142,7 +142,7 @@ error[L0201]: cannot find `i64` in this scope
 34 |   (+ i64 (fn () (local count i64) count)))
    |      ^^^ not found in this scope
    |
-   = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year int) 2025)`, or in a `type` signature
+   = note: `i64` is a type; a type goes beside a name in a binding, as in `(let ((year int) 2025) ...)`, or in a `type` signature
    = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
@@ -151,5 +151,5 @@ error[L0201]: cannot find `i64` in this scope
 34 |   (+ i64 (fn () (local count i64) count)))
    |                              ^^^ not found in this scope
    |
-   = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year int) 2025)`, or in a `type` signature
+   = note: `i64` is a type; a type goes beside a name in a binding, as in `(let ((year int) 2025) ...)`, or in a `type` signature
    = note: run `knave doc L0201` for an explanation

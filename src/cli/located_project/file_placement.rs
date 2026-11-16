@@ -3,6 +3,7 @@ mod tree_scoping;
 use std::path::{Path, PathBuf};
 
 use crate::cli::program_file::ProgramFile;
+use crate::core::ModulePath;
 use crate::modules::{LibraryTable, SearchScope};
 use tree_scoping::ProjectFolders;
 pub use tree_scoping::TreeScoping;
@@ -30,6 +31,10 @@ impl<'p> FilePlacement<'p> {
 
     pub fn tasks_directory(&self) -> &Path {
         &self.tasks_directory
+    }
+
+    pub fn library_takes(&self, path: &ModulePath) -> bool {
+        self.libraries.names_library(None, path)
     }
 
     pub fn trees(&self) -> TreeScoping<'_> {

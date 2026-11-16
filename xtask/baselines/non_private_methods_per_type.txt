@@ -4,7 +4,7 @@ expand/src/diagnostic/collection.rs::Diagnostics 11
 expand/src/diagnostic/mod.rs::Diagnostic 21
 expand/src/expand/globals.rs::GlobalTable 13
 expand/src/expand/mod.rs::Expander 95
-expand/src/expand/problems.rs::ExpandProblems 91
+expand/src/expand/problems.rs::ExpandProblems 90
 expand/src/expand/session.rs::ExpansionSession 16
 expand/src/expand/shape.rs::Shape 15
 expand/src/interpret/arguments.rs::Arguments 20

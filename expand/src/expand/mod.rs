@@ -79,6 +79,7 @@ mod string_view;
 mod structural_path_claim;
 mod structural_path_claims;
 mod structural_traits;
+mod taken_module_problems;
 mod top_level_check;
 mod top_level_form;
 mod try_check;
@@ -137,6 +138,7 @@ pub use set_aside_problems::SetAsideProblems;
 use string_view::StringViewSearch;
 use structural_path_claims::StructuralPathClaims;
 use structural_traits::StructuralTraits;
+pub use taken_module_problems::TakenModuleProblems;
 use type_note::TypeNote;
 
 pub struct Program {

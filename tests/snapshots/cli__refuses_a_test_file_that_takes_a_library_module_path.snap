@@ -1,0 +1,21 @@
+---
+source: tests/cli.rs
+expression: test.assert_exit_code(1).stderr()
+---
+error[L0258]: library `hints` takes this file's module path `hints`
+ --> tests/hints.knv:1:1
+  |
+1 | (use prelude/test deftest assert)
+  | ^ this file never loads
+  |
+  = note: a library's name takes precedence over a local module of the same name, so this file would never run
+  = help: rename the file, or rename the library in `project.knv`
+
+error[L0258]: library `hints` takes this file's module path `hints/extra`
+ --> tests/hints/extra.knv:1:1
+  |
+1 | (use prelude/test deftest assert)
+  | ^ this file never loads
+  |
+  = note: a library's name takes precedence over a local module of the same name, so this file would never run
+  = help: rename the file, or rename the library in `project.knv`

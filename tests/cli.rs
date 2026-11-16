@@ -7402,6 +7402,17 @@ fn test_refuses_a_test_file_that_takes_a_compiler_module_path() {
 }
 
 #[test]
+fn test_refuses_a_test_file_that_takes_a_library_module_path() {
+    let failing_test = "(use prelude/test deftest assert)\n(deftest fails (assert false))\n";
+    let sandbox = Sandbox::new("test_library_module_paths")
+        .with_fixture_tree("libraries")
+        .with_file("tested-app/tests/hints.knv", failing_test)
+        .with_file("tested-app/tests/hints/extra.knv", failing_test);
+    let test = sandbox.compiler_in("tested-app", &["test"]);
+    insta::assert_snapshot!(test.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn test_outside_a_project_resolves_use_from_the_directory_alone() {
     let sandbox = Sandbox::new("loose_test").with_fixture_tree("loose-tests");
     let test = sandbox.compiler(&["test", "tests"]);
@@ -9626,6 +9637,18 @@ fn task_parses_flag_shapes_the_way_command_lines_write_them() {
     })
     .collect();
     insta::assert_snapshot!(outcomes.join("---\n"));
+}
+
+#[test]
+fn task_refuses_a_task_file_that_takes_a_library_module_path() {
+    let sandbox = Sandbox::new("task_library_module_paths")
+        .with_fixture_tree("libraries")
+        .with_file(
+            "tested-app/tasks/hints.knv",
+            "(deftask from-hints () (println \"ran\"))\n",
+        );
+    let task = sandbox.compiler_in("tested-app", &["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
 }
 
 #[test]

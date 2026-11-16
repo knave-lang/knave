@@ -44,7 +44,7 @@ impl SourceWalk {
         if let Some(file) = files.iter().find(|file| file.is_unnamable()) {
             return Err(file.report_unnamable());
         }
-        TreeFile::refuse_compiler_modules(&files, terminal)?;
+        TreeFile::refuse_taken_modules(&files, None, terminal)?;
         Ok(files.into_iter().map(TreeFile::into_module).collect())
     }
 

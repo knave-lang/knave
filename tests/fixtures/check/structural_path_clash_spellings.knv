@@ -1,0 +1,6 @@
+(use structural_path_clash_spellings/a show-octal)
+(use structural_path_clash_spellings/b ->p p)
+
+(defn main ()
+  (show-octal (->p 1))
+  (show-octal (->p 2)))

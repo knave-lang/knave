@@ -62,7 +62,6 @@ mod rest_of_body;
 mod result_printer;
 mod returned_arguments;
 mod rust_clauses;
-mod rust_trait_path;
 mod rust_type;
 mod saved_call_origins;
 mod saved_definitions;
@@ -268,7 +267,7 @@ struct ExpansionTables {
     macros: MacroTable,
     macro_origins: MacroOrigins,
     global_macros: Vec<(crate::core::BindingId, Form)>,
-    trait_paths: FxHashMap<crate::core::BindingId, rust_trait_path::RustTraitPath>,
+    trait_paths: FxHashMap<crate::core::BindingId, crate::rust_trait_path::RustTraitPath>,
     structural_path_claims: StructuralPathClaims,
     enum_variants: FxHashMap<crate::core::BindingId, Vec<crate::core::BindingId>>,
     variant_fields: FxHashMap<crate::core::BindingId, Vec<Rc<str>>>,

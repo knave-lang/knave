@@ -106,7 +106,7 @@ mod tests {
     use std::rc::Rc;
 
     use super::super::binding_table::tests::World;
-    use super::super::{Phase, Scope};
+    use super::super::{Phase, Scope, ScopeSet};
     use crate::core::{BindingId, Namespace};
 
     struct NamesFixture {
@@ -141,11 +141,11 @@ mod tests {
         }
 
         fn visible(&self, scopes: &[Scope], namespace: Namespace, phase: Phase) -> Vec<BindingId> {
-            let mut visible = self.world.table.visible_names().bindings(
-                &World::scope_set(scopes),
-                namespace,
-                phase,
-            );
+            let mut visible =
+                self.world
+                    .table
+                    .visible_names()
+                    .bindings(&ScopeSet::of(scopes), namespace, phase);
             visible.sort();
             visible
         }

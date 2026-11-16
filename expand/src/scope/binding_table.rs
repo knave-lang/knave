@@ -222,13 +222,7 @@ pub(super) mod tests {
         }
 
         pub(in crate::scope) fn symbol(name: &str, scopes: &[Scope]) -> Symbol {
-            Symbol::with_scopes(name, Self::scope_set(scopes))
-        }
-
-        pub(in crate::scope) fn scope_set(scopes: &[Scope]) -> ScopeSet {
-            let mut set = ScopeSet::default();
-            scopes.iter().for_each(|scope| set.add(*scope));
-            set
+            Symbol::with_scopes(name, ScopeSet::of(scopes))
         }
 
         pub(in crate::scope) fn define(

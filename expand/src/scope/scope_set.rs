@@ -29,6 +29,13 @@ pub struct ScopeSet {
 impl ScopeSet {
     pub(super) const SHORTEST_SHARED_PREFIX: usize = 64;
 
+    #[cfg(test)]
+    pub(crate) fn of(scopes: &[Scope]) -> Self {
+        let mut set = Self::default();
+        scopes.iter().for_each(|scope| set.add(*scope));
+        set
+    }
+
     pub fn add(&mut self, scope: Scope) {
         if let Err(position) = self.position(scope)
             && !self.shares(scope)
@@ -398,12 +405,6 @@ mod tests {
             chain.prefix().expect("a test chain holds scopes")
         }
 
-        fn added_one_by_one(scopes: &[Scope]) -> ScopeSet {
-            let mut set = ScopeSet::default();
-            scopes.iter().for_each(|scope| set.add(*scope));
-            set
-        }
-
         fn hash_of(set: &ScopeSet) -> u64 {
             let mut hasher = std::hash::DefaultHasher::new();
             set.hash(&mut hasher);
@@ -523,7 +524,7 @@ mod tests {
     #[test]
     fn a_shared_set_equals_and_hashes_like_its_scopes_added_one_by_one() {
         let (shared, scopes) = Scopes::new().shared_set_of(Scopes::SHARED_LENGTH);
-        let added = Scopes::added_one_by_one(&scopes);
+        let added = ScopeSet::of(&scopes);
         assert_eq!(shared, added);
         assert_eq!(Scopes::hash_of(&shared), Scopes::hash_of(&added));
         assert_eq!(shared.largest(), added.largest());
@@ -628,7 +629,7 @@ mod tests {
         let mut scopes = Scopes::new();
         let (chain, shared) = scopes.chain_of(Scopes::SHARED_LENGTH);
         let newer = scopes.allocator.fresh(ScopeKind::Local);
-        let mut set = Scopes::added_one_by_one(&[newer]);
+        let mut set = ScopeSet::of(&[newer]);
         set.add_prefix(&Scopes::prefix_of(&chain));
         let expected: Vec<Scope> = shared.into_iter().chain([newer]).collect();
         assert_eq!(set.own(), expected);

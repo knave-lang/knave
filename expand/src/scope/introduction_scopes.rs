@@ -1,4 +1,4 @@
-use super::{Scope, ScopeKind};
+use super::{Scope, ScopeKind, ScopeSet};
 use crate::reader::{Form, Symbol};
 
 pub(crate) struct IntroductionScopes<'s> {
@@ -26,6 +26,19 @@ impl<'s> IntroductionScopes<'s> {
         let head = form.as_list()?.first()?.as_symbol()?;
         head.scopes()
             .largest_matching(|scope| self.is_introduction(scope))
+    }
+
+    pub(crate) fn equal_without_introductions(
+        &self,
+        written: &ScopeSet,
+        stored: &ScopeSet,
+    ) -> bool {
+        stored.is_subset_of(written)
+            && !written.any(|scope| !self.is_introduction(scope) && !stored.contains(scope))
+    }
+
+    pub(crate) fn remove_from(&self, scopes: &mut ScopeSet) {
+        scopes.retain(|scope| !self.is_introduction(scope));
     }
 
     fn is_introduction(&self, scope: Scope) -> bool {

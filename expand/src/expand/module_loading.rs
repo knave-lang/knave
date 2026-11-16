@@ -272,7 +272,7 @@ impl Expander<'_> {
     }
 
     fn loaded(&self, id: ModuleId, path: &ModulePath, span: Span) -> Result<ModuleId, Diagnostic> {
-        if !self.modules.get(id).is_loading() {
+        if !self.modules.get(id).status().is_loading() {
             return Ok(id);
         }
         let mut cycle: Vec<String> = self

@@ -4,15 +4,10 @@ use rustc_hash::FxHashMap;
 
 use super::export_table::ExportTable;
 use super::module_scopes::ModuleScopes;
+use super::module_status::ModuleStatus;
 use crate::core::{BindingId, ModuleId, ModulePath, Namespace};
 use crate::reader::Symbol;
 use crate::scope::ScopeSet;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-enum LoadStatus {
-    Loading,
-    Loaded,
-}
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(bound(deserialize = "'de: 'static"))]
@@ -20,7 +15,7 @@ pub struct ModuleRecord {
     path: ModulePath,
     scopes: ModuleScopes,
     exports: ExportTable,
-    status: LoadStatus,
+    status: ModuleStatus,
 }
 
 impl ModuleRecord {
@@ -48,8 +43,8 @@ impl ModuleRecord {
         &self.exports
     }
 
-    pub fn is_loading(&self) -> bool {
-        self.status == LoadStatus::Loading
+    pub fn status(&self) -> &ModuleStatus {
+        &self.status
     }
 }
 
@@ -65,7 +60,7 @@ impl ModuleRegistry {
             path,
             scopes,
             exports: ExportTable::default(),
-            status: LoadStatus::Loading,
+            status: ModuleStatus::loading(),
         })
     }
 
@@ -85,13 +80,13 @@ impl ModuleRegistry {
     }
 
     pub fn finish_loading(&mut self, id: ModuleId) {
-        self.records[id.index()].status = LoadStatus::Loaded;
+        self.records[id.index()].status.finish_loading();
     }
 
     pub fn loading_paths(&self) -> Vec<&ModulePath> {
         self.records
             .iter()
-            .filter(|record| record.is_loading())
+            .filter(|record| record.status.is_loading())
             .map(ModuleRecord::path)
             .collect()
     }

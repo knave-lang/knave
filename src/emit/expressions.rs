@@ -2515,13 +2515,9 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn closure(&mut self, lambda: &TypedLambda, ty: &Type) -> Code {
-        let closure = self.closure_binding(lambda, ty, |emitter, param| {
+        self.closure_binding(lambda, ty, |emitter, param| {
             emitter.bind_parameter(param, TypePosition::Value)
-        });
-        if !lambda.facts.returned {
-            return closure;
-        }
-        Code::joined(vec![Code::atom("move "), closure], Precedence::Operator)
+        })
     }
 
     fn closure_binding(
@@ -2554,12 +2550,13 @@ impl<'a> ExpressionEmitter<'a> {
         let body = self.closure_body(lambda, annotated);
         self.locals.leave();
         self.tail_loop = previous;
+        let capture = if lambda.facts.returned { "move " } else { "" };
         let head = match (annotated, ty) {
             (true, Type::Function(_, _, result)) => {
                 let result = self.types().show(result, TypePosition::Value);
-                Code::atom(format!("|{}| -> {result} ", params.join(", ")))
+                Code::atom(format!("{capture}|{}| -> {result} ", params.join(", ")))
             }
-            _ => Code::atom(format!("|{}| ", params.join(", "))),
+            _ => Code::atom(format!("{capture}|{}| ", params.join(", "))),
         };
         Code::joined(vec![head, body], Precedence::Operator)
     }

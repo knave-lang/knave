@@ -13,6 +13,12 @@
         add (fn (y) (+ value y)))
     add))
 
+(defn bound-picker (limit)
+  (let (most limit
+        pick (fn ((name (ref str)))
+               (if (> (len name) most) "long" name)))
+    pick))
+
 (defn picked-adder (x flag)
   (let (value x)
     (if flag
@@ -24,4 +30,5 @@
   (println ((let-adder 2) 3))
   (println ((called-adder 2) 3))
   (println ((bound-adder 2) 3))
+  (println ((bound-picker 3) "ab"))
   (println ((picked-adder 2 true) 3)))

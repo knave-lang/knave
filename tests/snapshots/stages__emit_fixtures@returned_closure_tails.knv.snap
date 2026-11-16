@@ -24,6 +24,12 @@ fn bound_adder(x: i64) -> impl Fn(i64) -> i64 {
     add
 }
 
+fn bound_picker(limit: usize) -> impl Fn(&str) -> &str {
+    let most: usize = limit;
+    let pick = move |name: &'static str| if name.len() > most { "long" } else { name };
+    pick
+}
+
 fn picked_adder(x: i64, flag: bool) -> impl Fn(i64) -> i64 {
     let value: i64 = x;
     if flag {
@@ -39,6 +45,7 @@ fn main() {
     println!("{}", let_adder(2)(3));
     println!("{}", called_adder(2)(3));
     println!("{}", bound_adder(2)(3));
+    println!("{}", bound_picker(3)("ab"));
     println!("{}", picked_adder(2, true)(3))
 }
 

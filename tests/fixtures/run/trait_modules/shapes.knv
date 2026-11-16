@@ -1,5 +1,6 @@
 (trait shape
   (area (fn ((ref self)) f64))
+
   (scale! (fn ((mut self) f64) unit)))
 
 (export shape)

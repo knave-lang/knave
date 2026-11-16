@@ -6,8 +6,9 @@
   :size u16)
 
 (trait showroom
-  (longer-make (fn ((ref str) (ref str) (ref self))
-                 (ref str))))
+  (longer-make
+    (fn ((ref str) (ref str) (ref self))
+      (ref str))))
 
 (impl showroom depot
   (longer-make (first second lot)

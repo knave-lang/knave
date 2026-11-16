@@ -7,7 +7,8 @@
 
 (deftrait generic-method-with-clause
   (rust "Copy")
-  (area (where (a) (fn ((ref self) a) f64))))
+  (area
+    (where (a) (fn ((ref self) a) f64))))
 
 (deftrait clause-after-implementor
   i8

@@ -4,10 +4,17 @@
 (trait shape
   (type part)
   (area (fn ((ref self)) i64))
-  (same-area (fn ((ref self) (ref self)) bool))
-  (holds (fn ((ref self) (ref part)) bool))
+
+  (same-area
+    (fn ((ref self) (ref self)) bool))
+
+  (holds
+    (fn ((ref self) (ref part)) bool))
+
   (fits (fn (i64 (ref self)) bool))
-  (exceeds (fn ((ref i64) (ref self)) bool)))
+
+  (exceeds
+    (fn ((ref i64) (ref self)) bool)))
 
 (impl shape circle
   (type part i64)

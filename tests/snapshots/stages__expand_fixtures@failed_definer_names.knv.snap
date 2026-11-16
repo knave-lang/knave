@@ -31,18 +31,18 @@ error[L0341]: a `rust` clause on `deftrait` holds one string
    = note: run `knave doc L0341` for an explanation
 
 error[L0342]: a `deftrait` method is a name and a type, as `(area (fn ((ref self)) float))`
-  --> expand/failed_definer_names.knv:32:3
+  --> expand/failed_definer_names.knv:33:3
    |
-32 |   3)
+33 |   3)
    |   ^ here
    |
    = help: to name a Rust trait, write `(rust "Path")` after the name
    = note: run `knave doc L0342` for an explanation
 
 error[L0345]: `deftype` names a Rust type
-  --> expand/failed_definer_names.knv:34:17
+  --> expand/failed_definer_names.knv:35:17
    |
-34 | (deftype meters f64)
+35 | (deftype meters f64)
    |                 ^^^ here
    |
    = help: write `(deftype name (rust "Path"))`

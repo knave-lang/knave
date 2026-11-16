@@ -2,10 +2,15 @@
 
 (trait sample
   (by-value (fn (self) i64))
+
   (by-ref (fn ((ref self)) i64))
+
   (bump! (fn ((mut self) i64) unit))
+
   (free (fn (i64) i64))
+
   (borrowed (fn ((ref i64)) i64))
+
   (other (fn (point) i64)))
 
 (impl sample point

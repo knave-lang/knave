@@ -28,7 +28,8 @@
 
 (deftrait with-output
   (type output)
-  (produce (fn ((ref self)) (output self)))
+  (produce
+    (fn ((ref self)) (output self)))
   3)
 
 (deftype meters f64)

@@ -2,7 +2,8 @@
   :offset i64)
 
 (trait mileage
-  (reset! (fn ((ref self) (mut (vec i64))) unit)))
+  (reset!
+    (fn ((ref self) (mut (vec i64))) unit)))
 
 (impl mileage odometer
   (reset! (o readings)

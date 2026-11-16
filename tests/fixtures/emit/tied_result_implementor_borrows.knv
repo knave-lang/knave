@@ -14,11 +14,18 @@
 
 (trait garage
   (echo (fn (self (ref str)) (ref str)))
+
   (tag (fn ((ref str) self) (ref str)))
-  (maybe (fn (self (ref str)) (option (ref str))))
+
+  (maybe
+    (fn (self (ref str)) (option (ref str))))
+
   (brand (fn (self (ref str)) (ref str)))
+
   (stamp (fn (i64 self) (ref str)))
+
   (swap (fn (self car) self))
+
   (trade (fn (self car) self)))
 
 (impl garage car

@@ -32,9 +32,15 @@
 
 (trait dealer
   (greet (fn (self (ref str)) (ref str)))
-  (call-out (fn (self (ref str)) (ref str)))
+
+  (call-out
+    (fn (self (ref str)) (ref str)))
+
   (shout (fn (self (ref str)) (ref str)))
-  (offer (fn (self (ref str)) (option (ref str))))
+
+  (offer
+    (fn (self (ref str)) (option (ref str))))
+
   (wave (fn (self (ref str)) (ref str))))
 
 (impl dealer car

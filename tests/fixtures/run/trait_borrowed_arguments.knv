@@ -10,11 +10,17 @@
   :year i64)
 
 (trait garage
-  (label (fn ((ref self) (ref str))
-           (pair self (ref str))))
-  (newer-model (fn ((ref self) self) (ref str)))
+  (label
+    (fn ((ref self) (ref str))
+      (pair self (ref str))))
+
+  (newer-model
+    (fn ((ref self) self) (ref str)))
+
   (echo (fn (self (ref str)) (ref str)))
+
   (badge (fn (i64 self) (ref str)))
+
   (newest (fn (self (ref self)) self)))
 
 (impl garage car
@@ -55,8 +61,11 @@
       (deref other))))
 
 (trait lot
-  (pick (fn ((ref self) (ref self)) (ref self)))
-  (stamp! (fn ((mut self) (ref str)) (ref str))))
+  (pick
+    (fn ((ref self) (ref self)) (ref self)))
+
+  (stamp!
+    (fn ((mut self) (ref str)) (ref str))))
 
 (impl lot van
   (pick (v other)

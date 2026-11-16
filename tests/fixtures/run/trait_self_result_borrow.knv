@@ -5,9 +5,13 @@
 (trait garage
   (type part)
   (twin (fn (self) self))
+
   (fleet (fn (self) (vec self)))
+
   (rename (fn (self (ref str)) self))
+
   (newer (fn (self self) self))
+
   (swap (fn (self part) self)))
 
 (impl garage car

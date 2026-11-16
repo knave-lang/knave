@@ -2,10 +2,13 @@
   :size usize)
 
 (trait counter
-  (tally (fn ((ref self) (iterator (ref str)))
-           usize))
-  (total (fn ((iterator (ref str)) (ref self))
-           usize)))
+  (tally
+    (fn ((ref self) (iterator (ref str)))
+      usize))
+
+  (total
+    (fn ((iterator (ref str)) (ref self))
+      usize)))
 
 (impl counter depot
   (tally (lot names)

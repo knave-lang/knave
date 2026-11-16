@@ -6,6 +6,7 @@
 
 (trait shape
   (area (fn ((ref self)) f64))
+
   (scale! (fn ((mut self) f64) unit)))
 
 (impl shape circle
@@ -50,7 +51,8 @@
   (itself (t) (clone t)))
 
 (trait swapped
-  (swap! (fn ((mut self) (mut self)) unit)))
+  (swap!
+    (fn ((mut self) (mut self)) unit)))
 
 (impl swapped tag
   (swap! (a b) (do (local _b b))))

@@ -5,9 +5,10 @@
   :years (vec i64))
 
 (trait survey
-  (tally (fn ((ref self)
-              (fn ((iterator (ref i64))) usize))
-           usize)))
+  (tally
+    (fn ((ref self)
+         (fn ((iterator (ref i64))) usize))
+      usize)))
 
 (impl survey depot
   (tally (lot counter)
@@ -18,8 +19,9 @@
     (counter (iter (:years lot)))))
 
 (trait census
-  (counter (fn ((ref self))
-             (fn ((iterator (ref i64))) usize))))
+  (counter
+    (fn ((ref self))
+      (fn ((iterator (ref i64))) usize))))
 
 (defn main ()
   (local lot (->depot (vec 2019 2021 2024)))

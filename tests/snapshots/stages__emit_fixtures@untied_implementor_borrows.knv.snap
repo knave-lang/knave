@@ -4,9 +4,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/emit/untied_implementor_borrows.knv
 ---
 error[L0605]: `newer` returns a `car`, which cannot hold the borrow in `other`
-  --> emit/untied_implementor_borrows.knv:12:13
+  --> emit/untied_implementor_borrows.knv:15:13
    |
-12 |   (newer (c other)
+15 |   (newer (c other)
    |             ^^^^^ this borrow reaches the result
    |
    = note: a trait signature cannot name the lifetime that `car` holds
@@ -14,9 +14,9 @@ error[L0605]: `newer` returns a `car`, which cannot hold the borrow in `other`
    = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `relabel` returns a `car`, which cannot hold the borrow in `label`
-  --> emit/untied_implementor_borrows.knv:15:13
+  --> emit/untied_implementor_borrows.knv:18:13
    |
-15 |   (relabel (label c)
+18 |   (relabel (label c)
    |             ^^^^^ this borrow reaches the result
    |
    = note: a trait signature cannot name the lifetime that `car` holds
@@ -24,9 +24,9 @@ error[L0605]: `relabel` returns a `car`, which cannot hold the borrow in `label`
    = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `badge` returns a borrow that cannot come from `c`
-  --> emit/untied_implementor_borrows.knv:18:16
+  --> emit/untied_implementor_borrows.knv:21:16
    |
-18 |   (badge (year c)
+21 |   (badge (year c)
    |                ^ the result borrows from this value
    |
    = note: no parameter of the trait's signature holds a borrow, so the result takes the `'static` lifetime
@@ -34,9 +34,9 @@ error[L0605]: `badge` returns a borrow that cannot come from `c`
    = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `model-of` returns a borrow that cannot come from `c`
-  --> emit/untied_implementor_borrows.knv:21:14
+  --> emit/untied_implementor_borrows.knv:24:14
    |
-21 |   (model-of (c) (:model c)))
+24 |   (model-of (c) (:model c)))
    |              ^ the result borrows from this value
    |
    = note: no parameter of the trait's signature holds a borrow, so the result takes the `'static` lifetime

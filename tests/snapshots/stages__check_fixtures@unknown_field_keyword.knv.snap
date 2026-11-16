@@ -13,3 +13,4 @@ help: a field with a similar name exists
   |
 9 |   (println (:year leaf)))
   |                +
+  = note: run `knave doc L0408` for an explanation

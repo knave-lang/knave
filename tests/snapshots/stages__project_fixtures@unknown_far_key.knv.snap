@@ -8,3 +8,5 @@ error[L0704]: unknown key `:qqqqqq`
   |
 1 | (defproject b :qqqqqq "x")
   |               ^^^^^^^ not a key of this form
+  |
+  = note: run `knave doc L0704` for an explanation

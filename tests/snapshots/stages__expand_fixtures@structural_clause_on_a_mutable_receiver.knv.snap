@@ -14,3 +14,4 @@ error[L0248]: a `structural` clause needs one method that takes `(ref self)`
    | |_______________________^ this clause fills the body of one method
    |
    = help: declare one `(method name (fn ((ref self) ...) result))` in this `rust-trait`
+   = note: run `knave doc L0248` for an explanation

@@ -19,3 +19,4 @@ warning[L0249]: set aside `bar` after `<input 5>`
   |
   = note: error[L0203]: `bar` is defined more than once
   = help: enter `bar` again to use it
+  = note: run `knave doc L0249` for an explanation

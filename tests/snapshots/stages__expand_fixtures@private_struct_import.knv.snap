@@ -10,3 +10,4 @@ error[L0205]: module `garage/cars` does not export `car`
   |                  ^^^ not exported
   |
   = help: add `car` to the `export` list of `garage/cars`
+  = note: run `knave doc L0205` for an explanation

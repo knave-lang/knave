@@ -10,6 +10,7 @@ error[L0338]: `shape/labeled` takes a label on every argument or on none
   |                                                      ^^^ this argument has no label
   |
   = help: a keyword argument is always a label: write `:text value :size value`
+  = note: run `knave doc L0338` for an explanation
 
 error[L0338]: `shape/labeled` takes a label on every argument or on none
  --> expand/variant_partly_labeled.knv:9:43
@@ -18,6 +19,7 @@ error[L0338]: `shape/labeled` takes a label on every argument or on none
   |                                           ^^^^ this argument has no label
   |
   = help: a keyword argument is always a label: write `:text value :size value`
+  = note: run `knave doc L0338` for an explanation
 
 error[L0338]: `shape/labeled` takes a label on every argument or on none
   --> expand/variant_partly_labeled.knv:12:29
@@ -26,6 +28,7 @@ error[L0338]: `shape/labeled` takes a label on every argument or on none
    |                             ^^^^^ this label has no value
    |
    = help: a keyword argument is always a label: write `:text value :size value`
+   = note: run `knave doc L0338` for an explanation
 
 error[L0338]: `action/named` takes a label on every argument or on none
   --> expand/variant_partly_labeled.knv:14:45
@@ -34,3 +37,4 @@ error[L0338]: `action/named` takes a label on every argument or on none
    |                                             ^^^^^ this label has no value
    |
    = help: a keyword argument is always a label: write `:reader value`
+   = note: run `knave doc L0338` for an explanation

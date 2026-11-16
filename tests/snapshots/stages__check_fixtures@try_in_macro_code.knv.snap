@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/try_in_macro_code.knv
 ---
 error[L0316]: `try` forms only exist at runtime
@@ -8,3 +8,5 @@ error[L0316]: `try` forms only exist at runtime
   |
 1 | (defmacro passes-through (form) (try form))
   |                                 ^^^^^^^^^^ used at compile time here
+  |
+  = note: run `knave doc L0316` for an explanation

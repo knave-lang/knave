@@ -11,6 +11,8 @@ error[L0303]: `keyword-field` expects a keyword as argument 1, found a symbol
 ...
 13 | (field-of-symbol)
    | ----------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0303]: `keyword-field` expects a keyword as argument 1, found a symbol
   --> expand/keyword_field_errors.knv:8:17
@@ -20,6 +22,8 @@ error[L0303]: `keyword-field` expects a keyword as argument 1, found a symbol
 ...
 15 | (field-of-colon)
    | ---------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0303]: `keyword-field` expects a keyword as argument 1, found a string
   --> expand/keyword_field_errors.knv:11:17
@@ -29,3 +33,5 @@ error[L0303]: `keyword-field` expects a keyword as argument 1, found a string
 ...
 17 | (field-of-string)
    | ----------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation

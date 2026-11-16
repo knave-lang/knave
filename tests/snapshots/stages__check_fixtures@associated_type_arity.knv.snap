@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/associated_type_arity.knv
 ---
 error[L0415]: `vec` takes 1 type argument but 0 were given
@@ -8,3 +8,5 @@ error[L0415]: `vec` takes 1 type argument but 0 were given
   |
 6 |   (type item (vec))
   |              ^^^^^ expected 1 type argument
+  |
+  = note: run `knave doc L0415` for an explanation

@@ -11,6 +11,8 @@ warning[L0803]: unreachable `match` arm
 6 |     (point 0.0)
 7 |     ((circle _) 1.0)))
   |      ^^^^^^^^^^ this arm can never match
+  |
+  = note: run `knave doc L0803` for an explanation
 
 (derive shape clone copy partial-eq show)
 (type area (fn (shape) f64))

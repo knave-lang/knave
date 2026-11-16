@@ -11,3 +11,4 @@ error[L0507]: mismatched function type
   |
   = note: no adjustment makes parameter 1 match
   = help: change the parameter's ownership in a `type` signature, or pass a function that matches
+  = note: run `knave doc L0507` for an explanation

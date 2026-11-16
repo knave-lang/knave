@@ -13,3 +13,4 @@ help: write the type with `the`, and replace each `_` with a type
   |
 2 |   (let-try (x (parse "1")) (the (result _ (parse-error _)) (ok x))))
   |                            +++++++++++++++++++++++++++++++       +
+  = note: run `knave doc L0407` for an explanation

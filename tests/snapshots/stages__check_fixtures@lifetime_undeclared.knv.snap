@@ -10,3 +10,4 @@ error[L0201]: cannot find lifetime `'missing` in this scope
   |             ^^^^^^^^ not found in this scope
   |
   = help: declare the lifetime in the enclosing `where` or type head
+  = note: run `knave doc L0201` for an explanation

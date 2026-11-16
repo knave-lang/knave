@@ -16,3 +16,4 @@ help: clone the value if both places need it
 13 -   (local bigger (assoc (:badge garage) :size 14))
 13 +   (local bigger (assoc (clone (:badge garage)) :size 14))
    |
+   = note: run `knave doc L0501` for an explanation

@@ -28,3 +28,4 @@ warning[L0109]: this docstring code does not read, so `fmt` leaves it as written
   |   ^^ the code from this line on does not read as forms
   |
   = help: indent the result's later lines deeper than the code, so they continue the result
+  = note: run `knave doc L0109` for an explanation

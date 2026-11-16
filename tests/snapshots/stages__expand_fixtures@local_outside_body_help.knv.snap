@@ -10,6 +10,7 @@ error[L0227]: `local` can only appear directly in a body
   |            ^^^^^^^^^^^^^^^^^^^^^ not allowed here
   |
   = help: wrap the code that uses it in `(let (total (+ 1 2)) ...)`
+  = note: run `knave doc L0227` for an explanation
 
 error[L0227]: `local` can only appear directly in a body
  --> expand/local_outside_body_help.knv:5:12
@@ -18,3 +19,4 @@ error[L0227]: `local` can only appear directly in a body
   |            ^^^^^^^^^^^^^ not allowed here
   |
   = help: wrap the code that uses it in `(let (name value) ...)`
+  = note: run `knave doc L0227` for an explanation

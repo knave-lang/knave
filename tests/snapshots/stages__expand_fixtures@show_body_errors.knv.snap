@@ -10,6 +10,7 @@ error[L0301]: a `show` body is one construction form or a symbol
   |                 ^^ here
   |
   = help: write the call that builds the value, as in `(->money :cents 1200)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a `show` body is one construction form or a symbol
  --> expand/show_body_errors.knv:9:15
@@ -18,6 +19,7 @@ error[L0301]: a `show` body is one construction form or a symbol
   |               ^^^^^^^^^^^^^ here
   |
   = help: write the call that builds the value, as in `(->money :cents 1200)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a `show` body is one construction form or a symbol
   --> expand/show_body_errors.knv:16:17
@@ -26,3 +28,4 @@ error[L0301]: a `show` body is one construction form or a symbol
    |                 ^^ here
    |
    = help: write the call that builds the value, as in `(->money :cents 1200)`
+   = note: run `knave doc L0301` for an explanation

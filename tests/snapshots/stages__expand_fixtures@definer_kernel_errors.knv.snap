@@ -10,6 +10,7 @@ error[L0222]: a `deftype` template cannot name `item`
   |                                    ^^^^^^^^^^^^^^ `deftype` templates name their parameters by number
   |
   = help: write the placeholder as `{0}`
+  = note: run `knave doc L0222` for an explanation
 
 error[L0222]: a `deftype` template cannot name `!item`
  --> expand/definer_kernel_errors.knv:5:39
@@ -18,6 +19,7 @@ error[L0222]: a `deftype` template cannot name `!item`
   |                                       ^^^^^^^^^^^^^^^ `deftype` templates name their parameters by number
   |
   = help: write the placeholder as `{0}`
+  = note: run `knave doc L0222` for an explanation
 
 error[L0223]: a `deftype` with clauses takes one type parameter
  --> expand/definer_kernel_errors.knv:7:10
@@ -26,6 +28,7 @@ error[L0223]: a `deftype` with clauses takes one type parameter
   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ this type has 2 type parameters
   |
   = help: give the type one parameter, as in `(deftype (two-parameter item) ...)`
+  = note: run `knave doc L0223` for an explanation
 
 error[L0225]: `{0}` names no type parameter
   --> expand/definer_kernel_errors.knv:11:29
@@ -34,6 +37,7 @@ error[L0225]: `{0}` names no type parameter
    |                             ^^^^^^^^^^^^^^^^^^ this type has 0 type parameters
    |
    = help: declare the type parameters on the name, as in `(deftype (no-parameter a b) (rust "Holder<{0}, {1}>"))`
+   = note: run `knave doc L0225` for an explanation
 
 error[L0223]: a `deftype` with clauses takes one type parameter
   --> expand/definer_kernel_errors.knv:13:10
@@ -42,6 +46,7 @@ error[L0223]: a `deftype` with clauses takes one type parameter
    |          ^^^^^^^^^^ this type has 0 type parameters
    |
    = help: give the type one parameter, as in `(deftype (bad-clause item) ...)`
+   = note: run `knave doc L0223` for an explanation
 
 error[L0248]: a `structural` clause needs one method that takes `(ref self)`
   --> expand/definer_kernel_errors.knv:19:3
@@ -54,6 +59,7 @@ error[L0248]: a `structural` clause needs one method that takes `(ref self)`
    | |_______________________^ this clause fills the body of one method
    |
    = help: declare one `(method name (fn ((ref self) ...) result))` in this `deftrait`
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `cloned-trait` binds `Clone`, which `derive` already writes
   --> expand/definer_kernel_errors.knv:28:3
@@ -66,6 +72,7 @@ error[L0248]: `cloned-trait` binds `Clone`, which `derive` already writes
    | |_______________________^ every struct would get both the derive and this impl
    |
    = help: keep the clause off this `deftrait`, or bind a trait that `derive` does not write
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: this `deftrait` has a second `structural` clause
   --> expand/definer_kernel_errors.knv:42:3
@@ -84,6 +91,7 @@ error[L0248]: this `deftrait` has a second `structural` clause
    | |_______________________^ second clause
    |
    = help: merge the two clauses into one
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `number-again` binds `crate::rt::Number`, which `number` already binds
   --> expand/definer_kernel_errors.knv:52:3
@@ -96,6 +104,7 @@ error[L0248]: `number-again` binds `crate::rt::Number`, which `number` already b
    | |_______________________^ the two traits would infer two impls of one Rust trait
    |
    = help: keep the clause off this `deftrait`, or give it a Rust path that no other trait binds
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `second-octal` binds `std::fmt::Octal`, which `first-octal` already binds
   --> expand/definer_kernel_errors.knv:72:3
@@ -108,6 +117,7 @@ error[L0248]: `second-octal` binds `std::fmt::Octal`, which `first-octal` alread
    | |_______________________^ the two traits would infer two impls of one Rust trait
    |
    = help: keep the clause off this `deftrait`, or give it a Rust path that no other trait binds
+   = note: run `knave doc L0248` for an explanation
 
 error[L0225]: `{1}` names no type parameter
   --> expand/definer_kernel_errors.knv:79:9
@@ -116,6 +126,7 @@ error[L0225]: `{1}` names no type parameter
    |         ^^^^^^^^^^^^^ this type has 1 type parameter
    |
    = help: declare the type parameters on the name, as in `(defenum (holder a b) ...)`
+   = note: run `knave doc L0225` for an explanation
 
 error[L0225]: `{0}` names no type parameter
   --> expand/definer_kernel_errors.knv:83:9
@@ -124,6 +135,7 @@ error[L0225]: `{0}` names no type parameter
    |         ^^^^^^^^^^^^^ this type has 0 type parameters
    |
    = help: declare the type parameters on the name, as in `(defenum (missing-parameter a) ...)`
+   = note: run `knave doc L0225` for an explanation
 
 error[L0210]: malformed `deftype`
   --> expand/definer_kernel_errors.knv:86:1
@@ -134,6 +146,7 @@ error[L0210]: malformed `deftype`
    | |_______^ this does not fit the shape of `deftype`
    |
    = help: write it as `(deftype (name parameter ...) (rust "template") (type "template") ...)`
+   = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `deftrait`
   --> expand/definer_kernel_errors.knv:92:9
@@ -142,6 +155,7 @@ error[L0210]: malformed `deftrait`
    |         ^ this does not fit the shape of `deftrait`
    |
    = help: write it as `(deftrait name (rust "Path") (requires trait ...)? (method name type)? (help "text")? type ...)`
+   = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `deftrait`
   --> expand/definer_kernel_errors.knv:96:3
@@ -150,6 +164,7 @@ error[L0210]: malformed `deftrait`
    |   ^^^^^^^^ this does not fit the shape of `deftrait`
    |
    = help: write it as `(deftrait name (rust "Path") (requires trait ...)? (method name type)? (help "text")? type ...)`
+   = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `deftrait`
    --> expand/definer_kernel_errors.knv:100:15
@@ -158,6 +173,7 @@ error[L0210]: malformed `deftrait`
     |               ^^^^^^ this does not fit the shape of `deftrait`
     |
     = help: write it as `(deftrait name (rust "Path") (requires trait ...)? (method name type)? (help "text")? type ...)`
+    = note: run `knave doc L0210` for an explanation
 
 error[L0341]: a `rust` clause on `defenum` holds one string, then an optional `bare`
    --> expand/definer_kernel_errors.knv:103:3
@@ -166,18 +182,23 @@ error[L0341]: a `rust` clause on `defenum` holds one string, then an optional `b
     |   ^^^^^^^^^^^^^^^^^ here
     |
     = help: write it as `(rust "Path")` or `(rust "Path" bare)`
+    = note: run `knave doc L0341` for an explanation
 
 error[L0212]: expected a trait, found `3`
    --> expand/definer_kernel_errors.knv:106:33
     |
 106 | (deftrait (malformed-supertrait 3)
     |                                 ^ not a trait
+    |
+    = note: run `knave doc L0212` for an explanation
 
 error[L0212]: expected a name, found `3`
    --> expand/definer_kernel_errors.knv:109:32
     |
 109 | (defenum (malformed-parameters 3) hold)
     |                                ^ not a name
+    |
+    = note: run `knave doc L0212` for an explanation
 
 error[L0210]: malformed `my-type`
    --> expand/definer_kernel_errors.knv:114:1
@@ -186,3 +207,4 @@ error[L0210]: malformed `my-type`
     | ^^^^^^^^^^^^^^^^ this does not fit the shape of `my-type`
     |
     = help: write it as `(rust-type (name parameter ...) "template" (type "template") ...)`
+    = note: run `knave doc L0210` for an explanation

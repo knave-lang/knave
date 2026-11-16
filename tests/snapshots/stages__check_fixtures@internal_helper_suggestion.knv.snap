@@ -13,6 +13,7 @@ help: a name with a similar spelling exists
   |
 6 |   (println (make-thing 1)))
   |                    +
+  = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `internal-helpr` in this scope
  --> check/internal_helper_suggestion/helpers.knv:6:14
@@ -26,3 +27,4 @@ error[L0201]: cannot find `internal-helpr` in this scope
   |                        -------------- in this macro call
   |
   = note: in this expansion of `make-thing`
+  = note: run `knave doc L0201` for an explanation

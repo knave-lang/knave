@@ -9,3 +9,4 @@ error[L0359]: `deftask` defines a task only in a file under `tasks/`
   |          ^^^^^^ outside `tasks/`
   |
   = help: move this task into a file under `tasks/`
+  = note: run `knave doc L0359` for an explanation

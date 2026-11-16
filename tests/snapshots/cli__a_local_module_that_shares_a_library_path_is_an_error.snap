@@ -10,6 +10,7 @@ error[L0253]: `src/keymap.knv` and library `keymap` share the module path `keyma
   |
   = note: library `hints` lists `keymap`, whose modules take the path `keymap`
   = help: rename `src/keymap.knv`
+  = note: run `knave doc L0253` for an explanation
 
 error[L0201]: cannot find `key` in this scope
  --> src/main.knv:4:31
@@ -21,3 +22,4 @@ help: a name with a similar spelling exists
   |
 4 | (defn main () (println (shout keys)))
   |                                  +
+  = note: run `knave doc L0201` for an explanation

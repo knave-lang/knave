@@ -11,12 +11,15 @@ error[L0205]: module `prelude/macros` does not export `documented-terms-key`
   |
   = note: `documented-terms-key` is internal to the prelude
   = help: let a prelude definer build and document the definition, as in `(def name "text" value)` or `(defn name (parameter) body)`
+  = note: run `knave doc L0205` for an explanation
 
 error[L0205]: module `prelude/macros` does not export `listing-part`
  --> expand/use_documentation_helpers_from_macros.knv:1:42
   |
 1 | (use prelude/macros documented-terms-key listing-part
   |                                          ^^^^^^^^^^^^ not exported
+  |
+  = note: run `knave doc L0205` for an explanation
 
 error[L0205]: module `prelude/macros` does not export `module-docstring-notes`
  --> expand/use_documentation_helpers_from_macros.knv:2:21
@@ -26,6 +29,7 @@ error[L0205]: module `prelude/macros` does not export `module-docstring-notes`
   |
   = note: `module-docstring-notes` is internal to the prelude
   = help: let a prelude definer build and document the definition, as in `(def name "text" value)` or `(defn name (parameter) body)`
+  = note: run `knave doc L0205` for an explanation
 
 error[L0205]: module `prelude/macros` does not export `noted-term`
  --> expand/use_documentation_helpers_from_macros.knv:2:44
@@ -35,3 +39,4 @@ error[L0205]: module `prelude/macros` does not export `noted-term`
   |
   = note: `noted-term` is internal to the prelude
   = help: let a prelude definer build and document the definition, as in `(def name "text" value)` or `(defn name (parameter) body)`
+  = note: run `knave doc L0205` for an explanation

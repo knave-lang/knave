@@ -10,6 +10,7 @@ error[L0336]: `let` takes a list of bindings
   |                  ^^^^^ this has no list of bindings
   |
   = help: write it as `(let (name value) body ...)`
+  = note: run `knave doc L0336` for an explanation
 
 error[L0336]: `let` takes a list of bindings
  --> expand/let_binding_list_errors.knv:3:25
@@ -18,6 +19,7 @@ error[L0336]: `let` takes a list of bindings
   |                         ^ not a list of bindings
   |
   = help: write it as `(let (name value) body ...)`
+  = note: run `knave doc L0336` for an explanation
 
 error[L0336]: `let` takes a list of bindings
  --> expand/let_binding_list_errors.knv:5:20
@@ -26,6 +28,7 @@ error[L0336]: `let` takes a list of bindings
   |                    ^ not a list of bindings
   |
   = help: to bind `x` for the rest of the body, write `(local x 5)`; to define it for the module, write `(def x 5)`
+  = note: run `knave doc L0336` for an explanation
 
 error[L0336]: `let` takes a list of bindings
  --> expand/let_binding_list_errors.knv:8:8
@@ -34,6 +37,7 @@ error[L0336]: `let` takes a list of bindings
   |        ^ not a list of bindings
   |
   = help: write the bindings in a list, as `(let (x 5) (* x 2))`
+  = note: run `knave doc L0336` for an explanation
 
 error[L0336]: `let` takes a list of bindings
   --> expand/let_binding_list_errors.knv:10:26
@@ -42,6 +46,7 @@ error[L0336]: `let` takes a list of bindings
    |                          ^^^ not a list of bindings
    |
    = help: write it as `(let (name value) body ...)`
+   = note: run `knave doc L0336` for an explanation
 
 error[L0336]: `let` takes a list of bindings
   --> expand/let_binding_list_errors.knv:12:29
@@ -50,6 +55,7 @@ error[L0336]: `let` takes a list of bindings
    |                             ^^ not a list of bindings
    |
    = help: write it as `(let (name value) body ...)`
+   = note: run `knave doc L0336` for an explanation
 
 error[L0336]: each name and its value go straight into the binding list of `let`, without their own parentheses
   --> expand/let_binding_list_errors.knv:15:9
@@ -58,6 +64,7 @@ error[L0336]: each name and its value go straight into the binding list of `let`
    |         ^^^^^^^^ a name and its value in their own parentheses
    |
    = help: write it as `(let (step 0 total 1) ...)`
+   = note: run `knave doc L0336` for an explanation
 
 error[L0336]: each name and its value go straight into the binding list of `let`, without their own parentheses
   --> expand/let_binding_list_errors.knv:18:9
@@ -66,6 +73,7 @@ error[L0336]: each name and its value go straight into the binding list of `let`
    |         ^^^^^^^^ a name and its value in their own parentheses
    |
    = help: write it as `(let (step 0 label "a") ...)`
+   = note: run `knave doc L0336` for an explanation
 
 error[L0336]: each name and its value go straight into the binding list of `let`, without their own parentheses
   --> expand/let_binding_list_errors.knv:21:9
@@ -74,6 +82,7 @@ error[L0336]: each name and its value go straight into the binding list of `let`
    |         ^^^^^^^^^^^ a name and its value in their own parentheses
    |
    = help: write it as `(let (label "a" count 1) ...)`
+   = note: run `knave doc L0336` for an explanation
 
 error[L0336]: each name and its value go straight into the binding list of `let`, without their own parentheses
   --> expand/let_binding_list_errors.knv:24:9
@@ -82,3 +91,4 @@ error[L0336]: each name and its value go straight into the binding list of `let`
    |         ^^^^^^^^^^^^ a name and its value in their own parentheses
    |
    = help: write it as `(let (done false found true) ...)`
+   = note: run `knave doc L0336` for an explanation

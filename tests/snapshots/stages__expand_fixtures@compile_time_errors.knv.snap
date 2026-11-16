@@ -11,6 +11,8 @@ error[L0303]: `first` expects a list as argument 1, found an integer
 ...
 21 | (first-of-number)
    | ----------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0314]: `nth` was given an index outside the list
   --> expand/compile_time_errors.knv:7:17
@@ -20,6 +22,8 @@ error[L0314]: `nth` was given an index outside the list
 ...
 23 | (past-the-end)
    | -------------- in this macro call
+   |
+   = note: run `knave doc L0314` for an explanation
 
 error[L0313]: the test of `if` must be a boolean, found an integer
   --> expand/compile_time_errors.knv:10:21
@@ -29,6 +33,8 @@ error[L0313]: the test of `if` must be a boolean, found an integer
 ...
 25 | (number-test)
    | ------------- in this macro call
+   |
+   = note: run `knave doc L0313` for an explanation
 
 error[L0312]: a string cannot be called
   --> expand/compile_time_errors.knv:13:17
@@ -38,12 +44,16 @@ error[L0312]: a string cannot be called
 ...
 27 | (call-a-string)
    | --------------- in this macro call
+   |
+   = note: run `knave doc L0312` for an explanation
 
 error[L0316]: structs only exist at runtime
   --> expand/compile_time_errors.knv:16:17
    |
 16 |   (macro (form) (field form name)))
    |                 ^^^^^^^^^^^^^^^^^ used at compile time here
+   |
+   = note: run `knave doc L0316` for an explanation
 
 error[L0311]: `first` takes 1 argument but 2 were given
   --> expand/compile_time_errors.knv:19:17
@@ -53,3 +63,5 @@ error[L0311]: `first` takes 1 argument but 2 were given
 ...
 31 | (too-many-arguments)
    | -------------------- in this macro call
+   |
+   = note: run `knave doc L0311` for an explanation

@@ -8,3 +8,5 @@ error[L0415]: `vec` takes 1 type argument but 0 were given
   |
 5 |     ((vec) "count({0})")))
   |      ^^^^^ expected 1 type argument
+  |
+  = note: run `knave doc L0415` for an explanation

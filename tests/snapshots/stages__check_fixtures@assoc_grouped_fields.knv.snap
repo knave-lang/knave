@@ -8,6 +8,8 @@ error[L0201]: cannot find `year` in this scope
    |
 13 |   (assoc leaf (year 2025) (make "Kia")))
    |                ^^^^ not found in this scope
+   |
+   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `make` in this scope
   --> check/assoc_grouped_fields.knv:13:28
@@ -20,3 +22,4 @@ help: a name with a similar spelling exists
 13 -   (assoc leaf (year 2025) (make "Kia")))
 13 +   (assoc leaf (year 2025) (take "Kia")))
    |
+   = note: run `knave doc L0201` for an explanation

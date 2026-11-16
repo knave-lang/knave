@@ -10,6 +10,7 @@ error[L0301]: a `document` header must name a term
   |           ^^^^^ not a name
   |
   = help: start the header with the term's name, as in `(document (name part ...) text)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a `document` header must name a term
  --> expand/document_head_not_a_name.knv:6:12
@@ -18,6 +19,7 @@ error[L0301]: a `document` header must name a term
   |            ^^^^^ not a name
   |
   = help: start the header with the term's name, as in `(document (name part ...) text)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a `document` header must name a term
  --> expand/document_head_not_a_name.knv:9:11
@@ -26,3 +28,4 @@ error[L0301]: a `document` header must name a term
   |           ^^ not a name
   |
   = help: start the header with the term's name, as in `(document (name part ...) text)`
+  = note: run `knave doc L0301` for an explanation

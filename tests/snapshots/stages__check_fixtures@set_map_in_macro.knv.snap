@@ -8,3 +8,5 @@ error[L0316]: map operations only exist at runtime
   |
 2 |   (set! (at m (str "x")) 1))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^ used at compile time here
+  |
+  = note: run `knave doc L0316` for an explanation

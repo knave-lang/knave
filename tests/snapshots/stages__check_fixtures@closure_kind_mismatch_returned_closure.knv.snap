@@ -10,3 +10,4 @@ error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
    |          ^^^^^^ `model` moves here
    |
    = help: clone `model`, or borrow it with `(ref model)`
+   = note: run `knave doc L0509` for an explanation

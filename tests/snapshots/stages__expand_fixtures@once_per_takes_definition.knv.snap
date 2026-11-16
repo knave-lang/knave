@@ -13,6 +13,7 @@ error[L0321]: a failure description takes `:part value` pairs
   |            ---------- in this macro call
   |
   = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:once-per`, `:suggest`
+  = note: run `knave doc L0321` for an explanation
 
 error[L0321]: a failure description takes `:part value` pairs
   --> expand/once_per_takes_definition.knv:13:13
@@ -24,6 +25,7 @@ error[L0321]: a failure description takes `:part value` pairs
    |                 -------- in this macro call
    |
    = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:once-per`, `:suggest`
+   = note: run `knave doc L0321` for an explanation
 
 error[L0321]: a failure description takes `:part value` pairs
   --> expand/once_per_takes_definition.knv:20:23
@@ -35,3 +37,4 @@ error[L0321]: a failure description takes `:part value` pairs
    |                   ---------- in this macro call
    |
    = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:once-per`, `:suggest`
+   = note: run `knave doc L0321` for an explanation

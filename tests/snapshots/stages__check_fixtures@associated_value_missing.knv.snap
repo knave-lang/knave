@@ -10,3 +10,4 @@ error[L0450]: this entry of `addable` does not give `output`
   |   ^^^^^^^^^^^^^^ `addable` declares the associated type `output`
   |
   = help: end the entry with `(output type)`, as in `(where () i64 (output type))`
+  = note: run `knave doc L0450` for an explanation

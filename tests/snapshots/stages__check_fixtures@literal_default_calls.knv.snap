@@ -11,3 +11,4 @@ error[L0401]: mismatched types
   |
   = note: `limit` defaulted to `i64`, because `count-up` is called with `usize` and with `i32`
   = help: give `count-up` one parameter type with a `type` signature, such as `(type count-up (fn (usize) i64))`, and pass that type at every call
+  = note: run `knave doc L0401` for an explanation

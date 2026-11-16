@@ -11,12 +11,15 @@ warning[L0802]: the van is parked on a link
    |
    = note: vans park on the left
    = help: move the van
+   = note: run `knave doc L0802` for an explanation
 
 warning[L0802]: the bus has no help
   --> expand/warn_continues_expansion.knv:22:17
    |
 22 | (def bus (plain "red bus"))
    |                 ^^^^^^^^^ here
+   |
+   = note: run `knave doc L0802` for an explanation
 
 (def van "blue van")
 (def bus "red bus")

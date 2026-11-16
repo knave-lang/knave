@@ -8,3 +8,5 @@ error[L0401]: mismatched types
   |
 1 | (defn main () (vals (vec 1 2)))
   |                     ^^^^^^^^^ expected a map, found (vec _)
+  |
+  = note: run `knave doc L0401` for an explanation

@@ -10,3 +10,4 @@ error[L0330]: `a` has length 2 but `b` has length 1
   |                               ^ this `a` has no matching `b`
   |
   = help: give `a` and `b` the same length
+  = note: run `knave doc L0330` for an explanation

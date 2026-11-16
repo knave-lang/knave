@@ -10,3 +10,4 @@ error[L0711]: library `hints` cannot take a version
   |                               ^^^^^ a library is found by its source, not its version
   |
   = help: remove the version
+  = note: run `knave doc L0711` for an explanation

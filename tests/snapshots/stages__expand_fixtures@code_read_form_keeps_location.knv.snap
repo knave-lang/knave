@@ -8,3 +8,5 @@ error[L0201]: cannot find `missing` in this scope
   |
 6 | (defn main () (read-text "(missing 1)"))
   |                            ^^^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

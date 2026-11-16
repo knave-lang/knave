@@ -10,3 +10,4 @@ error[L0407]: type annotations needed
   |   ^^^^^^^^^ cannot infer the type of this value
   |
   = help: write the type with `the`, as in `(the (vec i64) (vec))`, or add a `type` signature
+  = note: run `knave doc L0407` for an explanation

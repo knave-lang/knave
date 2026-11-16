@@ -11,6 +11,7 @@ error[L0517]: a returned closure cannot use `start`, which `counter!` changes
   |
   = note: `start` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
   = help: copy it first with `(local value start)` and use `value` in the closure
+  = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `ticker!` changes
   --> check/changed_by_returned_closure.knv:12:19
@@ -20,6 +21,7 @@ error[L0517]: a returned closure cannot use `x`, which `ticker!` changes
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
+   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `chooser!` changes
   --> check/changed_by_returned_closure.knv:19:18
@@ -29,6 +31,7 @@ error[L0517]: a returned closure cannot use `x`, which `chooser!` changes
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
+   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `skipper!` changes
   --> check/changed_by_returned_closure.knv:25:18
@@ -38,6 +41,7 @@ error[L0517]: a returned closure cannot use `x`, which `skipper!` changes
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
+   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `matcher!` changes
   --> check/changed_by_returned_closure.knv:29:29
@@ -47,6 +51,7 @@ error[L0517]: a returned closure cannot use `x`, which `matcher!` changes
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
+   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `bumper!` changes
   --> check/changed_by_returned_closure.knv:32:33
@@ -56,3 +61,4 @@ error[L0517]: a returned closure cannot use `x`, which `bumper!` changes
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
+   = note: run `knave doc L0517` for an explanation

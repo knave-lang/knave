@@ -12,4 +12,5 @@ error[L0101]: this list is never closed
   | ^ this `(` has no matching `)`
   |
   = help: add a `)` where the list ends
+  = note: run `knave doc L0101` for an explanation
 warning: cannot load the project around `./src/main.knv` with its libraries, so `fmt` reads shapes only beside each file and in its parent directories

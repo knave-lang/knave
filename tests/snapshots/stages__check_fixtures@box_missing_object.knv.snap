@@ -10,3 +10,4 @@ error[L0404]: `(box circle)` does not implement `shape`
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `shape`
    |
    = help: write the type `(box shape)` where the box is made, such as `(local (shapes (vec (box shape))) ...)`
+   = note: run `knave doc L0404` for an explanation

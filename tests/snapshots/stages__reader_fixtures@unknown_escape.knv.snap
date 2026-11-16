@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).read_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/read/unknown_escape.knv
 ---
 error[L0104]: unknown escape in string
@@ -10,3 +10,4 @@ error[L0104]: unknown escape in string
   |                    ^^ unknown escape
   |
   = help: the escapes are `\n`, `\r`, `\t`, `\0`, `\\`, `\"`, `\'` and `\u{...}`
+  = note: run `knave doc L0104` for an explanation

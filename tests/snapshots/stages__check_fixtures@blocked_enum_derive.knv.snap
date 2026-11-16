@@ -10,3 +10,4 @@ error[L0423]: `value` cannot derive `eq`
   |               ^^ variant `number` holds `f64`, which is not `eq`
   |
   = help: change the payload of variant `number`, or leave this trait out of the `derive`
+  = note: run `knave doc L0423` for an explanation

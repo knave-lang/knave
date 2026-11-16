@@ -8,3 +8,5 @@ error[L0201]: cannot find `make-car` in this scope
   |
 8 |   (println (:year (make-car "Honda" "Civic" 2019 false))))
   |                    ^^^^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

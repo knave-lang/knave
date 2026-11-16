@@ -10,3 +10,4 @@ error[L0210]: malformed `if`
   |             ^^^^^^^^^^^^^^^^^^^^^^^^ this does not fit the shape of `if`
   |
   = help: write `(when test body ...)` to run forms only when the test holds
+  = note: run `knave doc L0210` for an explanation

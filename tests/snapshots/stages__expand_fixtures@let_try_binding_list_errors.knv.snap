@@ -10,6 +10,7 @@ error[L0336]: `let-try` takes a list of bindings
   |                  ^^^^^^^^^ this has no list of bindings
   |
   = help: write it as `(let-try (name value) body ...)`
+  = note: run `knave doc L0336` for an explanation
 
 error[L0336]: `let-try` takes a list of bindings
  --> expand/let_try_binding_list_errors.knv:4:12
@@ -18,6 +19,7 @@ error[L0336]: `let-try` takes a list of bindings
   |            ^^^^ not a list of bindings
   |
   = help: write the bindings in a list, as `(let-try (text (parse text)) ...)`
+  = note: run `knave doc L0336` for an explanation
 
 error[L0336]: `let-try` takes a list of bindings
  --> expand/let_try_binding_list_errors.knv:7:12
@@ -26,6 +28,7 @@ error[L0336]: `let-try` takes a list of bindings
   |            ^^^^ not a list of bindings
   |
   = help: write the bindings in a list, as `(let-try (text (parse text)) ...)`
+  = note: run `knave doc L0336` for an explanation
 
 error[L0335]: `let-try` has no body
   --> expand/let_try_binding_list_errors.knv:10:3
@@ -34,6 +37,7 @@ error[L0335]: `let-try` has no body
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ its bindings reach no form
    |
    = help: write the forms that use the bindings after the list
+   = note: run `knave doc L0335` for an explanation
 
 error[L0334]: a name in the binding list of `let-try` has no value
   --> expand/let_try_binding_list_errors.knv:13:13
@@ -42,6 +46,7 @@ error[L0334]: a name in the binding list of `let-try` has no value
    |             ^^^^^ this name has no value
    |
    = help: write its value after it, as `(let-try (value value) ...)`
+   = note: run `knave doc L0334` for an explanation
 
 error[L0334]: a name in the binding list of `let-try` has no value
   --> expand/let_try_binding_list_errors.knv:16:13
@@ -50,3 +55,4 @@ error[L0334]: a name in the binding list of `let-try` has no value
    |             ^^^^^^^^^^^^^^^^^^^^ this name has no value
    |
    = help: write its value after it, as `(let-try ((value (parse text)) value) ...)`, or write each name and its value without their own parentheses, as `(let-try (value (parse text)) ...)`
+   = note: run `knave doc L0334` for an explanation

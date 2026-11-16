@@ -10,3 +10,4 @@ warning[L0806]: parameter `scale` is never read
   |            ^^^^^ this parameter is never read
   |
   = help: if the parameter must stay, name it `_scale`
+  = note: run `knave doc L0806` for an explanation

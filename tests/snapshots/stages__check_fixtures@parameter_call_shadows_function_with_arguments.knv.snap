@@ -13,3 +13,4 @@ error[L0401]: mismatched types
   |                           -------------- `double-range` calls its parameter `span` here, so it expects a function
   |
   = help: the parameter `span` shadows the function `span`, so to call the function, rename the parameter
+  = note: run `knave doc L0401` for an explanation

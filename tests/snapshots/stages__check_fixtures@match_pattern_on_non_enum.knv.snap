@@ -8,3 +8,5 @@ error[L0401]: mismatched types
   |
 8 |   (match n ((circle _) 0)))
   |             ^^^^^^^^^^ expected `shape`, found `i64`
+  |
+  = note: run `knave doc L0401` for an explanation

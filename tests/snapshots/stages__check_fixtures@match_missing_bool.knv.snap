@@ -11,3 +11,4 @@ error[L0433]: non-exhaustive `match`
   |
   = note: missing 1 case: `false`
   = help: add an arm for each missing case
+  = note: run `knave doc L0433` for an explanation

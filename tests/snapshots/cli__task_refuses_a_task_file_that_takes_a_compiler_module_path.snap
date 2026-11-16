@@ -10,6 +10,7 @@ error[L0257]: this file's module path `kernel` belongs to the compiler
   |
   = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so this file would never run
   = help: rename the file
+  = note: run `knave doc L0257` for an explanation
 
 error[L0257]: this file's module path `prelude` belongs to the compiler
  --> tasks/prelude.knv:1:1
@@ -19,3 +20,4 @@ error[L0257]: this file's module path `prelude` belongs to the compiler
   |
   = note: `prelude`, `kernel`, `code` and every path under `prelude/` are the compiler's, so this file would never run
   = help: rename the file
+  = note: run `knave doc L0257` for an explanation

@@ -8,3 +8,5 @@ error[L0404]: `circle` does not implement `shape`
    |
 11 |   (take (box (new circle (radius 1.0)))))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `shape`
+   |
+   = note: run `knave doc L0404` for an explanation

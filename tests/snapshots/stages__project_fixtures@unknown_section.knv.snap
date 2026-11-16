@@ -13,3 +13,4 @@ help: a section with a similar name exists
   |
 1 | (defproject browser (dependencies (serde "1.0")))
   |                             +
+  = note: run `knave doc L0707` for an explanation

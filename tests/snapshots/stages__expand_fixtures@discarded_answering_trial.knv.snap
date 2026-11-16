@@ -8,3 +8,5 @@ error[L0201]: cannot find `unknown-value` in this scope
    |
 15 | (defn main () unknown-value)
    |               ^^^^^^^^^^^^^ not found in this scope
+   |
+   = note: run `knave doc L0201` for an explanation

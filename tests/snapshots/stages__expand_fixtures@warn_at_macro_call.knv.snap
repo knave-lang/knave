@@ -13,6 +13,8 @@ warning[L0802]: the van is parked on a link
   |
 3 | (def van (parked "blue van"))
   |          ------------------- in this macro call
+  |
+  = note: run `knave doc L0802` for an explanation
 
 warning[L0802]: the van is parked on a link
  --> expand/warn_at_macro_call/parking.knv:8:14
@@ -24,6 +26,8 @@ warning[L0802]: the van is parked on a link
   |
 5 | (def bus (parked "red bus"))
   |          ------------------ in this macro call
+  |
+  = note: run `knave doc L0802` for an explanation
 
 (def van "blue van")
 (def bus "red bus")

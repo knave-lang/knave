@@ -10,3 +10,4 @@ error[L0354]: the result of this example does not read as one form
   |   ^^^^^^^^^ the line after this form starts with `=> `
   |
   = help: write the result as one form, end it with `...` to run the example without comparing its result, or put the example in a fenced code block to show it without running it
+  = note: run `knave doc L0354` for an explanation

@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/rust_type_parameters_in_where.knv
 ---
 error[L0219]: `rust-type` names its type parameters on its name
@@ -10,3 +10,4 @@ error[L0219]: `rust-type` names its type parameters on its name
   |                   ^^^^^ this `where` names them in the body
   |
   = help: write `(rust-type (boxed item) "Box<{0}>")`
+  = note: run `knave doc L0219` for an explanation

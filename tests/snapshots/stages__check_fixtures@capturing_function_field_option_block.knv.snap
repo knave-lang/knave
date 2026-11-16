@@ -13,3 +13,4 @@ error[L0511]: cannot store a capturing closure in the field `maker`
    |                             ^^^^^^^^^^^^^^^^^^ this closure captures `base`
    |
    = help: a field declared with a function type holds only a named function or a closure that captures nothing
+   = note: run `knave doc L0511` for an explanation

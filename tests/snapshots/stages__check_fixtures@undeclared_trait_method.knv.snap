@@ -10,3 +10,4 @@ error[L0241]: `shape` does not declare `perimeter`
    |    ^^^^^^^^^ not a method of `shape`
    |
    = help: declare it in the trait, or remove it
+   = note: run `knave doc L0241` for an explanation

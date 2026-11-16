@@ -14,3 +14,4 @@ error[L0722]: library `keymap` comes from two sources
   |                                  ------ from the source given here
   |
   = help: point every `keymap` entry at one source
+  = note: run `knave doc L0722` for an explanation

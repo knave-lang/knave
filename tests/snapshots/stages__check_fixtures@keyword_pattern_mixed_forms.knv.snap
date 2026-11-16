@@ -12,6 +12,7 @@ error[L0462]: this pattern of `point` mixes positions and field labels
    |                    this part goes by position
    |
    = help: label every part, or write one pattern for each field in order
+   = note: run `knave doc L0462` for an explanation
 
 error[L0462]: this pattern of `point` mixes positions and field labels
   --> check/keyword_pattern_mixed_forms.knv:13:20
@@ -22,6 +23,7 @@ error[L0462]: this pattern of `point` mixes positions and field labels
    |                    this part names a field
    |
    = help: label every part, or write one pattern for each field in order
+   = note: run `knave doc L0462` for an explanation
 
 error[L0462]: this pattern of `labeled` mixes positions and field labels
   --> check/keyword_pattern_mixed_forms.knv:17:17
@@ -32,6 +34,7 @@ error[L0462]: this pattern of `labeled` mixes positions and field labels
    |               this part goes by position
    |
    = help: label every part, or write one pattern for each field in order
+   = note: run `knave doc L0462` for an explanation
 
 error[L0462]: this pattern of `labeled` mixes positions and field labels
   --> check/keyword_pattern_mixed_forms.knv:22:21
@@ -42,6 +45,7 @@ error[L0462]: this pattern of `labeled` mixes positions and field labels
    |                     this part names a field
    |
    = help: label every part, or write one pattern for each field in order
+   = note: run `knave doc L0462` for an explanation
 
 error[L0462]: this pattern of `measured` mixes positions and field labels
   --> check/keyword_pattern_mixed_forms.knv:29:18
@@ -52,6 +56,7 @@ error[L0462]: this pattern of `measured` mixes positions and field labels
    |                this part goes by position
    |
    = help: `measured` takes 1 part by position, without a label
+   = note: run `knave doc L0462` for an explanation
 
 error[L0462]: this pattern of `idle` mixes positions and field labels
   --> check/keyword_pattern_mixed_forms.knv:35:14
@@ -62,3 +67,4 @@ error[L0462]: this pattern of `idle` mixes positions and field labels
    |            this part goes by position
    |
    = help: `idle` has no payload: write `idle`
+   = note: run `knave doc L0462` for an explanation

@@ -8,3 +8,5 @@ error[L0301]: a field step cannot follow an index step
    |
 14 |   (assoc-in garage (:bays 0 :make) "Nissan"))
    |                             ^^^^^ here
+   |
+   = note: run `knave doc L0301` for an explanation

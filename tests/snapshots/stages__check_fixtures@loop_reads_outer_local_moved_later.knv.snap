@@ -16,3 +16,4 @@ help: clone the value if both places need it
 11 -                  (local b g)
 11 +                  (local b (clone g))
    |
+   = note: run `knave doc L0501` for an explanation

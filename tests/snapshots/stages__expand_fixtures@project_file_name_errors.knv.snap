@@ -11,3 +11,5 @@ error[L0311]: `project-file-name` takes 0 arguments but 1 was given
 5 |
 6 | (def file-name (extra-argument))
   |                ---------------- in this macro call
+  |
+  = note: run `knave doc L0311` for an explanation

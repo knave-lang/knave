@@ -13,3 +13,4 @@ help: write the type with `the`, and replace each `_` with a type
   |
 2 |   (local ignored (fn (y) (the _ y)))
   |                          ++++++  +
+  = note: run `knave doc L0407` for an explanation

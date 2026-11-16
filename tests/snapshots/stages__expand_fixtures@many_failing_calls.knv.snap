@@ -11,6 +11,7 @@ error[L0326]: macro expansion did not finish
    |
    = note: the macro calls in one top-level form expand to at most 131072 forms in all
    = help: make each recursive macro stop, or split a large expansion across several top-level forms
+   = note: run `knave doc L0326` for an explanation
 
 error[L0326]: macro expansion did not finish
   --> expand/many_failing_calls.knv:30:26
@@ -20,6 +21,7 @@ error[L0326]: macro expansion did not finish
    |
    = note: the macro calls in one top-level form expand to at most 131072 forms in all
    = help: make each recursive macro stop, or split a large expansion across several top-level forms
+   = note: run `knave doc L0326` for an explanation
 
 error[L0326]: macro expansion did not finish
   --> expand/many_failing_calls.knv:33:12
@@ -29,6 +31,7 @@ error[L0326]: macro expansion did not finish
    |
    = note: the macro calls in one top-level form expand to at most 131072 forms in all
    = help: make each recursive macro stop, or split a large expansion across several top-level forms
+   = note: run `knave doc L0326` for an explanation
 
 error[L0326]: macro expansion did not finish
   --> expand/many_failing_calls.knv:33:19
@@ -38,3 +41,4 @@ error[L0326]: macro expansion did not finish
    |
    = note: the macro calls in one top-level form expand to at most 131072 forms in all
    = help: make each recursive macro stop, or split a large expansion across several top-level forms
+   = note: run `knave doc L0326` for an explanation

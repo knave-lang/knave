@@ -10,3 +10,4 @@ error[L0701]: `project.knv` must hold a `defproject` form
   | ^ expected `(defproject <name> ...)` here
   |
   = help: start the file with `(defproject my-program)`
+  = note: run `knave doc L0701` for an explanation

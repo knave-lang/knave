@@ -14,6 +14,7 @@ help: a field with a similar name exists
 5 - (defn read-email (:someone user) (:email: someone))
 5 + (defn read-email (:someone user) (:email someone))
   |
+  = note: run `knave doc L0408` for an explanation
 
 error[L0408]: `user` has no field `:email:`
  --> check/trailing_colon_field_uses.knv:8:23
@@ -26,6 +27,7 @@ help: a field with a similar name exists
 8 -   (->user :name "ana" :email: "ana@example.com"))
 8 +   (->user :name "ana" :email "ana@example.com"))
   |
+  = note: run `knave doc L0408` for an explanation
 
 error[L0408]: `user` has no field `:email:`
   --> check/trailing_colon_field_uses.knv:11:18
@@ -38,6 +40,7 @@ help: a field with a similar name exists
 11 -   (assoc someone :email: "bo@example.com"))
 11 +   (assoc someone :email "bo@example.com"))
    |
+   = note: run `knave doc L0408` for an explanation
 
 error[L0408]: `user` has no field `:email:`
   --> check/trailing_colon_field_uses.knv:14:21
@@ -50,3 +53,4 @@ help: a field with a similar name exists
 14 -   (map (iter users) :email:))
 14 +   (map (iter users) :email))
    |
+   = note: run `knave doc L0408` for an explanation

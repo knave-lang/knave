@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/try_outside_fn.knv
 ---
 error[L0220]: `try` is not inside a function
@@ -10,3 +10,4 @@ error[L0220]: `try` is not inside a function
   |            ^^^^^^^^^^^^ there is no function here for `try` to return from
   |
   = help: write `try` inside a `fn` body
+  = note: run `knave doc L0220` for an explanation

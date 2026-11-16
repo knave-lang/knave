@@ -14,3 +14,4 @@ help: clone the value to own a copy
 18 -   (prn (len (:cars (open-garage cars)))))
 18 +   (prn (len (:cars (open-garage (clone cars))))))
    |
+   = note: run `knave doc L0503` for an explanation

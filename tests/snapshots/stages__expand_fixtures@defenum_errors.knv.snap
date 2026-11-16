@@ -10,6 +10,7 @@ error[L0346]: a variant is a name or a list that starts with a name
   |                          ^ here
   |
   = help: write it as `name`, `(name type ...)` or `(name :field type ...)`
+  = note: run `knave doc L0346` for an explanation
 
 error[L0346]: a variant is a name or a list that starts with a name
  --> expand/defenum_errors.knv:3:26
@@ -18,6 +19,7 @@ error[L0346]: a variant is a name or a list that starts with a name
   |                          ^^^^^^^ here
   |
   = help: write it as `name`, `(name type ...)` or `(name :field type ...)`
+  = note: run `knave doc L0346` for an explanation
 
 error[L0347]: a variant writes its fields flat
  --> expand/defenum_errors.knv:6:12
@@ -26,6 +28,7 @@ error[L0347]: a variant writes its fields flat
   |            ^^^^^^^^^^^^^^^^^^^^^^ here
   |
   = help: write them after its name, as in (labeled :text string :size f64)
+  = note: run `knave doc L0347` for an explanation
 
 error[L0348]: this variant's first item is a type, so it takes no fields
  --> expand/defenum_errors.knv:8:43
@@ -34,6 +37,7 @@ error[L0348]: this variant's first item is a type, so it takes no fields
   |                                           ^^^^^ here
   |
   = help: write only types, or give every item a `:field`
+  = note: run `knave doc L0348` for an explanation
 
 error[L0348]: a field must start with `:`
   --> expand/defenum_errors.knv:10:49
@@ -42,6 +46,7 @@ error[L0348]: a field must start with `:`
    |                                                 ^^^ here
    |
    = help: write each field as `:name type`, as in (labeled :text string)
+   = note: run `knave doc L0348` for an explanation
 
 error[L0349]: this field has no type
   --> expand/defenum_errors.knv:12:38
@@ -50,6 +55,7 @@ error[L0349]: this field has no type
    |                                      ^^^^^ here
    |
    = help: write a type after it, as in :text i64
+   = note: run `knave doc L0349` for an explanation
 
 error[L0349]: this field has no type
   --> expand/defenum_errors.knv:14:43
@@ -58,6 +64,7 @@ error[L0349]: this field has no type
    |                                           ^^^^^ here
    |
    = help: write a type after it, as in :text i64
+   = note: run `knave doc L0349` for an explanation
 
 error[L0340]: the `rust` clause comes right after the name
   --> expand/defenum_errors.knv:18:3
@@ -66,6 +73,7 @@ error[L0340]: the `rust` clause comes right after the name
    |   ^^^^^^^^^^^^^ here
    |
    = help: move it to the first place after the name, or after the docstring
+   = note: run `knave doc L0340` for an explanation
 
 error[L0341]: a `rust` clause on `defenum` holds one string, then an optional `bare`
   --> expand/defenum_errors.knv:25:3
@@ -74,6 +82,7 @@ error[L0341]: a `rust` clause on `defenum` holds one string, then an optional `b
    |   ^^^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(rust "Path")` or `(rust "Path" bare)`
+   = note: run `knave doc L0341` for an explanation
 
 error[L0341]: a `rust` clause on `defenum` holds one string, then an optional `bare`
   --> expand/defenum_errors.knv:29:3
@@ -82,6 +91,7 @@ error[L0341]: a `rust` clause on `defenum` holds one string, then an optional `b
    |   ^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(rust "Path")` or `(rust "Path" bare)`
+   = note: run `knave doc L0341` for an explanation
 
 error[L0339]: `defenum` needs a name
   --> expand/defenum_errors.knv:32:10
@@ -90,6 +100,7 @@ error[L0339]: `defenum` needs a name
    |          ^ here
    |
    = help: write a name, as in (defenum shape ...)
+   = note: run `knave doc L0339` for an explanation
 
 error[L0222]: a `defenum` template cannot name `item`
   --> expand/defenum_errors.knv:35:9
@@ -98,6 +109,7 @@ error[L0222]: a `defenum` template cannot name `item`
    |         ^^^^^^^^^^^^^^^^ `defenum` templates name their parameters by number
    |
    = help: write the placeholder as `{0}`
+   = note: run `knave doc L0222` for an explanation
 
 error[L0222]: a `defenum` template cannot name `name`
   --> expand/defenum_errors.knv:39:9
@@ -106,6 +118,7 @@ error[L0222]: a `defenum` template cannot name `name`
    |         ^^^^^^^^ `defenum` templates name their parameters by number
    |
    = help: write the placeholder as `{0}`
+   = note: run `knave doc L0222` for an explanation
 
 error[L0213]: this type template has a malformed placeholder
   --> expand/defenum_errors.knv:43:9
@@ -114,6 +127,7 @@ error[L0213]: this type template has a malformed placeholder
    |         ^^^^^^^^^ a placeholder is `{`, a number and `}`
    |
    = help: write a literal brace as `{{` or `}}`
+   = note: run `knave doc L0213` for an explanation
 
 error[L0226]: the template never uses this type parameter
   --> expand/defenum_errors.knv:46:25
@@ -122,3 +136,4 @@ error[L0226]: the template never uses this type parameter
    |                         ^^^^ its placeholder is `{0}`
    |
    = help: use `{0}` in the template, or remove the parameter
+   = note: run `knave doc L0226` for an explanation

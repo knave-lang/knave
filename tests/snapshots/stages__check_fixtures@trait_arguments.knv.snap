@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/trait_arguments.knv
 ---
 warning[L0217]: `comparable` binds a Rust path that `partial-eq` already binds
@@ -11,5 +11,6 @@ warning[L0217]: `comparable` binds a Rust path that `partial-eq` already binds
   |
   = note: two traits that bind one Rust path can disagree about its implementors
   = help: use `partial-eq`, or give `comparable` a different Rust path
+  = note: run `knave doc L0217` for an explanation
 
 (type compare-with (where ((a (comparable b)) b) (fn (a b) bool)))

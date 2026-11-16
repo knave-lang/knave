@@ -10,6 +10,7 @@ error[L0412]: `first` only exists at compile time
   |                         ^^^^^ used in code that runs in the program
   |
   = note: definitions that use the `code` module or `quote` can only be used by macros
+  = note: run `knave doc L0412` for an explanation
 
 error[L0442]: quoted code only exists at compile time
  --> check/compile_time_errors.knv:7:17
@@ -18,3 +19,4 @@ error[L0442]: quoted code only exists at compile time
   |                 ^^^^^^^^^^^^^ used in code that runs in the program
   |
   = help: use `quote` inside macros, or write a string if you want text
+  = note: run `knave doc L0442` for an explanation

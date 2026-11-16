@@ -17,3 +17,4 @@ help: clone the value if both places need it
 3 -   (local moved greeting)
 3 +   (local moved (clone greeting))
   |
+  = note: run `knave doc L0501` for an explanation

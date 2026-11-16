@@ -13,3 +13,4 @@ error[L0501]: use of moved value `names`
    |
    = note: `names` is a lazy pipeline, so it runs once
    = help: collect it if both places need its items, as in `(collect names)`, or write a function that rebuilds it
+   = note: run `knave doc L0501` for an explanation

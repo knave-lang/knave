@@ -15,6 +15,7 @@ error[L0306]: `str` belongs to the program, so macro code cannot run it
     |      --- `str` expands to Rust code that runs in the program
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`
+    = note: run `knave doc L0306` for an explanation
 
 error[L0319]: this Rust code belongs to the program, so macro code cannot run it
  --> expand/program_only.knv:9:17
@@ -23,6 +24,7 @@ error[L0319]: this Rust code belongs to the program, so macro code cannot run it
   |                 ^^^^^^^^^^^^^^ macro code runs this
   |
   = help: to compute this in the program, return it as code from the macro, for example with `quote`
+  = note: run `knave doc L0319` for an explanation
 
 error[L0306]: `+` belongs to the program, so macro code cannot run it
    --> expand/program_only.knv:14:17
@@ -37,6 +39,7 @@ error[L0306]: `+` belongs to the program, so macro code cannot run it
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`
     = help: in macro code, use `number-add` from `code` instead
+    = note: run `knave doc L0306` for an explanation
 
 error[L0306]: `str` belongs to the program, so macro code cannot run it
    --> expand/program_only.knv:20:24
@@ -50,6 +53,7 @@ error[L0306]: `str` belongs to the program, so macro code cannot run it
     |      --- `str` expands to Rust code that runs in the program
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`
+    = note: run `knave doc L0306` for an explanation
 
 error[L0306]: `*` belongs to the program, so macro code cannot run it
    --> expand/program_only.knv:25:25
@@ -66,12 +70,15 @@ error[L0306]: `*` belongs to the program, so macro code cannot run it
     |                     - `*` expands to Rust code that runs in the program
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`
+    = note: run `knave doc L0306` for an explanation
 
 error[L0308]: `double` has errors, so macro code cannot use it
   --> expand/program_only.knv:33:18
    |
 33 |   (macro (form) (double 3) (list)))
    |                  ^^^^^^ used by macro code here
+   |
+   = note: run `knave doc L0308` for an explanation
 
 error[L0306]: `print` belongs to the program, so macro code cannot run it
    --> expand/program_only.knv:38:17
@@ -85,6 +92,7 @@ error[L0306]: `print` belongs to the program, so macro code cannot run it
     |           ----- `print` expands to Rust code that runs in the program
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`
+    = note: run `knave doc L0306` for an explanation
 
 error[L0306]: `sqrt` belongs to the program, so macro code cannot run it
    --> expand/program_only.knv:41:18
@@ -98,3 +106,4 @@ error[L0306]: `sqrt` belongs to the program, so macro code cannot run it
     |   ---------------------------------- `sqrt` is Rust code that runs in the program
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`
+    = note: run `knave doc L0306` for an explanation

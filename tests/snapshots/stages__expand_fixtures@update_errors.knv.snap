@@ -10,6 +10,7 @@ error[L0353]: this field update has no function
   |                 ^^^^^^ here
   |
   = help: write a function after the field, as in `(update item :count neg)`
+  = note: run `knave doc L0353` for an explanation
 
 error[L0353]: a field update takes no default, because the field always exists
  --> expand/update_errors.knv:7:28
@@ -18,6 +19,7 @@ error[L0353]: a field update takes no default, because the field always exists
   |                            ^ here
   |
   = help: drop the default
+  = note: run `knave doc L0353` for an explanation
 
 error[L0353]: a map update takes a function and a default
  --> expand/update_errors.knv:8:24
@@ -26,6 +28,7 @@ error[L0353]: a map update takes a function and a default
   |                        ^^^ no default follows this function
   |
   = help: write `(update map key function default)`
+  = note: run `knave doc L0353` for an explanation
 
 error[L0353]: a map update takes a function and a default
  --> expand/update_errors.knv:9:22
@@ -34,3 +37,4 @@ error[L0353]: a map update takes a function and a default
   |                      ^ here
   |
   = help: write `(update map key function default)`
+  = note: run `knave doc L0353` for an explanation

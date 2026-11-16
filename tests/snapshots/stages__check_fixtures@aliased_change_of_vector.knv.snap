@@ -12,6 +12,7 @@ error[L0516]: this call changes `scores` through two arguments at once
   |               this argument already changes `scores`
   |
   = help: pass a different place to each argument that the call changes
+  = note: run `knave doc L0516` for an explanation
 
 error[L0516]: this call changes `scores` through two arguments at once
  --> check/aliased_change_of_vector.knv:8:28
@@ -22,3 +23,4 @@ error[L0516]: this call changes `scores` through two arguments at once
   |               this argument already changes `scores`
   |
   = help: pass a different place to each argument that the call changes
+  = note: run `knave doc L0516` for an explanation

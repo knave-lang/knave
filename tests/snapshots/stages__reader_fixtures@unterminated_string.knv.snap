@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).read_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/read/unterminated_string.knv
 ---
 error[L0103]: this string is never closed
@@ -10,3 +10,4 @@ error[L0103]: this string is never closed
   |            ^ this `"` has no closing `"`
   |
   = help: add a `"` where the string ends
+  = note: run `knave doc L0103` for an explanation

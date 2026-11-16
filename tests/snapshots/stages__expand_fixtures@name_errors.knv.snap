@@ -14,6 +14,7 @@ help: a name with a similar spelling exists
 3 - (def area (fn (height) (widht height)))
 3 + (def area (fn (height) (width height)))
   |
+  = note: run `knave doc L0201` for an explanation
 
 error[L0209]: `()` is not an expression
  --> expand/name_errors.knv:5:14
@@ -25,6 +26,7 @@ help: the unit value is written `(do)`
   |
 5 | (def nothing (do))
   |               ++
+  = note: run `knave doc L0209` for an explanation
 
 error[L0208]: `def` can only appear at module level
  --> expand/name_errors.knv:7:20
@@ -33,6 +35,7 @@ error[L0208]: `def` can only appear at module level
   |                    ^^^^^^^^^^^^^ not allowed inside an expression
   |
   = help: use `local` to bind a name inside a body
+  = note: run `knave doc L0208` for an explanation
 
 error[L0227]: `local` can only appear directly in a body
  --> expand/name_errors.knv:9:12
@@ -41,6 +44,7 @@ error[L0227]: `local` can only appear directly in a body
   |            ^^^^^^^^^^^ not allowed here
   |
   = help: wrap the code that uses it in `(let (x 1) ...)`
+  = note: run `knave doc L0227` for an explanation
 
 error[L0210]: malformed `if`
   --> expand/name_errors.knv:11:14
@@ -49,6 +53,7 @@ error[L0210]: malformed `if`
    |              ^^^^^^^^^^ this does not fit the shape of `if`
    |
    = help: write it as `(if test then else)`
+   = note: run `knave doc L0210` for an explanation
 
 error[L0203]: `twice` is defined more than once
   --> expand/name_errors.knv:15:6
@@ -58,6 +63,8 @@ error[L0203]: `twice` is defined more than once
 14 |
 15 | (def twice 2)
    |      ^^^^^ defined again here
+   |
+   = note: run `knave doc L0203` for an explanation
 
 error[L0201]: cannot find `'origin` in this scope
   --> expand/name_errors.knv:17:13
@@ -66,6 +73,7 @@ error[L0201]: cannot find `'origin` in this scope
    |             ^^^^^^^ not found in this scope
    |
    = help: there is no quote shorthand; write `(quote origin)`
+   = note: run `knave doc L0201` for an explanation
 
 error[L0211]: `if` is a form, not a value
   --> expand/name_errors.knv:19:17
@@ -74,3 +82,4 @@ error[L0211]: `if` is a form, not a value
    |                 ^^ used as a value here
    |
    = help: write it as `(if test then else)`
+   = note: run `knave doc L0211` for an explanation

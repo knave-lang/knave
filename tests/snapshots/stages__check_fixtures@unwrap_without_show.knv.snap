@@ -13,3 +13,4 @@ error[L0404]: `failure` does not implement `show`
   |
   = note: `failure` cannot derive `show`: field `retry` is `(fn () i64)`
   = help: a closure, an iterator or a function has no printed form
+  = note: run `knave doc L0404` for an explanation

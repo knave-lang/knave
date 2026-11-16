@@ -8,9 +8,13 @@ error[L0301]: this sighting is unconfirmed
    |
 16 | (def unconfirmed (note-then-fail))
    |                  ^^^^^^^^^^^^^^^^ here
+   |
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: sightings noted: 0
   --> expand/module_notes_failed_call.knv:20:13
    |
 20 | (def report (report-sightings bird))
    |             ^^^^^^^^^^^^^^^^^^^^^^^ here
+   |
+   = note: run `knave doc L0301` for an explanation

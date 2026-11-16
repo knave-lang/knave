@@ -13,3 +13,4 @@ error[L0515]: `bump!` changes its argument, but `change` passes it a copy
   |                 ^^^^^ this binding takes `bump!` as `(fn (i64) unit)`
   |
   = help: to change the caller's value, call `bump!` by name; to change a copy on purpose, start its body with `(local x x)`
+  = note: run `knave doc L0515` for an explanation

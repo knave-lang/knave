@@ -8,3 +8,5 @@ error[L0201]: cannot find `twice-named` in this scope
   |
 8 | (def page (doc-page twice-named))
   |                     ^^^^^^^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

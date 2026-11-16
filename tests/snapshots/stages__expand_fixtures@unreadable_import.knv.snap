@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).expand_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/expand/unreadable_import.knv
 ---
 error[L0205]: module `unreadable/unclosed` does not export `shape`
@@ -10,12 +10,15 @@ error[L0205]: module `unreadable/unclosed` does not export `shape`
   |                          ^^^^^ not exported
   |
   = help: add `shape` to the `export` list of `unreadable/unclosed`
+  = note: run `knave doc L0205` for an explanation
 
 error[L0201]: cannot find `shape` in this scope
  --> expand/unreadable_import.knv:3:18
   |
 3 | (def main (fn () shape))
   |                  ^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation
 
 error[L0101]: this list is never closed
  --> expand/unreadable/unclosed.knv:3:1
@@ -24,6 +27,7 @@ error[L0101]: this list is never closed
   | ^ this `(` has no matching `)`
   |
   = help: add a `)` where the list ends
+  = note: run `knave doc L0101` for an explanation
 
 error[L0101]: this list is never closed
  --> expand/unreadable/unclosed.knv:3:12
@@ -32,3 +36,4 @@ error[L0101]: this list is never closed
   |            ^ this `(` has no matching `)`
   |
   = help: add a `)` where the list ends
+  = note: run `knave doc L0101` for an explanation

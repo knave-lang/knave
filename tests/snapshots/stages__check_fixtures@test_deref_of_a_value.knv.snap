@@ -8,3 +8,5 @@ error[L0401]: mismatched types
   |
 5 |   (assert (= (deref number) 1)))
   |                     ^^^^^^ expected `(ref _)`, found an integer
+  |
+  = note: run `knave doc L0401` for an explanation

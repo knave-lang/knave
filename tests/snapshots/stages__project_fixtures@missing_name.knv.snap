@@ -10,3 +10,4 @@ error[L0703]: the project has no name
   |  ^^^^^^^^^^ expected a name after `defproject`
   |
   = help: name the project, as `(defproject my-program)`
+  = note: run `knave doc L0703` for an explanation

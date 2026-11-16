@@ -11,3 +11,4 @@ error[L0208]: `deftest` can only appear at module level
   | |_____________________________^ not allowed inside an expression
   |
   = help: use `local` to bind a name inside a body
+  = note: run `knave doc L0208` for an explanation

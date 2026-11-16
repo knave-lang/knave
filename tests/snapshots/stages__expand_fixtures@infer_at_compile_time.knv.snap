@@ -8,3 +8,5 @@ error[L0316]: `infer` forms only exist at runtime
   |
 1 | (defmacro typed () (infer 1))
   |                    ^^^^^^^^^ used at compile time here
+  |
+  = note: run `knave doc L0316` for an explanation

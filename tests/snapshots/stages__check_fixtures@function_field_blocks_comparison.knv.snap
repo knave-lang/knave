@@ -10,3 +10,4 @@ error[L0404]: `handler` does not implement `partial-eq`
   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `partial-eq`
   |
   = note: `handler` cannot derive `partial-eq`: field `callback` is `(fn (i64) i64)`
+  = note: run `knave doc L0404` for an explanation

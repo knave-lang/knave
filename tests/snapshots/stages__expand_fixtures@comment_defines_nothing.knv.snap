@@ -8,3 +8,5 @@ error[L0201]: cannot find `greet` in this scope
   |
 4 | (defn main () (greet "ana"))
   |                ^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

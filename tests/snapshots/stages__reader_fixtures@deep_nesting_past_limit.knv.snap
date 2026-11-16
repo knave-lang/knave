@@ -11,3 +11,4 @@ error[L0108]: this list nests too deeply
      |
      = note: lists nest at most 1024 deep
      = help: move the inner forms into a function of their own
+     = note: run `knave doc L0108` for an explanation

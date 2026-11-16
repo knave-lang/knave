@@ -10,3 +10,4 @@ error[L0245]: `_` binds no value to read
   |             ^ this reads a binding named `_`
   |
   = help: give the binding a name, and read that name here
+  = note: run `knave doc L0245` for an explanation

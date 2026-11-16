@@ -13,6 +13,7 @@ help: write the type with `the`, and replace each `_` with a type
   |
 7 |     (new holder (left (the (vec _) (vec))) (right (vec))))
   |                       ++++++++++++      +
+  = note: run `knave doc L0407` for an explanation
 
 error[L0407]: type annotations needed
  --> check/cannot_infer_struct_fields.knv:7:37
@@ -24,3 +25,4 @@ help: write the type with `the`, and replace each `_` with a type
   |
 7 |     (new holder (left (vec)) (right (the (vec _) (vec)))))
   |                                     ++++++++++++      +
+  = note: run `knave doc L0407` for an explanation

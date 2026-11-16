@@ -13,6 +13,7 @@ error[L0404]: `ticket` does not implement `show`
   |        ^^^^^^^^^^^^^ this needs `show`
   |
   = help: add `show` to the struct's `derive`
+  = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `ticket` does not implement `clone`
  --> check/derive_leaves_out.knv:8:15
@@ -24,3 +25,4 @@ error[L0404]: `ticket` does not implement `clone`
   |               ^^^^^ this needs `clone`
   |
   = help: add `clone` to the struct's `derive`
+  = note: run `knave doc L0404` for an explanation

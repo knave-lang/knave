@@ -10,6 +10,7 @@ error[L0708]: expected a key or a section
   |                     ^^^^^^^ this is neither a `:key value` pair nor a section
   |
   = help: give a value after a key, as `:entry "src/main.knv"`
+  = note: run `knave doc L0708` for an explanation
 
 error[L0708]: expected a key
  --> project/unexpected_form.knv:2:40
@@ -18,3 +19,4 @@ error[L0708]: expected a key
   |                                        ^^^^^^ this is not a `:key value` pair
   |
   = help: an entry is a name, then an optional version, then `:key value` pairs
+  = note: run `knave doc L0708` for an explanation

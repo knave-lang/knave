@@ -13,3 +13,5 @@ error[L0203]: `helper` is defined more than once
   |
 3 | (def helper (fn () 1))
   |      ------ first defined here
+  |
+  = note: run `knave doc L0203` for an explanation

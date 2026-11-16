@@ -13,6 +13,7 @@ help: a field with a similar name exists
   |
 4 |   (defaults :admin? false))
   |                 +
+  = note: run `knave doc L0324` for an explanation
 
 error[L0301]: `admin?` has two defaults
  --> expand/defaults_errors.knv:9:27
@@ -21,6 +22,7 @@ error[L0301]: `admin?` has two defaults
   |                           ^^^^^^^ here
   |
   = help: keep one
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a struct takes one `defaults` clause, after its fields
   --> expand/defaults_errors.knv:14:3
@@ -29,6 +31,7 @@ error[L0301]: a struct takes one `defaults` clause, after its fields
    |   ^^^^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: move the defaults to the end
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a struct takes one `defaults` clause, after its fields
   --> expand/defaults_errors.knv:18:3
@@ -37,6 +40,7 @@ error[L0301]: a struct takes one `defaults` clause, after its fields
    |   ^^^^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: move the defaults to the end
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this default has no value
   --> expand/defaults_errors.knv:25:13
@@ -45,6 +49,7 @@ error[L0301]: this default has no value
    |             ^^^^^^^ here
    |
    = help: write a value after it, as in :admin? false
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a default must start with `:`
   --> expand/defaults_errors.knv:30:13
@@ -53,6 +58,7 @@ error[L0301]: a default must start with `:`
    |             ^^^^^^ here
    |
    = help: write each default as `:field value`, as in (defaults :admin? false)
+   = note: run `knave doc L0301` for an explanation
 
 error[L0324]: `blank` has no field `x`
   --> expand/defaults_errors.knv:38:28
@@ -61,6 +67,7 @@ error[L0324]: `blank` has no field `x`
    |                            ^^ here
    |
    = help: `blank` has no fields
+   = note: run `knave doc L0324` for an explanation
 
 error[L0324]: `close` has no field `nmae`
   --> expand/defaults_errors.knv:42:13
@@ -73,6 +80,7 @@ help: a field with a similar name exists
 42 -   (defaults :nmae "ana"))
 42 +   (defaults :name "ana"))
    |
+   = note: run `knave doc L0324` for an explanation
 
 error[L0323]: `close-parameter` has no parameter `:nmae`
   --> expand/defaults_errors.knv:44:44
@@ -85,6 +93,7 @@ help: a parameter with a similar name exists
 44 - (defn close-parameter (:name str (defaults :nmae "ana"))
 44 + (defn close-parameter (:name str (defaults :name "ana"))
    |
+   = note: run `knave doc L0323` for an explanation
 
 error[L0324]: `user` has no field `admn?`
   --> expand/defaults_errors.knv:50:27
@@ -93,3 +102,4 @@ error[L0324]: `user` has no field `admn?`
    |                           ^^^^^^ here
    |
    = help: the fields of `user` are name, admin?
+   = note: run `knave doc L0324` for an explanation

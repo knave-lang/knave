@@ -10,6 +10,7 @@ warning[L0804]: `add-one` changes an argument, so its name should end with `!`
   |       ^^^^^^^ this function changes an argument
   |
   = help: rename it `add-one!`
+  = note: run `knave doc L0804` for an explanation
 
 warning[L0804]: `add-two` changes an argument, so its name should end with `!`
  --> check/mut_parameter_passed_twice.knv:3:7
@@ -18,6 +19,7 @@ warning[L0804]: `add-two` changes an argument, so its name should end with `!`
   |       ^^^^^^^ this function changes an argument
   |
   = help: rename it `add-two!`
+  = note: run `knave doc L0804` for an explanation
 
 (type add-one (fn ((mut (vec i64))) unit))
 (type add-two (fn ((mut (vec i64))) unit))

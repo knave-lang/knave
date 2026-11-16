@@ -13,6 +13,7 @@ help: write the type with `the`, and replace each `_` with a type
   |
 2 |   (str (some (the (vec _) (vec))))
   |              ++++++++++++      +
+  = note: run `knave doc L0407` for an explanation
 
 error[L0407]: type annotations needed
  --> check/cannot_infer_each_variable.knv:3:14
@@ -24,3 +25,4 @@ help: write the type with `the`, and replace each `_` with a type
   |
 3 |   (str (some (the (vec _) (vec)))))
   |              ++++++++++++      +
+  = note: run `knave doc L0407` for an explanation

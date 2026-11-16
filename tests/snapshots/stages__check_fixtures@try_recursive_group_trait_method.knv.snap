@@ -10,3 +10,4 @@ error[L0429]: `try` needs a result or an option
   |       ^^^^^^^^^^^^^^^^ the type of this call is not known yet
   |
   = help: write a `type` signature for one of: `fmt-number`, `fmt`, `fmt-expression`
+  = note: run `knave doc L0429` for an explanation

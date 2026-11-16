@@ -10,6 +10,7 @@ error[L0210]: malformed `deftype`
   | ^^^^^^^^^^^^^^^^ this does not fit the shape of `deftype`
   |
   = help: write it as `(rust-type (name parameter ...) "template" (type "template") ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0225]: `{0}` names no type parameter
  --> expand/user_definer_shape.knv:8:23
@@ -18,6 +19,7 @@ error[L0225]: `{0}` names no type parameter
   |                       ^^^^^^^^^^^^^ this type has 0 type parameters
   |
   = help: declare the type parameters on the name, as in `(deftype (no-parameter a) ...)`
+  = note: run `knave doc L0225` for an explanation
 
 error[L0210]: malformed `my-trait`
   --> expand/user_definer_shape.knv:13:50
@@ -26,3 +28,4 @@ error[L0210]: malformed `my-trait`
    |                                                  ^ this does not fit the shape of `my-trait`
    |
    = help: write it as `(my-trait name (rust "Path") (requires trait ...)? (method name type)? (help "text")? type ...)`
+   = note: run `knave doc L0210` for an explanation

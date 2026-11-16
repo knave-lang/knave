@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/recur_argument_count.knv
 ---
 error[L0215]: `recur` passes 0 arguments, but its function takes 1
@@ -10,3 +10,4 @@ error[L0215]: `recur` passes 0 arguments, but its function takes 1
   |                               ^^^^^^^ passes 0 arguments
   |
   = help: write `recur` with 1 argument, one for each parameter of the function
+  = note: run `knave doc L0215` for an explanation

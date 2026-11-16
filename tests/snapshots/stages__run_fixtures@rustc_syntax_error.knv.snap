@@ -11,3 +11,4 @@ error[L0604]: leading `+` is not supported
   |
   = note: reported by rustc while compiling the generated Rust
   = help: try removing the `+`
+  = note: run `knave doc L0604` for an explanation

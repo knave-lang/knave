@@ -12,3 +12,4 @@ error[L0404]: `score` does not implement `ord`
   = note: `ord` is never inferred for a struct, so the struct needs a written `derive`
   = note: `score` cannot derive `ord`: field `points` is `f64`
   = help: to sort by one field instead, use `sort-by!` with the field keyword `:name`
+  = note: run `knave doc L0404` for an explanation

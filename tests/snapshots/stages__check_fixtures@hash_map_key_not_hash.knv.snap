@@ -10,6 +10,7 @@ error[L0404]: `float-key` does not implement `hash`
   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `hash`
   |
   = note: `float-key` cannot derive `hash`: field `value` is `f64`
+  = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `float-key` does not implement `eq`
  --> check/hash_map_key_not_hash.knv:6:15
@@ -18,3 +19,4 @@ error[L0404]: `float-key` does not implement `eq`
   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `eq`
   |
   = note: `float-key` cannot derive `eq`: field `value` is `f64`
+  = note: run `knave doc L0404` for an explanation

@@ -16,3 +16,4 @@ error[L0306]: `+` belongs to the program, so macro code cannot run it
     |
     = help: to compute this in the program, return it as code from the macro, for example with `quote`
     = help: in macro code, use `number-add` from `code` instead
+    = note: run `knave doc L0306` for an explanation

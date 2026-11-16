@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/try_recursive_group.knv
 ---
 error[L0429]: `try` needs a result or an option
@@ -11,3 +11,4 @@ error[L0429]: `try` needs a result or an option
   |
   = note: this `parse` is the program's own, and it hides the prelude's `parse`
   = help: write a `type` signature for one of: `parse-number`, `parse`, `parse-expression`
+  = note: run `knave doc L0429` for an explanation

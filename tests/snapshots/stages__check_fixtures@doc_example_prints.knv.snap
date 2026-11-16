@@ -8,3 +8,5 @@ error[L0401]: mismatched types
   |
 6 |   (println (twice 3))
   |   ^^^^^^^^^^^^^^^^^^^ expected `unit`, found an integer
+  |
+  = note: run `knave doc L0401` for an explanation

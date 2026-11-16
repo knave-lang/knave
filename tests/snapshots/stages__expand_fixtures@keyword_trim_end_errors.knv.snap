@@ -11,3 +11,5 @@ error[L0303]: `keyword-trim-end` expects a keyword as argument 1, found a symbol
 6 |
 7 | (trim-symbol)
   | ------------- in this macro call
+  |
+  = note: run `knave doc L0303` for an explanation

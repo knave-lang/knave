@@ -10,3 +10,4 @@ error[L0442]: quoted code only exists at compile time
   |         ^^^^^^^^^^^^^ used in code that runs in the program
   |
   = help: use `quote` inside macros, or write a string if you want text
+  = note: run `knave doc L0442` for an explanation

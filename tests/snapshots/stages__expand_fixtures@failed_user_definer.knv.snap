@@ -8,3 +8,5 @@ error[L0301]: defgauge is not ready
   |
 7 | (defgauge level)
   |           ^^^^^ here
+  |
+  = note: run `knave doc L0301` for an explanation

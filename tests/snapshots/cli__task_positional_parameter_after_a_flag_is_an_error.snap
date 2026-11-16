@@ -9,3 +9,4 @@ error[L0358]: a positional parameter of a task comes before its flags
   |                         ^^^ a positional parameter after a flag
   |
   = help: move it before the first keyword
+  = note: run `knave doc L0358` for an explanation

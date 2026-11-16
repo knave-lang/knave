@@ -153,6 +153,7 @@ warning[L0109]: this docstring code does not read, so `fmt` leaves it as written
    |   ^^^^^^^^^^^^^^^^ the code from this line on does not read as forms
    |
    = help: close each list and string, or name the code's language after the fence's backticks, as in ```rust
+   = note: run `knave doc L0109` for an explanation
 
 warning[L0109]: this docstring code does not read, so `fmt` leaves it as written
   --> format/docstring_code.knv:55:3
@@ -161,3 +162,4 @@ warning[L0109]: this docstring code does not read, so `fmt` leaves it as written
    |   ^^^^^^^^^^ the code from this line on does not read as forms
    |
    = help: close each list and string, or name the code's language after the fence's backticks, as in ```rust
+   = note: run `knave doc L0109` for an explanation

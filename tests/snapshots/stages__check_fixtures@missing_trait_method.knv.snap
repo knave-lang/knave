@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/missing_trait_method.knv
 ---
 error[L0239]: `circle` is missing `scale!` from `shape`
@@ -10,3 +10,4 @@ error[L0239]: `circle` is missing `scale!` from `shape`
   |             ^^^^^^ this implementation is missing `scale!`
   |
   = help: add the `scale!` method
+  = note: run `knave doc L0239` for an explanation

@@ -8,3 +8,5 @@ error[L0201]: cannot find `no-such-term` in this scope
   |
 1 | (def missing-page (doc no-such-term))
   |                        ^^^^^^^^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

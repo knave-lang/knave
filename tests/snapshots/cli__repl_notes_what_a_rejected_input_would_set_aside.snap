@@ -13,3 +13,4 @@ error[L0201]: cannot find `karl` in this scope
   |                                                                ^^^^ not found in this scope
   |
   = note: `<input 3>` would set aside `karl`: missing field `email` in `user`
+  = note: run `knave doc L0201` for an explanation

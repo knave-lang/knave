@@ -13,6 +13,7 @@ error[L0301]: this pattern variable needs `...` after it
   |   ---------------- in this macro call
   |
   = help: write `...` after it
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this pattern variable needs `...` after it
  --> expand/two_wrong_depth_rules_report_once_each.knv:3:34
@@ -24,3 +25,4 @@ error[L0301]: this pattern variable needs `...` after it
   |   ----------------- in this macro call
   |
   = help: write `...` after it
+  = note: run `knave doc L0301` for an explanation

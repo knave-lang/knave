@@ -10,3 +10,4 @@ error[L0210]: malformed `rust-trait`
   |                                                  ^^^ this does not fit the shape of `rust-trait`
   |
   = help: write it as `(rust-trait name "Path" (requires trait ...)? (method name type)? (help "text")? type ...)`
+  = note: run `knave doc L0210` for an explanation

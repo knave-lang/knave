@@ -10,3 +10,4 @@ error[L0228]: malformed `ref` type
   |          ^^^^^^^^^^^^^^^^^^ this does not fit the shape of the type
   |
   = help: write it as `(ref type)`
+  = note: run `knave doc L0228` for an explanation

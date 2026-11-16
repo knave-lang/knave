@@ -11,3 +11,4 @@ error[L0455]: `main` returns a value of type `(ref str)`
   |
   = note: `main` returns `unit` or a `result`
   = help: end the body of `main` with a print, such as `(println value)`, or return a `result`
+  = note: run `knave doc L0455` for an explanation

@@ -18,3 +18,5 @@ help: a name with a similar spelling exists
 2 + (defn circle (r) (none r))
   |
 help: enter `circle` again to use it
+  |
+  = note: run `knave doc L0249` for an explanation

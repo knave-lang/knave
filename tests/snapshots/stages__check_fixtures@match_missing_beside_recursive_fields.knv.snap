@@ -17,3 +17,4 @@ error[L0433]: non-exhaustive `match`
     |
     = note: missing 1 case: `(wide (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _) (link (link (link (link _ _) _) _) _))`
     = help: add an arm for each missing case
+    = note: run `knave doc L0433` for an explanation

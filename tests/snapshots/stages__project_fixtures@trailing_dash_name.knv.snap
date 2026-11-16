@@ -11,6 +11,7 @@ error[L0718]: `my-app-` is not a project name
   |
   = note: the name names the build directory and the program
   = help: use lowercase letters, digits and single dashes, as `my-program`
+  = note: run `knave doc L0718` for an explanation
 
 error[L0717]: edition 2025 does not exist
  --> project/trailing_dash_name.knv:1:30
@@ -23,3 +24,4 @@ help: the only edition is 2026
 1 - (defproject my-app- :edition 2025)
 1 + (defproject my-app- :edition 2026)
   |
+  = note: run `knave doc L0717` for an explanation

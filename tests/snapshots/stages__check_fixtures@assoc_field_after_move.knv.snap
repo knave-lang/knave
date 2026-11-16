@@ -16,3 +16,4 @@ help: clone the value if both places need it
 7 -   (local newer (assoc leaf :year 2025))
 7 +   (local newer (assoc (clone leaf) :year 2025))
   |
+  = note: run `knave doc L0501` for an explanation

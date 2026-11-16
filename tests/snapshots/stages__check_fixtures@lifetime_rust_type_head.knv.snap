@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/lifetime_rust_type_head.knv
 ---
 error[L0212]: expected a type parameter, found `'a`
@@ -8,3 +8,5 @@ error[L0212]: expected a type parameter, found `'a`
   |
 1 | (rust-type (stored 'a) "Stored<{0}>")
   |                    ^^ not a type parameter
+  |
+  = note: run `knave doc L0212` for an explanation

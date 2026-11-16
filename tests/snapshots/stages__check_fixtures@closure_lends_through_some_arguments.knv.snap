@@ -16,6 +16,7 @@ error[L0512]: cannot pass a borrow of a local value to `pick`
    |                  ^^^^^^^^^^^^^^^^^^^^ this borrows a local value
    |
    = help: define `pick` with `defn`, where its result can borrow from its argument
+   = note: run `knave doc L0512` for an explanation
 
 error[L0512]: cannot pass a borrow of a local value to `first`
   --> check/closure_lends_through_some_arguments.knv:17:19
@@ -30,6 +31,7 @@ error[L0512]: cannot pass a borrow of a local value to `first`
    |                   ^^^^^ this borrows a local value
    |
    = help: define `first` with `defn`, where its result can borrow from its argument
+   = note: run `knave doc L0512` for an explanation
 
 error[L0512]: cannot pass a borrow of a local value to `again`
   --> check/closure_lends_through_some_arguments.knv:18:19
@@ -47,6 +49,7 @@ error[L0512]: cannot pass a borrow of a local value to `again`
    |                   ^^^^^ this borrows a local value
    |
    = help: define `first` with `defn`, where its result can borrow from its argument
+   = note: run `knave doc L0512` for an explanation
 
 error[L0512]: cannot pass a borrow of a local value to `more`
   --> check/closure_lends_through_some_arguments.knv:25:18
@@ -66,3 +69,4 @@ error[L0512]: cannot pass a borrow of a local value to `more`
    |                  ^^^^^ this borrows a local value
    |
    = help: define `first` with `defn`, where its result can borrow from its argument
+   = note: run `knave doc L0512` for an explanation

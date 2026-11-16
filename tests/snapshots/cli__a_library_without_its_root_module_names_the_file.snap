@@ -9,3 +9,4 @@ error[L0724]: library `broken` has no root module `../broken/src/nope.knv`
   |                             ^^^^^^ this library's `:lib` names no file
   |
   = help: fix `:lib` in `../broken/project.knv`, or add the file
+  = note: run `knave doc L0724` for an explanation

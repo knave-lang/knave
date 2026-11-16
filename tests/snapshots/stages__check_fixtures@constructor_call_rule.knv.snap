@@ -8,6 +8,8 @@ error[L0409]: missing field `year` in `car`
   |
 9 | (defn missing () (->car :make "Nissan"))
   |                  ^^^^^^^^^^^^^^^^^^^^^^ each missing field needs a value
+  |
+  = note: run `knave doc L0409` for an explanation
 
 error[L0408]: `car` has no field `:mak`
   --> check/constructor_call_rule.knv:11:28
@@ -19,6 +21,7 @@ help: a field with a similar name exists
    |
 11 | (defn misspelled () (->car :make "Nissan"))
    |                                +
+   = note: run `knave doc L0408` for an explanation
 
 error[L0454]: `:make` is given twice in `car`
   --> check/constructor_call_rule.knv:13:41
@@ -29,9 +32,12 @@ error[L0454]: `:make` is given twice in `car`
    |                          first given here
    |
    = help: remove the second `:make` and its value
+   = note: run `knave doc L0454` for an explanation
 
 error[L0409]: missing field `right` in `pair`
   --> check/constructor_call_rule.knv:15:20
    |
 15 | (defn half-pair () (->pair :left 1))
    |                    ^^^^^^^^^^^^^^^^ each missing field needs a value
+   |
+   = note: run `knave doc L0409` for an explanation

@@ -9,3 +9,5 @@ error[L0402]: this function takes 3 arguments but 2 were given
 2 | /   (map-at update (sorted-map "a" 1) "a"
 3 | |     (fn (n) (+ n 1))))
   | |_____________________^ expected 3 arguments
+  |
+  = note: run `knave doc L0402` for an explanation

@@ -10,3 +10,4 @@ error[L0401]: mismatched types
   |                      ^ expected `bool`, found an integer
   |
   = note: the test of `if` must be a `bool`
+  = note: run `knave doc L0401` for an explanation

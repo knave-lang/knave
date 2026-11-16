@@ -11,3 +11,4 @@ error[L0401]: mismatched types
   |
   = note: `b` defaulted to `i64`, because `flip` is called with `i64` and passed as a value with `i16`
   = help: give `flip` a type parameter with a `type` signature, such as `(type flip (where ((a number signed)) (fn (a) a)))`, so that each use takes its own type
+  = note: run `knave doc L0401` for an explanation

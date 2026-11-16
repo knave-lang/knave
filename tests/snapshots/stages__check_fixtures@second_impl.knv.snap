@@ -13,6 +13,7 @@ error[L0459]: `p` already implements `display`
    |          ^ this implements `display` again
    |
    = help: remove one of the two
+   = note: run `knave doc L0459` for an explanation
 
 error[L0459]: `(tree i64)` already implements `display`
   --> check/second_impl.knv:26:10
@@ -24,6 +25,7 @@ error[L0459]: `(tree i64)` already implements `display`
    |          ^^^^^^^^^^ this implements `display` again
    |
    = help: remove one of the two
+   = note: run `knave doc L0459` for an explanation
 
 error[L0459]: `listed` already implements `octal`
   --> check/second_impl.knv:43:13
@@ -35,3 +37,4 @@ error[L0459]: `listed` already implements `octal`
    |             ^^^^^^ this implements `octal` again
    |
    = help: remove one of the two
+   = note: run `knave doc L0459` for an explanation

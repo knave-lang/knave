@@ -10,6 +10,7 @@ error[L0204]: cannot find module `kernel`
   |                                    ^^^^^^ no module with this path
   |
   = help: a module path names a file relative to the root directory, without its extension
+  = note: run `knave doc L0204` for an explanation
 
 error[L0204]: cannot find module `code`
  --> expand/doc_module_compiler_provided.knv:3:34
@@ -18,3 +19,4 @@ error[L0204]: cannot find module `code`
   |                                  ^^^^ no module with this path
   |
   = help: a module path names a file relative to the root directory, without its extension
+  = note: run `knave doc L0204` for an explanation

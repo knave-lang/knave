@@ -12,3 +12,4 @@ error[L0501]: use of moved value `consume`
   |                   ^^^^^^^ value used here after it moved
   |
   = help: this closure moves a captured value, so it cannot be copied
+  = note: run `knave doc L0501` for an explanation

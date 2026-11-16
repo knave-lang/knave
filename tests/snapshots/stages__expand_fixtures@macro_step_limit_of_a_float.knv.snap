@@ -10,3 +10,4 @@ error[L0301]: `with-macro-steps` takes a whole number of steps
   |                   ^^^ not a number of steps
   |
   = help: write a whole number from 0 to 18446744073709551615
+  = note: run `knave doc L0301` for an explanation

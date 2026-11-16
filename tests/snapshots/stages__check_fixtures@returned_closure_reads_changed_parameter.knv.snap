@@ -11,6 +11,7 @@ error[L0517]: a returned closure cannot use `x`, which `snap!` changes
   |
   = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
   = help: copy it first with `(local value x)` and use `value` in the closure
+  = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `shown-adder!` changes
  --> check/returned_closure_reads_changed_parameter.knv:9:25
@@ -20,6 +21,7 @@ error[L0517]: a returned closure cannot use `x`, which `shown-adder!` changes
   |
   = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
   = help: copy it first with `(local value x)` and use `value` in the closure
+  = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `walk!` changes
   --> check/returned_closure_reads_changed_parameter.knv:17:41
@@ -29,6 +31,7 @@ error[L0517]: a returned closure cannot use `x`, which `walk!` changes
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
+   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `branch-adder!` changes
   --> check/returned_closure_reads_changed_parameter.knv:23:25
@@ -38,6 +41,7 @@ error[L0517]: a returned closure cannot use `x`, which `branch-adder!` changes
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
+   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `bumped-adder!` changes
   --> check/returned_closure_reads_changed_parameter.knv:33:25
@@ -47,6 +51,7 @@ error[L0517]: a returned closure cannot use `x`, which `bumped-adder!` changes
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
+   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `called-adder!` changes
   --> check/returned_closure_reads_changed_parameter.knv:39:19
@@ -56,6 +61,7 @@ error[L0517]: a returned closure cannot use `x`, which `called-adder!` changes
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
+   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `looped-adder!` changes
   --> check/returned_closure_reads_changed_parameter.knv:46:20
@@ -65,6 +71,7 @@ error[L0517]: a returned closure cannot use `x`, which `looped-adder!` changes
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
+   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `seeded-adder!` changes
   --> check/returned_closure_reads_changed_parameter.knv:51:25
@@ -74,3 +81,4 @@ error[L0517]: a returned closure cannot use `x`, which `seeded-adder!` changes
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
    = help: copy it first with `(local value x)` and use `value` in the closure
+   = note: run `knave doc L0517` for an explanation

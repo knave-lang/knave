@@ -10,6 +10,7 @@ error[L0205]: module `prelude/backdoor` does not export `definition`
   |                       ^^^^^^^^^^ not exported
   |
   = help: add `definition` to the `export` list of `prelude/backdoor`
+  = note: run `knave doc L0205` for an explanation
 
 error[L0255]: `prelude/internal/syntax` is internal to the prelude
  --> expand/prelude/backdoor.knv:1:6
@@ -19,9 +20,12 @@ error[L0255]: `prelude/internal/syntax` is internal to the prelude
   |
   = note: it holds helpers of the prelude's own forms
   = help: remove this `use`
+  = note: run `knave doc L0255` for an explanation
 
 error[L0201]: cannot find `definition` in this scope
  --> expand/prelude/backdoor.knv:3:9
   |
 3 | (export definition)
   |         ^^^^^^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

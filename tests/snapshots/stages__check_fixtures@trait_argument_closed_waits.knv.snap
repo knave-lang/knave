@@ -10,3 +10,4 @@ error[L0404]: `(vec a)` does not implement `holds`
    |           ^^^^^ this needs `holds`
    |
    = note: `holds` is implemented for: (with (vec i64) i64)
+   = note: run `knave doc L0404` for an explanation

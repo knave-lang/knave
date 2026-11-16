@@ -10,3 +10,4 @@ error[L0401]: mismatched types
   |                  ^^^^^^^^^^^^ expected `(vec _)`, found `(sorted-map string _)`
   |
   = help: `get` reads a collection of unknown type as a vector or a slice, so write a `type` signature for `score-of`, such as `(type score-of (fn ((ref (sorted-map string _)) _) _))`
+  = note: run `knave doc L0401` for an explanation

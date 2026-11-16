@@ -12,3 +12,4 @@ error[L0404]: `not-a-key` does not implement `ord`
   = note: `ord` is never inferred for a struct, so the struct needs a written `derive`
   = help: add `(derive not-a-key clone partial-eq eq hash show ord)` to compare fields in this order: `name`
   = help: to sort by one field instead, use `sort-by!` with the field keyword `:name`
+  = note: run `knave doc L0404` for an explanation

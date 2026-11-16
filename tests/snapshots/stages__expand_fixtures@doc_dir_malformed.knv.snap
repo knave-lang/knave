@@ -10,6 +10,7 @@ error[L0301]: `dir` takes one module name, or nothing
   |                 ^^^^^^^ not one module name
   |
   = help: write `(dir)`, or a module as in `(dir geometry)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: `dir` takes one module name, or nothing
  --> expand/doc_dir_malformed.knv:3:16
@@ -18,6 +19,7 @@ error[L0301]: `dir` takes one module name, or nothing
   |                ^^^^^^^^^^^^^ not one module name
   |
   = help: write `(dir)`, or a module as in `(dir geometry)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: `dir` takes one module name, or nothing
  --> expand/doc_dir_malformed.knv:5:26
@@ -26,6 +28,7 @@ error[L0301]: `dir` takes one module name, or nothing
   |                          ^^^^^^^ not one module name
   |
   = help: write `(dir)`, or a module as in `(dir geometry)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: `dir` takes one module name, or nothing
  --> expand/doc_dir_malformed.knv:7:38
@@ -34,6 +37,7 @@ error[L0301]: `dir` takes one module name, or nothing
   |                                      ^^^^^^^ not one module name
   |
   = help: write `(dir)`, or a module as in `(dir geometry)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0327]: `(dir)` has no docstring
  --> expand/doc_dir_malformed.knv:9:30
@@ -42,6 +46,7 @@ error[L0327]: `(dir)` has no docstring
   |                              ^^^^^ a listing has no docstring
   |
   = help: read its results with `doc-page`
+  = note: run `knave doc L0327` for an explanation
 
 error[L0301]: a documentation lookup takes a name, a module or a listing
   --> expand/doc_dir_malformed.knv:11:27
@@ -50,6 +55,7 @@ error[L0301]: a documentation lookup takes a name, a module or a listing
    |                           ^^ not a name, a module or a listing
    |
    = help: write a name, a module as in `(module geometry)`, or a listing as in `(dir geometry)`
+   = note: run `knave doc L0301` for an explanation
 
 error[L0204]: cannot find module `nowhere`
   --> expand/doc_dir_malformed.knv:13:26
@@ -58,3 +64,4 @@ error[L0204]: cannot find module `nowhere`
    |                          ^^^^^^^ no module with this path
    |
    = help: a module path names a file relative to the root directory, without its extension
+   = note: run `knave doc L0204` for an explanation

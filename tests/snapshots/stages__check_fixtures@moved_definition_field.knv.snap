@@ -14,3 +14,4 @@ help: clone the value to own a copy
 2 -   (local deck (->deck :name "The Deck" :cards cards))
 2 +   (local deck (->deck :name "The Deck" :cards (clone cards)))
   |
+  = note: run `knave doc L0503` for an explanation

@@ -7,3 +7,5 @@ error[L0310]: `origin` is not available at compile time
   |
 1 | origin
   | ^^^^^^ used by macro code here
+  |
+  = note: run `knave doc L0310` for an explanation

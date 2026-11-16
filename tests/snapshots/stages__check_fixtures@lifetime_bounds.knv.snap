@@ -10,3 +10,4 @@ error[L0417]: a lifetime cannot require traits
   |           ^^^^^^^^^^ traits given here
   |
   = help: write the lifetime alone, as in `'a`
+  = note: run `knave doc L0417` for an explanation

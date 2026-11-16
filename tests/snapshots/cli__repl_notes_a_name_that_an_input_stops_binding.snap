@@ -13,3 +13,4 @@ error[L0201]: cannot find `foo` in this scope
   |  ^^^ not found in this scope
   |
   = note: `<input 3>` no longer defines `foo` after `<input 4>`
+  = note: run `knave doc L0201` for an explanation

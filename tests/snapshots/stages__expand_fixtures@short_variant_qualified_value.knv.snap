@@ -10,3 +10,4 @@ error[L0231]: this is not a pattern
   |      ^^^^^^^^^^^^^ a pattern names a binding, a literal or a variant
   |
   = help: write a binding name, `_`, a literal, or `(variant pattern ...)`
+  = note: run `knave doc L0231` for an explanation

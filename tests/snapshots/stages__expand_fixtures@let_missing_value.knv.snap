@@ -10,6 +10,7 @@ error[L0334]: a name in the binding list of `let` has no value
   |                          ^ this name has no value
   |
   = help: write its value after it, as `(let (x value) ...)`
+  = note: run `knave doc L0334` for an explanation
 
 error[L0334]: a name in the binding list of `let` has no value
  --> expand/let_missing_value.knv:5:9
@@ -18,6 +19,7 @@ error[L0334]: a name in the binding list of `let` has no value
   |         ^^^^^ this name has no value
   |
   = help: write its value after it, as `(let (total (+ 1 2) count value) ...)`
+  = note: run `knave doc L0334` for an explanation
 
 error[L0334]: a name in the binding list of `let` has no value
  --> expand/let_missing_value.knv:9:9
@@ -26,6 +28,7 @@ error[L0334]: a name in the binding list of `let` has no value
   |         ^^^^^^^^^^^^^ this name has no value
   |
   = help: write its value after it, as `(let ((count usize) value) ...)`, or write each name and its value without their own parentheses, as `(let (count usize) ...)`
+  = note: run `knave doc L0334` for an explanation
 
 error[L0334]: a name in the binding list of `let` has no value
   --> expand/let_missing_value.knv:13:9
@@ -34,6 +37,7 @@ error[L0334]: a name in the binding list of `let` has no value
    |         ^^^^^^^^ this name has no value
    |
    = help: write its value after it, as `(let ((index 0) (total 0) (rest 5) value) ...)`, or write each name and its value without their own parentheses, as `(let (index 0 total 0 rest 5) ...)`
+   = note: run `knave doc L0334` for an explanation
 
 error[L0334]: a name in the binding list of `let` has no value
   --> expand/let_missing_value.knv:18:9
@@ -42,6 +46,7 @@ error[L0334]: a name in the binding list of `let` has no value
    |         ^^^^^^^^^^^ this name has no value
    |
    = help: write its value after it, as `(let (count 0 (total i64) value) ...)`
+   = note: run `knave doc L0334` for an explanation
 
 error[L0334]: a name in the binding list of `let` has no value
   --> expand/let_missing_value.knv:22:9
@@ -50,3 +55,4 @@ error[L0334]: a name in the binding list of `let` has no value
    |         ^^^^^^^^^^^ this name has no value
    |
    = help: write its value after it, as `(let ((total 0 1) value) ...)`
+   = note: run `knave doc L0334` for an explanation

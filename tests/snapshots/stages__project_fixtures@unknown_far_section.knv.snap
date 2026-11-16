@@ -10,3 +10,4 @@ error[L0707]: unknown section `zzz`
   |                ^^^ not a section of a project
   |
   = help: the sections are `libraries`, `dependencies` and `dev-dependencies`
+  = note: run `knave doc L0707` for an explanation

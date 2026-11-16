@@ -10,6 +10,7 @@ error[L0201]: cannot find `i64` in this scope
   |              ^^^ not found in this scope
   |
   = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature
+  = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `option` in this scope
  --> expand/type_in_value.knv:5:17
@@ -18,12 +19,15 @@ error[L0201]: cannot find `option` in this scope
   |                 ^^^^^^ not found in this scope
   |
   = note: `option` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature
+  = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
  --> expand/type_in_value.knv:5:24
   |
 5 |   (let (parsed (option i64)) parsed))
   |                        ^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
  --> expand/type_in_value.knv:7:43
@@ -32,6 +36,7 @@ error[L0201]: cannot find `i64` in this scope
   |                                           ^^^ not found in this scope
   |
   = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature
+  = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
   --> expand/type_in_value.knv:10:15
@@ -40,6 +45,7 @@ error[L0201]: cannot find `i64` in this scope
    |               ^^^ not found in this scope
    |
    = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature
+   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `string` in this scope
   --> expand/type_in_value.knv:11:16
@@ -53,6 +59,7 @@ help: a name with a similar spelling exists
 11 -   (local count string)
 11 +   (local count stdin)
    |
+   = note: run `knave doc L0201` for an explanation
 
 error[L0304]: `char` is a macro, not a value
   --> expand/type_in_value.knv:14:33
@@ -61,6 +68,7 @@ error[L0304]: `char` is a macro, not a value
    |                                 ^^^^ used as a value here
    |
    = help: a macro can only be called; pass a function instead
+   = note: run `knave doc L0304` for an explanation
 
 error[L0201]: cannot find `totl` in this scope
   --> expand/type_in_value.knv:21:6
@@ -72,6 +80,7 @@ help: a name with a similar spelling exists
    |
 21 |   (+ total i64))
    |         +
+   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
   --> expand/type_in_value.knv:21:11
@@ -80,6 +89,7 @@ error[L0201]: cannot find `i64` in this scope
    |           ^^^ not found in this scope
    |
    = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature
+   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
   --> expand/type_in_value.knv:23:25
@@ -88,6 +98,7 @@ error[L0201]: cannot find `i64` in this scope
    |                         ^^^ not found in this scope
    |
    = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature
+   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `string` in this scope
   --> expand/type_in_value.knv:25:26
@@ -101,6 +112,7 @@ help: a name with a similar spelling exists
 25 - (def second-module-value string)
 25 + (def second-module-value stdin)
    |
+   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `point` in this scope
   --> expand/type_in_value.knv:31:28
@@ -113,6 +125,7 @@ help: a name with a similar spelling exists
 31 - (defn struct-as-callee () (point 0 i64))
 31 + (defn struct-as-callee () (print 0 i64))
    |
+   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
   --> expand/type_in_value.knv:31:36
@@ -121,6 +134,7 @@ error[L0201]: cannot find `i64` in this scope
    |                                    ^^^ not found in this scope
    |
    = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature
+   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
   --> expand/type_in_value.knv:34:6
@@ -129,6 +143,7 @@ error[L0201]: cannot find `i64` in this scope
    |      ^^^ not found in this scope
    |
    = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature
+   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `i64` in this scope
   --> expand/type_in_value.knv:34:30
@@ -137,3 +152,4 @@ error[L0201]: cannot find `i64` in this scope
    |                              ^^^ not found in this scope
    |
    = note: `i64` is a type; a type goes beside a name in a binding, as in `(local (year i64) 2025)`, or in a `type` signature
+   = note: run `knave doc L0201` for an explanation

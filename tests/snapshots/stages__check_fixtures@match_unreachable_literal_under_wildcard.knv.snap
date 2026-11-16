@@ -10,6 +10,8 @@ warning[L0803]: unreachable `match` arm
   |      ----------- this arm covers it
 8 |     ((point 1 2) 2)
   |      ^^^^^^^^^^^ this arm can never match
+  |
+  = note: run `knave doc L0803` for an explanation
 
 (derive point clone copy partial-eq eq hash show)
 (type ->point (fn (i64 i64) point))

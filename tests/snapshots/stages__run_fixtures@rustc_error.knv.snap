@@ -16,3 +16,4 @@ help: clone the value if both places need it
 7 -   (local moved first-pair)
 7 +   (local moved (clone first-pair))
   |
+  = note: run `knave doc L0501` for an explanation

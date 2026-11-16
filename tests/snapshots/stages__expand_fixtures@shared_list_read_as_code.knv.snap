@@ -14,6 +14,7 @@ error[L0326]: macro code used a list too large to read as code
    |
    = note: a list that macro code passes to a built-in reads as at most 131072 forms, counting each shared part once per use
    = help: build a smaller list, or stop repeating the same list inside itself
+   = note: run `knave doc L0326` for an explanation
 
 error[L0326]: macro code used a list too large to read as code
   --> expand/shared_list_read_as_code.knv:14:3
@@ -26,6 +27,7 @@ error[L0326]: macro code used a list too large to read as code
    |
    = note: a list that macro code passes to a built-in reads as at most 131072 forms, counting each shared part once per use
    = help: build a smaller list, or stop repeating the same list inside itself
+   = note: run `knave doc L0326` for an explanation
 
 error[L0326]: macro code used a list too large to read as code
   --> expand/shared_list_read_as_code.knv:17:3
@@ -38,6 +40,7 @@ error[L0326]: macro code used a list too large to read as code
    |
    = note: a list that macro code passes to a built-in reads as at most 131072 forms, counting each shared part once per use
    = help: build a smaller list, or stop repeating the same list inside itself
+   = note: run `knave doc L0326` for an explanation
 
 error[L0326]: macro code used a list too large to read as code
   --> expand/shared_list_read_as_code.knv:20:3
@@ -50,6 +53,7 @@ error[L0326]: macro code used a list too large to read as code
    |
    = note: a list that macro code passes to a built-in reads as at most 131072 forms, counting each shared part once per use
    = help: build a smaller list, or stop repeating the same list inside itself
+   = note: run `knave doc L0326` for an explanation
 
 error[L0326]: macro code used a list too large to read as code
   --> expand/shared_list_read_as_code.knv:23:3
@@ -62,3 +66,4 @@ error[L0326]: macro code used a list too large to read as code
    |
    = note: a list that macro code passes to a built-in reads as at most 131072 forms, counting each shared part once per use
    = help: build a smaller list, or stop repeating the same list inside itself
+   = note: run `knave doc L0326` for an explanation

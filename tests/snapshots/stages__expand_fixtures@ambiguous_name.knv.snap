@@ -14,3 +14,5 @@ error[L0202]: `shared` is ambiguous
    | |
    | this name could refer to more than one binding
    | one candidate is defined here
+   |
+   = note: run `knave doc L0202` for an explanation

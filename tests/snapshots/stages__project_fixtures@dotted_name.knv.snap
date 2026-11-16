@@ -11,3 +11,4 @@ error[L0718]: `..` is not a project name
   |
   = note: the name names the build directory and the program
   = help: use lowercase letters, digits and single dashes, as `my-program`
+  = note: run `knave doc L0718` for an explanation

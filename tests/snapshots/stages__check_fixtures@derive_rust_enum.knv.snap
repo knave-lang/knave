@@ -10,3 +10,4 @@ error[L0435]: `option` is a Rust type, so it has no `derive`
   |         ^^^^^^ `option` names a Rust type
   |
   = help: the traits of a Rust type come from the Rust traits that list it
+  = note: run `knave doc L0435` for an explanation

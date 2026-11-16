@@ -10,3 +10,4 @@ error[L0210]: malformed `match`
   |                         ^^ this does not fit the shape of `match`
   |
   = help: write it as `(match value (pattern body ...) ...)`
+  = note: run `knave doc L0210` for an explanation

@@ -10,6 +10,7 @@ error[L0345]: `deftype` names a Rust type
   |                         ^^^ here
   |
   = help: write `(deftype name (rust "Path"))`
+  = note: run `knave doc L0345` for an explanation
 
 error[L0345]: `deftype` names a Rust type
  --> expand/deftype_errors.knv:3:10
@@ -18,6 +19,7 @@ error[L0345]: `deftype` names a Rust type
   |          ^^^^^^^^^^^^^^^^ here
   |
   = help: write `(deftype name (rust "Path"))`
+  = note: run `knave doc L0345` for an explanation
 
 error[L0345]: `deftype` names a Rust type
  --> expand/deftype_errors.knv:5:10
@@ -26,6 +28,7 @@ error[L0345]: `deftype` names a Rust type
   |          ^^^^^^^^^^ here
   |
   = help: write `(deftype name (rust "Path"))`
+  = note: run `knave doc L0345` for an explanation
 
 error[L0341]: a `rust` clause on `deftype` holds one string
  --> expand/deftype_errors.knv:7:34
@@ -34,6 +37,7 @@ error[L0341]: a `rust` clause on `deftype` holds one string
   |                                  ^^^^^^^^^^^^^^^^^^ here
   |
   = help: write it as `(rust "Path")`
+  = note: run `knave doc L0341` for an explanation
 
 error[L0340]: the `rust` clause comes right after the name
   --> expand/deftype_errors.knv:11:3
@@ -42,6 +46,7 @@ error[L0340]: the `rust` clause comes right after the name
    |   ^^^^^^^^^^^^ here
    |
    = help: move it to the first place after the name, or after the docstring
+   = note: run `knave doc L0340` for an explanation
 
 error[L0339]: `deftype` needs a name
   --> expand/deftype_errors.knv:13:10
@@ -50,3 +55,4 @@ error[L0339]: `deftype` needs a name
    |          ^^^^^ here
    |
    = help: write a name, as in (deftype shape ...)
+   = note: run `knave doc L0339` for an explanation

@@ -9,3 +9,4 @@ error[L0604]: rustc could not compile the generated program
   | ^ while compiling this program
   |
   = note: rustc crashed before reporting anything
+  = note: run `knave doc L0604` for an explanation

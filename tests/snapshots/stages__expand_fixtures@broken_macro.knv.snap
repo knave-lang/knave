@@ -10,15 +10,20 @@ error[L0210]: malformed `macro`
   |                             ^^^^ this does not fit the shape of `macro`
   |
   = help: write it as `(macro (form) body ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0309]: the macro `unparameterized` has errors, so this call cannot expand
  --> expand/broken_macro.knv:5:1
   |
 5 | (unparameterized)
   | ^^^^^^^^^^^^^^^^^ this call needs the macro
+  |
+  = note: run `knave doc L0309` for an explanation
 
 error[L0307]: `self-expanding` depends on itself at compile time
  --> expand/broken_macro.knv:8:17
   |
 8 |   (macro (form) (self-expanding)))
   |                 ^^^^^^^^^^^^^^^^ needed here while it is still being computed
+  |
+  = note: run `knave doc L0307` for an explanation

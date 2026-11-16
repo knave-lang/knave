@@ -11,6 +11,8 @@ error[L0303]: `first` expects code as argument 1, found unit
 ...
 39 | (first-of-unit)
    | --------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0303]: `first` expects code as argument 1, found a function
   --> expand/compile_time_type_errors.knv:7:17
@@ -20,6 +22,8 @@ error[L0303]: `first` expects code as argument 1, found a function
 ...
 41 | (first-of-function)
    | ------------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0303]: `first` expects a list as argument 1, found a symbol
   --> expand/compile_time_type_errors.knv:10:17
@@ -29,6 +33,8 @@ error[L0303]: `first` expects a list as argument 1, found a symbol
 ...
 43 | (first-of-symbol)
    | ----------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0303]: `number-add` expects an integer as argument 1, found a list
   --> expand/compile_time_type_errors.knv:13:17
@@ -38,6 +44,8 @@ error[L0303]: `number-add` expects an integer as argument 1, found a list
 ...
 45 | (add-a-list)
    | ------------ in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0303]: `number-add` expects an integer as argument 1, found a float
   --> expand/compile_time_type_errors.knv:16:17
@@ -47,6 +55,8 @@ error[L0303]: `number-add` expects an integer as argument 1, found a float
 ...
 47 | (add-a-float)
    | ------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0315]: `number-add` overflowed
   --> expand/compile_time_type_errors.knv:20:5
@@ -56,6 +66,8 @@ error[L0315]: `number-add` overflowed
 ...
 49 | (overflow)
    | ---------- in this macro call
+   |
+   = note: run `knave doc L0315` for an explanation
 
 error[L0303]: `nth` expects an integer as argument 2, found a float
   --> expand/compile_time_type_errors.knv:23:17
@@ -65,6 +77,8 @@ error[L0303]: `nth` expects an integer as argument 2, found a float
 ...
 51 | (nth-at-a-fraction)
    | ------------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0303]: `bool-not` expects a boolean as argument 1, found an integer
   --> expand/compile_time_type_errors.knv:26:17
@@ -74,6 +88,8 @@ error[L0303]: `bool-not` expects a boolean as argument 1, found an integer
 ...
 53 | (negate-a-number)
    | ----------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0312]: a boolean cannot be called
   --> expand/compile_time_type_errors.knv:28:30
@@ -83,6 +99,8 @@ error[L0312]: a boolean cannot be called
 ...
 55 | (call-true)
    | ----------- in this macro call
+   |
+   = note: run `knave doc L0312` for an explanation
 
 error[L0303]: `fail` expects a string as argument 1, found an integer
   --> expand/compile_time_type_errors.knv:31:17
@@ -92,6 +110,8 @@ error[L0303]: `fail` expects a string as argument 1, found an integer
 ...
 57 | (fail-with-a-number)
    | -------------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0303]: `fail` expects a string as argument 3, found an integer
   --> expand/compile_time_type_errors.knv:34:17
@@ -101,6 +121,8 @@ error[L0303]: `fail` expects a string as argument 3, found an integer
 ...
 59 | (fail-with-a-numbered-help)
    | --------------------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0311]: this function takes 1 argument but 0 were given
   --> expand/compile_time_type_errors.knv:37:17
@@ -110,3 +132,5 @@ error[L0311]: this function takes 1 argument but 0 were given
 ...
 61 | (call-with-too-few)
    | ------------------- in this macro call
+   |
+   = note: run `knave doc L0311` for an explanation

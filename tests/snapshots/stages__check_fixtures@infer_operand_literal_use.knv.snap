@@ -8,3 +8,5 @@ error[L0401]: mismatched types
   |
 7 |   (listen (port)))
   |           ^^^^^^ expected `u16`, found `i64`
+  |
+  = note: run `knave doc L0401` for an explanation

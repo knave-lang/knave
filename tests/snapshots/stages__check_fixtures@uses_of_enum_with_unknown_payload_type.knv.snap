@@ -8,9 +8,13 @@ error[L0415]: `vec` takes 1 type argument but 2 were given
   |
 6 |   (yes (vec i64 i64))
   |        ^^^^^^^^^^^^^ expected 1 type argument
+  |
+  = note: run `knave doc L0415` for an explanation
 
 error[L0415]: `vec` takes 1 type argument but 2 were given
  --> check/uses_of_enum_with_unknown_payload_type.knv:7:18
   |
 7 |   (broken :items (vec i64 i64))
   |                  ^^^^^^^^^^^^^ expected 1 type argument
+  |
+  = note: run `knave doc L0415` for an explanation

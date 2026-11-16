@@ -14,3 +14,4 @@ help: clone the value if both places need it
 15 -                (do (local b g) (recur (+ i 1)))
 15 +                (do (local b (clone g)) (recur (+ i 1)))
    |
+   = note: run `knave doc L0501` for an explanation

@@ -15,3 +15,4 @@ error[L0201]: cannot find `missing-name` in this scope
   |   --------- in this macro call
   |
   = note: in this expansion of `leaks`
+  = note: run `knave doc L0201` for an explanation

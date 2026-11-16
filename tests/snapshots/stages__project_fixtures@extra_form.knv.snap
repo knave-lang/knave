@@ -13,3 +13,4 @@ error[L0702]: `project.knv` holds a form after its `defproject` form
   | ^^^^^^^^^^^^^^^^^^ this form is outside the `defproject` form
   |
   = help: move this form inside the `defproject` form, or remove it
+  = note: run `knave doc L0702` for an explanation

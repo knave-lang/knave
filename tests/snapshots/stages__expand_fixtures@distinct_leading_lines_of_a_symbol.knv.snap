@@ -11,3 +11,5 @@ error[L0303]: `distinct-leading-lines` expects a list of strings as argument 1, 
 5 |
 6 | (defn main () (println (kept-texts)))
   |                        ------------ in this macro call
+  |
+  = note: run `knave doc L0303` for an explanation

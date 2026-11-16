@@ -15,3 +15,4 @@ error[L0512]: cannot pass a borrow of a local value to `whole`
   |                          ^^^^^^^^^^ this borrows a local value
   |
   = help: define `whole` with `defn`, where its result can borrow from its argument
+  = note: run `knave doc L0512` for an explanation

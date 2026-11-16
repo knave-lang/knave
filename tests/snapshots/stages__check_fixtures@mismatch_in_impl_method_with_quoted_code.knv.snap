@@ -8,3 +8,5 @@ error[L0401]: mismatched types
   |
 9 |     (do (+ 1 "a") (quote hello) (str "x"))))
   |              ^^^ expected an integer, found `str`
+  |
+  = note: run `knave doc L0401` for an explanation

@@ -13,6 +13,7 @@ error[L0515]: `bump!` changes its argument, but this call passes it a copy
    |               ^^^^^ this parameter expects `i64`, and `bump!` takes `(mut i64)`
    |
    = help: to change a copy on purpose, write `(type bump! (fn (i64) unit))`, or start the body with `(local x x)`
+   = note: run `knave doc L0515` for an explanation
 
 error[L0515]: `bump!` changes its argument, but the field `apply` passes it a copy
   --> check/changing_function_value.knv:11:33
@@ -24,6 +25,7 @@ error[L0515]: `bump!` changes its argument, but the field `apply` passes it a co
    |                                 ^^^^^ the function in `apply` expects `i64`, and `bump!` takes `(mut i64)`
    |
    = help: to change a copy on purpose, write `(type bump! (fn (i64) unit))`, or start the body with `(local x x)`
+   = note: run `knave doc L0515` for an explanation
 
 error[L0515]: `bump!` changes its argument, but the field `apply` passes it a copy
   --> check/changing_function_value.knv:13:24
@@ -35,3 +37,4 @@ error[L0515]: `bump!` changes its argument, but the field `apply` passes it a co
    |                        ^^^^^ the function in `apply` expects `i64`, and `bump!` takes `(mut i64)`
    |
    = help: to change a copy on purpose, write `(type bump! (fn (i64) unit))`, or start the body with `(local x x)`
+   = note: run `knave doc L0515` for an explanation

@@ -11,3 +11,4 @@ error[L0517]: a returned closure cannot use `x`, which `walk!` changes
   |
   = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
   = help: copy it first with `(local value x)` and use `value` in the closure
+  = note: run `knave doc L0517` for an explanation

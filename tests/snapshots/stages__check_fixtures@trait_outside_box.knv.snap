@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/trait_outside_box.knv
 ---
 error[L0449]: a trait is a type only inside `(box ...)`
@@ -10,3 +10,4 @@ error[L0449]: a trait is a type only inside `(box ...)`
   |                 ^^^^^ `shape` is a trait
   |
   = help: write `(box shape)` to box it as a trait object
+  = note: run `knave doc L0449` for an explanation

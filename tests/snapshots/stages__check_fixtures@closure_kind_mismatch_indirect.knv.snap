@@ -10,6 +10,7 @@ error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
   |                         ^^^^^^^ `text` moves here
   |
   = help: clone `text`, or borrow it with `(ref text)`
+  = note: run `knave doc L0509` for an explanation
 
 error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
  --> check/closure_kind_mismatch_indirect.knv:7:8
@@ -20,3 +21,4 @@ error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
   | |______________________________^ this closure is stronger than the parameter accepts
   |
   = help: clone the closure's captures, or borrow them instead
+  = note: run `knave doc L0509` for an explanation

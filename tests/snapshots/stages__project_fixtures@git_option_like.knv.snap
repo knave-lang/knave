@@ -10,3 +10,4 @@ error[L0727]: `:git` cannot start with `-`
   |                               ^^^^ git would read this as an option
   |
   = help: write the repository's URL or path, as `https://example.com/keymap.git`
+  = note: run `knave doc L0727` for an explanation

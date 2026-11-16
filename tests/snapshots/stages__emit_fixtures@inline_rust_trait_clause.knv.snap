@@ -11,3 +11,5 @@ error[L0603]: invalid Rust template: a template with clauses needs a `def`, whos
 3 | |               (where (a) (fn (a) a))
 4 | |               (ord "count({0})"))
   | |_________________________________^ in this template
+  |
+  = note: run `knave doc L0603` for an explanation

@@ -10,6 +10,7 @@ error[L0304]: `unless` is a macro, not a value
   |               ^^^^^^ used as a value here
   |
   = help: a macro can only be called; pass a function instead
+  = note: run `knave doc L0304` for an explanation
 
 error[L0301]: `->car` takes 4 arguments, one per field, or a `:field value` pair for each field without a default
  --> emit/constructor_errors.knv:9:15
@@ -18,3 +19,4 @@ error[L0301]: `->car` takes 4 arguments, one per field, or a `:field value` pair
   |               ^^^^^^^^^^^^^^^^^^^^^^^ here
   |
   = help: write it as `(->car make model year electric?)`
+  = note: run `knave doc L0301` for an explanation

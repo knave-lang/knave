@@ -10,6 +10,8 @@ warning[L0803]: unreachable `match` arm
   |      ----------------- this arm covers it
 8 |     ((range _ end) end)))
   |      ^^^^^^^^^^^^^ this arm can never match
+  |
+  = note: run `knave doc L0803` for an explanation
 
 (derive range clone copy partial-eq eq hash show)
 (type ->range (fn (i64 i64) range))

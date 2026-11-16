@@ -11,6 +11,7 @@ error[L0433]: non-exhaustive `match`
   |
   = note: missing 1 case: `_`
   = help: add an arm for each missing case
+  = note: run `knave doc L0433` for an explanation
 
 warning[L0803]: unreachable `match` arm
  --> check/match_unreachable_literals.knv:2:25
@@ -19,6 +20,8 @@ warning[L0803]: unreachable `match` arm
   |                   -     ^ this arm can never match
   |                   |
   |                   this arm covers it
+  |
+  = note: run `knave doc L0803` for an explanation
 
 error[L0433]: non-exhaustive `match`
  --> check/match_unreachable_literals.knv:5:3
@@ -28,6 +31,7 @@ error[L0433]: non-exhaustive `match`
   |
   = note: missing 1 case: `_`
   = help: add an arm for each missing case
+  = note: run `knave doc L0433` for an explanation
 
 warning[L0803]: unreachable `match` arm
  --> check/match_unreachable_literals.knv:5:29
@@ -36,6 +40,8 @@ warning[L0803]: unreachable `match` arm
   |             ---             ^^^ this arm can never match
   |             |
   |             this arm covers it
+  |
+  = note: run `knave doc L0803` for an explanation
 
 warning[L0803]: unreachable `match` arm
  --> check/match_unreachable_literals.knv:8:32
@@ -44,3 +50,5 @@ warning[L0803]: unreachable `match` arm
   |             ----               ^^^^ this arm can never match
   |             |
   |             this arm covers it
+  |
+  = note: run `knave doc L0803` for an explanation

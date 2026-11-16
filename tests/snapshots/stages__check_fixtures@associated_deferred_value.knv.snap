@@ -8,3 +8,5 @@ error[L0401]: mismatched types
   |
 3 |     (parse "4"))
   |     ^^^^^^^^^^^ expected `parse-bool-error`, found `parse-int-error`
+  |
+  = note: run `knave doc L0401` for an explanation

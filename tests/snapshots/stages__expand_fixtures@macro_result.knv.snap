@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).expand_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/expand/macro_result.knv
 ---
 error[L0302]: this macro returned a boolean instead of code
@@ -8,3 +8,5 @@ error[L0302]: this macro returned a boolean instead of code
   |
 3 | (returns-boolean)
   | ^^^^^^^^^^^^^^^^^ in this macro call
+  |
+  = note: run `knave doc L0302` for an explanation

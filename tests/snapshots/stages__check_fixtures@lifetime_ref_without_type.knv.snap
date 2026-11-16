@@ -8,3 +8,5 @@ error[L0212]: expected a type, found `'a`
   |
 2 |   (where ('a) (fn ((ref 'a)) unit)))
   |                         ^^ not a type
+  |
+  = note: run `knave doc L0212` for an explanation

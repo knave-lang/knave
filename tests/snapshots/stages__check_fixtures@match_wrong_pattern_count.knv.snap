@@ -8,9 +8,13 @@ error[L0432]: `circle` takes 1 part in a pattern but 2 were given
   |
 5 |     ((circle _ _) 0.0)
   |      ^^^^^^^^^^^^ this pattern has the wrong number of parts
+  |
+  = note: run `knave doc L0432` for an explanation
 
 error[L0432]: `circle` takes 1 part in a pattern but 2 were given
  --> check/match_wrong_pattern_count.knv:9:13
   |
 9 |   (match s ((shape/circle _ _) 0.0)))
   |             ^^^^^^^^^^^^^^^^^^ this pattern has the wrong number of parts
+  |
+  = note: run `knave doc L0432` for an explanation

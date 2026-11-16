@@ -10,3 +10,4 @@ warning[L0256]: `shadowing-tests/greeting.knv` hides `src/greeting.knv`
   |
   = note: a module of the test directory takes precedence over a source module of the same path
   = help: rename `shadowing-tests/greeting.knv` to reach `src/greeting.knv`
+  = note: run `knave doc L0256` for an explanation

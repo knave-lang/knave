@@ -10,6 +10,7 @@ warning[L0803]: unreachable `match` arm
   |      ^ this arm can never match
   |
   = note: the earlier arms together cover every value this arm matches
+  = note: run `knave doc L0803` for an explanation
 
 error[L0501]: use of moved value `model`
   --> check/ownership_error_keeps_type_warnings.knv:12:12
@@ -24,3 +25,4 @@ help: clone the value if both places need it
 11 -   (local parked model)
 11 +   (local parked (clone model))
    |
+   = note: run `knave doc L0501` for an explanation

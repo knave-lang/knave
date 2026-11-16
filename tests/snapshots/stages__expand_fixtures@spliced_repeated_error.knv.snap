@@ -13,6 +13,7 @@ error[L0201]: cannot find `missing` in this scope
    | ------ in this macro call
    |
    = note: in this expansion of `defs`
+   = note: run `knave doc L0201` for an explanation
 
 error[L0207]: expected a definition at module level
   --> expand/spliced_repeated_error.knv:16:1
@@ -21,6 +22,7 @@ error[L0207]: expected a definition at module level
    | ^^^^^^ this is not a definition
    |
    = help: put expressions inside a function, such as `(def run (fn () ...))`
+   = note: run `knave doc L0207` for an explanation
 
 error[L0326]: macro expansion did not finish
   --> expand/spliced_repeated_error.knv:16:1
@@ -30,3 +32,4 @@ error[L0326]: macro expansion did not finish
    |
    = note: the macro calls in one top-level form expand to at most 131072 forms in all
    = help: make each recursive macro stop, or split a large expansion across several top-level forms
+   = note: run `knave doc L0326` for an explanation

@@ -11,3 +11,5 @@ error[L0314]: `string-drop` was given a count longer than the string
 4 |
 5 | (def past-end (drop-past-end "unused"))
   |               ------------------------ in this macro call
+  |
+  = note: run `knave doc L0314` for an explanation

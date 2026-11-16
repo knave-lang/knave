@@ -8,6 +8,8 @@ error[L0317]: a `match` only exists at runtime
   |
 5 |     (match form ((on) 1) (off 0))))
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ used at compile time here
+  |
+  = note: run `knave doc L0317` for an explanation
 
 error[L0316]: enum values only exist at runtime
  --> check/match_in_macro.knv:7:30
@@ -17,3 +19,5 @@ error[L0316]: enum values only exist at runtime
 8 |
 9 | (def first (make-flag 1))
   |            ------------- in this macro call
+  |
+  = note: run `knave doc L0316` for an explanation

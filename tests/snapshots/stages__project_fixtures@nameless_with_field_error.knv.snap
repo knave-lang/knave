@@ -10,6 +10,7 @@ error[L0703]: the project has no name
   |  ^^^^^^^^^^ expected a name after `defproject`
   |
   = help: name the project, as `(defproject my-program)`
+  = note: run `knave doc L0703` for an explanation
 
 error[L0717]: edition 2025 does not exist
  --> project/nameless_with_field_error.knv:1:22
@@ -22,3 +23,4 @@ help: the only edition is 2026
 1 - (defproject :edition 2025)
 1 + (defproject :edition 2026)
   |
+  = note: run `knave doc L0717` for an explanation

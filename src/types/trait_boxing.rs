@@ -14,8 +14,7 @@ impl<'a> TraitBoxing<'a> {
     }
 
     pub(super) fn suggests_box(&self, trait_binding: BindingId) -> bool {
-        !self.traits.prelude_internal.contains(trait_binding)
-            && self.blocker(trait_binding).is_none()
+        self.definition(trait_binding).is_some() && self.blocker(trait_binding).is_none()
     }
 
     pub(super) fn blocker(&self, trait_binding: BindingId) -> Option<(String, &'static str)> {
@@ -152,11 +151,11 @@ mod tests {
     }
 
     #[test]
-    fn a_box_is_suggested_for_a_trait_the_program_can_box_and_name() {
+    fn a_box_is_suggested_only_for_a_defined_trait_without_a_blocker() {
         let fixture = BoxingFixture::new();
         assert!(fixture.suggests_box("drawn"));
-        assert!(fixture.suggests_box("display"));
-        assert!(fixture.suggests_box("shown-number"));
+        assert!(!fixture.suggests_box("display"));
+        assert!(!fixture.suggests_box("shown-number"));
         assert!(!fixture.suggests_box("consumed"));
         assert!(!fixture.suggests_box("contains"));
     }

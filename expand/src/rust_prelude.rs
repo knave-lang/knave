@@ -2,9 +2,12 @@ pub struct RustPrelude;
 
 impl RustPrelude {
     const TYPES: [&'static str; 5] = ["Box", "Option", "Result", "String", "Vec"];
-    const TRAITS: [(&'static str, &'static str); 31] = [
+    const TRAITS: [(&'static str, &'static str); 34] = [
         ("AsMut", "std::convert::AsMut"),
         ("AsRef", "std::convert::AsRef"),
+        ("AsyncFn", "std::ops::AsyncFn"),
+        ("AsyncFnMut", "std::ops::AsyncFnMut"),
+        ("AsyncFnOnce", "std::ops::AsyncFnOnce"),
         ("Clone", "std::clone::Clone"),
         ("Copy", "std::marker::Copy"),
         ("Default", "std::default::Default"),

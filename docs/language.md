@@ -669,7 +669,7 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 
 **A library is a project that other projects list under `libraries`.** Its `:path` resolves from the project file that lists it, and the compiler reads the library's own project file for its `:lib` and its own libraries. A `:path` with no project file is `L0723`, and a `:lib` that names no file is `L0724`, both labeled on the entry that lists the library.
 
-- A library's name is kebab-case, `L0721`, and is not `prelude`, `kernel`, `code` or `project`, `L0720`, because no `use` could reach a library of such a name.
+- A library's name is kebab-case, `L0721`, and is not `prelude`, `kernel`, `code` or `project`, `L0720`, because `(use prelude)`, `(use kernel)`, `(use code)` and `(use project)` never load a library's root module.
 - `(use hints)` loads the library's root module, the file `:lib` names. `(use hints/labels label)` loads `labels` from the directory of `:lib`.
 - Inside a library, `use` resolves from the directory of its `:lib`, and the module's path in the program takes the library's name as its prefix, so `labels` inside `hints` is `hints/labels`. `prelude`, `kernel` and `code` modules keep their paths. A module belongs to a library when it was loaded from that library's files, so a program module never takes a library's prefix.
 - A program or a library reaches only the libraries its own project file lists. A `use` of a library that only another library lists is `L0252`. A program module of that name would share the library's module path, so a local module or directory named as a library that only another library lists is `L0253`, which names both.

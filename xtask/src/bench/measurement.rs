@@ -24,11 +24,13 @@ impl Measurement {
              A stage is the inclusive cost of the calls the command-line module makes into one \
              compiler module. `{other}` holds the rest: process startup, argument parsing, \
              reading the entry file, printing, and dropping each stage's result. \
-             A stage's `{allocator_row}` row holds the calls its entry function makes itself \
-             into the allocator, the functions whose names start with {allocator_prefixes}, and the \
-             stage's own row leaves them out. Their cost swings when an earlier stage changes how it leaves \
-             the heap, so an allocator row never rises notably: the allocation counters catch \
-             allocation that really grows. \
+             A stage's `{allocator_row}` row holds the calls into an allocator function, one \
+             whose name starts with {allocator_prefixes}, made by the stage's entry function or by \
+             a function below it that only that stage's entry function reaches and that no code \
+             outside the stages reaches. A call that one allocator function makes into another is \
+             not counted again. The stage's own row leaves them out. Their cost swings when an \
+             earlier stage changes how it leaves the heap, so an allocator row never rises \
+             notably: the check on {gated} below catches allocation that really grows. \
              `rustfmt` runs as a child process that callgrind does not trace, so the `build` stage \
              counts only the compiler's side of formatting.\n\n\
              The compiler hashes with a fixed seed, so its hash maps lay out the same way in \
@@ -40,16 +42,15 @@ impl Measurement {
              The bench then builds each compiler again with the `counters` feature and runs it \
              once on each corpus program, without valgrind, as `--counters emit` on the \
              program's file name from the program's directory, with only `PATH` set. Each counter \
-             of that run is recorded. The check fails when a program's `{allocated}` or \
-             `{peak}` rises more than {tolerance}% above the base commit, unless a commit of \
+             of that run is recorded. The check fails when a program's {gated} rises more \
+             than {tolerance}% above the base commit, unless a commit of \
              the pull request names the program in a `Counters-Accepted:` trailer.\n",
             other = Self::OTHER,
             allocator_row = AllocatorShare::row_of("<stage>"),
             allocator_prefixes = AllocatorShare::CALLEE_PREFIXES
                 .map(|prefix| format!("`{prefix}`"))
                 .join(" or "),
-            allocated = CounterGate::GATED_COUNTERS[0],
-            peak = CounterGate::GATED_COUNTERS[1],
+            gated = CounterGate::gated_names(),
             tolerance = CounterGate::TOLERANCE_PERCENT,
         )
     }

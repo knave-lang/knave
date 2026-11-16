@@ -1,8 +1,9 @@
 use std::collections::BTreeSet;
 
-use super::allocator_share::AllocatorShare;
+use super::call::Call;
+use super::call_record::CallRecord;
 use super::measurement::Measurement;
-use super::stage_costs::StageCosts;
+use super::stage_entry::StageEntry;
 use crate::failure::TaskFailure;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -59,19 +60,15 @@ impl<'a> ProfileReader<'a> {
             .collect()
     }
 
-    fn allocator_share_of_call(&self, caller: &str, callee: &str) -> Option<String> {
-        if !AllocatorShare::is_allocator_call(callee) || !self.is_entry_point(caller) {
-            return None;
-        }
-        self.module_of(caller).map(str::to_string)
-    }
-
-    fn is_entry_point(&self, function: &str) -> bool {
-        Self::STAGE_ENTRY_POINTS.iter().any(|entry_point| {
-            self.in_each_crate(entry_point)
-                .iter()
-                .any(|name| name == function)
-        })
+    fn stage_entries(&self) -> Vec<StageEntry> {
+        Self::STAGE_ENTRY_POINTS
+            .iter()
+            .flat_map(|entry_point| self.in_each_crate(entry_point))
+            .filter_map(|function| {
+                let stage = self.module_of(&function)?.to_string();
+                Some(StageEntry { stage, function })
+            })
+            .collect()
     }
 
     fn stage_of_call(&self, caller: &str, callee: &str) -> Option<String> {
@@ -131,8 +128,7 @@ struct ProfileScan<'reader, 'text> {
     caller: &'text str,
     callee: &'text str,
     call_cost_follows: bool,
-    costs: StageCosts,
-    entered: BTreeSet<&'text str>,
+    record: CallRecord<'text>,
 }
 
 impl<'reader, 'text> ProfileScan<'reader, 'text> {
@@ -146,8 +142,7 @@ impl<'reader, 'text> ProfileScan<'reader, 'text> {
             caller: "",
             callee: "",
             call_cost_follows: false,
-            costs: StageCosts::default(),
-            entered: BTreeSet::new(),
+            record: CallRecord::default(),
         }
     }
 
@@ -173,16 +168,13 @@ impl<'reader, 'text> ProfileScan<'reader, 'text> {
         };
         let counts = Self::counts(cost_line.split_once(' ').map_or("", |(_, counts)| counts));
         let cost = Self::count_at(&counts, column);
-        if let Some(stage) = self.reader.stage_of_call(self.caller, self.callee) {
-            self.costs.add_inclusive(stage, cost);
-            self.entered.insert(self.callee);
-        }
-        if let Some(stage) = self
-            .reader
-            .allocator_share_of_call(self.caller, self.callee)
-        {
-            self.costs.add_allocator(stage, cost);
-        }
+        let call = Call {
+            caller: self.caller,
+            callee: self.callee,
+            cost,
+        };
+        let stage = self.reader.stage_of_call(self.caller, self.callee);
+        self.record.record(call, stage);
     }
 
     fn finish(self) -> Result<Measurement, TaskFailure> {
@@ -192,13 +184,11 @@ impl<'reader, 'text> ProfileScan<'reader, 'text> {
         let summary = self
             .summary
             .ok_or(TaskFailure::malformed_profile("summary"))?;
-        if let Some(candidates) = self.reader.missing_entry_point(&self.entered) {
+        if let Some(candidates) = self.reader.missing_entry_point(self.record.entered()) {
             return Err(TaskFailure::stage_entry_missing(&candidates));
         }
-        Ok(Measurement::new(
-            self.costs.into_rows()?,
-            Self::count_at(&summary, column),
-        ))
+        let rows = self.record.into_rows(&self.reader.stage_entries())?;
+        Ok(Measurement::new(rows, Self::count_at(&summary, column)))
     }
 
     fn column_of(header: &str) -> Option<usize> {
@@ -252,8 +242,56 @@ mod tests {
              0 8\n\
              \n\
              fn=compiler::build::token_alignment::RustTokens::scan\n\
-             0 6\n\
+             0 3\n\
+             cfn=compiler::build::token_alignment::RustTokens::push\n\
+             calls=1 0\n\
+             0 5\n\
+             \n\
+             fn=compiler::build::token_alignment::RustTokens::push\n\
+             0 3\n\
              cfn=__rustc::__rust_alloc\n\
+             calls=1 0\n\
+             0 2\n";
+
+        const SHARED_CALLS: &'static str = "\nfn=compiler::emit::RustEmitter::emit\n\
+             0 4\n\
+             cfn=compiler::source::Text::copied\n\
+             calls=1 0\n\
+             0 6\n\
+             \n\
+             fn=compiler::build::formatting::EmittedFormatting::apply\n\
+             0 4\n\
+             cfn=compiler::source::Text::copied\n\
+             calls=1 0\n\
+             0 6\n\
+             \n\
+             fn=compiler::source::Text::copied\n\
+             0 8\n\
+             cfn=__rustc::__rust_alloc\n\
+             calls=2 0\n\
+             0 4\n";
+
+        const ALLOCATOR_CALLING_THE_ALLOCATOR: &'static str = "\nfn=compiler::build::formatting::EmittedFormatting::apply\n\
+             0 4\n\
+             cfn=alloc::raw_vec::RawVec<T,A>::grow_one\n\
+             calls=1 0\n\
+             0 9\n\
+             \n\
+             fn=alloc::raw_vec::RawVec<T,A>::grow_one\n\
+             0 2\n\
+             cfn=__rustc::__rust_realloc\n\
+             calls=1 0\n\
+             0 7\n";
+
+        const CALL_OUTSIDE_EVERY_STAGE: &'static str = "\nfn=compiler::build::formatting::EmittedFormatting::apply\n\
+             0 4\n\
+             cfn=core::ptr::drop_in_place<compiler::expand::Program>\n\
+             calls=1 0\n\
+             0 5\n\
+             \n\
+             fn=core::ptr::drop_in_place<compiler::expand::Program>\n\
+             0 60\n\
+             cfn=__rustc::__rust_dealloc\n\
              calls=1 0\n\
              0 2\n";
 
@@ -292,6 +330,11 @@ mod tests {
                 .collect()
         }
 
+        fn with_calls(calls: &str) -> Measurement {
+            let profile = format!("{}{calls}", Self::ONE_CRATE);
+            Self::read(&profile, &Self::COMPILER, EntryPointCheck::Enforced).unwrap()
+        }
+
         fn without_emit_entry(profile: &str) -> String {
             profile.replace("RustEmitter::emit\n", "RustEmitter::lower\n")
         }
@@ -326,37 +369,42 @@ mod tests {
     }
 
     #[test]
-    fn moves_the_allocator_calls_of_a_stage_s_entry_point_to_its_allocator_row() {
-        let profile = format!(
-            "{}{}",
-            ProfileFixture::ONE_CRATE,
-            ProfileFixture::BUILD_CALLS
-        );
-        let measurement = ProfileFixture::read(
-            &profile,
-            &ProfileFixture::COMPILER,
-            EntryPointCheck::Enforced,
-        )
-        .unwrap();
-        assert_eq!(measurement.instructions_of("build allocator"), Some(8));
-        assert_eq!(measurement.instructions_of("build"), Some(12));
+    fn moves_an_allocator_call_below_a_stage_s_entry_point_to_its_allocator_row() {
+        let measurement = ProfileFixture::with_calls(ProfileFixture::BUILD_CALLS);
+        assert_eq!(measurement.instructions_of("build allocator"), Some(10));
+        assert_eq!(measurement.instructions_of("build"), Some(10));
     }
 
     #[test]
     fn charges_allocation_to_the_stage_that_runs_it_not_the_module_that_defines_it() {
-        let profile = format!(
-            "{}{}",
-            ProfileFixture::ONE_CRATE,
-            ProfileFixture::EMIT_CALL_UNDER_BUILD
-        );
-        let measurement = ProfileFixture::read(
-            &profile,
-            &ProfileFixture::COMPILER,
-            EntryPointCheck::Enforced,
-        )
-        .unwrap();
+        let measurement = ProfileFixture::with_calls(ProfileFixture::EMIT_CALL_UNDER_BUILD);
         assert_eq!(measurement.instructions_of("emit allocator"), None);
         assert_eq!(measurement.instructions_of("emit"), Some(50));
+        assert_eq!(measurement.instructions_of("build allocator"), Some(3));
+        assert_eq!(measurement.instructions_of("build"), Some(17));
+    }
+
+    #[test]
+    fn leaves_the_allocator_calls_of_a_function_two_stages_reach_in_both_stage_rows() {
+        let measurement = ProfileFixture::with_calls(ProfileFixture::SHARED_CALLS);
+        assert_eq!(measurement.instructions_of("emit allocator"), None);
+        assert_eq!(measurement.instructions_of("build allocator"), None);
+        assert_eq!(measurement.instructions_of("emit"), Some(50));
+        assert_eq!(measurement.instructions_of("build"), Some(20));
+    }
+
+    #[test]
+    fn counts_an_allocator_call_once_and_not_again_inside_the_allocator() {
+        let measurement =
+            ProfileFixture::with_calls(ProfileFixture::ALLOCATOR_CALLING_THE_ALLOCATOR);
+        assert_eq!(measurement.instructions_of("build allocator"), Some(9));
+        assert_eq!(measurement.instructions_of("build"), Some(11));
+    }
+
+    #[test]
+    fn leaves_the_allocator_calls_of_a_function_the_code_outside_every_stage_reaches() {
+        let measurement = ProfileFixture::with_calls(ProfileFixture::CALL_OUTSIDE_EVERY_STAGE);
+        assert_eq!(measurement.instructions_of("build allocator"), None);
         assert_eq!(measurement.instructions_of("build"), Some(20));
     }
 

@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/inline_text_at_a_borrow_then_a_number_keeps_the_borrow.knv
+---
+main
+  5:14 borrow `s`: no live loan
+  8:9 change `s`: `s` lent at 5:14, held by `r`
+  9:12 borrow `n`: `s` lent at 5:14, held by `r`

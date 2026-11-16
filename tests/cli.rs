@@ -9652,6 +9652,18 @@ fn task_refuses_a_task_file_that_takes_a_library_module_path() {
 }
 
 #[test]
+fn check_refuses_a_task_file_that_takes_a_library_module_path() {
+    let sandbox = Sandbox::new("check_task_library_module_paths")
+        .with_fixture_tree("libraries")
+        .with_file(
+            "tested-app/tasks/hints.knv",
+            "(deftask from-hints () (println \"ran\"))\n",
+        );
+    let check = sandbox.compiler_in("tested-app", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn task_refuses_a_task_file_that_takes_a_compiler_module_path() {
     let task = Sandbox::with_tasks("task_compiler_module_paths")
         .with_file(

@@ -816,10 +816,18 @@
   => 0
 
   It also keeps a literal at the type it names. A literal with no written
-  type takes its width from its uses, so `(let (port 8080) (listen port))`
-  makes `port` a [u16] when `listen` takes one. With `(the int 8080)` in
-  place of `8080`, `port` stays an [int], and the call reports `L0401`,
+  type takes its width from its uses, so without `the`, `port` below would be
+  a [u16]. With it, `port` stays an [int], and the call reports `L0401`,
   expected `u16`, found `int`.
+
+  ```
+  (type listen (fn (u16) u16))
+
+  (defn listen (port) port)
+
+  (let (port (the int 8080))
+    (listen port))
+  ```
 
   (let (word (str \"pear\"))
     (= (the (ref str) (ref word)) \"pear\"))

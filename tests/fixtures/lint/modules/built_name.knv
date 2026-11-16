@@ -1,0 +1,8 @@
+(use code list symbol)
+
+(export call-helper)
+
+(defn helper () 7)
+
+(defmacro call-helper ()
+  (list (symbol (quote anchor) "hel" "per")))

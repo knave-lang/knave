@@ -1,0 +1,19 @@
+(type halve
+  (where ((n float)) (fn (n) n)))
+
+(defn halve (x) (/ x 2.0))
+
+(type twice
+  (where ((n int)) (fn (n) n)))
+
+(defn twice (x) (* x 2))
+
+(type narrow
+  (where ((n f32)) (fn (n) n)))
+
+(defn narrow (x) x)
+
+(type named
+  (where ((n string)) (fn (n) n)))
+
+(defn named (x) x)

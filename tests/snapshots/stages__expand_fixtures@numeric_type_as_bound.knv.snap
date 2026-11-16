@@ -1,0 +1,39 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/numeric_type_as_bound.knv
+---
+error[L0212]: expected a trait, found `float`
+ --> expand/numeric_type_as_bound.knv:2:14
+  |
+2 |   (where ((n float)) (fn (n) n)))
+  |              ^^^^^ not a trait
+  |
+  = help: write a trait that every floating-point type implements, such as `floating`, `signed` or `number`
+  = note: run `knave doc L0212` for an explanation
+
+error[L0212]: expected a trait, found `int`
+ --> expand/numeric_type_as_bound.knv:7:14
+  |
+7 |   (where ((n int)) (fn (n) n)))
+  |              ^^^ not a trait
+  |
+  = help: write a trait that every integer type implements, such as `integer` or `number`
+  = note: run `knave doc L0212` for an explanation
+
+error[L0212]: expected a trait, found `f32`
+  --> expand/numeric_type_as_bound.knv:12:14
+   |
+12 |   (where ((n f32)) (fn (n) n)))
+   |              ^^^ not a trait
+   |
+   = help: write a trait that every floating-point type implements, such as `floating`, `signed` or `number`
+   = note: run `knave doc L0212` for an explanation
+
+error[L0212]: expected a trait, found `string`
+  --> expand/numeric_type_as_bound.knv:17:14
+   |
+17 |   (where ((n string)) (fn (n) n)))
+   |              ^^^^^^ not a trait
+   |
+   = note: run `knave doc L0212` for an explanation

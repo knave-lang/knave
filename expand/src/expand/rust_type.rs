@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use super::Expander;
+use super::namespace_problems::NamespaceProblems;
 use super::problems::{ExpandProblems, ParameterExample};
 use super::shape::Shape;
 use super::type_placeholder_problems::TypePlaceholderProblems;
@@ -32,7 +33,7 @@ impl Expander<'_> {
         let (head, unsized_parameters) = Self::mark_unsized_parameters(&items[1]);
         let parameterized = self.lower_head(&shape, &head, body)?;
         if let Some(binder) = parameterized.binders.iter().find(|binder| binder.lifetime) {
-            return Err(ExpandProblems::wrong_namespace(
+            return Err(NamespaceProblems::wrong_namespace(
                 self.tables.bindings.get(binder.variable).name(),
                 "a type parameter",
                 binder.span,

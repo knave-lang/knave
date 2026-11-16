@@ -1,6 +1,7 @@
 use super::Expander;
 use super::context::DefinitionContext;
 use super::macro_call_lookup::MacroCallLookup;
+use super::namespace_problems::NamespaceProblems;
 use super::problems::ExpandProblems;
 use super::recorded_inputs::BoundName;
 use crate::core::{BindingId, BindingInfo, BindingKind, ModuleId, Namespace};
@@ -124,9 +125,9 @@ impl Expander<'_> {
             context.strip_use_sites(&mut binder);
         }
         let span = binder.span();
-        let symbol = binder
-            .as_symbol()
-            .ok_or_else(|| ExpandProblems::wrong_namespace(&binder.to_string(), "a name", span))?;
+        let symbol = binder.as_symbol().ok_or_else(|| {
+            NamespaceProblems::wrong_namespace(&binder.to_string(), "a name", span)
+        })?;
         Self::reject_keyword_binder(symbol.name(), span)?;
         let info = BindingInfo::new(symbol.shared_name(), kind, Some(span));
         let binding = self.tables.bindings.add(info);

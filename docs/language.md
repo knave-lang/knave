@@ -1049,7 +1049,7 @@ A `rust-trait` may hold a `structural` clause: keyword and string pairs that sta
 | `{field}` | the field's name | `:field` |
 | `{value}` | a borrow of the field or payload. The `Box` a recursive enum adds is borrowed through, because the source never writes it | `:field`, `:part` |
 
-`{{` and `}}` write a literal brace. The clause needs exactly one `method`, whose first parameter is `(ref self)`, because the impl has one body. A clause on a trait that `derive` writes, such as `std::clone::Clone`, or on a path another `rust-trait` binds is an error, because a type would get two impls of one Rust trait. A missing, unknown or repeated key, a key without a string, and a placeholder its key cannot fill are errors too, all `L0248`. The `structural` clause is told from an implementor as `(help "text")` is, because no type holds a string.
+`{{` and `}}` write a literal brace. The clause needs exactly one `method`, whose first parameter is `(ref self)`, because the impl has one body. A clause on a trait that `derive` writes, such as `std::clone::Clone`, or on a Rust trait that another `rust-trait` binds, whatever its spelling, is an error, because a type would get two impls of one Rust trait. A missing, unknown or repeated key, a key without a string, and a placeholder its key cannot fill are errors too, all `L0248`. The `structural` clause is told from an implementor as `(help "text")` is, because no type holds a string.
 
 A `rust-trait` declares an associated type with `(associated (name owner) "RustName")`, and may declare several. The clause names its one parameter, the implementor, on its name, as a type definition does. Each entry then ends with one `(name type)` clause per associated type, inside a `where` whose parameters the type may use:
 
@@ -1162,7 +1162,7 @@ These names break a rule:
 
 Every symbol the reader accepts that names an item becomes a valid Rust identifier. Two items the program wrote that become one Rust name in one module are an error at the second item, so `a-b` beside `a_b` is reported, never left to rustc.
 
-A program type or trait that mangles to a name Rust's 2021 prelude brings into
+A program type or trait that mangles to a name Rust's 2024 prelude brings into
 scope takes the suffix `2`, so the emitted name never hides `Sized`, `Clone`,
 `Iterator`, `Vec` or another prelude name. A `rust-type` or `rust-trait` path is
 never renamed.

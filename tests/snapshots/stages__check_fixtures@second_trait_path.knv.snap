@@ -3,14 +3,14 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/second_trait_path.knv
 ---
-warning[L0217]: `shows` binds a Rust path that `display` already binds
+warning[L0217]: `shows` binds the Rust trait that `display` already binds
  --> check/second_trait_path.knv:1:13
   |
 1 | (rust-trait shows "std::fmt::Display" i64)
   |             ^^^^^ this also binds `std::fmt::Display`
   |
-  = note: two traits that bind one Rust path can disagree about its implementors
-  = help: use `display`, or give `shows` a different Rust path
+  = note: two traits that bind one Rust trait can disagree about its implementors
+  = help: use `display`, or give `shows` a different Rust trait
   = note: run `knave doc L0217` for an explanation
 
 (type main (fn () unit))

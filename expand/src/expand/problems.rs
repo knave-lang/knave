@@ -157,7 +157,7 @@ impl ExpandProblems {
             ),
         )
         .with_help(format!(
-            "keep the clause off this `{definer}`, or give it a Rust path that no other trait binds"
+            "keep the clause off this `{definer}`, or give it a Rust trait that no other trait binds"
         ))
     }
 
@@ -189,10 +189,10 @@ impl ExpandProblems {
         )
         .with_label(Label::new(
             first_clause,
-            format!("`{first}` infers `{path}` here"),
+            format!("`{first}` infers this Rust trait here"),
         ))
         .with_help(format!(
-            "keep one of the two clauses, or give this `{definer}` another Rust path"
+            "keep one of the two clauses, or give this `{definer}` another Rust trait"
         ))
     }
 
@@ -1165,21 +1165,21 @@ impl ExpandProblems {
 
     pub fn second_trait_path(name: &str, existing: &str, path: &str, span: Span) -> Diagnostic {
         let title = if name == existing {
-            format!("`{name}` binds `{path}` again")
+            format!("`{name}` binds the same Rust trait again")
         } else {
-            format!("`{name}` binds a Rust path that `{existing}` already binds")
+            format!("`{name}` binds the Rust trait that `{existing}` already binds")
         };
         let help = if name == existing {
-            format!("remove the second `{name}`, or give it a different Rust path")
+            format!("remove the second `{name}`, or give it a different Rust trait")
         } else {
-            format!("use `{existing}`, or give `{name}` a different Rust path")
+            format!("use `{existing}`, or give `{name}` a different Rust trait")
         };
         Diagnostic::warning(
             DiagnosticCode::SECOND_TRAIT_PATH,
             title,
             Label::new(span, format!("this also binds `{path}`")),
         )
-        .with_note("two traits that bind one Rust path can disagree about its implementors")
+        .with_note("two traits that bind one Rust trait can disagree about its implementors")
         .with_help(help)
     }
 

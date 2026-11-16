@@ -19,7 +19,7 @@ use support::{
 const BORROW_ACROSS_MOVE_FIX: &str = "## Fixes\n\n```knave\n(defn main ()\n  (local grid (vec 1 2))\n  (local first (at grid 0))\n  (local next (assoc grid 0 3))\n  (println (at next 0) \" \" first))\n```\n";
 const SECOND_TRAIT_PATH_EXAMPLE: &str = "## Erroneous example\n\n```knave\n(deftrait printable (rust \"std::fmt::Display\") i64)\n\n(defn main ()\n  (println 1))\n```\n";
 const TITLE_QUOTING_EXPLANATION: &str = "The compiler says cannot find `distnce` in this scope.\n\n## Erroneous example\n\n```knave\n(defn main ()\n  (println distnce))\n```\n";
-const WARNING_TITLE_QUOTING_EXPLANATION: &str = "The compiler says `printable` binds a Rust path that `display` already binds.\n\n## Erroneous example\n\n```knave\n(deftrait printable (rust \"std::fmt::Display\") i64)\n\n(defn main ()\n  (println 1))\n```\n";
+const WARNING_TITLE_QUOTING_EXPLANATION: &str = "The compiler says `printable` binds the Rust trait that `display` already binds.\n\n## Erroneous example\n\n```knave\n(deftrait printable (rust \"std::fmt::Display\") i64)\n\n(defn main ()\n  (println 1))\n```\n";
 const MISSING_MAIN_EXAMPLE: &str = "## Erroneous example\n\n```knave\n(defn helper () 1)\n```\n";
 const PROJECT_EXAMPLE: &str = "## Erroneous example\n\n```knave\n;; project.knv\n(libraries)\n;; src/main.knv\n(defn main () (println 1))\n```\n";
 const REPL_EXAMPLE: &str = "## Erroneous example\n\n```knave\n;; knave repl\n(defstruct point :x i64)\n(defn ->point (x) x)\n```\n";
@@ -577,7 +577,7 @@ fn an_explanation_that_quotes_its_warning_title_restates_it() {
     let explanation = ExplanationExamples::new("L0217", WARNING_TITLE_QUOTING_EXPLANATION);
     assert_eq!(
         explanation.restated_titles(),
-        vec!["`printable` binds a Rust path that `display` already binds".to_string()]
+        vec!["`printable` binds the Rust trait that `display` already binds".to_string()]
     );
 }
 

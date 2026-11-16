@@ -3,24 +3,24 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/second_trait_binding.knv
 ---
-warning[L0217]: `partial-eq` binds `PartialEq` again
+warning[L0217]: `partial-eq` binds the same Rust trait again
  --> check/second_trait_binding.knv:5:13
   |
 5 | (rust-trait partial-eq "PartialEq" point)
   |             ^^^^^^^^^^ this also binds `PartialEq`
   |
-  = note: two traits that bind one Rust path can disagree about its implementors
-  = help: remove the second `partial-eq`, or give it a different Rust path
+  = note: two traits that bind one Rust trait can disagree about its implementors
+  = help: remove the second `partial-eq`, or give it a different Rust trait
   = note: run `knave doc L0217` for an explanation
 
-warning[L0217]: `same-values` binds a Rust path that `partial-eq` already binds
+warning[L0217]: `same-values` binds the Rust trait that `partial-eq` already binds
   --> check/second_trait_binding.knv:10:11
    |
 10 | (deftrait same-values
    |           ^^^^^^^^^^^ this also binds `std::cmp::PartialEq`
    |
-   = note: two traits that bind one Rust path can disagree about its implementors
-   = help: use `partial-eq`, or give `same-values` a different Rust path
+   = note: two traits that bind one Rust trait can disagree about its implementors
+   = help: use `partial-eq`, or give `same-values` a different Rust trait
    = note: run `knave doc L0217` for an explanation
 
 (derive point clone copy partial-eq eq hash show)

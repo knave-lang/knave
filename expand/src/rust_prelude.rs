@@ -40,13 +40,24 @@ impl RustPrelude {
     ];
 
     pub fn holds(name: &str) -> bool {
-        Self::TYPES.contains(&name) || Self::trait_path(name).is_some()
+        Self::TYPES.binary_search(&name).is_ok() || Self::trait_path(name).is_some()
     }
 
     pub fn trait_path(name: &str) -> Option<&'static str> {
         Self::TRAITS
-            .iter()
-            .find(|(trait_name, _)| *trait_name == name)
-            .map(|(_, path)| *path)
+            .binary_search_by(|(trait_name, _)| (*trait_name).cmp(name))
+            .ok()
+            .map(|position| Self::TRAITS[position].1)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RustPrelude;
+
+    #[test]
+    fn the_tables_are_sorted_for_their_binary_search() {
+        assert!(RustPrelude::TYPES.is_sorted());
+        assert!(RustPrelude::TRAITS.is_sorted_by_key(|(name, _)| *name));
     }
 }

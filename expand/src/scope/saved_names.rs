@@ -2,7 +2,7 @@ use std::cell::OnceCell;
 use std::ops::Range;
 use std::rc::Rc;
 
-use super::binding_table::NameEntries;
+use super::name_entries::NameEntries;
 use super::{Scope, ScopeSet, Scopes};
 use crate::core::Namespace;
 
@@ -318,7 +318,7 @@ mod tests {
 
     use super::{NameSlots, NameTables, SavedNames};
     use crate::core::Namespace;
-    use crate::scope::binding_table::NameEntries;
+    use crate::scope::name_entries::NameEntries;
     use crate::scope::{Scope, Scopes};
 
     struct SavedNamesFixture;

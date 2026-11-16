@@ -1,3 +1,18 @@
 (use prelude/test doctest)
 
 (doctest prelude/vec)
+
+(deftest first-and-second-read-a-pair
+  (let (names (pair (str "ana") (str "bo")))
+    (assert (= (first (ref names)) "ana"))
+    (assert (= (second (ref names)) "bo"))
+    (assert (= (second names) "bo")))
+  (assert (= (first (pair 1 2.5)) 1))
+  (assert (= (second (pair 1 2.5)) 2.5)))
+
+(deftest first-and-second-read-a-slice
+  (let (items (vec 10 20))
+    (assert (= (first items) (some (ref 10))))
+    (assert (= (second items) (some (ref 20)))))
+  (assert (= (second (the (vec i64) (vec 1)))
+             none)))

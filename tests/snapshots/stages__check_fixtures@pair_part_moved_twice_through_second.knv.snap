@@ -1,0 +1,19 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/pair_part_moved_twice_through_second.knv
+---
+error[L0501]: use of moved value `(second names)`
+ --> check/pair_part_moved_twice_through_second.knv:4:19
+  |
+3 |         a (second names)
+  |           -------------- value moved here
+4 |         b (second names))
+  |                   ^^^^^ value used here after it moved
+  |
+help: clone the value if both places need it
+  |
+3 -         a (second names)
+3 +         a (clone (second names))
+  |
+  = note: run `knave doc L0501` for an explanation

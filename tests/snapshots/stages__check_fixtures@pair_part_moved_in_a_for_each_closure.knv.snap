@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/pair_part_moved_in_a_for_each_closure.knv
+---
+error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
+ --> check/pair_part_moved_in_a_for_each_closure.knv:6:31
+  |
+6 |       (fn (i) (println (takes (first p)))))))
+  |       ------------------------^^^^^^^^^---
+  |       |                       |
+  |       |                       `p` moves here
+  |       this closure is passed here
+  |
+  = help: clone `p`, or borrow it with `(ref p)`
+  = note: run `knave doc L0509` for an explanation

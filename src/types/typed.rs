@@ -97,7 +97,7 @@ impl FieldPlace<'_> {
     fn field_text(owner: String, label: &&FieldLabel) -> String {
         let field = label.spelled(&label.name);
         match label.spelling {
-            FieldSpelling::Keyword => format!("({field} {owner})"),
+            FieldSpelling::Keyword | FieldSpelling::Pair(_) => format!("({field} {owner})"),
             FieldSpelling::Bare => format!("(field {owner} {field})"),
         }
     }

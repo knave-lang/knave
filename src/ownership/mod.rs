@@ -25,6 +25,7 @@ mod parameter_uses;
 mod place_arguments;
 mod problems;
 mod promoted_constants;
+mod read_usage;
 mod recurrence;
 mod refusals;
 mod repeats;

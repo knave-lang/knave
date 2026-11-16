@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use super::{BindingId, DroppedBorrows, Keyword, ReferenceKind, TypeExpr};
+use crate::mangle::NameMangler;
 use crate::reader::{Form, Number};
 use crate::source::Span;
 
@@ -37,16 +38,20 @@ pub enum MapOperation {
     Iter,
     Update,
     Push,
+    First,
+    Second,
 }
 
 impl MapOperation {
-    const KEYWORDS: [(Self, &'static str); 6] = [
+    const KEYWORDS: [(Self, &'static str); 8] = [
         (Self::Get, "get"),
         (Self::Keys, "keys"),
         (Self::Vals, "vals"),
         (Self::Iter, "iter"),
         (Self::Update, "update"),
         (Self::Push, "push"),
+        (Self::First, "first"),
+        (Self::Second, "second"),
     ];
 
     pub fn of(name: &str) -> Option<Self> {
@@ -202,9 +207,17 @@ pub struct FieldLabel {
 
 impl FieldLabel {
     pub fn spelled(&self, field_name: &str) -> String {
+        match (self.spelling, field_name) {
+            (FieldSpelling::Pair(operation), _) => operation.keyword().to_string(),
+            (FieldSpelling::Bare, _) => field_name.to_string(),
+            (FieldSpelling::Keyword, _) => format!("{}{field_name}", Keyword::MARKER),
+        }
+    }
+
+    pub fn rust_name(&self) -> String {
         match self.spelling {
-            FieldSpelling::Bare => field_name.to_string(),
-            FieldSpelling::Keyword => format!("{}{field_name}", Keyword::MARKER),
+            FieldSpelling::Pair(_) => self.name.to_string(),
+            FieldSpelling::Bare | FieldSpelling::Keyword => NameMangler::value(&self.name),
         }
     }
 }
@@ -213,6 +226,7 @@ impl FieldLabel {
 pub enum FieldSpelling {
     Bare,
     Keyword,
+    Pair(MapOperation),
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]

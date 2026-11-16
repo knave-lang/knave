@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/get_on_a_pair.knv
+---
+error[L0401]: mismatched types
+ --> check/get_on_a_pair.knv:2:17
+  |
+2 |   (println (get (pair 1 2) 0)))
+  |                 ^^^^^^^^^^ expected `(slice _)`, found `(pair _ _)`
+  |
+  = note: run `knave doc L0401` for an explanation

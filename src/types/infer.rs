@@ -17,11 +17,10 @@ use super::enums::VariantPayload;
 use super::expectation::Expectation;
 use super::parameter_call_labels::ParameterCallRequest;
 use super::pending::{DecidedBorrows, PendingBorrow};
+use super::positional_read::PositionalRead;
 use super::problems::{MismatchContext, TypeProblems};
 use super::selfless_method::SelflessMethod;
-use super::ty::Type;
-use super::ty::TypeVar;
-use super::ty::{Bound, BoundOrigin};
+use super::ty::{Bound, BoundOrigin, Type, TypeVar};
 use super::typed::{
     Borrow, FieldOrder, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm, TypedBinder,
     TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedExpr, TypedExprKind,
@@ -2741,6 +2740,8 @@ impl TypeChecker {
             MapOperation::Iter => self.infer_iter(value, arguments, span),
             MapOperation::Get => self.infer_get(value, arguments, span),
             MapOperation::Push => self.infer_push(value, arguments, span),
+            MapOperation::First => self.infer_part(PositionalRead::first(span), value, arguments),
+            MapOperation::Second => self.infer_part(PositionalRead::second(span), value, arguments),
             _ => self.infer_map_only(operation, value, arguments, span),
         }
     }
@@ -2756,23 +2757,11 @@ impl TypeChecker {
         self.check_map_key(&collection, value.span);
         match operation {
             MapOperation::Update => self.infer_map_update(value, collection, arguments, span),
-            _ => self.infer_map_iterator_operation(operation, value, collection, arguments, span),
+            MapOperation::Keys => {
+                self.infer_map_iterator(value, collection, MapIterator::Keys, arguments, span)
+            }
+            _ => self.infer_map_iterator(value, collection, MapIterator::Vals, arguments, span),
         }
-    }
-
-    fn infer_map_iterator_operation(
-        &mut self,
-        operation: MapOperation,
-        value: TypedExpr,
-        collection: Collection,
-        arguments: &[Expr],
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        let iterator = match operation {
-            MapOperation::Keys => MapIterator::Keys,
-            _ => MapIterator::Vals,
-        };
-        self.infer_map_iterator(value, collection, iterator, arguments, span)
     }
 
     fn infer_iter(
@@ -2844,6 +2833,25 @@ impl TypeChecker {
         ];
         let result = self.prelude_types().option_type(element);
         self.synthetic_call_with_value("{0}.get({1})", parameters, result, value, arguments, span)
+    }
+
+    fn infer_part(
+        &mut self,
+        read: PositionalRead,
+        value: TypedExpr,
+        arguments: &[Expr],
+    ) -> Result<TypedExpr, Diagnostic> {
+        let (reader, span) = (read.reader(arguments)?, read.span());
+        let types = &self.declarations.types().rust_types;
+        if let Some(found) = read.pair_part(&self.unifier.resolve(&value.ty), types) {
+            return Ok(found.read(value, &self.copy_rules()));
+        }
+        self.note_unknown_collection(&value, read.slice_assumption());
+        let callee = self.infer(reader)?;
+        let (parameters, ty) = self.function_shape(&callee, 1)?;
+        let borrow = self.pass_call_argument(Some(&callee), 0, &parameters[0], &value)?;
+        let kind = TypedExprKind::Call(Box::new(callee), vec![TypedArgument { value, borrow }]);
+        Ok(TypedExpr { kind, ty, span })
     }
 
     fn infer_push(

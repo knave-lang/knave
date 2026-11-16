@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/pair_part_moved_by_a_closure_called_twice.knv
+---
+error[L0501]: use of moved value `f`
+ --> check/pair_part_moved_by_a_closure_called_twice.knv:5:15
+  |
+4 |     (println (f))
+  |               - value moved here
+5 |     (println (f))))
+  |               ^ value used here after it moved
+  |
+  = help: this closure moves a captured value, so it cannot be copied
+  = note: run `knave doc L0501` for an explanation

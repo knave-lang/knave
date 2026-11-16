@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/second_of_an_unknown_parameter.knv
+---
+error[L0401]: mismatched types
+ --> check/second_of_an_unknown_parameter.knv:4:19
+  |
+4 |   (println (right (pair 1 2))))
+  |                   ^^^^^^^^^^ expected `(vec _)`, found `(pair _ _)`
+  |
+  = help: `second` reads a value of unknown type as a vector or a slice, not a pair, so write a `type` signature for `right`, such as `(type right (fn ((pair _ _)) _))`
+  = note: run `knave doc L0401` for an explanation

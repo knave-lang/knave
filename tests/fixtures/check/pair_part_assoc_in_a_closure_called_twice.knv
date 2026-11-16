@@ -1,0 +1,5 @@
+(defn main ()
+  (let (p (pair (vec 1 2) (str "x"))
+        f (fn () (assoc (first p) 0 5)))
+    (prn (f))
+    (prn (f))))

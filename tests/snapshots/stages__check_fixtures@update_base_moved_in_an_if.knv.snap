@@ -1,0 +1,19 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/update_base_moved_in_an_if.knv
+---
+error[L0501]: use of moved value `s`
+ --> check/update_base_moved_in_an_if.knv:6:21
+  |
+5 |         q (new _ (if true s s) (a 2)))
+  |                           - value moved here
+6 |     (println (field s b) (field q a))))
+  |                     ^ value used here after it moved
+  |
+help: clone the value if both places need it
+  |
+5 -         q (new _ (if true s s) (a 2)))
+5 +         q (new _ (if true (clone s) s) (a 2)))
+  |
+  = note: run `knave doc L0501` for an explanation

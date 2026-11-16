@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/first_of_an_unknown_parameter.knv
+---
+error[L0401]: mismatched types
+ --> check/first_of_an_unknown_parameter.knv:4:18
+  |
+4 |   (println (left (pair 1 2))))
+  |                  ^^^^^^^^^^ expected `(vec _)`, found `(pair _ _)`
+  |
+  = help: `first` reads a value of unknown type as a vector or a slice, not a pair, so write a `type` signature for `left`, such as `(type left (fn ((pair _ _)) _))`
+  = note: run `knave doc L0401` for an explanation

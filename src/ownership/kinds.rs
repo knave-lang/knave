@@ -9,6 +9,7 @@ use super::definitions::LocalDefinitions;
 use super::lambda_address::LambdaAddress;
 use super::parameter_uses::ParameterUses;
 use super::problems::OwnershipProblems;
+use super::read_usage::ReadUsage;
 use super::subtree::Subtree;
 use super::update_bases::UpdateBases;
 use crate::core::{BindingArena, BindingId, FieldLabel, ReferenceKind};
@@ -19,12 +20,6 @@ use crate::types::{
     TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedDefinition, TypedExpr,
     TypedExprKind, TypedLambda, TypedLeaf, TypedModule, TypedProgram, TypedStructExpr,
 };
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Usage {
-    Move,
-    Borrow,
-}
 
 struct LocalClosure {
     binding: BindingId,
@@ -373,28 +368,28 @@ impl<'a> ClosureKinds<'a> {
 
     fn scan_lambda_body(&mut self, lambda: &TypedLambda) -> CaptureReport {
         let own = self.definitions.of(lambda);
-        self.scan_block(&lambda.body, &own, Usage::Move)
+        self.scan_block(&lambda.body, &own, ReadUsage::Move)
     }
 
     fn scan_block(
         &mut self,
         block: &TypedBlock,
         own: &FxHashSet<BindingId>,
-        usage: Usage,
+        usage: ReadUsage,
     ) -> CaptureReport {
         let last = block.items.len().checked_sub(1);
         let mut total = CaptureReport::default();
         for (position, item) in block.items.iter().enumerate() {
             match item {
                 TypedBodyItem::Let(binder, value) => {
-                    total.merge(self.scan_expression(value, own, Usage::Move));
+                    total.merge(self.scan_expression(value, own, ReadUsage::Move));
                     self.register_binding(binder.binding, value);
                 }
                 TypedBodyItem::Expr(expr) if Some(position) == last => {
                     total.merge(self.scan_expression(expr, own, usage));
                 }
                 TypedBodyItem::Expr(expr) => {
-                    total.merge(self.scan_expression(expr, own, Usage::Move));
+                    total.merge(self.scan_expression(expr, own, ReadUsage::Move));
                 }
             }
         }
@@ -422,7 +417,7 @@ impl<'a> ClosureKinds<'a> {
         &mut self,
         expr: &TypedExpr,
         own: &FxHashSet<BindingId>,
-        usage: Usage,
+        usage: ReadUsage,
     ) -> CaptureReport {
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.scan_leaf(leaf, expr, own, usage),
@@ -433,7 +428,17 @@ impl<'a> ClosureKinds<'a> {
                 report
             }
             TypedExprKind::Control(control) => self.scan_control(control, own, usage),
+            TypedExprKind::Struct(_) if usage.moves_field(expr, &self.copy) => {
+                self.scan_moved_field(expr, own)
+            }
             other => self.scan_nested(expr, other, own),
+        }
+    }
+
+    fn scan_moved_field(&mut self, read: &TypedExpr, own: &FxHashSet<BindingId>) -> CaptureReport {
+        match read.field_place() {
+            Some(place) => self.record_field_move(&place, read.span, own),
+            None => self.scan_nested(read, &read.kind, own),
         }
     }
 
@@ -442,12 +447,12 @@ impl<'a> ClosureKinds<'a> {
         leaf: &TypedLeaf,
         expr: &TypedExpr,
         own: &FxHashSet<BindingId>,
-        usage: Usage,
+        usage: ReadUsage,
     ) -> CaptureReport {
         let mut report = CaptureReport::default();
         if let TypedLeaf::Local(binding) = leaf
             && !own.contains(binding)
-            && usage == Usage::Move
+            && usage == ReadUsage::Move
         {
             self.record_move(&mut report, *binding, &expr.ty, expr.span);
         }
@@ -476,7 +481,9 @@ impl<'a> ClosureKinds<'a> {
             TypedExprKind::Try { .. } | TypedExprKind::Borrow(..) | TypedExprKind::Deref(_) => {
                 self.scan_written(expr, kind, own)
             }
-            TypedExprKind::TraitObject(value, _) => self.scan_expression(value, own, Usage::Move),
+            TypedExprKind::TraitObject(value, _) => {
+                self.scan_expression(value, own, ReadUsage::Move)
+            }
             _ => self.scan_value(expr, kind, own),
         }
     }
@@ -488,11 +495,11 @@ impl<'a> ClosureKinds<'a> {
         own: &FxHashSet<BindingId>,
     ) -> CaptureReport {
         match kind {
-            TypedExprKind::Try { value, .. } => self.scan_expression(value, own, Usage::Move),
+            TypedExprKind::Try { value, .. } => self.scan_expression(value, own, ReadUsage::Move),
             TypedExprKind::Borrow(reference, value) => {
                 self.scan_borrow(expr, *reference, value, own)
             }
-            TypedExprKind::Deref(value) => self.scan_expression(value, own, Usage::Borrow),
+            TypedExprKind::Deref(value) => self.scan_expression(value, own, ReadUsage::Borrow),
             _ => unreachable!("the caller matches a written form"),
         }
     }
@@ -532,7 +539,7 @@ impl<'a> ClosureKinds<'a> {
         {
             report.changed.entry(root).or_insert(expr.span);
         }
-        report.merge(self.scan_expression(value, own, Usage::Borrow));
+        report.merge(self.scan_expression(value, own, ReadUsage::Borrow));
         report
     }
 
@@ -550,7 +557,7 @@ impl<'a> ClosureKinds<'a> {
             TypedStructExpr::Update(_, base, fields) => {
                 self.scan_struct_update(expr, base, fields, own)
             }
-            TypedStructExpr::Field(value, _) => self.scan_expression(value, own, Usage::Borrow),
+            TypedStructExpr::Field(value, _) => self.scan_expression(value, own, ReadUsage::Borrow),
         }
     }
 
@@ -563,7 +570,7 @@ impl<'a> ClosureKinds<'a> {
     ) -> CaptureReport {
         let mut report = match base.field_place() {
             Some(place) => self.record_unlisted_moves(&place, base.span, update, fields, own),
-            None => self.scan_expression(base, own, Usage::Move),
+            None => self.scan_expression(base, own, ReadUsage::Move),
         };
         let values: Vec<&TypedExpr> = fields.iter().map(|(_, value)| value).collect();
         report.merge(self.scan_values(&values, own));
@@ -591,18 +598,9 @@ impl<'a> ClosureKinds<'a> {
         values: &[&TypedExpr],
         own: &FxHashSet<BindingId>,
     ) -> CaptureReport {
-        let mut report = self.scan_update_base(base, own);
+        let mut report = self.scan_expression(base, own, ReadUsage::Move);
         report.merge(self.scan_values(values, own));
         report
-    }
-
-    fn scan_update_base(&mut self, base: &TypedExpr, own: &FxHashSet<BindingId>) -> CaptureReport {
-        match base.field_place() {
-            Some(place) if place.reads_field() && !self.copy.is_copy(&base.ty) => {
-                self.record_field_move(&place, base.span, own)
-            }
-            _ => self.scan_expression(base, own, Usage::Move),
-        }
     }
 
     fn record_field_move(
@@ -621,7 +619,7 @@ impl<'a> ClosureKinds<'a> {
     fn scan_values(&mut self, values: &[&TypedExpr], own: &FxHashSet<BindingId>) -> CaptureReport {
         let mut report = CaptureReport::default();
         for value in values {
-            report.merge(self.scan_expression(value, own, Usage::Move));
+            report.merge(self.scan_expression(value, own, ReadUsage::Move));
         }
         report
     }
@@ -644,7 +642,7 @@ impl<'a> ClosureKinds<'a> {
         report: &mut CaptureReport,
     ) {
         let TypedExprKind::Leaf(TypedLeaf::Local(binding)) = &callee.kind else {
-            report.merge(self.scan_expression(callee, own, Usage::Borrow));
+            report.merge(self.scan_expression(callee, own, ReadUsage::Borrow));
             return;
         };
         if own.contains(binding) {
@@ -693,9 +691,9 @@ impl<'a> ClosureKinds<'a> {
             report.changed.entry(root).or_insert(argument.value.span);
         }
         let usage = if reference.is_none() && !argument.value.ty.is_reference() {
-            Usage::Move
+            ReadUsage::Move
         } else {
-            Usage::Borrow
+            ReadUsage::Borrow
         };
         report.merge(self.scan_expression(&argument.value, own, usage));
     }
@@ -719,7 +717,7 @@ impl<'a> ClosureKinds<'a> {
         &mut self,
         control: &TypedControl,
         own: &FxHashSet<BindingId>,
-        usage: Usage,
+        usage: ReadUsage,
     ) -> CaptureReport {
         match control {
             TypedControl::Block(block) => self.scan_block(block, own, usage),
@@ -736,9 +734,9 @@ impl<'a> ClosureKinds<'a> {
         then: &TypedExpr,
         otherwise: &TypedExpr,
         own: &FxHashSet<BindingId>,
-        usage: Usage,
+        usage: ReadUsage,
     ) -> CaptureReport {
-        let mut report = self.scan_expression(test, own, Usage::Borrow);
+        let mut report = self.scan_expression(test, own, ReadUsage::Borrow);
         report.merge(self.scan_expression(then, own, usage));
         report.merge(self.scan_expression(otherwise, own, usage));
         report
@@ -748,9 +746,9 @@ impl<'a> ClosureKinds<'a> {
         &mut self,
         matched: &crate::types::TypedMatch,
         own: &FxHashSet<BindingId>,
-        usage: Usage,
+        usage: ReadUsage,
     ) -> CaptureReport {
-        let mut report = self.scan_expression(&matched.value, own, Usage::Move);
+        let mut report = self.scan_expression(&matched.value, own, ReadUsage::Move);
         for arm in &matched.arms {
             report.merge(self.scan_block(&arm.body, own, usage));
         }

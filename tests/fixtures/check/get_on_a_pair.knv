@@ -1,0 +1,2 @@
+(defn main ()
+  (println (get (pair 1 2) 0)))

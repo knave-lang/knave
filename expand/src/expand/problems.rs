@@ -867,13 +867,12 @@ impl ExpandProblems {
         ))
     }
 
-    pub fn parameters_on_name(kind: &str, replacement: &str, span: Span) -> Diagnostic {
+    pub fn parameters_on_name(kind: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::TYPE_PARAMETERS_ON_NAME,
             format!("`{kind}` names its type parameters on its name"),
             Label::new(span, "this `where` names them in the body"),
         )
-        .with_help(format!("write `{replacement}`"))
     }
 
     pub fn mixed_variant_payload(span: Span) -> Diagnostic {

@@ -11,6 +11,11 @@ error[L0501]: use of moved value `(first names)`
 4 |         b (first names))
   |                  ^^^^^ value used here after it moved
   |
+help: borrow the part if the first place only reads it
+  |
+3 -         a (first names)
+3 +         a (first (ref names))
+  |
 help: clone the value if both places need it
   |
 3 -         a (first names)

@@ -354,9 +354,7 @@ src/ownership/problems.rs::OwnershipProblems::function_value_mismatch 4
 
 src/ownership/problems.rs::OwnershipProblems::lent_local_borrow 4
 
-src/ownership/problems.rs::OwnershipProblems::missing_copy_bound 5
 
-src/ownership/problems.rs::OwnershipProblems::moved_value 5
 
 src/ownership/problems.rs::OwnershipProblems::pipeline_capture_mismatch 5
 

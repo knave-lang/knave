@@ -17,6 +17,7 @@ mod lambda_source;
 mod lent_borrows;
 mod local_borrows;
 mod modes;
+mod moved_value_problems;
 mod moved_values;
 mod moves;
 mod mutation;

@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::moved_value_problems::{CopyBound, MoveSpans, MovedValueProblems};
 use super::moved_values::{FieldPath, MoveSite, MovedValues};
 use super::mutation::ChangedValues;
 use super::problems::OwnershipProblems;
@@ -23,6 +24,13 @@ struct MovedUse<'u> {
     place: &'u FieldPlace<'u>,
     span: Span,
     site: &'u MoveSite,
+}
+
+impl MovedUse<'_> {
+    fn spans(&self) -> MoveSpans {
+        let (used, moved) = (self.span, self.site.span());
+        MoveSpans { used, moved }
+    }
 }
 
 #[derive(Default)]
@@ -255,7 +263,7 @@ impl<'a> MoveChecker<'a> {
     }
 
     fn move_fields(&mut self, place: &FieldPlace, span: Span, moving: Vec<Rc<str>>) {
-        let site = self.field_site(place, span);
+        let site = MoveSite::field(place, self.bindings, span);
         for field in moving {
             let mut path = Self::field_path(place);
             path.push(field);
@@ -267,16 +275,9 @@ impl<'a> MoveChecker<'a> {
         if self.copy.is_copy(place.root_type) {
             return;
         }
-        let site = self.field_site(place, span);
+        let site = MoveSite::field(place, self.bindings, span);
         self.moved
             .move_field(place.root, Self::field_path(place), site);
-    }
-
-    fn field_site(&self, place: &FieldPlace, span: Span) -> MoveSite {
-        MoveSite::Field {
-            span,
-            place: place.written(self.bindings).into(),
-        }
     }
 
     fn field_path(place: &FieldPlace) -> FieldPath {
@@ -504,16 +505,16 @@ impl<'a> MoveChecker<'a> {
             return OwnershipProblems::pipeline_help(moved, name);
         }
         let site = moved_use.site;
-        OwnershipProblems::clone_suggestion(moved, site.moved_place(name), site.span())
+        MovedValueProblems::reuse_suggestions(moved, site, name)
     }
 
     fn moved_value(&self, moved_use: &MovedUse) -> Diagnostic {
         let site = moved_use.site;
         let moved_place = site.moved_place(self.bindings.get(moved_use.place.root).name());
         if self.moved_in_earlier_pass(moved_use) {
-            OwnershipProblems::use_after_earlier_pass_move(moved_place, moved_use.span, site.span())
+            MovedValueProblems::use_after_earlier_pass_move(moved_place, moved_use.spans())
         } else {
-            OwnershipProblems::use_after_move(moved_place, moved_use.span, site.span())
+            MovedValueProblems::use_after_move(moved_place, moved_use.spans())
         }
     }
 
@@ -536,12 +537,15 @@ impl<'a> MoveChecker<'a> {
             return None;
         }
         let parameter = self.generics.get(generic)?;
-        Some(OwnershipProblems::missing_copy_bound(
-            self.bindings.get(place.root).name(),
-            &parameter.name,
-            self.copy.copy_trait_name(self.bindings),
-            moved_use.span,
-            moved_use.site.span(),
+        let bound = CopyBound {
+            parameter: &parameter.name,
+            copy_trait: self.copy.copy_trait_name(self.bindings),
+        };
+        let name = self.bindings.get(place.root).name();
+        Some(MovedValueProblems::missing_copy_bound(
+            name,
+            &bound,
+            moved_use.spans(),
         ))
     }
 

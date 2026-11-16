@@ -5,12 +5,16 @@ input_file: tests/fixtures/format/layout_methods_as_types.knv
 ---
 (type cross (fn (point point point) f64))
 (type before (fn ((ref str) (ref str)) (ref str)))
+(type count-unread (fn ((ref self)) i64))
+(type size (fn ((ref self)) i64))
 (type sync-account! (fn ((mut self) (ref str)) (result unit mail-error)))
 (type archive! (fn ((mut self) (ref str) (ref str) (ref str) (ref str) (ref str) (ref str)) (result unit mail-error)))
 
 (deftrait mail-syncer
   (cross (fn (point point point) f64))
   (before (fn ((ref str) (ref str)) (ref str)))
+  (count-unread (fn ((ref self)) i64))
+  (size (fn ((ref self)) i64))
   (sync-account! (fn ((mut self) (ref str))
                    (result unit mail-error)))
   (archive! (fn ((mut self) (ref str) (ref str) (ref str) (ref str) (ref str) (ref str)) (result unit mail-error))))
@@ -20,6 +24,11 @@ input_file: tests/fixtures/format/layout_methods_as_types.knv
 
 (type before
   (fn ((ref str) (ref str)) (ref str)))
+
+(type count-unread
+  (fn ((ref self)) i64))
+
+(type size (fn ((ref self)) i64))
 
 (type sync-account!
   (fn ((mut self) (ref str))
@@ -40,6 +49,11 @@ input_file: tests/fixtures/format/layout_methods_as_types.knv
 
   (before
     (fn ((ref str) (ref str)) (ref str)))
+
+  (count-unread
+    (fn ((ref self)) i64))
+
+  (size (fn ((ref self)) i64))
 
   (sync-account!
     (fn ((mut self) (ref str))

@@ -13,6 +13,7 @@ mod docstring_part;
 mod docstring_place;
 mod docstring_regions;
 mod docstring_syntax;
+mod fill_width;
 mod format_problems;
 mod format_rules;
 mod import_group;

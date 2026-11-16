@@ -199,7 +199,7 @@ pub(super) mod tests {
     }
 
     impl NameEntriesFixture {
-        const SCOPE_COUNT: usize = 5;
+        pub(in crate::scope) const SCOPE_COUNT: usize = 5;
 
         fn bound_under_subsets(count: usize) -> Self {
             let mut supply = Scopes::default();
@@ -233,8 +233,12 @@ pub(super) mod tests {
                 .collect()
         }
 
+        pub(in crate::scope) fn last_bound_subset(scopes: &[Scope]) -> Vec<Scope> {
+            Self::subset(scopes, NameEntries::LONG_LIST_LENGTH - 1)
+        }
+
         fn reference(&self) -> Vec<Scope> {
-            vec![self.scopes[0], self.scopes[1], self.scopes[4]]
+            Self::last_bound_subset(&self.scopes)
         }
 
         fn visible(&self, reference: &[Scope]) -> Vec<BindingId> {

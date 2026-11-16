@@ -27,7 +27,7 @@ impl Expander<'_> {
     ) -> Result<(), Diagnostic> {
         let shape = self.definition_shape(DefinitionForm::RustType, form);
         let items = shape.at_least(Self::RUST_TYPE_PARTS)?;
-        self.reject_old_rust_type_parameters(&shape, items)?;
+        self.reject_misplaced_where(&shape, items)?;
         let body = vec![items[2].clone()];
         let (head, unsized_parameters) = Self::mark_unsized_parameters(&items[1]);
         let parameterized = self.lower_head(&shape, &head, body)?;
@@ -89,11 +89,7 @@ impl Expander<'_> {
             .is_some_and(|symbol| symbol.name() == TypeBinder::UNSIZED)
     }
 
-    fn reject_old_rust_type_parameters(
-        &self,
-        shape: &Shape<'_>,
-        items: &[Form],
-    ) -> Result<(), Diagnostic> {
+    fn reject_misplaced_where(&self, shape: &Shape<'_>, items: &[Form]) -> Result<(), Diagnostic> {
         match self.misplaced_where(&items[2..]) {
             Some(span) => Err(ExpandProblems::parameters_on_name(
                 shape.written_name(),

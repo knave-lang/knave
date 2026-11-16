@@ -188,8 +188,7 @@ impl Expander<'_> {
                 bare: false,
             });
         }
-        let template = Self::enum_rust_template(text, parameters)
-            .map_err(|_| Self::malformed_rust_clause(shape, clause))?;
+        let template = Self::enum_rust_template(text, parameters);
         Ok(EnumRust {
             path: Rc::clone(text),
             template: Rc::new(template),
@@ -212,10 +211,7 @@ impl Expander<'_> {
         }
     }
 
-    fn enum_rust_template(
-        path: &str,
-        parameters: usize,
-    ) -> Result<ParsedTemplate, crate::core::MalformedPlaceholder> {
+    fn enum_rust_template(path: &str, parameters: usize) -> ParsedTemplate {
         let arguments: Vec<String> = (0..parameters)
             .map(|index| format!("{{{index}}}"))
             .collect();
@@ -225,6 +221,7 @@ impl Expander<'_> {
             format!("{path}<{}>", arguments.join(", "))
         };
         ParsedTemplate::parse(&template)
+            .expect("a path holds no brace, so only the appended placeholders open one")
     }
 
     fn malformed_rust_clause(shape: &Shape, clause: &Form) -> Diagnostic {

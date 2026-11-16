@@ -1,0 +1,11 @@
+(trait shape (area (fn (self) f64)))
+
+(struct circle (radius f64))
+
+(impl shape circle
+  (area (c) (field c radius)))
+
+(defn measured (value) (area value))
+
+(defn main ()
+  (println (measured (box (new circle (radius 1.0))))))

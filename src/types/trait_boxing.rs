@@ -13,8 +13,9 @@ impl<'a> TraitBoxing<'a> {
         Self { traits, bindings }
     }
 
-    pub(super) fn boxes(&self, trait_binding: BindingId) -> bool {
-        self.definition(trait_binding).is_some() && self.blocker(trait_binding).is_none()
+    pub(super) fn suggests_box(&self, trait_binding: BindingId) -> bool {
+        !self.traits.prelude_internal.contains(trait_binding)
+            && self.blocker(trait_binding).is_none()
     }
 
     pub(super) fn blocker(&self, trait_binding: BindingId) -> Option<(String, &'static str)> {
@@ -84,6 +85,7 @@ mod tests {
             (trait listed
               (type item)
               (first (fn ((ref self)) item)))
+            (rust-trait shown-number \"std::fmt::Display\" i64)
             (defn main () (do))";
 
         fn new() -> Self {
@@ -100,9 +102,9 @@ mod tests {
                 .map(|(blocker, _)| blocker)
         }
 
-        fn boxes(&self, trait_name: &str) -> bool {
+        fn suggests_box(&self, trait_name: &str) -> bool {
             let trait_binding = self.declarations.trait_named(trait_name);
-            self.declarations.trait_boxing().boxes(trait_binding)
+            self.declarations.trait_boxing().suggests_box(trait_binding)
         }
     }
 
@@ -150,11 +152,13 @@ mod tests {
     }
 
     #[test]
-    fn only_a_defined_trait_without_a_blocker_boxes() {
+    fn a_box_is_suggested_for_a_trait_the_program_can_box_and_name() {
         let fixture = BoxingFixture::new();
-        assert!(fixture.boxes("drawn"));
-        assert!(!fixture.boxes("consumed"));
-        assert!(!fixture.boxes("debug"));
+        assert!(fixture.suggests_box("drawn"));
+        assert!(fixture.suggests_box("display"));
+        assert!(fixture.suggests_box("shown-number"));
+        assert!(!fixture.suggests_box("consumed"));
+        assert!(!fixture.suggests_box("contains"));
     }
 
     #[test]

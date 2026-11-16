@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/box_missing_unboxable_trait.knv
+---
+error[L0404]: `(box circle)` does not implement `shape`
+  --> check/box_missing_unboxable_trait.knv:12:22
+   |
+12 |   (println (measured (box (new circle (radius 1.0))))))
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `shape`
+   |
+   = note: `shape` is implemented for: circle

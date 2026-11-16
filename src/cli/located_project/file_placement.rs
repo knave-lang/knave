@@ -49,7 +49,7 @@ impl<'p> FilePlacement<'p> {
 
     pub fn file_within(&self, path: PathBuf) -> ProgramFile {
         let tasks_directory = self.tasks_directory();
-        if ProgramFile::relative_module(&path, tasks_directory).is_some() {
+        if self.trees().holds_task(&path) {
             let file = ProgramFile::within(path, tasks_directory.to_path_buf());
             return self.trees().task_file(file);
         }

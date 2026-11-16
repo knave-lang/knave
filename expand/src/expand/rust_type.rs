@@ -5,8 +5,8 @@ use super::problems::{ExpandProblems, ParameterExample};
 use super::shape::Shape;
 use super::type_placeholder_problems::TypePlaceholderProblems;
 use crate::core::{
-    BindingId, CoreModule, DefinitionForm, EnumRust, Item, ItemKind, ParsedTemplate, TypeBinder,
-    TypeExpr,
+    BindingId, CoreModule, DefinitionForm, EnumRust, Item, ItemKind, ParsedTemplate,
+    TemplateBraces, TypeBinder, TypeExpr,
 };
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind};
@@ -16,7 +16,6 @@ impl Expander<'_> {
     const CLAUSE_TYPE_PARAMETERS: usize = 1;
     const RUST_CLAUSE: &'static str = "rust";
     const BARE_WORD: &'static str = "bare";
-    const TEMPLATE_BRACES: [char; 2] = ['{', '}'];
     const RUST_CLAUSE_HELP: &'static str =
         "write it as `(rust \"Path\")` or `(rust \"Path\" bare)`";
 
@@ -177,7 +176,7 @@ impl Expander<'_> {
         let FormKind::String(text) = path.kind() else {
             return Err(Self::malformed_rust_clause(shape, clause));
         };
-        if text.contains(Self::TEMPLATE_BRACES) {
+        if TemplateBraces::appear_in(text) {
             if bare {
                 return Err(Self::malformed_rust_clause(shape, clause));
             }

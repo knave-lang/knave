@@ -13,6 +13,7 @@ mod saved_bindings;
 mod saved_value;
 mod structural;
 mod template;
+mod template_braces;
 mod template_operation;
 mod types;
 mod written_types;
@@ -55,6 +56,7 @@ pub use structural::{
 pub use template::{
     Access, MalformedPlaceholder, ParsedTemplate, PassingAspect, PassingDifference, Piece,
 };
+pub use template_braces::TemplateBraces;
 pub use template_operation::{Division, Operand, TemplateOperation};
 pub use types::{ClosureKind, TypeBinder, TypeBound, TypeExpr, TypeExprKind};
 pub use written_types::WrittenTypes;

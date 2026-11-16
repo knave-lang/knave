@@ -253,10 +253,10 @@
   The function must return unit, and so does the call. A vector or a map
   passes as its [iter].
 
-  (local total 0)
-  (for-each (range 1 4)
-    (fn (x) (set! total (+ total x))))
-  (= total 6)
+  (let (total 0)
+    (for-each (range 1 4)
+      (fn (x) (set! total (+ total x))))
+    (= total 6))
   => true")
 
 (document (enumerate items)
@@ -330,9 +330,9 @@
   returns `none` for no items, and the last of equal keys. A vector or a map
   passes as its [iter]. A keyword such as `:age` reads that field.
 
-  (local words (vec \"pear\" \"kiwi\" \"fig\"))
-  (max-by-key (copied words)
-    (fn (word) (len (deref word))))
+  (let (words (vec \"pear\" \"kiwi\" \"fig\"))
+    (max-by-key (copied words)
+      (fn (word) (len (deref word)))))
   => (some \"kiwi\")")
 
 (document (any? items test)

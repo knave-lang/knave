@@ -143,8 +143,8 @@
   Write it behind a borrow, as `(ref (slice a))`. A `(ref (vec a))` passes as
   one.
 
-  (local items (vec 1 2))
-  (len (the (ref (slice i64)) (ref items)))
+  (let (items (vec 1 2))
+    (len (the (ref (slice i64)) (ref items))))
   => 2")
 
 (document sequence

@@ -93,14 +93,14 @@
   A vector takes an element, and a [string] takes a [char] or a
   `(ref str)`. `push!` as a value is the vector push.
 
-  (local items (vec 1))
-  (push! items 2)
-  (clone items)
+  (let (items (vec 1))
+    (push! items 2)
+    (clone items))
   => (vec 1 2)
 
-  (local word (str \"pe\"))
-  (push! word (char \"a\"))
-  (clone word)
+  (let (word (str \"pe\"))
+    (push! word (char \"a\"))
+    (clone word))
   => \"pea\"")
 
 (def vec-push!
@@ -225,11 +225,11 @@
 
   It returns `none` for an empty vector.
 
-  (local items (vec 1))
-  (pop! items)
+  (let (items (vec 1)) (pop! items))
   => (some 1)
 
-  (pop! items)
+  (let (items (the (vec i64) (vec)))
+    (pop! items))
   => none")
 
 (document (remove-at! items index)
@@ -238,11 +238,13 @@
   `index` is a [usize], so an [i64] is an error. Each later item moves down by
   one. It panics when `index` is not below the vector's length.
 
-  (local items (vec 1 2 3))
-  (remove-at! items 0)
+  (let (items (vec 1 2 3))
+    (remove-at! items 0))
   => 1
 
-  (clone items)
+  (let (items (vec 1 2 3))
+    (remove-at! items 0)
+    (clone items))
   => (vec 2 3)")
 
 (document (sort! items)
@@ -256,13 +258,14 @@
   puts it last, and zero keeps the two in order. Rust's `sort_by` may panic
   when `compare` is not a consistent order.
 
-  (local items (vec 3 1 2))
-  (sort! items)
-  (clone items)
+  (let (items (vec 3 1 2))
+    (sort! items)
+    (clone items))
   => (vec 1 2 3)
 
-  (sort! items >)
-  (clone items)
+  (let (items (vec 3 1 2))
+    (sort! items >)
+    (clone items))
   => (vec 3 2 1)")
 
 (document (sort-by! items key)
@@ -272,10 +275,10 @@
   with equal keys keep their order. A keyword such as `:age` reads that field.
   Rust's `sort_by_key` may panic when `key` is not consistent between calls.
 
-  (local words (vec \"pear\" \"fig\" \"kiwi\"))
-  (sort-by! words
-    (fn (word) (len (deref word))))
-  (clone words)
+  (let (words (vec \"pear\" \"fig\" \"kiwi\"))
+    (sort-by! words
+      (fn (word) (len (deref word))))
+    (clone words))
   => (vec \"fig\" \"pear\" \"kiwi\")")
 
 (document (windows items size)
@@ -298,8 +301,8 @@
   below the length. `get` returns an [option] in place of the panic. A vector
   passes as its slice.
 
-  (local items (vec 10 20))
-  (deref (at items 1))
+  (let (items (vec 10 20))
+    (deref (at items 1)))
   => 20")
 
 (document (first items)
@@ -307,8 +310,7 @@
 
   It returns `none` for an empty slice. A vector passes as its slice.
 
-  (local items (vec 1 2))
-  (first items)
+  (first (vec 1 2))
   => (some (ref 1))
 
   (first (the (vec i64) (vec)))
@@ -319,8 +321,7 @@
 
   It returns `none` for an empty slice. A vector passes as its slice.
 
-  (local items (vec 1 2))
-  (last items)
+  (last (vec 1 2))
   => (some (ref 2))
 
   (last (the (vec i64) (vec)))
@@ -338,9 +339,9 @@
 (document (reverse! items)
   "Reverses a vector in place.
 
-  (local items (vec 1 2))
-  (reverse! items)
-  (clone items)
+  (let (items (vec 1 2))
+    (reverse! items)
+    (clone items))
   => (vec 2 1)")
 
 (document (dedup! items)
@@ -349,7 +350,7 @@
   Only neighbors count, so sort the vector first to remove every repeat. The
   items implement [partial-eq].
 
-  (local items (vec 1 1 2 1))
-  (dedup! items)
-  (clone items)
+  (let (items (vec 1 1 2 1))
+    (dedup! items)
+    (clone items))
   => (vec 1 2 1)")

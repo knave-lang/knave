@@ -1,46 +1,14 @@
 use std::ops::Range;
 
+use super::name_entry::NameEntry;
 use super::phase::Phase;
 use super::{Scope, ScopeSet};
 use crate::core::BindingId;
 
-#[derive(serde::Serialize, serde::Deserialize)]
-pub(super) struct Entry {
-    scopes: ScopeSet,
-    binding: BindingId,
-    phase: Phase,
-}
-
-impl Entry {
-    pub(super) fn binding(&self) -> BindingId {
-        self.binding
-    }
-
-    pub(super) fn scope_count(&self) -> usize {
-        self.scopes.len()
-    }
-
-    fn is_visible_from_scopes(&self, scopes: &ScopeSet, phase: Phase) -> bool {
-        self.phase_matches(phase) && self.scopes.is_subset_of(scopes)
-    }
-
-    fn is_visible_from_plain_scopes(&self, scopes: &ScopeSet, phase: Phase) -> bool {
-        self.phase_matches(phase) && self.scopes.is_plain_subset_of(scopes)
-    }
-
-    fn phase_matches(&self, phase: Phase) -> bool {
-        phase == Phase::CompileTime || self.phase == Phase::Runtime
-    }
-
-    fn anchor(&self) -> Option<Scope> {
-        self.scopes.plain_largest()
-    }
-}
-
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub(super) struct NameEntries {
-    plain_sorted_by_anchor: Vec<Entry>,
-    sharing: Vec<Entry>,
+    plain_sorted_by_anchor: Vec<NameEntry>,
+    sharing: Vec<NameEntry>,
 }
 
 impl NameEntries {
@@ -59,22 +27,18 @@ impl NameEntries {
         match self.entry_with_scopes(anchored_end, scopes) {
             Some(existing) => Self::existing(existing, binding),
             None => {
-                let entry = Entry {
-                    scopes: scopes.clone(),
-                    binding,
-                    phase,
-                };
+                let entry = NameEntry::new(scopes.clone(), binding, phase);
                 self.plain_sorted_by_anchor.insert(anchored_end, entry);
                 Ok(())
             }
         }
     }
 
-    fn existing(existing: &Entry, binding: BindingId) -> Result<(), BindingId> {
-        if existing.binding == binding {
+    fn existing(existing: &NameEntry, binding: BindingId) -> Result<(), BindingId> {
+        if existing.binding() == binding {
             Ok(())
         } else {
-            Err(existing.binding)
+            Err(existing.binding())
         }
     }
 
@@ -85,14 +49,10 @@ impl NameEntries {
         binding: BindingId,
         phase: Phase,
     ) -> Result<(), BindingId> {
-        if let Some(existing) = self.all().find(|entry| entry.scopes == *scopes) {
+        if let Some(existing) = self.all().find(|entry| entry.scopes() == scopes) {
             return Self::existing(existing, binding);
         }
-        let entry = Entry {
-            scopes: scopes.clone(),
-            binding,
-            phase,
-        };
+        let entry = NameEntry::new(scopes.clone(), binding, phase);
         if scopes.is_plain() {
             let anchored_end = self.anchored_end(scopes.plain_largest());
             self.plain_sorted_by_anchor.insert(anchored_end, entry);
@@ -107,16 +67,16 @@ impl NameEntries {
             .partition_point(|entry| entry.anchor() <= anchor)
     }
 
-    fn entry_with_scopes(&self, anchored_end: usize, scopes: &ScopeSet) -> Option<&Entry> {
+    fn entry_with_scopes(&self, anchored_end: usize, scopes: &ScopeSet) -> Option<&NameEntry> {
         let anchor = scopes.plain_largest();
         self.plain_sorted_by_anchor[..anchored_end]
             .iter()
             .rev()
             .take_while(|entry| entry.anchor() == anchor)
-            .find(|entry| entry.scopes == *scopes)
+            .find(|entry| entry.scopes() == scopes)
     }
 
-    pub(super) fn visible(&self, scopes: &ScopeSet, phase: Phase) -> Vec<&Entry> {
+    pub(super) fn visible(&self, scopes: &ScopeSet, phase: Phase) -> Vec<&NameEntry> {
         let mut visible = Vec::new();
         self.visit_visible(scopes, phase, |entry| visible.push(entry));
         visible
@@ -126,7 +86,7 @@ impl NameEntries {
         &'entries self,
         scopes: &ScopeSet,
         phase: Phase,
-        visit: impl FnMut(&'entries Entry),
+        visit: impl FnMut(&'entries NameEntry),
     ) {
         if self.is_plain_search(scopes) {
             self.visit_plain_visible(scopes, phase, visit);
@@ -143,9 +103,9 @@ impl NameEntries {
         &'entries self,
         scopes: &ScopeSet,
         phase: Phase,
-        mut visit: impl FnMut(&'entries Entry),
+        mut visit: impl FnMut(&'entries NameEntry),
     ) {
-        let mut visit_if_visible = |entry: &'entries Entry| {
+        let mut visit_if_visible = |entry: &'entries NameEntry| {
             if entry.is_visible_from_plain_scopes(scopes, phase) {
                 visit(entry);
             }
@@ -168,7 +128,7 @@ impl NameEntries {
         &'entries self,
         scopes: &ScopeSet,
         phase: Phase,
-        visit: impl FnMut(&'entries Entry),
+        visit: impl FnMut(&'entries NameEntry),
     ) {
         self.all()
             .filter(|entry| entry.is_visible_from_scopes(scopes, phase))
@@ -177,14 +137,14 @@ impl NameEntries {
 
     pub(super) fn unbind(&mut self, binding: BindingId) {
         self.plain_sorted_by_anchor
-            .retain(|entry| entry.binding != binding);
-        self.sharing.retain(|entry| entry.binding != binding);
+            .retain(|entry| entry.binding() != binding);
+        self.sharing.retain(|entry| entry.binding() != binding);
     }
 
     pub(super) fn forget(&mut self, forgotten: &impl Fn(BindingId) -> bool) {
         self.plain_sorted_by_anchor
-            .retain(|entry| !forgotten(entry.binding));
-        self.sharing.retain(|entry| !forgotten(entry.binding));
+            .retain(|entry| !forgotten(entry.binding()));
+        self.sharing.retain(|entry| !forgotten(entry.binding()));
     }
 
     pub(super) fn is_empty(&self) -> bool {
@@ -193,15 +153,15 @@ impl NameEntries {
 
     pub(super) fn is_within(&self, scopes: &Range<Scope>) -> bool {
         self.all()
-            .all(|entry| entry.scopes.iter().any(|scope| scopes.contains(&scope)))
+            .all(|entry| entry.scopes().iter().any(|scope| scopes.contains(&scope)))
     }
 
     #[cfg(test)]
     pub(super) fn holds(&self, binding: BindingId) -> bool {
-        self.all().any(|entry| entry.binding == binding)
+        self.all().any(|entry| entry.binding() == binding)
     }
 
-    fn all(&self) -> impl Iterator<Item = &Entry> {
+    fn all(&self) -> impl Iterator<Item = &NameEntry> {
         self.plain_sorted_by_anchor.iter().chain(&self.sharing)
     }
 

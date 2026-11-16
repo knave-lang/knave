@@ -27,7 +27,7 @@ error[L0347]: a variant writes its fields flat
 6 |   (labeled (struct (text string))))
   |            ^^^^^^^^^^^^^^^^^^^^^^ here
   |
-  = help: write them after its name, as in (labeled :text string :size f64)
+  = help: write them after its name, as in (labeled :text string :size float)
   = note: run `knave doc L0347` for an explanation
 
 error[L0348]: this variant's first item is a type, so it takes no fields

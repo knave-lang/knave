@@ -807,8 +807,19 @@
   another type is an error, except that a borrowed [string], `(ref name)`,
   passes as a `(ref str)`.
 
-  (the i64 3)
-  => 3
+  Write it to choose a width, or to give an empty collection its type.
+
+  (the u16 8080)
+  => 8080
+
+  (len (the (vec int) (vec)))
+  => 0
+
+  It also keeps a literal at the type it names. A literal with no written
+  type takes its width from its uses, so `(let (port 8080) (listen port))`
+  makes `port` a [u16] when `listen` takes one. With `(the int 8080)` in
+  place of `8080`, `port` stays an [int], and the call reports `L0401`,
+  expected `u16`, found `int`.
 
   (let (word (str \"pear\"))
     (= (the (ref str) (ref word)) \"pear\"))
@@ -847,12 +858,12 @@
   enclosing function, or leaves the enclosing [loop]. That function must
   return a `result` or an `option` of the same kind.
 
-  (let (step (fn ((value (option i64)))
+  (let (step (fn ((value (option int)))
                (let-try (n value) (some (+ n 1)))))
     (step (some 1)))
   => (some 2)
 
-  (let (step (fn ((value (option i64)))
+  (let (step (fn ((value (option int)))
                (let-try (n value) (some (+ n 1)))))
     (step none))
   => none")
@@ -883,15 +894,15 @@
   Unlike [->], a step takes no extra arguments: a call form is a call whose
   result is the function, so `(try-> x (make-step))` is `((make-step) x)`.
 
-  (let (half (fn ((n i64))
+  (let (half (fn ((n int))
                (if (> n 0) (some (/ n 2)) none))
-        twice-halved (fn ((n i64)) (try-> n half half)))
+        twice-halved (fn ((n int)) (try-> n half half)))
     (twice-halved 8))
   => (some 2)
 
-  (let (half (fn ((n i64))
+  (let (half (fn ((n int))
                (if (> n 0) (some (/ n 2)) none))
-        twice-halved (fn ((n i64)) (try-> n half half)))
+        twice-halved (fn ((n int)) (try-> n half half)))
     (twice-halved 0))
   => none")
 

@@ -68,7 +68,7 @@
   (len (vec 1 2 3))
   => 3
 
-  (empty? (the (vec i64) (vec)))
+  (empty? (the (vec int) (vec)))
   => true"
   (local count (len elements))
   (if (empty? elements)
@@ -137,7 +137,7 @@
   (rust "{0}.sort_by(|{!left}, {!right}| {1}({!left}, {!right}).cmp(&0))"
     (where (a)
       (fn ((mut (vec a))
-           (fn ((ref a) (ref a)) i64))
+           (fn ((ref a) (ref a)) int))
         unit))))
 
 (defrule sort!
@@ -228,14 +228,14 @@
   (let (items (vec 1)) (pop! items))
   => (some 1)
 
-  (let (items (the (vec i64) (vec)))
+  (let (items (the (vec int) (vec)))
     (pop! items))
   => none")
 
 (document (remove-at! items index)
   "Removes the item at an index and returns it.
 
-  `index` is a [usize], so an [i64] is an error. Each later item moves down by
+  `index` is a [usize], so an [int] is an error. Each later item moves down by
   one. It panics when `index` is not below the vector's length.
 
   (let (items (vec 1 2 3))
@@ -254,7 +254,7 @@
   order. Both need items that implement [ord].
 
   `(sort! items compare)` orders by a function of two `(ref a)` that returns
-  an [i64]. A negative result puts the first item first, a positive result
+  an [int]. A negative result puts the first item first, a positive result
   puts it last, and zero keeps the two in order. Rust's `sort_by` may panic
   when `compare` is not a consistent order.
 
@@ -284,7 +284,7 @@
 (document (windows items size)
   "Returns an iterator over each run of `size` neighboring items of a slice.
 
-  Each run is a `(ref (slice a))`. `size` is a [usize], so an [i64] is an
+  Each run is a `(ref (slice a))`. `size` is a [usize], so an [int] is an
   error. A slice shorter than `size` gives no run. It panics when `size` is
   zero. A vector passes as its slice.
 
@@ -297,7 +297,7 @@
 (document (at items index)
   "Returns a borrow of the item at an index.
 
-  `index` is a [usize], so an [i64] is an error. It panics when `index` is not
+  `index` is a [usize], so an [int] is an error. It panics when `index` is not
   below the length. `get` returns an [option] in place of the panic. A vector
   passes as its slice.
 
@@ -313,7 +313,7 @@
   (first (vec 1 2))
   => (some (ref 1))
 
-  (first (the (vec i64) (vec)))
+  (first (the (vec int) (vec)))
   => none")
 
 (document (last items)
@@ -324,7 +324,7 @@
   (last (vec 1 2))
   => (some (ref 2))
 
-  (last (the (vec i64) (vec)))
+  (last (the (vec int) (vec)))
   => none")
 
 (document (reverse items)

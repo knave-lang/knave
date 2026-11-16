@@ -48,7 +48,7 @@
   `vec` also builds one from its items, and a `(ref (vec a))` passes as a
   `(ref (slice a))`.
 
-  (the (vec i64) (vec 1 2))
+  (the (vec int) (vec 1 2))
   => (vec 1 2)")
 
 (document (sorted-map key value)
@@ -57,7 +57,7 @@
   Its keys implement `ord`. `sorted-map` also builds one from keys and
   values.
 
-  (len (the (sorted-map i64 bool) (sorted-map 1 true 2 false)))
+  (len (the (sorted-map int bool) (sorted-map 1 true 2 false)))
   => 2")
 
 (document (hash-map key value)
@@ -66,7 +66,7 @@
   Its keys implement `hash` and `eq`, and it holds them in no order that a
   program may rely on. `hash-map` also builds one from keys and values.
 
-  (len (the (hash-map i64 bool) (hash-map 1 true)))
+  (len (the (hash-map int bool) (hash-map 1 true)))
   => 1")
 
 (document (box value)
@@ -83,7 +83,7 @@
   `some` and `none` build one, and [match] reads it with the patterns
   `(some x)` and `none`.
 
-  (the (option i64) (some 3))
+  (the (option int) (some 3))
   => (some 3)")
 
 (document (option/some value)
@@ -99,7 +99,7 @@
 
   `none` is the same value.
 
-  (the (option i64) option/none)
+  (the (option int) option/none)
   => none")
 
 (document (result a b)
@@ -108,7 +108,7 @@
   `ok` and `err` build one, and [match] reads it with the patterns `(ok x)`
   and `(err x)`.
 
-  (the (result i64 string) (ok 3))
+  (the (result int string) (ok 3))
   => (ok 3)")
 
 (document (result/ok value)
@@ -116,7 +116,7 @@
 
   `ok` is the macro for this call.
 
-  (the (result i64 string) (result/ok 3))
+  (the (result int string) (result/ok 3))
   => (ok 3)")
 
 (document (result/err error)
@@ -124,7 +124,7 @@
 
   `err` is the macro for this call.
 
-  (the (result i64 string)
+  (the (result int string)
        (result/err (str \"bad\")))
   => (err (str \"bad\"))")
 
@@ -134,7 +134,7 @@
   It is an error in a struct field or an enum payload, because Rust names this
   type only as a function's own parameter or result.
 
-  (collect (the (iterator i64) (range 0 2)))
+  (collect (the (iterator int) (range 0 2)))
   => (vec 0 1)")
 
 (document (slice a)
@@ -144,7 +144,7 @@
   one.
 
   (let (items (vec 1 2))
-    (len (the (ref (slice i64)) (ref items))))
+    (len (the (ref (slice int)) (ref items))))
   => 2")
 
 (document sequence

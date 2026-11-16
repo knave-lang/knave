@@ -77,7 +77,7 @@
   (get (sorted-map \"pear\" 3 \"fig\" 1) \"fig\")
   => (some (ref 1))
 
-  (empty? (the (sorted-map i64 i64) (sorted-map)))
+  (empty? (the (sorted-map int int) (sorted-map)))
   => true"
   (map-form "std::collections::BTreeMap"
             (quote sorted-map)
@@ -94,7 +94,7 @@
   (get (hash-map \"pear\" 3 \"fig\" 1) \"fig\")
   => (some (ref 1))
 
-  (empty? (the (hash-map i64 i64) (hash-map)))
+  (empty? (the (hash-map int int) (hash-map)))
   => true"
   (map-form "std::collections::HashMap"
             (quote hash-map)

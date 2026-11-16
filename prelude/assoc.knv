@@ -27,7 +27,7 @@
   values come in pairs, and each pair updates the result of the one before.
   The call moves the collection.
 
-  A vector index is a [usize], so an [i64] is an error, and the call panics
+  A vector index is a [usize], so an [int] is an error, and the call panics
   when the index is out of bounds. A map key has the type of the map's keys: a
   string literal is a `(ref str)`, so a [string] key takes `(str \"name\")`,
   and a `(ref str)` key takes a literal or `(as-str name)`. A map adds a
@@ -198,7 +198,7 @@
   call moves each field the path does not change, unless it is `copy`.
 
   An index step names a vector element, as in `(assoc-in grid (1 0) 7)`. An
-  index is a [usize], so an [i64] is an error, and the call panics when it is
+  index is a [usize], so an [int] is an error, and the call panics when it is
   out of bounds. A keyword step after an index step is an error.
 
   A map key step names a map's value, as in `(assoc-in scores (\"ana\") 7)` or

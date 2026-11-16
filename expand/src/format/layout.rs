@@ -173,7 +173,7 @@ impl<'s> LayoutEngine<'s> {
     ) -> Option<Rc<str>> {
         let text = self.one_line_text(list)?;
         let length = text.chars().count();
-        let declared = length + self.plan(list).declared_prefix;
+        let declared = self.plan(list).one_line().declared_length(length);
         let short = self.roles.is_short(list, declared);
         (short && column + length + trailing <= Block::WIDTH).then_some(text)
     }
@@ -188,7 +188,7 @@ impl<'s> LayoutEngine<'s> {
     }
 
     fn fresh_one_line_text(&mut self, list: &ListNode) -> Option<Rc<str>> {
-        let allowed = list.closing_comments.is_empty() && self.plan(list).allows_one_line();
+        let allowed = list.closing_comments.is_empty() && self.plan(list).one_line().is_allowed();
         allowed.then_some(())?;
         let parts = list
             .entries

@@ -37,7 +37,8 @@ impl<'t> Bindings<'t> {
         namespace: Namespace,
     ) -> Vec<(Rc<str>, BindingId)> {
         self.table
-            .visible_name_bindings(symbol, namespace, self.phase)
+            .visible_names()
+            .name_bindings(symbol, namespace, self.phase)
     }
 }
 

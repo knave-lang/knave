@@ -21,7 +21,6 @@ expand/src/project/problems.rs::ProjectProblems 31
 expand/src/reader/cursor.rs::Cursor 8
 expand/src/reader/form.rs::Form 17
 expand/src/reader/problems.rs::ReadProblems 8
-expand/src/scope/binding_table.rs::BindingTable 9
 expand/src/scope/scope_chain.rs::ChainPrefix 8
 expand/src/scope/scope_chain.rs::SharedScopes 11
 expand/src/scope/scope_set.rs::ScopeSet 17

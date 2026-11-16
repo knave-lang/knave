@@ -187,12 +187,12 @@ impl NameEntries {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::NameEntries;
     use crate::core::BindingId;
     use crate::scope::{Phase, Scope, ScopeKind, ScopeSet, Scopes};
 
-    struct NameEntriesFixture {
+    pub(in crate::scope) struct NameEntriesFixture {
         entries: NameEntries,
         scopes: Vec<Scope>,
         bound: Vec<(Vec<Scope>, BindingId)>,
@@ -216,18 +216,21 @@ mod tests {
         }
 
         fn bind_subset(&mut self, index: usize) {
-            let subset: Vec<Scope> = self
-                .scopes
-                .iter()
-                .enumerate()
-                .filter(|(position, _)| index & (1 << position) != 0)
-                .map(|(_, scope)| *scope)
-                .collect();
+            let subset = Self::subset(&self.scopes, index);
             let binding = BindingId::from_index(index as u32);
             self.entries
                 .bind(&ScopeSet::of(&subset), binding, Phase::Runtime)
                 .expect("each subset is bound once");
             self.bound.push((subset, binding));
+        }
+
+        pub(in crate::scope) fn subset(scopes: &[Scope], index: usize) -> Vec<Scope> {
+            scopes
+                .iter()
+                .enumerate()
+                .filter(|(position, _)| index & (1 << position) != 0)
+                .map(|(_, scope)| *scope)
+                .collect()
         }
 
         fn reference(&self) -> Vec<Scope> {

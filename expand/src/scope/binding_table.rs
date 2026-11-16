@@ -145,6 +145,7 @@ impl LargestCandidates {
 pub(super) mod tests {
     use super::*;
     use crate::core::{BindingArena, BindingInfo, BindingKind};
+    use crate::scope::name_entries::tests::NameEntriesFixture;
     use crate::scope::{ChainPrefix, Scope, ScopeChain, ScopeKind, ScopeSet, Scopes};
 
     pub(in crate::scope) struct World {
@@ -261,19 +262,10 @@ pub(super) mod tests {
         ) -> Vec<(Vec<Scope>, BindingId)> {
             (0..count)
                 .map(|index| {
-                    let subset = Self::subset(scopes, index);
+                    let subset = NameEntriesFixture::subset(scopes, index);
                     let binding = self.define(name, &subset, Phase::Runtime);
                     (subset, binding)
                 })
-                .collect()
-        }
-
-        fn subset(scopes: &[Scope], index: usize) -> Vec<Scope> {
-            scopes
-                .iter()
-                .enumerate()
-                .filter(|(position, _)| index & (1 << position) != 0)
-                .map(|(_, scope)| *scope)
                 .collect()
         }
 

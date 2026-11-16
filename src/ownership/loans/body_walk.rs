@@ -45,15 +45,11 @@ impl<'w> BodyWalk<'w> {
                 self.call(CallSite::new(callee, arguments), at)
             }
             TypedExprKind::Recur(arguments) => LoopWalk::new(self).recur(arguments, at),
-            TypedExprKind::Borrow(kind, inner) => self.borrowed(*kind, inner, at),
+            TypedExprKind::Borrow(..) | TypedExprKind::Deref(_) => self.referenced(expr, at),
             TypedExprKind::Struct(TypedStructExpr::Field(owner, _)) => {
                 self.field_read(expr, owner, at)
             }
             TypedExprKind::Control(control) => self.control(control, at),
-            TypedExprKind::Deref(inner) => {
-                let read = self.expr(inner, at);
-                Walked::holding(read.end, read.held.referent())
-            }
             _ => self.sequence(expr.children().into_iter(), at),
         }
     }
@@ -88,6 +84,18 @@ impl<'w> BodyWalk<'w> {
             }
             None => self.expr(inner, at),
         }
+    }
+
+    fn referenced(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
+        match &expr.kind {
+            TypedExprKind::Borrow(kind, inner) => self.borrowed(*kind, inner, at),
+            _ => self.dereferenced(expr, at),
+        }
+    }
+
+    fn dereferenced(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
+        let read = self.sequence(expr.children().into_iter(), at);
+        Walked::holding(read.end, read.held.referent())
     }
 
     fn field_read(&mut self, expr: &'w TypedExpr, owner: &'w TypedExpr, at: PointId) -> Walked {

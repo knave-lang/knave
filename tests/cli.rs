@@ -9877,6 +9877,17 @@ fn task_refuses_a_task_file_that_takes_a_library_module_path() {
 }
 
 #[test]
+fn check_of_a_task_file_reports_a_task_defined_twice() {
+    let check = Sandbox::with_tasks("check_task_file_duplicate")
+        .with_file(
+            "tasks/twice.knv",
+            "(deftask serve () (println \"a\"))\n(deftask serve () (println \"b\"))\n",
+        )
+        .compiler(&["check", "tasks/twice.knv"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn check_refuses_a_task_file_that_takes_a_library_module_path() {
     let sandbox = Sandbox::new("check_task_library_module_paths")
         .with_fixture_tree("libraries")

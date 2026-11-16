@@ -9888,6 +9888,18 @@ fn check_of_a_task_file_reports_a_task_defined_twice() {
 }
 
 #[test]
+fn lint_of_a_task_file_reports_a_task_defined_twice() {
+    let lint = Sandbox::with_tasks("lint_task_file_duplicate")
+        .with_file(
+            "tasks/twice.knv",
+            "(deftask serve () (println \"a\"))\n(deftask serve () (println \"b\"))\n",
+        )
+        .compiler(&["lint", "tasks/twice.knv"]);
+    lint.assert_exit_code(1);
+    assert!(lint.stderr().contains("error[L0356]"), "{}", lint.stderr());
+}
+
+#[test]
 fn check_refuses_a_task_file_that_takes_a_library_module_path() {
     let sandbox = Sandbox::new("check_task_library_module_paths")
         .with_fixture_tree("libraries")

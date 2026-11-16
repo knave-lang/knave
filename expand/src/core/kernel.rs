@@ -308,6 +308,12 @@ impl KernelType {
             _ => None,
         }
     }
+
+    pub fn named(name: &str) -> Option<KernelType> {
+        Self::all().find(|kernel_type| {
+            kernel_type.name() == name || kernel_type.differing_spelling() == Some(name)
+        })
+    }
 }
 
 pub struct KernelConstants;

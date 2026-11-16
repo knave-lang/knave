@@ -1,0 +1,13 @@
+(use shadowing/money float ->float)
+(use prelude i64)
+
+(defstruct string :text (vec u8))
+
+(defstruct (holder f64) :item f64)
+
+(type pick (where (int) (fn (int) int)))
+(defn pick (x) x)
+
+(defn main ()
+  (println (:whole (->float 3 14)))
+  (println (pick 1)))

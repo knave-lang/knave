@@ -1,5 +1,6 @@
 use super::Expander;
 use super::context::DefinitionContext;
+use super::kernel_type_shadow::KernelTypeShadow;
 use super::macro_call_lookup::MacroCallLookup;
 use super::namespace_problems::NamespaceProblems;
 use super::problems::ExpandProblems;
@@ -7,6 +8,7 @@ use super::recorded_inputs::BoundName;
 use crate::core::{BindingId, BindingInfo, BindingKind, ModuleId, Namespace};
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
+use crate::interpret::Warnings;
 use crate::reader::{Form, Symbol};
 use crate::scope::{Phase, Resolution};
 use crate::source::Span;
@@ -95,7 +97,11 @@ impl Expander<'_> {
                     span,
                     self.tables.bindings.get(existing).span(),
                 )
-            })
+            })?;
+        if let Some(shadow) = KernelTypeShadow::of(symbol.name(), namespace, self.kind(binding)) {
+            self.problems.report_warning(shadow.at_import(span));
+        }
+        Ok(())
     }
 
     fn note_bound(&mut self, binder: &Form, namespace: Namespace) {
@@ -140,6 +146,9 @@ impl Expander<'_> {
                     self.tables.bindings.get(existing).span(),
                 )
             })?;
+        if let Some(shadow) = KernelTypeShadow::of(symbol.name(), namespace, kind) {
+            self.problems.report_warning(shadow.at_definition(span));
+        }
         Ok(binding)
     }
 

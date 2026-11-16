@@ -1086,8 +1086,7 @@
 
   It emits `text.as_str()`.
 
-  (local word (str \"pear\"))
-  (upper-case (as-str word))
+  (upper-case (as-str (str \"pear\")))
   => \"PEAR\"")
 
 (document (parse text)

@@ -35,8 +35,9 @@ pub struct JsonEvaluation {
 }
 
 impl PrintedEvaluation {
-    const PRINTER: &'static str = "print-form";
-    const PRINTER_MODULE: &'static str = "prelude/text";
+    const PRINTER: &'static str = "print-result";
+    const PRINTER_SOURCE: &'static str = "<result printer>";
+    const PRINTER_TEXT: &'static str = "(fn ((value (ref _))) (prn value))";
 
     fn deciding(colors: TokenColors) -> Self {
         match colors {
@@ -49,11 +50,13 @@ impl PrintedEvaluation {
         Self::deciding(TokenColors::deciding(AutoStream::choice(&io::stdout())))
     }
 
-    fn plain_printer(session: &mut ExpansionSession<'_>) -> ResultPrinter {
-        let printer = session
-            .module_value(Self::PRINTER_MODULE, Self::PRINTER)
-            .expect("the prelude defines the printer");
-        ResultPrinter::calling(printer)
+    fn plain_printer(session: &mut ExpansionSession<'_>) -> Result<ResultPrinter, Diagnostics> {
+        let bound_holder = session
+            .prelude_value(ValueMarker::VALUE_TEXT)
+            .expect("the prelude defines the value's text");
+        let source = session.add_source(Self::PRINTER_SOURCE, Self::PRINTER_TEXT);
+        let printer = session.prelude_function(Self::PRINTER, source)?;
+        Ok(ResultPrinter::through(printer, bound_holder))
     }
 }
 
@@ -62,7 +65,7 @@ impl EvaluationOutput for PrintedEvaluation {
 
     fn printer(&self, session: &mut ExpansionSession<'_>) -> Result<ResultPrinter, Diagnostics> {
         match self {
-            Self::Plain => Ok(Self::plain_printer(session)),
+            Self::Plain => Self::plain_printer(session),
             Self::Painted(marker) => marker.printer(session),
         }
     }

@@ -3181,6 +3181,19 @@ fn doc_write_refuses_a_file_that_cannot_be_a_module() {
 }
 
 #[test]
+fn doc_write_refuses_a_file_that_takes_a_library_module() {
+    let sandbox = Sandbox::new("doc_write_library_module")
+        .with_fixture_tree("libraries")
+        .with_file(
+            "tested-app/src/hints.knv",
+            "(export shadowed)\n(defn shadowed () 1)\n",
+        );
+    let write = sandbox.compiler_in("tested-app", &["doc", "--write"]);
+    insta::assert_snapshot!(write.assert_exit_code(1).stderr());
+    assert!(!sandbox.directory.join("tested-app/doc").exists());
+}
+
+#[test]
 fn doc_write_refuses_a_file_that_takes_a_compiler_module() {
     let sandbox = Sandbox::with_documented_project("doc_write_compiler_module")
         .with_file("src/prelude/extra.knv", "");

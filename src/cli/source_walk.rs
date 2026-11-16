@@ -15,15 +15,16 @@ use super::unreadable_file::UnreadableFile;
 use super::working_directory::WorkingDirectory;
 use crate::language::Language;
 
-pub struct SourceWalk {
+pub struct SourceWalk<'p> {
     root: PathBuf,
     bounds: TreeBounds,
     skipped: SkippedDirectory,
     left_out: Vec<PathBuf>,
+    taken: TakenModulePaths<'p>,
 }
 
-impl SourceWalk {
-    pub fn of(project: &LocatedProject) -> Self {
+impl<'p> SourceWalk<'p> {
+    pub fn of(project: &'p LocatedProject) -> Self {
         let root = Self::walked_root(project);
         let placement = project.placement();
         let left_out = [placement.tasks_directory(), placement.tests_directory()]
@@ -35,6 +36,7 @@ impl SourceWalk {
             bounds: TreeBounds::of(&root),
             root,
             left_out,
+            taken: placement.taken_module_paths(),
         }
     }
 
@@ -45,7 +47,7 @@ impl SourceWalk {
         if let Some(file) = files.iter().find(|file| file.is_unnamable()) {
             return Err(file.report_unnamable());
         }
-        TakenModulePaths::by_the_compiler().refuse(&files, terminal)?;
+        self.taken.refuse(&files, terminal)?;
         Ok(files.into_iter().map(TreeFile::into_module).collect())
     }
 

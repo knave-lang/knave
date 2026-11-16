@@ -150,8 +150,12 @@ impl<'p> Linter<'p> {
 
 #[cfg(test)]
 mod tests {
+    use super::Linter;
+    use crate::diagnostic::Diagnostic;
     use crate::interpret::StepBudget;
     use crate::lint::expanded_source::ExpandedSource;
+    use crate::lint::rule_host::RuleHost;
+    use crate::lint::rule_program::RuleProgram;
 
     struct LinterFixture;
 
@@ -159,6 +163,27 @@ mod tests {
         const TINY_STEP_LIMIT: u64 = 10;
         const CHAIN_LENGTH: usize = 40;
         const CHAIN_STEP_LIMIT: u64 = 5_000;
+        const ONE_STEP: u64 = 1;
+
+        fn is_helper_kept(step_limit: u64) -> Result<bool, Diagnostic> {
+            let source = ExpandedSource::expand("(defn helper () 1)\n(defn main () (println 1))");
+            let program = source.program();
+            let mut rules = RuleProgram::expand_from_sources().expect("the lint rules expand");
+            let names = rules.read_back(&program.bindings).into_names();
+            let linter = Linter::new(program, source.sources()).with_step_limit(step_limit);
+            let mut host = RuleHost::new(&rules, linter.facts(&names));
+            let helper = program
+                .bindings
+                .ids()
+                .find(|binding| program.bindings.get(*binding).name() == "helper")
+                .expect("the program defines helper");
+            let span = program
+                .bindings
+                .get(helper)
+                .span()
+                .expect("helper is written");
+            linter.is_kept(&mut host, helper, span)
+        }
 
         fn short_definition_and_long_chain() -> ExpandedSource {
             let locals: String = (1..=Self::CHAIN_LENGTH)
@@ -241,19 +266,18 @@ mod tests {
     }
 
     #[test]
-    fn a_definition_whose_kept_test_passes_its_budget_is_kept() {
-        let source =
-            ExpandedSource::expand("(export area)\n(defn helper () 1)\n(defn area (width) width)");
-        let unreachable = "L0807".to_string();
-        assert!(
-            source
-                .warning_codes_within(StepBudget::DEFAULT_LIMIT)
-                .contains(&unreachable)
-        );
-        assert!(
-            !source
-                .warning_codes_within(LinterFixture::TINY_STEP_LIMIT)
-                .contains(&unreachable)
-        );
+    fn a_kept_test_past_its_step_limit_keeps_the_definition() {
+        assert!(matches!(
+            LinterFixture::is_helper_kept(LinterFixture::ONE_STEP),
+            Ok(true)
+        ));
+    }
+
+    #[test]
+    fn a_kept_test_within_its_step_limit_gives_its_own_answer() {
+        assert!(matches!(
+            LinterFixture::is_helper_kept(StepBudget::DEFAULT_LIMIT),
+            Ok(false)
+        ));
     }
 }

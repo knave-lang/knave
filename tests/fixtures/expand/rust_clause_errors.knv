@@ -85,3 +85,9 @@
     (where ((s sequence))
       (fn ((ref s)) usize))
     (str "count({0}(1))")))
+
+(def stray-close-clause
+  (rust "measure({0})"
+    (where ((s sequence))
+      (fn ((ref s)) usize))
+    (str "count({0}}")))

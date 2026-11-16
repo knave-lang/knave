@@ -107,6 +107,7 @@ impl ParsedTemplate {
                     pieces.push(Piece::Literal(std::mem::take(&mut literal)));
                     pieces.push(placeholder);
                 }
+                (TemplateBraces::CLOSE, _) => return Err(MalformedPlaceholder),
                 _ => literal.push(character),
             }
         }

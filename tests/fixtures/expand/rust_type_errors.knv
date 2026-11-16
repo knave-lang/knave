@@ -11,3 +11,5 @@
 (rust-type missing-template)
 
 (rust-type (borrowing item) "Vec<{&0}>")
+
+(rust-type stray-close "Hold}er")

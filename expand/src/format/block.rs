@@ -97,7 +97,6 @@ impl Block {
     }
 
     pub const WIDTH: usize = 80;
-    pub const FILL_WIDTH: usize = 60;
 
     pub fn overflow_of(width: usize) -> usize {
         width.saturating_sub(Self::WIDTH)

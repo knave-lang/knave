@@ -3,6 +3,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::block::Block;
+use super::fill_width::FillWidth;
 use super::list_plan::{Arrangement, LaterIndent, ListPlan};
 use super::list_roles::ListRoles;
 use super::measure::Measure;
@@ -75,10 +76,6 @@ struct AssemblyState<L> {
 }
 
 impl<'s> LayoutEngine<'s> {
-    pub const SHORT_LIST_LIMIT: usize = 40;
-    pub const SPARSE_LIST_LIMIT: usize = 60;
-    pub const SPARSE_LIST_NESTED_LISTS: usize = 2;
-
     pub fn new(shapes: &'s ShapeCatalog) -> Self {
         Self {
             shapes,
@@ -176,15 +173,8 @@ impl<'s> LayoutEngine<'s> {
     ) -> Option<Rc<str>> {
         let text = self.one_line_text(list)?;
         let length = text.chars().count();
-        let fits = self.is_short(list, length) && column + length + trailing <= Block::WIDTH;
+        let fits = self.roles.is_short(list, length) && column + length + trailing <= Block::WIDTH;
         fits.then_some(text)
-    }
-
-    fn is_short(&self, list: &ListNode, length: usize) -> bool {
-        let sparse = length <= Self::SPARSE_LIST_LIMIT
-            && list.nested_lists <= Self::SPARSE_LIST_NESTED_LISTS;
-        let short_arm = length <= Block::FILL_WIDTH && self.roles.is_arm(list);
-        length <= Self::SHORT_LIST_LIMIT || sparse || short_arm
     }
 
     fn one_line_text(&mut self, list: &ListNode) -> Option<Rc<str>> {
@@ -373,7 +363,7 @@ impl<'l> ListAssembly<'l> {
         let start = state.laid_out.end_column() + Self::SEPARATOR.len();
         let unit_layout: L = self.unit(engine, index, unit, start);
         let end = unit_layout.end_column() + self.unit_trailing(index);
-        if end <= Block::FILL_WIDTH {
+        if end <= FillWidth::COLUMNS {
             state.laid_out.join(Self::SEPARATOR, unit_layout);
         } else {
             self.push_on_own_line(engine, state, index, unit);

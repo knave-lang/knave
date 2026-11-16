@@ -29,7 +29,8 @@ input_file: tests/fixtures/format/layout_methods_impl.knv
   (fetch-labels!
     (fn ((mut self)) (vec string)))
 
-  (count-unread (fn ((ref self)) i64))
+  (count-unread
+    (fn ((ref self)) i64))
 
   (label-count (fn ((ref self)) i64)))
 

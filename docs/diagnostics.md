@@ -48,7 +48,7 @@ help: a function with a similar name exists
 
 **Use the names the user wrote.** Never show a Rust name such as `make_point` in place of `make-point`.
 
-**Print a type by its shown name.** A type the compiler prints, in a message, a label, a note, a help or a list of implementors, is `int` or `float`, never `i64` or `f64`. A name the user wrote prints as written: a message that quotes a written `i64` keeps `i64`.
+**Print a type by its shown name.** A type the compiler prints, in a message, a label, a note, a help or a list of implementors, is `int` or `float`, never `i64` or `f64`. A name the user wrote prints as written: a message that quotes a written `i64` keeps `i64`. Relayed rustc text keeps Rust's spelling.
 
 **If a name does not resolve, suggest the closest name.** Rank candidates by edit distance. If no candidate is within a third of the name's length, leave out the suggestion.
 

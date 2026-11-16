@@ -82,7 +82,10 @@ impl<'w> BodyWalk<'w> {
                 let lending = Lending::new(place, <dyn LoanKind>::of(kind), inner.span);
                 self.lend_after(read, lending)
             }
-            None => self.expr(inner, at),
+            None => {
+                let read = self.expr(inner, at);
+                Walked::holding(read.end, read.held.within())
+            }
         }
     }
 

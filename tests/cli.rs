@@ -7413,6 +7413,15 @@ fn test_refuses_a_test_file_that_takes_a_library_module_path() {
 }
 
 #[test]
+fn test_refuses_a_source_file_that_takes_a_library_module_path() {
+    let sandbox = Sandbox::new("test_source_library_module_path")
+        .with_fixture_tree("libraries")
+        .with_file("tested-app/src/hints.knv", "(def unused 1)\n");
+    let test = sandbox.compiler_in("tested-app", &["test", "src"]);
+    insta::assert_snapshot!(test.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn test_outside_a_project_resolves_use_from_the_directory_alone() {
     let sandbox = Sandbox::new("loose_test").with_fixture_tree("loose-tests");
     let test = sandbox.compiler(&["test", "tests"]);

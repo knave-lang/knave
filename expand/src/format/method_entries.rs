@@ -35,11 +35,8 @@ impl MethodEntries {
 
     fn needs_blank_line(list: &ListNode, earlier: usize, later: usize) -> bool {
         let neighbors = earlier + 1 == later;
-        let either_has_body = [earlier, later]
-            .iter()
-            .any(|entry| Self::has_body(&list.entries[*entry]));
         let written_blank_line = list.entries[later].gap_before() == WrittenGap::BlankLine;
-        neighbors && either_has_body && !written_blank_line
+        neighbors && !written_blank_line
     }
 
     fn is_method(entry: &Entry, shapes: &ShapeCatalog) -> bool {
@@ -53,14 +50,6 @@ impl MethodEntries {
                 .is_some_and(|signature| signature.node.as_list().is_some());
             unshaped_name && signature_is_list
         })
-    }
-
-    fn has_body(entry: &Entry) -> bool {
-        let header_end = Shape::METHOD.header_length + 1;
-        entry
-            .node
-            .as_list()
-            .is_some_and(|list| list.entries.len() > header_end)
     }
 }
 
@@ -165,9 +154,9 @@ mod tests {
     }
 
     #[test]
-    fn no_blank_line_separates_two_signatures() {
+    fn a_blank_line_separates_two_signatures() {
         let fixture = MethodsFixture::new();
-        assert!(!fixture.takes_blank_line("(trait t (a (fn () i64)) (b (fn () i64)))", 3));
+        assert!(fixture.takes_blank_line("(trait t (a (fn () i64)) (b (fn () i64)))", 3));
     }
 
     #[test]

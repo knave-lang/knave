@@ -15,7 +15,7 @@ impl ListRoles {
     pub fn plan(&mut self, list: &ListNode, shapes: &ShapeCatalog) -> ListPlan {
         match self.roles.get(&list.id).copied() {
             Some(ListRole::BindingList) => ListPlan::binding_list(list),
-            Some(ListRole::Method) => self.shaped_plan(list, Some(Shape::METHOD), shapes),
+            Some(ListRole::Method) => self.method_plan(list, shapes),
             Some(ListRole::Arm) | None => {
                 let shape = list.head_name().and_then(|name| shapes.of(name));
                 self.shaped_plan(list, shape, shapes)
@@ -25,6 +25,11 @@ impl ListRoles {
 
     pub fn is_arm(&self, list: &ListNode) -> bool {
         self.roles.get(&list.id) == Some(&ListRole::Arm)
+    }
+
+    fn method_plan(&mut self, list: &ListNode, shapes: &ShapeCatalog) -> ListPlan {
+        self.shaped_plan(list, Some(Shape::METHOD), shapes)
+            .with_lone_header_below()
     }
 
     fn shaped_plan(

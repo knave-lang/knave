@@ -1,0 +1,56 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/format/layout_methods_as_types.knv
+---
+(type cross (fn (point point point) f64))
+(type before (fn ((ref str) (ref str)) (ref str)))
+(type sync-account! (fn ((mut self) (ref str)) (result unit mail-error)))
+(type archive! (fn ((mut self) (ref str) (ref str) (ref str) (ref str) (ref str) (ref str)) (result unit mail-error)))
+
+(deftrait mail-syncer
+  (cross (fn (point point point) f64))
+  (before (fn ((ref str) (ref str)) (ref str)))
+  (sync-account! (fn ((mut self) (ref str))
+                   (result unit mail-error)))
+  (archive! (fn ((mut self) (ref str) (ref str) (ref str) (ref str) (ref str) (ref str)) (result unit mail-error))))
+
+---
+(type cross (fn (point point point) f64))
+
+(type before
+  (fn ((ref str) (ref str)) (ref str)))
+
+(type sync-account!
+  (fn ((mut self) (ref str))
+    (result unit mail-error)))
+
+(type archive!
+  (fn ((mut self)
+       (ref str)
+       (ref str)
+       (ref str)
+       (ref str)
+       (ref str)
+       (ref str))
+    (result unit mail-error)))
+
+(deftrait mail-syncer
+  (cross (fn (point point point) f64))
+
+  (before
+    (fn ((ref str) (ref str)) (ref str)))
+
+  (sync-account!
+    (fn ((mut self) (ref str))
+      (result unit mail-error)))
+
+  (archive!
+    (fn ((mut self)
+         (ref str)
+         (ref str)
+         (ref str)
+         (ref str)
+         (ref str)
+         (ref str))
+      (result unit mail-error))))

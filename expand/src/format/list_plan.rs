@@ -81,6 +81,21 @@ impl ListPlan {
         }
     }
 
+    pub fn with_lone_header_below(self) -> Self {
+        let header = self.arrangements[0];
+        let body_follows = self.units.len() > header.first_line_units;
+        if body_follows {
+            return self;
+        }
+        Self {
+            arrangements: vec![Arrangement {
+                first_line_units: 1,
+                later_indent: Arrangement::body(),
+            }],
+            ..self
+        }
+    }
+
     pub fn takes_blank_line_before(&self, entry: usize) -> bool {
         self.nested.takes_blank_line_before(entry)
     }

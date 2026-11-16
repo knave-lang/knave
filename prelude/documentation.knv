@@ -169,10 +169,13 @@
   (fn (page)
     (local terms (module-exports (page-path page)))
     (local pairs (paired-terms terms (homes-of page terms)))
+    (local owned (owned-terms page pairs))
     (local sections
-      (map-list (owned-terms page pairs)
-        (fn (term)
-          (list term (term-docstring term)))))
+      (map-list (items-where (fn (term)
+                               (bool-not (other-name? term owned)))
+                             owned)
+                (fn (term)
+                  (list term (term-docstring term) (other-names term owned)))))
     (local summary (module-docstring page))
     (local links
       (link-table page
@@ -194,6 +197,28 @@
 
 (def section-body
   (fn (section) (nth section 1)))
+
+(def section-other-names
+  (fn (section) (nth section 2)))
+
+(def other-name?
+  (fn (term terms)
+    (bool-not (empty? (items-where (fn (other) (names-again? other term))
+                                   terms)))))
+
+(def other-names
+  (fn (term terms)
+    (items-where (fn (other) (names-again? term other))
+                 terms)))
+
+(def names-again?
+  (fn (heading term)
+    (if (value-eq (symbol-name heading) (symbol-name term))
+      false
+      (if (same-binding? heading term)
+        (value-eq (looked-up (quote doc-header) heading)
+                  (symbol-name heading))
+        false))))
 
 (def module-docstring
   (fn (page)
@@ -254,9 +279,10 @@
 (def term-section
   (fn (page links section)
     (local term (section-term section))
-    (string "<a id=\""
-            (symbol-name term)
-            "\"></a>\n\n" "## `"
+    (string (anchor term)
+            (join-text ""
+                       (map-list (section-other-names section) anchor))
+            "\n" "## `"
             (symbol-name term)
             "`\n\n" code-fence code-language "\n"
             (looked-up (quote doc-header) term)
@@ -264,6 +290,10 @@
             "\n" code-fence "\n\n"
             (body-markdown page links (section-body section))
             "\n")))
+
+(def anchor
+  (fn (term)
+    (string "<a id=\"" (symbol-name term) "\"></a>\n")))
 
 (def type-line
   (fn (page term)

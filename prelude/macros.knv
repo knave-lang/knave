@@ -1248,9 +1248,18 @@
       (notes-with-key key
                       (module-notes context
                                     (term-docstrings-key (noted-term key)))))
-    (if (empty? noted)
+    (if (empty? noted) (other-name-notes context key) noted)))
+
+(def other-name-notes
+  (fn (context key)
+    (local documented
+      (notes-with-key key
+                      (module-notes context documented-terms-key)))
+    (if (empty? documented)
       (notes-with-key key (module-notes context docstrings-key))
-      noted)))
+      (notes-with-key key
+                      (module-notes context
+                                    (term-docstrings-key (noted-term (first documented))))))))
 
 (def notes-with-key
   (fn (key notes)

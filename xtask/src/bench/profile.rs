@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use super::call::Call;
 use super::call_record::CallRecord;
+use super::collection_toggles::CollectionToggles;
 use super::measurement::Measurement;
 use super::stage_entry::StageEntry;
 use crate::failure::TaskFailure;
@@ -184,6 +185,9 @@ impl<'reader, 'text> ProfileScan<'reader, 'text> {
         let summary = self
             .summary
             .ok_or(TaskFailure::malformed_profile("summary"))?;
+        if self.record.collected_nothing_in_a_thread_entry() {
+            return Err(CollectionToggles::nothing_collected());
+        }
         if let Some(candidates) = self.reader.missing_entry_point(self.record.entered()) {
             return Err(TaskFailure::stage_entry_missing(&candidates));
         }
@@ -217,6 +221,34 @@ mod tests {
 
     impl ProfileFixture {
         const ONE_CRATE: &'static str = include_str!("../../fixtures/bench/callgrind.out");
+        const THREAD_ENTRY_COST: u64 = 1000;
+        const NOTHING_COLLECTED: &'static str = "callgrind collected nothing under \
+             `--toggle-collect=std::sys::backtrace::__rust_begin_short_backtrace`";
+        const EMIT_ENTERED_UNDER_BUILD: &'static str = "\n\
+             fn=compiler::build::formatting::EmittedFormatting::apply\n\
+             cfn=compiler::emit::RustEmitter::emit\n\
+             calls=1 0\n\
+             0 7\n";
+        const RENAMED_THREAD_ENTRY: &'static str = "events: Ir\n\
+             summary: 900\n\
+             fn=compiler::cli::Terminal::emit\n\
+             cfn=compiler::expand::Expander::expand\n\
+             calls=1 0\n\
+             0 300\n\
+             cfn=compiler::check::ProgramChecker::check\n\
+             calls=1 0\n\
+             0 200\n\
+             cfn=compiler::emit::RustEmitter::emit\n\
+             calls=1 0\n\
+             0 100\n\
+             cfn=compiler::build::formatting::EmittedFormatting::apply\n\
+             calls=1 0\n\
+             0 100\n\
+             \n\
+             fn=compiler::expand::Expander::expand\n\
+             cfn=__rustc::__rust_alloc\n\
+             calls=3 0\n\
+             0 300\n";
         const TWO_CRATES: &'static str =
             include_str!("../../fixtures/bench/callgrind-two-crates.out");
         const COMPILER: [&'static str; 1] = ["compiler"];
@@ -307,6 +339,18 @@ mod tests {
              calls=1 0\n\
              0 3\n";
 
+        fn read_with_thread_entry(
+            profile: &str,
+            crate_names: &[&str],
+            entry_point_check: EntryPointCheck,
+        ) -> Result<Measurement, TaskFailure> {
+            let profile = format!(
+                "{profile}{}",
+                Self::thread_entry_call(Self::THREAD_ENTRY_COST)
+            );
+            Self::read(&profile, crate_names, entry_point_check)
+        }
+
         fn read(
             profile: &str,
             crate_names: &[&str],
@@ -314,6 +358,26 @@ mod tests {
         ) -> Result<Measurement, TaskFailure> {
             let crate_names = crate_names.iter().map(ToString::to_string).collect();
             ProfileReader::new(&crate_names, entry_point_check).read(profile)
+        }
+
+        fn thread_entry_failure(profile: &str, entry_point_check: EntryPointCheck) -> String {
+            Self::failure_text(Self::read(profile, &Self::COMPILER, entry_point_check))
+        }
+
+        fn failure_text(result: Result<Measurement, TaskFailure>) -> String {
+            result.map_or_else(
+                |failure| failure.to_string(),
+                |measurement| format!("measured {:?}", Self::rows(&measurement)),
+            )
+        }
+
+        fn thread_entry_call(cost: u64) -> String {
+            format!(
+                "\nfn=std::rt::lang_start::{{{{closure}}}}\n\
+                 cfn=std::sys::backtrace::__rust_begin_short_backtrace\n\
+                 calls=1 0\n\
+                 0 {cost}\n"
+            )
         }
 
         fn rows(measurement: &Measurement) -> Vec<(String, u64)> {
@@ -332,7 +396,8 @@ mod tests {
 
         fn with_calls(calls: &str) -> Measurement {
             let profile = format!("{}{calls}", Self::ONE_CRATE);
-            Self::read(&profile, &Self::COMPILER, EntryPointCheck::Enforced).unwrap()
+            Self::read_with_thread_entry(&profile, &Self::COMPILER, EntryPointCheck::Enforced)
+                .unwrap()
         }
 
         fn without_emit_entry(profile: &str) -> String {
@@ -342,7 +407,7 @@ mod tests {
 
     #[test]
     fn charges_calls_out_of_the_entry_module_to_the_callee_module() {
-        let measurement = ProfileFixture::read(
+        let measurement = ProfileFixture::read_with_thread_entry(
             ProfileFixture::ONE_CRATE,
             &ProfileFixture::COMPILER,
             EntryPointCheck::Enforced,
@@ -356,7 +421,7 @@ mod tests {
 
     #[test]
     fn charges_calls_into_another_workspace_crate_to_the_callee_module() {
-        let measurement = ProfileFixture::read(
+        let measurement = ProfileFixture::read_with_thread_entry(
             ProfileFixture::TWO_CRATES,
             &ProfileFixture::COMPILER_AND_FRONT_END,
             EntryPointCheck::Enforced,
@@ -410,7 +475,7 @@ mod tests {
 
     #[test]
     fn rejects_a_profile_that_never_enters_a_stage() {
-        let failure = ProfileFixture::read(
+        let failure = ProfileFixture::read_with_thread_entry(
             &ProfileFixture::without_emit_entry(ProfileFixture::ONE_CRATE),
             &ProfileFixture::COMPILER,
             EntryPointCheck::Enforced,
@@ -425,7 +490,7 @@ mod tests {
 
     #[test]
     fn names_the_missing_entry_point_in_each_workspace_crate() {
-        let failure = ProfileFixture::read(
+        let failure = ProfileFixture::read_with_thread_entry(
             &ProfileFixture::without_emit_entry(ProfileFixture::TWO_CRATES),
             &ProfileFixture::COMPILER_AND_FRONT_END,
             EntryPointCheck::Enforced,
@@ -438,7 +503,7 @@ mod tests {
 
     #[test]
     fn skips_the_entry_points_of_a_baseline() {
-        let measurement = ProfileFixture::read(
+        let measurement = ProfileFixture::read_with_thread_entry(
             &ProfileFixture::without_emit_entry(ProfileFixture::ONE_CRATE),
             &ProfileFixture::COMPILER,
             EntryPointCheck::Skipped,
@@ -447,8 +512,80 @@ mod tests {
     }
 
     #[test]
+    fn sums_the_cost_of_every_call_into_the_thread_entry() {
+        let profile = format!(
+            "{}{}{}",
+            ProfileFixture::ONE_CRATE,
+            ProfileFixture::thread_entry_call(ProfileFixture::THREAD_ENTRY_COST),
+            ProfileFixture::thread_entry_call(0)
+        );
+        let rows = ProfileFixture::read(
+            &profile,
+            &ProfileFixture::COMPILER,
+            EntryPointCheck::Enforced,
+        )
+        .map(|measurement| ProfileFixture::rows(&measurement))
+        .map_err(|failure| failure.to_string());
+        assert_eq!(rows, Ok(ProfileFixture::stage_rows()));
+    }
+
+    #[test]
+    fn names_the_thread_entry_toggle_when_no_call_enters_it() {
+        let failure = ProfileFixture::thread_entry_failure(
+            ProfileFixture::RENAMED_THREAD_ENTRY,
+            EntryPointCheck::Skipped,
+        );
+        assert!(
+            failure.contains(ProfileFixture::NOTHING_COLLECTED),
+            "{failure}"
+        );
+    }
+
+    #[test]
+    fn names_the_thread_entry_toggle_when_its_calls_cost_nothing() {
+        let profile = format!(
+            "{}{}",
+            ProfileFixture::RENAMED_THREAD_ENTRY,
+            ProfileFixture::thread_entry_call(0)
+        );
+        let failure = ProfileFixture::thread_entry_failure(&profile, EntryPointCheck::Enforced);
+        assert!(
+            failure.contains(ProfileFixture::NOTHING_COLLECTED),
+            "{failure}"
+        );
+    }
+
+    #[test]
+    fn names_the_thread_entry_toggle_before_a_missing_stage_entry() {
+        let profile = ProfileFixture::without_emit_entry(ProfileFixture::RENAMED_THREAD_ENTRY);
+        let failure = ProfileFixture::thread_entry_failure(&profile, EntryPointCheck::Enforced);
+        assert!(
+            failure.contains(ProfileFixture::NOTHING_COLLECTED),
+            "{failure}"
+        );
+    }
+
+    #[test]
+    fn rejects_a_stage_entered_only_from_outside_the_command_line_module() {
+        let profile = format!(
+            "{}{}",
+            ProfileFixture::without_emit_entry(ProfileFixture::ONE_CRATE),
+            ProfileFixture::EMIT_ENTERED_UNDER_BUILD
+        );
+        let failure = ProfileFixture::failure_text(ProfileFixture::read_with_thread_entry(
+            &profile,
+            &ProfileFixture::COMPILER,
+            EntryPointCheck::Enforced,
+        ));
+        assert!(
+            failure.contains("into `compiler::emit::RustEmitter::emit`,"),
+            "{failure}"
+        );
+    }
+
+    #[test]
     fn rejects_a_profile_without_a_summary() {
-        let failure = ProfileFixture::read(
+        let failure = ProfileFixture::read_with_thread_entry(
             "events: Ir\n",
             &ProfileFixture::COMPILER,
             EntryPointCheck::Enforced,

@@ -5,6 +5,7 @@ mod call_graph;
 mod call_record;
 mod callgrind;
 mod change;
+mod collection_toggles;
 mod comparison;
 mod compiler;
 mod corpus;

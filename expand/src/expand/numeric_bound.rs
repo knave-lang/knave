@@ -55,8 +55,8 @@ impl NumericBound {
         let prelude = modules.get(modules.find(&ModulePath::new(ModuleSources::PRELUDE))?);
         let mut traits = Self::covering_traits(family, prelude, &Self::declarations(expanded));
         traits.sort();
-        let traits = traits.into_iter().map(|(_, name)| name).collect();
-        Some(Self { family, traits })
+        let traits: Vec<Rc<str>> = traits.into_iter().map(|(_, name)| name).collect();
+        (!traits.is_empty()).then_some(Self { family, traits })
     }
 
     pub fn family(&self) -> &'static str {
@@ -118,12 +118,112 @@ impl NumericBound {
 
 #[cfg(test)]
 mod tests {
+    use rustc_hash::FxHashMap;
+
     use super::{NumberFamily, NumericBound};
     use crate::core::{
-        BindingArena, BindingInfo, BindingKind, ImplementorRows, PrimitiveType,
-        RustTraitDeclaration, RustTraitImplementor, TypeExpr, TypeExprKind,
+        BindingArena, BindingInfo, BindingKind, CoreModule, ImplementorRows, Item, ItemKind,
+        KernelType, ModuleId, ModulePath, Namespace, PrimitiveType, RustTraitDeclaration,
+        RustTraitImplementor, TypeExpr, TypeExprKind,
     };
+    use crate::modules::{ModuleRegistry, ModuleScopes, ModuleSources};
+    use crate::scope::{ScopeKind, Scopes};
     use crate::source::{SourceId, Span};
+
+    struct PreludeFixture {
+        declarations: DeclarationFixture,
+        modules: ModuleRegistry,
+        expanded: FxHashMap<ModuleId, CoreModule>,
+        prelude: ModuleId,
+    }
+
+    impl PreludeFixture {
+        fn new() -> Self {
+            let mut scopes = Scopes::default();
+            let mut modules = ModuleRegistry::default();
+            let path = ModulePath::new(ModuleSources::PRELUDE);
+            let prelude = modules.register(
+                path.clone(),
+                ModuleScopes::new(
+                    scopes.fresh(ScopeKind::Module),
+                    scopes.fresh(ScopeKind::Module),
+                ),
+            );
+            let mut expanded = FxHashMap::default();
+            expanded.insert(prelude, CoreModule::new(prelude, path, None));
+            Self {
+                declarations: DeclarationFixture::new(),
+                modules,
+                expanded,
+                prelude,
+            }
+        }
+
+        fn integer_trait(&mut self, name: &str) {
+            self.private_integer_trait();
+            let declaration = self.declarations.rows_of(NumberFamily::Integer.members());
+            self.modules.get_mut(self.prelude).export(
+                name.into(),
+                Namespace::Type,
+                declaration.binding,
+            );
+            self.declare(declaration);
+        }
+
+        fn private_integer_trait(&mut self) {
+            let declaration = self.declarations.rows_of(NumberFamily::Integer.members());
+            self.declare(declaration);
+        }
+
+        fn declare(&mut self, declaration: RustTraitDeclaration) {
+            let module = self
+                .expanded
+                .get_mut(&self.prelude)
+                .expect("the prelude module");
+            module.items.push(Item {
+                kind: ItemKind::RustTrait(declaration),
+                span: DeclarationFixture::span(),
+                hidden: false,
+            });
+        }
+
+        fn traits_for(&self, primitive: PrimitiveType) -> Option<Vec<String>> {
+            let kind = BindingKind::KernelType(KernelType::Primitive(primitive));
+            let bound = NumericBound::of_kind(kind, &self.modules, &self.expanded)?;
+            Some(bound.traits().iter().map(|name| name.to_string()).collect())
+        }
+    }
+
+    #[test]
+    fn the_names_come_from_the_prelude_rows() {
+        let mut prelude = PreludeFixture::new();
+        prelude.integer_trait("whole");
+        assert_eq!(
+            prelude.traits_for(PrimitiveType::I64),
+            Some(vec!["whole".to_string()])
+        );
+    }
+
+    #[test]
+    fn a_trait_the_prelude_does_not_export_is_left_out() {
+        let mut prelude = PreludeFixture::new();
+        prelude.private_integer_trait();
+        assert_eq!(prelude.traits_for(PrimitiveType::I64), None);
+    }
+
+    #[test]
+    fn no_trait_of_the_family_gives_no_bound() {
+        let mut prelude = PreludeFixture::new();
+        prelude.integer_trait("whole");
+        assert_eq!(prelude.traits_for(PrimitiveType::F64), None);
+    }
+
+    #[test]
+    fn a_type_outside_the_number_families_gives_no_bound() {
+        let mut prelude = PreludeFixture::new();
+        prelude.integer_trait("whole");
+        assert_eq!(prelude.traits_for(PrimitiveType::Bool), None);
+    }
 
     struct DeclarationFixture {
         arena: BindingArena,

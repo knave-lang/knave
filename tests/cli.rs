@@ -223,7 +223,7 @@ const PROMPT_DOCUMENT_LEAVING_ANOTHER: &str = "(use prelude/macros document)\n(d
 const PROMPT_DOCUMENT_BESIDE_ITS_DEFINITION: &str = "(use prelude/macros document)\n(do (defn g () 2) (document (g) \"A\"))\n(document (g) \"B\")\n(doc g)\n";
 const PROMPT_RUNAWAY_MACRO: &str =
     "(defmacro spin () ((fn () (recur))))\n(with-macro-steps 1000 (spin))\n(+ 1 2)\n";
-const PROMPT_INFER: &str = "(defn identity (x) x)\n(infer (vec 1 2))\n(infer identity)\n(infer none)\n(def text (infer identity))\ntext\n";
+const PROMPT_INFER: &str = "(defn identity (x) x)\n(infer (vec 1 2))\n(infer identity)\n(infer none)\n(infer 1.5)\n(def text (infer identity))\ntext\n";
 const PROMPT_REDEFINITION: &str = "(defn square (n) (* n n))\n(defn cube (n) (* n (square n)))\n(cube 3)\n(defn square (n) (+ n n))\n(cube 3)\n";
 const PROMPT_DROPPING_REPLACEMENT: &str = "(defstruct point :x i64 :y i64)
 (defn ->point (x y) (vec x y))
@@ -3016,6 +3016,9 @@ fn doc_write_prelude_gives_two_names_of_one_type_one_section() {
     let page = sandbox.contents("doc/prelude.md");
     assert!(page.contains("<a id=\"int\"></a>\n<a id=\"i64\"></a>\n\n## `int`\n"));
     assert!(page.contains("```\n\nAlso written `i64`.\n\n"));
+    assert!(page.contains("<a id=\"float\"></a>\n<a id=\"f64\"></a>\n\n## `float`\n"));
+    assert!(page.contains("```\n\nAlso written `f64`.\n\n"));
+    assert!(!page.contains("## `f64`"));
     assert!(!page.contains("## `i64`"));
 }
 

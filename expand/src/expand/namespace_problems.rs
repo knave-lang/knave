@@ -17,7 +17,7 @@ impl NamespaceProblems {
 
     pub fn not_a_trait(name: &str, numeric: Option<NumericBound>, span: Span) -> Diagnostic {
         let diagnostic = Self::wrong_namespace(name, "a trait", span);
-        match numeric.filter(|bound| !bound.traits().is_empty()) {
+        match numeric {
             Some(bound) => diagnostic.with_help(format!(
                 "write a trait that every {} type implements, such as {}",
                 bound.family(),

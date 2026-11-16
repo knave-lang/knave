@@ -35,7 +35,7 @@
 
 **If the job fails on allocation growth, stop and report the programs and counters it names to the project owner.** NEVER add a `Counters-Accepted:` trailer before the project owner approves the rise.
 
-**To read a program's counters, such as its `allocator.allocations`, read the job's comment on a ready pull request.** Before the pull request is ready, run `cargo xtask bench measure --save <file>` on Linux and read the program's line in `<file>`.
+**To read a program's counters, such as its `allocator.allocations`, read the job's comment on a ready pull request.** Before the pull request is ready, run `cargo xtask bench measure --save <file>` on Linux and read the program's line in `<file>`. Compare a local count only with another local count, and CI's only with CI's: the two environments give different counts for one tree.
 
 **On a pull request, the `File sizes` and `Design rules` steps refuse a new or raised entry in a file under `xtask/baselines/`.** A `Baseline-Accepted: <baseline> <subject>` trailer in a commit of the pull request lets the entry pass. `<baseline>` is the baseline's file name without `.txt`, such as `production_lines`, and one trailer MAY list several subjects of that baseline. If the base has no baseline file at that path, every entry counts as new. If the step fails on such an entry, stop and report the entry to the project owner. NEVER add a `Baseline-Accepted:` trailer before the project owner approves the entry.
 

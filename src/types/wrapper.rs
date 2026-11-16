@@ -89,8 +89,7 @@ impl PreparedFunctionValue {
             },
             wraps: Some(self.wraps),
             kind: crate::types::ClosureKind::Fn,
-            moved_capture: None,
-            changed_capture: None,
+            facts: crate::types::ClosureFacts::default(),
         };
         TypedExpr {
             kind: TypedExprKind::Fn(Rc::new(lambda)),

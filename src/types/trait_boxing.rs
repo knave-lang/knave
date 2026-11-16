@@ -13,12 +13,12 @@ impl<'a> TraitBoxing<'a> {
         Self { traits, bindings }
     }
 
+    pub(super) fn boxes(&self, trait_binding: BindingId) -> bool {
+        self.definition(trait_binding).is_some() && self.blocker(trait_binding).is_none()
+    }
+
     pub(super) fn blocker(&self, trait_binding: BindingId) -> Option<(String, &'static str)> {
-        let definition = self
-            .traits
-            .definitions()
-            .iter()
-            .find(|definition| definition.binding == trait_binding)?;
+        let definition = self.definition(trait_binding)?;
         if let Some(associated) = self
             .traits
             .table()
@@ -31,6 +31,10 @@ impl<'a> TraitBoxing<'a> {
             ));
         }
         self.method_blocker(definition)
+    }
+
+    fn definition(&self, trait_binding: BindingId) -> Option<&'a TypedTrait> {
+        (self.traits.definitions().iter()).find(|definition| definition.binding == trait_binding)
     }
 
     fn method_blocker(&self, definition: &TypedTrait) -> Option<(String, &'static str)> {
@@ -95,6 +99,11 @@ mod tests {
                 .blocker(trait_binding)
                 .map(|(blocker, _)| blocker)
         }
+
+        fn boxes(&self, trait_name: &str) -> bool {
+            let trait_binding = self.declarations.trait_named(trait_name);
+            self.declarations.trait_boxing().boxes(trait_binding)
+        }
     }
 
     #[test]
@@ -138,6 +147,14 @@ mod tests {
             fixture.blocker("listed"),
             Some("it declares the associated type `item`".to_string())
         );
+    }
+
+    #[test]
+    fn only_a_defined_trait_without_a_blocker_boxes() {
+        let fixture = BoxingFixture::new();
+        assert!(fixture.boxes("drawn"));
+        assert!(!fixture.boxes("consumed"));
+        assert!(!fixture.boxes("debug"));
     }
 
     #[test]

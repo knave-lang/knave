@@ -2607,9 +2607,9 @@ impl TypeChecker {
             return None;
         };
         let argument = arguments.first()?;
-        let boxable = self.declared_traits().is_written(bound.binding);
-        let table = &self.declarations.traits.table;
-        (boxable && table.satisfies(bound, argument, &|_, _| false)).then(|| found.clone())
+        let traits = &self.declarations.traits;
+        let boxable = TraitBoxing::new(traits, &self.bindings).boxes(bound.binding);
+        (boxable && traits.table.satisfies(bound, argument, &|_, _| false)).then(|| found.clone())
     }
 
     fn implementor_names(

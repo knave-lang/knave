@@ -1,6 +1,7 @@
 use super::entry_argument::EntryArgument;
 use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
+use super::located_program::LocatedProgram;
 use super::program_file::ProgramFile;
 use super::source_report::SourceReport;
 use super::task_catalog::TaskCatalog;
@@ -29,8 +30,9 @@ impl ProjectInspection {
             &WarningPrinter,
         ) -> Result<(), ExitStatus>,
     ) -> Result<(), ExitStatus> {
-        let checks_tasks = self.entry.defaults_to_project_entry();
+        let defaults_to_project_entry = self.entry.defaults_to_project_entry();
         let program = self.entry.locate(terminal)?;
+        let checks_tasks = defaults_to_project_entry || Self::names_a_task_file(&program);
         let output = TaskCatalog::user_output(terminal.diagnostic_output());
         terminal.configure(|settings| settings.rerouted_to(output));
         let entry = inspect_entry(terminal, program.file(), print_warnings);
@@ -41,6 +43,13 @@ impl ProjectInspection {
             None => Ok(()),
         };
         entry.and(tasks)
+    }
+
+    fn names_a_task_file(program: &LocatedProgram) -> bool {
+        program.project().is_some_and(|project| {
+            let tasks_directory = project.placement().tasks_directory().to_path_buf();
+            ProgramFile::relative_module(program.file().path(), &tasks_directory).is_some()
+        })
     }
 
     fn check_tasks(

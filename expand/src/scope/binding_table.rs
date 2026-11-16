@@ -7,6 +7,7 @@ use rustc_hash::FxHashMap;
 use super::name_entries::NameEntries;
 use super::name_entry::NameEntry;
 use super::phase::Phase;
+use super::qualified_names::QualifiedNames;
 use super::saved_names::{NameTables, SavedNames};
 use super::{Scope, ScopeSet};
 use crate::core::{BindingId, Namespace};
@@ -160,33 +161,6 @@ impl BindingTable {
         let own = self.entries.get(&(shared, namespace));
         let saved = self.saved.entries_seen_from(scopes, name, namespace);
         own.into_iter().chain(saved)
-    }
-}
-
-#[derive(Default, serde::Serialize, serde::Deserialize)]
-struct QualifiedNames {
-    by_last_segment: FxHashMap<(Rc<str>, Namespace), Vec<Rc<str>>>,
-}
-
-impl QualifiedNames {
-    const SEPARATOR: char = '/';
-
-    fn record(&mut self, (name, namespace): &(Rc<str>, Namespace)) {
-        if let Some((_, last_segment)) = name.rsplit_once(Self::SEPARATOR) {
-            let names = self
-                .by_last_segment
-                .entry((last_segment.into(), *namespace))
-                .or_default();
-            if !names.contains(name) {
-                names.push(Rc::clone(name));
-            }
-        }
-    }
-
-    fn ending_in(&self, last_segment: Rc<str>, namespace: Namespace) -> &[Rc<str>] {
-        self.by_last_segment
-            .get(&(last_segment, namespace))
-            .map_or(&[], Vec::as_slice)
     }
 }
 

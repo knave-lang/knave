@@ -4,6 +4,7 @@ mod associated;
 mod assumed_collections;
 mod binding;
 mod borrowed_items;
+mod borrowing_types;
 mod boxed_payload;
 mod boxes;
 mod checked_program;
@@ -186,6 +187,7 @@ mod written_type_variables;
 
 pub use crate::core::ClosureKind;
 pub use binding::GenericBinding;
+pub use borrowing_types::BorrowingTypes;
 pub use boxed_payload::BoxedPayload;
 pub use checker::TypeChecker;
 pub use clause_choice::ClauseChoice;

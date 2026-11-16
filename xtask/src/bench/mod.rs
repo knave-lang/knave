@@ -14,6 +14,7 @@ mod counter_run;
 mod failure;
 #[cfg(test)]
 mod fixture;
+mod gated_counters;
 
 mod header;
 mod history;

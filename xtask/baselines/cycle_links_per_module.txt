@@ -57,7 +57,3 @@ src/types/templates.rs 1
 src/types/type_text.rs 1
 src/types/type_text_writer.rs 1
 src/types/typed.rs 2
-xtask/src/bench/change.rs 1
-xtask/src/bench/counter_gate.rs 2
-xtask/src/bench/measurement.rs 1
-xtask/src/bench/results.rs 1

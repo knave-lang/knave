@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use super::change::Change;
 use super::counter_gate::{CounterGate, CounterRise};
+use super::gated_counters::GatedCounters;
 use super::results::ResultSet;
 use super::table::{GroupedCount, MarkdownTable};
 
@@ -41,14 +42,14 @@ impl<'a> CounterComparison<'a> {
         if rises.is_empty() {
             return format!(
                 "No program's {} rose more than {}%.\n",
-                CounterGate::gated_names(),
-                CounterGate::TOLERANCE_PERCENT
+                GatedCounters::listed(),
+                GatedCounters::TOLERANCE_PERCENT
             );
         }
         let list: String = rises.iter().map(|rise| self.rise_line(rise)).collect();
         format!(
             "These counters rose more than {}%:\n\n{list}",
-            CounterGate::TOLERANCE_PERCENT
+            GatedCounters::TOLERANCE_PERCENT
         )
     }
 

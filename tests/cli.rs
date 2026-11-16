@@ -10214,6 +10214,22 @@ fn task_module_hiding_a_source_module_names_the_tasks_directory() {
 }
 
 #[test]
+fn task_listing_warns_of_a_task_module_hiding_a_source_module() {
+    let task = Sandbox::new("task_listing_hides_source")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("src/util.knv", "(export x)\n\n(def x 1)\n")
+        .with_file("tasks/util.knv", "(export x)\n\n(def x 2)\n")
+        .with_file(
+            "tasks/t.knv",
+            "(use util x)\n\n(deftask t () (println x))\n",
+        )
+        .compiler(&["task"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "t\n");
+    insta::assert_snapshot!(task.stderr());
+}
+
+#[test]
 fn task_file_may_still_import_deftask_from_prelude_task() {
     let task = Sandbox::new("task_explicit_import")
         .with_file(&Language::project_file_name(), TASK_PROJECT)

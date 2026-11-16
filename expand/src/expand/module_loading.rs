@@ -476,31 +476,12 @@ impl Expander<'_> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
-    use crate::core::ModulePath;
-    use crate::expand::{Expander, Program};
+    use crate::expand::expanded_module::ExpandedModule;
     use crate::modules::ModuleSources;
-    use crate::source::SourceMap;
-
-    struct ImportFixture;
-
-    impl ImportFixture {
-        const MODULE: &str = "fixture";
-
-        fn expand(text: &str) -> Program {
-            let mut sources = SourceMap::default();
-            let entry = sources.add(Self::MODULE, text);
-            let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
-            Expander::new(&mut sources, module_sources)
-                .expand(ModulePath::new(Self::MODULE), entry)
-                .unwrap_or_else(|_| panic!("the program expands"))
-        }
-    }
 
     #[test]
     fn a_written_module_records_its_imports_and_the_prelude_none() {
-        let program = ImportFixture::expand("(use code value-eq)\n(defn main () (println 1))");
+        let program = ExpandedModule::of("(use code value-eq)\n(defn main () (println 1))");
         assert_eq!(program.entry_module().lint_facts.imports().len(), 1);
         assert!(
             program

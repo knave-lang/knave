@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/user_traits_are_not_suggested.knv
+---
+error[L0212]: expected a trait, found `int`
+ --> expand/user_traits_are_not_suggested.knv:7:14
+  |
+7 |   (where ((n int)) (fn (n) n)))
+  |              ^^^ not a trait
+  |
+  = help: write a trait that every integer type implements, such as `integer` or `number`
+  = note: run `knave doc L0212` for an explanation

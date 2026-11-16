@@ -1,0 +1,9 @@
+(use user_traits_are_not_suggested/wide wide)
+
+(rust-trait whole "Copy"
+  i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize)
+
+(type twice
+  (where ((n int)) (fn (n) n)))
+
+(defn twice (x) (* x 2))

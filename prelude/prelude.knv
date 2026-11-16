@@ -139,8 +139,7 @@
 
   It emits a Rust `fn` item, a closure or a block, by where it appears.
 
-  (local twice (fn (x) (* x 2)))
-  (twice 3)
+  (let (twice (fn (x) (* x 2))) (twice 3))
   => 6")
 
 (document (def name value)
@@ -271,8 +270,7 @@
   The operation is [get], [keys], [vals], [iter], [update] or `push`.
   `get`, `keys`, `vals`, `iter`, `update` and [push!] expand to it.
 
-  (local items (vec 1 2))
-  (map-at get items 1)
+  (map-at get (vec 1 2) 1)
   => (some (ref 2))")
 
 (document (set-at value (key ...) item)
@@ -280,9 +278,9 @@
 
   It emits an assignment. [set!] expands to it.
 
-  (local items (vec 1 2))
-  (set-at items (0) 9)
-  (clone items)
+  (let (items (vec 1 2))
+    (set-at items (0) 9)
+    (clone items))
   => (vec 9 2)")
 
 (document (new name (field value) ...)
@@ -294,9 +292,8 @@
   ```
   (struct point (x i64) (y i64))
 
-  (local start (new point (x 1) (y 2)))
-
-  (field (new _ start (x 9)) x)
+  (let (start (new point (x 1) (y 2)))
+    (field (new _ start (x 9)) x))
   => 9
   ```")
 
@@ -317,8 +314,8 @@
 
   It emits `&value`. In a type, `(ref type)` is a shared reference.
 
-  (local word (str \"pear\"))
-  (len (ref word))
+  (let (word (str \"pear\"))
+    (len (ref word)))
   => 4")
 
 (document (mut place)
@@ -326,10 +323,10 @@
 
   It emits `&mut place`. In a type, `(mut type)` is a mutable reference.
 
-  (local total 1)
-  (local place (mut total))
-  (set! place 2)
-  (= total 2)
+  (let (total 1
+        place (mut total))
+    (set! place 2)
+    (= total 2))
   => true")
 
 (document (deref value)
@@ -337,8 +334,7 @@
 
   It emits `*value`.
 
-  (local total 3)
-  (deref (ref total))
+  (let (total 3) (deref (ref total)))
   => 3")
 
 (document (quote form)
@@ -421,13 +417,14 @@
 
   It emits `expression?`.
 
-  (local step
-    (fn ((value (option i64)))
-      (some (+ (try value) 1))))
-  (step (some 1))
+  (let (step (fn ((value (option i64)))
+               (some (+ (try value) 1))))
+    (step (some 1)))
   => (some 2)
 
-  (step none)
+  (let (step (fn ((value (option i64)))
+               (some (+ (try value) 1))))
+    (step none))
   => none")
 
 (document (infer expression)
@@ -501,10 +498,10 @@
   It emits `impl FnMut(argument, ...) -> result`. A written `fn-mut` is
   exact, while a plain [fn] leaves the kind to inference.
 
-  (local total 0)
-  (for-each (range 1 4)
-    (fn (x) (set! total (+ total x))))
-  (= total 6)
+  (let (total 0)
+    (for-each (range 1 4)
+      (fn (x) (set! total (+ total x))))
+    (= total 6))
   => true")
 
 (document (fn-once (argument ...) result)
@@ -513,8 +510,8 @@
   It emits `impl FnOnce(argument, ...) -> result`. A written `fn-once` is
   exact, while a plain [fn] leaves the kind to inference.
 
-  (local word (str \"pear\"))
-  (map-some (some 1) (fn (n) word))
+  (let (word (str \"pear\"))
+    (map-some (some 1) (fn (n) word)))
   => (some (str \"pear\"))")
 
 (document (where (variable (variable trait ...) ...) type)

@@ -74,8 +74,7 @@
   implement `ord`. `sorted-map` is also the type `(sorted-map key value)`,
   Rust's `std::collections::BTreeMap<K, V>`.
 
-  (local prices (sorted-map \"pear\" 3 \"fig\" 1))
-  (get prices \"fig\")
+  (get (sorted-map \"pear\" 3 \"fig\" 1) \"fig\")
   => (some (ref 1))
 
   (empty? (the (sorted-map i64 i64) (sorted-map)))
@@ -92,8 +91,7 @@
   implement `hash` and `eq`. `hash-map` is also the type
   `(hash-map key value)`, Rust's `std::collections::HashMap<K, V>`.
 
-  (local prices (hash-map \"pear\" 3 \"fig\" 1))
-  (get prices \"fig\")
+  (get (hash-map \"pear\" 3 \"fig\" 1) \"fig\")
   => (some (ref 1))
 
   (empty? (the (hash-map i64 i64) (hash-map)))
@@ -128,12 +126,10 @@
   It returns an [option] of a borrow, and `none` for a missing index or
   key. `get` as a value is the slice reader.
 
-  (local items (vec 10 20))
-  (get items 1)
+  (get (vec 10 20) 1)
   => (some (ref 20))
 
-  (local prices (sorted-map \"pear\" 3))
-  (get prices \"fig\")
+  (get (sorted-map \"pear\" 3) \"fig\")
   => none")
 
 (def slice-get
@@ -152,11 +148,12 @@
   A [sorted-map] yields them in key order, and the order of a [hash-map] is
   not fixed. The map stays usable.
 
-  (local prices (sorted-map \"pear\" 3 \"fig\" 1))
-  (collect (map (keys prices) str))
+  (collect (map (keys (sorted-map \"pear\" 3 \"fig\" 1)) str))
   => (vec (str \"fig\") (str \"pear\"))
 
-  (len prices)
+  (let (prices (sorted-map \"pear\" 3 \"fig\" 1))
+    (collect (map (keys prices) str))
+    (len prices))
   => 2")
 
 (document (vals map)
@@ -166,11 +163,10 @@
   not fixed. The map stays usable. Each item is a borrow, so
   `(sum (vals map))` is an error, and `(reduce (vals map) 0 +)` adds them.
 
-  (local prices (sorted-map \"pear\" 3 \"fig\" 1))
-  (collect (map (vals prices) str))
+  (collect (map (vals (sorted-map \"pear\" 3 \"fig\" 1)) str))
   => (vec (str 1) (str 3))
 
-  (reduce (vals prices) 0 +)
+  (reduce (vals (sorted-map \"pear\" 3 \"fig\" 1)) 0 +)
   => 4")
 
 (document (into-sorted-map pairs)
@@ -179,9 +175,8 @@
   `pairs` is a `(vec (pair key value))`, and the call moves it. Keys implement
   [ord], and the last pair of a repeated key wins.
 
-  (local prices
-    (into-sorted-map (vec (pair \"pear\" 3) (pair \"pear\" 5))))
-  (get prices \"pear\")
+  (get (into-sorted-map (vec (pair \"pear\" 3) (pair \"pear\" 5)))
+       \"pear\")
   => (some (ref 5))")
 
 (document (into-hash-map pairs)
@@ -190,7 +185,6 @@
   `pairs` is a `(vec (pair key value))`, and the call moves it. Keys implement
   [hash] and [eq], and the last pair of a repeated key wins.
 
-  (local prices
-    (into-hash-map (vec (pair \"pear\" 3) (pair \"pear\" 5))))
-  (get prices \"pear\")
+  (get (into-hash-map (vec (pair \"pear\" 3) (pair \"pear\" 5)))
+       \"pear\")
   => (some (ref 5))")

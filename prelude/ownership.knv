@@ -38,11 +38,12 @@
   `(str text)` builds a [string] from it. `clone` is also the trait, Rust's
   `Clone`.
 
-  (local word (str \"pear\"))
-  (clone word)
+  (clone (str \"pear\"))
   => \"pear\"
 
-  (len word)
+  (let (word (str \"pear\"))
+    (clone word)
+    (len word))
   => 4")
 
 (document copy

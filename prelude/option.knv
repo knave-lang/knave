@@ -80,11 +80,12 @@
 
   It borrows the option, which stays usable.
 
-  (local name (some (str \"pear\")))
-  (some? name)
+  (some? (some (str \"pear\")))
   => true
 
-  (unwrap name)
+  (let (name (some (str \"pear\")))
+    (some? name)
+    (unwrap name))
   => \"pear\"")
 
 (document (none? option)

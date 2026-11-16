@@ -112,12 +112,12 @@
 
   It borrows the result, which stays usable.
 
-  (local outcome
-    (ok-or (some (str \"pear\")) \"missing\"))
-  (ok? outcome)
+  (ok? (ok-or (some (str \"pear\")) \"missing\"))
   => true
 
-  (unwrap-ok outcome)
+  (let (outcome (ok-or (some (str \"pear\")) \"missing\"))
+    (ok? outcome)
+    (unwrap-ok outcome))
   => \"pear\"")
 
 (document (err? result)

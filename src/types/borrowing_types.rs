@@ -16,19 +16,6 @@ impl<'p> BorrowingTypes<'p> {
     }
 
     pub fn keeps_borrow(&self, ty: &Type) -> bool {
-        self.program.type_holds_borrow(ty) || self.holds_an_iterator(ty)
-    }
-
-    fn holds_an_iterator(&self, ty: &Type) -> bool {
-        match ty {
-            Type::Function(..) => false,
-            _ => {
-                self.pipelines.is_pipeline(ty)
-                    || ty
-                        .parts()
-                        .into_iter()
-                        .any(|part| self.holds_an_iterator(part))
-            }
-        }
+        self.program.type_holds_borrow(ty) || self.pipelines.holds_an_iterator(ty)
     }
 }

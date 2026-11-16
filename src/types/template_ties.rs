@@ -62,13 +62,13 @@ impl TemplateTies {
     }
 
     fn adapted_iterators(parameters: &[Type], result: &Type, pipelines: Pipelines) -> Vec<usize> {
-        if !pipelines.is_pipeline(result) {
+        if !pipelines.holds_an_iterator(result) {
             return Vec::new();
         }
         parameters
             .iter()
             .enumerate()
-            .filter(|(_, parameter)| pipelines.is_pipeline(parameter))
+            .filter(|(_, parameter)| pipelines.holds_an_iterator(parameter))
             .map(|(position, _)| position)
             .collect()
     }

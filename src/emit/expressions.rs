@@ -36,10 +36,10 @@ use crate::ownership::StructUpdateOrder;
 use crate::reader::{Number, NumberValue};
 use crate::source::Span;
 use crate::types::{
-    Borrow, ClauseChoice, ClosureKind, Collection, FieldOrder, SchemeBindings, SyntheticTemplate,
-    Type, TypedArgument, TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
-    TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
-    TypedProgram, TypedStructExpr, VariantPayload, ViewCoercion,
+    Borrow, BorrowedIndex, ClauseChoice, ClosureKind, Collection, FieldOrder, SchemeBindings,
+    SyntheticTemplate, Type, TypedArgument, TypedArm, TypedBinder, TypedBlock, TypedBodyItem,
+    TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedPattern,
+    TypedPatternKind, TypedProgram, TypedStructExpr, VariantPayload, ViewCoercion, WrittenBorrows,
 };
 
 mod compound_assignment;
@@ -540,10 +540,7 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn borrowed_index_template(&self, callee: &TypedExpr) -> Option<RustTemplate> {
         let template = self.called_template(callee)?;
-        let place = template.template.strip_prefix('&')?;
-        if !ParsedTemplate::parse(place).ok()?.is_single_index_place() {
-            return None;
-        }
+        let place = BorrowedIndex::place(&template.template)?;
         Some(RustTemplate {
             template: Rc::from(place),
             type_expr: template.type_expr.clone(),
@@ -2319,35 +2316,13 @@ impl<'a> ExpressionEmitter<'a> {
     ) -> Option<Code> {
         let value = &argument.value;
         let code = match argument.borrow {
-            Borrow::Deref(levels) => {
-                self.place(Self::under_written_borrows(value, levels)?, context)
-            }
+            Borrow::Deref(levels) => self.place(WrittenBorrows::under(value, levels)?, context),
             Borrow::Collapse(levels) => {
-                self.expr_in(Self::under_written_borrows(value, levels)?, context)
+                self.expr_in(WrittenBorrows::under(value, levels)?, context)
             }
             _ => return None,
         };
         Some(code.spanned(value.span))
-    }
-
-    fn under_written_borrows(value: &TypedExpr, levels: usize) -> Option<&TypedExpr> {
-        (0..levels).try_fold(
-            Self::without_dereferenced_borrows(value),
-            |value, _| match &value.kind {
-                TypedExprKind::Borrow(_, place) => Some(place.as_ref()),
-                _ => None,
-            },
-        )
-    }
-
-    fn without_dereferenced_borrows(value: &TypedExpr) -> &TypedExpr {
-        match &value.kind {
-            TypedExprKind::Deref(inner) => match &inner.kind {
-                TypedExprKind::Borrow(_, place) => Self::without_dereferenced_borrows(place),
-                _ => value,
-            },
-            _ => value,
-        }
     }
 
     fn borrowed_index_argument(
@@ -2795,7 +2770,7 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn field_owner(&mut self, owner: &TypedExpr) -> Code {
-        let owner = Self::without_dereferenced_borrows(owner);
+        let owner = WrittenBorrows::without_dereferenced(owner);
         match &owner.kind {
             TypedExprKind::Deref(referent) => self.field_owner(referent),
             _ => self.place(owner, TypeContext::Known),

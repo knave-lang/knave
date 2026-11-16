@@ -1,4 +1,3 @@
-use knave_expand::rust_trait_path::RustTraitPath;
 use rustc_hash::FxHashMap;
 
 use super::checker::TypeChecker;
@@ -229,14 +228,12 @@ impl TypeChecker {
         trait_binding: BindingId,
         head: BindingId,
     ) -> Option<&TypedTraitImpl> {
-        let rust_paths = &self.declarations.traits.rust_paths;
-        let path = RustTraitPath::from(&**rust_paths.get(&trait_binding)?);
+        let resolved_paths = &self.declarations.traits.resolved_paths;
+        let path = resolved_paths.get(&trait_binding)?;
         self.declarations.traits.impls.iter().find(|implementation| {
             implementation.trait_binding != trait_binding
-                && rust_paths
-                    .get(&implementation.trait_binding)
-                    .is_some_and(|other| RustTraitPath::from(&**other) == path)
                 && matches!(implementation.implementor, Type::Named(binding, _) if binding == head)
+                && resolved_paths.get(&implementation.trait_binding) == Some(path)
         })
     }
 }

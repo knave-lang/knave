@@ -7659,6 +7659,15 @@ fn test_refuses_a_test_file_that_takes_a_compiler_module_path() {
 }
 
 #[test]
+fn test_of_one_file_refuses_a_file_that_takes_a_compiler_module_path() {
+    let failing_test = "(use prelude/test deftest assert)\n(deftest fails (assert false))\n";
+    let sandbox =
+        Sandbox::new("test_one_compiler_module_path").with_file("tests/kernel.knv", failing_test);
+    let test = sandbox.compiler(&["test", "tests/kernel.knv"]);
+    insta::assert_snapshot!(test.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn test_refuses_a_test_file_that_takes_a_library_module_path() {
     let failing_test = "(use prelude/test deftest assert)\n(deftest fails (assert false))\n";
     let sandbox = Sandbox::new("test_library_module_paths")

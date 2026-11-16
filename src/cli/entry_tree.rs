@@ -95,11 +95,18 @@ impl EntryTree {
         if self.path.is_dir() {
             self.load_directory(terminal)
         } else {
-            Ok(ModuleOfSources {
-                file: self.entry_file(),
-                sources: vec![terminal.sources().load(&self.path)?],
-            })
+            self.load_file(terminal)
         }
+    }
+
+    fn load_file(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
+        let file = self.entry_file();
+        let named = TreeFile::new(file.module_path().as_str().to_string(), self.path.clone());
+        TakenModulePaths::by_the_compiler().refuse(&[named], terminal)?;
+        Ok(ModuleOfSources {
+            file,
+            sources: vec![terminal.sources().load(&self.path)?],
+        })
     }
 
     fn entry_file(&self) -> ProgramFile {

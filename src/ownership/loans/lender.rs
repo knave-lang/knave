@@ -1,6 +1,6 @@
 use super::access::Move;
 use super::control_flow_graph::ControlFlowGraph;
-use super::holdings::{Holdings, Layer};
+use super::holdings::Holdings;
 use super::lending::Lending;
 use super::loan_place::LoanPlace;
 use super::loan_table::LoanTable;
@@ -40,11 +40,9 @@ impl<'l> Lender<'l> {
 
     pub fn receive(&mut self, passed: &Holdings) {
         let point = self.graph.point_mut(self.point);
-        for layer in Layer::BOTH.map(|layer| passed.layer(layer)) {
-            point.receive(layer.loans());
-            for (value, _) in layer.values() {
-                point.using(value);
-            }
+        point.receive(passed.loans().map(|(_, loan)| loan));
+        for value in passed.values() {
+            point.using(value.binding());
         }
     }
 }

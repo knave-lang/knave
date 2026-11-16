@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/reference_copied_from_two_levels_down_lets_the_middle_change.knv
+---
+main
+  3:29 borrow `s`: no live loan
+  4:23 borrow `names`: `s` lent at 3:29, held by `names`
+  7:23 borrow `rs`: `s` lent at 3:29, held by `names`; `names` lent at 4:23, held by `rs`
+  8:10 change `names`: `s` lent at 3:29, held by `names`
+  9:22 borrow `other`: `s` lent at 3:29, held by `names`
+  10:22 borrow `names`: `s` lent at 3:29, held by `names`

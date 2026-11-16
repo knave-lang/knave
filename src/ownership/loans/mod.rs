@@ -10,6 +10,7 @@ mod call_walk;
 mod closure;
 mod control_flow_graph;
 mod expression_walk;
+mod held_value;
 mod holdings;
 mod lender;
 mod lending;

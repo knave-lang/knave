@@ -12,3 +12,4 @@ error[L0404]: `(iterator (ref str))` does not implement `joinable`
   = note: `joinable` is implemented for `(vec item)` for each `item` in: string, (ref str)
   = note: `joinable` is implemented for `(slice item)` for each `item` in: string, (ref str)
   = help: `join` takes a vector or a slice of `string` or `(ref str)` items: turn other items into text first, as in `(join (collect (map (iter items) str)) ", ")`, and collect an iterator, as in `(join (collect items) ", ")`; both allocate the vector
+  = note: run `knave doc L0404` for an explanation

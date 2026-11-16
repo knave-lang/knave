@@ -103,7 +103,7 @@ error[L0248]: `number-again` binds `crate::rt::Number`, which `number` already b
 56 | |               :bare ""))
    | |_______________________^ the two traits would infer two impls of one Rust trait
    |
-   = help: keep the clause off this `deftrait`, or give it a Rust path that no other trait binds
+   = help: keep the clause off this `deftrait`, or give it a Rust trait that no other trait binds
    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `second-octal` binds `std::fmt::Octal`, which `first-octal` already binds
@@ -116,7 +116,7 @@ error[L0248]: `second-octal` binds `std::fmt::Octal`, which `first-octal` alread
 76 | |               :bare ""))
    | |_______________________^ the two traits would infer two impls of one Rust trait
    |
-   = help: keep the clause off this `deftrait`, or give it a Rust path that no other trait binds
+   = help: keep the clause off this `deftrait`, or give it a Rust trait that no other trait binds
    = note: run `knave doc L0248` for an explanation
 
 error[L0225]: `{1}` names no type parameter

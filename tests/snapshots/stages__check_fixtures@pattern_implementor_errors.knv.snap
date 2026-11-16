@@ -3,14 +3,14 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/pattern_implementor_errors.knv
 ---
-warning[L0217]: `shown` binds a Rust path that `display` already binds
+warning[L0217]: `shown` binds the Rust trait that `display` already binds
  --> check/pattern_implementor_errors.knv:1:13
   |
 1 | (rust-trait shown "std::fmt::Display"
   |             ^^^^^ this also binds `std::fmt::Display`
   |
-  = note: two traits that bind one Rust path can disagree about its implementors
-  = help: use `display`, or give `shown` a different Rust path
+  = note: two traits that bind one Rust trait can disagree about its implementors
+  = help: use `display`, or give `shown` a different Rust trait
   = note: run `knave doc L0217` for an explanation
 
 error[L0404]: `str` does not implement `shown`
@@ -59,14 +59,14 @@ error[L0418]: a type parameter alone cannot implement a trait
    = help: wrap the parameter in a type, as in `(where ((a everything)) (ref a))`
    = note: run `knave doc L0418` for an explanation
 
-warning[L0217]: `labeled` binds a Rust path that `display` already binds
+warning[L0217]: `labeled` binds the Rust trait that `display` already binds
   --> check/pattern_implementor_errors.knv:34:13
    |
 34 | (rust-trait labeled "std::fmt::Display" (ref str))
    |             ^^^^^^^ this also binds `std::fmt::Display`
    |
-   = note: two traits that bind one Rust path can disagree about its implementors
-   = help: use `display`, or give `labeled` a different Rust path
+   = note: two traits that bind one Rust trait can disagree about its implementors
+   = help: use `display`, or give `labeled` a different Rust trait
    = note: run `knave doc L0217` for an explanation
 
 error[L0404]: `(ref a)` does not implement `labeled`

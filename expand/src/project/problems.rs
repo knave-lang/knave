@@ -69,15 +69,19 @@ impl ProjectProblems {
     }
 
     pub fn reserved_library_name(name: &str, span: Span) -> Diagnostic {
+        let reason = if name == Language::PROJECT_FILE_STEM {
+            format!(
+                "`(use {name})` names the project file, so the library's root module could never load"
+            )
+        } else {
+            format!("`{name}` names one of the compiler's own modules")
+        };
         Diagnostic::error(
             DiagnosticCode::RESERVED_LIBRARY_NAME,
             format!("`{name}` cannot name a library"),
             Label::new(span, "this name is reserved"),
         )
-        .with_note(format!(
-            "`prelude`, `kernel` and `code` name the compiler's own modules, and `{}` at the root is the project file",
-            Language::project_file_name()
-        ))
+        .with_note(reason)
         .with_help("give the library another name")
     }
 

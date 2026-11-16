@@ -9,7 +9,7 @@ error[L0720]: `code` cannot name a library
 2 |             (libraries (code :path "../code")
   |                         ^^^^ this name is reserved
   |
-  = note: `prelude`, `kernel` and `code` name the compiler's own modules, and `project.knv` at the root is the project file
+  = note: `code` names one of the compiler's own modules
   = help: give the library another name
   = note: run `knave doc L0720` for an explanation
 
@@ -19,7 +19,7 @@ error[L0720]: `prelude` cannot name a library
 3 |                        (prelude :path "../prelude")
   |                         ^^^^^^^ this name is reserved
   |
-  = note: `prelude`, `kernel` and `code` name the compiler's own modules, and `project.knv` at the root is the project file
+  = note: `prelude` names one of the compiler's own modules
   = help: give the library another name
   = note: run `knave doc L0720` for an explanation
 
@@ -29,6 +29,6 @@ error[L0720]: `project` cannot name a library
 4 |                        (project :path "../project")))
   |                         ^^^^^^^ this name is reserved
   |
-  = note: `prelude`, `kernel` and `code` name the compiler's own modules, and `project.knv` at the root is the project file
+  = note: `(use project)` names the project file, so the library's root module could never load
   = help: give the library another name
   = note: run `knave doc L0720` for an explanation

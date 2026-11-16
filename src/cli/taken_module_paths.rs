@@ -1,6 +1,6 @@
-use super::entry_tree::TreeFile;
 use super::exit_status::ExitStatus;
 use super::terminal::Terminal;
+use super::tree_file::TreeFile;
 use crate::core::ModulePath;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::TakenModuleProblems;

@@ -54,7 +54,7 @@
   parameter stay local to the body.
 
   A function cannot return a closure that uses a parameter it also changes,
-  which is `L0517`. Copy the value into a local first, and use the local in
+  which is `L0517`. Copy the value into a `let` binding first, and use it in
   the closure. Write `(let (value (clone start)) ...)` for a type that is
   not `copy`. For a `copy` type, write `(let (value start) ...)`, or
   `(let (value (deref start)) ...)` when the parameter is written as a [mut],

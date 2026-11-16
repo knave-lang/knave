@@ -213,6 +213,7 @@
 (rust-trait pattern "crate::rt::Separator"
   (help "`split` takes a `(ref str)`, a `(ref string)`, a `char` or a `(fn (char) bool)` separator: borrow an owned `string` with `as-str`")
   (ref str)
+  (ref (ref str))
   (ref string)
   char
   (fn (char) bool))
@@ -222,6 +223,7 @@
     (where ((p pattern))
       (fn ((ref str) p) (iterator (ref str))))
     ((ref str) "{0}.split({1})")
+    ((ref (ref str)) "{0}.split({1})")
     ((ref string) "{0}.split({1})")
     (char "{0}.split({1})")
     ((fn (char) bool) "{0}.split({1})")))
@@ -1032,10 +1034,11 @@
 (document (split text separator)
   "Returns an iterator over the parts of a string between separators.
 
-  `separator` is a `(ref str)`, a `(ref string)`, a [char], or a function
-  from a `char` to a [bool], such as [digit?]: any type of the [pattern] trait. Two separators
-  in a row give an empty part, and an empty string gives one empty part.
-  `text` is a `(ref str)`, so borrow a [string] with [as-str].
+  `separator` is a `(ref str)`, a borrow of one, a `(ref string)`, a [char],
+  or a function from a `char` to a [bool], such as [digit?]: any type of the
+  [pattern] trait. Two separators in a row give an empty part, and an empty
+  string gives one empty part. `text` is a `(ref str)`, so borrow a [string]
+  with [as-str].
 
   (collect (split \"a,b\" \",\"))
   => (vec \"a\" \"b\")
@@ -1048,7 +1051,8 @@
 
 (document pattern
   "Marks a separator that [split] can split a string on: a `(ref str)`, a
-  `(ref string)`, a [char], or a function from a `char` to a [bool].")
+  borrow of one, a `(ref string)`, a [char], or a function from a `char` to a
+  [bool].")
 
 (document (join items separator)
   "Joins a vector or a slice of strings into one [string], with `separator`

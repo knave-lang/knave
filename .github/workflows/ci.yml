@@ -446,7 +446,7 @@ jobs:
         run: |
           read -ra accepted <<< "$ACCEPTED_PROGRAMS"
           compare() {
-            nix develop .#ci -c cargo xtask bench compare --length "$1" "$2" target/bench/candidate.tsv "${accepted[@]/#/--accepted=}"
+            nix develop .#ci -c cargo xtask bench compare --length "$1" "$2" target/bench/candidate.tsv "${@:3}" "${accepted[@]/#/--accepted=}"
           }
           full=$(compare full target/bench/baseline.tsv)
           brief=$(compare brief target/bench/baseline.tsv)
@@ -460,9 +460,9 @@ jobs:
           accepted_heading="### Since the accepted baseline"
           case "$ACCEPTED_FOUND" in
             true)
-              accepted_versions="\`$ACCEPTED_TAG\` at ${ACCEPTED_SHA::7} against ${HEAD_SHA::7} merged into \`$BASE_REF\`."
-              accepted_full=$(compare full target/bench/accepted.tsv)
-              accepted_brief=$(compare brief target/bench/accepted.tsv)
+              accepted_versions="\`$ACCEPTED_TAG\` at ${ACCEPTED_SHA::7} against ${HEAD_SHA::7} merged into \`$BASE_REF\`. This section folds each stage's allocator row into the stage, because which allocator calls a stage's row holds shifts as the code changes."
+              accepted_full=$(compare full target/bench/accepted.tsv --stages=folded)
+              accepted_brief=$(compare brief target/bench/accepted.tsv --stages=folded)
               ;;
             tag-missing)
               accepted_versions="No commit carries the tag \`$ACCEPTED_TAG\`, so there is no accepted baseline to compare with."

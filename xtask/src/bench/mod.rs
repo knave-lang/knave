@@ -26,6 +26,7 @@ mod results;
 mod stage_costs;
 mod stage_entry;
 mod stage_reach;
+mod stage_view;
 mod table;
 
 use std::collections::BTreeSet;
@@ -51,6 +52,7 @@ use method::MeasurementMethod;
 use output_file::OutputFile;
 use profile::EntryPointCheck;
 use results::{Counters, ProgramResult, ResultSet};
+use stage_view::StageView;
 
 #[derive(Subcommand)]
 pub enum BenchTask {
@@ -108,6 +110,8 @@ pub struct CompareOptions {
     candidate: PathBuf,
     #[arg(long, value_enum, default_value_t = ReportLength::Full)]
     length: ReportLength,
+    #[arg(long, value_enum, default_value_t = StageView::Split)]
+    stages: StageView,
     #[arg(
         long,
         action = clap::ArgAction::Append,
@@ -178,8 +182,8 @@ impl BenchTask {
 
 impl CompareOptions {
     fn compare(&self) -> Result<String, TaskFailure> {
-        let baseline = ResultSet::load(&self.baseline)?;
-        let candidate = ResultSet::load(&self.candidate)?;
+        let baseline = self.stages.apply(ResultSet::load(&self.baseline)?);
+        let candidate = self.stages.apply(ResultSet::load(&self.candidate)?);
         let accepted = self.accepted.iter().cloned().collect();
         Ok(self
             .length
@@ -362,6 +366,13 @@ mod tests {
             }
         }
 
+        fn stages(arguments: &[&str]) -> StageView {
+            match Self::parse(arguments) {
+                BenchTask::Compare(options) => options.stages,
+                _ => panic!("{arguments:?} parsed to another task"),
+            }
+        }
+
         fn parse(arguments: &[&str]) -> BenchTask {
             let command = BenchTask::augment_subcommands(Command::new(Self::COMMAND));
             let matches = command
@@ -465,5 +476,17 @@ mod tests {
     fn compare_takes_an_accepted_program_that_looks_like_a_flag() {
         let accepted = BenchArgumentsFixture::accepted(&["compare", "a", "b", "--accepted=--help"]);
         assert_eq!(accepted, ["--help"]);
+    }
+
+    #[test]
+    fn compare_shows_each_stage_apart_from_its_allocator_row_by_default() {
+        let stages = BenchArgumentsFixture::stages(&["compare", "a", "b"]);
+        assert_eq!(stages, StageView::Split);
+    }
+
+    #[test]
+    fn compare_folds_the_allocator_rows_when_asked() {
+        let stages = BenchArgumentsFixture::stages(&["compare", "a", "b", "--stages=folded"]);
+        assert_eq!(stages, StageView::Folded);
     }
 }

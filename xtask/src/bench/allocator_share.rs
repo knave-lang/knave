@@ -15,7 +15,11 @@ impl AllocatorShare {
     }
 
     pub fn is_row(stage: &str) -> bool {
-        stage.ends_with(Self::SUFFIX)
+        Self::stage_of(stage).is_some()
+    }
+
+    pub fn stage_of(row: &str) -> Option<&str> {
+        row.strip_suffix(Self::SUFFIX)
     }
 }
 
@@ -28,6 +32,12 @@ mod tests {
         assert_eq!(AllocatorShare::row_of("build"), "build allocator");
         assert!(AllocatorShare::is_row("build allocator"));
         assert!(!AllocatorShare::is_row("build"));
+    }
+
+    #[test]
+    fn reads_the_stage_of_an_allocator_row() {
+        assert_eq!(AllocatorShare::stage_of("build allocator"), Some("build"));
+        assert_eq!(AllocatorShare::stage_of("build"), None);
     }
 
     #[test]

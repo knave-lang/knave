@@ -74,6 +74,15 @@ impl Measurement {
         self.total
     }
 
+    pub fn with_allocator_rows_folded(&self) -> Self {
+        let mut stages = BTreeMap::new();
+        for (row, instructions) in &self.stages {
+            let stage = AllocatorShare::stage_of(row).unwrap_or(row);
+            *stages.entry(stage.to_string()).or_default() += instructions;
+        }
+        Self::new(stages, self.total)
+    }
+
     pub fn instructions_of(&self, stage: &str) -> Option<u64> {
         self.rows()
             .find(|(name, _)| *name == stage)
@@ -84,6 +93,23 @@ impl Measurement {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn folds_each_allocator_row_into_its_stage() {
+        let stages = BTreeMap::from([
+            ("emit".to_string(), 30),
+            ("emit allocator".to_string(), 12),
+            ("expand allocator".to_string(), 5),
+            ("read".to_string(), 8),
+        ]);
+        let folded = Measurement::new(stages, 100).with_allocator_rows_folded();
+        let expected = BTreeMap::from([
+            ("emit".to_string(), 42),
+            ("expand".to_string(), 5),
+            ("read".to_string(), 8),
+        ]);
+        assert_eq!(folded, Measurement::new(expected, 100));
+    }
 
     #[test]
     fn charges_the_unstaged_remainder_to_other() {

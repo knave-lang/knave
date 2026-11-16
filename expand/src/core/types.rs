@@ -106,13 +106,6 @@ impl TypeExpr {
         &self.kind
     }
 
-    fn where_body(&self) -> &TypeExpr {
-        match self.kind() {
-            TypeExprKind::Where(_, body) => body,
-            _ => self,
-        }
-    }
-
     pub fn shared_reference_parameters(&self) -> SharedReferences {
         match self.where_body().kind() {
             TypeExprKind::Function(_, parameters, _) => SharedReferences::new(
@@ -129,6 +122,13 @@ impl TypeExpr {
                     .collect(),
             ),
             _ => SharedReferences::default(),
+        }
+    }
+
+    fn where_body(&self) -> &TypeExpr {
+        match self.kind() {
+            TypeExprKind::Where(_, body) => body,
+            _ => self,
         }
     }
 

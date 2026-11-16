@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/written_lifetime_keeps_no_changed_vector.knv
+---
+main
+  8:11 change `v`: no live loan
+  9:10 change `v`: no live loan
+  10:19 move `d`: no live loan

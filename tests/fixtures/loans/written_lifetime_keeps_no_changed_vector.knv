@@ -1,0 +1,10 @@
+(defn main ()
+  (local v (vec 1 2 3))
+  (local d
+    ((rust "{0}.drain(..).collect::<Vec<_>>().into_iter()"
+       (where (a 'drained)
+         (fn ((mut 'drained (vec a)))
+           (iterator a))))
+     (mut v)))
+  (push! v 4)
+  (println (count d)))

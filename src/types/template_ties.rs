@@ -117,8 +117,10 @@ impl TemplateTies {
             .iter()
             .enumerate()
             .filter(|(_, parameter)| match parameter {
-                Type::Ref(..) => !sourced,
-                Type::Mut(_, referent) => !sourced || pipelines.holds_an_iterator(referent),
+                Type::Ref(Lifetime::Elided, _) => !sourced,
+                Type::Mut(Lifetime::Elided, referent) => {
+                    !sourced || pipelines.holds_an_iterator(referent)
+                }
                 _ => false,
             })
             .map(|(position, _)| position)

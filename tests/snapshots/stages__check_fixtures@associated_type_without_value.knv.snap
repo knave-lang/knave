@@ -4,9 +4,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/check/associated_type_without_value.knv
 ---
 error[L0210]: malformed `impl`
- --> check/associated_type_without_value.knv:6:3
+ --> check/associated_type_without_value.knv:7:3
   |
-6 |   (type item)
+7 |   (type item)
   |   ^^^^^^^^^^^ this does not fit the shape of `impl`
   |
   = help: write an associated type as `(type item a)`

@@ -6,9 +6,12 @@
   :size u16)
 
 (trait garage
-  (build (fn ((fn ((ref str) u16) car) (ref self))
-           car))
-  (restock (fn ((ref self) (fn () car)) car)))
+  (build
+    (fn ((fn ((ref str) u16) car) (ref self))
+      car))
+
+  (restock
+    (fn ((ref self) (fn () car)) car)))
 
 (impl garage depot
   (build (constructor lot)

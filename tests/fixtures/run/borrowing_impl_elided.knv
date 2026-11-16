@@ -4,7 +4,10 @@
 
 (trait badged
   (badge (fn (i64 (ref self)) (ref str)))
-  (pick (fn ((ref str) (ref self)) (ref str)))
+
+  (pick
+    (fn ((ref str) (ref self)) (ref str)))
+
   (make (fn ((ref self)) (ref str))))
 
 (impl badged car

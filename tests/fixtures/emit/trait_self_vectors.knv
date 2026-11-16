@@ -2,7 +2,9 @@
   :year i64)
 
 (trait fleet
-  (newest (fn ((ref self) (vec self)) i64))
+  (newest
+    (fn ((ref self) (vec self)) i64))
+
   (pair (fn (self) (vec self))))
 
 (impl fleet car

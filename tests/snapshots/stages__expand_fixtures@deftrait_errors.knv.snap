@@ -24,88 +24,89 @@ error[L0343]: a `deftrait` with a `rust` clause lists its implementors here
 error[L0343]: a `deftrait` with a `rust` clause lists its implementors here
   --> expand/deftrait_errors.knv:10:3
    |
-10 |   (area (where (a) (fn ((ref self) a) f64))))
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
+10 | /   (area
+11 | |     (where (a) (fn ((ref self) a) f64))))
+   | |________________________________________^ here
    |
    = help: declare a method of a Rust trait as `(method name type)`
    = note: run `knave doc L0343` for an explanation
 
 error[L0340]: the `rust` clause comes right after the name
-  --> expand/deftrait_errors.knv:14:3
+  --> expand/deftrait_errors.knv:15:3
    |
-14 |   (rust "Copy"))
+15 |   (rust "Copy"))
    |   ^^^^^^^^^^^^^ here
    |
    = help: move it to the first place after the name, or after the docstring
    = note: run `knave doc L0340` for an explanation
 
 error[L0340]: the `rust` clause comes right after the name
-  --> expand/deftrait_errors.knv:18:3
+  --> expand/deftrait_errors.knv:19:3
    |
-18 |   (rust "Copy"))
+19 |   (rust "Copy"))
    |   ^^^^^^^^^^^^^ here
    |
    = help: move it to the first place after the name, or after the docstring
    = note: run `knave doc L0340` for an explanation
 
 error[L0340]: the `rust` clause comes right after the name
-  --> expand/deftrait_errors.knv:23:3
+  --> expand/deftrait_errors.knv:24:3
    |
-23 |   (rust "Clone"))
+24 |   (rust "Clone"))
    |   ^^^^^^^^^^^^^^ here
    |
    = help: move it to the first place after the name, or after the docstring
    = note: run `knave doc L0340` for an explanation
 
 error[L0341]: a `rust` clause on `deftrait` holds one string
-  --> expand/deftrait_errors.knv:26:3
+  --> expand/deftrait_errors.knv:27:3
    |
-26 |   (rust "Copy" "Clone")
+27 |   (rust "Copy" "Clone")
    |   ^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(rust "Path")`
    = note: run `knave doc L0341` for an explanation
 
 error[L0344]: a Rust trait takes no supertraits
-  --> expand/deftrait_errors.knv:29:11
+  --> expand/deftrait_errors.knv:30:11
    |
-29 | (deftrait (clause-with-supertraits (clone))
+30 | (deftrait (clause-with-supertraits (clone))
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write the name alone
    = note: run `knave doc L0344` for an explanation
 
 error[L0342]: a `deftrait` method is a name and a type, as `(area (fn ((ref self)) float))`
-  --> expand/deftrait_errors.knv:33:31
+  --> expand/deftrait_errors.knv:34:31
    |
-33 | (deftrait method-without-type (area))
+34 | (deftrait method-without-type (area))
    |                               ^^^^^^ here
    |
    = help: to name a Rust trait, write `(rust "Path")` after the name
    = note: run `knave doc L0342` for an explanation
 
 error[L0342]: a `deftrait` method is a name and a type, as `(area (fn ((ref self)) float))`
-  --> expand/deftrait_errors.knv:35:31
+  --> expand/deftrait_errors.knv:36:31
    |
-35 | (deftrait clause-without-path (rust))
+36 | (deftrait clause-without-path (rust))
    |                               ^^^^^^ here
    |
    = help: to name a Rust trait, write `(rust "Path")` after the name
    = note: run `knave doc L0342` for an explanation
 
 error[L0342]: a `deftrait` method is a name and a type, as `(area (fn ((ref self)) float))`
-  --> expand/deftrait_errors.knv:42:3
+  --> expand/deftrait_errors.knv:43:3
    |
-42 |   (method measure (fn ((ref self)) f64)))
+43 |   (method measure (fn ((ref self)) f64)))
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: to declare a method of a Rust trait, write `(rust "Path")` after the name
    = note: run `knave doc L0342` for an explanation
 
 error[L0339]: `deftrait` needs a name
-  --> expand/deftrait_errors.knv:44:11
+  --> expand/deftrait_errors.knv:45:11
    |
-44 | (deftrait ())
+45 | (deftrait ())
    |           ^^ here
    |
    = help: write a name, as in (deftrait shape ...)

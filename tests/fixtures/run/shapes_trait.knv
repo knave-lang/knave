@@ -8,8 +8,11 @@
 
 (trait shape
   (area (fn ((ref self)) f64))
+
   (label-length (fn ((ref self)) usize))
+
   (label-details (fn ((ref self)) usize))
+
   (wait (fn ((ref self)) unit)))
 
 (impl shape circle

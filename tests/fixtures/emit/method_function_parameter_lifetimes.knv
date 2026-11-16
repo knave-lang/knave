@@ -6,10 +6,15 @@
   :size u16)
 
 (trait garage
-  (park (fn ((fn ((ref str) u16) car) (ref self))
-          u16))
-  (restock (fn ((fn () car) (ref self)) u16))
-  (inspect (fn ((ref self) (fn () car)) u16)))
+  (park
+    (fn ((fn ((ref str) u16) car) (ref self))
+      u16))
+
+  (restock
+    (fn ((fn () car) (ref self)) u16))
+
+  (inspect
+    (fn ((ref self) (fn () car)) u16)))
 
 (impl garage depot
   (park (constructor lot)
@@ -26,8 +31,9 @@
   :rows u16)
 
 (trait builder
-  (assemble (fn ((fn ((ref str) u16) car) (ref self))
-              u16)))
+  (assemble
+    (fn ((fn ((ref str) u16) car) (ref self))
+      u16)))
 
 (impl builder depot
   (assemble (constructor lot)

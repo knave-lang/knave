@@ -6,6 +6,7 @@
 
 (trait parking
   (build (fn (i64) self))
+
   (add (fn (i64 self) i64)))
 
 (impl parking garage

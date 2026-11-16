@@ -692,7 +692,7 @@ impl OwnershipProblems {
             ),
         )
         .with_help(format!(
-            "to change a copy on purpose, write `(type {function} {by_value})`, or start the body with `(local {param} {param})`"
+            "to change a copy on purpose, write `(type {function} {by_value})`, or wrap the body in `(let ({param} {param}) ...)`"
         ));
         Self::with_lost_change(diagnostic, change)
     }
@@ -718,7 +718,7 @@ impl OwnershipProblems {
             ),
         )
         .with_help(format!(
-            "to change the caller's value, call `{function}` by name; to change a copy on purpose, start its body with `(local {param} {param})`"
+            "to change the caller's value, call `{function}` by name; to change a copy on purpose, wrap its body in `(let ({param} {param}) ...)`"
         ));
         Self::with_lost_change(diagnostic, change)
     }
@@ -760,14 +760,14 @@ impl OwnershipProblems {
             "`{param}` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives"
         ))
         .with_help(format!(
-            "copy it first with `(local value {copy})` and use `value` in the closure"
+            "copy it first with `(let (value {copy}) ...)` and use `value` in the closure"
         ))
     }
 
     pub fn inferred_mut_of_copy(argument: Span, change: Option<ChangeSite>) -> Diagnostic {
         Self::mut_of_copy(argument, change).with_quoting_help(
             format!(
-                "bind it to a local and pass the local: `(local value {})`",
+                "bind it and pass the binding: `(let (value {}) ...)`",
                 Help::QUOTED_FORM
             ),
             argument,
@@ -801,7 +801,7 @@ impl OwnershipProblems {
 
     fn mut_of_definition(argument: Span, change: Option<ChangeSite>, value: &str) -> Diagnostic {
         Self::mut_of_copy(argument, change)
-            .with_help(format!("a `def` never changes: `(local value {value})`"))
+            .with_help(format!("a `def` is constant: `(let (value {value}) ...)`"))
     }
 
     fn mut_of_copy(argument: Span, change: Option<ChangeSite>) -> Diagnostic {
@@ -828,7 +828,7 @@ impl OwnershipProblems {
         site: Span,
         param: &str,
     ) -> Diagnostic {
-        Self::with_parameter_change(warning, site, &format!("(local {param} {param})"))
+        Self::with_parameter_change(warning, site, &format!("{param} {param}"))
     }
 
     pub fn with_cloned_parameter_change(
@@ -836,14 +836,14 @@ impl OwnershipProblems {
         site: Span,
         param: &str,
     ) -> Diagnostic {
-        Self::with_parameter_change(warning, site, &format!("(local {param} (clone {param}))"))
+        Self::with_parameter_change(warning, site, &format!("{param} (clone {param})"))
     }
 
-    fn with_parameter_change(warning: Diagnostic, site: Span, local: &str) -> Diagnostic {
+    fn with_parameter_change(warning: Diagnostic, site: Span, binding: &str) -> Diagnostic {
         warning
             .with_label(Label::new(site, "this changes the caller's value"))
             .with_help(format!(
-                "to change only this function's copy, start the body with `{local}`"
+                "to change only this function's copy, wrap the body in `(let ({binding}) ...)`"
             ))
     }
 

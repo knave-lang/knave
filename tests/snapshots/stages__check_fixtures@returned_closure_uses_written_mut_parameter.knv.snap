@@ -10,7 +10,7 @@ error[L0517]: a returned closure cannot use `t`, which `bump-ref!` changes
   |                 ^ the closure uses `t` here
   |
   = note: `t` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
-  = help: copy it first with `(local value (deref t))` and use `value` in the closure
+  = help: copy it first with `(let (value (deref t)) ...)` and use `value` in the closure
   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `items`, which `counter!` changes
@@ -20,5 +20,5 @@ error[L0517]: a returned closure cannot use `items`, which `counter!` changes
   |               ^^^^^ the closure uses `items` here
   |
   = note: `items` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
-  = help: copy it first with `(local value (clone items))` and use `value` in the closure
+  = help: copy it first with `(let (value (clone items)) ...)` and use `value` in the closure
   = note: run `knave doc L0517` for an explanation

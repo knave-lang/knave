@@ -551,7 +551,7 @@ impl TypeProblems {
     pub fn missing_trait_on_box(needed: &NeededTrait<'_>, found: &str, span: Span) -> Diagnostic {
         let trait_name = needed.name();
         Self::missing_trait_on_struct(needed, found, span).with_help(format!(
-            "write the type `(box {trait_name})` where the box is made, such as `(local (shapes (vec (box {trait_name}))) ...)`"
+            "write the type `(box {trait_name})` where the box is made, such as `(let ((shapes (vec (box {trait_name}))) (vec)) ...)`"
         ))
     }
 
@@ -1060,7 +1060,7 @@ impl TypeProblems {
             Label::new(span, format!("this `{struct_name}` is borrowed")),
         )
         .with_help(format!(
-            "bind an owned `{struct_name}` first, as in `(local owned (clone base))`, and update `owned`"
+            "bind an owned `{struct_name}` first, as in `(let (owned (clone base)) ...)`, and update `owned`"
         ))
     }
 

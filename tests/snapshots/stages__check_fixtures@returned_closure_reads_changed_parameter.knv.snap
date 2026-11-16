@@ -10,7 +10,7 @@ error[L0517]: a returned closure cannot use `x`, which `snap!` changes
   |                   ^ the closure uses `x` here
   |
   = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
-  = help: copy it first with `(local value x)` and use `value` in the closure
+  = help: copy it first with `(let (value x) ...)` and use `value` in the closure
   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `shown-adder!` changes
@@ -20,7 +20,7 @@ error[L0517]: a returned closure cannot use `x`, which `shown-adder!` changes
   |                         ^ the closure uses `x` here
   |
   = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
-  = help: copy it first with `(local value x)` and use `value` in the closure
+  = help: copy it first with `(let (value x) ...)` and use `value` in the closure
   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `walk!` changes
@@ -30,7 +30,7 @@ error[L0517]: a returned closure cannot use `x`, which `walk!` changes
    |                                         ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
-   = help: copy it first with `(local value x)` and use `value` in the closure
+   = help: copy it first with `(let (value x) ...)` and use `value` in the closure
    = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `branch-adder!` changes
@@ -40,7 +40,7 @@ error[L0517]: a returned closure cannot use `x`, which `branch-adder!` changes
    |                         ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
-   = help: copy it first with `(local value x)` and use `value` in the closure
+   = help: copy it first with `(let (value x) ...)` and use `value` in the closure
    = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `bumped-adder!` changes
@@ -50,7 +50,7 @@ error[L0517]: a returned closure cannot use `x`, which `bumped-adder!` changes
    |                         ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
-   = help: copy it first with `(local value x)` and use `value` in the closure
+   = help: copy it first with `(let (value x) ...)` and use `value` in the closure
    = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `called-adder!` changes
@@ -60,7 +60,7 @@ error[L0517]: a returned closure cannot use `x`, which `called-adder!` changes
    |                   ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
-   = help: copy it first with `(local value x)` and use `value` in the closure
+   = help: copy it first with `(let (value x) ...)` and use `value` in the closure
    = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `looped-adder!` changes
@@ -70,7 +70,7 @@ error[L0517]: a returned closure cannot use `x`, which `looped-adder!` changes
    |                    ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
-   = help: copy it first with `(local value x)` and use `value` in the closure
+   = help: copy it first with `(let (value x) ...)` and use `value` in the closure
    = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `x`, which `seeded-adder!` changes
@@ -80,5 +80,5 @@ error[L0517]: a returned closure cannot use `x`, which `seeded-adder!` changes
    |                         ^ the closure uses `x` here
    |
    = note: `x` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
-   = help: copy it first with `(local value x)` and use `value` in the closure
+   = help: copy it first with `(let (value x) ...)` and use `value` in the closure
    = note: run `knave doc L0517` for an explanation

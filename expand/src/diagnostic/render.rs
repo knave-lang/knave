@@ -380,10 +380,13 @@ mod tests {
             "a title",
             Label::new(Span::new(source, 7..16), "a label"),
         )
-        .with_quoting_help("bind it: `(local value {form})`", Span::new(source, 7..16));
+        .with_quoting_help(
+            "bind it: `(let (value {form}) ...)`",
+            Span::new(source, 7..16),
+        );
         let rendered = DiagnosticRenderer::plain(&sources).render(&diagnostic);
         assert!(
-            rendered.contains("bind it: `(local value (+ a 1))`"),
+            rendered.contains("bind it: `(let (value (+ a 1)) ...)`"),
             "{rendered}"
         );
     }

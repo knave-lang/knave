@@ -22,7 +22,7 @@ impl EmitProblems {
             "the result is a closure or an iterator, and a parameter takes a function or an iterator, so Rust ties the result to every borrow the function takes",
         )
         .with_help(format!(
-            "to change only this function's copy, start the body with `(local {param} {copy})`"
+            "to change only this function's copy, wrap the body in `(let ({param} {copy}) ...)`"
         ))
     }
 

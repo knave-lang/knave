@@ -10,7 +10,7 @@ error[L0517]: a returned closure cannot use `name`, which `greeter!` changes
   |               ^^^^ the closure uses `name` here
   |
   = note: `name` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
-  = help: copy it first with `(local value (clone name))` and use `value` in the closure
+  = help: copy it first with `(let (value (clone name)) ...)` and use `value` in the closure
   = note: run `knave doc L0517` for an explanation
 
 error[L0517]: a returned closure cannot use `items`, which `counter!` changes
@@ -20,5 +20,5 @@ error[L0517]: a returned closure cannot use `items`, which `counter!` changes
   |               ^^^^^ the closure uses `items` here
   |
   = note: `items` borrows the caller's value as `mut`, and the closure would keep that borrow for as long as it lives
-  = help: copy it first with `(local value (clone items))` and use `value` in the closure
+  = help: copy it first with `(let (value (clone items)) ...)` and use `value` in the closure
   = note: run `knave doc L0517` for an explanation

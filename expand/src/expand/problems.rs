@@ -647,7 +647,7 @@ impl ExpandProblems {
     pub fn type_in_value_note(name: &str) -> String {
         format!(
             "`{name}` is a type; a type goes beside a name in a binding, as in \
-             `(local (year int) 2025)`, or in a `type` signature"
+             `(let ((year int) 2025) ...)`, or in a `type` signature"
         )
     }
 

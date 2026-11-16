@@ -12,7 +12,7 @@ error[L0514]: this argument is a copy, so changing it changes nothing
 12 |   (bump! 5)
    |          ^ this is a copy, not a place
    |
-   = help: bind it to a local and pass the local: `(local value 5)`
+   = help: bind it and pass the binding: `(let (value 5) ...)`
    = note: run `knave doc L0514` for an explanation
 
 error[L0514]: this argument is a copy, so changing it changes nothing
@@ -24,7 +24,7 @@ error[L0514]: this argument is a copy, so changing it changes nothing
 13 |   (bump! (+ total 1))
    |          ^^^^^^^^^^^ this is a copy, not a place
    |
-   = help: bind it to a local and pass the local: `(local value (+ total 1))`
+   = help: bind it and pass the binding: `(let (value (+ total 1)) ...)`
    = note: run `knave doc L0514` for an explanation
 
 error[L0514]: this argument is a copy, so changing it changes nothing
@@ -36,7 +36,7 @@ error[L0514]: this argument is a copy, so changing it changes nothing
 14 |   (bump! limit)
    |          ^^^^^ this is a copy, not a place
    |
-   = help: a `def` never changes: `(local value limit)`
+   = help: a `def` is constant: `(let (value limit) ...)`
    = note: run `knave doc L0514` for an explanation
 
 error[L0514]: this argument is a copy, so changing it changes nothing
@@ -45,7 +45,7 @@ error[L0514]: this argument is a copy, so changing it changes nothing
 15 |   (grow! (vec (str "cy")))
    |          ^^^^^^^^^^^^^^^^ this is a copy, not a place
    |
-   = help: bind it to a local and pass the local: `(local value (vec (str "cy")))`
+   = help: bind it and pass the binding: `(let (value (vec (str "cy"))) ...)`
    = note: run `knave doc L0514` for an explanation
 
 error[L0514]: this argument is a copy, so changing it changes nothing
@@ -54,7 +54,7 @@ error[L0514]: this argument is a copy, so changing it changes nothing
 16 |   (grow! names)
    |          ^^^^^ this is a copy, not a place
    |
-   = help: a `def` never changes: `(local value (clone names))`
+   = help: a `def` is constant: `(let (value (clone names)) ...)`
    = note: run `knave doc L0514` for an explanation
 
 error[L0514]: a call cannot change a value behind a shared borrow, such as an element, yet

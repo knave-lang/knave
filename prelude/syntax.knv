@@ -226,16 +226,10 @@
   (fn (form bindings)
     (if (let-call? form)
       (string "write the forms that use the bindings after the list; "
-              "to bind a name for the rest of the body, write `"
-              (first-local-step bindings)
+              "to bind a name for the rest of the body, wrap it in `"
+              (elided-call form bindings)
               "`")
       "write the forms that use the bindings after the list")))
-
-(def first-local-step
-  (fn (bindings)
-    (if (empty? bindings)
-      (quote (local name value))
-      (local-step bindings))))
 
 (def unlisted-bindings
   (fn (form)
@@ -292,8 +286,8 @@
     (if (empty? (drop form 3))
       (string "to bind `"
               (symbol-name (nth form 1))
-              "` for the rest of the body, write `"
-              (prepend (quote local) (flat-pair form))
+              "` for the rest of the body, wrap it in `"
+              (elided-call form (flat-pair form))
               "`; to define it for the module, write `"
               (prepend (quote def) (flat-pair form))
               "`")

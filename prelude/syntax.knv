@@ -218,18 +218,9 @@
   (fn (form bindings)
     (fail (string "`" (form-name form) "` has no body")
       form
-      (body-help form bindings)
+      "write the forms that use the bindings after the list"
       (quote (:code bindings-without-body
                     :label "its bindings reach no form")))))
-
-(def body-help
-  (fn (form bindings)
-    (if (let-call? form)
-      (string "write the forms that use the bindings after the list; "
-              "to bind a name for the rest of the body, wrap it in `"
-              (elided-call form bindings)
-              "`")
-      "write the forms that use the bindings after the list")))
 
 (def unlisted-bindings
   (fn (form)

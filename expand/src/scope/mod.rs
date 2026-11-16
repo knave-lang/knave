@@ -1,4 +1,5 @@
 mod binding_table;
+mod name_entries;
 mod phase;
 mod saved_names;
 mod scope_chain;

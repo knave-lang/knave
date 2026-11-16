@@ -23,8 +23,6 @@ expand/src/interpret/code_list.rs 1
 expand/src/interpret/value.rs 1
 expand/src/project/dependency_reader.rs 1
 expand/src/project/reader.rs 1
-expand/src/scope/binding_table.rs 1
-expand/src/scope/saved_names.rs 1
 expand/src/scope/scope_chain.rs 1
 expand/src/scope/scope_set.rs 1
 src/cli/edited_lines.rs 2

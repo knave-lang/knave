@@ -9,6 +9,7 @@ mod scope_kind;
 mod scope_set;
 mod scope_supply;
 mod scopes;
+mod visible_names;
 
 pub use binding_table::{BindingTable, Resolution};
 pub use phase::Phase;
@@ -18,3 +19,4 @@ pub(crate) use scope_kind::ScopeKind;
 pub use scope_set::{Scope, ScopeSet};
 pub use scope_supply::ScopeSupply;
 pub(crate) use scopes::Scopes;
+pub use visible_names::VisibleNames;

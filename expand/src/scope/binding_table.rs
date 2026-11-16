@@ -4,12 +4,13 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::Scope;
 use super::name_entries::NameEntries;
 use super::name_entry::NameEntry;
 use super::phase::Phase;
 use super::qualified_names::QualifiedNames;
 use super::saved_names::{NameTables, SavedNames};
-use super::{Scope, ScopeSet};
+use super::visible_names::VisibleNames;
 use crate::core::{BindingId, Namespace};
 use crate::reader::Symbol;
 
@@ -68,75 +69,18 @@ impl BindingTable {
 
     pub fn resolve(&self, symbol: &Symbol, namespace: Namespace, phase: Phase) -> Resolution {
         let mut largest = LargestCandidates::default();
-        for entries in self.entries_named(
-            symbol.scopes(),
-            symbol.name(),
-            symbol.shared_name(),
-            namespace,
-        ) {
+        for entries in
+            self.visible_names()
+                .entries_named(symbol.scopes(), symbol.shared_name(), namespace)
+        {
             entries.visit_visible(symbol.scopes(), phase, |entry| largest.consider(entry));
         }
         largest.resolution()
     }
 
-    pub fn visible_name_bindings(
-        &self,
-        symbol: &Symbol,
-        namespace: Namespace,
-        phase: Phase,
-    ) -> Vec<(Rc<str>, BindingId)> {
-        let own = self
-            .entries
-            .iter()
-            .map(|((name, entry_namespace), entries)| (Rc::clone(name), *entry_namespace, entries));
-        own.chain(self.saved.all())
-            .filter(|(_, entry_namespace, _)| *entry_namespace == namespace)
-            .flat_map(|(name, _, entries)| {
-                entries
-                    .visible(symbol.scopes(), phase)
-                    .into_iter()
-                    .map(move |entry| (Rc::clone(&name), entry.binding()))
-            })
-            .collect()
-    }
-
-    pub fn visible_bindings(
-        &self,
-        scopes: &ScopeSet,
-        namespace: Namespace,
-        phase: Phase,
-    ) -> Vec<BindingId> {
-        let own = self
-            .entries
-            .iter()
-            .filter(|((_, entry_namespace), _)| *entry_namespace == namespace)
-            .map(|(_, entries)| entries);
-        own.chain(self.saved.all_of(namespace))
-            .flat_map(|entries| entries.visible(scopes, phase))
-            .map(|entry| entry.binding())
-            .collect()
-    }
-
-    pub fn visible_qualified_bindings_ending_in(
-        &self,
-        last_segment: &Symbol,
-        namespace: Namespace,
-        phase: Phase,
-    ) -> Vec<BindingId> {
-        let mut visible = Vec::new();
-        for name in self
-            .qualified_names
-            .ending_in(last_segment.shared_name(), namespace)
-        {
-            for entries in
-                self.entries_named(last_segment.scopes(), name, Rc::clone(name), namespace)
-            {
-                entries.visit_visible(last_segment.scopes(), phase, |entry| {
-                    visible.push(entry.binding());
-                });
-            }
-        }
-        visible
+    #[inline(always)]
+    pub fn visible_names(&self) -> VisibleNames<'_> {
+        VisibleNames::new(&self.entries, &self.saved, &self.qualified_names)
     }
 
     pub fn take_saved(&mut self, prelude_scopes: Range<Scope>) -> NameTables {
@@ -149,18 +93,6 @@ impl BindingTable {
 
     pub fn adopt_saved(&mut self, saved: SavedNames) {
         self.saved = saved;
-    }
-
-    fn entries_named(
-        &self,
-        scopes: &ScopeSet,
-        name: &str,
-        shared: Rc<str>,
-        namespace: Namespace,
-    ) -> impl Iterator<Item = &NameEntries> {
-        let own = self.entries.get(&(shared, namespace));
-        let saved = self.saved.entries_seen_from(scopes, name, namespace);
-        own.into_iter().chain(saved)
     }
 }
 
@@ -210,13 +142,13 @@ impl LargestCandidates {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::*;
     use crate::core::{BindingArena, BindingInfo, BindingKind};
-    use crate::scope::{ChainPrefix, Scope, ScopeChain, ScopeKind, Scopes};
+    use crate::scope::{ChainPrefix, Scope, ScopeChain, ScopeKind, ScopeSet, Scopes};
 
-    struct World {
-        table: BindingTable,
+    pub(in crate::scope) struct World {
+        pub(in crate::scope) table: BindingTable,
         bindings: BindingArena,
         scopes: Scopes,
     }
@@ -224,7 +156,7 @@ mod tests {
     impl World {
         const LONG_LIST_LENGTH: usize = 20;
 
-        fn new() -> Self {
+        pub(in crate::scope) fn new() -> Self {
             Self {
                 table: BindingTable::default(),
                 bindings: BindingArena::default(),
@@ -232,11 +164,11 @@ mod tests {
             }
         }
 
-        fn scope(&mut self) -> Scope {
+        pub(in crate::scope) fn scope(&mut self) -> Scope {
             self.scopes.fresh(ScopeKind::Local)
         }
 
-        fn save_names(&mut self) {
+        pub(in crate::scope) fn save_names(&mut self) {
             let first = Scopes::default().next_scope();
             self.save_names_from(first);
         }
@@ -291,21 +223,26 @@ mod tests {
             )
         }
 
-        fn symbol(name: &str, scopes: &[Scope]) -> Symbol {
+        pub(in crate::scope) fn symbol(name: &str, scopes: &[Scope]) -> Symbol {
             Symbol::with_scopes(name, Self::scope_set(scopes))
         }
 
-        fn scope_set(scopes: &[Scope]) -> ScopeSet {
+        pub(in crate::scope) fn scope_set(scopes: &[Scope]) -> ScopeSet {
             let mut set = ScopeSet::default();
             scopes.iter().for_each(|scope| set.add(*scope));
             set
         }
 
-        fn define(&mut self, name: &str, scopes: &[Scope], phase: Phase) -> BindingId {
+        pub(in crate::scope) fn define(
+            &mut self,
+            name: &str,
+            scopes: &[Scope],
+            phase: Phase,
+        ) -> BindingId {
             self.define_in(name, scopes, Namespace::Value, phase)
         }
 
-        fn define_type(&mut self, name: &str, scopes: &[Scope]) -> BindingId {
+        pub(in crate::scope) fn define_type(&mut self, name: &str, scopes: &[Scope]) -> BindingId {
             self.define_in(name, scopes, Namespace::Type, Phase::Runtime)
         }
 
@@ -346,20 +283,6 @@ mod tests {
                 .filter(|(position, _)| index & (1 << position) != 0)
                 .map(|(_, scope)| *scope)
                 .collect()
-        }
-
-        fn visible_qualified_ending_in(
-            &self,
-            last_segment: &str,
-            scopes: &[Scope],
-        ) -> Vec<BindingId> {
-            let mut bindings = self.table.visible_qualified_bindings_ending_in(
-                &Self::symbol(last_segment, scopes),
-                Namespace::Value,
-                Phase::Runtime,
-            );
-            bindings.sort();
-            bindings
         }
 
         fn resolve(&self, name: &str, scopes: &[Scope], phase: Phase) -> Resolution {
@@ -442,23 +365,6 @@ mod tests {
     }
 
     #[test]
-    fn a_saved_type_name_is_listed_in_the_type_namespace_only() {
-        let mut world = World::new();
-        let scope = world.scope();
-        let saved = world.define_type("saved", &[scope]);
-        world.save_names();
-        let symbol = World::symbol("anything", &[scope]);
-        let types = world
-            .table
-            .visible_name_bindings(&symbol, Namespace::Type, Phase::Runtime);
-        let values = world
-            .table
-            .visible_name_bindings(&symbol, Namespace::Value, Phase::Runtime);
-        assert_eq!(types, vec![(Rc::from("saved"), saved)]);
-        assert!(values.is_empty());
-    }
-
-    #[test]
     fn a_qualified_name_bound_again_after_a_save_is_recorded_once() {
         let mut world = World::new();
         let (scope, other) = (world.scope(), world.scope());
@@ -513,53 +419,6 @@ mod tests {
             .table
             .resolve(&symbol, Namespace::Value, Phase::Runtime);
         assert!(!world.table.saved.is_decoded("shared", Namespace::Value));
-    }
-
-    #[test]
-    fn a_saved_name_is_listed_beside_the_programs_own() {
-        let mut world = World::new();
-        let scope = world.scope();
-        let saved = world.define("saved", &[scope], Phase::Runtime);
-        world.save_names();
-        let own = world.define("own", &[scope], Phase::Runtime);
-        let symbol = World::symbol("anything", &[scope]);
-        let mut listed =
-            world
-                .table
-                .visible_name_bindings(&symbol, Namespace::Value, Phase::Runtime);
-        listed.sort_by_key(|(_, binding)| *binding);
-        let bindings: Vec<BindingId> = listed.into_iter().map(|(_, binding)| binding).collect();
-        assert_eq!(bindings, vec![saved, own]);
-    }
-
-    #[test]
-    fn a_saved_binding_is_visible_beside_the_programs_own() {
-        let mut world = World::new();
-        let scope = world.scope();
-        let saved = world.define_type("saved", &[scope]);
-        world.save_names();
-        let own = world.define_type("own", &[scope]);
-        let scopes = World::scope_set(&[scope]);
-        let mut visible = world
-            .table
-            .visible_bindings(&scopes, Namespace::Type, Phase::Runtime);
-        visible.sort();
-        assert_eq!(visible, vec![saved, own]);
-    }
-
-    #[test]
-    fn a_saved_qualified_name_is_found_by_its_last_segment() {
-        let mut world = World::new();
-        let scope = world.scope();
-        let saved = world.define("option/some", &[scope], Phase::Runtime);
-        world.save_names();
-        let symbol = World::symbol("some", &[scope]);
-        let found = world.table.visible_qualified_bindings_ending_in(
-            &symbol,
-            Namespace::Value,
-            Phase::Runtime,
-        );
-        assert_eq!(found, vec![saved]);
     }
 
     #[test]
@@ -722,48 +581,6 @@ mod tests {
     }
 
     #[test]
-    fn a_qualified_binding_is_found_by_its_last_segment() {
-        let mut world = World::new();
-        let module = world.scope();
-        let circle = world.define("shape/circle", &[module], Phase::Runtime);
-        let nested = world.define("geometry/shape/circle", &[module], Phase::Runtime);
-        world.define("circle", &[module], Phase::Runtime);
-        world.define("shape/square", &[module], Phase::Runtime);
-        assert_eq!(
-            world.visible_qualified_ending_in("circle", &[module]),
-            [circle, nested]
-        );
-    }
-
-    #[test]
-    fn a_qualified_binding_outside_the_reference_scopes_is_not_found() {
-        let mut world = World::new();
-        let (module, inner) = (world.scope(), world.scope());
-        world.define("shape/circle", &[module, inner], Phase::Runtime);
-        assert_eq!(world.visible_qualified_ending_in("circle", &[module]), []);
-    }
-
-    #[test]
-    fn a_qualified_name_in_another_namespace_is_not_found() {
-        let mut world = World::new();
-        let module = world.scope();
-        world.define_type("shape/circle", &[module]);
-        assert_eq!(world.visible_qualified_ending_in("circle", &[module]), []);
-    }
-
-    #[test]
-    fn a_qualified_name_bound_twice_finds_each_binding_once() {
-        let mut world = World::new();
-        let (module, inner) = (world.scope(), world.scope());
-        let outer = world.define("shape/circle", &[module], Phase::Runtime);
-        let shadow = world.define("shape/circle", &[module, inner], Phase::Runtime);
-        assert_eq!(
-            world.visible_qualified_ending_in("circle", &[module, inner]),
-            [outer, shadow]
-        );
-    }
-
-    #[test]
     fn a_binding_under_a_shared_prefix_is_visible_from_a_longer_prefix() {
         let mut world = World::new();
         let chain = world.chain(ScopeSet::SHORTEST_SHARED_PREFIX);
@@ -847,66 +664,5 @@ mod tests {
             Phase::Runtime,
         );
         assert_eq!(duplicate, Err(first));
-    }
-
-    #[test]
-    fn a_compile_time_name_is_listed_only_for_a_compile_time_lookup() {
-        let mut world = World::new();
-        let scope = world.scope();
-        let helper = world.define("helper", &[scope], Phase::CompileTime);
-        let symbol = World::symbol("helper", &[scope]);
-        let listed = |phase| {
-            world
-                .table
-                .visible_name_bindings(&symbol, Namespace::Value, phase)
-                .into_iter()
-                .map(|(_, binding)| binding)
-                .collect::<Vec<_>>()
-        };
-        assert_eq!(listed(Phase::CompileTime), [helper]);
-        assert!(listed(Phase::Runtime).is_empty());
-    }
-
-    #[test]
-    fn a_compile_time_binding_is_visible_only_to_a_compile_time_lookup() {
-        let mut world = World::new();
-        let scope = world.scope();
-        let helper = world.define("helper", &[scope], Phase::CompileTime);
-        let scopes = World::scope_set(&[scope]);
-        let visible = |phase| {
-            world
-                .table
-                .visible_bindings(&scopes, Namespace::Value, phase)
-        };
-        assert_eq!(visible(Phase::CompileTime), [helper]);
-        assert!(visible(Phase::Runtime).is_empty());
-    }
-
-    #[test]
-    fn a_compile_time_qualified_binding_is_found_only_by_a_compile_time_lookup() {
-        let mut world = World::new();
-        let scope = world.scope();
-        let helper = world.define("tools/helper", &[scope], Phase::CompileTime);
-        let last_segment = World::symbol("helper", &[scope]);
-        let found = |phase| {
-            world
-                .table
-                .visible_qualified_bindings_ending_in(&last_segment, Namespace::Value, phase)
-        };
-        assert_eq!(found(Phase::CompileTime), [helper]);
-        assert!(found(Phase::Runtime).is_empty());
-    }
-
-    #[test]
-    fn a_type_lookup_sees_only_the_programs_own_type_bindings() {
-        let mut world = World::new();
-        let scope = world.scope();
-        world.define("shape", &[scope], Phase::Runtime);
-        let shape_type = world.define_type("shape", &[scope]);
-        let scopes = World::scope_set(&[scope]);
-        let visible = world
-            .table
-            .visible_bindings(&scopes, Namespace::Type, Phase::Runtime);
-        assert_eq!(visible, [shape_type]);
     }
 }

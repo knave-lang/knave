@@ -1889,10 +1889,8 @@ impl Expander<'_> {
         path: &str,
     ) -> Option<BindingId> {
         let symbol = name.as_symbol()?;
-        let mut visible =
-            self.tables
-                .table
-                .visible_bindings(symbol.scopes(), Namespace::Type, self.phase);
+        let names = self.tables.table.visible_names();
+        let mut visible = names.bindings(symbol.scopes(), Namespace::Type, self.phase);
         visible.sort();
         let path = RustTraitPath::from(path);
         visible.into_iter().find(|existing| {

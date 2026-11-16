@@ -928,10 +928,9 @@ impl Expander<'_> {
         symbol: &Symbol,
         accepts: impl Fn(VariantInfo) -> bool,
     ) -> Vec<BindingId> {
-        let mut variants: Vec<BindingId> = self
-            .tables
-            .table
-            .visible_qualified_bindings_ending_in(symbol, Namespace::Value, self.phase)
+        let names = self.tables.table.visible_names();
+        let mut variants: Vec<BindingId> = names
+            .qualified_bindings_ending_in(symbol, Namespace::Value, self.phase)
             .into_iter()
             .filter(|binding| {
                 matches!(self.kind(*binding), BindingKind::Variant(_, info) if accepts(info))

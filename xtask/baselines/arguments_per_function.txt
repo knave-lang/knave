@@ -72,7 +72,6 @@ expand/src/modules/libraries.rs::LibraryRoot::new 5
 expand/src/project/fields.rs::FieldScanner::add_field 4
 expand/src/project/problems.rs::ProjectProblems::library_without_root_module 4
 expand/src/scope/binding_table.rs::BindingTable::bind 4
-expand/src/scope/binding_table.rs::BindingTable::entries_named 4
 expand/src/source/file.rs::SourceFile::excerpt 4
 src/build/cargo_manifest.rs::CargoManifest::new 4
 src/build/formatting.rs::Rustfmt::communicate 4

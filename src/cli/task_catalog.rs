@@ -20,6 +20,11 @@ use crate::reader::StringLiteral;
 use crate::source::{SourceId, Span};
 use crate::types::{TypedExpr, TypedExprKind, TypedLeaf, TypedProgram};
 
+struct TaskLookup {
+    expression: Expr,
+    warnings: Diagnostics,
+}
+
 pub struct TaskCatalog {
     request: EvaluationRequest,
     names_lookup: String,
@@ -73,22 +78,15 @@ impl TaskCatalog {
 
     pub fn listing(&self, terminal: &mut Terminal) -> Result<String, ExitStatus> {
         self.names(terminal)?;
-        self.print_expansion_warnings(terminal)?;
-        let listing = self.expanded_text(terminal, Self::LISTING)?;
+        let lookup = self.expanded(terminal, Self::LISTING)?;
+        terminal.source_report().print(&lookup.warnings).passed()?;
+        let listing = Self::literal(&lookup.expression)
+            .ok_or_else(|| Self::report_no_string(Self::LISTING))?;
         Ok(if listing.is_empty() {
             listing
         } else {
             format!("{listing}\n")
         })
-    }
-
-    fn print_expansion_warnings(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
-        let (no_runners, _) = Self::block_of(&[]);
-        let entered = self.entered_program(terminal, &no_runners)?;
-        terminal
-            .source_report()
-            .print(&entered.program.warnings)
-            .passed()
     }
 
     pub fn signatures(
@@ -178,24 +176,29 @@ impl TaskCatalog {
 
     fn expanded_text(&self, terminal: &mut Terminal, lookup: &str) -> Result<String, ExitStatus> {
         let expanded = self.expanded(terminal, lookup)?;
-        Self::literal(&expanded).ok_or_else(|| Self::report_no_string(lookup))
+        Self::literal(&expanded.expression).ok_or_else(|| Self::report_no_string(lookup))
     }
 
-    fn expanded(&self, terminal: &mut Terminal, lookup: &str) -> Result<Expr, ExitStatus> {
+    fn expanded(&self, terminal: &mut Terminal, lookup: &str) -> Result<TaskLookup, ExitStatus> {
         terminal
             .expansion()
             .within_evaluation(&self.request, |mut session| {
                 let source = session.add_source(Self::LOOKUP_SOURCE, lookup);
-                Self::task_expression(&mut session, source)
+                Self::task_lookup(session, source)
             })
     }
 
-    fn task_expression(
-        session: &mut ExpansionSession<'_>,
+    fn task_lookup(
+        mut session: ExpansionSession<'_>,
         source: SourceId,
-    ) -> Result<Expr, Diagnostics> {
+    ) -> Result<TaskLookup, Diagnostics> {
         let form = session.read(source)?.remove(0);
-        session.expression_in(&ModulePath::new(ModuleSources::TASK), form)
+        let expression = session.expression_in(&ModulePath::new(ModuleSources::TASK), form)?;
+        let warnings = session.finish()?.warnings;
+        Ok(TaskLookup {
+            expression,
+            warnings,
+        })
     }
 
     fn literal(expanded: &Expr) -> Option<String> {

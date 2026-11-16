@@ -73,12 +73,22 @@ impl TaskCatalog {
 
     pub fn listing(&self, terminal: &mut Terminal) -> Result<String, ExitStatus> {
         self.names(terminal)?;
+        self.print_expansion_warnings(terminal)?;
         let listing = self.expanded_text(terminal, Self::LISTING)?;
         Ok(if listing.is_empty() {
             listing
         } else {
             format!("{listing}\n")
         })
+    }
+
+    fn print_expansion_warnings(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
+        let (no_runners, _) = Self::block_of(&[]);
+        let entered = self.entered_program(terminal, &no_runners)?;
+        terminal
+            .source_report()
+            .print(&entered.program.warnings)
+            .passed()
     }
 
     pub fn signatures(

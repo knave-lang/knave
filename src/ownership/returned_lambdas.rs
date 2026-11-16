@@ -35,10 +35,8 @@ impl ReturnedLambdas {
                 _ => None,
             })
             .flat_map(|function| values.closures(function))
-            .filter_map(|closure| match &closure.kind {
-                TypedExprKind::Fn(lambda) => Some(LambdaAddress::of(lambda)),
-                _ => None,
-            })
+            .filter_map(TypedExpr::lambda_value)
+            .map(LambdaAddress::of)
             .collect();
         Self { lambdas }
     }

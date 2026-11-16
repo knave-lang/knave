@@ -423,10 +423,6 @@ impl<'a> ExpressionEmitter<'a> {
         self.emission.emitted_expressions += 1;
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, expr, context),
-            TypedExprKind::Fn(lambda) if lambda.facts.returned => Code::joined(
-                vec![Code::atom("move "), self.closure(lambda, &expr.ty)],
-                Precedence::Operator,
-            ),
             TypedExprKind::Fn(lambda) => self.closure(lambda, &expr.ty),
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments, expr.span),
             TypedExprKind::Recur(_) => {
@@ -2519,9 +2515,13 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn closure(&mut self, lambda: &TypedLambda, ty: &Type) -> Code {
-        self.closure_binding(lambda, ty, |emitter, param| {
+        let closure = self.closure_binding(lambda, ty, |emitter, param| {
             emitter.bind_parameter(param, TypePosition::Value)
-        })
+        });
+        if !lambda.facts.returned {
+            return closure;
+        }
+        Code::joined(vec![Code::atom("move "), closure], Precedence::Operator)
     }
 
     fn closure_binding(

@@ -10,5 +10,5 @@ error[L0404]: `string` does not implement `pattern`
   |                                ^^^^^^^^^ this needs `pattern`
   |
   = note: `pattern` is implemented for: (ref str), (ref (ref str)), (ref string), char, (fn (char) bool)
-  = help: `split` takes a `(ref str)`, a `(ref string)`, a `char` or a `(fn (char) bool)` separator: borrow an owned `string` with `as-str`
+  = help: to split on an owned `string`, borrow it with `as-str`
   = note: run `knave doc L0404` for an explanation

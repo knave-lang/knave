@@ -114,3 +114,11 @@ error[L0213]: this type template has a malformed placeholder
    |         ^^^^^^^^^ a placeholder is `{`, a number and `}`
    |
    = help: write a literal brace as `{{` or `}}`
+
+error[L0226]: the template never uses this type parameter
+  --> expand/defenum_errors.knv:46:25
+   |
+46 | (defenum (escaped-close item)
+   |                         ^^^^ its placeholder is `{0}`
+   |
+   = help: use `{0}` in the template, or remove the parameter

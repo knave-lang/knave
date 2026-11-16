@@ -35,15 +35,6 @@ impl<'c> CallSite<'c> {
         }
     }
 
-    fn adapts(&self, position: usize, rules: &LoanRules<'_>) -> bool {
-        match &self.callee.ty {
-            Type::Function(_, parameters, result) => parameters
-                .get(position)
-                .is_some_and(|parameter| rules.adapts(parameter, result)),
-            _ => false,
-        }
-    }
-
     pub fn result_holdings(&self, passed: Vec<PassedHoldings>, rules: &LoanRules<'_>) -> Holdings {
         let Some(ties) = rules.ties(self.callee) else {
             return Holdings::default();
@@ -54,7 +45,7 @@ impl<'c> CallSite<'c> {
             .fold(Holdings::default(), |held, (position, passed)| {
                 if ties.lends_through(position) {
                     held.merged(passed.all())
-                } else if ties.holds_through(position) || self.adapts(position, rules) {
+                } else if ties.holds_through(position) {
                     held.merged(passed.held().clone())
                 } else {
                     held

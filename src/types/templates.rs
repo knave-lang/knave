@@ -3,6 +3,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::inline_templates::InlineTemplates;
+use super::pipelines::Pipelines;
 use super::registered_template::RegisteredTemplate;
 use super::template_ties::TemplateTies;
 use super::ty::Scheme;
@@ -24,8 +25,8 @@ pub struct TemplateBorrows {
 }
 
 impl TemplateBorrows {
-    pub fn register(&mut self, name: TemplateName<'_>, scheme: &Scheme) {
-        let ties = TemplateTies::of(scheme);
+    pub fn register(&mut self, name: TemplateName<'_>, scheme: &Scheme, pipelines: Pipelines) {
+        let ties = TemplateTies::of(scheme, pipelines);
         match name {
             TemplateName::Declared(binding, text) => {
                 let registered = RegisteredTemplate::declared(text, ties);

@@ -959,7 +959,8 @@ impl TypeChecker {
         };
         self.collect_clauses(member.binding, template, &scheme);
         let name = super::TemplateName::Declared(member.binding, &template.template);
-        self.template_borrows.register(name, &scheme);
+        let pipelines = super::Pipelines::new(&self.declarations.types().rust_types);
+        self.template_borrows.register(name, &scheme, pipelines);
         self.schemes.insert(member.binding, scheme);
         true
     }

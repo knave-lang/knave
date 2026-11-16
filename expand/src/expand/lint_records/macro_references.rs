@@ -73,16 +73,7 @@ impl<'t> MacroReferences<'t> {
     }
 
     fn note(&self, binding: BindingId, named: &mut dyn FnMut(BindingId)) {
-        let kind = self.bindings.get(binding).kind();
-        let importable = kind.defining_module().is_some()
-            || matches!(
-                kind,
-                BindingKind::CodeBuiltin(_)
-                    | BindingKind::KernelForm(_)
-                    | BindingKind::KernelType(_)
-                    | BindingKind::Boolean(_)
-            );
-        if importable {
+        if self.bindings.get(binding).kind().is_importable() {
             named(binding);
         }
     }

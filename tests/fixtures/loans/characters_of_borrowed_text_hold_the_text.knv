@@ -1,0 +1,5 @@
+(defn main ()
+  (local s (str "ab"))
+  (local cs (chars (as-str s)))
+  (set! s (str "c"))
+  (println (count cs)))

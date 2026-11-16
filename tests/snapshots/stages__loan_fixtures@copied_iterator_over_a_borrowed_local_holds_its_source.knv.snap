@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/copied_iterator_over_a_borrowed_local_holds_its_source.knv
+---
+main
+  3:17 borrow `v`: no live loan
+  5:9 change `v`: `v` lent at 3:17, held by `it`
+  6:19 move `it`: `v` lent at 3:17, held by `it`

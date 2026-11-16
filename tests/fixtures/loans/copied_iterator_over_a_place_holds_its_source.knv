@@ -1,0 +1,5 @@
+(defn main ()
+  (local v (vec 1 2))
+  (local it (copied v))
+  (set! v (vec 3))
+  (println (count it)))

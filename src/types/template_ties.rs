@@ -33,14 +33,16 @@ impl TemplateTies {
             return Some(Self::default());
         };
         let generics: Vec<GenericId> = scheme.params.iter().map(|param| param.id).collect();
-        let lifetime = TiedPositions::of(Self::lifetime_ties(parameters, result)?);
+        let lifetime = TiedPositions::of(Self::lifetime_ties(parameters, result)?).union(
+            &TiedPositions::of(Self::kept_references(parameters, result, pipelines)),
+        );
         let held = TiedPositions::of(Self::held_ties(parameters, result, &generics)).union(
             &TiedPositions::of(Self::adapted_iterators(parameters, result, pipelines)),
         );
-        let beneath = TiedPositions::of(
-            held.positions()
-                .filter(|position| matches!(parameters[*position], Type::Ref(..) | Type::Mut(..))),
-        );
+        let beneath = TiedPositions::of(held.positions().filter(|position| {
+            !lifetime.contains(*position)
+                && matches!(parameters[*position], Type::Ref(..) | Type::Mut(..))
+        }));
         Some(Self {
             lifetime,
             held,
@@ -100,6 +102,25 @@ impl TemplateTies {
             .iter()
             .enumerate()
             .filter(|(_, parameter)| pipelines.holds_an_iterator(parameter))
+            .map(|(position, _)| position)
+            .collect()
+    }
+
+    fn kept_references(parameters: &[Type], result: &Type, pipelines: Pipelines) -> Vec<usize> {
+        if !pipelines.holds_an_iterator(result) {
+            return Vec::new();
+        }
+        let sourced = parameters
+            .iter()
+            .any(|parameter| pipelines.holds_an_iterator(parameter));
+        parameters
+            .iter()
+            .enumerate()
+            .filter(|(_, parameter)| match parameter {
+                Type::Ref(..) => !sourced,
+                Type::Mut(_, referent) => !sourced || pipelines.holds_an_iterator(referent),
+                _ => false,
+            })
             .map(|(position, _)| position)
             .collect()
     }
@@ -199,7 +220,7 @@ mod tests {
             vec![Type::shared(TiesFixture::generic()), index],
             Type::shared(TiesFixture::generic()),
         );
-        assert_eq!(at, Some(TemplateTies::new(&[0], &[0]).beneath(&[0])));
+        assert_eq!(at, Some(TemplateTies::new(&[0], &[0])));
     }
 
     #[test]

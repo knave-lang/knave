@@ -8,7 +8,7 @@ use crate::core::ParsedTemplate;
 pub struct RegisteredTemplate {
     text: Rc<str>,
     ties: Option<TemplateTies>,
-    parsed: OnceCell<Option<ParsedTemplate>>,
+    parsed: OnceCell<Option<Box<ParsedTemplate>>>,
 }
 
 impl RegisteredTemplate {
@@ -49,8 +49,8 @@ impl RegisteredTemplate {
 
     fn parsed(&self) -> Option<&ParsedTemplate> {
         self.parsed
-            .get_or_init(|| ParsedTemplate::parse(&self.text).ok())
-            .as_ref()
+            .get_or_init(|| ParsedTemplate::parse(&self.text).ok().map(Box::new))
+            .as_deref()
     }
 }
 

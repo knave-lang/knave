@@ -1,28 +1,29 @@
 use std::collections::BTreeSet;
 
 use super::pipelines::Pipelines;
+use super::tied_positions::TiedPositions;
 use super::ty::{GenericId, Lifetime, Scheme, Type};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TemplateTies {
-    lifetime: Vec<usize>,
-    held: Vec<usize>,
-    beneath: Vec<usize>,
+    lifetime: TiedPositions,
+    held: TiedPositions,
+    beneath: TiedPositions,
 }
 
 impl TemplateTies {
     pub fn new(lifetime: &[usize], held: &[usize]) -> Self {
         Self {
-            lifetime: lifetime.to_vec(),
-            held: held.to_vec(),
-            beneath: Vec::new(),
+            lifetime: TiedPositions::of(lifetime.iter().copied()),
+            held: TiedPositions::of(held.iter().copied()),
+            beneath: TiedPositions::default(),
         }
     }
 
     #[cfg(test)]
     pub fn beneath(self, positions: &[usize]) -> Self {
         Self {
-            beneath: positions.to_vec(),
+            beneath: TiedPositions::of(positions.iter().copied()),
             ..self
         }
     }
@@ -32,17 +33,16 @@ impl TemplateTies {
             return Some(Self::default());
         };
         let generics: Vec<GenericId> = scheme.params.iter().map(|param| param.id).collect();
-        let held = Self::merged(
-            &Self::held_ties(parameters, result, &generics),
-            &Self::adapted_iterators(parameters, result, pipelines),
+        let lifetime = TiedPositions::of(Self::lifetime_ties(parameters, result)?);
+        let held = TiedPositions::of(Self::held_ties(parameters, result, &generics)).union(
+            &TiedPositions::of(Self::adapted_iterators(parameters, result, pipelines)),
         );
-        let beneath = held
-            .iter()
-            .copied()
-            .filter(|position| matches!(parameters[*position], Type::Ref(..) | Type::Mut(..)))
-            .collect();
+        let beneath = TiedPositions::of(
+            held.positions()
+                .filter(|position| matches!(parameters[*position], Type::Ref(..) | Type::Mut(..))),
+        );
         Some(Self {
-            lifetime: Self::lifetime_ties(parameters, result)?,
+            lifetime,
             held,
             beneath,
         })
@@ -50,29 +50,28 @@ impl TemplateTies {
 
     pub fn widened(known: Option<Self>, other: Option<Self>) -> Option<Self> {
         let (known, other) = (known?, other?);
-        let held = Self::merged(&known.held, &other.held);
-        let beneath = held
-            .iter()
-            .copied()
-            .filter(|position| known.reads_beneath(*position) && other.reads_beneath(*position))
-            .collect();
+        let held = known.held.union(&other.held);
+        let beneath =
+            TiedPositions::of(held.positions().filter(|position| {
+                known.reads_beneath(*position) && other.reads_beneath(*position)
+            }));
         Some(Self {
-            lifetime: Self::merged(&known.lifetime, &other.lifetime),
+            lifetime: known.lifetime.union(&other.lifetime),
             held,
             beneath,
         })
     }
 
     pub fn lends_through(&self, position: usize) -> bool {
-        self.lifetime.contains(&position)
+        self.lifetime.contains(position)
     }
 
     pub fn holds_through(&self, position: usize) -> bool {
-        self.held.contains(&position)
+        self.held.contains(position)
     }
 
     pub fn holds_beneath(&self, position: usize) -> bool {
-        self.beneath.contains(&position)
+        self.beneath.contains(position)
     }
 
     fn reads_beneath(&self, position: usize) -> bool {
@@ -103,11 +102,6 @@ impl TemplateTies {
             .filter(|(_, parameter)| pipelines.holds_an_iterator(parameter))
             .map(|(position, _)| position)
             .collect()
-    }
-
-    fn merged(mine: &[usize], theirs: &[usize]) -> Vec<usize> {
-        let positions: BTreeSet<usize> = mine.iter().chain(theirs).copied().collect();
-        positions.into_iter().collect()
     }
 
     fn lifetime_ties(parameters: &[Type], result: &Type) -> Option<Vec<usize>> {

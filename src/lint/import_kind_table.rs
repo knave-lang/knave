@@ -310,6 +310,27 @@ impl ImportKindTable {
         }
     }
 
+    fn probe_rows() -> Vec<(String, &'static str)> {
+        vec![
+            (
+                format!(
+                    "(use {} greet shout)\n(defn main () (match 1 (greet (println (shout greet)))))",
+                    Self::MODULE
+                ),
+                "`greet` is imported but never used",
+            ),
+            (
+                format!(
+                    "(use {} point)\n(use tests/fixtures/lint/modules/point_function point)\n\
+                     (export made)\n(defn made () (point 1))\n{}",
+                    Self::MODULE,
+                    Self::MAIN
+                ),
+                "nothing this `use` brings in is used",
+            ),
+        ]
+    }
+
     fn unused_import_titles(text: &str) -> Vec<String> {
         ExpandedSource::expand(text)
             .warning_titles()
@@ -364,6 +385,17 @@ fn a_name_never_read_warns_by_its_written_spelling() {
             ImportKindTable::unused_import_titles(&row.text),
             expected,
             "{kind:?}"
+        );
+    }
+}
+
+#[test]
+fn a_name_that_only_a_probe_looks_up_warns() {
+    for (text, warning) in ImportKindTable::probe_rows() {
+        assert_eq!(
+            ImportKindTable::unused_import_titles(&text),
+            [warning],
+            "{text}"
         );
     }
 }

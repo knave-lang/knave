@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/fold_result_holds_its_accumulator_and_not_the_vector.knv
+---
+main
+  5:19 borrow `v`: no live loan
+  5:30 borrow `t`: no live loan
+  7:9 change `v`: `t` lent at 5:30, held by `last`

@@ -1,0 +1,8 @@
+(defn main ()
+  (local v (vec (str "a")))
+  (local t (str "t"))
+  (local last
+    (reduce (iter v) (as-str t)
+      (fn (acc x) acc)))
+  (set! v (vec (str "b")))
+  (println last))

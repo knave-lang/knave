@@ -1,0 +1,9 @@
+(defn main ()
+  (local s (str "a"))
+  (local r
+    ((rust "{0}" (where (a) (fn (a) a)))
+     (as-str s)))
+  (local n
+    ((rust "{0}" (fn (i64) i64)) 1))
+  (set! s (str "b"))
+  (println n r))

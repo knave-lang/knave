@@ -446,7 +446,6 @@ src/types/infer.rs::TypeChecker::infer_map_at 4
 
 src/types/infer.rs::TypeChecker::infer_map_iterator 5
 
-src/types/infer.rs::TypeChecker::infer_map_iterator_operation 5
 
 src/types/infer.rs::TypeChecker::infer_map_lookup 4
 

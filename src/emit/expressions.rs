@@ -2049,17 +2049,10 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn declared_field_depth(&self, owner: &TypedExpr, field: &str) -> Option<usize> {
-        let mut owner_type = &owner.ty;
-        while let Type::Ref(_, inner) | Type::Mut(_, inner) = owner_type {
-            owner_type = inner;
-        }
-        let Type::Named(binding, arguments) = owner_type else {
-            return None;
-        };
-        self.types
-            .structs()
-            .get(*binding)?
-            .instantiated_field_depth(field, arguments)
+        Some(
+            self.declared_field_type(&owner.ty, field)?
+                .reference_depth(),
+        )
     }
 
     fn argument_at_depth(
@@ -2779,7 +2772,7 @@ impl<'a> ExpressionEmitter<'a> {
     fn field_access(&mut self, value: &TypedExpr, label: &FieldLabel, result: &Type) -> Code {
         let borrows_field = result.is_reference()
             && !self
-                .declared_field_type(value, label)
+                .declared_field_type(&value.ty, &label.name)
                 .is_some_and(|declared| declared.is_reference());
         let access = self.field_place(value, label);
         if borrows_field {
@@ -2797,10 +2790,7 @@ impl<'a> ExpressionEmitter<'a> {
             value.parenthesized()
         };
         Code::joined_outside_delimiters(
-            vec![
-                value,
-                Code::atom(format!(".{}", NameMangler::value(&label.name))),
-            ],
+            vec![value, Code::atom(format!(".{}", label.rust_name()))],
             Precedence::Atom,
         )
     }
@@ -2813,17 +2803,18 @@ impl<'a> ExpressionEmitter<'a> {
         }
     }
 
-    fn declared_field_type(&self, value: &TypedExpr, label: &FieldLabel) -> Option<Type> {
-        let mut owner = &value.ty;
+    fn declared_field_type(&self, owner: &Type, field: &str) -> Option<Type> {
+        let mut owner = owner;
         while let Type::Ref(_, inner) | Type::Mut(_, inner) = owner {
             owner = inner;
         }
         let Type::Named(binding, arguments) = owner else {
             return None;
         };
-        self.types
-            .structs()
-            .get(*binding)?
-            .instantiated_field(&label.name, arguments)
+        if Some(*binding) == self.types.rust_types().pair_binding() {
+            return arguments.get(field.parse::<usize>().ok()?).cloned();
+        }
+        let definition = self.types.structs().get(*binding)?;
+        definition.instantiated_field(field, arguments)
     }
 }

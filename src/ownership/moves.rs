@@ -5,6 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::moved_values::{FieldPath, MoveSite, MovedValues};
 use super::mutation::ChangedValues;
 use super::problems::OwnershipProblems;
+use super::read_usage::ReadUsage;
 use super::repeats::{NextPass, RepeatingBody};
 use super::stored_definitions::StoredDefinitions;
 use super::update_bases::UpdateBases;
@@ -17,12 +18,6 @@ use crate::types::{
     StructTable, TemplateBorrows, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl,
     TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedStructExpr,
 };
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Usage {
-    Move,
-    Borrow,
-}
 
 struct MovedUse<'u> {
     place: &'u FieldPlace<'u>,
@@ -98,12 +93,12 @@ impl<'a> MoveChecker<'a> {
             .map(|param| param.binding)
             .collect();
         self.changed = ChangedValues::of(lambda, enclosing);
-        self.block(&lambda.body, Usage::Move);
+        self.block(&lambda.body, ReadUsage::Move);
         self.report()
     }
 
     pub fn check_value(mut self, value: &TypedExpr) -> MoveReport {
-        self.expr(value, Usage::Move);
+        self.expr(value, ReadUsage::Move);
         self.report()
     }
 
@@ -114,11 +109,12 @@ impl<'a> MoveChecker<'a> {
         }
     }
 
-    fn expr(&mut self, expr: &TypedExpr, usage: Usage) {
+    fn expr(&mut self, expr: &TypedExpr, usage: ReadUsage) {
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, expr, usage),
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
             TypedExprKind::Control(control) => self.control(control, usage),
+            TypedExprKind::Struct(structure) => self.structure(expr, structure, usage),
             other => self.nested_expr(expr, other),
         }
     }
@@ -126,10 +122,9 @@ impl<'a> MoveChecker<'a> {
     fn nested_expr(&mut self, expr: &TypedExpr, kind: &TypedExprKind) {
         match kind {
             TypedExprKind::Recur(arguments) => self.recur(arguments),
-            TypedExprKind::Struct(structure) => self.structure(expr, structure),
             TypedExprKind::Variant(_, arguments, _) => self.expressions(arguments),
             TypedExprKind::Assoc(value, keys, item) => self.assoc(value, keys, item),
-            TypedExprKind::TraitObject(value, _) => self.expr(value, Usage::Move),
+            TypedExprKind::TraitObject(value, _) => self.expr(value, ReadUsage::Move),
             _ => self.value_kind(expr, kind),
         }
     }
@@ -147,19 +142,19 @@ impl<'a> MoveChecker<'a> {
     fn expressions(&mut self, arguments: &[TypedExpr]) {
         arguments
             .iter()
-            .for_each(|argument| self.expr(argument, Usage::Move));
+            .for_each(|argument| self.expr(argument, ReadUsage::Move));
     }
 
     fn assoc(&mut self, value: &TypedExpr, keys: &[TypedExpr], item: &TypedExpr) {
-        self.update_base(value);
+        self.expr(value, ReadUsage::Move);
         self.expressions(keys);
-        self.expr(item, Usage::Move);
+        self.expr(item, ReadUsage::Move);
     }
 
-    fn leaf(&mut self, leaf: &TypedLeaf, expr: &TypedExpr, usage: Usage) {
+    fn leaf(&mut self, leaf: &TypedLeaf, expr: &TypedExpr, usage: ReadUsage) {
         match leaf {
             TypedLeaf::Local(binding) => self.local(*binding, &expr.ty, expr.span, usage),
-            TypedLeaf::Global(binding) if usage == Usage::Move => {
+            TypedLeaf::Global(binding) if usage == ReadUsage::Move => {
                 self.stored_definition(*binding, expr)
             }
             _ => {}
@@ -181,16 +176,16 @@ impl<'a> MoveChecker<'a> {
     fn written(&mut self, expr: &TypedExpr) {
         match &expr.kind {
             TypedExprKind::Borrow(_, value) | TypedExprKind::Deref(value) => {
-                self.expr(value, Usage::Borrow)
+                self.expr(value, ReadUsage::Borrow)
             }
-            TypedExprKind::Try { value, .. } => self.expr(value, Usage::Move),
+            TypedExprKind::Try { value, .. } => self.expr(value, ReadUsage::Move),
             _ => unreachable!("the caller matches a written form"),
         }
     }
 
-    fn structure(&mut self, expr: &TypedExpr, structure: &TypedStructExpr) {
+    fn structure(&mut self, expr: &TypedExpr, structure: &TypedStructExpr, usage: ReadUsage) {
         match structure {
-            TypedStructExpr::Field(owner, _) => self.field_read(expr, owner),
+            TypedStructExpr::Field(owner, _) => self.field_read(expr, owner, usage),
             TypedStructExpr::New(_, fields) => self.field_values(fields),
             TypedStructExpr::Update(_, base, fields) => self.update(expr, base, fields),
         }
@@ -207,7 +202,7 @@ impl<'a> MoveChecker<'a> {
                 self.move_fields(&place, base.span, moved);
             }
             StructUpdateOrder::BaseFirst => {
-                self.update_base(base);
+                self.expr(base, ReadUsage::Move);
                 self.field_values(fields);
             }
         }
@@ -216,13 +211,16 @@ impl<'a> MoveChecker<'a> {
     fn field_values(&mut self, fields: &[(FieldLabel, TypedExpr)]) {
         fields
             .iter()
-            .for_each(|(_, value)| self.expr(value, Usage::Move));
+            .for_each(|(_, value)| self.expr(value, ReadUsage::Move));
     }
 
-    fn field_read(&mut self, read: &TypedExpr, owner: &TypedExpr) {
-        match read.field_place() {
-            Some(place) => self.place_read(&place, Self::root_span(read)),
-            None => self.expr(owner, Usage::Borrow),
+    fn field_read(&mut self, read: &TypedExpr, owner: &TypedExpr, usage: ReadUsage) {
+        let Some(place) = read.field_place() else {
+            return self.expr(owner, ReadUsage::Borrow);
+        };
+        self.place_read(&place, Self::root_span(read));
+        if usage.moves_field(read, &self.copy) {
+            self.move_field(&place, read.span);
         }
     }
 
@@ -256,16 +254,6 @@ impl<'a> MoveChecker<'a> {
         }
     }
 
-    fn update_base(&mut self, base: &TypedExpr) {
-        match base.field_place() {
-            Some(place) if place.reads_field() && !self.copy.is_copy(&base.ty) => {
-                self.expr(base, Usage::Borrow);
-                self.move_field(&place, base.span);
-            }
-            _ => self.expr(base, Usage::Move),
-        }
-    }
-
     fn move_fields(&mut self, place: &FieldPlace, span: Span, moving: Vec<Rc<str>>) {
         let site = self.field_site(place, span);
         for field in moving {
@@ -295,7 +283,7 @@ impl<'a> MoveChecker<'a> {
         place.path.iter().map(|label| label.name.clone()).collect()
     }
 
-    fn control(&mut self, control: &TypedControl, usage: Usage) {
+    fn control(&mut self, control: &TypedControl, usage: ReadUsage) {
         match control {
             TypedControl::Block(block) => self.block(block, usage),
             TypedControl::If(test, then, otherwise) => self.branches(test, then, otherwise, usage),
@@ -316,16 +304,16 @@ impl<'a> MoveChecker<'a> {
         }
     }
 
-    fn scrutinee_usage(&self, matched: &TypedMatch) -> Usage {
+    fn scrutinee_usage(&self, matched: &TypedMatch) -> ReadUsage {
         let binds_owned_part = matched
             .arms
             .iter()
             .flat_map(|arm| arm.pattern.binders())
             .any(|binder| !self.copy.is_copy(&binder.ty));
         if binds_owned_part {
-            Usage::Move
+            ReadUsage::Move
         } else {
-            Usage::Borrow
+            ReadUsage::Borrow
         }
     }
 
@@ -337,7 +325,7 @@ impl<'a> MoveChecker<'a> {
 
     fn pass(&mut self, lambda: &TypedLambda) -> RepeatingBody {
         let enclosing = self.repeating.replace(RepeatingBody::enter(&self.moved));
-        self.block(&lambda.body, Usage::Move);
+        self.block(&lambda.body, ReadUsage::Move);
         std::mem::replace(&mut self.repeating, enclosing).expect("the pass entered a body")
     }
 
@@ -367,15 +355,15 @@ impl<'a> MoveChecker<'a> {
             }
             TypedExprKind::Leaf(TypedLeaf::Local(other)) => {
                 let kind = self.local_function_kind(*other);
-                self.expr(value, Usage::Move);
+                self.expr(value, ReadUsage::Move);
                 kind
             }
             TypedExprKind::Call(..) => {
-                self.expr(value, Usage::Move);
+                self.expr(value, ReadUsage::Move);
                 Self::once_call_result(&value.ty)
             }
             _ => {
-                self.expr(value, Usage::Move);
+                self.expr(value, ReadUsage::Move);
                 None
             }
         }
@@ -408,22 +396,22 @@ impl<'a> MoveChecker<'a> {
         }
         for (position, argument) in arguments.iter().enumerate() {
             let usage = if self.moves(callee, position, argument) {
-                Usage::Move
+                ReadUsage::Move
             } else {
-                Usage::Borrow
+                ReadUsage::Borrow
             };
             self.expr(&argument.value, usage);
         }
     }
 
-    fn callee_usage(&self, callee: &TypedExpr) -> Usage {
+    fn callee_usage(&self, callee: &TypedExpr) -> ReadUsage {
         match &callee.kind {
             TypedExprKind::Leaf(TypedLeaf::Local(binding))
                 if self.once_functions.contains(binding) =>
             {
-                Usage::Move
+                ReadUsage::Move
             }
-            _ => Usage::Borrow,
+            _ => ReadUsage::Borrow,
         }
     }
 
@@ -438,9 +426,9 @@ impl<'a> MoveChecker<'a> {
             let usage = if argument.borrow == Borrow::None
                 && !matches!(argument.value.ty, Type::Ref(_, _))
             {
-                Usage::Move
+                ReadUsage::Move
             } else {
-                Usage::Borrow
+                ReadUsage::Borrow
             };
             self.expr(&argument.value, usage);
         }
@@ -454,9 +442,9 @@ impl<'a> MoveChecker<'a> {
         test: &TypedExpr,
         then: &TypedExpr,
         otherwise: &TypedExpr,
-        usage: Usage,
+        usage: ReadUsage,
     ) {
-        self.expr(test, Usage::Borrow);
+        self.expr(test, ReadUsage::Borrow);
         let before = self.moved.clone();
         self.expr(then, usage);
         let after_then = std::mem::replace(&mut self.moved, before);
@@ -464,18 +452,18 @@ impl<'a> MoveChecker<'a> {
         self.moved.merge(after_then);
     }
 
-    fn block(&mut self, block: &TypedBlock, usage: Usage) {
+    fn block(&mut self, block: &TypedBlock, usage: ReadUsage) {
         let last = block.items.len().checked_sub(1);
         for (position, item) in block.items.iter().enumerate() {
             match item {
                 TypedBodyItem::Let(binder, value) => self.bind(binder.binding, value),
                 TypedBodyItem::Expr(expr) if Some(position) == last => self.expr(expr, usage),
-                TypedBodyItem::Expr(expr) => self.expr(expr, Usage::Move),
+                TypedBodyItem::Expr(expr) => self.expr(expr, ReadUsage::Move),
             }
         }
     }
 
-    fn local(&mut self, binding: BindingId, ty: &Type, span: Span, usage: Usage) {
+    fn local(&mut self, binding: BindingId, ty: &Type, span: Span, usage: ReadUsage) {
         match self.moved.site(binding) {
             Some(site) => self.use_after_move(&Self::whole_place(binding, ty), span, &site),
             None => self.record_use(binding, ty, span, usage),
@@ -575,9 +563,9 @@ impl<'a> MoveChecker<'a> {
         None
     }
 
-    fn record_use(&mut self, binding: BindingId, ty: &Type, span: Span, usage: Usage) {
+    fn record_use(&mut self, binding: BindingId, ty: &Type, span: Span, usage: ReadUsage) {
         let is_copy = self.copy.is_copy(ty) || self.copy_functions.contains(&binding);
-        if usage == Usage::Move && !is_copy {
+        if usage == ReadUsage::Move && !is_copy {
             self.moved.move_whole(binding, span);
         }
     }

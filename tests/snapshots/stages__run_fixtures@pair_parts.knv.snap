@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/pair_parts.knv
+---
+ana
+bo
+(some 3)
+(some 4)
+(vec (some 3))
+1
+11
+2
+5
+6
+18
+cy
+x
+ana
+anabo

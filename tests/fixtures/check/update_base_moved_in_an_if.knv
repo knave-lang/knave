@@ -1,0 +1,6 @@
+(struct inner (a i64) (b string))
+
+(defn main ()
+  (let (s (new inner (a 1) (b (str "x")))
+        q (new _ (if true s s) (a 2)))
+    (println (field s b) (field q a))))

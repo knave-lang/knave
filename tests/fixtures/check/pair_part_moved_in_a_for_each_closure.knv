@@ -1,0 +1,6 @@
+(defn takes ((s string)) (len s))
+
+(defn main ()
+  (let (p (pair (str "a") (str "b")))
+    (for-each (range 0 2)
+      (fn (i) (println (takes (first p)))))))

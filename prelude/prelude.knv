@@ -23,7 +23,7 @@
 
 (use prelude/vec at collect copied dedup! first iter last
                  pop! push! remove-at! reverse reverse!
-                 sort! sort-by! vec windows)
+                 second sort! sort-by! vec windows)
 
 (use prelude/iterator any? count enumerate every? filter
                       find for-each map max max-by-key min
@@ -89,14 +89,14 @@
         partial-ord pattern pi pop! pos? pr-str print
         println prn push! quote range read-line recur reduce
         ref rem remove-at! result reverse reverse! run-tests
-        rust rust-trait rust-type sequence set! set-at show
-        signed slice slurp some some? sort! sort-by!
-        sorted-map source split sqrt starts-with? stdin str
-        str string struct subs sum take take-while template
-        the then-ok then-some trait trim true try try-> type
-        u128 u16 u32 u64 u8 unit unless unwrap unwrap-err
-        unwrap-ok unwrap-or update upper-case use usize vals
-        vec when where whitespace? windows with
+        rust rust-trait rust-type second sequence set!
+        set-at show signed slice slurp some some? sort!
+        sort-by! sorted-map source split sqrt starts-with?
+        stdin str str string struct subs sum take take-while
+        template the then-ok then-some trait trim true try
+        try-> type u128 u16 u32 u64 u8 unit unless unwrap
+        unwrap-err unwrap-ok unwrap-or update upper-case use
+        usize vals vec when where whitespace? windows with
         with-macro-steps zero? zip)
 
 (def def
@@ -269,8 +269,10 @@
 (document (map-at operation value argument ...)
   "Applies a collection operation whose Rust the collection's type picks.
 
-  The operation is [get], [keys], [vals], [iter], [update] or `push`.
-  `get`, `keys`, `vals`, `iter`, `update` and [push!] expand to it.
+  The operation is [get], [keys], [vals], [iter], [update], `push`,
+  [first] or [second]. `get`, `keys`, `vals`, `iter`, `update`, [push!],
+  `first` and `second` expand to it. `first` and `second` take the reader
+  to call on a value that is not a pair as their last argument.
 
   (map-at get (vec 1 2) 1)
   => (some (ref 2))")

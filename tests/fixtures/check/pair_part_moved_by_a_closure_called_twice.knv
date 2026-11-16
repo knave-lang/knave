@@ -1,0 +1,5 @@
+(defn main ()
+  (let (p (pair (str "a") (str "b"))
+        f (fn () (first p)))
+    (println (f))
+    (println (f))))

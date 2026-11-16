@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/pair_used_after_a_part_moved.knv
+---
+error[L0501]: use of moved value `(first names)`
+ --> check/pair_used_after_a_part_moved.knv:5:10
+  |
+3 |         a (first names))
+  |           ------------- value moved here
+4 |     (println a)
+5 |     (prn names)))
+  |          ^^^^^ value used here after it moved
+  |
+help: clone the value if both places need it
+  |
+3 -         a (first names))
+3 +         a (clone (first names)))
+  |
+  = note: run `knave doc L0501` for an explanation

@@ -1,0 +1,4 @@
+(defn right (entry) (second entry))
+
+(defn main ()
+  (println (right (pair 1 2))))

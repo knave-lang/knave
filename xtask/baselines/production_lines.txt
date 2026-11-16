@@ -8,7 +8,7 @@ expand/src/expand/problems.rs 1141
 
 expand/src/format/layout.rs 501
 
-src/emit/expressions.rs 2829
+src/emit/expressions.rs 2820
 
 src/emit/items.rs 1629
 
@@ -38,4 +38,4 @@ src/types/pinning.rs 729
 
 src/types/problems.rs 1364
 
-src/types/typed.rs 775
+src/types/typed.rs 751

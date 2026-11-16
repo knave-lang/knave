@@ -1,0 +1,5 @@
+(defn main ()
+  (let (names (pair (str "ana") (str "bo"))
+        a (second names)
+        b (second names))
+    (println a b)))

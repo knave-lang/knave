@@ -1,0 +1,6 @@
+(defn call-twice ((f (fn () string)))
+  (str (f) (f)))
+
+(defn main ()
+  (let (p (pair (str "a") (str "b")))
+    (println (call-twice (fn () (first p))))))

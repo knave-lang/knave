@@ -14,8 +14,8 @@
   "Builds, reads and reorders vectors.")
 
 (export at collect copied dedup! first iter last pop! push!
-        remove-at! reverse reverse! sort! sort-by! vec
-        windows)
+        remove-at! reverse reverse! second sort! sort-by!
+        vec windows)
 
 (def element-placeholders
   (fn (count)
@@ -164,7 +164,29 @@
       (fn ((ref (slice a)) usize) (ref a)))))
 
 (def first
+  (macro (form)
+    (if (symbol? form)
+      (quote slice-first)
+      (concat (list (quote map-at) (quote first))
+              (rest form)
+              (list (quote slice-first))))))
+
+(def second
+  (macro (form)
+    (if (symbol? form)
+      (quote slice-second)
+      (concat (list (quote map-at) (quote second))
+              (rest form)
+              (list (quote slice-second))))))
+
+(def slice-first
   (rust "{0}.first()"
+    (where (item)
+      (fn ((ref (slice item)))
+        (option (ref item))))))
+
+(def slice-second
+  (rust "{0}.get(1)"
     (where (item)
       (fn ((ref (slice item)))
         (option (ref item))))))
@@ -306,14 +328,37 @@
   => 20")
 
 (document (first items)
-  "Returns a borrow of a slice's first item as an [option].
+  "Returns the first part of a pair, or a borrow of a slice's first item.
 
-  It returns `none` for an empty slice. A vector passes as its slice.
+  The argument's type picks the meaning. A pair's part reads as a field
+  does: an owned pair gives the part and moves only it, and a borrowed pair
+  gives a borrow of it. A slice gives an [option] of a borrow, `none` when
+  it is empty, and a vector passes as its slice.
+  `first` as a value is the slice reader.
+
+  (first (pair \"fig\" 2))
+  => \"fig\"
 
   (first (vec 1 2))
   => (some (ref 1))
 
   (first (the (vec int) (vec)))
+  => none")
+
+(document (second items)
+  "Returns the second part of a pair, or a borrow of a slice's second item.
+
+  The argument's type picks the meaning, as for [first]. A pair gives its
+  second part, and a slice gives an [option] of a borrow, `none` when it
+  holds fewer than two items. `second` as a value is the slice reader.
+
+  (second (pair \"fig\" 2))
+  => 2
+
+  (second (vec 1 2))
+  => (some (ref 2))
+
+  (second (vec 1))
   => none")
 
 (document (last items)

@@ -108,27 +108,17 @@ impl<'i> NamedTypes<'i> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use super::NamedTypes;
-    use crate::core::{ItemKind, ModulePath};
-    use crate::expand::Expander;
-    use crate::modules::ModuleSources;
-    use crate::source::SourceMap;
+    use crate::core::ItemKind;
+    use crate::expand::expanded_module::ExpandedModule;
 
     struct NamedTypesFixture;
 
     impl NamedTypesFixture {
-        const MODULE: &str = "shapes";
         const POINT: &str = "(defstruct point :x i64)\n";
 
         fn named_by(text: &str, kind: fn(&ItemKind) -> bool) -> Vec<String> {
-            let mut sources = SourceMap::default();
-            let entry = sources.add(Self::MODULE, format!("{}{text}", Self::POINT));
-            let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
-            let program = Expander::new(&mut sources, module_sources)
-                .expand(ModulePath::new(Self::MODULE), entry)
-                .unwrap_or_else(|_| panic!("the program expands"));
+            let program = ExpandedModule::of(&format!("{}{text}", Self::POINT));
             let mut named = Vec::new();
             for item in &program.entry_module().items {
                 if kind(&item.kind) {
@@ -141,12 +131,7 @@ mod tests {
         }
 
         fn named_by_rust_trait(text: &str, name: &str) -> Vec<String> {
-            let mut sources = SourceMap::default();
-            let entry = sources.add(Self::MODULE, format!("{}{text}", Self::POINT));
-            let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
-            let program = Expander::new(&mut sources, module_sources)
-                .expand(ModulePath::new(Self::MODULE), entry)
-                .unwrap_or_else(|_| panic!("the program expands"));
+            let program = ExpandedModule::of(&format!("{}{text}", Self::POINT));
             let mut named = Vec::new();
             for item in &program.entry_module().items {
                 if let ItemKind::RustTrait(declaration) = &item.kind

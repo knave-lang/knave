@@ -20,6 +20,8 @@ mod duplicate_definitions;
 mod enclosing_index;
 mod evaluated_forms;
 mod expanded_call;
+#[cfg(test)]
+pub(crate) mod expanded_module;
 mod expansion_limit;
 mod expression;
 mod failed_definition;

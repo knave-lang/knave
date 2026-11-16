@@ -30,26 +30,14 @@ impl<'i> MemberOwners<'i> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use super::MemberOwners;
-    use crate::core::ModulePath;
-    use crate::expand::Expander;
-    use crate::modules::ModuleSources;
-    use crate::source::SourceMap;
+    use crate::expand::expanded_module::ExpandedModule;
 
     struct MemberOwnersFixture;
 
     impl MemberOwnersFixture {
-        const MODULE: &str = "shapes";
-
         fn owned_by(text: &str) -> Vec<(String, String)> {
-            let mut sources = SourceMap::default();
-            let entry = sources.add(Self::MODULE, text);
-            let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
-            let program = Expander::new(&mut sources, module_sources)
-                .expand(ModulePath::new(Self::MODULE), entry)
-                .unwrap_or_else(|_| panic!("the program expands"));
+            let program = ExpandedModule::of(text);
             let name = |binding| program.bindings.get(binding).name().to_string();
             let mut owned = Vec::new();
             for item in &program.entry_module().items {

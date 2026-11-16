@@ -90,27 +90,17 @@ impl<'t> MacroReferences<'t> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
-    use crate::core::{BindingId, ModulePath};
-    use crate::expand::{Expander, Program};
-    use crate::modules::ModuleSources;
-    use crate::source::SourceMap;
+    use crate::core::BindingId;
+    use crate::expand::Program;
+    use crate::expand::expanded_module::ExpandedModule;
 
     struct MacroReferencesFixture {
         program: Program,
     }
 
     impl MacroReferencesFixture {
-        const MODULE: &str = "fixture";
-
         fn expand(text: &str) -> Self {
-            let mut sources = SourceMap::default();
-            let entry = sources.add(Self::MODULE, text);
-            let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
-            let program = Expander::new(&mut sources, module_sources)
-                .expand(ModulePath::new(Self::MODULE), entry)
-                .unwrap_or_else(|_| panic!("the program expands"));
+            let program = ExpandedModule::of(text);
             Self { program }
         }
 

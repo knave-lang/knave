@@ -1,0 +1,11 @@
+(defn main ()
+  (local v (vec 1 2 3))
+  (local s (str "ab"))
+  (local it
+    ((rust "{0}.take({1}.len())"
+       (fn ((iterator i64) (ref str))
+         (iterator i64)))
+     (the (iterator i64) (take v 3))
+     (as-str s)))
+  (set! s (str "b"))
+  (println (count it)))

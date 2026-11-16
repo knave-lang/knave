@@ -10,6 +10,7 @@ error[L0234]: expected a type
   |                 ^^^^^^ this is not a type
   |
   = help: a type is a name such as `i64`, or a form such as `(fn (i64) i64)` or `(ref str)`
+  = note: run `knave doc L0234` for an explanation
 
 error[L0228]: malformed `ref` type
  --> expand/malformed_types.knv:5:16
@@ -18,12 +19,15 @@ error[L0228]: malformed `ref` type
   |                ^^^ this does not fit the shape of the type
   |
   = help: write it as `(ref type)`
+  = note: run `knave doc L0228` for an explanation
 
 error[L0212]: expected a type constructor, found `number`
   --> expand/malformed_types.knv:10:9
    |
 10 |   (fn ((number i64)) i64))
    |         ^^^^^^ not a type constructor
+   |
+   = note: run `knave doc L0212` for an explanation
 
 error[L0228]: malformed `fn` type
   --> expand/malformed_types.knv:14:16
@@ -32,6 +36,7 @@ error[L0228]: malformed `fn` type
    |                ^^^^^^^^ this does not fit the shape of the type
    |
    = help: write it as `(fn (argument ...) result)`
+   = note: run `knave doc L0228` for an explanation
 
 error[L0228]: malformed `ref` type
   --> expand/malformed_types.knv:18:22
@@ -40,6 +45,7 @@ error[L0228]: malformed `ref` type
    |                      ^^^^^ this does not fit the shape of the type
    |
    = help: write it as `(ref type)`
+   = note: run `knave doc L0228` for an explanation
 
 error[L0228]: malformed `where` type
   --> expand/malformed_types.knv:22:19
@@ -48,18 +54,23 @@ error[L0228]: malformed `where` type
    |                   ^^^^^^^^^^^ this does not fit the shape of the type
    |
    = help: write it as `(where (variable (variable trait ...) ...) type)`
+   = note: run `knave doc L0228` for an explanation
 
 error[L0212]: expected a trait, found `"trait"`
   --> expand/malformed_types.knv:27:14
    |
 27 |   (where ((t "trait")) (fn (t) t)))
    |              ^^^^^^^ not a trait
+   |
+   = note: run `knave doc L0212` for an explanation
 
 error[L0212]: expected a trait, found `i64`
   --> expand/malformed_types.knv:32:14
    |
 32 |   (where ((t i64)) (fn (t) t)))
    |              ^^^ not a trait
+   |
+   = note: run `knave doc L0212` for an explanation
 
 error[L0228]: malformed `mut` type
   --> expand/malformed_types.knv:36:22
@@ -68,3 +79,4 @@ error[L0228]: malformed `mut` type
    |                      ^^^^^ this does not fit the shape of the type
    |
    = help: write it as `(mut type)`
+   = note: run `knave doc L0228` for an explanation

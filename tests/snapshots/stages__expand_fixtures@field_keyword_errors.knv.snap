@@ -10,6 +10,7 @@ error[L0244]: a name cannot start with `:`
   |      ^^^^^^ this is a field keyword
   |
   = help: names starting with `:` read struct fields; choose another name
+  = note: run `knave doc L0244` for an explanation
 
 error[L0244]: a name cannot start with `:`
  --> expand/field_keyword_errors.knv:9:18
@@ -18,6 +19,7 @@ error[L0244]: a name cannot start with `:`
   |                  ^^^^^ this is a field keyword
   |
   = help: names starting with `:` read struct fields; choose another name
+  = note: run `knave doc L0244` for an explanation
 
 error[L0244]: a name cannot start with `:`
   --> expand/field_keyword_errors.knv:12:19
@@ -26,6 +28,7 @@ error[L0244]: a name cannot start with `:`
    |                   ^^^^^ this is a field keyword
    |
    = help: names starting with `:` read struct fields; choose another name
+   = note: run `knave doc L0244` for an explanation
 
 error[L0243]: a field keyword takes one value
   --> expand/field_keyword_errors.knv:17:24
@@ -34,6 +37,7 @@ error[L0243]: a field keyword takes one value
    |                        ^^^^^ this value is extra
    |
    = help: write (:year value)
+   = note: run `knave doc L0243` for an explanation
 
 error[L0243]: a field keyword takes one value
   --> expand/field_keyword_errors.knv:18:12
@@ -42,6 +46,7 @@ error[L0243]: a field keyword takes one value
    |            ^^^^^^^ this call has no value
    |
    = help: write (:year value)
+   = note: run `knave doc L0243` for an explanation
 
 error[L0244]: a name cannot start with `:`
   --> expand/field_keyword_errors.knv:19:10
@@ -50,3 +55,4 @@ error[L0244]: a name cannot start with `:`
    |          ^^^^^ this is a field keyword
    |
    = help: names starting with `:` read struct fields; choose another name
+   = note: run `knave doc L0244` for an explanation

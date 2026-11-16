@@ -10,6 +10,7 @@ error[L0205]: module `geometry/shapes` does not export `checked`
   |                      ^^^^^^^ not exported
   |
   = help: add `checked` to the `export` list of `geometry/shapes`
+  = note: run `knave doc L0205` for an explanation
 
 error[L0205]: module `geometry/shapes` does not export `make-sqare`
  --> expand/import_errors.knv:1:30
@@ -21,6 +22,7 @@ help: an export with a similar name exists
   |
 1 | (use geometry/shapes checked make-square)
   |                                     +
+  = note: run `knave doc L0205` for an explanation
 
 error[L0204]: cannot find module `geometry/missing`
  --> expand/import_errors.knv:2:6
@@ -29,3 +31,4 @@ error[L0204]: cannot find module `geometry/missing`
   |      ^^^^^^^^^^^^^^^^ no module with this path
   |
   = help: a module path names a file relative to the root directory, without its extension
+  = note: run `knave doc L0204` for an explanation

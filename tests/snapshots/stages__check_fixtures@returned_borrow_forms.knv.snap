@@ -16,6 +16,7 @@ error[L0510]: cannot return a borrow of a local value
    |           ^^^^^^^^^^^^^ this borrows a local value
    |
    = help: the field `make` of `car` borrows its data, so give it the owned type `string`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a local value
   --> check/returned_borrow_forms.knv:28:14
@@ -29,6 +30,7 @@ error[L0510]: cannot return a borrow of a local value
    |              ^^^^^^^^^^^^ this borrows a local value
    |
    = help: the field `at` of `pin` borrows its data, so give it the owned type `point`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a local value
   --> check/returned_borrow_forms.knv:32:17
@@ -42,6 +44,7 @@ error[L0510]: cannot return a borrow of a local value
    |                 ^^^^^^^^^^^^^^ this borrows a local value
    |
    = help: the `titled` payload of `badge` borrows its data, so give it the owned type `string`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a local value
   --> check/returned_borrow_forms.knv:36:21
@@ -52,6 +55,7 @@ error[L0510]: cannot return a borrow of a local value
    |                     ^^^^^^^^^^^^^ this borrows a local value
    |
    = help: return an owned value with `(clone ...)`, or borrow from a parameter
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a local value
   --> check/returned_borrow_forms.knv:40:20
@@ -65,3 +69,4 @@ error[L0510]: cannot return a borrow of a local value
    |                    ^^^^^^^^^^^^^ this borrows a local value
    |
    = help: the field `text` of `plaque/engraved` borrows its data, so give it the owned type `string`
+   = note: run `knave doc L0510` for an explanation

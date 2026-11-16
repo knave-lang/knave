@@ -10,3 +10,4 @@ error[L0411]: this value's type would contain itself
   |                               ^^^^^^^ here
   |
   = help: a function cannot be called with itself as its own argument type
+  = note: run `knave doc L0411` for an explanation

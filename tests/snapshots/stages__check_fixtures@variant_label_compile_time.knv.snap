@@ -11,3 +11,5 @@ error[L0316]: enum values only exist at runtime
 7 |
 8 | (defn main () (build))
   |               ------- in this macro call
+  |
+  = note: run `knave doc L0316` for an explanation

@@ -10,3 +10,4 @@ error[L0301]: a docstring is a string
   |         ^ not a string
   |
   = help: write it as a string literal
+  = note: run `knave doc L0301` for an explanation

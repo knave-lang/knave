@@ -8,3 +8,5 @@ error[L0201]: cannot find type `t` in this scope
   |
 4 | (impl sized (vec t) (size (v) (len v)))
   |                  ^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

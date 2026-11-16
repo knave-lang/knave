@@ -11,6 +11,8 @@ warning[L0802]: the van is parked on a link
 ...
 10 | (def first-van (parked "blue van"))
    |                ------------------- in this macro call
+   |
+   = note: run `knave doc L0802` for an explanation
 
 (def first-van "blue van")
 (def second-van "red van")

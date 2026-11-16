@@ -12,6 +12,8 @@ error[L0603]: invalid Rust template: a template with clauses needs a `def`, whos
 4 | |                 (fn ((ref s)) usize))
 5 | |               (str "{0}.len()"))
   | |________________________________^ in this template
+  |
+  = note: run `knave doc L0603` for an explanation
 
 error[L0603]: invalid Rust template: a template with clauses needs a `def`, whose calls give the type that chooses a clause
   --> emit/inline_rust_clauses.knv:8:5
@@ -21,3 +23,5 @@ error[L0603]: invalid Rust template: a template with clauses needs a `def`, whos
 10 | |         (fn ((ref s)) usize))
 11 | |       (str "{0}.len()")))
    | |________________________^ in this template
+   |
+   = note: run `knave doc L0603` for an explanation

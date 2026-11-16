@@ -10,3 +10,4 @@ error[L0301]: this use of `check-library-examples` does not match its shape
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
   |
   = help: write it as `(check-library-examples)`
+  = note: run `knave doc L0301` for an explanation

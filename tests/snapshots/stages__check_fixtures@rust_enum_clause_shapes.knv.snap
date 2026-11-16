@@ -10,6 +10,7 @@ error[L0210]: malformed `enum`
   |         ^^^^^^ this does not fit the shape of `enum`
   |
   = help: write it as `(rust "Path")` or `(rust "Path" bare)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `enum`
  --> check/rust_enum_clause_shapes.knv:3:9
@@ -18,6 +19,7 @@ error[L0210]: malformed `enum`
   |         ^^^^^^^^^^^^^^^^^^^^ this does not fit the shape of `enum`
   |
   = help: write it as `(rust "Path")` or `(rust "Path" bare)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `enum`
  --> check/rust_enum_clause_shapes.knv:5:9
@@ -26,3 +28,4 @@ error[L0210]: malformed `enum`
   |         ^^^^^^^^^^^^^^^^^ this does not fit the shape of `enum`
   |
   = help: write it as `(rust "Path")` or `(rust "Path" bare)`
+  = note: run `knave doc L0210` for an explanation

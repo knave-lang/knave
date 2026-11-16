@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/impl_method_type_error.knv
 ---
 error[L0401]: mismatched types
@@ -10,3 +10,5 @@ error[L0401]: mismatched types
   |    ----         ^^^^^ expected `usize`, found `(mut (vec a))`
   |    |
   |    expected because of this signature
+  |
+  = note: run `knave doc L0401` for an explanation

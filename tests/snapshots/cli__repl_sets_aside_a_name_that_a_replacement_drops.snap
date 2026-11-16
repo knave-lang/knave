@@ -14,3 +14,4 @@ warning[L0249]: set aside `point` after `<input 2>`
   |
   = note: `->point` replaced the input that defined `point`
   = help: enter `point` again to use it
+  = note: run `knave doc L0249` for an explanation

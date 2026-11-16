@@ -13,3 +13,4 @@ help: a field with a similar name exists
    |
 13 |   (assoc leaf :year 2025))
    |                  +
+   = note: run `knave doc L0408` for an explanation

@@ -10,3 +10,4 @@ error[L0211]: `def` is a form, not a value
   |            ^^^ used as a value here
   |
   = help: write it as `(def name value)`
+  = note: run `knave doc L0211` for an explanation

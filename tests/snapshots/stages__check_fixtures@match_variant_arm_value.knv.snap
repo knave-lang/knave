@@ -10,3 +10,4 @@ error[L0436]: `point` names a variant in this arm, not a value
   |                   ^^^^^ names the variant, not a value
   |
   = help: write `shape/point` for the variant's value
+  = note: run `knave doc L0436` for an explanation

@@ -10,6 +10,7 @@ error[L0329]: a header shape is a list that starts with the form's name
   |               ^^^^^^^ not a list that starts with a name
   |
   = help: write it as `(header-shape (form name ...))`
+  = note: run `knave doc L0329` for an explanation
 
 error[L0329]: a header shape is a list that starts with the form's name
   --> expand/header_shape_errors.knv:10:15
@@ -18,6 +19,7 @@ error[L0329]: a header shape is a list that starts with the form's name
    |               ^^ not a list that starts with a name
    |
    = help: write it as `(header-shape (form name ...))`
+   = note: run `knave doc L0329` for an explanation
 
 error[L0329]: a header shape is a list that starts with the form's name
   --> expand/header_shape_errors.knv:12:15
@@ -26,3 +28,4 @@ error[L0329]: a header shape is a list that starts with the form's name
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a list that starts with a name
    |
    = help: write it as `(header-shape (form name ...))`
+   = note: run `knave doc L0329` for an explanation

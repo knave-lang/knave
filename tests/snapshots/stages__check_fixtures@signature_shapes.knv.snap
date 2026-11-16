@@ -10,6 +10,7 @@ warning[L0804]: `bump` changes an argument, so its name should end with `!`
   |       ^^^^ this function changes an argument
   |
   = help: rename it `bump!`
+  = note: run `knave doc L0804` for an explanation
 
 warning[L0804]: `touch` changes an argument, so its name should end with `!`
   --> check/signature_shapes.knv:10:7
@@ -18,6 +19,7 @@ warning[L0804]: `touch` changes an argument, so its name should end with `!`
    |       ^^^^^ this function changes an argument
    |
    = help: rename it `touch!`
+   = note: run `knave doc L0804` for an explanation
 
 warning[L0804]: `touch-counter` changes an argument, so its name should end with `!`
   --> check/signature_shapes.knv:12:7
@@ -26,6 +28,7 @@ warning[L0804]: `touch-counter` changes an argument, so its name should end with
    |       ^^^^^^^^^^^^^ this function changes an argument
    |
    = help: rename it `touch-counter!`
+   = note: run `knave doc L0804` for an explanation
 
 (derive counter clone partial-eq eq hash show)
 (type bump (fn ((mut counter)) unit))

@@ -14,3 +14,5 @@ warning[L0803]: unreachable `match` arm
   |                          -     ^ this arm can never match
   |                          |
   |                          this arm covers it
+  |
+  = note: run `knave doc L0803` for an explanation

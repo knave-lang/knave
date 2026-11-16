@@ -13,6 +13,7 @@ error[L0247]: a `rust` clause must pass its arguments as its template does
   |          ^^^^^^^^^^^^^^ this clause differs in whether `{0}` receives a method call
   |
   = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
+  = note: run `knave doc L0247` for an explanation
 
 error[L0246]: a `rust` with clauses takes one type parameter
  --> expand/rust_trait_clause_errors.knv:8:5
@@ -21,6 +22,7 @@ error[L0246]: a `rust` with clauses takes one type parameter
   |     ^^^^^^^^^^^^^^ this type binds 0 type parameters
   |
   = help: bind one parameter, as in `(where ((s source)) (fn ((ref s)) string))`
+  = note: run `knave doc L0246` for an explanation
 
 error[L0246]: a `rust` with clauses takes one type parameter
   --> expand/rust_trait_clause_errors.knv:13:5
@@ -29,15 +31,20 @@ error[L0246]: a `rust` with clauses takes one type parameter
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ this type binds 2 type parameters
    |
    = help: bind one parameter, as in `(where ((s source)) (fn ((ref s)) string))`
+   = note: run `knave doc L0246` for an explanation
 
 error[L0201]: cannot find type `nosuch` in this scope
   --> expand/rust_trait_clause_errors.knv:19:6
    |
 19 |     (nosuch "count({0})")))
    |      ^^^^^^ not found in this scope
+   |
+   = note: run `knave doc L0201` for an explanation
 
 error[L0212]: expected a type constructor, found `partial-eq`
   --> expand/rust_trait_clause_errors.knv:24:7
    |
 24 |     ((partial-eq i64) "count({0})")))
    |       ^^^^^^^^^^ not a type constructor
+   |
+   = note: run `knave doc L0212` for an explanation

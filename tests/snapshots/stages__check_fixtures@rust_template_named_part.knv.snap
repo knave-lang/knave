@@ -10,3 +10,4 @@ error[L0438]: a `rust` template needs one variant with a part for each placehold
   |   ^^^^^^^^^^^^^^^^^^^ this template needs positional parts
   |
   = help: write one positional part for each placeholder, as in `(enum (pair a b) (rust "({0}, {1})") (of a b))`
+  = note: run `knave doc L0438` for an explanation

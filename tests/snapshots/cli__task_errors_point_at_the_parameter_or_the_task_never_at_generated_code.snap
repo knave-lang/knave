@@ -9,6 +9,7 @@ error[L0404]: `(vec i64)` does not implement `from-str`
   |                  ^^ this needs `from-str`
   |
   = note: `from-str` is implemented for: bool, char, string, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+  = note: run `knave doc L0404` for an explanation
 ---
 error[L0404]: `(ref str)` does not implement `from-str`
  --> tasks/hi.knv:5:14
@@ -17,6 +18,7 @@ error[L0404]: `(ref str)` does not implement `from-str`
   |              ^^^ this needs `from-str`
   |
   = note: `from-str` is implemented for: bool, char, string, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+  = note: run `knave doc L0404` for an explanation
 ---
 error[L0404]: `i64` does not implement `task-outcome`
  --> tasks/add.knv:5:10
@@ -26,6 +28,7 @@ error[L0404]: `i64` does not implement `task-outcome`
   |
   = note: `task-outcome` is implemented for: unit, (where (a (e display)) (result a e))
   = help: end the task's body with a print or another call that returns `unit`, or return a `result`
+  = note: run `knave doc L0404` for an explanation
 ---
 error[L0361]: the only form of task `docless` is a string, so it is the task's body, not its docstring
  --> tasks/docless.knv:5:21
@@ -34,12 +37,15 @@ error[L0361]: the only form of task `docless` is a string, so it is the task's b
   |                     ^^^^^^^^^^^^^^^^^^ this string is the body
   |
   = help: write the task's body after the docstring
+  = note: run `knave doc L0361` for an explanation
 ---
 error[L0406]: the literal `-1` does not fit in `u16`
  --> tasks/d.knv:5:13
   |
 5 | (deftask d (:port u16 -1) (println port))
   |             ^^^^^ out of range for `u16`
+  |
+  = note: run `knave doc L0406` for an explanation
 ---
 error[L0404]: `string` does not implement `number`
  --> tasks/area.knv:5:16
@@ -48,3 +54,4 @@ error[L0404]: `string` does not implement `number`
   |                ^^^^ this needs `number`
   |
   = note: `number` is implemented for: i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+  = note: run `knave doc L0404` for an explanation

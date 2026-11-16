@@ -10,3 +10,4 @@ error[L0225]: `{1}` names no type parameter
   |         ^^^^^^^^^^^^ this type has 1 type parameter
   |
   = help: declare the type parameters on the name, as in `(enum (pair a b) ...)`
+  = note: run `knave doc L0225` for an explanation

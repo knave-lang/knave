@@ -10,3 +10,4 @@ error[L0404]: `point` does not implement `eq`
    |                   ^^^^^^^^^^^^^ this needs `eq`
    |
    = note: `point` cannot derive `eq`: field `x` is `f64`
+   = note: run `knave doc L0404` for an explanation

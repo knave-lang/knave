@@ -8,3 +8,5 @@ error[L0401]: mismatched types
   |
 4 |   (assert (= (len "ab") "two")))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `str`
+  |
+  = note: run `knave doc L0401` for an explanation

@@ -13,3 +13,4 @@ help: write the type with `the`, and replace each `_` with a type
    |
 32 |   (println (link (->wrapper 1 (the (vec _) (vec))) (vec))))
    |                               ++++++++++++      +
+   = note: run `knave doc L0407` for an explanation

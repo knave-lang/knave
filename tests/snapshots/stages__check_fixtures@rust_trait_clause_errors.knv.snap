@@ -12,6 +12,7 @@ error[L0464]: this clause can never be chosen
   |      ^^^ an earlier clause covers this target
   |
   = help: move the narrower clause first
+  = note: run `knave doc L0464` for an explanation
 
 error[L0464]: this clause can never be chosen
   --> check/rust_trait_clause_errors.knv:11:6
@@ -22,6 +23,7 @@ error[L0464]: this clause can never be chosen
    |      ^^^ an earlier clause has this target
    |
    = help: remove the repeated clause
+   = note: run `knave doc L0464` for an explanation
 
 error[L0464]: this clause can never be chosen
   --> check/rust_trait_clause_errors.knv:17:6
@@ -32,6 +34,7 @@ error[L0464]: this clause can never be chosen
    |      ^^^ an earlier clause has this target
    |
    = help: remove the repeated clause
+   = note: run `knave doc L0464` for an explanation
 
 error[L0464]: this clause can never be chosen
   --> check/rust_trait_clause_errors.knv:23:6
@@ -42,6 +45,7 @@ error[L0464]: this clause can never be chosen
    |      ^^^ an earlier clause covers this target
    |
    = help: move the narrower clause first
+   = note: run `knave doc L0464` for an explanation
 
 error[L0464]: this clause can never be chosen
   --> check/rust_trait_clause_errors.knv:40:6
@@ -52,6 +56,7 @@ error[L0464]: this clause can never be chosen
    |      ^^^^^^ an earlier clause covers this target
    |
    = help: move the narrower clause first
+   = note: run `knave doc L0464` for an explanation
 
 error[L0449]: a trait is a type only inside `(box ...)`
   --> check/rust_trait_clause_errors.knv:42:39
@@ -60,3 +65,4 @@ error[L0449]: a trait is a type only inside `(box ...)`
    |                                       ^^^ `ord` is a trait
    |
    = help: write `(box ord)` to box it as a trait object
+   = note: run `knave doc L0449` for an explanation

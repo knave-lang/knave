@@ -10,6 +10,7 @@ error[L0328]: a docstring goes after the parameter list
   |                  ^^^^^ a docstring in place of the parameter list
   |
   = help: write it as the first body form, after the parameter list
+  = note: run `knave doc L0328` for an explanation
 
 error[L0201]: cannot find `fooo` in this scope
  --> expand/failed_user_definer_typo.knv:7:24
@@ -22,3 +23,4 @@ help: a name with a similar spelling exists
 7 - (defn main () (println fooo))
 7 + (defn main () (println foo))
   |
+  = note: run `knave doc L0201` for an explanation

@@ -10,3 +10,4 @@ error[L0404]: `value` does not implement `clone`
   |          ^^^^^^^^^^^^^^ this needs `clone`
   |
   = note: `value` cannot derive `clone`: variant `file` holds `file`
+  = note: run `knave doc L0404` for an explanation

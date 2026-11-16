@@ -14,3 +14,4 @@ error[L0456]: cannot choose which implementor of `garage` runs `score`
    |
    = note: a call picks an implementor from the type of a parameter or result that is `self`
    = help: add `(ref self)` as the first parameter of `score`, as in `(where (item) (fn ((ref self) item) i64))`
+   = note: run `knave doc L0456` for an explanation

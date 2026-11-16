@@ -10,6 +10,7 @@ error[L0328]: a docstring goes after the parameter list
   |                     ^^^^^ a docstring in place of the parameter list
   |
   = help: write it as the first body form, after the parameter list
+  = note: run `knave doc L0328` for an explanation
 
 error[L0328]: a docstring goes after the parameter list
  --> expand/failed_body_definer_annotated_name.knv:5:30
@@ -18,6 +19,7 @@ error[L0328]: a docstring goes after the parameter list
   |                              ^^^^^ a docstring in place of the parameter list
   |
   = help: write it as the first body form, after the parameter list
+  = note: run `knave doc L0328` for an explanation
 
 error[L0328]: a docstring goes after the parameter list
  --> expand/failed_body_definer_annotated_name.knv:8:11
@@ -26,3 +28,4 @@ error[L0328]: a docstring goes after the parameter list
   |           ^^^^^ a docstring in place of the parameter list
   |
   = help: write it as the first body form, after the parameter list
+  = note: run `knave doc L0328` for an explanation

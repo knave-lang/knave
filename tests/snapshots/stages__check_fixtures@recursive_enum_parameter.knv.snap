@@ -12,3 +12,4 @@ error[L0439]: type parameter `a` is only used recursively
   |                           - first recursive use
   |
   = help: use `a` in a payload outside `wrapped`, or remove it
+  = note: run `knave doc L0439` for an explanation

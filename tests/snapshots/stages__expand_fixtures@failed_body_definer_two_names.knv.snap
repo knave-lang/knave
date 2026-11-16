@@ -8,3 +8,5 @@ error[L0301]: no names today
    |
 10 |   (two-names left right)
    |              ^^^^ here
+   |
+   = note: run `knave doc L0301` for an explanation

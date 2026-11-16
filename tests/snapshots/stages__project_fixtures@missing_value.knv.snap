@@ -10,3 +10,4 @@ error[L0705]: `:version` has no value
   |                     ^^^^^^^^ expected a value after this key
   |
   = help: write the value right after `:version`
+  = note: run `knave doc L0705` for an explanation

@@ -8,15 +8,21 @@ error[L0302]: this macro returned a boolean instead of code
   |
 8 |   (yes)
   |   ^^^^^ in this macro call
+  |
+  = note: run `knave doc L0302` for an explanation
 
 error[L0302]: this macro returned a boolean instead of code
  --> expand/macro_results_of_different_macros.knv:9:3
   |
 9 |   (no)
   |   ^^^^ in this macro call
+  |
+  = note: run `knave doc L0302` for an explanation
 
 error[L0302]: this macro returned a boolean instead of code
   --> expand/macro_results_of_different_macros.knv:10:3
    |
 10 |   (maybe))
    |   ^^^^^^^ in this macro call
+   |
+   = note: run `knave doc L0302` for an explanation

@@ -11,6 +11,7 @@ error[L0506]: `names` is taken as a reference, so this mutable borrow cannot pas
    |
    = note: the callee's body decides whether the parameter takes a borrow
    = help: pass the value without `mut`, or write the parameter's type
+   = note: run `knave doc L0506` for an explanation
 
 error[L0506]: `x` is taken as a mutable reference, so this borrow cannot pass
   --> check/written_mode_errors.knv:13:10
@@ -20,3 +21,4 @@ error[L0506]: `x` is taken as a mutable reference, so this borrow cannot pass
    |
    = note: the callee's body decides whether the parameter takes a borrow
    = help: pass the value without `ref`, or write the parameter's type
+   = note: run `knave doc L0506` for an explanation

@@ -15,6 +15,7 @@ error[L0510]: cannot return a borrow of a local value
   |                    ^^^^^^^^^^^^^ this borrows a local value
   |
   = help: the field `make` of `car` borrows its data, so give it the owned type `string`
+  = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a local value
   --> check/closure_returns_struct_borrow.knv:16:26
@@ -28,3 +29,4 @@ error[L0510]: cannot return a borrow of a local value
    |                          ^^^^^^^^^^^^^ this borrows a local value
    |
    = help: the field `make` of `car` borrows its data, so give it the owned type `string`
+   = note: run `knave doc L0510` for an explanation

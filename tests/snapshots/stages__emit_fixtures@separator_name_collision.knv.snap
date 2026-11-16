@@ -13,3 +13,4 @@ error[L0602]: `a-b` and `a_b` both become `a_b` in Rust
   |       ^^^ this becomes `a_b`
   |
   = help: rename one of them
+  = note: run `knave doc L0602` for an explanation

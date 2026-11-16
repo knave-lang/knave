@@ -16,6 +16,7 @@ help: clone the value if both places need it
 8 -   (store name)
 8 +   (store (clone name))
   |
+  = note: run `knave doc L0501` for an explanation
 
 error[L0503]: this value is borrowed, but the call needs to own it
   --> check/ownership_errors.knv:12:10
@@ -24,6 +25,7 @@ error[L0503]: this value is borrowed, but the call needs to own it
    |          ^^^^^^^^^^^^^^^ only a borrow is available here
    |
    = help: pass a copy with `(clone ...)`
+   = note: run `knave doc L0503` for an explanation
 
 error[L0501]: use of moved value `name`
   --> check/ownership_errors.knv:19:10
@@ -38,6 +40,7 @@ help: clone the value if both places need it
 18 -   (if flag (store name) (store name))
 18 +   (if flag (store (clone name)) (store name))
    |
+   = note: run `knave doc L0501` for an explanation
 
 error[L0501]: use of moved value `take`
   --> check/ownership_errors.knv:26:15
@@ -48,3 +51,4 @@ error[L0501]: use of moved value `take`
    |               ^^^^ value used here after it moved
    |
    = help: this closure moves a captured value, so it cannot be copied
+   = note: run `knave doc L0501` for an explanation

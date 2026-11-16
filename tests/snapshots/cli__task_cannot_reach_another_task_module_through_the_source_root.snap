@@ -10,9 +10,12 @@ error[L0204]: cannot find module `tasks/util`
   |
   = note: `tasks/util.knv` exists, under a directory a task cannot reach this way
   = help: a task uses a module of `tasks/` by its path from `tasks/`, and cannot use a module under `tests/`
+  = note: run `knave doc L0204` for an explanation
 
 error[L0201]: cannot find `h` in this scope
  --> tasks/t.knv:3:24
   |
 3 | (deftask t () (println h))
   |                        ^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

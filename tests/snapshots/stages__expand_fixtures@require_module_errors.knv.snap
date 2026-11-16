@@ -8,24 +8,32 @@ error[L0205]: module `code` does not export `pinned-at`
   |
 1 | (use code first module-symbol pinned-at require-module
   |                               ^^^^^^^^^ not exported
+  |
+  = note: run `knave doc L0205` for an explanation
 
 error[L0205]: module `code` does not export `require-module`
  --> expand/require_module_errors.knv:1:41
   |
 1 | (use code first module-symbol pinned-at require-module
   |                                         ^^^^^^^^^^^^^^ not exported
+  |
+  = note: run `knave doc L0205` for an explanation
 
 error[L0205]: module `code` does not export `require-modules`
  --> expand/require_module_errors.knv:4:11
   |
 4 | (use code require-modules)
   |           ^^^^^^^^^^^^^^^ not exported
+  |
+  = note: run `knave doc L0205` for an explanation
 
 error[L0205]: module `prelude/syntax` does not export `pinned-at`
  --> expand/require_module_errors.knv:5:21
   |
 5 | (use prelude/syntax pinned-at)
   |                     ^^^^^^^^^ not exported
+  |
+  = note: run `knave doc L0205` for an explanation
 
 error[L0204]: cannot find module `noted/birds`
   --> expand/require_module_errors.knv:15:1
@@ -37,6 +45,7 @@ error[L0204]: cannot find module `noted/birds`
    |             -------------- in this macro call
    |
    = help: a module path names a file relative to the root directory, without its extension
+   = note: run `knave doc L0204` for an explanation
 
 error[L0204]: cannot find module `prelude/internal/macros`
   --> expand/require_module_errors.knv:27:1
@@ -48,6 +57,7 @@ error[L0204]: cannot find module `prelude/internal/macros`
    |               --------------- in this macro call
    |
    = help: a module path names a file relative to the root directory, without its extension
+   = note: run `knave doc L0204` for an explanation
 
 error[L0255]: `prelude/internal/code` is internal to the prelude
   --> expand/require_module_errors.knv:31:6
@@ -57,6 +67,7 @@ error[L0255]: `prelude/internal/code` is internal to the prelude
    |
    = note: it holds helpers of the prelude's own forms
    = help: remove this `use`
+   = note: run `knave doc L0255` for an explanation
 
 error[L0204]: cannot find module `prelude/internal/code`
   --> expand/require_module_errors.knv:35:40
@@ -68,3 +79,4 @@ error[L0204]: cannot find module `prelude/internal/code`
    |                    ---------------------- in this macro call
    |
    = help: a module path names a file relative to the root directory, without its extension
+   = note: run `knave doc L0204` for an explanation

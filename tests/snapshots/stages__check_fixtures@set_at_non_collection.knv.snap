@@ -8,3 +8,5 @@ error[L0401]: mismatched types
   |
 5 |   (set! (at (new cell (alive false)) 0)
   |             ^^^^^^^^^^^^^^^^^^^^^^^^ expected a collection, found cell
+  |
+  = note: run `knave doc L0401` for an explanation

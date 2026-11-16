@@ -13,3 +13,4 @@ error[L0301]: helper is not done
    |   --------- in this macro call
    |
    = help: finish it
+   = note: run `knave doc L0301` for an explanation

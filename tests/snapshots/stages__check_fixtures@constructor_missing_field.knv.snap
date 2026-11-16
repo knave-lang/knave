@@ -8,3 +8,5 @@ error[L0409]: missing field `email` in `user`
   |
 8 |   (local ana (->user :name "ana"))
   |              ^^^^^^^^^^^^^^^^^^^^ each missing field needs a value
+  |
+  = note: run `knave doc L0409` for an explanation

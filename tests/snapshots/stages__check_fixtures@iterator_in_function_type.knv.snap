@@ -11,6 +11,7 @@ error[L0458]: Rust cannot name the type `(iterator (ref i64))` here
   |
   = note: Rust names this type only as the type of a function's own parameter or result
   = help: pass a value whose type Rust can name instead, such as the collection the items come from
+  = note: run `knave doc L0458` for an explanation
 
 error[L0458]: Rust cannot name the type `(iterator i64)` here
  --> check/iterator_in_function_type.knv:5:12
@@ -20,6 +21,7 @@ error[L0458]: Rust cannot name the type `(iterator i64)` here
   |
   = note: Rust names this type only as the type of a function's own parameter or result
   = help: pass a value whose type Rust can name instead, such as the collection the items come from
+  = note: run `knave doc L0458` for an explanation
 
 error[L0458]: Rust cannot name the type `(iterator (ref a))` here
  --> check/iterator_in_function_type.knv:8:20
@@ -29,6 +31,7 @@ error[L0458]: Rust cannot name the type `(iterator (ref a))` here
   |
   = note: Rust names this type only as the type of a function's own parameter or result
   = help: pass a value whose type Rust can name instead, such as the collection the items come from
+  = note: run `knave doc L0458` for an explanation
 
 error[L0458]: Rust cannot name the type `(iterator a)` here
   --> check/iterator_in_function_type.knv:13:3
@@ -38,6 +41,7 @@ error[L0458]: Rust cannot name the type `(iterator a)` here
    |
    = note: Rust names this type only as the type of a function's own parameter or result
    = help: pass a value whose type Rust can name instead, such as the collection the items come from
+   = note: run `knave doc L0458` for an explanation
 
 error[L0458]: Rust cannot name the type `(iterator (ref i64))` here
   --> check/iterator_in_function_type.knv:16:8
@@ -47,6 +51,7 @@ error[L0458]: Rust cannot name the type `(iterator (ref i64))` here
    |
    = note: Rust names this type only as the type of a function's own parameter or result
    = help: pass a value whose type Rust can name instead, such as the collection the items come from
+   = note: run `knave doc L0458` for an explanation
 
 error[L0458]: Rust cannot name the type `(iterator (ref i64))` here
   --> check/iterator_in_function_type.knv:25:5
@@ -56,3 +61,4 @@ error[L0458]: Rust cannot name the type `(iterator (ref i64))` here
    |
    = note: Rust names this type only as the type of a function's own parameter or result
    = help: pass a value whose type Rust can name instead, such as the collection the items come from
+   = note: run `knave doc L0458` for an explanation

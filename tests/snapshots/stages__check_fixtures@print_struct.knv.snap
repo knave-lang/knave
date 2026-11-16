@@ -10,3 +10,4 @@ error[L0404]: `point` does not implement `display`
   |                        ^^^^^^^^^^^^^ this needs `display`
   |
   = help: write `(display type (value) ...)`, or print the value with `prn`
+  = note: run `knave doc L0404` for an explanation

@@ -13,3 +13,4 @@ error[L0301]: a field must start with `:`
   |                 ^^^^^^^^^^ here
   |
   = help: write each field as `:name type`, as in (defstruct point :x f64 :y f64)
+  = note: run `knave doc L0301` for an explanation

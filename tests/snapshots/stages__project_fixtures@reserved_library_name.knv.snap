@@ -11,6 +11,7 @@ error[L0720]: `code` cannot name a library
   |
   = note: `prelude`, `kernel` and `code` name the compiler's own modules
   = help: give the library another name
+  = note: run `knave doc L0720` for an explanation
 
 error[L0720]: `prelude` cannot name a library
  --> project/reserved_library_name.knv:3:25
@@ -20,3 +21,4 @@ error[L0720]: `prelude` cannot name a library
   |
   = note: `prelude`, `kernel` and `code` name the compiler's own modules
   = help: give the library another name
+  = note: run `knave doc L0720` for an explanation

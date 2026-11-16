@@ -11,6 +11,7 @@ warning[L0217]: `point-eq` binds a Rust path that `eq` already binds
   |
   = note: two traits that bind one Rust path can disagree about its implementors
   = help: use `eq`, or give `point-eq` a different Rust path
+  = note: run `knave doc L0217` for an explanation
 
 error[L0421]: `point` does not derive `point-eq`
  --> check/unsupported_trait_claim.knv:5:27
@@ -19,3 +20,4 @@ error[L0421]: `point` does not derive `point-eq`
   |                           ^^^^^ this struct does not derive `point-eq`
   |
   = help: remove `point` from this `rust-trait`, or list a type that Rust implements `point-eq` for
+  = note: run `knave doc L0421` for an explanation

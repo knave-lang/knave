@@ -10,3 +10,4 @@ error[L0426]: `with` is only allowed in a Rust trait's list of implementors
   |                   ^^^^^^^^^^^^ not allowed here
   |
   = help: write `(with type type)` in the list of a Rust trait's implementors
+  = note: run `knave doc L0426` for an explanation

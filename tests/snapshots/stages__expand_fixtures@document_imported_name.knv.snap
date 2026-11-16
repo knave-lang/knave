@@ -10,3 +10,4 @@ error[L0351]: this module documents `helper` but does not define it
   |            ^^^^^^ not defined in this module
   |
   = help: define `helper` in this module, or move this `document` to the module that defines it
+  = note: run `knave doc L0351` for an explanation

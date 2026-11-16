@@ -7,3 +7,5 @@ error[L0401]: mismatched types
   |
 2 | (area 2 "3")
   |         ^^^ expected an integer, found `str`
+  |
+  = note: run `knave doc L0401` for an explanation

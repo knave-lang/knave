@@ -8,21 +8,29 @@ error[L0201]: cannot find `missing-name` in this scope
   |
 3 | (def unbound-helper (fn () missing-name))
   |                            ^^^^^^^^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation
 
 error[L0309]: the macro `calls-unbound-helper` has errors, so this call cannot expand
   --> expand/broken_helper.knv:10:1
    |
 10 | (calls-unbound-helper)
    | ^^^^^^^^^^^^^^^^^^^^^^ this call needs the macro
+   |
+   = note: run `knave doc L0309` for an explanation
 
 error[L0308]: `unbound-helper` has errors, so macro code cannot use it
   --> expand/broken_helper.knv:13:18
    |
 13 |   (macro (form) (unbound-helper) (list)))
    |                  ^^^^^^^^^^^^^^ used by macro code here
+   |
+   = note: run `knave doc L0308` for an explanation
 
 error[L0307]: `needs-cyclic-helper` depends on itself at compile time
   --> expand/broken_helper.knv:18:10
    |
 18 |   (fn () (needs-cyclic-helper)))
    |          ^^^^^^^^^^^^^^^^^^^^^ needed here while it is still being computed
+   |
+   = note: run `knave doc L0307` for an explanation

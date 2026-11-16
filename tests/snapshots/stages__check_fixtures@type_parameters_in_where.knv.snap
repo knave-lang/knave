@@ -10,3 +10,4 @@ error[L0219]: `struct` names its type parameters on its name
   |          ^^^^^ this `where` names them in the body
   |
   = help: write `(struct (pair a b) (first a) (second b))`
+  = note: run `knave doc L0219` for an explanation

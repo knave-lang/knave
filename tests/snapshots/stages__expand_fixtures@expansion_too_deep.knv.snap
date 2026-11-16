@@ -10,6 +10,7 @@ error[L0305]: macro expansion did not finish
   |                   ^^^^^^^^^^^ expanding this form keeps producing more macro calls
   |
   = help: check that every recursive macro has a case that stops
+  = note: run `knave doc L0305` for an explanation
 
 error[L0305]: macro expansion did not finish
  --> expand/expansion_too_deep.knv:7:15
@@ -18,3 +19,4 @@ error[L0305]: macro expansion did not finish
   |               ^^^^^^^^^^^ expanding this form keeps producing more macro calls
   |
   = help: check that every recursive macro has a case that stops
+  = note: run `knave doc L0305` for an explanation

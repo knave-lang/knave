@@ -9,3 +9,4 @@ error[L0216]: `recur` is not inside a function
   | ^^^^^^^^^ there is no function here for `recur` to jump back to
   |
   = help: write `recur` inside a `fn` body
+  = note: run `knave doc L0216` for an explanation

@@ -11,6 +11,7 @@ error[L0458]: Rust cannot name the type `(iterator (ref i64))` here
   |
   = note: Rust names this type only as the type of a function's own parameter or result
   = help: pass a value whose type Rust can name instead, such as the collection the items come from
+  = note: run `knave doc L0458` for an explanation
 
 warning[L0803]: unreachable `match` arm
  --> check/iterator_function_field_beside_move_and_warning.knv:7:21
@@ -19,6 +20,8 @@ warning[L0803]: unreachable `match` arm
   |             -       ^^^^^ this arm can never match
   |             |
   |             this arm covers it
+  |
+  = note: run `knave doc L0803` for an explanation
 
 error[L0501]: use of moved value `years`
   --> check/iterator_function_field_beside_move_and_warning.knv:16:17
@@ -33,3 +36,4 @@ help: clone the value if both places need it
 15 -   (local moved (consume years))
 15 +   (local moved (consume (clone years)))
    |
+   = note: run `knave doc L0501` for an explanation

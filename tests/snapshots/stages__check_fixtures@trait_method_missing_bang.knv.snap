@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/trait_method_missing_bang.knv
 ---
 warning[L0804]: `put` changes an argument, so its name should end with `!`
@@ -10,6 +10,7 @@ warning[L0804]: `put` changes an argument, so its name should end with `!`
   |    ^^^ this function changes an argument
   |
   = help: rename it `put!`
+  = note: run `knave doc L0804` for an explanation
 
 (derive bag clone partial-eq eq hash show)
 (type main (fn () unit))

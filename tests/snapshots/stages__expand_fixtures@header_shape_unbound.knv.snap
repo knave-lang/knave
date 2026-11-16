@@ -13,9 +13,12 @@ help: a name with a similar spelling exists
   |
 6 | (header-shape (unless-zero value))
   |                     +
+  = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `no-such-form` in this scope
  --> expand/header_shape_unbound.knv:8:16
   |
 8 | (header-shape (no-such-form name))
   |                ^^^^^^^^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

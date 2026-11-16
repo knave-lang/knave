@@ -11,3 +11,5 @@ error[L0401]: mismatched types
 ...
 6 |   (->deck :name "The Deck" :cards (make)))
   |                                   ------ `build-deck` calls its parameter `make` here, so it expects a function
+  |
+  = note: run `knave doc L0401` for an explanation

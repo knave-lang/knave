@@ -13,3 +13,4 @@ error[L0301]: this pattern variable needs `...` after it
   |               ---------- in this macro call
   |
   = help: write `...` after it
+  = note: run `knave doc L0301` for an explanation

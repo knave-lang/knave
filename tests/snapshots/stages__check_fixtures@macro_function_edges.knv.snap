@@ -10,6 +10,7 @@ error[L0304]: `swapped` is a macro, not a value
    |          ^^^^^^^ used as a value here
    |
    = help: a macro can only be called; pass a function instead
+   = note: run `knave doc L0304` for an explanation
 
 error[L0304]: `mixed` is a macro, not a value
   --> check/macro_function_edges.knv:36:10
@@ -22,6 +23,7 @@ help: a macro can only be called; pass `add` instead
 36 - (def two mixed)
 36 + (def two add)
    |
+   = note: run `knave doc L0304` for an explanation
 
 error[L0304]: `partial` is a macro, not a value
   --> check/macro_function_edges.knv:38:12
@@ -30,6 +32,7 @@ error[L0304]: `partial` is a macro, not a value
    |            ^^^^^^^ used as a value here
    |
    = help: a macro can only be called; pass a function instead
+   = note: run `knave doc L0304` for an explanation
 
 error[L0304]: `unary` is a macro, not a value
   --> check/macro_function_edges.knv:40:11
@@ -38,6 +41,7 @@ error[L0304]: `unary` is a macro, not a value
    |           ^^^^^ used as a value here
    |
    = help: a macro can only be called; pass a function instead
+   = note: run `knave doc L0304` for an explanation
 
 error[L0304]: `conditional` is a macro, not a value
   --> check/macro_function_edges.knv:42:11
@@ -46,6 +50,7 @@ error[L0304]: `conditional` is a macro, not a value
    |           ^^^^^^^^^^^ used as a value here
    |
    = help: a macro can only be called; pass a function instead
+   = note: run `knave doc L0304` for an explanation
 
 error[L0304]: `nested` is a macro, not a value
   --> check/macro_function_edges.knv:44:10
@@ -54,6 +59,7 @@ error[L0304]: `nested` is a macro, not a value
    |          ^^^^^^ used as a value here
    |
    = help: a macro can only be called; pass a function instead
+   = note: run `knave doc L0304` for an explanation
 
 error[L0304]: `quoted-thing` is a macro, not a value
   --> check/macro_function_edges.knv:46:12
@@ -62,6 +68,7 @@ error[L0304]: `quoted-thing` is a macro, not a value
    |            ^^^^^^^^^^^^ used as a value here
    |
    = help: a macro can only be called; pass a function instead
+   = note: run `knave doc L0304` for an explanation
 
 error[L0304]: `broken` is a macro, not a value
   --> check/macro_function_edges.knv:48:12
@@ -70,6 +77,7 @@ error[L0304]: `broken` is a macro, not a value
    |            ^^^^^^ used as a value here
    |
    = help: a macro can only be called; pass a function instead
+   = note: run `knave doc L0304` for an explanation
 
 error[L0210]: malformed `local`
   --> check/macro_function_edges.knv:51:3
@@ -78,12 +86,15 @@ error[L0210]: malformed `local`
    |   ^^^^^^^^^^^ this does not fit the shape of `local`
    |
    = help: write it as `(local name value)`
+   = note: run `knave doc L0210` for an explanation
 
 error[L0201]: cannot find `barr` in this scope
   --> check/macro_function_edges.knv:52:4
    |
 52 |   (barr))
    |    ^^^^ not found in this scope
+   |
+   = note: run `knave doc L0201` for an explanation
 
 error[L0304]: `shadowed-plus` is a macro, not a value
   --> check/macro_function_edges.knv:56:12
@@ -92,3 +103,4 @@ error[L0304]: `shadowed-plus` is a macro, not a value
    |            ^^^^^^^^^^^^^ used as a value here
    |
    = help: a macro can only be called; pass a function instead
+   = note: run `knave doc L0304` for an explanation

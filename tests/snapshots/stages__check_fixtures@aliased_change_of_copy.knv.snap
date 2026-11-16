@@ -12,3 +12,4 @@ error[L0516]: this call changes `corner` through two arguments at once
    |                this argument already changes `corner`
    |
    = help: pass a different place to each argument that the call changes
+   = note: run `knave doc L0516` for an explanation

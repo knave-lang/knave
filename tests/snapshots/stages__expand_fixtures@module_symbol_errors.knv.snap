@@ -13,3 +13,4 @@ error[L0204]: cannot find module `missing/module`
   |           -------------- in this macro call
   |
   = help: a module path names a file relative to the root directory, without its extension
+  = note: run `knave doc L0204` for an explanation

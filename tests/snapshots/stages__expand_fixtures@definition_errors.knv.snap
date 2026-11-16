@@ -10,6 +10,7 @@ error[L0207]: expected a definition at module level
   | ^^^^^^^^^^^^^ this is not a definition
   |
   = help: put expressions inside a function, such as `(def run (fn () ...))`
+  = note: run `knave doc L0207` for an explanation
 
 error[L0210]: malformed `struct`
  --> expand/definition_errors.knv:3:1
@@ -18,6 +19,7 @@ error[L0210]: malformed `struct`
   | ^^^^^^^^ this does not fit the shape of `struct`
   |
   = help: write it as `(struct (name parameter ...) (field type) ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `rust-trait`
  --> expand/definition_errors.knv:5:1
@@ -26,6 +28,7 @@ error[L0210]: malformed `rust-trait`
   | ^^^^^^^^^^^^ this does not fit the shape of `rust-trait`
   |
   = help: write it as `(rust-trait name "Path" (requires trait ...)? (method name type)? (help "text")? type ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0236]: `println` cannot have a type signature here
  --> expand/definition_errors.knv:7:7
@@ -34,6 +37,7 @@ error[L0236]: `println` cannot have a type signature here
   |       ^^^^^^^ not a definition of this module
   |
   = help: a `type` signature must sit in the module whose `def` it describes
+  = note: run `knave doc L0236` for an explanation
 
 error[L0210]: malformed `struct`
  --> expand/definition_errors.knv:9:14
@@ -42,6 +46,7 @@ error[L0210]: malformed `struct`
   |              ^^^^^ this does not fit the shape of `struct`
   |
   = help: write it as `(struct (name parameter ...) (field type) ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `struct`
   --> expand/definition_errors.knv:11:16
@@ -50,3 +55,4 @@ error[L0210]: malformed `struct`
    |                ^^^^^^^ this does not fit the shape of `struct`
    |
    = help: write it as `(struct (name parameter ...) (field type) ...)`
+   = note: run `knave doc L0210` for an explanation

@@ -10,12 +10,15 @@ error[L0210]: malformed `def`
   | ^^^^^^^ this does not fit the shape of `def`
   |
   = help: write it as `(def name value)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0212]: expected a name, found `1`
  --> expand/def_malformed.knv:3:6
   |
 3 | (def 1 2)
   |      ^ not a name
+  |
+  = note: run `knave doc L0212` for an explanation
 
 error[L0210]: malformed `def`
  --> expand/def_malformed.knv:5:1
@@ -24,6 +27,7 @@ error[L0210]: malformed `def`
   | ^^^^^ this does not fit the shape of `def`
   |
   = help: write it as `(def name value)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `def`
  --> expand/def_malformed.knv:7:1
@@ -33,6 +37,7 @@ error[L0210]: malformed `def`
   | |______^ this does not fit the shape of `def`
   |
   = help: write it as `(def name value)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `def`
   --> expand/def_malformed.knv:10:1
@@ -43,9 +48,12 @@ error[L0210]: malformed `def`
    | |______^ this does not fit the shape of `def`
    |
    = help: write it as `(def name value)`
+   = note: run `knave doc L0210` for an explanation
 
 error[L0212]: expected a name, found `3`
   --> expand/def_malformed.knv:14:6
    |
 14 | (def 3
    |      ^ not a name
+   |
+   = note: run `knave doc L0212` for an explanation

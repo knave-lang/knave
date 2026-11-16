@@ -8,6 +8,8 @@ error[L0401]: mismatched types
   |
 9 |   (later? 2020 (mut year)))
   |                ^^^^^^^^^^ expected an integer, found `(mut _)`
+  |
+  = note: run `knave doc L0401` for an explanation
 
 error[L0419]: this argument is a copy, so changing it changes nothing
   --> check/generic_mut_beside_literal.knv:13:22
@@ -16,3 +18,4 @@ error[L0419]: this argument is a copy, so changing it changes nothing
    |                      ^^^^ this is a copy, not a place
    |
    = help: pass a local or a field, because a call returns a copy
+   = note: run `knave doc L0419` for an explanation

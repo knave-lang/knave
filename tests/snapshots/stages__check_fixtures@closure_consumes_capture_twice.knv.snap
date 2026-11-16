@@ -15,3 +15,4 @@ error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
    |
    = note: `values` is a lazy pipeline, so it runs once
    = help: collect it if both places need its items, as in `(collect values)`, or write a function that rebuilds it
+   = note: run `knave doc L0509` for an explanation

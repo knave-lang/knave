@@ -13,3 +13,4 @@ error[L0505]: use of moved value `x`
   |
   = note: the signature writes `a` without `copy`, and a written signature is exact
   = help: add a `copy` bound to the signature: `(a copy)`
+  = note: run `knave doc L0505` for an explanation

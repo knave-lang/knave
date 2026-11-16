@@ -14,3 +14,4 @@ help: a name with a similar spelling exists
 2 -   (println (infer (nope 1))))
 2 +   (println (infer (none 1))))
   |
+  = note: run `knave doc L0201` for an explanation

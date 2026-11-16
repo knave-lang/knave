@@ -10,6 +10,7 @@ error[L0429]: `try` needs a result or an option
   |                ^^^^^^^^^^ this is `unit`
   |
   = help: write `try` around a result or an option value
+  = note: run `knave doc L0429` for an explanation
 
 error[L0429]: `try` needs a result or an option
  --> check/try_not_result_or_option.knv:7:23
@@ -18,3 +19,4 @@ error[L0429]: `try` needs a result or an option
   |                       ^^^^^^^^^^^^^ this is `(vec _)`
   |
   = help: write `try` around a result or an option value
+  = note: run `knave doc L0429` for an explanation

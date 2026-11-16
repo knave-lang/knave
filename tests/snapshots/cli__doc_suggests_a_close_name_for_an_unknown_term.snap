@@ -13,3 +13,4 @@ help: a name with a similar spelling exists
 1 - defm
 1 + def
   |
+  = note: run `knave doc L0201` for an explanation

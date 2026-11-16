@@ -10,3 +10,4 @@ error[L0728]: library `lib-outside` names a `:lib` outside its checkout
   |
   = note: a library fetched from git may only name files inside its own checkout
   = help: ask the library's authors to use a relative `:lib` without `..`
+  = note: run `knave doc L0728` for an explanation

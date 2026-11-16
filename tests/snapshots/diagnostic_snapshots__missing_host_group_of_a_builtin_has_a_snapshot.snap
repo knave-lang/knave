@@ -9,3 +9,4 @@ error[L0364]: `origin` is not available where this code runs
   | ^^^^^^ used here
   |
   = help: this built-in works only inside a macro
+  = note: run `knave doc L0364` for an explanation

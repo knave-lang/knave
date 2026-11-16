@@ -11,3 +11,5 @@ error[L0311]: `declare-definition` takes 1 argument but 2 were given
 ...
 7 | (defbroken limit)
   | ----------------- in this macro call
+  |
+  = note: run `knave doc L0311` for an explanation

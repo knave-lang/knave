@@ -7,3 +7,5 @@ error[L0364]: macro code cannot read a global here
   |
 1 | origin
   | ^^^^^^ used here
+  |
+  = note: run `knave doc L0364` for an explanation

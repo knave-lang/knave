@@ -10,3 +10,4 @@ error[L0457]: type annotations needed
   |             ^^^^^^ cannot tell whether this is a vector or a map
   |
   = help: add a `type` signature that names the collection's type
+  = note: run `knave doc L0457` for an explanation

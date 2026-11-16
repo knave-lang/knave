@@ -10,3 +10,4 @@ error[L0323]: `sort-users` has no parameter `:name`
   |                                    ^^^^^ here
   |
   = help: the parameters of `sort-users` are :key, :label
+  = note: run `knave doc L0323` for an explanation

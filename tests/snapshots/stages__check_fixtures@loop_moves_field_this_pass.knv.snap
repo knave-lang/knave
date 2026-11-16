@@ -16,3 +16,4 @@ help: clone the value if both places need it
 21 -                  (local renamed (assoc (:tag g) :size 2))
 21 +                  (local renamed (assoc (clone (:tag g)) :size 2))
    |
+   = note: run `knave doc L0501` for an explanation

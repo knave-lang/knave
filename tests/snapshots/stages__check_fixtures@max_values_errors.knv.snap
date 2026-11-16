@@ -11,6 +11,7 @@ error[L0404]: `(vec i64)` does not implement `display`
   |
   = note: `display` is implemented for: bool, char, str, string, (ref str), io-error, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, (where ((a display)) (ref a))
   = note: `display` is implemented for `(parse-error target)` for each `target` in: bool, char, string, i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+  = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `(vec i64)` does not implement `partial-ord`
  --> check/max_values_errors.knv:2:17
@@ -19,6 +20,7 @@ error[L0404]: `(vec i64)` does not implement `partial-ord`
   |                 ^^^^^^^ this needs `partial-ord`
   |
   = note: `partial-ord` is implemented for: char, str, string, (ref str), i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, (where ((a partial-ord)) (ref a)), (where ((a partial-ord)) (box a)), (where ((a partial-ord) (b partial-ord)) (pair a b))
+  = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `f64` does not implement `ord`
  --> check/max_values_errors.knv:3:3
@@ -27,3 +29,4 @@ error[L0404]: `f64` does not implement `ord`
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `ord`
   |
   = note: `ord` is implemented for: char, string, (ref str), i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, (where ((a ord)) (ref a)), (where ((a ord)) (box a)), (where ((a ord) (b ord)) (pair a b))
+  = note: run `knave doc L0404` for an explanation

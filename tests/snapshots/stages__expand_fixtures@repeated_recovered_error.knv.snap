@@ -8,3 +8,5 @@ error[L0201]: cannot find `missing-name` in this scope
   |
 3 | (defn main () (twice (missing-name)))
   |                       ^^^^^^^^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

@@ -10,3 +10,4 @@ error[L0443]: no payload uses the type parameter `a`
   |               ^ declared here
   |
   = help: use `a` in a variant payload, or remove it
+  = note: run `knave doc L0443` for an explanation

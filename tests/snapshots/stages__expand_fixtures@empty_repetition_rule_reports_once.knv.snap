@@ -13,3 +13,4 @@ error[L0301]: nothing before this `...` repeats
   |   ---------- in this macro call
   |
   = help: remove this `...`, or repeat a variable that the pattern repeats
+  = note: run `knave doc L0301` for an explanation

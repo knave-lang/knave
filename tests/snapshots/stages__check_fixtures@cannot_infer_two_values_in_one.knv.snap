@@ -13,6 +13,7 @@ help: write the type with `the`, and replace each `_` with a type
   |
 1 | (defn main () (str (pair (the (vec _) (vec)) (vec))))
   |                          ++++++++++++      +
+  = note: run `knave doc L0407` for an explanation
 
 error[L0407]: type annotations needed
  --> check/cannot_infer_two_values_in_one.knv:1:32
@@ -24,3 +25,4 @@ help: write the type with `the`, and replace each `_` with a type
   |
 1 | (defn main () (str (pair (vec) (the (vec _) (vec)))))
   |                                ++++++++++++      +
+  = note: run `knave doc L0407` for an explanation

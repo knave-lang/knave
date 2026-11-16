@@ -19,3 +19,4 @@ warning[L0249]: set aside `k` after `<input 5>`
   |
   = note: a `document` of `g` replaced the input that documented `k`
   = help: enter the `document` of `k` again to keep it
+  = note: run `knave doc L0249` for an explanation

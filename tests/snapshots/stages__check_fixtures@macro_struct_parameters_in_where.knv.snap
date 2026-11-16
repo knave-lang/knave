@@ -10,3 +10,4 @@ error[L0219]: `old-pair` names its type parameters on its name
   | ^^^^^^^^^^ this `where` names them in the body
   |
   = help: write `(old-pair (pair a b) (first a) (second b))`
+  = note: run `knave doc L0219` for an explanation

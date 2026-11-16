@@ -10,3 +10,4 @@ error[L0407]: type annotations needed
   |   ^^^^^ cannot tell which struct's `size` this is
   |
   = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+  = note: run `knave doc L0407` for an explanation

@@ -12,3 +12,4 @@ error[L0501]: use of moved value `stack`
    |          ^^^^^ value used here after it moved
    |
    = help: use the value before it moves, because a `mut` borrow cannot be cloned
+   = note: run `knave doc L0501` for an explanation

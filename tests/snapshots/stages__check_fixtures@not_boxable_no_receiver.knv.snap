@@ -10,3 +10,4 @@ error[L0448]: `shape` cannot be a trait object
   |                      ^^^^^ `make` has no receiver
   |
   = help: give the method a `(ref self)` or `(mut self)` receiver
+  = note: run `knave doc L0448` for an explanation

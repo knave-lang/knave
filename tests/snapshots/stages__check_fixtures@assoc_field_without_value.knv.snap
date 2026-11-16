@@ -10,3 +10,4 @@ error[L0301]: this field has no value
    |               ^^^^^ here
    |
    = help: write `:field value` pairs, as in (assoc leaf :year 2025)
+   = note: run `knave doc L0301` for an explanation

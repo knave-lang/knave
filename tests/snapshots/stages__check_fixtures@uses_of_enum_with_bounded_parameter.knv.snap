@@ -10,3 +10,4 @@ error[L0417]: the type parameter `a` cannot require traits here
   |                 ^^^^^^^^^^^ traits given here
   |
   = help: write `a` alone, and require the traits in the `where` of each function that needs them
+  = note: run `knave doc L0417` for an explanation

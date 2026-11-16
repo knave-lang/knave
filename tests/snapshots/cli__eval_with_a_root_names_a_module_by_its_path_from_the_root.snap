@@ -10,3 +10,4 @@ error[L0206]: importing `sub/c` creates a cycle
   |
   = note: the modules import each other: sub/c -> sub/c
   = help: move the shared definitions into a module that both can import
+  = note: run `knave doc L0206` for an explanation

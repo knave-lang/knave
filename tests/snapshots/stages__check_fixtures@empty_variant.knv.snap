@@ -10,3 +10,4 @@ error[L0210]: malformed `enum`
   |           ^^ this does not fit the shape of `enum`
   |
   = help: write it as `(enum (name parameter ...) (rust "Path")? variant ...)`
+  = note: run `knave doc L0210` for an explanation

@@ -10,3 +10,4 @@ error[L0219]: `enum` names its type parameters on its name
   |    ^^^^^ this `where` names them in the body
   |
   = help: write `(enum (pair-of a) (both a a) neither)`
+  = note: run `knave doc L0219` for an explanation

@@ -13,6 +13,7 @@ warning[L0249]: set aside `karl` after `<input 4>`
   |
   = note: error[L0409]: missing field `email` in `user`
   = help: enter `karl` again to use it
+  = note: run `knave doc L0249` for an explanation
 
 warning[L0249]: set aside `greet` after `<input 4>`
  --> <input 3>:1:34
@@ -23,6 +24,7 @@ warning[L0249]: set aside `greet` after `<input 4>`
   = note: error[L0201]: cannot find `karl` in this scope
   = note: `<input 4>` set aside `karl`: missing field `email` in `user`
   = help: enter `greet` again to use it
+  = note: run `knave doc L0249` for an explanation
 error[L0201]: cannot find `greet` in this scope
  --> <input 5>:1:2
   |
@@ -30,3 +32,4 @@ error[L0201]: cannot find `greet` in this scope
   |  ^^^^^ not found in this scope
   |
   = note: `<input 4>` set aside `greet`: cannot find `karl` in this scope
+  = note: run `knave doc L0201` for an explanation

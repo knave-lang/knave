@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/not_boxable_self_return.knv
 ---
 error[L0448]: `shape` cannot be a trait object
@@ -10,3 +10,4 @@ error[L0448]: `shape` cannot be a trait object
   |                      ^^^^^ `copy` returns `self` by value
   |
   = help: return a reference or another type, not the implementor's own type
+  = note: run `knave doc L0448` for an explanation

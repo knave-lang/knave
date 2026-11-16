@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/duplicate_associated_type.knv
 ---
 error[L0447]: the associated type `item` is defined more than once
@@ -10,3 +10,4 @@ error[L0447]: the associated type `item` is defined more than once
   |   ^^^^^^^^^^^^^ defined again here
   |
   = help: remove one of the definitions
+  = note: run `knave doc L0447` for an explanation

@@ -14,3 +14,4 @@ error[L0325]: macro code built a list nested too deeply
    |
    = note: lists that macro code builds nest at most 4096 deep
    = help: make the macro stop nesting, or build a flatter list
+   = note: run `knave doc L0325` for an explanation

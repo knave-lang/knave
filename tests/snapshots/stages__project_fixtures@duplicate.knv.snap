@@ -12,6 +12,7 @@ error[L0709]: `:entry` is given more than once
   |             ^^^^^^ given again here
   |
   = help: remove one of them
+  = note: run `knave doc L0709` for an explanation
 
 error[L0709]: `serde` is given more than once
  --> project/duplicate.knv:4:42
@@ -22,6 +23,7 @@ error[L0709]: `serde` is given more than once
   |                            first given here
   |
   = help: remove one of them
+  = note: run `knave doc L0709` for an explanation
 
 error[L0709]: `dependencies` is given more than once
  --> project/duplicate.knv:5:14
@@ -32,3 +34,4 @@ error[L0709]: `dependencies` is given more than once
   |              ^^^^^^^^^^^^ given again here
   |
   = help: remove one of them
+  = note: run `knave doc L0709` for an explanation

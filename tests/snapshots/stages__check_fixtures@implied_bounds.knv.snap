@@ -10,3 +10,4 @@ error[L0440]: `n` might not implement `number`
    |                           ^ this needs `number`
    |
    = help: add the trait to the signature's `where`: `(n number)`
+   = note: run `knave doc L0440` for an explanation

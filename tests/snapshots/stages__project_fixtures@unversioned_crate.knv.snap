@@ -10,3 +10,4 @@ error[L0716]: crate `serde` has no version
   |                            ^^^^^ this crate needs a version or a `:path`
   |
   = help: write the version after the name, as `(serde "1.0")`
+  = note: run `knave doc L0716` for an explanation

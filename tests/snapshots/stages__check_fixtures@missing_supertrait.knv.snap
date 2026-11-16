@@ -10,3 +10,4 @@ error[L0446]: `circle` does not implement `display`, a supertrait of `shape`
   |             ^^^^^^ `circle` does not implement `display`
   |
   = help: write `(display type (value) ...)`, or print the value with `prn`
+  = note: run `knave doc L0446` for an explanation

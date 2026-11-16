@@ -9,6 +9,7 @@ warning[L0802]: `zzqx` names no term that this page can link to
   |                               ^^^^ no term to link to
   |
   = help: write the name of a term in the module's scope, or put the brackets inside backticks
+  = note: run `knave doc L0802` for an explanation
 
 warning[L0802]: `a(b` names no term that this page can link to
   --> src/a.knv:6:3
@@ -21,6 +22,7 @@ warning[L0802]: `a(b` names no term that this page can link to
    | |_______________________________^ no term to link to
    |
    = help: write the name of a term in the module's scope, or put the brackets inside backticks
+   = note: run `knave doc L0802` for an explanation
 
 warning[L0802]: `42` names no term that this page can link to
   --> src/a.knv:6:3
@@ -33,6 +35,7 @@ warning[L0802]: `42` names no term that this page can link to
    | |_______________________________^ no term to link to
    |
    = help: write the name of a term in the module's scope, or put the brackets inside backticks
+   = note: run `knave doc L0802` for an explanation
 
 warning[L0802]: `)x` names no term that this page can link to
   --> src/a.knv:6:3
@@ -45,6 +48,7 @@ warning[L0802]: `)x` names no term that this page can link to
    | |_______________________________^ no term to link to
    |
    = help: write the name of a term in the module's scope, or put the brackets inside backticks
+   = note: run `knave doc L0802` for an explanation
 
 warning[L0802]: `optoin` names no term that this page can link to
  --> src/a.knv:6:15
@@ -57,6 +61,7 @@ help: a term with a similar name exists
 6 -   "Reads the [optoin] from `text`.
 6 +   "Reads the [option] from `text`.
   |
+  = note: run `knave doc L0802` for an explanation
 
 warning[L0802]: `helpr` names no term that this page can link to
   --> src/a.knv:10:24
@@ -68,6 +73,7 @@ help: a term with a similar name exists
    |
 10 |   Also [42], [)x] and [helper]."
    |                            +
+   = note: run `knave doc L0802` for an explanation
 
 warning[L0802]: `parze` names no term that this page can link to
   --> src/a.knv:15:16
@@ -80,3 +86,4 @@ help: a term with a similar name exists
 15 -   Counts like [parze]."
 15 +   Counts like [parse]."
    |
+   = note: run `knave doc L0802` for an explanation

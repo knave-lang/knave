@@ -13,3 +13,4 @@ error[L0330]: `a` has length 2 but `b` has length 1
   |   --------------------------- in this macro call
   |
   = help: give `a` and `b` the same length
+  = note: run `knave doc L0330` for an explanation

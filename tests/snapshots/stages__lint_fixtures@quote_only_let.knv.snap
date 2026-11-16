@@ -10,3 +10,4 @@ warning[L0801]: `total` is never read
   |         ^^^^^ bound here and never read
   |
   = help: if the binding must stay, name it `_total`
+  = note: run `knave doc L0801` for an explanation

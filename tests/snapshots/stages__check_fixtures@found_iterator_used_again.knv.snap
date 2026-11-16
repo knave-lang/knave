@@ -14,6 +14,7 @@ error[L0501]: use of moved value `values`
   |
   = note: `values` is a lazy pipeline, so it runs once
   = help: collect it if both places need its items, as in `(collect values)`, or write a function that rebuilds it
+  = note: run `knave doc L0501` for an explanation
 
 error[L0501]: use of moved value `steps`
   --> check/found_iterator_used_again.knv:14:14
@@ -26,3 +27,4 @@ error[L0501]: use of moved value `steps`
    |
    = note: `steps` is a lazy pipeline, so it runs once
    = help: collect it if both places need its items, as in `(collect steps)`, or write a function that rebuilds it
+   = note: run `knave doc L0501` for an explanation

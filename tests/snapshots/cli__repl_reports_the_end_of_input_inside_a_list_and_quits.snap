@@ -13,3 +13,4 @@ error[L0101]: this list is never closed
   | ^ this `(` has no matching `)`
   |
   = help: add a `)` where the list ends
+  = note: run `knave doc L0101` for an explanation

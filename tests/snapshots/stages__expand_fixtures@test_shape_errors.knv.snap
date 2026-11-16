@@ -10,6 +10,7 @@ error[L0301]: this use of `deftest` does not match its shape
   | ^^^^^^^^^ here
   |
   = help: write it as `(deftest name body ...)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `deftest` does not match its shape
  --> expand/test_shape_errors.knv:5:1
@@ -18,6 +19,7 @@ error[L0301]: this use of `deftest` does not match its shape
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
   |
   = help: write it as `(deftest name body ...)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `assert` does not match its shape
  --> expand/test_shape_errors.knv:7:26
@@ -26,6 +28,7 @@ error[L0301]: this use of `assert` does not match its shape
   |                          ^^^^^^^^ here
   |
   = help: write it as `(assert form)` or `(assert form "message")`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `assert` does not match its shape
  --> expand/test_shape_errors.knv:9:27
@@ -34,6 +37,7 @@ error[L0301]: this use of `assert` does not match its shape
   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
   |
   = help: write it as `(assert form)` or `(assert form "message")`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `deftest` does not match its shape
   --> expand/test_shape_errors.knv:11:1
@@ -42,6 +46,7 @@ error[L0301]: this use of `deftest` does not match its shape
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(deftest name body ...)`
+   = note: run `knave doc L0301` for an explanation
 
 error[L0209]: `()` is not an expression
   --> expand/test_shape_errors.knv:14:14
@@ -53,6 +58,7 @@ help: the unit value is written `(do)`
    |
 14 |   (assert (= (do) 1)))
    |               ++
+   = note: run `knave doc L0209` for an explanation
 
 error[L0301]: this use of `run-tests` does not match its shape
   --> expand/test_shape_errors.knv:17:3
@@ -61,6 +67,7 @@ error[L0301]: this use of `run-tests` does not match its shape
    |   ^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(run-tests)` or `(run-tests :marker "text")`, either one with `:untested module` at the end
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `run-tests` does not match its shape
   --> expand/test_shape_errors.knv:19:24
@@ -69,6 +76,7 @@ error[L0301]: this use of `run-tests` does not match its shape
    |                        ^^^^^^^^^^^^^ here
    |
    = help: write it as `(run-tests)` or `(run-tests :marker "text")`, either one with `:untested module` at the end
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `run-tests` does not match its shape
   --> expand/test_shape_errors.knv:21:37
@@ -77,6 +85,7 @@ error[L0301]: this use of `run-tests` does not match its shape
    |                                     ^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(run-tests)` or `(run-tests :marker "text")`, either one with `:untested module` at the end
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `run-tests` does not match its shape
   --> expand/test_shape_errors.knv:23:36
@@ -85,6 +94,7 @@ error[L0301]: this use of `run-tests` does not match its shape
    |                                    ^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(run-tests)` or `(run-tests :marker "text")`, either one with `:untested module` at the end
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `run-tests` does not match its shape
   --> expand/test_shape_errors.knv:25:32
@@ -93,6 +103,7 @@ error[L0301]: this use of `run-tests` does not match its shape
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(run-tests)` or `(run-tests :marker "text")`, either one with `:untested module` at the end
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `run-tests` does not match its shape
   --> expand/test_shape_errors.knv:28:3
@@ -101,6 +112,7 @@ error[L0301]: this use of `run-tests` does not match its shape
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(run-tests)` or `(run-tests :marker "text")`, either one with `:untested module` at the end
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `run-tests` does not match its shape
   --> expand/test_shape_errors.knv:31:3
@@ -109,6 +121,7 @@ error[L0301]: this use of `run-tests` does not match its shape
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(run-tests)` or `(run-tests :marker "text")`, either one with `:untested module` at the end
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `run-tests` does not match its shape
   --> expand/test_shape_errors.knv:34:3
@@ -117,6 +130,7 @@ error[L0301]: this use of `run-tests` does not match its shape
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(run-tests)` or `(run-tests :marker "text")`, either one with `:untested module` at the end
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `run-tests` does not match its shape
   --> expand/test_shape_errors.knv:36:31
@@ -125,6 +139,7 @@ error[L0301]: this use of `run-tests` does not match its shape
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(run-tests)` or `(run-tests :marker "text")`, either one with `:untested module` at the end
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `run-tests` does not match its shape
   --> expand/test_shape_errors.knv:39:3
@@ -133,3 +148,4 @@ error[L0301]: this use of `run-tests` does not match its shape
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ here
    |
    = help: write it as `(run-tests)` or `(run-tests :marker "text")`, either one with `:untested module` at the end
+   = note: run `knave doc L0301` for an explanation

@@ -14,3 +14,4 @@ help: a key with a similar name exists
 1 - (defproject q :entyr)
 1 + (defproject q :entry)
   |
+  = note: run `knave doc L0704` for an explanation

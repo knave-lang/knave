@@ -10,3 +10,4 @@ error[L0301]: a struct update takes only `:field value` pairs
    |                          ^ here
    |
    = help: update the collection in a separate `assoc`
+   = note: run `knave doc L0301` for an explanation

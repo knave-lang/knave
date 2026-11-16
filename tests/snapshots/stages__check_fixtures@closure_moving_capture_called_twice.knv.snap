@@ -12,3 +12,4 @@ error[L0501]: use of moved value `f`
   |             value moved here
   |
   = help: this closure moves a captured value, so it cannot be copied
+  = note: run `knave doc L0501` for an explanation

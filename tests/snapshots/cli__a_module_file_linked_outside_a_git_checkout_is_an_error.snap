@@ -9,6 +9,7 @@ error[L0205]: module `linked-module` does not export `key`
   |                    ^^^ not exported
   |
   = help: add `key` to the `export` list of `linked-module`
+  = note: run `knave doc L0205` for an explanation
 
 error[L0201]: cannot find `key` in this scope
  --> src/main.knv:4:12
@@ -20,6 +21,7 @@ help: a name with a similar spelling exists
   |
 4 |   (println keys))
   |               +
+  = note: run `knave doc L0201` for an explanation
 
 error[L0254]: module `linked-module/other` resolves outside its library's checkout
  --> <sandbox>/cache/knave/git/412c8852557917f29ecff26421ce88121b0021eb/src/lib.knv:1:6
@@ -29,6 +31,7 @@ error[L0254]: module `linked-module/other` resolves outside its library's checko
   |
   = note: `<sandbox>/cache/knave/git/412c8852557917f29ecff26421ce88121b0021eb/src/other.knv` is a symbolic link, and a library fetched from git may only read files inside its own checkout
   = help: ask the library's authors to commit the module's file instead of a link
+  = note: run `knave doc L0254` for an explanation
 
 error[L0201]: cannot find `key` in this scope
  --> <sandbox>/cache/knave/git/412c8852557917f29ecff26421ce88121b0021eb/src/lib.knv:3:9
@@ -40,3 +43,4 @@ help: a name with a similar spelling exists
   |
 3 | (export keys)
   |            +
+  = note: run `knave doc L0201` for an explanation

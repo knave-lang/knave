@@ -10,6 +10,7 @@ error[L0207]: expected a definition at module level
    | ^^^^^^ this is not a definition
    |
    = help: put expressions inside a function, such as `(def run (fn () ...))`
+   = note: run `knave doc L0207` for an explanation
 
 error[L0326]: macro expansion did not finish
   --> expand/spliced_bodies_too_large.knv:19:1
@@ -19,6 +20,7 @@ error[L0326]: macro expansion did not finish
    |
    = note: the macro calls in one top-level form expand to at most 131072 forms in all
    = help: make each recursive macro stop, or split a large expansion across several top-level forms
+   = note: run `knave doc L0326` for an explanation
 
 error[L0326]: macro expansion did not finish
   --> expand/spliced_bodies_too_large.knv:19:1
@@ -28,3 +30,4 @@ error[L0326]: macro expansion did not finish
    |
    = note: the macro calls in one top-level form expand to at most 131072 forms in all
    = help: make each recursive macro stop, or split a large expansion across several top-level forms
+   = note: run `knave doc L0326` for an explanation

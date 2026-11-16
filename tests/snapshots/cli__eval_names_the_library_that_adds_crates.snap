@@ -9,3 +9,4 @@ error[L0719]: `eval` cannot use crate dependencies yet
   |      ^^^^^^ library `helper` adds crates
   |
   = help: use `build`, `run` or `test` for a program with crates for now
+  = note: run `knave doc L0719` for an explanation

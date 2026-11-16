@@ -10,3 +10,4 @@ error[L0228]: malformed associated value
   |                            ^^^^^^^^^^^^^^ this does not fit the shape of a value clause
   |
   = help: write each value as `(name type)`
+  = note: run `knave doc L0228` for an explanation

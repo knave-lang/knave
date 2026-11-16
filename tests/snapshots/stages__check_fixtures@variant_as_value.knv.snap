@@ -10,3 +10,4 @@ error[L0233]: `shape/circle` is a variant constructor, not a value
   |             ^^^^^^^^^^^^ this constructor takes 1 argument when it is called
   |
   = help: write `(shape/circle value ...)`
+  = note: run `knave doc L0233` for an explanation

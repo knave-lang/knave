@@ -15,3 +15,4 @@ error[L0459]: `p` already implements `std::fmt::Octal` through `octal2`
    |              - `octal2` implements `std::fmt::Octal` here
    |
    = help: use `octal2` here, or remove one of the two
+   = note: run `knave doc L0459` for an explanation

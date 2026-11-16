@@ -11,6 +11,7 @@ error[L0721]: `KeyMap` is not a library name
   |
   = note: `use` reads a library's name as the first part of a module path
   = help: use lowercase letters, digits and single dashes, as `my-library`
+  = note: run `knave doc L0721` for an explanation
 
 error[L0721]: `key_map` is not a library name
  --> project/invalid_library_name.knv:3:25
@@ -20,3 +21,4 @@ error[L0721]: `key_map` is not a library name
   |
   = note: `use` reads a library's name as the first part of a module path
   = help: use lowercase letters, digits and single dashes, as `my-library`
+  = note: run `knave doc L0721` for an explanation

@@ -8,3 +8,5 @@ error[L0603]: invalid Rust template: `{1}` has no matching argument
   |
 4 | (defn main () (println (broken 1)))
   |                        ^^^^^^^^^^ in this template
+  |
+  = note: run `knave doc L0603` for an explanation

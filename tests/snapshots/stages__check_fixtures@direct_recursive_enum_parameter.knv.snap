@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/direct_recursive_enum_parameter.knv
 ---
 error[L0439]: type parameter `a` is only used recursively
@@ -10,3 +10,4 @@ error[L0439]: type parameter `a` is only used recursively
   |              ^ declared here - first recursive use
   |
   = help: use `a` in a payload outside `chain`, or remove it
+  = note: run `knave doc L0439` for an explanation

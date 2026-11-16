@@ -14,3 +14,4 @@ help: clone the value if both places need it
 16 -                  (local renamed (assoc g :owner (str "Nissan")))
 16 +                  (local renamed (assoc (clone g) :owner (str "Nissan")))
    |
+   = note: run `knave doc L0501` for an explanation

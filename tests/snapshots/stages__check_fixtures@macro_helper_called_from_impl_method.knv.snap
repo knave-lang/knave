@@ -10,3 +10,4 @@ error[L0412]: `empty?` only exists at compile time
    |          ^^^^^^ used in code that runs in the program
    |
    = note: definitions that use the `code` module or `quote` can only be used by macros
+   = note: run `knave doc L0412` for an explanation

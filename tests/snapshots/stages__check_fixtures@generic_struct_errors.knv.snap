@@ -8,12 +8,16 @@ error[L0415]: `pair` takes 2 type arguments but 1 was given
   |
 3 | (type too-few (fn ((pair i64)) i64))
   |                    ^^^^^^^^^^ expected 2 type arguments
+  |
+  = note: run `knave doc L0415` for an explanation
 
 error[L0415]: `pair` takes 2 type arguments but 3 were given
  --> check/generic_struct_errors.knv:8:8
   |
 8 |   (fn ((pair i64 i64 i64)) i64))
   |        ^^^^^^^^^^^^^^^^^^ expected 2 type arguments
+  |
+  = note: run `knave doc L0415` for an explanation
 
 error[L0416]: no field uses the type parameter `b`
   --> check/generic_struct_errors.knv:12:19
@@ -22,6 +26,7 @@ error[L0416]: no field uses the type parameter `b`
    |                   ^ declared here
    |
    = help: use `b` in a field's type, or remove it
+   = note: run `knave doc L0416` for an explanation
 
 error[L0417]: the type parameter `a` cannot require traits here
   --> check/generic_struct_errors.knv:14:18
@@ -30,3 +35,4 @@ error[L0417]: the type parameter `a` cannot require traits here
    |                  ^^^^^^^^^^^ traits given here
    |
    = help: write `a` alone, and require the traits in the `where` of each function that needs them
+   = note: run `knave doc L0417` for an explanation

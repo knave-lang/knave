@@ -10,9 +10,12 @@ error[L0204]: cannot find module `tests/support`
   |
   = note: `tests/support.knv` exists, under a directory a task cannot reach this way
   = help: a task uses a module of `tasks/` by its path from `tasks/`, and cannot use a module under `tests/`
+  = note: run `knave doc L0204` for an explanation
 
 error[L0201]: cannot find `helper` in this scope
  --> tasks/t.knv:3:16
   |
 3 | (deftask t () (helper))
   |                ^^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

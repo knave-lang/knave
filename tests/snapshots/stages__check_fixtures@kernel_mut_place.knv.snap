@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/kernel_mut_place.knv
 ---
 error[L0419]: this argument is a copy, so changing it changes nothing
@@ -10,3 +10,4 @@ error[L0419]: this argument is a copy, so changing it changes nothing
   |                        ^^^^^^^ this is a copy, not a place
   |
   = help: pass a local or a field, because a call returns a copy
+  = note: run `knave doc L0419` for an explanation

@@ -10,6 +10,7 @@ error[L0301]: a documentation lookup takes a name, a module or a listing
   |                          ^^^^^^^^ not a name, a module or a listing
   |
   = help: write a name, a module as in `(module geometry)`, or a listing as in `(dir geometry)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a documentation lookup takes a name, a module or a listing
  --> expand/doc_lookup_malformed.knv:3:27
@@ -18,6 +19,7 @@ error[L0301]: a documentation lookup takes a name, a module or a listing
   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a name, a module or a listing
   |
   = help: write a name, a module as in `(module geometry)`, or a listing as in `(dir geometry)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a documentation lookup takes a name, a module or a listing
  --> expand/doc_lookup_malformed.knv:5:28
@@ -26,6 +28,7 @@ error[L0301]: a documentation lookup takes a name, a module or a listing
   |                            ^^^^^^^^^^ not a name, a module or a listing
   |
   = help: write a name, a module as in `(module geometry)`, or a listing as in `(dir geometry)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a documentation lookup takes a name, a module or a listing
  --> expand/doc_lookup_malformed.knv:7:28
@@ -34,6 +37,7 @@ error[L0301]: a documentation lookup takes a name, a module or a listing
   |                            ^^^ not a name, a module or a listing
   |
   = help: write a name, a module as in `(module geometry)`, or a listing as in `(dir geometry)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a documentation lookup takes a name, a module or a listing
  --> expand/doc_lookup_malformed.knv:9:20
@@ -42,3 +46,4 @@ error[L0301]: a documentation lookup takes a name, a module or a listing
   |                    ^^^^^ not a name, a module or a listing
   |
   = help: write a name, a module as in `(module geometry)`, or a listing as in `(dir geometry)`
+  = note: run `knave doc L0301` for an explanation

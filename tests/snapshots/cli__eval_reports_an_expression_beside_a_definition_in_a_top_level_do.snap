@@ -9,3 +9,4 @@ error[L0207]: expected a definition at module level
   |                                      ^^^^^^^ this is not a definition
   |
   = help: put expressions inside a function, such as `(def run (fn () ...))`
+  = note: run `knave doc L0207` for an explanation

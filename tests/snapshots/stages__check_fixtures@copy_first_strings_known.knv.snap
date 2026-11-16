@@ -10,3 +10,4 @@ error[L0503]: this value is borrowed, but the call needs to own it
   |                      ^^^^^^^^^^^^ only a borrow is available here
   |
   = help: pass a copy with `(clone ...)`
+  = note: run `knave doc L0503` for an explanation

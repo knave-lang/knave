@@ -10,3 +10,4 @@ error[L0416]: no field uses the type parameter `a`
   |                  ^ declared here
   |
   = help: use `a` in a field's type, or remove it
+  = note: run `knave doc L0416` for an explanation

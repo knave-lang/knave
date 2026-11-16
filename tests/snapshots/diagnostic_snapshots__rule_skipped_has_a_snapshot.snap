@@ -9,3 +9,4 @@ warning[L0805]: `unused-binding` was not checked in `origin`
   | ^^^^^^ this definition is too large for the rule's step budget
   |
   = help: split the definition into smaller ones
+  = note: run `knave doc L0805` for an explanation

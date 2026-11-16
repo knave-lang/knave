@@ -12,3 +12,4 @@ help: write the type with `the`, and replace each `_` with a type
   |
 1 | (the (vec _) (vec))
   | ++++++++++++      +
+  = note: run `knave doc L0407` for an explanation

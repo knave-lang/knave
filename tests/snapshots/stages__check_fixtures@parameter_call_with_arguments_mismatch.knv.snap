@@ -11,3 +11,5 @@ error[L0401]: mismatched types
 2 |
 3 | (defn combine-ranges (combine) (combine 150 240))
   |                                ----------------- `combine-ranges` calls its parameter `combine` here, so it expects a function
+  |
+  = note: run `knave doc L0401` for an explanation

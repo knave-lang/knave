@@ -14,6 +14,7 @@ error[L0248]: a `structural` clause needs one method that takes `(ref self)`
    | |_______________________^ this clause fills the body of one method
    |
    = help: declare one `(method name (fn ((ref self) ...) result))` in this `rust-trait`
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: a `structural` clause needs one method that takes `(ref self)`
   --> expand/structural_clause_errors.knv:16:3
@@ -26,6 +27,7 @@ error[L0248]: a `structural` clause needs one method that takes `(ref self)`
    | |_______________________^ this clause fills the body of one method
    |
    = help: declare one `(method name (fn ((ref self) ...) result))` in this `rust-trait`
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: a `structural` clause needs one method that takes `(ref self)`
   --> expand/structural_clause_errors.knv:25:3
@@ -38,6 +40,7 @@ error[L0248]: a `structural` clause needs one method that takes `(ref self)`
    | |_______________________^ this clause fills the body of one method
    |
    = help: declare one `(method name (fn ((ref self) ...) result))` in this `rust-trait`
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `cl` binds `std::clone::Clone`, which `derive` already writes
   --> expand/structural_clause_errors.knv:34:3
@@ -50,6 +53,7 @@ error[L0248]: `cl` binds `std::clone::Clone`, which `derive` already writes
    | |_______________________^ every struct would get both the derive and this impl
    |
    = help: keep the clause off this `rust-trait`, or bind a trait that `derive` does not write
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `num2` binds `crate::rt::Number`, which `number` already binds
   --> expand/structural_clause_errors.knv:43:3
@@ -62,6 +66,7 @@ error[L0248]: `num2` binds `crate::rt::Number`, which `number` already binds
    | |_______________________^ the two traits would infer two impls of one Rust trait
    |
    = help: keep the clause off this `rust-trait`, or give it a Rust path that no other trait binds
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:bare` is missing from this `structural` clause
   --> expand/structural_clause_errors.knv:52:3
@@ -70,6 +75,7 @@ error[L0248]: `:bare` is missing from this `structural` clause
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause has no `:bare`
    |
    = help: add `:bare` and its template string
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:other` is not a key of a `structural` clause
   --> expand/structural_clause_errors.knv:62:15
@@ -78,6 +84,7 @@ error[L0248]: `:other` is not a key of a `structural` clause
    |               ^^^^^^ expected a key here
    |
    = help: a `structural` clause takes `:struct`, `:field`, `:variant`, `:part`, `:bare`
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `"text"` is not a key of a `structural` clause
   --> expand/structural_clause_errors.knv:67:15
@@ -86,6 +93,7 @@ error[L0248]: `"text"` is not a key of a `structural` clause
    |               ^^^^^^ expected a key here
    |
    = help: a `structural` clause takes `:struct`, `:field`, `:variant`, `:part`, `:bare`
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:field` appears twice in this `structural` clause
   --> expand/structural_clause_errors.knv:79:15
@@ -96,6 +104,7 @@ error[L0248]: `:field` appears twice in this `structural` clause
    |               ^^^^^^ repeated here
    |
    = help: remove one of the two `:field` templates
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:bare` has no template string after it
   --> expand/structural_clause_errors.knv:87:57
@@ -104,6 +113,7 @@ error[L0248]: `:bare` has no template string after it
    |                                                         ^^^^^ expected a string after this key
    |
    = help: write the Rust text after the key, as in `:bare "..."`
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:bare` has no template string after it
   --> expand/structural_clause_errors.knv:96:15
@@ -112,6 +122,7 @@ error[L0248]: `:bare` has no template string after it
    |               ^^^^^ expected a string after this key
    |
    = help: write the Rust text after the key, as in `:bare "..."`
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:part` cannot fill `{field}`
    --> expand/structural_clause_errors.knv:104:21
@@ -120,6 +131,7 @@ error[L0248]: `:part` cannot fill `{field}`
     |                     ^^^^^^^^^^^^^^^^ this template holds `{field}`
     |
     = help: `:part` takes `{value}`, and `{{` or `}}` for a literal brace
+    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:bare` cannot fill `{2}`
    --> expand/structural_clause_errors.knv:114:21
@@ -128,6 +140,7 @@ error[L0248]: `:bare` cannot fill `{2}`
     |                     ^^^^^ this template holds `{2}`
     |
     = help: `:bare` takes `{0}`, `{1}`, `{name}`, and `{{` or `}}` for a literal brace
+    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:struct` cannot fill `{name`
    --> expand/structural_clause_errors.knv:119:23
@@ -136,6 +149,7 @@ error[L0248]: `:struct` cannot fill `{name`
     |                       ^^^^^^^ this template holds `{name`
     |
     = help: `:struct` takes `{0}`, `{1}`, `{name}`, `{parts}`, and `{{` or `}}` for a literal brace
+    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: this `rust-trait` has a second `structural` clause
    --> expand/structural_clause_errors.knv:133:3
@@ -154,3 +168,4 @@ error[L0248]: this `rust-trait` has a second `structural` clause
     | |_______________________^ second clause
     |
     = help: merge the two clauses into one
+    = note: run `knave doc L0248` for an explanation

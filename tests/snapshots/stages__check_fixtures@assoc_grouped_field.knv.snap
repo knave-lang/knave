@@ -10,3 +10,4 @@ error[L0301]: a collection update takes keys and values in pairs
    |               ^^^^^^^^^^^ here
    |
    = help: to update a field, write (assoc leaf :year 2025)
+   = note: run `knave doc L0301` for an explanation

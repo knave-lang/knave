@@ -17,3 +17,5 @@ help: a name with a similar spelling exists
 2 + (defn circle (r) (none r))
   |
 help: enter a definition to set aside the inputs that no longer check
+  |
+  = note: run `knave doc L0201` for an explanation

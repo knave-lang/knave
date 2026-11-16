@@ -10,3 +10,4 @@ error[L0238]: `string` is not a trait
   |                ^^^^^^ a `derive` lists traits
   |
   = help: list a trait's name, not `string`
+  = note: run `knave doc L0238` for an explanation

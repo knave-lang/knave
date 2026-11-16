@@ -8,3 +8,5 @@ error[L0301]: defdsl is not ready
   |
 7 | (defdsl query)
   |         ^^^^^ here
+  |
+  = note: run `knave doc L0301` for an explanation

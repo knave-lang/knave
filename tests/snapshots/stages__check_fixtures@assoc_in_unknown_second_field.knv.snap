@@ -8,3 +8,5 @@ error[L0408]: `point` has no field `:z`
    |
 12 |   (assoc-in line (:start :z) 3))
    |                          ^^ unknown field
+   |
+   = note: run `knave doc L0408` for an explanation

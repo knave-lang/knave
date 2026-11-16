@@ -13,3 +13,4 @@ help: a name with a similar spelling exists
   |
 6 |   (twice 3)
   |        +
+  = note: run `knave doc L0201` for an explanation

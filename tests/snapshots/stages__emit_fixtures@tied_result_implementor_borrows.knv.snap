@@ -11,6 +11,7 @@ error[L0605]: `echo` returns a borrow that cannot come from `c`
    |
    = note: the trait's signature lets the result borrow only from its reference parameters
    = help: take this parameter as `(ref self)` in the trait's signature `(fn (self (ref str)) (ref str))`, so the result can borrow from it
+   = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `tag` returns a borrow that cannot come from `c`
   --> emit/tied_result_implementor_borrows.knv:27:14
@@ -20,6 +21,7 @@ error[L0605]: `tag` returns a borrow that cannot come from `c`
    |
    = note: the trait's signature lets the result borrow only from its reference parameters
    = help: take this parameter as `(ref self)` in the trait's signature `(fn ((ref str) self) (ref str))`, so the result can borrow from it
+   = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `maybe` returns a borrow that cannot come from `c`
   --> emit/tied_result_implementor_borrows.knv:29:11
@@ -29,6 +31,7 @@ error[L0605]: `maybe` returns a borrow that cannot come from `c`
    |
    = note: the trait's signature lets the result borrow only from its reference parameters
    = help: take this parameter as `(ref self)` in the trait's signature `(fn (self (ref str)) (option (ref str)))`, so the result can borrow from it
+   = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `brand` returns a borrow that cannot come from `c`
   --> emit/tied_result_implementor_borrows.knv:31:11
@@ -38,6 +41,7 @@ error[L0605]: `brand` returns a borrow that cannot come from `c`
    |
    = note: the trait's signature lets the result borrow only from its reference parameters
    = help: take this parameter as `(ref self)` in the trait's signature `(fn (self (ref str)) (ref str))`, so the result can borrow from it
+   = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `stamp` returns a borrow that cannot come from `c`
   --> emit/tied_result_implementor_borrows.knv:33:16
@@ -47,6 +51,7 @@ error[L0605]: `stamp` returns a borrow that cannot come from `c`
    |
    = note: no parameter of the trait's signature holds a borrow, so the result takes the `'static` lifetime
    = help: take this parameter as `(ref self)` in the trait, so the result can borrow from it
+   = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `swap` returns a `car`, which cannot hold the borrow in `other`
   --> emit/tied_result_implementor_borrows.knv:36:12
@@ -56,6 +61,7 @@ error[L0605]: `swap` returns a `car`, which cannot hold the borrow in `other`
    |
    = note: a trait signature cannot name the lifetime that `car` holds
    = help: write `self` in place of `car` for this parameter in the trait
+   = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `trade` returns a `car`, which cannot hold the borrow in `other`
   --> emit/tied_result_implementor_borrows.knv:38:13
@@ -65,6 +71,7 @@ error[L0605]: `trade` returns a `car`, which cannot hold the borrow in `other`
    |
    = note: a trait signature cannot name the lifetime that `car` holds
    = help: write `self` in place of `car` for this parameter in the trait
+   = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `echo` returns a borrow that cannot come from `v`
   --> emit/tied_result_implementor_borrows.knv:44:10
@@ -74,6 +81,7 @@ error[L0605]: `echo` returns a borrow that cannot come from `v`
    |
    = note: the trait's signature lets the result borrow only from its reference parameters
    = help: take this parameter as `(ref self)` in the trait's signature `(fn (self (ref str)) (ref str))`, so the result can borrow from it
+   = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `park` returns a borrow that cannot come from `r`
   --> emit/tied_result_implementor_borrows.knv:64:10
@@ -83,3 +91,4 @@ error[L0605]: `park` returns a borrow that cannot come from `r`
    |
    = note: the trait's signature lets the result borrow only from its reference parameters
    = help: take this parameter as `(ref self)` in the trait's signature `(fn (self (ref str)) (ref str))`, so the result can borrow from it
+   = note: run `knave doc L0605` for an explanation

@@ -10,6 +10,7 @@ error[L0404]: `(vec i64)` does not implement `holds`
    |           ^^^^^^ this needs `holds`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
+   = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `(vec string)` does not implement `holds`
   --> check/trait_argument_literal_mismatch.knv:14:11
@@ -18,6 +19,7 @@ error[L0404]: `(vec string)` does not implement `holds`
    |           ^^^^^ this needs `holds`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
+   = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `(vec (option u8))` does not implement `holds`
   --> check/trait_argument_literal_mismatch.knv:17:11
@@ -26,6 +28,7 @@ error[L0404]: `(vec (option u8))` does not implement `holds`
    |           ^^^^^^^ this needs `holds`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
+   = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `(vec i64)` does not implement `holds`
   --> check/trait_argument_literal_mismatch.knv:20:11
@@ -34,6 +37,7 @@ error[L0404]: `(vec i64)` does not implement `holds`
    |           ^^^^^^ this needs `holds`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
+   = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `(vec (pair u8 string))` does not implement `holds`
   --> check/trait_argument_literal_mismatch.knv:23:11
@@ -42,6 +46,7 @@ error[L0404]: `(vec (pair u8 string))` does not implement `holds`
    |           ^^^^ this needs `holds`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
+   = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `(vec string)` does not implement `holds`
   --> check/trait_argument_literal_mismatch.knv:27:11
@@ -50,3 +55,4 @@ error[L0404]: `(vec string)` does not implement `holds`
    |           ^^^^^ this needs `holds`
    |
    = note: `holds` is implemented for: (with (where (item) (vec item)) item)
+   = note: run `knave doc L0404` for an explanation

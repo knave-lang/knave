@@ -17,3 +17,4 @@ help: clone the value if both places need it
 13 -   (local h (assoc-in g (:badge :size) 3))
 13 +   (local h (clone (:badge g)))
    |
+   = note: run `knave doc L0501` for an explanation

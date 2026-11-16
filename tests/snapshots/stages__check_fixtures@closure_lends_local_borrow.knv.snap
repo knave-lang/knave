@@ -12,6 +12,7 @@ error[L0510]: cannot return a borrow of a local value
    |       ^^^^^^^^^^^^ this borrows a local value
    |
    = help: return an owned value with `(clone ...)`, or borrow from a parameter
+   = note: run `knave doc L0510` for an explanation
 
 error[L0512]: cannot pass a borrow of a local value to `first`
   --> check/closure_lends_local_borrow.knv:24:19
@@ -26,6 +27,7 @@ error[L0512]: cannot pass a borrow of a local value to `first`
    |                   ^^^^^ this borrows a local value
    |
    = help: define `first` with `defn`, where its result can borrow from its argument
+   = note: run `knave doc L0512` for an explanation
 
 error[L0512]: cannot pass a borrow of a local value to `first`
   --> check/closure_lends_local_borrow.knv:25:19
@@ -40,6 +42,7 @@ error[L0512]: cannot pass a borrow of a local value to `first`
    |                   ^^^^^^^^^^^ this borrows a local value
    |
    = help: define `first` with `defn`, where its result can borrow from its argument
+   = note: run `knave doc L0512` for an explanation
 
 error[L0512]: cannot pass a borrow of a local value to `pick`
   --> check/closure_lends_local_borrow.knv:26:18
@@ -54,6 +57,7 @@ error[L0512]: cannot pass a borrow of a local value to `pick`
    |                  ^^^^^ this borrows a local value
    |
    = help: define `pick` with `defn`, where its result can borrow from its argument
+   = note: run `knave doc L0512` for an explanation
 
 error[L0512]: cannot pass a borrow of a local value to `longer`
   --> check/closure_lends_local_borrow.knv:27:29
@@ -68,6 +72,7 @@ error[L0512]: cannot pass a borrow of a local value to `longer`
    |                             ^^^^^^^^^^^^^ this borrows a local value
    |
    = help: define `longer` with `defn`, where its result can borrow from its argument
+   = note: run `knave doc L0512` for an explanation
 
 error[L0512]: cannot pass a borrow of a temporary value to `first`
   --> check/closure_lends_local_borrow.knv:31:19
@@ -79,3 +84,4 @@ error[L0512]: cannot pass a borrow of a temporary value to `first`
    |                   ^^^^^^^^^^^^^^^ this temporary value is dropped at the end of the statement
    |
    = help: define `first` with `defn`, where its result can borrow from its argument
+   = note: run `knave doc L0512` for an explanation

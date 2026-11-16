@@ -12,3 +12,4 @@ error[L0726]: crate `answer` has two requests that cannot merge
   |
   = note: the program builds one copy of each crate, and only plain versions that are semver-compatible merge
   = help: make the `answer` entries ask for compatible plain versions
+  = note: run `knave doc L0726` for an explanation

@@ -12,3 +12,4 @@ error[L0325]: this expression nests too deeply
    = note: expressions nest at most 1024 deep
    = note: in this expansion of `deep`
    = help: move the inner expressions into a function of their own
+   = note: run `knave doc L0325` for an explanation

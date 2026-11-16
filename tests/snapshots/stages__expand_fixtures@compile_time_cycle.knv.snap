@@ -11,3 +11,5 @@ error[L0307]: `ping` depends on itself at compile time
 ...
 7 | (uses-ping)
   | ----------- in this macro call
+  |
+  = note: run `knave doc L0307` for an explanation

@@ -10,6 +10,7 @@ error[L0407]: type annotations needed
    |             ^^^^^^^^^^^^^^^^ cannot infer a type that a bound of this function names
    |
    = help: a bound of this function names a type that no argument or result holds, so its signature must change
+   = note: run `knave doc L0407` for an explanation
 
 error[L0407]: type annotations needed
   --> check/cannot_infer_bound_on_nested_literal.knv:18:13
@@ -18,6 +19,7 @@ error[L0407]: type annotations needed
    |             ^^^^^^^^^^^^^^^^^^^ cannot infer a type that a bound of this function names
    |
    = help: a bound of this function names a type that no argument or result holds, so its signature must change
+   = note: run `knave doc L0407` for an explanation
 
 error[L0407]: type annotations needed
   --> check/cannot_infer_bound_on_nested_literal.knv:19:13
@@ -26,6 +28,7 @@ error[L0407]: type annotations needed
    |             ^^^^^^^^^^^^^^^ cannot infer a type that a bound of this function names
    |
    = help: a bound of this function names a type that no argument or result holds, so its signature must change
+   = note: run `knave doc L0407` for an explanation
 
 error[L0407]: type annotations needed
   --> check/cannot_infer_bound_on_nested_literal.knv:22:27
@@ -34,3 +37,4 @@ error[L0407]: type annotations needed
    |                           ^^^^^^^^^^^^^^^^ cannot infer a type that a bound of this function names
    |
    = help: a bound of this function names a type that no argument or result holds, so its signature must change
+   = note: run `knave doc L0407` for an explanation

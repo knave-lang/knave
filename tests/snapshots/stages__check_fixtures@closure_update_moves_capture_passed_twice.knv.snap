@@ -13,3 +13,4 @@ error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
    |          this closure is passed here
    |
    = help: clone `g`, or borrow it with `(ref g)`
+   = note: run `knave doc L0509` for an explanation

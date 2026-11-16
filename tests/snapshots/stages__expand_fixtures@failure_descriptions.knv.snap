@@ -13,6 +13,7 @@ error[L0321]: a failure description takes `:part value` pairs
    | -------------- in this macro call
    |
    = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:once-per`, `:suggest`
+   = note: run `knave doc L0321` for an explanation
 
 error[L0321]: a failure description takes `:part value` pairs
   --> expand/failure_descriptions.knv:11:44
@@ -24,6 +25,7 @@ error[L0321]: a failure description takes `:part value` pairs
    | -------------------- in this macro call
    |
    = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:once-per`, `:suggest`
+   = note: run `knave doc L0321` for an explanation
 
 error[L0322]: no macro diagnostic is named `repeated-parametr`
   --> expand/failure_descriptions.knv:17:21
@@ -38,6 +40,7 @@ help: a diagnostic with a similar name exists
    |
 17 |       (quote (:code repeated-parameter)))))
    |                                     +
+   = note: run `knave doc L0322` for an explanation
 
 error[L0322]: no macro diagnostic is named `repeated-field`
   --> expand/failure_descriptions.knv:23:21
@@ -47,6 +50,8 @@ error[L0322]: no macro diagnostic is named `repeated-field`
 ...
 89 | (type-stage-code)
    | ----------------- in this macro call
+   |
+   = note: run `knave doc L0322` for an explanation
 
 error[L0321]: a failure description takes `:part value` pairs
   --> expand/failure_descriptions.knv:27:50
@@ -58,6 +63,7 @@ error[L0321]: a failure description takes `:part value` pairs
    | ------------- in this macro call
    |
    = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:once-per`, `:suggest`
+   = note: run `knave doc L0321` for an explanation
 
 error[L0311]: `fail` takes 4 arguments but 5 were given
   --> expand/failure_descriptions.knv:31:5
@@ -67,6 +73,8 @@ error[L0311]: `fail` takes 4 arguments but 5 were given
 ...
 93 | (too-many)
    | ---------- in this macro call
+   |
+   = note: run `knave doc L0311` for an explanation
 
 error[L0321]: a failure description takes `:part value` pairs
   --> expand/failure_descriptions.knv:35:53
@@ -78,6 +86,7 @@ error[L0321]: a failure description takes `:part value` pairs
    | ------------------- in this macro call
    |
    = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:once-per`, `:suggest`
+   = note: run `knave doc L0321` for an explanation
 
 error[L0321]: a failure description takes `:part value` pairs
    --> expand/failure_descriptions.knv:51:51
@@ -89,6 +98,7 @@ error[L0321]: a failure description takes `:part value` pairs
     | -------------- in this macro call
     |
     = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:once-per`, `:suggest`
+    = note: run `knave doc L0321` for an explanation
 
 error[L0321]: an `:earlier` part needs an `:earlier-label`
    --> expand/failure_descriptions.knv:69:24
@@ -100,6 +110,7 @@ error[L0321]: an `:earlier` part needs an `:earlier-label`
     | ------------------------------ in this macro call
     |
     = help: add `:earlier-label "text"` beside `:earlier`
+    = note: run `knave doc L0321` for an explanation
 
 error[L0321]: an `:earlier-label` part needs an `:earlier`
    --> expand/failure_descriptions.knv:75:15
@@ -111,6 +122,7 @@ error[L0321]: an `:earlier-label` part needs an `:earlier`
     | --------------------- in this macro call
     |
     = help: add `:earlier` beside `:earlier-label`
+    = note: run `knave doc L0321` for an explanation
 
 error[L0321]: a failure description takes `:part value` pairs
    --> expand/failure_descriptions.knv:81:57
@@ -122,6 +134,7 @@ error[L0321]: a failure description takes `:part value` pairs
     | ---------------------- in this macro call
     |
     = help: the parts are `:code`, `:earlier`, `:earlier-label`, `:label`, `:note`, `:once-per`, `:suggest`
+    = note: run `knave doc L0321` for an explanation
 
 error[L0320]: the leaf is parked
   --> expand/failure_descriptions.knv:97:1
@@ -130,6 +143,7 @@ error[L0320]: the leaf is parked
    | ^^^^^^^ here
    |
    = help: drive it
+   = note: run `knave doc L0320` for an explanation
 
 error[L0320]: the leaf is parked
   --> expand/failure_descriptions.knv:99:1
@@ -138,6 +152,7 @@ error[L0320]: the leaf is parked
    | ^^^^^^^^^^ parked here
    |
    = help: drive it
+   = note: run `knave doc L0320` for an explanation
 
 error[L0320]: `leaf` is given twice
    --> expand/failure_descriptions.knv:105:25
@@ -148,3 +163,4 @@ error[L0320]: `leaf` is given twice
     |                    first given here
     |
     = help: remove the second `leaf`
+    = note: run `knave doc L0320` for an explanation

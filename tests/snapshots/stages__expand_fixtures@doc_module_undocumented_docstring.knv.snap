@@ -10,3 +10,4 @@ error[L0327]: `undocumented/shapes` has no docstring
   |                      ^^^^^^^^^^^^^^^^^^^ no docstring for this module
   |
   = help: write `(module "...")` in the module's file
+  = note: run `knave doc L0327` for an explanation

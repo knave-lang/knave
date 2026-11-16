@@ -10,6 +10,7 @@ error[L0301]: no rule of `only-two` matches this form
   |                     ^^^^^^^^^^^^^^^^ here
   |
   = help: write it as `(only-two left right)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this use of `needs-name` does not match its shape
  --> expand/macro_errors.knv:9:1
@@ -18,6 +19,7 @@ error[L0301]: this use of `needs-name` does not match its shape
   | ^^^^^^^^^^^^ here
   |
   = help: write it as `(needs-name name value)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0304]: `when` is a macro, not a value
   --> expand/macro_errors.knv:11:22
@@ -26,6 +28,7 @@ error[L0304]: `when` is a macro, not a value
    |                      ^^^^ used as a value here
    |
    = help: a macro can only be called; pass a function instead
+   = note: run `knave doc L0304` for an explanation
 
 error[L0301]: no rule of `+` matches this form
   --> expand/macro_errors.knv:13:25
@@ -34,3 +37,4 @@ error[L0301]: no rule of `+` matches this form
    |                         ^^^ here
    |
    = help: write it as `(+ a)`, or `(+ a b)`, or `(+ a b c more ...)`
+   = note: run `knave doc L0301` for an explanation

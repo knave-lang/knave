@@ -10,3 +10,4 @@ error[L0446]: `circle` does not implement `area-trait`, a supertrait of `shape`
    |             ^^^^^^ `circle` does not implement `area-trait`
    |
    = help: implement `area-trait` for `circle`
+   = note: run `knave doc L0446` for an explanation

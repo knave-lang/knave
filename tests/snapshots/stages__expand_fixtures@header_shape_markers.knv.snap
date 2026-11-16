@@ -14,6 +14,7 @@ help: write `:docstring` to state that the form takes a docstring
 8 - (header-shape (my-defn name parameters) :documented)
 8 + (header-shape (my-defn name parameters) :docstring)
   |
+  = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:11:26
@@ -22,6 +23,7 @@ error[L0331]: unexpected form after a header shape
    |                          ^^^^^^^^^^ not expected here
    |
    = help: remove it: only `:docstring`, `:docstring-only`, `:one-per-line`, `:arms`, `:bindings` and `:methods` may follow a header shape, each once
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:13:41
@@ -30,6 +32,7 @@ error[L0331]: unexpected form after a header shape
    |                                         ^^^^^^ not expected here
    |
    = help: remove it: only `:docstring`, `:docstring-only`, `:one-per-line`, `:arms`, `:bindings` and `:methods` may follow a header shape, each once
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:15:52
@@ -38,6 +41,7 @@ error[L0331]: unexpected form after a header shape
    |                                                    ^^^^ not expected here
    |
    = help: remove it: only `:docstring`, `:docstring-only`, `:one-per-line`, `:arms`, `:bindings` and `:methods` may follow a header shape, each once
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:18:15
@@ -46,6 +50,7 @@ error[L0331]: unexpected form after a header shape
    |               ^^^^^^^^^^^ not expected here
    |
    = help: remove it: only `:docstring`, `:docstring-only`, `:one-per-line`, `:arms`, `:bindings` and `:methods` may follow a header shape, each once
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:24:29
@@ -54,6 +59,7 @@ error[L0331]: unexpected form after a header shape
    |                             ^^^^^^^^^^^^^ not expected here
    |
    = help: remove it: only `:docstring`, `:docstring-only`, `:one-per-line`, `:arms`, `:bindings` and `:methods` may follow a header shape, each once
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:26:41
@@ -65,6 +71,7 @@ help: write `:one-per-line` to state that a call of the form does not fill runs 
    |
 26 | (header-shape (my-defn name parameters) :one-per-line)
    |                                                     +
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:28:41
@@ -76,6 +83,7 @@ help: write `:arms` to state that each list after the header is an arm
    |
 28 | (header-shape (my-defn name parameters) :arms)
    |                                             +
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:30:47
@@ -84,6 +92,7 @@ error[L0331]: unexpected form after a header shape
    |                                               ^^^^^ not expected here
    |
    = help: remove it: only `:docstring`, `:docstring-only`, `:one-per-line`, `:arms`, `:bindings` and `:methods` may follow a header shape, each once
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:36:41
@@ -95,6 +104,7 @@ help: write `:bindings` to state that the header's last form is a binding list
    |
 36 | (header-shape (my-defn name parameters) :bindings)
    |                                                 +
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:38:51
@@ -103,6 +113,7 @@ error[L0331]: unexpected form after a header shape
    |                                                   ^^^^^^^^^ not expected here
    |
    = help: remove it: only `:docstring`, `:docstring-only`, `:one-per-line`, `:arms`, `:bindings` and `:methods` may follow a header shape, each once
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:44:41
@@ -114,6 +125,7 @@ help: write `:methods` to state that each list after the header is a method
    |
 44 | (header-shape (my-defn name parameters) :methods)
    |                                                +
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:46:50
@@ -122,6 +134,7 @@ error[L0331]: unexpected form after a header shape
    |                                                  ^^^^^^^^ not expected here
    |
    = help: remove it: only `:docstring`, `:docstring-only`, `:one-per-line`, `:arms`, `:bindings` and `:methods` may follow a header shape, each once
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:48:47
@@ -130,6 +143,7 @@ error[L0331]: unexpected form after a header shape
    |                                               ^^^^^^^^ `:arms` and `:methods` exclude each other
    |
    = help: keep one: `:arms` and `:methods` each state what every list after the header is
+   = note: run `knave doc L0331` for an explanation
 
 error[L0331]: unexpected form after a header shape
   --> expand/header_shape_markers.knv:52:15
@@ -138,3 +152,4 @@ error[L0331]: unexpected form after a header shape
    |               ^^^^^ `:arms` and `:methods` exclude each other
    |
    = help: keep one: `:arms` and `:methods` each state what every list after the header is
+   = note: run `knave doc L0331` for an explanation

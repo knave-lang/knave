@@ -10,3 +10,4 @@ error[L0725]: cannot fetch git library `keymap`
   |
   = note: git says: <message>
   = help: check the library's `:git` and `:rev`, and that the repository is reachable
+  = note: run `knave doc L0725` for an explanation

@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/foreign_display.knv
 ---
 error[L0445]: `(vec i64)` cannot implement `display`
@@ -11,3 +11,4 @@ error[L0445]: `(vec i64)` cannot implement `display`
   |
   = note: Rust implements a trait only for a type in the crate that defines the trait or the type
   = help: implement it for a struct or enum this program defines
+  = note: run `knave doc L0445` for an explanation

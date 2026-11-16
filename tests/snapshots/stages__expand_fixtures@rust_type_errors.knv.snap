@@ -10,6 +10,7 @@ error[L0225]: `{1}` names no type parameter
   |                           ^^^^^^^^^^ this type has 1 type parameter
   |
   = help: declare the type parameters on the name, as in `(rust-type (shifted a b) "Box<{1}>")`
+  = note: run `knave doc L0225` for an explanation
 
 error[L0226]: the template never uses this type parameter
  --> expand/rust_type_errors.knv:3:25
@@ -18,6 +19,7 @@ error[L0226]: the template never uses this type parameter
   |                         ^^^^^ its placeholder is `{1}`
   |
   = help: use `{1}` in the template, or remove the parameter
+  = note: run `knave doc L0226` for an explanation
 
 error[L0213]: this type template has a malformed placeholder
  --> expand/rust_type_errors.knv:5:19
@@ -26,6 +28,7 @@ error[L0213]: this type template has a malformed placeholder
   |                   ^^^^^^^^ a placeholder is `{`, a number and `}`
   |
   = help: write a literal brace as `{{` or `}}`
+  = note: run `knave doc L0213` for an explanation
 
 error[L0225]: `{0}` names no type parameter
  --> expand/rust_type_errors.knv:7:18
@@ -34,6 +37,7 @@ error[L0225]: `{0}` names no type parameter
   |                  ^^^^^^^^^^ this type has 0 type parameters
   |
   = help: declare the type parameters on the name, as in `(rust-type (plain a) "Vec<{0}>")`
+  = note: run `knave doc L0225` for an explanation
 
 error[L0210]: malformed `rust-type`
  --> expand/rust_type_errors.knv:9:1
@@ -42,6 +46,7 @@ error[L0210]: malformed `rust-type`
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this does not fit the shape of `rust-type`
   |
   = help: write it as `(rust-type (name parameter ...) "template" (type "template") ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `rust-type`
   --> expand/rust_type_errors.knv:11:1
@@ -50,6 +55,7 @@ error[L0210]: malformed `rust-type`
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this does not fit the shape of `rust-type`
    |
    = help: write it as `(rust-type (name parameter ...) "template" (type "template") ...)`
+   = note: run `knave doc L0210` for an explanation
 
 error[L0224]: a type template cannot borrow a placeholder
   --> expand/rust_type_errors.knv:13:29
@@ -58,3 +64,4 @@ error[L0224]: a type template cannot borrow a placeholder
    |                             ^^^^^^^^^^^ `{&...}` only makes sense for a value
    |
    = help: write the placeholder as `{0}`
+   = note: run `knave doc L0224` for an explanation

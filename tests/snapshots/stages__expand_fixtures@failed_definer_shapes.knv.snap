@@ -8,27 +8,37 @@ error[L0301]: defone is not ready
    |
 16 | (defone first-thing second-thing)
    |         ^^^^^^^^^^^ here
+   |
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: defbare is not ready
   --> expand/failed_definer_shapes.knv:18:10
    |
 18 | (defbare third-thing)
    |          ^^^^^^^^^^^ here
+   |
+   = note: run `knave doc L0301` for an explanation
 
 error[L0201]: cannot find `first-thing` in this scope
   --> expand/failed_definer_shapes.knv:21:4
    |
 21 |   (first-thing)
    |    ^^^^^^^^^^^ not found in this scope
+   |
+   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `second-thing` in this scope
   --> expand/failed_definer_shapes.knv:22:4
    |
 22 |   (second-thing)
    |    ^^^^^^^^^^^^ not found in this scope
+   |
+   = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `third-thing` in this scope
   --> expand/failed_definer_shapes.knv:23:4
    |
 23 |   (third-thing))
    |    ^^^^^^^^^^^ not found in this scope
+   |
+   = note: run `knave doc L0201` for an explanation

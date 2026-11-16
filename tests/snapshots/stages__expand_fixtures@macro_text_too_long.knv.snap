@@ -14,3 +14,4 @@ error[L0355]: macro code built a value too large
   |
   = note: text that macro code builds holds at most 16777216 bytes
   = help: build smaller text, or make the macro stop growing it
+  = note: run `knave doc L0355` for an explanation

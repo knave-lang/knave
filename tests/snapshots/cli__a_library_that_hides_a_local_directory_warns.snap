@@ -10,3 +10,4 @@ warning[L0251]: library `hints` hides `src/hints`
   |
   = note: a library's name takes precedence over a local module of the same name
   = help: rename `src/hints` to reach it, or rename the library in `project.knv`
+  = note: run `knave doc L0251` for an explanation

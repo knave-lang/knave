@@ -11,9 +11,12 @@ error[L0207]: expected a definition at module level
   | |______________________________^ this is not a definition
   |
   = help: put expressions inside a function, such as `(def run (fn () ...))`
+  = note: run `knave doc L0207` for an explanation
 
 error[L0201]: cannot find `rate` in this scope
  --> check/let_at_top_level.knv:2:24
   |
 2 |   (defn scale (n) (* n rate)))
   |                        ^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

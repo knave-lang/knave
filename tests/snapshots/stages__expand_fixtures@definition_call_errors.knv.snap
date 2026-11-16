@@ -11,6 +11,8 @@ error[L0311]: `definition-call` takes 1 argument but 0 were given
 5 |
 6 | (def missing (call-of-nothing))
   |              ----------------- in this macro call
+  |
+  = note: run `knave doc L0311` for an explanation
 
 error[L0303]: `definition-call` expects a symbol as argument 1, found a string
   --> expand/definition_call_errors.knv:9:17
@@ -20,6 +22,8 @@ error[L0303]: `definition-call` expects a symbol as argument 1, found a string
 10 |
 11 | (def text (call-of-text))
    |           -------------- in this macro call
+   |
+   = note: run `knave doc L0303` for an explanation
 
 error[L0201]: cannot find `no-such-term` in this scope
   --> expand/definition_call_errors.knv:15:29
@@ -29,3 +33,5 @@ error[L0201]: cannot find `no-such-term` in this scope
 16 |
 17 | (def unbound (call-of-unbound))
    |              ----------------- in this macro call
+   |
+   = note: run `knave doc L0201` for an explanation

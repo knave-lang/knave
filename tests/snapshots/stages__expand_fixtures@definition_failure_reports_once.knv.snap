@@ -13,3 +13,4 @@ error[L0301]: this macro is not finished
    |   ----------------- in this macro call
    |
    = help: finish the macro
+   = note: run `knave doc L0301` for an explanation

@@ -10,6 +10,7 @@ error[L0301]: this field has no type
   |   ^^^^^ here
   |
   = help: write a type after it, as in :year i64
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: a field must start with `:`
  --> expand/defstruct_errors.knv:6:3
@@ -18,6 +19,7 @@ error[L0301]: a field must start with `:`
   |   ^^^^ here
   |
   = help: write each field as `:name type`, as in (defstruct point :x f64 :y f64)
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this field has no type
  --> expand/defstruct_errors.knv:9:3
@@ -26,3 +28,4 @@ error[L0301]: this field has no type
   |   ^^^^^^ here
   |
   = help: write a type after it, as in :seats i64
+  = note: run `knave doc L0301` for an explanation

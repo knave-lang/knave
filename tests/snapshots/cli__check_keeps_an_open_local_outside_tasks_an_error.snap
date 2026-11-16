@@ -12,3 +12,4 @@ help: write the type with `the`, and replace each `_` with a type
   |
 2 |   (local x (the (result _ (parse-error _)) (parse "1")))
   |            +++++++++++++++++++++++++++++++            +
+  = note: run `knave doc L0407` for an explanation

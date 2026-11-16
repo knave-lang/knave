@@ -8,3 +8,5 @@ error[L0706]: `:edition` takes a whole number
   |
 1 | (defproject browser :edition 2026.5)
   |                              ^^^^^^ expected a whole number
+  |
+  = note: run `knave doc L0706` for an explanation

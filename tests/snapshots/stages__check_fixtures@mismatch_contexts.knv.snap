@@ -11,6 +11,8 @@ error[L0401]: mismatched types
 4 |
 5 | (defn answer () "forty-two")
   |                 ^^^^^^^^^^^ expected `i64`, found `(ref str)`
+  |
+  = note: run `knave doc L0401` for an explanation
 
 error[L0401]: mismatched types
  --> check/mismatch_contexts.knv:8:22
@@ -19,12 +21,16 @@ error[L0401]: mismatched types
   |                 ---  ^^^^^^ expected `i64`, found `(ref str)`
   |                 |
   |                 expected because of this annotation
+  |
+  = note: run `knave doc L0401` for an explanation
 
 error[L0401]: mismatched types
   --> check/mismatch_contexts.knv:12:23
    |
 12 |   (new counter (count "many")))
    |                       ^^^^^^ expected `i64`, found `(ref str)`
+   |
+   = note: run `knave doc L0401` for an explanation
 
 error[L0408]: `counter` has no field `cuont`
   --> check/mismatch_contexts.knv:15:17
@@ -37,6 +43,7 @@ help: a field with a similar name exists
 15 -   (new counter (cuont 1)))
 15 +   (new counter (count 1)))
    |
+   = note: run `knave doc L0408` for an explanation
 
 error[L0401]: mismatched types
   --> check/mismatch_contexts.knv:18:22
@@ -45,6 +52,8 @@ error[L0401]: mismatched types
    |                 ---  ^^^ expected `str`, found a float
    |                 |
    |                 expected because of this annotation
+   |
+   = note: run `knave doc L0401` for an explanation
 
 error[L0401]: mismatched types
   --> check/mismatch_contexts.knv:22:24
@@ -53,6 +62,8 @@ error[L0401]: mismatched types
    |               -------  ^^^^^^ expected `counter`, found `(ref str)`
    |               |
    |               expected because of this annotation
+   |
+   = note: run `knave doc L0401` for an explanation
 
 error[L0401]: mismatched types
   --> check/mismatch_contexts.knv:27:5
@@ -61,6 +72,8 @@ error[L0401]: mismatched types
    |                -------------- expected because of this annotation
 27 |     (fn (left right) left))
    |     ^^^^^^^^^^^^^^^^^^^^^^ expected `(fn (i64) i64)`, found `(fn (_ _) _)`
+   |
+   = note: run `knave doc L0401` for an explanation
 
 error[L0401]: mismatched types
   --> check/mismatch_contexts.knv:32:1
@@ -70,3 +83,5 @@ error[L0401]: mismatched types
 31 |
 32 | (defn ends-with-let () (local unused 1))
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i64`, found `unit`
+   |
+   = note: run `knave doc L0401` for an explanation

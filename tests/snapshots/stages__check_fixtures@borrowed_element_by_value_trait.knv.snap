@@ -10,3 +10,4 @@ error[L0404]: `(ref a)` does not implement `retire`
    |                                              ^^^ this needs `retire`
    |
    = note: `retire` is implemented for: car
+   = note: run `knave doc L0404` for an explanation

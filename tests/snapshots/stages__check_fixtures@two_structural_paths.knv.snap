@@ -23,3 +23,4 @@ error[L0248]: `octal3` binds `std::fmt::Octal`, which `octal` already infers
    | |______________________________________________- `octal` infers `std::fmt::Octal` here
    |
    = help: keep one of the two clauses, or give this `rust-trait` another Rust path
+   = note: run `knave doc L0248` for an explanation

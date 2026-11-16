@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/try_in_unit_function.knv
 ---
 error[L0428]: `try` cannot return from this function
@@ -11,3 +11,4 @@ error[L0428]: `try` cannot return from this function
   |
   = note: `try` here needs a function that returns `result` whose error can hold this value's error
   = help: make the function return the value `try` needs, or handle this value without `try`
+  = note: run `knave doc L0428` for an explanation

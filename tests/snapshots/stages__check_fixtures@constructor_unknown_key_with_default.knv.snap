@@ -14,3 +14,4 @@ help: a field with a similar name exists
 8 -   (local ana (->user :name "ana" :emial "ana@example.com"))
 8 +   (local ana (->user :name "ana" :email "ana@example.com"))
   |
+  = note: run `knave doc L0408` for an explanation

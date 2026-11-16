@@ -13,6 +13,7 @@ error[L0510]: cannot return a borrow of a temporary value
   |   this borrows a temporary value
   |
   = help: return an owned value, or borrow from a parameter or a top-level `def`
+  = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
  --> check/returned_unpromoted_temporary.knv:8:18
@@ -24,6 +25,7 @@ error[L0510]: cannot return a borrow of a temporary value
   |                  this borrows a temporary value
   |
   = help: return an owned value, or borrow from a parameter or a top-level `def`
+  = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:10:17
@@ -35,6 +37,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |                 this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:13:3
@@ -46,6 +49,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |   this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:16:3
@@ -57,6 +61,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |   this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:18:21
@@ -68,6 +73,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |                     this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:21:3
@@ -79,6 +85,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |   this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:24:3
@@ -90,6 +97,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |   this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:27:3
@@ -101,6 +109,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |   this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:29:16
@@ -112,6 +121,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |                this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:32:3
@@ -123,6 +133,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |   this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:41:3
@@ -134,6 +145,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |   this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:44:3
@@ -145,6 +157,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |   this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:47:3
@@ -159,6 +172,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |                      this temporary value is dropped when the function returns
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:52:3
@@ -173,6 +187,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |                                                     this temporary value is dropped when the function returns
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:62:18
@@ -184,6 +199,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |                  this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:65:3
@@ -195,6 +211,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |   this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:68:3
@@ -206,6 +223,7 @@ error[L0510]: cannot return a borrow of a temporary value
    |   this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation
 
 error[L0510]: cannot return a borrow of a temporary value
   --> check/returned_unpromoted_temporary.knv:71:3
@@ -217,3 +235,4 @@ error[L0510]: cannot return a borrow of a temporary value
    |   this borrows a temporary value
    |
    = help: return an owned value, or borrow from a parameter or a top-level `def`
+   = note: run `knave doc L0510` for an explanation

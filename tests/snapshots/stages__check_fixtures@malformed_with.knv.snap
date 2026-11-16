@@ -10,6 +10,7 @@ error[L0228]: malformed `with` type
   |                   ^^^^ this does not fit the shape of the type
   |
   = help: write it as `(with type type)`
+  = note: run `knave doc L0228` for an explanation
 
 error[L0228]: malformed `with` type
  --> check/malformed_with.knv:9:19
@@ -18,3 +19,4 @@ error[L0228]: malformed `with` type
   |                   ^^^^^^^^ this does not fit the shape of the type
   |
   = help: write it as `(with type type)`
+  = note: run `knave doc L0228` for an explanation

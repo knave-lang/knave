@@ -11,6 +11,7 @@ error[L0605]: `newer` returns a `car`, which cannot hold the borrow in `other`
    |
    = note: a trait signature cannot name the lifetime that `car` holds
    = help: write `self` in place of `car` for this parameter in the trait
+   = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `relabel` returns a `car`, which cannot hold the borrow in `label`
   --> emit/untied_implementor_borrows.knv:15:13
@@ -20,6 +21,7 @@ error[L0605]: `relabel` returns a `car`, which cannot hold the borrow in `label`
    |
    = note: a trait signature cannot name the lifetime that `car` holds
    = help: build the `car` in a function outside the trait
+   = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `badge` returns a borrow that cannot come from `c`
   --> emit/untied_implementor_borrows.knv:18:16
@@ -29,6 +31,7 @@ error[L0605]: `badge` returns a borrow that cannot come from `c`
    |
    = note: no parameter of the trait's signature holds a borrow, so the result takes the `'static` lifetime
    = help: take this parameter as `(ref self)` in the trait, so the result can borrow from it
+   = note: run `knave doc L0605` for an explanation
 
 error[L0605]: `model-of` returns a borrow that cannot come from `c`
   --> emit/untied_implementor_borrows.knv:21:14
@@ -38,3 +41,4 @@ error[L0605]: `model-of` returns a borrow that cannot come from `c`
    |
    = note: no parameter of the trait's signature holds a borrow, so the result takes the `'static` lifetime
    = help: take this parameter as `(ref self)` in the trait, so the result can borrow from it
+   = note: run `knave doc L0605` for an explanation

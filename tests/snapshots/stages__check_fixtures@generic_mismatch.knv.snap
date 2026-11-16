@@ -10,3 +10,4 @@ error[L0401]: mismatched types
   |                    ^^^^^^ expected `t`, found `(ref str)`
   |
   = note: `t` is a type parameter, so this code must work for every type `t` stands for
+  = note: run `knave doc L0401` for an explanation

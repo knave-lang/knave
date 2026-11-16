@@ -14,3 +14,4 @@ error[L0437]: `try` cannot choose an error variant
    = note: variant `io` holds `io-error`
    = note: variant `read` holds `io-error`
    = help: keep one variant for each error type, or convert the error with `map-err`
+   = note: run `knave doc L0437` for an explanation

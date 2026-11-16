@@ -10,3 +10,4 @@ error[L0401]: mismatched types
   |          ^^^^^^ expected `(vec _)`, found `limits`
   |
   = help: a struct is not a collection, so update a field with a keyword key, such as `:field`
+  = note: run `knave doc L0401` for an explanation

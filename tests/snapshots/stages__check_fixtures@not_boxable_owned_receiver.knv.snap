@@ -10,3 +10,4 @@ error[L0448]: `shape` cannot be a trait object
   |                      ^^^^^ `area` takes `self` by value
   |
   = help: take the receiver by reference, as `(ref self)` or `(mut self)`
+  = note: run `knave doc L0448` for an explanation

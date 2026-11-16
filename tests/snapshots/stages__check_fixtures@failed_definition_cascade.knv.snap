@@ -12,3 +12,4 @@ error[L0401]: mismatched types
   |     ^^^^^^^^^^^^^^^^ expected `(pair (vec _) _)`, found `(pair (vec _) (ref str))`
   |
   = note: both branches of `if` must have the same type
+  = note: run `knave doc L0401` for an explanation

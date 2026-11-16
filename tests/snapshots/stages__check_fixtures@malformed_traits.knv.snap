@@ -10,6 +10,7 @@ error[L0210]: malformed `trait`
   | ^^^^^^^ this does not fit the shape of `trait`
   |
   = help: write it as `(trait name (method type) ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `trait`
  --> check/malformed_traits.knv:3:18
@@ -18,6 +19,7 @@ error[L0210]: malformed `trait`
   |                  ^^^^ this does not fit the shape of `trait`
   |
   = help: write it as `(trait name (method type) ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `trait`
  --> check/malformed_traits.knv:5:18
@@ -26,6 +28,7 @@ error[L0210]: malformed `trait`
   |                  ^^^^^^ this does not fit the shape of `trait`
   |
   = help: write it as `(trait name (method type) ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `trait`
  --> check/malformed_traits.knv:7:15
@@ -34,6 +37,7 @@ error[L0210]: malformed `trait`
   |               ^^^^^^ this does not fit the shape of `trait`
   |
   = help: write it as `(trait name (method type) ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `trait`
  --> check/malformed_traits.knv:9:30
@@ -42,6 +46,7 @@ error[L0210]: malformed `trait`
   |                              ^^^ this does not fit the shape of `trait`
   |
   = help: write it as `(trait name (method type) ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `impl`
   --> check/malformed_traits.knv:16:7
@@ -50,6 +55,7 @@ error[L0210]: malformed `impl`
    |       ^^^^^^ this does not fit the shape of `impl`
    |
    = help: write a visible trait
+   = note: run `knave doc L0210` for an explanation
 
 error[L0239]: `circle` is missing `area` from `painted`
   --> check/malformed_traits.knv:21:15
@@ -58,6 +64,7 @@ error[L0239]: `circle` is missing `area` from `painted`
    |               ^^^^^^ this implementation is missing `area`
    |
    = help: add the `area` method
+   = note: run `knave doc L0239` for an explanation
 
 error[L0210]: malformed `impl`
   --> check/malformed_traits.knv:23:22
@@ -66,6 +73,7 @@ error[L0210]: malformed `impl`
    |                      ^^^^ this does not fit the shape of `impl`
    |
    = help: write it as `(impl trait type (method (parameter ...) body ...) ...)`
+   = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `impl`
   --> check/malformed_traits.knv:25:22
@@ -74,6 +82,7 @@ error[L0210]: malformed `impl`
    |                      ^^^^^^ this does not fit the shape of `impl`
    |
    = help: write it as `(impl trait type (method (parameter ...) body ...) ...)`
+   = note: run `knave doc L0210` for an explanation
 
 error[L0239]: `circle` is missing `area` from `painted`
   --> check/malformed_traits.knv:27:15
@@ -82,6 +91,7 @@ error[L0239]: `circle` is missing `area` from `painted`
    |               ^^^^^^ this implementation is missing `area`
    |
    = help: add the `area` method
+   = note: run `knave doc L0239` for an explanation
 
 error[L0241]: `painted` does not declare `nope`
   --> check/malformed_traits.knv:27:23
@@ -90,6 +100,7 @@ error[L0241]: `painted` does not declare `nope`
    |                       ^^^^ not a method of `painted`
    |
    = help: declare it in the trait, or remove it
+   = note: run `knave doc L0241` for an explanation
 
 error[L0210]: malformed `impl`
   --> check/malformed_traits.knv:29:1
@@ -98,3 +109,4 @@ error[L0210]: malformed `impl`
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this does not fit the shape of `impl`
    |
    = help: define the trait before implementing it
+   = note: run `knave doc L0210` for an explanation

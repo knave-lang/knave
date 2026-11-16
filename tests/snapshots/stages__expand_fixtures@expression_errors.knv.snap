@@ -10,6 +10,7 @@ error[L0229]: `macro` must be the value of a module-level `def`
   |          ^^^^^^^^^^^^^^^^^^^ not allowed here
   |
   = help: write `(def name (macro (form) body ...))`
+  = note: run `knave doc L0229` for an explanation
 
 error[L0210]: malformed `new`
  --> expand/expression_errors.knv:6:34
@@ -18,6 +19,7 @@ error[L0210]: malformed `new`
   |                                  ^^^^ this does not fit the shape of `new`
   |
   = help: write it as `(new name (field value) ...) or (new _ base (field value) ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `rust`
  --> expand/expression_errors.knv:8:31
@@ -26,6 +28,7 @@ error[L0210]: malformed `rust`
   |                               ^^^ this does not fit the shape of `rust`
   |
   = help: write it as `(rust "template" type (target "template") ...)`
+  = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `fn`
   --> expand/expression_errors.knv:10:15
@@ -34,6 +37,7 @@ error[L0210]: malformed `fn`
    |               ^^^^ this does not fit the shape of `fn`
    |
    = help: write it as `(fn (parameter ...) body ...)`
+   = note: run `knave doc L0210` for an explanation
 
 error[L0210]: malformed `rust`
   --> expand/expression_errors.knv:12:30
@@ -42,3 +46,4 @@ error[L0210]: malformed `rust`
    |                              ^ this does not fit the shape of `rust`
    |
    = help: write it as `(rust "template" type (target "template") ...)`
+   = note: run `knave doc L0210` for an explanation

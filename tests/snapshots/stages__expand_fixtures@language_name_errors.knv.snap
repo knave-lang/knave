@@ -11,3 +11,5 @@ error[L0311]: `language-name` takes 0 arguments but 1 was given
 5 |
 6 | (def name (extra-argument))
   |           ---------------- in this macro call
+  |
+  = note: run `knave doc L0311` for an explanation

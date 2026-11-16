@@ -13,3 +13,4 @@ warning[L0723]: library `missing` has no project file at `../missing/project.knv
   |                             ^^^^^^^ this library's `:path` names no project
   |
   = help: point `:path` at the library's directory, which holds its project file
+  = note: run `knave doc L0723` for an explanation

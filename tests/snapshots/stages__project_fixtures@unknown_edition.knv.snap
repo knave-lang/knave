@@ -14,3 +14,4 @@ help: the only edition is 2026
 1 - (defproject browser :edition 2025)
 1 + (defproject browser :edition 2026)
   |
+  = note: run `knave doc L0717` for an explanation

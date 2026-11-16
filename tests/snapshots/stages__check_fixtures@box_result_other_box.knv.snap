@@ -8,3 +8,5 @@ error[L0401]: mismatched types
   |
 8 | (defn main () (take (vec 1 2)))
   |                     ^^^^^^^^^ expected `(box shape)`, found `(vec _)`
+  |
+  = note: run `knave doc L0401` for an explanation

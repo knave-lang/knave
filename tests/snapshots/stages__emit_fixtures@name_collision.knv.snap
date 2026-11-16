@@ -13,3 +13,4 @@ error[L0602]: `admin?` and `is-admin` both become `is_admin` in Rust
   |       ^^^^^^^^ this becomes `is_admin`
   |
   = help: rename one of them
+  = note: run `knave doc L0602` for an explanation

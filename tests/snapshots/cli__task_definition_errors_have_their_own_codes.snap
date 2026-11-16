@@ -9,6 +9,7 @@ error[L0360]: a task cannot have a flag named `--help`
   |              ^^^^^ this flag
   |
   = help: rename the flag, because `--help` prints the task's usage
+  = note: run `knave doc L0360` for an explanation
 ---
 error[L0361]: the only form of task `docless` is a string, so it is the task's body, not its docstring
  --> tasks/t.knv:1:21
@@ -17,3 +18,4 @@ error[L0361]: the only form of task `docless` is a string, so it is the task's b
   |                     ^^^^^^^^^^^^^^^^^^ this string is the body
   |
   = help: write the task's body after the docstring
+  = note: run `knave doc L0361` for an explanation

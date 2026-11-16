@@ -13,3 +13,4 @@ error[L0602]: `wrapped` and `wrapper` both become `Wrapper` in Rust
   |         ^^^^^^^ this becomes `Wrapper`
   |
   = help: rename one of them
+  = note: run `knave doc L0602` for an explanation

@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).check_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/check/unused_enum_parameter.knv
 ---
 error[L0443]: no payload uses the type parameter `b`
@@ -10,3 +10,4 @@ error[L0443]: no payload uses the type parameter `b`
   |                  ^ declared here
   |
   = help: use `b` in a variant payload, or remove it
+  = note: run `knave doc L0443` for an explanation

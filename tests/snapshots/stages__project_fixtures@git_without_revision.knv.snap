@@ -10,3 +10,4 @@ error[L0714]: git library `keymap` has no `:rev`
   |                                ^^^^ this repository needs a commit
   |
   = help: add `:rev` with the commit's full 40-character hash
+  = note: run `knave doc L0714` for an explanation

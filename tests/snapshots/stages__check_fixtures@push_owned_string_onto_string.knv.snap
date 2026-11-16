@@ -10,3 +10,4 @@ error[L0401]: mismatched types
   |                        ^^^^^^ expected a `char` or a `(ref str)`, found `string`
   |
   = help: borrow the item with `(ref ...)`
+  = note: run `knave doc L0401` for an explanation

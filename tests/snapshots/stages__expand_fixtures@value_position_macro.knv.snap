@@ -10,3 +10,4 @@ error[L0304]: `unless` is a macro, not a value
    |               ^^^^^^ used as a value here
    |
    = help: a macro can only be called; pass a function instead
+   = note: run `knave doc L0304` for an explanation

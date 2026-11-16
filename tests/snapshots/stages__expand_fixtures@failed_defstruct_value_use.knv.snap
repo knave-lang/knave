@@ -10,6 +10,7 @@ error[L0301]: a field must start with `:`
   |   ^^^^^^^ here
   |
   = help: write each field as `:name type`, as in (defstruct point :x f64 :y f64)
+  = note: run `knave doc L0301` for an explanation
 
 error[L0201]: cannot find `point` in this scope
  --> expand/failed_defstruct_value_use.knv:5:18
@@ -22,9 +23,12 @@ help: a name with a similar spelling exists
 5 - (defn origin () (point 0 0))
 5 + (defn origin () (print 0 0))
   |
+  = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `point-x` in this scope
  --> expand/failed_defstruct_value_use.knv:8:13
   |
 8 |   (println (point-x (origin))))
   |             ^^^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

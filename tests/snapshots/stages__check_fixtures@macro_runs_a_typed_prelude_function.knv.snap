@@ -18,3 +18,4 @@ error[L0306]: `reduce` belongs to the program, so macro code cannot run it
    |                      --- macro code reaches it through this
    |
    = help: to compute this in the program, return it as code from the macro, for example with `quote`
+   = note: run `knave doc L0306` for an explanation

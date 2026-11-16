@@ -11,3 +11,5 @@ error[L0311]: `symbol` takes 1 argument but 0 were given
 4 |
 5 | (def x (m))
   |        --- in this macro call
+  |
+  = note: run `knave doc L0311` for an explanation

@@ -11,6 +11,7 @@ error[L0350]: `defproject` belongs only in `project.knv`
   |
   = note: the compiler reads the project file as data, and never expands it
   = help: move it into `project.knv` at the project root
+  = note: run `knave doc L0350` for an explanation
 
 error[L0350]: `libraries` belongs only in `project.knv`
  --> expand/project_form_in_program.knv:6:1
@@ -20,6 +21,7 @@ error[L0350]: `libraries` belongs only in `project.knv`
   |
   = note: the compiler reads the project file as data, and never expands it
   = help: move it into `project.knv` at the project root
+  = note: run `knave doc L0350` for an explanation
 
 error[L0350]: `dependencies` belongs only in `project.knv`
  --> expand/project_form_in_program.knv:8:1
@@ -29,6 +31,7 @@ error[L0350]: `dependencies` belongs only in `project.knv`
   |
   = note: the compiler reads the project file as data, and never expands it
   = help: move it into `project.knv` at the project root
+  = note: run `knave doc L0350` for an explanation
 
 error[L0350]: `dev-dependencies` belongs only in `project.knv`
   --> expand/project_form_in_program.knv:10:1
@@ -38,3 +41,4 @@ error[L0350]: `dev-dependencies` belongs only in `project.knv`
    |
    = note: the compiler reads the project file as data, and never expands it
    = help: move it into `project.knv` at the project root
+   = note: run `knave doc L0350` for an explanation

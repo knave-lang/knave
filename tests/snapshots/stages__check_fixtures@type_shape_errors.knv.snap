@@ -10,12 +10,15 @@ error[L0407]: type annotations needed
   |                                   ^ cannot tell which struct's `x` this is
   |
   = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+  = note: run `knave doc L0407` for an explanation
 
 error[L0410]: `bool` has no fields
   --> check/type_shape_errors.knv:11:34
    |
 11 | (defn field-of-boolean () (field true x))
    |                                  ^^^^ only structs have fields
+   |
+   = note: run `knave doc L0410` for an explanation
 
 error[L0411]: this value's type would contain itself
   --> check/type_shape_errors.knv:13:25
@@ -24,15 +27,20 @@ error[L0411]: this value's type would contain itself
    |                         ^ here
    |
    = help: a function cannot be called with itself as its own argument type
+   = note: run `knave doc L0411` for an explanation
 
 error[L0413]: `where` must wrap a whole signature
   --> check/type_shape_errors.knv:16:8
    |
 16 |   (fn ((where (a) a)) i64))
    |        ^^^^^^^^^^^^^ not allowed inside another type
+   |
+   = note: run `knave doc L0413` for an explanation
 
 error[L0415]: `point` takes 0 type arguments but 1 was given
   --> check/type_shape_errors.knv:21:8
    |
 21 |   (fn ((point i64)) i64))
    |        ^^^^^^^^^^^ expected 0 type arguments
+   |
+   = note: run `knave doc L0415` for an explanation

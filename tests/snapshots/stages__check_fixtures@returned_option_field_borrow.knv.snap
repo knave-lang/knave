@@ -15,3 +15,4 @@ error[L0510]: cannot return a borrow of a local value
   |                       ^^^^^^^^^^^^^^ this borrows a local value
   |
   = help: the field `model` of `car` borrows its data, so give it the owned type `(option string)`
+  = note: run `knave doc L0510` for an explanation

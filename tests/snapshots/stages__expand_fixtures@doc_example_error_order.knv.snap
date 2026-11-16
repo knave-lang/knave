@@ -13,9 +13,12 @@ help: a name with a similar spelling exists
   |
 6 |   (twice 3)
   |        +
+  = note: run `knave doc L0201` for an explanation
 
 error[L0201]: cannot find `missing-in-body` in this scope
  --> expand/doc_example_error_order.knv:8:4
   |
 8 |   (missing-in-body x))
   |    ^^^^^^^^^^^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

@@ -10,6 +10,7 @@ error[L0465]: `looped` requires itself
   |             ^^^^^^ `looped` leads back to `looped`
   |
   = help: remove this requirement: Rust rejects a trait that is its own supertrait
+  = note: run `knave doc L0465` for an explanation
 
 error[L0465]: `second-mark` requires itself
   --> check/rust_trait_requires_cycle.knv:10:13
@@ -18,6 +19,7 @@ error[L0465]: `second-mark` requires itself
    |             ^^^^^^^^^^ `first-mark` leads back to `second-mark`
    |
    = help: remove this requirement: Rust rejects a trait that is its own supertrait
+   = note: run `knave doc L0465` for an explanation
 
 error[L0440]: `a` might not implement `partial-eq`
   --> check/rust_trait_requires_cycle.knv:16:26
@@ -26,6 +28,7 @@ error[L0440]: `a` might not implement `partial-eq`
    |                          ^ this needs `partial-eq`
    |
    = help: add the trait to the signature's `where`: `(a partial-eq)`
+   = note: run `knave doc L0440` for an explanation
 
 error[L0440]: `a` might not implement `partial-eq`
   --> check/rust_trait_requires_cycle.knv:21:26
@@ -34,3 +37,4 @@ error[L0440]: `a` might not implement `partial-eq`
    |                          ^ this needs `partial-eq`
    |
    = help: add the trait to the signature's `where`: `(a partial-eq)`
+   = note: run `knave doc L0440` for an explanation

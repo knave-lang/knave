@@ -8,3 +8,5 @@ error[L0401]: mismatched types
   |
 1 | (defn main () (assoc 1 0 2))
   |                      ^ expected `(vec _)`, found an integer
+  |
+  = note: run `knave doc L0401` for an explanation

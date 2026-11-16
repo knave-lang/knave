@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).read_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/read/malformed_number.knv
 ---
 error[L0105]: `1+` is not a valid number
@@ -11,6 +11,7 @@ error[L0105]: `1+` is not a valid number
   |
   = note: a name cannot start with a digit, or with a sign followed by a digit
   = help: numbers look like `42`, `-7`, `1_000`, `2.5` or `1e9`
+  = note: run `knave doc L0105` for an explanation
 
 error[L0105]: `1.2.3` is not a valid number
  --> read/malformed_number.knv:2:14
@@ -20,3 +21,4 @@ error[L0105]: `1.2.3` is not a valid number
   |
   = note: a name cannot start with a digit, or with a sign followed by a digit
   = help: numbers look like `42`, `-7`, `1_000`, `2.5` or `1e9`
+  = note: run `knave doc L0105` for an explanation

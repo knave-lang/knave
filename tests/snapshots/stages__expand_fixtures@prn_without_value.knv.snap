@@ -10,3 +10,4 @@ error[L0352]: `prn` needs a value to print
   |               ^^^^^ here
   |
   = help: write a value after it, as in `(prn total)`
+  = note: run `knave doc L0352` for an explanation

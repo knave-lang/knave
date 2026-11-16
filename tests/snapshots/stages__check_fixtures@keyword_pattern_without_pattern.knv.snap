@@ -10,6 +10,7 @@ error[L0463]: `:x` has no pattern after it
   |                    ^^ this field keyword needs a pattern
   |
   = help: write a pattern after `:x`, or remove it
+  = note: run `knave doc L0463` for an explanation
 
 error[L0463]: `:x` has no pattern after it
   --> check/keyword_pattern_without_pattern.knv:11:20
@@ -18,12 +19,15 @@ error[L0463]: `:x` has no pattern after it
    |                    ^^ this field keyword needs a pattern
    |
    = help: write a pattern after `:x`, or remove it
+   = note: run `knave doc L0463` for an explanation
 
 error[L0460]: `point` has no field `:z`
   --> check/keyword_pattern_without_pattern.knv:14:20
    |
 14 |   (match p ((point :z) 0)))
    |                    ^^ unknown field
+   |
+   = note: run `knave doc L0460` for an explanation
 
 error[L0460]: `circle` has no field `:radius`
   --> check/keyword_pattern_without_pattern.knv:17:21
@@ -32,3 +36,4 @@ error[L0460]: `circle` has no field `:radius`
    |                     ^^^^^^^ unknown field
    |
    = help: `circle` takes 1 part by position, without a label
+   = note: run `knave doc L0460` for an explanation

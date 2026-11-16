@@ -14,6 +14,7 @@ warning[L0249]: set aside `circle` and `square` after `<input 5>`
   = note: error[L0205]: module `shapes` does not export `square`
   = help: add `square` to the `export` list of `shapes`
   = help: enter `circle` and `square` again to use them
+  = note: run `knave doc L0249` for an explanation
 
 warning[L0249]: set aside `area` after `<input 5>`
  --> <input 3>:1:16
@@ -24,6 +25,7 @@ warning[L0249]: set aside `area` after `<input 5>`
   = note: error[L0201]: cannot find `square` in this scope
   = note: `<input 5>` set aside `square`: module `shapes` does not export `square`
   = help: enter `area` again to use it
+  = note: run `knave doc L0249` for an explanation
 error[L0201]: cannot find `area` in this scope
  --> <input 6>:1:2
   |
@@ -31,3 +33,4 @@ error[L0201]: cannot find `area` in this scope
   |  ^^^^ not found in this scope
   |
   = note: `<input 5>` set aside `area`: cannot find `square` in this scope
+  = note: run `knave doc L0201` for an explanation

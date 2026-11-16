@@ -8,3 +8,5 @@ error[L0402]: this function takes 1 argument but 0 were given
   |
 3 |   (get years))
   |   ^^^^^^^^^^^ expected 1 argument
+  |
+  = note: run `knave doc L0402` for an explanation

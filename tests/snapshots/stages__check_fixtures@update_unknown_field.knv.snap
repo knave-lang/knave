@@ -8,3 +8,5 @@ error[L0408]: `item` has no field `:total`
   |
 5 |   (prn (update (->item :count 1) :total neg)))
   |                                  ^^^^^^ unknown field
+  |
+  = note: run `knave doc L0408` for an explanation

@@ -14,3 +14,4 @@ help: a name with a similar spelling exists
 7 - (defn main () (both missing-nam missing-name))
 7 + (defn main () (both missing-nam missing-nam))
   |
+  = note: run `knave doc L0201` for an explanation

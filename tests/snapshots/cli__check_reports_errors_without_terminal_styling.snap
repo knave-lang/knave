@@ -7,3 +7,5 @@ error[L0201]: cannot find `greeting` in this scope
   |
 2 |   (println greeting))
   |            ^^^^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

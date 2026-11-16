@@ -10,6 +10,7 @@ error[L0301]: `dir` takes one module name, or nothing
   | ^^^^^^^^^ not one module name
   |
   = help: write `(dir)`, or a module as in `(dir geometry)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: `dir` takes one module name, or nothing
  --> expand/doc_listing_malformed_at_top_level.knv:3:1
@@ -18,6 +19,7 @@ error[L0301]: `dir` takes one module name, or nothing
   | ^^^^^^^^^ not one module name
   |
   = help: write `(dir)`, or a module as in `(dir geometry)`
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: `apropos` takes one symbol or string to search for
  --> expand/doc_listing_malformed_at_top_level.knv:5:1
@@ -26,6 +28,7 @@ error[L0301]: `apropos` takes one symbol or string to search for
   | ^^^^^^^^^^^ not one search text
   |
   = help: write `(apropos sort)`, or `(apropos "sorted map")` for text with spaces
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: `apropos` takes one symbol or string to search for
  --> expand/doc_listing_malformed_at_top_level.knv:7:1
@@ -34,6 +37,7 @@ error[L0301]: `apropos` takes one symbol or string to search for
   | ^^^^^^^^^ not one search text
   |
   = help: write `(apropos sort)`, or `(apropos "sorted map")` for text with spaces
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: `find-doc` takes one symbol or string to search for
  --> expand/doc_listing_malformed_at_top_level.knv:9:1
@@ -42,6 +46,7 @@ error[L0301]: `find-doc` takes one symbol or string to search for
   | ^^^^^^^^^^^^^^ not one search text
   |
   = help: write `(find-doc sort)`, or `(find-doc "sorted map")` for text with spaces
+  = note: run `knave doc L0301` for an explanation
 
 error[L0301]: `find-doc` takes one symbol or string to search for
   --> expand/doc_listing_malformed_at_top_level.knv:11:1
@@ -50,6 +55,7 @@ error[L0301]: `find-doc` takes one symbol or string to search for
    | ^^^^^^^^^^ not one search text
    |
    = help: write `(find-doc sort)`, or `(find-doc "sorted map")` for text with spaces
+   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: `dir` takes one module name, or nothing
   --> expand/doc_listing_malformed_at_top_level.knv:16:1
@@ -58,3 +64,4 @@ error[L0301]: `dir` takes one module name, or nothing
    | ^^^ not one module name
    |
    = help: write `(dir)`, or a module as in `(dir geometry)`
+   = note: run `knave doc L0301` for an explanation

@@ -10,3 +10,4 @@ error[L0218]: this Rust template has a malformed placeholder
   |         ^^^^ a placeholder is `{`, a number and `}`
   |
   = help: write a literal brace as `{{` or `}}`
+  = note: run `knave doc L0218` for an explanation

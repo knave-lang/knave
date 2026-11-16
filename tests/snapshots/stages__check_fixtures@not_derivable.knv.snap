@@ -10,3 +10,4 @@ error[L0422]: `display` cannot be derived
   |                ^^^^^^^ not a derivable trait
   |
   = help: a `derive` lists any of: clone, copy, debug, partial-eq, eq, partial-ord, ord, hash, show
+  = note: run `knave doc L0422` for an explanation

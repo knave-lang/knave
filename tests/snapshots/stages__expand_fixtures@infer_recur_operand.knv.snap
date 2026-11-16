@@ -10,3 +10,4 @@ error[L0214]: `recur` is not in tail position
   |          ^^^^^^^^^^^^^^^ this `recur` is not the last thing the function does
   |
   = help: make `recur` the last form of the function, or call the function by name
+  = note: run `knave doc L0214` for an explanation

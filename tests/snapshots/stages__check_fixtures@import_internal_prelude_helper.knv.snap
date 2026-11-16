@@ -11,6 +11,7 @@ error[L0205]: module `prelude/macros` does not export `note-docstring`
   |
   = note: `note-docstring` is internal to the prelude
   = help: let a prelude definer build and document the definition, as in `(def name "text" value)` or `(defn name (parameter) body)`
+  = note: run `knave doc L0205` for an explanation
 
 error[L0205]: module `prelude/syntax` does not export `call-signature`
  --> check/import_internal_prelude_helper.knv:2:21
@@ -20,9 +21,12 @@ error[L0205]: module `prelude/syntax` does not export `call-signature`
   |
   = note: `call-signature` is internal to the prelude
   = help: let a prelude definer build and document the definition, as in `(def name "text" value)` or `(defn name (parameter) body)`
+  = note: run `knave doc L0205` for an explanation
 
 error[L0205]: module `prelude/macros` does not export `unheard-of`
  --> check/import_internal_prelude_helper.knv:3:21
   |
 3 | (use prelude/macros unheard-of)
   |                     ^^^^^^^^^^ not exported
+  |
+  = note: run `knave doc L0205` for an explanation

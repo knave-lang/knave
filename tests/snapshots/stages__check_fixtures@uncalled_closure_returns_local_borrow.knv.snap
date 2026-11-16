@@ -12,3 +12,4 @@ error[L0510]: cannot return a borrow of a local value
   |       ^^^^^^^^^^^ this borrows a local value
   |
   = help: return an owned value with `(clone ...)`, or borrow from a parameter
+  = note: run `knave doc L0510` for an explanation

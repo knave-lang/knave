@@ -10,6 +10,7 @@ error[L0404]: `i64` does not implement `named`
    |             ^^^^^^^^^^^^^ this needs `named`
    |
    = note: `named` is implemented for: 
+   = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `i64` does not implement `named`
   --> check/literal_missing_trait_nested.knv:17:17
@@ -18,6 +19,7 @@ error[L0404]: `i64` does not implement `named`
    |                 ^^^^^^^^^^^^^^ this needs `named`
    |
    = note: `named` is implemented for: 
+   = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `i64` does not implement `named`
   --> check/literal_missing_trait_nested.knv:20:21
@@ -25,4 +27,5 @@ error[L0404]: `i64` does not implement `named`
 20 |     (fn (function) (function (some 1))))
    |                     ^^^^^^^^ this needs `named`
    |
-   = note: `named` is implemented for:
+   = note: `named` is implemented for: 
+   = note: run `knave doc L0404` for an explanation

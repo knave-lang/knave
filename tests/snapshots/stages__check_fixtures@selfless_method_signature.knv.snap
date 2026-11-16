@@ -14,3 +14,4 @@ error[L0456]: cannot choose which implementor of `vetting` runs `check`
    |
    = note: a call picks an implementor from the type of a parameter or result that is `self`
    = help: add `(ref self)` as the first parameter of `check`, as in `(fn ((ref self) str) bool)`
+   = note: run `knave doc L0456` for an explanation

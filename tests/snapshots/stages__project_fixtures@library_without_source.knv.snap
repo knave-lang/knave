@@ -10,3 +10,4 @@ error[L0712]: library `hints` has no source
   |                                 ^^^^^ this library needs `:path` or `:git`
   |
   = help: write `(hints :path "../hints")`, or `:git` with a `:rev`
+  = note: run `knave doc L0712` for an explanation

@@ -14,3 +14,4 @@ error[L0356]: task `where` is defined more than once
   |          ----- first defined here
   |
   = help: rename one of the tasks
+  = note: run `knave doc L0356` for an explanation

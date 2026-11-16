@@ -13,3 +13,4 @@ error[L0424]: `ticket` has a second `derive`
   | ^^^^^^^^^^^^^^^^^^^^^ second `derive`
   |
   = help: merge the two trait lists into one `derive`
+  = note: run `knave doc L0424` for an explanation

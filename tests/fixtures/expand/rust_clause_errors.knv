@@ -41,8 +41,13 @@
 
 (def receiver-in-clause
   (rust "measure({0})"
+    (where ((s sequence)) (fn (s) usize))
+    (str "{0}.count()")))
+
+(def changed-receiver-in-clause
+  (rust "measure({0})"
     (where ((s sequence))
-      (fn ((ref s)) usize))
+      (fn ((mut s)) usize))
     (str "{0}.count()")))
 
 (def extra-argument-in-clause

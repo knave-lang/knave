@@ -1,0 +1,5 @@
+(def measure
+  (rust "measure({0})"
+    (where ((s sequence))
+      (fn ((ref s)) usize))
+    (str "{0}.len()")))

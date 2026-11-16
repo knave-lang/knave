@@ -60,6 +60,7 @@ mod rest_of_body;
 mod result_printer;
 mod returned_arguments;
 mod rust_clauses;
+mod rust_trait_path;
 mod rust_type;
 mod saved_call_origins;
 mod saved_definitions;

@@ -13,6 +13,16 @@ warning[L0217]: `partial-eq` binds `PartialEq` again
   = help: remove the second `partial-eq`, or give it a different Rust path
   = note: run `knave doc L0217` for an explanation
 
+warning[L0217]: `same-values` binds a Rust path that `partial-eq` already binds
+  --> check/second_trait_binding.knv:10:11
+   |
+10 | (deftrait same-values
+   |           ^^^^^^^^^^^ this also binds `std::cmp::PartialEq`
+   |
+   = note: two traits that bind one Rust path can disagree about its implementors
+   = help: use `partial-eq`, or give `same-values` a different Rust path
+   = note: run `knave doc L0217` for an explanation
+
 (derive point clone copy partial-eq eq hash show)
 (type ->point (fn (int int) point))
 (type main (fn () unit))

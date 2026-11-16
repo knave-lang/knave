@@ -6,3 +6,7 @@
 
 (defn main ()
   (println (= (->point 1 2) (->point 1 2))))
+
+(deftrait same-values
+  (rust "std::cmp::PartialEq")
+  i64)

@@ -15,14 +15,23 @@ fn main() {
         "{}",
         part_count("a1b2c", |argument_0: char| argument_0.is_ascii_digit())
     );
-    vec![";".to_string()].iter().for_each(|separator: &String| {
-        println!("{}", part_count("a;b", separator));
-        println!("{}", "a;b;c".split(separator).count())
-    });
-    vec![",", ";"].iter().for_each(|separator: &&str| {
-        println!("{}", part_count("a,b;c", separator));
-        println!("{}", "a,b;c".split(separator).count())
-    });
+    {
+        let mut strings = Vec::new();
+        strings.push(";".to_string());
+        strings.iter().for_each(|separator: &String| {
+            println!("{}", part_count("a;b", separator));
+            println!("{}", "a;b;c".split(separator).count())
+        })
+    }
+    {
+        let mut literals = Vec::new();
+        literals.push(",");
+        literals.push(";");
+        literals.iter().for_each(|separator: &&str| {
+            println!("{}", part_count("a,b;c", separator));
+            println!("{}", "a,b;c".split(separator).count())
+        })
+    }
     println!("{}", "a,b".split(",").count());
     println!("{}", "a b".split(' ').count());
     println!(

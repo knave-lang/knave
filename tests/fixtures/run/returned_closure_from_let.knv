@@ -1,4 +1,11 @@
 (defn adder (x)
   (let (value x) (fn (y) (+ value y))))
 
-(defn main () (println ((adder 2) 3)))
+(defn bound-adder (x)
+  (let (value x
+        add (fn (y) (+ value y)))
+    add))
+
+(defn main ()
+  (println ((adder 2) 3))
+  (println ((bound-adder 2) 4)))

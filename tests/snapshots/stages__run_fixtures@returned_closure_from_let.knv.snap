@@ -4,3 +4,4 @@ expression: reports.report(path)
 input_file: tests/fixtures/run/returned_closure_from_let.knv
 ---
 5
+6

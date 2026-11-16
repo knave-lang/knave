@@ -1,24 +1,12 @@
 use std::rc::Rc;
 
 use super::{
-    BindingArena, BindingId, Expr, FieldLabel, ImplementorRow, ImplementorRows, Lambda, ModulePath,
-    ParsedTemplate, PrimitiveType, StructuralClause, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
+    BindingArena, BindingId, Expr, FieldLabel, ImplementorRow, ImplementorRows, Lambda, ModuleId,
+    ModulePath, ParsedTemplate, PrimitiveType, StructuralClause, TypeBinder, TypeBound, TypeExpr,
+    TypeExprKind,
 };
 use crate::rust_trait_path::RustTraitPath;
 use crate::source::Span;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct ModuleId(u32);
-
-impl ModuleId {
-    pub fn new(index: usize) -> Self {
-        Self(u32::try_from(index).expect("fewer than 2^32 modules"))
-    }
-
-    pub fn index(self) -> usize {
-        self.0 as usize
-    }
-}
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(bound(deserialize = "'de: 'static"))]

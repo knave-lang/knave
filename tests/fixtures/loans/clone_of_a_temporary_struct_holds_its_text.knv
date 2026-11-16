@@ -1,0 +1,9 @@
+(defstruct tag
+  :label (ref str))
+
+(defn main ()
+  (local s (str "a"))
+  (local c
+    (clone (->tag :label (as-str s))))
+  (set! s (str "b"))
+  (println (:label c)))

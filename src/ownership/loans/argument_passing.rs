@@ -91,7 +91,7 @@ impl Passing for Lends {
                 let lent = lender.lend(Lending::new(place, self.kind, argument.span));
                 PassedHoldings::lending(argument.held.within(), lent)
             }
-            None => PassedHoldings::kept(argument.held),
+            None => PassedHoldings::kept(argument.held.within()),
         }
     }
 }

@@ -1,0 +1,9 @@
+(defn main ()
+  (local v (vec 1 2))
+  (local it
+    ((rust "{0}.iter().copied()"
+       (where (a)
+         (fn ((ref (vec a))) (iterator a))))
+     (ref v)))
+  (set! v (vec 3))
+  (println (count it)))

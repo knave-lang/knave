@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/characters_of_borrowed_text_hold_the_text.knv
+---
+main
+  3:28 borrow `s`: no live loan
+  4:9 change `s`: `s` lent at 3:28, held by `cs`
+  5:19 move `cs`: `s` lent at 3:28, held by `cs`

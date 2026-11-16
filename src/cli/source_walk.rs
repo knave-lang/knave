@@ -3,7 +3,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use super::diagnostic_output::StandardErrorMessages;
-use super::entry_tree::TreeFile;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
@@ -11,6 +10,7 @@ use super::skipped_directory::SkippedDirectory;
 use super::taken_module_paths::TakenModulePaths;
 use super::terminal::Terminal;
 use super::tree_bounds::TreeBounds;
+use super::tree_file::TreeFile;
 use super::unreadable_file::UnreadableFile;
 use super::working_directory::WorkingDirectory;
 use crate::language::Language;

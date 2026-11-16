@@ -367,9 +367,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-bench-${{ hashFiles('flake.lock') }}-${{ hashFiles('xtask/src/bench/compiler.rs') }}-
             ${{ runner.os }}-cargo-bench-${{ hashFiles('flake.lock') }}-
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          path: ${{ env.BASELINE }}
       - name: Measure the pull request
         id: measure
-        run: nix develop .#ci -c cargo xtask bench measure --save target/bench/candidate.tsv
+        run: nix develop .#ci -c cargo xtask bench measure --workspace "$BASELINE" --save target/bench/candidate.tsv
       - name: Upload the pull request's profiles
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -556,10 +561,15 @@ jobs:
           fetch_when_present "refs/tags/$ACCEPTED_TAG" --depth=1
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          path: ${{ env.BASELINE }}
       - name: Record the counts of this commit
         id: measure
         run: |
-          nix develop .#ci -c cargo xtask bench measure --save "$HEAD_RESULTS"
+          nix develop .#ci -c cargo xtask bench measure --workspace "$BASELINE" --save "$HEAD_RESULTS"
           git notes --ref="$NOTES" add -f -F "$HEAD_RESULTS" HEAD
       - name: Recall the accepted baseline
         id: accepted

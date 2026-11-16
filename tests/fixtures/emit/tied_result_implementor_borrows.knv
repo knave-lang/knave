@@ -13,14 +13,17 @@
 (defn model-of (c) (:model c))
 
 (trait garage
-  (echo (fn (self (ref str)) (ref str)))
+  (echo
+    (fn (self (ref str)) (ref str)))
 
-  (tag (fn ((ref str) self) (ref str)))
+  (tag
+    (fn ((ref str) self) (ref str)))
 
   (maybe
     (fn (self (ref str)) (option (ref str))))
 
-  (brand (fn (self (ref str)) (ref str)))
+  (brand
+    (fn (self (ref str)) (ref str)))
 
   (stamp (fn (i64 self) (ref str)))
 
@@ -65,7 +68,8 @@
   (trade (v other) v))
 
 (trait valet
-  (park (fn (self (ref str)) (ref str))))
+  (park
+    (fn (self (ref str)) (ref str))))
 
 (impl valet ride
   (park (r name)

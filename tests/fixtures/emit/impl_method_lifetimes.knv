@@ -3,7 +3,8 @@
 (struct holder (name string))
 
 (trait picker
-  (label (fn ((ref self)) (ref string)))
+  (label
+    (fn ((ref self)) (ref string)))
 
   (pick
     (fn ((ref holder) (ref holder))

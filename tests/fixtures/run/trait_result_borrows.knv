@@ -8,7 +8,8 @@
 (enum ride (cab (ref str)) bike)
 
 (trait garage
-  (echo (fn (self (ref str)) (ref str))))
+  (echo
+    (fn (self (ref str)) (ref str))))
 
 (impl garage car (echo (c name) name))
 
@@ -31,17 +32,20 @@
   (if (> (:year c) 2000) name "old"))
 
 (trait dealer
-  (greet (fn (self (ref str)) (ref str)))
+  (greet
+    (fn (self (ref str)) (ref str)))
 
   (call-out
     (fn (self (ref str)) (ref str)))
 
-  (shout (fn (self (ref str)) (ref str)))
+  (shout
+    (fn (self (ref str)) (ref str)))
 
   (offer
     (fn (self (ref str)) (option (ref str))))
 
-  (wave (fn (self (ref str)) (ref str))))
+  (wave
+    (fn (self (ref str)) (ref str))))
 
 (impl dealer car
   (greet (c name) (second c name))
@@ -55,7 +59,8 @@
   (wave (c name) ((fn (x) name) c)))
 
 (trait valet
-  (park (fn (self (ref str)) (ref str))))
+  (park
+    (fn (self (ref str)) (ref str))))
 
 (impl valet ride
   (park (r name)

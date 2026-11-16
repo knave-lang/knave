@@ -1,5 +1,6 @@
 (trait describe
-  (describe-it (fn ((ref self)) string)))
+  (describe-it
+    (fn ((ref self)) string)))
 
 (impl describe (vec a)
   (describe-it (v) (pr-str v)))

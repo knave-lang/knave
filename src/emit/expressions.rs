@@ -2203,7 +2203,7 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn inlines_call(lambda: &TypedLambda, call_arguments: &[&str]) -> bool {
         lambda.kind == ClosureKind::Fn
-            && lambda.moved_capture.is_none()
+            && lambda.facts.moved_capture.is_none()
             && lambda.wraps.is_none()
             && !Self::contains_try(&lambda.body)
             && matches!(lambda.body.items.as_slice(), [TypedBodyItem::Expr(_)])

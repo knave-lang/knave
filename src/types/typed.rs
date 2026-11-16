@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::closure_facts::ClosureFacts;
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
 use super::parameter_modes::ParameterModes;
@@ -281,8 +282,7 @@ pub struct TypedLambda {
     pub body: TypedBlock,
     pub wraps: Option<WrappedFunction>,
     pub kind: ClosureKind,
-    pub moved_capture: Option<(BindingId, Span)>,
-    pub changed_capture: Option<(BindingId, Span)>,
+    pub facts: ClosureFacts,
 }
 
 #[derive(Clone, Debug)]

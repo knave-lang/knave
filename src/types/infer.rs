@@ -1213,8 +1213,7 @@ impl TypeChecker {
                 body,
                 wraps: None,
                 kind: crate::types::ClosureKind::Fn,
-                moved_capture: None,
-                changed_capture: None,
+                facts: crate::types::ClosureFacts::default(),
             })),
             function,
         ))

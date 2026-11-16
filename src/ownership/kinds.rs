@@ -343,11 +343,11 @@ impl<'a> ClosureKinds<'a> {
             }
             let report = self.analyze_lambda(lambda);
             lambda.kind = report.kind();
-            lambda.moved_capture = report
+            lambda.facts.moved_capture = report
                 .moved
                 .first_key_value()
                 .map(|(binding, span)| (*binding, *span));
-            lambda.changed_capture = report
+            lambda.facts.changed_capture = report
                 .changed
                 .first_key_value()
                 .map(|(binding, span)| (*binding, *span));
@@ -877,8 +877,8 @@ impl<'a> ClosureKinds<'a> {
     fn lambda_capture(lambda: &TypedLambda) -> Option<BindingId> {
         match lambda.kind {
             ClosureKind::Fn => None,
-            ClosureKind::FnMut => lambda.changed_capture.map(|(binding, _)| binding),
-            ClosureKind::FnOnce => lambda.moved_capture.map(|(binding, _)| binding),
+            ClosureKind::FnMut => lambda.facts.changed_capture.map(|(binding, _)| binding),
+            ClosureKind::FnOnce => lambda.facts.moved_capture.map(|(binding, _)| binding),
         }
     }
 
@@ -1570,9 +1570,9 @@ impl<'a> ClosureKinds<'a> {
             return None;
         };
         if lambda.kind == ClosureKind::FnMut {
-            return lambda.changed_capture.map(|(_, span)| span);
+            return lambda.facts.changed_capture.map(|(_, span)| span);
         }
-        lambda.moved_capture.map(|(_, span)| span)
+        lambda.facts.moved_capture.map(|(_, span)| span)
     }
 
     fn called_mutable_bindings(&self, modules: &[TypedModule]) -> FxHashSet<BindingId> {

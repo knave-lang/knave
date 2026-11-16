@@ -59,18 +59,7 @@ pub enum BenchTask {
     )]
     Measure(MeasureOptions),
     #[command(about = "Print a Markdown table of the change between two saved results")]
-    Compare {
-        baseline: PathBuf,
-        candidate: PathBuf,
-        #[arg(long, value_enum, default_value_t = ReportLength::Full)]
-        length: ReportLength,
-        #[arg(
-            long,
-            action = clap::ArgAction::Append,
-            help = "The programs whose counter rises a `Counters-Accepted:` trailer names"
-        )]
-        accepted: Vec<String>,
-    },
+    Compare(CompareOptions),
     #[command(
         about = "Fail when a gated counter of a program rose past the tolerance, unless `--accepted` names the program"
     )]
@@ -114,6 +103,20 @@ impl ReportLength {
 }
 
 #[derive(Args)]
+pub struct CompareOptions {
+    baseline: PathBuf,
+    candidate: PathBuf,
+    #[arg(long, value_enum, default_value_t = ReportLength::Full)]
+    length: ReportLength,
+    #[arg(
+        long,
+        action = clap::ArgAction::Append,
+        help = "The programs whose counter rises a `Counters-Accepted:` trailer names"
+    )]
+    accepted: Vec<String>,
+}
+
+#[derive(Args)]
 pub struct RecallOptions {
     commit: String,
     #[arg(long, help = "The notes ref that holds the history")]
@@ -142,17 +145,7 @@ impl BenchTask {
     pub fn run(self, root: &Path) -> ExitCode {
         let report = match self {
             Self::Measure(options) => FrontEndBenchmark::new(root, options).measure(),
-            Self::Compare {
-                baseline,
-                candidate,
-                length,
-                accepted,
-            } => Self::compare(
-                &baseline,
-                &candidate,
-                length,
-                &accepted.into_iter().collect(),
-            ),
+            Self::Compare(options) => options.compare(),
             Self::CheckCounters {
                 baseline,
                 candidate,
@@ -172,17 +165,6 @@ impl BenchTask {
         }
     }
 
-    fn compare(
-        baseline: &Path,
-        candidate: &Path,
-        length: ReportLength,
-        accepted: &BTreeSet<String>,
-    ) -> Result<String, TaskFailure> {
-        let baseline = ResultSet::load(baseline)?;
-        let candidate = ResultSet::load(candidate)?;
-        Ok(length.render(&Comparison::new(&baseline, &candidate, accepted)))
-    }
-
     fn check_counters(
         baseline: &Path,
         candidate: &Path,
@@ -191,6 +173,17 @@ impl BenchTask {
         let baseline = ResultSet::load(baseline)?;
         let candidate = ResultSet::load(candidate)?;
         CounterGate::new(&baseline, &candidate, accepted).check()
+    }
+}
+
+impl CompareOptions {
+    fn compare(&self) -> Result<String, TaskFailure> {
+        let baseline = ResultSet::load(&self.baseline)?;
+        let candidate = ResultSet::load(&self.candidate)?;
+        let accepted = self.accepted.iter().cloned().collect();
+        Ok(self
+            .length
+            .render(&Comparison::new(&baseline, &candidate, &accepted)))
     }
 }
 
@@ -363,9 +356,8 @@ mod tests {
 
         fn accepted(arguments: &[&str]) -> Vec<String> {
             match Self::parse(arguments) {
-                BenchTask::Compare { accepted, .. } | BenchTask::CheckCounters { accepted, .. } => {
-                    accepted
-                }
+                BenchTask::Compare(options) => options.accepted,
+                BenchTask::CheckCounters { accepted, .. } => accepted,
                 _ => panic!("{arguments:?} parsed to another task"),
             }
         }

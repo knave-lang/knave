@@ -731,8 +731,8 @@
 
   ```
   (defstruct point
-    :x i64
-    :y i64)
+    :x int
+    :y int)
 
   (display point (p)
     \"(\"
@@ -889,7 +889,7 @@
 
   ```
   (defstruct money
-    :cents i64)
+    :cents int)
 
   (show money (m)
     (->money :cents (:cents m)))
@@ -917,7 +917,7 @@
 
   ```
   (defstruct point
-    :x i64)
+    :x int)
 
   (derive point debug)
   ```")
@@ -934,9 +934,9 @@
   "Names the error type of parsing a `target` type.
 
   It is the associated type of [from-str], as `Err` is in Rust, so
-  `(parse-error i64)` is [parse-int-error].
+  `(parse-error int)` is [parse-int-error].
 
-  (unwrap-ok (the (result i64 (parse-error i64))
+  (unwrap-ok (the (result int (parse-error int))
                   (parse \"12\")))
   => 12")
 
@@ -955,13 +955,13 @@
 (document parse-int-error
   "Names the error of parsing an integer, Rust's `ParseIntError`.
 
-  (err? (the (result i64 parse-int-error) (parse \"x\")))
+  (err? (the (result int parse-int-error) (parse \"x\")))
   => true")
 
 (document parse-float-error
   "Names the error of parsing a float, Rust's `ParseFloatError`.
 
-  (err? (the (result f64 parse-float-error) (parse \"x\")))
+  (err? (the (result float parse-float-error) (parse \"x\")))
   => true")
 
 (document infallible
@@ -1093,11 +1093,11 @@
   "Parses a string into the type that the call's result takes.
 
   It returns `(result target (parse-error target))`, where `target` implements
-  [from-str], so `(the (result i64 parse-int-error) (parse \"12\"))` is `ok`.
+  [from-str], so `(the (result int parse-int-error) (parse \"12\"))` is `ok`.
 
   It takes a `(ref str)`, so borrow a [string] with [as-str].
 
-  (unwrap-ok (the (result i64 parse-int-error) (parse \"12\")))
+  (unwrap-ok (the (result int parse-int-error) (parse \"12\")))
   => 12")
 
 (document (lower-case text)

@@ -18,7 +18,7 @@ error[L0301]: a field must start with `:`
 6 |   make str)
   |   ^^^^ here
   |
-  = help: write each field as `:name type`, as in (defstruct point :x f64 :y f64)
+  = help: write each field as `:name type`, as in (defstruct point :x float :y float)
   = note: run `knave doc L0301` for an explanation
 
 error[L0301]: this field has no type

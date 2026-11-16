@@ -70,7 +70,7 @@
   (unwrap-or none 7)
   => 7
 
-  (match (the (option i64) none)
+  (match (the (option int) none)
     ((some value) value)
     (none 0))
   => 0")
@@ -93,7 +93,7 @@
 
   It borrows the option, which stays usable.
 
-  (none? (the (option i64) none))
+  (none? (the (option int) none))
   => true
 
   (none? (some 1))
@@ -108,7 +108,7 @@
   (unwrap-or (some 3) 7)
   => 3
 
-  (unwrap-or (the (option i64) none) 7)
+  (unwrap-or (the (option int) none) 7)
   => 7")
 
 (document (unwrap option)
@@ -138,7 +138,7 @@
   (map-some (some 2) (fn (n) (* n 10)))
   => (some 20)
 
-  (map-some (the (option i64) none)
+  (map-some (the (option int) none)
     (fn (n) (* n 10)))
   => none")
 

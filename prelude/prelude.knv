@@ -192,7 +192,7 @@
   position expands to a function that the macro introduced in this module.
 
   ```
-  (type twice (fn (i64) i64))
+  (type twice (fn (int) int))
 
   (def twice (fn (x) (* 2 x)))
 
@@ -207,7 +207,7 @@
   It emits a Rust `struct`.
 
   ```
-  (struct point (x i64) (y i64))
+  (struct point (x int) (y int))
 
   (field (new point (x 1) (y 2)) x)
   => 1
@@ -221,7 +221,7 @@
   A `(rust \"Path\")` after the name makes the enum the named Rust type.
 
   ```
-  (enum shape (circle f64) square)
+  (enum shape (circle float) square)
 
   (match (shape/circle 1.0)
     ((circle radius) radius)
@@ -235,7 +235,7 @@
   It emits a `#[derive(...)]` attribute on the type.
 
   ```
-  (struct mark (x i64))
+  (struct mark (x int))
 
   (derive mark debug)
   ```")
@@ -290,7 +290,7 @@
   `(new _ base (field value) ...)` takes the other fields from a base value.
 
   ```
-  (struct point (x i64) (y i64))
+  (struct point (x int) (y int))
 
   (let (start (new point (x 1) (y 2)))
     (field (new _ start (x 9)) x))
@@ -303,7 +303,7 @@
   It emits `value.name`.
 
   ```
-  (struct point (x i64) (y i64))
+  (struct point (x int) (y int))
 
   (field (new point (x 1) (y 2)) y)
   => 2
@@ -417,12 +417,12 @@
 
   It emits `expression?`.
 
-  (let (step (fn ((value (option i64)))
+  (let (step (fn ((value (option int)))
                (some (+ (try value) 1))))
     (step (some 1)))
   => (some 2)
 
-  (let (step (fn ((value (option i64)))
+  (let (step (fn ((value (option int)))
                (some (+ (try value) 1))))
     (step none))
   => none")

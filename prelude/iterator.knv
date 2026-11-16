@@ -376,7 +376,7 @@
 (document (take items limit)
   "Returns an iterator over at most the first `limit` items.
 
-  `limit` is a [usize], so an [i64] is an error. A vector or a map passes as
+  `limit` is a [usize], so an [int] is an error. A vector or a map passes as
   its [iter].
 
   (collect (take (range 0 9) 2))

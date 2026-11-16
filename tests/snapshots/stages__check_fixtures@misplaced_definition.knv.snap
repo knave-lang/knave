@@ -9,7 +9,7 @@ error[L0208]: `defn` can only appear at module level
 2 |   (defn double (x) (* x 2))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^ not allowed inside an expression
   |
-  = help: use `local` to bind a name inside a body
+  = help: use `let` to bind a name inside a body
   = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `defn` can only appear at module level
@@ -18,7 +18,7 @@ error[L0208]: `defn` can only appear at module level
 6 |   (defn triple (x) (* x 3))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^ not allowed inside an expression
   |
-  = help: use `local` to bind a name inside a body
+  = help: use `let` to bind a name inside a body
   = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `def` can only appear at module level
@@ -27,7 +27,7 @@ error[L0208]: `def` can only appear at module level
 10 |   (def limit 10)
    |   ^^^^^^^^^^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `defn` can only appear at module level
@@ -37,7 +37,7 @@ error[L0208]: `defn` can only appear at module level
 15 | |     (if (= n 0) 0 (countdown (- n 1))))
    | |_______________________________________^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0201]: cannot find `halve` in this scope
@@ -54,7 +54,7 @@ error[L0208]: `defn` can only appear at module level
 20 |   (defn halve (x) (/ x 2)))
    |   ^^^^^^^^^^^^^^^^^^^^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0201]: cannot find `shift` in this scope
@@ -71,7 +71,7 @@ error[L0208]: `def` can only appear at module level
 45 |   (def incomplete)
    |   ^^^^^^^^^^^^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `def` can only appear at module level
@@ -80,7 +80,7 @@ error[L0208]: `def` can only appear at module level
 49 |   (def shout (macro (form) form))
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `defn` can only appear at module level
@@ -89,7 +89,7 @@ error[L0208]: `defn` can only appear at module level
 53 |   (defn wrong () (missing 1))
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0201]: cannot find `missing` in this scope
@@ -106,7 +106,7 @@ error[L0208]: `def` can only appear at module level
 57 |   (macro (form) (def inner 1) inner))
    |                 ^^^^^^^^^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `defstruct` can only appear at module level
@@ -116,7 +116,7 @@ error[L0208]: `defstruct` can only appear at module level
 61 | |     :x i64)
    | |___________^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `struct` can only appear at module level
@@ -125,7 +125,7 @@ error[L0208]: `struct` can only appear at module level
 65 | (defn malformed-struct () (struct))
    |                           ^^^^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0201]: cannot find `hidden` in this scope
@@ -142,7 +142,7 @@ error[L0208]: `struct` can only appear at module level
 73 |     (struct inner-point (x i64))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `def` can only appear at module level
@@ -151,7 +151,7 @@ error[L0208]: `def` can only appear at module level
 77 |   (def (typed i64) 1)
    |   ^^^^^^^^^^^^^^^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `def` can only appear at module level
@@ -160,7 +160,7 @@ error[L0208]: `def` can only appear at module level
 80 | (defn unnamed () (def 7 1))
    |                  ^^^^^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `def` can only appear at module level
@@ -170,7 +170,7 @@ error[L0208]: `def` can only appear at module level
 84 | |     1 2)
    | |________^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `def` can only appear at module level
@@ -179,7 +179,7 @@ error[L0208]: `def` can only appear at module level
 88 |   (def)
    |   ^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `def` can only appear at module level
@@ -188,5 +188,5 @@ error[L0208]: `def` can only appear at module level
 89 |   (def after 1)
    |   ^^^^^^^^^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation

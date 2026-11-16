@@ -9,7 +9,7 @@ error[L0208]: `define-helper` can only appear at module level
 7 |   (define-helper bump (count) (+ count 1))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not allowed inside an expression
   |
-  = help: use `local` to bind a name inside a body
+  = help: use `let` to bind a name inside a body
   = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `def` can only appear at module level
@@ -18,5 +18,5 @@ error[L0208]: `def` can only appear at module level
 11 |   (when true (def written-limit 3))
    |              ^^^^^^^^^^^^^^^^^^^^^ not allowed inside an expression
    |
-   = help: use `local` to bind a name inside a body
+   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation

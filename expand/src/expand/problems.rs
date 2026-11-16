@@ -641,7 +641,7 @@ impl ExpandProblems {
             format!("`{definer}` can only appear at module level"),
             Label::new(span, "not allowed inside an expression"),
         )
-        .with_help("use `local` to bind a name inside a body")
+        .with_help("use `let` to bind a name inside a body")
     }
 
     pub fn type_in_value_note(name: &str) -> String {

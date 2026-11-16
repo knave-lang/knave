@@ -4,7 +4,6 @@ use super::budget_arena::BudgetId;
 use super::context::DefinitionContext;
 use super::declared_trait::DeclaredTrait;
 use super::problems::ExpandProblems;
-use super::rust_trait_path::RustTraitPath;
 use super::shape::Shape;
 use super::sourced_items::SourcedItems;
 use super::spliced_forms::{SplicedForm, SplicedForms};
@@ -22,6 +21,7 @@ use crate::diagnostic::{Counted, Diagnostic, DistinctDiagnostics};
 use crate::interpret::Warnings;
 use crate::mangle::NameMangler;
 use crate::reader::{Form, FormKind, Symbol};
+use crate::rust_trait_path::RustTraitPath;
 use crate::scope::ScopeKind;
 use crate::source::Span;
 

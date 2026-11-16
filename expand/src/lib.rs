@@ -9,6 +9,7 @@ pub mod modules;
 pub mod project;
 pub mod reader;
 pub mod rust_prelude;
+pub mod rust_trait_path;
 pub mod scope;
 pub mod source;
 pub mod stack;

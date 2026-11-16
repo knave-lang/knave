@@ -1,7 +1,7 @@
 use rustc_hash::FxHashMap;
 
-use super::rust_trait_path::RustTraitPath;
 use super::structural_path_claim::StructuralPathClaim;
+use crate::rust_trait_path::RustTraitPath;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub(super) struct StructuralPathClaims {

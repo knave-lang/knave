@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::rust_prelude::RustPrelude;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub(super) struct RustTraitPath {
+pub struct RustTraitPath {
     named: Rc<str>,
 }
 

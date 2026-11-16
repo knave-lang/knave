@@ -1,0 +1,5 @@
+(use modules/point_maker as-point)
+(use modules/shapes origin)
+
+(defn main ()
+  (println (:x (as-point (origin)))))

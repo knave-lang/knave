@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use super::project_folders::ProjectFolders;
 use crate::cli::program_file::ProgramFile;
 use crate::modules::{LibraryTable, SearchScope};
@@ -10,6 +12,10 @@ pub struct TreeScoping<'s> {
 impl<'s> TreeScoping<'s> {
     pub fn new(folders: &'s ProjectFolders, libraries: &'s LibraryTable) -> Self {
         Self { folders, libraries }
+    }
+
+    pub fn holds_task(&self, path: &Path) -> bool {
+        ProgramFile::relative_module(path, self.folders.tasks_directory()).is_some()
     }
 
     pub fn test_file(&self, file: ProgramFile) -> ProgramFile {

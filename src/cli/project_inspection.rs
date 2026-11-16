@@ -46,10 +46,10 @@ impl ProjectInspection {
     }
 
     fn names_a_task_file(program: &LocatedProgram) -> bool {
-        program.project().is_some_and(|project| {
-            let tasks_directory = project.placement().tasks_directory().to_path_buf();
-            ProgramFile::relative_module(program.file().path(), &tasks_directory).is_some()
-        })
+        let path = program.file().path();
+        program
+            .project()
+            .is_some_and(|project| project.placement().trees().holds_task(path))
     }
 
     fn check_tasks(

@@ -551,9 +551,11 @@ pub(super) mod tests {
     #[test]
     fn a_long_binding_list_resolves_to_its_exact_subset() {
         let mut world = World::new();
-        let scopes: Vec<Scope> = (0..5).map(|_| world.scope()).collect();
+        let scopes: Vec<Scope> = (0..NameEntriesFixture::SCOPE_COUNT)
+            .map(|_| world.scope())
+            .collect();
         let entries = world.define_under_subsets("x", &scopes, NameEntries::LONG_LIST_LENGTH);
-        let reference = [scopes[0], scopes[1], scopes[4]];
+        let reference = NameEntriesFixture::last_bound_subset(&scopes);
         let (_, exact) = entries
             .iter()
             .find(|(subset, _)| *subset == reference)

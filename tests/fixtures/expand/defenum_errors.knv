@@ -42,3 +42,7 @@
 (defenum (open-brace item)
   (rust "Hold{er")
   (hold item))
+
+(defenum (escaped-close item)
+  (rust "Hold}}er")
+  (hold item))

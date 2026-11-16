@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/inline_take_of_a_changing_iterator_holds_it.knv
+---
+main
+  3:19 borrow `v`: no live loan
+  8:11 change `it`: `v` lent at 3:19, held by `it`
+  9:16 move `it`: `v` lent at 3:19, held by `t`; mut `it` lent at 8:11, held by `t`
+  10:19 move `t`: `v` lent at 3:19, held by `t`; mut `it` lent at 8:11, held by `t`
+  10:29 move `moved`: `v` lent at 3:19, held by `moved`

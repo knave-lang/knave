@@ -16,6 +16,10 @@ impl Loan {
         self.made_at
     }
 
+    pub fn source_order(&self) -> (usize, usize) {
+        self.lending.source_order()
+    }
+
     pub fn written(&self, names: &LoanNames<'_>) -> String {
         self.lending.written(names)
     }

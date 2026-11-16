@@ -83,6 +83,7 @@ impl<'w> BodyFacts<'w> {
         let held = values.into_iter().flat_map(|value| {
             self.regions
                 .of(value)
+                .into_iter()
                 .map(move |loan| (loan, LoanHolder::Value(value)))
         });
         let received = facts
@@ -94,9 +95,12 @@ impl<'w> BodyFacts<'w> {
             .live_at(point)
             .map(|loan| (loan, LoanHolder::Result));
         let mut listed = BTreeSet::new();
-        held.chain(received)
+        let mut live: Vec<_> = held
+            .chain(received)
             .chain(returned)
             .filter(|(loan, _)| listed.insert(*loan))
-            .collect()
+            .collect();
+        live.sort_by_key(|(loan, _)| self.loans.loan(*loan).source_order());
+        live
     }
 }

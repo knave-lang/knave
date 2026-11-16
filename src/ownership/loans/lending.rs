@@ -19,6 +19,10 @@ impl Lending {
         PlaceAccess::new(self.place.clone(), self.kind.access(), self.span)
     }
 
+    pub fn source_order(&self) -> (usize, usize) {
+        (self.span.source().index(), self.span.range().start)
+    }
+
     pub fn written(&self, names: &LoanNames<'_>) -> String {
         format!(
             "{}`{}` lent at {}",

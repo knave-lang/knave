@@ -1,0 +1,10 @@
+(defn main ()
+  (local v (vec 1 2))
+  (local it (iter v))
+  (local t
+    ((rust "Iterator::take({0}, 1)"
+       (where (a)
+         (fn ((mut (iterator a))) (iterator a))))
+     (mut it)))
+  (local moved it)
+  (println (count t) (count moved)))

@@ -103,6 +103,7 @@ mod stage_work;
 mod standard_error;
 mod standard_output;
 mod streamed_program;
+mod taken_module_paths;
 mod task;
 mod task_catalog;
 mod task_runners;

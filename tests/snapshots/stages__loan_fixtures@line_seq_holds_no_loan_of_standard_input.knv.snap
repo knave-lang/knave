@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/line_seq_holds_no_loan_of_standard_input.knv
+---
+main
+  3:26 borrow `input`: no live loan
+  4:16 move `input`: no live loan
+  5:19 move `lines`: no live loan
+  6:24 borrow `moved`: no live loan

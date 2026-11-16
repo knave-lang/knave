@@ -1,0 +1,6 @@
+(defn main ()
+  (local input stdin)
+  (local lines (line-seq input))
+  (local moved input)
+  (println (count lines))
+  (println (ok? (slurp moved))))

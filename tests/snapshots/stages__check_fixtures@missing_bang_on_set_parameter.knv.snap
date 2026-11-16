@@ -12,7 +12,7 @@ warning[L0804]: `clamp` changes an argument, so its name should end with `!`
   |                ----------- this changes the caller's value
   |
   = help: rename it `clamp!`
-  = help: to change only this function's copy, start the body with `(local x x)`
+  = help: to change only this function's copy, wrap the body in `(let (x x) ...)`
   = note: run `knave doc L0804` for an explanation
 
 warning[L0804]: `rename` changes an argument, so its name should end with `!`
@@ -24,7 +24,7 @@ warning[L0804]: `rename` changes an argument, so its name should end with `!`
   |   ----------------------- this changes the caller's value
   |
   = help: rename it `rename!`
-  = help: to change only this function's copy, start the body with `(local name (clone name))`
+  = help: to change only this function's copy, wrap the body in `(let (name (clone name)) ...)`
   = note: run `knave doc L0804` for an explanation
 
 (type clamp (fn ((mut int)) unit))

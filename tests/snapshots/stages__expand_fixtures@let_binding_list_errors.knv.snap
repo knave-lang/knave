@@ -27,7 +27,7 @@ error[L0336]: `let` takes a list of bindings
 5 | (defn flat () (let x 5))
   |                    ^ not a list of bindings
   |
-  = help: to bind `x` for the rest of the body, write `(local x 5)`; to define it for the module, write `(def x 5)`
+  = help: to bind `x` for the rest of the body, wrap it in `(let (x 5) ...)`; to define it for the module, write `(def x 5)`
   = note: run `knave doc L0336` for an explanation
 
 error[L0336]: `let` takes a list of bindings

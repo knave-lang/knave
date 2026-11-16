@@ -1,0 +1,7 @@
+(use code pattern-head?)
+(use modules/every_kind point)
+
+(defmacro head? (x)
+  (if (pattern-head? x) 1 0))
+
+(defn main () (println (head? point)))

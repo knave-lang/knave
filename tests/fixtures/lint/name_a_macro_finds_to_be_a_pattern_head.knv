@@ -1,0 +1,8 @@
+(use code pattern-head?)
+(use modules/every_kind shape)
+
+(defmacro head? (x)
+  (if (pattern-head? x) 1 0))
+
+(defn main ()
+  (println (head? shape/circle)))

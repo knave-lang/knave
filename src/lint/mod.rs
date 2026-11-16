@@ -32,3 +32,5 @@ pub use rule_failure::RuleFailure;
 pub use rule_program::RuleProgram;
 #[cfg(test)]
 mod expanded_source;
+#[cfg(test)]
+mod import_kind_table;

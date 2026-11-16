@@ -1,0 +1,17 @@
+(export boxed greet point shape shape/circle shout sized)
+
+(defn greet () 1)
+
+(defmacro shout (x) x)
+
+(defstruct point
+  :x i64)
+
+(defenum shape
+  (circle i64)
+  dot)
+
+(trait sized
+  (size (fn ((ref self)) i64)))
+
+(rust-type (boxed item) "Box<{0}>")

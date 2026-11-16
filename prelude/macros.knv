@@ -516,7 +516,9 @@
   last form is a binding list, which the formatter lays out one name and
   its value per line, and a `:methods` states that each list after the
   header that starts with a name and a list is a method, which the
-  formatter lays out like a `defn`.
+  formatter lays out like a `defn` when a body follows the list and like
+  a `type` declaration when none does, with a blank line between every
+  two neighboring methods.
 
   ```
   (use prelude/macros header-shape)

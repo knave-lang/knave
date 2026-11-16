@@ -17,6 +17,7 @@ input_file: tests/fixtures/format/layout_methods_deftrait.knv
 (deftrait shape
   "A figure with an area."
   (area (fn ((ref self)) f64))
+
   (perimeter (fn ((ref self)) f64))
 
   (describe (fn ((ref self)) string)

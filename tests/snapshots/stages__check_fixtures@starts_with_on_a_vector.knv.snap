@@ -10,3 +10,4 @@ error[L0404]: `(vec (ref str))` does not implement `prefixed`
   |                          ^^^^^^^^^ this needs `prefixed`
   |
   = note: `prefixed` is implemented for: str, string, (where ((text prefixed)) (ref text))
+  = note: run `knave doc L0404` for an explanation

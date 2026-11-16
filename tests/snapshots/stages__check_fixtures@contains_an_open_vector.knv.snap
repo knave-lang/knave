@@ -11,3 +11,4 @@ error[L0404]: `str` does not implement `contains`
   |
   = note: `contains` is implemented for: (with str (ref str)), (with string (ref str)), (with (where ((item partial-eq)) (vec item)) item), (with (where ((item partial-eq)) (slice item)) item), (with (where ((whole (contains part)) part) (ref whole)) part)
   = help: `contains?` looks for a `(ref str)` part in text and for an item of the element type in a vector or a slice: write `(as-str part)` to look for a `string` in text, or `(str part)` to look for text in a vector of `string`
+  = note: run `knave doc L0404` for an explanation

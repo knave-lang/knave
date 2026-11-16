@@ -211,7 +211,7 @@
     (fn ((ref str)) (iterator (ref str)))))
 
 (rust-trait pattern "crate::rt::Separator"
-  (help "`split` takes a `(ref str)`, a `(ref string)`, a `char` or a `(fn (char) bool)` separator: borrow an owned `string` with `as-str`")
+  (help "to split on an owned `string`, borrow it with `as-str`")
   (ref str)
   (ref (ref str))
   (ref string)

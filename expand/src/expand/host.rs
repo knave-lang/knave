@@ -91,7 +91,7 @@ impl ModuleQueries for Expander<'_> {
     }
 
     fn module_exports(&self, path: &Symbol, span: Span) -> Result<Vec<Symbol>, Diagnostic> {
-        let record = self.loaded_module(path, span)?;
+        let record = self.read_module_by_path(path, span)?;
         let names: BTreeSet<Rc<str>> = record
             .exports()
             .entries()
@@ -104,7 +104,7 @@ impl ModuleQueries for Expander<'_> {
     }
 
     fn module_definitions(&self, path: &Symbol, span: Span) -> Result<Vec<Symbol>, Diagnostic> {
-        let record = self.loaded_module(path, span)?;
+        let record = self.read_module_by_path(path, span)?;
         let names = self
             .modules
             .find(record.path())
@@ -126,7 +126,7 @@ impl ModuleQueries for Expander<'_> {
     }
 
     fn module_symbol(&self, path: &Symbol, span: Span) -> Result<Symbol, Diagnostic> {
-        let record = self.loaded_module(path, span)?;
+        let record = self.read_module_by_path(path, span)?;
         if ModuleSources::is_compiler_provided(record.path()) {
             return Err(ExpandProblems::unknown_module(record.path(), span));
         }
@@ -276,13 +276,22 @@ impl SourceQueries for Expander<'_> {
 }
 
 impl Expander<'_> {
-    fn loaded_module(&self, path: &Symbol, span: Span) -> Result<&ModuleRecord, Diagnostic> {
-        let path = ModulePath::new(path.name());
+    fn read_module_by_path(
+        &self,
+        written: &Symbol,
+        span: Span,
+    ) -> Result<&ModuleRecord, Diagnostic> {
+        let path = ModulePath::new(written.name());
         let module = self
             .text_modules
             .find_module(&self.modules, &path)
             .ok_or_else(|| ExpandProblems::unknown_module(&path, span))?;
-        Ok(self.modules.get(module))
+        let record = self.modules.get(module);
+        let introductions = self.tables.scopes.introductions();
+        record
+            .status()
+            .note_path_read(written.scopes(), &introductions);
+        Ok(record)
     }
 
     fn definition_scopes(&self, binding: BindingId) -> ScopeSet {

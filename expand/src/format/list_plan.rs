@@ -17,6 +17,7 @@ pub struct Arrangement {
 }
 
 pub struct ListPlan {
+    pub declared_prefix: usize,
     pub units: Vec<Unit>,
     pub arrangements: Vec<Arrangement>,
     pub docstring_entry: Option<usize>,
@@ -62,6 +63,7 @@ impl ListPlan {
             docstring_entry,
             nested,
             one_line_allowed: docstring_entry.is_none() && one_line_body,
+            declared_prefix: 0,
         }
     }
 
@@ -78,20 +80,17 @@ impl ListPlan {
             nested: NestedLists::default(),
             preferred_arrangement: None,
             one_line_allowed: list.entries.len() <= BindingPairs::PAIR_LENGTH,
+            declared_prefix: 0,
         }
     }
 
-    pub fn with_lone_header_below(self) -> Self {
-        let header = self.arrangements[0];
-        let body_follows = self.units.len() > header.first_line_units;
-        if body_follows {
-            return self;
-        }
+    pub fn declared_as(self, declared_prefix: usize) -> Self {
         Self {
             arrangements: vec![Arrangement {
                 first_line_units: 1,
                 later_indent: Arrangement::body(),
             }],
+            declared_prefix,
             ..self
         }
     }

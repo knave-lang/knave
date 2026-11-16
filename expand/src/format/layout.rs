@@ -173,8 +173,9 @@ impl<'s> LayoutEngine<'s> {
     ) -> Option<Rc<str>> {
         let text = self.one_line_text(list)?;
         let length = text.chars().count();
-        let fits = self.roles.is_short(list, length) && column + length + trailing <= Block::WIDTH;
-        fits.then_some(text)
+        let declared = length + self.plan(list).declared_prefix;
+        let short = self.roles.is_short(list, declared);
+        (short && column + length + trailing <= Block::WIDTH).then_some(text)
     }
 
     fn one_line_text(&mut self, list: &ListNode) -> Option<Rc<str>> {
@@ -219,7 +220,6 @@ impl<'s> LayoutEngine<'s> {
 impl<'l> ListAssembly<'l> {
     const OPEN: &'static str = "(";
     const CLOSE: &'static str = ")";
-    const SEPARATOR: &'static str = " ";
 
     fn new(list: &'l ListNode, plan: &'l ListPlan, column: usize, trailing: usize) -> Self {
         Self {
@@ -250,7 +250,7 @@ impl<'l> ListAssembly<'l> {
     }
 
     fn separator(index: usize) -> &'static str {
-        if index == 0 { "" } else { Self::SEPARATOR }
+        if index == 0 { "" } else { Unit::SEPARATOR }
     }
 
     fn assemble<L: LaidOut>(&self, engine: &mut LayoutEngine<'_>, arrangement: Arrangement) -> L {
@@ -360,11 +360,11 @@ impl<'l> ListAssembly<'l> {
         index: usize,
         unit: Unit,
     ) {
-        let start = state.laid_out.end_column() + Self::SEPARATOR.len();
+        let start = state.laid_out.end_column() + Unit::SEPARATOR.len();
         let unit_layout: L = self.unit(engine, index, unit, start);
         let end = unit_layout.end_column() + self.unit_trailing(index);
         if end <= FillWidth::COLUMNS {
-            state.laid_out.join(Self::SEPARATOR, unit_layout);
+            state.laid_out.join(Unit::SEPARATOR, unit_layout);
         } else {
             self.push_on_own_line(engine, state, index, unit);
         }
@@ -412,9 +412,9 @@ impl<'l> ListAssembly<'l> {
             Unit::Single(entry) => self.entry_layout(engine, entry, start, trailing),
             Unit::Pair(keyword, value) => {
                 let mut laid_out: L = self.entry_layout(engine, keyword, start, 0);
-                let value_start = laid_out.end_column() + Self::SEPARATOR.len();
+                let value_start = laid_out.end_column() + Unit::SEPARATOR.len();
                 let value_layout = self.pair_value_layout(engine, value, value_start, trailing);
-                laid_out.join(Self::SEPARATOR, value_layout);
+                laid_out.join(Unit::SEPARATOR, value_layout);
                 laid_out
             }
         }

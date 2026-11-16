@@ -124,6 +124,10 @@ impl Shape {
         bindings: false,
     };
 
+    pub fn holds_only_header(self, list: &ListNode) -> bool {
+        list.entries.len() <= self.header_length + 1
+    }
+
     pub fn allows_one_line(self, item_count: usize) -> bool {
         self.one_line.allows(self.header_length, item_count)
     }

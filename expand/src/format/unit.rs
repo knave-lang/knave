@@ -5,6 +5,8 @@ pub enum Unit {
 }
 
 impl Unit {
+    pub const SEPARATOR: &'static str = " ";
+
     pub fn first_entry(self) -> usize {
         match self {
             Unit::Single(entry) | Unit::Pair(entry, _) => entry,

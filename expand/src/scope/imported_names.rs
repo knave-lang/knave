@@ -4,12 +4,14 @@ use std::rc::Rc;
 use super::ScopeSet;
 use super::name_entries::NameEntries;
 use super::phase::Phase;
+use super::qualified_names::QualifiedNames;
 use super::saved_exports::SavedExports;
 use crate::core::{BindingId, Namespace};
 
 #[derive(Default)]
 pub(super) struct ImportedNames {
     modules: Vec<ImportedModule>,
+    qualified_names: QualifiedNames,
 }
 
 struct ImportedModule {
@@ -21,6 +23,10 @@ struct ImportedModule {
 impl ImportedNames {
     pub(super) fn add(&mut self, scopes: ScopeSet, exports: SavedExports) {
         let entries = (0..exports.count()).map(|_| OnceCell::new()).collect();
+        for position in 0..exports.count() {
+            let (name, namespace, _) = exports.export(position);
+            self.qualified_names.record_saved(name, namespace);
+        }
         self.modules.push(ImportedModule {
             scopes,
             exports,
@@ -62,6 +68,14 @@ impl ImportedNames {
             .flat_map(move |module| module.all_of(namespace))
     }
 
+    pub(super) fn qualified_ending_in(
+        &self,
+        last_segment: Rc<str>,
+        namespace: Namespace,
+    ) -> &[Rc<str>] {
+        self.qualified_names.ending_in(last_segment, namespace)
+    }
+
     #[cfg(test)]
     pub(super) fn decoded_count(&self) -> usize {
         let entries = self.modules.iter().flat_map(|module| &module.entries);
@@ -77,14 +91,14 @@ impl ImportedModule {
 
     fn all(&self) -> impl Iterator<Item = (Rc<str>, Namespace, &NameEntries)> {
         (0..self.entries.len()).map(|position| {
-            let (name, namespace) = self.exports.key(position);
+            let (name, namespace, _) = self.exports.export(position);
             (Rc::from(name), namespace, self.decoded(position))
         })
     }
 
     fn all_of(&self, namespace: Namespace) -> impl Iterator<Item = &NameEntries> {
         (0..self.entries.len())
-            .filter(move |position| self.exports.key(*position).1 == namespace)
+            .filter(move |position| self.exports.export(*position).1 == namespace)
             .map(|position| self.decoded(position))
     }
 
@@ -93,9 +107,10 @@ impl ImportedModule {
     }
 
     fn decode(&self, position: usize) -> NameEntries {
+        let (_, _, binding) = self.exports.export(position);
         let mut entries = NameEntries::default();
         entries
-            .bind(&self.scopes, self.exports.binding(position), Phase::Runtime)
+            .bind(&self.scopes, binding, Phase::Runtime)
             .expect("an empty entry list takes any binding");
         entries
     }
@@ -125,7 +140,8 @@ mod tests {
             let module = world.scope();
             world
                 .table
-                .import_saved(ScopeSet::of(&[module]), Self::exports());
+                .prelude_mut()
+                .import(ScopeSet::of(&[module]), Self::exports());
             Self { world, module }
         }
 
@@ -155,7 +171,7 @@ mod tests {
         }
 
         fn decoded_count(&self) -> usize {
-            self.world.table.imported_decoded_count()
+            self.world.table.prelude().imported_decoded_count()
         }
     }
 

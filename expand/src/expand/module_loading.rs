@@ -269,11 +269,12 @@ impl Expander<'_> {
     fn import_everything(&mut self, module: ModuleId, base: ModuleId) {
         let mut scopes = ScopeSet::default();
         scopes.add(self.modules.get(module).scopes().base());
-        if let Some(saved) = self.modules.get(base).saved_exports() {
-            self.tables.table.import_saved(scopes, saved);
+        if let Some(saved) = self.modules.get(base).exports().saved() {
+            self.tables.table.prelude_mut().import(scopes, saved);
             return;
         }
-        let exports: Vec<(Rc<str>, Namespace, _)> = self.modules.get(base).exports().collect();
+        let exports: Vec<(Rc<str>, Namespace, _)> =
+            self.modules.get(base).exports().entries().collect();
         for (name, namespace, binding) in exports {
             let symbol = Symbol::with_scopes(name, scopes.clone());
             self.tables
@@ -345,6 +346,7 @@ impl Expander<'_> {
             .modules
             .get(target)
             .exports()
+            .entries()
             .filter(|(name, namespace, _)| {
                 *namespace == Namespace::Value && name.starts_with(&prefix)
             })
@@ -394,6 +396,7 @@ impl Expander<'_> {
             .modules
             .get(target)
             .exports()
+            .entries()
             .map(|(name, _, _)| name)
             .collect();
         let similar = SimilarName::closest(symbol.name(), &exported);
@@ -419,7 +422,12 @@ impl Expander<'_> {
             .records()
             .filter(|record| ModuleSources::is_internal(record.path()))
             .filter(|record| !ModuleSources::is_compiler_provided(record.path()))
-            .any(|record| record.exports().any(|(exported, _, _)| *exported == *name))
+            .any(|record| {
+                record
+                    .exports()
+                    .entries()
+                    .any(|(exported, _, _)| *exported == *name)
+            })
     }
 
     fn create_builtin(&mut self, path: &ModulePath, builtin: BuiltinModule) -> ModuleId {

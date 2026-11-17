@@ -97,6 +97,7 @@ impl NumericBound {
     ) -> Vec<(usize, Rc<str>)> {
         prelude
             .exports()
+            .entries()
             .filter_map(|(name, _, binding)| {
                 let rows = Self::covered_rows(family, declarations.get(&binding)?)?;
                 Some((rows, name))

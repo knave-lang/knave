@@ -2,7 +2,6 @@ mod binder_origin;
 mod binding;
 mod builtin;
 mod consulted_traits;
-mod dotted_module_path;
 mod expr;
 mod implementor_rows;
 mod kernel;
@@ -22,6 +21,7 @@ mod template;
 mod template_braces;
 mod template_operation;
 mod types;
+mod unnamed_part_path;
 mod written_types;
 
 pub use binder_origin::BinderOrigin;
@@ -33,7 +33,6 @@ pub use builtin::{Builtin, BuiltinModule};
 pub use consulted_traits::{
     BorrowTrait, ConsultedTraits, CopyTrait, EqualityTrait, HashTrait, OrderTrait,
 };
-pub use dotted_module_path::DottedModulePath;
 pub use expr::{
     Arm, Binder, Block, BodyItem, Control, Expr, ExprKind, FieldLabel, FieldSpelling, Lambda, Leaf,
     Literal, MapOperation, Pattern, PatternArguments, PatternKind, PatternPart, RustClause,
@@ -70,4 +69,5 @@ pub use template::{
 pub use template_braces::TemplateBraces;
 pub use template_operation::{Division, Operand, TemplateOperation};
 pub use types::{ClosureKind, TypeBinder, TypeBound, TypeExpr, TypeExprKind};
+pub use unnamed_part_path::UnnamedPartPath;
 pub use written_types::WrittenTypes;

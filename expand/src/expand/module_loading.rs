@@ -3,17 +3,17 @@ use std::rc::Rc;
 use super::Expander;
 use super::builtin_export::BuiltinExport;
 use super::context::DefinitionContext;
-use super::module_path_problems::ModulePathProblems;
+use super::local_file_diagnosis::LocalFileDiagnosis;
 use super::problems::{ExpandProblems, MissingExportRemedy};
 use super::shape::Shape;
 use crate::core::{
-    BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, DottedModulePath,
-    KernelConstants, KernelForm, KernelType, ModuleId, ModulePath, Namespace,
+    BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, KernelConstants, KernelForm,
+    KernelType, ModuleId, ModulePath, Namespace, UnnamedPartPath,
 };
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
 use crate::interpret::Warnings;
-use crate::modules::{LocalFiles, LocatedModule, ModuleScopes, ModuleSource, ModuleSources};
+use crate::modules::{LocatedModule, ModuleScopes, ModuleSource, ModuleSources};
 use crate::reader::{Form, Reader, Symbol};
 use crate::scope::{Phase, ScopeKind, ScopeSet};
 use crate::source::{SourceId, Span};
@@ -55,10 +55,7 @@ impl Expander<'_> {
                     self.load_source_module(path.clone(), &[source])
                 }))
             }
-            None => Err(match self.local_files().unreachable_file(path) {
-                Some(file) => ExpandProblems::unreachable_module(path, &file, span),
-                None => ExpandProblems::unknown_module(path, span),
-            }),
+            None => Err(self.local_file_diagnosis().missing_module(path, span)),
         }
     }
 
@@ -118,8 +115,9 @@ impl Expander<'_> {
         let shape = Shape::new(KernelForm::Definition(DefinitionForm::Use), form);
         let items = shape.at_least(2)?;
         let written =
-            DottedModulePath::check(shape.symbol(&items[1])?.name()).map_err(|dotted| {
-                ModulePathProblems::dot_segment(&dotted, &self.local_files(), items[1].span())
+            UnnamedPartPath::check(shape.symbol(&items[1])?.name()).map_err(|unnamed| {
+                self.local_file_diagnosis()
+                    .unnamed_part_use(&unnamed, items[1].span())
             })?;
         let path = self.resolve_use(&written, items[1].span())?;
         let target = self.load_module(&path, items[1].span())?;
@@ -225,9 +223,8 @@ impl Expander<'_> {
             .map(|(_, owner)| Rc::clone(owner))
     }
 
-    fn local_files(&self) -> LocalFiles<'_> {
-        let owner = self.importing_owner();
-        self.module_sources.local_files(owner.as_deref())
+    fn local_file_diagnosis(&self) -> LocalFileDiagnosis<'_> {
+        LocalFileDiagnosis::new(self.module_sources.local_files(self.importing_owner()))
     }
 
     fn importing_owner(&self) -> Option<Rc<str>> {

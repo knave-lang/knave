@@ -1,28 +1,31 @@
 use super::ModulePath;
 
-pub(super) enum PathPart<'t> {
+pub(super) enum PathPart {
     Current,
     Parent,
-    Named(&'t str),
+    Empty,
+    Named,
 }
 
-impl<'t> PathPart<'t> {
+impl PathPart {
     const CURRENT: &'static str = ".";
     const PARENT: &'static str = "..";
+    const EMPTY: &'static str = "";
 
-    pub(super) fn parts(path: &'t str) -> impl Iterator<Item = PathPart<'t>> {
+    pub(super) fn parts(path: &str) -> impl Iterator<Item = PathPart> {
         path.split(ModulePath::SEPARATOR).map(Self::parse)
     }
 
-    fn parse(part: &'t str) -> Self {
+    fn parse(part: &str) -> Self {
         match part {
             Self::CURRENT => Self::Current,
             Self::PARENT => Self::Parent,
-            name => Self::Named(name),
+            Self::EMPTY => Self::Empty,
+            _ => Self::Named,
         }
     }
 
-    pub(super) fn is_dot(&self) -> bool {
-        !matches!(self, Self::Named(_))
+    pub(super) fn is_name(&self) -> bool {
+        matches!(self, Self::Named)
     }
 }

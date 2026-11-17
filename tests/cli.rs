@@ -10524,18 +10524,78 @@ fn dotted_use_through_a_link_helps_with_the_file_the_link_leads_to() {
 }
 
 #[test]
-fn dotted_use_that_leads_to_a_folder_helps_with_the_written_path() {
+fn dotted_use_that_leads_to_a_folder_names_no_file() {
     let sandbox = Sandbox::new("dotted_use_to_folder")
         .with_file(
             "main.knv",
             "(use .alias/../folder)\n\n(defn main () (println 1))\n",
         )
+        .with_file("folder.knv", "(def kept 0)\n")
         .with_file("deep/folder.knv/keep.knv", "(def kept 1)\n")
         .with_file("deep/inner/keep.knv", "(def kept 2)\n");
     std::os::unix::fs::symlink("deep/inner", sandbox.directory.join(".alias"))
         .expect("the sandbox can hold a symbolic link");
     let check = sandbox.compiler(&["check", "main.knv"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn library_dotted_use_of_a_path_its_listed_library_takes_names_the_file() {
+    let sandbox = Sandbox::new("library_dotted_use_listed")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (shapes :path \"../shapes\")))\n",
+        )
+        .with_file(
+            "app/src/main.knv",
+            "(use shapes area)\n\n(defn main () (println (area 2)))\n",
+        )
+        .with_file(
+            &format!("shapes/{}", Language::project_file_name()),
+            "(defproject shapes (libraries (text :path \"../text\")))\n",
+        )
+        .with_file(
+            "shapes/src/lib.knv",
+            "(use ./text/pad)\n\n(export area)\n\n(defn area (side) (* side side))\n",
+        )
+        .with_file("shapes/src/text/pad.knv", "(def kept 1)\n")
+        .with_file(
+            &format!("text/{}", Language::project_file_name()),
+            "(defproject text)\n",
+        )
+        .with_file("text/src/lib.knv", "(def kept 2)\n")
+        .with_file("text/src/pad.knv", "(def kept 3)\n");
+    let check = sandbox.compiler_in("app", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn task_dotted_use_through_a_link_names_the_file_it_reaches() {
+    let sandbox = Sandbox::new("task_dotted_use_through_link")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file(
+            "tests/support.knv",
+            "(export helper)\n\n(defn helper () 1)\n",
+        )
+        .with_file("tests/x/keep.knv", "(def kept 1)\n")
+        .with_file(
+            "tasks/t.knv",
+            "(use link/../support helper)\n\n(deftask t () (println (helper)))\n",
+        );
+    std::os::unix::fs::symlink("../tests/x", sandbox.directory.join("tasks/link"))
+        .expect("the sandbox can hold a symbolic link");
+    let support = fs::canonicalize(sandbox.directory.join("tests/support.knv"))
+        .expect("the support file resolves");
+    let task = sandbox.compiler(&["task", "t"]);
+    let stderr = task.assert_exit_code(1).stderr();
+    assert!(
+        stderr.contains(&format!(
+            "`{}` exists, under a directory a task cannot reach this way",
+            support.display()
+        )),
+        "{stderr}"
+    );
 }
 
 const DOTTED_MARKS_TEST: &str = "(use ../src/text/marks bang)\n\n(use prelude/test assert deftest)\n\n(deftest bangs (assert (= bang \"!\")))\n";

@@ -112,7 +112,7 @@ The exceptions are:
 - `DesignRules::STAGE_ORDER` in `xtask/src/design.rs` lists the stages from first to last.
 - A stage reports problems as `Diagnostic` values. NEVER print from a stage.
 - Only `src/cli/` prints, except the directives that `build.rs` gives cargo.
-- Only `src/cli/`, `src/build/`, `ModuleSources`, `build.rs`, which writes only to `OUT_DIR`, and `xtask/` touch the file system or run processes.
+- Only `src/cli/`, `src/build/`, `ModuleSources` and the `LocalRoot` and `LocalFiles` it builds, `build.rs`, which writes only to `OUT_DIR`, and `xtask/` touch the file system or run processes.
 - The only `build.rs` builds the prelude state. NEVER add another build script or give this one another job.
 - Write the wording of every diagnostic that a compiler stage reports in the stage's problems type, such as `ExpandProblems` or `TypeProblems`.
 - A prelude `fail` writes its message, help and labels in the prelude.

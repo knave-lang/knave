@@ -12,11 +12,12 @@ use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
 use super::declarations::Declarations;
 use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
+use super::definition_outcomes::DefinitionOutcomes;
 use super::derive_blockers::DeriveBlockers;
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
 use super::field_parameters::FieldParameters;
-use super::graph::{Definition, DefinitionGraph, DependencyGraph};
+use super::graph::{Definition, DefinitionGraph};
 use super::impl_overlap::ImplementorOverlap;
 use super::infer::OpenCollections;
 use super::literal_settlement::LiteralSettlement;
@@ -176,9 +177,7 @@ pub struct TypeChecker {
     pub(super) variant_arm: FxHashMap<BindingId, VariantArmReference>,
     pub(super) unchecked: FxHashSet<BindingId>,
     entry_function: Option<BindingId>,
-    pub(super) unreached_prelude: Rc<FxHashSet<BindingId>>,
-    failed_bindings: FxHashSet<BindingId>,
-    bindings_after_errors: FxHashSet<BindingId>,
+    pub(super) outcomes: DefinitionOutcomes,
     pub(super) diagnostics: Diagnostics,
     pub(super) warnings: Diagnostics,
     pub(super) missing_annotations: super::missing_annotations::MissingAnnotations,
@@ -262,9 +261,7 @@ impl TypeChecker {
             variant_arm: FxHashMap::default(),
             unchecked: FxHashSet::default(),
             entry_function: None,
-            unreached_prelude: Rc::default(),
-            failed_bindings: FxHashSet::default(),
-            bindings_after_errors: FxHashSet::default(),
+            outcomes: DefinitionOutcomes::default(),
             diagnostics: Diagnostics::default(),
             warnings: Diagnostics::default(),
             missing_annotations: super::missing_annotations::MissingAnnotations::default(),
@@ -576,7 +573,6 @@ impl TypeChecker {
         let dependencies = graph.dependencies();
         self.unchecked = dependencies.unchecked(entry_function.as_slice());
         self.entry_function = entry_function;
-        self.unreached_prelude = graph.reach().unreached();
         let by_binding: FxHashMap<BindingId, &Definition> = graph
             .definitions()
             .iter()
@@ -590,54 +586,17 @@ impl TypeChecker {
                 .map(|binding| by_binding[binding])
                 .collect();
             let bindings: Vec<BindingId> = members.iter().map(|member| member.binding).collect();
-            if self.has_failed_member_or_dependency(dependencies, &bindings) {
-                self.failed_bindings.extend(bindings);
+            if self.outcomes.is_blocked(dependencies, &bindings) {
+                self.outcomes.fail(bindings);
                 continue;
             }
             let reported_before = self.diagnostics.len();
             typed.extend(self.check_component(&members));
-            self.note_bindings_after_errors(reported_before, dependencies, &bindings);
-            self.fail_group_when_a_member_failed(bindings);
+            let reported_errors = self.diagnostics.len() - reported_before;
+            self.outcomes
+                .finish_group(dependencies, &bindings, reported_errors);
         }
         typed
-    }
-
-    fn has_failed_member_or_dependency(
-        &self,
-        dependencies: &DependencyGraph,
-        bindings: &[BindingId],
-    ) -> bool {
-        self.has_failed_member(bindings)
-            || dependencies.directly_depends_on_any(bindings, &self.failed_bindings)
-    }
-
-    fn fail_group_when_a_member_failed(&mut self, bindings: Vec<BindingId>) {
-        if self.has_failed_member(&bindings) {
-            self.failed_bindings.extend(bindings);
-        }
-    }
-
-    fn note_bindings_after_errors(
-        &mut self,
-        reported_before: usize,
-        dependencies: &DependencyGraph,
-        bindings: &[BindingId],
-    ) {
-        if self.diagnostics.len() > reported_before
-            || dependencies.directly_depends_on_any(bindings, &self.bindings_after_errors)
-        {
-            self.bindings_after_errors.extend(bindings);
-        }
-    }
-
-    pub(super) fn follows_reported_error(&self, binding: BindingId) -> bool {
-        self.bindings_after_errors.contains(&binding)
-    }
-
-    fn has_failed_member(&self, bindings: &[BindingId]) -> bool {
-        bindings
-            .iter()
-            .any(|binding| self.failed_bindings.contains(binding))
     }
 
     pub(super) fn admissible_types(&self) -> AdmissibleTypes<'_> {
@@ -942,7 +901,7 @@ impl TypeChecker {
                 Ok(value) => typed.push((member.binding, value)),
                 Err(diagnostic) => {
                     self.diagnostics.push(diagnostic);
-                    self.failed_bindings.insert(member.binding);
+                    self.outcomes.fail([member.binding]);
                     let failed = self.failed_scheme();
                     self.schemes.insert(member.binding, failed);
                 }
@@ -2042,9 +2001,8 @@ impl TypeChecker {
                         Ok(implementor) => implementor,
                         Err(diagnostic) => {
                             self.diagnostics.push(diagnostic);
-                            for method in methods {
-                                self.failed_bindings.insert(method.binding);
-                            }
+                            self.outcomes
+                                .fail(methods.iter().map(|method| method.binding));
                             continue;
                         }
                     };
@@ -2978,6 +2936,7 @@ impl TypeChecker {
         program: &crate::expand::Program,
         graph: &DefinitionGraph,
     ) -> Result<(super::typed::TypedProgram, OpenCollections), Diagnostics> {
+        self.outcomes = DefinitionOutcomes::new(graph.reach().unreached());
         self.record_prelude_definitions(&program.modules, &program.pending_definitions);
         self.collect_declarations(&program.modules, graph);
         self.declarations.written = graph.reach().written_bodies().clone();

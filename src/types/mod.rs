@@ -20,6 +20,7 @@ mod declared_traits;
 mod declared_types;
 mod declared_variant;
 mod deferred_definitions;
+mod definition_outcomes;
 mod derive_blockers;
 mod derives;
 mod display;

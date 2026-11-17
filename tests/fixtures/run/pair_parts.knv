@@ -12,6 +12,9 @@
 (defn add-parts! ((scores (mut (pair i64 i64))))
   (+ (first scores) (second scores)))
 
+(defn tag! ((entry (mut (pair i64 string))))
+  (push! (second entry) "!"))
+
 (defn main ()
   (let (names (pair (str "ana") (str "bo"))
         scores (vec 3 4)
@@ -46,4 +49,9 @@
       (prn ranked)
       (prn (collect (map (iter ranked)
                       (fn (entry) (second entry)))))
-      (println (+ count 1)))))
+      (println (+ count 1)))
+    (let (tagged (pair 1 (str "a"))
+          grown (pair (vec 1) 2))
+      (tag! (mut tagged))
+      (push! (first grown) 3)
+      (prn tagged grown))))

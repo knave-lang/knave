@@ -7,6 +7,7 @@ use super::ty::Type;
 use super::typed::{TypedExpr, TypedExprKind, TypedStructExpr};
 use super::unifier::{LiteralKind, Unifier, UnifyError};
 use super::view_coercion::ViewCoercion;
+use crate::core::FieldSpelling;
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 
@@ -78,6 +79,9 @@ impl<'a> Unification<'a> {
         let Type::Named(binding, arguments) = owner else {
             return value.ty.clone();
         };
+        if let FieldSpelling::Pair(position) = label.spelling {
+            return arguments[position.index()].clone();
+        }
         self.declarations
             .field_type(binding, &label.name, &arguments)
             .unwrap_or_else(|| value.ty.clone())

@@ -1,3 +1,5 @@
+use std::collections::hash_map;
+use std::ops::Range;
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
@@ -18,10 +20,12 @@ impl Default for ExportTable {
 
 impl ExportTable {
     pub fn insert(&mut self, name: Rc<str>, namespace: Namespace, binding: BindingId) {
-        let Self::Built(exports) = self else {
-            panic!("a saved module takes no new export")
-        };
-        exports.insert((name, namespace), binding);
+        if let Self::Saved(saved) = self {
+            *self = Self::Built(Self::built_from(*saved));
+        }
+        if let Self::Built(exports) = self {
+            exports.insert((name, namespace), binding);
+        }
     }
 
     pub fn get(&self, name: &str, namespace: Namespace) -> Option<BindingId> {
@@ -32,21 +36,45 @@ impl ExportTable {
     }
 
     pub fn entries(&self) -> impl Iterator<Item = (Rc<str>, Namespace, BindingId)> + '_ {
-        let (built, saved) = match self {
-            Self::Built(exports) => (Some(exports), None),
-            Self::Saved(saved) => (None, Some(saved)),
-        };
-        let built_entries = built
-            .into_iter()
-            .flatten()
-            .map(|((name, namespace), binding)| (Rc::clone(name), *namespace, *binding));
-        built_entries.chain(saved.into_iter().flat_map(SavedExports::entries))
+        match self {
+            Self::Built(exports) => ExportEntries::Built(exports.iter()),
+            Self::Saved(saved) => ExportEntries::Saved(*saved, 0..saved.count()),
+        }
     }
 
     pub fn saved(&self) -> Option<SavedExports> {
         match self {
             Self::Built(_) => None,
             Self::Saved(saved) => Some(*saved),
+        }
+    }
+
+    fn built_from(saved: SavedExports) -> FxHashMap<(Rc<str>, Namespace), BindingId> {
+        let entries = ExportEntries::Saved(saved, 0..saved.count());
+        entries
+            .map(|(name, namespace, binding)| ((name, namespace), binding))
+            .collect()
+    }
+}
+
+enum ExportEntries<'a> {
+    Built(hash_map::Iter<'a, (Rc<str>, Namespace), BindingId>),
+    Saved(SavedExports, Range<usize>),
+}
+
+impl Iterator for ExportEntries<'_> {
+    type Item = (Rc<str>, Namespace, BindingId);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Built(entries) => {
+                let ((name, namespace), binding) = entries.next()?;
+                Some((Rc::clone(name), *namespace, *binding))
+            }
+            Self::Saved(saved, positions) => {
+                let (name, namespace, binding) = saved.export(positions.next()?);
+                Some((Rc::from(name), namespace, binding))
+            }
         }
     }
 }
@@ -145,13 +173,16 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "a saved module takes no new export")]
-    fn a_saved_table_takes_no_new_export() {
-        let mut saved = ExportFixture::of(&EXPORTS).saved();
-        saved.insert(
-            Rc::from("filter"),
-            Namespace::Value,
-            BindingId::from_index(9),
+    fn a_saved_table_takes_a_new_export_beside_its_own() {
+        let mut table = ExportFixture::of(&EXPORTS).saved();
+        let filter = BindingId::from_index(9);
+        table.insert(Rc::from("filter"), Namespace::Value, filter);
+        assert!(table.saved().is_none());
+        assert_eq!(table.get("filter", Namespace::Value), Some(filter));
+        assert_eq!(
+            table.get("str", Namespace::Type),
+            Some(BindingId::from_index(8))
         );
+        assert_eq!(table.entries().count(), EXPORTS.len() + 1);
     }
 }

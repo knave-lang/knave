@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use super::name_key::NameKey;
 use super::saved_keys::{SavedKeys, SavedKeysBuilder};
 use super::saved_words::{SavedWords, SavedWordsBuilder};
@@ -39,14 +37,7 @@ impl SavedExports {
         Some(binding)
     }
 
-    pub fn entries(&self) -> impl Iterator<Item = (Rc<str>, Namespace, BindingId)> + '_ {
-        (0..self.count()).map(|position| {
-            let (name, namespace, binding) = self.export(position);
-            (Rc::from(name), namespace, binding)
-        })
-    }
-
-    pub(super) fn count(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.keys.count()
     }
 
@@ -54,7 +45,7 @@ impl SavedExports {
         self.keys.position(key)
     }
 
-    pub(super) fn export(&self, position: usize) -> (&'static str, Namespace, BindingId) {
+    pub fn export(&self, position: usize) -> (&'static str, Namespace, BindingId) {
         let (name, namespace) = self.keys.key(position);
         let binding = SavedWords::new(self.bindings, 1).word(position, 0);
         (name, namespace, BindingId::from_index(binding))

@@ -27,7 +27,7 @@ impl<'l> Lender<'l> {
         let access = lending.access();
         let loan = self.loans.record(lending, self.point);
         self.access(access.lending(loan));
-        Holdings::lent(loan)
+        Holdings::from(loan)
     }
 
     pub fn move_out(&mut self, place: LoanPlace, span: Span) {

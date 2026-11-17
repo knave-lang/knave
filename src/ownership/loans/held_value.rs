@@ -1,3 +1,4 @@
+use super::loan_depth::LoanDepth;
 use crate::core::BindingId;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -29,8 +30,8 @@ impl HeldValue {
         }
     }
 
-    pub fn placed(&self, layer: usize) -> Option<usize> {
-        layer.checked_add_signed(self.depth)
+    pub fn placed(&self, layer: LoanDepth) -> Option<LoanDepth> {
+        layer.shifted(self.depth)
     }
 }
 
@@ -38,12 +39,19 @@ impl HeldValue {
 mod tests {
     use super::HeldValue;
     use crate::core::BindingId;
+    use crate::ownership::loans::loan_depth::LoanDepth;
 
     #[test]
     fn a_value_held_within_places_each_layer_one_deeper_and_its_referent_one_higher() {
         let value = HeldValue::of(BindingId::from_index(1));
-        assert_eq!(value.within().placed(0), Some(1));
-        assert_eq!(value.referent().placed(1), Some(0));
-        assert_eq!(value.referent().placed(0), None);
+        assert_eq!(
+            value.within().placed(LoanDepth::TOP),
+            Some(LoanDepth::at(1))
+        );
+        assert_eq!(
+            value.referent().placed(LoanDepth::at(1)),
+            Some(LoanDepth::TOP)
+        );
+        assert_eq!(value.referent().placed(LoanDepth::TOP), None);
     }
 }

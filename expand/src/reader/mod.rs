@@ -1,6 +1,7 @@
 mod cursor;
 mod form;
 mod form_shape;
+mod list_close;
 mod literal_forms;
 mod number;
 mod problems;
@@ -10,6 +11,7 @@ mod token;
 
 pub use form::{Form, FormKind, FormNesting, Number, NumberValue, Symbol};
 pub use form_shape::FormShape;
+pub use list_close::ListClose;
 pub use literal_forms::LiteralForms;
 pub use string_literal::StringLiteral;
 pub use syntax::Syntax;
@@ -262,7 +264,7 @@ impl<'a> Reader<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Form, Reader};
+    use super::{Form, ListClose, Reader};
     use crate::source::{SourceId, SourceMap, TextPosition};
 
     struct ReadFixture {
@@ -292,6 +294,44 @@ mod tests {
                 .read()
                 .unwrap_or_else(|_| panic!("the file reads"))
         }
+    }
+
+    struct ListCloseFixture;
+
+    impl ListCloseFixture {
+        fn close_after(text: &str, head: &str) -> usize {
+            let mut sources = SourceMap::default();
+            let file = sources.add("close.knv", text);
+            let offset = text.find(head).expect("the text holds the head") + head.len();
+            ListClose::after(sources.file(file), offset)
+        }
+    }
+
+    #[test]
+    fn a_string_holding_a_close_does_not_close_the_list() {
+        let text = "(use \")\" x) y";
+        assert_eq!(
+            ListCloseFixture::close_after(text, "use"),
+            text.find(") y").unwrap()
+        );
+    }
+
+    #[test]
+    fn a_comment_holding_a_close_does_not_close_the_list() {
+        let text = "(use ; )\n x) y";
+        assert_eq!(
+            ListCloseFixture::close_after(text, "use"),
+            text.find(") y").unwrap()
+        );
+    }
+
+    #[test]
+    fn a_nested_list_does_not_close_the_list() {
+        let text = "(use (a (b)) x) y";
+        assert_eq!(
+            ListCloseFixture::close_after(text, "use"),
+            text.find(") y").unwrap()
+        );
     }
 
     #[test]

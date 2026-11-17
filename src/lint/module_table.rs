@@ -92,11 +92,14 @@ impl<'p> ModuleTable<'p> {
     }
 
     fn unread_name(&self, name: &ImportedName, used: &ModuleUse) -> Form {
-        let mut parts = vec![SpannedForms::symbol(self.written(name.span), name.span)];
+        let mut parts = vec![SpannedForms::symbol(
+            self.written(name.written.span),
+            name.written.span,
+        )];
         if used.brings_only_macros(name) {
-            parts.push(SpannedForms::symbol(Self::MACRO_ONLY, name.span));
+            parts.push(SpannedForms::symbol(Self::MACRO_ONLY, name.written.span));
         }
-        SpannedForms::list(parts, name.span)
+        SpannedForms::list(parts, name.written.span)
     }
 
     fn written(&self, span: Span) -> &str {

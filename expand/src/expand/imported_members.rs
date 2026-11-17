@@ -3,7 +3,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::trait_methods::TraitMethods;
-use crate::core::{BindingArena, BindingId, BindingKind, Namespace};
+use crate::core::{BindingArena, BindingId, BindingKind, ImportedBindings, Namespace};
 use crate::modules::ModuleRecord;
 
 #[derive(Clone, Copy)]
@@ -39,12 +39,15 @@ impl<'e> ImportedMembers<'e> {
         }
     }
 
-    pub(super) fn of(&self, name: &str, type_binding: BindingId) -> Vec<(Rc<str>, BindingId)> {
-        match self.bindings.get(type_binding).kind() {
-            BindingKind::Enum(_) => self.constructors(name),
-            BindingKind::Trait(_) => self.methods(type_binding),
-            _ => Vec::new(),
-        }
+    pub(super) fn of(&self, name: &str, bindings: ImportedBindings) -> Vec<(Rc<str>, BindingId)> {
+        bindings
+            .iter()
+            .flat_map(|binding| match self.bindings.get(binding).kind() {
+                BindingKind::Enum(_) => self.constructors(name),
+                BindingKind::Trait(_) => self.methods(binding),
+                _ => Vec::new(),
+            })
+            .collect()
     }
 
     fn constructors(&self, name: &str) -> Vec<(Rc<str>, BindingId)> {

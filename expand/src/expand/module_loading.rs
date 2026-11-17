@@ -4,6 +4,7 @@ use super::Expander;
 use super::builtin_export::BuiltinExport;
 use super::context::DefinitionContext;
 use super::imported_members::{ImportedMembers, MemberTables};
+use super::lint_records::UseFormText;
 use super::local_file_diagnosis::LocalFileDiagnosis;
 use super::module_body::PendingItem;
 use super::module_load_site::ModuleLoadSite;
@@ -12,9 +13,9 @@ use super::shape::Shape;
 use super::text_module_load::TextModuleLoad;
 use super::text_module_record::TextModuleRecord;
 use crate::core::{
-    BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, Import, ImportedBindings,
-    ImportedName, KernelConstants, KernelForm, KernelType, ModuleId, ModulePath, Namespace,
-    UnnamedPartPath,
+    BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, ImportedBindings,
+    KernelConstants, KernelForm, KernelType, ModuleId, ModulePath, Namespace, UnnamedPartPath,
+    WrittenName, WrittenUse,
 };
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
@@ -148,7 +149,7 @@ impl Expander<'_> {
         &mut self,
         form: &Form,
         context: &DefinitionContext,
-    ) -> Result<Option<Import>, Diagnostic> {
+    ) -> Result<Option<WrittenUse>, Diagnostic> {
         let shape = Shape::new(KernelForm::Definition(DefinitionForm::Use), form);
         let items = shape.at_least(2)?;
         let written =
@@ -159,11 +160,20 @@ impl Expander<'_> {
         let path = self.use_path(&written, items[1].span())?;
         let target = self.load_module(&path, items[1].span())?;
         let names = self.import_names(target, &path, &items[2..], &shape, context)?;
-        let records_imports = self
-            .current_module
-            .is_some_and(|module| ModuleSources::is_written(self.modules.get(module).path()));
-        let (span, names) = (form.span(), names.into_boxed_slice());
-        Ok(records_imports.then_some(Import { span, names }))
+        let introductions = self.tables.scopes.introductions();
+        let written_in_source = items[..2]
+            .iter()
+            .all(|item| !introductions.carried_by_binder(item))
+            && self
+                .current_module
+                .is_some_and(|module| ModuleSources::is_written(self.modules.get(module).path()));
+        let use_form = UseFormText::new(self.sources, form.span(), items[0].span());
+        let names = names.into_iter().filter(|name| use_form.holds(name.span));
+        Ok(written_in_source.then(|| WrittenUse {
+            span: form.span(),
+            module: target,
+            names: names.collect(),
+        }))
     }
 
     fn import_names(
@@ -173,17 +183,17 @@ impl Expander<'_> {
         names: &[Form],
         shape: &Shape<'_>,
         context: &DefinitionContext,
-    ) -> Result<Vec<ImportedName>, Diagnostic> {
+    ) -> Result<Vec<WrittenName>, Diagnostic> {
         let mut imported = Vec::with_capacity(names.len());
         for name in names {
             let mut binder = name.clone();
             context.strip_use_sites(&mut binder);
             let symbol = binder.as_symbol().ok_or_else(|| shape.malformed(name))?;
             match self.import_name(target, path, symbol, name.span()) {
-                Ok(bindings) => imported.push(ImportedName {
-                    span: name.span(),
-                    bindings,
-                }),
+                Ok(bindings) => {
+                    let span = name.span();
+                    imported.push(WrittenName { span, bindings });
+                }
                 Err(diagnostic) => self.problems.report(diagnostic),
             }
         }
@@ -336,7 +346,10 @@ impl Expander<'_> {
         let Some(bindings) = self.bind_exported_namespaces(target, symbol, span)? else {
             return Err(self.missing_export(target, path, symbol, span));
         };
-        self.import_members(target, symbol, span)?;
+        let tables = MemberTables::new(&self.tables.bindings, &self.tables.trait_methods);
+        let members = ImportedMembers::new(self.modules.get(target), tables);
+        let members = members.of(symbol.name(), bindings);
+        self.bind_members(symbol, members, span)?;
         Ok(bindings)
     }
 
@@ -354,25 +367,6 @@ impl Expander<'_> {
             }
         }
         Ok(ImportedBindings::found(found))
-    }
-
-    fn import_members(
-        &mut self,
-        target: ModuleId,
-        symbol: &Symbol,
-        span: Span,
-    ) -> Result<(), Diagnostic> {
-        let Some(binding) = self
-            .modules
-            .get(target)
-            .exported(symbol.name(), Namespace::Type)
-        else {
-            return Ok(());
-        };
-        let tables = MemberTables::new(&self.tables.bindings, &self.tables.trait_methods);
-        let members = ImportedMembers::new(self.modules.get(target), tables);
-        let members = members.of(symbol.name(), binding);
-        self.bind_members(symbol, members, span)
     }
 
     fn bind_members(
@@ -486,7 +480,8 @@ mod tests {
                 .modules
                 .iter()
                 .filter(|module| ModuleSources::is_embedded_prelude(&module.path))
-                .all(|module| module.lint_facts.imports().is_empty())
+                .all(|module| module.lint_facts.written_uses().is_empty()
+                    && module.lint_facts.imports().is_empty())
         );
     }
 }

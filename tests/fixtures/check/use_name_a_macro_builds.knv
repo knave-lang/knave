@@ -1,0 +1,8 @@
+(use code concat list symbol)
+
+(defmacro u (form anchor)
+  (concat form (list (symbol anchor "pad-left"))))
+
+(u (use built_names/format) here)
+
+(defn main () (println (pad-left "a")))

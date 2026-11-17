@@ -65,7 +65,7 @@ pub use kernel::{
     KernelType, LeafForm, ReferenceKind, StructDerives, StructForm,
 };
 pub use keyword::Keyword;
-pub use lint_facts::{Import, ImportedName, LintFacts};
+pub use lint_facts::{Import, ImportedName, LintFacts, WrittenName, WrittenUse};
 pub use member_owners::MemberOwners;
 pub use module::{
     AssociatedValue, CoreModule, EnumDefiner, EnumRust, ImplAssociatedType, ImplMethod, Item,

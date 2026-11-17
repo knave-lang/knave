@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/use_name_a_macro_builds_beside_a_written_one.knv
+---
+(type main (fn () unit))

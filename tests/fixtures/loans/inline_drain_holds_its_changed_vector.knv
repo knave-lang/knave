@@ -1,0 +1,9 @@
+(defn main ()
+  (local v (vec 1 2 3))
+  (local d
+    ((rust "{0}.drain(..)"
+       (where (a)
+         (fn ((mut (vec a))) (iterator a))))
+     (mut v)))
+  (push! v 4)
+  (println (count d)))

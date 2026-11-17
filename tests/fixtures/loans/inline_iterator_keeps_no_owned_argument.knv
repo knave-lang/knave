@@ -1,0 +1,12 @@
+(defn main ()
+  (local v (vec 1 2 3))
+  (local s (str "a"))
+  (local it
+    ((rust "{{ let _ = {1}; {0}.iter().copied() }}"
+       (where (a)
+         (fn ((ref (vec a)) (option (ref str)))
+           (iterator a))))
+     (ref v)
+     (some (as-str s))))
+  (set! s (str "b"))
+  (println (count it)))

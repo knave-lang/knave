@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/inline_iterator_keeps_no_owned_argument.knv
+---
+main
+  9:11 borrow `v`: no live loan
+  10:20 borrow `s`: no live loan
+  11:9 change `s`: `v` lent at 9:11, held by `it`
+  12:19 move `it`: `v` lent at 9:11, held by `it`

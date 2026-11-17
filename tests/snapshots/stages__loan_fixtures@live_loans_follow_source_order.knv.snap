@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/live_loans_follow_source_order.knv
+---
+main
+  5:20 borrow `s`: no live loan
+  7:22 borrow `t`: `s` lent at 5:20, held by `r`; `u` lent at 10:22, held by `r`
+  8:11 change `s`: `s` lent at 5:20, held by `r`; `t` lent at 7:22, held by `y`; `u` lent at 10:22, held by `r`
+  10:22 borrow `u`: no live loan

@@ -1224,7 +1224,7 @@ impl TypeChecker {
         expected: Option<(&Type, bool)>,
     ) -> Result<TypedBinder, Diagnostic> {
         let ty = match (&param.annotation, expected) {
-            (Some(annotation), _) => self.lower_type(annotation, &FxHashMap::default())?,
+            (Some(annotation), _) => self.written_types().lower_without_generics(annotation)?,
             (None, Some((expected, _))) => expected.clone(),
             (None, None) => self.unifier.fresh(),
         };
@@ -1297,7 +1297,7 @@ impl TypeChecker {
     ) -> Result<(TypedBodyItem, Type), Diagnostic> {
         let (value, ty) = match &binder.annotation {
             Some(annotation) => {
-                let ty = self.lower_type(annotation, &FxHashMap::default())?;
+                let ty = self.written_types().lower_without_generics(annotation)?;
                 let context = MismatchContext::Annotation {
                     annotation: annotation.span(),
                 };
@@ -3610,7 +3610,7 @@ impl TypeChecker {
         template: &Rc<RustTemplate>,
         span: Span,
     ) -> Result<(TypedExprKind, Type), Diagnostic> {
-        let scheme = self.lower_scheme(&template.type_expr)?;
+        let scheme = self.written_schemes().lower_scheme(&template.type_expr)?;
         let ty = self.instantiation().instantiate(&scheme, span);
         Ok((TypedExprKind::Leaf(TypedLeaf::Rust(template.clone())), ty))
     }

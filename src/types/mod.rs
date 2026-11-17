@@ -42,7 +42,6 @@ mod literal_fit;
 mod literal_settlement;
 mod lowered_associated_value;
 mod lowered_payload;
-mod lowering;
 mod main_result;
 mod method_receivers;
 mod missing_annotations;
@@ -70,6 +69,7 @@ mod returned_values;
 mod rust_trait;
 mod rust_trait_paths;
 mod rust_types;
+mod scheme_lowering;
 mod selection;
 mod selfless_methods;
 mod size;
@@ -110,6 +110,11 @@ mod walk;
 mod wrapper;
 mod written_bodies;
 mod written_projection;
+mod written_type_facts;
+#[cfg(test)]
+mod written_type_fixture;
+mod written_type_lowering;
+mod written_type_records;
 
 pub use crate::core::ClosureKind;
 pub use binding::GenericBinding;

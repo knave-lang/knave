@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::generic_registry::GenericRegistry;
 use super::ty::{Bound, GenericParam, Type, TypeVar};
 use super::unifier::Unifier;
@@ -34,12 +36,23 @@ impl<'a> GenericDeclarations<'a> {
         self.unifier.bind(var, Type::Generic(param.id));
         param
     }
+
+    pub(super) fn declare_associated_type(&mut self, name: &str) -> GenericParam {
+        let param = self.declare(name, Vec::new());
+        self.registry.mark_associated_type(param.id, Rc::from(name));
+        param
+    }
+
+    pub(super) fn fresh_variable(&mut self) -> Type {
+        self.unifier.fresh()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::GenericDeclarations;
     use crate::core::BindingId;
+    use crate::types::declared_generics::DeclaredGenerics;
     use crate::types::generic_registry::GenericRegistry;
     use crate::types::ty::{Bound, Type};
     use crate::types::unifier::Unifier;
@@ -99,5 +112,26 @@ mod tests {
             fixture.unifier.resolve(&Type::Var(var)),
             Type::Generic(param.id)
         );
+    }
+
+    #[test]
+    fn a_declared_associated_type_is_named_in_the_registry() {
+        let mut fixture = DeclarationsFixture::new();
+        let param = fixture.declarations().declare_associated_type("item");
+        let declared = DeclaredGenerics::from(fixture.registry);
+        assert_eq!(
+            declared.associated_types.get(&param.id).map(|name| &**name),
+            Some("item")
+        );
+        assert!(declared.params.contains_key(&param.id));
+    }
+
+    #[test]
+    fn each_fresh_variable_is_a_new_variable() {
+        let mut fixture = DeclarationsFixture::new();
+        let first = fixture.declarations().fresh_variable();
+        let second = fixture.declarations().fresh_variable();
+        assert!(matches!(first, Type::Var(_)));
+        assert_ne!(first, second);
     }
 }

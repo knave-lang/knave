@@ -99,7 +99,7 @@ impl Expander<'_> {
                 )
             })?;
         let hidden = HiddenKernelType::of(symbol.name(), namespace, self.kind(binding))
-            .filter(|_| !self.expands_library_module());
+            .filter(|_| !self.expands_library_module() && !self.tables.scopes.introduced(symbol));
         if let Some(hidden) = hidden {
             self.problems.report_warning(hidden.at_import(span));
         }
@@ -149,7 +149,7 @@ impl Expander<'_> {
                 )
             })?;
         let hidden = HiddenKernelType::of(symbol.name(), namespace, kind)
-            .filter(|_| !self.expands_library_module());
+            .filter(|_| !self.expands_library_module() && !self.tables.scopes.introduced(symbol));
         if let Some(hidden) = hidden {
             self.problems.report_warning(hidden.at_definition(span));
         }

@@ -5,7 +5,7 @@ expression: check.assert_exit_code(0).stderr()
 warning[L0259]: `float` hides the kernel type `float`
  --> src/main.knv:1:20
   |
-1 | (use money ->float float)
+1 | (use money ->float float make-int)
   |                    ^^^^^ this imports `float` in place of the kernel type
   |
   = note: in this scope, a type written `float` names this binding, while a printed `float` is the kernel type

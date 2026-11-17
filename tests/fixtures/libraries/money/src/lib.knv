@@ -1,6 +1,11 @@
 (use coins ->float float)
 
-(export ->float float i64)
+(export ->float float i64 make-int)
 
 (defstruct i64
   :n bool)
+
+(defmacro make-int ()
+  (template (do
+              (defstruct int
+                :n bool))))

@@ -488,11 +488,13 @@ mod tests {
         let mut fixture = Fixture::new();
         let first = fixture.type_variable("a");
         let second = fixture.type_variable("b");
-        let pair = fixture.declared_struct("pair", 3);
+        let point = fixture.declared_struct("point", 0);
+        let triple = fixture.declared_struct("triple", 4);
         let written = Fixture::named(
-            pair,
+            triple,
             vec![
                 Fixture::named(first, Vec::new()),
+                Fixture::named(point, Vec::new()),
                 Fixture::named(second, Vec::new()),
                 Fixture::named(first, Vec::new()),
             ],

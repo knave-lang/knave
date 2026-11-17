@@ -274,6 +274,9 @@ impl<'a> MoveChecker<'a> {
         if self.copy.is_copy(place.root_type) {
             return;
         }
+        let path = Self::path_names(place);
+        let earlier = self.moved.site_overlapping(place.root, path);
+        self.bound_field_moves.record_moved_again(earlier);
         let moved = MovedPlace::of(place, self.bindings);
         let site = self.bound_field_moves.field_site(span, moved);
         self.moved
@@ -479,11 +482,8 @@ impl<'a> MoveChecker<'a> {
         }
         let moved_use = MovedUse { place, span, site };
         let offered = self.use_after_move_diagnostic(&moved_use);
-        let pending = self.bound_field_moves.offer(site, offered, |owned_site| {
-            self.use_after_move_diagnostic(&MovedUse {
-                site: owned_site,
-                ..moved_use
-            })
+        let pending = self.bound_field_moves.offer(site, offered, |site| {
+            self.use_after_move_diagnostic(&MovedUse { site, ..moved_use })
         });
         self.diagnostics.push(pending);
     }

@@ -55,6 +55,13 @@ mod tests {
     }
 
     #[test]
+    fn the_last_position_of_the_first_word_is_kept() {
+        let last = FirstPositionsOnly::of([63, 64]);
+        assert!(last.contains(63) && !last.contains(64));
+        assert_eq!(last.positions().collect::<Vec<_>>(), [63]);
+    }
+
+    #[test]
     fn a_union_keeps_the_positions_of_both() {
         let left = FirstPositionsOnly::of([1, 2]);
         let right = FirstPositionsOnly::of([2, 5]);

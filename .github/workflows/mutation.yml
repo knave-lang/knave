@@ -17,7 +17,7 @@ env:
   DIFF: git.diff
   ISSUE_TITLE: Nightly mutants
   INSTA_UPDATE: "no"
-  SHARDS: 8
+  SHARDS: 16
 
 jobs:
   plan:
@@ -34,65 +34,70 @@ jobs:
       shards: ${{ steps.plan.outputs.shards }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        continue-on-error: true
         timeout-minutes: 5
         with:
           persist-credentials: false
           fetch-depth: 0
       - id: plan
-        continue-on-error: true
         timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/mutation/plan.sh
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: steps.plan.outcome == 'success'
-        continue-on-error: true
+      - uses: ./.github/actions/dev-shell
+        if: steps.plan.outputs.changed-sources != '0'
         with:
-          name: mutation-diff
-          path: ${{ env.DIFF }}
+          build-cache: mutation
+      - name: List the mutants of the diff
+        if: steps.plan.outputs.changed-sources != '0'
+        env:
+          MUTANTS: ${{ runner.temp }}/mutants
+        run: nix develop .#mutation -c bash .github/mutation/write-generated-mutants.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.plan.outputs.changed-sources != '0'
+        with:
+          name: mutants
+          path: ${{ runner.temp }}/mutants/
 
   mutants:
     needs: plan
     if: needs.plan.outputs.changed-sources != '' && needs.plan.outputs.changed-sources != '0'
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 8
       matrix:
         shard: ${{ fromJSON(needs.plan.outputs.shards) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 190
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        continue-on-error: true
         timeout-minutes: 5
         with:
           persist-credentials: false
           ref: ${{ needs.plan.outputs.head }}
       - uses: ./.github/actions/dev-shell
-        continue-on-error: true
         timeout-minutes: 10
         with:
           build-cache: mutation
           save-build-cache: ${{ matrix.shard == 0 }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        continue-on-error: true
         with:
-          name: mutation-diff
+          name: mutants
+          path: ${{ runner.temp }}/mutants
       - name: Test the mutants
-        continue-on-error: true
-        timeout-minutes: 170
+        timeout-minutes: 105
         env:
-          SHARD: ${{ matrix.shard }}/${{ env.SHARDS }}
+          SHARD: ${{ matrix.shard }}
+          MUTANTS: ${{ runner.temp }}/mutants
+          RESULTS: ${{ runner.temp }}/results
           CARGO_INCREMENTAL: "1"
-          RESULTS: ${{ github.workspace }}/results
-        run: nix develop .#mutation -c bash .github/mutation/run.sh
+          BUILD_SECONDS: 1500
+          TEST_SECONDS: 900
+        run: nix develop .#ci -c bash .github/mutation/test-patches.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ !cancelled() }}
-        continue-on-error: true
         with:
           name: mutants-shard-${{ matrix.shard }}
-          path: results/
+          path: ${{ runner.temp }}/results/
 
   report:
     needs: [plan, mutants]
@@ -104,22 +109,26 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        continue-on-error: true
         timeout-minutes: 5
         with:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        continue-on-error: true
+        if: needs.plan.outputs.changed-sources != '0'
         with:
           pattern: mutants-shard-*
           path: results
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: needs.plan.outputs.changed-sources != '0'
+        with:
+          name: mutants
+          path: mutants
       - name: Report the surviving mutants
-        continue-on-error: true
         timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
           BASE: ${{ needs.plan.outputs.base }}
           HEAD_COMMIT: ${{ needs.plan.outputs.head }}
           CHANGED_SOURCES: ${{ needs.plan.outputs.changed-sources }}
+          MUTANTS: mutants
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: bash .github/mutation/report.sh

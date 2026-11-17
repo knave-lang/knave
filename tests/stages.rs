@@ -13,9 +13,21 @@ use knave::stack::FreshStack;
 
 use support::{
     AgreementReport, ExplanationExamples, Fixture, FixtureReports, FormatFailures, HeaderAgreement,
-    LintFixture, ReadBackAgreement, SavedPreludeAgreement,
+    LintFixture, PreludePages, ReadBackAgreement, ReferencePage, SavedPreludeAgreement,
 };
 
+const REFERENCE_PAGE_OF_OTHER_OUTPUT: &str =
+    "# Sample\n\n```knave\n(defn main () (println 1))\n```\n\n```text\n2\n```\n";
+const REFERENCE_PAGE_WITHOUT_OUTPUT: &str =
+    "# Sample\n\n```knave\n(defn main () (println 1))\n```\n";
+const REFERENCE_PAGE_OF_MISLAID_EXAMPLE: &str =
+    "# Sample\n\n```knave\n(defn main ()  (println 1))\n```\n\n```text\n1\n```\n";
+const REFERENCE_PAGE_OF_UNREADABLE_EXAMPLE: &str =
+    "# Sample\n\n```knave\n(defn main ()\n```\n\n```text\n1\n```\n";
+const REFERENCE_PAGE_NAMING_LOCAL: &str = "# Sample\n\nNever write `local`.\n";
+const REFERENCE_PAGE_NAMING_A_LONGER_WORD: &str = "# Sample\n\nA locality is not a binding.\n";
+const REFERENCE_PAGE_OF_UNDEFINED_TERM: &str =
+    "# Sample\n\nSee [let](/docs/prelude/syntax/#let) and [lett](/docs/prelude/syntax/#lett).\n";
 const BORROW_ACROSS_MOVE_FIX: &str = "## Fixes\n\n```knave\n(defn main ()\n  (local grid (vec 1 2))\n  (local first (at grid 0))\n  (local next (assoc grid 0 3))\n  (println (at next 0) \" \" first))\n```\n";
 const SECOND_TRAIT_PATH_EXAMPLE: &str = "## Erroneous example\n\n```knave\n(deftrait printable (rust \"std::fmt::Display\") i64)\n\n(defn main ()\n  (println 1))\n```\n";
 const TITLE_QUOTING_EXPLANATION: &str = "The compiler says cannot find `distnce` in this scope.\n\n## Erroneous example\n\n```knave\n(defn main ()\n  (println distnce))\n```\n";
@@ -600,4 +612,104 @@ impl GeneratedLint {
             .join(name);
         Self::STACK.run(|| LintFixture::of_text(&path, text).report())
     }
+}
+
+#[test]
+fn reference_examples_print_their_shown_output() {
+    let failures: Vec<String> = ReferencePage::written()
+        .iter()
+        .flat_map(ReferencePage::output_failures)
+        .collect();
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+}
+
+#[test]
+fn reference_examples_are_laid_out() {
+    let mislaid: Vec<String> = ReferencePage::written()
+        .iter()
+        .flat_map(ReferencePage::mislaid_examples)
+        .collect();
+    assert!(mislaid.is_empty(), "{}", mislaid.join("\n\n"));
+}
+
+#[test]
+fn reference_prelude_links_name_a_documented_term() {
+    let prelude = PreludePages::written();
+    let broken: Vec<String> = ReferencePage::written()
+        .iter()
+        .flat_map(|page| page.broken_prelude_links(&prelude))
+        .collect();
+    assert!(broken.is_empty(), "{}", broken.join("\n"));
+}
+
+#[test]
+fn reference_example_of_other_output_shows_both_outputs() {
+    let page = ReferencePage::new("sample", REFERENCE_PAGE_OF_OTHER_OUTPUT);
+    assert_eq!(
+        page.output_failures(),
+        vec!["sample example 0 shows this output:\n2\n\nbut prints:\n1\n"]
+    );
+}
+
+#[test]
+fn reference_example_without_output_asks_for_it() {
+    let page = ReferencePage::new("sample", REFERENCE_PAGE_WITHOUT_OUTPUT);
+    assert_eq!(
+        page.output_failures(),
+        vec!["sample example 0 shows no output: put a `text` block of what it prints after it"]
+    );
+}
+
+#[test]
+fn reference_example_laid_out_otherwise_prints_its_layout() {
+    let page = ReferencePage::new("sample", REFERENCE_PAGE_OF_MISLAID_EXAMPLE);
+    assert_eq!(
+        page.mislaid_examples(),
+        vec![
+            "sample example 0 is not laid out as `knave fmt` lays it out. Replace the block \
+             with:\n\n(defn main () (println 1))\n"
+        ]
+    );
+}
+
+#[test]
+fn reference_link_to_an_undocumented_term_names_the_link() {
+    let page = ReferencePage::new("sample", REFERENCE_PAGE_OF_UNDEFINED_TERM);
+    assert_eq!(
+        page.broken_prelude_links(&PreludePages::written()),
+        vec!["sample links to /docs/prelude/syntax/#lett, which no prelude page defines"]
+    );
+}
+
+#[test]
+fn reference_example_that_knave_fmt_refuses_reports_the_refusal() {
+    let page = ReferencePage::new("sample", REFERENCE_PAGE_OF_UNREADABLE_EXAMPLE);
+    let mislaid = page.mislaid_examples();
+    assert_eq!(mislaid.len(), 1);
+    assert!(
+        mislaid[0].starts_with("sample example 0: error["),
+        "{}",
+        mislaid[0]
+    );
+}
+
+#[test]
+fn reference_pages_never_name_the_form_that_let_expands_to() {
+    let naming: Vec<String> = ReferencePage::written()
+        .iter()
+        .filter(|page| page.names_word(KernelForm::Local.name()))
+        .map(|page| page.name().to_string())
+        .collect();
+    assert!(
+        naming.is_empty(),
+        "{naming:?} name the form that `let` expands to"
+    );
+}
+
+#[test]
+fn reference_page_names_a_word_only_as_a_whole_word() {
+    let naming = ReferencePage::new("sample", REFERENCE_PAGE_NAMING_LOCAL);
+    let longer = ReferencePage::new("sample", REFERENCE_PAGE_NAMING_A_LONGER_WORD);
+    assert!(naming.names_word(KernelForm::Local.name()));
+    assert!(!longer.names_word(KernelForm::Local.name()));
 }

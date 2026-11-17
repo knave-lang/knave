@@ -8,6 +8,7 @@ mod headers;
 mod lint_fixture;
 mod project_example;
 mod read_back_agreement;
+mod reference_page;
 mod reports;
 mod saved_prelude;
 
@@ -41,6 +42,7 @@ pub use formatting::{FormatFailures, ShapeLookup};
 pub use headers::HeaderAgreement;
 pub use lint_fixture::LintFixture;
 pub use read_back_agreement::ReadBackAgreement;
+pub use reference_page::{PreludePages, ReferencePage};
 pub use reports::FixtureReports;
 pub use saved_prelude::SavedPreludeAgreement;
 

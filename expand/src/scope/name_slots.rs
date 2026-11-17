@@ -64,9 +64,11 @@ impl NameSlotsBuilder {
         self.claimed[slot] = position + 1;
     }
 
-    pub(super) fn words(&self) -> SavedWordsBuilder {
+    pub(super) fn words(&self) -> SavedWordsBuilder<1> {
         let mut words = SavedWordsBuilder::default();
-        words.push(&self.claimed);
+        for claimed in &self.claimed {
+            words.push([*claimed]);
+        }
         words
     }
 }

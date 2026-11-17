@@ -6,7 +6,7 @@ use crate::core::{BindingId, Namespace};
 #[derive(serde::Serialize)]
 pub struct ExportBytes {
     keys: SavedKeysBuilder,
-    bindings: SavedWordsBuilder,
+    bindings: SavedWordsBuilder<1>,
 }
 
 impl ExportBytes {
@@ -17,7 +17,7 @@ impl ExportBytes {
         };
         for (name, namespace, binding) in exports {
             bytes.keys.add(NameKey::new(name, namespace));
-            bytes.bindings.push(&[binding.index() as usize]);
+            bytes.bindings.push([binding.index() as usize]);
         }
         bytes
     }

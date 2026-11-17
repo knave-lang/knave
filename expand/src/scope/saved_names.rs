@@ -5,6 +5,7 @@ use std::rc::Rc;
 use super::name_entries::NameEntries;
 use super::name_key::NameKey;
 use super::saved_keys::{SavedKeys, SavedKeysBuilder};
+use super::saved_namespace::SavedNamespace;
 use super::saved_words::{SavedWords, SavedWordsBuilder};
 use super::{Scope, ScopeSet, Scopes};
 use crate::core::Namespace;
@@ -13,7 +14,7 @@ use crate::core::Namespace;
 pub struct NameTables {
     prelude_scopes: Range<Scope>,
     keys: SavedKeysBuilder,
-    ranges: SavedWordsBuilder,
+    ranges: SavedWordsBuilder<{ SavedNames::RANGE_WIDTH }>,
     entries: Vec<u8>,
 }
 
@@ -36,7 +37,7 @@ impl NameTables {
         };
         let mut sorted = entries;
         sorted.sort_by(|left, right| {
-            (&left.0, NameKey::code(left.1)).cmp(&(&right.0, NameKey::code(right.1)))
+            (&left.0, SavedNamespace::of(left.1)).cmp(&(&right.0, SavedNamespace::of(right.1)))
         });
         for (name, namespace, entries) in &sorted {
             tables.add(NameKey::new(name, *namespace), entries);
@@ -49,7 +50,7 @@ impl NameTables {
         let entries_start = self.entries.len();
         self.entries
             .extend(bincode::serialize(entries).expect("every name entry serializes"));
-        self.ranges.push(&[entries_start, self.entries.len()]);
+        self.ranges.push([entries_start, self.entries.len()]);
     }
 }
 

@@ -1,0 +1,18 @@
+(use code list located)
+
+(defmacro ma (other)
+  (template (defstruct (unquote (located other (quote float)))
+              :n bool)))
+
+(defmacro mb (other)
+  (template (defstruct (unquote (located other (quote float)))
+              :m bool)))
+
+(defmacro wrap (one two)
+  (template (do
+              (unquote (located one (list (quote ma) two)))
+              (unquote (located two (list (quote mb) one))))))
+
+(wrap (first-place) (second-place))
+
+(defn main () (println 1))

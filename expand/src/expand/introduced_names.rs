@@ -1,5 +1,7 @@
 use std::iter;
 
+use rustc_hash::FxHashSet;
+
 use super::own_introductions::OwnIntroductions;
 use super::saved_introductions::SavedIntroductions;
 use crate::source::Span;
@@ -25,7 +27,10 @@ impl IntroducedNames {
     }
 
     pub fn first_written_at(&self, call_site: Span, name: &str) -> Option<Span> {
-        iter::successors(self.at(call_site, name), |written| self.at(*written, name)).last()
+        let mut walked = FxHashSet::from_iter([call_site]);
+        iter::successors(self.at(call_site, name), |written| self.at(*written, name))
+            .take_while(|written| walked.insert(*written))
+            .last()
     }
 
     pub fn record(&mut self, call_site: Span, name: &str, written: Span) {
@@ -117,6 +122,19 @@ mod tests {
         assert_eq!(
             origins.introduced.first_written_at(generated_call, "x"),
             Some(template)
+        );
+    }
+
+    #[test]
+    fn names_that_two_calls_place_at_each_other_end_the_walk() {
+        let mut origins = OriginsFixture::with_saved_origins();
+        let first_call = OriginsFixture::span(1, 10, 20);
+        let second_call = OriginsFixture::span(1, 30, 40);
+        origins.introduced.record(first_call, "x", second_call);
+        origins.introduced.record(second_call, "x", first_call);
+        assert_eq!(
+            origins.introduced.first_written_at(first_call, "x"),
+            Some(second_call)
         );
     }
 }

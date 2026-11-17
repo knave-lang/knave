@@ -98,7 +98,11 @@ mod tests {
     impl CallChain {
         const SOURCE: &str = "(defn last-step () 1)\n\
                               (defn middle-step () (last-step))\n\
-                              (defn first-step () (middle-step))\n";
+                              (defn first-step () (middle-step))\n\
+                              (defn even-step (n) (if (= n 0) (last-step) (odd-step (- n 1))))\n\
+                              (defn odd-step (n) (even-step (- n 1)))\n\
+                              (defn calls-even () (even-step 2))\n\
+                              (defn calls-odd () (odd-step 3))\n";
         const NO_ERRORS: usize = 0;
         const ONE_ERROR: usize = 1;
 
@@ -121,6 +125,10 @@ mod tests {
             self.named("first-step")
         }
 
+        fn recursive_pair(&self) -> [BindingId; 2] {
+            [self.named("even-step"), self.named("odd-step")]
+        }
+
         fn named(&self, name: &str) -> BindingId {
             let bindings = &self.source.program().bindings;
             bindings
@@ -134,10 +142,9 @@ mod tests {
             self.outcomes.is_blocked(graph.dependencies(), &[binding])
         }
 
-        fn fail_when_blocked(&mut self, binding: BindingId) -> bool {
+        fn fail_when_blocked(&mut self, group: &[BindingId]) -> bool {
             let graph = DefinitionGraph::of(self.source.program());
-            self.outcomes
-                .fail_when_blocked(graph.dependencies(), &[binding])
+            self.outcomes.fail_when_blocked(graph.dependencies(), group)
         }
 
         fn finish(&mut self, group: &[BindingId], reported_errors: usize) {
@@ -172,14 +179,23 @@ mod tests {
     fn a_blocked_group_fails_and_blocks_its_own_callers() {
         let mut chain = CallChain::new();
         chain.outcomes.fail([chain.last()]);
-        assert!(chain.fail_when_blocked(chain.middle()));
+        assert!(chain.fail_when_blocked(&[chain.middle()]));
         assert!(chain.is_blocked(chain.first()));
+    }
+
+    #[test]
+    fn a_blocked_group_fails_every_member() {
+        let mut chain = CallChain::new();
+        chain.outcomes.fail([chain.last()]);
+        assert!(chain.fail_when_blocked(&chain.recursive_pair()));
+        assert!(chain.is_blocked(chain.named("calls-even")));
+        assert!(chain.is_blocked(chain.named("calls-odd")));
     }
 
     #[test]
     fn a_group_that_is_not_blocked_does_not_fail() {
         let mut chain = CallChain::new();
-        assert!(!chain.fail_when_blocked(chain.middle()));
+        assert!(!chain.fail_when_blocked(&[chain.middle()]));
         assert!(!chain.is_blocked(chain.first()));
     }
 

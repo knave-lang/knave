@@ -30,8 +30,7 @@ impl WrittenPrinter {
 
     fn bound_holder(&self, session: &mut ExpansionSession<'_>) -> Result<BindingId, Diagnostics> {
         let source = session.add_source(self.source, self.bound);
-        let form = session.read(source)?.remove(0);
-        let expanded = session.expression(form)?;
+        let expanded = session.prelude_expression(source)?;
         Ok(Self::binding_of(&expanded).expect("a printer's bound term expands to a binding"))
     }
 

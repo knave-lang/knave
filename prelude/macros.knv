@@ -1353,15 +1353,16 @@
     (if (empty? forms)
       term
       (found-header term
-                    (if (grouped-definitions? (first forms))
-                      (defining-form-header term
-                                            (rest (first forms))
-                                            expansions-left)
-                      (call-header term
-                                   (first forms)
-                                   (fn () (expand-call (first forms)))
-                                   expansions-left))
+                    (form-header term (first forms) expansions-left)
                     forms expansions-left))))
+
+(def form-header
+  (fn (term form expansions-left)
+    (if (grouped-definitions? form)
+      (defining-form-header term (rest form) expansions-left)
+      (call-header term form
+                   (fn () (expand-call form))
+                   expansions-left))))
 
 (def found-header
   (fn (term header forms expansions-left)

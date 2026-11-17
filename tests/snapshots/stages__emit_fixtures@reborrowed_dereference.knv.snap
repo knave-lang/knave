@@ -7,6 +7,21 @@ fn peek(x: &i64) -> i64 {
     *x
 }
 
+fn peek_through_shared() {
+    let held: i64 = 4;
+    let counted = &held;
+    let nested = &counted;
+    println!("{}", *std::convert::identity::<&i64>(*nested));
+    println!("{}", crate::rt::Shown(*nested))
+}
+
+fn peek_through_mut() {
+    let mut held: i64 = 2;
+    let changed = &mut held;
+    println!("{}", *std::convert::identity::<&i64>(&*changed));
+    println!("{}", crate::rt::Shown(&*changed))
+}
+
 fn main() {
     crate::rt::restore_default_sigpipe();
     let items: Vec<i64> = vec![3_i64, 5_i64, 8_i64];
@@ -14,9 +29,8 @@ fn main() {
         let show = |y: &i64| peek(y);
         println!("{}", items.iter().filter(|y: &&i64| show(y) > 3).count())
     }
-    let mut count: i64 = 2;
-    let counted = &mut count;
-    println!("{}", crate::rt::Shown(&*counted))
+    peek_through_shared();
+    peek_through_mut()
 }
 
 mod rt {

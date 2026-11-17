@@ -56,9 +56,10 @@ impl dyn Passing {
     }
 
     fn unadjusted(argument: &TypedArgument, rules: &LoanRules<'_>) -> &'static dyn Passing {
-        match argument.borrow == Borrow::None && rules.moves(&argument.value.ty) {
-            true => &Moves,
-            false => &Holds,
+        if argument.borrow == Borrow::None && rules.moves(&argument.value.ty) {
+            &Moves
+        } else {
+            &Holds
         }
     }
 
@@ -68,9 +69,10 @@ impl dyn Passing {
         rules: &LoanRules<'_>,
     ) -> &'static dyn Passing {
         let stored_whole = parameter.stores_the_reference() && !rules.copies_out(argument);
-        match argument.value.ty.is_reference() && !stored_whole {
-            true => &Collapses,
-            false => &Holds,
+        if argument.value.ty.is_reference() && !stored_whole {
+            &Collapses
+        } else {
+            &Holds
         }
     }
 

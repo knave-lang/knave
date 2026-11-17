@@ -823,8 +823,9 @@
         true
         (fail "`deftask` defines a task only in a file under `tasks/`"
           (note-name (first notes))
-          "move this task into a file under `tasks/`"
-          (quote (:code task-outside-tasks :label "outside `tasks/`")))))))
+          "move the file out of the hidden folder"
+          (quote (:code task-outside-tasks
+                        :label "this file sits in a hidden folder, which the task tree skips")))))))
 
 (def written-tasks
   (fn ()

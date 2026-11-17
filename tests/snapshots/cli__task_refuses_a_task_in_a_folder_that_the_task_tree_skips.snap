@@ -6,7 +6,7 @@ error[L0359]: `deftask` defines a task only in a file under `tasks/`
  --> tasks/.hidden/more.knv:1:10
   |
 1 | (deftask hid () (println "h"))
-  |          ^^^ outside `tasks/`
+  |          ^^^ this file sits in a hidden folder, which the task tree skips
   |
-  = help: move this task into a file under `tasks/`
+  = help: move the file out of the hidden folder
   = note: run `knave doc L0359` for an explanation

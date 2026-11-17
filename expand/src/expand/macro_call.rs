@@ -6,6 +6,7 @@ use super::Expander;
 use super::context::DefinitionContext;
 use super::expansion_limit::ExpansionLimit;
 use super::form_budget::FormBudget;
+use super::introducing_macros::MacroCall;
 use super::macro_call_lookup::MacroCallLookup;
 use super::macro_origin::MacroOrigin;
 use super::problems::ExpandProblems;
@@ -218,10 +219,14 @@ impl Expander<'_> {
         let closure = self.macro_closure(binding, call_site)?;
         let (input, introduction) = self.prepare_input(form, context);
         let origin = self.macro_origin(binding, call_site);
-        self.tables
-            .macro_origins
-            .introducing_macros
-            .record(introduction, binding, &origin);
+        self.tables.macro_origins.introducing_macros.record(
+            introduction,
+            &MacroCall {
+                binding,
+                form: &input,
+                origin: &origin,
+            },
+        );
         let arguments = ReturnedArguments::of_call(&input);
         self.expansion_depth += 1;
         self.introductions.push(introduction);

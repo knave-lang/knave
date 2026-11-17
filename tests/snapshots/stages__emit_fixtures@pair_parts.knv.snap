@@ -24,7 +24,7 @@ fn add_parts(scores: &mut (i64, i64)) -> i64 {
 }
 
 fn tag(entry: &mut (i64, String)) {
-    entry.1.push_str("!")
+    entry.1.push_str("!!")
 }
 
 fn main() {

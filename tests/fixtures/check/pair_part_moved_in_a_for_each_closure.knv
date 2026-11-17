@@ -3,4 +3,6 @@
 (defn main ()
   (let (p (pair (str "a") (str "b")))
     (for-each (range 0 2)
-      (fn (i) (println (takes (first p)))))))
+      (fn (i)
+        (println (len (second p))
+                 (takes (first p)))))))

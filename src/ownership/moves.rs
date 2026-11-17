@@ -2,6 +2,8 @@ use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::lambda_parameters::LambdaParameters;
+use super::moved_place::MovedPlace;
 use super::moved_value_problems::{CopyBound, MoveSpans, MovedValueProblems};
 use super::moved_values::{FieldPath, MoveSite, MovedValues};
 use super::mutation::ChangedValues;
@@ -54,8 +56,8 @@ pub struct MoveChecker<'a> {
     copy_functions: FxHashSet<BindingId>,
     once_functions: FxHashSet<BindingId>,
     reported: FxHashSet<BindingId>,
-    parameters: FxHashSet<BindingId>,
-    unwritten_parameters: FxHashSet<BindingId>,
+    parameters: LambdaParameters,
+    bound_values: FxHashSet<Span>,
     inferred_copies: InferredCopies,
     diagnostics: Vec<Diagnostic>,
 }
@@ -85,21 +87,15 @@ impl<'a> MoveChecker<'a> {
             copy_functions: FxHashSet::default(),
             once_functions: FxHashSet::default(),
             reported: FxHashSet::default(),
-            parameters: FxHashSet::default(),
-            unwritten_parameters: FxHashSet::default(),
+            parameters: LambdaParameters::default(),
+            bound_values: FxHashSet::default(),
             inferred_copies: InferredCopies::default(),
             diagnostics: Vec::new(),
         }
     }
 
     pub fn check(mut self, enclosing: BindingId, lambda: &TypedLambda) -> MoveReport {
-        self.parameters = lambda.params.iter().map(|param| param.binding).collect();
-        self.unwritten_parameters = lambda
-            .params
-            .iter()
-            .filter(|param| !param.annotated)
-            .map(|param| param.binding)
-            .collect();
+        self.parameters = LambdaParameters::of(lambda);
         self.changed = ChangedValues::of(lambda, enclosing);
         self.block(&lambda.body, ReadUsage::Move);
         self.report()
@@ -263,7 +259,8 @@ impl<'a> MoveChecker<'a> {
     }
 
     fn move_fields(&mut self, place: &FieldPlace, span: Span, moving: Vec<Rc<str>>) {
-        let site = MoveSite::field(place, self.bindings, span);
+        let moved = MovedPlace::of(place, self.bindings).owned();
+        let site = MoveSite::Field { span, place: moved };
         for field in moving {
             let mut path = Self::field_path(place);
             path.push(field);
@@ -275,7 +272,9 @@ impl<'a> MoveChecker<'a> {
         if self.copy.is_copy(place.root_type) {
             return;
         }
-        let site = MoveSite::field(place, self.bindings, span);
+        let moved =
+            MovedPlace::of(place, self.bindings).owned_unless_bound(&self.bound_values, span);
+        let site = MoveSite::Field { span, place: moved };
         self.moved
             .move_field(place.root, Self::field_path(place), site);
     }
@@ -364,6 +363,7 @@ impl<'a> MoveChecker<'a> {
                 Self::once_call_result(&value.ty)
             }
             _ => {
+                self.bound_values.insert(value.span);
                 self.expr(value, ReadUsage::Move);
                 None
             }
@@ -530,10 +530,10 @@ impl<'a> MoveChecker<'a> {
         if matches!(place.root_type, Type::Function(..)) {
             return Some(OwnershipProblems::closure_move_help(moved.clone()));
         }
-        let Type::Generic(generic) = place.root_type else {
+        let Some(Type::Generic(generic)) = place.pair_part_type() else {
             return None;
         };
-        if !self.parameters.contains(&place.root) {
+        if !self.parameters.contains(place.root) {
             return None;
         }
         let parameter = self.generics.get(generic)?;
@@ -543,7 +543,7 @@ impl<'a> MoveChecker<'a> {
         };
         let name = self.bindings.get(place.root).name();
         Some(MovedValueProblems::missing_copy_bound(
-            name,
+            moved_use.site.moved_place(name),
             &bound,
             moved_use.spans(),
         ))
@@ -561,7 +561,7 @@ impl<'a> MoveChecker<'a> {
         if self.changed.is_changed(binding) {
             return Some(OwnershipProblems::changed_value_help(moved.clone()));
         }
-        if self.parameters.contains(&binding) && self.changed.is_recursive_argument(binding) {
+        if self.parameters.contains(binding) && self.changed.is_recursive_argument(binding) {
             return Some(OwnershipProblems::recursive_parameter_help(moved.clone()));
         }
         None
@@ -576,7 +576,7 @@ impl<'a> MoveChecker<'a> {
 
     fn records_inferred_copy(&mut self, binding: BindingId, ty: &Type) -> bool {
         let copies_parameter =
-            self.unwritten_parameters.contains(&binding) && matches!(ty, Type::Generic(_));
+            self.parameters.is_unwritten(binding) && matches!(ty, Type::Generic(_));
         if copies_parameter {
             self.inferred_copies.insert(binding);
         }

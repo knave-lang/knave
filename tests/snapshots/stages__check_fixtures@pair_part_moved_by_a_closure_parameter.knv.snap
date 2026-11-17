@@ -9,8 +9,8 @@ error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
 6 |     (println (call-twice (fn () (first p))))))
   |                          -------^^^^^^^^^-
   |                          |      |
-  |                          |      `p` moves here
+  |                          |      `(first p)` moves here
   |                          this closure is passed here
   |
-  = help: clone `p`, or borrow it with `(ref p)`
+  = help: clone `(first p)`
   = note: run `knave doc L0509` for an explanation

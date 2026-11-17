@@ -7,6 +7,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::aliases::LetAliases;
 use super::definitions::LocalDefinitions;
 use super::lambda_address::LambdaAddress;
+use super::moved_place::MovedPlace;
 use super::parameter_uses::ParameterUses;
 use super::problems::OwnershipProblems;
 use super::read_usage::ReadUsage;
@@ -429,16 +430,12 @@ impl<'a> ClosureKinds<'a> {
             }
             TypedExprKind::Control(control) => self.scan_control(control, own, usage),
             TypedExprKind::Struct(_) if usage.moves_field(expr, &self.copy) => {
-                self.scan_moved_field(expr, own)
+                match expr.field_place() {
+                    Some(place) => self.record_field_move(&place, expr.span, own),
+                    None => self.scan_nested(expr, &expr.kind, own),
+                }
             }
             other => self.scan_nested(expr, other, own),
-        }
-    }
-
-    fn scan_moved_field(&mut self, read: &TypedExpr, own: &FxHashSet<BindingId>) -> CaptureReport {
-        match read.field_place() {
-            Some(place) => self.record_field_move(&place, read.span, own),
-            None => self.scan_nested(read, &read.kind, own),
         }
     }
 
@@ -1492,10 +1489,12 @@ impl<'a> ClosureKinds<'a> {
                 capture_span,
             );
         }
+        let moved =
+            capture.map(|binding| MovedPlace::captured(&argument.value, binding, self.bindings));
         OwnershipProblems::closure_kind_mismatch(
             actual,
             required,
-            capture.map(|binding| self.bindings.get(binding).name()),
+            moved.as_ref(),
             callee_name.as_deref(),
             argument.value.span,
             capture_span,

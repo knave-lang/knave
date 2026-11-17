@@ -1,0 +1,19 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/pair_part_moved_as_an_update_base.knv
+---
+error[L0501]: use of moved value `(first p)`
+ --> check/pair_part_moved_as_an_update_base.knv:6:28
+  |
+5 |         q (new _ (first p) (a 2)))
+  |                  --------- value moved here
+6 |     (println (field (first p) b)
+  |                            ^ value used here after it moved
+  |
+help: clone the value if both places need it
+  |
+5 -         q (new _ (first p) (a 2)))
+5 +         q (new _ (clone (first p)) (a 2)))
+  |
+  = note: run `knave doc L0501` for an explanation

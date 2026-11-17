@@ -1,0 +1,8 @@
+(type twice
+  (where (a) (fn ((pair a a)) (pair a a))))
+
+(defn twice (p)
+  (pair (first p) (first p)))
+
+(defn main ()
+  (println (first (twice (pair 3 4)))))

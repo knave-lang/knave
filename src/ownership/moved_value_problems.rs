@@ -1,3 +1,4 @@
+use super::moved_place::MovedPlace;
 use super::moved_values::MoveSite;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label, Suggestion};
 use crate::source::Span;
@@ -73,6 +74,19 @@ impl MovedValueProblems {
             "clone the value if both places need it",
             Suggestion::new(moved, cloned),
         )
+    }
+
+    pub fn captured_move_help(capture: Option<&MovedPlace>) -> String {
+        let Some(place) = capture else {
+            return "clone the closure's captures, or borrow them instead".to_string();
+        };
+        match place.borrowed() {
+            Some(borrowed) => format!(
+                "clone `{}`, or borrow it with `{borrowed}`",
+                place.written()
+            ),
+            None => format!("clone `{}`", place.written()),
+        }
     }
 
     pub fn missing_copy_bound(name: &str, bound: &CopyBound, spans: MoveSpans) -> Diagnostic {

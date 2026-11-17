@@ -2,38 +2,17 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use crate::core::{BindingArena, BindingId, FieldSpelling};
+use super::moved_place::MovedPlace;
+use crate::core::BindingId;
 use crate::source::Span;
-use crate::types::FieldPlace;
 
 #[derive(Clone)]
 pub enum MoveSite {
     Whole(Span),
-    Field {
-        span: Span,
-        place: Rc<str>,
-        borrowed: Option<Rc<str>>,
-    },
+    Field { span: Span, place: MovedPlace },
 }
 
 impl MoveSite {
-    pub fn field(place: &FieldPlace, bindings: &BindingArena, span: Span) -> Self {
-        let borrowed = Self::borrowed_part(place, bindings);
-        let place = place.written(bindings).into();
-        Self::Field {
-            span,
-            place,
-            borrowed,
-        }
-    }
-
-    fn borrowed_part(place: &FieldPlace, bindings: &BindingArena) -> Option<Rc<str>> {
-        let read = place.path.last()?;
-        let root = format!("(ref {})", bindings.get(place.root).name());
-        let borrowed = || place.path.iter().fold(root, FieldPlace::field_text).into();
-        matches!(read.spelling, FieldSpelling::Pair(_)).then(borrowed)
-    }
-
     pub fn span(&self) -> Span {
         match self {
             Self::Whole(span) | Self::Field { span, .. } => *span,
@@ -43,14 +22,14 @@ impl MoveSite {
     pub fn moved_place<'a>(&'a self, name: &'a str) -> &'a str {
         match self {
             Self::Whole(_) => name,
-            Self::Field { place, .. } => place,
+            Self::Field { place, .. } => place.written(),
         }
     }
 
     pub fn borrowed_place(&self) -> Option<&str> {
         match self {
             Self::Whole(_) => None,
-            Self::Field { borrowed, .. } => borrowed.as_deref(),
+            Self::Field { place, .. } => place.borrowed(),
         }
     }
 }

@@ -46,7 +46,7 @@ src/emit/template.rs::Template 30
 
 src/emit/types.rs::RustTypes 48
 
-src/ownership/kinds.rs::ClosureKinds 103
+src/ownership/kinds.rs::ClosureKinds 102
 
 src/ownership/local_borrows.rs::LocalBorrows 23
 

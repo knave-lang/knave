@@ -995,7 +995,8 @@
   "Returns the printed form of a value as a [string].
 
   The value's type implements [show]. As a part of [print], [println],
-  [eprintln], [str] or [display], it prints in place.
+  [eprintln], [str] or [display], it prints in place. To print a printed
+  form on its own line, call [prn].
 
   (pr-str \"pear\")
   => \"\\\"pear\\\"\"")

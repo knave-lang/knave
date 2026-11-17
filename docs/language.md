@@ -237,7 +237,7 @@ The prelude binds these Rust types, the traits that abstract them, and the funct
 
 `unwrap-ok`, `unwrap-err` and `expect-ok` panic with the printed form of the other side, as in `called unwrap-ok on (err (->failure :line 3))`, so they need `show` of it. `option`'s `unwrap` and `expect` need no bound.
 
-`prn` prints the printed forms of one or more values, separated by a space, and a newline, so `(prn 1 "a")` prints `1 "a"`. `(prn)` is `L0352`. `prn` as a value is a one-value function, and `eval` and the prompt print a result as `prn` prints it. `pr-str` returns a printed form as a `string`, and a `(pr-str x)` part of `print`, `println`, `eprint`, `eprintln`, `str` or `display` prints it in place. All three need the `show` trait, backed by `Show` in the runtime. A printed form uses only atoms and lists, and where the source can build the value, it is the source that builds an equal value, so a printed result pastes back into a program:
+`prn` prints the printed forms of one or more values, separated by a space, and a newline, so `(prn 1 "a")` prints `1 "a"`. `(prn)` is `L0352`. `prn` as a value is a one-value function, and `eval` and the prompt print a result as `prn` prints it. `pr-str` returns a printed form as a `string`, and a `(pr-str x)` part of `print`, `println`, `eprint`, `eprintln`, `str` or `display` prints it in place, while `prn` prints it on its own line. All three need the `show` trait, backed by `Show` in the runtime. A printed form uses only atoms and lists, and where the source can build the value, it is the source that builds an equal value, so a printed result pastes back into a program:
 
 | Value | Prints as |
 |---|---|

@@ -1,0 +1,5 @@
+(type labeled
+  (where ('a (n display))
+    (fn ((ref 'a str) n) string)))
+
+(defn labeled (label value) (str label value))

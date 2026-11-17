@@ -39,7 +39,8 @@ impl TypeChecker {
             .generic_declarations()
             .declare(Self::RECEIVER, Vec::new());
         let scope = FxHashMap::from_iter([(declaration.self_variable, receiver.id)]);
-        let Type::Function(_, parameters, result) = self.lower_type(&method.signature, &scope)?
+        let Type::Function(_, parameters, result) =
+            self.written_types().lower_type(&method.signature, &scope)?
         else {
             return Ok(());
         };

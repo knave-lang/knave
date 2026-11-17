@@ -8,7 +8,6 @@ use super::unifier::DeferredEquality;
 use super::written_projection::WrittenProjection;
 use crate::core::{BindingId, CoreModule, ItemKind, RustTraitDeclaration, RustTraitImplementor};
 use crate::diagnostic::Diagnostic;
-use crate::source::Span;
 
 impl TypeChecker {
     const PROJECTION_ARITY: usize = 1;
@@ -56,7 +55,9 @@ impl TypeChecker {
             .get()
             .iter()
             .map(|entry| {
-                let (implementor, values) = self.lower_implementor(entry, &trait_name)?;
+                let (implementor, values) = self
+                    .written_schemes()
+                    .lower_implementor(entry, &trait_name)?;
                 self.check_associated_values(declaration.binding, &declared, entry, &values)?;
                 for value in values {
                     self.declarations.traits.table.projections_mut().add_rule(
@@ -98,23 +99,6 @@ impl TypeChecker {
                 entry.implementor.span(),
             )),
             None => Ok(()),
-        }
-    }
-
-    pub(super) fn record_written_projection(&mut self, lowered: &Type, span: Span) {
-        if let Type::Named(binding, arguments) = lowered
-            && self
-                .declarations
-                .traits
-                .table
-                .projections()
-                .is_projection(*binding)
-        {
-            self.written_projections.push(WrittenProjection {
-                projection: *binding,
-                owner: arguments[0].clone(),
-                span,
-            });
         }
     }
 

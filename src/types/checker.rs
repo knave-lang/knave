@@ -240,7 +240,6 @@ struct UserTrait<'a> {
 }
 
 type LoweredFields = Vec<(Rc<str>, Type)>;
-type LoweredImplementor = (Type, Vec<GenericParam>, Vec<(BindingId, Type)>);
 
 #[derive(Clone, Copy)]
 pub(super) struct VariantArmReference {
@@ -750,6 +749,27 @@ impl TypeChecker {
         GenericDeclarations::new(&mut self.generics, &mut self.unifier)
     }
 
+    pub(super) fn written_types(
+        &mut self,
+    ) -> super::written_type_lowering::WrittenTypeLowering<'_> {
+        let facts = super::written_type_facts::WrittenTypeFacts {
+            bindings: &self.bindings,
+            declarations: &self.declarations,
+            checking_facts: &self.checking_facts,
+            type_arities: &self.type_arities,
+        };
+        let generics = GenericDeclarations::new(&mut self.generics, &mut self.unifier);
+        let records = super::written_type_records::WrittenTypeRecords {
+            projections: &mut self.written_projections,
+            diagnostics: &mut self.diagnostics,
+        };
+        super::written_type_lowering::WrittenTypeLowering::new(facts, generics, records)
+    }
+
+    pub(super) fn written_schemes(&mut self) -> super::scheme_lowering::SchemeLowering<'_> {
+        super::scheme_lowering::SchemeLowering::new(self.written_types())
+    }
+
     pub(super) fn instantiation(&mut self) -> Instantiation<'_> {
         Instantiation::new(&self.generics, &self.implied_bounds, &mut self.unifier)
     }
@@ -982,7 +1002,7 @@ impl TypeChecker {
         self.template_borrows
             .register(member.binding, &template.template);
         self.collect_template_clauses(member.binding, template);
-        let scheme = match self.lower_scheme(&template.type_expr) {
+        let scheme = match self.written_schemes().lower_scheme(&template.type_expr) {
             Ok(scheme) => scheme,
             Err(diagnostic) => {
                 self.diagnostics.push(diagnostic);
@@ -1015,7 +1035,8 @@ impl TypeChecker {
         match target.kind() {
             TypeExprKind::Trait(binding) => Ok(ClauseTarget::Trait(Bound::plain(*binding))),
             _ => self
-                .lower_type(target, &FxHashMap::default())
+                .written_types()
+                .lower_without_generics(target)
                 .map(ClauseTarget::Type),
         }
     }
@@ -1065,7 +1086,7 @@ impl TypeChecker {
 
     fn prepare_member(&mut self, member: &Definition) -> Option<(BindingId, Scheme)> {
         if let Some((signature, _)) = self.signatures.get(&member.binding).cloned() {
-            return match self.lower_scheme(&signature) {
+            return match self.written_schemes().lower_scheme(&signature) {
                 Ok(scheme) => {
                     if self.impl_methods.contains(&member.binding) {
                         self.implied_bounds.mark_impl_generics(&scheme.params);
@@ -1739,7 +1760,7 @@ impl TypeChecker {
         stored_type: &TypeExpr,
         scope: &FxHashMap<BindingId, GenericId>,
     ) -> Result<Type, Diagnostic> {
-        let lowered = self.lower_type(stored_type, scope)?;
+        let lowered = self.written_types().lower_type(stored_type, scope)?;
         Ok(self.borrow_views(lowered))
     }
 
@@ -1794,7 +1815,7 @@ impl TypeChecker {
             .iter()
             .map(|(target, template)| {
                 Ok((
-                    self.lower_type(target, &FxHashMap::default())?,
+                    self.written_types().lower_without_generics(target)?,
                     template.clone(),
                 ))
             })
@@ -1870,7 +1891,10 @@ impl TypeChecker {
         }
         let supertraits = supertraits
             .iter()
-            .map(|bound| self.lower_type_bound(bound, &FxHashMap::default()))
+            .map(|bound| {
+                self.written_types()
+                    .lower_type_bound(bound, &FxHashMap::default())
+            })
             .collect::<Result<Vec<_>, Diagnostic>>()?;
         self.declarations.traits.table.add(
             binding,
@@ -1928,15 +1952,6 @@ impl TypeChecker {
         )
     }
 
-    pub(super) fn check_boxable(&mut self, trait_binding: BindingId, span: Span) {
-        let boxing = TraitBoxing::new(&self.declarations.traits, &self.bindings);
-        if let Some((blocker, help)) = boxing.blocker(trait_binding) {
-            let trait_name = self.bindings.get(trait_binding).name();
-            self.diagnostics
-                .push(TypeProblems::not_boxable(trait_name, blocker, help, span));
-        }
-    }
-
     fn receiver_kind(signature: &TypeExpr, self_variable: BindingId) -> Option<ReceiverKind> {
         let TypeExprKind::Function(_, parameters, _) = signature.kind() else {
             return None;
@@ -1990,16 +2005,19 @@ impl TypeChecker {
                     continue;
                 };
                 let implementor_span = implementor.span();
-                let (implementor, params, associated_values) =
-                    match self.lower_impl_implementor(implementor, associated) {
-                        Ok(implementor) => implementor,
-                        Err(diagnostic) => {
-                            self.diagnostics.push(diagnostic);
-                            self.outcomes
-                                .fail(methods.iter().map(|method| method.binding));
-                            continue;
-                        }
-                    };
+                let variables = self.implementor_variables(implementor);
+                let (implementor, params, associated_values) = match self
+                    .written_schemes()
+                    .lower_impl_implementor(variables, implementor, associated)
+                {
+                    Ok(implementor) => implementor,
+                    Err(diagnostic) => {
+                        self.diagnostics.push(diagnostic);
+                        self.outcomes
+                            .fail(methods.iter().map(|method| method.binding));
+                        continue;
+                    }
+                };
                 if self.rejects_implementor(*trait_binding, &implementor, implementor_span) {
                     continue;
                 }
@@ -2129,32 +2147,6 @@ impl TypeChecker {
         }
     }
 
-    fn lower_impl_implementor(
-        &mut self,
-        implementor: &TypeExpr,
-        associated: &[crate::core::ImplAssociatedType],
-    ) -> Result<LoweredImplementor, Diagnostic> {
-        let mut params = Vec::new();
-        let mut scope = FxHashMap::default();
-        for variable in self.implementor_variables(implementor) {
-            let name = self.bindings.get(variable).name().to_string();
-            let param = self.generic_declarations().declare(&name, Vec::new());
-            scope.insert(variable, param.id);
-            params.push(param);
-        }
-        let body = self.lower_type(implementor, &scope)?;
-        let values = associated
-            .iter()
-            .map(|associated| {
-                Ok((
-                    associated.trait_type,
-                    self.lower_type(&associated.value, &scope)?,
-                ))
-            })
-            .collect::<Result<Vec<_>, Diagnostic>>()?;
-        Ok((body, params, values))
-    }
-
     fn implementor_variables(&self, implementor: &TypeExpr) -> Vec<BindingId> {
         let mut found = Vec::new();
         self.collect_implementor_variables(implementor, &mut found);
@@ -2276,7 +2268,9 @@ impl TypeChecker {
     ) -> Result<Vec<Bound>, Diagnostic> {
         let mut supertraits = Vec::new();
         for required in &declaration.requires {
-            let bound = self.lower_type_bound(&required.bound, &FxHashMap::default())?;
+            let bound = self
+                .written_types()
+                .lower_type_bound(&required.bound, &FxHashMap::default())?;
             if self.leads_back(&bound, declaration.binding) {
                 self.diagnostics.push(TypeProblems::requirement_cycle(
                     self.bindings.get(declaration.binding).name(),

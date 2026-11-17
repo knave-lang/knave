@@ -63,7 +63,7 @@ impl ExportBytes {
         let row = ExportRow {
             name_start,
             name_end: NameSlots::index(self.names.len()),
-            namespace: NameSlots::code(namespace),
+            namespace: NameKey::code(namespace),
             binding: binding.index(),
         };
         row.write(&mut self.rows);
@@ -83,7 +83,7 @@ impl SavedExports {
     }
 
     pub fn get(&self, name: &str, namespace: Namespace) -> Option<BindingId> {
-        let position = self.position(name, namespace)?;
+        let position = self.position(NameKey::new(name, namespace))?;
         let (_, _, binding) = self.export(position);
         Some(binding)
     }
@@ -107,15 +107,15 @@ impl SavedExports {
         self.rows.len() / ExportRow::SIZE
     }
 
-    pub(super) fn position(&self, name: &str, namespace: Namespace) -> Option<usize> {
-        NameSlots::find(self.slots, NameKey::new(name, namespace), |position| {
-            self.holds_key(position, name, namespace)
+    pub(super) fn position(&self, key: NameKey<'_>) -> Option<usize> {
+        NameSlots::find(self.slots, key, |position| {
+            self.holds_key(position, key.name, key.namespace)
         })
     }
 
     pub(super) fn export(&self, position: usize) -> (&'static str, Namespace, BindingId) {
         let row = self.row(position);
-        let namespace = NameSlots::namespace(row.namespace);
+        let namespace = NameKey::namespace(row.namespace);
         (
             self.name_of(row),
             namespace,
@@ -129,7 +129,7 @@ impl SavedExports {
 
     fn holds_key(&self, position: usize, name: &str, namespace: Namespace) -> bool {
         let row = self.row(position);
-        row.namespace == NameSlots::code(namespace) && self.name_bytes(row) == name.as_bytes()
+        row.namespace == NameKey::code(namespace) && self.name_bytes(row) == name.as_bytes()
     }
 
     fn name_bytes(&self, row: ExportRow) -> &'static [u8] {

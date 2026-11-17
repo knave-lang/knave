@@ -82,7 +82,7 @@ impl<'t> VisibleNames<'t> {
             .prelude
             .qualified_ending_in(last_segment.shared_name(), namespace);
         for name in own.iter().chain(prelude) {
-            for entries in self.entries_named(last_segment.scopes(), Rc::clone(name), namespace) {
+            for entries in self.entries_named(last_segment.scopes(), name, namespace) {
                 entries.visit_visible(last_segment.scopes(), phase, |entry| {
                     visible.push(entry.binding());
                 });
@@ -95,10 +95,10 @@ impl<'t> VisibleNames<'t> {
     pub(super) fn entries_named<'s>(
         &self,
         scopes: &'s ScopeSet,
-        name: Rc<str>,
+        name: &'s Rc<str>,
         namespace: Namespace,
     ) -> impl Iterator<Item = &'t NameEntries> + use<'t, 's> {
-        let own = self.entries.get(&(Rc::clone(&name), namespace));
+        let own = self.entries.get(&(Rc::clone(name), namespace));
         let prelude = self.prelude.entries_seen_from(scopes, name, namespace);
         own.into_iter().chain(prelude)
     }

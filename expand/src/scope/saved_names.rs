@@ -84,7 +84,7 @@ impl NameTables {
         };
         let mut sorted = entries;
         sorted.sort_by(|left, right| {
-            (&left.0, NameSlots::code(left.1)).cmp(&(&right.0, NameSlots::code(right.1)))
+            (&left.0, NameKey::code(left.1)).cmp(&(&right.0, NameKey::code(right.1)))
         });
         for (position, (name, namespace, entries)) in sorted.iter().enumerate() {
             tables.add(name, *namespace, entries);
@@ -103,7 +103,7 @@ impl NameTables {
         let row = NameRow {
             name_start,
             name_end,
-            namespace: NameSlots::code(namespace),
+            namespace: NameKey::code(namespace),
             entries_start,
             entries_end: NameSlots::index(self.entries.len()),
         };
@@ -154,19 +154,18 @@ impl SavedNames {
     pub(super) fn entries_seen_from(
         &self,
         scopes: &ScopeSet,
-        name: &str,
-        namespace: Namespace,
+        key: NameKey<'_>,
     ) -> Option<&NameEntries> {
         if scopes.may_hold_scope_in(&self.prelude_scopes) {
-            self.entries(name, namespace)
+            self.entries(key)
         } else {
             None
         }
     }
 
-    pub(super) fn entries(&self, name: &str, namespace: Namespace) -> Option<&NameEntries> {
-        let row = NameSlots::find(self.slots, NameKey::new(name, namespace), |row| {
-            self.holds_key(row, name, namespace)
+    pub(super) fn entries(&self, key: NameKey<'_>) -> Option<&NameEntries> {
+        let row = NameSlots::find(self.slots, key, |row| {
+            self.holds_key(row, key.name, key.namespace)
         })?;
         Some(self.decoded_row(row))
     }
@@ -177,14 +176,14 @@ impl SavedNames {
             let name: Rc<str> = Rc::from(self.name_of(saved));
             (
                 name,
-                NameSlots::namespace(saved.namespace),
+                NameKey::namespace(saved.namespace),
                 self.decoded_row(row),
             )
         })
     }
 
     pub(super) fn all_of(&self, namespace: Namespace) -> impl Iterator<Item = &NameEntries> {
-        let wanted = NameSlots::code(namespace);
+        let wanted = NameKey::code(namespace);
         (0..self.decoded.len())
             .filter(move |row| self.row(*row).namespace == wanted)
             .map(|row| self.decoded_row(row))
@@ -202,7 +201,7 @@ impl SavedNames {
 
     fn holds_key(&self, row: usize, name: &str, namespace: Namespace) -> bool {
         let saved = self.row(row);
-        saved.namespace == NameSlots::code(namespace) && self.name_bytes(saved) == name.as_bytes()
+        saved.namespace == NameKey::code(namespace) && self.name_bytes(saved) == name.as_bytes()
     }
 
     fn name_bytes(&self, row: NameRow) -> &'static [u8] {
@@ -232,6 +231,7 @@ mod tests {
     use super::{NameTables, SavedNames};
     use crate::core::Namespace;
     use crate::scope::name_entries::NameEntries;
+    use crate::scope::name_key::NameKey;
     use crate::scope::{Scope, Scopes};
 
     struct SavedNamesFixture;
@@ -256,23 +256,43 @@ mod tests {
     #[test]
     fn a_saved_name_is_found_in_its_namespace_only() {
         let saved = SavedNamesFixture::saved(&[("map", Namespace::Value)]);
-        assert!(saved.entries("map", Namespace::Value).is_some());
-        assert!(saved.entries("map", Namespace::Type).is_none());
+        assert!(
+            saved
+                .entries(NameKey::new("map", Namespace::Value))
+                .is_some()
+        );
+        assert!(
+            saved
+                .entries(NameKey::new("map", Namespace::Type))
+                .is_none()
+        );
     }
 
     #[test]
     fn one_name_in_two_namespaces_keeps_two_rows() {
         let saved =
             SavedNamesFixture::saved(&[("str", Namespace::Value), ("str", Namespace::Type)]);
-        assert!(saved.entries("str", Namespace::Value).is_some());
-        assert!(saved.entries("str", Namespace::Type).is_some());
+        assert!(
+            saved
+                .entries(NameKey::new("str", Namespace::Value))
+                .is_some()
+        );
+        assert!(
+            saved
+                .entries(NameKey::new("str", Namespace::Type))
+                .is_some()
+        );
         assert_eq!(saved.all().count(), 2);
     }
 
     #[test]
     fn a_missing_name_is_not_found() {
         let saved = SavedNamesFixture::saved(&[("map", Namespace::Value)]);
-        assert!(saved.entries("filter", Namespace::Value).is_none());
+        assert!(
+            saved
+                .entries(NameKey::new("filter", Namespace::Value))
+                .is_none()
+        );
     }
 
     #[test]
@@ -283,18 +303,18 @@ mod tests {
             .map(|name| (name.as_str(), Namespace::Value))
             .collect();
         let saved = SavedNamesFixture::saved(&keys);
-        assert!(
-            names
-                .iter()
-                .all(|name| saved.entries(name, Namespace::Value).is_some())
-        );
+        assert!(names.iter().all(|name| {
+            saved
+                .entries(NameKey::new(name, Namespace::Value))
+                .is_some()
+        }));
     }
 
     #[test]
     fn an_empty_table_finds_nothing() {
         assert!(
             SavedNames::default()
-                .entries("map", Namespace::Value)
+                .entries(NameKey::new("map", Namespace::Value))
                 .is_none()
         );
     }
@@ -303,7 +323,7 @@ mod tests {
     fn a_lookup_decodes_only_its_name() {
         let saved =
             SavedNamesFixture::saved(&[("map", Namespace::Value), ("filter", Namespace::Value)]);
-        saved.entries("map", Namespace::Value);
+        saved.entries(NameKey::new("map", Namespace::Value));
         assert!(saved.is_decoded("map", Namespace::Value));
         assert!(!saved.is_decoded("filter", Namespace::Value));
     }

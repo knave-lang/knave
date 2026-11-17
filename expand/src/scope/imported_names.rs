@@ -5,6 +5,7 @@ use std::slice;
 use rustc_hash::FxHashMap;
 
 use super::name_entries::NameEntries;
+use super::name_key::NameKey;
 use super::phase::Phase;
 use super::qualified_names::QualifiedNames;
 use super::saved_exports::SavedExports;
@@ -37,11 +38,10 @@ impl ImportedNames {
     pub(super) fn entries_seen_from<'t, 's>(
         &'t self,
         scopes: &'s ScopeSet,
-        name: Rc<str>,
-        namespace: Namespace,
+        key: NameKey<'s>,
     ) -> impl Iterator<Item = &'t NameEntries> + use<'t, 's> {
         self.modules_seen_from(scopes)
-            .filter_map(move |module| module.entries(&name, namespace))
+            .filter_map(move |module| module.entries(key))
     }
 
     pub(super) fn bound_with_scopes(
@@ -152,8 +152,8 @@ impl ImportedModule {
         }
     }
 
-    fn entries(&self, name: &str, namespace: Namespace) -> Option<&NameEntries> {
-        let position = self.exports.position(name, namespace)?;
+    fn entries(&self, key: NameKey<'_>) -> Option<&NameEntries> {
+        let position = self.exports.position(key)?;
         Some(self.decoded(position))
     }
 

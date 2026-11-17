@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use super::imported_names::ImportedNames;
 use super::name_entries::NameEntries;
+use super::name_key::NameKey;
 use super::saved_exports::SavedExports;
 use super::saved_names::SavedNames;
 use super::{Scope, ScopeSet};
@@ -34,13 +35,12 @@ impl PreludeNames {
     pub(super) fn entries_seen_from<'t, 's>(
         &'t self,
         scopes: &'s ScopeSet,
-        name: Rc<str>,
+        name: &'s str,
         namespace: Namespace,
     ) -> impl Iterator<Item = &'t NameEntries> + use<'t, 's> {
-        let saved = self.saved.entries_seen_from(scopes, &name, namespace);
-        self.imported
-            .entries_seen_from(scopes, name, namespace)
-            .chain(saved)
+        let key = NameKey::new(name, namespace);
+        let saved = self.saved.entries_seen_from(scopes, key);
+        self.imported.entries_seen_from(scopes, key).chain(saved)
     }
 
     pub(super) fn qualified_ending_in(

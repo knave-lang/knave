@@ -80,9 +80,10 @@ impl BindingTable {
 
     pub fn resolve(&self, symbol: &Symbol, namespace: Namespace, phase: Phase) -> Resolution {
         let mut largest = LargestCandidates::default();
-        for entries in
-            self.visible_names()
-                .entries_named(symbol.scopes(), symbol.shared_name(), namespace)
+        let name = symbol.shared_name();
+        for entries in self
+            .visible_names()
+            .entries_named(symbol.scopes(), &name, namespace)
         {
             entries.visit_visible(symbol.scopes(), phase, |entry| largest.consider(entry));
         }

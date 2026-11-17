@@ -1078,7 +1078,7 @@ impl TypeChecker {
             Some(scheme) => self.instantiate(&scheme, span),
             None => {
                 assert!(
-                    !self.unreached_prelude.contains(&binding),
+                    !self.outcomes.is_unreached(binding),
                     "the definition graph missed a reference to the prelude's `{}`",
                     self.bindings.get(binding).name()
                 );
@@ -1952,7 +1952,7 @@ impl TypeChecker {
         found: &[Type],
         span: Span,
     ) -> Result<(), Diagnostic> {
-        if self.follows_reported_error(function) {
+        if self.outcomes.follows_reported_error(function) {
             return Ok(());
         }
         for (position, (expected, found)) in expected.iter().zip(found).enumerate() {
@@ -3673,6 +3673,7 @@ mod tests {
         PrimitiveType,
     };
     use crate::source::{SourceId, Span};
+    use crate::types::definition_outcomes::DefinitionOutcomes;
     use crate::types::{ClosureKind, Type, TypeVar};
 
     #[test]
@@ -3719,7 +3720,8 @@ mod tests {
                 BindingKind::Global(ModuleId::new(0)),
                 None,
             ));
-            self.checker.unreached_prelude = Rc::new(FxHashSet::from_iter([binding]));
+            self.checker.outcomes =
+                DefinitionOutcomes::new(Rc::new(FxHashSet::from_iter([binding])));
             let span = Span::new(SourceId::new(0), 0..0);
             self.checker.global_type(binding, span)
         }

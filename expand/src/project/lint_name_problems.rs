@@ -9,10 +9,10 @@ pub(super) struct LintNameProblems;
 impl LintNameProblems {
     const ALWAYS_PRINTED: [DiagnosticCode; 5] = [
         DiagnosticCode::SECOND_TRAIT_PATH,
-        DiagnosticCode::KERNEL_TYPE_HIDDEN,
         DiagnosticCode::INPUT_SET_ASIDE,
         DiagnosticCode::LIBRARY_HIDES_LOCAL_MODULE,
         DiagnosticCode::TEST_MODULE_HIDES_SOURCE_MODULE,
+        DiagnosticCode::KERNEL_TYPE_HIDDEN,
     ];
 
     const BARE_NAME: &str = "write the lint's name bare: the name that `knave doc <code>` shows for an `L08xx` code, with dashes in place of its spaces";

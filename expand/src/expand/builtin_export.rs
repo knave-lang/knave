@@ -1,12 +1,9 @@
-use std::iter;
-
 use crate::core::{BindingInfo, BindingKind, KernelType, Namespace};
 
 pub(super) struct BuiltinExport {
     name: &'static str,
     namespace: Namespace,
     kind: BindingKind,
-    differing_spelling: Option<&'static str>,
 }
 
 impl BuiltinExport {
@@ -15,7 +12,6 @@ impl BuiltinExport {
             name,
             namespace: Namespace::Value,
             kind,
-            differing_spelling: None,
         }
     }
 
@@ -24,7 +20,6 @@ impl BuiltinExport {
             name: kernel_type.name(),
             namespace: Namespace::Type,
             kind: BindingKind::KernelType(kernel_type),
-            differing_spelling: kernel_type.differing_spelling(),
         }
     }
 
@@ -37,7 +32,14 @@ impl BuiltinExport {
     }
 
     pub fn names(&self) -> impl Iterator<Item = &'static str> + use<> {
-        iter::once(self.name).chain(self.differing_spelling)
+        let kernel_type = match self.kind {
+            BindingKind::KernelType(kernel_type) => Some(kernel_type),
+            _ => None,
+        };
+        let value_name = kernel_type.is_none().then_some(self.name);
+        value_name
+            .into_iter()
+            .chain(kernel_type.into_iter().flat_map(KernelType::names))
     }
 }
 

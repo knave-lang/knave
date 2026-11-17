@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use super::numeric_bound::NumericBound;
+use crate::core::KernelType;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::source::Span;
 
@@ -27,26 +28,27 @@ impl NamespaceProblems {
         }
     }
 
-    pub fn kernel_type_defined(written: &str, shown: &str, span: Span) -> Diagnostic {
+    pub fn kernel_type_defined(written: &str, hidden: KernelType, span: Span) -> Diagnostic {
         let label = Label::new(
             span,
             format!("this binds `{written}` in place of the kernel type"),
         );
-        Self::kernel_type_hidden(written, shown, label)
+        Self::kernel_type_hidden(written, hidden, label)
             .with_help(format!("rename this `{written}`"))
     }
 
-    pub fn kernel_type_imported(written: &str, shown: &str, span: Span) -> Diagnostic {
+    pub fn kernel_type_imported(written: &str, hidden: KernelType, span: Span) -> Diagnostic {
         let label = Label::new(
             span,
             format!("this imports `{written}` in place of the kernel type"),
         );
-        Self::kernel_type_hidden(written, shown, label).with_help(format!(
+        Self::kernel_type_hidden(written, hidden, label).with_help(format!(
             "leave `{written}` out of this `use`, or rename it in the module that defines it"
         ))
     }
 
-    fn kernel_type_hidden(written: &str, shown: &str, label: Label) -> Diagnostic {
+    fn kernel_type_hidden(written: &str, hidden: KernelType, label: Label) -> Diagnostic {
+        let shown = hidden.name();
         Diagnostic::warning(
             DiagnosticCode::KERNEL_TYPE_HIDDEN,
             format!("`{written}` hides the kernel type `{shown}`"),

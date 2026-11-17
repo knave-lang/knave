@@ -1,3 +1,5 @@
+use std::iter;
+
 use super::ClosureKind;
 use super::PrimitiveType;
 
@@ -302,17 +304,19 @@ impl KernelType {
         }
     }
 
-    pub fn differing_spelling(self) -> Option<&'static str> {
+    pub fn names(self) -> impl Iterator<Item = &'static str> {
+        iter::once(self.name()).chain(self.differing_spelling())
+    }
+
+    pub fn named(name: &str) -> Option<KernelType> {
+        Self::all().find(|kernel_type| kernel_type.names().any(|each| each == name))
+    }
+
+    fn differing_spelling(self) -> Option<&'static str> {
         match self {
             KernelType::Primitive(primitive) => primitive.names().differing_spelling(),
             _ => None,
         }
-    }
-
-    pub fn named(name: &str) -> Option<KernelType> {
-        Self::all().find(|kernel_type| {
-            kernel_type.name() == name || kernel_type.differing_spelling() == Some(name)
-        })
     }
 }
 

@@ -72,7 +72,10 @@ impl<'w> TreeWalk<'w> {
 
     fn collect_folder(&mut self, folder: PathBuf) -> io::Result<()> {
         match self.skipped.skip_reason(&folder) {
-            Some(SkipReason::HiddenFolder) => self.hidden_folders.push(folder),
+            Some(SkipReason::HiddenFolder) if !folder.is_symlink() => {
+                self.hidden_folders.push(folder)
+            }
+            Some(SkipReason::HiddenFolder) => {}
             Some(SkipReason::BuildFolder) => {}
             None if self.leaves_the_tree(&folder) => {}
             None => self.collect(&folder)?,

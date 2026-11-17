@@ -255,7 +255,6 @@ mod tests {
         BindingArena, BindingKind, ExprKind, Item, ItemKind, KernelConstants, KernelForm,
         KernelType, Leaf, Literal, Namespace,
     };
-    use crate::expand::builtin_export::BuiltinExport;
     use crate::scope::ImportedCounts;
 
     struct UserProgram {
@@ -400,7 +399,7 @@ mod tests {
             let prelude = Self::module(&state, ModuleSources::PRELUDE);
             KernelType::all()
                 .flat_map(|kernel_type| {
-                    BuiltinExport::kernel_type(kernel_type)
+                    kernel_type
                         .names()
                         .map(move |name| (name, kernel_type.shape()))
                 })

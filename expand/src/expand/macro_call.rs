@@ -221,7 +221,7 @@ impl Expander<'_> {
         self.tables
             .macro_origins
             .introducing_macros
-            .record(introduction, &origin);
+            .record(introduction, binding, &origin);
         let arguments = ReturnedArguments::of_call(&input);
         self.expansion_depth += 1;
         self.introductions.push(introduction);
@@ -442,6 +442,10 @@ impl Expander<'_> {
         binding: BindingId,
         definition: &Form,
     ) -> Result<Rc<Closure>, Diagnostic> {
+        self.tables
+            .macro_origins
+            .introducing_macros
+            .define(binding, definition);
         let compiled = self.lower_macro_lambda(definition).and_then(|lambda| {
             self.check_compile_time(&lambda)?;
             Ok(Rc::new(Closure {

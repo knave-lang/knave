@@ -1644,10 +1644,8 @@ impl Expander<'_> {
                 lifetime: false,
             })
             .collect();
-        TypeExpr::new(
-            TypeExprKind::Where(binders, Box::new(signature.clone())),
-            span,
-        )
+        let kind = TypeExprKind::Where(binders, Box::new(signature.clone()));
+        TypeExpr::new(kind, span)
     }
 
     fn lower_rust_trait(

@@ -1,7 +1,11 @@
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct FirstPositions(u64);
+pub struct FirstPositions<const PAST_THE_FIRST: bool>(u64);
 
-impl FirstPositions {
+pub type FirstPositionsOnly = FirstPositions<false>;
+
+pub type FirstPositionsAndBeyond = FirstPositions<true>;
+
+impl<const PAST_THE_FIRST: bool> FirstPositions<PAST_THE_FIRST> {
     const COUNT: usize = u64::BITS as usize;
 
     pub fn of(positions: impl IntoIterator<Item = usize>) -> Self {
@@ -18,7 +22,10 @@ impl FirstPositions {
     }
 
     pub fn contains(self, position: usize) -> bool {
-        Self::reaches(position) && self.0 & (1 << position) != 0
+        match Self::reaches(position) {
+            true => self.0 & (1 << position) != 0,
+            false => PAST_THE_FIRST,
+        }
     }
 
     pub fn union(self, other: Self) -> Self {
@@ -26,25 +33,27 @@ impl FirstPositions {
     }
 
     pub fn positions(self) -> impl Iterator<Item = usize> {
-        (0..Self::COUNT).filter(move |position| self.contains(*position))
+        (0..Self::COUNT).filter(move |position| self.0 & (1 << position) != 0)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::FirstPositions;
+    use super::{FirstPositionsAndBeyond, FirstPositionsOnly};
 
     #[test]
-    fn a_position_past_the_first_word_is_never_contained() {
-        let first = FirstPositions::of([3, 64, 70]);
-        assert_eq!(first.positions().collect::<Vec<_>>(), [3]);
-        assert!(!first.contains(64) && !first.contains(4));
+    fn a_position_past_the_first_word_takes_the_answer_its_type_names() {
+        let only = FirstPositionsOnly::of([3, 64, 70]);
+        let beyond = FirstPositionsAndBeyond::of([3]);
+        assert_eq!(only.positions().collect::<Vec<_>>(), [3]);
+        assert!(!only.contains(64) && !only.contains(4));
+        assert!(beyond.contains(64) && !beyond.contains(4));
     }
 
     #[test]
     fn a_union_keeps_the_positions_of_both() {
-        let left = FirstPositions::of([1, 2]);
-        let right = FirstPositions::of([2, 5]);
-        assert_eq!(left.union(right), FirstPositions::of([1, 2, 5]));
+        let left = FirstPositionsOnly::of([1, 2]);
+        let right = FirstPositionsOnly::of([2, 5]);
+        assert_eq!(left.union(right), FirstPositionsOnly::of([1, 2, 5]));
     }
 }

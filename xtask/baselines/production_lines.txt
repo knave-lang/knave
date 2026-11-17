@@ -20,7 +20,7 @@ src/emit/types.rs 801
 
 src/ownership/kinds.rs 1696
 
-src/ownership/moves.rs 587
+src/ownership/moves.rs 585
 
 src/ownership/problems.rs 775
 

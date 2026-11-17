@@ -2,6 +2,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::moved_place::MovedPlace;
 use super::moved_values::MoveSite;
+use super::pending_diagnostic::PendingDiagnostic;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
@@ -10,13 +11,6 @@ use crate::source::Span;
 pub struct BoundFieldMoves {
     bound_names: FxHashMap<Span, BindingId>,
     moved_names: FxHashSet<BindingId>,
-    borrow_helps: Vec<BorrowHelp>,
-}
-
-struct BorrowHelp {
-    position: usize,
-    bound: BindingId,
-    owned: Diagnostic,
 }
 
 impl BoundFieldMoves {
@@ -29,14 +23,42 @@ impl BoundFieldMoves {
     }
 
     pub fn field_site(&self, span: Span, moved: MovedPlace) -> MoveSite {
-        let place = match self.bound_names.contains_key(&span) {
-            true => moved,
-            false => moved.owned(),
+        let place = if self.bound_names.contains_key(&span) {
+            moved
+        } else {
+            moved.owned()
         };
         MoveSite::Field { span, place }
     }
 
-    pub fn owned_site(&self, site: &MoveSite) -> Option<(BindingId, MoveSite)> {
+    pub fn offer(
+        &self,
+        site: &MoveSite,
+        offered: Diagnostic,
+        owned: impl FnOnce(&MoveSite) -> Diagnostic,
+    ) -> PendingDiagnostic {
+        match self.owned_site(site) {
+            Some((bound, owned_site)) => {
+                let owned = owned(&owned_site);
+                PendingDiagnostic::BorrowOffered {
+                    offered,
+                    owned,
+                    bound,
+                }
+            }
+            None => PendingDiagnostic::Final(offered),
+        }
+    }
+
+    pub fn settle(self, pending: Vec<PendingDiagnostic>) -> Vec<Diagnostic> {
+        let moved_names = &self.moved_names;
+        pending
+            .into_iter()
+            .map(|diagnostic| diagnostic.settled(moved_names))
+            .collect()
+    }
+
+    fn owned_site(&self, site: &MoveSite) -> Option<(BindingId, MoveSite)> {
         let MoveSite::Field { span, place } = site else {
             return None;
         };
@@ -44,23 +66,5 @@ impl BoundFieldMoves {
         let bound = *self.bound_names.get(span)?;
         let place = place.clone().owned();
         Some((bound, MoveSite::Field { span: *span, place }))
-    }
-
-    pub fn defer(&mut self, position: usize, bound: BindingId, owned: Diagnostic) {
-        let help = BorrowHelp {
-            position,
-            bound,
-            owned,
-        };
-        self.borrow_helps.push(help);
-    }
-
-    pub fn settle(self, mut diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
-        for help in self.borrow_helps {
-            if self.moved_names.contains(&help.bound) {
-                diagnostics[help.position] = help.owned;
-            }
-        }
-        diagnostics
     }
 }

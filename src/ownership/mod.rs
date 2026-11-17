@@ -27,6 +27,7 @@ mod moves;
 mod mutation;
 mod names;
 mod parameter_uses;
+mod pending_diagnostic;
 mod place_arguments;
 mod problems;
 mod promoted_constants;

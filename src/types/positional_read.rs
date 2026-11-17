@@ -23,9 +23,10 @@ pub struct PairPart {
 impl PairPart {
     pub fn read(self, pair: TypedExpr, holds_copy: impl Fn(&Type) -> bool) -> TypedExpr {
         let span = self.label.span;
-        let ty = match self.owned || holds_copy(&self.part) {
-            true => self.part,
-            false => Type::shared(self.part),
+        let ty = if self.owned || holds_copy(&self.part) {
+            self.part
+        } else {
+            Type::shared(self.part)
         };
         let kind = TypedExprKind::Struct(TypedStructExpr::Field(Box::new(pair), self.label));
         TypedExpr { kind, ty, span }

@@ -22,6 +22,11 @@ impl BoundFieldMoves {
         self.moved_names.insert(name);
     }
 
+    pub fn record_moved_again(&mut self, earlier: Option<MoveSite>) {
+        let bound = earlier.and_then(|site| self.bound_names.get(&site.span()).copied());
+        self.moved_names.extend(bound);
+    }
+
     pub fn field_site(&self, span: Span, moved: MovedPlace) -> MoveSite {
         let place = if self.bound_names.contains_key(&span) {
             moved

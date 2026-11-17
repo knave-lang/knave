@@ -11,11 +11,6 @@ error[L0501]: use of moved value `(second names)`
 4 |         b (second names))
   |                   ^^^^^ value used here after it moved
   |
-help: borrow the part if the first place only reads it
-  |
-3 -         a (second names)
-3 +         a (second (ref names))
-  |
 help: clone the value if both places need it
   |
 3 -         a (second names)

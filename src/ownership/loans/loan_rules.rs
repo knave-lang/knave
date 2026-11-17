@@ -45,3 +45,47 @@ impl<'p> LoanRules<'p> {
         BorrowingTypes::of(self.program).keeps_borrow(ty)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::core::{ExprKind, Leaf, RustTemplate};
+    use crate::types::{BorrowedIndex, TypedSource};
+
+    struct IndexTemplates;
+
+    impl IndexTemplates {
+        fn with_clauses() -> Vec<String> {
+            let source = TypedSource::expand("(defn main () (println 1))");
+            let program = source.program();
+            program
+                .modules
+                .iter()
+                .flat_map(|module| module.definitions())
+                .filter_map(|(binding, value)| match value.kind() {
+                    ExprKind::Leaf(Leaf::Rust(template)) => Some((binding, template)),
+                    _ => None,
+                })
+                .filter(|(_, template)| Self::indexes_with_clauses(template))
+                .map(|(binding, _)| program.bindings.get(binding).name().to_string())
+                .collect()
+        }
+
+        fn indexes_with_clauses(template: &RustTemplate) -> bool {
+            let texts = template.clauses.iter().map(|clause| &clause.template);
+            !template.clauses.is_empty()
+                && texts
+                    .chain([&template.template])
+                    .any(|text| BorrowedIndex::place(text).is_some())
+        }
+    }
+
+    #[test]
+    fn no_prelude_template_that_indexes_in_place_has_clauses() {
+        assert_eq!(
+            IndexTemplates::with_clauses(),
+            Vec::<String>::new(),
+            "the loan rule reads a template without its clause choice, so it would \
+             disagree with the emitter on whether this argument is copied out"
+        );
+    }
+}

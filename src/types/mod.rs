@@ -77,7 +77,6 @@ mod missing_annotations;
 mod needed_trait;
 mod occurs_check;
 mod opaque_positions;
-mod pair_position;
 mod parameter_call_labels;
 mod parameter_call_search;
 mod parameter_copy;

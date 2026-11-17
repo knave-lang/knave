@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::{BindingId, DroppedBorrows, Keyword, ReferenceKind, TypeExpr};
+use super::{BindingId, DroppedBorrows, Keyword, PairPosition, ReferenceKind, TypeExpr};
 use crate::mangle::NameMangler;
 use crate::reader::{Form, Number};
 use crate::source::Span;
@@ -40,6 +40,15 @@ pub enum MapOperation {
     Push,
     First,
     Second,
+}
+
+impl From<PairPosition> for MapOperation {
+    fn from(position: PairPosition) -> Self {
+        match position {
+            PairPosition::First => Self::First,
+            PairPosition::Second => Self::Second,
+        }
+    }
 }
 
 impl MapOperation {
@@ -208,7 +217,9 @@ pub struct FieldLabel {
 impl FieldLabel {
     pub fn spelled(&self, field_name: &str) -> String {
         match (self.spelling, field_name) {
-            (FieldSpelling::Pair(operation), _) => operation.keyword().to_string(),
+            (FieldSpelling::Pair(position), _) => {
+                MapOperation::from(position).keyword().to_string()
+            }
             (FieldSpelling::Bare, _) => field_name.to_string(),
             (FieldSpelling::Keyword, _) => format!("{}{field_name}", Keyword::MARKER),
         }
@@ -226,7 +237,7 @@ impl FieldLabel {
 pub enum FieldSpelling {
     Bare,
     Keyword,
-    Pair(MapOperation),
+    Pair(PairPosition),
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]

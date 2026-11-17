@@ -1,13 +1,13 @@
 use rustc_hash::FxHashMap;
 
 use super::typed::{TypedExpr, TypedExprKind, TypedLeaf};
-use crate::core::{BindingId, Expr, ExprKind, MapOperation};
+use crate::core::{BindingId, Expr, ExprKind, MapOperation, PairPosition};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CollectionAssumption {
     PushTarget,
     GetCollection,
-    PairPartCollection(MapOperation),
+    PairPartCollection(PairPosition),
 }
 
 impl CollectionAssumption {
@@ -15,7 +15,7 @@ impl CollectionAssumption {
         match self {
             Self::PushTarget => "push!",
             Self::GetCollection => "get",
-            Self::PairPartCollection(operation) => operation.keyword(),
+            Self::PairPartCollection(position) => MapOperation::from(position).keyword(),
         }
     }
 

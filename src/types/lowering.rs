@@ -1,7 +1,7 @@
 use rustc_hash::FxHashMap;
 
-use super::associated::LoweredAssociatedValue;
 use super::checker::TypeChecker;
+use super::lowered_associated_value::LoweredAssociatedValue;
 use super::problems::TypeProblems;
 use super::trait_rows_reach::Implementor;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};

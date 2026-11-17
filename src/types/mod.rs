@@ -40,6 +40,7 @@ mod infer;
 mod instantiation;
 mod literal_fit;
 mod literal_settlement;
+mod lowered_associated_value;
 mod lowered_payload;
 mod lowering;
 mod main_result;
@@ -108,6 +109,7 @@ mod view_coercion;
 mod walk;
 mod wrapper;
 mod written_bodies;
+mod written_projection;
 
 pub use crate::core::ClosureKind;
 pub use binding::GenericBinding;

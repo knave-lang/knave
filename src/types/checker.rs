@@ -191,7 +191,7 @@ pub struct TypeChecker {
     pub(super) type_texts: super::type_text::TypeTexts,
     pub(super) holds_infer_forms: bool,
     pub(super) type_arities: FxHashMap<BindingId, usize>,
-    pub(super) written_projections: Vec<super::associated::WrittenProjection>,
+    pub(super) written_projections: Vec<super::written_projection::WrittenProjection>,
     pub(super) checked_projections: usize,
     signatures: FxHashMap<BindingId, (TypeExpr, Span)>,
     pub(super) checking_facts: CheckingFacts,

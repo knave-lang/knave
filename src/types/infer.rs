@@ -2844,7 +2844,7 @@ impl TypeChecker {
         let (reader, span) = (read.reader(arguments)?, read.span());
         let types = &self.declarations.types().rust_types;
         if let Some(found) = read.pair_part(&self.unifier.resolve(&value.ty), types) {
-            return Ok(found.read(value, &self.copy_rules()));
+            return Ok(found.read(value, |part| self.holds_copy_value(part)));
         }
         self.note_unknown_collection(&value, read.slice_assumption());
         let callee = self.infer(reader)?;

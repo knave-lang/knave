@@ -2190,6 +2190,16 @@ fn repl_accepts_a_definition_with_a_lint_of_no_level_and_prints_it() {
 }
 
 #[test]
+fn repl_warns_at_a_macro_from_an_earlier_input_that_hides_a_kernel_type() {
+    let sandbox = Sandbox::new("repl_kernel_type_macro");
+    let repl = sandbox.compiler_reading(
+        "(defmacro make-byte () (template (defstruct u8 :n bool)))\n(make-byte)\n",
+        &["repl"],
+    );
+    insta::assert_snapshot!(repl.stderr());
+}
+
+#[test]
 fn repl_accepts_a_definition_with_a_warned_lint_and_prints_it() {
     let (stdout, stderr) = LintsFixture::repl(Some("warn"));
     assert!(stderr.contains("warning[L0803]"), "{stderr}");
@@ -7983,6 +7993,18 @@ fn a_library_that_hides_a_local_directory_warns() {
 fn a_library_type_that_hides_a_kernel_type_warns_only_at_the_app_import() {
     let check = Sandbox::check_fixture("libraries/money-app");
     insta::assert_snapshot!(check.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn a_program_macro_around_a_library_macro_warns_only_at_its_own_binder() {
+    let check = Sandbox::check_fixture("libraries/money-wrap-app");
+    insta::assert_snapshot!(check.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn a_program_macro_that_a_library_macro_calls_warns_at_its_own_binder() {
+    let check = Sandbox::check_fixture("libraries/money-apply-app");
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
 #[test]

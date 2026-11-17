@@ -1,0 +1,2 @@
+(defproject money-wrap-app
+  (libraries (money :path "../money")))

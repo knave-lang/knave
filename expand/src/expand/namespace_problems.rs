@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use super::binder_reach::BinderReach;
 use super::numeric_bound::NumericBound;
+use super::problems::ExpandProblems;
 use crate::core::KernelType;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::source::Span;
@@ -35,16 +36,19 @@ impl NamespaceProblems {
         reach: &BinderReach,
     ) -> Diagnostic {
         let label = Label::new(
-            reach.binder,
+            reach.binder(),
             format!("this binds `{written}` in place of the kernel type"),
         );
-        let help = match &reach.introducing_macro {
-            Some(name) => format!("rename `{written}` in `{name}`"),
-            None => format!("rename this `{written}`"),
+        let help = match reach {
+            BinderReach::Written { .. } => format!("rename this `{written}`"),
+            BinderReach::InMacro {
+                introducing_macro, ..
+            } => format!("rename `{written}` in `{introducing_macro}`"),
         };
-        Self::kernel_type_hidden(written, hidden, label)
+        let diagnostic = Self::kernel_type_hidden(written, hidden, label)
             .with_note(Self::hidden_note(written, hidden, reach))
-            .with_help(help)
+            .with_help(help);
+        Self::with_macro_call(diagnostic, reach)
     }
 
     pub fn kernel_type_imported(
@@ -53,18 +57,21 @@ impl NamespaceProblems {
         reach: &BinderReach,
     ) -> Diagnostic {
         let label = Label::new(
-            reach.binder,
+            reach.binder(),
             format!("this imports `{written}` in place of the kernel type"),
         );
-        let help = match &reach.introducing_macro {
-            Some(name) => format!("leave `{written}` out of the `use` in `{name}`"),
-            None => format!(
+        let help = match reach {
+            BinderReach::Written { .. } => format!(
                 "leave `{written}` out of this `use`, or rename it in the module that defines it"
             ),
+            BinderReach::InMacro {
+                introducing_macro, ..
+            } => format!("leave `{written}` out of the `use` in `{introducing_macro}`"),
         };
-        Self::kernel_type_hidden(written, hidden, label)
+        let diagnostic = Self::kernel_type_hidden(written, hidden, label)
             .with_note(Self::hidden_note(written, hidden, reach))
-            .with_help(help)
+            .with_help(help);
+        Self::with_macro_call(diagnostic, reach)
     }
 
     fn kernel_type_hidden(written: &str, hidden: KernelType, label: Label) -> Diagnostic {
@@ -78,9 +85,27 @@ impl NamespaceProblems {
     fn hidden_note(written: &str, hidden: KernelType, reach: &BinderReach) -> String {
         format!(
             "{}, a type written `{written}` names this binding, while a printed `{}` is the kernel type",
-            reach.scope(),
+            Self::reach_scope(reach),
             hidden.name()
         )
+    }
+
+    fn with_macro_call(diagnostic: Diagnostic, reach: &BinderReach) -> Diagnostic {
+        match reach {
+            BinderReach::Written { .. } => diagnostic,
+            BinderReach::InMacro { call, .. } => {
+                diagnostic.with_label(ExpandProblems::macro_call(*call))
+            }
+        }
+    }
+
+    fn reach_scope(reach: &BinderReach) -> String {
+        match reach {
+            BinderReach::Written { .. } => "in this scope".to_string(),
+            BinderReach::InMacro {
+                introducing_macro, ..
+            } => format!("in the code of `{introducing_macro}`"),
+        }
     }
 
     fn alternatives(first: &str, others: &[Rc<str>]) -> String {

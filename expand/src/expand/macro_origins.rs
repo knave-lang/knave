@@ -1,7 +1,7 @@
 use super::binder_reach::BinderReach;
 use super::call_origins::CallOrigins;
 use super::introduced_names::IntroducedNames;
-use super::macro_call_lookup::MacroCallLookup;
+use super::project_introductions::ProjectIntroductions;
 use crate::reader::Symbol;
 use crate::scope::Scopes;
 use crate::source::Span;
@@ -10,6 +10,8 @@ use crate::source::Span;
 pub struct MacroOrigins {
     pub calls: CallOrigins,
     pub introduced: IntroducedNames,
+    #[serde(skip)]
+    pub project_introductions: ProjectIntroductions,
 }
 
 impl MacroOrigins {
@@ -20,15 +22,13 @@ impl MacroOrigins {
         span: Span,
     ) -> Option<BinderReach> {
         if !scopes.introduced(binder) {
-            return Some(BinderReach::written_at(span));
+            return Some(BinderReach::Written { binder: span });
         }
-        let origin = self
-            .calls
-            .introducing_macro(span)
-            .filter(|origin| origin.in_project)?;
-        Some(BinderReach {
+        let introducing_macro = self.project_introductions.writer_of(binder)?;
+        Some(BinderReach::InMacro {
             binder: self.introduced.at(span, binder.name()).unwrap_or(span),
-            introducing_macro: Some(origin.name),
+            call: span,
+            introducing_macro,
         })
     }
 }

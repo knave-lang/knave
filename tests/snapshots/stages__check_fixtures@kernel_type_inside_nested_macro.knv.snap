@@ -1,0 +1,41 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/kernel_type_inside_nested_macro.knv
+---
+warning[L0259]: `int` hides the kernel type `int`
+  --> check/kernel_type_inside_nested_macro.knv:3:26
+   |
+ 3 |               (defstruct int
+   |                          ^^^ this binds `int` in place of the kernel type
+...
+18 | (outer-counter)
+   | --------------- in this macro call
+   |
+   = note: in the code of `make-hidden-int`, a type written `int` names this binding, while a printed `int` is the kernel type
+   = help: rename `int` in `make-hidden-int`
+   = note: run `knave doc L0259` for an explanation
+
+warning[L0259]: `float` hides the kernel type `float`
+  --> check/kernel_type_inside_nested_macro.knv:16:27
+   |
+16 |   (template (define-named float)))
+   |                           ^^^^^ this binds `float` in place of the kernel type
+...
+20 | (outer-passing)
+   | --------------- in this macro call
+   |
+   = note: in the code of `outer-passing`, a type written `float` names this binding, while a printed `float` is the kernel type
+   = help: rename `float` in `outer-passing`
+   = note: run `knave doc L0259` for an explanation
+
+error[L0401]: mismatched types
+  --> check/kernel_type_inside_nested_macro.knv:18:1
+   |
+18 | (outer-counter)
+   | ^^^^^^^^^^^^^^^
+   | |
+   | expected `int`, found an integer
+   | expected because of this signature
+   |
+   = note: run `knave doc L0401` for an explanation

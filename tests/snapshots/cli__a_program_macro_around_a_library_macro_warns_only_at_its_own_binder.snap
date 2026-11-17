@@ -1,0 +1,29 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(0).stderr()
+---
+warning[L0259]: `float` hides the kernel type `float`
+  --> src/main.knv:8:26
+   |
+ 8 |               (defstruct float
+   |                          ^^^^^ this binds `float` in place of the kernel type
+...
+16 | (wrap-and-bind)
+   | --------------- in this macro call
+   |
+   = note: in the code of `wrap-and-bind`, a type written `float` names this binding, while a printed `float` is the kernel type
+   = help: rename `float` in `wrap-and-bind`
+   = note: run `knave doc L0259` for an explanation
+
+warning[L0259]: `u16` hides the kernel type `u16`
+  --> src/main.knv:12:27
+   |
+12 |   (template (define-named u16)))
+   |                           ^^^ this binds `u16` in place of the kernel type
+...
+18 | (wrap-named)
+   | ------------ in this macro call
+   |
+   = note: in the code of `wrap-named`, a type written `u16` names this binding, while a printed `u16` is the kernel type
+   = help: rename `u16` in `wrap-named`
+   = note: run `knave doc L0259` for an explanation

@@ -1,0 +1,12 @@
+(use money apply-macro)
+
+(defmacro make-counter ()
+  (template (do
+              (defstruct int
+                :n bool)
+              (type start (fn () int))
+              (defn start () 0))))
+
+(apply-macro make-counter)
+
+(defn main () (println 1))

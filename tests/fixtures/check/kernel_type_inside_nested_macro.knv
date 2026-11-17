@@ -1,0 +1,22 @@
+(defmacro make-hidden-int ()
+  (template (do
+              (defstruct int
+                :n bool)
+              (type start (fn () int))
+              (defn start () 0))))
+
+(defmacro outer-counter ()
+  (template (make-hidden-int)))
+
+(defmacro define-named (name)
+  (template (defstruct (unquote name)
+              :n bool)))
+
+(defmacro outer-passing ()
+  (template (define-named float)))
+
+(outer-counter)
+
+(outer-passing)
+
+(defn main () (println 1))

@@ -1,3 +1,4 @@
+use super::access::Access;
 use super::dropped_borrows::DroppedBorrows;
 use super::shared_references::SharedReferences;
 use super::template_braces::TemplateBraces;
@@ -13,30 +14,6 @@ pub enum Piece {
     Placeholder { index: usize, access: Access },
     TypePlaceholder { name: String },
     BinderPlaceholder { name: String },
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum Access {
-    Passed,
-    Borrowed,
-    Owned,
-}
-
-impl Access {
-    fn unborrowed(self) -> Self {
-        match self {
-            Self::Borrowed => Self::Passed,
-            passed_or_owned => passed_or_owned,
-        }
-    }
-
-    fn marker(&self) -> String {
-        match self {
-            Self::Passed => String::new(),
-            Self::Borrowed => ParsedTemplate::BORROW.to_string(),
-            Self::Owned => ParsedTemplate::OWNED.to_string(),
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -59,6 +36,7 @@ pub enum PassingAspect {
 
 enum BorrowChange {
     Kept,
+    Added,
     Dropped,
     Changed,
 }
@@ -92,10 +70,14 @@ impl ArgumentPassing<'_> {
     }
 
     fn borrow_change(self, clause: Self) -> Result<BorrowChange, PassingAspect> {
-        let change = match (self == clause, self.borrows(), clause.borrows()) {
-            (true, _, _) => BorrowChange::Kept,
-            (false, true, false) => BorrowChange::Dropped,
-            _ => BorrowChange::Changed,
+        let change = if self == clause {
+            BorrowChange::Kept
+        } else if clause.written_borrow && !self.written_borrow {
+            BorrowChange::Added
+        } else if self.borrows() && !clause.borrows() {
+            BorrowChange::Dropped
+        } else {
+            BorrowChange::Changed
         };
         match self.unborrowed().differing_aspect(&clause.unborrowed()) {
             Some(aspect) => Err(aspect),
@@ -135,9 +117,7 @@ pub struct ParsedTemplate {
 }
 
 impl ParsedTemplate {
-    const BORROW: char = '&';
     const BINDER: char = '!';
-    const OWNED: &'static str = "owned ";
     const DEREFERENCE: &'static str = "*";
 
     pub fn parse(text: &str) -> Result<Self, MalformedPlaceholder> {
@@ -171,7 +151,7 @@ impl ParsedTemplate {
     fn placeholder(
         characters: &mut std::iter::Peekable<std::str::Chars>,
     ) -> Result<Piece, MalformedPlaceholder> {
-        let borrowed = characters.next_if_eq(&Self::BORROW).is_some();
+        let borrowed = characters.next_if_eq(&Access::BORROW).is_some();
         let written = Self::placeholder_name(characters)?;
         let (access, name) = Self::access(borrowed, &written);
         if let Some(binder) = name.strip_prefix(Self::BINDER) {
@@ -193,7 +173,7 @@ impl ParsedTemplate {
     }
 
     fn access(borrowed: bool, name: &str) -> (Access, &str) {
-        match name.strip_prefix(Self::OWNED) {
+        match name.strip_prefix(Access::OWNED) {
             Some(index) if !borrowed => (Access::Owned, index),
             _ if borrowed => (Access::Borrowed, name),
             _ => (Access::Passed, name),
@@ -456,6 +436,9 @@ impl ParsedTemplate {
                 .map_err(|aspect| PassingDifference::Argument(argument, aspect))?;
             match change {
                 BorrowChange::Kept => {}
+                BorrowChange::Added => {
+                    return Err(PassingDifference::Argument(argument, PassingAspect::Borrow));
+                }
                 _ if shared_reference => {}
                 BorrowChange::Dropped => dropped.push(argument),
                 BorrowChange::Changed => {

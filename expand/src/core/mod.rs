@@ -1,3 +1,4 @@
+mod access;
 mod binder_origin;
 mod binding;
 mod builtin;
@@ -26,6 +27,7 @@ mod unnamed_part_path;
 mod written_borrow;
 mod written_types;
 
+pub use access::Access;
 pub use binder_origin::BinderOrigin;
 pub use binding::{
     BindingArena, BindingId, BindingInfo, BindingKind, Declaration, ModuleDefinitions, Namespace,
@@ -66,9 +68,7 @@ pub use structural::{
     StructuralClause, StructuralKey, StructuralPiece, StructuralTemplate, StructuralValues,
     UnfilledPlaceholder,
 };
-pub use template::{
-    Access, MalformedPlaceholder, ParsedTemplate, PassingAspect, PassingDifference, Piece,
-};
+pub use template::{MalformedPlaceholder, ParsedTemplate, PassingAspect, PassingDifference, Piece};
 pub use template_braces::TemplateBraces;
 pub use template_operation::{Division, Operand, TemplateOperation};
 pub use types::{ClosureKind, TypeBinder, TypeBound, TypeExpr, TypeExprKind};

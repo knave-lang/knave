@@ -6,14 +6,17 @@ input_file: tests/fixtures/emit/contains_text.knv
 fn main() {
     crate::rt::restore_default_sigpipe();
     let name = "ea".to_string();
-    let words = vec!["a", "b"];
+    let mut words = vec!["a", "b"];
+    words.push("c");
+    let mut numbers: Vec<i64> = vec![1_i64, 2_i64];
+    numbers.push(4);
     let text = "pear".to_string();
     println!("{}", "pear".contains("ea"));
     println!("{}", text.contains("ea"));
     println!("{}", "pear".contains(name.as_str()));
     println!("{}", text.contains("ea"));
     println!("{}", words.contains(&"a"));
-    println!("{}", vec![1_i64, 2_i64].contains(&3))
+    println!("{}", numbers.contains(&3))
 }
 
 mod rt {

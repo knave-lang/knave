@@ -101,3 +101,9 @@
   (rust "std::mem::size_of_val({0})"
     (where ((a clone)) (fn (a) usize))
     (i64 "std::mem::size_of_val({&0})")))
+
+(def written-borrow-added-in-clause
+  (rust "std::mem::size_of_val({0})"
+    (where ((a sequence))
+      (fn ((ref a)) usize))
+    (str "std::mem::size_of_val(&{0})")))

@@ -80,6 +80,9 @@ impl<'c> ClauseCheck<'c> {
                 };
                 match self.argument_type(scheme, target, argument)? {
                     Type::Ref(..) => None,
+                    unsettled if !unsettled.is_concrete() => {
+                        Some(ClauseProblems::clause_type_unsettled(argument, clause))
+                    }
                     passed => Some(ClauseProblems::clause_drops_a_borrow(
                         argument,
                         &self.display.show(&passed),

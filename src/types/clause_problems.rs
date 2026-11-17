@@ -13,6 +13,15 @@ impl ClauseProblems {
         )
     }
 
+    pub(super) fn clause_type_unsettled(argument: usize, clause: Span) -> Diagnostic {
+        Self::dropped_borrow(
+            clause,
+            format!(
+                "this clause passes `{{{argument}}}` without the template's borrow, and its type for `{{{argument}}}` cannot be settled from the clause's target"
+            ),
+        )
+    }
+
     pub(super) fn trait_clause_drops_a_borrow(argument: usize, clause: Span) -> Diagnostic {
         Self::dropped_borrow(
             clause,

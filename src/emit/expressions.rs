@@ -2309,13 +2309,8 @@ impl<'a> ExpressionEmitter<'a> {
         context: TypeContext,
         role: ArgumentRole,
     ) -> Code {
-        if let Some(value) = self.adjusted_argument(argument, context) {
+        if let Some(value) = self.adjusted_argument(argument, context, role) {
             return value;
-        }
-        if let Some(reference) = role.reborrowed_reference(argument) {
-            return self
-                .expr_in(reference, context)
-                .spanned(argument.value.span);
         }
         let value = match (&argument.value.kind, role) {
             (TypedExprKind::Borrow(_, place), ArgumentRole::Receiver) => self.place(place, context),
@@ -2332,10 +2327,14 @@ impl<'a> ExpressionEmitter<'a> {
         &mut self,
         argument: &TypedArgument,
         context: TypeContext,
+        role: ArgumentRole,
     ) -> Option<Code> {
+        let span = argument.value.span;
+        let reborrowed = role.reborrowed_reference(argument);
         self.borrowed_index_argument(argument, context)
             .or_else(|| self.argument_under_written_borrows(argument, context))
             .or_else(|| self.dereferenced_field(argument))
+            .or_else(|| Some(self.expr_in(reborrowed?, context).spanned(span)))
     }
 
     fn dereferenced_field(&mut self, argument: &TypedArgument) -> Option<Code> {

@@ -32,6 +32,10 @@ impl<const PAST_THE_FIRST: bool> FirstPositions<PAST_THE_FIRST> {
         Self(self.0 | other.0)
     }
 
+    pub fn intersection(self, other: Self) -> Self {
+        Self(self.0 & other.0)
+    }
+
     pub fn positions(self) -> impl Iterator<Item = usize> {
         (0..Self::COUNT).filter(move |position| self.0 & (1 << position) != 0)
     }

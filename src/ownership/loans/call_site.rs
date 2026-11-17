@@ -3,7 +3,7 @@ use super::holdings::Holdings;
 use super::loan_rules::LoanRules;
 use super::passed_holdings::PassedHoldings;
 use crate::types::{
-    PositionTie, TemplateTies, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLambda,
+    Borrow, PositionTie, TemplateTies, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLambda,
 };
 
 pub struct CallSite<'c> {
@@ -41,7 +41,26 @@ impl<'c> CallSite<'c> {
     }
 
     pub fn parameter(&self, position: usize) -> CalledParameter<'c> {
-        CalledParameter::at(self.parameter_type(position), self.ties.as_ref(), position)
+        let ty = self.parameter_type(position);
+        if self.stores_the_reference(position) {
+            CalledParameter::storing(ty)
+        } else {
+            CalledParameter::untied(ty)
+        }
+    }
+
+    fn stores_the_reference(&self, position: usize) -> bool {
+        self.ties
+            .as_ref()
+            .is_some_and(|ties| ties.stores_the_reference(position, self.uncollapsed()))
+    }
+
+    fn uncollapsed(&self) -> impl Iterator<Item = usize> + 'c {
+        self.arguments
+            .iter()
+            .enumerate()
+            .filter(|(_, argument)| !matches!(argument.borrow, Borrow::Collapse(_)))
+            .map(|(position, _)| position)
     }
 
     fn parameter_type(&self, position: usize) -> Option<&'c Type> {

@@ -12,6 +12,7 @@ pub struct TemplateTies {
     held: TiedPositions,
     beneath: FirstPositionsOnly,
     stored: FirstPositionsAndBeyond,
+    fixing: FirstPositionsOnly,
 }
 
 impl TemplateTies {
@@ -21,6 +22,7 @@ impl TemplateTies {
             held: TiedPositions::of(held.iter().copied()),
             beneath: FirstPositionsOnly::default(),
             stored: FirstPositionsAndBeyond::default(),
+            fixing: FirstPositionsOnly::default(),
         }
     }
 
@@ -28,6 +30,14 @@ impl TemplateTies {
     pub fn beneath(self, positions: &[usize]) -> Self {
         Self {
             beneath: FirstPositionsOnly::of(positions.iter().copied()),
+            ..self
+        }
+    }
+
+    #[cfg(test)]
+    pub fn fixing(self, positions: &[usize]) -> Self {
+        Self {
+            fixing: FirstPositionsOnly::of(positions.iter().copied()),
             ..self
         }
     }
@@ -60,6 +70,7 @@ impl TemplateTies {
             held,
             beneath,
             stored: FirstPositionsAndBeyond::of(Self::stored_references(parameters)),
+            fixing: FirstPositionsOnly::of(Self::fixing_the_stored_variable(parameters)),
         })
     }
 
@@ -75,6 +86,7 @@ impl TemplateTies {
             held,
             beneath,
             stored: known.stored.union(other.stored),
+            fixing: known.fixing.intersection(other.fixing),
         })
     }
 
@@ -90,8 +102,15 @@ impl TemplateTies {
         }
     }
 
-    pub fn stores_the_reference(&self, position: usize) -> bool {
+    pub fn stores_the_reference(
+        &self,
+        position: usize,
+        uncollapsed: impl IntoIterator<Item = usize>,
+    ) -> bool {
         self.stored.contains(position)
+            && uncollapsed
+                .into_iter()
+                .all(|other| !self.fixing.contains(other))
     }
 
     fn reads_beneath(&self, position: usize) -> bool {
@@ -110,6 +129,25 @@ impl TemplateTies {
             .filter(|(_, parameter)| shared.iter().any(|generic| parameter.mentions(*generic)))
             .map(|(position, _)| position)
             .collect()
+    }
+
+    fn fixing_the_stored_variable(parameters: &[Type]) -> Vec<usize> {
+        let stored: Vec<GenericId> = parameters
+            .iter()
+            .filter_map(|parameter| match parameter.innermost_referent() {
+                Type::Generic(generic) => Some(*generic),
+                _ => None,
+            })
+            .collect();
+        match stored.split_first() {
+            Some((generic, others)) if others.iter().all(|other| other == generic) => parameters
+                .iter()
+                .enumerate()
+                .filter(|(_, parameter)| parameter.mentions(*generic))
+                .map(|(position, _)| position)
+                .collect(),
+            _ => Vec::new(),
+        }
     }
 
     fn stored_references(parameters: &[Type]) -> Vec<usize> {
@@ -206,6 +244,7 @@ mod tests {
     use super::TemplateTies;
     use crate::core::{BindingId, ClosureKind, PrimitiveType};
     use crate::types::PositionTie;
+    use crate::types::first_positions::FirstPositionsOnly;
     use crate::types::pipelines::Pipelines;
     use crate::types::rust_types::RustTypeTable;
     use crate::types::ty::{GenericId, GenericParam, Lifetime, Scheme, Type};
@@ -250,7 +289,10 @@ mod tests {
             vec![Type::shared(TiesFixture::generic()), index],
             Type::shared(TiesFixture::generic()),
         );
-        assert_eq!(at, Some(TemplateTies::new(&[0], &[0]).storing(&[0])));
+        assert_eq!(
+            at,
+            Some(TemplateTies::new(&[0], &[0]).storing(&[0]).fixing(&[0]))
+        );
     }
 
     #[test]
@@ -280,7 +322,11 @@ mod tests {
         assert_eq!(pop, Some(TemplateTies::new(&[], &[0]).beneath(&[0])));
         assert_eq!(
             either,
-            Some(TemplateTies::new(&[], &[0, 1]).storing(&[0, 1]))
+            Some(
+                TemplateTies::new(&[], &[0, 1])
+                    .storing(&[0, 1])
+                    .fixing(&[0, 1])
+            )
         );
     }
 
@@ -299,9 +345,9 @@ mod tests {
         let vector = Type::mutable(TiesFixture::generic());
         let ties = TiesFixture::ties(vec![nested, Type::str_ref(), vector], Type::unit())
             .expect("the result holds no borrow");
-        assert!(ties.stores_the_reference(0));
-        assert!(!ties.stores_the_reference(1));
-        assert!(!ties.stores_the_reference(2));
+        assert!(ties.stores_the_reference(0, []));
+        assert!(!ties.stores_the_reference(1, []));
+        assert!(!ties.stores_the_reference(2, []));
     }
 
     #[test]
@@ -324,11 +370,38 @@ mod tests {
     }
 
     #[test]
+    fn two_stored_type_variables_keep_each_reference_whole_whatever_the_others_pass() {
+        let pair = TiesFixture::ties(
+            vec![TiesFixture::generic(), TiesFixture::other_generic()],
+            Type::unit(),
+        )
+        .expect("the result holds no borrow");
+        let single = TiesFixture::ties(
+            vec![TiesFixture::generic(), TiesFixture::generic()],
+            Type::unit(),
+        )
+        .expect("the result holds no borrow");
+        assert_eq!(pair.fixing, FirstPositionsOnly::default());
+        assert_eq!(single.fixing, FirstPositionsOnly::of([0, 1]));
+    }
+
+    #[test]
+    fn a_widened_variable_is_fixed_only_where_every_signature_fixes_it() {
+        let single = TiesFixture::ties(
+            vec![TiesFixture::generic(), TiesFixture::generic()],
+            Type::unit(),
+        );
+        let concrete = TiesFixture::ties(vec![Type::str_ref(), Type::str_ref()], Type::unit());
+        let widened = TemplateTies::widened(single, concrete).expect("both are settled");
+        assert_eq!(widened.fixing, FirstPositionsOnly::default());
+    }
+
+    #[test]
     fn a_position_past_the_first_word_keeps_its_reference_whole() {
         let ties = TiesFixture::ties(vec![Type::str_ref()], Type::unit())
             .expect("the result holds no borrow");
-        assert!(!ties.stores_the_reference(0));
-        assert!(ties.stores_the_reference(64));
+        assert!(!ties.stores_the_reference(0, []));
+        assert!(ties.stores_the_reference(64, []));
     }
 
     #[test]

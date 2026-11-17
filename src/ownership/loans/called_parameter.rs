@@ -1,4 +1,4 @@
-use crate::types::{TemplateTies, Type};
+use crate::types::Type;
 
 #[derive(Clone, Copy)]
 pub struct CalledParameter<'t> {
@@ -14,10 +14,10 @@ impl<'t> CalledParameter<'t> {
         }
     }
 
-    pub fn at(ty: Option<&'t Type>, ties: Option<&TemplateTies>, position: usize) -> Self {
+    pub fn storing(ty: Option<&'t Type>) -> Self {
         Self {
             ty,
-            stores_the_reference: ties.is_some_and(|ties| ties.stores_the_reference(position)),
+            stores_the_reference: true,
         }
     }
 

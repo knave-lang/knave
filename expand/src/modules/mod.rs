@@ -1,3 +1,4 @@
+mod export_table;
 mod libraries;
 mod located_module;
 mod module_origin;

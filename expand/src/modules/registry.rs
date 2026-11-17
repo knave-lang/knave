@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::export_table::ExportTable;
 use super::module_scopes::ModuleScopes;
 use crate::core::{BindingId, ModuleId, ModulePath, Namespace};
 use crate::reader::Symbol;
@@ -14,10 +15,11 @@ enum LoadStatus {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(bound(deserialize = "'de: 'static"))]
 pub struct ModuleRecord {
     path: ModulePath,
     scopes: ModuleScopes,
-    exports: FxHashMap<(Rc<str>, Namespace), BindingId>,
+    exports: ExportTable,
     status: LoadStatus,
 }
 
@@ -35,17 +37,15 @@ impl ModuleRecord {
     }
 
     pub fn export(&mut self, name: Rc<str>, namespace: Namespace, binding: BindingId) {
-        self.exports.insert((name, namespace), binding);
+        self.exports.insert(name, namespace, binding);
     }
 
     pub fn exported(&self, name: &str, namespace: Namespace) -> Option<BindingId> {
-        self.exports.get(&(Rc::from(name), namespace)).copied()
+        self.exports.get(name, namespace)
     }
 
-    pub fn exports(&self) -> impl Iterator<Item = (&Rc<str>, Namespace, BindingId)> {
-        self.exports
-            .iter()
-            .map(|((name, namespace), binding)| (name, *namespace, *binding))
+    pub fn exports(&self) -> impl Iterator<Item = (Rc<str>, Namespace, BindingId)> + '_ {
+        self.exports.entries()
     }
 
     pub fn is_loading(&self) -> bool {
@@ -64,7 +64,7 @@ impl ModuleRegistry {
         self.adopt(ModuleRecord {
             path,
             scopes,
-            exports: FxHashMap::default(),
+            exports: ExportTable::default(),
             status: LoadStatus::Loading,
         })
     }

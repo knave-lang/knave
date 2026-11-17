@@ -4,6 +4,7 @@ mod name_entry;
 mod name_slots;
 mod phase;
 mod qualified_names;
+mod saved_exports;
 mod saved_names;
 mod scope_chain;
 mod scope_kind;
@@ -14,6 +15,7 @@ mod visible_names;
 
 pub use binding_table::{BindingTable, Resolution};
 pub use phase::Phase;
+pub use saved_exports::{ExportBytes, ExportParts, SavedExports};
 pub use saved_names::{NameTables, SavedNames};
 pub use scope_chain::{ChainPrefix, ScopeChain};
 pub(crate) use scope_kind::ScopeKind;

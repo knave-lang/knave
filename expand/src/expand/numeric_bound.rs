@@ -99,7 +99,7 @@ impl NumericBound {
             .exports()
             .filter_map(|(name, _, binding)| {
                 let rows = Self::covered_rows(family, declarations.get(&binding)?)?;
-                Some((rows, Rc::clone(name)))
+                Some((rows, name))
             })
             .collect()
     }

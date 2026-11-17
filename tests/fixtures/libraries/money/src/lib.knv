@@ -1,0 +1,6 @@
+(use coins ->float float)
+
+(export ->float float i64)
+
+(defstruct i64
+  :n bool)

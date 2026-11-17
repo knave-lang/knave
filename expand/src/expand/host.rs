@@ -83,7 +83,7 @@ impl ModuleQueries for Expander<'_> {
         self.modules
             .records()
             .filter(|record| {
-                let library = self.library_of(record.path());
+                let library = self.library_modules.owner_of(record.path());
                 ModuleOrigin::new(record.path(), library.as_deref()).is_project()
             })
             .map(ModuleRecord::symbol)

@@ -206,7 +206,7 @@ impl Expander<'_> {
 
     fn note_library_module(&mut self, path: &ModulePath, owner: Option<Rc<str>>) {
         if let Some(owner) = owner {
-            self.library_modules.push((path.clone(), owner));
+            self.library_modules.remember(path, owner);
         }
     }
 
@@ -216,11 +216,8 @@ impl Expander<'_> {
         })
     }
 
-    pub(super) fn library_of(&self, path: &ModulePath) -> Option<Rc<str>> {
-        self.library_modules
-            .iter()
-            .find(|(loaded, _)| loaded == path)
-            .map(|(_, owner)| Rc::clone(owner))
+    pub(super) fn expands_library_module(&self) -> bool {
+        self.importing_owner().is_some()
     }
 
     fn local_file_diagnosis(&self) -> LocalFileDiagnosis<'_> {
@@ -229,7 +226,8 @@ impl Expander<'_> {
 
     fn importing_owner(&self) -> Option<Rc<str>> {
         let module = self.current_module?;
-        self.library_of(self.modules.get(module).path())
+        self.library_modules
+            .owner_of(self.modules.get(module).path())
     }
 
     fn loaded(&self, id: ModuleId, path: &ModulePath, span: Span) -> Result<ModuleId, Diagnostic> {

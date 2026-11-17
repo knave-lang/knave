@@ -1,0 +1,13 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(0).stderr()
+---
+warning[L0259]: `float` hides the kernel type `float`
+ --> src/main.knv:1:20
+  |
+1 | (use money ->float float)
+  |                    ^^^^^ this imports `float` in place of the kernel type
+  |
+  = note: in this scope, a type written `float` names this binding, while a printed `float` is the kernel type
+  = help: leave `float` out of this `use`, or rename it in the module that defines it
+  = note: run `knave doc L0259` for an explanation

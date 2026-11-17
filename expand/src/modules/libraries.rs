@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use super::local_files::LocalFiles;
 use super::local_root::LocalRoot;
 use super::search_scope::SearchScope;
 use super::unlisted_library::UnlistedLibrary;
@@ -126,13 +127,20 @@ impl LibraryTable {
         self.sees_library(owner, written)
     }
 
-    pub(super) fn local_root(&self, owner: &str) -> Option<LocalRoot<'_>> {
-        let library = self.named(Some(owner))?;
-        Some(LocalRoot::primary(
-            &library.source_root,
-            &library.display_root,
-            &Self::UNSCOPED,
-        ))
+    pub(super) fn local_files<'s>(
+        &'s self,
+        owner: &str,
+        loads_from_program: impl Fn(&ModulePath) -> bool + 's,
+    ) -> LocalFiles<'s> {
+        let Some(library) = self.named(Some(owner)) else {
+            return LocalFiles::new(Vec::new(), loads_from_program);
+        };
+        let root = LocalRoot::primary(&library.source_root, &library.display_root, &Self::UNSCOPED);
+        LocalFiles::new(vec![root], move |path| {
+            loads_from_program(path)
+                || self.sees_library(Some(&library.name), path)
+                || path.as_str() == library.root_module
+        })
     }
 
     fn named(&self, owner: Option<&str>) -> Option<&LibraryRoot> {

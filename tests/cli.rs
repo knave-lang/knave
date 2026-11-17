@@ -10662,6 +10662,42 @@ fn task_library_under_tests_with_a_dotted_use_helps_with_its_path() {
     insta::assert_snapshot!(task.assert_exit_code(1).stderr());
 }
 
+#[test]
+fn library_dotted_use_of_its_own_root_file_names_the_file() {
+    let sandbox = Sandbox::new("library_dotted_use_root_file")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (shapes :path \"../shapes\")))\n",
+        )
+        .with_file(
+            "app/src/main.knv",
+            "(use shapes area)\n\n(defn main () (println (area 2)))\n",
+        )
+        .with_file(
+            &format!("shapes/{}", Language::project_file_name()),
+            "(defproject shapes)\n",
+        )
+        .with_file(
+            "shapes/src/lib.knv",
+            "(use ./lib)\n\n(export area)\n\n(defn area (side) (* side side))\n",
+        );
+    let check = sandbox.compiler_in("app", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn test_of_the_project_using_a_source_module_through_its_folder_is_told_its_module_path() {
+    let sandbox = Sandbox::new("test_project_dotted_source")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file("src/text/marks.knv", PROJECT_MARKS)
+        .with_file(
+            "tests/marks.knv",
+            "(use ./src/text/marks bang)\n\n(use prelude/test assert deftest)\n\n(deftest bangs (assert (= bang \"!\")))\n",
+        );
+    let test = sandbox.compiler(&["test", "."]);
+    insta::assert_snapshot!(test.assert_exit_code(1).stderr());
+}
+
 const DOTTED_MARKS_TEST: &str = "(use ../src/text/marks bang)\n\n(use prelude/test assert deftest)\n\n(deftest bangs (assert (= bang \"!\")))\n";
 const DOTTED_LIBRARY_ROOT: &str =
     "(use ./square side)\n\n(use ../square)\n\n(export area)\n\n(defn area (side) (* side side))\n";

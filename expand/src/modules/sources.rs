@@ -226,21 +226,20 @@ impl ModuleSources {
     }
 
     pub fn local_files(&self, owner: Option<Rc<str>>) -> LocalFiles<'_> {
-        let roots = match owner.as_deref() {
-            Some(owner) => self.libraries.local_root(owner).into_iter().collect(),
-            None => self.local_roots().collect(),
-        };
-        LocalFiles::new(roots, move |path| {
-            self.loads_from_elsewhere(owner.as_deref(), path)
-        })
+        match owner {
+            Some(owner) => self
+                .libraries
+                .local_files(&owner, |path| !Self::is_written(path)),
+            None => LocalFiles::new(self.local_roots().collect(), |path| {
+                self.loads_from_elsewhere(path)
+            }),
+        }
     }
 
-    fn loads_from_elsewhere(&self, owner: Option<&str>, path: &ModulePath) -> bool {
-        let claimed = match owner {
-            Some(_) => self.libraries.names_library(owner, path),
-            None => Self::is_reserved(path) || self.libraries.owner_of(path).is_some(),
-        };
-        !Self::is_written(path) || claimed
+    fn loads_from_elsewhere(&self, path: &ModulePath) -> bool {
+        !Self::is_written(path)
+            || Self::is_reserved(path)
+            || self.libraries.owner_of(path).is_some()
     }
 
     pub fn is_prelude(path: &ModulePath) -> bool {

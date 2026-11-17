@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use super::name_key::NameKey;
 use super::name_slots::NameSlots;
 use crate::core::{BindingId, Namespace};
 
@@ -51,7 +52,7 @@ impl ExportBytes {
         };
         for (position, (name, namespace, binding)) in exports.enumerate() {
             bytes.add(name, namespace, binding);
-            NameSlots::claim(&mut bytes.slots, name, namespace, position);
+            NameSlots::claim(&mut bytes.slots, NameKey::new(name, namespace), position);
         }
         bytes
     }
@@ -111,7 +112,7 @@ impl SavedExports {
     }
 
     pub(super) fn position(&self, name: &str, namespace: Namespace) -> Option<usize> {
-        NameSlots::find(self.slots, name, namespace, |position| {
+        NameSlots::find(self.slots, NameKey::new(name, namespace), |position| {
             self.holds_key(position, name, namespace)
         })
     }

@@ -18,7 +18,7 @@ fn test_deref_of_a_local() {
     crate::rt::check_equal(
         "test_deref_side.knv:15:3",
         "(assert (= (deref borrowed) 1))",
-        &({ *borrowed }),
+        borrowed,
         &1,
         |left: &i64, right: &i64| *left == *right,
     );
@@ -28,7 +28,7 @@ fn holds_one(item: &i64) {
     crate::rt::check_equal(
         "test_deref_side.knv:20:3",
         "(assert (= (deref item) 1))",
-        &({ *item }),
+        item,
         &1,
         |left: &i64, right: &i64| *left == *right,
     )
@@ -43,7 +43,7 @@ fn test_deref_of_a_call() {
     crate::rt::check_equal(
         "test_deref_side.knv:26:3",
         "(assert (= (deref (count-of crate)) 1))",
-        &({ *count_of(&crate_) }),
+        count_of(&crate_),
         &1,
         |left: &i64, right: &i64| *left == *right,
     );

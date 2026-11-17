@@ -1,0 +1,13 @@
+(use prelude/test assert deftest)
+
+(defstruct point
+  :x i64)
+
+(derive point copy clone partial-eq)
+
+(deftest a-copy-deref-side-without-show
+  (local here (->point :x 1))
+  (local held (ref here))
+  (assert (= (deref held) (->point :x 1))))
+
+(defn main () (println "main"))

@@ -75,10 +75,11 @@ verdict_of_applied() {
 run_test_set() {
   local log=$1
   shift
-  local assignments=() arguments=()
+  local assignments=() arguments=() cargo_arguments=()
   split_assignments "$@"
+  split_cargo_arguments
   echo "cargo test $*" >> "$log"
-  env "${assignments[@]}" timeout --kill-after="$KILL_GRACE" "$BUILD_SECONDS" cargo test --no-run "${arguments[@]}" >> "$log" 2>&1
+  env "${assignments[@]}" timeout --kill-after="$KILL_GRACE" "$BUILD_SECONDS" cargo test --no-run "${cargo_arguments[@]}" >> "$log" 2>&1
   local build_status=$?
   if ((build_status != 0)); then
     verdict_of_build "$build_status" "$log" "$*"
@@ -95,6 +96,13 @@ split_assignments() {
     else
       arguments+=("$word")
     fi
+  done
+}
+
+split_cargo_arguments() {
+  for word in "${arguments[@]}"; do
+    [[ $word == -- ]] && return
+    cargo_arguments+=("$word")
   done
 }
 

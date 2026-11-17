@@ -197,6 +197,15 @@ impl TypeChecker {
     }
 
     fn report_path_clash(&mut self, trait_binding: BindingId, head: BindingId, span: Span) {
+        let Some(path) = self
+            .declarations
+            .traits
+            .rust_paths
+            .written(trait_binding)
+            .cloned()
+        else {
+            return;
+        };
         let Some(written) = self.written_impl_of_path(trait_binding, head) else {
             return;
         };
@@ -208,7 +217,6 @@ impl TypeChecker {
         if !self.reported_path_clashes.insert(clash) {
             return;
         }
-        let path = self.declarations.traits.rust_paths[&trait_binding].to_string();
         let written_trait = self.bindings.get(written_binding).name().to_string();
         let trait_name = self.bindings.get(trait_binding).name().to_string();
         let implementor = self.bindings.get(head).name().to_string();
@@ -228,12 +236,12 @@ impl TypeChecker {
         trait_binding: BindingId,
         head: BindingId,
     ) -> Option<&TypedTraitImpl> {
-        let resolved_paths = &self.declarations.traits.resolved_paths;
-        let path = resolved_paths.get(&trait_binding)?;
-        self.declarations.traits.impls.iter().find(|implementation| {
+        let traits = &self.declarations.traits;
+        let path = traits.rust_paths.resolved(trait_binding)?;
+        traits.impls.iter().find(|implementation| {
             implementation.trait_binding != trait_binding
                 && matches!(implementation.implementor, Type::Named(binding, _) if binding == head)
-                && resolved_paths.get(&implementation.trait_binding) == Some(path)
+                && traits.rust_paths.resolved(implementation.trait_binding) == Some(path)
         })
     }
 }

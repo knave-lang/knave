@@ -60,6 +60,7 @@ mod reached_traits;
 mod receiver_kind;
 mod returned_values;
 mod rust_trait;
+mod rust_trait_paths;
 mod rust_types;
 mod selection;
 mod selfless_methods;

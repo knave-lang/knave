@@ -123,6 +123,7 @@ mod test_run;
 mod token_colors;
 mod tree_bounds;
 mod tree_file;
+mod tree_modules;
 mod types;
 mod unreadable_file;
 mod user_label_output;

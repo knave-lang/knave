@@ -11,6 +11,7 @@ use super::exit_status::ExitStatus;
 use super::project_task::TaskName;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use super::tree_modules::TreeModules;
 use super::user_label_output::UserLabelOutput;
 use crate::core::{Expr, ExprKind, Leaf, Literal, ModulePath};
 use crate::diagnostic::Diagnostics;
@@ -42,6 +43,8 @@ impl TaskCatalog {
     const BLOCK_START: &'static str = "(do ";
     const BLOCK_END: &'static str = " (do))";
     const SEPARATOR: &'static str = " ";
+    const HIDDEN_FOLDER: &'static str = ":hidden-folder";
+    const PROJECT_FILE: &'static str = ":project-file";
 
     pub fn user_output(inner: Rc<dyn DiagnosticOutput>) -> Rc<dyn DiagnosticOutput> {
         let distinct = Rc::new(DistinctOutput::new(inner));
@@ -54,11 +57,7 @@ impl TaskCatalog {
     }
 
     pub fn load(tree: &EntryTree, terminal: &mut Terminal) -> Result<Self, ExitStatus> {
-        let modules: Vec<String> = tree
-            .module_paths()?
-            .iter()
-            .map(|module| StringLiteral::quoted(module))
-            .collect();
+        let modules = Self::tree_arguments(&tree.module_paths()?);
         Ok(Self {
             request: EvaluationRequest {
                 module: tree.load(terminal)?,
@@ -66,6 +65,22 @@ impl TaskCatalog {
             },
             names_lookup: format!("(task-names {})", modules.join(Self::SEPARATOR)),
         })
+    }
+
+    fn tree_arguments(tree: &TreeModules) -> Vec<String> {
+        let modules = tree
+            .modules
+            .iter()
+            .map(|module| StringLiteral::quoted(module));
+        let hidden = tree
+            .hidden_folders
+            .iter()
+            .map(|folder| format!("{} {}", Self::HIDDEN_FOLDER, StringLiteral::quoted(folder)));
+        let projects = tree
+            .project_files
+            .iter()
+            .map(|file| format!("{} {}", Self::PROJECT_FILE, StringLiteral::quoted(file)));
+        modules.chain(hidden).chain(projects).collect()
     }
 
     pub fn names(&self, terminal: &mut Terminal) -> Result<Vec<TaskName>, ExitStatus> {

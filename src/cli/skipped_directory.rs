@@ -23,7 +23,7 @@ impl SkippedDirectory {
         Self::is_hidden(directory) || self.is_build_parent(directory)
     }
 
-    fn is_hidden(directory: &Path) -> bool {
+    pub fn is_hidden(directory: &Path) -> bool {
         directory
             .file_name()
             .and_then(|name| name.to_str())

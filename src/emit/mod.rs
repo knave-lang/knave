@@ -1,3 +1,4 @@
+mod argument_role;
 mod assigned_in_place;
 mod bound_before;
 mod callee_definitions;

@@ -121,10 +121,8 @@ impl OpenVariable {
     }
 
     fn generalize(self, checker: &mut TypeChecker, name: &str) -> GenericParam {
-        let param = checker
-            .generics
-            .declare(name, self.bounds, &mut checker.unifier);
-        checker.unifier.bind(self.var, Type::Generic(param.id));
-        param
+        checker
+            .generic_declarations()
+            .generalize(self.var, name, self.bounds)
     }
 }

@@ -16,6 +16,7 @@ mod coverage;
 mod declarations;
 #[cfg(test)]
 mod declarations_fixture;
+mod declared_generics;
 mod declared_traits;
 mod declared_types;
 mod declared_variant;
@@ -30,6 +31,7 @@ mod expectation;
 mod field_parameters;
 mod finalize;
 mod form_results;
+mod generic_declarations;
 mod generic_registry;
 mod graph;
 mod impl_overlap;

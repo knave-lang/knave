@@ -1,0 +1,7 @@
+(def zero
+  (rust "Default::default()"
+    (where ((t clone)) (fn () t))
+    (i64 "i64::default()")))
+
+(defn main ()
+  (println (+ 1 (the i64 (zero)))))

@@ -36,20 +36,23 @@ impl<'t> ClausedTemplate<'t> {
             return Some(ClauseChooserProblems::missing(self.type_span));
         };
         let fixed = self
-            .argument_types()
-            .iter()
-            .any(|argument| argument.named_bindings().contains(&chooser.variable));
+            .signature_types()
+            .any(|written| written.named_bindings().contains(&chooser.variable));
         (!fixed).then(|| ClauseChooserProblems::fixed_by_no_argument(chooser.span))
     }
 
-    fn argument_types(&self) -> &[TypeExpr] {
-        let TypeExprKind::Where(_, body) = self.type_expr.kind() else {
-            return &[];
+    fn signature_types(&self) -> impl Iterator<Item = &TypeExpr> {
+        let body = match self.type_expr.kind() {
+            TypeExprKind::Where(_, body) => Some(body.kind()),
+            _ => None,
         };
-        match body.kind() {
-            TypeExprKind::Function(_, parameters, _) => parameters,
-            _ => &[],
-        }
+        let (parameters, result) = match body {
+            Some(TypeExprKind::Function(_, parameters, result)) => {
+                (parameters.as_slice(), Some(&**result))
+            }
+            _ => (&[][..], None),
+        };
+        parameters.iter().chain(result)
     }
 }
 

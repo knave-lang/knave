@@ -107,3 +107,8 @@
     (where ((a sequence))
       (fn ((ref a)) usize))
     (str "std::mem::size_of_val(&{0})")))
+
+(def marker-borrow-added-in-clause
+  (rust "std::mem::size_of_val({0})"
+    (where ((a clone)) (fn ((ref a)) usize))
+    (i64 "std::mem::size_of_val({&0})")))

@@ -33,4 +33,9 @@
       (fn (whole part) bool))
     ((ref str) "{0}.contains({1})")))
 
+(def matched-size
+  (rust "match &{&0} {{ v => std::mem::size_of_val(v) }}"
+    (where ((a clone)) (fn (a) usize))
+    ((ref str) "match {0} {{ v => std::mem::size_of_val(v) }}")))
+
 (defn main () (println (measure 3)))

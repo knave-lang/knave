@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use super::first_positions::FirstPositions;
+use super::first_positions::{FirstPositionsAndBeyond, FirstPositionsOnly};
 use super::pipelines::Pipelines;
 use super::position_tie::PositionTie;
 use super::tied_positions::TiedPositions;
@@ -10,8 +10,8 @@ use super::ty::{GenericId, Lifetime, Scheme, Type};
 pub struct TemplateTies {
     lifetime: TiedPositions,
     held: TiedPositions,
-    beneath: FirstPositions,
-    stored: FirstPositions,
+    beneath: FirstPositionsOnly,
+    stored: FirstPositionsAndBeyond,
 }
 
 impl TemplateTies {
@@ -19,15 +19,15 @@ impl TemplateTies {
         Self {
             lifetime: TiedPositions::of(lifetime.iter().copied()),
             held: TiedPositions::of(held.iter().copied()),
-            beneath: FirstPositions::default(),
-            stored: FirstPositions::default(),
+            beneath: FirstPositionsOnly::default(),
+            stored: FirstPositionsAndBeyond::default(),
         }
     }
 
     #[cfg(test)]
     pub fn beneath(self, positions: &[usize]) -> Self {
         Self {
-            beneath: FirstPositions::of(positions.iter().copied()),
+            beneath: FirstPositionsOnly::of(positions.iter().copied()),
             ..self
         }
     }
@@ -35,7 +35,7 @@ impl TemplateTies {
     #[cfg(test)]
     pub fn storing(self, positions: &[usize]) -> Self {
         Self {
-            stored: FirstPositions::of(positions.iter().copied()),
+            stored: FirstPositionsAndBeyond::of(positions.iter().copied()),
             ..self
         }
     }
@@ -51,7 +51,7 @@ impl TemplateTies {
         let held = TiedPositions::of(Self::held_ties(parameters, result, &generics)).union(
             &TiedPositions::of(Self::adapted_iterators(parameters, result, pipelines)),
         );
-        let beneath = FirstPositions::of(held.positions().filter(|position| {
+        let beneath = FirstPositionsOnly::of(held.positions().filter(|position| {
             !lifetime.contains(*position)
                 && matches!(parameters[*position], Type::Ref(..) | Type::Mut(..))
         }));
@@ -59,7 +59,7 @@ impl TemplateTies {
             lifetime,
             held,
             beneath,
-            stored: FirstPositions::of(Self::stored_references(parameters)),
+            stored: FirstPositionsAndBeyond::of(Self::stored_references(parameters)),
         })
     }
 
@@ -67,7 +67,7 @@ impl TemplateTies {
         let (known, other) = (known?, other?);
         let held = known.held.union(&other.held);
         let beneath =
-            FirstPositions::of(held.positions().filter(|position| {
+            FirstPositionsOnly::of(held.positions().filter(|position| {
                 known.reads_beneath(*position) && other.reads_beneath(*position)
             }));
         Some(Self {
@@ -91,7 +91,7 @@ impl TemplateTies {
     }
 
     pub fn stores_the_reference(&self, position: usize) -> bool {
-        !FirstPositions::reaches(position) || self.stored.contains(position)
+        self.stored.contains(position)
     }
 
     fn reads_beneath(&self, position: usize) -> bool {

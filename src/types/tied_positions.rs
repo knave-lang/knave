@@ -1,8 +1,8 @@
-use super::first_positions::FirstPositions;
+use super::first_positions::FirstPositionsOnly;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TiedPositions {
-    low: FirstPositions,
+    low: FirstPositionsOnly,
     high: Option<Box<HighPositions>>,
 }
 
@@ -20,7 +20,7 @@ impl TiedPositions {
     }
 
     pub fn contains(&self, position: usize) -> bool {
-        match FirstPositions::reaches(position) {
+        match FirstPositionsOnly::reaches(position) {
             true => self.low.contains(position),
             false => self
                 .high
@@ -40,8 +40,8 @@ impl TiedPositions {
     }
 
     fn insert(&mut self, position: usize) {
-        match FirstPositions::reaches(position) {
-            true => self.low = self.low.union(FirstPositions::of([position])),
+        match FirstPositionsOnly::reaches(position) {
+            true => self.low = self.low.union(FirstPositionsOnly::of([position])),
             false => {
                 let high = &mut self.high.get_or_insert_with(Box::default).0;
                 if let Err(at) = high.binary_search(&position) {

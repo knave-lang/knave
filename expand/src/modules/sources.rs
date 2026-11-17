@@ -1,9 +1,11 @@
 use std::fs;
 use std::io;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use super::libraries::LibraryTable;
+use super::local_files::LocalFiles;
+use super::local_root::LocalRoot;
 use super::located_module::LocatedModule;
 use super::module_source::ModuleSource;
 use super::search_scope::SearchScope;
@@ -192,7 +194,7 @@ impl ModuleSources {
         if owner.is_some() || self.libraries.owner_of(written).is_some() {
             return None;
         }
-        let file_name = Self::file_name(written);
+        let file_name = Language::file_name(written.as_str());
         let hidden = fallback_root.join(&file_name);
         let hides = self.root.join(&file_name).is_file() && hidden.is_file();
         hides.then(|| HiddenSourceModule {
@@ -208,50 +210,26 @@ impl ModuleSources {
 
     fn local_module(&self, written: &ModulePath) -> Option<PathBuf> {
         let head = LibraryTable::head(written);
-        let file = PathBuf::from(format!("{head}.{}", Language::EXTENSION));
+        let file = PathBuf::from(Language::file_name(head));
         self.local_roots().find_map(|local_root| {
             [&file, Path::new(head)]
                 .into_iter()
                 .find(|local| local_root.reaches(local))
-                .map(|local| local_root.display_root.join(local))
+                .map(|local| local_root.display_root().join(local))
         })
     }
 
     fn local_roots(&self) -> impl Iterator<Item = LocalRoot<'_>> {
+        let primary = LocalRoot::primary(&self.root, &self.display_root, &self.scope);
         let fallback = self.fallback_root.as_deref();
-        let primary = LocalRoot {
-            root: &self.root,
-            display_root: &self.display_root,
-            scope: &self.scope,
-            role: RootRole::Primary,
-        };
-        std::iter::once(primary).chain(fallback.map(|root| LocalRoot {
-            root,
-            display_root: root,
-            scope: &self.scope,
-            role: RootRole::Fallback,
-        }))
+        std::iter::once(primary).chain(fallback.map(|root| LocalRoot::fallback(root, &self.scope)))
     }
 
-    pub fn unreachable_file(&self, path: &ModulePath) -> Option<PathBuf> {
-        let file_name = Self::file_name(path);
-        self.local_roots()
-            .find(|local_root| local_root.holds_unreachable(Path::new(&file_name)))
-            .map(|local_root| Self::normalized(&local_root.display_root.join(&file_name)))
-    }
-
-    fn normalized(path: &Path) -> PathBuf {
-        let mut normalized = PathBuf::new();
-        for component in path.components() {
-            match component {
-                Component::CurDir => {}
-                Component::ParentDir if normalized.file_name().is_some() => {
-                    normalized.pop();
-                }
-                other => normalized.push(other),
-            }
+    pub fn local_files(&self, owner: Option<&str>) -> LocalFiles<'_> {
+        match owner {
+            Some(_) => LocalFiles::new(Vec::new()),
+            None => LocalFiles::new(self.local_roots().collect()),
         }
-        normalized
     }
 
     pub fn is_prelude(path: &ModulePath) -> bool {
@@ -330,7 +308,7 @@ impl ModuleSources {
             .find(is_named)
             .or_else(|| Self::TOOL_FILES.iter().find(is_named))
             .map(|(_, text)| ModuleSource::Text {
-                name: Self::file_name(path),
+                name: Language::file_name(path.as_str()),
                 text: (*text).to_string(),
             })
     }
@@ -359,15 +337,15 @@ impl ModuleSources {
     }
 
     fn user_file(&self, path: &ModulePath) -> Option<ModuleSource> {
-        let file_name = Self::file_name(path);
+        let file_name = Language::file_name(path.as_str());
         self.local_roots().find_map(|local_root| {
             if !local_root.reaches(Path::new(&file_name)) {
                 return None;
             }
-            let text = Self::read_file(&local_root.root.join(&file_name)).ok()?;
+            let text = Self::read_file(&local_root.root().join(&file_name)).ok()?;
             Some(ModuleSource::Text {
                 name: local_root
-                    .display_root
+                    .display_root()
                     .join(&file_name)
                     .display()
                     .to_string(),
@@ -375,23 +353,6 @@ impl ModuleSources {
             })
         })
     }
-
-    fn file_name(path: &ModulePath) -> String {
-        format!("{path}.{}", Language::EXTENSION)
-    }
-}
-
-struct LocalRoot<'s> {
-    root: &'s Path,
-    display_root: &'s Path,
-    scope: &'s SearchScope,
-    role: RootRole,
-}
-
-#[derive(Clone, Copy)]
-enum RootRole {
-    Primary,
-    Fallback,
 }
 
 pub struct PublicPrelude;
@@ -405,25 +366,6 @@ impl PublicPrelude {
             .filter(|module| !module.starts_with(ModuleSources::INTERNAL_DIRECTORY))
             .map(String::from)
             .collect()
-    }
-}
-
-impl LocalRoot<'_> {
-    fn reaches(&self, local: &Path) -> bool {
-        let path = self.root.join(local);
-        path.exists() && self.allows(&path)
-    }
-
-    fn holds_unreachable(&self, local: &Path) -> bool {
-        let path = self.root.join(local);
-        path.exists() && !self.allows(&path)
-    }
-
-    fn allows(&self, path: &Path) -> bool {
-        match self.role {
-            RootRole::Primary => self.scope.primary_reaches(path),
-            RootRole::Fallback => self.scope.fallback_reaches(path),
-        }
     }
 }
 

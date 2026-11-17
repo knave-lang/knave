@@ -20,14 +20,14 @@ error[L0201]: cannot find `helper` in this scope
   |
   = note: run `knave doc L0201` for an explanation
 ---
-error[L0259]: module path `../tests/support` has a `.` or `..` part
+error[L0260]: module path `../tests/support` has a `.` or `..` part
  --> tasks/t.knv:1:6
   |
 1 | (use ../tests/support helper)
   |      ^^^^^^^^^^^^^^^^ a module path names a file from the root directory
   |
-  = note: this path names no file under the root directory
-  = note: run `knave doc L0259` for an explanation
+  = note: `tests/support.knv` exists, but no module path this module can use names it
+  = note: run `knave doc L0260` for an explanation
 
 error[L0201]: cannot find `helper` in this scope
  --> tasks/t.knv:3:16

@@ -2,6 +2,7 @@
 (use dot_segment/./shapes)
 (use dot_segment/../dot_segment/shapes)
 (use ../shapes)
+(use ../expand/dot_segment/shapes)
 (use dot_segment/..)
 (use dot_segment/shapes area)
 

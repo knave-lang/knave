@@ -7,8 +7,8 @@ use super::module_path_problems::ModulePathProblems;
 use super::problems::{ExpandProblems, MissingExportRemedy};
 use super::shape::Shape;
 use crate::core::{
-    BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, KernelConstants, KernelForm,
-    KernelType, ModuleId, ModulePath, Namespace,
+    BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, DottedModulePath,
+    KernelConstants, KernelForm, KernelType, ModuleId, ModulePath, Namespace,
 };
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
@@ -27,9 +27,6 @@ impl Expander<'_> {
         path: &ModulePath,
         span: Span,
     ) -> Result<ModuleId, Diagnostic> {
-        if path.has_dot_segment() {
-            return Err(ModulePathProblems::dot_segment(path, span));
-        }
         if let Some(id) = self.modules.find(path) {
             return self.loaded(id, path, span);
         }
@@ -63,7 +60,9 @@ impl Expander<'_> {
     }
 
     fn missing_module(&self, path: &ModulePath, span: Span) -> Diagnostic {
-        match self.module_sources.unreachable_file(path) {
+        let owner = self.importing_owner();
+        let local_files = self.module_sources.local_files(owner.as_deref());
+        match local_files.unreachable_file(path) {
             Some(file) => ExpandProblems::unreachable_module(path, &file, span),
             None => ExpandProblems::unknown_module(path, span),
         }
@@ -124,7 +123,13 @@ impl Expander<'_> {
     ) -> Result<(), Diagnostic> {
         let shape = Shape::new(KernelForm::Definition(DefinitionForm::Use), form);
         let items = shape.at_least(2)?;
-        let written = ModulePath::new(shape.symbol(&items[1])?.name());
+        let written =
+            DottedModulePath::check(shape.symbol(&items[1])?.name()).map_err(|dotted| {
+                let owner = self.importing_owner();
+                let local_files = self.module_sources.local_files(owner.as_deref());
+                let target = local_files.dotted_path_target(&dotted);
+                ModulePathProblems::dot_segment(&dotted, target, items[1].span())
+            })?;
         let path = self.resolve_use(&written, items[1].span())?;
         let target = self.load_module(&path, items[1].span())?;
         self.import_names(target, &path, &items[2..], &shape, context)

@@ -2,11 +2,14 @@ mod binder_origin;
 mod binding;
 mod builtin;
 mod consulted_traits;
+mod dotted_module_path;
 mod expr;
 mod implementor_rows;
 mod kernel;
 mod keyword;
 mod module;
+mod module_path;
+mod path_part;
 mod primitive;
 mod primitive_names;
 mod printer;
@@ -30,6 +33,7 @@ pub use builtin::{Builtin, BuiltinModule};
 pub use consulted_traits::{
     BorrowTrait, ConsultedTraits, CopyTrait, EqualityTrait, HashTrait, OrderTrait,
 };
+pub use dotted_module_path::DottedModulePath;
 pub use expr::{
     Arm, Binder, Block, BodyItem, Control, Expr, ExprKind, FieldLabel, FieldSpelling, Lambda, Leaf,
     Literal, MapOperation, Pattern, PatternArguments, PatternKind, PatternPart, RustClause,
@@ -43,11 +47,12 @@ pub use kernel::{
 pub use keyword::Keyword;
 pub use module::{
     AssociatedValue, CoreModule, EnumDefiner, EnumRust, ImplAssociatedType, ImplMethod, Item,
-    ItemKind, ModuleId, ModulePath, RUST_TRAIT_ASSOCIATED_MARKER, RUST_TRAIT_HELP_MARKER,
+    ItemKind, ModuleId, RUST_TRAIT_ASSOCIATED_MARKER, RUST_TRAIT_HELP_MARKER,
     RUST_TRAIT_METHOD_MARKER, RUST_TRAIT_REQUIRES_MARKER, RUST_TRAIT_STRUCTURAL_MARKER,
     RequiredTrait, RustTraitAssociatedType, RustTraitDeclaration, RustTraitImplementor,
     TraitAssociatedType, TraitMethod, VariantDeclaration, VariantPayload,
 };
+pub use module_path::ModulePath;
 pub use primitive::PrimitiveType;
 pub use primitive_names::PrimitiveNames;
 pub use printer::CorePrinter;

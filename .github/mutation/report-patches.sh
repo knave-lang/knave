@@ -47,7 +47,7 @@ require_every_shard() {
 }
 
 require_no_failing_verdict() {
-  if cut -f 2 "$REPORT/results.tsv" | grep -Eq "$FAILING_VERDICTS"; then
+  if grep -Eq "$FAILING_VERDICTS" < <(cut -f 2 "$REPORT/results.tsv"); then
     fail "A mutant was missed, unapplied or invalid. See the summary."
   fi
 }

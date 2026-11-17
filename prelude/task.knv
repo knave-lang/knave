@@ -751,7 +751,7 @@
 
   Each `module` is the path of a module under `tasks/`, as a string. A
   `:hidden-folder` and a `:project-file` pair name a folder and a project
-  file that the walk of `tasks/` skipped, as a path from `tasks/`. A
+  file that the walk of `tasks/` skipped, as a module path from `tasks/`. A
   [deftask] in any other module fails, because a task lives under `tasks/`,
   and the pairs say why a module under `tasks/` is not a task file.")
 

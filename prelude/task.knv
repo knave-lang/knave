@@ -852,20 +852,41 @@
 
 (def task-outside-tree
   (fn (module name tree)
+    (local path (symbol-name module))
     (if (bool-not (project-module? module))
       (fail "`deftask` defines a task only in a file under `tasks/`"
         name "use this file by its path from `tasks/`"
         (quote (:code task-outside-tasks
                       :label "this file loads through a library, not by its path from `tasks/`")))
-      (if (under-any-folder? (symbol-name module) (nth tree 1))
+      (if (in-hidden-folder? path (nth tree 1))
         (fail "`deftask` defines a task only in a file under `tasks/`"
           name "move the file out of the hidden folder"
           (quote (:code task-outside-tasks
                         :label "this file sits in a hidden folder, which the task tree skips")))
-        (fail "`deftask` defines a task only in a file under `tasks/`"
-          name "rename the file"
-          (quote (:code task-outside-tasks
-                        :label "this file is a project file, which the task tree skips")))))))
+        (if (one-of? path (nth tree 2))
+          (fail "`deftask` defines a task only in a file under `tasks/`"
+            name "rename the file"
+            (quote
+              (:code
+                task-outside-tasks
+                :label "this file is a project file, which the task tree skips")))
+          (fail "`deftask` defines a task only in a file under `tasks/`"
+            name "use this file by its path from `tasks/`"
+            (quote (:code task-outside-tasks
+                          :label "this file loads under a path that is not its path from `tasks/`"))))))))
+
+(def in-hidden-folder?
+  (fn (path folders)
+    (if (relative-step? path)
+      false
+      (under-any-folder? path folders))))
+
+(def relative-step?
+  (fn (path)
+    (local segments (string "/" path "/"))
+    (if (string-contains? segments "/./")
+      true
+      (string-contains? segments "/../"))))
 
 (def project-module?
   (fn (module)

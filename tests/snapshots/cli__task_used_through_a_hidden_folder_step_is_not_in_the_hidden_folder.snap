@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(1).stderr()
+---
+error[L0359]: `deftask` defines a task only in a file under `tasks/`
+ --> tasks/.hidden/../more.knv:1:10
+  |
+1 | (deftask more () (println "m"))
+  |          ^^^^ this file loads under a path that is not its path from `tasks/`
+  |
+  = help: use this file by its path from `tasks/`
+  = note: run `knave doc L0359` for an explanation

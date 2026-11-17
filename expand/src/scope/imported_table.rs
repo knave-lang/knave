@@ -44,15 +44,17 @@ impl ImportedTable {
         self.modules.push(ImportedModule { scope, entries });
     }
 
-    pub(super) fn entries_seen_from<'t, 's>(
+    pub(super) fn visit_entries_seen_from<'t>(
         &'t self,
-        scopes: &'s ScopeSet,
+        scopes: &ScopeSet,
         key: NameKey<'_>,
-    ) -> SeenEntries<'t, 's> {
-        SeenEntries {
-            table: self,
-            position: self.exports.position(key),
-            modules: self.modules_seen_from(scopes),
+        visit: &mut impl FnMut(&'t NameEntries),
+    ) {
+        let Some(position) = self.exports.position(key) else {
+            return;
+        };
+        for module in self.modules_seen_from(scopes) {
+            visit(self.decoded(module, position));
         }
     }
 
@@ -117,22 +119,6 @@ impl ImportedTable {
             .bind(&scopes, binding, Phase::Runtime)
             .expect("an empty entry list takes any binding");
         entries
-    }
-}
-
-pub(super) struct SeenEntries<'t, 's> {
-    table: &'t ImportedTable,
-    position: Option<usize>,
-    modules: SeenModules<'t, 's>,
-}
-
-impl<'t> Iterator for SeenEntries<'t, '_> {
-    type Item = &'t NameEntries;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let position = self.position?;
-        let module = self.modules.next()?;
-        Some(self.table.decoded(module, position))
     }
 }
 

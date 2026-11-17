@@ -1,0 +1,11 @@
+(defmacro define-macro (name body)
+  (template (defmacro (unquote name) (unused)
+              (unquote body))))
+
+(define-macro make-float
+              (template (defstruct float
+                          :n bool)))
+
+(make-float 1)
+
+(defn main () (println 1))

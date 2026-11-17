@@ -1,0 +1,21 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/kernel_type_located_at_a_name_in_a_generated_macro.knv
+---
+warning[L0259]: `float` hides the kernel type `float`
+  --> check/kernel_type_located_at_a_name_in_a_generated_macro.knv:12:13
+   |
+12 | (make-float float)
+   |             ^^^^^
+   |             |
+   |             this binds `float` in place of the kernel type
+   |             in this macro call
+   |
+   = note: in the code of `make-float`, a type written `float` names this binding, while a printed `float` is the kernel type
+   = help: rename `float` in `make-float`
+   = note: run `knave doc L0259` for an explanation
+
+(derive float clone copy partial-eq eq hash show)
+(type ->float (fn (bool) float))
+(type main (fn () unit))

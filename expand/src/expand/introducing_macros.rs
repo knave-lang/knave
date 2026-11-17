@@ -1,8 +1,8 @@
+use std::cell::Cell;
 use std::rc::Rc;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
-use super::binder_reach::BinderReach;
 use super::macro_origin::MacroOrigin;
 use crate::core::BindingId;
 use crate::reader::{Form, Symbol};
@@ -12,41 +12,56 @@ use crate::source::Span;
 #[derive(Default)]
 pub struct IntroducingMacros {
     expansions: FxHashMap<Scope, Expansion>,
-    generated: FxHashSet<BindingId>,
+    generators: FxHashMap<BindingId, Scope>,
+}
+
+pub struct MacroCall<'c> {
+    pub binding: BindingId,
+    pub form: &'c Form,
+    pub origin: &'c MacroOrigin,
+}
+
+pub struct ProjectWriter {
+    pub name: Rc<str>,
+    pub generator_call: Option<Span>,
 }
 
 struct Expansion {
     origin: MacroOrigin,
-    of_generated_macro: bool,
+    call_writer: Option<Scope>,
+    generator: Option<Scope>,
 }
 
 impl IntroducingMacros {
     pub fn define(&mut self, binding: BindingId, definition: &Form) {
-        if self.written_by_a_template(definition) {
-            self.generated.insert(binding);
+        let mut writer = self.latest_writer(definition);
+        while let Some(expansion) = writer.and_then(|scope| self.expansions.get(&scope))
+            && expansion.origin.through_prelude
+        {
+            writer = expansion.call_writer;
+        }
+        if let Some(generator) = writer {
+            self.generators.insert(binding, generator);
         }
     }
 
-    pub fn record(&mut self, introduction: Scope, binding: BindingId, origin: &MacroOrigin) {
+    pub fn record(&mut self, introduction: Scope, call: &MacroCall<'_>) {
         let expansion = Expansion {
-            origin: origin.clone(),
-            of_generated_macro: self.generated.contains(&binding),
+            origin: call.origin.clone(),
+            call_writer: self.latest_writer(call.form),
+            generator: self.generators.get(&call.binding).copied(),
         };
         self.expansions.insert(introduction, expansion);
     }
 
-    pub fn reach_of(&self, binder: &Symbol, written: Span, call: Span) -> Option<BinderReach> {
+    pub fn project_writer_of(&self, binder: &Symbol) -> Option<ProjectWriter> {
         let writer = self.writer_of(binder)?;
-        if !writer.origin.in_project {
-            return None;
-        }
-        if writer.of_generated_macro {
-            return Some(BinderReach::Written { binder: written });
-        }
-        Some(BinderReach::InMacro {
-            binder: written,
-            call,
-            introducing_macro: Rc::clone(&writer.origin.name),
+        writer.origin.in_project.then(|| ProjectWriter {
+            name: Rc::clone(&writer.origin.name),
+            generator_call: writer
+                .generator
+                .and_then(|generator| self.expansions.get(&generator))
+                .map(|generator| generator.origin.call_site),
         })
     }
 
@@ -58,17 +73,15 @@ impl IntroducingMacros {
             .map(|(_, expansion)| expansion)
     }
 
-    fn written_by_a_template(&self, form: &Form) -> bool {
-        match (form.as_symbol(), form.as_list()) {
-            (Some(symbol), _) => symbol.scopes().any(|scope| self.is_template_scope(scope)),
-            (None, Some(items)) => items.iter().any(|item| self.written_by_a_template(item)),
-            (None, None) => false,
-        }
-    }
-
-    fn is_template_scope(&self, scope: Scope) -> bool {
-        self.expansions
-            .get(&scope)
-            .is_some_and(|expansion| !expansion.origin.through_prelude)
+    fn latest_writer(&self, form: &Form) -> Option<Scope> {
+        let head = form.as_list()?.first()?.as_symbol()?;
+        let latest = Cell::new(None);
+        head.scopes().any(|scope| {
+            if self.expansions.contains_key(&scope) {
+                latest.set(latest.get().max(Some(scope)));
+            }
+            false
+        });
+        latest.get()
     }
 }

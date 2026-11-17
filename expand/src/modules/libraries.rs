@@ -75,8 +75,6 @@ impl LibraryRoot {
 }
 
 impl LibraryTable {
-    const SEPARATOR: char = '/';
-
     pub fn new(
         program_visible: Vec<String>,
         libraries: Vec<LibraryRoot>,
@@ -91,9 +89,11 @@ impl LibraryTable {
 
     pub fn resolve(&self, owner: Option<&str>, written: &ModulePath) -> ModulePath {
         match self.named(owner) {
-            Some(library) if !self.sees_library(owner, written) => {
-                ModulePath::new(format!("{}{}{written}", library.name, Self::SEPARATOR))
-            }
+            Some(library) if !self.sees_library(owner, written) => ModulePath::new(format!(
+                "{}{}{written}",
+                library.name,
+                ModulePath::SEPARATOR
+            )),
             _ => written.clone(),
         }
     }
@@ -135,7 +135,7 @@ impl LibraryTable {
         let inner = path
             .as_str()
             .strip_prefix(library.name.as_str())?
-            .strip_prefix(Self::SEPARATOR);
+            .strip_prefix(ModulePath::SEPARATOR);
         Some(library.file(inner.unwrap_or(&library.root_module)))
     }
 
@@ -151,7 +151,7 @@ impl LibraryTable {
 
     pub fn head(path: &ModulePath) -> &str {
         path.as_str()
-            .split(Self::SEPARATOR)
+            .split(ModulePath::SEPARATOR)
             .next()
             .unwrap_or_default()
     }

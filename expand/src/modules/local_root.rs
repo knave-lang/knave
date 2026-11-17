@@ -1,4 +1,5 @@
-use std::path::Path;
+use std::fs;
+use std::path::{Component, Path, PathBuf};
 
 use super::search_scope::SearchScope;
 
@@ -9,13 +10,20 @@ pub(super) struct LocalRoot<'s> {
     role: RootRole,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+pub(super) struct ReachedFile {
+    pub(super) path: PathBuf,
+    pub(super) shown: PathBuf,
+}
+
+#[derive(Clone, Copy)]
 enum RootRole {
     Primary,
     Fallback,
 }
 
 impl<'s> LocalRoot<'s> {
+    const CURRENT_DIRECTORY: &'static str = ".";
+
     pub(super) fn primary(root: &'s Path, display_root: &'s Path, scope: &'s SearchScope) -> Self {
         Self {
             root,
@@ -34,21 +42,13 @@ impl<'s> LocalRoot<'s> {
         }
     }
 
-    pub(super) fn root(&self) -> &'s Path {
-        self.root
-    }
-
-    pub(super) fn display_root(&self) -> &'s Path {
-        self.display_root
-    }
-
-    pub(super) fn is_same_root(&self, other: &LocalRoot<'_>) -> bool {
-        self.role == other.role
-    }
-
-    pub(super) fn reaches(&self, local: &Path) -> bool {
+    pub(super) fn reached_file(&self, local: &Path) -> Option<ReachedFile> {
         let path = self.root.join(local);
-        path.exists() && self.allows(&path)
+        let reached = path.exists() && self.allows(&path);
+        reached.then(|| ReachedFile {
+            path,
+            shown: self.display_root.join(local),
+        })
     }
 
     pub(super) fn holds_unreachable(&self, local: &Path) -> bool {
@@ -56,10 +56,39 @@ impl<'s> LocalRoot<'s> {
         path.exists() && !self.allows(&path)
     }
 
+    pub(super) fn shown_file(&self, local: &Path) -> PathBuf {
+        Self::normalized(&self.display_root.join(local))
+    }
+
+    pub(super) fn canonical_file(&self, local: &Path) -> Option<PathBuf> {
+        let file = fs::canonicalize(self.root.join(local)).ok()?;
+        file.is_file().then_some(file)
+    }
+
+    pub(super) fn local_part<'f>(&self, canonical_file: &'f Path) -> Option<&'f Path> {
+        let directory = Path::new(Self::CURRENT_DIRECTORY).join(self.root);
+        let canonical_root = fs::canonicalize(directory).ok()?;
+        canonical_file.strip_prefix(canonical_root).ok()
+    }
+
     fn allows(&self, path: &Path) -> bool {
         match self.role {
             RootRole::Primary => self.scope.primary_reaches(path),
             RootRole::Fallback => self.scope.fallback_reaches(path),
         }
+    }
+
+    fn normalized(path: &Path) -> PathBuf {
+        let mut normalized = PathBuf::new();
+        for component in path.components() {
+            match component {
+                Component::CurDir => {}
+                Component::ParentDir if normalized.file_name().is_some() => {
+                    normalized.pop();
+                }
+                other => normalized.push(other),
+            }
+        }
+        normalized
     }
 }

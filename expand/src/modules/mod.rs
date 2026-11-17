@@ -1,3 +1,4 @@
+mod dotted_path_target;
 mod export_table;
 mod libraries;
 mod local_files;
@@ -11,9 +12,10 @@ mod search_scope;
 mod sources;
 mod unlisted_library;
 
+pub use dotted_path_target::DottedPathTarget;
 pub use export_table::ExportTable;
 pub use libraries::{LibraryFile, LibraryRoot, LibraryTable};
-pub use local_files::{DottedPathTarget, LocalFiles};
+pub use local_files::LocalFiles;
 pub use located_module::LocatedModule;
 pub use module_origin::ModuleOrigin;
 pub use module_scopes::ModuleScopes;

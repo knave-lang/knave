@@ -2312,6 +2312,11 @@ impl<'a> ExpressionEmitter<'a> {
         if let Some(value) = self.adjusted_argument(argument, context) {
             return value;
         }
+        if let Some(reference) = role.reborrowed_reference(argument) {
+            return self
+                .expr_in(reference, context)
+                .spanned(argument.value.span);
+        }
         let value = match (&argument.value.kind, role) {
             (TypedExprKind::Borrow(_, place), ArgumentRole::Receiver) => self.place(place, context),
             _ => self.argument_value(&argument.value, context, role),

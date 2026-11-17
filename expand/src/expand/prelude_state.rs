@@ -319,6 +319,18 @@ mod tests {
             expander.tables.module_notes.decoded_no_saved_note()
         }
 
+        fn imported_prelude(&self) -> (usize, usize) {
+            let (mut sources, entry) = self.sources();
+            let mut expander =
+                Expander::with_prelude(&mut sources, Self::module_sources(), Self::loaded_state());
+            expander.load_source_module(ModulePath::new(self.name), &[entry]);
+            let prelude = expander.tables.table.prelude();
+            (
+                prelude.imported_module_count(),
+                prelude.imported_decoded_count(),
+            )
+        }
+
         fn loaded_state() -> PreludeState {
             PreludeState::load(PreludeState::build().save().leak())
                 .expect("the saved prelude loads")
@@ -505,6 +517,11 @@ mod tests {
                 form.name()
             );
         }
+    }
+
+    #[test]
+    fn an_empty_program_imports_the_saved_prelude_and_decodes_none_of_its_names() {
+        assert_eq!(UserProgram::EMPTY.imported_prelude(), (1, 0));
     }
 
     #[test]

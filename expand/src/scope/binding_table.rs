@@ -99,7 +99,7 @@ impl BindingTable {
     }
 
     #[cfg(test)]
-    pub(super) fn prelude(&self) -> &PreludeNames {
+    pub(crate) fn prelude(&self) -> &PreludeNames {
         &self.prelude
     }
 

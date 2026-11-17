@@ -77,6 +77,11 @@ impl ImportedNames {
     }
 
     #[cfg(test)]
+    pub(super) fn module_count(&self) -> usize {
+        self.modules.len()
+    }
+
+    #[cfg(test)]
     pub(super) fn decoded_count(&self) -> usize {
         let entries = self.modules.iter().flat_map(|module| &module.entries);
         entries.filter(|entry| entry.get().is_some()).count()

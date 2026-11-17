@@ -5,14 +5,12 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::Scope;
-use super::ScopeSet;
-use super::imported_names::ImportedNames;
 use super::name_entries::NameEntries;
 use super::name_entry::NameEntry;
 use super::phase::Phase;
+use super::prelude_names::PreludeNames;
 use super::qualified_names::QualifiedNames;
-use super::saved_exports::SavedExports;
-use super::saved_names::{NameTables, SavedNames};
+use super::saved_names::NameTables;
 use super::visible_names::VisibleNames;
 use crate::core::{BindingId, Namespace};
 use crate::reader::Symbol;
@@ -27,9 +25,7 @@ pub enum Resolution {
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct BindingTable {
     #[serde(skip)]
-    saved: SavedNames,
-    #[serde(skip)]
-    imported: ImportedNames,
+    prelude: PreludeNames,
     entries: FxHashMap<(Rc<str>, Namespace), NameEntries>,
     qualified_names: QualifiedNames,
 }
@@ -43,8 +39,8 @@ impl BindingTable {
         phase: Phase,
     ) -> Result<(), BindingId> {
         if let Some(imported) =
-            self.imported
-                .bound_with_scopes(symbol.scopes(), symbol.name(), namespace)
+            self.prelude
+                .imported_with_scopes(symbol.scopes(), symbol.name(), namespace)
         {
             return if imported == binding {
                 Ok(())
@@ -77,7 +73,7 @@ impl BindingTable {
 
     #[cfg(test)]
     pub fn holds(&self, binding: BindingId) -> bool {
-        let saved = self.saved.all().map(|(_, _, entries)| entries);
+        let saved = self.prelude.all().map(|(_, _, entries)| entries);
         let mut all = self.entries.values().chain(saved);
         all.any(|entries| entries.holds(binding))
     }
@@ -95,24 +91,16 @@ impl BindingTable {
 
     #[inline(always)]
     pub fn visible_names(&self) -> VisibleNames<'_> {
-        VisibleNames::new(
-            &self.entries,
-            &self.imported,
-            &self.saved,
-            &self.qualified_names,
-        )
+        VisibleNames::new(&self.entries, &self.prelude, &self.qualified_names)
+    }
+
+    pub fn prelude_mut(&mut self) -> &mut PreludeNames {
+        &mut self.prelude
     }
 
     #[cfg(test)]
-    pub(super) fn imported_decoded_count(&self) -> usize {
-        self.imported.decoded_count()
-    }
-
-    pub fn import_saved(&mut self, scopes: ScopeSet, exports: SavedExports) {
-        for (name, namespace) in exports.keys() {
-            self.qualified_names.record_saved(name, namespace);
-        }
-        self.imported.add(scopes, exports);
+    pub(super) fn prelude(&self) -> &PreludeNames {
+        &self.prelude
     }
 
     pub fn take_saved(&mut self, prelude_scopes: Range<Scope>) -> NameTables {
@@ -121,10 +109,6 @@ impl BindingTable {
             .into_iter()
             .map(|((name, namespace), entries)| (name, namespace, entries));
         NameTables::of(keyed.collect(), prelude_scopes)
-    }
-
-    pub fn adopt_saved(&mut self, saved: SavedNames) {
-        self.saved = saved;
     }
 }
 
@@ -209,7 +193,7 @@ pub(super) mod tests {
             let tables = self.table.take_saved(prelude_scopes);
             let encoded = bincode::serialize(&tables).expect("the tables serialize");
             let saved = bincode::deserialize(encoded.leak()).expect("the tables load");
-            self.table.adopt_saved(saved);
+            self.table.prelude_mut().adopt_saved(saved);
         }
 
         fn chain(&mut self, length: usize) -> ScopeChain {
@@ -341,7 +325,12 @@ pub(super) mod tests {
         world
             .table
             .resolve(&symbol, Namespace::Value, Phase::Runtime);
-        assert!(!world.table.saved.is_decoded("saved", Namespace::Value));
+        assert!(
+            !world
+                .table
+                .prelude
+                .is_saved_decoded("saved", Namespace::Value)
+        );
     }
 
     #[test]
@@ -356,7 +345,12 @@ pub(super) mod tests {
         world
             .table
             .resolve(&symbol, Namespace::Value, Phase::Runtime);
-        assert!(!world.table.saved.is_decoded("saved", Namespace::Value));
+        assert!(
+            !world
+                .table
+                .prelude
+                .is_saved_decoded("saved", Namespace::Value)
+        );
     }
 
     #[test]
@@ -367,7 +361,12 @@ pub(super) mod tests {
         world.save_names();
         let chain = world.chain(ScopeSet::SHORTEST_SHARED_PREFIX);
         world.resolve_sharing("saved", &World::prefix(&chain));
-        assert!(world.table.saved.is_decoded("saved", Namespace::Value));
+        assert!(
+            world
+                .table
+                .prelude
+                .is_saved_decoded("saved", Namespace::Value)
+        );
     }
 
     #[test]
@@ -434,7 +433,12 @@ pub(super) mod tests {
         world
             .table
             .resolve(&symbol, Namespace::Value, Phase::Runtime);
-        assert!(!world.table.saved.is_decoded("shared", Namespace::Value));
+        assert!(
+            !world
+                .table
+                .prelude
+                .is_saved_decoded("shared", Namespace::Value)
+        );
     }
 
     #[test]

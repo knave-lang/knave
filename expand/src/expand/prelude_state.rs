@@ -103,7 +103,7 @@ impl PreludeState {
         };
         let mut tables = self.tables;
         tables.bindings.adopt_saved(loaded.bindings);
-        tables.table.adopt_saved(loaded.names);
+        tables.table.prelude_mut().adopt_saved(loaded.names);
         tables
     }
 
@@ -161,7 +161,11 @@ impl PreludeState {
         expander.tables = self.tables;
         expander.tables.module_notes.adopt(tables.notes);
         expander.tables.bindings.adopt_saved(tables.bindings);
-        expander.tables.table.adopt_saved(tables.names);
+        expander
+            .tables
+            .table
+            .prelude_mut()
+            .adopt_saved(tables.names);
         expander.tables.macro_origins = tables.origins.into_macro_origins();
         expander
             .tables
@@ -411,7 +415,7 @@ mod tests {
 
         fn exported_names(module: &str) -> Vec<String> {
             let state = UserProgram::loaded_state();
-            let exports = Self::module(&state, module).exports();
+            let exports = Self::module(&state, module).exports().entries();
             let names: BTreeSet<String> = exports.map(|(name, _, _)| name.to_string()).collect();
             names.into_iter().collect()
         }

@@ -83,19 +83,15 @@ impl SavedExports {
     }
 
     pub fn get(&self, name: &str, namespace: Namespace) -> Option<BindingId> {
-        self.position(name, namespace)
-            .map(|position| self.binding(position))
+        let position = self.position(name, namespace)?;
+        let (_, _, binding) = self.export(position);
+        Some(binding)
     }
 
     pub fn entries(&self) -> impl Iterator<Item = (Rc<str>, Namespace, BindingId)> + '_ {
         (0..self.count()).map(|position| {
-            let row = self.row(position);
-            let namespace = NameSlots::namespace(row.namespace);
-            (
-                Rc::from(self.name_of(row)),
-                namespace,
-                self.binding(position),
-            )
+            let (name, namespace, binding) = self.export(position);
+            (Rc::from(name), namespace, binding)
         })
     }
 
@@ -117,17 +113,14 @@ impl SavedExports {
         })
     }
 
-    pub(super) fn binding(&self, position: usize) -> BindingId {
-        BindingId::from_index(self.row(position).binding)
-    }
-
-    pub(super) fn key(&self, position: usize) -> (&'static str, Namespace) {
+    pub(super) fn export(&self, position: usize) -> (&'static str, Namespace, BindingId) {
         let row = self.row(position);
-        (self.name_of(row), NameSlots::namespace(row.namespace))
-    }
-
-    pub(super) fn keys(&self) -> impl Iterator<Item = (&'static str, Namespace)> + '_ {
-        (0..self.count()).map(|position| self.key(position))
+        let namespace = NameSlots::namespace(row.namespace);
+        (
+            self.name_of(row),
+            namespace,
+            BindingId::from_index(row.binding),
+        )
     }
 
     fn row(&self, position: usize) -> ExportRow {

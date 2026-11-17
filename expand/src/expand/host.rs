@@ -92,7 +92,11 @@ impl ModuleQueries for Expander<'_> {
 
     fn module_exports(&self, path: &Symbol, span: Span) -> Result<Vec<Symbol>, Diagnostic> {
         let record = self.loaded_module(path, span)?;
-        let names: BTreeSet<Rc<str>> = record.exports().map(|(name, _, _)| name).collect();
+        let names: BTreeSet<Rc<str>> = record
+            .exports()
+            .entries()
+            .map(|(name, _, _)| name)
+            .collect();
         Ok(names
             .into_iter()
             .map(|name| Symbol::with_scopes(name, record.scopes().set()))

@@ -18,7 +18,6 @@ use super::expectation::Expectation;
 use super::parameter_call_labels::ParameterCallRequest;
 use super::pending::{DecidedBorrows, PendingBorrow};
 use super::problems::{MismatchContext, TypeProblems};
-use super::rust_types::RustType;
 use super::selfless_methods::SelflessMethod;
 use super::ty::Bound;
 use super::ty::Type;
@@ -1802,14 +1801,14 @@ impl TypeChecker {
         site: &ArgumentSite<'_>,
     ) -> Result<TypedExpr, Diagnostic> {
         let expected = self.unifier.resolve(parameter);
-        if value.is_written_form() || !self.pipelines().is_pipeline(&expected) {
+        if value.is_written_form() || !self.prelude_types().is_pipeline(&expected) {
             return Ok(value);
         }
         let Some((item, collection_type)) = self.collection_item(&value.ty) else {
             return Ok(value);
         };
         let (template, item) = self.iteration(&expected, item);
-        let result = self.iterator_type(item);
+        let result = self.prelude_types().iterator_type(item);
         let parameters = vec![Type::shared(collection_type)];
         let span = value.span;
         let call =
@@ -2798,7 +2797,7 @@ impl TypeChecker {
                 self.check_map_key(&collection, value.span);
             }
         }
-        let result = self.iterator_type(item);
+        let result = self.prelude_types().iterator_type(item);
         let parameters = vec![Type::shared(collection_type)];
         self.synthetic_call_with_value("{0}.iter()", parameters, result, value, arguments, span)
     }
@@ -2833,10 +2832,10 @@ impl TypeChecker {
         self.note_unknown_collection(&value, CollectionAssumption::GetCollection);
         let element = self.unifier.fresh();
         let parameters = vec![
-            Type::shared(self.slice_of(element.clone())),
+            Type::shared(self.prelude_types().slice_of(element.clone())),
             Type::Primitive(PrimitiveType::Usize),
         ];
-        let result = self.option_type(element);
+        let result = self.prelude_types().option_type(element);
         self.synthetic_call_with_value("{0}.get({1})", parameters, result, value, arguments, span)
     }
 
@@ -2855,7 +2854,10 @@ impl TypeChecker {
         }
         self.note_unknown_collection(&value, CollectionAssumption::PushTarget);
         let element = self.unifier.fresh();
-        let parameters = vec![Type::mutable(self.vector_of(element.clone())), element];
+        let parameters = vec![
+            Type::mutable(self.prelude_types().vector_of(element.clone())),
+            element,
+        ];
         self.synthetic_call_with_value(
             "{0}.push({1})",
             parameters,
@@ -2929,31 +2931,11 @@ impl TypeChecker {
         TypeProblems::string_push_item(&self.unification().describe(&found), item.span)
     }
 
-    fn vector_of(&self, element: Type) -> Type {
-        let vector = self
-            .declarations
-            .types
-            .rust_types
-            .binding_with_template(RustType::VECTOR_TEMPLATE)
-            .expect("the prelude defines a vector type");
-        Type::Named(vector, vec![element])
-    }
-
     fn infer_iter_slice(&mut self, value: TypedExpr, span: Span) -> Result<TypedExpr, Diagnostic> {
         let element = self.unifier.fresh();
-        let parameter = Type::shared(self.slice_of(element.clone()));
-        let result = self.iterator_type(Type::shared(element));
+        let parameter = Type::shared(self.prelude_types().slice_of(element.clone()));
+        let result = self.prelude_types().iterator_type(Type::shared(element));
         self.synthetic_call_with_value("{0}.iter()", vec![parameter], result, value, &[], span)
-    }
-
-    fn slice_of(&self, element: Type) -> Type {
-        let slice = self
-            .declarations
-            .types
-            .rust_types
-            .binding_with_template(RustType::SLICE_TEMPLATE)
-            .expect("the prelude defines a slice type");
-        Type::Named(slice, vec![element])
     }
 
     fn map_collection(&self, value: &TypedExpr) -> Result<Collection, Diagnostic> {
@@ -3016,7 +2998,7 @@ impl TypeChecker {
             Type::shared(collection.ty().clone()),
             Type::shared(query_type),
         ];
-        let result = self.option_type(collection.value().clone());
+        let result = self.prelude_types().option_type(collection.value().clone());
         let call = self.synthetic_call_with_value(
             "{0}.get({1})",
             parameters,
@@ -3074,8 +3056,12 @@ impl TypeChecker {
             return Err(TypeProblems::wrong_argument_count(0, arguments.len(), span));
         }
         let result = match iterator {
-            MapIterator::Keys => self.iterator_type(Type::shared(collection.key().clone())),
-            MapIterator::Vals => self.iterator_type(Type::shared(collection.value().clone())),
+            MapIterator::Keys => self
+                .prelude_types()
+                .iterator_type(Type::shared(collection.key().clone())),
+            MapIterator::Vals => self
+                .prelude_types()
+                .iterator_type(Type::shared(collection.value().clone())),
         };
         let template = match iterator {
             MapIterator::Keys => "{0}.keys()",
@@ -3153,7 +3139,7 @@ impl TypeChecker {
 
     fn unknown_vector(&mut self, unknown: &Type, depth: usize, span: Span) -> Option<Collection> {
         let element = self.unifier.fresh();
-        let vector = self.nested_vector_type(depth, &element);
+        let vector = self.prelude_types().nested_vector_type(depth, &element);
         self.unifier.unify(unknown, &vector, span).ok()?;
         Collection::of(&vector, &self.declarations.types.rust_types)
     }
@@ -3188,7 +3174,9 @@ impl TypeChecker {
 
     fn set_at_target(&self, depth: usize, item: &Type) -> Type {
         match depth.checked_sub(1) {
-            Some(row_depth) => self.slice_of(self.nested_vector_type(row_depth, item)),
+            Some(row_depth) => self
+                .prelude_types()
+                .slice_of(self.prelude_types().nested_vector_type(row_depth, item)),
             None => item.clone(),
         }
     }
@@ -3293,26 +3281,6 @@ impl TypeChecker {
         }
     }
 
-    fn option_type(&self, value: Type) -> Type {
-        let option = self
-            .declarations
-            .types
-            .rust_types
-            .option_binding()
-            .expect("the prelude defines an option type");
-        Type::Named(option, vec![Type::shared(value)])
-    }
-
-    fn iterator_type(&self, item: Type) -> Type {
-        let iterator = self
-            .declarations
-            .types
-            .rust_types
-            .iterator_binding()
-            .expect("the prelude defines an iterator type");
-        Type::Named(iterator, vec![item])
-    }
-
     fn pair_type(&self, first: Type, second: Type) -> Type {
         let pair = self
             .declarations
@@ -3325,7 +3293,7 @@ impl TypeChecker {
 
     fn assoc_element(&mut self, depth: usize, base: &Type, span: Span) -> Result<Type, Diagnostic> {
         let element = self.unifier.fresh();
-        let expected = self.nested_vector_type(depth, &element);
+        let expected = self.prelude_types().nested_vector_type(depth, &element);
         self.unification()
             .expect(Expectation::plain(&expected), base, span)
             .map_err(|error| self.point_struct_base_to_fields(error, base))?;
@@ -3357,16 +3325,6 @@ impl TypeChecker {
             typed_keys.push(typed);
         }
         Ok(typed_keys)
-    }
-
-    fn nested_vector_type(&self, depth: usize, element: &Type) -> Type {
-        let vector = self
-            .declarations
-            .types
-            .rust_types
-            .binding_with_template(RustType::VECTOR_TEMPLATE)
-            .expect("the prelude defines a vector type");
-        (0..depth).fold(element.clone(), |ty, _| Type::Named(vector, vec![ty]))
     }
 
     fn infer_update(

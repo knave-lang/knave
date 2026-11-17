@@ -2,7 +2,9 @@ use super::called_parameter::CalledParameter;
 use super::holdings::Holdings;
 use super::loan_rules::LoanRules;
 use super::passed_holdings::PassedHoldings;
-use crate::types::{TemplateTies, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLambda};
+use crate::types::{
+    PositionTie, TemplateTies, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLambda,
+};
 
 pub struct CallSite<'c> {
     callee: &'c TypedExpr,
@@ -40,13 +42,6 @@ impl<'c> CallSite<'c> {
         }
     }
 
-    fn held_through(ties: &TemplateTies, position: usize, held: &Holdings) -> Holdings {
-        match ties.holds_beneath(position) {
-            true => held.referent(),
-            false => held.clone(),
-        }
-    }
-
     pub fn result_holdings(&self, passed: Vec<PassedHoldings>, rules: &LoanRules<'_>) -> Holdings {
         let Some(ties) = rules.ties(self.callee) else {
             return Holdings::default();
@@ -55,12 +50,11 @@ impl<'c> CallSite<'c> {
             .into_iter()
             .enumerate()
             .fold(Holdings::default(), |held, (position, passed)| {
-                if ties.lends_through(position) {
-                    held.merged(passed.all())
-                } else if ties.holds_through(position) {
-                    held.merged(Self::held_through(&ties, position, passed.held()))
-                } else {
-                    held
+                match ties.tie_at(position) {
+                    Some(PositionTie::Lent) => held.merged(passed.all()),
+                    Some(PositionTie::HeldBeneath) => held.merged(passed.held().referent()),
+                    Some(PositionTie::Held) => held.merged(passed.held().clone()),
+                    None => held,
                 }
             })
     }

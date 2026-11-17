@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use super::first_positions::FirstPositions;
 use super::pipelines::Pipelines;
+use super::position_tie::PositionTie;
 use super::tied_positions::TiedPositions;
 use super::ty::{GenericId, Lifetime, Scheme, Type};
 
@@ -77,16 +78,16 @@ impl TemplateTies {
         })
     }
 
-    pub fn lends_through(&self, position: usize) -> bool {
-        self.lifetime.contains(position)
-    }
-
-    pub fn holds_through(&self, position: usize) -> bool {
-        self.held.contains(position)
-    }
-
-    pub fn holds_beneath(&self, position: usize) -> bool {
-        self.beneath.contains(position)
+    pub fn tie_at(&self, position: usize) -> Option<PositionTie> {
+        if self.lifetime.contains(position) {
+            Some(PositionTie::Lent)
+        } else if self.beneath.contains(position) {
+            Some(PositionTie::HeldBeneath)
+        } else if self.held.contains(position) {
+            Some(PositionTie::Held)
+        } else {
+            None
+        }
     }
 
     pub fn stores_the_reference(&self, position: usize) -> bool {
@@ -94,7 +95,7 @@ impl TemplateTies {
     }
 
     fn reads_beneath(&self, position: usize) -> bool {
-        !self.holds_through(position) || self.holds_beneath(position)
+        !self.held.contains(position) || self.beneath.contains(position)
     }
 
     fn held_ties(parameters: &[Type], result: &Type, generics: &[GenericId]) -> Vec<usize> {
@@ -204,6 +205,7 @@ mod tests {
 
     use super::TemplateTies;
     use crate::core::{BindingId, ClosureKind, PrimitiveType};
+    use crate::types::PositionTie;
     use crate::types::pipelines::Pipelines;
     use crate::types::rust_types::RustTypeTable;
     use crate::types::ty::{GenericId, GenericParam, Lifetime, Scheme, Type};
@@ -300,6 +302,25 @@ mod tests {
         assert!(ties.stores_the_reference(0));
         assert!(!ties.stores_the_reference(1));
         assert!(!ties.stores_the_reference(2));
+    }
+
+    #[test]
+    fn each_position_has_the_strongest_tie_its_parameter_carries() {
+        let vector = Type::mutable(TiesFixture::generic());
+        let index = Type::Primitive(PrimitiveType::Usize);
+        let pop = TiesFixture::ties(vec![vector, index], TiesFixture::generic())
+            .expect("a type variable ties the result");
+        let at = TiesFixture::ties(
+            vec![Type::shared(TiesFixture::generic())],
+            Type::shared(TiesFixture::generic()),
+        )
+        .expect("an elided result borrows its one reference");
+        let either = TiesFixture::ties(vec![TiesFixture::generic()], TiesFixture::generic())
+            .expect("a type variable ties the result");
+        assert_eq!(at.tie_at(0), Some(PositionTie::Lent));
+        assert_eq!(pop.tie_at(0), Some(PositionTie::HeldBeneath));
+        assert_eq!(either.tie_at(0), Some(PositionTie::Held));
+        assert_eq!(pop.tie_at(1), None);
     }
 
     #[test]

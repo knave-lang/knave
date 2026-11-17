@@ -1,0 +1,8 @@
+(use ./dot_segment/shapes area)
+(use dot_segment/./shapes)
+(use dot_segment/../dot_segment/shapes)
+(use ../shapes)
+(use dot_segment/..)
+(use dot_segment/shapes area)
+
+(def tile (area 3))

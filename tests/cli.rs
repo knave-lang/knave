@@ -10397,47 +10397,20 @@ fn task_tree_reads_its_target_folder_beside_a_project_file() {
 }
 
 #[test]
-fn task_used_by_another_path_says_to_use_its_path_from_tasks() {
-    let task = Sandbox::new("task_used_by_another_path")
-        .with_file(&Language::project_file_name(), TASK_PROJECT)
-        .with_file("src/main.knv", TASK_MODULE)
-        .with_file("tasks/more.knv", "(deftask more () (println \"m\"))\n")
-        .with_file(
-            "tasks/t.knv",
-            "(use ./more)\n\n(deftask t () (println \"t\"))\n",
-        )
-        .compiler(&["task"]);
-    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
-}
-
-#[test]
-fn task_used_through_a_hidden_folder_step_is_not_in_the_hidden_folder() {
-    let task = Sandbox::new("task_used_through_hidden_step")
-        .with_file(&Language::project_file_name(), TASK_PROJECT)
-        .with_file("src/main.knv", TASK_MODULE)
-        .with_file("tasks/.hidden/keep.knv", "(def kept 1)\n")
-        .with_file("tasks/more.knv", "(deftask more () (println \"m\"))\n")
-        .with_file(
-            "tasks/t.knv",
-            "(use .hidden/../more)\n\n(deftask t () (println \"t\"))\n",
-        )
-        .compiler(&["task"]);
-    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
-}
-
-#[test]
 fn task_used_by_another_path_beside_hidden_folders_is_not_in_them() {
-    let task = Sandbox::new("task_other_path_beside_hidden")
+    let sandbox = Sandbox::new("task_other_path_beside_hidden")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tasks/.a/keep.knv", "(def kept 1)\n")
         .with_file("tasks/.b/keep.knv", "(def kept 2)\n")
-        .with_file("tasks/more.knv", "(deftask more () (println \"m\"))\n")
+        .with_file("tasks/sub/more.knv", "(deftask more () (println \"m\"))\n")
         .with_file(
             "tasks/t.knv",
-            "(use ./more)\n\n(deftask t () (println \"t\"))\n",
-        )
-        .compiler(&["task"]);
+            "(use .alias/more)\n\n(deftask t () (println \"t\"))\n",
+        );
+    std::os::unix::fs::symlink("sub", sandbox.directory.join("tasks/.alias"))
+        .expect("the sandbox can hold a symbolic link");
+    let task = sandbox.compiler(&["task"]);
     insta::assert_snapshot!(task.assert_exit_code(1).stderr());
 }
 

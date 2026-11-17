@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: task.assert_exit_code(1).stderr()
 ---
 error[L0359]: `deftask` defines a task only in a file under `tasks/`
- --> tasks/./more.knv:1:10
+ --> tasks/.alias/more.knv:1:10
   |
 1 | (deftask more () (println "m"))
   |          ^^^^ this file loads under a path that is not its path from `tasks/`

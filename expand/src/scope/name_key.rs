@@ -1,10 +1,11 @@
+use super::saved_namespace::SavedNamespace;
 use crate::core::Namespace;
 
 #[derive(Clone, Copy)]
 pub(super) struct NameKey<'a> {
-    pub(super) name: &'a str,
-    pub(super) namespace: Namespace,
-    pub(super) hash: u64,
+    name: &'a str,
+    namespace: Namespace,
+    hash: u64,
 }
 
 impl<'a> NameKey<'a> {
@@ -21,18 +22,12 @@ impl<'a> NameKey<'a> {
         }
     }
 
-    pub(super) fn code(namespace: Namespace) -> u32 {
-        match namespace {
-            Namespace::Value => 0,
-            Namespace::Type => 1,
-        }
+    pub(super) fn name(self) -> &'a str {
+        self.name
     }
 
-    pub(super) fn namespace(code: u32) -> Namespace {
-        match code {
-            0 => Namespace::Value,
-            _ => Namespace::Type,
-        }
+    pub(super) fn namespace(self) -> Namespace {
+        self.namespace
     }
 
     pub(super) fn first_slot(self, mask: usize) -> usize {
@@ -48,7 +43,7 @@ impl<'a> NameKey<'a> {
     }
 
     fn closing_word(length: usize, namespace: Namespace) -> u64 {
-        (length as u64) << u32::BITS | u64::from(Self::code(namespace))
+        (length as u64) << u32::BITS | u64::from(SavedNamespace::of(namespace).code())
     }
 
     fn mix(hash: u64, word: u64) -> u64 {

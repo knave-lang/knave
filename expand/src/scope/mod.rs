@@ -13,6 +13,7 @@ mod qualified_names;
 mod saved_exports;
 mod saved_keys;
 mod saved_names;
+mod saved_namespace;
 mod saved_words;
 mod scope_chain;
 mod scope_kind;

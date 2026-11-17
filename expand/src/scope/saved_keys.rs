@@ -1,5 +1,6 @@
 use super::name_key::NameKey;
 use super::name_slots::{NameSlots, NameSlotsBuilder};
+use super::saved_namespace::SavedNamespace;
 use super::saved_words::{SavedWords, SavedWordsBuilder};
 use crate::core::Namespace;
 
@@ -22,7 +23,7 @@ impl SavedKeys {
         let [name_start, name_end, namespace] = self.rows().row(position);
         let name = &self.names[name_start as usize..name_end as usize];
         let name = std::str::from_utf8(name).expect("a saved name is text");
-        (name, NameKey::namespace(namespace))
+        (name, SavedNamespace::read(namespace).namespace())
     }
 
     pub(super) fn count(&self) -> usize {
@@ -31,8 +32,8 @@ impl SavedKeys {
 
     fn holds(&self, position: usize, key: NameKey<'_>) -> bool {
         let [name_start, name_end, namespace] = self.rows().row(position);
-        namespace == NameKey::code(key.namespace)
-            && &self.names[name_start as usize..name_end as usize] == key.name.as_bytes()
+        SavedNamespace::read(namespace) == SavedNamespace::of(key.namespace())
+            && &self.names[name_start as usize..name_end as usize] == key.name().as_bytes()
     }
 
     fn rows(&self) -> SavedWords<3> {
@@ -42,7 +43,7 @@ impl SavedKeys {
 
 pub(super) struct SavedKeysBuilder {
     slots: NameSlotsBuilder,
-    rows: SavedWordsBuilder,
+    rows: SavedWordsBuilder<3>,
     names: Vec<u8>,
     count: usize,
 }
@@ -59,9 +60,9 @@ impl SavedKeysBuilder {
 
     pub(super) fn add(&mut self, key: NameKey<'_>) {
         let name_start = self.names.len();
-        self.names.extend(key.name.as_bytes());
-        let namespace = NameKey::code(key.namespace) as usize;
-        self.rows.push(&[name_start, self.names.len(), namespace]);
+        self.names.extend(key.name().as_bytes());
+        let namespace = SavedNamespace::of(key.namespace()).code() as usize;
+        self.rows.push([name_start, self.names.len(), namespace]);
         self.slots.claim(key, self.count);
         self.count += 1;
     }

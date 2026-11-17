@@ -1,8 +1,10 @@
 (type peek (fn ((ref i64)) i64))
+
 (defn peek (x) (deref x))
 
 (def peek-int
-  (rust "std::convert::identity::<&i64>({0})" (fn ((ref i64)) (ref i64))))
+  (rust "std::convert::identity::<&i64>({0})"
+    (fn ((ref i64)) (ref i64))))
 
 (defn peek-through-shared ()
   (local held 4)
@@ -20,6 +22,7 @@
 (defn main ()
   (local items (vec 3 5 8))
   (let (show (fn (y) (peek (deref y))))
-    (println (count (filter (iter items) (fn (y) (> (show y) 3))))))
+    (println (count (filter (iter items)
+                      (fn (y) (> (show y) 3))))))
   (peek-through-shared)
   (peek-through-mut))

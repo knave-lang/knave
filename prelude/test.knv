@@ -14,16 +14,15 @@
 (use prelude/text display show str)
 
 (use code add-module-note bool-not concat definition-symbol
-          empty? fail first form-location
-          keyword-name keyword? len list list? located
-          module-exports module-notes module-symbol nth
-          number-add number-lt number-sub prepend
-          program-modules project-modules read-form rest
-          same-binding? string string-drop string-length
-          string-lines string-strip-prefix
-          string-strip-suffix string-trim-end
-          string-trim-start string? symbol symbol-name
-          symbol? value-eq)
+          empty? fail first form-location keyword-name
+          keyword? len list list? located module-exports
+          module-notes module-symbol nth number-add
+          number-lt number-sub prepend program-modules
+          project-modules read-form rest same-binding?
+          string string-drop string-length string-lines
+          string-strip-prefix string-strip-suffix
+          string-trim-end string-trim-start string? symbol
+          symbol-name symbol? value-eq)
 
 (use prelude/syntax assert deftest run-tests)
 

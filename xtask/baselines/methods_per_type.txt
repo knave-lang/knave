@@ -50,7 +50,7 @@ src/ownership/kinds.rs::ClosureKinds 102
 
 src/ownership/local_borrows.rs::LocalBorrows 23
 
-src/ownership/moves.rs::MoveChecker 49
+src/ownership/moves.rs::MoveChecker 48
 
 src/ownership/problems.rs::OwnershipProblems 50
 

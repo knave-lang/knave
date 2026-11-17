@@ -18,9 +18,9 @@ src/emit/result_borrows.rs 740
 
 src/emit/types.rs 801
 
-src/ownership/kinds.rs 1701
+src/ownership/kinds.rs 1696
 
-src/ownership/moves.rs 585
+src/ownership/moves.rs 587
 
 src/ownership/problems.rs 775
 

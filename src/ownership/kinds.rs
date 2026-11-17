@@ -5,9 +5,9 @@ use std::rc::Rc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::aliases::LetAliases;
+use super::captured_move::CapturedMove;
 use super::definitions::LocalDefinitions;
 use super::lambda_address::LambdaAddress;
-use super::moved_place::MovedPlace;
 use super::parameter_uses::ParameterUses;
 use super::problems::OwnershipProblems;
 use super::read_usage::ReadUsage;
@@ -429,13 +429,19 @@ impl<'a> ClosureKinds<'a> {
                 report
             }
             TypedExprKind::Control(control) => self.scan_control(control, own, usage),
-            TypedExprKind::Struct(_) if usage.moves_field(expr, &self.copy) => {
-                match expr.field_place() {
-                    Some(place) => self.record_field_move(&place, expr.span, own),
-                    None => self.scan_nested(expr, &expr.kind, own),
-                }
+            TypedExprKind::Struct(TypedStructExpr::Field(..)) if usage == ReadUsage::Move => {
+                self.scan_moved_field(expr, own)
             }
             other => self.scan_nested(expr, other, own),
+        }
+    }
+
+    fn scan_moved_field(&mut self, read: &TypedExpr, own: &FxHashSet<BindingId>) -> CaptureReport {
+        match read.field_place() {
+            Some(place) if ReadUsage::Move.moves_field(read, &place, &self.copy) => {
+                self.record_field_move(&place, read.span, own)
+            }
+            _ => self.scan_nested(read, &read.kind, own),
         }
     }
 
@@ -514,9 +520,9 @@ impl<'a> ClosureKinds<'a> {
                 self.scan_values(&values, own)
             }
             TypedExprKind::Assoc(value, keys, item) => {
-                let mut values: Vec<&TypedExpr> = keys.iter().collect();
-                values.push(item);
-                self.scan_update(value, &values, own)
+                let mut values: Vec<&TypedExpr> = vec![value];
+                values.extend(keys.iter().chain([&**item]));
+                self.scan_values(&values, own)
             }
             _ => unreachable!("the caller matches a value form"),
         }
@@ -587,17 +593,6 @@ impl<'a> ClosureKinds<'a> {
             return CaptureReport::default();
         }
         self.record_field_move(place, span, own)
-    }
-
-    fn scan_update(
-        &mut self,
-        base: &TypedExpr,
-        values: &[&TypedExpr],
-        own: &FxHashSet<BindingId>,
-    ) -> CaptureReport {
-        let mut report = self.scan_expression(base, own, ReadUsage::Move);
-        report.merge(self.scan_values(values, own));
-        report
     }
 
     fn record_field_move(
@@ -1489,12 +1484,12 @@ impl<'a> ClosureKinds<'a> {
                 capture_span,
             );
         }
-        let moved =
-            capture.map(|binding| MovedPlace::captured(&argument.value, binding, self.bindings));
         OwnershipProblems::closure_kind_mismatch(
             actual,
             required,
-            moved.as_ref(),
+            CapturedMove::of(&argument.value, self.bindings)
+                .place(capture)
+                .as_ref(),
             callee_name.as_deref(),
             argument.value.span,
             capture_span,

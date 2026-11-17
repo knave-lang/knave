@@ -1,0 +1,7 @@
+(defn takes ((s string)) (len s))
+
+(defn main ()
+  (let (p (pair (str "a") 1)
+        a (first p))
+    (println (takes a))
+    (prn p)))

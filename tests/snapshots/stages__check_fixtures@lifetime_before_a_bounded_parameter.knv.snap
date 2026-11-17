@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/lifetime_before_a_bounded_parameter.knv
+---
+(type labeled (where ('a (n display)) (fn ((ref 'a str) n) string)))

@@ -6,7 +6,7 @@ use super::name_key::NameKey;
 use super::saved_exports::SavedExports;
 use super::saved_names::SavedNames;
 use super::{Scope, ScopeSet};
-use crate::core::{BindingId, Namespace};
+use crate::core::{BindingId, ModuleId, Namespace};
 
 #[derive(Default)]
 pub struct PreludeNames {
@@ -19,8 +19,8 @@ impl PreludeNames {
         self.saved = saved;
     }
 
-    pub fn import(&mut self, scope: Scope, exports: SavedExports) {
-        self.imported.add(scope, exports);
+    pub fn import(&mut self, scope: Scope, base: ModuleId, exports: SavedExports) {
+        self.imported.add(scope, base, exports);
     }
 
     pub(super) fn imported_with_scopes(
@@ -29,7 +29,8 @@ impl PreludeNames {
         name: &str,
         namespace: Namespace,
     ) -> Option<BindingId> {
-        self.imported.bound_with_scopes(scopes, name, namespace)
+        self.imported
+            .bound_with_scopes(scopes, NameKey::new(name, namespace))
     }
 
     pub(super) fn entries_seen_from<'t, 's>(
@@ -69,6 +70,11 @@ impl PreludeNames {
     #[cfg(test)]
     pub(crate) fn imported_decoded_count(&self) -> usize {
         self.imported.decoded_count()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn imported_table_count(&self) -> usize {
+        self.imported.table_count()
     }
 
     #[cfg(test)]

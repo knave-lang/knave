@@ -10256,6 +10256,30 @@ fn task_refuses_a_task_in_a_folder_that_the_task_tree_skips() {
 }
 
 #[test]
+fn task_refuses_a_task_in_a_library_that_lies_under_tasks() {
+    let task = Sandbox::new("task_in_library_under_tasks")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject chores (libraries (hints :path \"tasks/lib\")))\n",
+        )
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file(
+            "tasks/lib/project.knv",
+            "(defproject hints :lib \"hints.knv\")\n",
+        )
+        .with_file(
+            "tasks/lib/hints.knv",
+            "(deftask lib-task () (println \"l\"))\n",
+        )
+        .with_file(
+            "tasks/t.knv",
+            "(use hints)\n\n(deftask t () (println \"t\"))\n",
+        )
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn task_file_may_still_import_deftask_from_prelude_task() {
     let task = Sandbox::new("task_explicit_import")
         .with_file(&Language::project_file_name(), TASK_PROJECT)

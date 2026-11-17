@@ -1,0 +1,7 @@
+(defn f ((p (ref (pair i64 string))))
+  (push! (second p) "x"))
+
+(defn main ()
+  (let (p (pair 1 (str "a")))
+    (f (ref p))
+    (prn p)))

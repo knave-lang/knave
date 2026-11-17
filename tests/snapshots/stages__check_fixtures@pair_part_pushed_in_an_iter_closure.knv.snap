@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/pair_part_pushed_in_an_iter_closure.knv
+---
+error[L0401]: mismatched types
+ --> check/pair_part_pushed_in_an_iter_closure.knv:4:22
+  |
+4 |       (fn (e) (push! (second e) "x")))
+  |                      ^^^^^^^^^^ expected `(mut string)`, found `(ref string)`
+  |
+  = note: run `knave doc L0401` for an explanation

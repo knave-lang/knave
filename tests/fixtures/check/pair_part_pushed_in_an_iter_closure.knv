@@ -1,0 +1,5 @@
+(defn main ()
+  (let (v (vec (pair 1 (str "a"))))
+    (for-each (iter v)
+      (fn (e) (push! (second e) "x")))
+    (prn v)))

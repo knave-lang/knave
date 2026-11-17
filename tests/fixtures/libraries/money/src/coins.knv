@@ -1,0 +1,4 @@
+(export ->float float)
+
+(defstruct float
+  :whole i32)

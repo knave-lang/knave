@@ -98,8 +98,11 @@ impl Expander<'_> {
                     self.tables.bindings.get(existing).span(),
                 )
             })?;
-        let hidden = HiddenKernelType::of(symbol.name(), namespace, self.kind(binding));
-        self.report_hidden_kernel_type(hidden.map(|hidden| hidden.at_import(span)));
+        let hidden = HiddenKernelType::of(symbol.name(), namespace, self.kind(binding))
+            .filter(|_| !self.expands_library_module());
+        if let Some(hidden) = hidden {
+            self.problems.report_warning(hidden.at_import(span));
+        }
         Ok(())
     }
 
@@ -145,15 +148,12 @@ impl Expander<'_> {
                     self.tables.bindings.get(existing).span(),
                 )
             })?;
-        let hidden = HiddenKernelType::of(symbol.name(), namespace, kind);
-        self.report_hidden_kernel_type(hidden.map(|hidden| hidden.at_definition(span)));
-        Ok(binding)
-    }
-
-    fn report_hidden_kernel_type(&mut self, warning: Option<Diagnostic>) {
-        if let Some(warning) = warning {
-            self.problems.report_warning(warning);
+        let hidden = HiddenKernelType::of(symbol.name(), namespace, kind)
+            .filter(|_| !self.expands_library_module());
+        if let Some(hidden) = hidden {
+            self.problems.report_warning(hidden.at_definition(span));
         }
+        Ok(binding)
     }
 
     fn remember_duplicate_definition(&mut self, symbol: &Symbol, binding: BindingId) {

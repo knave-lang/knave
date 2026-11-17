@@ -1,0 +1,4 @@
+(use money ->float float)
+
+(defn main ()
+  (println (:whole (->float 3))))

@@ -7980,6 +7980,18 @@ fn a_library_that_hides_a_local_directory_warns() {
 }
 
 #[test]
+fn a_library_type_that_hides_a_kernel_type_warns_only_at_the_app_import() {
+    let check = Sandbox::check_fixture("libraries/money-app");
+    insta::assert_snapshot!(check.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn a_library_checked_alone_warns_at_its_types_that_hide_kernel_types() {
+    let check = Sandbox::compiler_in_fixture("libraries/money", &["check", "src/lib.knv"]);
+    insta::assert_snapshot!(check.assert_exit_code(0).stderr());
+}
+
+#[test]
 fn a_library_without_a_project_file_names_the_entry() {
     let check = Sandbox::check_fixture("libraries/missing-project");
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());

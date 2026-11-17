@@ -26,6 +26,7 @@ mod input_terms;
 mod introduced;
 mod introduced_name;
 mod introduced_names;
+mod library_modules;
 mod local_file_diagnosis;
 mod macro_call;
 mod macro_call_lookup;
@@ -117,6 +118,7 @@ use evaluated_forms::EvaluatedForms;
 pub use generated_entry::GeneratedEntry;
 use globals::{GlobalTable, LoweredGlobals};
 pub use input_terms::InputTerms;
+use library_modules::LibraryModules;
 use macro_call::MacroTable;
 pub use macro_call_lookup::MacroCallLookup;
 pub use macro_origin::MacroOrigin;
@@ -241,7 +243,7 @@ pub struct Expander<'s> {
     current_module: Option<ModuleId>,
     problems: ProblemReport,
     reported_hidden_modules: Vec<std::path::PathBuf>,
-    library_modules: Vec<(ModulePath, Rc<str>)>,
+    library_modules: LibraryModules,
     phase: Phase,
     expansion_depth: usize,
     nesting_depth: usize,
@@ -328,7 +330,7 @@ impl<'s> Expander<'s> {
             current_module: None,
             problems: ProblemReport::default(),
             reported_hidden_modules: Vec::new(),
-            library_modules: Vec::new(),
+            library_modules: LibraryModules::default(),
             phase: Phase::Runtime,
             expansion_depth: 0,
             nesting_depth: 0,

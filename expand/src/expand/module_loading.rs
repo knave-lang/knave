@@ -269,6 +269,10 @@ impl Expander<'_> {
     fn import_everything(&mut self, module: ModuleId, base: ModuleId) {
         let mut scopes = ScopeSet::default();
         scopes.add(self.modules.get(module).scopes().base());
+        if let Some(saved) = self.modules.get(base).saved_exports() {
+            self.tables.table.import_saved(scopes, saved);
+            return;
+        }
         let exports: Vec<(Rc<str>, Namespace, _)> = self.modules.get(base).exports().collect();
         for (name, namespace, binding) in exports {
             let symbol = Symbol::with_scopes(name, scopes.clone());

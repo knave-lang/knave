@@ -3,6 +3,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::ScopeSet;
+use super::imported_names::ImportedNames;
 use super::name_entries::NameEntries;
 use super::phase::Phase;
 use super::qualified_names::QualifiedNames;
@@ -12,6 +13,7 @@ use crate::reader::Symbol;
 
 pub struct VisibleNames<'t> {
     entries: &'t FxHashMap<(Rc<str>, Namespace), NameEntries>,
+    imported: &'t ImportedNames,
     saved: &'t SavedNames,
     qualified_names: &'t QualifiedNames,
 }
@@ -20,11 +22,13 @@ impl<'t> VisibleNames<'t> {
     #[inline(always)]
     pub(super) fn new(
         entries: &'t FxHashMap<(Rc<str>, Namespace), NameEntries>,
+        imported: &'t ImportedNames,
         saved: &'t SavedNames,
         qualified_names: &'t QualifiedNames,
     ) -> Self {
         Self {
             entries,
+            imported,
             saved,
             qualified_names,
         }
@@ -40,7 +44,8 @@ impl<'t> VisibleNames<'t> {
             .entries
             .iter()
             .map(|((name, entry_namespace), entries)| (Rc::clone(name), *entry_namespace, entries));
-        own.chain(self.saved.all())
+        own.chain(self.imported.all())
+            .chain(self.saved.all())
             .filter(|(_, entry_namespace, _)| *entry_namespace == namespace)
             .flat_map(|(name, _, entries)| {
                 entries
@@ -62,7 +67,8 @@ impl<'t> VisibleNames<'t> {
             .iter()
             .filter(|((_, entry_namespace), _)| *entry_namespace == namespace)
             .map(|(_, entries)| entries);
-        own.chain(self.saved.all_of(namespace))
+        own.chain(self.imported.all_of(namespace))
+            .chain(self.saved.all_of(namespace))
             .flat_map(|entries| entries.visible(scopes, phase))
             .map(|entry| entry.binding())
             .collect()
@@ -89,15 +95,16 @@ impl<'t> VisibleNames<'t> {
     }
 
     #[inline(always)]
-    pub(super) fn entries_named(
+    pub(super) fn entries_named<'s>(
         &self,
-        scopes: &ScopeSet,
+        scopes: &'s ScopeSet,
         name: Rc<str>,
         namespace: Namespace,
-    ) -> impl Iterator<Item = &'t NameEntries> + use<'t> {
+    ) -> impl Iterator<Item = &'t NameEntries> + use<'t, 's> {
         let saved = self.saved.entries_seen_from(scopes, &name, namespace);
-        let own = self.entries.get(&(name, namespace));
-        own.into_iter().chain(saved)
+        let own = self.entries.get(&(Rc::clone(&name), namespace));
+        let imported = self.imported.entries_seen_from(scopes, name, namespace);
+        imported.chain(own).chain(saved)
     }
 }
 

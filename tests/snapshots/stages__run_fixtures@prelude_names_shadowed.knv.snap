@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/prelude_names_shadowed.knv
+---
+true
+9
+3
+6

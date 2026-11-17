@@ -1,0 +1,13 @@
+(use prelude_names_shadowed/helpers first)
+
+(defn not (value)
+  value)
+
+(defn larger (left right)
+  (- left right))
+
+(defn main ()
+  (println (not true))
+  (println (max 3 9))
+  (println (first (vec 4 5 6)))
+  (println (unwrap (last (vec 4 5 6)))))

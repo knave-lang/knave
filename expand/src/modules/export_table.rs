@@ -43,6 +43,13 @@ impl ExportTable {
         built_entries.chain(saved.into_iter().flat_map(SavedExports::entries))
     }
 
+    pub fn saved(&self) -> Option<SavedExports> {
+        match self {
+            Self::Built(_) => None,
+            Self::Saved(saved) => Some(*saved),
+        }
+    }
+
     fn encoded(&self) -> ExportBytes {
         match self {
             Self::Built(exports) => ExportBytes::of(

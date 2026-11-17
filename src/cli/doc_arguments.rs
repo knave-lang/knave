@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use clap::Args;
 
 use super::doc::{DocCommand, DocEnvironment, DocPage};
-use super::doc_write::{DocScope, DocWriteCommand};
+use super::doc_write::{CompilerPages, DocScope, DocWriteCommand};
 use super::exit_status::ExitStatus;
 use super::explanation_lookup::ExplanationLookup;
 use super::explanation_page::ExplanationPage;
@@ -53,6 +53,12 @@ pub struct DocArguments {
         help = "Write the pages of the diagnostic codes instead of the project's"
     )]
     errors: bool,
+    #[arg(
+        long,
+        requires = "write",
+        help = "Write the pages of the language reference instead of the project's"
+    )]
+    reference: bool,
 }
 
 impl DocArguments {
@@ -80,12 +86,23 @@ impl DocArguments {
     }
 
     fn scope(&self) -> DocScope {
-        match (self.prelude, self.errors) {
-            (false, false) => DocScope::Project,
-            (true, false) => DocScope::Prelude,
-            (false, true) => DocScope::Errors,
-            (true, true) => DocScope::PreludeAndErrors,
+        let chosen = self.chosen_compiler_pages();
+        if chosen.is_empty() {
+            DocScope::Project
+        } else {
+            DocScope::Compiler(chosen)
         }
+    }
+
+    fn chosen_compiler_pages(&self) -> Vec<CompilerPages> {
+        [
+            (self.prelude, CompilerPages::Prelude),
+            (self.errors, CompilerPages::Errors),
+            (self.reference, CompilerPages::Reference),
+        ]
+        .into_iter()
+        .filter_map(|(chosen, pages)| chosen.then_some(pages))
+        .collect()
     }
 
     fn page(&self) -> DocPage {

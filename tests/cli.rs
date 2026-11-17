@@ -3331,6 +3331,52 @@ fn doc_write_errors_beside_the_prelude_writes_both() {
 }
 
 #[test]
+fn doc_write_reference_writes_the_index_and_each_page() {
+    let sandbox = Sandbox::new("doc_write_reference");
+    sandbox
+        .compiler(&["doc", "--write", "--reference", "--output", "pages"])
+        .assert_silent_success();
+    let reference = ReferenceSources::written();
+    let written: Vec<String> = sandbox
+        .files_under("pages")
+        .into_iter()
+        .filter(|file| !file.starts_with('.'))
+        .collect();
+    assert_eq!(written, reference.written_files());
+    for (written_file, source) in reference.sources() {
+        assert_eq!(&sandbox.contents(&format!("pages/{written_file}")), source);
+    }
+}
+
+#[test]
+fn doc_write_reference_beside_the_prelude_and_errors_writes_all_three() {
+    let sandbox = Sandbox::new("doc_write_reference_prelude_errors");
+    sandbox
+        .compiler(&[
+            "doc",
+            "--write",
+            "--prelude",
+            "--errors",
+            "--reference",
+            "--output",
+            "pages",
+        ])
+        .assert_silent_success();
+    let files = sandbox.files_under("pages");
+    for written in [
+        "prelude.md",
+        "prelude/syntax.md",
+        "errors.md",
+        "errors/L0501.md",
+    ] {
+        assert!(files.contains(&written.to_string()), "{written} is missing");
+    }
+    for written in ReferenceSources::written().written_files() {
+        assert!(files.contains(&written), "{written} is missing");
+    }
+}
+
+#[test]
 fn doc_write_prelude_ignores_a_broken_project_file() {
     let sandbox = Sandbox::new("doc_write_prelude_broken_project")
         .with_file(&Language::project_file_name(), "(defproject\n")
@@ -11052,4 +11098,46 @@ fn task_tree_keeps_its_subdirectories_and_skips_a_link_that_leaves_it() {
     let report = linked.assert_exit_code(1).stderr();
     assert!(!report.contains("<tasks>"));
     assert!(report.contains(" --> tasks/linked.knv:1:6"));
+}
+
+struct ReferenceSources {
+    pages: Vec<(String, String)>,
+}
+
+impl ReferenceSources {
+    const FOLDER: &str = "docs/reference";
+    const INDEX_SOURCE: &str = "README";
+    const WRITTEN_FOLDER: &str = "reference";
+
+    fn written() -> Self {
+        let mut pages: Vec<(String, String)> = fs::read_dir(Self::FOLDER)
+            .expect("the reference folder is readable")
+            .map(|entry| entry.expect("the reference folder lists").path())
+            .map(|path| Self::page_of(&path))
+            .collect();
+        pages.sort();
+        Self { pages }
+    }
+
+    fn page_of(path: &Path) -> (String, String) {
+        let name = path.file_stem().expect("a page has a name");
+        let text = fs::read_to_string(path).expect("a reference page is readable");
+        (Self::written_file(&name.to_string_lossy()), text)
+    }
+
+    fn written_file(name: &str) -> String {
+        if name == Self::INDEX_SOURCE {
+            format!("{}.md", Self::WRITTEN_FOLDER)
+        } else {
+            format!("{}/{name}.md", Self::WRITTEN_FOLDER)
+        }
+    }
+
+    fn written_files(&self) -> Vec<String> {
+        self.pages.iter().map(|(file, _)| file.clone()).collect()
+    }
+
+    fn sources(&self) -> &[(String, String)] {
+        &self.pages
+    }
 }

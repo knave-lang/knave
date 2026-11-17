@@ -91,6 +91,7 @@ mod prompt_lines;
 mod prompt_module;
 #[cfg(test)]
 mod recorded_output;
+mod reference_pages;
 mod release_flag;
 mod remove;
 mod repl;

@@ -10,6 +10,7 @@ use super::exit_status::ExitStatus;
 use super::library_walk::FetchingStore;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
+use super::reference_pages::ReferencePages;
 use super::source_walk::SourceWalk;
 use super::terminal::Terminal;
 use super::unreadable_file::UnreadableFile;
@@ -24,14 +25,19 @@ pub struct DocWriteCommand {
 
 pub enum DocScope {
     Project,
+    Compiler(Vec<CompilerPages>),
+}
+
+pub enum CompilerPages {
     Prelude,
     Errors,
-    PreludeAndErrors,
+    Reference,
 }
 
 enum PageSet {
     Modules(Box<DocumentedModules>),
     Errors,
+    Reference,
 }
 
 impl DocWriteCommand {
@@ -65,13 +71,11 @@ impl DocWriteCommand {
     }
 
     fn target(&self, terminal: &mut Terminal) -> Result<(PathBuf, Vec<PageSet>), ExitStatus> {
-        Ok(match self.scope {
+        Ok(match &self.scope {
             DocScope::Project => self.project_target(terminal)?,
-            DocScope::Prelude => (self.reference_folder(), vec![Self::prelude_modules()]),
-            DocScope::Errors => (self.reference_folder(), vec![PageSet::Errors]),
-            DocScope::PreludeAndErrors => (
-                self.reference_folder(),
-                vec![Self::prelude_modules(), PageSet::Errors],
+            DocScope::Compiler(chosen) => (
+                self.compiler_pages_folder(),
+                chosen.iter().map(Self::page_set).collect(),
             ),
         })
     }
@@ -106,7 +110,15 @@ impl DocWriteCommand {
         }
     }
 
-    fn reference_folder(&self) -> PathBuf {
+    fn page_set(chosen: &CompilerPages) -> PageSet {
+        match chosen {
+            CompilerPages::Prelude => Self::prelude_modules(),
+            CompilerPages::Errors => PageSet::Errors,
+            CompilerPages::Reference => PageSet::Reference,
+        }
+    }
+
+    fn compiler_pages_folder(&self) -> PathBuf {
         let root = LocatedProject::canonical_root(WorkingDirectory::path()).unwrap_or_default();
         self.folder_in(&root)
     }
@@ -130,6 +142,7 @@ impl PageSet {
         match self {
             Self::Modules(modules) => modules.pages(terminal),
             Self::Errors => ErrorPages::pages(terminal),
+            Self::Reference => Ok(ReferencePages::pages()),
         }
     }
 }

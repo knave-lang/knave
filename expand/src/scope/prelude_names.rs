@@ -67,7 +67,12 @@ impl PreludeNames {
     }
 
     #[cfg(test)]
-    pub(super) fn imported_decoded_count(&self) -> usize {
+    pub(crate) fn imported_decoded_count(&self) -> usize {
         self.imported.decoded_count()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn imported_module_count(&self) -> usize {
+        self.imported.module_count()
     }
 }

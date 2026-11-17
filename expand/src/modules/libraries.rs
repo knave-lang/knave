@@ -81,6 +81,8 @@ impl LibraryRoot {
 }
 
 impl LibraryTable {
+    const UNSCOPED: SearchScope = SearchScope::Program;
+
     pub fn new(
         program_visible: Vec<String>,
         libraries: Vec<LibraryRoot>,
@@ -124,16 +126,12 @@ impl LibraryTable {
         self.sees_library(owner, written)
     }
 
-    pub(super) fn local_root<'s>(
-        &'s self,
-        owner: &str,
-        scope: &'s SearchScope,
-    ) -> Option<LocalRoot<'s>> {
+    pub(super) fn local_root(&self, owner: &str) -> Option<LocalRoot<'_>> {
         let library = self.named(Some(owner))?;
         Some(LocalRoot::primary(
             &library.source_root,
             &library.display_root,
-            scope,
+            &Self::UNSCOPED,
         ))
     }
 

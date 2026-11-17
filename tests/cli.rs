@@ -10625,7 +10625,7 @@ fn dotted_use_through_a_folder_link_out_of_the_root_helps_with_the_path_in_place
 }
 
 #[test]
-fn dotted_use_with_a_parent_part_to_a_link_of_another_extension_names_the_real_file() {
+fn dotted_use_with_a_parent_part_to_a_link_of_another_extension_helps_with_the_link() {
     let sandbox = Sandbox::new("dotted_use_parent_link_other_extension")
         .with_file(
             "main.knv",
@@ -10636,16 +10636,30 @@ fn dotted_use_with_a_parent_part_to_a_link_of_another_extension_names_the_real_f
         .with_file("notes.knv", "(def kept 2)\n");
     std::os::unix::fs::symlink("notes.txt", sandbox.directory.join("alias.knv"))
         .expect("the sandbox can hold a symbolic link");
-    let notes = fs::canonicalize(sandbox.directory.join("notes.txt")).expect("the notes resolve");
     let check = sandbox.compiler(&["check", "main.knv"]);
-    let stderr = check.assert_exit_code(1).stderr();
-    assert!(
-        stderr.contains(&format!(
-            "`{}` exists, but no module path this module can use names it",
-            notes.display()
-        )),
-        "{stderr}"
-    );
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn task_library_under_tests_with_a_dotted_use_helps_with_its_path() {
+    let sandbox = Sandbox::new("task_library_under_tests_dotted")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject chores (libraries (fixtures :path \"tests/support-lib\")))\n",
+        )
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("tests/support-lib/project.knv", "(defproject fixtures)\n")
+        .with_file(
+            "tests/support-lib/src/lib.knv",
+            "(use ./pad)\n\n(export helper)\n\n(defn helper () 1)\n",
+        )
+        .with_file("tests/support-lib/src/pad.knv", "(def kept 1)\n")
+        .with_file(
+            "tasks/t.knv",
+            "(use fixtures helper)\n\n(deftask t () (println (helper)))\n",
+        );
+    let task = sandbox.compiler(&["task", "t"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
 }
 
 const DOTTED_MARKS_TEST: &str = "(use ../src/text/marks bang)\n\n(use prelude/test assert deftest)\n\n(deftest bangs (assert (= bang \"!\")))\n";

@@ -227,11 +227,7 @@ impl ModuleSources {
 
     pub fn local_files(&self, owner: Option<Rc<str>>) -> LocalFiles<'_> {
         let roots = match owner.as_deref() {
-            Some(owner) => self
-                .libraries
-                .local_root(owner, &self.scope)
-                .into_iter()
-                .collect(),
+            Some(owner) => self.libraries.local_root(owner).into_iter().collect(),
             None => self.local_roots().collect(),
         };
         LocalFiles::new(roots, move |path| {

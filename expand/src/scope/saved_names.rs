@@ -58,7 +58,7 @@ type SavedParts = (Range<Scope>, SavedKeys, &'static [u8], &'static [u8]);
 pub struct SavedNames {
     prelude_scopes: Range<Scope>,
     keys: SavedKeys,
-    ranges: SavedWords,
+    ranges: SavedWords<{ Self::RANGE_WIDTH }>,
     entries: &'static [u8],
     decoded: Vec<OnceCell<Box<NameEntries>>>,
 }
@@ -70,7 +70,7 @@ impl<'de: 'static> serde::Deserialize<'de> for SavedNames {
         Ok(Self {
             prelude_scopes,
             keys,
-            ranges: SavedWords::new(ranges, Self::RANGE_WIDTH),
+            ranges: SavedWords::new(ranges),
             entries,
             decoded: (0..keys.count()).map(|_| OnceCell::new()).collect(),
         })
@@ -83,7 +83,7 @@ impl Default for SavedNames {
         Self {
             prelude_scopes: nothing..nothing,
             keys: SavedKeys::default(),
-            ranges: SavedWords::new(&[], Self::RANGE_WIDTH),
+            ranges: SavedWords::new(&[]),
             entries: &[],
             decoded: Vec::new(),
         }
@@ -92,8 +92,6 @@ impl Default for SavedNames {
 
 impl SavedNames {
     const RANGE_WIDTH: usize = 2;
-    const ENTRIES_START: usize = 0;
-    const ENTRIES_END: usize = 1;
 
     pub(super) fn entries_seen_from(
         &self,
@@ -136,9 +134,9 @@ impl SavedNames {
     }
 
     fn decode(&self, position: usize) -> NameEntries {
-        let start = self.ranges.word(position, Self::ENTRIES_START) as usize;
-        let end = self.ranges.word(position, Self::ENTRIES_END) as usize;
-        bincode::deserialize(&self.entries[start..end]).expect("a saved name entry decodes")
+        let [start, end] = self.ranges.row(position);
+        bincode::deserialize(&self.entries[start as usize..end as usize])
+            .expect("a saved name entry decodes")
     }
 }
 

@@ -1,0 +1,9 @@
+(use code located)
+
+(defmacro make-float (place)
+  (template (defstruct (unquote (located place (quote float)))
+              :n bool)))
+
+(make-float (here))
+
+(defn main () (println 1))

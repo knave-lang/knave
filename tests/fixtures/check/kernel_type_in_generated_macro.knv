@@ -1,0 +1,10 @@
+(defmacro define-and-use ()
+  (template (do
+              (defmacro make-int ()
+                (template (defstruct int
+                            :n bool)))
+              (make-int))))
+
+(define-and-use)
+
+(defn main () (println 1))

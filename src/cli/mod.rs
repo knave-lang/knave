@@ -133,6 +133,7 @@ mod user_label_output;
 mod value_marker;
 mod whole_characters;
 mod working_directory;
+mod written_printer;
 
 pub use embedded_prelude::EmbeddedPrelude;
 

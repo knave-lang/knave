@@ -39,14 +39,6 @@ impl GeneratedFunction {
 }
 
 impl ResultPrinter {
-    pub fn calling(printer: BindingId) -> Self {
-        Self {
-            callee: printer,
-            bound_holder: printer,
-            functions: Vec::new(),
-        }
-    }
-
     pub fn through(function: GeneratedFunction, bound_holder: BindingId) -> Self {
         Self {
             callee: function.binding,

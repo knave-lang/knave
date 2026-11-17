@@ -14,6 +14,7 @@ use super::streamed_program::StreamedProgram;
 use super::terminal::Terminal;
 use super::token_colors::TokenColors;
 use super::value_marker::ValueMarker;
+use super::written_printer::WrittenPrinter;
 use crate::diagnostic::Diagnostics;
 use crate::expand::{ExpansionSession, ResultPrinter};
 
@@ -38,6 +39,7 @@ impl PrintedEvaluation {
     const PRINTER: &'static str = "print-result";
     const PRINTER_SOURCE: &'static str = "<result printer>";
     const PRINTER_TEXT: &'static str = "(fn ((value (ref _))) (prn value))";
+    const PRINTER_BOUND: &'static str = "prn";
 
     fn deciding(colors: TokenColors) -> Self {
         match colors {
@@ -51,12 +53,8 @@ impl PrintedEvaluation {
     }
 
     fn plain_printer(session: &mut ExpansionSession<'_>) -> Result<ResultPrinter, Diagnostics> {
-        let bound_holder = session
-            .prelude_value(ValueMarker::VALUE_TEXT)
-            .expect("the prelude defines the value's text");
-        let source = session.add_source(Self::PRINTER_SOURCE, Self::PRINTER_TEXT);
-        let printer = session.prelude_function(Self::PRINTER, source)?;
-        Ok(ResultPrinter::through(printer, bound_holder))
+        WrittenPrinter::new(Self::PRINTER, Self::PRINTER_SOURCE, Self::PRINTER_BOUND)
+            .build(session, Self::PRINTER_TEXT)
     }
 }
 

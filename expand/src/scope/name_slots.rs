@@ -1,66 +1,71 @@
 use super::name_key::NameKey;
+use super::saved_words::{SavedWords, SavedWordsBuilder};
 
-pub(crate) struct NameSlots;
+#[derive(Clone, Copy)]
+pub(super) struct NameSlots {
+    positions: SavedWords,
+}
 
 impl NameSlots {
-    pub(crate) const WORD: usize = size_of::<u32>();
-    const EMPTY: u32 = 0;
-    const LOAD_DIVISOR: usize = 2;
+    const EMPTY: usize = 0;
 
-    pub(crate) fn empty(names: usize) -> Vec<u8> {
-        vec![0; Self::capacity(names) * Self::WORD]
-    }
-
-    pub(crate) fn claim(slots: &mut [u8], key: NameKey<'_>, position: usize) {
-        let mask = slots.len() / Self::WORD - 1;
-        let mut slot = Self::start(key, mask);
-        while Self::word(slots, slot) != Self::EMPTY {
-            slot = (slot + 1) & mask;
+    pub(super) fn new(bytes: &'static [u8]) -> Self {
+        Self {
+            positions: SavedWords::new(bytes, 1),
         }
-        let claimed = Self::index(position + 1).to_le_bytes();
-        slots[slot * Self::WORD..(slot + 1) * Self::WORD].copy_from_slice(&claimed);
     }
 
-    pub(crate) fn find(
-        slots: &[u8],
+    pub(super) fn find(
+        &self,
         key: NameKey<'_>,
         holds_key: impl Fn(usize) -> bool,
     ) -> Option<usize> {
-        let count = slots.len() / Self::WORD;
+        let count = self.positions.rows();
         if count == 0 {
             return None;
         }
         let mask = count - 1;
-        let mut slot = Self::start(key, mask);
+        let mut slot = key.first_slot(mask);
         loop {
-            let position = Self::word(slots, slot);
-            if position == Self::EMPTY {
+            let claimed = self.positions.word(slot, 0) as usize;
+            if claimed == Self::EMPTY {
                 return None;
             }
-            let row = position as usize - 1;
+            let row = claimed - 1;
             if holds_key(row) {
                 return Some(row);
             }
             slot = (slot + 1) & mask;
         }
     }
+}
 
-    pub(crate) fn word(bytes: &[u8], index: usize) -> u32 {
-        let start = index * Self::WORD;
-        let word = &bytes[start..start + Self::WORD];
-        u32::from_le_bytes(word.try_into().expect("a saved word has four bytes"))
+pub(super) struct NameSlotsBuilder {
+    claimed: Vec<usize>,
+}
+
+impl NameSlotsBuilder {
+    const LOAD_DIVISOR: usize = 2;
+
+    pub(super) fn for_count(names: usize) -> Self {
+        let capacity = (names * Self::LOAD_DIVISOR).max(1).next_power_of_two();
+        Self {
+            claimed: vec![NameSlots::EMPTY; capacity],
+        }
     }
 
-    pub(crate) fn index(value: usize) -> u32 {
-        u32::try_from(value).expect("the saved prelude stays under 4 GiB")
+    pub(super) fn claim(&mut self, key: NameKey<'_>, position: usize) {
+        let mask = self.claimed.len() - 1;
+        let mut slot = key.first_slot(mask);
+        while self.claimed[slot] != NameSlots::EMPTY {
+            slot = (slot + 1) & mask;
+        }
+        self.claimed[slot] = position + 1;
     }
 
-    fn start(key: NameKey<'_>, mask: usize) -> usize {
-        let wide_mask = u64::try_from(mask).expect("a table's mask fits 64 bits");
-        usize::try_from(key.hash & wide_mask).expect("a slot fits its mask")
-    }
-
-    fn capacity(names: usize) -> usize {
-        (names * Self::LOAD_DIVISOR).max(1).next_power_of_two()
+    pub(super) fn words(&self) -> SavedWordsBuilder {
+        let mut words = SavedWordsBuilder::default();
+        words.push(&self.claimed);
+        words
     }
 }

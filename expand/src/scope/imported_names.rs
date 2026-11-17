@@ -1,37 +1,35 @@
 use std::cell::OnceCell;
 use std::rc::Rc;
 
-use super::ScopeSet;
+use rustc_hash::FxHashMap;
+
 use super::name_entries::NameEntries;
 use super::phase::Phase;
 use super::qualified_names::QualifiedNames;
 use super::saved_exports::SavedExports;
+use super::{Scope, ScopeSet};
 use crate::core::{BindingId, Namespace};
 
 #[derive(Default)]
 pub(super) struct ImportedNames {
     modules: Vec<ImportedModule>,
+    module_by_scope: FxHashMap<Scope, usize>,
+    recorded_exports: Vec<SavedExports>,
     qualified_names: QualifiedNames,
 }
 
 struct ImportedModule {
+    scope: Scope,
     scopes: ScopeSet,
     exports: SavedExports,
     entries: Vec<OnceCell<Box<NameEntries>>>,
 }
 
 impl ImportedNames {
-    pub(super) fn add(&mut self, scopes: ScopeSet, exports: SavedExports) {
-        let entries = (0..exports.count()).map(|_| OnceCell::new()).collect();
-        for position in 0..exports.count() {
-            let (name, namespace, _) = exports.export(position);
-            self.qualified_names.record_saved(name, namespace);
-        }
-        self.modules.push(ImportedModule {
-            scopes,
-            exports,
-            entries,
-        });
+    pub(super) fn add(&mut self, scope: Scope, exports: SavedExports) {
+        self.record_qualified_names(exports);
+        self.module_by_scope.insert(scope, self.modules.len());
+        self.modules.push(ImportedModule::new(scope, exports));
     }
 
     pub(super) fn entries_seen_from<'t, 's>(
@@ -40,9 +38,7 @@ impl ImportedNames {
         name: Rc<str>,
         namespace: Namespace,
     ) -> impl Iterator<Item = &'t NameEntries> + use<'t, 's> {
-        self.modules
-            .iter()
-            .filter(|module| module.scopes.is_subset_of(scopes))
+        self.modules_seen_from(scopes)
             .filter_map(move |module| module.entries(&name, namespace))
     }
 
@@ -52,10 +48,11 @@ impl ImportedNames {
         name: &str,
         namespace: Namespace,
     ) -> Option<BindingId> {
-        self.modules
-            .iter()
-            .filter(|module| module.scopes == *scopes)
-            .find_map(|module| module.exports.get(name, namespace))
+        if scopes.len() != 1 {
+            return None;
+        }
+        let module = self.module_by_scope.get(&scopes.largest()?)?;
+        self.modules[*module].exports.get(name, namespace)
     }
 
     pub(super) fn all(&self) -> impl Iterator<Item = (Rc<str>, Namespace, &NameEntries)> {
@@ -86,9 +83,54 @@ impl ImportedNames {
         let entries = self.modules.iter().flat_map(|module| &module.entries);
         entries.filter(|entry| entry.get().is_some()).count()
     }
+
+    fn record_qualified_names(&mut self, exports: SavedExports) {
+        if self.recorded_exports.contains(&exports) {
+            return;
+        }
+        for position in 0..exports.count() {
+            let (name, namespace, _) = exports.export(position);
+            self.qualified_names.record_saved(name, namespace);
+        }
+        self.recorded_exports.push(exports);
+    }
+
+    fn modules_seen_from<'t, 's>(
+        &'t self,
+        scopes: &'s ScopeSet,
+    ) -> impl Iterator<Item = &'t ImportedModule> + use<'t, 's> {
+        let (by_module, by_scope) = if self.modules.len() <= scopes.len() {
+            let modules = self.modules.iter();
+            (
+                Some(modules.filter(|module| scopes.contains(module.scope))),
+                None,
+            )
+        } else {
+            let modules = scopes
+                .iter()
+                .filter_map(|scope| self.module_by_scope.get(&scope));
+            (None, Some(modules.map(|module| &self.modules[*module])))
+        };
+        by_module
+            .into_iter()
+            .flatten()
+            .chain(by_scope.into_iter().flatten())
+    }
 }
 
 impl ImportedModule {
+    fn new(scope: Scope, exports: SavedExports) -> Self {
+        let mut scopes = ScopeSet::default();
+        scopes.add(scope);
+        let entries = (0..exports.count()).map(|_| OnceCell::new()).collect();
+        Self {
+            scope,
+            scopes,
+            exports,
+            entries,
+        }
+    }
+
     fn entries(&self, name: &str, namespace: Namespace) -> Option<&NameEntries> {
         let position = self.exports.position(name, namespace)?;
         Some(self.decoded(position))
@@ -143,10 +185,7 @@ mod tests {
         fn new() -> Self {
             let mut world = World::new();
             let module = world.scope();
-            world
-                .table
-                .prelude_mut()
-                .import(ScopeSet::of(&[module]), Self::exports());
+            world.table.prelude_mut().import(module, Self::exports());
             Self { world, module }
         }
 
@@ -175,6 +214,15 @@ mod tests {
                 .bind(&symbol, Namespace::Value, binding, Phase::Runtime)
         }
 
+        fn import_into_new_module(&mut self) -> Scope {
+            let module = self.world.scope();
+            self.world
+                .table
+                .prelude_mut()
+                .import(module, Self::exports());
+            module
+        }
+
         fn decoded_count(&self) -> usize {
             self.world.table.prelude().imported_decoded_count()
         }
@@ -198,6 +246,33 @@ mod tests {
         );
         assert_eq!(fixture.resolve("map", &[elsewhere]), Resolution::Unbound);
         assert_eq!(fixture.decoded_count(), 1);
+    }
+
+    #[test]
+    fn a_name_resolves_under_its_own_module_among_more_imports_than_scopes() {
+        let mut fixture = ImportFixture::new();
+        let second = fixture.import_into_new_module();
+        fixture.import_into_new_module();
+        let elsewhere = fixture.world.scope();
+        assert_eq!(
+            fixture.resolve("map", &[second]),
+            Resolution::Bound(ImportFixture::MAP)
+        );
+        assert_eq!(fixture.resolve("map", &[elsewhere]), Resolution::Unbound);
+        assert_eq!(fixture.decoded_count(), 1);
+    }
+
+    #[test]
+    fn a_binding_under_more_than_the_import_scopes_does_not_clash() {
+        let mut fixture = ImportFixture::new();
+        let later = fixture.import_into_new_module();
+        let symbol = World::symbol("map", &[fixture.module, later]);
+        let other = BindingId::from_index(9);
+        let bound = fixture
+            .world
+            .table
+            .bind(&symbol, Namespace::Value, other, Phase::Runtime);
+        assert_eq!(bound, Ok(()));
     }
 
     #[test]

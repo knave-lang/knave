@@ -428,7 +428,11 @@ impl TypeChecker {
     ) -> Implementor {
         let params: Vec<GenericParam> = (0..arity)
             .map(|position| {
-                self.new_generic(&Self::parameter_name(position), vec![Bound::plain(derived)])
+                self.generics.declare(
+                    &Self::parameter_name(position),
+                    vec![Bound::plain(derived)],
+                    &mut self.unifier,
+                )
             })
             .collect();
         let arguments = params.iter().map(|param| Type::Generic(param.id)).collect();

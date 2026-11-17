@@ -2,6 +2,7 @@ use rustc_hash::FxHashMap;
 
 use super::associated::LoweredAssociatedValue;
 use super::checker::TypeChecker;
+use super::generic_registry::GenericRole;
 use super::problems::TypeProblems;
 use super::trait_rows_reach::Implementor;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
@@ -119,13 +120,15 @@ impl TypeChecker {
                 continue;
             }
             let name = self.bindings.get(binder.variable).name().to_string();
-            let param = self.new_generic(&name, Vec::new());
+            let param = self.generics.declare(&name, Vec::new(), &mut self.unifier);
             if matches!(
                 self.bindings.get(binder.variable).kind(),
                 BindingKind::AssociatedType
             ) {
-                self.associated_generics
-                    .insert(param.id, std::rc::Rc::from(name.as_str()));
+                self.generics.assign(
+                    param.id,
+                    GenericRole::AssociatedType(std::rc::Rc::from(name.as_str())),
+                );
             }
             scope.insert(binder.variable, param.id);
             params.push(param);
@@ -184,9 +187,8 @@ impl TypeChecker {
     }
 
     fn replace_bounds(&mut self, param: &mut GenericParam, bounds: Vec<Bound>) {
-        param.bounds = bounds.clone();
-        self.generics.insert(param.id, param.clone());
-        self.unifier.register_generic(param.id, bounds);
+        param.bounds = bounds;
+        self.generics.redeclare(param, &mut self.unifier);
     }
 
     pub(super) fn lower_type(
@@ -277,40 +279,6 @@ impl TypeChecker {
             ReferenceKind::Shared => Type::Ref(lifetime, inner),
             ReferenceKind::Mutable => Type::Mut(lifetime, inner),
         })
-    }
-
-    pub(super) fn instantiate(&mut self, scheme: &Scheme, span: Span) -> Type {
-        let fresh: Vec<Type> = scheme
-            .params
-            .iter()
-            .map(|param| self.fresh_instance(param.id))
-            .collect();
-        let replacements: FxHashMap<GenericId, Type> = scheme
-            .params
-            .iter()
-            .zip(&fresh)
-            .map(|(param, value)| (param.id, value.clone()))
-            .collect();
-        for (param, value) in scheme.params.iter().zip(&fresh) {
-            if let Type::Var(var) = value {
-                let implied = self.implied_bounds.get(&param.id).into_iter().flatten();
-                let bounds = param
-                    .bounds
-                    .iter()
-                    .chain(implied)
-                    .map(|bound| bound.substituted(&replacements))
-                    .collect();
-                self.unifier.set_bounds(*var, bounds, span);
-            }
-        }
-        scheme.body.substitute(&replacements)
-    }
-
-    fn fresh_instance(&mut self, generic: GenericId) -> Type {
-        match self.literal_generics.get(&generic) {
-            Some(literal) => self.unifier.fresh_literal(*literal),
-            None => self.unifier.fresh(),
-        }
     }
 
     fn lower_named(

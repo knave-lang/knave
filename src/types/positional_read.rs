@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use super::assumed_collections::CollectionAssumption;
-use super::copy::CopyRules;
 use super::problems::TypeProblems;
 use super::rust_types::RustTypeTable;
 use super::ty::Type;
@@ -22,9 +21,9 @@ pub struct PairPart {
 }
 
 impl PairPart {
-    pub fn read(self, pair: TypedExpr, copy: &CopyRules) -> TypedExpr {
+    pub fn read(self, pair: TypedExpr, holds_copy: impl Fn(&Type) -> bool) -> TypedExpr {
         let span = self.label.span;
-        let ty = match self.owned || copy.is_small_copy(&self.part) {
+        let ty = match self.owned || holds_copy(&self.part) {
             true => self.part,
             false => Type::shared(self.part),
         };

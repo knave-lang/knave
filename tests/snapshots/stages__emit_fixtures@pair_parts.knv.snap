@@ -43,6 +43,15 @@ fn main() {
                 .collect::<Vec<_>>()
         )
     );
+    println!(
+        "{}",
+        crate::rt::Shown(
+            &scores
+                .windows(2)
+                .map(|argument_0: &[i64]| argument_0.get(1))
+                .collect::<Vec<_>>()
+        )
+    );
     println!("{}", (1_i64, 2.5_f64).0);
     println!("{}", add_parts(&mut totals));
     println!("{}", nested.0.1);
@@ -55,9 +64,26 @@ fn main() {
         println!("{}", take())
     }
     println!("{}", names.0);
-    let left = names.0;
-    let right = names.1;
-    println!("{}{}", left, right)
+    {
+        let left = names.0;
+        let right = names.1;
+        println!("{}{}", left, right)
+    }
+    let mut ranked: Vec<(String, i64)> = vec![("b".to_string(), 2), ("a".to_string(), 1)];
+    let kept: (String, i64) = ("c".to_string(), 3);
+    let count: i64 = kept.1;
+    ranked.sort_by_key(|entry: &(String, i64)| entry.1);
+    println!("{}", crate::rt::Shown(&ranked));
+    println!(
+        "{}",
+        crate::rt::Shown(
+            &ranked
+                .iter()
+                .map(|entry: &(String, i64)| entry.1)
+                .collect::<Vec<_>>()
+        )
+    );
+    println!("{}", count + 1)
 }
 
 mod rt {

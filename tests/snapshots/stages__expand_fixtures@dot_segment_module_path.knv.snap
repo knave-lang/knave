@@ -1,0 +1,49 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/dot_segment_module_path.knv
+---
+error[L0259]: module path `./dot_segment/shapes` has a `.` or `..` part
+ --> expand/dot_segment_module_path.knv:1:6
+  |
+1 | (use ./dot_segment/shapes area)
+  |      ^^^^^^^^^^^^^^^^^^^^ a module path names a file from the root directory
+  |
+  = help: write `dot_segment/shapes`
+  = note: run `knave doc L0259` for an explanation
+
+error[L0259]: module path `dot_segment/./shapes` has a `.` or `..` part
+ --> expand/dot_segment_module_path.knv:2:6
+  |
+2 | (use dot_segment/./shapes)
+  |      ^^^^^^^^^^^^^^^^^^^^ a module path names a file from the root directory
+  |
+  = help: write `dot_segment/shapes`
+  = note: run `knave doc L0259` for an explanation
+
+error[L0259]: module path `dot_segment/../dot_segment/shapes` has a `.` or `..` part
+ --> expand/dot_segment_module_path.knv:3:6
+  |
+3 | (use dot_segment/../dot_segment/shapes)
+  |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a module path names a file from the root directory
+  |
+  = help: write `dot_segment/shapes`
+  = note: run `knave doc L0259` for an explanation
+
+error[L0259]: module path `../shapes` has a `.` or `..` part
+ --> expand/dot_segment_module_path.knv:4:6
+  |
+4 | (use ../shapes)
+  |      ^^^^^^^^^ a module path names a file from the root directory
+  |
+  = note: this path names no file under the root directory
+  = note: run `knave doc L0259` for an explanation
+
+error[L0259]: module path `dot_segment/..` has a `.` or `..` part
+ --> expand/dot_segment_module_path.knv:5:6
+  |
+5 | (use dot_segment/..)
+  |      ^^^^^^^^^^^^^^ a module path names a file from the root directory
+  |
+  = note: this path names no file under the root directory
+  = note: run `knave doc L0259` for an explanation

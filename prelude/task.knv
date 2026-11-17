@@ -875,7 +875,7 @@
       (task-outside-tasks
         name "use this file by its path from `tasks/`"
         "this file loads through a library, not by its path from `tasks/`")
-      (if (in-hidden-folder? path (tree-hidden-folders tree))
+      (if (under-any-folder? path (tree-hidden-folders tree))
         (task-outside-tasks
           name "move the file out of the hidden folder"
           "this file sits in a hidden folder, which the task tree skips")
@@ -886,12 +886,6 @@
           (task-outside-tasks name
                               "use this file by its path from `tasks/`"
                               "this file loads under a path that is not its path from `tasks/`"))))))
-
-(def in-hidden-folder?
-  (fn (path folders)
-    (if (string-contains? (string "/" path "/") "/../")
-      false
-      (under-any-folder? path folders))))
 
 (def project-module?
   (fn (module)

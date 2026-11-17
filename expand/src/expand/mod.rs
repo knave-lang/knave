@@ -36,6 +36,7 @@ mod misplaced_definition;
 mod module_body;
 mod module_loading;
 mod module_notes;
+mod module_path_problems;
 mod module_survey;
 mod names;
 mod namespace_problems;

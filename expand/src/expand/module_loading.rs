@@ -3,6 +3,7 @@ use std::rc::Rc;
 use super::Expander;
 use super::builtin_export::BuiltinExport;
 use super::context::DefinitionContext;
+use super::module_path_problems::ModulePathProblems;
 use super::problems::{ExpandProblems, MissingExportRemedy};
 use super::shape::Shape;
 use crate::core::{
@@ -26,6 +27,9 @@ impl Expander<'_> {
         path: &ModulePath,
         span: Span,
     ) -> Result<ModuleId, Diagnostic> {
+        if path.has_dot_segment() {
+            return Err(ModulePathProblems::dot_segment(path, span));
+        }
         if let Some(id) = self.modules.find(path) {
             return self.loaded(id, path, span);
         }

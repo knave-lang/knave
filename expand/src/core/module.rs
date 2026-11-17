@@ -32,6 +32,28 @@ impl ModulePath {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    pub fn has_dot_segment(&self) -> bool {
+        self.0.split('/').any(Self::is_dot_segment)
+    }
+
+    pub fn from_root(&self) -> Option<ModulePath> {
+        let mut segments: Vec<&str> = Vec::new();
+        for segment in self.0.split('/') {
+            match segment {
+                "." => {}
+                ".." => {
+                    segments.pop()?;
+                }
+                named => segments.push(named),
+            }
+        }
+        (!segments.is_empty()).then(|| Self::new(segments.join("/")))
+    }
+
+    fn is_dot_segment(segment: &str) -> bool {
+        segment == "." || segment == ".."
+    }
 }
 
 impl fmt::Display for ModulePath {
@@ -315,7 +337,7 @@ impl ModuleExports {
 mod tests {
     use std::rc::Rc;
 
-    use super::ModuleExports;
+    use super::{ModuleExports, ModulePath};
     use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind};
 
     struct ExportsFixture {
@@ -388,5 +410,32 @@ mod tests {
         assert_eq!(fixture.exported("i64"), Some(shown));
         assert_eq!(fixture.exported("bool"), Some(other));
         assert_eq!(fixture.exported("int"), None);
+    }
+
+    #[test]
+    fn a_single_or_double_dot_part_is_a_dot_segment() {
+        assert!(ModulePath::new("./shapes").has_dot_segment());
+        assert!(ModulePath::new("text/../shapes").has_dot_segment());
+    }
+
+    #[test]
+    fn a_name_that_holds_dots_is_no_dot_segment() {
+        assert!(!ModulePath::new(".shapes/a..b/shapes.").has_dot_segment());
+    }
+
+    #[test]
+    fn a_path_from_the_root_drops_each_single_dot_and_the_part_before_each_double_dot() {
+        let rooted = ModulePath::new("./text/./pad/../shapes").from_root();
+        assert_eq!(rooted.as_ref().map(ModulePath::as_str), Some("text/shapes"));
+    }
+
+    #[test]
+    fn a_path_that_leaves_the_root_has_no_path_from_the_root() {
+        assert_eq!(ModulePath::new("../shapes").from_root(), None);
+    }
+
+    #[test]
+    fn a_path_that_names_the_root_has_no_path_from_the_root() {
+        assert_eq!(ModulePath::new("shapes/..").from_root(), None);
     }
 }

@@ -438,7 +438,7 @@ impl<'a> ClosureKinds<'a> {
 
     fn scan_moved_field(&mut self, read: &TypedExpr, own: &FxHashSet<BindingId>) -> CaptureReport {
         match read.field_place() {
-            Some(place) if ReadUsage::Move.moves_field(read, &place, &self.copy) => {
+            Some(place) if ReadUsage::Move.moves_field(read, &self.copy) => {
                 self.record_field_move(&place, read.span, own)
             }
             _ => self.scan_nested(read, &read.kind, own),

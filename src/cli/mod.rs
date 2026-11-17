@@ -69,6 +69,7 @@ mod lint_pages;
 mod lint_setting;
 mod located_program;
 mod located_project;
+mod module_names;
 mod module_of_sources;
 mod name_records;
 mod new;

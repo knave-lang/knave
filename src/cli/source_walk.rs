@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use super::diagnostic_output::StandardErrorMessages;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
+use super::module_names::ModuleNames;
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::taken_module_paths::TakenModulePaths;
@@ -105,6 +106,6 @@ impl<'p> SourceWalk<'p> {
         if file.extension()? != Language::EXTENSION || ProgramFile::is_project_file(file) {
             return None;
         }
-        ProgramFile::module_name(file.strip_prefix(&self.root).ok()?)
+        ModuleNames::of_source(file.strip_prefix(&self.root).ok()?)
     }
 }

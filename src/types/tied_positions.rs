@@ -30,7 +30,14 @@ impl TiedPositions {
     }
 
     pub fn union(&self, other: &Self) -> Self {
-        Self::of(self.positions().chain(other.positions()))
+        let mut union = Self {
+            low: self.low.union(other.low),
+            high: self.high.clone(),
+        };
+        for position in other.high.iter().flat_map(|high| high.0.iter().copied()) {
+            union.insert(position);
+        }
+        union
     }
 
     pub fn positions(&self) -> impl Iterator<Item = usize> + '_ {

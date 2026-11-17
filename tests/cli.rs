@@ -3823,7 +3823,7 @@ fn doc_types_prints_no_type_for_a_value_that_no_definition_binds() {
 }
 
 #[test]
-fn doc_types_prints_no_type_above_a_struct_page_whose_header_matches_the_value() {
+fn doc_types_prints_no_type_above_a_grouped_struct_page_beside_a_value() {
     let sandbox =
         Sandbox::new("doc_types_same_header").with_file("prog.knv", MACRO_STRUCT_BESIDE_A_DEF);
     assert_eq!(

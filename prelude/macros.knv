@@ -1338,7 +1338,7 @@
   (fn (term call expansions expansions-left)
     (if (empty? expansions)
       (if (grouped-definitions? call)
-        (defining-form-header term (rest call) expansions-left)
+        (grouped-header term (rest call) expansions-left)
         term)
       (call-header term call (fn () expansions) expansions-left))))
 
@@ -1348,35 +1348,62 @@
       (same-binding? (first form) (quote do))
       false)))
 
-(def defining-form-header
+(def grouped-header
   (fn (term forms expansions-left)
+    (defining-form-header term forms expansions-left names-term-first?
+      (fn ()
+        (defining-form-header term forms expansions-left names-term-after-head?
+          (fn () term))))))
+
+(def defining-form-header
+  (fn (term forms expansions-left matches? otherwise)
     (if (empty? forms)
-      term
-      (found-header term
-                    (form-header term (first forms) expansions-left)
-                    forms expansions-left))))
+      (otherwise)
+      (form-header term (first forms) expansions-left matches?
+        (fn ()
+          (defining-form-header term
+                                (rest forms)
+                                expansions-left matches?
+                                otherwise))))))
 
 (def form-header
-  (fn (term form expansions-left)
+  (fn (term form expansions-left matches? otherwise)
     (if (grouped-definitions? form)
-      (defining-form-header term (rest form) expansions-left)
-      (call-header term form
-                   (fn () (expand-call form))
-                   expansions-left))))
+      (defining-form-header term
+                            (rest form)
+                            expansions-left matches?
+                            otherwise)
+      (matching-header term
+                       (call-header term form
+                                    (fn () (expand-call form))
+                                    expansions-left)
+                       matches? otherwise))))
 
-(def found-header
-  (fn (term header forms expansions-left)
-    (if (defines? term header)
-      header
-      (defining-form-header term (rest forms) expansions-left))))
+(def matching-header
+  (fn (term header matches? otherwise)
+    (if (matches? term header) header (otherwise))))
 
-(def defines?
+(def names-term-first?
   (fn (term header)
     (if (header-shape? header)
       (if (number-lt 1 (len header))
         (names-term? (head-of (nth header 1)) term)
         false)
       false)))
+
+(def names-term-after-head?
+  (fn (term header)
+    (if (header-shape? header)
+      (names-term-in? term (rest header))
+      false)))
+
+(def names-term-in?
+  (fn (term items)
+    (if (empty? items)
+      false
+      (if (names-term? (first items) term)
+        true
+        (names-term-in? term (rest items))))))
 
 (def names-term?
   (fn (name term)

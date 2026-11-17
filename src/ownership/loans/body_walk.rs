@@ -53,7 +53,7 @@ impl<'w> BodyWalk<'w> {
     fn computed(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
         match &expr.kind {
             TypedExprKind::Call(callee, arguments) => {
-                self.call(CallSite::new(callee, arguments), at)
+                self.call(CallSite::new(callee, arguments, self.rules()), at)
             }
             TypedExprKind::Recur(arguments) => LoopWalk::new(self).recur(arguments, at),
             TypedExprKind::Control(control) => self.control(control, at),

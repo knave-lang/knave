@@ -3,6 +3,7 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use super::name_entries::NameEntries;
+use super::name_key::NameKey;
 use super::name_slots::NameSlots;
 use super::{Scope, ScopeSet, Scopes};
 use crate::core::Namespace;
@@ -87,7 +88,7 @@ impl NameTables {
         });
         for (position, (name, namespace, entries)) in sorted.iter().enumerate() {
             tables.add(name, *namespace, entries);
-            NameSlots::claim(&mut tables.slots, name, *namespace, position);
+            NameSlots::claim(&mut tables.slots, NameKey::new(name, *namespace), position);
         }
         tables
     }
@@ -164,7 +165,7 @@ impl SavedNames {
     }
 
     pub(super) fn entries(&self, name: &str, namespace: Namespace) -> Option<&NameEntries> {
-        let row = NameSlots::find(self.slots, name, namespace, |row| {
+        let row = NameSlots::find(self.slots, NameKey::new(name, namespace), |row| {
             self.holds_key(row, name, namespace)
         })?;
         Some(self.decoded_row(row))

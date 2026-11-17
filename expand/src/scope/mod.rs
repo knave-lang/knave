@@ -2,6 +2,7 @@ mod binding_table;
 mod imported_names;
 mod name_entries;
 mod name_entry;
+mod name_key;
 mod name_slots;
 mod phase;
 mod qualified_names;

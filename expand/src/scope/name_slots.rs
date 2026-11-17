@@ -1,3 +1,4 @@
+use super::name_key::NameKey;
 use crate::core::Namespace;
 
 pub(crate) struct NameSlots;
@@ -15,9 +16,9 @@ impl NameSlots {
         vec![0; Self::capacity(names) * Self::WORD]
     }
 
-    pub(crate) fn claim(slots: &mut [u8], name: &str, namespace: Namespace, position: usize) {
+    pub(crate) fn claim(slots: &mut [u8], key: NameKey<'_>, position: usize) {
         let mask = slots.len() / Self::WORD - 1;
-        let mut slot = Self::start(name, namespace, mask);
+        let mut slot = Self::start(key, mask);
         while Self::word(slots, slot) != Self::EMPTY {
             slot = (slot + 1) & mask;
         }
@@ -27,8 +28,7 @@ impl NameSlots {
 
     pub(crate) fn find(
         slots: &[u8],
-        name: &str,
-        namespace: Namespace,
+        key: NameKey<'_>,
         holds_key: impl Fn(usize) -> bool,
     ) -> Option<usize> {
         let count = slots.len() / Self::WORD;
@@ -36,7 +36,7 @@ impl NameSlots {
             return None;
         }
         let mask = count - 1;
-        let mut slot = Self::start(name, namespace, mask);
+        let mut slot = Self::start(key, mask);
         loop {
             let position = Self::word(slots, slot);
             if position == Self::EMPTY {
@@ -74,10 +74,10 @@ impl NameSlots {
         u32::try_from(value).expect("the saved prelude stays under 4 GiB")
     }
 
-    fn hash(name: &str, namespace: Namespace) -> u64 {
-        let chunks = name.as_bytes().chunks(Self::HASH_CHUNK);
+    fn hash(key: NameKey<'_>) -> u64 {
+        let chunks = key.name.as_bytes().chunks(Self::HASH_CHUNK);
         let hash = chunks.fold(0, |hash, chunk| Self::mix(hash, Self::chunk_word(chunk)));
-        Self::mix(hash, Self::closing_word(name.len(), namespace))
+        Self::mix(hash, Self::closing_word(key.name.len(), key.namespace))
             .rotate_left(Self::HASH_FINAL_ROTATION)
     }
 
@@ -95,9 +95,9 @@ impl NameSlots {
         u64::from_le_bytes(word)
     }
 
-    fn start(name: &str, namespace: Namespace, mask: usize) -> usize {
+    fn start(key: NameKey<'_>, mask: usize) -> usize {
         let wide_mask = u64::try_from(mask).expect("a table's mask fits 64 bits");
-        usize::try_from(Self::hash(name, namespace) & wide_mask).expect("a slot fits its mask")
+        usize::try_from(Self::hash(key) & wide_mask).expect("a slot fits its mask")
     }
 
     fn capacity(names: usize) -> usize {
@@ -109,43 +109,50 @@ impl NameSlots {
 mod tests {
     use super::NameSlots;
     use crate::core::Namespace;
+    use crate::scope::name_key::NameKey;
 
     #[test]
     fn a_slot_does_not_depend_on_the_word_size() {
         const MAP_VALUE_HASH: u64 = 0xbac4a085bbe42db9;
-        assert_eq!(NameSlots::hash("map", Namespace::Value), MAP_VALUE_HASH);
+        assert_eq!(
+            NameSlots::hash(NameKey::new("map", Namespace::Value)),
+            MAP_VALUE_HASH
+        );
     }
 
     #[test]
     fn the_namespace_changes_a_slot() {
         const MAP_TYPE_HASH: u64 = 0x976128b00d2a20c0;
-        assert_eq!(NameSlots::hash("map", Namespace::Type), MAP_TYPE_HASH);
+        assert_eq!(
+            NameSlots::hash(NameKey::new("map", Namespace::Type)),
+            MAP_TYPE_HASH
+        );
     }
 
     #[test]
     fn a_name_of_exactly_two_chunks_has_a_fixed_hash() {
         const TWO_CHUNK_HASH: u64 = 0x1d2f75f1d58f090e;
-        let hash = NameSlots::hash("sixteen-bytes-ok", Namespace::Value);
+        let hash = NameSlots::hash(NameKey::new("sixteen-bytes-ok", Namespace::Value));
         assert_eq!(hash, TWO_CHUNK_HASH);
     }
 
     #[test]
     fn a_name_past_two_chunks_has_a_fixed_hash() {
         const THREE_CHUNK_HASH: u64 = 0xb8e2b8c46ab4ebfc;
-        let hash = NameSlots::hash("eight-by-tail-one", Namespace::Value);
+        let hash = NameSlots::hash(NameKey::new("eight-by-tail-one", Namespace::Value));
         assert_eq!(hash, THREE_CHUNK_HASH);
     }
 
     #[test]
     fn a_trailing_zero_byte_changes_the_hash() {
-        let hash = |name| NameSlots::hash(name, Namespace::Value);
+        let hash = |name| NameSlots::hash(NameKey::new(name, Namespace::Value));
         assert_ne!(hash("a"), hash("a\0"));
         assert_ne!(hash("abcdefgh"), hash("abcdefgh\0"));
     }
 
     #[test]
     fn a_long_name_hashes_every_chunk() {
-        let hash = |name| NameSlots::hash(name, Namespace::Value);
+        let hash = |name| NameSlots::hash(NameKey::new(name, Namespace::Value));
         assert_ne!(hash("aight-by-tail-one"), hash("eight-by-tail-one"));
         assert_ne!(hash("eight-by-tail-one"), hash("eight-by-tail-two"));
     }

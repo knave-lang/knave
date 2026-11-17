@@ -1,0 +1,116 @@
+(use prelude/macros header-shape)
+(use code list)
+
+(defmacro defpair (a b)
+  (list (quote do)
+        (list (quote defn)
+              a
+              (quote (x))
+              (quote x))
+        (list (quote defn)
+              b
+              (quote (y z))
+              (quote y))))
+
+(defpair left right)
+
+(def right-page (doc-page right))
+
+(def left-page (doc-page left))
+
+(defmacro defpair-documented (a b)
+  (list (quote do)
+        (list (quote defn)
+              a
+              (quote (x))
+              (quote x))
+        (list (quote defn)
+              b
+              (quote (y z))
+              "Keeps the first."
+              (quote y))))
+
+(defpair-documented first-left first-right)
+
+(def documented-right-page (doc-page first-right))
+
+(defmacro defvalue-and-function (a b)
+  (list (quote do)
+        (list (quote def) a 1)
+        (list (quote defn)
+              b
+              (quote (n))
+              (quote n))))
+
+(defvalue-and-function one identity-of)
+
+(def value-page (doc-page one))
+
+(def function-page (doc-page identity-of))
+
+(defrule my-defn
+  ((n p b ...)
+   (defn n p
+     b ...)))
+
+(defmacro defpair-wrapped (a b)
+  (list (quote do)
+        (list (quote my-defn)
+              a
+              (quote (x))
+              (quote x))
+        (list (quote my-defn)
+              b
+              (quote (y z))
+              (quote y))))
+
+(defpair-wrapped wrapped-left wrapped-right)
+
+(def wrapped-page (doc-page wrapped-right))
+
+(defmacro defpair-shaped (a b)
+  (list (quote do)
+        (list (quote defn)
+              a
+              (quote (x))
+              (quote x))
+        (list (quote defn)
+              b
+              (quote (y z))
+              (quote y))))
+
+(header-shape (defpair-shaped a b))
+
+(defpair-shaped shaped-left shaped-right)
+
+(def shaped-left-page (doc-page shaped-left))
+
+(def shaped-right-page (doc-page shaped-right))
+
+(defmacro defpair-nested (a b)
+  (list (quote do)
+        (list (quote defn)
+              a
+              (quote (x))
+              (quote x))
+        (list (quote do)
+              (list (quote defn)
+                    b
+                    (quote (y z))
+                    (quote y)))))
+
+(defpair-nested nested-left nested-right)
+
+(def nested-page (doc-page nested-right))
+
+(defmacro defparcel (name)
+  (list (quote do)
+        (quote (comment "A parcel."))
+        (list (quote defstruct)
+              (list name (quote t))
+              (quote :item)
+              (quote t))))
+
+(defparcel parcel)
+
+(def parcel-page (doc-page parcel))

@@ -1337,8 +1337,49 @@
 (def macro-call-header
   (fn (term call expansions expansions-left)
     (if (empty? expansions)
-      term
+      (if (grouped-definitions? call)
+        (defining-form-header term (rest call) expansions-left)
+        term)
       (call-header term call (fn () expansions) expansions-left))))
+
+(def grouped-definitions?
+  (fn (form)
+    (if (header-shape? form)
+      (same-binding? (first form) (quote do))
+      false)))
+
+(def defining-form-header
+  (fn (term forms expansions-left)
+    (if (empty? forms)
+      term
+      (found-header term
+                    (if (grouped-definitions? (first forms))
+                      (defining-form-header term
+                                            (rest (first forms))
+                                            expansions-left)
+                      (call-header term
+                                   (first forms)
+                                   (fn () (expand-call (first forms)))
+                                   expansions-left))
+                    forms expansions-left))))
+
+(def found-header
+  (fn (term header forms expansions-left)
+    (if (defines? term header)
+      header
+      (defining-form-header term (rest forms) expansions-left))))
+
+(def defines?
+  (fn (term header)
+    (if (header-shape? header)
+      (if (number-lt 1 (len header))
+        (names-term? (head-of (nth header 1)) term)
+        false)
+      false)))
+
+(def names-term?
+  (fn (name term)
+    (if (symbol? name) (same-binding? term name) false)))
 
 (def header-shapes
   (fn (definer)

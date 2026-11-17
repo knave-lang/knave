@@ -3828,7 +3828,7 @@ fn doc_types_prints_no_type_above_a_struct_page_whose_header_matches_the_value()
         Sandbox::new("doc_types_same_header").with_file("prog.knv", MACRO_STRUCT_BESIDE_A_DEF);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "point"]),
-        "point\n\nA documented struct.\n"
+        "(defstruct point)\n\nA documented struct.\n"
     );
 }
 

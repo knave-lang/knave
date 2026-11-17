@@ -62,7 +62,7 @@ impl dyn Passing {
         rules: &LoanRules<'_>,
     ) -> &'static dyn Passing {
         match argument.borrow {
-            Borrow::Collapse(levels) if rules.copies_out(&argument.value, levels) => &Collapses,
+            Borrow::Collapse(_) if rules.copies_out(argument) => &Collapses,
             Borrow::Collapse(_) => &Holds,
             _ => <dyn Passing>::through_reference(parameter),
         }

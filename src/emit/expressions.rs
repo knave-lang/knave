@@ -36,10 +36,11 @@ use crate::ownership::StructUpdateOrder;
 use crate::reader::{Number, NumberValue};
 use crate::source::Span;
 use crate::types::{
-    Borrow, BorrowedIndex, ClauseChoice, ClosureKind, Collection, FieldOrder, SchemeBindings,
-    SyntheticTemplate, Type, TypedArgument, TypedArm, TypedBinder, TypedBlock, TypedBodyItem,
-    TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedPattern,
-    TypedPatternKind, TypedProgram, TypedStructExpr, VariantPayload, ViewCoercion, WrittenBorrows,
+    Borrow, BorrowedIndex, ClauseChoice, ClosureKind, Collection, CopiedOut, FieldOrder,
+    SchemeBindings, SyntheticTemplate, Type, TypedArgument, TypedArm, TypedBinder, TypedBlock,
+    TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch,
+    TypedPattern, TypedPatternKind, TypedProgram, TypedStructExpr, VariantPayload, ViewCoercion,
+    WrittenBorrows,
 };
 
 mod compound_assignment;
@@ -2280,10 +2281,25 @@ impl<'a> ExpressionEmitter<'a> {
     ) -> Option<Code> {
         let span = argument.value.span;
         let reborrowed = role.reborrowed_reference(argument);
-        self.borrowed_index_argument(argument, context)
-            .or_else(|| self.argument_under_written_borrows(argument, context))
-            .or_else(|| self.dereferenced_field(argument))
-            .or_else(|| Some(self.expr_in(reborrowed?, context).spanned(span)))
+        match CopiedOut::of(argument, |value| self.is_borrowed_index_call(value)) {
+            Some(copied) => Some(self.copied_out(&argument.value, copied, context)),
+            None => self
+                .dereferenced_field(argument)
+                .or_else(|| Some(self.expr_in(reborrowed?, context).spanned(span))),
+        }
+    }
+
+    fn copied_out(&mut self, value: &TypedExpr, copied: CopiedOut, context: TypeContext) -> Code {
+        let span = value.span;
+        match copied {
+            CopiedOut::IndexedPlace { dereferences } => {
+                let element = self.place(value, context).spanned(span);
+                Self::prefixed(&"*".repeat(dereferences), element)
+            }
+            CopiedOut::DereferencedPlace(place) => self.place(place, context),
+            CopiedOut::CollapsedPlace(place) => self.expr_in(place, context),
+        }
+        .spanned(span)
     }
 
     fn dereferenced_field(&mut self, argument: &TypedArgument) -> Option<Code> {
@@ -2307,40 +2323,6 @@ impl<'a> ExpressionEmitter<'a> {
             levels.saturating_sub(own_reference),
             span,
         ))
-    }
-
-    fn argument_under_written_borrows(
-        &mut self,
-        argument: &TypedArgument,
-        context: TypeContext,
-    ) -> Option<Code> {
-        let value = &argument.value;
-        let code = match argument.borrow {
-            Borrow::Deref(levels) => self.place(WrittenBorrows::under(value, levels)?, context),
-            Borrow::Collapse(levels) => {
-                self.expr_in(WrittenBorrows::under(value, levels)?, context)
-            }
-            _ => return None,
-        };
-        Some(code.spanned(value.span))
-    }
-
-    fn borrowed_index_argument(
-        &mut self,
-        argument: &TypedArgument,
-        context: TypeContext,
-    ) -> Option<Code> {
-        let levels = match argument.borrow {
-            Borrow::Deref(levels) => levels,
-            Borrow::Collapse(1) => 1,
-            _ => return None,
-        };
-        if !self.is_borrowed_index_call(&argument.value) {
-            return None;
-        }
-        let span = argument.value.span;
-        let element = self.place(&argument.value, context).spanned(span);
-        Some(Self::prefixed(&"*".repeat(levels - 1), element).spanned(span))
     }
 
     fn argument_value(

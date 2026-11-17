@@ -1,0 +1,8 @@
+(defn main ()
+  (local s (str "ab"))
+  (local names (vec (as-str s)))
+  (local r (at names 0))
+  (local o (the (option (ref str)) none))
+  (local v (unwrap-or o r))
+  (push! names "b")
+  (println v))

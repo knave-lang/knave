@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/vector_of_text_then_a_collapsed_local_lets_the_vector_change.knv
+---
+main
+  3:29 borrow `s`: no live loan
+  4:16 borrow `names`: `s` lent at 3:29, held by `names`
+  5:20 borrow `s`: `s` lent at 3:29, held by `names`; `names` lent at 4:16, held by `r`
+  7:10 change `names`: `s` lent at 3:29, held by `names`; `s` lent at 5:20, held by `out`
+  8:22 borrow `out`: `s` lent at 3:29, held by `out`; `s` lent at 5:20, held by `out`

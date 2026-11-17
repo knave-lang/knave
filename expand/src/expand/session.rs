@@ -145,7 +145,7 @@ impl ExpansionSession<'_> {
         scoped: &[Form],
         span: Span,
     ) -> Result<GeneratedEntry, Diagnostics> {
-        let checkpoint = self.expander.tables.module_notes.checkpoint();
+        let checkpoint = self.expander.tables.module_notes.log().checkpoint();
         let lowered = self.lower_in(module, |expander| {
             let body = expander.lower_body(scoped)?;
             TopLevelCheck.block(&body)?;

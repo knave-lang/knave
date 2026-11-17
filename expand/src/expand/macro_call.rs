@@ -172,7 +172,7 @@ impl Expander<'_> {
         binding: BindingId,
         form: Form,
     ) -> Result<Form, Diagnostic> {
-        let checkpoint = self.tables.module_notes.checkpoint();
+        let checkpoint = self.tables.module_notes.log().checkpoint();
         let budget = self.form_budgets.current().clone();
         let steps = budget.steps();
         let limit = steps.limit();
@@ -204,7 +204,7 @@ impl Expander<'_> {
         form: Form,
         context: Option<&mut DefinitionContext>,
     ) -> Result<Form, Diagnostic> {
-        let checkpoint = self.tables.module_notes.checkpoint();
+        let checkpoint = self.tables.module_notes.log().checkpoint();
         let expansion = self.macro_expansion(binding, form, context);
         if expansion.is_err() {
             self.tables.module_notes.roll_back(checkpoint);

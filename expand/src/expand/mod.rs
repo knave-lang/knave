@@ -460,7 +460,7 @@ impl<'s> Expander<'s> {
 
     fn noted_terms(&mut self, module: ModuleId, since: NotesCheckpoint) -> NotedTerms {
         let is_prelude = ModuleSources::is_prelude(self.modules.get(module).path());
-        if is_prelude || self.tables.module_notes.checkpoint() == since {
+        if is_prelude || self.tables.module_notes.log().checkpoint() == since {
             return NotedTerms::new(module, Vec::new());
         }
         let Some(notes) = self.docstring_notes() else {

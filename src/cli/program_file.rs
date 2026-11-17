@@ -21,7 +21,7 @@ pub struct ProgramFile {
 
 impl ProgramFile {
     const CURRENT_DIRECTORY: &str = ".";
-    const MODULE_SEPARATOR: &str = "/";
+    pub const MODULE_SEPARATOR: &str = "/";
 
     pub fn beside_itself(path: PathBuf) -> Self {
         let root = Self::directory_of(&path);

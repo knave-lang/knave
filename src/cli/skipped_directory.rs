@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use super::build_directory::BuildDirectory;
 use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
+use super::skip_reason::SkipReason;
 
 pub struct SkippedDirectory {
     build_parent: Option<PathBuf>,
@@ -20,10 +21,18 @@ impl SkippedDirectory {
     }
 
     pub fn is_skipped(&self, directory: &Path) -> bool {
-        Self::is_hidden(directory) || self.is_build_parent(directory)
+        self.skip_reason(directory).is_some()
     }
 
-    pub fn is_hidden(directory: &Path) -> bool {
+    pub fn skip_reason(&self, directory: &Path) -> Option<SkipReason> {
+        if Self::is_hidden(directory) {
+            return Some(SkipReason::HiddenFolder);
+        }
+        self.is_build_parent(directory)
+            .then_some(SkipReason::BuildFolder)
+    }
+
+    fn is_hidden(directory: &Path) -> bool {
         directory
             .file_name()
             .and_then(|name| name.to_str())

@@ -1,5 +1,3 @@
-use std::fs;
-use std::io;
 use std::path::{Path, PathBuf};
 
 use super::diagnostic_output::StandardErrorMessages;
@@ -13,14 +11,8 @@ use super::terminal::Terminal;
 use super::tree_bounds::TreeBounds;
 use super::tree_file::TreeFile;
 use super::tree_modules::TreeModules;
+use super::tree_walk::TreeWalk;
 use super::unreadable_file::UnreadableFile;
-use crate::language::Language;
-
-#[derive(Default)]
-struct TreeSkips {
-    hidden_folders: Vec<PathBuf>,
-    project_files: Vec<PathBuf>,
-}
 
 pub struct EntryTree {
     path: PathBuf,
@@ -69,7 +61,10 @@ impl EntryTree {
     pub const TASKS_ENTRY: &'static str = TreeKind::TASKS_ENTRY;
 
     pub fn of_tests(path: PathBuf, project: Option<LocatedProject>) -> Self {
-        let skipped = SkippedDirectory::for_walk_of(&path);
+        let build_root = project
+            .as_ref()
+            .map_or(path.as_path(), LocatedProject::root);
+        let skipped = SkippedDirectory::for_walk_of(build_root);
         Self {
             path,
             project,
@@ -129,36 +124,34 @@ impl EntryTree {
     }
 
     pub fn module_paths(&self) -> Result<TreeModules, ExitStatus> {
-        let (files, skips) = self.walk()?;
+        let (files, walk) = self.walk()?;
         Ok(TreeModules {
             modules: files.into_iter().map(TreeFile::into_module).collect(),
-            hidden_folders: self.relative_modules(&skips.hidden_folders),
-            project_files: self.relative_modules(&skips.project_files),
+            hidden_folders: walk.hidden_folders(),
+            project_files: walk.project_files(),
         })
-    }
-
-    fn relative_modules(&self, paths: &[PathBuf]) -> Vec<String> {
-        paths
-            .iter()
-            .filter_map(|path| ProgramFile::module_name(path.strip_prefix(&self.path).ok()?))
-            .collect()
     }
 
     fn module_files(&self) -> Result<Vec<TreeFile>, ExitStatus> {
         self.walk().map(|(files, _)| files)
     }
 
-    fn walk(&self) -> Result<(Vec<TreeFile>, TreeSkips), ExitStatus> {
-        let mut files = Vec::new();
-        let mut skips = TreeSkips::default();
-        self.collect_modules(&self.path, &mut files, &mut skips)
+    fn walk(&self) -> Result<(Vec<TreeFile>, TreeWalk<'_>), ExitStatus> {
+        let bounds = self.kind.stays_inside().then(|| TreeBounds::of(&self.path));
+        let walk = TreeWalk::new(&self.path, &self.skipped, bounds)
+            .walk()
             .map_err(|error| {
                 UnreadableFile::new(&self.path, &error).report_to(&StandardErrorMessages)
             })?;
+        let mut files: Vec<TreeFile> = walk
+            .sources()
+            .iter()
+            .filter_map(|path| Some(TreeFile::new(self.module_path(path)?, path.clone())))
+            .collect();
         files.sort();
         match files.iter().find(|file| self.kind.refuses(file)) {
             Some(file) => Err(file.report_unnamable()),
-            None => Ok((files, skips)),
+            None => Ok((files, walk)),
         }
     }
 
@@ -193,49 +186,7 @@ impl EntryTree {
         }
     }
 
-    fn collect_modules(
-        &self,
-        directory: &Path,
-        files: &mut Vec<TreeFile>,
-        skips: &mut TreeSkips,
-    ) -> io::Result<()> {
-        for entry in fs::read_dir(directory)? {
-            let path = entry?.path();
-            if path.is_dir() {
-                self.collect_subdirectory(&path, files, skips)?;
-            } else if ProgramFile::is_project_file(&path) {
-                skips.project_files.push(path);
-            } else if let Some(module) = self.module_path(&path) {
-                files.push(TreeFile::new(module, path));
-            }
-        }
-        Ok(())
-    }
-
-    fn collect_subdirectory(
-        &self,
-        directory: &Path,
-        files: &mut Vec<TreeFile>,
-        skips: &mut TreeSkips,
-    ) -> io::Result<()> {
-        if SkippedDirectory::is_hidden(directory) {
-            skips.hidden_folders.push(directory.to_path_buf());
-            return Ok(());
-        }
-        if self.skipped.is_skipped(directory) || self.leaves_the_tree(directory) {
-            return Ok(());
-        }
-        self.collect_modules(directory, files, skips)
-    }
-
-    fn leaves_the_tree(&self, directory: &Path) -> bool {
-        self.kind.stays_inside() && TreeBounds::of(&self.path).inside(directory).is_none()
-    }
-
     fn module_path(&self, file: &Path) -> Option<String> {
-        if file.extension()? != Language::EXTENSION {
-            return None;
-        }
         self.source_module_path(file)
             .or_else(|| ProgramFile::module_name(file.strip_prefix(&self.path).ok()?))
     }

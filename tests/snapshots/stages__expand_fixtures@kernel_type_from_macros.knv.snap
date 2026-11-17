@@ -4,6 +4,26 @@ expression: reports.report(path)
 input_file: tests/fixtures/expand/kernel_type_from_macros.knv
 ---
 warning[L0259]: `int` hides the kernel type `int`
+ --> expand/kernel_type_from_macros.knv:5:26
+  |
+5 |               (defstruct int
+  |                          ^^^ this binds `int` in place of the kernel type
+  |
+  = note: in the code of `make-hidden-int`, a type written `int` names this binding, while a printed `int` is the kernel type
+  = help: rename `int` in `make-hidden-int`
+  = note: run `knave doc L0259` for an explanation
+
+warning[L0259]: `float` hides the kernel type `float`
+  --> expand/kernel_type_from_macros.knv:13:34
+   |
+13 |   (template (use shadowing/money float)))
+   |                                  ^^^^^ this imports `float` in place of the kernel type
+   |
+   = note: in the code of `use-hidden-float`, a type written `float` names this binding, while a printed `float` is the kernel type
+   = help: leave `float` out of the `use` in `use-hidden-float`
+   = note: run `knave doc L0259` for an explanation
+
+warning[L0259]: `int` hides the kernel type `int`
   --> expand/kernel_type_from_macros.knv:19:1
    |
 19 | (make-int-here here)

@@ -1,0 +1,10 @@
+(defmacro make-counter ()
+  (template (do
+              (defstruct int
+                :n bool)
+              (type start (fn () int))
+              (defn start () 0))))
+
+(make-counter)
+
+(defn main () (println 1))

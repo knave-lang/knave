@@ -11,10 +11,12 @@ use super::macro_origin::MacroOrigin;
 use super::problems::ExpandProblems;
 use super::returned_arguments::ReturnedArguments;
 use super::shape::{Shape, WrittenDefiner};
-use crate::core::{BindingId, BindingKind, DefinitionForm, Expr, KernelForm, Lambda, Namespace};
+use crate::core::{
+    BindingId, BindingKind, DefinitionForm, Expr, KernelForm, Lambda, ModulePath, Namespace,
+};
 use crate::diagnostic::Diagnostic;
 use crate::interpret::{Closure, Env, Interpreter, LocalBindings, PassedLimit, Value};
-use crate::modules::ModuleSources;
+use crate::modules::{ModuleOrigin, ModuleSources};
 use crate::reader::Form;
 use crate::scope::{Phase, Scope, ScopeKind};
 use crate::source::Span;
@@ -299,11 +301,15 @@ impl Expander<'_> {
 
     fn macro_origin(&self, binding: BindingId, call_site: Span) -> MacroOrigin {
         let info = self.tables.bindings.get(binding);
+        let module = self.macro_module(binding);
+        let library = module.and_then(|path| self.library_modules.owner_of(path));
         MacroOrigin {
             name: info.shared_name(),
             defined: info.span().unwrap_or(call_site),
             call_site,
-            through_prelude: self.is_prelude_macro(binding),
+            through_prelude: module.is_some_and(ModuleSources::is_prelude),
+            in_project: module
+                .is_some_and(|path| ModuleOrigin::new(path, library.as_deref()).is_project()),
         }
     }
 
@@ -322,12 +328,10 @@ impl Expander<'_> {
         (form, introduction)
     }
 
-    fn is_prelude_macro(&self, binding: BindingId) -> bool {
+    fn macro_module(&self, binding: BindingId) -> Option<&ModulePath> {
         match self.kind(binding) {
-            BindingKind::Macro(module) => {
-                ModuleSources::is_prelude(self.modules.get(module).path())
-            }
-            _ => false,
+            BindingKind::Macro(module) => Some(self.modules.get(module).path()),
+            _ => None,
         }
     }
 

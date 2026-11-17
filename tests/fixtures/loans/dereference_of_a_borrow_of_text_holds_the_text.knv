@@ -1,0 +1,5 @@
+(defn main ()
+  (local s (str "a"))
+  (local c (deref (ref (as-str s))))
+  (set! s (str "b"))
+  (println c))

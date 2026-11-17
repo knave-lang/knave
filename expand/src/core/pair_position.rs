@@ -11,4 +11,8 @@ impl PairPosition {
             PairPosition::Second => 1,
         }
     }
+
+    pub fn part_of<T>(self, parts: &[T]) -> Option<&T> {
+        parts.get(self.index())
+    }
 }

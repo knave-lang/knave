@@ -24,9 +24,7 @@ impl<'a> FieldPlace<'a> {
     pub fn pair_part_type(&self) -> Option<&Type> {
         self.path.iter().try_fold(self.root_type, |owner, label| {
             match (label.spelling, owner) {
-                (FieldSpelling::Pair(position), Type::Named(_, parts)) => {
-                    parts.get(position.index())
-                }
+                (FieldSpelling::Pair(position), Type::Named(_, parts)) => position.part_of(parts),
                 _ => None,
             }
         })

@@ -70,7 +70,7 @@ impl PositionalRead {
         }
         match referent {
             Type::Named(pair, parts) if Some(*pair) == types.pair_binding() => Some(PairPart {
-                part: parts[self.position.index()].clone(),
+                part: self.position.part_of(parts)?.clone(),
                 label: self.label(),
                 owned: !matches!(value, Type::Ref(..) | Type::Mut(..)),
             }),

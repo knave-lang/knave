@@ -80,7 +80,8 @@ impl<'a> Unification<'a> {
             return value.ty.clone();
         };
         if let FieldSpelling::Pair(position) = label.spelling {
-            return arguments[position.index()].clone();
+            let part = position.part_of(&arguments).cloned();
+            return part.unwrap_or_else(|| value.ty.clone());
         }
         self.declarations
             .field_type(binding, &label.name, &arguments)

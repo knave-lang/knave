@@ -12,8 +12,8 @@ warning[L0259]: `int` hides the kernel type `int`
 8 | (define-and-use)
   | ---------------- in this macro call
   |
-  = note: in the code of `make-int`, a type written `int` names this binding, while a printed `int` is the kernel type
-  = help: rename `int` in `make-int`
+  = note: in the code of `define-and-use`, a type written `int` names this binding, while a printed `int` is the kernel type
+  = help: rename `int` in `define-and-use`
   = note: run `knave doc L0259` for an explanation
 
 (derive int clone copy partial-eq eq hash show)

@@ -1,0 +1,13 @@
+(defmacro generate-named (name)
+  (template (defmacro (unquote name) ()
+              (template (do
+                          (defstruct float
+                            :n bool)
+                          (type start (fn () float))
+                          (defn start () 1.5))))))
+
+(generate-named make-float)
+
+(make-float)
+
+(defn main () (println 1))

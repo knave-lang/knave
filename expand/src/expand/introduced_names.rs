@@ -1,3 +1,5 @@
+use std::iter;
+
 use super::own_introductions::OwnIntroductions;
 use super::saved_introductions::SavedIntroductions;
 use crate::source::Span;
@@ -20,6 +22,10 @@ impl IntroducedNames {
     pub fn at(&self, call_site: Span, name: &str) -> Option<Span> {
         let saved = self.saved.at(call_site, name);
         saved.or_else(|| self.own.at(call_site, name))
+    }
+
+    pub fn first_written_at(&self, call_site: Span, name: &str) -> Option<Span> {
+        iter::successors(self.at(call_site, name), |written| self.at(*written, name)).last()
     }
 
     pub fn record(&mut self, call_site: Span, name: &str, written: Span) {
@@ -96,5 +102,21 @@ mod tests {
         let kept = origins.introduced.into_own();
         assert_eq!(kept.at(call_site, "own"), Some(own));
         assert!(kept.at(OriginsFixture::call_site(), "helper").is_none());
+    }
+
+    #[test]
+    fn a_name_a_generated_macro_introduces_is_first_written_in_its_generator() {
+        let mut origins = OriginsFixture::with_saved_origins();
+        let generator_call = OriginsFixture::span(1, 40, 50);
+        let generated_call = OriginsFixture::span(1, 60, 65);
+        let template = OriginsFixture::span(1, 5, 10);
+        origins.introduced.record(generator_call, "x", template);
+        origins
+            .introduced
+            .record(generated_call, "x", generator_call);
+        assert_eq!(
+            origins.introduced.first_written_at(generated_call, "x"),
+            Some(template)
+        );
     }
 }

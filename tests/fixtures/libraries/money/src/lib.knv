@@ -1,6 +1,7 @@
 (use coins ->float float)
 
-(export ->float apply-macro define-named float i64 make-int)
+(export ->float apply-macro define-named float
+        generate-named i64 make-int)
 
 (defstruct i64
   :n bool)
@@ -16,3 +17,8 @@
 
 (defmacro apply-macro (named)
   (template ((unquote named))))
+
+(defmacro generate-named (name)
+  (template (defmacro (unquote name) ()
+              (template (defstruct float
+                          :n bool)))))

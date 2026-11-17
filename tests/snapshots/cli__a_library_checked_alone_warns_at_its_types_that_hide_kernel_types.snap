@@ -13,9 +13,9 @@ warning[L0259]: `float` hides the kernel type `float`
   = note: run `knave doc L0259` for an explanation
 
 warning[L0259]: `i64` hides the kernel type `int`
- --> src/lib.knv:5:12
+ --> src/lib.knv:6:12
   |
-5 | (defstruct i64
+6 | (defstruct i64
   |            ^^^ this binds `i64` in place of the kernel type
   |
   = note: in this scope, a type written `i64` names this binding, while a printed `int` is the kernel type

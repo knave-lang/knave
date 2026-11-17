@@ -15,6 +15,11 @@ impl UnnamedPartPath {
         Err(Self(written.into()))
     }
 
+    pub fn named_in_place(&self) -> Option<ModulePath> {
+        let names = PathPart::names_in_place(&self.0)?;
+        (!names.is_empty()).then(|| ModulePath::new(names.join(ModulePath::SEPARATOR)))
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -54,6 +59,30 @@ mod tests {
     #[test]
     fn a_trailing_separator_leaves_an_empty_part() {
         assert!(UnnamedPartPath::check("text/shapes/").is_err());
+    }
+
+    #[test]
+    fn a_path_named_in_place_drops_single_dot_and_empty_parts() {
+        let unnamed = UnnamedPartPath::check("./text//pad/").expect_err("unnamed");
+        assert_eq!(unnamed.named_in_place(), Some(ModulePath::new("text/pad")));
+    }
+
+    #[test]
+    fn a_path_with_a_double_dot_part_is_not_named_in_place() {
+        let unnamed = UnnamedPartPath::check("text/../pad").expect_err("unnamed");
+        assert_eq!(unnamed.named_in_place(), None);
+    }
+
+    #[test]
+    fn an_absolute_path_is_not_named_in_place() {
+        let unnamed = UnnamedPartPath::check("/text/pad").expect_err("unnamed");
+        assert_eq!(unnamed.named_in_place(), None);
+    }
+
+    #[test]
+    fn a_path_of_only_dots_names_nothing_in_place() {
+        let unnamed = UnnamedPartPath::check("./").expect_err("unnamed");
+        assert_eq!(unnamed.named_in_place(), None);
     }
 
     #[test]

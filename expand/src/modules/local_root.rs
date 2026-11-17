@@ -58,10 +58,12 @@ impl<'s> LocalRoot<'s> {
 
     pub(super) fn shown_file(&self, local: &Path) -> PathBuf {
         let shown = Self::normalized(&self.display_root.join(local));
-        match fs::canonicalize(self.root.join(local)) {
-            Ok(found) if fs::canonicalize(&shown).ok().as_ref() != Some(&found) => found,
-            _ => shown,
-        }
+        let Ok(found) = fs::canonicalize(self.root.join(local)) else {
+            return shown;
+        };
+        let shows_found =
+            !shown.is_symlink() && fs::canonicalize(&shown).is_ok_and(|file| file == found);
+        if shows_found { shown } else { found }
     }
 
     pub(super) fn canonical_file(&self, local: &Path) -> Option<PathBuf> {

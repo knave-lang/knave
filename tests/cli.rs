@@ -10599,7 +10599,7 @@ fn task_dotted_use_through_a_link_names_the_file_it_reaches() {
 }
 
 #[test]
-fn dotted_use_of_a_link_to_a_file_of_another_extension_names_the_file() {
+fn dotted_use_of_a_link_to_a_file_of_another_extension_helps_with_the_link() {
     let sandbox = Sandbox::new("dotted_use_link_other_extension")
         .with_file("main.knv", "(use ./alias)\n\n(defn main () (println 1))\n")
         .with_file("notes.txt", "(def kept 0)\n")
@@ -10608,6 +10608,44 @@ fn dotted_use_of_a_link_to_a_file_of_another_extension_names_the_file() {
         .expect("the sandbox can hold a symbolic link");
     let check = sandbox.compiler(&["check", "main.knv"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn dotted_use_through_a_folder_link_out_of_the_root_helps_with_the_path_in_place() {
+    let sandbox = Sandbox::new("dotted_use_folder_link_out")
+        .with_file(
+            "app/main.knv",
+            "(use ./ext/foo kept)\n\n(defn main () (println kept))\n",
+        )
+        .with_file("shared/foo.knv", "(export kept)\n\n(def kept 1)\n");
+    std::os::unix::fs::symlink("../shared", sandbox.directory.join("app/ext"))
+        .expect("the sandbox can hold a symbolic link");
+    let check = sandbox.compiler(&["check", "app/main.knv"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn dotted_use_with_a_parent_part_to_a_link_of_another_extension_names_the_real_file() {
+    let sandbox = Sandbox::new("dotted_use_parent_link_other_extension")
+        .with_file(
+            "main.knv",
+            "(use deep/../alias)\n\n(defn main () (println 1))\n",
+        )
+        .with_file("deep/keep.knv", "(def kept 0)\n")
+        .with_file("notes.txt", "(def kept 1)\n")
+        .with_file("notes.knv", "(def kept 2)\n");
+    std::os::unix::fs::symlink("notes.txt", sandbox.directory.join("alias.knv"))
+        .expect("the sandbox can hold a symbolic link");
+    let notes = fs::canonicalize(sandbox.directory.join("notes.txt")).expect("the notes resolve");
+    let check = sandbox.compiler(&["check", "main.knv"]);
+    let stderr = check.assert_exit_code(1).stderr();
+    assert!(
+        stderr.contains(&format!(
+            "`{}` exists, but no module path this module can use names it",
+            notes.display()
+        )),
+        "{stderr}"
+    );
 }
 
 const DOTTED_MARKS_TEST: &str = "(use ../src/text/marks bang)\n\n(use prelude/test assert deftest)\n\n(deftest bangs (assert (= bang \"!\")))\n";

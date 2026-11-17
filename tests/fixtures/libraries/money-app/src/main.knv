@@ -1,4 +1,7 @@
-(use money ->float float)
+(use money ->float float make-int)
+
+(make-int)
 
 (defn main ()
+  (println (+ (the int 3) 1))
   (println (:whole (->float 3))))

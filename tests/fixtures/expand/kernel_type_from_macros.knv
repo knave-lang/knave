@@ -1,0 +1,17 @@
+(use code symbol)
+
+(defmacro make-hidden-int ()
+  (template (do
+              (defstruct int
+                :n bool))))
+
+(defmacro make-int-here (context)
+  (template (defstruct (unquote (symbol context "int"))
+              :n bool)))
+
+(make-hidden-int)
+
+(make-int-here here)
+
+(defn main ()
+  (println (:n (->int true))))

@@ -1,5 +1,5 @@
 use super::{Scope, ScopeKind, ScopeSupply};
-use crate::reader::Form;
+use crate::reader::{Form, Symbol};
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Scopes {
@@ -28,11 +28,15 @@ impl Scopes {
     }
 
     pub(crate) fn carries_introduction_scope(&self, binder: &Form) -> bool {
-        binder.as_symbol().is_some_and(|symbol| {
-            symbol
-                .scopes()
-                .any(|scope| self.kind(scope).is_some_and(ScopeKind::is_introduction))
-        })
+        binder
+            .as_symbol()
+            .is_some_and(|symbol| self.introduced(symbol))
+    }
+
+    pub(crate) fn introduced(&self, symbol: &Symbol) -> bool {
+        symbol
+            .scopes()
+            .any(|scope| self.kind(scope).is_some_and(ScopeKind::is_introduction))
     }
 
     fn is_stripped_by_quote(&self, scope: Scope) -> bool {

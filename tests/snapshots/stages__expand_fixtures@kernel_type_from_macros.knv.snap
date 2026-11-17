@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/kernel_type_from_macros.knv
+---
+warning[L0259]: `int` hides the kernel type `int`
+  --> expand/kernel_type_from_macros.knv:14:1
+   |
+14 | (make-int-here here)
+   | ^^^^^^^^^^^^^^^^^^^^ this binds `int` in place of the kernel type
+   |
+   = note: in this scope, a type written `int` names this binding, while a printed `int` is the kernel type
+   = help: rename this `int`
+   = note: run `knave doc L0259` for an explanation
+
+(struct int (n bool))
+(def make-int (fn (n) (new int (n n))))
+(struct int_2 (n bool))
+(def make-int_2 (fn (n_2) (new int_2 (n n_2))))
+(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) (field (make-int_2 true) n))))

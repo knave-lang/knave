@@ -3,6 +3,7 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use super::name_entries::NameEntries;
+use super::name_slots::NameSlots;
 use super::{Scope, ScopeSet, Scopes};
 use crate::core::Namespace;
 
@@ -24,7 +25,7 @@ struct NameRow {
 }
 
 impl NameRow {
-    const WORD: usize = size_of::<u32>();
+    const WORD: usize = NameSlots::WORD;
     const WORDS: usize = 5;
     const SIZE: usize = Self::WORDS * Self::WORD;
 
@@ -53,72 +54,6 @@ impl NameRow {
     }
 }
 
-struct NameSlots;
-
-impl NameSlots {
-    const EMPTY: u32 = 0;
-    const LOAD_DIVISOR: usize = 2;
-
-    fn word(bytes: &[u8], index: usize) -> u32 {
-        let start = index * NameRow::WORD;
-        let word = &bytes[start..start + NameRow::WORD];
-        u32::from_le_bytes(word.try_into().expect("a saved word has four bytes"))
-    }
-
-    const HASH_FACTOR: u64 = 0x517c_c1b7_2722_0a95;
-    const HASH_ROTATION: u32 = 5;
-    const HASH_FINAL_ROTATION: u32 = 26;
-    const HASH_CHUNK: usize = size_of::<u64>();
-
-    fn hash(name: &str, namespace: Namespace) -> u64 {
-        let chunks = name.as_bytes().chunks(Self::HASH_CHUNK);
-        let hash = chunks.fold(0, |hash, chunk| Self::mix(hash, Self::chunk_word(chunk)));
-        Self::mix(hash, Self::closing_word(name.len(), namespace))
-            .rotate_left(Self::HASH_FINAL_ROTATION)
-    }
-
-    fn closing_word(length: usize, namespace: Namespace) -> u64 {
-        (length as u64) << u32::BITS | u64::from(Self::code(namespace))
-    }
-
-    fn mix(hash: u64, word: u64) -> u64 {
-        (hash.rotate_left(Self::HASH_ROTATION) ^ word).wrapping_mul(Self::HASH_FACTOR)
-    }
-
-    fn chunk_word(chunk: &[u8]) -> u64 {
-        let mut word = [0; Self::HASH_CHUNK];
-        word[..chunk.len()].copy_from_slice(chunk);
-        u64::from_le_bytes(word)
-    }
-
-    fn start(name: &str, namespace: Namespace, mask: usize) -> usize {
-        let wide_mask = u64::try_from(mask).expect("a table's mask fits 64 bits");
-        usize::try_from(Self::hash(name, namespace) & wide_mask).expect("a slot fits its mask")
-    }
-
-    fn code(namespace: Namespace) -> u32 {
-        match namespace {
-            Namespace::Value => 0,
-            Namespace::Type => 1,
-        }
-    }
-
-    fn namespace(code: u32) -> Namespace {
-        match code {
-            0 => Namespace::Value,
-            _ => Namespace::Type,
-        }
-    }
-
-    fn capacity(names: usize) -> usize {
-        (names * Self::LOAD_DIVISOR).max(1).next_power_of_two()
-    }
-
-    fn index(value: usize) -> u32 {
-        u32::try_from(value).expect("the saved prelude stays under 4 GiB")
-    }
-}
-
 #[derive(serde::Serialize)]
 pub struct NameTables {
     prelude_scopes: Range<Scope>,
@@ -141,7 +76,7 @@ impl NameTables {
         );
         let mut tables = Self {
             prelude_scopes,
-            slots: vec![0; NameSlots::capacity(entries.len()) * NameRow::WORD],
+            slots: NameSlots::empty(entries.len()),
             rows: Vec::new(),
             names: Vec::new(),
             entries: Vec::new(),
@@ -152,7 +87,7 @@ impl NameTables {
         });
         for (position, (name, namespace, entries)) in sorted.iter().enumerate() {
             tables.add(name, *namespace, entries);
-            tables.claim_slot(name, *namespace, position);
+            NameSlots::claim(&mut tables.slots, name, *namespace, position);
         }
         tables
     }
@@ -172,16 +107,6 @@ impl NameTables {
             entries_end: NameSlots::index(self.entries.len()),
         };
         row.write(&mut self.rows);
-    }
-
-    fn claim_slot(&mut self, name: &str, namespace: Namespace, position: usize) {
-        let mask = self.slots.len() / NameRow::WORD - 1;
-        let mut slot = NameSlots::start(name, namespace, mask);
-        while NameSlots::word(&self.slots, slot) != NameSlots::EMPTY {
-            slot = (slot + 1) & mask;
-        }
-        let claimed = NameSlots::index(position + 1).to_le_bytes();
-        self.slots[slot * NameRow::WORD..(slot + 1) * NameRow::WORD].copy_from_slice(&claimed);
     }
 }
 
@@ -239,23 +164,10 @@ impl SavedNames {
     }
 
     pub(super) fn entries(&self, name: &str, namespace: Namespace) -> Option<&NameEntries> {
-        let count = self.slots.len() / NameRow::WORD;
-        if count == 0 {
-            return None;
-        }
-        let mask = count - 1;
-        let mut slot = NameSlots::start(name, namespace, mask);
-        loop {
-            let position = NameSlots::word(self.slots, slot);
-            if position == NameSlots::EMPTY {
-                return None;
-            }
-            let row = position as usize - 1;
-            if self.holds_key(row, name, namespace) {
-                return Some(self.decoded_row(row));
-            }
-            slot = (slot + 1) & mask;
-        }
+        let row = NameSlots::find(self.slots, name, namespace, |row| {
+            self.holds_key(row, name, namespace)
+        })?;
+        Some(self.decoded_row(row))
     }
 
     pub(super) fn all(&self) -> impl Iterator<Item = (Rc<str>, Namespace, &NameEntries)> {
@@ -316,7 +228,7 @@ mod tests {
     use std::ops::Range;
     use std::rc::Rc;
 
-    use super::{NameSlots, NameTables, SavedNames};
+    use super::{NameTables, SavedNames};
     use crate::core::Namespace;
     use crate::scope::name_entries::NameEntries;
     use crate::scope::{Scope, Scopes};
@@ -338,46 +250,6 @@ mod tests {
                 .expect("the tables serialize");
             bincode::deserialize(bytes.leak()).expect("the tables load")
         }
-    }
-
-    #[test]
-    fn a_slot_does_not_depend_on_the_word_size() {
-        const MAP_VALUE_HASH: u64 = 0xbac4a085bbe42db9;
-        assert_eq!(NameSlots::hash("map", Namespace::Value), MAP_VALUE_HASH);
-    }
-
-    #[test]
-    fn the_namespace_changes_a_slot() {
-        const MAP_TYPE_HASH: u64 = 0x976128b00d2a20c0;
-        assert_eq!(NameSlots::hash("map", Namespace::Type), MAP_TYPE_HASH);
-    }
-
-    #[test]
-    fn a_name_of_exactly_two_chunks_has_a_fixed_hash() {
-        const TWO_CHUNK_HASH: u64 = 0x1d2f75f1d58f090e;
-        let hash = NameSlots::hash("sixteen-bytes-ok", Namespace::Value);
-        assert_eq!(hash, TWO_CHUNK_HASH);
-    }
-
-    #[test]
-    fn a_name_past_two_chunks_has_a_fixed_hash() {
-        const THREE_CHUNK_HASH: u64 = 0xb8e2b8c46ab4ebfc;
-        let hash = NameSlots::hash("eight-by-tail-one", Namespace::Value);
-        assert_eq!(hash, THREE_CHUNK_HASH);
-    }
-
-    #[test]
-    fn a_trailing_zero_byte_changes_the_hash() {
-        let hash = |name| NameSlots::hash(name, Namespace::Value);
-        assert_ne!(hash("a"), hash("a\0"));
-        assert_ne!(hash("abcdefgh"), hash("abcdefgh\0"));
-    }
-
-    #[test]
-    fn a_long_name_hashes_every_chunk() {
-        let hash = |name| NameSlots::hash(name, Namespace::Value);
-        assert_ne!(hash("aight-by-tail-one"), hash("eight-by-tail-one"));
-        assert_ne!(hash("eight-by-tail-one"), hash("eight-by-tail-two"));
     }
 
     #[test]

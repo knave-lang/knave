@@ -194,6 +194,10 @@ impl<'e> LetBindings<'e> {
 }
 
 impl TypedExprKind {
+    pub fn is_dereference(&self) -> bool {
+        matches!(self, TypedExprKind::Deref(_))
+    }
+
     fn nested_children(&self) -> Vec<&TypedExpr> {
         match self {
             TypedExprKind::Recur(arguments) => {

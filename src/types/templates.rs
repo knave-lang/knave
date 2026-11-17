@@ -23,9 +23,8 @@ impl TemplateBorrows {
         self.read_template(callee, false, |parsed| parsed.borrows(position))
     }
 
-    pub fn takes_dereference(&self, callee: Option<&TypedExpr>, value: &TypedExpr) -> bool {
-        let dereferences = matches!(value.kind, TypedExprKind::Deref(_));
-        dereferences && callee.is_some_and(|callee| self.read_template(callee, false, |_| true))
+    pub fn is_template(&self, callee: &TypedExpr) -> bool {
+        self.read_template(callee, false, |_| true)
     }
 
     pub fn receives(&self, callee: &TypedExpr, position: usize) -> bool {

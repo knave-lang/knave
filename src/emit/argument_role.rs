@@ -16,6 +16,9 @@ impl ArgumentRole {
     }
 
     pub(super) fn borrow_prefix(self, argument: &TypedArgument) -> Option<String> {
+        if self == ArgumentRole::MutPlace {
+            return None;
+        }
         let borrowed_already = self.borrowed_already(argument);
         match argument.borrow {
             Borrow::Shared if !borrowed_already => Some("&".to_string()),

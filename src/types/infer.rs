@@ -1877,7 +1877,8 @@ impl TypeChecker {
         let item = if collection.is_map() {
             let key = self.unifier.resolve(collection.key());
             let entry = self.unifier.resolve(collection.value());
-            self.pair_type(Type::shared(key), Type::shared(entry))
+            self.prelude_types()
+                .pair_of(Type::shared(key), Type::shared(entry))
         } else {
             Type::shared(self.unifier.resolve(collection.value()))
         };
@@ -2009,7 +2010,8 @@ impl TypeChecker {
         value: &TypedExpr,
     ) -> Result<Borrow, Diagnostic> {
         if let Type::Ref(_, referent) = self.unifier.shallow(parameter)
-            && self.template_borrows.takes_dereference(callee, value)
+            && value.kind.is_dereference()
+            && callee.is_some_and(|callee| self.template_borrows.is_template(callee))
             && self.passes_as_written(value)
         {
             return self.pass(&referent, &value.ty, value.span, Borrow::Shared);
@@ -2220,7 +2222,7 @@ impl TypeChecker {
     }
 
     fn dereference_may_leave_borrow(&self, value: &TypedExpr) -> bool {
-        matches!(value.kind, TypedExprKind::Deref(_)) && self.may_hold_borrow(&value.ty)
+        value.kind.is_dereference() && self.may_hold_borrow(&value.ty)
     }
 
     fn may_hold_borrow(&self, value: &Type) -> bool {
@@ -2229,8 +2231,7 @@ impl TypeChecker {
     }
 
     fn dereference_result_unknown(&self, value: &TypedExpr) -> bool {
-        matches!(value.kind, TypedExprKind::Deref(_))
-            && self.referent_unknown(&self.unifier.resolve(&value.ty))
+        value.kind.is_dereference() && self.referent_unknown(&self.unifier.resolve(&value.ty))
     }
 
     fn string_as_str_help(
@@ -2861,7 +2862,7 @@ impl TypeChecker {
         self.note_unknown_collection(&value, CollectionAssumption::PushTarget);
         let element = self.unifier.fresh();
         let parameters = vec![
-            Type::mutable(self.prelude_types().vector_of(element.clone())),
+            Type::mutable(self.prelude_types().nested_vector_of(1, &element)),
             element,
         ];
         self.synthetic_call_with_value(
@@ -3145,7 +3146,7 @@ impl TypeChecker {
 
     fn unknown_vector(&mut self, unknown: &Type, depth: usize, span: Span) -> Option<Collection> {
         let element = self.unifier.fresh();
-        let vector = self.prelude_types().nested_vector_type(depth, &element);
+        let vector = self.prelude_types().nested_vector_of(depth, &element);
         self.unifier.unify(unknown, &vector, span).ok()?;
         Collection::of(&vector, &self.declarations.types.rust_types)
     }
@@ -3182,7 +3183,7 @@ impl TypeChecker {
         match depth.checked_sub(1) {
             Some(row_depth) => self
                 .prelude_types()
-                .slice_of(self.prelude_types().nested_vector_type(row_depth, item)),
+                .slice_of(self.prelude_types().nested_vector_of(row_depth, item)),
             None => item.clone(),
         }
     }
@@ -3287,19 +3288,9 @@ impl TypeChecker {
         }
     }
 
-    fn pair_type(&self, first: Type, second: Type) -> Type {
-        let pair = self
-            .declarations
-            .types
-            .rust_types
-            .pair_binding()
-            .expect("the prelude defines a pair type");
-        Type::Named(pair, vec![first, second])
-    }
-
     fn assoc_element(&mut self, depth: usize, base: &Type, span: Span) -> Result<Type, Diagnostic> {
         let element = self.unifier.fresh();
-        let expected = self.prelude_types().nested_vector_type(depth, &element);
+        let expected = self.prelude_types().nested_vector_of(depth, &element);
         self.unification()
             .expect(Expectation::plain(&expected), base, span)
             .map_err(|error| self.point_struct_base_to_fields(error, base))?;

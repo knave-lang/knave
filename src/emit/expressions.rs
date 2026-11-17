@@ -2322,11 +2322,7 @@ impl<'a> ExpressionEmitter<'a> {
             _ => self.argument_value(&argument.value, context, role),
         }
         .spanned(argument.value.span);
-        let prefix = match role {
-            ArgumentRole::MutPlace => None,
-            _ => role.borrow_prefix(argument),
-        };
-        match prefix {
+        match role.borrow_prefix(argument) {
             Some(prefix) => Self::prefixed(&prefix, value).spanned(argument.value.span),
             None => value,
         }

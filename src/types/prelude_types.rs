@@ -15,14 +15,6 @@ impl<'t> PreludeTypes<'t> {
         Pipelines::new(self.rust_types).is_pipeline(ty)
     }
 
-    pub(super) fn vector_of(&self, element: Type) -> Type {
-        let vector = self
-            .rust_types
-            .binding_with_template(RustType::VECTOR_TEMPLATE)
-            .expect("the prelude defines a vector type");
-        Type::Named(vector, vec![element])
-    }
-
     pub(super) fn slice_of(&self, element: Type) -> Type {
         let slice = self
             .rust_types
@@ -47,7 +39,15 @@ impl<'t> PreludeTypes<'t> {
         Type::Named(iterator, vec![item])
     }
 
-    pub(super) fn nested_vector_type(&self, depth: usize, element: &Type) -> Type {
+    pub(super) fn pair_of(&self, first: Type, second: Type) -> Type {
+        let pair = self
+            .rust_types
+            .pair_binding()
+            .expect("the prelude defines a pair type");
+        Type::Named(pair, vec![first, second])
+    }
+
+    pub(super) fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
         let vector = self
             .rust_types
             .binding_with_template(RustType::VECTOR_TEMPLATE)

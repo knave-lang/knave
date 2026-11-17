@@ -128,11 +128,10 @@ The exceptions are:
 - You MAY run `gh workflow run new-tests.yml -f pull_request=<number>` to learn which of a pull request's tests fail on its merge base. `gh run view <run id>` shows the result.
 - That workflow does not replace the revert: a test that pins existing behavior passes on the merge base, and the workflow skips unit tests.
 - A test MUST reach every condition and match arm that a change adds.
-- Before you merge, test the pull request's mutants on GitHub's runners, per the Mutants section of `docs/pull-requests.md`:
+- Before you merge, test the pull request's mutants on GitHub's runners:
   1. Write a manifest with one mutant per new condition, negated, and one per new match arm, emptied.
-  2. Dispatch `pr-mutants.yml` on the pull request's head branch with that manifest.
-  3. Wait for the run with `gh run watch <run id> --interval 60 --exit-status`.
-  4. For each mutant whose verdict is `missed`, add a test that fails on it.
+  2. Dispatch and watch the run, per the Mutants section of `docs/pull-requests.md`.
+  3. Act on each verdict, per that section's verdict table. The run fails on a `missed`, `unapplied` or `invalid` verdict. For each `missed` mutant, add a test that fails on it, or show that the mutant does not change behavior.
 - A slow input is an input that runs longer than one second in a debug build.
 - If a bug shows only on a slow input, unit-test the structure that caused the bug.
 - If a fixture imports a module, put the module in a subdirectory: each top-level fixture file is an entry.

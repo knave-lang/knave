@@ -5,7 +5,7 @@
 1. If the branch has no pull request, open one with `gh pr create --draft`.
 2. You MAY push to a draft pull request at any time.
 3. When the working commands pass, run `gh pr ready`.
-4. Run `gh pr checks --watch`.
+4. Run `gh pr checks --watch --interval 60`.
 
 ## Issues
 
@@ -43,7 +43,7 @@
 
 1. Check whether `main` fails the same check, as the next section says. If it does, stop and show the failing output to the project owner.
 2. Reproduce the failure with the narrowest working command. If no working command reproduces the failure, read the cause from the CI log.
-3. Fix the cause, push, and run `gh pr checks --watch` again.
+3. Fix the cause, push, and run `gh pr checks --watch --interval 60` again.
 
 **NEVER reproduce a CI failure with a command that `AGENTS.md` bans locally.**
 
@@ -78,7 +78,7 @@ nix-store --realise "$merge_path" "$base_path"
 
 **Run each binary as `"$merge_path/bin/knave"` or `"$base_path/bin/knave"`.** Nix checks the signature of each download.
 
-**If `nix-store --realise` reports `no substituter that can build it`, run `gh pr checks <number> --watch`, then rerun the block.** If the second run reports the same error, stop and report the commit to the project owner. NEVER build a release binary to replace the download.
+**If `nix-store --realise` reports `no substituter that can build it`, run `gh pr checks <number> --watch --interval 60`, then rerun the block.** If the second run reports the same error, stop and report the commit to the project owner. NEVER build a release binary to replace the download.
 
 **A downloaded binary has no `counters` feature.** Read counters from the `front-end instruction counts` job.
 
@@ -103,7 +103,7 @@ done
 
 **This block checks the NarHash and no signature.** If the block prints `NarHash mismatch`, stop and report the commit to the project owner.
 
-**If `curl` reports a 404, run `gh pr checks <number> --watch`, then rerun the block.** If the second run reports a 404, stop and report the commit to the project owner. NEVER build a release binary to replace the download.
+**If `curl` reports a 404, run `gh pr checks <number> --watch --interval 60`, then rerun the block.** If the second run reports a 404, stop and report the commit to the project owner. NEVER build a release binary to replace the download.
 
 **Run each binary as `target/scratch/probe-<commit>/bin/.knave-wrapped` inside the dev shell:** `bin/knave` points at a store path that this block does not download.
 
@@ -120,7 +120,7 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **Read a downloaded profile with `callgrind_annotate <profile>`.**
 
-**If `gh run download` finds no artifact, run `gh pr checks <number> --watch`, then rerun the block.** If the second run finds no artifact, stop and report the pull request to the project owner.
+**If `gh run download` finds no artifact, run `gh pr checks <number> --watch --interval 60`, then rerun the block.** If the second run finds no artifact, stop and report the pull request to the project owner.
 
 ## Mutants
 
@@ -155,8 +155,8 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
    gh workflow run pr-mutants.yml --ref "$branch" -f pull_request=<number> -f commit="$commit" -f tag="$tag" -f mutants="$(gzip -c <manifest> | base64 -w0)"
    ```
 
-2. Find the run's ID with `gh run list --workflow pr-mutants.yml --limit 20 --json databaseId,displayTitle --jq ".[] | select(.displayTitle | endswith(\" $tag\")) | .databaseId"`. If the command prints nothing, rerun it after 10 seconds, at most six times. If the sixth run prints nothing, report the tag to the project owner.
-3. Run `gh run watch <run id> --exit-status` as a background shell command. The command exits when the run ends.
+2. Find the run's ID with `gh run list --workflow pr-mutants.yml --limit 20 --json databaseId,displayTitle --jq ".[] | select(.displayTitle | endswith(\" $tag\")) | .databaseId"`. If the command prints nothing, rerun it after 60 seconds, at most six times. If the sixth run prints nothing, report the tag to the project owner.
+3. Run `gh run watch <run id> --interval 60 --exit-status` as a background shell command. The command exits when the run ends.
 4. Download the results with `gh run download <run id> --name mutant-results --dir target/scratch/mutants-<run id>`.
 5. Read `summary.md` in that directory. It names each mutant's verdict and log file.
 

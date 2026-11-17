@@ -586,8 +586,7 @@ impl TypeChecker {
                 .map(|binding| by_binding[binding])
                 .collect();
             let bindings: Vec<BindingId> = members.iter().map(|member| member.binding).collect();
-            if self.outcomes.is_blocked(dependencies, &bindings) {
-                self.outcomes.fail(bindings);
+            if self.outcomes.fail_when_blocked(dependencies, &bindings) {
                 continue;
             }
             let reported_before = self.diagnostics.len();

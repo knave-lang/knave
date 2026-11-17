@@ -24,8 +24,16 @@ impl DefinitionOutcomes {
         self.failed.extend(bindings);
     }
 
-    pub(super) fn is_blocked(&self, dependencies: &DependencyGraph, group: &[BindingId]) -> bool {
-        self.has_failed_member(group) || dependencies.directly_depends_on_any(group, &self.failed)
+    pub(super) fn fail_when_blocked(
+        &mut self,
+        dependencies: &DependencyGraph,
+        group: &[BindingId],
+    ) -> bool {
+        let blocked = self.is_blocked(dependencies, group);
+        if blocked {
+            self.fail(group.iter().copied());
+        }
+        blocked
     }
 
     pub(super) fn finish_group(
@@ -44,6 +52,10 @@ impl DefinitionOutcomes {
 
     pub(super) fn is_unreached(&self, binding: BindingId) -> bool {
         self.unreached.contains(&binding)
+    }
+
+    fn is_blocked(&self, dependencies: &DependencyGraph, group: &[BindingId]) -> bool {
+        self.has_failed_member(group) || dependencies.directly_depends_on_any(group, &self.failed)
     }
 
     fn note_group_after_errors(
@@ -122,6 +134,12 @@ mod tests {
             self.outcomes.is_blocked(graph.dependencies(), &[binding])
         }
 
+        fn fail_when_blocked(&mut self, binding: BindingId) -> bool {
+            let graph = DefinitionGraph::of(self.source.program());
+            self.outcomes
+                .fail_when_blocked(graph.dependencies(), &[binding])
+        }
+
         fn finish(&mut self, group: &[BindingId], reported_errors: usize) {
             let graph = DefinitionGraph::of(self.source.program());
             self.outcomes
@@ -147,6 +165,21 @@ mod tests {
     fn a_caller_two_calls_from_a_failure_is_not_blocked() {
         let mut chain = CallChain::new();
         chain.outcomes.fail([chain.last()]);
+        assert!(!chain.is_blocked(chain.first()));
+    }
+
+    #[test]
+    fn a_blocked_group_fails_and_blocks_its_own_callers() {
+        let mut chain = CallChain::new();
+        chain.outcomes.fail([chain.last()]);
+        assert!(chain.fail_when_blocked(chain.middle()));
+        assert!(chain.is_blocked(chain.first()));
+    }
+
+    #[test]
+    fn a_group_that_is_not_blocked_does_not_fail() {
+        let mut chain = CallChain::new();
+        assert!(!chain.fail_when_blocked(chain.middle()));
         assert!(!chain.is_blocked(chain.first()));
     }
 

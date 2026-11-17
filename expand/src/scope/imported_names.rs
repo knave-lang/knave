@@ -192,6 +192,19 @@ mod tests {
     }
 
     #[test]
+    fn a_binding_under_a_scope_no_module_imports_does_not_clash() {
+        let mut fixture = ImportFixture::new();
+        let elsewhere = fixture.world.scope();
+        let symbol = World::symbol("map", &[elsewhere]);
+        let other = BindingId::from_index(9);
+        let bound = fixture
+            .world
+            .table
+            .bind(&symbol, Namespace::Value, other, Phase::Runtime);
+        assert_eq!(bound, Ok(()));
+    }
+
+    #[test]
     fn a_binding_under_more_than_the_import_scopes_does_not_clash() {
         let mut fixture = ImportFixture::new();
         let later = fixture.import_into_new_module();

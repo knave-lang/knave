@@ -1,10 +1,8 @@
 (use prelude_names_shadowed/helpers first)
 
-(defn not (value)
-  value)
+(defn not (value) value)
 
-(defn larger (left right)
-  (- left right))
+(defn larger (left right) (- left right))
 
 (defn main ()
   (println (not true))

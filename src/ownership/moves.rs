@@ -8,6 +8,7 @@ use super::moved_place::MovedPlace;
 use super::moved_value_problems::{CopyBound, MoveSpans, MovedValueProblems};
 use super::moved_values::{FieldPath, MoveSite, MovedValues};
 use super::mutation::ChangedValues;
+use super::pending_diagnostic::PendingDiagnostic;
 use super::problems::OwnershipProblems;
 use super::read_usage::ReadUsage;
 use super::repeats::{NextPass, RepeatingBody};
@@ -60,7 +61,7 @@ pub struct MoveChecker<'a> {
     parameters: LambdaParameters,
     bound_field_moves: BoundFieldMoves,
     inferred_copies: InferredCopies,
-    diagnostics: Vec<Diagnostic>,
+    diagnostics: Vec<PendingDiagnostic>,
 }
 
 impl<'a> MoveChecker<'a> {
@@ -174,8 +175,8 @@ impl<'a> MoveChecker<'a> {
             return;
         }
         let name = self.bindings.get(binding).name();
-        self.diagnostics
-            .push(OwnershipProblems::moved_definition(name, expr.span));
+        let diagnostic = OwnershipProblems::moved_definition(name, expr.span);
+        self.diagnostics.push(diagnostic.into());
     }
 
     fn written(&mut self, expr: &TypedExpr) {
@@ -477,17 +478,14 @@ impl<'a> MoveChecker<'a> {
             return;
         }
         let moved_use = MovedUse { place, span, site };
-        let diagnostic = self.use_after_move_diagnostic(&moved_use);
-        if let Some((bound, owned_site)) = self.bound_field_moves.owned_site(site) {
-            let owned_use = MovedUse {
-                site: &owned_site,
+        let offered = self.use_after_move_diagnostic(&moved_use);
+        let pending = self.bound_field_moves.offer(site, offered, |owned_site| {
+            self.use_after_move_diagnostic(&MovedUse {
+                site: owned_site,
                 ..moved_use
-            };
-            let owned = self.use_after_move_diagnostic(&owned_use);
-            let position = self.diagnostics.len();
-            self.bound_field_moves.defer(position, bound, owned);
-        }
-        self.diagnostics.push(diagnostic);
+            })
+        });
+        self.diagnostics.push(pending);
     }
 
     fn use_after_move_diagnostic(&self, moved_use: &MovedUse) -> Diagnostic {

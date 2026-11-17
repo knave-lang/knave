@@ -269,12 +269,7 @@ impl Expander<'_> {
     fn import_everything(&mut self, module: ModuleId, base: ModuleId) {
         let mut scopes = ScopeSet::default();
         scopes.add(self.modules.get(module).scopes().base());
-        let exports: Vec<(Rc<str>, Namespace, _)> = self
-            .modules
-            .get(base)
-            .exports()
-            .map(|(name, namespace, binding)| (Rc::clone(name), namespace, binding))
-            .collect();
+        let exports: Vec<(Rc<str>, Namespace, _)> = self.modules.get(base).exports().collect();
         for (name, namespace, binding) in exports {
             let symbol = Symbol::with_scopes(name, scopes.clone());
             self.tables
@@ -349,7 +344,7 @@ impl Expander<'_> {
             .filter(|(name, namespace, _)| {
                 *namespace == Namespace::Value && name.starts_with(&prefix)
             })
-            .map(|(name, _, binding)| (Rc::clone(name), binding))
+            .map(|(name, _, binding)| (name, binding))
             .collect();
         for (name, binding) in constructors {
             let constructor = Symbol::with_scopes(name, symbol.scopes().clone());
@@ -395,7 +390,7 @@ impl Expander<'_> {
             .modules
             .get(target)
             .exports()
-            .map(|(name, _, _)| Rc::clone(name))
+            .map(|(name, _, _)| name)
             .collect();
         let similar = SimilarName::closest(symbol.name(), &exported);
         let remedy = self.missing_export_remedy(path, symbol.name());
@@ -420,7 +415,7 @@ impl Expander<'_> {
             .records()
             .filter(|record| ModuleSources::is_internal(record.path()))
             .filter(|record| !ModuleSources::is_compiler_provided(record.path()))
-            .any(|record| record.exports().any(|(exported, _, _)| **exported == *name))
+            .any(|record| record.exports().any(|(exported, _, _)| *exported == *name))
     }
 
     fn create_builtin(&mut self, path: &ModulePath, builtin: BuiltinModule) -> ModuleId {

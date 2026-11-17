@@ -7,6 +7,7 @@ mod body_facts;
 mod body_walk;
 mod call_site;
 mod call_walk;
+mod called_parameter;
 mod closure;
 mod control_flow_graph;
 mod expression_walk;

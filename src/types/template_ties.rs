@@ -9,6 +9,7 @@ pub struct TemplateTies {
     lifetime: TiedPositions,
     held: TiedPositions,
     beneath: TiedPositions,
+    stored: TiedPositions,
 }
 
 impl TemplateTies {
@@ -17,6 +18,7 @@ impl TemplateTies {
             lifetime: TiedPositions::of(lifetime.iter().copied()),
             held: TiedPositions::of(held.iter().copied()),
             beneath: TiedPositions::default(),
+            stored: TiedPositions::default(),
         }
     }
 
@@ -24,6 +26,14 @@ impl TemplateTies {
     pub fn beneath(self, positions: &[usize]) -> Self {
         Self {
             beneath: TiedPositions::of(positions.iter().copied()),
+            ..self
+        }
+    }
+
+    #[cfg(test)]
+    pub fn storing(self, positions: &[usize]) -> Self {
+        Self {
+            stored: TiedPositions::of(positions.iter().copied()),
             ..self
         }
     }
@@ -47,6 +57,7 @@ impl TemplateTies {
             lifetime,
             held,
             beneath,
+            stored: TiedPositions::of(Self::stored_references(parameters)),
         })
     }
 
@@ -61,6 +72,7 @@ impl TemplateTies {
             lifetime: known.lifetime.union(&other.lifetime),
             held,
             beneath,
+            stored: known.stored.union(&other.stored),
         })
     }
 
@@ -74,6 +86,10 @@ impl TemplateTies {
 
     pub fn holds_beneath(&self, position: usize) -> bool {
         self.beneath.contains(position)
+    }
+
+    pub fn stores_the_reference(&self, position: usize) -> bool {
+        self.stored.contains(position)
     }
 
     fn reads_beneath(&self, position: usize) -> bool {
@@ -90,6 +106,15 @@ impl TemplateTies {
             .iter()
             .enumerate()
             .filter(|(_, parameter)| shared.iter().any(|generic| parameter.mentions(*generic)))
+            .map(|(position, _)| position)
+            .collect()
+    }
+
+    fn stored_references(parameters: &[Type]) -> Vec<usize> {
+        parameters
+            .iter()
+            .enumerate()
+            .filter(|(_, parameter)| matches!(parameter.innermost_referent(), Type::Generic(_)))
             .map(|(position, _)| position)
             .collect()
     }
@@ -222,7 +247,7 @@ mod tests {
             vec![Type::shared(TiesFixture::generic()), index],
             Type::shared(TiesFixture::generic()),
         );
-        assert_eq!(at, Some(TemplateTies::new(&[0], &[0])));
+        assert_eq!(at, Some(TemplateTies::new(&[0], &[0]).storing(&[0])));
     }
 
     #[test]
@@ -250,7 +275,10 @@ mod tests {
             TiesFixture::generic(),
         );
         assert_eq!(pop, Some(TemplateTies::new(&[], &[0]).beneath(&[0])));
-        assert_eq!(either, Some(TemplateTies::new(&[], &[0, 1])));
+        assert_eq!(
+            either,
+            Some(TemplateTies::new(&[], &[0, 1]).storing(&[0, 1]))
+        );
     }
 
     #[test]
@@ -259,7 +287,18 @@ mod tests {
             vec![TiesFixture::generic(), TiesFixture::other_generic()],
             TiesFixture::generic(),
         );
-        assert_eq!(lookup, Some(TemplateTies::new(&[], &[0])));
+        assert_eq!(lookup, Some(TemplateTies::new(&[], &[0]).storing(&[0, 1])));
+    }
+
+    #[test]
+    fn only_a_type_variable_beneath_a_parameter_s_references_stores_the_reference() {
+        let nested = Type::shared(Type::shared(TiesFixture::generic()));
+        let vector = Type::mutable(TiesFixture::generic());
+        let ties = TiesFixture::ties(vec![nested, Type::str_ref(), vector], Type::unit())
+            .expect("the result holds no borrow");
+        assert!(ties.stores_the_reference(0));
+        assert!(!ties.stores_the_reference(1));
+        assert!(!ties.stores_the_reference(2));
     }
 
     #[test]

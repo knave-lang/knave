@@ -1074,7 +1074,7 @@ impl TypeChecker {
             return current.clone();
         }
         match self.schemes.get(&binding).cloned() {
-            Some(scheme) => self.instantiate(&scheme, span),
+            Some(scheme) => self.instantiation().instantiate(&scheme, span),
             None => {
                 assert!(
                     !self.outcomes.is_unreached(binding),
@@ -3611,7 +3611,7 @@ impl TypeChecker {
         span: Span,
     ) -> Result<(TypedExprKind, Type), Diagnostic> {
         let scheme = self.lower_scheme(&template.type_expr)?;
-        let ty = self.instantiate(&scheme, span);
+        let ty = self.instantiation().instantiate(&scheme, span);
         Ok((TypedExprKind::Leaf(TypedLeaf::Rust(template.clone())), ty))
     }
 }

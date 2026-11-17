@@ -248,7 +248,7 @@ impl<'c> Finalizer<'c> {
                 let diagnostic = TypeProblems::out_of_range(number.text(), widest, span);
                 self.checker.diagnostics.push(diagnostic);
             }
-            Type::Generic(generic) if !self.checker.literal_generics.contains_key(generic) => {
+            Type::Generic(generic) if self.checker.generics.literal(*generic).is_none() => {
                 self.check_generic_literal(number, *generic, span);
             }
             Type::Primitive(primitive) if !LiteralFit::fits(number.value(), ty) => {

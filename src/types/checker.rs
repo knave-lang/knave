@@ -17,9 +17,12 @@ use super::derive_blockers::DeriveBlockers;
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
 use super::field_parameters::FieldParameters;
+use super::generic_registry::{GenericRegistry, GenericRole};
 use super::graph::{Definition, DefinitionGraph};
 use super::impl_overlap::ImplementorOverlap;
+use super::implied_bounds::ImpliedBounds;
 use super::infer::OpenCollections;
+use super::instantiation::Instantiation;
 use super::literal_settlement::LiteralSettlement;
 use super::method_receivers::MethodReceivers;
 use super::opaque_positions::OpaquePositions;
@@ -170,7 +173,7 @@ pub struct TypeChecker {
     pub(super) bindings: BindingArena,
     pub(super) unifier: Unifier,
     pub(super) declarations: Declarations,
-    pub(super) generics: FxHashMap<GenericId, GenericParam>,
+    pub(super) generics: GenericRegistry,
     pub(super) schemes: FxHashMap<BindingId, Scheme>,
     pub(super) component: FxHashMap<BindingId, Type>,
     pub(super) locals: FxHashMap<BindingId, Type>,
@@ -191,8 +194,7 @@ pub struct TypeChecker {
     signatures: FxHashMap<BindingId, (TypeExpr, Span)>,
     pub(super) checking_facts: CheckingFacts,
     monomorphic: Vec<Type>,
-    pub(super) implied_bounds: FxHashMap<GenericId, Vec<Bound>>,
-    pub(super) associated_generics: FxHashMap<GenericId, std::rc::Rc<str>>,
+    pub(super) implied_bounds: ImpliedBounds,
     pub(super) single_field_readers: FxHashMap<BindingId, Rc<str>>,
     pub(super) pending_borrows: Vec<PendingBorrow>,
     pub(super) open_set_ats: Vec<super::infer::OpenSetAt>,
@@ -213,13 +215,11 @@ pub struct TypeChecker {
     pub(super) parameter_call_requests: Vec<ParameterCallRequest>,
     pub(super) pending_mode_checks: Vec<PendingModeCheck>,
     impl_methods: FxHashSet<BindingId>,
-    impl_generics: FxHashSet<GenericId>,
     pub(super) conversions: Vec<TypedConversion>,
     pub(super) synthetic_bindings: FxHashSet<BindingId>,
     pub(super) pinned: FxHashMap<BindingId, Type>,
     pub(super) literal_defaults: LiteralDefaults,
     pub(super) assumed_collections: AssumedCollections,
-    pub(super) literal_generics: FxHashMap<GenericId, LiteralKind>,
     default_literal_parameters: bool,
     pub(super) recursive_group: Vec<BindingId>,
     reopened_parameters: Vec<ReopenedParameter>,
@@ -254,7 +254,7 @@ impl TypeChecker {
             bindings,
             unifier: Unifier::default(),
             declarations: Declarations::default(),
-            generics: FxHashMap::default(),
+            generics: GenericRegistry::default(),
             schemes: FxHashMap::default(),
             component: FxHashMap::default(),
             locals: FxHashMap::default(),
@@ -275,8 +275,7 @@ impl TypeChecker {
             signatures: FxHashMap::default(),
             checking_facts: CheckingFacts::default(),
             monomorphic: Vec::new(),
-            implied_bounds: FxHashMap::default(),
-            associated_generics: FxHashMap::default(),
+            implied_bounds: ImpliedBounds::default(),
             single_field_readers: FxHashMap::default(),
             pending_borrows: Vec::new(),
             open_set_ats: Vec::new(),
@@ -297,13 +296,11 @@ impl TypeChecker {
             parameter_call_requests: Vec::new(),
             pending_mode_checks: Vec::new(),
             impl_methods: FxHashSet::default(),
-            impl_generics: FxHashSet::default(),
             conversions: Vec::new(),
             synthetic_bindings: FxHashSet::default(),
             pinned: FxHashMap::default(),
             literal_defaults: LiteralDefaults::default(),
             assumed_collections: AssumedCollections::default(),
-            literal_generics: FxHashMap::default(),
             default_literal_parameters: false,
             recursive_group: Vec::new(),
             reopened_parameters: Vec::new(),
@@ -599,11 +596,11 @@ impl TypeChecker {
     }
 
     pub(super) fn admissible_types(&self) -> AdmissibleTypes<'_> {
-        AdmissibleTypes::new(&self.generics, &self.declarations.traits.table)
+        AdmissibleTypes::new(self.generics.params(), &self.declarations.traits.table)
     }
 
     pub(super) fn copy_rules(&self) -> super::copy::CopyRules<'_> {
-        super::copy::CopyRules::new(&self.declarations, &self.generics)
+        super::copy::CopyRules::new(&self.declarations, self.generics.params())
     }
 
     pub(super) fn is_box(&self, ty: &Type) -> bool {
@@ -675,7 +672,7 @@ impl TypeChecker {
     }
 
     pub(super) fn unification(&mut self) -> Unification<'_> {
-        let display = TypeDisplay::new(&self.bindings, &self.generics)
+        let display = TypeDisplay::new(&self.bindings, self.generics.params())
             .with_projections(self.declarations.traits.table.projections());
         let declarations = DeclaredTypes::new(&self.declarations.types);
         Unification::new(&mut self.unifier, display, declarations)
@@ -717,7 +714,7 @@ impl TypeChecker {
     }
 
     pub(super) fn display(&self) -> TypeDisplay<'_> {
-        TypeDisplay::new(&self.bindings, &self.generics)
+        TypeDisplay::new(&self.bindings, self.generics.params())
             .with_projections(self.declarations.traits.table.projections())
     }
 
@@ -747,16 +744,8 @@ impl TypeChecker {
         Some(self.call_origins.introducing_macro(span)?.name)
     }
 
-    pub(super) fn new_generic(&mut self, name: &str, bounds: Vec<Bound>) -> GenericParam {
-        let id = GenericId::new(self.generics.len());
-        let param = GenericParam {
-            id,
-            name: name.into(),
-            bounds: bounds.clone(),
-        };
-        self.generics.insert(id, param.clone());
-        self.unifier.register_generic(id, bounds);
-        param
+    pub(super) fn instantiation(&mut self) -> Instantiation<'_> {
+        Instantiation::new(&self.generics, &self.implied_bounds, &mut self.unifier)
     }
 
     fn discharge_obligations(&mut self, pass: ObligationPass) {
@@ -1073,8 +1062,7 @@ impl TypeChecker {
             return match self.lower_scheme(&signature) {
                 Ok(scheme) => {
                     if self.impl_methods.contains(&member.binding) {
-                        self.impl_generics
-                            .extend(scheme.params.iter().map(|param| param.id));
+                        self.implied_bounds.mark_impl_generics(&scheme.params);
                     }
                     self.component.insert(member.binding, scheme.body.clone());
                     Some((member.binding, scheme))
@@ -1413,7 +1401,7 @@ impl TypeChecker {
         let mut ids = Vec::new();
         Self::collect_generics(inferred, &mut ids);
         ids.into_iter()
-            .filter_map(|id| self.generics.get(&id).cloned())
+            .filter_map(|id| self.generics.params().get(&id).cloned())
             .collect()
     }
 
@@ -1450,10 +1438,11 @@ impl TypeChecker {
         }
         let name = Self::parameter_name(position);
         let bounds = self.self_plain_bounds(var);
-        let param = self.new_generic(&name, bounds);
+        let param = self.generics.declare(&name, bounds, &mut self.unifier);
         self.unifier.bind(var, Type::Generic(param.id));
         if let Some(literal) = literal {
-            self.literal_generics.insert(param.id, literal);
+            self.generics
+                .assign(param.id, GenericRole::Literal(literal));
         }
         Some(param)
     }
@@ -1522,7 +1511,11 @@ impl TypeChecker {
     }
 
     fn failed_scheme(&mut self) -> Scheme {
-        let param = self.new_generic(Self::parameter_name(0).as_str(), Vec::new());
+        let param = self.generics.declare(
+            Self::parameter_name(0).as_str(),
+            Vec::new(),
+            &mut self.unifier,
+        );
         Scheme {
             lifetimes: Vec::new(),
             body: Type::Generic(param.id),
@@ -1827,7 +1820,7 @@ impl TypeChecker {
             .filter(|binder| !binder.lifetime)
             .map(|binder| {
                 let name = self.bindings.get(binder.variable).name().to_string();
-                self.new_generic(&name, Vec::new())
+                self.generics.declare(&name, Vec::new(), &mut self.unifier)
             })
             .collect())
     }
@@ -2143,7 +2136,7 @@ impl TypeChecker {
         let mut scope = FxHashMap::default();
         for variable in self.implementor_variables(implementor) {
             let name = self.bindings.get(variable).name().to_string();
-            let param = self.new_generic(&name, Vec::new());
+            let param = self.generics.declare(&name, Vec::new(), &mut self.unifier);
             scope.insert(variable, param.id);
             params.push(param);
         }
@@ -2351,11 +2344,7 @@ impl TypeChecker {
                     .collect();
                 for (bounds, method_param) in found.iter_mut().zip(&definition.scheme.params) {
                     let declared = method_param.bounds.iter();
-                    let implied = self
-                        .implied_bounds
-                        .get(&method_param.id)
-                        .into_iter()
-                        .flatten();
+                    let implied = self.implied_bounds.of(method_param.id);
                     for bound in declared.chain(implied) {
                         let bound = bound.substituted(&replacements);
                         if !bounds.contains(&bound) {
@@ -2374,9 +2363,7 @@ impl TypeChecker {
             param.bounds = bounds;
         }
         for param in &params {
-            self.generics.insert(param.id, param.clone());
-            self.unifier
-                .register_generic(param.id, param.bounds.clone());
+            self.generics.redeclare(param, &mut self.unifier);
         }
         let trait_binding = self.declarations.traits.impls[position].trait_binding;
         let implementor = self.declarations.traits.impls[position].implementor.clone();
@@ -2396,8 +2383,8 @@ impl TypeChecker {
         if self.declares_bound(generic, &bound) {
             return;
         }
-        if self.impl_generics.contains(&generic) {
-            self.record_implied_bound(generic, bound);
+        if self.implied_bounds.is_impl_generic(generic) {
+            self.implied_bounds.record(generic, bound);
             return;
         }
         if self.apply_declared_bound(generic, &bound, span) {
@@ -2407,7 +2394,7 @@ impl TypeChecker {
             if self.declared_bound_implies(generic, &bound) {
                 return;
             }
-            self.record_implied_bound(generic, bound);
+            self.implied_bounds.record(generic, bound);
             return;
         }
         if self.has_written_projection_on(generic, bound.binding) {
@@ -2427,13 +2414,6 @@ impl TypeChecker {
             .generic_bounds(generic)
             .iter()
             .any(|declared| declared.meets(bound, generic))
-    }
-
-    fn record_implied_bound(&mut self, generic: GenericId, bound: Bound) {
-        let implied = self.implied_bounds.entry(generic).or_default();
-        if !implied.contains(&bound) {
-            implied.push(bound);
-        }
     }
 
     fn apply_declared_bound(&mut self, generic: GenericId, bound: &Bound, span: Span) -> bool {
@@ -3002,6 +2982,7 @@ impl TypeChecker {
             diagnostics.extend(warnings);
             return Err(diagnostics);
         }
+        let generics = self.generics.into_tables();
         Ok(super::typed::TypedProgram {
             modules,
             entry: program.entry.module,
@@ -3010,11 +2991,11 @@ impl TypeChecker {
             macro_field_reads: self.macro_field_reads,
             declarations: self.declarations,
             structural_uses: self.structural_uses,
-            associated_generics: self.associated_generics,
+            associated_generics: generics.associated,
             conversions: self.conversions,
             synthetic_bindings: self.synthetic_bindings,
-            generics: self.generics,
-            implied_bounds: self.implied_bounds,
+            generics: generics.params,
+            implied_bounds: self.implied_bounds.into_map(),
             template_borrows: self.template_borrows,
             template_clauses: self.template_clauses,
             pending_mode_checks: self.pending_mode_checks,
@@ -3023,7 +3004,7 @@ impl TypeChecker {
             escaping_lambdas: FxHashSet::default(),
             borrowing_lambdas: FxHashMap::default(),
             mutable_function_bindings: FxHashSet::default(),
-            literal_generics: self.literal_generics,
+            literal_generics: generics.literals,
             unnameable_types: self.unnameable_types,
             closure_types: self.closure_types,
             type_texts: self.type_texts,

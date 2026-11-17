@@ -24,7 +24,6 @@ mod template_braces;
 mod template_operation;
 mod types;
 mod unnamed_part_path;
-mod written_borrow;
 mod written_types;
 
 pub use access::Access;

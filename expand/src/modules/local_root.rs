@@ -67,7 +67,10 @@ impl<'s> LocalRoot<'s> {
     }
 
     pub(super) fn canonical_file(&self, local: &Path) -> Option<PathBuf> {
-        let file = fs::canonicalize(self.root.join(local)).ok()?;
+        let path = self.root.join(local);
+        let file = fs::canonicalize(path.parent()?)
+            .ok()?
+            .join(path.file_name()?);
         file.is_file().then_some(file)
     }
 

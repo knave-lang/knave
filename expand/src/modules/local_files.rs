@@ -77,9 +77,7 @@ impl<'s> LocalFiles<'s> {
             .iter()
             .position(|root| root.reached_file(local).is_some())?;
         let written = ModulePath::of_file(local)?;
-        let names_the_file = Path::new(&Language::file_name(written.as_str())) == local;
-        let loads_here =
-            names_the_file && first_reach == position && !(self.loads_elsewhere)(&written);
+        let loads_here = first_reach == position && !(self.loads_elsewhere)(&written);
         loads_here.then_some(written)
     }
 }

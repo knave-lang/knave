@@ -646,7 +646,6 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 
 - In a project, `build`, `run`, `check`, `types`, `expand` and `emit` take their file as optional and default to `:entry`. Outside one, a missing file is a usage error.
 - A file inside the source root resolves `use` from the source root, and its module path is its path from there, so `src/text/pad.knv` is `text/pad`. A file outside the source root resolves `use` from its own directory.
-- A module path holds no `.` or `..` part, so each file has one module path: `(use ./text/pad)` is `L0259`, whose help writes `text/pad`.
 - `build` and `run` write the binary of `:entry` to `<root>/target/knave/<name>/<name>`, from any working directory. Any other file builds where it would outside a project.
 - No module at the source root is named `project`: `(use project)` is an error.
 - An error in the project file stops the command.
@@ -698,6 +697,7 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 ## Modules
 
 - One file is one module. `(use text/format pad-left)` loads `text/format.knv` relative to the source root and binds `pad-left`. The source root is the project's source root (see Projects), or else the entry file's directory.
+- A module path holds no `.` or `..` part, so a path cannot spell one file two ways: `(use ./text/format)` is `L0260`, whose help writes the module path of the file the path leads to, here `text/format`, and inside a library the path from the library's root.
 - A name is private to its file until an `(export ...)` lists it. `export` can list imported names, which re-exports them.
 - Exporting a struct makes all its fields public: every module that imports it can read, build and update it, and its emitted Rust fields are `pub`.
 - Every user module imports the prelude. An explicit `use` shadows a prelude name.

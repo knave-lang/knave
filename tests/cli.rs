@@ -10415,6 +10415,53 @@ fn task_used_by_another_path_beside_hidden_folders_is_not_in_them() {
 }
 
 #[test]
+fn test_using_a_source_module_through_a_parent_part_is_told_its_module_path() {
+    let sandbox = Sandbox::new("test_dotted_source_module")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file("src/text/marks.knv", PROJECT_MARKS)
+        .with_file("tests/marks.knv", DOTTED_MARKS_TEST);
+    let test = sandbox.compiler(&["test", "tests"]);
+    insta::assert_snapshot!(test.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn test_using_a_hidden_source_module_through_a_parent_part_is_told_the_file_exists() {
+    let sandbox = Sandbox::new("test_dotted_hidden_source_module")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file("src/text/marks.knv", PROJECT_MARKS)
+        .with_file("tests/text/marks.knv", PROJECT_MARKS)
+        .with_file("tests/marks.knv", DOTTED_MARKS_TEST);
+    let test = sandbox.compiler(&["test", "tests/marks.knv"]);
+    insta::assert_snapshot!(test.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn library_dotted_use_is_told_its_path_within_the_library() {
+    let sandbox = Sandbox::new("library_dotted_use")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (shapes :path \"../shapes\")))\n",
+        )
+        .with_file(
+            "app/src/main.knv",
+            "(use shapes area)\n\n(defn main () (println (area 2)))\n",
+        )
+        .with_file(
+            &format!("shapes/{}", Language::project_file_name()),
+            "(defproject shapes)\n",
+        )
+        .with_file("shapes/src/lib.knv", DOTTED_LIBRARY_ROOT)
+        .with_file("shapes/src/square.knv", "(export side)\n\n(def side 4)\n")
+        .with_file("app/square.knv", "(export side)\n\n(def side 4)\n");
+    let check = sandbox.compiler_in("app", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+const DOTTED_MARKS_TEST: &str = "(use ../src/text/marks bang)\n\n(use prelude/test assert deftest)\n\n(deftest bangs (assert (= bang \"!\")))\n";
+const DOTTED_LIBRARY_ROOT: &str =
+    "(use ./square side)\n\n(use ../square)\n\n(export area)\n\n(defn area (side) (* side side))\n";
+
+#[test]
 fn task_reached_through_a_hidden_link_is_not_in_a_hidden_folder() {
     let sandbox = Sandbox::new("task_through_hidden_link")
         .with_file(&Language::project_file_name(), TASK_PROJECT)

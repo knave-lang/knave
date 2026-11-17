@@ -7,6 +7,10 @@ impl Language {
     pub const PROJECT_FILE_STEM: &str = "project";
 
     pub fn project_file_name() -> String {
-        format!("{}.{}", Self::PROJECT_FILE_STEM, Self::EXTENSION)
+        Self::file_name(Self::PROJECT_FILE_STEM)
+    }
+
+    pub fn file_name(stem: &str) -> String {
+        format!("{stem}.{}", Self::EXTENSION)
     }
 }

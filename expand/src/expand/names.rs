@@ -99,9 +99,14 @@ impl Expander<'_> {
                 )
             })?;
         let hidden = HiddenKernelType::of(symbol.name(), namespace, self.kind(binding))
-            .filter(|_| !self.expands_library_module() && !self.tables.scopes.introduced(symbol));
-        if let Some(hidden) = hidden {
-            self.problems.report_warning(hidden.at_import(span));
+            .filter(|_| !self.expands_library_module());
+        if let Some(hidden) = hidden
+            && let Some(reach) = self
+                .tables
+                .macro_origins
+                .reach(&self.tables.scopes, symbol, span)
+        {
+            self.problems.report_warning(hidden.at_import(&reach));
         }
         Ok(())
     }
@@ -149,9 +154,14 @@ impl Expander<'_> {
                 )
             })?;
         let hidden = HiddenKernelType::of(symbol.name(), namespace, kind)
-            .filter(|_| !self.expands_library_module() && !self.tables.scopes.introduced(symbol));
-        if let Some(hidden) = hidden {
-            self.problems.report_warning(hidden.at_definition(span));
+            .filter(|_| !self.expands_library_module());
+        if let Some(hidden) = hidden
+            && let Some(reach) = self
+                .tables
+                .macro_origins
+                .reach(&self.tables.scopes, symbol, span)
+        {
+            self.problems.report_warning(hidden.at_definition(&reach));
         }
         Ok(binding)
     }

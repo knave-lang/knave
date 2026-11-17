@@ -1,4 +1,5 @@
 mod binder_form;
+mod binder_reach;
 mod bindings;
 mod budget_arena;
 mod builtin_export;

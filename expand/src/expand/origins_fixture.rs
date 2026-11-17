@@ -27,6 +27,7 @@ impl OriginsFixture {
             defined: Self::span(0, 0, 1),
             call_site,
             through_prelude: false,
+            in_project: true,
         }
     }
 

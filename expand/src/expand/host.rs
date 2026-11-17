@@ -405,6 +405,7 @@ mod tests {
                 defined: call_site,
                 call_site,
                 through_prelude: false,
+                in_project: true,
             };
             expander
                 .tables

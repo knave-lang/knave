@@ -1,7 +1,7 @@
+use super::binder_reach::BinderReach;
 use super::namespace_problems::NamespaceProblems;
 use crate::core::{BindingKind, KernelType, Namespace};
 use crate::diagnostic::Diagnostic;
-use crate::source::Span;
 
 pub(super) struct HiddenKernelType<'name> {
     written: &'name str,
@@ -21,12 +21,12 @@ impl<'name> HiddenKernelType<'name> {
         })
     }
 
-    pub fn at_definition(&self, span: Span) -> Diagnostic {
-        NamespaceProblems::kernel_type_defined(self.written, self.kernel_type, span)
+    pub fn at_definition(&self, reach: &BinderReach) -> Diagnostic {
+        NamespaceProblems::kernel_type_defined(self.written, self.kernel_type, reach)
     }
 
-    pub fn at_import(&self, span: Span) -> Diagnostic {
-        NamespaceProblems::kernel_type_imported(self.written, self.kernel_type, span)
+    pub fn at_import(&self, reach: &BinderReach) -> Diagnostic {
+        NamespaceProblems::kernel_type_imported(self.written, self.kernel_type, reach)
     }
 }
 

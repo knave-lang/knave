@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use super::binder_reach::BinderReach;
 use super::numeric_bound::NumericBound;
 use crate::core::KernelType;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
@@ -28,35 +29,58 @@ impl NamespaceProblems {
         }
     }
 
-    pub fn kernel_type_defined(written: &str, hidden: KernelType, span: Span) -> Diagnostic {
+    pub fn kernel_type_defined(
+        written: &str,
+        hidden: KernelType,
+        reach: &BinderReach,
+    ) -> Diagnostic {
         let label = Label::new(
-            span,
+            reach.binder,
             format!("this binds `{written}` in place of the kernel type"),
         );
+        let help = match &reach.introducing_macro {
+            Some(name) => format!("rename `{written}` in `{name}`"),
+            None => format!("rename this `{written}`"),
+        };
         Self::kernel_type_hidden(written, hidden, label)
-            .with_help(format!("rename this `{written}`"))
+            .with_note(Self::hidden_note(written, hidden, reach))
+            .with_help(help)
     }
 
-    pub fn kernel_type_imported(written: &str, hidden: KernelType, span: Span) -> Diagnostic {
+    pub fn kernel_type_imported(
+        written: &str,
+        hidden: KernelType,
+        reach: &BinderReach,
+    ) -> Diagnostic {
         let label = Label::new(
-            span,
+            reach.binder,
             format!("this imports `{written}` in place of the kernel type"),
         );
-        Self::kernel_type_hidden(written, hidden, label).with_help(format!(
-            "leave `{written}` out of this `use`, or rename it in the module that defines it"
-        ))
+        let help = match &reach.introducing_macro {
+            Some(name) => format!("leave `{written}` out of the `use` in `{name}`"),
+            None => format!(
+                "leave `{written}` out of this `use`, or rename it in the module that defines it"
+            ),
+        };
+        Self::kernel_type_hidden(written, hidden, label)
+            .with_note(Self::hidden_note(written, hidden, reach))
+            .with_help(help)
     }
 
     fn kernel_type_hidden(written: &str, hidden: KernelType, label: Label) -> Diagnostic {
-        let shown = hidden.name();
         Diagnostic::warning(
             DiagnosticCode::KERNEL_TYPE_HIDDEN,
-            format!("`{written}` hides the kernel type `{shown}`"),
+            format!("`{written}` hides the kernel type `{}`", hidden.name()),
             label,
         )
-        .with_note(format!(
-            "in this scope, a type written `{written}` names this binding, while a printed `{shown}` is the kernel type"
-        ))
+    }
+
+    fn hidden_note(written: &str, hidden: KernelType, reach: &BinderReach) -> String {
+        format!(
+            "{}, a type written `{written}` names this binding, while a printed `{}` is the kernel type",
+            reach.scope(),
+            hidden.name()
+        )
     }
 
     fn alternatives(first: &str, others: &[Rc<str>]) -> String {

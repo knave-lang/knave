@@ -8,4 +8,5 @@ pub struct MacroOrigin {
     pub defined: Span,
     pub call_site: Span,
     pub through_prelude: bool,
+    pub in_project: bool,
 }

@@ -135,7 +135,7 @@ use evaluated_forms::EvaluatedForms;
 pub use generated_entry::GeneratedEntry;
 use globals::{GlobalTable, LoweredGlobals};
 pub use input_terms::InputTerms;
-use lint_records::{CompileTimeRoots, LintHandOff, MacroReferences};
+use lint_records::{CompileTimeRoots, LintHandOff, MacroReferences, MemberTables, UsedImports};
 use loaded_text_modules::LoadedTextModules;
 use macro_call::MacroTable;
 pub use macro_call_lookup::MacroCallLookup;
@@ -402,9 +402,12 @@ impl<'s> Expander<'s> {
             .tables
             .string_view
             .or_else(|| self.tables.find_string_view());
-        let modules = self.take_modules();
+        let mut modules = self.take_modules();
         let references = MacroReferences::new(&self.tables.table, &self.tables.bindings);
-        let named = LintHandOff::new(references, self.tables.macros.ready()).hand_to(&modules);
+        let members = MemberTables::new(&self.tables.bindings, &self.tables.trait_methods);
+        let read_out = UsedImports::new(self.tables.table.visible_names(), members, &self.modules);
+        let hand_off = LintHandOff::new(references, read_out, self.tables.macros.ready());
+        let named = hand_off.hand_to(&mut modules, self.sources);
         let mut program = Program {
             modules,
             entry: ProgramEntry {

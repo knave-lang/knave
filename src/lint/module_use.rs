@@ -53,7 +53,7 @@ impl<'p> ModuleUse<'p> {
         let imported = recorded
             .iter()
             .flat_map(|import| &import.names)
-            .flat_map(|name| name.bindings.iter());
+            .flat_map(|name| name.written.bindings.iter());
         imported
             .filter(|binding| {
                 let info = program.bindings.get(*binding);
@@ -64,13 +64,15 @@ impl<'p> ModuleUse<'p> {
     }
 
     pub fn refers_to(&self, name: &ImportedName) -> bool {
-        name.bindings
+        name.written
+            .bindings
             .iter()
             .any(|binding| self.used.contains(&binding))
     }
 
     pub fn brings_only_macros(&self, name: &ImportedName) -> bool {
-        name.bindings
+        name.written
+            .bindings
             .iter()
             .all(|binding| matches!(self.bindings.get(binding).kind(), BindingKind::Macro(_)))
     }
@@ -79,7 +81,7 @@ impl<'p> ModuleUse<'p> {
 #[cfg(test)]
 mod tests {
     use super::ModuleUse;
-    use crate::core::{BindingId, ImportedBindings, ImportedName};
+    use crate::core::{BindingId, ImportedBindings, ImportedName, WrittenName};
     use crate::lint::binding_owners::BindingOwners;
     use crate::lint::expanded_source::ExpandedSource;
     use crate::lint::linted_module::LintedModule;
@@ -104,8 +106,11 @@ mod tests {
                 .last()
                 .expect("the program binds the name");
             ImportedName {
-                span: Span::new(SourceId::new(0), 0..0),
-                bindings: ImportedBindings::one(binding),
+                written: WrittenName {
+                    span: Span::new(SourceId::new(0), 0..0),
+                    bindings: ImportedBindings::one(binding),
+                },
+                used: false,
             }
         }
 

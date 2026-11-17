@@ -1,0 +1,5 @@
+(export pad-left shout)
+
+(defn pad-left (text) text)
+
+(defn shout (text) text)

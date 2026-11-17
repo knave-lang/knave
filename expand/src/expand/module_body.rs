@@ -69,7 +69,7 @@ pub(super) enum PendingItem {
     Trait(BindingId, Form),
     Impl(crate::scope::Scope, Form),
     Export(Form),
-    Use(crate::core::Import),
+    Use(crate::core::WrittenUse),
 }
 
 impl Expander<'_> {
@@ -581,8 +581,8 @@ impl Expander<'_> {
             PendingItem::Struct(binding, form) => self.lower_struct(binding, &form, core),
             PendingItem::RustTrait(binding, form) => self.lower_rust_trait(binding, &form, core),
             PendingItem::RustType(binding, form) => self.lower_rust_type(binding, &form, core),
-            PendingItem::Use(import) => {
-                core.lint_facts.record_import(import);
+            PendingItem::Use(written) => {
+                core.lint_facts.record_use(written);
                 Ok(())
             }
             other => self.lower_other_pending(module, other, core),

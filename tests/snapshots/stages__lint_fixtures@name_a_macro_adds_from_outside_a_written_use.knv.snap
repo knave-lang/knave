@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/name_a_macro_adds_from_outside_a_written_use.knv
+---
+

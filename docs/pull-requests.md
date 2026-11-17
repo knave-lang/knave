@@ -130,11 +130,11 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 | Field | Value |
 | --- | --- |
-| `name` | A name that tells the mutant apart in the results |
-| `file` | The path of the file the mutant changes, from the repository root |
+| `name` | A name that tells the mutant apart in the results, with no tab or newline |
+| `file` | The path of a tracked file outside `.github/`, from the repository root |
 | `old` | Text that occurs exactly once in `file` at the tested commit |
 | `new` | The text that replaces `old` |
-| `tests` | A list of test sets, each a list of `cargo test` arguments |
+| `tests` | A list of test sets, each a non-empty list of `cargo test` arguments |
 
 **The workflow runs the test sets of a mutant in order and stops at the first set that fails.** Leading `NAME=value` items of a test set become environment variables, such as `INSTA_GLOB_FILTER=**/<fixture file name>`.
 
@@ -142,14 +142,17 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 [{"name": "a hidden definition is a candidate", "file": "src/lint/definition_reach.rs", "old": "!item.hidden && ", "new": "", "tests": [["--test", "stages", "lint_fixtures"], ["--lib", "lint::"]]}]
 ```
 
+**Dispatch the workflow on the pull request's head branch, NEVER on `main`.** `main`'s jobs restore the build cache of a run on `main`. The `plan` job refuses any other branch. If the head branch was cut before the workflow reached `main`, rebase the branch onto `main` first.
+
 **To run a manifest, follow these steps:**
 
 1. Dispatch the workflow on the pull request's head commit with a tag that no other run uses:
 
    ```sh
+   branch=$(gh pr view <number> --json headRefName --jq .headRefName)
    commit=$(gh pr view <number> --json headRefOid --jq .headRefOid)
    tag=mutants-$(date +%s)
-   gh workflow run pr-mutants.yml -f pull_request=<number> -f commit="$commit" -f tag="$tag" -f mutants="$(gzip -c <manifest> | base64 -w0)"
+   gh workflow run pr-mutants.yml --ref "$branch" -f pull_request=<number> -f commit="$commit" -f tag="$tag" -f mutants="$(gzip -c <manifest> | base64 -w0)"
    ```
 
 2. Find the run's ID with `gh run list --workflow pr-mutants.yml --limit 20 --json databaseId,displayTitle --jq ".[] | select(.displayTitle | endswith(\" $tag\")) | .databaseId"`. If the command prints nothing, rerun it after 10 seconds, at most six times. If the sixth run prints nothing, report the tag to the project owner.
@@ -161,16 +164,20 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **If the download finds no `mutant-results` artifact, read the failure with `gh run view <run id> --log-failed`.** The `plan` job fails in each of these cases:
 
-- The commit is not a commit of the pull request.
+- The run is not on the pull request's head branch.
+- The commit is not a full SHA of a commit of the pull request.
 - The pull request comes from a fork.
-- The manifest is empty, or an entry lacks a field.
+- `test-seconds` is less than 1.
+- The manifest is not a gzip compressed, base64 encoded JSON array.
+- The manifest is empty, or an entry breaks the manifest format.
 
-**The run fails when a mutant is missed or unapplied, or when a shard does not finish.** Act on each verdict:
+**The run fails when a mutant is missed, unapplied or invalid, or when a shard does not finish.** Act on each verdict:
 
 | Verdict | Meaning | Action |
 | --- | --- | --- |
 | `caught` | A test set failed | None |
 | `missed` | Every test set passed | Add a test that fails on the mutant, or show that the mutant does not change behavior |
-| `timeout` | A test set ran longer than `test-seconds`, 300 by default | Read the log. If the tests hang on the mutant, count the mutant as caught. Otherwise, dispatch the mutant again with a larger `test-seconds`. |
-| `unviable` | The tests do not compile with the mutant | Rewrite the mutant so that it compiles |
-| `unapplied` | `old` does not occur exactly once, or `file` does not exist | Fix the entry and dispatch it again |
+| `timeout` | A test set ran longer than `test-seconds`, 300 by default, or its build ran longer than 25 minutes | Read the log. If the tests hang on the mutant, count the mutant as caught. Otherwise, dispatch the mutant again with a larger `test-seconds`. |
+| `unviable` | The code does not compile with the mutant | Rewrite the mutant so that it compiles |
+| `invalid` | `cargo test` refused a test set without a compile error, such as for a test target that does not exist | Fix the test set and dispatch the mutant again |
+| `unapplied` | The entry cannot become a change to its file | Fix the entry as its verdict says and dispatch it again |

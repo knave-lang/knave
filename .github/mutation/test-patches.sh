@@ -3,6 +3,7 @@ set -uo pipefail
 
 readonly TIMED_OUT=124
 readonly KILL_GRACE=10s
+readonly COMPILE_FAILURE='error\[E[0-9]+\]|could not compile'
 
 main() {
   mkdir -p "$RESULTS/logs"
@@ -53,12 +54,27 @@ run_test_set() {
   local assignments=() arguments=()
   split_assignments "$@"
   echo "cargo test ${*}"
-  if ! env "${assignments[@]}" timeout --kill-after="$KILL_GRACE" "$BUILD_SECONDS" cargo test --no-run "${arguments[@]}" 2>&1; then
-    echo unviable
+  local build_output build_status
+  build_output=$(env "${assignments[@]}" timeout --kill-after="$KILL_GRACE" "$BUILD_SECONDS" cargo test --no-run "${arguments[@]}" 2>&1)
+  build_status=$?
+  echo "$build_output"
+  if ((build_status != 0)); then
+    verdict_of_build "$build_status" "$build_output" "$*"
     return 1
   fi
   env "${assignments[@]}" timeout --kill-after="$KILL_GRACE" "$TEST_SECONDS" cargo test "${arguments[@]}" 2>&1
   verdict_of_exit $? "$*"
+}
+
+verdict_of_build() {
+  local status=$1 output=$2 command_words=$3
+  if ((status == TIMED_OUT)); then
+    echo "timeout: build of $command_words"
+  elif grep -Eq "$COMPILE_FAILURE" <<< "$output"; then
+    echo unviable
+  else
+    echo "invalid: $(grep -m 1 '^error' <<< "$output" || echo "cargo test exited with $status")"
+  fi
 }
 
 split_assignments() {

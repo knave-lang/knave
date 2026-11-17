@@ -71,10 +71,15 @@
   (fn (form)
     (if (in-tasks-directory? form)
       form
-      (fail "`deftask` defines a task only in a file under `tasks/`"
-        (nth form 1)
-        "move this task into a file under `tasks/`"
-        (quote (:code task-outside-tasks :label "outside `tasks/`"))))))
+      (task-outside-tasks (nth form 1)
+                          "move this task into a file under `tasks/`"
+                          "outside `tasks/`"))))
+
+(def task-outside-tasks
+  (fn (name help label)
+    (fail "`deftask` defines a task only in a file under `tasks/`"
+      name help
+      (template (:code task-outside-tasks :label (unquote label))))))
 
 (def check-task-shape
   (fn (form)
@@ -736,7 +741,7 @@
   (macro (form)
     (check-task-modules (program-modules)
                         (task-tree (rest form)
-                                   (list (list) (list) (list))))
+                                   (task-tree-of (list) (list) (list))))
     (string-joined (map-list (program-tasks)
                      (fn (note)
                        (symbol-name (note-name note)))))))
@@ -818,20 +823,33 @@
                               (keyword-name (first forms))
                               (string (nth forms 1))))
         (task-tree (rest forms)
-                   (list (concat (nth tree 0)
-                                 (list (string (first forms))))
-                         (nth tree 1)
-                         (nth tree 2)))))))
+                   (task-tree-of (concat (tree-task-files tree)
+                                         (list (string (first forms))))
+                                 (tree-hidden-folders tree)
+                                 (tree-project-files tree)))))))
 
 (def with-skip
   (fn (tree kind path)
     (if (value-eq kind "hidden-folder")
-      (list (nth tree 0)
-            (concat (nth tree 1) (list path))
-            (nth tree 2))
-      (list (nth tree 0)
-            (nth tree 1)
-            (concat (nth tree 2) (list path))))))
+      (task-tree-of (tree-task-files tree)
+                    (concat (tree-hidden-folders tree) (list path))
+                    (tree-project-files tree))
+      (task-tree-of (tree-task-files tree)
+                    (tree-hidden-folders tree)
+                    (concat (tree-project-files tree) (list path))))))
+
+(def task-tree-of
+  (fn (task-files hidden-folders project-files)
+    (list task-files hidden-folders project-files)))
+
+(def tree-task-files
+  (fn (tree) (nth tree 0)))
+
+(def tree-hidden-folders
+  (fn (tree) (nth tree 1)))
+
+(def tree-project-files
+  (fn (tree) (nth tree 2)))
 
 (def check-task-modules
   (fn (modules tree)
@@ -846,7 +864,7 @@
     (local notes (module-notes module (quote tasks)))
     (if (empty? notes)
       true
-      (if (one-of? (symbol-name module) (nth tree 0))
+      (if (one-of? (symbol-name module) (tree-task-files tree))
         true
         (task-outside-tree module (note-name (first notes)) tree)))))
 
@@ -854,39 +872,26 @@
   (fn (module name tree)
     (local path (symbol-name module))
     (if (bool-not (project-module? module))
-      (fail "`deftask` defines a task only in a file under `tasks/`"
+      (task-outside-tasks
         name "use this file by its path from `tasks/`"
-        (quote (:code task-outside-tasks
-                      :label "this file loads through a library, not by its path from `tasks/`")))
-      (if (in-hidden-folder? path (nth tree 1))
-        (fail "`deftask` defines a task only in a file under `tasks/`"
+        "this file loads through a library, not by its path from `tasks/`")
+      (if (in-hidden-folder? path (tree-hidden-folders tree))
+        (task-outside-tasks
           name "move the file out of the hidden folder"
-          (quote (:code task-outside-tasks
-                        :label "this file sits in a hidden folder, which the task tree skips")))
-        (if (one-of? path (nth tree 2))
-          (fail "`deftask` defines a task only in a file under `tasks/`"
+          "this file sits in a hidden folder, which the task tree skips")
+        (if (one-of? path (tree-project-files tree))
+          (task-outside-tasks
             name "rename the file"
-            (quote
-              (:code
-                task-outside-tasks
-                :label "this file is a project file, which the task tree skips")))
-          (fail "`deftask` defines a task only in a file under `tasks/`"
-            name "use this file by its path from `tasks/`"
-            (quote (:code task-outside-tasks
-                          :label "this file loads under a path that is not its path from `tasks/`"))))))))
+            "this file is a project file, which the task tree skips")
+          (task-outside-tasks name
+                              "use this file by its path from `tasks/`"
+                              "this file loads under a path that is not its path from `tasks/`"))))))
 
 (def in-hidden-folder?
   (fn (path folders)
-    (if (relative-step? path)
+    (if (string-contains? (string "/" path "/") "/../")
       false
       (under-any-folder? path folders))))
-
-(def relative-step?
-  (fn (path)
-    (local segments (string "/" path "/"))
-    (if (string-contains? segments "/./")
-      true
-      (string-contains? segments "/../"))))
 
 (def project-module?
   (fn (module)

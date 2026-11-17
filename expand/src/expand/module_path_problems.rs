@@ -29,14 +29,16 @@ impl ModulePathProblems {
                 "`{}` exists, but no module path this module can use names it",
                 file.display()
             )),
-            UnnamedPartTarget::BeyondTaskReach(file) => Self::beyond_task_reach(diagnostic, &file),
+            UnnamedPartTarget::BeyondTaskReach(file) => {
+                Self::with_task_reach_advice(diagnostic, &file)
+            }
             UnnamedPartTarget::Absent => {
                 diagnostic.with_note("this path names no file under the root directory")
             }
         }
     }
 
-    pub fn beyond_task_reach(diagnostic: Diagnostic, file: &Path) -> Diagnostic {
+    pub fn with_task_reach_advice(diagnostic: Diagnostic, file: &Path) -> Diagnostic {
         diagnostic
             .with_note(format!(
                 "`{}` exists, under a directory a task cannot reach this way",

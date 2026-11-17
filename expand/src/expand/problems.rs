@@ -467,7 +467,7 @@ impl ExpandProblems {
             format!("cannot find module `{path}`"),
             Label::new(span, "no module this file can use has this path"),
         );
-        ModulePathProblems::beyond_task_reach(diagnostic, file)
+        ModulePathProblems::with_task_reach_advice(diagnostic, file)
     }
 
     pub fn local_module_beside_library(clash: &LocalModuleClash<'_>, span: Span) -> Diagnostic {

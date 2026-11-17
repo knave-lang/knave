@@ -9,7 +9,7 @@ pub struct UnnamedPartPath(Rc<str>);
 
 impl UnnamedPartPath {
     pub fn check(written: &str) -> Result<ModulePath, Self> {
-        if PathPart::parts(written).all(|part| part.is_name()) {
+        if PathPart::all_names(written) {
             return Ok(ModulePath::new(written));
         }
         Err(Self(written.into()))

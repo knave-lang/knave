@@ -67,8 +67,8 @@ impl LibraryRoot {
         self.lister.as_deref()
     }
 
-    pub(super) fn local_root<'s>(&'s self, scope: &'s SearchScope) -> LocalRoot<'s> {
-        LocalRoot::primary(&self.source_root, &self.display_root, scope)
+    pub fn checkout(&self) -> Option<&std::path::Path> {
+        self.checkout.as_deref()
     }
 
     fn file(&self, inner_module: &str) -> LibraryFile {
@@ -124,6 +124,19 @@ impl LibraryTable {
         self.sees_library(owner, written)
     }
 
+    pub(super) fn local_root<'s>(
+        &'s self,
+        owner: &str,
+        scope: &'s SearchScope,
+    ) -> Option<LocalRoot<'s>> {
+        let library = self.named(Some(owner))?;
+        Some(LocalRoot::primary(
+            &library.source_root,
+            &library.display_root,
+            scope,
+        ))
+    }
+
     fn named(&self, owner: Option<&str>) -> Option<&LibraryRoot> {
         let owner = owner?;
         self.libraries.iter().find(|library| library.name == owner)
@@ -143,10 +156,6 @@ impl LibraryTable {
             .strip_prefix(library.name.as_str())?
             .strip_prefix(ModulePath::SEPARATOR);
         Some(library.file(inner.unwrap_or(&library.root_module)))
-    }
-
-    pub fn checkout_of(&self, path: &ModulePath) -> Option<&std::path::Path> {
-        self.owner_of(path)?.checkout.as_deref()
     }
 
     pub fn owner_of(&self, path: &ModulePath) -> Option<&LibraryRoot> {

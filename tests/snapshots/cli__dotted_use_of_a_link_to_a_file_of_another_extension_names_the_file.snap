@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0260]: module path `./alias` has a part that is not a name
+ --> main.knv:1:6
+  |
+1 | (use ./alias)
+  |      ^^^^^^^ each part of a module path names a directory or a file
+  |
+  = note: `alias.knv` exists, but no module path this module can use names it
+  = note: run `knave doc L0260` for an explanation

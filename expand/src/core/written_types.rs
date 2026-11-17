@@ -38,8 +38,9 @@ mod tests {
 
     use crate::core::References;
     use crate::core::{
-        Arm, Binder, BindingArena, BindingId, Block, BodyItem, Control, Expr, ExprKind, Lambda,
-        Leaf, Literal, Pattern, PatternKind, RustClause, RustTemplate, TypeExpr, TypeExprKind,
+        Arm, Binder, BindingArena, BindingId, Block, BodyItem, Control, DroppedBorrows, Expr,
+        ExprKind, Lambda, Leaf, Literal, Pattern, PatternKind, RustClause, RustTemplate, TypeExpr,
+        TypeExprKind,
     };
     use crate::source::{SourceId, Span};
 
@@ -143,7 +144,7 @@ mod tests {
             clauses: vec![RustClause {
                 target: WrittenTypesFixture::named(3),
                 template: "{0}.size()".into(),
-                unborrowed: Vec::new(),
+                dropped_borrows: DroppedBorrows::default(),
             }],
         };
         let value = WrittenTypesFixture::expr(ExprKind::Leaf(Leaf::Rust(Rc::new(template))));

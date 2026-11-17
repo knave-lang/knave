@@ -97,17 +97,6 @@ impl ExpandProblems {
         ))
     }
 
-    pub fn rust_clauses_need_a_parameter(span: Span) -> Diagnostic {
-        Diagnostic::error(
-            DiagnosticCode::RUST_CLAUSES_NEED_A_PARAMETER,
-            "a `rust` with clauses takes a type parameter",
-            Label::new(span, "this type binds no type parameter"),
-        )
-        .with_help(
-            "bind a parameter for the clauses to choose by, as in `(where ((s source)) (fn ((ref s)) string))`",
-        )
-    }
-
     pub fn structural_clause_needs_one_method(definer: &str, clause: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::MALFORMED_STRUCTURAL_CLAUSE,

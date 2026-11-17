@@ -1,4 +1,5 @@
 use super::Expander;
+use super::clause_chooser_problems::ClauseChooserProblems;
 use super::problems::ExpandProblems;
 use super::shape::Shape;
 use crate::core::{
@@ -26,6 +27,30 @@ impl<'t> ClausedTemplate<'t> {
             shared_references: type_expr.shared_reference_parameters(),
         }
     }
+
+    fn chooser_problem(&self) -> Option<Diagnostic> {
+        let Some(chooser) = Expander::where_binders(self.type_expr)
+            .iter()
+            .find(|binder| !binder.lifetime)
+        else {
+            return Some(ClauseChooserProblems::missing(self.type_span));
+        };
+        let fixed = self
+            .argument_types()
+            .iter()
+            .any(|argument| argument.named_bindings().contains(&chooser.variable));
+        (!fixed).then(|| ClauseChooserProblems::fixed_by_no_argument(chooser.span))
+    }
+
+    fn argument_types(&self) -> &[TypeExpr] {
+        let TypeExprKind::Where(_, body) = self.type_expr.kind() else {
+            return &[];
+        };
+        match body.kind() {
+            TypeExprKind::Function(_, parameters, _) => parameters,
+            _ => &[],
+        }
+    }
 }
 
 impl Expander<'_> {
@@ -41,11 +66,10 @@ impl Expander<'_> {
             .iter()
             .map(|clause| Self::clause_pair(shape, clause))
             .collect::<Result<Vec<_>, Diagnostic>>()?;
-        let parameters = Self::type_parameters(template.type_expr).count();
-        if !pairs.is_empty() && parameters == 0 {
-            return Err(ExpandProblems::rust_clauses_need_a_parameter(
-                template.type_span,
-            ));
+        if !pairs.is_empty()
+            && let Some(problem) = template.chooser_problem()
+        {
+            return Err(problem);
         }
         pairs
             .into_iter()
@@ -68,9 +92,9 @@ impl Expander<'_> {
     ) -> Result<RustClause, Diagnostic> {
         let parsed = Self::parse_rust_template(shape.string(text)?, text.span())?;
         self.check_template_type_placeholders(&parsed, template.type_expr, text.span())?;
-        let unborrowed = template
+        let dropped_borrows = template
             .parsed
-            .passing_difference(&parsed, &template.shared_references)
+            .clause_borrows(&parsed, &template.shared_references)
             .map_err(|difference| {
                 ExpandProblems::clause_passes_arguments_unlike_template(
                     difference,
@@ -81,7 +105,7 @@ impl Expander<'_> {
         Ok(RustClause {
             target: self.lower_type(target)?,
             template: parsed.text().into(),
-            unborrowed,
+            dropped_borrows,
         })
     }
 
@@ -97,11 +121,5 @@ impl Expander<'_> {
             TypeExprKind::Where(binders, _) => binders.as_slice(),
             _ => &[],
         }
-    }
-
-    fn type_parameters(type_expr: &TypeExpr) -> impl Iterator<Item = &TypeBinder> {
-        Self::where_binders(type_expr)
-            .iter()
-            .filter(|binder| !binder.lifetime)
     }
 }

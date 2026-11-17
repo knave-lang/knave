@@ -70,18 +70,18 @@ impl<'c> ClauseCheck<'c> {
     ) -> Vec<Diagnostic> {
         let clause = written.target.span();
         written
-            .unborrowed
-            .iter()
+            .dropped_borrows
+            .arguments()
             .filter_map(|argument| {
                 let ClauseTarget::Type(target) = target else {
                     return Some(ClauseProblems::trait_clause_drops_a_borrow(
-                        *argument, clause,
+                        argument, clause,
                     ));
                 };
-                match self.argument_type(scheme, target, *argument)? {
+                match self.argument_type(scheme, target, argument)? {
                     Type::Ref(..) => None,
                     passed => Some(ClauseProblems::clause_drops_a_borrow(
-                        *argument,
+                        argument,
                         &self.display.show(&passed),
                         clause,
                     )),
@@ -103,7 +103,7 @@ impl<'c> ClauseCheck<'c> {
         scheme: &Scheme,
         target: &Type,
     ) -> Option<FxHashMap<GenericId, Type>> {
-        let chooser = scheme.params.first()?;
+        let chooser = scheme.clause_chooser()?;
         let mut solved = FxHashMap::default();
         solved.insert(chooser.id, target.clone());
         for bound in &chooser.bounds {

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::{BindingId, Keyword, ReferenceKind, TypeExpr};
+use super::{BindingId, DroppedBorrows, Keyword, ReferenceKind, TypeExpr};
 use crate::reader::{Form, Number};
 use crate::source::Span;
 
@@ -269,7 +269,7 @@ pub struct RustTemplate {
 pub struct RustClause {
     pub target: TypeExpr,
     pub template: Rc<str>,
-    pub unborrowed: Vec<usize>,
+    pub dropped_borrows: DroppedBorrows,
 }
 
 impl Expr {

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/rust_clause_unfixed_chooser.knv
+---
+error[L0246]: a `rust` with clauses chooses by its first type parameter, which no argument fixes
+ --> expand/rust_clause_unfixed_chooser.knv:3:13
+  |
+3 |     (where ((unused clone) (s sequence))
+  |             ^^^^^^^^^^^^^^ no argument's type names this parameter
+  |
+  = help: list first a parameter that an argument's type names
+  = note: run `knave doc L0246` for an explanation

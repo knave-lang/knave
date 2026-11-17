@@ -1871,19 +1871,15 @@ impl<'a> ExpressionEmitter<'a> {
         template: &Rc<RustTemplate>,
         instantiated: &Type,
     ) -> Rc<RustTemplate> {
-        let parameter = binding.and_then(|binding| {
+        let chosen = binding.and_then(|binding| {
+            let chooser = self.plan.definition(binding)?.scheme.clause_chooser()?;
             let (_, parameter) = self
                 .definition_type_bindings(binding, instantiated)
                 .into_iter()
-                .next()?;
-            Some((binding, parameter))
+                .find(|(name, _)| *name == *chooser.name)?;
+            Some(ClauseChoice::new(self.program).applied(template, binding, &parameter))
         });
-        match parameter {
-            Some((binding, parameter)) => {
-                ClauseChoice::new(self.program).applied(template, binding, &parameter)
-            }
-            None => Rc::clone(template),
-        }
+        chosen.unwrap_or_else(|| Rc::clone(template))
     }
 
     fn callee_type_arguments(&self, callee: &TypedExpr) -> Vec<(String, Code)> {

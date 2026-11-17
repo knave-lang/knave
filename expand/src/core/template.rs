@@ -1,6 +1,8 @@
+use super::dropped_borrows::DroppedBorrows;
 use super::shared_references::SharedReferences;
 use super::template_braces::TemplateBraces;
 use super::template_operation::TemplateOperation;
+use super::written_borrow::WrittenBorrow;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct MalformedPlaceholder;
@@ -55,6 +57,12 @@ pub enum PassingAspect {
     Operand,
 }
 
+enum BorrowChange {
+    Kept,
+    Dropped,
+    Changed,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 struct ArgumentPassing<'t> {
     accesses: Vec<Access>,
@@ -76,15 +84,27 @@ impl ArgumentPassing<'_> {
 
     fn unborrowed(self) -> Self {
         Self {
-            accesses: self
-                .accesses
-                .iter()
-                .map(|access| access.unborrowed())
-                .collect(),
+            accesses: self.accesses.into_iter().map(Access::unborrowed).collect(),
             operand: self.operand && !self.written_borrow,
             written_borrow: false,
             ..self
         }
+    }
+
+    fn borrow_change(self, clause: Self) -> Result<BorrowChange, PassingAspect> {
+        let change = match (self == clause, self.borrows(), clause.borrows()) {
+            (true, _, _) => BorrowChange::Kept,
+            (false, true, false) => BorrowChange::Dropped,
+            _ => BorrowChange::Changed,
+        };
+        match self.unborrowed().differing_aspect(&clause.unborrowed()) {
+            Some(aspect) => Err(aspect),
+            None => Ok(change),
+        }
+    }
+
+    fn borrows(&self) -> bool {
+        self.written_borrow || self.accesses.contains(&Access::Borrowed)
     }
 
     fn differing_aspect(&self, clause: &ArgumentPassing) -> Option<PassingAspect> {
@@ -414,32 +434,39 @@ impl ParsedTemplate {
         TemplateOperation::of(&self.pieces)
     }
 
-    pub fn passing_difference(
+    pub fn clause_borrows(
         &self,
         clause: &ParsedTemplate,
         shared_references: &SharedReferences,
-    ) -> Result<Vec<usize>, PassingDifference> {
+    ) -> Result<DroppedBorrows, PassingDifference> {
         let mut arguments: Vec<usize> = self.placeholders().chain(clause.placeholders()).collect();
         arguments.sort_unstable();
         arguments.dedup();
-        let mut unborrowed = Vec::new();
+        let mut dropped = Vec::new();
         for argument in arguments {
-            let (template, clause) = (self.passing(argument), clause.passing(argument));
             let shared_reference = shared_references.holds(argument);
-            let (template, clause) = if shared_reference {
-                (template.without_receiver(), clause.without_receiver())
+            let (in_template, in_clause) = (self.passing(argument), clause.passing(argument));
+            let (in_template, in_clause) = if shared_reference {
+                (in_template.without_receiver(), in_clause.without_receiver())
             } else {
-                (template, clause)
+                (in_template, in_clause)
             };
-            let differs = template != clause;
-            if let Some(aspect) = template.unborrowed().differing_aspect(&clause.unborrowed()) {
-                return Err(PassingDifference::Argument(argument, aspect));
-            }
-            if differs && !shared_reference {
-                unborrowed.push(argument);
+            let change = in_template
+                .borrow_change(in_clause)
+                .map_err(|aspect| PassingDifference::Argument(argument, aspect))?;
+            match change {
+                BorrowChange::Kept => {}
+                _ if shared_reference => {}
+                BorrowChange::Dropped => dropped.push(argument),
+                BorrowChange::Changed => {
+                    return Err(PassingDifference::Argument(argument, PassingAspect::Borrow));
+                }
             }
         }
-        self.call_difference(clause).map_or(Ok(unborrowed), Err)
+        match self.call_difference(clause) {
+            Some(difference) => Err(difference),
+            None => Ok(DroppedBorrows::new(dropped)),
+        }
     }
 
     fn call_difference(&self, clause: &ParsedTemplate) -> Option<PassingDifference> {
@@ -461,9 +488,9 @@ impl ParsedTemplate {
                 .operation()
                 .operator_arguments()
                 .any(|operand| operand == argument),
-            written_borrow: self.pieces.windows(2).any(|pair| {
+            written_borrow: self.pieces.windows(2).enumerate().any(|(position, pair)| {
                 matches!(pair, [Piece::Literal(text), Piece::Placeholder { index, .. }]
-                    if *index == argument && text.ends_with(Self::BORROW))
+                    if *index == argument && WrittenBorrow::after(text).borrows_at(position))
             }),
         }
     }

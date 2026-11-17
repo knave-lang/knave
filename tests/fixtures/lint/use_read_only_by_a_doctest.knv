@@ -1,0 +1,6 @@
+(use prelude/test doctest)
+(use modules/count tally)
+
+(doctest modules/count)
+
+(defn main () (println 1))

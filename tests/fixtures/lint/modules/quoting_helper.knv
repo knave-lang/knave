@@ -1,0 +1,9 @@
+(use code list)
+(use modules/format pad-left)
+
+(export padded)
+
+(def call-form
+  (fn (x) (list (quote pad-left) x)))
+
+(defmacro padded (x) (call-form x))

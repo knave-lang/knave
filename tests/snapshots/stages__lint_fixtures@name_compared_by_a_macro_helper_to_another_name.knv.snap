@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/name_compared_by_a_macro_helper_to_another_name.knv
+---
+

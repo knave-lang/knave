@@ -1,5 +1,6 @@
 mod binding_table;
 mod imported_names;
+mod imported_table;
 mod name_entries;
 mod name_entry;
 mod name_key;

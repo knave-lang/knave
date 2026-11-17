@@ -269,7 +269,10 @@ impl Expander<'_> {
     fn import_everything(&mut self, module: ModuleId, base: ModuleId) {
         let base_scope = self.modules.get(module).scopes().base();
         if let Some(saved) = self.modules.get(base).exports().saved() {
-            self.tables.table.prelude_mut().import(base_scope, saved);
+            self.tables
+                .table
+                .prelude_mut()
+                .import(base_scope, base, saved);
             return;
         }
         let mut scopes = ScopeSet::default();

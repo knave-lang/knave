@@ -120,16 +120,59 @@ fn bump(items: &mut Vec<i64>, i: i64) -> i64 {
 }
 ```
 
-**A second conversion for `get`, `{index? n}`.** The owner chose decision 1(b): `get` never panics, so a negative index gives `none`, while `at` panics. `{index? n}` is the conversion for a template whose result is an `option`. It writes the argument by its shape:
+**A second conversion for `get`, `{index? n}`.** The owner chose decision 1(b): `get` never panics, so a negative index gives `none`, while `at` panics. `{index? n}` is the conversion for a position where an index past the end gives `none`. It converts the argument alone, in its place, and maps a negative value to `usize::MAX`, an index past the end of every collection. It writes the argument by its shape:
 
 | Argument | Emitted |
 |---|---|
 | a non-negative integer literal | the bare literal: `items.get(5)` |
-| anything else, a negative literal included | the template inside a checked conversion that yields `None` when the value is negative: `usize::try_from(i).ok().and_then(\|index\| items.get(index))` |
+| anything else, a negative literal included | `usize::try_from(i).unwrap_or(usize::MAX)`: `items.get(usize::try_from(i).unwrap_or(usize::MAX))` |
 
-The binder `index` is hygienic, as a template's `{!name}` binder is, so it takes a fresh name when the program already uses `index`. The type stage rejects `{index? n}` in a template whose result is not an `option`, at the template, as a malformed placeholder. `{index? n}` has no negative-literal error: `(get items -1)` is valid and gives `none`, as Clojure's `(get [1 2] -1)` gives `nil`. It needs no runtime file. Its code is what a Rust programmer writes, and it costs nothing: with rustc 1.95 at `-C opt-level=3`, `usize::try_from(i).ok().and_then(|index| items.get(index))` over `&[u64]` compiles to the same function as `items.get(i)` with `i: usize` (rustc folds the two into one symbol, `get_plain = get_and_then`), because the slice's length is below `2^63`, so a negative `i` read as unsigned already fails the bounds compare.
+`items.get(usize::MAX)` is `None` for every slice: `get` checks `index < len`, and no length exceeds `usize::MAX`, so the compare fails even for a vector of zero-sized items of length `usize::MAX`. `{index? n}` has no negative-literal error: `(get items -1)` is valid and gives `none`, as Clojure's `(get [1 2] -1)` gives `nil`. It needs no runtime file, no closure and no binder.
 
-A second conversion is a second rule. It is the owner's choice of `get`'s contract that makes it necessary: one conversion cannot both panic and give `none`. `{index? n}` keeps it general, a property of any template that returns an `option`, not a case for `get`.
+**The collection stays where the template puts it.** Only the index changes, so `{0}` is evaluated first and always, as today, and a collection that is a call or a temporary keeps working. Checked with rustc 1.95:
+
+```lisp
+(defn make-items () (vec 1 2 3))
+(defn main ()
+  (let (i 1
+        items (vec 1 2))
+    (prn (get (make-items) i))
+    (let (x (get (make-items) i))
+      (prn x))
+    (prn (get (do (println "x") items) -1))))
+```
+
+```rust
+println!("{}", crate::rt::Shown(&make_items().get(usize::try_from(i).unwrap_or(usize::MAX))));
+{
+    let owner = make_items();
+    let x = owner.get(usize::try_from(i).unwrap_or(usize::MAX));
+    println!("{}", crate::rt::Shown(&x))
+}
+println!(
+    "{}",
+    crate::rt::Shown(
+        &({
+            println!("x");
+            items
+        })
+        .get(usize::try_from(-1_i64).unwrap_or(usize::MAX))
+    )
+)
+```
+
+rustc compiles it, and with `{:?}` in place of `crate::rt::Shown` it prints `Some(2)`, `Some(2)`, `x` and `None`. The second `get` binds its owner before the `let`, as the lent-temporary rule (`docs/language.md:1221`) does for a template with no block, closure, branch, loop or `;`, which `{0}.get({index? 1})` still is. A conversion that wraps the whole template, `usize::try_from(i).ok().and_then(|index| make_items().get(index))`, moves `{0}` into a closure: rustc refuses it (`E0515`, cannot return value referencing temporary value), the owner of the second `get` can no longer be bound outside, and the print of the third runs only for an index of 0 or more.
+
+**Cost.** With rustc 1.95 at `-C opt-level=3` over `&[u64]`, `items.get(usize::try_from(i).unwrap_or(usize::MAX))` adds three instructions before the bounds compare of `items.get(i)` with `i: usize`, and no branch:
+
+```text
+get_position:  testq %rdx, %rdx; movq $-1, %rcx; cmovnsq %rdx, %rcx; xorl %eax, %eax; cmpq %rsi, %rcx; leaq (%rdi,%rcx,8), %rcx; cmovbq %rcx, %rax
+get_plain:                                                         xorl %eax, %eax; cmpq %rsi, %rdx; leaq (%rdi,%rdx,8), %rcx; cmovbq %rcx, %rax
+```
+
+**Where it is allowed.** `usize::MAX` is a safe stand-in for a negative index only where the template turns an index past the end into a value. In a template whose result is not an `option`, such as `&{0}[{index? 1}]`, a negative index would panic with Rust's bounds message, `the index is 18446744073709551615`, where `{index n}` names the negative value. So the type stage rejects `{index? n}` in a template whose result is not an `option`, at the template, as a malformed placeholder.
+
+A second conversion is a second rule. It is the owner's choice of `get`'s contract that makes it necessary: one conversion cannot both panic and give `none`. `{index? n}` keeps it general, a property of any position where an index past the end gives `none`, not a case for `get`.
 
 **Representation.** The conversion is not an ownership access, so it is not an `Access` variant beside `{owned n}`. `Piece::Placeholder` (`expand/src/core/template.rs:11`) gains a separate field, `conversion: Option<Conversion>`, read only by the emitter and by the type stage's negative-literal check. The ownership pass reads `access` as today, and `{index 1}` borrows nothing.
 
@@ -368,8 +411,10 @@ Probed today on `b00494c5f`, and option A's output after:
 | `(len items)` | `items.len()` | `crate::rt::length(items.len())` |
 | `(+ (len items) 1)` | `items.len() + 1` | `crate::rt::length(items.len()) + 1` |
 | `(get items 5)` | `items.get(5)` | `items.get(5)` |
-| `(get items i)` | `items.get(i)` | `usize::try_from(i).ok().and_then(\|index\| items.get(index))` |
-| `(get items -1)` | `L0406`, `` the literal `-1` does not fit in `usize` `` | `usize::try_from(-1).ok().and_then(\|index\| items.get(index))`, which gives `None` |
+| `(get items i)` | `items.get(i)` | `items.get(usize::try_from(i).unwrap_or(usize::MAX))` |
+| `(get (make-items) i)` | `make_items().get(i)` | `make_items().get(usize::try_from(i).unwrap_or(usize::MAX))` |
+| `(let (x (get (make-items) i)) ...)` | `let owner = make_items(); let x = owner.get(i);` | `let owner = make_items(); let x = owner.get(usize::try_from(i).unwrap_or(usize::MAX));` |
+| `(get items -1)` | `L0406`, `` the literal `-1` does not fit in `usize` `` | `items.get(usize::try_from(-1_i64).unwrap_or(usize::MAX))`, which gives `None` |
 | `(subs "hello" 1 3)` | `&"hello"[1_usize..3_usize]` | `&"hello"[1..3]` |
 | `(count (windows items 2))` | `items.windows(2).count()` | `crate::rt::count(items.windows(2))` |
 | `(remove-at! items 0)` | `items.remove(0)` | `items.remove(0)` |
@@ -591,7 +636,7 @@ Option B instead adds 20,000 to 122,000 expansion instructions per written index
 
 RFC 0074 has landed, so the help texts, docs and pages say `int` from the start. Each PR runs the narrowest working commands, regenerates and reads its snapshots, and checks the counters. Each PR updates, in the same commit, every statement of `AGENTS.md`'s reference files, `docs/language.md` included, that its change makes false.
 
-1. **The `{index n}` conversion and `prelude/runtime/index.rs`, with no form using it. This PR is the prototype: it is built first, before the owner accepts the RFC, as was chosen for RFC 0074.** The `conversion` field on `Piece::Placeholder`, the three argument shapes in the emitter, the closure for a template used as a value, the negative-literal check with its new code, wording and explanation page (decision 7(a)), the `index` `RuntimePart` row and `NAMED` entry, `{index? n}` with its `option` check and hygienic binder, and `{index n}` and `{index? n}` in the placeholders row of `docs/language.md:1078`. Unit tests on the parser and emitter, and check and emit fixtures through a test-only `rust` template: a variable index, a literal, a negative literal in `(let (x (deref (at items -1))) ...)`, `(+ 1 (deref (at items -1)))` and `(println (deref (at items -1)))`, a value use, `v[i] += 1` through a test template shaped like `at`, and through a test template shaped like `get`, a literal, a variable and a negative literal giving `none`, and `{index? n}` in a template that returns no `option` rejected. It settles the design's compiler risks before the owner decides: that both `at`-shape paths keep matching with `{index n}`, and that the negative-literal check reaches every literal. No output change, no label.
+1. **The `{index n}` conversion and `prelude/runtime/index.rs`, with no form using it. This PR is the prototype: it is built first, before the owner accepts the RFC, as was chosen for RFC 0074.** The `conversion` field on `Piece::Placeholder`, the three argument shapes in the emitter, the closure for a template used as a value, the negative-literal check with its new code, wording and explanation page (decision 7(a)), the `index` `RuntimePart` row and `NAMED` entry, `{index? n}` with its `option` check, and `{index n}` and `{index? n}` in the placeholders row of `docs/language.md:1078`. Unit tests on the parser and emitter, and check and emit fixtures through a test-only `rust` template: a variable index, a literal, a negative literal in `(let (x (deref (at items -1))) ...)`, `(+ 1 (deref (at items -1)))` and `(println (deref (at items -1)))`, a value use, `v[i] += 1` through a test template shaped like `at`, and through a test template shaped like `get`, a literal, a variable and a negative literal giving `none`, a collection that is a call result, a collection argument that prints, which must print whatever the index, and `{index? n}` in a template that returns no `option` rejected. Every one of them runs. It settles the design's compiler risks before the owner decides: that both `at`-shape paths keep matching with `{index n}`, and that the negative-literal check reaches every literal. No output change, no label.
 2. **`convert` and its help.** `Integer`'s `widened` method and supertraits, the `RUNTIME_SUPERTRAITS` row, `convert` and its `RuntimePart` row, the `convert` page, check and run fixtures for widening, narrowing, overflow and a generic caller, and the `mismatch-help` row for expected `int` and found `usize`, with the precedence of "One help per error", building `mismatch-help` itself if RFC 0070's build has not. Its fixtures cover a written `usize` passed as `i64`, which gets the help, an `i64` passed as `u8`, which gets none, and the literal-default help winning. None of the 8 existing integer-pair snapshots changes (see the table under "Rust interop"). Adds behavior and breaks nothing, so no label. It lands before the switch so the switch can use `convert` in `vector_parameter_chains`.
 3. **The switch.** In the prelude: `len`, `enumerate`, `take`, `at`, `windows`, `remove-at!`, `slice-get` and `subs`, and `count-items` and `count-function` through `crate::rt::count`, with its `RuntimePart` row. In the checker: the five kernel sites, and the deleted branch at `open_collections.rs:191-195`. `prelude/runtime/length.rs` with its `RuntimePart` row. In the emitter: `ELEMENT_READ`. Respell the 65 fixture sources as `int`, the corpus programs, the `lent_temporaries` unit-test program, and the `L0413`, `L0415` and `L0444` fixes and erroneous examples; convert in `vector_parameter_chains`; rewrite `check/closure_iterator_receiver.knv` around `max`, whose template is `{0}.max()`. Rewrite the prelude prose listed under "What breaks" and the `usize` page to state the current rule only (see "Migration aids removed"), with every new or changed example binding through `let`, not `local`, `L0458.md:9-11`, and `docs/language.md` `:97`, `:174`, `:208`, `:282`, `:283` and `:334`. Run the emit diff of every corpus entry against the base commit's probe binary, `--test stages agree_fixtures`, and `cargo xtask agree --seeds 0..200`, and read each hunk. `release:minor`.
 
@@ -601,7 +646,7 @@ Item 454 of the project's plan ("one `len` for collections and iterators, remove
 
 1. **Does `get` with a negative index panic or return `none`?**
    - (a) Panic, as `at` does, through the same `{index n}`. One conversion for every index, in Go's and Swift's model, where a negative index is always a bug; `get`'s `none` keeps meaning "no item there yet", past the end.
-   - (b) `none`. **Decided by the owner.** Knave takes `get` from Clojure, where `(get [1 2] -1)` is `nil` and `nth` throws, and `get`'s contract becomes "never panics on an index". It needs a second conversion at `get`, `{index? n}`, which emits `usize::try_from(i).ok().and_then(|index| items.get(index))`, and a bug that computes `-1` reads as a missing item. Under (b), `(get items -1)` is valid, so it gets no compile-time error either: decision 7's check applies to `{index n}` only.
+   - (b) `none`. **Decided by the owner.** Knave takes `get` from Clojure, where `(get [1 2] -1)` is `nil` and `nth` throws, and `get`'s contract becomes "never panics on an index". It needs a second conversion at `get`, `{index? n}`, which emits `items.get(usize::try_from(i).unwrap_or(usize::MAX))`, and a bug that computes `-1` reads as a missing item. Under (b), `(get items -1)` is valid, so it gets no compile-time error either: decision 7's check applies to `{index n}` only.
 2. **When does the negative check run?**
    - (a) Always, as Rust's bounds check does. **Decided by the owner.** Release builds of `take` and `windows` would otherwise take a negative count as a huge one.
    - (b) Debug only, as Rust's overflow check does: the release build emits `i as usize`, option C.
@@ -647,7 +692,7 @@ Option A: every user-facing index and size in the prelude and the kernel forms b
 
 The project owner decided:
 
-- **Decision 1: (b).** `get` with a negative index returns `none` and never panics; `at` panics. `get` uses the `{index? n}` conversion, which emits `usize::try_from(i).ok().and_then(|index| items.get(index))` for a variable index.
+- **Decision 1: (b).** `get` with a negative index returns `none` and never panics; `at` panics. `get` uses the `{index? n}` conversion, which emits `items.get(usize::try_from(i).unwrap_or(usize::MAX))` for a variable index.
 - **Decision 2: (a).** The negative check of `{index n}` runs always, in debug and release builds.
 - **Decision 3: (b).** Every length conversion is checked: `len` and `(count (iter c))` emit `crate::rt::length(items.len())`, which panics `length does not fit in int: <n>`. `len`'s docs carry no caveat.
 
@@ -689,6 +734,8 @@ Kept, because they serve new code: `convert` and its help, the new negative-inde
 - **A `convert` with `To: TryFrom<From>` bounds:** fails to compile in generic Knave code, because the Knave `integer` bound does not imply it.
 - **An emitter turbofish for `convert`:** a template type placeholder already writes it.
 - **The conversion help worded in `TypeProblems`:** it would name a prelude function in Rust.
+- **`{index? n}` as a closure around the template, `usize::try_from(i).ok().and_then(|index| items.get(index))`:** moves the collection into the closure, so `get` on a call result or a temporary is a rustc error, a lent temporary's owner cannot be bound outside, and the collection runs only for an index of 0 or more.
+- **A runtime function for `{index? n}`, such as `crate::rt::position(i)`:** costs the same as `usize::try_from(i).unwrap_or(usize::MAX)` but adds a runtime part, and a reader must look up what it returns for a negative value.
 - **Keeping `usize` and adding only the conversion help:** leaves the problem, and the inference that spreads `usize` through programs.
 
 ## Rule

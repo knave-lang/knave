@@ -73,12 +73,12 @@ impl RecordedInputs {
         }
         Registration {
             outer,
-            notes: notes.checkpoint(),
+            notes: notes.log().checkpoint(),
         }
     }
 
     pub(super) fn leave(&mut self, registration: Registration, notes: &ModuleNotes) {
-        if registration.notes != notes.checkpoint() {
+        if registration.notes != notes.log().checkpoint() {
             self.noting.extend(self.registering);
         }
         self.registering = registration.outer;

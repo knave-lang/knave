@@ -2,23 +2,20 @@ use crate::core::ModuleId;
 use crate::interpret::{HeldBytes, NotesTooLarge};
 use crate::reader::Form;
 
-use super::saved_notes::{NoteTables, NotesKey, NotesTable, SavedNotes};
+mod notes_log;
+
+use super::saved_notes::{NoteTables, NotesTable, SavedNotes};
+pub use notes_log::NotesCheckpoint;
+use notes_log::NotesLog;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct ModuleNotes {
     #[serde(skip)]
     saved: SavedNotes,
     notes: NotesTable,
-    added: Vec<NotesKey>,
+    log: NotesLog,
     #[serde(skip)]
     held_bytes: usize,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct NotesCheckpoint(usize);
-
-impl NotesCheckpoint {
-    pub const START: Self = Self(0);
 }
 
 impl ModuleNotes {
@@ -34,7 +31,7 @@ impl ModuleNotes {
         }
         let notes_key = (module, key.to_string());
         self.notes.entry(notes_key.clone()).or_default().push(note);
-        self.added.push(notes_key);
+        self.log.record(notes_key);
         self.held_bytes = held_bytes;
         Ok(())
     }
@@ -64,17 +61,14 @@ impl ModuleNotes {
         key: &str,
     ) -> Vec<Form> {
         let notes_key = (module, key.to_string());
-        let added = self.added[checkpoint.0..]
-            .iter()
-            .filter(|added_key| **added_key == notes_key)
-            .count();
+        let added = self.log.count_since(checkpoint, &notes_key);
         let notes = self.notes.get(&notes_key).map_or(&[][..], Vec::as_slice);
         notes[notes.len() - added..].to_vec()
     }
 
     #[cfg(test)]
     pub fn holds_no_unsaved_note(&self) -> bool {
-        self.notes.is_empty() && self.added.is_empty()
+        self.notes.is_empty() && self.log.is_empty()
     }
 
     #[cfg(test)]
@@ -82,12 +76,12 @@ impl ModuleNotes {
         self.saved.decoded_nothing()
     }
 
-    pub fn checkpoint(&self) -> NotesCheckpoint {
-        NotesCheckpoint(self.added.len())
+    pub fn log(&self) -> &NotesLog {
+        &self.log
     }
 
     pub fn roll_back(&mut self, checkpoint: NotesCheckpoint) {
-        for notes_key in self.added.split_off(checkpoint.0).into_iter().rev() {
+        for notes_key in self.log.split_off(checkpoint).into_iter().rev() {
             let removed = self
                 .notes
                 .get_mut(&notes_key)
@@ -139,7 +133,7 @@ mod tests {
     #[test]
     fn rolling_back_a_note_frees_its_bytes() {
         let mut notes = ModuleNotes::default();
-        let checkpoint = notes.checkpoint();
+        let checkpoint = notes.log().checkpoint();
         let full = ModuleNotes::BYTE_LIMIT;
         assert!(NoteForms::add(&mut notes, NoteForms::holding(full)));
         notes.roll_back(checkpoint);

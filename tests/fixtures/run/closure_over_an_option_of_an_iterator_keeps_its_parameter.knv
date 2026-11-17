@@ -1,0 +1,10 @@
+(defn kept! (s)
+  (set! s (str "xy"))
+  (local cs (some (chars (as-str s))))
+  (fn ()
+    (match cs ((some c) (count c)) (none 0))))
+
+(defn main ()
+  (local t (str "a"))
+  (local f (kept! (mut t)))
+  (println (f)))

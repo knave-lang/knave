@@ -1,0 +1,37 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/closure_over_an_option_of_an_iterator_keeps_its_parameter.knv
+---
+fn kept(s: &mut String) -> impl FnOnce() -> usize {
+    *s = "xy".to_string();
+    let cs = Some(s.as_str().chars());
+    move || match cs {
+        Some(c) => c.count(),
+        None => 0,
+    }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut t = "a".to_string();
+    let f = kept(&mut t);
+    println!("{}", f())
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

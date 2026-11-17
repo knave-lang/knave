@@ -267,12 +267,13 @@ impl Expander<'_> {
     }
 
     fn import_everything(&mut self, module: ModuleId, base: ModuleId) {
-        let mut scopes = ScopeSet::default();
-        scopes.add(self.modules.get(module).scopes().base());
+        let base_scope = self.modules.get(module).scopes().base();
         if let Some(saved) = self.modules.get(base).exports().saved() {
-            self.tables.table.prelude_mut().import(scopes, saved);
+            self.tables.table.prelude_mut().import(base_scope, saved);
             return;
         }
+        let mut scopes = ScopeSet::default();
+        scopes.add(base_scope);
         let exports: Vec<(Rc<str>, Namespace, _)> =
             self.modules.get(base).exports().entries().collect();
         for (name, namespace, binding) in exports {

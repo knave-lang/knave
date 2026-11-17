@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
-use super::ScopeSet;
 use super::imported_names::ImportedNames;
 use super::name_entries::NameEntries;
 use super::saved_exports::SavedExports;
 use super::saved_names::SavedNames;
+use super::{Scope, ScopeSet};
 use crate::core::{BindingId, Namespace};
 
 #[derive(Default)]
@@ -18,8 +18,8 @@ impl PreludeNames {
         self.saved = saved;
     }
 
-    pub fn import(&mut self, scopes: ScopeSet, exports: SavedExports) {
-        self.imported.add(scopes, exports);
+    pub fn import(&mut self, scope: Scope, exports: SavedExports) {
+        self.imported.add(scope, exports);
     }
 
     pub(super) fn imported_with_scopes(

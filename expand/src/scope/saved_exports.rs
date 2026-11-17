@@ -70,7 +70,7 @@ impl ExportBytes {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct SavedExports {
     slots: &'static [u8],
     rows: &'static [u8],

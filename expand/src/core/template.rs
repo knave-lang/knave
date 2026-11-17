@@ -72,7 +72,7 @@ impl ArgumentPassing<'_> {
     fn borrow_change(self, clause: Self) -> Result<BorrowChange, PassingAspect> {
         let change = if self == clause {
             BorrowChange::Kept
-        } else if clause.written_borrow && !self.written_borrow {
+        } else if clause.adds_a_borrow_to(&self) {
             BorrowChange::Added
         } else if self.borrows() && !clause.borrows() {
             BorrowChange::Dropped
@@ -83,6 +83,11 @@ impl ArgumentPassing<'_> {
             Some(aspect) => Err(aspect),
             None => Ok(change),
         }
+    }
+
+    fn adds_a_borrow_to(&self, template: &Self) -> bool {
+        let writes_a_new_borrow = self.written_borrow && !template.written_borrow;
+        writes_a_new_borrow || (self.borrows() && !template.borrows())
     }
 
     fn borrows(&self) -> bool {

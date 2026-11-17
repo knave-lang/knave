@@ -8007,6 +8007,12 @@ fn a_macro_that_a_library_macro_generates_leaves_its_binder_silent() {
 }
 
 #[test]
+fn a_binder_the_app_passes_to_a_library_generator_names_no_macro() {
+    let check = Sandbox::check_fixture("libraries/money-generate-with-app");
+    insta::assert_snapshot!(check.assert_exit_code(0).stderr());
+}
+
+#[test]
 fn a_program_macro_that_a_library_macro_calls_warns_at_its_own_binder() {
     let check = Sandbox::check_fixture("libraries/money-apply-app");
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());

@@ -164,7 +164,8 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **If the download finds no `mutant-results` artifact, read the failure with `gh run view <run id> --log-failed`.** The `plan` job fails in each of these cases:
 
-- The run is on the default branch.
+- The run is on the default branch, or the workflow cannot tell the default branch.
+- The pull request's head branch is the default branch.
 - The run is on any ref but the pull request's head branch.
 - The commit is not a full SHA of a commit of the pull request.
 - The pull request comes from a fork.

@@ -27,6 +27,10 @@ require_head_branch_of_pull_request() {
     fail "Pull request $PULL_REQUEST comes from a fork, so its code does not run here."
   fi
   head_branch=$(jq -r .head.ref <<< "$details")
+  [[ -n $DEFAULT_BRANCH ]] || fail "The workflow cannot tell the default branch, so it refuses to run."
+  if [[ $head_branch == "$DEFAULT_BRANCH" ]]; then
+    fail "Pull request $PULL_REQUEST has $DEFAULT_BRANCH as its head branch, so its mutants cannot run here."
+  fi
   if [[ $GITHUB_REF == "refs/heads/$DEFAULT_BRANCH" ]]; then
     fail "The workflow does not run on $DEFAULT_BRANCH. Dispatch with --ref $head_branch."
   fi
@@ -36,7 +40,9 @@ require_head_branch_of_pull_request() {
 }
 
 require_commit_of_pull_request() {
-  if ! gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PULL_REQUEST/commits" --jq '.[].sha' | grep -qxF "$COMMIT"; then
+  local commits
+  commits=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PULL_REQUEST/commits?per_page=100" --jq '.[].sha')
+  if ! grep -qxF "$COMMIT" <<< "$commits"; then
     fail "Commit $COMMIT is not a commit of pull request $PULL_REQUEST."
   fi
 }

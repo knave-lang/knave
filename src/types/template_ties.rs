@@ -370,6 +370,17 @@ mod tests {
     }
 
     #[test]
+    fn a_reference_stored_by_either_widened_signature_stays_stored() {
+        let concrete = TiesFixture::ties(vec![Type::str_ref()], Type::str_ref());
+        let generic = TiesFixture::ties(
+            vec![Type::shared(TiesFixture::generic())],
+            Type::shared(TiesFixture::generic()),
+        );
+        let widened = TemplateTies::widened(concrete, generic).expect("both are settled");
+        assert!(widened.stores_the_reference(0, []));
+    }
+
+    #[test]
     fn two_stored_type_variables_keep_each_reference_whole_whatever_the_others_pass() {
         let pair = TiesFixture::ties(
             vec![TiesFixture::generic(), TiesFixture::other_generic()],

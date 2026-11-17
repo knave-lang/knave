@@ -49,14 +49,16 @@ impl dyn Passing {
             Borrow::Mutable => &Lends::MUTABLE,
             Borrow::Reborrow => <dyn Passing>::reborrowed(parameter.ty()),
             Borrow::Deref(_) => &Copies,
-            Borrow::Collapse(_) if argument.value.ty.is_reference() => {
-                <dyn Passing>::collapsed(argument, parameter, rules)
-            }
-            Borrow::Passthrough if argument.value.ty.is_reference() => {
-                <dyn Passing>::through_reference(parameter.ty())
-            }
-            Borrow::None if rules.moves(&argument.value.ty) => &Moves,
-            _ => &Holds,
+            Borrow::Collapse(_) => <dyn Passing>::collapsed(argument, parameter, rules),
+            Borrow::Passthrough => <dyn Passing>::through_reference(argument, parameter.ty()),
+            _ => <dyn Passing>::unadjusted(argument, rules),
+        }
+    }
+
+    fn unadjusted(argument: &TypedArgument, rules: &LoanRules<'_>) -> &'static dyn Passing {
+        match argument.borrow == Borrow::None && rules.moves(&argument.value.ty) {
+            true => &Moves,
+            false => &Holds,
         }
     }
 
@@ -65,9 +67,10 @@ impl dyn Passing {
         parameter: CalledParameter<'_>,
         rules: &LoanRules<'_>,
     ) -> &'static dyn Passing {
-        match parameter.stores_the_reference() && !rules.copies_out(argument) {
-            true => &Holds,
-            false => &Collapses,
+        let stored_whole = parameter.stores_the_reference() && !rules.copies_out(argument);
+        match argument.value.ty.is_reference() && !stored_whole {
+            true => &Collapses,
+            false => &Holds,
         }
     }
 
@@ -78,8 +81,12 @@ impl dyn Passing {
         }
     }
 
-    fn through_reference(parameter: Option<&Type>) -> &'static dyn Passing {
+    fn through_reference(
+        argument: &TypedArgument,
+        parameter: Option<&Type>,
+    ) -> &'static dyn Passing {
         match parameter {
+            _ if !argument.value.ty.is_reference() => &Holds,
             Some(Type::Mut(..)) => &Lends::MUTABLE,
             Some(Type::Ref(..)) => &Lends::SHARED,
             _ => &Holds,

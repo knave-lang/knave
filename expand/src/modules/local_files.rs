@@ -31,22 +31,27 @@ impl<'s> LocalFiles<'s> {
     }
 
     pub fn unnamed_part_target(&self, path: &UnnamedPartPath) -> UnnamedPartTarget {
-        if let Some(written) = self.written_in_place(path) {
-            return UnnamedPartTarget::Reachable(written);
-        }
         let file_name = Language::file_name(path.as_str());
         let local = Path::new(&file_name);
-        let Some((holder, file)) = self
+        let found = self
             .roots
             .iter()
-            .find_map(|root| Some((root, root.canonical_file(local)?)))
-        else {
-            return UnnamedPartTarget::Absent;
-        };
-        match (0..self.roots.len()).find_map(|position| self.written_path(position, &file)) {
-            Some(written) => UnnamedPartTarget::Reachable(written),
-            None => self.target_without_module_path(holder, local),
+            .find_map(|root| Some((root, root.canonical_file(local)?)));
+        let written = found
+            .as_ref()
+            .and_then(|(_, file)| self.shortest_written_path(file))
+            .or_else(|| self.written_in_place(path));
+        match (written, found) {
+            (Some(written), _) => UnnamedPartTarget::Reachable(written),
+            (None, Some((holder, _))) => self.target_without_module_path(holder, local),
+            (None, None) => UnnamedPartTarget::Absent,
         }
+    }
+
+    fn shortest_written_path(&self, file: &Path) -> Option<ModulePath> {
+        (0..self.roots.len())
+            .filter_map(|position| self.written_path(position, file))
+            .min_by_key(|written| written.as_str().len())
     }
 
     fn written_in_place(&self, path: &UnnamedPartPath) -> Option<ModulePath> {

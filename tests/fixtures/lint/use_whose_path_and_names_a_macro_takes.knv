@@ -1,0 +1,8 @@
+(use code list)
+
+(defmacro imp (p a b)
+  (list (quote use) p a b))
+
+(imp modules/format pad-left shout)
+
+(defn main () (println (pad-left "a")))

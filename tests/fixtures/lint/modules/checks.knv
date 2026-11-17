@@ -1,0 +1,13 @@
+(use code same-binding?)
+(use modules/picks pick)
+
+(export picked?)
+
+(def pick-form?
+  (fn (name)
+    (same-binding? name (quote pick))))
+
+(defmacro picked? (name)
+  (if (pick-form? name)
+    (quote "pick")
+    (quote "other")))

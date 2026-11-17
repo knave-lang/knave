@@ -1,0 +1,3 @@
+(use modules/lister count-exports)
+
+(defn main () (println (count-exports)))

@@ -1,0 +1,5 @@
+(use modules/every_kind boxed)
+
+(rust-trait tidy "Tidy" (boxed i64))
+
+(defn main () (println "hi"))

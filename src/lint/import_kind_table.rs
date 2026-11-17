@@ -76,6 +76,32 @@ impl ImportKindTable {
                     "(export pick)\n(defn pick ((s shape)) (match s (dot (dot)) (_ 0)))\n\
                      (defn main () (println 1))",
                 ),
+                Self::read_from(
+                    "a doctest that names the module the use loads",
+                    "(use prelude/test doctest)\n(use tests/fixtures/lint/modules/count tally)",
+                    "(doctest tests/fixtures/lint/modules/count)\n(defn main () (println 1))",
+                ),
+                Self::read_from(
+                    "a doctest example",
+                    "(use prelude/test doctest)\n\
+                     (use tests/fixtures/lint/modules/counted counted)\n\
+                     (use tests/fixtures/lint/modules/every_kind greet)",
+                    "(doctest tests/fixtures/lint/modules/counted)\n(defn main () (println 1))",
+                ),
+                Self::read(
+                    "a quoted name a compile-time def compares",
+                    "greet",
+                    "(use code same-binding?)\n(export greeted?)\n\
+                     (def greet-form? (fn (name) (same-binding? name (quote greet))))\n\
+                     (defmacro greeted? (name) (if (greet-form? name) 1 2))\n\
+                     (defn main () (println (greeted? greet)))",
+                ),
+                Self::read_from(
+                    "a macro call's argument a code builtin compares",
+                    "(use tests/fixtures/lint/modules/greet_checks greeted?)\n\
+                     (use tests/fixtures/lint/modules/every_kind greet)",
+                    "(defn main () (println (greeted? greet)))",
+                ),
             ],
             BindingKind::Macro(_) => vec![
                 Self::read("a call", "shout", "(defn main () (println (shout 1)))"),
@@ -123,11 +149,13 @@ impl ImportKindTable {
         match kind {
             BindingKind::Struct(_) => vec![
                 Self::type_position("point", "point"),
+                Self::implementor_row("point", "point"),
                 Self::template("point", "(the point (unquote x))"),
                 Self::uncalled_template("point", "(the point (unquote x))"),
             ],
             BindingKind::Enum(_) => vec![
                 Self::type_position("shape", "shape"),
+                Self::implementor_row("shape", "shape"),
                 Self::read(
                     "a call of a variant",
                     "shape",
@@ -156,6 +184,8 @@ impl ImportKindTable {
             ],
             BindingKind::RustType(_) => vec![
                 Self::type_position("boxed", "(boxed i64)"),
+                Self::implementor_row("boxed", "(boxed i64)"),
+                Self::implementor_row("boxed", "(where ((a tidy)) (boxed a))"),
                 Self::template("boxed", "(the (boxed i64) (unquote x))"),
                 Self::uncalled_template("boxed", "(the (boxed i64) (unquote x))"),
             ],
@@ -248,6 +278,11 @@ impl ImportKindTable {
         Self::read("a type position", name, &body)
     }
 
+    fn implementor_row(name: &str, row: &str) -> ReadRow {
+        let body = format!("(rust-trait tidy \"Tidy\" {row})\n{}", Self::MAIN);
+        Self::read("a rust-trait implementor row", name, &body)
+    }
+
     fn template(name: &str, template: &str) -> ReadRow {
         let body = format!(
             "(defmacro written (x) (template {template}))\n\
@@ -302,16 +337,16 @@ fn every_importable_kind_has_reads_and_an_unread_row() {
 
 #[test]
 fn a_name_read_in_any_way_its_kind_allows_is_used() {
+    let mut warned = Vec::new();
     for kind in ImportKindTable::every_kind() {
         for row in ImportKindTable::reads_of(kind) {
             let titles = ImportKindTable::unused_import_titles(&row.text);
-            assert!(
-                titles.is_empty(),
-                "{kind:?} read by {}: {titles:?}",
-                row.way
-            );
+            if !titles.is_empty() {
+                warned.push(format!("{kind:?} read by {}: {titles:?}", row.way));
+            }
         }
     }
+    assert!(warned.is_empty(), "{warned:#?}");
 }
 
 #[test]

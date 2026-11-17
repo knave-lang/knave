@@ -1,0 +1,13 @@
+(use code same-binding?)
+(use tests/fixtures/lint/modules/every_kind greet)
+
+(export greeted?)
+
+(def greet-form?
+  (fn (name)
+    (same-binding? name (quote greet))))
+
+(defmacro greeted? (name)
+  (if (greet-form? name)
+    (quote "greet")
+    (quote "other")))

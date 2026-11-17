@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/name_compared_to_a_name_bound_elsewhere.knv
+---
+

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/name_a_macro_asks_about_as_a_pattern_head.knv
+---
+warning[L0808]: nothing this `use` brings in is used
+ --> lint/name_a_macro_asks_about_as_a_pattern_head.knv:2:1
+  |
+2 | (use modules/dot dot)
+  | ^^^^^^^^^^^^^^^^^^^^^ nothing this brings in is used
+  |
+  = help: remove the `use`
+  = note: run `knave doc L0808` for an explanation

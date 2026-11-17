@@ -1,0 +1,7 @@
+(use code len module-exports)
+(use modules/count tally)
+
+(export count-exports)
+
+(defmacro count-exports ()
+  (len (module-exports (quote modules/count))))

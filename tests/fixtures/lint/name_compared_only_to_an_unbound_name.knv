@@ -1,0 +1,3 @@
+(use modules/checks picked?)
+
+(defn main () (println (picked? pick)))

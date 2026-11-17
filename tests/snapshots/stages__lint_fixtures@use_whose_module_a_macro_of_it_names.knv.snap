@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/use_whose_module_a_macro_of_it_names.knv
+---
+warning[L0808]: `tally` is imported but never used
+ --> lint/modules/lister.knv:2:20
+  |
+2 | (use modules/count tally)
+  |                    ^^^^^ never used
+  |
+  = help: remove `tally` from this `use`
+  = note: run `knave doc L0808` for an explanation

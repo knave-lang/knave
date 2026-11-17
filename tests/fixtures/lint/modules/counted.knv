@@ -1,0 +1,8 @@
+(export counted)
+
+(defn counted ()
+  "Counts one greeting.
+
+  (greet)
+  => 1"
+  1)

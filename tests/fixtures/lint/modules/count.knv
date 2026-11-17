@@ -1,0 +1,8 @@
+(export tally)
+
+(defn tally (n)
+  "Doubles a count.
+
+  (tally 2)
+  => 4"
+  (* n 2))

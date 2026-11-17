@@ -1,0 +1,6 @@
+(use modules/every_kind boxed)
+
+(rust-trait tidy "Tidy"
+  (where ((a tidy)) (boxed a)))
+
+(defn main () (println "hi"))

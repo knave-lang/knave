@@ -10428,6 +10428,21 @@ fn task_reached_through_a_hidden_link_is_not_in_a_hidden_folder() {
 }
 
 #[test]
+fn task_in_the_second_hidden_folder_names_the_hidden_folder() {
+    let task = Sandbox::new("task_in_second_hidden_folder")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("tasks/.a/keep.knv", "(def kept 1)\n")
+        .with_file("tasks/.b/more.knv", "(deftask more () (println \"m\"))\n")
+        .with_file(
+            "tasks/t.knv",
+            "(use .b/more)\n\n(deftask t () (println \"t\"))\n",
+        )
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn task_file_may_still_import_deftask_from_prelude_task() {
     let task = Sandbox::new("task_explicit_import")
         .with_file(&Language::project_file_name(), TASK_PROJECT)

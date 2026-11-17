@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -43,6 +44,8 @@ impl<'w> TreeWalk<'w> {
         self.hidden_folders
             .iter()
             .filter_map(|folder| ModuleNames::of_folder(folder.strip_prefix(self.root).ok()?))
+            .collect::<BTreeSet<_>>()
+            .into_iter()
             .collect()
     }
 
@@ -50,6 +53,8 @@ impl<'w> TreeWalk<'w> {
         self.project_files
             .iter()
             .filter_map(|file| ModuleNames::of_source(file.strip_prefix(self.root).ok()?))
+            .collect::<BTreeSet<_>>()
+            .into_iter()
             .collect()
     }
 

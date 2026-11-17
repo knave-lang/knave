@@ -1,6 +1,6 @@
 use crate::core::{DottedModulePath, ModulePath};
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
-use crate::modules::DottedPathTarget;
+use crate::modules::{DottedPathTarget, LocalFiles};
 use crate::source::Span;
 
 pub struct ModulePathProblems;
@@ -8,7 +8,7 @@ pub struct ModulePathProblems;
 impl ModulePathProblems {
     pub fn dot_segment(
         path: &DottedModulePath,
-        target: DottedPathTarget,
+        local_files: &LocalFiles,
         span: Span,
     ) -> Diagnostic {
         let diagnostic = Diagnostic::error(
@@ -16,7 +16,7 @@ impl ModulePathProblems {
             format!("module path `{path}` has a `.` or `..` part"),
             Label::new(span, "a module path names a file from the root directory"),
         );
-        match target {
+        match local_files.dotted_path_target(path) {
             DottedPathTarget::Reachable(written) => Self::write(diagnostic, &written),
             DottedPathTarget::Unreachable(file) => diagnostic.with_note(format!(
                 "`{}` exists, but no module path this module can use names it",

@@ -1,0 +1,20 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0260]: module path `./shapes/square` has a `.` or `..` part
+ --> src/main.knv:1:6
+  |
+1 | (use ./shapes/square side)
+  |      ^^^^^^^^^^^^^^^ a module path names a file from the root directory
+  |
+  = note: `src/shapes/square.knv` exists, but no module path this module can use names it
+  = note: run `knave doc L0260` for an explanation
+
+error[L0201]: cannot find `side` in this scope
+ --> src/main.knv:3:24
+  |
+3 | (defn main () (println side))
+  |                        ^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

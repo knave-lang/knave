@@ -13,7 +13,7 @@ use crate::core::{
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
 use crate::interpret::Warnings;
-use crate::modules::{LocatedModule, ModuleScopes, ModuleSource, ModuleSources};
+use crate::modules::{LocalFiles, LocatedModule, ModuleScopes, ModuleSource, ModuleSources};
 use crate::reader::{Form, Reader, Symbol};
 use crate::scope::{Phase, ScopeKind, ScopeSet};
 use crate::source::{SourceId, Span};
@@ -55,16 +55,10 @@ impl Expander<'_> {
                     self.load_source_module(path.clone(), &[source])
                 }))
             }
-            None => Err(self.missing_module(path, span)),
-        }
-    }
-
-    fn missing_module(&self, path: &ModulePath, span: Span) -> Diagnostic {
-        let owner = self.importing_owner();
-        let local_files = self.module_sources.local_files(owner.as_deref());
-        match local_files.unreachable_file(path) {
-            Some(file) => ExpandProblems::unreachable_module(path, &file, span),
-            None => ExpandProblems::unknown_module(path, span),
+            None => Err(match self.local_files().unreachable_file(path) {
+                Some(file) => ExpandProblems::unreachable_module(path, &file, span),
+                None => ExpandProblems::unknown_module(path, span),
+            }),
         }
     }
 
@@ -125,10 +119,7 @@ impl Expander<'_> {
         let items = shape.at_least(2)?;
         let written =
             DottedModulePath::check(shape.symbol(&items[1])?.name()).map_err(|dotted| {
-                let owner = self.importing_owner();
-                let local_files = self.module_sources.local_files(owner.as_deref());
-                let target = local_files.dotted_path_target(&dotted);
-                ModulePathProblems::dot_segment(&dotted, target, items[1].span())
+                ModulePathProblems::dot_segment(&dotted, &self.local_files(), items[1].span())
             })?;
         let path = self.resolve_use(&written, items[1].span())?;
         let target = self.load_module(&path, items[1].span())?;
@@ -232,6 +223,11 @@ impl Expander<'_> {
             .iter()
             .find(|(loaded, _)| loaded == path)
             .map(|(_, owner)| Rc::clone(owner))
+    }
+
+    fn local_files(&self) -> LocalFiles<'_> {
+        let owner = self.importing_owner();
+        self.module_sources.local_files(owner.as_deref())
     }
 
     fn importing_owner(&self) -> Option<Rc<str>> {

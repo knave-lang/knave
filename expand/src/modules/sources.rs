@@ -214,8 +214,8 @@ impl ModuleSources {
         self.local_roots().find_map(|local_root| {
             [&file, Path::new(head)]
                 .into_iter()
-                .find(|local| local_root.reaches(local))
-                .map(|local| local_root.display_root().join(local))
+                .find_map(|local| local_root.reached_file(local))
+                .map(|reached| reached.shown)
         })
     }
 
@@ -226,10 +226,15 @@ impl ModuleSources {
     }
 
     pub fn local_files(&self, owner: Option<&str>) -> LocalFiles<'_> {
-        match owner {
-            Some(_) => LocalFiles::new(Vec::new()),
-            None => LocalFiles::new(self.local_roots().collect()),
-        }
+        let roots = match owner {
+            Some(_) => Vec::new(),
+            None => self.local_roots().collect(),
+        };
+        LocalFiles::new(roots, |path| {
+            !Self::is_written(path)
+                || Self::is_reserved(path)
+                || self.libraries.owner_of(path).is_some()
+        })
     }
 
     pub fn is_prelude(path: &ModulePath) -> bool {
@@ -339,16 +344,10 @@ impl ModuleSources {
     fn user_file(&self, path: &ModulePath) -> Option<ModuleSource> {
         let file_name = Language::file_name(path.as_str());
         self.local_roots().find_map(|local_root| {
-            if !local_root.reaches(Path::new(&file_name)) {
-                return None;
-            }
-            let text = Self::read_file(&local_root.root().join(&file_name)).ok()?;
+            let reached = local_root.reached_file(Path::new(&file_name))?;
+            let text = Self::read_file(&reached.path).ok()?;
             Some(ModuleSource::Text {
-                name: local_root
-                    .display_root()
-                    .join(&file_name)
-                    .display()
-                    .to_string(),
+                name: reached.shown.display().to_string(),
                 text,
             })
         })

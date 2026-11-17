@@ -10457,6 +10457,87 @@ fn library_dotted_use_is_told_its_path_within_the_library() {
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
+#[test]
+fn dotted_use_of_a_local_module_that_a_library_claims_names_the_file() {
+    let sandbox = Sandbox::new("dotted_use_library_claims")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (shapes :path \"../shapes\")))\n",
+        )
+        .with_file(
+            "app/src/main.knv",
+            "(use ./shapes/square side)\n\n(defn main () (println side))\n",
+        )
+        .with_file(
+            "app/src/shapes/square.knv",
+            "(export side)\n\n(def side 4)\n",
+        )
+        .with_file(
+            &format!("shapes/{}", Language::project_file_name()),
+            "(defproject shapes)\n",
+        )
+        .with_file("shapes/src/lib.knv", "(def area 1)\n")
+        .with_file("shapes/src/square.knv", "(export side)\n\n(def side 5)\n");
+    let check = sandbox.compiler_in("app", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn dotted_use_of_a_local_module_that_the_prelude_claims_names_the_file() {
+    let sandbox = Sandbox::new("dotted_use_prelude_claims")
+        .with_file(
+            "main.knv",
+            "(use ./prelude/list)\n\n(defn main () (println 1))\n",
+        )
+        .with_file("prelude/list.knv", "(def kept 1)\n");
+    let check = sandbox.compiler(&["check", "main.knv"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn dotted_use_of_the_reserved_project_path_names_the_file() {
+    let sandbox = Sandbox::new("dotted_use_reserved_project")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file(
+            "src/main.knv",
+            "(use ./project)\n\n(defn main () (println 1))\n",
+        )
+        .with_file("src/project.knv", "(def kept 1)\n");
+    let check = sandbox.compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn dotted_use_through_a_link_helps_with_the_file_the_link_leads_to() {
+    let sandbox = Sandbox::new("dotted_use_through_link")
+        .with_file(
+            "main.knv",
+            "(use .alias/../more)\n\n(defn main () (println 1))\n",
+        )
+        .with_file("more.knv", "(def kept 1)\n")
+        .with_file("deep/more.knv", "(def kept 2)\n")
+        .with_file("deep/inner/keep.knv", "(def kept 3)\n");
+    std::os::unix::fs::symlink("deep/inner", sandbox.directory.join(".alias"))
+        .expect("the sandbox can hold a symbolic link");
+    let check = sandbox.compiler(&["check", "main.knv"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn dotted_use_that_leads_to_a_folder_helps_with_the_written_path() {
+    let sandbox = Sandbox::new("dotted_use_to_folder")
+        .with_file(
+            "main.knv",
+            "(use .alias/../folder)\n\n(defn main () (println 1))\n",
+        )
+        .with_file("deep/folder.knv/keep.knv", "(def kept 1)\n")
+        .with_file("deep/inner/keep.knv", "(def kept 2)\n");
+    std::os::unix::fs::symlink("deep/inner", sandbox.directory.join(".alias"))
+        .expect("the sandbox can hold a symbolic link");
+    let check = sandbox.compiler(&["check", "main.knv"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
 const DOTTED_MARKS_TEST: &str = "(use ../src/text/marks bang)\n\n(use prelude/test assert deftest)\n\n(deftest bangs (assert (= bang \"!\")))\n";
 const DOTTED_LIBRARY_ROOT: &str =
     "(use ./square side)\n\n(use ../square)\n\n(export area)\n\n(defn area (side) (* side side))\n";

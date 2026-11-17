@@ -9,7 +9,12 @@
   (template (defstruct (unquote (symbol context "int"))
               :n bool)))
 
+(defmacro use-hidden-float ()
+  (template (use shadowing/money float)))
+
 (make-hidden-int)
+
+(use-hidden-float)
 
 (make-int-here here)
 

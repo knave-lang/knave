@@ -10332,6 +10332,41 @@ fn task_in_a_hidden_folder_of_a_library_under_tasks_names_the_library() {
 }
 
 #[test]
+fn task_in_a_dotted_hidden_folder_names_the_hidden_folder() {
+    let task = Sandbox::new("task_in_dotted_hidden_folder")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file(
+            "tasks/.shared.d/more.knv",
+            "(deftask more () (println \"m\"))\n",
+        )
+        .with_file(
+            "tasks/t.knv",
+            "(use .shared.d/more)\n\n(deftask t () (println \"t\"))\n",
+        )
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn task_tree_reads_its_target_folder_beside_a_project_file() {
+    let task = Sandbox::new("task_target_beside_project_file")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("tasks/project.knv", "(defproject inner)\n")
+        .with_file(
+            "tasks/target/more.knv",
+            "(deftask more () (println \"m\"))\n",
+        )
+        .with_file(
+            "tasks/t.knv",
+            "(use target/more)\n\n(deftask t () (println \"t\"))\n",
+        )
+        .compiler(&["task"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "more\nt\n");
+}
+
+#[test]
 fn task_file_may_still_import_deftask_from_prelude_task() {
     let task = Sandbox::new("task_explicit_import")
         .with_file(&Language::project_file_name(), TASK_PROJECT)

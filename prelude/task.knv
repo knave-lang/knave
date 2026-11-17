@@ -11,9 +11,9 @@
           keyword-name keyword? len list list? module-notes
           nth number-add number-lt number-sub number?
           prepend program-modules read-form rest
-          sorted-names string string-length string-lines
-          string-strip-prefix string-trim-start string?
-          symbol symbol-name symbol? value-eq)
+          sorted-names string string-contains? string-length
+          string-lines string-strip-prefix string-trim-start
+          string? symbol symbol-name symbol? value-eq)
 
 (use prelude/internal/code pinned-at)
 
@@ -821,11 +821,24 @@
       true
       (if (one-of? (symbol-name module) allowed)
         true
-        (fail "`deftask` defines a task only in a file under `tasks/`"
-          (note-name (first notes))
-          "move the file out of the hidden folder"
-          (quote (:code task-outside-tasks
-                        :label "this file sits in a hidden folder, which the task tree skips")))))))
+        (task-outside-tree module (note-name (first notes)))))))
+
+(def task-outside-tree
+  (fn (module name)
+    (if (hidden-module? module)
+      (fail "`deftask` defines a task only in a file under `tasks/`"
+        name "move the file out of the hidden folder"
+        (quote (:code task-outside-tasks
+                      :label "this file sits in a hidden folder, which the task tree skips")))
+      (fail "`deftask` defines a task only in a file under `tasks/`"
+        name
+        "move the task out of the library and into a task file"
+        (quote (:code task-outside-tasks
+                      :label "this file is a library module, which the task tree does not read as a task file"))))))
+
+(def hidden-module?
+  (fn (module)
+    (string-contains? (string "/" (symbol-name module)) "/.")))
 
 (def written-tasks
   (fn ()

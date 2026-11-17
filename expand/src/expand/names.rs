@@ -1,6 +1,6 @@
 use super::Expander;
 use super::context::DefinitionContext;
-use super::kernel_type_shadow::KernelTypeShadow;
+use super::hidden_kernel_type::HiddenKernelType;
 use super::macro_call_lookup::MacroCallLookup;
 use super::namespace_problems::NamespaceProblems;
 use super::problems::ExpandProblems;
@@ -98,9 +98,8 @@ impl Expander<'_> {
                     self.tables.bindings.get(existing).span(),
                 )
             })?;
-        if let Some(shadow) = KernelTypeShadow::of(symbol.name(), namespace, self.kind(binding)) {
-            self.problems.report_warning(shadow.at_import(span));
-        }
+        let hidden = HiddenKernelType::of(symbol.name(), namespace, self.kind(binding));
+        self.report_hidden_kernel_type(hidden.map(|hidden| hidden.at_import(span)));
         Ok(())
     }
 
@@ -146,10 +145,15 @@ impl Expander<'_> {
                     self.tables.bindings.get(existing).span(),
                 )
             })?;
-        if let Some(shadow) = KernelTypeShadow::of(symbol.name(), namespace, kind) {
-            self.problems.report_warning(shadow.at_definition(span));
-        }
+        let hidden = HiddenKernelType::of(symbol.name(), namespace, kind);
+        self.report_hidden_kernel_type(hidden.map(|hidden| hidden.at_definition(span)));
         Ok(binding)
+    }
+
+    fn report_hidden_kernel_type(&mut self, warning: Option<Diagnostic>) {
+        if let Some(warning) = warning {
+            self.problems.report_warning(warning);
+        }
     }
 
     fn remember_duplicate_definition(&mut self, symbol: &Symbol, binding: BindingId) {

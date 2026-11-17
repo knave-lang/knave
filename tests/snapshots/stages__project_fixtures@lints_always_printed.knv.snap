@@ -9,6 +9,6 @@ error[L0729]: unknown lint `second-trait-path`
 1 | (defproject browser (lints (second-trait-path allow)))
   |                             ^^^^^^^^^^^^^^^^^ not the name of a lint
   |
-  = note: `L0217`, `L0249`, `L0251` and `L0256` always print and have no level
+  = note: `L0217`, `L0249`, `L0251`, `L0256` and `L0259` always print and have no level
   = help: the lints are `unused-binding`, `unmatched-link`, `unreachable-arm`, `missing-bang`, `rule-skipped` and `unused-parameter`
   = note: run `knave doc L0729` for an explanation

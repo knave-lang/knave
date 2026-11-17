@@ -1,0 +1,7 @@
+(defn main ()
+  (local s (str "ab"))
+  (local names (vec (as-str s)))
+  (local r (at names 0))
+  (local it (chars r))
+  (push! names "b")
+  (println (count it)))

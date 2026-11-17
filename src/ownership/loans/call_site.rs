@@ -1,3 +1,4 @@
+use super::called_parameter::CalledParameter;
 use super::holdings::Holdings;
 use super::loan_rules::LoanRules;
 use super::passed_holdings::PassedHoldings;
@@ -28,7 +29,11 @@ impl<'c> CallSite<'c> {
         self.arguments
     }
 
-    pub fn parameter(&self, position: usize) -> Option<&'c Type> {
+    pub fn parameter(&self, position: usize, ties: Option<&TemplateTies>) -> CalledParameter<'c> {
+        CalledParameter::at(self.parameter_type(position), ties, position)
+    }
+
+    fn parameter_type(&self, position: usize) -> Option<&'c Type> {
         match &self.callee.ty {
             Type::Function(_, parameters, _) => parameters.get(position),
             _ => None,
@@ -85,10 +90,11 @@ mod tests {
         );
         SiteFixture::with_site(source.bound("r"), |site| {
             assert!(
-                site.parameter(0)
+                site.parameter(0, None)
+                    .ty()
                     .is_some_and(|parameter| parameter.is_reference())
             );
-            assert!(site.parameter(2).is_none());
+            assert!(site.parameter(2, None).ty().is_none());
             assert!(site.repeated_lambda().is_none());
         });
     }

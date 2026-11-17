@@ -1,3 +1,5 @@
-(export float ->float)
+(export ->float float)
 
-(defstruct float :whole i32 :fraction u32)
+(defstruct float
+  :whole i32
+  :fraction u32)

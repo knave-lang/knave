@@ -105,6 +105,7 @@ mod tests {
         const MAP: BindingId = BindingId::from_index(3);
         const SOME: BindingId = BindingId::from_index(5);
         const VEC: BindingId = BindingId::from_index(8);
+        const FILTER: BindingId = BindingId::from_index(11);
 
         fn new() -> Self {
             let mut world = World::new();
@@ -120,12 +121,19 @@ mod tests {
         }
 
         fn exports() -> SavedExports {
-            let exports = [
+            Self::saved(&[
                 ("map", Namespace::Value, Self::MAP),
                 ("option/some", Namespace::Value, Self::SOME),
                 ("vec", Namespace::Type, Self::VEC),
-            ];
-            let bytes = bincode::serialize(&ExportBytes::of(exports.into_iter()))
+            ])
+        }
+
+        fn kernel_exports() -> SavedExports {
+            Self::saved(&[("filter", Namespace::Value, Self::FILTER)])
+        }
+
+        fn saved(exports: &[(&str, Namespace, BindingId)]) -> SavedExports {
+            let bytes = bincode::serialize(&ExportBytes::of(exports.iter().copied()))
                 .expect("the exports save");
             bincode::deserialize(bytes.leak()).expect("the exports load")
         }
@@ -229,6 +237,26 @@ mod tests {
         assert_eq!(
             fixture.resolve("map", &[second]),
             Resolution::Bound(ImportFixture::MAP)
+        );
+    }
+
+    #[test]
+    fn a_module_sees_only_the_exports_of_its_own_base() {
+        let mut fixture = ImportFixture::new();
+        let kernel_user = fixture.world.scope();
+        let kernel = ModuleId::new(1);
+        fixture
+            .world
+            .table
+            .import_prelude(kernel_user, kernel, ImportFixture::kernel_exports());
+        assert_eq!(
+            fixture.resolve("filter", &[kernel_user]),
+            Resolution::Bound(ImportFixture::FILTER)
+        );
+        assert_eq!(fixture.resolve("map", &[kernel_user]), Resolution::Unbound);
+        assert_eq!(
+            fixture.resolve("filter", &[fixture.module]),
+            Resolution::Unbound
         );
     }
 

@@ -10239,6 +10239,23 @@ fn task_listing_warns_of_a_task_module_hiding_a_source_module() {
 }
 
 #[test]
+fn task_refuses_a_task_in_a_folder_that_the_task_tree_skips() {
+    let task = Sandbox::new("task_in_hidden_folder")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file(
+            "tasks/.hidden/more.knv",
+            "(deftask hid () (println \"h\"))\n",
+        )
+        .with_file(
+            "tasks/t.knv",
+            "(use .hidden/more)\n\n(deftask t () (println \"t\"))\n",
+        )
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn task_file_may_still_import_deftask_from_prelude_task() {
     let task = Sandbox::new("task_explicit_import")
         .with_file(&Language::project_file_name(), TASK_PROJECT)

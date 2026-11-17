@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly FAILING_VERDICTS='^(missed|unapplied)'
+readonly FAILING_VERDICTS='^(missed|unapplied|invalid)'
 
 main() {
   mkdir -p "$REPORT/logs"
@@ -22,7 +22,7 @@ summary() {
   echo
   echo '| Mutant | Verdict | Seconds | Log |'
   echo '| --- | --- | --- | --- |'
-  awk -F '\t' '{ printf "| %s | %s | %s | `%s` |\n", $1, $2, $3, $4 }' "$REPORT/results.tsv"
+  awk -F '\t' '{ gsub(/\|/, "\\|"); printf "| %s | %s | %s | `%s` |\n", $1, $2, $3, $4 }' "$REPORT/results.tsv"
   missing_shards_line
 }
 
@@ -48,7 +48,7 @@ require_every_shard() {
 
 require_no_failing_verdict() {
   if cut -f 2 "$REPORT/results.tsv" | grep -Eq "$FAILING_VERDICTS"; then
-    fail "A mutant survived or did not apply. See the summary."
+    fail "A mutant was missed, unapplied or invalid. See the summary."
   fi
 }
 

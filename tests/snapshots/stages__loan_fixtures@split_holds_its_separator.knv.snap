@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/split_holds_its_separator.knv
+---
+main
+  5:20 borrow `s`: no live loan
+  5:31 borrow `p`: no live loan
+  6:9 change `p`: `s` lent at 5:20, held by `parts`; `p` lent at 5:31, held by `parts`
+  7:19 move `parts`: `s` lent at 5:20, held by `parts`; `p` lent at 5:31, held by `parts`

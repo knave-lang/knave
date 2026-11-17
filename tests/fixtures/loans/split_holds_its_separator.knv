@@ -1,0 +1,7 @@
+(defn main ()
+  (local s (str "a,b"))
+  (local p (str ","))
+  (local parts
+    (split (as-str s) (as-str p)))
+  (set! p (str ";"))
+  (println (count parts)))

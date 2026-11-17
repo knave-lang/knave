@@ -1,6 +1,6 @@
 use crate::types::{
-    BorrowedIndex, BorrowingTypes, CopyRules, TemplateTies, Type, TypedExpr, TypedExprKind,
-    TypedProgram, WrittenBorrows,
+    BorrowedIndex, BorrowingTypes, CopiedOut, CopyRules, TemplateTies, Type, TypedArgument,
+    TypedExpr, TypedExprKind, TypedProgram,
 };
 
 pub struct LoanRules<'p> {
@@ -26,9 +26,8 @@ impl<'p> LoanRules<'p> {
             .read_template(callee, None, |_, ties| ties.cloned())
     }
 
-    pub fn copies_out(&self, value: &TypedExpr, levels: usize) -> bool {
-        WrittenBorrows::under(value, levels).is_some()
-            || (levels == 1 && self.indexes_in_place(value))
+    pub fn copies_out(&self, argument: &TypedArgument) -> bool {
+        CopiedOut::of(argument, |value| self.indexes_in_place(value)).is_some()
     }
 
     fn indexes_in_place(&self, value: &TypedExpr) -> bool {

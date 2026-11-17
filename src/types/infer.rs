@@ -3078,12 +3078,10 @@ impl TypeChecker {
             return Err(TypeProblems::wrong_argument_count(0, arguments.len(), span));
         }
         let (item, template) = match iterator {
-            MapIterator::Keys => (collection.key(), SyntheticTemplate::KEYS.text()),
-            MapIterator::Vals => (collection.value(), SyntheticTemplate::VALUES.text()),
+            MapIterator::Keys => (collection.key().clone(), SyntheticTemplate::KEYS.text()),
+            MapIterator::Vals => (collection.value().clone(), SyntheticTemplate::VALUES.text()),
         };
-        let result = self
-            .prelude_types()
-            .iterator_type(Type::shared(item.clone()));
+        let result = self.prelude_types().iterator_type(Type::shared(item));
         let parameters = vec![Type::shared(collection.ty().clone())];
         self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
     }

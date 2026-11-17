@@ -72,7 +72,7 @@ impl PositionalRead {
             Type::Named(pair, parts) if Some(*pair) == types.pair_binding() => Some(PairPart {
                 part: parts[self.position.index()].clone(),
                 label: self.label(),
-                owned: std::ptr::eq(referent, value),
+                owned: !matches!(value, Type::Ref(..) | Type::Mut(..)),
             }),
             _ => None,
         }

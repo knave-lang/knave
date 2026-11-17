@@ -106,18 +106,27 @@ impl SavedExports {
         }
     }
 
-    fn count(&self) -> usize {
+    pub(super) fn count(&self) -> usize {
         self.rows.len() / ExportRow::SIZE
     }
 
-    fn position(&self, name: &str, namespace: Namespace) -> Option<usize> {
+    pub(super) fn position(&self, name: &str, namespace: Namespace) -> Option<usize> {
         NameSlots::find(self.slots, name, namespace, |position| {
             self.holds_key(position, name, namespace)
         })
     }
 
-    fn binding(&self, position: usize) -> BindingId {
+    pub(super) fn binding(&self, position: usize) -> BindingId {
         BindingId::from_index(self.row(position).binding)
+    }
+
+    pub(super) fn key(&self, position: usize) -> (&'static str, Namespace) {
+        let row = self.row(position);
+        (self.name_of(row), NameSlots::namespace(row.namespace))
+    }
+
+    pub(super) fn keys(&self) -> impl Iterator<Item = (&'static str, Namespace)> + '_ {
+        (0..self.count()).map(|position| self.key(position))
     }
 
     fn row(&self, position: usize) -> ExportRow {

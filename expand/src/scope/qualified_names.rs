@@ -24,6 +24,12 @@ impl QualifiedNames {
         }
     }
 
+    pub(super) fn record_saved(&mut self, name: &str, namespace: Namespace) {
+        if name.contains(Self::SEPARATOR) {
+            self.record(&(Rc::from(name), namespace));
+        }
+    }
+
     pub(super) fn ending_in(&self, last_segment: Rc<str>, namespace: Namespace) -> &[Rc<str>] {
         self.by_last_segment
             .get(&(last_segment, namespace))

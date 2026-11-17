@@ -1,0 +1,4 @@
+(defn first (items)
+  (len items))
+
+(export first)

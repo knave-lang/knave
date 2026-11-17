@@ -6,7 +6,7 @@ use super::export_table::ExportTable;
 use super::module_scopes::ModuleScopes;
 use crate::core::{BindingId, ModuleId, ModulePath, Namespace};
 use crate::reader::Symbol;
-use crate::scope::ScopeSet;
+use crate::scope::{SavedExports, ScopeSet};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 enum LoadStatus {
@@ -46,6 +46,10 @@ impl ModuleRecord {
 
     pub fn exports(&self) -> impl Iterator<Item = (Rc<str>, Namespace, BindingId)> + '_ {
         self.exports.entries()
+    }
+
+    pub fn saved_exports(&self) -> Option<SavedExports> {
+        self.exports.saved()
     }
 
     pub fn is_loading(&self) -> bool {

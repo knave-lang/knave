@@ -5,10 +5,13 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::Scope;
+use super::ScopeSet;
+use super::imported_names::ImportedNames;
 use super::name_entries::NameEntries;
 use super::name_entry::NameEntry;
 use super::phase::Phase;
 use super::qualified_names::QualifiedNames;
+use super::saved_exports::SavedExports;
 use super::saved_names::{NameTables, SavedNames};
 use super::visible_names::VisibleNames;
 use crate::core::{BindingId, Namespace};
@@ -25,6 +28,8 @@ pub enum Resolution {
 pub struct BindingTable {
     #[serde(skip)]
     saved: SavedNames,
+    #[serde(skip)]
+    imported: ImportedNames,
     entries: FxHashMap<(Rc<str>, Namespace), NameEntries>,
     qualified_names: QualifiedNames,
 }
@@ -37,6 +42,16 @@ impl BindingTable {
         binding: BindingId,
         phase: Phase,
     ) -> Result<(), BindingId> {
+        if let Some(imported) =
+            self.imported
+                .bound_with_scopes(symbol.scopes(), symbol.name(), namespace)
+        {
+            return if imported == binding {
+                Ok(())
+            } else {
+                Err(imported)
+            };
+        }
         let entries = match self.entries.entry((symbol.shared_name(), namespace)) {
             hash_map::Entry::Occupied(occupied) => occupied.into_mut(),
             hash_map::Entry::Vacant(vacant) => {
@@ -80,7 +95,24 @@ impl BindingTable {
 
     #[inline(always)]
     pub fn visible_names(&self) -> VisibleNames<'_> {
-        VisibleNames::new(&self.entries, &self.saved, &self.qualified_names)
+        VisibleNames::new(
+            &self.entries,
+            &self.imported,
+            &self.saved,
+            &self.qualified_names,
+        )
+    }
+
+    #[cfg(test)]
+    pub(super) fn imported_decoded_count(&self) -> usize {
+        self.imported.decoded_count()
+    }
+
+    pub fn import_saved(&mut self, scopes: ScopeSet, exports: SavedExports) {
+        for (name, namespace) in exports.keys() {
+            self.qualified_names.record_saved(name, namespace);
+        }
+        self.imported.add(scopes, exports);
     }
 
     pub fn take_saved(&mut self, prelude_scopes: Range<Scope>) -> NameTables {

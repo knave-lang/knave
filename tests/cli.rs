@@ -224,6 +224,9 @@ const PROMPT_DOCUMENT_BESIDE_ITS_DEFINITION: &str = "(use prelude/macros documen
 const PROMPT_RUNAWAY_MACRO: &str =
     "(defmacro spin () ((fn () (recur))))\n(with-macro-steps 1000 (spin))\n(+ 1 2)\n";
 const PROMPT_INFER: &str = "(defn identity (x) x)\n(infer (vec 1 2))\n(infer identity)\n(infer none)\n(infer 1.5)\n(def text (infer identity))\ntext\n";
+const PROMPT_PRELUDE_REDEFINITION: &str =
+    "(not true)\n(defn not (value) value)\n(not true)\n(defn not (value) false)\n(not true)\n";
+
 const PROMPT_REDEFINITION: &str = "(defn square (n) (* n n))\n(defn cube (n) (* n (square n)))\n(cube 3)\n(defn square (n) (+ n n))\n(cube 3)\n";
 const PROMPT_DROPPING_REPLACEMENT: &str = "(defstruct point :x i64 :y i64)
 (defn ->point (x y) (vec x y))
@@ -5531,6 +5534,13 @@ fn eval_reports_a_macro_that_passes_the_step_limit() {
 fn repl_prints_an_inferred_type_as_a_string() {
     let sandbox = Sandbox::new("repl_infer");
     let repl = sandbox.compiler_reading(PROMPT_INFER, &["repl"]);
+    insta::assert_snapshot!(repl.transcript());
+}
+
+#[test]
+fn repl_shadows_a_prelude_name_and_replaces_its_own_definition_of_it() {
+    let sandbox = Sandbox::new("repl_prelude_redefinition");
+    let repl = sandbox.compiler_reading(PROMPT_PRELUDE_REDEFINITION, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 

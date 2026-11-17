@@ -50,6 +50,7 @@ mod enum_table;
 mod enums;
 mod expectation;
 mod field_parameters;
+mod field_place;
 mod finalize;
 mod form_results;
 mod generic_declarations;
@@ -174,6 +175,7 @@ pub use declarations::Declarations;
 pub use display::TypeDisplay;
 pub use enum_table::EnumTable;
 pub use enums::{EnumDefinition, VariantDefinition, VariantPayload};
+pub use field_place::FieldPlace;
 pub use form_results::{FormResult, FormResults};
 pub use graph::DefinitionGraph;
 pub use main_result::MainResult;
@@ -201,10 +203,10 @@ pub use traits::TraitTable;
 pub use ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type, TypeVar};
 pub use type_declarations::TypeDeclarations;
 pub use typed::{
-    Borrow, ClosureType, FieldOrder, FieldPlace, PendingModeCheck, TypedArgument, TypedArm,
-    TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedDefinition,
-    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedModule, TypedPattern,
-    TypedPatternKind, TypedProgram, TypedStructExpr,
+    Borrow, ClosureType, FieldOrder, PendingModeCheck, TypedArgument, TypedArm, TypedBinder,
+    TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedDefinition, TypedExpr,
+    TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedModule, TypedPattern, TypedPatternKind,
+    TypedProgram, TypedStructExpr,
 };
 pub use typed_associated_type::TypedAssociatedType;
 pub use typed_impl_method::TypedImplMethod;

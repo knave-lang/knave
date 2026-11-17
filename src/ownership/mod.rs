@@ -12,11 +12,13 @@ mod gate;
 mod held;
 mod kinds;
 mod lambda_address;
+mod lambda_parameters;
 #[cfg(test)]
 mod lambda_source;
 mod lent_borrows;
 mod local_borrows;
 mod modes;
+mod moved_place;
 mod moved_value_problems;
 mod moved_values;
 mod moves;

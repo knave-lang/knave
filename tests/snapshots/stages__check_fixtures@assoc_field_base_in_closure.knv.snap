@@ -8,9 +8,9 @@ error[L0509]: this closure is `FnOnce`, but the parameter accepts `FnMut`
    |
 14 | /     (fn (i)
 15 | |       (local b (assoc (:badge g) :size 14))
-   | |                       ^^^^^^^^^^ `g` moves here
+   | |                       ^^^^^^^^^^ `(:badge g)` moves here
 16 | |       (println i " " (:size b)))))
    | |________________________________- this closure is passed here
    |
-   = help: clone `g`, or borrow it with `(ref g)`
+   = help: clone `(:badge g)`
    = note: run `knave doc L0509` for an explanation

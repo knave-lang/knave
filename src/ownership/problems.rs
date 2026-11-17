@@ -1,6 +1,8 @@
 use std::rc::Rc;
 
 use super::functions::ParamMode;
+use super::moved_place::MovedPlace;
+use super::moved_value_problems::MovedValueProblems;
 use crate::core::ReferenceKind;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Help, Label, Suggestion};
 use crate::source::Span;
@@ -192,12 +194,13 @@ impl OwnershipProblems {
     pub fn closure_kind_mismatch(
         actual: ClosureKind,
         required: ClosureKind,
-        capture: Option<&str>,
+        capture: Option<&MovedPlace>,
         callee: Option<&str>,
         passed: Span,
         capture_span: Option<Span>,
     ) -> Diagnostic {
-        let (primary, secondary) = Self::closure_kind_labels(actual, capture, passed, capture_span);
+        let name = capture.map(MovedPlace::written);
+        let (primary, secondary) = Self::closure_kind_labels(actual, name, passed, capture_span);
         Self::closure_kind_error(actual, required, primary, secondary)
             .with_help(Self::closure_kind_help(actual, required, capture, callee))
     }
@@ -302,12 +305,12 @@ impl OwnershipProblems {
     fn closure_kind_help(
         actual: ClosureKind,
         required: ClosureKind,
-        capture: Option<&str>,
+        capture: Option<&MovedPlace>,
         callee: Option<&str>,
     ) -> String {
         if actual == ClosureKind::FnMut {
             let callee = callee.unwrap_or("this function");
-            return match capture {
+            return match capture.map(MovedPlace::written) {
                 Some(name) => format!(
                     "`{callee}` calls this closure as `{}`, but it changes `{name}`",
                     required.keyword()
@@ -318,10 +321,7 @@ impl OwnershipProblems {
                 ),
             };
         }
-        match capture {
-            Some(name) => format!("clone `{name}`, or borrow it with `(ref {name})`"),
-            None => "clone the closure's captures, or borrow them instead".to_string(),
-        }
+        MovedValueProblems::captured_move_help(capture)
     }
 
     pub fn local_borrow(borrowed: Span, dropped: &DroppedValue) -> Diagnostic {

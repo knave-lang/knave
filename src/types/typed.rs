@@ -5,6 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::closure_facts::ClosureFacts;
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
+use super::field_place::FieldPlace;
 use super::parameter_modes::ParameterModes;
 use super::template_clauses::TemplateClauses;
 use super::templates::TemplateBorrows;
@@ -13,8 +14,8 @@ use super::typed_trait_method::TypedTraitMethod;
 use super::unifier::LiteralKind;
 use super::{Declarations, EnumTable, StructuralUses};
 use crate::core::{
-    BindingArena, BindingId, ClosureKind, DefinitionForm, FieldLabel, FieldSpelling, KernelForm,
-    Literal, ModuleId, ModulePath, ReferenceKind, RustTemplate,
+    BindingArena, BindingId, ClosureKind, DefinitionForm, FieldLabel, KernelForm, Literal,
+    ModuleId, ModulePath, ReferenceKind, RustTemplate,
 };
 use crate::diagnostic::Diagnostics;
 use crate::source::Span;
@@ -75,31 +76,6 @@ impl TypedExpr {
                 .children()
                 .into_iter()
                 .any(|child| child.mentions_local(binding))
-    }
-}
-
-pub struct FieldPlace<'a> {
-    pub root: BindingId,
-    pub root_type: &'a Type,
-    pub path: Vec<&'a FieldLabel>,
-}
-
-impl FieldPlace<'_> {
-    pub fn reads_field(&self) -> bool {
-        !self.path.is_empty()
-    }
-
-    pub fn written(&self, bindings: &BindingArena) -> String {
-        let root = bindings.get(self.root).name().to_string();
-        self.path.iter().fold(root, Self::field_text)
-    }
-
-    pub fn field_text(owner: String, label: &&FieldLabel) -> String {
-        let field = label.spelled(&label.name);
-        match label.spelling {
-            FieldSpelling::Keyword | FieldSpelling::Pair(_) => format!("({field} {owner})"),
-            FieldSpelling::Bare => format!("(field {owner} {field})"),
-        }
     }
 }
 

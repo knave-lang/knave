@@ -1,5 +1,6 @@
 use std::cell::OnceCell;
 use std::rc::Rc;
+use std::slice;
 
 use rustc_hash::FxHashMap;
 
@@ -7,6 +8,7 @@ use super::name_entries::NameEntries;
 use super::phase::Phase;
 use super::qualified_names::QualifiedNames;
 use super::saved_exports::SavedExports;
+use super::scope_set::SortedIter;
 use super::{Scope, ScopeSet};
 use crate::core::{BindingId, Namespace};
 
@@ -95,26 +97,45 @@ impl ImportedNames {
         self.recorded_exports.push(exports);
     }
 
-    fn modules_seen_from<'t, 's>(
-        &'t self,
-        scopes: &'s ScopeSet,
-    ) -> impl Iterator<Item = &'t ImportedModule> + use<'t, 's> {
-        let (by_module, by_scope) = if self.modules.len() <= scopes.len() {
-            let modules = self.modules.iter();
-            (
-                Some(modules.filter(|module| scopes.contains(module.scope))),
-                None,
-            )
+    fn modules_seen_from<'t, 's>(&'t self, scopes: &'s ScopeSet) -> SeenModules<'t, 's> {
+        if self.modules.len() <= scopes.len() {
+            SeenModules::ByModule {
+                modules: self.modules.iter(),
+                scopes,
+            }
         } else {
-            let modules = scopes
-                .iter()
-                .filter_map(|scope| self.module_by_scope.get(&scope));
-            (None, Some(modules.map(|module| &self.modules[*module])))
-        };
-        by_module
-            .into_iter()
-            .flatten()
-            .chain(by_scope.into_iter().flatten())
+            SeenModules::ByScope {
+                scopes: scopes.iter(),
+                names: self,
+            }
+        }
+    }
+}
+
+enum SeenModules<'t, 's> {
+    ByModule {
+        modules: slice::Iter<'t, ImportedModule>,
+        scopes: &'s ScopeSet,
+    },
+    ByScope {
+        scopes: SortedIter<'s>,
+        names: &'t ImportedNames,
+    },
+}
+
+impl<'t> Iterator for SeenModules<'t, '_> {
+    type Item = &'t ImportedModule;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::ByModule { modules, scopes } => {
+                modules.find(|module| scopes.contains(module.scope))
+            }
+            Self::ByScope { scopes, names } => {
+                let module = scopes.find_map(|scope| names.module_by_scope.get(&scope))?;
+                Some(&names.modules[*module])
+            }
+        }
     }
 }
 

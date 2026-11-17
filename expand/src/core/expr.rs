@@ -216,12 +216,10 @@ pub struct FieldLabel {
 
 impl FieldLabel {
     pub fn spelled(&self, field_name: &str) -> String {
-        match (self.spelling, field_name) {
-            (FieldSpelling::Pair(position), _) => {
-                MapOperation::from(position).keyword().to_string()
-            }
-            (FieldSpelling::Bare, _) => field_name.to_string(),
-            (FieldSpelling::Keyword, _) => format!("{}{field_name}", Keyword::MARKER),
+        match self.spelling {
+            FieldSpelling::Pair(position) => MapOperation::from(position).keyword().to_string(),
+            FieldSpelling::Bare => field_name.to_string(),
+            FieldSpelling::Keyword => format!("{}{field_name}", Keyword::MARKER),
         }
     }
 

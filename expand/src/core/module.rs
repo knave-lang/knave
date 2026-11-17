@@ -5,6 +5,7 @@ use super::{
     BindingArena, BindingId, Expr, FieldLabel, ImplementorRow, ImplementorRows, Lambda,
     ParsedTemplate, StructuralClause, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
 };
+use crate::rust_trait_path::RustTraitPath;
 use crate::source::Span;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -90,6 +91,7 @@ pub struct RequiredTrait {
 pub struct RustTraitDeclaration {
     pub binding: BindingId,
     pub path: Rc<str>,
+    pub resolved_path: RustTraitPath,
     pub self_variable: BindingId,
     pub methods: Vec<TraitMethod>,
     pub help: Option<Rc<str>>,

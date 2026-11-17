@@ -422,6 +422,7 @@ mod tests {
             RustTraitDeclaration {
                 binding: self.declared,
                 path: "Shown".into(),
+                resolved_path: "Shown".into(),
                 self_variable: self.declared,
                 methods: Vec::new(),
                 help: None,

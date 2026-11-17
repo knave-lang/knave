@@ -338,6 +338,7 @@ mod tests {
             RustTraitDeclaration {
                 binding: self.binding(name),
                 path: name.into(),
+                resolved_path: name.into(),
                 self_variable: self.binding("self"),
                 methods: Vec::new(),
                 help: None,

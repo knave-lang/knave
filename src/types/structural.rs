@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use rustc_hash::FxHashMap;
 
 use super::checker::TypeChecker;
@@ -197,19 +199,11 @@ impl TypeChecker {
     }
 
     fn report_path_clash(&mut self, trait_binding: BindingId, head: BindingId, span: Span) {
-        let Some(path) = self
-            .declarations
-            .traits
-            .rust_paths
-            .written(trait_binding)
-            .cloned()
-        else {
-            return;
-        };
-        let Some(written) = self.written_impl_of_path(trait_binding, head) else {
+        let Some((written, path)) = self.written_impl_of_path(trait_binding, head) else {
             return;
         };
         let (written_binding, written_span) = (written.trait_binding, written.implementor_span);
+        let path = Rc::clone(path);
         let clash = StructuralUse {
             trait_binding,
             head,
@@ -235,14 +229,15 @@ impl TypeChecker {
         &self,
         trait_binding: BindingId,
         head: BindingId,
-    ) -> Option<&TypedTraitImpl> {
-        let traits = &self.declarations.traits;
-        let path = traits.rust_paths.resolved(trait_binding)?;
-        traits.impls.iter().find(|implementation| {
+    ) -> Option<(&TypedTraitImpl, &Rc<str>)> {
+        let paths = &self.declarations.traits.rust_paths;
+        let resolved = paths.resolved(trait_binding)?;
+        let written = self.declarations.traits.impls.iter().find(|implementation| {
             implementation.trait_binding != trait_binding
                 && matches!(implementation.implementor, Type::Named(binding, _) if binding == head)
-                && traits.rust_paths.resolved(implementation.trait_binding) == Some(path)
-        })
+                && paths.resolved(implementation.trait_binding) == Some(resolved)
+        })?;
+        Some((written, paths.written(trait_binding)?))
     }
 }
 

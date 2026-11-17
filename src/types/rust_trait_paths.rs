@@ -3,7 +3,7 @@ use std::rc::Rc;
 use knave_expand::rust_trait_path::RustTraitPath;
 use rustc_hash::FxHashMap;
 
-use crate::core::BindingId;
+use crate::core::{BindingId, RustTraitDeclaration};
 
 #[derive(Default)]
 pub struct RustTraitPaths {
@@ -20,8 +20,10 @@ impl RustTraitPaths {
         self.resolved.get(&binding)
     }
 
-    pub(super) fn record(&mut self, binding: BindingId, path: &Rc<str>) {
-        self.written.insert(binding, Rc::clone(path));
-        self.resolved.insert(binding, (**path).into());
+    pub(super) fn record(&mut self, declaration: &RustTraitDeclaration) {
+        let binding = declaration.binding;
+        self.written.insert(binding, Rc::clone(&declaration.path));
+        self.resolved
+            .insert(binding, declaration.resolved_path.clone());
     }
 }

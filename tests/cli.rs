@@ -10698,6 +10698,75 @@ fn test_of_the_project_using_a_source_module_through_its_folder_is_told_its_modu
     insta::assert_snapshot!(test.assert_exit_code(1).stderr());
 }
 
+#[test]
+fn dotted_use_of_a_library_file_under_the_source_root_names_the_library() {
+    let sandbox = Sandbox::new("dotted_use_library_under_source")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject app (libraries (shapes :path \"src/vendor/shapes\")))\n",
+        )
+        .with_file(
+            "src/main.knv",
+            "(use shapes area)\n(use ./vendor/shapes/src/lib)\n(use vendor/shapes/src/lib/)\n\n(defn main () (println (area 2)))\n",
+        )
+        .with_file("src/vendor/shapes/project.knv", "(defproject shapes)\n")
+        .with_file(
+            "src/vendor/shapes/src/lib.knv",
+            "(export area)\n\n(defn area (side) (* side side))\n",
+        );
+    let check = sandbox.compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn library_dotted_use_of_a_prelude_path_names_the_file() {
+    let sandbox = Sandbox::new("library_dotted_use_prelude")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (shapes :path \"../shapes\")))\n",
+        )
+        .with_file(
+            "app/src/main.knv",
+            "(use shapes area)\n\n(defn main () (println (area 2)))\n",
+        )
+        .with_file(
+            &format!("shapes/{}", Language::project_file_name()),
+            "(defproject shapes)\n",
+        )
+        .with_file(
+            "shapes/src/lib.knv",
+            "(use ./prelude/list)\n\n(export area)\n\n(defn area (side) (* side side))\n",
+        )
+        .with_file("shapes/src/prelude/list.knv", "(def kept 1)\n");
+    let check = sandbox.compiler_in("app", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn library_dotted_use_of_a_file_of_a_library_it_cannot_use_names_the_library() {
+    let sandbox = Sandbox::new("library_dotted_use_unseen_library")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (shapes :path \"../shapes\") (dots :path \"../shapes/src/vendor/dots\")))\n",
+        )
+        .with_file(
+            "app/src/main.knv",
+            "(use shapes area)\n\n(defn main () (println (area 2)))\n",
+        )
+        .with_file(
+            &format!("shapes/{}", Language::project_file_name()),
+            "(defproject shapes)\n",
+        )
+        .with_file(
+            "shapes/src/lib.knv",
+            "(use ./vendor/dots/src/lib)\n\n(export area)\n\n(defn area (side) (* side side))\n",
+        )
+        .with_file("shapes/src/vendor/dots/project.knv", "(defproject dots)\n")
+        .with_file("shapes/src/vendor/dots/src/lib.knv", "(def kept 1)\n");
+    let check = sandbox.compiler_in("app", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
 const DOTTED_MARKS_TEST: &str = "(use ../src/text/marks bang)\n\n(use prelude/test assert deftest)\n\n(deftest bangs (assert (= bang \"!\")))\n";
 const DOTTED_LIBRARY_ROOT: &str =
     "(use ./square side)\n\n(use ../square)\n\n(export area)\n\n(defn area (side) (* side side))\n";

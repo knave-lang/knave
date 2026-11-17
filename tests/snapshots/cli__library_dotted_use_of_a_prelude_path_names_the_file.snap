@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0260]: module path `./prelude/list` has a part that is not a name
+ --> ../shapes/src/lib.knv:1:6
+  |
+1 | (use ./prelude/list)
+  |      ^^^^^^^^^^^^^^ each part of a module path names a directory or a file
+  |
+  = note: `../shapes/src/prelude/list.knv` exists, but no module path this module can use names it
+  = note: run `knave doc L0260` for an explanation

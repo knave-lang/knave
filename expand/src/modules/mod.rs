@@ -1,5 +1,6 @@
 mod export_table;
 mod libraries;
+mod library_place;
 mod local_files;
 mod local_root;
 mod located_module;

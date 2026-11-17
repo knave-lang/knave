@@ -84,15 +84,15 @@ impl Expander<'_> {
     ) -> Result<(), BindingId> {
         match self.tables.table.bind(symbol, namespace, binding, phase) {
             Err(existing) if self.tables.globals.is_failed_definition(existing) => {
-                self.forget_failed(symbol, namespace, existing);
+                self.forget_failed(existing);
                 self.tables.table.bind(symbol, namespace, binding, phase)
             }
             bound => bound,
         }
     }
 
-    fn forget_failed(&mut self, symbol: &Symbol, namespace: Namespace, failed: BindingId) {
-        self.tables.table.unbind(symbol, namespace, failed);
+    fn forget_failed(&mut self, failed: BindingId) {
+        self.tables.table.forget(|binding| binding == failed);
         self.tables.globals.forget_failed_definition(failed);
     }
 

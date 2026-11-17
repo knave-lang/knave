@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+#[cfg(test)]
+use super::imported_counts::ImportedCounts;
 use super::imported_table::ImportedTable;
 use super::name_entries::NameEntries;
 use super::name_key::NameKey;
@@ -67,18 +69,12 @@ impl ImportedNames {
     }
 
     #[cfg(test)]
-    pub(super) fn table_count(&self) -> usize {
-        self.tables.len()
-    }
-
-    #[cfg(test)]
-    pub(super) fn module_count(&self) -> usize {
-        self.tables.iter().map(ImportedTable::module_count).sum()
-    }
-
-    #[cfg(test)]
-    pub(super) fn decoded_count(&self) -> usize {
-        self.tables.iter().map(ImportedTable::decoded_count).sum()
+    pub(super) fn counts(&self) -> ImportedCounts {
+        ImportedCounts {
+            tables: self.tables.len(),
+            modules: self.tables.iter().map(ImportedTable::module_count).sum(),
+            decoded_names: self.tables.iter().map(ImportedTable::decoded_count).sum(),
+        }
     }
 
     fn add_table(&mut self, base: ModuleId, exports: SavedExports) -> usize {
@@ -115,8 +111,7 @@ mod tests {
             let module = world.scope();
             world
                 .table
-                .prelude_mut()
-                .import(module, Self::base(), Self::exports());
+                .import_prelude(module, Self::base(), Self::exports());
             Self { world, module }
         }
 
@@ -153,13 +148,12 @@ mod tests {
             let module = self.world.scope();
             self.world
                 .table
-                .prelude_mut()
-                .import(module, Self::base(), Self::exports());
+                .import_prelude(module, Self::base(), Self::exports());
             module
         }
 
         fn decoded_count(&self) -> usize {
-            self.world.table.prelude().imported_decoded_count()
+            self.world.table.imported_prelude_counts().decoded_names
         }
     }
 
@@ -215,10 +209,10 @@ mod tests {
         let mut fixture = ImportFixture::new();
         let second = fixture.import_into_new_module();
         let other = fixture.world.scope();
-        let prelude = fixture.world.table.prelude_mut();
-        prelude.import(other, ModuleId::new(1), ImportFixture::exports());
-        assert_eq!(fixture.world.table.prelude().imported_table_count(), 2);
-        assert_eq!(fixture.world.table.prelude().imported_module_count(), 3);
+        let table = &mut fixture.world.table;
+        table.import_prelude(other, ModuleId::new(1), ImportFixture::exports());
+        let counts = table.imported_prelude_counts();
+        assert_eq!((counts.tables, counts.modules), (2, 3));
         assert_eq!(
             fixture.resolve("map", &[second]),
             Resolution::Bound(ImportFixture::MAP)

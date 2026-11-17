@@ -4,15 +4,18 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+#[cfg(test)]
+use super::ImportedCounts;
 use super::Scope;
 use super::name_entries::NameEntries;
 use super::name_entry::NameEntry;
 use super::phase::Phase;
 use super::prelude_names::PreludeNames;
 use super::qualified_names::QualifiedNames;
-use super::saved_names::NameTables;
+use super::saved_exports::SavedExports;
+use super::saved_names::{NameTables, SavedNames};
 use super::visible_names::VisibleNames;
-use crate::core::{BindingId, Namespace};
+use crate::core::{BindingId, ModuleId, Namespace};
 use crate::reader::Symbol;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -58,12 +61,6 @@ impl BindingTable {
         entries.bind(symbol.scopes(), binding, phase)
     }
 
-    pub fn unbind(&mut self, symbol: &Symbol, namespace: Namespace, binding: BindingId) {
-        if let Some(entries) = self.entries.get_mut(&(symbol.shared_name(), namespace)) {
-            entries.unbind(binding);
-        }
-    }
-
     pub fn forget(&mut self, forgotten: impl Fn(BindingId) -> bool) {
         for entries in self.entries.values_mut() {
             entries.forget(&forgotten);
@@ -93,13 +90,17 @@ impl BindingTable {
         VisibleNames::new(&self.entries, &self.prelude, &self.qualified_names)
     }
 
-    pub fn prelude_mut(&mut self) -> &mut PreludeNames {
-        &mut self.prelude
+    pub fn import_prelude(&mut self, scope: Scope, base: ModuleId, exports: SavedExports) {
+        self.prelude.import(scope, base, exports);
+    }
+
+    pub fn adopt_saved(&mut self, saved: SavedNames) {
+        self.prelude.adopt_saved(saved);
     }
 
     #[cfg(test)]
-    pub(crate) fn prelude(&self) -> &PreludeNames {
-        &self.prelude
+    pub(crate) fn imported_prelude_counts(&self) -> ImportedCounts {
+        self.prelude.imported_counts()
     }
 
     pub fn take_saved(&mut self, prelude_scopes: Range<Scope>) -> NameTables {
@@ -192,7 +193,7 @@ pub(super) mod tests {
             let tables = self.table.take_saved(prelude_scopes);
             let encoded = bincode::serialize(&tables).expect("the tables serialize");
             let saved = bincode::deserialize(encoded.leak()).expect("the tables load");
-            self.table.prelude_mut().adopt_saved(saved);
+            self.table.adopt_saved(saved);
         }
 
         fn chain(&mut self, length: usize) -> ScopeChain {

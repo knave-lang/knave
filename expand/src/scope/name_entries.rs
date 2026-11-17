@@ -138,12 +138,6 @@ impl NameEntries {
             .for_each(visit);
     }
 
-    pub(super) fn unbind(&mut self, binding: BindingId) {
-        self.plain_sorted_by_anchor
-            .retain(|entry| entry.binding() != binding);
-        self.sharing.retain(|entry| entry.binding() != binding);
-    }
-
     pub(super) fn forget(&mut self, forgotten: &impl Fn(BindingId) -> bool) {
         self.plain_sorted_by_anchor
             .retain(|entry| !forgotten(entry.binding()));

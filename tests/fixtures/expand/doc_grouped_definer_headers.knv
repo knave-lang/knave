@@ -114,3 +114,36 @@
 (defparcel parcel)
 
 (def parcel-page (doc-page parcel))
+
+(defmacro defwrap (a b)
+  (list (quote do)
+        (quote (defn wrap-helper (q) q))
+        (list (quote defpair-shaped) a b)))
+
+(defwrap forwarded-left forwarded-right)
+
+(def forwarded-left-page (doc-page forwarded-left))
+
+(def forwarded-right-page (doc-page forwarded-right))
+
+(defmacro defparameter-pair (a b)
+  (list (quote do)
+        (list (quote defn) a (list b) b)
+        (list (quote def) b 1)))
+
+(defparameter-pair takes-limit limit)
+
+(def limit-page (doc-page limit))
+
+(defmacro defnumbered (n name)
+  (list (quote def) name n))
+
+(header-shape (defnumbered n name))
+
+(defmacro defnumbered-group (name)
+  (list (quote do)
+        (list (quote defnumbered) 7 name)))
+
+(defnumbered-group seventh)
+
+(def seventh-page (doc-page seventh))

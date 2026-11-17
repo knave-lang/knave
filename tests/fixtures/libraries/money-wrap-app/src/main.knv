@@ -1,0 +1,21 @@
+(use money define-named make-int)
+
+(defmacro wrap () (template (make-int)))
+
+(defmacro wrap-and-bind ()
+  (template (do
+              (make-int)
+              (defstruct float
+                :n bool))))
+
+(defmacro wrap-named ()
+  (template (define-named u16)))
+
+(wrap)
+
+(wrap-and-bind)
+
+(wrap-named)
+
+(defn main ()
+  (println (+ (the int 3) 1)))

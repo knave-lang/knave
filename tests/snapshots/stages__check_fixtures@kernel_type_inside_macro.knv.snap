@@ -8,6 +8,9 @@ warning[L0259]: `int` hides the kernel type `int`
   |
 3 |               (defstruct int
   |                          ^^^ this binds `int` in place of the kernel type
+...
+8 | (make-counter)
+  | -------------- in this macro call
   |
   = note: in the code of `make-counter`, a type written `int` names this binding, while a printed `int` is the kernel type
   = help: rename `int` in `make-counter`

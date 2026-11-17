@@ -1,0 +1,27 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+warning[L0259]: `int` hides the kernel type `int`
+  --> src/main.knv:5:26
+   |
+ 5 |               (defstruct int
+   |                          ^^^ this binds `int` in place of the kernel type
+...
+10 | (apply-macro make-counter)
+   | -------------------------- in this macro call
+   |
+   = note: in the code of `make-counter`, a type written `int` names this binding, while a printed `int` is the kernel type
+   = help: rename `int` in `make-counter`
+   = note: run `knave doc L0259` for an explanation
+
+error[L0401]: mismatched types
+  --> src/main.knv:10:1
+   |
+10 | (apply-macro make-counter)
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | expected `int`, found an integer
+   | expected because of this signature
+   |
+   = note: run `knave doc L0401` for an explanation

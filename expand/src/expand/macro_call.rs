@@ -217,6 +217,11 @@ impl Expander<'_> {
         }
         let closure = self.macro_closure(binding, call_site)?;
         let (input, introduction) = self.prepare_input(form, context);
+        let origin = self.macro_origin(binding, call_site);
+        self.tables
+            .macro_origins
+            .project_introductions
+            .record(introduction, &origin);
         let arguments = ReturnedArguments::of_call(&input);
         self.expansion_depth += 1;
         self.introductions.push(introduction);

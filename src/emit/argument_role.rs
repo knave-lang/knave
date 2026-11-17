@@ -1,4 +1,4 @@
-use crate::types::{Borrow, TypedArgument};
+use crate::types::{Borrow, Type, TypedArgument, TypedExpr, TypedExprKind};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum ArgumentRole {
@@ -24,6 +24,19 @@ impl ArgumentRole {
             Borrow::Reborrow => None,
             Borrow::Pending(_) => {
                 unreachable!("the type checker decides every pending borrow")
+            }
+            _ => None,
+        }
+    }
+
+    pub(super) fn reborrowed_reference(self, argument: &TypedArgument) -> Option<&TypedExpr> {
+        match &argument.value.kind {
+            TypedExprKind::Deref(reference)
+                if argument.borrow == Borrow::Shared
+                    && !self.borrows_by_itself(argument.borrow)
+                    && matches!(reference.ty, Type::Ref(..)) =>
+            {
+                Some(reference)
             }
             _ => None,
         }

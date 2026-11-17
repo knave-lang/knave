@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/print_dereferenced_part.knv
+---
+3
+count: 2
+last: 8
+5
+2
+8

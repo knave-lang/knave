@@ -2008,6 +2008,12 @@ impl TypeChecker {
         parameter: &Type,
         value: &TypedExpr,
     ) -> Result<Borrow, Diagnostic> {
+        if let Type::Ref(_, referent) = self.unifier.shallow(parameter)
+            && self.template_borrows.takes_dereference(callee, value)
+            && self.passes_as_written(value)
+        {
+            return self.pass(&referent, &value.ty, value.span, Borrow::Shared);
+        }
         match self.layers_above_held_view(callee, parameter, value) {
             Some(layers) => self.pass_held_view(parameter, value, layers),
             None => self.pass_to_callee(callee, position, parameter, value),

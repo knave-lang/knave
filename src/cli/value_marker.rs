@@ -1,6 +1,7 @@
 use std::hash::{BuildHasher, RandomState};
 
 use super::program_stream::ProgramStream;
+use super::written_printer::WrittenPrinter;
 use crate::diagnostic::Diagnostics;
 use crate::expand::{ExpansionSession, ResultPrinter};
 use crate::language::Language;
@@ -10,7 +11,7 @@ pub struct ValueMarker {
 }
 
 impl ValueMarker {
-    pub const VALUE_TEXT: &'static str = "pr-str";
+    const VALUE_TEXT: &'static str = "pr-str";
     const VALUE_PRINTER: &'static str = "print-value";
     const VALUE_PRINTER_SOURCE: &'static str = "<value printer>";
     const RECORD_SEPARATOR: char = '\u{1e}';
@@ -32,12 +33,12 @@ impl ValueMarker {
         &self,
         session: &mut ExpansionSession<'_>,
     ) -> Result<ResultPrinter, Diagnostics> {
-        let bound_holder = session
-            .prelude_value(Self::VALUE_TEXT)
-            .expect("the prelude defines the value's text");
-        let source = session.add_source(Self::VALUE_PRINTER_SOURCE, &self.printer_text());
-        let printer = session.prelude_function(Self::VALUE_PRINTER, source)?;
-        Ok(ResultPrinter::through(printer, bound_holder))
+        WrittenPrinter::new(
+            Self::VALUE_PRINTER,
+            Self::VALUE_PRINTER_SOURCE,
+            Self::VALUE_TEXT,
+        )
+        .build(session, &self.printer_text())
     }
 
     pub fn text(&self) -> &str {

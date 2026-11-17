@@ -2,12 +2,11 @@ use std::rc::Rc;
 
 use super::assumed_collections::CollectionAssumption;
 use super::copy::CopyRules;
-use super::pair_position::PairPosition;
 use super::problems::TypeProblems;
 use super::rust_types::RustTypeTable;
 use super::ty::Type;
 use super::typed::{TypedExpr, TypedExprKind, TypedStructExpr};
-use crate::core::{Expr, FieldLabel, FieldSpelling};
+use crate::core::{Expr, FieldLabel, FieldSpelling, PairPosition};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 
@@ -50,7 +49,7 @@ impl PositionalRead {
     }
 
     pub fn slice_assumption(&self) -> CollectionAssumption {
-        self.position.slice_assumption()
+        CollectionAssumption::PairPartCollection(self.position)
     }
 
     pub fn reader<'e>(&self, arguments: &'e [Expr]) -> Result<&'e Expr, Diagnostic> {
@@ -81,9 +80,9 @@ impl PositionalRead {
 
     fn label(&self) -> FieldLabel {
         FieldLabel {
-            name: Rc::from(self.position.field_name()),
+            name: Rc::from(self.position.index().to_string()),
             span: self.span,
-            spelling: FieldSpelling::Pair(self.position.operation()),
+            spelling: FieldSpelling::Pair(self.position),
         }
     }
 }

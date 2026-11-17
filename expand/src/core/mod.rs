@@ -14,6 +14,7 @@ mod keyword;
 mod lexeme;
 mod module;
 mod module_path;
+mod pair_position;
 mod passing_allowance;
 mod passing_relaxation;
 mod path_part;
@@ -64,6 +65,7 @@ pub use module::{
     TraitAssociatedType, TraitMethod, VariantDeclaration, VariantPayload,
 };
 pub use module_path::ModulePath;
+pub use pair_position::PairPosition;
 pub use passing_allowance::PassingAllowance;
 pub use primitive::PrimitiveType;
 pub use primitive_names::PrimitiveNames;

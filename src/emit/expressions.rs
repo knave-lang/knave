@@ -3,6 +3,7 @@ use std::rc::Rc;
 use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::argument_role::ArgumentRole;
 use super::callee_definitions::{CalleeDefinition, CalleeDefinitions};
 use super::clause_choice::ClauseChoice;
 use super::emitted_types::EmittedTypes;
@@ -57,15 +58,6 @@ impl UpdateArgument {
             None => self.code.clone(),
         }
     }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum ArgumentRole {
-    Receiver,
-    IndexReceiver,
-    Borrowed,
-    MutPlace,
-    Ordinary,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -159,18 +151,6 @@ impl PatternShape {
             guards: Vec::new(),
             prologue: Vec::new(),
         }
-    }
-}
-
-impl ArgumentRole {
-    fn borrows_by_itself(self, borrow: Borrow) -> bool {
-        matches!(
-            (self, borrow),
-            (
-                ArgumentRole::Receiver | ArgumentRole::IndexReceiver,
-                Borrow::Shared | Borrow::Mutable,
-            ) | (ArgumentRole::Borrowed, Borrow::Shared)
-        )
     }
 }
 
@@ -2088,7 +2068,7 @@ impl<'a> ExpressionEmitter<'a> {
             Borrow::Deref(levels) | Borrow::Collapse(levels) => {
                 value.ty.reference_depth().saturating_sub(levels)
             }
-            _ if Self::writes_borrow_prefix(argument, role) => value.ty.reference_depth() + 1,
+            _ if role.writes_borrow_prefix(argument) => value.ty.reference_depth() + 1,
             _ if role == ArgumentRole::Borrowed => self
                 .place_depth(value)
                 .unwrap_or_else(|| value.ty.reference_depth()),
@@ -2145,7 +2125,7 @@ impl<'a> ExpressionEmitter<'a> {
         context: TypeContext,
         role: ArgumentRole,
     ) -> Option<Code> {
-        if Self::writes_borrow_prefix(argument, role) {
+        if role.writes_borrow_prefix(argument) {
             let value = self.argument_value(&argument.value, context, role);
             return Some(value.spanned(argument.value.span));
         }
@@ -2162,11 +2142,6 @@ impl<'a> ExpressionEmitter<'a> {
             }
             _ => None,
         }
-    }
-
-    fn writes_borrow_prefix(argument: &TypedArgument, role: ArgumentRole) -> bool {
-        matches!(argument.borrow, Borrow::Shared | Borrow::Mutable)
-            && !Self::borrowed_already(argument, role)
     }
 
     fn dereferenced(code: Code, levels: usize, span: Span) -> Code {
@@ -2344,7 +2319,7 @@ impl<'a> ExpressionEmitter<'a> {
         .spanned(argument.value.span);
         let prefix = match role {
             ArgumentRole::MutPlace => None,
-            _ => Self::borrow_prefix(argument, role),
+            _ => role.borrow_prefix(argument),
         };
         match prefix {
             Some(prefix) => Self::prefixed(&prefix, value).spanned(argument.value.span),
@@ -2474,24 +2449,6 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn is_static(&self, binding: BindingId) -> bool {
         self.plan.item(binding).map(|item| item.kind) == Some(ItemKind::Static)
-    }
-
-    fn borrow_prefix(argument: &TypedArgument, role: ArgumentRole) -> Option<String> {
-        let borrowed_already = Self::borrowed_already(argument, role);
-        match argument.borrow {
-            Borrow::Shared if !borrowed_already => Some("&".to_string()),
-            Borrow::Mutable if !borrowed_already => Some("&mut ".to_string()),
-            Borrow::Deref(levels) => Some("*".repeat(levels)),
-            Borrow::Reborrow => None,
-            Borrow::Pending(_) => {
-                unreachable!("the type checker decides every pending borrow")
-            }
-            _ => None,
-        }
-    }
-
-    fn borrowed_already(argument: &TypedArgument, role: ArgumentRole) -> bool {
-        argument.value.ty.is_reference() || role.borrows_by_itself(argument.borrow)
     }
 
     fn prefixed(prefix: &str, value: Code) -> Code {

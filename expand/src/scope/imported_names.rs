@@ -38,7 +38,12 @@ impl ImportedNames {
         name: Rc<str>,
         namespace: Namespace,
     ) -> impl Iterator<Item = &'t NameEntries> + use<'t, 's> {
-        self.modules_seen_from(scopes)
+        let modules = self
+            .exports_hold(&name, namespace)
+            .then(|| self.modules_seen_from(scopes));
+        modules
+            .into_iter()
+            .flatten()
             .filter_map(move |module| module.entries(&name, namespace))
     }
 
@@ -93,6 +98,11 @@ impl ImportedNames {
             self.qualified_names.record_saved(name, namespace);
         }
         self.recorded_exports.push(exports);
+    }
+
+    fn exports_hold(&self, name: &str, namespace: Namespace) -> bool {
+        let mut exports = self.recorded_exports.iter();
+        exports.any(|exports| exports.position(name, namespace).is_some())
     }
 
     fn modules_seen_from<'t, 's>(

@@ -1,6 +1,8 @@
+use super::first_positions::FirstPositions;
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TiedPositions {
-    low: u64,
+    low: FirstPositions,
     high: Option<Box<HighPositions>>,
 }
 
@@ -8,8 +10,6 @@ pub struct TiedPositions {
 struct HighPositions(Vec<usize>);
 
 impl TiedPositions {
-    const LOW_BITS: usize = u64::BITS as usize;
-
     pub fn of(positions: impl IntoIterator<Item = usize>) -> Self {
         positions
             .into_iter()
@@ -20,8 +20,8 @@ impl TiedPositions {
     }
 
     pub fn contains(&self, position: usize) -> bool {
-        match position < Self::LOW_BITS {
-            true => self.low & (1 << position) != 0,
+        match FirstPositions::reaches(position) {
+            true => self.low.contains(position),
             false => self
                 .high
                 .as_ref()
@@ -34,14 +34,14 @@ impl TiedPositions {
     }
 
     pub fn positions(&self) -> impl Iterator<Item = usize> + '_ {
-        (0..Self::LOW_BITS)
-            .filter(|position| self.low & (1 << position) != 0)
+        self.low
+            .positions()
             .chain(self.high.iter().flat_map(|high| high.0.iter().copied()))
     }
 
     fn insert(&mut self, position: usize) {
-        match position < Self::LOW_BITS {
-            true => self.low |= 1 << position,
+        match FirstPositions::reaches(position) {
+            true => self.low = self.low.union(FirstPositions::of([position])),
             false => {
                 let high = &mut self.high.get_or_insert_with(Box::default).0;
                 if let Err(at) = high.binary_search(&position) {

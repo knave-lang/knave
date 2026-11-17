@@ -1,11 +1,13 @@
 use rustc_hash::FxHashMap;
 
+use super::RustTrait;
 use super::checker::TypeChecker;
 use super::declared_generics::DeclaredGenerics;
-use super::ty::{GenericId, Type};
+use super::ty::{Bound, GenericId, Type};
 use crate::core::{
-    BindingArena, BindingId, BindingInfo, BindingKind, ClosureKind, ModuleId, PrimitiveType,
-    ReferenceKind, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
+    BindingArena, BindingId, BindingInfo, BindingKind, ClosureKind, ImplementorRows, ModuleId,
+    PrimitiveType, ReferenceKind, RustTraitDeclaration, TypeBinder, TypeBound, TypeExpr,
+    TypeExprKind,
 };
 use crate::diagnostic::Diagnostic;
 use crate::source::{SourceId, Span};
@@ -107,6 +109,54 @@ impl WrittenTypeFixture {
         scope: &FxHashMap<BindingId, GenericId>,
     ) -> Result<Type, Diagnostic> {
         self.checker.written_types().lower_type(type_expr, scope)
+    }
+
+    pub(super) fn lower_without_generics(
+        &mut self,
+        type_expr: &TypeExpr,
+    ) -> Result<Type, Diagnostic> {
+        self.checker
+            .written_types()
+            .lower_without_generics(type_expr)
+    }
+
+    pub(super) fn lower_bound(&mut self, bound: &TypeBound) -> Result<Bound, Diagnostic> {
+        self.checker
+            .written_types()
+            .lower_type_bound(bound, &FxHashMap::default())
+    }
+
+    pub(super) fn bound_with_argument(binding: BindingId) -> TypeBound {
+        TypeBound {
+            binding,
+            argument: Some(Self::integer()),
+        }
+    }
+
+    pub(super) fn holding_trait(
+        &mut self,
+        rust_trait: impl FnOnce(&RustTraitDeclaration) -> RustTrait,
+    ) -> BindingId {
+        let binding = self.named_trait("shown");
+        let declaration = RustTraitDeclaration {
+            binding,
+            path: "Shown".into(),
+            resolved_path: "Shown".into(),
+            self_variable: binding,
+            methods: Vec::new(),
+            help: None,
+            requires: Vec::new(),
+            structural: None,
+            associated: Vec::new(),
+            implementors: ImplementorRows::new(Vec::new()),
+        };
+        let rust_trait = rust_trait(&declaration);
+        self.checker
+            .declarations
+            .traits
+            .table
+            .add(binding, rust_trait);
+        binding
     }
 
     pub(super) fn declared_generics(&mut self) -> DeclaredGenerics {

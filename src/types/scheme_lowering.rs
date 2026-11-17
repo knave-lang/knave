@@ -71,13 +71,12 @@ impl<'l> SchemeLowering<'l> {
 
     pub(super) fn lower_impl_implementor(
         &mut self,
-        variables: Vec<BindingId>,
         implementor: &TypeExpr,
         associated: &[ImplAssociatedType],
     ) -> Result<LoweredImplementor, Diagnostic> {
         let mut params = Vec::new();
         let mut scope = FxHashMap::default();
-        for variable in variables {
+        for variable in self.types.type_variables(implementor) {
             let param = self.types.declare_variable(variable);
             scope.insert(variable, param.id);
             params.push(param);
@@ -261,7 +260,7 @@ mod tests {
         let (body, params, values) = fixture
             .checker
             .written_schemes()
-            .lower_impl_implementor(vec![variable], &implementor, &associated)
+            .lower_impl_implementor(&implementor, &associated)
             .expect("the implementor lowers");
         let generic = Type::Generic(params[0].id);
         assert_eq!(body, Type::Named(wrapper, vec![generic.clone()]));

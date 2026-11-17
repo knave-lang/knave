@@ -1,0 +1,2 @@
+(defproject money-generate-app
+  (libraries (money :path "../money")))

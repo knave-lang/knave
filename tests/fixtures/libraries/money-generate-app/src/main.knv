@@ -1,0 +1,11 @@
+(use money generate-named)
+
+(generate-named make-float)
+
+(make-float)
+
+(type start (fn () float))
+
+(defn start () 1.5)
+
+(defn main () (println (start)))

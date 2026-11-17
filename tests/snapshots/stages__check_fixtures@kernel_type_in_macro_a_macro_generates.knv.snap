@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/kernel_type_in_macro_a_macro_generates.knv
+---
+warning[L0259]: `float` hides the kernel type `float`
+  --> check/kernel_type_in_macro_a_macro_generates.knv:4:38
+   |
+ 4 |                           (defstruct float
+   |                                      ^^^^^ this binds `float` in place of the kernel type
+...
+11 | (make-float)
+   | ------------ in this macro call
+   |
+   = note: in the code of `generate-named`, a type written `float` names this binding, while a printed `float` is the kernel type
+   = help: rename `float` in `generate-named`
+   = note: run `knave doc L0259` for an explanation
+
+error[L0401]: mismatched types
+  --> check/kernel_type_in_macro_a_macro_generates.knv:11:1
+   |
+11 | (make-float)
+   | ^^^^^^^^^^^^
+   | |
+   | expected `float`, found a float
+   | expected because of this signature
+   |
+   = note: run `knave doc L0401` for an explanation

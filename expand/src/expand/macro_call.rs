@@ -220,7 +220,7 @@ impl Expander<'_> {
         let origin = self.macro_origin(binding, call_site);
         self.tables
             .macro_origins
-            .project_introductions
+            .introducing_macros
             .record(introduction, &origin);
         let arguments = ReturnedArguments::of_call(&input);
         self.expansion_depth += 1;

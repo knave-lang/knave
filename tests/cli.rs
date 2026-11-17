@@ -8002,6 +8002,11 @@ fn a_program_macro_around_a_library_macro_warns_only_at_its_own_binder() {
 }
 
 #[test]
+fn a_macro_that_a_library_macro_generates_leaves_its_binder_silent() {
+    Sandbox::check_fixture("libraries/money-generate-app").assert_silent_success();
+}
+
+#[test]
 fn a_program_macro_that_a_library_macro_calls_warns_at_its_own_binder() {
     let check = Sandbox::check_fixture("libraries/money-apply-app");
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());

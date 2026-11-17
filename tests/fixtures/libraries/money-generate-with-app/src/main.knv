@@ -1,0 +1,7 @@
+(use money generate-with)
+
+(generate-with make-float float)
+
+(make-float)
+
+(defn main () (println 1))

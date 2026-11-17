@@ -24,14 +24,10 @@ impl MacroOrigins {
         if !scopes.introduced(binder) {
             return Some(BinderReach::Written { binder: span });
         }
-        let introducing_macro = self.introducing_macros.project_writer_of(binder)?;
-        Some(BinderReach::InMacro {
-            binder: self
-                .introduced
-                .first_written_at(span, binder.name())
-                .unwrap_or(span),
-            call: span,
-            introducing_macro,
-        })
+        let written = self
+            .introduced
+            .first_written_at(span, binder.name())
+            .unwrap_or(span);
+        self.introducing_macros.reach_of(binder, written, span)
     }
 }

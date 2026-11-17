@@ -1,10 +1,10 @@
 use crate::core::Namespace;
 
 #[derive(Clone, Copy)]
-pub(crate) struct NameKey<'a> {
-    pub(crate) name: &'a str,
-    pub(crate) namespace: Namespace,
-    pub(crate) hash: u64,
+pub(super) struct NameKey<'a> {
+    pub(super) name: &'a str,
+    pub(super) namespace: Namespace,
+    pub(super) hash: u64,
 }
 
 impl<'a> NameKey<'a> {
@@ -13,7 +13,7 @@ impl<'a> NameKey<'a> {
     const HASH_FINAL_ROTATION: u32 = 26;
     const HASH_CHUNK: usize = size_of::<u64>();
 
-    pub(crate) fn new(name: &'a str, namespace: Namespace) -> Self {
+    pub(super) fn new(name: &'a str, namespace: Namespace) -> Self {
         Self {
             name,
             namespace,
@@ -21,18 +21,23 @@ impl<'a> NameKey<'a> {
         }
     }
 
-    pub(crate) fn code(namespace: Namespace) -> u32 {
+    pub(super) fn code(namespace: Namespace) -> u32 {
         match namespace {
             Namespace::Value => 0,
             Namespace::Type => 1,
         }
     }
 
-    pub(crate) fn namespace(code: u32) -> Namespace {
+    pub(super) fn namespace(code: u32) -> Namespace {
         match code {
             0 => Namespace::Value,
             _ => Namespace::Type,
         }
+    }
+
+    pub(super) fn first_slot(self, mask: usize) -> usize {
+        let wide_mask = u64::try_from(mask).expect("a table's mask fits 64 bits");
+        usize::try_from(self.hash & wide_mask).expect("a slot fits its mask")
     }
 
     fn hash(name: &str, namespace: Namespace) -> u64 {

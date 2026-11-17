@@ -218,7 +218,7 @@ mod tests {
             ];
             let bytes = bincode::serialize(&ExportBytes::of(exports.into_iter()))
                 .expect("the exports save");
-            SavedExports::of(bincode::deserialize(bytes.leak()).expect("the exports load"))
+            bincode::deserialize(bytes.leak()).expect("the exports load")
         }
 
         fn resolve(&self, name: &str, scopes: &[Scope]) -> Resolution {

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use crate::core::{BindingId, Namespace};
-use crate::scope::{ExportBytes, ExportParts, SavedExports};
+use crate::scope::{ExportBytes, SavedExports};
 
 pub enum ExportTable {
     Built(FxHashMap<(Rc<str>, Namespace), BindingId>),
@@ -49,29 +49,25 @@ impl ExportTable {
             Self::Saved(saved) => Some(*saved),
         }
     }
-
-    fn encoded(&self) -> ExportBytes {
-        match self {
-            Self::Built(exports) => ExportBytes::of(
-                exports
-                    .iter()
-                    .map(|((name, namespace), binding)| (&**name, *namespace, *binding)),
-            ),
-            Self::Saved(saved) => saved.encoded(),
-        }
-    }
 }
 
 impl serde::Serialize for ExportTable {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.encoded().serialize(serializer)
+        match self {
+            Self::Built(exports) => {
+                let entries = exports.iter();
+                let exports =
+                    entries.map(|((name, namespace), binding)| (&**name, *namespace, *binding));
+                ExportBytes::of(exports).serialize(serializer)
+            }
+            Self::Saved(saved) => saved.serialize(serializer),
+        }
     }
 }
 
 impl<'de: 'static> serde::Deserialize<'de> for ExportTable {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let parts: ExportParts = serde::Deserialize::deserialize(deserializer)?;
-        Ok(Self::Saved(SavedExports::of(parts)))
+        SavedExports::deserialize(deserializer).map(Self::Saved)
     }
 }
 

@@ -1,0 +1,21 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/kernel_type_in_generated_macro.knv
+---
+warning[L0259]: `int` hides the kernel type `int`
+ --> check/kernel_type_in_generated_macro.knv:4:38
+  |
+4 |                 (template (defstruct int
+  |                                      ^^^ this binds `int` in place of the kernel type
+...
+8 | (define-and-use)
+  | ---------------- in this macro call
+  |
+  = note: in the code of `make-int`, a type written `int` names this binding, while a printed `int` is the kernel type
+  = help: rename `int` in `make-int`
+  = note: run `knave doc L0259` for an explanation
+
+(derive int clone copy partial-eq eq hash show)
+(type ->int (fn (bool) int))
+(type main (fn () unit))

@@ -985,8 +985,8 @@
 
   Each value's type implements [show], and a [string] prints quoted. A space
   separates two printed forms, so the line reads back as the values. `prn`
-  as a value is a one-value function, and `eval` and the prompt print each
-  result with it.
+  as a value is a one-value function, and `eval` and the prompt print a
+  result as `prn` prints it.
 
   (prn \"pear\" 3)
   => \"pear\" 3 ...")

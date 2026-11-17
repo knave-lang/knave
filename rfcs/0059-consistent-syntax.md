@@ -1,6 +1,6 @@
 # RFC 0059: One consistent syntax
 
-**Status:** Accepted
+**Status:** Accepted. Its move of the one-argument printer to `print-form` is superseded by issue #593, which keeps `prn` as the one name; `docs/language.md` states the rule.
 **Date:** 2026-11-06
 
 ## Problem

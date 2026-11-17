@@ -4363,7 +4363,7 @@ fn run_reports_a_program_that_cannot_start() {
 }
 
 #[test]
-fn eval_prints_a_value_through_print_form() {
+fn eval_prints_a_value_as_prn_prints_it() {
     let sandbox = Sandbox::new("eval_value").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "session.knv", "(->point (square 2) 3)"]);
     assert_eq!(

@@ -3,7 +3,7 @@ use super::saved_words::{SavedWords, SavedWordsBuilder};
 
 #[derive(Clone, Copy)]
 pub(super) struct NameSlots {
-    positions: SavedWords,
+    positions: SavedWords<1>,
 }
 
 impl NameSlots {
@@ -11,7 +11,7 @@ impl NameSlots {
 
     pub(super) fn new(bytes: &'static [u8]) -> Self {
         Self {
-            positions: SavedWords::new(bytes, 1),
+            positions: SavedWords::new(bytes),
         }
     }
 
@@ -27,7 +27,8 @@ impl NameSlots {
         let mask = count - 1;
         let mut slot = key.first_slot(mask);
         loop {
-            let claimed = self.positions.word(slot, 0) as usize;
+            let [claimed] = self.positions.row(slot);
+            let claimed = claimed as usize;
             if claimed == Self::EMPTY {
                 return None;
             }

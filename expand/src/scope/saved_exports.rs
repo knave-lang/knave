@@ -47,7 +47,7 @@ impl SavedExports {
 
     pub fn export(&self, position: usize) -> (&'static str, Namespace, BindingId) {
         let (name, namespace) = self.keys.key(position);
-        let binding = SavedWords::new(self.bindings, 1).word(position, 0);
+        let [binding] = SavedWords::<1>::new(self.bindings).row(position);
         (name, namespace, BindingId::from_index(binding))
     }
 }

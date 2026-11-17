@@ -14,19 +14,15 @@ pub(super) struct SavedKeys {
 }
 
 impl SavedKeys {
-    const NAME_START: usize = 0;
-    const NAME_END: usize = 1;
-    const NAMESPACE: usize = 2;
-    const WIDTH: usize = 3;
-
     pub(super) fn position(&self, key: NameKey<'_>) -> Option<usize> {
         NameSlots::new(self.slots).find(key, |position| self.holds(position, key))
     }
 
     pub(super) fn key(&self, position: usize) -> (&'static str, Namespace) {
-        let name = std::str::from_utf8(self.name_bytes(position)).expect("a saved name is text");
-        let namespace = NameKey::namespace(self.rows().word(position, Self::NAMESPACE));
-        (name, namespace)
+        let [name_start, name_end, namespace] = self.rows().row(position);
+        let name = &self.names[name_start as usize..name_end as usize];
+        let name = std::str::from_utf8(name).expect("a saved name is text");
+        (name, NameKey::namespace(namespace))
     }
 
     pub(super) fn count(&self) -> usize {
@@ -34,19 +30,13 @@ impl SavedKeys {
     }
 
     fn holds(&self, position: usize, key: NameKey<'_>) -> bool {
-        let namespace = self.rows().word(position, Self::NAMESPACE);
+        let [name_start, name_end, namespace] = self.rows().row(position);
         namespace == NameKey::code(key.namespace)
-            && self.name_bytes(position) == key.name.as_bytes()
+            && &self.names[name_start as usize..name_end as usize] == key.name.as_bytes()
     }
 
-    fn name_bytes(&self, position: usize) -> &'static [u8] {
-        let rows = self.rows();
-        let start = rows.word(position, Self::NAME_START) as usize;
-        &self.names[start..rows.word(position, Self::NAME_END) as usize]
-    }
-
-    fn rows(&self) -> SavedWords {
-        SavedWords::new(self.rows, Self::WIDTH)
+    fn rows(&self) -> SavedWords<3> {
+        SavedWords::new(self.rows)
     }
 }
 

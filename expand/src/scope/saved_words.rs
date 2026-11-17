@@ -1,24 +1,27 @@
 #[derive(Clone, Copy)]
-pub(super) struct SavedWords {
+pub(super) struct SavedWords<const WIDTH: usize> {
     bytes: &'static [u8],
-    width: usize,
 }
 
-impl SavedWords {
+impl<const WIDTH: usize> SavedWords<WIDTH> {
     const WORD: usize = size_of::<u32>();
+    const ROW: usize = WIDTH * Self::WORD;
 
-    pub(super) fn new(bytes: &'static [u8], width: usize) -> Self {
-        Self { bytes, width }
+    pub(super) fn new(bytes: &'static [u8]) -> Self {
+        Self { bytes }
     }
 
     pub(super) fn rows(&self) -> usize {
-        self.bytes.len() / (self.width * Self::WORD)
+        self.bytes.len() / Self::ROW
     }
 
-    pub(super) fn word(&self, row: usize, column: usize) -> u32 {
-        let start = (row * self.width + column) * Self::WORD;
-        let word = &self.bytes[start..start + Self::WORD];
-        u32::from_le_bytes(word.try_into().expect("a saved word has four bytes"))
+    pub(super) fn row(&self, position: usize) -> [u32; WIDTH] {
+        let start = position * Self::ROW;
+        let row = &self.bytes[start..start + Self::ROW];
+        std::array::from_fn(|column| {
+            let word = &row[column * Self::WORD..(column + 1) * Self::WORD];
+            u32::from_le_bytes(word.try_into().expect("a saved word has four bytes"))
+        })
     }
 }
 
@@ -46,9 +49,8 @@ mod tests {
         let mut builder = SavedWordsBuilder::default();
         builder.push(&[1, 2]);
         builder.push(&[3, 70_000]);
-        let words = SavedWords::new(builder.bytes.leak(), 2);
+        let words = SavedWords::<2>::new(builder.bytes.leak());
         assert_eq!(words.rows(), 2);
-        assert_eq!(words.word(1, 0), 3);
-        assert_eq!(words.word(1, 1), 70_000);
+        assert_eq!(words.row(1), [3, 70_000]);
     }
 }

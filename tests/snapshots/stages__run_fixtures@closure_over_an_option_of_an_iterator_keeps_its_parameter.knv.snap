@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/closure_over_an_option_of_an_iterator_keeps_its_parameter.knv
+---
+2

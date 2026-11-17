@@ -290,6 +290,10 @@ mod tests {
               (set! x (+ x 1))
               (match (iter items)
                 (it (fn () (count it)))))
+            (defn wrapped! (s)
+              (set! s (str \"xy\"))
+              (local cs (some (chars (as-str s))))
+              (fn () (match cs ((some c) (count c)) (none 0))))
             (defn main ())";
 
         fn new() -> Self {
@@ -376,6 +380,11 @@ mod tests {
     #[test]
     fn a_match_binder_keeps_the_parameter_its_scrutinee_borrows() {
         assert_eq!(KeptFixture::new().kept_names("matched!"), vec!["items"]);
+    }
+
+    #[test]
+    fn a_local_holding_an_iterator_inside_another_type_keeps_the_parameter_it_borrows() {
+        assert_eq!(KeptFixture::new().kept_names("wrapped!"), vec!["s"]);
     }
 
     #[test]

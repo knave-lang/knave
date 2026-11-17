@@ -10598,6 +10598,18 @@ fn task_dotted_use_through_a_link_names_the_file_it_reaches() {
     );
 }
 
+#[test]
+fn dotted_use_of_a_link_to_a_file_of_another_extension_names_the_file() {
+    let sandbox = Sandbox::new("dotted_use_link_other_extension")
+        .with_file("main.knv", "(use ./alias)\n\n(defn main () (println 1))\n")
+        .with_file("notes.txt", "(def kept 0)\n")
+        .with_file("notes.knv", "(def kept 1)\n");
+    std::os::unix::fs::symlink("notes.txt", sandbox.directory.join("alias.knv"))
+        .expect("the sandbox can hold a symbolic link");
+    let check = sandbox.compiler(&["check", "main.knv"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
 const DOTTED_MARKS_TEST: &str = "(use ../src/text/marks bang)\n\n(use prelude/test assert deftest)\n\n(deftest bangs (assert (= bang \"!\")))\n";
 const DOTTED_LIBRARY_ROOT: &str =
     "(use ./square side)\n\n(use ../square)\n\n(export area)\n\n(defn area (side) (* side side))\n";

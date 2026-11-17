@@ -42,11 +42,15 @@ impl<'s> LocalFiles<'s> {
         };
         match (0..self.roots.len()).find_map(|position| self.written_path(position, &file)) {
             Some(written) => UnnamedPartTarget::Reachable(written),
-            None => self.unwritable_target(holder, local),
+            None => self.target_without_module_path(holder, local),
         }
     }
 
-    fn unwritable_target(&self, holder: &LocalRoot<'_>, local: &Path) -> UnnamedPartTarget {
+    fn target_without_module_path(
+        &self,
+        holder: &LocalRoot<'_>,
+        local: &Path,
+    ) -> UnnamedPartTarget {
         match self.roots.iter().find(|root| root.holds_unreachable(local)) {
             Some(scoped) => UnnamedPartTarget::BeyondTaskReach(scoped.shown_file(local)),
             None => UnnamedPartTarget::Unreachable(holder.shown_file(local)),
@@ -60,7 +64,9 @@ impl<'s> LocalFiles<'s> {
             .iter()
             .position(|root| root.reached_file(local).is_some())?;
         let written = ModulePath::of_file(local)?;
-        let loads_here = first_reach == position && !(self.loads_elsewhere)(&written);
+        let names_the_file = Path::new(&Language::file_name(written.as_str())) == local;
+        let loads_here =
+            names_the_file && first_reach == position && !(self.loads_elsewhere)(&written);
         loads_here.then_some(written)
     }
 }

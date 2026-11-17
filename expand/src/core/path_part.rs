@@ -1,31 +1,12 @@
 use super::ModulePath;
 
-pub(super) enum PathPart {
-    Current,
-    Parent,
-    Empty,
-    Named,
-}
+pub(super) struct PathPart;
 
 impl PathPart {
-    const CURRENT: &'static str = ".";
-    const PARENT: &'static str = "..";
-    const EMPTY: &'static str = "";
+    const NOT_NAMES: [&'static str; 3] = [".", "..", ""];
 
-    pub(super) fn parts(path: &str) -> impl Iterator<Item = PathPart> {
-        path.split(ModulePath::SEPARATOR).map(Self::parse)
-    }
-
-    fn parse(part: &str) -> Self {
-        match part {
-            Self::CURRENT => Self::Current,
-            Self::PARENT => Self::Parent,
-            Self::EMPTY => Self::Empty,
-            _ => Self::Named,
-        }
-    }
-
-    pub(super) fn is_name(&self) -> bool {
-        matches!(self, Self::Named)
+    pub(super) fn all_names(path: &str) -> bool {
+        path.split(ModulePath::SEPARATOR)
+            .all(|part| !Self::NOT_NAMES.contains(&part))
     }
 }

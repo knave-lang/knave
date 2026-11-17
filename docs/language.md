@@ -697,7 +697,7 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 ## Modules
 
 - One file is one module. `(use text/format pad-left)` loads `text/format.knv` relative to the source root and binds `pad-left`. The source root is the project's source root (see Projects), or else the entry file's directory.
-- Every part of a module path is a name: a `.` or `..` part, a leading, trailing or doubled `/` and an absolute path are `L0260`. `(use ./text/format)` is `L0260`, whose help writes the module path that loads the file the path leads to, here `text/format`.
+- Every part of a `use` path is a name: a `.` or `..` part, a leading, trailing or doubled `/` and an absolute path are `L0260`. `(use ./text/format)` is `L0260`, whose help writes the module path that loads the file the path leads to, here `text/format`.
 - A name is private to its file until an `(export ...)` lists it. `export` can list imported names, which re-exports them.
 - Exporting a struct makes all its fields public: every module that imports it can read, build and update it, and its emitted Rust fields are `pub`.
 - Every user module imports the prelude. An explicit `use` shadows a prelude name.

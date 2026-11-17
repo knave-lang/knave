@@ -180,14 +180,6 @@ impl ExpansionSession<'_> {
         self.expander.evaluated_forms.is_definition(span)
     }
 
-    pub fn prelude_value(&self, name: &str) -> Option<BindingId> {
-        let prelude = self.prelude()?;
-        self.expander
-            .modules
-            .get(prelude)
-            .exported(name, Namespace::Value)
-    }
-
     pub fn module_value(&self, module: &str, name: &str) -> Option<BindingId> {
         let module = self.expander.modules.find(&ModulePath::new(module))?;
         self.expander
@@ -411,9 +403,14 @@ mod tests {
             let printer = session
                 .prelude_function(Self::PRINTER_NAME, source)
                 .unwrap_or_else(|_| panic!("the printer lowers"));
-            let text = session
-                .prelude_value(Self::VALUE_TEXT)
-                .expect("the prelude defines the value's text");
+            let bound = session.add_source(Self::PRINTER_NAME, Self::VALUE_TEXT);
+            let expanded = session
+                .prelude_expression(bound)
+                .unwrap_or_else(|_| panic!("the value's text lowers"));
+            let ExprKind::Leaf(Leaf::Var(text)) = expanded.kind() else {
+                panic!("the prelude defines the value's text");
+            };
+            let text = *text;
             let printing = entry.printing(&ResultPrinter::through(printer, text), &[0]);
             (Self::finished(session), printing)
         }

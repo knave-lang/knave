@@ -1872,11 +1872,10 @@ impl<'a> ExpressionEmitter<'a> {
         instantiated: &Type,
     ) -> Rc<RustTemplate> {
         let chosen = binding.and_then(|binding| {
-            let chooser = self.plan.definition(binding)?.scheme.clause_chooser()?;
-            let (_, parameter) = self
-                .definition_type_bindings(binding, instantiated)
-                .into_iter()
-                .find(|(name, _)| *name == *chooser.name)?;
+            let scheme = &self.plan.definition(binding)?.scheme;
+            let mut bindings = FxHashMap::default();
+            Self::collect_generic_bindings(&scheme.body, instantiated, &mut bindings);
+            let parameter = bindings.remove(&scheme.clause_chooser()?.id)?;
             Some(ClauseChoice::new(self.program).applied(template, binding, &parameter))
         });
         chosen.unwrap_or_else(|| Rc::clone(template))

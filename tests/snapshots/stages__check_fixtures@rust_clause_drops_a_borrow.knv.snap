@@ -20,3 +20,12 @@ error[L0247]: a `rust` clause must pass its arguments as its template does
   |
   = help: borrow the placeholder as the template does
   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> check/rust_clause_drops_a_borrow.knv:34:6
+   |
+34 |     ((ref str) "{0}.contains({1})")))
+   |      ^^^^^^^^^ this clause passes `{1}` without the template's borrow, and its type for `{1}` cannot be settled from the clause's target
+   |
+   = help: borrow the placeholder as the template does
+   = note: run `knave doc L0247` for an explanation

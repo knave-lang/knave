@@ -29,7 +29,7 @@ use super::parameter_modes::ParameterModes;
 use super::peeling::ReferencePeeling;
 use super::pending::PendingBorrow;
 use super::pinning::LiteralDefaults;
-use super::pipelines::Pipelines;
+use super::prelude_types::PreludeTypes;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
 use super::reached_traits::{ReachedDeclaration, ReachedTraits};
 use super::selection::Selection;
@@ -666,8 +666,8 @@ impl TypeChecker {
         LiteralSettlement::new(&self.unifier, &self.declarations.traits.table)
     }
 
-    pub(super) fn pipelines(&self) -> Pipelines<'_> {
-        Pipelines::new(&self.declarations.types.rust_types)
+    pub(super) fn prelude_types(&self) -> PreludeTypes<'_> {
+        PreludeTypes::new(&self.declarations.types.rust_types)
     }
 
     pub(super) fn function_value_wrapper(&mut self) -> FunctionValueWrapper<'_> {

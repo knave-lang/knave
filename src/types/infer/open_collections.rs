@@ -206,7 +206,7 @@ impl TypeChecker {
                     MismatchContext::Plain,
                 )
             })?;
-        let target = self.slice_of(open.item.clone());
+        let target = self.prelude_types().slice_of(open.item.clone());
         self.unification()
             .expect(Expectation::plain(&target), collection.ty(), open.span)?;
         self.expect_index(open)

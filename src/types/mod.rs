@@ -55,6 +55,7 @@ mod peeling;
 mod pending;
 mod pinning;
 mod pipelines;
+mod prelude_types;
 mod problems;
 mod projection;
 mod reached_traits;

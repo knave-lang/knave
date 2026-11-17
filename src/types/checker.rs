@@ -7,6 +7,7 @@ use super::admissible_types::AdmissibleTypes;
 use super::assumed_collections::AssumedCollections;
 use super::checked_program::CheckedProgram;
 use super::checking_facts::CheckingFacts;
+use super::clause_check::ClauseCheck;
 use super::copy::InferredCopies;
 use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
 use super::declarations::Declarations;
@@ -579,6 +580,11 @@ impl TypeChecker {
         LiteralSettlement::new(&self.unifier, &self.declarations.traits.table)
     }
 
+    fn clause_check(&mut self) -> ClauseCheck<'_> {
+        let open = self.unifier.fresh();
+        ClauseCheck::new(&self.declarations.traits.table, self.display(), open)
+    }
+
     pub(super) fn prelude_types(&self) -> PreludeTypes<'_> {
         PreludeTypes::new(&self.declarations.types.rust_types)
     }
@@ -934,7 +940,6 @@ impl TypeChecker {
         };
         self.template_borrows
             .register(member.binding, &template.template);
-        self.collect_template_clauses(member.binding, template);
         let scheme = match self.written_schemes().lower_scheme(&template.type_expr) {
             Ok(scheme) => scheme,
             Err(diagnostic) => {
@@ -943,10 +948,12 @@ impl TypeChecker {
             }
         };
         self.schemes.insert(member.binding, scheme);
+        self.collect_template_clauses(member.binding, template);
         true
     }
 
     fn collect_template_clauses(&mut self, binding: BindingId, template: &RustTemplate) {
+        let scheme = self.schemes[&binding].clone();
         let lowered = template
             .clauses
             .iter()
@@ -957,7 +964,9 @@ impl TypeChecker {
             .collect::<Result<Vec<_>, Diagnostic>>();
         match lowered {
             Ok(clauses) => {
-                self.report_covered_clauses(template, &clauses);
+                for problem in self.clause_check().problems(&scheme, template, &clauses) {
+                    self.diagnostics.push(problem);
+                }
                 self.template_clauses.add(binding, clauses);
             }
             Err(diagnostic) => self.diagnostics.push(diagnostic),
@@ -971,27 +980,6 @@ impl TypeChecker {
                 .written_types()
                 .lower_without_generics(target)
                 .map(ClauseTarget::Type),
-        }
-    }
-
-    fn report_covered_clauses(
-        &mut self,
-        template: &RustTemplate,
-        clauses: &[(ClauseTarget, Rc<str>)],
-    ) {
-        for (index, (target, _)) in clauses.iter().enumerate() {
-            let covering = clauses[..index]
-                .iter()
-                .position(|(earlier, _)| earlier.covers(target, &self.declarations.traits.table));
-            if let Some(covering) = covering {
-                let clause = template.clauses[index].target.span();
-                let earlier = template.clauses[covering].target.span();
-                self.diagnostics.push(if clauses[covering].0 == *target {
-                    TypeProblems::repeated_clause(clause, earlier)
-                } else {
-                    TypeProblems::covered_clause(clause, earlier)
-                });
-            }
         }
     }
 

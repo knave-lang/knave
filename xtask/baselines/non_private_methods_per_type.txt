@@ -44,7 +44,7 @@ src/ownership/problems.rs::OwnershipProblems 34
 src/types/checker.rs::TypeChecker 60
 src/types/collection.rs::Collection 8
 src/types/enums.rs::EnumDefinition 8
-src/types/problems.rs::TypeProblems 103
+src/types/problems.rs::TypeProblems 101
 src/types/projection.rs::ProjectionTable 9
 src/types/rust_types.rs::RustTypeTable 15
 src/types/traits.rs::TraitTable 15

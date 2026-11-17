@@ -269,6 +269,7 @@ pub struct RustTemplate {
 pub struct RustClause {
     pub target: TypeExpr,
     pub template: Rc<str>,
+    pub unborrowed: Vec<usize>,
 }
 
 impl Expr {

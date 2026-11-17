@@ -21,6 +21,13 @@ pub enum Access {
 }
 
 impl Access {
+    fn unborrowed(self) -> Self {
+        match self {
+            Self::Borrowed => Self::Passed,
+            passed_or_owned => passed_or_owned,
+        }
+    }
+
     fn marker(&self) -> String {
         match self {
             Self::Passed => String::new(),
@@ -56,12 +63,26 @@ struct ArgumentPassing<'t> {
     dereferences: bool,
     called: Option<Vec<&'t str>>,
     operand: bool,
+    written_borrow: bool,
 }
 
 impl ArgumentPassing<'_> {
     fn without_receiver(self) -> Self {
         Self {
             receives: false,
+            ..self
+        }
+    }
+
+    fn unborrowed(self) -> Self {
+        Self {
+            accesses: self
+                .accesses
+                .iter()
+                .map(|access| access.unborrowed())
+                .collect(),
+            operand: self.operand && !self.written_borrow,
+            written_borrow: false,
             ..self
         }
     }
@@ -397,24 +418,28 @@ impl ParsedTemplate {
         &self,
         clause: &ParsedTemplate,
         shared_references: &SharedReferences,
-    ) -> Option<PassingDifference> {
+    ) -> Result<Vec<usize>, PassingDifference> {
         let mut arguments: Vec<usize> = self.placeholders().chain(clause.placeholders()).collect();
         arguments.sort_unstable();
         arguments.dedup();
-        arguments
-            .into_iter()
-            .find_map(|argument| {
-                let (template, clause) = (self.passing(argument), clause.passing(argument));
-                let (template, clause) = if shared_references.holds(argument) {
-                    (template.without_receiver(), clause.without_receiver())
-                } else {
-                    (template, clause)
-                };
-                template
-                    .differing_aspect(&clause)
-                    .map(|aspect| PassingDifference::Argument(argument, aspect))
-            })
-            .or_else(|| self.call_difference(clause))
+        let mut unborrowed = Vec::new();
+        for argument in arguments {
+            let (template, clause) = (self.passing(argument), clause.passing(argument));
+            let shared_reference = shared_references.holds(argument);
+            let (template, clause) = if shared_reference {
+                (template.without_receiver(), clause.without_receiver())
+            } else {
+                (template, clause)
+            };
+            let differs = template != clause;
+            if let Some(aspect) = template.unborrowed().differing_aspect(&clause.unborrowed()) {
+                return Err(PassingDifference::Argument(argument, aspect));
+            }
+            if differs && !shared_reference {
+                unborrowed.push(argument);
+            }
+        }
+        self.call_difference(clause).map_or(Ok(unborrowed), Err)
     }
 
     fn call_difference(&self, clause: &ParsedTemplate) -> Option<PassingDifference> {
@@ -436,6 +461,10 @@ impl ParsedTemplate {
                 .operation()
                 .operator_arguments()
                 .any(|operand| operand == argument),
+            written_borrow: self.pieces.windows(2).any(|pair| {
+                matches!(pair, [Piece::Literal(text), Piece::Placeholder { index, .. }]
+                    if *index == argument && text.ends_with(Self::BORROW))
+            }),
         }
     }
 }

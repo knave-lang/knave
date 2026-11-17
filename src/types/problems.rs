@@ -617,25 +617,6 @@ impl TypeProblems {
         ))
     }
 
-    pub fn covered_clause(clause: Span, earlier: Span) -> Diagnostic {
-        Self::unreachable_clause(clause, earlier, "an earlier clause covers this target")
-            .with_help("move the narrower clause first")
-    }
-
-    pub fn repeated_clause(clause: Span, earlier: Span) -> Diagnostic {
-        Self::unreachable_clause(clause, earlier, "an earlier clause has this target")
-            .with_help("remove the repeated clause")
-    }
-
-    fn unreachable_clause(clause: Span, earlier: Span, reason: &str) -> Diagnostic {
-        Diagnostic::error(
-            DiagnosticCode::COVERED_CLAUSE,
-            "this clause can never be chosen",
-            Label::new(clause, reason),
-        )
-        .with_label(Label::new(earlier, "this clause comes first"))
-    }
-
     pub fn requirement_cycle(trait_name: &str, required: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::REQUIREMENT_CYCLE,

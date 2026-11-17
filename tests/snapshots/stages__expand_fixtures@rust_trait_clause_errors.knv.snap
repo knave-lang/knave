@@ -15,23 +15,14 @@ error[L0247]: a `rust` clause must pass its arguments as its template does
   = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
   = note: run `knave doc L0247` for an explanation
 
-error[L0246]: a `rust` with clauses takes one type parameter
+error[L0246]: a `rust` with clauses takes a type parameter
  --> expand/rust_trait_clause_errors.knv:8:5
   |
 8 |     (fn (i64) i64)
-  |     ^^^^^^^^^^^^^^ this type binds 0 type parameters
+  |     ^^^^^^^^^^^^^^ this type binds no type parameter
   |
-  = help: bind one parameter, as in `(where ((s source)) (fn ((ref s)) string))`
+  = help: bind a parameter for the clauses to choose by, as in `(where ((s source)) (fn ((ref s)) string))`
   = note: run `knave doc L0246` for an explanation
-
-error[L0246]: a `rust` with clauses takes one type parameter
-  --> expand/rust_trait_clause_errors.knv:13:5
-   |
-13 |     (where (a b) (fn (a b) a))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ this type binds 2 type parameters
-   |
-   = help: bind one parameter, as in `(where ((s source)) (fn ((ref s)) string))`
-   = note: run `knave doc L0246` for an explanation
 
 error[L0201]: cannot find type `nosuch` in this scope
   --> expand/rust_trait_clause_errors.knv:19:6

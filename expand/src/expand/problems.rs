@@ -97,19 +97,15 @@ impl ExpandProblems {
         ))
     }
 
-    pub fn rust_clauses_need_one_parameter(parameters: usize, span: Span) -> Diagnostic {
+    pub fn rust_clauses_need_a_parameter(span: Span) -> Diagnostic {
         Diagnostic::error(
-            DiagnosticCode::RUST_CLAUSES_NEED_ONE_PARAMETER,
-            "a `rust` with clauses takes one type parameter",
-            Label::new(
-                span,
-                format!(
-                    "this type binds {}",
-                    Counted::noun(parameters, "type parameter")
-                ),
-            ),
+            DiagnosticCode::RUST_CLAUSES_NEED_A_PARAMETER,
+            "a `rust` with clauses takes a type parameter",
+            Label::new(span, "this type binds no type parameter"),
         )
-        .with_help("bind one parameter, as in `(where ((s source)) (fn ((ref s)) string))`")
+        .with_help(
+            "bind a parameter for the clauses to choose by, as in `(where ((s source)) (fn ((ref s)) string))`",
+        )
     }
 
     pub fn structural_clause_needs_one_method(definer: &str, clause: Span) -> Diagnostic {

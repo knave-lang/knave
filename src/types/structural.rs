@@ -231,13 +231,15 @@ impl TypeChecker {
         head: BindingId,
     ) -> Option<(&TypedTraitImpl, &Rc<str>)> {
         let paths = &self.declarations.traits.rust_paths;
-        let resolved = paths.resolved(trait_binding)?;
+        let path = paths.recorded(trait_binding)?;
         let written = self.declarations.traits.impls.iter().find(|implementation| {
             implementation.trait_binding != trait_binding
                 && matches!(implementation.implementor, Type::Named(binding, _) if binding == head)
-                && paths.resolved(implementation.trait_binding) == Some(resolved)
+                && paths
+                    .recorded(implementation.trait_binding)
+                    .is_some_and(|other| other.resolved == path.resolved)
         })?;
-        Some((written, paths.written(trait_binding)?))
+        Some((written, &path.written))
     }
 }
 

@@ -10,6 +10,7 @@ use super::checking_facts::CheckingFacts;
 use super::copy::InferredCopies;
 use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
 use super::declarations::Declarations;
+use super::declared_generics::DeclaredGenerics;
 use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::definition_outcomes::DefinitionOutcomes;
@@ -17,7 +18,8 @@ use super::derive_blockers::DeriveBlockers;
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
 use super::field_parameters::FieldParameters;
-use super::generic_registry::{GenericRegistry, GenericRole};
+use super::generic_declarations::GenericDeclarations;
+use super::generic_registry::GenericRegistry;
 use super::graph::{Definition, DefinitionGraph};
 use super::impl_overlap::ImplementorOverlap;
 use super::implied_bounds::ImpliedBounds;
@@ -744,6 +746,10 @@ impl TypeChecker {
         Some(self.call_origins.introducing_macro(span)?.name)
     }
 
+    pub(super) fn generic_declarations(&mut self) -> GenericDeclarations<'_> {
+        GenericDeclarations::new(&mut self.generics, &mut self.unifier)
+    }
+
     pub(super) fn instantiation(&mut self) -> Instantiation<'_> {
         Instantiation::new(&self.generics, &self.implied_bounds, &mut self.unifier)
     }
@@ -1401,7 +1407,7 @@ impl TypeChecker {
         let mut ids = Vec::new();
         Self::collect_generics(inferred, &mut ids);
         ids.into_iter()
-            .filter_map(|id| self.generics.params().get(&id).cloned())
+            .filter_map(|id| self.generics.param(id).cloned())
             .collect()
     }
 
@@ -1438,11 +1444,9 @@ impl TypeChecker {
         }
         let name = Self::parameter_name(position);
         let bounds = self.self_plain_bounds(var);
-        let param = self.generics.declare(&name, bounds, &mut self.unifier);
-        self.unifier.bind(var, Type::Generic(param.id));
+        let param = self.generic_declarations().generalize(var, &name, bounds);
         if let Some(literal) = literal {
-            self.generics
-                .assign(param.id, GenericRole::Literal(literal));
+            self.generics.mark_literal(param.id, literal);
         }
         Some(param)
     }
@@ -1511,11 +1515,9 @@ impl TypeChecker {
     }
 
     fn failed_scheme(&mut self) -> Scheme {
-        let param = self.generics.declare(
-            Self::parameter_name(0).as_str(),
-            Vec::new(),
-            &mut self.unifier,
-        );
+        let param = self
+            .generic_declarations()
+            .declare(Self::parameter_name(0).as_str(), Vec::new());
         Scheme {
             lifetimes: Vec::new(),
             body: Type::Generic(param.id),
@@ -1820,7 +1822,7 @@ impl TypeChecker {
             .filter(|binder| !binder.lifetime)
             .map(|binder| {
                 let name = self.bindings.get(binder.variable).name().to_string();
-                self.generics.declare(&name, Vec::new(), &mut self.unifier)
+                self.generic_declarations().declare(&name, Vec::new())
             })
             .collect())
     }
@@ -2136,7 +2138,7 @@ impl TypeChecker {
         let mut scope = FxHashMap::default();
         for variable in self.implementor_variables(implementor) {
             let name = self.bindings.get(variable).name().to_string();
-            let param = self.generics.declare(&name, Vec::new(), &mut self.unifier);
+            let param = self.generic_declarations().declare(&name, Vec::new());
             scope.insert(variable, param.id);
             params.push(param);
         }
@@ -2360,10 +2362,7 @@ impl TypeChecker {
     fn store_impl_bounds(&mut self, position: usize, bounds: Vec<Vec<Bound>>) {
         let mut params = self.declarations.traits.impls[position].params.clone();
         for (param, bounds) in params.iter_mut().zip(bounds) {
-            param.bounds = bounds;
-        }
-        for param in &params {
-            self.generics.redeclare(param, &mut self.unifier);
+            self.generic_declarations().redeclare(param, bounds);
         }
         let trait_binding = self.declarations.traits.impls[position].trait_binding;
         let implementor = self.declarations.traits.impls[position].implementor.clone();
@@ -2982,7 +2981,7 @@ impl TypeChecker {
             diagnostics.extend(warnings);
             return Err(diagnostics);
         }
-        let generics = self.generics.into_tables();
+        let generics = DeclaredGenerics::from(self.generics);
         Ok(super::typed::TypedProgram {
             modules,
             entry: program.entry.module,
@@ -2991,11 +2990,11 @@ impl TypeChecker {
             macro_field_reads: self.macro_field_reads,
             declarations: self.declarations,
             structural_uses: self.structural_uses,
-            associated_generics: generics.associated,
+            associated_generics: generics.associated_types,
             conversions: self.conversions,
             synthetic_bindings: self.synthetic_bindings,
             generics: generics.params,
-            implied_bounds: self.implied_bounds.into_map(),
+            implied_bounds: self.implied_bounds.into_bounds(),
             template_borrows: self.template_borrows,
             template_clauses: self.template_clauses,
             pending_mode_checks: self.pending_mode_checks,

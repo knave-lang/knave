@@ -2,7 +2,6 @@ use rustc_hash::FxHashMap;
 
 use super::associated::LoweredAssociatedValue;
 use super::checker::TypeChecker;
-use super::generic_registry::GenericRole;
 use super::problems::TypeProblems;
 use super::trait_rows_reach::Implementor;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
@@ -120,15 +119,13 @@ impl TypeChecker {
                 continue;
             }
             let name = self.bindings.get(binder.variable).name().to_string();
-            let param = self.generics.declare(&name, Vec::new(), &mut self.unifier);
+            let param = self.generic_declarations().declare(&name, Vec::new());
             if matches!(
                 self.bindings.get(binder.variable).kind(),
                 BindingKind::AssociatedType
             ) {
-                self.generics.assign(
-                    param.id,
-                    GenericRole::AssociatedType(std::rc::Rc::from(name.as_str())),
-                );
+                self.generics
+                    .mark_associated_type(param.id, std::rc::Rc::from(name.as_str()));
             }
             scope.insert(binder.variable, param.id);
             params.push(param);
@@ -187,8 +184,7 @@ impl TypeChecker {
     }
 
     fn replace_bounds(&mut self, param: &mut GenericParam, bounds: Vec<Bound>) {
-        param.bounds = bounds;
-        self.generics.redeclare(param, &mut self.unifier);
+        self.generic_declarations().redeclare(param, bounds);
     }
 
     pub(super) fn lower_type(

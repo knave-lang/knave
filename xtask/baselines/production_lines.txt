@@ -3,7 +3,7 @@ expand/src/expand/expression.rs 1000
 expand/src/expand/module_body.rs 1986
 expand/src/expand/problems.rs 1217
 expand/src/format/layout.rs 501
-src/emit/expressions.rs 2870
+src/emit/expressions.rs 2869
 src/emit/items.rs 1629
 src/emit/plan.rs 648
 src/emit/result_borrows.rs 740

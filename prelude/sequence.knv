@@ -26,7 +26,9 @@
 (def contains?
   (rust "{0}.contains(&{&1})"
     (where ((whole (contains part)) part)
-      (fn ((ref whole) part) bool))))
+      (fn ((ref whole) part) bool))
+    (str "{0}.contains({1})")
+    (string "{0}.contains({1})")))
 
 (def len
   (rust "{0}.len()"

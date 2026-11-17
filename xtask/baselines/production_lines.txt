@@ -17,5 +17,5 @@ src/types/checker.rs 2588
 src/types/infer.rs 3618
 src/types/infer/shared_variables.rs 573
 src/types/pinning.rs 729
-src/types/problems.rs 1383
+src/types/problems.rs 1364
 src/types/typed.rs 775

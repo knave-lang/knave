@@ -42,9 +42,8 @@ impl Expander<'_> {
             .map(|clause| Self::clause_pair(shape, clause))
             .collect::<Result<Vec<_>, Diagnostic>>()?;
         let parameters = Self::type_parameters(template.type_expr).count();
-        if !pairs.is_empty() && parameters != 1 {
-            return Err(ExpandProblems::rust_clauses_need_one_parameter(
-                parameters,
+        if !pairs.is_empty() && parameters == 0 {
+            return Err(ExpandProblems::rust_clauses_need_a_parameter(
                 template.type_span,
             ));
         }
@@ -69,19 +68,20 @@ impl Expander<'_> {
     ) -> Result<RustClause, Diagnostic> {
         let parsed = Self::parse_rust_template(shape.string(text)?, text.span())?;
         self.check_template_type_placeholders(&parsed, template.type_expr, text.span())?;
-        if let Some(difference) = template
+        let unborrowed = template
             .parsed
             .passing_difference(&parsed, &template.shared_references)
-        {
-            return Err(ExpandProblems::clause_passes_arguments_unlike_template(
-                difference,
-                text.span(),
-                template.span,
-            ));
-        }
+            .map_err(|difference| {
+                ExpandProblems::clause_passes_arguments_unlike_template(
+                    difference,
+                    text.span(),
+                    template.span,
+                )
+            })?;
         Ok(RustClause {
             target: self.lower_type(target)?,
             template: parsed.text().into(),
+            unborrowed,
         })
     }
 

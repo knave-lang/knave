@@ -3,7 +3,7 @@
     (fn (i64) i64)
     (i64 "count({0})")))
 
-(def two-binders
+(def two-binders-choose-by-the-first
   (rust "measure({0}, {1})"
     (where ((a sequence) (b sequence))
       (fn ((ref a) (ref b)) usize))
@@ -37,7 +37,7 @@
   (rust "measure({0})"
     (where ((s sequence))
       (fn ((ref s)) usize))
-    (str "count({&0})")))
+    (str "count({owned 0})")))
 
 (def receiver-in-clause
   (rust "measure({0})"

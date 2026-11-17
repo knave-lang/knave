@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/rust_clause_drops_a_borrow.knv
+---
+error[L0247]: a `rust` clause must pass its arguments as its template does
+ --> check/rust_clause_drops_a_borrow.knv:5:6
+  |
+5 |     (i64 "std::mem::size_of_val({0})")
+  |      ^^^ this clause passes `{0}` without the template's borrow, and here `{0}` is `int`, not a shared reference
+  |
+  = help: borrow the placeholder as the template does
+  = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+ --> check/rust_clause_drops_a_borrow.knv:6:6
+  |
+6 |     (ord "std::mem::size_of_val({0})")))
+  |      ^^^ this clause names a trait, so it cannot pass `{0}` without the template's borrow
+  |
+  = help: borrow the placeholder as the template does
+  = note: run `knave doc L0247` for an explanation

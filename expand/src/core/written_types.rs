@@ -143,6 +143,7 @@ mod tests {
             clauses: vec![RustClause {
                 target: WrittenTypesFixture::named(3),
                 template: "{0}.size()".into(),
+                unborrowed: Vec::new(),
             }],
         };
         let value = WrittenTypesFixture::expr(ExprKind::Leaf(Leaf::Rust(Rc::new(template))));

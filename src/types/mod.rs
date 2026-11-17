@@ -9,6 +9,8 @@ mod boxes;
 mod checked_program;
 mod checker;
 mod checking_facts;
+mod clause_check;
+mod clause_problems;
 mod closure_facts;
 mod collected_enum;
 mod collected_struct;

@@ -1,0 +1,8 @@
+(def measure
+  (rust "std::mem::size_of_val(&{&0})"
+    (where ((a clone)) (fn (a) usize))
+    ((ref str) "std::mem::size_of_val({0})")
+    (i64 "std::mem::size_of_val({0})")
+    (ord "std::mem::size_of_val({0})")))
+
+(defn main () (println (measure 3)))

@@ -62,7 +62,6 @@ impl BoundFieldMoves {
         let MoveSite::Field { span, place } = site else {
             return None;
         };
-        place.borrowed()?;
         let bound = *self.bound_names.get(span)?;
         let place = place.clone().owned();
         Some((bound, MoveSite::Field { span: *span, place }))

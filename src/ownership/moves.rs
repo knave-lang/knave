@@ -225,7 +225,7 @@ impl<'a> MoveChecker<'a> {
             return self.expr(owner, ReadUsage::Borrow);
         };
         self.place_read(&place, Self::root_span(read));
-        if usage.moves_field(read, &place, &self.copy) {
+        if usage.moves_field(read, &self.copy) {
             self.move_field(&place, read.span);
         }
     }

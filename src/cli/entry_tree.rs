@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use super::diagnostic_output::StandardErrorMessages;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
+use super::module_names::ModuleNames;
 use super::module_of_sources::ModuleOfSources;
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
@@ -188,7 +189,7 @@ impl EntryTree {
 
     fn module_path(&self, file: &Path) -> Option<String> {
         self.source_module_path(file)
-            .or_else(|| ProgramFile::module_name(file.strip_prefix(&self.path).ok()?))
+            .or_else(|| ModuleNames::of_source(file.strip_prefix(&self.path).ok()?))
     }
 
     fn source_module_path(&self, file: &Path) -> Option<String> {

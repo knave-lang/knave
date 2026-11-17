@@ -3,6 +3,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use super::exit_status::ExitStatus;
+use super::module_names::ModuleNames;
 use super::standard_error::StandardError;
 use crate::core::ModulePath;
 use crate::language::Language;
@@ -21,7 +22,6 @@ pub struct ProgramFile {
 
 impl ProgramFile {
     const CURRENT_DIRECTORY: &str = ".";
-    pub const MODULE_SEPARATOR: &str = "/";
 
     pub fn beside_itself(path: PathBuf) -> Self {
         let root = Self::directory_of(&path);
@@ -84,15 +84,6 @@ impl ProgramFile {
         self.module.clone()
     }
 
-    pub fn module_name(relative: &Path) -> Option<String> {
-        let without_extension = relative.with_extension("");
-        let parts: Vec<&str> = without_extension
-            .components()
-            .map(|component| component.as_os_str().to_str())
-            .collect::<Option<_>>()?;
-        Some(parts.join(Self::MODULE_SEPARATOR))
-    }
-
     pub fn is_project_file(path: &Path) -> bool {
         path.file_name()
             .is_some_and(|name| *name == *Language::project_file_name())
@@ -113,7 +104,7 @@ impl ProgramFile {
     pub fn relative_module(path: &Path, root: &Path) -> Option<String> {
         let directory = Self::canonical(&Self::directory_of(path))?;
         let relative_directory = directory.strip_prefix(Self::canonical(root)?).ok()?;
-        Self::module_name(&relative_directory.join(path.file_name()?))
+        ModuleNames::of_source(&relative_directory.join(path.file_name()?))
     }
 
     pub fn resolved_crate(dependency: &CrateDependency, root: &Path) -> CrateDependency {

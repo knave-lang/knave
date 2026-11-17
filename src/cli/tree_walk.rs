@@ -2,6 +2,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use super::module_names::ModuleNames;
 use super::program_file::ProgramFile;
 use super::skip_reason::SkipReason;
 use super::skipped_directory::SkippedDirectory;
@@ -41,14 +42,14 @@ impl<'w> TreeWalk<'w> {
     pub fn hidden_folders(&self) -> Vec<String> {
         self.hidden_folders
             .iter()
-            .filter_map(|folder| self.written_path(folder))
+            .filter_map(|folder| ModuleNames::of_folder(folder.strip_prefix(self.root).ok()?))
             .collect()
     }
 
     pub fn project_files(&self) -> Vec<String> {
         self.project_files
             .iter()
-            .filter_map(|file| ProgramFile::module_name(file.strip_prefix(self.root).ok()?))
+            .filter_map(|file| ModuleNames::of_source(file.strip_prefix(self.root).ok()?))
             .collect()
     }
 
@@ -83,15 +84,5 @@ impl<'w> TreeWalk<'w> {
         self.bounds
             .as_ref()
             .is_some_and(|bounds| bounds.inside(folder).is_none())
-    }
-
-    fn written_path(&self, folder: &Path) -> Option<String> {
-        let parts: Vec<&str> = folder
-            .strip_prefix(self.root)
-            .ok()?
-            .components()
-            .map(|component| component.as_os_str().to_str())
-            .collect::<Option<_>>()?;
-        Some(parts.join(ProgramFile::MODULE_SEPARATOR))
     }
 }

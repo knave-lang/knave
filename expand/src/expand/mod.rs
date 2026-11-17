@@ -4,6 +4,7 @@ mod budget_arena;
 mod builtin_export;
 mod call_origins;
 mod classified_form;
+mod clause_chooser_problems;
 mod compile_time_check;
 mod context;
 mod declared_trait;

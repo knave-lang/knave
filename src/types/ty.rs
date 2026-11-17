@@ -410,6 +410,10 @@ pub struct Scheme {
 }
 
 impl Scheme {
+    pub fn clause_chooser(&self) -> Option<&GenericParam> {
+        self.params.first()
+    }
+
     pub fn monomorphic(body: Type) -> Self {
         Self {
             lifetimes: Vec::new(),

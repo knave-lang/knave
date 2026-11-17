@@ -947,13 +947,12 @@ impl TypeChecker {
                 self.generic_declarations().failed_scheme()
             }
         };
+        self.collect_clauses(member.binding, template, &scheme);
         self.schemes.insert(member.binding, scheme);
-        self.collect_template_clauses(member.binding, template);
         true
     }
 
-    fn collect_template_clauses(&mut self, binding: BindingId, template: &RustTemplate) {
-        let scheme = self.schemes[&binding].clone();
+    fn collect_clauses(&mut self, binding: BindingId, template: &RustTemplate, scheme: &Scheme) {
         let lowered = template
             .clauses
             .iter()
@@ -964,7 +963,7 @@ impl TypeChecker {
             .collect::<Result<Vec<_>, Diagnostic>>();
         match lowered {
             Ok(clauses) => {
-                for problem in self.clause_check().problems(&scheme, template, &clauses) {
+                for problem in self.clause_check().problems(scheme, template, &clauses) {
                     self.diagnostics.push(problem);
                 }
                 self.template_clauses.add(binding, clauses);

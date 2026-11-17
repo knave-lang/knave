@@ -5,4 +5,19 @@
     (i64 "std::mem::size_of_val({0})")
     (ord "std::mem::size_of_val({0})")))
 
+(def shared-length
+  (rust "std::mem::size_of_val(&{&0})"
+    (where ((a clone)) (fn ((ref a)) usize))
+    (clone "std::mem::size_of_val({0})")))
+
+(def written-borrow
+  (rust "std::mem::size_of_val(&{0})"
+    (where ((a clone)) (fn (a) usize))
+    ((ref str) "std::mem::size_of_val({0})")))
+
+(def both-bits
+  (rust "{0} & {1}"
+    (where ((a clone)) (fn (a a) a))
+    (i64 "{0}&{1}")))
+
 (defn main () (println (measure 3)))

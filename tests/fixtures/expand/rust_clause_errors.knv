@@ -96,3 +96,8 @@
     (where ((s sequence))
       (fn ((ref s)) usize))
     (str "count({0}}")))
+
+(def borrow-added-in-clause
+  (rust "std::mem::size_of_val({0})"
+    (where ((a clone)) (fn (a) usize))
+    (i64 "std::mem::size_of_val({&0})")))

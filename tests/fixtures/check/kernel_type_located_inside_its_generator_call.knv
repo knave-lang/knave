@@ -1,0 +1,14 @@
+(use code located)
+
+(defmacro define-macro (name body)
+  (template (defmacro (unquote name) ()
+              (unquote body))))
+
+(define-macro make-float
+              (template (defstruct (unquote (located (quote (marker))
+                                                     (quote float)))
+                          :n bool)))
+
+(make-float)
+
+(defn main () (println 1))

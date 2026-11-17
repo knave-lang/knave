@@ -1,0 +1,15 @@
+(use code list)
+
+(defmacro define-generator (generator)
+  (template (defmacro (unquote generator) (name body)
+              (list (quote defmacro) name (list) body))))
+
+(define-generator define-macro)
+
+(define-macro make-float
+              (template (defstruct float
+                          :n bool)))
+
+(make-float)
+
+(defn main () (println 1))

@@ -1693,6 +1693,7 @@ impl Expander<'_> {
         core.items.push(Item {
             kind: ItemKind::RustTrait(RustTraitDeclaration {
                 binding,
+                resolved_path: self.tables.trait_paths[&binding].clone(),
                 path,
                 self_variable,
                 methods: entries.methods,

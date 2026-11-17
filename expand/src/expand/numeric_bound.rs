@@ -262,6 +262,7 @@ mod tests {
             RustTraitDeclaration {
                 binding: self.binding("marker"),
                 path: "Marker".into(),
+                resolved_path: "Marker".into(),
                 self_variable: self.binding("self"),
                 methods: Vec::new(),
                 help: None,

@@ -1,0 +1,10 @@
+(type peek (fn ((ref i64)) i64))
+(defn peek (x) (deref x))
+
+(defn main ()
+  (local items (vec 3 5 8))
+  (let (show (fn (y) (peek (deref y))))
+    (println (count (filter (iter items) (fn (y) (> (show y) 3))))))
+  (local count 2)
+  (local counted (mut count))
+  (prn (deref counted)))

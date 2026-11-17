@@ -1,8 +1,6 @@
-use std::rc::Rc;
-
-use knave_expand::rust_trait_path::RustTraitPath;
 use rustc_hash::FxHashMap;
 
+use super::rust_trait_paths::RustTraitPaths;
 use super::structural_trait::StructuralTrait;
 use super::trait_method_info::TraitMethodInfo;
 use super::traits::TraitTable;
@@ -16,8 +14,7 @@ pub struct TraitDeclarations {
     pub(super) definitions: Vec<TypedTrait>,
     pub(super) impls: Vec<TypedTraitImpl>,
     pub(super) methods: FxHashMap<BindingId, TraitMethodInfo>,
-    pub(super) rust_paths: FxHashMap<BindingId, Rc<str>>,
-    pub(super) resolved_paths: FxHashMap<BindingId, RustTraitPath>,
+    pub(super) rust_paths: RustTraitPaths,
     pub(super) structural: Vec<StructuralTrait>,
 }
 
@@ -38,13 +35,8 @@ impl TraitDeclarations {
         &self.methods
     }
 
-    pub fn rust_paths(&self) -> &FxHashMap<BindingId, Rc<str>> {
+    pub fn rust_paths(&self) -> &RustTraitPaths {
         &self.rust_paths
-    }
-
-    pub(super) fn record_rust_path(&mut self, binding: BindingId, path: &Rc<str>) {
-        self.rust_paths.insert(binding, Rc::clone(path));
-        self.resolved_paths.insert(binding, (**path).into());
     }
 
     pub fn structural(&self) -> &[StructuralTrait] {

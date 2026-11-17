@@ -2260,13 +2260,8 @@ impl TypeChecker {
         implementor: &Type,
         span: Span,
     ) -> bool {
-        if !self
-            .declarations
-            .traits
-            .rust_paths
-            .contains_key(&trait_binding)
-            || self.is_program_type(implementor)
-        {
+        let rust_paths = &self.declarations.traits.rust_paths;
+        if rust_paths.written(trait_binding).is_none() || self.is_program_type(implementor) {
             return false;
         }
         let implementor_name = self.display().show(implementor);
@@ -2364,7 +2359,8 @@ impl TypeChecker {
         };
         let traits = &mut self.declarations.traits;
         traits.table.add(declaration.binding, rust_trait);
-        traits.record_rust_path(declaration.binding, &declaration.path);
+        let binding = declaration.binding;
+        traits.rust_paths.record(binding, &declaration.path);
         for method in &declaration.methods {
             let receiver = Self::receiver_kind(&method.signature, declaration.self_variable);
             self.synthetic_bindings.insert(method.binding);

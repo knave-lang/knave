@@ -157,7 +157,7 @@ impl<'p> EmitPlan<'p> {
 
     pub fn trait_path(&self, binding: BindingId, from: ModuleId) -> String {
         let traits = &self.program.declarations.traits();
-        if let Some(path) = traits.rust_paths().get(&binding) {
+        if let Some(path) = traits.rust_paths().written(binding) {
             return path.to_string();
         }
         let definition = traits

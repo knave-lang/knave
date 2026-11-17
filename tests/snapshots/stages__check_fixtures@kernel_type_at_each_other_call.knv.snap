@@ -7,20 +7,24 @@ warning[L0259]: `float` hides the kernel type `float`
   --> check/kernel_type_at_each_other_call.knv:16:7
    |
 16 | (wrap (first-place) (second-place))
-   |       ^^^^^^^^^^^^^ this binds `float` in place of the kernel type
+   |       ^^^^^^^^^^^^^ -------------- in this macro call
+   |       |
+   |       this binds `float` in place of the kernel type
    |
-   = note: in this scope, a type written `float` names this binding, while a printed `float` is the kernel type
-   = help: rename this `float`
+   = note: in the code of `mb`, a type written `float` names this binding, while a printed `float` is the kernel type
+   = help: rename `float` in `mb`
    = note: run `knave doc L0259` for an explanation
 
 warning[L0259]: `float` hides the kernel type `float`
   --> check/kernel_type_at_each_other_call.knv:16:21
    |
 16 | (wrap (first-place) (second-place))
-   |                     ^^^^^^^^^^^^^^ this binds `float` in place of the kernel type
+   |       ------------- ^^^^^^^^^^^^^^ this binds `float` in place of the kernel type
+   |       |
+   |       in this macro call
    |
-   = note: in this scope, a type written `float` names this binding, while a printed `float` is the kernel type
-   = help: rename this `float`
+   = note: in the code of `ma`, a type written `float` names this binding, while a printed `float` is the kernel type
+   = help: rename `float` in `ma`
    = note: run `knave doc L0259` for an explanation
 
 (derive float clone copy partial-eq eq hash show)

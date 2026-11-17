@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/pair_part_bound_by_a_let_then_moved.knv
+---
+error[L0501]: use of moved value `(first p)`
+ --> check/pair_part_bound_by_a_let_then_moved.knv:7:10
+  |
+5 |         a (first p))
+  |           --------- value moved here
+6 |     (println (takes a))
+7 |     (prn p)))
+  |          ^ value used here after it moved
+  |
+help: clone the value if both places need it
+  |
+5 -         a (first p))
+5 +         a (clone (first p)))
+  |
+  = note: run `knave doc L0501` for an explanation

@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::bound_field_moves::BoundFieldMoves;
 use super::lambda_parameters::LambdaParameters;
 use super::moved_place::MovedPlace;
 use super::moved_value_problems::{CopyBound, MoveSpans, MovedValueProblems};
@@ -57,7 +58,7 @@ pub struct MoveChecker<'a> {
     once_functions: FxHashSet<BindingId>,
     reported: FxHashSet<BindingId>,
     parameters: LambdaParameters,
-    bound_values: FxHashSet<Span>,
+    bound_field_moves: BoundFieldMoves,
     inferred_copies: InferredCopies,
     diagnostics: Vec<Diagnostic>,
 }
@@ -88,7 +89,7 @@ impl<'a> MoveChecker<'a> {
             once_functions: FxHashSet::default(),
             reported: FxHashSet::default(),
             parameters: LambdaParameters::default(),
-            bound_values: FxHashSet::default(),
+            bound_field_moves: BoundFieldMoves::default(),
             inferred_copies: InferredCopies::default(),
             diagnostics: Vec::new(),
         }
@@ -108,7 +109,7 @@ impl<'a> MoveChecker<'a> {
 
     fn report(self) -> MoveReport {
         MoveReport {
-            diagnostics: self.diagnostics,
+            diagnostics: self.bound_field_moves.settle(self.diagnostics),
             inferred_copies: self.inferred_copies,
         }
     }
@@ -223,7 +224,7 @@ impl<'a> MoveChecker<'a> {
             return self.expr(owner, ReadUsage::Borrow);
         };
         self.place_read(&place, Self::root_span(read));
-        if usage.moves_field(read, &self.copy) {
+        if usage.moves_field(read, &place, &self.copy) {
             self.move_field(&place, read.span);
         }
     }
@@ -272,9 +273,8 @@ impl<'a> MoveChecker<'a> {
         if self.copy.is_copy(place.root_type) {
             return;
         }
-        let moved =
-            MovedPlace::of(place, self.bindings).owned_unless_bound(&self.bound_values, span);
-        let site = MoveSite::Field { span, place: moved };
+        let moved = MovedPlace::of(place, self.bindings);
+        let site = self.bound_field_moves.field_site(span, moved);
         self.moved
             .move_field(place.root, Self::field_path(place), site);
     }
@@ -337,6 +337,7 @@ impl<'a> MoveChecker<'a> {
     }
 
     fn bind(&mut self, binding: BindingId, value: &TypedExpr) {
+        self.bound_field_moves.bind(value.span, binding);
         match self.bound_function_kind(value) {
             Some(ClosureKind::Fn) => self.copy_functions.insert(binding),
             Some(ClosureKind::FnOnce) => self.once_functions.insert(binding),
@@ -363,7 +364,6 @@ impl<'a> MoveChecker<'a> {
                 Self::once_call_result(&value.ty)
             }
             _ => {
-                self.bound_values.insert(value.span);
                 self.expr(value, ReadUsage::Move);
                 None
             }
@@ -466,16 +466,8 @@ impl<'a> MoveChecker<'a> {
 
     fn local(&mut self, binding: BindingId, ty: &Type, span: Span, usage: ReadUsage) {
         match self.moved.site(binding) {
-            Some(site) => self.use_after_move(&Self::whole_place(binding, ty), span, &site),
+            Some(site) => self.use_after_move(&FieldPlace::whole(binding, ty), span, &site),
             None => self.record_use(binding, ty, span, usage),
-        }
-    }
-
-    fn whole_place(root: BindingId, root_type: &Type) -> FieldPlace<'_> {
-        FieldPlace {
-            root,
-            root_type,
-            path: Vec::new(),
         }
     }
 
@@ -486,6 +478,15 @@ impl<'a> MoveChecker<'a> {
         }
         let moved_use = MovedUse { place, span, site };
         let diagnostic = self.use_after_move_diagnostic(&moved_use);
+        if let Some((bound, owned_site)) = self.bound_field_moves.owned_site(site) {
+            let owned_use = MovedUse {
+                site: &owned_site,
+                ..moved_use
+            };
+            let owned = self.use_after_move_diagnostic(&owned_use);
+            let position = self.diagnostics.len();
+            self.bound_field_moves.defer(position, bound, owned);
+        }
         self.diagnostics.push(diagnostic);
     }
 
@@ -571,6 +572,7 @@ impl<'a> MoveChecker<'a> {
         let is_copy = self.copy.is_copy(ty) || self.copy_functions.contains(&binding);
         if usage == ReadUsage::Move && !is_copy {
             self.moved.move_whole(binding, span);
+            self.bound_field_moves.record_move(binding);
         }
     }
 

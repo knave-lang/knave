@@ -7,7 +7,16 @@ pub struct FieldPlace<'a> {
     pub path: Vec<&'a FieldLabel>,
 }
 
-impl FieldPlace<'_> {
+impl<'a> FieldPlace<'a> {
+    pub fn whole(root: BindingId, root_type: &'a Type) -> Self {
+        let path = Vec::new();
+        Self {
+            root,
+            root_type,
+            path,
+        }
+    }
+
     pub fn reads_field(&self) -> bool {
         !self.path.is_empty()
     }
@@ -24,11 +33,22 @@ impl FieldPlace<'_> {
     }
 
     pub fn written(&self, bindings: &BindingArena) -> String {
-        let root = bindings.get(self.root).name().to_string();
+        self.written_from(bindings.get(self.root).name().to_string())
+    }
+
+    pub fn written_borrowed(&self, bindings: &BindingArena) -> String {
+        self.written_from(Self::borrowed_root(bindings.get(self.root).name()))
+    }
+
+    pub fn borrowed_root(name: &str) -> String {
+        format!("(ref {name})")
+    }
+
+    fn written_from(&self, root: String) -> String {
         self.path.iter().fold(root, Self::field_text)
     }
 
-    pub fn field_text(owner: String, label: &&FieldLabel) -> String {
+    fn field_text(owner: String, label: &&FieldLabel) -> String {
         let field = label.spelled(&label.name);
         match label.spelling {
             FieldSpelling::Keyword | FieldSpelling::Pair(_) => format!("({field} {owner})"),

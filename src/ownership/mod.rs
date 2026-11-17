@@ -1,7 +1,9 @@
 mod aliased_changes;
 mod aliases;
 mod borrowing_lambdas;
+mod bound_field_moves;
 mod callers;
+mod captured_move;
 mod changes;
 mod checks;
 mod copied_reads;

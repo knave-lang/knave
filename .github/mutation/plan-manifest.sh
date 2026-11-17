@@ -27,8 +27,11 @@ require_head_branch_of_pull_request() {
     fail "Pull request $PULL_REQUEST comes from a fork, so its code does not run here."
   fi
   head_branch=$(jq -r .head.ref <<< "$details")
-  if [[ $GITHUB_REF_NAME != "$head_branch" ]]; then
-    fail "Dispatch with --ref $head_branch, the head branch of pull request $PULL_REQUEST, not $GITHUB_REF_NAME."
+  if [[ $GITHUB_REF == "refs/heads/$DEFAULT_BRANCH" ]]; then
+    fail "The workflow does not run on $DEFAULT_BRANCH. Dispatch with --ref $head_branch."
+  fi
+  if [[ $GITHUB_REF != "refs/heads/$head_branch" ]]; then
+    fail "Dispatch with --ref $head_branch, the head branch of pull request $PULL_REQUEST, not $GITHUB_REF."
   fi
 }
 
@@ -43,7 +46,7 @@ decode_manifest() {
   base64 --decode <<< "$MANIFEST" 2> /dev/null | gunzip > "$decoded" 2> /dev/null ||
     fail "The manifest is not gzip compressed, base64 encoded text."
   jq -e 'type == "array"' "$decoded" > /dev/null 2>&1 || fail "The manifest is not a JSON array."
-  jq 'sort_by(.tests | tostring)' "$decoded" > "$MANIFEST_FILE"
+  jq 'sort_by(.tests? | tostring)' "$decoded" > "$MANIFEST_FILE"
 }
 
 require_complete_entries() {
@@ -55,13 +58,13 @@ require_complete_entries() {
 
 incomplete_entries_program() {
   cat << 'EOF'
-def is_test_set: type == "array" and length > 0 and all(.[]; type == "string");
+def is_test_set: type == "array" and length > 0 and all(.[]; type == "string" and (test("[\t\n]") | not));
 def is_complete:
   type == "object"
   and (.name | type == "string" and length > 0 and (test("[\t\n]") | not))
   and (.file | type == "string") and (.old | type == "string") and (.new | type == "string")
   and (.tests | type == "array" and length > 0 and all(.[]; is_test_set));
-.[] | select(is_complete | not) | (.name | strings) // "an entry without a name"
+.[] | select(is_complete | not) | (.name? | strings) // "an entry without a name"
 EOF
 }
 
@@ -102,8 +105,8 @@ require_editable() {
     echo "$file is outside the files a mutant may change" >&2
     return 1
   fi
-  if ! git --literal-pathspecs ls-files --error-unmatch -- "$file" > /dev/null 2>&1 || [[ ! -f $file || -L $file ]]; then
-    echo "$file is not a tracked regular file at $COMMIT" >&2
+  if [[ $(git --literal-pathspecs ls-files --full-name -- "$file") != "$file" || ! -f $file || -L $file ]]; then
+    echo "$file is not the path of a tracked regular file at $COMMIT, written from the repository root" >&2
     return 1
   fi
 }

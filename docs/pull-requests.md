@@ -131,10 +131,10 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 | Field | Value |
 | --- | --- |
 | `name` | A name that tells the mutant apart in the results, with no tab or newline |
-| `file` | The path of a tracked file outside `.github/`, from the repository root |
+| `file` | The path of a tracked file outside `.github/`, written from the repository root with no `./` or `..` |
 | `old` | Text that occurs exactly once in `file` at the tested commit |
 | `new` | The text that replaces `old` |
-| `tests` | A list of test sets, each a non-empty list of `cargo test` arguments |
+| `tests` | A list of test sets, each a non-empty list of `cargo test` arguments with no tab or newline |
 
 **The workflow runs the test sets of a mutant in order and stops at the first set that fails.** Leading `NAME=value` items of a test set become environment variables, such as `INSTA_GLOB_FILTER=**/<fixture file name>`.
 
@@ -164,7 +164,8 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **If the download finds no `mutant-results` artifact, read the failure with `gh run view <run id> --log-failed`.** The `plan` job fails in each of these cases:
 
-- The run is not on the pull request's head branch.
+- The run is on the default branch.
+- The run is on any ref but the pull request's head branch.
 - The commit is not a full SHA of a commit of the pull request.
 - The pull request comes from a fork.
 - `test-seconds` is less than 1.
@@ -179,5 +180,5 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 | `missed` | Every test set passed | Add a test that fails on the mutant, or show that the mutant does not change behavior |
 | `timeout` | A test set ran longer than `test-seconds`, 300 by default, or its build ran longer than 25 minutes | Read the log. If the tests hang on the mutant, count the mutant as caught. Otherwise, dispatch the mutant again with a larger `test-seconds`. |
 | `unviable` | The code does not compile with the mutant | Rewrite the mutant so that it compiles |
-| `invalid` | `cargo test` refused a test set without a compile error, such as for a test target that does not exist | Fix the test set and dispatch the mutant again |
+| `invalid` | A test set fails without the mutant, or `cargo test` refused it without a compile error | Fix the test set and dispatch the mutant again |
 | `unapplied` | The entry cannot become a change to its file | Fix the entry as its verdict says and dispatch it again |

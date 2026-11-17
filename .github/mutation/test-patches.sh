@@ -2,12 +2,14 @@
 set -uo pipefail
 
 readonly TIMED_OUT=124
+readonly KILLED_AFTER_TIMEOUT=137
 readonly KILL_GRACE=10s
 readonly COMPILE_FAILURE='error\[E[0-9]+\]|could not compile'
 
 main() {
   mkdir -p "$RESULTS/logs"
   : > "$RESULTS/results.tsv"
+  record_baseline_failures
   for directory in $(mutants_of_shard); do
     record "$directory" "$(timed_verdict "$directory")"
   done
@@ -15,7 +17,25 @@ main() {
 }
 
 mutants_of_shard() {
-  grep -lx "$SHARD" "$MUTANTS"/*/shard | xargs -r -n 1 dirname | sort -V
+  grep -lx "$SHARD" "$MUTANTS"/*/shard 2> /dev/null | xargs -r -n 1 dirname | sort -V
+}
+
+record_baseline_failures() {
+  local test_set_json
+  : > "$(baseline_failures)"
+  while IFS= read -r test_set_json; do
+    mapfile -t test_set < <(jq -r '.[]' <<< "$test_set_json")
+    if ! run_test_set "$(baseline_log)" "${test_set[@]}" > /dev/null; then
+      echo "$test_set_json" >> "$(baseline_failures)"
+    fi
+    restore_checkout
+  done < <(test_sets_of_shard)
+}
+
+test_sets_of_shard() {
+  for directory in $(mutants_of_shard); do
+    jq -c '.[]' "$directory/tests.json"
+  done | sort -u
 }
 
 timed_verdict() {
@@ -31,9 +51,8 @@ verdict_of() {
   if [[ -f $directory/unapplied ]]; then
     echo "unapplied: $(head -n 1 "$directory/unapplied")"
   elif git apply "$directory/mutant.patch"; then
-    verdict_of_applied "$directory" >> "$(log_of "$directory")"
-    tail -n 1 "$(log_of "$directory")"
-    git checkout --quiet -- .
+    verdict_of_applied "$directory"
+    restore_checkout
   else
     echo "unapplied: git apply refused the patch"
   fi
@@ -41,40 +60,32 @@ verdict_of() {
 
 verdict_of_applied() {
   local directory=$1
-  local count index test_set
-  count=$(jq length "$directory/tests.json")
-  for ((index = 0; index < count; index++)); do
-    mapfile -t test_set < <(jq -r ".[$index][]" "$directory/tests.json")
-    run_test_set "${test_set[@]}" || return 0
-  done
+  local test_set_json
+  while IFS= read -r test_set_json; do
+    mapfile -t test_set < <(jq -r '.[]' <<< "$test_set_json")
+    if grep -qxF "$test_set_json" "$(baseline_failures)"; then
+      echo "invalid: ${test_set[*]} fails without the mutant"
+      return
+    fi
+    run_test_set "$(log_of "$directory")" "${test_set[@]}" || return
+  done < <(jq -c '.[]' "$directory/tests.json")
   echo missed
 }
 
 run_test_set() {
+  local log=$1
+  shift
   local assignments=() arguments=()
   split_assignments "$@"
-  echo "cargo test ${*}"
-  local build_output build_status
-  build_output=$(env "${assignments[@]}" timeout --kill-after="$KILL_GRACE" "$BUILD_SECONDS" cargo test --no-run "${arguments[@]}" 2>&1)
-  build_status=$?
-  echo "$build_output"
+  echo "cargo test $*" >> "$log"
+  env "${assignments[@]}" timeout --kill-after="$KILL_GRACE" "$BUILD_SECONDS" cargo test --no-run "${arguments[@]}" >> "$log" 2>&1
+  local build_status=$?
   if ((build_status != 0)); then
-    verdict_of_build "$build_status" "$build_output" "$*"
+    verdict_of_build "$build_status" "$log" "$*"
     return 1
   fi
-  env "${assignments[@]}" timeout --kill-after="$KILL_GRACE" "$TEST_SECONDS" cargo test "${arguments[@]}" 2>&1
+  env "${assignments[@]}" timeout --kill-after="$KILL_GRACE" "$TEST_SECONDS" cargo test "${arguments[@]}" >> "$log" 2>&1
   verdict_of_exit $? "$*"
-}
-
-verdict_of_build() {
-  local status=$1 output=$2 command_words=$3
-  if ((status == TIMED_OUT)); then
-    echo "timeout: build of $command_words"
-  elif grep -Eq "$COMPILE_FAILURE" <<< "$output"; then
-    echo unviable
-  else
-    echo "invalid: $(grep -m 1 '^error' <<< "$output" || echo "cargo test exited with $status")"
-  fi
 }
 
 split_assignments() {
@@ -87,14 +98,36 @@ split_assignments() {
   done
 }
 
+verdict_of_build() {
+  local status=$1 log=$2 command_words=$3
+  if is_timeout "$status"; then
+    echo "timeout: build of $command_words"
+  elif grep -Eq "$COMPILE_FAILURE" "$log"; then
+    echo unviable
+  else
+    echo "invalid: $(grep '^error' "$log" | tail -n 1 | grep . || echo "cargo test exited with $status")"
+  fi
+}
+
 verdict_of_exit() {
   local status=$1 command_words=$2
-  case $status in
-    0) return 0 ;;
-    "$TIMED_OUT") echo "timeout: $command_words" ;;
-    *) echo "caught: $command_words" ;;
-  esac
+  if ((status == 0)); then
+    return 0
+  elif is_timeout "$status"; then
+    echo "timeout: $command_words"
+  else
+    echo "caught: $command_words"
+  fi
   return 1
+}
+
+is_timeout() {
+  (($1 == TIMED_OUT || $1 == KILLED_AFTER_TIMEOUT))
+}
+
+restore_checkout() {
+  git checkout --quiet -- .
+  git clean -fdq ${TOOLS:+--exclude="/${TOOLS#"$PWD"/}"}
 }
 
 record() {
@@ -104,6 +137,14 @@ record() {
 
 log_of() {
   echo "$RESULTS/logs/$(basename "$1").log"
+}
+
+baseline_log() {
+  echo "$RESULTS/logs/baseline.log"
+}
+
+baseline_failures() {
+  echo "$RESULTS/baseline-failures"
 }
 
 main

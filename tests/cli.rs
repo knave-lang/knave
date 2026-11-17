@@ -10280,6 +10280,58 @@ fn task_refuses_a_task_in_a_library_that_lies_under_tasks() {
 }
 
 #[test]
+fn task_tree_reads_a_folder_named_like_the_build_folder() {
+    let task = Sandbox::new("task_in_target_folder")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file(
+            "tasks/target/more.knv",
+            "(deftask more () (println \"m\"))\n",
+        )
+        .compiler(&["task"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "more\n");
+}
+
+#[test]
+fn task_refuses_a_task_in_a_project_file_under_tasks() {
+    let task = Sandbox::new("task_in_project_file")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file(
+            "tasks/sub/project.knv",
+            "(deftask hid () (println \"h\"))\n",
+        )
+        .with_file(
+            "tasks/t.knv",
+            "(use sub/project)\n\n(deftask t () (println \"t\"))\n",
+        )
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn task_in_a_hidden_folder_of_a_library_under_tasks_names_the_library() {
+    let task = Sandbox::new("task_in_hidden_library_folder")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject chores (libraries (hints :path \"tasks/lib\")))\n",
+        )
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file(
+            "tasks/lib/project.knv",
+            "(defproject hints :lib \"hints.knv\")\n",
+        )
+        .with_file("tasks/lib/hints.knv", "(export x)\n\n(def x 1)\n")
+        .with_file("tasks/lib/.priv/x.knv", "(deftask p () (println \"p\"))\n")
+        .with_file(
+            "tasks/t.knv",
+            "(use hints/.priv/x)\n\n(deftask t () (println \"t\"))\n",
+        )
+        .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn task_file_may_still_import_deftask_from_prelude_task() {
     let task = Sandbox::new("task_explicit_import")
         .with_file(&Language::project_file_name(), TASK_PROJECT)

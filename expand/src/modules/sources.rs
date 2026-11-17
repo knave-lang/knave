@@ -225,16 +225,25 @@ impl ModuleSources {
         std::iter::once(primary).chain(fallback.map(|root| LocalRoot::fallback(root, &self.scope)))
     }
 
-    pub fn local_files(&self, owner: Option<&str>) -> LocalFiles<'_> {
-        let roots = match owner {
-            Some(_) => Vec::new(),
-            None => self.local_roots().collect(),
-        };
-        LocalFiles::new(roots, |path| {
-            !Self::is_written(path)
-                || Self::is_reserved(path)
-                || self.libraries.owner_of(path).is_some()
-        })
+    pub fn local_files(&self, owner: Option<Rc<str>>) -> LocalFiles<'_> {
+        match owner {
+            Some(owner) => {
+                let library = self.libraries.owner_of(&ModulePath::new(Rc::clone(&owner)));
+                let roots = library.map(|library| library.local_root(&self.scope));
+                LocalFiles::new(roots.into_iter().collect(), move |path| {
+                    self.resolve(Some(&owner), path) == *path
+                })
+            }
+            None => LocalFiles::new(self.local_roots().collect(), |path| {
+                self.loads_from_elsewhere(path)
+            }),
+        }
+    }
+
+    fn loads_from_elsewhere(&self, path: &ModulePath) -> bool {
+        !Self::is_written(path)
+            || Self::is_reserved(path)
+            || self.libraries.owner_of(path).is_some()
     }
 
     pub fn is_prelude(path: &ModulePath) -> bool {

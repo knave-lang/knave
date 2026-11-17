@@ -1,0 +1,85 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/unnamed_part_module_path.knv
+---
+error[L0260]: module path `./unnamed_part/shapes` has a part that is not a name
+ --> expand/unnamed_part_module_path.knv:1:6
+  |
+1 | (use ./unnamed_part/shapes area)
+  |      ^^^^^^^^^^^^^^^^^^^^^ each part of a module path names a directory or a file
+  |
+  = help: write `unnamed_part/shapes`
+  = note: run `knave doc L0260` for an explanation
+
+error[L0260]: module path `unnamed_part/./shapes` has a part that is not a name
+ --> expand/unnamed_part_module_path.knv:2:6
+  |
+2 | (use unnamed_part/./shapes)
+  |      ^^^^^^^^^^^^^^^^^^^^^ each part of a module path names a directory or a file
+  |
+  = help: write `unnamed_part/shapes`
+  = note: run `knave doc L0260` for an explanation
+
+error[L0260]: module path `unnamed_part/../unnamed_part/shapes` has a part that is not a name
+ --> expand/unnamed_part_module_path.knv:3:6
+  |
+3 | (use unnamed_part/../unnamed_part/shapes)
+  |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ each part of a module path names a directory or a file
+  |
+  = help: write `unnamed_part/shapes`
+  = note: run `knave doc L0260` for an explanation
+
+error[L0260]: module path `../shapes` has a part that is not a name
+ --> expand/unnamed_part_module_path.knv:4:6
+  |
+4 | (use ../shapes)
+  |      ^^^^^^^^^ each part of a module path names a directory or a file
+  |
+  = note: this path names no file under the root directory
+  = note: run `knave doc L0260` for an explanation
+
+error[L0260]: module path `../expand/unnamed_part/shapes` has a part that is not a name
+ --> expand/unnamed_part_module_path.knv:5:6
+  |
+5 | (use ../expand/unnamed_part/shapes)
+  |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ each part of a module path names a directory or a file
+  |
+  = help: write `unnamed_part/shapes`
+  = note: run `knave doc L0260` for an explanation
+
+error[L0260]: module path `unnamed_part/..` has a part that is not a name
+ --> expand/unnamed_part_module_path.knv:6:6
+  |
+6 | (use unnamed_part/..)
+  |      ^^^^^^^^^^^^^^^ each part of a module path names a directory or a file
+  |
+  = note: this path names no file under the root directory
+  = note: run `knave doc L0260` for an explanation
+
+error[L0260]: module path `unnamed_part//shapes` has a part that is not a name
+ --> expand/unnamed_part_module_path.knv:7:6
+  |
+7 | (use unnamed_part//shapes)
+  |      ^^^^^^^^^^^^^^^^^^^^ each part of a module path names a directory or a file
+  |
+  = help: write `unnamed_part/shapes`
+  = note: run `knave doc L0260` for an explanation
+
+error[L0260]: module path `unnamed_part/shapes/` has a part that is not a name
+ --> expand/unnamed_part_module_path.knv:8:6
+  |
+8 | (use unnamed_part/shapes/)
+  |      ^^^^^^^^^^^^^^^^^^^^ each part of a module path names a directory or a file
+  |
+  = note: this path names no file under the root directory
+  = note: run `knave doc L0260` for an explanation
+
+error[L0260]: module path `/unnamed_part/shapes` has a part that is not a name
+ --> expand/unnamed_part_module_path.knv:9:6
+  |
+9 | (use /unnamed_part/shapes)
+  |      ^^^^^^^^^^^^^^^^^^^^ each part of a module path names a directory or a file
+  |
+  = note: this path names no file under the root directory
+  = note: run `knave doc L0260` for an explanation

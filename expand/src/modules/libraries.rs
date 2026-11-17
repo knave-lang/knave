@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use super::local_root::LocalRoot;
+use super::search_scope::SearchScope;
 use super::unlisted_library::UnlistedLibrary;
 use crate::core::ModulePath;
 use crate::language::Language;
@@ -63,6 +65,10 @@ impl LibraryRoot {
 
     pub fn lister(&self) -> Option<&str> {
         self.lister.as_deref()
+    }
+
+    pub(super) fn local_root<'s>(&'s self, scope: &'s SearchScope) -> LocalRoot<'s> {
+        LocalRoot::primary(&self.source_root, &self.display_root, scope)
     }
 
     fn file(&self, inner_module: &str) -> LibraryFile {

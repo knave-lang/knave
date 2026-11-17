@@ -2,11 +2,11 @@
 source: tests/cli.rs
 expression: test.assert_exit_code(1).stderr()
 ---
-error[L0260]: module path `../src/text/marks` has a `.` or `..` part
+error[L0260]: module path `../src/text/marks` has a part that is not a name
  --> tests/marks.knv:1:6
   |
 1 | (use ../src/text/marks bang)
-  |      ^^^^^^^^^^^^^^^^^ a module path names a file from the root directory
+  |      ^^^^^^^^^^^^^^^^^ each part of a module path names a directory or a file
   |
   = help: write `text/marks`
   = note: run `knave doc L0260` for an explanation

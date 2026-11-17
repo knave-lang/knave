@@ -1,0 +1,12 @@
+(use ./unnamed_part/shapes area)
+(use unnamed_part/./shapes)
+(use unnamed_part/../unnamed_part/shapes)
+(use ../shapes)
+(use ../expand/unnamed_part/shapes)
+(use unnamed_part/..)
+(use unnamed_part//shapes)
+(use unnamed_part/shapes/)
+(use /unnamed_part/shapes)
+(use unnamed_part/shapes area)
+
+(def tile (area 3))

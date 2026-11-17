@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::rc::Rc;
 
+use super::module_path_problems::ModulePathProblems;
 use crate::core::{
     KernelForm, KernelType, Keyword, ModulePath, Namespace, PassingAspect, PassingDifference,
 };
@@ -8,7 +9,7 @@ use crate::diagnostic::{Counted, Diagnostic, DiagnosticCode, Label, MissingName,
 use crate::interpret::InterpretProblems;
 use crate::language::Language;
 use crate::modules::UnlistedLibrary;
-use crate::modules::{HiddenSourceModule, LibraryTable, LocalModuleClash, SearchScope};
+use crate::modules::{HiddenSourceModule, LibraryTable, LocalModuleClash};
 use crate::reader::Form;
 use crate::source::Span;
 
@@ -461,20 +462,12 @@ impl ExpandProblems {
     }
 
     pub fn unreachable_module(path: &ModulePath, file: &Path, span: Span) -> Diagnostic {
-        Diagnostic::error(
+        let diagnostic = Diagnostic::error(
             DiagnosticCode::UNKNOWN_MODULE,
             format!("cannot find module `{path}`"),
             Label::new(span, "no module this file can use has this path"),
-        )
-        .with_note(format!(
-            "`{}` exists, under a directory a task cannot reach this way",
-            file.display()
-        ))
-        .with_help(format!(
-            "a task uses a module of `{tasks}/` by its path from `{tasks}/`, and cannot use a module under `{tests}/`",
-            tasks = SearchScope::TASKS_DIRECTORY,
-            tests = SearchScope::TESTS_DIRECTORY,
-        ))
+        );
+        ModulePathProblems::beyond_task_reach(diagnostic, file)
     }
 
     pub fn local_module_beside_library(clash: &LocalModuleClash<'_>, span: Span) -> Diagnostic {

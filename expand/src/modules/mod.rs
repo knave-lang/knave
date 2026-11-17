@@ -1,4 +1,3 @@
-mod dotted_path_target;
 mod export_table;
 mod libraries;
 mod local_files;
@@ -11,8 +10,8 @@ mod registry;
 mod search_scope;
 mod sources;
 mod unlisted_library;
+mod unnamed_part_target;
 
-pub use dotted_path_target::DottedPathTarget;
 pub use export_table::ExportTable;
 pub use libraries::{LibraryFile, LibraryRoot, LibraryTable};
 pub use local_files::LocalFiles;
@@ -24,3 +23,4 @@ pub use registry::{ModuleRecord, ModuleRegistry};
 pub use search_scope::SearchScope;
 pub use sources::{HiddenSourceModule, LocalModuleClash, ModuleSources, PublicPrelude};
 pub use unlisted_library::UnlistedLibrary;
+pub use unnamed_part_target::UnnamedPartTarget;

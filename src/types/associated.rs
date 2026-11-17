@@ -1,24 +1,14 @@
 use super::checker::TypeChecker;
+use super::lowered_associated_value::LoweredAssociatedValue;
 use super::problems::{MismatchContext, ProjectionNames, TypeProblems};
 use super::projection::AssociatedType;
 use super::trait_rows_reach::Implementor;
 use super::ty::{GenericId, Type};
 use super::unifier::DeferredEquality;
+use super::written_projection::WrittenProjection;
 use crate::core::{BindingId, CoreModule, ItemKind, RustTraitDeclaration, RustTraitImplementor};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
-
-pub(super) struct LoweredAssociatedValue {
-    pub projection: BindingId,
-    pub value: Type,
-    pub span: Span,
-}
-
-pub(super) struct WrittenProjection {
-    projection: BindingId,
-    owner: Type,
-    span: Span,
-}
 
 impl TypeChecker {
     const PROJECTION_ARITY: usize = 1;

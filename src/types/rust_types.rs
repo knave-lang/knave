@@ -63,8 +63,6 @@ impl RustTypeTable {
     pub fn add(&mut self, binding: BindingId, rust_type: RustType) {
         if rust_type.has_template(RustType::ITERATOR_TEMPLATE) {
             self.iterators.insert(binding);
-        } else {
-            self.iterators.remove(&binding);
         }
         self.types.insert(binding, rust_type);
     }

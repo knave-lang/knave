@@ -18,24 +18,19 @@ impl<'c, 'w> CallWalk<'c, 'w> {
     pub fn walk(self, at: PointId) -> Walked {
         let rules = self.walk.rules();
         let called = self.walk.expr(self.site.callee(), at);
-        let ties = rules.ties(self.site.callee());
         let passings = self
             .site
             .arguments()
             .iter()
             .enumerate()
             .map(|(position, argument)| {
-                <dyn Passing>::of(
-                    argument,
-                    self.site.parameter(position, ties.as_ref()),
-                    rules,
-                )
+                <dyn Passing>::of(argument, self.site.parameter(position), rules)
             })
             .collect();
         let values = ArgumentValues::new(self.site.arguments(), passings);
         let evaluated = values.evaluate(self.walk, called.end);
         let point = self.walk.builder().join(&[evaluated.end]);
         let passed = values.pass(evaluated.held, &mut self.walk.builder().lender(point));
-        Walked::holding(point, self.site.result_holdings(passed, rules))
+        Walked::holding(point, self.site.result_holdings(passed))
     }
 }

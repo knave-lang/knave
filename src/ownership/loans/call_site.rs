@@ -9,11 +9,20 @@ use crate::types::{
 pub struct CallSite<'c> {
     callee: &'c TypedExpr,
     arguments: &'c [TypedArgument],
+    ties: Option<TemplateTies>,
 }
 
 impl<'c> CallSite<'c> {
-    pub fn new(callee: &'c TypedExpr, arguments: &'c [TypedArgument]) -> Self {
-        Self { callee, arguments }
+    pub fn new(
+        callee: &'c TypedExpr,
+        arguments: &'c [TypedArgument],
+        rules: &LoanRules<'_>,
+    ) -> Self {
+        Self {
+            callee,
+            arguments,
+            ties: rules.ties(callee),
+        }
     }
 
     pub fn repeated_lambda(&self) -> Option<&'c TypedLambda> {
@@ -31,8 +40,8 @@ impl<'c> CallSite<'c> {
         self.arguments
     }
 
-    pub fn parameter(&self, position: usize, ties: Option<&TemplateTies>) -> CalledParameter<'c> {
-        CalledParameter::at(self.parameter_type(position), ties, position)
+    pub fn parameter(&self, position: usize) -> CalledParameter<'c> {
+        CalledParameter::at(self.parameter_type(position), self.ties.as_ref(), position)
     }
 
     fn parameter_type(&self, position: usize) -> Option<&'c Type> {
@@ -42,8 +51,8 @@ impl<'c> CallSite<'c> {
         }
     }
 
-    pub fn result_holdings(&self, passed: Vec<PassedHoldings>, rules: &LoanRules<'_>) -> Holdings {
-        let Some(ties) = rules.ties(self.callee) else {
+    pub fn result_holdings(&self, passed: Vec<PassedHoldings>) -> Holdings {
+        let Some(ties) = &self.ties else {
             return Holdings::default();
         };
         passed
@@ -64,14 +73,21 @@ impl<'c> CallSite<'c> {
 mod tests {
     use super::CallSite;
     use crate::ownership::lambda_source::LambdaSource;
+    use crate::ownership::loans::loan_rules::LoanRules;
     use crate::types::{TypedExpr, TypedExprKind};
 
     struct SiteFixture;
 
     impl SiteFixture {
-        fn with_site<T>(call: &TypedExpr, read: impl FnOnce(CallSite<'_>) -> T) -> T {
+        fn with_site<T>(
+            call: &TypedExpr,
+            rules: &LoanRules<'_>,
+            read: impl FnOnce(CallSite<'_>) -> T,
+        ) -> T {
             match &call.kind {
-                TypedExprKind::Call(callee, arguments) => read(CallSite::new(callee, arguments)),
+                TypedExprKind::Call(callee, arguments) => {
+                    read(CallSite::new(callee, arguments, rules))
+                }
                 _ => panic!("the value is a call"),
             }
         }
@@ -82,13 +98,14 @@ mod tests {
         let source = LambdaSource::new(
             "(defn main ()\n  (local v (vec 1))\n  (local r (at v 0))\n  (local n (len v))\n  (println r n))",
         );
-        SiteFixture::with_site(source.bound("r"), |site| {
+        let rules = LoanRules::of(source.program());
+        SiteFixture::with_site(source.bound("r"), &rules, |site| {
             assert!(
-                site.parameter(0, None)
+                site.parameter(0)
                     .ty()
                     .is_some_and(|parameter| parameter.is_reference())
             );
-            assert!(site.parameter(2, None).ty().is_none());
+            assert!(site.parameter(2).ty().is_none());
             assert!(site.repeated_lambda().is_none());
         });
     }

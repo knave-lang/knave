@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/failure_two_calls_away_hides_a_later_error.knv
+---
+error[L0401]: mismatched types
+  --> check/failure_two_calls_away_hides_a_later_error.knv:10:22
+   |
+10 |   (if (> n 0) n (+ n "three")))
+   |                      ^^^^^^^ expected an integer, found `str`
+   |
+   = note: run `knave doc L0401` for an explanation

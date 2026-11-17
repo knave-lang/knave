@@ -121,3 +121,56 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 **Read a downloaded profile with `callgrind_annotate <profile>`.**
 
 **If `gh run download` finds no artifact, run `gh pr checks <number> --watch`, then rerun the block.** If the second run finds no artifact, stop and report the pull request to the project owner.
+
+## Mutants
+
+**Run the hand-written mutants of a pull request with the `Pull request mutants` workflow.** The workflow tests each mutant on GitHub's runners and reports a verdict for each.
+
+**A manifest is a JSON array with one object per mutant.** Each object has these fields:
+
+| Field | Value |
+| --- | --- |
+| `name` | A name that tells the mutant apart in the results |
+| `file` | The path of the file the mutant changes, from the repository root |
+| `old` | Text that occurs exactly once in `file` at the tested commit |
+| `new` | The text that replaces `old` |
+| `tests` | A list of test sets, each a list of `cargo test` arguments |
+
+**The workflow runs the test sets of a mutant in order and stops at the first set that fails.** Leading `NAME=value` items of a test set become environment variables, such as `INSTA_GLOB_FILTER=**/<fixture file name>`.
+
+```json
+[{"name": "a hidden definition is a candidate", "file": "src/lint/definition_reach.rs", "old": "!item.hidden && ", "new": "", "tests": [["--test", "stages", "lint_fixtures"], ["--lib", "lint::"]]}]
+```
+
+**To run a manifest, follow these steps:**
+
+1. Dispatch the workflow on the pull request's head commit with a tag that no other run uses:
+
+   ```sh
+   commit=$(gh pr view <number> --json headRefOid --jq .headRefOid)
+   tag=mutants-$(date +%s)
+   gh workflow run pr-mutants.yml -f pull_request=<number> -f commit="$commit" -f tag="$tag" -f mutants="$(gzip -c <manifest> | base64 -w0)"
+   ```
+
+2. Find the run's ID with `gh run list --workflow pr-mutants.yml --limit 20 --json databaseId,displayTitle --jq ".[] | select(.displayTitle | endswith(\" $tag\")) | .databaseId"`. If the command prints nothing, rerun it after 10 seconds, at most six times. If the sixth run prints nothing, report the tag to the project owner.
+3. Run `gh run watch <run id> --exit-status` as a background shell command. The command exits when the run ends.
+4. Download the results with `gh run download <run id> --name mutant-results --dir target/scratch/mutants-<run id>`.
+5. Read `summary.md` in that directory. It names each mutant's verdict and log file.
+
+**If `gh workflow run` refuses the manifest as too large, split the manifest and dispatch each part with its own tag.**
+
+**If the download finds no `mutant-results` artifact, read the failure with `gh run view <run id> --log-failed`.** The `plan` job fails in each of these cases:
+
+- The commit is not a commit of the pull request.
+- The pull request comes from a fork.
+- The manifest is empty, or an entry lacks a field.
+
+**The run fails when a mutant is missed or unapplied, or when a shard does not finish.** Act on each verdict:
+
+| Verdict | Meaning | Action |
+| --- | --- | --- |
+| `caught` | A test set failed | None |
+| `missed` | Every test set passed | Add a test that fails on the mutant, or show that the mutant does not change behavior |
+| `timeout` | A test set ran longer than `test-seconds`, 300 by default | Read the log. If the tests hang on the mutant, count the mutant as caught. Otherwise, dispatch the mutant again with a larger `test-seconds`. |
+| `unviable` | The tests do not compile with the mutant | Rewrite the mutant so that it compiles |
+| `unapplied` | `old` does not occur exactly once, or `file` does not exist | Fix the entry and dispatch it again |

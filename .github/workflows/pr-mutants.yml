@@ -1,0 +1,142 @@
+name: Pull request mutants
+run-name: Mutants of pull request ${{ inputs.pull_request }} ${{ inputs.tag }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        description: Number of the pull request whose code the mutants change
+        required: true
+        type: number
+      commit:
+        description: The pull request's commit that the mutants apply to
+        required: true
+        type: string
+      mutants:
+        description: The manifest of mutants as gzip compressed, base64 encoded JSON
+        required: true
+        type: string
+      tag:
+        description: A word that tells this run apart in the run list
+        default: ""
+        type: string
+      test-seconds:
+        description: The longest one test set may run before its mutant counts as timed out
+        default: 300
+        type: number
+
+permissions:
+  contents: read
+
+env:
+  CACHIX_CACHE: rslisp
+  INSTA_UPDATE: "no"
+  MUTANTS: ${{ github.workspace }}/mutants
+  SHARDS: 6
+  TOOLS: ${{ github.workspace }}/mutation-tools
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      shards: ${{ steps.plan.outputs.shards }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.commit }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          path: mutation-tools
+          sparse-checkout: |
+            .github/mutation
+            .github/actions
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PULL_REQUEST: ${{ inputs.pull_request }}
+          COMMIT: ${{ inputs.commit }}
+          MANIFEST: ${{ inputs.mutants }}
+        run: bash "$TOOLS/.github/mutation/plan-manifest.sh"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mutants
+          path: mutants/
+
+  mutants:
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.commit }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          path: mutation-tools
+          sparse-checkout: |
+            .github/mutation
+            .github/actions
+      - uses: ./mutation-tools/.github/actions/dev-shell
+        with:
+          build-cache: test
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: mutants
+          path: mutants
+      - name: Test the mutants
+        timeout-minutes: 40
+        env:
+          SHARD: ${{ matrix.shard }}
+          RESULTS: ${{ github.workspace }}/results
+          CARGO_INCREMENTAL: "1"
+          BUILD_SECONDS: 1500
+          TEST_SECONDS: ${{ inputs.test-seconds }}
+        run: nix develop .#ci -c bash "$TOOLS/.github/mutation/test-patches.sh"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: mutant-results-shard-${{ matrix.shard }}
+          path: results/
+
+  report:
+    needs: [plan, mutants]
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          path: mutation-tools
+          sparse-checkout: |
+            .github/mutation
+            .github/actions
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: mutant-results-shard-*
+          path: shard-results
+      - name: Report each mutant's verdict
+        env:
+          PULL_REQUEST: ${{ inputs.pull_request }}
+          COMMIT: ${{ inputs.commit }}
+          SHARD_LIST: ${{ needs.plan.outputs.shards }}
+          SHARD_RESULTS: shard-results
+          REPORT: mutant-results
+        run: bash "$TOOLS/.github/mutation/report-patches.sh"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: mutant-results
+          path: mutant-results/

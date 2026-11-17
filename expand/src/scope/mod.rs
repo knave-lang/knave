@@ -1,4 +1,6 @@
 mod binding_table;
+#[cfg(test)]
+mod imported_counts;
 mod imported_names;
 mod imported_table;
 mod name_entries;
@@ -20,8 +22,9 @@ mod scopes;
 mod visible_names;
 
 pub use binding_table::{BindingTable, Resolution};
+#[cfg(test)]
+pub(crate) use imported_counts::ImportedCounts;
 pub use phase::Phase;
-pub use prelude_names::PreludeNames;
 pub use saved_exports::{ExportBytes, SavedExports};
 pub use saved_names::{NameTables, SavedNames};
 pub use scope_chain::{ChainPrefix, ScopeChain};

@@ -103,7 +103,7 @@ impl PreludeState {
         };
         let mut tables = self.tables;
         tables.bindings.adopt_saved(loaded.bindings);
-        tables.table.prelude_mut().adopt_saved(loaded.names);
+        tables.table.adopt_saved(loaded.names);
         tables
     }
 
@@ -161,11 +161,7 @@ impl PreludeState {
         expander.tables = self.tables;
         expander.tables.module_notes.adopt(tables.notes);
         expander.tables.bindings.adopt_saved(tables.bindings);
-        expander
-            .tables
-            .table
-            .prelude_mut()
-            .adopt_saved(tables.names);
+        expander.tables.table.adopt_saved(tables.names);
         expander.tables.macro_origins = tables.origins.into_macro_origins();
         expander
             .tables
@@ -260,6 +256,7 @@ mod tests {
         KernelType, Leaf, Literal, Namespace,
     };
     use crate::expand::builtin_export::BuiltinExport;
+    use crate::scope::ImportedCounts;
 
     struct UserProgram {
         name: &'static str,
@@ -319,16 +316,12 @@ mod tests {
             expander.tables.module_notes.decoded_no_saved_note()
         }
 
-        fn imported_prelude(&self) -> (usize, usize) {
+        fn imported_prelude(&self) -> ImportedCounts {
             let (mut sources, entry) = self.sources();
             let mut expander =
                 Expander::with_prelude(&mut sources, Self::module_sources(), Self::loaded_state());
             expander.load_source_module(ModulePath::new(self.name), &[entry]);
-            let prelude = expander.tables.table.prelude();
-            (
-                prelude.imported_module_count(),
-                prelude.imported_decoded_count(),
-            )
+            expander.tables.table.imported_prelude_counts()
         }
 
         fn loaded_state() -> PreludeState {
@@ -521,7 +514,12 @@ mod tests {
 
     #[test]
     fn an_empty_program_imports_the_saved_prelude_and_decodes_none_of_its_names() {
-        assert_eq!(UserProgram::EMPTY.imported_prelude(), (1, 0));
+        let counts = ImportedCounts {
+            tables: 1,
+            modules: 1,
+            decoded_names: 0,
+        };
+        assert_eq!(UserProgram::EMPTY.imported_prelude(), counts);
     }
 
     #[test]

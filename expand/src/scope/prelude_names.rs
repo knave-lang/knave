@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+#[cfg(test)]
+use super::imported_counts::ImportedCounts;
 use super::imported_names::ImportedNames;
 use super::name_entries::NameEntries;
 use super::name_key::NameKey;
@@ -9,17 +11,17 @@ use super::{Scope, ScopeSet};
 use crate::core::{BindingId, ModuleId, Namespace};
 
 #[derive(Default)]
-pub struct PreludeNames {
+pub(super) struct PreludeNames {
     saved: SavedNames,
     imported: ImportedNames,
 }
 
 impl PreludeNames {
-    pub fn adopt_saved(&mut self, saved: SavedNames) {
+    pub(super) fn adopt_saved(&mut self, saved: SavedNames) {
         self.saved = saved;
     }
 
-    pub fn import(&mut self, scope: Scope, base: ModuleId, exports: SavedExports) {
+    pub(super) fn import(&mut self, scope: Scope, base: ModuleId, exports: SavedExports) {
         self.imported.add(scope, base, exports);
     }
 
@@ -69,17 +71,7 @@ impl PreludeNames {
     }
 
     #[cfg(test)]
-    pub(crate) fn imported_decoded_count(&self) -> usize {
-        self.imported.decoded_count()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn imported_table_count(&self) -> usize {
-        self.imported.table_count()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn imported_module_count(&self) -> usize {
-        self.imported.module_count()
+    pub(super) fn imported_counts(&self) -> ImportedCounts {
+        self.imported.counts()
     }
 }

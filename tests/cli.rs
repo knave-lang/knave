@@ -4373,6 +4373,26 @@ fn eval_prints_a_value_as_prn_prints_it() {
 }
 
 #[test]
+fn eval_prints_through_the_prelude_prn_beside_a_module_prn() {
+    let sandbox =
+        Sandbox::new("eval_shadowed_prn").with_file("session.knv", "(defmacro prn (x) x)\n");
+    let eval = sandbox.compiler(&["eval", "session.knv", "(str \"a\") 1"]);
+    assert_eq!(eval.assert_silent_success().stdout(), "\"a\"\n1\n");
+}
+
+#[test]
+fn eval_json_prints_through_the_prelude_pr_str_beside_a_module_pr_str() {
+    let sandbox = Sandbox::new("eval_shadowed_pr_str")
+        .with_file("session.knv", "(defn pr-str (x) (str \"mine\"))\n");
+    let eval = sandbox.compiler(&["eval", "--json", "session.knv", "(fn () 1) 2"]);
+    let replies = eval.assert_exit_code(0).json_replies();
+    assert!(
+        replies.contains(&json!({"value": "2", "form": 2})),
+        "{replies:?}"
+    );
+}
+
+#[test]
 fn eval_prints_nothing_for_a_unit_result() {
     let sandbox = Sandbox::new("eval_unit").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "session.knv", "(println \"side \" (square 3))"]);

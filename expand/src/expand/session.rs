@@ -163,13 +163,17 @@ impl ExpansionSession<'_> {
         name: &str,
         source: SourceId,
     ) -> Result<GeneratedFunction, Diagnostics> {
+        let value = self.prelude_expression(source)?;
+        let binding = self.introduced_global(name, value.span());
+        Ok(GeneratedFunction::new(binding, value))
+    }
+
+    pub fn prelude_expression(&mut self, source: SourceId) -> Result<Expr, Diagnostics> {
         let prelude = self.prelude().expect("the session loads the prelude");
         let mut form = self.read_one(source)?;
         Self::add_module_scopes(self.expander.modules.get(prelude), &mut form);
         let lowered = self.lower_in(prelude, |expander| expander.lower_expr(&form));
-        let value = self.collect_diagnostics(lowered)?;
-        let binding = self.introduced_global(name, value.span());
-        Ok(GeneratedFunction::new(binding, value))
+        self.collect_diagnostics(lowered)
     }
 
     pub fn defines(&self, span: Span) -> bool {

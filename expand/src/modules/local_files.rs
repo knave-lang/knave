@@ -31,6 +31,9 @@ impl<'s> LocalFiles<'s> {
     }
 
     pub fn unnamed_part_target(&self, path: &UnnamedPartPath) -> UnnamedPartTarget {
+        if let Some(written) = self.written_in_place(path) {
+            return UnnamedPartTarget::Reachable(written);
+        }
         let file_name = Language::file_name(path.as_str());
         let local = Path::new(&file_name);
         let Some((holder, file)) = self
@@ -44,6 +47,16 @@ impl<'s> LocalFiles<'s> {
             Some(written) => UnnamedPartTarget::Reachable(written),
             None => self.target_without_module_path(holder, local),
         }
+    }
+
+    fn written_in_place(&self, path: &UnnamedPartPath) -> Option<ModulePath> {
+        let written = path.named_in_place()?;
+        let file_name = Language::file_name(written.as_str());
+        let reached = self
+            .roots
+            .iter()
+            .any(|root| root.reached_file(Path::new(&file_name)).is_some());
+        (reached && !(self.loads_elsewhere)(&written)).then_some(written)
     }
 
     fn target_without_module_path(

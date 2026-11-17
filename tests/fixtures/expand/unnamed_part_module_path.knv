@@ -6,6 +6,7 @@
 (use unnamed_part/..)
 (use unnamed_part//shapes)
 (use unnamed_part/shapes/)
+(use ./unnamed_part/missing)
 (use /unnamed_part/shapes)
 (use unnamed_part/shapes area)
 

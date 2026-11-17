@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+shopt -s nullglob
 source .github/mutation/issue.sh
 
 readonly SURVIVORS_HEADING='## Missed or timed out'
@@ -7,15 +8,16 @@ readonly UNVIABLE_HEADING='## Functions whose only mutants were unviable'
 
 main() {
   if ! every_shard_completed; then
-    echo "::warning::A mutation shard did not finish, so the issue keeps its last tested commit."
-    return
+    fail "A mutation shard did not finish, so the issue keeps its last tested commit."
   fi
-  local issue previous survivors unviable
+  local issue previous found survivors unviable
   issue=$(nightly_issue)
   previous=$(issue_body_text <<< "$issue")
-  survivors=$(merged_unchecked "$SURVIVORS_HEADING" "$previous" "$(surviving_mutants)")
+  found=$(surviving_mutants)
+  survivors=$(merged_unchecked "$SURVIVORS_HEADING" "$previous" "$found")
   unviable=$(merged_unchecked "$UNVIABLE_HEADING" "$previous" "$(functions_with_only_unviable_mutants)")
   publish "$(issue_number <<< "$issue")" "$(issue_body "$survivors" "$unviable")" "$survivors$unviable"
+  require_no_new_survivor "$previous" "$found"
 }
 
 every_shard_completed() {
@@ -38,7 +40,8 @@ unchecked_lines_under() {
 }
 
 surviving_mutants() {
-  { cat results/mutants-shard-*/survivors.tsv 2>/dev/null || true; } | sort -u |
+  awk -F '\t' '$2 ~ /^(missed|timeout)/ { split($2, verdict, ":"); print verdict[1] "\t" $1 }' \
+    /dev/null results/mutants-shard-*/results.tsv | sort -u |
     while IFS=$'\t' read -r outcome name; do
       IFS=: read -r file line _ description <<< "$name"
       echo "- [ ] \`$file:$line\` $outcome:${description}"
@@ -46,14 +49,33 @@ surviving_mutants() {
 }
 
 functions_with_only_unviable_mutants() {
-  jq -rs '
-    [.[].outcomes[] | .summary as $summary | .scenario.Mutant? // empty | {
-      key: "`\(.file):\(.function.span.start.line)` `\(.function.function_name)`",
-      unviable: ($summary == "Unviable")
-    }]
-    | group_by(.key)
-    | map(select(all(.unviable)) | "- [ ] \(.[0].key)")
-    | .[]' results/mutants-shard-*/first-stage.json 2>/dev/null || true
+  awk -F '\t' '
+    FNR == NR { function_of[$1] = $2; next }
+    { key = function_of[$1]; seen[key] = 1; if ($2 != "unviable") viable[key] = 1 }
+    END { for (key in seen) if (!(key in viable)) print "- [ ] " key }
+  ' <(mutant_functions) results/mutants-shard-*/results.tsv 2>/dev/null | sort
+}
+
+mutant_functions() {
+  for directory in "$MUTANTS"/*/; do
+    printf '%s\t%s\n' "$(cat "$directory/name")" "$(cat "$directory/function")"
+  done
+}
+
+require_no_new_survivor() {
+  local previous=$1 found=$2
+  local new
+  new=$(comm -13 <(listed_items <<< "$previous" | sort -u) <(listed_items <<< "$found" | grep -F '` missed:' | sort -u))
+  [[ -z $new ]] || fail "These mutants are missed and new since the last run: $new"
+}
+
+listed_items() {
+  sed -n 's/^- \[[ x]\] //p'
+}
+
+fail() {
+  echo "::error::$1"
+  exit 1
 }
 
 issue_body() {

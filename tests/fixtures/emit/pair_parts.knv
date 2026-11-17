@@ -13,7 +13,7 @@
   (+ (first scores) (second scores)))
 
 (defn tag! ((entry (mut (pair i64 string))))
-  (push! (second entry) "!"))
+  (push! (second entry) "!!"))
 
 (defn main ()
   (let (names (pair (str "ana") (str "bo"))

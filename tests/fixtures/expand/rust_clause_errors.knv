@@ -112,3 +112,14 @@
   (rust "std::mem::size_of_val({0})"
     (where ((a clone)) (fn ((ref a)) usize))
     (i64 "std::mem::size_of_val({&0})")))
+
+(def marker-kept-after-dropping-a-written-borrow
+  (rust "std::mem::size_of_val(&{&0})"
+    (where ((a clone)) (fn (a) usize))
+    ((ref str) "std::mem::size_of_val({&0})")))
+
+(def marker-dropped-on-a-shared-reference
+  (rust "{&0} == {&1}"
+    (where ((a partial-eq))
+      (fn ((ref a) (ref a)) bool))
+    (string "{0} == {1}")))

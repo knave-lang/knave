@@ -75,17 +75,37 @@ impl<'a> Unification<'a> {
         let TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) = &value.kind else {
             return value.ty.clone();
         };
-        let (owner, _) = ReferencePeeling::new(self.unifier).peel(&owner.ty);
-        let Type::Named(binding, arguments) = owner else {
+        let (peeled, _) = ReferencePeeling::new(self.unifier).peel(&owner.ty);
+        let Type::Named(binding, arguments) = peeled else {
             return value.ty.clone();
         };
         if let FieldSpelling::Pair(position) = label.spelling {
-            let part = position.part_of(&arguments).cloned();
-            return part.unwrap_or_else(|| value.ty.clone());
+            let part = position
+                .part_of(&arguments)
+                .filter(|_| !self.behind_shared(owner));
+            return part.cloned().unwrap_or_else(|| value.ty.clone());
         }
         self.declarations
             .field_type(binding, &label.name, &arguments)
             .unwrap_or_else(|| value.ty.clone())
+    }
+
+    fn behind_shared(&self, owner: &TypedExpr) -> bool {
+        let shared = self.has_shared_layer(&self.place_type(owner));
+        match &owner.kind {
+            TypedExprKind::Struct(TypedStructExpr::Field(inner, _)) => {
+                shared || self.behind_shared(inner)
+            }
+            _ => shared,
+        }
+    }
+
+    fn has_shared_layer(&self, ty: &Type) -> bool {
+        match self.unifier.resolve(ty) {
+            Type::Ref(..) => true,
+            Type::Mut(_, inner) => self.has_shared_layer(&inner),
+            _ => false,
+        }
     }
 
     fn unifies_viewed_items(&mut self, coercion: ViewCoercion, span: Span) -> bool {

@@ -33,15 +33,16 @@ impl PreludeNames {
             .bound_with_scopes(scopes, NameKey::new(name, namespace))
     }
 
-    pub(super) fn entries_seen_from<'t, 's>(
+    pub(super) fn visit_entries_seen_from<'t>(
         &'t self,
-        scopes: &'s ScopeSet,
-        name: &'s str,
-        namespace: Namespace,
-    ) -> impl Iterator<Item = &'t NameEntries> + use<'t, 's> {
-        let key = NameKey::new(name, namespace);
-        let saved = self.saved.entries_seen_from(scopes, key);
-        self.imported.entries_seen_from(scopes, key).chain(saved)
+        scopes: &ScopeSet,
+        key: NameKey<'_>,
+        visit: &mut impl FnMut(&'t NameEntries),
+    ) {
+        self.imported.visit_entries_seen_from(scopes, key, visit);
+        if let Some(saved) = self.saved.entries_seen_from(scopes, key) {
+            visit(saved);
+        }
     }
 
     pub(super) fn qualified_ending_in(

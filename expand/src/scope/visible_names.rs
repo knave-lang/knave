@@ -4,6 +4,7 @@ use rustc_hash::FxHashMap;
 
 use super::ScopeSet;
 use super::name_entries::NameEntries;
+use super::name_key::NameKey;
 use super::phase::Phase;
 use super::prelude_names::PreludeNames;
 use super::qualified_names::QualifiedNames;
@@ -82,25 +83,29 @@ impl<'t> VisibleNames<'t> {
             .prelude
             .qualified_ending_in(last_segment.shared_name(), namespace);
         for name in own.iter().chain(prelude) {
-            for entries in self.entries_named(last_segment.scopes(), name, namespace) {
+            let key = (Rc::clone(name), namespace);
+            self.visit_entries_named(last_segment.scopes(), &key, &mut |entries| {
                 entries.visit_visible(last_segment.scopes(), phase, |entry| {
                     visible.push(entry.binding());
                 });
-            }
+            });
         }
         visible
     }
 
     #[inline(always)]
-    pub(super) fn entries_named<'s>(
+    pub(super) fn visit_entries_named(
         &self,
-        scopes: &'s ScopeSet,
-        name: &'s Rc<str>,
-        namespace: Namespace,
-    ) -> impl Iterator<Item = &'t NameEntries> + use<'t, 's> {
-        let own = self.entries.get(&(Rc::clone(name), namespace));
-        let prelude = self.prelude.entries_seen_from(scopes, name, namespace);
-        own.into_iter().chain(prelude)
+        scopes: &ScopeSet,
+        key: &(Rc<str>, Namespace),
+        visit: &mut impl FnMut(&'t NameEntries),
+    ) {
+        if let Some(own) = self.entries.get(key) {
+            visit(own);
+        }
+        let (name, namespace) = key;
+        let key = NameKey::new(name, *namespace);
+        self.prelude.visit_entries_seen_from(scopes, key, visit);
     }
 }
 

@@ -23,14 +23,15 @@ impl ImportedNames {
         self.tables[table].add(scope);
     }
 
-    pub(super) fn entries_seen_from<'t, 's>(
+    pub(super) fn visit_entries_seen_from<'t>(
         &'t self,
-        scopes: &'s ScopeSet,
-        key: NameKey<'s>,
-    ) -> impl Iterator<Item = &'t NameEntries> + use<'t, 's> {
-        self.tables
-            .iter()
-            .flat_map(move |table| table.entries_seen_from(scopes, key))
+        scopes: &ScopeSet,
+        key: NameKey<'_>,
+        visit: &mut impl FnMut(&'t NameEntries),
+    ) {
+        for table in &self.tables {
+            table.visit_entries_seen_from(scopes, key, visit);
+        }
     }
 
     pub(super) fn bound_with_scopes(

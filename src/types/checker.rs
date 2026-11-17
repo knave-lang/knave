@@ -53,10 +53,10 @@ use super::{
 };
 use super::{lowered_payload::LoweredPayload, payload_lowering::PayloadLowering};
 use crate::core::{
-    BindingArena, BindingId, BindingKind, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr,
-    ExprKind, Item, ItemKind, KernelForm, Leaf, ModuleId, ParsedTemplate, ReferenceKind,
-    RustTemplate, StructDerives, StructExpr, TypeBinder, TypeExpr, TypeExprKind,
-    VariantDeclaration, VariantPayload as CoreVariantPayload,
+    BindingArena, BindingId, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr, ExprKind, Item,
+    ItemKind, KernelForm, Leaf, ModuleId, ParsedTemplate, ReferenceKind, RustTemplate,
+    StructDerives, StructExpr, TypeBinder, TypeExpr, TypeExprKind, VariantDeclaration,
+    VariantPayload as CoreVariantPayload,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::{MacroCallLookup, PendingDefinitions};
@@ -2005,10 +2005,9 @@ impl TypeChecker {
                     continue;
                 };
                 let implementor_span = implementor.span();
-                let variables = self.implementor_variables(implementor);
                 let (implementor, params, associated_values) = match self
                     .written_schemes()
-                    .lower_impl_implementor(variables, implementor, associated)
+                    .lower_impl_implementor(implementor, associated)
                 {
                     Ok(implementor) => implementor,
                     Err(diagnostic) => {
@@ -2144,28 +2143,6 @@ impl TypeChecker {
                 span,
                 help,
             ));
-        }
-    }
-
-    fn implementor_variables(&self, implementor: &TypeExpr) -> Vec<BindingId> {
-        let mut found = Vec::new();
-        self.collect_implementor_variables(implementor, &mut found);
-        found
-    }
-
-    fn collect_implementor_variables(&self, type_expr: &TypeExpr, found: &mut Vec<BindingId>) {
-        if let TypeExprKind::Named(binding, arguments) = type_expr.kind()
-            && arguments.is_empty()
-            && matches!(
-                self.bindings.get(*binding).kind(),
-                BindingKind::TypeVariable
-            )
-            && !found.contains(binding)
-        {
-            found.push(*binding);
-        }
-        for part in type_expr.parts() {
-            self.collect_implementor_variables(part, found);
         }
     }
 

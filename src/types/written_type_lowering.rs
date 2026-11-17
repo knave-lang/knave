@@ -88,6 +88,28 @@ impl<'l> WrittenTypeLowering<'l> {
         }
     }
 
+    pub(super) fn type_variables(&self, type_expr: &TypeExpr) -> Vec<BindingId> {
+        let mut found = Vec::new();
+        self.collect_type_variables(type_expr, &mut found);
+        found
+    }
+
+    fn collect_type_variables(&self, type_expr: &TypeExpr, found: &mut Vec<BindingId>) {
+        if let TypeExprKind::Named(binding, arguments) = type_expr.kind()
+            && arguments.is_empty()
+            && matches!(
+                self.bindings.get(*binding).kind(),
+                BindingKind::TypeVariable
+            )
+            && !found.contains(binding)
+        {
+            found.push(*binding);
+        }
+        for part in type_expr.parts() {
+            self.collect_type_variables(part, found);
+        }
+    }
+
     pub(super) fn replace_bounds(&mut self, param: &mut GenericParam, bounds: Vec<Bound>) {
         self.generics.redeclare(param, bounds);
     }
@@ -286,96 +308,17 @@ impl ScopedTypeLowering<'_, '_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::{
-        BindingArena, BindingId, BindingInfo, BindingKind, ImplementorRows, RustTraitDeclaration,
-    };
-    use crate::source::{SourceId, Span};
-    use crate::types::checker::TypeChecker;
-    use crate::types::{LoweredRows, RustTrait};
-
-    struct ArgumentCheckFixture {
-        checker: TypeChecker,
-        declared: BindingId,
-    }
-
-    impl ArgumentCheckFixture {
-        fn new() -> Self {
-            let mut checker = TypeChecker::new(BindingArena::default());
-            let declared = checker.bindings.add(BindingInfo::new(
-                "shown".into(),
-                BindingKind::TypeVariable,
-                None,
-            ));
-            Self { checker, declared }
-        }
-
-        fn declaration(&self) -> RustTraitDeclaration {
-            RustTraitDeclaration {
-                binding: self.declared,
-                path: "Shown".into(),
-                resolved_path: "Shown".into(),
-                self_variable: self.declared,
-                methods: Vec::new(),
-                help: None,
-                requires: Vec::new(),
-                structural: None,
-                associated: Vec::new(),
-                implementors: ImplementorRows::new(Vec::new()),
-            }
-        }
-
-        fn holding(mut self, rust_trait: impl FnOnce(&RustTraitDeclaration) -> RustTrait) -> Self {
-            let rust_trait = rust_trait(&self.declaration());
-            self.checker
-                .declarations
-                .traits
-                .table
-                .add(self.declared, rust_trait);
-            self
-        }
-
-        fn checks_an_argument(&mut self) -> bool {
-            let span = Span::new(SourceId::new(0), 0..0);
-            self.checker
-                .written_types()
-                .check_trait_argument(self.declared, span)
-                .is_ok()
-        }
-    }
-
-    #[test]
-    fn a_reached_trait_without_argument_rows_takes_no_argument() {
-        let mut fixture = ArgumentCheckFixture::new().holding(|declaration| {
-            RustTrait::lowered(declaration, LoweredRows::new(Vec::new(), Vec::new()))
-        });
-        assert!(!fixture.checks_an_argument());
-    }
-
-    #[test]
-    #[should_panic(expected = "the trait reach left out a trait the program uses")]
-    fn an_argument_on_an_unreached_trait_fails_loudly() {
-        ArgumentCheckFixture::new()
-            .holding(RustTrait::unreached)
-            .checks_an_argument();
-    }
-}
-
-#[cfg(test)]
-mod lowering_tests {
     use rustc_hash::FxHashMap;
 
-    use crate::core::{ReferenceKind, TypeExprKind};
+    use crate::core::{PrimitiveType, ReferenceKind, TypeExprKind};
     use crate::types::ty::{Bound, GenericId, Type};
     use crate::types::written_type_fixture::WrittenTypeFixture as Fixture;
-
-    fn no_generics() -> FxHashMap<crate::core::BindingId, GenericId> {
-        FxHashMap::default()
-    }
+    use crate::types::{LoweredRows, RustTrait};
 
     #[test]
     fn a_primitive_lowers_to_itself() {
         let mut fixture = Fixture::new();
-        let lowered = fixture.lower(&Fixture::integer(), &no_generics());
+        let lowered = fixture.lower_without_generics(&Fixture::integer());
         assert_eq!(
             lowered.ok(),
             Some(Type::Primitive(crate::core::PrimitiveType::I64))
@@ -386,7 +329,7 @@ mod lowering_tests {
     fn a_shared_reference_stays_shared() {
         let mut fixture = Fixture::new();
         let shared = Fixture::reference(ReferenceKind::Shared, Fixture::integer());
-        let lowered = fixture.lower(&shared, &no_generics());
+        let lowered = fixture.lower_without_generics(&shared);
         assert!(matches!(lowered, Ok(Type::Ref(..))));
     }
 
@@ -394,21 +337,21 @@ mod lowering_tests {
     fn a_mutable_reference_stays_mutable() {
         let mut fixture = Fixture::new();
         let mutable = Fixture::reference(ReferenceKind::Mutable, Fixture::integer());
-        let lowered = fixture.lower(&mutable, &no_generics());
+        let lowered = fixture.lower_without_generics(&mutable);
         assert!(matches!(lowered, Ok(Type::Mut(..))));
     }
 
     #[test]
     fn a_function_lowers_its_parameters_and_result() {
         let mut fixture = Fixture::new();
-        let function = Fixture::function(vec![Fixture::integer()], Fixture::integer());
-        let Ok(Type::Function(_, parameters, result)) = fixture.lower(&function, &no_generics())
+        let boolean = Fixture::expression(TypeExprKind::Primitive(PrimitiveType::Bool));
+        let function = Fixture::function(vec![Fixture::integer()], boolean);
+        let Ok(Type::Function(_, parameters, result)) = fixture.lower_without_generics(&function)
         else {
             panic!("a function type lowers to a function");
         };
-        let integer = Type::Primitive(crate::core::PrimitiveType::I64);
-        assert_eq!(parameters, vec![integer.clone()]);
-        assert_eq!(*result, integer);
+        assert_eq!(parameters, vec![Type::Primitive(PrimitiveType::I64)]);
+        assert_eq!(*result, Type::Primitive(PrimitiveType::Bool));
     }
 
     #[test]
@@ -416,7 +359,7 @@ mod lowering_tests {
         let mut fixture = Fixture::new();
         let hole = Fixture::expression(TypeExprKind::Hole);
         assert!(matches!(
-            fixture.lower(&hole, &no_generics()),
+            fixture.lower_without_generics(&hole),
             Ok(Type::Var(_))
         ));
     }
@@ -435,10 +378,7 @@ mod lowering_tests {
     fn a_type_variable_without_generics_lowers_to_a_fresh_variable() {
         let mut fixture = Fixture::new();
         let variable = fixture.type_variable("a");
-        let lowered = fixture
-            .checker
-            .written_types()
-            .lower_without_generics(&Fixture::named(variable, Vec::new()));
+        let lowered = fixture.lower_without_generics(&Fixture::named(variable, Vec::new()));
         assert!(matches!(lowered, Ok(Type::Var(_))));
     }
 
@@ -447,7 +387,7 @@ mod lowering_tests {
         let mut fixture = Fixture::new();
         let wrapper = fixture.declared_struct("wrapper", 1);
         let written = Fixture::named(wrapper, vec![Fixture::integer()]);
-        let lowered = fixture.lower(&written, &no_generics());
+        let lowered = fixture.lower_without_generics(&written);
         assert!(matches!(lowered, Ok(Type::Named(binding, _)) if binding == wrapper));
     }
 
@@ -456,7 +396,7 @@ mod lowering_tests {
         let mut fixture = Fixture::new();
         let point = fixture.declared_struct("point", 0);
         let written = Fixture::named(point, vec![Fixture::integer()]);
-        assert!(fixture.lower(&written, &no_generics()).is_err());
+        assert!(fixture.lower_without_generics(&written).is_err());
     }
 
     #[test]
@@ -466,7 +406,7 @@ mod lowering_tests {
             Vec::new(),
             Box::new(Fixture::integer()),
         ));
-        assert!(fixture.lower(&nested, &no_generics()).is_err());
+        assert!(fixture.lower_without_generics(&nested).is_err());
     }
 
     #[test]
@@ -474,7 +414,7 @@ mod lowering_tests {
         let mut fixture = Fixture::new();
         let display = fixture.named_trait("display");
         let bare = Fixture::expression(TypeExprKind::Trait(display));
-        assert!(fixture.lower(&bare, &no_generics()).is_err());
+        assert!(fixture.lower_without_generics(&bare).is_err());
     }
 
     #[test]
@@ -482,10 +422,7 @@ mod lowering_tests {
         let mut fixture = Fixture::new();
         let display = fixture.named_trait("display");
         let binder = Fixture::bounded(display, &[display]);
-        let bound = fixture
-            .checker
-            .written_types()
-            .lower_type_bound(&binder.bounds[0], &no_generics());
+        let bound = fixture.lower_bound(&binder.bounds[0]);
         assert_eq!(bound.ok(), Some(Bound::plain(display)));
     }
 
@@ -523,5 +460,44 @@ mod lowering_tests {
             fixture.checker.unifier.generic_bounds(param.id),
             [Bound::plain(display)]
         );
+    }
+
+    #[test]
+    fn a_reached_trait_without_argument_rows_takes_no_argument() {
+        let mut fixture = Fixture::new();
+        let shown = fixture.holding_trait(|declaration| {
+            RustTrait::lowered(declaration, LoweredRows::new(Vec::new(), Vec::new()))
+        });
+        assert!(
+            fixture
+                .lower_bound(&Fixture::bound_with_argument(shown))
+                .is_err()
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "the trait reach left out a trait the program uses")]
+    fn an_argument_on_an_unreached_trait_fails_loudly() {
+        let mut fixture = Fixture::new();
+        let shown = fixture.holding_trait(RustTrait::unreached);
+        let _ = fixture.lower_bound(&Fixture::bound_with_argument(shown));
+    }
+
+    #[test]
+    fn the_type_variables_of_a_type_are_listed_once_in_order() {
+        let mut fixture = Fixture::new();
+        let first = fixture.type_variable("a");
+        let second = fixture.type_variable("b");
+        let pair = fixture.declared_struct("pair", 3);
+        let written = Fixture::named(
+            pair,
+            vec![
+                Fixture::named(first, Vec::new()),
+                Fixture::named(second, Vec::new()),
+                Fixture::named(first, Vec::new()),
+            ],
+        );
+        let variables = fixture.checker.written_types().type_variables(&written);
+        assert_eq!(variables, vec![first, second]);
     }
 }

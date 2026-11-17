@@ -32,6 +32,12 @@ impl ModulePathProblems {
             UnnamedPartTarget::BeyondTaskReach(file) => {
                 Self::with_task_reach_advice(diagnostic, &file)
             }
+            UnnamedPartTarget::LibraryFile { file, library } => diagnostic
+                .with_note(format!(
+                    "`{}` is a file of library `{library}`",
+                    file.display()
+                ))
+                .with_help(format!("use it by its module path under `{library}`")),
             UnnamedPartTarget::Absent => {
                 diagnostic.with_note("this path names no file under the root directory")
             }

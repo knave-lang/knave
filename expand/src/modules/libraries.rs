@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use super::library_place::LibraryPlace;
 use super::local_files::LocalFiles;
 use super::local_root::LocalRoot;
 use super::search_scope::SearchScope;
@@ -129,18 +130,40 @@ impl LibraryTable {
 
     pub(super) fn local_files<'s>(
         &'s self,
-        owner: &str,
-        loads_from_program: impl Fn(&ModulePath) -> bool + 's,
+        owner: Option<&str>,
+        program_roots: Vec<LocalRoot<'s>>,
+        compiler_claims: impl Fn(&ModulePath) -> bool + 's,
     ) -> LocalFiles<'s> {
-        let Some(library) = self.named(Some(owner)) else {
-            return LocalFiles::new(Vec::new(), loads_from_program);
-        };
-        let root = LocalRoot::primary(&library.source_root, &library.display_root, &Self::UNSCOPED);
-        LocalFiles::new(vec![root], move |path| {
-            loads_from_program(path)
-                || self.sees_library(Some(&library.name), path)
-                || path.as_str() == library.root_module
-        })
+        let library = self.named(owner);
+        let other_libraries = self
+            .libraries
+            .iter()
+            .filter(|other| library.is_none_or(|own| own.name != other.name))
+            .map(|other| LibraryPlace {
+                name: &other.name,
+                source_root: &other.source_root,
+                display_root: &other.display_root,
+                root_module: &other.root_module,
+                visible: self.sees_library(owner, &ModulePath::new(other.name.as_str())),
+            })
+            .collect();
+        match library {
+            Some(library) => {
+                let root = LocalRoot::primary(
+                    &library.source_root,
+                    &library.display_root,
+                    &Self::UNSCOPED,
+                );
+                LocalFiles::new(vec![root], other_libraries, move |path| {
+                    compiler_claims(path)
+                        || self.sees_library(Some(&library.name), path)
+                        || path.as_str() == library.root_module
+                })
+            }
+            None => LocalFiles::new(program_roots, other_libraries, move |path| {
+                compiler_claims(path) || self.owner_of(path).is_some()
+            }),
+        }
     }
 
     fn named(&self, owner: Option<&str>) -> Option<&LibraryRoot> {

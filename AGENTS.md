@@ -195,6 +195,7 @@ cargo test <narrowest test>
 | the program generator or `cargo xtask agree` | `-p knave-agree`, then `cargo build --bin knave` and `cargo xtask agree`, which runs seeds 0 to 19 and compares their findings with the recorded list |
 | a CLI command | `--test cli <test name>` |
 | a diagnostic code | `--test diagnostic_codes --test diagnostic_snapshots` |
+| a page of `docs/reference/` or its checks | `--test stages reference_` |
 | `xtask/` | `-p xtask` |
 
 - To run one fixture of a stage, prefix the stage's command with `INSTA_GLOB_FILTER='**/<fixture file name>'`.
@@ -230,5 +231,6 @@ cargo test <narrowest test>
 | --- | --- |
 | `docs/language.md` | change the language or the Rust it emits |
 | `docs/diagnostics.md` | add or change an error or a warning |
+| `docs/reference/` | change a form, a rule or an output that a reference page shows |
 | `docs/pull-requests.md` | open a pull request, push to one, review one, or fix a CI failure |
 | `rfcs/README.md` | write a design, or change a rule that an RFC or decision records |

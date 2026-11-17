@@ -13,9 +13,11 @@ use knave::stack::FreshStack;
 
 use support::{
     AgreementReport, ExplanationExamples, Fixture, FixtureReports, FormatFailures, HeaderAgreement,
-    LintFixture, PreludePages, ReadBackAgreement, ReferencePage, SavedPreludeAgreement,
+    LintFixture, PreludePages, ReadBackAgreement, ReferenceIndex, ReferencePage,
+    SavedPreludeAgreement,
 };
 
+const REFERENCE_INDEX_OF_ONE_PAGE: &str = "# Language reference\n\n- [Bindings](reference/bindings.md): names.\n- [Types](reference/types.md): types.\n";
 const REFERENCE_PAGE_OF_OTHER_OUTPUT: &str =
     "# Sample\n\n```knave\n(defn main () (println 1))\n```\n\n```text\n2\n```\n";
 const REFERENCE_PAGE_WITHOUT_OUTPUT: &str =
@@ -712,4 +714,26 @@ fn reference_page_names_a_word_only_as_a_whole_word() {
     let longer = ReferencePage::new("sample", REFERENCE_PAGE_NAMING_A_LONGER_WORD);
     assert!(naming.names_word(KernelForm::Local.name()));
     assert!(!longer.names_word(KernelForm::Local.name()));
+}
+
+#[test]
+fn reference_index_links_each_page_and_only_pages() {
+    let mismatches = ReferenceIndex::written().link_mismatches(&ReferencePage::written());
+    assert!(mismatches.is_empty(), "{}", mismatches.join("\n"));
+}
+
+#[test]
+fn reference_index_names_an_unlinked_page_and_a_link_without_a_page() {
+    let pages = [
+        ReferencePage::new(ReferenceIndex::PAGE_NAME, REFERENCE_INDEX_OF_ONE_PAGE),
+        ReferencePage::new("bindings", ""),
+        ReferencePage::new("traits", ""),
+    ];
+    assert_eq!(
+        ReferenceIndex::new(REFERENCE_INDEX_OF_ONE_PAGE).link_mismatches(&pages),
+        vec![
+            "the index has no link to `reference/traits.md`",
+            "the index links `reference/types.md`, which is no page",
+        ]
+    );
 }

@@ -4,12 +4,13 @@ use rustc_hash::FxHashSet;
 
 use super::declarations::Declarations;
 use super::declared_traits::DeclaredTraits;
+use super::definition_kind::DefinitionKind;
 use super::derive_blockers::DeriveBlockers;
+use super::derive_candidate::DeriveCandidate;
 use super::derive_source::DeriveSource;
 use super::derived_trait::DerivedTrait;
 use super::ty::Type;
 use super::type_declarations::TypeDeclarations;
-use super::variant_payloads::VariantPayloads;
 use crate::core::{BindingId, StructDerives};
 
 pub(super) struct DeriveRules<'a> {
@@ -22,12 +23,13 @@ pub(super) struct DeriveRules<'a> {
 impl<'a> DeriveRules<'a> {
     pub(super) fn new(
         declarations: &'a Declarations,
+        blockers: DeriveBlockers<'a>,
         changed_structs: &'a FxHashSet<BindingId>,
     ) -> Self {
         Self {
             traits: DeclaredTraits::new(&declarations.traits),
             types: &declarations.types,
-            blockers: DeriveBlockers::new(declarations, VariantPayloads::new(&declarations.types)),
+            blockers,
             changed_structs,
         }
     }
@@ -37,6 +39,30 @@ impl<'a> DeriveRules<'a> {
             .enums
             .get(binding)
             .is_some_and(|definition| definition.rust.is_some())
+    }
+
+    pub(super) fn blocked(
+        &self,
+        candidates: &[DeriveCandidate],
+    ) -> Vec<(DeriveCandidate, Rc<str>, Type)> {
+        candidates
+            .iter()
+            .filter_map(|candidate| {
+                self.blocking(candidate)
+                    .map(|(field, ty)| (*candidate, field, ty))
+            })
+            .collect()
+    }
+
+    pub(super) fn blocking(&self, candidate: &DeriveCandidate) -> Option<(Rc<str>, Type)> {
+        match candidate.kind {
+            DefinitionKind::Struct => {
+                self.blocking_field(candidate.binding, candidate.trait_binding)
+            }
+            DefinitionKind::Enum => {
+                self.blocking_enum_payload(candidate.binding, candidate.trait_binding)
+            }
+        }
     }
 
     pub(super) fn blocking_field(
@@ -85,10 +111,17 @@ mod tests {
     use rustc_hash::FxHashSet;
 
     use crate::types::declarations_fixture::DeclarationsFixture;
+    use crate::types::definition_kind::DefinitionKind;
+    use crate::types::derive_candidate::DeriveCandidate;
     use crate::types::derive_source::DeriveSource;
     use crate::types::derived_trait::DerivedTrait;
 
-    const SOURCE: &str = "(struct point)\n(struct depot)\n(defn main () (do))";
+    const SOURCE: &str = "
+        (struct point)
+        (struct depot)
+        (struct ticket (id u32) (owner string))
+        (enum reading (text string) (number f64))
+        (defn main () (do))";
 
     struct RulesFixture {
         declarations: DeclarationsFixture,
@@ -106,6 +139,22 @@ mod tests {
         fn changing(mut self, name: &str) -> Self {
             self.changed.insert(self.declarations.type_named(name));
             self
+        }
+
+        fn candidate(&self, name: &str, kind: DefinitionKind, trait_name: &str) -> DeriveCandidate {
+            DeriveCandidate {
+                binding: self.declarations.type_named(name),
+                kind,
+                trait_binding: self.declarations.trait_named(trait_name),
+                source: DeriveSource::Inferred,
+            }
+        }
+
+        fn blocking(&self, candidate: &DeriveCandidate) -> Option<String> {
+            self.declarations
+                .derive_rules(&self.changed)
+                .blocking(candidate)
+                .map(|(field, _)| field.to_string())
         }
 
         fn inferred(&self, name: &str, trait_name: &str, derived: DerivedTrait) -> bool {
@@ -155,5 +204,38 @@ mod tests {
                 .derive_rules(&fixture.changed)
                 .is_rust_enum(point)
         );
+    }
+
+    #[test]
+    fn a_struct_is_blocked_by_its_field() {
+        let fixture = RulesFixture::new();
+        let ticket = fixture.candidate("ticket", DefinitionKind::Struct, "copy");
+        assert_eq!(fixture.blocking(&ticket), Some("owner".to_string()));
+    }
+
+    #[test]
+    fn an_enum_is_blocked_by_its_payload() {
+        let fixture = RulesFixture::new();
+        let reading = fixture.candidate("reading", DefinitionKind::Enum, "copy");
+        assert_eq!(fixture.blocking(&reading), Some("text".to_string()));
+    }
+
+    #[test]
+    fn only_the_blocked_candidates_are_listed() {
+        let fixture = RulesFixture::new();
+        let candidates = [
+            fixture.candidate("ticket", DefinitionKind::Struct, "clone"),
+            fixture.candidate("ticket", DefinitionKind::Struct, "copy"),
+        ];
+        let blocked = fixture
+            .declarations
+            .derive_rules(&fixture.changed)
+            .blocked(&candidates);
+        let traits: Vec<_> = blocked
+            .iter()
+            .map(|(candidate, field, _)| (candidate.trait_binding, field.to_string()))
+            .collect();
+        let copy = fixture.declarations.trait_named("copy");
+        assert_eq!(traits, vec![(copy, "owner".to_string())]);
     }
 }

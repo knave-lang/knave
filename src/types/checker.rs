@@ -17,6 +17,7 @@ use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::definition_outcomes::DefinitionOutcomes;
 use super::derivable_traits::DerivableTraits;
+use super::derive_blockers::DeriveBlockers;
 use super::derive_rules::DeriveRules;
 use super::display::TypeDisplay;
 use super::enum_item::EnumItem;
@@ -514,10 +515,6 @@ impl TypeChecker {
         super::copy::CopyRules::new(&self.declarations, self.generics.params())
     }
 
-    pub(super) fn is_box(&self, ty: &Type) -> bool {
-        self.declared_types().is_box(ty)
-    }
-
     pub(super) fn variant_payloads(&self) -> VariantPayloads<'_> {
         VariantPayloads::new(&self.declarations.types)
     }
@@ -535,7 +532,8 @@ impl TypeChecker {
     }
 
     pub(super) fn derive_rules(&self) -> DeriveRules<'_> {
-        DeriveRules::new(&self.declarations, &self.changed_structs)
+        let blockers = DeriveBlockers::new(&self.declarations, self.variant_payloads());
+        DeriveRules::new(&self.declarations, blockers, &self.changed_structs)
     }
 
     fn check_opaque_positions(

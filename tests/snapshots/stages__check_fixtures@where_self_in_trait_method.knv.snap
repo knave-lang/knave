@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/where_self_in_trait_method.knv
+---
+error[L0413]: `where` must wrap a whole signature
+ --> check/where_self_in_trait_method.knv:2:14
+  |
+2 |   (pick (fn ((where (a) self)) i64)))
+  |              ^^^^^^^^^^^^^^^^ not allowed inside another type
+  |
+  = note: run `knave doc L0413` for an explanation

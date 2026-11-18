@@ -2,9 +2,10 @@ use rustc_hash::FxHashMap;
 
 use super::lowered_associated_value::LoweredAssociatedValue;
 use super::lowered_binders::LoweredBinders;
+use super::lowered_impl::LoweredImpl;
 use super::problems::TypeProblems;
 use super::trait_rows_reach::Implementor;
-use super::ty::{GenericId, GenericParam, Scheme, Type};
+use super::ty::{GenericId, Scheme, Type};
 use super::written_type_lowering::WrittenTypeLowering;
 use super::written_type_variables::WrittenTypeVariables;
 use crate::core::{
@@ -12,8 +13,6 @@ use crate::core::{
 };
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
-
-pub(super) type LoweredImplementor = (Type, Vec<GenericParam>, Vec<(BindingId, Type)>);
 
 pub(super) struct SchemeLowering<'l> {
     types: WrittenTypeLowering<'l>,
@@ -68,7 +67,7 @@ impl<'l> SchemeLowering<'l> {
         &mut self,
         implementor: &TypeExpr,
         associated: &[ImplAssociatedType],
-    ) -> Result<LoweredImplementor, Diagnostic> {
+    ) -> Result<LoweredImpl, Diagnostic> {
         let mut params = Vec::new();
         let mut scope = FxHashMap::default();
         for variable in self.variables.of(implementor) {
@@ -86,7 +85,7 @@ impl<'l> SchemeLowering<'l> {
                 ))
             })
             .collect::<Result<Vec<_>, Diagnostic>>()?;
-        Ok((body, params, values))
+        Ok(LoweredImpl::new(body, params, values))
     }
 
     fn where_body(implementor: &TypeExpr) -> &TypeExpr {
@@ -216,7 +215,8 @@ mod tests {
             .checker
             .written_schemes()
             .lower_impl_implementor(&implementor, &associated)
-            .expect("the implementor lowers");
+            .expect("the implementor lowers")
+            .into_parts();
         let generic = Type::Generic(params[0].id);
         assert_eq!(body, Type::Named(wrapper, vec![generic.clone()]));
         assert_eq!(values, vec![(item, generic)]);

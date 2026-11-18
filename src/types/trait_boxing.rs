@@ -1,5 +1,6 @@
 use super::receiver_kind::ReceiverKind;
 use super::trait_declarations::TraitDeclarations;
+use super::trait_definitions::TraitDefinitions;
 use super::typed_trait::TypedTrait;
 use crate::core::{BindingArena, BindingId};
 
@@ -34,7 +35,7 @@ impl<'a> TraitBoxing<'a> {
     }
 
     fn definition(&self, trait_binding: BindingId) -> Option<&'a TypedTrait> {
-        (self.traits.definitions().iter()).find(|definition| definition.binding == trait_binding)
+        TraitDefinitions::new(self.traits).definition(trait_binding)
     }
 
     fn method_blocker(&self, definition: &TypedTrait) -> Option<(String, &'static str)> {

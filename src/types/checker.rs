@@ -25,6 +25,7 @@ use super::graph::{Definition, DefinitionGraph};
 use super::impl_item::ImplItem;
 use super::implementation_check::ImplementationCheck;
 use super::implementation_collector::ImplementationCollector;
+use super::implementation_verdict::ImplementationVerdict;
 use super::implied_bounds::ImpliedBounds;
 use super::infer::OpenCollections;
 use super::instantiation::Instantiation;
@@ -1497,22 +1498,21 @@ impl TypeChecker {
                 return;
             }
         };
-        let span = item.implementor.span();
-        let check = self.implementation_check();
-        let rejection = check.rejection(item.trait_binding, &lowered.0, span);
-        let unsized_problems = check.unsized_problems(&lowered.0, span, item.methods);
-        if let Some(rejection) = rejection {
-            self.diagnostics.push(rejection);
-            return;
+        let verdict = self
+            .implementation_check()
+            .verdict(item, lowered.implementor());
+        match verdict {
+            ImplementationVerdict::Rejected(rejection) => self.diagnostics.push(rejection),
+            ImplementationVerdict::Accepted(problems) => {
+                self.diagnostics.extend(problems.into_iter().collect());
+                let collected = self.implementation_collector().collect(item, lowered);
+                collected.enter(
+                    &mut self.declarations.traits,
+                    &mut self.synthetic_bindings,
+                    &mut self.impl_methods,
+                );
+            }
         }
-        self.diagnostics
-            .extend(unsized_problems.into_iter().collect());
-        let collected = self.implementation_collector().collect(item, lowered);
-        collected.enter(
-            &mut self.declarations.traits,
-            &mut self.synthetic_bindings,
-            &mut self.impl_methods,
-        );
     }
 
     fn implementation_check(&self) -> ImplementationCheck<'_> {

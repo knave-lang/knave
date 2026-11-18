@@ -2,8 +2,9 @@ use std::rc::Rc;
 
 use super::collected_impl::CollectedImpl;
 use super::impl_item::ImplItem;
-use super::scheme_lowering::LoweredImplementor;
+use super::lowered_impl::LoweredImpl;
 use super::trait_declarations::TraitDeclarations;
+use super::trait_definitions::TraitDefinitions;
 use super::ty::{Scheme, Type};
 use super::{Implementor, TypedImplMethod, TypedTraitImpl};
 use crate::core::BindingId;
@@ -17,8 +18,8 @@ impl<'a> ImplementationCollector<'a> {
         Self { traits }
     }
 
-    pub(super) fn collect(&self, item: ImplItem<'_>, lowered: LoweredImplementor) -> CollectedImpl {
-        let (implementor, params, associated_values) = lowered;
+    pub(super) fn collect(&self, item: ImplItem<'_>, lowered: LoweredImpl) -> CollectedImpl {
+        let (implementor, params, associated_values) = lowered.into_parts();
         let entry = Implementor {
             scheme: Scheme {
                 lifetimes: Vec::new(),
@@ -53,11 +54,7 @@ impl<'a> ImplementationCollector<'a> {
             .iter()
             .map(|method| TypedImplMethod {
                 binding: method.binding,
-                receiver: self
-                    .traits
-                    .methods
-                    .get(&method.trait_method)
-                    .and_then(|info| info.receiver),
+                receiver: TraitDefinitions::new(self.traits).receiver(method.trait_method),
             })
             .collect()
     }
@@ -74,10 +71,8 @@ impl<'a> ImplementationCollector<'a> {
     }
 
     fn associated_name(&self, trait_binding: BindingId, associated: BindingId) -> Rc<str> {
-        self.traits
-            .definitions
-            .iter()
-            .find(|trait_definition| trait_definition.binding == trait_binding)
+        TraitDefinitions::new(self.traits)
+            .definition(trait_binding)
             .and_then(|trait_definition| {
                 trait_definition
                     .associated
@@ -90,10 +85,12 @@ impl<'a> ImplementationCollector<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::{ModuleId, PrimitiveType};
+    use crate::core::{BindingId, ModuleId, PrimitiveType};
     use crate::types::Type;
     use crate::types::declarations_fixture::DeclarationsFixture;
     use crate::types::impl_item::ImplItem;
+    use crate::types::lowered_impl::LoweredImpl;
+    use crate::types::trait_definitions::TraitDefinitions;
     use crate::types::written_type_fixture::WrittenTypeFixture;
 
     const SOURCE: &str = "(trait container (type item) (size (fn ((ref self)) usize)))\n\
@@ -122,7 +119,7 @@ mod tests {
                 methods: &[],
             };
             let usize_type = Type::Primitive(PrimitiveType::Usize);
-            let lowered = (
+            let lowered = LoweredImpl::new(
                 Type::Primitive(PrimitiveType::I64),
                 Vec::new(),
                 vec![(associated, usize_type)],
@@ -134,15 +131,10 @@ mod tests {
             self.declarations.enter_impl(collected);
         }
 
-        fn associated_type_of(
-            &self,
-            trait_binding: crate::core::BindingId,
-        ) -> crate::core::BindingId {
-            let traits = self.declarations.traits();
-            let definition = traits
-                .definitions()
-                .iter()
-                .find(|definition| definition.binding == trait_binding)
+        fn associated_type_of(&self, trait_binding: BindingId) -> BindingId {
+            let definitions = TraitDefinitions::new(self.declarations.traits());
+            let definition = definitions
+                .definition(trait_binding)
                 .expect("the trait is defined");
             definition.associated[0].binding
         }

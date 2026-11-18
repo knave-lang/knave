@@ -8,6 +8,7 @@ use super::assumed_collections::AssumedCollections;
 use super::checked_program::CheckedProgram;
 use super::checking_facts::CheckingFacts;
 use super::clause_check::ClauseCheck;
+use super::collected_rust_trait::CollectedRustTrait;
 use super::copy::InferredCopies;
 use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
 use super::declarations::Declarations;
@@ -42,22 +43,23 @@ use super::rust_type_item::RustTypeItem;
 use super::selection::Selection;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_boxing::TraitBoxing;
+use super::trait_declaration_collector::TraitDeclarationCollector;
 use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::type_declaration_collector::TypeDeclarationCollector;
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
+use super::user_trait::UserTrait;
 use super::variant_payloads::VariantPayloads;
 use super::wrapper::FunctionValueWrapper;
 use super::{
     Implementor, LoweredRows, PendingModeCheck, ReceiverKind, RustTrait, StructDefinition,
-    TemplateBorrows, TraitMethodInfo, TypedAssociatedType, TypedConversion, TypedDefinition,
-    TypedExpr, TypedExprKind, TypedImplMethod, TypedLeaf, TypedTrait, TypedTraitImpl,
-    TypedTraitMethod,
+    TemplateBorrows, TypedConversion, TypedDefinition, TypedExpr, TypedExprKind, TypedImplMethod,
+    TypedLeaf, TypedTraitImpl,
 };
 use crate::core::{
     BindingArena, BindingId, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr, ExprKind, Item,
-    ItemKind, KernelForm, Leaf, ModuleId, ReferenceKind, RustTemplate, StructDerives, StructExpr,
-    TypeExpr, TypeExprKind,
+    ItemKind, KernelForm, Leaf, ModuleId, RustTemplate, StructDerives, StructExpr, TypeExpr,
+    TypeExprKind,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::{MacroCallLookup, PendingDefinitions};
@@ -133,15 +135,6 @@ pub struct TypeChecker {
     pub(super) reported_unknown_try_groups: FxHashSet<BindingId>,
     pub(super) string_view: Option<BindingId>,
     pub(super) checking: super::typed::CheckWork,
-}
-
-struct UserTrait<'a> {
-    binding: BindingId,
-    rust_name: &'a std::rc::Rc<str>,
-    self_variable: BindingId,
-    supertraits: &'a [crate::core::TypeBound],
-    associated: &'a [crate::core::TraitAssociatedType],
-    methods: &'a [crate::core::TraitMethod],
 }
 
 #[derive(Clone, Copy)]
@@ -368,17 +361,15 @@ impl TypeChecker {
             methods,
         ) = kind
         {
-            return self.collect_user_trait(
+            return self.collect_user_trait(UserTrait {
                 module,
-                UserTrait {
-                    binding: *binding,
-                    rust_name,
-                    self_variable: *self_variable,
-                    supertraits,
-                    associated,
-                    methods,
-                },
-            );
+                binding: *binding,
+                rust_name,
+                self_variable: *self_variable,
+                supertraits,
+                associated,
+                methods,
+            });
         }
         Ok(())
     }
@@ -701,6 +692,10 @@ impl TypeChecker {
     pub(super) fn type_collector(&mut self) -> TypeDeclarationCollector<'_> {
         let (lowering, facts) = self.written_type_parts();
         TypeDeclarationCollector::new(lowering, facts.bindings, &facts.declarations.types)
+    }
+
+    fn trait_collector(&mut self) -> TraitDeclarationCollector<'_> {
+        TraitDeclarationCollector::new(self.written_types())
     }
 
     pub(super) fn written_schemes(&mut self) -> super::scheme_lowering::SchemeLowering<'_> {
@@ -1455,135 +1450,19 @@ impl TypeChecker {
         }
     }
 
-    fn collect_user_trait(
-        &mut self,
-        module: ModuleId,
-        declaration: UserTrait<'_>,
-    ) -> Result<(), Diagnostic> {
-        let UserTrait {
-            binding,
-            rust_name,
-            self_variable,
-            supertraits,
-            associated,
-            methods,
-        } = declaration;
-        let associated: Vec<TypedAssociatedType> = associated
-            .iter()
-            .map(|associated| TypedAssociatedType {
-                binding: associated.binding,
-                name: associated.name.clone(),
-            })
-            .collect();
-        if !associated.is_empty() {
-            self.checking_facts.trait_arguments.insert(binding);
-        }
-        let supertraits = supertraits
-            .iter()
-            .map(|bound| {
-                self.written_types()
-                    .lower_type_bound(bound, &FxHashMap::default())
-            })
-            .collect::<Result<Vec<_>, Diagnostic>>()?;
-        self.declarations.traits.table.add(
-            binding,
-            RustTrait::written(
-                rust_name.clone(),
-                associated.first().map(|associated| associated.name.clone()),
-                LoweredRows::new(Vec::new(), supertraits.clone()),
-            ),
-        );
-        let mut typed_methods = Vec::new();
-        for method in methods {
-            let receiver = Self::receiver_kind(&method.signature, self_variable);
-            let returns_self = Self::trait_method_returns_self(&method.signature, self_variable);
+    fn collect_user_trait(&mut self, declaration: UserTrait<'_>) -> Result<(), Diagnostic> {
+        if !declaration.associated.is_empty() {
             self.checking_facts
-                .selfless_methods
-                .record(method, binding, self_variable);
-            self.synthetic_bindings.insert(method.binding);
-            if let Some(default) = method.default {
-                self.synthetic_bindings.insert(default);
-            }
-            self.declarations.traits.methods.insert(
-                method.binding,
-                TraitMethodInfo {
-                    trait_binding: binding,
-                    rust_name: rust_name.clone(),
-                    receiver,
-                },
-            );
-            typed_methods.push(TypedTraitMethod {
-                binding: method.binding,
-                receiver,
-                default: method.default,
-                returns_self,
-            });
+                .trait_arguments
+                .insert(declaration.binding);
         }
-        self.declarations.traits.definitions.push(TypedTrait {
-            binding,
-            module,
-            rust_name: rust_name.clone(),
-            supertraits,
-            associated,
-            methods: typed_methods,
-        });
+        let collected = self.trait_collector().collect_user_trait(declaration)?;
+        collected.enter(
+            &mut self.declarations.traits,
+            &mut self.checking_facts,
+            &mut self.synthetic_bindings,
+        );
         Ok(())
-    }
-
-    fn trait_method_returns_self(signature: &TypeExpr, self_variable: BindingId) -> bool {
-        let TypeExprKind::Function(_, _, result) = signature.kind() else {
-            return false;
-        };
-        matches!(
-            result.kind(),
-            TypeExprKind::Named(binding, arguments)
-                if *binding == self_variable && arguments.is_empty()
-        )
-    }
-
-    fn receiver_kind(signature: &TypeExpr, self_variable: BindingId) -> Option<ReceiverKind> {
-        let TypeExprKind::Function(_, parameters, _) = signature.kind() else {
-            return None;
-        };
-        parameters
-            .first()
-            .and_then(|parameter| Self::parameter_receiver(parameter, self_variable))
-    }
-
-    fn parameter_receiver(parameter: &TypeExpr, self_variable: BindingId) -> Option<ReceiverKind> {
-        match parameter.kind() {
-            TypeExprKind::Named(binding, arguments) => {
-                Self::named_receiver(*binding, arguments, self_variable, ReceiverKind::Owned)
-            }
-            TypeExprKind::Reference(kind, _, inner) => {
-                Self::reference_receiver(*kind, inner, self_variable)
-            }
-            _ => None,
-        }
-    }
-
-    fn reference_receiver(
-        kind: ReferenceKind,
-        inner: &TypeExpr,
-        self_variable: BindingId,
-    ) -> Option<ReceiverKind> {
-        let TypeExprKind::Named(binding, arguments) = inner.kind() else {
-            return None;
-        };
-        let receiver = match kind {
-            ReferenceKind::Shared => ReceiverKind::Shared,
-            ReferenceKind::Mutable => ReceiverKind::Mutable,
-        };
-        Self::named_receiver(*binding, arguments, self_variable, receiver)
-    }
-
-    fn named_receiver(
-        binding: BindingId,
-        arguments: &[TypeExpr],
-        self_variable: BindingId,
-        receiver: ReceiverKind,
-    ) -> Option<ReceiverKind> {
-        (binding == self_variable && arguments.is_empty()).then_some(receiver)
     }
 
     fn collect_trait_impls(&mut self, modules: &[CoreModule]) {
@@ -1869,21 +1748,8 @@ impl TypeChecker {
         } else {
             RustTrait::unreached(declaration)
         };
-        let traits = &mut self.declarations.traits;
-        traits.table.add(declaration.binding, rust_trait);
-        traits.rust_paths.record(declaration);
-        for method in &declaration.methods {
-            let receiver = Self::receiver_kind(&method.signature, declaration.self_variable);
-            self.synthetic_bindings.insert(method.binding);
-            self.declarations.traits.methods.insert(
-                method.binding,
-                TraitMethodInfo {
-                    trait_binding: declaration.binding,
-                    rust_name: Rc::clone(&declaration.path),
-                    receiver,
-                },
-            );
-        }
+        CollectedRustTrait::new(declaration, rust_trait)
+            .enter(&mut self.declarations.traits, &mut self.synthetic_bindings);
         Ok(())
     }
 

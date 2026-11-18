@@ -17,7 +17,15 @@ impl ChangedLines {
     const RANGE_SEPARATOR: char = ',';
 
     pub fn since(root: &Path, base: &str) -> Result<Self, TaskFailure> {
-        let output = Git::new(root).run(&["diff", "-U0", "--no-color", "--no-ext-diff", base])?;
+        let output = Git::new(root).run(&[
+            "diff",
+            "-U0",
+            "--no-color",
+            "--no-ext-diff",
+            "--src-prefix=a/",
+            "--dst-prefix=b/",
+            base,
+        ])?;
         if !output.status.success() {
             return Err(TaskFailure::tool_failed("git diff", &output.stderr));
         }
@@ -60,10 +68,6 @@ impl ChangedLines {
                 last: first + count - 1,
             },
         }
-    }
-
-    pub fn files(&self) -> impl Iterator<Item = &str> {
-        self.spans.keys().map(String::as_str)
     }
 
     pub fn touches(&self, file: &str, span: LineSpan) -> bool {
@@ -127,8 +131,13 @@ mod tests {
 
     #[test]
     fn a_deleted_file_lists_no_lines() {
-        let changed = ChangedLines::parse(DiffCase::DIFF);
-        assert_eq!(changed.files().collect::<Vec<_>>(), ["src/a.rs"]);
+        assert!(!DiffCase::touches("src/gone.rs", 1, 3));
+    }
+
+    #[test]
+    fn a_failed_diff_is_a_failure() {
+        let root = crate::workspace::WorkspaceFixture::repository_root();
+        assert!(ChangedLines::since(root, "no-such-revision").is_err());
     }
 
     #[test]

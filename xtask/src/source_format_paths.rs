@@ -1,3 +1,9 @@
+use std::fs;
+use std::io;
+use std::path::Path;
+
+use crate::failure::TaskFailure;
+
 pub struct SourceFormatPaths {
     checked: Vec<&'static str>,
     skipped: Vec<&'static str>,
@@ -20,6 +26,30 @@ impl SourceFormatPaths {
         list.lines()
             .filter_map(|line| line.strip_prefix(verb))
             .collect()
+    }
+
+    pub fn files(&self, root: &Path, extension: &str) -> Result<Vec<String>, TaskFailure> {
+        let mut files = Vec::new();
+        for directory in &self.checked {
+            let path = root.join(directory);
+            Self::collect(&path, root, &mut files)
+                .map_err(|error| TaskFailure::unreadable(&path, error))?;
+        }
+        files.retain(|file| self.checks(file) && file.ends_with(&format!(".{extension}")));
+        files.sort();
+        Ok(files)
+    }
+
+    fn collect(directory: &Path, root: &Path, files: &mut Vec<String>) -> io::Result<()> {
+        for entry in fs::read_dir(directory)? {
+            let path = entry?.path();
+            if path.is_dir() {
+                Self::collect(&path, root, files)?;
+            } else if let Ok(relative) = path.strip_prefix(root) {
+                files.push(relative.display().to_string());
+            }
+        }
+        Ok(())
     }
 
     pub fn checks(&self, file: &str) -> bool {
@@ -69,6 +99,31 @@ mod tests {
     fn a_file_outside_every_checked_directory_is_not_checked() {
         assert!(!PathsCase::checks("src/core.knv"));
         assert!(!PathsCase::checks("preludes/core.knv"));
+    }
+
+    #[test]
+    fn the_files_are_the_checked_sources_of_the_repository() {
+        let root = crate::workspace::WorkspaceFixture::repository_root();
+        let files = SourceFormatPaths::default()
+            .files(root, "knv")
+            .expect("the tree reads");
+        assert!(files.contains(&"examples/hello.knv".to_string()));
+        assert!(files.iter().all(|file| file.ends_with(".knv")));
+        assert!(
+            !files
+                .iter()
+                .any(|file| file.starts_with("tests/fixtures/read/"))
+        );
+    }
+
+    #[test]
+    fn an_unreadable_checked_directory_fails() {
+        let paths = SourceFormatPaths::parse("check absent\n");
+        assert!(
+            paths
+                .files(std::path::Path::new("/nonexistent"), "knv")
+                .is_err()
+        );
     }
 
     #[test]

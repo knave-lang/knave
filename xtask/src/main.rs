@@ -84,7 +84,7 @@ enum Task {
     )]
     DesignRules(RatchetTask),
     #[command(
-        about = "Before a push, run the CI gates on the changes since the branch forked: CRAP of the changed functions, the layout of changed sources, file sizes and design rules"
+        about = "Before a push, run CI's gates where they judge the changes since the branch forked: the CRAP of the changed functions, the layout of every checked source, file sizes and design rules"
     )]
     Prepush(PrepushTask),
     #[command(

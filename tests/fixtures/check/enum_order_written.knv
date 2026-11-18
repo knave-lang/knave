@@ -1,0 +1,7 @@
+(enum rank low high)
+
+(derive rank debug)
+
+(defn main ()
+  (local values (vec rank/low rank/high))
+  (sort! values))

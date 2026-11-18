@@ -198,6 +198,7 @@ cargo test <narrowest test>
 | a CLI command | `--test cli <test name>` |
 | a diagnostic code | `--test diagnostic_codes --test diagnostic_snapshots` |
 | a page of `docs/reference/` or its checks | `--test stages reference_` |
+| the agent skill under `skills/` or its checks | `--test stages skill_` |
 | `xtask/` | `-p xtask` |
 
 - To run one fixture of a stage, prefix the stage's command with `INSTA_GLOB_FILTER='**/<fixture file name>'`.
@@ -235,5 +236,6 @@ cargo test <narrowest test>
 | `docs/diagnostics.md` | add or change an error or a warning |
 | `docs/reference/README.md` | add a page to the language reference |
 | `docs/reference/bindings.md` | change `let`, `set!` or `def`, or what they print |
+| `skills/writing-knave/SKILL.md` | change a form, a rule or a command that the skill shows |
 | `docs/pull-requests.md` | open a pull request, push to one, review one, or fix a CI failure |
 | `rfcs/README.md` | write a design, or change a rule that an RFC or decision records |

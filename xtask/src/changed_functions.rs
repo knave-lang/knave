@@ -1,9 +1,10 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
+use crate::changed_function::ChangedFunction;
 use crate::changed_lines::ChangedLines;
 use crate::crap::ScoredFunction;
-use crate::crap_forecast::{ChangedFunction, CrapForecast};
+use crate::crap_forecast::CrapForecast;
 use crate::failure::TaskFailure;
 use crate::functions::{SourceFunction, SourceTree};
 use crate::gate::QualityGate;
@@ -57,11 +58,7 @@ impl ChangedFunctions {
         let missed = report.missed_within(&function.file, function.lines);
         let broader = TestSelection::broader_run(&function.file);
         let coverage = report.within(&function.file, function.lines);
-        ChangedFunction {
-            scored: ScoredFunction::new(function, coverage),
-            missed,
-            broader,
-        }
+        ChangedFunction::new(ScoredFunction::new(function, coverage), missed, broader)
     }
 }
 

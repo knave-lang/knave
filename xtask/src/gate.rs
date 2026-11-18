@@ -27,7 +27,6 @@ impl QualityGate {
     const MINIMUM_LINE_COVERAGE: f64 = 99.0;
     pub const MAXIMUM_CRAP: f64 = 8.0;
     const README: &str = "README.md";
-    const EXTENSION_CONSTANT: &str = "EXTENSION";
 
     pub fn new(root: &Path) -> Self {
         Self {
@@ -59,7 +58,7 @@ impl QualityGate {
 
     fn lint_emitted_programs(&self) -> Result<Vec<LintedProgram>, TaskFailure> {
         let workspace = CargoWorkspace::read(&self.root)?;
-        let extension = LanguageSource::find(&workspace)?.constant(Self::EXTENSION_CONSTANT)?;
+        let extension = LanguageSource::find(&workspace)?.extension()?;
         EmittedLints::new(&self.root, &extension).run()
     }
 

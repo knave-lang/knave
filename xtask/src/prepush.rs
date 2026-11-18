@@ -10,7 +10,7 @@ use crate::crap_forecast::CrapForecast;
 use crate::design::DesignRules;
 use crate::failure::TaskFailure;
 use crate::git::Git;
-use crate::narrow_coverage::NarrowCoverage;
+use crate::instrumented_tests::InstrumentedTests;
 use crate::production_lines::ProductionLineCensus;
 use crate::production_sources::ProductionSources;
 use crate::ratchet_gate::RatchetGate;
@@ -76,7 +76,7 @@ impl PrepushTask {
             .iter()
             .map(|arguments| TestRun::parse(arguments))
             .collect();
-        let report = NarrowCoverage::new(root).measure(&functions.test_runs(&also))?;
+        let report = InstrumentedTests::new(root).run_selected(&functions.test_runs(&also))?;
         Ok(functions.forecast(&report))
     }
 

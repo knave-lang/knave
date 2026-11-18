@@ -1,0 +1,6 @@
+check prelude
+check examples
+check tests/fixtures
+skip tests/fixtures/read
+skip tests/fixtures/format
+skip tests/fixtures/expand/unreadable

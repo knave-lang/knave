@@ -21,6 +21,10 @@ impl ScoredFunction {
         }
     }
 
+    pub fn fully_covered_score(&self) -> f64 {
+        self.function.complexity as f64
+    }
+
     pub fn row(&self) -> String {
         format!(
             "  {:>7.1} {:>4} {:>7.1}%  {}\n",

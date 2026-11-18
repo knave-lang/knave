@@ -1,20 +1,7 @@
+use crate::changed_function::ChangedFunction;
 use crate::checks::Check;
 use crate::crap::ScoredFunction;
-use crate::lcov::MissedLines;
-use crate::test_selection::TestRun;
-
-pub struct ChangedFunction {
-    pub scored: ScoredFunction,
-    pub missed: MissedLines,
-    pub broader: Option<TestRun>,
-}
-
-#[derive(PartialEq, Eq)]
-enum Outlook {
-    Passes,
-    Fails,
-    Unproven,
-}
+use crate::outlook::Outlook;
 
 pub struct CrapForecast {
     maximum: f64,
@@ -26,27 +13,16 @@ impl CrapForecast {
         Self { maximum, functions }
     }
 
-    fn outlook(&self, function: &ChangedFunction) -> Outlook {
-        let fully_covered_score = function.scored.function.complexity as f64;
-        if function.scored.crap <= self.maximum {
-            Outlook::Passes
-        } else if fully_covered_score > self.maximum {
-            Outlook::Fails
-        } else {
-            Outlook::Unproven
-        }
-    }
-
     fn with_outlook(&self, outlook: Outlook) -> impl Iterator<Item = &ChangedFunction> {
         self.functions
             .iter()
-            .filter(move |function| self.outlook(function) == outlook)
+            .filter(move |function| function.outlook(self.maximum) == outlook)
     }
 
     fn failures(&self) -> String {
         let rows: String = self
             .with_outlook(Outlook::Fails)
-            .map(|function| function.scored.row())
+            .map(ChangedFunction::row)
             .collect();
         if rows.is_empty() {
             return rows;
@@ -56,27 +32,8 @@ impl CrapForecast {
 
     fn unproven(&self) -> String {
         self.with_outlook(Outlook::Unproven)
-            .map(|function| self.describe_unproven(function))
+            .map(ChangedFunction::unproven_advice)
             .collect()
-    }
-
-    fn describe_unproven(&self, function: &ChangedFunction) -> String {
-        format!(
-            "  {} scores {:.1} because the tests prepush ran miss {}. CI fails it unless another test covers those lines. {}\n",
-            function.scored.function,
-            function.scored.crap,
-            function.missed,
-            Self::clearing_step(function.broader.as_ref())
-        )
-    }
-
-    fn clearing_step(broader: Option<&TestRun>) -> String {
-        match broader {
-            Some(run) => format!(
-                "If `cargo test {run}` covers them, run `cargo xtask prepush --also '{run}'`; otherwise test them."
-            ),
-            None => "Name the test that covers them with `cargo xtask prepush --also '<cargo test arguments>'`, or test them.".to_string(),
-        }
     }
 }
 
@@ -104,7 +61,8 @@ impl Check for CrapForecast {
 mod tests {
     use std::path::Path;
 
-    use super::{ChangedFunction, CrapForecast};
+    use super::CrapForecast;
+    use crate::changed_function::ChangedFunction;
     use crate::checks::Check;
     use crate::crap::ScoredFunction;
     use crate::functions::{LineSpan, SourceFunction};
@@ -132,11 +90,11 @@ mod tests {
                 lines,
                 complexity,
             };
-            ChangedFunction {
-                scored: ScoredFunction::new(function, report.within("src/a.rs", lines)),
-                missed: report.missed_within("src/a.rs", lines),
-                broader: broader.map(TestRun::parse),
-            }
+            ChangedFunction::new(
+                ScoredFunction::new(function, report.within("src/a.rs", lines)),
+                report.missed_within("src/a.rs", lines),
+                broader.map(TestRun::parse),
+            )
         }
 
         fn forecast(complexity: usize, broader: Option<&str>) -> CrapForecast {

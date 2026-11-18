@@ -13,6 +13,7 @@ pub struct LanguageSource {
 impl LanguageSource {
     const FILE: &'static str = "language.rs";
     const TYPE: &'static str = "Language";
+    const EXTENSION_CONSTANT: &'static str = "EXTENSION";
 
     pub fn find(workspace: &CargoWorkspace) -> Result<Self, TaskFailure> {
         workspace
@@ -22,6 +23,10 @@ impl LanguageSource {
             .find(|path| path.is_file())
             .map(|path| Self { path })
             .ok_or_else(|| TaskFailure::language_missing(Self::FILE))
+    }
+
+    pub fn extension(&self) -> Result<String, TaskFailure> {
+        self.constant(Self::EXTENSION_CONSTANT)
     }
 
     pub fn constant(&self, name: &str) -> Result<String, TaskFailure> {

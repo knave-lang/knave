@@ -213,11 +213,11 @@
   => 1
   ```")
 
-(document (enum (name parameter ...) variant ...)
-  "Defines an enum type from its variants.
+(document (enum (name parameter ...) case ...)
+  "Defines an enum type from its cases.
 
   The name is a bare name, or a list of the name and its type parameters. A
-  variant is a name, `(name type ...)` or `(name (struct (field type) ...))`.
+  case is a name, `(name type ...)` or `(name (struct (field type) ...))`.
   A `(rust \"Path\")` after the name makes the enum the named Rust type.
 
   ```
@@ -245,8 +245,8 @@
 
   An arm's body is a [do], so its last form is the arm's value.
 
-  A pattern is [_], a literal, a bare name, `(variant pattern ...)`,
-  `(variant :field pattern ...)`, `(type-name pattern ...)` or
+  A pattern is [_], a literal, a bare name, `(case pattern ...)`,
+  `(case :field pattern ...)`, `(type-name pattern ...)` or
   `(type-name :field pattern ...)`. It emits a Rust `match`.
 
   (match 3 (0 \"zero\") (_ \"other\"))

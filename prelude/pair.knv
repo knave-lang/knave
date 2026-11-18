@@ -27,7 +27,7 @@
   => (pair 1 \"a\")")
 
 (document (pair/pair a b)
-  "Builds the [pair] variant of a pair.
+  "Builds the [pair] case of a pair.
 
   `pair` is the function for this call.
 

@@ -87,7 +87,7 @@
   => (some 3)")
 
 (document (option/some value)
-  "Builds the `some` variant of an [option].
+  "Builds the `some` case of an [option].
 
   `some` is the macro for this call.
 
@@ -95,7 +95,7 @@
   => (some 3)")
 
 (document option/none
-  "Holds the `none` variant of an [option].
+  "Holds the `none` case of an [option].
 
   `none` is the same value.
 
@@ -112,7 +112,7 @@
   => (ok 3)")
 
 (document (result/ok value)
-  "Builds the `ok` variant of a [result].
+  "Builds the `ok` case of a [result].
 
   `ok` is the macro for this call.
 
@@ -120,7 +120,7 @@
   => (ok 3)")
 
 (document (result/err error)
-  "Builds the `err` variant of a [result].
+  "Builds the `err` case of a [result].
 
   `err` is the macro for this call.
 

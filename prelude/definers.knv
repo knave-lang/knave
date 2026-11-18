@@ -19,7 +19,7 @@
 (defmacro defenum (head body ...)
   "Defines an enum, or names a Rust enum with a `rust` clause.
 
-  Write (defenum name variant ...). A variant is a name, `(name type ...)` or
+  Write (defenum name case ...). A case is a name, `(name type ...)` or
   `(name :field type ...)`. A `(rust \"Path\")` right after the name or the
   docstring makes the enum the named Rust type.
 

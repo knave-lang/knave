@@ -2550,7 +2550,7 @@ fn doc_prints_the_page_of_a_kernel_form() {
     let doc = sandbox.compiler(&["doc", "match"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        "(match value (pattern body ...) ...)\n\nEvaluates the body of the first arm whose pattern matches the value.\n\nAn arm's body is a [do], so its last form is the arm's value.\n\nA pattern is [_], a literal, a bare name, `(variant pattern ...)`,\n`(variant :field pattern ...)`, `(type-name pattern ...)` or\n`(type-name :field pattern ...)`. It emits a Rust `match`.\n\n(match 3 (0 \"zero\") (_ \"other\"))\n=> \"other\"\n\n(match (pair 1 2) ((pair left _) left))\n=> 1\n"
+        "(match value (pattern body ...) ...)\n\nEvaluates the body of the first arm whose pattern matches the value.\n\nAn arm's body is a [do], so its last form is the arm's value.\n\nA pattern is [_], a literal, a bare name, `(case pattern ...)`,\n`(case :field pattern ...)`, `(type-name pattern ...)` or\n`(type-name :field pattern ...)`. It emits a Rust `match`.\n\n(match 3 (0 \"zero\") (_ \"other\"))\n=> \"other\"\n\n(match (pair 1 2) ((pair left _) left))\n=> 1\n"
     );
 }
 

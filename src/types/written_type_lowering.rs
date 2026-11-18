@@ -88,30 +88,12 @@ impl<'l> WrittenTypeLowering<'l> {
         }
     }
 
-    pub(super) fn type_variables(&self, type_expr: &TypeExpr) -> Vec<BindingId> {
-        let mut found = Vec::new();
-        self.collect_type_variables(type_expr, &mut found);
-        found
+    pub(super) fn replace_bounds(&mut self, param: &mut GenericParam, bounds: Vec<Bound>) {
+        self.generics.redeclare(param, bounds);
     }
 
-    fn collect_type_variables(&self, type_expr: &TypeExpr, found: &mut Vec<BindingId>) {
-        if let TypeExprKind::Named(binding, arguments) = type_expr.kind()
-            && arguments.is_empty()
-            && matches!(
-                self.bindings.get(*binding).kind(),
-                BindingKind::TypeVariable
-            )
-            && !found.contains(binding)
-        {
-            found.push(*binding);
-        }
-        for part in type_expr.parts() {
-            self.collect_type_variables(part, found);
-        }
-    }
-
-    pub(super) fn generics(&mut self) -> &mut GenericDeclarations<'l> {
-        &mut self.generics
+    pub(super) fn placeholder_type(&mut self) -> Type {
+        self.generics.failed_scheme().body
     }
 
     fn check_trait_argument(&self, binding: BindingId, span: Span) -> Result<(), Diagnostic> {
@@ -454,9 +436,7 @@ mod tests {
         let display = fixture.named_trait("display");
         let mut lowering = fixture.checker.written_types();
         let mut param = lowering.declare_variable(variable);
-        lowering
-            .generics()
-            .redeclare(&mut param, vec![Bound::plain(display)]);
+        lowering.replace_bounds(&mut param, vec![Bound::plain(display)]);
         assert_eq!(param.bounds, vec![Bound::plain(display)]);
         assert_eq!(
             fixture.checker.unifier.generic_bounds(param.id),
@@ -501,7 +481,7 @@ mod tests {
                 Fixture::named(first, Vec::new()),
             ],
         );
-        let variables = fixture.checker.written_types().type_variables(&written);
+        let variables = fixture.type_variables(&written);
         assert_eq!(variables, vec![first, second]);
     }
 
@@ -510,13 +490,7 @@ mod tests {
         let mut fixture = Fixture::new();
         let variable = fixture.type_variable("a");
         let written = Fixture::named(variable, vec![Fixture::integer()]);
-        assert!(
-            fixture
-                .checker
-                .written_types()
-                .type_variables(&written)
-                .is_empty()
-        );
+        assert!(fixture.type_variables(&written).is_empty());
     }
 
     #[test]
@@ -524,12 +498,6 @@ mod tests {
         let mut fixture = Fixture::new();
         let item = fixture.associated_type("item");
         let written = Fixture::named(item, Vec::new());
-        assert!(
-            fixture
-                .checker
-                .written_types()
-                .type_variables(&written)
-                .is_empty()
-        );
+        assert!(fixture.type_variables(&written).is_empty());
     }
 }

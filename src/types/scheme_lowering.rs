@@ -5,6 +5,7 @@ use super::problems::TypeProblems;
 use super::trait_rows_reach::Implementor;
 use super::ty::{Bound, GenericId, GenericParam, Scheme, Type};
 use super::written_type_lowering::WrittenTypeLowering;
+use super::written_type_variables::WrittenTypeVariables;
 use crate::core::{
     AssociatedValue, BindingId, ImplAssociatedType, RustTraitImplementor, TypeBinder, TypeExpr,
     TypeExprKind,
@@ -23,11 +24,12 @@ struct LoweredBinders {
 
 pub(super) struct SchemeLowering<'l> {
     types: WrittenTypeLowering<'l>,
+    variables: WrittenTypeVariables<'l>,
 }
 
 impl<'l> SchemeLowering<'l> {
-    pub(super) fn new(types: WrittenTypeLowering<'l>) -> Self {
-        Self { types }
+    pub(super) fn new(types: WrittenTypeLowering<'l>, variables: WrittenTypeVariables<'l>) -> Self {
+        Self { types, variables }
     }
 
     pub(super) fn lower_scheme(&mut self, type_expr: &TypeExpr) -> Result<Scheme, Diagnostic> {
@@ -76,7 +78,7 @@ impl<'l> SchemeLowering<'l> {
     ) -> Result<LoweredImplementor, Diagnostic> {
         let mut params = Vec::new();
         let mut scope = FxHashMap::default();
-        for variable in self.types.type_variables(implementor) {
+        for variable in self.variables.of(implementor) {
             let param = self.types.declare_variable(variable);
             scope.insert(variable, param.id);
             params.push(param);
@@ -162,7 +164,7 @@ impl<'l> SchemeLowering<'l> {
             .zip(&mut params)
         {
             let bounds = self.lower_bounds(binder, &scope)?;
-            self.types.generics().redeclare(param, bounds);
+            self.types.replace_bounds(param, bounds);
         }
         Ok(LoweredBinders {
             lifetimes,

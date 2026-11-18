@@ -58,15 +58,7 @@ impl ParameterUsage {
 
     fn visit(&mut self, type_expr: &TypeExpr, place: Place) {
         match type_expr.kind() {
-            TypeExprKind::Named(binding, arguments) => {
-                let place = self.place_inside(*binding, place);
-                if *binding == self.variable {
-                    self.record_use(type_expr.span(), place);
-                }
-                for argument in arguments {
-                    self.visit(argument, place);
-                }
-            }
+            TypeExprKind::Named(..) => self.visit_named(type_expr, place),
             TypeExprKind::Function(_, parameters, result) => {
                 for parameter in parameters {
                     self.visit(parameter, place);
@@ -78,6 +70,19 @@ impl ParameterUsage {
             }
             TypeExprKind::Primitive(_) | TypeExprKind::Hole => {}
             TypeExprKind::Where(..) | TypeExprKind::With(..) | TypeExprKind::Trait(_) => {}
+        }
+    }
+
+    fn visit_named(&mut self, type_expr: &TypeExpr, place: Place) {
+        let TypeExprKind::Named(binding, arguments) = type_expr.kind() else {
+            return;
+        };
+        let place = self.place_inside(*binding, place);
+        if *binding == self.variable {
+            self.record_use(type_expr.span(), place);
+        }
+        for argument in arguments {
+            self.visit(argument, place);
         }
     }
 

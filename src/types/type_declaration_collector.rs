@@ -3,6 +3,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::collected_enum::CollectedEnum;
+use super::collected_struct::CollectedStruct;
 use super::declared_types::DeclaredTypes;
 use super::enum_item::EnumItem;
 use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
@@ -48,7 +49,7 @@ impl<'c> TypeDeclarationCollector<'c> {
         &mut self,
         binders: &[TypeBinder],
         fields: &[(FieldLabel, TypeExpr)],
-    ) -> Result<(StructDefinition, Option<Diagnostic>), Diagnostic> {
+    ) -> Result<CollectedStruct, Diagnostic> {
         let params = self.struct_params(binders)?;
         let lifetimes = Self::lifetime_binders(binders);
         let scope: FxHashMap<BindingId, GenericId> = binders
@@ -73,7 +74,10 @@ impl<'c> TypeDeclarationCollector<'c> {
             blocked: Vec::new(),
             written_derive: None,
         };
-        Ok((definition, problem))
+        Ok(CollectedStruct {
+            definition,
+            problem,
+        })
     }
 
     pub(super) fn collect_enum(&mut self, item: EnumItem<'_>) -> Result<CollectedEnum, Diagnostic> {
@@ -178,7 +182,7 @@ impl<'c> TypeDeclarationCollector<'c> {
             self.lower_stored_type(type_expr, scope)
                 .unwrap_or_else(|problem| {
                     problems.push(problem);
-                    self.lowering.generics().failed_scheme().body
+                    self.lowering.placeholder_type()
                 })
         };
         let payload = match payload {
@@ -362,18 +366,19 @@ mod tests {
             Fixture::field_label("value"),
             Fixture::named(variable, Vec::new()),
         )];
-        let (definition, problem) = fixture
+        let collected = fixture
             .checker
             .type_collector()
             .collect_struct(&binders, &fields)
             .expect("the struct collects");
+        let definition = &collected.definition;
         assert_eq!(definition.lifetimes, vec![lifetime]);
         assert_eq!(definition.params.len(), 1);
         assert_eq!(
             definition.fields[0].1,
             Type::Generic(definition.params[0].id)
         );
-        assert!(problem.is_none());
+        assert!(collected.problem.is_none());
     }
 
     #[test]
@@ -382,12 +387,12 @@ mod tests {
         let variable = fixture.type_variable("t");
         let binders = [Fixture::bounded(variable, &[])];
         let fields = [(Fixture::field_label("count"), Fixture::integer())];
-        let (_, problem) = fixture
+        let collected = fixture
             .checker
             .type_collector()
             .collect_struct(&binders, &fields)
             .expect("the struct collects");
-        assert!(problem.is_some());
+        assert!(collected.problem.is_some());
     }
 
     #[test]

@@ -829,7 +829,7 @@ impl Expander<'_> {
     ) -> String {
         let variant = variants
             .first()
-            .map_or("variant", |variant| variant.name.as_ref());
+            .map_or("case", |variant| variant.name.as_ref());
         let parameters = Self::enum_parameter_names(enum_head);
         let parts = parameters.join(" ");
         let variant = format!("({variant} {parts})");

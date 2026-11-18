@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use knave_expand::mangle::NameMangler;
 use rustc_hash::FxHashMap;
 
+use super::constant_definitions::ConstantDefinitions;
 use super::item_visibilities::ItemVisibilities;
 use super::problems::EmitProblems;
 use super::visibility::Visibility;
@@ -45,7 +46,6 @@ pub struct EmitPlan<'p> {
 impl<'p> EmitPlan<'p> {
     const ENTRY_RUST_NAME: &'static str = "main";
     const MODULE_SEPARATOR: char = '/';
-    const MACRO_CALLS: [&'static str; 3] = ["!(", "![", "!{"];
     const FIRST_RENAME_SUFFIX: usize = 2;
 
     pub fn build(program: &'p TypedProgram, entry_span: Span) -> Result<Self, Diagnostics> {
@@ -593,40 +593,13 @@ impl<'p> EmitPlan<'p> {
     fn definition_kind(&self, definition: &TypedDefinition) -> ItemKind {
         match &definition.value.kind {
             TypedExprKind::Fn(_) => ItemKind::Function,
-            _ if self.is_const_evaluable(&definition.value) => ItemKind::Const,
+            _ if ConstantDefinitions::new(self.program, &self.definitions)
+                .is_const_evaluable(&definition.value) =>
+            {
+                ItemKind::Const
+            }
             _ => ItemKind::Static,
         }
-    }
-
-    fn is_const_evaluable(&self, expr: &TypedExpr) -> bool {
-        match &expr.kind {
-            TypedExprKind::Leaf(leaf) => self.is_const_leaf(leaf),
-            TypedExprKind::Call(callee, arguments) => {
-                self.is_const_evaluable(callee)
-                    && arguments
-                        .iter()
-                        .all(|argument| self.is_const_evaluable(&argument.value))
-            }
-            _ => false,
-        }
-    }
-
-    fn is_const_leaf(&self, leaf: &TypedLeaf) -> bool {
-        match leaf {
-            TypedLeaf::Literal(_) => true,
-            TypedLeaf::Global(binding) => self
-                .definition(*binding)
-                .is_some_and(|definition| self.is_const_evaluable(&definition.value)),
-            TypedLeaf::Rust(template) => Self::is_operator_template(&template.template),
-            TypedLeaf::Local(_) => false,
-        }
-    }
-
-    fn is_operator_template(text: &str) -> bool {
-        let is_plain_value = text.chars().all(char::is_alphanumeric);
-        let calls_something =
-            Self::MACRO_CALLS.iter().any(|call| text.contains(call)) || text.contains(['.', '(']);
-        is_plain_value || !calls_something
     }
 
     fn collision(&self, rust_name: &str, first: BindingId, second: BindingId) -> Diagnostic {

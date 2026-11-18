@@ -3,7 +3,7 @@ mod assigned_in_place;
 mod bound_before;
 mod callee_definitions;
 mod callee_parameters;
-mod clause_choice;
+mod constant_definitions;
 mod emitted_types;
 mod emitted_value;
 mod expressions;

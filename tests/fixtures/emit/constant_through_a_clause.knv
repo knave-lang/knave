@@ -1,0 +1,17 @@
+(def double
+  (rust "std::ops::Mul::mul({0}, 2)"
+    (where ((n integer)) (fn (n) n))
+    (i64 "{0} * 2")))
+
+(def eight (double 4))
+
+(def doubled-byte (double (the u8 20)))
+
+(def halve
+  (rust "std::ops::Div::div({0}, 2)"
+    (where ((n integer)) (fn (n) n))
+    (i32 "{0} / 2")))
+
+(def four (halve 8))
+
+(defn main () (prn eight doubled-byte four))

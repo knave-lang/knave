@@ -1,0 +1,10 @@
+(def twice
+  (rust "std::convert::identity({0}) * 2"
+    (where ((n integer)) (fn (n) n))
+    (i64 "{0} * 2")))
+
+(defn borrowed-double ()
+  (ref (twice 21)))
+
+(defn main ()
+  (println (deref (borrowed-double))))

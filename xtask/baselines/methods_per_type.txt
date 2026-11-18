@@ -30,11 +30,11 @@ expand/src/scope/scope_set.rs::ScopeSet 27
 
 src/cli/library_walk.rs::LibraryWalk 22
 
-src/emit/expressions.rs::ExpressionEmitter 220
+src/emit/expressions.rs::ExpressionEmitter 219
 
 src/emit/items.rs::ItemEmitter 84
 
-src/emit/plan.rs::EmitPlan 46
+src/emit/plan.rs::EmitPlan 43
 
 src/emit/result_borrows.rs::BodyFlows 30
 

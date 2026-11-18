@@ -44,6 +44,10 @@ impl TemplateClauses {
         self.clauses.insert(binding, clauses);
     }
 
+    pub fn lists(&self, binding: BindingId) -> bool {
+        self.clauses.contains_key(&binding)
+    }
+
     pub fn chosen(
         &self,
         binding: BindingId,

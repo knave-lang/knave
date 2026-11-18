@@ -136,6 +136,16 @@ mod tests {
     }
 
     #[test]
+    fn an_unmeasured_function_says_no_test_reached_it() {
+        let function = ForecastCase::function_in("", 8, None);
+        let details = CrapForecast::new(ForecastCase::MAXIMUM, vec![function]).details();
+        assert!(
+            details.starts_with("  src/a.rs:1 area scores 72.0 with no coverage record, so none of the tests prepush ran reached it."),
+            "{details}"
+        );
+    }
+
+    #[test]
     fn an_unproven_function_without_a_broader_run_asks_for_its_test() {
         let details = ForecastCase::forecast(8, None).details();
         assert!(details.ends_with("Name the test that covers them with `cargo xtask prepush --also '<cargo test arguments>'`, or test them.\n"), "{details}");

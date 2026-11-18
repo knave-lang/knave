@@ -1,0 +1,4 @@
+(display (vec i64) (numbers)
+  (pr-str numbers))
+
+(defn main () (println (str (vec 1 2))))

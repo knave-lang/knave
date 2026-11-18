@@ -8,6 +8,7 @@ def diagnostic_suites: [["--test", "diagnostic_codes", "--test", "diagnostic_sna
 
 def test_sets:
   if startswith("src/cli/") then [["--lib", "cli::"], ["--test", "cli"], ["--lib"]] + stage_suites + diagnostic_suites
+  elif startswith("xtask/agree/") then [["-p", "knave-agree"]]
   elif startswith("xtask/src/") then [["-p", "xtask"]]
   elif startswith("expand/src/") then [["-p", "knave-expand", "--lib"]] + stage_suites + [["--lib"], ["--test", "cli"]] + diagnostic_suites
   else [["--lib"]] + stage_suites + [["--test", "cli"]] + diagnostic_suites

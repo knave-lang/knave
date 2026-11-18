@@ -14,6 +14,13 @@ main() {
     record "$directory" "$(timed_verdict "$directory")"
   done
   touch "$RESULTS/complete"
+  warn_when_slow
+}
+
+warn_when_slow() {
+  if [[ -n ${SLOW_SECONDS:-} ]] && ((SECONDS > SLOW_SECONDS)); then
+    echo "::warning::Shard $SHARD took $((SECONDS / 60)) minutes, past $((SLOW_SECONDS / 60)). The cost estimates in .github/mutation/shards.jq may be low."
+  fi
 }
 
 mutants_of_shard() {

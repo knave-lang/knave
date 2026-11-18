@@ -91,6 +91,7 @@ mod peeling;
 mod pending;
 mod pinning;
 mod pipelines;
+mod place_types;
 mod positional_read;
 mod prelude_types;
 mod problems;

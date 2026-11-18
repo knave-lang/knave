@@ -41,6 +41,7 @@ use super::parameter_names::ParameterNames;
 use super::peeling::ReferencePeeling;
 use super::pending::PendingBorrow;
 use super::pinning::LiteralDefaults;
+use super::place_types::PlaceTypes;
 use super::prelude_types::PreludeTypes;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
 use super::reached_traits::{ReachedDeclaration, ReachedTraits};
@@ -576,6 +577,10 @@ impl TypeChecker {
 
     pub(super) fn function_value_wrapper(&mut self) -> FunctionValueWrapper<'_> {
         FunctionValueWrapper::new(&mut self.bindings)
+    }
+
+    pub(super) fn place_types(&self) -> PlaceTypes<'_> {
+        PlaceTypes::new(&self.unifier, self.declared_types())
     }
 
     pub(super) fn unification(&mut self) -> Unification<'_> {

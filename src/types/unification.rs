@@ -1,13 +1,10 @@
 use super::declared_types::DeclaredTypes;
 use super::display::TypeDisplay;
 use super::expectation::Expectation;
-use super::peeling::ReferencePeeling;
 use super::problems::TypeProblems;
 use super::ty::Type;
-use super::typed::{TypedExpr, TypedExprKind, TypedStructExpr};
 use super::unifier::{LiteralKind, Unifier, UnifyError};
 use super::view_coercion::ViewCoercion;
-use crate::core::FieldSpelling;
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 
@@ -71,59 +68,6 @@ impl<'a> Unification<'a> {
         }
     }
 
-    pub(super) fn place_type(&self, value: &TypedExpr) -> Type {
-        if self.pair_part_behind_shared(value) {
-            value.ty.clone()
-        } else {
-            self.declared_type(value)
-        }
-    }
-
-    pub(super) fn written_place_type(&self, value: &TypedExpr) -> Type {
-        let declared = self.declared_type(value);
-        if self.pair_part_behind_shared(value) {
-            Type::shared(declared)
-        } else {
-            declared
-        }
-    }
-
-    fn pair_part_behind_shared(&self, value: &TypedExpr) -> bool {
-        matches!(&value.kind, TypedExprKind::Struct(TypedStructExpr::Field(owner, label))
-            if matches!(label.spelling, FieldSpelling::Pair(_)) && self.behind_shared(owner))
-    }
-
-    fn declared_type(&self, value: &TypedExpr) -> Type {
-        let TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) = &value.kind else {
-            return value.ty.clone();
-        };
-        let (peeled, _) = ReferencePeeling::new(self.unifier).peel(&owner.ty);
-        let Type::Named(binding, arguments) = peeled else {
-            return value.ty.clone();
-        };
-        let declared = match label.spelling {
-            FieldSpelling::Pair(position) => position.part_of(&arguments).cloned(),
-            _ => self
-                .declarations
-                .field_type(binding, &label.name, &arguments),
-        };
-        declared.unwrap_or_else(|| value.ty.clone())
-    }
-
-    fn behind_shared(&self, owner: &TypedExpr) -> bool {
-        let peeling = ReferencePeeling::new(self.unifier);
-        let mut current = owner;
-        loop {
-            if peeling.has_shared_layer(&self.declared_type(current)) {
-                return true;
-            }
-            let TypedExprKind::Struct(TypedStructExpr::Field(inner, _)) = &current.kind else {
-                return false;
-            };
-            current = inner;
-        }
-    }
-
     fn unifies_viewed_items(&mut self, coercion: ViewCoercion, span: Span) -> bool {
         let Some(items) = self.declarations.viewed_items(coercion) else {
             return false;
@@ -157,14 +101,13 @@ mod tests {
     use rustc_hash::FxHashMap;
 
     use super::Unification;
-    use crate::core::{FieldLabel, FieldSpelling, Literal, PairPosition, PrimitiveType};
+    use crate::core::PrimitiveType;
     use crate::diagnostic::Diagnostic;
     use crate::source::{SourceId, Span};
     use crate::types::declared_types::DeclaredTypes;
     use crate::types::display::TypeDisplay;
     use crate::types::expectation::Expectation;
     use crate::types::type_declarations::TypeDeclarations;
-    use crate::types::typed::{TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr};
     use crate::types::unifier::{LiteralKind, Unifier};
     use crate::types::{GenericId, GenericParam, Type, TypedProgram, TypedSource};
 
@@ -223,10 +166,6 @@ mod tests {
             self.unification().describe(described)
         }
 
-        fn place_type(&mut self, place: &TypedExpr) -> Type {
-            self.unification().place_type(place)
-        }
-
         fn parameter(&self, function: &str) -> Type {
             let definition = self
                 .program
@@ -243,64 +182,6 @@ mod tests {
 
         fn referent(&self, function: &str) -> Type {
             self.parameter(function).referent().clone()
-        }
-
-        fn field_of(&self, owner: Type, field: &str) -> TypedExpr {
-            let owner = TypedExpr {
-                kind: TypedExprKind::Leaf(TypedLeaf::Literal(Literal::Bool(false))),
-                ty: owner,
-                span: self.span,
-            };
-            TypedExpr {
-                kind: TypedExprKind::Struct(TypedStructExpr::Field(
-                    Box::new(owner),
-                    FieldLabel {
-                        name: field.into(),
-                        span: self.span,
-                        spelling: FieldSpelling::Bare,
-                    },
-                )),
-                ty: Self::boolean(),
-                span: self.span,
-            }
-        }
-
-        fn first_parts(&self, borrow: fn(Type) -> Type, depth: usize) -> TypedExpr {
-            let pair = self
-                .types
-                .rust_types
-                .pair_binding()
-                .expect("the prelude defines a pair");
-            let mut nested = vec![Self::integer()];
-            for level in 0..depth {
-                nested.push(Type::Named(
-                    pair,
-                    vec![nested[level].clone(), Self::integer()],
-                ));
-            }
-            let mut read = TypedExpr {
-                kind: TypedExprKind::Leaf(TypedLeaf::Literal(Literal::Bool(false))),
-                ty: borrow(nested[depth].clone()),
-                span: self.span,
-            };
-            for level in (0..depth).rev() {
-                let label = FieldLabel {
-                    name: "0".into(),
-                    span: self.span,
-                    spelling: FieldSpelling::Pair(PairPosition::First),
-                };
-                let ty = match level {
-                    0 => Self::boolean(),
-                    _ => Type::shared(nested[level].clone()),
-                };
-                let kind = TypedExprKind::Struct(TypedStructExpr::Field(Box::new(read), label));
-                read = TypedExpr {
-                    kind,
-                    ty,
-                    span: self.span,
-                };
-            }
-            read
         }
 
         fn generic() -> GenericId {
@@ -470,40 +351,5 @@ mod tests {
     fn a_known_type_is_described_in_backticks() {
         let mut fixture = UnificationFixture::new();
         assert_eq!(fixture.describe(&UnificationFixture::integer()), "`int`");
-    }
-
-    #[test]
-    fn a_field_through_a_borrow_has_its_declared_type() {
-        let mut fixture = UnificationFixture::new();
-        let field = fixture.field_of(fixture.parameter("measure"), "value");
-        assert_eq!(fixture.place_type(&field), UnificationFixture::integer());
-    }
-
-    #[test]
-    fn an_undeclared_field_keeps_its_inferred_type() {
-        let mut fixture = UnificationFixture::new();
-        let field = fixture.field_of(fixture.parameter("measure"), "missing");
-        assert_eq!(fixture.place_type(&field), UnificationFixture::boolean());
-    }
-
-    #[test]
-    fn a_deeply_nested_pair_part_through_mut_is_a_place() {
-        let mut fixture = UnificationFixture::new();
-        let part = fixture.first_parts(Type::mutable, 30);
-        assert_eq!(fixture.place_type(&part), UnificationFixture::integer());
-    }
-
-    #[test]
-    fn a_deeply_nested_pair_part_through_ref_keeps_its_read_type() {
-        let mut fixture = UnificationFixture::new();
-        let part = fixture.first_parts(Type::shared, 30);
-        assert_eq!(fixture.place_type(&part), UnificationFixture::boolean());
-    }
-
-    #[test]
-    fn a_field_of_a_non_struct_keeps_its_inferred_type() {
-        let mut fixture = UnificationFixture::new();
-        let field = fixture.field_of(UnificationFixture::integer(), "value");
-        assert_eq!(fixture.place_type(&field), UnificationFixture::boolean());
     }
 }

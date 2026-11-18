@@ -58,7 +58,7 @@ impl TypeChecker {
         let TypedExprKind::Borrow(ReferenceKind::Shared, place) = &value.kind else {
             return false;
         };
-        let borrowed = self.unification().place_type(place);
+        let borrowed = self.place_types().read(place);
         self.unifier.resolve(&borrowed) == Self::owned_string()
     }
 

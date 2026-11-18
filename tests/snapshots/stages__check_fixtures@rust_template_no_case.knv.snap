@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/rust_template_no_case.knv
+---
+error[L0438]: a `rust` template needs one case with a part for each placeholder
+ --> check/rust_template_no_case.knv:1:18
+  |
+1 | (enum (pair a b) (rust "({0}, {1})"))
+  |                  ^^^^^^^^^^^^^^^^^^^ this template needs exactly one case
+  |
+  = help: write one positional part for each placeholder, as in `(enum (pair a b) (rust "({0}, {1})") (case a b))`
+  = note: run `knave doc L0438` for an explanation

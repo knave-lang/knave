@@ -767,7 +767,7 @@ impl TypeProblems {
 
     pub fn ambiguous_variant(name: &str, enums: &[String], span: Span) -> Diagnostic {
         let diagnostic = Diagnostic::error(
-            DiagnosticCode::AMBIGUOUS_VARIANT,
+            DiagnosticCode::AMBIGUOUS_CASE,
             "cannot tell which enum this pattern matches",
             Label::new(span, "this case name fits more than one enum"),
         )
@@ -789,7 +789,7 @@ impl TypeProblems {
 
     pub fn variant_arm_value(name: &str, variant: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
-            DiagnosticCode::VARIANT_ARM_VALUE,
+            DiagnosticCode::CASE_ARM_VALUE,
             format!("`{name}` names a case in this arm, not a value"),
             Label::new(span, "names the case, not a value"),
         )
@@ -804,7 +804,7 @@ impl TypeProblems {
     ) -> Diagnostic {
         let names: Vec<String> = variants.iter().map(|name| format!("`{name}`")).collect();
         Diagnostic::error(
-            DiagnosticCode::UNKNOWN_VARIANT,
+            DiagnosticCode::UNKNOWN_CASE,
             format!("`{enum_name}` has no case `{variant}`"),
             Label::new(span, format!("not a case of `{enum_name}`")),
         )

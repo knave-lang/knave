@@ -783,7 +783,7 @@ impl ExpandProblems {
 
     pub fn mixed_variant_payload(span: Span) -> Diagnostic {
         Diagnostic::error(
-            DiagnosticCode::MIXED_VARIANT_PAYLOAD,
+            DiagnosticCode::MIXED_CASE_PAYLOAD,
             "a case's payload is either types or one `struct` body",
             Label::new(span, "this mixes the two"),
         )
@@ -874,7 +874,7 @@ impl ExpandProblems {
 
     pub fn variant_as_value(name: &str, arity: usize, span: Span) -> Diagnostic {
         Diagnostic::error(
-            DiagnosticCode::VARIANT_AS_VALUE,
+            DiagnosticCode::CASE_AS_VALUE,
             format!("`{name}` is a case constructor, not a value"),
             Label::new(
                 span,

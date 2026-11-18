@@ -22,7 +22,9 @@ use super::enum_item::EnumItem;
 use super::generic_declarations::GenericDeclarations;
 use super::generic_registry::GenericRegistry;
 use super::graph::{Definition, DefinitionGraph};
-use super::impl_overlap::ImplementorOverlap;
+use super::impl_item::ImplItem;
+use super::implementation_check::ImplementationCheck;
+use super::implementation_collector::ImplementationCollector;
 use super::implied_bounds::ImpliedBounds;
 use super::infer::OpenCollections;
 use super::instantiation::Instantiation;
@@ -52,9 +54,8 @@ use super::user_trait::UserTrait;
 use super::variant_payloads::VariantPayloads;
 use super::wrapper::FunctionValueWrapper;
 use super::{
-    Implementor, LoweredRows, PendingModeCheck, ReceiverKind, RustTrait, StructDefinition,
-    TemplateBorrows, TypedConversion, TypedDefinition, TypedExpr, TypedExprKind, TypedImplMethod,
-    TypedLeaf, TypedTraitImpl,
+    Implementor, LoweredRows, PendingModeCheck, RustTrait, StructDefinition, TemplateBorrows,
+    TypedConversion, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf,
 };
 use crate::core::{
     BindingArena, BindingId, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr, ExprKind, Item,
@@ -1472,87 +1473,54 @@ impl TypeChecker {
                 else {
                     continue;
                 };
-                let implementor_span = implementor.span();
-                let (implementor, params, associated_values) = match self
-                    .written_schemes()
-                    .lower_impl_implementor(implementor, associated)
-                {
-                    Ok(implementor) => implementor,
-                    Err(diagnostic) => {
-                        self.diagnostics.push(diagnostic);
-                        self.outcomes
-                            .fail(methods.iter().map(|method| method.binding));
-                        continue;
-                    }
-                };
-                if self.rejects_implementor(*trait_binding, &implementor, implementor_span) {
-                    continue;
-                }
-                self.report_unsized_implementor(&implementor, implementor_span, methods);
-                let argument = self
-                    .declarations
-                    .traits
-                    .table
-                    .get(*trait_binding)
-                    .is_some_and(|rust_trait| rust_trait.associated.is_some())
-                    .then(|| associated_values.first().map(|(_, value)| value.clone()))
-                    .flatten();
-                self.declarations.traits.table.add_implementor(
-                    *trait_binding,
-                    Implementor {
-                        scheme: Scheme {
-                            lifetimes: Vec::new(),
-                            params: params.clone(),
-                            body: implementor.clone(),
-                        },
-                        argument,
-                    },
-                );
-                let mut typed_methods = Vec::new();
-                for method in methods {
-                    self.synthetic_bindings.insert(method.binding);
-                    self.impl_methods.insert(method.binding);
-                    let receiver = self
-                        .declarations
-                        .traits
-                        .methods
-                        .get(&method.trait_method)
-                        .and_then(|info| info.receiver);
-                    typed_methods.push(TypedImplMethod {
-                        binding: method.binding,
-                        receiver,
-                    });
-                }
-                let associated = associated_values
-                    .into_iter()
-                    .map(|(binding, value)| {
-                        let name = self
-                            .declarations
-                            .traits
-                            .definitions
-                            .iter()
-                            .find(|trait_definition| trait_definition.binding == *trait_binding)
-                            .and_then(|trait_definition| {
-                                trait_definition
-                                    .associated
-                                    .iter()
-                                    .find(|associated| associated.binding == binding)
-                            })
-                            .map_or_else(|| Rc::from(""), |associated| associated.name.clone());
-                        (binding, name, value)
-                    })
-                    .collect();
-                self.declarations.traits.impls.push(TypedTraitImpl {
+                self.collect_trait_impl(ImplItem {
+                    module: module.id,
                     trait_binding: *trait_binding,
                     implementor,
-                    params,
                     associated,
-                    implementor_span,
-                    module: module.id,
-                    methods: typed_methods,
+                    methods,
                 });
             }
         }
+    }
+
+    fn collect_trait_impl(&mut self, item: ImplItem<'_>) {
+        let lowered = match self
+            .written_schemes()
+            .lower_impl_implementor(item.implementor, item.associated)
+        {
+            Ok(lowered) => lowered,
+            Err(diagnostic) => {
+                self.diagnostics.push(diagnostic);
+                self.outcomes
+                    .fail(item.methods.iter().map(|method| method.binding));
+                return;
+            }
+        };
+        let span = item.implementor.span();
+        let check = self.implementation_check();
+        let rejection = check.rejection(item.trait_binding, &lowered.0, span);
+        let unsized_problems = check.unsized_problems(&lowered.0, span, item.methods);
+        if let Some(rejection) = rejection {
+            self.diagnostics.push(rejection);
+            return;
+        }
+        self.diagnostics
+            .extend(unsized_problems.into_iter().collect());
+        let collected = self.implementation_collector().collect(item, lowered);
+        collected.enter(
+            &mut self.declarations.traits,
+            &mut self.synthetic_bindings,
+            &mut self.impl_methods,
+        );
+    }
+
+    fn implementation_check(&self) -> ImplementationCheck<'_> {
+        ImplementationCheck::new(&self.bindings, &self.declarations, self.display())
+    }
+
+    fn implementation_collector(&self) -> ImplementationCollector<'_> {
+        ImplementationCollector::new(&self.declarations.traits)
     }
 
     fn report_supertraits(&mut self) {
@@ -1612,99 +1580,6 @@ impl TypeChecker {
                 help,
             ));
         }
-    }
-
-    fn report_unsized_implementor(
-        &mut self,
-        implementor: &Type,
-        span: Span,
-        methods: &[crate::core::ImplMethod],
-    ) {
-        if !self.declared_types().is_unsized(implementor) {
-            return;
-        }
-        for method in methods {
-            let owned = self
-                .declarations
-                .traits
-                .methods
-                .get(&method.trait_method)
-                .is_some_and(|info| info.receiver == Some(ReceiverKind::Owned));
-            if !owned {
-                continue;
-            }
-            let implementor_name = self.display().show(implementor);
-            let method_name = self.bindings.get(method.trait_method).name().to_string();
-            self.diagnostics.push(TypeProblems::unsized_implementor(
-                &implementor_name,
-                &method_name,
-                span,
-            ));
-        }
-    }
-
-    fn report_foreign_implementor(
-        &mut self,
-        trait_binding: BindingId,
-        implementor: &Type,
-        span: Span,
-    ) -> bool {
-        let rust_paths = &self.declarations.traits.rust_paths;
-        if rust_paths.written(trait_binding).is_none() || self.is_program_type(implementor) {
-            return false;
-        }
-        let implementor_name = self.display().show(implementor);
-        let trait_name = self.bindings.get(trait_binding).name().to_string();
-        self.diagnostics.push(TypeProblems::foreign_implementor(
-            &trait_name,
-            &implementor_name,
-            span,
-        ));
-        true
-    }
-
-    fn rejects_implementor(
-        &mut self,
-        trait_binding: BindingId,
-        implementor: &Type,
-        span: Span,
-    ) -> bool {
-        self.report_foreign_implementor(trait_binding, implementor, span)
-            || self.report_second_impl(trait_binding, implementor, span)
-    }
-
-    fn report_second_impl(
-        &mut self,
-        trait_binding: BindingId,
-        implementor: &Type,
-        span: Span,
-    ) -> bool {
-        let Some(first) = self
-            .declarations
-            .traits
-            .impls
-            .iter()
-            .find(|implementation| {
-                implementation.trait_binding == trait_binding
-                    && ImplementorOverlap::overlaps(&implementation.implementor, implementor)
-            })
-        else {
-            return false;
-        };
-        let first = TypeProblems::first_impl(first.implementor_span);
-        let implementor_name = self.display().show(implementor);
-        let trait_name = self.bindings.get(trait_binding).name().to_string();
-        self.diagnostics.push(TypeProblems::second_impl(
-            &implementor_name,
-            &trait_name,
-            span,
-            first,
-        ));
-        true
-    }
-
-    fn is_program_type(&self, implementor: &Type) -> bool {
-        matches!(implementor, Type::Named(binding, _) if self.declared_types().declares(*binding))
     }
 
     fn acyclic_requirements(
@@ -1926,7 +1801,7 @@ impl TypeChecker {
         let argument = self.literal_settlement().shown_argument(bound);
         let needed = display.needed(bound.binding, argument, implementor);
         let found = display.show(implementor);
-        let program_type = self.is_program_type(implementor);
+        let program_type = self.declared_types().declares_type(implementor);
         let diagnostic = match self.unimplemented_box(implementor, bound) {
             Some(boxed) => TypeProblems::missing_trait_on_box(&needed, &display.show(&boxed), span),
             None => match implementor {

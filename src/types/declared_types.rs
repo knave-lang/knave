@@ -25,8 +25,9 @@ impl<'a> DeclaredTypes<'a> {
             .and_then(|definition| definition.instantiated_field(label, arguments))
     }
 
-    pub(super) fn declares(&self, binding: BindingId) -> bool {
-        self.is_struct(binding) || self.types.enums.get(binding).is_some()
+    pub(super) fn declares_type(&self, candidate: &Type) -> bool {
+        matches!(candidate, Type::Named(binding, _)
+            if self.is_struct(*binding) || self.types.enums.get(*binding).is_some())
     }
 
     pub(super) fn is_struct(&self, binding: BindingId) -> bool {
@@ -138,7 +139,7 @@ mod tests {
         let fixture = DeclarationsFixture::new(SOURCE);
         let reading = fixture.type_named("reading");
         let declared = fixture.declared_types();
-        assert!(declared.declares(reading));
+        assert!(declared.declares_type(&Type::Named(reading, Vec::new())));
         assert!(declared.is_struct(reading));
     }
 
@@ -147,17 +148,15 @@ mod tests {
         let fixture = DeclarationsFixture::new(SOURCE);
         let level = fixture.type_named("level");
         let declared = fixture.declared_types();
-        assert!(declared.declares(level));
+        assert!(declared.declares_type(&Type::Named(level, Vec::new())));
         assert!(!declared.is_struct(level));
     }
 
     #[test]
     fn a_rust_type_is_not_declared() {
         let fixture = DeclarationsFixture::new(SOURCE);
-        let Type::Named(vector, _) = fixture.parameter("readings") else {
-            panic!("a vector is a named type");
-        };
-        assert!(!fixture.declared_types().declares(vector));
+        let vector = fixture.parameter("readings");
+        assert!(!fixture.declared_types().declares_type(&vector));
     }
 
     #[test]

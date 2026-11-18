@@ -50,6 +50,10 @@ impl<'t> ArgumentPassing<'t> {
         }
     }
 
+    pub(super) fn differs_as_operand(&self, clause: &ArgumentPassing) -> bool {
+        self.operand != clause.operand
+    }
+
     pub(super) fn differing_aspect(&self, clause: &ArgumentPassing) -> Option<PassingAspect> {
         [
             (

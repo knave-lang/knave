@@ -138,3 +138,8 @@
   (rust "std::mem::size_of_val({&0})"
     (where ((a clone)) (fn (a) usize))
     (i64 "std::mem::size_of_val({0})")))
+
+(def marker-dropped-beside-a-kept-written-borrow
+  (rust "std::mem::size_of_val(&{&0})"
+    (where ((a clone)) (fn (a) usize))
+    (i64 "std::mem::size_of_val(&{0})")))

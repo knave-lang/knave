@@ -94,6 +94,15 @@ impl<'s> LocalFiles<'s> {
             .iter()
             .filter_map(|holder| Some((holder, holder.root.local_part(file)?)))
             .min_by_key(|(_, inner)| Self::depth_below_root(inner))?;
+        let local_depth = self
+            .roots
+            .iter()
+            .filter_map(|root| root.local_part(file))
+            .map(Self::depth_below_root)
+            .min();
+        if local_depth.is_some_and(|depth| depth <= Self::depth_below_root(inner)) {
+            return None;
+        }
         let written = holder
             .visible
             .then(|| holder.library.module_path_of(inner))

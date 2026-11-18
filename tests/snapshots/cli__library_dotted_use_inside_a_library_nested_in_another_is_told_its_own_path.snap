@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0260]: module path `./pad` has a part that is not a name
+ --> ../shapes/src/vendor/dots/src/lib.knv:1:6
+  |
+1 | (use ./pad)
+  |      ^^^^^ each part of a module path names a directory or a file
+  |
+  = help: write `pad`
+  = note: run `knave doc L0260` for an explanation

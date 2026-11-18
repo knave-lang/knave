@@ -10814,6 +10814,56 @@ fn library_dotted_use_of_its_own_project_module_is_told_its_path() {
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
+#[test]
+fn dotted_use_in_an_example_project_inside_a_library_is_told_its_own_path() {
+    let sandbox = Sandbox::new("dotted_use_example_inside_library")
+        .with_file(
+            &format!("shapes/{}", Language::project_file_name()),
+            "(defproject shapes :lib \"shapes.knv\")\n",
+        )
+        .with_file("shapes/shapes.knv", "(def kept 0)\n")
+        .with_file(
+            &format!("shapes/examples/demo/{}", Language::project_file_name()),
+            "(defproject demo (libraries (shapes :path \"../..\")))\n",
+        )
+        .with_file(
+            "shapes/examples/demo/src/main.knv",
+            "(use ./helper kept)\n\n(defn main () (println kept))\n",
+        )
+        .with_file(
+            "shapes/examples/demo/src/helper.knv",
+            "(export kept)\n\n(def kept 1)\n",
+        );
+    let check = sandbox.compiler_in("shapes/examples/demo", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn library_dotted_use_inside_a_library_nested_in_another_is_told_its_own_path() {
+    let sandbox = Sandbox::new("library_dotted_use_nested_own")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (shapes :path \"../shapes\") (dots :path \"../shapes/src/vendor/dots\")))\n",
+        )
+        .with_file(
+            "app/src/main.knv",
+            "(use dots kept)\n\n(defn main () (println kept))\n",
+        )
+        .with_file(
+            &format!("shapes/{}", Language::project_file_name()),
+            "(defproject shapes)\n",
+        )
+        .with_file("shapes/src/lib.knv", "(def kept 0)\n")
+        .with_file("shapes/src/vendor/dots/project.knv", "(defproject dots)\n")
+        .with_file(
+            "shapes/src/vendor/dots/src/lib.knv",
+            "(use ./pad)\n\n(export kept)\n\n(def kept 1)\n",
+        )
+        .with_file("shapes/src/vendor/dots/src/pad.knv", "(def padded 2)\n");
+    let check = sandbox.compiler_in("app", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
 const DOTTED_MARKS_TEST: &str = "(use ../src/text/marks bang)\n\n(use prelude/test assert deftest)\n\n(deftest bangs (assert (= bang \"!\")))\n";
 const DOTTED_LIBRARY_ROOT: &str =
     "(use ./square side)\n\n(use ../square)\n\n(export area)\n\n(defn area (side) (* side side))\n";

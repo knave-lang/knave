@@ -99,13 +99,13 @@ See [set!](/docs/prelude/place/#set!) for every target it accepts.
 
 ## Define module-level names with `def`
 
-`(def name value)` names a value for the whole module. The definitions of a module can appear in any order, so a function can use a `def` written below it.
+`(def name value)` names a value for the whole module.
 
 ```knave
+(def max-retries 3)
+
 (defn main ()
   (println (* max-retries 2)))
-
-(def max-retries 3)
 ```
 
 ```text
@@ -127,7 +127,32 @@ A `def` whose value is a function defines a function. `defn` is the short way to
 20
 ```
 
-A string between the name and the value documents the definition. `knave doc` prints it.
+See [def](/docs/prelude/#def) and [defn](/docs/prelude/syntax/#defn).
+
+### What may sit below its use
+
+A function can use a `def` or a type written below it in the module.
+
+```knave
+(defn main ()
+  (println (:x (->point :x max-retries :y 0))))
+
+(def max-retries 3)
+
+(defstruct point
+  :x int
+  :y int)
+```
+
+```text
+3
+```
+
+A macro is the exception: it must sit above its first top-level use, because the compiler expands the top-level forms of a module in order. See [defmacro](/docs/prelude/macros/#defmacro).
+
+### Document a definition
+
+A string between the name and the value documents the definition, but only when another form follows it. `knave doc` prints the documentation.
 
 ```knave
 (def max-retries
@@ -141,4 +166,14 @@ A string between the name and the value documents the definition. `knave doc` pr
 3
 ```
 
-See [def](/docs/prelude/#def) and [defn](/docs/prelude/syntax/#defn).
+With no form after it, the string is the value, so `(def greeting "hi")` binds `greeting` to the string `"hi"`.
+
+```knave
+(def greeting "hi")
+
+(defn main () (println greeting))
+```
+
+```text
+hi
+```

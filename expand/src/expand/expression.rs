@@ -13,8 +13,8 @@ use super::{context::DefinitionContext, namespace_problems::NamespaceProblems};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, Control, ControlForm, Expr, ExprKind,
     ExpressionForm, FieldLabel, FieldSpelling, KernelForm, Keyword, Lambda, Leaf, LeafForm,
-    Literal, MapOperation, Namespace, ParsedTemplate, Pattern, PatternArguments, PatternKind,
-    PatternPart, ReferenceKind, RustTemplate, StructExpr, StructForm, TypeExpr, VariantInfo,
+    Literal, MapOperation, Namespace, Pattern, PatternArguments, PatternKind, PatternPart,
+    ReferenceKind, RustTemplate, StructExpr, StructForm, VariantInfo,
 };
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Symbol};
@@ -954,28 +954,6 @@ impl Expander<'_> {
             type_expr,
             clauses,
         }))))
-    }
-
-    pub(super) fn check_template_type_placeholders(
-        &self,
-        template: &ParsedTemplate,
-        type_expr: &TypeExpr,
-        span: Span,
-    ) -> Result<(), Diagnostic> {
-        let parameters: Vec<String> = Self::where_binders(type_expr)
-            .iter()
-            .map(|binder| self.tables.bindings.get(binder.variable).name().to_string())
-            .collect();
-        for name in template.type_placeholders() {
-            if !parameters.iter().any(|parameter| parameter == name) {
-                return Err(ExpandProblems::unknown_type_placeholder(
-                    name,
-                    &parameters,
-                    span,
-                ));
-            }
-        }
-        Ok(())
     }
 
     fn lower_recur(&mut self, shape: &Shape) -> Result<ExprKind, Diagnostic> {

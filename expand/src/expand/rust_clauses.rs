@@ -185,6 +185,28 @@ impl Expander<'_> {
         ParsedTemplate::parse(text).map_err(|_| ExpandProblems::malformed_template(span))
     }
 
+    pub(super) fn check_template_type_placeholders(
+        &self,
+        template: &ParsedTemplate,
+        type_expr: &TypeExpr,
+        span: Span,
+    ) -> Result<(), Diagnostic> {
+        let parameters: Vec<String> = Self::where_binders(type_expr)
+            .iter()
+            .map(|binder| self.tables.bindings.get(binder.variable).name().to_string())
+            .collect();
+        for name in template.type_placeholders() {
+            if !parameters.iter().any(|parameter| parameter == name) {
+                return Err(ExpandProblems::unknown_type_placeholder(
+                    name,
+                    &parameters,
+                    span,
+                ));
+            }
+        }
+        Ok(())
+    }
+
     pub(super) fn where_binders(type_expr: &TypeExpr) -> &[TypeBinder] {
         match type_expr.kind() {
             TypeExprKind::Where(binders, _) => binders.as_slice(),

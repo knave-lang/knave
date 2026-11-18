@@ -314,7 +314,7 @@ impl Template {
     fn holds_prefix(&self, argument: &Code, position: usize) -> bool {
         let followed_by_postfix = self
             .literal_at(position + 1)
-            .is_some_and(|text| text.starts_with(Self::POSTFIX_OPERATORS));
+            .is_some_and(|text| text.trim_start().starts_with(Self::POSTFIX_OPERATORS));
         argument.precedence == Precedence::Prefix && !followed_by_postfix
     }
 
@@ -455,6 +455,12 @@ mod tests {
     fn a_lone_dereference_stays_a_prefix() {
         let template = Template::new("*{0}");
         assert_eq!(template.precedence(), Precedence::Prefix);
+    }
+
+    #[test]
+    fn parenthesizes_a_dereference_before_a_spaced_method_call() {
+        let dereference = Code::with("*r", Precedence::Prefix);
+        assert_eq!(inline("{0} .trim()", vec![dereference]), "(*r) .trim()");
     }
 
     #[test]

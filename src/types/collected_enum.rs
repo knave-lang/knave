@@ -5,12 +5,24 @@ use crate::core::BindingId;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 
 pub(super) struct CollectedEnum {
-    pub(super) definition: EnumDefinition,
-    pub(super) rust_type: Option<RustType>,
-    pub(super) problems: Vec<Diagnostic>,
+    definition: EnumDefinition,
+    rust_type: Option<RustType>,
+    problems: Vec<Diagnostic>,
 }
 
 impl CollectedEnum {
+    pub(super) fn new(
+        definition: EnumDefinition,
+        rust_type: Option<RustType>,
+        problems: Vec<Diagnostic>,
+    ) -> Self {
+        Self {
+            definition,
+            rust_type,
+            problems,
+        }
+    }
+
     pub(super) fn enter(
         self,
         binding: BindingId,

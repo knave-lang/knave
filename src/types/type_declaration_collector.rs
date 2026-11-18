@@ -74,10 +74,7 @@ impl<'c> TypeDeclarationCollector<'c> {
             blocked: Vec::new(),
             written_derive: None,
         };
-        Ok(CollectedStruct {
-            definition,
-            problem,
-        })
+        Ok(CollectedStruct::new(definition, problem))
     }
 
     pub(super) fn collect_enum(&mut self, item: EnumItem<'_>) -> Result<CollectedEnum, Diagnostic> {
@@ -133,11 +130,7 @@ impl<'c> TypeDeclarationCollector<'c> {
             blocked: Vec::new(),
             written_derive: None,
         };
-        Ok(CollectedEnum {
-            definition,
-            rust_type,
-            problems,
-        })
+        Ok(CollectedEnum::new(definition, rust_type, problems))
     }
 
     pub(super) fn collect_rust_type(
@@ -347,7 +340,9 @@ impl<'c> TypeDeclarationCollector<'c> {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::{ParsedTemplate, VariantPayload};
+    use std::rc::Rc;
+
+    use crate::core::{EnumRust, ParsedTemplate, VariantPayload};
     use crate::types::enum_item::EnumItem;
     use crate::types::rust_type_item::RustTypeItem;
     use crate::types::ty::Type;
@@ -356,6 +351,7 @@ mod tests {
     #[test]
     fn a_struct_keeps_its_lifetimes_and_lowers_fields_with_its_params() {
         let mut fixture = Fixture::new();
+        let pair = fixture.declared_struct("pair", 1);
         let lifetime = fixture.lifetime("'a");
         let variable = fixture.type_variable("t");
         let binders = [
@@ -371,19 +367,22 @@ mod tests {
             .type_collector()
             .collect_struct(&binders, &fields)
             .expect("the struct collects");
-        let definition = &collected.definition;
+        fixture.enter_struct(pair, collected);
+        let definition = fixture.checker.declarations.types.structs.get(pair);
+        let definition = definition.expect("the struct is entered");
         assert_eq!(definition.lifetimes, vec![lifetime]);
         assert_eq!(definition.params.len(), 1);
         assert_eq!(
             definition.fields[0].1,
             Type::Generic(definition.params[0].id)
         );
-        assert!(collected.problem.is_none());
+        assert!(fixture.checker.diagnostics.is_empty());
     }
 
     #[test]
     fn a_struct_parameter_no_field_uses_is_reported() {
         let mut fixture = Fixture::new();
+        let counter = fixture.declared_struct("counter", 1);
         let variable = fixture.type_variable("t");
         let binders = [Fixture::bounded(variable, &[])];
         let fields = [(Fixture::field_label("count"), Fixture::integer())];
@@ -392,7 +391,8 @@ mod tests {
             .type_collector()
             .collect_struct(&binders, &fields)
             .expect("the struct collects");
-        assert!(collected.problem.is_some());
+        fixture.enter_struct(counter, collected);
+        assert_eq!(fixture.checker.diagnostics.len(), 1);
     }
 
     #[test]
@@ -426,9 +426,46 @@ mod tests {
                 definer: &None,
             })
             .expect("the enum collects");
-        assert_eq!(collected.definition.lifetimes, vec![lifetime]);
-        assert!(collected.rust_type.is_none());
-        assert!(collected.problems.is_empty());
+        fixture.enter_enum(shape, collected);
+        let types = &fixture.checker.declarations.types;
+        let definition = types.enums.get(shape).expect("the enum is entered");
+        assert_eq!(definition.lifetimes, vec![lifetime]);
+        assert!(types.rust_types.get(shape).is_none());
+        assert!(fixture.checker.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn an_enum_with_a_rust_form_enters_its_rust_type() {
+        let mut fixture = Fixture::new();
+        let shape = fixture.declared_struct("shape", 0);
+        let variants = [fixture.variant("empty", VariantPayload::None)];
+        let rust = Some(EnumRust {
+            path: "Shape".into(),
+            template: Rc::new(ParsedTemplate::parse("Shape").expect("a template")),
+            template_clause: false,
+            bare: false,
+        });
+        let collected = fixture
+            .checker
+            .type_collector()
+            .collect_enum(EnumItem {
+                binding: shape,
+                binders: &[],
+                variants: &variants,
+                rust: &rust,
+                definer: &None,
+            })
+            .expect("the enum collects");
+        fixture.enter_enum(shape, collected);
+        assert!(
+            fixture
+                .checker
+                .declarations
+                .types
+                .rust_types
+                .get(shape)
+                .is_some()
+        );
     }
 
     #[test]
@@ -449,15 +486,17 @@ mod tests {
                 definer: &None,
             })
             .expect("the enum collects");
-        assert_eq!(collected.problems.len(), 1);
+        fixture.enter_enum(shape, collected);
+        assert_eq!(fixture.checker.diagnostics.len(), 1);
+        let definition = fixture.checker.declarations.types.enums.get(shape);
+        let definition = definition.expect("the enum is entered");
         let crate::types::enums::VariantPayload::Positional(payload) =
-            &collected.definition.variants[0].payload
+            &definition.variants[0].payload
         else {
             panic!("a positional payload stays positional");
         };
         assert!(matches!(payload[0], Type::Generic(_)));
     }
-
     #[test]
     fn a_rust_type_keeps_its_clauses_and_unsized_parameters() {
         let mut fixture = Fixture::new();

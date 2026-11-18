@@ -4,11 +4,18 @@ use crate::core::BindingId;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 
 pub(super) struct CollectedStruct {
-    pub(super) definition: StructDefinition,
-    pub(super) problem: Option<Diagnostic>,
+    definition: StructDefinition,
+    problem: Option<Diagnostic>,
 }
 
 impl CollectedStruct {
+    pub(super) fn new(definition: StructDefinition, problem: Option<Diagnostic>) -> Self {
+        Self {
+            definition,
+            problem,
+        }
+    }
+
     pub(super) fn enter(
         self,
         binding: BindingId,

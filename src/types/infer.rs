@@ -200,8 +200,8 @@ impl TypeChecker {
             ));
         }
         let ty = match kind {
-            ReferenceKind::Shared => Type::shared(self.unification().place_type(&value)),
-            ReferenceKind::Mutable => Type::mutable(self.unification().written_place_type(&value)),
+            ReferenceKind::Shared => Type::shared(self.place_types().read(&value)),
+            ReferenceKind::Mutable => Type::mutable(self.place_types().changed(&value)),
         };
         Ok(TypedExpr {
             kind: TypedExprKind::Borrow(kind, Box::new(value)),
@@ -2254,7 +2254,7 @@ impl TypeChecker {
         argument: &Type,
         value: &TypedExpr,
     ) -> Result<Borrow, Diagnostic> {
-        let place = self.unification().written_place_type(value);
+        let place = self.place_types().changed(value);
         if value.is_place() && !place.is_reference() {
             return self.pass(inner, &place, value.span, Borrow::Mutable);
         }
@@ -3355,7 +3355,7 @@ impl TypeChecker {
     fn moved_field_base(&mut self, base: TypedExpr) -> TypedExpr {
         if self.reads_owned_field(&base) {
             TypedExpr {
-                ty: self.unification().place_type(&base),
+                ty: self.place_types().read(&base),
                 ..base
             }
         } else {

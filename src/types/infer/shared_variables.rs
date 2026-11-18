@@ -409,9 +409,9 @@ impl TypeChecker {
         place: TypedExpr,
         argument: &mut TypedArgument,
     ) -> Result<(), Diagnostic> {
-        let mut unification = self.unification();
-        let written = unification.place_type(&place);
-        unification.expect(Expectation::plain(shared), &written, place.span)?;
+        let written = self.place_types().read(&place);
+        self.unification()
+            .expect(Expectation::plain(shared), &written, place.span)?;
         *argument = TypedArgument {
             value: place,
             borrow: Borrow::Shared,
@@ -547,7 +547,7 @@ impl TypeChecker {
     }
 
     fn reference_depth_as_written(&mut self, argument: &TypedArgument) -> usize {
-        let place = self.unification().place_type(&argument.value);
+        let place = self.place_types().read(&argument.value);
         let written = self.unifier.resolve(&place);
         if self.declared_types().is_unsized(&written) {
             return Self::UNSIZED_VALUE_DEPTH;

@@ -15,15 +15,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - id: knave-cache
+        uses: actions/cache/restore@v4
         with:
-          path: |
+          path: &knave-files |
             ~/.cargo/bin/knave
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
           key: knave-${{ env.KNAVE_VERSION }}-${{ runner.os }}
       - name: Install Knave
         run: cargo install knave --version "$KNAVE_VERSION" --locked
+      - if: steps.knave-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: *knave-files
+          key: ${{ steps.knave-cache.outputs.cache-primary-key }}
       - name: Check the layout
         run: knave fmt --check
       - name: Lint

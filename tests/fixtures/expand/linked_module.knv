@@ -1,0 +1,4 @@
+(use linked_module/shapes/box count)
+(use linked_module/alias/box size)
+
+(def total (+ count (size)))

@@ -224,7 +224,7 @@ impl Expander<'_> {
     }
 
     fn add_prelude_source(&mut self, path: &ModulePath) {
-        if let Some(ModuleSource::Text { name, text }) = self.module_sources.find(path) {
+        if let Some(ModuleSource::Text { name, text, .. }) = self.module_sources.find(path) {
             self.sources.add(name, text);
         }
     }

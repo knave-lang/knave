@@ -32,6 +32,10 @@ impl SourceFile {
         &self.name
     }
 
+    pub fn is_generated(&self) -> bool {
+        self.name.starts_with('<') && self.name.ends_with('>')
+    }
+
     pub fn text(&self) -> &str {
         &self.text
     }

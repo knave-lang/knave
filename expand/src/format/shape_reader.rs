@@ -112,7 +112,7 @@ impl ShapeReader {
 impl CatalogWalk<'_> {
     fn add_module(&mut self, owner: Option<&str>, written: &ModulePath) {
         let Some(LocatedModule {
-            source: ModuleSource::Text { name, text },
+            source: ModuleSource::Text { name, text, .. },
             owner: module_owner,
         }) = self.lookup.find(owner, written)
         else {

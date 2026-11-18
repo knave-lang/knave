@@ -80,7 +80,7 @@ impl Expander<'_> {
         let outer_module = self.current_module.replace(module);
         let (pending, budgets) = self.register_definitions(module, forms);
         let path = self.modules.get(module).path();
-        let mut core = CoreModule::new(module, path.clone(), self.library_modules.owner_of(path));
+        let mut core = CoreModule::new(module, path.clone(), self.text_modules.owner_of(path));
         let (impls, rest) = pending.partition(|item| matches!(item, PendingItem::Impl(..)));
         let (exports, rest) = rest.partition(|item| matches!(item, PendingItem::Export(..)));
         self.lower_pending_group(module, rest, &budgets, &mut core);

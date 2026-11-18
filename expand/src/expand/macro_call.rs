@@ -314,7 +314,7 @@ impl Expander<'_> {
     fn macro_origin(&self, binding: BindingId, call_site: Span) -> MacroOrigin {
         let info = self.tables.bindings.get(binding);
         let module = self.macro_module(binding);
-        let library = module.and_then(|path| self.library_modules.owner_of(path));
+        let library = module.and_then(|path| self.text_modules.owner_of(path));
         MacroOrigin {
             name: info.shared_name(),
             defined: info.span().unwrap_or(call_site),

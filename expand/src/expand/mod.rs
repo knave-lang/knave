@@ -33,7 +33,7 @@ mod introduced;
 mod introduced_name;
 mod introduced_names;
 mod introducing_macros;
-mod library_modules;
+mod loaded_text_modules;
 mod local_file_diagnosis;
 mod macro_call;
 mod macro_call_lookup;
@@ -44,6 +44,7 @@ mod macro_origins;
 mod macro_value_limits;
 mod misplaced_definition;
 mod module_body;
+mod module_load_site;
 mod module_loading;
 mod module_notes;
 mod module_path_problems;
@@ -83,6 +84,7 @@ mod saved_origin_rows;
 mod saved_origins;
 mod saved_prelude;
 mod saved_values;
+mod second_module_path;
 mod session;
 mod set_aside_input;
 mod set_aside_problems;
@@ -94,6 +96,8 @@ mod structural_path_claim;
 mod structural_path_claims;
 mod structural_traits;
 mod taken_module_problems;
+mod text_module_load;
+mod text_module_record;
 mod top_level_check;
 mod top_level_form;
 mod try_check;
@@ -125,7 +129,7 @@ use evaluated_forms::EvaluatedForms;
 pub use generated_entry::GeneratedEntry;
 use globals::{GlobalTable, LoweredGlobals};
 pub use input_terms::InputTerms;
-use library_modules::LibraryModules;
+use loaded_text_modules::LoadedTextModules;
 use macro_call::MacroTable;
 pub use macro_call_lookup::MacroCallLookup;
 pub use macro_origin::MacroOrigin;
@@ -250,7 +254,7 @@ pub struct Expander<'s> {
     current_module: Option<ModuleId>,
     problems: ProblemReport,
     reported_hidden_modules: Vec<std::path::PathBuf>,
-    library_modules: LibraryModules,
+    text_modules: LoadedTextModules,
     phase: Phase,
     expansion_depth: usize,
     nesting_depth: usize,
@@ -337,7 +341,7 @@ impl<'s> Expander<'s> {
             current_module: None,
             problems: ProblemReport::default(),
             reported_hidden_modules: Vec::new(),
-            library_modules: LibraryModules::default(),
+            text_modules: LoadedTextModules::default(),
             phase: Phase::Runtime,
             expansion_depth: 0,
             nesting_depth: 0,

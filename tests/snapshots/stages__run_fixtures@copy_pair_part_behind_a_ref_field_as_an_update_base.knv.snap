@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/copy_pair_part_behind_a_ref_field_as_an_update_base.knv
+---
+25

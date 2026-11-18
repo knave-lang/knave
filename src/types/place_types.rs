@@ -1,3 +1,4 @@
+use super::copy::CopyRules;
 use super::declared_types::DeclaredTypes;
 use super::peeling::ReferencePeeling;
 use super::ty::Type;
@@ -8,13 +9,19 @@ use crate::core::{FieldLabel, FieldSpelling};
 pub(super) struct PlaceTypes<'a> {
     unifier: &'a Unifier,
     declarations: DeclaredTypes<'a>,
+    copy: CopyRules<'a>,
 }
 
 impl<'a> PlaceTypes<'a> {
-    pub(super) fn new(unifier: &'a Unifier, declarations: DeclaredTypes<'a>) -> Self {
+    pub(super) fn new(
+        unifier: &'a Unifier,
+        declarations: DeclaredTypes<'a>,
+        copy: CopyRules<'a>,
+    ) -> Self {
         Self {
             unifier,
             declarations,
+            copy,
         }
     }
 
@@ -31,8 +38,15 @@ impl<'a> PlaceTypes<'a> {
     }
 
     pub(super) fn moved(&self, value: &TypedExpr) -> Type {
-        let owner = Self::field_owner(value).map(|(owner, _)| owner);
+        let owner = Self::field_owner(value)
+            .map(|(owner, _)| owner)
+            .filter(|_| !self.copies_out(value));
         self.borrowed_behind(value, owner, |ty| self.unifier.resolve(ty).is_reference())
+    }
+
+    fn copies_out(&self, value: &TypedExpr) -> bool {
+        let declared = self.unifier.resolve(&self.declared_type(value));
+        self.copy.is_copy(&declared)
     }
 
     fn field_owner(value: &TypedExpr) -> Option<(&TypedExpr, &FieldLabel)> {
@@ -92,15 +106,17 @@ mod tests {
     use super::PlaceTypes;
     use crate::core::{FieldLabel, FieldSpelling, Literal, PairPosition, PrimitiveType};
     use crate::source::{SourceId, Span};
+    use crate::types::copy::CopyRules;
     use crate::types::declared_types::DeclaredTypes;
-    use crate::types::type_declarations::TypeDeclarations;
+    use crate::types::ty::{GenericId, GenericParam};
     use crate::types::typed::{TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr};
     use crate::types::unifier::Unifier;
     use crate::types::{Type, TypedProgram, TypedSource};
+    use rustc_hash::FxHashMap;
 
     struct PlaceTypesFixture {
         program: TypedProgram,
-        types: TypeDeclarations,
+        generics: FxHashMap<GenericId, GenericParam>,
         unifier: Unifier,
         span: Span,
     }
@@ -112,11 +128,9 @@ mod tests {
             (defn main () (println \"Leaf\"))";
 
         fn new() -> Self {
-            let mut program = TypedSource::expand(Self::SOURCE).typed();
-            let types = std::mem::take(program.declarations.types_mut());
             Self {
-                program,
-                types,
+                program: TypedSource::expand(Self::SOURCE).typed(),
+                generics: FxHashMap::default(),
                 unifier: Unifier::default(),
                 span: Span::new(SourceId::new(0), 0..0),
             }
@@ -127,7 +141,12 @@ mod tests {
         }
 
         fn place_types(&self) -> PlaceTypes<'_> {
-            PlaceTypes::new(&self.unifier, DeclaredTypes::new(&self.types))
+            let declarations = &self.program.declarations;
+            PlaceTypes::new(
+                &self.unifier,
+                DeclaredTypes::new(declarations.types()),
+                CopyRules::new(declarations, &self.generics),
+            )
         }
 
         fn parameter(&self, function: &str) -> Type {
@@ -169,7 +188,9 @@ mod tests {
 
         fn first_parts(&self, borrow: fn(Type) -> Type, depth: usize) -> TypedExpr {
             let pair = self
-                .types
+                .program
+                .declarations
+                .types()
                 .rust_types
                 .pair_binding()
                 .expect("the prelude defines a pair");

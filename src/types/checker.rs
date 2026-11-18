@@ -580,7 +580,7 @@ impl TypeChecker {
     }
 
     pub(super) fn place_types(&self) -> PlaceTypes<'_> {
-        PlaceTypes::new(&self.unifier, self.declared_types())
+        PlaceTypes::new(&self.unifier, self.declared_types(), self.copy_rules())
     }
 
     pub(super) fn unification(&mut self) -> Unification<'_> {

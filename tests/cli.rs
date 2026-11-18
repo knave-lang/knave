@@ -75,7 +75,7 @@ const DOCUMENTED_MAIN: &str =
     "(module \"Prints a greeting.\")\n\n(export main)\n\n(defn main () (println \"hi\"))\n";
 const DOCUMENTED_AREA: &str = "(export area)\n\n(defn area (width height)\n  \"Multiplies two sides, as [option] does not.\"\n  (* width height))\n";
 const UNMATCHED_LINKS: &str = "(export parse tally)\n\n(module \"Parses text, unlike [zzqx].\")\n\n(defn parse (text)\n  \"Reads the [optoin] from `text`.\n\n  It keeps [parse] linked.\n    Indented [a(b], again.\n  Also [42], [)x] and [helpr].\"\n  text)\n\n(defn tally ()\n  \"\n  Counts like [parze].\"\n  1)\n\n(defn helper () 2)\n";
-const AREA_SECTION: &str = "<a id=\"area\"></a>\n\n## `area`\n\n```knave\n(defn area (width height))\n(type area\n  (where ((a number)) (fn (a a) a)))\n```\n\nMultiplies two sides, as [option](https://knave-lang.org/docs/prelude/types/#option) does not.\n";
+const AREA_SECTION: &str = "<a id=\"area\"></a>\n\n## `area`\n\n```knave\n(defn area (width height))\n\n(type area\n  (where ((a number)) (fn (a a) a)))\n```\n\nMultiplies two sides, as [option](https://knave-lang.org/docs/prelude/types/#option) does not.\n";
 const UNTYPED_SHAPES: &str = "(export point twice)\n\n(defstruct point \"A point.\" :x i64)\n\n(defrule twice \"Writes a form twice.\" ((x) (do x x)))\n";
 const UNTYPED_SHAPES_PAGE: &str = "# shapes\n\n<a id=\"point\"></a>\n\n## `point`\n\n```knave\n(defstruct point)\n```\n\nA point.\n\n<a id=\"twice\"></a>\n\n## `twice`\n\n```knave\n(defrule twice)\n```\n\nWrites a form twice.\n";
 const PRELUDE_PAGES: [&str; 24] = [
@@ -104,7 +104,8 @@ const PRELUDE_PAGES: [&str; 24] = [
     "types",
     "vec",
 ];
-const UNWRAP_OR_SECTION: &str = "<a id=\"unwrap-or\"></a>\n\n## `unwrap-or`\n\n```knave\n(unwrap-or option default)\n(type unwrap-or\n  (where (a) (fn ((option a) a) a)))\n```\n";
+const FOR_EACH_HEADER_BLOCK: &str = "```knave\n(for-each items function)\n\n(type for-each\n  (where (a)\n    (fn ((iterator a) (fn (a) unit)) unit)))\n```\n";
+const UNWRAP_OR_SECTION: &str = "<a id=\"unwrap-or\"></a>\n\n## `unwrap-or`\n\n```knave\n(unwrap-or option default)\n\n(type unwrap-or\n  (where (a) (fn ((option a) a) a)))\n```\n";
 const PRELUDE_REEXPORT: &str = "## Re-exported names\n\n- [`*`](prelude/number.md#%2A)\n";
 const VEC_REEXPORT: &str = "- [`vec`](../prelude/types.md#vec)\n";
 const GEOMETRY: &str = "(export area)\n\n(defn area (width height) \"Multiplies a width by a height.\" (* width height))\n";
@@ -176,7 +177,7 @@ const EVALUATED_GEOMETRY: &str = "(defn area (w h) (* w h))\n(area 2 3)\n(defn r
 const GEOMETRY_DEFINITIONS: &str = "(defn area (w h) (* w h))\n(defn report ()\n  (println (area 4 5)))\n(do (defn twice (n) (* 2 n)))\n";
 const BARE_ARROW_AND_TILDE_FENCE: &str = "(export pick)\n\n(defn pick (x)\n  \"Picks a number.\n\n  (pick   1)\n  =>\n\n  ~~~\n  (pick   2)\n  => 9\n  ~~~\"\n  x)\n";
 const BARE_ARROW_AND_TILDE_FENCE_LAID_OUT: &str = "(export pick)\n\n(defn pick (x)\n  \"Picks a number.\n\n  (pick   1)\n  =>\n\n  ~~~\n  (pick 2)\n  => 9\n  ~~~\"\n  x)\n";
-const BARE_ARROW_AND_TILDE_FENCE_PAGE: &str = "# pick\n\n<a id=\"pick\"></a>\n\n## `pick`\n\n```knave\n(defn pick (x))\n(type pick (where (a) (fn (a) a)))\n```\n\nPicks a number.\n\n(pick   1)\n=>\n\n~~~knave\n(pick 2)\n=> 9\n~~~\n";
+const BARE_ARROW_AND_TILDE_FENCE_PAGE: &str = "# pick\n\n<a id=\"pick\"></a>\n\n## `pick`\n\n```knave\n(defn pick (x))\n\n(type pick (where (a) (fn (a) a)))\n```\n\nPicks a number.\n\n(pick   1)\n=>\n\n~~~knave\n(pick 2)\n=> 9\n~~~\n";
 const UNREADABLE_PAGE_FENCE: &str =
     "(export pick)\n\n(defn pick (x)\n  \"Picks a number.\n\n  ```\n  (pick   1\n  ```\"\n  x)\n";
 const MULTI_LINE_STRING_FENCE: &str = "(export count-lines)\n\n(defn count-lines (text)\n  \"Counts the lines of a text.\n\n  ```\n  (count-lines   \\\"first\n  second\\\")\n  ```\"\n  (len text))\n";
@@ -184,7 +185,7 @@ const MULTI_LINE_STRING_EXAMPLE: &str = "(export count-lines)\n\n(defn count-lin
 const QUOTES_OUTSIDE_CODE: &str = "(export wrap)\n\n(defn wrap (text)\n  \"Wraps a text in a \\\" mark.\n\n  Each wrapped \\\" line\n  starts at the margin.\n\n  ```rust\n  let quote = '\\\"';\n  let mark = 1;\n  ```\n\n  After the fence.\n\n  (wrap \\\"a\n    b\\\"\n        1)\n  => 1\n\n  The end.\"\n  text)\n";
 const QUOTES_OUTSIDE_CODE_BODY: &str = "Wraps a text in a \" mark.\n\nEach wrapped \" line\nstarts at the margin.\n\n```rust\nlet quote = '\"';\nlet mark = 1;\n```\n\nAfter the fence.\n\n```knave\n(wrap \"a\n    b\"\n      1)\n=> 1\n```\n\nThe end.\n";
 const LONG_TYPED_LENGTHS: &str = "(export combine-lengths)\n\n(defn combine-lengths (first-measured-length second-measured-length)\n  \"Adds two lengths.\n\n  ```\n  (combine-lengths   1   2)\n  ```\"\n  (+ first-measured-length second-measured-length))\n";
-const LONG_TYPED_LENGTHS_PAGE: &str = "# lengths\n\n<a id=\"combine-lengths\"></a>\n\n## `combine-lengths`\n\n```knave\n(defn combine-lengths (first-measured-length second-measured-length))\n(type combine-lengths\n  (where ((a number)) (fn (a a) a)))\n```\n\nAdds two lengths.\n\n```knave\n(combine-lengths 1 2)\n```\n";
+const LONG_TYPED_LENGTHS_PAGE: &str = "# lengths\n\n<a id=\"combine-lengths\"></a>\n\n## `combine-lengths`\n\n```knave\n(defn combine-lengths (first-measured-length second-measured-length))\n\n(type combine-lengths\n  (where ((a number)) (fn (a a) a)))\n```\n\nAdds two lengths.\n\n```knave\n(combine-lengths 1 2)\n```\n";
 const UNREACHABLE_ARM_AND_UNUSED_BINDING: &str = "(defn pick (x) (match x (_ 1) (_ 2)))\n\n(defn main ()\n  (let (unused 1)\n    (println (pick 2))))\n";
 const LIBRARY_WITH_UNUSED_BINDING: &str =
     "(export helper)\n\n(defn helper ()\n  (let (unread 1)\n    2))\n";
@@ -3083,6 +3084,11 @@ fn doc_write_prelude_writes_a_page_per_public_prelude_module() {
     );
     assert!(
         sandbox
+            .contents("doc/prelude/iterator.md")
+            .contains(FOR_EACH_HEADER_BLOCK)
+    );
+    assert!(
+        sandbox
             .contents("doc/prelude.md")
             .contains(PRELUDE_REEXPORT)
     );
@@ -3289,12 +3295,12 @@ fn doc_write_gives_each_page_the_type_of_its_own_name() {
     assert!(
         sandbox
             .contents("doc/a.md")
-            .contains("\n(type size (fn () int))\n```")
+            .contains("\n\n(type size (fn () int))\n```")
     );
     assert!(
         sandbox
             .contents("doc/b.md")
-            .contains("\n(type size (fn () (ref str)))\n```")
+            .contains("\n\n(type size (fn () (ref str)))\n```")
     );
 }
 
@@ -3316,7 +3322,7 @@ fn doc_write_shows_the_type_a_module_gives_its_own_name() {
     assert!(
         sandbox
             .contents("doc/geometry/area.md")
-            .contains("\n(type square-area\n  (where ((a number)) (fn (a) a)))\n```")
+            .contains("\n\n(type square-area\n  (where ((a number)) (fn (a) a)))\n```")
     );
 }
 
@@ -3457,12 +3463,12 @@ fn doc_write_types_a_module_from_the_whole_program_when_its_own_check_fails() {
     assert!(
         sandbox
             .contents("doc/lib.md")
-            .contains("\n(def nothing)\n(type nothing (option int))\n```")
+            .contains("\n(def nothing)\n\n(type nothing (option int))\n```")
     );
     assert!(
         sandbox
             .contents("doc/other.md")
-            .contains("\n(def nobody)\n(type nobody (option (ref str)))\n```")
+            .contains("\n(def nobody)\n\n(type nobody (option (ref str)))\n```")
     );
 }
 
@@ -3818,7 +3824,7 @@ fn doc_types_prints_the_inferred_type_above_the_page() {
     let sandbox = Sandbox::new("doc_types").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "twice"]),
-        format!("{TWICE_TYPE}\n{TWICE_PAGE}")
+        format!("{TWICE_TYPE}\n\n{TWICE_PAGE}")
     );
 }
 
@@ -3828,7 +3834,7 @@ fn doc_types_takes_the_flag_after_the_term() {
     let doc = sandbox.compiler(&["doc", "twice", "--file", "prog.knv", "--types"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        format!("{TWICE_TYPE}\n{TWICE_PAGE}")
+        format!("{TWICE_TYPE}\n\n{TWICE_PAGE}")
     );
 }
 
@@ -3837,7 +3843,7 @@ fn doc_types_prints_the_generic_type_of_an_uncalled_function() {
     let sandbox = Sandbox::new("doc_types_generic").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "same"]),
-        "(type same (where (a) (fn (a) a)))\n(defn same (x))\n\nNo documentation.\n"
+        "(type same (where (a) (fn (a) a)))\n\n(defn same (x))\n\nNo documentation.\n"
     );
 }
 
@@ -3861,7 +3867,7 @@ fn doc_types_prints_the_type_of_a_prelude_function() {
     let sandbox = Sandbox::new("doc_types_prelude");
     assert_eq!(
         sandbox.typed_page(&["sum"]),
-        "(type sum (where ((n number)) (fn ((iterator n)) n)))\n(defn sum (values))\n\nAdds the items of an iterator from left to right.\n\nAn empty iterator gives 0. An overflow panics in a debug build, as `+`\ndoes. A vector passes and yields copies of its numbers. `(iter items)` is an\nerror, as its items are borrows, and so is a map.\n\n(sum (vec 1 2 3))\n=> 6\n\n(sum (range 0 0))\n=> 0\n"
+        "(type sum (where ((n number)) (fn ((iterator n)) n)))\n\n(defn sum (values))\n\nAdds the items of an iterator from left to right.\n\nAn empty iterator gives 0. An overflow panics in a debug build, as `+`\ndoes. A vector passes and yields copies of its numbers. `(iter items)` is an\nerror, as its items are borrows, and so is a map.\n\n(sum (vec 1 2 3))\n=> 6\n\n(sum (range 0 0))\n=> 0\n"
     );
 }
 
@@ -3897,7 +3903,7 @@ fn doc_types_prints_the_type_of_a_struct_constructor() {
     let sandbox = Sandbox::new("doc_types_constructor").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "->point"]),
-        "(type ->point (fn (int int) point))\n(defstruct point)\n\nNo documentation.\n"
+        "(type ->point (fn (int int) point))\n\n(defstruct point)\n\nNo documentation.\n"
     );
 }
 
@@ -3906,7 +3912,7 @@ fn doc_types_prints_the_type_of_a_function_with_keyword_parameters() {
     let sandbox = Sandbox::new("doc_types_keyword").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "area"]),
-        "(type area (fn (int int) int))\n(defn area (:width i64 :height i64))\n\nNo documentation.\n"
+        "(type area (fn (int int) int))\n\n(defn area (:width i64 :height i64))\n\nNo documentation.\n"
     );
 }
 
@@ -3915,7 +3921,7 @@ fn doc_types_prints_the_type_of_a_plain_definition() {
     let sandbox = Sandbox::new("doc_types_plain").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "limit"]),
-        "(type limit int)\n(def limit)\n\nNo documentation.\n"
+        "(type limit int)\n\n(def limit)\n\nNo documentation.\n"
     );
 }
 
@@ -3951,7 +3957,7 @@ fn doc_types_prints_the_type_of_a_documented_function_beside_a_struct() {
         .with_file("prog.knv", DOCUMENTED_FUNCTION_BESIDE_A_STRUCT);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "point"]),
-        format!("{POINT_TYPE}\n(defn point ())\n\nMakes the origin.\n")
+        format!("{POINT_TYPE}\n\n(defn point ())\n\nMakes the origin.\n")
     );
 }
 
@@ -3961,7 +3967,7 @@ fn doc_types_prints_the_type_of_an_undocumented_function_beside_a_struct() {
         .with_file("prog.knv", UNDOCUMENTED_FUNCTION_BESIDE_A_STRUCT);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "point"]),
-        format!("{POINT_TYPE}\n(defn point ())\n\nNo documentation.\n")
+        format!("{POINT_TYPE}\n\n(defn point ())\n\nNo documentation.\n")
     );
 }
 
@@ -3971,7 +3977,7 @@ fn doc_types_prints_the_type_of_an_undocumented_def_beside_a_struct() {
         .with_file("prog.knv", UNDOCUMENTED_DEF_BESIDE_A_STRUCT);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "point"]),
-        "(type point int)\n(def point)\n\nNo documentation.\n"
+        "(type point int)\n\n(def point)\n\nNo documentation.\n"
     );
 }
 
@@ -3999,7 +4005,7 @@ fn doc_types_prints_the_type_of_an_imported_term() {
         .with_file("main.knv", NUMBERS_ENTRY);
     assert_eq!(
         sandbox.typed_page(&["--file", "main.knv", "twice"]),
-        format!("{TWICE_TYPE}\n{TWICE_PAGE}")
+        format!("{TWICE_TYPE}\n\n{TWICE_PAGE}")
     );
 }
 
@@ -4008,7 +4014,7 @@ fn doc_types_prints_the_type_of_the_definition_that_shadows_a_prelude_name() {
     let sandbox = Sandbox::new("doc_types_shadowing").with_file("main.knv", SHADOWING_SUM);
     assert_eq!(
         sandbox.typed_page(&["--file", "main.knv", "sum"]),
-        "(type sum (fn (int int) int))\n(defn sum (left right))\n\nNo documentation.\n"
+        "(type sum (fn (int int) int))\n\n(defn sum (left right))\n\nNo documentation.\n"
     );
 }
 
@@ -4024,7 +4030,7 @@ fn doc_types_leaves_a_page_in_the_program_untyped() {
     );
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "page"]),
-        "(type page (ref str))\n(def page)\n\nNo documentation.\n"
+        "(type page (ref str))\n\n(def page)\n\nNo documentation.\n"
     );
 }
 

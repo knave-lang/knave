@@ -107,8 +107,9 @@ impl DocOutput {
             .iter()
             .map(|type_line| colors.paint(type_line))
             .chain([self.page.painted(colors)])
-            .map(|line| format!("{line}\n"))
-            .collect()
+            .map(|form| format!("{form}\n"))
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 }
 
@@ -293,7 +294,7 @@ mod tests {
         assert_eq!(
             output.text(colors),
             format!(
-                "{}\n{}\n\nTakes :k 2.\n",
+                "{}\n\n{}\n\nTakes :k 2.\n",
                 colors.paint("(type x :k)"),
                 colors.paint("(defn x (:k))")
             )

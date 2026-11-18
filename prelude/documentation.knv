@@ -313,7 +313,7 @@
       (named-type (page-types page) (symbol-name term)))
     (if (empty? found)
       ""
-      (string "\n" (first found)))))
+      (string "\n\n" (first found)))))
 
 (def named-type
   (fn (types name)

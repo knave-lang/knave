@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use super::{
     BindingArena, BindingId, Expr, FieldLabel, ImplementorRow, ImplementorRows, Lambda, ModulePath,
-    ParsedTemplate, StructuralClause, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
+    ParsedTemplate, PrimitiveType, StructuralClause, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
 };
 use crate::rust_trait_path::RustTraitPath;
 use crate::source::Span;
@@ -55,8 +55,11 @@ pub struct RustTraitImplementor {
 }
 
 impl ImplementorRow for RustTraitImplementor {
-    fn is_primitive(&self) -> bool {
-        matches!(self.implementor.kind(), TypeExprKind::Primitive(_))
+    fn primitive(&self) -> Option<PrimitiveType> {
+        match self.implementor.kind() {
+            TypeExprKind::Primitive(primitive) => Some(*primitive),
+            _ => None,
+        }
     }
 }
 

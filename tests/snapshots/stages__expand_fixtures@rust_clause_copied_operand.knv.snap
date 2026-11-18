@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/rust_clause_copied_operand.knv
+---
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_copied_operand.knv:16:10
+   |
+14 |   (rust "crate::rt::is_even({0})"
+   |         ------------------------- the template passes its arguments differently
+15 |     (where ((n integer)) (fn (n) bool))
+16 |     (i64 "match {0} {{ 0 => true, _ => false }}")))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation

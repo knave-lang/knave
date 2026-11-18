@@ -2,9 +2,7 @@ use std::path::Path;
 use std::rc::Rc;
 
 use super::module_path_problems::ModulePathProblems;
-use crate::core::{
-    KernelForm, KernelType, Keyword, ModulePath, Namespace, PassingAspect, PassingDifference,
-};
+use crate::core::{KernelForm, KernelType, Keyword, ModulePath, Namespace};
 use crate::diagnostic::{Counted, Diagnostic, DiagnosticCode, Label, MissingName, Suggestion};
 use crate::interpret::InterpretProblems;
 use crate::language::Language;
@@ -241,57 +239,6 @@ impl ExpandProblems {
             "`{key}` takes {}, and `{{{{` or `}}}}` for a literal brace",
             listed.join(", ")
         ))
-    }
-
-    pub fn clause_passes_arguments_unlike_template(
-        difference: PassingDifference,
-        clause: Span,
-        template: Span,
-    ) -> Diagnostic {
-        let (clause_label, template_label) = match difference {
-            PassingDifference::Argument(argument, aspect) => (
-                Self::passing_aspect_label(argument, aspect),
-                format!("unlike the template's `{{{argument}}}` here"),
-            ),
-            PassingDifference::CallOnlyInClause => (
-                "this clause calls a function".to_string(),
-                "the template calls no function".to_string(),
-            ),
-            PassingDifference::CallOnlyInTemplate => (
-                "this clause calls no function".to_string(),
-                "the template calls a function".to_string(),
-            ),
-        };
-        Diagnostic::error(
-            DiagnosticCode::CLAUSE_PASSES_ARGUMENTS_UNLIKE_TEMPLATE,
-            "a `rust` clause must pass its arguments as its template does",
-            Label::new(clause, clause_label),
-        )
-        .with_label(Label::new(template, template_label))
-        .with_help(
-            "write each placeholder as the template writes it, with the same borrow, receiver, index or call",
-        )
-    }
-
-    fn passing_aspect_label(argument: usize, aspect: PassingAspect) -> String {
-        let placeholder = format!("`{{{argument}}}`");
-        match aspect {
-            PassingAspect::Use => format!("this clause differs in whether it uses {placeholder}"),
-            PassingAspect::Borrow => format!("this clause borrows {placeholder} differently"),
-            PassingAspect::Receiver => {
-                format!("this clause differs in whether {placeholder} receives a method call")
-            }
-            PassingAspect::Index => {
-                format!("this clause differs in whether it indexes {placeholder}")
-            }
-            PassingAspect::Dereference => {
-                format!("this clause differs in whether it dereferences {placeholder}")
-            }
-            PassingAspect::Call => format!("this clause differs in whether it calls {placeholder}"),
-            PassingAspect::Operand => {
-                format!("this clause differs in whether {placeholder} is an operator's operand")
-            }
-        }
     }
 
     pub fn malformed_template(span: Span) -> Diagnostic {

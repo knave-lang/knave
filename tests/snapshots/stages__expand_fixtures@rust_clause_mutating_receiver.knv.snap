@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/rust_clause_mutating_receiver.knv
+---
+error[L0247]: a `rust` clause must pass its arguments as its template does
+ --> expand/rust_clause_mutating_receiver.knv:4:9
+  |
+2 |   (rust "std::mem::drop({0})"
+  |         --------------------- unlike the template's `{0}` here
+3 |     (where ((n integer)) (fn (n) unit))
+4 |     (u8 "{0}.make_ascii_uppercase()")))
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs in whether `{0}` receives a method call
+  |
+  = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
+  = note: run `knave doc L0247` for an explanation

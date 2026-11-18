@@ -1,4 +1,3 @@
-use super::shared_references::SharedReferences;
 use super::{BindingId, PrimitiveType, ReferenceKind};
 use crate::source::Span;
 
@@ -106,26 +105,7 @@ impl TypeExpr {
         &self.kind
     }
 
-    pub fn shared_reference_parameters(&self) -> SharedReferences {
-        match self.where_body().kind() {
-            TypeExprKind::Function(_, parameters, _) => SharedReferences::new(
-                parameters
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, parameter)| {
-                        matches!(
-                            parameter.kind(),
-                            TypeExprKind::Reference(ReferenceKind::Shared, _, _)
-                        )
-                    })
-                    .map(|(position, _)| position)
-                    .collect(),
-            ),
-            _ => SharedReferences::default(),
-        }
-    }
-
-    fn where_body(&self) -> &TypeExpr {
+    pub fn where_body(&self) -> &TypeExpr {
         match self.kind() {
             TypeExprKind::Where(_, body) => body,
             _ => self,

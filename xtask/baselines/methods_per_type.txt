@@ -2,13 +2,13 @@ expand/src/core/printer.rs::CorePrinter 49
 
 expand/src/core/template.rs::ParsedTemplate 26
 
-expand/src/core/template_operation.rs::TemplateOperation 33
+expand/src/core/template_operation.rs::TemplateOperation 32
 
 expand/src/diagnostic/mod.rs::Diagnostic 22
 
 expand/src/expand/mod.rs::Expander 381
 
-expand/src/expand/problems.rs::ExpandProblems 95
+expand/src/expand/problems.rs::ExpandProblems 93
 
 expand/src/expand/session.rs::ExpansionSession 30
 

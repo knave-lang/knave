@@ -3,10 +3,14 @@ use std::fmt;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use super::SavedValue;
+use super::{PrimitiveType, SavedValue};
 
 pub trait ImplementorRow {
-    fn is_primitive(&self) -> bool;
+    fn primitive(&self) -> Option<PrimitiveType>;
+
+    fn is_primitive(&self) -> bool {
+        self.primitive().is_some()
+    }
 }
 
 #[derive(Clone)]
@@ -41,6 +45,12 @@ impl<R: ImplementorRow + Serialize + DeserializeOwned> ImplementorRows<R> {
         self.all_rows_primitive
     }
 
+    pub fn lists_primitive(&self, primitive: PrimitiveType) -> bool {
+        self.get()
+            .iter()
+            .any(|row| row.primitive() == Some(primitive))
+    }
+
     fn encoded(&self) -> Vec<u8> {
         bincode::serialize(self.get()).expect("rows encode")
     }
@@ -73,15 +83,16 @@ impl<'de: 'static, R: DeserializeOwned> serde::Deserialize<'de> for ImplementorR
 #[cfg(test)]
 mod tests {
     use super::{ImplementorRow, ImplementorRows};
+    use crate::core::PrimitiveType;
 
     #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
     struct NamedRow {
         name: u32,
-        primitive: bool,
+        primitive: Option<PrimitiveType>,
     }
 
     impl ImplementorRow for NamedRow {
-        fn is_primitive(&self) -> bool {
+        fn primitive(&self) -> Option<PrimitiveType> {
             self.primitive
         }
     }
@@ -90,7 +101,17 @@ mod tests {
 
     impl RowsFixture {
         fn row(name: u32, primitive: bool) -> NamedRow {
-            NamedRow { name, primitive }
+            NamedRow {
+                name,
+                primitive: primitive.then_some(PrimitiveType::I64),
+            }
+        }
+
+        fn primitive_row(name: u32, primitive: PrimitiveType) -> NamedRow {
+            NamedRow {
+                name,
+                primitive: Some(primitive),
+            }
         }
 
         fn reloaded(rows: &ImplementorRows<NamedRow>) -> ImplementorRows<NamedRow> {
@@ -123,5 +144,16 @@ mod tests {
         assert!(RowsFixture::reloaded(&primitives).all_rows_primitive());
         assert!(!RowsFixture::reloaded(&mixed).all_rows_primitive());
         assert!(!RowsFixture::reloaded(&empty).all_rows_primitive());
+    }
+
+    #[test]
+    fn saved_rows_list_only_the_primitives_written() {
+        let rows = ImplementorRows::new(vec![
+            RowsFixture::primitive_row(1, PrimitiveType::U8),
+            RowsFixture::row(2, false),
+        ]);
+        let reloaded = RowsFixture::reloaded(&rows);
+        assert!(reloaded.lists_primitive(PrimitiveType::U8));
+        assert!(!reloaded.lists_primitive(PrimitiveType::I64));
     }
 }

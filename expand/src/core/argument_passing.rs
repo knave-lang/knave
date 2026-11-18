@@ -1,5 +1,5 @@
 use super::access::Access;
-use super::shared_references::SharedReferences;
+use super::passing_relaxation::PassingRelaxation;
 use super::template::{ParsedTemplate, PassingAspect};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -31,6 +31,14 @@ impl<'t> ArgumentPassing<'t> {
         }
     }
 
+    pub(super) fn relaxed(self, relaxation: PassingRelaxation) -> Self {
+        match relaxation {
+            PassingRelaxation::Copied => self.copied(),
+            PassingRelaxation::SharedReference => self.without_receiver(),
+            PassingRelaxation::Exact => self,
+        }
+    }
+
     fn without_receiver(self) -> Self {
         Self {
             receives: false,
@@ -38,15 +46,10 @@ impl<'t> ArgumentPassing<'t> {
         }
     }
 
-    pub(super) fn ignoring_receiver_of_shared(
-        self,
-        shared_references: &SharedReferences,
-        argument: usize,
-    ) -> Self {
-        if shared_references.holds(argument) {
-            self.without_receiver()
-        } else {
-            self
+    fn copied(self) -> Self {
+        Self {
+            operand: false,
+            ..self
         }
     }
 

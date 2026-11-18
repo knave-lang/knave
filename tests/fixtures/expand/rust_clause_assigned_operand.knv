@@ -1,0 +1,113 @@
+(def touch
+  (rust "std::mem::drop({0})"
+    (where ((n integer)) (fn (n) unit))
+    (i64 "{0} += 1")))
+
+(def touch-parenthesized
+  (rust "std::mem::drop({0})"
+    (where ((n integer)) (fn (n) unit))
+    (i64 "({0}) += 1")))
+
+(def overwrite-parenthesized
+  (rust "std::mem::drop({0})"
+    (where ((n integer)) (fn (n) unit))
+    (i64 "({0}) = 7")))
+
+(def touch-through-a-borrow
+  (rust "std::mem::drop({0})"
+    (where ((n integer)) (fn (n) unit))
+    (i64 "{{ let r = &mut {0}; *r += 1; }}")))
+
+(def touch-any-integer
+  (rust "std::mem::drop({0})"
+    (where ((n integer)) (fn (n) unit))
+    (integer "({0}) += 1")))
+
+(def touch-behind-a-comment
+  (rust "std::mem::drop({0})"
+    (where ((n integer)) (fn (n) unit))
+    (i64 "({0}) /* \" */ += 1 /* \" */")))
+
+(def touch-behind-a-char
+  (rust "std::mem::drop({0})"
+    (where ((n integer)) (fn (n) unit))
+    (i64 "{{ '\"'; let r = &mut {0}; '\"'; *r += 1; }}")))
+
+(def bump
+  (rust "crate::rt::is_even({0})"
+    (where ((n integer)) (fn (n) bool))
+    (i64 "{{ ({0}) /* \" */ += 1 /* \" */; true }}")))
+
+(def same
+  (rust "{0} + 0"
+    (where ((n integer)) (fn (n) n))
+    (i64 "{{ let r = &mut {0}; *r += 1; *r }}")))
+
+(def same-byte
+  (rust "{0} * 1"
+    (where ((n integer)) (fn (n) n))
+    (u8 "{{ ({0}) += 1; 0 }}")))
+
+(def touch-behind-a-raw-string
+  (rust "std::mem::drop({0})"
+    (where ((n integer)) (fn (n) unit))
+    (i64
+      "match {0} {{ ref mut r if r#\"a\"b\"# == \"\" => *r += 1, _ => () }}")))
+
+(def destructure-tuple
+  (rust "crate::rt::is_even({0})"
+    (where ((n integer)) (fn (n) bool))
+    (i64 "{{ ({0}, _) = (7, 0); true }}")))
+
+(def destructure-array
+  (rust "crate::rt::is_even({0})"
+    (where ((n integer)) (fn (n) bool))
+    (i64 "{{ [{0}, _] = [7, 0]; true }}")))
+
+(def destructure-single
+  (rust "crate::rt::is_even({0})"
+    (where ((n integer)) (fn (n) bool))
+    (i64 "{{ ({0},) = (7,); true }}")))
+
+(def raw-borrow
+  (rust "crate::rt::is_even({0})"
+    (where ((n integer)) (fn (n) bool))
+    (i64 "{{ let p = &raw mut {0}; unsafe {{ *p += 1 }}; true }}")))
+
+(def destructure-under-an-operator
+  (rust "{0} == 0"
+    (where ((n integer)) (fn (n) bool))
+    (i64 "{{ ({0}, _) = (7, 0); true }}")))
+
+(def write-another-argument
+  (rust "{{ *{1} += 1; crate::rt::is_even({0}) }}"
+    (where ((n integer))
+      (fn (n (mut i64)) bool))
+    (i64 "{{ *{1} += 1; match {0} {{ ref mut r => *r += 1 }}; true }}")))
+
+(defn main ()
+  (let (b 41)
+    (set! b (+ b 0))
+    (touch b)
+    (touch-parenthesized b)
+    (overwrite-parenthesized b)
+    (touch-through-a-borrow b)
+    (touch-any-integer b)
+    (touch-behind-a-comment b)
+    (touch-behind-a-char b)
+    (println (bump b) b)
+    (println b))
+  (let (fixed 41)
+    (touch-parenthesized fixed)
+    (println fixed)))
+
+(def shout-behind-an-operator
+  (rust "crate::rt::is_even({0})"
+    (where ((n integer)) (fn (n) bool))
+    (u8 "() == {0}.make_ascii_uppercase()")))
+
+(def call-a-named-method
+  (rust "std::mem::drop(({0}, {1}))"
+    (where ((n number) (t number))
+      (fn (n t) unit))
+    (u8 "[{0}.{1}()][0]")))

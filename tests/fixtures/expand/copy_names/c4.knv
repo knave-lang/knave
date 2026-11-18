@@ -1,0 +1,3 @@
+(export copy4)
+
+(rust-trait copy4 "Copy")

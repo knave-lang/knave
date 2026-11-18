@@ -1,9 +1,9 @@
-#[derive(Default)]
-pub struct SharedReferences {
+#[derive(Clone, Default)]
+pub struct ArgumentPositions {
     positions: Vec<usize>,
 }
 
-impl SharedReferences {
+impl ArgumentPositions {
     pub fn new(positions: Vec<usize>) -> Self {
         Self { positions }
     }

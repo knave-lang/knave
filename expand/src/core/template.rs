@@ -26,7 +26,7 @@ impl Piece {
 pub enum PassingDifference {
     Argument(usize, PassingAspect),
     CallOnlyInClause,
-    CallOnlyInTemplate,
+    ImpureClause,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

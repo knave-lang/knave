@@ -180,11 +180,11 @@ Decision 2 spells the prelude function `uppercase`, which is `upper-case` in the
 
 ## Rule
 
-The build states these rules in [docs/language.md: Field keywords](../docs/language.md#field-keywords), [Types](../docs/language.md#types), [Ownership](../docs/language.md#ownership), [Names in Rust](../docs/language.md#names-in-rust) and [10. User-defined traits](../docs/language.md#10-user-defined-traits), in the explanation of `L0407` (`expand/src/diagnostic/explanations/L0407.md`), and in a new explanation of `L0466`. It replaces the two sentences of Field keywords that say a function needs a signature when two structs share a field name.
+The build states these rules in [docs/language.md: Field keywords](../docs/language.md#field-keywords), [Types](../docs/language.md#types), [Ownership](../docs/language.md#ownership), [Names in Rust](../docs/language.md#names-in-rust) and [10. User-defined traits](../docs/language.md#10-user-defined-traits), in the explanation of `L0407` (`expand/src/diagnostic/explanations/L0407.md`), and in a new explanation of `L0467`. It replaces the two sentences of Field keywords that say a function needs a signature when two structs share a field name.
 
 ### 1. A call whose field type fails the body's use
 
-The bound's field type is a type like any other. A body that fixes it, as `upper-case` fixes it to `str`, gives the bound that type. A body that uses it through a trait, as `str` uses `display`, gives the field type that trait bound. A call checks the bound against the struct it passes, and a struct whose field fails either is `L0466` at that call, a new code of the type stage. On `main`, `L0465` is the last code of `L04xx`.
+The bound's field type is a type like any other. A body that fixes it, as `upper-case` fixes it to `str`, gives the bound that type. A body that uses it through a trait, as `str` uses `display`, gives the field type that trait bound. A call checks the bound against the struct it passes, and a struct whose field fails either is `L0467` at that call, a new code of the type stage. On `main`, `L0465` is the last code of `L04xx`, and PR 676 takes `L0466`.
 
 ```lisp
 (defn main ()
@@ -194,7 +194,7 @@ The bound's field type is a type like any other. A body that fixes it, as `upper
 After the build:
 
 ```text
-error[L0466]: `uppercase-name` needs a `:name` of type `str`, but `product`'s `:name` is `i32`
+error[L0467]: `uppercase-name` needs a `:name` of type `str`, but `product`'s `:name` is `i32`
  --> two.knv:9:28
   |
 9 |   (println (uppercase-name (->product 7))))
@@ -212,7 +212,7 @@ error[L0466]: `uppercase-name` needs a `:name` of type `str`, but `product`'s `:
 A field type that lacks a trait the body needs takes the same code, with the trait in the title:
 
 ```text
-error[L0466]: `describe` needs a `:name` that implements `display`, but `badge`'s `:name` is `(fn () int)`
+error[L0467]: `describe` needs a `:name` that implements `display`, but `badge`'s `:name` is `(fn () int)`
 ```
 
 The secondary label points at the form that brought the trait, as `str` here. The note lists the structs that meet the bound, in source order, and the label of a struct from another module prints as two types of one name print in a diagnostic today.
@@ -338,8 +338,8 @@ The change lives in the type rule of the existing kernel form `field`, and in on
 
 1. **The `mut` getter.** Rule 3.2 adds `get_<field>_mut` to the trait when a `set!` or a `mut` borrow needs it. The alternative is an error at such a `set!`, with help to write a signature. The recommendation is the method, because Rust programmers write it and the uniform `set!` rule then holds for generic owners.
 2. **The bound's spelling.** This RFC writes `(has :name b)`. A keyword names the field as a read and a `defstruct` do. `field` would read as the kernel form, and a name ending in `?` reads as a predicate. The owner may prefer another name.
-3. **A `string` field read as `str`.** On `main`, a read of a known `string` field meets `(ref str)` by the `str` adjustment. A generic read whose body fixes `str`, as `uppercase-name` does, rejects a struct whose `:name` is `string`, with `L0466`, because `String` and `str` are two field types. The alternative is a field bound that meets the use through a view, emitted as `A::FieldType: AsRef<str>` and `x.get_name().as_ref()`. The recommendation is the exact rule for this build, and the view rule as a later RFC if programs need it.
+3. **A `string` field read as `str`.** On `main`, a read of a known `string` field meets `(ref str)` by the `str` adjustment. A generic read whose body fixes `str`, as `uppercase-name` does, rejects a struct whose `:name` is `string`, with `L0467`, because `String` and `str` are two field types. The alternative is a field bound that meets the use through a view, emitted as `A::FieldType: AsRef<str>` and `x.get_name().as_ref()`. The recommendation is the exact rule for this build, and the view rule as a later RFC if programs need it.
 
 ## Prototype
 
-`target/scratch/proto/` held the prototype, which is not part of this pull request. rustc 2024 compiled and ran the Rust of Option A, Rule 2 and Rule 3: `d1.rs` printed `hello ana` and `hello rex`, `d2final.rs` printed `ANA`, `REX`, `name: ana` and `name: 7`, and `d3final.rs` checked the copy, clone, borrow and `get_age_mut` reads. Calling `uppercase_name(&Product { name: 7 })` gave rustc's `E0271`, which Rule 1 replaces with `L0466`. The instrumented `main` build of Rule 5 changed only two `eprintln!` lines in `src/types/infer.rs`.
+`target/scratch/proto/` held the prototype, which is not part of this pull request. rustc 2024 compiled and ran the Rust of Option A, Rule 2 and Rule 3: `d1.rs` printed `hello ana` and `hello rex`, `d2final.rs` printed `ANA`, `REX`, `name: ana` and `name: 7`, and `d3final.rs` checked the copy, clone, borrow and `get_age_mut` reads. Calling `uppercase_name(&Product { name: 7 })` gave rustc's `E0271`, which Rule 1 replaces with `L0467`. The instrumented `main` build of Rule 5 changed only two `eprintln!` lines in `src/types/infer.rs`.

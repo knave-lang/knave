@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/with_self_in_trait_method.knv
+---
+error[L0426]: `with` is only allowed in a Rust trait's list of implementors
+ --> check/with_self_in_trait_method.knv:2:15
+  |
+2 |   (probe (fn ((with self i64)) i64)))
+  |               ^^^^^^^^^^^^^^^ not allowed here
+  |
+  = help: write `(with type type)` in the list of a Rust trait's implementors
+  = note: run `knave doc L0426` for an explanation

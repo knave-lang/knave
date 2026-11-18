@@ -1,0 +1,6 @@
+(trait tagged
+  (probe (fn ((with self i64)) i64)))
+
+(impl tagged i64 (probe (v) 1))
+
+(defn main () (println (probe 1)))

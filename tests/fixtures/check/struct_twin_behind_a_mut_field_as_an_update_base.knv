@@ -2,11 +2,11 @@
 
 (struct hold (i inner))
 
-(struct (wrap 'r)
-        (r (mut 'r hold)))
+(struct (wrap 'r) (r (mut 'r hold)))
 
 (defn main ()
-  (let (h (new hold (i (new inner (a 1) (b (str "x")))))
+  (let (h (new hold
+            (i (new inner (a 1) (b (str "x")))))
         w (new wrap (r (mut h)))
         q (new _ (field (field w r) i) (a 2)))
     (println (field q a))))

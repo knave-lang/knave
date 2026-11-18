@@ -6,7 +6,11 @@
         (r (mut 'r (pair hold i64))))
 
 (defn main ()
-  (let (p (pair (new hold (i (new inner (a 1) (b (str "x"))))) 2)
+  (let (p (pair (new hold
+                  (i (new inner (a 1) (b (str "x")))))
+                2)
         w (new wrap (r (mut p)))
-        q (new _ (field (first (field w r)) i) (a 2)))
+        q (new _
+            (field (first (field w r)) i)
+            (a 2)))
     (println (field q a))))

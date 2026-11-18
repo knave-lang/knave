@@ -176,6 +176,8 @@ cargo fmt --all --check
 cargo test <narrowest test>
 ```
 
+**Before every push, run `cargo xtask prepush` and do what its message says for each item it names.**
+
 **If `IN_NIX_SHELL` is set, run every command as written.**
 
 **If `IN_NIX_SHELL` is not set, prefix every command that runs a dev shell tool, such as `cargo`, with `direnv exec .`.** If direnv is missing or refuses, stop and ask the project owner.

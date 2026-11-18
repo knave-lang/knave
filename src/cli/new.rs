@@ -1,10 +1,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::doc_write::DocWriteCommand;
 use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
-use super::program_file::ProgramFile;
+use super::new_file::NewFile;
+use super::project_component::ProjectComponent;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
 use super::working_directory::WorkingDirectory;
@@ -16,22 +16,18 @@ use crate::source::Span;
 
 pub struct NewCommand {
     name: String,
+    components: Vec<Box<dyn ProjectComponent>>,
     formatter: SourceFormatter,
-}
-
-struct NewFile {
-    path: PathBuf,
-    text: String,
 }
 
 impl NewCommand {
     const ENTRY_TEXT: &str = "(defn main ()\n  (println \"hello\"))\n";
     const NAME_ARGUMENT: &str = "<name argument>";
-    const IGNORE_FILE: &str = ".gitignore";
 
-    pub fn new(name: String) -> Self {
+    pub fn new(name: String, components: Vec<Box<dyn ProjectComponent>>) -> Self {
         Self {
             name,
+            components,
             formatter: EmbeddedPrelude::source_formatter(),
         }
     }
@@ -39,50 +35,65 @@ impl NewCommand {
     pub fn run(mut self, terminal: &mut Terminal) -> ExitStatus {
         let root = PathBuf::from(&self.name);
         match self.files(terminal, &root) {
-            Ok(files) => Self::write_all(&root, &files),
+            Ok(files) => self.write_all(&root, &files),
             Err(status) => status,
         }
     }
 
-    fn files(&mut self, terminal: &mut Terminal, root: &Path) -> Result<[NewFile; 3], ExitStatus> {
+    fn files(&mut self, terminal: &mut Terminal, root: &Path) -> Result<Vec<NewFile>, ExitStatus> {
         self.check_name(terminal)?;
         Self::refuse_existing(root)?;
-        let project_file = NewFile {
+        let mut files = self.base_files(terminal, root)?;
+        files.extend(
+            self.components
+                .iter()
+                .flat_map(|component| component.files(root)),
+        );
+        Ok(files)
+    }
+
+    fn base_files(
+        &mut self,
+        terminal: &mut Terminal,
+        root: &Path,
+    ) -> Result<Vec<NewFile>, ExitStatus> {
+        let project_file = self.project_file(root);
+        let entry_file = Self::entry_file(terminal, root, &project_file)?;
+        let working_directory = WorkingDirectory::path();
+        let source_lookup = ModuleLookup::beside(working_directory);
+        Ok(vec![
+            self.formatted(
+                terminal,
+                project_file,
+                &ModuleLookup::beside_project_file(working_directory),
+            ),
+            self.formatted(terminal, entry_file, &source_lookup),
+        ])
+    }
+
+    fn project_file(&self, root: &Path) -> NewFile {
+        NewFile {
             path: root.join(Language::project_file_name()),
             text: format!(
                 "({} {})\n",
                 EmbeddedPrelude::project_vocabulary().head(),
                 self.name
             ),
-        };
+        }
+    }
+
+    fn entry_file(
+        terminal: &mut Terminal,
+        root: &Path,
+        project_file: &NewFile,
+    ) -> Result<NewFile, ExitStatus> {
         let mut sources = terminal.sources();
         let source = sources.add(project_file.path.display(), project_file.text.clone());
         let project = sources.read_project(source)?;
-        let entry_file = NewFile {
+        Ok(NewFile {
             path: root.join(&project.entry),
             text: Self::ENTRY_TEXT.to_string(),
-        };
-        let working_directory = WorkingDirectory::path();
-        Ok([
-            self.formatted(
-                terminal,
-                project_file,
-                &ModuleLookup::beside_project_file(working_directory),
-            ),
-            self.formatted(
-                terminal,
-                entry_file,
-                &ModuleLookup::beside(working_directory),
-            ),
-            Self::ignore_file(root),
-        ])
-    }
-
-    fn ignore_file(root: &Path) -> NewFile {
-        NewFile {
-            path: root.join(Self::IGNORE_FILE),
-            text: format!("/{}/\n", DocWriteCommand::DEFAULT_FOLDER),
-        }
+        })
     }
 
     fn check_name(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
@@ -128,21 +139,20 @@ impl NewCommand {
         }
     }
 
-    fn write_all(root: &Path, files: &[NewFile]) -> ExitStatus {
+    fn write_all(&self, root: &Path, files: &[NewFile]) -> ExitStatus {
         match files.iter().find_map(|file| file.write().err()) {
             Some(failure) => {
                 fs::remove_dir_all(root).ok();
                 failure
             }
-            None => ExitStatus::Success,
+            None => self.set_up_all(root),
         }
     }
-}
 
-impl NewFile {
-    fn write(&self) -> Result<(), ExitStatus> {
-        fs::create_dir_all(ProgramFile::directory_of(&self.path))
-            .and_then(|()| fs::write(&self.path, &self.text))
-            .map_err(|error| ProgramFile::report_unwritable(&self.path, &error))
+    fn set_up_all(&self, root: &Path) -> ExitStatus {
+        for component in &self.components {
+            component.set_up(root);
+        }
+        ExitStatus::Success
     }
 }

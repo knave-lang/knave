@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: new.assert_exit_code(0).stderr()
+---
+warning: git could not start: Permission denied (os error 13), so the project has no git repository
+help: run `git init` in it later

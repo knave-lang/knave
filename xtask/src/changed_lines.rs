@@ -134,6 +134,63 @@ mod tests {
         assert!(!DiffCase::touches("src/gone.rs", 1, 3));
     }
 
+    struct TemporaryRepository {
+        root: std::path::PathBuf,
+    }
+
+    impl TemporaryRepository {
+        const FILE: &str = "src/a.rs";
+
+        fn with_changed_line(name: &str) -> Self {
+            let root =
+                std::env::temp_dir().join(format!("xtask-diff-{name}-{}", std::process::id()));
+            std::fs::create_dir_all(root.join("src")).expect("the repository is created");
+            let repository = Self { root };
+            repository.git(&["init", "--quiet"]);
+            repository.write("fn a() {\n    1\n}\n");
+            repository.git(&["add", "."]);
+            repository.git(&[
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "commit",
+                "--quiet",
+                "-m",
+                "base",
+            ]);
+            repository.git(&["config", "diff.noprefix", "true"]);
+            repository.write("fn a() {\n    2\n}\n");
+            repository
+        }
+
+        fn write(&self, text: &str) {
+            std::fs::write(self.root.join(Self::FILE), text).expect("the file is written");
+        }
+
+        fn git(&self, arguments: &[&str]) {
+            let status = std::process::Command::new("git")
+                .args(arguments)
+                .current_dir(&self.root)
+                .status()
+                .expect("git runs");
+            assert!(status.success(), "git {arguments:?} failed");
+        }
+    }
+
+    impl Drop for TemporaryRepository {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    #[test]
+    fn a_change_shows_under_a_user_config_without_path_prefixes() {
+        let repository = TemporaryRepository::with_changed_line("noprefix");
+        let changed = ChangedLines::since(&repository.root, "HEAD").expect("git diff runs");
+        assert!(changed.touches(TemporaryRepository::FILE, LineSpan { first: 2, last: 2 }));
+    }
+
     #[test]
     fn a_failed_diff_is_a_failure() {
         let root = crate::workspace::WorkspaceFixture::repository_root();

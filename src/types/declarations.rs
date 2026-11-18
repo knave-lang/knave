@@ -81,6 +81,7 @@ impl Declarations {
 #[cfg(test)]
 mod tests {
     use super::Declarations;
+    use crate::types::TypedSource;
 
     #[test]
     #[should_panic(expected = "declarations are built only during collection")]
@@ -88,6 +89,13 @@ mod tests {
         let mut declarations = Declarations::default();
         declarations.freeze();
         let _ = declarations.builder();
+    }
+
+    #[test]
+    #[should_panic(expected = "declarations are built only during collection")]
+    fn checking_a_program_freezes_its_declarations() {
+        let mut program = TypedSource::expand("(defn main () (do))").typed();
+        let _ = program.declarations.builder();
     }
 
     #[test]

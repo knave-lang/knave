@@ -1,0 +1,4 @@
+(defn takes ((s string)) (println s))
+
+(defn take-first! ((p (mut (pair string i64))))
+  (takes (first p)))

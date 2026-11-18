@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/pair_part_pushed_through_a_ref_inside_a_mut.knv
+---
+error[L0401]: mismatched types
+ --> check/pair_part_pushed_through_a_ref_inside_a_mut.knv:2:10
+  |
+2 |   (push! (second p) "xy"))
+  |          ^^^^^^^^^^ expected `(mut string)`, found `(ref string)`
+  |
+  = note: run `knave doc L0401` for an explanation

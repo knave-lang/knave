@@ -231,6 +231,7 @@ cargo test <narrowest test>
 | --- | --- |
 | `docs/language.md` | change the language or the Rust it emits |
 | `docs/diagnostics.md` | add or change an error or a warning |
-| `docs/reference/` | change a form, a rule or an output that a reference page shows |
+| `docs/reference/README.md` | add a page to the language reference |
+| `docs/reference/bindings.md` | change `let`, `set!` or `def`, or what they print |
 | `docs/pull-requests.md` | open a pull request, push to one, review one, or fix a CI failure |
 | `rfcs/README.md` | write a design, or change a rule that an RFC or decision records |

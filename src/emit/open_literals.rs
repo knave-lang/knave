@@ -6,7 +6,7 @@ use super::let_annotation::LetAnnotation;
 use super::rust_fallback::RustFallback;
 use super::type_anchor::TypeAnchor;
 use super::type_context::TypeContext;
-use crate::core::{BindingId, BindingKind, FieldLabel, Literal, VariantInfo};
+use crate::core::{BindingId, BindingKind, Conversion, FieldLabel, Literal, VariantInfo};
 use crate::reader::Number;
 use crate::source::Span;
 use crate::types::{
@@ -90,40 +90,65 @@ impl OpenLiteralSearch<'_> {
 
     fn call(&mut self, callee: &TypedExpr, arguments: &[TypedArgument], context: TypeContext) {
         self.expr(callee, context);
+        let conversions = self.program.template_borrows.conversions(callee);
+        let conversions = conversions.as_deref();
         match &callee.kind {
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
                 let positions = self.callees.positions_of(*binding);
-                self.arguments(positions.as_deref(), arguments, context);
+                let shape = CallShape::new(positions.as_deref(), conversions);
+                self.arguments(shape, arguments, context);
             }
             TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
                 let positions = GenericPositions::of_template(&template.type_expr);
-                self.arguments(positions.as_ref(), arguments, context);
+                let shape = CallShape::new(positions.as_ref(), conversions);
+                self.arguments(shape, arguments, context);
             }
-            _ => self.arguments(None, arguments, context),
+            _ => self.arguments(CallShape::new(None, conversions), arguments, context),
         }
     }
 
     fn arguments(
         &mut self,
-        positions: Option<&GenericPositions>,
+        shape: CallShape<'_>,
         arguments: &[TypedArgument],
         context: TypeContext,
     ) {
+        if shape.is_plain() {
+            return self.known_arguments(arguments);
+        }
+        let values: Vec<&TypedExpr> = arguments.iter().map(|argument| &argument.value).collect();
+        let contexts = self.argument_contexts(shape.positions, &values, context);
+        self.positions(
+            &values,
+            Self::opened(contexts, shape.conversions.unwrap_or_default()),
+        );
+    }
+
+    fn argument_contexts(
+        &self,
+        positions: Option<&GenericPositions>,
+        values: &[&TypedExpr],
+        context: TypeContext,
+    ) -> Vec<TypeContext> {
         match positions {
-            Some(positions) => self.generic_arguments(positions, arguments, context),
-            None => self.known_arguments(arguments),
+            Some(positions) => positions.contexts(&self.anchor.certainties(values), context),
+            None => vec![TypeContext::Known; values.len()],
         }
     }
 
-    fn generic_arguments(
-        &mut self,
-        positions: &GenericPositions,
-        arguments: &[TypedArgument],
-        context: TypeContext,
-    ) {
-        let values: Vec<&TypedExpr> = arguments.iter().map(|argument| &argument.value).collect();
-        let contexts = positions.contexts(&self.anchor.certainties(&values), context);
-        self.positions(&values, contexts);
+    fn opened(
+        mut contexts: Vec<TypeContext>,
+        conversions: &[(usize, Conversion)],
+    ) -> Vec<TypeContext> {
+        let open = conversions
+            .iter()
+            .filter(|(_, conversion)| conversion.leaves_argument_type_open());
+        for (position, _) in open {
+            if let Some(context) = contexts.get_mut(*position) {
+                *context = TypeContext::Unknown;
+            }
+        }
+        contexts
     }
 
     fn known_arguments(&mut self, arguments: &[TypedArgument]) {
@@ -252,5 +277,26 @@ impl OpenLiteralSearch<'_> {
         let contexts = GenericPositions::of_fields(&definition.params, declared)
             .contexts(&self.anchor.certainties(values), context);
         self.positions(values, contexts);
+    }
+}
+
+struct CallShape<'c> {
+    positions: Option<&'c GenericPositions>,
+    conversions: Option<&'c [(usize, Conversion)]>,
+}
+
+impl<'c> CallShape<'c> {
+    fn new(
+        positions: Option<&'c GenericPositions>,
+        conversions: Option<&'c [(usize, Conversion)]>,
+    ) -> Self {
+        Self {
+            positions,
+            conversions,
+        }
+    }
+
+    fn is_plain(&self) -> bool {
+        self.positions.is_none() && self.conversions.is_none()
     }
 }

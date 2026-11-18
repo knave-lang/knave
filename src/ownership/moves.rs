@@ -423,7 +423,7 @@ impl<'a> MoveChecker<'a> {
     fn moves(&self, callee: &TypedExpr, position: usize, argument: &TypedArgument) -> bool {
         argument.borrow == Borrow::None
             && !matches!(argument.value.ty, Type::Ref(_, _))
-            && !self.template_borrows.keeps(callee, position)
+            && !self.template_borrows.borrows(callee, position)
     }
 
     fn recur(&mut self, arguments: &[TypedArgument]) {

@@ -4,19 +4,49 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::typed::{TypedExpr, TypedExprKind, TypedLeaf};
-use crate::core::{BindingId, ParsedTemplate, ReferenceKind};
+use crate::core::{BindingId, Conversion, ParsedTemplate, Piece, ReferenceKind};
+
+pub type Conversions = Rc<[(usize, Conversion)]>;
 
 #[derive(Default)]
 pub struct TemplateBorrows {
     templates: FxHashMap<BindingId, ParsedTemplate>,
+    conversions: FxHashMap<BindingId, Conversions>,
     inline: RefCell<FxHashMap<Rc<str>, Option<ParsedTemplate>>>,
 }
 
 impl TemplateBorrows {
     pub fn register(&mut self, binding: BindingId, template: &str) {
         if let Ok(parsed) = ParsedTemplate::parse(template) {
+            if let Some(conversions) = Self::written_conversions(&parsed) {
+                self.conversions.insert(binding, conversions);
+            }
             self.templates.insert(binding, parsed);
         }
+    }
+
+    pub fn conversions(&self, callee: &TypedExpr) -> Option<Conversions> {
+        match &callee.kind {
+            TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
+                self.conversions.get(binding).cloned()
+            }
+            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
+                self.inline_conversions(callee, &template.template)
+            }
+            _ => None,
+        }
+    }
+
+    fn inline_conversions(&self, callee: &TypedExpr, template: &str) -> Option<Conversions> {
+        if !Conversion::may_be_written_in(template) {
+            return None;
+        }
+        self.read_template(callee, None, Self::written_conversions)
+    }
+
+    fn written_conversions(parsed: &ParsedTemplate) -> Option<Conversions> {
+        let mut conversions = Piece::conversions_in(parsed.pieces()).peekable();
+        conversions.peek().is_some().then(|| conversions.collect())
     }
 
     pub fn borrows(&self, callee: &TypedExpr, position: usize) -> bool {
@@ -29,10 +59,6 @@ impl TemplateBorrows {
 
     pub fn receives(&self, callee: &TypedExpr, position: usize) -> bool {
         self.read_template(callee, false, |parsed| parsed.receives(position))
-    }
-
-    pub fn keeps(&self, callee: &TypedExpr, position: usize) -> bool {
-        self.reference(callee, position).is_some()
     }
 
     pub fn reference(&self, callee: &TypedExpr, position: usize) -> Option<ReferenceKind> {

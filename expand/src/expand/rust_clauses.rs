@@ -1,11 +1,12 @@
 use super::Expander;
 use super::clause_chooser_problems::ClauseChooserProblems;
 use super::clause_passing_problems::ClausePassingProblems;
+use super::conversion_problems::ConversionProblems;
 use super::copy_implementors::CopyImplementors;
 use super::problems::ExpandProblems;
 use super::shape::Shape;
 use crate::core::{
-    ArgumentPositions, ClauseComparison, ParsedTemplate, PassingAllowance, ReferenceKind,
+    ArgumentPositions, ClauseComparison, ParsedTemplate, PassingAllowance, Piece, ReferenceKind,
     RustClause, TypeBinder, TypeExpr, TypeExprKind,
 };
 use crate::diagnostic::Diagnostic;
@@ -155,6 +156,9 @@ impl Expander<'_> {
     ) -> Result<RustClause, Diagnostic> {
         let template = lowering.template;
         let parsed = Self::parse_rust_template(shape.string(text)?, text.span())?;
+        if Piece::conversions_in(parsed.pieces()).next().is_some() {
+            return Err(ConversionProblems::in_clause_template(text.span()));
+        }
         self.check_template_type_placeholders(&parsed, template.type_expr, text.span())?;
         let target = self.lower_type(target)?;
         let allowance = template.passing_allowance(&target, &lowering.copy);

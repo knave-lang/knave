@@ -1,12 +1,13 @@
 use std::rc::Rc;
 
 use super::Expander;
+use super::conversion_problems::ConversionProblems;
 use super::namespace_problems::NamespaceProblems;
 use super::problems::{ExpandProblems, ParameterExample};
 use super::shape::Shape;
 use super::type_placeholder_problems::TypePlaceholderProblems;
 use crate::core::{
-    BindingId, CoreModule, DefinitionForm, EnumRust, Item, ItemKind, ParsedTemplate,
+    BindingId, CoreModule, DefinitionForm, EnumRust, Item, ItemKind, ParsedTemplate, Piece,
     TemplateBraces, TypeBinder, TypeExpr,
 };
 use crate::diagnostic::Diagnostic;
@@ -229,6 +230,12 @@ impl Expander<'_> {
             .map_err(|_| ExpandProblems::malformed_type_template(template_form.span()))?;
         if template.borrows_any() {
             return Err(ExpandProblems::borrowed_type_placeholder(
+                template_form.span(),
+            ));
+        }
+        if let Some((position, _)) = Piece::conversions_in(template.pieces()).next() {
+            return Err(ConversionProblems::in_type_template(
+                position,
                 template_form.span(),
             ));
         }

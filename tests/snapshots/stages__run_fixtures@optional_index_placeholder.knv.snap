@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/optional_index_placeholder.knv
+---
+(some 30)
+(some 20)
+none
+(some 20)
+(some 20)
+none
+none
+the collection is read
+none

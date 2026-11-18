@@ -1,0 +1,5 @@
+(deftype (wrapper item) (rust "Vec<{index 0}>"))
+
+(rust-type (sized item) "Vec<{index? 0}>")
+
+(rust-type (shelf item) "Vec<{0}>" (i64 "Vec<{index 0}>"))

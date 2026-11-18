@@ -1,0 +1,24 @@
+(def get2
+  (rust "{0}.get({index? 1})"
+    (where (a)
+      (fn ((ref (slice a)) int)
+        (option (ref a))))))
+
+(defn make-items () (vec 10 20 30))
+
+(defn announced (items)
+  (println "the collection is read")
+  items)
+
+(defn main ()
+  (let (items (vec 10 20 30)
+        i 1)
+    (prn (get2 items 2))
+    (prn (get2 items i))
+    (prn (get2 items -1))
+    (prn (get2 (make-items) i))
+    (let (item (get2 (make-items) i))
+      (prn item))
+    (prn (get2 items -4294967295))
+    (prn (get2 items (if (= i 1) -4294967295 -4294967296)))
+    (prn (get2 (announced items) -1))))

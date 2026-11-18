@@ -1,5 +1,7 @@
+use std::sync::OnceLock;
+
 use super::{ArgumentRole, ExpressionEmitter};
-use crate::core::{ReferenceKind, RustTemplate};
+use crate::core::{ParsedTemplate, Piece, ReferenceKind, RustTemplate};
 use crate::emit::fragment::Code;
 use crate::emit::type_context::TypeContext;
 use crate::source::Span;
@@ -12,6 +14,29 @@ pub(super) struct CompoundAssignment {
     pub arguments: Vec<TypedArgument>,
 }
 
+struct ElementRead;
+
+impl ElementRead {
+    const TEMPLATE: &'static str = "&{0}[{1}]";
+
+    fn matches(template: &str) -> bool {
+        ParsedTemplate::parse(template).is_ok_and(|parsed| {
+            parsed
+                .pieces()
+                .iter()
+                .map(Piece::unconverted)
+                .eq(Self::parsed().pieces().iter().cloned())
+        })
+    }
+
+    fn parsed() -> &'static ParsedTemplate {
+        static PARSED: OnceLock<ParsedTemplate> = OnceLock::new();
+        PARSED.get_or_init(|| {
+            ParsedTemplate::parse(Self::TEMPLATE).expect("the element read is a template")
+        })
+    }
+}
+
 struct Operands<'e> {
     value: &'e TypedArgument,
     place_first: bool,
@@ -19,7 +44,6 @@ struct Operands<'e> {
 
 impl ExpressionEmitter<'_> {
     const COMMUTING_OPERATORS: [&'static str; 2] = ["+", "*"];
-    const ELEMENT_READ: &'static str = "&{0}[{1}]";
     const READ_PLACE: &'static str = "{!current}";
     const COMPUTED_VALUE: &'static str = "{!value}";
 
@@ -142,7 +166,7 @@ impl ExpressionEmitter<'_> {
             return false;
         };
         self.definition_template(binding, &callee.ty)
-            .is_some_and(|template| *template.template == *Self::ELEMENT_READ)
+            .is_some_and(|template| ElementRead::matches(&template.template))
     }
 
     fn leaves_places_alone(expr: &TypedExpr) -> bool {

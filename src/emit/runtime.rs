@@ -38,6 +38,7 @@ enum RuntimePart {
     Max,
     Min,
     IsEven,
+    Index,
 }
 
 impl RuntimePart {
@@ -49,7 +50,7 @@ impl RuntimePart {
         "eprintln!(",
         "std::io::stderr(",
     ];
-    const NAMED: [(&'static str, RuntimePart); 29] = [
+    const NAMED: [(&'static str, RuntimePart); 30] = [
         ("Number", RuntimePart::Number),
         ("Signed", RuntimePart::Signed),
         ("Float", RuntimePart::Float),
@@ -79,6 +80,7 @@ impl RuntimePart {
         ("max", RuntimePart::Max),
         ("min", RuntimePart::Min),
         ("is_even", RuntimePart::IsEven),
+        ("index", RuntimePart::Index),
     ];
     const SCANNED: [ScannedPart; 4] = [
         ScannedPart {
@@ -269,8 +271,9 @@ impl RuntimeModule {
     const MAX: &'static str = include_str!("../../prelude/runtime/max.rs");
     const MIN: &'static str = include_str!("../../prelude/runtime/min.rs");
     const IS_EVEN: &'static str = include_str!("../../prelude/runtime/is_even.rs");
+    const INDEX: &'static str = include_str!("../../prelude/runtime/index.rs");
     const START_UP_CALL: &'static str = "crate::rt::restore_default_sigpipe();";
-    const FIXED_PARTS: [(RuntimePart, &'static str); 31] = [
+    const FIXED_PARTS: [(RuntimePart, &'static str); 32] = [
         (RuntimePart::Signed, Self::SIGNED),
         (RuntimePart::Float, Self::FLOAT),
         (RuntimePart::Integer, Self::INTEGER),
@@ -302,6 +305,7 @@ impl RuntimeModule {
         (RuntimePart::Max, Self::MAX),
         (RuntimePart::Min, Self::MIN),
         (RuntimePart::IsEven, Self::IS_EVEN),
+        (RuntimePart::Index, Self::INDEX),
     ];
     const CONVERSIONS: &'static [Conversion] = &[
         Conversion {
@@ -466,6 +470,18 @@ mod tests {
         let source = module.source();
         assert!(source.contains("pub fn is_even<N: Integer>"));
         assert!(source.contains("fn from_literal(value: i128) -> Self;"));
+    }
+
+    #[test]
+    fn an_index_conversion_brings_the_index_function() {
+        let module =
+            RuntimeModule::of("items[crate::rt::index(i)]").expect("the code needs the runtime");
+        assert!(
+            module
+                .source()
+                .contains("pub fn index(value: i64) -> usize")
+        );
+        assert!(module.start_up_call().is_none());
     }
 
     #[test]

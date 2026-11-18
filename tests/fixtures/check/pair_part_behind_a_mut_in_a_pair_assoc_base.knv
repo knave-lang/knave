@@ -1,0 +1,5 @@
+(struct inner (a i64) (b string))
+
+(defn f ((p (pair (mut (pair inner i64)) i64)))
+  (let (q (assoc (first (first p)) :a 2))
+    (println (field q a))))

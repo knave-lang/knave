@@ -5,6 +5,12 @@ use super::typed::{TypedExpr, TypedExprKind, TypedStructExpr};
 use super::unifier::Unifier;
 use crate::core::FieldSpelling;
 
+#[derive(Clone, Copy)]
+enum Layer {
+    Shared,
+    Reference,
+}
+
 pub(super) struct PlaceTypes<'a> {
     unifier: &'a Unifier,
     declarations: DeclaredTypes<'a>,
@@ -23,17 +29,25 @@ impl<'a> PlaceTypes<'a> {
     }
 
     pub(super) fn changed(&self, value: &TypedExpr) -> Type {
+        self.borrowed_behind(value, Layer::Shared)
+    }
+
+    pub(super) fn moved(&self, value: &TypedExpr) -> Type {
+        self.borrowed_behind(value, Layer::Reference)
+    }
+
+    fn borrowed_behind(&self, value: &TypedExpr, layer: Layer) -> Type {
         let declared = self.declared_type(value);
-        if self.pair_part_behind_shared(value) {
+        if self.pair_part_behind(value, layer) {
             Type::shared(declared)
         } else {
             declared
         }
     }
 
-    fn pair_part_behind_shared(&self, value: &TypedExpr) -> bool {
+    fn pair_part_behind(&self, value: &TypedExpr, layer: Layer) -> bool {
         matches!(&value.kind, TypedExprKind::Struct(TypedStructExpr::Field(owner, label))
-            if matches!(label.spelling, FieldSpelling::Pair(_)) && self.behind_shared(owner))
+            if matches!(label.spelling, FieldSpelling::Pair(_)) && self.behind(owner, layer))
     }
 
     fn declared_type(&self, value: &TypedExpr) -> Type {
@@ -53,11 +67,16 @@ impl<'a> PlaceTypes<'a> {
         declared.unwrap_or_else(|| value.ty.clone())
     }
 
-    fn behind_shared(&self, owner: &TypedExpr) -> bool {
+    fn behind(&self, owner: &TypedExpr, layer: Layer) -> bool {
         let peeling = ReferencePeeling::new(self.unifier);
         let mut current = owner;
         loop {
-            if peeling.has_shared_layer(&self.declared_type(current)) {
+            let ty = self.declared_type(current);
+            let found = match layer {
+                Layer::Shared => peeling.has_shared_layer(&ty),
+                Layer::Reference => self.unifier.resolve(&ty).is_reference(),
+            };
+            if found {
                 return true;
             }
             let TypedExprKind::Struct(TypedStructExpr::Field(inner, _)) = &current.kind else {

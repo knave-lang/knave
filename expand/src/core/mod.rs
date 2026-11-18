@@ -1,7 +1,9 @@
 mod access;
+mod argument_passing;
 mod binder_origin;
 mod binding;
 mod builtin;
+mod clause_comparison;
 mod consulted_traits;
 mod dropped_borrows;
 mod expr;
@@ -33,6 +35,7 @@ pub use binding::{
     VariantInfo,
 };
 pub use builtin::{Builtin, BuiltinModule};
+pub use clause_comparison::ClauseComparison;
 pub use consulted_traits::{
     BorrowTrait, ConsultedTraits, CopyTrait, EqualityTrait, HashTrait, OrderTrait,
 };

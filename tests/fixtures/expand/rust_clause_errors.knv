@@ -123,3 +123,8 @@
     (where ((a partial-eq))
       (fn ((ref a) (ref a)) bool))
     (string "{0} == {1}")))
+
+(def receiver-after-dropping-a-written-borrow
+  (rust "str::len(&{&0})"
+    (where ((a clone)) (fn (a) usize))
+    ((ref str) "{0}.len()")))

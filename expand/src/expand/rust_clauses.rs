@@ -3,7 +3,8 @@ use super::clause_chooser_problems::ClauseChooserProblems;
 use super::problems::ExpandProblems;
 use super::shape::Shape;
 use crate::core::{
-    ParsedTemplate, RustClause, SharedReferences, TypeBinder, TypeExpr, TypeExprKind,
+    ClauseComparison, ParsedTemplate, RustClause, SharedReferences, TypeBinder, TypeExpr,
+    TypeExprKind,
 };
 use crate::diagnostic::Diagnostic;
 use crate::reader::Form;
@@ -38,19 +39,19 @@ impl<'t> ClausedTemplate<'t> {
         let fixed = self
             .signature_types()
             .any(|written| written.named_bindings().contains(&chooser.variable));
-        (!fixed).then(|| ClauseChooserProblems::fixed_by_no_argument(chooser.span))
+        (!fixed).then(|| ClauseChooserProblems::unfixed(chooser.span))
     }
 
     fn signature_types(&self) -> impl Iterator<Item = &TypeExpr> {
         let body = match self.type_expr.kind() {
-            TypeExprKind::Where(_, body) => Some(body.kind()),
+            TypeExprKind::Where(_, body) => Some(&**body),
             _ => None,
         };
-        let (parameters, result) = match body {
+        let (parameters, result) = match body.map(TypeExpr::kind) {
             Some(TypeExprKind::Function(_, parameters, result)) => {
                 (parameters.as_slice(), Some(&**result))
             }
-            _ => (&[][..], None),
+            _ => (&[][..], body),
         };
         parameters.iter().chain(result)
     }
@@ -95,16 +96,16 @@ impl Expander<'_> {
     ) -> Result<RustClause, Diagnostic> {
         let parsed = Self::parse_rust_template(shape.string(text)?, text.span())?;
         self.check_template_type_placeholders(&parsed, template.type_expr, text.span())?;
-        let dropped_borrows = template
-            .parsed
-            .clause_borrows(&parsed, &template.shared_references)
-            .map_err(|difference| {
-                ExpandProblems::clause_passes_arguments_unlike_template(
-                    difference,
-                    text.span(),
-                    template.span,
-                )
-            })?;
+        let dropped_borrows =
+            ClauseComparison::new(template.parsed, &parsed, &template.shared_references)
+                .dropped_borrows()
+                .map_err(|difference| {
+                    ExpandProblems::clause_passes_arguments_unlike_template(
+                        difference,
+                        text.span(),
+                        template.span,
+                    )
+                })?;
         Ok(RustClause {
             target: self.lower_type(target)?,
             template: parsed.text().into(),

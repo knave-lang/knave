@@ -1,0 +1,10 @@
+(struct inner (a i64) (b string))
+
+(struct (wrap 'r)
+        (r (mut 'r (pair inner i64))))
+
+(defn main ()
+  (let (p (pair (new inner (a 1) (b (str "x"))) 2)
+        w (new wrap (r (mut p)))
+        q (new _ (first (field w r)) (a 2)))
+    (println (field q a))))

@@ -48,7 +48,7 @@ impl dyn Passing {
             Borrow::Mutable => &Lends::MUTABLE,
             Borrow::Reborrow => <dyn Passing>::reborrowed(parameter),
             Borrow::Deref(_) => &Copies,
-            Borrow::Collapse(_) => <dyn Passing>::collapsed(argument, rules),
+            Borrow::Collapse(_) => <dyn Passing>::collapsed(argument),
             Borrow::Passthrough => <dyn Passing>::through_reference(argument, parameter),
             _ => <dyn Passing>::unadjusted(argument, rules),
         }
@@ -62,8 +62,8 @@ impl dyn Passing {
         }
     }
 
-    fn collapsed(argument: &TypedArgument, rules: &LoanRules<'_>) -> &'static dyn Passing {
-        if argument.collapsed_shared_layers().is_some() || rules.copies_out(argument) {
+    fn collapsed(argument: &TypedArgument) -> &'static dyn Passing {
+        if argument.collapsed_shared_layers().is_some() {
             &Collapses
         } else {
             &Holds

@@ -2,6 +2,8 @@ use rustc_hash::FxHashMap;
 
 use super::RustTrait;
 use super::checker::TypeChecker;
+use super::collected_enum::CollectedEnum;
+use super::collected_struct::CollectedStruct;
 use super::declared_generics::DeclaredGenerics;
 use super::ty::{Bound, GenericId, Type};
 use super::written_type_variables::WrittenTypeVariables;
@@ -179,6 +181,16 @@ impl WrittenTypeFixture {
 
     pub(super) fn type_variables(&self, type_expr: &TypeExpr) -> Vec<BindingId> {
         WrittenTypeVariables::new(&self.checker.bindings).of(type_expr)
+    }
+
+    pub(super) fn enter_struct(&mut self, binding: BindingId, collected: CollectedStruct) {
+        let types = &mut self.checker.declarations.types;
+        collected.enter(binding, types, &mut self.checker.diagnostics);
+    }
+
+    pub(super) fn enter_enum(&mut self, binding: BindingId, collected: CollectedEnum) {
+        let types = &mut self.checker.declarations.types;
+        collected.enter(binding, types, &mut self.checker.diagnostics);
     }
 
     pub(super) fn declared_generics(&mut self) -> DeclaredGenerics {

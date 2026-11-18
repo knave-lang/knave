@@ -8,6 +8,12 @@ pub(super) struct ParameterUsage {
     first_recursive: Option<Span>,
 }
 
+struct NamedUse<'a> {
+    binding: BindingId,
+    arguments: &'a [TypeExpr],
+    span: Span,
+}
+
 #[derive(Clone, Copy)]
 enum Place {
     OutsideSelf,
@@ -58,7 +64,14 @@ impl ParameterUsage {
 
     fn visit(&mut self, type_expr: &TypeExpr, place: Place) {
         match type_expr.kind() {
-            TypeExprKind::Named(..) => self.visit_named(type_expr, place),
+            TypeExprKind::Named(binding, arguments) => self.visit_named(
+                NamedUse {
+                    binding: *binding,
+                    arguments,
+                    span: type_expr.span(),
+                },
+                place,
+            ),
             TypeExprKind::Function(_, parameters, result) => {
                 for parameter in parameters {
                     self.visit(parameter, place);
@@ -73,15 +86,12 @@ impl ParameterUsage {
         }
     }
 
-    fn visit_named(&mut self, type_expr: &TypeExpr, place: Place) {
-        let TypeExprKind::Named(binding, arguments) = type_expr.kind() else {
-            return;
-        };
-        let place = self.place_inside(*binding, place);
-        if *binding == self.variable {
-            self.record_use(type_expr.span(), place);
+    fn visit_named(&mut self, named: NamedUse<'_>, place: Place) {
+        let place = self.place_inside(named.binding, place);
+        if named.binding == self.variable {
+            self.record_use(named.span, place);
         }
-        for argument in arguments {
+        for argument in named.arguments {
             self.visit(argument, place);
         }
     }

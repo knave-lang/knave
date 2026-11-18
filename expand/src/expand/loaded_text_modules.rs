@@ -14,7 +14,7 @@ use crate::source::SourceMap;
 pub(super) struct LoadedTextModules {
     owners: FxHashMap<ModulePath, Rc<str>>,
     first_loads: FxHashMap<RealPath, ModuleLoadSite>,
-    kept_paths: FxHashMap<ModulePath, ModulePath>,
+    loaded_paths: FxHashMap<ModulePath, ModulePath>,
 }
 
 impl LoadedTextModules {
@@ -28,8 +28,8 @@ impl LoadedTextModules {
             None => TextModuleRecord::New,
         };
         match &record {
-            TextModuleRecord::BindsTo { kept, .. } => {
-                self.kept_paths.insert(load.site.path, kept.clone());
+            TextModuleRecord::BindsTo { loaded, .. } => {
+                self.loaded_paths.insert(load.site.path, loaded.clone());
             }
             TextModuleRecord::New => {
                 if let Some(file) = load.file {
@@ -55,7 +55,7 @@ impl LoadedTextModules {
     ) -> Option<ModuleId> {
         modules
             .find(path)
-            .or_else(|| modules.find(self.kept_paths.get(path)?))
+            .or_else(|| modules.find(self.loaded_paths.get(path)?))
     }
 
     pub(super) fn owner_of(&self, path: &ModulePath) -> Option<Rc<str>> {

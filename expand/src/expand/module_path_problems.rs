@@ -9,13 +9,17 @@ use crate::source::Span;
 pub struct ModulePathProblems;
 
 impl ModulePathProblems {
-    pub fn file_of_another_module(kept: &ModulePath, refused: &ModulePath, at: Span) -> Diagnostic {
+    pub fn file_of_another_module(
+        written: &ModulePath,
+        refused: &ModulePath,
+        at: Span,
+    ) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::FILE_OF_ANOTHER_MODULE,
-            format!("module path `{refused}` loads the file of module `{kept}`"),
-            Label::new(at, format!("this file is module `{kept}`")),
+            format!("module path `{refused}` loads the file of module `{written}`"),
+            Label::new(at, format!("this file is module `{written}`")),
         )
-        .with_help(format!("write `{kept}`"))
+        .with_help(format!("write `{written}`"))
     }
 
     pub fn unnamed_part(

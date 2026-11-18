@@ -17,18 +17,18 @@ impl SecondModulePath {
         if self.parts_a_library_from_generated_code(sources) {
             return TextModuleRecord::Separate;
         }
-        let (kept, refused) = if self.keeps_the_library_path() {
+        let (written, refused) = if self.keeps_the_library_path() {
             (&self.second, &self.first)
         } else {
             (&self.first, &self.second)
         };
         let reported =
-            Self::in_program_files(refused, sources) && !Self::is_generated(kept, sources);
+            Self::in_program_files(refused, sources) && !Self::is_generated(written, sources);
         let diagnostic = reported.then(|| {
-            ModulePathProblems::file_of_another_module(&kept.path, &refused.path, refused.span)
+            ModulePathProblems::file_of_another_module(&written.path, &refused.path, refused.span)
         });
         TextModuleRecord::BindsTo {
-            kept: self.first.path,
+            loaded: self.first.path,
             diagnostic,
         }
     }

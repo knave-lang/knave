@@ -8,6 +8,7 @@ use super::derive_blockers::DeriveBlockers;
 use super::derive_catalog::DeriveCatalog;
 use super::derive_rules::DeriveRules;
 use super::display::TypeDisplay;
+use super::explanation_sources::ExplanationSources;
 use super::impl_item::ImplItem;
 use super::implementation_check::ImplementationCheck;
 use super::implementation_collector::ImplementationCollector;
@@ -35,6 +36,10 @@ impl DeclarationsFixture {
             program,
             declarations,
         }
+    }
+
+    pub(super) fn declarations(&self) -> &Declarations {
+        &self.declarations
     }
 
     pub(super) fn types(&self) -> &TypeDeclarations {
@@ -70,6 +75,19 @@ impl DeclarationsFixture {
         changed_structs: &'a rustc_hash::FxHashSet<BindingId>,
     ) -> DeriveRules<'a> {
         DeriveRules::new(&self.declarations, self.derive_blockers(), changed_structs)
+    }
+
+    pub(super) fn explanation_sources<'a>(
+        &'a self,
+        changed_structs: &'a rustc_hash::FxHashSet<BindingId>,
+    ) -> ExplanationSources<'a> {
+        ExplanationSources {
+            declarations: &self.declarations,
+            bindings: &self.program.bindings,
+            display: TypeDisplay::new(&self.program.bindings, &self.program.generics)
+                .with_projections(self.declarations.traits().table.projections()),
+            derive_rules: self.derive_rules(changed_structs),
+        }
     }
 
     pub(super) fn derivable_traits(&self) -> DerivableTraits<'_> {

@@ -394,23 +394,17 @@ src/types/checker.rs::TypeChecker::adopt_selection 6
 
 src/types/checker.rs::TypeChecker::check 7
 
-src/types/checker.rs::TypeChecker::enum_trait_help 4
 
 src/types/checker.rs::TypeChecker::generalize_var 4
 
 src/types/checker.rs::TypeChecker::generalize_vars 4
 
-src/types/checker.rs::TypeChecker::missing_trait_diagnostic 4
 
 src/types/checker.rs::TypeChecker::select_implementor 4
 
-src/types/checker.rs::TypeChecker::struct_trait_help 4
 
-src/types/checker.rs::TypeChecker::type_trait_help 4
 
-src/types/checker.rs::TypeChecker::with_non_order_help 5
 
-src/types/checker.rs::TypeChecker::with_order_help 6
 
 src/types/derives.rs::TypeChecker::report_listed_block 4
 

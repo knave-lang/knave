@@ -3,6 +3,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashSet;
 
 use super::checker::TypeChecker;
+use super::parameter_names::ParameterNames;
 use super::ty::{Bound, GenericParam, Scheme, Type, TypeVar};
 use super::typed::TypedExpr;
 use crate::core::BindingId;
@@ -92,7 +93,7 @@ impl TypeTextWriter {
 
     fn free_names(&self) -> impl Iterator<Item = String> + use<'_> {
         (0..)
-            .map(TypeChecker::parameter_name)
+            .map(ParameterNames::at)
             .filter(|name| !self.enclosing_names.contains(name))
     }
 

@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
 use super::generic_registry::GenericRegistry;
-use super::ty::{Bound, GenericParam, Type, TypeVar};
+use super::parameter_names::ParameterNames;
+use super::ty::{Bound, GenericParam, Scheme, Type, TypeVar};
 use super::unifier::Unifier;
 
 pub(super) struct GenericDeclarations<'a> {
@@ -45,6 +46,15 @@ impl<'a> GenericDeclarations<'a> {
 
     pub(super) fn fresh_variable(&mut self) -> Type {
         self.unifier.fresh()
+    }
+
+    pub(super) fn failed_scheme(&mut self) -> Scheme {
+        let param = self.declare(ParameterNames::at(0).as_str(), Vec::new());
+        Scheme {
+            lifetimes: Vec::new(),
+            body: Type::Generic(param.id),
+            params: vec![param],
+        }
     }
 }
 

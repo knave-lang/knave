@@ -110,8 +110,8 @@ impl<'l> WrittenTypeLowering<'l> {
         }
     }
 
-    pub(super) fn replace_bounds(&mut self, param: &mut GenericParam, bounds: Vec<Bound>) {
-        self.generics.redeclare(param, bounds);
+    pub(super) fn generics(&mut self) -> &mut GenericDeclarations<'l> {
+        &mut self.generics
     }
 
     fn check_trait_argument(&self, binding: BindingId, span: Span) -> Result<(), Diagnostic> {
@@ -454,7 +454,9 @@ mod tests {
         let display = fixture.named_trait("display");
         let mut lowering = fixture.checker.written_types();
         let mut param = lowering.declare_variable(variable);
-        lowering.replace_bounds(&mut param, vec![Bound::plain(display)]);
+        lowering
+            .generics()
+            .redeclare(&mut param, vec![Bound::plain(display)]);
         assert_eq!(param.bounds, vec![Bound::plain(display)]);
         assert_eq!(
             fixture.checker.unifier.generic_bounds(param.id),
@@ -501,5 +503,33 @@ mod tests {
         );
         let variables = fixture.checker.written_types().type_variables(&written);
         assert_eq!(variables, vec![first, second]);
+    }
+
+    #[test]
+    fn a_type_variable_applied_to_arguments_is_no_type_variable() {
+        let mut fixture = Fixture::new();
+        let variable = fixture.type_variable("a");
+        let written = Fixture::named(variable, vec![Fixture::integer()]);
+        assert!(
+            fixture
+                .checker
+                .written_types()
+                .type_variables(&written)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn an_associated_type_is_no_type_variable() {
+        let mut fixture = Fixture::new();
+        let item = fixture.associated_type("item");
+        let written = Fixture::named(item, Vec::new());
+        assert!(
+            fixture
+                .checker
+                .written_types()
+                .type_variables(&written)
+                .is_empty()
+        );
     }
 }

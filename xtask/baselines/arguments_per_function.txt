@@ -195,14 +195,8 @@ src/types/associated.rs::TypeChecker::check_associated_values 4
 src/types/borrowed_items.rs::TypeChecker::borrow_owned_items 4
 src/types/borrowed_items.rs::TypeChecker::borrowing_signature 4
 src/types/boxes.rs::BoxPlanner::cyclic 4
-src/types/checker.rs::ParameterUsage::visit 4
-src/types/checker.rs::ParameterUsage::visit_named 6
-src/types/checker.rs::ParameterUsage::visit_payload 4
 src/types/checker.rs::TypeChecker::adopt_selection 6
 src/types/checker.rs::TypeChecker::check 7
-src/types/checker.rs::TypeChecker::check_enum_parameters_used 4
-src/types/checker.rs::TypeChecker::collect_enum 5
-src/types/checker.rs::TypeChecker::collect_rust_type 5
 src/types/checker.rs::TypeChecker::enum_trait_help 4
 src/types/checker.rs::TypeChecker::generalize_var 4
 src/types/checker.rs::TypeChecker::generalize_vars 4

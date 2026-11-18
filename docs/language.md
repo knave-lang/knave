@@ -115,7 +115,7 @@ A `let` that cannot bind is an error. A name without a value is `L0334`, and its
 
 A `local` outside a body is `L0227`, and its help wraps the code in a `let` that shows the binding as written, as `(let (x 5) ...)`. A name in a value that is unbound and names a type, as `int` in `(let (year int) 2025)`, keeps `L0201` and its similar-name suggestion, and adds the note that a type goes beside a name in a binding, as in `(let ((year int) 2025) ...)`, or in a `type` signature. The note appears on the first such name of each form of a body and of each module-level value, because only the compiler knows which names are types. A struct name at the head of a call gets no note, because there it reads as a call of a constructor. A name that names a macro keeps `L0304`, and a value that resolves stays valid, so `(let (make pair) ...)` binds `make` to the function `pair`.
 
-The prelude, the docs and the examples follow one style rule: bind the steps of a function body with `local`, and use `let` where only one expression fits or where a binding should end before the body does.
+The prelude's own code follows one style rule: bind the steps of a function body with `local`, and use `let` where only one expression fits or where a binding should end before the body does. Every documentation example, in a docstring, an explanation or the reference, binds with the block form of `let`, as in `(let (a 1 b 2) body ...)`.
 
 1. **The steps of a function body use `local`.** They add no nesting and read as the Rust they emit.
 2. **A position that takes one expression uses `let`:** an `if` branch, a `match` arm or an argument.

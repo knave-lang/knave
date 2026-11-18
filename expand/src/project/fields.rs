@@ -103,9 +103,13 @@ impl<'f> Fields<'f> {
     }
 
     pub fn string(&self, key: &str, problems: &mut Diagnostics) -> Option<String> {
+        self.located_string(key, problems).map(|(text, _)| text)
+    }
+
+    pub fn located_string(&self, key: &str, problems: &mut Diagnostics) -> Option<(String, Span)> {
         let field = self.get(key)?;
         match field.value.kind() {
-            FormKind::String(text) => Some(text.to_string()),
+            FormKind::String(text) => Some((text.to_string(), field.value.span())),
             _ => field.report_mismatch(Self::STRING, problems),
         }
     }

@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use super::Project;
 use super::dependency_reader::DependencyReader;
 use super::fields::{FieldScanner, Fields};
 use super::lint_reader::LintReader;
@@ -8,6 +7,7 @@ use super::name::ProjectName;
 use super::problems::ProjectProblems;
 use super::section::Section;
 use super::vocabulary::ProjectVocabulary;
+use super::{CompilerVersion, Project};
 use crate::diagnostic::Diagnostics;
 use crate::language::Language;
 use crate::reader::Form;
@@ -25,7 +25,7 @@ struct ProjectForm<'f> {
 }
 
 impl<'v> ProjectReader<'v> {
-    const KEYS: &'static [&'static str] = &["version", "entry", "lib", "edition"];
+    const KEYS: &'static [&'static str] = &["version", "entry", "lib", "edition", Language::NAME];
     const DEFAULT_VERSION: &'static str = "0.1.0";
     const DEFAULT_ENTRY: &'static str = "src/main";
     const DEFAULT_LIBRARY_ROOT: &'static str = "src/lib";
@@ -161,12 +161,16 @@ impl<'v> ProjectReader<'v> {
         let entry = self.module_file(fields, "entry", Self::DEFAULT_ENTRY);
         let library_root = self.module_file(fields, "lib", Self::DEFAULT_LIBRARY_ROOT);
         let edition = self.edition(fields);
+        let compiler_version = fields
+            .located_string(Language::NAME, &mut self.problems)
+            .map(|(text, span)| CompilerVersion { text, span });
         Some(Project {
             name: name?,
             version,
             entry,
             library_root,
             edition,
+            compiler_version,
             libraries: sections.libraries,
             dependencies: sections.dependencies,
             dev_dependencies: sections.dev_dependencies,

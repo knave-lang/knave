@@ -4,7 +4,7 @@ pub struct VersionedText {
 
 impl VersionedText {
     const VERSION_SLOT: &str = "{knave-version}";
-    const VERSION: &str = env!("CARGO_PKG_VERSION");
+    pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
     pub const fn new(template: &'static str) -> Self {
         Self { template }

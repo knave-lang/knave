@@ -618,6 +618,7 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 
 ```lisp
 (defproject browser
+  :knave "0.18.0"
   :version "0.1.0"
   :entry "src/main.knv"
   :edition 2026
@@ -642,6 +643,7 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 
 - The name follows `defproject` and is the only required part. It is kebab-case: words of lowercase letters and digits, joined by single dashes, starting with a letter.
 - `:entry` defaults to `src/main.knv`, `:lib` to `src/lib.knv`, `:version` to `"0.1.0"`, and `:edition` to the compiler's edition, 2026. An edition other than 2026 is an error.
+- `:knave` records the Knave version the project uses, as a string ([RFC 0079](../rfcs/0079-project-knave-version.md)). It has no default.
 - A dependency is a list: the name, an optional version string, then `:key value` pairs. A feature is a string.
 - A crate dependency takes a version or a `:path`, and MAY take `:features`.
 - A library takes `:path`, or `:git` with `:rev`, and no version. `:rev` is a full 40-digit commit hash.
@@ -649,7 +651,7 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 - The `lints` section sets the level of each lint, an `L08xx` code, by its name: `allow`, `warn` or `deny` (see Lints). An unknown lint, `L0729`, suggests the closest lint's name, or the lint's name when the entry gives its code; an unknown level is `L0730`; a lint listed twice is `L0731`; an entry with no level is `L0732`; a number, which would set a rule's threshold, is `L0733`, because no rule takes one yet; a level written as a string or a list is `L0734`; and a name written as a string, a number or a list is `L0735`. Only the root project's section applies: a library's section is read and checked, but sets no level.
 - The compiler reads and checks `dependencies` and `dev-dependencies`. Only the program that `knave test` builds can use a project's `dev-dependencies`, and a library's `dev-dependencies` never join a dependent's manifest. Until the rest of RFC 0061 lands, `eval` and `repl` in a project that uses crates are an error, `L0719`, labeled on the project's first crate, or on the library entry that adds crates. An empty section is allowed.
 
-**`knave new <name>` creates a project in a new directory of that name.** It writes `(defproject <name>)`, an entry at `src/main.knv` that exports a function `greeting` and whose `main` prints it, and a test at `tests/greeting.knv` that checks `greeting`. Then it adds three components, each on by default:
+**`knave new <name>` creates a project in a new directory of that name.** It writes `(defproject <name> :knave "<version>")`, with the compiler's own version, an entry at `src/main.knv` that exports a function `greeting` and whose `main` prints it, and a test at `tests/greeting.knv` that checks `greeting`. Then it adds three components, each on by default:
 
 - Git: a `.gitignore` that lists `/doc/`, the folder of `knave doc --write`, and a repository from `git init`. Inside a git work tree, `new` runs no `git init`. When `git` is missing, cannot start or fails, `new` warns and still exits 0. `--skip-git` leaves out both.
 - GitHub: `.github/workflows/knave.yml`, which installs the compiler's own version with `cargo install knave --version <version> --locked` and a cache, then runs `knave fmt --check`, `knave lint` and `knave test`. `--skip-github` leaves it out.

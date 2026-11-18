@@ -1,3 +1,4 @@
+mod compiler_version;
 mod crate_set;
 mod dependency_reader;
 mod dependency_section;
@@ -24,6 +25,7 @@ mod vocabulary;
 
 use std::path::PathBuf;
 
+pub use compiler_version::CompilerVersion;
 pub use crate_set::CrateSet;
 pub use dependency_section::DependencySection;
 pub(crate) use level_keys::LevelKeys;
@@ -46,6 +48,7 @@ pub struct Project {
     pub entry: PathBuf,
     pub library_root: PathBuf,
     pub edition: i128,
+    pub compiler_version: Option<CompilerVersion>,
     pub libraries: Vec<LibraryDependency>,
     pub dependencies: Vec<CrateDependency>,
     pub dev_dependencies: Vec<CrateDependency>,

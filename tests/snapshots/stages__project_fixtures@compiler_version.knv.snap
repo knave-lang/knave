@@ -1,0 +1,30 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/compiler_version.knv
+---
+Project {
+    name: "browser",
+    version: "0.1.0",
+    entry: "src/main.knv",
+    library_root: "src/lib.knv",
+    edition: 2026,
+    compiler_version: Some(
+        CompilerVersion {
+            text: "0.18.0",
+            span: Span {
+                source: SourceId(
+                    0,
+                ),
+                start: 27,
+                end: 35,
+            },
+        },
+    ),
+    libraries: [],
+    dependencies: [],
+    dev_dependencies: [],
+    lints: LintTable {
+        entries: [],
+    },
+}

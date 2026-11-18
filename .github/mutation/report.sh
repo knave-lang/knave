@@ -21,8 +21,7 @@ main() {
 }
 
 every_shard_completed() {
-  ((CHANGED_SOURCES == 0)) && return 0
-  for shard in $(seq 0 $((SHARDS - 1))); do
+  for shard in $(seq 0 $((${SHARD_COUNT:-0} - 1))); do
     [[ -f results/mutants-shard-$shard/complete ]] || return 1
   done
 }
@@ -65,12 +64,12 @@ mutant_functions() {
 require_no_new_survivor() {
   local previous=$1 found=$2
   local new
-  new=$(comm -13 <(listed_items <<< "$previous" | sort -u) <(listed_items <<< "$found" | grep -F '` missed:' | sort -u))
-  [[ -z $new ]] || fail "These mutants are missed and new since the last run: $new"
+  new=$(comm -13 <(unchecked_items <<< "$previous" | sort -u) <(unchecked_items <<< "$found" | grep -F '` missed:' | sort -u))
+  [[ -z $new ]] || fail "These mutants are missed and were not open in the issue: $new"
 }
 
-listed_items() {
-  sed -n 's/^- \[[ x]\] //p'
+unchecked_items() {
+  sed -n 's/^- \[ \] //p'
 }
 
 fail() {

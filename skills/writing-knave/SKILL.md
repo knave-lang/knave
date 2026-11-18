@@ -174,7 +174,7 @@ metadata:
 | `i64`, `f64`, `String`, `&str` | `int`, `float`, `string`, `(ref str)` |
 | `Vec<T>`, `Option<T>`, `Result<T, E>` | `(vec t)`, `(option t)`, `(result t e)` |
 | `fn f(x: i64)` | `(defn f ((x int)) ...)` |
-| `x += 1` | `(set! x (+ x 1))` |
+| `x += 1` | `(set! x (inc x))` |
 | `x == y`, `x != y` | `(= x y)`, `(not= x y)` |
 | `x?` | `(try x)` |
 | `p.x`, `v.len()` | `(:x p)`, `(len v)` |

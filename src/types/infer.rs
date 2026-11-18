@@ -3355,7 +3355,7 @@ impl TypeChecker {
     fn moved_field_base(&mut self, base: TypedExpr) -> TypedExpr {
         if self.reads_owned_field(&base) {
             TypedExpr {
-                ty: self.place_types().moved(&base),
+                ty: self.place_types().moved(&base, &self.copy_rules()),
                 ..base
             }
         } else {

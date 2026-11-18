@@ -1,9 +1,0 @@
----
-source: tests/stages.rs
-expression: reports.report(path)
-input_file: tests/fixtures/loans/branching_template_of_a_collapsed_local_holds_the_vector.knv
----
-main
-  3:29 borrow `s`: no live loan
-  4:16 borrow `names`: `s` lent at 3:29, held by `names`
-  9:10 change `names`: `s` lent at 3:29, held by `names`; `names` lent at 4:16, held by `v`

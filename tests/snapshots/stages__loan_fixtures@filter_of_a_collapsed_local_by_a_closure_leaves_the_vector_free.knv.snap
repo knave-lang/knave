@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/filter_of_a_collapsed_local_by_a_closure_leaves_the_vector_free.knv
+---
+main
+  3:29 borrow `s`: no live loan
+  4:16 borrow `names`: `s` lent at 3:29, held by `names`
+  12:10 change `names`: `s` lent at 3:29, held by `names`
+  13:8 borrow `v`: `s` lent at 3:29, held by `v`

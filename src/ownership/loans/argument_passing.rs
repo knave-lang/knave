@@ -1,4 +1,3 @@
-use super::called_parameter::CalledParameter;
 use super::holdings::Holdings;
 use super::lender::Lender;
 use super::lending::Lending;
@@ -41,16 +40,16 @@ impl Lends {
 impl dyn Passing {
     pub fn of(
         argument: &TypedArgument,
-        parameter: CalledParameter<'_>,
+        parameter: Option<&Type>,
         rules: &LoanRules<'_>,
     ) -> &'static dyn Passing {
         match argument.borrow {
             Borrow::Shared => &Lends::SHARED,
             Borrow::Mutable => &Lends::MUTABLE,
-            Borrow::Reborrow => <dyn Passing>::reborrowed(parameter.ty()),
+            Borrow::Reborrow => <dyn Passing>::reborrowed(parameter),
             Borrow::Deref(_) => &Copies,
-            Borrow::Collapse(_) => <dyn Passing>::collapsed(argument, parameter, rules),
-            Borrow::Passthrough => <dyn Passing>::through_reference(argument, parameter.ty()),
+            Borrow::Collapse(_) => <dyn Passing>::collapsed(argument, rules),
+            Borrow::Passthrough => <dyn Passing>::through_reference(argument, parameter),
             _ => <dyn Passing>::unadjusted(argument, rules),
         }
     }
@@ -63,13 +62,8 @@ impl dyn Passing {
         }
     }
 
-    fn collapsed(
-        argument: &TypedArgument,
-        parameter: CalledParameter<'_>,
-        rules: &LoanRules<'_>,
-    ) -> &'static dyn Passing {
-        let stored_whole = parameter.stores_the_reference() && !rules.copies_out(argument);
-        if argument.value.ty.is_reference() && !stored_whole {
+    fn collapsed(argument: &TypedArgument, rules: &LoanRules<'_>) -> &'static dyn Passing {
+        if argument.collapsed_shared_layers().is_some() || rules.copies_out(argument) {
             &Collapses
         } else {
             &Holds
@@ -170,7 +164,6 @@ mod tests {
     use super::{PassedArgument, Passing};
     use crate::core::BindingId;
     use crate::ownership::lambda_source::LambdaSource;
-    use crate::ownership::loans::called_parameter::CalledParameter;
     use crate::ownership::loans::control_flow_graph::ControlFlowGraph;
     use crate::ownership::loans::holdings::Holdings;
     use crate::ownership::loans::lender::Lender;
@@ -230,7 +223,7 @@ mod tests {
                 borrow,
             };
             let rules = LoanRules::of(self.source.program());
-            let passing = <dyn Passing>::of(&argument, CalledParameter::untied(None), &rules);
+            let passing = <dyn Passing>::of(&argument, None, &rules);
             let mut graph = ControlFlowGraph::new();
             let mut loans = LoanTable::default();
             let mut lender = Lender::new(&mut graph, &mut loans, PointId::ENTRY);
@@ -242,7 +235,7 @@ mod tests {
         fn outcome(&self, local: &str, borrow: Borrow, parameter: Option<&Type>) -> Outcome {
             let argument = self.argument(local, borrow);
             let rules = LoanRules::of(self.source.program());
-            let passing = <dyn Passing>::of(&argument, CalledParameter::untied(parameter), &rules);
+            let passing = <dyn Passing>::of(&argument, parameter, &rules);
             let mut graph = ControlFlowGraph::new();
             let mut loans = LoanTable::default();
             let passed = {

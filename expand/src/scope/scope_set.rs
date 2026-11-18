@@ -92,11 +92,25 @@ impl ScopeSet {
         self.shared_is_subset_of(other)
     }
 
-    pub(super) fn largest(&self) -> Option<Scope> {
-        let own_largest = self.own().last().copied();
+    pub(super) fn largest_matching(&self, matches: impl Fn(Scope) -> bool) -> Option<Scope> {
+        let own = self
+            .own()
+            .iter()
+            .rev()
+            .copied()
+            .find(|scope| matches(*scope));
         match self.shared() {
-            Some(shared) => own_largest.max(shared.largest()),
-            None => own_largest,
+            Some(shared) if shared.largest() > own => {
+                let largest_shared = shared.largest().filter(|scope| matches(*scope));
+                own.max(largest_shared.or_else(|| {
+                    shared
+                        .ascending()
+                        .into_iter()
+                        .filter(|scope| matches(*scope))
+                        .last()
+                }))
+            }
+            _ => own,
         }
     }
 
@@ -160,7 +174,8 @@ impl ScopeSet {
     }
 
     fn is_worth_sharing(&self, prefix: &ChainPrefix) -> bool {
-        prefix.len() >= Self::SHORTEST_SHARED_PREFIX && Some(prefix.first()) > self.largest()
+        prefix.len() >= Self::SHORTEST_SHARED_PREFIX
+            && Some(prefix.first()) > self.largest_matching(|_| true)
     }
 
     fn contains_prefix(&self, prefix: &ChainPrefix) -> bool {
@@ -527,7 +542,10 @@ mod tests {
         let added = ScopeSet::of(&scopes);
         assert_eq!(shared, added);
         assert_eq!(Scopes::hash_of(&shared), Scopes::hash_of(&added));
-        assert_eq!(shared.largest(), added.largest());
+        assert_eq!(
+            shared.largest_matching(|_| true),
+            added.largest_matching(|_| true)
+        );
         assert!(shared.is_subset_of(&added) && added.is_subset_of(&shared));
     }
 
@@ -602,7 +620,23 @@ mod tests {
         let (mut set, _) = scopes.shared_set_of(Scopes::SHARED_LENGTH);
         let (newer_chain, newer) = scopes.chain_of(Scopes::SHARED_LENGTH);
         set.add_prefix(&Scopes::prefix_of(&newer_chain));
-        assert_eq!(set.largest(), newer.last().copied());
+        assert_eq!(set.largest_matching(|_| true), newer.last().copied());
+    }
+
+    #[test]
+    fn the_largest_matching_scope_of_a_shared_set_may_sit_below_its_largest() {
+        let (set, scopes) = Scopes::new().shared_set_of(Scopes::SHARED_LENGTH);
+        let first = scopes[0];
+        assert_eq!(set.largest_matching(|scope| scope == first), Some(first));
+    }
+
+    #[test]
+    fn the_largest_matching_own_scope_wins_over_smaller_shared_ones() {
+        let mut scopes = Scopes::new();
+        let (mut set, older) = scopes.shared_set_of(Scopes::SHARED_LENGTH);
+        let own = scopes.allocator.fresh(ScopeKind::Local);
+        set.add(own);
+        assert_eq!(set.largest_matching(|scope| scope != older[1]), Some(own));
     }
 
     #[test]

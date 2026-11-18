@@ -32,17 +32,13 @@ impl MacroOrigins {
             .introduced
             .first_written_at(site.span(), binder.name())
             .unwrap_or(site.span());
-        let passed_in = writer
-            .generator_call
-            .is_some_and(|generator_call| generator_call.contains(written))
-            && site.is_spelled_at(sources, written);
-        if passed_in {
+        if writer.passed_in(site, sources, written) {
             return Some(BinderReach::Written { binder: written });
         }
         Some(BinderReach::InMacro {
             binder: written,
             call: site.span(),
-            introducing_macro: writer.name,
+            introducing_macro: writer.name(),
         })
     }
 }

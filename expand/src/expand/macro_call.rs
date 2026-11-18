@@ -4,9 +4,9 @@ use rustc_hash::FxHashMap;
 
 use super::Expander;
 use super::context::DefinitionContext;
+use super::expanded_call::ExpandedCall;
 use super::expansion_limit::ExpansionLimit;
 use super::form_budget::FormBudget;
-use super::introducing_macros::MacroCall;
 use super::macro_call_lookup::MacroCallLookup;
 use super::macro_origin::MacroOrigin;
 use super::problems::ExpandProblems;
@@ -217,16 +217,18 @@ impl Expander<'_> {
             return Err(self.expansion_too_large(binding, call_site));
         }
         let closure = self.macro_closure(binding, call_site)?;
+        let head_writer = self.tables.scopes.latest_introduction_at_head(&form);
         let (input, introduction) = self.prepare_input(form, context);
         let origin = self.macro_origin(binding, call_site);
-        self.tables.macro_origins.introducing_macros.record(
-            introduction,
-            &MacroCall {
-                binding,
-                form: &input,
-                origin: &origin,
-            },
-        );
+        let call = ExpandedCall {
+            binding,
+            head_writer,
+            origin: &origin,
+        };
+        self.tables
+            .macro_origins
+            .introducing_macros
+            .record(introduction, &call);
         let arguments = ReturnedArguments::of_call(&input);
         self.expansion_depth += 1;
         self.introductions.push(introduction);
@@ -447,10 +449,10 @@ impl Expander<'_> {
         binding: BindingId,
         definition: &Form,
     ) -> Result<Rc<Closure>, Diagnostic> {
-        self.tables
-            .macro_origins
-            .introducing_macros
-            .define(binding, definition);
+        self.tables.macro_origins.introducing_macros.define(
+            binding,
+            self.tables.scopes.latest_introduction_at_head(definition),
+        );
         let compiled = self.lower_macro_lambda(definition).and_then(|lambda| {
             self.check_compile_time(&lambda)?;
             Ok(Rc::new(Closure {

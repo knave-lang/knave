@@ -317,6 +317,7 @@ struct Sandbox {
 impl Sandbox {
     const COMPILER: &str = env!("CARGO_BIN_EXE_knave");
     const GIT_FOLDER: &str = ".git";
+    const GIT_CEILING_VARIABLE: &str = "GIT_CEILING_DIRECTORIES";
     const BUILD_PARENT: &str = "target";
 
     fn new(test_name: &str) -> Self {
@@ -629,6 +630,17 @@ exit 101
     fn compiler_reporting_to(&self, standard_error: Stdio, arguments: &[&str]) -> Outcome {
         let mut command = self.command(Path::new(Self::COMPILER), arguments);
         command.stderr(standard_error);
+        Outcome::of(&mut command)
+    }
+
+    fn compiler_outside_git_in(&self, working_directory: &str, arguments: &[&str]) -> Outcome {
+        let mut command = self.command(Path::new(Self::COMPILER), arguments);
+        command
+            .current_dir(self.directory.join(working_directory))
+            .env(
+                Self::GIT_CEILING_VARIABLE,
+                self.directory.parent().expect("the sandbox has a parent"),
+            );
         Outcome::of(&mut command)
     }
 
@@ -8074,7 +8086,7 @@ fn new_writes_a_workflow_that_runs_each_check() {
 fn new_runs_git_init() {
     let sandbox = Sandbox::new("new_git_init");
     sandbox
-        .compiler(&["new", "demo-app"])
+        .compiler_outside_git_in(".", &["new", "demo-app"])
         .assert_silent_success();
     assert!(sandbox.has_git_repository("demo-app"));
 }
@@ -8082,9 +8094,11 @@ fn new_runs_git_init() {
 #[test]
 fn new_inside_a_git_repository_runs_no_git_init() {
     let sandbox = Sandbox::new("new_inside_git");
-    sandbox.compiler(&["new", "outer"]).assert_silent_success();
     sandbox
-        .compiler_in("outer", &["new", "inner"])
+        .compiler_outside_git_in(".", &["new", "outer"])
+        .assert_silent_success();
+    sandbox
+        .compiler_outside_git_in("outer", &["new", "inner"])
         .assert_silent_success();
     assert!(!sandbox.has_git_repository("outer/inner"));
 }

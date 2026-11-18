@@ -201,7 +201,6 @@ src/types/checker.rs::TypeChecker::enum_trait_help 4
 src/types/checker.rs::TypeChecker::generalize_var 4
 src/types/checker.rs::TypeChecker::generalize_vars 4
 src/types/checker.rs::TypeChecker::missing_trait_diagnostic 4
-src/types/checker.rs::TypeChecker::named_receiver 4
 src/types/checker.rs::TypeChecker::select_implementor 4
 src/types/checker.rs::TypeChecker::struct_trait_help 4
 src/types/checker.rs::TypeChecker::type_trait_help 4

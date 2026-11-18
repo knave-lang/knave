@@ -1,0 +1,9 @@
+(defn broken () (+ 1 "one"))
+
+(type small? (fn (int) bool))
+
+(defn small? (n) (< n 10))
+
+(defn main ()
+  (local names (vec "ada" "bob"))
+  (println (count (take-while (iter names) small?))))

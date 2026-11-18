@@ -7977,18 +7977,38 @@ fn new_writes_every_component_by_default() {
 }
 
 #[test]
-fn new_skips_the_github_workflow_and_the_agent_skill() {
-    let sandbox = Sandbox::new("new_skip_github_and_skill");
+fn new_skips_the_github_workflow() {
+    let sandbox = Sandbox::new("new_skip_github");
     sandbox
-        .compiler(&["new", "demo-app", "--skip-github", "--skip-agent-skill"])
+        .compiler(&["new", "demo-app", "--skip-github"])
         .assert_silent_success();
     assert_eq!(
         sandbox.project_files("demo-app"),
         [
+            ".agents/skills/writing-knave/SKILL.md",
+            ".claude/skills/writing-knave/SKILL.md",
             ".gitignore",
             "project.knv",
             "src/main.knv",
-            "tests/greeting.knv"
+            "tests/greeting.knv",
+        ]
+    );
+}
+
+#[test]
+fn new_skips_the_agent_skill() {
+    let sandbox = Sandbox::new("new_skip_agent_skill");
+    sandbox
+        .compiler(&["new", "demo-app", "--skip-agent-skill"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.project_files("demo-app"),
+        [
+            ".github/workflows/knave.yml",
+            ".gitignore",
+            "project.knv",
+            "src/main.knv",
+            "tests/greeting.knv",
         ]
     );
 }

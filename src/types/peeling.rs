@@ -29,4 +29,15 @@ impl<'a> ReferencePeeling<'a> {
             }
         }
     }
+
+    pub(super) fn has_shared_layer(&self, ty: &Type) -> bool {
+        let mut matched = self.unifier.resolve(ty);
+        loop {
+            match matched {
+                Type::Ref(..) => return true,
+                Type::Mut(_, inner) => matched = self.unifier.resolve(&inner),
+                _ => return false,
+            }
+        }
+    }
 }

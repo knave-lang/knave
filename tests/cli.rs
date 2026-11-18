@@ -24,7 +24,7 @@ const EVERY_NEW_FILE: [&str; 7] = [
     ".gitignore",
     "project.knv",
     "src/main.knv",
-    "tests/main.knv",
+    "tests/greeting.knv",
 ];
 const AGENT_SKILL_PATHS: [&str; 2] = [
     "demo-app/.agents/skills/writing-knave/SKILL.md",
@@ -7988,7 +7988,7 @@ fn new_skips_the_github_workflow_and_the_agent_skill() {
             ".gitignore",
             "project.knv",
             "src/main.knv",
-            "tests/main.knv"
+            "tests/greeting.knv"
         ]
     );
 }
@@ -8007,7 +8007,7 @@ fn new_skips_git_and_keeps_the_github_workflow() {
             ".github/workflows/knave.yml",
             "project.knv",
             "src/main.knv",
-            "tests/main.knv",
+            "tests/greeting.knv",
         ]
     );
     assert!(!sandbox.has_git_repository("demo-app"));
@@ -8022,6 +8022,19 @@ fn new_writes_a_project_that_passes_its_own_checks() {
     for check in NEW_PROJECT_CHECKS {
         sandbox.compiler_in("demo-app", check).assert_exit_code(0);
     }
+}
+
+#[test]
+fn new_writes_a_test_of_the_programs_own_function() {
+    let sandbox = Sandbox::new("new_starter_test");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let test = sandbox.compiler_in("demo-app", &["test"]);
+    assert_eq!(
+        test.assert_exit_code(0).stdout(),
+        "running 1 test\ntest greeting/greeting-says-hello ... ok\n1 passed, 0 failed\n"
+    );
 }
 
 #[test]

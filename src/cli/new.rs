@@ -22,9 +22,8 @@ pub struct NewCommand {
 }
 
 impl NewCommand {
-    const ENTRY_TEXT: &str = "(defn main ()\n  (println \"hello\"))\n";
-    const STARTER_TEST_STEM: &str = "main";
-    const STARTER_TEST_TEXT: &str = "(deftest addition\n  (assert (= (+ 1 2) 3)))\n";
+    const GREETING_FUNCTION: &str = "greeting";
+    const GREETING: &str = "\"hello\"";
     const NAME_ARGUMENT: &str = "<name argument>";
 
     pub fn new(name: String, components: Vec<Box<dyn ProjectComponent>>) -> Self {
@@ -62,6 +61,7 @@ impl NewCommand {
     ) -> Result<Vec<NewFile>, ExitStatus> {
         let project_file = self.project_file(root);
         let entry_file = Self::entry_file(terminal, root, &project_file)?;
+        let starter_test = Self::starter_test(root, entry_file.path());
         let working_directory = WorkingDirectory::path();
         let source_lookup = ModuleLookup::beside(working_directory);
         Ok(vec![
@@ -71,7 +71,7 @@ impl NewCommand {
                 &ModuleLookup::beside_project_file(working_directory),
             ),
             self.formatted(terminal, entry_file, &source_lookup),
-            self.formatted(terminal, Self::starter_test(root), &source_lookup),
+            self.formatted(terminal, starter_test, &source_lookup),
         ])
     }
 
@@ -95,17 +95,28 @@ impl NewCommand {
             project_file.text().to_string(),
         );
         let project = sources.read_project(source)?;
-        Ok(NewFile::new(
-            root.join(&project.entry),
-            Self::ENTRY_TEXT.to_string(),
-        ))
+        let function = Self::GREETING_FUNCTION;
+        let text = format!(
+            "(export {function})\n\n(defn {function} () {})\n\n(defn main ()\n  (println ({function})))\n",
+            Self::GREETING
+        );
+        Ok(NewFile::new(root.join(&project.entry), text))
     }
 
-    fn starter_test(root: &Path) -> NewFile {
-        let file_name = format!("{}.{}", Self::STARTER_TEST_STEM, Language::EXTENSION);
+    fn starter_test(root: &Path, entry: &Path) -> NewFile {
+        let function = Self::GREETING_FUNCTION;
+        let entry_module = entry
+            .file_stem()
+            .expect("the project's entry names a file")
+            .display();
+        let text = format!(
+            "(use {entry_module} {function})\n\n(deftest {function}-says-hello\n  (assert (= ({function}) {})))\n",
+            Self::GREETING
+        );
+        let file_name = format!("{function}.{}", Language::EXTENSION);
         NewFile::new(
             root.join(SearchScope::TESTS_DIRECTORY).join(file_name),
-            Self::STARTER_TEST_TEXT.to_string(),
+            text,
         )
     }
 

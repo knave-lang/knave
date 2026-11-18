@@ -1,3 +1,4 @@
+use super::derivable_trait::DerivableTrait;
 use super::derived_trait::DerivedTrait;
 use super::structural_trait::StructuralTrait;
 use super::written_derive::WrittenDerive;
@@ -6,7 +7,7 @@ use crate::modules::ModuleSources;
 use crate::source::Span;
 
 pub(super) struct DeriveCatalog {
-    traits: Vec<(BindingId, DerivedTrait)>,
+    traits: Vec<DerivableTrait>,
 }
 
 impl DeriveCatalog {
@@ -26,52 +27,55 @@ impl DeriveCatalog {
             prelude_traits
                 .iter()
                 .filter(move |(_, path)| StructDerives::derive_name(path) == *derived)
-                .map(move |(binding, _)| (*binding, DerivedTrait::Written(derived)))
+                .map(move |(binding, _)| DerivableTrait {
+                    binding: *binding,
+                    derived: DerivedTrait::Written(derived),
+                })
         });
-        let structural = structural
-            .iter()
-            .map(|structural| (structural.binding, DerivedTrait::Structural));
+        let structural = structural.iter().map(|structural| DerivableTrait {
+            binding: structural.binding,
+            derived: DerivedTrait::Structural,
+        });
         Self {
             traits: written.chain(structural).collect(),
         }
     }
 
-    pub(super) fn entries(&self) -> &[(BindingId, DerivedTrait)] {
+    pub(super) fn entries(&self) -> &[DerivableTrait] {
         &self.traits
     }
 
     pub(super) fn accepts(&self, trait_binding: BindingId) -> bool {
         self.traits
             .iter()
-            .any(|(binding, _)| *binding == trait_binding)
+            .any(|entry| entry.binding == trait_binding)
     }
 
     pub(super) fn names(&self, bindings: &BindingArena) -> Vec<String> {
         self.traits
             .iter()
-            .map(|(binding, _)| bindings.get(*binding).name().to_string())
+            .map(|entry| bindings.get(entry.binding).name().to_string())
             .collect()
     }
 
     pub(super) fn listing_span(
         &self,
         derive: &WrittenDerive,
-        trait_binding: BindingId,
-        derived: DerivedTrait,
+        entry: DerivableTrait,
     ) -> Option<Span> {
         derive
             .traits
             .iter()
-            .find(|(listed, _)| *listed == trait_binding || self.brings(*listed, derived))
+            .find(|(listed, _)| *listed == entry.binding || self.brings(*listed, entry.derived))
             .map(|(_, span)| *span)
     }
 
     pub(super) fn written_name(&self, trait_binding: BindingId) -> Option<&'static str> {
         self.traits
             .iter()
-            .find(|(binding, _)| *binding == trait_binding)
-            .and_then(|(_, derived)| match derived {
-                DerivedTrait::Written(name) => Some(*name),
+            .find(|entry| entry.binding == trait_binding)
+            .and_then(|entry| match entry.derived {
+                DerivedTrait::Written(name) => Some(name),
                 DerivedTrait::Structural => None,
             })
     }
@@ -80,8 +84,8 @@ impl DeriveCatalog {
         let listed = self
             .traits
             .iter()
-            .find(|(binding, _)| *binding == listed)
-            .map(|(_, listed)| *listed);
+            .find(|entry| entry.binding == listed)
+            .map(|entry| entry.derived);
         match (listed, derived) {
             (Some(DerivedTrait::Written(listed)), DerivedTrait::Written(name)) => {
                 StructDerives::brings(listed, name)
@@ -95,6 +99,7 @@ impl DeriveCatalog {
 mod tests {
     use crate::source::{SourceId, Span};
     use crate::types::declarations_fixture::DeclarationsFixture;
+    use crate::types::derivable_trait::DerivableTrait;
     use crate::types::derived_trait::DerivedTrait;
     use crate::types::written_derive::WrittenDerive;
 
@@ -157,7 +162,13 @@ mod tests {
         let catalog = fixture.declarations.derive_catalog();
         let debug = fixture.declarations.trait_named("debug");
         let listing = fixture.listing("debug");
-        let span = catalog.listing_span(&listing, debug, DerivedTrait::Written("Debug"));
+        let span = catalog.listing_span(
+            &listing,
+            DerivableTrait {
+                binding: debug,
+                derived: DerivedTrait::Written("Debug"),
+            },
+        );
         assert_eq!(span, Some(CatalogFixture::span(7)));
     }
 
@@ -167,7 +178,13 @@ mod tests {
         let catalog = fixture.declarations.derive_catalog();
         let partial = fixture.declarations.trait_named("partial-eq");
         let listing = fixture.listing("eq");
-        let span = catalog.listing_span(&listing, partial, DerivedTrait::Written("PartialEq"));
+        let span = catalog.listing_span(
+            &listing,
+            DerivableTrait {
+                binding: partial,
+                derived: DerivedTrait::Written("PartialEq"),
+            },
+        );
         assert_eq!(span, Some(CatalogFixture::span(7)));
     }
 
@@ -178,7 +195,13 @@ mod tests {
         let debug = fixture.declarations.trait_named("debug");
         let listing = fixture.listing("hash");
         assert_eq!(
-            catalog.listing_span(&listing, debug, DerivedTrait::Written("Debug")),
+            catalog.listing_span(
+                &listing,
+                DerivableTrait {
+                    binding: debug,
+                    derived: DerivedTrait::Written("Debug")
+                }
+            ),
             None
         );
     }

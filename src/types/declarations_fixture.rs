@@ -55,9 +55,12 @@ impl DeclarationsFixture {
         &self.program.bindings
     }
 
+    pub(super) fn modules(&self) -> &[crate::core::CoreModule] {
+        &self.source.program().modules
+    }
+
     pub(super) fn derive_catalog(&self) -> DeriveCatalog {
-        let modules = &self.source.program().modules;
-        DeriveCatalog::of(modules, &self.declarations.traits.structural)
+        DeriveCatalog::of(self.modules(), &self.declarations.traits.structural)
     }
 
     pub(super) fn derive_rules<'a>(

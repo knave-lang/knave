@@ -811,7 +811,7 @@ impl TypeProblems {
         .with_help(format!("write one of: {}", names.join(", ")))
     }
 
-    pub fn non_exhaustive_match(cases: &[String], span: Span) -> Diagnostic {
+    pub fn non_exhaustive_match(patterns: &[String], span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::NON_EXHAUSTIVE_MATCH,
             "non-exhaustive `match`",
@@ -819,14 +819,14 @@ impl TypeProblems {
         )
         .with_note(format!(
             "missing {}: {}",
-            Counted::noun(cases.len(), "case"),
-            cases
+            Counted::noun(patterns.len(), "pattern"),
+            patterns
                 .iter()
-                .map(|case| format!("`{case}`"))
+                .map(|pattern| format!("`{pattern}`"))
                 .collect::<Vec<_>>()
                 .join(", ")
         ))
-        .with_help("add an arm for each missing case")
+        .with_help("add an arm for each missing pattern")
     }
 
     pub fn unreachable_arm(span: Span, covered_by: Option<Span>) -> Diagnostic {

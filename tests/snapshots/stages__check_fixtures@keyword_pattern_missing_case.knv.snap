@@ -9,8 +9,8 @@ error[L0433]: non-exhaustive `match`
 10 |   (match p ((point :x 0) 1)))
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
    |
-   = note: missing 1 case: `(point _ _)`
-   = help: add an arm for each missing case
+   = note: missing 1 pattern: `(point _ _)`
+   = help: add an arm for each missing pattern
    = note: run `knave doc L0433` for an explanation
 
 error[L0433]: non-exhaustive `match`
@@ -21,6 +21,6 @@ error[L0433]: non-exhaustive `match`
 15 | |     (dot 2)))
    | |____________^ this `match` does not cover every value
    |
-   = note: missing 1 case: `(labeled _ _)`
-   = help: add an arm for each missing case
+   = note: missing 1 pattern: `(labeled _ _)`
+   = help: add an arm for each missing pattern
    = note: run `knave doc L0433` for an explanation

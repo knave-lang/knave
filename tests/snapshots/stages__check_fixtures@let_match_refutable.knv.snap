@@ -10,6 +10,6 @@ error[L0433]: non-exhaustive `match`
 3 | |     (println x)))
   | |________________^ this `match` does not cover every value
   |
-  = note: missing 1 case: `none`
-  = help: add an arm for each missing case
+  = note: missing 1 pattern: `none`
+  = help: add an arm for each missing pattern
   = note: run `knave doc L0433` for an explanation

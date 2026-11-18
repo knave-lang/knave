@@ -11,6 +11,6 @@ error[L0433]: non-exhaustive `match`
 11 | |     (nothing 0.0)))
    | |__________________^ this `match` does not cover every value
    |
-   = note: missing 1 case: `(just (rect _ _))`
-   = help: add an arm for each missing case
+   = note: missing 1 pattern: `(just (rect _ _))`
+   = help: add an arm for each missing pattern
    = note: run `knave doc L0433` for an explanation

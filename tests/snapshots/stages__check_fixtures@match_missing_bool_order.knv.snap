@@ -9,6 +9,6 @@ error[L0433]: non-exhaustive `match`
 6 |   (match s ((switches false false) 0)))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
   |
-  = note: missing 2 cases: `(switches false true)`, `(switches true _)`
-  = help: add an arm for each missing case
+  = note: missing 2 patterns: `(switches false true)`, `(switches true _)`
+  = help: add an arm for each missing pattern
   = note: run `knave doc L0433` for an explanation

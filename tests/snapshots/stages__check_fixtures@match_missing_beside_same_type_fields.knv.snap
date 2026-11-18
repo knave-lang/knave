@@ -15,6 +15,6 @@ error[L0433]: non-exhaustive `match`
 166 | |      47)))
     | |_________^ this `match` does not cover every value
     |
-    = note: missing 1 case: `(wide (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _))`
-    = help: add an arm for each missing case
+    = note: missing 1 pattern: `(wide (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _) (yes (deep _) _))`
+    = help: add an arm for each missing pattern
     = note: run `knave doc L0433` for an explanation

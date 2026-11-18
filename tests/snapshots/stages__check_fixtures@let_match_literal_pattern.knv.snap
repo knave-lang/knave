@@ -10,8 +10,8 @@ error[L0433]: non-exhaustive `match`
 10 | |     (println "five")))
    | |_____________________^ this `match` does not cover every value
    |
-   = note: missing 1 case: `(meters _)`
-   = help: add an arm for each missing case
+   = note: missing 1 pattern: `(meters _)`
+   = help: add an arm for each missing pattern
    = note: run `knave doc L0433` for an explanation
 
 error[L0433]: non-exhaustive `match`
@@ -21,8 +21,8 @@ error[L0433]: non-exhaustive `match`
 14 | |     (println "zero")))
    | |_____________________^ this `match` does not cover every value
    |
-   = note: missing 2 cases: `(big _)`, `small`
-   = help: add an arm for each missing case
+   = note: missing 2 patterns: `(big _)`, `small`
+   = help: add an arm for each missing pattern
    = note: run `knave doc L0433` for an explanation
 
 error[L0433]: non-exhaustive `match`
@@ -32,6 +32,6 @@ error[L0433]: non-exhaustive `match`
 18 | |     (println "zero")))
    | |_____________________^ this `match` does not cover every value
    |
-   = note: missing 2 cases: `(big _)`, `small`
-   = help: add an arm for each missing case
+   = note: missing 2 patterns: `(big _)`, `small`
+   = help: add an arm for each missing pattern
    = note: run `knave doc L0433` for an explanation

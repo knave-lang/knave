@@ -9,6 +9,6 @@ error[L0433]: non-exhaustive `match`
 10 |   (match value ((knot _ rope/frayed) 0)))
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
    |
-   = note: missing 1 case: `(knot _ (strand _))`
-   = help: add an arm for each missing case
+   = note: missing 1 pattern: `(knot _ (strand _))`
+   = help: add an arm for each missing pattern
    = note: run `knave doc L0433` for an explanation

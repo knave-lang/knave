@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/convert_overflow.knv
+---
+stderr:
+
+thread 'main' panicked at main.rs:5:26:
+attempt to convert 300 to `u8` with overflow
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+exit code: 101

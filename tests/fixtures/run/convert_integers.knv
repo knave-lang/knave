@@ -1,0 +1,21 @@
+(def byte-count
+  (rust "{0}.len()"
+    (fn ((ref str)) usize)))
+
+(type widen
+  (where ((n integer)) (fn (n) int)))
+
+(defn widen (x) (convert x))
+
+(defn main ()
+  (let (size (byte-count "pear")
+        small (the u8 200)
+        huge (* (the u128 170141183460469231731687303715884105727) 2))
+    (println (the int (convert size)))
+    (println (the int (convert small)))
+    (println (the u8 (convert 250)))
+    (println (the i8 (convert -5)))
+    (println (the u128 (convert (the u64 18446744073709551615))))
+    (println (the u128 (convert huge)))
+    (println (widen small))
+    (println (widen (the i16 -300)))))

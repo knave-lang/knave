@@ -39,6 +39,7 @@ enum RuntimePart {
     Min,
     IsEven,
     Index,
+    Convert,
 }
 
 impl RuntimePart {
@@ -50,7 +51,7 @@ impl RuntimePart {
         "eprintln!(",
         "std::io::stderr(",
     ];
-    const NAMED: [(&'static str, RuntimePart); 30] = [
+    const NAMED: [(&'static str, RuntimePart); 31] = [
         ("Number", RuntimePart::Number),
         ("Signed", RuntimePart::Signed),
         ("Float", RuntimePart::Float),
@@ -81,6 +82,7 @@ impl RuntimePart {
         ("min", RuntimePart::Min),
         ("is_even", RuntimePart::IsEven),
         ("index", RuntimePart::Index),
+        ("convert", RuntimePart::Convert),
     ];
     const SCANNED: [ScannedPart; 4] = [
         ScannedPart {
@@ -101,7 +103,7 @@ impl RuntimePart {
         },
     ];
 
-    const REQUIRED: [(RuntimePart, &'static [RuntimePart]); 19] = [
+    const REQUIRED: [(RuntimePart, &'static [RuntimePart]); 20] = [
         (RuntimePart::FromLiteral, &[RuntimePart::Number]),
         (RuntimePart::FromFloatLiteral, &[RuntimePart::Number]),
         (RuntimePart::Signed, &[RuntimePart::Number]),
@@ -110,6 +112,7 @@ impl RuntimePart {
             RuntimePart::IsEven,
             &[RuntimePart::Integer, RuntimePart::FromLiteral],
         ),
+        (RuntimePart::Convert, &[RuntimePart::Integer]),
         (RuntimePart::Float, &[RuntimePart::Signed]),
         (RuntimePart::MapSequence, &[RuntimePart::Sequence]),
         (RuntimePart::Lines, &[RuntimePart::Io]),
@@ -272,8 +275,9 @@ impl RuntimeModule {
     const MIN: &'static str = include_str!("../../prelude/runtime/min.rs");
     const IS_EVEN: &'static str = include_str!("../../prelude/runtime/is_even.rs");
     const INDEX: &'static str = include_str!("../../prelude/runtime/index.rs");
+    const CONVERT: &'static str = include_str!("../../prelude/runtime/convert.rs");
     const START_UP_CALL: &'static str = "crate::rt::restore_default_sigpipe();";
-    const FIXED_PARTS: [(RuntimePart, &'static str); 32] = [
+    const FIXED_PARTS: [(RuntimePart, &'static str); 33] = [
         (RuntimePart::Signed, Self::SIGNED),
         (RuntimePart::Float, Self::FLOAT),
         (RuntimePart::Integer, Self::INTEGER),
@@ -306,6 +310,7 @@ impl RuntimeModule {
         (RuntimePart::Min, Self::MIN),
         (RuntimePart::IsEven, Self::IS_EVEN),
         (RuntimePart::Index, Self::INDEX),
+        (RuntimePart::Convert, Self::CONVERT),
     ];
     const CONVERSIONS: &'static [Conversion] = &[
         Conversion {
@@ -482,6 +487,15 @@ mod tests {
                 .contains("pub fn index(value: i64) -> usize")
         );
         assert!(module.start_up_call().is_none());
+    }
+
+    #[test]
+    fn a_concrete_conversion_brings_the_integer_trait_it_bounds() {
+        let module = RuntimeModule::of("crate::rt::convert::<i64, _>(count)")
+            .expect("the code needs the runtime");
+        let source = module.source();
+        assert!(source.contains("pub fn convert<To: Integer, From: Integer>"));
+        assert!(source.contains("pub trait Integer:"));
     }
 
     #[test]

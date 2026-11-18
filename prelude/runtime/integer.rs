@@ -1,4 +1,7 @@
-pub trait Integer: Number {}
+pub trait Integer:
+    Number + std::fmt::Display + TryFrom<i128> + TryFrom<u128> + TryInto<i128> + TryInto<u128>
+{
+}
 
 macro_rules! integers {
     ($($integer:ty),*) => {

@@ -1,0 +1,7 @@
+(type describe
+  (where ((n integer)) (fn (n) string)))
+
+(defn describe (x) (str x))
+
+(defn main ()
+  (println (describe (the u8 7))))

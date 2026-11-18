@@ -1,0 +1,7 @@
+(def byte-count
+  (rust "{0}.len()"
+    (fn ((ref str)) usize)))
+
+(defn main ()
+  (let (size (byte-count "pear"))
+    (println (the int (convert size)))))

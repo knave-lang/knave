@@ -1,8 +1,17 @@
-(trait numbered
-  (number (fn ((ref self)) i64)))
+(enum (wrap a) (wrapped a))
 
-(impl numbered i64 (number (n) 1))
+(trait labelled
+  (label (fn ((ref self)) i64)))
 
-(impl numbered i64 (number (n) 2))
+(impl labelled (wrap i64) (label (w) 1))
 
-(defn main () (println (number 5)))
+(impl labelled (wrap a) (label (w) 2))
+
+(trait consumed (take (fn (self) i64)))
+
+(impl consumed str (take (t) 0))
+
+(impl consumed str (take (t) 0))
+
+(defn main ()
+  (println (label (wrap/wrapped true))))

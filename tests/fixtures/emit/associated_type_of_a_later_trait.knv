@@ -6,6 +6,12 @@
   (type output)
   (produce (fn ((ref self)) usize)))
 
+(struct shelf (count usize))
+
+(impl container shelf
+  (type item usize)
+  (size (s) (field s count)))
+
 (struct counter (count usize))
 
 (impl producer counter
@@ -13,4 +19,5 @@
   (produce (c) (field c count)))
 
 (defn main ()
+  (println (size (new shelf (count 2))))
   (println (produce (new counter (count 3)))))

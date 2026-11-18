@@ -60,7 +60,7 @@ impl Expander<'_> {
                     },
                     file,
                 };
-                if let TextModuleRecord::BindsTo { kept, diagnostic } =
+                if let TextModuleRecord::BindsTo { loaded, diagnostic } =
                     self.text_modules.record(load, self.sources)
                 {
                     diagnostic
@@ -68,7 +68,7 @@ impl Expander<'_> {
                         .for_each(|error| self.problems.report(error));
                     let id = self
                         .modules
-                        .find(&kept)
+                        .find(&loaded)
                         .expect("a recorded first load is registered");
                     return self.loaded(id, path, span);
                 }

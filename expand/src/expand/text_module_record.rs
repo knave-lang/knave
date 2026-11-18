@@ -5,7 +5,7 @@ pub(super) enum TextModuleRecord {
     New,
     Separate,
     BindsTo {
-        kept: ModulePath,
+        loaded: ModulePath,
         diagnostic: Option<Diagnostic>,
     },
 }

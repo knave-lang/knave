@@ -6,6 +6,7 @@ use super::checker::TypeChecker;
 use super::definition_kind::DefinitionKind;
 use super::derive_candidate::DeriveCandidate;
 use super::derive_catalog::DeriveCatalog;
+use super::derive_listings::DeriveListings;
 use super::derive_source::DeriveSource;
 use super::derive_target::DeriveTarget;
 use super::parameter_names::ParameterNames;
@@ -21,7 +22,8 @@ impl TypeChecker {
         let targets = DeriveTarget::all(modules);
         let catalog = DeriveCatalog::of(modules, &self.declarations.traits().structural);
         let written = self.written_derives(modules, &catalog);
-        let mut candidates = self.add_derive_candidates(&targets, &catalog, &written);
+        let listings = DeriveListings::new(&catalog, written);
+        let mut candidates = self.add_derive_candidates(&targets, &catalog, &listings);
         self.remove_blocked_derives(&mut candidates);
         self.record_derives(&candidates, &catalog);
     }
@@ -36,7 +38,7 @@ impl TypeChecker {
             let ItemKind::Derive(struct_binding, name_span, traits) = &item.kind else {
                 continue;
             };
-            if self.derive_rules().is_rust_enum(*struct_binding) {
+            if self.declarations.types().enums.is_rust(*struct_binding) {
                 let enum_name = self.bindings.get(*struct_binding).name().to_string();
                 self.diagnostics
                     .push(TypeProblems::derive_on_rust_type(&enum_name, *name_span));
@@ -101,21 +103,15 @@ impl TypeChecker {
         &mut self,
         targets: &[DeriveTarget],
         catalog: &DeriveCatalog,
-        written: &FxHashMap<BindingId, WrittenDerive>,
+        listings: &DeriveListings,
     ) -> Vec<DeriveCandidate> {
         let mut candidates = Vec::new();
         for entry in catalog.entries() {
             for target in targets {
-                let rules = self.derive_rules();
-                if rules.is_rust_enum(target.binding) {
+                if self.declarations.types().enums.is_rust(target.binding) {
                     continue;
                 }
-                let source = match written.get(&target.binding) {
-                    Some(derive) => catalog
-                        .listing_span(derive, *entry)
-                        .map(DeriveSource::Listed),
-                    None => rules.unlisted_source(target.binding, *entry),
-                };
+                let source = self.derive_rules().source(target.binding, *entry, listings);
                 let Some(source) = source else {
                     continue;
                 };

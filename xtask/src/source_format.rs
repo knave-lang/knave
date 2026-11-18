@@ -21,14 +21,18 @@ impl SourceFormat {
         let extension = LanguageSource::find(&workspace)?.extension()?;
         let files = SourceFormatPaths::default().files(root, &extension)?;
         let mut command = Cargo::command();
-        command
-            .current_dir(root)
-            .args(Self::FORMAT_CHECK)
-            .args(&files);
+        command.current_dir(root).args(Self::arguments(&files));
         let output = command
             .output()
             .map_err(|error| TaskFailure::tool_missing("cargo", error))?;
         Ok(Self::finished(files.len(), output))
+    }
+
+    fn arguments(files: &[String]) -> Vec<&str> {
+        Self::FORMAT_CHECK
+            .into_iter()
+            .chain(files.iter().map(String::as_str))
+            .collect()
     }
 
     pub fn finished(checked_files: usize, output: Output) -> Self {
@@ -89,6 +93,26 @@ impl FormatOutputs {
 mod tests {
     use super::{FormatOutputs, SourceFormat};
     use crate::checks::Check;
+
+    #[test]
+    fn the_check_lays_out_each_file_without_rewriting_it() {
+        let files = [
+            "prelude/core.knv".to_string(),
+            "examples/hello.knv".to_string(),
+        ];
+        assert_eq!(
+            SourceFormat::arguments(&files),
+            [
+                "run",
+                "--quiet",
+                "--",
+                "fmt",
+                "--check",
+                "prelude/core.knv",
+                "examples/hello.knv"
+            ]
+        );
+    }
 
     #[test]
     fn a_failed_format_check_fails_and_names_its_files() {

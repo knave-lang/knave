@@ -1,8 +1,7 @@
-use std::fs;
-use std::io;
 use std::path::Path;
 
 use crate::failure::TaskFailure;
+use crate::git::Git;
 
 pub struct SourceFormatPaths {
     checked: Vec<&'static str>,
@@ -14,6 +13,8 @@ impl SourceFormatPaths {
     const CHECK: &'static str = "check ";
     const SKIP: &'static str = "skip ";
     const DIRECTORY_SEPARATOR: char = '/';
+    const LIST_TRACKED_FILES: &'static str = "ls-files";
+    const END_OF_OPTIONS: &'static str = "--";
 
     fn parse(list: &'static str) -> Self {
         Self {
@@ -29,27 +30,19 @@ impl SourceFormatPaths {
     }
 
     pub fn files(&self, root: &Path, extension: &str) -> Result<Vec<String>, TaskFailure> {
-        let mut files = Vec::new();
-        for directory in &self.checked {
-            let path = root.join(directory);
-            Self::collect(&path, root, &mut files)
-                .map_err(|error| TaskFailure::unreadable(&path, error))?;
+        let mut arguments = vec![Self::LIST_TRACKED_FILES, Self::END_OF_OPTIONS];
+        arguments.extend(&self.checked);
+        let output = Git::new(root).run(&arguments)?;
+        if !output.status.success() {
+            return Err(TaskFailure::tool_failed("git ls-files", &output.stderr));
         }
-        files.retain(|file| self.checks(file) && file.ends_with(&format!(".{extension}")));
-        files.sort();
-        Ok(files)
-    }
-
-    fn collect(directory: &Path, root: &Path, files: &mut Vec<String>) -> io::Result<()> {
-        for entry in fs::read_dir(directory)? {
-            let path = entry?.path();
-            if path.is_dir() {
-                Self::collect(&path, root, files)?;
-            } else if let Ok(relative) = path.strip_prefix(root) {
-                files.push(relative.display().to_string());
-            }
-        }
-        Ok(())
+        let suffix = format!(".{extension}");
+        Ok(String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .filter(|file| file.ends_with(&suffix) && self.checks(file))
+            .filter(|file| root.join(file).is_file())
+            .map(String::from)
+            .collect())
     }
 
     pub fn checks(&self, file: &str) -> bool {
@@ -117,7 +110,7 @@ mod tests {
     }
 
     #[test]
-    fn an_unreadable_checked_directory_fails() {
+    fn a_tree_git_cannot_list_fails() {
         let paths = SourceFormatPaths::parse("check absent\n");
         assert!(
             paths

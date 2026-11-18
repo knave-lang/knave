@@ -19,7 +19,7 @@ impl<'e> ReturnedLet<'e> {
         let TypedExprKind::Leaf(TypedLeaf::Local(returned)) = &tail.kind else {
             return None;
         };
-        if !items.iter().all(Self::binds_a_leaf) {
+        if !items.iter().all(Self::binds_a_literal_or_name) {
             return None;
         }
         let (_, value) = items
@@ -29,7 +29,7 @@ impl<'e> ReturnedLet<'e> {
         Some(value)
     }
 
-    fn binds_a_leaf(item: &TypedBodyItem) -> bool {
+    fn binds_a_literal_or_name(item: &TypedBodyItem) -> bool {
         item.as_let().is_some_and(|(_, value)| {
             matches!(
                 value.kind,

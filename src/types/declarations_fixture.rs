@@ -4,6 +4,7 @@ use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::derive_blockers::DeriveBlockers;
 use super::display::TypeDisplay;
+use super::impl_item::ImplItem;
 use super::implementation_check::ImplementationCheck;
 use super::implementation_collector::ImplementationCollector;
 use super::trait_boxing::TraitBoxing;
@@ -11,18 +12,21 @@ use super::trait_declarations::TraitDeclarations;
 use super::type_declarations::TypeDeclarations;
 use super::variant_payloads::VariantPayloads;
 use super::{Type, TypedProgram, TypedSource};
-use crate::core::BindingId;
+use crate::core::{BindingId, ItemKind};
 
 pub(super) struct DeclarationsFixture {
+    source: TypedSource,
     program: TypedProgram,
     declarations: Declarations,
 }
 
 impl DeclarationsFixture {
     pub(super) fn new(source: &str) -> Self {
-        let mut program = TypedSource::expand(source).typed();
+        let source = TypedSource::expand(source);
+        let mut program = source.typed();
         let declarations = std::mem::take(&mut program.declarations);
         Self {
+            source,
             program,
             declarations,
         }
@@ -58,6 +62,30 @@ impl DeclarationsFixture {
         ImplementationCheck::new(&self.program.bindings, &self.declarations, display)
     }
 
+    pub(super) fn impl_item(&self, trait_name: &str) -> ImplItem<'_> {
+        let trait_binding = self.trait_named(trait_name);
+        self.source
+            .program()
+            .modules
+            .iter()
+            .flat_map(|module| module.items.iter().map(move |item| (module.id, item)))
+            .find_map(|(module, item)| match &item.kind {
+                ItemKind::Impl(binding, implementor, associated, methods)
+                    if *binding == trait_binding =>
+                {
+                    Some(ImplItem {
+                        module,
+                        trait_binding,
+                        implementor,
+                        associated,
+                        methods,
+                    })
+                }
+                _ => None,
+            })
+            .expect("the source implements the trait")
+    }
+
     pub(super) fn implementation_collector(&self) -> ImplementationCollector<'_> {
         ImplementationCollector::new(&self.declarations.traits)
     }
@@ -80,6 +108,11 @@ impl DeclarationsFixture {
         self.binding_named(name, &|binding| {
             self.declarations.traits.table.get(binding).is_some()
         })
+    }
+
+    pub(super) fn rust_type_named(&self, name: &str) -> BindingId {
+        let types = &self.declarations.types;
+        self.binding_named(name, &|binding| types.rust_types.get(binding).is_some())
     }
 
     pub(super) fn type_named(&self, name: &str) -> BindingId {

@@ -2,8 +2,12 @@ use super::ReceiverKind;
 use super::declarations::Declarations;
 use super::declared_types::DeclaredTypes;
 use super::display::TypeDisplay;
+use super::impl_item::ImplItem;
 use super::impl_overlap::ImplementorOverlap;
+use super::implementation_verdict::ImplementationVerdict;
 use super::problems::TypeProblems;
+use super::trait_declarations::TraitDeclarations;
+use super::trait_definitions::TraitDefinitions;
 use super::ty::Type;
 use crate::core::{BindingArena, BindingId, ImplMethod};
 use crate::diagnostic::Diagnostic;
@@ -11,7 +15,8 @@ use crate::source::Span;
 
 pub(super) struct ImplementationCheck<'a> {
     bindings: &'a BindingArena,
-    declarations: &'a Declarations,
+    types: DeclaredTypes<'a>,
+    traits: &'a TraitDeclarations,
     display: TypeDisplay<'a>,
 }
 
@@ -23,12 +28,25 @@ impl<'a> ImplementationCheck<'a> {
     ) -> Self {
         Self {
             bindings,
-            declarations,
+            types: DeclaredTypes::new(&declarations.types),
+            traits: &declarations.traits,
             display,
         }
     }
 
-    pub(super) fn rejection(
+    pub(super) fn verdict(&self, item: ImplItem<'_>, implementor: &Type) -> ImplementationVerdict {
+        let span = item.implementor.span();
+        match self.rejection(item.trait_binding, implementor, span) {
+            Some(rejection) => ImplementationVerdict::Rejected(rejection),
+            None => ImplementationVerdict::Accepted(self.unsized_problems(
+                implementor,
+                span,
+                item.methods,
+            )),
+        }
+    }
+
+    fn rejection(
         &self,
         trait_binding: BindingId,
         implementor: &Type,
@@ -38,13 +56,13 @@ impl<'a> ImplementationCheck<'a> {
             .or_else(|| self.second_impl(trait_binding, implementor, span))
     }
 
-    pub(super) fn unsized_problems(
+    fn unsized_problems(
         &self,
         implementor: &Type,
         span: Span,
         methods: &[ImplMethod],
     ) -> Vec<Diagnostic> {
-        if !DeclaredTypes::new(&self.declarations.types).is_unsized(implementor) {
+        if !self.types.is_unsized(implementor) {
             return Vec::new();
         }
         methods
@@ -59,11 +77,7 @@ impl<'a> ImplementationCheck<'a> {
     }
 
     fn receives_owned(&self, trait_method: BindingId) -> bool {
-        self.declarations
-            .traits
-            .methods
-            .get(&trait_method)
-            .is_some_and(|info| info.receiver == Some(ReceiverKind::Owned))
+        TraitDefinitions::new(self.traits).receiver(trait_method) == Some(ReceiverKind::Owned)
     }
 
     fn foreign_implementor(
@@ -72,8 +86,8 @@ impl<'a> ImplementationCheck<'a> {
         implementor: &Type,
         span: Span,
     ) -> Option<Diagnostic> {
-        let rust_paths = &self.declarations.traits.rust_paths;
-        let program_type = DeclaredTypes::new(&self.declarations.types).declares_type(implementor);
+        let rust_paths = &self.traits.rust_paths;
+        let program_type = self.types.declares_type(implementor);
         if rust_paths.written(trait_binding).is_none() || program_type {
             return None;
         }
@@ -92,15 +106,10 @@ impl<'a> ImplementationCheck<'a> {
         implementor: &Type,
         span: Span,
     ) -> Option<Diagnostic> {
-        let first = self
-            .declarations
-            .traits
-            .impls
-            .iter()
-            .find(|implementation| {
-                implementation.trait_binding == trait_binding
-                    && ImplementorOverlap::overlaps(&implementation.implementor, implementor)
-            })?;
+        let first = self.traits.impls.iter().find(|implementation| {
+            implementation.trait_binding == trait_binding
+                && ImplementorOverlap::overlaps(&implementation.implementor, implementor)
+        })?;
         let first = TypeProblems::first_impl(first.implementor_span);
         let implementor_name = self.display.show(implementor);
         let trait_name = self.bindings.get(trait_binding).name().to_string();
@@ -115,14 +124,17 @@ impl<'a> ImplementationCheck<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::PrimitiveType;
-    use crate::source::{SourceId, Span};
+    use crate::core::{BindingId, PrimitiveType};
     use crate::types::Type;
     use crate::types::declarations_fixture::DeclarationsFixture;
+    use crate::types::implementation_verdict::ImplementationVerdict;
 
     const SOURCE: &str = "(trait numbered (number (fn ((ref self)) i64)))\n\
                           (trait viewed (view (fn ((ref self)) i64)))\n\
-                          (impl numbered i64 (number (n) 1))\n";
+                          (trait consumed (take (fn (self) i64)))\n\
+                          (impl numbered i64 (number (n) 1))\n\
+                          (impl viewed bool (view (flag) 0))\n\
+                          (impl consumed bool (take (flag) 0))\n";
 
     struct CheckFixture {
         declarations: DeclarationsFixture,
@@ -135,28 +147,91 @@ mod tests {
             }
         }
 
-        fn rejects(&self, trait_name: &str, implementor: PrimitiveType) -> bool {
-            let trait_binding = self.declarations.trait_named(trait_name);
-            let span = Span::new(SourceId::new(0), 0..0);
+        fn verdict_on(&self, trait_name: &str, implementor: Type) -> ImplementationVerdict {
+            let item = self.declarations.impl_item(trait_name);
             self.declarations
                 .implementation_check()
-                .rejection(trait_binding, &Type::Primitive(implementor), span)
-                .is_some()
+                .verdict(item, &implementor)
+        }
+
+        fn integer() -> Type {
+            Type::Primitive(PrimitiveType::I64)
+        }
+
+        fn text() -> Type {
+            Type::Primitive(PrimitiveType::Str)
+        }
+
+        fn rejected(verdict: &ImplementationVerdict) -> bool {
+            matches!(verdict, ImplementationVerdict::Rejected(_))
+        }
+
+        fn problems(verdict: &ImplementationVerdict) -> usize {
+            match verdict {
+                ImplementationVerdict::Accepted(problems) => problems.len(),
+                ImplementationVerdict::Rejected(_) => panic!("the impl is accepted"),
+            }
+        }
+
+        fn vector(&self) -> Type {
+            let vec = self.declarations.rust_type_named("vec");
+            Type::Named(vec, vec![Self::integer()])
+        }
+
+        fn display(&self) -> BindingId {
+            self.declarations.trait_named("display")
         }
     }
 
     #[test]
     fn a_second_impl_for_the_same_type_is_rejected() {
-        assert!(CheckFixture::new().rejects("numbered", PrimitiveType::I64));
+        let fixture = CheckFixture::new();
+        let verdict = fixture.verdict_on("numbered", CheckFixture::integer());
+        assert!(CheckFixture::rejected(&verdict));
     }
 
     #[test]
-    fn an_impl_for_another_type_is_not_rejected() {
-        assert!(!CheckFixture::new().rejects("numbered", PrimitiveType::Bool));
+    fn an_impl_for_another_type_is_accepted() {
+        let fixture = CheckFixture::new();
+        let verdict = fixture.verdict_on("numbered", Type::Primitive(PrimitiveType::Bool));
+        assert_eq!(CheckFixture::problems(&verdict), 0);
     }
 
     #[test]
-    fn an_impl_of_another_trait_for_the_same_type_is_not_rejected() {
-        assert!(!CheckFixture::new().rejects("viewed", PrimitiveType::I64));
+    fn an_impl_of_another_trait_for_the_same_type_is_accepted() {
+        let fixture = CheckFixture::new();
+        let verdict = fixture.verdict_on("viewed", CheckFixture::integer());
+        assert!(!CheckFixture::rejected(&verdict));
+    }
+
+    #[test]
+    fn an_unsized_implementor_reports_a_method_that_takes_self() {
+        let fixture = CheckFixture::new();
+        let verdict = fixture.verdict_on("consumed", CheckFixture::text());
+        assert_eq!(CheckFixture::problems(&verdict), 1);
+    }
+
+    #[test]
+    fn an_unsized_implementor_may_borrow_self() {
+        let fixture = CheckFixture::new();
+        let verdict = fixture.verdict_on("viewed", CheckFixture::text());
+        assert_eq!(CheckFixture::problems(&verdict), 0);
+    }
+
+    #[test]
+    fn a_sized_implementor_may_take_self() {
+        let fixture = CheckFixture::new();
+        let verdict = fixture.verdict_on("consumed", CheckFixture::integer());
+        assert_eq!(CheckFixture::problems(&verdict), 0);
+    }
+
+    #[test]
+    fn a_foreign_type_cannot_implement_a_rust_trait() {
+        let fixture = CheckFixture::new();
+        let check = fixture.declarations.implementation_check();
+        let mut item = fixture.declarations.impl_item("numbered");
+        item.trait_binding = fixture.display();
+        let verdict = check.verdict(item, &fixture.vector());
+        assert!(CheckFixture::rejected(&verdict));
     }
 }

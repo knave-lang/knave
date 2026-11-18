@@ -168,7 +168,7 @@ impl TypeChecker {
 
     fn remove_blocked_derives(&mut self, candidates: &mut Vec<DeriveCandidate>) {
         loop {
-            let blocked = self.blocked_derives(candidates);
+            let blocked = self.derive_rules().blocked(candidates);
             if blocked.is_empty() {
                 break;
             }
@@ -184,19 +184,6 @@ impl TypeChecker {
                 self.report_blocked_derive(candidate, field, ty);
             }
         }
-    }
-
-    fn blocked_derives(
-        &self,
-        candidates: &[DeriveCandidate],
-    ) -> Vec<(DeriveCandidate, Rc<str>, Type)> {
-        candidates
-            .iter()
-            .filter_map(|candidate| {
-                self.blocking_payload(candidate.binding, candidate.kind, candidate.trait_binding)
-                    .map(|(field, ty)| (*candidate, field, ty))
-            })
-            .collect()
     }
 
     fn report_blocked_derive(&mut self, candidate: DeriveCandidate, field: Rc<str>, ty: Type) {
@@ -269,20 +256,6 @@ impl TypeChecker {
             };
             derives.extend(written_name);
             derived_traits.push(candidate.trait_binding);
-        }
-    }
-
-    fn blocking_payload(
-        &self,
-        binding: BindingId,
-        kind: DefinitionKind,
-        trait_binding: BindingId,
-    ) -> Option<(Rc<str>, Type)> {
-        match kind {
-            DefinitionKind::Struct => self.derive_rules().blocking_field(binding, trait_binding),
-            DefinitionKind::Enum => self
-                .derive_rules()
-                .blocking_enum_payload(binding, trait_binding),
         }
     }
 

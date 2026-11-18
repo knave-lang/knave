@@ -64,7 +64,7 @@ impl DeclarationsFixture {
         &'a self,
         changed_structs: &'a rustc_hash::FxHashSet<BindingId>,
     ) -> DeriveRules<'a> {
-        DeriveRules::new(&self.declarations, changed_structs)
+        DeriveRules::new(&self.declarations, self.derive_blockers(), changed_structs)
     }
 
     pub(super) fn derivable_traits(&self) -> DerivableTraits<'_> {

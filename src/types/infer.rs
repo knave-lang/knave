@@ -1632,7 +1632,7 @@ impl TypeChecker {
                 let [payload] = payloads.as_slice() else {
                     return None;
                 };
-                (!self.is_box(payload) && Self::could_unify(payload, source))
+                (!self.declared_types().is_box(payload) && Self::could_unify(payload, source))
                     .then(|| (variant, Rc::clone(&candidate.name), payload.clone()))
             })
             .collect();

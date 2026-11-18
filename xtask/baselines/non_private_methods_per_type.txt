@@ -84,7 +84,7 @@ src/ownership/parameter_uses.rs::ParameterUses 10
 
 src/ownership/problems.rs::OwnershipProblems 34
 
-src/types/checker.rs::TypeChecker 60
+src/types/checker.rs::TypeChecker 59
 
 src/types/collection.rs::Collection 8
 

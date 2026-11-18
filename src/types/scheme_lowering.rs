@@ -1,26 +1,19 @@
 use rustc_hash::FxHashMap;
 
 use super::lowered_associated_value::LoweredAssociatedValue;
+use super::lowered_binders::LoweredBinders;
 use super::problems::TypeProblems;
 use super::trait_rows_reach::Implementor;
-use super::ty::{Bound, GenericId, GenericParam, Scheme, Type};
+use super::ty::{GenericId, GenericParam, Scheme, Type};
 use super::written_type_lowering::WrittenTypeLowering;
 use super::written_type_variables::WrittenTypeVariables;
 use crate::core::{
-    AssociatedValue, BindingId, ImplAssociatedType, RustTraitImplementor, TypeBinder, TypeExpr,
-    TypeExprKind,
+    AssociatedValue, BindingId, ImplAssociatedType, RustTraitImplementor, TypeExpr, TypeExprKind,
 };
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 
 pub(super) type LoweredImplementor = (Type, Vec<GenericParam>, Vec<(BindingId, Type)>);
-
-#[derive(Default)]
-struct LoweredBinders {
-    lifetimes: Vec<BindingId>,
-    params: Vec<GenericParam>,
-    scope: FxHashMap<BindingId, GenericId>,
-}
 
 pub(super) struct SchemeLowering<'l> {
     types: WrittenTypeLowering<'l>,
@@ -38,7 +31,7 @@ impl<'l> SchemeLowering<'l> {
                 self.types.lower_type(type_expr, &FxHashMap::default())?,
             ));
         };
-        let binders = self.lower_binders(binders)?;
+        let binders = self.types.lower_binders(binders)?;
         Ok(Scheme {
             lifetimes: binders.lifetimes,
             params: binders.params,
@@ -53,7 +46,7 @@ impl<'l> SchemeLowering<'l> {
     ) -> Result<(Implementor, Vec<LoweredAssociatedValue>), Diagnostic> {
         let implementor = &entry.implementor;
         let binders = match implementor.kind() {
-            TypeExprKind::Where(binders, _) => self.lower_binders(binders)?,
+            TypeExprKind::Where(binders, _) => self.types.lower_binders(binders)?,
             _ => LoweredBinders::default(),
         };
         let (body, argument) =
@@ -143,46 +136,6 @@ impl<'l> SchemeLowering<'l> {
             return Err(TypeProblems::bare_implementor(trait_name, span));
         }
         Ok(())
-    }
-
-    fn lower_binders(&mut self, binders: &[TypeBinder]) -> Result<LoweredBinders, Diagnostic> {
-        let mut lifetimes = Vec::new();
-        let mut params = Vec::new();
-        let mut scope = FxHashMap::default();
-        for binder in binders {
-            if binder.lifetime {
-                lifetimes.push(binder.variable);
-                continue;
-            }
-            let param = self.types.declare_variable(binder.variable);
-            scope.insert(binder.variable, param.id);
-            params.push(param);
-        }
-        for (binder, param) in binders
-            .iter()
-            .filter(|binder| !binder.lifetime)
-            .zip(&mut params)
-        {
-            let bounds = self.lower_bounds(binder, &scope)?;
-            self.types.replace_bounds(param, bounds);
-        }
-        Ok(LoweredBinders {
-            lifetimes,
-            params,
-            scope,
-        })
-    }
-
-    fn lower_bounds(
-        &mut self,
-        binder: &TypeBinder,
-        scope: &FxHashMap<BindingId, GenericId>,
-    ) -> Result<Vec<Bound>, Diagnostic> {
-        binder
-            .bounds
-            .iter()
-            .map(|bound| self.types.lower_type_bound(bound, scope))
-            .collect()
     }
 }
 

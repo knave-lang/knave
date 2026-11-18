@@ -1,13 +1,14 @@
-use std::cell::Cell;
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::binder_site::BinderSite;
+use super::expanded_call::ExpandedCall;
 use super::macro_origin::MacroOrigin;
 use crate::core::BindingId;
-use crate::reader::{Form, Symbol};
+use crate::reader::Symbol;
 use crate::scope::Scope;
-use crate::source::Span;
+use crate::source::{SourceMap, Span};
 
 #[derive(Default)]
 pub struct IntroducingMacros {
@@ -15,15 +16,21 @@ pub struct IntroducingMacros {
     generators: FxHashMap<BindingId, Scope>,
 }
 
-pub struct MacroCall<'c> {
-    pub binding: BindingId,
-    pub form: &'c Form,
-    pub origin: &'c MacroOrigin,
+pub struct ProjectWriter {
+    name: Rc<str>,
+    generator_call: Option<Span>,
 }
 
-pub struct ProjectWriter {
-    pub name: Rc<str>,
-    pub generator_call: Option<Span>,
+impl ProjectWriter {
+    pub fn name(&self) -> Rc<str> {
+        Rc::clone(&self.name)
+    }
+
+    pub fn passed_in(&self, site: &BinderSite<'_>, sources: &SourceMap, written: Span) -> bool {
+        self.generator_call
+            .is_some_and(|generator_call| generator_call.contains(written))
+            && site.is_spelled_at(sources, written)
+    }
 }
 
 struct Expansion {
@@ -33,8 +40,8 @@ struct Expansion {
 }
 
 impl IntroducingMacros {
-    pub fn define(&mut self, binding: BindingId, definition: &Form) {
-        let mut writer = self.latest_writer(definition);
+    pub fn define(&mut self, binding: BindingId, definition_writer: Option<Scope>) {
+        let mut writer = definition_writer;
         while let Some(expansion) = writer.and_then(|scope| self.expansions.get(&scope))
             && expansion.origin.through_prelude
         {
@@ -45,10 +52,10 @@ impl IntroducingMacros {
         }
     }
 
-    pub fn record(&mut self, introduction: Scope, call: &MacroCall<'_>) {
+    pub fn record(&mut self, introduction: Scope, call: &ExpandedCall<'_>) {
         let expansion = Expansion {
             origin: call.origin.clone(),
-            call_writer: self.latest_writer(call.form),
+            call_writer: call.head_writer.filter(|writer| *writer < introduction),
             generator: self.generators.get(&call.binding).copied(),
         };
         self.expansions.insert(introduction, expansion);
@@ -72,16 +79,77 @@ impl IntroducingMacros {
             .min_by_key(|(introduction, _)| **introduction)
             .map(|(_, expansion)| expansion)
     }
+}
 
-    fn latest_writer(&self, form: &Form) -> Option<Scope> {
-        let head = form.as_list()?.first()?.as_symbol()?;
-        let latest = Cell::new(None);
-        head.scopes().any(|scope| {
-            if self.expansions.contains_key(&scope) {
-                latest.set(latest.get().max(Some(scope)));
-            }
-            false
-        });
-        latest.get()
+#[cfg(test)]
+mod tests {
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::Duration;
+
+    use super::IntroducingMacros;
+    use crate::core::BindingId;
+    use crate::expand::expanded_call::ExpandedCall;
+    use crate::expand::origins_fixture::OriginsFixture;
+    use crate::scope::{Scope, ScopeKind, Scopes};
+
+    struct WalkFixture {
+        macros: IntroducingMacros,
+        scopes: Scopes,
+    }
+
+    impl WalkFixture {
+        const DEADLINE: Duration = Duration::from_secs(5);
+        const CALLED: BindingId = BindingId::from_index(1);
+        const DEFINED: BindingId = BindingId::from_index(2);
+
+        fn ends_within_deadline(build: fn(&mut Self) -> Option<Scope>) -> bool {
+            let (finished, ended) = mpsc::channel();
+            thread::spawn(move || {
+                let mut fixture = Self {
+                    macros: IntroducingMacros::default(),
+                    scopes: Scopes::default(),
+                };
+                let definition_writer = build(&mut fixture);
+                fixture.macros.define(Self::DEFINED, definition_writer);
+                finished.send(()).ok();
+            });
+            ended.recv_timeout(Self::DEADLINE).is_ok()
+        }
+
+        fn fresh(&mut self) -> Scope {
+            self.scopes.fresh(ScopeKind::Introduction)
+        }
+
+        fn record_prelude_call(&mut self, introduction: Scope, head_writer: Scope) {
+            let origin =
+                OriginsFixture::joined_origin("prelude-macro", OriginsFixture::call_site());
+            let call = ExpandedCall {
+                binding: Self::CALLED,
+                head_writer: Some(head_writer),
+                origin: &origin,
+            };
+            self.macros.record(introduction, &call);
+        }
+    }
+
+    #[test]
+    fn a_call_written_by_its_own_expansion_ends_the_walk() {
+        assert!(WalkFixture::ends_within_deadline(|fixture| {
+            let expansion = fixture.fresh();
+            fixture.record_prelude_call(expansion, expansion);
+            Some(expansion)
+        }));
+    }
+
+    #[test]
+    fn a_call_written_by_a_newer_expansion_ends_the_walk() {
+        assert!(WalkFixture::ends_within_deadline(|fixture| {
+            let older = fixture.fresh();
+            let newer = fixture.fresh();
+            fixture.record_prelude_call(older, newer);
+            fixture.record_prelude_call(newer, older);
+            Some(newer)
+        }));
     }
 }

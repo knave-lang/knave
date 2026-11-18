@@ -33,6 +33,12 @@ impl Scopes {
             .is_some_and(|symbol| self.introduced(symbol))
     }
 
+    pub(crate) fn latest_introduction_at_head(&self, form: &Form) -> Option<Scope> {
+        let head = form.as_list()?.first()?.as_symbol()?;
+        head.scopes()
+            .largest_matching(|scope| self.kind(scope).is_some_and(ScopeKind::is_introduction))
+    }
+
     pub(crate) fn introduced(&self, symbol: &Symbol) -> bool {
         symbol
             .scopes()

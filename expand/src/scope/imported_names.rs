@@ -44,7 +44,7 @@ impl ImportedNames {
         if scopes.len() != 1 {
             return None;
         }
-        let scope = scopes.largest()?;
+        let scope = scopes.largest_matching(|_| true)?;
         self.tables
             .iter()
             .find_map(|table| table.bound_with_scope(scope, key))

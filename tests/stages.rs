@@ -27,7 +27,8 @@ const REFERENCE_PAGE_OF_MISLAID_EXAMPLE: &str =
 const REFERENCE_PAGE_OF_UNREADABLE_EXAMPLE: &str =
     "# Sample\n\n```knave\n(defn main ()\n```\n\n```text\n1\n```\n";
 const REFERENCE_PAGE_NAMING_LOCAL: &str = "# Sample\n\nNever write `local`.\n";
-const REFERENCE_PAGE_NAMING_A_LONGER_WORD: &str = "# Sample\n\nA locality is not a binding.\n";
+const REFERENCE_PAGE_NAMING_A_LONGER_WORD: &str =
+    "# Sample\n\nA locality or a `local_note` is not a binding.\n";
 const REFERENCE_PAGE_OF_UNDEFINED_TERM: &str =
     "# Sample\n\nSee [let](/docs/prelude/syntax/#let) and [lett](/docs/prelude/syntax/#lett).\n";
 const BORROW_ACROSS_MOVE_FIX: &str = "## Fixes\n\n```knave\n(defn main ()\n  (local grid (vec 1 2))\n  (local first (at grid 0))\n  (local next (assoc grid 0 3))\n  (println (at next 0) \" \" first))\n```\n";

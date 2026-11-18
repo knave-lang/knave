@@ -103,7 +103,6 @@ impl TestSelection {
 
     pub fn runs<'a>(files: impl Iterator<Item = &'a str>) -> BTreeSet<TestRun> {
         files
-            .filter(|file| file.ends_with(Self::RUST_EXTENSION))
             .flat_map(|file| {
                 Self::stage_run(file)
                     .into_iter()
@@ -202,11 +201,6 @@ mod tests {
             SelectionCase::runs(&["src/lib.rs", "src/main.rs"]),
             ["--test stages check_fixtures"]
         );
-    }
-
-    #[test]
-    fn a_file_that_is_not_rust_runs_nothing() {
-        assert!(SelectionCase::runs(&["prelude/core.knv", "README.md"]).is_empty());
     }
 
     #[test]

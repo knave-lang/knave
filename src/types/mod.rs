@@ -29,6 +29,7 @@ mod declared_types;
 mod declared_variant;
 mod deferred_definitions;
 mod definition_outcomes;
+mod derivable_traits;
 mod derive_blockers;
 mod derives;
 mod display;
@@ -102,7 +103,6 @@ mod templates;
 mod trait_boxing;
 mod trait_declaration_collector;
 mod trait_declarations;
-mod trait_definitions;
 #[cfg(test)]
 mod trait_fixture;
 mod trait_method_info;

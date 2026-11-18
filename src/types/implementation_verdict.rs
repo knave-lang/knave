@@ -1,6 +1,6 @@
-use crate::diagnostic::Diagnostic;
+use crate::diagnostic::{Diagnostic, Diagnostics};
 
 pub(super) enum ImplementationVerdict {
     Rejected(Diagnostic),
-    Accepted(Vec<Diagnostic>),
+    Accepted(Diagnostics),
 }

@@ -1,20 +1,19 @@
 use std::rc::Rc;
 
 use super::collected_impl::CollectedImpl;
+use super::declared_traits::DeclaredTraits;
 use super::impl_item::ImplItem;
 use super::lowered_impl::LoweredImpl;
-use super::trait_declarations::TraitDeclarations;
-use super::trait_definitions::TraitDefinitions;
 use super::ty::{Scheme, Type};
 use super::{Implementor, TypedImplMethod, TypedTraitImpl};
 use crate::core::BindingId;
 
 pub(super) struct ImplementationCollector<'a> {
-    traits: &'a TraitDeclarations,
+    traits: DeclaredTraits<'a>,
 }
 
 impl<'a> ImplementationCollector<'a> {
-    pub(super) fn new(traits: &'a TraitDeclarations) -> Self {
+    pub(super) fn new(traits: DeclaredTraits<'a>) -> Self {
         Self { traits }
     }
 
@@ -42,9 +41,8 @@ impl<'a> ImplementationCollector<'a> {
 
     fn argument(&self, trait_binding: BindingId, values: &[(BindingId, Type)]) -> Option<Type> {
         self.traits
-            .table
-            .get(trait_binding)
-            .is_some_and(|rust_trait| rust_trait.associated.is_some())
+            .definition(trait_binding)
+            .is_some_and(|definition| !definition.associated.is_empty())
             .then(|| values.first().map(|(_, value)| value.clone()))
             .flatten()
     }
@@ -54,7 +52,7 @@ impl<'a> ImplementationCollector<'a> {
             .iter()
             .map(|method| TypedImplMethod {
                 binding: method.binding,
-                receiver: TraitDefinitions::new(self.traits).receiver(method.trait_method),
+                receiver: self.traits.receiver(method.trait_method),
             })
             .collect()
     }
@@ -71,7 +69,7 @@ impl<'a> ImplementationCollector<'a> {
     }
 
     fn associated_name(&self, trait_binding: BindingId, associated: BindingId) -> Rc<str> {
-        TraitDefinitions::new(self.traits)
+        self.traits
             .definition(trait_binding)
             .and_then(|trait_definition| {
                 trait_definition
@@ -90,7 +88,6 @@ mod tests {
     use crate::types::declarations_fixture::DeclarationsFixture;
     use crate::types::impl_item::ImplItem;
     use crate::types::lowered_impl::LoweredImpl;
-    use crate::types::trait_definitions::TraitDefinitions;
     use crate::types::written_type_fixture::WrittenTypeFixture;
 
     const SOURCE: &str = "(trait container (type item) (size (fn ((ref self)) usize)))\n\
@@ -132,8 +129,8 @@ mod tests {
         }
 
         fn associated_type_of(&self, trait_binding: BindingId) -> BindingId {
-            let definitions = TraitDefinitions::new(self.declarations.traits());
-            let definition = definitions
+            let traits = self.declarations.declared_traits();
+            let definition = traits
                 .definition(trait_binding)
                 .expect("the trait is defined");
             definition.associated[0].binding

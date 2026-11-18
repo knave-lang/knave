@@ -16,6 +16,7 @@ use super::declared_generics::DeclaredGenerics;
 use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::definition_outcomes::DefinitionOutcomes;
+use super::derivable_traits::DerivableTraits;
 use super::derive_blockers::DeriveBlockers;
 use super::display::TypeDisplay;
 use super::enum_item::EnumItem;
@@ -529,12 +530,12 @@ impl TypeChecker {
         DeclaredTraits::new(&self.declarations.traits)
     }
 
+    pub(super) fn derivability(&self) -> DerivableTraits<'_> {
+        DerivableTraits::new(&self.declarations.traits)
+    }
+
     pub(super) fn derive_blockers(&self) -> DeriveBlockers<'_> {
-        DeriveBlockers::new(
-            &self.declarations.types,
-            self.declared_traits(),
-            self.variant_payloads(),
-        )
+        DeriveBlockers::new(&self.declarations, self.variant_payloads())
     }
 
     fn check_opaque_positions(
@@ -569,7 +570,7 @@ impl TypeChecker {
         ReferencePeeling::new(&self.unifier)
     }
 
-    pub(super) fn literal_settlement(&self) -> LiteralSettlement<'_> {
+    fn literal_settlement(&self) -> LiteralSettlement<'_> {
         LiteralSettlement::new(&self.unifier, &self.declarations.traits.table)
     }
 
@@ -1504,7 +1505,7 @@ impl TypeChecker {
         match verdict {
             ImplementationVerdict::Rejected(rejection) => self.diagnostics.push(rejection),
             ImplementationVerdict::Accepted(problems) => {
-                self.diagnostics.extend(problems.into_iter().collect());
+                self.diagnostics.extend(problems);
                 let collected = self.implementation_collector().collect(item, lowered);
                 collected.enter(
                     &mut self.declarations.traits,
@@ -1520,7 +1521,7 @@ impl TypeChecker {
     }
 
     fn implementation_collector(&self) -> ImplementationCollector<'_> {
-        ImplementationCollector::new(&self.declarations.traits)
+        ImplementationCollector::new(self.declared_traits())
     }
 
     fn report_supertraits(&mut self) {
@@ -1967,7 +1968,7 @@ impl TypeChecker {
         let enum_name = self.bindings.get(binding).name().to_string();
         let trait_name = self.bindings.get(bound.binding).name();
         let mut diagnostic = match definition.written_derive {
-            Some(span) if self.declared_traits().is_derivable(bound.binding) => diagnostic
+            Some(span) if self.derivability().is_derivable(bound.binding) => diagnostic
                 .with_label(TypeProblems::derive_leaves_out(span, trait_name))
                 .with_help(TypeProblems::add_to_enum_derive_help(trait_name)),
             _ => diagnostic,
@@ -2163,7 +2164,7 @@ impl TypeChecker {
         let Some(derive_span) = definition.written_derive else {
             return diagnostic;
         };
-        if !self.declared_traits().is_derivable(bound) {
+        if !self.derivability().is_derivable(bound) {
             return diagnostic;
         }
         let trait_name = self.bindings.get(bound).name();

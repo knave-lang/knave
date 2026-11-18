@@ -2,6 +2,7 @@ use super::collected_impl::CollectedImpl;
 use super::declarations::Declarations;
 use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
+use super::derivable_traits::DerivableTraits;
 use super::derive_blockers::DeriveBlockers;
 use super::display::TypeDisplay;
 use super::impl_item::ImplItem;
@@ -48,10 +49,13 @@ impl DeclarationsFixture {
         DeclaredTraits::new(&self.declarations.traits)
     }
 
+    pub(super) fn derivable_traits(&self) -> DerivableTraits<'_> {
+        DerivableTraits::new(&self.declarations.traits)
+    }
+
     pub(super) fn derive_blockers(&self) -> DeriveBlockers<'_> {
         DeriveBlockers::new(
-            &self.declarations.types,
-            self.declared_traits(),
+            &self.declarations,
             VariantPayloads::new(&self.declarations.types),
         )
     }
@@ -87,7 +91,7 @@ impl DeclarationsFixture {
     }
 
     pub(super) fn implementation_collector(&self) -> ImplementationCollector<'_> {
-        ImplementationCollector::new(&self.declarations.traits)
+        ImplementationCollector::new(self.declared_traits())
     }
 
     pub(super) fn enter_impl(&mut self, collected: CollectedImpl) {

@@ -1,22 +1,22 @@
 use super::ReceiverKind;
 use super::declarations::Declarations;
+use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::display::TypeDisplay;
 use super::impl_item::ImplItem;
-use super::impl_overlap::ImplementorOverlap;
 use super::implementation_verdict::ImplementationVerdict;
 use super::problems::TypeProblems;
-use super::trait_declarations::TraitDeclarations;
-use super::trait_definitions::TraitDefinitions;
+use super::rust_trait_paths::RustTraitPaths;
 use super::ty::Type;
 use crate::core::{BindingArena, BindingId, ImplMethod};
-use crate::diagnostic::Diagnostic;
+use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::source::Span;
 
 pub(super) struct ImplementationCheck<'a> {
     bindings: &'a BindingArena,
     types: DeclaredTypes<'a>,
-    traits: &'a TraitDeclarations,
+    traits: DeclaredTraits<'a>,
+    rust_paths: &'a RustTraitPaths,
     display: TypeDisplay<'a>,
 }
 
@@ -29,7 +29,8 @@ impl<'a> ImplementationCheck<'a> {
         Self {
             bindings,
             types: DeclaredTypes::new(&declarations.types),
-            traits: &declarations.traits,
+            traits: DeclaredTraits::new(&declarations.traits),
+            rust_paths: &declarations.traits.rust_paths,
             display,
         }
     }
@@ -61,9 +62,9 @@ impl<'a> ImplementationCheck<'a> {
         implementor: &Type,
         span: Span,
         methods: &[ImplMethod],
-    ) -> Vec<Diagnostic> {
+    ) -> Diagnostics {
         if !self.types.is_unsized(implementor) {
-            return Vec::new();
+            return Diagnostics::default();
         }
         methods
             .iter()
@@ -77,7 +78,7 @@ impl<'a> ImplementationCheck<'a> {
     }
 
     fn receives_owned(&self, trait_method: BindingId) -> bool {
-        TraitDefinitions::new(self.traits).receiver(trait_method) == Some(ReceiverKind::Owned)
+        self.traits.receiver(trait_method) == Some(ReceiverKind::Owned)
     }
 
     fn foreign_implementor(
@@ -86,9 +87,8 @@ impl<'a> ImplementationCheck<'a> {
         implementor: &Type,
         span: Span,
     ) -> Option<Diagnostic> {
-        let rust_paths = &self.traits.rust_paths;
         let program_type = self.types.declares_type(implementor);
-        if rust_paths.written(trait_binding).is_none() || program_type {
+        if self.rust_paths.written(trait_binding).is_none() || program_type {
             return None;
         }
         let implementor_name = self.display.show(implementor);
@@ -106,10 +106,7 @@ impl<'a> ImplementationCheck<'a> {
         implementor: &Type,
         span: Span,
     ) -> Option<Diagnostic> {
-        let first = self.traits.impls.iter().find(|implementation| {
-            implementation.trait_binding == trait_binding
-                && ImplementorOverlap::overlaps(&implementation.implementor, implementor)
-        })?;
+        let first = self.traits.overlapping_impl(trait_binding, implementor)?;
         let first = TypeProblems::first_impl(first.implementor_span);
         let implementor_name = self.display.show(implementor);
         let trait_name = self.bindings.get(trait_binding).name().to_string();

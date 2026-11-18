@@ -60,7 +60,7 @@ impl TypeChecker {
         implementor: &Type,
         program_type: bool,
     ) -> bool {
-        if !self.declared_traits().is_structural(trait_binding) {
+        if !self.derivability().is_structural(trait_binding) {
             return program_type || !self.declares_methods(trait_binding);
         }
         self.lacks_source_form(implementor)
@@ -103,7 +103,8 @@ impl TypeChecker {
         trait_binding: BindingId,
     ) -> Diagnostic {
         let traits = self.declared_traits();
-        let replacing = traits
+        let replacing = self
+            .derivability()
             .is_structural(trait_binding)
             .then(|| traits.written_impl(trait_binding, head))
             .flatten();
@@ -190,7 +191,7 @@ impl TypeChecker {
         let Type::Named(head, _) = implementor else {
             return;
         };
-        if !self.declared_traits().is_structural(trait_binding) {
+        if !self.derivability().is_structural(trait_binding) {
             return;
         }
         self.report_path_clash(trait_binding, *head, span);

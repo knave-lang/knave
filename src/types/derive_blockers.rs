@@ -1,7 +1,9 @@
 use std::rc::Rc;
 
 use super::boxed_payload::BoxedPayload;
+use super::declarations::Declarations;
 use super::declared_traits::DeclaredTraits;
+use super::derivable_traits::DerivableTraits;
 use super::selection::Selection;
 use super::ty::{Bound, GenericId, Type};
 use super::type_declarations::TypeDeclarations;
@@ -11,18 +13,16 @@ use crate::core::BindingId;
 pub(super) struct DeriveBlockers<'a> {
     types: &'a TypeDeclarations,
     traits: DeclaredTraits<'a>,
+    derivability: DerivableTraits<'a>,
     payloads: VariantPayloads<'a>,
 }
 
 impl<'a> DeriveBlockers<'a> {
-    pub(super) fn new(
-        types: &'a TypeDeclarations,
-        traits: DeclaredTraits<'a>,
-        payloads: VariantPayloads<'a>,
-    ) -> Self {
+    pub(super) fn new(declarations: &'a Declarations, payloads: VariantPayloads<'a>) -> Self {
         Self {
-            types,
-            traits,
+            types: &declarations.types,
+            traits: DeclaredTraits::new(&declarations.traits),
+            derivability: DerivableTraits::new(&declarations.traits),
             payloads,
         }
     }
@@ -61,7 +61,7 @@ impl<'a> DeriveBlockers<'a> {
         payload: &'p Type,
         trait_binding: BindingId,
     ) -> &'p Type {
-        match self.traits.is_structural(trait_binding) {
+        match self.derivability.is_structural(trait_binding) {
             true => self.payloads.written(boxed, payload),
             false => payload,
         }
@@ -78,7 +78,7 @@ impl<'a> DeriveBlockers<'a> {
 
     fn field_type_satisfies(&self, bound: &Bound, field_type: &Type, params: &[GenericId]) -> bool {
         match field_type {
-            Type::Function(..) => self.traits.allows_function_fields(bound.binding),
+            Type::Function(..) => self.derivability.allows_function_fields(bound.binding),
             Type::Generic(generic) => params.contains(generic),
             _ => match self.traits.select(bound, field_type) {
                 Selection::Implemented { requirements, .. } => {

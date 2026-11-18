@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/index_placeholder.knv
+---
+20
+10
+20
+30
+25
+25
+21
+31
+32

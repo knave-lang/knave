@@ -10,6 +10,7 @@ mod clause_chooser_problems;
 mod clause_passing_problems;
 mod compile_time_check;
 mod context;
+mod conversion_problems;
 mod copy_implementors;
 mod declared_trait;
 mod defining_call;

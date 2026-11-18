@@ -1,0 +1,7 @@
+(defenum (duo a b)
+  (rust "({index 0}, {1})")
+  (duo a b))
+
+(defenum (trio a b c)
+  (rust "({0}, {1}, {index? 2})")
+  (trio a b c))

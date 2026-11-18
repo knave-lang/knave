@@ -1,0 +1,10 @@
+(def first-or
+  (rust "[{0}].get({index? 1}).copied()"
+    (where (a) (fn (a int) (option a)))))
+
+(defn main ()
+  (let (wide (= (len "ab") 2)
+        at 0)
+    (prn (first-or (if wide 3000000000 0) at))
+    (prn (first-or (do (println "picked") 3000000000)
+                   (- at 4294967295)))))

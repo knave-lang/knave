@@ -1,0 +1,9 @@
+(def at2
+  (rust "&{0}[{index 1}]"
+    (where (a)
+      (fn ((ref (slice a)) int) (ref a)))))
+
+(defn main ()
+  (let (items (vec 10 20 30)
+        back (- 0 2))
+    (println (deref (at2 items back)))))

@@ -4,6 +4,7 @@ mod bound_before;
 mod callee_definitions;
 mod callee_parameters;
 mod constant_definitions;
+mod converted_argument;
 mod double_negation;
 mod emitted_types;
 mod emitted_value;

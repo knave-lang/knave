@@ -1,4 +1,3 @@
-expand/src/core/template.rs::ParsedTemplate::access 1
 
 expand/src/diagnostic/render.rs::DiagnosticRenderer::annotation 1
 

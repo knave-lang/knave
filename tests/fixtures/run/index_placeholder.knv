@@ -1,0 +1,49 @@
+(def at2
+  (rust "&{0}[{index 1}]"
+    (where (a)
+      (fn ((ref (slice a)) int) (ref a)))))
+
+(def nth
+  (rust "{0}[{index 1}]"
+    (fn ((ref (vec int)) int) int)))
+
+(def add-at
+  (rust "{0}[{index 1}] + {2}"
+    (fn ((ref (vec int)) int int) int)))
+
+(def set-at2
+  (rust "{0}[{index 1}] = {2}"
+    (where (a)
+      (fn ((mut (slice a)) int a) unit))))
+
+(defn bump! (items i)
+  (set-at2 items i
+           (+ (deref (at2 items i)) 1))
+  (deref (at2 items i)))
+
+(defn bump-through! (scores order k)
+  (set! (at scores (deref (at2 order k)))
+        (+ (at scores (deref (at2 order k))) 1))
+  (deref (at scores 2)))
+
+(defn bump-at! (items (j usize))
+  (set! (at items j)
+        (+ (deref (at items j)) 1))
+  (deref (at items j)))
+
+(defn main ()
+  (let (items (vec 10 20 30)
+        i 1
+        far (+ i 1)
+        pick nth)
+    (println (deref (at2 items i)))
+    (println (deref (at2 items 0)))
+    (println (deref (at2 items (- far 1))))
+    (println (pick items far))
+    (println (add-at items 1 5))
+    (println (add-at items 1 (if (= i 1) 5 6)))
+    (println (bump! items i))
+    (let (order (vec 2 0))
+      (push! order 1)
+      (println (bump-through! items order 0)))
+    (println (bump-at! items 2))))

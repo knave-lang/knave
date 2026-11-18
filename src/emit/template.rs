@@ -1,3 +1,4 @@
+use super::converted_argument::ConvertedArgument;
 use super::fragment::{Code, Fragment, Precedence};
 use super::operator::{RustOperator, RustText, Side};
 use super::preceded_code::PrecededCode;
@@ -139,7 +140,14 @@ impl Template {
             Substitution::Inline(codes) => codes,
             Substitution::Bind(bound) => return self.inline_with_temporaries(bound, types),
         };
-        if let [Piece::Placeholder { index, .. }] = self.parsed.pieces() {
+        if let [
+            Piece::Placeholder {
+                index,
+                conversion: None,
+                ..
+            },
+        ] = self.parsed.pieces()
+        {
             return Ok(arguments.swap_remove(*index));
         }
         self.substitute(&arguments, types, places)
@@ -157,8 +165,16 @@ impl Template {
         for (position, piece) in pieces.iter().enumerate() {
             match piece {
                 Piece::Literal(literal) => fragments.push(Fragment::Text(literal.clone())),
-                Piece::Placeholder { index, access } => {
-                    let argument = self.argument_in_place(&arguments[*index], position);
+                Piece::Placeholder {
+                    index,
+                    access,
+                    conversion,
+                } => {
+                    let converted = conversion.map(|conversion| {
+                        ConvertedArgument::new(conversion).code(&arguments[*index])
+                    });
+                    let written = converted.as_ref().unwrap_or(&arguments[*index]);
+                    let argument = self.argument_in_place(written, position);
                     bare_struct_literal |= argument.bare_struct_literal
                         && Self::is_outside_delimiters(&pieces[..position]);
                     fragments.extend(argument.fragments);
@@ -462,6 +478,36 @@ mod tests {
         assert_eq!(
             inline("{owned 0}.any({1})", vec![temporary, Code::atom("big")]),
             "years.iter().any(big)"
+        );
+    }
+
+    #[test]
+    fn converts_an_index_in_its_place() {
+        assert_eq!(
+            inline(
+                "&{0}[{index 1}]",
+                vec![Code::atom("items"), Code::atom("i")]
+            ),
+            "&items[crate::rt::index(i)]"
+        );
+    }
+
+    #[test]
+    fn converts_a_template_that_is_one_converted_placeholder() {
+        assert_eq!(
+            inline("{index 0}", vec![Code::atom("i")]),
+            "crate::rt::index(i)"
+        );
+    }
+
+    #[test]
+    fn writes_a_converted_operation_without_parentheses() {
+        assert_eq!(
+            inline(
+                "{0}.get({index? 1})",
+                vec![Code::atom("items"), operator("i + 1")]
+            ),
+            "items.get(usize::try_from(i + 1).unwrap_or(usize::MAX))"
         );
     }
 

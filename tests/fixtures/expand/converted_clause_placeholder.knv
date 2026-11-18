@@ -1,0 +1,12 @@
+(def item-at
+  (rust "&{0}[{1}]"
+    (where (a)
+      (fn ((ref (slice a)) int) (ref a)))
+    (i64 "&{0}[{index 1}]")))
+
+(def item-near
+  (rust "{0}.get({1})"
+    (where (a)
+      (fn ((ref (slice a)) int)
+        (option (ref a))))
+    (i64 "{0}.get({index? 1})")))

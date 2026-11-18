@@ -1,22 +1,151 @@
 use super::access::Access;
+use super::conversion::Conversion;
 use super::template_braces::TemplateBraces;
 use super::template_operation::TemplateOperation;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct MalformedPlaceholder;
 
+struct WrittenPlaceholder;
+
+impl WrittenPlaceholder {
+    const BINDER: char = '!';
+
+    fn read(
+        characters: &mut std::iter::Peekable<std::str::Chars>,
+    ) -> Result<Piece, MalformedPlaceholder> {
+        let borrow_marker = characters.next_if_eq(&Access::BORROW);
+        let written = Self::placeholder_name(characters)?;
+        let (conversion, unconverted) = Conversion::split(&written);
+        let (access, name) = Self::access(borrow_marker, unconverted);
+        let marks = PlaceholderMarks { access, conversion };
+        if marks.combines_access_and_conversion() {
+            return Err(MalformedPlaceholder);
+        }
+        match name.strip_prefix(Self::BINDER) {
+            Some(binder) => Self::binder_placeholder(binder, &marks),
+            None => Self::argument_placeholder(name, marks),
+        }
+    }
+
+    fn binder_placeholder(
+        binder: &str,
+        marks: &PlaceholderMarks,
+    ) -> Result<Piece, MalformedPlaceholder> {
+        if marks.is_marked() || binder.is_empty() {
+            return Err(MalformedPlaceholder);
+        }
+        Ok(Piece::BinderPlaceholder {
+            name: binder.to_string(),
+        })
+    }
+
+    fn argument_placeholder(
+        name: &str,
+        marks: PlaceholderMarks,
+    ) -> Result<Piece, MalformedPlaceholder> {
+        match name.parse::<usize>() {
+            Ok(index) => Ok(Piece::Placeholder {
+                index,
+                access: marks.access,
+                conversion: marks.conversion,
+            }),
+            Err(_) if marks.is_marked() => Err(MalformedPlaceholder),
+            Err(_) => Ok(Piece::TypePlaceholder {
+                name: name.to_string(),
+            }),
+        }
+    }
+
+    fn access(borrow_marker: Option<char>, name: &str) -> (Access, &str) {
+        if borrow_marker.is_some() {
+            return (Access::Borrowed, name);
+        }
+        match name.strip_prefix(Access::OWNED) {
+            Some(index) => (Access::Owned, index),
+            None => (Access::Passed, name),
+        }
+    }
+
+    fn placeholder_name(
+        characters: &mut impl Iterator<Item = char>,
+    ) -> Result<String, MalformedPlaceholder> {
+        let mut name = String::new();
+        for next in characters {
+            if next == TemplateBraces::CLOSE {
+                return if name.is_empty() {
+                    Err(MalformedPlaceholder)
+                } else {
+                    Ok(name)
+                };
+            }
+            name.push(next);
+        }
+        Err(MalformedPlaceholder)
+    }
+}
+
+struct PlaceholderMarks {
+    access: Access,
+    conversion: Option<Conversion>,
+}
+
+impl PlaceholderMarks {
+    fn is_marked(&self) -> bool {
+        self.access != Access::Passed || self.conversion.is_some()
+    }
+
+    fn combines_access_and_conversion(&self) -> bool {
+        self.access != Access::Passed && self.conversion.is_some()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Piece {
     Literal(String),
-    Placeholder { index: usize, access: Access },
-    TypePlaceholder { name: String },
-    BinderPlaceholder { name: String },
+    Placeholder {
+        index: usize,
+        access: Access,
+        conversion: Option<Conversion>,
+    },
+    TypePlaceholder {
+        name: String,
+    },
+    BinderPlaceholder {
+        name: String,
+    },
 }
 
 impl Piece {
+    pub fn conversions_in(pieces: &[Self]) -> impl Iterator<Item = (usize, Conversion)> + '_ {
+        pieces.iter().filter_map(Self::conversion)
+    }
+
+    pub fn conversion(&self) -> Option<(usize, Conversion)> {
+        match self {
+            Self::Placeholder {
+                index,
+                conversion: Some(conversion),
+                ..
+            } => Some((*index, *conversion)),
+            _ => None,
+        }
+    }
+
+    pub fn unconverted(&self) -> Self {
+        match self {
+            Self::Placeholder { index, access, .. } => Self::Placeholder {
+                index: *index,
+                access: *access,
+                conversion: None,
+            },
+            other => other.clone(),
+        }
+    }
+
     pub(super) fn access_for(&self, argument: usize) -> Option<Access> {
         match self {
-            Self::Placeholder { index, access } if *index == argument => Some(*access),
+            Self::Placeholder { index, access, .. } if *index == argument => Some(*access),
             _ => None,
         }
     }
@@ -47,7 +176,6 @@ pub struct ParsedTemplate {
 }
 
 impl ParsedTemplate {
-    const BINDER: char = '!';
     const DEREFERENCE: &'static str = "*";
 
     pub fn parse(text: &str) -> Result<Self, MalformedPlaceholder> {
@@ -62,7 +190,7 @@ impl ParsedTemplate {
                     literal.push(character);
                 }
                 (TemplateBraces::OPEN, _) => {
-                    let placeholder = Self::placeholder(&mut characters)?;
+                    let placeholder = WrittenPlaceholder::read(&mut characters)?;
                     pieces.push(Piece::Literal(std::mem::take(&mut literal)));
                     pieces.push(placeholder);
                 }
@@ -76,55 +204,6 @@ impl ParsedTemplate {
             pieces,
             text: text.to_string(),
         })
-    }
-
-    fn placeholder(
-        characters: &mut std::iter::Peekable<std::str::Chars>,
-    ) -> Result<Piece, MalformedPlaceholder> {
-        let borrowed = characters.next_if_eq(&Access::BORROW).is_some();
-        let written = Self::placeholder_name(characters)?;
-        let (access, name) = Self::access(borrowed, &written);
-        if let Some(binder) = name.strip_prefix(Self::BINDER) {
-            return if access != Access::Passed || binder.is_empty() {
-                Err(MalformedPlaceholder)
-            } else {
-                Ok(Piece::BinderPlaceholder {
-                    name: binder.to_string(),
-                })
-            };
-        }
-        match name.parse::<usize>() {
-            Ok(index) => Ok(Piece::Placeholder { index, access }),
-            Err(_) if access != Access::Passed => Err(MalformedPlaceholder),
-            Err(_) => Ok(Piece::TypePlaceholder {
-                name: name.to_string(),
-            }),
-        }
-    }
-
-    fn access(borrowed: bool, name: &str) -> (Access, &str) {
-        match name.strip_prefix(Access::OWNED) {
-            Some(index) if !borrowed => (Access::Owned, index),
-            _ if borrowed => (Access::Borrowed, name),
-            _ => (Access::Passed, name),
-        }
-    }
-
-    fn placeholder_name(
-        characters: &mut impl Iterator<Item = char>,
-    ) -> Result<String, MalformedPlaceholder> {
-        let mut name = String::new();
-        for next in characters {
-            if next == TemplateBraces::CLOSE {
-                return if name.is_empty() {
-                    Err(MalformedPlaceholder)
-                } else {
-                    Ok(name)
-                };
-            }
-            name.push(next);
-        }
-        Err(MalformedPlaceholder)
     }
 
     pub fn pieces(&self) -> &[Piece] {
@@ -185,7 +264,7 @@ impl ParsedTemplate {
         let mut pieces = self.pieces.clone();
         for position in 1..pieces.len() {
             let borrowed = matches!(&pieces[position],
-                Piece::Placeholder { index, access: Access::Borrowed } if *index == argument);
+                Piece::Placeholder { index, access: Access::Borrowed, .. } if *index == argument);
             if borrowed
                 && let Piece::Literal(text) = &mut pieces[position - 1]
                 && text.ends_with(Access::BORROW)
@@ -194,6 +273,7 @@ impl ParsedTemplate {
                 pieces[position] = Piece::Placeholder {
                     index: argument,
                     access: Access::Passed,
+                    conversion: None,
                 };
             }
         }
@@ -221,7 +301,16 @@ impl ParsedTemplate {
     fn rendered_piece(piece: &Piece) -> String {
         match piece {
             Piece::Literal(literal) => literal.replace('{', "{{").replace('}', "}}"),
-            Piece::Placeholder { index, access } => format!("{{{}{index}}}", access.marker()),
+            Piece::Placeholder {
+                index,
+                conversion: Some(conversion),
+                ..
+            } => conversion.placeholder(*index),
+            Piece::Placeholder {
+                index,
+                access,
+                conversion: None,
+            } => format!("{{{}{index}}}", access.marker()),
             Piece::TypePlaceholder { name } => format!("{{{name}}}"),
             Piece::BinderPlaceholder { name } => format!("{{!{name}}}"),
         }
@@ -246,7 +335,7 @@ impl ParsedTemplate {
         };
         matches!(
             pieces,
-            [Piece::Placeholder { index, access }, Piece::Literal(method), ..]
+            [Piece::Placeholder { index, access, .. }, Piece::Literal(method), ..]
                 if *index == argument && *access != Access::Borrowed && method.starts_with('.')
         )
     }
@@ -363,7 +452,7 @@ impl ParsedTemplate {
 
 #[cfg(test)]
 mod tests {
-    use super::{Access, MalformedPlaceholder, ParsedTemplate, Piece};
+    use super::{Access, Conversion, MalformedPlaceholder, ParsedTemplate, Piece};
 
     #[test]
     fn splits_literals_from_placeholders() {
@@ -374,7 +463,8 @@ mod tests {
                 Piece::Literal("Vec<".to_string()),
                 Piece::Placeholder {
                     index: 0,
-                    access: Access::Passed
+                    access: Access::Passed,
+                    conversion: None
                 },
                 Piece::Literal(">".to_string())
             ]
@@ -425,6 +515,12 @@ mod tests {
     }
 
     #[test]
+    fn accepts_an_element_place_with_a_converted_index() {
+        let parsed = ParsedTemplate::parse("{0}[{index 1}]").expect("a valid template");
+        assert!(parsed.is_single_index_place());
+    }
+
+    #[test]
     fn rejects_a_range_index_as_an_element_place() {
         let parsed = ParsedTemplate::parse("{0}[{1}..{2}]").expect("a valid template");
         assert!(!parsed.is_single_index_place());
@@ -450,12 +546,95 @@ mod tests {
             parsed.pieces()[0],
             Piece::Placeholder {
                 index: 0,
-                access: Access::Owned
+                access: Access::Owned,
+                conversion: None
             }
         );
         assert!(!parsed.borrows(0));
         assert!(!parsed.borrows_any());
         assert_eq!(parsed.text(), "{owned 0}.any({1})");
+    }
+
+    #[test]
+    fn marks_each_conversion_of_a_placeholder() {
+        let parsed =
+            ParsedTemplate::parse("{0}.get({index? 1})[{index 2}]").expect("a valid template");
+        let conversions: Vec<(usize, Conversion)> = parsed
+            .pieces()
+            .iter()
+            .filter_map(Piece::conversion)
+            .collect();
+        assert_eq!(
+            conversions,
+            [(1, Conversion::OptionalIndex), (2, Conversion::Index)]
+        );
+        assert_eq!(parsed.placeholders().collect::<Vec<_>>(), [0, 1, 2]);
+    }
+
+    #[test]
+    fn a_converted_placeholder_passes_its_argument() {
+        let parsed = ParsedTemplate::parse("&{0}[{index 1}]").expect("a valid template");
+        assert_eq!(
+            parsed.pieces()[3],
+            Piece::Placeholder {
+                index: 1,
+                access: Access::Passed,
+                conversion: Some(Conversion::Index)
+            }
+        );
+        assert!(!parsed.borrows(1));
+    }
+
+    #[test]
+    fn keeps_the_text_of_a_conversion_through_a_rewrite() {
+        let text = "{0}.get({index? 1}).map(|{!item}| {!item}[{index 2}])";
+        let renamed = ParsedTemplate::parse(text)
+            .expect("a valid template")
+            .with_binders(&[("item".to_string(), "item".to_string())]);
+        assert_eq!(
+            renamed.text(),
+            "{0}.get({index? 1}).map(|item| item[{index 2}])"
+        );
+    }
+
+    #[test]
+    fn keeps_the_access_of_a_placeholder_through_a_rewrite() {
+        let text = "{&0}.iter().map(|{!item}| {owned 1}.push({!item}))";
+        let renamed = ParsedTemplate::parse(text)
+            .expect("a valid template")
+            .with_binders(&[("item".to_string(), "item".to_string())]);
+        assert_eq!(
+            renamed.text(),
+            "{&0}.iter().map(|item| {owned 1}.push(item))"
+        );
+    }
+
+    #[test]
+    fn drops_the_conversion_of_a_placeholder() {
+        let parsed = ParsedTemplate::parse("{owned 0}.nth({index 1})").expect("a valid template");
+        let unconverted: Vec<Piece> = parsed.pieces().iter().map(Piece::unconverted).collect();
+        let plain = ParsedTemplate::parse("{owned 0}.nth({1})").expect("a valid template");
+        assert_eq!(unconverted, plain.pieces());
+    }
+
+    #[test]
+    fn reports_a_conversion_beside_an_access_or_a_name() {
+        for text in [
+            "{&index 0}",
+            "{index &0}",
+            "{index owned 0}",
+            "{owned index 0}",
+            "{index? !item}",
+            "{index target}",
+            "{index? target}",
+            "{index }",
+        ] {
+            assert_eq!(
+                ParsedTemplate::parse(text).err(),
+                Some(MalformedPlaceholder),
+                "{text}"
+            );
+        }
     }
 
     #[test]

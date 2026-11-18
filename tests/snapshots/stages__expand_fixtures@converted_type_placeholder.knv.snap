@@ -1,0 +1,31 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/converted_type_placeholder.knv
+---
+error[L0218]: this Rust template has a malformed placeholder
+ --> expand/converted_type_placeholder.knv:1:31
+  |
+1 | (deftype (wrapper item) (rust "Vec<{index 0}>"))
+  |                               ^^^^^^^^^^^^^^^^ a type template cannot convert a placeholder
+  |
+  = help: write the placeholder as `{0}`
+  = note: run `knave doc L0218` for an explanation
+
+error[L0218]: this Rust template has a malformed placeholder
+ --> expand/converted_type_placeholder.knv:3:25
+  |
+3 | (rust-type (sized item) "Vec<{index? 0}>")
+  |                         ^^^^^^^^^^^^^^^^^ a type template cannot convert a placeholder
+  |
+  = help: write the placeholder as `{0}`
+  = note: run `knave doc L0218` for an explanation
+
+error[L0218]: this Rust template has a malformed placeholder
+ --> expand/converted_type_placeholder.knv:5:41
+  |
+5 | (rust-type (shelf item) "Vec<{0}>" (i64 "Vec<{index 0}>"))
+  |                                         ^^^^^^^^^^^^^^^^ a type template cannot convert a placeholder
+  |
+  = help: write the placeholder as `{0}`
+  = note: run `knave doc L0218` for an explanation

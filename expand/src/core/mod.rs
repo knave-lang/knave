@@ -6,6 +6,7 @@ mod binding;
 mod builtin;
 mod clause_comparison;
 mod consulted_traits;
+mod conversion;
 mod dropped_borrows;
 mod expr;
 mod implementor_rows;
@@ -45,6 +46,7 @@ pub use clause_comparison::ClauseComparison;
 pub use consulted_traits::{
     BorrowTrait, ConsultedTraits, CopyTrait, EqualityTrait, HashTrait, OrderTrait,
 };
+pub use conversion::Conversion;
 pub use dropped_borrows::DroppedBorrows;
 pub use expr::{
     Arm, Binder, Block, BodyItem, Control, Expr, ExprKind, FieldLabel, FieldSpelling, Lambda, Leaf,

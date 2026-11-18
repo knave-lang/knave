@@ -17,7 +17,8 @@
   "Builds a pair of two values.
 
   `pair` is also the type `(pair a b)`, Rust's `(A, B)`. In a [match] or a
-  `let-match`, `(pair x y)` is the pattern that binds the parts.
+  `let-match`, `(pair x y)` is the pattern that binds the parts. `first` and
+  `second` read one part.
 
   (match (pair 1 2)
     ((pair left right) (+ left right)))

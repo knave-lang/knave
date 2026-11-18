@@ -1,0 +1,14 @@
+(defmacro pass (x)
+  (template (unquote x)))
+
+(defmacro define-macro (name body)
+  (template (pass (defmacro (unquote name) ()
+                    (unquote body)))))
+
+(define-macro make-float
+              (template (defstruct float
+                          :n bool)))
+
+(make-float)
+
+(defn main () (println 1))

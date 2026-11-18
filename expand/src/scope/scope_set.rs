@@ -631,6 +631,15 @@ mod tests {
     }
 
     #[test]
+    fn the_largest_matching_own_scope_may_sit_below_the_largest_own_scope() {
+        let mut scopes = Scopes::new();
+        let older = scopes.allocator.fresh(ScopeKind::Local);
+        let newer = scopes.allocator.fresh(ScopeKind::Local);
+        let set = ScopeSet::of(&[older, newer]);
+        assert_eq!(set.largest_matching(|scope| scope == older), Some(older));
+    }
+
+    #[test]
     fn the_largest_matching_own_scope_wins_over_smaller_shared_ones() {
         let mut scopes = Scopes::new();
         let (mut set, older) = scopes.shared_set_of(Scopes::SHARED_LENGTH);

@@ -65,8 +65,8 @@ impl TraitFixture {
 
     pub(super) fn enter_trait(&mut self, collected: CollectedTrait) {
         let checker = &mut self.types.checker;
-        collected.enter(
-            checker.declarations.traits_mut(),
+        checker.declarations.open_builder().traits().enter_trait(
+            collected,
             &mut checker.checking_facts,
             &mut checker.synthetic_bindings,
         );
@@ -74,9 +74,7 @@ impl TraitFixture {
 
     pub(super) fn enter_rust_trait(&mut self, collected: CollectedRustTrait<'_>) {
         let checker = &mut self.types.checker;
-        collected.enter(
-            checker.declarations.traits_mut(),
-            &mut checker.synthetic_bindings,
-        );
+        let traits = checker.declarations.open_builder().traits();
+        traits.enter_rust_trait(collected, &mut checker.synthetic_bindings);
     }
 }

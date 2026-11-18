@@ -21,7 +21,8 @@ impl<'a> TypeDeclarationsBuilder<'a> {
         collected: CollectedStruct,
         diagnostics: &mut Diagnostics,
     ) {
-        collected.enter(binding, self.types, diagnostics);
+        self.types.structs.add(binding, collected.definition);
+        diagnostics.extend(collected.problem.into_iter().collect());
     }
 
     pub(super) fn enter_enum(
@@ -30,7 +31,11 @@ impl<'a> TypeDeclarationsBuilder<'a> {
         collected: CollectedEnum,
         diagnostics: &mut Diagnostics,
     ) {
-        collected.enter(binding, self.types, diagnostics);
+        if let Some(rust_type) = collected.rust_type {
+            self.types.rust_types.add(binding, rust_type);
+        }
+        self.types.enums.add(binding, collected.definition);
+        diagnostics.extend(collected.problems.into_iter().collect());
     }
 
     pub(super) fn add_rust_type(self, binding: BindingId, rust_type: RustType) {

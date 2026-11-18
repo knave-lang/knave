@@ -1,11 +1,9 @@
 use super::StructDefinition;
-use super::type_declarations::TypeDeclarations;
-use crate::core::BindingId;
-use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::diagnostic::Diagnostic;
 
 pub(super) struct CollectedStruct {
-    definition: StructDefinition,
-    problem: Option<Diagnostic>,
+    pub(super) definition: StructDefinition,
+    pub(super) problem: Option<Diagnostic>,
 }
 
 impl CollectedStruct {
@@ -14,15 +12,5 @@ impl CollectedStruct {
             definition,
             problem,
         }
-    }
-
-    pub(super) fn enter(
-        self,
-        binding: BindingId,
-        types: &mut TypeDeclarations,
-        diagnostics: &mut Diagnostics,
-    ) {
-        types.structs.add(binding, self.definition);
-        diagnostics.extend(self.problem.into_iter().collect());
     }
 }

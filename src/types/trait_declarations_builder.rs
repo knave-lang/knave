@@ -23,7 +23,19 @@ impl<'a> TraitDeclarationsBuilder<'a> {
         facts: &mut CheckingFacts,
         synthetic: &mut FxHashSet<BindingId>,
     ) {
-        collected.enter(self.traits, facts, synthetic);
+        let traits = self.traits;
+        traits
+            .table
+            .add(collected.definition.binding, collected.rust_trait);
+        for (method, selfless) in collected.selfless {
+            facts.selfless_methods.insert(method, selfless);
+        }
+        for method in &collected.definition.methods {
+            synthetic.extend(std::iter::once(method.binding).chain(method.default));
+            let info = collected.definition.method_info(method);
+            traits.methods.insert(method.binding, info);
+        }
+        traits.definitions.push(collected.definition);
     }
 
     pub(super) fn enter_rust_trait(
@@ -31,7 +43,15 @@ impl<'a> TraitDeclarationsBuilder<'a> {
         collected: CollectedRustTrait,
         synthetic: &mut FxHashSet<BindingId>,
     ) {
-        collected.enter(self.traits, synthetic);
+        let traits = self.traits;
+        traits
+            .table
+            .add(collected.declaration.binding, collected.rust_trait);
+        traits.rust_paths.record(collected.declaration);
+        for (method, info) in collected.methods {
+            synthetic.insert(method);
+            traits.methods.insert(method, info);
+        }
     }
 
     pub(super) fn enter_impl(
@@ -40,7 +60,15 @@ impl<'a> TraitDeclarationsBuilder<'a> {
         synthetic: &mut FxHashSet<BindingId>,
         impl_methods: &mut FxHashSet<BindingId>,
     ) {
-        collected.enter(self.traits, synthetic, impl_methods);
+        let traits = self.traits;
+        traits
+            .table
+            .add_implementor(collected.definition.trait_binding, collected.implementor);
+        for method in &collected.definition.methods {
+            synthetic.insert(method.binding);
+            impl_methods.insert(method.binding);
+        }
+        traits.impls.push(collected.definition);
     }
 
     pub(super) fn add_structural(self, structural: StructuralTrait) {

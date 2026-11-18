@@ -24,6 +24,7 @@ use super::enum_item::EnumItem;
 use super::generic_declarations::GenericDeclarations;
 use super::generic_registry::GenericRegistry;
 use super::graph::{Definition, DefinitionGraph};
+use super::impl_bounds::ImplBounds;
 use super::impl_item::ImplItem;
 use super::implementation_check::ImplementationCheck;
 use super::implementation_collector::ImplementationCollector;
@@ -659,6 +660,11 @@ impl TypeChecker {
 
     pub(super) fn generic_declarations(&mut self) -> GenericDeclarations<'_> {
         GenericDeclarations::new(&mut self.generics, &mut self.unifier)
+    }
+
+    fn impl_bounds(&mut self) -> ImplBounds<'_> {
+        let generics = GenericDeclarations::new(&mut self.generics, &mut self.unifier);
+        ImplBounds::new(&mut self.declarations, &self.implied_bounds, generics)
     }
 
     fn written_type_parts(
@@ -1624,46 +1630,6 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn absorb_impl_bounds(&mut self, definitions: &FxHashMap<BindingId, TypedDefinition>) {
-        for position in 0..self.declarations.traits().impls.len() {
-            let params = self.declarations.traits().impls[position].params.clone();
-            let mut found: Vec<Vec<Bound>> = vec![Vec::new(); params.len()];
-            for method in &self.declarations.traits().impls[position].methods {
-                let Some(definition) = definitions.get(&method.binding) else {
-                    continue;
-                };
-                let replacements: FxHashMap<GenericId, Type> = definition
-                    .scheme
-                    .params
-                    .iter()
-                    .zip(&params)
-                    .map(|(method_param, implementation)| {
-                        (method_param.id, Type::Generic(implementation.id))
-                    })
-                    .collect();
-                for (bounds, method_param) in found.iter_mut().zip(&definition.scheme.params) {
-                    let declared = method_param.bounds.iter();
-                    let implied = self.implied_bounds.of(method_param.id);
-                    for bound in declared.chain(implied) {
-                        let bound = bound.substituted(&replacements);
-                        if !bounds.contains(&bound) {
-                            bounds.push(bound);
-                        }
-                    }
-                }
-            }
-            self.store_impl_bounds(position, found);
-        }
-    }
-
-    fn store_impl_bounds(&mut self, position: usize, bounds: Vec<Vec<Bound>>) {
-        let mut params = self.declarations.traits().impls[position].params.clone();
-        for (param, bounds) in params.iter_mut().zip(bounds) {
-            self.generic_declarations().redeclare(param, bounds);
-        }
-        self.declarations.record_impl_params(position, params);
-    }
-
     fn check_generic_bound(&mut self, generic: GenericId, bound: Bound, span: Span) {
         if self.declares_bound(generic, &bound) {
             return;
@@ -2210,7 +2176,7 @@ impl TypeChecker {
                 finalizer.definition(definition);
             }
         }
-        self.absorb_impl_bounds(&definitions);
+        self.impl_bounds().absorb(&definitions);
         self.record_uses_through_impls();
         self.discharge_obligations(ObligationPass::Final);
         self.check_written_projections();

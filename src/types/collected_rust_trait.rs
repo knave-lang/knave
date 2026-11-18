@@ -1,16 +1,13 @@
 use std::rc::Rc;
 
-use rustc_hash::FxHashSet;
-
 use super::method_signature::MethodSignature;
-use super::trait_declarations::TraitDeclarations;
 use super::{RustTrait, TraitMethodInfo};
 use crate::core::{BindingId, RustTraitDeclaration};
 
 pub(super) struct CollectedRustTrait<'a> {
-    declaration: &'a RustTraitDeclaration,
-    rust_trait: RustTrait,
-    methods: Vec<(BindingId, TraitMethodInfo)>,
+    pub(super) declaration: &'a RustTraitDeclaration,
+    pub(super) rust_trait: RustTrait,
+    pub(super) methods: Vec<(BindingId, TraitMethodInfo)>,
 }
 
 impl<'a> CollectedRustTrait<'a> {
@@ -32,19 +29,6 @@ impl<'a> CollectedRustTrait<'a> {
             declaration,
             rust_trait,
             methods,
-        }
-    }
-
-    pub(super) fn enter(
-        self,
-        traits: &mut TraitDeclarations,
-        synthetic: &mut FxHashSet<BindingId>,
-    ) {
-        traits.table.add(self.declaration.binding, self.rust_trait);
-        traits.rust_paths.record(self.declaration);
-        for (method, info) in self.methods {
-            synthetic.insert(method);
-            traits.enter_method(method, info);
         }
     }
 }

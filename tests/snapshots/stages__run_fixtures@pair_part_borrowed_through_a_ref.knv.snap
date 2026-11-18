@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/pair_part_borrowed_through_a_ref.knv
+---
+7
+ana
+(pair 7 "seven") (pair "ana" "bo")

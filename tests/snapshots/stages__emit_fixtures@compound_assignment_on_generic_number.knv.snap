@@ -13,7 +13,7 @@ fn twice<A: crate::rt::Number>(x: &mut A) {
     *x += *x
 }
 
-fn climb<A: PartialOrd + crate::rt::Number>(mut n: A, step: A, limit: A) -> A {
+fn climb<A: crate::rt::Number>(mut n: A, step: A, limit: A) -> A {
     loop {
         if n < limit {
             n += step;

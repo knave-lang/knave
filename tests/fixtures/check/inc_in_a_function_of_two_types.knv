@@ -1,0 +1,5 @@
+(defn step (x) (inc x))
+
+(defn main ()
+  (println (step 1))
+  (println (step (the usize 2))))

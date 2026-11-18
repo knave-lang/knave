@@ -2,25 +2,31 @@
 (use prelude/pair pair)
 (use prelude/logic and)
 (use prelude/syntax let)
+(use prelude/ownership copy)
 (use prelude/types box option result vec)
 
 (module
   "Does arithmetic and comparison, and names the number traits.")
 
-(export * + - / < <= = > >= eq floating hash integer neg
-        not= number ord partial-eq partial-ord pi rem signed
-        sqrt)
+(export * + - / < <= = > >= dec eq even? floating hash inc
+        integer neg neg? not= number odd? ord partial-eq
+        partial-ord pi pos? rem signed sqrt zero?)
 
 (rust-trait number "crate::rt::Number"
+  (requires copy partial-ord)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32
   f64)
 
 (rust-trait signed "crate::rt::Signed"
+  (requires number)
   i8 i16 i32 i64 i128 isize f32 f64)
 
-(rust-trait floating "crate::rt::Float" f32 f64)
+(rust-trait floating "crate::rt::Float"
+  (requires signed)
+  f32 f64)
 
 (rust-trait integer "crate::rt::Integer"
+  (requires number)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize)
 
 (rust-trait partial-eq "PartialEq"
@@ -189,6 +195,59 @@
 
 (defrule-with-value not= ne
   ((a b) (ne a b)))
+
+(defrule-with-value inc (fn (x) (+ x 1))
+  ((number) (+ number 1)))
+
+(defrule-with-value dec (fn (x) (- x 1))
+  ((number) (- number 1)))
+
+(defrule-with-value zero? (fn (x) (= x 0))
+  ((number) (= number 0)))
+
+(defrule-with-value pos? (fn (x) (> x 0))
+  ((number) (> number 0)))
+
+(defrule-with-value neg? (fn (x) (< x 0))
+  ((number) (< number 0)))
+
+(def even-integer
+  (rust "crate::rt::is_even({0})"
+    (where ((n integer)) (fn (n) bool))
+    (u8 "u8::is_multiple_of({0}, 2)")
+    (u16 "u16::is_multiple_of({0}, 2)")
+    (u32 "u32::is_multiple_of({0}, 2)")
+    (u64 "u64::is_multiple_of({0}, 2)")
+    (u128 "u128::is_multiple_of({0}, 2)")
+    (usize "usize::is_multiple_of({0}, 2)")
+    (i8 "{0} % 2 == 0")
+    (i16 "{0} % 2 == 0")
+    (i32 "{0} % 2 == 0")
+    (i64 "{0} % 2 == 0")
+    (i128 "{0} % 2 == 0")
+    (isize "{0} % 2 == 0")))
+
+(def odd-integer
+  (rust "!crate::rt::is_even({0})"
+    (where ((n integer)) (fn (n) bool))
+    (u8 "!u8::is_multiple_of({0}, 2)")
+    (u16 "!u16::is_multiple_of({0}, 2)")
+    (u32 "!u32::is_multiple_of({0}, 2)")
+    (u64 "!u64::is_multiple_of({0}, 2)")
+    (u128 "!u128::is_multiple_of({0}, 2)")
+    (usize "!usize::is_multiple_of({0}, 2)")
+    (i8 "{0} % 2 != 0")
+    (i16 "{0} % 2 != 0")
+    (i32 "{0} % 2 != 0")
+    (i64 "{0} % 2 != 0")
+    (i128 "{0} % 2 != 0")
+    (isize "{0} % 2 != 0")))
+
+(defrule-with-value even? (fn (x) (even-integer x))
+  ((integer) (even-integer integer)))
+
+(defrule-with-value odd? (fn (x) (odd-integer x))
+  ((integer) (odd-integer integer)))
 
 (rust-trait ord "Ord"
   (requires eq partial-ord)
@@ -450,3 +509,96 @@
 
   (not= \"a\" \"a\")
   => false")
+
+(document (inc number)
+  "Returns a number plus one.
+
+  It emits `number + 1`, as `(+ number 1)` does. `inc` as a value is the
+  function of one number, so `(map (iter v) inc)` adds one to each item.
+
+  (inc 1)
+  => 2
+
+  (inc 1.5)
+  => 2.5
+
+  (collect (map (iter (vec 1 2)) inc))
+  => (vec 2 3)")
+
+(document (dec number)
+  "Returns a number minus one.
+
+  It emits `number - 1`, as `(- number 1)` does, so on an unsigned 0 it panics
+  as `(- number 1)` does. `dec` as a value is the function of one number.
+
+  (dec 3)
+  => 2
+
+  (collect (map (iter (vec 1 2)) dec))
+  => (vec 0 1)")
+
+(document (zero? number)
+  "Returns whether a number is zero.
+
+  It emits `number == 0`, as `(= number 0)` does. `zero?` as a value is the
+  function of one number, so `(filter (iter v) zero?)` keeps the zeros.
+
+  (zero? 0)
+  => true
+
+  (zero? 2.5)
+  => false")
+
+(document (pos? number)
+  "Returns whether a number is greater than zero.
+
+  It emits `number > 0`, as `(> number 0)` does, so zero is not positive.
+  `pos?` as a value is the function of one number.
+
+  (pos? 2)
+  => true
+
+  (pos? 0)
+  => false")
+
+(document (neg? number)
+  "Returns whether a number is less than zero.
+
+  It emits `number < 0`, as `(< number 0)` does, so zero is not negative, and
+  on an unsigned type it is always false. `neg?` as a value is the function of
+  one number.
+
+  (neg? -2.5)
+  => true
+
+  (neg? 0)
+  => false")
+
+(document (even? integer)
+  "Returns whether an integer divides by two.
+
+  It emits `integer % 2 == 0` on a signed type,
+  `u8::is_multiple_of(integer, 2)` on an unsigned type such as `u8`, and
+  `crate::rt::is_even(integer)` in a function generic over [integer]. It takes
+  only an integer type, so a float is an error. `even?` as a value is the
+  function of one integer.
+
+  (even? 4)
+  => true
+
+  (even? -3)
+  => false")
+
+(document (odd? integer)
+  "Returns whether an integer leaves a remainder when divided by two.
+
+  It emits `integer % 2 != 0` on a signed type, so a negative odd number is odd
+  too, `!u8::is_multiple_of(integer, 2)` on an unsigned type such as `u8`,
+  and `!crate::rt::is_even(integer)` in a function generic over [integer]. It
+  takes only an integer type. `odd?` as a value is the function of one integer.
+
+  (odd? -3)
+  => true
+
+  (count (filter (iter (vec 1 2 3)) odd?))
+  => 2")

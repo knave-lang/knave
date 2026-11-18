@@ -1,0 +1,4 @@
+(defn halves () (even? 2.5))
+
+(defn odd-floats ()
+  (count (filter (iter (vec 1.5 2.0)) odd?)))

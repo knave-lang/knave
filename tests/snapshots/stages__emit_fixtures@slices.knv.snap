@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: "Fixture::load(path).emit_report()"
 input_file: tests/fixtures/emit/slices.knv
 ---
-fn total<A: Copy + crate::rt::Number>(numbers: &[A]) -> A {
+fn total<A: crate::rt::Number>(numbers: &[A]) -> A {
     crate::prelude::iterator::sum(numbers.iter().copied())
 }
 
@@ -15,7 +15,7 @@ fn count_pairs<A>(numbers: &[A]) -> usize {
     numbers.windows(2).count()
 }
 
-fn total_from<A: Copy + crate::rt::Number>(numbers: &[A], mut index: usize) -> A {
+fn total_from<A: crate::rt::Number>(numbers: &[A], mut index: usize) -> A {
     loop {
         if index < numbers.len() {
             index += 1;

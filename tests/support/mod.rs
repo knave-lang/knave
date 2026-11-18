@@ -13,6 +13,7 @@ mod reference_index;
 mod reference_page;
 mod reports;
 mod saved_prelude;
+mod skill_page;
 
 use std::fs;
 use std::io::{Read, Write};
@@ -49,6 +50,7 @@ pub use reference_index::ReferenceIndex;
 pub use reference_page::{PreludePages, ReferencePage};
 pub use reports::FixtureReports;
 pub use saved_prelude::SavedPreludeAgreement;
+pub use skill_page::SkillPage;
 
 pub struct Fixture {
     sources: SourceMap,

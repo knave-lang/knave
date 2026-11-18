@@ -15,7 +15,7 @@ use knave::stack::FreshStack;
 use support::{
     AgreementReport, ExplanationExamples, Fixture, FixtureReports, FormatFailures, GuideLinks,
     HeaderAgreement, LintFixture, PreludePages, ReadBackAgreement, ReferenceIndex, ReferencePage,
-    SavedPreludeAgreement,
+    SavedPreludeAgreement, SkillPage,
 };
 
 const REFERENCE_INDEX_OF_ONE_PAGE: &str = "# Language reference\n\n- [Bindings](reference/bindings.md): names.\n- [Types](reference/types.md): types.\n";
@@ -57,6 +57,7 @@ const MISLAID_REPL_EXAMPLE: &str =
 const DESCRIBED_EXAMPLE: &str =
     "## Described example\n\n```text\n(((( … ))))\n```\n\n```knave\n(def deep (vec))\n```\n";
 const UNREADABLE_EXAMPLE: &str = "## Erroneous example\n\n```knave\n(defn main (\n```\n";
+const WRONG_SKILL_VALUE: &str = "```knave\n(defn twice (n) (* 2 n))\n\n(twice 2)\n=> 5\n```\n";
 const FAILING_EXIT_FIX: &str = "## Fixes\n\n```knave\n(defn main ()\n  (local empty (the (vec i64) (vec)))\n  (println (at empty 0)))\n```\n";
 
 #[test]
@@ -217,6 +218,32 @@ fn the_read_back_agreement_holds_every_kernel_form_a_definition_can_hold() {
         "forms no read-back holds: {:?}",
         ReadBackAgreement::NEVER_HELD
     );
+}
+
+#[test]
+fn skill_examples_show_their_values() {
+    let failures = SkillPage::written().value_failures();
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+}
+
+#[test]
+fn skill_example_fails_when_its_value_differs() {
+    let skill = SkillPage::new("writing-knave".to_string(), WRONG_SKILL_VALUE.to_string());
+    let failures = skill.value_failures();
+    assert_eq!(failures.len(), 1);
+    assert!(failures[0].contains("shows `=> 5` but `knave eval` prints:\n4"));
+}
+
+#[test]
+fn skill_examples_are_laid_out() {
+    let mislaid = SkillPage::written().mislaid_program();
+    assert_eq!(mislaid, None);
+}
+
+#[test]
+fn skill_name_matches_its_folder() {
+    let skill = SkillPage::written();
+    assert_eq!(skill.declared_name(), Some(skill.folder_name()));
 }
 
 #[test]

@@ -1,0 +1,14 @@
+(defstruct point
+  :x i64
+  :y i64)
+
+(def origin (->point 0 0))
+
+(def x-of
+  (rust "{0}.x" (fn ((ref point)) i64)))
+
+(defn main ()
+  (local p (->point 3 4))
+  (println (x-of p))
+  (println (x-of (ref p)))
+  (println (x-of origin)))

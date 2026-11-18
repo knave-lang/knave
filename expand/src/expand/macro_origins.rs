@@ -22,7 +22,7 @@ impl MacroOrigins {
         site: &BinderSite<'_>,
     ) -> Option<BinderReach> {
         let binder = site.symbol();
-        if !scopes.introduced(binder) {
+        if !scopes.introductions().carried_by(binder) {
             return Some(BinderReach::Written {
                 binder: site.span(),
             });

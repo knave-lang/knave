@@ -1,5 +1,6 @@
+use super::introduction_scopes::IntroductionScopes;
 use super::{Scope, ScopeKind, ScopeSupply};
-use crate::reader::{Form, Symbol};
+use crate::reader::Form;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Scopes {
@@ -27,22 +28,8 @@ impl Scopes {
         quoted
     }
 
-    pub(crate) fn carries_introduction_scope(&self, binder: &Form) -> bool {
-        binder
-            .as_symbol()
-            .is_some_and(|symbol| self.introduced(symbol))
-    }
-
-    pub(crate) fn latest_introduction_at_head(&self, form: &Form) -> Option<Scope> {
-        let head = form.as_list()?.first()?.as_symbol()?;
-        head.scopes()
-            .largest_matching(|scope| self.kind(scope).is_some_and(ScopeKind::is_introduction))
-    }
-
-    pub(crate) fn introduced(&self, symbol: &Symbol) -> bool {
-        symbol
-            .scopes()
-            .any(|scope| self.kind(scope).is_some_and(ScopeKind::is_introduction))
+    pub(crate) fn introductions(&self) -> IntroductionScopes<'_> {
+        IntroductionScopes::over(&self.kinds_in_order_made)
     }
 
     fn is_stripped_by_quote(&self, scope: Scope) -> bool {
@@ -93,7 +80,7 @@ mod tests {
 
         fn carries_introduction_scope(&mut self, kind: ScopeKind) -> bool {
             let (symbol, _) = self.symbol_with(kind);
-            self.scopes.carries_introduction_scope(&symbol)
+            self.scopes.introductions().carried_by_binder(&symbol)
         }
 
         fn form(kind: FormKind) -> Form {
@@ -154,7 +141,23 @@ mod tests {
         let mut fixture = ScopesFixture::default();
         let (symbol, _) = fixture.symbol_with(ScopeKind::Introduction);
         let list = ScopesFixture::form(FormKind::List(vec![symbol]));
-        assert!(!fixture.scopes.carries_introduction_scope(&list));
+        assert!(!fixture.scopes.introductions().carried_by_binder(&list));
+    }
+
+    #[test]
+    fn the_latest_introduction_at_a_head_passes_over_newer_scopes_of_other_kinds() {
+        let mut fixture = ScopesFixture::default();
+        let introduction = fixture.scopes.fresh(ScopeKind::Introduction);
+        let use_site = fixture.scopes.fresh(ScopeKind::UseSite);
+        let mut set = ScopeSet::default();
+        set.add(introduction);
+        set.add(use_site);
+        let head = ScopesFixture::form(FormKind::Symbol(Symbol::with_scopes("name", set)));
+        let call = ScopesFixture::form(FormKind::List(vec![head]));
+        assert_eq!(
+            fixture.scopes.introductions().latest_at_head(&call),
+            Some(introduction)
+        );
     }
 
     #[test]

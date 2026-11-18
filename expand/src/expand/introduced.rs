@@ -4,7 +4,7 @@ use crate::reader::Form;
 
 impl Expander<'_> {
     pub(super) fn note_global(&mut self, binding: BindingId, binder: &Form) {
-        if self.tables.scopes.carries_introduction_scope(binder) {
+        if self.tables.scopes.introductions().carried_by_binder(binder) {
             self.tables
                 .bindings
                 .set_origin(binding, BinderOrigin::Introduced);

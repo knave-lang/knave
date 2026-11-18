@@ -1,7 +1,4 @@
-use crate::types::{
-    BorrowedIndex, BorrowingTypes, CopiedOut, CopyRules, TemplateTies, Type, TypedArgument,
-    TypedExpr, TypedExprKind, TypedProgram,
-};
+use crate::types::{BorrowingTypes, CopyRules, TemplateTies, Type, TypedExpr, TypedProgram};
 
 pub struct LoanRules<'p> {
     program: &'p TypedProgram,
@@ -24,21 +21,6 @@ impl<'p> LoanRules<'p> {
         self.program
             .template_borrows
             .read_template(callee, None, |_, ties| ties.cloned())
-    }
-
-    pub fn copies_out(&self, argument: &TypedArgument) -> bool {
-        CopiedOut::of(argument, |value| self.indexes_in_place(value)).is_some()
-    }
-
-    fn indexes_in_place(&self, value: &TypedExpr) -> bool {
-        let TypedExprKind::Call(callee, _) = &value.kind else {
-            return false;
-        };
-        self.program
-            .template_borrows
-            .read_template(callee, false, |parsed, _| {
-                BorrowedIndex::place(parsed.text()).is_some()
-            })
     }
 
     pub fn holds_a_borrow(&self, ty: &Type) -> bool {

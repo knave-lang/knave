@@ -137,6 +137,7 @@ mod working_directory;
 mod written_printer;
 
 pub use embedded_prelude::EmbeddedPrelude;
+pub use reference_pages::ReferencePages;
 
 use std::env;
 use std::ffi::OsString;

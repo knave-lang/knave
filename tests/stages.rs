@@ -8,16 +8,24 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 use std::time::Duration;
 
+use knave::cli::ReferencePages;
 use knave::core::KernelForm;
 use knave::stack::FreshStack;
 
 use support::{
-    AgreementReport, ExplanationExamples, Fixture, FixtureReports, FormatFailures, HeaderAgreement,
-    LintFixture, PreludePages, ReadBackAgreement, ReferenceIndex, ReferencePage,
+    AgreementReport, ExplanationExamples, Fixture, FixtureReports, FormatFailures, GuideLinks,
+    HeaderAgreement, LintFixture, PreludePages, ReadBackAgreement, ReferenceIndex, ReferencePage,
     SavedPreludeAgreement,
 };
 
 const REFERENCE_INDEX_OF_ONE_PAGE: &str = "# Language reference\n\n- [Bindings](reference/bindings.md): names.\n- [Types](reference/types.md): types.\n";
+const REFERENCE_PAGE_OF_UNCLOSED_EXAMPLE: &str =
+    "# Sample\n\n```knave\n(defn main () (println 1))\n\n```text\n1\n```\n";
+const REFERENCE_PAGE_OF_TWO_HEADINGS: &str =
+    "# Sample\n\n## Change a binding with `set!`\n\n### What may sit below its use\n";
+const GUIDE_LINKING_TWO_HEADINGS: &str = "See [set!](reference/sample.md#change-a-binding-with-set), [order](reference/sample.md#what-may-sit-below-its-use) and [the page](reference/sample.md).\n";
+const GUIDE_LINKING_RENAMED_HEADING: &str =
+    "See [set!](reference/sample.md#change-a-name-with-set) and [x](reference/missing.md).\n";
 const REFERENCE_PAGE_OF_OTHER_OUTPUT: &str =
     "# Sample\n\n```knave\n(defn main () (println 1))\n```\n\n```text\n2\n```\n";
 const REFERENCE_PAGE_WITHOUT_OUTPUT: &str =
@@ -726,7 +734,7 @@ fn reference_index_links_each_page_and_only_pages() {
 #[test]
 fn reference_index_names_an_unlinked_page_and_a_link_without_a_page() {
     let pages = [
-        ReferencePage::new(ReferenceIndex::PAGE_NAME, REFERENCE_INDEX_OF_ONE_PAGE),
+        ReferencePage::new(ReferencePages::INDEX_SOURCE, REFERENCE_INDEX_OF_ONE_PAGE),
         ReferencePage::new("bindings", ""),
         ReferencePage::new("traits", ""),
     ];
@@ -735,6 +743,44 @@ fn reference_index_names_an_unlinked_page_and_a_link_without_a_page() {
         vec![
             "the index has no link to `reference/traits.md`",
             "the index links `reference/types.md`, which is no page",
+        ]
+    );
+}
+
+#[test]
+fn reference_example_without_a_closing_fence_names_the_example() {
+    let page = ReferencePage::new("sample", REFERENCE_PAGE_OF_UNCLOSED_EXAMPLE);
+    let unclosed = "sample example 0 has no closing fence: end the example with a line that holds \
+                    only ```";
+    assert_eq!(page.output_failures(), vec![unclosed]);
+    assert_eq!(page.mislaid_examples(), vec![unclosed]);
+}
+
+#[test]
+fn reference_links_from_the_language_guide_name_a_heading() {
+    let broken = GuideLinks::written().broken(&ReferencePage::written());
+    assert!(broken.is_empty(), "{}", broken.join("\n"));
+}
+
+#[test]
+fn reference_link_from_the_guide_resolves_to_each_heading_level() {
+    let pages = [ReferencePage::new("sample", REFERENCE_PAGE_OF_TWO_HEADINGS)];
+    assert!(
+        GuideLinks::new(GUIDE_LINKING_TWO_HEADINGS)
+            .broken(&pages)
+            .is_empty()
+    );
+}
+
+#[test]
+fn reference_link_from_the_guide_to_a_renamed_heading_names_the_link() {
+    let pages = [ReferencePage::new("sample", REFERENCE_PAGE_OF_TWO_HEADINGS)];
+    assert_eq!(
+        GuideLinks::new(GUIDE_LINKING_RENAMED_HEADING).broken(&pages),
+        vec![
+            "docs/language.md links to `sample.md#change-a-name-with-set`, which names no heading \
+             of a reference page",
+            "docs/language.md links to `missing.md`, which names no heading of a reference page",
         ]
     );
 }

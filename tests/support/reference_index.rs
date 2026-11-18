@@ -1,5 +1,7 @@
 use std::fs;
 
+use knave::cli::ReferencePages;
+
 use super::ReferencePage;
 
 pub struct ReferenceIndex {
@@ -7,13 +9,15 @@ pub struct ReferenceIndex {
 }
 
 impl ReferenceIndex {
-    pub const PAGE_NAME: &str = "README";
-    const PATH: &str = "docs/reference/README.md";
-    const LINK_START: &str = "](reference/";
     const LINK_END: &str = ".md)";
 
     pub fn written() -> Self {
-        Self::new(&fs::read_to_string(Self::PATH).expect("the reference index is readable"))
+        let path = format!(
+            "{}/{}.md",
+            ReferencePages::FOLDER,
+            ReferencePages::INDEX_SOURCE
+        );
+        Self::new(&fs::read_to_string(path).expect("the reference index is readable"))
     }
 
     pub fn new(text: &str) -> Self {
@@ -25,25 +29,37 @@ impl ReferenceIndex {
         let names: Vec<&str> = pages
             .iter()
             .map(ReferencePage::name)
-            .filter(|name| *name != Self::PAGE_NAME)
+            .filter(|name| *name != ReferencePages::INDEX_SOURCE)
             .collect();
-        let links: Vec<&str> = self.linked_pages().collect();
+        let links = self.linked_pages();
         let unlinked = names
             .iter()
             .filter(|name| !links.contains(name))
-            .map(|name| format!("the index has no link to `reference/{name}.md`"));
+            .map(|name| {
+                format!(
+                    "the index has no link to `{}`",
+                    ReferencePages::written_file(name)
+                )
+            });
         let pageless = links
             .iter()
             .filter(|link| !names.contains(link))
-            .map(|link| format!("the index links `reference/{link}.md`, which is no page"));
+            .map(|link| {
+                format!(
+                    "the index links `{}`, which is no page",
+                    ReferencePages::written_file(link)
+                )
+            });
         unlinked.chain(pageless).collect()
     }
 
-    fn linked_pages(&self) -> impl Iterator<Item = &str> {
+    fn linked_pages(&self) -> Vec<&str> {
+        let link_start = format!("]({}/", ReferencePages::WRITTEN_FOLDER);
         self.text
-            .split(Self::LINK_START)
+            .split(link_start.as_str())
             .skip(1)
             .filter_map(|rest| rest.split_once(Self::LINK_END))
             .map(|(name, _)| name)
+            .collect()
     }
 }

@@ -2,6 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::thread;
 
+use knave::cli::ReferencePages;
+
 use super::Fixture;
 use super::example_folder::ExampleFolder;
 use super::example_layout::ExampleLayout;
@@ -17,7 +19,7 @@ pub struct PreludePages {
 
 struct ReferenceExample<'p> {
     place: String,
-    code: &'p str,
+    code: Option<&'p str>,
     shown_output: Option<&'p str>,
 }
 
@@ -28,16 +30,19 @@ struct PreludeLink<'p> {
 }
 
 impl ReferencePage {
-    const FOLDER: &str = "docs/reference";
     const EXAMPLE_FENCE: &str = "```knave\n";
     const OUTPUT_FENCE: &str = "```text\n";
     const CLOSING_FENCE: &str = "```\n";
+    const FENCE_START: &str = "```";
+    const HEADING_START: char = '#';
+    const ANCHOR_SEPARATOR: char = '-';
+    const ANCHOR_PUNCTUATION: &str = " -_";
     const PRELUDE_LINK_START: &str = "](/docs/prelude/";
     const LINK_END: char = ')';
     const MAXIMUM_PARALLEL_BUILDS: usize = 4;
 
     pub fn written() -> Vec<Self> {
-        let mut paths: Vec<PathBuf> = fs::read_dir(Self::FOLDER)
+        let mut paths: Vec<PathBuf> = fs::read_dir(ReferencePages::FOLDER)
             .expect("the reference folder is readable")
             .map(|entry| entry.expect("a reference entry is readable").path())
             .collect();
@@ -82,6 +87,29 @@ impl ReferencePage {
         &self.name
     }
 
+    pub fn has_heading_anchor(&self, anchor: &str) -> bool {
+        self.text
+            .lines()
+            .filter_map(|line| line.strip_prefix(Self::HEADING_START))
+            .map(|heading| Self::anchor_of(heading.trim_start_matches(Self::HEADING_START)))
+            .any(|heading_anchor| heading_anchor == anchor)
+    }
+
+    fn anchor_of(heading: &str) -> String {
+        heading
+            .trim()
+            .to_lowercase()
+            .chars()
+            .filter(|character| {
+                character.is_alphanumeric() || Self::ANCHOR_PUNCTUATION.contains(*character)
+            })
+            .map(|character| match character {
+                ' ' => Self::ANCHOR_SEPARATOR,
+                kept => kept,
+            })
+            .collect()
+    }
+
     pub fn broken_prelude_links(&self, prelude: &PreludePages) -> Vec<String> {
         self.prelude_links()
             .filter(|link| !prelude.defines(link))
@@ -107,9 +135,12 @@ impl ReferencePage {
     }
 
     fn failure_of(&self, example: &ReferenceExample) -> Option<String> {
+        let Some(code) = example.code else {
+            return Some(example.unclosed_failure());
+        };
         let file = format!("{}.knv", example.place.replace(' ', "-"));
         let path = PathBuf::from(Fixture::FIXTURE_ROOT).join(file);
-        let printed = Fixture::of_text(&path, example.code.to_string()).run_report();
+        let printed = Fixture::of_text(&path, code.to_string()).run_report();
         example.output_failure(&printed)
     }
 
@@ -123,19 +154,36 @@ impl ReferencePage {
     }
 
     fn example_at<'p>(&self, index: usize, rest: &'p str) -> ReferenceExample<'p> {
-        let (code, after_code) = rest
-            .split_once(Self::CLOSING_FENCE)
-            .expect("each example closes its fence");
-        let shown_output = after_code
-            .trim_start_matches('\n')
-            .strip_prefix(Self::OUTPUT_FENCE)
-            .and_then(|output| output.split(Self::CLOSING_FENCE).next());
         let place = format!("{} example {index}", self.name);
+        let closed = Self::closing_fence_offset(rest).map(|end| rest.split_at(end));
+        let shown_output = closed.and_then(|(_, after_code)| Self::shown_output_of(after_code));
         ReferenceExample {
             place,
-            code,
+            code: closed.map(|(code, _)| code),
             shown_output,
         }
+    }
+
+    fn closing_fence_offset(rest: &str) -> Option<usize> {
+        let mut offset = 0;
+        for line in rest.split_inclusive('\n') {
+            if line == Self::CLOSING_FENCE {
+                return Some(offset);
+            }
+            if line.starts_with(Self::FENCE_START) {
+                return None;
+            }
+            offset += line.len();
+        }
+        None
+    }
+
+    fn shown_output_of(after_code: &str) -> Option<&str> {
+        after_code
+            .strip_prefix(Self::CLOSING_FENCE)?
+            .trim_start_matches('\n')
+            .strip_prefix(Self::OUTPUT_FENCE)
+            .and_then(|output| output.split(Self::CLOSING_FENCE).next())
     }
 
     fn prelude_links(&self) -> impl Iterator<Item = PreludeLink<'_>> {
@@ -162,9 +210,19 @@ impl ReferenceExample<'_> {
         }
     }
 
+    fn unclosed_failure(&self) -> String {
+        format!(
+            "{} has no closing fence: end the example with a line that holds only ```",
+            self.place
+        )
+    }
+
     fn mislaid(&self) -> Option<String> {
-        match ExampleLayout::of_single_file(self.code).laid_out() {
-            Ok(laid_out) if laid_out == self.code => None,
+        let Some(code) = self.code else {
+            return Some(self.unclosed_failure());
+        };
+        match ExampleLayout::of_single_file(code).laid_out() {
+            Ok(laid_out) if laid_out == code => None,
             Ok(laid_out) => Some(format!(
                 "{} is not laid out as `knave fmt` lays it out. Replace the block with:\n\n{laid_out}",
                 self.place

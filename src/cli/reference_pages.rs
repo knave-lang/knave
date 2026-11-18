@@ -1,23 +1,53 @@
 use super::doc_folder::WrittenPage;
 
+macro_rules! reference_folder {
+    () => {
+        "docs/reference"
+    };
+}
+
+macro_rules! index_source {
+    () => {
+        "README"
+    };
+}
+
+macro_rules! reference_source {
+    ($name:expr) => {
+        include_str!(concat!("../../", reference_folder!(), "/", $name, ".md"))
+    };
+}
+
 pub struct ReferencePages;
 
 impl ReferencePages {
-    const INDEX: &'static str = "reference";
-    const INDEX_TEXT: &'static str = include_str!("../../docs/reference/README.md");
-    const PAGES: [(&'static str, &'static str); 1] =
-        [("bindings", include_str!("../../docs/reference/bindings.md"))];
+    pub const FOLDER: &'static str = reference_folder!();
+    pub const INDEX_SOURCE: &'static str = index_source!();
+    pub const WRITTEN_FOLDER: &'static str = "reference";
+    const PAGES: [(&'static str, &'static str); 2] = [
+        (index_source!(), reference_source!(index_source!())),
+        ("bindings", reference_source!("bindings")),
+    ];
 
     pub fn pages() -> Vec<WrittenPage> {
-        let index = Self::page(Self::INDEX.to_string(), Self::INDEX_TEXT);
-        let pages = Self::PAGES
+        Self::PAGES
             .iter()
-            .map(|(name, text)| Self::page(format!("{}/{name}", Self::INDEX), text));
-        std::iter::once(index).chain(pages).collect()
+            .map(|(source, text)| WrittenPage {
+                module: Self::written_module(source),
+                text: text.to_string(),
+            })
+            .collect()
     }
 
-    fn page(module: String, text: &str) -> WrittenPage {
-        let text = text.to_string();
-        WrittenPage { module, text }
+    pub fn written_file(source: &str) -> String {
+        WrittenPage::file_name(&Self::written_module(source))
+    }
+
+    fn written_module(source: &str) -> String {
+        if source == Self::INDEX_SOURCE {
+            Self::WRITTEN_FOLDER.to_string()
+        } else {
+            format!("{}/{source}", Self::WRITTEN_FOLDER)
+        }
     }
 }

@@ -8,6 +8,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
 use knave::build::EmittedFormatting;
+use knave::cli::ReferencePages;
 use knave::diagnostic::DiagnosticRenderer;
 use knave::language::Language;
 use knave::source::SourceMap;
@@ -3342,7 +3343,12 @@ fn doc_write_reference_writes_the_index_and_each_page() {
         .into_iter()
         .filter(|file| !file.starts_with('.'))
         .collect();
-    assert_eq!(written, reference.written_files());
+    assert_eq!(
+        written,
+        reference.written_files(),
+        "list each page of {} in `ReferencePages::PAGES` in src/cli/reference_pages.rs",
+        ReferencePages::FOLDER
+    );
     for (written_file, source) in reference.sources() {
         assert_eq!(&sandbox.contents(&format!("pages/{written_file}")), source);
     }
@@ -11105,12 +11111,8 @@ struct ReferenceSources {
 }
 
 impl ReferenceSources {
-    const FOLDER: &str = "docs/reference";
-    const INDEX_SOURCE: &str = "README";
-    const WRITTEN_FOLDER: &str = "reference";
-
     fn written() -> Self {
-        let mut pages: Vec<(String, String)> = fs::read_dir(Self::FOLDER)
+        let mut pages: Vec<(String, String)> = fs::read_dir(ReferencePages::FOLDER)
             .expect("the reference folder is readable")
             .map(|entry| entry.expect("the reference folder lists").path())
             .map(|path| Self::page_of(&path))
@@ -11122,15 +11124,7 @@ impl ReferenceSources {
     fn page_of(path: &Path) -> (String, String) {
         let name = path.file_stem().expect("a page has a name");
         let text = fs::read_to_string(path).expect("a reference page is readable");
-        (Self::written_file(&name.to_string_lossy()), text)
-    }
-
-    fn written_file(name: &str) -> String {
-        if name == Self::INDEX_SOURCE {
-            format!("{}.md", Self::WRITTEN_FOLDER)
-        } else {
-            format!("{}/{name}.md", Self::WRITTEN_FOLDER)
-        }
+        (ReferencePages::written_file(&name.to_string_lossy()), text)
     }
 
     fn written_files(&self) -> Vec<String> {

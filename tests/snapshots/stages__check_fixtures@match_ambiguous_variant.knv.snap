@@ -7,9 +7,9 @@ error[L0430]: cannot tell which enum this pattern matches
  --> check/match_ambiguous_variant.knv:8:17
   |
 8 |   (match value ((same _) (do))))
-  |                 ^^^^^^^^ this variant name fits more than one enum
+  |                 ^^^^^^^^ this case name fits more than one enum
   |
-  = note: this variant name fits `first` and `second`
+  = note: this case name fits `first` and `second`
   = help: qualify one pattern with its enum's name, as in `(first/same ...)`
   = note: run `knave doc L0430` for an explanation
 
@@ -17,8 +17,8 @@ error[L0430]: cannot tell which enum this pattern matches
   --> check/match_ambiguous_variant.knv:11:23
    |
 11 |   (match value ((wrap (same _)) (do))))
-   |                       ^^^^^^^^ this variant name fits more than one enum
+   |                       ^^^^^^^^ this case name fits more than one enum
    |
-   = note: this variant name fits `first` and `second`
+   = note: this case name fits `first` and `second`
    = help: qualify one pattern with its enum's name
    = note: run `knave doc L0430` for an explanation

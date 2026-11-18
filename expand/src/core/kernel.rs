@@ -107,7 +107,7 @@ impl KernelForm {
         KernelFormRow {
             form: KernelForm::Definition(DefinitionForm::Enum),
             name: "enum",
-            shape: "(enum (name parameter ...) (rust \"Path\")? variant ...)",
+            shape: "(enum (name parameter ...) (rust \"Path\")? case ...)",
         },
         KernelFormRow {
             form: KernelForm::Definition(DefinitionForm::Derive),

@@ -269,7 +269,7 @@ mod tests {
             (rust-type written "std::fmt::Result")
             (rust-trait octal "std::fmt::Octal"
               (method write-octal (fn ((ref self) (mut out)) written))
-              (structural :struct "" :field "" :variant "" :part "" :bare "")
+              (structural :struct "" :field "" :case "" :part "" :bare "")
               u32)
             (def show-octal (rust "{0}" (where ((a octal)) (fn ((ref a)) unit))))
             (def copied (rust "{0}.clone()" (where ((a clone)) (fn ((ref a)) a))))

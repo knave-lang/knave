@@ -798,7 +798,7 @@ impl Expander<'_> {
         let [variant] = variants else {
             return Err(ExpandProblems::enum_rust_template(
                 clause.span(),
-                "this template needs exactly one variant",
+                "this template needs exactly one case",
                 &example,
             ));
         };

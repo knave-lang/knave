@@ -5,8 +5,4 @@
 (rust-trait mutable-receiver "std::fmt::UpperHex"
   (method write-mutable-receiver
     (fn ((mut self) (mut out)) written))
-  (structural :struct ""
-              :field ""
-              :variant ""
-              :part ""
-              :bare ""))
+  (structural :struct "" :field "" :case "" :part "" :bare ""))

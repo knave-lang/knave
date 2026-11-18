@@ -10,5 +10,5 @@ error[L0404]: `rank` does not implement `ord`
   |          ^^^^^^ this needs `ord`
   |
   = note: `ord` is never inferred for an enum, so the enum needs a written `derive`
-  = help: add `(derive rank clone copy partial-eq eq hash show ord)` to compare variants in declared order: `low`, then `high`
+  = help: add `(derive rank clone copy partial-eq eq hash show ord)` to compare cases in declared order: `low`, then `high`
   = note: run `knave doc L0404` for an explanation

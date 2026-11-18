@@ -118,7 +118,7 @@ mod tests {
           (structural
             :struct \"write!({1}, \\\"{name}\\\")\"
             :field \"\"
-            :variant \"write!({1}, \\\"{name}\\\")\"
+            :case \"write!({1}, \\\"{name}\\\")\"
             :part \"\"
             :bare \"write!({1}, \\\"{name}\\\")\")
           u32)

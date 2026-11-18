@@ -75,7 +75,7 @@ These forms are the compiler's complete vocabulary. Every other form is a macro 
 | `recur` | `(recur argument...)` | `loop` | arguments: expressions. |
 | `try` | `(try expression)` | `expression?` | expression: expression. |
 | `infer` | `(infer expression)` | a string literal | expression: expression, checked and never run. |
-| `rust-trait` | `(rust-trait name "Path" (requires trait...)? (method name type)? (structural key "text"...)? (help "text")? type...)` | trait bound, or a Rust `impl` for a program type when it declares a method | name: type binder. methods: a name and a function type whose first parameter may be `self`, `(ref self)` or `(mut self)`. structural: the Rust text of the impl the compiler writes for each struct and enum, under the keys `:struct`, `:field`, `:variant`, `:part` and `:bare`. help: the help line a missing implementor shows. types: types, `(with type type)`, or `(where (param...) type)`. |
+| `rust-trait` | `(rust-trait name "Path" (requires trait...)? (method name type)? (structural key "text"...)? (help "text")? type...)` | trait bound, or a Rust `impl` for a program type when it declares a method | name: type binder. methods: a name and a function type whose first parameter may be `self`, `(ref self)` or `(mut self)`. structural: the Rust text of the impl the compiler writes for each struct and enum, under the keys `:struct`, `:field`, `:case`, `:part` and `:bare`. help: the help line a missing implementor shows. types: types, `(with type type)`, or `(where (param...) type)`. |
 | `trait` | `(trait name (method type)...)` | `trait` | name: type binder. methods: a name and a function type whose first parameter may be `self`, `(ref self)` or `(mut self)`. |
 | `impl` | `(impl trait type (method (parameter...) body...)...)` | `impl` | trait and type: references to a trait and a struct or enum. methods: a name, parameter binders and a body. |
 | `rust-type` | `(rust-type name "template" (type "template")...)` or `(rust-type (name parameter...) "template" (type "template")...)` | the filled template | name: type binder. params: type binders. clauses: a type and a template. |
@@ -1054,13 +1054,13 @@ A `rust-trait` implementor can take type parameters from a `where`. `(where ((a 
 
 A `rust-trait` path that holds `{0}` is a Rust `where` predicate, not a trait path. `(rust-trait step "std::ops::Range<{0}>: Iterator<Item = {0}>" i64 ...)` makes a bound `(n step)` emit `where std::ops::Range<N>: Iterator<Item = N>` on the function, with the type parameter in place of `{0}`. A generic caller inherits the bound. The predicate reaches function items only, not trait or impl methods.
 
-A `rust-trait` may hold a `structural` clause: keyword and string pairs that state, as Rust text, the impl of the trait for a struct or an enum. A struct fills `:struct`, and each of its fields fills `:field`. A case with a payload fills `:variant`, and each payload fills `:part`, as does each field of a struct payload, because `show` prints a case by position, which still builds an equal value. A case without a payload fills `:bare`. The placeholders are:
+A `rust-trait` may hold a `structural` clause: keyword and string pairs that state, as Rust text, the impl of the trait for a struct or an enum. A struct fills `:struct`, and each of its fields fills `:field`. A case with a payload fills `:case`, and each payload fills `:part`, as does each field of a struct payload, because `show` prints a case by position, which still builds an equal value. A case without a payload fills `:bare`. The placeholders are:
 
 | Placeholder | Meaning | Keys |
 |---|---|---|
-| `{0}`, `{1}`, ... | the method's parameters, the receiver first | `:struct`, `:variant`, `:bare` |
-| `{name}` | the struct's name, or the case's qualified name such as `tree/node`, escaped for a Rust string literal | `:struct`, `:variant`, `:bare` |
-| `{parts}` | each field filled into `:field`, or each payload filled into `:part`, in declared order | `:struct`, `:variant` |
+| `{0}`, `{1}`, ... | the method's parameters, the receiver first | `:struct`, `:case`, `:bare` |
+| `{name}` | the struct's name, or the case's qualified name such as `tree/node`, escaped for a Rust string literal | `:struct`, `:case`, `:bare` |
+| `{parts}` | each field filled into `:field`, or each payload filled into `:part`, in declared order | `:struct`, `:case` |
 | `{field}` | the field's name | `:field` |
 | `{value}` | a borrow of the field or payload. The `Box` a recursive enum adds is borrowed through, because the source never writes it | `:field`, `:part` |
 

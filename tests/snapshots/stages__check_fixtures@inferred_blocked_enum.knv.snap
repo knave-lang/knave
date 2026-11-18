@@ -9,5 +9,5 @@ error[L0404]: `value` does not implement `clone`
 8 |   (clone (value/file f)))
   |          ^^^^^^^^^^^^^^ this needs `clone`
   |
-  = note: `value` cannot derive `clone`: variant `file` holds `file`
+  = note: `value` cannot derive `clone`: case `file` holds `file`
   = note: run `knave doc L0404` for an explanation

@@ -41,7 +41,7 @@ error[L0404]: `task` does not implement `show`
 25 |   (prn (task/run one))
    |        ^^^^^^^^^^^^^^ this needs `show`
    |
-   = note: `task` cannot derive `show`: variant `run` holds `(fn () int)`
+   = note: `task` cannot derive `show`: case `run` holds `(fn () int)`
    = help: a closure, an iterator or a function has no printed form
    = note: run `knave doc L0404` for an explanation
 

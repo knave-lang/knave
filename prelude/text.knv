@@ -100,7 +100,7 @@
   (structural
     :struct "crate::rt::Record::open({1}, \"->{name}\"){parts}.close()"
     :field ".text(\":{field}\").part({value})"
-    :variant "crate::rt::Record::open({1}, \"{name}\"){parts}.close()"
+    :case "crate::rt::Record::open({1}, \"{name}\"){parts}.close()"
     :part ".part({value})"
     :bare "{1}.write_str(\"{name}\")")
   (help "a closure, an iterator or a function has no printed form")

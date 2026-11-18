@@ -9,7 +9,7 @@
   (structural
     :struct "{{ let out = {1}; write!(out, \"({name}\")?{parts}; write!(out, \")\") }}"
     :field "; write!(out, \" :{field} {{:o}}\", {value})?"
-    :variant "{{ let out = {1}; write!(out, \"({name}\")?{parts}; write!(out, \")\") }}"
+    :case "{{ let out = {1}; write!(out, \"({name}\")?{parts}; write!(out, \")\") }}"
     :part "; write!(out, \" {{:o}}\", {value})?"
     :bare "write!({1}, \"{name}\")")
   u32)

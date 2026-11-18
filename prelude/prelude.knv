@@ -215,7 +215,7 @@
   => 1
   ```")
 
-(document (enum (name parameter ...) variant ...)
+(document (enum (name parameter ...) case ...)
   "Defines an enum type from its cases.
 
   The name is a bare name, or a list of the name and its type parameters. A

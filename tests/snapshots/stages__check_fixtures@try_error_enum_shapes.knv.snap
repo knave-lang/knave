@@ -10,8 +10,8 @@ error[L0437]: `try` cannot convert this error
    |       ^^^^^^^^^^^^^^ this error is `string`
    |
    = note: this function returns a result whose error is `(generic-error io-error)`
-   = note: `try` converts an error through one variant of an error enum that holds it
-   = help: write the function's error type as an enum with one variant for each error it tries, or convert the error with `map-err`
+   = note: `try` converts an error through one case of an error enum that holds it
+   = help: write the function's error type as an enum with one case for each error it tries, or convert the error with `map-err`
    = note: run `knave doc L0437` for an explanation
 
 error[L0437]: `try` cannot convert this error
@@ -21,6 +21,6 @@ error[L0437]: `try` cannot convert this error
    |       ^^^^^^^^^^^^^^ this error is `string`
    |
    = note: this function returns a result whose error is `shaped-error`
-   = note: `try` converts an error through one variant of an error enum that holds it
-   = help: write the function's error type as an enum with one variant for each error it tries, or convert the error with `map-err`
+   = note: `try` converts an error through one case of an error enum that holds it
+   = help: write the function's error type as an enum with one case for each error it tries, or convert the error with `map-err`
    = note: run `knave doc L0437` for an explanation

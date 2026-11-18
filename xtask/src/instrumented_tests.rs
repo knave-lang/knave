@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -9,6 +11,7 @@ use crate::failure::TaskFailure;
 use crate::lcov::LcovReport;
 use crate::test_selection::TestRun;
 use crate::test_shard::TestShard;
+use crate::workspace::CargoWorkspace;
 
 pub struct InstrumentedTests<'a> {
     root: &'a Path,
@@ -24,6 +27,8 @@ impl<'a> InstrumentedTests<'a> {
     const FORGET_PREVIOUS_PROFILES: [&'static str; 3] = ["llvm-cov", "clean", "--profraw-only"];
     const RUN_WITHOUT_REPORT: [&'static str; 3] = ["llvm-cov", "test", "--no-report"];
     const WRITE_REPORT: [&'static str; 3] = ["llvm-cov", "report", "--lcov"];
+    const PACKAGE: &'static str = "--package";
+    const OUTPUT_PATH: &'static str = "--output-path";
 
     pub fn new(root: &'a Path) -> Self {
         Self { root }
@@ -39,19 +44,42 @@ impl<'a> InstrumentedTests<'a> {
         if runs.is_empty() {
             return Ok(LcovReport::parse("", self.root));
         }
-        self.cargo(|command| command.args(Self::FORGET_PREVIOUS_PROFILES))?;
-        for run in runs {
-            self.cargo(|command| command.args(Self::RUN_WITHOUT_REPORT).args(run.arguments()))?;
-        }
         let report = self.root.join(Self::SELECTED_REPORT);
         Self::create_parent(&report)?;
-        self.cargo(|command| {
-            command
-                .args(Self::WRITE_REPORT)
-                .arg("--output-path")
-                .arg(&report)
-        })?;
+        let packages = CargoWorkspace::read(self.root)?.package_names();
+        for arguments in Self::selected_commands(runs, &packages, &report) {
+            self.cargo(|command| command.args(&arguments))?;
+        }
         self.parsed(&report)
+    }
+
+    fn selected_commands(
+        runs: &[TestRun],
+        packages: &BTreeSet<String>,
+        report: &Path,
+    ) -> Vec<Vec<OsString>> {
+        let forget = Self::os_strings(&Self::FORGET_PREVIOUS_PROFILES);
+        let tests = runs.iter().map(|run| {
+            let mut arguments = Self::os_strings(&Self::RUN_WITHOUT_REPORT);
+            arguments.extend(run.arguments().iter().map(OsString::from));
+            arguments
+        });
+        let mut write = Self::os_strings(&Self::WRITE_REPORT);
+        for package in packages {
+            write.extend([OsString::from(Self::PACKAGE), OsString::from(package)]);
+        }
+        write.extend([
+            OsString::from(Self::OUTPUT_PATH),
+            report.as_os_str().to_owned(),
+        ]);
+        std::iter::once(forget)
+            .chain(tests)
+            .chain([write])
+            .collect()
+    }
+
+    fn os_strings(arguments: &[&str]) -> Vec<OsString> {
+        arguments.iter().map(OsString::from).collect()
     }
 
     fn parsed(&self, report: &Path) -> Result<LcovReport, TaskFailure> {
@@ -141,12 +169,15 @@ impl<'a> InstrumentedTests<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+    use std::ffi::OsStr;
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::process::Command;
 
     use super::InstrumentedTests;
     use crate::failure::TaskFailure;
+    use crate::test_selection::TestRun;
 
     struct ShardCheckout {
         root: PathBuf,
@@ -225,6 +256,34 @@ mod tests {
         InstrumentedTests::instrumented_run(&mut command, Path::new("report.info"), &selection);
         let arguments: Vec<_> = command.get_args().collect();
         assert_eq!(arguments[arguments.len() - selection.len()..], selection);
+    }
+
+    #[test]
+    fn a_selected_run_forgets_old_profiles_runs_each_test_and_reports_each_package() {
+        let runs = [
+            TestRun::parse("--lib emit::"),
+            TestRun::parse("--test stages emit_fixtures"),
+        ];
+        let packages = BTreeSet::from(["knave".to_string(), "knave-expand".to_string()]);
+        let commands: Vec<String> =
+            InstrumentedTests::selected_commands(&runs, &packages, Path::new("selected.info"))
+                .iter()
+                .map(|arguments| {
+                    arguments
+                        .join(OsStr::new(" "))
+                        .to_string_lossy()
+                        .into_owned()
+                })
+                .collect();
+        assert_eq!(
+            commands,
+            [
+                "llvm-cov clean --profraw-only",
+                "llvm-cov test --no-report --lib emit::",
+                "llvm-cov test --no-report --test stages emit_fixtures",
+                "llvm-cov report --lcov --package knave --package knave-expand --output-path selected.info"
+            ]
+        );
     }
 
     #[test]

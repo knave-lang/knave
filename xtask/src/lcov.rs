@@ -105,6 +105,10 @@ pub struct MissedLines {
 }
 
 impl MissedLines {
+    pub fn is_empty(&self) -> bool {
+        self.lines.is_empty()
+    }
+
     fn in_file(file: &str, lines: &BTreeMap<usize, bool>) -> Self {
         Self {
             file: file.to_string(),

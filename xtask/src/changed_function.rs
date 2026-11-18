@@ -33,6 +33,14 @@ impl ChangedFunction {
     }
 
     pub fn unproven_advice(&self) -> String {
+        if self.missed.is_empty() {
+            return format!(
+                "  {} scores {:.1} with no coverage record, so none of the tests prepush ran reached it. {}\n",
+                self.scored.function,
+                self.scored.crap,
+                self.clearing_step()
+            );
+        }
         format!(
             "  {} scores {:.1} because the tests prepush ran miss {}. CI fails it unless another test covers those lines. {}\n",
             self.scored.function,

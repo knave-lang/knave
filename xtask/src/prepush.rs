@@ -29,32 +29,43 @@ pub struct PrepushTask {
     #[arg(
         long,
         allow_hyphen_values = true,
-        help = "Also run these `cargo test` arguments under coverage, such as '--test stages emit_fixtures'"
+        help = "Also run these `cargo test` arguments under coverage, such as '--test stages emit_fixtures'. CI's coverage runs no features, release builds or ignored tests, so lines that only such a run covers do not count there"
     )]
     also: Vec<String>,
 }
 
 impl PrepushTask {
+    const MEASURED_TREE: &str = "prepush measures the working tree, uncommitted edits included. Git's diff leaves out untracked files, so add new files to the index first.";
     const AFTER_A_REBASE: &str = "After each rebase, run `cargo xtask prepush` again: git's baseline merge driver adds both branches' changes to each entry, and file-sizes and design-rules catch an entry whose sum is off.";
 
     pub fn run(&self, root: &Path) -> ExitCode {
         let verdict = self
             .attempt(root)
             .unwrap_or_else(|failure| failure.report());
-        println!("{}", Self::AFTER_A_REBASE);
+        println!("{}\n{}", Self::MEASURED_TREE, Self::AFTER_A_REBASE);
         verdict
     }
 
     fn attempt(&self, root: &Path) -> Result<ExitCode, TaskFailure> {
         let fork_point = self.fork_point(root)?;
         let changed = ChangedLines::since(root, &fork_point)?;
-        let mut checks: Vec<Box<dyn Check>> = vec![
-            Box::new(self.crap_forecast(root, &changed)?),
-            Box::new(SourceFormat::check(root, &changed)?),
-        ];
-        checks.extend(Self::ratchet_checks(root, &fork_point)?);
+        let checks = Self::checks(
+            self.crap_forecast(root, &changed)?,
+            SourceFormat::check(root)?,
+            Self::ratchet_checks(root, &fork_point)?,
+        );
         let checks: Vec<&dyn Check> = checks.iter().map(Box::as_ref).collect();
         Ok(Verdict::announce(&checks))
+    }
+
+    fn checks(
+        forecast: CrapForecast,
+        format: SourceFormat,
+        ratchets: Vec<Box<dyn Check>>,
+    ) -> Vec<Box<dyn Check>> {
+        let mut checks: Vec<Box<dyn Check>> = vec![Box::new(forecast), Box::new(format)];
+        checks.extend(ratchets);
+        checks
     }
 
     fn fork_point(&self, root: &Path) -> Result<String, TaskFailure> {
@@ -91,7 +102,58 @@ impl PrepushTask {
 #[cfg(test)]
 mod tests {
     use super::PrepushTask;
+    use crate::checks::Check;
+    use crate::crap_forecast::CrapForecast;
+    use crate::source_format::{FormatOutputs, SourceFormat};
     use crate::workspace::WorkspaceFixture;
+
+    struct PrepushCase;
+
+    impl PrepushCase {
+        fn summaries(checks: &[Box<dyn Check>]) -> Vec<String> {
+            checks.iter().map(|check| check.summary()).collect()
+        }
+    }
+
+    #[test]
+    fn prepush_runs_the_forecast_the_layout_and_each_ratchet() {
+        let forecast = CrapForecast::new(8.0, Vec::new());
+        let format = SourceFormat::finished(1, FormatOutputs::passed());
+        let ratchet = Box::new(SourceFormat::finished(2, FormatOutputs::passed()));
+        let summaries =
+            PrepushCase::summaries(&PrepushTask::checks(forecast, format, vec![ratchet]));
+        assert_eq!(summaries.len(), 3, "{summaries:?}");
+        assert!(summaries[0].contains("CRAP"), "{}", summaries[0]);
+        assert!(
+            summaries[1].starts_with("1 source files"),
+            "{}",
+            summaries[1]
+        );
+        assert!(
+            summaries[2].starts_with("2 source files"),
+            "{}",
+            summaries[2]
+        );
+    }
+
+    #[test]
+    fn the_ratchets_hold_file_sizes_and_refuse_raises_since_the_fork_point() {
+        let root = WorkspaceFixture::repository_root();
+        let checks = PrepushTask::ratchet_checks(root, "HEAD").expect("the ratchets read");
+        let summaries = PrepushCase::summaries(&checks);
+        assert!(
+            summaries
+                .iter()
+                .any(|summary| summary.contains("production lines")),
+            "{summaries:?}"
+        );
+        assert!(
+            summaries
+                .iter()
+                .any(|summary| summary.contains("added or raised since the base")),
+            "{summaries:?}"
+        );
+    }
 
     #[test]
     fn an_unknown_base_fails_before_any_check() {

@@ -1,6 +1,6 @@
 # RFC 0075: Collections speak `int`
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-11-17
 
 Item 487 of the project's plan. The owner approved the direction: the prelude's collection forms speak `int`, as in Go and Swift. `len` and `count` return `int`, index arguments take `int`, the emitted Rust converts at the boundary, and `usize` stays for Rust interop and precise control. The design builds on RFC 0074, accepted and released in v0.17.0, which makes `int` the shown name of `i64`: Knave source, diagnostics and docs below say `int`, and the emitted Rust says `i64`. Code references are against `origin/main` at `b00494c5f`. Every "today" output was produced with a build of `b00494c5f`. Rust-only claims were checked with rustc 1.95 from the dev shell, at `-C opt-level=3`, edition 2024.

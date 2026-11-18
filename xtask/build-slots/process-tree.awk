@@ -10,6 +10,7 @@ END {
         grown = 1
       }
   } while (grown)
+  PROCINFO["sorted_in"] = "@ind_num_asc"
   separator = ""
   for (process in tree) {
     printf "%s%s", separator, process

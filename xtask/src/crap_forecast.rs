@@ -116,9 +116,15 @@ mod tests {
     impl ForecastCase {
         const MAXIMUM: f64 = 8.0;
         const REPORT: &str = "SF:/work/src/a.rs\nDA:1,1\nDA:2,1\nDA:3,0\nDA:4,1\nend_of_record\n";
+        const COVERED_REPORT: &str =
+            "SF:/work/src/a.rs\nDA:1,1\nDA:2,1\nDA:3,1\nDA:4,1\nend_of_record\n";
 
         fn function(complexity: usize, broader: Option<&str>) -> ChangedFunction {
-            let report = LcovReport::parse(Self::REPORT, Path::new("/work"));
+            Self::function_in(Self::REPORT, complexity, broader)
+        }
+
+        fn function_in(report: &str, complexity: usize, broader: Option<&str>) -> ChangedFunction {
+            let report = LcovReport::parse(report, Path::new("/work"));
             let lines = LineSpan { first: 1, last: 4 };
             let function = SourceFunction {
                 file: "src/a.rs".to_string(),
@@ -143,6 +149,12 @@ mod tests {
         let forecast = ForecastCase::forecast(7, None);
         assert!(forecast.passes());
         assert_eq!(forecast.details(), "");
+    }
+
+    #[test]
+    fn a_fully_covered_function_at_the_limit_passes() {
+        let function = ForecastCase::function_in(ForecastCase::COVERED_REPORT, 8, None);
+        assert!(CrapForecast::new(ForecastCase::MAXIMUM, vec![function]).passes());
     }
 
     #[test]

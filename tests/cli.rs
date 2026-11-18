@@ -14,6 +14,8 @@ use knave::language::Language;
 use knave::source::SourceMap;
 use serde_json::{Map, Value, json};
 
+const FAILING_GIT: &str = "#!/bin/sh\nexit 1\n";
+const EVERY_NEW_FILE: [&str; 3] = [".gitignore", "project.knv", "src/main.knv"];
 const GREETING: &str = "(defn main ()\n  (println \"hello from the sandbox\"))\n";
 const PRINTS_A: &str = "(defn main () (println \"A\"))\n";
 const PRINTS_B: &str = "(defn main () (println \"B\"))\n";
@@ -300,6 +302,7 @@ struct Sandbox {
 
 impl Sandbox {
     const COMPILER: &str = env!("CARGO_BIN_EXE_knave");
+    const GIT_FOLDER: &str = ".git";
     const BUILD_PARENT: &str = "target";
 
     fn new(test_name: &str) -> Self {
@@ -364,6 +367,20 @@ exit 101
     fn without_file(self, name: &str) -> Self {
         fs::remove_file(self.directory.join(name)).expect("the sandbox removes files");
         self
+    }
+
+    fn project_files(&self, directory: &str) -> Vec<String> {
+        self.files_under(directory)
+            .into_iter()
+            .filter(|file| !Path::new(file).starts_with(Self::GIT_FOLDER))
+            .collect()
+    }
+
+    fn has_git_repository(&self, directory: &str) -> bool {
+        self.directory
+            .join(directory)
+            .join(Self::GIT_FOLDER)
+            .is_dir()
     }
 
     fn files_under(&self, directory: &str) -> Vec<String> {
@@ -7912,6 +7929,70 @@ fn new_writes_a_gitignore_that_lists_the_doc_folder() {
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
     assert_eq!(sandbox.contents("demo-app/.gitignore"), "/doc/\n");
+}
+
+#[test]
+fn new_writes_every_component_by_default() {
+    let sandbox = Sandbox::new("new_every_component");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    assert_eq!(sandbox.project_files("demo-app"), EVERY_NEW_FILE);
+}
+
+#[test]
+fn new_skips_git() {
+    let sandbox = Sandbox::new("new_skip_git");
+    sandbox
+        .compiler(&["new", "demo-app", "--skip-git"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.project_files("demo-app"),
+        ["project.knv", "src/main.knv"]
+    );
+    assert!(!sandbox.has_git_repository("demo-app"));
+}
+
+#[test]
+fn new_runs_git_init() {
+    let sandbox = Sandbox::new("new_git_init");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    assert!(sandbox.has_git_repository("demo-app"));
+}
+
+#[test]
+fn new_inside_a_git_repository_runs_no_git_init() {
+    let sandbox = Sandbox::new("new_inside_git");
+    sandbox.compiler(&["new", "outer"]).assert_silent_success();
+    sandbox
+        .compiler_in("outer", &["new", "inner"])
+        .assert_silent_success();
+    assert!(!sandbox.has_git_repository("outer/inner"));
+}
+
+#[test]
+fn new_without_git_writes_the_project_and_warns() {
+    let sandbox = Sandbox::new("new_without_git").with_file("no-tools/.keep", "");
+    let new = sandbox.compiler_with_path("no-tools", &["new", "demo-app"]);
+    insta::assert_snapshot!(new.assert_exit_code(0).stderr());
+    assert_eq!(sandbox.project_files("demo-app"), EVERY_NEW_FILE);
+}
+
+#[test]
+fn new_warns_when_git_init_fails() {
+    let sandbox =
+        Sandbox::new("new_git_init_fails").with_executable("failing-bin/git", FAILING_GIT);
+    let new = sandbox.compiler_with_path("failing-bin", &["new", "demo-app"]);
+    insta::assert_snapshot!(new.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn new_warns_when_git_cannot_start() {
+    let sandbox = Sandbox::new("new_git_cannot_start").with_file("locked-bin/git", FAILING_GIT);
+    let new = sandbox.compiler_with_path("locked-bin", &["new", "demo-app"]);
+    insta::assert_snapshot!(new.assert_exit_code(0).stderr());
 }
 
 #[test]

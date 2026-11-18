@@ -4,6 +4,7 @@ use super::add::AddCommand;
 use super::crate_section::CrateSection;
 use super::exit_status::ExitStatus;
 use super::new::NewCommand;
+use super::new_components::NewComponents;
 use super::release_flag::ReleaseFlag;
 use super::remove::RemoveCommand;
 use super::task::TaskCommand;
@@ -55,13 +56,17 @@ pub enum ProjectCommand {
             value_parser = clap::builder::NonEmptyStringValueParser::new()
         )]
         name: String,
+        #[command(flatten)]
+        components: NewComponents,
     },
 }
 
 impl ProjectCommand {
     pub fn execute(self, terminal: &mut Terminal) -> ExitStatus {
         match self {
-            Self::New { name } => NewCommand::new(name).run(terminal),
+            Self::New { name, components } => {
+                NewCommand::new(name, components.chosen()).run(terminal)
+            }
             Self::Add {
                 name,
                 features,

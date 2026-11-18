@@ -112,7 +112,7 @@ Decision 2 adds a struct whose `name` is an `i32`:
   (println (describe (->product 7))))
 ```
 
-The read types now differ, one a value and two stored borrows, so every read goes through a borrow of the struct. After the build:
+The read types now differ, one a value and two stored borrows, so the trait reads through a borrow of the struct, and each reader settles its own read, by refinement 12. After the build:
 
 ```rust
 trait HasName {
@@ -121,16 +121,16 @@ trait HasName {
 }
 
 impl<'a> HasName for User<'a> {
-    type Name = str;
-    fn name(&self) -> &str {
-        self.name
+    type Name = &'a str;
+    fn name(&self) -> &&'a str {
+        &self.name
     }
 }
 
 impl<'a> HasName for Animal<'a> {
-    type Name = str;
-    fn name(&self) -> &str {
-        self.name
+    type Name = &'a str;
+    fn name(&self) -> &&'a str {
+        &self.name
     }
 }
 
@@ -146,8 +146,8 @@ impl HasName for Product {
     }
 }
 
-fn uppercase_name<A: HasName<Name = str>>(x: &A) -> String {
-    x.name().to_uppercase()
+fn uppercase_name<'a, A: HasName<Name = &'a str>>(x: &A) -> String {
+    (*x.name()).to_uppercase()
 }
 
 fn describe<A: HasName>(x: &A) -> String
@@ -158,7 +158,7 @@ where
 }
 ```
 
-`upper-case` takes `(ref str)`, so the body fixes the read: `(type uppercase-name (where ((a (has :name (ref str)))) (fn ((ref a)) string)))`, the same text as with two structs. `describe` uses the read only through `display`: `(where ((a (has :name (ref b))) (b display)) (fn ((ref a)) string))`. Each call takes its own struct's type, so `describe` reads a `str` from `user` and an `i32` from `product`.
+`uppercase-name` takes only `user` and `animal`, whose reads are one Copy value, the stored `(ref str)`, so it copies the read out of the getter and keeps the struct's lifetime: `(type uppercase-name (where ((a (has :name (ref str)))) (fn ((ref a)) string)))`, the same text as with two structs. `describe` takes `user` and `product`, two kinds, so its read borrows the parameter and uses it only through `display`: `(where ((a (has :name (ref b))) (b display)) (fn ((ref a)) string))`. Each call takes its own struct's type, so `describe` reads a `(ref str)` from `user` and an `i32` from `product`.
 
 ### B. `defstruct` writes a trait and an impl per field
 
@@ -199,6 +199,10 @@ The project owner refined decision 3 again on 2026-11-18, after the third review
 
 10. **A field trait takes its lifetime parameter whenever the read type carries the struct's lifetime,** a stored borrow or a value that holds one, as `trait HasOwner<'u> { fn owner(&self) -> User<'u>; }` for `(defstruct car :owner user)` with `(defstruct user :name str)`. This refines refinement 7. On `main`, `(let (o (owner-of (->car (->user "ana")))) (println (:name o)))` prints `ana` through `fn owner_of(x: Car<'_>) -> User<'_>`. A plain `fn owner(&self) -> User<'_>` ties the result to the borrow of the car, which is `E0716` for that program once a second struct declares `:owner user`.
 11. **A field's shape comes only from the structs that some instantiation of a generic reader of that field takes,** a call or a function value such as `(map (iter cs) age-of)`, the same structs that get an impl, so a struct that no reader receives changes nothing. With the shape taken from every struct that declares the field, `(defstruct user :age str)`, declared and never passed, would turn a plain `:age int` reader into the mixed shape, change `(infer (age-of c))` from `int` to `(ref int)`, and make `(collect (map (iter cs) age-of))` under a `(vec int)` signature `L0401`.
+
+The project owner refined decision 3 again on 2026-11-18, after the fourth review:
+
+12. **Each reader settles its read type from its own instantiations,** calls and function values. The trait's shape stays per field, by refinement 11, but a reader whose instantiations all give one Copy value reads through the shared getter and copies it out, as `fn age_of<A: HasAge<Age = i64>>(x: &A) -> i64 { *x.age() }`, so it keeps `(has :age int)`. Only a reader that itself takes mixed kinds borrows its parameter. Under refinement 11 alone, `(defn show-age (x) (str "age " (:age x)))` called with a `user` whose `:age` is `str` would turn `:age` mixed for every reader, so `age-of`, called only with `cat` and `dog`, would return `(ref int)`, and `(collect (map (iter cs) age-of))` under a `(vec int)` signature would be `L0401`.
 
 ## Rejected options and why
 
@@ -286,15 +290,15 @@ A call with a value that has no such field reports the existing codes at the cal
    | one type, stored borrow | `trait HasName<'u> { fn name(&self) -> &'u str; }` | `(ref str)` |
    | differing, every one a value | `trait HasAge { type Age; fn age(&self) -> Self::Age; }` | `r` |
    | differing, every one a stored borrow | `trait HasTag<'u> { type Tag: ?Sized; fn tag(&self) -> &'u Self::Tag; }` | `(ref b)`, with the struct's lifetime |
-   | differing otherwise, mixed kinds and generic structs included | `trait HasItem { type Item: ?Sized; fn item(&self) -> &Self::Item; }` | `(ref b)`, a borrow of the parameter |
+   | differing otherwise, mixed kinds and generic structs included | `trait HasItem { type Item: ?Sized; fn item(&self) -> &Self::Item; }` | the reader's own, by refinement 12: one Copy read copied out, as `*x.item()`, or `(ref b)`, a borrow of the parameter, for a reader that takes mixed kinds |
 
-   A generic struct's read of a field whose type holds the struct's parameter never agrees with another struct's, so that field always takes an associated type. `(pair a)`'s `:count int` agrees with `cat`'s `:count int` and keeps the plain shape. In the last shape, a value read goes through `&self.item`, and a stored borrow reborrows as `self.item` at the struct's borrow.
+   A generic struct's read of a field whose type holds the struct's parameter never agrees with another struct's, so that field always takes an associated type. `(pair a)`'s `:count int` agrees with `cat`'s `:count int` and keeps the plain shape. In the last shape, every struct's getter returns `&self.item`. `Item` is the read itself for a value and for a stored borrow, `i32` or `&'a str`, so a reader whose instantiations give one such read copies it out with `*x.item()`, and a stored borrow keeps the struct's lifetime there. `Item` is the field's type for any other field, `String` or `A`, whose read is already a borrow of the struct.
 
-   **When the shape settles.** The checker checks a definition before the definitions that call it, and the members of a recursive group together. So a generic read keeps its variable `r` through inference, each instantiation settles `r` from the struct it takes, and the shape settles when every definition is checked. Inside a recursive group the members are monomorphic, as every Hindley-Milner group is: an instantiation inside the group fixes the owner for the whole group, and an instantiation from outside with another struct is `L0401`. In the plain shapes and the value and stored-borrow shapes, every instantiation already gave `r` the same kind of read, so the checker writes the settled type into the reader and into the scheme of every generic caller that holds a copy of `r`: in a plain shape `r` becomes the shared type in the printed type and the emitted Rust, which is refinement 7's read typed at once.
+   **When the shape settles.** The checker checks a definition before the definitions that call it, and the members of a recursive group together. So a generic read keeps its variable `r` through inference, each instantiation settles `r` from the struct it takes, and the shape settles when every definition is checked. Inside a recursive group the members are monomorphic, as every Hindley-Milner group is: an instantiation inside the group fixes the owner for the whole group, and an instantiation from outside with another struct is `L0401`. Each reader settles its own `r`, by refinement 12. When a reader's instantiations give one read type, the checker writes that type into the reader and into the scheme of every generic caller that holds a copy of `r`: in a plain shape every reader of the field settles so, which is refinement 7's read typed at once, and in the mixed shape a reader whose instantiations give one Copy read settles so too and copies it out of the getter. A reader whose instantiations give several read types keeps `r` generic, which in the value and stored-borrow shapes needs no change.
 
    **A read that meets a literal** follows the existing Literals rule, which a function's open literal type already follows: the literal type is not generalized, and the calls settle it. `(defn next-age (x) (+ (:age x) 1))` called with `cat`, whose `:age` is `int`, prints `(type next-age (where ((a (has :age int))) (fn ((ref a)) int)))`, as `(defn inc (x) (+ x 1))` prints `(fn (u8) u8)` when called with a `u8`. Called with `cat` and with `drone`, whose `:age` is `u8`, it is `L0401` at the second call, with the note `` `x` defaulted to `int`, because `next-age` is called with `cat` and with `drone` ``, the same note `inc` gets for two number types. A body that leaves the read generic, as `(str (:age x))` does, takes both.
 
-   **The second check of the mixed shape.** In the mixed shape, each passed struct's read becomes a borrow of the struct, and a caller whose result type comes from the read, as `(defn f (c) (age-of c))`, changes type with it. So the checker checks the whole program a second time with the settled read types, as `TypeChecker::check` (`src/types/checker.rs:2196`) already runs `check_program` again with a fresh checker when it finds new vector bases. A first pass with errors stops there and reports them, as that loop's `?` does, so the user sees one pass's errors, never both. One extra pass is enough: the mixed shape only adds borrow layers, and a field bound looks through borrows (`field_owner`, `src/types/infer.rs:3564`), so no field's set of passed structs changes in the second pass. On the two largest corpus entries, `deep_nesting.knv` and `generic_types.knv`, the type stage is about 0.11 to 0.13 seconds of a debug `knave check`, so the second pass adds about 25 to 30 percent to `check`. Only a program with a mixed-shape field pays it, and every such program fails on `main` with `L0407`.
+   **The second check of the mixed shape.** In the mixed shape, a reader that takes mixed kinds reads a borrow of the struct for every struct it takes, and a caller whose result type comes from that read, as `(defn f (c) (show-age c))`, changes type with it. Every other reader keeps the read type its instantiations gave it, by refinement 12, so nothing else changes. So a second check runs only when some reader of a mixed-shape field takes mixed kinds. It checks the whole program again with the settled read types, as `TypeChecker::check` (`src/types/checker.rs:2196`) already runs `check_program` again with a fresh checker when it finds new vector bases. A first pass with errors stops there and reports them, as that loop's `?` does, so the user sees one pass's errors, never both. One extra pass is enough: a mixed-kind reader's read only gains a borrow layer, and a field bound looks through borrows (`field_owner`, `src/types/infer.rs:3564`), so no field's set of passed structs, and no reader's set of instantiations, changes in the second pass. On the two largest corpus entries, `deep_nesting.knv` and `generic_types.knv`, the type stage is about 0.11 to 0.13 seconds of a debug `knave check`, so the second pass adds about 25 to 30 percent to `check`. Only a program with a mixed-kind reader pays it, and every such program fails on `main` with `L0407`.
 
    **A reader that no instantiation reaches** has no passed struct, so its read keeps its variable, and `knave types` prints `(type hello (where ((a (has :name r))) (fn ((ref a)) r)))`. The emitter writes no Rust for it, as it writes none for any unreached function on `main`, which still checks and prints it (`DependencyGraph::unchecked`, `src/types/graph.rs:234`). The same rule covers:
    - a library checked alone, whose doc page prints the open signature, while a program that uses the library prints the reader's type from that program's instantiations,
@@ -308,9 +312,9 @@ A call with a value that has no such field reports the existing codes at the cal
 
 ### 3. Ownership
 
-**A read has the type that its trait's shape gives, Rule 2.4.** In the plain shapes and the value shape that is the known read's type: the read of a Copy `int` field is `int`, the read of a `str` field is `(ref str)` with the struct's lifetime, and the read of a `string` field is `(ref string)`. In the stored-borrow shape it is a borrow with the struct's lifetime. In the mixed shape it is a borrow of the parameter, `(ref b)`, so the ownership pass treats a returned read as a borrow of the argument, as it does for a `string` field on `main`: `(let (n (name-of (->owner (str "a")))) (println n))` emits `let owner = make_owner("a".to_string()); let n = name_of(&owner);`. Every adjustment runs on that type, as it does for a known read.
+**A read has the type that its trait's shape gives, Rule 2.4.** In the plain shapes and the value shape that is the known read's type: the read of a Copy `int` field is `int`, the read of a `str` field is `(ref str)` with the struct's lifetime, and the read of a `string` field is `(ref string)`. In the stored-borrow shape it is a borrow with the struct's lifetime. In the mixed shape a reader whose instantiations give one Copy read has that read, with the struct's lifetime for a stored borrow, and a reader that takes mixed kinds has a borrow of the parameter, `(ref b)`, so the ownership pass treats a returned read as a borrow of the argument, as it does for a `string` field on `main`: `(let (n (name-of (->owner (str "a")))) (println n))` emits `let owner = make_owner("a".to_string()); let n = name_of(&owner);`. Every adjustment runs on that type, as it does for a known read.
 
-The owner's accepted cost: in the mixed shape, a stored borrow's read cannot outlive its argument. `(defn pick () (local u (->user "ana")) (name-of u))` returns `&'static str` when `name-of` reads a known `user`, and is `L0510` when `name-of` is a mixed-shape reader, because the result borrows the local `u`. A field takes the mixed shape only when calls pass its readers structs of mixed kinds, by refinement 11, so the program fails on `main` with `L0407`.
+The owner's accepted cost: a reader that takes mixed kinds cannot return a stored borrow's read past its argument. `(defn pick () (local u (->user "ana")) (name-of u))` returns `&'static str` when `name-of` reads a known `user`, and also when `name-of` takes only stored borrows of `str`, which it copies out. It is `L0510` when `name-of` itself takes `user` and `product`, because the result borrows the local `u`. A reader takes mixed kinds only in a program that fails on `main` with `L0407`.
 
 | Use | Bound | Emitted read |
 | --- | --- | --- |
@@ -406,7 +410,7 @@ A throwaway build of `main` that logs each zero-or-several lookup ran `knave che
 
 No prelude or example file reaches the lookup, so no other output changes.
 
-**Fixtures for the shapes.** The fixtures come in groups. Each fixture of a group adds one struct to the fixture above it, with a second reader that takes the new struct, and switches the trait's shape, while the first reader's `(println (infer ...))` line, which the emitted Rust holds as a string literal, stays the same. The first reader never takes the new struct, because its body fixes a read the new struct fails, which would be `L0467` at the call. The last two fixtures stand alone.
+**Fixtures for the shapes.** The fixtures come in groups. Each fixture of a group adds one struct to the fixture above it, with a second reader that takes the new struct, and switches the trait's shape, while the first reader's `(println (infer ...))` line, which the emitted Rust holds as a string literal, stays the same. The first reader never takes the new struct, because its body fixes a read the new struct fails, which would be `L0467` at the call. The last three fixtures stand alone.
 
 | Group | Fixture | Structs | First reader | Second reader | Trait |
 | --- | --- | --- | --- | --- | --- |
@@ -417,6 +421,7 @@ No prelude or example file reaches the lookup, so no other output changes.
 | borrow | `emit/field_trait_mixed.knv` | the same, and `product` with `:name i32` | the same | `describe`, `(str "name: " (:name x))`, with `user` and `product` | `trait HasName { type Name: ?Sized; ... }`, `HasName<Name = str>` |
 | owned | `emit/field_trait_plain_owned.knv` | `book`, `film` with `:title string` | `shout`, `(loud (:title x))` with `(type loud (fn ((ref string)) string))`: `(where ((a (has :title (ref string)))) (fn (a) string))` | none | `trait HasTitle { fn title(&self) -> &String; }` |
 | owned | `emit/field_trait_generic_struct.knv` | the same, and `(boxed a)` with `:title a` | the same, with `book` and `(boxed string)` | `size`, `(:title x)` returned, with `film` and `(boxed int)` | `trait HasTitle { type Title: ?Sized; ... }`, `impl<A> HasTitle for Boxed<A>` |
+| alone | `emit/field_trait_mixed_value_reader.knv` | `cat`, `dog` with `:age int`, and `user` with `:age str` | `age-of`, with `cat` and `dog`, and `ages`, `(collect (map (iter cs) age-of))` under `(vec int)`: `(where ((a (has :age int))) (fn (a) int))` | `show-age`, `(str "age " (:age x))`, with `user` and `cat` | `trait HasAge { type Age: ?Sized; fn age(&self) -> &Self::Age; }`, `HasAge<Age = i64>` and `*x.age()` for `age-of` |
 | alone | `emit/field_trait_unpassed_struct.knv` | `cat`, `dog` with `:age int`, and `user` with `:age str` that no reader takes | `age-of`: `(where ((a (has :age int))) (fn (a) int))`, as with `cat` and `dog` alone | none | `trait HasAge { fn age(&self) -> i64; }`, no impl for `User` |
 | alone | `emit/field_trait_plain_value_lifetime.knv` | `user` with `:name str`, and `car`, `boat` with `:owner user` | `owner-of`: `(where ((a (has :owner user))) (fn (a) user))` | none | `trait HasOwner<'u> { fn owner(&self) -> User<'u>; }` |
 
@@ -461,10 +466,11 @@ The change lives in the type rule of the existing kernel form `field`, and in on
 `target/scratch/proto3/` and `target/scratch/proto4/` held the prototype, which is not part of this pull request. rustc 2024 compiled and ran the Rust of Option A, Rule 2 and Rule 3:
 
 - `proto4/d1.rs`, decision 1 in the plain stored-borrow shape, printed `hello ana` and `hello rex`, then a name and a trimmed name read from temporaries.
-- `proto4/d2.rs`, decision 2 in the mixed shape, printed `ANA`, `REX`, `name: ana` and `name: 7`. A name read from a temporary there is `E0716` in Rust, which the ownership pass's binding of the temporary prevents, as Rule 3 says.
+- `proto4/d2.rs`, decision 2 in the mixed shape before refinement 12, printed `ANA`, `REX`, `name: ana` and `name: 7`. A name read from a temporary there is `E0716` in Rust, which the ownership pass's binding of the temporary prevents for a reader that takes mixed kinds, as Rule 3 says.
 - `proto4/values.rs`, `values2.rs` and `stored2.rs` held the fixture pairs of Rule 5.
 - `proto5/mixedmut.rs` held the changing trait of Rule 3.2 in the mixed and plain value shapes, with `user` implementing only `HasName`, and the plain owned shape with `&String`, read by `shout` through `loud`.
 - `proto6/ownerval.rs` held refinement 10: the reviewer's `owner-of` on a temporary `car` and a `boat`, an `(option (ref str))` field, and a value shape whose `type Pin = User<'a>` keeps the lifetime. `proto6/ages.rs` held refinement 11: `ages` collects `int` reads of `cat` while a `user` with `:age str` reaches no reader and gets no impl.
+- `proto8/perreader.rs` held refinement 12 on the fourth review's program: `age-of` copies `*x.age()` and stays `int`, so `ages` collects a `Vec<i64>`, `show-age` takes `user` and `cat` through a borrow, and `age_text`, which takes only `user`, copies the stored `&'a str` out with the struct's lifetime past a temporary. `proto8/d2.rs` held decision 2 under refinement 12.
 - `proto7/cmpd.rs` held the compound assignment of Rule 3.2, `let value = x.bonus(); *x.age_mut() += value;` over `cat` and `drone`, with the known-primitive form beside it and `E0502` for the unbound open form, and `HasOwnerMut<'u>: HasOwner<'u>` on `car` and `boat`.
 - `proto3/shapes.rs` held every shape with the probes of the first two reviews, rebuilt from their text, with the plain owned shape written in the view rule's `&str`: `double-age!` and `double-level!` with a `mut` parameter that also reads, a name and a trimmed name from temporaries, a two-field reader, a stored borrow of a local, a generic `get` over `Boxed<i64>`, `Boxed<String>` and a generic caller, the mixed shape, `start-x` through a by-value point, a chained read through a Copy struct that holds a borrow, a chained read through a borrow, and `:item` beside a trait with `type Item`.
 

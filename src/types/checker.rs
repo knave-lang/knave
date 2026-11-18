@@ -325,9 +325,12 @@ impl TypeChecker {
     fn collect_type_item(&mut self, module: ModuleId, item: &Item) -> Result<(), Diagnostic> {
         let kind = &item.kind;
         if let ItemKind::Struct(binding, params, fields) = kind {
-            let (definition, problem) = self.type_collector().collect_struct(params, fields)?;
-            self.declarations.types.structs.add(*binding, definition);
-            self.diagnostics.extend(problem.into_iter().collect());
+            let collected = self.type_collector().collect_struct(params, fields)?;
+            collected.enter(
+                *binding,
+                &mut self.declarations.types,
+                &mut self.diagnostics,
+            );
             return Ok(());
         }
         if let ItemKind::Enum(binding, binders, variants, rust, definer) = kind {
@@ -338,15 +341,11 @@ impl TypeChecker {
                 rust,
                 definer,
             })?;
-            if let Some(rust_type) = collected.rust_type {
-                self.declarations.types.rust_types.add(*binding, rust_type);
-            }
-            self.declarations
-                .types
-                .enums
-                .add(*binding, collected.definition);
-            self.diagnostics
-                .extend(collected.problems.into_iter().collect());
+            collected.enter(
+                *binding,
+                &mut self.declarations.types,
+                &mut self.diagnostics,
+            );
             return Ok(());
         }
         if let ItemKind::RustType(binding, binders, unsized_parameters, template, clauses) = kind {
@@ -665,24 +664,12 @@ impl TypeChecker {
         GenericDeclarations::new(&mut self.generics, &mut self.unifier)
     }
 
-    pub(super) fn written_types(
+    fn written_type_parts(
         &mut self,
-    ) -> super::written_type_lowering::WrittenTypeLowering<'_> {
-        let facts = super::written_type_facts::WrittenTypeFacts {
-            bindings: &self.bindings,
-            declarations: &self.declarations,
-            checking_facts: &self.checking_facts,
-            type_arities: &self.type_arities,
-        };
-        let generics = GenericDeclarations::new(&mut self.generics, &mut self.unifier);
-        let records = super::written_type_records::WrittenTypeRecords {
-            projections: &mut self.written_projections,
-            diagnostics: &mut self.diagnostics,
-        };
-        super::written_type_lowering::WrittenTypeLowering::new(facts, generics, records)
-    }
-
-    pub(super) fn type_collector(&mut self) -> TypeDeclarationCollector<'_> {
+    ) -> (
+        super::written_type_lowering::WrittenTypeLowering<'_>,
+        super::written_type_facts::WrittenTypeFacts<'_>,
+    ) {
         let facts = super::written_type_facts::WrittenTypeFacts {
             bindings: &self.bindings,
             declarations: &self.declarations,
@@ -696,11 +683,24 @@ impl TypeChecker {
         };
         let lowering =
             super::written_type_lowering::WrittenTypeLowering::new(facts, generics, records);
-        TypeDeclarationCollector::new(lowering, &self.bindings, &self.declarations.types)
+        (lowering, facts)
+    }
+
+    pub(super) fn written_types(
+        &mut self,
+    ) -> super::written_type_lowering::WrittenTypeLowering<'_> {
+        self.written_type_parts().0
+    }
+
+    pub(super) fn type_collector(&mut self) -> TypeDeclarationCollector<'_> {
+        let (lowering, facts) = self.written_type_parts();
+        TypeDeclarationCollector::new(lowering, facts.bindings, &facts.declarations.types)
     }
 
     pub(super) fn written_schemes(&mut self) -> super::scheme_lowering::SchemeLowering<'_> {
-        super::scheme_lowering::SchemeLowering::new(self.written_types())
+        let (lowering, facts) = self.written_type_parts();
+        let variables = super::written_type_variables::WrittenTypeVariables::new(facts.bindings);
+        super::scheme_lowering::SchemeLowering::new(lowering, variables)
     }
 
     pub(super) fn instantiation(&mut self) -> Instantiation<'_> {

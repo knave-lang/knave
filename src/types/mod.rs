@@ -11,6 +11,7 @@ mod checker;
 mod checking_facts;
 mod closure_facts;
 mod collected_enum;
+mod collected_struct;
 mod collection;
 mod copy;
 mod coverage;
@@ -121,6 +122,7 @@ mod written_type_facts;
 mod written_type_fixture;
 mod written_type_lowering;
 mod written_type_records;
+mod written_type_variables;
 
 pub use crate::core::ClosureKind;
 pub use binding::GenericBinding;

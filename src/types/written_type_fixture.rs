@@ -4,6 +4,7 @@ use super::RustTrait;
 use super::checker::TypeChecker;
 use super::declared_generics::DeclaredGenerics;
 use super::ty::{Bound, GenericId, Type};
+use super::written_type_variables::WrittenTypeVariables;
 use crate::core::{
     BindingArena, BindingId, BindingInfo, BindingKind, ClosureKind, FieldLabel, FieldSpelling,
     ImplementorRows, ModuleId, PrimitiveType, ReferenceKind, RustTraitDeclaration, TypeBinder,
@@ -174,6 +175,10 @@ impl WrittenTypeFixture {
             payload,
             span: Self::span(),
         }
+    }
+
+    pub(super) fn type_variables(&self, type_expr: &TypeExpr) -> Vec<BindingId> {
+        WrittenTypeVariables::new(&self.checker.bindings).of(type_expr)
     }
 
     pub(super) fn declared_generics(&mut self) -> DeclaredGenerics {

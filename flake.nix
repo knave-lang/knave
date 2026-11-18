@@ -422,6 +422,12 @@
                 export CARGO_BUILD_JOBS=''${CARGO_BUILD_JOBS:-2}
                 export CARGO_INCREMENTAL=0
               fi
+              baseline_driver='cargo run --quiet --package knave-baseline --bin merge-baseline -- %O %A %B %P; status=$?; [ $status -le 2 ] && exit $status; git merge-file -L ours -L base -L theirs %A %O %B'
+              if [[ -d "$(git rev-parse --show-toplevel 2> /dev/null)/xtask/baselines" ]] &&
+                [[ $(git config merge.baseline.driver) != "$baseline_driver" ]]; then
+                git config merge.baseline.name "add both branches' changes to each baseline entry"
+                git config merge.baseline.driver "$baseline_driver"
+              fi
             '';
           }
           // coverageTools pkgs

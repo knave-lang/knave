@@ -3,6 +3,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
+use super::claim_rules::ClaimRules;
 use super::libraries::LibraryTable;
 use super::local_files::LocalFiles;
 use super::local_root::LocalRoot;
@@ -226,15 +227,12 @@ impl ModuleSources {
     }
 
     pub fn local_files(&self, owner: Option<Rc<str>>) -> LocalFiles<'_> {
-        let roots = self.local_roots().collect();
-        match owner.as_deref() {
-            Some(owner) => self
-                .libraries
-                .local_files(Some(owner), roots, Self::compiler_claims),
-            None => self
-                .libraries
-                .local_files(None, roots, Self::program_claims),
-        }
+        let claims = ClaimRules {
+            program: Self::program_claims,
+            library: Self::compiler_claims,
+        };
+        self.libraries
+            .local_files(owner.as_deref(), self.local_roots().collect(), claims)
     }
 
     fn program_claims(path: &ModulePath) -> bool {

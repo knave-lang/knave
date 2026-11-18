@@ -1,3 +1,4 @@
+mod claim_rules;
 mod export_table;
 mod libraries;
 mod library_naming;
@@ -7,6 +8,7 @@ mod located_module;
 mod module_origin;
 mod module_scopes;
 mod module_source;
+mod other_libraries;
 mod registry;
 mod search_scope;
 mod sources;

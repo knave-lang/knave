@@ -140,13 +140,27 @@
             }
 
             wait_for_slot() {
+              join_queue
               until take_free_slot; do
-                if [[ -z ''${told_user_about_wait:-} ]]; then
-                  echo "cargo: waiting for one of $slot_limit build slots" >&2
-                  told_user_about_wait=yes
-                fi
+                tell_user_about_wait
                 sleep "$seconds_between_attempts"
               done
+              exec {queue_lock}>&-
+            }
+
+            join_queue() {
+              exec {queue_lock}>"$slot_directory/queue-of-$slot_limit"
+              if ! "$flock" -n "$queue_lock"; then
+                tell_user_about_wait
+                "$flock" "$queue_lock"
+              fi
+            }
+
+            tell_user_about_wait() {
+              if [[ -z ''${told_user_about_wait:-} ]]; then
+                echo "cargo: waiting for one of $slot_limit build slots" >&2
+                told_user_about_wait=yes
+              fi
             }
 
             take_free_slot() {
@@ -217,6 +231,7 @@
             esac
           '';
           cargo = pkgs.lib.getExe' (cargoWithBuildSlots pkgs recordingCargo) "cargo";
+          flock = pkgs.lib.getExe pkgs.flock;
         in
         pkgs.runCommand "build-slots" { } ''
           fail() {
@@ -281,6 +296,22 @@
           finish killed
           finish second
           finish after-kill
+          wait
+
+          KNAVE_BUILD_SLOTS=1 ${cargo} build holder &
+          wait_for_call build-holder
+          KNAVE_BUILD_SLOTS=1 ${cargo} build earlier 2>/dev/null &
+          sleep 2
+          ${flock} -n "$HOME/.cache/knave/build-slots/queue-of-1" true && fail "a waiting cargo left the queue open"
+          KNAVE_BUILD_SLOTS=1 ${cargo} build later 2>later-waiting &
+          sleep 2
+          grep --quiet 'waiting for one of 1 build slots' later-waiting || fail "a queued command says nothing"
+          finish holder
+          wait_for_call build-earlier
+          expect_no_call build-later
+          finish earlier
+          wait_for_call build-later
+          finish later
           wait
 
           status=0

@@ -1,0 +1,3 @@
+(defn main ()
+  (let (big 300)
+    (println (the u8 (convert big)))))

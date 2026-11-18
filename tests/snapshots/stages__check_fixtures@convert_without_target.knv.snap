@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/convert_without_target.knv
+---
+error[L0407]: type annotations needed
+ --> check/convert_without_target.knv:2:11
+  |
+2 |   (let (n (convert 3)) (println n)))
+  |           ^^^^^^^^^^^ cannot infer the type `_` of this value
+  |
+help: write the type with `the`, and replace each `_` with a type
+  |
+2 |   (let (n (the _ (convert 3))) (println n)))
+  |           ++++++            +
+  = note: run `knave doc L0407` for an explanation

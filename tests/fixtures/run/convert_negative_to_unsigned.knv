@@ -1,0 +1,7 @@
+(type unsigned
+  (where ((n integer)) (fn (n) usize)))
+
+(defn unsigned (x) (convert x))
+
+(defn main ()
+  (println (unsigned (the i64 -1))))

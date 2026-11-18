@@ -8,9 +8,10 @@
 (module
   "Does arithmetic and comparison, and names the number traits.")
 
-(export * + - / < <= = > >= dec eq even? floating hash inc
-        integer neg neg? not= number odd? ord partial-eq
-        partial-ord pi pos? rem signed sqrt zero?)
+(export * + - / < <= = > >= convert dec eq even? floating
+        hash inc integer neg neg? not= number odd? ord
+        partial-eq partial-ord pi pos? rem signed sqrt
+        zero?)
 
 (rust-trait number "crate::rt::Number"
   (requires copy partial-ord)
@@ -211,6 +212,11 @@
 (defrule-with-value neg? (fn (x) (< x 0))
   ((number) (< number 0)))
 
+(def convert
+  (rust "crate::rt::convert::<{to}, _>({0})"
+    (where ((from integer) (to integer))
+      (fn (from) to))))
+
 (def even-integer
   (rust "crate::rt::is_even({0})"
     (where ((n integer)) (fn (n) bool))
@@ -305,6 +311,14 @@
   (last-digit 127)
   => 7
   ```")
+
+(document (convert value)
+  "Converts an integer to the integer type that the call's result takes.
+
+  It panics when the value does not fit in that type.
+
+  (the u8 (convert 200))
+  => 200")
 
 (document partial-eq
   "Marks a type whose values [=] and [not=] compare, as Rust's `PartialEq` does.

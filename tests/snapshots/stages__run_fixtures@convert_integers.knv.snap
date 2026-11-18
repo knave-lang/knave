@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/convert_integers.knv
+---
+4
+200
+250
+-5
+18446744073709551615
+340282366920938463463374607431768211454
+200
+-300

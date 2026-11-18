@@ -328,15 +328,26 @@
 
       sourceFormat =
         pkgs: package:
+        let
+          inherit (pkgs) lib;
+          listed = lib.filter (line: line != "") (
+            lib.splitString "\n" (builtins.readFile ./xtask/source-format-paths.txt)
+          );
+          pathsAfter = verb: map (lib.removePrefix "${verb} ") (lib.filter (lib.hasPrefix "${verb} ") listed);
+          findSources =
+            checked:
+            let
+              directory = ./. + "/${checked}";
+              skipped = lib.filter (lib.hasPrefix "${checked}/") (pathsAfter "skip");
+              skipping = path: " -not -path '${directory}/${lib.removePrefix "${checked}/" path}/*'";
+            in
+            "find ${directory} -name '*.knv'${lib.concatMapStrings skipping skipped}";
+        in
         pkgs.runCommand "source-format" { } ''
-          fixtures=${./tests/fixtures}
-          mapfile -t fixture_files < <(
-            find "$fixtures" -name '*.knv' \
-              -not -path "$fixtures/read/*" \
-              -not -path "$fixtures/format/*" \
-              -not -path "$fixtures/expand/unreadable/*" | sort
-          )
-          ${pkgs.lib.getExe package} fmt --check ${./prelude} ${./examples} "''${fixture_files[@]}" ||
+          mapfile -t source_files < <({ ${
+            lib.concatMapStringsSep "; " findSources (pathsAfter "check")
+          }; } | sort)
+          ${lib.getExe package} fmt --check "''${source_files[@]}" ||
             { echo "run knave fmt on the files above to lay them out" >&2; exit 1; }
           touch $out
         '';

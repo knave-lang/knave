@@ -7,6 +7,7 @@ use clap::ValueEnum;
 use crate::cargo::Cargo;
 use crate::failure::TaskFailure;
 use crate::lcov::LcovReport;
+use crate::test_selection::TestRun;
 use crate::test_shard::TestShard;
 
 pub struct InstrumentedTests<'a> {
@@ -19,6 +20,10 @@ impl<'a> InstrumentedTests<'a> {
     const UNMEASURED_PACKAGE: &'static str = "xtask";
     const FORGET_PREVIOUS_RUNS: [&'static str; 3] = ["llvm-cov", "clean", "--workspace"];
     const KEEP_BUILD_ARTIFACTS: &'static str = "--no-clean";
+    const SELECTED_REPORT: &'static str = "target/coverage/selected.info";
+    const FORGET_PREVIOUS_PROFILES: [&'static str; 3] = ["llvm-cov", "clean", "--profraw-only"];
+    const RUN_WITHOUT_REPORT: [&'static str; 3] = ["llvm-cov", "test", "--no-report"];
+    const WRITE_REPORT: [&'static str; 3] = ["llvm-cov", "report", "--lcov"];
 
     pub fn new(root: &'a Path) -> Self {
         Self { root }
@@ -27,8 +32,30 @@ impl<'a> InstrumentedTests<'a> {
     pub fn run(&self) -> Result<LcovReport, TaskFailure> {
         let report = self.root.join(Self::REPORT);
         self.measure(&report, &[])?;
-        let text = Self::read(&report)?;
-        Ok(LcovReport::parse(&text, self.root))
+        self.parsed(&report)
+    }
+
+    pub fn run_selected(&self, runs: &[TestRun]) -> Result<LcovReport, TaskFailure> {
+        if runs.is_empty() {
+            return Ok(LcovReport::parse("", self.root));
+        }
+        self.cargo(|command| command.args(Self::FORGET_PREVIOUS_PROFILES))?;
+        for run in runs {
+            self.cargo(|command| command.args(Self::RUN_WITHOUT_REPORT).args(run.arguments()))?;
+        }
+        let report = self.root.join(Self::SELECTED_REPORT);
+        Self::create_parent(&report)?;
+        self.cargo(|command| {
+            command
+                .args(Self::WRITE_REPORT)
+                .arg("--output-path")
+                .arg(&report)
+        })?;
+        self.parsed(&report)
+    }
+
+    fn parsed(&self, report: &Path) -> Result<LcovReport, TaskFailure> {
+        Ok(LcovReport::parse(&Self::read(report)?, self.root))
     }
 
     pub fn run_shard(&self, shard: TestShard) -> Result<(), TaskFailure> {
@@ -198,6 +225,13 @@ mod tests {
         InstrumentedTests::instrumented_run(&mut command, Path::new("report.info"), &selection);
         let arguments: Vec<_> = command.get_args().collect();
         assert_eq!(arguments[arguments.len() - selection.len()..], selection);
+    }
+
+    #[test]
+    fn no_selected_runs_measure_nothing_and_run_no_cargo() {
+        let tests = InstrumentedTests::new(Path::new("/nonexistent/workspace"));
+        let report = tests.run_selected(&[]).expect("nothing runs");
+        assert_eq!(report.total().percent(), 0.0);
     }
 
     #[test]

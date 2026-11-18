@@ -6,6 +6,7 @@ use crate::changed_lines::ChangedLines;
 use crate::checks::Check;
 use crate::failure::TaskFailure;
 use crate::language::LanguageSource;
+use crate::source_format_paths::SourceFormatPaths;
 use crate::workspace::CargoWorkspace;
 
 pub struct SourceFormat {
@@ -14,37 +15,21 @@ pub struct SourceFormat {
 }
 
 impl SourceFormat {
-    const CHECKED_DIRECTORIES: [&str; 3] = ["prelude/", "examples/", "tests/fixtures/"];
-    const SKIPPED_DIRECTORIES: [&str; 3] = [
-        "tests/fixtures/read/",
-        "tests/fixtures/format/",
-        "tests/fixtures/expand/unreadable/",
-    ];
-    const EXTENSION_CONSTANT: &str = "EXTENSION";
     const FORMAT_CHECK: [&str; 5] = ["run", "--quiet", "--", "fmt", "--check"];
 
     pub fn check(root: &Path, changed: &ChangedLines) -> Result<Self, TaskFailure> {
         let workspace = CargoWorkspace::read(root)?;
-        let extension = LanguageSource::find(&workspace)?.constant(Self::EXTENSION_CONSTANT)?;
+        let extension = LanguageSource::find(&workspace)?.extension()?;
         let files = Self::checked_files(changed, &format!(".{extension}"));
         let output = Self::run(root, &files)?;
         Ok(Self { files, output })
     }
 
     fn checked_files(changed: &ChangedLines, extension: &str) -> Vec<String> {
+        let paths = SourceFormatPaths::default();
         changed
             .files()
-            .filter(|file| file.ends_with(extension))
-            .filter(|file| {
-                Self::CHECKED_DIRECTORIES
-                    .iter()
-                    .any(|directory| file.starts_with(directory))
-            })
-            .filter(|file| {
-                !Self::SKIPPED_DIRECTORIES
-                    .iter()
-                    .any(|directory| file.starts_with(directory))
-            })
+            .filter(|file| file.ends_with(extension) && paths.checks(file))
             .map(String::from)
             .collect()
     }

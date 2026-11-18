@@ -1,6 +1,6 @@
 use super::declarations_builder::DeclarationsBuilder;
 use super::trait_declarations::TraitDeclarations;
-use super::ty::{GenericParam, Scheme};
+use super::ty::GenericParam;
 use super::type_declarations::TypeDeclarations;
 use super::written_bodies::WrittenBodies;
 
@@ -38,35 +38,19 @@ impl Declarations {
     }
 
     pub(super) fn record_impl_params(&mut self, position: usize, params: Vec<GenericParam>) {
-        let implementation = &mut self.traits.impls[position];
-        implementation.params = params.clone();
-        let implementor = implementation.implementor.clone();
-        self.traits.table.set_implementor_scheme(
-            implementation.trait_binding,
-            &implementor,
-            Scheme {
-                lifetimes: Vec::new(),
-                params,
-                body: implementor.clone(),
-            },
-        );
+        self.traits.record_impl_params(position, params);
     }
 }
 
 #[cfg(test)]
 impl Declarations {
-    pub fn thaw(&mut self) {
-        self.frozen = false;
+    pub(super) fn open_builder(&mut self) -> DeclarationsBuilder<'_> {
+        DeclarationsBuilder::new(&mut self.types, &mut self.traits, &mut self.written)
     }
 
-    pub fn types_mut(&mut self) -> &mut TypeDeclarations {
-        &mut self.types
+    pub(super) fn take_types(&mut self) -> TypeDeclarations {
+        std::mem::take(&mut self.types)
     }
-
-    pub fn traits_mut(&mut self) -> &mut TraitDeclarations {
-        &mut self.traits
-    }
-
     pub fn with_traits(table: super::TraitTable) -> Self {
         Self {
             traits: TraitDeclarations {

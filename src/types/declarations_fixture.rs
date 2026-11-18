@@ -13,6 +13,7 @@ use super::implementation_check::ImplementationCheck;
 use super::implementation_collector::ImplementationCollector;
 use super::trait_boxing::TraitBoxing;
 use super::trait_declarations::TraitDeclarations;
+use super::ty::GenericParam;
 use super::type_declarations::TypeDeclarations;
 use super::variant_payloads::VariantPayloads;
 use super::{Type, TypedProgram, TypedSource};
@@ -117,18 +118,18 @@ impl DeclarationsFixture {
     }
 
     pub(super) fn builder(&mut self) -> DeclarationsBuilder<'_> {
-        self.declarations.thaw();
-        self.declarations.builder()
+        self.declarations.open_builder()
+    }
+
+    pub(super) fn record_impl_params(&mut self, position: usize, params: Vec<GenericParam>) {
+        self.declarations.record_impl_params(position, params);
     }
 
     pub(super) fn enter_impl(&mut self, collected: CollectedImpl) {
         let mut synthetic = Default::default();
         let mut impl_methods = Default::default();
-        collected.enter(
-            self.declarations.traits_mut(),
-            &mut synthetic,
-            &mut impl_methods,
-        );
+        let traits = self.declarations.open_builder().traits();
+        traits.enter_impl(collected, &mut synthetic, &mut impl_methods);
     }
 
     pub(super) fn traits(&self) -> &TraitDeclarations {

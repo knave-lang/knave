@@ -3,6 +3,7 @@ use rustc_hash::FxHashMap;
 use super::RustTrait;
 use super::checker::TypeChecker;
 use super::collected_enum::CollectedEnum;
+use super::collected_rust_trait::CollectedRustTrait;
 use super::collected_struct::CollectedStruct;
 use super::declared_generics::DeclaredGenerics;
 use super::trait_fixture::TraitFixture;
@@ -144,11 +145,9 @@ impl WrittenTypeFixture {
         let binding = self.named_trait("shown");
         let declaration = TraitFixture::declaration(binding, Vec::new());
         let rust_trait = rust_trait(&declaration);
-        self.checker
-            .declarations
-            .traits_mut()
-            .table
-            .add(binding, rust_trait);
+        let collected = CollectedRustTrait::new(&declaration, rust_trait);
+        let traits = self.checker.declarations.open_builder().traits();
+        traits.enter_rust_trait(collected, &mut self.checker.synthetic_bindings);
         binding
     }
 
@@ -174,13 +173,13 @@ impl WrittenTypeFixture {
     }
 
     pub(super) fn enter_struct(&mut self, binding: BindingId, collected: CollectedStruct) {
-        let types = self.checker.declarations.types_mut();
-        collected.enter(binding, types, &mut self.checker.diagnostics);
+        let types = self.checker.declarations.open_builder().types();
+        types.enter_struct(binding, collected, &mut self.checker.diagnostics);
     }
 
     pub(super) fn enter_enum(&mut self, binding: BindingId, collected: CollectedEnum) {
-        let types = self.checker.declarations.types_mut();
-        collected.enter(binding, types, &mut self.checker.diagnostics);
+        let types = self.checker.declarations.open_builder().types();
+        types.enter_enum(binding, collected, &mut self.checker.diagnostics);
     }
 
     pub(super) fn declared_generics(&mut self) -> DeclaredGenerics {

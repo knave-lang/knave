@@ -56,6 +56,7 @@ mod form_results;
 mod generic_declarations;
 mod generic_registry;
 mod graph;
+mod impl_bounds;
 mod impl_item;
 mod impl_overlap;
 mod implementation_check;

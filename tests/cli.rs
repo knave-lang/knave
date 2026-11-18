@@ -10707,13 +10707,14 @@ fn dotted_use_of_a_library_file_under_the_source_root_names_the_library() {
         )
         .with_file(
             "src/main.knv",
-            "(use shapes area)\n(use ./vendor/shapes/src/lib)\n(use vendor/shapes/src/lib/)\n\n(defn main () (println (area 2)))\n",
+            "(use shapes area)\n(use ./vendor/shapes/src/lib)\n(use vendor/shapes/src/lib/)\n(use ./vendor/shapes/src/geometry)\n\n(defn main () (println (area 2)))\n",
         )
         .with_file("src/vendor/shapes/project.knv", "(defproject shapes)\n")
         .with_file(
             "src/vendor/shapes/src/lib.knv",
             "(export area)\n\n(defn area (side) (* side side))\n",
-        );
+        )
+        .with_file("src/vendor/shapes/src/geometry.knv", "(def kept 1)\n");
     let check = sandbox.compiler(&["check"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
@@ -10761,6 +10762,28 @@ fn library_dotted_use_of_a_file_of_a_library_it_cannot_use_names_the_library() {
             "shapes/src/lib.knv",
             "(use ./vendor/dots/src/lib)\n\n(export area)\n\n(defn area (side) (* side side))\n",
         )
+        .with_file("shapes/src/vendor/dots/project.knv", "(defproject dots)\n")
+        .with_file("shapes/src/vendor/dots/src/lib.knv", "(def kept 1)\n");
+    let check = sandbox.compiler_in("app", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn dotted_use_of_a_file_of_a_library_inside_another_names_the_inner_library() {
+    let sandbox = Sandbox::new("dotted_use_nested_library")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (shapes :path \"../shapes\") (dots :path \"../shapes/src/vendor/dots\")))\n",
+        )
+        .with_file(
+            "app/src/main.knv",
+            "(use ../../shapes/src/vendor/dots/src/lib)\n\n(defn main () (println 1))\n",
+        )
+        .with_file(
+            &format!("shapes/{}", Language::project_file_name()),
+            "(defproject shapes)\n",
+        )
+        .with_file("shapes/src/lib.knv", "(def kept 0)\n")
         .with_file("shapes/src/vendor/dots/project.knv", "(defproject dots)\n")
         .with_file("shapes/src/vendor/dots/src/lib.knv", "(def kept 1)\n");
     let check = sandbox.compiler_in("app", &["check"]);

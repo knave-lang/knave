@@ -1,6 +1,5 @@
 mod export_table;
 mod libraries;
-mod library_place;
 mod local_files;
 mod local_root;
 mod located_module;
@@ -12,6 +11,7 @@ mod search_scope;
 mod sources;
 mod unlisted_library;
 mod unnamed_part_target;
+mod visible_library;
 
 pub use export_table::ExportTable;
 pub use libraries::{LibraryFile, LibraryRoot, LibraryTable};

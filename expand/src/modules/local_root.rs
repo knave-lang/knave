@@ -51,19 +51,20 @@ impl<'s> LocalRoot<'s> {
         })
     }
 
-    pub(super) fn holds_unreachable(&self, local: &Path) -> bool {
+    pub(super) fn unreachable_file(&self, local: &Path) -> Option<PathBuf> {
         let path = self.root.join(local);
-        path.exists() && !self.allows(&path)
+        fs::canonicalize(&path).ok().filter(|_| !self.allows(&path))
     }
 
-    pub(super) fn shown_file(&self, local: &Path) -> PathBuf {
+    pub(super) fn shown_file(&self, local: &Path, found: &Path) -> PathBuf {
         let shown = Self::normalized(&self.display_root.join(local));
-        let Ok(found) = fs::canonicalize(self.root.join(local)) else {
-            return shown;
-        };
         let shows_found =
             !shown.is_symlink() && fs::canonicalize(&shown).is_ok_and(|file| file == found);
-        if shows_found { shown } else { found }
+        if shows_found {
+            shown
+        } else {
+            found.to_path_buf()
+        }
     }
 
     pub(super) fn canonical_file(&self, local: &Path) -> Option<PathBuf> {

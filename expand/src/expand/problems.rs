@@ -512,14 +512,13 @@ impl ExpandProblems {
     }
 
     pub fn unlisted_library(unlisted: &UnlistedLibrary, span: Span) -> Diagnostic {
-        let (library, section) = (unlisted.name, unlisted.section);
-        let file = Language::project_file_name();
-        Diagnostic::error(
+        let library = unlisted.name;
+        let diagnostic = Diagnostic::error(
             DiagnosticCode::UNLISTED_LIBRARY,
             format!("this project does not list library `{library}`"),
             Label::new(span, "a library that another library uses"),
-        )
-        .with_help(format!("add `{library}` to the `{section}` of `{file}`"))
+        );
+        ModulePathProblems::with_listing_advice(diagnostic, library, unlisted.section)
     }
 
     pub fn library_hides_local_module(

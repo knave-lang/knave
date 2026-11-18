@@ -1451,7 +1451,7 @@ impl TypeChecker {
     }
 
     fn collect_user_trait(&mut self, declaration: UserTrait<'_>) -> Result<(), Diagnostic> {
-        if !declaration.associated.is_empty() {
+        if declaration.takes_argument() {
             self.checking_facts
                 .trait_arguments
                 .insert(declaration.binding);

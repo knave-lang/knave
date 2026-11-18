@@ -83,6 +83,7 @@ mod rust_type_item;
 mod rust_types;
 mod scheme_lowering;
 mod selection;
+mod selfless_method;
 mod selfless_methods;
 mod size;
 mod string_view;
@@ -95,6 +96,8 @@ mod templates;
 mod trait_boxing;
 mod trait_declaration_collector;
 mod trait_declarations;
+#[cfg(test)]
+mod trait_fixture;
 mod trait_method_info;
 mod trait_reach;
 mod trait_rows_reach;

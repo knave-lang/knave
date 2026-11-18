@@ -10,13 +10,28 @@ use crate::core::{BindingId, RustTraitDeclaration};
 pub(super) struct CollectedRustTrait<'a> {
     declaration: &'a RustTraitDeclaration,
     rust_trait: RustTrait,
+    methods: Vec<(BindingId, TraitMethodInfo)>,
 }
 
 impl<'a> CollectedRustTrait<'a> {
     pub(super) fn new(declaration: &'a RustTraitDeclaration, rust_trait: RustTrait) -> Self {
+        let methods = declaration
+            .methods
+            .iter()
+            .map(|method| {
+                let signature = MethodSignature::new(&method.signature, declaration.self_variable);
+                let info = TraitMethodInfo {
+                    trait_binding: declaration.binding,
+                    rust_name: Rc::clone(&declaration.path),
+                    receiver: signature.receiver(),
+                };
+                (method.binding, info)
+            })
+            .collect();
         Self {
             declaration,
             rust_trait,
+            methods,
         }
     }
 
@@ -25,21 +40,11 @@ impl<'a> CollectedRustTrait<'a> {
         traits: &mut TraitDeclarations,
         synthetic: &mut FxHashSet<BindingId>,
     ) {
-        let declaration = self.declaration;
-        traits.table.add(declaration.binding, self.rust_trait);
-        traits.rust_paths.record(declaration);
-        for method in &declaration.methods {
-            let receiver =
-                MethodSignature::new(&method.signature, declaration.self_variable).receiver();
-            synthetic.insert(method.binding);
-            traits.methods.insert(
-                method.binding,
-                TraitMethodInfo {
-                    trait_binding: declaration.binding,
-                    rust_name: Rc::clone(&declaration.path),
-                    receiver,
-                },
-            );
+        traits.table.add(self.declaration.binding, self.rust_trait);
+        traits.rust_paths.record(self.declaration);
+        for (method, info) in self.methods {
+            synthetic.insert(method);
+            traits.enter_method(method, info);
         }
     }
 }
@@ -48,13 +53,14 @@ impl<'a> CollectedRustTrait<'a> {
 mod tests {
     use super::CollectedRustTrait;
     use crate::core::ReferenceKind;
+    use crate::types::trait_fixture::TraitFixture;
     use crate::types::written_type_fixture::WrittenTypeFixture as Fixture;
     use crate::types::{ReceiverKind, RustTrait};
 
     #[test]
     fn a_rust_trait_enters_its_methods_as_synthetic_with_their_receivers() {
-        let mut fixture = Fixture::new();
-        let self_variable = fixture.type_variable("self");
+        let mut fixture = TraitFixture::new();
+        let self_variable = fixture.types.type_variable("self");
         let receiver = Fixture::reference(
             ReferenceKind::Mutable,
             Fixture::named(self_variable, Vec::new()),
@@ -66,7 +72,7 @@ mod tests {
         declaration.self_variable = self_variable;
         let rust_trait = RustTrait::unreached(&declaration);
         fixture.enter_rust_trait(CollectedRustTrait::new(&declaration, rust_trait));
-        let checker = &fixture.checker;
+        let checker = &fixture.types.checker;
         let info = checker.declarations.traits.methods.get(&method_binding);
         let info = info.expect("the method is entered");
         assert_eq!(info.trait_binding, declaration.binding);

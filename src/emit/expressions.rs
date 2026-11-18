@@ -5,6 +5,7 @@ use rustc_hash::FxHashSet;
 
 use super::argument_role::ArgumentRole;
 use super::callee_definitions::{CalleeDefinition, CalleeDefinitions};
+use super::double_negation::DoubleNegation;
 use super::emitted_types::EmittedTypes;
 use super::emitted_value::EmittedValue;
 use super::fragment::{Code, Fragment, Precedence};
@@ -1977,7 +1978,10 @@ impl<'a> ExpressionEmitter<'a> {
             let body = self.inlined_closure_body(lambda, &call.arguments());
             codes.replace(call.position(), body);
         }
-        let code = self.inline_with_places(inlined.template(), codes, types, &places, span);
+        let negation = DoubleNegation::new(template, arguments).cancelled(&codes);
+        let code = negation.unwrap_or_else(|| {
+            self.inline_with_places(inlined.template(), codes, types, &places, span)
+        });
         self.locals.leave();
         code
     }

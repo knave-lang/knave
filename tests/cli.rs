@@ -16,12 +16,19 @@ use serde_json::{Map, Value, json};
 
 const FAILING_GIT: &str = "#!/bin/sh\nexit 1\n";
 const NEW_PROJECT_CHECKS: [&[&str]; 3] = [&["fmt", "--check"], &["lint"], &["test"]];
-const EVERY_NEW_FILE: [&str; 5] = [
+const VERSION_SLOT: &str = "{knave-version}";
+const EVERY_NEW_FILE: [&str; 7] = [
+    ".agents/skills/writing-knave/SKILL.md",
+    ".claude/skills/writing-knave/SKILL.md",
     ".github/workflows/knave.yml",
     ".gitignore",
     "project.knv",
     "src/main.knv",
     "tests/main.knv",
+];
+const AGENT_SKILL_PATHS: [&str; 2] = [
+    "demo-app/.agents/skills/writing-knave/SKILL.md",
+    "demo-app/.claude/skills/writing-knave/SKILL.md",
 ];
 const GREETING: &str = "(defn main ()\n  (println \"hello from the sandbox\"))\n";
 const PRINTS_A: &str = "(defn main () (println \"A\"))\n";
@@ -7939,6 +7946,28 @@ fn new_writes_a_gitignore_that_lists_the_doc_folder() {
 }
 
 #[test]
+fn new_writes_the_same_agent_skill_for_each_agent_tool() {
+    let sandbox = Sandbox::new("new_agent_skill_folders");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let [shared, claude] = AGENT_SKILL_PATHS.map(|path| sandbox.contents(path));
+    assert_eq!(shared, claude);
+}
+
+#[test]
+fn new_writes_the_compiler_version_into_the_agent_skill() {
+    let sandbox = Sandbox::new("new_agent_skill_version");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let skill = sandbox.contents(AGENT_SKILL_PATHS[0]);
+    let version_line = format!("knave-version: \"{}\"\n", env!("CARGO_PKG_VERSION"));
+    assert!(skill.contains(&version_line));
+    assert!(!skill.contains(VERSION_SLOT));
+}
+
+#[test]
 fn new_writes_every_component_by_default() {
     let sandbox = Sandbox::new("new_every_component");
     sandbox
@@ -7948,10 +7977,10 @@ fn new_writes_every_component_by_default() {
 }
 
 #[test]
-fn new_skips_the_github_workflow() {
-    let sandbox = Sandbox::new("new_skip_github");
+fn new_skips_the_github_workflow_and_the_agent_skill() {
+    let sandbox = Sandbox::new("new_skip_github_and_skill");
     sandbox
-        .compiler(&["new", "demo-app", "--skip-github"])
+        .compiler(&["new", "demo-app", "--skip-github", "--skip-agent-skill"])
         .assert_silent_success();
     assert_eq!(
         sandbox.project_files("demo-app"),
@@ -7973,6 +8002,8 @@ fn new_skips_git_and_keeps_the_github_workflow() {
     assert_eq!(
         sandbox.project_files("demo-app"),
         [
+            ".agents/skills/writing-knave/SKILL.md",
+            ".claude/skills/writing-knave/SKILL.md",
             ".github/workflows/knave.yml",
             "project.knv",
             "src/main.knv",

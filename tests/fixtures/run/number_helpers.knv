@@ -18,6 +18,12 @@
 
 (defn lopsided? (x) (odd? (inc x)))
 
+(def limit 7)
+
+(def flag (even? limit))
+
+(def unsigned-flag (odd? (the u8 3)))
+
 (defn main ()
   (let (size (the usize 4)
         whole 3
@@ -42,6 +48,7 @@
          (balanced? part)
          (halfway? size)
          (lopsided? whole))
+    (prn flag unsigned-flag)
     (prn (collect (map (iter numbers) inc)))
     (prn (collect (map (iter numbers) dec)))
     (prn (count (filter (iter numbers) zero?))

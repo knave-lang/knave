@@ -1,0 +1,5 @@
+(defn borrowed-parity ()
+  (ref (even? 4)))
+
+(defn main ()
+  (println (deref (borrowed-parity))))

@@ -8,11 +8,11 @@ expand/src/expand/problems.rs 1141
 
 expand/src/format/layout.rs 501
 
-src/emit/expressions.rs 2864
+src/emit/expressions.rs 2825
 
 src/emit/items.rs 1629
 
-src/emit/plan.rs 648
+src/emit/plan.rs 621
 
 src/emit/result_borrows.rs 740
 

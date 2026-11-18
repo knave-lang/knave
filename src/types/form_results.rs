@@ -1,5 +1,6 @@
 use super::display::TypeDisplay;
 use super::problems::TypeProblems;
+use super::program_definitions::ProgramDefinitions;
 use super::ty::{Bound, Type};
 use super::typed::{TypedBodyItem, TypedDefinition, TypedExprKind, TypedProgram};
 use crate::core::BindingId;
@@ -22,7 +23,7 @@ impl<'a> FormResults<'a> {
     pub fn of(program: &'a TypedProgram, printer: BindingId) -> Vec<FormResult> {
         let results = Self {
             program,
-            printer_bounds: Self::argument_bounds(Self::definition(program, printer)),
+            printer_bounds: Self::argument_bounds(ProgramDefinitions::new(program).find(printer)),
         };
         results.entry_results()
     }
@@ -31,7 +32,7 @@ impl<'a> FormResults<'a> {
         let Some(TypedExprKind::Fn(lambda)) = self
             .program
             .entry_function
-            .and_then(|entry| Self::definition(self.program, entry))
+            .and_then(|entry| ProgramDefinitions::new(self.program).find(entry))
             .map(|definition| &definition.value.kind)
         else {
             return Vec::new();
@@ -83,14 +84,6 @@ impl<'a> FormResults<'a> {
     fn display(&self) -> TypeDisplay<'a> {
         TypeDisplay::new(&self.program.bindings, &self.program.generics)
             .with_projections(self.program.declarations.traits().table().projections())
-    }
-
-    fn definition(program: &TypedProgram, binding: BindingId) -> Option<&TypedDefinition> {
-        program
-            .modules
-            .iter()
-            .flat_map(|module| &module.definitions)
-            .find(|definition| definition.binding == binding)
     }
 
     fn argument_bounds(printer: Option<&TypedDefinition>) -> Vec<Bound> {

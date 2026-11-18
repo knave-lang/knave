@@ -1,0 +1,10 @@
+(def flip
+  (rust "std::ops::Neg::neg({0})"
+    (where ((n signed)) (fn (n) n))
+    (i64 "-{0}")))
+
+(defn borrowed-quotient ()
+  (ref (/ 5 (flip 1))))
+
+(defn main ()
+  (println (deref (borrowed-quotient))))

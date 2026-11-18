@@ -1,11 +1,10 @@
 use std::rc::Rc;
 
 use knave_expand::mangle::NameMangler;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 
 use super::argument_role::ArgumentRole;
 use super::callee_definitions::{CalleeDefinition, CalleeDefinitions};
-use super::clause_choice::ClauseChoice;
 use super::emitted_types::EmittedTypes;
 use super::emitted_value::EmittedValue;
 use super::fragment::{Code, Fragment, Precedence};
@@ -36,10 +35,10 @@ use crate::ownership::StructUpdateOrder;
 use crate::reader::{Number, NumberValue};
 use crate::source::Span;
 use crate::types::{
-    Borrow, ClosureKind, Collection, FieldOrder, GenericId, Type, TypedArgument, TypedArm,
-    TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
-    TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedProgram, TypedStructExpr,
-    VariantPayload, ViewCoercion,
+    Borrow, ClauseChoice, ClosureKind, Collection, FieldOrder, SchemeBindings, Type, TypedArgument,
+    TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
+    TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedProgram,
+    TypedStructExpr, VariantPayload, ViewCoercion,
 };
 
 mod compound_assignment;
@@ -1871,14 +1870,12 @@ impl<'a> ExpressionEmitter<'a> {
         template: &Rc<RustTemplate>,
         instantiated: &Type,
     ) -> Rc<RustTemplate> {
-        let chosen = binding.and_then(|binding| {
-            let scheme = &self.plan.definition(binding)?.scheme;
-            let mut bindings = FxHashMap::default();
-            Self::collect_generic_bindings(&scheme.body, instantiated, &mut bindings);
-            let parameter = bindings.remove(&scheme.clause_chooser()?.id)?;
-            Some(ClauseChoice::new(self.program).applied(template, binding, &parameter))
-        });
-        chosen.unwrap_or_else(|| Rc::clone(template))
+        match binding.and_then(|binding| self.plan.definition(binding)) {
+            Some(definition) => {
+                ClauseChoice::new(self.program).for_call(template, definition, instantiated)
+            }
+            None => Rc::clone(template),
+        }
     }
 
     fn callee_type_arguments(&self, callee: &TypedExpr) -> Vec<(String, Code)> {
@@ -1911,47 +1908,11 @@ impl<'a> ExpressionEmitter<'a> {
         binding: BindingId,
         instantiated: &Type,
     ) -> Vec<(String, Type)> {
-        let Some(definition) = self.plan.definition(binding) else {
-            return Vec::new();
-        };
-        let mut bindings = FxHashMap::default();
-        Self::collect_generic_bindings(&definition.scheme.body, instantiated, &mut bindings);
-        definition
-            .scheme
-            .params
-            .iter()
-            .filter_map(|param| Some((param.name.to_string(), bindings.remove(&param.id)?)))
-            .collect()
-    }
-
-    fn collect_generic_bindings(
-        pattern: &Type,
-        instantiated: &Type,
-        bindings: &mut FxHashMap<GenericId, Type>,
-    ) {
-        match (pattern, instantiated) {
-            (Type::Generic(generic), ty) => {
-                bindings.entry(*generic).or_insert_with(|| ty.clone());
-            }
-            (Type::Named(owner, arguments), Type::Named(other, other_arguments))
-                if owner == other =>
-            {
-                for (argument, other_argument) in arguments.iter().zip(other_arguments) {
-                    Self::collect_generic_bindings(argument, other_argument, bindings);
-                }
-            }
-            (Type::Function(_, parameters, result), Type::Function(_, other, other_result)) => {
-                for (parameter, other_parameter) in parameters.iter().zip(other) {
-                    Self::collect_generic_bindings(parameter, other_parameter, bindings);
-                }
-                Self::collect_generic_bindings(result, other_result, bindings);
-            }
-            (Type::Ref(_, inner), Type::Ref(_, other))
-            | (Type::Mut(_, inner), Type::Mut(_, other)) => {
-                Self::collect_generic_bindings(inner, other, bindings);
-            }
-            _ => {}
-        }
+        self.plan
+            .definition(binding)
+            .map_or_else(Vec::new, |definition| {
+                SchemeBindings::new(definition).of(instantiated)
+            })
     }
 
     fn template_call(

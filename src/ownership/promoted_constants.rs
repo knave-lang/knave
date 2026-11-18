@@ -2,7 +2,8 @@ use super::local_borrows::LocalBorrows;
 use crate::core::{Division, Literal, Operand, ParsedTemplate, PrimitiveType, TemplateOperation};
 use crate::reader::NumberValue;
 use crate::types::{
-    Type, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
+    ClauseChoice, Type, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedLeaf,
+    TypedProgram,
 };
 
 #[derive(Clone, Copy)]
@@ -47,12 +48,9 @@ impl<'p> PromotedConstants<'p> {
         arguments
             .iter()
             .all(|argument| self.promotes(&argument.value))
-            && self
-                .program
-                .template_borrows
-                .read_template(callee, false, |template| {
-                    self.promotes_template(template, arguments)
-                })
+            && ClauseChoice::new(self.program).read_selected_template(callee, false, |template| {
+                self.promotes_template(template, arguments)
+            })
     }
 
     fn promotes_template(&self, template: &ParsedTemplate, arguments: &[TypedArgument]) -> bool {
@@ -184,10 +182,10 @@ impl<'p> PromotedConstants<'p> {
         let TypedExprKind::Call(callee, arguments) = &operand.kind else {
             return None;
         };
-        let negates = self
-            .program
-            .template_borrows
-            .read_template(callee, false, |template| template.operation().is_negation());
+        let negates =
+            ClauseChoice::new(self.program).read_selected_template(callee, false, |template| {
+                template.operation().is_negation()
+            });
         arguments
             .first()
             .filter(|_| negates)

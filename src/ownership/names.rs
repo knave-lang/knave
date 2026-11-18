@@ -3,8 +3,8 @@ use rustc_hash::FxHashSet;
 use crate::core::BindingId;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::types::{
-    CopyRules, ReceiverKind, Type, TypedDefinition, TypedExprKind, TypedLambda, TypedProgram,
-    TypedTraitMethod,
+    CopyRules, ProgramDefinitions, ReceiverKind, Type, TypedDefinition, TypedExprKind, TypedLambda,
+    TypedProgram, TypedTraitMethod,
 };
 
 use super::problems::OwnershipProblems;
@@ -113,18 +113,10 @@ impl ChangingFunctionNames {
         program: &TypedProgram,
         method: &TypedTraitMethod,
     ) -> Option<Diagnostic> {
-        let definition = Self::definition(program, method.binding)?;
+        let definition = ProgramDefinitions::new(program).find(method.binding)?;
         let changes_argument =
             method.receiver == Some(ReceiverKind::Mutable) || Self::takes_mut_parameter(definition);
         Self::changed_name_warning(program, method.binding, definition.span, changes_argument)
-    }
-
-    fn definition(program: &TypedProgram, binding: BindingId) -> Option<&TypedDefinition> {
-        program
-            .modules
-            .iter()
-            .flat_map(|module| &module.definitions)
-            .find(|definition| definition.binding == binding)
     }
 
     fn takes_mut_parameter(definition: &TypedDefinition) -> bool {

@@ -136,6 +136,7 @@
             slot_limit=''${KNAVE_BUILD_SLOTS:-2}
             time_limit=''${KNAVE_BUILD_TIME_LIMIT:-}
             timed_out_status=124
+            longest_number=9
             read_timed_out_status=129
             seconds_before_kill=5
             seconds_between_attempts=1
@@ -183,12 +184,17 @@
             }
 
             run_cargo_telling_timer() {
-              local to_timer=$1
+              local to_timer=$1 stderr status=0
               shift
-              (
-                echo "$BASHPID" >&"$to_timer"
-                KNAVE_BUILD_SLOT_HELD=1 exec "$real_cargo" "$@" {to_timer}>&-
-              )
+              exec {stderr}>&2
+              {
+                (
+                  echo "$BASHPID" >&"$to_timer"
+                  KNAVE_BUILD_SLOT_HELD=1 exec "$real_cargo" "$@" 2>&"$stderr" {stderr}>&-
+                )
+              } 2>/dev/null || status=$?
+              exec {stderr}>&-
+              return "$status"
             }
 
             stop_at_time_limit() {
@@ -203,15 +209,27 @@
 
             stop_if_running() {
               local tree identities waited
-              tree=$(process_tree "$1")
+              [[ -n $(survivors "$1" "$(identify "$1")") ]] || return 1
+              tree=$(freeze_process_tree "$1")
               identities=$(identify "$tree")
-              [[ -n $(survivors "$1" "$identities") ]] || return 1
               signal_survivors TERM "$tree" "$identities"
+              signal_survivors CONT "$tree" "$identities"
               for ((waited = 0; waited < seconds_before_kill; waited++)); do
                 [[ -n $(survivors "$tree" "$identities") ]] || return 0
                 sleep 1
               done
               signal_survivors KILL "$tree" "$identities"
+            }
+
+            freeze_process_tree() {
+              local tree frozen=""
+              tree=$(process_tree "$1")
+              until [[ $tree == "$frozen" ]]; do
+                frozen=$tree
+                signal_survivors STOP "$tree" "$(identify "$tree")"
+                tree=$(process_tree "$1")
+              done
+              echo "$tree"
             }
 
             process_tree() {
@@ -256,8 +274,8 @@
             }
 
             require_positive_whole_number() {
-              if [[ ! $2 =~ ^[1-9][0-9]*$ ]]; then
-                echo "$1 must be a positive whole number, not '$2'" >&2
+              if [[ ! $2 =~ ^[1-9][0-9]{0,$((longest_number - 1))}$ ]]; then
+                echo "$1 must be a positive whole number of at most $longest_number digits, not '$2'" >&2
                 exit 2
               fi
             }
@@ -367,6 +385,14 @@
                 ;;
               exit-124) exit 124 ;;
               exit-with) exit "$2" ;;
+              say-error) echo "cargo error" >&2 ;;
+              forker)
+                while :; do
+                  sleep 300 &
+                  echo $! >>"$calls/forked"
+                  sleep 0.002
+                done
+                ;;
               die-by) exec env --default-signal kill -s "$2" $$ ;;
               ready-sleep)
                 touch "$calls/ready"
@@ -565,7 +591,8 @@
           status=0
           KNAVE_BUILD_TIME_LIMIT=1 timeout 10 ${cargo} sleep 30 2>stopped || status=$?
           [[ $status == 124 ]] || fail "a run past KNAVE_BUILD_TIME_LIMIT exited $status, not 124"
-          grep --quiet 'stopped by KNAVE_BUILD_TIME_LIMIT=1,' stopped || fail "a stopped run says nothing"
+          [[ $(<stopped) == "cargo: stopped by KNAVE_BUILD_TIME_LIMIT=1, which counts seconds from when the command took a build slot" ]] ||
+            fail "a stopped run printed '$(<stopped)', not only the limit line"
 
           status=0
           KNAVE_BUILD_TIME_LIMIT=1 timeout 10 ${cargo} hang 2>/dev/null || status=$?
@@ -576,6 +603,16 @@
           KNAVE_BUILD_TIME_LIMIT=1 timeout 10 ${cargo} deep 2>/dev/null || status=$?
           [[ $status == 124 ]] || fail "a run with a hung grandchild exited $status, not 124"
           expect_stopped "$(<"$calls/grandchild")" "a grandchild of cargo outlived KNAVE_BUILD_TIME_LIMIT"
+
+          KNAVE_BUILD_TIME_LIMIT=10 ${cargo} say-error 2>said
+          [[ $(<said) == "cargo error" ]] || fail "a limited cargo's standard error read '$(<said)', not its own message"
+
+          status=0
+          KNAVE_BUILD_TIME_LIMIT=1 timeout 20 ${cargo} forker 2>/dev/null || status=$?
+          [[ $status == 124 ]] || fail "a run that keeps forking exited $status, not 124"
+          while read -r forked; do
+            ! running "$forked" || fail "a process that cargo forked as the limit fired outlived the limit"
+          done <"$calls/forked"
 
           status=0
           KNAVE_BUILD_TIME_LIMIT=1 timeout 20 ${cargo} stubborn 2>/dev/null || status=$?
@@ -672,7 +709,7 @@
           expect_stopped "$reader" "the timer of a killed wrapper held its output open"
 
           KNAVE_BUILD_TIME_LIMIT=61 ${cargo} sleep 0
-          ! ${ps} -A -o args= | grep --quiet --line-regexp 'sleep 61' || fail "a limited run that finished left its timer running"
+          ! ${ps} -A -o args= | grep --quiet --line-regexp '.*/bin/carg[o] sleep 0' || fail "a limited run that finished left its timer running"
 
           status=0
           KNAVE_BUILD_TIME_LIMIT=1 timeout 20 ${cargo} slow-to-stop 2>/dev/null || status=$?
@@ -686,11 +723,11 @@
 
           KNAVE_BUILD_SLOT_HELD=1 KNAVE_BUILD_TIME_LIMIT=1 ${cargo} sleep 2 || fail "a nested cargo set a limit of its own"
 
-          for invalid in 0 ten 1.5; do
+          for invalid in 0 ten 1.5 1000000000; do
             status=0
             KNAVE_BUILD_TIME_LIMIT=$invalid timeout 5 ${cargo} check 2>refused || status=$?
             [[ $status == 2 ]] || fail "a KNAVE_BUILD_TIME_LIMIT of '$invalid' was not refused"
-            grep --quiet "KNAVE_BUILD_TIME_LIMIT must be a positive whole number, not '$invalid'" refused ||
+            grep --quiet "KNAVE_BUILD_TIME_LIMIT must be a positive whole number of at most 9 digits, not '$invalid'" refused ||
               fail "a refused KNAVE_BUILD_TIME_LIMIT of '$invalid' says nothing"
           done
           touch $out

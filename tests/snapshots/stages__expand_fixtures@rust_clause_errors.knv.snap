@@ -272,3 +272,15 @@ error[L0247]: a `rust` clause must pass its arguments as its template does
     |
     = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
     = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+   --> expand/rust_clause_errors.knv:145:10
+    |
+143 |   (rust "std::mem::size_of_val(&{&0})"
+    |         ------------------------------ unlike the template's `{0}` here
+144 |     (where ((a clone)) (fn (a) usize))
+145 |     (i64 "std::mem::size_of_val(&{0})")))
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause borrows `{0}` differently
+    |
+    = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
+    = note: run `knave doc L0247` for an explanation

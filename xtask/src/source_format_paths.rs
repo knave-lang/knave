@@ -67,6 +67,63 @@ impl Default for SourceFormatPaths {
 mod tests {
     use super::SourceFormatPaths;
 
+    struct TemporaryTree {
+        root: std::path::PathBuf,
+    }
+
+    impl TemporaryTree {
+        fn new(name: &str) -> Self {
+            let root =
+                std::env::temp_dir().join(format!("xtask-paths-{name}-{}", std::process::id()));
+            std::fs::create_dir_all(root.join("prelude")).expect("the tree is created");
+            Self { root }
+        }
+
+        fn write(&self, file: &str) {
+            std::fs::write(self.root.join(file), "").expect("the file is written");
+        }
+
+        fn git(&self, arguments: &[&str]) {
+            let status = std::process::Command::new("git")
+                .args(arguments)
+                .current_dir(&self.root)
+                .status()
+                .expect("git runs");
+            assert!(status.success(), "git {arguments:?} failed");
+        }
+
+        fn files(&self) -> Result<Vec<String>, String> {
+            SourceFormatPaths::parse("check prelude\n")
+                .files(&self.root, "knv")
+                .map_err(|failure| failure.to_string())
+        }
+    }
+
+    impl Drop for TemporaryTree {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.root);
+        }
+    }
+
+    #[test]
+    fn a_tree_outside_any_repository_fails() {
+        let tree = TemporaryTree::new("outside");
+        assert!(tree.files().is_err());
+    }
+
+    #[test]
+    fn only_tracked_files_that_still_exist_are_listed() {
+        let tree = TemporaryTree::new("tracked");
+        tree.git(&["init", "--quiet"]);
+        for file in ["prelude/kept.knv", "prelude/deleted.knv"] {
+            tree.write(file);
+        }
+        tree.git(&["add", "."]);
+        tree.write("prelude/untracked.knv");
+        std::fs::remove_file(tree.root.join("prelude/deleted.knv")).expect("the file is deleted");
+        assert_eq!(tree.files(), Ok(vec!["prelude/kept.knv".to_string()]));
+    }
+
     struct PathsCase;
 
     impl PathsCase {
@@ -106,16 +163,6 @@ mod tests {
             !files
                 .iter()
                 .any(|file| file.starts_with("tests/fixtures/read/"))
-        );
-    }
-
-    #[test]
-    fn a_tree_git_cannot_list_fails() {
-        let paths = SourceFormatPaths::parse("check absent\n");
-        assert!(
-            paths
-                .files(std::path::Path::new("/nonexistent"), "knv")
-                .is_err()
         );
     }
 

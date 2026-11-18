@@ -128,19 +128,38 @@
           text = ''
             real_cargo=${pkgs.lib.getExe' realCargo "cargo"}
             flock=${pkgs.lib.getExe pkgs.flock}
+            timeout=${pkgs.lib.getExe' pkgs.coreutils "timeout"}
             slot_directory=$HOME/.cache/knave/build-slots
             slot_limit=''${KNAVE_BUILD_SLOTS:-2}
+            time_limit=''${KNAVE_BUILD_TIME_LIMIT:-}
+            timed_out_status=124
             seconds_between_attempts=1
 
             main() {
               if [[ -n ''${CI:-} || -n ''${KNAVE_BUILD_SLOT_HELD:-} ]] || ! command_compiles "$@"; then
                 exec "$real_cargo" "$@"
               fi
-              require_valid_slot_limit
+              require_positive_whole_number KNAVE_BUILD_SLOTS "$slot_limit"
+              if [[ -n $time_limit ]]; then
+                require_positive_whole_number KNAVE_BUILD_TIME_LIMIT "$time_limit"
+              fi
               mkdir -p "$slot_directory"
               wait_for_slot
               # Keep the lock from cargo: a daemon that a build starts, such as sccache, would inherit it and hold the slot.
-              KNAVE_BUILD_SLOT_HELD=1 "$real_cargo" "$@" {slot_lock}>&-
+              run_in_slot "$@" {slot_lock}>&-
+            }
+
+            run_in_slot() {
+              if [[ -z $time_limit ]]; then
+                KNAVE_BUILD_SLOT_HELD=1 "$real_cargo" "$@"
+                return
+              fi
+              local status=0
+              KNAVE_BUILD_SLOT_HELD=1 "$timeout" "$time_limit" "$real_cargo" "$@" || status=$?
+              if ((status == timed_out_status)); then
+                echo "cargo: stopped after the KNAVE_BUILD_TIME_LIMIT of $time_limit seconds, counted from when it took a build slot" >&2
+              fi
+              return "$status"
             }
 
             command_compiles() {
@@ -164,9 +183,9 @@
               done
             }
 
-            require_valid_slot_limit() {
-              if [[ ! $slot_limit =~ ^[1-9][0-9]*$ ]]; then
-                echo "KNAVE_BUILD_SLOTS must be a positive whole number, not '$slot_limit'" >&2
+            require_positive_whole_number() {
+              if [[ ! $2 =~ ^[1-9][0-9]*$ ]]; then
+                echo "$1 must be a positive whole number, not '$2'" >&2
                 exit 2
               fi
             }
@@ -255,6 +274,7 @@
                 until [[ -e $calls/finish-$2 ]]; do sleep 0.1; done
                 ;;
               failing) exit 3 ;;
+              sleep) sleep "$2" ;;
               xtask) timeout 5 "$slot_limited_cargo" check inside-xtask ;;
               daemon)
                 sleep 300 >/dev/null 2>&1 &
@@ -355,6 +375,35 @@
           KNAVE_BUILD_SLOTS=1 ${cargo} daemon
           timeout 5 env KNAVE_BUILD_SLOTS=1 ${cargo} check after-daemon || fail "a process that outlived cargo kept the slot"
           kill "$(<"$calls/daemon-process")"
+
+          KNAVE_BUILD_SLOTS=1 ${cargo} build limit-holder &
+          wait_for_call build-limit-holder
+          KNAVE_BUILD_SLOTS=1 KNAVE_BUILD_TIME_LIMIT=2 ${cargo} sleep 1 2>/dev/null &
+          queued=$!
+          sleep 3
+          finish limit-holder
+          wait "$queued" || fail "KNAVE_BUILD_TIME_LIMIT counted the wait for a slot"
+          wait
+
+          status=0
+          KNAVE_BUILD_TIME_LIMIT=1 timeout 10 ${cargo} sleep 30 2>stopped || status=$?
+          [[ $status == 124 ]] || fail "a run past KNAVE_BUILD_TIME_LIMIT exited $status, not 124"
+          grep --quiet 'stopped after the KNAVE_BUILD_TIME_LIMIT of 1 seconds' stopped || fail "a stopped run says nothing"
+
+          status=0
+          KNAVE_BUILD_TIME_LIMIT=10 ${cargo} failing 2>within-limit || status=$?
+          [[ $status == 3 ]] || fail "a run within KNAVE_BUILD_TIME_LIMIT exited $status, not 3"
+          [[ ! -s within-limit ]] || fail "a run within KNAVE_BUILD_TIME_LIMIT printed $(<within-limit)"
+
+          KNAVE_BUILD_SLOT_HELD=1 KNAVE_BUILD_TIME_LIMIT=1 ${cargo} sleep 2 || fail "a nested cargo set a limit of its own"
+
+          for invalid in 0 ten 1.5; do
+            status=0
+            KNAVE_BUILD_TIME_LIMIT=$invalid timeout 5 ${cargo} check 2>refused || status=$?
+            [[ $status == 2 ]] || fail "a KNAVE_BUILD_TIME_LIMIT of '$invalid' was not refused"
+            grep --quiet "KNAVE_BUILD_TIME_LIMIT must be a positive whole number, not '$invalid'" refused ||
+              fail "a refused KNAVE_BUILD_TIME_LIMIT of '$invalid' says nothing"
+          done
           touch $out
         '';
 

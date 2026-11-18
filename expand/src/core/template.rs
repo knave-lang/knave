@@ -1,6 +1,4 @@
 use super::access::Access;
-use super::dropped_borrows::DroppedBorrows;
-use super::shared_references::SharedReferences;
 use super::template_braces::TemplateBraces;
 use super::template_operation::TemplateOperation;
 
@@ -13,6 +11,15 @@ pub enum Piece {
     Placeholder { index: usize, access: Access },
     TypePlaceholder { name: String },
     BinderPlaceholder { name: String },
+}
+
+impl Piece {
+    pub(super) fn access_for(&self, argument: usize) -> Option<Access> {
+        match self {
+            Self::Placeholder { index, access } if *index == argument => Some(*access),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -31,53 +38,6 @@ pub enum PassingAspect {
     Dereference,
     Call,
     Operand,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-struct ArgumentPassing<'t> {
-    accesses: Vec<Access>,
-    receives: bool,
-    indexes: bool,
-    dereferences: bool,
-    called: Option<Vec<&'t str>>,
-    operand: bool,
-}
-
-impl ArgumentPassing<'_> {
-    fn without_receiver(self) -> Self {
-        Self {
-            receives: false,
-            ..self
-        }
-    }
-
-    fn compared(self, shared_references: &SharedReferences, argument: usize) -> Self {
-        if shared_references.holds(argument) {
-            self.without_receiver()
-        } else {
-            self
-        }
-    }
-
-    fn differing_aspect(&self, clause: &ArgumentPassing) -> Option<PassingAspect> {
-        [
-            (
-                PassingAspect::Use,
-                self.accesses.is_empty() != clause.accesses.is_empty(),
-            ),
-            (PassingAspect::Borrow, self.accesses != clause.accesses),
-            (PassingAspect::Receiver, self.receives != clause.receives),
-            (PassingAspect::Index, self.indexes != clause.indexes),
-            (
-                PassingAspect::Dereference,
-                self.dereferences != clause.dereferences,
-            ),
-            (PassingAspect::Call, self.called != clause.called),
-            (PassingAspect::Operand, self.operand != clause.operand),
-        ]
-        .into_iter()
-        .find_map(|(aspect, differs)| differs.then_some(aspect))
-    }
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -221,6 +181,25 @@ impl ParsedTemplate {
         Self::from_pieces(pieces)
     }
 
+    pub(super) fn without_written_borrow(&self, argument: usize) -> Self {
+        let mut pieces = self.pieces.clone();
+        for position in 1..pieces.len() {
+            let borrowed = matches!(&pieces[position],
+                Piece::Placeholder { index, access: Access::Borrowed } if *index == argument);
+            if borrowed
+                && let Piece::Literal(text) = &mut pieces[position - 1]
+                && text.ends_with(Access::BORROW)
+            {
+                text.pop();
+                pieces[position] = Piece::Placeholder {
+                    index: argument,
+                    access: Access::Passed,
+                };
+            }
+        }
+        Self::from_pieces(pieces)
+    }
+
     fn from_pieces(pieces: Vec<Piece>) -> Self {
         let mut merged: Vec<Piece> = Vec::new();
         for piece in pieces {
@@ -256,10 +235,7 @@ impl ParsedTemplate {
     fn accesses(&self, argument: usize) -> Vec<Access> {
         self.pieces
             .iter()
-            .filter_map(|piece| match piece {
-                Piece::Placeholder { index, access } if *index == argument => Some(*access),
-                _ => None,
-            })
+            .filter_map(|piece| piece.access_for(argument))
             .collect()
     }
 
@@ -382,67 +358,6 @@ impl ParsedTemplate {
 
     pub fn operation(&self) -> TemplateOperation<'_> {
         TemplateOperation::of(&self.pieces)
-    }
-
-    pub fn clause_borrows(
-        &self,
-        clause: &ParsedTemplate,
-        shared_references: &SharedReferences,
-    ) -> Result<DroppedBorrows, PassingDifference> {
-        let mut arguments: Vec<usize> = self.placeholders().chain(clause.placeholders()).collect();
-        arguments.sort_unstable();
-        arguments.dedup();
-        let mut dropped = Vec::new();
-        for argument in arguments {
-            let in_clause = clause
-                .passing(argument)
-                .compared(shared_references, argument);
-            let in_template = self.passing(argument).compared(shared_references, argument);
-            let Some(aspect) = in_template.differing_aspect(&in_clause) else {
-                continue;
-            };
-            let unborrowed = self
-                .text
-                .replace(&format!("&{{&{argument}}}"), &format!("{{{argument}}}"));
-            let drops_the_borrow = ParsedTemplate::parse(&unborrowed).is_ok_and(|unborrowed| {
-                unborrowed
-                    .passing(argument)
-                    .compared(shared_references, argument)
-                    == in_clause
-            });
-            if !drops_the_borrow {
-                return Err(PassingDifference::Argument(argument, aspect));
-            }
-            if !shared_references.holds(argument) {
-                dropped.push(argument);
-            }
-        }
-        match self.call_difference(clause) {
-            Some(difference) => Err(difference),
-            None => Ok(DroppedBorrows::new(dropped)),
-        }
-    }
-
-    fn call_difference(&self, clause: &ParsedTemplate) -> Option<PassingDifference> {
-        match (self.operation().calls(), clause.operation().calls()) {
-            (false, true) => Some(PassingDifference::CallOnlyInClause),
-            (true, false) => Some(PassingDifference::CallOnlyInTemplate),
-            _ => None,
-        }
-    }
-
-    fn passing(&self, argument: usize) -> ArgumentPassing<'_> {
-        ArgumentPassing {
-            accesses: self.accesses(argument),
-            receives: self.receives(argument),
-            indexes: self.indexes(argument),
-            dereferences: self.dereferences(argument),
-            called: self.called_arguments(argument),
-            operand: self
-                .operation()
-                .operator_arguments()
-                .any(|operand| operand == argument),
-        }
     }
 }
 

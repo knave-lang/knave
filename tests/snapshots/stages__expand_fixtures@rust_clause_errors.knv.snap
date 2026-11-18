@@ -220,7 +220,7 @@ error[L0247]: a `rust` clause must pass its arguments as its template does
     |         ------------------------------ unlike the template's `{0}` here
 118 |     (where ((a clone)) (fn (a) usize))
 119 |     ((ref str) "std::mem::size_of_val({&0})")))
-    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs in whether `{0}` is an operator's operand
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause borrows `{0}` differently
     |
     = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
     = note: run `knave doc L0247` for an explanation
@@ -233,6 +233,18 @@ error[L0247]: a `rust` clause must pass its arguments as its template does
 ...
 125 |     (string "{0} == {1}")))
     |             ^^^^^^^^^^^^ this clause borrows `{0}` differently
+    |
+    = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
+    = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+   --> expand/rust_clause_errors.knv:130:16
+    |
+128 |   (rust "str::len(&{&0})"
+    |         ----------------- unlike the template's `{0}` here
+129 |     (where ((a clone)) (fn (a) usize))
+130 |     ((ref str) "{0}.len()")))
+    |                ^^^^^^^^^^^ this clause differs in whether `{0}` receives a method call
     |
     = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
     = note: run `knave doc L0247` for an explanation

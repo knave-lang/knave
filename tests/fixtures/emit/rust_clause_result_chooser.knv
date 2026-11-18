@@ -3,5 +3,11 @@
     (where ((t clone)) (fn () t))
     (i64 "i64::default()")))
 
+(def nothing
+  (rust "Default::default()"
+    (where ((t clone)) t)
+    (i64 "<i64 as Default>::default()")))
+
 (defn main ()
-  (println (+ 1 (the i64 (zero)))))
+  (println (+ 1 (the i64 (zero))))
+  (println (+ 1 (the i64 nothing))))

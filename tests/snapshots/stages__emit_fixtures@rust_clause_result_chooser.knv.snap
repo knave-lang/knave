@@ -11,6 +11,13 @@ fn main() {
             let result: i64 = i64::default();
             result
         })
+    );
+    println!(
+        "{}",
+        1 + ({
+            let result: i64 = <i64 as Default>::default();
+            result
+        })
     )
 }
 

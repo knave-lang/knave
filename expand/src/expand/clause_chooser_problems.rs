@@ -15,7 +15,7 @@ impl ClauseChooserProblems {
         )
     }
 
-    pub(super) fn fixed_by_no_argument(chooser: Span) -> Diagnostic {
+    pub(super) fn unfixed(chooser: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::RUST_CLAUSES_NEED_A_PARAMETER,
             "a `rust` with clauses chooses by its first type parameter, which no call fixes",

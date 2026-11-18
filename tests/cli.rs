@@ -26,6 +26,8 @@ const EVERY_NEW_FILE: [&str; 7] = [
     "src/main.knv",
     "tests/greeting.knv",
 ];
+const WORKFLOW_FILE: &str = ".github/workflows/knave.yml";
+const VERSION_STEP: &str = "name: Read the Knave version";
 const AGENT_SKILL_PATHS: [&str; 2] = [
     "demo-app/.agents/skills/writing-knave/SKILL.md",
     "demo-app/.claude/skills/writing-knave/SKILL.md",
@@ -424,6 +426,34 @@ exit 101
 
     fn contents(&self, name: &str) -> String {
         fs::read_to_string(self.directory.join(name)).expect("the sandbox file is readable")
+    }
+
+    fn run_version_step(&self, project: &str) -> (bool, String) {
+        let workflow = self.contents(&format!("{project}/{WORKFLOW_FILE}"));
+        let environment = self.directory.join("github-environment");
+        fs::write(&environment, "").expect("the sandbox accepts files");
+        let status = Command::new("bash")
+            .args(["-c", &Self::version_step_script(&workflow)])
+            .env("GITHUB_ENV", &environment)
+            .current_dir(self.directory.join(project))
+            .stdout(Stdio::null())
+            .status()
+            .expect("bash runs");
+        let exported = fs::read_to_string(&environment).expect("the environment file is readable");
+        (status.success(), exported)
+    }
+
+    fn version_step_script(workflow: &str) -> String {
+        let step = workflow
+            .split("      - ")
+            .find(|step| step.starts_with(VERSION_STEP))
+            .expect("the workflow reads the Knave version");
+        let (_, script) = step.split_once("run: |\n").expect("the step runs a script");
+        script
+            .lines()
+            .map(str::trim_start)
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn with_documented_project(test_name: &str) -> Self {
@@ -8255,17 +8285,39 @@ fn new_warns_when_git_cannot_start() {
 }
 
 #[test]
-fn new_writes_the_compiler_version_into_the_github_workflow() {
+fn new_writes_a_workflow_that_holds_no_version() {
     let sandbox = Sandbox::new("new_workflow_version");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
-    let version_line = format!("KNAVE_VERSION: \"{}\"\n", env!("CARGO_PKG_VERSION"));
-    assert!(
-        sandbox
-            .contents("demo-app/.github/workflows/knave.yml")
-            .contains(&version_line)
+    let workflow = sandbox.contents(&format!("demo-app/{WORKFLOW_FILE}"));
+    assert!(!workflow.contains(env!("CARGO_PKG_VERSION")));
+    assert!(!workflow.contains(VERSION_SLOT));
+}
+
+#[test]
+fn new_writes_a_workflow_that_reads_the_version_from_the_project_file() {
+    let sandbox = Sandbox::new("new_workflow_reads_version");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.run_version_step("demo-app"),
+        (
+            true,
+            format!("KNAVE_VERSION={}\n", env!("CARGO_PKG_VERSION"))
+        )
     );
+}
+
+#[test]
+fn new_writes_a_workflow_that_fails_without_a_recorded_version() {
+    let sandbox = Sandbox::new("new_workflow_without_version");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let sandbox = sandbox.with_file("demo-app/project.knv", "(defproject demo-app)\n");
+    assert_eq!(sandbox.run_version_step("demo-app"), (false, String::new()));
 }
 
 #[test]

@@ -7,14 +7,16 @@ on:
 permissions:
   contents: read
 
-env:
-  KNAVE_VERSION: "{knave-version}"
-
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Read the Knave version from {project-file}
+        run: |
+          version=$(grep -o ':{version-key} "[^"]*"' {project-file} | cut -d '"' -f 2)
+          test -n "$version" || { echo "::error file={project-file}::{project-file} records no :{version-key} version"; exit 1; }
+          echo "KNAVE_VERSION=$version" >> "$GITHUB_ENV"
       - id: knave-cache
         uses: actions/cache/restore@v4
         with:

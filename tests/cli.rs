@@ -3355,6 +3355,21 @@ fn doc_write_reference_writes_the_index_and_each_page() {
 }
 
 #[test]
+fn doc_write_reference_writes_the_index_as_reference_md() {
+    let sandbox = Sandbox::new("doc_write_reference_index");
+    sandbox
+        .compiler(&["doc", "--write", "--reference", "--output", "pages"])
+        .assert_silent_success();
+    let files = sandbox.files_under("pages");
+    assert!(files.contains(&"reference.md".to_string()), "{files:?}");
+    assert!(
+        sandbox
+            .contents("pages/reference.md")
+            .starts_with("# Language reference\n")
+    );
+}
+
+#[test]
 fn doc_write_reference_beside_the_prelude_and_errors_writes_all_three() {
     let sandbox = Sandbox::new("doc_write_reference_prelude_errors");
     sandbox

@@ -26,7 +26,7 @@ impl RatchetGate {
         Ok(Verdict::announce(&checks))
     }
 
-    fn checks(&self, ratchets: Vec<Ratchet>) -> Result<Vec<Box<dyn Check>>, TaskFailure> {
+    pub fn checks(&self, ratchets: Vec<Ratchet>) -> Result<Vec<Box<dyn Check>>, TaskFailure> {
         let raises = self.raises(&ratchets)?;
         let ratchets = ratchets
             .into_iter()

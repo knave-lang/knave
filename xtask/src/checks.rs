@@ -84,21 +84,8 @@ impl Check for CrapLimit {
     }
 
     fn details(&self) -> String {
-        let rows: String = self
-            .over_limit()
-            .map(|scored| {
-                format!(
-                    "  {:>7.1} {:>4} {:>7.1}%  {}\n",
-                    scored.crap,
-                    scored.function.complexity,
-                    scored.coverage.percent(),
-                    scored.function
-                )
-            })
-            .collect();
-        format!(
-            "Split these functions or test their branches:\n     CRAP   CC  covered  function\n{rows}"
-        )
+        let rows: String = self.over_limit().map(ScoredFunction::row).collect();
+        format!("{}{rows}", ScoredFunction::TABLE_HEADER)
     }
 }
 

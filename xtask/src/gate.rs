@@ -25,7 +25,7 @@ struct CoverageEvidence {
 
 impl QualityGate {
     const MINIMUM_LINE_COVERAGE: f64 = 99.0;
-    const MAXIMUM_CRAP: f64 = 8.0;
+    pub const MAXIMUM_CRAP: f64 = 8.0;
     const README: &str = "README.md";
     const EXTENSION_CONSTANT: &str = "EXTENSION";
 

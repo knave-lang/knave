@@ -19,6 +19,10 @@ pub struct LineSpan {
 }
 
 impl LineSpan {
+    pub fn overlaps(self, other: Self) -> bool {
+        self.first <= other.last && other.first <= self.last
+    }
+
     fn of(signature: &Signature, body: &Block) -> Self {
         Self {
             first: signature.fn_token.span.start().line,

@@ -3,10 +3,13 @@ mod badge;
 mod baseline_raises;
 mod bench;
 mod cargo;
+mod changed_functions;
+mod changed_lines;
 mod checks;
 mod complexity;
 mod coverage;
 mod crap;
+mod crap_forecast;
 mod design;
 mod emitted_lints;
 mod failure;
@@ -17,7 +20,9 @@ mod git;
 mod instrumented_tests;
 mod language;
 mod lcov;
+mod narrow_coverage;
 mod parsed_source;
+mod prepush;
 mod production_lines;
 mod production_sources;
 mod ratchet;
@@ -25,8 +30,10 @@ mod ratchet_gate;
 mod reduction_arguments;
 mod release;
 mod source_file;
+mod source_format;
 mod test_code;
 mod test_modules;
+mod test_selection;
 mod test_shard;
 mod verdict;
 mod workspace;
@@ -42,6 +49,7 @@ use design::DesignRules;
 use failure::TaskFailure;
 use gate::QualityGate;
 use instrumented_tests::InstrumentedTests;
+use prepush::PrepushTask;
 use production_lines::ProductionLineCensus;
 use production_sources::ProductionSources;
 use ratchet_gate::RatchetGate;
@@ -73,6 +81,10 @@ enum Task {
         about = "Check the design rules of the Rust code: type, function and module limits, each with its baseline"
     )]
     DesignRules(RatchetTask),
+    #[command(
+        about = "Before a push, run the CI gates on the changes since the branch forked: CRAP of the changed functions, the layout of changed sources, file sizes and design rules"
+    )]
+    Prepush(PrepushTask),
     #[command(
         subcommand,
         about = "Measure the compiler's front end under callgrind, or compare two measurements"
@@ -168,6 +180,7 @@ impl Task {
             Task::DesignRules(rules) => rules
                 .check_design_rules(workspace_root)
                 .unwrap_or_else(|failure| failure.report()),
+            Task::Prepush(prepush) => prepush.run(workspace_root),
             Task::Bench(task) => task.run(workspace_root),
             Task::NextRelease(release) => release.run(),
             Task::SetVersion(version) => version.run(workspace_root),
@@ -247,6 +260,22 @@ mod tests {
             base(&["xtask", "design-rules", "--base", "HEAD^1"]),
             Some("HEAD^1".to_string())
         );
+    }
+
+    #[test]
+    fn prepush_takes_a_base_and_repeated_extra_runs() {
+        let command_line = [
+            "xtask",
+            "prepush",
+            "--base",
+            "HEAD^1",
+            "--also",
+            "--test cli fmt",
+            "--also",
+            "--lib",
+        ];
+        let parsed = Tasks::try_parse_from(command_line).expect("the command line parses");
+        assert!(matches!(parsed.task, Task::Prepush(_)));
     }
 
     #[test]

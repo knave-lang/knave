@@ -8,6 +8,9 @@ pub struct ScoredFunction {
 }
 
 impl ScoredFunction {
+    pub const TABLE_HEADER: &str =
+        "Split these functions or test their branches:\n     CRAP   CC  covered  function\n";
+
     pub fn new(function: SourceFunction, coverage: LineCoverage) -> Self {
         let complexity = function.complexity as f64;
         let crap = complexity * complexity * coverage.uncovered_fraction().powi(3) + complexity;
@@ -16,6 +19,16 @@ impl ScoredFunction {
             coverage,
             crap,
         }
+    }
+
+    pub fn row(&self) -> String {
+        format!(
+            "  {:>7.1} {:>4} {:>7.1}%  {}\n",
+            self.crap,
+            self.function.complexity,
+            self.coverage.percent(),
+            self.function
+        )
     }
 }
 

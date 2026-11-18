@@ -45,12 +45,20 @@ impl LcovReport {
     }
 
     pub fn within(&self, file: &str, span: LineSpan) -> LineCoverage {
+        self.lines_within(file, span).into_values().collect()
+    }
+
+    pub fn missed_within(&self, file: &str, span: LineSpan) -> MissedLines {
+        MissedLines::in_file(file, &self.lines_within(file, span))
+    }
+
+    fn lines_within(&self, file: &str, span: LineSpan) -> BTreeMap<usize, bool> {
         self.files
             .get(file)
             .map(|lines| {
                 lines
                     .range(span.first..=span.last)
-                    .map(|(_, covered)| *covered)
+                    .map(|(line, covered)| (*line, *covered))
                     .collect()
             })
             .unwrap_or_default()
@@ -225,5 +233,12 @@ mod tests {
         let missed = SampleReport::parse().most_missed(5);
         let listed: Vec<String> = missed.iter().map(ToString::to_string).collect();
         assert_eq!(listed, ["src/shapes.rs: 4-5, 9"]);
+    }
+
+    #[test]
+    fn missed_within_lists_only_the_span() {
+        let span = LineSpan { first: 4, last: 6 };
+        let missed = SampleReport::parse().missed_within("src/shapes.rs", span);
+        assert_eq!(missed.to_string(), "src/shapes.rs: 4-5");
     }
 }

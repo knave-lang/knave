@@ -72,13 +72,25 @@ impl<'a> Unification<'a> {
     }
 
     pub(super) fn place_type(&self, value: &TypedExpr) -> Type {
-        if let TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) = &value.kind
-            && matches!(label.spelling, FieldSpelling::Pair(_))
-            && self.behind_shared(owner)
-        {
-            return value.ty.clone();
+        if self.pair_part_behind_shared(value) {
+            value.ty.clone()
+        } else {
+            self.declared_type(value)
         }
-        self.declared_type(value)
+    }
+
+    pub(super) fn written_place_type(&self, value: &TypedExpr) -> Type {
+        let declared = self.declared_type(value);
+        if self.pair_part_behind_shared(value) {
+            Type::shared(declared)
+        } else {
+            declared
+        }
+    }
+
+    fn pair_part_behind_shared(&self, value: &TypedExpr) -> bool {
+        matches!(&value.kind, TypedExprKind::Struct(TypedStructExpr::Field(owner, label))
+            if matches!(label.spelling, FieldSpelling::Pair(_)) && self.behind_shared(owner))
     }
 
     fn declared_type(&self, value: &TypedExpr) -> Type {

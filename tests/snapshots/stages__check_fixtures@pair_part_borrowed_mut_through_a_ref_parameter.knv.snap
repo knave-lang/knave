@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/pair_part_borrowed_mut_through_a_ref_parameter.knv
+---
+error[L0401]: mismatched types
+ --> check/pair_part_borrowed_mut_through_a_ref_parameter.knv:4:10
+  |
+4 |   (bump! (mut (first p))))
+  |          ^^^^^^^^^^^^^^^ expected `(mut int)`, found `(mut (ref int))`
+  |
+  = note: run `knave doc L0401` for an explanation

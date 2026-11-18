@@ -1,0 +1,2 @@
+(defn f ((p (ref (pair i64 string))))
+  (set! (first p) 5))

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/pair_part_set_through_a_ref_parameter.knv
+---
+error[L0401]: mismatched types
+ --> check/pair_part_set_through_a_ref_parameter.knv:2:9
+  |
+2 |   (set! (first p) 5))
+  |         ^^^^^^^^^ expected `(mut _)`, found `(ref int)`
+  |
+  = note: run `knave doc L0401` for an explanation

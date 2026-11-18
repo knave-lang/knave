@@ -13,7 +13,7 @@ readme = "README.md"
 include = ["/build.rs", "/src/", "/prelude/runtime/", "/docs/reference/", "/README.md", "/LICENSE"]
 
 [workspace]
-members = ["expand", "xtask", "xtask/agree"]
+members = ["expand", "xtask", "xtask/agree", "xtask/baseline"]
 
 [workspace.package]
 version = "0.17.0"

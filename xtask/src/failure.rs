@@ -46,16 +46,6 @@ impl TaskFailure {
         Self::new(format!("cannot parse `{}`: {error}", path.display()))
     }
 
-    pub fn malformed_baseline(file: &str, line: &str) -> Self {
-        Self::new(format!(
-            "{file} has a malformed line {line:?}: expected <subject> <count>"
-        ))
-    }
-
-    pub fn repeated_baseline_entry(file: &str, line: &str) -> Self {
-        Self::new(format!("{file} lists a subject twice, again in {line:?}"))
-    }
-
     pub fn unknown_revision(revision: &str) -> Self {
         Self::new(format!("cannot find the revision `{revision}`"))
     }

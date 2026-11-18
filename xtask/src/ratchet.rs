@@ -1,12 +1,12 @@
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
+use knave_baseline::BaselineText;
+pub use knave_baseline::Counts;
+
 use crate::checks::Check;
 use crate::failure::TaskFailure;
-
-pub type Counts = BTreeMap<String, usize>;
 
 pub struct Unit {
     one: &'static str,
@@ -35,6 +35,7 @@ pub struct Limit {
 pub struct Baseline {
     file: String,
     entries: Counts,
+    crowded: Vec<String>,
 }
 
 impl Baseline {
@@ -46,23 +47,13 @@ impl Baseline {
     }
 
     pub fn parse(file: &str, text: &str) -> Result<Self, TaskFailure> {
-        let mut entries = Counts::new();
-        for line in text.lines() {
-            let (subject, count) =
-                Self::entry(line).ok_or_else(|| TaskFailure::malformed_baseline(file, line))?;
-            if entries.insert(subject, count).is_some() {
-                return Err(TaskFailure::repeated_baseline_entry(file, line));
-            }
-        }
+        let text =
+            BaselineText::parse(file, text).map_err(|error| TaskFailure::new(error.to_string()))?;
         Ok(Self {
             file: file.to_string(),
-            entries,
+            entries: text.entries().clone(),
+            crowded: text.crowded().map(String::from).collect(),
         })
-    }
-
-    fn entry(line: &str) -> Option<(String, usize)> {
-        let (subject, count) = line.rsplit_once(' ')?;
-        Some((subject.to_string(), count.parse().ok()?))
     }
 
     pub fn raised_since(&self, base: &Baseline) -> Vec<Raise> {
@@ -86,6 +77,10 @@ impl Baseline {
             .keys()
             .filter(|subject| !measured.contains_key(*subject))
             .map(String::as_str)
+    }
+
+    fn crowded(&self) -> impl Iterator<Item = &str> {
+        self.crowded.iter().map(String::as_str)
     }
 
     fn len(&self) -> usize {
@@ -125,6 +120,9 @@ enum Problem<'a> {
     Vanished {
         subject: &'a str,
     },
+    Crowded {
+        line: &'a str,
+    },
 }
 
 pub struct Ratchet {
@@ -160,7 +158,11 @@ impl Ratchet {
             .baseline
             .vanished(&self.measured)
             .map(|subject| Problem::Vanished { subject });
-        measured.chain(vanished).collect()
+        let crowded = self
+            .baseline
+            .crowded()
+            .map(|line| Problem::Crowded { line });
+        measured.chain(vanished).chain(crowded).collect()
     }
 
     fn problem<'a>(&self, subject: &'a str, count: usize) -> Option<Problem<'a>> {
@@ -218,13 +220,17 @@ impl Ratchet {
                 self.baseline.file()
             ),
             Problem::WithinLimit { subject, count } => format!(
-                "{subject} has {}, within the limit of {}. Remove its entry from {}.",
+                "{subject} has {}, within the limit of {}. Delete its line from {} and keep the blank lines around it.",
                 self.limit.unit.count(count),
                 self.limit.maximum,
                 self.baseline.file()
             ),
             Problem::Vanished { subject } => format!(
-                "{subject} is listed in {} but no longer exists. Remove its entry.",
+                "{subject} is listed in {} but no longer exists. Delete its line and keep the blank lines around it.",
+                self.baseline.file()
+            ),
+            Problem::Crowded { line } => format!(
+                "{line:?} follows another entry of {} with no blank line between them. Put a blank line above it.",
                 self.baseline.file()
             ),
         }
@@ -344,7 +350,7 @@ mod tests {
     fn a_listed_subject_within_the_limit_must_leave_the_baseline() {
         assert_eq!(
             RatchetCase::details(&[("src/a.rs", 1)], "src/a.rs 900"),
-            "  src/a.rs has 1 production line, within the limit of 500. Remove its entry from xtask/baselines/production_lines.txt.\n"
+            "  src/a.rs has 1 production line, within the limit of 500. Delete its line from xtask/baselines/production_lines.txt and keep the blank lines around it.\n"
         );
     }
 
@@ -352,7 +358,7 @@ mod tests {
     fn a_listed_subject_at_the_limit_must_leave_the_baseline() {
         assert_eq!(
             RatchetCase::details(&[("src/a.rs", 500)], "src/a.rs 900"),
-            "  src/a.rs has 500 production lines, within the limit of 500. Remove its entry from xtask/baselines/production_lines.txt.\n"
+            "  src/a.rs has 500 production lines, within the limit of 500. Delete its line from xtask/baselines/production_lines.txt and keep the blank lines around it.\n"
         );
     }
 
@@ -360,7 +366,7 @@ mod tests {
     fn a_listed_subject_that_no_longer_exists_must_leave_the_baseline() {
         assert_eq!(
             RatchetCase::details(&[], "src/gone.rs 900"),
-            "  src/gone.rs is listed in xtask/baselines/production_lines.txt but no longer exists. Remove its entry.\n"
+            "  src/gone.rs is listed in xtask/baselines/production_lines.txt but no longer exists. Delete its line and keep the blank lines around it.\n"
         );
     }
 
@@ -373,22 +379,22 @@ mod tests {
     }
 
     #[test]
-    fn a_subject_may_hold_spaces() {
-        let baseline = Baseline::parse("baseline.txt", "a b 3").expect("the baseline parses");
-        assert_eq!(baseline.listed("a b"), Some(3));
-    }
-
-    #[test]
-    fn a_baseline_line_without_a_count_is_malformed() {
+    fn an_entry_right_below_another_must_get_a_blank_line_above_it() {
         assert_eq!(
-            RatchetCase::baseline_failure("src/a.rs many"),
-            "baseline.txt has a malformed line \"src/a.rs many\": expected <subject> <count>"
+            RatchetCase::details(
+                &[("src/a.rs", 900), ("src/b.rs", 800)],
+                "src/a.rs 900\nsrc/b.rs 800\n"
+            ),
+            "  \"src/b.rs 800\" follows another entry of xtask/baselines/production_lines.txt with no blank line between them. Put a blank line above it.\n"
         );
     }
 
     #[test]
-    fn a_baseline_line_without_a_separator_is_malformed() {
-        assert!(Baseline::parse("baseline.txt", "src/a.rs").is_err());
+    fn a_malformed_baseline_names_its_line() {
+        assert_eq!(
+            RatchetCase::baseline_failure("src/a.rs many"),
+            "baseline.txt has a malformed line \"src/a.rs many\": expected <subject> <count>"
+        );
     }
 
     #[test]
@@ -408,14 +414,6 @@ mod tests {
                 ("a".to_string(), Some(10), 11),
                 ("e".to_string(), None, 600)
             ]
-        );
-    }
-
-    #[test]
-    fn a_subject_listed_twice_is_rejected() {
-        assert_eq!(
-            RatchetCase::baseline_failure("src/a.rs 1\nsrc/a.rs 900"),
-            "baseline.txt lists a subject twice, again in \"src/a.rs 900\""
         );
     }
 }

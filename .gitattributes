@@ -1,1 +1,2 @@
 *.knv linguist-language=Clojure linguist-detectable=false
+xtask/baselines/*.txt merge=baseline

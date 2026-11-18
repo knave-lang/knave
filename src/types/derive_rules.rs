@@ -5,6 +5,7 @@ use rustc_hash::FxHashSet;
 use super::declarations::Declarations;
 use super::declared_traits::DeclaredTraits;
 use super::definition_kind::DefinitionKind;
+use super::derivable_trait::DerivableTrait;
 use super::derive_blockers::DeriveBlockers;
 use super::derive_candidate::DeriveCandidate;
 use super::derive_source::DeriveSource;
@@ -84,10 +85,10 @@ impl<'a> DeriveRules<'a> {
     pub(super) fn unlisted_source(
         &self,
         struct_binding: BindingId,
-        trait_binding: BindingId,
-        derived: DerivedTrait,
+        entry: DerivableTrait,
     ) -> Option<DeriveSource> {
-        match derived {
+        let trait_binding = entry.binding;
+        match entry.derived {
             DerivedTrait::Structural => self
                 .traits
                 .written_impl(trait_binding, struct_binding)
@@ -112,6 +113,7 @@ mod tests {
 
     use crate::types::declarations_fixture::DeclarationsFixture;
     use crate::types::definition_kind::DefinitionKind;
+    use crate::types::derivable_trait::DerivableTrait;
     use crate::types::derive_candidate::DeriveCandidate;
     use crate::types::derive_source::DeriveSource;
     use crate::types::derived_trait::DerivedTrait;
@@ -163,7 +165,13 @@ mod tests {
             matches!(
                 self.declarations
                     .derive_rules(&self.changed)
-                    .unlisted_source(binding, trait_binding, derived),
+                    .unlisted_source(
+                        binding,
+                        DerivableTrait {
+                            binding: trait_binding,
+                            derived
+                        }
+                    ),
                 Some(DeriveSource::Inferred)
             )
         }

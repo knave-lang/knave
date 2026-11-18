@@ -7,6 +7,7 @@ use super::definition_kind::DefinitionKind;
 use super::derive_candidate::DeriveCandidate;
 use super::derive_catalog::DeriveCatalog;
 use super::derive_source::DeriveSource;
+use super::derive_target::DeriveTarget;
 use super::parameter_names::ParameterNames;
 use super::problems::TypeProblems;
 use super::trait_rows_reach::Implementor;
@@ -17,28 +18,12 @@ use crate::source::Span;
 
 impl TypeChecker {
     pub(super) fn register_derived_traits(&mut self, modules: &[CoreModule]) {
-        let types = Self::type_arities(modules);
+        let targets = DeriveTarget::all(modules);
         let catalog = DeriveCatalog::of(modules, &self.declarations.traits.structural);
         let written = self.written_derives(modules, &catalog);
-        let mut candidates = self.add_derive_candidates(&types, &catalog, &written);
+        let mut candidates = self.add_derive_candidates(&targets, &catalog, &written);
         self.remove_blocked_derives(&mut candidates);
         self.record_derives(&candidates, &catalog);
-    }
-
-    fn type_arities(modules: &[CoreModule]) -> Vec<(BindingId, usize, DefinitionKind)> {
-        modules
-            .iter()
-            .flat_map(|module| &module.items)
-            .filter_map(|item| match &item.kind {
-                ItemKind::Struct(binding, params, _) => {
-                    Some((*binding, params.len(), DefinitionKind::Struct))
-                }
-                ItemKind::Enum(binding, params, ..) => {
-                    Some((*binding, params.len(), DefinitionKind::Enum))
-                }
-                _ => None,
-            })
-            .collect()
     }
 
     fn written_derives(
@@ -109,35 +94,36 @@ impl TypeChecker {
 
     fn add_derive_candidates(
         &mut self,
-        types: &[(BindingId, usize, DefinitionKind)],
+        targets: &[DeriveTarget],
         catalog: &DeriveCatalog,
         written: &FxHashMap<BindingId, WrittenDerive>,
     ) -> Vec<DeriveCandidate> {
         let mut candidates = Vec::new();
-        for (trait_binding, derived) in catalog.entries() {
-            for (binding, arity, kind) in types {
-                let sources = self.derive_rules();
-                if sources.is_rust_enum(*binding) {
+        for entry in catalog.entries() {
+            for target in targets {
+                let rules = self.derive_rules();
+                if rules.is_rust_enum(target.binding) {
                     continue;
                 }
-                let source = match written.get(binding) {
+                let source = match written.get(&target.binding) {
                     Some(derive) => catalog
-                        .listing_span(derive, *trait_binding, *derived)
+                        .listing_span(derive, *entry)
                         .map(DeriveSource::Listed),
-                    None => sources.unlisted_source(*binding, *trait_binding, *derived),
+                    None => rules.unlisted_source(target.binding, *entry),
                 };
                 let Some(source) = source else {
                     continue;
                 };
-                let implementor = self.derived_implementor(*binding, *arity, *trait_binding);
+                let implementor =
+                    self.derived_implementor(target.binding, target.arity, entry.binding);
                 self.declarations
                     .traits
                     .table
-                    .add_implementor(*trait_binding, implementor);
+                    .add_implementor(entry.binding, implementor);
                 candidates.push(DeriveCandidate {
-                    binding: *binding,
-                    kind: *kind,
-                    trait_binding: *trait_binding,
+                    binding: target.binding,
+                    kind: target.kind,
+                    trait_binding: entry.binding,
                     source,
                 });
             }

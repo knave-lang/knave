@@ -1,5 +1,6 @@
 use super::checker::TypeChecker;
 use super::lowered_associated_value::LoweredAssociatedValue;
+use super::lowered_implementors::LoweredImplementors;
 use super::problems::{MismatchContext, ProjectionNames, TypeProblems};
 use super::projection::AssociatedType;
 use super::trait_rows_reach::Implementor;
@@ -17,18 +18,14 @@ impl TypeChecker {
             for associated in &declaration.associated {
                 self.type_arities
                     .insert(associated.binding, Self::PROJECTION_ARITY);
-                self.declarations
-                    .traits_mut()
-                    .table
-                    .projections_mut()
-                    .declare(
-                        associated.binding,
-                        AssociatedType {
-                            trait_binding: declaration.binding,
-                            parameter: associated.parameter.clone(),
-                            rust_name: associated.rust_name.clone(),
-                        },
-                    );
+                self.declarations.builder().projections().declare(
+                    associated.binding,
+                    AssociatedType {
+                        trait_binding: declaration.binding,
+                        parameter: associated.parameter.clone(),
+                        rust_name: associated.rust_name.clone(),
+                    },
+                );
             }
         }
     }
@@ -47,6 +44,23 @@ impl TypeChecker {
         &mut self,
         declaration: &RustTraitDeclaration,
     ) -> Result<Vec<Implementor>, Diagnostic> {
+        let lowered = self.lowered_implementors(declaration);
+        let implementors = lowered
+            .implementors
+            .into_iter()
+            .map(|(implementor, values)| {
+                let projections = self.declarations.builder().projections();
+                projections.add_rules(&implementor, values);
+                implementor
+            })
+            .collect();
+        match lowered.failure {
+            Some(failure) => Err(failure),
+            None => Ok(implementors),
+        }
+    }
+
+    fn lowered_implementors(&mut self, declaration: &RustTraitDeclaration) -> LoweredImplementors {
         let trait_name = self.bindings.get(declaration.binding).name().to_string();
         let declared = self
             .declarations
@@ -54,25 +68,24 @@ impl TypeChecker {
             .table
             .projections()
             .declared_by(declaration.binding);
-        declaration
-            .implementors
-            .get()
-            .iter()
-            .map(|entry| {
-                let (implementor, values) = self
-                    .written_schemes()
-                    .lower_implementor(entry, &trait_name)?;
-                self.check_associated_values(declaration.binding, &declared, entry, &values)?;
-                for value in values {
-                    self.declarations
-                        .traits_mut()
-                        .table
-                        .projections_mut()
-                        .add_rule(value.projection, &implementor, value.value);
+        let mut lowered = LoweredImplementors::default();
+        for entry in declaration.implementors.get() {
+            let checked = self
+                .written_schemes()
+                .lower_implementor(entry, &trait_name)
+                .and_then(|(implementor, values)| {
+                    self.check_associated_values(declaration.binding, &declared, entry, &values)?;
+                    Ok((implementor, values))
+                });
+            match checked {
+                Ok(implementor) => lowered.implementors.push(implementor),
+                Err(failure) => {
+                    lowered.failure = Some(failure);
+                    break;
                 }
-                Ok(implementor)
-            })
-            .collect()
+            }
+        }
+        lowered
     }
 
     fn check_associated_values(
@@ -107,7 +120,7 @@ impl TypeChecker {
     }
 
     pub(super) fn share_projections(&mut self) {
-        let projections = self.declarations.traits_mut().table.share_projections();
+        let projections = self.declarations.builder().projections().share();
         self.unifier.adopt_projections(projections);
     }
 

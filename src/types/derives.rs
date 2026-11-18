@@ -61,17 +61,8 @@ impl TypeChecker {
                         && !self.report_derived_written_impl(*struct_binding, *trait_binding, *span)
                 })
                 .collect();
-            if let Some(definition) = self
-                .declarations
-                .types_mut()
-                .structs
-                .get_mut(*struct_binding)
-            {
-                definition.written_derive = Some(item.span);
-            }
-            if let Some(definition) = self.declarations.types_mut().enums.get_mut(*struct_binding) {
-                definition.written_derive = Some(item.span);
-            }
+            let derives = self.declarations.builder().derives();
+            derives.mark_written_derive(*struct_binding, item.span);
             written.insert(
                 *struct_binding,
                 WrittenDerive {
@@ -117,10 +108,8 @@ impl TypeChecker {
                 };
                 let implementor =
                     self.derived_implementor(target.binding, target.arity, entry.binding);
-                self.declarations
-                    .traits_mut()
-                    .table
-                    .add_implementor(entry.binding, implementor);
+                let derives = self.declarations.builder().derives();
+                derives.add_implementor(entry.binding, implementor);
                 candidates.push(DeriveCandidate {
                     binding: target.binding,
                     kind: target.kind,
@@ -160,10 +149,8 @@ impl TypeChecker {
                 break;
             }
             for (candidate, field, ty) in blocked {
-                self.declarations
-                    .traits_mut()
-                    .table
-                    .remove_struct_implementor(candidate.trait_binding, candidate.binding);
+                let derives = self.declarations.builder().derives();
+                derives.remove_implementor(candidate.trait_binding, candidate.binding);
                 candidates.retain(|kept| {
                     (kept.binding, kept.trait_binding)
                         != (candidate.binding, candidate.trait_binding)
@@ -176,7 +163,10 @@ impl TypeChecker {
     fn report_blocked_derive(&mut self, candidate: DeriveCandidate, field: Rc<str>, ty: Type) {
         match candidate.source {
             DeriveSource::Listed(span) => self.report_listed_block(candidate, &field, &ty, span),
-            DeriveSource::Inferred => self.record_inferred_block(candidate, field, ty),
+            DeriveSource::Inferred => {
+                let derives = self.declarations.builder().derives();
+                derives.record_block(candidate, field, ty);
+            }
         }
     }
 
@@ -201,64 +191,11 @@ impl TypeChecker {
         self.diagnostics.push(diagnostic);
     }
 
-    fn record_inferred_block(&mut self, candidate: DeriveCandidate, field: Rc<str>, ty: Type) {
-        match candidate.kind {
-            DefinitionKind::Struct => {
-                if let Some(definition) = self
-                    .declarations
-                    .types_mut()
-                    .structs
-                    .get_mut(candidate.binding)
-                {
-                    definition
-                        .blocked
-                        .push((candidate.trait_binding, field, ty));
-                }
-            }
-            DefinitionKind::Enum => {
-                if let Some(definition) = self
-                    .declarations
-                    .types_mut()
-                    .enums
-                    .get_mut(candidate.binding)
-                {
-                    definition
-                        .blocked
-                        .push((candidate.trait_binding, field, ty));
-                }
-            }
-        }
-    }
-
     fn record_derives(&mut self, candidates: &[DeriveCandidate], catalog: &DeriveCatalog) {
         for candidate in candidates {
             let written_name = catalog.written_name(candidate.trait_binding);
-            let (derives, derived_traits) = match candidate.kind {
-                DefinitionKind::Struct => {
-                    let Some(definition) = self
-                        .declarations
-                        .types_mut()
-                        .structs
-                        .get_mut(candidate.binding)
-                    else {
-                        continue;
-                    };
-                    (&mut definition.derives, &mut definition.derived_traits)
-                }
-                DefinitionKind::Enum => {
-                    let Some(definition) = self
-                        .declarations
-                        .types_mut()
-                        .enums
-                        .get_mut(candidate.binding)
-                    else {
-                        continue;
-                    };
-                    (&mut definition.derives, &mut definition.derived_traits)
-                }
-            };
-            derives.extend(written_name);
-            derived_traits.push(candidate.trait_binding);
+            let derives = self.declarations.builder().derives();
+            derives.record_derive(candidate, written_name);
         }
     }
 

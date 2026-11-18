@@ -1,5 +1,6 @@
 use super::collected_impl::CollectedImpl;
 use super::declarations::Declarations;
+use super::declarations_builder::DeclarationsBuilder;
 use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::derivable_traits::DerivableTraits;
@@ -113,6 +114,11 @@ impl DeclarationsFixture {
 
     pub(super) fn implementation_collector(&self) -> ImplementationCollector<'_> {
         ImplementationCollector::new(self.declared_traits())
+    }
+
+    pub(super) fn builder(&mut self) -> DeclarationsBuilder<'_> {
+        self.declarations.thaw();
+        self.declarations.builder()
     }
 
     pub(super) fn enter_impl(&mut self, collected: CollectedImpl) {

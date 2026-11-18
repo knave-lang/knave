@@ -44,16 +44,17 @@ impl TypeChecker {
         else {
             return Ok(());
         };
+        let structural = StructuralTrait {
+            binding: declaration.binding,
+            method: method.binding,
+            parameters: parameters.into_iter().skip(1).collect(),
+            result: *result,
+            clause: clause.clone(),
+        };
         self.declarations
-            .traits_mut()
-            .structural
-            .push(StructuralTrait {
-                binding: declaration.binding,
-                method: method.binding,
-                parameters: parameters.into_iter().skip(1).collect(),
-                result: *result,
-                clause: clause.clone(),
-            });
+            .builder()
+            .traits()
+            .add_structural(structural);
         Ok(())
     }
 

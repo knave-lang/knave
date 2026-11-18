@@ -347,6 +347,13 @@ impl TypedBlock {
 }
 
 impl TypedBodyItem {
+    pub fn as_let(&self) -> Option<(&TypedBinder, &TypedExpr)> {
+        match self {
+            TypedBodyItem::Let(binder, value) => Some((binder, value)),
+            TypedBodyItem::Expr(_) => None,
+        }
+    }
+
     pub fn expr(&self) -> &TypedExpr {
         match self {
             TypedBodyItem::Let(_, value) | TypedBodyItem::Expr(value) => value,

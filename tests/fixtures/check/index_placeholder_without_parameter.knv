@@ -1,0 +1,8 @@
+(def nth
+  (rust "{0}[{index 2}]"
+    (fn ((ref (vec int)) int) int)))
+
+(def origin (rust "{index 0}" int))
+
+(defn main ()
+  (println (nth (vec 10 20) 1) origin))

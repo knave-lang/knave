@@ -29,6 +29,7 @@ use super::implementation_check::ImplementationCheck;
 use super::implementation_collector::ImplementationCollector;
 use super::implementation_verdict::ImplementationVerdict;
 use super::implied_bounds::ImpliedBounds;
+use super::index_checks::IndexChecks;
 use super::infer::OpenCollections;
 use super::instantiation::Instantiation;
 use super::literal_settlement::LiteralSettlement;
@@ -569,6 +570,10 @@ impl TypeChecker {
     fn clause_check(&mut self) -> ClauseCheck<'_> {
         let open = self.unifier.fresh();
         ClauseCheck::new(&self.declarations.traits().table, self.display(), open)
+    }
+
+    pub(super) fn index_checks(&self) -> IndexChecks<'_> {
+        IndexChecks::new(&self.template_borrows, self.declarations.types())
     }
 
     pub(super) fn prelude_types(&self) -> PreludeTypes<'_> {

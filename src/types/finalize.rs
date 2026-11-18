@@ -133,6 +133,7 @@ impl<'c> Finalizer<'c> {
     fn expr(&mut self, expr: &mut TypedExpr) {
         let enclosure = self.enclosure;
         let site = Enclosure::site_of(enclosure, expr.span);
+        self.report_index_problems(expr);
         if let TypedExprKind::Call(callee, arguments) = &mut expr.kind {
             if self.checker.unifier.holds_open_literal(&callee.ty) {
                 self.default_literals(&callee.ty, callee.span);
@@ -152,6 +153,11 @@ impl<'c> Finalizer<'c> {
             self.check_range(number, &expr.ty.clone(), expr.span);
         }
         self.finalize_wrapped_function(expr);
+    }
+
+    fn report_index_problems(&mut self, expr: &TypedExpr) {
+        let problems = self.checker.index_checks().problems(expr);
+        self.checker.diagnostics.extend(problems);
     }
 
     fn children(&mut self, expr: &mut TypedExpr) {

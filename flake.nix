@@ -131,13 +131,13 @@
             ps=${pkgs.lib.getExe' pkgs.unixtools.procps "ps"}
             awk=${pkgs.lib.getExe pkgs.gawk}
             env=${pkgs.lib.getExe' pkgs.coreutils "env"}
+            kill=${pkgs.lib.getExe' pkgs.coreutils "kill"}
             process_tree_program=${./xtask/build-slots/process-tree.awk}
             survivors_program=${./xtask/build-slots/survivors.awk}
             slot_directory=$HOME/.cache/knave/build-slots
             slot_limit=''${KNAVE_BUILD_SLOTS:-2}
             time_limit=''${KNAVE_BUILD_TIME_LIMIT:-}
             timed_out_status=124
-            signal_status_base=128
             seconds_before_kill=5
             seconds_between_attempts=1
 
@@ -206,15 +206,16 @@
             }
 
             pass_on_signal() {
-              if (($1 > signal_status_base)); then
-                kill -n "$(($1 - signal_status_base))" $$ 2>/dev/null || true
-              fi
+              case $1 in
+                130) kill -INT $$ ;;
+                131) exec "$env" --default-signal=QUIT "$kill" -QUIT $$ ;;
+              esac
             }
 
             stop_if_running() {
               local tree identities waited
               tree=$(process_tree "$1")
-              identities=$(identify "$tree") || return 1
+              identities=$(identify "$tree")
               [[ -n $(survivors "$1" "$identities") ]] || return 1
               signal_survivors TERM "$tree" "$identities"
               for ((waited = 0; waited < seconds_before_kill; waited++)); do
@@ -376,6 +377,7 @@
                 wait
                 ;;
               exit-124) exit 124 ;;
+              exit-with) exit "$2" ;;
               catch-int)
                 trap 'touch "$calls/caught-int"' INT
                 touch "$calls/catch-int-ready"
@@ -589,6 +591,27 @@
           expect_group_signal_stops_limited_run TERM
           expect_group_signal_stops_limited_run INT
           expect_group_signal_stops_limited_run QUIT
+
+          for code in 130 143 147; do
+            KNAVE_BUILD_TIME_LIMIT=10 timeout 5 bash -c "${cargo} exit-with $code; echo \$? >exit-$code" 2>reported-$code ||
+              fail "a limited cargo that exited $code hung"
+            [[ $(<exit-$code) == "$code" ]] || fail "a limited cargo that exited $code exited $(<exit-$code)"
+            ! grep --quiet --extended-regexp 'Terminated|Stopped|Quit|Hangup' reported-$code ||
+              fail "a limited cargo that exited $code made the wrapper die by a signal: $(<reported-$code)"
+          done
+          timeout 5 env KNAVE_BUILD_SLOTS=1 ${cargo} check after-exit-codes || fail "a limited cargo with a high exit code kept its slot"
+
+          rm -f "$calls/sleep-300"
+          (
+            trap - INT QUIT
+            exec ${setsid} bash -c "KNAVE_BUILD_SLOTS=1 KNAVE_BUILD_TIME_LIMIT=60 ${cargo} sleep 300; :" 2>quit-reported
+          ) &
+          quitting=$!
+          wait_for_call sleep-300
+          wait_for_sleep "$(<"$calls/sleep-300")"
+          kill -QUIT -- "-$quitting"
+          wait "$quitting" || true
+          grep --quiet Quit quit-reported || fail "a limited run stopped by SIGQUIT exited instead of dying by SIGQUIT"
 
           rm -f "$calls/sleep-300"
           ${setsid} env KNAVE_BUILD_SLOTS=1 KNAVE_BUILD_TIME_LIMIT=60 ${cargo} sleep 300 &

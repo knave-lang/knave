@@ -21,6 +21,7 @@ use super::derive_blockers::DeriveBlockers;
 use super::derive_rules::DeriveRules;
 use super::display::TypeDisplay;
 use super::enum_item::EnumItem;
+use super::explanation_sources::ExplanationSources;
 use super::generic_declarations::GenericDeclarations;
 use super::generic_registry::GenericRegistry;
 use super::graph::{Definition, DefinitionGraph};
@@ -35,6 +36,8 @@ use super::infer::OpenCollections;
 use super::instantiation::Instantiation;
 use super::literal_settlement::LiteralSettlement;
 use super::method_receivers::MethodReceivers;
+use super::missing_trait::MissingTrait;
+use super::missing_trait_explanation::MissingTraitExplanation;
 use super::opaque_positions::OpaquePositions;
 use super::parameter_call_labels::ParameterCallRequest;
 use super::parameter_call_search::CalledParameters;
@@ -45,12 +48,11 @@ use super::pending::PendingBorrow;
 use super::pinning::LiteralDefaults;
 use super::place_types::PlaceTypes;
 use super::prelude_types::PreludeTypes;
-use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
+use super::problems::{MismatchContext, TypeProblems};
 use super::reached_traits::{ReachedDeclaration, ReachedTraits};
 use super::rust_type_item::RustTypeItem;
 use super::selection::Selection;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
-use super::trait_boxing::TraitBoxing;
 use super::trait_declaration_collector::TraitDeclarationCollector;
 use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::type_declaration_collector::TypeDeclarationCollector;
@@ -60,8 +62,8 @@ use super::user_trait::UserTrait;
 use super::variant_payloads::VariantPayloads;
 use super::wrapper::FunctionValueWrapper;
 use super::{
-    Implementor, LoweredRows, PendingModeCheck, RustTrait, StructDefinition, TemplateBorrows,
-    TypedConversion, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf,
+    LoweredRows, PendingModeCheck, RustTrait, TemplateBorrows, TypedConversion, TypedDefinition,
+    TypedExpr, TypedExprKind, TypedLeaf,
 };
 use crate::core::{
     BindingArena, BindingId, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr, ExprKind, Item,
@@ -562,6 +564,15 @@ impl TypeChecker {
 
     pub(super) fn reference_peeling(&self) -> ReferencePeeling<'_> {
         ReferencePeeling::new(&self.unifier)
+    }
+
+    fn missing_trait_explanation(&self) -> MissingTraitExplanation<'_> {
+        MissingTraitExplanation::new(ExplanationSources {
+            declarations: &self.declarations,
+            bindings: &self.bindings,
+            display: self.display(),
+            derive_rules: self.derive_rules(),
+        })
     }
 
     fn literal_settlement(&self) -> LiteralSettlement<'_> {
@@ -1714,413 +1725,14 @@ impl TypeChecker {
     }
 
     pub(super) fn report_missing_trait(&mut self, bound: &Bound, implementor: &Type, span: Span) {
-        let display = self.display();
-        let mut diagnostic = self.missing_trait_diagnostic(bound, implementor, span, &display);
-        if let Type::Named(binding, _) = implementor {
-            diagnostic = self.type_trait_help(diagnostic, *binding, bound, &display);
-            diagnostic = self.with_replacing_impl(diagnostic, *binding, bound.binding);
-        }
-        self.diagnostics
-            .push(Self::with_bound_origins(diagnostic, &bound.origins));
-    }
-
-    fn with_bound_origins(diagnostic: Diagnostic, origins: &[BoundOrigin]) -> Diagnostic {
-        let labeled = origins.iter().fold(diagnostic, Self::with_origin_label);
-        match origins.first() {
-            Some(BoundOrigin::BorrowCopied(_)) => {
-                labeled.with_help(TypeProblems::clone_copied_help())
-            }
-            None => labeled,
-        }
-    }
-
-    fn with_origin_label(diagnostic: Diagnostic, origin: &BoundOrigin) -> Diagnostic {
-        match origin {
-            BoundOrigin::BorrowCopied(copied) => {
-                diagnostic.with_label(TypeProblems::borrow_copied(*copied))
-            }
-        }
-    }
-
-    fn missing_trait_diagnostic(
-        &self,
-        bound: &Bound,
-        implementor: &Type,
-        span: Span,
-        display: &TypeDisplay<'_>,
-    ) -> Diagnostic {
-        let argument = self.literal_settlement().shown_argument(bound);
-        let needed = display.needed(bound.binding, argument, implementor);
-        let found = display.show(implementor);
-        let program_type = self.declared_types().declares_type(implementor);
-        let diagnostic = match self.unimplemented_box(implementor, bound) {
-            Some(boxed) => TypeProblems::missing_trait_on_box(&needed, &display.show(&boxed), span),
-            None => match implementor {
-                Type::Named(binding, _) if program_type => {
-                    TypeProblems::missing_trait_on_struct(&needed, &found, span)
-                }
-                _ => {
-                    let implementors = self.implementor_names(bound.binding, display);
-                    TypeProblems::missing_trait(&needed, &found, span, implementors)
-                }
-            },
+        let missing = MissingTrait {
+            bound,
+            implementor,
+            span,
+            shown_argument: self.literal_settlement().shown_argument(bound),
         };
-        if !self.shows_trait_help(bound.binding, implementor, program_type) {
-            return diagnostic;
-        }
-        let known = self.declarations.traits().table.get(bound.binding);
-        match known.and_then(|known| known.help.as_deref()) {
-            Some(help) => diagnostic.with_help(help),
-            None => diagnostic,
-        }
-    }
-
-    fn unimplemented_box(&self, implementor: &Type, bound: &Bound) -> Option<Type> {
-        let mut found = implementor;
-        while let Type::Ref(_, inner) | Type::Mut(_, inner) = found {
-            found = inner;
-        }
-        let Type::Named(_, arguments) = found else {
-            return None;
-        };
-        let argument = (arguments.first()).filter(|_| self.declarations.types().is_box(found))?;
-        let traits = self.declarations.traits();
-        let boxable = TraitBoxing::new(traits, &self.bindings).suggests_box(bound.binding);
-        (boxable && traits.table.satisfies(bound, argument, &|_, _| false)).then(|| found.clone())
-    }
-
-    fn implementor_names(
-        &self,
-        trait_binding: BindingId,
-        display: &TypeDisplay<'_>,
-    ) -> ImplementorList {
-        self.declarations
-            .traits()
-            .table
-            .get(trait_binding)
-            .map(|rust_trait| self.group_implementors(rust_trait, display))
-            .unwrap_or_default()
-    }
-
-    fn group_implementors(
-        &self,
-        rust_trait: &RustTrait,
-        display: &TypeDisplay<'_>,
-    ) -> ImplementorList {
-        let implementors = rust_trait.rows().reached().implementors();
-        let mut grouped: Vec<(BindingId, Vec<(usize, String)>)> = Vec::new();
-        for (position, known) in implementors.iter().enumerate() {
-            let Some((binding, argument)) = self.grouped_implementor(known) else {
-                continue;
-            };
-            let shown = display.show(argument);
-            match grouped.iter_mut().find(|(group, _)| *group == binding) {
-                Some((_, entries)) => entries.push((position, shown)),
-                None => grouped.push((binding, vec![(position, shown)])),
-            }
-        }
-        let groups: Vec<(BindingId, Vec<(usize, String)>)> = grouped
-            .into_iter()
-            .filter(|(_, entries)| entries.len() > 1)
-            .collect();
-        let grouped_positions: FxHashSet<usize> = groups
-            .iter()
-            .flat_map(|(_, entries)| entries.iter().map(|(position, _)| *position))
-            .collect();
-        let entries = implementors
-            .iter()
-            .enumerate()
-            .filter(|(position, _)| !grouped_positions.contains(position))
-            .map(|(_, known)| Self::show_implementor(display, known))
-            .collect();
-        let groups = groups
-            .into_iter()
-            .map(|(binding, entries)| ImplementorGroup {
-                constructor: self.bindings.get(binding).name().to_string(),
-                parameter: self.group_parameter(binding),
-                arguments: entries.into_iter().map(|(_, shown)| shown).collect(),
-            })
-            .collect();
-        ImplementorList { entries, groups }
-    }
-
-    fn group_parameter(&self, binding: BindingId) -> String {
-        let projected = self
-            .declarations
-            .traits()
-            .table
-            .projections()
-            .associated(binding)
-            .map(|associated| associated.parameter.to_string());
-        projected
-            .or_else(|| {
-                self.declarations
-                    .types()
-                    .rust_types
-                    .get(binding)
-                    .and_then(|rust_type| rust_type.params.first())
-                    .map(ToString::to_string)
-            })
-            .expect("a grouped implementor has a type parameter")
-    }
-
-    fn grouped_implementor<'a>(&'a self, known: &'a Implementor) -> Option<(BindingId, &'a Type)> {
-        if known.argument.is_some() {
-            return None;
-        }
-        let Type::Named(binding, arguments) = &known.scheme.body else {
-            return None;
-        };
-        let [argument] = arguments.as_slice() else {
-            return None;
-        };
-        let single_parameter = self
-            .declarations
-            .traits()
-            .table
-            .projections()
-            .is_projection(*binding)
-            || self
-                .declarations
-                .types()
-                .rust_types
-                .get(*binding)
-                .is_some_and(|rust_type| rust_type.params.len() == 1);
-        (single_parameter && !argument.is_unknown()).then_some((*binding, argument))
-    }
-
-    fn type_trait_help(
-        &self,
-        diagnostic: Diagnostic,
-        binding: BindingId,
-        bound: &Bound,
-        display: &TypeDisplay<'_>,
-    ) -> Diagnostic {
-        if self.declarations.types().enums.get(binding).is_some() {
-            return self.enum_trait_help(diagnostic, binding, bound, display);
-        }
-        self.struct_trait_help(diagnostic, binding, bound, display)
-    }
-
-    fn enum_trait_help(
-        &self,
-        diagnostic: Diagnostic,
-        binding: BindingId,
-        bound: &Bound,
-        display: &TypeDisplay<'_>,
-    ) -> Diagnostic {
-        let definition = self
-            .declarations
-            .types()
-            .enums
-            .get(binding)
-            .expect("enum trait help names an enum");
-        let enum_name = self.bindings.get(binding).name().to_string();
-        let trait_name = self.bindings.get(bound.binding).name();
-        let mut diagnostic = match definition.written_derive {
-            Some(span) if self.derivability().is_derivable(bound.binding) => diagnostic
-                .with_label(TypeProblems::derive_leaves_out(span, trait_name))
-                .with_help(TypeProblems::add_to_enum_derive_help(trait_name)),
-            _ => diagnostic,
-        };
-        if self.is_order(bound.binding) {
-            if definition.written_derive.is_none() {
-                diagnostic =
-                    diagnostic.with_note(TypeProblems::order_not_inferred_enum_note(trait_name));
-            }
-            if let Some((variant, field_type)) = self
-                .derive_rules()
-                .blocking_enum_payload(binding, bound.binding)
-            {
-                diagnostic = diagnostic.with_note(TypeProblems::order_blocked_enum_note(
-                    &enum_name,
-                    &variant,
-                    &display.show(&field_type),
-                    trait_name,
-                ));
-            } else {
-                let mut derives: Vec<String> = definition
-                    .derived_traits
-                    .iter()
-                    .map(|binding| self.bindings.get(*binding).name().to_string())
-                    .collect();
-                derives.push(trait_name.to_string());
-                let variants: Vec<Rc<str>> = definition
-                    .variants
-                    .iter()
-                    .map(|variant| variant.name.clone())
-                    .collect();
-                diagnostic = diagnostic.with_help(TypeProblems::enum_order_help(
-                    &enum_name, &derives, &variants,
-                ));
-            }
-        } else if let Some((blocked, variant, payload)) = definition
-            .blocked
-            .iter()
-            .find(|(blocked, _, _)| *blocked == bound.binding)
-        {
-            diagnostic = diagnostic.with_note(TypeProblems::blocked_enum_derive_note(
-                &enum_name,
-                self.bindings.get(*blocked).name(),
-                variant,
-                &display.show(payload),
-            ));
-        }
-        diagnostic
-    }
-
-    fn struct_trait_help(
-        &self,
-        diagnostic: Diagnostic,
-        struct_binding: BindingId,
-        bound: &Bound,
-        display: &TypeDisplay<'_>,
-    ) -> Diagnostic {
-        let Some(definition) = self.declarations.types().structs.get(struct_binding) else {
-            return diagnostic;
-        };
-        let struct_name = self.bindings.get(struct_binding).name().to_string();
-        if self.is_order(bound.binding) {
-            self.with_order_help(
-                diagnostic,
-                definition,
-                struct_binding,
-                &struct_name,
-                bound.binding,
-                display,
-            )
-        } else {
-            self.with_non_order_help(diagnostic, definition, bound.binding, &struct_name, display)
-        }
-    }
-
-    fn with_non_order_help(
-        &self,
-        diagnostic: Diagnostic,
-        definition: &StructDefinition,
-        trait_binding: BindingId,
-        struct_name: &str,
-        display: &TypeDisplay<'_>,
-    ) -> Diagnostic {
-        let diagnostic = self.with_written_derive(diagnostic, definition, trait_binding);
-        match definition
-            .blocked
-            .iter()
-            .find(|(blocked, _, _)| *blocked == trait_binding)
-        {
-            Some((_, field, field_type)) => {
-                diagnostic.with_note(TypeProblems::blocked_derive_note(
-                    struct_name,
-                    self.bindings.get(trait_binding).name(),
-                    field,
-                    &display.show(field_type),
-                ))
-            }
-            None => diagnostic,
-        }
-    }
-
-    fn is_order(&self, trait_binding: BindingId) -> bool {
-        self.declarations
-            .traits()
-            .table
-            .get(trait_binding)
-            .is_some_and(|rust_trait| rust_trait.path.as_ref() == crate::core::OrderTrait::PATH)
-    }
-
-    fn with_order_help(
-        &self,
-        diagnostic: Diagnostic,
-        definition: &StructDefinition,
-        struct_binding: BindingId,
-        struct_name: &str,
-        trait_binding: BindingId,
-        display: &TypeDisplay<'_>,
-    ) -> Diagnostic {
-        let trait_name = self.bindings.get(trait_binding).name();
-        let diagnostic = match definition.written_derive {
-            Some(span) => diagnostic.with_label(TypeProblems::derive_leaves_out(span, trait_name)),
-            None => diagnostic.with_note(TypeProblems::order_not_inferred_note(trait_name)),
-        };
-        let sortable = self.first_ord_field(definition, trait_binding);
-        match self
-            .derive_rules()
-            .blocking_field(struct_binding, trait_binding)
-        {
-            Some((field, field_type)) => diagnostic
-                .with_note(TypeProblems::order_blocked_note(
-                    struct_name,
-                    &field,
-                    &display.show(&field_type),
-                    trait_name,
-                ))
-                .with_help(TypeProblems::sort_by_help(sortable)),
-            None => {
-                let fields: Vec<Rc<str>> = definition
-                    .fields
-                    .iter()
-                    .map(|(name, _)| name.clone())
-                    .collect();
-                let mut derives: Vec<String> = definition
-                    .derived_traits
-                    .iter()
-                    .map(|binding| self.bindings.get(*binding).name().to_string())
-                    .collect();
-                derives.push(self.bindings.get(trait_binding).name().to_string());
-                diagnostic
-                    .with_help(TypeProblems::order_derive_help(
-                        struct_name,
-                        &derives,
-                        &fields,
-                    ))
-                    .with_help(TypeProblems::sort_by_help(sortable))
-            }
-        }
-    }
-
-    fn first_ord_field<'a>(
-        &self,
-        definition: &'a StructDefinition,
-        trait_binding: BindingId,
-    ) -> Option<&'a str> {
-        let params: Vec<GenericId> = definition.params.iter().map(|param| param.id).collect();
-        definition
-            .fields
-            .iter()
-            .find(|(_, ty)| {
-                self.declarations.traits().table.satisfies(
-                    &Bound::plain(trait_binding),
-                    ty,
-                    &|generic, _| params.contains(&generic),
-                )
-            })
-            .map(|(name, _)| name.as_ref())
-    }
-
-    fn show_implementor(display: &TypeDisplay<'_>, implementor: &Implementor) -> String {
-        let body = display.scheme(&implementor.scheme);
-        match &implementor.argument {
-            Some(argument) => format!("(with {body} {})", display.show(argument)),
-            None => body,
-        }
-    }
-
-    fn with_written_derive(
-        &self,
-        diagnostic: Diagnostic,
-        definition: &StructDefinition,
-        bound: BindingId,
-    ) -> Diagnostic {
-        let Some(derive_span) = definition.written_derive else {
-            return diagnostic;
-        };
-        if !self.derivability().is_derivable(bound) {
-            return diagnostic;
-        }
-        let trait_name = self.bindings.get(bound).name();
-        diagnostic
-            .with_label(TypeProblems::derive_leaves_out(derive_span, trait_name))
-            .with_help(TypeProblems::add_to_derive_help(trait_name))
+        let diagnostic = self.missing_trait_explanation().explain(missing);
+        self.diagnostics.push(diagnostic);
     }
 }
 

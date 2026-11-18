@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::trait_rows_reach::{LoweredRows, TraitRowsReach};
-use crate::core::RustTraitDeclaration;
+use crate::core::{OrderTrait, RustTraitDeclaration};
 
 pub struct RustTrait {
     pub path: Rc<str>,
@@ -34,6 +34,10 @@ impl RustTrait {
             associated,
             rows: TraitRowsReach::lowered(rows),
         }
+    }
+
+    pub fn is_order(&self) -> bool {
+        self.path.as_ref() == OrderTrait::PATH
     }
 
     pub fn rows(&self) -> &TraitRowsReach {

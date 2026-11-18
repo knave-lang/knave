@@ -1,6 +1,6 @@
 # RFC 0071: Formatting the code in docstrings
 
-**Status:** Accepted
+**Status:** Accepted. Decision Q-d: Superseded by 0076.
 **Date:** 2026-11-11
 
 ## Problem

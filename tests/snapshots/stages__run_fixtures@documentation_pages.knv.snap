@@ -13,6 +13,7 @@ Measures shapes on a grid, as [area](#area) does.
 
 ```knave
 (defn area (width height))
+
 (type area (fn (i64 i64) i64))
 ```
 

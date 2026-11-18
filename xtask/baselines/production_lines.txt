@@ -30,7 +30,7 @@ src/ownership/values.rs 601
 
 src/types/checker.rs 2295
 
-src/types/infer.rs 3618
+src/types/infer.rs 3626
 
 src/types/infer/shared_variables.rs 573
 

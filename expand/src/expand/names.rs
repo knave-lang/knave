@@ -118,7 +118,7 @@ impl Expander<'_> {
         self.recorded_inputs.note_bound(binder.span(), || {
             let symbol = binder
                 .as_symbol()
-                .filter(|_| !tables.scopes.carries_introduction_scope(binder))?;
+                .filter(|_| !tables.scopes.introductions().carried_by_binder(binder))?;
             Some(BoundName {
                 name: symbol.shared_name(),
                 namespace,

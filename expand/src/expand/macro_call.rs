@@ -217,7 +217,7 @@ impl Expander<'_> {
             return Err(self.expansion_too_large(binding, call_site));
         }
         let closure = self.macro_closure(binding, call_site)?;
-        let head_writer = self.tables.scopes.latest_introduction_at_head(&form);
+        let head_writer = self.tables.scopes.introductions().latest_at_head(&form);
         let (input, introduction) = self.prepare_input(form, context);
         let origin = self.macro_origin(binding, call_site);
         let call = ExpandedCall {
@@ -451,7 +451,10 @@ impl Expander<'_> {
     ) -> Result<Rc<Closure>, Diagnostic> {
         self.tables.macro_origins.introducing_macros.define(
             binding,
-            self.tables.scopes.latest_introduction_at_head(definition),
+            self.tables
+                .scopes
+                .introductions()
+                .latest_at_head(definition),
         );
         let compiled = self.lower_macro_lambda(definition).and_then(|lambda| {
             self.check_compile_time(&lambda)?;

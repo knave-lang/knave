@@ -1,0 +1,19 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/impl_body_bound_unmet_through_another_impl.knv
+---
+error[L0404]: `io-error` does not implement `clone`
+  --> check/impl_body_bound_unmet_through_another_impl.knv:21:10
+   |
+11 |     (local copied (clone (:value w)))
+   |                          ---------- the body of the impl needs it here
+...
+17 |       ((some v) (inner (ref (->wrapper v))))
+   |                        ------------------- the body of the impl needs it here
+...
+21 |   (outer item))
+   |          ^^^^ this needs `clone`
+   |
+   = note: `clone` is implemented for: bool, char, string, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, infallible, parse-bool-error, parse-char-error, parse-float-error, parse-int-error, duration, instant, (where (a) (ref a)), (where ((a clone)) (vec a)), (where ((a clone)) (option a)), (where ((a clone) (b clone)) (result a b)), (where ((a clone)) (box a)), (where ((a clone) (b clone)) (pair a b)), (where ((a clone)) (wrapper a))
+   = note: run `knave doc L0404` for an explanation

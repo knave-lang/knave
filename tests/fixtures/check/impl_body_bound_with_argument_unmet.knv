@@ -1,0 +1,13 @@
+(trait same-ends
+  (same-ends (fn ((ref self)) bool)))
+
+(impl same-ends (vec a)
+  (same-ends (items)
+    (= (at items 0) (at items 1))))
+
+(defn checks ((errors (ref (vec io-error))))
+  (same-ends errors))
+
+(defn main ()
+  (local errors (vec))
+  (println (checks (ref errors))))

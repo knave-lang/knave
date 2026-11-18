@@ -6,7 +6,10 @@ use super::admissible::Admissible;
 use super::admissible_types::AdmissibleTypes;
 use super::argument_passing::ArgumentPassing;
 use super::assumed_collections::AssumedCollections;
+use super::bound_origin_problems::BoundOriginProblems;
+use super::bound_origins::BoundOrigins;
 use super::callee_borrows::CalleeBorrows;
+use super::check_round::{CheckRound, RoundGrowth};
 use super::checked_program::CheckedProgram;
 use super::checking_facts::CheckingFacts;
 use super::clause_check::ClauseCheck;
@@ -31,14 +34,15 @@ use super::generalization_rules::GeneralizationRules;
 use super::generic_declarations::GenericDeclarations;
 use super::generic_registry::GenericRegistry;
 use super::graph::{Definition, DefinitionGraph};
+use super::impl_absorption::ImplAbsorption;
 use super::impl_bounds::ImplBounds;
 use super::impl_item::ImplItem;
+use super::impl_position::ImplPosition;
 use super::implementation_check::ImplementationCheck;
 use super::implementation_collector::ImplementationCollector;
 use super::implementation_verdict::ImplementationVerdict;
 use super::implied_bounds::ImpliedBounds;
 use super::index_checks::IndexChecks;
-use super::infer::OpenCollections;
 use super::instantiation::Instantiation;
 use super::literal_parameters::LiteralParameters;
 use super::literal_settlement::LiteralSettlement;
@@ -58,6 +62,7 @@ use super::prelude_types::PreludeTypes;
 use super::problems::{MismatchContext, TypeProblems};
 use super::reached_traits::{ReachedDeclaration, ReachedTraits};
 use super::reopened_parameters::ReopenedParameters;
+use super::round_facts::RoundFacts;
 use super::rust_type_item::RustTypeItem;
 use super::selection::Selection;
 use super::shared_call::SharedCall;
@@ -70,6 +75,7 @@ use super::trait_declaration_collector::TraitDeclarationCollector;
 use super::ty::{Bound, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::type_declaration_collector::TypeDeclarationCollector;
 use super::type_variables::TypeVariables;
+use super::typed_module_builder::TypedModuleBuilder;
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
 use super::user_trait::UserTrait;
@@ -480,6 +486,7 @@ impl TypeChecker {
         &mut self,
         entry_function: Option<BindingId>,
         graph: &DefinitionGraph,
+        absorption: &mut ImplAbsorption,
     ) -> FxHashMap<BindingId, TypedDefinition> {
         let dependencies = graph.dependencies();
         self.unchecked = dependencies.unchecked(entry_function.as_slice());
@@ -505,8 +512,21 @@ impl TypeChecker {
             let reported_errors = self.diagnostics.len() - reported_before;
             self.outcomes
                 .finish_group(dependencies, &bindings, reported_errors);
+            let finished = absorption.finish_methods(&bindings);
+            self.absorb_impls(&finished, &typed, absorption);
         }
         typed
+    }
+
+    fn absorb_impls(
+        &mut self,
+        impls: &[ImplPosition],
+        definitions: &FxHashMap<BindingId, TypedDefinition>,
+        absorption: &mut ImplAbsorption,
+    ) {
+        self.impl_bounds().absorb(impls, definitions, absorption);
+        let uses = self.structural_uses.impl_uses();
+        absorption.settle(uses, &self.unifier, self.declarations.traits().impls());
     }
 
     pub(super) fn admissible_types(&self) -> AdmissibleTypes<'_> {
@@ -649,7 +669,8 @@ impl TypeChecker {
     }
 
     pub(super) fn require_copy(&mut self, value: &Type) {
-        CopyRequirement::new(self.copy_trait, &mut self.unifier).require(value, Vec::new());
+        CopyRequirement::new(self.copy_trait, &mut self.unifier)
+            .require(value, BoundOrigins::none());
     }
 
     pub(super) fn argument_passing(&mut self) -> ArgumentPassing<'_> {
@@ -1483,7 +1504,7 @@ impl TypeChecker {
             return;
         }
         if self.implied_bounds.is_impl_generic(generic) {
-            self.implied_bounds.record(generic, bound);
+            self.implied_bounds.record_from_body(generic, bound, span);
             return;
         }
         if self.apply_declared_bound(generic, &bound, span) {
@@ -1505,7 +1526,8 @@ impl TypeChecker {
             &generic_name,
             span,
         );
-        self.diagnostics.push(diagnostic);
+        self.diagnostics
+            .push(BoundOriginProblems::annotate(diagnostic, &bound.origins));
     }
 
     fn declares_bound(&self, generic: GenericId, bound: &Bound) -> bool {
@@ -1583,30 +1605,26 @@ impl TypeChecker {
         literal_defaults: LiteralDefaults,
         default_literal_parameters: bool,
     ) -> Result<super::typed::TypedProgram, Diagnostics> {
-        let configured = |vector_bases: &FxHashSet<Span>, checking| {
+        let configured = |facts: &RoundFacts| {
             let mut checker = Self::new(program.bindings.clone());
             checker.string_view = program.string_view;
-            checker.checking = checking;
+            checker.checking = facts.checking();
             checker.changed_structs = changed_structs.clone();
             checker.inferred_copies = inferred_copies.clone();
             checker.pinned = pinned.clone();
             checker.literal_defaults = literal_defaults.clone();
             checker.default_literal_parameters = default_literal_parameters;
-            checker.vector_bases = vector_bases.clone();
+            checker.vector_bases = facts.vector_bases().clone();
             checker.call_origins = Rc::clone(&program.call_origins);
             checker
         };
-        let mut vector_bases = FxHashSet::default();
-        let mut checking = super::typed::CheckWork::default();
+        let mut facts = RoundFacts::default();
         loop {
-            let (typed, open_collections) =
-                configured(&vector_bases, checking).check_program(program, graph)?;
-            checking = typed.checking;
-            let found = open_collections.vector_bases(program, graph, &typed)?;
-            if found.is_empty() {
-                return Ok(typed);
+            match configured(&facts).check_program(program, graph, &facts) {
+                CheckRound::Checked(typed) => return Ok(*typed),
+                CheckRound::Failed(diagnostics) => return Err(diagnostics),
+                CheckRound::Grown(growth, checking) => facts.grow(growth, checking),
             }
-            vector_bases.extend(found);
         }
     }
 
@@ -1614,19 +1632,24 @@ impl TypeChecker {
         mut self,
         program: &crate::expand::Program,
         graph: &DefinitionGraph,
-    ) -> Result<(super::typed::TypedProgram, OpenCollections), Diagnostics> {
+        facts: &RoundFacts,
+    ) -> CheckRound {
         self.outcomes = DefinitionOutcomes::new(graph.reach().unreached());
         self.record_prelude_definitions(&program.modules, &program.pending_definitions);
         self.collect_declarations(&program.modules, graph);
-        let mut definitions = self.check_definitions(program.entry.function, graph);
+        self.impl_bounds().seed(facts.seeds());
+        let mut round = ImplAbsorption::new(self.declarations.traits().impls());
+        let mut definitions = self.check_definitions(program.entry.function, graph, &mut round);
         let mut finalizer = super::finalize::Finalizer::new(&mut self);
         for binding in graph.order() {
             if let Some(definition) = definitions.get_mut(&binding) {
                 finalizer.definition(definition);
             }
         }
-        self.impl_bounds().absorb(&definitions);
-        self.record_uses_through_impls();
+        self.absorb_impls(&round.every_impl(), &definitions, &mut round);
+        if let Some(grown) = round.into_rerun() {
+            return CheckRound::Grown(RoundGrowth::ImplBounds(grown), self.checking);
+        }
         self.discharge_obligations(ObligationPass::Final);
         self.check_written_projections();
         self.resolve_missing_annotations();
@@ -1636,38 +1659,10 @@ impl TypeChecker {
         let typed_modules = program
             .modules
             .iter()
-            .map(|module| Self::typed_module(module, &mut definitions))
+            .map(|module| TypedModuleBuilder::build(module, &mut definitions))
             .collect();
-        Ok((self.into_program(typed_modules, program)?, open_collections))
-    }
-
-    fn typed_module(
-        module: &CoreModule,
-        definitions: &mut FxHashMap<BindingId, TypedDefinition>,
-    ) -> super::typed::TypedModule {
-        let mut typed = super::typed::TypedModule {
-            id: module.id,
-            path: module.path.clone(),
-            definitions: Vec::new(),
-            structs: Vec::new(),
-            enums: Vec::new(),
-            exports: module.exports().bindings().collect(),
-        };
-        for item in &module.items {
-            match &item.kind {
-                ItemKind::Def(binding, _) => typed.definitions.extend(definitions.remove(binding)),
-                ItemKind::Struct(binding, ..) => typed.structs.push(*binding),
-                ItemKind::Enum(binding, ..) => typed.enums.push(*binding),
-                ItemKind::Signature(..)
-                | ItemKind::RustTrait(..)
-                | ItemKind::RustType(..)
-                | ItemKind::Trait(..)
-                | ItemKind::Impl(..)
-                | ItemKind::Derive(..)
-                | ItemKind::MismatchHelp(..) => {}
-            }
-        }
-        typed
+        let typed = self.into_program(typed_modules, program);
+        open_collections.round(typed, program, graph)
     }
 
     fn into_program(

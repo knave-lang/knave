@@ -4,7 +4,6 @@ use rustc_hash::FxHashMap;
 
 use super::checker::TypeChecker;
 use super::problems::TypeProblems;
-use super::selection::Selection;
 use super::structural_trait::StructuralTrait;
 use super::structural_uses::{ImplBoundUse, StructuralUse};
 use super::ty::{Bound, Type};
@@ -61,11 +60,9 @@ impl TypeChecker {
     pub(super) fn record_structural_use(&mut self, bound: &Bound, implementor: &Type, span: Span) {
         let definitions = self.recursive_group.clone();
         if self.has_generic_program_impl(bound.binding) {
-            self.structural_uses.defer_until_impls(ImplBoundUse {
-                definitions: definitions.clone(),
+            self.structural_uses.record_impl_use(ImplBoundUse {
                 bound: bound.clone(),
                 implementor: implementor.clone(),
-                span,
             });
         }
         self.record_use_in(&definitions, bound.binding, implementor, span);
@@ -79,40 +76,6 @@ impl TypeChecker {
             .any(|implementation| {
                 implementation.trait_binding == trait_binding && !implementation.params.is_empty()
             })
-    }
-
-    pub(super) fn record_uses_through_impls(&mut self) {
-        for pending in self.structural_uses.deferred_until_impls().to_vec() {
-            self.record_requirements(&pending);
-        }
-    }
-
-    fn record_requirements(&mut self, pending: &ImplBoundUse) {
-        let implementor = self.unifier.resolve(&pending.implementor);
-        let Selection::Implemented { requirements, .. } = self
-            .declarations
-            .traits()
-            .table
-            .rows(pending.bound.binding)
-            .select(&pending.bound, &implementor)
-        else {
-            return;
-        };
-        for requirement in requirements {
-            let required = self.unifier.resolve(&requirement.implementor);
-            self.record_use_in(
-                &pending.definitions,
-                requirement.bound.binding,
-                &required,
-                pending.span,
-            );
-            self.record_requirements(&ImplBoundUse {
-                definitions: pending.definitions.clone(),
-                bound: requirement.bound,
-                implementor: required,
-                span: pending.span,
-            });
-        }
     }
 
     fn record_use_in(
@@ -236,10 +199,7 @@ mod tests {
             (impl label i64 (label-it (n) (str n)))
             (defn main () (println (describe-it (vec 1)) (label-it 2)))"#,
         );
-        assert_eq!(
-            source.typed().structural_uses.deferred_until_impls().len(),
-            1
-        );
+        assert_eq!(source.typed().structural_uses.impl_uses().len(), 1);
     }
 
     #[test]

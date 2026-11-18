@@ -68,7 +68,7 @@ impl<'s> ImplementorMatch<'s> {
         let settles = matcher.matches(&implementor.scheme.body, target)
             && matcher.matches(pattern_argument, target_argument);
         settles.then(|| Selection::Implemented {
-            requirements: matcher.requirements(),
+            requirements: matcher.requirements(bound),
             argument: Some(pattern_argument.substitute(&matcher.bindings)),
         })
     }
@@ -114,7 +114,7 @@ impl<'s> ImplementorMatch<'s> {
             return Selection::Missing;
         }
         Selection::Implemented {
-            requirements: self.requirements(),
+            requirements: self.requirements(bound),
             argument: Some(argument),
         }
     }
@@ -129,7 +129,7 @@ impl<'s> ImplementorMatch<'s> {
             return Selection::Undecided;
         }
         Selection::Implemented {
-            requirements: self.requirements(),
+            requirements: self.requirements(bound),
             argument: None,
         }
     }
@@ -195,7 +195,7 @@ impl<'s> ImplementorMatch<'s> {
         }
     }
 
-    fn requirements(&self) -> Vec<Requirement> {
+    fn requirements(&self, required: &Bound) -> Vec<Requirement> {
         self.implementor
             .scheme
             .params
@@ -203,7 +203,7 @@ impl<'s> ImplementorMatch<'s> {
             .filter_map(|param| Some((param, self.bindings.get(&param.id)?)))
             .flat_map(|(param, implementor)| {
                 param.bounds.iter().map(|bound| Requirement {
-                    bound: bound.substituted(&self.bindings),
+                    bound: bound.substituted(&self.bindings).inheriting(required),
                     implementor: implementor.clone(),
                 })
             })

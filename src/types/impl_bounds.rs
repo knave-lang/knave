@@ -2,6 +2,9 @@ use rustc_hash::FxHashMap;
 
 use super::declarations::Declarations;
 use super::generic_declarations::GenericDeclarations;
+use super::impl_absorption::ImplAbsorption;
+use super::impl_bound_seeds::ImplBoundSeeds;
+use super::impl_position::ImplPosition;
 use super::implied_bounds::ImpliedBounds;
 use super::ty::{Bound, GenericId, Type};
 use super::typed::TypedDefinition;
@@ -26,19 +29,35 @@ impl<'a> ImplBounds<'a> {
         }
     }
 
-    pub(super) fn absorb(mut self, definitions: &FxHashMap<BindingId, TypedDefinition>) {
-        for position in 0..self.declarations.traits().impls.len() {
+    pub(super) fn seed(mut self, seeds: &ImplBoundSeeds) {
+        for position in ImplPosition::all(self.declarations.traits().impls.len()) {
+            let params = &self.declarations.traits().impls[position.index()].params;
+            if let Some(bounds) = seeds.bounds_of(position, params) {
+                self.store(position, bounds);
+            }
+        }
+    }
+
+    pub(super) fn absorb(
+        mut self,
+        positions: &[ImplPosition],
+        definitions: &FxHashMap<BindingId, TypedDefinition>,
+        absorption: &mut ImplAbsorption,
+    ) {
+        for &position in positions {
             let found = self.found_bounds(position, definitions);
+            let params = &self.declarations.traits().impls[position.index()].params;
+            absorption.record(position, params, &found);
             self.store(position, found);
         }
     }
 
     fn found_bounds(
         &self,
-        position: usize,
+        position: ImplPosition,
         definitions: &FxHashMap<BindingId, TypedDefinition>,
     ) -> Vec<Vec<Bound>> {
-        let implementation = &self.declarations.traits().impls[position];
+        let implementation = &self.declarations.traits().impls[position.index()];
         let params = &implementation.params;
         let mut found: Vec<Vec<Bound>> = vec![Vec::new(); params.len()];
         for method in &implementation.methods {
@@ -68,12 +87,15 @@ impl<'a> ImplBounds<'a> {
         found
     }
 
-    fn store(&mut self, position: usize, bounds: Vec<Vec<Bound>>) {
-        let mut params = self.declarations.traits().impls[position].params.clone();
+    fn store(&mut self, position: ImplPosition, bounds: Vec<Vec<Bound>>) {
+        let mut params = self.declarations.traits().impls[position.index()]
+            .params
+            .clone();
         for (param, bounds) in params.iter_mut().zip(bounds) {
             self.generics.redeclare(param, bounds);
         }
-        self.declarations.record_impl_params(position, params);
+        self.declarations
+            .record_impl_params(position.index(), params);
     }
 }
 

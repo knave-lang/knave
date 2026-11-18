@@ -1,3 +1,4 @@
+use super::bound_fit::BoundFit;
 use super::expectation::Expectation;
 use super::passing_facts::PassingFacts;
 use super::passing_tables::PassingTables;
@@ -110,7 +111,7 @@ impl<'s, 'a> BorrowRules<'s, 'a> {
         }
         if levels == 0
             && let Type::Ref(_, referent) = argument
-            && self.passes_through(var, argument, referent)
+            && self.bound_fit().passes_through(var, argument, referent)
         {
             return self
                 .fit(&Type::Var(var), referent, span)
@@ -126,23 +127,9 @@ impl<'s, 'a> BorrowRules<'s, 'a> {
     }
 
     fn dereferences(&self, var: TypeVar, reference: &Type, referent: &Type) -> bool {
-        let fails_traits =
-            self.unifier.literal_kind(var).is_some() || self.fails_bounds(var, reference);
+        let fails_traits = self.unifier.literal_kind(var).is_some()
+            || self.bound_fit().misses_a_bound(var, reference);
         fails_traits && self.facts().holds_copy_value(referent)
-    }
-
-    fn passes_through(&self, var: TypeVar, reference: &Type, referent: &Type) -> bool {
-        self.fails_bounds(var, reference) && !self.fails_bounds(var, referent)
-    }
-
-    fn fails_bounds(&self, var: TypeVar, value: &Type) -> bool {
-        self.unifier.bounds(var).iter().any(|bound| {
-            !self.tables.declarations.traits().table.satisfies(
-                bound,
-                value,
-                &|generic, required| self.unifier.generic_bounds(generic).contains(required),
-            )
-        })
     }
 
     pub(super) fn fit(
@@ -165,6 +152,10 @@ impl<'s, 'a> BorrowRules<'s, 'a> {
 
     fn facts(&self) -> PassingFacts<'_> {
         PassingFacts::new(self.tables, self.unifier)
+    }
+
+    fn bound_fit(&self) -> BoundFit<'_> {
+        BoundFit::new(self.unifier, &self.tables.declarations.traits().table)
     }
 }
 

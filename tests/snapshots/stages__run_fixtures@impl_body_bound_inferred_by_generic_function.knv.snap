@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/impl_body_bound_inferred_by_generic_function.knv
+---
+true
+true

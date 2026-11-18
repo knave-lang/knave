@@ -1,10 +1,11 @@
 use super::borrow_rules::BorrowRules;
+use super::bound_origins::BoundOrigins;
 use super::copy_requirement::CopyRequirement;
 use super::passed_types::PassedTypes;
 use super::passing_facts::PassingFacts;
 use super::passing_tables::PassingTables;
 use super::pending::PendingBorrow;
-use super::ty::{BoundOrigin, Type, TypeVar};
+use super::ty::{Type, TypeVar};
 use super::unifier::Unifier;
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
@@ -93,7 +94,7 @@ impl<'s, 'a> PendingBorrowDecision<'s, 'a> {
 
     fn copy_through_borrow(&mut self, parameter: &Type, argument: &Type, copied: Span) -> Borrow {
         CopyRequirement::new(self.tables.copy_trait, self.unifier)
-            .require(parameter, vec![BoundOrigin::BorrowCopied(copied)]);
+            .require(parameter, BoundOrigins::borrow_copied(copied));
         Borrow::Deref(argument.reference_depth())
     }
 

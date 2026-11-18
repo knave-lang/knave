@@ -1,0 +1,20 @@
+(trait pairing
+  (first-copy (fn ((ref self)) bool))
+
+  (first-two-equal
+    (fn ((ref self)) bool)))
+
+(impl pairing (vec a)
+  (first-copy (items)
+    (local first (clone (at items 0)))
+    (do (local _first first) true))
+
+  (first-two-equal (items)
+    (= (at items 0) (at items 1))))
+
+(defn checks ((items (ref (vec io-error))))
+  (and (first-copy items) (first-two-equal items)))
+
+(defn main ()
+  (local errors (vec))
+  (println (checks (ref errors))))

@@ -1,9 +1,12 @@
+(defstruct label
+  :blank bool)
+
 (defn main ()
-  (local s (str "ab"))
-  (local names (vec (as-str s)))
-  (local r (at names 0))
+  (local first (->label false))
+  (local labels (vec (ref first)))
+  (local r (at labels 0))
   (local v
-    ((rust "{0}.is_empty().then_some({0})"
-       (fn ((ref str)) (option (ref str))))
+    ((rust "{0}.blank.then_some({0})"
+       (fn ((ref label)) (option (ref label))))
      r))
-  (prn v))
+  (println (none? v)))

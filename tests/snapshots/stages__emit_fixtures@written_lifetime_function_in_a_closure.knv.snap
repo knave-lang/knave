@@ -6,7 +6,7 @@ input_file: tests/fixtures/emit/written_lifetime_function_in_a_closure.knv
 ---
 fn lines_longer_than<'a>(text: &'a str, shortest: &str) -> impl Iterator<Item = &'a str> {
     text.lines()
-        .filter(move |line: &&'a str| line.len() > shortest.len())
+        .filter(move |line: &&'a str| (*line).len() > shortest.len())
 }
 
 fn main() {

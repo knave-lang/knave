@@ -1,8 +1,9 @@
 use crate::types::{Borrow, Type, TypedArgument, TypedExpr, TypedExprKind};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ArgumentRole {
     Receiver,
+    FieldOwner,
     IndexReceiver,
     Borrowed,
     MutPlace,
@@ -11,6 +12,23 @@ pub(super) enum ArgumentRole {
 }
 
 impl ArgumentRole {
+    const METHOD_CALL_OPENERS: [char; 2] = ['(', ':'];
+
+    pub(super) fn receiving(member: &str) -> Self {
+        let name = member.strip_prefix('.').unwrap_or(member);
+        let after_name = name
+            .trim_start_matches(|character: char| character.is_alphanumeric() || character == '_');
+        if after_name.starts_with(Self::METHOD_CALL_OPENERS) {
+            ArgumentRole::Receiver
+        } else {
+            ArgumentRole::FieldOwner
+        }
+    }
+
+    pub(super) fn reads_a_member(self) -> bool {
+        matches!(self, ArgumentRole::Receiver | ArgumentRole::FieldOwner)
+    }
+
     pub(super) fn writes_borrow_prefix(self, argument: &TypedArgument) -> bool {
         matches!(argument.borrow, Borrow::Shared | Borrow::Mutable)
             && !self.borrowed_already(argument)
@@ -36,7 +54,7 @@ impl ArgumentRole {
     }
 
     pub(super) fn dereferenced_layers(self, argument: &TypedArgument) -> Option<usize> {
-        let autodereferences = matches!(self, ArgumentRole::Receiver | ArgumentRole::Coerced);
+        let autodereferences = matches!(self, ArgumentRole::FieldOwner | ArgumentRole::Coerced);
         match argument.borrow {
             Borrow::Deref(levels) => Some(levels),
             _ => argument
@@ -66,9 +84,36 @@ impl ArgumentRole {
         matches!(
             (self, borrow),
             (
-                ArgumentRole::Receiver | ArgumentRole::IndexReceiver,
+                ArgumentRole::Receiver | ArgumentRole::FieldOwner | ArgumentRole::IndexReceiver,
                 Borrow::Shared | Borrow::Mutable,
             ) | (ArgumentRole::Borrowed, Borrow::Shared)
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_member_called_with_arguments_receives_a_method_call() {
+        for member in [".len()", ".max(", ".collect::<Vec<_>>()"] {
+            assert_eq!(
+                ArgumentRole::receiving(member),
+                ArgumentRole::Receiver,
+                "{member}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_member_without_arguments_reads_a_field() {
+        for member in [".radius", ".1", ".blank.then_some("] {
+            assert_eq!(
+                ArgumentRole::receiving(member),
+                ArgumentRole::FieldOwner,
+                "{member}"
+            );
+        }
     }
 }

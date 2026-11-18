@@ -2221,8 +2221,8 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn argument_role(parsed: &Template, position: usize, argument: &TypedArgument) -> ArgumentRole {
-        if position == 0 && parsed.receives(position) {
-            ArgumentRole::Receiver
+        if let Some(role) = parsed.receiver(position) {
+            role
         } else if parsed.indexes(position) {
             ArgumentRole::IndexReceiver
         } else if Self::is_mut_place(parsed, position, argument) {
@@ -2262,8 +2262,8 @@ impl<'a> ExpressionEmitter<'a> {
         if let Some(value) = self.adjusted_argument(argument, context, role) {
             return value;
         }
-        let value = match (&argument.value.kind, role) {
-            (TypedExprKind::Borrow(_, place), ArgumentRole::Receiver) => self.place(place, context),
+        let value = match &argument.value.kind {
+            TypedExprKind::Borrow(_, place) if role.reads_a_member() => self.place(place, context),
             _ => self.argument_value(&argument.value, context, role),
         }
         .spanned(argument.value.span);
@@ -2341,11 +2341,10 @@ impl<'a> ExpressionEmitter<'a> {
             (TypedExprKind::Borrow(ReferenceKind::Mutable, place), ArgumentRole::MutPlace) => {
                 self.place(place, TypeContext::Known)
             }
-            (TypedExprKind::Leaf(TypedLeaf::Global(binding)), ArgumentRole::Receiver)
-                if self.is_static(*binding) =>
-            {
-                Code::atom(self.plan.path_to(*binding, self.module))
-            }
+            (
+                TypedExprKind::Leaf(TypedLeaf::Global(binding)),
+                ArgumentRole::Receiver | ArgumentRole::FieldOwner,
+            ) if self.is_static(*binding) => Code::atom(self.plan.path_to(*binding, self.module)),
             _ => self.expr_in(value, context),
         }
     }

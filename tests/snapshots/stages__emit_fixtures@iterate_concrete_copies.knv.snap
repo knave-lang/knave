@@ -8,7 +8,7 @@ fn total(values: impl Iterator<Item = i64>) -> i64 {
 }
 
 fn count_long<'a>(names: impl Iterator<Item = &'a str>) -> usize {
-    names.filter(|name: &&str| name.len() > 4).count()
+    names.filter(|name: &&str| (*name).len() > 4).count()
 }
 
 fn count_big<'a>(values: impl Iterator<Item = &'a i64>) -> usize {

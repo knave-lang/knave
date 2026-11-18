@@ -20,7 +20,7 @@ fn main() {
     let radius: i64 = 2;
     let radius_view = &radius;
     let radius_outer = &radius_view;
-    println!("{}", outer.area());
+    println!("{}", (*outer).area());
     println!("{}", inner.same_area(outer));
     println!("{}", inner.holds(radius_outer));
     println!("{}", Shape::fits(9, inner));

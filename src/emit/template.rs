@@ -1,3 +1,4 @@
+use super::argument_role::ArgumentRole;
 use super::converted_argument::ConvertedArgument;
 use super::fragment::{Code, Fragment, Precedence};
 use super::operator::{RustOperator, RustText, Side};
@@ -43,12 +44,18 @@ impl Template {
         self.parsed.dereferences(argument)
     }
 
-    pub fn receives(&self, argument: usize) -> bool {
+    pub(super) fn receiver(&self, argument: usize) -> Option<ArgumentRole> {
         let mut uses = self
             .parsed
             .placeholders()
             .filter(|index| *index == argument);
-        self.parsed.receives(argument) && uses.nth(1).is_none()
+        if argument > 0 || !self.parsed.receives(argument) || uses.nth(1).is_some() {
+            return None;
+        }
+        let position = self.parsed.pieces().iter().position(
+            |piece| matches!(piece, Piece::Placeholder { index, .. } if *index == argument),
+        )?;
+        self.literal_at(position + 1).map(ArgumentRole::receiving)
     }
 
     pub fn is_binary_operation(&self) -> bool {

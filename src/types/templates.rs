@@ -5,6 +5,7 @@ use rustc_hash::FxHashMap;
 use super::inline_templates::InlineTemplates;
 use super::pipelines::Pipelines;
 use super::registered_template::RegisteredTemplate;
+use super::rust_types::RustTypeTable;
 use super::template_ties::TemplateTies;
 use super::ty::Scheme;
 use super::typed::{TypedExpr, TypedExprKind, TypedLeaf};
@@ -25,8 +26,13 @@ pub struct TemplateBorrows {
 }
 
 impl TemplateBorrows {
-    pub fn register(&mut self, name: TemplateName<'_>, scheme: &Scheme, pipelines: Pipelines) {
-        let ties = TemplateTies::of(scheme, pipelines);
+    pub fn register(
+        &mut self,
+        name: TemplateName<'_>,
+        scheme: &Scheme,
+        rust_types: &RustTypeTable,
+    ) {
+        let ties = TemplateTies::of(scheme, Pipelines::new(rust_types));
         match name {
             TemplateName::Declared(binding, text) => {
                 let registered = RegisteredTemplate::declared(text, ties);

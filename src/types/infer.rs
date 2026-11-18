@@ -17,12 +17,9 @@ use super::enums::VariantPayload;
 use super::expectation::Expectation;
 use super::parameter_call_labels::ParameterCallRequest;
 use super::pending::{DecidedBorrows, PendingBorrow};
-use super::pipelines::Pipelines;
 use super::positional_read::PositionalRead;
 use super::problems::{MismatchContext, TypeProblems};
 use super::selfless_method::SelflessMethod;
-use super::synthetic_template::SyntheticTemplate;
-use super::templates::TemplateName;
 use super::ty::{Bound, BoundOrigin, Type, TypeVar};
 use super::typed::{
     Borrow, FieldOrder, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm, TypedBinder,
@@ -32,6 +29,7 @@ use super::typed::{
 use super::unifier::LiteralKind;
 use super::{BoxedPayload, PayloadPosition, variant_names::VariantNames};
 use super::{pattern_fields::PatternFields, pattern_placement::PatternPlacement};
+use super::{synthetic_template::SyntheticTemplate, templates::TemplateName};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, BorrowTrait, Control, EqualityTrait,
     Expr, ExprKind, FieldLabel, HashTrait, Keyword, Lambda, Leaf, Literal, MapOperation,
@@ -2796,11 +2794,9 @@ impl TypeChecker {
                 self.check_map_key(&collection, value.span);
             }
         }
-        let (template, result) = (
-            SyntheticTemplate::ITERATE.text(),
-            self.prelude_types().iterator_type(item),
-        );
+        let result = self.prelude_types().iterator_type(item);
         let parameters = vec![Type::shared(collection_type)];
+        let template = SyntheticTemplate::ITERATE.text();
         self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
     }
 
@@ -3620,9 +3616,9 @@ impl TypeChecker {
         span: Span,
     ) -> Result<(TypedExprKind, Type), Diagnostic> {
         let scheme = self.written_schemes().lower_scheme(&template.type_expr)?;
-        let pipelines = Pipelines::new(&self.declarations.types().rust_types);
         let name = TemplateName::Inline(&template.template);
-        self.template_borrows.register(name, &scheme, pipelines);
+        let rust_types = &self.declarations.types().rust_types;
+        self.template_borrows.register(name, &scheme, rust_types);
         let ty = self.instantiation().instantiate(&scheme, span);
         Ok((TypedExprKind::Leaf(TypedLeaf::Rust(template.clone())), ty))
     }

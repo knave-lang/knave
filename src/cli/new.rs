@@ -11,6 +11,7 @@ use super::working_directory::WorkingDirectory;
 use crate::diagnostic::Diagnostics;
 use crate::format::{ModuleLookup, SourceFormatter};
 use crate::language::Language;
+use crate::modules::SearchScope;
 use crate::project::ProjectName;
 use crate::source::Span;
 
@@ -22,6 +23,8 @@ pub struct NewCommand {
 
 impl NewCommand {
     const ENTRY_TEXT: &str = "(defn main ()\n  (println \"hello\"))\n";
+    const STARTER_TEST_STEM: &str = "main";
+    const STARTER_TEST_TEXT: &str = "(deftest addition\n  (assert (= (+ 1 2) 3)))\n";
     const NAME_ARGUMENT: &str = "<name argument>";
 
     pub fn new(name: String, components: Vec<Box<dyn ProjectComponent>>) -> Self {
@@ -68,6 +71,7 @@ impl NewCommand {
                 &ModuleLookup::beside_project_file(working_directory),
             ),
             self.formatted(terminal, entry_file, &source_lookup),
+            self.formatted(terminal, Self::starter_test(root), &source_lookup),
         ])
     }
 
@@ -94,6 +98,14 @@ impl NewCommand {
             path: root.join(&project.entry),
             text: Self::ENTRY_TEXT.to_string(),
         })
+    }
+
+    fn starter_test(root: &Path) -> NewFile {
+        let file_name = format!("{}.{}", Self::STARTER_TEST_STEM, Language::EXTENSION);
+        NewFile {
+            path: root.join(SearchScope::TESTS_DIRECTORY).join(file_name),
+            text: Self::STARTER_TEST_TEXT.to_string(),
+        }
     }
 
     fn check_name(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {

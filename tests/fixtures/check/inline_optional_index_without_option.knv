@@ -1,0 +1,6 @@
+(defn main ()
+  (let (items (vec 10 20 30))
+    (println (deref ((rust "&{0}[{index? 1}]"
+                       (where (a)
+                         (fn ((ref (slice a)) int) (ref a))))
+                     items 1)))))

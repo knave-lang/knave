@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/optional_index_without_option.knv
+---
+error[L0218]: this Rust template has a malformed placeholder
+ --> check/optional_index_without_option.knv:4:33
+  |
+4 |       (fn ((ref (slice a)) int) (ref a)))))
+  |                                 ^^^^^^^ `{index? 1}` turns a negative index into one past the end, so the result must be an option
+  |
+  = help: return an option, or write `{index 1}`, which panics on a negative index
+  = note: run `knave doc L0218` for an explanation

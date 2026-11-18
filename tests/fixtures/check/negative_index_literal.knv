@@ -1,0 +1,140 @@
+(def at2
+  (rust "&{0}[{index 1}]"
+    (where (a)
+      (fn ((ref (slice a)) int) (ref a)))))
+
+(def get2
+  (rust "{0}.get({index? 1})"
+    (where (a)
+      (fn ((ref (slice a)) int)
+        (option (ref a))))))
+
+(defn bound (items)
+  (let (x (deref (at2 items -1))) x))
+
+(defn added (items)
+  (+ 1 (deref (at2 items -1))))
+
+(defn printed (items)
+  (println (deref (at2 items -1))))
+
+(defn looked-up (items) (get2 items -1))
+
+(defn branched (items)
+  (deref (at2 items (if (= 1 1) -3 0))))
+
+(defn matched (items (choice bool))
+  (deref (at2 items
+              (match choice (true -4) (false 0)))))
+
+(defn blocked (items)
+  (deref (at2 items (do (println "picked") -5))))
+
+(defn typed (items)
+  (deref (at2 items (the int -6))))
+
+(defn bound-in-block (items)
+  (deref (at2 items (do (let (x -7) x)))))
+
+(defn bound-among (items)
+  (deref (at2 items
+              (let (x -8
+                    y 0)
+                x))))
+
+(defn rebound (items)
+  (deref (at2 items
+              (let (x -9
+                    x 0)
+                x))))
+
+(defn reassigned (items)
+  (deref (at2 items (let (x -1) (set! x 2) x))))
+
+(defn shifted (items)
+  (deref (at2 items
+              (let (x -11
+                    y (do (set! x 1) 0))
+                x))))
+
+(defn reset-by-closure (items)
+  (deref (at2 items
+              (let (x -12
+                    reset (fn () (set! x 1))
+                    done (reset))
+                x))))
+
+(defn printed-between (items)
+  (deref (at2 items
+              (let (x -13) (println "hi") x))))
+
+(def store!
+  (rust "*{0} = {1}"
+    (where (a) (fn ((mut a) a) unit))))
+
+(defn stored (items)
+  (deref (at2 items
+              (let (x -10
+                    y (do (store! (mut x) 1) 0))
+                x))))
+
+(defn bound-beside-name (items)
+  (deref (at2 items
+              (let (y 0
+                    x -17
+                    z y)
+                x))))
+
+(defn bump! (c) (set! c (+ c 6)))
+
+(defn bumped (items)
+  (deref (at2 items (let (x -18) (bump! x) x))))
+
+(defn bumped-in-binding (items)
+  (deref (at2 items
+              (let (x -19
+                    y (bump! x))
+                x))))
+
+(defn put! ((c (mut int))) (set! c 1))
+
+(defn other-borrowed (items)
+  (deref (at2 items
+              (let (x -14
+                    y 0
+                    r (mut y))
+                (set! r 1)
+                x))))
+
+(defn other-stored (items)
+  (deref (at2 items
+              (let (x -15
+                    y 0)
+                (store! (mut y) 1)
+                x))))
+
+(defn other-passed (items)
+  (deref (at2 items
+              (let (x -16
+                    y 0)
+                (put! y)
+                x))))
+
+(defn called-inline (items)
+  ((rust "{0}[{index 1}]"
+     (fn ((ref (vec int)) int) int))
+   items -2))
+
+(defn main ()
+  (let (items (vec 10 20 30))
+    (println (bound items) (added items))
+    (printed items)
+    (prn (looked-up items))
+    (println (called-inline items))
+    (println (typed items) (bound-in-block items))
+    (println (bound-among items)
+             (rebound items)
+             (reassigned items))
+    (println (branched items)
+             (matched items true)
+             (blocked items))))

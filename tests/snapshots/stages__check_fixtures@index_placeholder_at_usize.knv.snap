@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/index_placeholder_at_usize.knv
+---
+error[L0218]: this Rust template has a malformed placeholder
+ --> check/index_placeholder_at_usize.knv:4:28
+  |
+4 |       (fn ((ref (slice a)) usize) (ref a)))))
+  |                            ^^^^^ `{index 1}` converts an `int`, and this parameter is not `int`
+  |
+  = help: write the parameter's type as `int`
+  = note: run `knave doc L0218` for an explanation

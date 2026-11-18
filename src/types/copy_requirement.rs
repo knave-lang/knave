@@ -1,4 +1,5 @@
-use super::ty::{Bound, BoundOrigin, Type};
+use super::bound_origins::BoundOrigins;
+use super::ty::{Bound, Type};
 use super::unifier::Unifier;
 use crate::core::BindingId;
 
@@ -15,7 +16,7 @@ impl<'u> CopyRequirement<'u> {
         }
     }
 
-    pub(super) fn require(&mut self, value: &Type, origins: Vec<BoundOrigin>) {
+    pub(super) fn require(&mut self, value: &Type, origins: BoundOrigins) {
         let Type::Var(var) = self.unifier.shallow(value) else {
             return;
         };
@@ -29,13 +30,16 @@ impl<'u> CopyRequirement<'u> {
 #[cfg(test)]
 mod tests {
     use crate::types::Type;
+    use crate::types::bound_origins::BoundOrigins;
     use crate::types::passing_fixture::PassingFixture;
 
     #[test]
     fn a_variable_gets_the_copy_bound() {
         let mut fixture = PassingFixture::new();
         let open = fixture.unifier().fresh();
-        fixture.copy_requirement().require(&open, Vec::new());
+        fixture
+            .copy_requirement()
+            .require(&open, BoundOrigins::none());
         let Type::Var(var) = open else {
             unreachable!("fresh makes a variable")
         };

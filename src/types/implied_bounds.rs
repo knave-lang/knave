@@ -1,6 +1,8 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::bound_origins::BoundOrigin;
 use super::ty::{Bound, GenericId, GenericParam};
+use crate::source::Span;
 
 #[derive(Default)]
 pub(super) struct ImpliedBounds {
@@ -23,6 +25,11 @@ impl ImpliedBounds {
         if !implied.contains(&bound) {
             implied.push(bound);
         }
+    }
+
+    pub(super) fn record_from_body(&mut self, generic: GenericId, mut bound: Bound, needed: Span) {
+        bound.origins.add(BoundOrigin::ImplBody(needed));
+        self.record(generic, bound);
     }
 
     pub(super) fn of(&self, generic: GenericId) -> impl Iterator<Item = &Bound> {

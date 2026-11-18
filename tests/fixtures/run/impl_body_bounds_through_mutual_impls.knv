@@ -1,0 +1,30 @@
+(defstruct (left a)
+  :value a
+  :depth int)
+
+(defstruct (right a)
+  :value a
+  :depth int)
+
+(trait go-left
+  (go-left (fn ((ref self)) bool)))
+
+(trait go-right
+  (go-right (fn ((ref self)) bool)))
+
+(impl go-left (left a)
+  (go-left (l)
+    (if (= (:depth l) 0)
+      true
+      (go-right (ref (->right (clone (:value l))
+                              (- (:depth l) 1)))))))
+
+(impl go-right (right a)
+  (go-right (r)
+    (if (= (:depth r) 0)
+      (= (:value r) (:value r))
+      (go-left (ref (->left (clone (:value r))
+                            (- (:depth r) 1)))))))
+
+(defn main ()
+  (println (go-left (ref (->left 1 3)))))

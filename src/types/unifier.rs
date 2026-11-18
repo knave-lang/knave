@@ -179,7 +179,7 @@ impl Unifier {
     pub fn add_bound(&mut self, var: TypeVar, bound: Bound) {
         let bounds = &mut self.vars[var.index()].bounds;
         match bounds.iter_mut().find(|known| **known == bound) {
-            Some(known) => known.merge_origins(bound),
+            Some(known) => known.origins.inherit(&bound.origins),
             None => bounds.push(bound),
         }
     }

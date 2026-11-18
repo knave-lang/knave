@@ -1,0 +1,8 @@
+(use impl_body_bound_unmet_in_module/matching first-match)
+
+(defn checks ((items (ref (vec io-error))))
+  (first-match items))
+
+(defn main ()
+  (local errors (vec))
+  (println (checks (ref errors))))

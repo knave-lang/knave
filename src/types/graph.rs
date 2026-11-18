@@ -68,11 +68,7 @@ impl<'p> DefinitionGraph<'p> {
         );
         let written = WrittenBodies::of(&program.modules);
         let dependencies = DependencyGraph::build(walked, macro_helpers, &written);
-        let order: Vec<BindingId> = definitions
-            .iter()
-            .map(|definition| definition.binding)
-            .collect();
-        let components = dependencies.components(&order);
+        let components = dependencies.components(&Self::impl_methods_first(program, &definitions));
         Self {
             definitions,
             dependencies,
@@ -83,6 +79,28 @@ impl<'p> DefinitionGraph<'p> {
                 written,
             },
         }
+    }
+
+    fn impl_methods_first(program: &Program, definitions: &[Definition]) -> Vec<BindingId> {
+        let impl_methods: FxHashSet<BindingId> = Self::impl_methods(program).collect();
+        let (methods, others): (Vec<BindingId>, Vec<BindingId>) = definitions
+            .iter()
+            .map(|definition| definition.binding)
+            .partition(|binding| impl_methods.contains(binding));
+        methods.into_iter().chain(others).collect()
+    }
+
+    fn impl_methods(program: &Program) -> impl Iterator<Item = BindingId> + '_ {
+        program
+            .modules
+            .iter()
+            .flat_map(|module| &module.items)
+            .filter_map(|item| match &item.kind {
+                ItemKind::Impl(_, _, _, methods) => Some(methods),
+                _ => None,
+            })
+            .flatten()
+            .map(|method| method.binding)
     }
 
     fn item_count(program: &Program) -> usize {
@@ -673,6 +691,57 @@ mod tests {
                 .unreached()
                 .contains(&sum)
         );
+    }
+
+    #[test]
+    fn an_impl_method_is_checked_before_a_function_written_ahead_of_its_impl() {
+        let fixture = ImplOrderFixture::new();
+        assert!(fixture.impl_method_position() < fixture.position_of("early"));
+    }
+
+    struct ImplOrderFixture {
+        source: TypedSource,
+    }
+
+    impl ImplOrderFixture {
+        const SOURCE: &str = "
+            (trait probe (probe (fn ((ref self)) bool)))
+            (defn early (items) (probe items))
+            (impl probe (vec a) (probe (items) (= (len items) 0)))
+            (defn main () (println (early (ref (vec 1)))))";
+
+        fn new() -> Self {
+            Self {
+                source: TypedSource::expand(Self::SOURCE),
+            }
+        }
+
+        fn impl_method_position(&self) -> usize {
+            let method = DefinitionGraph::impl_methods(self.source.program())
+                .find(|method| self.source.program().bindings.get(*method).name() == "probe")
+                .expect("the source implements probe");
+            self.component_holding(method)
+        }
+
+        fn position_of(&self, name: &str) -> usize {
+            let program = self.source.program();
+            let binding = program
+                .modules
+                .iter()
+                .flat_map(|module| module.definitions())
+                .map(|(binding, _)| binding)
+                .find(|binding| program.bindings.get(*binding).name() == name)
+                .expect("the source defines the name");
+            self.component_holding(binding)
+        }
+
+        fn component_holding(&self, binding: BindingId) -> usize {
+            DefinitionGraph::of(self.source.program())
+                .components()
+                .iter()
+                .position(|component| component.contains(&binding))
+                .expect("the graph checks the binding")
+        }
     }
 
     struct PreludeFixture;

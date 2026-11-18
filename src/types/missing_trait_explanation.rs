@@ -1,3 +1,4 @@
+use super::bound_origin_problems::BoundOriginProblems;
 use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::derivable_traits::DerivableTraits;
@@ -10,7 +11,7 @@ use super::struct_trait_help::StructTraitHelp;
 use super::trait_boxing::TraitBoxing;
 use super::trait_help::TraitHelp;
 use super::trait_help_visibility::TraitHelpVisibility;
-use super::ty::{Bound, BoundOrigin, Type};
+use super::ty::{Bound, Type};
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
 
@@ -30,7 +31,7 @@ impl<'a> MissingTraitExplanation<'a> {
             diagnostic = self.type_trait_help(diagnostic, *binding, bound);
             diagnostic = self.with_replacing_impl(diagnostic, *binding, bound.binding);
         }
-        Self::with_bound_origins(diagnostic, &bound.origins)
+        BoundOriginProblems::annotate(diagnostic, &bound.origins)
     }
 
     fn diagnostic(&self, missing: MissingTrait<'_>) -> Diagnostic {
@@ -121,24 +122,6 @@ impl<'a> MissingTraitExplanation<'a> {
             head_name,
         ))
     }
-
-    fn with_bound_origins(diagnostic: Diagnostic, origins: &[BoundOrigin]) -> Diagnostic {
-        let labeled = origins.iter().fold(diagnostic, Self::with_origin_label);
-        match origins.first() {
-            Some(BoundOrigin::BorrowCopied(_)) => {
-                labeled.with_help(TypeProblems::clone_copied_help())
-            }
-            None => labeled,
-        }
-    }
-
-    fn with_origin_label(diagnostic: Diagnostic, origin: &BoundOrigin) -> Diagnostic {
-        match origin {
-            BoundOrigin::BorrowCopied(copied) => {
-                diagnostic.with_label(TypeProblems::borrow_copied(*copied))
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -148,9 +131,10 @@ mod tests {
     use crate::diagnostic::Diagnostic;
     use crate::source::{SourceId, Span};
     use crate::types::Type;
+    use crate::types::bound_origins::BoundOrigin;
     use crate::types::declarations_fixture::DeclarationsFixture;
     use crate::types::missing_trait::MissingTrait;
-    use crate::types::ty::{Bound, BoundOrigin};
+    use crate::types::ty::Bound;
 
     const SOURCE: &str = "
         (defstruct score :points i64)
@@ -256,7 +240,7 @@ mod tests {
         let mut bound = fixture.shown();
         bound
             .origins
-            .push(BoundOrigin::BorrowCopied(ExplanationFixture::span()));
+            .add(BoundOrigin::BorrowCopied(ExplanationFixture::span()));
         let diagnostic = fixture.explain(&bound, &fixture.score());
         let labels: Vec<&str> = diagnostic.labels().map(|label| label.message()).collect();
         assert_eq!(

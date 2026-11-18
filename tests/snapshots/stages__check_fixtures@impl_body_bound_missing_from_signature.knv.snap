@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/impl_body_bound_missing_from_signature.knv
+---
+error[L0440]: `a` might not implement `clone`
+  --> check/impl_body_bound_missing_from_signature.knv:14:16
+   |
+ 8 |     (local first (clone item))
+   |                         ---- the body of the impl needs it here
+...
+14 |   (first-match (ref (vec item))))
+   |                ^^^^^^^^^^^^^^^^ this needs `clone`
+   |
+   = help: add the trait to the signature's `where`: `(a clone)`
+   = note: run `knave doc L0440` for an explanation

@@ -4,6 +4,7 @@ use crate::core::{BindingId, Expr, PrimitiveType};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::Program;
 use crate::source::Span;
+use crate::types::check_round::{CheckRound, RoundGrowth};
 use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
@@ -19,6 +20,22 @@ pub(in crate::types) struct OpenCollections {
 }
 
 impl OpenCollections {
+    pub(in crate::types) fn round(
+        &self,
+        typed: Result<TypedProgram, Diagnostics>,
+        program: &Program,
+        graph: &DefinitionGraph,
+    ) -> CheckRound {
+        let found = typed.and_then(|typed| Ok((self.vector_bases(program, graph, &typed)?, typed)));
+        match found {
+            Ok((found, typed)) if found.is_empty() => CheckRound::Checked(Box::new(typed)),
+            Ok((found, typed)) => {
+                CheckRound::Grown(RoundGrowth::VectorBases(found), typed.checking)
+            }
+            Err(diagnostics) => CheckRound::Failed(diagnostics),
+        }
+    }
+
     pub(in crate::types) fn vector_bases(
         &self,
         program: &Program,

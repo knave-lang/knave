@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/impl_body_bound_forwarded_by_a_written_generic.knv
+---
+(type checks (where ((a first-match)) (fn ((ref a)) bool)))
+(type forwards (where ((b first-match)) (fn ((ref b)) bool)))
+(type main (fn () unit))

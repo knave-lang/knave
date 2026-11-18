@@ -1,5 +1,6 @@
 use rustc_hash::FxHashMap;
 
+use super::bound_origins::BoundOrigins;
 use super::needed_trait::NeededTrait;
 use super::projection::ProjectionTable;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
@@ -160,7 +161,7 @@ impl<'a> TypeDisplay<'a> {
         let shown = Bound {
             binding,
             argument: argument.filter(|argument| !argument.has_vars() && argument != implementor),
-            origins: Vec::new(),
+            origins: BoundOrigins::none(),
         };
         NeededTrait::new(self.bindings.get(binding).name(), self.bound(&shown))
     }

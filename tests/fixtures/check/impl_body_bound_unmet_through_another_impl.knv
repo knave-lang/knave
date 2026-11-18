@@ -1,0 +1,23 @@
+(defstruct (wrapper a)
+  :value a)
+
+(trait outer (outer (fn (self) bool)))
+
+(trait inner
+  (inner (fn ((ref self)) bool)))
+
+(impl inner (wrapper b)
+  (inner (w)
+    (local copied (clone (:value w)))
+    (do (local _c copied) true)))
+
+(impl outer (option a)
+  (outer (value)
+    (match value
+      ((some v) (inner (ref (->wrapper v))))
+      (none true))))
+
+(defn checks ((item (option io-error)))
+  (outer item))
+
+(defn main () (println (checks none)))

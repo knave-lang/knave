@@ -1,6 +1,5 @@
 mod labeled_variant;
 mod open_collections;
-pub(super) use open_collections::OpenCollections;
 mod shared_variables;
 mod short_pattern;
 mod variant_target;

@@ -1,0 +1,52 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/impl_body_bounds_unmet_from_two_methods.knv
+---
+error[L0404]: `io-error` does not implement `clone`
+  --> check/impl_body_bounds_unmet_from_two_methods.knv:16:20
+   |
+ 9 |     (local first (clone (at items 0)))
+   |                         ------------ the body of the impl needs it here
+...
+16 |   (and (first-copy items) (first-two-equal items)))
+   |                    ^^^^^ this needs `clone`
+   |
+   = note: `clone` is implemented for: bool, char, string, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, infallible, parse-bool-error, parse-char-error, parse-float-error, parse-int-error, duration, instant, (where (a) (ref a)), (where ((a clone)) (vec a)), (where ((a clone)) (option a)), (where ((a clone) (b clone)) (result a b)), (where ((a clone)) (box a)), (where ((a clone) (b clone)) (pair a b))
+   = note: run `knave doc L0404` for an explanation
+
+error[L0404]: `io-error` does not implement `partial-eq`
+  --> check/impl_body_bounds_unmet_from_two_methods.knv:16:20
+   |
+13 |     (= (at items 0) (at items 1))))
+   |        ------------ the body of the impl needs it here
+...
+16 |   (and (first-copy items) (first-two-equal items)))
+   |                    ^^^^^ this needs `partial-eq`
+   |
+   = note: `partial-eq` is implemented for: bool, char, str, string, (ref str), i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, infallible, parse-bool-error, parse-char-error, parse-float-error, parse-int-error, duration, instant, (with string str), (with str string), (with string (ref str)), (with (ref str) string), (with (where ((a (partial-eq b)) b) (ref a)) (ref b)), (where ((a partial-eq)) (vec a)), (where ((a partial-eq)) (option a)), (where ((a partial-eq) (b partial-eq)) (result a b)), (where ((a partial-eq)) (box a)), (where ((a partial-eq) (b partial-eq)) (pair a b))
+   = note: run `knave doc L0404` for an explanation
+
+error[L0404]: `io-error` does not implement `clone`
+  --> check/impl_body_bounds_unmet_from_two_methods.knv:16:44
+   |
+ 9 |     (local first (clone (at items 0)))
+   |                         ------------ the body of the impl needs it here
+...
+16 |   (and (first-copy items) (first-two-equal items)))
+   |                                            ^^^^^ this needs `clone`
+   |
+   = note: `clone` is implemented for: bool, char, string, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, infallible, parse-bool-error, parse-char-error, parse-float-error, parse-int-error, duration, instant, (where (a) (ref a)), (where ((a clone)) (vec a)), (where ((a clone)) (option a)), (where ((a clone) (b clone)) (result a b)), (where ((a clone)) (box a)), (where ((a clone) (b clone)) (pair a b))
+   = note: run `knave doc L0404` for an explanation
+
+error[L0404]: `io-error` does not implement `partial-eq`
+  --> check/impl_body_bounds_unmet_from_two_methods.knv:16:44
+   |
+13 |     (= (at items 0) (at items 1))))
+   |        ------------ the body of the impl needs it here
+...
+16 |   (and (first-copy items) (first-two-equal items)))
+   |                                            ^^^^^ this needs `partial-eq`
+   |
+   = note: `partial-eq` is implemented for: bool, char, str, string, (ref str), i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, infallible, parse-bool-error, parse-char-error, parse-float-error, parse-int-error, duration, instant, (with string str), (with str string), (with string (ref str)), (with (ref str) string), (with (where ((a (partial-eq b)) b) (ref a)) (ref b)), (where ((a partial-eq)) (vec a)), (where ((a partial-eq)) (option a)), (where ((a partial-eq) (b partial-eq)) (result a b)), (where ((a partial-eq)) (box a)), (where ((a partial-eq) (b partial-eq)) (pair a b))
+   = note: run `knave doc L0404` for an explanation

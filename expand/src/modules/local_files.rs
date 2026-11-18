@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use super::local_root::LocalRoot;
+use super::unlisted_library::UnlistedLibrary;
 use super::unnamed_part_target::UnnamedPartTarget;
 use super::visible_library::VisibleLibrary;
 use crate::core::{ModulePath, UnnamedPartPath};
@@ -8,20 +9,33 @@ use crate::language::Language;
 
 pub struct LocalFiles<'s> {
     roots: Vec<LocalRoot<'s>>,
-    other_libraries: Vec<VisibleLibrary<'s>>,
     loads_elsewhere: Box<dyn Fn(&ModulePath) -> bool + 's>,
+    other_libraries: Vec<VisibleLibrary<'s>>,
+    library_section: &'s str,
 }
 
 impl<'s> LocalFiles<'s> {
     pub(super) fn new(
         roots: Vec<LocalRoot<'s>>,
-        other_libraries: Vec<VisibleLibrary<'s>>,
         loads_elsewhere: impl Fn(&ModulePath) -> bool + 's,
     ) -> Self {
         Self {
             roots,
-            other_libraries,
             loads_elsewhere: Box::new(loads_elsewhere),
+            other_libraries: Vec::new(),
+            library_section: "",
+        }
+    }
+
+    pub(super) fn beside(
+        self,
+        other_libraries: Vec<VisibleLibrary<'s>>,
+        library_section: &'s str,
+    ) -> Self {
+        Self {
+            other_libraries,
+            library_section,
+            ..self
         }
     }
 
@@ -33,7 +47,7 @@ impl<'s> LocalFiles<'s> {
             .find_map(|root| Some(root.shown_file(local, &root.unreachable_file(local)?)))
     }
 
-    pub fn unnamed_part_target(&self, path: &UnnamedPartPath) -> UnnamedPartTarget {
+    pub fn unnamed_part_target(&self, path: &UnnamedPartPath) -> UnnamedPartTarget<'s> {
         let file_name = Language::file_name(path.as_str());
         let local = Path::new(&file_name);
         let found = self.found_file(local);
@@ -55,10 +69,10 @@ impl<'s> LocalFiles<'s> {
         path: &UnnamedPartPath,
         local: &Path,
         found: Option<(&LocalRoot<'s>, PathBuf)>,
-    ) -> UnnamedPartTarget {
+    ) -> UnnamedPartTarget<'s> {
         let written = found
             .as_ref()
-            .and_then(|(_, file)| self.shortest_written_path(file))
+            .and_then(|(_, file)| self.innermost_written_path(file))
             .or_else(|| self.written_in_place(path));
         match (written, found) {
             (Some(written), _) => UnnamedPartTarget::Reachable(written),
@@ -74,12 +88,12 @@ impl<'s> LocalFiles<'s> {
             .find_map(|root| root.canonical_file(Path::new(&file_name)))
     }
 
-    fn library_target(&self, file: &Path) -> Option<UnnamedPartTarget> {
+    fn library_target(&self, file: &Path) -> Option<UnnamedPartTarget<'s>> {
         let (holder, inner) = self
             .other_libraries
             .iter()
             .filter_map(|holder| Some((holder, holder.root.local_part(file)?)))
-            .min_by_key(|(_, inner)| inner.components().count())?;
+            .min_by_key(|(_, inner)| Self::depth_below_root(inner))?;
         let written = holder
             .visible
             .then(|| holder.library.module_path_of(inner))
@@ -88,16 +102,23 @@ impl<'s> LocalFiles<'s> {
             Some(written) => UnnamedPartTarget::Reachable(written),
             None => UnnamedPartTarget::LibraryFile {
                 file: holder.root.shown_file(inner, file),
-                library: holder.library.name().to_string(),
-                section: holder.section.to_string(),
+                unlisted: UnlistedLibrary {
+                    name: holder.library.name(),
+                    lister: None,
+                    section: self.library_section,
+                },
             },
         })
     }
 
-    fn shortest_written_path(&self, file: &Path) -> Option<ModulePath> {
+    fn innermost_written_path(&self, file: &Path) -> Option<ModulePath> {
         (0..self.roots.len())
             .filter_map(|position| self.written_path(position, file))
-            .min_by_key(|written| written.as_str().len())
+            .min_by_key(|written| Self::depth_below_root(Path::new(written.as_str())))
+    }
+
+    fn depth_below_root(inner: &Path) -> usize {
+        inner.components().count()
     }
 
     fn written_in_place(&self, path: &UnnamedPartPath) -> Option<ModulePath> {
@@ -116,7 +137,7 @@ impl<'s> LocalFiles<'s> {
         holder: &LocalRoot<'_>,
         local: &Path,
         file: &Path,
-    ) -> UnnamedPartTarget {
+    ) -> UnnamedPartTarget<'s> {
         match self
             .roots
             .iter()

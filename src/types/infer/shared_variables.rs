@@ -539,7 +539,7 @@ impl TypeChecker {
     ) -> bool {
         let bound = bound.substituted_vars(assignment);
         self.declarations
-            .traits
+            .traits()
             .table
             .satisfies(&bound, implementor, &|generic, required| {
                 self.unifier.generic_bounds(generic).contains(required)

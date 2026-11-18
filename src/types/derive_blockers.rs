@@ -20,9 +20,9 @@ pub(super) struct DeriveBlockers<'a> {
 impl<'a> DeriveBlockers<'a> {
     pub(super) fn new(declarations: &'a Declarations, payloads: VariantPayloads<'a>) -> Self {
         Self {
-            types: &declarations.types,
-            traits: DeclaredTraits::new(&declarations.traits),
-            derivability: DerivableTraits::new(&declarations.traits),
+            types: declarations.types(),
+            traits: DeclaredTraits::new(declarations.traits()),
+            derivability: DerivableTraits::new(declarations.traits()),
             payloads,
         }
     }

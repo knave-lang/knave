@@ -17,14 +17,18 @@ impl TypeChecker {
             for associated in &declaration.associated {
                 self.type_arities
                     .insert(associated.binding, Self::PROJECTION_ARITY);
-                self.declarations.traits.table.projections_mut().declare(
-                    associated.binding,
-                    AssociatedType {
-                        trait_binding: declaration.binding,
-                        parameter: associated.parameter.clone(),
-                        rust_name: associated.rust_name.clone(),
-                    },
-                );
+                self.declarations
+                    .traits_mut()
+                    .table
+                    .projections_mut()
+                    .declare(
+                        associated.binding,
+                        AssociatedType {
+                            trait_binding: declaration.binding,
+                            parameter: associated.parameter.clone(),
+                            rust_name: associated.rust_name.clone(),
+                        },
+                    );
             }
         }
     }
@@ -46,7 +50,7 @@ impl TypeChecker {
         let trait_name = self.bindings.get(declaration.binding).name().to_string();
         let declared = self
             .declarations
-            .traits
+            .traits()
             .table
             .projections()
             .declared_by(declaration.binding);
@@ -60,11 +64,11 @@ impl TypeChecker {
                     .lower_implementor(entry, &trait_name)?;
                 self.check_associated_values(declaration.binding, &declared, entry, &values)?;
                 for value in values {
-                    self.declarations.traits.table.projections_mut().add_rule(
-                        value.projection,
-                        &implementor,
-                        value.value,
-                    );
+                    self.declarations
+                        .traits_mut()
+                        .table
+                        .projections_mut()
+                        .add_rule(value.projection, &implementor, value.value);
                 }
                 Ok(implementor)
             })
@@ -103,7 +107,7 @@ impl TypeChecker {
     }
 
     pub(super) fn share_projections(&mut self) {
-        let projections = self.declarations.traits.table.share_projections();
+        let projections = self.declarations.traits_mut().table.share_projections();
         self.unifier.adopt_projections(projections);
     }
 
@@ -131,7 +135,7 @@ impl TypeChecker {
 
     fn projection_trait(&self, projection: BindingId) -> BindingId {
         self.declarations
-            .traits
+            .traits()
             .table
             .projections()
             .associated(projection)
@@ -140,7 +144,7 @@ impl TypeChecker {
     }
 
     fn check_written_projection(&self, written: &WrittenProjection) -> Result<(), Diagnostic> {
-        let projections = self.declarations.traits.table.projections();
+        let projections = self.declarations.traits().table.projections();
         let trait_binding = self.projection_trait(written.projection);
         let names = ProjectionNames {
             projection: self.bindings.get(written.projection).name(),

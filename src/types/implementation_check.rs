@@ -28,9 +28,9 @@ impl<'a> ImplementationCheck<'a> {
     ) -> Self {
         Self {
             bindings,
-            types: DeclaredTypes::new(&declarations.types),
-            traits: DeclaredTraits::new(&declarations.traits),
-            rust_paths: &declarations.traits.rust_paths,
+            types: DeclaredTypes::new(declarations.types()),
+            traits: DeclaredTraits::new(declarations.traits()),
+            rust_paths: &declarations.traits().rust_paths,
             display,
         }
     }

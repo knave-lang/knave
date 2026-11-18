@@ -116,7 +116,7 @@ impl<'a> SequenceUses<'a> {
         match ty.referent() {
             Type::Generic(caller_generic) => OpenCollections::owner(self.typed, *caller_generic)
                 .is_some_and(|caller| self.reach_only_sequences(caller, *caller_generic)),
-            passed => Collection::of_referent(passed, self.typed.declarations.types.rust_types())
+            passed => Collection::of_referent(passed, self.typed.declarations.types().rust_types())
                 .is_some_and(|collection| collection.is_sequence()),
         }
     }
@@ -196,7 +196,7 @@ impl TypeChecker {
                 .push((open.collection.clone(), open.span));
             return Ok(());
         }
-        let collection = Collection::of_referent(&resolved, &self.declarations.types.rust_types)
+        let collection = Collection::of_referent(&resolved, &self.declarations.types().rust_types)
             .filter(|collection| !collection.is_map())
             .ok_or_else(|| {
                 TypeProblems::mismatch(

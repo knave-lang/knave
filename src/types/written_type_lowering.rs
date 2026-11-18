@@ -145,7 +145,7 @@ impl<'l> WrittenTypeLowering<'l> {
         if self.checking_facts.takes_argument(binding) {
             return Ok(());
         }
-        if let Some(rust_trait) = self.declarations.traits.table.get(binding) {
+        if let Some(rust_trait) = self.declarations.traits().table.get(binding) {
             rust_trait.rows().assert_reached();
         }
         Err(TypeProblems::trait_takes_no_argument(
@@ -173,7 +173,7 @@ impl<'l> WrittenTypeLowering<'l> {
     }
 
     fn check_boxable(&mut self, trait_binding: BindingId, span: Span) {
-        let boxing = TraitBoxing::new(&self.declarations.traits, self.bindings);
+        let boxing = TraitBoxing::new(self.declarations.traits(), self.bindings);
         if let Some((blocker, help)) = boxing.blocker(trait_binding) {
             let trait_name = self.bindings.get(trait_binding).name();
             self.diagnostics
@@ -185,7 +185,7 @@ impl<'l> WrittenTypeLowering<'l> {
         if let Type::Named(binding, arguments) = lowered
             && self
                 .declarations
-                .traits
+                .traits()
                 .table
                 .projections()
                 .is_projection(*binding)
@@ -300,7 +300,13 @@ impl ScopedTypeLowering<'_, '_> {
         arguments
             .iter()
             .map(|argument| {
-                if self.lowering.declarations.types.rust_types.is_box(binding) {
+                if self
+                    .lowering
+                    .declarations
+                    .types()
+                    .rust_types
+                    .is_box(binding)
+                {
                     self.lower_box_argument(argument)
                 } else {
                     self.lower(argument)

@@ -19,7 +19,7 @@ impl TypeChecker {
         let site = self.variant_site(binding, expected);
         let labels = self
             .declarations
-            .types
+            .types()
             .enums
             .variant_shape(site.info)
             .field_labels(fields)

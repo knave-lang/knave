@@ -59,7 +59,7 @@ impl<'a> FormResults<'a> {
             !self
                 .program
                 .declarations
-                .traits
+                .traits()
                 .table()
                 .satisfies(bound, argument, &|_, _| false)
         });
@@ -82,7 +82,7 @@ impl<'a> FormResults<'a> {
 
     fn display(&self) -> TypeDisplay<'a> {
         TypeDisplay::new(&self.program.bindings, &self.program.generics)
-            .with_projections(self.program.declarations.traits.table().projections())
+            .with_projections(self.program.declarations.traits().table().projections())
     }
 
     fn definition(program: &TypedProgram, binding: BindingId) -> Option<&TypedDefinition> {

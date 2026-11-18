@@ -36,19 +36,19 @@ impl DeclarationsFixture {
     }
 
     pub(super) fn types(&self) -> &TypeDeclarations {
-        &self.declarations.types
+        self.declarations.types()
     }
 
     pub(super) fn trait_boxing(&self) -> TraitBoxing<'_> {
-        TraitBoxing::new(&self.declarations.traits, &self.program.bindings)
+        TraitBoxing::new(self.declarations.traits(), &self.program.bindings)
     }
 
     pub(super) fn declared_types(&self) -> DeclaredTypes<'_> {
-        DeclaredTypes::new(&self.declarations.types)
+        DeclaredTypes::new(self.declarations.types())
     }
 
     pub(super) fn declared_traits(&self) -> DeclaredTraits<'_> {
-        DeclaredTraits::new(&self.declarations.traits)
+        DeclaredTraits::new(self.declarations.traits())
     }
 
     pub(super) fn program_bindings(&self) -> &crate::core::BindingArena {
@@ -60,7 +60,7 @@ impl DeclarationsFixture {
     }
 
     pub(super) fn derive_catalog(&self) -> DeriveCatalog {
-        DeriveCatalog::of(self.modules(), &self.declarations.traits.structural)
+        DeriveCatalog::of(self.modules(), &self.declarations.traits().structural)
     }
 
     pub(super) fn derive_rules<'a>(
@@ -71,19 +71,19 @@ impl DeclarationsFixture {
     }
 
     pub(super) fn derivable_traits(&self) -> DerivableTraits<'_> {
-        DerivableTraits::new(&self.declarations.traits)
+        DerivableTraits::new(self.declarations.traits())
     }
 
     pub(super) fn derive_blockers(&self) -> DeriveBlockers<'_> {
         DeriveBlockers::new(
             &self.declarations,
-            VariantPayloads::new(&self.declarations.types),
+            VariantPayloads::new(self.declarations.types()),
         )
     }
 
     pub(super) fn implementation_check(&self) -> ImplementationCheck<'_> {
         let display = TypeDisplay::new(&self.program.bindings, &self.program.generics)
-            .with_projections(self.declarations.traits.table.projections());
+            .with_projections(self.declarations.traits().table.projections());
         ImplementationCheck::new(&self.program.bindings, &self.declarations, display)
     }
 
@@ -119,29 +119,29 @@ impl DeclarationsFixture {
         let mut synthetic = Default::default();
         let mut impl_methods = Default::default();
         collected.enter(
-            &mut self.declarations.traits,
+            self.declarations.traits_mut(),
             &mut synthetic,
             &mut impl_methods,
         );
     }
 
     pub(super) fn traits(&self) -> &TraitDeclarations {
-        &self.declarations.traits
+        self.declarations.traits()
     }
 
     pub(super) fn trait_named(&self, name: &str) -> BindingId {
         self.binding_named(name, &|binding| {
-            self.declarations.traits.table.get(binding).is_some()
+            self.declarations.traits().table.get(binding).is_some()
         })
     }
 
     pub(super) fn rust_type_named(&self, name: &str) -> BindingId {
-        let types = &self.declarations.types;
+        let types = self.declarations.types();
         self.binding_named(name, &|binding| types.rust_types.get(binding).is_some())
     }
 
     pub(super) fn type_named(&self, name: &str) -> BindingId {
-        let types = &self.declarations.types;
+        let types = self.declarations.types();
         self.binding_named(name, &|binding| {
             types.structs.get(binding).is_some() || types.enums.get(binding).is_some()
         })

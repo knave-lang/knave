@@ -66,7 +66,7 @@ impl<'a> MainResult<'a> {
     fn is_admissible(&self, definition: &TypedDefinition, result: &Type) -> bool {
         *result == Type::unit()
             || definition
-                .result_error(self.program.declarations.types.enums())
+                .result_error(self.program.declarations.types().enums())
                 .is_some()
     }
 
@@ -83,7 +83,7 @@ impl<'a> MainResult<'a> {
 
     fn display(&self) -> TypeDisplay<'a> {
         TypeDisplay::new(&self.program.bindings, &self.program.generics)
-            .with_projections(self.program.declarations.traits.table().projections())
+            .with_projections(self.program.declarations.traits().table().projections())
     }
 
     fn returned_span(definition: &TypedDefinition, lambda: &TypedLambda) -> Span {

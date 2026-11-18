@@ -146,7 +146,7 @@ impl WrittenTypeFixture {
         let rust_trait = rust_trait(&declaration);
         self.checker
             .declarations
-            .traits
+            .traits_mut()
             .table
             .add(binding, rust_trait);
         binding
@@ -174,12 +174,12 @@ impl WrittenTypeFixture {
     }
 
     pub(super) fn enter_struct(&mut self, binding: BindingId, collected: CollectedStruct) {
-        let types = &mut self.checker.declarations.types;
+        let types = self.checker.declarations.types_mut();
         collected.enter(binding, types, &mut self.checker.diagnostics);
     }
 
     pub(super) fn enter_enum(&mut self, binding: BindingId, collected: CollectedEnum) {
-        let types = &mut self.checker.declarations.types;
+        let types = self.checker.declarations.types_mut();
         collected.enter(binding, types, &mut self.checker.diagnostics);
     }
 

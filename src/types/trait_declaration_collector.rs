@@ -132,7 +132,7 @@ mod tests {
             .expect("the trait collects");
         fixture.enter_trait(collected);
         let checker = &fixture.types.checker;
-        let traits = &checker.declarations.traits;
+        let traits = checker.declarations.traits();
         let definition = &traits.definitions[0];
         assert_eq!(definition.supertraits, vec![Bound::plain(display)]);
         assert_eq!(definition.methods[0].receiver, Some(ReceiverKind::Shared));
@@ -181,7 +181,7 @@ mod tests {
                 .get(methods[0].binding)
                 .is_some()
         );
-        let definition = &checker.declarations.traits.definitions[0];
+        let definition = &checker.declarations.traits().definitions[0];
         assert_eq!(definition.associated.len(), 1);
         assert!(!definition.methods[0].returns_self);
     }
@@ -209,7 +209,7 @@ mod tests {
             })
             .expect("the trait collects");
         fixture.enter_trait(collected);
-        let definition = &fixture.types.checker.declarations.traits.definitions[0];
+        let definition = &fixture.types.checker.declarations.traits().definitions[0];
         assert!(definition.methods[0].returns_self);
         let selfless = &fixture.types.checker.checking_facts.selfless_methods;
         assert!(selfless.get(methods[0].binding).is_none());

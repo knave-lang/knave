@@ -11,10 +11,8 @@ pub struct GitSetup;
 
 impl ProjectComponent for GitSetup {
     fn files(&self, root: &Path) -> Vec<NewFile> {
-        vec![NewFile {
-            path: root.join(Self::IGNORE_FILE),
-            text: format!("/{}/\n", DocWriteCommand::DEFAULT_FOLDER),
-        }]
+        let text = format!("/{}/\n", DocWriteCommand::DEFAULT_FOLDER);
+        vec![NewFile::new(root.join(Self::IGNORE_FILE), text)]
     }
 
     fn set_up(&self, root: &Path) {

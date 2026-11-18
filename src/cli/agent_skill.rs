@@ -19,9 +19,11 @@ impl ProjectComponent for AgentSkill {
         let text = Self::TEXT.filled();
         Self::SKILL_FOLDERS
             .iter()
-            .map(|folder| NewFile {
-                path: root.join(folder).join(Self::NAME).join(Self::FILE),
-                text: text.clone(),
+            .map(|folder| {
+                NewFile::new(
+                    root.join(folder).join(Self::NAME).join(Self::FILE),
+                    text.clone(),
+                )
             })
             .collect()
     }

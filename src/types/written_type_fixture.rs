@@ -3,17 +3,15 @@ use rustc_hash::FxHashMap;
 use super::RustTrait;
 use super::checker::TypeChecker;
 use super::collected_enum::CollectedEnum;
-use super::collected_rust_trait::CollectedRustTrait;
 use super::collected_struct::CollectedStruct;
-use super::collected_trait::CollectedTrait;
 use super::declared_generics::DeclaredGenerics;
-use super::trait_declaration_collector::TraitDeclarationCollector;
+use super::trait_fixture::TraitFixture;
 use super::ty::{Bound, GenericId, Type};
 use super::written_type_variables::WrittenTypeVariables;
 use crate::core::{
     BindingArena, BindingId, BindingInfo, BindingKind, ClosureKind, FieldLabel, FieldSpelling,
-    ImplementorRows, ModuleId, PrimitiveType, ReferenceKind, RustTraitDeclaration, TraitMethod,
-    TypeBinder, TypeBound, TypeExpr, TypeExprKind, VariantDeclaration, VariantPayload,
+    ModuleId, PrimitiveType, ReferenceKind, RustTraitDeclaration, TypeBinder, TypeBound, TypeExpr,
+    TypeExprKind, VariantDeclaration, VariantPayload,
 };
 use crate::diagnostic::Diagnostic;
 use crate::source::{SourceId, Span};
@@ -55,7 +53,7 @@ impl WrittenTypeFixture {
         self.binding(name, BindingKind::Trait(ModuleId::new(0)))
     }
 
-    fn binding(&mut self, name: &str, kind: BindingKind) -> BindingId {
+    pub(super) fn binding(&mut self, name: &str, kind: BindingKind) -> BindingId {
         self.checker
             .bindings
             .add(BindingInfo::new(name.into(), kind, None))
@@ -143,71 +141,15 @@ impl WrittenTypeFixture {
         &mut self,
         rust_trait: impl FnOnce(&RustTraitDeclaration) -> RustTrait,
     ) -> BindingId {
-        let declaration = self.rust_trait_declaration(Vec::new());
+        let binding = self.named_trait("shown");
+        let declaration = TraitFixture::declaration(binding, Vec::new());
         let rust_trait = rust_trait(&declaration);
-        let binding = declaration.binding;
         self.checker
             .declarations
             .traits
             .table
             .add(binding, rust_trait);
         binding
-    }
-
-    pub(super) fn rust_trait_declaration(
-        &mut self,
-        methods: Vec<TraitMethod>,
-    ) -> RustTraitDeclaration {
-        let binding = self.named_trait("shown");
-        RustTraitDeclaration {
-            binding,
-            path: "Shown".into(),
-            resolved_path: "Shown".into(),
-            self_variable: binding,
-            methods,
-            help: None,
-            requires: Vec::new(),
-            structural: None,
-            associated: Vec::new(),
-            implementors: ImplementorRows::new(Vec::new()),
-        }
-    }
-
-    pub(super) fn trait_method(
-        &mut self,
-        signature: TypeExpr,
-        default: Option<BindingId>,
-    ) -> TraitMethod {
-        TraitMethod {
-            binding: self.binding("method", BindingKind::Local),
-            signature,
-            default,
-        }
-    }
-
-    pub(super) fn default_method(&mut self) -> BindingId {
-        self.binding("default", BindingKind::Local)
-    }
-
-    pub(super) fn trait_collector(&mut self) -> TraitDeclarationCollector<'_> {
-        TraitDeclarationCollector::new(self.checker.written_types())
-    }
-
-    pub(super) fn enter_trait(&mut self, collected: CollectedTrait<'_>) {
-        let checker = &mut self.checker;
-        collected.enter(
-            &mut checker.declarations.traits,
-            &mut checker.checking_facts,
-            &mut checker.synthetic_bindings,
-        );
-    }
-
-    pub(super) fn enter_rust_trait(&mut self, collected: CollectedRustTrait<'_>) {
-        let checker = &mut self.checker;
-        collected.enter(
-            &mut checker.declarations.traits,
-            &mut checker.synthetic_bindings,
-        );
     }
 
     pub(super) fn field_label(name: &str) -> FieldLabel {

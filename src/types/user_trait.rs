@@ -12,3 +12,9 @@ pub(super) struct UserTrait<'a> {
     pub(super) associated: &'a [TraitAssociatedType],
     pub(super) methods: &'a [TraitMethod],
 }
+
+impl UserTrait<'_> {
+    pub(super) fn takes_argument(&self) -> bool {
+        !self.associated.is_empty()
+    }
+}

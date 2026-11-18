@@ -18,7 +18,7 @@ use super::expectation::Expectation;
 use super::parameter_call_labels::ParameterCallRequest;
 use super::pending::{DecidedBorrows, PendingBorrow};
 use super::problems::{MismatchContext, TypeProblems};
-use super::selfless_methods::SelflessMethod;
+use super::selfless_method::SelflessMethod;
 use super::ty::Bound;
 use super::ty::Type;
 use super::ty::TypeVar;
@@ -1059,13 +1059,13 @@ impl TypeChecker {
             .expect("a trait method has a scheme before any call");
         let replacement = self
             .display()
-            .scheme_with_receiver(scheme, method.trait_binding);
+            .scheme_with_receiver(scheme, method.trait_binding());
         TypeProblems::selfless_method_call(
-            self.bindings.get(method.trait_binding).name(),
+            self.bindings.get(method.trait_binding()).name(),
             name,
             &replacement,
             span,
-            method.signature,
+            method.signature(),
         )
     }
 

@@ -19,6 +19,10 @@ pub struct TraitDeclarations {
 }
 
 impl TraitDeclarations {
+    pub(super) fn enter_method(&mut self, method: BindingId, info: TraitMethodInfo) {
+        self.methods.insert(method, info);
+    }
+
     pub fn table(&self) -> &TraitTable {
         &self.table
     }

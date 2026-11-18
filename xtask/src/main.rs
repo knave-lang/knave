@@ -33,6 +33,8 @@ mod release;
 mod source_file;
 mod source_format;
 mod source_format_paths;
+#[cfg(test)]
+mod temporary_repository;
 mod test_code;
 mod test_modules;
 mod test_selection;

@@ -30,14 +30,9 @@ impl SourceFormatPaths {
     }
 
     pub fn files(&self, root: &Path, extension: &str) -> Result<Vec<String>, TaskFailure> {
-        let mut arguments = vec![Self::LIST_TRACKED_FILES, Self::END_OF_OPTIONS];
-        arguments.extend(&self.checked);
-        let output = Git::new(root).run(&arguments)?;
-        if !output.status.success() {
-            return Err(TaskFailure::tool_failed("git ls-files", &output.stderr));
-        }
         let suffix = format!(".{extension}");
-        Ok(String::from_utf8_lossy(&output.stdout)
+        Ok(self
+            .tracked_files(root)?
             .lines()
             .filter(|file| file.ends_with(&suffix) && self.checks(file))
             .filter(|file| root.join(file).is_file())
@@ -45,7 +40,17 @@ impl SourceFormatPaths {
             .collect())
     }
 
-    pub fn checks(&self, file: &str) -> bool {
+    fn tracked_files(&self, root: &Path) -> Result<String, TaskFailure> {
+        let mut arguments = vec![Self::LIST_TRACKED_FILES, Self::END_OF_OPTIONS];
+        arguments.extend(&self.checked);
+        let output = Git::new(root).run(&arguments)?;
+        if !output.status.success() {
+            return Err(TaskFailure::tool_failed("git ls-files", &output.stderr));
+        }
+        Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+    }
+
+    fn checks(&self, file: &str) -> bool {
         Self::under_any(&self.checked, file) && !Self::under_any(&self.skipped, file)
     }
 
@@ -66,63 +71,7 @@ impl Default for SourceFormatPaths {
 #[cfg(test)]
 mod tests {
     use super::SourceFormatPaths;
-
-    struct TemporaryTree {
-        root: std::path::PathBuf,
-    }
-
-    impl TemporaryTree {
-        fn new(name: &str) -> Self {
-            let root =
-                std::env::temp_dir().join(format!("xtask-paths-{name}-{}", std::process::id()));
-            std::fs::create_dir_all(root.join("prelude")).expect("the tree is created");
-            Self { root }
-        }
-
-        fn write(&self, file: &str) {
-            std::fs::write(self.root.join(file), "").expect("the file is written");
-        }
-
-        fn git(&self, arguments: &[&str]) {
-            let status = std::process::Command::new("git")
-                .args(arguments)
-                .current_dir(&self.root)
-                .status()
-                .expect("git runs");
-            assert!(status.success(), "git {arguments:?} failed");
-        }
-
-        fn files(&self) -> Result<Vec<String>, String> {
-            SourceFormatPaths::parse("check prelude\n")
-                .files(&self.root, "knv")
-                .map_err(|failure| failure.to_string())
-        }
-    }
-
-    impl Drop for TemporaryTree {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.root);
-        }
-    }
-
-    #[test]
-    fn a_tree_outside_any_repository_fails() {
-        let tree = TemporaryTree::new("outside");
-        assert!(tree.files().is_err());
-    }
-
-    #[test]
-    fn only_tracked_files_that_still_exist_are_listed() {
-        let tree = TemporaryTree::new("tracked");
-        tree.git(&["init", "--quiet"]);
-        for file in ["prelude/kept.knv", "prelude/deleted.knv"] {
-            tree.write(file);
-        }
-        tree.git(&["add", "."]);
-        tree.write("prelude/untracked.knv");
-        std::fs::remove_file(tree.root.join("prelude/deleted.knv")).expect("the file is deleted");
-        assert_eq!(tree.files(), Ok(vec!["prelude/kept.knv".to_string()]));
-    }
+    use crate::temporary_repository::TemporaryRepository;
 
     struct PathsCase;
 
@@ -132,6 +81,38 @@ mod tests {
         fn checks(file: &str) -> bool {
             SourceFormatPaths::parse(Self::LIST).checks(file)
         }
+    }
+
+    struct TreeCase;
+
+    impl TreeCase {
+        fn files(repository: &TemporaryRepository) -> Result<Vec<String>, String> {
+            SourceFormatPaths::parse("check prelude\n")
+                .files(repository.root(), "knv")
+                .map_err(|failure| failure.to_string())
+        }
+    }
+
+    #[test]
+    fn a_tree_outside_any_repository_fails() {
+        let repository = TemporaryRepository::outside_git("paths-outside");
+        repository.write("prelude/a.knv", "");
+        assert!(TreeCase::files(&repository).is_err());
+    }
+
+    #[test]
+    fn only_tracked_files_that_still_exist_are_listed() {
+        let repository = TemporaryRepository::initialized("paths-tracked");
+        for file in ["prelude/kept.knv", "prelude/deleted.knv"] {
+            repository.write(file, "");
+        }
+        repository.git(&["add", "."]);
+        repository.write("prelude/untracked.knv", "");
+        repository.remove("prelude/deleted.knv");
+        assert_eq!(
+            TreeCase::files(&repository),
+            Ok(vec!["prelude/kept.knv".to_string()])
+        );
     }
 
     #[test]

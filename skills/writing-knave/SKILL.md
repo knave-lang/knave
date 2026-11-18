@@ -178,6 +178,7 @@ metadata:
 | `x == y`, `x != y` | `(= x y)`, `(not= x y)` |
 | `x?` | `(try x)` |
 | `p.x`, `v.len()` | `(:x p)`, `(len v)` |
+| `p.0`, `p.1` | `(first p)`, `(second p)` |
 | `Some(v) => v`, `None => 0` | `((some v) v)`, `(none 0)` |
 | `Ok(())` | `(ok (do))` |
 | `v.iter().map(f).sum()` | `(-> v (map f) sum)` |

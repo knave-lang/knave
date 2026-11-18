@@ -4,12 +4,18 @@ expression: reports.report(path)
 input_file: tests/fixtures/emit/associated_type_of_a_later_trait.knv
 ---
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Shelf {
+    count: usize,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct Counter {
     count: usize,
 }
 
 fn main() {
     crate::rt::restore_default_sigpipe();
+    println!("{}", Shelf { count: 2 }.size());
     println!("{}", Counter { count: 3 }.produce())
 }
 
@@ -21,6 +27,13 @@ trait Container {
 trait Producer {
     type Output;
     fn produce(&self) -> usize;
+}
+
+impl Container for Shelf {
+    type Item = usize;
+    fn size(&self) -> usize {
+        self.count
+    }
 }
 
 impl Producer for Counter {

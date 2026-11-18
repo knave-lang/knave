@@ -3,14 +3,43 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/second_impl_called.knv
 ---
-error[L0459]: `int` already implements `numbered`
- --> check/second_impl_called.knv:6:16
+error[L0459]: `(wrap a)` already implements `labelled`
+ --> check/second_impl_called.knv:8:16
   |
-4 | (impl numbered i64 (number (n) 1))
-  |                --- first implemented here
-5 |
-6 | (impl numbered i64 (number (n) 2))
-  |                ^^^ this implements `numbered` again
+6 | (impl labelled (wrap i64) (label (w) 1))
+  |                ---------- first implemented here
+7 |
+8 | (impl labelled (wrap a) (label (w) 2))
+  |                ^^^^^^^^ this implements `labelled` again
   |
   = help: remove one of the two
   = note: run `knave doc L0459` for an explanation
+
+error[L0444]: `str` has no size, so `take` cannot take `self` by value
+  --> check/second_impl_called.knv:12:16
+   |
+12 | (impl consumed str (take (t) 0))
+   |                ^^^ `str` has no size
+   |
+   = help: take the receiver by reference, as in `(fn ((ref self)) ...)`
+   = note: run `knave doc L0444` for an explanation
+
+error[L0459]: `str` already implements `consumed`
+  --> check/second_impl_called.knv:14:16
+   |
+12 | (impl consumed str (take (t) 0))
+   |                --- first implemented here
+13 |
+14 | (impl consumed str (take (t) 0))
+   |                ^^^ this implements `consumed` again
+   |
+   = help: remove one of the two
+   = note: run `knave doc L0459` for an explanation
+
+error[L0404]: `(wrap bool)` does not implement `labelled`
+  --> check/second_impl_called.knv:17:19
+   |
+17 |   (println (label (wrap/wrapped true))))
+   |                   ^^^^^^^^^^^^^^^^^^^ this needs `labelled`
+   |
+   = note: run `knave doc L0404` for an explanation

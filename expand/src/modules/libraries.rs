@@ -1,8 +1,10 @@
 use std::path::{Path, PathBuf};
 
+use super::claim_rules::ClaimRules;
 use super::library_naming::LibraryNaming;
 use super::local_files::LocalFiles;
 use super::local_root::LocalRoot;
+use super::other_libraries::OtherLibraries;
 use super::search_scope::SearchScope;
 use super::unlisted_library::UnlistedLibrary;
 use super::visible_library::VisibleLibrary;
@@ -153,19 +155,25 @@ impl LibraryTable {
         &'s self,
         owner: Option<&str>,
         program_roots: Vec<LocalRoot<'s>>,
-        claims: impl Fn(&ModulePath) -> bool + 's,
+        claims: ClaimRules,
     ) -> LocalFiles<'s> {
         let library = self.named(owner);
-        let other_libraries = self
-            .libraries
-            .iter()
-            .filter(|other| library.is_none_or(|own| own.name != other.name))
-            .map(|other| VisibleLibrary {
-                library: other,
-                root: LocalRoot::primary(&other.source_root, &other.display_root, &Self::UNSCOPED),
-                visible: self.sees(owner, &other.name),
-            })
-            .collect();
+        let other_libraries = OtherLibraries::new(
+            self.libraries
+                .iter()
+                .filter(|other| library.is_none_or(|own| own.name != other.name))
+                .map(|other| VisibleLibrary {
+                    library: other,
+                    root: LocalRoot::primary(
+                        &other.source_root,
+                        &other.display_root,
+                        &Self::UNSCOPED,
+                    ),
+                    visible: self.sees(owner, &other.name),
+                })
+                .collect(),
+            &self.library_section,
+        );
         match library {
             Some(library) => {
                 let root = LocalRoot::primary(
@@ -173,17 +181,15 @@ impl LibraryTable {
                     &library.display_root,
                     &Self::UNSCOPED,
                 );
-                LocalFiles::new(vec![root], move |path| {
-                    claims(path)
+                LocalFiles::new(vec![root], other_libraries, move |path| {
+                    (claims.library)(path)
                         || self.sees_library(Some(&library.name), path)
                         || path.as_str() == library.root_module
                 })
-                .beside(other_libraries, &self.library_section)
             }
-            None => LocalFiles::new(program_roots, move |path| {
-                claims(path) || self.owner_of(path).is_some()
-            })
-            .beside(other_libraries, &self.library_section),
+            None => LocalFiles::new(program_roots, other_libraries, move |path| {
+                (claims.program)(path) || self.owner_of(path).is_some()
+            }),
         }
     }
 

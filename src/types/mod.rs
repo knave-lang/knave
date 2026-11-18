@@ -44,6 +44,7 @@ mod instantiation;
 mod literal_fit;
 mod literal_settlement;
 mod lowered_associated_value;
+mod lowered_binders;
 mod lowered_payload;
 mod main_result;
 mod method_receivers;

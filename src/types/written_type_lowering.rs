@@ -3,6 +3,7 @@ use rustc_hash::FxHashMap;
 use super::checking_facts::CheckingFacts;
 use super::declarations::Declarations;
 use super::generic_declarations::GenericDeclarations;
+use super::lowered_binders::LoweredBinders;
 use super::problems::TypeProblems;
 use super::trait_boxing::TraitBoxing;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Type};
@@ -10,8 +11,8 @@ use super::written_projection::WrittenProjection;
 use super::written_type_facts::WrittenTypeFacts;
 use super::written_type_records::WrittenTypeRecords;
 use crate::core::{
-    BindingArena, BindingId, BindingKind, ClosureKind, ReferenceKind, TypeBound, TypeExpr,
-    TypeExprKind,
+    BindingArena, BindingId, BindingKind, ClosureKind, ReferenceKind, TypeBinder, TypeBound,
+    TypeExpr, TypeExprKind,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::source::Span;
@@ -80,7 +81,47 @@ impl<'l> WrittenTypeLowering<'l> {
         Ok(Bound::with_argument(bound.binding, argument))
     }
 
+    pub(super) fn lower_binders(
+        &mut self,
+        binders: &[TypeBinder],
+    ) -> Result<LoweredBinders, Diagnostic> {
+        let mut lifetimes = Vec::new();
+        let mut params = Vec::new();
+        let mut scope = FxHashMap::default();
+        for binder in binders {
+            if binder.lifetime {
+                lifetimes.push(binder.variable);
+                continue;
+            }
+            let param = self.declare_binder(binder.variable);
+            scope.insert(binder.variable, param.id);
+            params.push(param);
+        }
+        for (binder, param) in binders
+            .iter()
+            .filter(|binder| !binder.lifetime)
+            .zip(&mut params)
+        {
+            let bounds = self.lower_bounds(binder, &scope)?;
+            self.generics.redeclare(param, bounds);
+        }
+        Ok(LoweredBinders {
+            lifetimes,
+            params,
+            scope,
+        })
+    }
+
     pub(super) fn declare_variable(&mut self, variable: BindingId) -> GenericParam {
+        let name = self.bindings.get(variable).name();
+        self.generics.declare(name, Vec::new())
+    }
+
+    pub(super) fn placeholder_type(&mut self) -> Type {
+        self.generics.failed_scheme().body
+    }
+
+    fn declare_binder(&mut self, variable: BindingId) -> GenericParam {
         let name = self.bindings.get(variable).name();
         match self.bindings.get(variable).kind() {
             BindingKind::AssociatedType => self.generics.declare_associated_type(name),
@@ -88,12 +129,16 @@ impl<'l> WrittenTypeLowering<'l> {
         }
     }
 
-    pub(super) fn replace_bounds(&mut self, param: &mut GenericParam, bounds: Vec<Bound>) {
-        self.generics.redeclare(param, bounds);
-    }
-
-    pub(super) fn placeholder_type(&mut self) -> Type {
-        self.generics.failed_scheme().body
+    fn lower_bounds(
+        &mut self,
+        binder: &TypeBinder,
+        scope: &FxHashMap<BindingId, GenericId>,
+    ) -> Result<Vec<Bound>, Diagnostic> {
+        binder
+            .bounds
+            .iter()
+            .map(|bound| self.lower_type_bound(bound, scope))
+            .collect()
     }
 
     fn check_trait_argument(&self, binding: BindingId, span: Span) -> Result<(), Diagnostic> {
@@ -412,7 +457,9 @@ mod tests {
     fn a_declared_associated_type_is_named_in_the_declared_generics() {
         let mut fixture = Fixture::new();
         let item = fixture.associated_type("item");
-        let param = fixture.checker.written_types().declare_variable(item);
+        let binders = [Fixture::bounded(item, &[])];
+        let lowered = fixture.checker.written_types().lower_binders(&binders);
+        let param = lowered.expect("the binders lower").params.remove(0);
         let declared = fixture.declared_generics();
         assert_eq!(
             declared.associated_types.get(&param.id).map(|name| &**name),
@@ -430,13 +477,13 @@ mod tests {
     }
 
     #[test]
-    fn replaced_bounds_reach_the_param_and_the_unifier() {
+    fn binder_bounds_reach_the_param_and_the_unifier() {
         let mut fixture = Fixture::new();
         let variable = fixture.type_variable("a");
         let display = fixture.named_trait("display");
-        let mut lowering = fixture.checker.written_types();
-        let mut param = lowering.declare_variable(variable);
-        lowering.replace_bounds(&mut param, vec![Bound::plain(display)]);
+        let binders = [Fixture::bounded(variable, &[display])];
+        let lowered = fixture.checker.written_types().lower_binders(&binders);
+        let param = lowered.expect("the binders lower").params.remove(0);
         assert_eq!(param.bounds, vec![Bound::plain(display)]);
         assert_eq!(
             fixture.checker.unifier.generic_bounds(param.id),

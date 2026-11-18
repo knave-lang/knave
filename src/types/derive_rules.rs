@@ -28,8 +28,8 @@ impl<'a> DeriveRules<'a> {
         changed_structs: &'a FxHashSet<BindingId>,
     ) -> Self {
         Self {
-            traits: DeclaredTraits::new(&declarations.traits),
-            types: &declarations.types,
+            traits: DeclaredTraits::new(declarations.traits()),
+            types: declarations.types(),
             blockers,
             changed_structs,
         }

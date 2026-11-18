@@ -151,7 +151,7 @@ mod tests {
                 bounds: Vec::new(),
             };
             let mut program = TypedSource::expand(Self::SOURCE).typed();
-            let types = std::mem::take(&mut program.declarations.types);
+            let types = std::mem::take(program.declarations.types_mut());
             Self {
                 program,
                 types,

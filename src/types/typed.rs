@@ -402,7 +402,7 @@ impl TypedProgram {
         name: &str,
     ) -> Option<&TypedTraitMethod> {
         self.declarations
-            .traits
+            .traits()
             .definitions()
             .iter()
             .filter(|definition| definition.binding == trait_binding)
@@ -415,7 +415,7 @@ impl TypedProgram {
             .declared_trait_method(trait_binding, name)
             .and_then(|declared| declared.default);
         self.declarations
-            .traits
+            .traits()
             .impls()
             .iter()
             .filter(|implementation| implementation.trait_binding == trait_binding)
@@ -427,7 +427,7 @@ impl TypedProgram {
     }
 
     pub fn is_box(&self, ty: &Type) -> bool {
-        self.declarations.types.is_box(ty)
+        self.declarations.types().is_box(ty)
     }
 
     pub fn entry_module(&self) -> &TypedModule {
@@ -446,11 +446,11 @@ impl TypedProgram {
         binding: BindingId,
         visiting: &mut FxHashSet<BindingId>,
     ) -> bool {
-        if let Some(definition) = self.declarations.types.structs().get(binding) {
+        if let Some(definition) = self.declarations.types().structs().get(binding) {
             return !definition.lifetimes.is_empty()
                 || self.definition_holds_borrow_with(binding, visiting);
         }
-        if let Some(definition) = self.declarations.types.enums().get(binding) {
+        if let Some(definition) = self.declarations.types().enums().get(binding) {
             return definition.rust.is_none()
                 && (!definition.lifetimes.is_empty()
                     || self.definition_holds_borrow_with(binding, visiting));
@@ -562,12 +562,12 @@ impl TypedProgram {
         if !visiting.insert(binding) {
             return false;
         }
-        let holds = if let Some(definition) = self.declarations.types.structs().get(binding) {
+        let holds = if let Some(definition) = self.declarations.types().structs().get(binding) {
             definition
                 .fields
                 .iter()
                 .any(|(_, field)| self.type_holds_borrow_with(field, visiting))
-        } else if let Some(definition) = self.declarations.types.enums().get(binding) {
+        } else if let Some(definition) = self.declarations.types().enums().get(binding) {
             definition.rust.is_none()
                 && definition
                     .payload_types()
@@ -665,7 +665,7 @@ impl TypedProgram {
 
     fn type_display(&self) -> TypeDisplay<'_> {
         TypeDisplay::new(&self.bindings, &self.generics)
-            .with_projections(self.declarations.traits.table().projections())
+            .with_projections(self.declarations.traits().table().projections())
     }
 
     fn writable_name(&self, binding: BindingId) -> Option<&str> {
@@ -677,7 +677,7 @@ impl TypedProgram {
     }
 
     fn inferred_enum_box_line(&self, binding: BindingId) -> Option<String> {
-        let definition = self.declarations.types.enums().get(binding)?;
+        let definition = self.declarations.types().enums().get(binding)?;
         if !definition
             .payload_types()
             .any(|payload| self.is_box(payload))
@@ -746,7 +746,7 @@ impl TypedProgram {
     }
 
     fn inferred_enum_derive_line(&self, binding: BindingId) -> Option<String> {
-        let definition = self.declarations.types.enums().get(binding)?;
+        let definition = self.declarations.types().enums().get(binding)?;
         if definition.rust.is_some() || definition.written_derive.is_some() {
             return None;
         }
@@ -760,7 +760,7 @@ impl TypedProgram {
     }
 
     fn inferred_derive_line(&self, binding: BindingId) -> Option<String> {
-        let definition = self.declarations.types.structs().get(binding)?;
+        let definition = self.declarations.types().structs().get(binding)?;
         if definition.written_derive.is_some() {
             return None;
         }

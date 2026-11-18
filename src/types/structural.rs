@@ -44,13 +44,16 @@ impl TypeChecker {
         else {
             return Ok(());
         };
-        self.declarations.traits.structural.push(StructuralTrait {
-            binding: declaration.binding,
-            method: method.binding,
-            parameters: parameters.into_iter().skip(1).collect(),
-            result: *result,
-            clause: clause.clone(),
-        });
+        self.declarations
+            .traits_mut()
+            .structural
+            .push(StructuralTrait {
+                binding: declaration.binding,
+                method: method.binding,
+                parameters: parameters.into_iter().skip(1).collect(),
+                result: *result,
+                clause: clause.clone(),
+            });
         Ok(())
     }
 
@@ -71,11 +74,11 @@ impl TypeChecker {
 
     fn blocking_types<'t>(&'t self, implementor: &Type) -> impl Iterator<Item = &'t Type> + 't {
         let blocked = match implementor {
-            Type::Named(binding, _) => match self.declarations.types.structs.get(*binding) {
+            Type::Named(binding, _) => match self.declarations.types().structs.get(*binding) {
                 Some(definition) => definition.blocked.as_slice(),
                 None => self
                     .declarations
-                    .types
+                    .types()
                     .enums
                     .get(*binding)
                     .map_or(&[][..], |definition| definition.blocked.as_slice()),
@@ -86,7 +89,7 @@ impl TypeChecker {
     }
 
     fn lacks_source_form(&self, ty: &Type) -> bool {
-        let rust_types = &self.declarations.types.rust_types;
+        let rust_types = &self.declarations.types().rust_types;
         let opaque = matches!(ty, Type::Named(binding, _) if rust_types.is_opaque(*binding));
         opaque
             || matches!(ty, Type::Function(..))
@@ -122,7 +125,7 @@ impl TypeChecker {
 
     fn declares_methods(&self, trait_binding: BindingId) -> bool {
         self.declarations
-            .traits
+            .traits()
             .methods
             .values()
             .any(|method| method.trait_binding == trait_binding)
@@ -142,9 +145,13 @@ impl TypeChecker {
     }
 
     fn has_generic_program_impl(&self, trait_binding: BindingId) -> bool {
-        self.declarations.traits.impls.iter().any(|implementation| {
-            implementation.trait_binding == trait_binding && !implementation.params.is_empty()
-        })
+        self.declarations
+            .traits()
+            .impls
+            .iter()
+            .any(|implementation| {
+                implementation.trait_binding == trait_binding && !implementation.params.is_empty()
+            })
     }
 
     pub(super) fn record_uses_through_impls(&mut self) {
@@ -157,7 +164,7 @@ impl TypeChecker {
         let implementor = self.unifier.resolve(&pending.implementor);
         let Selection::Implemented { requirements, .. } = self
             .declarations
-            .traits
+            .traits()
             .table
             .rows(pending.bound.binding)
             .select(&pending.bound, &implementor)
@@ -234,9 +241,9 @@ impl TypeChecker {
         trait_binding: BindingId,
         head: BindingId,
     ) -> Option<(&TypedTraitImpl, &Rc<str>)> {
-        let paths = &self.declarations.traits.rust_paths;
+        let paths = &self.declarations.traits().rust_paths;
         let path = paths.recorded(trait_binding)?;
-        let written = self.declarations.traits.impls.iter().find(|implementation| {
+        let written = self.declarations.traits().impls.iter().find(|implementation| {
             implementation.trait_binding != trait_binding
                 && matches!(implementation.implementor, Type::Named(binding, _) if binding == head)
                 && paths

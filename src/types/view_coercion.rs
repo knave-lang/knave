@@ -66,7 +66,7 @@ mod tests {
 
         fn viewed_items(&self, view: &Type, owned: &Type) -> Option<Vec<(Type, Type)>> {
             ViewCoercion::new(view, owned)
-                .viewed_items(self.program.declarations.types.rust_types())
+                .viewed_items(self.program.declarations.types().rust_types())
         }
 
         fn parameter(&self, function: &str) -> Type {

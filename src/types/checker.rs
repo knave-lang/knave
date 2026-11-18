@@ -228,11 +228,12 @@ impl TypeChecker {
         }
         self.share_projections();
         self.check_written_projections();
-        self.declarations.types.box_binding = self.declarations.types.rust_types.box_binding();
-        if let Some(box_binding) = self.declarations.types.box_binding {
-            self.declarations.types.inferred_boxes = super::boxes::BoxPlanner::add_boxes(
-                &mut self.declarations.types.structs,
-                &mut self.declarations.types.enums,
+        let types = self.declarations.types_mut();
+        types.box_binding = types.rust_types.box_binding();
+        if let Some(box_binding) = types.box_binding {
+            types.inferred_boxes = super::boxes::BoxPlanner::add_boxes(
+                &mut types.structs,
+                &mut types.enums,
                 box_binding,
             );
         }
@@ -243,7 +244,7 @@ impl TypeChecker {
         self.check_trait_claims(modules, reached);
         self.copy_trait = self
             .declarations
-            .traits
+            .traits()
             .table
             .with_paths(&[CopyTrait::PATH])
             .first()
@@ -326,7 +327,7 @@ impl TypeChecker {
             let collected = self.type_collector().collect_struct(params, fields)?;
             collected.enter(
                 *binding,
-                &mut self.declarations.types,
+                self.declarations.types_mut(),
                 &mut self.diagnostics,
             );
             return Ok(());
@@ -341,7 +342,7 @@ impl TypeChecker {
             })?;
             collected.enter(
                 *binding,
-                &mut self.declarations.types,
+                self.declarations.types_mut(),
                 &mut self.diagnostics,
             );
             return Ok(());
@@ -353,7 +354,8 @@ impl TypeChecker {
                 template,
                 clauses,
             })?;
-            self.declarations.types.rust_types.add(*binding, rust_type);
+            let rust_types = &mut self.declarations.types_mut().rust_types;
+            rust_types.add(*binding, rust_type);
             return Ok(());
         }
         if let ItemKind::Trait(
@@ -407,7 +409,7 @@ impl TypeChecker {
                 let TypeExprKind::Named(binding, _) = implementor.kind() else {
                     continue;
                 };
-                let Some(definition) = self.declarations.types.structs.get(*binding) else {
+                let Some(definition) = self.declarations.types().structs.get(*binding) else {
                     continue;
                 };
                 if definition
@@ -508,7 +510,7 @@ impl TypeChecker {
     }
 
     pub(super) fn admissible_types(&self) -> AdmissibleTypes<'_> {
-        AdmissibleTypes::new(self.generics.params(), &self.declarations.traits.table)
+        AdmissibleTypes::new(self.generics.params(), &self.declarations.traits().table)
     }
 
     pub(super) fn copy_rules(&self) -> super::copy::CopyRules<'_> {
@@ -516,19 +518,19 @@ impl TypeChecker {
     }
 
     pub(super) fn variant_payloads(&self) -> VariantPayloads<'_> {
-        VariantPayloads::new(&self.declarations.types)
+        VariantPayloads::new(self.declarations.types())
     }
 
     pub(super) fn declared_types(&self) -> DeclaredTypes<'_> {
-        DeclaredTypes::new(&self.declarations.types)
+        DeclaredTypes::new(self.declarations.types())
     }
 
     pub(super) fn declared_traits(&self) -> DeclaredTraits<'_> {
-        DeclaredTraits::new(&self.declarations.traits)
+        DeclaredTraits::new(self.declarations.traits())
     }
 
     pub(super) fn derivability(&self) -> DerivableTraits<'_> {
-        DerivableTraits::new(&self.declarations.traits)
+        DerivableTraits::new(self.declarations.traits())
     }
 
     pub(super) fn derive_rules(&self) -> DeriveRules<'_> {
@@ -561,7 +563,7 @@ impl TypeChecker {
             closures: &self.closure_types,
         };
         let receivers = MethodReceivers::new(&self.template_borrows);
-        OpaquePositions::new(&self.declarations.types, receivers, checked)
+        OpaquePositions::new(self.declarations.types(), receivers, checked)
     }
 
     pub(super) fn reference_peeling(&self) -> ReferencePeeling<'_> {
@@ -569,16 +571,16 @@ impl TypeChecker {
     }
 
     fn literal_settlement(&self) -> LiteralSettlement<'_> {
-        LiteralSettlement::new(&self.unifier, &self.declarations.traits.table)
+        LiteralSettlement::new(&self.unifier, &self.declarations.traits().table)
     }
 
     fn clause_check(&mut self) -> ClauseCheck<'_> {
         let open = self.unifier.fresh();
-        ClauseCheck::new(&self.declarations.traits.table, self.display(), open)
+        ClauseCheck::new(&self.declarations.traits().table, self.display(), open)
     }
 
     pub(super) fn prelude_types(&self) -> PreludeTypes<'_> {
-        PreludeTypes::new(&self.declarations.types.rust_types)
+        PreludeTypes::new(&self.declarations.types().rust_types)
     }
 
     pub(super) fn function_value_wrapper(&mut self) -> FunctionValueWrapper<'_> {
@@ -587,8 +589,8 @@ impl TypeChecker {
 
     pub(super) fn unification(&mut self) -> Unification<'_> {
         let display = TypeDisplay::new(&self.bindings, self.generics.params())
-            .with_projections(self.declarations.traits.table.projections());
-        let declarations = DeclaredTypes::new(&self.declarations.types);
+            .with_projections(self.declarations.traits().table.projections());
+        let declarations = DeclaredTypes::new(self.declarations.types());
         Unification::new(&mut self.unifier, display, declarations)
     }
 
@@ -602,10 +604,10 @@ impl TypeChecker {
     pub(super) fn match_coverage(&self) -> MatchCoverage<'_> {
         let catalog = ConstructorCatalog::new(
             self.reference_peeling(),
-            &self.declarations.types,
+            self.declarations.types(),
             self.variant_payloads(),
         );
-        let text = WitnessText::new(&self.bindings, &self.declarations.types.enums);
+        let text = WitnessText::new(&self.bindings, &self.declarations.types().enums);
         MatchCoverage::new(&self.bindings, catalog, text)
     }
 
@@ -613,11 +615,7 @@ impl TypeChecker {
         self.require_copy_from(value, Vec::new());
     }
 
-    pub(super) fn require_copy_at(&mut self, value: &Type, copied: Span) {
-        self.require_copy_from(value, vec![BoundOrigin::BorrowCopied(copied)]);
-    }
-
-    fn require_copy_from(&mut self, value: &Type, origins: Vec<BoundOrigin>) {
+    pub(super) fn require_copy_from(&mut self, value: &Type, origins: Vec<BoundOrigin>) {
         let Type::Var(var) = self.unifier.shallow(value) else {
             return;
         };
@@ -629,7 +627,7 @@ impl TypeChecker {
 
     pub(super) fn display(&self) -> TypeDisplay<'_> {
         TypeDisplay::new(&self.bindings, self.generics.params())
-            .with_projections(self.declarations.traits.table.projections())
+            .with_projections(self.declarations.traits().table.projections())
     }
 
     fn resolve_missing_annotations(&mut self) {
@@ -692,7 +690,7 @@ impl TypeChecker {
 
     pub(super) fn type_collector(&mut self) -> TypeDeclarationCollector<'_> {
         let (lowering, facts) = self.written_type_parts();
-        TypeDeclarationCollector::new(lowering, facts.bindings, &facts.declarations.types)
+        TypeDeclarationCollector::new(lowering, facts.bindings, facts.declarations.types())
     }
 
     fn trait_collector(&mut self) -> TraitDeclarationCollector<'_> {
@@ -760,7 +758,7 @@ impl TypeChecker {
         site: ObligationSite,
         pass: ObligationPass,
     ) {
-        if self.declarations.types.boxed_object(implementor) == Some(bound.binding) {
+        if self.declarations.types().boxed_object(implementor) == Some(bound.binding) {
             return;
         }
         match self.literal_settlement().select(&bound, implementor) {
@@ -1154,7 +1152,7 @@ impl TypeChecker {
             .first()
             .map(|(_, value)| value.span)
             .expect("a recursive group has at least one member");
-        self.link_bounded_vars(&vars, span);
+        while self.link_round(&vars, span) {}
         self.settle_entry_success(members, span);
         let pinnable_vars = self.pinnable_vars(members);
         self.generalize_vars(vars, start, span, &pinnable_vars);
@@ -1185,7 +1183,7 @@ impl TypeChecker {
         (open
             && self
                 .declarations
-                .types
+                .types()
                 .enums
                 .get(binding)?
                 .is_result_shaped())
@@ -1288,10 +1286,6 @@ impl TypeChecker {
         }
     }
 
-    fn link_bounded_vars(&mut self, vars: &[TypeVar], span: Span) {
-        while self.link_round(vars, span) {}
-    }
-
     fn link_round(&mut self, vars: &[TypeVar], span: Span) -> bool {
         let mut linked = false;
         for var in vars {
@@ -1319,10 +1313,11 @@ impl TypeChecker {
     }
 
     fn linked_vars(&self, var: TypeVar, vars: &[TypeVar]) -> Vec<TypeVar> {
+        let table = &self.declarations.traits().table;
         self.unifier
             .bounds(var)
             .iter()
-            .filter(|bound| self.declarations.traits.table.links_argument(bound.binding))
+            .filter(|bound| table.links_argument(bound.binding))
             .filter_map(|bound| {
                 let argument = bound
                     .argument
@@ -1459,7 +1454,7 @@ impl TypeChecker {
         }
         let collected = self.trait_collector().collect_user_trait(declaration)?;
         collected.enter(
-            &mut self.declarations.traits,
+            self.declarations.traits_mut(),
             &mut self.checking_facts,
             &mut self.synthetic_bindings,
         );
@@ -1506,7 +1501,7 @@ impl TypeChecker {
                 self.diagnostics.extend(problems);
                 let collected = self.implementation_collector().collect(item, lowered);
                 collected.enter(
-                    &mut self.declarations.traits,
+                    self.declarations.traits_mut(),
                     &mut self.synthetic_bindings,
                     &mut self.impl_methods,
                 );
@@ -1525,7 +1520,7 @@ impl TypeChecker {
     fn report_supertraits(&mut self) {
         let implementations: Vec<(BindingId, Type, Span)> = self
             .declarations
-            .traits
+            .traits()
             .impls
             .iter()
             .map(|implementation| {
@@ -1547,7 +1542,7 @@ impl TypeChecker {
         implementor: &Type,
         span: Span,
     ) {
-        let Some(rust_trait) = self.declarations.traits.table.get(trait_binding) else {
+        let Some(rust_trait) = self.declarations.traits().table.get(trait_binding) else {
             return;
         };
         let supertraits = rust_trait.rows().reached().supertraits().to_vec();
@@ -1557,7 +1552,7 @@ impl TypeChecker {
         let trait_name = self.bindings.get(trait_binding).name().to_string();
         let implementor_name = self.display().show(implementor);
         for supertrait in supertraits {
-            if self.declarations.traits.table.satisfies(
+            if self.declarations.traits().table.satisfies(
                 &supertrait,
                 implementor,
                 &|generic, bound| self.unifier.generic_bounds(generic).contains(bound),
@@ -1567,7 +1562,7 @@ impl TypeChecker {
             let supertrait_name = self.bindings.get(supertrait.binding).name().to_string();
             let help = self
                 .declarations
-                .traits
+                .traits()
                 .table
                 .get(supertrait.binding)
                 .and_then(|known| known.help.clone());
@@ -1605,7 +1600,7 @@ impl TypeChecker {
 
     fn leads_back(&self, required: &Bound, declared: BindingId) -> bool {
         self.declarations
-            .traits
+            .traits()
             .table
             .brings(required, &|brought| brought.binding == declared)
     }
@@ -1623,15 +1618,15 @@ impl TypeChecker {
             RustTrait::unreached(declaration)
         };
         CollectedRustTrait::new(declaration, rust_trait)
-            .enter(&mut self.declarations.traits, &mut self.synthetic_bindings);
+            .enter(self.declarations.traits_mut(), &mut self.synthetic_bindings);
         Ok(())
     }
 
     fn absorb_impl_bounds(&mut self, definitions: &FxHashMap<BindingId, TypedDefinition>) {
-        for position in 0..self.declarations.traits.impls.len() {
-            let params = self.declarations.traits.impls[position].params.clone();
+        for position in 0..self.declarations.traits().impls.len() {
+            let params = self.declarations.traits().impls[position].params.clone();
             let mut found: Vec<Vec<Bound>> = vec![Vec::new(); params.len()];
-            for method in &self.declarations.traits.impls[position].methods {
+            for method in &self.declarations.traits().impls[position].methods {
                 let Some(definition) = definitions.get(&method.binding) else {
                     continue;
                 };
@@ -1660,14 +1655,15 @@ impl TypeChecker {
     }
 
     fn store_impl_bounds(&mut self, position: usize, bounds: Vec<Vec<Bound>>) {
-        let mut params = self.declarations.traits.impls[position].params.clone();
+        let mut params = self.declarations.traits().impls[position].params.clone();
         for (param, bounds) in params.iter_mut().zip(bounds) {
             self.generic_declarations().redeclare(param, bounds);
         }
-        let trait_binding = self.declarations.traits.impls[position].trait_binding;
-        let implementor = self.declarations.traits.impls[position].implementor.clone();
-        self.declarations.traits.impls[position].params = params.clone();
-        self.declarations.traits.table.set_implementor_scheme(
+        let traits = self.declarations.traits_mut();
+        let trait_binding = traits.impls[position].trait_binding;
+        let implementor = traits.impls[position].implementor.clone();
+        traits.impls[position].params = params.clone();
+        traits.table.set_implementor_scheme(
             trait_binding,
             &implementor,
             Scheme {
@@ -1743,7 +1739,7 @@ impl TypeChecker {
                 !types.is_empty()
                     && types.iter().all(|candidate| {
                         self.declarations
-                            .traits
+                            .traits()
                             .table
                             .satisfies(bound, candidate, &|_, _| false)
                     })
@@ -1755,7 +1751,7 @@ impl TypeChecker {
     fn declared_bound_implies(&self, generic: GenericId, bound: &Bound) -> bool {
         self.unifier.generic_bounds(generic).iter().any(|declared| {
             self.declarations
-                .traits
+                .traits()
                 .table
                 .implies(declared, bound, generic)
         })
@@ -1816,7 +1812,7 @@ impl TypeChecker {
         if !self.shows_trait_help(bound.binding, implementor, program_type) {
             return diagnostic;
         }
-        let known = self.declarations.traits.table.get(bound.binding);
+        let known = self.declarations.traits().table.get(bound.binding);
         match known.and_then(|known| known.help.as_deref()) {
             Some(help) => diagnostic.with_help(help),
             None => diagnostic,
@@ -1831,8 +1827,8 @@ impl TypeChecker {
         let Type::Named(_, arguments) = found else {
             return None;
         };
-        let argument = (arguments.first()).filter(|_| self.declarations.types.is_box(found))?;
-        let traits = &self.declarations.traits;
+        let argument = (arguments.first()).filter(|_| self.declarations.types().is_box(found))?;
+        let traits = self.declarations.traits();
         let boxable = TraitBoxing::new(traits, &self.bindings).suggests_box(bound.binding);
         (boxable && traits.table.satisfies(bound, argument, &|_, _| false)).then(|| found.clone())
     }
@@ -1843,7 +1839,7 @@ impl TypeChecker {
         display: &TypeDisplay<'_>,
     ) -> ImplementorList {
         self.declarations
-            .traits
+            .traits()
             .table
             .get(trait_binding)
             .map(|rust_trait| self.group_implementors(rust_trait, display))
@@ -1895,7 +1891,7 @@ impl TypeChecker {
     fn group_parameter(&self, binding: BindingId) -> String {
         let projected = self
             .declarations
-            .traits
+            .traits()
             .table
             .projections()
             .associated(binding)
@@ -1903,7 +1899,7 @@ impl TypeChecker {
         projected
             .or_else(|| {
                 self.declarations
-                    .types
+                    .types()
                     .rust_types
                     .get(binding)
                     .and_then(|rust_type| rust_type.params.first())
@@ -1924,13 +1920,13 @@ impl TypeChecker {
         };
         let single_parameter = self
             .declarations
-            .traits
+            .traits()
             .table
             .projections()
             .is_projection(*binding)
             || self
                 .declarations
-                .types
+                .types()
                 .rust_types
                 .get(*binding)
                 .is_some_and(|rust_type| rust_type.params.len() == 1);
@@ -1944,7 +1940,7 @@ impl TypeChecker {
         bound: &Bound,
         display: &TypeDisplay<'_>,
     ) -> Diagnostic {
-        if self.declarations.types.enums.get(binding).is_some() {
+        if self.declarations.types().enums.get(binding).is_some() {
             return self.enum_trait_help(diagnostic, binding, bound, display);
         }
         self.struct_trait_help(diagnostic, binding, bound, display)
@@ -1959,7 +1955,7 @@ impl TypeChecker {
     ) -> Diagnostic {
         let definition = self
             .declarations
-            .types
+            .types()
             .enums
             .get(binding)
             .expect("enum trait help names an enum");
@@ -2024,7 +2020,7 @@ impl TypeChecker {
         bound: &Bound,
         display: &TypeDisplay<'_>,
     ) -> Diagnostic {
-        let Some(definition) = self.declarations.types.structs.get(struct_binding) else {
+        let Some(definition) = self.declarations.types().structs.get(struct_binding) else {
             return diagnostic;
         };
         let struct_name = self.bindings.get(struct_binding).name().to_string();
@@ -2070,7 +2066,7 @@ impl TypeChecker {
 
     fn is_order(&self, trait_binding: BindingId) -> bool {
         self.declarations
-            .traits
+            .traits()
             .table
             .get(trait_binding)
             .is_some_and(|rust_trait| rust_trait.path.as_ref() == crate::core::OrderTrait::PATH)
@@ -2136,7 +2132,7 @@ impl TypeChecker {
             .fields
             .iter()
             .find(|(_, ty)| {
-                self.declarations.traits.table.satisfies(
+                self.declarations.traits().table.satisfies(
                     &Bound::plain(trait_binding),
                     ty,
                     &|generic, _| params.contains(&generic),
@@ -2217,7 +2213,8 @@ impl TypeChecker {
         self.outcomes = DefinitionOutcomes::new(graph.reach().unreached());
         self.record_prelude_definitions(&program.modules, &program.pending_definitions);
         self.collect_declarations(&program.modules, graph);
-        self.declarations.written = graph.reach().written_bodies().clone();
+        self.declarations
+            .record_written_bodies(graph.reach().written_bodies().clone());
         let mut definitions = self.check_definitions(program.entry.function, graph);
         let mut finalizer = super::finalize::Finalizer::new(&mut self);
         for binding in graph.order() {

@@ -73,7 +73,7 @@ mod tests {
         let rust_trait = RustTrait::unreached(&declaration);
         fixture.enter_rust_trait(CollectedRustTrait::new(&declaration, rust_trait));
         let checker = &fixture.types.checker;
-        let info = checker.declarations.traits.methods.get(&method_binding);
+        let info = checker.declarations.traits().methods.get(&method_binding);
         let info = info.expect("the method is entered");
         assert_eq!(info.trait_binding, declaration.binding);
         assert_eq!(info.receiver, Some(ReceiverKind::Mutable));
@@ -81,7 +81,7 @@ mod tests {
         assert!(
             checker
                 .declarations
-                .traits
+                .traits()
                 .table
                 .get(declaration.binding)
                 .is_some()

@@ -4,9 +4,9 @@ use super::written_bodies::WrittenBodies;
 
 #[derive(Default)]
 pub struct Declarations {
-    pub(super) types: TypeDeclarations,
-    pub(super) traits: TraitDeclarations,
-    pub(super) written: WrittenBodies,
+    types: TypeDeclarations,
+    traits: TraitDeclarations,
+    written: WrittenBodies,
 }
 
 impl Declarations {
@@ -20,6 +20,18 @@ impl Declarations {
 
     pub fn written_bodies(&self) -> &WrittenBodies {
         &self.written
+    }
+
+    pub(super) fn types_mut(&mut self) -> &mut TypeDeclarations {
+        &mut self.types
+    }
+
+    pub(super) fn traits_mut(&mut self) -> &mut TraitDeclarations {
+        &mut self.traits
+    }
+
+    pub(super) fn record_written_bodies(&mut self, written: WrittenBodies) {
+        self.written = written;
     }
 }
 

@@ -368,7 +368,7 @@ mod tests {
             .collect_struct(&binders, &fields)
             .expect("the struct collects");
         fixture.enter_struct(pair, collected);
-        let definition = fixture.checker.declarations.types.structs.get(pair);
+        let definition = fixture.checker.declarations.types().structs.get(pair);
         let definition = definition.expect("the struct is entered");
         assert_eq!(definition.lifetimes, vec![lifetime]);
         assert_eq!(definition.params.len(), 1);
@@ -427,7 +427,7 @@ mod tests {
             })
             .expect("the enum collects");
         fixture.enter_enum(shape, collected);
-        let types = &fixture.checker.declarations.types;
+        let types = fixture.checker.declarations.types();
         let definition = types.enums.get(shape).expect("the enum is entered");
         assert_eq!(definition.lifetimes, vec![lifetime]);
         assert!(types.rust_types.get(shape).is_none());
@@ -461,7 +461,7 @@ mod tests {
             fixture
                 .checker
                 .declarations
-                .types
+                .types()
                 .rust_types
                 .get(shape)
                 .is_some()
@@ -488,7 +488,7 @@ mod tests {
             .expect("the enum collects");
         fixture.enter_enum(shape, collected);
         assert_eq!(fixture.checker.diagnostics.len(), 1);
-        let definition = fixture.checker.declarations.types.enums.get(shape);
+        let definition = fixture.checker.declarations.types().enums.get(shape);
         let definition = definition.expect("the enum is entered");
         let crate::types::enums::VariantPayload::Positional(payload) =
             &definition.variants[0].payload

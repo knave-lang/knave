@@ -1,0 +1,4 @@
+(defn bump! ((n (mut i64))) (set! n 1))
+
+(defn f ((p (ref (pair i64 string))))
+  (bump! (mut (first p))))

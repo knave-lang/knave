@@ -199,10 +199,9 @@ impl TypeChecker {
                 self.field_place(&value),
             ));
         }
-        let borrowed = self.unification().place_type(&value);
         let ty = match kind {
-            ReferenceKind::Shared => Type::shared(borrowed),
-            ReferenceKind::Mutable => Type::mutable(borrowed),
+            ReferenceKind::Shared => Type::shared(self.unification().place_type(&value)),
+            ReferenceKind::Mutable => Type::mutable(self.unification().written_place_type(&value)),
         };
         Ok(TypedExpr {
             kind: TypedExprKind::Borrow(kind, Box::new(value)),
@@ -2255,7 +2254,7 @@ impl TypeChecker {
         argument: &Type,
         value: &TypedExpr,
     ) -> Result<Borrow, Diagnostic> {
-        let place = self.unification().place_type(value);
+        let place = self.unification().written_place_type(value);
         if value.is_place() && !place.is_reference() {
             return self.pass(inner, &place, value.span, Borrow::Mutable);
         }
@@ -2265,7 +2264,8 @@ impl TypeChecker {
                 self.field_place(value),
             ));
         }
-        self.pass_types(parameter, argument, value.span)
+        let found = if value.is_place() { &place } else { argument };
+        self.pass_types(parameter, found, value.span)
     }
 
     fn slice_argument(&mut self, parameter: &Type, argument: &Type, span: Span) -> Type {

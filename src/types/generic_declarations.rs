@@ -144,4 +144,14 @@ mod tests {
         assert!(matches!(first, Type::Var(_)));
         assert_ne!(first, second);
     }
+
+    #[test]
+    fn a_failed_scheme_is_generic_over_its_one_placeholder() {
+        let mut fixture = DeclarationsFixture::new();
+        let scheme = fixture.declarations().failed_scheme();
+        assert_eq!(scheme.params.len(), 1);
+        assert_eq!(&*scheme.params[0].name, "a");
+        assert_eq!(scheme.body, Type::Generic(scheme.params[0].id));
+        assert!(fixture.registry.param(scheme.params[0].id).is_some());
+    }
 }

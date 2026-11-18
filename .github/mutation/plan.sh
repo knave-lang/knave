@@ -26,10 +26,6 @@ commit_a_day_old() {
   git rev-list -1 --first-parent --before="24 hours ago" HEAD
 }
 
-shard_list() {
-  jq -cn --argjson count "$SHARDS" '[range($count)]'
-}
-
 tested=$(last_tested_commit)
 if is_usable_base "$tested"; then
   base=$tested
@@ -44,5 +40,4 @@ changed_sources=$(git diff --name-only "$base" "$head" -- 'src/*.rs' 'expand/src
   echo "base=$base"
   echo "head=$head"
   echo "changed-sources=$changed_sources"
-  echo "shards=$(shard_list)"
 } >> "$GITHUB_OUTPUT"

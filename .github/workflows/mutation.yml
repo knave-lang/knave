@@ -17,7 +17,6 @@ env:
   DIFF: git.diff
   ISSUE_TITLE: Nightly mutants
   INSTA_UPDATE: "no"
-  SHARDS: 16
 
 jobs:
   plan:
@@ -31,7 +30,8 @@ jobs:
       base: ${{ steps.plan.outputs.base }}
       head: ${{ steps.plan.outputs.head }}
       changed-sources: ${{ steps.plan.outputs.changed-sources }}
-      shards: ${{ steps.plan.outputs.shards }}
+      shards: ${{ steps.mutants.outputs.shards }}
+      shard-count: ${{ steps.mutants.outputs.shard-count }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         timeout-minutes: 5
@@ -47,7 +47,8 @@ jobs:
         if: steps.plan.outputs.changed-sources != '0'
         with:
           build-cache: mutation
-      - name: List the mutants of the diff
+      - id: mutants
+        name: List the mutants of the diff
         if: steps.plan.outputs.changed-sources != '0'
         env:
           MUTANTS: ${{ runner.temp }}/mutants
@@ -60,7 +61,7 @@ jobs:
 
   mutants:
     needs: plan
-    if: needs.plan.outputs.changed-sources != '' && needs.plan.outputs.changed-sources != '0'
+    if: needs.plan.outputs.shard-count != '' && needs.plan.outputs.shard-count != '0'
     strategy:
       fail-fast: false
       max-parallel: 8
@@ -101,7 +102,7 @@ jobs:
 
   report:
     needs: [plan, mutants]
-    if: ${{ !cancelled() && needs.plan.outputs.head != '' }}
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -113,12 +114,12 @@ jobs:
         with:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        if: needs.plan.outputs.changed-sources != '0'
+        if: needs.plan.outputs.shard-count != '' && needs.plan.outputs.shard-count != '0'
         with:
           pattern: mutants-shard-*
           path: results
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        if: needs.plan.outputs.changed-sources != '0'
+        if: needs.plan.outputs.shard-count != '' && needs.plan.outputs.shard-count != '0'
         with:
           name: mutants
           path: mutants
@@ -128,7 +129,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BASE: ${{ needs.plan.outputs.base }}
           HEAD_COMMIT: ${{ needs.plan.outputs.head }}
-          CHANGED_SOURCES: ${{ needs.plan.outputs.changed-sources }}
+          SHARD_COUNT: ${{ needs.plan.outputs.shard-count }}
           MUTANTS: mutants
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: bash .github/mutation/report.sh

@@ -130,12 +130,14 @@
             flock=${pkgs.lib.getExe pkgs.flock}
             ps=${pkgs.lib.getExe' pkgs.unixtools.procps "ps"}
             awk=${pkgs.lib.getExe pkgs.gawk}
+            env=${pkgs.lib.getExe' pkgs.coreutils "env"}
             process_tree_program=${./xtask/build-slots/process-tree.awk}
             survivors_program=${./xtask/build-slots/survivors.awk}
             slot_directory=$HOME/.cache/knave/build-slots
             slot_limit=''${KNAVE_BUILD_SLOTS:-2}
             time_limit=''${KNAVE_BUILD_TIME_LIMIT:-}
             timed_out_status=124
+            signal_status_base=128
             seconds_before_kill=5
             seconds_between_attempts=1
 
@@ -162,20 +164,17 @@
             }
 
             run_within_time_limit() {
-              local cargo_process timer finished="" status
-              trap : INT QUIT
-              start_cargo_in_callers_process_group "$@"
+              local restored_signals cargo_process timer finished status=0
+              restored_signals=$(signals_not_ignored_on_entry)
+              trap "" INT QUIT
+              start_cargo_in_callers_process_group "$restored_signals" "$@"
               cargo_process=$!
               sleep "$time_limit" >/dev/null 2>&1 &
               timer=$!
-              until [[ -n ''${finished:-} ]]; do
-                status=0
-                wait -n -p finished "$cargo_process" "$timer" || status=$?
-              done
+              wait -n -p finished "$cargo_process" "$timer" || status=$?
               if [[ $finished == "$cargo_process" ]]; then
                 kill "$timer" 2>/dev/null || true
-              elif running "$cargo_process"; then
-                stop_process_tree "$cargo_process"
+              elif stop_if_running "$cargo_process"; then
                 wait "$cargo_process" || true
                 echo "cargo: stopped by KNAVE_BUILD_TIME_LIMIT=$time_limit, which counts seconds from when the command took a build slot" >&2
                 status=$timed_out_status
@@ -188,29 +187,35 @@
               return "$status"
             }
 
-            start_cargo_in_callers_process_group() {
-              # A job started with & ignores SIGINT and reads /dev/null, so restore both: Ctrl-C and a program's input reach cargo as they would in the foreground.
+            signals_not_ignored_on_entry() {
+              local signal restored=()
+              for signal in INT QUIT; do
+                [[ -n $(trap -p "$signal") ]] || restored+=("$signal")
+              done
               (
-                trap - INT QUIT
-                KNAVE_BUILD_SLOT_HELD=1 exec "$real_cargo" "$@"
-              ) <&0 &
+                IFS=,
+                echo "''${restored[*]}"
+              )
+            }
+
+            start_cargo_in_callers_process_group() {
+              local restored_signals=$1
+              shift
+              # A job started with & ignores SIGINT and SIGQUIT and reads /dev/null: restore the signals the caller left alone, and the caller's input.
+              "$env" ''${restored_signals:+"--default-signal=$restored_signals"} KNAVE_BUILD_SLOT_HELD=1 "$real_cargo" "$@" <&0 &
             }
 
             pass_on_signal() {
-              case $1 in
-                130) kill -INT $$ ;;
-                131) kill -QUIT $$ ;;
-              esac
+              if (($1 > signal_status_base)); then
+                kill -n "$(($1 - signal_status_base))" $$ 2>/dev/null || true
+              fi
             }
 
-            running() {
-              "$ps" -o stat= -p "$1" | "$awk" '!/^Z/ { found = 1 } END { exit !found }'
-            }
-
-            stop_process_tree() {
+            stop_if_running() {
               local tree identities waited
               tree=$(process_tree "$1")
-              identities=$(identify "$tree")
+              identities=$(identify "$tree") || return 1
+              [[ -n $(survivors "$1" "$identities") ]] || return 1
               signal_survivors TERM "$tree" "$identities"
               for ((waited = 0; waited < seconds_before_kill; waited++)); do
                 [[ -n $(survivors "$tree" "$identities") ]] || return 0
@@ -352,10 +357,14 @@
                 until [[ -e $calls/finish-$2 ]]; do sleep 0.1; done
                 ;;
               failing) exit 3 ;;
-              sleep) sleep "$2" ;;
+              sleep) exec sleep "$2" ;;
               hang)
                 sleep 300 &
                 echo $! >"$calls/hung-child"
+                wait
+                ;;
+              deep)
+                bash -c 'sleep 300 & echo $! >"$calls/grandchild"; wait' &
                 wait
                 ;;
               stubborn)
@@ -369,6 +378,7 @@
               exit-124) exit 124 ;;
               catch-int)
                 trap 'touch "$calls/caught-int"' INT
+                touch "$calls/catch-int-ready"
                 until [[ -e $calls/finish-catch-int ]]; do sleep 0.1; done
                 ;;
               slow-to-stop)
@@ -396,8 +406,9 @@
             on_terminal() {
               timeout 20 ${script} --quiet --return --command "env KNAVE_BUILD_SLOTS=1 KNAVE_BUILD_TIME_LIMIT=60 ${cargo} $1" /dev/null >/dev/null
             }
-            { sleep 2; printf '\003'; sleep 3; } | on_terminal "build ctrl-c" || true
-            expect_stopped "$(<"$calls/build-ctrl-c")" "Ctrl-C on the terminal left a limited build running"
+            rm -f "$calls/sleep-300"
+            { sleep 2; printf '\003'; sleep 3; } | on_terminal "sleep 300" || true
+            expect_stopped "$(<"$calls/sleep-300")" "Ctrl-C on the terminal left a limited build running"
 
             { sleep 2; echo hello; sleep 3; } | on_terminal "read-input terminal" || fail "a limited run could not read the terminal"
             [[ $(<"$calls/input") == hello ]] || fail "a limited run read '$(<"$calls/input")' from the terminal, not hello"
@@ -439,18 +450,28 @@
             ) &
             wait_for_call "$1-''${2:-}"
           }
+          wait_for_sleep() {
+            for _ in {1..100}; do
+              [[ $(${ps} -o comm= -p "$1") == sleep ]] && return
+              sleep 0.1
+            done
+            fail "cargo $1 never reached its sleep"
+          }
           expect_slot_held() {
             ${flock} -n "$HOME/.cache/knave/build-slots/1" true && fail "$1"
             return 0
           }
           expect_group_signal_stops_limited_run() {
-            limited_run_in_own_group build "group-$1"
+            rm -f "$calls/sleep-300"
+            limited_run_in_own_group sleep 300
+            wait_for_sleep "$(<"$calls/sleep-300")"
             kill "-$1" -- "-$!"
-            expect_stopped "$(<"$calls/build-group-$1")" "SIG$1 to the caller's group left a limited build running"
+            expect_stopped "$(<"$calls/sleep-300")" "SIG$1 to the caller's group left a limited build running"
             timeout 5 env KNAVE_BUILD_SLOTS=1 ${cargo} check "after-group-$1" || fail "SIG$1 to a limited run kept its slot"
           }
           export HOME=$PWD/home calls=$PWD/calls slot_limited_cargo=${cargo}
           unset CI KNAVE_BUILD_SLOTS KNAVE_BUILD_SLOT_HELD
+          ulimit -c 0
           mkdir -p "$HOME" "$calls"
 
           ${cargo} build first &
@@ -541,9 +562,24 @@
           expect_stopped "$(<"$calls/hung-child")" "a child of cargo outlived KNAVE_BUILD_TIME_LIMIT"
 
           status=0
+          KNAVE_BUILD_TIME_LIMIT=1 timeout 10 ${cargo} deep 2>/dev/null || status=$?
+          [[ $status == 124 ]] || fail "a run with a hung grandchild exited $status, not 124"
+          expect_stopped "$(<"$calls/grandchild")" "a grandchild of cargo outlived KNAVE_BUILD_TIME_LIMIT"
+
+          status=0
           KNAVE_BUILD_TIME_LIMIT=1 timeout 20 ${cargo} stubborn 2>/dev/null || status=$?
           [[ $status == 124 ]] || fail "a run with a child that ignores SIGTERM exited $status, not 124"
           expect_stopped "$(<"$calls/stubborn-child")" "a child of cargo that ignores SIGTERM outlived KNAVE_BUILD_TIME_LIMIT"
+
+          (
+            trap - INT QUIT
+            exec ${setsid} env KNAVE_BUILD_TIME_LIMIT=1 ${cargo} stubborn 2>/dev/null
+          ) &
+          stopping=$!
+          sleep 2.5
+          kill -INT -- "-$stopping"
+          expect_stopped "$(<"$calls/stubborn-child")" "SIGINT during the grace before SIGKILL spared a child of cargo"
+          wait "$stopping" || true
 
           status=0
           KNAVE_BUILD_TIME_LIMIT=10 ${cargo} exit-124 2>own-124 || status=$?
@@ -552,10 +588,23 @@
 
           expect_group_signal_stops_limited_run TERM
           expect_group_signal_stops_limited_run INT
+          expect_group_signal_stops_limited_run QUIT
+
+          rm -f "$calls/sleep-300"
+          ${setsid} env KNAVE_BUILD_SLOTS=1 KNAVE_BUILD_TIME_LIMIT=60 ${cargo} sleep 300 &
+          ignoring=$!
+          wait_for_call sleep-300
+          wait_for_sleep "$(<"$calls/sleep-300")"
+          kill -INT -- "-$ignoring"
+          sleep 1
+          running "$(<"$calls/sleep-300")" || fail "a limited run started with SIGINT ignored stopped on SIGINT"
+          kill -TERM -- "-$ignoring"
+          wait "$ignoring" || true
 
           ${terminalChecks}
           limited_run_in_own_group catch-int
           catching=$!
+          wait_for_call catch-int-ready
           kill -INT -- "-$catching"
           wait_for_call caught-int
           sleep 1
@@ -564,14 +613,16 @@
           wait "$catching" || fail "a program that caught SIGINT and finished did not pass on its success"
 
           mkfifo output
+          rm -f "$calls/sleep-300"
           cat output >/dev/null &
           reader=$!
           (
             trap - INT QUIT
-            exec ${setsid} bash -c "KNAVE_BUILD_SLOTS=1 KNAVE_BUILD_TIME_LIMIT=60 ${cargo} build piped; touch $calls/caller-continued" >output 2>&1
+            exec ${setsid} bash -c "KNAVE_BUILD_SLOTS=1 KNAVE_BUILD_TIME_LIMIT=60 ${cargo} sleep 300; touch $calls/caller-continued" >output 2>&1
           ) &
           piped=$!
-          wait_for_call build-piped
+          wait_for_call sleep-300
+          wait_for_sleep "$(<"$calls/sleep-300")"
           kill -INT -- "-$piped"
           expect_stopped "$reader" "a reader of a limited run saw no end of output after SIGINT"
           wait "$piped" || true

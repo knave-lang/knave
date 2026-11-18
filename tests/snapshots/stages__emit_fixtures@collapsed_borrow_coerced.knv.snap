@@ -19,8 +19,8 @@ fn main() {
     let equal = |left: i64, right: i64| left == right;
     println!("{}", equal(**outer, **outer));
     println!("{}", {
-        let template_argument_0 = outer;
-        let template_argument_1 = outer;
+        let template_argument_0 = *outer;
+        let template_argument_1 = *outer;
         let template_argument_2 = |left: &i64, right: &i64| *left == *right;
         template_argument_2(template_argument_0, template_argument_1)
     });

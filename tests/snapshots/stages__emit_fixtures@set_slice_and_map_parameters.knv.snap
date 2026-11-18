@@ -48,7 +48,7 @@ fn main() {
         map
     };
     rename_through(&mut models, "leaf", "Nissan Leaf Plus");
-    println!("{}", models.get("leaf").unwrap());
+    println!("{}", *models.get("leaf").unwrap());
     let mut prices: std::collections::BTreeMap<&str, i64> = {
         let mut map = std::collections::BTreeMap::new();
         map.insert("leaf", 28000_i64);

@@ -44,7 +44,11 @@ impl Template {
     }
 
     pub fn receives(&self, argument: usize) -> bool {
-        self.parsed.receives(argument)
+        let mut uses = self
+            .parsed
+            .placeholders()
+            .filter(|index| *index == argument);
+        self.parsed.receives(argument) && uses.nth(1).is_none()
     }
 
     pub fn is_binary_operation(&self) -> bool {

@@ -1691,7 +1691,7 @@ impl<'a> ExpressionEmitter<'a> {
         position: usize,
         argument: &TypedArgument,
     ) -> Code {
-        let value = self.argument(argument, TypeContext::Known, ArgumentRole::Ordinary);
+        let value = self.argument(argument, TypeContext::Known, ArgumentRole::Coerced);
         match self
             .local_closures
             .argument_borrow(callee, position, &argument.value)
@@ -1722,7 +1722,7 @@ impl<'a> ExpressionEmitter<'a> {
             };
             let rest: Vec<Code> = rest
                 .iter()
-                .map(|argument| self.argument(argument, TypeContext::Known, ArgumentRole::Ordinary))
+                .map(|argument| self.argument(argument, TypeContext::Known, ArgumentRole::Coerced))
                 .collect();
             let mut call = vec![Code::atom(format!(".{name}("))];
             call.extend(Self::separated(rest));
@@ -1734,7 +1734,7 @@ impl<'a> ExpressionEmitter<'a> {
         }
         let arguments: Vec<Code> = arguments
             .iter()
-            .map(|argument| self.argument(argument, TypeContext::Known, ArgumentRole::Ordinary))
+            .map(|argument| self.argument(argument, TypeContext::Known, ArgumentRole::Coerced))
             .collect();
         let path = self.plan.trait_path(info.trait_binding, self.module);
         let mut parts = vec![Code::atom(format!("{path}::{name}("))];
@@ -2284,7 +2284,7 @@ impl<'a> ExpressionEmitter<'a> {
         match CopiedOut::of(argument, |value| self.is_borrowed_index_call(value)) {
             Some(copied) => Some(self.copied_out(&argument.value, copied, context)),
             None => self
-                .dereferenced_field(argument)
+                .dereferenced_field(argument, role)
                 .or_else(|| Some(self.expr_in(reborrowed?, context).spanned(span))),
         }
     }
@@ -2302,10 +2302,8 @@ impl<'a> ExpressionEmitter<'a> {
         .spanned(span)
     }
 
-    fn dereferenced_field(&mut self, argument: &TypedArgument) -> Option<Code> {
-        let Borrow::Deref(levels) = argument.borrow else {
-            return None;
-        };
+    fn dereferenced_field(&mut self, argument: &TypedArgument, role: ArgumentRole) -> Option<Code> {
+        let levels = role.dereferenced_layers(argument)?;
         let TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) = &argument.value.kind
         else {
             return None;
@@ -2332,7 +2330,7 @@ impl<'a> ExpressionEmitter<'a> {
         role: ArgumentRole,
     ) -> Code {
         match (&value.kind, role) {
-            (_, ArgumentRole::Ordinary) => self.expr_in(value, context),
+            (_, ArgumentRole::Ordinary | ArgumentRole::Coerced) => self.expr_in(value, context),
             (TypedExprKind::Struct(TypedStructExpr::Field(owner, label)), _) => {
                 self.field_place(owner, label)
             }

@@ -6,6 +6,7 @@ pub(super) enum ArgumentRole {
     IndexReceiver,
     Borrowed,
     MutPlace,
+    Coerced,
     Ordinary,
 }
 
@@ -27,8 +28,20 @@ impl ArgumentRole {
         match argument.borrow {
             Borrow::Shared if !borrowed_already => Some("&".to_string()),
             Borrow::Mutable if !borrowed_already => Some("&mut ".to_string()),
-            Borrow::Deref(levels) => Some("*".repeat(levels)),
+            Borrow::Deref(_) | Borrow::Collapse(_) => self
+                .dereferenced_layers(argument)
+                .map(|levels| "*".repeat(levels)),
             _ => None,
+        }
+    }
+
+    pub(super) fn dereferenced_layers(self, argument: &TypedArgument) -> Option<usize> {
+        let autodereferences = matches!(self, ArgumentRole::Receiver | ArgumentRole::Coerced);
+        match argument.borrow {
+            Borrow::Deref(levels) => Some(levels),
+            _ => argument
+                .collapsed_shared_layers()
+                .filter(|_| !autodereferences),
         }
     }
 

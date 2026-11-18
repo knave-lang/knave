@@ -162,6 +162,7 @@ mod type_declarations_builder;
 mod type_text;
 mod type_text_writer;
 mod typed;
+mod typed_argument;
 mod typed_associated_type;
 mod typed_impl_method;
 #[cfg(test)]

@@ -950,17 +950,15 @@ impl TypeChecker {
         let ExprKind::Leaf(Leaf::Rust(template)) = member.value.kind() else {
             return false;
         };
-        let scheme = match self.written_schemes().lower_scheme(&template.type_expr) {
-            Ok(scheme) => scheme,
-            Err(diagnostic) => {
-                self.diagnostics.push(diagnostic);
-                self.generic_declarations().failed_scheme()
-            }
-        };
+        let scheme = self.written_schemes().lower_scheme(&template.type_expr);
+        let scheme = scheme.unwrap_or_else(|diagnostic| {
+            self.diagnostics.push(diagnostic);
+            self.generic_declarations().failed_scheme()
+        });
         self.collect_clauses(member.binding, template, &scheme);
         let name = super::TemplateName::Declared(member.binding, &template.template);
-        let pipelines = super::Pipelines::new(&self.declarations.types().rust_types);
-        self.template_borrows.register(name, &scheme, pipelines);
+        let rust_types = &self.declarations.types().rust_types;
+        self.template_borrows.register(name, &scheme, rust_types);
         self.schemes.insert(member.binding, scheme);
         true
     }

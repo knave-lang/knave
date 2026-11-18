@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/generic_order_field.knv
+---
+error[L0404]: `(entry int)` does not implement `ord`
+ --> check/generic_order_field.knv:7:10
+  |
+7 |   (sort! entries))
+  |          ^^^^^^^ this needs `ord`
+  |
+  = note: `ord` is never inferred for a struct, so the struct needs a written `derive`
+  = help: add `(derive entry clone copy partial-eq eq hash show ord)` to compare fields in this order: `key`, then `count`
+  = help: to sort by one field instead, use `sort-by!` with the field keyword `:key`
+  = note: run `knave doc L0404` for an explanation

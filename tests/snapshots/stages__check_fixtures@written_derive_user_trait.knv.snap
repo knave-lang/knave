@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/written_derive_user_trait.knv
+---
+error[L0404]: `ticket` does not implement `shown`
+  --> check/written_derive_user_trait.knv:10:18
+   |
+10 |   (println (show (->ticket 1))))
+   |                  ^^^^^^^^^^^^ this needs `shown`
+   |
+   = note: run `knave doc L0404` for an explanation

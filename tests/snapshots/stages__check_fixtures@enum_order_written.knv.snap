@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/enum_order_written.knv
+---
+error[L0404]: `rank` does not implement `ord`
+ --> check/enum_order_written.knv:7:10
+  |
+3 | (derive rank debug)
+  | ------------------- this `derive` leaves out `ord`
+...
+7 |   (sort! values))
+  |          ^^^^^^ this needs `ord`
+  |
+  = help: add `ord` to the enum's `derive`
+  = help: add `(derive rank debug ord)` to compare cases in declared order: `low`, then `high`
+  = note: run `knave doc L0404` for an explanation

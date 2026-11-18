@@ -1,0 +1,7 @@
+(struct (entry a) (key a) (count i64))
+
+(defn main ()
+  (local entries
+    (vec (new entry (key 2) (count 1))
+         (new entry (key 3) (count 0))))
+  (sort! entries))

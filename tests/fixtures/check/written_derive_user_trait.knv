@@ -1,0 +1,10 @@
+(trait shown
+  (show (fn ((ref self)) usize)))
+
+(defstruct ticket
+  :id u32)
+
+(derive ticket debug)
+
+(defn main ()
+  (println (show (->ticket 1))))

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/inc_of_a_string.knv
+---
+error[L0401]: mismatched types
+ --> check/inc_of_a_string.knv:1:24
+  |
+1 | (defn main () (println (inc "a")))
+  |                        ^^^^^^^^^ expected `str`, found an integer
+  |
+  = note: run `knave doc L0401` for an explanation

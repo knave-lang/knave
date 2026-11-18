@@ -78,6 +78,7 @@ The project owner accepted the five rules and these changes. Each change breaks 
 These names break a rule, and the owner accepted each:
 
 - `str` builds a `string`, an exception to rule 4. The owner kept the short name that every program writes.
+- `inc` and `dec` abbreviate *increment* and *decrement*, as `str` abbreviates *string*, an exception to spelling a name out. The owner kept Clojure's short names, which programs write often.
 - `then-some` and `then-ok` break rule 5 until #280 lands.
 
 These names stay, deliberately: `collect`, `len`, `defstruct`, `vals`, `at`, `push!` on vectors, `max-by-key`, `dedup!`, `lines`, `for-each`, `iter`, `find` and `remove-at!`. `rem`, `add` and the other arithmetic names stay exported, because `rem` is the only remainder operator and a program passes `add` as a value.

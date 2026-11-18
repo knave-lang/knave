@@ -37,6 +37,7 @@ enum RuntimePart {
     RunTest,
     Max,
     Min,
+    IsEven,
 }
 
 impl RuntimePart {
@@ -48,7 +49,7 @@ impl RuntimePart {
         "eprintln!(",
         "std::io::stderr(",
     ];
-    const NAMED: [(&'static str, RuntimePart); 28] = [
+    const NAMED: [(&'static str, RuntimePart); 29] = [
         ("Number", RuntimePart::Number),
         ("Signed", RuntimePart::Signed),
         ("Float", RuntimePart::Float),
@@ -77,6 +78,7 @@ impl RuntimePart {
         ("run_test", RuntimePart::RunTest),
         ("max", RuntimePart::Max),
         ("min", RuntimePart::Min),
+        ("is_even", RuntimePart::IsEven),
     ];
     const SCANNED: [ScannedPart; 4] = [
         ScannedPart {
@@ -97,11 +99,15 @@ impl RuntimePart {
         },
     ];
 
-    const REQUIRED: [(RuntimePart, &'static [RuntimePart]); 18] = [
+    const REQUIRED: [(RuntimePart, &'static [RuntimePart]); 19] = [
         (RuntimePart::FromLiteral, &[RuntimePart::Number]),
         (RuntimePart::FromFloatLiteral, &[RuntimePart::Number]),
         (RuntimePart::Signed, &[RuntimePart::Number]),
         (RuntimePart::Integer, &[RuntimePart::Number]),
+        (
+            RuntimePart::IsEven,
+            &[RuntimePart::Integer, RuntimePart::FromLiteral],
+        ),
         (RuntimePart::Float, &[RuntimePart::Signed]),
         (RuntimePart::MapSequence, &[RuntimePart::Sequence]),
         (RuntimePart::Lines, &[RuntimePart::Io]),
@@ -262,8 +268,9 @@ impl RuntimeModule {
     const RUN_TEST: &'static str = include_str!("../../prelude/runtime/run_test.rs");
     const MAX: &'static str = include_str!("../../prelude/runtime/max.rs");
     const MIN: &'static str = include_str!("../../prelude/runtime/min.rs");
+    const IS_EVEN: &'static str = include_str!("../../prelude/runtime/is_even.rs");
     const START_UP_CALL: &'static str = "crate::rt::restore_default_sigpipe();";
-    const FIXED_PARTS: [(RuntimePart, &'static str); 30] = [
+    const FIXED_PARTS: [(RuntimePart, &'static str); 31] = [
         (RuntimePart::Signed, Self::SIGNED),
         (RuntimePart::Float, Self::FLOAT),
         (RuntimePart::Integer, Self::INTEGER),
@@ -294,6 +301,7 @@ impl RuntimeModule {
         (RuntimePart::RunTest, Self::RUN_TEST),
         (RuntimePart::Max, Self::MAX),
         (RuntimePart::Min, Self::MIN),
+        (RuntimePart::IsEven, Self::IS_EVEN),
     ];
     const CONVERSIONS: &'static [Conversion] = &[
         Conversion {
@@ -449,6 +457,15 @@ mod tests {
         let module =
             RuntimeModule::of("crate::rt::exit(3_i32)").expect("the code needs the runtime");
         assert!(module.source().contains("pub fn exit(code: i32)"));
+    }
+
+    #[test]
+    fn an_is_even_call_brings_the_literal_conversion_it_uses() {
+        let module =
+            RuntimeModule::of("crate::rt::is_even(x)").expect("the code needs the runtime");
+        let source = module.source();
+        assert!(source.contains("pub fn is_even<N: Integer>"));
+        assert!(source.contains("fn from_literal(value: i128) -> Self;"));
     }
 
     #[test]

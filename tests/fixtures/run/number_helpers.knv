@@ -1,0 +1,53 @@
+(type step
+  (where ((n number)) (fn (n) n)))
+
+(defn step (x) (inc x))
+
+(type balanced?
+  (where ((n number)) (fn (n) bool)))
+
+(defn balanced? (x) (zero? x))
+
+(type halfway?
+  (where ((n integer)) (fn (n) bool)))
+
+(defn halfway? (x) (even? (dec x)))
+
+(type lopsided?
+  (where ((n integer)) (fn (n) bool)))
+
+(defn lopsided? (x) (odd? (inc x)))
+
+(defn main ()
+  (let (size (the usize 4)
+        whole 3
+        part -2.5
+        empty 0
+        numbers (vec -1 0 3 4)
+        sizes (the (vec usize) (vec 1 2 3)))
+    (prn (inc whole)
+         (dec whole)
+         (inc part)
+         (dec size))
+    (prn (zero? empty)
+         (zero? part)
+         (pos? whole)
+         (neg? part))
+    (prn (even? whole)
+         (odd? whole)
+         (even? (+ whole 1))
+         (odd? size))
+    (prn (step whole)
+         (step part)
+         (balanced? part)
+         (halfway? size)
+         (lopsided? whole))
+    (prn (collect (map (iter numbers) inc)))
+    (prn (collect (map (iter numbers) dec)))
+    (prn (count (filter (iter numbers) zero?))
+         (count (filter (iter numbers) pos?))
+         (count (filter (iter numbers) neg?))
+         (count (filter (iter numbers) even?))
+         (count (filter (iter numbers) odd?)))
+    (prn (count (filter (iter sizes) even?))
+         (count (filter (iter sizes) odd?)))))

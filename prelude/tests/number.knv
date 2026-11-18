@@ -1,3 +1,62 @@
 (use prelude/test doctest)
 
 (doctest prelude/number)
+
+(type step-up
+  (where ((n number)) (fn (n) n)))
+
+(defn step-up (value) (inc value))
+
+(type step-down
+  (where ((n number)) (fn (n) n)))
+
+(defn step-down (value) (dec value))
+
+(deftest inc-adds-one-to-any-number
+  (assert (= (inc -1) 0))
+  (assert (= (inc 0.5) 1.5))
+  (assert (= (step-up (the usize 4)) 5))
+  (assert (= (step-up 2.5) 3.5)))
+
+(deftest dec-subtracts-one-from-any-number
+  (assert (= (dec 0) -1))
+  (assert (= (dec 1.5) 0.5))
+  (assert (= (step-down (the u8 4)) 3))
+  (assert (= (step-down 2.5) 1.5)))
+
+(deftest inc-and-dec-are-values
+  (assert (= (collect (map (iter (vec 1 2)) inc))
+             (vec 2 3)))
+  (assert (= (collect (map (iter (vec 1 2)) dec))
+             (vec 0 1))))
+
+(deftest zero-pos-and-neg-split-the-numbers-at-zero
+  (assert (zero? 0.0))
+  (assert (not (zero? -1)))
+  (assert (pos? 0.5))
+  (assert (not (pos? 0)))
+  (assert (neg? -1))
+  (assert (not (neg? 0.0))))
+
+(deftest sign-predicates-are-values
+  (local numbers (vec -2 0 0 3))
+  (assert (= (count (filter (iter numbers) zero?))
+             2))
+  (assert (= (count (filter (iter numbers) pos?))
+             1))
+  (assert (= (count (filter (iter numbers) neg?))
+             1)))
+
+(deftest even-and-odd-read-negative-integers
+  (assert (even? -4))
+  (assert (not (even? -3)))
+  (assert (odd? -3))
+  (assert (not (odd? 0)))
+  (assert (odd? (the usize 7))))
+
+(deftest even-and-odd-are-values
+  (local numbers (vec 1 2 3 4 5))
+  (assert (= (count (filter (iter numbers) even?))
+             2))
+  (assert (= (count (filter (iter numbers) odd?))
+             3)))

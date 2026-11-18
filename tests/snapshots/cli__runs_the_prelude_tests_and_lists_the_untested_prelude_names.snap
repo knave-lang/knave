@@ -2,8 +2,15 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (54 of 240): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display enum eprint eprintln eq exit export field floating fmt fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord pattern quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
-running 212 tests
+untested in prelude (54 of 247): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display enum eprint eprintln eq exit export field floating fmt fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord pattern quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
+running 226 tests
+test number/inc-adds-one-to-any-number ... ok
+test number/dec-subtracts-one-from-any-number ... ok
+test number/inc-and-dec-are-values ... ok
+test number/zero-pos-and-neg-split-the-numbers-at-zero ... ok
+test number/sign-predicates-are-values ... ok
+test number/even-and-odd-read-negative-integers ... ok
+test number/even-and-odd-are-values ... ok
 test option/some-holds-a-value ... ok
 test option/none-holds-nothing ... ok
 test option/unwrap-takes-the-value ... ok
@@ -116,6 +123,13 @@ test prelude/number/doc:> ... ok
 test prelude/number/doc:>= ... ok
 test prelude/number/doc:= ... ok
 test prelude/number/doc:not= ... ok
+test prelude/number/doc:inc ... ok
+test prelude/number/doc:dec ... ok
+test prelude/number/doc:zero? ... ok
+test prelude/number/doc:pos? ... ok
+test prelude/number/doc:neg? ... ok
+test prelude/number/doc:even? ... ok
+test prelude/number/doc:odd? ... ok
 test prelude/option/doc:some ... ok
 test prelude/option/doc:none ... ok
 test prelude/option/doc:some? ... ok
@@ -235,4 +249,4 @@ test prelude/vec/doc:last ... ok
 test prelude/vec/doc:reverse ... ok
 test prelude/vec/doc:reverse! ... ok
 test prelude/vec/doc:dedup! ... ok
-212 passed, 0 failed
+226 passed, 0 failed

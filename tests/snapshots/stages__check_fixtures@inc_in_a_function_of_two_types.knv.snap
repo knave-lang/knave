@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/inc_in_a_function_of_two_types.knv
+---
+error[L0401]: mismatched types
+ --> check/inc_in_a_function_of_two_types.knv:5:18
+  |
+5 |   (println (step (the usize 2))))
+  |                  ^^^^^^^^^^^^^ expected `int`, found `usize`
+  |
+  = note: `x` defaulted to `int`, because `step` is called with `int` and with `usize`
+  = help: give `step` one parameter type with a `type` signature, such as `(type step (fn (int) int))`, and pass that type at every call
+  = note: run `knave doc L0401` for an explanation

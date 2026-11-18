@@ -1,0 +1,67 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/number_helper_arity.knv
+---
+error[L0301]: no rule of `inc` matches this form
+ --> check/number_helper_arity.knv:2:12
+  |
+2 |   (println (inc 1 2))
+  |            ^^^^^^^^^ here
+  |
+  = help: write it as `(inc number)`
+  = note: run `knave doc L0301` for an explanation
+
+error[L0301]: no rule of `dec` matches this form
+ --> check/number_helper_arity.knv:3:12
+  |
+3 |   (println (dec))
+  |            ^^^^^ here
+  |
+  = help: write it as `(dec number)`
+  = note: run `knave doc L0301` for an explanation
+
+error[L0301]: no rule of `zero?` matches this form
+ --> check/number_helper_arity.knv:4:12
+  |
+4 |   (println (zero? 1 2))
+  |            ^^^^^^^^^^^ here
+  |
+  = help: write it as `(zero? number)`
+  = note: run `knave doc L0301` for an explanation
+
+error[L0301]: no rule of `pos?` matches this form
+ --> check/number_helper_arity.knv:5:12
+  |
+5 |   (println (pos?))
+  |            ^^^^^^ here
+  |
+  = help: write it as `(pos? number)`
+  = note: run `knave doc L0301` for an explanation
+
+error[L0301]: no rule of `neg?` matches this form
+ --> check/number_helper_arity.knv:6:12
+  |
+6 |   (println (neg? 1 2))
+  |            ^^^^^^^^^^ here
+  |
+  = help: write it as `(neg? number)`
+  = note: run `knave doc L0301` for an explanation
+
+error[L0301]: no rule of `even?` matches this form
+ --> check/number_helper_arity.knv:7:12
+  |
+7 |   (println (even?))
+  |            ^^^^^^^ here
+  |
+  = help: write it as `(even? integer)`
+  = note: run `knave doc L0301` for an explanation
+
+error[L0301]: no rule of `odd?` matches this form
+ --> check/number_helper_arity.knv:8:12
+  |
+8 |   (println (odd? 1 2)))
+  |            ^^^^^^^^^^ here
+  |
+  = help: write it as `(odd? integer)`
+  = note: run `knave doc L0301` for an explanation

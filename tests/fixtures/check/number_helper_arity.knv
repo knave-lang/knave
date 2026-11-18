@@ -1,0 +1,8 @@
+(defn main ()
+  (println (inc 1 2))
+  (println (dec))
+  (println (zero? 1 2))
+  (println (pos?))
+  (println (neg? 1 2))
+  (println (even?))
+  (println (odd? 1 2)))

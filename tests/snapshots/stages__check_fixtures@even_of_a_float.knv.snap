@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/even_of_a_float.knv
+---
+error[L0404]: `float` does not implement `integer`
+ --> check/even_of_a_float.knv:1:17
+  |
+1 | (defn halves () (even? 2.5))
+  |                 ^^^^^^^^^^^ this needs `integer`
+  |
+  = note: `integer` is implemented for: i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize
+  = note: run `knave doc L0404` for an explanation
+
+error[L0404]: `float` does not implement `integer`
+ --> check/even_of_a_float.knv:4:3
+  |
+4 |   (count (filter (iter (vec 1.5 2.0)) odd?)))
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `integer`
+  |
+  = note: `integer` is implemented for: i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize
+  = note: run `knave doc L0404` for an explanation

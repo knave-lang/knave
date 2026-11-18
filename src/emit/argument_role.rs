@@ -28,10 +28,6 @@ impl ArgumentRole {
             Borrow::Shared if !borrowed_already => Some("&".to_string()),
             Borrow::Mutable if !borrowed_already => Some("&mut ".to_string()),
             Borrow::Deref(levels) => Some("*".repeat(levels)),
-            Borrow::Reborrow => None,
-            Borrow::Pending(_) => {
-                unreachable!("the type checker decides every pending borrow")
-            }
             _ => None,
         }
     }

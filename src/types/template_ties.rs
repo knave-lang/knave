@@ -143,6 +143,7 @@ impl TemplateTies {
             Some((generic, others)) if others.iter().all(|other| other == generic) => parameters
                 .iter()
                 .enumerate()
+                .filter(|(_, parameter)| !matches!(parameter, Type::Function(..)))
                 .filter(|(_, parameter)| parameter.mentions(*generic))
                 .map(|(position, _)| position)
                 .collect(),

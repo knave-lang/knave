@@ -1,0 +1,13 @@
+(defn main ()
+  (local s (str "ab"))
+  (local names (vec (as-str s)))
+  (local r (at names 0))
+  (local v
+    ((rust "Some({0}).filter(|_| {1}(\"x\"))"
+       (where (a)
+         (fn ((ref a) (fn ((ref a)) bool))
+           (option (ref a)))))
+     r
+     (fn (x) true)))
+  (push! names "b")
+  (prn v))

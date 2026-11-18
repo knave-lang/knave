@@ -28,6 +28,16 @@ const EVERY_NEW_FILE: [&str; 7] = [
 ];
 const WORKFLOW_FILE: &str = ".github/workflows/knave.yml";
 const VERSION_STEP: &str = "name: Read the Knave version";
+const EVERY_OWNED_FILE: [&str; 3] = [
+    ".agents/skills/writing-knave/SKILL.md",
+    ".claude/skills/writing-knave/SKILL.md",
+    ".github/workflows/knave.yml",
+];
+const FILLED_VERSION: &str = "0.0.1";
+const RELEASED_SKILL: &str =
+    include_str!("../src/cli/earlier_texts/skills/writing-knave/SKILL.md/0.18.0");
+const RELEASED_WORKFLOW: &str =
+    include_str!("../src/cli/earlier_texts/src/cli/github_workflow.yml/0.18.0");
 const AGENT_SKILL_PATHS: [&str; 2] = [
     "demo-app/.agents/skills/writing-knave/SKILL.md",
     "demo-app/.claude/skills/writing-knave/SKILL.md",
@@ -454,6 +464,42 @@ exit 101
             .map(str::trim_start)
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    fn with_released_project(test_name: &str, skipped: &[&str]) -> Self {
+        let sandbox = Self::new(test_name);
+        let arguments = [&["new", "demo-app"], skipped].concat();
+        sandbox.compiler(&arguments).assert_silent_success();
+        let workflow = format!("demo-app/{WORKFLOW_FILE}");
+        let released_skill = RELEASED_SKILL.replace(VERSION_SLOT, FILLED_VERSION);
+        let written_skills: Vec<&str> = AGENT_SKILL_PATHS
+            .into_iter()
+            .filter(|path| sandbox.directory.join(path).exists())
+            .collect();
+        written_skills
+            .into_iter()
+            .fold(sandbox, |sandbox, path| {
+                sandbox.with_file(path, &released_skill)
+            })
+            .with_file("demo-app/project.knv", "(defproject demo-app)\n")
+            .with_file(
+                &workflow,
+                &RELEASED_WORKFLOW.replace(VERSION_SLOT, FILLED_VERSION),
+            )
+    }
+
+    fn without_version(text: &str) -> String {
+        text.replace(env!("CARGO_PKG_VERSION"), "<version>")
+    }
+
+    fn files_with_contents(&self, directory: &str) -> Vec<(String, String)> {
+        self.project_files(directory)
+            .into_iter()
+            .map(|file| {
+                let text = self.contents(&format!("{directory}/{file}"));
+                (file, text)
+            })
+            .collect()
     }
 
     fn with_documented_project(test_name: &str) -> Self {
@@ -8318,6 +8364,86 @@ fn new_writes_a_workflow_that_fails_without_a_recorded_version() {
         .assert_silent_success();
     let sandbox = sandbox.with_file("demo-app/project.knv", "(defproject demo-app)\n");
     assert_eq!(sandbox.run_version_step("demo-app"), (false, String::new()));
+}
+
+#[test]
+fn upgrade_rewrites_the_files_a_release_wrote_and_records_the_version() {
+    let sandbox = Sandbox::with_released_project("upgrade_released_files", &[]);
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    insta::assert_snapshot!(Sandbox::without_version(
+        &upgrade.assert_exit_code(0).stderr()
+    ));
+    sandbox
+        .compiler(&["new", "fresh-app"])
+        .assert_silent_success();
+    for path in EVERY_OWNED_FILE {
+        assert_eq!(
+            sandbox.contents(&format!("demo-app/{path}")),
+            sandbox.contents(&format!("fresh-app/{path}")),
+            "`{path}` holds an earlier text"
+        );
+    }
+    assert_eq!(
+        sandbox.contents("demo-app/project.knv"),
+        format!(
+            "(defproject demo-app :knave \"{}\")\n",
+            env!("CARGO_PKG_VERSION")
+        )
+    );
+}
+
+#[test]
+fn upgrade_keeps_a_workflow_the_user_changed() {
+    let sandbox = Sandbox::with_released_project("upgrade_changed_workflow", &[]);
+    let workflow = format!("demo-app/{WORKFLOW_FILE}");
+    let changed = format!(
+        "{}      - name: Build\n        run: knave task build\n",
+        sandbox.contents(&workflow)
+    );
+    let sandbox = sandbox.with_file(&workflow, &changed);
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    insta::assert_snapshot!(Sandbox::without_version(
+        &upgrade.assert_exit_code(0).stderr()
+    ));
+    assert_eq!(sandbox.contents(&workflow), changed);
+}
+
+#[test]
+fn upgrade_writes_no_skill_into_a_project_made_without_one() {
+    let sandbox = Sandbox::with_released_project("upgrade_without_skill", &["--skip-agent-skill"]);
+    sandbox
+        .compiler_in("demo-app", &["upgrade"])
+        .assert_exit_code(0);
+    assert_eq!(
+        sandbox.project_files("demo-app"),
+        [
+            ".github/workflows/knave.yml",
+            ".gitignore",
+            "project.knv",
+            "src/main.knv",
+            "tests/greeting.knv",
+        ]
+    );
+}
+
+#[test]
+fn upgrade_of_a_current_project_changes_nothing() {
+    let sandbox = Sandbox::new("upgrade_current");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let before = sandbox.files_with_contents("demo-app");
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    insta::assert_snapshot!(Sandbox::without_version(
+        &upgrade.assert_exit_code(0).stderr()
+    ));
+    assert_eq!(sandbox.files_with_contents("demo-app"), before);
+}
+
+#[test]
+fn upgrade_outside_a_project_is_a_usage_error() {
+    let sandbox = Sandbox::new("upgrade_outside_project");
+    insta::assert_snapshot!(sandbox.compiler(&["upgrade"]).assert_exit_code(2).stderr());
 }
 
 #[test]

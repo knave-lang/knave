@@ -9,6 +9,7 @@ use super::release_flag::ReleaseFlag;
 use super::remove::RemoveCommand;
 use super::task::TaskCommand;
 use super::terminal::Terminal;
+use super::upgrade::UpgradeCommand;
 
 const DEV_HELP: &str = "Edit the crates that only tests build with";
 
@@ -59,6 +60,10 @@ pub enum ProjectCommand {
         #[command(flatten)]
         components: NewComponents,
     },
+    #[command(
+        about = "Record this Knave's version in the project file, and rewrite the files Knave wrote"
+    )]
+    Upgrade,
 }
 
 impl ProjectCommand {
@@ -78,6 +83,7 @@ impl ProjectCommand {
             Self::Task { command, release } => {
                 TaskCommand::new(command, release.profile()).run(terminal)
             }
+            Self::Upgrade => UpgradeCommand.run(terminal),
         }
     }
 }

@@ -1,0 +1,38 @@
+---
+source: tests/cli.rs
+expression: "Sandbox::without_version(&upgrade.assert_exit_code(0).stderr())"
+---
+recorded Knave <version> in `project.knv`
+warning: kept `.github/workflows/knave.yml`, because it differs from every text Knave wrote
+help: the lines marked `-` are yours and the lines marked `+` are Knave <version>'s: merge them by hand
+--- .github/workflows/knave.yml
++++ .github/workflows/knave.yml (Knave <version>)
+@@ -7,14 +7,16 @@
+ permissions:
+   contents: read
+ 
+-env:
+-  KNAVE_VERSION: "0.0.1"
+-
+ jobs:
+   check:
+     runs-on: ubuntu-latest
+     steps:
+       - uses: actions/checkout@v4
++      - name: Read the Knave version from project.knv
++        run: |
++          version=$(grep -o ':knave "[^"]*"' project.knv | cut -d '"' -f 2)
++          test -n "$version" || { echo "::error file=project.knv::project.knv records no :knave version"; exit 1; }
++          echo "KNAVE_VERSION=$version" >> "$GITHUB_ENV"
+       - id: knave-cache
+         uses: actions/cache/restore@v4
+         with:
+@@ -36,5 +38,3 @@
+         run: knave lint
+       - name: Test
+         run: knave test
+-      - name: Build
+-        run: knave task build
+
+rewrote `.agents/skills/writing-knave/SKILL.md`
+rewrote `.claude/skills/writing-knave/SKILL.md`

@@ -8025,6 +8025,19 @@ fn new_writes_a_project_that_passes_its_own_checks() {
 }
 
 #[test]
+fn new_writes_a_workflow_that_runs_each_check() {
+    let sandbox = Sandbox::new("new_workflow_checks");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let workflow = sandbox.contents("demo-app/.github/workflows/knave.yml");
+    for check in NEW_PROJECT_CHECKS {
+        let step = format!("run: knave {}\n", check.join(" "));
+        assert!(workflow.contains(&step), "the workflow has no `{step}`");
+    }
+}
+
+#[test]
 fn new_runs_git_init() {
     let sandbox = Sandbox::new("new_git_init");
     sandbox

@@ -19,11 +19,7 @@ impl<'a> PlaceTypes<'a> {
     }
 
     pub(super) fn read(&self, value: &TypedExpr) -> Type {
-        if self.pair_part_behind_shared(value) {
-            value.ty.clone()
-        } else {
-            self.declared_type(value)
-        }
+        self.declared_type(value)
     }
 
     pub(super) fn changed(&self, value: &TypedExpr) -> Type {
@@ -228,10 +224,10 @@ mod tests {
     }
 
     #[test]
-    fn a_deeply_nested_pair_part_through_ref_cannot_change() {
+    fn a_deeply_nested_pair_part_through_ref_reads_but_cannot_change() {
         let fixture = PlaceTypesFixture::new();
         let part = fixture.first_parts(Type::shared, 30);
-        assert_eq!(fixture.read(&part), PlaceTypesFixture::boolean());
+        assert_eq!(fixture.read(&part), PlaceTypesFixture::integer());
         let changed = fixture.place_types().changed(&part);
         assert_eq!(changed, Type::shared(PlaceTypesFixture::integer()));
     }

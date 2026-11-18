@@ -1,0 +1,16 @@
+(defn show-number ((n (ref i64)))
+  (println n))
+
+(defn show-text ((s (ref string)))
+  (println s))
+
+(defn show-parts ((numbered (ref (pair i64 string)))
+                  (named (ref (pair string string))))
+  (show-number (ref (first numbered)))
+  (show-text (ref (first named))))
+
+(defn main ()
+  (let (numbered (pair 7 (str "seven"))
+        named (pair (str "ana") (str "bo")))
+    (show-parts (ref numbered) (ref named))
+    (prn numbered named)))

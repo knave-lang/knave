@@ -48,12 +48,6 @@ impl TemplateClauses {
         self.clauses.contains_key(&binding)
     }
 
-    pub fn chooses(&self, binding: BindingId) -> bool {
-        self.clauses
-            .get(&binding)
-            .is_some_and(|clauses| !clauses.is_empty())
-    }
-
     pub fn chosen(
         &self,
         binding: BindingId,

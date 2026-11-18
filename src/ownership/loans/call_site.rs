@@ -1,16 +1,14 @@
-use super::called_parameter::CalledParameter;
 use super::holdings::Holdings;
 use super::loan_rules::LoanRules;
 use super::passed_holdings::PassedHoldings;
 use crate::types::{
-    Borrow, PositionTie, TemplateTies, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLambda,
+    PositionTie, TemplateTies, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLambda,
 };
 
 pub struct CallSite<'c> {
     callee: &'c TypedExpr,
     arguments: &'c [TypedArgument],
     ties: Option<TemplateTies>,
-    dereferenced: Vec<usize>,
 }
 
 impl<'c> CallSite<'c> {
@@ -19,14 +17,10 @@ impl<'c> CallSite<'c> {
         arguments: &'c [TypedArgument],
         rules: &LoanRules<'_>,
     ) -> Self {
-        let dereferenced = Self::collapsed(arguments)
-            .filter(|position| rules.dereferences_every_use(callee, *position))
-            .collect();
         Self {
             callee,
             arguments,
             ties: rules.ties(callee),
-            dereferenced,
         }
     }
 
@@ -45,38 +39,7 @@ impl<'c> CallSite<'c> {
         self.arguments
     }
 
-    pub fn parameter(&self, position: usize) -> CalledParameter<'c> {
-        let ty = self.parameter_type(position);
-        if self.stores_the_reference(position) {
-            CalledParameter::storing(ty)
-        } else {
-            CalledParameter::untied(ty)
-        }
-    }
-
-    fn stores_the_reference(&self, position: usize) -> bool {
-        self.ties.as_ref().is_some_and(|ties| {
-            ties.stores_the_reference(position, self.uncollapsed(), &self.dereferenced)
-        })
-    }
-
-    fn uncollapsed(&self) -> impl Iterator<Item = usize> + 'c {
-        self.arguments
-            .iter()
-            .enumerate()
-            .filter(|(_, argument)| !matches!(argument.borrow, Borrow::Collapse(_)))
-            .map(|(position, _)| position)
-    }
-
-    fn collapsed(arguments: &[TypedArgument]) -> impl Iterator<Item = usize> + '_ {
-        arguments
-            .iter()
-            .enumerate()
-            .filter(|(_, argument)| matches!(argument.borrow, Borrow::Collapse(_)))
-            .map(|(position, _)| position)
-    }
-
-    fn parameter_type(&self, position: usize) -> Option<&'c Type> {
+    pub fn parameter(&self, position: usize) -> Option<&'c Type> {
         match &self.callee.ty {
             Type::Function(_, parameters, _) => parameters.get(position),
             _ => None,
@@ -134,10 +97,9 @@ mod tests {
         SiteFixture::with_site(source.bound("r"), &rules, |site| {
             assert!(
                 site.parameter(0)
-                    .ty()
                     .is_some_and(|parameter| parameter.is_reference())
             );
-            assert!(site.parameter(2).ty().is_none());
+            assert!(site.parameter(2).is_none());
             assert!(site.repeated_lambda().is_none());
         });
     }

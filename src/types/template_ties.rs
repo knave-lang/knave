@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use super::first_positions::{FirstPositionsAndBeyond, FirstPositionsOnly};
+use super::first_positions::FirstPositions;
 use super::pipelines::Pipelines;
 use super::position_tie::PositionTie;
 use super::tied_positions::TiedPositions;
@@ -10,9 +10,7 @@ use super::ty::{GenericId, Lifetime, Scheme, Type};
 pub struct TemplateTies {
     lifetime: TiedPositions,
     held: TiedPositions,
-    beneath: FirstPositionsOnly,
-    stored: FirstPositionsAndBeyond,
-    fixing: FirstPositionsOnly,
+    beneath: FirstPositions,
 }
 
 impl TemplateTies {
@@ -20,32 +18,14 @@ impl TemplateTies {
         Self {
             lifetime: TiedPositions::of(lifetime.iter().copied()),
             held: TiedPositions::of(held.iter().copied()),
-            beneath: FirstPositionsOnly::default(),
-            stored: FirstPositionsAndBeyond::default(),
-            fixing: FirstPositionsOnly::default(),
+            beneath: FirstPositions::default(),
         }
     }
 
     #[cfg(test)]
     pub fn beneath(self, positions: &[usize]) -> Self {
         Self {
-            beneath: FirstPositionsOnly::of(positions.iter().copied()),
-            ..self
-        }
-    }
-
-    #[cfg(test)]
-    pub fn fixing(self, positions: &[usize]) -> Self {
-        Self {
-            fixing: FirstPositionsOnly::of(positions.iter().copied()),
-            ..self
-        }
-    }
-
-    #[cfg(test)]
-    pub fn storing(self, positions: &[usize]) -> Self {
-        Self {
-            stored: FirstPositionsAndBeyond::of(positions.iter().copied()),
+            beneath: FirstPositions::of(positions.iter().copied()),
             ..self
         }
     }
@@ -61,7 +41,7 @@ impl TemplateTies {
         let held = TiedPositions::of(Self::held_ties(parameters, result, &generics)).union(
             &TiedPositions::of(Self::adapted_iterators(parameters, result, pipelines)),
         );
-        let beneath = FirstPositionsOnly::of(held.positions().filter(|position| {
+        let beneath = FirstPositions::of(held.positions().filter(|position| {
             !lifetime.contains(*position)
                 && matches!(parameters[*position], Type::Ref(..) | Type::Mut(..))
         }));
@@ -69,8 +49,6 @@ impl TemplateTies {
             lifetime,
             held,
             beneath,
-            stored: FirstPositionsAndBeyond::of(Self::stored_references(parameters)),
-            fixing: FirstPositionsOnly::of(Self::fixing_the_stored_variable(parameters)),
         })
     }
 
@@ -78,15 +56,13 @@ impl TemplateTies {
         let (known, other) = (known?, other?);
         let held = known.held.union(&other.held);
         let beneath =
-            FirstPositionsOnly::of(held.positions().filter(|position| {
+            FirstPositions::of(held.positions().filter(|position| {
                 known.reads_beneath(*position) && other.reads_beneath(*position)
             }));
         Some(Self {
             lifetime: known.lifetime.union(&other.lifetime),
             held,
             beneath,
-            stored: known.stored.union(other.stored),
-            fixing: known.fixing.intersection(other.fixing),
         })
     }
 
@@ -99,21 +75,6 @@ impl TemplateTies {
             Some(PositionTie::Held)
         } else {
             None
-        }
-    }
-
-    pub fn stores_the_reference(
-        &self,
-        position: usize,
-        uncollapsed: impl IntoIterator<Item = usize>,
-        dereferenced: &[usize],
-    ) -> bool {
-        if self.stored.contains(position) {
-            uncollapsed
-                .into_iter()
-                .all(|other| !self.fixing.contains(other))
-        } else {
-            !dereferenced.contains(&position)
         }
     }
 
@@ -131,35 +92,6 @@ impl TemplateTies {
             .iter()
             .enumerate()
             .filter(|(_, parameter)| shared.iter().any(|generic| parameter.mentions(*generic)))
-            .map(|(position, _)| position)
-            .collect()
-    }
-
-    fn fixing_the_stored_variable(parameters: &[Type]) -> Vec<usize> {
-        let stored: Vec<GenericId> = parameters
-            .iter()
-            .filter_map(|parameter| match parameter.innermost_referent() {
-                Type::Generic(generic) => Some(*generic),
-                _ => None,
-            })
-            .collect();
-        match stored.split_first() {
-            Some((generic, others)) if others.iter().all(|other| other == generic) => parameters
-                .iter()
-                .enumerate()
-                .filter(|(_, parameter)| !matches!(parameter, Type::Function(..)))
-                .filter(|(_, parameter)| parameter.mentions(*generic))
-                .map(|(position, _)| position)
-                .collect(),
-            _ => Vec::new(),
-        }
-    }
-
-    fn stored_references(parameters: &[Type]) -> Vec<usize> {
-        parameters
-            .iter()
-            .enumerate()
-            .filter(|(_, parameter)| matches!(parameter.innermost_referent(), Type::Generic(_)))
             .map(|(position, _)| position)
             .collect()
     }
@@ -249,7 +181,6 @@ mod tests {
     use super::TemplateTies;
     use crate::core::{BindingId, ClosureKind, PrimitiveType};
     use crate::types::PositionTie;
-    use crate::types::first_positions::FirstPositionsOnly;
     use crate::types::pipelines::Pipelines;
     use crate::types::rust_types::RustTypeTable;
     use crate::types::ty::{GenericId, GenericParam, Lifetime, Scheme, Type};
@@ -294,10 +225,7 @@ mod tests {
             vec![Type::shared(TiesFixture::generic()), index],
             Type::shared(TiesFixture::generic()),
         );
-        assert_eq!(
-            at,
-            Some(TemplateTies::new(&[0], &[0]).storing(&[0]).fixing(&[0]))
-        );
+        assert_eq!(at, Some(TemplateTies::new(&[0], &[0])));
     }
 
     #[test]
@@ -325,14 +253,7 @@ mod tests {
             TiesFixture::generic(),
         );
         assert_eq!(pop, Some(TemplateTies::new(&[], &[0]).beneath(&[0])));
-        assert_eq!(
-            either,
-            Some(
-                TemplateTies::new(&[], &[0, 1])
-                    .storing(&[0, 1])
-                    .fixing(&[0, 1])
-            )
-        );
+        assert_eq!(either, Some(TemplateTies::new(&[], &[0, 1])));
     }
 
     #[test]
@@ -341,17 +262,7 @@ mod tests {
             vec![TiesFixture::generic(), TiesFixture::other_generic()],
             TiesFixture::generic(),
         );
-        assert_eq!(lookup, Some(TemplateTies::new(&[], &[0]).storing(&[0, 1])));
-    }
-
-    #[test]
-    fn a_concrete_reference_is_stored_unless_the_text_dereferences_it() {
-        let nested = Type::shared(Type::shared(TiesFixture::generic()));
-        let ties = TiesFixture::ties(vec![nested, Type::str_ref()], Type::unit())
-            .expect("the result holds no borrow");
-        assert!(ties.stores_the_reference(0, [], &[0]));
-        assert!(ties.stores_the_reference(1, [], &[]));
-        assert!(!ties.stores_the_reference(1, [], &[1]));
+        assert_eq!(lookup, Some(TemplateTies::new(&[], &[0])));
     }
 
     #[test]
@@ -371,52 +282,6 @@ mod tests {
         assert_eq!(pop.tie_at(0), Some(PositionTie::HeldBeneath));
         assert_eq!(either.tie_at(0), Some(PositionTie::Held));
         assert_eq!(pop.tie_at(1), None);
-    }
-
-    #[test]
-    fn a_reference_stored_by_either_widened_signature_stays_stored() {
-        let concrete = TiesFixture::ties(vec![Type::str_ref()], Type::str_ref());
-        let generic = TiesFixture::ties(
-            vec![Type::shared(TiesFixture::generic())],
-            Type::shared(TiesFixture::generic()),
-        );
-        let widened = TemplateTies::widened(concrete, generic).expect("both are settled");
-        assert!(widened.stores_the_reference(0, [], &[0]));
-    }
-
-    #[test]
-    fn two_stored_type_variables_keep_each_reference_whole_whatever_the_others_pass() {
-        let pair = TiesFixture::ties(
-            vec![TiesFixture::generic(), TiesFixture::other_generic()],
-            Type::unit(),
-        )
-        .expect("the result holds no borrow");
-        let single = TiesFixture::ties(
-            vec![TiesFixture::generic(), TiesFixture::generic()],
-            Type::unit(),
-        )
-        .expect("the result holds no borrow");
-        assert_eq!(pair.fixing, FirstPositionsOnly::default());
-        assert_eq!(single.fixing, FirstPositionsOnly::of([0, 1]));
-    }
-
-    #[test]
-    fn a_widened_variable_is_fixed_only_where_every_signature_fixes_it() {
-        let single = TiesFixture::ties(
-            vec![TiesFixture::generic(), TiesFixture::generic()],
-            Type::unit(),
-        );
-        let concrete = TiesFixture::ties(vec![Type::str_ref(), Type::str_ref()], Type::unit());
-        let widened = TemplateTies::widened(single, concrete).expect("both are settled");
-        assert_eq!(widened.fixing, FirstPositionsOnly::default());
-    }
-
-    #[test]
-    fn a_position_past_the_first_word_keeps_its_reference_whole() {
-        let ties = TiesFixture::ties(vec![Type::str_ref()], Type::unit())
-            .expect("the result holds no borrow");
-        assert!(!ties.stores_the_reference(0, [], &[0]));
-        assert!(ties.stores_the_reference(64, [], &[64]));
     }
 
     #[test]

@@ -1,6 +1,5 @@
 use super::argument_passing::Passing;
 use super::argument_values::ArgumentValues;
-use super::called_parameter::CalledParameter;
 use super::expression_walk::ExpressionWalk;
 use super::point_id::PointId;
 use super::walked::Walked;
@@ -48,13 +47,7 @@ impl<'c, 'w> LoopWalk<'c, 'w> {
         let passings = arguments
             .iter()
             .zip(parameters)
-            .map(|(argument, parameter)| {
-                <dyn Passing>::of(
-                    argument,
-                    CalledParameter::untied(Some(&parameter.ty)),
-                    rules,
-                )
-            })
+            .map(|(argument, parameter)| <dyn Passing>::of(argument, Some(&parameter.ty), rules))
             .collect();
         let values = ArgumentValues::new(arguments, passings);
         let evaluated = values.evaluate(self.walk, at);

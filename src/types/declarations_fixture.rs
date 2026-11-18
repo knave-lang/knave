@@ -1,8 +1,13 @@
+use super::collected_impl::CollectedImpl;
 use super::declarations::Declarations;
 use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::derive_blockers::DeriveBlockers;
+use super::display::TypeDisplay;
+use super::implementation_check::ImplementationCheck;
+use super::implementation_collector::ImplementationCollector;
 use super::trait_boxing::TraitBoxing;
+use super::trait_declarations::TraitDeclarations;
 use super::type_declarations::TypeDeclarations;
 use super::variant_payloads::VariantPayloads;
 use super::{Type, TypedProgram, TypedSource};
@@ -45,6 +50,30 @@ impl DeclarationsFixture {
             self.declared_traits(),
             VariantPayloads::new(&self.declarations.types),
         )
+    }
+
+    pub(super) fn implementation_check(&self) -> ImplementationCheck<'_> {
+        let display = TypeDisplay::new(&self.program.bindings, &self.program.generics)
+            .with_projections(self.declarations.traits.table.projections());
+        ImplementationCheck::new(&self.program.bindings, &self.declarations, display)
+    }
+
+    pub(super) fn implementation_collector(&self) -> ImplementationCollector<'_> {
+        ImplementationCollector::new(&self.declarations.traits)
+    }
+
+    pub(super) fn enter_impl(&mut self, collected: CollectedImpl) {
+        let mut synthetic = Default::default();
+        let mut impl_methods = Default::default();
+        collected.enter(
+            &mut self.declarations.traits,
+            &mut synthetic,
+            &mut impl_methods,
+        );
+    }
+
+    pub(super) fn traits(&self) -> &TraitDeclarations {
+        &self.declarations.traits
     }
 
     pub(super) fn trait_named(&self, name: &str) -> BindingId {

@@ -28,7 +28,7 @@ src/ownership/slices.rs 522
 
 src/ownership/values.rs 601
 
-src/types/checker.rs 2441
+src/types/checker.rs 2316
 
 src/types/infer.rs 3618
 

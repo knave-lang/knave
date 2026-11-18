@@ -3,11 +3,11 @@
 **Status:** Proposed
 **Date:** 2026-11-18
 
-Code references are against `origin/main` at `0c579cb4a`. Each knave output marked "on `main`" comes from the release binary of that commit. Each emitted Rust block marked "after the build" is the shape this RFC asks for, and the prototype compiled and ran it with rustc.
+Code references are against `origin/main` at `0c579cb4a`. Each knave output marked "on `main`" comes from the release binary of that commit. Each emitted Rust block marked "after the build" is the shape this RFC asks for, and the prototype compiled and ran it with rustc 2024.
 
 ## Problem
 
-A field read names its struct only through the value's type ([docs/language.md: Field keywords](../docs/language.md#field-keywords)). When the value's type is still unknown at the read, the checker looks the field up by name across the program's structs (`unique_owner`, `src/types/infer.rs:3585`). One struct with the field fixes the type. Any other count is `L0407`:
+A field read names its struct only through the value's type ([docs/language.md: Field keywords](../docs/language.md#field-keywords)). When the value's type is still unknown at the read, the checker looks the field up by name across every struct of the program (`unique_owner`, `src/types/infer.rs:3585`). One struct with the field fixes the type. Any other count is `L0407`:
 
 ```lisp
 (defstruct user :name str)
@@ -24,9 +24,9 @@ On `main`:
 
 ```text
 error[L0407]: type annotations needed
- --> one.knv:3:32
+ --> one.knv:4:32
   |
-3 | (defn hello (x) (str "hello " (:name x)))
+4 | (defn hello (x) (str "hello " (:name x)))
   |                                ^^^^^ cannot tell which struct's `name` this is
   |
   = help: name the struct in a signature, as in `(fn ((ref point)) _)`
@@ -34,24 +34,25 @@ error[L0407]: type annotations needed
 
 The help is no fix here: a signature that names `user` rejects `animal`. No written type says "any struct with a `name`", so the program needs two functions with one body.
 
-The same lookup gives three smaller faults:
+The same lookup gives two smaller faults:
 
 - **No struct with the field is `L0407` too.** `(defn size-of (x) (:size x))` with no `size` field anywhere reads "cannot tell which struct's `size` this is", where the real fault is that no struct declares `:size`.
-- **The count ignores visibility.** A struct that another module neither exports nor lets the reader import still counts. A module that declares `user` beside a `(use pets2 greet)` whose `pets2` declares a private `animal :name str` reports `L0407` on `(:name x)`.
 - **The read decides at its position.** The lookup runs when the checker reaches the read, so a later form in the same body that fixes the value's type comes too late.
 
 ## Options
 
 ### A. A field bound, emitted as one Rust trait per field name (recommended, and the owner's model)
 
-The checker gives an unknown owner a field bound, `(a (has :name b))`: `a` is a struct with a field `name`, and `b` is that field's type. The bound behaves as a trait bound does. It generalizes, it is checked at each call, and pinning removes it when every call passes one struct. The emitter writes one Rust trait per field name that a reached generic read needs, and one impl per struct that a reached call passes.
+The checker gives an unknown owner a field bound, `(a (has :name b))`: `a` is a struct with a field `name`, and `b` is the type a read of that field gives. The bound behaves as a trait bound does. It generalizes, it is checked at each call, and pinning removes it when every call passes one struct. The emitter writes one Rust trait per field name that a reached generic read needs, and one impl per struct that a reached call passes. Rule 2 gives the trait's shape, and Rule 2.6 gives the two spellings of its associated type that the owner chooses between. The blocks below use decision 3's name, `FieldType`.
 
 Decision 1, after the build:
 
 ```rust
 trait HasName {
-    type FieldType: ?Sized;
-    fn get_name(&self) -> &Self::FieldType;
+    type FieldType<'s>
+    where
+        Self: 's;
+    fn get_name(&self) -> Self::FieldType<'_>;
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -60,8 +61,11 @@ struct User<'a> {
 }
 
 impl<'a> HasName for User<'a> {
-    type FieldType = str;
-    fn get_name(&self) -> &str {
+    type FieldType<'s>
+        = &'a str
+    where
+        Self: 's;
+    fn get_name(&self) -> &'a str {
         self.name
     }
 }
@@ -72,8 +76,11 @@ struct Animal<'a> {
 }
 
 impl<'a> HasName for Animal<'a> {
-    type FieldType = str;
-    fn get_name(&self) -> &str {
+    type FieldType<'s>
+        = &'a str
+    where
+        Self: 's;
+    fn get_name(&self) -> &'a str {
         self.name
     }
 }
@@ -86,9 +93,9 @@ fn make_animal(name: &str) -> Animal<'_> {
     Animal { name }
 }
 
-fn hello<A: HasName>(x: &A) -> String
+fn hello<'a, A: HasName>(x: &'a A) -> String
 where
-    A::FieldType: std::fmt::Display,
+    A::FieldType<'a>: std::fmt::Display,
 {
     format!("hello {}", x.get_name())
 }
@@ -122,26 +129,31 @@ Decision 2 adds a struct whose `name` is an `i32`:
 After the build, beside the trait and the impls above, with `Product`'s impl:
 
 ```rust
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Product {
+    name: i32,
+}
+
 impl HasName for Product {
-    type FieldType = i32;
-    fn get_name(&self) -> &i32 {
-        &self.name
+    type FieldType<'s> = i32;
+    fn get_name(&self) -> i32 {
+        self.name
     }
 }
 
-fn uppercase_name<A: HasName<FieldType = str>>(x: &A) -> String {
+fn uppercase_name<'a, A: HasName<FieldType<'a> = &'a str>>(x: &'a A) -> String {
     x.get_name().to_uppercase()
 }
 
-fn describe<A: HasName>(x: &A) -> String
+fn describe<'a, A: HasName>(x: &'a A) -> String
 where
-    A::FieldType: std::fmt::Display,
+    A::FieldType<'a>: std::fmt::Display,
 {
     format!("name: {}", x.get_name())
 }
 ```
 
-`upper-case` takes `(ref str)`, so the body fixes the field type: `(type uppercase-name (where ((a (has :name str))) (fn ((ref a)) string)))`. `describe` uses the field only through `display`, so it keeps the field type open: `(where ((a (has :name b)) (b display)) (fn ((ref a)) string))`. Each call takes its own struct's field type, so `describe` reads a `str` from `user` and an `i32` from `product`.
+`upper-case` takes `(ref str)`, so the body fixes the read's type: `(type uppercase-name (where ((a (has :name (ref str)))) (fn ((ref a)) string)))`. `describe` uses the read only through `display`, so it keeps the read's type open: `(where ((a (has :name b)) (b display)) (fn ((ref a)) string))`. Each call takes its own struct's read type, so `describe` reads a `(ref str)` from `user` and an `i32` from `product`.
 
 ### B. `defstruct` writes a trait and an impl per field
 
@@ -168,23 +180,31 @@ The project owner decided on 2026-11-08:
 3. The model: one Rust trait per field name, such as `HasName` with an associated `FieldType` and `fn get_name(&self) -> &Self::FieldType`, and `impl HasName for Animal { type FieldType = String; ... }` for each struct.
 4. Before 1.0 the owner is the only user, so the change needs no migration aid.
 
-Decision 2 spells the prelude function `uppercase`, which is `upper-case` in the prelude (`prelude/text.knv:789`). This RFC reads the decision with that name. Decision 3's `type FieldType = String` is the impl for a `string` field. A `str` field gives `type FieldType = str`, which needs the trait's `?Sized`, as Rule 2 says.
+Decision 2 spells the prelude function `uppercase`, which is `upper-case` in the prelude (`prelude/text.knv:789`). This RFC reads the decision with that name.
+
+Decision 3's getter, `fn get_name(&self) -> &Self::FieldType`, holds for a field that a read borrows, such as a `string` field: `type FieldType<'s> = &'s String` returns the same `&String`. It cannot hold for the two other kinds of field, so Rule 2.3 makes `FieldType` the type of a read and the getter return it by value:
+
+- **A field the struct stores as a borrow.** A `&Self::FieldType` result borrows the struct, not the stored borrow. On `main`, `(defn name-of (x) (:name x))` with `(let (n (name-of (->user "ana" 3))) (println n))` prints `ana`. With `&Self::FieldType`, a second struct with `:name str` makes the same program rustc's `E0716`, "temporary value dropped while borrowed", because `n` borrows the temporary `user`.
+- **A Copy field.** On `main`, `(infer (:age u))` is `"int"`. A getter that returns `&i64` makes the generic read `(ref int)` and the known read `int`, so pinning cannot give the known read's Rust.
+
+The associated type's name, `FieldType` or the field's own name, waits on the owner, as Rule 2.6 says.
 
 ## Rejected options and why
 
 - **B: a trait per field from `defstruct`:** two structs that share a field clash, every program's Rust changes, and a macro cannot see whether a read's struct is known.
 - **C: one copy per struct:** the Rust grows by one function per struct and reader, calls name a struct the source never wrote, and function values need a choice the source never states.
 - **D: a written accessor:** decision 1 requires the unannotated function to compile.
-- **A field bound on every unknown owner, one candidate included:** a library function that reads the only struct with `:name` would print a `where` and emit a trait for one implementor, where a concrete type says the same thing and reads better. Rule 5 keeps one candidate concrete.
-- **A separate Rust type parameter for the field type, as `fn hello<A: HasName<FieldType = B>, B: Display + ?Sized>`:** it is valid Rust, but `A::FieldType` is the form a Rust programmer writes, and it keeps one generic parameter per owner.
+- **A field bound on every unknown owner, one candidate included:** a reader of the only struct with `:name` would print a `where` and emit a trait for one implementor, where a concrete type says the same thing and reads better. Rule 5 keeps one candidate concrete.
+- **A getter that returns `&Self::FieldType` for every field:** a generic read of a stored borrow would end at the struct's borrow, which turns a working program into `E0716`, and a Copy field would read as a borrow, unlike the known read.
+- **Candidates limited to the structs the reading module sees:** the checker has no field visibility rule today. A known read of a private struct's field from another module compiles on `main`, so a limit only for generic reads would be an exception. It would also break a library reader: `(defn hello (x) (str "hi " (:name x)))` in a library compiles on `main` for its caller's `user`, and a library could not hold a generic reader of its callers' structs.
 
 ## Rule
 
-The build states these rules in [docs/language.md: Field keywords](../docs/language.md#field-keywords), [Types](../docs/language.md#types), [Ownership](../docs/language.md#ownership), [Names in Rust](../docs/language.md#names-in-rust) and [10. User-defined traits](../docs/language.md#10-user-defined-traits), in the explanation of `L0407` (`expand/src/diagnostic/explanations/L0407.md`), and in a new explanation of `L0467`. It replaces the two sentences of Field keywords that say a function needs a signature when two structs share a field name.
+The build states these rules in [docs/language.md: Field keywords](../docs/language.md#field-keywords), [Types](../docs/language.md#types), [Ownership](../docs/language.md#ownership), [Names in Rust](../docs/language.md#names-in-rust) and [10. User-defined traits](../docs/language.md#10-user-defined-traits), in the explanation of `L0407`, and in a new explanation of `L0467`. It replaces the two sentences of Field keywords that say a function needs a signature when two structs share a field name, and it rewrites the paragraph of `expand/src/diagnostic/explanations/L0407.md` that says a field read or update finds its struct by the field's name: a read with no candidate is `L0408`, a read with several gives a field bound, and only an update with several, or a bound nothing fixes, stays `L0407`.
 
 ### 1. A call whose field type fails the body's use
 
-The bound's field type is a type like any other. A body that fixes it, as `upper-case` fixes it to `str`, gives the bound that type. A body that uses it through a trait, as `str` uses `display`, gives the field type that trait bound. A call checks the bound against the struct it passes, and a struct whose field fails either is `L0467` at that call, a new code of the type stage. On `main`, `L0465` is the last code of `L04xx`, and PR 676 takes `L0466`.
+The bound's read type is a type like any other. A body that fixes it, as `upper-case` fixes it to `(ref str)`, gives the bound that type. A body that uses it through a trait, as `str` uses `display`, gives the read type that trait bound. A call checks the bound against the struct it passes, and a struct whose read fails either is `L0467` at that call, a new code of the type stage. `L0465` is the last code on `main`, and PR 676 takes `L0466`.
 
 ```lisp
 (defn main ()
@@ -194,7 +214,7 @@ The bound's field type is a type like any other. A body that fixes it, as `upper
 After the build:
 
 ```text
-error[L0467]: `uppercase-name` needs a `:name` of type `str`, but `product`'s `:name` is `i32`
+error[L0467]: `uppercase-name` needs a `:name` that reads as `(ref str)`, but `product`'s `:name` is `i32`
  --> two.knv:9:28
   |
 9 |   (println (uppercase-name (->product 7))))
@@ -203,19 +223,21 @@ error[L0467]: `uppercase-name` needs a `:name` of type `str`, but `product`'s `:
  ::: two.knv:5:27
   |
 5 | (defn uppercase-name (x) (upper-case (:name x)))
-  |                           ---------- `upper-case` takes `(ref str)`, so `:name` must be `str`
+  |                           ---------- `upper-case` takes `(ref str)`, so `:name` must read as `(ref str)`
   |
-  = note: `uppercase-name` accepts every struct whose `:name` is `str`: `user` and `animal`
-  = help: pass a struct whose `:name` is `str`, or write a `type` signature for `uppercase-name` that names `product`
+  = note: `uppercase-name` accepts every struct whose `:name` reads as `(ref str)`: `user` and `animal`
+  = help: pass a struct whose `:name` reads as `(ref str)`
 ```
 
-A field type that lacks a trait the body needs takes the same code, with the trait in the title:
+A read type that lacks a trait the body needs takes the same code, with the trait in the title:
 
 ```text
 error[L0467]: `describe` needs a `:name` that implements `display`, but `badge`'s `:name` is `(fn () int)`
 ```
 
-The secondary label points at the form that brought the trait, as `str` here. The note lists the structs that meet the bound, in source order, and the label of a struct from another module prints as two types of one name print in a diagnostic today.
+The secondary label points at the form that brought the type or the trait, as `upper-case` and `str` here. The note lists the structs that meet the bound, in source order, and a struct from another module prints as two types of one name print in a diagnostic today.
+
+**One diagnostic for a chain of calls.** When `(defn shout (y) (uppercase-name y))` passes its own generic owner on and `main` calls `(shout (->product 7))`, the bound reaches `main` through `shout`'s generalized bound. `L0467` labels the call in `main`, the first call that passes a struct. The secondary label stays on the form that fixed the type, inside `uppercase-name`, and a second note names the path: `` `shout` passes `y` to `uppercase-name` ``. No other call reports.
 
 The message never names `HasName`, `FieldType` or `get_name`, so rustc's `E0271`, which the prototype hits when it calls `uppercase_name(&Product { .. })`, never reaches the user.
 
@@ -230,43 +252,73 @@ A call with a value that has no such field reports the existing codes at the cal
 ### 2. Readable output
 
 1. **A trait emits only for a field that an emitted function reads from a generic owner.** A read whose owner is a known struct, from the start or after pinning, emits `x.name` as it does today. A program with no generic read after pinning emits no trait and no impl, so its Rust stays byte for byte what `main` emits.
-2. **An impl emits only for a struct that a reached call passes for the bound,** directly or through another generic function's bound, as the structural trait impls of [8.2 Struct traits](../docs/language.md#82-struct-traits) do. A struct no call passes gets no impl.
-3. **The trait is `Has` and the field's Rust name in Pascal case, with `type FieldType: ?Sized` and `fn get_<field>(&self) -> &Self::FieldType`.** `admin?` gives `HasIsAdmin` and `get_is_admin`. `?Sized` lets a `str` or `(slice a)` field, which a struct stores as a borrow, give its view as the field type, so `get_name` returns `&str` and no read writes `&&str`. A trait name that a written item takes yields as an introduced item does: `HasName2` beside a program's own `has-name` struct.
-4. **The trait emits at the crate root, and each impl beside its struct.** A struct in another module emits `impl crate::HasName for Animal<'_>` in that module's `mod`, and a module that calls `get_name` gets a Rust `use` of the trait, as a user trait's method call does.
-5. **An impl for a struct that holds a borrow names its lifetime,** as `impl<'a> HasName for User<'a>`, as [10. User-defined traits](../docs/language.md#10-user-defined-traits) writes `impl<'a> Finder for Snippet<'a>`. A generic struct's impl carries its parameters, as `impl<A> HasName for Boxed<A> { type FieldType = A; ... }`.
-6. **A field type that only the bound names emits as the projection, `A::FieldType`.** Its traits go to a `where` clause, as `A::FieldType: std::fmt::Display`. A fixed field type emits as the trait's binding, as `HasName<FieldType = str>`.
-7. **A pinned function emits what it emits with the struct written in its signature.** With only `(hello (->user "ana"))` in `main`, `hello` emits `fn hello(x: User<'_>) -> String` and `x.name`, the Rust that `main` emits today when `user` is the only struct with `name`.
+2. **An impl emits only for a struct that a reached call passes for the bound,** directly or through another generic function's bound, as the structural trait impls of [8.2 Struct traits](../docs/language.md#82-struct-traits) do. A struct no call passes gets no impl. A trait declares only the methods a reached use needs.
+3. **The trait is `Has` and the field's Rust name in Pascal case, with a generic associated type for the read and a getter that returns it by value:**
+
+   ```rust
+   trait HasName {
+       type FieldType<'s>
+       where
+           Self: 's;
+       fn get_name(&self) -> Self::FieldType<'_>;
+   }
+   ```
+
+   Each impl's read type is the type a known read of the field gives on `main`, by the Fields bullet of [Ownership](../docs/language.md#ownership):
+
+   | Field | Read on `main` | `type FieldType<'s>` | Getter body |
+   | --- | --- | --- | --- |
+   | stored as a borrow: `str`, `(slice a)`, `(ref t)` | the stored borrow | `&'a str`, `&'a [A]`, `&'a T`, with the struct's lifetime | `self.name` |
+   | a function type, or a Copy type of 16 bytes or less | the value | `i32`, `fn(&str) -> bool` | `self.name` |
+   | any other type | a borrow of the field | `&'s String`, `&'s Vec<i64>` | `&self.name` |
+
+   `admin?` gives `HasIsAdmin` and `get_is_admin`. A trait name that a written item takes yields as an introduced item does: `HasName2` beside a program's own `has-name` struct.
+4. **The trait emits at the crate root, and each impl beside its struct.** A struct in another module emits its impl in that module's `mod` as `impl<'a> crate::HasName for Animal<'a>`, and a module that calls `get_name` gets a Rust `use` of the trait, as a user trait's method call does.
+5. **Every impl names its struct's lifetime and parameters,** as `impl<'a> HasName for User<'a>` and `impl<A> HasName for Boxed<A>`, the spelling that [10. User-defined traits](../docs/language.md#10-user-defined-traits) uses for `impl<'a> Finder for Snippet<'a>`. The read type of a stored borrow needs the name `'a`.
+6. **A read type that only the bound names emits as the trait's projection at the parameter's lifetime.** The parameter's borrow takes the shared lifetime `'a`, by the existing naming rule, and its traits go to a `where` clause. A fixed read type emits as the trait's binding, as `HasName<FieldType<'a> = &'a str>`. The spelling depends on the associated type's name, which the owner decides:
+
+   | Reader | Decision 3's name, `FieldType` | The field's name, `Name` |
+   | --- | --- | --- |
+   | one field, `hello` | `A::FieldType<'a>: Display` | `A::Name<'a>: Display` |
+   | two fields, `(str (:name x) (:age x))` | `<A as HasName>::FieldType<'a>: Display` and `<A as HasAge>::FieldType<'a>: Display` | `A::Name<'a>: Display` and `A::Age<'a>: Display` |
+   | a fixed read, `uppercase-name` | `HasName<FieldType<'a> = &'a str>` | `HasName<Name<'a> = &'a str>` |
+
+   With `FieldType`, an owner with two field bounds needs the qualified path, because `A::FieldType` names two items and rustc reports `E0221`, "ambiguous associated type". The emitter writes the qualified path exactly when the owner has more than one field bound. With the field's name, `A::Name` is never ambiguous, because two fields of one struct never share a name. The prototype compiled and ran both spellings.
+7. **A read type that carries a field bound of its own emits as a type parameter of its own.** `(:name (:owner x))`, with two structs that declare `:owner` and two that declare `:name`, gives `(a (has :owner (ref b)))` and `(b (has :name c))`, and emits `fn owner_name<'a, A: HasOwner<FieldType<'a> = &'a B>, B: HasName + 'a>(x: &'a A)`. The inner read's owner is the referent `B`, as a known read strips its owner's borrows.
+8. **A pinned function emits what it emits with the struct written in its signature.** With only `(hello (->user "ana"))` in `main`, `hello` emits `fn hello(x: User<'_>) -> String` and `x.name`, the Rust that `main` emits today when `user` is the only struct with `name`. Rule 3 makes this hold.
 
 ### 3. Ownership
 
-A generic read borrows. The getter returns `&Self::FieldType`, and the read's type is `(ref b)`. A Copy value leaves the borrow only where a use needs a value, by the existing Adjustment rule, so the read never decides ownership from a type it does not know yet. On `main`, a generic struct shows why: `(struct (boxed a) (name a))` with `(defn hello (x) (:name x))` called on `(new boxed (name 3))` is `L0401`, ``expected `(ref int)`, found `int` ``, at the read, because the read took a borrow before pinning made `a` a Copy `int`. The build fixes that report for both kinds of read.
+**A read has the type that a known read of the struct's field gives, the read type of Rule 2.3.** A read whose owner is unknown has a fresh variable `b` for that type. When the owner becomes known, in the body, at pinning or at a call, `b` takes the field's read type, so the read of a Copy `int` field is `int`, the read of a `str` field is `(ref str)` with the struct's lifetime, and the read of a `string` field is `(ref string)`. The read never takes a borrow that a later fact turns into a copy, and every adjustment runs on the settled type, as it does for a known read. A pinned read therefore has the type and the Rust of the known read, which is what Rule 2.8 needs.
+
+The same rule covers a known struct whose field type holds a type parameter of the struct. On `main`, `(struct (boxed a) (name a))` with `(defn hello (x) (:name x))` called on `(new boxed (name 3))` is `L0401`, ``expected `(ref int)`, found `int` ``, at the read, because the read took a borrow before pinning made `a` a Copy `int`. After the build, the read of `name` has a read-type variable until `a` is known, and the program compiles to `fn hello(x: Boxed<i64>) -> i64`, which copies the Copy `boxed` as a known read does.
 
 | Use | Bound | Emitted read |
 | --- | --- | --- |
-| a borrow, `(defn name-of (x) (:name x))` | `(a (has :name b))` | `fn name_of<A: HasName>(x: &A) -> &A::FieldType { x.get_name() }` |
-| a copy, `(defn next-age (x) (+ (:age x) 1))` with `:age int` | `(a (has :age int))` | `*x.get_age() + 1` |
-| a copy of a field type the body leaves open, as `(set! total (:age x))` | `(b copy)`, inferred as for a generic parameter | `total = *x.get_age()` |
-| a clone, `(clone (:name x))` | `(b clone)` | `x.get_name().clone()` |
-| a move, `(keep (:name x))` with `keep` taking an owned `string` | none | `L0503` at the read, as for a known struct today, with the help `(clone ...)` |
-| a change, `(set! (:age x) 5)` | `(a (has :age int))`, and `x` takes `mut` | `*x.get_age_mut() = 5` |
+| returned, `(defn name-of (x) (:name x))` | `(a (has :name b))` | `fn name_of<'a, A: HasName>(x: &'a A) -> A::FieldType<'a> { x.get_name() }`, and `user`'s `&'a str` outlives the temporary `user` |
+| a Copy field in arithmetic, `(+ (:age x) 1)` | `(a (has :age int))` | `x.get_age() + 1` |
+| owned where the read type is open, `(set! total (:age x))` | `(b copy)`, inferred as for a generic parameter | `total = x.get_age()` |
+| a clone, `(clone (:title x))` with `:title string` | `(a (has :title (ref string)))` | `x.get_title().clone()` |
+| a move, `(keep (:title x))` with `keep` taking an owned `string` | none | `L0503` at the read, as for a known struct today, with the help `(clone ...)` |
+| a change, `(set! (:age x) 5)` | `(a (has :age int))`, and `x` takes `mut` | `*x.get_age_mut() = 5`, by open detail 1 |
 
 1. **A read never moves the field,** as on `main`, where only the base of a collection or struct update moves one. A use that needs to own a field that is not Copy is `L0503` today and stays `L0503`.
-2. **A `set!` of a generic field, or a `mut` borrow of one, adds `fn get_<field>_mut(&mut self) -> &mut Self::FieldType` to the trait.** The trait gains the method only when a reached function needs it. The parameter takes `mut` by the existing Modes rule, so `(defn birthday! (x) (set! (:age x) (+ (:age x) 1)))` emits `fn birthday<A: HasAge<FieldType = i64>>(x: &mut A) { *x.get_age_mut() += 1; }`. Open detail 1 asks the owner to confirm the method.
+2. **A `set!` of a generic field, or a `mut` borrow of one, adds a stored type and a `mut` getter to the trait** when a reached function needs them: `type Stored; fn get_age_mut(&mut self) -> &mut Self::Stored;`, where `Stored` is the field's Rust type as the struct stores it, `i64` or `&'a str`. The parameter takes `mut` by the existing Modes rule, so `(defn birthday! (x) (set! (:age x) (+ (:age x) 1)))` emits `fn birthday<A: HasAge<Stored = i64>>(x: &mut A) { *x.get_age_mut() += 1; }`. Every struct has a stored type, a view field included, so every impl can write the method. A call whose struct the same `set!` on a known value would reject is `L0467` at the call, with the known `set!`'s reason: on `main`, `(set! (:name u) "bob")` on a `str` field is `L0401`, so a generic `set!` of a `str` field with that value rejects `user` at the call. Open detail 1 asks the owner to confirm the method.
 3. **A struct update or a collection update on a generic owner stays an error.** `(assoc p :x 2)` builds a new value of the owner's struct, and a field trait has no constructor. Rule 4 gives the error its new text.
-4. **A generic owner is never Copy.** A parameter whose type only a field bound knows takes `ref` or `mut`, never copy, unless the body infers `copy` for it. That keeps decision 1's `hello` at `x: &A`.
+4. **A generic owner is never Copy.** A parameter whose type only a field bound knows takes `ref` or `mut`, never copy, unless the body infers `copy` for it. That keeps decision 1's `hello` at `x: &'a A`.
 
 ### 4. Diagnostics with several candidates
 
-A read on an unknown owner prints as the bound everywhere a type prints, as a `rust-trait` with an associated type prints `(c (container item))`:
+A read on an unknown owner prints as the bound everywhere a type prints, as a `deftrait` with an associated type prints `(c (container item))` in [10. User-defined traits](../docs/language.md#10-user-defined-traits):
 
 | Where | Text |
 | --- | --- |
 | `knave types` and a doc page's signature | `(type hello (where ((a (has :name b)) (b display)) (fn ((ref a)) string)))` |
-| `(infer (:name x))` in `hello` | `"b"`, the field type's variable, as `(infer x)` is `"a"` |
+| `(infer (:name x))` in `hello` | `"b"`, the read type's variable, as `(infer x)` is `"a"`. In a function pinned to `user` it is `"(ref str)"`, as on `main` |
 | `(infer hello)` | `"(where ((a (has :name b)) (b display)) (fn (a) string))"`, with modes left out by the existing rule |
 | a type error that names the owner | `a`, with a note that `a` is any struct with `:name`: `user` or `animal` |
 
-The text pastes into a `type` signature, so a written signature can state the bound: `(type hello (where ((a (has :name b)) (b display)) (fn ((ref a)) string)))`. `has` is a kernel bound that the prelude re-exports and documents, as it does every kernel name. A bound may hold several fields, `(a (has :name b) (has :age int))`, and a field type may carry its own bound, so `(:city (:address x))` gives `(a (has :address b))` and `(b (has :city c))` when two structs declare `:city`.
+The text pastes into a `type` signature, so a written signature can state the bound: `(type hello (where ((a (has :name b)) (b display)) (fn ((ref a)) string)))`. A bound may hold several fields, `(a (has :name b) (has :age int))`, and a read type may carry its own bound, as Rule 2.7 shows.
 
 The errors without an owner name the candidates:
 
@@ -280,7 +332,7 @@ error[L0408]: no struct has a field `:size`
   = help: a field with a similar name exists: `:side`
 ```
 
-The help appears only when a field of a visible struct is within the distance of the existing closest-name rule.
+The help appears only when a field of a struct is within the distance of the existing closest-name rule.
 
 ```text
 error[L0407]: type annotations needed
@@ -293,11 +345,13 @@ error[L0407]: type annotations needed
   = help: name the struct in a signature, as in `(fn (point) point)`
 ```
 
-### 5. What decides the parameter's type today
+### 5. What decides the parameter's type
 
-On `main`, `field_owner` (`src/types/infer.rs:3564`) strips the value's borrows. A known struct is the owner. A type variable goes to `unique_owner`, which takes every struct of the program that declares the field (`StructTable::with_field`, `src/types/structs.rs:101`). One struct fixes the variable on the spot. Zero or several are `L0407`. A struct update uses the same lookup through `update_owner_from_fields` (`src/types/infer.rs:3390`), keeping the structs that declare every field it names.
+On `main`, `field_owner` (`src/types/infer.rs:3564`) strips the value's borrows. A known struct is the owner. A type variable goes to `unique_owner`, which takes every struct of the program that declares the field (`StructTable::with_field`, `src/types/structs.rs:101`), whatever module declares it and whether or not the reading module imports it. One struct fixes the variable on the spot. Zero or several are `L0407`. A struct update uses the same lookup through `update_owner_from_fields` (`src/types/infer.rs:3390`), keeping the structs that declare every field it names.
 
-After the build, the lookup counts the candidates of Rule 6.1. One candidate still fixes the owner at the read, so every program that compiles on `main` keeps its types. Two or more give the owner the field bound, and a later form of the body that fixes the owner checks the bound then, so the read no longer decides at its position. None is `L0408` at the read, as Rule 4 shows.
+After the build, the lookup still counts every struct of the program, as `main` does. One candidate still fixes the owner at the read, so every program that compiles on `main` keeps its types. Two or more give the owner the field bound, and a later form of the body that fixes the owner checks the bound then, so the read no longer decides at its position. None is `L0408` at the read, as Rule 4 shows.
+
+**An open literal type wins over the lookup.** On `main`, `(:x n)` after `(let (n 5) ...)` is `L0407`, as `L0407.md` documents. A read whose owner is an open integer or float literal type is `L0410` at the read, `` `int` has no fields ``, naming the literal's default type, before any candidate counts, because no struct is a number.
 
 | Program | On `main` | After the build |
 | --- | --- | --- |
@@ -305,6 +359,7 @@ After the build, the lookup counts the candidates of Rule 6.1. One candidate sti
 | decision 2, `user`, `animal` and `product` | `L0407` at each `(:name x)` | generic, as Option A shows |
 | decision 1 with `user` alone | `fn hello(x: User<'_>) -> String`, single-struct inference | the same, byte for byte |
 | decision 1 with `(type hello (fn ((ref user)) string))` | `fn hello(x: &User<'_>) -> String` | the same, byte for byte |
+| a library's `hello`, called by a module that declares `user` | `hi ana` | the same, byte for byte |
 
 A throwaway build of `main` that logs each zero-or-several lookup ran `knave check` on each of the 2,702 `.knv` files under `prelude/`, `examples/` and `tests/fixtures/`, leaving out `read/` and `format/`. Three files reach the lookup, and only their snapshots change:
 
@@ -318,11 +373,12 @@ No prelude or example file reaches the lookup, so no other output changes.
 
 ### 6. Interplay
 
-1. **Structs across modules.** A candidate is a struct whose fields the reading module may read, by the Visibility rule of [RFC 0038](0038-field-keywords.md): one of its own, or one it imports. A private struct of another module no longer counts, so the `pets2` program of the Problem compiles with `user` as the only candidate. A call that passes a struct whose fields the reader may not read is `L0408` at the call, with a note that the struct's fields are private to its module.
-2. **Generic structs.** A generic struct is a candidate like any other, and its field type takes the struct's arguments at the call: `(boxed int)` meets `(has :name int)`. Its impl carries the struct's parameters, as Rule 2 says.
-3. **An enum's case.** An enum is never a candidate. A case's fields exist only inside that case, so a getter of `&Self::FieldType` cannot exist for the enum. A program reads a case's field through `match`, as on `main`, and a generic reader called with an enum is `L0410`.
+1. **Structs across modules.** A candidate is any struct of the program, as on `main`. The checker has no field visibility rule: a known read of a private struct's field from another module compiles on `main`, and a generic read checks no visibility either. So a library can hold a generic reader for its callers' structs, and the trait and impls of Rule 2.4 span the modules.
+2. **Generic structs.** A generic struct is a candidate like any other, and its read type takes the struct's arguments at the call: `(boxed int)` meets `(has :name int)`. Its impl carries the struct's parameters, as Rule 2.5 says.
+3. **An enum's case.** An enum is never a candidate. A case's fields exist only inside that case, so a getter cannot exist for the enum. A program reads a case's field through `match`, as on `main`, and a generic reader called with an enum is `L0410`.
 4. **A written type annotation.** A written signature is exact. One that names a struct emits today's Rust. One that names a type variable without the field bound is `L0440`, with a help that writes the bound, as `(a (has :name b))`, as a missing `copy` gets `(a copy)` today. A binder annotation, as `(x (ref user))`, fixes the owner.
-5. **A field the prelude reads.** The prelude declares no struct and no function that reads a field. Its macros, `defstruct`'s constructors, `assoc`, `assoc-in`, `update` and the keyword closure, expand to `field` and `new` in the user's module, so their reads follow these rules there. A keyword closure, as `(map (iter xs) :name)` in an unannotated function, gives the function the bound through its parameter's element type: `fn names<A: HasName>(xs: &[A]) -> impl Iterator<Item = &A::FieldType>`. `update` reads and then builds, so a generic owner is the update error of Rule 3.3.
+5. **A closure.** A `local` closure stays monomorphic, as on `main`, so a field bound on its own parameter must settle by the end of checking. `(let (f (fn (y) (:name y))) (f (->user "ana")) (f (->animal "rex")))` is `L0401`, ``expected `user`, found `animal` ``, at the second argument, as `(let (f (fn (y) y)) (f 1) (f "a"))` is today. A closure that no call fixes is `L0407` at the read, `` cannot tell which struct's `name` this is ``, with the note of Rule 4 that lists the candidates. A read inside a closure whose owner is the enclosing function's parameter gives the function the bound, so it generalizes with the function.
+6. **A field the prelude reads.** The prelude declares no struct and no function that reads a field. Its macros, `defstruct`'s constructors, `assoc`, `assoc-in`, `update` and the keyword closure, expand to `field` and `new` in the user's module, so their reads follow these rules there. A keyword closure, as `(map (iter xs) :name)` in an unannotated function, gives the function the bound through its parameter's element type. `update` reads and then builds, so a generic owner is the update error of Rule 3.3.
 
 ### 7. Prelude first
 
@@ -332,14 +388,15 @@ The prelude cannot express this, and the build adds no kernel form:
 - **The struct set is the program's.** The candidates span modules, and each impl depends on the calls that reach it. Only the compiler sees every struct, every call and every pin.
 - **A trait per field from a macro clashes,** as Option B says, and [RFC 0038](0038-field-keywords.md) moved keyword reads into the expander for the same reason.
 
-The change lives in the type rule of the existing kernel form `field`, and in one new kernel bound, `has`, which a `where` writes beside traits. `docs/language.md` records why `has` is a kernel name: a bound that names a field of any struct needs the struct table, which only the compiler holds. The prelude keeps every macro unchanged, and it documents `has` on its own page, as it documents every kernel name it re-exports. The Rust names `HasName`, `FieldType` and `get_name` are no fact the prelude states, so the compiler derives them from the field, as it derives `make_point` from `->point`.
+The change lives in the type rule of the existing kernel form `field`, and in one kernel name of a new kind: the bound `has`, which a `where` writes beside traits. A kernel name is needed because the prelude cannot define a family of bounds keyed by a field name, and the printed bound must paste into a signature. `has` is exported by the built-in `kernel` module and re-exported by the prelude like every kernel name. The build adds it as a row of the table in [Types](../docs/language.md#types), `(where ((a (has :name b))) (fn ((ref a)) b))` beside `fn<A: HasName>(&A) -> A::FieldType<'_>`, and records why it is a kernel name in [Kernel forms](../docs/language.md#kernel-forms), beside the reasons of the other kernel names. `prelude/prelude.knv` documents `has` with a `document` form, as it documents `struct`. The Rust names `HasName`, `FieldType` and `get_name` are no fact the prelude states, so the compiler derives them from the field, as it derives `make_point` from `->point`.
 
 ## Open details
 
-1. **The `mut` getter.** Rule 3.2 adds `get_<field>_mut` to the trait when a `set!` or a `mut` borrow needs it. The alternative is an error at such a `set!`, with help to write a signature. The recommendation is the method, because Rust programmers write it and the uniform `set!` rule then holds for generic owners.
+1. **The `mut` getter.** Rule 3.2 adds `Stored` and `get_<field>_mut` to the trait when a `set!` or a `mut` borrow needs them. The alternative is an error at such a `set!`, with help to write a signature. The recommendation is the method, because Rust programmers write it and the uniform `set!` rule then holds for generic owners.
 2. **The bound's spelling.** This RFC writes `(has :name b)`. A keyword names the field as a read and a `defstruct` do. `field` would read as the kernel form, and a name ending in `?` reads as a predicate. The owner may prefer another name.
-3. **A `string` field read as `str`.** On `main`, a read of a known `string` field meets `(ref str)` by the `str` adjustment. A generic read whose body fixes `str`, as `uppercase-name` does, rejects a struct whose `:name` is `string`, with `L0467`, because `String` and `str` are two field types. The alternative is a field bound that meets the use through a view, emitted as `A::FieldType: AsRef<str>` and `x.get_name().as_ref()`. The recommendation is the exact rule for this build, and the view rule as a later RFC if programs need it.
+3. **An owned text or vector field read through its view.** On `main`, a known read of a `string` field is `(ref string)`, and it meets `(ref str)` by the `str` adjustment. A generic read whose body fixes `(ref str)`, as `uppercase-name` does, would reject a struct whose `:name` is `string` under an exact rule, while the same read of the known struct passes. That is worse output and an exception to the adjustment rule, and it would grow under the one text type of issue #589, where the user writes only `str` and the compiler picks `&str` or `String` per use: two structs that both write `:name str` could then disagree in a field bound. The recommendation is the view rule. In a field bound, a field that the struct stores as `String` reads as `(ref str)`, and one stored as `Vec<T>` reads as `(ref (slice t))`, by the existing shrinking adjustment, so the impl writes `type FieldType<'s> = &'s str` and `&self.name`, which Rust's deref coercion accepts, and needs no `AsRef<str>`. The prototype ran `uppercase_name` on such a struct. A known read keeps its type, so no program on `main` changes. After issue #589 every text field reads as `(ref str)` in a bound, whatever Rust type it emits as, so the rule needs no change then. The cost is that `(clone (:name x))` in a generic reader clones a `(ref str)`, which is `L0404` as for a `str` field today.
+4. **The associated type's name.** Decision 3 names it `FieldType`, which forces the qualified path of Rule 2.6 on every owner with two field bounds. The field's own name, `type Name<'s>`, keeps `A::Name<'a>` everywhere. The rest of this RFC holds with either name.
 
 ## Prototype
 
-`target/scratch/proto/` held the prototype, which is not part of this pull request. rustc 2024 compiled and ran the Rust of Option A, Rule 2 and Rule 3: `d1.rs` printed `hello ana` and `hello rex`, `d2final.rs` printed `ANA`, `REX`, `name: ana` and `name: 7`, and `d3final.rs` checked the copy, clone, borrow and `get_age_mut` reads. Calling `uppercase_name(&Product { name: 7 })` gave rustc's `E0271`, which Rule 1 replaces with `L0467`. The instrumented `main` build of Rule 5 changed only two `eprintln!` lines in `src/types/infer.rs`.
+`target/scratch/proto/` and `target/scratch/proto2/` held the prototype, which is not part of this pull request. rustc 2024 compiled and ran the Rust of Option A, Rule 2 and Rule 3 in both spellings of Rule 2.6: `d1.rs` printed `hello ana` and `hello rex`, and `d2.rs` printed `ANA`, `REX`, `name: ana` and `name: 7`, then ran the `name-of` program of the Decision section, which printed `ana` where the `&Self::FieldType` getter gives `E0716`, and `uppercase_name` on a struct whose `name` is a `String`, which printed `BO`. Further files checked two field bounds on one owner, where the unqualified `A::FieldType` gives `E0221`, a chained read, a generic struct's impl, a Copy read and the `mut` getter. Calling `uppercase_name(&Product { .. })` gave rustc's `E0271`, which Rule 1 replaces with `L0467`. The instrumented `main` build of Rule 5 changed only two `eprintln!` lines in `src/types/infer.rs`.

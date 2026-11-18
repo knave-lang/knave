@@ -3,13 +3,7 @@ use super::peeling::ReferencePeeling;
 use super::ty::Type;
 use super::typed::{TypedExpr, TypedExprKind, TypedStructExpr};
 use super::unifier::Unifier;
-use crate::core::FieldSpelling;
-
-#[derive(Clone, Copy)]
-enum Layer {
-    Shared,
-    Reference,
-}
+use crate::core::{FieldLabel, FieldSpelling};
 
 pub(super) struct PlaceTypes<'a> {
     unifier: &'a Unifier,
@@ -29,25 +23,37 @@ impl<'a> PlaceTypes<'a> {
     }
 
     pub(super) fn changed(&self, value: &TypedExpr) -> Type {
-        self.borrowed_behind(value, Layer::Shared)
+        let peeling = ReferencePeeling::new(self.unifier);
+        let part_owner = Self::field_owner(value)
+            .filter(|(_, label)| matches!(label.spelling, FieldSpelling::Pair(_)))
+            .map(|(owner, _)| owner);
+        self.borrowed_behind(value, part_owner, |ty| peeling.has_shared_layer(ty))
     }
 
     pub(super) fn moved(&self, value: &TypedExpr) -> Type {
-        self.borrowed_behind(value, Layer::Reference)
+        let owner = Self::field_owner(value).map(|(owner, _)| owner);
+        self.borrowed_behind(value, owner, |ty| self.unifier.resolve(ty).is_reference())
     }
 
-    fn borrowed_behind(&self, value: &TypedExpr, layer: Layer) -> Type {
+    fn field_owner(value: &TypedExpr) -> Option<(&TypedExpr, &FieldLabel)> {
+        match &value.kind {
+            TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) => Some((owner, label)),
+            _ => None,
+        }
+    }
+
+    fn borrowed_behind(
+        &self,
+        value: &TypedExpr,
+        owner: Option<&TypedExpr>,
+        layer: impl Fn(&Type) -> bool,
+    ) -> Type {
         let declared = self.declared_type(value);
-        if self.pair_part_behind(value, layer) {
+        if owner.is_some_and(|owner| self.behind(owner, layer)) {
             Type::shared(declared)
         } else {
             declared
         }
-    }
-
-    fn pair_part_behind(&self, value: &TypedExpr, layer: Layer) -> bool {
-        matches!(&value.kind, TypedExprKind::Struct(TypedStructExpr::Field(owner, label))
-            if matches!(label.spelling, FieldSpelling::Pair(_)) && self.behind(owner, layer))
     }
 
     fn declared_type(&self, value: &TypedExpr) -> Type {
@@ -67,19 +73,13 @@ impl<'a> PlaceTypes<'a> {
         declared.unwrap_or_else(|| value.ty.clone())
     }
 
-    fn behind(&self, owner: &TypedExpr, layer: Layer) -> bool {
-        let peeling = ReferencePeeling::new(self.unifier);
+    fn behind(&self, owner: &TypedExpr, layer: impl Fn(&Type) -> bool) -> bool {
         let mut current = owner;
         loop {
-            let ty = self.declared_type(current);
-            let found = match layer {
-                Layer::Shared => peeling.has_shared_layer(&ty),
-                Layer::Reference => self.unifier.resolve(&ty).is_reference(),
-            };
-            if found {
+            if layer(&self.declared_type(current)) {
                 return true;
             }
-            let TypedExprKind::Struct(TypedStructExpr::Field(inner, _)) = &current.kind else {
+            let Some((inner, _)) = Self::field_owner(current) else {
                 return false;
             };
             current = inner;

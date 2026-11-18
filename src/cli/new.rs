@@ -76,14 +76,12 @@ impl NewCommand {
     }
 
     fn project_file(&self, root: &Path) -> NewFile {
-        NewFile {
-            path: root.join(Language::project_file_name()),
-            text: format!(
-                "({} {})\n",
-                EmbeddedPrelude::project_vocabulary().head(),
-                self.name
-            ),
-        }
+        let text = format!(
+            "({} {})\n",
+            EmbeddedPrelude::project_vocabulary().head(),
+            self.name
+        );
+        NewFile::new(root.join(Language::project_file_name()), text)
     }
 
     fn entry_file(
@@ -92,20 +90,23 @@ impl NewCommand {
         project_file: &NewFile,
     ) -> Result<NewFile, ExitStatus> {
         let mut sources = terminal.sources();
-        let source = sources.add(project_file.path.display(), project_file.text.clone());
+        let source = sources.add(
+            project_file.path().display(),
+            project_file.text().to_string(),
+        );
         let project = sources.read_project(source)?;
-        Ok(NewFile {
-            path: root.join(&project.entry),
-            text: Self::ENTRY_TEXT.to_string(),
-        })
+        Ok(NewFile::new(
+            root.join(&project.entry),
+            Self::ENTRY_TEXT.to_string(),
+        ))
     }
 
     fn starter_test(root: &Path) -> NewFile {
         let file_name = format!("{}.{}", Self::STARTER_TEST_STEM, Language::EXTENSION);
-        NewFile {
-            path: root.join(SearchScope::TESTS_DIRECTORY).join(file_name),
-            text: Self::STARTER_TEST_TEXT.to_string(),
-        }
+        NewFile::new(
+            root.join(SearchScope::TESTS_DIRECTORY).join(file_name),
+            Self::STARTER_TEST_TEXT.to_string(),
+        )
     }
 
     fn check_name(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
@@ -137,7 +138,9 @@ impl NewCommand {
         file: NewFile,
         lookup: &ModuleLookup,
     ) -> NewFile {
-        let source = terminal.sources().add(file.path.display(), file.text);
+        let source = terminal
+            .sources()
+            .add(file.path().display(), file.text().to_string());
         let text = self
             .formatter
             .format(terminal.source_file(source), lookup)
@@ -145,10 +148,7 @@ impl NewCommand {
                 unreachable!("the formatter reads and keeps a new project's files: {failure:?}")
             })
             .text;
-        NewFile {
-            path: file.path,
-            text,
-        }
+        file.with_text(text)
     }
 
     fn write_all(&self, root: &Path, files: &[NewFile]) -> ExitStatus {

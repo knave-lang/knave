@@ -13,9 +13,6 @@ impl GithubWorkflow {
 
 impl ProjectComponent for GithubWorkflow {
     fn files(&self, root: &Path) -> Vec<NewFile> {
-        vec![NewFile {
-            path: root.join(Self::PATH),
-            text: Self::TEXT.filled(),
-        }]
+        vec![NewFile::new(root.join(Self::PATH), Self::TEXT.filled())]
     }
 }

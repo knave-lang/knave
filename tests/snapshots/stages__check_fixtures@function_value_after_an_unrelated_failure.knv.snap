@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/function_value_after_an_unrelated_failure.knv
+---
+error[L0401]: mismatched types
+ --> check/function_value_after_an_unrelated_failure.knv:1:22
+  |
+1 | (defn broken () (+ 1 "one"))
+  |                      ^^^^^ expected an integer, found `str`
+  |
+  = note: run `knave doc L0401` for an explanation
+
+error[L0401]: mismatched types
+ --> check/function_value_after_an_unrelated_failure.knv:9:44
+  |
+9 |   (println (count (take-while (iter names) small?))))
+  |                                            ^^^^^^ expected `str`, found `int`
+  |
+  = note: run `knave doc L0401` for an explanation

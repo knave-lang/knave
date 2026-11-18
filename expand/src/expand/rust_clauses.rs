@@ -1,10 +1,12 @@
 use super::Expander;
 use super::clause_chooser_problems::ClauseChooserProblems;
+use super::clause_passing_problems::ClausePassingProblems;
+use super::copy_implementors::CopyImplementors;
 use super::problems::ExpandProblems;
 use super::shape::Shape;
 use crate::core::{
-    ClauseComparison, ParsedTemplate, RustClause, SharedReferences, TypeBinder, TypeExpr,
-    TypeExprKind,
+    ArgumentPositions, ClauseComparison, ParsedTemplate, PassingAllowance, ReferenceKind,
+    RustClause, TypeBinder, TypeExpr, TypeExprKind,
 };
 use crate::diagnostic::Diagnostic;
 use crate::reader::Form;
@@ -15,7 +17,8 @@ pub(super) struct ClausedTemplate<'t> {
     span: Span,
     type_expr: &'t TypeExpr,
     type_span: Span,
-    shared_references: SharedReferences,
+    shared_references: ArgumentPositions,
+    chooser_arguments: ArgumentPositions,
 }
 
 impl<'t> ClausedTemplate<'t> {
@@ -25,15 +28,13 @@ impl<'t> ClausedTemplate<'t> {
             span: items[1].span(),
             type_expr,
             type_span: items[2].span(),
-            shared_references: type_expr.shared_reference_parameters(),
+            shared_references: Self::parameter_positions(type_expr, Self::is_shared_reference),
+            chooser_arguments: Self::chooser_arguments(type_expr),
         }
     }
 
     fn chooser_problem(&self) -> Option<Diagnostic> {
-        let Some(chooser) = Expander::where_binders(self.type_expr)
-            .iter()
-            .find(|binder| !binder.lifetime)
-        else {
+        let Some(chooser) = Self::chooser_of(self.type_expr) else {
             return Some(ClauseChooserProblems::missing(self.type_span));
         };
         let fixed = self
@@ -55,6 +56,59 @@ impl<'t> ClausedTemplate<'t> {
         };
         parameters.iter().chain(result)
     }
+
+    fn passing_allowance(&self, target: &TypeExpr, copy: &CopyImplementors) -> PassingAllowance {
+        let copied = if copy.lists_primitive(target) {
+            self.chooser_arguments.clone()
+        } else {
+            ArgumentPositions::default()
+        };
+        PassingAllowance::new(self.shared_references.clone(), copied)
+    }
+
+    fn chooser_of(type_expr: &TypeExpr) -> Option<&TypeBinder> {
+        Expander::where_binders(type_expr)
+            .iter()
+            .find(|binder| !binder.lifetime)
+    }
+
+    fn chooser_arguments(type_expr: &TypeExpr) -> ArgumentPositions {
+        Self::chooser_of(type_expr).map_or_else(ArgumentPositions::default, |chooser| {
+            Self::parameter_positions(type_expr, |parameter| {
+                matches!(parameter.kind(), TypeExprKind::Named(variable, _)
+                    if *variable == chooser.variable)
+            })
+        })
+    }
+
+    fn is_shared_reference(parameter: &TypeExpr) -> bool {
+        matches!(
+            parameter.kind(),
+            TypeExprKind::Reference(ReferenceKind::Shared, _, _)
+        )
+    }
+
+    fn parameter_positions(
+        type_expr: &TypeExpr,
+        selects: impl Fn(&TypeExpr) -> bool,
+    ) -> ArgumentPositions {
+        match type_expr.where_body().kind() {
+            TypeExprKind::Function(_, parameters, _) => ArgumentPositions::new(
+                parameters
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, parameter)| selects(parameter))
+                    .map(|(position, _)| position)
+                    .collect(),
+            ),
+            _ => ArgumentPositions::default(),
+        }
+    }
+}
+
+struct ClauseLowering<'c, 't> {
+    template: &'c ClausedTemplate<'t>,
+    copy: CopyImplementors,
 }
 
 impl Expander<'_> {
@@ -70,14 +124,19 @@ impl Expander<'_> {
             .iter()
             .map(|clause| Self::clause_pair(shape, clause))
             .collect::<Result<Vec<_>, Diagnostic>>()?;
-        if !pairs.is_empty()
-            && let Some(problem) = template.chooser_problem()
-        {
+        if pairs.is_empty() {
+            return Ok(Vec::new());
+        }
+        if let Some(problem) = template.chooser_problem() {
             return Err(problem);
         }
+        let lowering = ClauseLowering {
+            template,
+            copy: CopyImplementors::in_modules(self.tables.expanded.values()),
+        };
         pairs
             .into_iter()
-            .map(|pair| self.lower_rust_clause(shape, template, pair))
+            .map(|pair| self.lower_rust_clause(shape, &lowering, pair))
             .collect()
     }
 
@@ -91,23 +150,25 @@ impl Expander<'_> {
     fn lower_rust_clause(
         &mut self,
         shape: &Shape,
-        template: &ClausedTemplate,
+        lowering: &ClauseLowering,
         [target, text]: [&Form; 2],
     ) -> Result<RustClause, Diagnostic> {
+        let template = lowering.template;
         let parsed = Self::parse_rust_template(shape.string(text)?, text.span())?;
         self.check_template_type_placeholders(&parsed, template.type_expr, text.span())?;
-        let dropped_borrows =
-            ClauseComparison::new(template.parsed, &parsed, &template.shared_references)
-                .dropped_borrows()
-                .map_err(|difference| {
-                    ExpandProblems::clause_passes_arguments_unlike_template(
-                        difference,
-                        text.span(),
-                        template.span,
-                    )
-                })?;
+        let target = self.lower_type(target)?;
+        let allowance = template.passing_allowance(&target, &lowering.copy);
+        let dropped_borrows = ClauseComparison::new(template.parsed, &parsed, &allowance)
+            .dropped_borrows()
+            .map_err(|difference| {
+                ClausePassingProblems::arguments_unlike_template(
+                    difference,
+                    text.span(),
+                    template.span,
+                )
+            })?;
         Ok(RustClause {
-            target: self.lower_type(target)?,
+            target,
             template: parsed.text().into(),
             dropped_borrows,
         })

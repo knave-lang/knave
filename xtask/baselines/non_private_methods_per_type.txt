@@ -10,7 +10,7 @@ expand/src/expand/globals.rs::GlobalTable 13
 
 expand/src/expand/mod.rs::Expander 95
 
-expand/src/expand/problems.rs::ExpandProblems 88
+expand/src/expand/problems.rs::ExpandProblems 87
 
 expand/src/expand/session.rs::ExpansionSession 16
 

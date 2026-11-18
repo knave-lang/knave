@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/rust_clause_copies_only_the_binder.knv
+---
+error[L0247]: a `rust` clause must pass its arguments as its template does
+ --> expand/rust_clause_copies_only_the_binder.knv:5:9
+  |
+2 |   (rust "std::vec::Vec::len({1}) == 0"
+  |         ------------------------------ unlike the template's `{1}` here
+...
+5 |     (u8 "{1} == std::vec::Vec::new()")))
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs in whether `{1}` is an operator's operand
+  |
+  = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
+  = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_copies_only_the_binder.knv:11:9
+   |
+ 8 |   (rust "std::string::String::len({1}) == 0"
+   |         ------------------------------------ unlike the template's `{1}` here
+...
+11 |     (u8 "{1} == std::string::String::new()")))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs in whether `{1}` is an operator's operand
+   |
+   = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
+   = note: run `knave doc L0247` for an explanation

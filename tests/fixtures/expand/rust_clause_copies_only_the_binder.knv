@@ -1,0 +1,15 @@
+(def empty-elements?
+  (rust "std::vec::Vec::len({1}) == 0"
+    (where ((n integer))
+      (fn (n (vec n)) bool))
+    (u8 "{1} == std::vec::Vec::new()")))
+
+(def empty-name?
+  (rust "std::string::String::len({1}) == 0"
+    (where ((n integer))
+      (fn (n string) bool))
+    (u8 "{1} == std::string::String::new()")))
+
+(defn main ()
+  (prn (empty-elements? (the u8 1) (vec))
+       (empty-name? (the u8 1) "")))

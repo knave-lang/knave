@@ -1,0 +1,87 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/rust_clause_copy_rebound.knv
+---
+warning[L0217]: `copy1` binds the Rust trait that `copy` already binds
+ --> expand/copy_names/c1.knv:3:13
+  |
+3 | (rust-trait copy1 "Copy")
+  |             ^^^^^ this also binds `Copy`
+  |
+  = note: two traits that bind one Rust trait can disagree about its implementors
+  = help: use `copy`, or give `copy1` a different Rust trait
+  = note: run `knave doc L0217` for an explanation
+
+warning[L0217]: `copy2` binds the Rust trait that `copy` already binds
+ --> expand/copy_names/c2.knv:3:13
+  |
+3 | (rust-trait copy2 "Copy")
+  |             ^^^^^ this also binds `Copy`
+  |
+  = note: two traits that bind one Rust trait can disagree about its implementors
+  = help: use `copy`, or give `copy2` a different Rust trait
+  = note: run `knave doc L0217` for an explanation
+
+warning[L0217]: `copy3` binds the Rust trait that `copy` already binds
+ --> expand/copy_names/c3.knv:3:13
+  |
+3 | (rust-trait copy3 "Copy")
+  |             ^^^^^ this also binds `Copy`
+  |
+  = note: two traits that bind one Rust trait can disagree about its implementors
+  = help: use `copy`, or give `copy3` a different Rust trait
+  = note: run `knave doc L0217` for an explanation
+
+warning[L0217]: `copy4` binds the Rust trait that `copy` already binds
+ --> expand/copy_names/c4.knv:3:13
+  |
+3 | (rust-trait copy4 "Copy")
+  |             ^^^^^ this also binds `Copy`
+  |
+  = note: two traits that bind one Rust trait can disagree about its implementors
+  = help: use `copy`, or give `copy4` a different Rust trait
+  = note: run `knave doc L0217` for an explanation
+
+warning[L0217]: `copy5` binds the Rust trait that `copy` already binds
+ --> expand/copy_names/c5.knv:3:13
+  |
+3 | (rust-trait copy5 "Copy")
+  |             ^^^^^ this also binds `Copy`
+  |
+  = note: two traits that bind one Rust trait can disagree about its implementors
+  = help: use `copy`, or give `copy5` a different Rust trait
+  = note: run `knave doc L0217` for an explanation
+
+warning[L0217]: `copy6` binds the Rust trait that `copy` already binds
+ --> expand/copy_names/c6.knv:3:13
+  |
+3 | (rust-trait copy6 "Copy")
+  |             ^^^^^ this also binds `Copy`
+  |
+  = note: two traits that bind one Rust trait can disagree about its implementors
+  = help: use `copy`, or give `copy6` a different Rust trait
+  = note: run `knave doc L0217` for an explanation
+
+warning[L0217]: `copy7` binds the Rust trait that `copy` already binds
+ --> expand/copy_names/c7.knv:3:13
+  |
+3 | (rust-trait copy7 "Copy")
+  |             ^^^^^ this also binds `Copy`
+  |
+  = note: two traits that bind one Rust trait can disagree about its implementors
+  = help: use `copy`, or give `copy7` a different Rust trait
+  = note: run `knave doc L0217` for an explanation
+
+warning[L0217]: `copy8` binds the Rust trait that `copy` already binds
+ --> expand/copy_names/c8.knv:3:13
+  |
+3 | (rust-trait copy8 "Copy")
+  |             ^^^^^ this also binds `Copy`
+  |
+  = note: two traits that bind one Rust trait can disagree about its implementors
+  = help: use `copy`, or give `copy8` a different Rust trait
+  = note: run `knave doc L0217` for an explanation
+
+(def twice (rust "std::ops::Mul::mul({0}, 2)" (where ((n integer)) (fn (n) n)) (int "{0} * 2")))
+(def main (fn () ((rust "println!(\"{{}}\", crate::rt::Shown({0}))" (where ((part-type-0 show)) (fn ((ref part-type-0)) unit))) (twice 3))))

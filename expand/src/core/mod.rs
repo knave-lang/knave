@@ -1,5 +1,6 @@
 mod access;
 mod argument_passing;
+mod argument_positions;
 mod binder_origin;
 mod binding;
 mod builtin;
@@ -10,8 +11,11 @@ mod expr;
 mod implementor_rows;
 mod kernel;
 mod keyword;
+mod lexeme;
 mod module;
 mod module_path;
+mod passing_allowance;
+mod passing_relaxation;
 mod path_part;
 mod primitive;
 mod primitive_names;
@@ -19,16 +23,17 @@ mod printer;
 mod references;
 mod saved_bindings;
 mod saved_value;
-mod shared_references;
 mod structural;
 mod template;
 mod template_braces;
+mod template_lexer;
 mod template_operation;
 mod types;
 mod unnamed_part_path;
 mod written_types;
 
 pub use access::Access;
+pub use argument_positions::ArgumentPositions;
 pub use binder_origin::BinderOrigin;
 pub use binding::{
     BindingArena, BindingId, BindingInfo, BindingKind, Declaration, ModuleDefinitions, Namespace,
@@ -59,13 +64,13 @@ pub use module::{
     TraitAssociatedType, TraitMethod, VariantDeclaration, VariantPayload,
 };
 pub use module_path::ModulePath;
+pub use passing_allowance::PassingAllowance;
 pub use primitive::PrimitiveType;
 pub use primitive_names::PrimitiveNames;
 pub use printer::CorePrinter;
 pub use references::References;
 pub use saved_bindings::{BindingTables, SavedBindings};
 pub use saved_value::SavedValue;
-pub use shared_references::SharedReferences;
 pub use structural::{
     StructuralClause, StructuralKey, StructuralPiece, StructuralTemplate, StructuralValues,
     UnfilledPlaceholder,

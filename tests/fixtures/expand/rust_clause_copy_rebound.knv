@@ -1,0 +1,15 @@
+(use copy_names/c1 copy1)
+(use copy_names/c2 copy2)
+(use copy_names/c3 copy3)
+(use copy_names/c4 copy4)
+(use copy_names/c5 copy5)
+(use copy_names/c6 copy6)
+(use copy_names/c7 copy7)
+(use copy_names/c8 copy8)
+
+(def twice
+  (rust "std::ops::Mul::mul({0}, 2)"
+    (where ((n integer)) (fn (n) n))
+    (i64 "{0} * 2")))
+
+(defn main () (prn (twice 3)))

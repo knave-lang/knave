@@ -58,20 +58,19 @@
 
 (def operand-only-in-template
   (rust "{0} + 1"
-    (where ((n number)) (fn (n) n))
-    (i64 "add({0}, 1)")))
+    (where ((s sequence)) (fn (s) s))
+    (string "add({0}, 1)")))
+
+(def operand-in-a-trait-clause
+  (rust "{0}.is_even()"
+    (where ((n integer)) (fn (n) bool))
+    (integer "{0} % 2 == 0")))
 
 (def call-only-in-clause
   (rust "{0}.len"
     (where ((s sequence))
       (fn ((ref s)) usize))
     (str "{0}.len()")))
-
-(def call-only-in-template
-  (rust "{0}.len()"
-    (where ((s sequence))
-      (fn ((ref s)) usize))
-    (str "{0}.len")))
 
 (def index-in-clause
   (rust "measure({0})"

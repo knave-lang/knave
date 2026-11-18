@@ -1,0 +1,16 @@
+(def even
+  (rust "crate::rt::is_even({0})"
+    (where ((n integer)) (fn (n) bool))
+    (u8 "u8::is_multiple_of({0}, 2)")
+    (i64 "{0} % 2 == 0")))
+
+(def call-only-in-template
+  (rust "{0}.len()"
+    (where ((s sequence))
+      (fn ((ref s)) usize))
+    (str "{0}.len")))
+
+(def small?
+  (rust "crate::rt::is_even({0})"
+    (where ((n integer)) (fn (n) bool))
+    (i64 "match {0} {{ 0 => true, _ => false }}")))

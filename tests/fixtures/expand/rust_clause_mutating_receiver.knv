@@ -1,0 +1,9 @@
+(def shout
+  (rust "std::mem::drop({0})"
+    (where ((n integer)) (fn (n) unit))
+    (u8 "{0}.make_ascii_uppercase()")))
+
+(defn main ()
+  (let (b (the u8 97))
+    (shout b)
+    (println b)))

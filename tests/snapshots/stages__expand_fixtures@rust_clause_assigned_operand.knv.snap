@@ -1,0 +1,232 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/rust_clause_assigned_operand.knv
+---
+error[L0247]: a `rust` clause must pass its arguments as its template does
+ --> expand/rust_clause_assigned_operand.knv:4:10
+  |
+2 |   (rust "std::mem::drop({0})"
+  |         --------------------- the template passes its arguments differently
+3 |     (where ((n integer)) (fn (n) unit))
+4 |     (i64 "{0} += 1")))
+  |          ^^^^^^^^^^ this clause differs from the template but is not a plain expression
+  |
+  = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+  = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+ --> expand/rust_clause_assigned_operand.knv:9:10
+  |
+7 |   (rust "std::mem::drop({0})"
+  |         --------------------- the template passes its arguments differently
+8 |     (where ((n integer)) (fn (n) unit))
+9 |     (i64 "({0}) += 1")))
+  |          ^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+  |
+  = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+  = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:14:10
+   |
+12 |   (rust "std::mem::drop({0})"
+   |         --------------------- the template passes its arguments differently
+13 |     (where ((n integer)) (fn (n) unit))
+14 |     (i64 "({0}) = 7")))
+   |          ^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:19:10
+   |
+17 |   (rust "std::mem::drop({0})"
+   |         --------------------- the template passes its arguments differently
+18 |     (where ((n integer)) (fn (n) unit))
+19 |     (i64 "{{ let r = &mut {0}; *r += 1; }}")))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:24:14
+   |
+22 |   (rust "std::mem::drop({0})"
+   |         --------------------- the template passes its arguments differently
+23 |     (where ((n integer)) (fn (n) unit))
+24 |     (integer "({0}) += 1")))
+   |              ^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:29:10
+   |
+27 |   (rust "std::mem::drop({0})"
+   |         --------------------- the template passes its arguments differently
+28 |     (where ((n integer)) (fn (n) unit))
+29 |     (i64 "({0}) /* \" */ += 1 /* \" */")))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:34:10
+   |
+32 |   (rust "std::mem::drop({0})"
+   |         --------------------- the template passes its arguments differently
+33 |     (where ((n integer)) (fn (n) unit))
+34 |     (i64 "{{ '\"'; let r = &mut {0}; '\"'; *r += 1; }}")))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:39:10
+   |
+37 |   (rust "crate::rt::is_even({0})"
+   |         ------------------------- the template passes its arguments differently
+38 |     (where ((n integer)) (fn (n) bool))
+39 |     (i64 "{{ ({0}) /* \" */ += 1 /* \" */; true }}")))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:44:10
+   |
+42 |   (rust "{0} + 0"
+   |         --------- the template passes its arguments differently
+43 |     (where ((n integer)) (fn (n) n))
+44 |     (i64 "{{ let r = &mut {0}; *r += 1; *r }}")))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:49:9
+   |
+47 |   (rust "{0} * 1"
+   |         --------- the template passes its arguments differently
+48 |     (where ((n integer)) (fn (n) n))
+49 |     (u8 "{{ ({0}) += 1; 0 }}")))
+   |         ^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:55:7
+   |
+52 |   (rust "std::mem::drop({0})"
+   |         --------------------- the template passes its arguments differently
+...
+55 |       "match {0} {{ ref mut r if r#\"a\"b\"# == \"\" => *r += 1, _ => () }}")))
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:60:10
+   |
+58 |   (rust "crate::rt::is_even({0})"
+   |         ------------------------- the template passes its arguments differently
+59 |     (where ((n integer)) (fn (n) bool))
+60 |     (i64 "{{ ({0}, _) = (7, 0); true }}")))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:65:10
+   |
+63 |   (rust "crate::rt::is_even({0})"
+   |         ------------------------- the template passes its arguments differently
+64 |     (where ((n integer)) (fn (n) bool))
+65 |     (i64 "{{ [{0}, _] = [7, 0]; true }}")))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:70:10
+   |
+68 |   (rust "crate::rt::is_even({0})"
+   |         ------------------------- the template passes its arguments differently
+69 |     (where ((n integer)) (fn (n) bool))
+70 |     (i64 "{{ ({0},) = (7,); true }}")))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:75:10
+   |
+73 |   (rust "crate::rt::is_even({0})"
+   |         ------------------------- the template passes its arguments differently
+74 |     (where ((n integer)) (fn (n) bool))
+75 |     (i64 "{{ let p = &raw mut {0}; unsafe {{ *p += 1 }}; true }}")))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:80:10
+   |
+78 |   (rust "{0} == 0"
+   |         ---------- the template passes its arguments differently
+79 |     (where ((n integer)) (fn (n) bool))
+80 |     (i64 "{{ ({0}, _) = (7, 0); true }}")))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_assigned_operand.knv:86:10
+   |
+83 |   (rust "{{ *{1} += 1; crate::rt::is_even({0}) }}"
+   |         ------------------------------------------ the template passes its arguments differently
+...
+86 |     (i64 "{{ *{1} += 1; match {0} {{ ref mut r => *r += 1 }}; true }}")))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+   |
+   = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+   --> expand/rust_clause_assigned_operand.knv:107:9
+    |
+105 |   (rust "crate::rt::is_even({0})"
+    |         ------------------------- the template passes its arguments differently
+106 |     (where ((n integer)) (fn (n) bool))
+107 |     (u8 "() == {0}.make_ascii_uppercase()")))
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+    |
+    = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+    = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+   --> expand/rust_clause_assigned_operand.knv:113:9
+    |
+110 |   (rust "std::mem::drop(({0}, {1}))"
+    |         ---------------------------- the template passes its arguments differently
+...
+113 |     (u8 "[{0}.{1}()][0]")))
+    |         ^^^^^^^^^^^^^^^^ this clause differs from the template but is not a plain expression
+    |
+    = help: differ only in an expression of names, literals, path calls and operators besides `=`, `&` and `|`
+    = note: run `knave doc L0247` for an explanation

@@ -97,189 +97,189 @@ error[L0247]: a `rust` clause must pass its arguments as its template does
    = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-  --> expand/rust_clause_errors.knv:62:10
+  --> expand/rust_clause_errors.knv:62:13
    |
 60 |   (rust "{0} + 1"
    |         --------- unlike the template's `{0}` here
-61 |     (where ((n number)) (fn (n) n))
-62 |     (i64 "add({0}, 1)")))
-   |          ^^^^^^^^^^^^^ this clause differs in whether `{0}` is an operator's operand
+61 |     (where ((s sequence)) (fn (s) s))
+62 |     (string "add({0}, 1)")))
+   |             ^^^^^^^^^^^^^ this clause differs in whether `{0}` is an operator's operand
    |
    = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
    = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-  --> expand/rust_clause_errors.knv:68:10
+  --> expand/rust_clause_errors.knv:67:14
    |
-65 |   (rust "{0}.len"
+65 |   (rust "{0}.is_even()"
+   |         --------------- unlike the template's `{0}` here
+66 |     (where ((n integer)) (fn (n) bool))
+67 |     (integer "{0} % 2 == 0")))
+   |              ^^^^^^^^^^^^^^ this clause differs in whether `{0}` receives a method call
+   |
+   = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
+   = note: run `knave doc L0247` for an explanation
+
+error[L0247]: a `rust` clause must pass its arguments as its template does
+  --> expand/rust_clause_errors.knv:73:10
+   |
+70 |   (rust "{0}.len"
    |         --------- the template calls no function
 ...
-68 |     (str "{0}.len()")))
+73 |     (str "{0}.len()")))
    |          ^^^^^^^^^^^ this clause calls a function
    |
    = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
    = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-  --> expand/rust_clause_errors.knv:74:10
+  --> expand/rust_clause_errors.knv:79:10
    |
-71 |   (rust "{0}.len()"
-   |         ----------- the template calls a function
-...
-74 |     (str "{0}.len")))
-   |          ^^^^^^^^^ this clause calls no function
-   |
-   = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
-   = note: run `knave doc L0247` for an explanation
-
-error[L0247]: a `rust` clause must pass its arguments as its template does
-  --> expand/rust_clause_errors.knv:80:10
-   |
-77 |   (rust "measure({0})"
+76 |   (rust "measure({0})"
    |         -------------- unlike the template's `{0}` here
 ...
-80 |     (str "count({0}[0])")))
+79 |     (str "count({0}[0])")))
    |          ^^^^^^^^^^^^^^^ this clause differs in whether it indexes `{0}`
    |
    = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
    = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-  --> expand/rust_clause_errors.knv:86:10
+  --> expand/rust_clause_errors.knv:85:10
    |
-83 |   (rust "measure({0})"
+82 |   (rust "measure({0})"
    |         -------------- unlike the template's `{0}` here
 ...
-86 |     (str "count(*{0})")))
+85 |     (str "count(*{0})")))
    |          ^^^^^^^^^^^^^ this clause differs in whether it dereferences `{0}`
    |
    = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
    = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-  --> expand/rust_clause_errors.knv:92:10
+  --> expand/rust_clause_errors.knv:91:10
    |
-89 |   (rust "measure({0})"
+88 |   (rust "measure({0})"
    |         -------------- unlike the template's `{0}` here
 ...
-92 |     (str "count({0}(1))")))
+91 |     (str "count({0}(1))")))
    |          ^^^^^^^^^^^^^^^ this clause differs in whether it calls `{0}`
    |
    = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
    = note: run `knave doc L0247` for an explanation
 
 error[L0218]: this Rust template has a malformed placeholder
-  --> expand/rust_clause_errors.knv:98:10
+  --> expand/rust_clause_errors.knv:97:10
    |
-98 |     (str "count({0}}")))
+97 |     (str "count({0}}")))
    |          ^^^^^^^^^^^^ a placeholder is `{`, a number and `}`
    |
    = help: write a literal brace as `{{` or `}}`
    = note: run `knave doc L0218` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-   --> expand/rust_clause_errors.knv:103:10
+   --> expand/rust_clause_errors.knv:102:10
     |
-101 |   (rust "std::mem::size_of_val({0})"
+100 |   (rust "std::mem::size_of_val({0})"
     |         ---------------------------- unlike the template's `{0}` here
-102 |     (where ((a clone)) (fn (a) usize))
-103 |     (i64 "std::mem::size_of_val({&0})")))
+101 |     (where ((a clone)) (fn (a) usize))
+102 |     (i64 "std::mem::size_of_val({&0})")))
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause borrows `{0}` differently
     |
     = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
     = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-   --> expand/rust_clause_errors.knv:109:10
+   --> expand/rust_clause_errors.knv:108:10
     |
-106 |   (rust "std::mem::size_of_val({0})"
+105 |   (rust "std::mem::size_of_val({0})"
     |         ---------------------------- unlike the template's `{0}` here
 ...
-109 |     (str "std::mem::size_of_val(&{0})")))
+108 |     (str "std::mem::size_of_val(&{0})")))
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs in whether `{0}` is an operator's operand
     |
     = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
     = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-   --> expand/rust_clause_errors.knv:114:10
+   --> expand/rust_clause_errors.knv:113:10
     |
-112 |   (rust "std::mem::size_of_val({0})"
+111 |   (rust "std::mem::size_of_val({0})"
     |         ---------------------------- unlike the template's `{0}` here
-113 |     (where ((a clone)) (fn ((ref a)) usize))
-114 |     (i64 "std::mem::size_of_val({&0})")))
+112 |     (where ((a clone)) (fn ((ref a)) usize))
+113 |     (i64 "std::mem::size_of_val({&0})")))
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause borrows `{0}` differently
     |
     = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
     = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-   --> expand/rust_clause_errors.knv:119:16
+   --> expand/rust_clause_errors.knv:118:16
     |
-117 |   (rust "std::mem::size_of_val(&{&0})"
+116 |   (rust "std::mem::size_of_val(&{&0})"
     |         ------------------------------ unlike the template's `{0}` here
-118 |     (where ((a clone)) (fn (a) usize))
-119 |     ((ref str) "std::mem::size_of_val({&0})")))
+117 |     (where ((a clone)) (fn (a) usize))
+118 |     ((ref str) "std::mem::size_of_val({&0})")))
     |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause borrows `{0}` differently
     |
     = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
     = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-   --> expand/rust_clause_errors.knv:125:13
+   --> expand/rust_clause_errors.knv:124:13
     |
-122 |   (rust "{&0} == {&1}"
+121 |   (rust "{&0} == {&1}"
     |         -------------- unlike the template's `{0}` here
 ...
-125 |     (string "{0} == {1}")))
+124 |     (string "{0} == {1}")))
     |             ^^^^^^^^^^^^ this clause borrows `{0}` differently
     |
     = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
     = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-   --> expand/rust_clause_errors.knv:130:16
+   --> expand/rust_clause_errors.knv:129:16
     |
-128 |   (rust "str::len(&{&0})"
+127 |   (rust "str::len(&{&0})"
     |         ----------------- unlike the template's `{0}` here
-129 |     (where ((a clone)) (fn (a) usize))
-130 |     ((ref str) "{0}.len()")))
+128 |     (where ((a clone)) (fn (a) usize))
+129 |     ((ref str) "{0}.len()")))
     |                ^^^^^^^^^^^ this clause differs in whether `{0}` receives a method call
     |
     = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
     = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-   --> expand/rust_clause_errors.knv:135:10
+   --> expand/rust_clause_errors.knv:134:10
     |
-133 |   (rust "std::mem::size_of_val(&{&0})"
+132 |   (rust "std::mem::size_of_val(&{&0})"
     |         ------------------------------ unlike the template's `{0}` here
-134 |     (where ((a clone)) (fn (a) usize))
-135 |     (i64 "std::mem::size_of_val(&{&0}[0])")))
+133 |     (where ((a clone)) (fn (a) usize))
+134 |     (i64 "std::mem::size_of_val(&{&0}[0])")))
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause differs in whether it indexes `{0}`
     |
     = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
     = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-   --> expand/rust_clause_errors.knv:140:10
+   --> expand/rust_clause_errors.knv:139:10
     |
-138 |   (rust "std::mem::size_of_val({&0})"
+137 |   (rust "std::mem::size_of_val({&0})"
     |         ----------------------------- unlike the template's `{0}` here
-139 |     (where ((a clone)) (fn (a) usize))
-140 |     (i64 "std::mem::size_of_val({0})")))
+138 |     (where ((a clone)) (fn (a) usize))
+139 |     (i64 "std::mem::size_of_val({0})")))
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause borrows `{0}` differently
     |
     = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call
     = note: run `knave doc L0247` for an explanation
 
 error[L0247]: a `rust` clause must pass its arguments as its template does
-   --> expand/rust_clause_errors.knv:145:10
+   --> expand/rust_clause_errors.knv:144:10
     |
-143 |   (rust "std::mem::size_of_val(&{&0})"
+142 |   (rust "std::mem::size_of_val(&{&0})"
     |         ------------------------------ unlike the template's `{0}` here
-144 |     (where ((a clone)) (fn (a) usize))
-145 |     (i64 "std::mem::size_of_val(&{0})")))
+143 |     (where ((a clone)) (fn (a) usize))
+144 |     (i64 "std::mem::size_of_val(&{0})")))
     |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause borrows `{0}` differently
     |
     = help: write each placeholder as the template writes it, with the same borrow, receiver, index or call

@@ -130,14 +130,13 @@
             flock=${pkgs.lib.getExe pkgs.flock}
             ps=${pkgs.lib.getExe' pkgs.unixtools.procps "ps"}
             awk=${pkgs.lib.getExe pkgs.gawk}
-            env=${pkgs.lib.getExe' pkgs.coreutils "env"}
-            kill=${pkgs.lib.getExe' pkgs.coreutils "kill"}
             process_tree_program=${./xtask/build-slots/process-tree.awk}
             survivors_program=${./xtask/build-slots/survivors.awk}
             slot_directory=$HOME/.cache/knave/build-slots
             slot_limit=''${KNAVE_BUILD_SLOTS:-2}
             time_limit=''${KNAVE_BUILD_TIME_LIMIT:-}
             timed_out_status=124
+            read_timed_out_status=129
             seconds_before_kill=5
             seconds_between_attempts=1
 
@@ -164,52 +163,42 @@
             }
 
             run_within_time_limit() {
-              local restored_signals cargo_process timer finished status=0
-              restored_signals=$(signals_not_ignored_on_entry)
-              trap "" INT QUIT
-              start_cargo_in_callers_process_group "$restored_signals" "$@"
-              cargo_process=$!
-              sleep "$time_limit" >/dev/null 2>&1 &
-              timer=$!
-              wait -n -p finished "$cargo_process" "$timer" || status=$?
-              if [[ $finished == "$cargo_process" ]]; then
-                kill "$timer" 2>/dev/null || true
-              elif stop_if_running "$cargo_process"; then
-                wait "$cargo_process" || true
-                echo "cargo: stopped by KNAVE_BUILD_TIME_LIMIT=$time_limit, which counts seconds from when the command took a build slot" >&2
+              local to_timer timer_process status=0 timer_status=0
+              coproc time_limit_timer { stop_at_time_limit >/dev/null; }
+              timer_process=$!
+              exec {to_timer}>&"''${time_limit_timer[1]}"
+              close_coprocess_pipes "''${time_limit_timer[@]}"
+              run_cargo_telling_timer "$to_timer" "$@" || status=$?
+              exec {to_timer}>&-
+              wait "$timer_process" || timer_status=$?
+              if ((timer_status == timed_out_status)); then
                 status=$timed_out_status
-              else
-                status=0
-                wait "$cargo_process" || status=$?
               fi
-              trap - INT QUIT
-              pass_on_signal "$status"
               return "$status"
             }
 
-            signals_not_ignored_on_entry() {
-              local signal restored=()
-              for signal in INT QUIT; do
-                [[ -n $(trap -p "$signal") ]] || restored+=("$signal")
-              done
+            close_coprocess_pipes() {
+              local output=$1 input=$2
+              exec {output}<&- {input}>&-
+            }
+
+            run_cargo_telling_timer() {
+              local to_timer=$1
+              shift
               (
-                IFS=,
-                echo "''${restored[*]}"
+                echo "$BASHPID" >&"$to_timer"
+                KNAVE_BUILD_SLOT_HELD=1 exec "$real_cargo" "$@" {to_timer}>&-
               )
             }
 
-            start_cargo_in_callers_process_group() {
-              local restored_signals=$1
-              shift
-              # A job started with & ignores SIGINT and SIGQUIT and reads /dev/null: restore the signals the caller left alone, and the caller's input.
-              "$env" ''${restored_signals:+"--default-signal=$restored_signals"} KNAVE_BUILD_SLOT_HELD=1 "$real_cargo" "$@" <&0 &
-            }
-
-            pass_on_signal() {
-              case $1 in
-                130) kill -INT $$ ;;
-                131) exec "$env" --default-signal=QUIT "$kill" -QUIT $$ ;;
-              esac
+            stop_at_time_limit() {
+              local cargo_process waited=0
+              read -r cargo_process || return 0
+              read -r -t "$time_limit" || waited=$?
+              if ((waited >= read_timed_out_status)) && stop_if_running "$cargo_process"; then
+                echo "cargo: stopped by KNAVE_BUILD_TIME_LIMIT=$time_limit, which counts seconds from when the command took a build slot" >&2
+                return "$timed_out_status"
+              fi
             }
 
             stop_if_running() {
@@ -378,6 +367,16 @@
                 ;;
               exit-124) exit 124 ;;
               exit-with) exit "$2" ;;
+              die-by) exec env --default-signal kill -s "$2" $$ ;;
+              ready-sleep)
+                touch "$calls/ready"
+                exec sleep "$2"
+                ;;
+              catch-exit-130)
+                trap 'exit 130' INT
+                touch "$calls/ready"
+                while :; do sleep 0.1; done
+                ;;
               catch-int)
                 trap 'touch "$calls/caught-int"' INT
                 touch "$calls/catch-int-ready"
@@ -404,6 +403,8 @@
           ps = pkgs.lib.getExe' pkgs.unixtools.procps "ps";
           script = pkgs.lib.getExe' pkgs.util-linux "script";
           setsid = pkgs.lib.getExe' pkgs.util-linux "setsid";
+          python = pkgs.lib.getExe pkgs.python3Minimal;
+          waitStatus = ./xtask/build-slots/wait-status.py;
           terminalChecks = pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
             on_terminal() {
               timeout 20 ${script} --quiet --return --command "env KNAVE_BUILD_SLOTS=1 KNAVE_BUILD_TIME_LIMIT=60 ${cargo} $1" /dev/null >/dev/null
@@ -458,6 +459,12 @@
               sleep 0.1
             done
             fail "cargo $1 never reached its sleep"
+          }
+          expect_same_wait_status() {
+            local unlimited limited
+            unlimited=$(timeout 30 env -u KNAVE_BUILD_TIME_LIMIT ${python} -I ${waitStatus} "$@" 2>/dev/null)
+            limited=$(timeout 30 env KNAVE_BUILD_TIME_LIMIT=60 ${python} -I ${waitStatus} "$@" 2>/dev/null)
+            [[ $unlimited == "$limited" ]] || fail "''${*: -2} ended with '$unlimited' unlimited but '$limited' under a limit"
           }
           expect_slot_held() {
             ${flock} -n "$HOME/.cache/knave/build-slots/1" true && fail "$1"
@@ -543,6 +550,8 @@
           KNAVE_BUILD_SLOTS=1 ${cargo} daemon
           timeout 5 env KNAVE_BUILD_SLOTS=1 ${cargo} check after-daemon || fail "a process that outlived cargo kept the slot"
           kill "$(<"$calls/daemon-process")"
+          KNAVE_BUILD_TIME_LIMIT=60 timeout 10 ${cargo} daemon || fail "a limited cargo waited for a daemon it started"
+          kill "$(<"$calls/daemon-process")"
 
           KNAVE_BUILD_SLOTS=1 ${cargo} build limit-holder &
           wait_for_call build-limit-holder
@@ -601,17 +610,19 @@
           done
           timeout 5 env KNAVE_BUILD_SLOTS=1 ${cargo} check after-exit-codes || fail "a limited cargo with a high exit code kept its slot"
 
-          rm -f "$calls/sleep-300"
-          (
-            trap - INT QUIT
-            exec ${setsid} bash -c "KNAVE_BUILD_SLOTS=1 KNAVE_BUILD_TIME_LIMIT=60 ${cargo} sleep 300; :" 2>quit-reported
-          ) &
-          quitting=$!
-          wait_for_call sleep-300
-          wait_for_sleep "$(<"$calls/sleep-300")"
-          kill -QUIT -- "-$quitting"
-          wait "$quitting" || true
-          grep --quiet Quit quit-reported || fail "a limited run stopped by SIGQUIT exited instead of dying by SIGQUIT"
+          for code in {0..255}; do
+            expect_same_wait_status -- ${cargo} exit-with "$code"
+          done
+          for signal in INT QUIT TERM HUP KILL USR1 PIPE ALRM; do
+            expect_same_wait_status -- ${cargo} die-by "$signal"
+          done
+          for signal in INT QUIT TERM HUP; do
+            expect_same_wait_status --group-signal "$signal" --ready-file "$calls/ready" --delay 0.3 -- ${cargo} ready-sleep 300
+          done
+          for signal in INT QUIT; do
+            expect_same_wait_status --ignore INT,QUIT --group-signal "$signal" --ready-file "$calls/ready" --delay 0.3 -- ${cargo} ready-sleep 2
+          done
+          expect_same_wait_status --group-signal INT --ready-file "$calls/ready" --delay 0.3 -- ${cargo} catch-exit-130
 
           rm -f "$calls/sleep-300"
           ${setsid} env KNAVE_BUILD_SLOTS=1 KNAVE_BUILD_TIME_LIMIT=60 ${cargo} sleep 300 &

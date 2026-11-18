@@ -162,7 +162,7 @@ impl<'l> SchemeLowering<'l> {
             .zip(&mut params)
         {
             let bounds = self.lower_bounds(binder, &scope)?;
-            self.types.replace_bounds(param, bounds);
+            self.types.generics().redeclare(param, bounds);
         }
         Ok(LoweredBinders {
             lifetimes,

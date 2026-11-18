@@ -16,8 +16,7 @@ use super::declared_types::DeclaredTypes;
 use super::definition_outcomes::DefinitionOutcomes;
 use super::derive_blockers::DeriveBlockers;
 use super::display::TypeDisplay;
-use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
-use super::field_parameters::FieldParameters;
+use super::enum_item::EnumItem;
 use super::generic_declarations::GenericDeclarations;
 use super::generic_registry::GenericRegistry;
 use super::graph::{Definition, DefinitionGraph};
@@ -31,32 +30,33 @@ use super::opaque_positions::OpaquePositions;
 use super::parameter_call_labels::ParameterCallRequest;
 use super::parameter_call_search::CalledParameters;
 use super::parameter_modes::ParameterModes;
+use super::parameter_names::ParameterNames;
 use super::peeling::ReferencePeeling;
 use super::pending::PendingBorrow;
 use super::pinning::LiteralDefaults;
 use super::prelude_types::PreludeTypes;
 use super::problems::{ImplementorGroup, ImplementorList, MismatchContext, TypeProblems};
 use super::reached_traits::{ReachedDeclaration, ReachedTraits};
+use super::rust_type_item::RustTypeItem;
 use super::selection::Selection;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_boxing::TraitBoxing;
 use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
+use super::type_declaration_collector::TypeDeclarationCollector;
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
 use super::variant_payloads::VariantPayloads;
 use super::wrapper::FunctionValueWrapper;
 use super::{
-    Implementor, LoweredRows, PendingModeCheck, ReceiverKind, RustTrait, RustType,
-    StructDefinition, TemplateBorrows, TraitMethodInfo, TypedAssociatedType, TypedConversion,
-    TypedDefinition, TypedExpr, TypedExprKind, TypedImplMethod, TypedLeaf, TypedTrait,
-    TypedTraitImpl, TypedTraitMethod,
+    Implementor, LoweredRows, PendingModeCheck, ReceiverKind, RustTrait, StructDefinition,
+    TemplateBorrows, TraitMethodInfo, TypedAssociatedType, TypedConversion, TypedDefinition,
+    TypedExpr, TypedExprKind, TypedImplMethod, TypedLeaf, TypedTrait, TypedTraitImpl,
+    TypedTraitMethod,
 };
-use super::{lowered_payload::LoweredPayload, payload_lowering::PayloadLowering};
 use crate::core::{
     BindingArena, BindingId, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr, ExprKind, Item,
-    ItemKind, KernelForm, Leaf, ModuleId, ParsedTemplate, ReferenceKind, RustTemplate,
-    StructDerives, StructExpr, TypeBinder, TypeExpr, TypeExprKind, VariantDeclaration,
-    VariantPayload as CoreVariantPayload,
+    ItemKind, KernelForm, Leaf, ModuleId, ReferenceKind, RustTemplate, StructDerives, StructExpr,
+    TypeExpr, TypeExprKind,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::{MacroCallLookup, PendingDefinitions};
@@ -73,102 +73,6 @@ struct ReopenedParameter {
 pub(super) enum ObligationPass {
     Deferring,
     Final,
-}
-
-struct ParameterUsage {
-    outside_self: bool,
-    first_recursive: Option<Span>,
-}
-
-impl ParameterUsage {
-    fn scan(variants: &[VariantDeclaration], enum_binding: BindingId, variable: BindingId) -> Self {
-        let mut usage = Self {
-            outside_self: false,
-            first_recursive: None,
-        };
-        for variant in variants {
-            usage.visit_payload(&variant.payload, enum_binding, variable, false);
-        }
-        usage
-    }
-
-    fn visit_payload(
-        &mut self,
-        payload: &CoreVariantPayload,
-        enum_binding: BindingId,
-        variable: BindingId,
-        inside_self: bool,
-    ) {
-        match payload {
-            CoreVariantPayload::None => {}
-            CoreVariantPayload::Positional(types) => {
-                for type_expr in types {
-                    self.visit(type_expr, enum_binding, variable, inside_self);
-                }
-            }
-            CoreVariantPayload::Named(fields) => {
-                for (_, type_expr) in fields {
-                    self.visit(type_expr, enum_binding, variable, inside_self);
-                }
-            }
-        }
-    }
-
-    fn visit(
-        &mut self,
-        type_expr: &TypeExpr,
-        enum_binding: BindingId,
-        variable: BindingId,
-        inside_self: bool,
-    ) {
-        match type_expr.kind() {
-            TypeExprKind::Named(binding, arguments) => self.visit_named(
-                type_expr,
-                *binding,
-                arguments,
-                enum_binding,
-                variable,
-                inside_self,
-            ),
-            TypeExprKind::Function(_, parameters, result) => {
-                for parameter in parameters {
-                    self.visit(parameter, enum_binding, variable, inside_self);
-                }
-                self.visit(result, enum_binding, variable, inside_self);
-            }
-            TypeExprKind::Reference(_, _, inner) => {
-                self.visit(inner, enum_binding, variable, inside_self);
-            }
-            TypeExprKind::Primitive(_) | TypeExprKind::Hole => {}
-            TypeExprKind::Where(..) | TypeExprKind::With(..) | TypeExprKind::Trait(_) => {}
-        }
-    }
-
-    fn visit_named(
-        &mut self,
-        type_expr: &TypeExpr,
-        binding: BindingId,
-        arguments: &[TypeExpr],
-        enum_binding: BindingId,
-        variable: BindingId,
-        inside_self: bool,
-    ) {
-        let inside_self = inside_self || binding == enum_binding;
-        if binding == variable {
-            self.record_use(type_expr.span(), inside_self);
-        }
-        for argument in arguments {
-            self.visit(argument, enum_binding, variable, inside_self);
-        }
-    }
-
-    fn record_use(&mut self, span: Span, inside_self: bool) {
-        if inside_self {
-            self.first_recursive.get_or_insert(span);
-        } else {
-            self.outside_self = true;
-        }
-    }
 }
 
 pub struct TypeChecker {
@@ -239,8 +143,6 @@ struct UserTrait<'a> {
     methods: &'a [crate::core::TraitMethod],
 }
 
-type LoweredFields = Vec<(Rc<str>, Type)>;
-
 #[derive(Clone, Copy)]
 pub(super) struct VariantArmReference {
     pub outer: Option<BindingId>,
@@ -248,8 +150,6 @@ pub(super) struct VariantArmReference {
 }
 
 impl TypeChecker {
-    const PARAMETER_NAMES: &str = "abcdefghijklmnopqrstuvwxyz";
-
     pub(super) fn new(bindings: BindingArena) -> Self {
         Self {
             bindings,
@@ -425,23 +325,39 @@ impl TypeChecker {
     fn collect_type_item(&mut self, module: ModuleId, item: &Item) -> Result<(), Diagnostic> {
         let kind = &item.kind;
         if let ItemKind::Struct(binding, params, fields) = kind {
-            let problem = self.collect_struct(*binding, params, fields)?;
+            let (definition, problem) = self.type_collector().collect_struct(params, fields)?;
+            self.declarations.types.structs.add(*binding, definition);
             self.diagnostics.extend(problem.into_iter().collect());
             return Ok(());
         }
-        if let ItemKind::Enum(binding, params, variants, rust, definer) = kind {
-            let problem = self.collect_enum(*binding, params, variants, rust, definer)?;
-            self.diagnostics.extend(problem.into_iter().collect());
+        if let ItemKind::Enum(binding, binders, variants, rust, definer) = kind {
+            let collected = self.type_collector().collect_enum(EnumItem {
+                binding: *binding,
+                binders,
+                variants,
+                rust,
+                definer,
+            })?;
+            if let Some(rust_type) = collected.rust_type {
+                self.declarations.types.rust_types.add(*binding, rust_type);
+            }
+            self.declarations
+                .types
+                .enums
+                .add(*binding, collected.definition);
+            self.diagnostics
+                .extend(collected.problems.into_iter().collect());
             return Ok(());
         }
         if let ItemKind::RustType(binding, binders, unsized_parameters, template, clauses) = kind {
-            return self.collect_rust_type(
-                *binding,
+            let rust_type = self.type_collector().collect_rust_type(RustTypeItem {
                 binders,
                 unsized_parameters,
                 template,
                 clauses,
-            );
+            })?;
+            self.declarations.types.rust_types.add(*binding, rust_type);
+            return Ok(());
         }
         if let ItemKind::Trait(
             binding,
@@ -766,6 +682,23 @@ impl TypeChecker {
         super::written_type_lowering::WrittenTypeLowering::new(facts, generics, records)
     }
 
+    pub(super) fn type_collector(&mut self) -> TypeDeclarationCollector<'_> {
+        let facts = super::written_type_facts::WrittenTypeFacts {
+            bindings: &self.bindings,
+            declarations: &self.declarations,
+            checking_facts: &self.checking_facts,
+            type_arities: &self.type_arities,
+        };
+        let generics = GenericDeclarations::new(&mut self.generics, &mut self.unifier);
+        let records = super::written_type_records::WrittenTypeRecords {
+            projections: &mut self.written_projections,
+            diagnostics: &mut self.diagnostics,
+        };
+        let lowering =
+            super::written_type_lowering::WrittenTypeLowering::new(facts, generics, records);
+        TypeDeclarationCollector::new(lowering, &self.bindings, &self.declarations.types)
+    }
+
     pub(super) fn written_schemes(&mut self) -> super::scheme_lowering::SchemeLowering<'_> {
         super::scheme_lowering::SchemeLowering::new(self.written_types())
     }
@@ -916,7 +849,7 @@ impl TypeChecker {
                 Err(diagnostic) => {
                     self.diagnostics.push(diagnostic);
                     self.outcomes.fail([member.binding]);
-                    let failed = self.failed_scheme();
+                    let failed = self.generic_declarations().failed_scheme();
                     self.schemes.insert(member.binding, failed);
                 }
             }
@@ -1006,7 +939,7 @@ impl TypeChecker {
             Ok(scheme) => scheme,
             Err(diagnostic) => {
                 self.diagnostics.push(diagnostic);
-                self.failed_scheme()
+                self.generic_declarations().failed_scheme()
             }
         };
         self.schemes.insert(member.binding, scheme);
@@ -1463,7 +1396,7 @@ impl TypeChecker {
             self.default_literal(var, literal, span);
             return None;
         }
-        let name = Self::parameter_name(position);
+        let name = ParameterNames::at(position);
         let bounds = self.self_plain_bounds(var);
         let param = self.generic_declarations().generalize(var, &name, bounds);
         if let Some(literal) = literal {
@@ -1532,337 +1465,6 @@ impl TypeChecker {
                 .for_each(|argument| Self::collect_vars(argument, vars)),
             Type::Ref(_, inner) | Type::Mut(_, inner) => Self::collect_vars(inner, vars),
             _ => {}
-        }
-    }
-
-    fn failed_scheme(&mut self) -> Scheme {
-        let param = self
-            .generic_declarations()
-            .declare(Self::parameter_name(0).as_str(), Vec::new());
-        Scheme {
-            lifetimes: Vec::new(),
-            body: Type::Generic(param.id),
-            params: vec![param],
-        }
-    }
-
-    pub(super) fn parameter_name(position: usize) -> String {
-        let letters: Vec<char> = Self::PARAMETER_NAMES.chars().collect();
-        match letters.get(position) {
-            Some(letter) => letter.to_string(),
-            None => format!("t{position}"),
-        }
-    }
-
-    fn collect_struct(
-        &mut self,
-        binding: BindingId,
-        binders: &[TypeBinder],
-        fields: &[(crate::core::FieldLabel, TypeExpr)],
-    ) -> Result<Option<Diagnostic>, Diagnostic> {
-        let params = self.struct_params(binders)?;
-        let lifetimes = Self::lifetime_binders(binders);
-        let scope: FxHashMap<BindingId, GenericId> = binders
-            .iter()
-            .filter(|binder| !binder.lifetime)
-            .zip(&params)
-            .map(|(binder, param)| (binder.variable, param.id))
-            .collect();
-        let (lowered, field_spans) = self.lower_fields(fields, &scope)?;
-        let problem = FieldParameters::new(binders, &params).unused_in(&lowered);
-        self.declarations.types.structs.add(
-            binding,
-            StructDefinition {
-                lifetimes,
-                params,
-                fields: lowered,
-                field_spans,
-                function_spans: fields
-                    .iter()
-                    .map(|(_, field_type)| Self::function_span(field_type))
-                    .collect(),
-                derives: Vec::new(),
-                derived_traits: Vec::new(),
-                blocked: Vec::new(),
-                written_derive: None,
-            },
-        );
-        Ok(problem)
-    }
-
-    fn collect_enum(
-        &mut self,
-        binding: BindingId,
-        binders: &[TypeBinder],
-        variants: &[VariantDeclaration],
-        rust: &Option<crate::core::EnumRust>,
-        definer: &Option<crate::core::EnumDefiner>,
-    ) -> Result<Vec<Diagnostic>, Diagnostic> {
-        let params = self.struct_params(binders)?;
-        let lifetimes = Self::lifetime_binders(binders);
-        let scope: FxHashMap<BindingId, GenericId> = binders
-            .iter()
-            .filter(|binder| !binder.lifetime)
-            .zip(&params)
-            .map(|(binder, param)| (binder.variable, param.id))
-            .collect();
-        let mut lowered = Vec::new();
-        let mut problems = Vec::new();
-        for variant in variants {
-            let payload = self.lower_variant_payload(&variant.payload, &scope);
-            let lowering = PayloadLowering::of(&payload.problems);
-            problems.extend(payload.problems);
-            let type_exprs = Self::payload_type_exprs(&variant.payload);
-            lowered.push(VariantDefinition {
-                name: variant.name.clone(),
-                payload: payload.payload,
-                lowering,
-                payload_spans: type_exprs
-                    .iter()
-                    .map(|type_expr| type_expr.span())
-                    .collect(),
-                function_spans: type_exprs.into_iter().map(Self::function_span).collect(),
-                span: variant.span,
-            });
-        }
-        problems.extend(self.check_enum_parameters_used(binding, binders, &params, variants));
-        if let Some(rust) = rust {
-            self.declarations.types.rust_types.add(
-                binding,
-                RustType {
-                    template: rust.template.clone(),
-                    clauses: Vec::new(),
-                    params: params.iter().map(|param| Rc::clone(&param.name)).collect(),
-                    unsized_parameters: Vec::new(),
-                },
-            );
-        }
-        self.declarations.types.enums.add(
-            binding,
-            EnumDefinition {
-                lifetimes,
-                params,
-                variants: lowered,
-                rust: rust.clone(),
-                definer: definer.clone(),
-                derives: Vec::new(),
-                derived_traits: Vec::new(),
-                blocked: Vec::new(),
-                written_derive: None,
-            },
-        );
-        Ok(problems)
-    }
-
-    fn lower_variant_payload(
-        &mut self,
-        payload: &CoreVariantPayload,
-        scope: &FxHashMap<BindingId, GenericId>,
-    ) -> LoweredPayload {
-        let mut problems = Vec::new();
-        let mut lower = |type_expr: &TypeExpr| {
-            self.lower_stored_type(type_expr, scope)
-                .unwrap_or_else(|problem| {
-                    problems.push(problem);
-                    self.failed_scheme().body
-                })
-        };
-        let payload = match payload {
-            CoreVariantPayload::None => VariantPayload::None,
-            CoreVariantPayload::Positional(types) => {
-                VariantPayload::Positional(types.iter().map(&mut lower).collect())
-            }
-            CoreVariantPayload::Named(fields) => VariantPayload::Named(
-                fields
-                    .iter()
-                    .map(|(label, field_type)| (label.name.clone(), lower(field_type)))
-                    .collect(),
-            ),
-        };
-        LoweredPayload { payload, problems }
-    }
-
-    fn check_enum_parameters_used(
-        &self,
-        enum_binding: BindingId,
-        binders: &[TypeBinder],
-        params: &[GenericParam],
-        variants: &[VariantDeclaration],
-    ) -> Option<Diagnostic> {
-        let enum_name = self.bindings.get(enum_binding).name();
-        binders
-            .iter()
-            .filter(|binder| !binder.lifetime)
-            .zip(params)
-            .find_map(|(binder, param)| {
-                let usage = ParameterUsage::scan(variants, enum_binding, binder.variable);
-                match (usage.outside_self, usage.first_recursive) {
-                    (true, _) => None,
-                    (false, Some(recursive_use)) => {
-                        Some(TypeProblems::recursively_used_enum_parameter(
-                            &param.name,
-                            enum_name,
-                            binder.span,
-                            recursive_use,
-                        ))
-                    }
-                    (false, None) => Some(TypeProblems::unused_enum_parameter(
-                        &param.name,
-                        binder.span,
-                    )),
-                }
-            })
-    }
-
-    fn lower_fields(
-        &mut self,
-        fields: &[(crate::core::FieldLabel, TypeExpr)],
-        scope: &FxHashMap<BindingId, GenericId>,
-    ) -> Result<(LoweredFields, Vec<Span>), Diagnostic> {
-        let mut lowered = Vec::new();
-        let mut spans = Vec::new();
-        for (label, field_type) in fields {
-            lowered.push((
-                label.name.clone(),
-                self.lower_stored_type(field_type, scope)?,
-            ));
-            spans.push(field_type.span());
-        }
-        Ok((lowered, spans))
-    }
-
-    fn payload_type_exprs(payload: &CoreVariantPayload) -> Vec<&TypeExpr> {
-        match payload {
-            CoreVariantPayload::None => Vec::new(),
-            CoreVariantPayload::Positional(types) => types.iter().collect(),
-            CoreVariantPayload::Named(fields) => {
-                fields.iter().map(|(_, field_type)| field_type).collect()
-            }
-        }
-    }
-
-    fn function_span(stored_type: &TypeExpr) -> Span {
-        Self::inner_function_span(stored_type).unwrap_or(stored_type.span())
-    }
-
-    fn inner_function_span(type_expr: &TypeExpr) -> Option<Span> {
-        if matches!(type_expr.kind(), TypeExprKind::Function(..)) {
-            return Some(type_expr.span());
-        }
-        type_expr
-            .parts()
-            .into_iter()
-            .find_map(Self::inner_function_span)
-    }
-
-    fn lower_stored_type(
-        &mut self,
-        stored_type: &TypeExpr,
-        scope: &FxHashMap<BindingId, GenericId>,
-    ) -> Result<Type, Diagnostic> {
-        let lowered = self.written_types().lower_type(stored_type, scope)?;
-        Ok(self.borrow_views(lowered))
-    }
-
-    fn borrow_views(&self, stored: Type) -> Type {
-        match stored {
-            view if self.declared_types().is_unsized(&view) => Type::shared(view),
-            Type::Named(binding, arguments) => {
-                Type::Named(binding, self.borrow_named_arguments(binding, arguments))
-            }
-            sized => sized,
-        }
-    }
-
-    fn borrow_argument_views(&self, argument: Type) -> Type {
-        match argument {
-            Type::Named(binding, arguments) => {
-                Type::Named(binding, self.borrow_named_arguments(binding, arguments))
-            }
-            view => view,
-        }
-    }
-
-    fn borrow_named_arguments(&self, binding: BindingId, arguments: Vec<Type>) -> Vec<Type> {
-        arguments
-            .into_iter()
-            .enumerate()
-            .map(|(position, argument)| {
-                if self
-                    .declarations
-                    .types
-                    .rust_types
-                    .parameter_may_be_unsized(binding, position)
-                {
-                    self.borrow_argument_views(argument)
-                } else {
-                    self.borrow_views(argument)
-                }
-            })
-            .collect()
-    }
-
-    fn collect_rust_type(
-        &mut self,
-        binding: BindingId,
-        binders: &[TypeBinder],
-        unsized_parameters: &[usize],
-        template: &Rc<ParsedTemplate>,
-        clauses: &[(TypeExpr, Rc<ParsedTemplate>)],
-    ) -> Result<(), Diagnostic> {
-        self.reject_bounds(binders)?;
-        let clauses = clauses
-            .iter()
-            .map(|(target, template)| {
-                Ok((
-                    self.written_types().lower_without_generics(target)?,
-                    template.clone(),
-                ))
-            })
-            .collect::<Result<Vec<_>, Diagnostic>>()?;
-        self.declarations.types.rust_types.add(
-            binding,
-            RustType {
-                template: template.clone(),
-                clauses,
-                params: binders
-                    .iter()
-                    .filter(|binder| !binder.lifetime)
-                    .map(|binder| Rc::from(self.bindings.get(binder.variable).name()))
-                    .collect(),
-                unsized_parameters: unsized_parameters.to_vec(),
-            },
-        );
-        Ok(())
-    }
-
-    fn struct_params(&mut self, binders: &[TypeBinder]) -> Result<Vec<GenericParam>, Diagnostic> {
-        self.reject_bounds(binders)?;
-        Ok(binders
-            .iter()
-            .filter(|binder| !binder.lifetime)
-            .map(|binder| {
-                let name = self.bindings.get(binder.variable).name().to_string();
-                self.generic_declarations().declare(&name, Vec::new())
-            })
-            .collect())
-    }
-
-    fn lifetime_binders(binders: &[TypeBinder]) -> Vec<BindingId> {
-        binders
-            .iter()
-            .filter(|binder| binder.lifetime)
-            .map(|binder| binder.variable)
-            .collect()
-    }
-
-    fn reject_bounds(&self, binders: &[TypeBinder]) -> Result<(), Diagnostic> {
-        match binders.iter().find(|binder| !binder.bounds.is_empty()) {
-            Some(binder) => Err(TypeProblems::bounded_type_parameter(
-                self.bindings.get(binder.variable).name(),
-                binder.span,
-            )),
-            None => Ok(()),
         }
     }
 
@@ -3026,12 +2628,6 @@ mod tests {
                 .add_bound(var, Bound::with_argument(binding, Type::Var(other)));
             self.checker.link_var(var, &[var, other], self.span)
         }
-    }
-
-    #[test]
-    fn parameters_past_the_alphabet_are_numbered() {
-        assert_eq!(TypeChecker::parameter_name(0), "a");
-        assert_eq!(TypeChecker::parameter_name(26), "t26");
     }
 
     #[test]

@@ -3,6 +3,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::checker::TypeChecker;
+use super::parameter_names::ParameterNames;
 use super::problems::TypeProblems;
 use super::trait_rows_reach::Implementor;
 use super::ty::{Bound, GenericParam, Scheme, Type};
@@ -429,7 +430,7 @@ impl TypeChecker {
         let params: Vec<GenericParam> = (0..arity)
             .map(|position| {
                 self.generic_declarations()
-                    .declare(&Self::parameter_name(position), vec![Bound::plain(derived)])
+                    .declare(&ParameterNames::at(position), vec![Bound::plain(derived)])
             })
             .collect();
         let arguments = params.iter().map(|param| Type::Generic(param.id)).collect();

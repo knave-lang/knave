@@ -5,9 +5,9 @@ use super::checker::TypeChecker;
 use super::declared_generics::DeclaredGenerics;
 use super::ty::{Bound, GenericId, Type};
 use crate::core::{
-    BindingArena, BindingId, BindingInfo, BindingKind, ClosureKind, ImplementorRows, ModuleId,
-    PrimitiveType, ReferenceKind, RustTraitDeclaration, TypeBinder, TypeBound, TypeExpr,
-    TypeExprKind,
+    BindingArena, BindingId, BindingInfo, BindingKind, ClosureKind, FieldLabel, FieldSpelling,
+    ImplementorRows, ModuleId, PrimitiveType, ReferenceKind, RustTraitDeclaration, TypeBinder,
+    TypeBound, TypeExpr, TypeExprKind, VariantDeclaration, VariantPayload,
 };
 use crate::diagnostic::Diagnostic;
 use crate::source::{SourceId, Span};
@@ -157,6 +157,23 @@ impl WrittenTypeFixture {
             .table
             .add(binding, rust_trait);
         binding
+    }
+
+    pub(super) fn field_label(name: &str) -> FieldLabel {
+        FieldLabel {
+            name: name.into(),
+            span: Self::span(),
+            spelling: FieldSpelling::Bare,
+        }
+    }
+
+    pub(super) fn variant(&mut self, name: &str, payload: VariantPayload) -> VariantDeclaration {
+        VariantDeclaration {
+            binding: self.binding(name, BindingKind::Local),
+            name: name.into(),
+            payload,
+            span: Self::span(),
+        }
     }
 
     pub(super) fn declared_generics(&mut self) -> DeclaredGenerics {

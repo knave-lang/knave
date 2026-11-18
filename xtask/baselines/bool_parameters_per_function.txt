@@ -24,10 +24,6 @@ src/ownership/mutation.rs::ChangedValues::arguments 1
 src/ownership/names.rs::ChangingFunctionNames::changed_name_warning 1
 src/ownership/slices.rs::ShrinkSelection::scan 1
 src/ownership/value_kinds.rs::ValueKind::starting_mode 1
-src/types/checker.rs::ParameterUsage::record_use 1
-src/types/checker.rs::ParameterUsage::visit 1
-src/types/checker.rs::ParameterUsage::visit_named 1
-src/types/checker.rs::ParameterUsage::visit_payload 1
 src/types/checker.rs::TypeChecker::check 1
 src/types/checker.rs::TypeChecker::with_operand_mark 1
 src/types/infer/shared_variables.rs::TypeChecker::pass_group 1

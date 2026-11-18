@@ -4,8 +4,11 @@ use super::Expander;
 use super::builtin_export::BuiltinExport;
 use super::context::DefinitionContext;
 use super::local_file_diagnosis::LocalFileDiagnosis;
+use super::module_load_site::ModuleLoadSite;
 use super::problems::{ExpandProblems, MissingExportRemedy};
 use super::shape::Shape;
+use super::text_module_load::TextModuleLoad;
+use super::text_module_record::TextModuleRecord;
 use crate::core::{
     BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, KernelConstants, KernelForm,
     KernelType, ModuleId, ModulePath, Namespace, UnnamedPartPath,
@@ -45,10 +48,30 @@ impl Expander<'_> {
                 ..
             }) => Ok(self.create_builtin(path, builtin)),
             Some(LocatedModule {
-                source: ModuleSource::Text { name, text },
+                source: ModuleSource::Text { name, text, file },
                 owner,
             }) => {
-                self.note_library_module(path, owner);
+                let load = TextModuleLoad {
+                    site: ModuleLoadSite {
+                        path: path.clone(),
+                        span,
+                        owner,
+                        importer: self.importing_owner(),
+                    },
+                    file,
+                };
+                if let TextModuleRecord::BindsTo { kept, diagnostic } =
+                    self.text_modules.record(load, self.sources)
+                {
+                    diagnostic
+                        .into_iter()
+                        .for_each(|error| self.problems.report(error));
+                    let id = self
+                        .modules
+                        .find(&kept)
+                        .expect("a recorded first load is registered");
+                    return self.loaded(id, path, span);
+                }
                 let source = self.sources.add(name, text);
                 self.recorded_inputs.note_loaded(source);
                 Ok(DeepRecursion::guard(|| {
@@ -193,10 +216,7 @@ impl Expander<'_> {
         let Some(shadow) = self.module_sources.hidden_source_module(owner, written) else {
             return;
         };
-        let use_site = self.sources.file(span.source()).name();
-        if !ModuleSources::is_written_file(use_site)
-            || self.reported_hidden_modules.contains(&shadow.hidden)
-        {
+        if !self.written_by_user(span) || self.reported_hidden_modules.contains(&shadow.hidden) {
             return;
         }
         let warning = ExpandProblems::test_module_hides_source_module(&shadow, span);
@@ -204,10 +224,8 @@ impl Expander<'_> {
         self.reported_hidden_modules.push(shadow.hidden);
     }
 
-    fn note_library_module(&mut self, path: &ModulePath, owner: Option<Rc<str>>) {
-        if let Some(owner) = owner {
-            self.library_modules.remember(path, owner);
-        }
+    fn written_by_user(&self, span: Span) -> bool {
+        !self.sources.file(span.source()).is_generated()
     }
 
     fn importing_from_prelude(&self) -> bool {
@@ -226,8 +244,7 @@ impl Expander<'_> {
 
     fn importing_owner(&self) -> Option<Rc<str>> {
         let module = self.current_module?;
-        self.library_modules
-            .owner_of(self.modules.get(module).path())
+        self.text_modules.owner_of(self.modules.get(module).path())
     }
 
     fn loaded(&self, id: ModuleId, path: &ModulePath, span: Span) -> Result<ModuleId, Diagnostic> {

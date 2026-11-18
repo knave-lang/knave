@@ -1,0 +1,21 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0261]: module path `alias/box` loads the file of module `shapes/box`
+ --> main.knv:3:6
+  |
+3 | (use alias/box size)
+  |      ^^^^^^^^^ this file is module `shapes/box`
+  |
+  = help: write `shapes/box`
+  = note: run `knave doc L0261` for an explanation
+
+error[L0261]: module path `alias/box` loads the file of module `shapes/box`
+ --> util.knv:1:6
+  |
+1 | (use alias/box size)
+  |      ^^^^^^^^^ this file is module `shapes/box`
+  |
+  = help: write `shapes/box`
+  = note: run `knave doc L0261` for an explanation

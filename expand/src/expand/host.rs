@@ -83,7 +83,7 @@ impl ModuleQueries for Expander<'_> {
         self.modules
             .records()
             .filter(|record| {
-                let library = self.library_modules.owner_of(record.path());
+                let library = self.text_modules.owner_of(record.path());
                 ModuleOrigin::new(record.path(), library.as_deref()).is_project()
             })
             .map(ModuleRecord::symbol)
@@ -279,8 +279,8 @@ impl Expander<'_> {
     fn loaded_module(&self, path: &Symbol, span: Span) -> Result<&ModuleRecord, Diagnostic> {
         let path = ModulePath::new(path.name());
         let module = self
-            .modules
-            .find(&path)
+            .text_modules
+            .find_module(&self.modules, &path)
             .ok_or_else(|| ExpandProblems::unknown_module(&path, span))?;
         Ok(self.modules.get(module))
     }

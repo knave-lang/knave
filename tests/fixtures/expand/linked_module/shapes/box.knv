@@ -1,0 +1,5 @@
+(export count size)
+
+(def count 1)
+
+(defn size () 2)

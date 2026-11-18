@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/linked_module.knv
+---
+error[L0261]: module path `linked_module/alias/box` loads the file of module `linked_module/shapes/box`
+ --> expand/linked_module.knv:2:6
+  |
+2 | (use linked_module/alias/box size)
+  |      ^^^^^^^^^^^^^^^^^^^^^^^ this file is module `linked_module/shapes/box`
+  |
+  = help: write `linked_module/shapes/box`
+  = note: run `knave doc L0261` for an explanation

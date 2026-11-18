@@ -9,6 +9,7 @@ use super::local_files::LocalFiles;
 use super::local_root::LocalRoot;
 use super::located_module::LocatedModule;
 use super::module_source::ModuleSource;
+use super::real_path::RealPath;
 use super::search_scope::SearchScope;
 use super::unlisted_library::UnlistedLibrary;
 use crate::core::{BuiltinModule, ModulePath};
@@ -205,10 +206,6 @@ impl ModuleSources {
         })
     }
 
-    pub fn is_written_file(name: &str) -> bool {
-        Path::new(name).is_file()
-    }
-
     fn local_module(&self, written: &ModulePath) -> Option<PathBuf> {
         let head = LibraryTable::head(written);
         let file = PathBuf::from(Language::file_name(head));
@@ -321,6 +318,7 @@ impl ModuleSources {
             .map(|(_, text)| ModuleSource::Text {
                 name: Language::file_name(path.as_str()),
                 text: (*text).to_string(),
+                file: None,
             })
     }
 
@@ -344,6 +342,7 @@ impl ModuleSources {
         Some(ModuleSource::Text {
             name: file.display.display().to_string(),
             text,
+            file: fs::canonicalize(&file.path).ok().map(RealPath::new),
         })
     }
 
@@ -355,6 +354,7 @@ impl ModuleSources {
             Some(ModuleSource::Text {
                 name: reached.shown.display().to_string(),
                 text,
+                file: fs::canonicalize(&reached.path).ok().map(RealPath::new),
             })
         })
     }

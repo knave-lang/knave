@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0261]: module path `vendor/hints/src/labels` loads the file of module `hints/labels`
+ --> src/main.knv:1:6
+  |
+1 | (use vendor/hints/src/labels label)
+  |      ^^^^^^^^^^^^^^^^^^^^^^^ this file is module `hints/labels`
+  |
+  = help: write `hints/labels`
+  = note: run `knave doc L0261` for an explanation

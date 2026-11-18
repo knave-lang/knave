@@ -872,13 +872,13 @@
   (fn (module name tree)
     (local path (symbol-name module))
     (if (bool-not (project-module? module))
-      (task-outside-tasks
-        name "use this file by its path from `tasks/`"
-        "this file loads through a library, not by its path from `tasks/`")
-      (if (under-any-folder? path (tree-hidden-folders tree))
+      (if (string-contains? (string "/" path) "/.")
+        (task-in-hidden-folder name)
         (task-outside-tasks
-          name "move the file out of the hidden folder"
-          "this file sits in a hidden folder, which the task tree skips")
+          name "use this file by its path from `tasks/`"
+          "this file loads through a library, not by its path from `tasks/`"))
+      (if (under-any-folder? path (tree-hidden-folders tree))
+        (task-in-hidden-folder name)
         (if (one-of? path (tree-project-files tree))
           (task-outside-tasks
             name "rename the file"
@@ -891,6 +891,12 @@
   (fn (module)
     (one-of? (symbol-name module)
              (map-list (project-modules) symbol-name))))
+
+(def task-in-hidden-folder
+  (fn (name)
+    (task-outside-tasks
+      name "move the file out of the hidden folder"
+      "this file sits in a hidden folder, which the task tree skips")))
 
 (def under-any-folder?
   (fn (path folders)

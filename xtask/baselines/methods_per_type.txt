@@ -20,7 +20,7 @@ expand/src/interpret/builtins/text.rs::TextOperations 39
 
 expand/src/mangle.rs::NameMangler 22
 
-expand/src/modules/sources.rs::ModuleSources 35
+expand/src/modules/sources.rs::ModuleSources 34
 
 expand/src/project/problems.rs::ProjectProblems 31
 

@@ -34,7 +34,7 @@ expand/src/modules/libraries.rs::LibraryTable 8
 
 expand/src/modules/registry.rs::ModuleRegistry 10
 
-expand/src/modules/sources.rs::ModuleSources 25
+expand/src/modules/sources.rs::ModuleSources 24
 
 expand/src/project/problems.rs::ProjectProblems 31
 

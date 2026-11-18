@@ -10707,7 +10707,7 @@ fn task_refuses_a_task_in_a_project_file_under_tasks() {
 }
 
 #[test]
-fn task_in_a_hidden_folder_of_a_library_under_tasks_names_the_library() {
+fn task_in_a_hidden_folder_of_a_library_under_tasks_names_the_hidden_folder() {
     let task = Sandbox::new("task_in_hidden_library_folder")
         .with_file(
             &Language::project_file_name(),
@@ -10764,7 +10764,7 @@ fn task_tree_reads_its_target_folder_beside_a_project_file() {
 }
 
 #[test]
-fn task_used_by_another_path_beside_hidden_folders_is_not_in_them() {
+fn task_reached_through_a_hidden_link_beside_hidden_folders_runs() {
     let sandbox = Sandbox::new("task_other_path_beside_hidden")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
@@ -10777,8 +10777,12 @@ fn task_used_by_another_path_beside_hidden_folders_is_not_in_them() {
         );
     std::os::unix::fs::symlink("sub", sandbox.directory.join("tasks/.alias"))
         .expect("the sandbox can hold a symbolic link");
-    let task = sandbox.compiler(&["task"]);
-    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+    let task = sandbox.compiler(&["task", "t"]);
+    assert_eq!(
+        task.assert_exit_code(0).stdout(),
+        "t
+"
+    );
 }
 
 #[test]
@@ -11259,12 +11263,321 @@ fn test_in_a_root_entry_project_using_a_folder_named_like_a_library_is_told_its_
     insta::assert_snapshot!(test.assert_exit_code(1).stderr());
 }
 
+#[test]
+fn use_through_a_linked_folder_of_a_loaded_file_is_told_its_first_path() {
+    let sandbox = Sandbox::new("use_linked_folder_loaded_file")
+        .with_file(
+            "main.knv",
+            "(use shapes/box count)\n(use alias/box size)\n\n(defn main () (println (+ count (size))))\n",
+        )
+        .with_file(
+            "shapes/box.knv",
+            "(export count size)\n\n(def count 1)\n\n(defn size () 2)\n",
+        );
+    std::os::unix::fs::symlink("shapes", sandbox.directory.join("alias"))
+        .expect("the sandbox can hold a symbolic link");
+    let check = sandbox.compiler(&["check", "main.knv"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn use_of_one_file_by_one_path_twice_loads_it_once() {
+    let sandbox = Sandbox::new("use_one_path_twice")
+        .with_file(
+            "main.knv",
+            "(use shapes/box count)\n(use shapes/box size)\n\n(defn main () (println (+ count (size))))\n",
+        )
+        .with_file(
+            "shapes/box.knv",
+            "(export count size)\n\n(def count 1)\n\n(defn size () 2)\n",
+        );
+    let run = sandbox.compiler(&["run", "main.knv"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "3\n");
+}
+
+#[test]
+fn task_reaching_a_task_file_through_a_hidden_link_before_the_tree_is_told_its_tree_path() {
+    let sandbox = Sandbox::new("task_link_before_tree")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("tasks/sub/more.knv", "(deftask more () (println \"m\"))\n")
+        .with_file(
+            "tasks/a.knv",
+            "(use .alias/more)\n\n(deftask a () (println \"a\"))\n",
+        );
+    std::os::unix::fs::symlink("sub", sandbox.directory.join("tasks/.alias"))
+        .expect("the sandbox can hold a symbolic link");
+    let task = sandbox.compiler(&["task", "a"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn test_of_a_folder_with_a_linked_folder_inside_runs_each_test_once() {
+    let sandbox =
+        Sandbox::new("test_linked_folder_once").with_file("tests/sub/a_test.knv", PROJECT_TESTS);
+    std::os::unix::fs::symlink("sub", sandbox.directory.join("tests/alias"))
+        .expect("the sandbox can hold a symbolic link");
+    let test = sandbox.compiler(&["test", "tests"]);
+    assert_eq!(
+        test.assert_silent_success().stdout(),
+        "running 1 test\ntest alias/a_test/adds ... ok\n1 passed, 0 failed\n"
+    );
+}
+
+#[test]
+fn use_of_a_library_file_by_a_local_path_is_told_the_library_path() {
+    let sandbox = Sandbox::new("use_library_file_local_path")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject app\n  (libraries (hints :path \"src/vendor/hints\")))\n",
+        )
+        .with_file(
+            "src/main.knv",
+            "(use vendor/hints/src/labels label)\n(use hints greet)\n\n(defn main () (println (greet label)))\n",
+        )
+        .with_file("src/vendor/hints/project.knv", "(defproject hints)\n")
+        .with_file(
+            "src/vendor/hints/src/lib.knv",
+            "(use labels label)\n\n(export greet)\n\n(defn greet (name) (str label name))\n",
+        )
+        .with_file(
+            "src/vendor/hints/src/labels.knv",
+            "(export label)\n\n(def label \"x\")\n",
+        );
+    let check = sandbox.compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn test_of_the_project_with_a_library_inside_the_source_root_loads_it_once() {
+    let sandbox = Sandbox::new("test_project_vendored_library")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject tiles\n  (libraries (shapes :path \"src/vendor/shapes\")))\n",
+        )
+        .with_file(
+            "src/main.knv",
+            "(use shapes area)\n\n(defn main () (prn (area 2)))\n",
+        )
+        .with_file("src/vendor/shapes/project.knv", "(defproject shapes)\n")
+        .with_file(
+            "src/vendor/shapes/src/lib.knv",
+            "(export area)\n\n(defn area (side) (* side side))\n",
+        )
+        .with_file("tests/a_test.knv", PROJECT_TESTS);
+    sandbox.compiler(&["test", "."]).assert_exit_code(0);
+}
+
+#[test]
+fn test_of_the_project_runs_a_vendored_library_test_after_main_uses_it() {
+    let test = VendoredLibraryProject::new("vendored_used_first", "src/main.knv").test_everything();
+    assert_eq!(test, VendoredLibraryProject::EVERY_TEST_RUN);
+}
+
+#[test]
+fn test_of_the_project_runs_a_vendored_library_test_before_a_module_uses_it() {
+    let test = VendoredLibraryProject::new("vendored_used_last", "src/zz.knv").test_everything();
+    assert_eq!(test, VendoredLibraryProject::EVERY_TEST_RUN);
+}
+
+struct VendoredLibraryProject {
+    sandbox: Sandbox,
+}
+
+impl VendoredLibraryProject {
+    const EVERY_TEST_RUN: &str = "running 2 tests\ntest tests/a_test/adds ... ok\ntest vendor/shapes/src/lib/adds ... ok\n2 passed, 0 failed\n";
+
+    fn new(name: &str, user: &str) -> Self {
+        let sandbox = Sandbox::new(name)
+            .with_file(
+                &Language::project_file_name(),
+                "(defproject tiles\n  (libraries (shapes :path \"src/vendor/shapes\")))\n",
+            )
+            .with_file(user, "(use shapes area)\n\n(export twice)\n\n(defn twice () (area 2))\n")
+            .with_file("src/vendor/shapes/project.knv", "(defproject shapes)\n")
+            .with_file(
+                "src/vendor/shapes/src/lib.knv",
+                "(use prelude/test assert deftest)\n\n(export area)\n\n(defn area (side) (* side side))\n\n(deftest adds (assert (= (area 2) 4)))\n",
+            )
+            .with_file("tests/a_test.knv", PROJECT_TESTS);
+        Self { sandbox }
+    }
+
+    fn test_everything(&self) -> String {
+        let test = self.sandbox.compiler(&["test", "."]);
+        test.assert_silent_success().stdout().to_string()
+    }
+}
+
+#[test]
+fn doc_write_with_a_linked_folder_inside_the_source_root_loads_each_file_once() {
+    let sandbox = Sandbox::new("doc_write_linked_folder")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file(
+            "src/main.knv",
+            "(use shapes/box area)\n\n(defn main () (prn (area 2)))\n",
+        )
+        .with_file(
+            "src/shapes/box.knv",
+            "(export area)\n\n(defn area (side) (* side side))\n",
+        );
+    std::os::unix::fs::symlink("shapes", sandbox.directory.join("src/alias"))
+        .expect("the sandbox can hold a symbolic link");
+    sandbox.compiler(&["doc", "--write"]).assert_exit_code(0);
+}
+
+#[test]
+fn task_with_a_linked_folder_inside_tasks_runs() {
+    let sandbox = Sandbox::new("task_linked_folder_inside")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("tasks/sub/more.knv", "(deftask more () (println \"m\"))\n")
+        .with_file("tasks/a.knv", "(deftask a () (println \"a\"))\n");
+    std::os::unix::fs::symlink("sub", sandbox.directory.join("tasks/alias"))
+        .expect("the sandbox can hold a symbolic link");
+    let task = sandbox.compiler(&["task", "a"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "a\n");
+}
+
+#[test]
+fn test_of_a_folder_with_a_link_out_of_it_runs_the_linked_tests() {
+    let sandbox = Sandbox::new("test_link_out_of_folder")
+        .with_file("tests/a_test.knv", PROJECT_TESTS)
+        .with_file("extra/b_test.knv", PROJECT_TESTS);
+    std::os::unix::fs::symlink("../extra", sandbox.directory.join("tests/ext"))
+        .expect("the sandbox can hold a symbolic link");
+    let test = sandbox.compiler(&["test", "tests"]);
+    assert_eq!(
+        test.assert_silent_success().stdout(),
+        "running 2 tests\ntest a_test/adds ... ok\ntest ext/b_test/adds ... ok\n2 passed, 0 failed\n"
+    );
+}
+
+#[test]
+fn doc_write_of_a_module_written_through_a_linked_folder_finds_it() {
+    let sandbox = Sandbox::new("doc_write_module_through_link")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file(
+            "src/main.knv",
+            "(use alias/box area)\n\n(defn main () (prn (area 2)))\n",
+        )
+        .with_file(
+            "src/shapes/box.knv",
+            "(export area)\n\n(defn area (side) (* side side))\n",
+        );
+    std::os::unix::fs::symlink("shapes", sandbox.directory.join("src/alias"))
+        .expect("the sandbox can hold a symbolic link");
+    sandbox.compiler(&["doc", "--write"]).assert_exit_code(0);
+}
+
+#[test]
+fn import_cycle_closed_through_a_linked_folder_is_a_cycle() {
+    let sandbox = Sandbox::new("cycle_through_linked_folder")
+        .with_file(
+            "main.knv",
+            "(use shapes/box area)\n\n(defn main () (println (area 2)))\n",
+        )
+        .with_file(
+            "shapes/box.knv",
+            "(use util helper)\n\n(export area)\n\n(defn area (side) (helper side))\n",
+        )
+        .with_file(
+            "util.knv",
+            "(use alias/box area)\n\n(export helper)\n\n(defn helper (side) (* side side))\n",
+        );
+    std::os::unix::fs::symlink("shapes", sandbox.directory.join("alias"))
+        .expect("the sandbox can hold a symbolic link");
+    let check = sandbox.compiler(&["check", "main.knv"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn task_in_a_hidden_folder_reached_through_a_link_runs() {
+    let sandbox = Sandbox::new("task_link_to_hidden_folder")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file("src/main.knv", TASK_MODULE)
+        .with_file("tasks/a.knv", "(deftask a () (println \"a\"))\n")
+        .with_file("tasks/.more/m.knv", "(deftask more () (println \"m\"))\n");
+    std::os::unix::fs::symlink(".more", sandbox.directory.join("tasks/more"))
+        .expect("the sandbox can hold a symbolic link");
+    let task = sandbox.compiler(&["task", "more"]);
+    assert_eq!(task.assert_exit_code(0).stdout(), "m\n");
+}
+
+#[test]
+fn test_in_a_hidden_folder_reached_through_a_link_runs() {
+    let sandbox = Sandbox::new("test_link_to_hidden_folder")
+        .with_file("tests/a_test.knv", PROJECT_TESTS)
+        .with_file("tests/.shared/b_test.knv", PROJECT_TESTS);
+    std::os::unix::fs::symlink(".shared", sandbox.directory.join("tests/shared"))
+        .expect("the sandbox can hold a symbolic link");
+    let test = sandbox.compiler(&["test", "tests"]);
+    assert_eq!(
+        test.assert_silent_success().stdout(),
+        "running 2 tests\ntest a_test/adds ... ok\ntest shared/b_test/adds ... ok\n2 passed, 0 failed\n"
+    );
+}
+
+#[test]
+fn libraries_that_list_one_library_under_two_names_both_load_it() {
+    let sandbox = Sandbox::new("two_names_for_one_library")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject app\n  (libraries (a :path \"libs/a\") (b :path \"libs/b\")))\n",
+        )
+        .with_file(
+            "src/main.knv",
+            "(use a fa)\n(use b fb)\n\n(defn main () (println (+ (fa) (fb))))\n",
+        )
+        .with_file(
+            "libs/a/project.knv",
+            "(defproject a\n  (libraries (c :path \"../c\")))\n",
+        )
+        .with_file(
+            "libs/a/src/lib.knv",
+            "(use c one)\n\n(export fa)\n\n(defn fa () one)\n",
+        )
+        .with_file(
+            "libs/b/project.knv",
+            "(defproject b\n  (libraries (cc :path \"../c\")))\n",
+        )
+        .with_file(
+            "libs/b/src/lib.knv",
+            "(use cc one)\n\n(export fb)\n\n(defn fb () one)\n",
+        )
+        .with_file("libs/c/project.knv", "(defproject c)\n")
+        .with_file("libs/c/src/lib.knv", "(export one)\n\n(def one 1)\n");
+    let run = sandbox.compiler(&["run"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "2\n");
+}
+
+#[test]
+fn second_path_written_in_two_files_is_reported_in_each() {
+    let sandbox = Sandbox::new("second_path_in_two_files")
+        .with_file(
+            "main.knv",
+            "(use shapes/box count)\n(use util twice)\n(use alias/box size)\n\n(defn main () (println (+ count (twice (size)))))\n",
+        )
+        .with_file(
+            "util.knv",
+            "(use alias/box size)\n\n(export twice)\n\n(defn twice (n) (* 2 (+ n (size))))\n",
+        )
+        .with_file(
+            "shapes/box.knv",
+            "(export count size)\n\n(def count 1)\n\n(defn size () 2)\n",
+        );
+    std::os::unix::fs::symlink("shapes", sandbox.directory.join("alias"))
+        .expect("the sandbox can hold a symbolic link");
+    let check = sandbox.compiler(&["check", "main.knv"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
 const DOTTED_MARKS_TEST: &str = "(use ../src/text/marks bang)\n\n(use prelude/test assert deftest)\n\n(deftest bangs (assert (= bang \"!\")))\n";
 const DOTTED_LIBRARY_ROOT: &str =
     "(use ./square side)\n\n(use ../square)\n\n(export area)\n\n(defn area (side) (* side side))\n";
 
 #[test]
-fn task_reached_through_a_hidden_link_is_not_in_a_hidden_folder() {
+fn task_reached_through_a_hidden_link_runs_with_the_tree_module() {
     let sandbox = Sandbox::new("task_through_hidden_link")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
@@ -11275,8 +11588,12 @@ fn task_reached_through_a_hidden_link_is_not_in_a_hidden_folder() {
         );
     std::os::unix::fs::symlink("sub", sandbox.directory.join("tasks/.alias"))
         .expect("the sandbox can hold a symbolic link");
-    let task = sandbox.compiler(&["task"]);
-    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+    let task = sandbox.compiler(&["task", "t"]);
+    assert_eq!(
+        task.assert_exit_code(0).stdout(),
+        "t
+"
+    );
 }
 
 #[test]

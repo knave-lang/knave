@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::core::UnnamedPartPath;
+use crate::core::{ModulePath, UnnamedPartPath};
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::language::Language;
 use crate::modules::{SearchScope, UnlistedLibrary, UnnamedPartTarget};
@@ -9,6 +9,15 @@ use crate::source::Span;
 pub struct ModulePathProblems;
 
 impl ModulePathProblems {
+    pub fn file_of_another_module(kept: &ModulePath, refused: &ModulePath, at: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::FILE_OF_ANOTHER_MODULE,
+            format!("module path `{refused}` loads the file of module `{kept}`"),
+            Label::new(at, format!("this file is module `{kept}`")),
+        )
+        .with_help(format!("write `{kept}`"))
+    }
+
     pub fn unnamed_part(
         path: &UnnamedPartPath,
         target: UnnamedPartTarget,

@@ -37,7 +37,7 @@ fn main() {
     };
     println!("{} {}", next.len(), empty.is_empty());
     println!("{}", next.get("a").unwrap());
-    next.keys().for_each(|key: &&str| println!("{}", key));
+    next.keys().for_each(|key: &&str| println!("{}", *key));
     next.values().for_each(|value: &i64| println!("{}", value));
     next.iter().for_each(|entry: (&&str, &i64)| {
         let (key, value) = entry;

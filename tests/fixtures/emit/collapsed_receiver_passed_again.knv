@@ -1,0 +1,9 @@
+(defn main ()
+  (local s (str "ab"))
+  (local names (vec (as-str s)))
+  (local r (at names 0))
+  (local v
+    ((rust "{0}.is_empty().then_some({0})"
+       (fn ((ref str)) (option (ref str))))
+     r))
+  (prn v))

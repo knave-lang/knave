@@ -175,6 +175,7 @@ metadata:
 | `Vec<T>`, `Option<T>`, `Result<T, E>` | `(vec t)`, `(option t)`, `(result t e)` |
 | `fn f(x: i64)` | `(defn f ((x int)) ...)` |
 | `x += 1` | `(set! x (inc x))` |
+| `x as u8`, `u8::try_from(x)` | `(the u8 (convert x))` |
 | `x == y`, `x != y` | `(= x y)`, `(not= x y)` |
 | `x?` | `(try x)` |
 | `p.x`, `v.len()` | `(:x p)`, `(len v)` |

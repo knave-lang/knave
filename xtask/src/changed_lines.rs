@@ -171,6 +171,8 @@ mod tests {
         fn git(&self, arguments: &[&str]) {
             let status = std::process::Command::new("git")
                 .args(arguments)
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .env("GIT_CONFIG_NOSYSTEM", "1")
                 .current_dir(&self.root)
                 .status()
                 .expect("git runs");

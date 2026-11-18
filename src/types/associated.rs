@@ -1,6 +1,5 @@
 use super::checker::TypeChecker;
 use super::lowered_associated_value::LoweredAssociatedValue;
-use super::lowered_implementors::LoweredImplementors;
 use super::problems::{MismatchContext, ProjectionNames, TypeProblems};
 use super::projection::AssociatedType;
 use super::trait_rows_reach::Implementor;
@@ -44,23 +43,6 @@ impl TypeChecker {
         &mut self,
         declaration: &RustTraitDeclaration,
     ) -> Result<Vec<Implementor>, Diagnostic> {
-        let lowered = self.lowered_implementors(declaration);
-        let implementors = lowered
-            .implementors
-            .into_iter()
-            .map(|(implementor, values)| {
-                let projections = self.declarations.builder().projections();
-                projections.add_rules(&implementor, values);
-                implementor
-            })
-            .collect();
-        match lowered.failure {
-            Some(failure) => Err(failure),
-            None => Ok(implementors),
-        }
-    }
-
-    fn lowered_implementors(&mut self, declaration: &RustTraitDeclaration) -> LoweredImplementors {
         let trait_name = self.bindings.get(declaration.binding).name().to_string();
         let declared = self
             .declarations
@@ -68,24 +50,17 @@ impl TypeChecker {
             .table
             .projections()
             .declared_by(declaration.binding);
-        let mut lowered = LoweredImplementors::default();
+        let mut implementors = Vec::new();
         for entry in declaration.implementors.get() {
-            let checked = self
+            let (implementor, values) = self
                 .written_schemes()
-                .lower_implementor(entry, &trait_name)
-                .and_then(|(implementor, values)| {
-                    self.check_associated_values(declaration.binding, &declared, entry, &values)?;
-                    Ok((implementor, values))
-                });
-            match checked {
-                Ok(implementor) => lowered.implementors.push(implementor),
-                Err(failure) => {
-                    lowered.failure = Some(failure);
-                    break;
-                }
-            }
+                .lower_implementor(entry, &trait_name)?;
+            self.check_associated_values(declaration.binding, &declared, entry, &values)?;
+            let projections = self.declarations.builder().projections();
+            projections.add_rules(&implementor, values);
+            implementors.push(implementor);
         }
-        lowered
+        Ok(implementors)
     }
 
     fn check_associated_values(

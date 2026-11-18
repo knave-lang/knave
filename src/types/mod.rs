@@ -67,7 +67,6 @@ mod literal_settlement;
 mod lowered_associated_value;
 mod lowered_binders;
 mod lowered_impl;
-mod lowered_implementors;
 mod lowered_payload;
 mod main_result;
 mod method_receivers;

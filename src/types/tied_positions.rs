@@ -72,7 +72,7 @@ mod tests {
 
     #[test]
     fn a_union_keeps_the_positions_of_both() {
-        let union = TiedPositions::of([1, 80]).union(&TiedPositions::of([2]));
-        assert_eq!(union.positions().collect::<Vec<_>>(), [1, 2, 80]);
+        let union = TiedPositions::of([1, 80]).union(&TiedPositions::of([2, 70]));
+        assert_eq!(union.positions().collect::<Vec<_>>(), [1, 2, 70, 80]);
     }
 }

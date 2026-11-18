@@ -128,18 +128,18 @@ impl TypeProblems {
     ) -> Diagnostic {
         let mut diagnostic = Diagnostic::error(
             DiagnosticCode::TRY_NO_CONVERSION,
-            "`try` cannot choose an error variant",
+            "`try` cannot choose an error case",
             Label::new(span, format!("this error is {source}")),
         )
         .with_note(format!(
             "this function returns a result whose error is {target}"
         ))
-        .with_note("`try` converts an error through one variant of an error enum that holds it");
+        .with_note("`try` converts an error through one case of an error enum that holds it");
         for (name, payload) in variants {
-            diagnostic = diagnostic.with_note(format!("variant `{name}` holds {payload}"));
+            diagnostic = diagnostic.with_note(format!("case `{name}` holds {payload}"));
         }
         diagnostic
-            .with_help("keep one variant for each error type, or convert the error with `map-err`")
+            .with_help("keep one case for each error type, or convert the error with `map-err`")
     }
 
     pub fn try_no_conversion(source: &str, target: &str, span: Span) -> Diagnostic {
@@ -151,9 +151,9 @@ impl TypeProblems {
         .with_note(format!(
             "this function returns a result whose error is {target}"
         ))
-        .with_note("`try` converts an error through one variant of an error enum that holds it")
+        .with_note("`try` converts an error through one case of an error enum that holds it")
         .with_help(
-            "write the function's error type as an enum with one variant for each error it tries, or convert the error with `map-err`",
+            "write the function's error type as an enum with one case for each error it tries, or convert the error with `map-err`",
         )
     }
 
@@ -769,10 +769,10 @@ impl TypeProblems {
         let diagnostic = Diagnostic::error(
             DiagnosticCode::AMBIGUOUS_VARIANT,
             "cannot tell which enum this pattern matches",
-            Label::new(span, "this variant name fits more than one enum"),
+            Label::new(span, "this case name fits more than one enum"),
         )
         .with_note(format!(
-            "this variant name fits {}",
+            "this case name fits {}",
             enums
                 .iter()
                 .map(|enum_name| format!("`{enum_name}`"))
@@ -790,10 +790,10 @@ impl TypeProblems {
     pub fn variant_arm_value(name: &str, variant: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::VARIANT_ARM_VALUE,
-            format!("`{name}` names a variant in this arm, not a value"),
-            Label::new(span, "names the variant, not a value"),
+            format!("`{name}` names a case in this arm, not a value"),
+            Label::new(span, "names the case, not a value"),
         )
-        .with_help(format!("write `{variant}` for the variant's value"))
+        .with_help(format!("write `{variant}` for the case's value"))
     }
 
     pub fn unknown_variant(
@@ -805,8 +805,8 @@ impl TypeProblems {
         let names: Vec<String> = variants.iter().map(|name| format!("`{name}`")).collect();
         Diagnostic::error(
             DiagnosticCode::UNKNOWN_VARIANT,
-            format!("`{enum_name}` has no variant `{variant}`"),
-            Label::new(span, format!("not a variant of `{enum_name}`")),
+            format!("`{enum_name}` has no case `{variant}`"),
+            Label::new(span, format!("not a case of `{enum_name}`")),
         )
         .with_help(format!("write one of: {}", names.join(", ")))
     }
@@ -1134,7 +1134,7 @@ impl TypeProblems {
             format!("no payload uses the type parameter `{name}`"),
             Label::new(span, "declared here"),
         )
-        .with_help(format!("use `{name}` in a variant payload, or remove it"))
+        .with_help(format!("use `{name}` in a case payload, or remove it"))
     }
 
     pub fn recursively_used_enum_parameter(
@@ -1215,11 +1215,11 @@ impl TypeProblems {
             format!("`{enum_name}` cannot derive `{trait_name}`"),
             Label::new(
                 span,
-                format!("variant `{variant}` holds `{payload_type}`, which is not `{trait_name}`"),
+                format!("case `{variant}` holds `{payload_type}`, which is not `{trait_name}`"),
             ),
         )
         .with_help(format!(
-            "change the payload of variant `{variant}`, or leave this trait out of the `derive`"
+            "change the payload of case `{variant}`, or leave this trait out of the `derive`"
         ))
     }
 
@@ -1230,7 +1230,7 @@ impl TypeProblems {
         payload_type: &str,
     ) -> String {
         format!(
-            "`{enum_name}` cannot derive `{trait_name}`: variant `{variant}` holds `{payload_type}`"
+            "`{enum_name}` cannot derive `{trait_name}`: case `{variant}` holds `{payload_type}`"
         )
     }
 
@@ -1242,7 +1242,7 @@ impl TypeProblems {
 
     pub fn enum_order_help(enum_name: &str, derives: &[String], variants: &[Rc<str>]) -> String {
         format!(
-            "add `(derive {enum_name} {})` to compare variants in declared order: {}",
+            "add `(derive {enum_name} {})` to compare cases in declared order: {}",
             derives.join(" "),
             Self::field_order(variants)
         )
@@ -1259,7 +1259,7 @@ impl TypeProblems {
         trait_name: &str,
     ) -> String {
         format!(
-            "`{enum_name}` cannot derive `{trait_name}`: variant `{variant}` holds `{payload_type}`"
+            "`{enum_name}` cannot derive `{trait_name}`: case `{variant}` holds `{payload_type}`"
         )
     }
 

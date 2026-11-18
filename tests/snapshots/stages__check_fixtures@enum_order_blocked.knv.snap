@@ -10,5 +10,5 @@ error[L0404]: `value` does not implement `ord`
   |          ^^^^^^ this needs `ord`
   |
   = note: `ord` is never inferred for an enum, so the enum needs a written `derive`
-  = note: `value` cannot derive `ord`: variant `number` holds `float`
+  = note: `value` cannot derive `ord`: case `number` holds `float`
   = note: run `knave doc L0404` for an explanation

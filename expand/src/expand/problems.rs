@@ -344,7 +344,7 @@ impl ExpandProblems {
     pub fn enum_rust_template(span: Span, label: &str, example: &str) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::ENUM_RUST_TEMPLATE,
-            "a `rust` template needs one variant with a part for each placeholder",
+            "a `rust` template needs one case with a part for each placeholder",
             Label::new(span, label),
         )
         .with_help(format!(
@@ -784,7 +784,7 @@ impl ExpandProblems {
     pub fn mixed_variant_payload(span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::MIXED_VARIANT_PAYLOAD,
-            "a variant's payload is either types or one `struct` body",
+            "a case's payload is either types or one `struct` body",
             Label::new(span, "this mixes the two"),
         )
         .with_help(
@@ -867,15 +867,15 @@ impl ExpandProblems {
         Diagnostic::error(
             DiagnosticCode::NOT_A_PATTERN,
             "this is not a pattern",
-            Label::new(span, "a pattern names a binding, a literal or a variant"),
+            Label::new(span, "a pattern names a binding, a literal or a case"),
         )
-        .with_help("write a binding name, `_`, a literal, or `(variant pattern ...)`")
+        .with_help("write a binding name, `_`, a literal, or `(case pattern ...)`")
     }
 
     pub fn variant_as_value(name: &str, arity: usize, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::VARIANT_AS_VALUE,
-            format!("`{name}` is a variant constructor, not a value"),
+            format!("`{name}` is a case constructor, not a value"),
             Label::new(
                 span,
                 format!(

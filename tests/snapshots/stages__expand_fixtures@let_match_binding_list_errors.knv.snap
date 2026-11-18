@@ -97,7 +97,7 @@ error[L0231]: this is not a pattern
   --> expand/let_match_binding_list_errors.knv:33:15
    |
 33 |   (let-match ((1 2) (pair 1 2))
-   |               ^^^^^ a pattern names a binding, a literal or a variant
+   |               ^^^^^ a pattern names a binding, a literal or a case
    |
-   = help: write a binding name, `_`, a literal, or `(variant pattern ...)`
+   = help: write a binding name, `_`, a literal, or `(case pattern ...)`
    = note: run `knave doc L0231` for an explanation

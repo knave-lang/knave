@@ -253,7 +253,7 @@ mod tests {
     }
 
     impl StructuralFixture {
-        const CLAUSE: &str = r#"(structural :struct "write!({1}, \"{name}\"){parts}" :field "" :variant "write!({1}, \"{{{name}}}\")" :part "" :bare "write!({1}, \"{name}\")")"#;
+        const CLAUSE: &str = r#"(structural :struct "write!({1}, \"{name}\"){parts}" :field "" :case "write!({1}, \"{{{name}}}\")" :part "" :bare "write!({1}, \"{name}\")")"#;
         const PATH: &str = "std::fmt::Octal";
 
         fn new() -> Self {

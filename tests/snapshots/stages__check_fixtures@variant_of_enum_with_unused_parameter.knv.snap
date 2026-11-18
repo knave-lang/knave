@@ -9,5 +9,5 @@ error[L0443]: no payload uses the type parameter `a`
 1 | (defenum (reply a)
   |                 ^ declared here
   |
-  = help: use `a` in a variant payload, or remove it
+  = help: use `a` in a case payload, or remove it
   = note: run `knave doc L0443` for an explanation

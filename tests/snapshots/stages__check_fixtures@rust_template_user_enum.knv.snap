@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/rust_template_user_enum.knv
 ---
-error[L0438]: a `rust` template needs one variant with a part for each placeholder
+error[L0438]: a `rust` template needs one case with a part for each placeholder
  --> check/rust_template_user_enum.knv:2:3
   |
 2 |   (rust "({0})")

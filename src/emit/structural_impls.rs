@@ -423,11 +423,11 @@ impl<'a> StructuralImpls<'a> {
             VariantPayload::None => (path, StructuralKey::Bare),
             VariantPayload::Positional(payloads) => (
                 format!("{path}({})", Self::part_names(payloads.len()).join(", ")),
-                StructuralKey::Variant,
+                StructuralKey::Case,
             ),
             VariantPayload::Named(fields) => (
                 format!("{path} {{ {} }}", Self::named_parts(fields).join(", ")),
-                StructuralKey::Variant,
+                StructuralKey::Case,
             ),
         };
         format!(

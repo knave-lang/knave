@@ -8,7 +8,7 @@ error[L0248]: `octal3` binds `std::fmt::Octal`, which `octal` already infers
    |
 11 | /   (structural :struct "write!({1}, \"{name}\")"
 12 | |               :field ""
-13 | |               :variant "write!({1}, \"{name}\")"
+13 | |               :case "write!({1}, \"{name}\")"
 14 | |               :part ""
 15 | |               :bare "write!({1}, \"{name}\")")
    | |______________________________________________^ the two clauses would infer two impls of one Rust trait
@@ -17,7 +17,7 @@ error[L0248]: `octal3` binds `std::fmt::Octal`, which `octal` already infers
    |
 11 | /   (structural :struct "write!({1}, \"{name}\")"
 12 | |               :field ""
-13 | |               :variant "write!({1}, \"{name}\")"
+13 | |               :case "write!({1}, \"{name}\")"
 14 | |               :part ""
 15 | |               :bare "write!({1}, \"{name}\")")
    | |______________________________________________- `octal` infers this Rust trait here

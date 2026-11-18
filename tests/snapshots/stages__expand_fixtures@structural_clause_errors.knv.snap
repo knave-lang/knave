@@ -4,168 +4,140 @@ expression: reports.report(path)
 input_file: tests/fixtures/expand/structural_clause_errors.knv
 ---
 error[L0248]: a `structural` clause needs one method that takes `(ref self)`
-  --> expand/structural_clause_errors.knv:6:3
+ --> expand/structural_clause_errors.knv:6:3
+  |
+6 |   (structural :struct "" :field "" :case "" :part "" :bare ""))
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause fills the body of one method
+  |
+  = help: declare one `(method name (fn ((ref self) ...) result))` in this `rust-trait`
+  = note: run `knave doc L0248` for an explanation
+
+error[L0248]: a `structural` clause needs one method that takes `(ref self)`
+  --> expand/structural_clause_errors.knv:12:3
    |
- 6 | /   (structural :struct ""
- 7 | |               :field ""
- 8 | |               :variant ""
- 9 | |               :part ""
-10 | |               :bare ""))
-   | |_______________________^ this clause fills the body of one method
+12 |   (structural :struct "" :field "" :case "" :part "" :bare ""))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause fills the body of one method
    |
    = help: declare one `(method name (fn ((ref self) ...) result))` in this `rust-trait`
    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: a `structural` clause needs one method that takes `(ref self)`
-  --> expand/structural_clause_errors.knv:16:3
+  --> expand/structural_clause_errors.knv:17:3
    |
-16 | /   (structural :struct ""
-17 | |               :field ""
-18 | |               :variant ""
-19 | |               :part ""
-20 | |               :bare ""))
-   | |_______________________^ this clause fills the body of one method
-   |
-   = help: declare one `(method name (fn ((ref self) ...) result))` in this `rust-trait`
-   = note: run `knave doc L0248` for an explanation
-
-error[L0248]: a `structural` clause needs one method that takes `(ref self)`
-  --> expand/structural_clause_errors.knv:25:3
-   |
-25 | /   (structural :struct ""
-26 | |               :field ""
-27 | |               :variant ""
-28 | |               :part ""
-29 | |               :bare ""))
-   | |_______________________^ this clause fills the body of one method
+17 |   (structural :struct "" :field "" :case "" :part "" :bare ""))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause fills the body of one method
    |
    = help: declare one `(method name (fn ((ref self) ...) result))` in this `rust-trait`
    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `cl` binds `std::clone::Clone`, which `derive` already writes
-  --> expand/structural_clause_errors.knv:34:3
+  --> expand/structural_clause_errors.knv:22:3
    |
-34 | /   (structural :struct ""
-35 | |               :field ""
-36 | |               :variant ""
-37 | |               :part ""
-38 | |               :bare ""))
-   | |_______________________^ every struct would get both the derive and this impl
+22 |   (structural :struct "" :field "" :case "" :part "" :bare ""))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ every struct would get both the derive and this impl
    |
    = help: keep the clause off this `rust-trait`, or bind a trait that `derive` does not write
    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `num2` binds `crate::rt::Number`, which `number` already binds
-  --> expand/structural_clause_errors.knv:43:3
+  --> expand/structural_clause_errors.knv:27:3
    |
-43 | /   (structural :struct ""
-44 | |               :field ""
-45 | |               :variant ""
-46 | |               :part ""
-47 | |               :bare ""))
-   | |_______________________^ the two traits would infer two impls of one Rust trait
+27 |   (structural :struct "" :field "" :case "" :part "" :bare ""))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the two traits would infer two impls of one Rust trait
    |
    = help: keep the clause off this `rust-trait`, or give it a Rust trait that no other trait binds
    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:bare` is missing from this `structural` clause
-  --> expand/structural_clause_errors.knv:52:3
+  --> expand/structural_clause_errors.knv:32:3
    |
-52 |   (structural :struct "" :field "" :variant "" :part ""))
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause has no `:bare`
+32 |   (structural :struct "" :field "" :case "" :part ""))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this clause has no `:bare`
    |
    = help: add `:bare` and its template string
    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:other` is not a key of a `structural` clause
-  --> expand/structural_clause_errors.knv:62:15
+  --> expand/structural_clause_errors.knv:42:15
    |
-62 |               :other ""))
+42 |               :other ""))
    |               ^^^^^^ expected a key here
    |
-   = help: a `structural` clause takes `:struct`, `:field`, `:variant`, `:part`, `:bare`
+   = help: a `structural` clause takes `:struct`, `:field`, `:case`, `:part`, `:bare`
    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `"text"` is not a key of a `structural` clause
-  --> expand/structural_clause_errors.knv:67:15
+  --> expand/structural_clause_errors.knv:47:15
    |
-67 |   (structural "text"
+47 |   (structural "text"
    |               ^^^^^^ expected a key here
    |
-   = help: a `structural` clause takes `:struct`, `:field`, `:variant`, `:part`, `:bare`
+   = help: a `structural` clause takes `:struct`, `:field`, `:case`, `:part`, `:bare`
    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:field` appears twice in this `structural` clause
-  --> expand/structural_clause_errors.knv:79:15
+  --> expand/structural_clause_errors.knv:59:15
    |
-78 |               :field ""
+58 |               :field ""
    |               ------ first given here
-79 |               :field ""
+59 |               :field ""
    |               ^^^^^^ repeated here
    |
    = help: remove one of the two `:field` templates
    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:bare` has no template string after it
-  --> expand/structural_clause_errors.knv:87:57
+  --> expand/structural_clause_errors.knv:67:54
    |
-87 |   (structural :struct "" :field "" :variant "" :part "" :bare))
-   |                                                         ^^^^^ expected a string after this key
+67 |   (structural :struct "" :field "" :case "" :part "" :bare))
+   |                                                      ^^^^^ expected a string after this key
    |
    = help: write the Rust text after the key, as in `:bare "..."`
    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:bare` has no template string after it
-  --> expand/structural_clause_errors.knv:96:15
+  --> expand/structural_clause_errors.knv:76:15
    |
-96 |               :bare written))
+76 |               :bare written))
    |               ^^^^^ expected a string after this key
    |
    = help: write the Rust text after the key, as in `:bare "..."`
    = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:part` cannot fill `{field}`
-   --> expand/structural_clause_errors.knv:104:21
-    |
-104 |               :part ".part({field})"
-    |                     ^^^^^^^^^^^^^^^^ this template holds `{field}`
-    |
-    = help: `:part` takes `{value}`, and `{{` or `}}` for a literal brace
-    = note: run `knave doc L0248` for an explanation
+  --> expand/structural_clause_errors.knv:84:21
+   |
+84 |               :part ".part({field})"
+   |                     ^^^^^^^^^^^^^^^^ this template holds `{field}`
+   |
+   = help: `:part` takes `{value}`, and `{{` or `}}` for a literal brace
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:bare` cannot fill `{2}`
-   --> expand/structural_clause_errors.knv:114:21
-    |
-114 |               :bare "{2}"))
-    |                     ^^^^^ this template holds `{2}`
-    |
-    = help: `:bare` takes `{0}`, `{1}`, `{name}`, and `{{` or `}}` for a literal brace
-    = note: run `knave doc L0248` for an explanation
+  --> expand/structural_clause_errors.knv:94:21
+   |
+94 |               :bare "{2}"))
+   |                     ^^^^^ this template holds `{2}`
+   |
+   = help: `:bare` takes `{0}`, `{1}`, `{name}`, and `{{` or `}}` for a literal brace
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: `:struct` cannot fill `{name`
-   --> expand/structural_clause_errors.knv:119:23
-    |
-119 |   (structural :struct "{name"
-    |                       ^^^^^^^ this template holds `{name`
-    |
-    = help: `:struct` takes `{0}`, `{1}`, `{name}`, `{parts}`, and `{{` or `}}` for a literal brace
-    = note: run `knave doc L0248` for an explanation
+  --> expand/structural_clause_errors.knv:99:23
+   |
+99 |   (structural :struct "{name"
+   |                       ^^^^^^^ this template holds `{name`
+   |
+   = help: `:struct` takes `{0}`, `{1}`, `{name}`, `{parts}`, and `{{` or `}}` for a literal brace
+   = note: run `knave doc L0248` for an explanation
 
 error[L0248]: this `rust-trait` has a second `structural` clause
-   --> expand/structural_clause_errors.knv:133:3
+   --> expand/structural_clause_errors.knv:109:3
     |
-128 | /   (structural :struct ""
-129 | |               :field ""
-130 | |               :variant ""
-131 | |               :part ""
-132 | |               :bare "")
-    | |_______________________- first clause
-133 | /   (structural :struct ""
-134 | |               :field ""
-135 | |               :variant ""
-136 | |               :part ""
-137 | |               :bare ""))
-    | |_______________________^ second clause
+108 |   (structural :struct "" :field "" :case "" :part "" :bare "")
+    |   ------------------------------------------------------------ first clause
+109 |   (structural :struct "" :field "" :case "" :part "" :bare ""))
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ second clause
     |
     = help: merge the two clauses into one
     = note: run `knave doc L0248` for an explanation

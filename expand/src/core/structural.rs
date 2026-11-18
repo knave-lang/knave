@@ -4,7 +4,7 @@ use super::Keyword;
 pub enum StructuralKey {
     Struct,
     Field,
-    Variant,
+    Case,
     Part,
     Bare,
 }
@@ -13,7 +13,7 @@ impl StructuralKey {
     pub const ALL: [StructuralKey; 5] = [
         StructuralKey::Struct,
         StructuralKey::Field,
-        StructuralKey::Variant,
+        StructuralKey::Case,
         StructuralKey::Part,
         StructuralKey::Bare,
     ];
@@ -27,7 +27,7 @@ impl StructuralKey {
         match self {
             StructuralKey::Struct => "struct",
             StructuralKey::Field => "field",
-            StructuralKey::Variant => "variant",
+            StructuralKey::Case => "case",
             StructuralKey::Part => "part",
             StructuralKey::Bare => "bare",
         }
@@ -44,7 +44,7 @@ impl StructuralKey {
                 !matches!(self, StructuralKey::Field | StructuralKey::Part)
             }
             StructuralPiece::Parts => {
-                matches!(self, StructuralKey::Struct | StructuralKey::Variant)
+                matches!(self, StructuralKey::Struct | StructuralKey::Case)
             }
             StructuralPiece::Field => self == StructuralKey::Field,
             StructuralPiece::Value => matches!(self, StructuralKey::Field | StructuralKey::Part),
@@ -363,10 +363,10 @@ mod tests {
     #[test]
     fn a_key_reads_from_its_keyword() {
         assert_eq!(
-            StructuralKey::from_keyword(":variant"),
-            Some(StructuralKey::Variant)
+            StructuralKey::from_keyword(":case"),
+            Some(StructuralKey::Case)
         );
-        assert_eq!(StructuralKey::from_keyword("variant"), None);
+        assert_eq!(StructuralKey::from_keyword("case"), None);
         assert_eq!(StructuralKey::from_keyword(":other"), None);
     }
 }

@@ -7,7 +7,7 @@ error[L0423]: `value` cannot derive `eq`
  --> check/blocked_enum_derive.knv:3:15
   |
 3 | (derive value eq)
-  |               ^^ variant `number` holds `float`, which is not `eq`
+  |               ^^ case `number` holds `float`, which is not `eq`
   |
-  = help: change the payload of variant `number`, or leave this trait out of the `derive`
+  = help: change the payload of case `number`, or leave this trait out of the `derive`
   = note: run `knave doc L0423` for an explanation

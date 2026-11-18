@@ -219,10 +219,10 @@
 
 (def variant-error
   (fn (variant)
-    (fail "a variant is a name or a list that starts with a name"
+    (fail "a case is a name or a list that starts with a name"
       variant
       "write it as `name`, `(name type ...)` or `(name :field type ...)`"
-      (template (:code malformed-variant)))))
+      (template (:code malformed-case)))))
 
 (def variant-with-items
   (fn (variant)
@@ -248,15 +248,15 @@
 (def check-variant-type
   (fn (item)
     (if (keyword? item)
-      (fail "this variant's first item is a type, so it takes no fields"
+      (fail "this case's first item is a type, so it takes no fields"
         item
         "write only types, or give every item a `:field`"
-        (template (:code mixed-variant-items)))
+        (template (:code mixed-case-items)))
       (if (headed-by? item "struct")
-        (fail "a variant writes its fields flat"
+        (fail "a case writes its fields flat"
           item
           "write them after its name, as in (labeled :text string :size float)"
-          (template (:code variant-struct-payload)))
+          (template (:code case-struct-payload)))
         (quote checked)))))
 
 (def variant-fields
@@ -274,7 +274,7 @@
       (fail "a field must start with `:`"
         keyword
         "write each field as `:name type`, as in (labeled :text string)"
-        (template (:code mixed-variant-items))))))
+        (template (:code mixed-case-items))))))
 
 (def variant-field-type
   (fn (keyword more)
@@ -284,7 +284,7 @@
         (string "write a type after it, as in "
                 (symbol-name keyword)
                 " int")
-        (template (:code variant-field-without-type)))
+        (template (:code case-field-without-type)))
       (first more))))
 
 (def trait-definition

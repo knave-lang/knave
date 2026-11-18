@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/expand/defenum_errors.knv
 ---
-error[L0346]: a variant is a name or a list that starts with a name
+error[L0346]: a case is a name or a list that starts with a name
  --> expand/defenum_errors.knv:1:26
   |
 1 | (defenum unnamed-variant 3)
@@ -12,7 +12,7 @@ error[L0346]: a variant is a name or a list that starts with a name
   = help: write it as `name`, `(name type ...)` or `(name :field type ...)`
   = note: run `knave doc L0346` for an explanation
 
-error[L0346]: a variant is a name or a list that starts with a name
+error[L0346]: a case is a name or a list that starts with a name
  --> expand/defenum_errors.knv:3:26
   |
 3 | (defenum keyword-variant :circle)
@@ -21,7 +21,7 @@ error[L0346]: a variant is a name or a list that starts with a name
   = help: write it as `name`, `(name type ...)` or `(name :field type ...)`
   = note: run `knave doc L0346` for an explanation
 
-error[L0347]: a variant writes its fields flat
+error[L0347]: a case writes its fields flat
  --> expand/defenum_errors.knv:6:12
   |
 6 |   (labeled (struct (text string))))
@@ -30,7 +30,7 @@ error[L0347]: a variant writes its fields flat
   = help: write them after its name, as in (labeled :text string :size float)
   = note: run `knave doc L0347` for an explanation
 
-error[L0348]: this variant's first item is a type, so it takes no fields
+error[L0348]: this case's first item is a type, so it takes no fields
  --> expand/defenum_errors.knv:8:43
   |
 8 | (defenum field-after-type (labeled string :size f64))

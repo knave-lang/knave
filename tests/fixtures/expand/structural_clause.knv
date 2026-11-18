@@ -8,7 +8,7 @@
       octal-result))
   (structural :struct "write!({1}, \"{name}\"){parts}"
               :field ""
-              :variant "write!({1}, \"{{{name}}}\")"
+              :case "write!({1}, \"{{{name}}}\")"
               :part ""
               :bare "write!({1}, \"{name}\")")
   i64)

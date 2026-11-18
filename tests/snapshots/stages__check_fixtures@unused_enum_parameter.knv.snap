@@ -9,5 +9,5 @@ error[L0443]: no payload uses the type parameter `b`
 1 | (enum (pair-of a b) (both a a) neither)
   |                  ^ declared here
   |
-  = help: use `b` in a variant payload, or remove it
+  = help: use `b` in a case payload, or remove it
   = note: run `knave doc L0443` for an explanation

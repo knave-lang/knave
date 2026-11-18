@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/pair_part_of_a_mut_pair_passed_to_an_owner.knv
+---
+error[L0503]: this value is borrowed, but the call needs to own it
+ --> check/pair_part_of_a_mut_pair_passed_to_an_owner.knv:4:10
+  |
+4 |   (takes (first p)))
+  |          ^^^^^^^^^ only a borrow is available here
+  |
+  = help: pass a copy with `(clone ...)`
+  = note: run `knave doc L0503` for an explanation

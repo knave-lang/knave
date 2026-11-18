@@ -1,0 +1,2 @@
+(defn f ((p (mut (ref (pair i64 string)))))
+  (push! (second p) "xy"))

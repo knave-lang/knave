@@ -1,0 +1,5 @@
+(defstruct holder
+  :pr (pair i64 string))
+
+(defn f ((h (ref holder)))
+  (push! (second (:pr h)) "xy"))

@@ -7,6 +7,7 @@ use super::new_file::NewFile;
 use super::project_component::ProjectComponent;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use super::versioned_text::VersionedText;
 use super::working_directory::WorkingDirectory;
 use crate::diagnostic::Diagnostics;
 use crate::format::{ModuleLookup, SourceFormatter};
@@ -77,9 +78,11 @@ impl NewCommand {
 
     fn project_file(&self, root: &Path) -> NewFile {
         let text = format!(
-            "({} {})\n",
+            "({} {} :{} \"{}\")\n",
             EmbeddedPrelude::project_vocabulary().head(),
-            self.name
+            self.name,
+            Language::NAME,
+            VersionedText::VERSION
         );
         NewFile::new(root.join(Language::project_file_name()), text)
     }

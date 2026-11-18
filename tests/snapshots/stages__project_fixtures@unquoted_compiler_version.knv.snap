@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/unquoted_compiler_version.knv
+---
+error[L0706]: `:knave` takes a string
+ --> project/unquoted_compiler_version.knv:1:28
+  |
+1 | (defproject browser :knave 18)
+  |                            ^^ expected a string
+  |
+  = note: run `knave doc L0706` for an explanation

@@ -8617,6 +8617,21 @@ fn new_creates_a_project_that_runs() {
 }
 
 #[test]
+fn new_records_the_compiler_version_in_the_project_file() {
+    let sandbox = Sandbox::new("new_project_version");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.contents("demo-app/project.knv"),
+        format!(
+            "(defproject demo-app :knave \"{}\")\n",
+            env!("CARGO_PKG_VERSION")
+        )
+    );
+}
+
+#[test]
 fn new_writes_a_gitignore_that_lists_the_doc_folder() {
     let sandbox = Sandbox::new("new_gitignore");
     sandbox

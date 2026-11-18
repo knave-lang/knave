@@ -14,7 +14,7 @@ pub struct LocalFiles<'s> {
 }
 
 enum FileOwner<'f, 's> {
-    LocalRoot(usize),
+    LocalRoot,
     Library(&'f VisibleLibrary<'s>, PathBuf),
 }
 
@@ -78,13 +78,7 @@ impl<'s> LocalFiles<'s> {
         let local_roots = self
             .roots
             .iter()
-            .enumerate()
-            .filter_map(|(position, root)| {
-                Some((
-                    FileOwner::LocalRoot(position),
-                    root.local_part(file)?.to_path_buf(),
-                ))
-            });
+            .filter_map(|root| Some((FileOwner::LocalRoot, root.local_part(file)?.to_path_buf())));
         let libraries = self
             .other_libraries
             .holders(file)
@@ -92,7 +86,7 @@ impl<'s> LocalFiles<'s> {
             .map(|(holder, inner)| (FileOwner::Library(holder, inner.clone()), inner));
         local_roots
             .chain(libraries)
-            .min_by_key(|(_, inner)| inner.components().count())
+            .min_by_key(|(_, inner)| Self::depth_below_root(inner))
             .map(|(owner, _)| owner)
     }
 
@@ -102,11 +96,19 @@ impl<'s> LocalFiles<'s> {
         owner: Option<FileOwner<'_, 's>>,
     ) -> Option<ModulePath> {
         match (found, owner) {
-            (Some((_, file)), Some(FileOwner::LocalRoot(position))) => {
-                self.written_path(position, file)
-            }
+            (Some((_, file)), Some(FileOwner::LocalRoot)) => self.innermost_written_path(file),
             _ => None,
         }
+    }
+
+    fn innermost_written_path(&self, file: &Path) -> Option<ModulePath> {
+        (0..self.roots.len())
+            .filter_map(|position| self.written_path(position, file))
+            .min_by_key(|written| Self::depth_below_root(Path::new(written.as_str())))
+    }
+
+    fn depth_below_root(inner: &Path) -> usize {
+        inner.components().count()
     }
 
     fn local_target(

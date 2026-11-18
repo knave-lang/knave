@@ -1,0 +1,20 @@
+---
+source: tests/cli.rs
+expression: test.assert_exit_code(1).stderr()
+---
+error[L0260]: module path `./shapes/helpers` has a part that is not a name
+ --> tests/a.knv:1:6
+  |
+1 | (use ./shapes/helpers side)
+  |      ^^^^^^^^^^^^^^^^ each part of a module path names a directory or a file
+  |
+  = help: write `tests/shapes/helpers`
+  = note: run `knave doc L0260` for an explanation
+
+error[L0201]: cannot find `side` in this scope
+ --> tests/a.knv:5:27
+  |
+5 | (deftest sides (assert (= side 4)))
+  |                           ^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

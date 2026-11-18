@@ -35,6 +35,7 @@ mod derivable_traits;
 mod derive_blockers;
 mod derive_candidate;
 mod derive_catalog;
+mod derive_listings;
 mod derive_rules;
 mod derive_source;
 mod derive_target;

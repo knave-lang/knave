@@ -8,15 +8,14 @@ use super::definition_kind::DefinitionKind;
 use super::derivable_trait::DerivableTrait;
 use super::derive_blockers::DeriveBlockers;
 use super::derive_candidate::DeriveCandidate;
+use super::derive_listings::DeriveListings;
 use super::derive_source::DeriveSource;
 use super::derived_trait::DerivedTrait;
 use super::ty::Type;
-use super::type_declarations::TypeDeclarations;
 use crate::core::{BindingId, StructDerives};
 
 pub(super) struct DeriveRules<'a> {
     traits: DeclaredTraits<'a>,
-    types: &'a TypeDeclarations,
     blockers: DeriveBlockers<'a>,
     changed_structs: &'a FxHashSet<BindingId>,
 }
@@ -29,17 +28,22 @@ impl<'a> DeriveRules<'a> {
     ) -> Self {
         Self {
             traits: DeclaredTraits::new(declarations.traits()),
-            types: declarations.types(),
             blockers,
             changed_structs,
         }
     }
 
-    pub(super) fn is_rust_enum(&self, binding: BindingId) -> bool {
-        self.types
-            .enums
-            .get(binding)
-            .is_some_and(|definition| definition.rust.is_some())
+    pub(super) fn source(
+        &self,
+        binding: BindingId,
+        entry: DerivableTrait,
+        listings: &DeriveListings,
+    ) -> Option<DeriveSource> {
+        if listings.lists(binding) {
+            listings.listed_source(binding, entry)
+        } else {
+            self.unlisted_source(binding, entry)
+        }
     }
 
     pub(super) fn blocked(
@@ -82,7 +86,7 @@ impl<'a> DeriveRules<'a> {
         self.blockers.blocking_enum_payload(binding, trait_binding)
     }
 
-    pub(super) fn unlisted_source(
+    fn unlisted_source(
         &self,
         struct_binding: BindingId,
         entry: DerivableTrait,
@@ -109,12 +113,13 @@ impl<'a> DeriveRules<'a> {
 
 #[cfg(test)]
 mod tests {
-    use rustc_hash::FxHashSet;
+    use rustc_hash::{FxHashMap, FxHashSet};
 
     use crate::types::declarations_fixture::DeclarationsFixture;
     use crate::types::definition_kind::DefinitionKind;
     use crate::types::derivable_trait::DerivableTrait;
     use crate::types::derive_candidate::DeriveCandidate;
+    use crate::types::derive_listings::DeriveListings;
     use crate::types::derive_source::DeriveSource;
     use crate::types::derived_trait::DerivedTrait;
 
@@ -162,16 +167,16 @@ mod tests {
         fn inferred(&self, name: &str, trait_name: &str, derived: DerivedTrait) -> bool {
             let binding = self.declarations.type_named(name);
             let trait_binding = self.declarations.trait_named(trait_name);
+            let catalog = self.declarations.derive_catalog();
+            let unlisted = DeriveListings::new(&catalog, FxHashMap::default());
+            let entry = DerivableTrait {
+                binding: trait_binding,
+                derived,
+            };
             matches!(
                 self.declarations
                     .derive_rules(&self.changed)
-                    .unlisted_source(
-                        binding,
-                        DerivableTrait {
-                            binding: trait_binding,
-                            derived
-                        }
-                    ),
+                    .source(binding, entry, &unlisted),
                 Some(DeriveSource::Inferred)
             )
         }
@@ -200,18 +205,6 @@ mod tests {
     fn a_structural_trait_is_inferred_without_a_written_impl() {
         let fixture = RulesFixture::new();
         assert!(fixture.inferred("depot", "show", DerivedTrait::Structural));
-    }
-
-    #[test]
-    fn a_plain_struct_is_no_rust_enum() {
-        let fixture = RulesFixture::new();
-        let point = fixture.declarations.type_named("point");
-        assert!(
-            !fixture
-                .declarations
-                .derive_rules(&fixture.changed)
-                .is_rust_enum(point)
-        );
     }
 
     #[test]

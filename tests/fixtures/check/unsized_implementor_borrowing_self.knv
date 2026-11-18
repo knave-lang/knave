@@ -1,0 +1,4 @@
+(trait viewed
+  (view (fn ((ref self)) i64)))
+
+(impl viewed str (view (text) 0))

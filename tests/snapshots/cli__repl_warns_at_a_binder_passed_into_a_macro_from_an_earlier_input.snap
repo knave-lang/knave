@@ -1,0 +1,18 @@
+---
+source: tests/cli.rs
+expression: repl.stderr()
+---
+warning[L0259]: `u8` hides the kernel type `u8`
+ --> <input 2>:1:46
+  |
+1 | (define-macro make-byte (template (defstruct u8 :n bool)))
+  |                                              ^^ this binds `u8` in place of the kernel type
+  |
+ ::: <input 3>:1:1
+  |
+1 | (make-byte)
+  | ----------- in this macro call
+  |
+  = note: in this scope, a type written `u8` names this binding, while a printed `u8` is the kernel type
+  = help: rename this `u8`
+  = note: run `knave doc L0259` for an explanation

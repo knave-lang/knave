@@ -40,7 +40,9 @@ impl NamespaceProblems {
             format!("this binds `{written}` in place of the kernel type"),
         );
         let help = match reach {
-            BinderReach::Written { .. } => format!("rename this `{written}`"),
+            BinderReach::Written { .. } | BinderReach::PassedIn { .. } => {
+                format!("rename this `{written}`")
+            }
             BinderReach::InMacro {
                 introducing_macro, ..
             } => format!("rename `{written}` in `{introducing_macro}`"),
@@ -61,7 +63,7 @@ impl NamespaceProblems {
             format!("this imports `{written}` in place of the kernel type"),
         );
         let help = match reach {
-            BinderReach::Written { .. } => format!(
+            BinderReach::Written { .. } | BinderReach::PassedIn { .. } => format!(
                 "leave `{written}` out of this `use`, or rename it in the module that defines it"
             ),
             BinderReach::InMacro {
@@ -93,7 +95,7 @@ impl NamespaceProblems {
     fn with_macro_call(diagnostic: Diagnostic, reach: &BinderReach) -> Diagnostic {
         match reach {
             BinderReach::Written { .. } => diagnostic,
-            BinderReach::InMacro { call, .. } => {
+            BinderReach::PassedIn { call, .. } | BinderReach::InMacro { call, .. } => {
                 diagnostic.with_label(ExpandProblems::macro_call(*call))
             }
         }
@@ -101,7 +103,9 @@ impl NamespaceProblems {
 
     fn reach_scope(reach: &BinderReach) -> String {
         match reach {
-            BinderReach::Written { .. } => "in this scope".to_string(),
+            BinderReach::Written { .. } | BinderReach::PassedIn { .. } => {
+                "in this scope".to_string()
+            }
             BinderReach::InMacro {
                 introducing_macro, ..
             } => format!("in the code of `{introducing_macro}`"),

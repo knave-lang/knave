@@ -2201,6 +2201,29 @@ fn repl_warns_at_a_macro_from_an_earlier_input_that_hides_a_kernel_type() {
 }
 
 #[test]
+fn repl_warns_at_a_binder_passed_into_a_macro_from_an_earlier_input() {
+    let sandbox = Sandbox::new("repl_kernel_type_passed_in");
+    let repl = sandbox.compiler_reading(
+        "(defmacro define-macro (name body) (template (defmacro (unquote name) () (unquote body))))\n\
+         (define-macro make-byte (template (defstruct u8 :n bool)))\n\
+         (make-byte)\n",
+        &["repl"],
+    );
+    insta::assert_snapshot!(repl.stderr());
+}
+
+#[test]
+fn repl_warns_at_a_binder_the_app_passes_to_a_library_generator_in_an_earlier_input() {
+    let sandbox = Sandbox::new("repl_kernel_type_generator").with_fixture_tree("libraries");
+    let repl = sandbox.compiler_reading_in(
+        "money-generate-with-app",
+        "(use money generate-with)\n(generate-with make-float float)\n(make-float)\n",
+        &["repl"],
+    );
+    insta::assert_snapshot!(repl.stderr());
+}
+
+#[test]
 fn repl_accepts_a_definition_with_a_warned_lint_and_prints_it() {
     let (stdout, stderr) = LintsFixture::repl(Some("warn"));
     assert!(stderr.contains("warning[L0803]"), "{stderr}");

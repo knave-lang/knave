@@ -6,6 +6,10 @@ pub(super) enum BinderReach {
     Written {
         binder: Span,
     },
+    PassedIn {
+        binder: Span,
+        call: Span,
+    },
     InMacro {
         binder: Span,
         call: Span,
@@ -16,7 +20,9 @@ pub(super) enum BinderReach {
 impl BinderReach {
     pub fn binder(&self) -> Span {
         match self {
-            Self::Written { binder } | Self::InMacro { binder, .. } => *binder,
+            Self::Written { binder }
+            | Self::PassedIn { binder, .. }
+            | Self::InMacro { binder, .. } => *binder,
         }
     }
 }

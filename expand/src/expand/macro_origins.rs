@@ -33,7 +33,10 @@ impl MacroOrigins {
             .first_written_at(site.span(), binder.name())
             .unwrap_or(site.span());
         if writer.passed_in(site, sources, written) {
-            return Some(BinderReach::Written { binder: written });
+            return Some(BinderReach::PassedIn {
+                binder: written,
+                call: site.span(),
+            });
         }
         Some(BinderReach::InMacro {
             binder: written,

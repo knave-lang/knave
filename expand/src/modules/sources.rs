@@ -226,15 +226,23 @@ impl ModuleSources {
     }
 
     pub fn local_files(&self, owner: Option<Rc<str>>) -> LocalFiles<'_> {
-        self.libraries.local_files(
-            owner.as_deref(),
-            self.local_roots().collect(),
-            Self::compiler_claims,
-        )
+        let roots = self.local_roots().collect();
+        match owner.as_deref() {
+            Some(owner) => self
+                .libraries
+                .local_files(Some(owner), roots, Self::compiler_claims),
+            None => self
+                .libraries
+                .local_files(None, roots, Self::program_claims),
+        }
+    }
+
+    fn program_claims(path: &ModulePath) -> bool {
+        Self::compiler_claims(path) || Self::is_reserved(path)
     }
 
     fn compiler_claims(path: &ModulePath) -> bool {
-        !Self::is_written(path) || Self::is_reserved(path)
+        !Self::is_written(path)
     }
 
     pub fn is_prelude(path: &ModulePath) -> bool {

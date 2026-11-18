@@ -518,7 +518,7 @@ impl ExpandProblems {
             format!("this project does not list library `{library}`"),
             Label::new(span, "a library that another library uses"),
         );
-        ModulePathProblems::with_listing_advice(diagnostic, library, unlisted.section)
+        ModulePathProblems::with_listing_advice(diagnostic, unlisted)
     }
 
     pub fn library_hides_local_module(

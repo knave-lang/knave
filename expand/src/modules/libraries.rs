@@ -1,10 +1,11 @@
 use std::path::{Path, PathBuf};
 
+use super::library_naming::LibraryNaming;
 use super::local_files::LocalFiles;
 use super::local_root::LocalRoot;
 use super::search_scope::SearchScope;
 use super::unlisted_library::UnlistedLibrary;
-use super::visible_library::{LibraryNaming, VisibleLibrary};
+use super::visible_library::VisibleLibrary;
 use crate::core::ModulePath;
 use crate::language::Language;
 
@@ -152,7 +153,7 @@ impl LibraryTable {
         &'s self,
         owner: Option<&str>,
         program_roots: Vec<LocalRoot<'s>>,
-        compiler_claims: impl Fn(&ModulePath) -> bool + 's,
+        claims: impl Fn(&ModulePath) -> bool + 's,
     ) -> LocalFiles<'s> {
         let library = self.named(owner);
         let other_libraries = self
@@ -163,7 +164,6 @@ impl LibraryTable {
                 library: other,
                 root: LocalRoot::primary(&other.source_root, &other.display_root, &Self::UNSCOPED),
                 visible: self.sees(owner, &other.name),
-                section: &self.library_section,
             })
             .collect();
         match library {
@@ -173,15 +173,17 @@ impl LibraryTable {
                     &library.display_root,
                     &Self::UNSCOPED,
                 );
-                LocalFiles::new(vec![root], other_libraries, move |path| {
-                    compiler_claims(path)
+                LocalFiles::new(vec![root], move |path| {
+                    claims(path)
                         || self.sees_library(Some(&library.name), path)
                         || path.as_str() == library.root_module
                 })
+                .beside(other_libraries, &self.library_section)
             }
-            None => LocalFiles::new(program_roots, other_libraries, move |path| {
-                compiler_claims(path) || self.owner_of(path).is_some()
-            }),
+            None => LocalFiles::new(program_roots, move |path| {
+                claims(path) || self.owner_of(path).is_some()
+            })
+            .beside(other_libraries, &self.library_section),
         }
     }
 

@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::core::UnnamedPartPath;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::language::Language;
-use crate::modules::{SearchScope, UnnamedPartTarget};
+use crate::modules::{SearchScope, UnlistedLibrary, UnnamedPartTarget};
 use crate::source::Span;
 
 pub struct ModulePathProblems;
@@ -33,16 +33,13 @@ impl ModulePathProblems {
             UnnamedPartTarget::BeyondTaskReach(file) => {
                 Self::with_task_reach_advice(diagnostic, &file)
             }
-            UnnamedPartTarget::LibraryFile {
-                file,
-                library,
-                section,
-            } => {
+            UnnamedPartTarget::LibraryFile { file, unlisted } => {
                 let diagnostic = diagnostic.with_note(format!(
-                    "`{}` is a file of library `{library}`",
-                    file.display()
+                    "`{}` is a file of library `{}`",
+                    file.display(),
+                    unlisted.name
                 ));
-                Self::with_listing_advice(diagnostic, &library, &section)
+                Self::with_listing_advice(diagnostic, &unlisted)
             }
             UnnamedPartTarget::Absent => {
                 diagnostic.with_note("this path names no file under the root directory")
@@ -50,9 +47,11 @@ impl ModulePathProblems {
         }
     }
 
-    pub fn with_listing_advice(diagnostic: Diagnostic, library: &str, section: &str) -> Diagnostic {
+    pub fn with_listing_advice(diagnostic: Diagnostic, unlisted: &UnlistedLibrary) -> Diagnostic {
         diagnostic.with_help(format!(
-            "add `{library}` to the `{section}` of `{}`",
+            "add `{}` to the `{}` of `{}`",
+            unlisted.name,
+            unlisted.section,
             Language::project_file_name()
         ))
     }

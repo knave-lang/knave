@@ -1,0 +1,16 @@
+(trait container
+  (type item)
+  (size (fn ((ref self)) usize)))
+
+(trait producer
+  (type output)
+  (produce (fn ((ref self)) usize)))
+
+(struct counter (count usize))
+
+(impl producer counter
+  (type output usize)
+  (produce (c) (field c count)))
+
+(defn main ()
+  (println (produce (new counter (count 3)))))

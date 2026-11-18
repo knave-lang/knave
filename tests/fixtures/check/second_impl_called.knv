@@ -1,0 +1,8 @@
+(trait numbered
+  (number (fn ((ref self)) i64)))
+
+(impl numbered i64 (number (n) 1))
+
+(impl numbered i64 (number (n) 2))
+
+(defn main () (println (number 5)))

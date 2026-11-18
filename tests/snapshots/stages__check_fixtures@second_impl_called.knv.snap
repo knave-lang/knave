@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/second_impl_called.knv
+---
+error[L0459]: `int` already implements `numbered`
+ --> check/second_impl_called.knv:6:16
+  |
+4 | (impl numbered i64 (number (n) 1))
+  |                --- first implemented here
+5 |
+6 | (impl numbered i64 (number (n) 2))
+  |                ^^^ this implements `numbered` again
+  |
+  = help: remove one of the two
+  = note: run `knave doc L0459` for an explanation

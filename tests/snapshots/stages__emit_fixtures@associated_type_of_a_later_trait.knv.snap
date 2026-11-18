@@ -1,0 +1,48 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/associated_type_of_a_later_trait.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Counter {
+    count: usize,
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", Counter { count: 3 }.produce())
+}
+
+trait Container {
+    type Item;
+    fn size(&self) -> usize;
+}
+
+trait Producer {
+    type Output;
+    fn produce(&self) -> usize;
+}
+
+impl Producer for Counter {
+    type Output = usize;
+    fn produce(&self) -> usize {
+        self.count
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: "Sandbox::without_version(&upgrade.assert_exit_code(0).stderr())"
+---
+note: the project already uses Knave <version>, the version of this `knave`
+help: to install a newer Knave, run `cargo install knave --locked`

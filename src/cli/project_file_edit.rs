@@ -32,6 +32,10 @@ impl ProjectFileEdit {
         }
     }
 
+    pub fn root(&self) -> &Path {
+        self.project.root()
+    }
+
     pub fn listed_crate(&self, section: CrateSection, name: &str) -> Option<&CrateDependency> {
         self.project.own_crate(section, name)
     }

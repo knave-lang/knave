@@ -5,7 +5,7 @@ use super::git_setup::GitSetup;
 use super::github_workflow::GithubWorkflow;
 use super::project_component::ProjectComponent;
 
-#[derive(Args)]
+#[derive(Args, Default)]
 pub struct NewComponents {
     #[arg(long, help = "Write no `.gitignore` and run no `git init`")]
     skip_git: bool,
@@ -17,15 +17,22 @@ pub struct NewComponents {
 
 impl NewComponents {
     pub fn chosen(&self) -> Vec<Box<dyn ProjectComponent>> {
-        let offered: [(bool, Box<dyn ProjectComponent>); 3] = [
-            (self.skip_git, Box::new(GitSetup)),
-            (self.skip_github, Box::new(GithubWorkflow)),
-            (self.skip_agent_skill, Box::new(AgentSkill)),
-        ];
-        offered
+        self.offered()
             .into_iter()
             .filter(|(skipped, _)| !skipped)
             .map(|(_, component)| component)
             .collect()
+    }
+
+    pub fn every() -> Vec<Box<dyn ProjectComponent>> {
+        Self::default().chosen()
+    }
+
+    fn offered(&self) -> [(bool, Box<dyn ProjectComponent>); 3] {
+        [
+            (self.skip_git, Box::new(GitSetup)),
+            (self.skip_github, Box::new(GithubWorkflow)),
+            (self.skip_agent_skill, Box::new(AgentSkill)),
+        ]
     }
 }

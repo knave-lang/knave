@@ -2,6 +2,7 @@ use std::ops::Range;
 
 use super::dependency_reader::DependencyReader;
 use super::dependency_section::DependencySection;
+use super::fields::FieldScanner;
 use super::section::Section;
 use super::vocabulary::ProjectVocabulary;
 use crate::reader::Form;
@@ -68,6 +69,24 @@ impl<'t> ProjectEditor<'t> {
         }
     }
 
+    pub fn with_field(&self, key: &str, value: &str) -> Option<String> {
+        let Some(listed) = self.field_value(key) else {
+            let field = format!(" :{key} {value}");
+            return Some(self.splice(Self::after_name(self.project), &field));
+        };
+        let range = listed.span().range();
+        let holds_value = self.text[range.clone()] == *value;
+        (!holds_value).then(|| self.splice(range, value))
+    }
+
+    fn field_value(&self, key: &str) -> Option<&'t Form> {
+        let parts = Self::entries(self.project);
+        let position = parts
+            .iter()
+            .position(|part| FieldScanner::key_of(part) == Some(key))?;
+        parts.get(position + 1)
+    }
+
     pub fn without_crate(&self, section: DependencySection, name: &str) -> Option<String> {
         let section_form = self.section(section)?;
         let listed = Self::entry_named(section_form, name)?;
@@ -103,6 +122,16 @@ impl<'t> ProjectEditor<'t> {
             .and_then(|parts| parts.first())
             .and_then(|head| head.as_symbol())
             .is_some_and(|head| head.name() == name)
+    }
+
+    fn after_name(project: &Form) -> Range<usize> {
+        let name_end = Self::entries(project)
+            .first()
+            .expect("a loaded project form has a name")
+            .span()
+            .range()
+            .end;
+        name_end..name_end
     }
 
     fn before_close(form: &Form) -> Range<usize> {
@@ -280,6 +309,38 @@ mod tests {
             text.as_deref(),
             Some("(defproject demo\r\n  (dependencies\r\n    (fake-json \"1.4.2\")))\r\n")
         );
+    }
+
+    #[test]
+    fn setting_a_field_the_project_lacks_writes_it_after_the_name() {
+        let text = edited(
+            "(defproject demo (dependencies (other \"1.0\")))\n",
+            |editor| editor.with_field("knave", "\"0.19.0\""),
+        );
+        assert_eq!(
+            text.as_deref(),
+            Some("(defproject demo :knave \"0.19.0\" (dependencies (other \"1.0\")))\n")
+        );
+    }
+
+    #[test]
+    fn setting_a_listed_field_replaces_its_value() {
+        let text = edited(
+            "(defproject demo\n  :knave \"0.18.0\" ; pinned\n)\n",
+            |editor| editor.with_field("knave", "\"0.19.0\""),
+        );
+        assert_eq!(
+            text.as_deref(),
+            Some("(defproject demo\n  :knave \"0.19.0\" ; pinned\n)\n")
+        );
+    }
+
+    #[test]
+    fn setting_a_field_to_its_value_changes_nothing() {
+        let text = edited("(defproject demo :knave \"0.19.0\")\n", |editor| {
+            editor.with_field("knave", "\"0.19.0\"")
+        });
+        assert_eq!(text, None);
     }
 
     #[test]

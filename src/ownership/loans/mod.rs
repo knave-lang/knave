@@ -10,6 +10,7 @@ mod call_walk;
 mod called_parameter;
 mod closure;
 mod control_flow_graph;
+mod dereferenced_placeholders;
 mod expression_walk;
 mod held_value;
 mod holdings;

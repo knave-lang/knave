@@ -1,0 +1,10 @@
+(defn main ()
+  (local s (str "ab"))
+  (local names (vec (as-str s)))
+  (local r (at names 0))
+  (local v
+    ((rust "if {0}.is_empty() {{ {0} }} else {{ {0} }}"
+       (fn ((ref str)) (ref str)))
+     r))
+  (push! names "b")
+  (prn v))

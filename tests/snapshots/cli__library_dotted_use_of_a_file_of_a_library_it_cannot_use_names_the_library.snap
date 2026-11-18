@@ -9,5 +9,5 @@ error[L0260]: module path `./vendor/dots/src/lib` has a part that is not a name
   |      ^^^^^^^^^^^^^^^^^^^^^ each part of a module path names a directory or a file
   |
   = note: `../shapes/src/vendor/dots/src/lib.knv` is a file of library `dots`
-  = help: use it by its module path under `dots`
+  = help: add `dots` to the `libraries` of `project.knv`
   = note: run `knave doc L0260` for an explanation

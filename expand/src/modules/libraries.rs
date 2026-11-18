@@ -1,10 +1,10 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use super::library_place::LibraryPlace;
 use super::local_files::LocalFiles;
 use super::local_root::LocalRoot;
 use super::search_scope::SearchScope;
 use super::unlisted_library::UnlistedLibrary;
+use super::visible_library::{LibraryNaming, VisibleLibrary};
 use crate::core::ModulePath;
 use crate::language::Language;
 
@@ -73,12 +73,34 @@ impl LibraryRoot {
         self.checkout.as_deref()
     }
 
+    fn module_path_under(&self, inner_module: &str) -> ModulePath {
+        ModulePath::new(format!(
+            "{}{}{inner_module}",
+            self.name,
+            ModulePath::SEPARATOR
+        ))
+    }
+
     fn file(&self, inner_module: &str) -> LibraryFile {
         let file_name = format!("{inner_module}.{}", Language::EXTENSION);
         LibraryFile {
             path: self.source_root.join(&file_name),
             display: self.display_root.join(&file_name),
         }
+    }
+}
+
+impl LibraryNaming for LibraryRoot {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn module_path_of(&self, inner: &Path) -> Option<ModulePath> {
+        let inner = ModulePath::of_file(inner)?;
+        if inner.as_str() == self.root_module {
+            return Some(ModulePath::new(self.name.as_str()));
+        }
+        Some(self.module_path_under(inner.as_str()))
     }
 }
 
@@ -99,11 +121,9 @@ impl LibraryTable {
 
     pub fn resolve(&self, owner: Option<&str>, written: &ModulePath) -> ModulePath {
         match self.named(owner) {
-            Some(library) if !self.sees_library(owner, written) => ModulePath::new(format!(
-                "{}{}{written}",
-                library.name,
-                ModulePath::SEPARATOR
-            )),
+            Some(library) if !self.sees_library(owner, written) => {
+                library.module_path_under(written.as_str())
+            }
             _ => written.clone(),
         }
     }
@@ -139,12 +159,11 @@ impl LibraryTable {
             .libraries
             .iter()
             .filter(|other| library.is_none_or(|own| own.name != other.name))
-            .map(|other| LibraryPlace {
-                name: &other.name,
-                source_root: &other.source_root,
-                display_root: &other.display_root,
-                root_module: &other.root_module,
-                visible: self.sees_library(owner, &ModulePath::new(other.name.as_str())),
+            .map(|other| VisibleLibrary {
+                library: other,
+                root: LocalRoot::primary(&other.source_root, &other.display_root, &Self::UNSCOPED),
+                visible: self.sees(owner, &other.name),
+                section: &self.library_section,
             })
             .collect();
         match library {
@@ -172,10 +191,14 @@ impl LibraryTable {
     }
 
     fn sees_library(&self, owner: Option<&str>, written: &ModulePath) -> bool {
+        self.sees(owner, Self::head(written))
+    }
+
+    fn sees(&self, owner: Option<&str>, library: &str) -> bool {
         let visible = self
             .named(owner)
-            .map_or(&self.program_visible, |library| &library.visible);
-        visible.iter().any(|name| name == Self::head(written))
+            .map_or(&self.program_visible, |named| &named.visible);
+        visible.iter().any(|name| name == library)
     }
 
     pub fn file(&self, path: &ModulePath) -> Option<LibraryFile> {

@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::process::Output;
+use std::process::{Command, Output};
 
 use crate::cargo::Cargo;
 use crate::checks::Check;
@@ -20,19 +20,19 @@ impl SourceFormat {
         let workspace = CargoWorkspace::read(root)?;
         let extension = LanguageSource::find(&workspace)?.extension()?;
         let files = SourceFormatPaths::default().files(root, &extension)?;
-        let mut command = Cargo::command();
-        command.current_dir(root).args(Self::arguments(&files));
-        let output = command
+        let output = Self::command(root, &files)
             .output()
             .map_err(|error| TaskFailure::tool_missing("cargo", error))?;
         Ok(Self::finished(files.len(), output))
     }
 
-    fn arguments(files: &[String]) -> Vec<&str> {
-        Self::FORMAT_CHECK
-            .into_iter()
-            .chain(files.iter().map(String::as_str))
-            .collect()
+    fn command(root: &Path, files: &[String]) -> Command {
+        let mut command = Cargo::command();
+        command
+            .current_dir(root)
+            .args(Self::FORMAT_CHECK)
+            .args(files);
+        command
     }
 
     pub fn finished(checked_files: usize, output: Output) -> Self {
@@ -91,6 +91,8 @@ impl FormatOutputs {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::{FormatOutputs, SourceFormat};
     use crate::checks::Check;
 
@@ -100,8 +102,10 @@ mod tests {
             "prelude/core.knv".to_string(),
             "examples/hello.knv".to_string(),
         ];
+        let command = SourceFormat::command(Path::new("/checkout"), &files);
+        assert_eq!(command.get_current_dir(), Some(Path::new("/checkout")));
         assert_eq!(
-            SourceFormat::arguments(&files),
+            command.get_args().collect::<Vec<_>>(),
             [
                 "run",
                 "--quiet",

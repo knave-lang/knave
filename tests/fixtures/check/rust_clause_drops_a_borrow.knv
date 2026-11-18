@@ -44,4 +44,14 @@
       (fn (a (vec b)) usize))
     (i64 "f({0}, {1})")))
 
+(rust-trait carries "crate::Carries"
+  (with str (ref str))
+  (with string (ref str)))
+
+(def carries?
+  (rust "{0}.contains(&{&1})"
+    (where ((whole (carries part)) part)
+      (fn ((ref whole) part) bool))
+    (i64 "{0}.contains({1})")))
+
 (defn main () (println (measure 3)))

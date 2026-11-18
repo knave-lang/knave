@@ -1,7 +1,7 @@
 expand/src/core/printer.rs 685
 expand/src/expand/expression.rs 1000
 expand/src/expand/module_body.rs 1986
-expand/src/expand/problems.rs 1209
+expand/src/expand/problems.rs 1194
 expand/src/format/layout.rs 501
 src/emit/expressions.rs 2864
 src/emit/items.rs 1629
@@ -13,7 +13,7 @@ src/ownership/moves.rs 593
 src/ownership/problems.rs 858
 src/ownership/slices.rs 522
 src/ownership/values.rs 601
-src/types/checker.rs 2588
+src/types/checker.rs 2575
 src/types/infer.rs 3618
 src/types/infer/shared_variables.rs 573
 src/types/pinning.rs 729

@@ -19,6 +19,13 @@ impl TemplateArguments {
         }
     }
 
+    pub fn written(&self, position: usize) -> Option<&Code> {
+        match self {
+            Self::Written(codes) => codes.get(position),
+            Self::Bound(_) => None,
+        }
+    }
+
     pub fn replace(&mut self, position: usize, code: Code) {
         match self {
             Self::Written(codes) => codes[position] = code,

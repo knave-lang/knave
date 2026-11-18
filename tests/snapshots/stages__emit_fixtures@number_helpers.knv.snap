@@ -19,6 +19,10 @@ fn is_lopsided<N: crate::rt::Integer>(x: N) -> bool {
     !crate::rt::is_even(x + N::from_literal(1))
 }
 
+fn is_steady<N: crate::rt::Integer>(x: N) -> bool {
+    crate::rt::is_even(x)
+}
+
 const LIMIT: i64 = 7;
 
 const FLAG: bool = LIMIT % 2 == 0;
@@ -56,12 +60,13 @@ fn main() {
         crate::rt::Shown(&!usize::is_multiple_of(size, 2))
     );
     println!(
-        "{} {} {} {} {}",
+        "{} {} {} {} {} {}",
         crate::rt::Shown(&step(whole)),
         crate::rt::Shown(&step(part)),
         crate::rt::Shown(&is_balanced(part)),
         crate::rt::Shown(&is_halfway(size)),
-        crate::rt::Shown(&is_lopsided(whole))
+        crate::rt::Shown(&is_lopsided(whole)),
+        crate::rt::Shown(&is_steady(whole))
     );
     println!(
         "{} {}",

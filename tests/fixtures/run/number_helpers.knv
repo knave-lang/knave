@@ -18,6 +18,11 @@
 
 (defn lopsided? (x) (odd? (inc x)))
 
+(type steady?
+  (where ((n integer)) (fn (n) bool)))
+
+(defn steady? (x) (not (odd? x)))
+
 (def limit 7)
 
 (def flag (even? limit))
@@ -47,7 +52,8 @@
          (step part)
          (balanced? part)
          (halfway? size)
-         (lopsided? whole))
+         (lopsided? whole)
+         (steady? whole))
     (prn flag unsigned-flag)
     (prn (collect (map (iter numbers) inc)))
     (prn (collect (map (iter numbers) dec)))

@@ -1,0 +1,29 @@
+name: Knave
+
+on:
+  push:
+  pull_request:
+
+env:
+  KNAVE_VERSION: "{knave-version}"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/knave
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+          key: knave-${{ env.KNAVE_VERSION }}-${{ runner.os }}
+      - name: Install Knave
+        run: cargo install knave --version "$KNAVE_VERSION" --locked
+      - name: Check the layout
+        run: knave fmt --check
+      - name: Lint
+        run: knave lint
+      - name: Test
+        run: knave test

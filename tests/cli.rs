@@ -15,7 +15,14 @@ use knave::source::SourceMap;
 use serde_json::{Map, Value, json};
 
 const FAILING_GIT: &str = "#!/bin/sh\nexit 1\n";
-const EVERY_NEW_FILE: [&str; 3] = [".gitignore", "project.knv", "src/main.knv"];
+const NEW_PROJECT_CHECKS: [&[&str]; 3] = [&["fmt", "--check"], &["lint"], &["test"]];
+const EVERY_NEW_FILE: [&str; 5] = [
+    ".github/workflows/knave.yml",
+    ".gitignore",
+    "project.knv",
+    "src/main.knv",
+    "tests/main.knv",
+];
 const GREETING: &str = "(defn main ()\n  (println \"hello from the sandbox\"))\n";
 const PRINTS_A: &str = "(defn main () (println \"A\"))\n";
 const PRINTS_B: &str = "(defn main () (println \"B\"))\n";
@@ -7941,16 +7948,49 @@ fn new_writes_every_component_by_default() {
 }
 
 #[test]
-fn new_skips_git() {
+fn new_skips_the_github_workflow() {
+    let sandbox = Sandbox::new("new_skip_github");
+    sandbox
+        .compiler(&["new", "demo-app", "--skip-github"])
+        .assert_silent_success();
+    assert_eq!(
+        sandbox.project_files("demo-app"),
+        [
+            ".gitignore",
+            "project.knv",
+            "src/main.knv",
+            "tests/main.knv"
+        ]
+    );
+}
+
+#[test]
+fn new_skips_git_and_keeps_the_github_workflow() {
     let sandbox = Sandbox::new("new_skip_git");
     sandbox
         .compiler(&["new", "demo-app", "--skip-git"])
         .assert_silent_success();
     assert_eq!(
         sandbox.project_files("demo-app"),
-        ["project.knv", "src/main.knv"]
+        [
+            ".github/workflows/knave.yml",
+            "project.knv",
+            "src/main.knv",
+            "tests/main.knv",
+        ]
     );
     assert!(!sandbox.has_git_repository("demo-app"));
+}
+
+#[test]
+fn new_writes_a_project_that_passes_its_own_checks() {
+    let sandbox = Sandbox::new("new_project_checks");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    for check in NEW_PROJECT_CHECKS {
+        sandbox.compiler_in("demo-app", check).assert_exit_code(0);
+    }
 }
 
 #[test]
@@ -7993,6 +8033,20 @@ fn new_warns_when_git_cannot_start() {
     let sandbox = Sandbox::new("new_git_cannot_start").with_file("locked-bin/git", FAILING_GIT);
     let new = sandbox.compiler_with_path("locked-bin", &["new", "demo-app"]);
     insta::assert_snapshot!(new.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn new_writes_the_compiler_version_into_the_github_workflow() {
+    let sandbox = Sandbox::new("new_workflow_version");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let version_line = format!("KNAVE_VERSION: \"{}\"\n", env!("CARGO_PKG_VERSION"));
+    assert!(
+        sandbox
+            .contents("demo-app/.github/workflows/knave.yml")
+            .contains(&version_line)
+    );
 }
 
 #[test]

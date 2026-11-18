@@ -1,0 +1,6 @@
+(trait holder
+  (pick (fn ((where (a) self)) i64)))
+
+(impl holder i64 (pick (v) 1))
+
+(defn main () (println (pick 1)))

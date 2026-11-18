@@ -9,6 +9,6 @@ error[L0433]: non-exhaustive `match`
 4 |   (match s ((circle r) (* 3.0 r r))))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
   |
-  = note: missing 2 cases: `(rect _ _)`, `point`
-  = help: add an arm for each missing case
+  = note: missing 2 patterns: `(rect _ _)`, `point`
+  = help: add an arm for each missing pattern
   = note: run `knave doc L0433` for an explanation

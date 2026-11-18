@@ -9,8 +9,8 @@ error[L0433]: non-exhaustive `match`
 2 |   (match n (0 0) (1 1) (1 2)))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
   |
-  = note: missing 1 case: `_`
-  = help: add an arm for each missing case
+  = note: missing 1 pattern: `_`
+  = help: add an arm for each missing pattern
   = note: run `knave doc L0433` for an explanation
 
 warning[L0803]: unreachable `match` arm
@@ -29,8 +29,8 @@ error[L0433]: non-exhaustive `match`
 5 |   (match s ("a" 1) ("b" 2) ("a" 3)))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
   |
-  = note: missing 1 case: `_`
-  = help: add an arm for each missing case
+  = note: missing 1 pattern: `_`
+  = help: add an arm for each missing pattern
   = note: run `knave doc L0433` for an explanation
 
 warning[L0803]: unreachable `match` arm

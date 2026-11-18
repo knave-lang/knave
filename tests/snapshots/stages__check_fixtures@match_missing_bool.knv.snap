@@ -9,6 +9,6 @@ error[L0433]: non-exhaustive `match`
 2 |   (match flag (true 1)))
   |   ^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
   |
-  = note: missing 1 case: `false`
-  = help: add an arm for each missing case
+  = note: missing 1 pattern: `false`
+  = help: add an arm for each missing pattern
   = note: run `knave doc L0433` for an explanation

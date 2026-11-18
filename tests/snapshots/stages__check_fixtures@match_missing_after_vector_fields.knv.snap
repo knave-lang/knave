@@ -9,6 +9,6 @@ error[L0433]: non-exhaustive `match`
 7 |   (match b ((batch _ _ true) 1)))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this `match` does not cover every value
   |
-  = note: missing 1 case: `(batch _ _ false)`
-  = help: add an arm for each missing case
+  = note: missing 1 pattern: `(batch _ _ false)`
+  = help: add an arm for each missing pattern
   = note: run `knave doc L0433` for an explanation

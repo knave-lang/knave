@@ -1,13 +1,13 @@
 name: Dev shell
-description: Install Nix, trust the project's Cachix, and restore the Rust build cache.
+description: Install Nix, trust the project's Cachix, and restore the Rust build cache when one is named.
 
 inputs:
   cachix-auth-token:
     description: Pushes built store paths to Cachix when set.
     default: ""
   build-cache:
-    description: The name of the Rust build cache, shared by every job that builds the same way.
-    required: true
+    description: The name of the Rust build cache, shared by every job that builds the same way. A job that builds nothing leaves it empty.
+    default: ""
   save-build-cache:
     description: Saves the Rust build cache after the job.
     default: "false"
@@ -26,9 +26,11 @@ runs:
         skipPush: ${{ runner.os == 'macOS' }}
     # The build cache's key holds the compiler's version, so the cache action must find rustc and cargo.
     - name: Expose the dev shell's Rust tools
+      if: inputs.build-cache != ''
       shell: bash
       run: nix develop .#ci -c bash -c 'dirname "$(command -v cargo)"; dirname "$(command -v rustc)"' >> "$GITHUB_PATH"
     - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      if: inputs.build-cache != ''
       with:
         shared-key: ${{ inputs.build-cache }}
         save-if: ${{ inputs.save-build-cache }}

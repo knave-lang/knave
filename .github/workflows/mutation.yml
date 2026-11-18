@@ -45,8 +45,6 @@ jobs:
         run: bash .github/mutation/plan.sh
       - uses: ./.github/actions/dev-shell
         if: steps.plan.outputs.changed-sources != '0'
-        with:
-          build-cache: mutation
       - id: mutants
         name: List the mutants of the diff
         if: steps.plan.outputs.changed-sources != '0'
@@ -93,6 +91,7 @@ jobs:
           CARGO_INCREMENTAL: "1"
           BUILD_SECONDS: 1500
           TEST_SECONDS: 900
+          SLOW_SECONDS: 5100
         run: nix develop .#ci -c bash .github/mutation/test-patches.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ !cancelled() }}

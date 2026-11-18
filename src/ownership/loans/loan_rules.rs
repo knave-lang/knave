@@ -1,6 +1,7 @@
+use super::dereferenced_placeholders::DereferencedPlaceholders;
 use crate::types::{
     BorrowedIndex, BorrowingTypes, CopiedOut, CopyRules, TemplateTies, Type, TypedArgument,
-    TypedExpr, TypedExprKind, TypedProgram,
+    TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
 };
 
 pub struct LoanRules<'p> {
@@ -26,6 +27,21 @@ impl<'p> LoanRules<'p> {
             .read_template(callee, None, |_, ties| ties.cloned())
     }
 
+    pub fn dereferences_every_use(&self, callee: &TypedExpr, position: usize) -> bool {
+        !self.chooses_a_clause(callee)
+            && self
+                .program
+                .template_borrows
+                .read_template(callee, false, |parsed, _| {
+                    DereferencedPlaceholders::new(parsed).dereference_every_use(position)
+                })
+    }
+
+    fn chooses_a_clause(&self, callee: &TypedExpr) -> bool {
+        matches!(&callee.kind, TypedExprKind::Leaf(TypedLeaf::Global(binding))
+            if self.program.template_clauses.chooses(*binding))
+    }
+
     pub fn copies_out(&self, argument: &TypedArgument) -> bool {
         CopiedOut::of(argument, |value| self.indexes_in_place(value)).is_some()
     }
@@ -48,8 +64,25 @@ impl<'p> LoanRules<'p> {
 
 #[cfg(test)]
 mod tests {
+    use super::LoanRules;
     use crate::core::{ExprKind, Leaf, RustTemplate};
-    use crate::types::{BorrowedIndex, TypedSource};
+    use crate::ownership::lambda_source::LambdaSource;
+    use crate::types::{BorrowedIndex, TypedExpr, TypedExprKind, TypedSource};
+
+    struct ClauseCalls;
+
+    impl ClauseCalls {
+        const SOURCE: &str = "(def size (rust \"{0}.len()\" (where (a) (fn ((ref a)) usize))))\n\
+            (def sized (rust \"{0}.len()\" (where (a) (fn ((ref a)) usize)) (str \"{0}.len()\")))\n\
+            (defn main ()\n  (local plain (size \"ab\"))\n  (local chosen (sized \"ab\"))\n  (println plain chosen))";
+
+        fn callee<'s>(source: &'s LambdaSource, name: &str) -> &'s TypedExpr {
+            match &source.bound(name).kind {
+                TypedExprKind::Call(callee, _) => callee,
+                _ => panic!("`{name}` is bound to a call"),
+            }
+        }
+    }
 
     struct IndexTemplates;
 
@@ -77,6 +110,14 @@ mod tests {
                     .chain([&template.template])
                     .any(|text| BorrowedIndex::place(text).is_some())
         }
+    }
+
+    #[test]
+    fn a_template_that_chooses_a_clause_dereferences_no_argument() {
+        let source = LambdaSource::new(ClauseCalls::SOURCE);
+        let rules = LoanRules::of(source.program());
+        assert!(rules.dereferences_every_use(ClauseCalls::callee(&source, "plain"), 0));
+        assert!(!rules.dereferences_every_use(ClauseCalls::callee(&source, "chosen"), 0));
     }
 
     #[test]

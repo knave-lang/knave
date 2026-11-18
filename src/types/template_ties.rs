@@ -106,11 +106,15 @@ impl TemplateTies {
         &self,
         position: usize,
         uncollapsed: impl IntoIterator<Item = usize>,
+        dereferenced: &[usize],
     ) -> bool {
-        self.stored.contains(position)
-            && uncollapsed
+        if self.stored.contains(position) {
+            uncollapsed
                 .into_iter()
                 .all(|other| !self.fixing.contains(other))
+        } else {
+            !dereferenced.contains(&position)
+        }
     }
 
     fn reads_beneath(&self, position: usize) -> bool {
@@ -341,14 +345,13 @@ mod tests {
     }
 
     #[test]
-    fn only_a_type_variable_beneath_a_parameter_s_references_stores_the_reference() {
+    fn a_concrete_reference_is_stored_unless_the_text_dereferences_it() {
         let nested = Type::shared(Type::shared(TiesFixture::generic()));
-        let vector = Type::mutable(TiesFixture::generic());
-        let ties = TiesFixture::ties(vec![nested, Type::str_ref(), vector], Type::unit())
+        let ties = TiesFixture::ties(vec![nested, Type::str_ref()], Type::unit())
             .expect("the result holds no borrow");
-        assert!(ties.stores_the_reference(0, []));
-        assert!(!ties.stores_the_reference(1, []));
-        assert!(!ties.stores_the_reference(2, []));
+        assert!(ties.stores_the_reference(0, [], &[0]));
+        assert!(ties.stores_the_reference(1, [], &[]));
+        assert!(!ties.stores_the_reference(1, [], &[1]));
     }
 
     #[test]
@@ -378,7 +381,7 @@ mod tests {
             Type::shared(TiesFixture::generic()),
         );
         let widened = TemplateTies::widened(concrete, generic).expect("both are settled");
-        assert!(widened.stores_the_reference(0, []));
+        assert!(widened.stores_the_reference(0, [], &[0]));
     }
 
     #[test]
@@ -412,8 +415,8 @@ mod tests {
     fn a_position_past_the_first_word_keeps_its_reference_whole() {
         let ties = TiesFixture::ties(vec![Type::str_ref()], Type::unit())
             .expect("the result holds no borrow");
-        assert!(!ties.stores_the_reference(0, []));
-        assert!(ties.stores_the_reference(64, []));
+        assert!(!ties.stores_the_reference(0, [], &[0]));
+        assert!(ties.stores_the_reference(64, [], &[64]));
     }
 
     #[test]

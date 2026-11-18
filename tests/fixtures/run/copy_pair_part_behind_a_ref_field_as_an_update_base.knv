@@ -1,0 +1,10 @@
+(struct pt (x i64) (y i64))
+
+(struct (wrap 'r)
+        (r (ref 'r (pair pt i64))))
+
+(defn main ()
+  (let (p (pair (new pt (x 1) (y 5)) 3)
+        w (new wrap (r (ref p)))
+        q (new _ (first (field w r)) (x 2)))
+    (println (field q x) (field q y))))

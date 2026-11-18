@@ -1,0 +1,11 @@
+(struct pt (x i64) (y i64))
+
+(struct cell (p pt))
+
+(struct (wrap 'r) (r (ref 'r cell)))
+
+(defn main ()
+  (let (c (new cell (p (new pt (x 1) (y 5))))
+        w (new wrap (r (ref c)))
+        q (new _ (field (field w r) p) (x 2)))
+    (println (field q x) (field q y))))

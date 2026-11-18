@@ -62,7 +62,7 @@ src/ownership/usage.rs::UsageCollector 23
 
 src/ownership/values.rs::FunctionValueModes 38
 
-src/types/checker.rs::TypeChecker 434
+src/types/checker.rs::TypeChecker 429
 
 src/types/opaque_positions.rs::OpaquePositions 24
 

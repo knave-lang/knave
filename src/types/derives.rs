@@ -3,53 +3,26 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::checker::TypeChecker;
+use super::definition_kind::DefinitionKind;
+use super::derive_candidate::DeriveCandidate;
+use super::derive_catalog::DeriveCatalog;
+use super::derive_source::DeriveSource;
 use super::parameter_names::ParameterNames;
 use super::problems::TypeProblems;
 use super::trait_rows_reach::Implementor;
 use super::ty::{Bound, GenericParam, Scheme, Type};
-use crate::core::{BindingId, CoreModule, ItemKind, StructDerives};
-use crate::modules::ModuleSources;
+use super::written_derive::WrittenDerive;
+use crate::core::{BindingId, CoreModule, ItemKind};
 use crate::source::Span;
-
-struct WrittenDerive {
-    span: Span,
-    traits: Vec<(BindingId, Span)>,
-}
-
-#[derive(Clone, Copy)]
-enum DeriveSource {
-    Inferred,
-    Listed(Span),
-}
-
-#[derive(Clone, Copy)]
-enum DefinitionKind {
-    Struct,
-    Enum,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum DerivedTrait {
-    Written(&'static str),
-    Structural,
-}
-
-#[derive(Clone, Copy)]
-struct DeriveCandidate {
-    binding: BindingId,
-    kind: DefinitionKind,
-    trait_binding: BindingId,
-    source: DeriveSource,
-}
 
 impl TypeChecker {
     pub(super) fn register_derived_traits(&mut self, modules: &[CoreModule]) {
         let types = Self::type_arities(modules);
-        let derivable = self.derivable_traits(modules);
-        let written = self.written_derives(modules, &derivable);
-        let mut candidates = self.add_derive_candidates(&types, &derivable, &written);
+        let catalog = DeriveCatalog::of(modules, &self.declarations.traits.structural);
+        let written = self.written_derives(modules, &catalog);
+        let mut candidates = self.add_derive_candidates(&types, &catalog, &written);
         self.remove_blocked_derives(&mut candidates);
-        self.record_derives(&candidates, &derivable);
+        self.record_derives(&candidates, &catalog);
     }
 
     fn type_arities(modules: &[CoreModule]) -> Vec<(BindingId, usize, DefinitionKind)> {
@@ -68,44 +41,17 @@ impl TypeChecker {
             .collect()
     }
 
-    fn derivable_traits(&self, modules: &[CoreModule]) -> Vec<(BindingId, DerivedTrait)> {
-        let prelude_traits: Vec<(BindingId, &str)> = modules
-            .iter()
-            .filter(|module| ModuleSources::is_prelude(&module.path))
-            .flat_map(|module| &module.items)
-            .filter_map(|item| match &item.kind {
-                ItemKind::RustTrait(declaration) => {
-                    Some((declaration.binding, declaration.path.as_ref()))
-                }
-                _ => None,
-            })
-            .collect();
-        let written = StructDerives::DERIVABLE.iter().flat_map(|derived| {
-            prelude_traits
-                .iter()
-                .filter(move |(_, path)| StructDerives::derive_name(path) == *derived)
-                .map(move |(binding, _)| (*binding, DerivedTrait::Written(derived)))
-        });
-        let structural = self
-            .declarations
-            .traits
-            .structural
-            .iter()
-            .map(|structural| (structural.binding, DerivedTrait::Structural));
-        written.chain(structural).collect()
-    }
-
     fn written_derives(
         &mut self,
         modules: &[CoreModule],
-        derivable: &[(BindingId, DerivedTrait)],
+        catalog: &DeriveCatalog,
     ) -> FxHashMap<BindingId, WrittenDerive> {
         let mut written: FxHashMap<BindingId, WrittenDerive> = FxHashMap::default();
         for item in modules.iter().flat_map(|module| &module.items) {
             let ItemKind::Derive(struct_binding, name_span, traits) = &item.kind else {
                 continue;
             };
-            if self.is_rust_enum(*struct_binding) {
+            if self.derive_rules().is_rust_enum(*struct_binding) {
                 let enum_name = self.bindings.get(*struct_binding).name().to_string();
                 self.diagnostics
                     .push(TypeProblems::derive_on_rust_type(&enum_name, *name_span));
@@ -124,7 +70,7 @@ impl TypeChecker {
                 .iter()
                 .copied()
                 .filter(|(trait_binding, span)| {
-                    self.accepts_derive(*trait_binding, *span, derivable)
+                    self.accepts_derive(*trait_binding, *span, catalog)
                         && !self.report_derived_written_impl(*struct_binding, *trait_binding, *span)
                 })
                 .collect();
@@ -149,18 +95,12 @@ impl TypeChecker {
         &mut self,
         trait_binding: BindingId,
         span: Span,
-        derivable: &[(BindingId, DerivedTrait)],
+        catalog: &DeriveCatalog,
     ) -> bool {
-        if derivable
-            .iter()
-            .any(|(binding, _)| *binding == trait_binding)
-        {
+        if catalog.accepts(trait_binding) {
             return true;
         }
-        let names: Vec<String> = derivable
-            .iter()
-            .map(|(binding, _)| self.bindings.get(*binding).name().to_string())
-            .collect();
+        let names = catalog.names(&self.bindings);
         let trait_name = self.bindings.get(trait_binding).name().to_string();
         self.diagnostics
             .push(TypeProblems::not_derivable(&trait_name, &names, span));
@@ -170,18 +110,23 @@ impl TypeChecker {
     fn add_derive_candidates(
         &mut self,
         types: &[(BindingId, usize, DefinitionKind)],
-        derivable: &[(BindingId, DerivedTrait)],
+        catalog: &DeriveCatalog,
         written: &FxHashMap<BindingId, WrittenDerive>,
     ) -> Vec<DeriveCandidate> {
         let mut candidates = Vec::new();
-        for (trait_binding, derived) in derivable {
+        for (trait_binding, derived) in catalog.entries() {
             for (binding, arity, kind) in types {
-                if self.is_rust_enum(*binding) {
+                let sources = self.derive_rules();
+                if sources.is_rust_enum(*binding) {
                     continue;
                 }
-                let Some(source) =
-                    self.derive_source(*binding, *trait_binding, *derived, written, derivable)
-                else {
+                let source = match written.get(binding) {
+                    Some(derive) => catalog
+                        .listing_span(derive, *trait_binding, *derived)
+                        .map(DeriveSource::Listed),
+                    None => sources.unlisted_source(*binding, *trait_binding, *derived),
+                };
+                let Some(source) = source else {
                     continue;
                 };
                 let implementor = self.derived_implementor(*binding, *arity, *trait_binding);
@@ -198,42 +143,6 @@ impl TypeChecker {
             }
         }
         candidates
-    }
-
-    fn is_rust_enum(&self, binding: BindingId) -> bool {
-        self.declarations
-            .types
-            .enums
-            .get(binding)
-            .is_some_and(|definition| definition.rust.is_some())
-    }
-
-    fn derive_source(
-        &self,
-        struct_binding: BindingId,
-        trait_binding: BindingId,
-        derived: DerivedTrait,
-        written: &FxHashMap<BindingId, WrittenDerive>,
-        derivable: &[(BindingId, DerivedTrait)],
-    ) -> Option<DeriveSource> {
-        match (written.get(&struct_binding), derived) {
-            (Some(derive), _) => Self::listing_span(derive, trait_binding, derived, derivable)
-                .map(DeriveSource::Listed),
-            (None, DerivedTrait::Structural) => self
-                .declared_traits()
-                .written_impl(trait_binding, struct_binding)
-                .is_none()
-                .then_some(DeriveSource::Inferred),
-            (None, DerivedTrait::Written(name))
-                if name == StructDerives::COPY
-                    && self.changed_structs.contains(&struct_binding) =>
-            {
-                None
-            }
-            (None, DerivedTrait::Written(name)) => StructDerives::INFERRED
-                .contains(&name)
-                .then_some(DeriveSource::Inferred),
-        }
     }
 
     fn report_derived_written_impl(
@@ -255,38 +164,6 @@ impl TypeChecker {
         );
         self.diagnostics.push(diagnostic);
         true
-    }
-
-    fn listing_span(
-        derive: &WrittenDerive,
-        trait_binding: BindingId,
-        derived: DerivedTrait,
-        derivable: &[(BindingId, DerivedTrait)],
-    ) -> Option<Span> {
-        derive
-            .traits
-            .iter()
-            .find(|(listed, _)| {
-                *listed == trait_binding || Self::brings(*listed, derived, derivable)
-            })
-            .map(|(_, span)| *span)
-    }
-
-    fn brings(
-        listed: BindingId,
-        derived: DerivedTrait,
-        derivable: &[(BindingId, DerivedTrait)],
-    ) -> bool {
-        let listed = derivable
-            .iter()
-            .find(|(binding, _)| *binding == listed)
-            .map(|(_, listed)| *listed);
-        match (listed, derived) {
-            (Some(DerivedTrait::Written(listed)), DerivedTrait::Written(name)) => {
-                StructDerives::brings(listed, name)
-            }
-            _ => false,
-        }
     }
 
     fn remove_blocked_derives(&mut self, candidates: &mut Vec<DeriveCandidate>) {
@@ -370,19 +247,9 @@ impl TypeChecker {
         }
     }
 
-    fn record_derives(
-        &mut self,
-        candidates: &[DeriveCandidate],
-        derivable: &[(BindingId, DerivedTrait)],
-    ) {
+    fn record_derives(&mut self, candidates: &[DeriveCandidate], catalog: &DeriveCatalog) {
         for candidate in candidates {
-            let written_name = derivable
-                .iter()
-                .find(|(binding, _)| *binding == candidate.trait_binding)
-                .and_then(|(_, derived)| match derived {
-                    DerivedTrait::Written(name) => Some(*name),
-                    DerivedTrait::Structural => None,
-                });
+            let written_name = catalog.written_name(candidate.trait_binding);
             let (derives, derived_traits) = match candidate.kind {
                 DefinitionKind::Struct => {
                     let Some(definition) =
@@ -412,11 +279,9 @@ impl TypeChecker {
         trait_binding: BindingId,
     ) -> Option<(Rc<str>, Type)> {
         match kind {
-            DefinitionKind::Struct => self
-                .derive_blockers()
-                .blocking_field(binding, trait_binding),
+            DefinitionKind::Struct => self.derive_rules().blocking_field(binding, trait_binding),
             DefinitionKind::Enum => self
-                .derive_blockers()
+                .derive_rules()
                 .blocking_enum_payload(binding, trait_binding),
         }
     }

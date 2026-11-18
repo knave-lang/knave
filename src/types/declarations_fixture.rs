@@ -4,6 +4,8 @@ use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::derivable_traits::DerivableTraits;
 use super::derive_blockers::DeriveBlockers;
+use super::derive_catalog::DeriveCatalog;
+use super::derive_rules::DeriveRules;
 use super::display::TypeDisplay;
 use super::impl_item::ImplItem;
 use super::implementation_check::ImplementationCheck;
@@ -47,6 +49,22 @@ impl DeclarationsFixture {
 
     pub(super) fn declared_traits(&self) -> DeclaredTraits<'_> {
         DeclaredTraits::new(&self.declarations.traits)
+    }
+
+    pub(super) fn program_bindings(&self) -> &crate::core::BindingArena {
+        &self.program.bindings
+    }
+
+    pub(super) fn derive_catalog(&self) -> DeriveCatalog {
+        let modules = &self.source.program().modules;
+        DeriveCatalog::of(modules, &self.declarations.traits.structural)
+    }
+
+    pub(super) fn derive_rules<'a>(
+        &'a self,
+        changed_structs: &'a rustc_hash::FxHashSet<BindingId>,
+    ) -> DeriveRules<'a> {
+        DeriveRules::new(&self.declarations, changed_structs)
     }
 
     pub(super) fn derivable_traits(&self) -> DerivableTraits<'_> {

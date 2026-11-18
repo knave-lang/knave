@@ -17,7 +17,7 @@ use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::definition_outcomes::DefinitionOutcomes;
 use super::derivable_traits::DerivableTraits;
-use super::derive_blockers::DeriveBlockers;
+use super::derive_rules::DeriveRules;
 use super::display::TypeDisplay;
 use super::enum_item::EnumItem;
 use super::generic_declarations::GenericDeclarations;
@@ -534,8 +534,8 @@ impl TypeChecker {
         DerivableTraits::new(&self.declarations.traits)
     }
 
-    pub(super) fn derive_blockers(&self) -> DeriveBlockers<'_> {
-        DeriveBlockers::new(&self.declarations, self.variant_payloads())
+    pub(super) fn derive_rules(&self) -> DeriveRules<'_> {
+        DeriveRules::new(&self.declarations, &self.changed_structs)
     }
 
     fn check_opaque_positions(
@@ -1979,7 +1979,7 @@ impl TypeChecker {
                     diagnostic.with_note(TypeProblems::order_not_inferred_enum_note(trait_name));
             }
             if let Some((variant, field_type)) = self
-                .derive_blockers()
+                .derive_rules()
                 .blocking_enum_payload(binding, bound.binding)
             {
                 diagnostic = diagnostic.with_note(TypeProblems::order_blocked_enum_note(
@@ -2094,7 +2094,7 @@ impl TypeChecker {
         };
         let sortable = self.first_ord_field(definition, trait_binding);
         match self
-            .derive_blockers()
+            .derive_rules()
             .blocking_field(struct_binding, trait_binding)
         {
             Some((field, field_type)) => diagnostic

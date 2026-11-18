@@ -1,7 +1,7 @@
 use super::argument_passing::ArgumentPassing;
 use super::dropped_borrows::DroppedBorrows;
 use super::shared_references::SharedReferences;
-use super::template::{ParsedTemplate, PassingDifference};
+use super::template::{ParsedTemplate, PassingAspect, PassingDifference};
 
 pub struct ClauseComparison<'t> {
     template: &'t ParsedTemplate,
@@ -44,15 +44,25 @@ impl<'t> ClauseComparison<'t> {
 
     fn drops_a_borrow(&self, argument: usize) -> Result<bool, PassingDifference> {
         let in_clause = self.compared(self.clause, argument);
-        if self.compared(self.template, argument) == in_clause {
+        let Some(aspect) = self
+            .compared(self.template, argument)
+            .differing_aspect(&in_clause)
+        else {
             return Ok(false);
-        }
+        };
         let unborrowed = self.template.without_written_borrow(argument);
         let remaining = self
             .compared(&unborrowed, argument)
             .differing_aspect(&in_clause);
         if let Some(remaining) = remaining {
-            return Err(PassingDifference::Argument(argument, remaining));
+            let dropped_borrow_explains =
+                matches!(aspect, PassingAspect::Borrow | PassingAspect::Operand);
+            let reported = if dropped_borrow_explains {
+                remaining
+            } else {
+                aspect
+            };
+            return Err(PassingDifference::Argument(argument, reported));
         }
         Ok(!self.shared_references.holds(argument))
     }

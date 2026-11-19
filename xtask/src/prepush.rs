@@ -15,6 +15,7 @@ use crate::instrumented_tests::InstrumentedTests;
 use crate::production_lines::ProductionLineCensus;
 use crate::ratchet_gate::RatchetGate;
 use crate::source_format::SourceFormat;
+use crate::template_history::TemplateHistory;
 use crate::test_selection::TestRun;
 use crate::verdict::Verdict;
 
@@ -48,10 +49,12 @@ impl PrepushTask {
     fn attempt(&self, root: &Path) -> Result<ExitCode, TaskFailure> {
         let fork_point = self.fork_point(root)?;
         let changed = ChangedLines::since(root, &fork_point)?;
+        let mut ratchets = Self::ratchet_checks(root, &fork_point)?;
+        ratchets.push(Box::new(TemplateHistory::check(root)?));
         let checks = Self::checks(
             self.crap_forecast(root, &changed)?,
             SourceFormat::check(root)?,
-            Self::ratchet_checks(root, &fork_point)?,
+            ratchets,
         );
         let checks: Vec<&dyn Check> = checks.iter().map(Box::as_ref).collect();
         Ok(Verdict::announce(&checks))

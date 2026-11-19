@@ -663,7 +663,7 @@ The name argument is checked first: a name that is not kebab-case is `L0718`, la
 **`knave upgrade` moves a project to the running compiler's version.** Outside a project it is a usage error. It sets `:knave` to the compiler's version, adding the key after the project's name when the file lacks it, and then visits each file that Knave owns: the two copies of the agent skill and the GitHub workflow. It touches no other file.
 
 - A missing file stays missing, so a component that a `--skip-` flag left out stays out.
-- A file that holds a text some Knave release wrote, for any version, takes this compiler's text, and the command names it. The compiler keeps each earlier text of its templates under `src/cli/earlier_texts/`, at the template's own path.
+- A file that holds a text some Knave release wrote, for any version, takes this compiler's text, and the command names it. The compiler keeps each text that a release wrote under `src/cli/earlier_texts/`, at the template's own path and named by the release's version. `cargo xtask prepush` fails when an owned template differs from its text at the highest `v*` tag and that text is missing there, so a change between releases needs no entry.
 - A file that holds any other text is the user's: the command keeps it, warns, and prints a unified diff from the file to this compiler's text.
 - When nothing changes, the command says so, with a help that names `cargo install knave --locked`. It exits 0 in each case.
 - It prints no `L0737`, since it clears it. A compiler older than `:knave` gets `L0736` and leaves every file as it is, so the command never lowers the version.

@@ -1,0 +1,2 @@
+(defn main ()
+  (println (unwrap-ok (the (result int duration) (ok 3)))))

@@ -2,6 +2,10 @@
 (use prelude/types box option result vec)
 (use prelude/pair pair)
 
+(use prelude/text infallible parse-bool-error
+                  parse-char-error parse-float-error
+                  parse-int-error)
+
 (module
   "Copies values that would otherwise move.")
 
@@ -9,7 +13,8 @@
 
 (rust-trait clone "Clone"
   bool char string i8 i16 i32 i64 i128 isize u8 u16 u32 u64
-  u128 usize f32 f64
+  u128 usize f32 f64 infallible parse-bool-error
+  parse-char-error parse-float-error parse-int-error
   (where (a) (ref a))
   (where ((a clone)) (vec a))
   (where ((a clone)) (option a))

@@ -1,9 +1,8 @@
 use super::borrow_rules::BorrowRules;
 use super::copy_requirement::CopyRequirement;
-use super::declared_types::DeclaredTypes;
 use super::passed_types::PassedTypes;
 use super::passing_facts::PassingFacts;
-use super::passing_sources::PassingSources;
+use super::passing_tables::PassingTables;
 use super::pending::PendingBorrow;
 use super::ty::{BoundOrigin, Type, TypeVar};
 use super::unifier::Unifier;
@@ -12,13 +11,13 @@ use crate::source::Span;
 use crate::types::typed::Borrow;
 
 pub(super) struct PendingBorrowDecision<'s, 'a> {
-    sources: PassingSources<'a>,
+    tables: PassingTables<'a>,
     unifier: &'s mut Unifier,
 }
 
 impl<'s, 'a> PendingBorrowDecision<'s, 'a> {
-    pub(super) fn new(sources: PassingSources<'a>, unifier: &'s mut Unifier) -> Self {
-        Self { sources, unifier }
+    pub(super) fn new(tables: PassingTables<'a>, unifier: &'s mut Unifier) -> Self {
+        Self { tables, unifier }
     }
 
     pub(super) fn decide(&mut self, pending: &PendingBorrow) -> Result<Borrow, Diagnostic> {
@@ -79,9 +78,7 @@ impl<'s, 'a> PendingBorrowDecision<'s, 'a> {
     fn borrowed_view(&self, borrowed: &Type) -> Option<Type> {
         let view = self.unifier.resolve(borrowed);
         match &view {
-            Type::Ref(_, referent)
-                if DeclaredTypes::new(self.sources.declarations.types()).is_unsized(referent) =>
-            {
+            Type::Ref(_, referent) if self.tables.declared_types().is_unsized(referent) => {
                 Some(view)
             }
             _ => None,
@@ -95,7 +92,7 @@ impl<'s, 'a> PendingBorrowDecision<'s, 'a> {
     }
 
     fn copy_through_borrow(&mut self, parameter: &Type, argument: &Type, copied: Span) -> Borrow {
-        CopyRequirement::new(self.sources.copy_trait, self.unifier)
+        CopyRequirement::new(self.tables.copy_trait, self.unifier)
             .require(parameter, vec![BoundOrigin::BorrowCopied(copied)]);
         Borrow::Deref(argument.reference_depth())
     }
@@ -105,11 +102,11 @@ impl<'s, 'a> PendingBorrowDecision<'s, 'a> {
     }
 
     fn rules(&mut self) -> BorrowRules<'_, 'a> {
-        BorrowRules::new(self.sources, self.unifier)
+        BorrowRules::new(self.tables, self.unifier)
     }
 
     fn facts(&self) -> PassingFacts<'_> {
-        PassingFacts::new(self.sources, self.unifier)
+        PassingFacts::new(self.tables, self.unifier)
     }
 }
 
@@ -117,19 +114,7 @@ impl<'s, 'a> PendingBorrowDecision<'s, 'a> {
 mod tests {
     use crate::types::Type;
     use crate::types::passing_fixture::PassingFixture;
-    use crate::types::pending::PendingBorrow;
     use crate::types::typed::Borrow;
-
-    fn pending(var: &Type, argument: Type) -> PendingBorrow {
-        let Type::Var(var) = var else {
-            unreachable!("a pending borrow waits on a variable")
-        };
-        PendingBorrow {
-            var: *var,
-            argument,
-            span: PassingFixture::span(),
-        }
-    }
 
     #[test]
     fn a_literal_parameter_takes_an_unknown_referent_by_value() {
@@ -138,7 +123,7 @@ mod tests {
         let argument = Type::shared(fixture.unifier().fresh());
         let decided = fixture
             .argument_passing()
-            .decide(&pending(&parameter, argument));
+            .decide(&PassingFixture::pending_borrow(&parameter, argument));
         assert_eq!(decided.expect("the borrow is decided"), Borrow::Deref(1));
     }
 
@@ -149,7 +134,7 @@ mod tests {
         let argument = Type::shared(parameter.clone());
         let decided = fixture
             .argument_passing()
-            .decide(&pending(&parameter, argument));
+            .decide(&PassingFixture::pending_borrow(&parameter, argument));
         assert_eq!(decided.expect("the borrow is decided"), Borrow::Deref(1));
         let Type::Var(var) = parameter else {
             unreachable!("fresh makes a variable")
@@ -177,7 +162,7 @@ mod tests {
         let argument = Type::shared(Type::shared(referent.clone()));
         let decided = fixture
             .argument_passing()
-            .decide(&pending(&Type::Var(var), argument));
+            .decide(&PassingFixture::pending_borrow(&Type::Var(var), argument));
         assert_eq!(decided.expect("the borrow is decided"), Borrow::Deref(2));
         let view = Type::shared(PassingFixture::str());
         assert_eq!(fixture.unifier().resolve(&referent), view);

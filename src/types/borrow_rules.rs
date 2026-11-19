@@ -1,9 +1,6 @@
-use super::copy::CopyRules;
-use super::declared_types::DeclaredTypes;
-use super::display::TypeDisplay;
 use super::expectation::Expectation;
 use super::passing_facts::PassingFacts;
-use super::passing_sources::PassingSources;
+use super::passing_tables::PassingTables;
 use super::ty::{Type, TypeVar};
 use super::unification::Unification;
 use super::unifier::Unifier;
@@ -12,13 +9,13 @@ use crate::source::Span;
 use crate::types::typed::Borrow;
 
 pub(super) struct BorrowRules<'s, 'a> {
-    sources: PassingSources<'a>,
+    tables: PassingTables<'a>,
     unifier: &'s mut Unifier,
 }
 
 impl<'s, 'a> BorrowRules<'s, 'a> {
-    pub(super) fn new(sources: PassingSources<'a>, unifier: &'s mut Unifier) -> Self {
-        Self { sources, unifier }
+    pub(super) fn new(tables: PassingTables<'a>, unifier: &'s mut Unifier) -> Self {
+        Self { tables, unifier }
     }
 
     pub(super) fn describe(&mut self, described: &Type) -> String {
@@ -87,6 +84,7 @@ impl<'s, 'a> BorrowRules<'s, 'a> {
 
     fn borrow_of_referent(&self, referent: &Type, levels: usize) -> Borrow {
         if self
+            .tables
             .copy_rules()
             .is_small_copy(&self.unifier.resolve(referent))
         {
@@ -139,7 +137,7 @@ impl<'s, 'a> BorrowRules<'s, 'a> {
 
     fn fails_bounds(&self, var: TypeVar, value: &Type) -> bool {
         self.unifier.bounds(var).iter().any(|bound| {
-            !self.sources.declarations.traits().table.satisfies(
+            !self.tables.declarations.traits().table.satisfies(
                 bound,
                 value,
                 &|generic, required| self.unifier.generic_bounds(generic).contains(required),
@@ -162,19 +160,11 @@ impl<'s, 'a> BorrowRules<'s, 'a> {
     }
 
     fn unification(&mut self) -> Unification<'_> {
-        let sources = self.sources;
-        let display = TypeDisplay::new(sources.bindings, sources.generics)
-            .with_projections(sources.declarations.traits().table.projections());
-        let declarations = DeclaredTypes::new(sources.declarations.types());
-        Unification::new(self.unifier, display, declarations)
-    }
-
-    fn copy_rules(&self) -> CopyRules<'a> {
-        CopyRules::new(self.sources.declarations, self.sources.generics)
+        self.tables.unification(self.unifier)
     }
 
     fn facts(&self) -> PassingFacts<'_> {
-        PassingFacts::new(self.sources, self.unifier)
+        PassingFacts::new(self.tables, self.unifier)
     }
 }
 
@@ -184,24 +174,20 @@ mod tests {
     use crate::types::passing_fixture::PassingFixture;
     use crate::types::typed::Borrow;
 
-    fn passed(parameter: Type, argument: Type) -> Borrow {
-        let mut fixture = PassingFixture::new();
-        (fixture.rules())
-            .pass_types(&parameter, &argument, PassingFixture::span())
-            .expect("the types fit")
-    }
-
     #[test]
     fn a_borrowed_small_copy_passes_dereferenced_to_a_value() {
         let borrowed = Type::shared(PassingFixture::int());
-        assert_eq!(passed(PassingFixture::int(), borrowed), Borrow::Deref(1));
+        assert_eq!(
+            PassingFixture::new().passed(&PassingFixture::int(), &borrowed),
+            Borrow::Deref(1)
+        );
     }
 
     #[test]
     fn a_borrowed_string_passes_through_to_a_value() {
         let borrowed = Type::shared(PassingFixture::string());
         assert_eq!(
-            passed(PassingFixture::string(), borrowed),
+            PassingFixture::new().passed(&PassingFixture::string(), &borrowed),
             Borrow::Passthrough
         );
     }
@@ -210,20 +196,29 @@ mod tests {
     fn a_deeper_reference_collapses_to_the_parameter() {
         let parameter = Type::shared(PassingFixture::string());
         let argument = Type::shared(parameter.clone());
-        assert_eq!(passed(parameter, argument), Borrow::Collapse(1));
+        assert_eq!(
+            PassingFixture::new().passed(&parameter, &argument),
+            Borrow::Collapse(1)
+        );
     }
 
     #[test]
     fn a_mut_reborrows_into_a_mut() {
         let changed = Type::mutable(PassingFixture::int());
-        assert_eq!(passed(changed.clone(), changed), Borrow::Reborrow);
+        assert_eq!(
+            PassingFixture::new().passed(&changed, &changed),
+            Borrow::Reborrow
+        );
     }
 
     #[test]
     fn a_mut_reborrows_into_a_ref() {
         let parameter = Type::shared(PassingFixture::int());
         let argument = Type::mutable(PassingFixture::int());
-        assert_eq!(passed(parameter, argument), Borrow::Reborrow);
+        assert_eq!(
+            PassingFixture::new().passed(&parameter, &argument),
+            Borrow::Reborrow
+        );
     }
 
     #[test]

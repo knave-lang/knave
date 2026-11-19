@@ -1,9 +1,8 @@
 use super::borrow_rules::BorrowRules;
-use super::declared_types::DeclaredTypes;
 use super::deferred_decisions::DeferredDecisions;
 use super::passed_types::PassedTypes;
 use super::passing_facts::PassingFacts;
-use super::passing_sources::PassingSources;
+use super::passing_tables::PassingTables;
 use super::pending::PendingBorrow;
 use super::pending_borrow_decision::PendingBorrowDecision;
 use super::place_types::PlaceTypes;
@@ -13,34 +12,26 @@ use super::typed::TypedExpr;
 use super::unifier::Unifier;
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
+use crate::types::RustType;
 use crate::types::typed::Borrow;
 
 pub(super) struct ArgumentPassing<'a> {
-    sources: PassingSources<'a>,
+    tables: PassingTables<'a>,
     unifier: &'a mut Unifier,
     deferred: &'a mut DeferredDecisions,
 }
 
 impl<'a> ArgumentPassing<'a> {
     pub(super) fn new(
-        sources: PassingSources<'a>,
+        tables: PassingTables<'a>,
         unifier: &'a mut Unifier,
         deferred: &'a mut DeferredDecisions,
     ) -> Self {
         Self {
-            sources,
+            tables,
             unifier,
             deferred,
         }
-    }
-
-    pub(super) fn fit(
-        &mut self,
-        expected: &Type,
-        found: &Type,
-        span: Span,
-    ) -> Result<(), Diagnostic> {
-        self.rules().fit(expected, found, span)
     }
 
     pub(super) fn pass_argument(
@@ -88,7 +79,21 @@ impl<'a> ArgumentPassing<'a> {
         }
     }
 
-    pub(super) fn layers_above_held_view(
+    pub(super) fn pass_held_view(
+        &mut self,
+        callee: Option<&TypedExpr>,
+        parameter: &Type,
+        value: &TypedExpr,
+    ) -> Option<Result<Borrow, Diagnostic>> {
+        let layers = self.layers_above_held_view(callee, parameter, value)?;
+        Some(self.pass_view_under(parameter, value, layers))
+    }
+
+    pub(super) fn decide(&mut self, pending: &PendingBorrow) -> Result<Borrow, Diagnostic> {
+        PendingBorrowDecision::new(self.tables, self.unifier).decide(pending)
+    }
+
+    fn layers_above_held_view(
         &self,
         callee: Option<&TypedExpr>,
         parameter: &Type,
@@ -106,7 +111,9 @@ impl<'a> ArgumentPassing<'a> {
         let layers = argument
             .reference_depth()
             .checked_sub(parameter.reference_depth() + 1)?;
-        let holds_view = DeclaredTypes::new(self.sources.declarations.types())
+        let holds_view = self
+            .tables
+            .declared_types()
             .is_unsized(argument.innermost_referent())
             && self
                 .unifier
@@ -115,7 +122,7 @@ impl<'a> ArgumentPassing<'a> {
         holds_view.then_some(layers)
     }
 
-    pub(super) fn pass_held_view(
+    fn pass_view_under(
         &mut self,
         parameter: &Type,
         value: &TypedExpr,
@@ -138,11 +145,7 @@ impl<'a> ArgumentPassing<'a> {
         passed: &PassedTypes<'_>,
         value: &TypedExpr,
     ) -> Result<Borrow, Diagnostic> {
-        let place = PlaceTypes::new(
-            self.unifier,
-            DeclaredTypes::new(self.sources.declarations.types()),
-        )
-        .changed(value);
+        let place = PlaceTypes::new(self.unifier, self.tables.declared_types()).changed(value);
         if value.is_place() && !place.is_reference() {
             return self
                 .rules()
@@ -183,15 +186,15 @@ impl<'a> ArgumentPassing<'a> {
         let Type::Var(_) = found else {
             return found.clone();
         };
-        if !self.sources.declarations.types().rust_types.is_slice(slice) {
+        if !self.tables.declarations.types().rust_types.is_slice(slice) {
             return found.clone();
         }
         let Some(vector) = self
-            .sources
+            .tables
             .declarations
             .types()
             .rust_types
-            .binding_with_template(crate::types::RustType::VECTOR_TEMPLATE)
+            .binding_with_template(RustType::VECTOR_TEMPLATE)
         else {
             return found.clone();
         };
@@ -218,10 +221,6 @@ impl<'a> ArgumentPassing<'a> {
         matches!(self.unifier.shallow(parameter), Type::Ref(..))
     }
 
-    pub(super) fn decide(&mut self, pending: &PendingBorrow) -> Result<Borrow, Diagnostic> {
-        PendingBorrowDecision::new(self.sources, self.unifier).decide(pending)
-    }
-
     fn dereference_result_unknown(&self, value: &TypedExpr) -> bool {
         value.kind.is_dereference()
             && self
@@ -230,11 +229,11 @@ impl<'a> ArgumentPassing<'a> {
     }
 
     fn rules(&mut self) -> BorrowRules<'_, 'a> {
-        BorrowRules::new(self.sources, self.unifier)
+        BorrowRules::new(self.tables, self.unifier)
     }
 
     fn facts(&self) -> PassingFacts<'_> {
-        PassingFacts::new(self.sources, self.unifier)
+        PassingFacts::new(self.tables, self.unifier)
     }
 }
 

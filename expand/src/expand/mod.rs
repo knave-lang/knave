@@ -29,6 +29,7 @@ mod generated_entry;
 mod globals;
 mod hidden_kernel_type;
 mod host;
+mod imported_members;
 mod input_terms;
 mod introduced;
 mod introduced_name;
@@ -101,6 +102,7 @@ mod text_module_load;
 mod text_module_record;
 mod top_level_check;
 mod top_level_form;
+mod trait_methods;
 mod try_check;
 mod type_expr;
 mod type_note;
@@ -238,15 +240,6 @@ impl Program {
     }
 }
 
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub struct TraitMethods {
-    pub rust_name: Rc<str>,
-    pub self_variable: crate::core::BindingId,
-    pub associated: Vec<(crate::core::BindingId, Rc<str>)>,
-    pub methods: Vec<(crate::core::BindingId, crate::core::TypeExpr)>,
-    pub defaults: rustc_hash::FxHashSet<crate::core::BindingId>,
-}
-
 pub struct Expander<'s> {
     sources: &'s mut SourceMap,
     module_sources: ModuleSources,
@@ -288,7 +281,7 @@ struct ExpansionTables {
     structural_path_claims: StructuralPathClaims,
     enum_variants: FxHashMap<crate::core::BindingId, Vec<crate::core::BindingId>>,
     variant_fields: FxHashMap<crate::core::BindingId, Vec<Rc<str>>>,
-    trait_methods: FxHashMap<crate::core::BindingId, TraitMethods>,
+    trait_methods: FxHashMap<crate::core::BindingId, trait_methods::TraitMethods>,
     globals: GlobalTable,
     module_notes: ModuleNotes,
     expanded: FxHashMap<ModuleId, CoreModule>,

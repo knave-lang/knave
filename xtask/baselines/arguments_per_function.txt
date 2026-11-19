@@ -58,7 +58,6 @@ expand/src/expand/module_loading.rs::Expander::import_name 4
 
 expand/src/expand/module_loading.rs::Expander::import_names 5
 
-expand/src/expand/module_loading.rs::Expander::import_trait_methods 4
 
 expand/src/expand/module_loading.rs::Expander::missing_export 4
 

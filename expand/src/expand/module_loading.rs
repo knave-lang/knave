@@ -3,6 +3,7 @@ use std::rc::Rc;
 use super::Expander;
 use super::builtin_export::BuiltinExport;
 use super::context::DefinitionContext;
+use super::imported_members::{ImportedMembers, MemberTables};
 use super::local_file_diagnosis::LocalFileDiagnosis;
 use super::module_load_site::ModuleLoadSite;
 use super::problems::{ExpandProblems, MissingExportRemedy};
@@ -344,61 +345,21 @@ impl Expander<'_> {
         else {
             return Ok(());
         };
-        if matches!(self.kind(binding), BindingKind::Enum(_)) {
-            self.import_enum_constructors(target, symbol, span)?;
-        }
-        if matches!(self.kind(binding), BindingKind::Trait(_)) {
-            self.import_trait_methods(target, symbol, binding, span)?;
-        }
-        Ok(())
+        let tables = MemberTables::new(&self.tables.bindings, &self.tables.trait_methods);
+        let members = ImportedMembers::new(self.modules.get(target), tables);
+        let members = members.of(symbol.name(), binding);
+        self.bind_members(symbol, members, span)
     }
 
-    fn import_enum_constructors(
+    fn bind_members(
         &mut self,
-        target: ModuleId,
         symbol: &Symbol,
+        members: Vec<(Rc<str>, BindingId)>,
         span: Span,
     ) -> Result<(), Diagnostic> {
-        let prefix = format!("{}/", symbol.name());
-        let constructors: Vec<(Rc<str>, BindingId)> = self
-            .modules
-            .get(target)
-            .exports()
-            .entries()
-            .filter(|(name, namespace, _)| {
-                *namespace == Namespace::Value && name.starts_with(&prefix)
-            })
-            .map(|(name, _, binding)| (name, binding))
-            .collect();
-        for (name, binding) in constructors {
-            let constructor = Symbol::with_scopes(name, symbol.scopes().clone());
-            self.bind_import(&constructor, Namespace::Value, binding, span)?;
-        }
-        Ok(())
-    }
-
-    fn import_trait_methods(
-        &mut self,
-        target: ModuleId,
-        symbol: &Symbol,
-        trait_binding: BindingId,
-        span: Span,
-    ) -> Result<(), Diagnostic> {
-        let Some(trait_methods) = self.tables.trait_methods.get(&trait_binding) else {
-            return Ok(());
-        };
-        let methods: Vec<BindingId> = trait_methods
-            .methods
-            .iter()
-            .map(|(binding, _)| *binding)
-            .collect();
-        for method in methods {
-            let name: Rc<str> = self.tables.bindings.get(method).name().into();
-            if self.modules.get(target).exported(&name, Namespace::Value) != Some(method) {
-                continue;
-            }
-            let imported = Symbol::with_scopes(Rc::clone(&name), symbol.scopes().clone());
-            self.bind_import(&imported, Namespace::Value, method, span)?;
+        for (name, binding) in members {
+            let member = Symbol::with_scopes(name, symbol.scopes().clone());
+            self.bind_import(&member, Namespace::Value, binding, span)?;
         }
         Ok(())
     }

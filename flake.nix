@@ -363,7 +363,15 @@
           check_benchmark_tools() {
             (PATH=$1 && command -v valgrind) >/dev/null || fail "a Linux dev shell has no valgrind"
           }
+          check_sccache_idle_timeout() {
+            local expected=$1
+            source ${pkgs.writeText "shell-hook" defaultShell.shellHook}
+            [[ $SCCACHE_IDLE_TIMEOUT == "$expected" ]] ||
+              fail "a dev shell set SCCACHE_IDLE_TIMEOUT to '$SCCACHE_IDLE_TIMEOUT', not '$expected'"
+          }
           check_shell ${pkgs.lib.makeBinPath defaultShell.nativeBuildInputs}
+          (unset CI SCCACHE_IDLE_TIMEOUT && check_sccache_idle_timeout 120)
+          (unset CI && SCCACHE_IDLE_TIMEOUT=30 && check_sccache_idle_timeout 30)
           ${benchmarkToolsCheck}
           touch $out
         '';
@@ -906,6 +914,7 @@
               if [[ -z ''${CI:-} ]]; then
                 export CARGO_BUILD_JOBS=''${CARGO_BUILD_JOBS:-2}
                 export CARGO_INCREMENTAL=0
+                export SCCACHE_IDLE_TIMEOUT=''${SCCACHE_IDLE_TIMEOUT:-120}
               fi
               baseline_driver='${pkgs.lib.getExe (baselineMerger pkgs)} %O %A %B %P; status=$?; [ $status -le 2 ] && exit $status; git merge-file -L ours -L base -L theirs %A %O %B'
               if [[ -d "$(git rev-parse --show-toplevel 2> /dev/null)/xtask/baselines" ]] &&

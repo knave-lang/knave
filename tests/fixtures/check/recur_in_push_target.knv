@@ -1,0 +1,4 @@
+(defn grow (items)
+  (push! (recur items) 1))
+
+(defn main () (println "unused"))

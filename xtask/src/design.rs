@@ -18,7 +18,7 @@ use crate::census::Census;
 use crate::failure::TaskFailure;
 use crate::parsed_source::ParsedSource;
 use crate::production_sources::ProductionSources;
-use crate::ratchet::{Counts, Limit, Measurement, Unit};
+use crate::ratchet::{Limit, Measurement, Unit};
 
 pub struct DesignRules;
 
@@ -114,34 +114,49 @@ impl DesignRules {
         advice: Self::EXTRACT_AN_OBJECT,
     };
 
-    pub const LIMITS: [Limit; 9] = [
-        Self::METHODS,
-        Self::NON_PRIVATE_METHODS,
-        Self::FIELDS,
-        Self::INHERENT_IMPL_FILES,
-        Self::ARGUMENTS,
-        Self::BOOL_PARAMETERS,
-        Self::FREE_FUNCTIONS,
-        Self::CYCLE_LINKS,
-        Self::LATER_STAGE_DEPENDENCIES,
-    ];
-
-    fn measured(sources: &[ParsedSource]) -> [Counts; 9] {
+    fn measured(sources: &[ParsedSource]) -> [Measurement; 9] {
         let [methods, non_private_methods, fields, inherent_impl_files] =
             TypeShapes::measure(sources).into_counts();
         let [arguments, bool_parameters, free_functions] =
             Signatures::measure(sources).into_counts();
         let graph = ModuleGraph::build(sources);
         [
-            methods,
-            non_private_methods,
-            fields,
-            inherent_impl_files,
-            arguments,
-            bool_parameters,
-            free_functions,
-            graph.cycle_links(),
-            graph.later_stage_dependencies(&Self::STAGE_ORDER),
+            Measurement {
+                limit: Self::METHODS,
+                counts: methods,
+            },
+            Measurement {
+                limit: Self::NON_PRIVATE_METHODS,
+                counts: non_private_methods,
+            },
+            Measurement {
+                limit: Self::FIELDS,
+                counts: fields,
+            },
+            Measurement {
+                limit: Self::INHERENT_IMPL_FILES,
+                counts: inherent_impl_files,
+            },
+            Measurement {
+                limit: Self::ARGUMENTS,
+                counts: arguments,
+            },
+            Measurement {
+                limit: Self::BOOL_PARAMETERS,
+                counts: bool_parameters,
+            },
+            Measurement {
+                limit: Self::FREE_FUNCTIONS,
+                counts: free_functions,
+            },
+            Measurement {
+                limit: Self::CYCLE_LINKS,
+                counts: graph.cycle_links(),
+            },
+            Measurement {
+                limit: Self::LATER_STAGE_DEPENDENCIES,
+                counts: graph.later_stage_dependencies(&Self::STAGE_ORDER),
+            },
         ]
     }
 }
@@ -149,10 +164,6 @@ impl DesignRules {
 impl Census for DesignRules {
     fn measure(&self, root: &Path) -> Result<Vec<Measurement>, TaskFailure> {
         let sources = ProductionSources::new(root).parsed()?;
-        Ok(Self::LIMITS
-            .into_iter()
-            .zip(Self::measured(&sources))
-            .map(|(limit, counts)| Measurement { limit, counts })
-            .collect())
+        Ok(Self::measured(&sources).into())
     }
 }

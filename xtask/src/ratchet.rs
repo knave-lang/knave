@@ -129,32 +129,24 @@ impl Check for Ratchet {
 
 #[cfg(test)]
 mod tests {
-    use super::{Counts, Limit, Measurement, Ratchet};
+    use super::{Counts, Limit, Measurement, Ratchet, Unit};
     use crate::checks::Check;
-    use crate::design::DesignRules;
-    use crate::production_lines::ProductionLineCensus;
     use crate::rise_approvals::RiseApprovals;
 
-    struct RatchetCase {
-        limit: Limit,
-    }
+    struct RatchetCase;
 
     impl RatchetCase {
-        const SUBJECT: &str = "src/a.rs";
+        const LIMIT: Limit = Limit {
+            name: "production_lines",
+            maximum: 500,
+            subjects: "Rust files",
+            unit: Unit::new("production line", "production lines"),
+            advice: "Split it by responsibility.",
+        };
 
-        fn every_gate() -> impl Iterator<Item = Self> {
-            std::iter::once(ProductionLineCensus::LIMIT)
-                .chain(DesignRules::LIMITS)
-                .map(|limit| Self { limit })
-        }
-
-        fn over(&self, excess: usize) -> usize {
-            self.limit.maximum + excess
-        }
-
-        fn ratchet(&self, head: &[(&str, usize)], base: &[(&str, usize)], log: &str) -> Ratchet {
+        fn ratchet(head: &[(&str, usize)], base: &[(&str, usize)], log: &str) -> Ratchet {
             let head = Measurement {
-                limit: self.limit,
+                limit: Self::LIMIT,
                 counts: Self::counts(head),
             };
             Ratchet::new(head, Self::counts(base), &RiseApprovals::parse(log))
@@ -166,122 +158,68 @@ mod tests {
                 .map(|&(subject, count)| (subject.to_string(), count))
                 .collect()
         }
-
-        fn trailer(&self) -> String {
-            format!("{} {}\n", self.limit.name, Self::SUBJECT)
-        }
     }
 
     #[test]
     fn a_rise_over_the_limit_is_refused() {
-        for case in RatchetCase::every_gate() {
-            let ratchet = case.ratchet(
-                &[(RatchetCase::SUBJECT, case.over(2))],
-                &[(RatchetCase::SUBJECT, case.over(1))],
-                "",
-            );
-            assert!(!ratchet.passes(), "{}", case.limit.name);
-        }
+        assert!(!RatchetCase::ratchet(&[("src/a.rs", 902)], &[("src/a.rs", 901)], "").passes());
     }
 
     #[test]
     fn a_rise_with_its_trailer_is_accepted() {
-        for case in RatchetCase::every_gate() {
-            let ratchet = case.ratchet(
-                &[(RatchetCase::SUBJECT, case.over(2))],
-                &[(RatchetCase::SUBJECT, case.over(1))],
-                &case.trailer(),
-            );
-            assert!(ratchet.passes(), "{}", case.limit.name);
-        }
+        let ratchet = RatchetCase::ratchet(
+            &[("src/a.rs", 902)],
+            &[("src/a.rs", 901)],
+            "production_lines src/a.rs\n",
+        );
+        assert!(ratchet.passes());
     }
 
     #[test]
     fn a_fall_needs_nothing() {
-        for case in RatchetCase::every_gate() {
-            let ratchet = case.ratchet(
-                &[(RatchetCase::SUBJECT, case.over(1))],
-                &[(RatchetCase::SUBJECT, case.over(2))],
-                "",
-            );
-            assert!(ratchet.passes(), "{}", case.limit.name);
-        }
+        assert!(RatchetCase::ratchet(&[("src/a.rs", 901)], &[("src/a.rs", 902)], "").passes());
     }
 
     #[test]
     fn an_unchanged_count_over_the_limit_needs_nothing() {
-        for case in RatchetCase::every_gate() {
-            let counts = [(RatchetCase::SUBJECT, case.over(1))];
-            assert!(
-                case.ratchet(&counts, &counts, "").passes(),
-                "{}",
-                case.limit.name
-            );
-        }
+        let counts = [("src/a.rs", 901)];
+        assert!(RatchetCase::ratchet(&counts, &counts, "").passes());
     }
 
     #[test]
     fn a_new_subject_over_the_limit_is_measured_against_nothing() {
-        for case in RatchetCase::every_gate() {
-            let ratchet = case.ratchet(&[(RatchetCase::SUBJECT, case.over(1))], &[], "");
-            assert!(!ratchet.passes(), "{}", case.limit.name);
-            assert!(
-                ratchet.details().contains("did not exist at the base"),
-                "{}",
-                ratchet.details()
-            );
-        }
+        let ratchet = RatchetCase::ratchet(&[("src/a.rs", 501)], &[], "");
+        assert_eq!(
+            ratchet.details(),
+            "  src/a.rs has 501 production lines, over the limit of 500, and did not exist at the base. Split it by responsibility. If the project owner approves the rise, add this trailer to a commit of the branch:\n    Baseline-Accepted: production_lines src/a.rs\n"
+        );
     }
 
     #[test]
     fn a_deleted_subject_needs_nothing() {
-        for case in RatchetCase::every_gate() {
-            let ratchet = case.ratchet(&[], &[(RatchetCase::SUBJECT, case.over(1))], "");
-            assert!(ratchet.passes(), "{}", case.limit.name);
-        }
+        assert!(RatchetCase::ratchet(&[], &[("src/a.rs", 901)], "").passes());
     }
 
     #[test]
-    fn a_subject_within_the_limit_needs_nothing_even_when_it_grew() {
-        for case in RatchetCase::every_gate() {
-            let maximum = case.limit.maximum;
-            let ratchet = case.ratchet(&[(RatchetCase::SUBJECT, maximum)], &[], "");
-            assert!(ratchet.passes(), "{}", case.limit.name);
-        }
+    fn a_subject_within_the_limit_needs_nothing_even_when_it_is_new() {
+        assert!(RatchetCase::ratchet(&[("src/a.rs", 500)], &[], "").passes());
     }
 
     #[test]
     fn a_subject_that_crosses_the_limit_is_refused() {
-        for case in RatchetCase::every_gate() {
-            let maximum = case.limit.maximum;
-            let ratchet = case.ratchet(
-                &[(RatchetCase::SUBJECT, case.over(1))],
-                &[(RatchetCase::SUBJECT, maximum)],
-                "",
-            );
-            assert!(!ratchet.passes(), "{}", case.limit.name);
-        }
+        assert!(!RatchetCase::ratchet(&[("src/a.rs", 501)], &[("src/a.rs", 500)], "").passes());
     }
 
     #[test]
-    fn a_trailer_of_another_gate_leaves_the_rise_refused() {
-        let case = RatchetCase {
-            limit: ProductionLineCensus::LIMIT,
-        };
-        let ratchet = case.ratchet(
-            &[(RatchetCase::SUBJECT, case.over(1))],
-            &[],
-            "methods_per_type src/a.rs\n",
-        );
+    fn a_trailer_of_another_limit_leaves_the_rise_refused() {
+        let ratchet =
+            RatchetCase::ratchet(&[("src/a.rs", 501)], &[], "methods_per_type src/a.rs\n");
         assert!(!ratchet.passes());
     }
 
     #[test]
     fn a_refusal_names_the_counts_the_limit_and_the_trailer() {
-        let case = RatchetCase {
-            limit: ProductionLineCensus::LIMIT,
-        };
-        let ratchet = case.ratchet(&[("src/a.rs", 901)], &[("src/a.rs", 900)], "");
+        let ratchet = RatchetCase::ratchet(&[("src/a.rs", 901)], &[("src/a.rs", 900)], "");
         assert_eq!(
             ratchet.details(),
             "  src/a.rs has 901 production lines, over the limit of 500, and 900 at the base. Split it by responsibility. If the project owner approves the rise, add this trailer to a commit of the branch:\n    Baseline-Accepted: production_lines src/a.rs\n"
@@ -290,10 +228,7 @@ mod tests {
 
     #[test]
     fn the_summary_counts_the_subjects_over_the_limit_and_the_refused_rises() {
-        let case = RatchetCase {
-            limit: ProductionLineCensus::LIMIT,
-        };
-        let ratchet = case.ratchet(
+        let ratchet = RatchetCase::ratchet(
             &[("src/a.rs", 901), ("src/b.rs", 700), ("src/c.rs", 3)],
             &[("src/a.rs", 900), ("src/b.rs", 700)],
             "",

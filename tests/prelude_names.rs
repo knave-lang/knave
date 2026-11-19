@@ -104,6 +104,7 @@ impl PreludeNaming {
 
 #[derive(Clone, Copy, Default)]
 struct FunctionShape {
+    is_function: bool,
     returns_bool: bool,
     takes_mut: bool,
 }
@@ -124,10 +125,11 @@ impl FunctionShape {
     }
 
     fn of_form(form: &Form) -> Self {
-        match Self::headed(form) {
+        match FormText::headed(form) {
             Some((Self::WHERE, [_, body])) => Self::of_form(body),
             Some((Self::FUNCTION, [parameters, result])) => Self {
-                returns_bool: Self::symbol(result) == Some(Self::BOOL),
+                is_function: true,
+                returns_bool: FormText::symbol(result) == Some(Self::BOOL),
                 takes_mut: Self::any_mut(parameters),
             },
             _ => Self::default(),
@@ -139,7 +141,19 @@ impl FunctionShape {
             .as_list()
             .unwrap_or_default()
             .iter()
-            .any(|parameter| matches!(Self::headed(parameter), Some((Self::MUT, _))))
+            .any(|parameter| matches!(FormText::headed(parameter), Some((Self::MUT, _))))
+    }
+}
+
+struct FormText;
+
+impl FormText {
+    const FILE: &str = "<example>";
+
+    fn read(text: &str) -> Vec<Form> {
+        let mut sources = SourceMap::default();
+        let source = sources.add(Self::FILE, text);
+        Reader::new(sources.file(source)).read().unwrap_or_default()
     }
 
     fn headed(form: &Form) -> Option<(&str, &[Form])> {
@@ -152,6 +166,202 @@ impl FunctionShape {
             FormKind::Symbol(symbol) => Some(symbol.name()),
             _ => None,
         }
+    }
+}
+
+struct PreludeExamples {
+    compiler: Compiler,
+}
+
+impl PreludeExamples {
+    fn load() -> Self {
+        Self { compiler: Compiler }
+    }
+
+    fn broken_examples(&self) -> Vec<String> {
+        let names = self.compiler.exported_names();
+        let rules = ExampleRules::of(self.functions(&names));
+        self.compiler
+            .pages(&names)
+            .iter()
+            .flat_map(|page| page.broken_examples(&rules))
+            .collect()
+    }
+
+    fn functions(&self, names: &[String]) -> BTreeSet<String> {
+        let values = ValueProbe::of(names.to_vec()).values();
+        self.compiler
+            .inferred_types(&values)
+            .into_iter()
+            .filter(|(_, shape)| shape.is_function)
+            .map(|(name, _)| name)
+            .collect()
+    }
+}
+
+struct Page {
+    name: String,
+    body: String,
+}
+
+impl Page {
+    fn broken_examples(&self, rules: &ExampleRules) -> Vec<String> {
+        ExampleBlocks::of(&self.body)
+            .iter()
+            .enumerate()
+            .flat_map(|(index, example)| {
+                let number = index + 1;
+                rules
+                    .problems(&self.name, example)
+                    .into_iter()
+                    .map(move |problem| format!("{} #{number}: {problem}", self.name))
+            })
+            .collect()
+    }
+}
+
+#[derive(Default)]
+struct ExampleBlocks<'a> {
+    examples: Vec<String>,
+    paragraph: Vec<&'a str>,
+    fence: Option<Fence<'a>>,
+}
+
+struct Fence<'a> {
+    holds_code: bool,
+    lines: Vec<&'a str>,
+}
+
+impl<'a> ExampleBlocks<'a> {
+    const FENCE: &'static str = "```";
+    const CODE_TAG: &'static str = "knave";
+    const RESULT: &'static str = "=>";
+
+    fn of(body: &'a str) -> Vec<String> {
+        let mut blocks = Self::default();
+        for line in body.lines() {
+            blocks.take(line);
+        }
+        blocks.end_paragraph();
+        blocks.examples
+    }
+
+    fn take(&mut self, line: &'a str) {
+        if let Some(tag) = line.trim_start().strip_prefix(Self::FENCE) {
+            self.toggle_fence(tag);
+        } else if let Some(fence) = &mut self.fence {
+            fence.lines.push(line);
+        } else if line.trim().is_empty() {
+            self.end_paragraph();
+        } else {
+            self.paragraph.push(line);
+        }
+    }
+
+    fn toggle_fence(&mut self, tag: &str) {
+        match self.fence.take() {
+            Some(fence) if fence.holds_code => self.examples.push(Self::code(&fence.lines)),
+            Some(_) => {}
+            None => {
+                self.end_paragraph();
+                self.fence = Some(Fence {
+                    holds_code: tag.is_empty() || tag == Self::CODE_TAG,
+                    lines: Vec::new(),
+                });
+            }
+        }
+    }
+
+    fn end_paragraph(&mut self) {
+        let lines = std::mem::take(&mut self.paragraph);
+        if lines.iter().any(|line| line.starts_with(Self::RESULT)) {
+            self.examples.push(Self::code(&lines));
+        }
+    }
+
+    fn code(lines: &[&str]) -> String {
+        lines
+            .iter()
+            .filter(|line| !line.starts_with(Self::RESULT))
+            .map(|line| format!("{line}\n"))
+            .collect()
+    }
+}
+
+struct ExampleRules {
+    functions: BTreeSet<String>,
+}
+
+impl ExampleRules {
+    const UNWRAPS: &[&str] = &["unwrap", "expect", "unwrap-ok", "unwrap-err", "expect-ok"];
+    const CONSTRUCTORS: &[&str] = &[
+        "str",
+        "vec",
+        "hash-map",
+        "sorted-map",
+        "some",
+        "ok",
+        "err",
+        "pair",
+        "box",
+        "char",
+    ];
+    const TEST: &str = "deftest";
+    const THREADS: &[&str] = &["->", "->>"];
+    const FIRST_STEP: usize = 2;
+
+    fn of(functions: BTreeSet<String>) -> Self {
+        Self { functions }
+    }
+
+    fn problems(&self, page: &str, example: &str) -> Vec<String> {
+        let mut problems = Vec::new();
+        for form in FormText::read(example) {
+            self.walk(page, &form, &mut problems);
+        }
+        problems
+    }
+
+    fn walk(&self, page: &str, form: &Form, problems: &mut Vec<String>) {
+        let Some(items) = form.as_list() else {
+            return;
+        };
+        let head = items.first().and_then(FormText::symbol);
+        if head == Some(Self::TEST) {
+            return;
+        }
+        problems.extend(head.and_then(|head| self.problem(page, head, items)));
+        let steps = if head.is_some_and(|head| Self::THREADS.contains(&head)) {
+            Self::FIRST_STEP
+        } else {
+            items.len()
+        };
+        for (position, item) in items.iter().enumerate() {
+            if position < steps {
+                self.walk(page, item, problems);
+            } else {
+                self.walk_step(page, item, problems);
+            }
+        }
+    }
+
+    fn walk_step(&self, page: &str, step: &Form, problems: &mut Vec<String>) {
+        for item in step.as_list().unwrap_or_default() {
+            self.walk(page, item, problems);
+        }
+    }
+
+    fn problem(&self, page: &str, head: &str, items: &[Form]) -> Option<String> {
+        if Self::UNWRAPS.contains(&head) && head != page {
+            return Some(format!("calls `{head}` outside its own page"));
+        }
+        let first = items.get(1).and_then(FormText::headed)?.0;
+        (self.starts_chain(head) && self.starts_chain(first))
+            .then(|| format!("`({head} ({first} ...))` is not threaded with `->` or `->>`"))
+    }
+
+    fn starts_chain(&self, name: &str) -> bool {
+        self.functions.contains(name) && !Self::CONSTRUCTORS.contains(&name)
     }
 }
 
@@ -214,6 +424,7 @@ impl Compiler {
     const LISTING_FORM: &str = "(doc-page (dir prelude))";
     const LISTING_HEADER: &str = "(dir prelude)";
     const TYPE_SEPARATOR: &str = "\t";
+    const PAGE_MARKER: &str = "@@page ";
 
     fn exported_names(&self) -> Vec<String> {
         let printed = self.evaluate(Self::LISTING_FORM);
@@ -239,6 +450,27 @@ impl Compiler {
             .lines()
             .filter_map(|line| line.split_once(Self::TYPE_SEPARATOR))
             .map(|(name, type_text)| (name.to_string(), FunctionShape::of(type_text)))
+            .collect()
+    }
+
+    fn pages(&self, names: &[String]) -> Vec<Page> {
+        let printing: String = names
+            .iter()
+            .map(|name| {
+                format!(
+                    "(println \"{}{name}\") (println (doc-body {name}))",
+                    Self::PAGE_MARKER
+                )
+            })
+            .collect();
+        self.evaluate(&format!("(do {printing})"))
+            .split(Self::PAGE_MARKER)
+            .skip(1)
+            .filter_map(|chunk| chunk.split_once('\n'))
+            .map(|(name, body)| Page {
+                name: name.to_string(),
+                body: body.to_string(),
+            })
             .collect()
     }
 
@@ -285,4 +517,94 @@ fn each_exported_predicate_and_mutation_carries_its_suffix() {
             .collect::<Vec<_>>(),
         broken.join("\n")
     );
+}
+
+#[test]
+fn each_prelude_example_follows_the_code_rules_of_the_skill() {
+    let broken = PreludeExamples::load().broken_examples();
+    assert!(
+        broken.is_empty(),
+        "prelude examples that break the code rules of `skills/writing-knave/SKILL.md`:\n{}",
+        broken.join("\n")
+    );
+}
+
+struct RulesFixture;
+
+impl RulesFixture {
+    const FUNCTIONS: &[&str] = &["collect", "map", "iter", "some", "unwrap-ok"];
+    const PAGE: &str = "ok";
+
+    fn problems(example: &str) -> Vec<String> {
+        Self::rules().problems(Self::PAGE, example)
+    }
+
+    fn problems_on(page: &str, example: &str) -> Vec<String> {
+        Self::rules().problems(page, example)
+    }
+
+    fn rules() -> ExampleRules {
+        ExampleRules::of(
+            Self::FUNCTIONS
+                .iter()
+                .map(|name| name.to_string())
+                .collect(),
+        )
+    }
+}
+
+#[test]
+fn an_unwrap_outside_its_own_page_breaks_the_rules() {
+    assert_eq!(
+        RulesFixture::problems("(unwrap-ok (ok 1))"),
+        ["calls `unwrap-ok` outside its own page"]
+    );
+    assert!(RulesFixture::problems_on("unwrap-ok", "(unwrap-ok (ok 1))").is_empty());
+}
+
+#[test]
+fn an_unwrap_inside_a_test_breaks_no_rule() {
+    assert!(RulesFixture::problems("(deftest reads (unwrap-ok (ok 1)))").is_empty());
+}
+
+#[test]
+fn a_call_on_a_call_breaks_the_rules_unless_threaded() {
+    assert_eq!(
+        RulesFixture::problems("(collect (map items str))"),
+        ["`(collect (map ...))` is not threaded with `->` or `->>`"]
+    );
+    assert!(RulesFixture::problems("(-> items (map str) collect)").is_empty());
+    assert!(RulesFixture::problems("(-> items (map (iter other) str))").is_empty());
+    assert_eq!(
+        RulesFixture::problems("(-> (collect (map items str)) iter)").len(),
+        1
+    );
+}
+
+#[test]
+fn a_constructor_or_another_form_starts_no_chain() {
+    assert!(RulesFixture::problems("(some (map items str))").is_empty());
+    assert!(RulesFixture::problems("(collect (some 1))").is_empty());
+    assert!(RulesFixture::problems("(the int (map items str))").is_empty());
+    assert!(RulesFixture::problems("(collect (the int items))").is_empty());
+}
+
+#[test]
+fn examples_are_result_paragraphs_and_code_fences() {
+    let body = "Prose.\n\n(f 1)\n=> 2\n\n(g 1)\n\n```\n(h 1)\n```\n\n```knave\n(k 1)\n=> 3\n```\n\n```text\n(t 1)\n```";
+    assert_eq!(ExampleBlocks::of(body), ["(f 1)\n", "(h 1)\n", "(k 1)\n"]);
+}
+
+#[test]
+fn only_a_function_type_is_a_function() {
+    assert!(FunctionShape::of("(fn (int) int)").is_function);
+    assert!(FunctionShape::of("(where (a) (fn (a) a))").is_function);
+    assert!(!FunctionShape::of("int").is_function);
+}
+
+#[test]
+fn only_a_prelude_function_joins_the_functions_of_the_rules() {
+    let names = ["map", "->"].map(String::from);
+    let functions = PreludeExamples::load().functions(&names);
+    assert_eq!(functions, BTreeSet::from(["map".to_string()]));
 }

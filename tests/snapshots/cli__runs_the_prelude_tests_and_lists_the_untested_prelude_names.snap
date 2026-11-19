@@ -2,8 +2,8 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (54 of 249): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display enum eprint eprintln eq exit export field floating fmt fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord pattern quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
-running 230 tests
+untested in prelude (54 of 250): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display enum eprint eprintln eq exit export field floating fmt fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord pattern quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
+running 231 tests
 test number/inc-adds-one-to-any-number ... ok
 test number/dec-subtracts-one-from-any-number ... ok
 test number/inc-and-dec-are-values ... ok
@@ -55,6 +55,7 @@ test prelude/doc:if ... ok
 test prelude/doc:match ... ok
 test prelude/doc:assoc-at ... ok
 test prelude/doc:map-at ... ok
+test prelude/doc:push-at! ... ok
 test prelude/doc:set-at! ... ok
 test prelude/doc:ref ... ok
 test prelude/doc:mut ... ok
@@ -253,4 +254,4 @@ test prelude/vec/doc:last ... ok
 test prelude/vec/doc:reverse ... ok
 test prelude/vec/doc:reverse! ... ok
 test prelude/vec/doc:dedup! ... ok
-230 passed, 0 failed
+231 passed, 0 failed

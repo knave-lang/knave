@@ -1,0 +1,4 @@
+(defn main ()
+  (let (items (vec 1))
+    (push! items 2)
+    (println (len items))))

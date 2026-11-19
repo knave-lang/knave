@@ -1,3 +1,5 @@
+mod collection_lowering;
+
 use std::borrow::Cow;
 use std::rc::Rc;
 
@@ -13,14 +15,15 @@ use super::{context::DefinitionContext, namespace_problems::NamespaceProblems};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, Control, ControlForm, Expr, ExprKind,
     ExpressionForm, FieldLabel, FieldSpelling, KernelForm, Keyword, Lambda, Leaf, LeafForm,
-    Literal, MapOperation, Namespace, Pattern, PatternArguments, PatternKind, PatternPart,
-    ReferenceKind, RustTemplate, StructExpr, StructForm, VariantInfo,
+    Literal, Namespace, Pattern, PatternArguments, PatternKind, PatternPart, ReferenceKind,
+    RustTemplate, StructExpr, StructForm, VariantInfo,
 };
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind, Symbol};
 use crate::scope::{Scope, ScopeKind};
 use crate::source::Span;
 use crate::stack::DeepRecursion;
+use collection_lowering::CollectionLowering;
 
 impl Expander<'_> {
     const LABEL_AND_VALUE: usize = 2;
@@ -394,8 +397,10 @@ impl Expander<'_> {
         shape: &Shape,
     ) -> Result<ExprKind, Diagnostic> {
         match expression {
-            ExpressionForm::MapAt => self.lower_map_at(shape),
-            ExpressionForm::SetAt => self.lower_set_at(shape),
+            ExpressionForm::Assoc
+            | ExpressionForm::MapAt
+            | ExpressionForm::PushAt
+            | ExpressionForm::SetAt => CollectionLowering::new(self).lower(expression, shape),
             other => self.lower_simple_expression(other, shape),
         }
     }
@@ -410,7 +415,6 @@ impl Expander<'_> {
             ExpressionForm::Control(form) => self.lower_control_form(form, shape),
             ExpressionForm::Struct(form) => self.lower_struct_form(form, shape),
             ExpressionForm::Match => self.lower_match(shape),
-            ExpressionForm::Assoc => self.lower_assoc(shape),
             _ => unreachable!("the caller matches a simple expression form"),
         }
     }
@@ -662,44 +666,6 @@ impl Expander<'_> {
             .iter()
             .map(|field| self.lower_field_value(shape, field))
             .collect()
-    }
-
-    fn lower_assoc(&mut self, shape: &Shape) -> Result<ExprKind, Diagnostic> {
-        let items = shape.exactly(4)?;
-        let value = self.lower_expr(&items[1])?;
-        let keys = shape
-            .list(&items[2])?
-            .iter()
-            .map(|key| self.lower_expr(key))
-            .collect::<Result<Vec<_>, Diagnostic>>()?;
-        let item = self.lower_expr(&items[3])?;
-        Ok(ExprKind::Assoc(Box::new(value), keys, Box::new(item)))
-    }
-
-    fn lower_map_at(&mut self, shape: &Shape) -> Result<ExprKind, Diagnostic> {
-        let items = shape.at_least(3)?;
-        let operation = items[1]
-            .as_symbol()
-            .and_then(|symbol| MapOperation::of(symbol.name()))
-            .ok_or_else(|| shape.malformed(&items[1]))?;
-        let value = self.lower_expr(&items[2])?;
-        let arguments = items[3..]
-            .iter()
-            .map(|argument| self.lower_expr(argument))
-            .collect::<Result<Vec<_>, Diagnostic>>()?;
-        Ok(ExprKind::MapAt(operation, Box::new(value), arguments))
-    }
-
-    fn lower_set_at(&mut self, shape: &Shape) -> Result<ExprKind, Diagnostic> {
-        let items = shape.exactly(4)?;
-        let value = self.lower_expr(&items[1])?;
-        let keys = shape
-            .list(&items[2])?
-            .iter()
-            .map(|key| self.lower_expr(key))
-            .collect::<Result<Vec<_>, Diagnostic>>()?;
-        let item = self.lower_expr(&items[3])?;
-        Ok(ExprKind::SetAt(Box::new(value), keys, Box::new(item)))
     }
 
     fn lower_field_value(

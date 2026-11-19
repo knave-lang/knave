@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/push_at.knv
+---
+(def main (fn () (do (local items ((rust "vec![{0}]" (where (item) (fn (item) (vec item)))) 1)) (push-at! items 2) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) (len items)))))

@@ -1,0 +1,3 @@
+(defn main ()
+  (let (items (vec 1))
+    (map-at push items 2)))

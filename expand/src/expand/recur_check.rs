@@ -70,6 +70,10 @@ impl RecurCheck {
                 self.expr(value, TailPosition::NotTail)?;
                 self.arguments(arguments.iter())
             }
+            ExprKind::PushAt(target, item) => {
+                self.expr(target, TailPosition::NotTail)?;
+                self.arguments(std::iter::once(item.as_ref()))
+            }
             _ => self.constructed_value(kind),
         }
     }

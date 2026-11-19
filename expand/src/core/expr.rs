@@ -27,6 +27,7 @@ pub enum ExprKind {
     LabeledVariant(BindingId, Vec<(FieldLabel, Expr)>),
     Assoc(Box<Expr>, Vec<Expr>, Box<Expr>),
     MapAt(MapOperation, Box<Expr>, Vec<Expr>),
+    PushAt(Box<Expr>, Box<Expr>),
     SetAt(Box<Expr>, Vec<Expr>, Box<Expr>),
 }
 
@@ -37,7 +38,6 @@ pub enum MapOperation {
     Vals,
     Iter,
     Update,
-    Push,
     First,
     Second,
 }
@@ -52,13 +52,12 @@ impl From<PairPosition> for MapOperation {
 }
 
 impl MapOperation {
-    const KEYWORDS: [(Self, &'static str); 8] = [
+    const KEYWORDS: [(Self, &'static str); 7] = [
         (Self::Get, "get"),
         (Self::Keys, "keys"),
         (Self::Vals, "vals"),
         (Self::Iter, "iter"),
         (Self::Update, "update"),
-        (Self::Push, "push"),
         (Self::First, "first"),
         (Self::Second, "second"),
     ];
@@ -349,6 +348,7 @@ impl ExprKind {
             ExprKind::MapAt(_, value, arguments) => {
                 std::iter::once(value.as_ref()).chain(arguments).collect()
             }
+            ExprKind::PushAt(target, item) => vec![target.as_ref(), item.as_ref()],
             _ => Vec::new(),
         }
     }

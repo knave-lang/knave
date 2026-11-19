@@ -1,0 +1,68 @@
+use crate::core::{Expr, ExprKind, ExpressionForm, MapOperation};
+use crate::diagnostic::Diagnostic;
+use crate::expand::Expander;
+use crate::expand::shape::Shape;
+use crate::reader::Form;
+
+pub(super) struct CollectionLowering<'e, 'x> {
+    expander: &'e mut Expander<'x>,
+}
+
+type KeyedParts = (Box<Expr>, Vec<Expr>, Box<Expr>);
+
+impl<'e, 'x> CollectionLowering<'e, 'x> {
+    pub(super) fn new(expander: &'e mut Expander<'x>) -> Self {
+        Self { expander }
+    }
+
+    pub(super) fn lower(
+        &mut self,
+        form: ExpressionForm,
+        shape: &Shape,
+    ) -> Result<ExprKind, Diagnostic> {
+        match form {
+            ExpressionForm::Assoc => self
+                .keyed(shape)
+                .map(|(value, keys, item)| ExprKind::Assoc(value, keys, item)),
+            ExpressionForm::MapAt => self.map_at(shape),
+            ExpressionForm::PushAt => self.push_at(shape),
+            ExpressionForm::SetAt => self
+                .keyed(shape)
+                .map(|(value, keys, item)| ExprKind::SetAt(value, keys, item)),
+            _ => unreachable!("the caller matches a collection form"),
+        }
+    }
+
+    fn keyed(&mut self, shape: &Shape) -> Result<KeyedParts, Diagnostic> {
+        let items = shape.exactly(4)?;
+        let value = self.expander.lower_expr(&items[1])?;
+        let keys = self.expressions(shape.list(&items[2])?)?;
+        let item = self.expander.lower_expr(&items[3])?;
+        Ok((Box::new(value), keys, Box::new(item)))
+    }
+
+    fn map_at(&mut self, shape: &Shape) -> Result<ExprKind, Diagnostic> {
+        let items = shape.at_least(3)?;
+        let operation = items[1]
+            .as_symbol()
+            .and_then(|symbol| MapOperation::of(symbol.name()))
+            .ok_or_else(|| shape.malformed(&items[1]))?;
+        let value = self.expander.lower_expr(&items[2])?;
+        let arguments = self.expressions(&items[3..])?;
+        Ok(ExprKind::MapAt(operation, Box::new(value), arguments))
+    }
+
+    fn push_at(&mut self, shape: &Shape) -> Result<ExprKind, Diagnostic> {
+        let items = shape.exactly(3)?;
+        let target = self.expander.lower_expr(&items[1])?;
+        let item = self.expander.lower_expr(&items[2])?;
+        Ok(ExprKind::PushAt(Box::new(target), Box::new(item)))
+    }
+
+    fn expressions(&mut self, forms: &[Form]) -> Result<Vec<Expr>, Diagnostic> {
+        forms
+            .iter()
+            .map(|form| self.expander.lower_expr(form))
+            .collect()
+    }
+}

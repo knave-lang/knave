@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/short_lived_view_needs_owned_text.knv
+---
+struct user
+  name: owned, written a view
+defn make
+  name: owned, written a view
+defn main
+  local line: owned
+needs owned text
+  8:37

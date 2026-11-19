@@ -1,0 +1,5 @@
+(defstruct user :name (ref str) :age int)
+
+(defn main ()
+  (let (ana (->user :name "Ana" :age 3))
+    (println (:name ana))))

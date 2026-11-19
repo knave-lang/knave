@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/created_text_makes_a_field_owned.knv
+---
+struct user
+  name: owned

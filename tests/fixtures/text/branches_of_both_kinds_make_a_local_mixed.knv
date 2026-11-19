@@ -1,0 +1,4 @@
+(defn main ()
+  (let (loud true
+        name (if loud (as-str (str "x" 1)) "y"))
+    (println name)))

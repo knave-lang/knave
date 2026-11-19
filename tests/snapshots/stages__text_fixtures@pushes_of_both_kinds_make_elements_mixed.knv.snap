@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/pushes_of_both_kinds_make_elements_mixed.knv
+---
+defn main
+  local names[0]: mixed, written a view

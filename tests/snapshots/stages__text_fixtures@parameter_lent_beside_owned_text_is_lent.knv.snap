@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/parameter_lent_beside_owned_text_is_lent.knv
+---
+defn tagged
+  result: owned
+defn label
+  name: lent
+  result: owned

@@ -148,6 +148,7 @@ impl SearchFixture {
                 .map(|(index, field)| (format!("field{index}").into(), field))
                 .collect(),
             field_spans: Vec::new(),
+            bare_text_fields: Vec::new(),
             function_spans: Vec::new(),
             derives: Vec::new(),
             derived_traits: Vec::new(),

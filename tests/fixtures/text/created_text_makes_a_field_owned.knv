@@ -1,0 +1,5 @@
+(defstruct user :name string :age int)
+
+(defn main ()
+  (let (made (->user :name (str "u" 1) :age 1))
+    (println (:name made))))

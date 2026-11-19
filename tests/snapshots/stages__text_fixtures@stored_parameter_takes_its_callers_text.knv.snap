@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/stored_parameter_takes_its_callers_text.knv
+---
+struct user
+  name: a 'static view, written a view
+defn make
+  name: a 'static view, written a view

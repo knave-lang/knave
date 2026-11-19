@@ -1,0 +1,5 @@
+(defn duplicate (text) (clone text))
+
+(defn main ()
+  (let (owned (str "a" 1))
+    (println (duplicate owned))))

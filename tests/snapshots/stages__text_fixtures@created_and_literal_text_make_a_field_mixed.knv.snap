@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/created_and_literal_text_make_a_field_mixed.knv
+---
+struct user
+  name: mixed, written a view
+defn make
+  name: mixed, written a view

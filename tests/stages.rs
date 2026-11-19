@@ -156,6 +156,19 @@ fn loan_fixtures() {
 }
 
 #[test]
+fn text_fixtures() {
+    let fixtures = "fixtures/text/*.knv";
+    let mut paths = Vec::new();
+    insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
+    let reports = FixtureReports::compute(paths, |path| Fixture::load(path).text_report());
+    insta::glob!(fixtures, |path| {
+        if let Some(report) = reports.report(path) {
+            insta::assert_snapshot!(report);
+        }
+    });
+}
+
+#[test]
 fn emit_fixtures() {
     let fixtures = "fixtures/emit/*.knv";
     let mut paths = Vec::new();

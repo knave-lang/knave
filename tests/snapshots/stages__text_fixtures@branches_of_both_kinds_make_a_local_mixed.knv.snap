@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/branches_of_both_kinds_make_a_local_mixed.knv
+---
+defn main
+  local name: mixed, written a view

@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/read_only_parameter_stays_a_view.knv
+---
+defn shout
+  text: a view
+  result: owned
+defn main
+  local owned: owned

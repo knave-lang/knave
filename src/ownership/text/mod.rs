@@ -6,6 +6,7 @@ mod call_target;
 mod callee;
 mod callee_scheme;
 mod class_role;
+mod construction_flows;
 mod flow;
 #[cfg(test)]
 mod flow_fixture;

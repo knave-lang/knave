@@ -109,6 +109,12 @@ mod tests {
     }
 
     #[test]
+    fn a_template_skips_a_versioned_line_whose_version_holds_a_space() {
+        let changed = "version: \"0.4 edited\"\nrun `knave` 0.4.0\n";
+        assert_eq!(TEMPLATE.version_in(changed), Some("0.4.0"));
+    }
+
+    #[test]
     fn a_template_finds_no_version_in_a_text_without_its_versioned_line() {
         assert_eq!(TEMPLATE.version_in("run `knave`\nversion: \"\"\n"), None);
     }

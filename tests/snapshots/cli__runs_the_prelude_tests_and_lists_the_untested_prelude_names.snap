@@ -2,8 +2,8 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (54 of 250): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display enum eprint eprintln eq exit export field floating fmt fn-once from-str hash impl integer io-error macro module new number ord partial-eq partial-ord pattern quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
-running 231 tests
+untested in prelude (56 of 259): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display duration enum eprint eprintln eq exit export field floating fmt fn-once from-str hash impl instant integer io-error macro module new number ord partial-eq partial-ord pattern quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
+running 240 tests
 test number/inc-adds-one-to-any-number ... ok
 test number/dec-subtracts-one-from-any-number ... ok
 test number/inc-and-dec-are-values ... ok
@@ -31,6 +31,15 @@ test prelude/io/doc:io-error ... ok
 test prelude/io/doc:stdin ... ok
 test prelude/io/doc:source ... ok
 test prelude/io/doc:command-line-args ... ok
+test prelude/io/doc:duration ... ok
+test prelude/io/doc:instant ... ok
+test prelude/io/doc:seconds ... ok
+test prelude/io/doc:millis ... ok
+test prelude/io/doc:micros ... ok
+test prelude/io/doc:nanos ... ok
+test prelude/io/doc:sleep ... ok
+test prelude/io/doc:now ... ok
+test prelude/io/doc:elapsed ... ok
 test prelude/iterator/doc:sum ... ok
 test prelude/iterator/doc:range ... ok
 test prelude/iterator/doc:map ... ok
@@ -254,4 +263,4 @@ test prelude/vec/doc:last ... ok
 test prelude/vec/doc:reverse ... ok
 test prelude/vec/doc:reverse! ... ok
 test prelude/vec/doc:dedup! ... ok
-231 passed, 0 failed
+240 passed, 0 failed

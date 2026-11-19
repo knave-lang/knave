@@ -1,5 +1,6 @@
 (use prelude/macros document module)
 (use prelude/types box option result vec)
+(use prelude/io duration instant)
 (use prelude/pair pair)
 
 (use prelude/text infallible parse-bool-error
@@ -15,6 +16,7 @@
   bool char string i8 i16 i32 i64 i128 isize u8 u16 u32 u64
   u128 usize f32 f64 infallible parse-bool-error
   parse-char-error parse-float-error parse-int-error
+  duration instant
   (where (a) (ref a))
   (where ((a clone)) (vec a))
   (where ((a clone)) (option a))
@@ -26,7 +28,7 @@
 (rust-trait copy "Copy"
   (requires clone)
   bool char unit i8 i16 i32 i64 i128 isize u8 u16 u32 u64
-  u128 usize f32 f64 infallible
+  u128 usize f32 f64 infallible duration instant
   (where (a) (ref a))
   (where ((a copy)) (option a))
   (where ((a copy) (b copy)) (result a b))

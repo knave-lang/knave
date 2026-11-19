@@ -4,6 +4,7 @@
 (use prelude/syntax let)
 (use prelude/ownership copy)
 (use prelude/types box option result vec)
+(use prelude/io duration instant)
 
 (use prelude/text infallible parse-bool-error
                   parse-char-error parse-float-error
@@ -39,7 +40,7 @@
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32
   f64 infallible parse-bool-error parse-char-error
-  parse-float-error parse-int-error
+  parse-float-error parse-int-error duration instant
   (with string str)
   (with str string)
   (with string (ref str))
@@ -60,7 +61,7 @@
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize
   infallible parse-bool-error parse-char-error
-  parse-float-error parse-int-error
+  parse-float-error parse-int-error duration instant
   (where ((a eq)) (vec a))
   (where ((a eq)) (option a))
   (where ((a eq) (b eq)) (result a b))
@@ -71,7 +72,7 @@
   bool char str string
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize
-  infallible
+  infallible duration instant
   (where ((a hash)) (vec a))
   (where ((a hash)) (option a))
   (where ((a hash) (b hash)) (result a b))
@@ -83,7 +84,7 @@
   char str string
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32
-  f64 infallible
+  f64 infallible duration instant
   (where ((a partial-ord)) (ref a))
   (where ((a partial-ord)) (box a))
   (where ((a partial-ord) (b partial-ord))
@@ -268,7 +269,7 @@
   char string
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize
-  infallible
+  infallible duration instant
   (where ((a ord)) (ref a))
   (where ((a ord)) (box a))
   (where ((a ord) (b ord)) (pair a b)))

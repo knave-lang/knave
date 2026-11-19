@@ -1,0 +1,10 @@
+(defn pause (count) (millis count))
+
+(defn main ()
+  (let (start (now))
+    (sleep (seconds 2))
+    (sleep (millis 250))
+    (sleep (micros 3))
+    (sleep (nanos 7))
+    (sleep (pause 1))
+    (prn (elapsed start))))

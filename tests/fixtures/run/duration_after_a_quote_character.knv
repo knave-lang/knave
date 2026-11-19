@@ -1,0 +1,6 @@
+(defn quote? (c) (= c (char "\"")))
+
+(defn wait () (seconds 1))
+
+(defn main ()
+  (prn (quote? (char "a")) (wait)))

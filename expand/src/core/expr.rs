@@ -27,7 +27,7 @@ pub enum ExprKind {
     LabeledVariant(BindingId, Vec<(FieldLabel, Expr)>),
     Assoc(KeyedPath),
     MapAt(MapOperation, Box<Expr>, Vec<Expr>),
-    PushAt(Box<Expr>, Box<Expr>),
+    PushAt(Push),
     SetAt(KeyedPath),
 }
 
@@ -343,7 +343,7 @@ impl ExprKind {
             ExprKind::MapAt(_, value, arguments) => {
                 std::iter::once(value.as_ref()).chain(arguments).collect()
             }
-            ExprKind::PushAt(target, item) => vec![target.as_ref(), item.as_ref()],
+            ExprKind::PushAt(push) => vec![push.target.as_ref(), push.item.as_ref()],
             _ => Vec::new(),
         }
     }
@@ -387,6 +387,13 @@ impl KeyedPath {
             .chain(std::iter::once(self.item.as_ref()))
             .collect()
     }
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct Push {
+    pub target: Box<Expr>,
+    pub item: Box<Expr>,
+    pub written_by: Option<Rc<str>>,
 }
 
 impl Block {

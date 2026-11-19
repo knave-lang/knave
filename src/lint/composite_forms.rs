@@ -32,7 +32,7 @@ impl CompositeForms {
         match kind {
             ExprKind::Assoc(path) => Self::keyed(forms, (CollectionForm::Assoc, path), span),
             ExprKind::SetAt(path) => Self::keyed(forms, (CollectionForm::SetAt, path), span),
-            ExprKind::PushAt(target, item) => Self::push_at(forms, (target, item), span),
+            ExprKind::PushAt(push) => Self::push_at(forms, (&push.target, &push.item), span),
             other => Self::map_at(forms, other, span),
         }
     }

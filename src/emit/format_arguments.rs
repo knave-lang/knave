@@ -125,15 +125,20 @@ impl FormatMacro {
         }
     }
 
-    const CALL: &'static str = "!(";
+    const BANG: char = '!';
+    const CALL_OPENS: char = '(';
 
     fn is_called_in(text: &str) -> bool {
-        text.match_indices(Self::CALL).any(|(call, _)| {
-            let name = Identifier::ending(&text[..call]).text();
-            Self::ALL
-                .iter()
-                .any(|format_macro| format_macro.name == name)
+        text.match_indices(Self::BANG).any(|(bang, _)| {
+            text[bang + 1..].starts_with(Self::CALL_OPENS) && Self::names(&text[..bang])
         })
+    }
+
+    fn names(before_bang: &str) -> bool {
+        let name = Identifier::ending(before_bang).text();
+        Self::ALL
+            .iter()
+            .any(|format_macro| format_macro.name == name)
     }
 
     fn called_by(open: &OpenDelimiter<'_>) -> Option<&'static Self> {

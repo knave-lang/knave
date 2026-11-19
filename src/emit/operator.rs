@@ -186,7 +186,7 @@ impl<'a> TokenScanner<'a> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn read(
         &mut self,
         position: usize,

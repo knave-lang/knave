@@ -131,7 +131,7 @@ impl<'t> DocLookup<'t> {
     ) -> Result<PageText, ExitStatus> {
         let read = self.read_term(term)?;
         let entry = environment.load(self.terminal)?;
-        let expanded = self.terminal.expansion().within_session(
+        let expanded = self.terminal.expansion().sessions().within(
             &ModuleOfSources::single(environment.file(), entry),
             |mut session| {
                 let source = session.add_source(Self::TERM_SOURCE, term);
@@ -144,7 +144,7 @@ impl<'t> DocLookup<'t> {
     pub fn lint_explanation(&mut self, name: &str) -> Result<Option<String>, ExitStatus> {
         let environment = DocEnvironment::Prelude;
         let entry = environment.load(self.terminal)?;
-        self.terminal.expansion().within_session(
+        self.terminal.expansion().sessions().within(
             &ModuleOfSources::single(environment.file(), entry),
             |mut session| LintPages::new(&mut session).documented_explanation(name),
         )
@@ -157,7 +157,7 @@ impl<'t> DocLookup<'t> {
     ) -> Result<DocOutput, ExitStatus> {
         let read = self.read_term(term)?;
         let entry = environment.load(self.terminal)?;
-        let lookup = self.terminal.expansion().within_session(
+        let lookup = self.terminal.expansion().sessions().within(
             &ModuleOfSources::single(environment.file(), entry),
             |session| TypedLookup::new(session, (Self::TERM_SOURCE, term)).look_up(&read),
         )?;

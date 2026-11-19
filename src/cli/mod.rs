@@ -74,6 +74,7 @@ mod lint_setting;
 mod loan_report_command;
 mod located_program;
 mod located_project;
+mod module_alone;
 mod module_names;
 mod module_of_sources;
 mod name_records;

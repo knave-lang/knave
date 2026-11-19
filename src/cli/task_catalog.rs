@@ -147,6 +147,7 @@ impl TaskCatalog {
     ) -> Result<EnteredProgram, ExitStatus> {
         terminal
             .expansion()
+            .sessions()
             .within_evaluation(&self.request, |mut session| {
                 let source = session.add_source(Self::RUNNER_SOURCE, entry);
                 Self::entered(session, source).map(|program| EnteredProgram { program, source })
@@ -195,6 +196,7 @@ impl TaskCatalog {
     fn expanded(&self, terminal: &mut Terminal, lookup: &str) -> Result<TaskLookup, ExitStatus> {
         terminal
             .expansion()
+            .sessions()
             .within_evaluation(&self.request, |mut session| {
                 let source = session.add_source(Self::LOOKUP_SOURCE, lookup);
                 Self::task_lookup(session, source)

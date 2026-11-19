@@ -115,9 +115,12 @@ impl EvalCommand {
             evaluated: self.forms.module_spans(module.anchor(), ranges),
             module,
         };
-        terminal.expansion().within_evaluation(&request, |session| {
-            ExpandedEvaluation::new(session, &request, &self.forms, self.output.as_ref())
-        })
+        terminal
+            .expansion()
+            .sessions()
+            .within_evaluation(&request, |session| {
+                ExpandedEvaluation::new(session, &request, &self.forms, self.output.as_ref())
+            })
     }
 
     fn load_module(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {

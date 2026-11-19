@@ -4,6 +4,7 @@ use super::doc_folder::WrittenPage;
 use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
 use super::expanded_page::ExpandedPage;
+use super::module_alone::ModuleAlone;
 use super::module_of_sources::ModuleOfSources;
 use super::program_file::ProgramFile;
 use super::terminal::Terminal;
@@ -57,7 +58,6 @@ impl EntryProgram {
 
 impl DocumentedModules {
     pub const CALL_SOURCE: &'static str = "<documentation>";
-    const LOADING_FORM: &'static str = "(do)";
     const NAMES_MACRO: &'static str = "documentation-names";
     const PAGE_MACRO: &'static str = "documentation-page";
 
@@ -106,7 +106,7 @@ impl DocumentedModules {
         let entry = terminal
             .sources()
             .add(self.file.path().display(), String::new());
-        let (texts, warnings) = terminal.expansion().within_session(
+        let (texts, warnings) = terminal.expansion().sessions().within(
             &ModuleOfSources::single(self.file.clone(), entry),
             |mut session| {
                 self.load_written(&mut session)?;
@@ -152,17 +152,11 @@ impl DocumentedModules {
         terminal: &mut Terminal,
         module: &str,
     ) -> Result<Result<Vec<TypedName>, Diagnostics>, ExitStatus> {
-        let entry = terminal
-            .sources()
-            .add(self.file.path().display(), String::new());
-        let (program, named) = terminal.expansion().within_session(
-            &ModuleOfSources::single(self.file.clone(), entry),
-            |mut session| {
-                Self::load(&mut session, module)?;
+        let (program, named) =
+            ModuleAlone::new(&self.file).within(terminal, module, |mut session| {
                 let named = Self::named_bindings(&mut session, module)?;
                 Ok((Self::checked_also(session.finish()?, &named), named))
-            },
-        )?;
+            })?;
         Ok(ProgramChecker::check::<EnforcedOwnership>(&program)
             .map(|typed| Self::typed_names(&typed, named)))
     }
@@ -172,7 +166,7 @@ impl DocumentedModules {
         let source = terminal
             .sources()
             .add(entry.file.path().display(), entry.text.clone());
-        let (program, loaded, named) = terminal.expansion().within_session(
+        let (program, loaded, named) = terminal.expansion().sessions().within(
             &ModuleOfSources::single(entry.file.clone(), source),
             |mut session| {
                 let loaded = self.loaded_written(&session);
@@ -229,14 +223,8 @@ impl DocumentedModules {
 
     fn load_written(&self, session: &mut ExpansionSession<'_>) -> Result<(), Diagnostics> {
         for module in &self.written {
-            Self::load(session, module)?;
+            ModuleAlone::load(session, module)?;
         }
-        Ok(())
-    }
-
-    fn load(session: &mut ExpansionSession<'_>, module: &str) -> Result<(), Diagnostics> {
-        let form = Self::read(session, Self::LOADING_FORM)?;
-        session.expression_in(&ModulePath::new(module), form)?;
         Ok(())
     }
 

@@ -39,28 +39,8 @@ impl<'a> Expansion<'a> {
         Ok(program)
     }
 
-    pub fn within_session<T>(
-        &mut self,
-        module: &ModuleOfSources,
-        work: impl FnOnce(ExpansionSession<'_>) -> Result<T, Diagnostics>,
-    ) -> Result<T, ExitStatus> {
-        self.expander(&module.file)
-            .open(module.file.module_path(), &module.sources)
-            .and_then(work)
-            .map_err(|diagnostics| self.report(&diagnostics))
-    }
-
-    pub fn within_evaluation<T>(
-        &mut self,
-        request: &EvaluationRequest,
-        work: impl FnOnce(ExpansionSession<'_>) -> Result<T, Diagnostics>,
-    ) -> Result<T, ExitStatus> {
-        let module = &request.module;
-        self.expander(&module.file)
-            .evaluating(request.evaluated.iter().copied())
-            .open(module.file.module_path(), &module.sources)
-            .and_then(work)
-            .map_err(|diagnostics| self.report(&diagnostics))
+    pub fn sessions(self) -> ExpansionSessions<'a> {
+        ExpansionSessions { expansion: self }
     }
 
     pub fn classify(&mut self, module: &ModuleOfSources, form: Span) -> ClassifiedForm {
@@ -93,6 +73,46 @@ impl<'a> Expansion<'a> {
 
     fn report(&self, diagnostics: &Diagnostics) -> ExitStatus {
         self.output.report(self.sources, diagnostics)
+    }
+}
+
+pub struct ExpansionSessions<'a> {
+    expansion: Expansion<'a>,
+}
+
+impl ExpansionSessions<'_> {
+    pub fn within<T>(
+        &mut self,
+        module: &ModuleOfSources,
+        work: impl FnOnce(ExpansionSession<'_>) -> Result<T, Diagnostics>,
+    ) -> Result<T, ExitStatus> {
+        self.within_silently(module, work)
+            .map_err(|diagnostics| self.expansion.report(&diagnostics))
+    }
+
+    pub fn within_silently<T>(
+        &mut self,
+        module: &ModuleOfSources,
+        work: impl FnOnce(ExpansionSession<'_>) -> Result<T, Diagnostics>,
+    ) -> Result<T, Diagnostics> {
+        self.expansion
+            .expander(&module.file)
+            .open(module.file.module_path(), &module.sources)
+            .and_then(work)
+    }
+
+    pub fn within_evaluation<T>(
+        &mut self,
+        request: &EvaluationRequest,
+        work: impl FnOnce(ExpansionSession<'_>) -> Result<T, Diagnostics>,
+    ) -> Result<T, ExitStatus> {
+        let module = &request.module;
+        self.expansion
+            .expander(&module.file)
+            .evaluating(request.evaluated.iter().copied())
+            .open(module.file.module_path(), &module.sources)
+            .and_then(work)
+            .map_err(|diagnostics| self.expansion.report(&diagnostics))
     }
 }
 
@@ -222,7 +242,8 @@ mod tests {
         let module = fixture.module(&[ExpansionFixture::DEFINITIONS]);
         let program = fixture
             .expansion()
-            .within_session(&module, |session| session.finish());
+            .sessions()
+            .within(&module, |session| session.finish());
         assert!(program.is_ok());
     }
 
@@ -232,7 +253,8 @@ mod tests {
         let module = fixture.module(&[ExpansionFixture::UNBOUND]);
         let status = fixture
             .expansion()
-            .within_session(&module, |session| session.finish())
+            .sessions()
+            .within(&module, |session| session.finish())
             .err();
         assert_eq!(status, Some(ExitStatus::ProgramErrors));
         assert_eq!(fixture.output.writes(), ["1 diagnostics"]);
@@ -249,6 +271,7 @@ mod tests {
         };
         let defined = fixture
             .expansion()
+            .sessions()
             .within_evaluation(&request, |session| Ok(session.defines(evaluated)));
         assert_eq!(defined.ok(), Some(true));
     }

@@ -3,6 +3,7 @@ use rustc_hash::FxHashSet;
 use super::assoc_flows::AssocFlows;
 use super::call_flows::CallFlows;
 use super::reaching_text::ReachingText;
+use super::short_lived_text::ShortLivedText;
 use super::slot::Slot;
 use super::slot_listing::SlotListing;
 use super::slot_owner::SlotOwner;
@@ -140,7 +141,7 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             return TextValue::default();
         }
         if self.opaque.contains(&binding) {
-            return TextValue::from(Source::Text(ReachingText::BORROWED), expr.span);
+            return ShortLivedText::of(expr);
         }
         let owner = if self.parameters.contains(&binding) {
             SlotOwner::Parameter(binding)

@@ -4,13 +4,12 @@ use super::callee::Callee;
 use super::instantiation::Instantiation;
 use super::need::Need;
 use super::node_id::NodeId;
-use super::reaching_text::ReachingText;
 use super::representation::Representation;
 use super::scheme_position::SchemePosition;
+use super::short_lived_text::ShortLivedText;
 use super::slot::Slot;
 use super::slot_owner::SlotOwner;
 use super::source::Source;
-use super::text_position::TextPositions;
 use super::text_read::TextRead;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
@@ -53,11 +52,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
     }
 
     fn unknown_result(&self) -> TextValue {
-        if TextPositions::holds_text(&self.call.ty) {
-            TextValue::from(Source::Text(ReachingText::BORROWED), self.call.span)
-        } else {
-            TextValue::default()
-        }
+        ShortLivedText::of(self.call)
     }
 
     fn through(

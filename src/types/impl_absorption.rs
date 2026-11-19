@@ -107,6 +107,7 @@ mod tests {
     use super::ImplAbsorption;
     use crate::core::BindingId;
     use crate::types::declarations_fixture::DeclarationsFixture;
+    use crate::types::typed_source::TypedSource;
 
     const SOURCE: &str = "
         (trait pair-check
@@ -159,5 +160,39 @@ mod tests {
             .map(|method| !absorption.finish_methods(&[method]).is_empty())
             .collect();
         assert_eq!(finished, vec![false, true]);
+    }
+
+    struct ChainFixture;
+
+    impl ChainFixture {
+        const HELD: &str = "{held}";
+
+        const TOP_DOWN_CHAIN: &str = "
+            (defn main () (println (t3 (e3/full3 (str \"x\")))))
+            (defenum (e3 a) (full3 a) empty3)
+            (trait t3 (t3 (fn (self) bool)))
+            (impl t3 (e3 {held}) (t3 (w) (match w ((full3 v) (t2 (e2/full2 v))) (empty3 true))))
+            (defenum (e2 a) (full2 a) empty2)
+            (trait t2 (t2 (fn (self) bool)))
+            (impl t2 (e2 {held}) (t2 (w) (match w ((full2 v) (t1 (ref (->w1 v)))) (empty2 true))))
+            (defstruct (w1 a) :value a)
+            (trait t1 (t1 (fn ((ref self)) bool)))
+            (impl t1 (w1 {held}) (t1 (w) (do (local _copy (clone (:value w))) true)))";
+
+        fn inferred_expressions(held: &str) -> usize {
+            let source = Self::TOP_DOWN_CHAIN.replace(Self::HELD, held);
+            TypedSource::expand(&source)
+                .typed()
+                .checking
+                .inferred_expressions
+        }
+    }
+
+    #[test]
+    fn a_top_down_chain_of_impls_whose_bodies_need_a_bound_checks_in_one_round() {
+        assert_eq!(
+            ChainFixture::inferred_expressions("a"),
+            ChainFixture::inferred_expressions("string")
+        );
     }
 }

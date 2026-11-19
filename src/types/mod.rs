@@ -15,6 +15,7 @@ mod bound_origins;
 mod boxed_payload;
 mod boxes;
 mod callee_borrows;
+mod check_order;
 mod check_round;
 mod checked_program;
 mod checker;

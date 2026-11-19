@@ -55,8 +55,7 @@ mod tests {
 
     #[test]
     fn a_release_version_compares_each_number_in_turn() {
-        let ordered =
-            ["0.9.9", "0.18.0", "0.18.1", "1.0.0"].map(|text| ReleaseVersion::parse(text));
+        let ordered = ["0.9.9", "0.18.0", "0.18.1", "1.0.0"].map(ReleaseVersion::parse);
         assert!(ordered.windows(2).all(|pair| pair[0] < pair[1]));
     }
 

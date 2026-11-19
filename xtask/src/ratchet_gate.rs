@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -6,7 +7,7 @@ use crate::census::Census;
 use crate::checks::Check;
 use crate::failure::TaskFailure;
 use crate::git::Git;
-use crate::ratchet::Ratchet;
+use crate::ratchet::{Comparison, Counts, Measurement, Ratchet};
 use crate::rise_approvals::RiseApprovals;
 use crate::verdict::Verdict;
 
@@ -59,13 +60,26 @@ impl BaseComparison<'_> {
     fn ratchets(&self, census: &dyn Census) -> Result<Vec<Box<dyn Check>>, TaskFailure> {
         let head = census.measure(self.head_root)?;
         let base = census.measure(self.tree.root())?;
-        Ok(head
+        Ok(Self::compare(head, base)
             .into_iter()
-            .zip(base)
-            .map(|(head, base)| {
-                Box::new(Ratchet::new(head, base.counts, &self.approvals)) as Box<dyn Check>
-            })
+            .map(|comparison| Box::new(Ratchet::new(comparison, &self.approvals)) as Box<dyn Check>)
             .collect())
+    }
+
+    fn compare(head: Vec<Measurement>, base: Vec<Measurement>) -> Vec<Comparison> {
+        let mut base_counts: BTreeMap<&str, Counts> = base
+            .into_iter()
+            .map(|measurement| (measurement.limit.name, measurement.counts))
+            .collect();
+        head.into_iter()
+            .map(|measurement| Comparison {
+                base: base_counts
+                    .remove(measurement.limit.name)
+                    .unwrap_or_default(),
+                limit: measurement.limit,
+                head: measurement.counts,
+            })
+            .collect()
     }
 }
 
@@ -74,11 +88,11 @@ mod tests {
     use std::fs;
     use std::path::Path;
 
-    use super::RatchetGate;
+    use super::{BaseComparison, RatchetGate};
     use crate::census::Census;
     use crate::failure::TaskFailure;
     use crate::production_lines::ProductionLineCensus;
-    use crate::ratchet::Measurement;
+    use crate::ratchet::{Counts, Limit, Measurement};
     use crate::temporary_repository::TemporaryRepository;
 
     struct CountsFile;
@@ -174,6 +188,32 @@ mod tests {
         let branch = Branch::forked_with("gate-fall", "src/a.rs 900\nsrc/b.rs 700\n");
         branch.commit("src/a.rs 899\n", "shrink");
         assert_eq!(branch.details(), [""]);
+    }
+
+    #[test]
+    fn head_and_base_pair_by_limit_name_and_a_limit_missing_at_the_base_counts_nothing() {
+        let measurement = |name: &'static str, count: usize| Measurement {
+            limit: Limit {
+                name,
+                ..ProductionLineCensus::LIMIT
+            },
+            counts: Counts::from([("src/a.rs".to_string(), count)]),
+        };
+        let comparisons = BaseComparison::compare(
+            vec![measurement("first", 1), measurement("second", 2)],
+            vec![measurement("second", 20)],
+        );
+        let paired: Vec<(&str, usize, Option<usize>)> = comparisons
+            .iter()
+            .map(|comparison| {
+                (
+                    comparison.limit.name,
+                    comparison.head["src/a.rs"],
+                    comparison.base.get("src/a.rs").copied(),
+                )
+            })
+            .collect();
+        assert_eq!(paired, [("first", 1, None), ("second", 2, Some(20))]);
     }
 
     #[test]

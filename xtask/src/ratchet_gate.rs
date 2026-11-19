@@ -2,12 +2,12 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use crate::base_tree::BaseTree;
 use crate::census::Census;
 use crate::checks::Check;
 use crate::failure::TaskFailure;
 use crate::git::Git;
 use crate::ratchet::{Comparison, Counts, Measurement, Ratchet};
+use crate::revision_tree::RevisionTree;
 use crate::rise_approvals::RiseApprovals;
 use crate::verdict::Verdict;
 
@@ -45,14 +45,14 @@ impl RatchetGate {
         Ok(BaseComparison {
             head_root: &self.root,
             approvals: RiseApprovals::since(&git, &merge_base)?,
-            tree: BaseTree::extract(&git, &merge_base)?,
+            tree: RevisionTree::extract(&self.root, &merge_base)?,
         })
     }
 }
 
 struct BaseComparison<'a> {
     head_root: &'a Path,
-    tree: BaseTree,
+    tree: RevisionTree,
     approvals: RiseApprovals,
 }
 

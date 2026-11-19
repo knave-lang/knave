@@ -1,6 +1,5 @@
 mod agree;
 mod badge;
-mod base_tree;
 mod bench;
 mod cargo;
 mod census;
@@ -31,6 +30,7 @@ mod ratchet;
 mod ratchet_gate;
 mod reduction_arguments;
 mod release;
+mod revision_tree;
 mod rise_approvals;
 mod source_file;
 mod source_format;

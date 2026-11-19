@@ -2,6 +2,7 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use clap::Args;
+use knave_agree::LeftOutFixtures;
 
 use crate::changed_functions::ChangedFunctions;
 use crate::changed_lines::ChangedLines;
@@ -81,8 +82,24 @@ impl PrepushTask {
             .iter()
             .map(|arguments| TestRun::parse(arguments))
             .collect();
-        let report = InstrumentedTests::new(root).run_selected(&functions.test_runs(&also))?;
+        let runs = functions.test_runs(&also);
+        Self::announce_left_out_fixtures(&runs);
+        let report = InstrumentedTests::new(root).run_selected(&runs)?;
         Ok(functions.forecast(&report))
+    }
+
+    fn announce_left_out_fixtures(runs: &[TestRun]) {
+        for note in Self::left_out_fixture_notes(runs) {
+            println!("note: {note}");
+        }
+    }
+
+    fn left_out_fixture_notes(runs: &[TestRun]) -> Vec<String> {
+        if runs.iter().any(TestRun::runs_stage_fixtures) {
+            LeftOutFixtures::slow().notes()
+        } else {
+            Vec::new()
+        }
     }
 
     fn ratchet_checks(root: &Path, fork_point: &str) -> Result<Vec<Box<dyn Check>>, TaskFailure> {
@@ -92,10 +109,13 @@ impl PrepushTask {
 
 #[cfg(test)]
 mod tests {
+    use knave_agree::LeftOutFixtures;
+
     use super::PrepushTask;
     use crate::checks::Check;
     use crate::crap_forecast::CrapForecast;
     use crate::source_format::{FormatOutputs, SourceFormat};
+    use crate::test_selection::TestRun;
     use crate::workspace::WorkspaceFixture;
 
     struct PrepushCase;
@@ -104,6 +124,27 @@ mod tests {
         fn summaries(checks: &[Box<dyn Check>]) -> Vec<String> {
             checks.iter().map(|check| check.summary()).collect()
         }
+    }
+
+    #[test]
+    fn a_selection_with_stage_fixtures_notes_each_left_out_fixture() {
+        let runs = [
+            TestRun::parse("--lib emit::"),
+            TestRun::parse("--test stages check_fixtures"),
+        ];
+        assert_eq!(
+            PrepushTask::left_out_fixture_notes(&runs),
+            LeftOutFixtures::slow().notes()
+        );
+    }
+
+    #[test]
+    fn a_selection_without_stage_fixtures_notes_nothing() {
+        let runs = [
+            TestRun::parse("--lib emit::"),
+            TestRun::parse("--test cli fmt"),
+        ];
+        assert!(PrepushTask::left_out_fixture_notes(&runs).is_empty());
     }
 
     #[test]

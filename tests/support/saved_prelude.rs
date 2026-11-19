@@ -24,7 +24,7 @@ impl SavedPreludeAgreement {
                 .with_saved_prelude(prelude)
                 .stage_report()
         });
-        for path in self.paths.iter().filter(|path| built.ran(path)) {
+        for path in &self.paths {
             assert_eq!(
                 loaded.report(path),
                 built.report(path),

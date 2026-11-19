@@ -1,14 +1,15 @@
 use std::env;
+use std::io::{self, Write};
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
+use knave_agree::LeftOutFixtures;
 use rustc_hash::FxHashMap;
 
 use super::fixture_queue::FixtureQueue;
-use super::left_out_fixtures::LeftOutFixtures;
 
 pub struct FixtureReports {
     reports: FxHashMap<PathBuf, String>,
@@ -22,11 +23,9 @@ impl FixtureReports {
         paths: Vec<PathBuf>,
         report: impl Fn(&Path) -> String + Send + Sync + 'static,
     ) -> Self {
-        Self::compute_within(
-            Self::FIXTURE_DEADLINE,
-            LeftOutFixtures::from_environment().kept(paths),
-            report,
-        )
+        let left_out = LeftOutFixtures::from_environment();
+        Self::announce(&left_out.notes_for(&paths));
+        Self::compute_within(Self::FIXTURE_DEADLINE, left_out.kept(paths), report)
     }
 
     pub fn compute_within(
@@ -46,14 +45,15 @@ impl FixtureReports {
         }
     }
 
-    pub fn ran(&self, path: &Path) -> bool {
-        self.reports.contains_key(path)
+    pub fn report(&self, path: &Path) -> Option<&str> {
+        self.reports.get(path).map(String::as_str)
     }
 
-    pub fn report(&self, path: &Path) -> &str {
-        self.reports
-            .get(path)
-            .expect("the first glob pass listed this fixture")
+    fn announce(notes: &[String]) {
+        let mut stderr = io::stderr();
+        for note in notes {
+            let _shown_only_when_stderr_is_open = writeln!(stderr, "{note}");
+        }
     }
 
     fn workers() -> usize {

@@ -5,6 +5,7 @@ mod counted;
 mod definition_errors;
 mod distinct;
 mod explanation;
+mod fallback_help;
 mod label;
 mod quoted_form;
 mod render;
@@ -20,6 +21,7 @@ pub use counted::Counted;
 pub use definition_errors::DefinitionErrors;
 pub use distinct::DistinctDiagnostics;
 pub use explanation::Explanation;
+pub use fallback_help::FallbackHelp;
 pub use label::{Help, Label, Suggestion};
 pub use render::DiagnosticRenderer;
 pub use rule_name::RuleName;
@@ -111,20 +113,16 @@ impl Diagnostic {
     }
 
     pub fn with_help(mut self, help: impl Into<Help>) -> Self {
-        self.report.helps.push(help.into());
+        help.into().join(&mut self.report.helps);
         self
     }
 
-    pub fn with_quoting_help(mut self, help: impl Into<String>, form: Span) -> Self {
-        self.report.helps.push(Help::quoting(help.into(), form));
-        self
+    pub fn with_quoting_help(self, help: impl Into<String>, form: Span) -> Self {
+        self.with_help(Help::quoting(help.into(), form))
     }
 
-    pub fn with_suggestion(mut self, help: impl Into<String>, suggestion: Suggestion) -> Self {
-        self.report
-            .helps
-            .push(Help::new(help.into()).with_suggestion(suggestion));
-        self
+    pub fn with_suggestion(self, help: impl Into<String>, suggestion: Suggestion) -> Self {
+        self.with_help(Help::new(help.into()).with_suggestion(suggestion))
     }
 
     pub fn with_missing_name(mut self, missing: MissingName) -> Self {
@@ -178,7 +176,7 @@ impl Diagnostic {
 
 #[cfg(test)]
 mod tests {
-    use super::{Diagnostic, DiagnosticCode, Label, RuleName, Severity};
+    use super::{Diagnostic, DiagnosticCode, FallbackHelp, Help, Label, RuleName, Severity};
     use crate::source::{SourceId, Span};
 
     struct WarningFixture;
@@ -233,5 +231,54 @@ mod tests {
     fn a_lint_warning_carries_its_lint_rule() {
         let rule = WarningFixture::lint_warning().rule().cloned();
         assert_eq!(rule, Some(RuleName::new(WarningFixture::RULE)));
+    }
+
+    struct HelpFixture;
+
+    impl HelpFixture {
+        const FALLBACK: &str = "convert it";
+        const OWN: &str = "write a signature";
+
+        fn bare() -> Diagnostic {
+            let span = Span::new(SourceId::new(0), 0..4);
+            Diagnostic::error(
+                DiagnosticCode::MISMATCHED_TYPES,
+                "mismatched types",
+                Label::new(span, "here"),
+            )
+        }
+
+        fn fallback() -> FallbackHelp {
+            FallbackHelp {
+                message: Self::FALLBACK.to_owned(),
+                form: Span::new(SourceId::new(0), 0..4),
+            }
+        }
+
+        fn messages(diagnostic: &Diagnostic) -> Vec<&str> {
+            diagnostic.helps().iter().map(Help::message).collect()
+        }
+    }
+
+    #[test]
+    fn a_fallback_help_shows_when_no_other_help_does() {
+        let diagnostic = HelpFixture::bare().with_help(HelpFixture::fallback());
+        assert_eq!(HelpFixture::messages(&diagnostic), [HelpFixture::FALLBACK]);
+    }
+
+    #[test]
+    fn a_later_help_displaces_a_fallback_help() {
+        let diagnostic = HelpFixture::bare()
+            .with_help(HelpFixture::fallback())
+            .with_help(HelpFixture::OWN);
+        assert_eq!(HelpFixture::messages(&diagnostic), [HelpFixture::OWN]);
+    }
+
+    #[test]
+    fn a_fallback_help_after_another_help_does_not_show() {
+        let diagnostic = HelpFixture::bare()
+            .with_help(HelpFixture::OWN)
+            .with_help(HelpFixture::fallback());
+        assert_eq!(HelpFixture::messages(&diagnostic), [HelpFixture::OWN]);
     }
 }

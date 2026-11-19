@@ -254,6 +254,7 @@ mod tests {
         .with_quoting_help("bind it: `{form}`", span);
         let names = ["karl"];
         let warning = SetAsideProblems::set_aside(&SetAsideFixture::input(&names), &error);
-        assert_eq!(warning.helps()[0].quoted_form(), Some(span));
+        let rendered = warning.helps()[0].rendered(|quoted| (quoted == span).to_string());
+        assert_eq!(rendered, "bind it: `true`");
     }
 }

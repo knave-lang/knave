@@ -630,12 +630,7 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn sure_arm(&mut self, value: &TypedExpr, arm: &TypedArm) -> Code {
         let statements = self.sure_arm_contents(value, arm);
-        Code::block(vec![
-            Fragment::Text("{".to_string()),
-            Fragment::Indented(statements),
-            Fragment::Newline,
-            Fragment::Text("}".to_string()),
-        ])
+        Code::block(Self::block_with(statements))
     }
 
     fn sure_arm_contents(&mut self, value: &TypedExpr, arm: &TypedArm) -> Vec<Fragment> {
@@ -1355,12 +1350,7 @@ impl<'a> ExpressionEmitter<'a> {
         let name = self.assoc_name(value);
         let inner = self.assoc_assignment(&name, value, keys, item);
         self.locals.leave();
-        Code::block(vec![
-            Fragment::Text("{".to_string()),
-            Fragment::Indented(inner),
-            Fragment::Newline,
-            Fragment::Text("}".to_string()),
-        ])
+        Code::block(Self::block_with(inner))
     }
 
     fn assoc_name(&mut self, value: &TypedExpr) -> String {
@@ -1787,12 +1777,7 @@ impl<'a> ExpressionEmitter<'a> {
         self.locals.leave();
         statements.push(Fragment::Newline);
         statements.extend(call.fragments);
-        Code::block(vec![
-            Fragment::Text("{".to_string()),
-            Fragment::Indented(statements),
-            Fragment::Newline,
-            Fragment::Text("}".to_string()),
-        ])
+        Code::block(Self::block_with(statements))
     }
 
     pub(super) fn contains_try(block: &TypedBlock) -> bool {
@@ -2171,12 +2156,7 @@ impl<'a> ExpressionEmitter<'a> {
         inner.push(Fragment::Newline);
         inner.push(Fragment::Text(map_name));
         self.locals.leave();
-        Code::block(vec![
-            Fragment::Text("{".to_string()),
-            Fragment::Indented(inner),
-            Fragment::Newline,
-            Fragment::Text("}".to_string()),
-        ])
+        Code::block(Self::block_with(inner))
     }
 
     fn map_update_base(&mut self, value: &TypedExpr) -> String {
@@ -2450,22 +2430,12 @@ impl<'a> ExpressionEmitter<'a> {
     fn braced(fragments: Vec<Fragment>) -> Code {
         let mut inner = vec![Fragment::Newline];
         inner.extend(fragments);
-        Code::block(vec![
-            Fragment::Text("{".to_string()),
-            Fragment::Indented(inner),
-            Fragment::Newline,
-            Fragment::Text("}".to_string()),
-        ])
+        Code::block(Self::block_with(inner))
     }
 
     fn inline_call(&mut self, lambda: &TypedLambda, arguments: &[TypedArgument]) -> Code {
         let fragments = self.inline_call_contents(lambda, arguments);
-        Code::block(vec![
-            Fragment::Text("{".to_string()),
-            Fragment::Indented(fragments),
-            Fragment::Newline,
-            Fragment::Text("}".to_string()),
-        ])
+        Code::block(Self::block_with(fragments))
     }
 
     fn inline_call_contents(
@@ -2512,12 +2482,7 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn block(&mut self, block: &TypedBlock) -> Code {
         let statements = self.block_contents(block);
-        Code::block(vec![
-            Fragment::Text("{".to_string()),
-            Fragment::Indented(statements),
-            Fragment::Newline,
-            Fragment::Text("}".to_string()),
-        ])
+        Code::block(Self::block_with(statements))
     }
 
     fn block_contents(&mut self, block: &TypedBlock) -> Vec<Fragment> {
@@ -2694,12 +2659,7 @@ impl<'a> ExpressionEmitter<'a> {
         contents.push(Fragment::Text(";".to_string()));
         contents.push(Fragment::Newline);
         contents.extend(body.fragments);
-        Code::block(vec![
-            Fragment::Text("{".to_string()),
-            Fragment::Indented(contents),
-            Fragment::Newline,
-            Fragment::Text("}".to_string()),
-        ])
+        Code::block(Self::block_with(contents))
     }
 
     fn construction(&mut self, binding: BindingId, fields: &[(FieldLabel, TypedExpr)]) -> Code {

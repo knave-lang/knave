@@ -19,10 +19,6 @@ impl OwnCallOrigins {
         self.origins.get(&call_site).cloned()
     }
 
-    pub fn holds(&self, call_site: Span) -> bool {
-        self.origins.contains_key(&call_site)
-    }
-
     pub fn enclosing(&self, span: Span) -> Option<MacroOrigin> {
         let index = self
             .enclosing_index

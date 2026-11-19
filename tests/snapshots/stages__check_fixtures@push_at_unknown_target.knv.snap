@@ -9,5 +9,5 @@ error[L0401]: mismatched types
 5 |   (add-one! (mut text)))
   |             ^^^^^^^^^^ expected `(vec int)`, found `string`
   |
-  = help: `push-at!` reads a target of unknown type as a vector, so write a `type` signature for `add-one!`, such as `(type add-one! (fn ((mut string)) _))`
+  = help: a push reads a target of unknown type as a vector, so write a `type` signature for `add-one!`, such as `(type add-one! (fn ((mut string)) _))`
   = note: run `knave doc L0401` for an explanation

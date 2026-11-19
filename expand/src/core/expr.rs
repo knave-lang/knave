@@ -393,7 +393,6 @@ impl KeyedPath {
 pub struct Push {
     pub target: Box<Expr>,
     pub item: Box<Expr>,
-    pub written_by: Option<Rc<str>>,
 }
 
 impl Block {

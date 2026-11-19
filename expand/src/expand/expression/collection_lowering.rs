@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::core::{CollectionForm, Expr, ExprKind, KeyedPath, MapOperation, Push};
 use crate::diagnostic::Diagnostic;
 use crate::expand::Expander;
@@ -53,19 +51,12 @@ impl<'e, 'x> CollectionLowering<'e, 'x> {
 
     fn push_at(&mut self, shape: &Shape) -> Result<ExprKind, Diagnostic> {
         let items = shape.exactly(3)?;
-        let written_by = self.macro_writing(&items[0]);
         let target = self.expander.lower_expr(&items[1])?;
         let item = self.expander.lower_expr(&items[2])?;
         Ok(ExprKind::PushAt(Push {
             target: Box::new(target),
             item: Box::new(item),
-            written_by,
         }))
-    }
-
-    fn macro_writing(&self, head: &Form) -> Option<Rc<str>> {
-        let calls = &self.expander.tables.macro_origins.calls;
-        calls.last_expanded_at(head.span())
     }
 
     fn expressions(&mut self, forms: &[Form]) -> Result<Vec<Expr>, Diagnostic> {

@@ -237,7 +237,7 @@ impl TypeProblems {
         signature: &str,
     ) -> String {
         format!(
-            "`{}` reads {}, so write a `type` signature for `{function}`, such as `(type {function} {signature})`",
+            "{} reads {}, so write a `type` signature for `{function}`, such as `(type {function} {signature})`",
             assumption.operation(),
             assumption.reading(),
         )

@@ -2426,18 +2426,13 @@ impl TypeChecker {
     }
 
     fn infer_push(&mut self, push: &Push, span: Span) -> Result<TypedExpr, Diagnostic> {
-        let Push {
-            target,
-            item,
-            written_by,
-        } = push;
+        let Push { target, item } = push;
         let value = self.infer(target)?;
         if self.is_string_target(&value.ty) {
             let item = self.infer(item)?;
             return self.infer_string_push(value, item, span);
         }
-        let assumption = CollectionAssumption::push_target(written_by.clone());
-        self.note_unknown_collection(&value, assumption);
+        self.note_unknown_collection(&value, CollectionAssumption::PushTarget);
         let element = self.unifier.fresh();
         let parameters = vec![
             Type::mutable(self.prelude_types().nested_vector_of(1, &element)),

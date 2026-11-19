@@ -14,6 +14,7 @@ mod checking;
 mod checkout_bounds;
 mod color_when;
 mod command;
+mod compiler_check;
 mod counter_report;
 mod crate_build;
 mod crate_name;

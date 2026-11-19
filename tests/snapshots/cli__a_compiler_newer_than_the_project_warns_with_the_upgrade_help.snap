@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: "Sandbox::without_version(&check.assert_exit_code(0).stderr())"
+---
+warning[L0737]: the project records Knave 0.0.1, and this is Knave <version>
+ --> project.knv:1:29
+  |
+1 | (defproject demo-app :knave "0.0.1")
+  |                             ^^^^^^^ recorded by an earlier Knave
+  |
+  = help: run `knave upgrade` to record Knave <version> and rewrite the files Knave wrote
+  = note: run `knave doc L0737` for an explanation

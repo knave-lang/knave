@@ -8,14 +8,13 @@ impl VersionedText {
     const VERSION_SLOT: &str = "{knave-version}";
     const PROJECT_FILE_SLOT: &str = "{project-file}";
     const VERSION_KEY_SLOT: &str = "{version-key}";
-    pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
     pub const fn new(template: &'static str) -> Self {
         Self { template }
     }
 
     pub fn filled(&self) -> String {
-        self.named().replace(Self::VERSION_SLOT, Self::VERSION)
+        self.named().replace(Self::VERSION_SLOT, Language::VERSION)
     }
 
     pub fn wrote(&self, text: &str) -> bool {

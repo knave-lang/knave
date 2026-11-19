@@ -1,4 +1,5 @@
 mod compiler_version;
+mod compiler_version_problems;
 mod crate_set;
 mod dependency_reader;
 mod dependency_section;
@@ -16,6 +17,7 @@ mod project_editor;
 mod project_roles;
 mod quoted_list;
 mod reader;
+mod release_version;
 mod role_book;
 mod role_note;
 mod role_problem;
@@ -36,6 +38,7 @@ pub use problems::ProjectProblems;
 pub use project_editor::{CrateEntry, ProjectEditor};
 pub(crate) use project_roles::ProjectRoles;
 pub use reader::ProjectReader;
+pub use release_version::ReleaseVersion;
 pub use section::Section;
 pub use vocabulary::ProjectVocabulary;
 

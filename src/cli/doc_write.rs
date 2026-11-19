@@ -8,7 +8,7 @@ use super::doc_pages::{DocumentedModules, EntryProgram};
 use super::error_pages::ErrorPages;
 use super::exit_status::ExitStatus;
 use super::library_walk::FetchingStore;
-use super::located_project::LocatedProject;
+use super::located_project::{LocatedProject, ProjectRoot};
 use super::program_file::ProgramFile;
 use super::reference_pages::ReferencePages;
 use super::source_walk::SourceWalk;
@@ -119,7 +119,7 @@ impl DocWriteCommand {
     }
 
     fn compiler_pages_folder(&self) -> PathBuf {
-        let root = LocatedProject::canonical_root(WorkingDirectory::path()).unwrap_or_default();
+        let root = ProjectRoot::canonical_of(WorkingDirectory::path()).unwrap_or_default();
         self.folder_in(&root)
     }
 

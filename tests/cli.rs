@@ -34,6 +34,9 @@ const EVERY_OWNED_FILE: [&str; 3] = [
     ".github/workflows/knave.yml",
 ];
 const FILLED_VERSION: &str = "0.0.1";
+const NEWER_VERSION: &str = "999.0.0";
+const OLDER_COMPILER_ERROR: &str = "error[L0736]";
+const NEWER_COMPILER_WARNING: &str = "warning[L0737]";
 const RELEASED_SKILL: &str =
     include_str!("../src/cli/earlier_texts/skills/writing-knave/SKILL.md/0.18.0");
 const RELEASED_WORKFLOW: &str =
@@ -488,6 +491,15 @@ exit 101
                 &workflow,
                 &RELEASED_WORKFLOW.replace(VERSION_SLOT, FILLED_VERSION),
             )
+    }
+
+    fn with_recorded_version(test_name: &str, version: &str) -> Self {
+        let sandbox = Self::new(test_name);
+        sandbox
+            .compiler(&["new", "demo-app"])
+            .assert_silent_success();
+        let project = format!("(defproject demo-app :knave \"{version}\")\n");
+        sandbox.with_file("demo-app/project.knv", &project)
     }
 
     fn without_version(text: &str) -> String {
@@ -9013,6 +9025,87 @@ fn upgrade_of_a_current_project_changes_nothing() {
 fn upgrade_outside_a_project_is_a_usage_error() {
     let sandbox = Sandbox::new("upgrade_outside_project");
     insta::assert_snapshot!(sandbox.compiler(&["upgrade"]).assert_exit_code(2).stderr());
+}
+
+#[test]
+fn a_compiler_older_than_the_project_fails_check() {
+    let sandbox = Sandbox::with_recorded_version("version_older_compiler", NEWER_VERSION);
+    let check = sandbox.compiler_in("demo-app", &["check"]);
+    insta::assert_snapshot!(Sandbox::without_version(
+        &check.assert_exit_code(1).stderr()
+    ));
+}
+
+#[test]
+fn upgrade_by_a_compiler_older_than_the_project_keeps_the_project_file() {
+    let sandbox = Sandbox::with_recorded_version("upgrade_older_compiler", NEWER_VERSION);
+    let before = sandbox.contents("demo-app/project.knv");
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    assert!(
+        upgrade
+            .assert_exit_code(1)
+            .stderr()
+            .contains(OLDER_COMPILER_ERROR)
+    );
+    assert_eq!(sandbox.contents("demo-app/project.knv"), before);
+}
+
+#[test]
+fn a_compiler_newer_than_the_project_warns_once_per_command() {
+    let sandbox = Sandbox::with_recorded_version("version_newer_compiler", FILLED_VERSION);
+    for command in [["check"], ["run"], ["test"]] {
+        let stderr = sandbox
+            .compiler_in("demo-app", &command)
+            .assert_exit_code(0)
+            .stderr();
+        assert_eq!(
+            stderr.matches(NEWER_COMPILER_WARNING).count(),
+            1,
+            "`knave {}` printed:\n{stderr}",
+            command[0]
+        );
+    }
+}
+
+#[test]
+fn a_compiler_newer_than_the_project_warns_with_the_upgrade_help() {
+    let sandbox = Sandbox::with_recorded_version("version_newer_help", FILLED_VERSION);
+    let check = sandbox.compiler_in("demo-app", &["check"]);
+    insta::assert_snapshot!(Sandbox::without_version(
+        &check.assert_exit_code(0).stderr()
+    ));
+}
+
+#[test]
+fn upgrade_of_an_earlier_version_records_it_without_the_warning() {
+    let sandbox = Sandbox::with_recorded_version("upgrade_earlier_version", FILLED_VERSION);
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    insta::assert_snapshot!(Sandbox::without_version(
+        &upgrade.assert_exit_code(0).stderr()
+    ));
+    sandbox
+        .compiler_in("demo-app", &["check"])
+        .assert_silent_success();
+}
+
+#[test]
+fn a_project_without_a_recorded_version_reports_no_version() {
+    let sandbox = Sandbox::new("version_unrecorded");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let sandbox = sandbox.with_file("demo-app/project.knv", "(defproject demo-app)\n");
+    for command in [["check"], ["run"], ["test"]] {
+        let stderr = sandbox
+            .compiler_in("demo-app", &command)
+            .assert_exit_code(0)
+            .stderr();
+        assert!(
+            !stderr.contains("[L073"),
+            "`knave {}` printed:\n{stderr}",
+            command[0]
+        );
+    }
 }
 
 #[test]

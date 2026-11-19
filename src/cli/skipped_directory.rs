@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use super::build_directory::BuildDirectory;
-use super::located_project::LocatedProject;
+use super::located_project::ProjectRoot;
 use super::program_file::ProgramFile;
 use super::skip_reason::SkipReason;
 
@@ -14,7 +14,7 @@ impl SkippedDirectory {
 
     pub fn for_walk_of(walk_root: &Path) -> Self {
         let build_base =
-            LocatedProject::canonical_root(walk_root).or_else(|| ProgramFile::canonical(walk_root));
+            ProjectRoot::canonical_of(walk_root).or_else(|| ProgramFile::canonical(walk_root));
         Self {
             build_parent: build_base.map(|base| base.join(BuildDirectory::PARENT)),
         }

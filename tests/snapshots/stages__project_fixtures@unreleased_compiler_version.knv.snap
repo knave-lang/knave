@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/unreleased_compiler_version.knv
+---
+error[L0706]: `:knave` takes a release version such as `"0.18.0"`
+ --> project/unreleased_compiler_version.knv:1:28
+  |
+1 | (defproject browser :knave "latest")
+  |                            ^^^^^^^^ expected a release version such as `"0.18.0"`
+  |
+  = note: run `knave doc L0706` for an explanation

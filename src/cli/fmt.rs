@@ -11,7 +11,7 @@ use rustc_hash::FxHashMap;
 use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
 use super::library_walk::CacheOnlyStore;
-use super::located_project::LocatedProject;
+use super::located_project::{LocatedProject, ProjectRoot};
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
@@ -124,7 +124,7 @@ impl FmtCommand {
             return Ok(paths);
         }
         let working_directory = WorkingDirectory::resolved()?;
-        let root = LocatedProject::canonical_root(&working_directory)
+        let root = ProjectRoot::canonical_of(&working_directory)
             .ok_or_else(WorkingDirectory::report_no_project)?;
         Ok(vec![Self::upward_path(&working_directory, &root)])
     }
@@ -340,7 +340,7 @@ impl NearbyProjects {
         directory: &Path,
         terminal: &Terminal,
     ) -> Option<&LocatedProject> {
-        let root = LocatedProject::canonical_root(directory)?;
+        let root = ProjectRoot::canonical_of(directory)?;
         let formatted_files = &self.formatted_files;
         self.projects
             .entry(root)

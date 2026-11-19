@@ -1,0 +1,5 @@
+---
+source: tests/cli.rs
+expression: "Sandbox::without_version(&upgrade.assert_exit_code(0).stderr())"
+---
+recorded Knave <version> in `project.knv`

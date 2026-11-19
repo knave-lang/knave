@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: "Sandbox::without_version(&check.assert_exit_code(1).stderr())"
+---
+error[L0736]: the project uses Knave 999.0.0, and this is Knave <version>
+ --> project.knv:1:29
+  |
+1 | (defproject demo-app :knave "999.0.0")
+  |                             ^^^^^^^^^ the project's Knave version
+  |
+  = help: install that version with `cargo install knave --version 999.0.0 --locked`
+  = note: run `knave doc L0736` for an explanation

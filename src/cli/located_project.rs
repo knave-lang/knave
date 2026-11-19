@@ -1,7 +1,9 @@
 mod file_placement;
+mod project_root;
 
 use std::path::{Path, PathBuf};
 
+use super::compiler_check::CompilerCheck;
 use super::crate_section::CrateSection;
 use super::exit_status::ExitStatus;
 use super::library_walk::{LibraryStore, LibraryWalk};
@@ -15,6 +17,7 @@ use crate::language::Language;
 use crate::modules::LibraryTable;
 use crate::project::{CrateDependency, Project, ProjectProblems};
 use file_placement::FilePlacement;
+pub use project_root::ProjectRoot;
 
 pub struct LocatedProject {
     root: PathBuf,
@@ -30,12 +33,43 @@ impl LocatedProject {
         terminal: &mut Terminal,
         store: impl LibraryStore,
     ) -> Result<Option<Self>, ExitStatus> {
+        let located = Self::enter(directory, terminal, store)?;
+        Self::check_compiler(located.as_ref(), terminal, &CompilerCheck::EVERY_MISMATCH)?;
+        Ok(located)
+    }
+
+    pub fn enter_to_upgrade(
+        directory: &Path,
+        terminal: &mut Terminal,
+        store: impl LibraryStore,
+    ) -> Result<Option<Self>, ExitStatus> {
+        let located = Self::enter(directory, terminal, store)?;
+        Self::check_compiler(located.as_ref(), terminal, &CompilerCheck::OLDER_COMPILER)?;
+        Ok(located)
+    }
+
+    fn enter(
+        directory: &Path,
+        terminal: &mut Terminal,
+        store: impl LibraryStore,
+    ) -> Result<Option<Self>, ExitStatus> {
         let located = Self::search_from(directory, terminal, store)?;
         if let Some(entered) = &located {
             let levels = LintLevels::of(&entered.project.lints);
             terminal.configure(|settings| settings.leveling_lints_by(levels));
         }
         Ok(located)
+    }
+
+    fn check_compiler(
+        located: Option<&Self>,
+        terminal: &Terminal,
+        check: &CompilerCheck,
+    ) -> Result<(), ExitStatus> {
+        match located {
+            Some(entered) => check.report(&entered.project, &entered.project_file(), terminal),
+            None => Ok(()),
+        }
     }
 
     fn search_from(
@@ -64,19 +98,10 @@ impl LocatedProject {
     }
 
     fn nearest_root(directory: &Path) -> Result<Option<PathBuf>, ExitStatus> {
-        match Self::canonical_root(directory) {
+        match ProjectRoot::canonical_of(directory) {
             Some(root) => Ok(Some(Self::shown(&root)?)),
             None => Ok(None),
         }
-    }
-
-    pub fn canonical_root(directory: &Path) -> Option<PathBuf> {
-        let start = ProgramFile::canonical(directory)?;
-        let file_name = Language::project_file_name();
-        start
-            .ancestors()
-            .find(|ancestor| ancestor.join(&file_name).is_file())
-            .map(Path::to_path_buf)
     }
 
     fn shown(root: &Path) -> Result<PathBuf, ExitStatus> {

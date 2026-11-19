@@ -1,16 +1,17 @@
 use rustc_hash::FxHashSet;
 
 use super::call_flows::CallFlows;
-use super::node::Source;
 use super::reaching_text::ReachingText;
-use super::slot::{Slot, SlotOwner};
+use super::slot::Slot;
+use super::slot_owner::SlotOwner;
 use super::slot_reads::SlotReads;
+use super::source::Source;
 use super::text_position::TextPositions;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
 use super::type_path::TypePath;
 use super::walk_context::WalkContext;
-use crate::core::{BindingId, Literal, ReferenceKind};
+use crate::core::{BindingId, FieldLabel, Literal, ReferenceKind};
 use crate::types::{
     FieldOrder, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
     TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
@@ -210,11 +211,7 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
         }
     }
 
-    fn fields(
-        &mut self,
-        binding: BindingId,
-        fields: &[(crate::core::FieldLabel, TypedExpr)],
-    ) -> TextValue {
+    fn fields(&mut self, binding: BindingId, fields: &[(FieldLabel, TypedExpr)]) -> TextValue {
         for (label, value) in fields {
             let value = self.value(value);
             let owner = SlotOwner::Field(binding, label.name.clone());

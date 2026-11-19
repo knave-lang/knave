@@ -1,10 +1,13 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::flow_graph::{Flow, FlowGraph};
-use super::node::{NodeId, Source};
+use super::flow::Flow;
+use super::flow_graph::FlowGraph;
+use super::need::Need;
+use super::node_id::NodeId;
 use super::reaching_text::ReachingText;
 use super::representation::Representation;
-use super::slot::{Need, Slot};
+use super::slot::Slot;
+use super::source::Source;
 use super::stored_parameters::StoredParameters;
 use super::transfer::Transfer;
 use crate::core::BindingId;
@@ -210,10 +213,12 @@ mod tests {
     use super::TextSolver;
     use crate::core::BindingId;
     use crate::ownership::text::flow_graph::FlowGraph;
-    use crate::ownership::text::node::{NodeId, Source};
+    use crate::ownership::text::node_id::NodeId;
     use crate::ownership::text::reaching_text::ReachingText;
     use crate::ownership::text::representation::Representation;
-    use crate::ownership::text::slot::{Slot, SlotOwner};
+    use crate::ownership::text::slot::Slot;
+    use crate::ownership::text::slot_owner::SlotOwner;
+    use crate::ownership::text::source::Source;
     use crate::ownership::text::text_value::TextValue;
     use crate::ownership::text::transfer::Transfer;
     use crate::source::{SourceId, Span};

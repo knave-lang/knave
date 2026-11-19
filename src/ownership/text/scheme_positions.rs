@@ -1,30 +1,9 @@
-use super::representation::{Access, Representation};
+use super::access::Access;
+use super::representation::Representation;
+use super::scheme_position::SchemePosition;
 use super::text_position::TextPositions;
 use super::type_path::TypePath;
 use crate::types::{GenericId, Type};
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SchemePosition {
-    Generic {
-        generic: GenericId,
-        outer: TypePath,
-        inner: TypePath,
-        access: Access,
-    },
-    Written {
-        path: TypePath,
-        written: Representation,
-    },
-}
-
-impl SchemePosition {
-    pub fn path(&self) -> TypePath {
-        match self {
-            Self::Generic { outer, inner, .. } => outer.joined(inner),
-            Self::Written { path, .. } => path.clone(),
-        }
-    }
-}
 
 #[derive(Clone)]
 struct Place {

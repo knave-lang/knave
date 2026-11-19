@@ -1,6 +1,7 @@
 use super::flow_graph::FlowGraph;
-use super::node::Source;
-use super::slot::{Slot, SlotOwner};
+use super::slot::Slot;
+use super::slot_owner::SlotOwner;
+use super::source::Source;
 use super::text_position::TextPositions;
 use super::text_value::TextValue;
 use super::transfer::Transfer;

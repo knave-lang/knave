@@ -1,5 +1,6 @@
 use super::representation::Representation;
-use super::scheme_positions::{SchemePosition, SchemePositions};
+use super::scheme_position::SchemePosition;
+use super::scheme_positions::SchemePositions;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
 use super::type_path::TypePath;

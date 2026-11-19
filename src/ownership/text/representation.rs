@@ -1,13 +1,8 @@
 use std::fmt;
 
+use super::access::Access;
 use super::reaching_text::ReachingText;
 use crate::core::PrimitiveType;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Access {
-    Direct,
-    Referenced,
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Representation {
@@ -254,8 +249,8 @@ mod tests {
 
     #[test]
     fn written_text_reads_as_its_representation() {
-        use super::Access;
         use crate::core::PrimitiveType;
+        use crate::ownership::text::access::Access;
         assert_eq!(
             Representation::written(PrimitiveType::Str, Access::Referenced),
             Some(Representation::View)

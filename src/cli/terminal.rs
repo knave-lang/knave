@@ -1,3 +1,4 @@
+mod project_loader;
 mod source_loader;
 
 use std::rc::Rc;
@@ -18,6 +19,7 @@ use crate::emit::EmittedCrate;
 use crate::ownership::OwnershipGate;
 use crate::source::{SourceFile, SourceId, SourceMap};
 use crate::types::TypedProgram;
+pub use project_loader::ProjectLoader;
 pub use source_loader::SourceLoader;
 
 pub struct Terminal {

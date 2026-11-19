@@ -8621,18 +8621,21 @@ fn a_compiler_older_than_a_project_with_an_unknown_key_reports_only_the_version(
             "demo-app/project.knv",
             &format!("(defproject demo-app :knave \"{NEWER_VERSION}\" :newkey \"x\")\n"),
         );
-    for command in [["check"], ["upgrade"]] {
+    let before = sandbox.files_with_contents("demo-app");
+    for command in [&["check"][..], &["upgrade"], &["fmt"], &["fmt", "--check"]] {
         let stderr = sandbox
-            .compiler_in("demo-app", &command)
+            .compiler_in("demo-app", command)
             .assert_exit_code(1)
             .stderr();
         assert_eq!(
             stderr.matches(OLDER_COMPILER_ERROR).count(),
             1,
             "`knave {}` printed:\n{stderr}",
-            command[0]
+            command.join(" ")
         );
         assert!(!stderr.contains("L0704"), "{stderr}");
+        assert!(!stderr.contains("cannot load the project"), "{stderr}");
+        assert_eq!(sandbox.files_with_contents("demo-app"), before);
     }
 }
 

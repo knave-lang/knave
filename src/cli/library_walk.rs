@@ -78,7 +78,8 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
     ) -> Result<WalkedLibraries, ExitStatus> {
         let project = terminal
             .sources()
-            .load_project(&root.join(Language::project_file_name()))?;
+            .projects()
+            .load(&root.join(Language::project_file_name()))?;
         let mut walk = Self {
             terminal,
             seen: Vec::new(),
@@ -232,7 +233,7 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
         if !self.is_first_visit(library_root, library)? {
             return Ok(());
         }
-        let project = self.terminal.sources().load_project(&project_file)?;
+        let project = self.terminal.sources().projects().load(&project_file)?;
         let own_checkout = Self::own_checkout(library_root, library);
         let visited = VisitedLibrary {
             root: library_root,

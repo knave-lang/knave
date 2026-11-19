@@ -96,7 +96,7 @@ impl NewCommand {
             project_file.path().display(),
             project_file.text().to_string(),
         );
-        let project = sources.read_project(source)?;
+        let project = sources.projects().read(source)?;
         let function = Self::GREETING_FUNCTION;
         let text = format!(
             "(export {function})\n\n(defn {function} () {})\n\n(defn main ()\n  (println ({function})))\n",

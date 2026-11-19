@@ -1,8 +1,9 @@
 use super::body_flows::BodyFlows;
 use super::flow_graph::FlowGraph;
 use super::representation::Representation;
-use super::slot::{Slot, SlotOwner};
+use super::slot::Slot;
 use super::slot_listing::SlotListing;
+use super::slot_owner::SlotOwner;
 use super::text_position::TextPositions;
 use super::text_program::TextProgram;
 use super::walk_context::WalkContext;

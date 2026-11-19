@@ -1,4 +1,5 @@
-use super::representation::{Access, Representation};
+use super::access::Access;
+use super::representation::Representation;
 use super::type_path::TypePath;
 use crate::core::PrimitiveType;
 use crate::types::Type;

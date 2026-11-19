@@ -1,8 +1,9 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::flow_graph::FlowGraph;
-use super::node::{NodeId, Source};
-use super::slot::Need;
+use super::need::Need;
+use super::node_id::NodeId;
+use super::source::Source;
 use super::transfer::Transfer;
 use crate::core::BindingId;
 

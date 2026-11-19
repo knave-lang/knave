@@ -1,10 +1,13 @@
 use rustc_hash::FxHashMap;
 
 use super::flow_graph::FlowGraph;
-use super::node::NodeId;
+use super::listed_section::ListedSection;
+use super::listed_slot::ListedSlot;
+use super::node_id::NodeId;
 use super::representation::Representation;
-use super::slot::{ListedSlot, Slot, SlotOwner};
-use super::slot_listing::{ListedSection, SlotListing};
+use super::slot::Slot;
+use super::slot_listing::SlotListing;
+use super::slot_owner::SlotOwner;
 use super::text_program::TextProgram;
 use super::text_solver::TextSolver;
 use crate::source::{SourceMap, Span};

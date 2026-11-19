@@ -1,4 +1,5 @@
-use super::node::{NodeId, Source};
+use super::node_id::NodeId;
+use super::source::Source;
 use super::transfer::Transfer;
 use super::type_path::TypePath;
 use crate::source::Span;

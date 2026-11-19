@@ -1,4 +1,4 @@
-use super::representation::Access;
+use super::access::Access;
 use super::text_program::TextProgram;
 use crate::core::BindingId;
 use crate::types::{GenericId, GenericParam, Type, TypedExpr, TypedExprKind, TypedLeaf};

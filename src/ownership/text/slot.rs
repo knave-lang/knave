@@ -1,30 +1,7 @@
-use std::rc::Rc;
-
-use super::representation::Representation;
+use super::need::Need;
+use super::slot_owner::SlotOwner;
 use super::type_path::TypePath;
 use crate::core::BindingId;
-use crate::source::Span;
-use crate::types::GenericId;
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum SlotOwner {
-    Parameter(BindingId),
-    Result(BindingId),
-    Local(BindingId),
-    Field(BindingId, Rc<str>),
-    Variable(Span, GenericId),
-    Value(Span),
-    OwnedArgument(Span),
-    ClonedArgument(Span),
-    WrittenView(BindingId, Rc<str>),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Need {
-    Owned,
-    OwnedOrMixed,
-    View,
-}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Slot {
@@ -68,10 +45,4 @@ impl Slot {
     pub fn is_local(&self) -> bool {
         matches!(self.owner, SlotOwner::Local(_)) && self.path.is_top()
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct ListedSlot {
-    pub slot: Slot,
-    pub written: Representation,
 }

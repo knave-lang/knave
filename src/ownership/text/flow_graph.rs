@@ -1,18 +1,9 @@
 use rustc_hash::FxHashMap;
 
-use super::node::{NodeId, Source};
+use super::flow::Flow;
+use super::node_id::NodeId;
 use super::slot::Slot;
 use super::text_value::TextValue;
-use super::transfer::Transfer;
-use crate::source::Span;
-
-#[derive(Clone, Copy, Debug)]
-pub struct Flow {
-    pub source: Source,
-    pub target: NodeId,
-    pub transfer: Transfer,
-    pub span: Span,
-}
 
 #[derive(Default)]
 pub struct FlowGraph {
@@ -86,7 +77,7 @@ impl FlowGraph {
 mod tests {
     use super::{FlowGraph, Slot};
     use crate::core::BindingId;
-    use crate::ownership::text::slot::SlotOwner;
+    use crate::ownership::text::slot_owner::SlotOwner;
 
     struct Locals;
 

@@ -1,11 +1,9 @@
-use super::slot::{ListedSlot, Slot, SlotOwner};
+use super::listed_section::ListedSection;
+use super::listed_slot::ListedSlot;
+use super::slot::Slot;
+use super::slot_owner::SlotOwner;
 use super::text_position::TextPositions;
 use crate::types::Type;
-
-pub struct ListedSection {
-    pub heading: Option<String>,
-    pub slots: Vec<ListedSlot>,
-}
 
 #[derive(Default)]
 pub struct SlotListing {

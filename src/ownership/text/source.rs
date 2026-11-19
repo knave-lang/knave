@@ -1,7 +1,5 @@
+use super::node_id::NodeId;
 use super::reaching_text::ReachingText;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct NodeId(pub usize);
 
 #[derive(Clone, Copy, Debug)]
 pub enum Source {

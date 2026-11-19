@@ -1,5 +1,5 @@
+use super::access::Access;
 use super::reaching_text::ReachingText;
-use super::representation::Access;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Transfer {

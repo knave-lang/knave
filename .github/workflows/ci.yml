@@ -141,14 +141,12 @@ jobs:
           build-cache: coverage
       - name: Build the compiler
         run: nix develop .#ci -c cargo build --bin knave
-      - name: Record which commits the compiler holds
+      - name: Record which merge commit the compiler holds
         if: github.event_name == 'pull_request'
-        env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           mkdir -p target/ci-debug
           cp target/debug/knave target/ci-debug/knave
-          printf 'head %s\nmerge %s\n' "$HEAD_SHA" "$GITHUB_SHA" > target/ci-debug/commits
+          echo "$GITHUB_SHA" > target/ci-debug/merge
       - name: Upload the debug compiler
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

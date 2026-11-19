@@ -109,23 +109,41 @@ done
 
 ## Debug binaries
 
-**The `agreement` job uploads the debug `knave` of each ready pull request.** The artifact's name is `knave-debug-<head commit>`. The binary holds the pull request merged into its base. GitHub keeps the artifact for three days.
+**The `agreement` job uploads the debug `knave` of each ready pull request.** The artifact's name is `knave-debug-<head commit>`. GitHub keeps the artifact for three days.
+
+**The binary holds the head merged with the base branch as of the CI run.** The binary lacks every commit that the base branch gained after the run started. The artifact's `merge` file names the merge commit.
+
+**The binary runs only on Linux x86-64, in a dev shell of the same `flake.lock`.** The binary loads its C library from the Nix store paths of the CI run.
 
 **If you probe a ready pull request with a debug `knave`, first run this block in the dev shell:**
 
 ```sh
-head=$(gh pr view <number> --json headRefOid --jq .headRefOid)
+pull_request=<number>
+read -r fork head < <(gh pr view "$pull_request" --json isCrossRepository,headRefOid --jq '"\(.isCrossRepository) \(.headRefOid)"')
 run=$(gh run list --commit "$head" --workflow CI --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId')
-rm -rf target/ci-debug
-if [ -z "$run" ]; then echo "No CI run for $head"; false
-elif ! gh run download "$run" --name "knave-debug-$head" --dir target/ci-debug; then echo "Run $run has no debug knave for $head. Run status: $(gh run view "$run" --json status --jq .status)"; false
-elif ! grep -qx "head $head" target/ci-debug/commits; then echo "The debug knave does not hold $head"; false
-else chmod +x target/ci-debug/knave && realpath target/ci-debug/knave; fi
+directory=target/ci-debug/$head
+rm -rf "$directory"
+if [ "$fork" = true ]; then echo "Pull request $pull_request comes from a fork"; false
+elif [ -z "$run" ]; then echo "No CI run for $head"; false
+elif ! gh run download "$run" --name "knave-debug-$head" --dir "$directory"; then echo "Run $run has no debug knave for $head. Run status: $(gh run view "$run" --json status --jq .status)"; false
+elif ! chmod +x "$directory/knave" || ! "$directory/knave" --version > /dev/null; then echo "The debug knave does not start on this machine"; false
+else
+  merge=$(cat "$directory/merge")
+  git fetch --quiet origin "refs/pull/$pull_request/merge"
+  [ "$merge" = "$(git rev-parse FETCH_HEAD)" ] || echo "Warning: the debug knave holds merge $merge, but refs/pull/$pull_request/merge is now $(git rev-parse FETCH_HEAD)"
+  realpath "$directory/knave"
+fi
 ```
+
+**NEVER download the debug `knave` of a pull request from a fork.** A fork's run can upload any file under the artifact's name. The block refuses a pull request from a fork.
 
 **Run each probe with the path that the block prints.**
 
-**If the block exits nonzero, build the compiler with `cargo build --bin knave` and probe `target/debug/knave`.**
+**If the block warns that the merge commits differ, check whether a probe depends on a commit that the binary lacks.** If a probe does, build the compiler with `cargo build --bin knave`.
+
+**If the block reports no debug `knave` for a run that is not `completed`, wait for the run.** Run `gh pr checks <number> --watch --interval 60`, then rerun the block once.
+
+**Otherwise, if the block or its rerun exits nonzero, build the compiler with `cargo build --bin knave`.** Probe `target/debug/knave`.
 
 ## Callgrind profiles
 

@@ -6,8 +6,10 @@ use syn::{ImplItem, Item, TraitItem};
 
 use std::path::Path;
 
+use crate::census::Census;
 use crate::failure::TaskFailure;
-use crate::ratchet::{Counts, Limit, Ratchet, Unit};
+use crate::production_sources::ProductionSources;
+use crate::ratchet::{Counts, Limit, Measurement, Unit};
 use crate::source_file::SourceFile;
 use crate::test_code::TestCode;
 use crate::test_modules::TestModuleFiles;
@@ -18,18 +20,14 @@ impl ProductionLineCensus {
     const TEST_FILE_LINES: usize = 0;
     const MAXIMUM_PRODUCTION_LINES: usize = 500;
     pub const LIMIT: Limit = Limit {
-        baseline: "xtask/baselines/production_lines.txt",
+        name: "production_lines",
         maximum: Self::MAXIMUM_PRODUCTION_LINES,
         subjects: "Rust files",
         unit: Unit::new("production line", "production lines"),
         advice: "Split it by responsibility.",
     };
 
-    pub fn ratchet(root: &Path, sources: &[SourceFile]) -> Result<Ratchet, TaskFailure> {
-        Ratchet::read(root, Self::LIMIT, Self::measure(sources))
-    }
-
-    fn measure(sources: &[SourceFile]) -> Counts {
+    fn count_lines(sources: &[SourceFile]) -> Counts {
         let test_files = TestModuleFiles::find(sources);
         sources
             .iter()
@@ -52,6 +50,16 @@ impl ProductionLineCensus {
         let mut test_lines = TestLines::default();
         test_lines.visit_file(syntax);
         source.line_count() - test_lines.excluded.len()
+    }
+}
+
+impl Census for ProductionLineCensus {
+    fn measure(&self, root: &Path) -> Result<Vec<Measurement>, TaskFailure> {
+        let sources = ProductionSources::new(root).files()?;
+        Ok(vec![Measurement {
+            limit: Self::LIMIT,
+            counts: Self::count_lines(&sources),
+        }])
     }
 }
 
@@ -113,7 +121,7 @@ mod tests {
                 .iter()
                 .map(|(path, text)| Self::source(path, text))
                 .collect();
-            ProductionLineCensus::measure(&sources)
+            ProductionLineCensus::count_lines(&sources)
         }
 
         fn source(path: &str, text: &str) -> SourceFile {

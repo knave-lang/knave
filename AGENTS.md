@@ -149,7 +149,7 @@ The exceptions are:
 - NEVER lower `MINIMUM_LINE_COVERAGE` or raise `MAXIMUM_CRAP` in `xtask/src/gate.rs` without the project owner's approval.
 - NEVER raise `MAXIMUM_PRODUCTION_LINES` in `xtask/src/production_lines.rs` without the project owner's approval.
 - NEVER raise a limit in `xtask/src/design.rs` without the project owner's approval.
-- NEVER add an entry to, or raise an entry in, a file under `xtask/baselines/` without the project owner's approval.
+- NEVER add a `Baseline-Accepted:` trailer without the project owner's approval.
 - NEVER hide code from `cargo xtask coverage`, such as by moving branches into a macro: the gate cannot see inside a macro.
 
 ### Dev shell

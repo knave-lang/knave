@@ -45,8 +45,12 @@ impl TemporaryRepository {
     }
 
     pub fn commit_all(&self) {
+        self.commit_all_with_message("fixture");
+    }
+
+    pub fn commit_all_with_message(&self, message: &str) {
         self.git(&["add", "."]);
-        self.git(&[&Self::AUTHOR[..], &["commit", "--quiet", "-m", "fixture"]].concat());
+        self.git(&[&Self::AUTHOR[..], &["commit", "--quiet", "-m", message]].concat());
     }
 
     pub fn git(&self, arguments: &[&str]) {

@@ -1,8 +1,9 @@
 mod agree;
 mod badge;
-mod baseline_raises;
+mod base_tree;
 mod bench;
 mod cargo;
+mod census;
 mod changed_function;
 mod changed_functions;
 mod changed_lines;
@@ -30,6 +31,7 @@ mod ratchet;
 mod ratchet_gate;
 mod reduction_arguments;
 mod release;
+mod rise_approvals;
 mod source_file;
 mod source_format;
 mod source_format_paths;
@@ -55,7 +57,6 @@ use gate::QualityGate;
 use instrumented_tests::InstrumentedTests;
 use prepush::PrepushTask;
 use production_lines::ProductionLineCensus;
-use production_sources::ProductionSources;
 use ratchet_gate::RatchetGate;
 use release::{NextReleaseTask, ReleaseNotesTask, SetVersionTask};
 use test_shard::TestShard;
@@ -77,12 +78,10 @@ enum Task {
         about = "Run the tests with coverage, then check the coverage floor, the CRAP limit, the README badge and the emitted Rust's lints"
     )]
     Coverage(CoverageTask),
-    #[command(
-        about = "Check that no Rust file outgrows the production line limit or its baseline entry"
-    )]
+    #[command(about = "Check that no Rust file over the production line limit grew since the base")]
     FileSizes(RatchetTask),
     #[command(
-        about = "Check the design rules of the Rust code: type, function and module limits, each with its baseline"
+        about = "Check that no type, function or module over a design rule's limit grew since the base"
     )]
     DesignRules(RatchetTask),
     #[command(
@@ -110,9 +109,10 @@ enum Task {
 struct RatchetTask {
     #[arg(
         long,
-        help = "Also refuse a baseline entry added or raised since this revision, unless a `Baseline-Accepted:` trailer names its baseline and subject"
+        default_value = "origin/main",
+        help = "Measure against the merge base with this revision, and refuse a subject over a limit that is new or grew, unless a `Baseline-Accepted:` trailer names its limit and subject"
     )]
-    base: Option<String>,
+    base: String,
 }
 
 #[derive(Args)]
@@ -133,19 +133,15 @@ enum CoveragePart {
 
 impl RatchetTask {
     fn check_file_sizes(&self, workspace_root: &Path) -> Result<ExitCode, TaskFailure> {
-        let files = ProductionSources::new(workspace_root).files()?;
-        let ratchet = ProductionLineCensus::ratchet(workspace_root, &files)?;
-        self.gate(workspace_root).run(vec![ratchet])
+        self.gate(workspace_root).run(&[&ProductionLineCensus])
     }
 
     fn check_design_rules(&self, workspace_root: &Path) -> Result<ExitCode, TaskFailure> {
-        let sources = ProductionSources::new(workspace_root).parsed()?;
-        let ratchets = DesignRules::ratchets(workspace_root, &sources)?;
-        self.gate(workspace_root).run(ratchets)
+        self.gate(workspace_root).run(&[&DesignRules])
     }
 
     fn gate(&self, workspace_root: &Path) -> RatchetGate {
-        RatchetGate::new(workspace_root, self.base.as_deref())
+        RatchetGate::new(workspace_root, &self.base)
     }
 }
 
@@ -235,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn file_sizes_takes_an_optional_base() {
+    fn file_sizes_takes_a_base_that_defaults_to_origin_main() {
         let base = |arguments: &[&str]| match Tasks::try_parse_from(arguments)
             .expect("the command line parses")
             .task
@@ -243,15 +239,12 @@ mod tests {
             Task::FileSizes(sizes) => sizes.base,
             _ => panic!("the command line names another task"),
         };
-        assert_eq!(base(&["xtask", "file-sizes"]), None);
-        assert_eq!(
-            base(&["xtask", "file-sizes", "--base", "HEAD^1"]),
-            Some("HEAD^1".to_string())
-        );
+        assert_eq!(base(&["xtask", "file-sizes"]), "origin/main");
+        assert_eq!(base(&["xtask", "file-sizes", "--base", "HEAD^1"]), "HEAD^1");
     }
 
     #[test]
-    fn design_rules_take_an_optional_base() {
+    fn design_rules_take_a_base_that_defaults_to_origin_main() {
         let base = |arguments: &[&str]| match Tasks::try_parse_from(arguments)
             .expect("the command line parses")
             .task
@@ -259,10 +252,10 @@ mod tests {
             Task::DesignRules(rules) => rules.base,
             _ => panic!("the command line names another task"),
         };
-        assert_eq!(base(&["xtask", "design-rules"]), None);
+        assert_eq!(base(&["xtask", "design-rules"]), "origin/main");
         assert_eq!(
             base(&["xtask", "design-rules", "--base", "HEAD^1"]),
-            Some("HEAD^1".to_string())
+            "HEAD^1"
         );
     }
 

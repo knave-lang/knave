@@ -3,7 +3,7 @@ impl Show for std::time::Duration {
         let nanos = self.as_nanos();
         let (unit, per_unit) = DURATION_UNITS
             .into_iter()
-            .find(|&(_, per_unit)| nanos % per_unit == 0)
+            .find(|&(_, per_unit)| nanos.is_multiple_of(per_unit))
             .unwrap_or(NANOS);
         write!(out, "({unit} {})", nanos / per_unit)
     }

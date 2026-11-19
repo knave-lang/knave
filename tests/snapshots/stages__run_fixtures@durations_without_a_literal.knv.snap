@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/durations_without_a_literal.knv
+---
+(seconds 2)
+(vec (millis 1) (millis 2))
+true

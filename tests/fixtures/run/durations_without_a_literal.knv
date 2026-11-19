@@ -1,0 +1,5 @@
+(defn main ()
+  (let (n 2)
+    (prn (seconds n))
+    (prn (collect (map (iter (vec 1 2)) millis)))
+    (prn (< (elapsed (now)) (seconds n)))))

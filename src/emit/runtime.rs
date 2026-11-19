@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use super::string_literals::StringLiterals;
 use crate::language::Language;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -94,26 +95,47 @@ impl RuntimePart {
         ("index", RuntimePart::Index),
         ("convert", RuntimePart::Convert),
     ];
+    const DURATION_COUNTS: &'static [RuntimePart] = &[
+        RuntimePart::Seconds,
+        RuntimePart::Millis,
+        RuntimePart::Micros,
+        RuntimePart::Nanos,
+    ];
     const SCANNED: [ScannedPart; 5] = [
         ScannedPart {
             part: RuntimePart::FromLiteral,
             markers: &["::from_literal("],
+            companion: None,
+            bringers: &[],
+            search: MarkerSearch::Anywhere,
         },
         ScannedPart {
             part: RuntimePart::FromFloatLiteral,
             markers: &["::from_float_literal("],
+            companion: None,
+            bringers: &[],
+            search: MarkerSearch::Anywhere,
         },
         ScannedPart {
             part: RuntimePart::MapSequence,
             markers: &["std::collections::BTreeMap", "std::collections::HashMap"],
+            companion: Some(RuntimePart::Sequence),
+            bringers: &[],
+            search: MarkerSearch::Anywhere,
         },
         ScannedPart {
             part: RuntimePart::Signal,
             markers: Self::STANDARD_STREAM_MARKERS,
+            companion: None,
+            bringers: &[],
+            search: MarkerSearch::Unprefixed,
         },
         ScannedPart {
             part: RuntimePart::ShowDuration,
-            markers: &["std::time::Duration"],
+            markers: &["std::time::Duration", "std::time::Instant"],
+            companion: Some(RuntimePart::Show),
+            bringers: Self::DURATION_COUNTS,
+            search: MarkerSearch::OutsideStrings,
         },
     ];
 
@@ -178,30 +200,49 @@ impl RuntimePart {
 struct ScannedPart {
     part: RuntimePart,
     markers: &'static [&'static str],
+    companion: Option<RuntimePart>,
+    bringers: &'static [RuntimePart],
+    search: MarkerSearch,
 }
 
 impl ScannedPart {
     fn found_in(&self, code: &EmittedCode, needed: &BTreeSet<RuntimePart>) -> bool {
-        match self.part {
-            RuntimePart::MapSequence => {
-                needed.contains(&RuntimePart::Sequence)
-                    && self.any_marker(|marker| code.contains(marker))
-            }
-            RuntimePart::ShowDuration => {
-                needed.contains(&RuntimePart::Show)
-                    && self.any_marker(|marker| code.contains(marker))
-            }
-            RuntimePart::Signal => self.any_marker(|marker| code.contains_unprefixed(marker)),
-            _ => self.any_marker(|marker| code.contains(marker)),
-        }
+        self.companion_is_needed(needed) && (self.brought_by(needed) || self.has_marker_in(code))
     }
 
-    fn any_marker(&self, found: impl Fn(&str) -> bool) -> bool {
-        self.markers.iter().any(|marker| found(marker))
+    fn companion_is_needed(&self, needed: &BTreeSet<RuntimePart>) -> bool {
+        self.companion
+            .is_none_or(|companion| needed.contains(&companion))
+    }
+
+    fn brought_by(&self, needed: &BTreeSet<RuntimePart>) -> bool {
+        self.bringers.iter().any(|bringer| needed.contains(bringer))
+    }
+
+    fn has_marker_in(&self, code: &EmittedCode) -> bool {
+        self.markers
+            .iter()
+            .any(|marker| self.search.finds(code, marker))
     }
 
     fn part(&self) -> RuntimePart {
         self.part
+    }
+}
+
+enum MarkerSearch {
+    Anywhere,
+    Unprefixed,
+    OutsideStrings,
+}
+
+impl MarkerSearch {
+    fn finds(&self, code: &EmittedCode, marker: &str) -> bool {
+        match self {
+            MarkerSearch::Anywhere => code.contains(marker),
+            MarkerSearch::Unprefixed => code.contains_unprefixed(marker),
+            MarkerSearch::OutsideStrings => code.contains_outside_strings(marker),
+        }
     }
 }
 
@@ -233,6 +274,12 @@ impl<'a> EmittedCode<'a> {
 
     fn contains(&self, marker: &str) -> bool {
         self.text.contains(marker)
+    }
+
+    fn contains_outside_strings(&self, marker: &str) -> bool {
+        StringLiterals::code_spans(self.text)
+            .iter()
+            .any(|code| code.contains(marker))
     }
 
     fn contains_unprefixed(&self, marker: &str) -> bool {

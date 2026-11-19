@@ -1,11 +1,11 @@
 use rustc_hash::FxHashMap;
 
 use super::text_names::TextNames;
-use crate::core::{BindingId, BindingKind, ClosureKind, PrimitiveType};
+use super::text_traits::TextTraits;
+use crate::core::{BindingId, BindingKind};
 use crate::modules::ModuleSources;
 use crate::types::{
-    Bound, GenericId, StructDefinition, Type, TypedDefinition, TypedModule, TypedProgram,
-    VariantPayload,
+    StructDefinition, Type, TypedDefinition, TypedModule, TypedProgram, VariantPayload,
 };
 
 pub struct TextProgram<'p> {
@@ -71,21 +71,11 @@ impl<'p> TextProgram<'p> {
         }
     }
 
-    pub fn owns_text_for(&self, bound: &Bound) -> bool {
-        let table = self.program.declarations.traits().table();
-        let anything = |_: GenericId, _: &Bound| true;
-        let holds = |ty: Type| table.satisfies(bound, &ty, &anything);
-        let holds_for_every_reference = holds(Type::shared(Self::function_type()));
-        let views_hold = holds(Type::Primitive(PrimitiveType::Str))
-            || holds(Type::str_ref()) && !holds_for_every_reference;
-        holds(Type::Primitive(PrimitiveType::String)) && !views_hold
+    pub fn traits(&self) -> TextTraits<'p> {
+        TextTraits::new(self.program.declarations.traits().table())
     }
 
     pub fn names(&self) -> TextNames<'p> {
         TextNames::new(self.program)
-    }
-
-    fn function_type() -> Type {
-        Type::Function(ClosureKind::Fn, Vec::new(), Box::new(Type::unit()))
     }
 }

@@ -103,8 +103,8 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         value: &TextValue,
     ) {
         let variable = Slot::from(SlotOwner::Variable(self.call.span, generic));
-        let program = self.context.program();
-        if !value.sources().is_empty() && target.scheme().needs_owned_text(generic, program) {
+        let traits = self.context.program().traits();
+        if !value.sources().is_empty() && target.scheme().needs_owned_text(generic, traits) {
             self.context.require(variable.clone(), Need::OwnedOrMixed);
         }
         self.pour(

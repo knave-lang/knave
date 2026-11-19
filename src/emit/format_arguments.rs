@@ -1,9 +1,17 @@
+use super::argument_start::ArgumentStart;
+use super::format_string::{FormatString, PassedArgument};
 use super::open_delimiter::OpenDelimiter;
-use super::operator::{ArgumentStart, RustText};
+use super::operator::RustText;
 use crate::core::Piece;
 
 pub(super) struct FormatArguments<'p> {
     pieces: &'p [Piece],
+}
+
+struct PlacedArgument {
+    argument: usize,
+    position: usize,
+    offset: usize,
 }
 
 struct FormatMacro {
@@ -11,51 +19,41 @@ struct FormatMacro {
     format_string: usize,
 }
 
-struct FormatString<'t> {
-    text: &'t str,
-}
-
-struct FormatPlaceholder<'t> {
-    argument: FormatArgument<'t>,
-    spec: &'t str,
-}
-
-struct FormatPlaceholders<'t> {
-    written: std::vec::IntoIter<&'t str>,
-    next_positional: usize,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum FormatArgument<'t> {
-    Positional(usize),
-    Named(&'t str),
-}
-
-struct PassedArgument<'t> {
-    position: usize,
-    name: Option<&'t str>,
-}
-
 impl<'p> FormatArguments<'p> {
     const PLACED_VALUE: &'static str = "_";
+    const MACRO_CALL: char = '!';
 
     pub(super) fn new(pieces: &'p [Piece]) -> Self {
         Self { pieces }
     }
 
-    pub(super) fn formats_whole(&self, argument: usize) -> bool {
-        let mut uses = self
-            .pieces
-            .iter()
-            .enumerate()
-            .filter(|(_, piece)| piece.is_placeholder_of(argument))
-            .peekable();
-        uses.peek().is_some() && uses.all(|(position, _)| self.is_whole_argument(position))
+    pub(super) fn formatted(&self) -> Vec<usize> {
+        if !self.calls_a_macro() {
+            return Vec::new();
+        }
+        let (written, uses) = self.placed_text();
+        let marks: Vec<usize> = uses.iter().map(|placed| placed.offset).collect();
+        let starts = RustText::new(&written).argument_starts(&marks);
+        let mut formatted: Vec<usize> = uses.iter().map(|placed| placed.argument).collect();
+        formatted.sort_unstable();
+        formatted.dedup();
+        formatted.retain(|argument| {
+            uses.iter()
+                .zip(&starts)
+                .filter(|(placed, _)| placed.argument == *argument)
+                .all(|(placed, start)| self.is_whole_argument(placed.position, start.as_ref()))
+        });
+        formatted
     }
 
-    fn is_whole_argument(&self, position: usize) -> bool {
-        let written = self.text_before(position);
-        let Some(start) = RustText::new(&written).argument_start() else {
+    fn calls_a_macro(&self) -> bool {
+        self.pieces
+            .iter()
+            .any(|piece| matches!(piece, Piece::Literal(text) if text.contains(Self::MACRO_CALL)))
+    }
+
+    fn is_whole_argument(&self, position: usize, start: Option<&ArgumentStart<'_>>) -> bool {
+        let Some(start) = start else {
             return false;
         };
         let Some(format_macro) = FormatMacro::called_by(start.open()) else {
@@ -65,7 +63,7 @@ impl<'p> FormatArguments<'p> {
             && format_macro
                 .format_string(start.open())
                 .is_some_and(|format_string| {
-                    !format_string.points_at(&format_macro.argument_at(&start))
+                    !format_string.points_at(&format_macro.argument_at(start))
                 })
     }
 
@@ -76,14 +74,24 @@ impl<'p> FormatArguments<'p> {
         )
     }
 
-    fn text_before(&self, position: usize) -> String {
-        self.pieces[..position]
-            .iter()
-            .map(|piece| match piece {
-                Piece::Literal(text) => text.as_str(),
-                _ => Self::PLACED_VALUE,
-            })
-            .collect()
+    fn placed_text(&self) -> (String, Vec<PlacedArgument>) {
+        let mut written = String::new();
+        let mut uses = Vec::new();
+        for (position, piece) in self.pieces.iter().enumerate() {
+            match piece {
+                Piece::Literal(text) => written.push_str(text),
+                Piece::Placeholder { index, .. } => {
+                    uses.push(PlacedArgument {
+                        argument: *index,
+                        position,
+                        offset: written.len(),
+                    });
+                    written.push_str(Self::PLACED_VALUE);
+                }
+                _ => written.push_str(Self::PLACED_VALUE),
+            }
+        }
+        (written, uses)
     }
 }
 
@@ -126,84 +134,12 @@ impl FormatMacro {
         if open.passed_arguments() <= self.format_string {
             return None;
         }
-        open.text_at(self.format_string)
-            .map(|text| FormatString { text })
+        open.text_at(self.format_string).map(FormatString::new)
     }
 
     fn argument_at<'t>(&self, start: &ArgumentStart<'t>) -> PassedArgument<'t> {
         let passed = start.open().passed_arguments();
-        PassedArgument {
-            position: passed.saturating_sub(self.format_string + 1),
-            name: start.name(),
-        }
-    }
-}
-
-impl<'t> FormatString<'t> {
-    fn points_at(&self, argument: &PassedArgument<'_>) -> bool {
-        FormatPlaceholders::of(self.text)
-            .any(|placeholder| argument.is(placeholder.argument) && placeholder.is_pointer())
-    }
-}
-
-impl PassedArgument<'_> {
-    fn is(&self, formatted: FormatArgument<'_>) -> bool {
-        match formatted {
-            FormatArgument::Positional(position) => position == self.position,
-            FormatArgument::Named(name) => Some(name) == self.name,
-        }
-    }
-}
-
-impl FormatPlaceholder<'_> {
-    const POINTER: char = 'p';
-
-    fn is_pointer(&self) -> bool {
-        self.spec.trim_end().ends_with(Self::POINTER)
-    }
-}
-
-impl<'t> FormatPlaceholders<'t> {
-    const PRECISION_FROM_ARGUMENT: &'static str = ".*";
-
-    fn of(text: &'t str) -> Self {
-        let written: Vec<&'t str> = text
-            .split("{{")
-            .flat_map(|part| part.split('{').skip(1))
-            .filter_map(|opened| opened.split_once('}').map(|(inside, _)| inside))
-            .collect();
-        Self {
-            written: written.into_iter(),
-            next_positional: 0,
-        }
-    }
-
-    fn resolve(&mut self, written: &'t str, spec: &str) -> FormatArgument<'t> {
-        if spec.contains(Self::PRECISION_FROM_ARGUMENT) {
-            self.next_positional += 1;
-        }
-        match written.parse() {
-            Ok(index) => FormatArgument::Positional(index),
-            Err(_) if written.is_empty() => self.take_positional(),
-            Err(_) => FormatArgument::Named(written),
-        }
-    }
-
-    fn take_positional(&mut self) -> FormatArgument<'t> {
-        let argument = FormatArgument::Positional(self.next_positional);
-        self.next_positional += 1;
-        argument
-    }
-}
-
-impl<'t> Iterator for FormatPlaceholders<'t> {
-    type Item = FormatPlaceholder<'t>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let placeholder = self.written.next()?;
-        let (written, spec) = placeholder.split_once(':').unwrap_or((placeholder, ""));
-        let argument = self.resolve(written.trim(), spec);
-        Some(FormatPlaceholder { argument, spec })
+        PassedArgument::new(passed.saturating_sub(self.format_string + 1), start.name())
     }
 }
 
@@ -217,7 +153,9 @@ mod tests {
     impl FormatFixture {
         fn formats_whole(text: &str, argument: usize) -> bool {
             let parsed = ParsedTemplate::parse(text).expect("a valid template");
-            FormatArguments::new(parsed.pieces()).formats_whole(argument)
+            FormatArguments::new(parsed.pieces())
+                .formatted()
+                .contains(&argument)
         }
     }
 
@@ -276,6 +214,8 @@ mod tests {
             "println!(\"{{0 :p}}\", {0})",
             "println!(\"{{ :p}}\", {0})",
             "println!(\"{{:p}}\", x = {0})",
+            "println!(\"{{:.*p}}\", 2, {0})",
+            "println!(\"{{x}} {{:p}}\", {0}, x = 1)",
             "vec!(\"a\", {0})",
             "println!(\"{{}}\", {0}); f({0})",
             "{0}",

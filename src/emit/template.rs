@@ -1,3 +1,5 @@
+use std::cell::OnceCell;
+
 use super::argument_role::ArgumentRole;
 use super::converted_argument::ConvertedArgument;
 use super::format_arguments::FormatArguments;
@@ -17,6 +19,7 @@ pub enum TemplateError {
 
 pub struct Template {
     parsed: ParsedTemplate,
+    formatted: OnceCell<Vec<usize>>,
 }
 
 impl Template {
@@ -29,6 +32,7 @@ impl Template {
     pub fn new(text: &str) -> Self {
         Self {
             parsed: ParsedTemplate::parse(text).expect("the expansion stage checked the template"),
+            formatted: OnceCell::new(),
         }
     }
 
@@ -45,7 +49,10 @@ impl Template {
     }
 
     pub(super) fn written_role(&self, argument: usize) -> Option<ArgumentRole> {
-        if FormatArguments::new(self.parsed.pieces()).formats_whole(argument) {
+        let formatted = self
+            .formatted
+            .get_or_init(|| FormatArguments::new(self.parsed.pieces()).formatted());
+        if formatted.contains(&argument) {
             let role = if self.parsed.borrows(argument) {
                 ArgumentRole::Formatted
             } else {
@@ -88,6 +95,7 @@ impl Template {
     pub fn with_binders(&self, renames: &[(String, String)]) -> Self {
         Self {
             parsed: self.parsed.with_binders(renames),
+            formatted: OnceCell::new(),
         }
     }
 

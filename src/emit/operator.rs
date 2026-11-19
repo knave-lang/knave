@@ -1,3 +1,4 @@
+use super::argument_start::ArgumentStart;
 use super::open_delimiter::OpenDelimiter;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -117,21 +118,8 @@ impl<'a> RustText<'a> {
         TokenScanner::scan(self.text).open.is_empty()
     }
 
-    pub fn argument_start(&self) -> Option<ArgumentStart<'a>> {
-        let mut scanner = TokenScanner::scan(self.text);
-        if scanner.literal != Literal::Outside {
-            return None;
-        }
-        let open = scanner.open.pop()?;
-        let written = self.text.trim_end();
-        if written.ends_with(',') {
-            return Some(ArgumentStart { open, name: None });
-        }
-        let name = Self::argument_name(written)?;
-        Some(ArgumentStart {
-            open,
-            name: Some(name),
-        })
+    pub fn argument_starts(&self, marks: &[usize]) -> Vec<Option<ArgumentStart<'a>>> {
+        TokenScanner::scan_marking(self.text, marks).1
     }
 
     pub fn trailing_identifier(text: &str) -> &str {
@@ -145,21 +133,6 @@ impl<'a> RustText<'a> {
         let name = Self::trailing_identifier(named);
         let before_name = &named[..named.len() - name.len()];
         (!name.is_empty() && before_name.trim_end().ends_with(',')).then_some(name)
-    }
-}
-
-pub struct ArgumentStart<'a> {
-    open: OpenDelimiter<'a>,
-    name: Option<&'a str>,
-}
-
-impl<'a> ArgumentStart<'a> {
-    pub fn open(&self) -> &OpenDelimiter<'a> {
-        &self.open
-    }
-
-    pub fn name(&self) -> Option<&'a str> {
-        self.name
     }
 }
 
@@ -177,6 +150,11 @@ impl<'a> TokenScanner<'a> {
     const QUOTE_LENGTH: usize = 1;
 
     fn scan(text: &'a str) -> Self {
+        Self::scan_marking(text, &[]).0
+    }
+
+    fn scan_marking(text: &'a str, marks: &[usize]) -> (Self, Vec<Option<ArgumentStart<'a>>>) {
+        let mut starts = Vec::with_capacity(marks.len());
         let mut scanner = Self {
             text,
             tokens: Vec::new(),
@@ -188,6 +166,7 @@ impl<'a> TokenScanner<'a> {
         };
         let mut characters = text.char_indices().peekable();
         while let Some((position, character)) = characters.next() {
+            scanner.mark_up_to(position, marks, &mut starts);
             if scanner.consume_literal(position, character) {
                 continue;
             }
@@ -204,7 +183,32 @@ impl<'a> TokenScanner<'a> {
             }
         }
         scanner.flush(text.len());
-        scanner
+        scanner.mark_up_to(text.len(), marks, &mut starts);
+        (scanner, starts)
+    }
+
+    fn mark_up_to(
+        &self,
+        position: usize,
+        marks: &[usize],
+        starts: &mut Vec<Option<ArgumentStart<'a>>>,
+    ) {
+        while let Some(mark) = marks.get(starts.len()).filter(|mark| **mark <= position) {
+            starts.push(self.argument_start_at(*mark));
+        }
+    }
+
+    fn argument_start_at(&self, position: usize) -> Option<ArgumentStart<'a>> {
+        if self.literal != Literal::Outside {
+            return None;
+        }
+        let open = self.open.last()?.clone();
+        let written = self.text[..position].trim_end();
+        if written.ends_with(',') {
+            return Some(ArgumentStart::new(open, None));
+        }
+        let name = RustText::argument_name(written)?;
+        Some(ArgumentStart::new(open, Some(name)))
     }
 
     fn consume_literal(&mut self, position: usize, character: char) -> bool {

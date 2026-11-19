@@ -1,4 +1,4 @@
-use crate::core::{CollectionForm, Expr, ExprKind, MapOperation};
+use crate::core::{CollectionForm, Expr, ExprKind, KeyedPath, MapOperation};
 use crate::diagnostic::Diagnostic;
 use crate::expand::Expander;
 use crate::expand::shape::Shape;
@@ -7,8 +7,6 @@ use crate::reader::Form;
 pub(super) struct CollectionLowering<'e, 'x> {
     expander: &'e mut Expander<'x>,
 }
-
-type KeyedParts = (Box<Expr>, Vec<Expr>, Box<Expr>);
 
 impl<'e, 'x> CollectionLowering<'e, 'x> {
     pub(super) fn new(expander: &'e mut Expander<'x>) -> Self {
@@ -21,23 +19,23 @@ impl<'e, 'x> CollectionLowering<'e, 'x> {
         shape: &Shape,
     ) -> Result<ExprKind, Diagnostic> {
         match form {
-            CollectionForm::Assoc => self
-                .keyed(shape)
-                .map(|(value, keys, item)| ExprKind::Assoc(value, keys, item)),
+            CollectionForm::Assoc => self.keyed(shape).map(ExprKind::Assoc),
             CollectionForm::MapAt => self.map_at(shape),
             CollectionForm::PushAt => self.push_at(shape),
-            CollectionForm::SetAt => self
-                .keyed(shape)
-                .map(|(value, keys, item)| ExprKind::SetAt(value, keys, item)),
+            CollectionForm::SetAt => self.keyed(shape).map(ExprKind::SetAt),
         }
     }
 
-    fn keyed(&mut self, shape: &Shape) -> Result<KeyedParts, Diagnostic> {
+    fn keyed(&mut self, shape: &Shape) -> Result<KeyedPath, Diagnostic> {
         let items = shape.exactly(4)?;
         let value = self.expander.lower_expr(&items[1])?;
         let keys = self.expressions(shape.list(&items[2])?)?;
         let item = self.expander.lower_expr(&items[3])?;
-        Ok((Box::new(value), keys, Box::new(item)))
+        Ok(KeyedPath {
+            value: Box::new(value),
+            keys,
+            item: Box::new(item),
+        })
     }
 
     fn map_at(&mut self, shape: &Shape) -> Result<ExprKind, Diagnostic> {

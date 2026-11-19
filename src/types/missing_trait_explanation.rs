@@ -89,15 +89,11 @@ impl<'a> MissingTraitExplanation<'a> {
         binding: BindingId,
         bound: &Bound,
     ) -> Diagnostic {
-        let types = self.sources.declarations.types();
-        if let Some(definition) = types.enums.get(binding) {
-            return EnumTraitHelp::new(binding, definition, bound)
-                .add_to(diagnostic, &self.sources);
+        if let Some(help) = EnumTraitHelp::of(binding, bound, &self.sources) {
+            return help.add_to(diagnostic);
         }
-        match types.structs.get(binding) {
-            Some(definition) => {
-                StructTraitHelp::new(binding, definition, bound).add_to(diagnostic, &self.sources)
-            }
+        match StructTraitHelp::of(binding, bound, &self.sources) {
+            Some(help) => help.add_to(diagnostic),
             None => diagnostic,
         }
     }
@@ -147,10 +143,7 @@ impl<'a> MissingTraitExplanation<'a> {
 
 #[cfg(test)]
 mod tests {
-    use rustc_hash::FxHashSet;
-
     use super::MissingTraitExplanation;
-    use crate::core::BindingId;
     use crate::core::PrimitiveType;
     use crate::diagnostic::Diagnostic;
     use crate::source::{SourceId, Span};
@@ -166,23 +159,23 @@ mod tests {
         (trait shape (area (fn ((ref self)) f64)))
         (struct circle (radius f64))
         (impl shape circle (area (shape) (:radius shape)))
+        (enum level (low) (high))
+        (derive level debug)
         (defn main () (do))";
 
     struct ExplanationFixture {
         declarations: DeclarationsFixture,
-        changed_structs: FxHashSet<BindingId>,
     }
 
     impl ExplanationFixture {
         fn new() -> Self {
             Self {
                 declarations: DeclarationsFixture::new(SOURCE),
-                changed_structs: FxHashSet::default(),
             }
         }
 
         fn explain(&self, bound: &Bound, implementor: &Type) -> Diagnostic {
-            let sources = self.declarations.explanation_sources(&self.changed_structs);
+            let sources = self.declarations.explanation_sources();
             MissingTraitExplanation::new(sources).explain(MissingTrait {
                 bound,
                 implementor,
@@ -240,6 +233,21 @@ mod tests {
                 "write the type `(box shape)` where the box is made, such as `(let ((shapes (vec (box shape))) (vec)) ...)`"
             ]
         );
+    }
+
+    #[test]
+    fn an_enum_gets_the_enum_help() {
+        let fixture = ExplanationFixture::new();
+        let declarations = &fixture.declarations;
+        let level = Type::Named(declarations.type_named("level"), Vec::new());
+        let clone = Bound::plain(declarations.trait_named("clone"));
+        let diagnostic = fixture.explain(&clone, &level);
+        let helps: Vec<&str> = diagnostic
+            .helps()
+            .iter()
+            .map(|help| help.message())
+            .collect();
+        assert_eq!(helps, ["add `clone` to the enum's `derive`"]);
     }
 
     #[test]

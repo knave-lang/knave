@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use super::EnumDefinition;
-use super::derivable_traits::DerivableTraits;
 use super::explanation_sources::ExplanationSources;
 use super::problems::TypeProblems;
 use super::trait_help::TraitHelp;
@@ -9,48 +8,35 @@ use super::ty::Bound;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
 
-pub(super) struct EnumTraitHelp<'h> {
+pub(super) struct EnumTraitHelp<'h, 'a> {
     binding: BindingId,
     definition: &'h EnumDefinition,
     bound: &'h Bound,
+    sources: &'h ExplanationSources<'a>,
 }
 
-impl<'h> EnumTraitHelp<'h> {
-    pub(super) fn new(
+impl<'h, 'a> EnumTraitHelp<'h, 'a> {
+    pub(super) fn of(
         binding: BindingId,
-        definition: &'h EnumDefinition,
         bound: &'h Bound,
-    ) -> Self {
-        Self {
+        sources: &'h ExplanationSources<'a>,
+    ) -> Option<Self> {
+        let definition = sources.declarations.types().enums.get(binding)?;
+        Some(Self {
             binding,
             definition,
             bound,
-        }
+            sources,
+        })
     }
 
-    fn with_written_derive(
-        &self,
-        diagnostic: Diagnostic,
-        sources: &ExplanationSources<'_>,
-    ) -> Diagnostic {
-        let trait_name = sources.bindings.get(self.bound.binding).name();
-        let derivable = DerivableTraits::new(sources.declarations.traits());
-        match self.definition.written_derive {
-            Some(span) if derivable.is_derivable(self.bound.binding) => diagnostic
-                .with_label(TypeProblems::derive_leaves_out(span, trait_name))
-                .with_help(TypeProblems::add_to_enum_derive_help(trait_name)),
-            _ => diagnostic,
-        }
+    fn with_derive_label(&self, diagnostic: Diagnostic) -> Diagnostic {
+        let written = self.definition.written_derive;
+        self.with_written_derive(diagnostic, written, TypeProblems::add_to_enum_derive_help)
     }
 
-    fn order_help(&self, enum_name: &str, sources: &ExplanationSources<'_>) -> String {
-        let mut derives: Vec<String> = self
-            .definition
-            .derived_traits
-            .iter()
-            .map(|binding| sources.bindings.get(*binding).name().to_string())
-            .collect();
-        derives.push(sources.bindings.get(self.bound.binding).name().to_string());
+    fn order_help(&self, enum_name: &str) -> String {
+        let derives = self.derives_with_needed(&self.definition.derived_traits);
         let variants: Vec<Rc<str>> = self
             .definition
             .variants
@@ -61,24 +47,25 @@ impl<'h> EnumTraitHelp<'h> {
     }
 }
 
-impl TraitHelp for EnumTraitHelp<'_> {
+impl TraitHelp for EnumTraitHelp<'_, '_> {
     fn needed(&self) -> &Bound {
         self.bound
     }
 
-    fn with_order_help(
-        &self,
-        diagnostic: Diagnostic,
-        sources: &ExplanationSources<'_>,
-    ) -> Diagnostic {
-        let mut diagnostic = self.with_written_derive(diagnostic, sources);
-        let enum_name = sources.bindings.get(self.binding).name().to_string();
-        let trait_name = sources.bindings.get(self.bound.binding).name();
+    fn sources(&self) -> &ExplanationSources<'_> {
+        self.sources
+    }
+
+    fn with_order_help(&self, diagnostic: Diagnostic) -> Diagnostic {
+        let mut diagnostic = self.with_derive_label(diagnostic);
+        let enum_name = self.name(self.binding).to_string();
+        let trait_name = self.needed_name();
         if self.definition.written_derive.is_none() {
             diagnostic =
                 diagnostic.with_note(TypeProblems::order_not_inferred_enum_note(trait_name));
         }
-        let blocking = sources
+        let blocking = self
+            .sources
             .derive_rules
             .blocking_enum_payload(self.binding, self.bound.binding);
         match blocking {
@@ -86,32 +73,23 @@ impl TraitHelp for EnumTraitHelp<'_> {
                 diagnostic.with_note(TypeProblems::order_blocked_enum_note(
                     &enum_name,
                     &variant,
-                    &sources.display.show(&field_type),
+                    &self.sources.display.show(&field_type),
                     trait_name,
                 ))
             }
-            None => diagnostic.with_help(self.order_help(&enum_name, sources)),
+            None => diagnostic.with_help(self.order_help(&enum_name)),
         }
     }
 
-    fn with_other_help(
-        &self,
-        diagnostic: Diagnostic,
-        sources: &ExplanationSources<'_>,
-    ) -> Diagnostic {
-        let diagnostic = self.with_written_derive(diagnostic, sources);
-        let blocked = self
-            .definition
-            .blocked
-            .iter()
-            .find(|(blocked, _, _)| *blocked == self.bound.binding);
-        match blocked {
+    fn with_other_help(&self, diagnostic: Diagnostic) -> Diagnostic {
+        let diagnostic = self.with_derive_label(diagnostic);
+        match self.block_on_needed(&self.definition.blocked) {
             Some((blocked, variant, payload)) => {
                 diagnostic.with_note(TypeProblems::blocked_enum_derive_note(
-                    sources.bindings.get(self.binding).name(),
-                    sources.bindings.get(*blocked).name(),
+                    self.name(self.binding),
+                    self.name(*blocked),
                     variant,
-                    &sources.display.show(payload),
+                    &self.sources.display.show(payload),
                 ))
             }
             None => diagnostic,
@@ -121,16 +99,10 @@ impl TraitHelp for EnumTraitHelp<'_> {
 
 #[cfg(test)]
 mod tests {
-    use rustc_hash::FxHashSet;
-
     use super::EnumTraitHelp;
-    use crate::core::BindingId;
     use crate::diagnostic::Diagnostic;
-    use crate::source::{SourceId, Span};
-    use crate::types::declarations_fixture::DeclarationsFixture;
-    use crate::types::problems::TypeProblems;
     use crate::types::trait_help::TraitHelp;
-    use crate::types::ty::Bound;
+    use crate::types::trait_help_fixture::TraitHelpFixture;
 
     const SOURCE: &str = "
         (enum rank low high)
@@ -139,41 +111,26 @@ mod tests {
         (defn main () (do))";
 
     struct EnumHelpFixture {
-        declarations: DeclarationsFixture,
-        changed_structs: FxHashSet<BindingId>,
+        fixture: TraitHelpFixture,
     }
 
     impl EnumHelpFixture {
         fn new() -> Self {
             Self {
-                declarations: DeclarationsFixture::new(SOURCE),
-                changed_structs: FxHashSet::default(),
+                fixture: TraitHelpFixture::new(SOURCE),
             }
         }
 
-        fn help(&self, enum_name: &str, trait_name: &str) -> Diagnostic {
-            let binding = self.declarations.type_named(enum_name);
-            let definition = self
-                .declarations
-                .types()
-                .enums
-                .get(binding)
-                .expect("an enum");
-            let bound = Bound::plain(self.declarations.trait_named(trait_name));
-            let sources = self.declarations.explanation_sources(&self.changed_structs);
-            let diagnostic = Self::unexplained(trait_name);
-            EnumTraitHelp::new(binding, definition, &bound).add_to(diagnostic, &sources)
-        }
-
-        fn unexplained(trait_name: &str) -> Diagnostic {
-            TypeProblems::missing_bound(trait_name, "T", Span::new(SourceId::new(0), 0..0))
-        }
-
-        fn added_helps<'d>(diagnostic: &'d Diagnostic, trait_name: &str) -> Vec<&'d str> {
-            let unexplained = Self::unexplained(trait_name).helps().len();
-            (diagnostic.helps().iter().skip(unexplained))
-                .map(|help| help.message())
-                .collect()
+        fn help(&self, type_name: &str, trait_name: &str) -> Diagnostic {
+            self.fixture.explain(
+                type_name,
+                trait_name,
+                |binding, bound, sources, diagnostic| {
+                    EnumTraitHelp::of(binding, bound, sources)
+                        .expect("the source declares the type")
+                        .add_to(diagnostic)
+                },
+            )
         }
     }
 
@@ -185,7 +142,7 @@ mod tests {
             ["`ord` is never inferred for an enum, so the enum needs a written `derive`"]
         );
         assert_eq!(
-            EnumHelpFixture::added_helps(&diagnostic, "ord"),
+            TraitHelpFixture::added_helps(&diagnostic, "ord"),
             [
                 "add `(derive rank clone copy partial-eq eq hash show ord)` to compare cases in declared order: `low`, then `high`"
             ]
@@ -205,7 +162,7 @@ mod tests {
     fn a_derivable_bound_on_a_written_derive_asks_to_add_it() {
         let diagnostic = EnumHelpFixture::new().help("value", "clone");
         assert_eq!(
-            EnumHelpFixture::added_helps(&diagnostic, "clone"),
+            TraitHelpFixture::added_helps(&diagnostic, "clone"),
             ["add `clone` to the enum's `derive`"]
         );
         assert_eq!(diagnostic.labels().count(), 2);

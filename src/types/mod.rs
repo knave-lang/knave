@@ -138,6 +138,8 @@ mod trait_declarations_builder;
 #[cfg(test)]
 mod trait_fixture;
 mod trait_help;
+#[cfg(test)]
+mod trait_help_fixture;
 mod trait_help_visibility;
 mod trait_method_info;
 mod trait_reach;

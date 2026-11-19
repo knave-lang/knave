@@ -394,17 +394,11 @@ src/types/checker.rs::TypeChecker::adopt_selection 6
 
 src/types/checker.rs::TypeChecker::check 7
 
-
 src/types/checker.rs::TypeChecker::generalize_var 4
 
 src/types/checker.rs::TypeChecker::generalize_vars 4
 
-
 src/types/checker.rs::TypeChecker::select_implementor 4
-
-
-
-
 
 src/types/derives.rs::TypeChecker::report_listed_block 4
 

@@ -120,10 +120,7 @@ impl<'s, 'a> ImplementorListing<'s, 'a> {
 
 #[cfg(test)]
 mod tests {
-    use rustc_hash::FxHashSet;
-
     use super::ImplementorListing;
-    use crate::core::BindingId;
     use crate::types::declarations_fixture::DeclarationsFixture;
     use crate::types::problems::ImplementorList;
 
@@ -139,19 +136,17 @@ mod tests {
 
     struct ListingFixture {
         declarations: DeclarationsFixture,
-        changed_structs: FxHashSet<BindingId>,
     }
 
     impl ListingFixture {
         fn new() -> Self {
             Self {
                 declarations: DeclarationsFixture::new(SOURCE),
-                changed_structs: FxHashSet::default(),
             }
         }
 
         fn listed(&self, trait_name: &str) -> ImplementorList {
-            let sources = self.declarations.explanation_sources(&self.changed_structs);
+            let sources = self.declarations.explanation_sources();
             ImplementorListing::new(&sources).list(self.declarations.trait_named(trait_name))
         }
     }

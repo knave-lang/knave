@@ -38,9 +38,8 @@ impl TextPositions {
     fn visit(&mut self, ty: &Type, path: TypePath, access: Access) {
         match ty {
             Type::Primitive(primitive) => self.visit_primitive(*primitive, path, access),
-            Type::Ref(_, inner) | Type::Mut(_, inner) => {
-                self.visit(inner, path, Access::Referenced)
-            }
+            Type::Ref(_, inner) => self.visit(inner, path, Access::Referenced),
+            Type::Mut(_, inner) => self.visit(inner, path, Access::Mutable),
             Type::Named(_, arguments) => {
                 arguments.iter().enumerate().for_each(|(part, argument)| {
                     self.visit(argument, path.child(part), Access::Direct)
@@ -76,6 +75,12 @@ mod tests {
         let positions = TextPositions::of(&Type::shared(Types::text(PrimitiveType::String)));
         assert_eq!(positions[0].written, Representation::Lent);
         assert!(positions[0].path.is_top());
+    }
+
+    #[test]
+    fn a_mutable_string_is_mutable_text() {
+        let positions = TextPositions::of(&Type::mutable(Types::text(PrimitiveType::String)));
+        assert_eq!(positions[0].written, Representation::Mutable);
     }
 
     #[test]

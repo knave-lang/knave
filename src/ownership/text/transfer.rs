@@ -14,7 +14,7 @@ impl Transfer {
     pub fn referring(access: Access) -> Self {
         match access {
             Access::Direct => Self::Move,
-            Access::Referenced => Self::Refer,
+            Access::Referenced | Access::Mutable => Self::Refer,
         }
     }
 
@@ -28,7 +28,7 @@ impl Transfer {
     pub fn lending(access: Access) -> Self {
         match access {
             Access::Direct => Self::Move,
-            Access::Referenced => Self::Lend,
+            Access::Referenced | Access::Mutable => Self::Lend,
         }
     }
 
@@ -177,6 +177,8 @@ mod tests {
         use super::Access;
         assert_eq!(Transfer::lending(Access::Referenced), Transfer::Lend);
         assert_eq!(Transfer::lending(Access::Direct), Transfer::Move);
+        assert_eq!(Transfer::lending(Access::Mutable), Transfer::Lend);
+        assert_eq!(Transfer::referring(Access::Mutable), Transfer::Refer);
     }
 
     #[test]

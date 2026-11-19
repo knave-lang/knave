@@ -1,0 +1,7 @@
+(defn reset! (name)
+  (set! name (str "pear" 1)))
+
+(defn main ()
+  (local n (str "a" 1))
+  (reset! n)
+  (println n))

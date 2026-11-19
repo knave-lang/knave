@@ -12,6 +12,7 @@ pub enum Representation {
     Mixed,
     Lent,
     LentMixed,
+    Mutable,
 }
 
 impl Representation {
@@ -20,6 +21,7 @@ impl Representation {
             (PrimitiveType::String | PrimitiveType::Str, Access::Direct) => Some(Self::Owned),
             (PrimitiveType::String, Access::Referenced) => Some(Self::Lent),
             (PrimitiveType::Str, Access::Referenced) => Some(Self::View),
+            (PrimitiveType::String | PrimitiveType::Str, Access::Mutable) => Some(Self::Mutable),
             _ => None,
         }
     }
@@ -80,7 +82,7 @@ impl Representation {
                 arriving.holds(ReachingText::STATIC.with(ReachingText::SHORT_LIVED_VIEWS))
             }
             Self::LentMixed => arriving.holds(ReachingText::SHORT_LIVED_VIEWS),
-            Self::View | Self::StaticView => false,
+            Self::View | Self::StaticView | Self::Mutable => false,
         }
     }
 }
@@ -94,6 +96,7 @@ impl fmt::Display for Representation {
             Self::Mixed => "mixed",
             Self::Lent => "lent",
             Self::LentMixed => "lent mixed",
+            Self::Mutable => "mutable",
         })
     }
 }
@@ -228,6 +231,7 @@ mod tests {
         assert!(Representation::Owned.refuses(LENT));
         assert!(!Representation::Owned.refuses(STATIC));
         assert!(!Representation::View.refuses(LENT));
+        assert!(!Representation::Mutable.refuses(LENT));
     }
 
     #[test]
@@ -263,6 +267,10 @@ mod tests {
             Some(Representation::Owned)
         );
         assert_eq!(
+            Representation::written(PrimitiveType::String, Access::Mutable),
+            Some(Representation::Mutable)
+        );
+        assert_eq!(
             Representation::written(PrimitiveType::Bool, Access::Direct),
             None
         );
@@ -277,6 +285,7 @@ mod tests {
             Representation::Mixed,
             Representation::Lent,
             Representation::LentMixed,
+            Representation::Mutable,
         ]
         .iter()
         .map(ToString::to_string)
@@ -289,7 +298,8 @@ mod tests {
                 "a 'static view",
                 "mixed",
                 "lent",
-                "lent mixed"
+                "lent mixed",
+                "mutable"
             ]
         );
     }

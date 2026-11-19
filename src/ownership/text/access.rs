@@ -2,4 +2,5 @@
 pub enum Access {
     Direct,
     Referenced,
+    Mutable,
 }

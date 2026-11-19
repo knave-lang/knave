@@ -36,6 +36,12 @@ pub struct Measurement {
     pub counts: Counts,
 }
 
+pub struct Comparison {
+    pub limit: Limit,
+    pub head: Counts,
+    pub base: Counts,
+}
+
 struct Rise<'a> {
     subject: &'a str,
     head: usize,
@@ -50,12 +56,12 @@ pub struct Ratchet {
 }
 
 impl Ratchet {
-    pub fn new(head: Measurement, base: Counts, approvals: &RiseApprovals) -> Self {
+    pub fn new(comparison: Comparison, approvals: &RiseApprovals) -> Self {
         Self {
-            approved: approvals.subjects_of(head.limit.name),
-            limit: head.limit,
-            head: head.counts,
-            base,
+            approved: approvals.subjects_of(comparison.limit.name),
+            limit: comparison.limit,
+            head: comparison.head,
+            base: comparison.base,
         }
     }
 
@@ -129,7 +135,7 @@ impl Check for Ratchet {
 
 #[cfg(test)]
 mod tests {
-    use super::{Counts, Limit, Measurement, Ratchet, Unit};
+    use super::{Comparison, Counts, Limit, Ratchet, Unit};
     use crate::checks::Check;
     use crate::rise_approvals::RiseApprovals;
 
@@ -145,11 +151,12 @@ mod tests {
         };
 
         fn ratchet(head: &[(&str, usize)], base: &[(&str, usize)], log: &str) -> Ratchet {
-            let head = Measurement {
+            let comparison = Comparison {
                 limit: Self::LIMIT,
-                counts: Self::counts(head),
+                head: Self::counts(head),
+                base: Self::counts(base),
             };
-            Ratchet::new(head, Self::counts(base), &RiseApprovals::parse(log))
+            Ratchet::new(comparison, &RiseApprovals::parse(log))
         }
 
         fn counts(entries: &[(&str, usize)]) -> Counts {

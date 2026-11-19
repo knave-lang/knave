@@ -1,0 +1,8 @@
+(type smaller-of
+  (where ((a ord)) (fn (a a) a)))
+
+(defn smaller-of (left right)
+  (if (< left right) left right))
+
+(defn main ()
+  (println (smaller-of "b" "a")))

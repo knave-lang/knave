@@ -1,0 +1,4 @@
+(defn main ()
+  (let (names (vec (str "a" 1)))
+    (let (picked (at names 0))
+      (println picked))))

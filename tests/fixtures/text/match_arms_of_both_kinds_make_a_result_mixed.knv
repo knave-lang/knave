@@ -1,0 +1,6 @@
+(defn describe (count)
+  (match (> count 1)
+    (true (as-str (str "many " count)))
+    (false "one")))
+
+(defn main () (println (describe 2)))

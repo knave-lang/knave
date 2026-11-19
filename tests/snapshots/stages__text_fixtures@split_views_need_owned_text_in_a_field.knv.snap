@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/split_views_need_owned_text_in_a_field.knv
+---
+struct team
+  names[0]: owned, written a view
+defn main
+  local line: owned
+needs owned text
+  6:53

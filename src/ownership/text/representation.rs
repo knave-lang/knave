@@ -265,4 +265,30 @@ mod tests {
             None
         );
     }
+
+    #[test]
+    fn each_representation_prints_in_words() {
+        let printed: Vec<String> = [
+            Representation::Owned,
+            Representation::View,
+            Representation::StaticView,
+            Representation::Mixed,
+            Representation::Lent,
+            Representation::LentMixed,
+        ]
+        .iter()
+        .map(ToString::to_string)
+        .collect();
+        assert_eq!(
+            printed,
+            [
+                "owned",
+                "a view",
+                "a 'static view",
+                "mixed",
+                "lent",
+                "lent mixed"
+            ]
+        );
+    }
 }

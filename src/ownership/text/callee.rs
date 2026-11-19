@@ -76,7 +76,6 @@ impl<'t> Callee<'t> {
             Type::Ref(_, inner) => {
                 Self::whole_generic(inner).map(|(generic, _)| (generic, Access::Referenced))
             }
-            Type::Mut(_, inner) => Self::whole_generic(inner),
             _ => None,
         }
     }

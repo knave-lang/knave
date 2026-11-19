@@ -1,0 +1,4 @@
+(defstruct unused
+  :label str)
+
+(defn main () (println 1))

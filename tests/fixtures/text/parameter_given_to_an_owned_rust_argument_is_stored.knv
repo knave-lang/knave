@@ -1,0 +1,7 @@
+(def take
+  (rust "{0}.len()" (fn (string) usize)))
+
+(defn relay (text) (take text))
+
+(defn main ()
+  (println (relay (str "a" 1))))

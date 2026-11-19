@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/first_element_read_is_lent.knv
+---
+defn main
+  local names[0]: owned
+  local picked: lent

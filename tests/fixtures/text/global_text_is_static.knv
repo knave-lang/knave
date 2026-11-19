@@ -1,0 +1,8 @@
+(def greeting "hi")
+
+(defstruct user
+  :name str)
+
+(defn main ()
+  (let (ana (->user :name greeting))
+    (println (:name ana))))

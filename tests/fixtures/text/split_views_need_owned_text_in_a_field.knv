@@ -1,0 +1,7 @@
+(defstruct team
+  :names (vec str))
+
+(defn main ()
+  (let (line (str "a b" 1)
+        crew (->team :names (collect (split (as-str line) " "))))
+    (println (len (:names crew)))))

@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/parameter_given_to_an_owned_rust_argument_is_stored.knv
+---
+defn relay
+  text: owned

@@ -1,0 +1,6 @@
+(defn main ()
+  (let (loud true
+        maybe (if loud
+                (some (as-str (str "a" 1)))
+                (some "b")))
+    (println (unwrap-or maybe "none"))))

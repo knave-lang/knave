@@ -1,0 +1,6 @@
+(defn main ()
+  (let (names (vec))
+    (push! names (str "a" 1))
+    (let (picked (unwrap-or (first names)
+                            (ref (str "none"))))
+      (println picked))))

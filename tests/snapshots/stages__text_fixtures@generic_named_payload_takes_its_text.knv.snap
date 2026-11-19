@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/generic_named_payload_takes_its_text.knv
+---
+defn main
+  local kept[0]: mixed, written a view

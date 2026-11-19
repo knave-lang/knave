@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/vector_literal_of_both_kinds_has_mixed_elements.knv
+---
+defn main
+  local names[0]: mixed, written a view

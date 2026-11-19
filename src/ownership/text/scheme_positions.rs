@@ -190,4 +190,33 @@ mod tests {
             }
         ));
     }
+
+    #[test]
+    fn a_generic_path_runs_through_its_outer_and_inner_parts() {
+        let generic = GenericId::new(0);
+        let pair = Type::Named(BindingId::from_index(8), vec![Types::text()]);
+        let positions =
+            SchemePositions::of(&Types::vec_of(Type::Generic(generic)), &Types::vec_of(pair));
+        assert_eq!(positions[0].path(), TypePath::default().child(0).child(0));
+    }
+
+    #[test]
+    fn a_written_path_is_its_own_place() {
+        let positions =
+            SchemePositions::of(&Types::vec_of(Types::text()), &Types::vec_of(Types::text()));
+        assert_eq!(positions[0].path(), TypePath::default().child(0));
+    }
+
+    #[test]
+    fn a_reference_declared_over_a_value_still_reaches_its_generic() {
+        let generic = GenericId::new(0);
+        let positions = SchemePositions::of(&Type::shared(Type::Generic(generic)), &Types::text());
+        assert!(matches!(
+            positions.as_slice(),
+            [SchemePosition::Generic {
+                access: Access::Referenced,
+                ..
+            }]
+        ));
+    }
 }

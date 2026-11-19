@@ -1,0 +1,6 @@
+(type size-of (fn (string) usize))
+
+(defn size-of (text) (len text))
+
+(defn main ()
+  (println (size-of (str "a" 1))))

@@ -1,0 +1,8 @@
+(defstruct user
+  :name str)
+
+(defn main ()
+  (let (literal (->user :name "a")
+        made ((fn ()
+                (->user :name (as-str (str "b" 1))))))
+    (println (:name literal) (:name made))))

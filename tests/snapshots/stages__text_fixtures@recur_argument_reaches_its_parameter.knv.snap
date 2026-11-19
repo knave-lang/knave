@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/recur_argument_reaches_its_parameter.knv
+---
+struct user
+  name: mixed, written a view
+defn named
+  label: mixed, written a view

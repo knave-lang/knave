@@ -643,7 +643,8 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 
 - The name follows `defproject` and is the only required part. It is kebab-case: words of lowercase letters and digits, joined by single dashes, starting with a letter.
 - `:entry` defaults to `src/main.knv`, `:lib` to `src/lib.knv`, `:version` to `"0.1.0"`, and `:edition` to the compiler's edition, 2026. An edition other than 2026 is an error.
-- `:knave` records the Knave version the project uses, as a string ([RFC 0079](../rfcs/0079-project-knave-version.md)). It has no default.
+- `:knave` records the Knave version the project uses, as a release version string such as `"0.18.0"` ([RFC 0079](../rfcs/0079-project-knave-version.md)). Any other string is `L0706`. It has no default, and a project without it gets no version check.
+- Every command that finds the project compares the running compiler with the root project's `:knave`; a library's is never compared. A compiler older than `:knave` is the error `L0736`, with a help that names `cargo install knave --version <version> --locked`. A newer compiler is the warning `L0737`, with a help that names `knave upgrade`. No lint level changes either, and only `knave upgrade`, which records the running version, clears the warning.
 - A dependency is a list: the name, an optional version string, then `:key value` pairs. A feature is a string.
 - A crate dependency takes a version or a `:path`, and MAY take `:features`.
 - A library takes `:path`, or `:git` with `:rev`, and no version. `:rev` is a full 40-digit commit hash.
@@ -665,6 +666,7 @@ The name argument is checked first: a name that is not kebab-case is `L0718`, la
 - A file that holds a text some Knave release wrote, for any version, takes this compiler's text, and the command names it. The compiler keeps each earlier text of its templates under `src/cli/earlier_texts/`, at the template's own path.
 - A file that holds any other text is the user's: the command keeps it, warns, and prints a unified diff from the file to this compiler's text.
 - When nothing changes, the command says so, with a help that names `cargo install knave --locked`. It exits 0 in each case.
+- It prints no `L0737`, since it clears it. A compiler older than `:knave` gets `L0736` and leaves every file as it is, so the command never lowers the version.
 
 **`knave fmt` lays out the project file by the shapes in `prelude/project-file`.** The module states `(header-shape (defproject name) :one-per-line)` and the same marker for each section, so when a form breaks, each key and each dependency takes a line of its own. `knave new` writes its files through the formatter. A program that uses `prelude/project-file` and calls `defproject` or a section gets `L0350`, because the form belongs only in the project file. The module declares each form's role with `project-role`, such as `(project-role libraries library-section)`, and the compiler takes the project file's names from those roles.
 

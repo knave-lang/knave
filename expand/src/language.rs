@@ -4,6 +4,7 @@ impl Language {
     pub const NAME: &str = "knave";
     pub const EXTENSION: &str = "knv";
     pub const EDITION: i128 = 2026;
+    pub const VERSION: &str = env!("CARGO_PKG_VERSION");
     pub const PROJECT_FILE_STEM: &str = "project";
 
     pub fn project_file_name() -> String {

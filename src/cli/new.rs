@@ -7,7 +7,6 @@ use super::new_file::NewFile;
 use super::project_component::ProjectComponent;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
-use super::versioned_text::VersionedText;
 use super::working_directory::WorkingDirectory;
 use crate::diagnostic::Diagnostics;
 use crate::format::{ModuleLookup, SourceFormatter};
@@ -82,7 +81,7 @@ impl NewCommand {
             EmbeddedPrelude::project_vocabulary().head(),
             self.name,
             Language::NAME,
-            VersionedText::VERSION
+            Language::VERSION
         );
         NewFile::new(root.join(Language::project_file_name()), text)
     }

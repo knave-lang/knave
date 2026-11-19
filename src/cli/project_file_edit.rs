@@ -26,7 +26,23 @@ impl ProjectFileEdit {
         command: &str,
     ) -> Result<Self, ExitStatus> {
         let working_directory = WorkingDirectory::path();
-        match LocatedProject::enter_from(working_directory, terminal, FetchingStore::default())? {
+        let located =
+            LocatedProject::enter_from(working_directory, terminal, FetchingStore::default())?;
+        Self::of_located(located, command)
+    }
+
+    pub fn to_upgrade(terminal: &mut Terminal, command: &str) -> Result<Self, ExitStatus> {
+        let working_directory = WorkingDirectory::path();
+        let located = LocatedProject::enter_to_upgrade(
+            working_directory,
+            terminal,
+            FetchingStore::default(),
+        )?;
+        Self::of_located(located, command)
+    }
+
+    fn of_located(located: Option<LocatedProject>, command: &str) -> Result<Self, ExitStatus> {
+        match located {
             Some(project) => Ok(Self { project }),
             None => Err(Self::report_no_project(command)),
         }

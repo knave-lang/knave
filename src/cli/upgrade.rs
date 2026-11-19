@@ -10,7 +10,6 @@ use super::program_file::ProgramFile;
 use super::project_file_edit::ProjectFileEdit;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
-use super::versioned_text::VersionedText;
 use crate::language::Language;
 
 pub struct UpgradeCommand;
@@ -26,7 +25,7 @@ impl UpgradeCommand {
     }
 
     fn upgrade(terminal: &mut Terminal) -> Result<(), ExitStatus> {
-        let edit = ProjectFileEdit::of_working_directory(terminal, Self::COMMAND)?;
+        let edit = ProjectFileEdit::to_upgrade(terminal, Self::COMMAND)?;
         let mut changed = Self::record_version(&edit, terminal)?;
         for file in NewComponents::every()
             .iter()
@@ -41,14 +40,14 @@ impl UpgradeCommand {
     }
 
     fn record_version(edit: &ProjectFileEdit, terminal: &Terminal) -> Result<bool, ExitStatus> {
-        let version = format!("\"{}\"", VersionedText::VERSION);
+        let version = format!("\"{}\"", Language::VERSION);
         let recorded = edit.apply(terminal, |editor| {
             editor.with_field(Language::NAME, &version)
         })?;
         if recorded {
             StandardError::write_line(format_args!(
                 "recorded Knave {} in `{}`",
-                VersionedText::VERSION,
+                Language::VERSION,
                 Language::project_file_name()
             ));
         }
@@ -79,7 +78,7 @@ impl UpgradeCommand {
 
     fn report_kept(file: &OwnedFile, written: &str) {
         let shown = file.path().display().to_string();
-        let version = VersionedText::VERSION;
+        let version = Language::VERSION;
         let current = file.current_text();
         let diff = TextDiff::from_lines(written, &current)
             .unified_diff()
@@ -93,7 +92,7 @@ impl UpgradeCommand {
     fn report_current() {
         StandardError::write_line(format_args!(
             "note: the project already uses Knave {}, the version of this `{}`\nhelp: to install a newer Knave, run `cargo install {} --locked`",
-            VersionedText::VERSION,
+            Language::VERSION,
             Language::NAME,
             Language::NAME
         ));

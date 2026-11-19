@@ -34,3 +34,39 @@ macro_rules! released_text {
 }
 
 pub(crate) use released_text;
+
+#[cfg(test)]
+pub struct KeptTextsFolder {
+    template: &'static str,
+}
+
+#[cfg(test)]
+impl KeptTextsFolder {
+    pub fn of(template: &'static str) -> Self {
+        Self { template }
+    }
+
+    pub fn assert_listed_by(&self, earlier_texts: &[ReleasedText]) {
+        let mut listed: Vec<&str> = earlier_texts.iter().map(ReleasedText::version).collect();
+        listed.sort_unstable();
+        assert_eq!(
+            listed,
+            self.kept_versions(),
+            "`EARLIER_TEXTS` of `{}`",
+            self.template
+        );
+    }
+
+    fn kept_versions(&self) -> Vec<String> {
+        let folder = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src/cli/earlier_texts")
+            .join(self.template);
+        let mut versions: Vec<String> = std::fs::read_dir(folder)
+            .expect("each owned template keeps a folder of earlier texts")
+            .map(|entry| entry.expect("a kept text is readable").file_name())
+            .map(|name| name.into_string().expect("a kept text's name is a version"))
+            .collect();
+        versions.sort_unstable();
+        versions
+    }
+}

@@ -23,3 +23,15 @@ impl ProjectComponent for GithubWorkflow {
         )]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::GithubWorkflow;
+    use crate::cli::released_text::KeptTextsFolder;
+
+    #[test]
+    fn the_workflow_lists_each_kept_text() {
+        KeptTextsFolder::of("src/cli/github_workflow.yml")
+            .assert_listed_by(GithubWorkflow::EARLIER_TEXTS);
+    }
+}

@@ -8,4 +8,4 @@ struct team
 defn main
   local line: owned
 needs owned text
-  6:53
+  text/split_views_need_owned_text_in_a_field.knv:6:53

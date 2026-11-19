@@ -11,4 +11,4 @@ defn main
   local owned: owned
   local lent: lent
 needs owned text
-  8:19
+  text/read_of_an_owned_field_is_lent.knv:8:19

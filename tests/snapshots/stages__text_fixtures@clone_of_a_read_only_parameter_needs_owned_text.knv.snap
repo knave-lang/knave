@@ -9,4 +9,4 @@ defn duplicate
 defn main
   local owned: owned
 needs owned text
-  1:31
+  text/clone_of_a_read_only_parameter_needs_owned_text.knv:1:31

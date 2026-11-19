@@ -63,7 +63,10 @@ impl<'r, 'p> TextReport<'r, 'p> {
         let lines: String = self
             .refused
             .iter()
-            .map(|span| format!("  {}\n", sources.start_position(*span)))
+            .map(|span| {
+                let file = sources.file(span.source()).name();
+                format!("  {file}:{}\n", sources.start_position(*span))
+            })
             .collect();
         if lines.is_empty() {
             String::new()

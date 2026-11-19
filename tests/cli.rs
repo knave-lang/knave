@@ -9199,6 +9199,20 @@ fn a_compiler_newer_than_the_project_warns_once_in_each_command() {
 }
 
 #[test]
+fn fmt_of_standard_input_under_an_older_compiler_fails_once() {
+    let sandbox = Sandbox::with_recorded_version("version_older_fmt_input", NEWER_VERSION);
+    let formatted = sandbox.compiler_reading_in(
+        "demo-app",
+        UNFORMATTED,
+        &["fmt", "--stdin-path", "src/main.knv", "-"],
+    );
+    let stderr = formatted.assert_exit_code(1).stderr();
+    assert_eq!(stderr.matches("[L073").count(), 1, "{stderr}");
+    assert!(stderr.contains(OLDER_COMPILER_ERROR), "{stderr}");
+    assert_eq!(formatted.stdout(), "");
+}
+
+#[test]
 fn fmt_under_a_newer_recorded_knave_lays_out_the_project() {
     let sandbox = Sandbox::with_recorded_version("version_newer_fmt", FILLED_VERSION)
         .with_file("demo-app/src/twice.knv", UNFORMATTED);

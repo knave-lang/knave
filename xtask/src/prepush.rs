@@ -35,13 +35,12 @@ pub struct PrepushTask {
 
 impl PrepushTask {
     const MEASURED_TREE: &str = "prepush measures the working tree, uncommitted edits included. Git's diff leaves out untracked files, so add new files to the index first.";
-    const AFTER_A_REBASE: &str = "After each rebase, run `cargo xtask prepush` again: git's baseline merge driver adds both branches' changes to each entry, and file-sizes and design-rules catch an entry whose sum is off.";
 
     pub fn run(&self, root: &Path) -> ExitCode {
         let verdict = self
             .attempt(root)
             .unwrap_or_else(|failure| failure.report());
-        println!("{}\n{}", Self::MEASURED_TREE, Self::AFTER_A_REBASE);
+        println!("{}", Self::MEASURED_TREE);
         verdict
     }
 

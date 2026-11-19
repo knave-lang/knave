@@ -52,38 +52,6 @@
             "-C link-arg=-fuse-ld=mold";
         };
 
-      baselineManifest = builtins.fromTOML (builtins.readFile ./xtask/baseline/Cargo.toml);
-
-      baselineMerger =
-        pkgs:
-        let
-          inherit (baselineManifest.package) edition;
-          library = builtins.replaceStrings [ "-" ] [ "_" ] baselineManifest.package.name;
-          binary = (builtins.head baselineManifest.bin).name;
-        in
-        pkgs.runCommandCC binary
-          {
-            nativeBuildInputs = [ pkgs.rustc ];
-            meta.mainProgram = binary;
-          }
-          ''
-            sources=${./xtask/baseline/src}
-            rustc --edition ${edition} -O --crate-type lib --crate-name ${library} "$sources/lib.rs" -o lib${library}.rlib
-            mkdir -p $out/bin
-            rustc --edition ${edition} -O "$sources/main.rs" --extern ${library}=lib${library}.rlib -o $out/bin/${binary}
-          '';
-
-      baselineMergerCheck =
-        pkgs:
-        pkgs.runCommand "baseline-merger" { } ''
-          printf 'a 383\n' > base
-          printf 'a 380\n' > ours
-          printf 'a 381\n' > theirs
-          ${pkgs.lib.getExe (baselineMerger pkgs)} base ours theirs baseline.txt
-          [[ $(<ours) == 'a 378' ]] || { echo "the merger wrote: $(<ours)" >&2; exit 1; }
-          touch $out
-        '';
-
       cargoManifest = builtins.fromTOML (builtins.readFile ./Cargo.toml);
       cratePackage = cargoManifest.package;
       crateVersion = cargoManifest.workspace.package.version;
@@ -916,12 +884,6 @@
                 export CARGO_INCREMENTAL=0
                 export SCCACHE_IDLE_TIMEOUT=''${SCCACHE_IDLE_TIMEOUT:-120}
               fi
-              baseline_driver='${pkgs.lib.getExe (baselineMerger pkgs)} %O %A %B %P; status=$?; [ $status -le 2 ] && exit $status; git merge-file -L ours -L base -L theirs %A %O %B'
-              if [[ -d "$(git rev-parse --show-toplevel 2> /dev/null)/xtask/baselines" ]] &&
-                [[ $(git config merge.baseline.driver) != "$baseline_driver" ]]; then
-                git config merge.baseline.name "add both branches' changes to each baseline entry"
-                git config merge.baseline.driver "$baseline_driver"
-              fi
             '';
           }
           // coverageTools pkgs
@@ -944,7 +906,6 @@
         default = self.packages.${system}.default;
         agent-docs = agentDocs nixpkgs.legacyPackages.${system};
         build-slots = buildSlots nixpkgs.legacyPackages.${system};
-        baseline-merger = baselineMergerCheck nixpkgs.legacyPackages.${system};
         dev-shell-tools = devShellTools nixpkgs.legacyPackages.${system} self.devShells.${system}.default;
         installed-profile =
           installedProfile nixpkgs.legacyPackages.${system}

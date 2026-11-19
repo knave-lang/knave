@@ -18,7 +18,10 @@ impl ArgumentRole {
         let name = member.strip_prefix('.').unwrap_or(member);
         let after_name = name
             .trim_start_matches(|character: char| character.is_alphanumeric() || character == '_');
-        if after_name.starts_with(Self::METHOD_CALL_OPENERS) {
+        if after_name
+            .trim_start()
+            .starts_with(Self::METHOD_CALL_OPENERS)
+        {
             ArgumentRole::Receiver
         } else {
             ArgumentRole::FieldOwner
@@ -97,7 +100,7 @@ mod tests {
 
     #[test]
     fn a_member_called_with_arguments_receives_a_method_call() {
-        for member in [".len()", ".max(", ".collect::<Vec<_>>()"] {
+        for member in [".len()", ".max(", ".max (", ".collect::<Vec<_>>()"] {
             assert_eq!(
                 ArgumentRole::receiving(member),
                 ArgumentRole::Receiver,

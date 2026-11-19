@@ -137,6 +137,8 @@ fi
 
 **Run each probe with the path that the block prints.**
 
+**Run `knave run` and `knave build` on a copy of the program under `target/scratch/`.** Each command writes a `target/` directory beside the program.
+
 **If the block warns that the binary lacks base commits, check whether a probe needs one.** If a probe does, build the compiler with `cargo build --bin knave`.
 
 **If the `ci.yml` of a run's merge commit lacks the upload step, the run uploads no debug `knave`.** Check the merge commit of the pull request with `git fetch origin refs/pull/<number>/merge && git grep --quiet knave-debug FETCH_HEAD -- .github/workflows/ci.yml`.

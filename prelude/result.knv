@@ -112,7 +112,9 @@
 
   It borrows the result, which stays usable.
 
-  (ok? (ok-or (some (str \"pear\")) \"missing\"))
+  (-> (some (str \"pear\"))
+      (ok-or \"missing\")
+      ok?)
   => true
 
   (let (outcome (ok-or (some (str \"pear\")) \"missing\"))

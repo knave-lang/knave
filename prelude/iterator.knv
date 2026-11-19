@@ -90,7 +90,7 @@
   (sum (vec 1 2 3))
   => 6
 
-  (sum (range 0 0))
+  (-> (range 0 0) sum)
   => 0"
   (reduce values 0 +))
 
@@ -203,10 +203,10 @@
 
   It is empty when `start` is not below `end`.
 
-  (collect (range 0 3))
+  (-> (range 0 3) collect)
   => (vec 0 1 2)
 
-  (count (range 3 3))
+  (-> (range 3 3) count)
   => 0")
 
 (document (map items function)
@@ -215,10 +215,12 @@
   It is lazy: the function runs when a later call reads the item. A vector or
   a map passes as its [iter]. A keyword such as `:age` reads that field.
 
-  (collect (map (range 0 3) (fn (x) (* x 2))))
+  (-> (range 0 3)
+      (map (fn (x) (* x 2)))
+      collect)
   => (vec 0 2 4)
 
-  (collect (map (vec 1 2) str))
+  (-> (vec 1 2) (map str) collect)
   => (vec (str 1) (str 2))")
 
 (document (filter items test)
@@ -227,8 +229,9 @@
   `test` takes a `(ref a)`. It is lazy: the test runs when a later call reads
   the item. A vector or a map passes as its [iter].
 
-  (collect (filter (range 0 4)
-             (fn (x) (> (deref x) 1))))
+  (-> (range 0 4)
+      (filter (fn (x) (> (deref x) 1)))
+      collect)
   => (vec 2 3)")
 
 (document (reduce items step)
@@ -254,8 +257,8 @@
   passes as its [iter].
 
   (let (total 0)
-    (for-each (range 1 4)
-      (fn (x) (set! total (+ total x))))
+    (-> (range 1 4)
+        (for-each (fn (x) (set! total (+ total x)))))
     (= total 6))
   => true")
 
@@ -265,7 +268,7 @@
   Each result is a `(pair usize a)`, and the index starts at 0. A vector or a
   map passes as its [iter].
 
-  (collect (enumerate (range 5 7)))
+  (-> (range 5 7) enumerate collect)
   => (vec (pair 0 5) (pair 1 6))")
 
 (document (zip left right)
@@ -274,7 +277,9 @@
   It ends when the shorter iterator ends. A vector or a map passes as its
   [iter].
 
-  (collect (zip (range 0 2) (range 5 9)))
+  (-> (range 0 2)
+      (zip (range 5 9))
+      collect)
   => (vec (pair 0 5) (pair 1 6))")
 
 (document (count items)
@@ -283,7 +288,7 @@
   `(count (iter collection))` emits the collection's [len], and any other call
   runs through the items. A vector or a map passes as its [iter].
 
-  (count (range 0 3))
+  (-> (range 0 3) count)
   => 3
 
   (count (iter (vec 1 2)))
@@ -300,7 +305,7 @@
   so `(max 1 2)` is `2`, `(max 1.0 2.0)` is `2.0`, and a NaN loses to the other
   value. `max` as a value is the iterator function.
 
-  (max (range 0 3))
+  (-> (range 0 3) max)
   => (some 2)
 
   (max 1 2)
@@ -317,7 +322,7 @@
   so `(min 1 2)` is `1`, `(min 1.0 2.0)` is `1.0`, and a NaN loses to the other
   value. `min` as a value is the iterator function.
 
-  (min (range 0 3))
+  (-> (range 0 3) min)
   => (some 0)
 
   (min 1.0 2.0)
@@ -331,8 +336,8 @@
   passes as its [iter]. A keyword such as `:age` reads that field.
 
   (let (words (vec \"pear\" \"kiwi\" \"fig\"))
-    (max-by-key (copied words)
-      (fn (word) (len (deref word)))))
+    (-> (copied words)
+        (max-by-key (fn (word) (len (deref word))))))
   => (some \"kiwi\")")
 
 (document (any? items test)
@@ -341,10 +346,10 @@
   It stops at the first item that passes, and no items give [false]. `test`
   takes the item itself. A vector or a map passes as its [iter].
 
-  (any? (range 0 3) (fn (x) (> x 1)))
+  (-> (range 0 3) (any? (fn (x) (> x 1))))
   => true
 
-  (any? (range 0 0) (fn (x) (> x 1)))
+  (-> (range 0 0) (any? (fn (x) (> x 1))))
   => false")
 
 (document (every? items test)
@@ -353,10 +358,12 @@
   It stops at the first item that fails, and no items give [true]. `test`
   takes the item itself. A vector or a map passes as its [iter].
 
-  (every? (range 0 3) (fn (x) (> x 1)))
+  (-> (range 0 3)
+      (every? (fn (x) (> x 1))))
   => false
 
-  (every? (range 0 0) (fn (x) (> x 1)))
+  (-> (range 0 0)
+      (every? (fn (x) (> x 1))))
   => true")
 
 (document (find items test)
@@ -365,12 +372,12 @@
   It returns `none` when no item passes. `test` takes a `(ref a)`. A vector or
   a map passes as its [iter].
 
-  (find (range 0 5)
-    (fn (x) (> (deref x) 2)))
+  (-> (range 0 5)
+      (find (fn (x) (> (deref x) 2))))
   => (some 3)
 
-  (find (range 0 5)
-    (fn (x) (> (deref x) 9)))
+  (-> (range 0 5)
+      (find (fn (x) (> (deref x) 9))))
   => none")
 
 (document (take items limit)
@@ -379,7 +386,7 @@
   `limit` is a [usize], so an [int] is an error. A vector or a map passes as
   its [iter].
 
-  (collect (take (range 0 9) 2))
+  (-> (range 0 9) (take 2) collect)
   => (vec 0 1)")
 
 (document (take-while items test)
@@ -387,6 +394,7 @@
 
   `test` takes a `(ref a)`. A vector or a map passes as its [iter].
 
-  (collect (take-while (copied (vec 1 5 2))
-             (fn (x) (< (deref x) 3))))
+  (-> (copied (vec 1 5 2))
+      (take-while (fn (x) (< (deref x) 3)))
+      collect)
   => (vec 1)")

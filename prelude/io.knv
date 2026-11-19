@@ -183,7 +183,7 @@
   With three lines on standard input:
 
   ```
-  (count (line-seq stdin))
+  (-> stdin line-seq count)
   => 3
   ```")
 

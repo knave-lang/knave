@@ -59,7 +59,7 @@
     (none 0))
   => 4
 
-  (collect (map (range 1 3) some))
+  (-> (range 1 3) (map some) collect)
   => (vec (some 1) (some 2))")
 
 (document none

@@ -523,7 +523,7 @@
   (str \"year \" 2026)
   => \"year 2026\"
 
-  (collect (map (iter (vec 1 2)) str))
+  (-> (vec 1 2) iter (map str) collect)
   => (vec (str 1) (str 2))")
 
 (defmacro print (parts ...)
@@ -1006,7 +1006,7 @@
 
   It takes a `(ref str)`, so borrow a [string] with [as-str].
 
-  (collect (chars \"hi\"))
+  (-> \"hi\" chars collect)
   => (vec (char \"h\") (char \"i\"))")
 
 (document (lines text)
@@ -1017,10 +1017,10 @@
 
   It takes a `(ref str)`, so borrow a [string] with [as-str].
 
-  (collect (lines \"a\\nb\\n\"))
+  (-> \"a\\nb\\n\" lines collect)
   => (vec \"a\" \"b\")
 
-  (collect (lines \"a\\r\\nb\"))
+  (-> \"a\\r\\nb\" lines collect)
   => (vec \"a\" \"b\")")
 
 (document (split text separator)
@@ -1032,13 +1032,13 @@
   string gives one empty part. `text` is a `(ref str)`, so borrow a [string]
   with [as-str].
 
-  (collect (split \"a,b\" \",\"))
+  (-> \"a,b\" (split \",\") collect)
   => (vec \"a\" \"b\")
 
-  (collect (split \"a,,b\" \",\"))
+  (-> \"a,,b\" (split \",\") collect)
   => (vec \"a\" \"\" \"b\")
 
-  (collect (split \"a1b\" digit?))
+  (-> \"a1b\" (split digit?) collect)
   => (vec \"a\" \"b\")")
 
 (document pattern
@@ -1057,7 +1057,7 @@
   (join (vec \"ana\" \"bo\") \", \")
   => \"ana, bo\"
 
-  (join (collect (split \"a b\" \" \")) \"+\")
+  (-> \"a b\" (split \" \") collect (join \"+\"))
   => \"a+b\"")
 
 (document (starts-with? text prefix)
@@ -1087,7 +1087,7 @@
 
   It emits `text.as_str()`.
 
-  (upper-case (as-str (str \"pear\")))
+  (-> (str \"pear\") as-str upper-case)
   => \"PEAR\"")
 
 (document (parse text)

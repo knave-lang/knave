@@ -225,7 +225,7 @@
   `(pair (ref key) (ref value))`. Where a call expects an [iterator], a vector,
   a slice or a map passes without `iter`.
 
-  (collect (map (iter (vec 1 2)) str))
+  (-> (vec 1 2) iter (map str) collect)
   => (vec (str 1) (str 2))")
 
 (document (copied items)
@@ -233,13 +233,13 @@
 
   The items implement [copy]. It takes a vector or a slice, not an iterator.
 
-  (collect (copied (vec 1 2)))
+  (-> (vec 1 2) copied collect)
   => (vec 1 2)")
 
 (document (collect items)
   "Collects the items of an iterator into a vector.
 
-  (collect (range 0 3))
+  (-> (range 0 3) collect)
   => (vec 0 1 2)")
 
 (document (pop! items)
@@ -310,10 +310,10 @@
   error. A slice shorter than `size` gives no run. It panics when `size` is
   zero. A vector passes as its slice.
 
-  (count (windows (vec 1 2 3) 2))
+  (-> (vec 1 2 3) (windows 2) count)
   => 2
 
-  (count (windows (vec 1) 2))
+  (-> (vec 1) (windows 2) count)
   => 0")
 
 (document (at items index)
@@ -378,7 +378,7 @@
   It takes a vector or a slice, not an iterator, and leaves the items in
   place. Use [reverse!] to reverse a vector itself.
 
-  (collect (map (reverse (vec 1 2)) str))
+  (-> (vec 1 2) reverse (map str) collect)
   => (vec (str 2) (str 1))")
 
 (document (reverse! items)

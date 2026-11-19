@@ -517,8 +517,8 @@
   exact, while a plain [fn] leaves the kind to inference.
 
   (let (total 0)
-    (for-each (range 1 4)
-      (fn (x) (set! total (+ total x))))
+    (-> (range 1 4)
+        (for-each (fn (x) (set! total (+ total x)))))
     (= total 6))
   => true")
 

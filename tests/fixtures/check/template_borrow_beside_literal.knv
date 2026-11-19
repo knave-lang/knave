@@ -1,0 +1,8 @@
+(def same?
+  (rust "{&0} == {1}"
+    (where ((a partial-eq)) (fn (a a) bool))))
+
+(defn main ()
+  (local year 2024)
+  (println (same? 2020 (ref year)))
+  (println (same? 2024 year)))

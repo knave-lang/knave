@@ -1,0 +1,10 @@
+(type first-of (where (a) (fn (a a) a)))
+
+(defn first-of (x y) x)
+
+(defn pick ((x (ref i64)) (y (ref i64)))
+  (first-of x y))
+
+(defn main ()
+  (local three 3)
+  (println (pick (ref three) (ref three))))

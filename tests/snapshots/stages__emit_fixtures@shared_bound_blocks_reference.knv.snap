@@ -1,0 +1,61 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/emit/shared_bound_blocks_reference.knv
+---
+#[derive(Clone, Copy)]
+struct Ledger {
+    opened: i64,
+    closed: i64,
+    balance: i64,
+}
+
+fn higher<A: Ranked>(x: A, y: A) -> A {
+    if x.rank() > y.rank() { x } else { y }
+}
+
+fn pick(x: &Ledger, y: &Ledger) -> Ledger {
+    higher(*x, *y)
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let first = Ledger {
+        opened: 1,
+        closed: 2,
+        balance: 30,
+    };
+    let second = Ledger {
+        opened: 3,
+        closed: 4,
+        balance: 40,
+    };
+    println!("{}", pick(&first, &second).balance)
+}
+
+trait Ranked {
+    fn rank(self) -> i64;
+}
+
+impl Ranked for Ledger {
+    fn rank(self) -> i64 {
+        self.balance
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

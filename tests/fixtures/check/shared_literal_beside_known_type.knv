@@ -1,0 +1,10 @@
+(type answer (fn () i64))
+
+(defn answer () 42)
+
+(defn pick (w x y z)
+  (if true w (if true x (if true y z))))
+
+(defn choose (unknown)
+  (local name (str "Ana"))
+  (pick 1 name (answer) unknown))

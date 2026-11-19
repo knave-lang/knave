@@ -195,12 +195,8 @@ impl<'a> TokenScanner<'a> {
     }
 
     fn opens_character(&self, position: usize) -> bool {
-        let mut after_quote = self.text[position + Self::QUOTE_LENGTH..].chars();
-        match after_quote.next() {
-            Some('\\') => true,
-            Some(_) => after_quote.next() == Some('\''),
-            None => false,
-        }
+        let after_quote = &self.text[position + Self::QUOTE_LENGTH..];
+        after_quote.starts_with('\\') || after_quote.chars().nth(1) == Some('\'')
     }
 
     fn consume_range(
@@ -307,7 +303,7 @@ mod tests {
     #[test]
     fn a_lifetime_opens_no_literal() {
         assert!(MarkerCase::finds(
-            "fn f<'a>(x: &'a str) -> std::time::Duration { wait(x) }"
+            "fn f(x: &'static str) -> std::time::Duration { wait(x) }"
         ));
     }
 

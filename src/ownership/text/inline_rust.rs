@@ -1,0 +1,63 @@
+use super::call_target::CallTarget;
+use super::callee_scheme::CalleeScheme;
+use super::inline_flows::InlineFlows;
+use super::representation::Representation;
+use super::slot_owner::SlotOwner;
+use super::template_call::TemplateCall;
+use super::text_position::TextPositions;
+use super::text_value::TextValue;
+use super::walk_context::WalkContext;
+use crate::source::Span;
+use crate::types::TypedExpr;
+
+pub struct InlineRust<'t> {
+    template: TemplateCall<'t>,
+}
+
+impl<'t> InlineRust<'t> {
+    pub fn new(scheme: CalleeScheme<'t>) -> Self {
+        Self {
+            template: TemplateCall::new(scheme),
+        }
+    }
+
+    fn shares_nested_text(call: &TypedExpr, values: &[TextValue]) -> bool {
+        values.iter().any(|value| !value.nested().is_empty())
+            || TextPositions::of(&call.ty)
+                .iter()
+                .any(|position| !position.path.is_top())
+    }
+}
+
+impl<'t> CallTarget<'t> for InlineRust<'t> {
+    fn scheme(&self) -> &CalleeScheme<'t> {
+        self.template.scheme()
+    }
+
+    fn inline_value(
+        &self,
+        context: &mut WalkContext<'_, '_>,
+        call: &TypedExpr,
+        values: &[TextValue],
+    ) -> Option<TextValue> {
+        Self::shares_nested_text(call, values)
+            .then(|| InlineFlows::new(context, call).value(values))
+    }
+
+    fn converted(&self, values: &[TextValue]) -> Option<TextValue> {
+        self.template.converted(values)
+    }
+
+    fn owned_argument(&self, call: Span) -> Option<SlotOwner> {
+        self.template.owned_argument(call)
+    }
+
+    fn made(
+        &self,
+        written: Representation,
+        arguments: &[TextValue],
+        call: Span,
+    ) -> Option<TextValue> {
+        self.template.made(written, arguments, call)
+    }
+}

@@ -1,13 +1,17 @@
 mod access;
 mod body_flows;
 mod call_flows;
+mod call_target;
 mod callee;
+mod callee_scheme;
 mod class_role;
 mod flow;
 #[cfg(test)]
 mod flow_fixture;
 mod flow_graph;
 mod inline_flows;
+mod inline_rust;
+mod instantiation;
 mod listed_section;
 mod listed_slot;
 mod need;
@@ -24,6 +28,7 @@ mod slot_owner;
 mod slot_reads;
 mod source;
 mod stored_parameters;
+mod template_call;
 mod text_conversion;
 mod text_decision_table;
 mod text_facts;
@@ -37,6 +42,7 @@ mod text_value;
 mod text_walk;
 mod transfer;
 mod type_path;
+mod user_function;
 mod walk_context;
 
 use slot_classes::SlotClasses;

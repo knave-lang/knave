@@ -233,7 +233,11 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
         if !self.is_first_visit(library_root, library)? {
             return Ok(());
         }
-        let project = self.terminal.sources().projects().load(&project_file)?;
+        let project = self
+            .terminal
+            .sources()
+            .projects()
+            .load_library(&project_file)?;
         let own_checkout = Self::own_checkout(library_root, library);
         let visited = VisitedLibrary {
             root: library_root,

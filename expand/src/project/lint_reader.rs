@@ -199,7 +199,7 @@ mod tests {
                 .read()
                 .expect("the project reads");
             let file = Span::new(source, 0..text.len());
-            ProjectReader::new(&Self::vocabulary()).read(&forms, file)
+            ProjectReader::new(&Self::vocabulary()).read_root(&forms, file)
         }
 
         fn codes(entries: &str) -> Vec<String> {

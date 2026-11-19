@@ -1,52 +1,15 @@
 use rustc_hash::FxHashMap;
 
-use crate::core::ReferenceKind;
 use crate::diagnostic::Diagnostic;
 use crate::types::checker::TypeChecker;
 use crate::types::expectation::Expectation;
-use crate::types::unifier::{LiteralKind, Unifier};
-use crate::types::{Borrow, Bound, Type, TypeVar, TypedArgument, TypedExpr, TypedExprKind};
+use crate::types::group_depths::GroupDepths;
+use crate::types::shared_group::SharedGroup;
+use crate::types::unifier::Unifier;
+use crate::types::{Borrow, Type, TypeVar, TypedArgument, TypedExpr};
 
 pub(super) struct SharedVariables {
     groups: Vec<SharedGroup>,
-}
-
-struct SharedGroup {
-    root: TypeVar,
-    members: Vec<SharedMember>,
-}
-
-struct SharedMember {
-    var: TypeVar,
-    positions: Vec<usize>,
-}
-
-impl SharedGroup {
-    fn is_linked(&self) -> bool {
-        self.members.len() > 1
-    }
-
-    fn positions(&self) -> impl Iterator<Item = usize> + Clone + '_ {
-        self.members
-            .iter()
-            .flat_map(|member| member.positions.iter().copied())
-    }
-
-    fn contains(&self, position: usize) -> bool {
-        self.members
-            .iter()
-            .any(|member| member.positions.contains(&position))
-    }
-
-    fn add_position(&mut self, var: TypeVar, position: usize) {
-        match self.members.iter_mut().find(|member| member.var == var) {
-            Some(member) => member.positions.push(position),
-            None => self.members.push(SharedMember {
-                var,
-                positions: vec![position],
-            }),
-        }
-    }
 }
 
 #[derive(Default)]
@@ -124,13 +87,10 @@ impl SharedVariables {
     }
 
     fn group_of(groups: &mut Vec<SharedGroup>, root: TypeVar) -> &mut SharedGroup {
-        match groups.iter().position(|group| group.root == root) {
+        match groups.iter().position(|group| group.root() == root) {
             Some(position) => &mut groups[position],
             None => {
-                groups.push(SharedGroup {
-                    root,
-                    members: Vec::new(),
-                });
+                groups.push(SharedGroup::new(root));
                 groups.last_mut().expect("the group was just added")
             }
         }
@@ -146,8 +106,6 @@ impl SharedVariables {
 }
 
 impl TypeChecker {
-    const UNSIZED_VALUE_DEPTH: usize = 1;
-
     pub(super) fn pass_shared_arguments(
         &mut self,
         callee: Option<&TypedExpr>,
@@ -155,20 +113,17 @@ impl TypeChecker {
         arguments: &mut [TypedArgument],
     ) -> Result<(), Diagnostic> {
         for group in shared.groups() {
-            let facts = self.passing_facts();
-            if (group.positions()).any(|at| facts.passes_as_written(&arguments[at].value)) {
+            if self
+                .shared_variable_group(group)
+                .passes_as_written(arguments)
+            {
                 self.pass_each(callee, group, arguments)?;
                 continue;
             }
             if group.is_linked() && self.try_as_written(group, arguments)? {
                 continue;
             }
-            let borrowed_by_rust = callee.is_some_and(|callee| {
-                group
-                    .positions()
-                    .all(|position| self.template_borrows.borrows(callee, position))
-            });
-            self.pass_group(callee, group, borrowed_by_rust, arguments)?;
+            self.pass_group(callee, group, arguments)?;
         }
         Ok(())
     }
@@ -178,15 +133,13 @@ impl TypeChecker {
         group: &SharedGroup,
         arguments: &mut [TypedArgument],
     ) -> Result<bool, Diagnostic> {
-        let Some(assignment) = self.written_assignment(group, arguments) else {
+        let Some(assignment) = self
+            .shared_variable_group(group)
+            .written_assignment(arguments)
+        else {
             return Ok(false);
         };
-        if !self.written_depths_agree(group, arguments)
-            || !self.written_types_hold(group, &assignment)
-        {
-            return Ok(false);
-        }
-        for member in &group.members {
+        for member in group.members() {
             let span = arguments[member.positions[0]].value.span;
             let found = assignment[&member.var].clone();
             self.unification()
@@ -198,114 +151,32 @@ impl TypeChecker {
         Ok(true)
     }
 
-    fn written_depths_agree(&mut self, group: &SharedGroup, arguments: &[TypedArgument]) -> bool {
-        let resolved: Vec<Type> = group
-            .positions()
-            .map(|position| self.unifier.resolve(&arguments[position].value.ty))
-            .collect();
-        let referent = resolved[0].innermost_referent().clone();
-        if !resolved
-            .iter()
-            .all(|argument| argument.innermost_referent() == &referent)
-        {
-            return true;
-        }
-        let depths: Vec<usize> = group
-            .positions()
-            .map(|position| self.reference_depth_as_written(&arguments[position]))
-            .collect();
-        depths.windows(2).all(|pair| pair[0] == pair[1])
-    }
-
-    fn written_types_hold(
-        &self,
-        group: &SharedGroup,
-        assignment: &FxHashMap<TypeVar, Type>,
-    ) -> bool {
-        !assignment
-            .values()
-            .any(|argument| self.passing_facts().referent_unknown(argument))
-            && self.group_bounds_hold(group, assignment)
-    }
-
-    fn written_assignment(
-        &self,
-        group: &SharedGroup,
-        arguments: &[TypedArgument],
-    ) -> Option<FxHashMap<TypeVar, Type>> {
-        let mut assignment = FxHashMap::default();
-        for member in &group.members {
-            let first = self
-                .unifier
-                .resolve(&arguments[member.positions[0]].value.ty);
-            let agrees = member
-                .positions
-                .iter()
-                .all(|position| self.unifier.resolve(&arguments[*position].value.ty) == first);
-            if !agrees {
-                return None;
-            }
-            assignment.insert(member.var, first);
-        }
-        Some(assignment)
-    }
-
-    fn group_bounds_hold(
-        &self,
-        group: &SharedGroup,
-        assignment: &FxHashMap<TypeVar, Type>,
-    ) -> bool {
-        group.members.iter().all(|member| {
-            let implementor = &assignment[&member.var];
-            self.unifier
-                .bounds(member.var)
-                .iter()
-                .all(|bound| self.bound_holds(bound, implementor, assignment))
-        })
-    }
-
     fn pass_group(
         &mut self,
         callee: Option<&TypedExpr>,
         group: &SharedGroup,
-        borrowed_by_rust: bool,
         arguments: &mut [TypedArgument],
     ) -> Result<(), Diagnostic> {
-        let positions: Vec<usize> = group.positions().collect();
-        let resolved: Vec<Type> = positions
-            .iter()
-            .map(|position| self.unifier.resolve(&arguments[*position].value.ty))
-            .collect();
-        let depths: Vec<usize> = positions
-            .iter()
-            .map(|position| self.reference_depth_as_written(&arguments[*position]))
-            .collect();
-        if resolved
-            .iter()
-            .any(|argument| self.passing_facts().referent_unknown(argument))
-            && !self.copies_known_referent(&resolved, &depths)
+        let depths = self.shared_variable_group(group).depths(arguments);
+        if self
+            .shared_variable_group(group)
+            .leaves_referent_to_each(&depths)
         {
             return self.pass_each(callee, group, arguments);
         }
-        let referent = self.unify_referents(&positions, &resolved, arguments)?;
-        let target = self.target_depth(group, &referent, &depths, borrowed_by_rust);
-        let span = arguments[positions[0]].value.span;
-        let chosen = Self::with_references(referent, target);
-        for member in &group.members {
+        let referent = self.unify_referents(&depths, arguments)?;
+        let order = self.shared_passing_order(callee);
+        let target = (self.shared_variable_group(group)).target_depth(&referent, &depths, &order);
+        let span = arguments[depths.positions[0]].value.span;
+        let chosen = target.wrap(referent);
+        for member in group.members() {
             self.unification()
                 .expect(Expectation::plain(&Type::Var(member.var)), &chosen, span)?;
         }
-        for (position, depth) in positions.iter().zip(depths) {
-            arguments[*position].borrow = Self::borrow_for_depth(depth, target);
+        for (position, depth) in depths.positions.iter().zip(depths.depths) {
+            arguments[*position].borrow = target.borrow_from(depth);
         }
         Ok(())
-    }
-
-    fn copies_known_referent(&self, resolved: &[Type], depths: &[usize]) -> bool {
-        let facts = self.passing_facts();
-        depths.windows(2).any(|pair| pair[0] != pair[1])
-            && (resolved.iter())
-                .any(|argument| facts.holds_copy_value(argument.innermost_referent()))
     }
 
     fn pass_each(
@@ -314,11 +185,11 @@ impl TypeChecker {
         group: &SharedGroup,
         arguments: &mut [TypedArgument],
     ) -> Result<(), Diagnostic> {
-        let root = group.root;
+        let root = group.root();
         let span = arguments[group.positions().next().expect("a group has a position")]
             .value
             .span;
-        for member in &group.members {
+        for member in group.members() {
             self.unification().expect(
                 Expectation::plain(&Type::Var(root)),
                 &Type::Var(member.var),
@@ -327,29 +198,11 @@ impl TypeChecker {
         }
         self.view_borrowed_strings_beside_views(group.positions(), arguments)?;
         let shared = Type::Var(root);
-        for position in self.passing_order(callee, group, &shared, arguments) {
+        let order = (self.shared_passing_order(callee)).order(group, &shared, arguments);
+        for position in order {
             self.pass_member(callee, position, &shared, &mut arguments[position])?;
         }
         Ok(())
-    }
-
-    fn passing_order(
-        &self,
-        callee: Option<&TypedExpr>,
-        group: &SharedGroup,
-        shared: &Type,
-        arguments: &[TypedArgument],
-    ) -> Vec<usize> {
-        let mut positions: Vec<usize> = group.positions().collect();
-        positions.sort_by_key(|position| {
-            let value = &arguments[*position].value;
-            (
-                self.place_the_template_borrows(callee, *position, shared, value)
-                    .is_none(),
-                self.takes_type_from_others(callee, group, *position, arguments),
-            )
-        });
-        positions
     }
 
     fn pass_member(
@@ -359,46 +212,19 @@ impl TypeChecker {
         shared: &Type,
         argument: &mut TypedArgument,
     ) -> Result<(), Diagnostic> {
-        match self.place_the_template_borrows(callee, position, shared, &argument.value) {
-            Some(place) => self.pass_template_borrow(shared, place.clone(), argument),
+        let order = self.shared_passing_order(callee);
+        match order.template_place(position, shared, &argument.value) {
+            Some(place) => {
+                let place = place.clone();
+                self.pass_template_borrow(shared, place, argument)
+            }
             None => {
                 let borrow = self.pass_call_argument(callee, position, shared, &argument.value)?;
-                argument.borrow =
-                    self.dereference_where_rust_borrows(callee, position, borrow, argument);
+                argument.borrow = (self.shared_passing_order(callee))
+                    .dereference_where_rust_borrows(position, borrow, argument);
                 Ok(())
             }
         }
-    }
-
-    fn dereference_where_rust_borrows(
-        &mut self,
-        callee: Option<&TypedExpr>,
-        position: usize,
-        borrow: Borrow,
-        argument: &TypedArgument,
-    ) -> Borrow {
-        if borrow != Borrow::Passthrough || !self.template_borrows_at(callee, position) {
-            return borrow;
-        }
-        Self::borrow_for_depth(self.reference_depth_as_written(argument), 0)
-    }
-
-    fn place_the_template_borrows<'v>(
-        &self,
-        callee: Option<&TypedExpr>,
-        position: usize,
-        shared: &Type,
-        value: &'v TypedExpr,
-    ) -> Option<&'v TypedExpr> {
-        let TypedExprKind::Borrow(ReferenceKind::Shared, place) = &value.kind else {
-            return None;
-        };
-        (self.template_borrows_at(callee, position) && !self.unifier.shallow(shared).is_reference())
-            .then_some(place)
-    }
-
-    fn template_borrows_at(&self, callee: Option<&TypedExpr>, position: usize) -> bool {
-        callee.is_some_and(|callee| self.template_borrows.borrows(callee, position))
     }
 
     fn pass_template_borrow(
@@ -417,155 +243,18 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn takes_type_from_others(
-        &self,
-        callee: Option<&TypedExpr>,
-        group: &SharedGroup,
-        position: usize,
-        arguments: &[TypedArgument],
-    ) -> bool {
-        let Some(kind) = self.open_literal_kind(&arguments[position].value.ty) else {
-            return false;
-        };
-        !self.template_borrows_at(callee, position)
-            && self.others_take_literal(kind, group, position, arguments)
-    }
-
-    fn open_literal_kind(&self, value: &Type) -> Option<LiteralKind> {
-        match self.unifier.shallow(value) {
-            Type::Var(var) => self.unifier.literal_kind(var),
-            _ => None,
-        }
-    }
-
-    fn others_take_literal(
-        &self,
-        kind: LiteralKind,
-        group: &SharedGroup,
-        position: usize,
-        arguments: &[TypedArgument],
-    ) -> bool {
-        group
-            .positions()
-            .filter(|other| *other != position)
-            .all(|other| self.referent_takes_literal(kind, &arguments[other].value.ty))
-    }
-
-    fn referent_takes_literal(&self, kind: LiteralKind, value: &Type) -> bool {
-        let resolved = self.unifier.resolve(value);
-        match resolved.innermost_referent() {
-            Type::Primitive(primitive) => kind.accepts(*primitive),
-            Type::Var(var) => self.unifier.literal_kind(*var).is_some(),
-            _ => false,
-        }
-    }
-
     fn unify_referents(
         &mut self,
-        positions: &[usize],
-        resolved: &[Type],
+        depths: &GroupDepths,
         arguments: &[TypedArgument],
     ) -> Result<Type, Diagnostic> {
-        let referent = resolved[0].innermost_referent().clone();
-        for (position, argument) in positions.iter().zip(resolved).skip(1) {
+        let referent = depths.resolved[0].innermost_referent().clone();
+        for (position, argument) in depths.positions.iter().zip(&depths.resolved).skip(1) {
             let span = arguments[*position].value.span;
             let found = argument.innermost_referent();
             self.unification()
                 .expect(Expectation::plain(&referent), found, span)?;
         }
         Ok(self.unifier.resolve(&referent))
-    }
-
-    fn target_depth(
-        &self,
-        group: &SharedGroup,
-        referent: &Type,
-        depths: &[usize],
-        borrowed_by_rust: bool,
-    ) -> usize {
-        if self.copies_out(group, referent) {
-            0
-        } else if depths.windows(2).all(|pair| pair[0] == pair[1]) {
-            let depth = depths[0];
-            if self.reference_blocks_bounds(group, referent, depth) {
-                0
-            } else {
-                depth
-            }
-        } else if borrowed_by_rust {
-            0
-        } else {
-            1
-        }
-    }
-
-    fn reference_blocks_bounds(&self, group: &SharedGroup, referent: &Type, depth: usize) -> bool {
-        depth > 0
-            && !self.group_fails_bounds(group, referent)
-            && self.group_fails_bounds(group, &Self::with_references(referent.clone(), depth))
-    }
-
-    fn copies_out(&self, group: &SharedGroup, referent: &Type) -> bool {
-        match referent {
-            Type::Var(literal) => self.unifier.literal_kind(*literal).is_some(),
-            _ => {
-                self.copy_rules().is_small_copy(referent)
-                    && !self.group_fails_bounds(group, referent)
-            }
-        }
-    }
-
-    fn group_fails_bounds(&self, group: &SharedGroup, referent: &Type) -> bool {
-        let assignment: FxHashMap<TypeVar, Type> = group
-            .members
-            .iter()
-            .map(|member| (member.var, referent.clone()))
-            .collect();
-        group.members.iter().any(|member| {
-            self.unifier
-                .bounds(member.var)
-                .iter()
-                .any(|bound| !self.bound_holds(bound, referent, &assignment))
-        })
-    }
-
-    fn bound_holds(
-        &self,
-        bound: &Bound,
-        implementor: &Type,
-        assignment: &FxHashMap<TypeVar, Type>,
-    ) -> bool {
-        let bound = bound.substituted_vars(assignment);
-        self.declarations
-            .traits()
-            .table
-            .satisfies(&bound, implementor, &|generic, required| {
-                self.unifier.generic_bounds(generic).contains(required)
-            })
-    }
-
-    fn reference_depth_as_written(&mut self, argument: &TypedArgument) -> usize {
-        let place = self.place_types().read(&argument.value);
-        let written = self.unifier.resolve(&place);
-        if self.declared_types().is_unsized(&written) {
-            return Self::UNSIZED_VALUE_DEPTH;
-        }
-        written.reference_depth()
-    }
-
-    fn with_references(referent: Type, depth: usize) -> Type {
-        (0..depth).fold(referent, |inner, _| Type::shared(inner))
-    }
-
-    fn borrow_for_depth(depth: usize, target: usize) -> Borrow {
-        if depth == target {
-            Borrow::None
-        } else if depth < target {
-            Borrow::Shared
-        } else if target == 0 {
-            Borrow::Deref(depth)
-        } else {
-            Borrow::Collapse(depth - target)
-        }
     }
 }

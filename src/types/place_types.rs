@@ -12,6 +12,8 @@ pub(super) struct PlaceTypes<'a> {
 }
 
 impl<'a> PlaceTypes<'a> {
+    const UNSIZED_VALUE_DEPTH: usize = 1;
+
     pub(super) fn new(unifier: &'a Unifier, declarations: DeclaredTypes<'a>) -> Self {
         Self {
             unifier,
@@ -41,6 +43,15 @@ impl<'a> PlaceTypes<'a> {
         self.borrowed_behind(declared, owner, |ty| {
             self.unifier.resolve(ty).is_reference()
         })
+    }
+
+    pub(super) fn reference_depth_as_written(&self, value: &TypedExpr) -> usize {
+        let place = self.read(value);
+        let written = self.unifier.resolve(&place);
+        if self.declarations.is_unsized(&written) {
+            return Self::UNSIZED_VALUE_DEPTH;
+        }
+        written.reference_depth()
     }
 
     fn field_owner(value: &TypedExpr) -> Option<(&TypedExpr, &FieldLabel)> {

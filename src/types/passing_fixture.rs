@@ -4,19 +4,26 @@ use rustc_hash::FxHashMap;
 
 use super::argument_passing::ArgumentPassing;
 use super::borrow_rules::BorrowRules;
+use super::callee_borrows::CalleeBorrows;
 use super::copy_requirement::CopyRequirement;
 use super::declarations_fixture::DeclarationsFixture;
 use super::deferred_decisions::DeferredDecisions;
+use super::group_depths::GroupDepths;
 use super::passing_facts::PassingFacts;
 use super::passing_tables::PassingTables;
 use super::pending::PendingBorrow;
 use super::place_types::PlaceTypes;
+use super::reference_depth::ReferenceDepth;
 use super::reopened_parameters::ReopenedParameters;
+use super::shared_group::SharedGroup;
+use super::shared_passing_order::SharedPassingOrder;
+use super::shared_variable_group::SharedVariableGroup;
 use super::string_views::StringViews;
+use super::templates::TemplateBorrows;
 use super::ty::{Bound, Type};
 use super::typed::{Borrow, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf};
 use super::unifier::{LiteralKind, Unifier};
-use crate::core::{BindingId, PrimitiveType, ReferenceKind};
+use crate::core::{BindingId, PrimitiveType, ReferenceKind, RustTemplate, TypeExpr, TypeExprKind};
 use crate::source::{SourceId, Span};
 
 pub(super) struct PassingFixture {
@@ -24,11 +31,14 @@ pub(super) struct PassingFixture {
     field_readers: FxHashMap<BindingId, Rc<str>>,
     unifier: Unifier,
     deferred: DeferredDecisions,
+    templates: TemplateBorrows,
 }
 
 impl PassingFixture {
     const SOURCE: &'static str = "
         (defn main () (do))";
+    pub(super) const BORROWING_SECOND: &'static str = "{0} == {&1}";
+    pub(super) const BORROWING_BOTH: &'static str = "{&0} == {&1}";
 
     pub(super) fn new() -> Self {
         Self {
@@ -36,6 +46,7 @@ impl PassingFixture {
             field_readers: FxHashMap::default(),
             unifier: Unifier::default(),
             deferred: DeferredDecisions::default(),
+            templates: TemplateBorrows::default(),
         }
     }
 
@@ -157,6 +168,92 @@ impl PassingFixture {
         self.declarations.binding("main")
     }
 
+    pub(super) fn shared_group(&mut self, members: &[usize]) -> SharedGroup {
+        let vars: Vec<_> = (0..=members.iter().copied().max().unwrap_or(0))
+            .map(|_| self.fresh_var())
+            .collect();
+        let mut group = SharedGroup::new(vars[0]);
+        for (position, member) in members.iter().enumerate() {
+            group.add_position(vars[*member], position);
+        }
+        group
+    }
+
+    pub(super) fn shared_variable_group<'f>(
+        &'f mut self,
+        group: &'f SharedGroup,
+    ) -> SharedVariableGroup<'f> {
+        let (tables, unifier, _) = self.split();
+        SharedVariableGroup::new(group, tables, unifier)
+    }
+
+    pub(super) fn shared_passing_order<'f>(
+        &'f mut self,
+        callee: Option<&'f TypedExpr>,
+    ) -> SharedPassingOrder<'f> {
+        self.passing_order_for(callee)
+    }
+
+    fn passing_order_for<'f>(&'f self, callee: Option<&'f TypedExpr>) -> SharedPassingOrder<'f> {
+        let tables = Self::tables_of(&self.declarations, &self.field_readers);
+        let places = PlaceTypes::new(&self.unifier, tables.declared_types());
+        SharedPassingOrder::new(places, &self.unifier, self.callee_borrows(callee))
+    }
+
+    pub(super) fn callee_borrows<'f>(&'f self, callee: Option<&'f TypedExpr>) -> CalleeBorrows<'f> {
+        CalleeBorrows::new(callee, &self.templates)
+    }
+
+    pub(super) fn shared_target(&mut self, referent: Type, depths: &[usize]) -> ReferenceDepth {
+        self.shared_target_at(None, referent, depths)
+    }
+
+    pub(super) fn shared_target_for(
+        &mut self,
+        callee: &TypedExpr,
+        referent: Type,
+        depths: &[usize],
+    ) -> ReferenceDepth {
+        self.shared_target_at(Some(callee), referent, depths)
+    }
+
+    fn shared_target_at(
+        &mut self,
+        callee: Option<&TypedExpr>,
+        referent: Type,
+        depths: &[usize],
+    ) -> ReferenceDepth {
+        let group = self.shared_group(&vec![0; depths.len()]);
+        let depths = GroupDepths {
+            positions: (0..depths.len()).collect(),
+            resolved: vec![referent.clone(); depths.len()],
+            depths: depths.to_vec(),
+        };
+        let tables = Self::tables_of(&self.declarations, &self.field_readers);
+        let order = self.passing_order_for(callee);
+        SharedVariableGroup::new(&group, tables, &self.unifier)
+            .target_depth(&referent, &depths, &order)
+    }
+
+    pub(super) fn template_call(text: &str) -> TypedExpr {
+        let template = RustTemplate {
+            template: Rc::from(text),
+            type_expr: TypeExpr::new(TypeExprKind::Hole, Self::span()),
+            clauses: Vec::new(),
+        };
+        Self::expression(
+            TypedExprKind::Leaf(TypedLeaf::Rust(Rc::new(template))),
+            Type::Primitive(PrimitiveType::Bool),
+        )
+    }
+
+    fn fresh_var(&mut self) -> super::ty::TypeVar {
+        let Type::Var(var) = self.unifier.fresh() else {
+            unreachable!("fresh makes a variable")
+        };
+        var
+    }
+
     pub(super) fn int() -> Type {
         Type::Primitive(PrimitiveType::I64)
     }
@@ -182,13 +279,20 @@ impl PassingFixture {
     }
 
     fn split(&mut self) -> (PassingTables<'_>, &mut Unifier, &mut DeferredDecisions) {
-        let tables = PassingTables {
-            declarations: self.declarations.declarations(),
-            bindings: self.declarations.program_bindings(),
-            generics: self.declarations.generics(),
-            single_field_readers: &self.field_readers,
-            copy_trait: Some(self.declarations.trait_named("copy")),
-        };
+        let tables = Self::tables_of(&self.declarations, &self.field_readers);
         (tables, &mut self.unifier, &mut self.deferred)
+    }
+
+    fn tables_of<'f>(
+        declarations: &'f DeclarationsFixture,
+        field_readers: &'f FxHashMap<BindingId, Rc<str>>,
+    ) -> PassingTables<'f> {
+        PassingTables {
+            declarations: declarations.declarations(),
+            bindings: declarations.program_bindings(),
+            generics: declarations.generics(),
+            single_field_readers: field_readers,
+            copy_trait: Some(declarations.trait_named("copy")),
+        }
     }
 }

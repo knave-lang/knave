@@ -7,7 +7,7 @@ use super::problems::ExpandProblems;
 use super::shape::Shape;
 use super::sourced_items::SourcedItems;
 use super::spliced_forms::{SplicedForm, SplicedForms};
-use super::{Expander, TraitMethods, binder_form::BinderForm, module_notes::NotesCheckpoint};
+use super::{Expander, binder_form::BinderForm, module_notes::NotesCheckpoint, trait_methods};
 use crate::core::{
     BinderOrigin, BindingId, BindingInfo, BindingKind, ControlForm, CoreModule, DefinitionForm,
     Expr, ExprKind, ExpressionForm, FieldLabel, ImplAssociatedType, ImplMethod, ImplementorRows,
@@ -36,7 +36,7 @@ struct TraitLowering<'a, 'f> {
 
 struct ImplLowering<'a, 'f> {
     shape: &'a Shape<'f>,
-    trait_methods: &'a TraitMethods,
+    trait_methods: &'a trait_methods::TraitMethods,
     trait_name: &'a str,
     implementor: &'a TypeExpr,
     associated: &'a [(BindingId, Rc<str>, TypeExpr)],
@@ -1027,7 +1027,7 @@ impl Expander<'_> {
             .collect();
         self.tables.trait_methods.insert(
             binding,
-            TraitMethods {
+            trait_methods::TraitMethods {
                 rust_name: Rc::clone(&rust_name),
                 self_variable,
                 associated: associated.clone(),
@@ -1425,7 +1425,7 @@ impl Expander<'_> {
         &mut self,
         shape: &Shape<'_>,
         entries: &[Form],
-        trait_methods: &TraitMethods,
+        trait_methods: &trait_methods::TraitMethods,
         trait_name: &str,
         type_name: &str,
         implementor_span: Span,
@@ -1471,7 +1471,7 @@ impl Expander<'_> {
         &mut self,
         shape: &Shape<'_>,
         entry: &Form,
-        trait_methods: &TraitMethods,
+        trait_methods: &trait_methods::TraitMethods,
         trait_name: &str,
     ) -> Result<Option<(BindingId, Rc<str>, TypeExpr)>, Diagnostic> {
         let entry_items = entry.as_list().ok_or_else(|| shape.malformed(entry))?;
@@ -1677,7 +1677,7 @@ impl Expander<'_> {
         });
         self.tables.trait_methods.insert(
             binding,
-            TraitMethods {
+            trait_methods::TraitMethods {
                 rust_name: Rc::clone(&path),
                 self_variable,
                 associated: Vec::new(),

@@ -26,7 +26,6 @@ src/ownership/problems.rs 775
 
 src/ownership/slices.rs 522
 
-src/ownership/values.rs 601
 
 src/types/checker.rs 1877
 

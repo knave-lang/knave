@@ -10,4 +10,4 @@ defn make
 defn main
   local line: owned
 needs owned text
-  10:37
+  text/short_lived_view_needs_owned_text.knv:10:37

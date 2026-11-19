@@ -15,8 +15,8 @@ use knave::stack::FreshStack;
 
 use support::{
     AgreementReport, ExplanationExamples, Fixture, FixtureReports, FormatFailures, GuideLinks,
-    HeaderAgreement, LintFixture, PreludePages, ReadBackAgreement, ReferenceIndex, ReferencePage,
-    SavedPreludeAgreement, SkillPage,
+    HeaderAgreement, LeftOutFixtures, LintFixture, PreludePages, ReadBackAgreement, ReferenceIndex,
+    ReferencePage, SavedPreludeAgreement, SkillPage,
 };
 
 const REFERENCE_INDEX_OF_ONE_PAGE: &str = "# Language reference\n\n- [Bindings](reference/bindings.md): names.\n- [Types](reference/types.md): types.\n";
@@ -126,7 +126,9 @@ fn check_fixtures() {
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).check_report());
     insta::glob!(fixtures, |path| {
-        insta::assert_snapshot!(reports.report(path));
+        if reports.ran(path) {
+            insta::assert_snapshot!(reports.report(path));
+        }
     });
 }
 
@@ -448,6 +450,40 @@ fn fixtures_within_their_deadline_keep_their_reports() {
         path.display().to_string()
     });
     assert_eq!(reports.report(&path), "quick.knv");
+}
+
+#[test]
+fn only_fixtures_given_a_report_ran() {
+    let path = PathBuf::from("quick.knv");
+    let reports = FixtureReports::compute_within(SHORT_DEADLINE, vec![path.clone()], |path| {
+        path.display().to_string()
+    });
+    assert!(reports.ran(&path));
+    assert!(!reports.ran(&PathBuf::from("left-out.knv")));
+}
+
+#[test]
+fn leaving_out_slow_fixtures_keeps_every_other_fixture() {
+    let slow = PathBuf::from("tests/fixtures/check/macro_vec_of_twenty_thousand_elements.knv");
+    let quick = PathBuf::from("tests/fixtures/check/quick.knv");
+    let kept = LeftOutFixtures::slow().kept(vec![slow, quick.clone()]);
+    assert_eq!(kept, [quick]);
+}
+
+#[test]
+fn each_slow_fixture_is_a_check_fixture() {
+    let mut paths = Vec::new();
+    insta::glob!("fixtures/check/*.knv", |path| paths
+        .push(PathBuf::from(path)));
+    let listed = paths.len();
+    assert_eq!(LeftOutFixtures::slow().kept(paths).len(), listed - 1);
+}
+
+#[test]
+fn leaving_out_no_fixtures_keeps_the_slow_ones() {
+    let slow = PathBuf::from("tests/fixtures/check/macro_vec_of_twenty_thousand_elements.knv");
+    let kept = LeftOutFixtures::none().kept(vec![slow.clone()]);
+    assert_eq!(kept, [slow]);
 }
 
 #[test]

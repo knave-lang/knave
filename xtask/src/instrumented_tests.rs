@@ -27,6 +27,8 @@ impl<'a> InstrumentedTests<'a> {
     const RUN_WITHOUT_REPORT: [&'static str; 3] = ["llvm-cov", "test", "--no-report"];
     const WRITE_REPORT: [&'static str; 3] = ["llvm-cov", "report", "--lcov"];
     const PACKAGE: &'static str = "--package";
+    const LEAVE_OUT_FIXTURES_TOO_SLOW_UNDER_COVERAGE: &'static str =
+        "KNAVE_LEAVE_OUT_SLOW_FIXTURES";
     const OUTPUT_PATH: &'static str = "--output-path";
 
     pub fn new(root: &'a Path) -> Self {
@@ -47,7 +49,7 @@ impl<'a> InstrumentedTests<'a> {
         Self::create_parent(&report)?;
         let packages = CargoWorkspace::read(self.root)?.package_names();
         for arguments in Self::selected_commands(runs, &packages, &report) {
-            self.cargo(|command| command.args(&arguments))?;
+            self.cargo(|command| Self::leaving_out_slow_fixtures(command.args(&arguments)))?;
         }
         self.parsed(&report)
     }
@@ -75,6 +77,10 @@ impl<'a> InstrumentedTests<'a> {
             .chain(tests)
             .chain([write])
             .collect()
+    }
+
+    fn leaving_out_slow_fixtures(command: &mut Command) -> &mut Command {
+        command.env(Self::LEAVE_OUT_FIXTURES_TOO_SLOW_UNDER_COVERAGE, "1")
     }
 
     fn os_strings(arguments: &[&str]) -> Vec<OsString> {
@@ -282,6 +288,20 @@ mod tests {
                 "llvm-cov test --no-report --test stages emit_fixtures",
                 "llvm-cov report --lcov --package knave --package knave-expand --output-path selected.info"
             ]
+        );
+    }
+
+    #[test]
+    fn a_selected_run_leaves_out_the_fixtures_too_slow_under_coverage() {
+        let mut command = Command::new("cargo");
+        InstrumentedTests::leaving_out_slow_fixtures(&mut command);
+        let variables: Vec<_> = command.get_envs().collect();
+        assert_eq!(
+            variables,
+            [(
+                OsStr::new("KNAVE_LEAVE_OUT_SLOW_FIXTURES"),
+                Some(OsStr::new("1"))
+            )]
         );
     }
 

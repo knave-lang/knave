@@ -23,7 +23,7 @@ fn main() {
         },
     };
     println!("{}", dealer.prices.get("Leaf").unwrap());
-    println!("{}", *dealer.ranking.get(&1).unwrap())
+    println!("{}", dealer.ranking.get(&1).unwrap())
 }
 
 mod rt {

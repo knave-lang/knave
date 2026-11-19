@@ -1,0 +1,22 @@
+(def formatted
+  (rust "format!(\"<{{}}>\", {0})"
+    (fn ((ref str)) string)))
+
+(def written
+  (rust "{{ use std::fmt::Write; let mut out = String::new(); write!(&mut out, \"({{}})\", {0}).unwrap(); writeln!(&mut out, \"{{}}\", {0}).unwrap(); out }}"
+    (fn ((ref str)) string)))
+
+(def checked
+  (rust "{{ assert!({0} > 0, \"empty {{}}\", {1}); if {0} == 0 {{ panic!(\"empty {{}}\", {1}) }} }}"
+    (fn (usize (ref str)) unit)))
+
+(defn main ()
+  (local tricks (vec "feint" "vanish"))
+  (for-each (iter tricks)
+    (fn (trick)
+      (local shown (formatted trick))
+      (println shown)
+      (print (written trick))
+      (checked (len trick) trick)))
+  (push! tricks "dash")
+  (println (len tricks)))

@@ -1,0 +1,12 @@
+(defstruct rogue
+  :name str)
+
+(defn main ()
+  (local rogue (->rogue :name "Vex"))
+  (local tricks (vec "feint" "vanish"))
+  (for-each (iter tricks)
+    (fn (trick)
+      (local line (str (:name rogue) " tries " trick))
+      (println line)))
+  (push! tricks "dash")
+  (println (len tricks)))

@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).emit_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/emit/sorted_map.knv
 ---
 fn size_of(collection: &std::collections::BTreeMap<&str, i64>) -> usize {
@@ -41,7 +41,7 @@ fn main() {
     };
     println!("{} {}", next.len(), empty.is_empty());
     println!("{}", next.get("a").unwrap());
-    next.keys().for_each(|key: &&str| println!("{}", *key));
+    next.keys().for_each(|key: &&str| println!("{}", key));
     next.values().for_each(|value: &i64| println!("{}", value));
     next.iter().for_each(|entry: (&&str, &i64)| {
         let (key, value) = entry;

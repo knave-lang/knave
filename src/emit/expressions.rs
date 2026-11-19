@@ -2202,7 +2202,7 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn argument_role(parsed: &Template, position: usize, argument: &TypedArgument) -> ArgumentRole {
-        if let Some(role) = parsed.receiver(position) {
+        if let Some(role) = parsed.written_role(position) {
             role
         } else if parsed.indexes(position) {
             ArgumentRole::IndexReceiver
@@ -2297,11 +2297,8 @@ impl<'a> ExpressionEmitter<'a> {
             .saturating_sub(place_depth);
         let span = argument.value.span;
         let place = self.field_place(owner, label).spanned(span);
-        Some(Self::dereferenced(
-            place,
-            levels.saturating_sub(own_reference),
-            span,
-        ))
+        let stripped = levels.saturating_sub(own_reference);
+        Some(Self::dereferenced(place, stripped, span))
     }
 
     fn argument_value(
@@ -2316,7 +2313,9 @@ impl<'a> ExpressionEmitter<'a> {
                 self.field_place(owner, label)
             }
             (_, ArgumentRole::IndexReceiver) => self.place(value, context),
-            (_, ArgumentRole::Borrowed) if self.is_borrowed_index_call(value) => {
+            (_, ArgumentRole::Borrowed | ArgumentRole::Formatted)
+                if self.is_borrowed_index_call(value) =>
+            {
                 self.place(value, context)
             }
             (TypedExprKind::Borrow(ReferenceKind::Mutable, place), ArgumentRole::MutPlace) => {

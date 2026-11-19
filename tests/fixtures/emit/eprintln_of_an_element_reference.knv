@@ -1,0 +1,6 @@
+(defn main ()
+  (local tricks (vec "feint" "vanish"))
+  (for-each (iter tricks)
+    (fn (trick) (eprintln "trick: " trick)))
+  (push! tricks "dash")
+  (println (len tricks)))

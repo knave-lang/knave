@@ -107,6 +107,26 @@ done
 
 **Run each binary as `target/scratch/probe-<commit>/bin/.knave-wrapped` inside the dev shell:** `bin/knave` points at a store path that this block does not download.
 
+## Debug binaries
+
+**The `agreement` job uploads the debug `knave` of each ready pull request.** The artifact's name is `knave-debug-<head commit>`. The binary holds the pull request merged into its base. GitHub keeps the artifact for three days.
+
+**If you probe a ready pull request with a debug `knave`, first run this block in the dev shell:**
+
+```sh
+head=$(gh pr view <number> --json headRefOid --jq .headRefOid)
+run=$(gh run list --commit "$head" --workflow CI --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId')
+rm -rf target/ci-debug
+if [ -z "$run" ]; then echo "No CI run for $head"; false
+elif ! gh run download "$run" --name "knave-debug-$head" --dir target/ci-debug; then echo "Run $run has no debug knave for $head. Run status: $(gh run view "$run" --json status --jq .status)"; false
+elif ! grep -qx "head $head" target/ci-debug/commits; then echo "The debug knave does not hold $head"; false
+else chmod +x target/ci-debug/knave && realpath target/ci-debug/knave; fi
+```
+
+**Run each probe with the path that the block prints.**
+
+**If the block exits nonzero, build the compiler with `cargo build --bin knave` and probe `target/debug/knave`.**
+
 ## Callgrind profiles
 
 **The `front-end instruction counts` job uploads the merged pull request's profiles as the `callgrind-profiles` artifact.** GitHub keeps the artifact for seven days. The artifact holds no profiles of the base.

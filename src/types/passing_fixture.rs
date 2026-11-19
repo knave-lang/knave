@@ -10,9 +10,11 @@ use super::deferred_decisions::DeferredDecisions;
 use super::passing_facts::PassingFacts;
 use super::passing_tables::PassingTables;
 use super::pending::PendingBorrow;
+use super::place_types::PlaceTypes;
 use super::reopened_parameters::ReopenedParameters;
+use super::string_views::StringViews;
 use super::ty::{Bound, Type};
-use super::typed::{Borrow, TypedExpr, TypedExprKind, TypedLeaf};
+use super::typed::{Borrow, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf};
 use super::unifier::{LiteralKind, Unifier};
 use crate::core::{BindingId, PrimitiveType, ReferenceKind};
 use crate::source::{SourceId, Span};
@@ -126,6 +128,33 @@ impl PassingFixture {
         let borrowed = Box::new(self.local(ty.clone()));
         let kind = TypedExprKind::Borrow(ReferenceKind::Shared, borrowed);
         Self::expression(kind, Type::shared(ty))
+    }
+
+    pub(super) fn written_mut_borrow(&self, ty: Type) -> TypedExpr {
+        let borrowed = Box::new(self.local(ty.clone()));
+        let kind = TypedExprKind::Borrow(ReferenceKind::Mutable, borrowed);
+        Self::expression(kind, Type::mutable(ty))
+    }
+
+    pub(super) fn string_views(&mut self, view: Option<BindingId>) -> StringViews<'_> {
+        let (tables, unifier, _) = self.split();
+        let unifier = &*unifier;
+        StringViews::new(
+            unifier,
+            PlaceTypes::new(unifier, tables.declared_types()),
+            view,
+        )
+    }
+
+    pub(super) fn argument(&self, value: TypedExpr) -> TypedArgument {
+        TypedArgument {
+            value,
+            borrow: Borrow::None,
+        }
+    }
+
+    pub(super) fn view_binding(&self) -> BindingId {
+        self.declarations.binding("main")
     }
 
     pub(super) fn int() -> Type {

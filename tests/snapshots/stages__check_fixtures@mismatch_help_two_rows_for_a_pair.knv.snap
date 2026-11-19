@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/mismatch_help_two_rows_for_a_pair.knv
+---
+error[L0468]: a `mismatch-help` already states the help for these two types
+ --> check/mismatch_help_two_rows_for_a_pair.knv:3:1
+  |
+1 | (mismatch-help u8 int "narrow it with `(convert {value})`")
+  | ----------------------------------------------------------- first help
+2 |
+3 | (mismatch-help u8 int "pass a `u8` instead of {value}")
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ second help for the same types
+  |
+  = help: remove one of the two
+  = note: run `knave doc L0468` for an explanation

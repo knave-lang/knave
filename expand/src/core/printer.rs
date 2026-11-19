@@ -121,6 +121,9 @@ impl<'a> CorePrinter<'a> {
             parts.extend(methods.iter().map(|method| self.impl_method(method)));
             return Self::list("impl", parts);
         }
+        if let ItemKind::MismatchHelp(help) = &item.kind {
+            return help.printed(|written| self.type_expr(written));
+        }
         String::new()
     }
 

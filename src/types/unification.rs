@@ -12,6 +12,7 @@ pub(super) struct Unification<'a> {
     unifier: &'a mut Unifier,
     display: TypeDisplay<'a>,
     declarations: DeclaredTypes<'a>,
+    enclosing: Option<Span>,
 }
 
 impl<'a> Unification<'a> {
@@ -24,7 +25,12 @@ impl<'a> Unification<'a> {
             unifier,
             display,
             declarations,
+            enclosing: None,
         }
+    }
+
+    pub(super) fn within(self, enclosing: Option<Span>) -> Self {
+        Self { enclosing, ..self }
     }
 
     pub(super) fn expect(
@@ -86,12 +92,19 @@ impl<'a> Unification<'a> {
                 &self.describe(&found),
                 span,
             ),
-            _ => TypeProblems::mismatch(
-                &self.describe(&expected),
-                &self.describe(&found),
-                span,
-                expectation.context,
-            ),
+            _ => {
+                let diagnostic = TypeProblems::mismatch(
+                    &self.describe(&expected),
+                    &self.describe(&found),
+                    span,
+                    expectation.context,
+                );
+                let help = self.declarations.mismatch_help(&expected, &found, span);
+                match help.filter(|_| self.enclosing != Some(span)) {
+                    Some(help) => diagnostic.with_help(help),
+                    None => diagnostic,
+                }
+            }
         }
     }
 }

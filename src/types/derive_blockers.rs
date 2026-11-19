@@ -232,7 +232,7 @@ mod tests {
             .blocking_payload("chain", "copy")
             .expect("a box is never copy");
         assert_eq!(variant, "link");
-        assert!(fixture.declarations.declared_types().is_box(&payload));
+        assert!(fixture.declarations.types().is_box(&payload));
         assert_eq!(payload.parts(), vec![&Type::Named(chain, Vec::new())]);
     }
 

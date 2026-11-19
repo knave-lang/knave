@@ -2,6 +2,8 @@ use super::ty::Type;
 use super::type_declarations::TypeDeclarations;
 use super::view_coercion::ViewCoercion;
 use crate::core::BindingId;
+use crate::diagnostic::FallbackHelp;
+use crate::source::Span;
 
 #[derive(Clone, Copy)]
 pub(super) struct DeclaredTypes<'a> {
@@ -34,8 +36,13 @@ impl<'a> DeclaredTypes<'a> {
         self.types.structs.get(binding).is_some()
     }
 
-    pub(super) fn is_box(&self, candidate: &Type) -> bool {
-        self.types.is_box(candidate)
+    pub(super) fn mismatch_help(
+        &self,
+        expected: &Type,
+        found: &Type,
+        value: Span,
+    ) -> Option<FallbackHelp> {
+        self.types.mismatch_helps.help(expected, found, value)
     }
 
     pub(super) fn is_unsized(&self, candidate: &Type) -> bool {
@@ -163,16 +170,12 @@ mod tests {
     fn a_vector_is_not_a_box() {
         let fixture = DeclarationsFixture::new(SOURCE);
         let vector = fixture.parameter("readings");
-        assert!(!fixture.declared_types().is_box(&vector));
+        assert!(!fixture.types().is_box(&vector));
     }
 
     #[test]
     fn a_number_is_not_a_box() {
         let fixture = DeclarationsFixture::new(SOURCE);
-        assert!(
-            !fixture
-                .declared_types()
-                .is_box(&Type::Primitive(PrimitiveType::I64))
-        );
+        assert!(!fixture.types().is_box(&Type::Primitive(PrimitiveType::I64)));
     }
 }

@@ -10,6 +10,7 @@ use super::ty::{GenericId, GenericParam};
 use super::unification::Unification;
 use super::unifier::Unifier;
 use crate::core::{BindingArena, BindingId};
+use crate::source::Span;
 
 #[derive(Clone, Copy)]
 pub(super) struct PassingTables<'a> {
@@ -18,6 +19,7 @@ pub(super) struct PassingTables<'a> {
     pub(super) generics: &'a FxHashMap<GenericId, GenericParam>,
     pub(super) single_field_readers: &'a FxHashMap<BindingId, Rc<str>>,
     pub(super) copy_trait: Option<BindingId>,
+    pub(super) enclosing: Option<Span>,
 }
 
 impl<'a> PassingTables<'a> {
@@ -25,7 +27,7 @@ impl<'a> PassingTables<'a> {
     where
         'a: 'u,
     {
-        Unification::new(unifier, self.display(), self.declared_types())
+        Unification::new(unifier, self.display(), self.declared_types()).within(self.enclosing)
     }
 
     pub(super) fn display(&self) -> TypeDisplay<'a> {

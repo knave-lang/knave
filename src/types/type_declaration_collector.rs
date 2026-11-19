@@ -9,6 +9,7 @@ use super::enum_item::EnumItem;
 use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
 use super::field_parameters::FieldParameters;
 use super::lowered_payload::LoweredPayload;
+use super::mismatch_helps::MismatchHelpRow;
 use super::parameter_usage::ParameterUsage;
 use super::payload_lowering::PayloadLowering;
 use super::problems::TypeProblems;
@@ -18,7 +19,7 @@ use super::type_declarations::TypeDeclarations;
 use super::written_type_lowering::WrittenTypeLowering;
 use super::{RustType, StructDefinition};
 use crate::core::{
-    BindingArena, BindingId, FieldLabel, TypeBinder, TypeExpr, TypeExprKind,
+    BindingArena, BindingId, FieldLabel, MismatchHelp, TypeBinder, TypeExpr, TypeExprKind,
     VariantPayload as CoreVariantPayload,
 };
 use crate::diagnostic::Diagnostic;
@@ -50,6 +51,19 @@ impl<'c> TypeDeclarationCollector<'c> {
             bindings,
             types,
         }
+    }
+
+    pub(super) fn collect_mismatch_help(
+        &mut self,
+        help: &MismatchHelp,
+        span: Span,
+    ) -> Result<MismatchHelpRow, Diagnostic> {
+        Ok(MismatchHelpRow {
+            span,
+            expected: self.lowering.lower_without_generics(&help.expected)?,
+            found: self.lowering.lower_without_generics(&help.found)?,
+            text: help.text.clone(),
+        })
     }
 
     pub(super) fn collect_struct(

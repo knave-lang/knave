@@ -1,0 +1,11 @@
+(def byte-count
+  (rust "{0}.len()"
+    (fn ((ref str)) usize)))
+
+(type twice (fn (int) int))
+
+(defn twice (n) (* n 2))
+
+(defn main ()
+  (let (size (byte-count "pear"))
+    (println (twice size))))

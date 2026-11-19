@@ -8,6 +8,7 @@ use pending_item::TypeDefinitionKind;
 use super::budget_arena::BudgetId;
 use super::context::DefinitionContext;
 use super::declared_trait::DeclaredTrait;
+use super::mismatch_help::MismatchHelpForm;
 use super::problems::ExpandProblems;
 use super::shape::Shape;
 use super::sourced_items::SourcedItems;
@@ -246,6 +247,7 @@ impl Expander<'_> {
         match definition {
             DefinitionForm::Def => self.register_def(module, &form, context),
             DefinitionForm::Type => Ok(Some(PendingItem::Signature(form))),
+            DefinitionForm::MismatchHelp => Ok(Some(PendingItem::MismatchHelp(form))),
             DefinitionForm::Struct => self.register_struct(module, form, context),
             DefinitionForm::RustTrait => self.register_rust_trait(module, form, context),
             DefinitionForm::RustType => self.register_rust_type(module, form, context),
@@ -556,6 +558,7 @@ impl Expander<'_> {
                 span,
             } => self.lower_def(binding, annotation, span, core),
             PendingItem::Signature(form) => self.lower_signature(module, &form, core),
+            PendingItem::MismatchHelp(form) => MismatchHelpForm::new(self, &form).lower(core),
             PendingItem::TypeDefinition(definition) => definition.lower(self, core),
             PendingItem::Use(written) => {
                 core.lint_facts.record_use(written);

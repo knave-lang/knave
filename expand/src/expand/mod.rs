@@ -47,6 +47,7 @@ mod macro_origin;
 mod macro_origins;
 #[cfg(test)]
 mod macro_value_limits;
+mod mismatch_help;
 mod misplaced_definition;
 mod module_body;
 mod module_load_site;

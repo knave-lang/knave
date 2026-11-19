@@ -1,0 +1,5 @@
+(mismatch-help u8 int "narrow it with `(convert {value})`")
+
+(mismatch-help u8 int "pass a `u8` instead of {value}")
+
+(defn main () (println 1))

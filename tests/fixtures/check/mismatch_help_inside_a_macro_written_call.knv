@@ -1,0 +1,13 @@
+(def byte-count
+  (rust "{0}.len()"
+    (fn ((ref str)) usize)))
+
+(defmacro call-twice (value)
+  (template (twice (byte-count (unquote value)))))
+
+(type twice (fn (int) int))
+
+(defn twice (n) (* n 2))
+
+(defn main ()
+  (println (call-twice "fig")))

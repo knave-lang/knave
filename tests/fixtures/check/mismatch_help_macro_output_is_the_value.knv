@@ -1,0 +1,13 @@
+(def byte-count
+  (rust "{0}.len()"
+    (fn ((ref str)) usize)))
+
+(defmacro size-of (text)
+  (template (byte-count (unquote text))))
+
+(type twice (fn (int) int))
+
+(defn twice (n) (* n 2))
+
+(defn main ()
+  (println (twice (size-of "pear"))))

@@ -85,23 +85,23 @@
         keys last len let let-match let-try line-seq lines
         local loop lower-case macro map map-at map-err
         map-ok map-some match max max-by-key micros millis
-        min module mut nanos neg neg? new none none? not
-        not= now number odd? ok ok-or ok? option or ord pair
-        parse parse-bool-error parse-char-error parse-error
-        parse-float-error parse-int-error partial-eq
-        partial-ord pattern pi pop! pos? pr-str print
-        println prn push! push-at! quote range read-line
-        recur reduce ref rem remove-at! result reverse
-        reverse! run-tests rust rust-trait rust-type second
-        seconds sequence set! set-at! show signed sleep
-        slice slurp some some? sort! sort-by! sorted-map
-        source split sqrt starts-with? stdin str str string
-        struct subs sum take take-while template the then-ok
-        then-some trait trim true try try-> type u128 u16
-        u32 u64 u8 unit unless unwrap unwrap-err unwrap-ok
-        unwrap-or update upper-case use usize vals vec when
-        where whitespace? windows with with-macro-steps
-        zero? zip)
+        min mismatch-help module mut nanos neg neg? new none
+        none? not not= now number odd? ok ok-or ok? option
+        or ord pair parse parse-bool-error parse-char-error
+        parse-error parse-float-error parse-int-error
+        partial-eq partial-ord pattern pi pop! pos? pr-str
+        print println prn push! push-at! quote range
+        read-line recur reduce ref rem remove-at! result
+        reverse reverse! run-tests rust rust-trait rust-type
+        second seconds sequence set! set-at! show signed
+        sleep slice slurp some some? sort! sort-by!
+        sorted-map source split sqrt starts-with? stdin str
+        str string struct subs sum take take-while template
+        the then-ok then-some trait trim true try try-> type
+        u128 u16 u32 u64 u8 unit unless unwrap unwrap-err
+        unwrap-ok unwrap-or update upper-case use usize vals
+        vec when where whitespace? windows with
+        with-macro-steps zero? zip)
 
 (def def
   (macro (form) (kernel-definition form)))
@@ -396,6 +396,19 @@
 
   (rust \"1 + 2\" i64)
   => 3")
+
+(document (mismatch-help expected found "help")
+  "States the help of a mismatch between two types.
+
+  An `L0401` whose expected type is `expected` and whose found type is
+  `found` shows the help, with `{value}` standing for the value as written,
+  unless the checker gives the error a help of its own. A row holds for the
+  whole program once its module loads, and a program holds one row for each
+  pair of types.
+
+  ```
+  (mismatch-help u8 int \"narrow it with `(convert {value})`\")
+  ```")
 
 (document (rust-trait name "Path" type ...)
   "Names a Rust trait and the types that implement it.

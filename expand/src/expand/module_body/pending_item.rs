@@ -13,6 +13,7 @@ pub(in crate::expand) enum PendingItem {
     },
     Signature(Form),
     Derive(Form),
+    MismatchHelp(Form),
     TypeDefinition(PendingTypeDefinition),
     Impl(Scope, Form),
     Export(Form),

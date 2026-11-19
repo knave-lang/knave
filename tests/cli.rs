@@ -8725,12 +8725,12 @@ fn new_records_the_compiler_version_in_the_project_file() {
 }
 
 #[test]
-fn new_writes_a_gitignore_that_lists_the_doc_folder() {
+fn new_writes_a_gitignore_that_lists_the_build_and_doc_folders() {
     let sandbox = Sandbox::new("new_gitignore");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
-    assert_eq!(sandbox.contents("demo-app/.gitignore"), "/doc/\n");
+    assert_eq!(sandbox.contents("demo-app/.gitignore"), "/target/\n/doc/\n");
 }
 
 #[test]

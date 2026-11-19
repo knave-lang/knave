@@ -1,0 +1,7 @@
+(defn grow! (names)
+  (push! names (as-str (str "b" 1))))
+
+(defn main ()
+  (local names (vec "a"))
+  (grow! (mut names))
+  (println (len names)))

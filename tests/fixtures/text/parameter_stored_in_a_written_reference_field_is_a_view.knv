@@ -1,0 +1,7 @@
+(defstruct tag
+  :label (ref str))
+
+(defn make (label) (->tag :label label))
+
+(defn main ()
+  (println (:label (make "a"))))

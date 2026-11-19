@@ -1,4 +1,6 @@
 (defstruct unused
   :label str)
 
+(struct badge (label str))
+
 (defn main () (println 1))

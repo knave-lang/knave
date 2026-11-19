@@ -5,3 +5,5 @@ input_file: tests/fixtures/text/field_nothing_stores_is_owned.knv
 ---
 struct unused
   label: owned, written a view
+struct badge
+  label: owned, written a view

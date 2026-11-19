@@ -1,3 +1,6 @@
+(defstruct label
+  :text str)
+
 (type read-name
   (fn ((ref str))
     (result string io-error)))
@@ -15,6 +18,16 @@
   (local value (try (checked count)))
   (ok (* value 2)))
 
+(defn shortened (text)
+  (if (empty? text)
+    (err (str "empty"))
+    (ok (trim text))))
+
+(defn labeled (text)
+  (ok (->label :text (try (shortened text)))))
+
 (defn main ()
   (println (ok? (read-name "name.txt"))
-           (ok? (doubled 2))))
+           (ok? (doubled 2))
+           (ok? (labeled " a "))
+           (:text (->label :text (as-str (str "made" 1))))))

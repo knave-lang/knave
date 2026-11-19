@@ -1,9 +1,8 @@
 use std::fs;
 use std::path::Path;
 
-use similar::TextDiff;
-
 use super::exit_status::ExitStatus;
+use super::kept_file::KeptFile;
 use super::new_components::NewComponents;
 use super::owned_file::{OwnedFile, OwnedFileState};
 use super::program_file::ProgramFile;
@@ -63,7 +62,7 @@ impl UpgradeCommand {
             OwnedFileState::Current => Ok(false),
             OwnedFileState::WrittenByEarlierKnave => Self::rewrite(&path, file),
             OwnedFileState::ChangedByUser => {
-                Self::report_kept(file, &written);
+                KeptFile::new(file, &written).report();
                 Ok(true)
             }
         }
@@ -74,19 +73,6 @@ impl UpgradeCommand {
             .map_err(|error| ProgramFile::report_unwritable(path, &error))?;
         StandardError::write_line(format_args!("rewrote `{}`", file.path().display()));
         Ok(true)
-    }
-
-    fn report_kept(file: &OwnedFile, written: &str) {
-        let shown = file.path().display().to_string();
-        let version = Language::VERSION;
-        let current = file.current_text();
-        let diff = TextDiff::from_lines(written, &current)
-            .unified_diff()
-            .header(&shown, &format!("{shown} (Knave {version})"))
-            .to_string();
-        StandardError::write_line(format_args!(
-            "warning: kept `{shown}`, because it differs from every text Knave wrote\nhelp: the lines marked `-` are yours and the lines marked `+` are Knave {version}'s: merge them by hand\n{diff}"
-        ));
     }
 
     fn report_current() {

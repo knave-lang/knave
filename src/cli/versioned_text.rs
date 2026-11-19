@@ -14,7 +14,19 @@ impl VersionedText {
     }
 
     pub fn filled(&self) -> String {
-        self.named().replace(Self::VERSION_SLOT, Language::VERSION)
+        self.filled_as(Language::VERSION)
+    }
+
+    pub fn filled_as(&self, version: &str) -> String {
+        self.named().replace(Self::VERSION_SLOT, version)
+    }
+
+    pub fn version_in<'t>(&self, text: &'t str) -> Option<&'t str> {
+        let named = self.named();
+        named
+            .lines()
+            .filter_map(|line| line.split_once(Self::VERSION_SLOT))
+            .find_map(|(before, after)| Self::version_between(text, before, after))
     }
 
     pub fn wrote(&self, text: &str) -> bool {
@@ -29,6 +41,12 @@ impl VersionedText {
         self.template
             .replace(Self::PROJECT_FILE_SLOT, &Language::project_file_name())
             .replace(Self::VERSION_KEY_SLOT, Language::NAME)
+    }
+
+    fn version_between<'t>(text: &'t str, before: &str, after: &str) -> Option<&'t str> {
+        text.lines()
+            .filter_map(|line| line.strip_prefix(before)?.strip_suffix(after))
+            .find(|version| !version.is_empty() && !version.contains(char::is_whitespace))
     }
 
     fn written_version<'t>(named: &str, text: &'t str) -> Option<&'t str> {
@@ -82,6 +100,25 @@ mod tests {
         let fixed = VersionedText::new("read {project-file} for :{version-key}\n");
         assert!(fixed.wrote("read project.knv for :knave\n"));
         assert!(!fixed.wrote("read project.knv for :knave\nmore\n"));
+    }
+
+    #[test]
+    fn a_template_finds_the_version_on_its_versioned_line() {
+        let changed = "edited first line\nrun `knave` 0.4.0\nmore\n";
+        assert_eq!(TEMPLATE.version_in(changed), Some("0.4.0"));
+    }
+
+    #[test]
+    fn a_template_finds_no_version_in_a_text_without_its_versioned_line() {
+        assert_eq!(TEMPLATE.version_in("run `knave`\nversion: \"\"\n"), None);
+    }
+
+    #[test]
+    fn a_template_fills_any_version() {
+        assert_eq!(
+            TEMPLATE.filled_as("0.4.0"),
+            "version: \"0.4.0\"\nrun `knave` 0.4.0\n"
+        );
     }
 
     #[test]

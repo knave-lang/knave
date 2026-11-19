@@ -2,6 +2,7 @@ use std::path::Path;
 
 use super::owned_file::OwnedFile;
 use super::project_component::ProjectComponent;
+use super::released_text::{ReleasedText, released_text};
 use super::versioned_text::VersionedText;
 
 pub struct AgentSkill;
@@ -10,9 +11,8 @@ impl AgentSkill {
     const NAME: &str = "writing-knave";
     const TEXT: VersionedText =
         VersionedText::new(include_str!("../../skills/writing-knave/SKILL.md"));
-    const EARLIER_TEXTS: &[VersionedText] = &[VersionedText::new(include_str!(
-        "earlier_texts/skills/writing-knave/SKILL.md/0.18.0"
-    ))];
+    const EARLIER_TEXTS: &[ReleasedText] =
+        &[released_text!("skills/writing-knave/SKILL.md", "0.18.0")];
     const FILE: &str = "SKILL.md";
     const SKILL_FOLDERS: [&str; 2] = [".agents/skills", ".claude/skills"];
 }

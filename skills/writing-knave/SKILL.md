@@ -16,6 +16,7 @@ metadata:
 - Give each state its own enum case, such as `(defenum button-state on off)`.
 - Choose behavior with an enum value. NEVER choose behavior with a `bool` parameter or field.
 - Wrap a unit or an identifier in a one-field struct, such as `(defstruct money :cents int)`.
+- Give each concept its own struct, even when another struct has the same fields. An offset is not a position.
 - Use a `defenum` in place of a `bool` flag plus an `option` field, such as `(defenum shipment pending (shipped tracking-number))`.
 
 ### Pipelines of transformations
@@ -34,6 +35,7 @@ metadata:
 - Keep a table of fixed facts in a `def`, such as a `vec` of structs.
 - If the caller defines the computation, as with `map`, take a `fn` parameter. Otherwise, take a value.
 - PREFER an enum with a `match` OVER a `deftrait`. A `deftrait` wins only when code outside the application adds a type, or when the trait names a Rust trait.
+- If each branch of a `match` would do the same work with a different value, return only the value from the `match`. Do the work once, outside it.
 
 ### Configuration and dependencies as data
 
@@ -53,10 +55,11 @@ metadata:
 - Return a `result` for a failure the caller can expect, such as bad input. Give each such failure its own case of one error enum.
 - `try` converts a failure of another type to the enum case that holds that type. If `try` converts a failure in a function, give that function a `type` signature that names the error enum.
 - A `loop` body is a function of its own, so `try` converts no failure inside it. Inside a `loop`, call a function whose `type` signature names the error enum.
-- Put the work that can fail in a function that returns a `result`. In `main`, call that function and `match` on the result. Print a failure with `eprintln`. Then call `(exit 1)`.
+- Give the error enum an `error->message` function that returns a sentence for the user.
+- Put the work that can fail in a function that returns a `result`. In `main`, call that function and `match` on the result. Print `(error->message failure)` with `eprintln`. Then call `(exit 1)`.
 - Return an `option` for a value that can be absent.
 - NEVER call `unwrap`, `expect`, `unwrap-ok`, `unwrap-err` or `expect-ok` outside a `deftest`.
-- Unless `knave check` or a rule in this file asks for a type, leave that type unwritten. A written type without `ref` takes ownership of the argument.
+- NEVER write a type that `knave check` or a rule in this file does not ask for. The compiler infers each type and how each parameter is passed, and a written type without `ref` takes ownership of the argument.
 - If `knave check` reports a use of a moved value, remove the written type that took ownership. If no written type did, read the value before the move. If two places each own the value, write `(clone value)`. NEVER write a `clone` only to silence a moved-value error.
 
 ## Idioms
@@ -139,16 +142,25 @@ metadata:
                        :quantity quantity))
       (err (line-item-error/invalid-quantity quantity)))))
 
+(defn error->message (failure)
+  (match failure
+    ((invalid-number cause) (str "not a number: " cause))
+    ((invalid-quantity quantity)
+     (str "a quantity must be 0 or more, got " quantity))))
+
 (defn main ()
   (match (parse-line-item "450" "2")
     ((ok line-item) (prn (line-item-total line-item)))
-    ((err failure) (eprintln (pr-str failure)) (exit 1))))
+    ((err failure) (eprintln (error->message failure)) (exit 1))))
 
 (parse-line-item "450" "-1")
 => (err (line-item-error/invalid-quantity -1))
 
 (parse-line-item "450" "two")
 => (err (line-item-error/invalid-number (parse-int-error "invalid digit found in string")))
+
+(error->message (line-item-error/invalid-quantity -1))
+=> "a quantity must be 0 or more, got -1"
 ```
 
 ## Work loop
@@ -164,7 +176,7 @@ metadata:
 5. If one error remains after three fixes, stop and show the error to the user.
 6. If you need the value of a form, run `knave eval <file> '<form>'`.
 7. If you run the application, pass its arguments after `--`, as `knave run -- 10`.
-8. Write a test beside each pure function, as `(deftest name (assert (= actual expected)))`. Run the tests with `knave test <file>`.
+8. Write a test beside each pure function, as `(deftest name (assert (= actual expected)))`. Write one test for each error case, as `(assert (= actual (err (enum/case value))))`. NEVER compare the text of `pr-str`. Run the tests with `knave test <file>`.
 9. Before you finish, run `knave fmt` and `knave lint`. Fix each warning that `knave lint` prints.
 
 ## Rust habits that fail
@@ -173,7 +185,7 @@ metadata:
 | --- | --- |
 | `i64`, `f64`, `String`, `&str` | `int`, `float`, `string`, `(ref str)` |
 | `Vec<T>`, `Option<T>`, `Result<T, E>` | `(vec t)`, `(option t)`, `(result t e)` |
-| `fn f(x: i64)` | `(defn f ((x int)) ...)` |
+| `fn f(x: i64) -> i64` | `(defn f (x) ...)` |
 | `x += 1` | `(set! x (inc x))` |
 | `x as u8`, `u8::try_from(x)` | `(the u8 (convert x))` |
 | `x == y`, `x != y` | `(= x y)`, `(not= x y)` |

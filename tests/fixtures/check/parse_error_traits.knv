@@ -6,3 +6,7 @@
   (impossible infallible))
 
 (derive parse-failure partial-eq eq clone debug)
+
+(enum never-fails (impossible infallible))
+
+(derive never-fails copy partial-ord ord hash)

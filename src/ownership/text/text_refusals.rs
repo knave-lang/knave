@@ -74,7 +74,7 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
 
 #[cfg(test)]
 mod tests {
-    use crate::ownership::text::flow_fixture::Flows;
+    use crate::ownership::text::flow_fixture::FlowFixture;
     use crate::ownership::text::need::Need;
     use crate::ownership::text::reaching_text::ReachingText;
     use crate::ownership::text::slot_owner::SlotOwner;
@@ -82,34 +82,46 @@ mod tests {
 
     #[test]
     fn a_clone_of_a_parameter_with_no_owned_text_is_refused() {
-        let flows = Flows::default()
-            .flow((Flows::PARAMETER, Flows::variable()), Transfer::Refer, 7)
-            .required(Flows::variable(), Need::OwnedOrMixed);
+        let flows = FlowFixture::default()
+            .flow(
+                (FlowFixture::PARAMETER, FlowFixture::variable()),
+                Transfer::Refer,
+                7,
+            )
+            .required(FlowFixture::variable(), Need::OwnedOrMixed);
         assert_eq!(flows.refused_at(), vec![7]);
     }
 
     #[test]
     fn a_clone_lent_owned_text_by_a_read_only_parameter_is_refused() {
-        let flows = Flows::default()
-            .text(ReachingText::OWNED, (Flows::PARAMETER, 3))
-            .flow((Flows::PARAMETER, Flows::variable()), Transfer::Lend, 7)
-            .required(Flows::variable(), Need::OwnedOrMixed);
+        let flows = FlowFixture::default()
+            .text(ReachingText::OWNED, (FlowFixture::PARAMETER, 3))
+            .flow(
+                (FlowFixture::PARAMETER, FlowFixture::variable()),
+                Transfer::Lend,
+                7,
+            )
+            .required(FlowFixture::variable(), Need::OwnedOrMixed);
         assert_eq!(flows.refused_at(), vec![7]);
     }
 
     #[test]
     fn a_clone_lent_an_owned_local_is_not_refused() {
-        let flows = Flows::default()
-            .text(ReachingText::OWNED, (Flows::LOCAL, 3))
-            .flow((Flows::LOCAL, Flows::variable()), Transfer::Lend, 7)
-            .required(Flows::variable(), Need::OwnedOrMixed);
+        let flows = FlowFixture::default()
+            .text(ReachingText::OWNED, (FlowFixture::LOCAL, 3))
+            .flow(
+                (FlowFixture::LOCAL, FlowFixture::variable()),
+                Transfer::Lend,
+                7,
+            )
+            .required(FlowFixture::variable(), Need::OwnedOrMixed);
         assert!(flows.refused_at().is_empty());
     }
 
     #[test]
     fn static_text_given_to_an_owned_argument_is_refused() {
-        let owned = SlotOwner::Argument(Flows::span(80));
-        let flows = Flows::default()
+        let owned = SlotOwner::Argument(FlowFixture::span(80));
+        let flows = FlowFixture::default()
             .required(owned.clone(), Need::Owned)
             .text(ReachingText::STATIC, (owned.clone(), 4))
             .text(ReachingText::OWNED, (owned, 5));
@@ -118,8 +130,8 @@ mod tests {
 
     #[test]
     fn a_short_lived_view_given_to_an_owned_argument_is_refused() {
-        let owned = SlotOwner::Argument(Flows::span(80));
-        let flows = Flows::default()
+        let owned = SlotOwner::Argument(FlowFixture::span(80));
+        let flows = FlowFixture::default()
             .required(owned.clone(), Need::Owned)
             .text(ReachingText::BORROWED, (owned, 4));
         assert_eq!(flows.refused_at(), vec![4]);
@@ -127,11 +139,11 @@ mod tests {
 
     #[test]
     fn an_owned_need_outranks_a_written_view() {
-        let owned = SlotOwner::Argument(Flows::span(80));
-        let flows = Flows::default()
+        let owned = SlotOwner::Argument(FlowFixture::span(80));
+        let flows = FlowFixture::default()
             .required(owned.clone(), Need::Owned)
-            .required(Flows::field(), Need::View)
-            .united(owned.clone(), Flows::field())
+            .required(FlowFixture::field(), Need::View)
+            .united(owned.clone(), FlowFixture::field())
             .text(ReachingText::STATIC, (owned, 4));
         assert_eq!(flows.refused_at(), vec![4]);
     }

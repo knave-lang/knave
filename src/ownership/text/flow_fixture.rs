@@ -17,11 +17,11 @@ use crate::source::{SourceId, Span};
 use crate::types::GenericId;
 
 #[derive(Default)]
-pub struct Flows {
+pub struct FlowFixture {
     graph: FlowGraph,
 }
 
-impl Flows {
+impl FlowFixture {
     pub const PARAMETER: SlotOwner = SlotOwner::Parameter(BindingId::from_index(1));
     pub const OTHER_PARAMETER: SlotOwner = SlotOwner::Parameter(BindingId::from_index(2));
     pub const LOCAL: SlotOwner = SlotOwner::Local(BindingId::from_index(3));

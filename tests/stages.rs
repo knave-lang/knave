@@ -474,21 +474,41 @@ fn fixtures_within_their_deadline_keep_their_reports() {
 }
 
 #[test]
-fn a_fixture_given_no_report_has_none() {
+#[should_panic(expected = "no report for unlisted.knv")]
+fn a_missing_report_that_no_list_leaves_out_fails_naming_the_fixture() {
     let reports = FixtureReports::compute_within(SHORT_DEADLINE, Vec::new(), |path| {
         path.display().to_string()
     });
-    assert_eq!(reports.report(&PathBuf::from("left-out.knv")), None);
+    reports.report(&PathBuf::from("unlisted.knv"));
 }
 
 #[test]
-fn every_slow_fixture_is_a_check_fixture() {
+fn a_fixture_the_list_leaves_out_has_no_report() {
+    let mut paths = Vec::new();
+    insta::glob!("fixtures/check/*.knv", |path| paths
+        .push(PathBuf::from(path)));
+    let slow = LeftOutFixtures::slow();
+    let left_out: Vec<PathBuf> = paths
+        .iter()
+        .filter(|path| slow.leaves_out(path))
+        .cloned()
+        .collect();
+    let reports = FixtureReports::compute_within(SHORT_DEADLINE, slow.kept(paths), |path| {
+        path.display().to_string()
+    })
+    .leaving_out(slow);
+    for path in &left_out {
+        assert_eq!(reports.report(path), None);
+    }
+}
+
+#[test]
+fn exactly_one_check_fixture_is_left_out_as_slow() {
     let mut paths = Vec::new();
     insta::glob!("fixtures/check/*.knv", |path| paths
         .push(PathBuf::from(path)));
     let listed = paths.len();
-    let slow = LeftOutFixtures::slow();
-    assert_eq!(listed - slow.kept(paths).len(), slow.notes().len());
+    assert_eq!(listed - LeftOutFixtures::slow().kept(paths).len(), 1);
 }
 
 #[test]

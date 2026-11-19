@@ -95,11 +95,8 @@ impl PrepushTask {
     }
 
     fn left_out_fixture_notes(runs: &[TestRun]) -> Vec<String> {
-        if runs.iter().any(TestRun::runs_stage_fixtures) {
-            LeftOutFixtures::slow().notes()
-        } else {
-            Vec::new()
-        }
+        LeftOutFixtures::slow()
+            .notes_for_stage_tests(|test| runs.iter().any(|run| run.selects_stage_test(test)))
     }
 
     fn ratchet_checks(root: &Path, fork_point: &str) -> Result<Vec<Box<dyn Check>>, TaskFailure> {
@@ -132,9 +129,11 @@ mod tests {
             TestRun::parse("--lib emit::"),
             TestRun::parse("--test stages check_fixtures"),
         ];
+        let notes = PrepushTask::left_out_fixture_notes(&runs);
+        assert!(!notes.is_empty());
         assert_eq!(
-            PrepushTask::left_out_fixture_notes(&runs),
-            LeftOutFixtures::slow().notes()
+            notes,
+            LeftOutFixtures::slow().notes_for_stage_tests(|test| test == "check_fixtures")
         );
     }
 
@@ -143,6 +142,15 @@ mod tests {
         let runs = [
             TestRun::parse("--lib emit::"),
             TestRun::parse("--test cli fmt"),
+        ];
+        assert!(PrepushTask::left_out_fixture_notes(&runs).is_empty());
+    }
+
+    #[test]
+    fn a_selection_of_other_stage_fixtures_notes_nothing() {
+        let runs = [
+            TestRun::parse("--test stages reader_fixtures"),
+            TestRun::parse("--test stages expand_fixtures"),
         ];
         assert!(PrepushTask::left_out_fixture_notes(&runs).is_empty());
     }

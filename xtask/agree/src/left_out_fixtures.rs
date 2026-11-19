@@ -11,6 +11,7 @@ impl LeftOutFixtures {
     const VARIABLE: &str = "KNAVE_LEAVE_OUT_SLOW_FIXTURES";
     const LEAVE_OUT: &str = "1";
     const SLOW_UNDER_COVERAGE: &[&str] = &["check/macro_vec_of_twenty_thousand_elements.knv"];
+    const STAGE_TEST_SUFFIX: &str = "_fixtures";
     const REASON: &str = "it runs too slowly under prepush's coverage build; CI still runs it";
 
     pub fn leave_out_slow_fixtures(command: &mut Command) -> &mut Command {
@@ -21,7 +22,7 @@ impl LeftOutFixtures {
         Self::from_variable(env::var_os(Self::VARIABLE).as_deref())
     }
 
-    pub fn from_variable(value: Option<&OsStr>) -> Self {
+    fn from_variable(value: Option<&OsStr>) -> Self {
         if value == Some(OsStr::new(Self::LEAVE_OUT)) {
             Self::slow()
         } else {
@@ -42,12 +43,20 @@ impl LeftOutFixtures {
     pub fn kept(&self, paths: Vec<PathBuf>) -> Vec<PathBuf> {
         paths
             .into_iter()
-            .filter(|path| self.left_out_name(path).is_none())
+            .filter(|path| !self.leaves_out(path))
             .collect()
     }
 
-    pub fn notes(&self) -> Vec<String> {
-        self.names.iter().map(|name| Self::note(name)).collect()
+    pub fn notes_for_stage_tests(&self, selects_test: impl Fn(&str) -> bool) -> Vec<String> {
+        self.names
+            .iter()
+            .filter(|name| selects_test(&Self::stage_test(name)))
+            .map(|name| Self::note(name))
+            .collect()
+    }
+
+    pub fn leaves_out(&self, path: &Path) -> bool {
+        self.left_out_name(path).is_some()
     }
 
     pub fn notes_for(&self, paths: &[PathBuf]) -> Vec<String> {
@@ -56,6 +65,11 @@ impl LeftOutFixtures {
             .filter_map(|path| self.left_out_name(path))
             .map(Self::note)
             .collect()
+    }
+
+    fn stage_test(name: &str) -> String {
+        let stage = name.split('/').next().unwrap_or(name);
+        format!("{stage}{}", Self::STAGE_TEST_SUFFIX)
     }
 
     fn note(name: &str) -> String {
@@ -135,11 +149,22 @@ mod tests {
     }
 
     #[test]
-    fn the_notes_of_every_slow_fixture_match_the_notes_for_their_paths() {
+    fn the_stage_test_that_globs_a_slow_fixture_gets_its_note() {
         let fixtures = LeftOutFixtures::slow();
-        assert_eq!(
-            fixtures.notes(),
-            fixtures.notes_for(&[LeftOutCase::slow_path()])
-        );
+        let notes = fixtures.notes_for_stage_tests(|test| test == "check_fixtures");
+        assert_eq!(notes, fixtures.notes_for(&[LeftOutCase::slow_path()]));
+    }
+
+    #[test]
+    fn other_stage_tests_get_no_note() {
+        let notes = LeftOutFixtures::slow().notes_for_stage_tests(|test| test == "emit_fixtures");
+        assert!(notes.is_empty(), "{notes:?}");
+    }
+
+    #[test]
+    fn only_a_listed_path_is_left_out() {
+        let fixtures = LeftOutFixtures::slow();
+        assert!(fixtures.leaves_out(&LeftOutCase::slow_path()));
+        assert!(!fixtures.leaves_out(&LeftOutCase::quick_path()));
     }
 }

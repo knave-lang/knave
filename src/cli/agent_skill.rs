@@ -30,3 +30,15 @@ impl ProjectComponent for AgentSkill {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::AgentSkill;
+    use crate::cli::released_text::KeptTextsFolder;
+
+    #[test]
+    fn the_skill_lists_each_kept_text() {
+        KeptTextsFolder::of("skills/writing-knave/SKILL.md")
+            .assert_listed_by(AgentSkill::EARLIER_TEXTS);
+    }
+}

@@ -37,11 +37,16 @@ impl<'p> FormatArguments<'p> {
         let mut formatted: Vec<usize> = uses.iter().map(|placed| placed.argument).collect();
         formatted.sort_unstable();
         formatted.dedup();
+        let whole: Vec<bool> = uses
+            .iter()
+            .zip(&starts)
+            .map(|(placed, start)| self.is_whole_argument(placed.position, start.as_ref()))
+            .collect();
         formatted.retain(|argument| {
             uses.iter()
-                .zip(&starts)
+                .zip(&whole)
                 .filter(|(placed, _)| placed.argument == *argument)
-                .all(|(placed, start)| self.is_whole_argument(placed.position, start.as_ref()))
+                .all(|(_, whole)| *whole)
         });
         formatted
     }

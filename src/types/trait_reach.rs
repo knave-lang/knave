@@ -110,8 +110,6 @@ impl<'p> TraitReach<'p> {
                     self.reach_written(&item.kind);
                     writes_a_type |= Self::writes_type(&item.kind);
                     self.reach_written_types(&item.kind);
-                } else {
-                    self.reach_item(&item.kind);
                 }
             }
         }
@@ -129,10 +127,6 @@ impl<'p> TraitReach<'p> {
 
     fn writes_type(kind: &ItemKind) -> bool {
         matches!(kind, ItemKind::Struct(..) | ItemKind::Enum(..))
-    }
-
-    fn reach_item(&mut self, kind: &ItemKind) {
-        NamedTypes::of(kind).visit(&mut |binding| self.reach(binding));
     }
 
     fn reach_written_types(&mut self, kind: &ItemKind) {

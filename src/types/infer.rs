@@ -9,6 +9,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::assumed_collection_problems::AssumedCollectionProblems;
 use super::assumed_collections::CollectionAssumption;
 use super::borrowed_items::ArgumentSite;
 use super::checker::{TypeChecker, VariantArmReference};
@@ -2080,7 +2081,7 @@ impl TypeChecker {
         };
         let function = self.bindings.get(callee).name();
         let signature = self.signature_with_parameter(callee, position, found);
-        diagnostic.with_help(TypeProblems::assumed_collection_help(
+        diagnostic.with_help(AssumedCollectionProblems::help(
             assumption, function, &signature,
         ))
     }

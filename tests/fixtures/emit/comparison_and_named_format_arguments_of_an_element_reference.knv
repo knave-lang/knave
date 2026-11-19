@@ -1,0 +1,21 @@
+(def differs
+  (rust "assert_ne!(\"x\", {0}, \"{{}}\", {0})"
+    (fn ((ref str)) unit)))
+
+(def differs-briefly
+  (rust "assert_ne!(\"x\", {0})"
+    (fn ((ref str)) unit)))
+
+(def named
+  (rust "println!(\"{{name}}\", name = {0})"
+    (fn ((ref str)) unit)))
+
+(defn main ()
+  (local tricks (vec "feint" "vanish"))
+  (for-each (iter tricks)
+    (fn (trick)
+      (differs trick)
+      (differs-briefly trick)
+      (named trick)))
+  (push! tricks "dash")
+  (println (len tricks)))

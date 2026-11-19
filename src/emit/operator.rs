@@ -97,6 +97,8 @@ pub struct RustText<'a> {
 }
 
 impl<'a> RustText<'a> {
+    pub const ARGUMENT_ENDS: [char; 3] = [',', ')', ']'];
+
     pub fn new(text: &'a str) -> Self {
         Self { text }
     }
@@ -110,7 +112,53 @@ impl<'a> RustText<'a> {
     }
 
     pub fn closes_every_delimiter(&self) -> bool {
-        TokenScanner::scan(self.text).depth == 0
+        TokenScanner::scan(self.text).open.is_empty()
+    }
+
+    pub fn innermost_open(&self) -> Option<OpenDelimiter<'a>> {
+        TokenScanner::scan(self.text).open.last().copied()
+    }
+
+    pub fn starts_an_argument(&self) -> bool {
+        let outside_literal = TokenScanner::scan(self.text).literal == Literal::Outside;
+        let written = self.text.trim_end();
+        outside_literal && (written.ends_with(',') || Self::names_an_argument(written))
+    }
+
+    fn names_an_argument(written: &str) -> bool {
+        let Some(name) = written.strip_suffix('=') else {
+            return false;
+        };
+        let name = name.trim_end();
+        let name_start = name
+            .rfind(|character: char| !(character.is_alphanumeric() || character == '_'))
+            .map_or(0, |at| at + 1);
+        name_start < name.len() && name[..name_start].trim_end().ends_with(',')
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct OpenDelimiter<'a> {
+    callee: Option<&'a str>,
+    arguments: usize,
+    text_arguments: u64,
+}
+
+impl OpenDelimiter<'_> {
+    pub fn follows_format_string(&self, macros: &[(&str, usize)]) -> bool {
+        let format_string = macros
+            .iter()
+            .find(|(name, _)| Some(*name) == self.callee)
+            .map(|(_, position)| *position);
+        format_string.is_some_and(|position| {
+            self.arguments > position && self.text_arguments & (1 << position) != 0
+        })
+    }
+
+    fn hold_text(&mut self) {
+        if self.arguments < u64::BITS as usize {
+            self.text_arguments |= 1 << self.arguments;
+        }
     }
 }
 
@@ -118,7 +166,7 @@ struct TokenScanner<'a> {
     text: &'a str,
     tokens: Vec<&'a str>,
     start: Option<usize>,
-    depth: usize,
+    open: Vec<OpenDelimiter<'a>>,
     literal: Literal,
     escaped: bool,
 }
@@ -131,7 +179,7 @@ impl<'a> TokenScanner<'a> {
             text,
             tokens: Vec::new(),
             start: None,
-            depth: 0,
+            open: Vec::new(),
             literal: Literal::Outside,
             escaped: false,
         };
@@ -146,7 +194,7 @@ impl<'a> TokenScanner<'a> {
             if scanner.consume_delimiter(position, character) {
                 continue;
             }
-            if character.is_whitespace() && scanner.depth == 0 {
+            if character.is_whitespace() && scanner.open.is_empty() {
                 scanner.flush(position);
             } else {
                 scanner.start.get_or_insert(position);
@@ -165,9 +213,16 @@ impl<'a> TokenScanner<'a> {
         } else if character == '\\' {
             self.escaped = true;
         } else if self.literal.closes(character) {
-            self.literal = Literal::Outside;
+            self.close_literal();
         }
         true
+    }
+
+    fn close_literal(&mut self) {
+        if let (Literal::String, Some(open)) = (self.literal, self.open.last_mut()) {
+            open.hold_text();
+        }
+        self.literal = Literal::Outside;
     }
 
     fn opens_character(&self, position: usize) -> bool {
@@ -181,7 +236,7 @@ impl<'a> TokenScanner<'a> {
         character: char,
         characters: &mut std::iter::Peekable<std::str::CharIndices<'a>>,
     ) -> bool {
-        if character != '.' || self.depth != 0 {
+        if character != '.' || !self.open.is_empty() {
             return false;
         }
         if characters.peek().is_none_or(|(_, next)| *next != '.') {
@@ -197,12 +252,39 @@ impl<'a> TokenScanner<'a> {
         match character {
             '"' => self.literal = Literal::String,
             '\'' if self.opens_character(position) => self.literal = Literal::Character,
-            '(' | '[' | '{' => self.depth += 1,
-            ')' | ']' | '}' => self.depth = self.depth.saturating_sub(1),
+            '(' => self.open(self.macro_called_at(position)),
+            '[' | '{' => self.open(None),
+            ')' | ']' | '}' => {
+                self.open.pop();
+            }
+            ',' => return self.count_argument(),
             _ => return false,
         }
         self.start.get_or_insert(position);
         true
+    }
+
+    fn open(&mut self, callee: Option<&'a str>) {
+        self.open.push(OpenDelimiter {
+            callee,
+            arguments: 0,
+            text_arguments: 0,
+        });
+    }
+
+    fn count_argument(&mut self) -> bool {
+        if let Some(open) = self.open.last_mut() {
+            open.arguments += 1;
+        }
+        false
+    }
+
+    fn macro_called_at(&self, position: usize) -> Option<&'a str> {
+        let path = self.text[..position].trim_end().strip_suffix('!')?;
+        let name_start = path
+            .rfind(|character: char| !(character.is_alphanumeric() || character == '_'))
+            .map_or(0, |at| at + 1);
+        Some(&path[name_start..])
     }
 
     fn flush(&mut self, position: usize) {

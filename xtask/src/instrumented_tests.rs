@@ -24,7 +24,6 @@ impl<'a> InstrumentedTests<'a> {
     const FORGET_PREVIOUS_RUNS: [&'static str; 3] = ["llvm-cov", "clean", "--workspace"];
     const KEEP_BUILD_ARTIFACTS: &'static str = "--no-clean";
     const SELECTED_REPORT: &'static str = "target/coverage/selected.info";
-    const FORGET_PREVIOUS_PROFILES: [&'static str; 3] = ["llvm-cov", "clean", "--profraw-only"];
     const RUN_WITHOUT_REPORT: [&'static str; 3] = ["llvm-cov", "test", "--no-report"];
     const WRITE_REPORT: [&'static str; 3] = ["llvm-cov", "report", "--lcov"];
     const PACKAGE: &'static str = "--package";
@@ -58,7 +57,7 @@ impl<'a> InstrumentedTests<'a> {
         packages: &BTreeSet<String>,
         report: &Path,
     ) -> Vec<Vec<OsString>> {
-        let forget = Self::os_strings(&Self::FORGET_PREVIOUS_PROFILES);
+        let forget = Self::os_strings(&Self::FORGET_PREVIOUS_RUNS);
         let tests = runs.iter().map(|run| {
             let mut arguments = Self::os_strings(&Self::RUN_WITHOUT_REPORT);
             arguments.extend(run.arguments().iter().map(OsString::from));
@@ -259,7 +258,7 @@ mod tests {
     }
 
     #[test]
-    fn a_selected_run_forgets_old_profiles_runs_each_test_and_reports_each_package() {
+    fn a_selected_run_forgets_earlier_builds_runs_each_test_and_reports_each_package() {
         let runs = [
             TestRun::parse("--lib emit::"),
             TestRun::parse("--test stages emit_fixtures"),
@@ -278,7 +277,7 @@ mod tests {
         assert_eq!(
             commands,
             [
-                "llvm-cov clean --profraw-only",
+                "llvm-cov clean --workspace",
                 "llvm-cov test --no-report --lib emit::",
                 "llvm-cov test --no-report --test stages emit_fixtures",
                 "llvm-cov report --lcov --package knave --package knave-expand --output-path selected.info"

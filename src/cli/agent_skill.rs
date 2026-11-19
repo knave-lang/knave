@@ -11,8 +11,10 @@ impl AgentSkill {
     const NAME: &str = "writing-knave";
     const TEXT: VersionedText =
         VersionedText::new(include_str!("../../skills/writing-knave/SKILL.md"));
-    const EARLIER_TEXTS: &[ReleasedText] =
-        &[released_text!("skills/writing-knave/SKILL.md", "0.18.0")];
+    const EARLIER_TEXTS: &[ReleasedText] = &[
+        released_text!("skills/writing-knave/SKILL.md", "0.18.0"),
+        released_text!("skills/writing-knave/SKILL.md", "0.19.0"),
+    ];
     const FILE: &str = "SKILL.md";
     const SKILL_FOLDERS: [&str; 2] = [".agents/skills", ".claude/skills"];
 }

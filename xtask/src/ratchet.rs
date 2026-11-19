@@ -198,7 +198,7 @@ mod tests {
         let ratchet = RatchetCase::ratchet(&[("src/a.rs", 501)], &[], "");
         assert_eq!(
             ratchet.details(),
-            "  src/a.rs has 501 production lines, over the limit of 500, and did not exist at the base. Split it by responsibility. If the project owner approves the rise, add this trailer to a commit of the branch:\n    Baseline-Accepted: production_lines src/a.rs\n"
+            "  src/a.rs has 501 production lines, over the limit of 500, and did not exist at the base. Split it by responsibility. If the project owner approves the rise, add this trailer to a commit of the branch:\n    Rise-Accepted: production_lines src/a.rs\n"
         );
     }
 
@@ -229,7 +229,7 @@ mod tests {
         let ratchet = RatchetCase::ratchet(&[("src/a.rs", 901)], &[("src/a.rs", 900)], "");
         assert_eq!(
             ratchet.details(),
-            "  src/a.rs has 901 production lines, over the limit of 500, and 900 at the base. Split it by responsibility. If the project owner approves the rise, add this trailer to a commit of the branch:\n    Baseline-Accepted: production_lines src/a.rs\n"
+            "  src/a.rs has 901 production lines, over the limit of 500, and 900 at the base. Split it by responsibility. If the project owner approves the rise, add this trailer to a commit of the branch:\n    Rise-Accepted: production_lines src/a.rs\n"
         );
     }
 
@@ -242,7 +242,7 @@ mod tests {
         );
         assert_eq!(
             ratchet.summary(),
-            "3 Rust files measured against the limit of 500 production lines: 2 over it, 1 of them risen since the base without a `Baseline-Accepted:` trailer"
+            "3 Rust files measured against the limit of 500 production lines: 2 over it, 1 of them risen since the base without a `Rise-Accepted:` trailer"
         );
     }
 }

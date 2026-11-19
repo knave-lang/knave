@@ -8,7 +8,7 @@ pub struct RiseApprovals {
 }
 
 impl RiseApprovals {
-    pub const TRAILER: &str = "Baseline-Accepted";
+    pub const TRAILER: &str = "Rise-Accepted";
 
     pub fn since(git: &Git, base: &str) -> Result<Self, TaskFailure> {
         let format = format!("--format=%(trailers:key={},valueonly)", Self::TRAILER);
@@ -81,7 +81,7 @@ mod tests {
     fn the_trailer_line_names_the_limit_and_the_subject() {
         assert_eq!(
             RiseApprovals::trailer_line("production_lines", "src/a.rs"),
-            "Baseline-Accepted: production_lines src/a.rs"
+            "Rise-Accepted: production_lines src/a.rs"
         );
     }
 

@@ -43,7 +43,7 @@
 - it was within the limit at the merge base
 - it did not exist at the merge base
 
-A `Baseline-Accepted: <limit> <subject>` trailer in a commit of the pull request lets the subject pass. One trailer MAY list several subjects of one limit. The step's message names `<limit>` and gives the trailer line. If the step fails on a subject, stop and report the subject to the project owner. NEVER add a `Baseline-Accepted:` trailer before the project owner approves the rise.
+A `Rise-Accepted: <limit> <subject>` trailer in a commit of the pull request lets the subject pass. One trailer MAY list several subjects of one limit. The step's message names `<limit>` and gives the trailer line. If the step fails on a subject, stop and report the subject to the project owner. NEVER add a `Rise-Accepted:` trailer before the project owner approves the rise.
 
 **Run `git fetch origin` before `cargo xtask file-sizes`, `cargo xtask design-rules` or `cargo xtask prepush`.** Each of them measures against the merge base with `origin/main`.
 

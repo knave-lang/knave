@@ -9,6 +9,7 @@ use super::local_files::LocalFiles;
 use super::local_root::LocalRoot;
 use super::located_module::LocatedModule;
 use super::module_source::ModuleSource;
+use super::project_folder::ProjectFolder;
 use super::real_path::RealPath;
 use super::search_scope::SearchScope;
 use super::unlisted_library::UnlistedLibrary;
@@ -137,8 +138,8 @@ impl ModuleSources {
         Self { scope, ..self }
     }
 
-    pub fn holds_task(&self, file: &str) -> bool {
-        self.scope.holds_task(Path::new(file))
+    pub fn project_folders(&self, file: &str) -> Vec<ProjectFolder> {
+        self.scope.project_folders(Path::new(file))
     }
 
     pub fn with_libraries(self, libraries: LibraryTable) -> Self {

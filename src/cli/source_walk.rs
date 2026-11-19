@@ -15,6 +15,7 @@ use super::tree_file::TreeFile;
 use super::unreadable_file::UnreadableFile;
 use super::working_directory::WorkingDirectory;
 use crate::language::Language;
+use crate::modules::ProjectTree;
 
 pub struct SourceWalk<'p> {
     root: PathBuf,
@@ -92,14 +93,10 @@ impl<'p> SourceWalk<'p> {
             Some(directory) => {
                 !self.skipped.is_skipped(&directory)
                     && !self.left_out.contains(&directory)
-                    && !Self::holds_a_project(&directory)
+                    && !ProjectTree::holds_a_project(&directory)
             }
             None => false,
         }
-    }
-
-    fn holds_a_project(directory: &Path) -> bool {
-        directory.join(Language::project_file_name()).is_file()
     }
 
     fn module_of(&self, file: &Path) -> Option<String> {

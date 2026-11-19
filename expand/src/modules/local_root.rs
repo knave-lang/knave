@@ -1,6 +1,7 @@
 use std::fs;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
+use super::lexical_path::LexicalPath;
 use super::search_scope::SearchScope;
 
 pub(super) struct LocalRoot<'s> {
@@ -57,7 +58,7 @@ impl<'s> LocalRoot<'s> {
     }
 
     pub(super) fn shown_file(&self, local: &Path, found: &Path) -> PathBuf {
-        let shown = Self::normalized(&self.display_root.join(local));
+        let shown = LexicalPath::of(&self.display_root.join(local)).into_path_buf();
         let shows_found =
             !shown.is_symlink() && fs::canonicalize(&shown).is_ok_and(|file| file == found);
         if shows_found {
@@ -86,19 +87,5 @@ impl<'s> LocalRoot<'s> {
             RootRole::Primary => self.scope.primary_reaches(path),
             RootRole::Fallback => self.scope.fallback_reaches(path),
         }
-    }
-
-    fn normalized(path: &Path) -> PathBuf {
-        let mut normalized = PathBuf::new();
-        for component in path.components() {
-            match component {
-                Component::CurDir => {}
-                Component::ParentDir if normalized.file_name().is_some() => {
-                    normalized.pop();
-                }
-                other => normalized.push(other),
-            }
-        }
-        normalized
     }
 }

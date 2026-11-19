@@ -1,20 +1,22 @@
 (use prelude/macros document header-shape map-list module
                     template)
 
-(use prelude/internal/macros docstring-before-body?)
+(use prelude/internal/macros docstring-before-body?
+                             holds-folder?)
+
 (use prelude/syntax deftask the)
 (use prelude/text display from-str str)
 (use prelude/types option result vec)
 
 (use code add-module-note bool-not concat empty? fail first
-          form-location in-tasks-directory? keyword-field
-          keyword-name keyword? len list list? module-notes
-          nth number-add number-lt number-sub number?
-          prepend program-modules project-modules read-form
-          rest sorted-names string string-contains?
-          string-length string-lines string-strip-prefix
-          string-trim-start string? symbol symbol-name
-          symbol? value-eq)
+          form-location keyword-field keyword-name keyword?
+          len list list? module-notes nth number-add
+          number-lt number-sub number? prepend
+          program-modules project-folders project-modules
+          read-form rest sorted-names string
+          string-contains? string-length string-lines
+          string-strip-prefix string-trim-start string?
+          symbol symbol-name symbol? value-eq)
 
 (use prelude/internal/code pinned-at)
 
@@ -69,7 +71,7 @@
 
 (def check-task-directory
   (fn (form)
-    (if (in-tasks-directory? form)
+    (if (holds-folder? (project-folders form) (quote tasks))
       form
       (task-outside-tasks (nth form 1)
                           "move this task into a file under `tasks/`"

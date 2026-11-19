@@ -19,15 +19,12 @@ impl<'s> TreeScoping<'s> {
     }
 
     pub fn test_file(&self, file: ProgramFile) -> ProgramFile {
-        let scope = SearchScope::tests(self.folders.tasks_directory());
+        let scope = SearchScope::tests(self.folders.root());
         self.beside_source_root(file).within_scope(scope)
     }
 
     pub fn task_file(&self, file: ProgramFile) -> ProgramFile {
-        let scope = SearchScope::tasks(
-            self.folders.tasks_directory(),
-            self.folders.tests_directory(),
-        );
+        let scope = SearchScope::tasks(self.folders.root());
         self.beside_source_root(file).within_scope(scope)
     }
 

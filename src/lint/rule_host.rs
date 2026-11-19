@@ -14,6 +14,7 @@ use crate::interpret::{
     DefinitionQueries, ExpansionCallbacks, GlobalValues, Host, Interpreter, ModuleNotes,
     ModuleQueries, NameComparison, SourceQueries, StepBudget, Value, Warnings,
 };
+use crate::modules::ProjectFolder;
 use crate::reader::{Form, LiteralForms, Symbol};
 use crate::source::{SourceMap, Span};
 
@@ -155,8 +156,8 @@ impl SourceQueries for RuleHost<'_> {
         format!("{}:{position}", file.name())
     }
 
-    fn in_tasks_directory(&self, _form: &Form) -> bool {
-        false
+    fn project_folders(&self, _form: &Form) -> Vec<ProjectFolder> {
+        Vec::new()
     }
 
     fn introducing_macro(&self, form: &Form) -> Option<Rc<str>> {
@@ -317,13 +318,12 @@ mod tests {
     }
 
     #[test]
-    fn places_no_form_in_a_tasks_directory() {
+    fn places_no_form_in_a_project_folder() {
         let fixture = HostFixture::new();
-        assert!(
-            !fixture
-                .host()
-                .in_tasks_directory(&fixture.form_at(HostFixture::CALL))
-        );
+        let folders = fixture
+            .host()
+            .project_folders(&fixture.form_at(HostFixture::CALL));
+        assert!(folders.is_empty());
     }
 
     #[test]

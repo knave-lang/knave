@@ -2,6 +2,7 @@ mod admissible;
 mod admissible_types;
 mod argument_passing;
 mod associated;
+mod assumed_collection_problems;
 mod assumed_collections;
 mod binding;
 mod borrow_rules;

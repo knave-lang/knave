@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/expand/use_lists_a_number.knv
+---
+error[L0210]: malformed `use`
+ --> expand/use_lists_a_number.knv:1:31
+  |
+1 | (use use_lists_a_number/words 1)
+  |                               ^ this does not fit the shape of `use`
+  |
+  = help: write it as `(use module name ...)`
+  = note: run `knave doc L0210` for an explanation

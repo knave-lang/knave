@@ -2,6 +2,7 @@ use std::io::ErrorKind;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
+use super::build_directory::BuildDirectory;
 use super::doc_write::DocWriteCommand;
 use super::new_file::NewFile;
 use super::project_component::ProjectComponent;
@@ -11,7 +12,11 @@ pub struct GitSetup;
 
 impl ProjectComponent for GitSetup {
     fn files(&self, root: &Path) -> Vec<NewFile> {
-        let text = format!("/{}/\n", DocWriteCommand::DEFAULT_FOLDER);
+        let text = format!(
+            "/{}/\n/{}/\n",
+            BuildDirectory::PARENT,
+            DocWriteCommand::DEFAULT_FOLDER
+        );
         vec![NewFile::new(root.join(Self::IGNORE_FILE), text)]
     }
 

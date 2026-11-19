@@ -112,13 +112,6 @@ impl<'a> RustText<'a> {
     pub fn closes_every_delimiter(&self) -> bool {
         TokenScanner::scan(self.text).depth == 0
     }
-
-    pub fn contains_outside_literals(&self, marker: &str) -> bool {
-        let literals = TokenScanner::scan(self.text).literals;
-        self.text
-            .match_indices(marker)
-            .any(|(position, _)| !literals.iter().any(|literal| literal.contains(&position)))
-    }
 }
 
 struct TokenScanner<'a> {
@@ -127,8 +120,6 @@ struct TokenScanner<'a> {
     start: Option<usize>,
     depth: usize,
     literal: Literal,
-    literal_start: usize,
-    literals: Vec<std::ops::Range<usize>>,
     escaped: bool,
 }
 
@@ -142,13 +133,11 @@ impl<'a> TokenScanner<'a> {
             start: None,
             depth: 0,
             literal: Literal::Outside,
-            literal_start: 0,
-            literals: Vec::new(),
             escaped: false,
         };
         let mut characters = text.char_indices().peekable();
         while let Some((position, character)) = characters.next() {
-            if scanner.consume_literal(position, character) {
+            if scanner.consume_literal(character) {
                 continue;
             }
             if scanner.consume_range(position, character, &mut characters) {
@@ -164,11 +153,10 @@ impl<'a> TokenScanner<'a> {
             }
         }
         scanner.flush(text.len());
-        scanner.close_literal(text.len());
         scanner
     }
 
-    fn consume_literal(&mut self, position: usize, character: char) -> bool {
+    fn consume_literal(&mut self, character: char) -> bool {
         if self.literal == Literal::Outside {
             return false;
         }
@@ -177,21 +165,9 @@ impl<'a> TokenScanner<'a> {
         } else if character == '\\' {
             self.escaped = true;
         } else if self.literal.closes(character) {
-            self.close_literal(position + character.len_utf8());
-        }
-        true
-    }
-
-    fn close_literal(&mut self, end: usize) {
-        if self.literal != Literal::Outside {
-            self.literals.push(self.literal_start..end);
             self.literal = Literal::Outside;
         }
-    }
-
-    fn open_literal(&mut self, position: usize, literal: Literal) {
-        self.literal = literal;
-        self.literal_start = position;
+        true
     }
 
     fn opens_character(&self, position: usize) -> bool {
@@ -219,10 +195,8 @@ impl<'a> TokenScanner<'a> {
 
     fn consume_delimiter(&mut self, position: usize, character: char) -> bool {
         match character {
-            '"' => self.open_literal(position, Literal::String),
-            '\'' if self.opens_character(position) => {
-                self.open_literal(position, Literal::Character);
-            }
+            '"' => self.literal = Literal::String,
+            '\'' if self.opens_character(position) => self.literal = Literal::Character,
             '(' | '[' | '{' => self.depth += 1,
             ')' | ']' | '}' => self.depth = self.depth.saturating_sub(1),
             _ => return false,
@@ -259,61 +233,34 @@ impl Literal {
 mod tests {
     use super::RustText;
 
-    struct MarkerCase;
+    struct TokenCase;
 
-    impl MarkerCase {
-        const MARKER: &str = "std::time::Duration";
-
-        fn finds(text: &str) -> bool {
-            RustText::new(text).contains_outside_literals(Self::MARKER)
+    impl TokenCase {
+        fn tokens(text: &str) -> Vec<&str> {
+            RustText::new(text).tokens()
         }
     }
 
     #[test]
-    fn a_marker_in_code_is_found() {
-        assert!(MarkerCase::finds(
-            "let pause: std::time::Duration = wait();"
-        ));
+    fn a_quote_character_is_one_token() {
+        assert_eq!(TokenCase::tokens(r#"'"' == c"#), [r#"'"'"#, "==", "c"]);
     }
 
     #[test]
-    fn a_marker_in_a_string_is_not_found() {
-        assert!(!MarkerCase::finds(r#"show("std::time::Duration")"#));
-    }
-
-    #[test]
-    fn an_escaped_quote_keeps_the_string_open() {
-        assert!(!MarkerCase::finds(r#"show("a \" std::time::Duration")"#));
-    }
-
-    #[test]
-    fn a_quote_character_ends_before_the_code_after_it() {
-        assert!(MarkerCase::finds(
-            r#"c == '"'; let d: std::time::Duration;"#
-        ));
-    }
-
-    #[test]
-    fn an_escaped_quote_character_ends_before_the_code_after_it() {
-        assert!(MarkerCase::finds(
-            r#"c == '\"'; let d: std::time::Duration;"#
-        ));
+    fn an_escaped_quote_character_is_one_token() {
+        assert_eq!(TokenCase::tokens(r#"'\"' == c"#), [r#"'\"'"#, "==", "c"]);
     }
 
     #[test]
     fn a_lifetime_opens_no_literal() {
-        assert!(MarkerCase::finds(
-            "fn f(x: &'static str) -> std::time::Duration { wait(x) }"
-        ));
+        assert_eq!(
+            TokenCase::tokens("f::<&'static str>(x) + 1"),
+            ["f::<&'static", "str>(x)", "+", "1"]
+        );
     }
 
     #[test]
-    fn a_quote_at_the_end_opens_no_literal() {
-        assert!(MarkerCase::finds("std::time::Duration'"));
-    }
-
-    #[test]
-    fn an_unclosed_string_hides_the_rest() {
-        assert!(!MarkerCase::finds(r#"show("open std::time::Duration"#));
+    fn a_lone_quote_at_the_end_opens_no_literal() {
+        assert_eq!(TokenCase::tokens("x + y'"), ["x", "+", "y'"]);
     }
 }

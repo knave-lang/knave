@@ -1,0 +1,8 @@
+(def raw
+  (rust "r#\"a\"b\"#" (fn () (ref str))))
+
+(defn text () (raw))
+
+(defn wait () (seconds 1))
+
+(defn main () (prn (text) (wait)))

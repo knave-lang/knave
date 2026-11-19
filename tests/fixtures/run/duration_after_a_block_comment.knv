@@ -1,0 +1,8 @@
+(def commented
+  (rust "{{ /* \" */ 1 }}" (fn () usize)))
+
+(defn one () (commented))
+
+(defn wait () (seconds 1))
+
+(defn main () (prn (one) (wait)))

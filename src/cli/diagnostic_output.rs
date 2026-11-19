@@ -18,6 +18,10 @@ pub trait DiagnosticOutput: MessageOutput {
     fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics);
     fn write_note(&self, sources: &SourceMap, message: &str);
 
+    fn write_after_earlier(&self, sources: &SourceMap, diagnostics: &Diagnostics) {
+        self.write(sources, diagnostics);
+    }
+
     fn report(&self, sources: &SourceMap, diagnostics: &Diagnostics) -> ExitStatus {
         if !diagnostics.has_errors() {
             return ExitStatus::Success;
@@ -61,9 +65,16 @@ impl DiagnosticOutput for RenderedDiagnostics {
     fn write_note(&self, sources: &SourceMap, message: &str) {
         StandardError::write_line(self.renderer(sources).render_note(message));
     }
+
+    fn write_after_earlier(&self, sources: &SourceMap, diagnostics: &Diagnostics) {
+        StandardError::write_line(Self::BLANK_LINE);
+        self.write(sources, diagnostics);
+    }
 }
 
 impl RenderedDiagnostics {
+    const BLANK_LINE: &'static str = "";
+
     pub fn new(standard_error: ColorChoice) -> Self {
         Self { standard_error }
     }

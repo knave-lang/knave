@@ -155,6 +155,7 @@ mod structural_uses;
 mod synthetic_template;
 mod template_clauses;
 mod template_signature;
+mod template_spelling;
 mod template_ties;
 mod templates;
 mod tied_positions;

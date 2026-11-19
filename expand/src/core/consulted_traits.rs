@@ -31,8 +31,8 @@ impl BorrowTrait {
 pub struct ConsultedTraits;
 
 impl ConsultedTraits {
-    pub const PATHS: [&'static str; 5] = [
-        CopyTrait::PATH,
+    pub const BY_EVERY_PROGRAM: [&'static str; 1] = [CopyTrait::PATH];
+    pub const BY_MAPS_AND_DERIVES: [&'static str; 4] = [
         OrderTrait::PATH,
         EqualityTrait::PATH,
         HashTrait::PATH,

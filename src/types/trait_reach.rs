@@ -1,6 +1,8 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::reached_traits::ReachedTraits;
+use super::rust_types::RustType;
+use super::template_spelling::TemplateSpelling;
 use crate::core::{
     BindingId, ConsultedTraits, CoreModule, ItemKind, MemberOwners, NamedTypes, References,
     RustTraitDeclaration,
@@ -10,8 +12,10 @@ use crate::modules::ModuleSources;
 pub struct TraitReach<'p> {
     declarations: FxHashMap<BindingId, &'p RustTraitDeclaration>,
     owners: FxHashMap<BindingId, BindingId>,
+    map_types: FxHashSet<BindingId>,
     reached: FxHashSet<BindingId>,
     waiting: Vec<BindingId>,
+    consults_map_keys: bool,
 }
 
 impl<'p> TraitReach<'p> {
@@ -27,8 +31,13 @@ impl<'p> TraitReach<'p> {
             }
             let named = references.written_types().named();
             for binding in references.globals().iter().chain(named) {
-                reach.reach(*binding);
+                reach.reach_noting_maps(*binding);
             }
+        }
+        if reach.consults_map_keys {
+            reach.reach_declared(|declaration| {
+                ConsultedTraits::BY_MAPS_AND_DERIVES.contains(&declaration.path.as_ref())
+            });
         }
         reach.close();
         ReachedTraits::new(reach.reached)
@@ -52,9 +61,28 @@ impl<'p> TraitReach<'p> {
         Self {
             declarations,
             owners,
+            map_types: Self::map_types(modules),
             reached: FxHashSet::default(),
             waiting: Vec::new(),
+            consults_map_keys: false,
         }
+    }
+
+    fn map_types(modules: &[CoreModule]) -> FxHashSet<BindingId> {
+        modules
+            .iter()
+            .flat_map(|module| &module.items)
+            .filter_map(|item| match &item.kind {
+                ItemKind::RustType(binding, _, _, template, _)
+                    if RustType::MAP_TEMPLATES
+                        .iter()
+                        .any(|map| TemplateSpelling::of(template).is(map)) =>
+                {
+                    Some(*binding)
+                }
+                _ => None,
+            })
+            .collect()
     }
 
     fn reach_declared(&mut self, chosen: impl Fn(&RustTraitDeclaration) -> bool) {
@@ -71,7 +99,7 @@ impl<'p> TraitReach<'p> {
 
     fn roots(&mut self, modules: &[CoreModule]) {
         self.reach_declared(|declaration| {
-            ConsultedTraits::PATHS.contains(&declaration.path.as_ref())
+            ConsultedTraits::BY_EVERY_PROGRAM.contains(&declaration.path.as_ref())
                 || declaration.implementors.all_rows_primitive()
         });
         let mut writes_a_type = false;
@@ -81,11 +109,14 @@ impl<'p> TraitReach<'p> {
                 if written {
                     self.reach_written(&item.kind);
                     writes_a_type |= Self::writes_type(&item.kind);
+                    self.reach_written_types(&item.kind);
+                } else {
+                    self.reach_item(&item.kind);
                 }
-                self.reach_item(&item.kind);
             }
         }
         if writes_a_type {
+            self.consults_map_keys = true;
             self.reach_declared(|declaration| declaration.structural.is_some());
         }
     }
@@ -102,6 +133,15 @@ impl<'p> TraitReach<'p> {
 
     fn reach_item(&mut self, kind: &ItemKind) {
         NamedTypes::of(kind).visit(&mut |binding| self.reach(binding));
+    }
+
+    fn reach_written_types(&mut self, kind: &ItemKind) {
+        NamedTypes::of(kind).visit(&mut |binding| self.reach_noting_maps(binding));
+    }
+
+    fn reach_noting_maps(&mut self, binding: BindingId) {
+        self.consults_map_keys |= self.map_types.contains(&binding);
+        self.reach(binding);
     }
 
     fn close(&mut self) {
@@ -145,6 +185,7 @@ mod tests {
 
     impl ReachFixture {
         const EMPTY_PROGRAM: &str = "(defn main ())";
+        const MAP_KEY_TRAITS: [&str; 4] = ["ord", "eq", "hash", "borrow"];
 
         fn of(program: &str) -> Self {
             Self::reaching(TypedSource::expand(program))
@@ -195,10 +236,50 @@ mod tests {
     }
 
     #[test]
+    fn an_empty_program_reaches_no_map_key_trait() {
+        let fixture = ReachFixture::of(ReachFixture::EMPTY_PROGRAM);
+        for map_key_trait in ReachFixture::MAP_KEY_TRAITS {
+            assert!(!fixture.reaches(map_key_trait), "{map_key_trait}");
+        }
+    }
+
+    #[test]
     fn a_reached_trait_reaches_the_traits_it_requires() {
         let fixture = ReachFixture::of(ReachFixture::EMPTY_PROGRAM);
-        assert!(fixture.reaches("ord"));
+        assert!(fixture.reaches("clone"));
+    }
+
+    #[test]
+    fn a_declared_type_reaches_the_map_key_traits_its_derives_consult() {
+        let fixture = ReachFixture::of("(defstruct point :x i64) (defn main ())");
+        for map_key_trait in ReachFixture::MAP_KEY_TRAITS {
+            assert!(fixture.reaches(map_key_trait), "{map_key_trait}");
+        }
         assert!(fixture.reaches("partial-ord"));
+    }
+
+    #[test]
+    fn a_written_map_type_reaches_the_map_key_traits() {
+        let fixture = ReachFixture::of(
+            "(defn total ((counts (sorted-map string i64))) counts)
+             (defn main ())",
+        );
+        for map_key_trait in ReachFixture::MAP_KEY_TRAITS {
+            assert!(fixture.reaches(map_key_trait), "{map_key_trait}");
+        }
+    }
+
+    #[test]
+    fn a_map_that_a_reached_definition_names_reaches_the_map_key_traits() {
+        let fixture = ReachFixture::of("(defn main () (into-hash-map (vec)))");
+        assert!(fixture.reaches("borrow"));
+        assert!(fixture.reaches("ord"));
+    }
+
+    #[test]
+    fn a_program_that_names_no_map_reaches_no_map_key_trait() {
+        let fixture = ReachFixture::of("(defn main () (len (vec 1)))");
+        assert!(!fixture.reaches("borrow"));
     }
 
     #[test]

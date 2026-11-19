@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
+use super::template_spelling::TemplateSpelling;
 use super::ty::Type;
 use crate::core::{BindingId, ParsedTemplate};
 
@@ -16,6 +17,10 @@ impl RustType {
     pub const VECTOR_TEMPLATE: &'static str = "Vec<{0}>";
     pub const BOX_TEMPLATE: &'static str = "Box<{0}>";
     pub const ITERATOR_TEMPLATE: &'static str = "impl Iterator<Item = {0}>";
+    pub const SORTED_MAP_TEMPLATE: &'static str = "std::collections::BTreeMap<{0}, {1}>";
+    pub const HASH_MAP_TEMPLATE: &'static str = "std::collections::HashMap<{0}, {1}>";
+    pub const MAP_TEMPLATES: [&'static str; 2] =
+        [Self::SORTED_MAP_TEMPLATE, Self::HASH_MAP_TEMPLATE];
     const OPAQUE_PREFIX: &'static str = "impl ";
 
     pub fn template_for(&self, argument: Option<&Type>) -> &Rc<ParsedTemplate> {
@@ -34,13 +39,7 @@ impl RustType {
     }
 
     pub fn has_template(&self, template: &str) -> bool {
-        self.template
-            .text()
-            .chars()
-            .filter(|character| !character.is_whitespace())
-            .eq(template
-                .chars()
-                .filter(|character| !character.is_whitespace()))
+        TemplateSpelling::of(&self.template).is(template)
     }
 
     pub fn leading_name(&self) -> &str {
@@ -93,11 +92,11 @@ impl RustTypeTable {
     }
 
     pub fn is_sorted_map(&self, binding: BindingId) -> bool {
-        self.has_template(binding, "std::collections::BTreeMap<{0}, {1}>")
+        self.has_template(binding, RustType::SORTED_MAP_TEMPLATE)
     }
 
     pub fn is_hash_map(&self, binding: BindingId) -> bool {
-        self.has_template(binding, "std::collections::HashMap<{0}, {1}>")
+        self.has_template(binding, RustType::HASH_MAP_TEMPLATE)
     }
 
     pub fn is_iterator(&self, binding: BindingId) -> bool {

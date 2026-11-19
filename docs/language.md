@@ -308,7 +308,7 @@ A keyword call with no value or with more than one value is an error. `local`, `
 
 A field label in `new` may be written as a keyword, so a macro passes the user's spelling through, as `assoc` and `->car` do. An unknown field then reports and suggests the field as a keyword, as `(assoc leaf :yer 2025)` suggests `:year`.
 
-A field read names its struct only through the value's type. When two structs share a field name, a function that reads that field from an unannotated parameter needs a signature, as `(type volume (fn ((ref cube)) int))` gives.
+A field read names its struct only through the value's type. When that type is still unknown, the read finds the struct by the field's name: one struct that declares the field fixes the type, none is `L0408`, `` no struct has a field `:size` ``, with the closest field that some struct declares, and an integer or float literal that nothing has fixed is `L0410`, `` `int` has no fields ``, before any struct counts. When two structs share a field name, a function that reads that field from an unannotated parameter needs a signature, as `(type volume (fn ((ref cube)) int))` gives.
 
 The expander carries keyword reads because a prelude macro per field would clash between two structs that share a field name.
 

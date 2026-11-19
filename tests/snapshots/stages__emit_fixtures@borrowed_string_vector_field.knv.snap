@@ -18,7 +18,7 @@ fn main() {
     nissan
         .models
         .iter()
-        .for_each(|model: &&str| println!("{} {}", nissan.make, *model))
+        .for_each(|model: &&str| println!("{} {}", nissan.make, model))
 }
 
 mod rt {

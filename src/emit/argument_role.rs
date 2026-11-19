@@ -6,6 +6,7 @@ pub(super) enum ArgumentRole {
     FieldOwner,
     IndexReceiver,
     Borrowed,
+    Formatted,
     MutPlace,
     Coerced,
     Ordinary,
@@ -57,7 +58,10 @@ impl ArgumentRole {
     }
 
     pub(super) fn dereferenced_layers(self, argument: &TypedArgument) -> Option<usize> {
-        let autodereferences = matches!(self, ArgumentRole::FieldOwner | ArgumentRole::Coerced);
+        let autodereferences = matches!(
+            self,
+            ArgumentRole::FieldOwner | ArgumentRole::Coerced | ArgumentRole::Formatted
+        );
         match argument.borrow {
             Borrow::Deref(levels) => Some(levels),
             _ => argument
@@ -89,7 +93,10 @@ impl ArgumentRole {
             (
                 ArgumentRole::Receiver | ArgumentRole::FieldOwner | ArgumentRole::IndexReceiver,
                 Borrow::Shared | Borrow::Mutable,
-            ) | (ArgumentRole::Borrowed, Borrow::Shared)
+            ) | (
+                ArgumentRole::Borrowed | ArgumentRole::Formatted,
+                Borrow::Shared
+            )
         )
     }
 }

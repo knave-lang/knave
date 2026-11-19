@@ -1,0 +1,49 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/format_macro_templates_of_an_element_reference.knv
+---
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut tricks = vec!["feint", "vanish"];
+    tricks.iter().for_each(|trick: &&str| {
+        let shown = format!("<{}>", trick);
+        println!("{}", shown);
+        print!("{}", {
+            use std::fmt::Write;
+            let mut out = String::new();
+            write!(&mut out, "({})", trick).unwrap();
+            writeln!(&mut out, "{}", trick).unwrap();
+            out
+        });
+        {
+            let template_argument_0 = (*trick).len();
+            let template_argument_1 = trick;
+            {
+                assert!(template_argument_0 > 0, "empty {}", template_argument_1);
+                if template_argument_0 == 0 {
+                    panic!("empty {}", template_argument_1)
+                }
+            }
+        }
+    });
+    tricks.push("dash");
+    println!("{}", tricks.len())
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

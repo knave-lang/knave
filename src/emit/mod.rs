@@ -11,6 +11,7 @@ mod emitted_code;
 mod emitted_types;
 mod emitted_value;
 mod expressions;
+mod format_arguments;
 mod fragment;
 mod fresh_lifetimes;
 mod function_borrow;

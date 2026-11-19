@@ -1,5 +1,6 @@
 use super::argument_role::ArgumentRole;
 use super::converted_argument::ConvertedArgument;
+use super::format_arguments::FormatArguments;
 use super::fragment::{Code, Fragment, Precedence};
 use super::operator::{RustOperator, RustText, Side};
 use super::preceded_code::PrecededCode;
@@ -44,7 +45,15 @@ impl Template {
         self.parsed.dereferences(argument)
     }
 
-    pub(super) fn receiver(&self, argument: usize) -> Option<ArgumentRole> {
+    pub(super) fn written_role(&self, argument: usize) -> Option<ArgumentRole> {
+        if FormatArguments::new(self.parsed.pieces()).holds_only(argument) {
+            let role = if self.parsed.borrows(argument) {
+                ArgumentRole::Formatted
+            } else {
+                ArgumentRole::Coerced
+            };
+            return Some(role);
+        }
         let mut uses = self
             .parsed
             .placeholders()

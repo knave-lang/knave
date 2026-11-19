@@ -1,0 +1,38 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/str_of_an_element_reference.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Rogue<'a> {
+    name: &'a str,
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let rogue = Rogue { name: "Vex" };
+    let mut tricks = vec!["feint", "vanish"];
+    tricks.iter().for_each(|trick: &&str| {
+        let line = format!("{} tries {}", rogue.name, trick);
+        println!("{}", line)
+    });
+    tricks.push("dash");
+    println!("{}", tricks.len())
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

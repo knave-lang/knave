@@ -12,7 +12,5 @@ pub enum SlotOwner {
     Field(BindingId, Rc<str>),
     Variable(Span, GenericId),
     Value(Span),
-    OwnedArgument(Span),
-    ClonedArgument(Span),
-    WrittenView(BindingId, Rc<str>),
+    Argument(Span),
 }

@@ -43,7 +43,7 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
         if let Some(result) = self.result_type() {
             let owner = SlotOwner::Result(self.function);
             self.list(&owner, &result);
-            self.walk.graph().receive(&Slot::top(owner), &value);
+            self.walk.graph().receive(&Slot::from(owner), &value);
         }
     }
 
@@ -143,7 +143,7 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
             let value = self.value(argument);
             self.walk
                 .graph()
-                .receive(&Slot::top(SlotOwner::Parameter(parameter)), &value);
+                .receive(&Slot::from(SlotOwner::Parameter(parameter)), &value);
         }
         TextValue::default()
     }
@@ -164,7 +164,7 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
         if TextPositions::holds_text(ty) {
             let owner = SlotOwner::Local(binding);
             self.list(&owner, ty);
-            self.walk.graph().receive(&Slot::top(owner), &value);
+            self.walk.graph().receive(&Slot::from(owner), &value);
         }
         TextValue::default()
     }
@@ -215,7 +215,7 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
         for (label, value) in fields {
             let value = self.value(value);
             let owner = SlotOwner::Field(binding, label.name.clone());
-            self.walk.graph().receive(&Slot::top(owner), &value);
+            self.walk.graph().receive(&Slot::from(owner), &value);
         }
         TextValue::default()
     }
@@ -234,7 +234,7 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
                     SlotOwner::Value(expr.span),
                     TypePath::default().child(argument),
                 ),
-                None => Slot::top(SlotOwner::Field(binding, field.to_string().into())),
+                None => Slot::from(SlotOwner::Field(binding, field.to_string().into())),
             };
             self.walk.graph().receive(&slot, &value);
         }

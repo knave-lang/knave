@@ -1,7 +1,9 @@
 use rustc_hash::FxHashMap;
 
 use super::flow::Flow;
+use super::need::Need;
 use super::node_id::NodeId;
+use super::node_partition::NodePartition;
 use super::slot::Slot;
 use super::text_value::TextValue;
 
@@ -9,7 +11,7 @@ use super::text_value::TextValue;
 pub struct FlowGraph {
     slots: Vec<Slot>,
     ids: FxHashMap<Slot, NodeId>,
-    parents: Vec<NodeId>,
+    partition: NodePartition,
     flows: Vec<Flow>,
 }
 
@@ -18,9 +20,8 @@ impl FlowGraph {
         if let Some(id) = self.ids.get(&slot) {
             return *id;
         }
-        let id = NodeId(self.slots.len());
+        let id = self.partition.add();
         self.slots.push(slot.clone());
-        self.parents.push(id);
         self.ids.insert(slot, id);
         id
     }
@@ -36,24 +37,22 @@ impl FlowGraph {
             });
         }
         for (path, nested) in value.nested() {
-            let inner = self.node(Slot::new(slot.owner.clone(), slot.path.joined(path)));
+            let inner = self.node(slot.nested(path));
             self.unite(inner, *nested);
         }
     }
 
     pub fn unite(&mut self, first: NodeId, second: NodeId) {
-        let (first, second) = (self.class(first), self.class(second));
-        if first != second {
-            self.parents[second.0] = first;
-        }
+        self.partition.unite(first, second);
     }
 
-    pub fn class(&self, node: NodeId) -> NodeId {
-        let mut current = node;
-        while self.parents[current.0] != current {
-            current = self.parents[current.0];
-        }
-        current
+    pub fn require(&mut self, slot: Slot, need: Need) {
+        let node = self.node(slot);
+        self.partition.require(node, need);
+    }
+
+    pub fn partition(&self) -> &NodePartition {
+        &self.partition
     }
 
     pub fn slot(&self, node: NodeId) -> &Slot {
@@ -62,14 +61,6 @@ impl FlowGraph {
 
     pub fn flows(&self) -> &[Flow] {
         &self.flows
-    }
-
-    pub fn classes(&self) -> FxHashMap<NodeId, Vec<NodeId>> {
-        let mut classes: FxHashMap<NodeId, Vec<NodeId>> = FxHashMap::default();
-        for node in (0..self.slots.len()).map(NodeId) {
-            classes.entry(self.class(node)).or_default().push(node);
-        }
-        classes
     }
 }
 
@@ -83,7 +74,7 @@ mod tests {
 
     impl Locals {
         fn slot(index: u32) -> Slot {
-            Slot::top(SlotOwner::Local(BindingId::from_index(index)))
+            Slot::from(SlotOwner::Local(BindingId::from_index(index)))
         }
     }
 
@@ -100,7 +91,8 @@ mod tests {
         let second = graph.node(Locals::slot(2));
         graph.unite(first, second);
         graph.unite(second, first);
-        assert_eq!(graph.class(first), graph.class(second));
-        assert_eq!(graph.classes()[&graph.class(first)].len(), 2);
+        let partition = graph.partition();
+        assert_eq!(partition.class(first), partition.class(second));
+        assert_eq!(partition.classes()[&partition.class(first)].len(), 2);
     }
 }

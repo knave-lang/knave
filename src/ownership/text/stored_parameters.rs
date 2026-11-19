@@ -19,9 +19,9 @@ impl<'g> StoredParameters<'g> {
         for flow in graph.flows() {
             if let (Source::Slot(source), Transfer::Move) = (flow.source, flow.transfer) {
                 moves
-                    .entry(graph.class(source))
+                    .entry(graph.partition().class(source))
                     .or_default()
-                    .push(graph.class(flow.target));
+                    .push(graph.partition().class(flow.target));
             }
         }
         Self {
@@ -75,18 +75,20 @@ impl<'g> StoredParameters<'g> {
     }
 
     fn stores(&self, class: NodeId, stored: &FxHashSet<BindingId>) -> bool {
-        let members = &self.classes[&class];
-        let written_view = members
-            .iter()
-            .any(|member| self.graph.slot(*member).need() == Some(Need::View));
-        !written_view
-            && members.iter().any(|member| {
-                let slot = self.graph.slot(*member);
-                slot.is_stored_place()
-                    || slot.need() == Some(Need::Owned)
-                    || slot
-                        .parameter()
-                        .is_some_and(|binding| stored.contains(&binding))
-            })
+        match self.graph.partition().need(class) {
+            Some(Need::View) => false,
+            Some(Need::Owned) => true,
+            Some(Need::OwnedOrMixed) | None => self.holds_stored_place(class, stored),
+        }
+    }
+
+    fn holds_stored_place(&self, class: NodeId, stored: &FxHashSet<BindingId>) -> bool {
+        self.classes[&class].iter().any(|member| {
+            let slot = self.graph.slot(*member);
+            slot.is_stored_place()
+                || slot
+                    .parameter()
+                    .is_some_and(|binding| stored.contains(&binding))
+        })
     }
 }

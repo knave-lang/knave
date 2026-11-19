@@ -7,7 +7,6 @@ use super::node_id::NodeId;
 use super::representation::Representation;
 use super::slot::Slot;
 use super::slot_listing::SlotListing;
-use super::slot_owner::SlotOwner;
 use super::text_program::TextProgram;
 use super::text_solver::TextSolver;
 use crate::source::{SourceMap, Span};
@@ -25,6 +24,7 @@ impl<'r, 'p> TextReport<'r, 'p> {
         solver: &'r TextSolver<'r>,
     ) -> Self {
         let nodes = graph
+            .partition()
             .classes()
             .into_values()
             .flatten()
@@ -60,7 +60,7 @@ impl<'r, 'p> TextReport<'r, 'p> {
 
     fn line(&self, listed: &ListedSlot) -> String {
         let decided = self.decided(&listed.slot);
-        let label = format!("{}{}", self.label(&listed.slot.owner), listed.slot.path);
+        let label = listed.slot.label(self.program.names());
         if decided == listed.written {
             format!("{label}: {decided}")
         } else {
@@ -73,20 +73,6 @@ impl<'r, 'p> TextReport<'r, 'p> {
             Some(node) => self.solver.representation(self.solver.class(*node)),
             None if slot.is_stored_place() => Representation::Owned,
             None => Representation::View,
-        }
-    }
-
-    fn label(&self, owner: &SlotOwner) -> String {
-        match owner {
-            SlotOwner::Parameter(binding) => self.program.names().name(*binding).to_string(),
-            SlotOwner::Result(_) => "result".to_string(),
-            SlotOwner::Local(binding) => format!("local {}", self.program.names().name(*binding)),
-            SlotOwner::Field(_, name) => name.to_string(),
-            SlotOwner::Variable(..)
-            | SlotOwner::Value(_)
-            | SlotOwner::OwnedArgument(_)
-            | SlotOwner::ClonedArgument(_)
-            | SlotOwner::WrittenView(..) => String::new(),
         }
     }
 

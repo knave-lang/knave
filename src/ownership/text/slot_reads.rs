@@ -27,7 +27,7 @@ impl<'g> SlotReads<'g> {
         if !positions.iter().any(|position| position.path.is_top()) {
             return self.nested_onto(TextValue::default(), owner, ty);
         }
-        let top = self.graph.node(Slot::top(owner.clone()));
+        let top = self.graph.node(Slot::from(owner.clone()));
         let read = TextValue::from(Source::Slot(top), span).transferred(transfer);
         self.nested_onto(read, owner, ty)
     }

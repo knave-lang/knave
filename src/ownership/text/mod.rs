@@ -9,6 +9,7 @@ mod listed_section;
 mod listed_slot;
 mod need;
 mod node_id;
+mod node_partition;
 mod reaching_text;
 mod representation;
 mod scheme_position;

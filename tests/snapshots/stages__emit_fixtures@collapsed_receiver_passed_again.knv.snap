@@ -15,13 +15,16 @@ fn make_label(blank: bool) -> Label {
 fn main() {
     crate::rt::restore_default_sigpipe();
     let first = make_label(false);
-    let labels = vec![&first];
+    let second = make_label(true);
+    let mut labels = vec![&first];
     let r = &labels[0];
     let v = {
         let template_argument_0 = *r;
         template_argument_0.blank.then_some(template_argument_0)
     };
-    println!("{}", v.is_none())
+    labels.push(&second);
+    println!("{}", v.is_none());
+    println!("{}", labels.len())
 }
 
 mod rt {

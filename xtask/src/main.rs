@@ -110,7 +110,7 @@ struct RatchetTask {
     #[arg(
         long,
         default_value = "origin/main",
-        help = "Measure against the merge base with this revision, and refuse a subject over a limit that is new or grew, unless a `Baseline-Accepted:` trailer names its limit and subject"
+        help = "Measure against the merge base with this revision, and refuse a subject over a limit that is new or grew, unless a `Rise-Accepted:` trailer names its limit and subject"
     )]
     base: String,
 }

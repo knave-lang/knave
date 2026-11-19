@@ -159,7 +159,7 @@ mod tests {
         assert_eq!(
             branch.details(),
             [
-                "  src/a.rs has 901 production lines, over the limit of 500, and 900 at the base. Split it by responsibility. If the project owner approves the rise, add this trailer to a commit of the branch:\n    Baseline-Accepted: production_lines src/a.rs\n"
+                "  src/a.rs has 901 production lines, over the limit of 500, and 900 at the base. Split it by responsibility. If the project owner approves the rise, add this trailer to a commit of the branch:\n    Rise-Accepted: production_lines src/a.rs\n"
             ]
         );
     }
@@ -169,7 +169,7 @@ mod tests {
         let branch = Branch::forked_with("gate-trailer", "src/a.rs 900\n");
         branch.commit(
             "src/a.rs 901\n",
-            "grow\n\nBaseline-Accepted: production_lines src/a.rs",
+            "grow\n\nRise-Accepted: production_lines src/a.rs",
         );
         assert_eq!(branch.details(), [""]);
     }

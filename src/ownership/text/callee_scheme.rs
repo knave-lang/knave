@@ -1,4 +1,4 @@
-use super::text_program::TextProgram;
+use super::text_traits::TextTraits;
 use crate::types::{GenericId, GenericParam, Type};
 
 #[derive(Clone, Copy)]
@@ -19,11 +19,11 @@ impl<'t> CalleeScheme<'t> {
         }
     }
 
-    pub fn needs_owned_text(&self, generic: GenericId, program: &TextProgram<'_>) -> bool {
+    pub fn needs_owned_text(&self, generic: GenericId, traits: TextTraits<'_>) -> bool {
         self.generics
             .iter()
             .filter(|param| param.id == generic)
             .flat_map(|param| &param.bounds)
-            .any(|bound| program.owns_text_for(bound))
+            .any(|bound| traits.owns_text_for(bound))
     }
 }

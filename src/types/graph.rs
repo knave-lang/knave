@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::check_order::CheckOrder;
 use super::deferred_definitions::DeferredDefinitions;
 use super::reached_traits::ReachedTraits;
 use super::trait_reach::TraitReach;
@@ -66,9 +67,14 @@ impl<'p> DefinitionGraph<'p> {
             Self::definitions_in(program)
                 .filter(|definition| walked.contains_key(&definition.binding)),
         );
+        let order = CheckOrder::of(
+            program,
+            &walked,
+            definitions.iter().map(|definition| definition.binding),
+        );
         let written = WrittenBodies::of(&program.modules);
         let dependencies = DependencyGraph::build(walked, macro_helpers, &written);
-        let components = dependencies.components(&Self::impl_methods_first(program, &definitions));
+        let components = dependencies.components(&order);
         Self {
             definitions,
             dependencies,
@@ -79,28 +85,6 @@ impl<'p> DefinitionGraph<'p> {
                 written,
             },
         }
-    }
-
-    fn impl_methods_first(program: &Program, definitions: &[Definition]) -> Vec<BindingId> {
-        let impl_methods: FxHashSet<BindingId> = Self::impl_methods(program).collect();
-        let (methods, others): (Vec<BindingId>, Vec<BindingId>) = definitions
-            .iter()
-            .map(|definition| definition.binding)
-            .partition(|binding| impl_methods.contains(binding));
-        methods.into_iter().chain(others).collect()
-    }
-
-    fn impl_methods(program: &Program) -> impl Iterator<Item = BindingId> + '_ {
-        program
-            .modules
-            .iter()
-            .flat_map(|module| &module.items)
-            .filter_map(|item| match &item.kind {
-                ItemKind::Impl(_, _, _, methods) => Some(methods),
-                _ => None,
-            })
-            .flatten()
-            .map(|method| method.binding)
     }
 
     fn item_count(program: &Program) -> usize {
@@ -397,6 +381,7 @@ mod tests {
     use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleId};
     use crate::expand::Program;
     use crate::modules::ModuleSources;
+    use crate::types::check_order::CheckOrder;
     use crate::types::{TypedProgram, TypedSource};
 
     struct CallGraph {
@@ -717,7 +702,7 @@ mod tests {
         }
 
         fn impl_method_position(&self) -> usize {
-            let method = DefinitionGraph::impl_methods(self.source.program())
+            let method = CheckOrder::impl_methods(self.source.program())
                 .find(|method| self.source.program().bindings.get(*method).name() == "probe")
                 .expect("the source implements probe");
             self.component_holding(method)

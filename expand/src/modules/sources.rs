@@ -108,7 +108,13 @@ impl ModuleSources {
     ];
     // A 28th entry in `PRELUDE_FILES` stops LLVM from unrolling its scan, which costs every
     // command thousands of instructions, so the tool modules live in their own list.
-    const TOOL_FILES: [(&str, &str); 1] = [(Self::LINT, include_str!("../../prelude/lint.knv"))];
+    const TOOL_FILES: [(&str, &str); 2] = [
+        (Self::LINT, include_str!("../../prelude/lint.knv")),
+        (
+            "prelude/internal/links",
+            include_str!("../../prelude/internal/links.knv"),
+        ),
+    ];
 
     pub fn new(root: PathBuf, display_root: PathBuf) -> Self {
         Self {

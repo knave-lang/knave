@@ -8,6 +8,7 @@ use std::time::Duration;
 use rustc_hash::FxHashMap;
 
 use super::fixture_queue::FixtureQueue;
+use super::left_out_fixtures::LeftOutFixtures;
 
 pub struct FixtureReports {
     reports: FxHashMap<PathBuf, String>,
@@ -21,7 +22,11 @@ impl FixtureReports {
         paths: Vec<PathBuf>,
         report: impl Fn(&Path) -> String + Send + Sync + 'static,
     ) -> Self {
-        Self::compute_within(Self::FIXTURE_DEADLINE, paths, report)
+        Self::compute_within(
+            Self::FIXTURE_DEADLINE,
+            LeftOutFixtures::from_environment().kept(paths),
+            report,
+        )
     }
 
     pub fn compute_within(
@@ -39,6 +44,10 @@ impl FixtureReports {
         Self {
             reports: queue.finished_reports(deadline),
         }
+    }
+
+    pub fn ran(&self, path: &Path) -> bool {
+        self.reports.contains_key(path)
     }
 
     pub fn report(&self, path: &Path) -> &str {

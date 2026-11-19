@@ -2673,7 +2673,7 @@ fn doc_prints_the_header_that_documents_a_prelude_term() {
     let doc = sandbox.compiler(&["doc", "str"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        "(str part ...)\n\nBuilds a [string] from its parts.\n\nA string literal part is literal text, and any other part prints with\n[display]. `(str x)` emits `x.to_string()`, and `str` as a value is that\none-part function, so `(map (iter years) str)` turns each year into a\n`string`.\n\n(str \"year \" 2026)\n=> \"year 2026\"\n\n(collect (map (iter (vec 1 2)) str))\n=> (vec (str 1) (str 2))\n"
+        "(str part ...)\n\nBuilds a [string] from its parts.\n\nA string literal part is literal text, and any other part prints with\n[display]. `(str x)` emits `x.to_string()`, and `str` as a value is that\none-part function, so `(map (iter years) str)` turns each year into a\n`string`.\n\n(str \"year \" 2026)\n=> \"year 2026\"\n\n(-> (vec 1 2) iter (map str) collect)\n=> (vec (str 1) (str 2))\n"
     );
 }
 
@@ -4000,7 +4000,7 @@ fn doc_types_prints_the_type_of_a_prelude_function() {
     let sandbox = Sandbox::new("doc_types_prelude");
     assert_eq!(
         sandbox.typed_page(&["sum"]),
-        "(type sum (where ((n number)) (fn ((iterator n)) n)))\n\n(defn sum (values))\n\nAdds the items of an iterator from left to right.\n\nAn empty iterator gives 0. An overflow panics in a debug build, as `+`\ndoes. A vector passes and yields copies of its numbers. `(iter items)` is an\nerror, as its items are borrows, and so is a map.\n\n(sum (vec 1 2 3))\n=> 6\n\n(sum (range 0 0))\n=> 0\n"
+        "(type sum (where ((n number)) (fn ((iterator n)) n)))\n\n(defn sum (values))\n\nAdds the items of an iterator from left to right.\n\nAn empty iterator gives 0. An overflow panics in a debug build, as `+`\ndoes. A vector passes and yields copies of its numbers. `(iter items)` is an\nerror, as its items are borrows, and so is a map.\n\n(sum (vec 1 2 3))\n=> 6\n\n(-> (range 0 0) sum)\n=> 0\n"
     );
 }
 

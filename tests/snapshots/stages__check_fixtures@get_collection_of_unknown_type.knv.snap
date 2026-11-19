@@ -9,5 +9,5 @@ error[L0401]: mismatched types
 5 |   (prn (score-of (ref scores) "ada")))
   |                  ^^^^^^^^^^^^ expected `(vec _)`, found `(sorted-map string _)`
   |
-  = help: `get` reads a collection of unknown type as a vector or a slice, so write a `type` signature for `score-of`, such as `(type score-of (fn ((ref (sorted-map string _)) _) _))`
+  = help: a lookup reads a collection of unknown type as a vector or a slice, so write a `type` signature for `score-of`, such as `(type score-of (fn ((ref (sorted-map string _)) _) _))`
   = note: run `knave doc L0401` for an explanation

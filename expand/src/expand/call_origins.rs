@@ -1,7 +1,3 @@
-use std::rc::Rc;
-
-use rustc_hash::FxHashMap;
-
 use super::macro_call_lookup::MacroCallLookup;
 use super::macro_origin::MacroOrigin;
 use super::own_call_origins::OwnCallOrigins;
@@ -13,8 +9,6 @@ pub struct CallOrigins {
     #[serde(skip)]
     saved: SavedCallOrigins,
     own: OwnCallOrigins,
-    #[serde(skip)]
-    later_expansions: FxHashMap<Span, Rc<str>>,
 }
 
 impl CallOrigins {
@@ -22,21 +16,11 @@ impl CallOrigins {
         Self {
             saved,
             own: OwnCallOrigins::default(),
-            later_expansions: FxHashMap::default(),
         }
     }
 
     pub fn record(&mut self, call_site: Span, origin: MacroOrigin) {
-        if self.own.holds(call_site) {
-            self.later_expansions
-                .insert(call_site, Rc::clone(&origin.name));
-        }
         self.own.record(call_site, origin);
-    }
-
-    pub fn last_expanded_at(&self, call_site: Span) -> Option<Rc<str>> {
-        let later = self.later_expansions.get(&call_site).cloned();
-        later.or_else(|| Some(self.own.at(call_site)?.name))
     }
 
     pub fn into_own(self) -> OwnCallOrigins {

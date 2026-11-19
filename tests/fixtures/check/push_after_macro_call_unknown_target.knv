@@ -1,0 +1,10 @@
+(defmacro grow! (target)
+  (template (do
+              (when true (println "x"))
+              (push-at! (unquote target) 1))))
+
+(defn add-one! (items) (grow! items))
+
+(defn main ()
+  (local text (str "a"))
+  (add-one! (mut text)))

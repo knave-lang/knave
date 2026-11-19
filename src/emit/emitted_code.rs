@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
+use super::operator::RustText;
 use super::runtime_part::RuntimePart;
-use super::string_literals::StringLiterals;
 
 pub struct EmittedCode<'a> {
     text: &'a str,
@@ -33,10 +33,8 @@ impl<'a> EmittedCode<'a> {
         self.text.contains(marker)
     }
 
-    pub fn contains_outside_strings(&self, marker: &str) -> bool {
-        StringLiterals::code_spans(self.text)
-            .iter()
-            .any(|code| code.contains(marker))
+    pub fn contains_outside_literals(&self, marker: &str) -> bool {
+        RustText::new(self.text).contains_outside_literals(marker)
     }
 
     pub fn contains_unprefixed(&self, marker: &str) -> bool {

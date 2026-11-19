@@ -4,11 +4,11 @@ use super::emitted_code::EmittedCode;
 use super::runtime_part::RuntimePart;
 
 pub struct ScannedPart {
-    pub part: RuntimePart,
-    pub markers: &'static [&'static str],
-    pub companion: Option<RuntimePart>,
-    pub bringers: &'static [RuntimePart],
-    pub search: MarkerSearch,
+    part: RuntimePart,
+    markers: &'static [&'static str],
+    companion: Option<RuntimePart>,
+    bringers: &'static [RuntimePart],
+    search: MarkerSearch,
 }
 
 impl ScannedPart {
@@ -19,12 +19,6 @@ impl ScannedPart {
         "eprint!(",
         "eprintln!(",
         "std::io::stderr(",
-    ];
-    const DURATION_COUNTS: &'static [RuntimePart] = &[
-        RuntimePart::Seconds,
-        RuntimePart::Millis,
-        RuntimePart::Micros,
-        RuntimePart::Nanos,
     ];
     pub const ALL: [ScannedPart; 5] = [
         ScannedPart {
@@ -59,8 +53,8 @@ impl ScannedPart {
             part: RuntimePart::ShowDuration,
             markers: &["std::time::Duration", "std::time::Instant"],
             companion: Some(RuntimePart::Show),
-            bringers: Self::DURATION_COUNTS,
-            search: MarkerSearch::OutsideStrings,
+            bringers: &[RuntimePart::DurationCount],
+            search: MarkerSearch::OutsideLiterals,
         },
     ];
 
@@ -88,10 +82,10 @@ impl ScannedPart {
     }
 }
 
-pub enum MarkerSearch {
+enum MarkerSearch {
     Anywhere,
     Unprefixed,
-    OutsideStrings,
+    OutsideLiterals,
 }
 
 impl MarkerSearch {
@@ -99,7 +93,7 @@ impl MarkerSearch {
         match self {
             MarkerSearch::Anywhere => code.contains(marker),
             MarkerSearch::Unprefixed => code.contains_unprefixed(marker),
-            MarkerSearch::OutsideStrings => code.contains_outside_strings(marker),
+            MarkerSearch::OutsideLiterals => code.contains_outside_literals(marker),
         }
     }
 }

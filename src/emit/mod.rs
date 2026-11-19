@@ -52,7 +52,6 @@ mod signature_borrows;
 mod store_sites;
 mod stored_arguments;
 mod stored_functions;
-mod string_literals;
 mod structural_impls;
 mod substitution;
 mod template;

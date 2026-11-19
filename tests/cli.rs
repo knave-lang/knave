@@ -8520,6 +8520,25 @@ fn upgrade_keeps_a_workflow_the_user_changed() {
 }
 
 #[test]
+fn upgrade_keeps_a_current_workflow_the_user_changed_and_shows_only_their_changes() {
+    let sandbox = Sandbox::new("upgrade_changed_current_workflow");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let workflow = format!("demo-app/{WORKFLOW_FILE}");
+    let changed = format!(
+        "{}      - name: Document\n        run: knave doc\n",
+        sandbox.contents(&workflow)
+    );
+    let sandbox = sandbox.with_file(&workflow, &changed);
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    insta::assert_snapshot!(Sandbox::without_version(
+        &upgrade.assert_exit_code(0).stderr()
+    ));
+    assert_eq!(sandbox.contents(&workflow), changed);
+}
+
+#[test]
 fn upgrade_writes_no_skill_into_a_project_made_without_one() {
     let sandbox = Sandbox::with_released_project("upgrade_without_skill", &["--skip-agent-skill"]);
     sandbox

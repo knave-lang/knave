@@ -1,6 +1,6 @@
 mod labeled_variant;
 mod open_collections;
-pub(super) use open_collections::{OpenCollections, OpenSetAt};
+pub(super) use open_collections::OpenCollections;
 mod shared_variables;
 mod short_pattern;
 mod variant_target;
@@ -15,7 +15,7 @@ use super::checker::{TypeChecker, VariantArmReference};
 use super::collection::{Collection, CollectionKind};
 use super::enums::VariantPayload;
 use super::expectation::Expectation;
-use super::parameter_call_labels::ParameterCallRequest;
+use super::parameter_call_request::ParameterCallRequest;
 use super::pending::{DecidedBorrows, PendingBorrow};
 use super::positional_read::PositionalRead;
 use super::problems::{MismatchContext, TypeProblems};
@@ -1687,11 +1687,11 @@ impl TypeChecker {
     }
 
     fn record_conversion(&mut self, conversion: TryConversion) {
-        let known = self.conversions.iter().any(|known| {
+        let known = self.deferred.conversions.iter().any(|known| {
             known.enum_binding == conversion.enum_binding && known.error == conversion.payload
         });
         if !known {
-            self.conversions.push(TypedConversion {
+            self.deferred.conversions.push(TypedConversion {
                 enum_binding: conversion.enum_binding,
                 variant: conversion.variant,
                 error: conversion.payload,
@@ -2041,7 +2041,7 @@ impl TypeChecker {
                 .map_err(|diagnostic| {
                     self.explain_assumed_collection(call, position, &value.ty, diagnostic)
                 })?;
-            self.pending_mode_checks.push(PendingModeCheck {
+            self.deferred.mode_checks.push(PendingModeCheck {
                 callee: call,
                 position,
                 kind: *kind,
@@ -2166,7 +2166,7 @@ impl TypeChecker {
         diagnostic: &Diagnostic,
     ) {
         if self.function_type_comes_from_call(callee, position, found, diagnostic) {
-            self.parameter_call_requests.push(ParameterCallRequest {
+            self.deferred.label_requests.push(ParameterCallRequest {
                 callee,
                 position,
                 argument: diagnostic.primary().span(),
@@ -2311,12 +2311,12 @@ impl TypeChecker {
     }
 
     fn defer_borrow(&mut self, var: TypeVar, argument: &Type, span: Span) -> Borrow {
-        self.pending_borrows.push(PendingBorrow {
+        self.deferred.borrows.push(PendingBorrow {
             var,
             argument: argument.clone(),
             span,
         });
-        Borrow::Pending(self.pending_borrows.len() - 1)
+        Borrow::Pending(self.deferred.borrows.len() - 1)
     }
 
     fn referent_unknown(&self, argument: &Type) -> bool {
@@ -2327,7 +2327,7 @@ impl TypeChecker {
     }
 
     pub(super) fn decide_pending_borrows(&mut self) -> DecidedBorrows {
-        let pending = std::mem::take(&mut self.pending_borrows);
+        let pending = std::mem::take(&mut self.deferred.borrows);
         let mut decided = FxHashMap::default();
         for (id, pending) in pending.iter().enumerate() {
             let borrow = self.decide_borrow(pending).unwrap_or_else(|diagnostic| {

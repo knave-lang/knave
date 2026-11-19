@@ -10,6 +10,6 @@ src/ownership/kinds.rs::ClosureKinds 21
 
 src/ownership/moves.rs::MoveChecker 18
 
-src/types/checker.rs::TypeChecker 56
+src/types/checker.rs::TypeChecker 50
 
 src/types/typed.rs::TypedProgram 26

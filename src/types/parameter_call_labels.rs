@@ -1,22 +1,9 @@
 use super::checker::TypeChecker;
+use super::parameter_call_request::ParameterCallRequest;
 use super::parameter_call_search::CalledParameters;
 use super::problems::TypeProblems;
-use crate::core::{BindingId, CoreModule};
-use crate::diagnostic::{Diagnostic, DiagnosticCode};
-use crate::source::Span;
-
-pub(super) struct ParameterCallRequest {
-    pub callee: BindingId,
-    pub position: usize,
-    pub argument: Span,
-}
-
-impl ParameterCallRequest {
-    fn explains(&self, diagnostic: &Diagnostic) -> bool {
-        diagnostic.code() == Some(&DiagnosticCode::MISMATCHED_TYPES)
-            && diagnostic.primary().span() == self.argument
-    }
-}
+use crate::core::CoreModule;
+use crate::diagnostic::Diagnostic;
 
 struct ParameterCallLabels<'m> {
     calls: CalledParameters<'m>,
@@ -24,10 +11,10 @@ struct ParameterCallLabels<'m> {
 
 impl TypeChecker {
     pub(super) fn label_parameter_calls(&mut self, modules: &[CoreModule]) {
-        if self.parameter_call_requests.is_empty() {
+        if self.deferred.label_requests.is_empty() {
             return;
         }
-        let requests = std::mem::take(&mut self.parameter_call_requests);
+        let requests = std::mem::take(&mut self.deferred.label_requests);
         let diagnostics = std::mem::take(&mut self.diagnostics);
         let labels = ParameterCallLabels {
             calls: self.called_parameters(modules),

@@ -15,6 +15,7 @@ use super::declarations::Declarations;
 use super::declared_generics::DeclaredGenerics;
 use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
+use super::deferred_decisions::DeferredDecisions;
 use super::definition_outcomes::DefinitionOutcomes;
 use super::derivable_traits::DerivableTraits;
 use super::derive_blockers::DeriveBlockers;
@@ -39,17 +40,16 @@ use super::method_receivers::MethodReceivers;
 use super::missing_trait::MissingTrait;
 use super::missing_trait_explanation::MissingTraitExplanation;
 use super::opaque_positions::OpaquePositions;
-use super::parameter_call_labels::ParameterCallRequest;
 use super::parameter_call_search::CalledParameters;
 use super::parameter_modes::ParameterModes;
 use super::parameter_names::ParameterNames;
 use super::peeling::ReferencePeeling;
-use super::pending::PendingBorrow;
 use super::pinning::LiteralDefaults;
 use super::place_types::PlaceTypes;
 use super::prelude_types::PreludeTypes;
 use super::problems::{MismatchContext, TypeProblems};
 use super::reached_traits::{ReachedDeclaration, ReachedTraits};
+use super::reopened_parameter::ReopenedParameter;
 use super::rust_type_item::RustTypeItem;
 use super::selection::Selection;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
@@ -62,8 +62,7 @@ use super::user_trait::UserTrait;
 use super::variant_payloads::VariantPayloads;
 use super::wrapper::FunctionValueWrapper;
 use super::{
-    LoweredRows, PendingModeCheck, RustTrait, TemplateBorrows, TypedConversion, TypedDefinition,
-    TypedExpr, TypedExprKind, TypedLeaf,
+    LoweredRows, RustTrait, TemplateBorrows, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf,
 };
 use crate::core::{
     BindingArena, BindingId, BodyItem, CopyTrait, CoreModule, DefinitionForm, Expr, ExprKind, Item,
@@ -74,12 +73,6 @@ use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::{MacroCallLookup, PendingDefinitions};
 use crate::modules::ModuleSources;
 use crate::source::Span;
-
-struct ReopenedParameter {
-    variable: Type,
-    pinned: Type,
-    span: Span,
-}
 
 #[derive(Clone, Copy)]
 pub(super) enum ObligationPass {
@@ -114,9 +107,7 @@ pub struct TypeChecker {
     monomorphic: Vec<Type>,
     pub(super) implied_bounds: ImpliedBounds,
     pub(super) single_field_readers: FxHashMap<BindingId, Rc<str>>,
-    pub(super) pending_borrows: Vec<PendingBorrow>,
-    pub(super) open_set_ats: Vec<super::infer::OpenSetAt>,
-    pub(super) unsettled_collections: Vec<(Type, Span)>,
+    pub(super) deferred: DeferredDecisions,
     pub(super) vector_bases: FxHashSet<Span>,
     pub(super) template_borrows: TemplateBorrows,
     template_clauses: TemplateClauses,
@@ -130,17 +121,13 @@ pub struct TypeChecker {
     copy_trait: Option<BindingId>,
     pub(super) structural_uses: super::structural_uses::StructuralUses,
     pub(super) reported_path_clashes: FxHashSet<super::structural_uses::StructuralUse>,
-    pub(super) parameter_call_requests: Vec<ParameterCallRequest>,
-    pub(super) pending_mode_checks: Vec<PendingModeCheck>,
     impl_methods: FxHashSet<BindingId>,
-    pub(super) conversions: Vec<TypedConversion>,
     pub(super) synthetic_bindings: FxHashSet<BindingId>,
     pub(super) pinned: FxHashMap<BindingId, Type>,
     pub(super) literal_defaults: LiteralDefaults,
     pub(super) assumed_collections: AssumedCollections,
     default_literal_parameters: bool,
     pub(super) recursive_group: Vec<BindingId>,
-    reopened_parameters: Vec<ReopenedParameter>,
     pub(super) reported_unknown_try_groups: FxHashSet<BindingId>,
     pub(super) string_view: Option<BindingId>,
     pub(super) checking: super::typed::CheckWork,
@@ -181,9 +168,7 @@ impl TypeChecker {
             monomorphic: Vec::new(),
             implied_bounds: ImpliedBounds::default(),
             single_field_readers: FxHashMap::default(),
-            pending_borrows: Vec::new(),
-            open_set_ats: Vec::new(),
-            unsettled_collections: Vec::new(),
+            deferred: DeferredDecisions::default(),
             vector_bases: FxHashSet::default(),
             template_borrows: TemplateBorrows::default(),
             template_clauses: TemplateClauses::default(),
@@ -197,17 +182,13 @@ impl TypeChecker {
             copy_trait: None,
             structural_uses: super::structural_uses::StructuralUses::default(),
             reported_path_clashes: FxHashSet::default(),
-            parameter_call_requests: Vec::new(),
-            pending_mode_checks: Vec::new(),
             impl_methods: FxHashSet::default(),
-            conversions: Vec::new(),
             synthetic_bindings: FxHashSet::default(),
             pinned: FxHashMap::default(),
             literal_defaults: LiteralDefaults::default(),
             assumed_collections: AssumedCollections::default(),
             default_literal_parameters: false,
             recursive_group: Vec::new(),
-            reopened_parameters: Vec::new(),
             reported_unknown_try_groups: FxHashSet::default(),
             string_view: None,
             checking: super::typed::CheckWork::default(),
@@ -1070,7 +1051,7 @@ impl TypeChecker {
             return pinned;
         }
         let variable = self.unifier.fresh();
-        self.reopened_parameters.push(ReopenedParameter {
+        self.deferred.reopened_parameters.push(ReopenedParameter {
             variable: variable.clone(),
             pinned,
             span,
@@ -1079,7 +1060,7 @@ impl TypeChecker {
     }
 
     fn close_reopened_parameters(&mut self) {
-        for reopened in std::mem::take(&mut self.reopened_parameters) {
+        for reopened in std::mem::take(&mut self.deferred.reopened_parameters) {
             if let Some(pinned) = self.pinned_part_left_open(&reopened) {
                 let closed = self
                     .unifier
@@ -1853,13 +1834,13 @@ impl TypeChecker {
             declarations: self.declarations,
             structural_uses: self.structural_uses,
             associated_generics: generics.associated_types,
-            conversions: self.conversions,
+            conversions: self.deferred.conversions,
             synthetic_bindings: self.synthetic_bindings,
             generics: generics.params,
             implied_bounds: self.implied_bounds.into_bounds(),
             template_borrows: self.template_borrows,
             template_clauses: self.template_clauses,
-            pending_mode_checks: self.pending_mode_checks,
+            pending_mode_checks: self.deferred.mode_checks,
             parameter_modes: ParameterModes::default(),
             stored_function_parameters: FxHashSet::default(),
             escaping_lambdas: FxHashSet::default(),

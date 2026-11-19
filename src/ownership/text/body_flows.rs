@@ -88,7 +88,7 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         if !matches!(callee.kind, TypedExprKind::Leaf(_)) {
             self.value(callee);
         }
-        CallFlows::new(&mut self.context, expr).value(callee, &values)
+        CallFlows::new(&mut self.context, expr, &values).value(callee)
     }
 
     fn result_type(&self) -> Option<Type> {

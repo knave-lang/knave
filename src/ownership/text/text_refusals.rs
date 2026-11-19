@@ -38,7 +38,7 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
     fn refuses(&self, flow: &Flow) -> bool {
         let target = self.classes.class(flow.target);
         let arriving = self.facts.arriving(flow);
-        let lends = flow.transfer == Transfer::Refer && self.classes.is_variable(target);
+        let lends = flow.transfer.lends() && self.classes.is_variable(target);
         self.need_refuses(flow, target)
             || !lends
                 && !self.reported_upstream(flow)
@@ -86,6 +86,24 @@ mod tests {
             .flow((Flows::PARAMETER, Flows::variable()), Transfer::Refer, 7)
             .required(Flows::variable(), Need::OwnedOrMixed);
         assert_eq!(flows.refused_at(), vec![7]);
+    }
+
+    #[test]
+    fn a_clone_lent_owned_text_by_a_read_only_parameter_is_refused() {
+        let flows = Flows::default()
+            .text(ReachingText::OWNED, (Flows::PARAMETER, 3))
+            .flow((Flows::PARAMETER, Flows::variable()), Transfer::Lend, 7)
+            .required(Flows::variable(), Need::OwnedOrMixed);
+        assert_eq!(flows.refused_at(), vec![7]);
+    }
+
+    #[test]
+    fn a_clone_lent_an_owned_local_is_not_refused() {
+        let flows = Flows::default()
+            .text(ReachingText::OWNED, (Flows::LOCAL, 3))
+            .flow((Flows::LOCAL, Flows::variable()), Transfer::Lend, 7)
+            .required(Flows::variable(), Need::OwnedOrMixed);
+        assert!(flows.refused_at().is_empty());
     }
 
     #[test]

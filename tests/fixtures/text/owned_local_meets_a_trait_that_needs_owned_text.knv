@@ -1,0 +1,9 @@
+(trait label
+  (label (fn ((ref self)) string)))
+
+(impl label string
+  (label (text) (str text)))
+
+(defn main ()
+  (local name (str "Ada" 1))
+  (println (label name)))

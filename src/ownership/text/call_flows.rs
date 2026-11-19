@@ -109,7 +109,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         }
         self.pour(
             &variable,
-            &value.clone().transferred(Transfer::through(access)),
+            &value.clone().transferred(Transfer::lending(access)),
         );
     }
 

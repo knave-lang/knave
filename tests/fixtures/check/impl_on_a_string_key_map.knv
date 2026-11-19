@@ -1,0 +1,7 @@
+(deftrait looker
+  (look (fn ((ref self)) bool)))
+
+(impl looker (hash-map string i64)
+  (look (self) (some? (get self "pear"))))
+
+(defn main () (println 1))

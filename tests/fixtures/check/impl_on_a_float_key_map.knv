@@ -1,0 +1,7 @@
+(deftrait looker
+  (look (fn ((ref self)) bool)))
+
+(impl looker (hash-map f64 i64)
+  (look (self) (some? (get self 1.5))))
+
+(defn main () (println 1))

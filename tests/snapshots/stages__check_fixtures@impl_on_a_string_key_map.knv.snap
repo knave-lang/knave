@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/impl_on_a_string_key_map.knv
+---
+(type main (fn () unit))

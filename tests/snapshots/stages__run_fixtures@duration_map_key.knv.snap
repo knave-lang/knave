@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/duration_map_key.knv
+---
+(some "a")
+(some 2)
+(sorted-map (millis 5) 2 (seconds 2) 1)

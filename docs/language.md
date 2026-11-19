@@ -290,7 +290,7 @@ Time uses Rust's `std::time` through the prelude. A `duration` is a value built 
 - `(sleep d)` emits `std::thread::sleep(d)`.
 - `(now)` emits `std::time::Instant::now()`.
 - `(elapsed start)` returns the `duration` since `start` and emits `start.elapsed()`.
-- Durations and instants implement `copy`, `partial-eq`, `eq`, `partial-ord`, `ord`, `hash` and `debug`, so `(>= (elapsed start) (millis 5))` compares two durations. They implement no arithmetic.
+- Durations and instants implement `copy`, `partial-eq`, `eq`, `partial-ord`, `ord`, `hash`, `borrow` and `debug`, so `(>= (elapsed start) (millis 5))` compares two durations and either type works as a map key. They implement no arithmetic.
 - A duration prints with `show` as the call that builds it, in its largest whole unit: `(prn (millis 2000))` prints `(seconds 2)`.
 - An instant has no source that rebuilds it, so it does not implement `show`.
 - Neither type implements `display`, because Rust's types do not.

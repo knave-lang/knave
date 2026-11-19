@@ -1,39 +1,30 @@
-use rustc_hash::FxHashMap;
-
-use super::flow_graph::FlowGraph;
+use super::flow::Flow;
 use super::listed_section::ListedSection;
 use super::listed_slot::ListedSlot;
-use super::node_id::NodeId;
-use super::representation::Representation;
-use super::slot::Slot;
 use super::slot_listing::SlotListing;
+use super::text_decision_table::TextDecisionTable;
 use super::text_program::TextProgram;
-use super::text_solver::TextSolver;
 use crate::source::{SourceMap, Span};
 
 pub struct TextReport<'r, 'p> {
     program: &'r TextProgram<'p>,
-    solver: &'r TextSolver<'r>,
-    nodes: FxHashMap<&'r Slot, NodeId>,
+    table: &'r TextDecisionTable<'r>,
+    refused: Vec<Span>,
 }
 
 impl<'r, 'p> TextReport<'r, 'p> {
     pub fn new(
         program: &'r TextProgram<'p>,
-        graph: &'r FlowGraph,
-        solver: &'r TextSolver<'r>,
+        table: &'r TextDecisionTable<'r>,
+        refusals: &[&Flow],
     ) -> Self {
-        let nodes = graph
-            .partition()
-            .classes()
-            .into_values()
-            .flatten()
-            .map(|node| (graph.slot(node), node))
-            .collect();
+        let mut refused: Vec<Span> = refusals.iter().map(|flow| flow.span).collect();
+        refused.sort_by_key(|span| (span.source().index(), span.range().start));
+        refused.dedup();
         Self {
             program,
-            solver,
-            nodes,
+            table,
+            refused,
         }
     }
 
@@ -59,7 +50,7 @@ impl<'r, 'p> TextReport<'r, 'p> {
     }
 
     fn line(&self, listed: &ListedSlot) -> String {
-        let decided = self.decided(&listed.slot);
+        let decided = self.table.of_slot(&listed.slot);
         let label = listed.slot.label(self.program.names());
         if decided == listed.written {
             format!("{label}: {decided}")
@@ -68,26 +59,11 @@ impl<'r, 'p> TextReport<'r, 'p> {
         }
     }
 
-    fn decided(&self, slot: &Slot) -> Representation {
-        match self.nodes.get(slot) {
-            Some(node) => self.solver.representation(self.solver.class(*node)),
-            None if slot.is_stored_place() => Representation::Owned,
-            None => Representation::View,
-        }
-    }
-
     fn refusals(&self, sources: &SourceMap) -> String {
-        let mut spans: Vec<Span> = self
-            .solver
-            .refusals()
-            .into_iter()
-            .map(|flow| flow.span)
-            .collect();
-        spans.sort_by_key(|span| (span.source().index(), span.range().start));
-        spans.dedup();
-        let lines: String = spans
-            .into_iter()
-            .map(|span| format!("  {}\n", sources.start_position(span)))
+        let lines: String = self
+            .refused
+            .iter()
+            .map(|span| format!("  {}\n", sources.start_position(*span)))
             .collect();
         if lines.is_empty() {
             String::new()

@@ -1,0 +1,7 @@
+(defstruct tag
+  :label (ref string))
+
+(defn main ()
+  (local names (vec (str "a" 1)))
+  (local picked (->tag :label (at names 0)))
+  (println (:label picked)))

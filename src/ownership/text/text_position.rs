@@ -10,6 +10,12 @@ pub struct TextPosition {
     pub written: Representation,
 }
 
+impl TextPosition {
+    pub fn is_written_reference(&self) -> bool {
+        matches!(self.written, Representation::View | Representation::Lent)
+    }
+}
+
 pub struct TextPositions {
     found: Vec<TextPosition>,
 }
@@ -83,6 +89,16 @@ mod tests {
         let positions = TextPositions::of(&option);
         assert_eq!(positions[0].written, Representation::Lent);
         assert_eq!(positions[0].path, TypePath::default().child(0));
+    }
+
+    #[test]
+    fn views_and_lent_text_are_written_references() {
+        let lent = TextPositions::of(&Type::shared(Types::text(PrimitiveType::String)));
+        let view = TextPositions::of(&Type::str_ref());
+        let owned = TextPositions::of(&Types::text(PrimitiveType::String));
+        assert!(lent[0].is_written_reference());
+        assert!(view[0].is_written_reference());
+        assert!(!owned[0].is_written_reference());
     }
 
     #[test]

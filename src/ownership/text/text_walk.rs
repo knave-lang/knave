@@ -1,11 +1,10 @@
 use super::body_flows::BodyFlows;
 use super::flow_graph::FlowGraph;
 use super::need::Need;
-use super::representation::Representation;
 use super::slot::Slot;
 use super::slot_listing::SlotListing;
 use super::slot_owner::SlotOwner;
-use super::text_position::TextPositions;
+use super::text_position::{TextPosition, TextPositions};
 use super::text_program::TextProgram;
 use super::walk_context::WalkContext;
 use crate::core::BindingId;
@@ -60,7 +59,7 @@ impl<'w, 'p> TextWalk<'w, 'p> {
     fn keep_written_view(&mut self, field: &SlotOwner, ty: &Type) {
         let views = TextPositions::of(ty)
             .into_iter()
-            .filter(|position| position.written == Representation::View);
+            .filter(TextPosition::is_written_reference);
         for position in views {
             self.graph
                 .require(Slot::new(field.clone(), position.path), Need::View);

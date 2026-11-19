@@ -24,9 +24,10 @@ The workflow holds no version. Its first step reads `:knave` from `project.knv`,
 ```yaml
 - name: Read the Knave version from project.knv
   run: |
-    version=$(grep -o ':knave "[^"]*"' project.knv | cut -d '"' -f 2)
-    test -n "$version" || { echo "::error file=project.knv::project.knv records no :knave version"; exit 1; }
-    echo "KNAVE_VERSION=$version" >> "$GITHUB_ENV"
+    versions=$(grep -v '^[[:space:]]*;' project.knv | grep -o ':knave "[^"]*".*' | cut -d '"' -f 2 || true)
+    test -n "$versions" || { echo "::error file=project.knv::project.knv records no :knave version"; exit 1; }
+    test "$(echo "$versions" | wc -l)" -eq 1 || { echo "::error file=project.knv::project.knv records more than one :knave version"; exit 1; }
+    echo "KNAVE_VERSION=$versions" >> "$GITHUB_ENV"
 ```
 
 `knave upgrade` records the running compiler in `:knave`, then visits each owned file. A missing file stays missing. A file that holds a text some Knave release wrote, for any version, is rewritten. Any other text is the user's change: the command keeps it and prints a unified diff. The compiler embeds the earlier texts of its templates, so it tells the two cases apart with no state on the user's machine.
@@ -52,6 +53,8 @@ The project owner decided on 2026-11-18:
 - **D127.** The command is `knave upgrade`. It records the running compiler in `:knave`. It rewrites each owned file that holds a text some Knave release wrote. It keeps a changed file with a warning and a unified diff, and exits 0. It never creates a missing file, and it touches nothing else.
 - A project without `:knave` gets no version check, and `knave upgrade` adds the key.
 - A compiler older than `:knave` refuses to lower it in `knave upgrade`, with the same install help.
+- The template history holds only texts that a release wrote. `cargo xtask prepush` checks each kept text against the template at its release's tag, and takes the latest `v*` tag reachable from `HEAD` as the release a change must keep.
+- A kept file prints two diffs from the closest text a release wrote: the user's changes, then Knave's changes since.
 - `knave upgrade` takes no flag. Adding a skipped component later and a `setup-knave` action are out of scope.
 
 ## Rejected options and why

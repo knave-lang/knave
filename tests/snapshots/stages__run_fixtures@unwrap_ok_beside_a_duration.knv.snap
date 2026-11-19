@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/unwrap_ok_beside_a_duration.knv
+---
+3

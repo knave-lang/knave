@@ -1,8 +1,9 @@
+mod module_level_problems;
+
 use super::Expander;
 use super::binder_form::BinderForm;
 use super::context::DefinitionContext;
 use super::macro_call_lookup::MacroCallLookup;
-use super::problems::ExpandProblems;
 use super::rest_of_body::RestOfBody;
 use super::shape::Shape;
 use crate::core::{
@@ -13,6 +14,7 @@ use crate::diagnostic::Diagnostic;
 use crate::reader::Form;
 use crate::scope::ScopeKind;
 use crate::source::Span;
+use module_level_problems::ModuleLevelProblems;
 
 impl Expander<'_> {
     pub(super) const DEF_FORM: KernelForm = KernelForm::Definition(DefinitionForm::Def);
@@ -44,7 +46,7 @@ impl Expander<'_> {
     pub(super) fn misplaced_definition(&self, kernel: KernelForm, span: Span) -> Diagnostic {
         let origin = self.tables.macro_origins.calls.introducing_macro(span);
         let written_definer = origin.as_ref().map_or(kernel.name(), |origin| &origin.name);
-        ExpandProblems::module_level_only(written_definer, span)
+        ModuleLevelProblems::module_level_only(written_definer, kernel, span)
     }
 
     fn misplaced_def_parts(form: &Form) -> Option<(&Form, Option<&Form>)> {

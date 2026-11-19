@@ -226,6 +226,9 @@
     (where ((from integer) (to integer))
       (fn (from) to))))
 
+(mismatch-help int usize
+               "convert it with `(convert {value})`, which panics when the value does not fit")
+
 (def even-integer
   (rust "crate::rt::is_even({0})"
     (where ((n integer)) (fn (n) bool))

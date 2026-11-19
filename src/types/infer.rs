@@ -118,13 +118,16 @@ impl TypeChecker {
     fn infer(&mut self, expr: &Expr) -> Result<TypedExpr, Diagnostic> {
         self.checking.inferred_expressions += 1;
         let span = expr.span();
-        match expr.kind() {
+        let enclosing = self.inferring.replace(span);
+        let typed = match expr.kind() {
             ExprKind::Leaf(leaf) => self.infer_leaf(leaf, span),
             ExprKind::Fn(lambda) => Self::typed(self.infer_lambda(lambda, span, None), span),
             ExprKind::Call(callee, arguments) => self.infer_call(callee, arguments, span),
             ExprKind::Control(control) => self.infer_control(control, span),
             other => self.infer_nested(expr, other, span),
-        }
+        };
+        self.inferring = enclosing;
+        typed
     }
 
     fn infer_nested(
@@ -1107,7 +1110,8 @@ impl TypeChecker {
         expected: &Type,
         context: &MismatchContext,
     ) -> Result<TypedExpr, Diagnostic> {
-        match (expr.kind(), self.unifier.shallow(expected)) {
+        let enclosing = self.inferring.replace(expr.span());
+        let typed = match (expr.kind(), self.unifier.shallow(expected)) {
             (ExprKind::Fn(lambda), Type::Function(_, parameters, result))
                 if parameters.len() == lambda.params.len() =>
             {
@@ -1137,7 +1141,9 @@ impl TypeChecker {
                 self.infer_labeled_variant(*binding, fields, Some(expected), expr.span())
             }
             _ => self.infer(expr),
-        }
+        };
+        self.inferring = enclosing;
+        typed
     }
 
     fn copy_out_of_borrow(&self, value: TypedExpr, expected: &Type) -> TypedExpr {
@@ -1634,7 +1640,7 @@ impl TypeChecker {
                 let [payload] = payloads.as_slice() else {
                     return None;
                 };
-                (!self.declared_types().is_box(payload) && Self::could_unify(payload, source))
+                (!self.declarations.types().is_box(payload) && Self::could_unify(payload, source))
                     .then(|| (variant, Rc::clone(&candidate.name), payload.clone()))
             })
             .collect();

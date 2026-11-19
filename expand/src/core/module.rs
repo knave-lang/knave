@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use super::{
     BindingArena, BindingId, Expr, FieldLabel, ImplementorRow, ImplementorRows, Lambda, LintFacts,
-    ModuleId, ModulePath, ParsedTemplate, PrimitiveType, StructuralClause, TypeBinder, TypeBound,
-    TypeExpr, TypeExprKind,
+    MismatchHelp, ModuleId, ModulePath, ParsedTemplate, PrimitiveType, StructuralClause,
+    TypeBinder, TypeBound, TypeExpr, TypeExprKind,
 };
 use crate::rust_trait_path::RustTraitPath;
 use crate::source::Span;
@@ -114,6 +114,7 @@ pub enum ItemKind {
         Rc<ParsedTemplate>,
         Vec<(TypeExpr, Rc<ParsedTemplate>)>,
     ),
+    MismatchHelp(MismatchHelp),
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]

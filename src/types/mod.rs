@@ -92,6 +92,7 @@ mod lowered_payload;
 mod main_result;
 mod method_receivers;
 mod method_signature;
+mod mismatch_helps;
 mod missing_annotations;
 mod missing_trait;
 mod missing_trait_explanation;

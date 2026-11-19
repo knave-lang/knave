@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/mismatch_help_annotated_value.knv
+---
+error[L0401]: mismatched types
+ --> check/mismatch_help_annotated_value.knv:6:19
+  |
+6 |   (println (twice (the usize 3))))
+  |                   ^^^^^^^^^^^^^ expected `int`, found `usize`
+  |
+  = help: convert it with `(convert (the usize 3))`, which panics when the value does not fit
+  = note: run `knave doc L0401` for an explanation

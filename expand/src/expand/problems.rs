@@ -559,15 +559,6 @@ impl ExpandProblems {
         )
     }
 
-    pub fn module_level_only(definer: &str, span: Span) -> Diagnostic {
-        Diagnostic::error(
-            DiagnosticCode::MODULE_LEVEL_ONLY,
-            format!("`{definer}` can only appear at module level"),
-            Label::new(span, "not allowed inside an expression"),
-        )
-        .with_help("use `let` to bind a name inside a body")
-    }
-
     pub fn type_in_value_note(name: &str) -> String {
         format!(
             "`{name}` is a type; a type goes beside a name in a binding, as in \

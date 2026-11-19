@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/mismatch_help_second_row_for_a_pair.knv
+---
+error[L0468]: a `mismatch-help` already states the help for these two types
+   --> check/mismatch_help_second_row_for_a_pair.knv:1:1
+    |
+  1 |   (mismatch-help int usize "mine: {value}")
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ second help for the same types
+    |
+   ::: prelude/number.knv:229:1
+    |
+229 | / (mismatch-help int usize
+230 | |                "convert it with `(convert {value})`, which panics when the value does not fit")
+    | |_______________________________________________________________________________________________- first help
+    |
+    = help: remove one of the two
+    = note: run `knave doc L0468` for an explanation
+
+error[L0401]: mismatched types
+  --> check/mismatch_help_second_row_for_a_pair.knv:12:19
+   |
+12 |   (println (twice (byte-count "pear"))))
+   |                   ^^^^^^^^^^^^^^^^^^^ expected `int`, found `usize`
+   |
+   = help: convert it with `(convert (byte-count "pear"))`, which panics when the value does not fit
+   = note: run `knave doc L0401` for an explanation

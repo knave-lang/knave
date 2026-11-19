@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/mismatch_help_usize_as_int.knv
+---
+error[L0401]: mismatched types
+  --> check/mismatch_help_usize_as_int.knv:11:21
+   |
+11 |     (println (twice size))))
+   |                     ^^^^ expected `int`, found `usize`
+   |
+   = help: convert it with `(convert size)`, which panics when the value does not fit
+   = note: run `knave doc L0401` for an explanation

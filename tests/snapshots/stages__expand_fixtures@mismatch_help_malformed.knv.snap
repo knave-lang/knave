@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/mismatch_help_malformed.knv
+---
+error[L0210]: malformed `mismatch-help`
+ --> expand/mismatch_help_malformed.knv:1:1
+  |
+1 | (mismatch-help int usize)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^ this does not fit the shape of `mismatch-help`
+  |
+  = help: write it as `(mismatch-help expected found "help")`
+  = note: run `knave doc L0210` for an explanation

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/mismatch_help_macro_output_is_the_value.knv
+---
+error[L0401]: mismatched types
+  --> check/mismatch_help_macro_output_is_the_value.knv:13:19
+   |
+13 |   (println (twice (size-of "pear"))))
+   |                   ^^^^^^^^^^^^^^^^ expected `int`, found `usize`
+   |
+   = help: convert it with `(convert (size-of "pear"))`, which panics when the value does not fit
+   = note: run `knave doc L0401` for an explanation

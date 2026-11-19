@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/expand/mismatch_help_inside_a_body.knv
+---
+error[L0208]: `mismatch-help` can only appear at module level
+ --> expand/mismatch_help_inside_a_body.knv:2:3
+  |
+2 |   (mismatch-help u8 int "inner")
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not allowed inside an expression
+  |
+  = note: run `knave doc L0208` for an explanation

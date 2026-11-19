@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/mismatch_help_replaces_only_the_value.knv
+---
+error[L0401]: mismatched types
+ --> check/mismatch_help_replaces_only_the_value.knv:8:19
+  |
+8 |   (println (wants (the int 3))))
+  |                   ^^^^^^^^^^^ expected `u8`, found `int`
+  |
+  = help: a `{form}` literal, then (the int 3)
+  = note: run `knave doc L0401` for an explanation

@@ -2,9 +2,10 @@ use super::RustType;
 use super::boxes::BoxPlanner;
 use super::collected_enum::CollectedEnum;
 use super::collected_struct::CollectedStruct;
+use super::mismatch_helps::MismatchHelpRow;
 use super::type_declarations::TypeDeclarations;
 use crate::core::BindingId;
-use crate::diagnostic::Diagnostics;
+use crate::diagnostic::{Diagnostic, Diagnostics};
 
 pub(super) struct TypeDeclarationsBuilder<'a> {
     types: &'a mut TypeDeclarations,
@@ -40,6 +41,10 @@ impl<'a> TypeDeclarationsBuilder<'a> {
 
     pub(super) fn add_rust_type(self, binding: BindingId, rust_type: RustType) {
         self.types.rust_types.add(binding, rust_type);
+    }
+
+    pub(super) fn add_mismatch_help(self, row: MismatchHelpRow) -> Result<(), Diagnostic> {
+        self.types.mismatch_helps.add(row)
     }
 
     pub(super) fn plan_boxes(self) {

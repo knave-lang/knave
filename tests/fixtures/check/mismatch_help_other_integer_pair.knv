@@ -1,0 +1,7 @@
+(type shade (fn (u8) u8))
+
+(defn shade (level) level)
+
+(defn main ()
+  (let (level (the int 3))
+    (println (shade level))))

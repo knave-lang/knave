@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/mismatch_help_written.knv
+---
+(mismatch-help u8 int "narrow it")
+(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) 1)))

@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use super::boxed_payload::BoxedPayload;
 use super::enum_table::EnumTable;
+use super::mismatch_helps::MismatchHelps;
 use super::rust_types::RustTypeTable;
 use super::structs::StructTable;
 use super::ty::Type;
@@ -14,6 +15,7 @@ pub struct TypeDeclarations {
     pub(super) rust_types: RustTypeTable,
     pub(super) box_binding: Option<BindingId>,
     pub(super) inferred_boxes: BTreeSet<BoxedPayload>,
+    pub(super) mismatch_helps: MismatchHelps,
 }
 
 impl TypeDeclarations {

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/mismatch_help_other_integer_pair.knv
+---
+error[L0401]: mismatched types
+ --> check/mismatch_help_other_integer_pair.knv:7:21
+  |
+7 |     (println (shade level))))
+  |                     ^^^^^ expected `u8`, found `int`
+  |
+  = note: run `knave doc L0401` for an explanation

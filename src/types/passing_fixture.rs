@@ -310,6 +310,7 @@ impl PassingFixture {
             generics: declarations.generics(),
             single_field_readers: field_readers,
             copy_trait: Some(declarations.trait_named("copy")),
+            enclosing: None,
         }
     }
 }

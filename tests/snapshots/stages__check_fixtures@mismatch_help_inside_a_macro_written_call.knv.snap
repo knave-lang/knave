@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/mismatch_help_inside_a_macro_written_call.knv
+---
+error[L0401]: mismatched types
+  --> check/mismatch_help_inside_a_macro_written_call.knv:13:12
+   |
+13 |   (println (call-twice "fig")))
+   |            ^^^^^^^^^^^^^^^^^^ expected `int`, found `usize`
+   |
+   = note: run `knave doc L0401` for an explanation

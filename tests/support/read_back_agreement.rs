@@ -22,7 +22,7 @@ impl ReadBackAgreement {
         "the printer renames a repeated name with an `_N` suffix",
     ];
     const ONLY_DEF_ITEMS_ARE_READ_BACK: &str = "the read-back reads only `def` items";
-    pub const NEVER_HELD: [(&str, &str); 12] = [
+    pub const NEVER_HELD: [(&str, &str); 13] = [
         ("type", Self::ONLY_DEF_ITEMS_ARE_READ_BACK),
         ("struct", Self::ONLY_DEF_ITEMS_ARE_READ_BACK),
         ("enum", Self::ONLY_DEF_ITEMS_ARE_READ_BACK),
@@ -33,6 +33,7 @@ impl ReadBackAgreement {
         ("impl", Self::ONLY_DEF_ITEMS_ARE_READ_BACK),
         ("use", Self::ONLY_DEF_ITEMS_ARE_READ_BACK),
         ("export", Self::ONLY_DEF_ITEMS_ARE_READ_BACK),
+        ("mismatch-help", Self::ONLY_DEF_ITEMS_ARE_READ_BACK),
         (
             "macro",
             "macro code is not linted, so no `macro` reaches a read-back",

@@ -141,6 +141,7 @@ pub struct TypeChecker {
     pub(super) reported_unknown_try_groups: FxHashSet<BindingId>,
     pub(super) string_view: Option<BindingId>,
     pub(super) checking: super::typed::CheckWork,
+    pub(super) inferring: Option<Span>,
 }
 
 #[derive(Clone, Copy)]
@@ -202,6 +203,7 @@ impl TypeChecker {
             reported_unknown_try_groups: FxHashSet::default(),
             string_view: None,
             checking: super::typed::CheckWork::default(),
+            inferring: None,
         }
     }
 
@@ -298,6 +300,12 @@ impl TypeChecker {
         match &item.kind {
             ItemKind::Def(..) | ItemKind::Signature(..) | ItemKind::Derive(..) => {
                 self.collect_value_item(item)
+            }
+            ItemKind::MismatchHelp(help) => {
+                let row = self
+                    .type_collector()
+                    .collect_mismatch_help(help, item.span)?;
+                self.declarations.builder().types().add_mismatch_help(row)
             }
             _ => self.collect_type_item(module, item),
         }
@@ -656,6 +664,7 @@ impl TypeChecker {
             generics: self.generics.params(),
             single_field_readers: &self.single_field_readers,
             copy_trait: self.copy_trait,
+            enclosing: self.inferring,
         };
         (tables, &mut self.unifier, &mut self.deferred)
     }
@@ -671,6 +680,7 @@ impl TypeChecker {
             generics: self.generics.params(),
             single_field_readers: &self.single_field_readers,
             copy_trait: self.copy_trait,
+            enclosing: self.inferring,
         }
     }
 
@@ -1811,7 +1821,8 @@ impl TypeChecker {
                 | ItemKind::RustType(..)
                 | ItemKind::Trait(..)
                 | ItemKind::Impl(..)
-                | ItemKind::Derive(..) => {}
+                | ItemKind::Derive(..)
+                | ItemKind::MismatchHelp(..) => {}
             }
         }
         typed

@@ -1,0 +1,8 @@
+(mismatch-help u8 int "a `{form}` literal, then {value}")
+
+(type wants (fn (u8) u8))
+
+(defn wants (n) n)
+
+(defn main ()
+  (println (wants (the int 3))))

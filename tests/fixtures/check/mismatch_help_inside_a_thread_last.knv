@@ -1,0 +1,10 @@
+(def byte-count
+  (rust "{0}.len()"
+    (fn ((ref str)) usize)))
+
+(type add (fn (int int) int))
+
+(defn add (a b) (+ a b))
+
+(defn main ()
+  (println (->> "pear" byte-count (add 1))))

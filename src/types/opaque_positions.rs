@@ -122,7 +122,8 @@ impl<'c> OpaquePositions<'c> {
             | ItemKind::Derive(..)
             | ItemKind::RustTrait(..)
             | ItemKind::Impl(..)
-            | ItemKind::RustType(..) => Vec::new(),
+            | ItemKind::RustType(..)
+            | ItemKind::MismatchHelp(..) => Vec::new(),
         }
     }
 

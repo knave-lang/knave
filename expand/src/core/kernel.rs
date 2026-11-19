@@ -65,6 +65,7 @@ pub enum DefinitionForm {
     Impl,
     Use,
     Export,
+    MismatchHelp,
 }
 
 struct KernelFormRow {
@@ -74,7 +75,7 @@ struct KernelFormRow {
 }
 
 impl KernelForm {
-    const ROWS: [KernelFormRow; 31] = [
+    const ROWS: [KernelFormRow; 32] = [
         KernelFormRow {
             form: KernelForm::Expression(ExpressionForm::Fn),
             name: "fn",
@@ -189,6 +190,11 @@ impl KernelForm {
             form: KernelForm::Definition(DefinitionForm::RustTrait),
             name: "rust-trait",
             shape: "(rust-trait name \"Path\" (requires trait ...)? (method name type)? (help \"text\")? type ...)",
+        },
+        KernelFormRow {
+            form: KernelForm::Definition(DefinitionForm::MismatchHelp),
+            name: "mismatch-help",
+            shape: "(mismatch-help expected found \"help\")",
         },
         KernelFormRow {
             form: KernelForm::Definition(DefinitionForm::RustType),

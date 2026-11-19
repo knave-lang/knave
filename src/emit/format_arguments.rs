@@ -1,4 +1,5 @@
-use super::operator::{OpenDelimiter, RustText};
+use super::open_delimiter::OpenDelimiter;
+use super::operator::{ArgumentStart, RustText};
 use crate::core::Piece;
 
 pub(super) struct FormatArguments<'p> {
@@ -14,10 +15,25 @@ struct FormatString<'t> {
     text: &'t str,
 }
 
+struct FormatPlaceholder<'t> {
+    argument: FormatArgument<'t>,
+    spec: &'t str,
+}
+
+struct FormatPlaceholders<'t> {
+    written: std::vec::IntoIter<&'t str>,
+    next_positional: usize,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum FormatArgument<'t> {
     Positional(usize),
     Named(&'t str),
+}
+
+struct PassedArgument<'t> {
+    position: usize,
+    name: Option<&'t str>,
 }
 
 impl<'p> FormatArguments<'p> {
@@ -45,14 +61,12 @@ impl<'p> FormatArguments<'p> {
         let Some(format_macro) = FormatMacro::called_by(start.open()) else {
             return false;
         };
-        let argument = match start.name() {
-            Some(name) => FormatArgument::Named(name),
-            None => FormatArgument::Positional(format_macro.positional_index(start.open())),
-        };
         self.ends_an_argument(position)
             && format_macro
                 .format_string(start.open())
-                .is_some_and(|format_string| !format_string.points_at(argument))
+                .is_some_and(|format_string| {
+                    !format_string.points_at(&format_macro.argument_at(&start))
+                })
     }
 
     fn ends_an_argument(&self, position: usize) -> bool {
@@ -116,41 +130,80 @@ impl FormatMacro {
             .map(|text| FormatString { text })
     }
 
-    fn positional_index(&self, open: &OpenDelimiter<'_>) -> usize {
-        open.passed_arguments()
-            .saturating_sub(self.format_string + 1)
+    fn argument_at<'t>(&self, start: &ArgumentStart<'t>) -> PassedArgument<'t> {
+        let passed = start.open().passed_arguments();
+        PassedArgument {
+            position: passed.saturating_sub(self.format_string + 1),
+            name: start.name(),
+        }
     }
 }
 
 impl<'t> FormatString<'t> {
+    fn points_at(&self, argument: &PassedArgument<'_>) -> bool {
+        FormatPlaceholders::of(self.text)
+            .any(|placeholder| argument.is(placeholder.argument) && placeholder.is_pointer())
+    }
+}
+
+impl PassedArgument<'_> {
+    fn is(&self, formatted: FormatArgument<'_>) -> bool {
+        match formatted {
+            FormatArgument::Positional(position) => position == self.position,
+            FormatArgument::Named(name) => Some(name) == self.name,
+        }
+    }
+}
+
+impl FormatPlaceholder<'_> {
     const POINTER: char = 'p';
+
+    fn is_pointer(&self) -> bool {
+        self.spec.trim_end().ends_with(Self::POINTER)
+    }
+}
+
+impl<'t> FormatPlaceholders<'t> {
     const PRECISION_FROM_ARGUMENT: &'static str = ".*";
 
-    fn points_at(&self, argument: FormatArgument<'_>) -> bool {
-        let mut next_positional = 0;
-        self.placeholders().any(|placeholder| {
-            let (written, spec) = placeholder.split_once(':').unwrap_or((placeholder, ""));
-            let written = written.trim();
-            if written.is_empty() && spec.contains(Self::PRECISION_FROM_ARGUMENT) {
-                next_positional += 1;
-            }
-            let formatted = match written.parse() {
-                Ok(index) => FormatArgument::Positional(index),
-                Err(_) if written.is_empty() => {
-                    next_positional += 1;
-                    FormatArgument::Positional(next_positional - 1)
-                }
-                Err(_) => FormatArgument::Named(written),
-            };
-            formatted == argument && spec.trim_end().ends_with(Self::POINTER)
-        })
-    }
-
-    fn placeholders(&self) -> impl Iterator<Item = &'t str> {
-        self.text
+    fn of(text: &'t str) -> Self {
+        let written: Vec<&'t str> = text
             .split("{{")
             .flat_map(|part| part.split('{').skip(1))
             .filter_map(|opened| opened.split_once('}').map(|(inside, _)| inside))
+            .collect();
+        Self {
+            written: written.into_iter(),
+            next_positional: 0,
+        }
+    }
+
+    fn resolve(&mut self, written: &'t str, spec: &str) -> FormatArgument<'t> {
+        if spec.contains(Self::PRECISION_FROM_ARGUMENT) {
+            self.next_positional += 1;
+        }
+        match written.parse() {
+            Ok(index) => FormatArgument::Positional(index),
+            Err(_) if written.is_empty() => self.take_positional(),
+            Err(_) => FormatArgument::Named(written),
+        }
+    }
+
+    fn take_positional(&mut self) -> FormatArgument<'t> {
+        let argument = FormatArgument::Positional(self.next_positional);
+        self.next_positional += 1;
+        argument
+    }
+}
+
+impl<'t> Iterator for FormatPlaceholders<'t> {
+    type Item = FormatPlaceholder<'t>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let placeholder = self.written.next()?;
+        let (written, spec) = placeholder.split_once(':').unwrap_or((placeholder, ""));
+        let argument = self.resolve(written.trim(), spec);
+        Some(FormatPlaceholder { argument, spec })
     }
 }
 
@@ -187,6 +240,9 @@ mod tests {
             "println!(\"{{x}}\",x = {0})",
             "println!(\"{{:p}} {{}}\", 1, {0})",
             "println!(\"{{:.*}}\", 2, {0})",
+            "println!(\"{{{{:p}}}} {{}}\", {0})",
+            "println!(\"}}}}{{:p}} {{}}\", 1, {0})",
+            "{{ f(\"{{}}\", 1); println!(\"{{:p}} {{}}\", 1, {0}) }}",
         ] {
             assert!(FormatFixture::formats_whole(text, 0), "{text}");
         }
@@ -214,6 +270,12 @@ mod tests {
             "println!(\"{{0:p}}\", {0})",
             "println!(\"{{x:p}}\", x = {0})",
             "println!(\"{{:.*}} {{:p}}\", 2, 1.5, {0})",
+            "println!(\"{{x:.*}} {{:p}}\", 2, {0}, x = 1.5)",
+            "println!(\"{{2:.*}} {{:p}}\", 3, {0}, 1.5)",
+            "println!(\"{{:p }}\", {0})",
+            "println!(\"{{0 :p}}\", {0})",
+            "println!(\"{{ :p}}\", {0})",
+            "println!(\"{{:p}}\", x = {0})",
             "vec!(\"a\", {0})",
             "println!(\"{{}}\", {0}); f({0})",
             "{0}",

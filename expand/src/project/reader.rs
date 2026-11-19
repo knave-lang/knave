@@ -10,7 +10,7 @@ use super::release_version::ReleaseVersion;
 use super::section::Section;
 use super::vocabulary::ProjectVocabulary;
 use super::{CompilerVersion, Project};
-use crate::diagnostic::Diagnostics;
+use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::reader::Form;
 use crate::source::Span;
@@ -18,6 +18,7 @@ use crate::source::Span;
 pub struct ProjectReader<'v> {
     problems: Diagnostics,
     vocabulary: &'v ProjectVocabulary,
+    refusal: Option<Diagnostic>,
 }
 
 struct ProjectForm<'f> {
@@ -36,14 +37,23 @@ impl<'v> ProjectReader<'v> {
         Self {
             problems: Diagnostics::default(),
             vocabulary,
+            refusal: None,
         }
     }
 
     pub fn read(mut self, forms: &[Form], file: Span) -> Result<Project, Diagnostics> {
         let project = self.project(forms, file);
+        let problems = self.problems_to_report();
         match project {
-            Some(project) => self.problems.into_result(project),
-            None => Err(self.problems),
+            Some(project) => problems.into_result(project),
+            None => Err(problems),
+        }
+    }
+
+    fn problems_to_report(self) -> Diagnostics {
+        match self.refusal {
+            Some(refusal) if self.problems.has_errors() => Diagnostics::from_iter([refusal]),
+            _ => self.problems,
         }
     }
 
@@ -190,7 +200,9 @@ impl<'v> ProjectReader<'v> {
                 .push(CompilerVersionProblems::malformed_version(mismatch));
             return None;
         };
-        Some(CompilerVersion { version, span })
+        let recorded = CompilerVersion { version, span };
+        self.refusal = recorded.refusal(ReleaseVersion::running());
+        Some(recorded)
     }
 
     fn module_file(&mut self, fields: &Fields<'_>, key: &str, default_module: &str) -> PathBuf {

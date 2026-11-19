@@ -8580,6 +8580,28 @@ fn upgrade_by_a_compiler_older_than_the_project_keeps_the_project_file() {
 }
 
 #[test]
+fn a_compiler_older_than_a_project_with_an_unknown_key_reports_only_the_version() {
+    let sandbox = Sandbox::with_recorded_version("version_older_unknown_key", NEWER_VERSION)
+        .with_file(
+            "demo-app/project.knv",
+            &format!("(defproject demo-app :knave \"{NEWER_VERSION}\" :newkey \"x\")\n"),
+        );
+    for command in [["check"], ["upgrade"]] {
+        let stderr = sandbox
+            .compiler_in("demo-app", &command)
+            .assert_exit_code(1)
+            .stderr();
+        assert_eq!(
+            stderr.matches(OLDER_COMPILER_ERROR).count(),
+            1,
+            "`knave {}` printed:\n{stderr}",
+            command[0]
+        );
+        assert!(!stderr.contains("L0704"), "{stderr}");
+    }
+}
+
+#[test]
 fn a_compiler_newer_than_the_project_warns_once_per_command() {
     let sandbox = Sandbox::with_recorded_version("version_newer_compiler", FILLED_VERSION);
     for command in [["check"], ["run"], ["test"]] {

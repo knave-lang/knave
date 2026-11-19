@@ -27,6 +27,8 @@ use crate::source::{SourceId, Span};
 use crate::stack::DeepRecursion;
 
 impl Expander<'_> {
+    const USE_HEAD_PARTS: usize = 2;
+
     pub(super) fn register_module_definition(
         &mut self,
         definition: DefinitionForm,
@@ -151,7 +153,7 @@ impl Expander<'_> {
         context: &DefinitionContext,
     ) -> Result<Option<WrittenUse>, Diagnostic> {
         let shape = Shape::new(KernelForm::Definition(DefinitionForm::Use), form);
-        let items = shape.at_least(2)?;
+        let items = shape.at_least(Self::USE_HEAD_PARTS)?;
         let written =
             UnnamedPartPath::check(shape.symbol(&items[1])?.name()).map_err(|unnamed| {
                 self.local_file_diagnosis()
@@ -159,22 +161,32 @@ impl Expander<'_> {
             })?;
         let path = self.use_path(&written, items[1].span())?;
         let target = self.load_module(&path, items[1].span())?;
-        let names = self.import_names(target, &path, &items[2..], &shape, context)?;
+        let names = self.import_names(
+            target,
+            &path,
+            &items[Self::USE_HEAD_PARTS..],
+            &shape,
+            context,
+        )?;
         let introductions = self.tables.scopes.introductions();
-        let written_in_source = items[..2]
+        let written_in_source = items[..Self::USE_HEAD_PARTS]
             .iter()
             .all(|item| !introductions.carried_by_binder(item))
             && self
                 .current_module
                 .is_some_and(|module| ModuleSources::is_written(self.modules.get(module).path()));
-        let use_form = UseFormText::new(self.sources, form.span(), items[0].span());
-        let names = names.into_iter().filter(|name| use_form.holds(name.span));
-        Ok(written_in_source.then(|| WrittenUse {
-            span: form.span(),
-            module: target,
-            names: names.collect(),
-            listed: items.len() - 2,
-            provenance: Provenance::Written,
+        Ok(written_in_source.then(|| {
+            let use_form = UseFormText::new(self.sources, form.span(), items[0].span());
+            WrittenUse {
+                span: form.span(),
+                module: target,
+                names: names
+                    .into_iter()
+                    .filter(|name| use_form.holds(name.span))
+                    .collect(),
+                listed: items.len() - Self::USE_HEAD_PARTS,
+                provenance: Provenance::Written,
+            }
         }))
     }
 

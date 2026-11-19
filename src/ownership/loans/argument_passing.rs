@@ -18,6 +18,7 @@ pub struct PassedArgument {
     place: Option<LoanPlace>,
     span: Span,
     held: Holdings,
+    collapsed_layers: usize,
 }
 
 pub struct Lends {
@@ -96,6 +97,7 @@ impl PassedArgument {
             place: LoanPlace::of(&argument.value),
             span: argument.value.span,
             held,
+            collapsed_layers: argument.collapsed_shared_layers().unwrap_or_default(),
         }
     }
 }
@@ -145,7 +147,8 @@ impl Passing for Collapses {
     }
 
     fn pass(&self, argument: PassedArgument, _lender: &mut Lender<'_>) -> PassedHoldings {
-        PassedHoldings::kept(argument.held.referent())
+        let layers = 0..argument.collapsed_layers;
+        PassedHoldings::kept(layers.fold(argument.held, |held, _| held.referent()))
     }
 }
 

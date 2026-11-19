@@ -147,29 +147,43 @@ impl<'a> TokenScanner<'a> {
     const QUOTE_LENGTH: usize = 1;
 
     fn scan(text: &'a str) -> Self {
-        let mut scanner = Self::new(text);
-        let mut characters = text.char_indices().peekable();
-        while let Some((position, character)) = characters.next() {
-            scanner.read(position, character, &mut characters);
-        }
-        scanner.flush(text.len());
-        scanner
+        Self::new(text).run(&[]).0
     }
 
     fn scan_marking(text: &'a str, marks: &[usize]) -> (Self, Vec<Option<ArgumentStart<'a>>>) {
-        let mut scanner = Self {
+        Self {
             tracks_calls: true,
             ..Self::new(text)
-        };
+        }
+        .run(marks)
+    }
+
+    fn run(mut self, marks: &[usize]) -> (Self, Vec<Option<ArgumentStart<'a>>>) {
+        let text = self.text;
         let mut starts = Vec::with_capacity(marks.len());
         let mut characters = text.char_indices().peekable();
         while let Some((position, character)) = characters.next() {
-            scanner.mark_up_to(position, marks, &mut starts);
-            scanner.read(position, character, &mut characters);
+            if starts.len() < marks.len() {
+                self.mark_up_to(position, marks, &mut starts);
+            }
+            if self.consume_literal(position, character) {
+                continue;
+            }
+            if self.consume_range(position, character, &mut characters) {
+                continue;
+            }
+            if self.consume_delimiter(position, character) {
+                continue;
+            }
+            if character.is_whitespace() && self.depth == 0 {
+                self.flush(position);
+            } else {
+                self.start.get_or_insert(position);
+            }
         }
-        scanner.flush(text.len());
-        scanner.mark_up_to(text.len(), marks, &mut starts);
-        (scanner, starts)
+        self.flush(text.len());
+        self.mark_up_to(text.len(), marks, &mut starts);
+        (self, starts)
     }
 
     fn new(text: &'a str) -> Self {
@@ -183,26 +197,6 @@ impl<'a> TokenScanner<'a> {
             literal: Literal::Outside,
             literal_start: 0,
             escaped: false,
-        }
-    }
-
-    #[inline(always)]
-    fn read(
-        &mut self,
-        position: usize,
-        character: char,
-        characters: &mut std::iter::Peekable<std::str::CharIndices<'a>>,
-    ) {
-        if self.consume_literal(position, character)
-            || self.consume_range(position, character, characters)
-            || self.consume_delimiter(position, character)
-        {
-            return;
-        }
-        if character.is_whitespace() && self.depth == 0 {
-            self.flush(position);
-        } else {
-            self.start.get_or_insert(position);
         }
     }
 

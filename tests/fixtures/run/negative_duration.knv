@@ -1,3 +1,4 @@
 (defn main ()
   (let (count (- 0 3))
+    (sleep (millis 1))
     (sleep (seconds count))))

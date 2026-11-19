@@ -17,7 +17,11 @@ enum RuntimePart {
     MapSequence,
     Io,
     Exit,
-    Duration,
+    Seconds,
+    Millis,
+    Micros,
+    Nanos,
+    DurationCount,
     Source,
     Separator,
     Lines,
@@ -64,10 +68,10 @@ impl RuntimePart {
         ("StartsWith", RuntimePart::StartsWith),
         ("read_line", RuntimePart::Io),
         ("exit", RuntimePart::Exit),
-        ("seconds", RuntimePart::Duration),
-        ("millis", RuntimePart::Duration),
-        ("micros", RuntimePart::Duration),
-        ("nanos", RuntimePart::Duration),
+        ("seconds", RuntimePart::Seconds),
+        ("millis", RuntimePart::Millis),
+        ("micros", RuntimePart::Micros),
+        ("nanos", RuntimePart::Nanos),
         ("Source", RuntimePart::Source),
         ("Separator", RuntimePart::Separator),
         ("lines", RuntimePart::Lines),
@@ -113,7 +117,7 @@ impl RuntimePart {
         },
     ];
 
-    const REQUIRED: [(RuntimePart, &'static [RuntimePart]); 20] = [
+    const REQUIRED: [(RuntimePart, &'static [RuntimePart]); 24] = [
         (RuntimePart::FromLiteral, &[RuntimePart::Number]),
         (RuntimePart::FromFloatLiteral, &[RuntimePart::Number]),
         (RuntimePart::Signed, &[RuntimePart::Number]),
@@ -126,6 +130,10 @@ impl RuntimePart {
         (RuntimePart::Float, &[RuntimePart::Signed]),
         (RuntimePart::MapSequence, &[RuntimePart::Sequence]),
         (RuntimePart::Lines, &[RuntimePart::Io]),
+        (RuntimePart::Seconds, &[RuntimePart::DurationCount]),
+        (RuntimePart::Millis, &[RuntimePart::DurationCount]),
+        (RuntimePart::Micros, &[RuntimePart::DurationCount]),
+        (RuntimePart::Nanos, &[RuntimePart::DurationCount]),
         (RuntimePart::UnwrapOk, &[RuntimePart::Show]),
         (RuntimePart::UnwrapErr, &[RuntimePart::Show]),
         (RuntimePart::ExpectOk, &[RuntimePart::Show]),
@@ -266,7 +274,11 @@ impl RuntimeModule {
     const MAP_SEQUENCE: &'static str = include_str!("../../prelude/runtime/map_sequence.rs");
     const IO: &'static str = include_str!("../../prelude/runtime/io.rs");
     const EXIT: &'static str = include_str!("../../prelude/runtime/exit.rs");
-    const DURATION: &'static str = include_str!("../../prelude/runtime/duration.rs");
+    const SECONDS: &'static str = include_str!("../../prelude/runtime/seconds.rs");
+    const MILLIS: &'static str = include_str!("../../prelude/runtime/millis.rs");
+    const MICROS: &'static str = include_str!("../../prelude/runtime/micros.rs");
+    const NANOS: &'static str = include_str!("../../prelude/runtime/nanos.rs");
+    const DURATION_COUNT: &'static str = include_str!("../../prelude/runtime/duration_count.rs");
     const SOURCE: &'static str = include_str!("../../prelude/runtime/source.rs");
     const SEPARATOR: &'static str = include_str!("../../prelude/runtime/separator.rs");
     const LINES: &'static str = include_str!("../../prelude/runtime/lines.rs");
@@ -293,7 +305,7 @@ impl RuntimeModule {
     const INDEX: &'static str = include_str!("../../prelude/runtime/index.rs");
     const CONVERT: &'static str = include_str!("../../prelude/runtime/convert.rs");
     const START_UP_CALL: &'static str = "crate::rt::restore_default_sigpipe();";
-    const FIXED_PARTS: [(RuntimePart, &'static str); 35] = [
+    const FIXED_PARTS: [(RuntimePart, &'static str); 39] = [
         (RuntimePart::Signed, Self::SIGNED),
         (RuntimePart::Float, Self::FLOAT),
         (RuntimePart::Integer, Self::INTEGER),
@@ -304,7 +316,11 @@ impl RuntimeModule {
         (RuntimePart::MapSequence, Self::MAP_SEQUENCE),
         (RuntimePart::Io, Self::IO),
         (RuntimePart::Exit, Self::EXIT),
-        (RuntimePart::Duration, Self::DURATION),
+        (RuntimePart::Seconds, Self::SECONDS),
+        (RuntimePart::Millis, Self::MILLIS),
+        (RuntimePart::Micros, Self::MICROS),
+        (RuntimePart::Nanos, Self::NANOS),
+        (RuntimePart::DurationCount, Self::DURATION_COUNT),
         (RuntimePart::Source, Self::SOURCE),
         (RuntimePart::Separator, Self::SEPARATOR),
         (RuntimePart::Lines, Self::LINES),

@@ -19,25 +19,11 @@ fn main() {
 }
 
 mod rt {
-    use std::time::Duration;
-
-    pub fn seconds(count: i64) -> Duration {
-        Duration::from_secs(non_negative("seconds", count))
+    pub fn millis(count: i64) -> std::time::Duration {
+        std::time::Duration::from_millis(duration_count("millis", count))
     }
 
-    pub fn millis(count: i64) -> Duration {
-        Duration::from_millis(non_negative("millis", count))
-    }
-
-    pub fn micros(count: i64) -> Duration {
-        Duration::from_micros(non_negative("micros", count))
-    }
-
-    pub fn nanos(count: i64) -> Duration {
-        Duration::from_nanos(non_negative("nanos", count))
-    }
-
-    fn non_negative(unit: &str, count: i64) -> u64 {
+    fn duration_count(unit: &str, count: i64) -> u64 {
         u64::try_from(count)
             .unwrap_or_else(|_| panic!("a duration cannot be negative: ({unit} {count})"))
     }
@@ -300,7 +286,7 @@ mod rt {
             let nanos = self.as_nanos();
             let (unit, per_unit) = DURATION_UNITS
                 .into_iter()
-                .find(|&(_, per_unit)| nanos % per_unit == 0)
+                .find(|&(_, per_unit)| nanos.is_multiple_of(per_unit))
                 .unwrap_or(NANOS);
             write!(out, "({unit} {})", nanos / per_unit)
         }

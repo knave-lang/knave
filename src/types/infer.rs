@@ -162,6 +162,7 @@ impl TypeChecker {
             ExprKind::MapAt(operation, value, arguments) => {
                 self.infer_map_at(*operation, value, arguments, span)
             }
+            ExprKind::PushAt(target, item) => self.infer_push(target, item, span),
             ExprKind::SetAt(value, keys, item) => self.infer_set_at(value, keys, item, span),
             _ => unreachable!("the caller matches a nested expression"),
         }
@@ -2313,7 +2314,6 @@ impl TypeChecker {
         match operation {
             MapOperation::Iter => self.infer_iter(value, arguments, span),
             MapOperation::Get => self.infer_get(value, arguments, span),
-            MapOperation::Push => self.infer_push(value, arguments, span),
             MapOperation::First => self.infer_part(PositionalRead::first(span), value, arguments),
             MapOperation::Second => self.infer_part(PositionalRead::second(span), value, arguments),
             _ => self.infer_map_only(operation, value, arguments, span),
@@ -2432,13 +2432,11 @@ impl TypeChecker {
 
     fn infer_push(
         &mut self,
-        value: TypedExpr,
-        arguments: &[Expr],
+        target: &Expr,
+        item: &Expr,
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
-        let [item] = arguments else {
-            return Err(TypeProblems::wrong_argument_count(1, arguments.len(), span));
-        };
+        let value = self.infer(target)?;
         if self.is_string_target(&value.ty) {
             let item = self.infer(item)?;
             return self.infer_string_push(value, item, span);
@@ -2454,7 +2452,7 @@ impl TypeChecker {
             parameters,
             Type::unit(),
             value,
-            arguments,
+            std::slice::from_ref(item),
             span,
         )
     }

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/map_at_push.knv
+---
+error[L0210]: malformed `map-at`
+ --> check/map_at_push.knv:3:13
+  |
+3 |     (map-at push items 2)))
+  |             ^^^^ this does not fit the shape of `map-at`
+  |
+  = help: write it as `(map-at operation value argument ...)`
+  = note: run `knave doc L0210` for an explanation

@@ -155,11 +155,20 @@ impl<'a> CorePrinter<'a> {
             ExprKind::Struct(structure) => self.structure(structure),
             ExprKind::Variant(binding, arguments) => self.variant(*binding, arguments),
             ExprKind::LabeledVariant(binding, fields) => self.labeled_variant(*binding, fields),
-            ExprKind::Assoc(value, keys, item) => self.assoc(value, keys, item),
+            _ => self.collection_form(kind),
+        }
+    }
+
+    fn collection_form(&mut self, kind: &ExprKind) -> String {
+        match kind {
+            ExprKind::Assoc(value, keys, item) => self.keyed("assoc-at", (value, keys, item)),
             ExprKind::MapAt(operation, value, arguments) => {
                 self.map_at(*operation, value, arguments)
             }
-            ExprKind::SetAt(value, keys, item) => self.set_at(value, keys, item),
+            ExprKind::PushAt(target, item) => {
+                Self::list("push-at!", vec![self.expr(target), self.expr(item)])
+            }
+            ExprKind::SetAt(value, keys, item) => self.keyed("set-at!", (value, keys, item)),
             _ => self.written_or_recur(kind),
         }
     }
@@ -180,34 +189,17 @@ impl<'a> CorePrinter<'a> {
         }
     }
 
-    fn assoc(&mut self, value: &Expr, keys: &[Expr], item: &Expr) -> String {
+    fn keyed(&mut self, head: &str, keyed: (&Expr, &[Expr], &Expr)) -> String {
+        let (value, keys, item) = keyed;
         let keys: Vec<String> = keys.iter().map(|key| self.expr(key)).collect();
-        Self::list(
-            "assoc-at",
-            vec![
-                self.expr(value),
-                format!("({})", keys.join(" ")),
-                self.expr(item),
-            ],
-        )
+        let keys = format!("({})", keys.join(" "));
+        Self::list(head, vec![self.expr(value), keys, self.expr(item)])
     }
 
     fn map_at(&mut self, operation: MapOperation, value: &Expr, arguments: &[Expr]) -> String {
         let mut parts = vec![operation.keyword().to_string(), self.expr(value)];
         parts.extend(arguments.iter().map(|argument| self.expr(argument)));
         Self::list("map-at", parts)
-    }
-
-    fn set_at(&mut self, value: &Expr, keys: &[Expr], item: &Expr) -> String {
-        let keys: Vec<String> = keys.iter().map(|key| self.expr(key)).collect();
-        Self::list(
-            "set-at!",
-            vec![
-                self.expr(value),
-                format!("({})", keys.join(" ")),
-                self.expr(item),
-            ],
-        )
     }
 
     fn written(&mut self, kind: &ExprKind) -> String {

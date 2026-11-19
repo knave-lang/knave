@@ -29,6 +29,8 @@
   (set! (at more 0) 3)
   more)
 
+(defn looked-up (scores) (get scores 0))
+
 (defn borrowed (text)
   (deref (ref text)))
 

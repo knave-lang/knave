@@ -84,7 +84,7 @@
   (macro (form)
     (if (symbol? form)
       (quote vec-push!)
-      (concat (list (quote map-at) (quote push))
+      (concat (list (quote push-at!))
               (rest form)))))
 
 (document (push! target item)

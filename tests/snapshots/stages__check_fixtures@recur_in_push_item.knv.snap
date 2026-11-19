@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/recur_in_push_item.knv
+---
+error[L0214]: `recur` is not in tail position
+ --> check/recur_in_push_item.knv:2:16
+  |
+2 |   (push! items (recur items)))
+  |                ^^^^^^^^^^^^^ this `recur` is not the last thing the function does
+  |
+  = help: make `recur` the last form of the function, or call the function by name
+  = note: run `knave doc L0214` for an explanation

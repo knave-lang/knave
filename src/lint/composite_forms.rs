@@ -23,14 +23,32 @@ impl CompositeForms {
             ExprKind::LabeledVariant(variant, fields) => {
                 Self::labeled(forms, (*variant, fields), span)
             }
+            other => Self::collection_form(forms, other, span),
+        }
+    }
+
+    fn collection_form(forms: &mut dyn FormReader<'_>, kind: &ExprKind, span: Span) -> Form {
+        match kind {
             ExprKind::Assoc(value, keys, item) => {
                 Self::keyed(forms, (ExpressionForm::Assoc, value, keys, item), span)
             }
             ExprKind::SetAt(value, keys, item) => {
                 Self::keyed(forms, (ExpressionForm::SetAt, value, keys, item), span)
             }
+            ExprKind::PushAt(target, item) => Self::push_at(forms, (target, item), span),
             other => Self::map_at(forms, other, span),
         }
+    }
+
+    fn push_at(forms: &mut dyn FormReader<'_>, push: (&Expr, &Expr), span: Span) -> Form {
+        let (target, item) = push;
+        let row = forms.writer().open();
+        let parts = vec![
+            forms.kernel_head(KernelForm::Expression(ExpressionForm::PushAt), span),
+            forms.expr(target),
+            forms.expr(item),
+        ];
+        forms.writer().close(row, parts, span)
     }
 
     fn map_at(forms: &mut dyn FormReader<'_>, kind: &ExprKind, span: Span) -> Form {

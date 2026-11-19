@@ -1,0 +1,3 @@
+(defmacro grow (items) (push! items 1))
+
+(defn main () (println "unused"))

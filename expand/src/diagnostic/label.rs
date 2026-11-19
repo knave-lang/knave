@@ -1,3 +1,6 @@
+use std::borrow::Cow;
+
+use super::FallbackHelp;
 use crate::source::Span;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -105,6 +108,14 @@ pub struct Help {
     message: String,
     suggestion: Option<Suggestion>,
     quoted_form: Option<Span>,
+    placeholder: &'static str,
+    precedence: HelpPrecedence,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum HelpPrecedence {
+    Own,
+    Fallback,
 }
 
 impl Help {
@@ -115,6 +126,8 @@ impl Help {
             message,
             suggestion: None,
             quoted_form: None,
+            placeholder: Self::QUOTED_FORM,
+            precedence: HelpPrecedence::Own,
         }
     }
 
@@ -125,8 +138,11 @@ impl Help {
         }
     }
 
-    pub fn quoted_form(&self) -> Option<Span> {
-        self.quoted_form
+    pub fn rendered(&self, form_text: impl FnOnce(Span) -> String) -> Cow<'_, str> {
+        match self.quoted_form {
+            Some(form) => Cow::Owned(self.message.replace(self.placeholder, &form_text(form))),
+            None => Cow::Borrowed(&self.message),
+        }
     }
 
     pub fn with_suggestion(self, suggestion: Suggestion) -> Self {
@@ -142,6 +158,31 @@ impl Help {
 
     pub fn suggestion(&self) -> Option<&Suggestion> {
         self.suggestion.as_ref()
+    }
+
+    pub(super) fn join(self, helps: &mut Vec<Help>) {
+        match self.precedence {
+            HelpPrecedence::Fallback if helps.iter().any(Self::is_own) => {}
+            HelpPrecedence::Fallback => helps.push(self),
+            HelpPrecedence::Own => {
+                helps.retain(Self::is_own);
+                helps.push(self);
+            }
+        }
+    }
+
+    fn is_own(&self) -> bool {
+        self.precedence == HelpPrecedence::Own
+    }
+}
+
+impl From<FallbackHelp> for Help {
+    fn from(help: FallbackHelp) -> Self {
+        Self {
+            placeholder: FallbackHelp::WRITTEN_VALUE,
+            precedence: HelpPrecedence::Fallback,
+            ..Self::quoting(help.message, help.form)
+        }
     }
 }
 

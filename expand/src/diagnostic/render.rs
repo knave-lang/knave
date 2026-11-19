@@ -103,13 +103,7 @@ impl<'a> DiagnosticRenderer<'a> {
     }
 
     fn help_message<'d>(&self, help: &'d Help) -> Cow<'d, str> {
-        match help.quoted_form() {
-            Some(form) => Cow::Owned(
-                help.message()
-                    .replace(Help::QUOTED_FORM, &self.form_text(form)),
-            ),
-            None => Cow::Borrowed(help.message()),
-        }
+        help.rendered(|form| self.form_text(form))
     }
 
     fn form_text(&self, form: Span) -> String {

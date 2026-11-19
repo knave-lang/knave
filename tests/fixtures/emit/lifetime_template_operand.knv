@@ -1,0 +1,7 @@
+(def plus-one
+  (rust "std::convert::identity::<&'static str>(\"ab\").len() + 1"
+    (fn () usize)))
+
+(defn twice () (* 2 (plus-one)))
+
+(defn main () (println (twice)))

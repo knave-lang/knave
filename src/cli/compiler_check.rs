@@ -19,7 +19,13 @@ impl CompilerCheck {
         problem_of: CompilerVersion::refusal,
     };
 
-    pub fn report(
+    pub fn report(&self, project_file: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
+        let mut scratch = terminal.scratch();
+        let project = scratch.sources().load_project(project_file)?;
+        self.report_located(&project, project_file, terminal)
+    }
+
+    pub fn report_located(
         &self,
         project: &Project,
         project_file: &Path,

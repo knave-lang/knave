@@ -35,6 +35,9 @@ const EVERY_OWNED_FILE: [&str; 3] = [
 ];
 const FILLED_VERSION: &str = "0.0.1";
 const NEWER_VERSION: &str = "999.0.0";
+const HELLO_TASK: &str = "(deftask hello ()\n  (println \"hello\"))\n";
+const VERSION_CHECKED_COMMANDS: [&[&str]; 4] =
+    [&["fmt"], &["lint"], &["build"], &["task", "hello"]];
 const OLDER_COMPILER_ERROR: &str = "error[L0736]";
 const NEWER_COMPILER_WARNING: &str = "warning[L0737]";
 const RELEASED_SKILL: &str =
@@ -8511,6 +8514,55 @@ fn a_compiler_newer_than_the_project_warns_once_per_command() {
             command[0]
         );
     }
+}
+
+#[test]
+fn a_compiler_older_than_the_project_fails_each_command_once() {
+    let sandbox = Sandbox::with_recorded_version("version_older_commands", NEWER_VERSION)
+        .with_file("demo-app/tasks/hello.knv", HELLO_TASK);
+    for command in VERSION_CHECKED_COMMANDS {
+        let stderr = sandbox
+            .compiler_in("demo-app", command)
+            .assert_exit_code(1)
+            .stderr();
+        assert_eq!(
+            stderr.matches("[L073").count(),
+            1,
+            "`knave {}` printed:\n{stderr}",
+            command.join(" ")
+        );
+        assert!(stderr.contains(OLDER_COMPILER_ERROR), "{stderr}");
+    }
+}
+
+#[test]
+fn a_compiler_newer_than_the_project_warns_once_in_each_command() {
+    let sandbox = Sandbox::with_recorded_version("version_newer_commands", FILLED_VERSION)
+        .with_file("demo-app/tasks/hello.knv", HELLO_TASK);
+    for command in VERSION_CHECKED_COMMANDS {
+        let stderr = sandbox
+            .compiler_in("demo-app", command)
+            .assert_exit_code(0)
+            .stderr();
+        assert_eq!(
+            stderr.matches("[L073").count(),
+            1,
+            "`knave {}` printed:\n{stderr}",
+            command.join(" ")
+        );
+        assert!(stderr.contains(NEWER_COMPILER_WARNING), "{stderr}");
+        assert!(!stderr.contains("cannot load the project"), "{stderr}");
+    }
+}
+
+#[test]
+fn fmt_under_a_newer_recorded_knave_lays_out_the_project() {
+    let sandbox = Sandbox::with_recorded_version("version_newer_fmt", FILLED_VERSION)
+        .with_file("demo-app/src/twice.knv", UNFORMATTED);
+    sandbox
+        .compiler_in("demo-app", &["fmt"])
+        .assert_exit_code(0);
+    assert_eq!(sandbox.contents("demo-app/src/twice.knv"), FORMATTED);
 }
 
 #[test]

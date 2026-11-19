@@ -1,0 +1,15 @@
+(enum app-error (io io-error))
+
+(type read-both
+  (fn ((ref str) (ref str))
+    (result usize app-error)))
+
+(defn read-both (first second)
+  (local head (try (slurp first)))
+  (local tail (try (slurp second)))
+  (ok (+ (len head) (len tail))))
+
+(defn main ()
+  (match (read-both "a.txt" "b.txt")
+    ((ok size) (println size))
+    ((err (app-error/io _reason)) (println "cannot read"))))

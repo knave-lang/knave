@@ -1,0 +1,45 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/try_conversion_used_twice.knv
+---
+enum AppError {
+    Io(std::io::Error),
+}
+
+fn read_both(first: &str, second: &str) -> Result<usize, AppError> {
+    let head = std::fs::read_to_string(first)?;
+    let tail = std::fs::read_to_string(second)?;
+    Ok(head.len() + tail.len())
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    match read_both("a.txt", "b.txt") {
+        Ok(size) => println!("{}", size),
+        Err(AppError::Io(_reason)) => println!("cannot read"),
+    }
+}
+
+impl From<std::io::Error> for AppError {
+    fn from(error: std::io::Error) -> Self {
+        AppError::Io(error)
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

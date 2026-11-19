@@ -271,8 +271,8 @@
 
   The operation is [get], [keys], [vals], [iter], [update], [first] or
   [second]. `get`, `keys`, `vals`, `iter`, `update`, `first` and `second`
-  expand to it. `first` and `second` take the reader
-  to call on a value that is not a pair as their last argument.
+  expand to it. `first` and `second` take the reader to call on a value
+  that is not a pair as their last argument.
 
   (map-at get (vec 1 2) 1)
   => (some (ref 2))")

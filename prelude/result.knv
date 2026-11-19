@@ -71,8 +71,8 @@
   As a value, it is a function of one argument, as in `(map (iter v) ok)`. In
   a [match], `(ok x)` is the pattern that binds the value.
 
-  (unwrap-ok (the (result int string) (ok 3)))
-  => 3
+  (the (result int string) (ok 3))
+  => (ok 3)
 
   (match (the (result int string) (ok 3))
     ((ok value) (+ value 1))
@@ -85,9 +85,9 @@
   As a value, it is a function of one argument, as in `(map (iter v) err)`. In
   a [match], `(err x)` is the pattern that binds the value.
 
-  (unwrap-err (the (result int string)
-                   (err (str \"bad\"))))
-  => \"bad\"
+  (the (result int string)
+       (err (str \"bad\")))
+  => (err (str \"bad\"))
 
   (match (the (result int string)
               (err (str \"bad\")))
@@ -117,8 +117,8 @@
 
   (let (outcome (ok-or (some (str \"pear\")) \"missing\"))
     (ok? outcome)
-    (unwrap-ok outcome))
-  => \"pear\"")
+    outcome)
+  => (ok (str \"pear\"))")
 
 (document (err? result)
   "Returns whether a [result] is [err].

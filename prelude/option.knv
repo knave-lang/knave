@@ -85,8 +85,8 @@
 
   (let (name (some (str \"pear\")))
     (some? name)
-    (unwrap name))
-  => \"pear\"")
+    name)
+  => (some (str \"pear\"))")
 
 (document (none? option)
   "Returns whether an [option] holds no value.

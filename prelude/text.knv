@@ -944,9 +944,9 @@
   It is the associated type of [from-str], as `Err` is in Rust, so
   `(parse-error int)` is [parse-int-error].
 
-  (unwrap-ok (the (result int (parse-error int))
-                  (parse \"12\")))
-  => 12")
+  (the (result int (parse-error int))
+       (parse \"12\"))
+  => (ok 12) ...")
 
 (document parse-bool-error
   "Names the error of parsing a [bool], Rust's `ParseBoolError`.
@@ -977,8 +977,8 @@
 
   It is the [parse-error] of [string].
 
-  (unwrap-ok (the (result string infallible) (parse \"pear\")))
-  => \"pear\"")
+  (the (result string infallible) (parse \"pear\"))
+  => (ok (str \"pear\"))")
 
 (document (prn value ...)
   "Prints the printed forms of its values and a newline to standard output.
@@ -1098,8 +1098,8 @@
 
   It takes a `(ref str)`, so borrow a [string] with [as-str].
 
-  (unwrap-ok (the (result int parse-int-error) (parse \"12\")))
-  => 12")
+  (the (result int parse-int-error) (parse \"12\"))
+  => (ok 12)")
 
 (document (lower-case text)
   "Returns a new [string] with each character in lower case.

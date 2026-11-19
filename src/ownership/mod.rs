@@ -50,6 +50,7 @@ mod stored;
 mod stored_definitions;
 mod subtree;
 mod tail_calls;
+mod text;
 mod trait_slices;
 mod uncoerced_parameters;
 mod update_bases;
@@ -95,6 +96,7 @@ pub use gate::{EnforcedOwnership, OwnershipGate, WaivedOwnership};
 pub use loans::LoanFacts;
 pub use mutation::ChangedValues;
 pub use tail_calls::TailCalls;
+pub use text::TextDecisions;
 pub use update_order::StructUpdateOrder;
 
 pub struct OwnershipChecker;

@@ -1,0 +1,8 @@
+(defstruct user :name str :age int)
+
+(defn make (name) (->user :name name :age 1))
+
+(defn main ()
+  (let (ana (make "ana")
+        made (make (as-str (str "u" 1))))
+    (println (:name ana) (:name made))))

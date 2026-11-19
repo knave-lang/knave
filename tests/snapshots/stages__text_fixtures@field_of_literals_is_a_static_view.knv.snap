@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/field_of_literals_is_a_static_view.knv
+---
+struct user
+  name: a 'static view, written a view

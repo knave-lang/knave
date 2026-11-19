@@ -58,13 +58,14 @@ impl<'c> TypeDeclarationCollector<'c> {
             .zip(&params)
             .map(|(binder, param)| (binder.variable, param.id))
             .collect();
-        let (lowered, field_spans) = self.lower_fields(fields, &scope)?;
+        let (lowered, field_spans, bare_text_fields) = self.lower_fields(fields, &scope)?;
         let problem = FieldParameters::new(binders, &params).unused_in(&lowered);
         let definition = StructDefinition {
             lifetimes,
             params,
             fields: lowered,
             field_spans,
+            bare_text_fields,
             function_spans: fields
                 .iter()
                 .map(|(_, field_type)| Self::function_span(field_type))
@@ -227,17 +228,20 @@ impl<'c> TypeDeclarationCollector<'c> {
         &mut self,
         fields: &[(FieldLabel, TypeExpr)],
         scope: &FxHashMap<BindingId, GenericId>,
-    ) -> Result<(LoweredFields, Vec<Span>), Diagnostic> {
+    ) -> Result<(LoweredFields, Vec<Span>, Vec<Rc<str>>), Diagnostic> {
         let mut lowered = Vec::new();
         let mut spans = Vec::new();
+        let mut bare_text = Vec::new();
         for (label, field_type) in fields {
-            lowered.push((
-                label.name.clone(),
-                self.lower_stored_type(field_type, scope)?,
-            ));
+            let written = self.lowering.lower_type(field_type, scope)?;
+            let stored = self.borrow_views(written.clone());
+            if stored != written {
+                bare_text.push(label.name.clone());
+            }
+            lowered.push((label.name.clone(), stored));
             spans.push(field_type.span());
         }
-        Ok((lowered, spans))
+        Ok((lowered, spans, bare_text))
     }
 
     fn payload_type_exprs(payload: &CoreVariantPayload) -> Vec<&TypeExpr> {

@@ -33,7 +33,7 @@ use knave::expand::{Expander, PreludeState, Program};
 use knave::format::FormatFailure;
 use knave::language::Language;
 use knave::modules::ModuleSources;
-use knave::ownership::{EnforcedOwnership, LoanFacts, WaivedOwnership};
+use knave::ownership::{EnforcedOwnership, LoanFacts, TextDecisions, WaivedOwnership};
 use knave::project::{Project, ProjectReader};
 use knave::reader::Reader;
 use knave::source::{SourceId, SourceMap, Span};
@@ -193,12 +193,20 @@ impl Fixture {
         }
     }
 
-    pub fn loan_report(mut self) -> String {
+    pub fn loan_report(self) -> String {
+        self.waived_report(|program, sources| LoanFacts::of(program).report(sources))
+    }
+
+    pub fn text_report(self) -> String {
+        self.waived_report(|program, sources| TextDecisions::of(program).report(sources))
+    }
+
+    fn waived_report(mut self, report: impl FnOnce(&TypedProgram, &SourceMap) -> String) -> String {
         let checked = self
             .expand()
             .and_then(|program| ProgramChecker::check::<WaivedOwnership>(&program));
         match checked {
-            Ok(program) => LoanFacts::of(&program).report(&self.sources),
+            Ok(program) => report(&program, &self.sources),
             Err(diagnostics) => self.render(&diagnostics),
         }
     }

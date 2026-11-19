@@ -133,6 +133,7 @@ mod test_entries;
 mod test_record;
 mod test_report;
 mod test_run;
+mod text_report_command;
 mod token_colors;
 mod tree_bounds;
 mod tree_file;

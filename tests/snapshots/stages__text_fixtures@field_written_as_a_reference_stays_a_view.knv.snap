@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/field_written_as_a_reference_stays_a_view.knv
+---
+struct user
+  name: a view

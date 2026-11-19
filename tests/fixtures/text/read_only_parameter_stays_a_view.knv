@@ -1,0 +1,5 @@
+(defn shout (text) (upper-case text))
+
+(defn main ()
+  (let (owned (str "bo"))
+    (println (shout (as-str owned)) (shout "lit"))))

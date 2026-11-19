@@ -1,0 +1,5 @@
+(defn main ()
+  (let (names (vec))
+    (push! names "a")
+    (push! names (as-str (str "b" 1)))
+    (println (len names))))

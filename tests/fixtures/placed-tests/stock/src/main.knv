@@ -1,0 +1,9 @@
+(use shelving shelf-count)
+(use units restock)
+(use written)
+
+(defn main ()
+  (println (restock (shelf-count) 3)))
+
+(deftest restocks-from-main
+  (assert (= (restock 4 6) 10)))

@@ -1,0 +1,2 @@
+(defproject stock
+  (libraries (shelving :path "src/vendor/shelving")))

@@ -2,7 +2,7 @@
                     template)
 
 (use prelude/internal/macros docstring-before-body?
-                             doctests-key
+                             doctests-key holds-folder?
                              module-docstring-notes
                              module-docstrings-key)
 
@@ -20,11 +20,12 @@
           keyword? len list list? located module-exports
           module-notes module-symbol nth number-add
           number-lt number-sub prepend program-modules
-          project-modules read-form rest same-binding?
-          string string-drop string-length string-lines
-          string-strip-prefix string-strip-suffix
-          string-trim-end string-trim-start string? symbol
-          symbol-name symbol? value-eq)
+          project-folders project-modules read-form rest
+          same-binding? string string-drop string-length
+          string-lines string-strip-prefix
+          string-strip-suffix string-trim-end
+          string-trim-start string? symbol symbol-name
+          symbol? value-eq warn)
 
 (use prelude/syntax assert deftest run-tests)
 
@@ -38,6 +39,7 @@
   (macro (call)
     (local form (nth call 1))
     (check-test-shape form)
+    (check-test-folder form)
     (local name (nth form 1))
     (local body (rest (rest form)))
     (local documented (docstring-before-body? body))
@@ -66,6 +68,85 @@
     (if (symbol? name)
       (bool-not (keyword? name))
       false)))
+
+(def check-test-folder
+  (fn (form)
+    (local folders (project-folders form))
+    (if (holds-folder? folders (quote source))
+      (test-outside-tests form (test-move-help folders))
+      form)))
+
+(def test-move-help
+  (fn (folders)
+    (if (holds-folder? folders (quote tasks))
+      "move the code this test tests into a module under the source root, and test that module from a file under `tests/`"
+      "move this test into a file under `tests/`, and test the module through the functions it exports")))
+
+(def test-outside-tests
+  (fn (form help)
+    (local name (nth form 1))
+    (warn (string "test `"
+                  (symbol-name name)
+                  "` lies outside `tests/`")
+      name help
+      (quote (:code test-outside-tests :label "outside `tests/`")))))
+
+(document (test-outside-tests form help)
+  "Reports a `deftest` written in a file of a project outside its `tests/`
+  directory.
+
+  A project keeps its tests in `tests/`, and a module is tested through the
+  functions it exports. A file is under `tests/` when the project loads it
+  through `tests/`, also through a symbolic link, one into `tasks/`
+  included. A test in `tasks/` is `L0810` too. The test still expands and
+  checks where it is, and at `allow` and `warn` it still runs. The lint does
+  not apply outside a project or in a library that a project uses, such as
+  one in a folder of the project that holds its own project file, under
+  `tasks/` too, and no `deftest` in a docstring example is `L0810`.
+
+  ## Erroneous example
+
+  ```
+  ;; knave check
+  ;; project.knv
+  (defproject stock)
+
+  ;; src/main.knv
+  (defn restock (count amount) (+ count amount))
+
+  (deftest restocks
+    (assert (= (restock 4 6) 10)))
+
+  (defn main () (println (restock 1 2)))
+  ```
+
+  ## Fixes
+
+  Move the test into a file under `tests/`, and test the module through
+  the functions it exports:
+
+  ```
+  ;; knave test
+  ;; project.knv
+  (defproject stock)
+
+  ;; src/main.knv
+  (export restock)
+
+  (defn restock (count amount) (+ count amount))
+
+  (defn main () (println (restock 1 2)))
+
+  ;; tests/restocking.knv
+  (use main restock)
+
+  (deftest restocks
+    (assert (= (restock 4 6) 10)))
+  ```
+
+  A file under `tests/` reaches no task module, so for a test in `tasks/`,
+  move the code it tests into a module under the source root, and test that
+  module from a file under `tests/`.")
 
 (def misshapen-test
   (fn (form)

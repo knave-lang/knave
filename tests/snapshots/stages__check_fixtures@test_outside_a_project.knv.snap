@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/test_outside_a_project.knv
+---
+(type restock (fn (int int) int))
+(type main (fn () unit))

@@ -79,6 +79,8 @@ help: a function with a similar name exists
 
 **Name a repeated test at the second `deftest`.** A second test of one name in one module is `L0333`, ``test `pads` is defined more than once``, with its primary label on the second test's name and a secondary label on the first, and the help `rename one of the tests`.
 
+**Label a misplaced test on its name.** A `deftest` in a file of a project outside `tests/` is the lint `L0810`, ``test `restocks` lies outside `tests/` ``, with its label on the test's name and a help that moves the test into `tests/` and tests the module through the functions it exports. In `tasks/` the help moves the code the test tests into a module under the source root instead, since a file under `tests/` reaches no task module.
+
 **Name a repeated task at the second `deftask`.** A second task of one name is `L0356`, ``task `serve` is defined more than once``, with its primary label on the second task's name, a secondary label on the first, and the help `rename one of the tasks`. A label never points at the source that `knave task` generates.
 
 **Label a task's own definition errors on the form at fault.** A task name that is not kebab-case is `L0357` on the name, a positional parameter after a flag is `L0358` on that name, a `deftask` outside `tasks/` is `L0359` on the task's name, a flag named `:help` is `L0360` on the keyword, a task whose only form is a string is `L0361` on the string, and a task whose result type stays open is `L0362` on the task's name, each with a help that states the fix.

@@ -1,0 +1,6 @@
+(export checks-shelf)
+
+(defmacro checks-shelf (name)
+  (template (deftest (unquote name) (assert true))))
+
+(checks-shelf shelf-holds)

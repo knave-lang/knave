@@ -10,5 +10,5 @@ error[L0729]: unknown lint `second-trait-path`
   |                             ^^^^^^^^^^^^^^^^^ not the name of a lint
   |
   = note: `L0217`, `L0249`, `L0251`, `L0256` and `L0259` always print and have no level
-  = help: the lints are `unused-binding`, `unmatched-link`, `unreachable-arm`, `missing-bang`, `rule-skipped`, `unused-parameter`, `unreachable-definition`, `unused-import` and `needless-type`
+  = help: the lints are `unused-binding`, `unmatched-link`, `unreachable-arm`, `missing-bang`, `rule-skipped`, `unused-parameter`, `unreachable-definition`, `unused-import`, `needless-type` and `test-outside-tests`
   = note: run `knave doc L0729` for an explanation

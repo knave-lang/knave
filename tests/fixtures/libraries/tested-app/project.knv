@@ -1,1 +1,3 @@
-(defproject tested-app (libraries (hints :path "../hints")))
+(defproject tested-app
+  (libraries (hints :path "../hints"))
+  (lints (test-outside-tests allow)))

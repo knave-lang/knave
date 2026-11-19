@@ -1,0 +1,6 @@
+(export crate-count)
+
+(defn crate-count () 4)
+
+(deftest counts-crates
+  (assert (= (crate-count) 4)))

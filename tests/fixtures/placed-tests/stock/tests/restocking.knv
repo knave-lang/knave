@@ -1,0 +1,5 @@
+(use main)
+(use units restock)
+
+(deftest restocks
+  (assert (= (restock 4 6) 10)))

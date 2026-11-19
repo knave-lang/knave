@@ -1,0 +1,10 @@
+(use units restock)
+
+(defn restocked-shelf (count) (restock count 2))
+
+(deftask restock-shelf ()
+  "Restocks a shelf."
+  (println (restocked-shelf 1)))
+
+(deftest restocks-a-shelf
+  (assert (= (restocked-shelf 1) 3)))

@@ -1,0 +1,6 @@
+(defn restock (count amount) (+ count amount))
+
+(deftest restocks-loose
+  (assert (= (restock 4 6) 10)))
+
+(defn main () (println (restock 1 2)))

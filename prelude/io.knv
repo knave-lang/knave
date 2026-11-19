@@ -98,13 +98,19 @@
 (def duration-of-count
   (fn (count literal counted)
     (if (number? count)
+      (duration-of-literal count literal)
+      (list counted count))))
+
+(def duration-of-literal
+  (fn (count literal)
+    (if (value-eq count 0)
+      (list literal 0)
       (if (negative-literal? count)
         (fail "a duration cannot be negative"
           count "write a count of zero or more"
           (template (:code negative-duration
                            :label "this count is below zero")))
-        (list literal count))
-      (list counted count))))
+        (list literal count)))))
 
 (def negative-literal?
   (fn (number)

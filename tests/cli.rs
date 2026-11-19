@@ -9040,6 +9040,16 @@ fn upgrade_keeps_a_workflow_the_user_changed() {
         &upgrade.assert_exit_code(0).stderr()
     ));
     assert_eq!(sandbox.contents(&workflow), changed);
+    sandbox
+        .compiler(&["new", "fresh-app"])
+        .assert_silent_success();
+    for path in AGENT_SKILL_PATHS {
+        assert_eq!(
+            sandbox.contents(path),
+            sandbox.contents(&path.replacen("demo-app", "fresh-app", 1)),
+            "`{path}` holds an earlier text"
+        );
+    }
 }
 
 #[test]

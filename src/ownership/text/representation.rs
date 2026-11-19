@@ -17,9 +17,9 @@ pub enum Representation {
 impl Representation {
     pub fn written(primitive: PrimitiveType, access: Access) -> Option<Self> {
         match (primitive, access) {
-            (PrimitiveType::String, Access::Direct) => Some(Self::Owned),
+            (PrimitiveType::String | PrimitiveType::Str, Access::Direct) => Some(Self::Owned),
             (PrimitiveType::String, Access::Referenced) => Some(Self::Lent),
-            (PrimitiveType::Str, _) => Some(Self::View),
+            (PrimitiveType::Str, Access::Referenced) => Some(Self::View),
             _ => None,
         }
     }
@@ -254,6 +254,10 @@ mod tests {
         assert_eq!(
             Representation::written(PrimitiveType::Str, Access::Referenced),
             Some(Representation::View)
+        );
+        assert_eq!(
+            Representation::written(PrimitiveType::Str, Access::Direct),
+            Some(Representation::Owned)
         );
         assert_eq!(
             Representation::written(PrimitiveType::Bool, Access::Direct),

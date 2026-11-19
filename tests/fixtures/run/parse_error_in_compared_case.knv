@@ -1,0 +1,44 @@
+(use prelude/test assert deftest run-tests)
+
+(enum line-item-error
+  (invalid-number parse-int-error)
+  (invalid-quantity i64))
+
+(derive line-item-error partial-eq eq clone debug show)
+
+(defn parse-quantity (text)
+  (local quantity
+    (map-err (parse text)
+      (fn (failure) (line-item-error/invalid-number failure))))
+  (the (result i64 line-item-error) quantity))
+
+(deftest unreadable-quantity-holds-the-parse-error
+  (assert (= (parse-quantity "x")
+             (err (line-item-error/invalid-number
+                    (unwrap-err (the (result i64 parse-int-error)
+                                     (parse "y"))))))))
+
+(deftest cloned-error-equals-its-original
+  (local failure (unwrap-err (parse-quantity "x")))
+  (assert (= (clone (ref failure)) failure)))
+
+(deftest readable-quantity-is-ok
+  (assert (= (parse-quantity "450") (ok 450))))
+
+(deftest bool-parse-errors-compare
+  (assert (= (unwrap-err (the (result bool parse-bool-error) (parse "maybe")))
+             (unwrap-err (the (result bool parse-bool-error) (parse "nope"))))))
+
+(deftest char-parse-errors-compare
+  (assert (= (unwrap-err (the (result char parse-char-error) (parse "ab")))
+             (unwrap-err (the (result char parse-char-error) (parse "cd"))))))
+
+(deftest int-parse-errors-tell-empty-from-invalid
+  (assert (not= (unwrap-err (the (result i64 parse-int-error) (parse "")))
+                (unwrap-err (the (result i64 parse-int-error) (parse "x"))))))
+
+(deftest float-parse-errors-compare
+  (assert (= (unwrap-err (the (result f64 parse-float-error) (parse "x")))
+             (unwrap-err (the (result f64 parse-float-error) (parse "y"))))))
+
+(defn main () (run-tests :marker "<record>"))

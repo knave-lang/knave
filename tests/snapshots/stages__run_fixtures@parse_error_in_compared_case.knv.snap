@@ -1,0 +1,21 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/parse_error_in_compared_case.knv
+---
+<record>(start 7)
+<record>(test "parse_error_in_compared_case/unreadable-quantity-holds-the-parse-error" "")
+<record>(ok)
+<record>(test "parse_error_in_compared_case/cloned-error-equals-its-original" "")
+<record>(ok)
+<record>(test "parse_error_in_compared_case/readable-quantity-is-ok" "")
+<record>(ok)
+<record>(test "parse_error_in_compared_case/bool-parse-errors-compare" "")
+<record>(ok)
+<record>(test "parse_error_in_compared_case/char-parse-errors-compare" "")
+<record>(ok)
+<record>(test "parse_error_in_compared_case/int-parse-errors-tell-empty-from-invalid" "")
+<record>(ok)
+<record>(test "parse_error_in_compared_case/float-parse-errors-compare" "")
+<record>(ok)
+<record>(done)

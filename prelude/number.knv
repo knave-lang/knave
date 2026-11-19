@@ -5,6 +5,10 @@
 (use prelude/ownership copy)
 (use prelude/types box option result vec)
 
+(use prelude/text infallible parse-bool-error
+                  parse-char-error parse-float-error
+                  parse-int-error)
+
 (module
   "Does arithmetic and comparison, and names the number traits.")
 
@@ -34,7 +38,8 @@
   bool char str string
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32
-  f64
+  f64 infallible parse-bool-error parse-char-error
+  parse-float-error parse-int-error
   (with string str)
   (with str string)
   (with string (ref str))
@@ -54,6 +59,8 @@
   bool char str string
   (ref str)
   i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize
+  infallible parse-bool-error parse-char-error
+  parse-float-error parse-int-error
   (where ((a eq)) (vec a))
   (where ((a eq)) (option a))
   (where ((a eq) (b eq)) (result a b))

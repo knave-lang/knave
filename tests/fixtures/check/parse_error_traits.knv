@@ -1,0 +1,8 @@
+(enum parse-failure
+  (bad-bool parse-bool-error)
+  (bad-char parse-char-error)
+  (bad-int parse-int-error)
+  (bad-float parse-float-error)
+  (impossible infallible))
+
+(derive parse-failure partial-eq eq clone debug)

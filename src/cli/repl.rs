@@ -143,7 +143,8 @@ impl PromptSession {
         let anchor_only = self.module.of(Vec::new());
         terminal
             .expansion()
-            .within_session(&anchor_only, |session| session.finish())
+            .sessions()
+            .within(&anchor_only, |session| session.finish())
             .and_then(|program| terminal.checking().check_silently(&program))
             .ok();
     }

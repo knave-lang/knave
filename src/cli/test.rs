@@ -76,6 +76,7 @@ impl TestCommand {
         let runner = self.runner_text();
         let program = terminal
             .expansion()
+            .sessions()
             .within_evaluation(&request, |session| self.entered_runner(session, &runner))?;
         program.ok_or_else(|| self.report_unloaded_module())
     }

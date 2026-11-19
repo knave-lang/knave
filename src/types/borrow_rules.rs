@@ -172,6 +172,7 @@ impl<'s, 'a> BorrowRules<'s, 'a> {
 mod tests {
     use crate::types::Type;
     use crate::types::passing_fixture::PassingFixture;
+    use crate::types::ty::{Bound, GenericId};
     use crate::types::typed::Borrow;
 
     #[test]
@@ -228,6 +229,34 @@ mod tests {
         let borrowed = Type::shared(PassingFixture::int());
         let borrow = (fixture.rules()).pass_types(&literal, &borrowed, PassingFixture::span());
         assert_eq!(borrow.expect("the types fit"), Borrow::Deref(1));
+    }
+
+    #[test]
+    fn a_bounded_variable_takes_a_borrow_of_a_generic_with_the_bound_through_it() {
+        let mut fixture = PassingFixture::new();
+        let number = Bound::plain(fixture.trait_named("number"));
+        let generic = GenericId::new(0);
+        fixture
+            .unifier()
+            .register_generic(generic, vec![number.clone()]);
+        let borrowed = Type::shared(Type::Generic(generic));
+        assert_eq!(
+            fixture.passed_to_variable_bounded_by(number, &borrowed),
+            Borrow::Passthrough
+        );
+    }
+
+    #[test]
+    fn a_bounded_variable_takes_a_borrow_of_a_generic_without_the_bound_as_is() {
+        let mut fixture = PassingFixture::new();
+        let number = Bound::plain(fixture.trait_named("number"));
+        let generic = GenericId::new(0);
+        fixture.unifier().register_generic(generic, Vec::new());
+        let borrowed = Type::shared(Type::Generic(generic));
+        assert_eq!(
+            fixture.passed_to_variable_bounded_by(number, &borrowed),
+            Borrow::None
+        );
     }
 
     #[test]

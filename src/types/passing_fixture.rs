@@ -11,7 +11,7 @@ use super::passing_facts::PassingFacts;
 use super::passing_tables::PassingTables;
 use super::pending::PendingBorrow;
 use super::reopened_parameters::ReopenedParameters;
-use super::ty::Type;
+use super::ty::{Bound, Type};
 use super::typed::{Borrow, TypedExpr, TypedExprKind, TypedLeaf};
 use super::unifier::{LiteralKind, Unifier};
 use crate::core::{BindingId, PrimitiveType, ReferenceKind};
@@ -51,6 +51,19 @@ impl PassingFixture {
         self.rules()
             .pass_types(parameter, argument, Self::span())
             .expect("the types fit")
+    }
+
+    pub(super) fn passed_to_variable_bounded_by(
+        &mut self,
+        bound: Bound,
+        argument: &Type,
+    ) -> Borrow {
+        let parameter = self.unifier.fresh();
+        let Type::Var(var) = parameter else {
+            unreachable!("fresh makes a variable")
+        };
+        self.unifier.add_bound(var, bound);
+        self.passed(&parameter, argument)
     }
 
     pub(super) fn pending_borrow(var: &Type, argument: Type) -> PendingBorrow {

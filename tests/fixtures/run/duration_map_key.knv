@@ -1,0 +1,6 @@
+(defn main ()
+  (let (by-length (hash-map (seconds 1) "a")
+        sorted (sorted-map (millis 5) 2 (seconds 2) 1))
+    (prn (get by-length (millis 1000)))
+    (prn (get sorted (millis 5)))
+    (prn sorted)))

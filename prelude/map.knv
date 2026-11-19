@@ -4,6 +4,7 @@
 (use prelude/macros defmacro defrule document module)
 (use prelude/syntax let)
 (use prelude/types hash-map option slice sorted-map vec)
+(use prelude/io duration instant)
 (use prelude/pair pair)
 (use prelude/number eq hash ord)
 
@@ -21,6 +22,7 @@
   (ref str)
   string i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize
   f32 f64
+  duration instant
   (with string str)
   (with (ref str) str))
 

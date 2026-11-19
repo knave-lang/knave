@@ -115,50 +115,73 @@ impl<'a> RustText<'a> {
         TokenScanner::scan(self.text).open.is_empty()
     }
 
-    pub fn innermost_open(&self) -> Option<OpenDelimiter<'a>> {
-        TokenScanner::scan(self.text).open.last().copied()
-    }
-
-    pub fn starts_an_argument(&self) -> bool {
-        let outside_literal = TokenScanner::scan(self.text).literal == Literal::Outside;
+    pub fn argument_start(&self) -> Option<ArgumentStart<'a>> {
+        let mut scanner = TokenScanner::scan(self.text);
+        if scanner.literal != Literal::Outside {
+            return None;
+        }
+        let open = scanner.open.pop()?;
         let written = self.text.trim_end();
-        outside_literal && (written.ends_with(',') || Self::names_an_argument(written))
-    }
-
-    fn names_an_argument(written: &str) -> bool {
-        let Some(name) = written.strip_suffix('=') else {
-            return false;
-        };
-        let name = name.trim_end();
-        let name_start = name
-            .rfind(|character: char| !(character.is_alphanumeric() || character == '_'))
-            .map_or(0, |at| at + 1);
-        name_start < name.len() && name[..name_start].trim_end().ends_with(',')
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct OpenDelimiter<'a> {
-    callee: Option<&'a str>,
-    arguments: usize,
-    text_arguments: u64,
-}
-
-impl OpenDelimiter<'_> {
-    pub fn follows_format_string(&self, macros: &[(&str, usize)]) -> bool {
-        let format_string = macros
-            .iter()
-            .find(|(name, _)| Some(*name) == self.callee)
-            .map(|(_, position)| *position);
-        format_string.is_some_and(|position| {
-            self.arguments > position && self.text_arguments & (1 << position) != 0
+        if written.ends_with(',') {
+            return Some(ArgumentStart { open, name: None });
+        }
+        let name = Self::argument_name(written)?;
+        Some(ArgumentStart {
+            open,
+            name: Some(name),
         })
     }
 
-    fn hold_text(&mut self) {
-        if self.arguments < u64::BITS as usize {
-            self.text_arguments |= 1 << self.arguments;
-        }
+    pub fn trailing_identifier(text: &str) -> &str {
+        let before = text
+            .trim_end_matches(|character: char| character.is_alphanumeric() || character == '_');
+        &text[before.len()..]
+    }
+
+    fn argument_name(written: &'a str) -> Option<&'a str> {
+        let named = written.strip_suffix('=')?.trim_end();
+        let name = Self::trailing_identifier(named);
+        let before_name = &named[..named.len() - name.len()];
+        (!name.is_empty() && before_name.trim_end().ends_with(',')).then_some(name)
+    }
+}
+
+pub struct ArgumentStart<'a> {
+    open: OpenDelimiter<'a>,
+    name: Option<&'a str>,
+}
+
+impl<'a> ArgumentStart<'a> {
+    pub fn open(&self) -> &OpenDelimiter<'a> {
+        &self.open
+    }
+
+    pub fn name(&self) -> Option<&'a str> {
+        self.name
+    }
+}
+
+#[derive(Clone)]
+pub struct OpenDelimiter<'a> {
+    callee: Option<&'a str>,
+    arguments: usize,
+    texts: Vec<(usize, &'a str)>,
+}
+
+impl<'a> OpenDelimiter<'a> {
+    pub fn callee(&self) -> Option<&'a str> {
+        self.callee
+    }
+
+    pub fn passed_arguments(&self) -> usize {
+        self.arguments
+    }
+
+    pub fn text_at(&self, argument: usize) -> Option<&'a str> {
+        self.texts
+            .iter()
+            .find(|(position, _)| *position == argument)
+            .map(|(_, text)| *text)
     }
 }
 
@@ -168,6 +191,7 @@ struct TokenScanner<'a> {
     start: Option<usize>,
     open: Vec<OpenDelimiter<'a>>,
     literal: Literal,
+    literal_start: usize,
     escaped: bool,
 }
 
@@ -181,11 +205,12 @@ impl<'a> TokenScanner<'a> {
             start: None,
             open: Vec::new(),
             literal: Literal::Outside,
+            literal_start: 0,
             escaped: false,
         };
         let mut characters = text.char_indices().peekable();
         while let Some((position, character)) = characters.next() {
-            if scanner.consume_literal(character) {
+            if scanner.consume_literal(position, character) {
                 continue;
             }
             if scanner.consume_range(position, character, &mut characters) {
@@ -204,7 +229,7 @@ impl<'a> TokenScanner<'a> {
         scanner
     }
 
-    fn consume_literal(&mut self, character: char) -> bool {
+    fn consume_literal(&mut self, position: usize, character: char) -> bool {
         if self.literal == Literal::Outside {
             return false;
         }
@@ -213,14 +238,15 @@ impl<'a> TokenScanner<'a> {
         } else if character == '\\' {
             self.escaped = true;
         } else if self.literal.closes(character) {
-            self.close_literal();
+            self.close_literal(position);
         }
         true
     }
 
-    fn close_literal(&mut self) {
+    fn close_literal(&mut self, end: usize) {
         if let (Literal::String, Some(open)) = (self.literal, self.open.last_mut()) {
-            open.hold_text();
+            let text = &self.text[self.literal_start + 1..end];
+            open.texts.push((open.arguments, text));
         }
         self.literal = Literal::Outside;
     }
@@ -250,7 +276,10 @@ impl<'a> TokenScanner<'a> {
 
     fn consume_delimiter(&mut self, position: usize, character: char) -> bool {
         match character {
-            '"' => self.literal = Literal::String,
+            '"' => {
+                self.literal = Literal::String;
+                self.literal_start = position;
+            }
             '\'' if self.opens_character(position) => self.literal = Literal::Character,
             '(' => self.open(self.macro_called_at(position)),
             '[' | '{' => self.open(None),
@@ -268,7 +297,7 @@ impl<'a> TokenScanner<'a> {
         self.open.push(OpenDelimiter {
             callee,
             arguments: 0,
-            text_arguments: 0,
+            texts: Vec::new(),
         });
     }
 
@@ -281,10 +310,7 @@ impl<'a> TokenScanner<'a> {
 
     fn macro_called_at(&self, position: usize) -> Option<&'a str> {
         let path = self.text[..position].trim_end().strip_suffix('!')?;
-        let name_start = path
-            .rfind(|character: char| !(character.is_alphanumeric() || character == '_'))
-            .map_or(0, |at| at + 1);
-        Some(&path[name_start..])
+        Some(RustText::trailing_identifier(path))
     }
 
     fn flush(&mut self, position: usize) {

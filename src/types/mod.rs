@@ -108,7 +108,7 @@ mod passed_types;
 mod passing_facts;
 #[cfg(test)]
 mod passing_fixture;
-mod passing_sources;
+mod passing_tables;
 mod pattern_fields;
 mod pattern_placement;
 mod payload_lowering;

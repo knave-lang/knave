@@ -46,7 +46,7 @@ use super::parameter_call_search::CalledParameters;
 use super::parameter_modes::ParameterModes;
 use super::parameter_names::ParameterNames;
 use super::passing_facts::PassingFacts;
-use super::passing_sources::PassingSources;
+use super::passing_tables::PassingTables;
 use super::peeling::ReferencePeeling;
 use super::pinning::LiteralDefaults;
 use super::place_types::PlaceTypes;
@@ -495,7 +495,7 @@ impl TypeChecker {
     }
 
     pub(super) fn copy_rules(&self) -> super::copy::CopyRules<'_> {
-        super::copy::CopyRules::new(&self.declarations, self.generics.params())
+        self.passing_tables().copy_rules()
     }
 
     pub(super) fn variant_payloads(&self) -> VariantPayloads<'_> {
@@ -503,7 +503,7 @@ impl TypeChecker {
     }
 
     pub(super) fn declared_types(&self) -> DeclaredTypes<'_> {
-        DeclaredTypes::new(self.declarations.types())
+        self.passing_tables().declared_types()
     }
 
     pub(super) fn declared_traits(&self) -> DeclaredTraits<'_> {
@@ -586,10 +586,8 @@ impl TypeChecker {
     }
 
     pub(super) fn unification(&mut self) -> Unification<'_> {
-        let display = TypeDisplay::new(&self.bindings, self.generics.params())
-            .with_projections(self.declarations.traits().table.projections());
-        let declarations = DeclaredTypes::new(self.declarations.types());
-        Unification::new(&mut self.unifier, display, declarations)
+        let (tables, unifier, _) = self.passing_borrows();
+        tables.unification(unifier)
     }
 
     pub(super) fn called_parameters<'m>(
@@ -614,40 +612,42 @@ impl TypeChecker {
     }
 
     pub(super) fn argument_passing(&mut self) -> ArgumentPassing<'_> {
-        let (sources, unifier, deferred) = self.passing_borrows();
-        ArgumentPassing::new(sources, unifier, deferred)
+        let (tables, unifier, deferred) = self.passing_borrows();
+        ArgumentPassing::new(tables, unifier, deferred)
     }
 
     fn reopened_parameters(&mut self) -> ReopenedParameters<'_> {
-        let (sources, unifier, deferred) = self.passing_borrows();
-        ReopenedParameters::new(sources, unifier, deferred)
+        let (tables, unifier, deferred) = self.passing_borrows();
+        ReopenedParameters::new(tables, unifier, deferred)
     }
 
-    fn passing_borrows(&mut self) -> (PassingSources<'_>, &mut Unifier, &mut DeferredDecisions) {
-        let sources = PassingSources {
+    fn passing_borrows(&mut self) -> (PassingTables<'_>, &mut Unifier, &mut DeferredDecisions) {
+        let tables = PassingTables {
             declarations: &self.declarations,
             bindings: &self.bindings,
             generics: self.generics.params(),
             single_field_readers: &self.single_field_readers,
             copy_trait: self.copy_trait,
         };
-        (sources, &mut self.unifier, &mut self.deferred)
+        (tables, &mut self.unifier, &mut self.deferred)
     }
 
     pub(super) fn passing_facts(&self) -> PassingFacts<'_> {
-        let sources = PassingSources {
+        PassingFacts::new(self.passing_tables(), &self.unifier)
+    }
+
+    fn passing_tables(&self) -> PassingTables<'_> {
+        PassingTables {
             declarations: &self.declarations,
             bindings: &self.bindings,
             generics: self.generics.params(),
             single_field_readers: &self.single_field_readers,
             copy_trait: self.copy_trait,
-        };
-        PassingFacts::new(sources, &self.unifier)
+        }
     }
 
     pub(super) fn display(&self) -> TypeDisplay<'_> {
-        TypeDisplay::new(&self.bindings, self.generics.params())
-            .with_projections(self.declarations.traits().table.projections())
+        self.passing_tables().display()
     }
 
     fn resolve_missing_annotations(&mut self) {

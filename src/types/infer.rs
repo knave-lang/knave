@@ -2015,17 +2015,14 @@ impl TypeChecker {
             && self.passing_facts().passes_as_written(value)
         {
             return self
-                .argument_passing()
-                .fit(&referent, &value.ty, value.span)
+                .unification()
+                .expect(Expectation::plain(&referent), &value.ty, value.span)
                 .map(|()| Borrow::Shared);
         }
-        let held_view = (self.argument_passing()).layers_above_held_view(callee, parameter, value);
-        match held_view {
-            Some(layers) => self
-                .argument_passing()
-                .pass_held_view(parameter, value, layers),
-            None => self.pass_to_callee(callee, position, parameter, value),
+        if let Some(passed) = (self.argument_passing()).pass_held_view(callee, parameter, value) {
+            return passed;
         }
+        self.pass_to_callee(callee, position, parameter, value)
     }
 
     fn pass_to_callee(
@@ -2044,9 +2041,8 @@ impl TypeChecker {
             && !self.unifier.shallow(parameter).is_reference()
             && let Type::Ref(_, referent) | Type::Mut(_, referent) = &value.ty
         {
-            self.argument_passing()
-                .fit(parameter, referent, value.span)
-                .map(|()| Borrow::None)
+            self.unification()
+                .expect(Expectation::plain(parameter), referent, value.span)
                 .map_err(|diagnostic| {
                     self.explain_assumed_collection(call, position, &value.ty, diagnostic)
                 })?;

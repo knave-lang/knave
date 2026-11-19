@@ -1,25 +1,24 @@
-use super::copy::CopyRules;
 use super::deferred_decisions::DeferredDecisions;
-use super::passing_sources::PassingSources;
+use super::passing_tables::PassingTables;
 use super::reopened_parameter::ReopenedParameter;
 use super::ty::Type;
 use super::unifier::Unifier;
 use crate::source::Span;
 
 pub(super) struct ReopenedParameters<'a> {
-    sources: PassingSources<'a>,
+    tables: PassingTables<'a>,
     unifier: &'a mut Unifier,
     deferred: &'a mut DeferredDecisions,
 }
 
 impl<'a> ReopenedParameters<'a> {
     pub(super) fn new(
-        sources: PassingSources<'a>,
+        tables: PassingTables<'a>,
         unifier: &'a mut Unifier,
         deferred: &'a mut DeferredDecisions,
     ) -> Self {
         Self {
-            sources,
+            tables,
             unifier,
             deferred,
         }
@@ -72,7 +71,7 @@ impl<'a> ReopenedParameters<'a> {
     }
 
     fn borrows_copy_value(&self, parameter: &Type) -> bool {
-        let copy_rules = || CopyRules::new(self.sources.declarations, self.sources.generics);
+        let copy_rules = || self.tables.copy_rules();
         matches!(parameter, Type::Ref(_, referent) if copy_rules().is_small_copy(referent))
     }
 }

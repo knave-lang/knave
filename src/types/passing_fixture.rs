@@ -8,10 +8,11 @@ use super::copy_requirement::CopyRequirement;
 use super::declarations_fixture::DeclarationsFixture;
 use super::deferred_decisions::DeferredDecisions;
 use super::passing_facts::PassingFacts;
-use super::passing_sources::PassingSources;
+use super::passing_tables::PassingTables;
+use super::pending::PendingBorrow;
 use super::reopened_parameters::ReopenedParameters;
 use super::ty::Type;
-use super::typed::{TypedExpr, TypedExprKind, TypedLeaf};
+use super::typed::{Borrow, TypedExpr, TypedExprKind, TypedLeaf};
 use super::unifier::{LiteralKind, Unifier};
 use crate::core::{BindingId, PrimitiveType, ReferenceKind};
 use crate::source::{SourceId, Span};
@@ -37,28 +38,45 @@ impl PassingFixture {
     }
 
     pub(super) fn argument_passing(&mut self) -> ArgumentPassing<'_> {
-        let (sources, unifier, deferred) = self.split();
-        ArgumentPassing::new(sources, unifier, deferred)
+        let (tables, unifier, deferred) = self.split();
+        ArgumentPassing::new(tables, unifier, deferred)
     }
 
     pub(super) fn rules(&mut self) -> BorrowRules<'_, '_> {
-        let (sources, unifier, _) = self.split();
-        BorrowRules::new(sources, unifier)
+        let (tables, unifier, _) = self.split();
+        BorrowRules::new(tables, unifier)
+    }
+
+    pub(super) fn passed(&mut self, parameter: &Type, argument: &Type) -> Borrow {
+        self.rules()
+            .pass_types(parameter, argument, Self::span())
+            .expect("the types fit")
+    }
+
+    pub(super) fn pending_borrow(var: &Type, argument: Type) -> PendingBorrow {
+        let Type::Var(var) = var else {
+            unreachable!("a pending borrow waits on a variable")
+        };
+        PendingBorrow {
+            var: *var,
+            argument,
+            span: Self::span(),
+        }
     }
 
     pub(super) fn reopened_parameters(&mut self) -> ReopenedParameters<'_> {
-        let (sources, unifier, deferred) = self.split();
-        ReopenedParameters::new(sources, unifier, deferred)
+        let (tables, unifier, deferred) = self.split();
+        ReopenedParameters::new(tables, unifier, deferred)
     }
 
     pub(super) fn copy_requirement(&mut self) -> CopyRequirement<'_> {
-        let (sources, unifier, _) = self.split();
-        CopyRequirement::new(sources.copy_trait, unifier)
+        let (tables, unifier, _) = self.split();
+        CopyRequirement::new(tables.copy_trait, unifier)
     }
 
     pub(super) fn facts(&mut self) -> PassingFacts<'_> {
-        let (sources, unifier, _) = self.split();
-        PassingFacts::new(sources, unifier)
+        let (tables, unifier, _) = self.split();
+        PassingFacts::new(tables, unifier)
     }
 
     pub(super) fn unifier(&mut self) -> &mut Unifier {
@@ -121,14 +139,14 @@ impl PassingFixture {
         }
     }
 
-    fn split(&mut self) -> (PassingSources<'_>, &mut Unifier, &mut DeferredDecisions) {
-        let sources = PassingSources {
+    fn split(&mut self) -> (PassingTables<'_>, &mut Unifier, &mut DeferredDecisions) {
+        let tables = PassingTables {
             declarations: self.declarations.declarations(),
             bindings: self.declarations.program_bindings(),
             generics: self.declarations.generics(),
             single_field_readers: &self.field_readers,
             copy_trait: Some(self.declarations.trait_named("copy")),
         };
-        (sources, &mut self.unifier, &mut self.deferred)
+        (tables, &mut self.unifier, &mut self.deferred)
     }
 }

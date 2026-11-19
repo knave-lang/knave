@@ -1,18 +1,17 @@
-use super::copy::CopyRules;
-use super::passing_sources::PassingSources;
+use super::passing_tables::PassingTables;
 use super::ty::{Type, TypeVar};
 use super::typed::{TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr};
 use super::unifier::Unifier;
 use crate::core::{Keyword, PrimitiveType};
 
 pub(super) struct PassingFacts<'a> {
-    sources: PassingSources<'a>,
+    tables: PassingTables<'a>,
     unifier: &'a Unifier,
 }
 
 impl<'a> PassingFacts<'a> {
-    pub(super) fn new(sources: PassingSources<'a>, unifier: &'a Unifier) -> Self {
-        Self { sources, unifier }
+    pub(super) fn new(tables: PassingTables<'a>, unifier: &'a Unifier) -> Self {
+        Self { tables, unifier }
     }
 
     pub(super) fn passes_as_written(&self, value: &TypedExpr) -> bool {
@@ -29,14 +28,14 @@ impl<'a> PassingFacts<'a> {
     pub(super) fn holds_copy_value(&self, referent: &Type) -> bool {
         match referent {
             Type::Var(var) => self.unifier.literal_kind(*var).is_some(),
-            _ => CopyRules::new(self.sources.declarations, self.sources.generics)
-                .is_small_copy(referent),
+            _ => self.tables.copy_rules().is_small_copy(referent),
         }
     }
 
     pub(super) fn allows_only_copy_values(&self, var: TypeVar) -> bool {
         self.unifier.bounds(var).iter().any(|bound| {
-            CopyRules::new(self.sources.declarations, self.sources.generics)
+            self.tables
+                .copy_rules()
                 .bound_allows_only_copy_values(bound.binding)
         })
     }
@@ -63,7 +62,7 @@ impl<'a> PassingFacts<'a> {
         let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = callee.kind else {
             return None;
         };
-        let label = self.sources.single_field_readers.get(&binding)?;
+        let label = self.tables.single_field_readers.get(&binding)?;
         let [argument] = arguments.as_slice() else {
             return None;
         };
@@ -83,7 +82,7 @@ impl<'a> PassingFacts<'a> {
     fn local_place(&self, value: &TypedExpr) -> Option<String> {
         match &value.kind {
             TypedExprKind::Leaf(TypedLeaf::Local(binding)) => {
-                Some(self.sources.bindings.get(*binding).name().to_string())
+                Some(self.tables.bindings.get(*binding).name().to_string())
             }
             TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) => Some(format!(
                 "(field {} {})",

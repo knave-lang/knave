@@ -23,6 +23,7 @@ enum RuntimePart {
     Lines,
     Signal,
     Show,
+    ShowDuration,
     UnwrapOk,
     UnwrapErr,
     ExpectOk,
@@ -89,7 +90,7 @@ impl RuntimePart {
         ("index", RuntimePart::Index),
         ("convert", RuntimePart::Convert),
     ];
-    const SCANNED: [ScannedPart; 4] = [
+    const SCANNED: [ScannedPart; 5] = [
         ScannedPart {
             part: RuntimePart::FromLiteral,
             markers: &["::from_literal("],
@@ -105,6 +106,10 @@ impl RuntimePart {
         ScannedPart {
             part: RuntimePart::Signal,
             markers: Self::STANDARD_STREAM_MARKERS,
+        },
+        ScannedPart {
+            part: RuntimePart::ShowDuration,
+            markers: &["std::time::Duration"],
         },
     ];
 
@@ -168,10 +173,14 @@ struct ScannedPart {
 }
 
 impl ScannedPart {
-    fn found_in(&self, code: &EmittedCode, named: &BTreeSet<RuntimePart>) -> bool {
+    fn found_in(&self, code: &EmittedCode, needed: &BTreeSet<RuntimePart>) -> bool {
         match self.part {
             RuntimePart::MapSequence => {
-                named.contains(&RuntimePart::Sequence)
+                needed.contains(&RuntimePart::Sequence)
+                    && self.any_marker(|marker| code.contains(marker))
+            }
+            RuntimePart::ShowDuration => {
+                needed.contains(&RuntimePart::Show)
                     && self.any_marker(|marker| code.contains(marker))
             }
             RuntimePart::Signal => self.any_marker(|marker| code.contains_unprefixed(marker)),
@@ -262,6 +271,7 @@ impl RuntimeModule {
     const SEPARATOR: &'static str = include_str!("../../prelude/runtime/separator.rs");
     const LINES: &'static str = include_str!("../../prelude/runtime/lines.rs");
     const SIGNAL: &'static str = include_str!("../../prelude/runtime/signal.rs");
+    const SHOW_DURATION: &'static str = include_str!("../../prelude/runtime/show_duration.rs");
     const SHOW: &'static str = include_str!("../../prelude/runtime/show.rs");
     const UNWRAP_OK: &'static str = include_str!("../../prelude/runtime/unwrap_ok.rs");
     const UNWRAP_ERR: &'static str = include_str!("../../prelude/runtime/unwrap_err.rs");
@@ -283,7 +293,7 @@ impl RuntimeModule {
     const INDEX: &'static str = include_str!("../../prelude/runtime/index.rs");
     const CONVERT: &'static str = include_str!("../../prelude/runtime/convert.rs");
     const START_UP_CALL: &'static str = "crate::rt::restore_default_sigpipe();";
-    const FIXED_PARTS: [(RuntimePart, &'static str); 34] = [
+    const FIXED_PARTS: [(RuntimePart, &'static str); 35] = [
         (RuntimePart::Signed, Self::SIGNED),
         (RuntimePart::Float, Self::FLOAT),
         (RuntimePart::Integer, Self::INTEGER),
@@ -300,6 +310,7 @@ impl RuntimeModule {
         (RuntimePart::Lines, Self::LINES),
         (RuntimePart::Signal, Self::SIGNAL),
         (RuntimePart::Show, Self::SHOW),
+        (RuntimePart::ShowDuration, Self::SHOW_DURATION),
         (RuntimePart::UnwrapOk, Self::UNWRAP_OK),
         (RuntimePart::UnwrapErr, Self::UNWRAP_ERR),
         (RuntimePart::ExpectOk, Self::EXPECT_OK),
@@ -338,13 +349,16 @@ impl RuntimeModule {
 
     pub fn of(code: &str) -> Option<RuntimeModule> {
         let code = EmittedCode::new(code);
-        let named = code.named_parts();
-        let mut parts: BTreeSet<RuntimePart> = RuntimePart::SCANNED
+        let named = Self::with_required(code.named_parts());
+        let scanned = RuntimePart::SCANNED
             .iter()
             .filter(|scanned| scanned.found_in(&code, &named))
-            .map(ScannedPart::part)
-            .collect();
-        parts.extend(named);
+            .map(ScannedPart::part);
+        let parts = Self::with_required(named.iter().copied().chain(scanned).collect());
+        (!parts.is_empty()).then_some(RuntimeModule { parts })
+    }
+
+    fn with_required(mut parts: BTreeSet<RuntimePart>) -> BTreeSet<RuntimePart> {
         let mut unchecked: Vec<RuntimePart> = parts.iter().copied().collect();
         while let Some(part) = unchecked.pop() {
             for required in part.required() {
@@ -353,7 +367,7 @@ impl RuntimeModule {
                 }
             }
         }
-        (!parts.is_empty()).then_some(RuntimeModule { parts })
+        parts
     }
 
     pub fn start_up_call(&self) -> Option<&'static str> {

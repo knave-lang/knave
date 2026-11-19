@@ -12,4 +12,5 @@
          (seconds 0))
     (println (= (seconds 1) (millis 1000)))
     (println (< (micros 999) (millis 1)))
-    (prn (collect (map (iter (vec 1 2)) seconds)))))
+    (prn (collect (map (iter (vec 1 2)) seconds)))
+    (println (unwrap-ok (the (result int duration) (ok 3))))))

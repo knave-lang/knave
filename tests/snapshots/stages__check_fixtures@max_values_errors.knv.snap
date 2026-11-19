@@ -19,7 +19,7 @@ error[L0404]: `(vec int)` does not implement `partial-ord`
 2 |   (println (max (vec 1) (vec 2)))
   |                 ^^^^^^^ this needs `partial-ord`
   |
-  = note: `partial-ord` is implemented for: char, str, string, (ref str), i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, infallible, (where ((a partial-ord)) (ref a)), (where ((a partial-ord)) (box a)), (where ((a partial-ord) (b partial-ord)) (pair a b))
+  = note: `partial-ord` is implemented for: char, str, string, (ref str), i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, infallible, duration, instant, (where ((a partial-ord)) (ref a)), (where ((a partial-ord)) (box a)), (where ((a partial-ord) (b partial-ord)) (pair a b))
   = note: run `knave doc L0404` for an explanation
 
 error[L0404]: `float` does not implement `ord`
@@ -28,5 +28,5 @@ error[L0404]: `float` does not implement `ord`
 3 |   (println (unwrap (max (iter (vec 1.0))))))
   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `ord`
   |
-  = note: `ord` is implemented for: char, string, (ref str), i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, infallible, (where ((a ord)) (ref a)), (where ((a ord)) (box a)), (where ((a ord) (b ord)) (pair a b))
+  = note: `ord` is implemented for: char, string, (ref str), i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, infallible, duration, instant, (where ((a ord)) (ref a)), (where ((a ord)) (box a)), (where ((a ord) (b ord)) (pair a b))
   = note: run `knave doc L0404` for an explanation

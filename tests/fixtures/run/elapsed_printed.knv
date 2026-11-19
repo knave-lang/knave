@@ -1,0 +1,3 @@
+(defn main ()
+  (let (shown (pr-str (elapsed (now))))
+    (println (starts-with? shown "("))))

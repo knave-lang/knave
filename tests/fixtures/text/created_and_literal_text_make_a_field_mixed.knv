@@ -1,4 +1,6 @@
-(defstruct user :name str :age int)
+(defstruct user
+  :name str
+  :age int)
 
 (defn make (name) (->user :name name :age 1))
 

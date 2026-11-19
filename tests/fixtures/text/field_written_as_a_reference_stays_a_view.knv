@@ -1,4 +1,6 @@
-(defstruct user :name (ref str) :age int)
+(defstruct user
+  :name (ref str)
+  :age int)
 
 (defn main ()
   (let (ana (->user :name "Ana" :age 3))

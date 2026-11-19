@@ -6,6 +6,7 @@ use super::admissible::Admissible;
 use super::admissible_types::AdmissibleTypes;
 use super::argument_passing::ArgumentPassing;
 use super::assumed_collections::AssumedCollections;
+use super::callee_borrows::CalleeBorrows;
 use super::checked_program::CheckedProgram;
 use super::checking_facts::CheckingFacts;
 use super::clause_check::ClauseCheck;
@@ -56,6 +57,9 @@ use super::reached_traits::{ReachedDeclaration, ReachedTraits};
 use super::reopened_parameters::ReopenedParameters;
 use super::rust_type_item::RustTypeItem;
 use super::selection::Selection;
+use super::shared_group::SharedGroup;
+use super::shared_passing_order::SharedPassingOrder;
+use super::shared_variable_group::SharedVariableGroup;
 use super::string_views::StringViews;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_declaration_collector::TraitDeclarationCollector;
@@ -588,6 +592,21 @@ impl TypeChecker {
 
     pub(super) fn string_views(&self) -> StringViews<'_> {
         StringViews::new(&self.unifier, self.place_types(), self.string_view)
+    }
+
+    pub(super) fn shared_variable_group<'g>(
+        &'g self,
+        group: &'g SharedGroup,
+    ) -> SharedVariableGroup<'g> {
+        SharedVariableGroup::new(group, self.passing_tables(), &self.unifier)
+    }
+
+    pub(super) fn shared_passing_order<'c>(
+        &'c self,
+        callee: Option<&'c TypedExpr>,
+    ) -> SharedPassingOrder<'c> {
+        let callee = CalleeBorrows::new(callee, &self.template_borrows);
+        SharedPassingOrder::new(self.place_types(), &self.unifier, callee)
     }
 
     pub(super) fn unification(&mut self) -> Unification<'_> {

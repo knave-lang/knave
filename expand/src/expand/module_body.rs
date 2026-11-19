@@ -1,4 +1,9 @@
+mod pending_item;
+
 use std::rc::Rc;
+
+pub(super) use pending_item::PendingItem;
+use pending_item::TypeDefinitionKind;
 
 use super::budget_arena::BudgetId;
 use super::context::DefinitionContext;
@@ -52,33 +57,6 @@ struct RustTraitEntries {
     structural: Option<Form>,
     associated: Vec<RustTraitAssociatedType>,
     implementors: Vec<RustTraitImplementor>,
-}
-
-pub(super) enum PendingItem {
-    Def {
-        binding: BindingId,
-        annotation: Option<Form>,
-        span: Span,
-    },
-    Signature(Form),
-    Derive(Form),
-    Struct(BindingId, Form),
-    Enum(BindingId, Form),
-    RustTrait(BindingId, Form),
-    RustType(BindingId, Form),
-    Trait(BindingId, Form),
-    Impl(crate::scope::Scope, Form),
-    Export(Form),
-    Use(crate::core::WrittenUse),
-}
-
-impl PendingItem {
-    fn mark(self, provenance: crate::core::Provenance) -> Self {
-        match self {
-            Self::Use(used) => Self::Use(crate::core::WrittenUse { provenance, ..used }),
-            item => item,
-        }
-    }
 }
 
 impl Expander<'_> {
@@ -302,7 +280,7 @@ impl Expander<'_> {
     ) -> Result<Option<PendingItem>, Diagnostic> {
         let shape = Shape::new(KernelForm::Definition(DefinitionForm::Struct), &form);
         let binding = self.register_type_name(&shape, BindingKind::Struct(module), context)?;
-        Ok(Some(PendingItem::Struct(binding, form)))
+        Ok(Some(TypeDefinitionKind::Struct.pending(binding, form)))
     }
 
     fn register_enum(
@@ -333,7 +311,7 @@ impl Expander<'_> {
             constructors.push(constructor);
         }
         self.tables.enum_variants.insert(binding, constructors);
-        Ok(Some(PendingItem::Enum(binding, form)))
+        Ok(Some(TypeDefinitionKind::Enum.pending(binding, form)))
     }
 
     fn first_enum_variant(items: &[Form]) -> usize {
@@ -434,7 +412,7 @@ impl Expander<'_> {
                 )?;
             }
         }
-        Ok(Some(PendingItem::RustTrait(binding, form)))
+        Ok(Some(TypeDefinitionKind::RustTrait.pending(binding, form)))
     }
 
     fn rust_trait_marker(entry: &Form) -> Option<&str> {
@@ -473,7 +451,7 @@ impl Expander<'_> {
     ) -> Result<Option<PendingItem>, Diagnostic> {
         let shape = self.definition_shape(DefinitionForm::RustType, &form);
         let binding = self.register_type_name(&shape, BindingKind::RustType(module), context)?;
-        Ok(Some(PendingItem::RustType(binding, form)))
+        Ok(Some(TypeDefinitionKind::RustType.pending(binding, form)))
     }
 
     fn register_trait(
@@ -503,7 +481,7 @@ impl Expander<'_> {
             );
             method?;
         }
-        Ok(Some(PendingItem::Trait(binding, form)))
+        Ok(Some(TypeDefinitionKind::Trait.pending(binding, form)))
     }
 
     fn register_impl(&mut self, form: Form) -> Result<Option<PendingItem>, Diagnostic> {
@@ -578,9 +556,7 @@ impl Expander<'_> {
                 span,
             } => self.lower_def(binding, annotation, span, core),
             PendingItem::Signature(form) => self.lower_signature(module, &form, core),
-            PendingItem::Struct(binding, form) => self.lower_struct(binding, &form, core),
-            PendingItem::RustTrait(binding, form) => self.lower_rust_trait(binding, &form, core),
-            PendingItem::RustType(binding, form) => self.lower_rust_type(binding, &form, core),
+            PendingItem::TypeDefinition(definition) => definition.lower(self, core),
             PendingItem::Use(written) => {
                 core.lint_facts.record_use(written);
                 Ok(())
@@ -596,9 +572,7 @@ impl Expander<'_> {
         core: &mut CoreModule,
     ) -> Result<(), Diagnostic> {
         match item {
-            PendingItem::Enum(binding, form) => self.lower_enum(binding, &form, core),
             PendingItem::Derive(form) => self.lower_derive(module, &form, core),
-            PendingItem::Trait(binding, form) => self.lower_trait(binding, &form, core),
             PendingItem::Impl(scope, form) => self.lower_impl(scope, &form, core),
             PendingItem::Export(form) => {
                 self.lower_exports(module, &form, core);

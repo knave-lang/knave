@@ -9,7 +9,7 @@ error[L0404]: `(error-of int)` does not implement `show`
 18 |   (println (unwrap-ok number))
    |                       ^^^^^^ this needs `show`
    |
-   = note: `show` is implemented for: bool, char, str, string, unit, io-error, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, (where ((a show)) (ref a)), (where ((a show)) (vec a)), (where ((a show)) (slice a)), (where ((a show)) (option a)), (where ((a show) (b show)) (result a b)), (where ((a show)) (box a)), (where ((a show) (b show)) (pair a b)), (where ((k show) (v show)) (sorted-map k v)), (where ((k show) (v show)) (hash-map k v))
+   = note: `show` is implemented for: bool, char, str, string, unit, io-error, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, duration, (where ((a show)) (ref a)), (where ((a show)) (vec a)), (where ((a show)) (slice a)), (where ((a show)) (option a)), (where ((a show) (b show)) (result a b)), (where ((a show)) (box a)), (where ((a show) (b show)) (pair a b)), (where ((k show) (v show)) (sorted-map k v)), (where ((k show) (v show)) (hash-map k v))
    = note: `show` is implemented for `(parse-error target)` for each `target` in: bool, char, string, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float
    = note: run `knave doc L0404` for an explanation
 
@@ -19,6 +19,6 @@ error[L0404]: `(error-of f32)` does not implement `show`
 21 |   (println (unwrap-ok float)))
    |                       ^^^^^ this needs `show`
    |
-   = note: `show` is implemented for: bool, char, str, string, unit, io-error, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, (where ((a show)) (ref a)), (where ((a show)) (vec a)), (where ((a show)) (slice a)), (where ((a show)) (option a)), (where ((a show) (b show)) (result a b)), (where ((a show)) (box a)), (where ((a show) (b show)) (pair a b)), (where ((k show) (v show)) (sorted-map k v)), (where ((k show) (v show)) (hash-map k v))
+   = note: `show` is implemented for: bool, char, str, string, unit, io-error, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, duration, (where ((a show)) (ref a)), (where ((a show)) (vec a)), (where ((a show)) (slice a)), (where ((a show)) (option a)), (where ((a show) (b show)) (result a b)), (where ((a show)) (box a)), (where ((a show) (b show)) (pair a b)), (where ((k show) (v show)) (sorted-map k v)), (where ((k show) (v show)) (hash-map k v))
    = note: `show` is implemented for `(parse-error target)` for each `target` in: bool, char, string, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float
    = note: run `knave doc L0404` for an explanation

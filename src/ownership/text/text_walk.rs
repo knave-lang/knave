@@ -1,5 +1,6 @@
 use super::body_flows::BodyFlows;
 use super::flow_graph::FlowGraph;
+use super::need::Need;
 use super::representation::Representation;
 use super::slot::Slot;
 use super::slot_listing::SlotListing;
@@ -56,20 +57,13 @@ impl<'w, 'p> TextWalk<'w, 'p> {
     }
 
     fn keep_written_view(&mut self, field: &SlotOwner, ty: &Type) {
-        let SlotOwner::Field(binding, name) = field else {
-            return;
-        };
         let views = TextPositions::of(ty)
             .into_iter()
             .filter(|position| position.written == Representation::View);
         for position in views {
-            let slot = self
-                .context
+            self.context
                 .graph()
-                .node(Slot::new(field.clone(), position.path.clone()));
-            let view = SlotOwner::WrittenView(*binding, name.clone());
-            let marker = self.context.graph().node(Slot::new(view, position.path));
-            self.context.graph().unite(slot, marker);
+                .require(Slot::new(field.clone(), position.path), Need::View);
         }
     }
 

@@ -23,7 +23,7 @@ pub struct TextSolver<'g> {
 
 impl<'g> TextSolver<'g> {
     pub fn solve(graph: &'g FlowGraph) -> Self {
-        let classes = graph.classes();
+        let classes = graph.partition().classes();
         let stored = StoredParameters::new(graph, &classes).find();
         let variables = classes
             .iter()
@@ -63,13 +63,13 @@ impl<'g> TextSolver<'g> {
     }
 
     pub fn class(&self, node: NodeId) -> NodeId {
-        self.graph.class(node)
+        self.graph.partition().class(node)
     }
 
     fn spread(&mut self) -> bool {
         let mut changed = false;
         for flow in self.graph.flows() {
-            let target = self.graph.class(flow.target);
+            let target = self.graph.partition().class(flow.target);
             let before = self.reaching(target);
             let after = before.with(self.arriving(flow));
             if after != before {
@@ -90,12 +90,15 @@ impl<'g> TextSolver<'g> {
             Source::Slot(node) if self.speaks_for_itself(node, flow.target) => {
                 ReachingText::BORROWED
             }
-            Source::Slot(node) => self.reaching(self.graph.class(node)),
+            Source::Slot(node) => self.reaching(self.graph.partition().class(node)),
         }
     }
 
     fn speaks_for_itself(&self, node: NodeId, target: NodeId) -> bool {
-        self.is_read_only_parameter(node) && !self.variables.contains(&self.graph.class(target))
+        self.is_read_only_parameter(node)
+            && !self
+                .variables
+                .contains(&self.graph.partition().class(target))
     }
 
     fn is_read_only_parameter(&self, node: NodeId) -> bool {
@@ -118,9 +121,10 @@ impl<'g> TextSolver<'g> {
             .flows()
             .iter()
             .filter_map(|flow| match flow.source {
-                Source::Slot(node) if self.is_read_only_parameter(node) => {
-                    Some((self.graph.class(node), self.graph.class(flow.target)))
-                }
+                Source::Slot(node) if self.is_read_only_parameter(node) => Some((
+                    self.graph.partition().class(node),
+                    self.graph.partition().class(flow.target),
+                )),
                 _ => None,
             })
             .filter(|(_, target)| self.variables.contains(target))
@@ -130,9 +134,10 @@ impl<'g> TextSolver<'g> {
     fn decided(&self, class: NodeId, tied: Option<NodeId>) -> Representation {
         let members: Vec<&Slot> = self.members(class).collect();
         let reaching = self.reaching(class);
-        if members.iter().any(|slot| slot.need() == Some(Need::Owned)) {
+        let need = self.graph.partition().need(class);
+        if need == Some(Need::Owned) {
             Representation::Owned
-        } else if members.iter().any(|slot| slot.need() == Some(Need::View)) {
+        } else if need == Some(Need::View) {
             Representation::View
         } else if members.iter().any(|slot| self.is_stored(slot)) {
             Representation::of_stored(reaching)
@@ -155,7 +160,7 @@ impl<'g> TextSolver<'g> {
     }
 
     fn refuses(&self, flow: &Flow) -> bool {
-        let target = self.graph.class(flow.target);
+        let target = self.graph.partition().class(flow.target);
         let arriving = self.arriving(flow);
         let lends = flow.transfer == Transfer::Refer && self.variables.contains(&target);
         self.need_refuses(flow, target)
@@ -166,7 +171,7 @@ impl<'g> TextSolver<'g> {
 
     fn need_refuses(&self, flow: &Flow, target: NodeId) -> bool {
         let arriving = self.arriving(flow);
-        match self.need(target) {
+        match self.graph.partition().need(target) {
             Some(Need::Owned) => arriving.holds(ReachingText::STATIC),
             Some(Need::View) | None => false,
             Some(Need::OwnedOrMixed) => {
@@ -182,17 +187,11 @@ impl<'g> TextSolver<'g> {
             Source::Slot(node) => {
                 flow.transfer == Transfer::Move
                     && self
-                        .representation(self.graph.class(node))
+                        .representation(self.graph.partition().class(node))
                         .takes_ownership()
             }
             Source::Text(_) => false,
         }
-    }
-
-    fn need(&self, class: NodeId) -> Option<Need> {
-        self.members(class)
-            .filter_map(Slot::need)
-            .min_by_key(|need| *need != Need::Owned)
     }
 
     fn reaching(&self, class: NodeId) -> ReachingText {
@@ -213,6 +212,7 @@ mod tests {
     use super::TextSolver;
     use crate::core::BindingId;
     use crate::ownership::text::flow_graph::FlowGraph;
+    use crate::ownership::text::need::Need;
     use crate::ownership::text::node_id::NodeId;
     use crate::ownership::text::reaching_text::ReachingText;
     use crate::ownership::text::representation::Representation;
@@ -247,13 +247,18 @@ mod tests {
             SlotOwner::Variable(Self::span(90), GenericId::new(0))
         }
 
+        fn required(mut self, owner: SlotOwner, need: Need) -> Self {
+            self.graph.require(Slot::from(owner), need);
+            self
+        }
+
         fn node(&mut self, owner: &SlotOwner) -> NodeId {
-            self.graph.node(Slot::top(owner.clone()))
+            self.graph.node(Slot::from(owner.clone()))
         }
 
         fn text(mut self, kind: ReachingText, (into, at): (SlotOwner, usize)) -> Self {
             let value = TextValue::from(Source::Text(kind), Self::span(at));
-            self.graph.receive(&Slot::top(into), &value);
+            self.graph.receive(&Slot::from(into), &value);
             self
         }
 
@@ -265,7 +270,7 @@ mod tests {
         ) -> Self {
             let source = self.node(&from);
             let value = TextValue::from(Source::Slot(source), Self::span(at)).transferred(transfer);
-            self.graph.receive(&Slot::top(into), &value);
+            self.graph.receive(&Slot::from(into), &value);
             self
         }
 
@@ -324,10 +329,11 @@ mod tests {
 
     #[test]
     fn a_parameter_passed_to_an_owned_argument_is_stored() {
-        let owned = SlotOwner::OwnedArgument(Flows::span(80));
+        let owned = SlotOwner::Argument(Flows::span(80));
         let flows = Flows::default()
             .text(ReachingText::STATIC, (Flows::PARAMETER, 0))
-            .flow((Flows::PARAMETER, owned), Transfer::Move, 1);
+            .flow((Flows::PARAMETER, owned.clone()), Transfer::Move, 1)
+            .required(owned, Need::Owned);
         assert_eq!(
             flows.representation(Flows::PARAMETER),
             Representation::StaticView
@@ -372,17 +378,17 @@ mod tests {
 
     #[test]
     fn a_clone_of_a_parameter_with_no_owned_text_is_refused() {
-        let cloned = SlotOwner::ClonedArgument(Flows::span(80));
         let flows = Flows::default()
             .flow((Flows::PARAMETER, Flows::variable()), Transfer::Refer, 7)
-            .united(Flows::variable(), cloned);
+            .required(Flows::variable(), Need::OwnedOrMixed);
         assert_eq!(flows.refused_at(), vec![7]);
     }
 
     #[test]
     fn static_text_given_to_an_owned_argument_is_refused() {
-        let owned = SlotOwner::OwnedArgument(Flows::span(80));
+        let owned = SlotOwner::Argument(Flows::span(80));
         let flows = Flows::default()
+            .required(owned.clone(), Need::Owned)
             .text(ReachingText::STATIC, (owned.clone(), 4))
             .text(ReachingText::OWNED, (owned, 5));
         assert_eq!(flows.refused_at(), vec![4]);
@@ -390,10 +396,11 @@ mod tests {
 
     #[test]
     fn an_owned_need_outranks_a_written_view() {
-        let owned = SlotOwner::OwnedArgument(Flows::span(80));
-        let view = SlotOwner::WrittenView(BindingId::from_index(5), "name".into());
+        let owned = SlotOwner::Argument(Flows::span(80));
         let flows = Flows::default()
-            .united(owned.clone(), view)
+            .required(owned.clone(), Need::Owned)
+            .required(Flows::field(), Need::View)
+            .united(owned.clone(), Flows::field())
             .text(ReachingText::STATIC, (owned, 4));
         assert_eq!(flows.refused_at(), vec![4]);
     }

@@ -1,6 +1,7 @@
 use super::access::Access;
 use super::callee::Callee;
 use super::inline_flows::InlineFlows;
+use super::need::Need;
 use super::node_id::NodeId;
 use super::reaching_text::ReachingText;
 use super::representation::Representation;
@@ -86,7 +87,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         if let Some((generic, access)) = Callee::whole_generic(declared) {
             self.whole_generic_argument((callee, generic), access, value);
         } else if let Some(parameter) = callee.parameter(index) {
-            self.pour(&Slot::top(SlotOwner::Parameter(parameter)), value);
+            self.pour(&Slot::from(SlotOwner::Parameter(parameter)), value);
         }
         for position in SchemePositions::of(declared, instantiated) {
             self.argument_position(callee, &position, value);
@@ -99,13 +100,12 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         access: Access,
         value: &TextValue,
     ) {
-        let variable = Slot::top(SlotOwner::Variable(self.call.span, generic));
+        let variable = Slot::from(SlotOwner::Variable(self.call.span, generic));
         let program = self.context.program();
         if !value.sources().is_empty() && callee.needs_owned_text(generic, program) {
-            let graph = self.context.graph();
-            let need = graph.node(Slot::top(SlotOwner::ClonedArgument(self.call.span)));
-            let node = graph.node(variable.clone());
-            graph.unite(node, need);
+            self.context
+                .graph()
+                .require(variable.clone(), Need::OwnedOrMixed);
         }
         self.pour(
             &variable,
@@ -129,11 +129,15 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
             SchemePosition::Written {
                 written: Representation::Owned,
                 path,
-            } if path.is_top() && callee.function().is_none() => {
-                self.pour(&Slot::top(SlotOwner::OwnedArgument(self.call.span)), value)
-            }
+            } if path.is_top() && callee.function().is_none() => self.pour_owned_argument(value),
             SchemePosition::Written { .. } => {}
         }
+    }
+
+    fn pour_owned_argument(&mut self, value: &TextValue) {
+        let argument = Slot::from(SlotOwner::Argument(self.call.span));
+        self.pour(&argument, value);
+        self.context.graph().require(argument, Need::Owned);
     }
 
     fn nested_at(value: &TextValue, path: &TypePath) -> Option<NodeId> {

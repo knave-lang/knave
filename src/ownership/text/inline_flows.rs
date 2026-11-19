@@ -21,10 +21,10 @@ impl<'g> InlineFlows<'g> {
 
     pub fn value(self, arguments: &[TextValue]) -> TextValue {
         let owner = SlotOwner::Variable(self.call.span, GenericId::new(Self::SHARED_VARIABLE));
-        let variable = self.graph.node(Slot::top(owner.clone()));
+        let variable = self.graph.node(Slot::from(owner.clone()));
         for argument in arguments {
             self.graph
-                .receive(&Slot::top(owner.clone()), &Self::top_of(argument));
+                .receive(&Slot::from(owner.clone()), &Self::top_of(argument));
             for (_, nested) in argument.nested() {
                 self.graph.unite(variable, *nested);
             }

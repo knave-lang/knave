@@ -1,0 +1,12 @@
+(def address-of
+  (rust "format!(\"{{:p}}\", {0})"
+    (fn ((ref str)) string)))
+
+(defn main ()
+  (local tricks (vec "feint" "vanish"))
+  (for-each (iter tricks)
+    (fn (trick)
+      (local address (address-of trick))
+      (println (len address))))
+  (push! tricks "dash")
+  (println (len tricks)))

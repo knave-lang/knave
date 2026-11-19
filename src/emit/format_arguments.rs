@@ -1,31 +1,26 @@
-use super::operator::RustText;
+use super::operator::{OpenDelimiter, RustText};
 use crate::core::Piece;
 
 pub(super) struct FormatArguments<'p> {
     pieces: &'p [Piece],
 }
 
+struct FormatMacro {
+    name: &'static str,
+    format_string: usize,
+}
+
+struct FormatString<'t> {
+    text: &'t str,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FormatArgument<'t> {
+    Positional(usize),
+    Named(&'t str),
+}
+
 impl<'p> FormatArguments<'p> {
-    const MACROS: [(&'static str, usize); 18] = [
-        ("assert", 1),
-        ("assert_eq", 2),
-        ("assert_ne", 2),
-        ("debug_assert", 1),
-        ("debug_assert_eq", 2),
-        ("debug_assert_ne", 2),
-        ("eprint", 0),
-        ("eprintln", 0),
-        ("format", 0),
-        ("format_args", 0),
-        ("panic", 0),
-        ("print", 0),
-        ("println", 0),
-        ("todo", 0),
-        ("unimplemented", 0),
-        ("unreachable", 0),
-        ("write", 1),
-        ("writeln", 1),
-    ];
     const PLACED_VALUE: &'static str = "_";
 
     pub(super) fn new(pieces: &'p [Piece]) -> Self {
@@ -44,12 +39,20 @@ impl<'p> FormatArguments<'p> {
 
     fn is_whole_argument(&self, position: usize) -> bool {
         let written = self.text_before(position);
-        let before = RustText::new(&written);
+        let Some(start) = RustText::new(&written).argument_start() else {
+            return false;
+        };
+        let Some(format_macro) = FormatMacro::called_by(start.open()) else {
+            return false;
+        };
+        let argument = match start.name() {
+            Some(name) => FormatArgument::Named(name),
+            None => FormatArgument::Positional(format_macro.positional_index(start.open())),
+        };
         self.ends_an_argument(position)
-            && before.starts_an_argument()
-            && before
-                .innermost_open()
-                .is_some_and(|open| open.follows_format_string(&Self::MACROS))
+            && format_macro
+                .format_string(start.open())
+                .is_some_and(|format_string| !format_string.points_at(argument))
     }
 
     fn ends_an_argument(&self, position: usize) -> bool {
@@ -67,6 +70,87 @@ impl<'p> FormatArguments<'p> {
                 _ => Self::PLACED_VALUE,
             })
             .collect()
+    }
+}
+
+impl FormatMacro {
+    const ALL: [Self; 18] = [
+        Self::at("assert", 1),
+        Self::at("assert_eq", 2),
+        Self::at("assert_ne", 2),
+        Self::at("debug_assert", 1),
+        Self::at("debug_assert_eq", 2),
+        Self::at("debug_assert_ne", 2),
+        Self::at("eprint", 0),
+        Self::at("eprintln", 0),
+        Self::at("format", 0),
+        Self::at("format_args", 0),
+        Self::at("panic", 0),
+        Self::at("print", 0),
+        Self::at("println", 0),
+        Self::at("todo", 0),
+        Self::at("unimplemented", 0),
+        Self::at("unreachable", 0),
+        Self::at("write", 1),
+        Self::at("writeln", 1),
+    ];
+
+    const fn at(name: &'static str, format_string: usize) -> Self {
+        Self {
+            name,
+            format_string,
+        }
+    }
+
+    fn called_by(open: &OpenDelimiter<'_>) -> Option<&'static Self> {
+        Self::ALL
+            .iter()
+            .find(|format_macro| open.callee() == Some(format_macro.name))
+    }
+
+    fn format_string<'t>(&self, open: &OpenDelimiter<'t>) -> Option<FormatString<'t>> {
+        if open.passed_arguments() <= self.format_string {
+            return None;
+        }
+        open.text_at(self.format_string)
+            .map(|text| FormatString { text })
+    }
+
+    fn positional_index(&self, open: &OpenDelimiter<'_>) -> usize {
+        open.passed_arguments()
+            .saturating_sub(self.format_string + 1)
+    }
+}
+
+impl<'t> FormatString<'t> {
+    const POINTER: char = 'p';
+    const PRECISION_FROM_ARGUMENT: &'static str = ".*";
+
+    fn points_at(&self, argument: FormatArgument<'_>) -> bool {
+        let mut next_positional = 0;
+        self.placeholders().any(|placeholder| {
+            let (written, spec) = placeholder.split_once(':').unwrap_or((placeholder, ""));
+            let written = written.trim();
+            if written.is_empty() && spec.contains(Self::PRECISION_FROM_ARGUMENT) {
+                next_positional += 1;
+            }
+            let formatted = match written.parse() {
+                Ok(index) => FormatArgument::Positional(index),
+                Err(_) if written.is_empty() => {
+                    next_positional += 1;
+                    FormatArgument::Positional(next_positional - 1)
+                }
+                Err(_) => FormatArgument::Named(written),
+            };
+            formatted == argument && spec.trim_end().ends_with(Self::POINTER)
+        })
+    }
+
+    fn placeholders(&self) -> impl Iterator<Item = &'t str> {
+        self.text
+            .split("{{")
+            .flat_map(|part| part.split('{').skip(1))
+            .filter_map(|opened| opened.split_once('}').map(|(inside, _)| inside))
     }
 }
 
@@ -100,6 +184,9 @@ mod tests {
             "println!(\"{{x}}\", x = {0})",
             "assert_eq!(\"a\", b, \"{{}}\", {0})",
             "write!(f(')'), \"{{}}\", {0})",
+            "println!(\"{{x}}\",x = {0})",
+            "println!(\"{{:p}} {{}}\", 1, {0})",
+            "println!(\"{{:.*}}\", 2, {0})",
         ] {
             assert!(FormatFixture::formats_whole(text, 0), "{text}");
         }
@@ -121,6 +208,12 @@ mod tests {
             "assert!(a == \"x\", {0})",
             "println!(\"{{}}\", x == {0})",
             "format!(\"{{}}\", g(')', \"x\", {0}))",
+            "assert_eq!(a, b, 'c', {0})",
+            "println!(\"{{:p}}\", {0})",
+            "println!(\"{{}} {{:#p}}\", 1, {0})",
+            "println!(\"{{0:p}}\", {0})",
+            "println!(\"{{x:p}}\", x = {0})",
+            "println!(\"{{:.*}} {{:p}}\", 2, 1.5, {0})",
             "vec!(\"a\", {0})",
             "println!(\"{{}}\", {0}); f({0})",
             "{0}",

@@ -13,7 +13,7 @@ fn main() {
     println!(
         "{}",
         v.iter()
-            .fold(0, |argument: i64, argument_2: &i64| argument + argument_2)
+            .fold(0, |argument: i64, &argument_2: &i64| argument + argument_2)
     );
     println!(
         "{}",

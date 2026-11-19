@@ -5,6 +5,7 @@ use rustc_hash::FxHashSet;
 
 use super::argument_role::ArgumentRole;
 use super::callee_definitions::{CalleeDefinition, CalleeDefinitions};
+use super::destructured_wrapper::DestructuredWrapper;
 use super::double_negation::DoubleNegation;
 use super::emitted_types::EmittedTypes;
 use super::emitted_value::EmittedValue;
@@ -2358,8 +2359,14 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn closure(&mut self, lambda: &TypedLambda, ty: &Type) -> Code {
-        self.closure_binding(lambda, ty, |emitter, param| {
-            emitter.bind_parameter(param, TypePosition::Value)
+        let Some(wrapper) = DestructuredWrapper::of(lambda) else {
+            return self.closure_binding(lambda, ty, |emitter, param| {
+                emitter.bind_parameter(param, TypePosition::Value)
+            });
+        };
+        self.closure_binding(wrapper.lambda(), ty, |emitter, param| {
+            let binder = emitter.bind_parameter(param, TypePosition::Value);
+            format!("{}{binder}", wrapper.pattern_prefix(param))
         })
     }
 
@@ -2367,7 +2374,7 @@ impl<'a> ExpressionEmitter<'a> {
         &mut self,
         lambda: &TypedLambda,
         ty: &Type,
-        bind: fn(&mut Self, &TypedBinder) -> String,
+        bind: impl Fn(&mut Self, &TypedBinder) -> String,
     ) -> Code {
         let annotated = Self::contains_try(&lambda.body);
         let previous = std::mem::replace(&mut self.tail_loop, TailLoop::of_closure(lambda));

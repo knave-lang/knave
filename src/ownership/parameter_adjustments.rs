@@ -17,6 +17,10 @@ impl Adjustment {
             Self::Deref(levels) => Borrow::Deref(levels),
         }
     }
+
+    pub(super) fn changes(self) -> bool {
+        !matches!(self, Self::None)
+    }
 }
 
 pub(super) struct ParameterAdjustments<'a> {

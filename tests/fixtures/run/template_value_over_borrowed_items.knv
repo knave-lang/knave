@@ -1,0 +1,15 @@
+(def widen
+  (rust "i64::from({0})" (fn (u8) int)))
+
+(def shown
+  (rust "{0}.to_string()"
+    (where ((n integer)) (fn (n) string))))
+
+(defn main ()
+  (let (sizes (vec (the u8 1) (the u8 2)))
+    (prn (the (vec int)
+              (collect (map sizes widen))))
+    (prn (the (vec int)
+              (collect (map sizes convert))))
+    (prn (the (vec string)
+              (collect (map sizes shown))))))

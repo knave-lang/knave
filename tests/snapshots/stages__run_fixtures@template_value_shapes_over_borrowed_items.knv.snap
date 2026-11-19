@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/template_value_shapes_over_borrowed_items.knv
+---
+(vec 1 4 9)
+(vec 2 5 10)
+(vec (some 2) (some 4) (some 6))
+(vec "1" "2" "3")
+(vec 1 4 9)
+(vec "1" "2" "3")
+(vec "1" "2" "3")

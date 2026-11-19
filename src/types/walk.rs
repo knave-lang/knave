@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use super::Type;
 use super::typed::{
-    LetValue, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
-    TypedLambda, TypedLeaf, TypedStructExpr,
+    LetValue, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
+    TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
 };
 
 impl TypedExpr {
@@ -290,6 +290,32 @@ impl TypedStructExpr {
 }
 
 impl TypedLambda {
+    pub fn wrapped_call(&self) -> Option<(&TypedExpr, &[TypedArgument])> {
+        self.wraps.as_ref()?;
+        match self.body.items.as_slice() {
+            [
+                TypedBodyItem::Expr(TypedExpr {
+                    kind: TypedExprKind::Call(callee, arguments),
+                    ..
+                }),
+            ] => Some((callee, arguments)),
+            _ => None,
+        }
+    }
+
+    pub fn wrapped_arguments_mut(&mut self) -> Option<&mut [TypedArgument]> {
+        self.wraps.as_ref()?;
+        match self.body.items.as_mut_slice() {
+            [
+                TypedBodyItem::Expr(TypedExpr {
+                    kind: TypedExprKind::Call(_, arguments),
+                    ..
+                }),
+            ] => Some(arguments),
+            _ => None,
+        }
+    }
+
     pub fn binders(&self) -> impl Iterator<Item = &TypedBinder> {
         self.params.iter().chain(self.body.binders())
     }

@@ -131,8 +131,8 @@ impl KernelForm {
         },
         KernelFormRow {
             form: KernelForm::Expression(ExpressionForm::SetAt),
-            name: "set-at",
-            shape: "(set-at value (key ...) item)",
+            name: "set-at!",
+            shape: "(set-at! value (key ...) item)",
         },
         KernelFormRow {
             form: KernelForm::Expression(ExpressionForm::Struct(StructForm::New)),

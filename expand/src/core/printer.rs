@@ -201,7 +201,7 @@ impl<'a> CorePrinter<'a> {
     fn set_at(&mut self, value: &Expr, keys: &[Expr], item: &Expr) -> String {
         let keys: Vec<String> = keys.iter().map(|key| self.expr(key)).collect();
         Self::list(
-            "set-at",
+            "set-at!",
             vec![
                 self.expr(value),
                 format!("({})", keys.join(" ")),

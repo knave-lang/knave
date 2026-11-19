@@ -310,7 +310,7 @@ mod tests {
         );
         assert_eq!(
             source.read_back("grown"),
-            "(def grown (fn (numbers) (local more (assoc-at numbers (0) 1)) (map-at push more 2) (set-at more (0) 3) more))"
+            "(def grown (fn (numbers) (local more (assoc-at numbers (0) 1)) (map-at push more 2) (set-at! more (0) 3) more))"
         );
     }
 

@@ -55,7 +55,7 @@ test prelude/doc:if ... ok
 test prelude/doc:match ... ok
 test prelude/doc:assoc-at ... ok
 test prelude/doc:map-at ... ok
-test prelude/doc:set-at ... ok
+test prelude/doc:set-at! ... ok
 test prelude/doc:ref ... ok
 test prelude/doc:mut ... ok
 test prelude/doc:deref ... ok

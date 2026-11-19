@@ -8453,6 +8453,21 @@ fn upgrade_of_a_current_project_changes_nothing() {
 }
 
 #[test]
+fn upgrade_of_a_current_project_without_a_skill_says_it_is_current() {
+    let sandbox = Sandbox::new("upgrade_current_without_skill");
+    sandbox
+        .compiler(&["new", "demo-app", "--skip-agent-skill"])
+        .assert_silent_success();
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    assert!(
+        upgrade
+            .assert_exit_code(0)
+            .stderr()
+            .starts_with("note: the project already uses Knave")
+    );
+}
+
+#[test]
 fn upgrade_outside_a_project_is_a_usage_error() {
     let sandbox = Sandbox::new("upgrade_outside_project");
     insta::assert_snapshot!(sandbox.compiler(&["upgrade"]).assert_exit_code(2).stderr());

@@ -8,17 +8,11 @@ use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
 use crate::types::graph::DefinitionGraph;
+use crate::types::open_set_at::OpenSetAt;
 use crate::types::pinning::InstantiationReport;
 use crate::types::problems::{MismatchContext, TypeProblems};
 use crate::types::unifier::LiteralKind;
 use crate::types::{GenericId, Type, TypedExpr, TypedProgram};
-
-pub(in crate::types) struct OpenSetAt {
-    collection: Type,
-    key: Type,
-    item: Type,
-    span: Span,
-}
 
 pub(in crate::types) struct OpenCollections {
     generics: Vec<(GenericId, Span)>,
@@ -143,7 +137,7 @@ impl TypeChecker {
         ];
         let mut arguments = keys.to_vec();
         arguments.push(item.clone());
-        self.open_set_ats.push(open);
+        self.deferred.open_set_ats.push(open);
         self.synthetic_call_with_value(
             "{0}[{1}] = {2}",
             parameters,
@@ -166,7 +160,7 @@ impl TypeChecker {
     }
 
     pub(in crate::types) fn close_open_set_ats(&mut self) {
-        for open in std::mem::take(&mut self.open_set_ats) {
+        for open in std::mem::take(&mut self.deferred.open_set_ats) {
             if let Err(diagnostic) = self.close_open_set_at(&open) {
                 self.diagnostics.push(diagnostic);
             }
@@ -174,7 +168,7 @@ impl TypeChecker {
     }
 
     pub(in crate::types) fn open_collections(&mut self) -> OpenCollections {
-        let generics = std::mem::take(&mut self.unsettled_collections)
+        let generics = std::mem::take(&mut self.deferred.unsettled_collections)
             .into_iter()
             .filter_map(
                 |(collection, span)| match self.unifier.resolve(&collection) {
@@ -192,7 +186,8 @@ impl TypeChecker {
             if self.is_integer_literal(&open.key) {
                 self.expect_index(open)?;
             }
-            self.unsettled_collections
+            self.deferred
+                .unsettled_collections
                 .push((open.collection.clone(), open.span));
             return Ok(());
         }

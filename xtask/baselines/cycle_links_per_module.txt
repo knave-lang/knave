@@ -90,17 +90,15 @@ src/ownership/promoted_constants.rs 1
 
 src/types/borrowed_items.rs 1
 
-src/types/checker.rs 4
+src/types/checker.rs 3
 
 src/types/finalize.rs 2
 
-src/types/infer.rs 4
+src/types/infer.rs 3
 
 src/types/infer/open_collections.rs 1
 
 src/types/infer/shared_variables.rs 1
-
-src/types/parameter_call_labels.rs 1
 
 src/types/templates.rs 1
 

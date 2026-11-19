@@ -1,0 +1,16 @@
+(trait named
+  (name-of (fn ((ref self)) string)))
+
+(defstruct dog
+  :name str)
+
+(impl named dog
+  (name-of (d) (str (:name d))))
+
+(type count-named
+  (fn ((vec (box named))) usize))
+
+(defn count-named (all) (len all))
+
+(defn main ()
+  (println (count-named (vec (box (->dog :name "Rex"))))))

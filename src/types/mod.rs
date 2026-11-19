@@ -265,10 +265,10 @@ pub use traits::TraitTable;
 pub use ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type, TypeVar};
 pub use type_declarations::TypeDeclarations;
 pub use typed::{
-    Borrow, ClosureType, FieldOrder, PendingModeCheck, TypedArgument, TypedArm, TypedBinder,
-    TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedDefinition, TypedExpr,
-    TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedModule, TypedPattern, TypedPatternKind,
-    TypedProgram, TypedStructExpr,
+    Borrow, ClosureType, FieldOrder, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm,
+    TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedDefinition,
+    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedModule, TypedPattern,
+    TypedPatternKind, TypedProgram, TypedStructExpr,
 };
 pub use typed_associated_type::TypedAssociatedType;
 pub use typed_impl_method::TypedImplMethod;

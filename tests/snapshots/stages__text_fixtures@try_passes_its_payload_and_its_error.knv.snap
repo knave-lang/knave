@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/try_passes_its_payload_and_its_error.knv
+---
+defn read-name
+  path: a view
+  local text: owned
+  result[0]: owned
+defn checked
+  result[1]: owned
+defn doubled
+  result[1]: owned

@@ -1,0 +1,8 @@
+(def raw
+  (rust "r\"C:\\\"" (fn () (ref str))))
+
+(defn path () (raw))
+
+(defn wait () (seconds 1))
+
+(defn main () (prn (path) (wait)))

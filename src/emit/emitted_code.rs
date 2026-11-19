@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use super::operator::RustText;
 use super::runtime_part::RuntimePart;
 
 pub struct EmittedCode<'a> {
@@ -31,10 +30,6 @@ impl<'a> EmittedCode<'a> {
 
     pub fn contains(&self, marker: &str) -> bool {
         self.text.contains(marker)
-    }
-
-    pub fn contains_outside_literals(&self, marker: &str) -> bool {
-        RustText::new(self.text).contains_outside_literals(marker)
     }
 
     pub fn contains_unprefixed(&self, marker: &str) -> bool {

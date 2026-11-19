@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/duration_after_a_block_comment.knv
+---
+1 (seconds 1)

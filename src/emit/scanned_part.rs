@@ -54,7 +54,7 @@ impl ScannedPart {
             markers: &["std::time::Duration", "std::time::Instant"],
             companion: Some(RuntimePart::Show),
             bringers: &[RuntimePart::DurationCount],
-            search: MarkerSearch::OutsideLiterals,
+            search: MarkerSearch::Anywhere,
         },
     ];
 
@@ -85,7 +85,6 @@ impl ScannedPart {
 enum MarkerSearch {
     Anywhere,
     Unprefixed,
-    OutsideLiterals,
 }
 
 impl MarkerSearch {
@@ -93,7 +92,6 @@ impl MarkerSearch {
         match self {
             MarkerSearch::Anywhere => code.contains(marker),
             MarkerSearch::Unprefixed => code.contains_unprefixed(marker),
-            MarkerSearch::OutsideLiterals => code.contains_outside_literals(marker),
         }
     }
 }

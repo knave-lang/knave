@@ -93,15 +93,15 @@
         println prn push! push-at! quote range read-line
         recur reduce ref rem remove-at! result reverse
         reverse! run-tests rust rust-trait rust-type second
-        seconds sequence set! set-at! show signed sleep slice
-        slurp some
-        some? sort! sort-by! sorted-map source split sqrt
-        starts-with? stdin str str string struct subs sum
-        take take-while template the then-ok then-some trait
-        trim true try try-> type u128 u16 u32 u64 u8 unit
-        unless unwrap unwrap-err unwrap-ok unwrap-or update
-        upper-case use usize vals vec when where whitespace?
-        windows with with-macro-steps zero? zip)
+        seconds sequence set! set-at! show signed sleep
+        slice slurp some some? sort! sort-by! sorted-map
+        source split sqrt starts-with? stdin str str string
+        struct subs sum take take-while template the then-ok
+        then-some trait trim true try try-> type u128 u16
+        u32 u64 u8 unit unless unwrap unwrap-err unwrap-ok
+        unwrap-or update upper-case use usize vals vec when
+        where whitespace? windows with with-macro-steps
+        zero? zip)
 
 (def def
   (macro (form) (kernel-definition form)))

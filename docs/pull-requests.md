@@ -37,7 +37,15 @@
 
 **To read a program's counters, such as its `allocator.allocations`, read the job's comment on a ready pull request.** Before the pull request is ready, run `cargo xtask bench measure --save <file>` on Linux and read the program's line in `<file>`. Compare a local count only with another local count, and CI's only with CI's: the two environments give different counts for one tree.
 
-**On a pull request, the `File sizes` and `Design rules` steps refuse a new or raised entry in a file under `xtask/baselines/`.** A `Baseline-Accepted: <baseline> <subject>` trailer in a commit of the pull request lets the entry pass. `<baseline>` is the baseline's file name without `.txt`, such as `production_lines`, and one trailer MAY list several subjects of that baseline. If the base has no baseline file at that path, every entry counts as new. If the step fails on such an entry, stop and report the entry to the project owner. NEVER add a `Baseline-Accepted:` trailer before the project owner approves the entry.
+**The `File sizes` and `Design rules` steps compare each subject over a limit with its count at the merge base.** The merge base is the merge base of the pull request and its base branch. A subject over a limit fails in each of these cases:
+
+- its count rose since the merge base
+- it was within the limit at the merge base
+- it did not exist at the merge base
+
+A `Baseline-Accepted: <limit> <subject>` trailer in a commit of the pull request lets the subject pass. One trailer MAY list several subjects of one limit. The step's message names `<limit>` and gives the trailer line. If the step fails on a subject, stop and report the subject to the project owner. NEVER add a `Baseline-Accepted:` trailer before the project owner approves the rise.
+
+**Run `git fetch origin` before `cargo xtask file-sizes`, `cargo xtask design-rules` or `cargo xtask prepush`.** Each of them measures against the merge base with `origin/main`.
 
 **If CI fails, run these steps:**
 

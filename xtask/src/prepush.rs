@@ -12,7 +12,6 @@ use crate::failure::TaskFailure;
 use crate::git::Git;
 use crate::instrumented_tests::InstrumentedTests;
 use crate::production_lines::ProductionLineCensus;
-use crate::production_sources::ProductionSources;
 use crate::ratchet_gate::RatchetGate;
 use crate::source_format::SourceFormat;
 use crate::test_selection::TestRun;
@@ -69,11 +68,7 @@ impl PrepushTask {
     }
 
     fn fork_point(&self, root: &Path) -> Result<String, TaskFailure> {
-        let output = Git::new(root).run(&["merge-base", &self.base, "HEAD"])?;
-        if !output.status.success() {
-            return Err(TaskFailure::unknown_revision(&self.base));
-        }
-        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        Git::new(root).merge_base(&self.base)
     }
 
     fn crap_forecast(
@@ -92,10 +87,7 @@ impl PrepushTask {
     }
 
     fn ratchet_checks(root: &Path, fork_point: &str) -> Result<Vec<Box<dyn Check>>, TaskFailure> {
-        let sources = ProductionSources::new(root);
-        let mut ratchets = DesignRules::ratchets(root, &sources.parsed()?)?;
-        ratchets.push(ProductionLineCensus::ratchet(root, &sources.files()?)?);
-        RatchetGate::new(root, Some(fork_point)).checks(ratchets)
+        RatchetGate::new(root, fork_point).checks(&[&DesignRules, &ProductionLineCensus])
     }
 }
 
@@ -148,9 +140,7 @@ mod tests {
             "{summaries:?}"
         );
         assert!(
-            summaries
-                .iter()
-                .any(|summary| summary.contains("added or raised since the base")),
+            summaries.iter().any(|summary| summary.contains("methods")),
             "{summaries:?}"
         );
     }

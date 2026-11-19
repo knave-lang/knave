@@ -1,13 +1,11 @@
-use std::cmp::Ordering;
-use std::fs;
-use std::path::Path;
-
-use knave_baseline::BaselineText;
-pub use knave_baseline::Counts;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::checks::Check;
-use crate::failure::TaskFailure;
+use crate::rise_approvals::RiseApprovals;
 
+pub type Counts = BTreeMap<String, usize>;
+
+#[derive(Clone, Copy)]
 pub struct Unit {
     one: &'static str,
     many: &'static str,
@@ -24,396 +22,285 @@ impl Unit {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Limit {
-    pub baseline: &'static str,
+    pub name: &'static str,
     pub maximum: usize,
     pub subjects: &'static str,
     pub unit: Unit,
     pub advice: &'static str,
 }
 
-pub struct Baseline {
-    file: String,
-    entries: Counts,
-    crowded: Vec<String>,
+pub struct Measurement {
+    pub limit: Limit,
+    pub counts: Counts,
 }
 
-impl Baseline {
-    pub fn read(root: &Path, file: &str) -> Result<Self, TaskFailure> {
-        let path = root.join(file);
-        let text =
-            fs::read_to_string(&path).map_err(|error| TaskFailure::unreadable(&path, error))?;
-        Self::parse(file, &text)
-    }
-
-    pub fn parse(file: &str, text: &str) -> Result<Self, TaskFailure> {
-        let text =
-            BaselineText::parse(file, text).map_err(|error| TaskFailure::new(error.to_string()))?;
-        Ok(Self {
-            file: file.to_string(),
-            entries: text.entries().clone(),
-            crowded: text.crowded().map(String::from).collect(),
-        })
-    }
-
-    pub fn raised_since(&self, base: &Baseline) -> Vec<Raise> {
-        self.entries
-            .iter()
-            .filter(|(subject, count)| base.listed(subject).is_none_or(|before| **count > before))
-            .map(|(subject, &count)| Raise {
-                subject: subject.clone(),
-                from: base.listed(subject),
-                to: count,
-            })
-            .collect()
-    }
-
-    fn listed(&self, subject: &str) -> Option<usize> {
-        self.entries.get(subject).copied()
-    }
-
-    fn vanished<'a>(&'a self, measured: &'a Counts) -> impl Iterator<Item = &'a str> {
-        self.entries
-            .keys()
-            .filter(|subject| !measured.contains_key(*subject))
-            .map(String::as_str)
-    }
-
-    fn crowded(&self) -> impl Iterator<Item = &str> {
-        self.crowded.iter().map(String::as_str)
-    }
-
-    fn len(&self) -> usize {
-        self.entries.len()
-    }
-
-    fn file(&self) -> &str {
-        &self.file
-    }
-}
-
-pub struct Raise {
-    pub subject: String,
-    pub from: Option<usize>,
-    pub to: usize,
-}
-
-enum Problem<'a> {
-    Oversized {
-        subject: &'a str,
-        count: usize,
-    },
-    Grown {
-        subject: &'a str,
-        count: usize,
-        listed: usize,
-    },
-    Shrunk {
-        subject: &'a str,
-        count: usize,
-        listed: usize,
-    },
-    WithinLimit {
-        subject: &'a str,
-        count: usize,
-    },
-    Vanished {
-        subject: &'a str,
-    },
-    Crowded {
-        line: &'a str,
-    },
+struct Rise<'a> {
+    subject: &'a str,
+    head: usize,
+    base: Option<usize>,
 }
 
 pub struct Ratchet {
     limit: Limit,
-    measured: Counts,
-    baseline: Baseline,
+    head: Counts,
+    base: Counts,
+    approved: BTreeSet<String>,
 }
 
 impl Ratchet {
-    pub fn read(root: &Path, limit: Limit, measured: Counts) -> Result<Self, TaskFailure> {
-        let baseline = Baseline::read(root, limit.baseline)?;
-        Ok(Self::new(limit, measured, baseline))
-    }
-
-    pub fn baseline_file(&self) -> &'static str {
-        self.limit.baseline
-    }
-
-    fn new(limit: Limit, measured: Counts, baseline: Baseline) -> Self {
+    pub fn new(head: Measurement, base: Counts, approvals: &RiseApprovals) -> Self {
         Self {
-            limit,
-            measured,
-            baseline,
+            approved: approvals.subjects_of(head.limit.name),
+            limit: head.limit,
+            head: head.counts,
+            base,
         }
     }
 
-    fn problems(&self) -> Vec<Problem<'_>> {
-        let measured = self
-            .measured
+    fn rises(&self) -> impl Iterator<Item = Rise<'_>> {
+        self.head
             .iter()
-            .filter_map(|(subject, &count)| self.problem(subject, count));
-        let vanished = self
-            .baseline
-            .vanished(&self.measured)
-            .map(|subject| Problem::Vanished { subject });
-        let crowded = self
-            .baseline
-            .crowded()
-            .map(|line| Problem::Crowded { line });
-        measured.chain(vanished).chain(crowded).collect()
+            .filter(|&(_, &head)| head > self.limit.maximum)
+            .map(|(subject, &head)| Rise {
+                subject,
+                head,
+                base: self.base.get(subject).copied(),
+            })
+            .filter(|rise| rise.base.is_none_or(|base| rise.head > base))
     }
 
-    fn problem<'a>(&self, subject: &'a str, count: usize) -> Option<Problem<'a>> {
-        match self.baseline.listed(subject) {
-            Some(listed) => self.listed_problem(subject, count, listed),
-            None => (count > self.limit.maximum).then_some(Problem::Oversized { subject, count }),
-        }
+    fn refused(&self) -> impl Iterator<Item = Rise<'_>> {
+        self.rises()
+            .filter(|rise| !self.approved.contains(rise.subject))
     }
 
-    fn listed_problem<'a>(
-        &self,
-        subject: &'a str,
-        count: usize,
-        listed: usize,
-    ) -> Option<Problem<'a>> {
-        if count <= self.limit.maximum {
-            return Some(Problem::WithinLimit { subject, count });
-        }
-        match count.cmp(&listed) {
-            Ordering::Greater => Some(Problem::Grown {
-                subject,
-                count,
-                listed,
-            }),
-            Ordering::Less => Some(Problem::Shrunk {
-                subject,
-                count,
-                listed,
-            }),
-            Ordering::Equal => None,
-        }
+    fn over_limit(&self) -> usize {
+        self.head
+            .values()
+            .filter(|&&count| count > self.limit.maximum)
+            .count()
     }
 
-    fn describe(&self, problem: &Problem) -> String {
-        match *problem {
-            Problem::Oversized { subject, count } => {
-                format!("{}. {}", self.over_limit(subject, count), self.limit.advice)
-            }
-            Problem::Grown {
-                subject,
-                count,
-                listed,
-            } => format!(
-                "{} and above its baseline of {listed}. {}",
-                self.over_limit(subject, count),
-                self.limit.advice
-            ),
-            Problem::Shrunk {
-                subject,
-                count,
-                listed,
-            } => format!(
-                "{} and below its baseline of {listed}. Lower its entry in {} to {count}.",
-                self.over_limit(subject, count),
-                self.baseline.file()
-            ),
-            Problem::WithinLimit { subject, count } => format!(
-                "{subject} has {}, within the limit of {}. Delete its line from {} and keep the blank lines around it.",
-                self.limit.unit.count(count),
-                self.limit.maximum,
-                self.baseline.file()
-            ),
-            Problem::Vanished { subject } => format!(
-                "{subject} is listed in {} but no longer exists. Delete its line and keep the blank lines around it.",
-                self.baseline.file()
-            ),
-            Problem::Crowded { line } => format!(
-                "{line:?} follows another entry of {} with no blank line between them. Put a blank line above it.",
-                self.baseline.file()
-            ),
-        }
-    }
-
-    fn over_limit(&self, subject: &str, count: usize) -> String {
+    fn describe(&self, rise: &Rise) -> String {
         format!(
-            "{subject} has {}, over the limit of {}",
-            self.limit.unit.count(count),
-            self.limit.maximum
+            "{} has {}, over the limit of {}, {}. {} If the project owner approves the rise, add this trailer to a commit of the branch:\n    {}",
+            rise.subject,
+            self.limit.unit.count(rise.head),
+            self.limit.maximum,
+            Self::base_clause(rise.base),
+            self.limit.advice,
+            RiseApprovals::trailer_line(self.limit.name, rise.subject)
         )
+    }
+
+    fn base_clause(base: Option<usize>) -> String {
+        match base {
+            Some(count) => format!("and {count} at the base"),
+            None => "and did not exist at the base".to_string(),
+        }
     }
 }
 
 impl Check for Ratchet {
     fn passes(&self) -> bool {
-        self.problems().is_empty()
+        self.refused().next().is_none()
     }
 
     fn summary(&self) -> String {
         format!(
-            "{} {} measured against the limit of {}, {} of them listed in {}",
-            self.measured.len(),
+            "{} {} measured against the limit of {}: {} over it, {} of them risen since the base without a `{}:` trailer",
+            self.head.len(),
             self.limit.subjects,
             self.limit.unit.count(self.limit.maximum),
-            self.baseline.len(),
-            self.baseline.file()
+            self.over_limit(),
+            self.refused().count(),
+            RiseApprovals::TRAILER
         )
     }
 
     fn details(&self) -> String {
-        self.problems()
-            .iter()
-            .map(|problem| format!("  {}\n", self.describe(problem)))
+        self.refused()
+            .map(|rise| format!("  {}\n", self.describe(&rise)))
             .collect()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Baseline, Counts, Limit, Ratchet, Unit};
+    use super::{Counts, Limit, Measurement, Ratchet};
     use crate::checks::Check;
+    use crate::design::DesignRules;
+    use crate::production_lines::ProductionLineCensus;
+    use crate::rise_approvals::RiseApprovals;
 
-    struct RatchetCase;
+    struct RatchetCase {
+        limit: Limit,
+    }
 
     impl RatchetCase {
-        const BASELINE: &str = "xtask/baselines/production_lines.txt";
+        const SUBJECT: &str = "src/a.rs";
 
-        fn ratchet(measured: &[(&str, usize)], baseline: &str) -> Ratchet {
-            let measured: Counts = measured
+        fn every_gate() -> impl Iterator<Item = Self> {
+            std::iter::once(ProductionLineCensus::LIMIT)
+                .chain(DesignRules::LIMITS)
+                .map(|limit| Self { limit })
+        }
+
+        fn over(&self, excess: usize) -> usize {
+            self.limit.maximum + excess
+        }
+
+        fn ratchet(&self, head: &[(&str, usize)], base: &[(&str, usize)], log: &str) -> Ratchet {
+            let head = Measurement {
+                limit: self.limit,
+                counts: Self::counts(head),
+            };
+            Ratchet::new(head, Self::counts(base), &RiseApprovals::parse(log))
+        }
+
+        fn counts(entries: &[(&str, usize)]) -> Counts {
+            entries
                 .iter()
                 .map(|&(subject, count)| (subject.to_string(), count))
-                .collect();
-            let baseline = Baseline::parse(Self::BASELINE, baseline).expect("the baseline parses");
-            Ratchet::new(Self::limit(), measured, baseline)
+                .collect()
         }
 
-        fn limit() -> Limit {
-            Limit {
-                baseline: Self::BASELINE,
-                maximum: 500,
-                subjects: "Rust files",
-                unit: Unit::new("production line", "production lines"),
-                advice: "Split it by responsibility.",
-            }
-        }
-
-        fn details(measured: &[(&str, usize)], baseline: &str) -> String {
-            let ratchet = Self::ratchet(measured, baseline);
-            assert!(!ratchet.passes(), "the check passed");
-            ratchet.details()
-        }
-
-        fn baseline_failure(text: &str) -> String {
-            match Baseline::parse("baseline.txt", text) {
-                Ok(_) => panic!("the baseline parsed"),
-                Err(failure) => failure.to_string(),
-            }
+        fn trailer(&self) -> String {
+            format!("{} {}\n", self.limit.name, Self::SUBJECT)
         }
     }
 
     #[test]
-    fn an_unlisted_subject_within_the_limit_passes() {
-        assert!(RatchetCase::ratchet(&[("src/a.rs", 500)], "").passes());
+    fn a_rise_over_the_limit_is_refused() {
+        for case in RatchetCase::every_gate() {
+            let ratchet = case.ratchet(
+                &[(RatchetCase::SUBJECT, case.over(2))],
+                &[(RatchetCase::SUBJECT, case.over(1))],
+                "",
+            );
+            assert!(!ratchet.passes(), "{}", case.limit.name);
+        }
     }
 
     #[test]
-    fn an_unlisted_subject_over_the_limit_fails() {
+    fn a_rise_with_its_trailer_is_accepted() {
+        for case in RatchetCase::every_gate() {
+            let ratchet = case.ratchet(
+                &[(RatchetCase::SUBJECT, case.over(2))],
+                &[(RatchetCase::SUBJECT, case.over(1))],
+                &case.trailer(),
+            );
+            assert!(ratchet.passes(), "{}", case.limit.name);
+        }
+    }
+
+    #[test]
+    fn a_fall_needs_nothing() {
+        for case in RatchetCase::every_gate() {
+            let ratchet = case.ratchet(
+                &[(RatchetCase::SUBJECT, case.over(1))],
+                &[(RatchetCase::SUBJECT, case.over(2))],
+                "",
+            );
+            assert!(ratchet.passes(), "{}", case.limit.name);
+        }
+    }
+
+    #[test]
+    fn an_unchanged_count_over_the_limit_needs_nothing() {
+        for case in RatchetCase::every_gate() {
+            let counts = [(RatchetCase::SUBJECT, case.over(1))];
+            assert!(
+                case.ratchet(&counts, &counts, "").passes(),
+                "{}",
+                case.limit.name
+            );
+        }
+    }
+
+    #[test]
+    fn a_new_subject_over_the_limit_is_measured_against_nothing() {
+        for case in RatchetCase::every_gate() {
+            let ratchet = case.ratchet(&[(RatchetCase::SUBJECT, case.over(1))], &[], "");
+            assert!(!ratchet.passes(), "{}", case.limit.name);
+            assert!(
+                ratchet.details().contains("did not exist at the base"),
+                "{}",
+                ratchet.details()
+            );
+        }
+    }
+
+    #[test]
+    fn a_deleted_subject_needs_nothing() {
+        for case in RatchetCase::every_gate() {
+            let ratchet = case.ratchet(&[], &[(RatchetCase::SUBJECT, case.over(1))], "");
+            assert!(ratchet.passes(), "{}", case.limit.name);
+        }
+    }
+
+    #[test]
+    fn a_subject_within_the_limit_needs_nothing_even_when_it_grew() {
+        for case in RatchetCase::every_gate() {
+            let maximum = case.limit.maximum;
+            let ratchet = case.ratchet(&[(RatchetCase::SUBJECT, maximum)], &[], "");
+            assert!(ratchet.passes(), "{}", case.limit.name);
+        }
+    }
+
+    #[test]
+    fn a_subject_that_crosses_the_limit_is_refused() {
+        for case in RatchetCase::every_gate() {
+            let maximum = case.limit.maximum;
+            let ratchet = case.ratchet(
+                &[(RatchetCase::SUBJECT, case.over(1))],
+                &[(RatchetCase::SUBJECT, maximum)],
+                "",
+            );
+            assert!(!ratchet.passes(), "{}", case.limit.name);
+        }
+    }
+
+    #[test]
+    fn a_trailer_of_another_gate_leaves_the_rise_refused() {
+        let case = RatchetCase {
+            limit: ProductionLineCensus::LIMIT,
+        };
+        let ratchet = case.ratchet(
+            &[(RatchetCase::SUBJECT, case.over(1))],
+            &[],
+            "methods_per_type src/a.rs\n",
+        );
+        assert!(!ratchet.passes());
+    }
+
+    #[test]
+    fn a_refusal_names_the_counts_the_limit_and_the_trailer() {
+        let case = RatchetCase {
+            limit: ProductionLineCensus::LIMIT,
+        };
+        let ratchet = case.ratchet(&[("src/a.rs", 901)], &[("src/a.rs", 900)], "");
         assert_eq!(
-            RatchetCase::details(&[("src/a.rs", 501)], ""),
-            "  src/a.rs has 501 production lines, over the limit of 500. Split it by responsibility.\n"
+            ratchet.details(),
+            "  src/a.rs has 901 production lines, over the limit of 500, and 900 at the base. Split it by responsibility. If the project owner approves the rise, add this trailer to a commit of the branch:\n    Baseline-Accepted: production_lines src/a.rs\n"
         );
     }
 
     #[test]
-    fn a_listed_subject_at_its_baseline_passes() {
-        assert!(RatchetCase::ratchet(&[("src/a.rs", 900)], "src/a.rs 900").passes());
-    }
-
-    #[test]
-    fn a_listed_subject_that_grew_fails() {
-        assert_eq!(
-            RatchetCase::details(&[("src/a.rs", 901)], "src/a.rs 900"),
-            "  src/a.rs has 901 production lines, over the limit of 500 and above its baseline of 900. Split it by responsibility.\n"
+    fn the_summary_counts_the_subjects_over_the_limit_and_the_refused_rises() {
+        let case = RatchetCase {
+            limit: ProductionLineCensus::LIMIT,
+        };
+        let ratchet = case.ratchet(
+            &[("src/a.rs", 901), ("src/b.rs", 700), ("src/c.rs", 3)],
+            &[("src/a.rs", 900), ("src/b.rs", 700)],
+            "",
         );
-    }
-
-    #[test]
-    fn a_listed_subject_that_shrank_must_lower_its_entry() {
         assert_eq!(
-            RatchetCase::details(&[("src/a.rs", 899)], "src/a.rs 900"),
-            "  src/a.rs has 899 production lines, over the limit of 500 and below its baseline of 900. Lower its entry in xtask/baselines/production_lines.txt to 899.\n"
-        );
-    }
-
-    #[test]
-    fn a_listed_subject_within_the_limit_must_leave_the_baseline() {
-        assert_eq!(
-            RatchetCase::details(&[("src/a.rs", 1)], "src/a.rs 900"),
-            "  src/a.rs has 1 production line, within the limit of 500. Delete its line from xtask/baselines/production_lines.txt and keep the blank lines around it.\n"
-        );
-    }
-
-    #[test]
-    fn a_listed_subject_at_the_limit_must_leave_the_baseline() {
-        assert_eq!(
-            RatchetCase::details(&[("src/a.rs", 500)], "src/a.rs 900"),
-            "  src/a.rs has 500 production lines, within the limit of 500. Delete its line from xtask/baselines/production_lines.txt and keep the blank lines around it.\n"
-        );
-    }
-
-    #[test]
-    fn a_listed_subject_that_no_longer_exists_must_leave_the_baseline() {
-        assert_eq!(
-            RatchetCase::details(&[], "src/gone.rs 900"),
-            "  src/gone.rs is listed in xtask/baselines/production_lines.txt but no longer exists. Delete its line and keep the blank lines around it.\n"
-        );
-    }
-
-    #[test]
-    fn the_summary_counts_the_subjects_and_the_baseline() {
-        assert_eq!(
-            RatchetCase::ratchet(&[("src/a.rs", 900), ("src/b.rs", 3)], "src/a.rs 900").summary(),
-            "2 Rust files measured against the limit of 500 production lines, 1 of them listed in xtask/baselines/production_lines.txt"
-        );
-    }
-
-    #[test]
-    fn an_entry_right_below_another_must_get_a_blank_line_above_it() {
-        assert_eq!(
-            RatchetCase::details(
-                &[("src/a.rs", 900), ("src/b.rs", 800)],
-                "src/a.rs 900\nsrc/b.rs 800\n"
-            ),
-            "  \"src/b.rs 800\" follows another entry of xtask/baselines/production_lines.txt with no blank line between them. Put a blank line above it.\n"
-        );
-    }
-
-    #[test]
-    fn a_malformed_baseline_names_its_line() {
-        assert_eq!(
-            RatchetCase::baseline_failure("src/a.rs many"),
-            "baseline.txt has a malformed line \"src/a.rs many\": expected <subject> <count>"
-        );
-    }
-
-    #[test]
-    fn a_raised_or_new_entry_is_a_raise_and_a_lowered_or_kept_one_is_not() {
-        let base =
-            Baseline::parse("baseline.txt", "a 10\nb 10\nc 10\nd 10").expect("the base parses");
-        let head =
-            Baseline::parse("baseline.txt", "a 11\nb 10\nc 9\ne 600").expect("the head parses");
-        let raises: Vec<(String, Option<usize>, usize)> = head
-            .raised_since(&base)
-            .into_iter()
-            .map(|raise| (raise.subject, raise.from, raise.to))
-            .collect();
-        assert_eq!(
-            raises,
-            [
-                ("a".to_string(), Some(10), 11),
-                ("e".to_string(), None, 600)
-            ]
+            ratchet.summary(),
+            "3 Rust files measured against the limit of 500 production lines: 2 over it, 1 of them risen since the base without a `Baseline-Accepted:` trailer"
         );
     }
 }

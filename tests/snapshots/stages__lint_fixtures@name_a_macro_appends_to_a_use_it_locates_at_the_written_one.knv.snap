@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/name_a_macro_appends_to_a_use_it_locates_at_the_written_one.knv
+---
+warning[L0808]: `shout` is imported but never used
+ --> lint/name_a_macro_appends_to_a_use_it_locates_at_the_written_one.knv:6:24
+  |
+6 | (u (use modules/format shout) pad-left)
+  |                        ^^^^^ never used
+  |
+  = help: remove `shout` from this `use`
+  = note: run `knave doc L0808` for an explanation

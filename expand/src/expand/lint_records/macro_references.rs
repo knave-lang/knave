@@ -1,8 +1,7 @@
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::{
-    BindingArena, BindingId, BindingKind, CoreModule, Expr, ExprKind, Lambda, Leaf, ModuleId,
-    Namespace,
+    BindingArena, BindingId, BindingKind, CoreModule, Expr, ExprKind, Leaf, ModuleId, Namespace,
 };
 use crate::interpret::Closure;
 use crate::modules::ModuleSources;
@@ -23,45 +22,36 @@ impl<'t> MacroReferences<'t> {
         self,
         macros: impl Iterator<Item = (BindingId, &'m Closure)>,
         modules: &[CoreModule],
-    ) -> FxHashSet<(ModuleId, BindingId)> {
-        let written: FxHashSet<ModuleId> = modules
+    ) -> FxHashSet<BindingId> {
+        let written = modules
             .iter()
             .filter(|module| ModuleSources::is_written(&module.path))
-            .map(|module| module.id)
+            .map(|module| (module.id, module))
             .collect();
-        let mut named = FxHashSet::default();
+        let mut walk = NamedWalk {
+            references: &self,
+            written,
+            named: FxHashSet::default(),
+            followed: FxHashSet::default(),
+        };
         for (binding, closure) in macros {
             if let BindingKind::Macro(module) = self.bindings.get(binding).kind()
-                && written.contains(&module)
+                && walk.written.contains_key(&module)
             {
-                self.walk(&closure.lambda, &mut |binding| {
-                    named.insert((module, binding));
-                });
+                walk.visit(closure.lambda.body.expressions().collect());
             }
         }
-        named
+        walk.named
     }
 
-    fn walk(&self, macro_function: &Lambda, named: &mut dyn FnMut(BindingId)) {
-        let mut pending: Vec<&Expr> = macro_function.body.expressions().collect();
-        while let Some(expr) = pending.pop() {
-            match expr.kind() {
-                ExprKind::Leaf(Leaf::Var(binding)) => self.note(*binding, named),
-                ExprKind::Leaf(Leaf::Quote(form)) => self.note_template(form, named),
-                _ => {}
-            }
-            pending.extend(expr.children());
-        }
-    }
-
-    fn note_template(&self, form: &Form, named: &mut dyn FnMut(BindingId)) {
+    fn note_template(&self, form: &Form, named: &mut Vec<BindingId>) {
         match form.kind() {
             FormKind::Symbol(symbol) => {
                 for namespace in Namespace::IMPORTED {
                     if let Resolution::Bound(binding) =
                         self.table.resolve_use(symbol, namespace, Phase::Runtime)
                     {
-                        self.note(binding, named);
+                        named.extend(self.note(binding));
                     }
                 }
             }
@@ -72,10 +62,65 @@ impl<'t> MacroReferences<'t> {
         }
     }
 
-    fn note(&self, binding: BindingId, named: &mut dyn FnMut(BindingId)) {
-        if self.bindings.get(binding).kind().is_importable() {
-            named(binding);
+    fn note(&self, binding: BindingId) -> Option<BindingId> {
+        self.bindings
+            .get(binding)
+            .kind()
+            .is_importable()
+            .then_some(binding)
+    }
+}
+
+struct NamedWalk<'w, 't, 'm> {
+    references: &'w MacroReferences<'t>,
+    written: FxHashMap<ModuleId, &'m CoreModule>,
+    named: FxHashSet<BindingId>,
+    followed: FxHashSet<BindingId>,
+}
+
+impl<'m> NamedWalk<'_, '_, 'm> {
+    fn visit<'e>(&mut self, mut pending: Vec<&'e Expr>)
+    where
+        'm: 'e,
+    {
+        while let Some(expr) = pending.pop() {
+            let references = self.references;
+            match expr.kind() {
+                ExprKind::Leaf(Leaf::Var(binding)) => {
+                    if let Some(helper) = references.note(*binding) {
+                        pending.extend(self.body_to_follow(helper));
+                    }
+                }
+                ExprKind::Leaf(Leaf::Quote(form)) => {
+                    let mut quoted = Vec::new();
+                    references.note_template(form, &mut quoted);
+                    for helper in quoted {
+                        pending.extend(self.body_to_follow(helper));
+                    }
+                }
+                _ => {}
+            }
+            pending.extend(expr.children());
         }
+    }
+
+    fn body_to_follow(&mut self, helper: BindingId) -> Option<&'m Expr> {
+        self.named.insert(helper);
+        if !self.followed.insert(helper) {
+            return None;
+        }
+        self.body_of(helper)
+    }
+
+    fn body_of(&self, binding: BindingId) -> Option<&'m Expr> {
+        let BindingKind::Global(module) = self.references.bindings.get(binding).kind() else {
+            return None;
+        };
+        let defining = self.written.get(&module)?;
+        let body = defining
+            .definitions()
+            .find(|(defined, _)| *defined == binding)?;
+        Some(&**body.1)
     }
 }
 
@@ -97,10 +142,26 @@ mod tests {
 
         fn names(&self, name: &str) -> bool {
             let defined = self.defined(name);
-            self.program
-                .compile_time_roots
-                .named_by_macros_in(self.program.entry_module().id)
-                .any(|named| named == defined)
+            self.program.compile_time_roots.contains(defined)
+        }
+
+        fn names_in(&self, name: &str, path: &str) -> bool {
+            let module = self
+                .program
+                .modules
+                .iter()
+                .find(|module| module.path.as_str() == path)
+                .expect("the program loads the module")
+                .id;
+            let bindings = &self.program.bindings;
+            let defined = bindings
+                .ids()
+                .find(|binding| {
+                    let info = bindings.get(*binding);
+                    info.name() == name && info.kind().defining_module() == Some(module)
+                })
+                .expect("the module defines the name");
+            self.program.compile_time_roots.contains(defined)
         }
 
         fn defined(&self, name: &str) -> BindingId {
@@ -130,6 +191,41 @@ mod tests {
             "(def size (fn (form) 1))\n(defmacro measured (x) (size x))",
         );
         assert!(fixture.names("size"));
+    }
+
+    #[test]
+    fn a_quote_in_a_helper_the_macro_calls_counts() {
+        let fixture = MacroReferencesFixture::expand(
+            "(defn mark () 1)\n(def helper (fn (form) (quote mark)))\n\
+             (defmacro marked (x) (helper x))",
+        );
+        assert!(fixture.names("mark"));
+    }
+
+    #[test]
+    fn a_helper_a_template_names_before_the_macro_calls_it_is_still_followed() {
+        let fixture = MacroReferencesFixture::expand(
+            "(defn mark () 1)\n(def helper (fn (form) (quote mark)))\n\
+             (defmacro marked (x) (if true (helper x) (template (helper))))",
+        );
+        assert!(fixture.names("mark"));
+    }
+
+    #[test]
+    fn a_quote_in_a_function_a_template_names_counts() {
+        let fixture = MacroReferencesFixture::expand(
+            "(defn mark () 1)\n(defn runtime () (quote mark))\n\
+             (defmacro run (x) (template (runtime)))",
+        );
+        assert!(fixture.names("mark"));
+    }
+
+    #[test]
+    fn a_prelude_macro_names_nothing() {
+        let fixture = MacroReferencesFixture::expand(
+            "(use prelude/test run-tests)\n(defn main () (println 1))",
+        );
+        assert!(!fixture.names_in("start-run", "prelude/test"));
     }
 
     #[test]

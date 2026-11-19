@@ -1,0 +1,4 @@
+(use prelude/test run-tests)
+(use modules/shapes origin)
+
+(defn main () (run-tests :untested modules/shapes))

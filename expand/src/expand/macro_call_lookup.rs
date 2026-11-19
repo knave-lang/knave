@@ -1,12 +1,11 @@
 use std::rc::Rc;
 
 use super::macro_origin::MacroOrigin;
-use crate::source::{SourceId, Span};
+use crate::source::Span;
 
 pub trait MacroCallLookup {
     fn introducing_macro(&self, span: Span) -> Option<MacroOrigin>;
     fn enclosing(&self, span: Span) -> Option<MacroOrigin>;
-    fn macros_called_in(&self, source: SourceId) -> Vec<Span>;
 }
 
 impl dyn MacroCallLookup {
@@ -25,10 +24,6 @@ impl MacroCallLookup for NoMacroCalls {
     fn enclosing(&self, _span: Span) -> Option<MacroOrigin> {
         None
     }
-
-    fn macros_called_in(&self, _source: SourceId) -> Vec<Span> {
-        Vec::new()
-    }
 }
 
 #[cfg(test)]
@@ -42,6 +37,5 @@ mod tests {
         let call_site = OriginsFixture::call_site();
         assert!(lookup.introducing_macro(call_site).is_none());
         assert!(lookup.enclosing(call_site).is_none());
-        assert!(lookup.macros_called_in(call_site.source()).is_empty());
     }
 }

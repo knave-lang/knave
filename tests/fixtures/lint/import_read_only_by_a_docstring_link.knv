@@ -1,0 +1,13 @@
+(use modules/format pad-left shout)
+(use modules/shapes origin point shape sized)
+
+(export shown)
+
+(defn shown ()
+  "Returns one, unlike [origin], [shape/circle], [size] and [two words].
+
+  It names nothing with [point][page], [point](page.md), an empty [], an
+  unclosed [pad-left, a `[pad-left]` code span, and it ends open at [shout"
+  1)
+
+(defn main () (println (shown)))

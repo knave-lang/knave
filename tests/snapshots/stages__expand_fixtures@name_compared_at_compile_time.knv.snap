@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/name_compared_at_compile_time.knv
+---
+(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) "pick")))

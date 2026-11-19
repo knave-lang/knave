@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/module_named_by_a_docstring_lookup.knv
+---
+warning[L0808]: `point` is imported but never used
+ --> lint/module_named_by_a_docstring_lookup.knv:1:28
+  |
+1 | (use modules/shapes origin point)
+  |                            ^^^^^ never used
+  |
+  = help: remove `point` from this `use`
+  = note: run `knave doc L0808` for an explanation

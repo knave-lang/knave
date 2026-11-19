@@ -1,10 +1,10 @@
-use super::binding_owners::BindingOwners;
 use super::definition_reach::{DefinitionReach, UnreachedDefinition};
 use super::linted_module::LintedModule;
-use super::module_use::ModuleUse;
 use super::rule_target::RuleTarget;
 use super::spanned_forms::SpannedForms;
-use crate::core::{BindingId, DefinitionForm, Import, ImportedName, KernelForm};
+use std::rc::Rc;
+
+use crate::core::{BindingId, BindingKind, DefinitionForm, Import, ImportedName, KernelForm};
 use crate::diagnostic::Diagnostic;
 use crate::expand::Program;
 use crate::interpret::ListNesting;
@@ -14,18 +14,18 @@ use crate::source::{SourceMap, Span};
 pub struct ModuleTable<'p> {
     program: &'p Program,
     sources: &'p SourceMap,
-    owners: BindingOwners,
     reach: DefinitionReach,
 }
 
 impl<'p> ModuleTable<'p> {
     const MACRO_ONLY: &'static str = "macro";
+    const MODULE_READ: &'static str = "module-read";
+    const MEMBERS: &'static str = "members";
 
     pub fn new(program: &'p Program, sources: &'p SourceMap, reach: DefinitionReach) -> Self {
         Self {
             program,
             sources,
-            owners: BindingOwners::of(program),
             reach,
         }
     }
@@ -37,20 +37,23 @@ impl<'p> ModuleTable<'p> {
         let Some(span) = first_item.or_else(|| recorded.first().map(|import| import.span)) else {
             return Ok(None);
         };
-        let used = ModuleUse::of(self.program, &self.owners, linted);
         let definitions = self
             .reach
             .unreached_in(module.id)
             .iter()
             .map(|definition| self.definition(definition, span))
             .collect();
-        let imports = recorded
+        let imports = recorded.iter().map(|import| self.import(import)).collect();
+        let notes = module
+            .lint_facts
+            .notes()
             .iter()
-            .map(|import| self.import(import, &used))
+            .map(|(key, notes)| Self::notes(key, notes, span))
             .collect();
         let parts = vec![
             SpannedForms::list(definitions, span),
             SpannedForms::list(imports, span),
+            SpannedForms::list(notes, span),
         ];
         let table = ListNesting::form_list(parts, span).map_err(|deep| deep.at(span))?;
         Ok(Some(RuleTarget::for_module(
@@ -58,6 +61,12 @@ impl<'p> ModuleTable<'p> {
             module.path.as_str().into(),
             span,
         )))
+    }
+
+    fn notes(key: &str, notes: &[Form], span: Span) -> Form {
+        let mut parts = vec![SpannedForms::symbol(key, span)];
+        parts.extend(notes.iter().cloned());
+        SpannedForms::list(parts, span)
     }
 
     fn definition(&self, definition: &UnreachedDefinition, span: Span) -> Form {
@@ -75,35 +84,52 @@ impl<'p> ModuleTable<'p> {
         )
     }
 
-    fn import(&self, import: &Import, used: &ModuleUse) -> Form {
+    fn import(&self, import: &Import) -> Form {
         let span = import.span;
         let unread = import
             .names
             .iter()
-            .filter(|name| !used.refers_to(name))
-            .map(|name| self.unread_name(name, used))
+            .enumerate()
+            .filter(|(_, name)| !name.used)
+            .map(|(position, name)| self.unread_name(name, import.members_of(position)))
             .collect();
-        let parts = vec![
+        let mut parts = vec![
             SpannedForms::kernel_head(KernelForm::Definition(DefinitionForm::Use), span),
-            SpannedForms::number(import.names.len() as i128, span),
+            SpannedForms::number(import.listed as i128, span),
             SpannedForms::list(unread, span),
         ];
+        if import.module_read {
+            parts.push(SpannedForms::symbol(Self::MODULE_READ, span));
+        }
         SpannedForms::list(parts, span)
     }
 
-    fn unread_name(&self, name: &ImportedName, used: &ModuleUse) -> Form {
-        let mut parts = vec![SpannedForms::symbol(
-            self.written(name.written.span),
-            name.written.span,
-        )];
-        if used.brings_only_macros(name) {
-            parts.push(SpannedForms::symbol(Self::MACRO_ONLY, name.written.span));
+    fn unread_name<'i>(
+        &self,
+        name: &ImportedName,
+        members: impl Iterator<Item = &'i Rc<str>>,
+    ) -> Form {
+        let written = &name.written;
+        let span = written.span;
+        let mut parts = vec![SpannedForms::symbol(written.text(self.sources), span)];
+        if self.brings_only_macros(name) {
+            parts.push(SpannedForms::symbol(Self::MACRO_ONLY, span));
         }
-        SpannedForms::list(parts, name.written.span)
+        let mut listed = vec![SpannedForms::symbol(Self::MEMBERS, span)];
+        listed.extend(members.map(|member| SpannedForms::symbol(member, span)));
+        if listed.len() > 1 {
+            parts.push(SpannedForms::list(listed, span));
+        }
+        SpannedForms::list(parts, span)
     }
 
-    fn written(&self, span: Span) -> &str {
-        &self.sources.file(span.source()).text()[span.range()]
+    fn brings_only_macros(&self, name: &ImportedName) -> bool {
+        name.written.bindings.iter().all(|binding| {
+            matches!(
+                self.program.bindings.get(binding).kind(),
+                BindingKind::Macro(_)
+            )
+        })
     }
 
     fn binder(&self, binding: BindingId, span: Span) -> Form {

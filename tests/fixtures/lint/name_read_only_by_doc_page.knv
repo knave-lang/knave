@@ -1,0 +1,7 @@
+(use modules/shapes point)
+
+(export point-page)
+
+(def point-page (doc-page point))
+
+(defn main () (println 1))

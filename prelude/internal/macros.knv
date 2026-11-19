@@ -4,10 +4,11 @@
           symbol? take value-eq)
 
 (export add-docstring-note docstring-before-body?
-        docstring-before-parameters docstrings-key
-        documented-body? documented-terms-key head-of
-        joined-chunks kernel-definition map-list
-        module-docstring-notes note-docstring noted-term
+        docstring-before-parameters docstring-notes-of
+        docstrings-key doctests-key documented-body?
+        documented-terms-key head-of joined-chunks
+        kernel-definition map-list module-docstring-notes
+        module-docstrings-key note-docstring noted-term
         term-docstrings-key text-chunk-pieces type-doc-key
         value-doc-key value-docstring-note whole-pairs?)
 
@@ -48,22 +49,29 @@
 
 (def documented-terms-key (quote documented-terms))
 
+(def doctests-key (quote doctests))
+
+(def module-docstrings-key (quote module-docstrings))
+
 (def noted-term
   (fn (note) (nth note 1)))
 
 (def module-docstring-notes
   (fn (context)
+    (docstring-notes-of (fn (key) (module-notes context key)))))
+
+(def docstring-notes-of
+  (fn (notes-of)
     (local with-notes-of
       (fn (notes terms)
         (if (empty? terms)
           notes
           (recur (concat notes
-                         (module-notes context
-                                       (term-docstrings-key (first terms))))
+                         (notes-of (term-docstrings-key (first terms))))
                  (rest terms)))))
-    (with-notes-of (module-notes context docstrings-key)
+    (with-notes-of (notes-of docstrings-key)
                    (distinct-leading-lines
-                     (map-list (module-notes context documented-terms-key)
+                     (map-list (notes-of documented-terms-key)
                        (fn (entry) (string (noted-term entry))))))))
 
 (def note-docstring

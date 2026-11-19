@@ -10,6 +10,7 @@
                              docstrings-key documented-body?
                              documented-terms-key head-of
                              map-list module-docstring-notes
+                             module-docstrings-key
                              note-docstring noted-term
                              term-docstrings-key
                              type-doc-key value-doc-key
@@ -840,8 +841,7 @@
   ```")
 
 (defmacro module (text)
-  (noted-docstring (fn ()
-                     (add-module-note (quote module-docstrings) text))
+  (noted-docstring (fn () (add-module-note module-docstrings-key text))
                    text))
 
 (header-shape (module) :docstring-only)
@@ -1146,7 +1146,7 @@
   (fn (path)
     (prepend (list (quote module) path)
              (written-texts (module-notes (module-symbol path)
-                                          (quote module-docstrings))))))
+                                          module-docstrings-key)))))
 
 (def written-texts
   (fn (texts)

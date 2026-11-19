@@ -1,4 +1,3 @@
-mod binding_owners;
 mod binding_symbols;
 mod bound_names;
 mod composite_forms;
@@ -8,7 +7,6 @@ mod form_reader;
 mod linted_module;
 mod linter;
 mod module_table;
-mod module_use;
 mod pattern_forms;
 mod problems;
 mod read_back;

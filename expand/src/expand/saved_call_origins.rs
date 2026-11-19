@@ -1,6 +1,6 @@
 use super::macro_origin::MacroOrigin;
 use super::saved_origin_rows::SavedOriginRows;
-use crate::source::{SourceId, Span};
+use crate::source::Span;
 
 #[derive(Default)]
 pub struct SavedCallOrigins {
@@ -15,12 +15,6 @@ impl SavedCallOrigins {
     pub fn at(&self, call_site: Span) -> Option<MacroOrigin> {
         let row = self.rows.row_at(call_site)?;
         Some(self.rows.decode(row).origin)
-    }
-
-    pub fn macros_called_in(&self, source: SourceId) -> impl Iterator<Item = Span> + '_ {
-        self.rows
-            .rows_of_source(source)
-            .map(|row| self.rows.decode(row).origin.defined)
     }
 
     pub fn enclosing(&self, span: Span) -> Option<MacroOrigin> {

@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/import_read_only_by_a_docstring_link.knv
+---
+warning[L0808]: nothing this `use` brings in is used
+ --> lint/import_read_only_by_a_docstring_link.knv:1:1
+  |
+1 | (use modules/format pad-left shout)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ nothing this brings in is used
+  |
+  = help: remove the `use`
+  = note: run `knave doc L0808` for an explanation
+
+warning[L0808]: `point` is imported but never used
+ --> lint/import_read_only_by_a_docstring_link.knv:2:28
+  |
+2 | (use modules/shapes origin point shape sized)
+  |                            ^^^^^ never used
+  |
+  = help: remove `point` from this `use`
+  = note: run `knave doc L0808` for an explanation

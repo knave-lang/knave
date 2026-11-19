@@ -1,0 +1,4 @@
+(use compared/checks picked?)
+(use compared/picks pick)
+
+(defn main () (println (picked? pick)))

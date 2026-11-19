@@ -1,8 +1,9 @@
 use std::rc::Rc;
 
+use super::project_modules::ProjectModules;
 use crate::core::{BindingId, CoreModule, Import, ImportedName, WrittenName, WrittenUse};
 use crate::expand::imported_members::{ImportedMembers, MemberTables};
-use crate::modules::{ModuleOrigin, ModuleRegistry};
+use crate::modules::ModuleRegistry;
 use crate::scope::{ScopeSet, VisibleNames};
 use crate::source::SourceMap;
 
@@ -25,10 +26,14 @@ impl<'e> UsedImports<'e> {
         }
     }
 
-    pub(in crate::expand) fn read_each(&self, modules: &mut [CoreModule], sources: &SourceMap) {
+    pub(in crate::expand) fn read_each(
+        &self,
+        modules: &mut [CoreModule],
+        project: &ProjectModules,
+        sources: &SourceMap,
+    ) {
         for module in modules {
-            let origin = ModuleOrigin::new(&module.path, module.library.as_deref());
-            if !origin.is_project() || module.lint_facts.written_uses().is_empty() {
+            if !project.contains(module.id) || module.lint_facts.written_uses().is_empty() {
                 continue;
             }
             let reader = ImportReader {
@@ -61,25 +66,41 @@ impl ImportReader<'_, '_> {
     fn import(&self, written: WrittenUse) -> Import {
         let target = self.used.modules.get(written.module);
         let members = ImportedMembers::new(target, self.used.members);
-        let names = written.names.into_vec().into_iter();
+        let mut names = Vec::with_capacity(written.names.len());
+        let mut unread_members = Vec::new();
+        for (position, name) in written.names.into_vec().into_iter().enumerate() {
+            let (name, unread) = self.name(name, &members);
+            unread_members.extend(unread.into_iter().map(|member| (position, member)));
+            names.push(name);
+        }
         Import {
             span: written.span,
-            names: names.map(|name| self.name(name, &members)).collect(),
+            names: names.into_boxed_slice(),
+            listed: written.listed,
             module_read: target.status().is_read_by_path(&self.scopes),
+            unread_members: unread_members.into_boxed_slice(),
         }
     }
 
-    fn name(&self, written: WrittenName, members: &ImportedMembers) -> ImportedName {
+    fn name(
+        &self,
+        written: WrittenName,
+        members: &ImportedMembers,
+    ) -> (ImportedName, Vec<Rc<str>>) {
         let text: Rc<str> = written.text(self.sources).into();
+        let member_entries = members.of(&text, written.bindings);
         let own = written
             .bindings
             .iter()
             .map(|binding| (Rc::clone(&text), binding));
-        let entries = own.chain(members.of(&text, written.bindings));
-        ImportedName {
-            used: self.used.is_used(entries, &self.scopes),
-            written,
-        }
+        let entries = own.chain(member_entries.iter().cloned());
+        let used = self.used.is_used(entries, &self.scopes);
+        let unread = if used {
+            Vec::new()
+        } else {
+            member_entries.into_iter().map(|(name, _)| name).collect()
+        };
+        (ImportedName { written, used }, unread)
     }
 }
 

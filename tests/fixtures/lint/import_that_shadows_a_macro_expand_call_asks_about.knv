@@ -1,0 +1,8 @@
+(use code empty? expand-call)
+(use modules/shadowing_when when)
+
+(defmacro macro-call? (x)
+  (if (empty? (expand-call x)) 0 1))
+
+(defn main ()
+  (println (macro-call? (when true 1))))

@@ -1,0 +1,9 @@
+(use code list)
+(use modules/format pad-left)
+
+(export padded)
+
+(defmacro padded (x)
+  (list (quote pad-left) x))
+
+(defn main () (println 1))

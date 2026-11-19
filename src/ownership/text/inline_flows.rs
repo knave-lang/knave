@@ -19,10 +19,15 @@ impl<'c, 'w, 'p> InlineFlows<'c, 'w, 'p> {
         Self { context, call }
     }
 
-    pub fn value(self, arguments: &[TextValue]) -> TextValue {
+    pub fn value(self, arguments: &[TextValue], queries: &[usize]) -> TextValue {
         let owner = SlotOwner::Variable(self.call.span, GenericId::new(Self::SHARED_VARIABLE));
         let variable = self.context.node(Slot::from(owner.clone()));
-        for argument in arguments {
+        let shared = arguments
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| !queries.contains(index))
+            .map(|(_, argument)| argument);
+        for argument in shared {
             self.context
                 .receive(&Slot::from(owner.clone()), &Self::top_of(argument));
             for (_, nested) in argument.nested() {

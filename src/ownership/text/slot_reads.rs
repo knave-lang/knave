@@ -17,8 +17,7 @@ impl<'g> SlotReads<'g> {
     }
 
     pub fn read(self, owner: &SlotOwner, read: TextRead<'_>) -> TextValue {
-        let positions = TextPositions::of(read.ty);
-        if !positions.iter().any(|position| position.path.is_top()) {
+        if !TextPositions::holds_top_text(read.ty) {
             return self.nested_onto(TextValue::default(), owner, read.ty);
         }
         let top = self.graph.node(Slot::from(owner.clone()));

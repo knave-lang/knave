@@ -1,0 +1,9 @@
+(defn main ()
+  (local counts
+    (reduce (vec "a" "b") (hash-map)
+      (fn (counts word)
+        (update counts
+                (str word)
+                (fn (n) (+ n 1))
+                0))))
+  (println (len counts)))

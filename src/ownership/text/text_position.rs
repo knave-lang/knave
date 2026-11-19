@@ -31,6 +31,10 @@ impl TextPositions {
         !Self::of(ty).is_empty()
     }
 
+    pub fn holds_top_text(ty: &Type) -> bool {
+        Self::of(ty).iter().any(|position| position.path.is_top())
+    }
+
     fn visit(&mut self, ty: &Type, path: TypePath, access: Access) {
         match ty {
             Type::Primitive(primitive) => self.visit_primitive(*primitive, path, access),
@@ -108,6 +112,14 @@ mod tests {
             vec![Types::text(PrimitiveType::Str)],
         );
         assert_eq!(TextPositions::of(&boxed)[0].written, Representation::Owned);
+    }
+
+    #[test]
+    fn a_vector_of_text_holds_no_text_at_its_top() {
+        let names = Type::Named(crate::core::BindingId::from_index(0), vec![Type::str_ref()]);
+        assert!(TextPositions::holds_text(&names));
+        assert!(!TextPositions::holds_top_text(&names));
+        assert!(TextPositions::holds_top_text(&Type::str_ref()));
     }
 
     #[test]

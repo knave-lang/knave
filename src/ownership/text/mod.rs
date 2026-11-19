@@ -22,6 +22,7 @@ mod reaching_text;
 mod representation;
 mod scheme_position;
 mod scheme_positions;
+mod short_lived_text;
 mod slot;
 mod slot_classes;
 mod slot_listing;

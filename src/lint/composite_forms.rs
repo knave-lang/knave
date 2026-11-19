@@ -2,7 +2,7 @@ use super::form_reader::FormReader;
 use super::spanned_forms::SpannedForms;
 use crate::core::{
     BindingId, CollectionForm, Expr, ExprKind, ExpressionForm, FieldLabel, KernelForm, KeyedPath,
-    StructExpr, StructForm,
+    Push, StructExpr, StructForm,
 };
 use crate::reader::Form;
 use crate::source::Span;
@@ -32,21 +32,20 @@ impl CompositeForms {
         match kind {
             ExprKind::Assoc(path) => Self::keyed(forms, (CollectionForm::Assoc, path), span),
             ExprKind::SetAt(path) => Self::keyed(forms, (CollectionForm::SetAt, path), span),
-            ExprKind::PushAt(push) => Self::push_at(forms, (&push.target, &push.item), span),
+            ExprKind::PushAt(push) => Self::push_at(forms, push, span),
             other => Self::map_at(forms, other, span),
         }
     }
 
-    fn push_at(forms: &mut dyn FormReader<'_>, push: (&Expr, &Expr), span: Span) -> Form {
-        let (target, item) = push;
+    fn push_at(forms: &mut dyn FormReader<'_>, push: &Push, span: Span) -> Form {
         let row = forms.writer().open();
         let parts = vec![
             forms.kernel_head(
                 KernelForm::Expression(ExpressionForm::Collection(CollectionForm::PushAt)),
                 span,
             ),
-            forms.expr(target),
-            forms.expr(item),
+            forms.expr(&push.target),
+            forms.expr(&push.item),
         ];
         forms.writer().close(row, parts, span)
     }

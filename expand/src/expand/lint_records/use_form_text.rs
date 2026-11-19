@@ -1,4 +1,4 @@
-use crate::reader::{ListClose, Syntax};
+use crate::reader::ListClose;
 use crate::source::{SourceMap, Span};
 
 pub(in crate::expand) struct UseFormText {
@@ -8,17 +8,8 @@ pub(in crate::expand) struct UseFormText {
 
 impl UseFormText {
     pub(in crate::expand) fn new(sources: &SourceMap, form: Span, head: Span) -> Self {
-        let close = if Self::opens_with(form, head) {
-            form.range().end - Syntax::CLOSE.len_utf8()
-        } else {
-            ListClose::after(sources.file(head.source()), head.range().end)
-        };
+        let close = ListClose::of(sources, form, head);
         Self { head, close }
-    }
-
-    fn opens_with(form: Span, head: Span) -> bool {
-        form.source() == head.source()
-            && form.range().start + Syntax::OPEN.len_utf8() == head.range().start
     }
 
     pub(in crate::expand) fn holds(&self, name: Span) -> bool {

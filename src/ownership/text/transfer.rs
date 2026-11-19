@@ -11,7 +11,7 @@ pub enum Transfer {
 }
 
 impl Transfer {
-    pub fn through(access: Access) -> Self {
+    pub fn referring(access: Access) -> Self {
         match access {
             Access::Direct => Self::Move,
             Access::Referenced => Self::Refer,

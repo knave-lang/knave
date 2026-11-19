@@ -161,7 +161,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
             Some((generic, access)) => self.read(
                 &SlotOwner::Variable(self.call.span, generic),
                 ty,
-                Transfer::through(access),
+                Transfer::referring(access),
             ),
             None => target.result().map_or_else(TextValue::default, |owner| {
                 self.read(&owner, ty, Transfer::Move)

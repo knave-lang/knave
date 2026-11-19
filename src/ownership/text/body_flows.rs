@@ -16,8 +16,8 @@ use super::type_path::TypePath;
 use super::walk_context::WalkContext;
 use crate::core::{BindingId, FieldLabel, Literal, ReferenceKind};
 use crate::types::{
-    FieldOrder, TryErrorConversion, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl,
-    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
+    Borrow, FieldOrder, TryErrorConversion, Type, TypedArgument, TypedBlock, TypedBodyItem,
+    TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
 };
 
 pub struct BodyFlows<'b, 'p> {
@@ -92,12 +92,20 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
     ) -> TextValue {
         let values: Vec<TextValue> = arguments
             .iter()
-            .map(|argument| self.value(&argument.value))
+            .map(|argument| self.argument(argument))
             .collect();
         if !matches!(callee.kind, TypedExprKind::Leaf(_)) {
             self.value(callee);
         }
         CallFlows::new(&mut self.context, expr, &values).value(callee)
+    }
+
+    fn argument(&mut self, argument: &TypedArgument) -> TextValue {
+        let value = self.value(&argument.value);
+        match argument.borrow {
+            Borrow::Deref(_) => value.transferred(Transfer::Lend),
+            _ => value,
+        }
     }
 
     fn result_type(&self) -> Option<Type> {

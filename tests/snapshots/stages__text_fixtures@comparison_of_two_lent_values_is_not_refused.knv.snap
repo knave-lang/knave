@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/comparison_of_two_lent_values_is_not_refused.knv
+---
+defn main
+  local model: owned
+  local other: owned
+  local lent: lent

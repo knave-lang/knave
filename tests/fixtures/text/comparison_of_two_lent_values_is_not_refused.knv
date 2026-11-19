@@ -1,0 +1,5 @@
+(defn main ()
+  (local model (str "Leaf" 1))
+  (local other (str "Civic" 1))
+  (local lent (ref other))
+  (println (> (ref model) lent)))

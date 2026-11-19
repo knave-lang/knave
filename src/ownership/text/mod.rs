@@ -2,7 +2,10 @@ mod access;
 mod body_flows;
 mod call_flows;
 mod callee;
+mod class_role;
 mod flow;
+#[cfg(test)]
+mod flow_fixture;
 mod flow_graph;
 mod inline_flows;
 mod listed_section;
@@ -15,26 +18,32 @@ mod representation;
 mod scheme_position;
 mod scheme_positions;
 mod slot;
+mod slot_classes;
 mod slot_listing;
 mod slot_owner;
 mod slot_reads;
 mod source;
 mod stored_parameters;
 mod text_conversion;
+mod text_decision_table;
+mod text_facts;
 mod text_names;
 mod text_position;
 mod text_program;
+mod text_refusals;
 mod text_report;
-mod text_solver;
 mod text_value;
 mod text_walk;
 mod transfer;
 mod type_path;
 mod walk_context;
 
+use slot_classes::SlotClasses;
+use text_decision_table::TextDecisionTable;
+use text_facts::TextFacts;
 use text_program::TextProgram;
+use text_refusals::TextRefusals;
 use text_report::TextReport;
-use text_solver::TextSolver;
 use text_walk::TextWalk;
 
 use crate::source::SourceMap;
@@ -53,7 +62,10 @@ impl<'p> TextDecisions<'p> {
 
     pub fn report(&self, sources: &SourceMap) -> String {
         let (graph, listing) = TextWalk::of(&self.program);
-        let solver = TextSolver::solve(&graph);
-        TextReport::new(&self.program, &graph, &solver).written(&listing, sources)
+        let classes = SlotClasses::of(&graph);
+        let facts = TextFacts::spread(&classes);
+        let table = TextDecisionTable::decide(&graph, &classes, &facts);
+        let refusals = TextRefusals::new(&classes, &facts, &table).found();
+        TextReport::new(&self.program, &table, &refusals).written(&listing, sources)
     }
 }

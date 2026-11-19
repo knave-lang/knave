@@ -1,3 +1,5 @@
+use rustc_hash::FxHashSet;
+
 use super::collected_impl::CollectedImpl;
 use super::declarations::Declarations;
 use super::declarations_builder::DeclarationsBuilder;
@@ -24,6 +26,7 @@ pub(super) struct DeclarationsFixture {
     source: TypedSource,
     program: TypedProgram,
     declarations: Declarations,
+    unchanged_structs: FxHashSet<BindingId>,
 }
 
 impl DeclarationsFixture {
@@ -35,6 +38,7 @@ impl DeclarationsFixture {
             source,
             program,
             declarations,
+            unchanged_structs: FxHashSet::default(),
         }
     }
 
@@ -72,21 +76,18 @@ impl DeclarationsFixture {
 
     pub(super) fn derive_rules<'a>(
         &'a self,
-        changed_structs: &'a rustc_hash::FxHashSet<BindingId>,
+        changed_structs: &'a FxHashSet<BindingId>,
     ) -> DeriveRules<'a> {
         DeriveRules::new(&self.declarations, self.derive_blockers(), changed_structs)
     }
 
-    pub(super) fn explanation_sources<'a>(
-        &'a self,
-        changed_structs: &'a rustc_hash::FxHashSet<BindingId>,
-    ) -> ExplanationSources<'a> {
+    pub(super) fn explanation_sources(&self) -> ExplanationSources<'_> {
         ExplanationSources {
             declarations: &self.declarations,
             bindings: &self.program.bindings,
             display: TypeDisplay::new(&self.program.bindings, &self.program.generics)
                 .with_projections(self.declarations.traits().table.projections()),
-            derive_rules: self.derive_rules(changed_structs),
+            derive_rules: self.derive_rules(&self.unchanged_structs),
         }
     }
 

@@ -61,7 +61,6 @@ src/types/problems.rs::TypeProblems::try_needs_unknown_recursive 1
 
 src/types/selection.rs::ImplementorMatch::select 1
 
-
 src/types/unifier.rs::Unifier::set_inside_operand 1
 
 xtask/src/coverage.rs::LineCoverage::with_line 1

@@ -1,7 +1,6 @@
 use std::rc::Rc;
 
 use super::StructDefinition;
-use super::derivable_traits::DerivableTraits;
 use super::explanation_sources::ExplanationSources;
 use super::problems::TypeProblems;
 use super::trait_help::TraitHelp;
@@ -9,50 +8,47 @@ use super::ty::{Bound, GenericId};
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
 
-pub(super) struct StructTraitHelp<'h> {
+pub(super) struct StructTraitHelp<'h, 'a> {
     binding: BindingId,
     definition: &'h StructDefinition,
     bound: &'h Bound,
+    sources: &'h ExplanationSources<'a>,
 }
 
-impl<'h> StructTraitHelp<'h> {
-    pub(super) fn new(
+impl<'h, 'a> StructTraitHelp<'h, 'a> {
+    pub(super) fn of(
         binding: BindingId,
-        definition: &'h StructDefinition,
         bound: &'h Bound,
-    ) -> Self {
-        Self {
+        sources: &'h ExplanationSources<'a>,
+    ) -> Option<Self> {
+        let definition = sources.declarations.types().structs.get(binding)?;
+        Some(Self {
             binding,
             definition,
             bound,
-        }
+            sources,
+        })
     }
 
-    fn order_derive_help(&self, struct_name: &str, sources: &ExplanationSources<'_>) -> String {
+    fn order_derive_help(&self, struct_name: &str) -> String {
         let fields: Vec<Rc<str>> = self
             .definition
             .fields
             .iter()
             .map(|(name, _)| name.clone())
             .collect();
-        let mut derives: Vec<String> = self
-            .definition
-            .derived_traits
-            .iter()
-            .map(|binding| sources.bindings.get(*binding).name().to_string())
-            .collect();
-        derives.push(sources.bindings.get(self.bound.binding).name().to_string());
+        let derives = self.derives_with_needed(&self.definition.derived_traits);
         TypeProblems::order_derive_help(struct_name, &derives, &fields)
     }
 
-    fn first_ord_field(&self, sources: &ExplanationSources<'_>) -> Option<&'h str> {
+    fn first_ord_field(&self) -> Option<&'h str> {
         let params: Vec<GenericId> = self
             .definition
             .params
             .iter()
             .map(|param| param.id)
             .collect();
-        let traits = &sources.declarations.traits().table;
+        let traits = &self.sources.declarations.traits().table;
         self.definition
             .fields
             .iter()
@@ -63,43 +59,27 @@ impl<'h> StructTraitHelp<'h> {
             })
             .map(|(name, _)| name.as_ref())
     }
-
-    fn with_written_derive(
-        &self,
-        diagnostic: Diagnostic,
-        sources: &ExplanationSources<'_>,
-    ) -> Diagnostic {
-        let Some(derive_span) = self.definition.written_derive else {
-            return diagnostic;
-        };
-        if !DerivableTraits::new(sources.declarations.traits()).is_derivable(self.bound.binding) {
-            return diagnostic;
-        }
-        let trait_name = sources.bindings.get(self.bound.binding).name();
-        diagnostic
-            .with_label(TypeProblems::derive_leaves_out(derive_span, trait_name))
-            .with_help(TypeProblems::add_to_derive_help(trait_name))
-    }
 }
 
-impl TraitHelp for StructTraitHelp<'_> {
+impl TraitHelp for StructTraitHelp<'_, '_> {
     fn needed(&self) -> &Bound {
         self.bound
     }
 
-    fn with_order_help(
-        &self,
-        diagnostic: Diagnostic,
-        sources: &ExplanationSources<'_>,
-    ) -> Diagnostic {
-        let struct_name = sources.bindings.get(self.binding).name();
-        let trait_name = sources.bindings.get(self.bound.binding).name();
+    fn sources(&self) -> &ExplanationSources<'_> {
+        self.sources
+    }
+
+    fn with_order_help(&self, diagnostic: Diagnostic) -> Diagnostic {
+        let struct_name = self.name(self.binding);
+        let trait_name = self.needed_name();
         let diagnostic = match self.definition.written_derive {
             Some(span) => diagnostic.with_label(TypeProblems::derive_leaves_out(span, trait_name)),
             None => diagnostic.with_note(TypeProblems::order_not_inferred_note(trait_name)),
         };
-        let sortable = self.first_ord_field(sources);
-        match sources
+        let sortable = self.first_ord_field();
+        match self
+            .sources
             .derive_rules
             .blocking_field(self.binding, self.bound.binding)
         {
@@ -107,34 +87,27 @@ impl TraitHelp for StructTraitHelp<'_> {
                 .with_note(TypeProblems::order_blocked_note(
                     struct_name,
                     &field,
-                    &sources.display.show(&field_type),
+                    &self.sources.display.show(&field_type),
                     trait_name,
                 ))
                 .with_help(TypeProblems::sort_by_help(sortable)),
             None => diagnostic
-                .with_help(self.order_derive_help(struct_name, sources))
+                .with_help(self.order_derive_help(struct_name))
                 .with_help(TypeProblems::sort_by_help(sortable)),
         }
     }
 
-    fn with_other_help(
-        &self,
-        diagnostic: Diagnostic,
-        sources: &ExplanationSources<'_>,
-    ) -> Diagnostic {
-        let diagnostic = self.with_written_derive(diagnostic, sources);
-        let blocked = self
-            .definition
-            .blocked
-            .iter()
-            .find(|(blocked, _, _)| *blocked == self.bound.binding);
-        match blocked {
+    fn with_other_help(&self, diagnostic: Diagnostic) -> Diagnostic {
+        let written = self.definition.written_derive;
+        let diagnostic =
+            self.with_written_derive(diagnostic, written, TypeProblems::add_to_derive_help);
+        match self.block_on_needed(&self.definition.blocked) {
             Some((_, field, field_type)) => {
                 diagnostic.with_note(TypeProblems::blocked_derive_note(
-                    sources.bindings.get(self.binding).name(),
-                    sources.bindings.get(self.bound.binding).name(),
+                    self.name(self.binding),
+                    self.needed_name(),
                     field,
-                    &sources.display.show(field_type),
+                    &self.sources.display.show(field_type),
                 ))
             }
             None => diagnostic,
@@ -144,60 +117,40 @@ impl TraitHelp for StructTraitHelp<'_> {
 
 #[cfg(test)]
 mod tests {
-    use rustc_hash::FxHashSet;
-
     use super::StructTraitHelp;
-    use crate::core::BindingId;
     use crate::diagnostic::Diagnostic;
-    use crate::source::{SourceId, Span};
-    use crate::types::declarations_fixture::DeclarationsFixture;
-    use crate::types::problems::TypeProblems;
     use crate::types::trait_help::TraitHelp;
-    use crate::types::ty::Bound;
+    use crate::types::trait_help_fixture::TraitHelpFixture;
 
     const SOURCE: &str = "
         (defstruct score :points i64 :name string)
         (defstruct ticket :id u32)
         (derive ticket debug)
+        (defstruct point :x f64)
         (trait shown (show (fn ((ref self)) usize)))
         (defn main () (do))";
 
     struct StructHelpFixture {
-        declarations: DeclarationsFixture,
-        changed_structs: FxHashSet<BindingId>,
+        fixture: TraitHelpFixture,
     }
 
     impl StructHelpFixture {
         fn new() -> Self {
             Self {
-                declarations: DeclarationsFixture::new(SOURCE),
-                changed_structs: FxHashSet::default(),
+                fixture: TraitHelpFixture::new(SOURCE),
             }
         }
 
-        fn help(&self, struct_name: &str, trait_name: &str) -> Diagnostic {
-            let binding = self.declarations.type_named(struct_name);
-            let definition = self
-                .declarations
-                .types()
-                .structs
-                .get(binding)
-                .expect("a struct");
-            let bound = Bound::plain(self.declarations.trait_named(trait_name));
-            let sources = self.declarations.explanation_sources(&self.changed_structs);
-            let diagnostic = Self::unexplained(trait_name);
-            StructTraitHelp::new(binding, definition, &bound).add_to(diagnostic, &sources)
-        }
-
-        fn unexplained(trait_name: &str) -> Diagnostic {
-            TypeProblems::missing_bound(trait_name, "T", Span::new(SourceId::new(0), 0..0))
-        }
-
-        fn added_helps<'d>(diagnostic: &'d Diagnostic, trait_name: &str) -> Vec<&'d str> {
-            let unexplained = Self::unexplained(trait_name).helps().len();
-            (diagnostic.helps().iter().skip(unexplained))
-                .map(|help| help.message())
-                .collect()
+        fn help(&self, type_name: &str, trait_name: &str) -> Diagnostic {
+            self.fixture.explain(
+                type_name,
+                trait_name,
+                |binding, bound, sources, diagnostic| {
+                    StructTraitHelp::of(binding, bound, sources)
+                        .expect("the source declares the type")
+                        .add_to(diagnostic)
+                },
+            )
         }
     }
 
@@ -209,7 +162,7 @@ mod tests {
             ["`ord` is never inferred for a struct, so the struct needs a written `derive`"]
         );
         assert_eq!(
-            StructHelpFixture::added_helps(&diagnostic, "ord"),
+            TraitHelpFixture::added_helps(&diagnostic, "ord"),
             [
                 "add `(derive score clone partial-eq eq hash show ord)` to compare fields in this order: `points`, then `name`",
                 "to sort by one field instead, use `sort-by!` with the field keyword `:points`",
@@ -228,7 +181,7 @@ mod tests {
     fn a_derivable_bound_on_a_written_derive_asks_to_add_it() {
         let diagnostic = StructHelpFixture::new().help("ticket", "clone");
         assert_eq!(
-            StructHelpFixture::added_helps(&diagnostic, "clone"),
+            TraitHelpFixture::added_helps(&diagnostic, "clone"),
             ["add `clone` to the struct's `derive`"]
         );
         assert_eq!(diagnostic.labels().count(), 2);
@@ -237,7 +190,16 @@ mod tests {
     #[test]
     fn a_user_trait_on_a_written_derive_adds_nothing() {
         let diagnostic = StructHelpFixture::new().help("ticket", "shown");
-        assert!(StructHelpFixture::added_helps(&diagnostic, "shown").is_empty());
+        assert!(TraitHelpFixture::added_helps(&diagnostic, "shown").is_empty());
         assert_eq!(diagnostic.labels().count(), 1);
+    }
+
+    #[test]
+    fn a_blocked_derive_names_the_field_that_blocks_it() {
+        let diagnostic = StructHelpFixture::new().help("point", "eq");
+        assert_eq!(
+            diagnostic.notes(),
+            ["`point` cannot derive `eq`: field `x` is `float`"]
+        );
     }
 }

@@ -2,7 +2,6 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::reached_traits::ReachedTraits;
 use super::rust_types::RustType;
-use super::template_spelling::TemplateSpelling;
 use crate::core::{
     BindingId, ConsultedTraits, CoreModule, ItemKind, MemberOwners, NamedTypes, References,
     RustTraitDeclaration,
@@ -15,7 +14,6 @@ pub struct TraitReach<'p> {
     map_types: FxHashSet<BindingId>,
     reached: FxHashSet<BindingId>,
     waiting: Vec<BindingId>,
-    consults_map_keys: bool,
 }
 
 impl<'p> TraitReach<'p> {
@@ -33,11 +31,6 @@ impl<'p> TraitReach<'p> {
             for binding in references.globals().iter().chain(named) {
                 reach.reach_noting_maps(*binding);
             }
-        }
-        if reach.consults_map_keys {
-            reach.reach_declared(|declaration| {
-                ConsultedTraits::BY_MAPS_AND_DERIVES.contains(&declaration.path.as_ref())
-            });
         }
         reach.close();
         ReachedTraits::new(reach.reached)
@@ -64,7 +57,6 @@ impl<'p> TraitReach<'p> {
             map_types: Self::map_types(modules),
             reached: FxHashSet::default(),
             waiting: Vec::new(),
-            consults_map_keys: false,
         }
     }
 
@@ -74,9 +66,7 @@ impl<'p> TraitReach<'p> {
             .flat_map(|module| &module.items)
             .filter_map(|item| match &item.kind {
                 ItemKind::RustType(binding, _, _, template, _)
-                    if RustType::MAP_TEMPLATES
-                        .iter()
-                        .any(|map| TemplateSpelling::of(template).is(map)) =>
+                    if RustType::spells_a_map(template) =>
                 {
                     Some(*binding)
                 }
@@ -102,19 +92,18 @@ impl<'p> TraitReach<'p> {
             ConsultedTraits::BY_EVERY_PROGRAM.contains(&declaration.path.as_ref())
                 || declaration.implementors.all_rows_primitive()
         });
-        let mut writes_a_type = false;
-        for module in modules {
-            let written = !ModuleSources::is_prelude(&module.path);
-            for item in &module.items {
-                if written {
-                    self.reach_written(&item.kind);
-                    writes_a_type |= Self::writes_type(&item.kind);
-                    self.reach_written_types(&item.kind);
-                }
-            }
+        let written_items = modules
+            .iter()
+            .filter(|module| !ModuleSources::is_prelude(&module.path))
+            .flat_map(|module| &module.items);
+        let mut declares_a_type = false;
+        for item in written_items {
+            self.reach_written(&item.kind);
+            declares_a_type |= Self::declares_type(&item.kind);
+            self.reach_written_types(&item.kind);
         }
-        if writes_a_type {
-            self.consults_map_keys = true;
+        if declares_a_type {
+            self.reach_map_keys();
             self.reach_declared(|declaration| declaration.structural.is_some());
         }
     }
@@ -125,7 +114,7 @@ impl<'p> TraitReach<'p> {
         }
     }
 
-    fn writes_type(kind: &ItemKind) -> bool {
+    fn declares_type(kind: &ItemKind) -> bool {
         matches!(kind, ItemKind::Struct(..) | ItemKind::Enum(..))
     }
 
@@ -134,8 +123,17 @@ impl<'p> TraitReach<'p> {
     }
 
     fn reach_noting_maps(&mut self, binding: BindingId) {
-        self.consults_map_keys |= self.map_types.contains(&binding);
+        if self.map_types.contains(&binding) {
+            self.reach_map_keys();
+        }
         self.reach(binding);
+    }
+
+    fn reach_map_keys(&mut self) {
+        self.map_types.clear();
+        self.reach_declared(|declaration| {
+            ConsultedTraits::BY_MAPS_AND_DERIVES.contains(&declaration.path.as_ref())
+        });
     }
 
     fn close(&mut self) {

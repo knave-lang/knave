@@ -17,11 +17,16 @@ impl RustType {
     pub const VECTOR_TEMPLATE: &'static str = "Vec<{0}>";
     pub const BOX_TEMPLATE: &'static str = "Box<{0}>";
     pub const ITERATOR_TEMPLATE: &'static str = "impl Iterator<Item = {0}>";
-    pub const SORTED_MAP_TEMPLATE: &'static str = "std::collections::BTreeMap<{0}, {1}>";
-    pub const HASH_MAP_TEMPLATE: &'static str = "std::collections::HashMap<{0}, {1}>";
-    pub const MAP_TEMPLATES: [&'static str; 2] =
-        [Self::SORTED_MAP_TEMPLATE, Self::HASH_MAP_TEMPLATE];
+    const SORTED_MAP_TEMPLATE: &'static str = "std::collections::BTreeMap<{0}, {1}>";
+    const HASH_MAP_TEMPLATE: &'static str = "std::collections::HashMap<{0}, {1}>";
+    const MAP_TEMPLATES: [&'static str; 2] = [Self::SORTED_MAP_TEMPLATE, Self::HASH_MAP_TEMPLATE];
     const OPAQUE_PREFIX: &'static str = "impl ";
+
+    pub fn spells_a_map(template: &ParsedTemplate) -> bool {
+        Self::MAP_TEMPLATES
+            .iter()
+            .any(|map| TemplateSpelling::of(template).is(map))
+    }
 
     pub fn template_for(&self, argument: Option<&Type>) -> &Rc<ParsedTemplate> {
         argument
@@ -129,5 +134,34 @@ impl RustTypeTable {
     fn has_template(&self, binding: BindingId, template: &str) -> bool {
         self.get(binding)
             .is_some_and(|rust_type| rust_type.has_template(template))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RustType;
+    use crate::core::ParsedTemplate;
+
+    struct TemplateFixture;
+
+    impl TemplateFixture {
+        fn spells_a_map(text: &str) -> bool {
+            RustType::spells_a_map(&ParsedTemplate::parse(text).expect("a template"))
+        }
+    }
+
+    #[test]
+    fn a_sorted_or_hash_map_template_spells_a_map() {
+        assert!(TemplateFixture::spells_a_map(
+            "std::collections::BTreeMap<{0}, {1}>"
+        ));
+        assert!(TemplateFixture::spells_a_map(
+            "std::collections::HashMap<{0},{1}>"
+        ));
+    }
+
+    #[test]
+    fn another_collection_template_spells_no_map() {
+        assert!(!TemplateFixture::spells_a_map("Vec<{0}>"));
     }
 }

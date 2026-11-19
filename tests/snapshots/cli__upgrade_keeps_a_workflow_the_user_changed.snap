@@ -7,7 +7,7 @@ warning: kept `.github/workflows/knave.yml`, because it differs from every text 
 help: the lines marked `-` are yours and the lines marked `+` are Knave <version>'s: merge them by hand
 --- .github/workflows/knave.yml
 +++ .github/workflows/knave.yml (Knave <version>)
-@@ -7,14 +7,16 @@
+@@ -7,14 +7,17 @@
  permissions:
    contents: read
  
@@ -21,13 +21,14 @@ help: the lines marked `-` are yours and the lines marked `+` are Knave <version
        - uses: actions/checkout@v4
 +      - name: Read the Knave version from project.knv
 +        run: |
-+          version=$(grep -o ':knave "[^"]*"' project.knv | cut -d '"' -f 2)
-+          test -n "$version" || { echo "::error file=project.knv::project.knv records no :knave version"; exit 1; }
-+          echo "KNAVE_VERSION=$version" >> "$GITHUB_ENV"
++          versions=$(grep -v '^[[:space:]]*;' project.knv | grep -o ':knave "[^"]*"' | cut -d '"' -f 2 || true)
++          test -n "$versions" || { echo "::error file=project.knv::project.knv records no :knave version"; exit 1; }
++          test "$(echo "$versions" | wc -l)" -eq 1 || { echo "::error file=project.knv::project.knv records more than one :knave version"; exit 1; }
++          echo "KNAVE_VERSION=$versions" >> "$GITHUB_ENV"
        - id: knave-cache
          uses: actions/cache/restore@v4
          with:
-@@ -36,5 +38,3 @@
+@@ -36,5 +39,3 @@
          run: knave lint
        - name: Test
          run: knave test

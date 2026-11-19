@@ -14,9 +14,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Read the Knave version from {project-file}
         run: |
-          version=$(grep -o ':{version-key} "[^"]*"' {project-file} | cut -d '"' -f 2)
-          test -n "$version" || { echo "::error file={project-file}::{project-file} records no :{version-key} version"; exit 1; }
-          echo "KNAVE_VERSION=$version" >> "$GITHUB_ENV"
+          versions=$(grep -v '^[[:space:]]*;' {project-file} | grep -o ':{version-key} "[^"]*"' | cut -d '"' -f 2 || true)
+          test -n "$versions" || { echo "::error file={project-file}::{project-file} records no :{version-key} version"; exit 1; }
+          test "$(echo "$versions" | wc -l)" -eq 1 || { echo "::error file={project-file}::{project-file} records more than one :{version-key} version"; exit 1; }
+          echo "KNAVE_VERSION=$versions" >> "$GITHUB_ENV"
       - id: knave-cache
         uses: actions/cache/restore@v4
         with:

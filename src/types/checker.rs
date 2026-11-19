@@ -56,6 +56,7 @@ use super::reached_traits::{ReachedDeclaration, ReachedTraits};
 use super::reopened_parameters::ReopenedParameters;
 use super::rust_type_item::RustTypeItem;
 use super::selection::Selection;
+use super::string_views::StringViews;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_declaration_collector::TraitDeclarationCollector;
 use super::ty::{Bound, GenericId, GenericParam, Scheme, Type, TypeVar};
@@ -583,6 +584,10 @@ impl TypeChecker {
 
     pub(super) fn place_types(&self) -> PlaceTypes<'_> {
         PlaceTypes::new(&self.unifier, self.declared_types())
+    }
+
+    pub(super) fn string_views(&self) -> StringViews<'_> {
+        StringViews::new(&self.unifier, self.place_types(), self.string_view)
     }
 
     pub(super) fn unification(&mut self) -> Unification<'_> {

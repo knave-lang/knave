@@ -3,14 +3,15 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::copied_reads::{ChangedCopy, CopiedMutReads};
+use super::function_values::FunctionValues;
 use super::parameter_adjustments::{Adjustment, ParameterAdjustments};
 use super::problems::{ChangingFunctionValue, OwnershipProblems};
 use crate::core::{BindingArena, BindingId, FieldLabel};
 use crate::diagnostic::Diagnostic;
 use crate::types::{
-    CopyRules, FunctionValueWrapper, GenericBinding, GenericId, GenericParam, StructTable, Type,
-    TypeDisplay, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedDefinition,
-    TypedExpr, TypedExprKind, TypedLeaf, TypedProgram, TypedStructExpr,
+    CopyRules, FunctionValueWrapper, GenericId, GenericParam, StructTable, Type, TypeDisplay,
+    TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedDefinition, TypedExpr,
+    TypedExprKind, TypedLeaf, TypedProgram, TypedStructExpr,
 };
 
 struct WrappedType<'a> {
@@ -40,9 +41,9 @@ pub struct FunctionValueModes<'a> {
     bindings: &'a mut BindingArena,
     generics: &'a FxHashMap<GenericId, GenericParam>,
     structs: &'a StructTable,
-    function_params: &'a FxHashMap<BindingId, Vec<Type>>,
     copied_reads: &'a CopiedMutReads,
     constructor_fields: FxHashMap<BindingId, Vec<Option<Rc<str>>>>,
+    function_values: FunctionValues<'a>,
     adjustments: ParameterAdjustments<'a>,
     diagnostics: Vec<Diagnostic>,
 }
@@ -62,9 +63,9 @@ impl<'a> FunctionValueModes<'a> {
             bindings: &mut program.bindings,
             generics: &program.generics,
             structs: program.declarations.types().structs(),
-            function_params,
             copied_reads,
             constructor_fields,
+            function_values: FunctionValues::new(function_params, &program.template_borrows),
             adjustments,
             diagnostics: Vec::new(),
         };
@@ -113,7 +114,10 @@ impl<'a> FunctionValueModes<'a> {
     }
 
     fn definition(&mut self, definition: &mut TypedDefinition) {
-        let current = self.function_params.get(&definition.binding).cloned();
+        let current = self
+            .function_values
+            .declared_params(definition.binding)
+            .map(<[Type]>::to_vec);
         self.expr(&mut definition.value, current.as_deref());
     }
 
@@ -294,16 +298,11 @@ impl<'a> FunctionValueModes<'a> {
         };
         let used = match &callee.kind {
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
-                self.used_params(*binding, parameters)
+                self.function_values.used_params(*binding, parameters)
             }
             _ => None,
         };
         Some(used.unwrap_or_else(|| parameters.clone()))
-    }
-
-    fn used_params(&self, binding: BindingId, used: &[Type]) -> Option<Vec<Type>> {
-        let declared = self.function_params.get(&binding)?;
-        Some(GenericBinding::of_each(declared, used).substitute(declared))
     }
 
     fn field_types(&self, binding: BindingId, ty: &Type) -> Vec<(std::rc::Rc<str>, Type)> {
@@ -323,10 +322,11 @@ impl<'a> FunctionValueModes<'a> {
         let Type::Function(_, expected_parameters, expected_result) = expected else {
             return false;
         };
-        let Some((binding, actual)) = self.function_value(value) else {
+        let Some(function) = self.function_values.recognize(value) else {
             return false;
         };
-        let Type::Function(_, actual_parameters, actual_result) = &actual else {
+        let (binding, actual) = (function.binding(), function.ty());
+        let Type::Function(_, actual_parameters, actual_result) = actual else {
             return false;
         };
         let adjustments = match self
@@ -334,12 +334,15 @@ impl<'a> FunctionValueModes<'a> {
             .of_each(expected_parameters, actual_parameters)
         {
             Ok(adjustments) => adjustments,
-            Err(parameter) => return self.mismatch(value, binding, &actual, expected, parameter),
+            Err(parameter) => {
+                return function.reports_mismatch()
+                    && self.mismatch(value, binding, actual, expected, parameter);
+            }
         };
         if let Some((position, changed)) = self.lost_change(binding, &adjustments) {
             let lost = LostChange {
                 function: binding,
-                actual: &actual,
+                actual,
                 expected_parameters,
                 position,
                 changed,
@@ -347,9 +350,9 @@ impl<'a> FunctionValueModes<'a> {
             };
             return self.changing_value(value, lost);
         }
-        if expected == &actual {
+        if !function.needs_wrapper(expected, &adjustments) {
             if matches!(value.kind, TypedExprKind::Fn(_)) {
-                self.unwrap(value, binding, &actual);
+                self.unwrap(value, binding, actual);
             }
             return false;
         }
@@ -360,7 +363,7 @@ impl<'a> FunctionValueModes<'a> {
                 parameters: expected_parameters,
                 expected_result,
                 actual_result,
-                actual: &actual,
+                actual,
             },
             adjustments,
         );
@@ -475,17 +478,5 @@ impl<'a> FunctionValueModes<'a> {
             ty: actual.clone(),
             span,
         }
-    }
-
-    fn function_value(&self, value: &TypedExpr) -> Option<(BindingId, Type)> {
-        let (binding, used_type) = value.function_value()?;
-        let Type::Function(_, used, result) = used_type else {
-            return None;
-        };
-        let parameters = self.used_params(binding, used)?;
-        Some((
-            binding,
-            Type::Function(crate::types::ClosureKind::Fn, parameters, result.clone()),
-        ))
     }
 }

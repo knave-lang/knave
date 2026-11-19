@@ -14,22 +14,22 @@ fn main() {
         "{}",
         years
             .iter()
-            .filter(|argument: &&i64| is_recent(**argument))
+            .filter(|&&argument: &&i64| is_recent(argument))
             .count()
     );
     println!(
         "{}",
-        years.iter().any(|argument: &i64| is_recent(*argument))
+        years.iter().any(|&argument: &i64| is_recent(argument))
     );
     println!(
         "{}",
-        crate::rt::Shown(&years.iter().find(|argument: &&i64| is_recent(**argument)))
+        crate::rt::Shown(&years.iter().find(|&&argument: &&i64| is_recent(argument)))
     );
     println!(
         "{}",
         years
             .iter()
-            .take_while(|argument: &&i64| is_recent(**argument))
+            .take_while(|&&argument: &&i64| is_recent(argument))
             .count()
     )
 }

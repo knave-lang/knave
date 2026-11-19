@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/template_value_over_borrowed_items.knv
+---
+(vec 1 2)
+(vec 1 2)
+(vec "1" "2")

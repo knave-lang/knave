@@ -9,6 +9,8 @@ mod checks;
 mod copied_reads;
 mod definitions;
 mod escaping_lambdas;
+mod function_value;
+mod function_values;
 mod functions;
 mod gate;
 mod held;

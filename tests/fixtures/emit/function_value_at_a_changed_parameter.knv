@@ -1,0 +1,15 @@
+(def doubled
+  (rust "{0} * 2" (fn (int) int)))
+
+(defn inc (x) (+ x 1))
+
+(type apply-mut!
+  (fn ((fn ((mut int)) int) (mut int))
+    int))
+
+(defn apply-mut! (f x) (f x))
+
+(defn main ()
+  (let (n 4)
+    (prn (apply-mut! inc (mut n)))
+    (prn (apply-mut! doubled (mut n)))))

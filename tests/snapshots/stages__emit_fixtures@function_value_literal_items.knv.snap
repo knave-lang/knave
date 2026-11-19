@@ -45,28 +45,28 @@ fn main() {
         "{}",
         bytes()
             .iter()
-            .take_while(|argument: &&u8| is_small_byte(**argument))
+            .take_while(|&&argument: &&u8| is_small_byte(argument))
             .count()
     );
     println!(
         "{}",
         readings()
             .iter()
-            .take_while(|argument: &&u16| is_small_reading(**argument))
+            .take_while(|&&argument: &&u16| is_small_reading(argument))
             .count()
     );
     println!(
         "{}",
         offsets()
             .iter()
-            .take_while(|argument: &&i32| is_small_offset(**argument))
+            .take_while(|&&argument: &&i32| is_small_offset(argument))
             .count()
     );
     println!(
         "{}",
         ratios()
             .iter()
-            .take_while(|argument: &&f32| is_small_ratio(**argument))
+            .take_while(|&&argument: &&f32| is_small_ratio(argument))
             .count()
     )
 }

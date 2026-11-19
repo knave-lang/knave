@@ -1,0 +1,41 @@
+(def square
+  (rust "{0} * {0}" (fn (int) int)))
+
+(def bump
+  (rust "{0}.pow(2) + 1" (fn (int) int)))
+
+(def twice
+  (rust "{0}.checked_mul(2)"
+    (where ((n integer))
+      (fn (n) (option n)))))
+
+(def shown
+  (rust "{0}.to_string()"
+    (where ((n display)) (fn (n) string))))
+
+(def shown-borrowed
+  (rust "{0}.to_string()"
+    (where ((n display))
+      (fn ((ref n)) string))))
+
+(def shout
+  (rust "{0}.to_uppercase()" (fn (string) string)))
+
+(defn main ()
+  (let (values (vec 1 2 3)
+        words (the (vec string)
+                   (collect (map values shown))))
+    (prn (the (vec int)
+              (collect (map values square))))
+    (prn (the (vec int)
+              (collect (map values bump))))
+    (prn (the (vec (option int))
+              (collect (map values twice))))
+    (prn (the (vec string)
+              (collect (map values shown))))
+    (prn (the (vec int)
+              (collect (map (iter values) square))))
+    (prn (the (vec string)
+              (collect (map values shown-borrowed))))
+    (prn (the (vec string)
+              (collect (map words shout))))))

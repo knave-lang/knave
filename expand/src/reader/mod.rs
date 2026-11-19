@@ -11,7 +11,7 @@ mod token;
 
 pub use form::{Form, FormKind, FormNesting, Number, NumberValue, Symbol};
 pub use form_shape::FormShape;
-pub use list_close::ListClose;
+pub(crate) use list_close::ListClose;
 pub use literal_forms::LiteralForms;
 pub use string_literal::StringLiteral;
 pub use syntax::Syntax;

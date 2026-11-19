@@ -31,9 +31,9 @@ pub use binding_table::BindingTable;
 #[cfg(test)]
 pub(crate) use imported_counts::ImportedCounts;
 pub(crate) use introduction_scopes::IntroductionScopes;
-pub use largest_candidates::LargestCandidates;
+pub(crate) use largest_candidates::LargestCandidates;
 pub use phase::Phase;
-pub use qualified_entries::QualifiedEntries;
+pub(crate) use qualified_entries::QualifiedEntries;
 pub use resolution::Resolution;
 pub use saved_exports::{ExportBytes, SavedExports};
 pub use saved_names::{NameTables, SavedNames};

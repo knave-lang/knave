@@ -47,24 +47,27 @@ impl Expander<'_> {
 
     fn check_value_form(&self, expr: &Expr, through: Option<Span>) -> Result<(), Diagnostic> {
         let problem = match expr.kind() {
-            ExprKind::Struct(_) => InterpretProblems::runtime_only("structs", expr.span()),
-            ExprKind::Assoc(..) => {
-                InterpretProblems::runtime_only("collection updates", expr.span())
-            }
-            ExprKind::MapAt(..) | ExprKind::SetAt(..) => {
-                InterpretProblems::runtime_only("map operations", expr.span())
-            }
-            ExprKind::PushAt(..) => {
-                InterpretProblems::runtime_only("collection pushes", expr.span())
-            }
-            ExprKind::Try(_) => InterpretProblems::runtime_only("`try` forms", expr.span()),
-            ExprKind::Infer(_) => InterpretProblems::runtime_only("`infer` forms", expr.span()),
             ExprKind::Control(Control::Match(..)) => {
                 InterpretProblems::match_only_at_runtime(expr.span())
             }
-            _ => return Ok(()),
+            kind => match Self::runtime_only_feature(kind) {
+                Some(feature) => InterpretProblems::runtime_only(feature, expr.span()),
+                None => return Ok(()),
+            },
         };
         Err(Self::routed(problem, through))
+    }
+
+    fn runtime_only_feature(kind: &ExprKind) -> Option<&'static str> {
+        match kind {
+            ExprKind::Struct(_) => Some("structs"),
+            ExprKind::Assoc(..) => Some("collection updates"),
+            ExprKind::MapAt(..) | ExprKind::SetAt(..) => Some("map operations"),
+            ExprKind::PushAt(..) => Some("collection pushes"),
+            ExprKind::Try(_) => Some("`try` forms"),
+            ExprKind::Infer(_) => Some("`infer` forms"),
+            _ => None,
+        }
     }
 
     fn check_global(

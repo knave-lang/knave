@@ -1,4 +1,4 @@
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::collected_impl::CollectedImpl;
 use super::declarations::Declarations;
@@ -16,7 +16,7 @@ use super::implementation_check::ImplementationCheck;
 use super::implementation_collector::ImplementationCollector;
 use super::trait_boxing::TraitBoxing;
 use super::trait_declarations::TraitDeclarations;
-use super::ty::GenericParam;
+use super::ty::{GenericId, GenericParam};
 use super::type_declarations::TypeDeclarations;
 use super::variant_payloads::VariantPayloads;
 use super::{Type, TypedProgram, TypedSource};
@@ -153,6 +153,14 @@ impl DeclarationsFixture {
 
     pub(super) fn traits(&self) -> &TraitDeclarations {
         self.declarations.traits()
+    }
+
+    pub(super) fn generics(&self) -> &FxHashMap<GenericId, GenericParam> {
+        &self.program.generics
+    }
+
+    pub(super) fn binding(&self, name: &str) -> BindingId {
+        self.binding_named(name, &|_| true)
     }
 
     pub(super) fn trait_named(&self, name: &str) -> BindingId {

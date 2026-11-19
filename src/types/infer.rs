@@ -16,11 +16,11 @@ use super::collection::{Collection, CollectionKind};
 use super::enums::VariantPayload;
 use super::expectation::Expectation;
 use super::parameter_call_request::ParameterCallRequest;
-use super::pending::{DecidedBorrows, PendingBorrow};
+use super::pending::DecidedBorrows;
 use super::positional_read::PositionalRead;
 use super::problems::{MismatchContext, TypeProblems};
 use super::selfless_method::SelflessMethod;
-use super::ty::{Bound, BoundOrigin, Type, TypeVar};
+use super::ty::{Bound, Type};
 use super::typed::{
     Borrow, FieldOrder, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm, TypedBinder,
     TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedExpr, TypedExprKind,
@@ -32,9 +32,9 @@ use super::{pattern_fields::PatternFields, pattern_placement::PatternPlacement};
 use super::{synthetic_template::SyntheticTemplate, templates::TemplateName};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, BorrowTrait, Control, EqualityTrait,
-    Expr, ExprKind, FieldLabel, HashTrait, Keyword, Lambda, Leaf, Literal, MapOperation,
-    OrderTrait, Pattern, PatternArguments, PatternKind, PrimitiveType, ReferenceKind, RustTemplate,
-    StructExpr, TypeExpr, TypeExprKind, VariantInfo,
+    Expr, ExprKind, FieldLabel, HashTrait, Lambda, Leaf, Literal, MapOperation, OrderTrait,
+    Pattern, PatternArguments, PatternKind, PrimitiveType, ReferenceKind, RustTemplate, StructExpr,
+    TypeExpr, TypeExprKind, VariantInfo,
 };
 use crate::diagnostic::{Diagnostic, DiagnosticCode, SimilarName};
 use crate::reader::NumberValue;
@@ -197,7 +197,7 @@ impl TypeChecker {
         if kind == ReferenceKind::Mutable && !value.is_place() {
             return Err(TypeProblems::mut_borrow_of_copy(
                 value.span,
-                self.field_place(&value),
+                self.passing_facts().field_place(&value),
             ));
         }
         let ty = match kind {
@@ -1138,7 +1138,7 @@ impl TypeChecker {
     }
 
     fn copy_out_of_borrow(&self, value: TypedExpr, expected: &Type) -> TypedExpr {
-        if self.passes_as_written(&value) {
+        if self.passing_facts().passes_as_written(&value) {
             return value;
         }
         let span = value.span;
@@ -1835,7 +1835,7 @@ impl TypeChecker {
             return false;
         };
         match self.unifier.shallow(item) {
-            Type::Var(var) => self.allows_only_copy_values(var),
+            Type::Var(var) => self.passing_facts().allows_only_copy_values(var),
             item => self.is_copy_element(&item, element),
         }
     }
@@ -2011,12 +2011,18 @@ impl TypeChecker {
         if let Type::Ref(_, referent) = self.unifier.shallow(parameter)
             && value.kind.is_dereference()
             && callee.is_some_and(|callee| self.template_borrows.is_template(callee))
-            && self.passes_as_written(value)
+            && self.passing_facts().passes_as_written(value)
         {
-            return self.pass(&referent, &value.ty, value.span, Borrow::Shared);
+            return self
+                .argument_passing()
+                .fit(&referent, &value.ty, value.span)
+                .map(|()| Borrow::Shared);
         }
-        match self.layers_above_held_view(callee, parameter, value) {
-            Some(layers) => self.pass_held_view(parameter, value, layers),
+        let held_view = (self.argument_passing()).layers_above_held_view(callee, parameter, value);
+        match held_view {
+            Some(layers) => self
+                .argument_passing()
+                .pass_held_view(parameter, value, layers),
             None => self.pass_to_callee(callee, position, parameter, value),
         }
     }
@@ -2030,14 +2036,16 @@ impl TypeChecker {
     ) -> Result<Borrow, Diagnostic> {
         let call = match callee.map(|callee| &callee.kind) {
             Some(TypedExprKind::Leaf(TypedLeaf::Global(binding))) => *binding,
-            _ => return self.pass_argument(parameter, value),
+            _ => return self.argument_passing().pass_argument(parameter, value),
         };
         if let TypedExprKind::Borrow(kind, _) = &value.kind
             && !self.checking_facts.written_at(call, position)
             && !self.unifier.shallow(parameter).is_reference()
             && let Type::Ref(_, referent) | Type::Mut(_, referent) = &value.ty
         {
-            self.pass(parameter, referent, value.span, Borrow::None)
+            self.argument_passing()
+                .fit(parameter, referent, value.span)
+                .map(|()| Borrow::None)
                 .map_err(|diagnostic| {
                     self.explain_assumed_collection(call, position, &value.ty, diagnostic)
                 })?;
@@ -2050,7 +2058,8 @@ impl TypeChecker {
             return Ok(Borrow::None);
         }
         let site = ArgumentSite { callee, position };
-        self.pass_argument(parameter, value)
+        self.argument_passing()
+            .pass_argument(parameter, value)
             .map_err(|diagnostic| self.explain_literal_default(call, position, diagnostic))
             .inspect_err(|diagnostic| {
                 self.request_parameter_call_label(call, position, &value.ty, diagnostic)
@@ -2059,53 +2068,6 @@ impl TypeChecker {
             .map_err(|diagnostic| {
                 self.explain_assumed_collection(call, position, &value.ty, diagnostic)
             })
-    }
-
-    fn layers_above_held_view(
-        &self,
-        callee: Option<&TypedExpr>,
-        parameter: &Type,
-        value: &TypedExpr,
-    ) -> Option<usize> {
-        let callee = callee?;
-        if !self.may_collapse(parameter) || self.passes_as_written(value) {
-            return None;
-        }
-        let parameter = self.unifier.resolve(parameter);
-        let argument = self.unifier.resolve(&value.ty);
-        let Type::Var(variable) = parameter.innermost_referent() else {
-            return None;
-        };
-        let layers = argument
-            .reference_depth()
-            .checked_sub(parameter.reference_depth() + 1)?;
-        let holds_view = self
-            .declared_types()
-            .is_unsized(argument.innermost_referent())
-            && self
-                .unifier
-                .resolve(&callee.ty)
-                .holds_outside_references(&Type::Var(*variable));
-        holds_view.then_some(layers)
-    }
-
-    fn may_collapse(&self, parameter: &Type) -> bool {
-        matches!(self.unifier.shallow(parameter), Type::Ref(..))
-    }
-
-    fn pass_held_view(
-        &mut self,
-        parameter: &Type,
-        value: &TypedExpr,
-        layers: usize,
-    ) -> Result<Borrow, Diagnostic> {
-        let argument = self.unifier.resolve(&value.ty);
-        let view = Self::without_references(&argument, layers);
-        let borrow = match layers {
-            0 => Borrow::None,
-            _ => Borrow::Collapse(layers),
-        };
-        self.pass(parameter, &view, value.span, borrow)
     }
 
     fn explain_assumed_collection(
@@ -2186,404 +2148,18 @@ impl TypeChecker {
             && !matches!(self.unifier.shallow(found), Type::Function(..))
     }
 
-    fn pass_argument(&mut self, parameter: &Type, value: &TypedExpr) -> Result<Borrow, Diagnostic> {
-        let parameter = self.unifier.shallow(parameter);
-        let argument = self.slice_argument(&parameter, &value.ty, value.span);
-        if self.passes_as_written(value) {
-            return self.pass(&parameter, &argument, value.span, Borrow::None);
-        }
-        match (&parameter, &argument) {
-            (Type::Ref(_, inner), found) if !found.is_reference() => {
-                if let Some(help) = self.string_as_str_help(inner, found, value) {
-                    return Err(TypeProblems::mismatch(
-                        &self.unification().describe(inner),
-                        &self.unification().describe(found),
-                        value.span,
-                        MismatchContext::Plain,
-                    )
-                    .with_help(help));
-                }
-                self.pass(inner, found, value.span, Borrow::Shared)
-            }
-            (Type::Mut(_, inner), _) => self.pass_mut_argument(inner, &parameter, &argument, value),
-            (Type::Var(var), Type::Ref(_, _)) if self.referent_unknown(&argument) => {
-                Ok(self.defer_borrow(*var, &argument, value.span))
-            }
-            (Type::Var(var), Type::Var(_)) if self.dereference_result_unknown(value) => {
-                Ok(self.defer_borrow(*var, &argument, value.span))
-            }
-            _ => self.pass_types(&parameter, &argument, value.span),
-        }
-    }
-
-    pub(super) fn passes_as_written(&self, value: &TypedExpr) -> bool {
-        value.is_written_form() && !self.dereference_may_leave_borrow(value)
-    }
-
-    fn dereference_may_leave_borrow(&self, value: &TypedExpr) -> bool {
-        value.kind.is_dereference() && self.may_hold_borrow(&value.ty)
-    }
-
-    fn may_hold_borrow(&self, value: &Type) -> bool {
-        let result = self.unifier.resolve(value);
-        result.is_reference() || self.referent_unknown(&result)
-    }
-
-    fn dereference_result_unknown(&self, value: &TypedExpr) -> bool {
-        value.kind.is_dereference() && self.referent_unknown(&self.unifier.resolve(&value.ty))
-    }
-
-    fn string_as_str_help(
-        &self,
-        expected: &Type,
-        found: &Type,
-        value: &TypedExpr,
-    ) -> Option<String> {
-        if !matches!(expected, Type::Primitive(PrimitiveType::Str))
-            || !matches!(found, Type::Primitive(PrimitiveType::String))
-        {
-            return None;
-        }
-        let place = self.local_place(value)?;
-        Some(format!("borrow it as a `str` with `(as-str {place})`"))
-    }
-
-    fn pass_mut_argument(
-        &mut self,
-        inner: &Type,
-        parameter: &Type,
-        argument: &Type,
-        value: &TypedExpr,
-    ) -> Result<Borrow, Diagnostic> {
-        let place = self.place_types().changed(value);
-        if value.is_place() && !place.is_reference() {
-            return self.pass(inner, &place, value.span, Borrow::Mutable);
-        }
-        if !value.is_place() && !argument.is_reference() {
-            return Err(TypeProblems::mut_borrow_of_copy(
-                value.span,
-                self.field_place(value),
-            ));
-        }
-        let found = if value.is_place() { &place } else { argument };
-        self.pass_types(parameter, found, value.span)
-    }
-
-    fn slice_argument(&mut self, parameter: &Type, argument: &Type, span: Span) -> Type {
-        let found = self.unifier.resolve(argument);
-        match (parameter, &found) {
-            (Type::Ref(_, expected), Type::Ref(_, referent)) => {
-                Type::shared(self.vector_before_slice(expected, referent, span))
-            }
-            (Type::Ref(_, expected), referent) if !referent.is_reference() => {
-                self.vector_before_slice(expected, referent, span)
-            }
-            _ => found,
-        }
-    }
-
-    fn vector_before_slice(&mut self, expected: &Type, found: &Type, span: Span) -> Type {
-        let Type::Named(slice, _) = self.unifier.shallow(expected) else {
-            return found.clone();
-        };
-        let Type::Var(_) = found else {
-            return found.clone();
-        };
-        if !self.declarations.types().rust_types.is_slice(slice) {
-            return found.clone();
-        }
-        let Some(vector) = self
-            .declarations
-            .types()
-            .rust_types
-            .binding_with_template(crate::types::RustType::VECTOR_TEMPLATE)
-        else {
-            return found.clone();
-        };
-        let element = self.unifier.fresh();
-        match self
-            .unifier
-            .unify(found, &Type::Named(vector, vec![element]), span)
-        {
-            Ok(()) => self.unifier.resolve(found),
-            Err(_) => found.clone(),
-        }
-    }
-
-    fn defer_borrow(&mut self, var: TypeVar, argument: &Type, span: Span) -> Borrow {
-        self.deferred.borrows.push(PendingBorrow {
-            var,
-            argument: argument.clone(),
-            span,
-        });
-        Borrow::Pending(self.deferred.borrows.len() - 1)
-    }
-
-    fn referent_unknown(&self, argument: &Type) -> bool {
-        matches!(
-            argument.innermost_referent(),
-            Type::Var(var) if self.unifier.literal_kind(*var).is_none()
-        )
-    }
-
     pub(super) fn decide_pending_borrows(&mut self) -> DecidedBorrows {
         let pending = std::mem::take(&mut self.deferred.borrows);
         let mut decided = FxHashMap::default();
         for (id, pending) in pending.iter().enumerate() {
-            let borrow = self.decide_borrow(pending).unwrap_or_else(|diagnostic| {
+            let decision = self.argument_passing().decide(pending);
+            let borrow = decision.unwrap_or_else(|diagnostic| {
                 self.diagnostics.push(diagnostic);
                 Borrow::None
             });
             decided.insert(id, borrow);
         }
         DecidedBorrows::new(decided)
-    }
-
-    fn decide_borrow(&mut self, pending: &PendingBorrow) -> Result<Borrow, Diagnostic> {
-        let argument = self.unifier.resolve(&pending.argument);
-        let parameter = self.unifier.shallow(&Type::Var(pending.var));
-        if let Type::Var(var) = parameter
-            && self.referent_unknown(&argument)
-            && self.needs_value(var)
-        {
-            let levels = argument.reference_depth();
-            let referent = argument.innermost_referent().clone();
-            return self.pass(&parameter, &referent, pending.span, Borrow::Deref(levels));
-        }
-        if Self::borrows_open_parameter_type(&parameter, &argument) {
-            return Ok(self.copy_through_borrow(&parameter, &argument, pending.span));
-        }
-        match self.view_for_unknown_referent(&parameter, &argument) {
-            Some(view) => self.pass_as_view(&view, &parameter, &argument, pending.span),
-            None => self.pass_types(&parameter, &argument, pending.span),
-        }
-    }
-
-    fn view_for_unknown_referent(&self, parameter: &Type, argument: &Type) -> Option<Type> {
-        if !self.referent_unknown(argument) {
-            return None;
-        }
-        self.borrowed_view(parameter)
-    }
-
-    fn pass_as_view(
-        &mut self,
-        view: &Type,
-        parameter: &Type,
-        argument: &Type,
-        span: Span,
-    ) -> Result<Borrow, Diagnostic> {
-        let referent = argument.innermost_referent();
-        self.unification()
-            .expect(Expectation::plain(view), referent, span)?;
-        let argument = self.unifier.resolve(argument);
-        let parameter = self.unifier.resolve(parameter);
-        let extra = argument
-            .reference_depth()
-            .saturating_sub(parameter.reference_depth());
-        let stripped = Self::without_references(&argument, extra);
-        self.pass(&parameter, &stripped, span, Borrow::Deref(extra))
-    }
-
-    fn borrowed_view(&self, borrowed: &Type) -> Option<Type> {
-        let view = self.unifier.resolve(borrowed);
-        match &view {
-            Type::Ref(_, referent) if self.declared_types().is_unsized(referent) => Some(view),
-            _ => None,
-        }
-    }
-
-    fn borrows_open_parameter_type(parameter: &Type, argument: &Type) -> bool {
-        matches!(parameter, Type::Var(_))
-            && argument.is_reference()
-            && argument.innermost_referent() == parameter
-    }
-
-    fn copy_through_borrow(&mut self, parameter: &Type, argument: &Type, copied: Span) -> Borrow {
-        self.require_copy_from(parameter, vec![BoundOrigin::BorrowCopied(copied)]);
-        Borrow::Deref(argument.reference_depth())
-    }
-
-    fn needs_value(&self, var: TypeVar) -> bool {
-        self.unifier.literal_kind(var).is_some() || self.allows_only_copy_values(var)
-    }
-
-    fn allows_only_copy_values(&self, var: TypeVar) -> bool {
-        self.unifier.bounds(var).iter().any(|bound| {
-            self.copy_rules()
-                .bound_allows_only_copy_values(bound.binding)
-        })
-    }
-
-    fn pass_types(
-        &mut self,
-        parameter: &Type,
-        argument: &Type,
-        span: Span,
-    ) -> Result<Borrow, Diagnostic> {
-        match (parameter, argument) {
-            (expected, Type::Ref(_, _)) if Self::is_known_value(expected) => {
-                let levels = argument.reference_depth();
-                let referent = argument.innermost_referent().clone();
-                self.unification()
-                    .expect(Expectation::plain(expected), &referent, span)?;
-                Ok(self.borrow_of_referent(&referent, levels))
-            }
-            (Type::Ref(_, _), Type::Ref(_, _)) if self.collapses(parameter, argument) => {
-                let parameter = self.unifier.resolve(parameter);
-                let extra = argument.reference_depth() - parameter.reference_depth();
-                let stripped = Self::without_references(argument, extra);
-                self.pass(&parameter, &stripped, span, Borrow::Collapse(extra))
-            }
-            (Type::Var(var), Type::Ref(_, _)) => self.pass_to_variable(*var, argument, span),
-            (Type::Mut(_, _), Type::Mut(_, _)) => {
-                self.pass(parameter, argument, span, Borrow::Reborrow)
-            }
-            (Type::Ref(_, _), Type::Mut(_, _))
-                if self.unification().coerces(parameter, argument, span) =>
-            {
-                self.pass(parameter, argument, span, Borrow::Reborrow)
-            }
-            (expected, found) => self.pass_value(expected, found, span),
-        }
-    }
-
-    fn pass_value(
-        &mut self,
-        expected: &Type,
-        found: &Type,
-        span: Span,
-    ) -> Result<Borrow, Diagnostic> {
-        if expected.is_unsized() && matches!(found, Type::Var(_)) {
-            let borrowed = Type::shared(expected.clone());
-            return self.pass(&borrowed, found, span, Borrow::None);
-        }
-        self.pass(expected, found, span, Borrow::None)
-    }
-
-    fn collapses(&self, parameter: &Type, argument: &Type) -> bool {
-        let parameter = self.unifier.resolve(parameter);
-        argument.reference_depth() > parameter.reference_depth()
-    }
-
-    fn without_references(value: &Type, levels: usize) -> Type {
-        match value {
-            Type::Ref(_, inner) if levels > 0 => Self::without_references(inner, levels - 1),
-            _ => value.clone(),
-        }
-    }
-
-    fn field_place(&self, value: &TypedExpr) -> Option<String> {
-        let TypedExprKind::Call(callee, arguments) = &value.kind else {
-            return None;
-        };
-        let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = callee.kind else {
-            return None;
-        };
-        let label = self.single_field_readers.get(&binding)?;
-        let [argument] = arguments.as_slice() else {
-            return None;
-        };
-        let place = self.local_place(&argument.value)?;
-        Some(format!("({}{label} {place})", Keyword::MARKER))
-    }
-
-    fn local_place(&self, value: &TypedExpr) -> Option<String> {
-        match &value.kind {
-            TypedExprKind::Leaf(TypedLeaf::Local(binding)) => {
-                Some(self.bindings.get(*binding).name().to_string())
-            }
-            TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) => Some(format!(
-                "(field {} {})",
-                self.local_place(owner)?,
-                label.name
-            )),
-            _ => None,
-        }
-    }
-
-    fn borrow_of_referent(&self, referent: &Type, levels: usize) -> Borrow {
-        if self
-            .copy_rules()
-            .is_small_copy(&self.unifier.resolve(referent))
-        {
-            Borrow::Deref(levels)
-        } else {
-            Borrow::Passthrough
-        }
-    }
-
-    fn pass_to_variable(
-        &mut self,
-        var: TypeVar,
-        argument: &Type,
-        span: Span,
-    ) -> Result<Borrow, Diagnostic> {
-        let mut levels = 0;
-        let mut passed = argument;
-        while let Type::Ref(_, referent) = passed
-            && self.dereferences(var, passed, referent)
-        {
-            levels += 1;
-            passed = referent;
-        }
-        if levels == 0
-            && let Type::Ref(_, referent) = argument
-            && self.passes_through(var, argument, referent)
-        {
-            return self.pass(&Type::Var(var), referent, span, Borrow::Passthrough);
-        }
-        let borrow = if levels == 0 {
-            Borrow::None
-        } else {
-            Borrow::Deref(levels)
-        };
-        self.pass(&Type::Var(var), &passed.clone(), span, borrow)
-    }
-
-    fn dereferences(&self, var: TypeVar, reference: &Type, referent: &Type) -> bool {
-        let fails_traits =
-            self.unifier.literal_kind(var).is_some() || self.fails_bounds(var, reference);
-        fails_traits && self.holds_copy_value(referent)
-    }
-
-    fn passes_through(&self, var: TypeVar, reference: &Type, referent: &Type) -> bool {
-        self.fails_bounds(var, reference) && !self.fails_bounds(var, referent)
-    }
-
-    fn fails_bounds(&self, var: TypeVar, value: &Type) -> bool {
-        self.unifier.bounds(var).iter().any(|bound| {
-            !self
-                .declarations
-                .traits()
-                .table
-                .satisfies(bound, value, &|generic, required| {
-                    self.unifier.generic_bounds(generic).contains(required)
-                })
-        })
-    }
-
-    fn holds_copy_value(&self, referent: &Type) -> bool {
-        match referent {
-            Type::Var(var) => self.unifier.literal_kind(*var).is_some(),
-            _ => self.copy_rules().is_small_copy(referent),
-        }
-    }
-
-    fn pass(
-        &mut self,
-        expected: &Type,
-        found: &Type,
-        span: Span,
-        borrow: Borrow,
-    ) -> Result<Borrow, Diagnostic> {
-        self.unification()
-            .expect(Expectation::plain(expected), found, span)
-            .map(|()| borrow)
-    }
-
-    fn is_known_value(parameter: &Type) -> bool {
-        matches!(parameter, Type::Named(..) | Type::Primitive(_))
     }
 
     fn infer_if(
@@ -2847,7 +2423,7 @@ impl TypeChecker {
         let (reader, span) = (read.reader(arguments)?, read.span());
         let types = &self.declarations.types().rust_types;
         if let Some(found) = read.pair_part(&self.unifier.resolve(&value.ty), types) {
-            return Ok(found.read(value, |part| self.holds_copy_value(part)));
+            return Ok(found.read(value, |part| self.passing_facts().holds_copy_value(part)));
         }
         self.note_unknown_collection(&value, read.slice_assumption());
         let callee = self.infer(reader)?;

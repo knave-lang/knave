@@ -155,10 +155,8 @@ impl TypeChecker {
         arguments: &mut [TypedArgument],
     ) -> Result<(), Diagnostic> {
         for group in shared.groups() {
-            if group
-                .positions()
-                .any(|position| self.passes_as_written(&arguments[position].value))
-            {
+            let facts = self.passing_facts();
+            if (group.positions()).any(|at| facts.passes_as_written(&arguments[at].value)) {
                 self.pass_each(callee, group, arguments)?;
                 continue;
             }
@@ -226,7 +224,7 @@ impl TypeChecker {
     ) -> bool {
         !assignment
             .values()
-            .any(|argument| self.referent_unknown(argument))
+            .any(|argument| self.passing_facts().referent_unknown(argument))
             && self.group_bounds_hold(group, assignment)
     }
 
@@ -284,7 +282,7 @@ impl TypeChecker {
             .collect();
         if resolved
             .iter()
-            .any(|argument| self.referent_unknown(argument))
+            .any(|argument| self.passing_facts().referent_unknown(argument))
             && !self.copies_known_referent(&resolved, &depths)
         {
             return self.pass_each(callee, group, arguments);
@@ -304,10 +302,10 @@ impl TypeChecker {
     }
 
     fn copies_known_referent(&self, resolved: &[Type], depths: &[usize]) -> bool {
+        let facts = self.passing_facts();
         depths.windows(2).any(|pair| pair[0] != pair[1])
-            && resolved
-                .iter()
-                .any(|argument| self.holds_copy_value(argument.innermost_referent()))
+            && (resolved.iter())
+                .any(|argument| facts.holds_copy_value(argument.innermost_referent()))
     }
 
     fn pass_each(

@@ -4,12 +4,14 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::admissible::Admissible;
 use super::admissible_types::AdmissibleTypes;
+use super::argument_passing::ArgumentPassing;
 use super::assumed_collections::AssumedCollections;
 use super::checked_program::CheckedProgram;
 use super::checking_facts::CheckingFacts;
 use super::clause_check::ClauseCheck;
 use super::collected_rust_trait::CollectedRustTrait;
 use super::copy::InferredCopies;
+use super::copy_requirement::CopyRequirement;
 use super::coverage::{ConstructorCatalog, MatchCoverage, WitnessText};
 use super::declarations::Declarations;
 use super::declared_generics::DeclaredGenerics;
@@ -43,18 +45,20 @@ use super::opaque_positions::OpaquePositions;
 use super::parameter_call_search::CalledParameters;
 use super::parameter_modes::ParameterModes;
 use super::parameter_names::ParameterNames;
+use super::passing_facts::PassingFacts;
+use super::passing_sources::PassingSources;
 use super::peeling::ReferencePeeling;
 use super::pinning::LiteralDefaults;
 use super::place_types::PlaceTypes;
 use super::prelude_types::PreludeTypes;
 use super::problems::{MismatchContext, TypeProblems};
 use super::reached_traits::{ReachedDeclaration, ReachedTraits};
-use super::reopened_parameter::ReopenedParameter;
+use super::reopened_parameters::ReopenedParameters;
 use super::rust_type_item::RustTypeItem;
 use super::selection::Selection;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_declaration_collector::TraitDeclarationCollector;
-use super::ty::{Bound, BoundOrigin, GenericId, GenericParam, Scheme, Type, TypeVar};
+use super::ty::{Bound, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::type_declaration_collector::TypeDeclarationCollector;
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
@@ -606,17 +610,39 @@ impl TypeChecker {
     }
 
     pub(super) fn require_copy(&mut self, value: &Type) {
-        self.require_copy_from(value, Vec::new());
+        CopyRequirement::new(self.copy_trait, &mut self.unifier).require(value, Vec::new());
     }
 
-    pub(super) fn require_copy_from(&mut self, value: &Type, origins: Vec<BoundOrigin>) {
-        let Type::Var(var) = self.unifier.shallow(value) else {
-            return;
+    pub(super) fn argument_passing(&mut self) -> ArgumentPassing<'_> {
+        let (sources, unifier, deferred) = self.passing_borrows();
+        ArgumentPassing::new(sources, unifier, deferred)
+    }
+
+    fn reopened_parameters(&mut self) -> ReopenedParameters<'_> {
+        let (sources, unifier, deferred) = self.passing_borrows();
+        ReopenedParameters::new(sources, unifier, deferred)
+    }
+
+    fn passing_borrows(&mut self) -> (PassingSources<'_>, &mut Unifier, &mut DeferredDecisions) {
+        let sources = PassingSources {
+            declarations: &self.declarations,
+            bindings: &self.bindings,
+            generics: self.generics.params(),
+            single_field_readers: &self.single_field_readers,
+            copy_trait: self.copy_trait,
         };
-        if let Some(copy) = self.copy_trait {
-            self.unifier
-                .add_bound(var, Bound::plain(copy).from_origins(origins));
-        }
+        (sources, &mut self.unifier, &mut self.deferred)
+    }
+
+    pub(super) fn passing_facts(&self) -> PassingFacts<'_> {
+        let sources = PassingSources {
+            declarations: &self.declarations,
+            bindings: &self.bindings,
+            generics: self.generics.params(),
+            single_field_readers: &self.single_field_readers,
+            copy_trait: self.copy_trait,
+        };
+        PassingFacts::new(sources, &self.unifier)
     }
 
     pub(super) fn display(&self) -> TypeDisplay<'_> {
@@ -855,7 +881,7 @@ impl TypeChecker {
         }
         self.close_open_set_ats();
         let decided = self.decide_pending_borrows();
-        self.close_reopened_parameters();
+        self.reopened_parameters().close();
         for (binding, value) in &mut typed {
             decided.patch(value);
             self.borrow_unsized_result(*binding, value);
@@ -1016,7 +1042,8 @@ impl TypeChecker {
         }
         if let Some(pinned) = self.pinned.get(&member.binding).cloned() {
             let pinned = self.open_unpinned_parameters(&pinned);
-            let reopened = self.reopen_borrowed_copy_parameters(pinned, member.span);
+            let reopened =
+                (self.reopened_parameters()).reopen_borrowed_copy_parameters(pinned, member.span);
             self.component.insert(member.binding, reopened);
             return None;
         }
@@ -1033,56 +1060,6 @@ impl TypeChecker {
             .map(|generic| (generic, self.unifier.fresh()))
             .collect();
         pinned.substitute(&fresh)
-    }
-
-    fn reopen_borrowed_copy_parameters(&mut self, pinned: Type, span: Span) -> Type {
-        let Type::Function(kind, parameters, result) = pinned else {
-            return pinned;
-        };
-        let parameters = parameters
-            .into_iter()
-            .map(|parameter| self.reopen_parameter(parameter, span))
-            .collect();
-        Type::Function(kind, parameters, result)
-    }
-
-    fn reopen_parameter(&mut self, pinned: Type, span: Span) -> Type {
-        if !self.borrows_copy_value(&pinned) {
-            return pinned;
-        }
-        let variable = self.unifier.fresh();
-        self.deferred.reopened_parameters.push(ReopenedParameter {
-            variable: variable.clone(),
-            pinned,
-            span,
-        });
-        variable
-    }
-
-    fn close_reopened_parameters(&mut self) {
-        for reopened in std::mem::take(&mut self.deferred.reopened_parameters) {
-            if let Some(pinned) = self.pinned_part_left_open(&reopened) {
-                let closed = self
-                    .unifier
-                    .unify(&reopened.variable, &pinned, reopened.span);
-                debug_assert!(
-                    closed.is_ok(),
-                    "a reopened parameter accepts its pinned type"
-                );
-            }
-        }
-    }
-
-    fn pinned_part_left_open(&self, reopened: &ReopenedParameter) -> Option<Type> {
-        match self.unifier.resolve(&reopened.variable) {
-            Type::Var(_) => Some(reopened.pinned.referent().clone()),
-            Type::Ref(..) => Some(reopened.pinned.clone()),
-            _ => None,
-        }
-    }
-
-    fn borrows_copy_value(&self, parameter: &Type) -> bool {
-        matches!(parameter, Type::Ref(_, referent) if self.copy_rules().is_small_copy(referent))
     }
 
     fn unwritten_shape(&mut self, value: &Expr) -> Type {

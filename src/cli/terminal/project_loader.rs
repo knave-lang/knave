@@ -22,22 +22,32 @@ impl<'a> ProjectLoader<'a> {
     }
 
     pub fn load(&mut self, project_file: &Path) -> Result<Project, ExitStatus> {
-        let source = self
-            .added(project_file)
-            .map_err(|error| UnreadableFile::new(project_file, &error).report_to(self.output))?;
+        let source = self.added_or_reported(project_file)?;
         self.read(source)
+    }
+
+    pub fn load_library(&mut self, project_file: &Path) -> Result<Project, ExitStatus> {
+        let source = self.added_or_reported(project_file)?;
+        self.forms(source)
+            .and_then(|forms| Self::reader().read_library(&forms, self.whole_file(source)))
+            .map_err(|diagnostics| self.report(&diagnostics))
     }
 
     pub fn read(&mut self, source: SourceId) -> Result<Project, ExitStatus> {
         self.forms(source)
-            .and_then(|forms| Self::reader().read(&forms, self.whole_file(source)))
-            .map_err(|diagnostics| self.output.report(self.sources, &diagnostics))
+            .and_then(|forms| Self::reader().read_root(&forms, self.whole_file(source)))
+            .map_err(|diagnostics| self.report(&diagnostics))
     }
 
     pub fn version_refusal(&mut self, project_file: &Path) -> Option<Diagnostic> {
         let source = self.added(project_file).ok()?;
         let forms = self.forms(source).ok()?;
         Self::reader().refusal(&forms, self.whole_file(source))
+    }
+
+    fn added_or_reported(&mut self, project_file: &Path) -> Result<SourceId, ExitStatus> {
+        self.added(project_file)
+            .map_err(|error| UnreadableFile::new(project_file, &error).report_to(self.output))
     }
 
     fn added(&mut self, project_file: &Path) -> io::Result<SourceId> {
@@ -47,6 +57,10 @@ impl<'a> ProjectLoader<'a> {
 
     fn forms(&self, source: SourceId) -> Result<Vec<Form>, Diagnostics> {
         Reader::new(self.sources.file(source)).read()
+    }
+
+    fn report(&self, diagnostics: &Diagnostics) -> ExitStatus {
+        self.output.report(self.sources, diagnostics)
     }
 
     fn reader() -> ProjectReader<'static> {

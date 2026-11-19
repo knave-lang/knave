@@ -509,6 +509,23 @@ exit 101
         sandbox.with_file("demo-app/project.knv", &project)
     }
 
+    fn with_library_project(test_name: &str, library_project: &str) -> Self {
+        Self::new(test_name)
+            .with_file(
+                &format!("app/{}", Language::project_file_name()),
+                "(defproject app (libraries (lib1 :path \"../lib1\")))\n",
+            )
+            .with_file(
+                "app/src/main.knv",
+                "(defn main ()\n  (println \"hello\"))\n",
+            )
+            .with_file(
+                &format!("lib1/{}", Language::project_file_name()),
+                library_project,
+            )
+            .with_file("lib1/src/lib.knv", "(export help)\n\n(defn help () 1)\n")
+    }
+
     fn without_version(text: &str) -> String {
         [env!("CARGO_PKG_VERSION"), RELEASED_TEXTS_VERSION]
             .into_iter()
@@ -9206,6 +9223,29 @@ fn a_compiler_older_than_a_project_with_an_unknown_key_reports_only_the_version(
         assert!(!stderr.contains("cannot load the project"), "{stderr}");
         assert_eq!(sandbox.files_with_contents("demo-app"), before);
     }
+}
+
+#[test]
+fn a_compiler_older_than_a_library_reports_the_library_problems_only() {
+    let stderr = Sandbox::with_library_project(
+        "version_older_library_unknown_key",
+        &format!("(defproject lib1 :knave \"{NEWER_VERSION}\" :newkey \"x\")\n"),
+    )
+    .compiler_in("app", &["check"])
+    .assert_exit_code(1)
+    .stderr();
+    assert!(stderr.contains("error[L0704]"), "{stderr}");
+    assert!(!stderr.contains("L0736"), "{stderr}");
+}
+
+#[test]
+fn a_compiler_older_than_a_library_checks_the_app_silently() {
+    Sandbox::with_library_project(
+        "version_older_library",
+        &format!("(defproject lib1 :knave \"{NEWER_VERSION}\")\n"),
+    )
+    .compiler_in("app", &["check"])
+    .assert_silent_success();
 }
 
 #[test]

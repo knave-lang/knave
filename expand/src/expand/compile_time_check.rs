@@ -61,8 +61,8 @@ impl Expander<'_> {
     fn runtime_only_feature(kind: &ExprKind) -> Option<&'static str> {
         match kind {
             ExprKind::Struct(_) => Some("structs"),
-            ExprKind::Assoc(..) => Some("collection updates"),
-            ExprKind::MapAt(..) | ExprKind::SetAt(..) => Some("map operations"),
+            ExprKind::Assoc(..) | ExprKind::SetAt(..) => Some("collection updates"),
+            ExprKind::MapAt(..) => Some("map operations"),
             ExprKind::PushAt(..) => Some("collection pushes"),
             ExprKind::Try(_) => Some("`try` forms"),
             ExprKind::Infer(_) => Some("`infer` forms"),

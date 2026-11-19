@@ -1,0 +1,3 @@
+(defmacro peek (items) (get items 0))
+
+(defn main () (println "unused"))

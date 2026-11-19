@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/get_in_macro.knv
+---
+error[L0316]: map operations only exist at runtime
+ --> check/get_in_macro.knv:1:24
+  |
+1 | (defmacro peek (items) (get items 0))
+  |                        ^^^^^^^^^^^^^ used at compile time here
+  |
+  = note: run `knave doc L0316` for an explanation

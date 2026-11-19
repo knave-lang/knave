@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/closure_body_stores_text.knv
+---
+struct user
+  name: mixed, written a view

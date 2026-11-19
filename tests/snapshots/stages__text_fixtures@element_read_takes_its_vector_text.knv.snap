@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/element_read_takes_its_vector_text.knv
+---
+defn main
+  local names[0]: owned
+  local picked: lent

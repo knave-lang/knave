@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/closure_result_needs_owned_text_in_a_field.knv
+---
+struct user
+  name: owned
+needs owned text
+  6:28

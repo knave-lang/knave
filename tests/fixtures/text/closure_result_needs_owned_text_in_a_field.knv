@@ -1,0 +1,7 @@
+(defstruct user
+  :name string)
+
+(defn main ()
+  (let (make (fn () (str "a" 1))
+        made (->user :name (make)))
+    (println (:name made))))

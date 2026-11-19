@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/match_arms_of_both_kinds_make_a_result_mixed.knv
+---
+defn describe
+  result: mixed, written a view

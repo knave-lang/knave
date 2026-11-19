@@ -80,7 +80,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         value: &TextValue,
     ) {
         if let Some((generic, access)) = Callee::whole_generic(declared) {
-            self.whole_generic_argument((callee, generic), (declared, access), value);
+            self.whole_generic_argument((callee, generic), access, value);
         } else if let Some(parameter) = callee.parameter(index) {
             self.pour(&Slot::top(SlotOwner::Parameter(parameter)), value);
         }
@@ -92,7 +92,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
     fn whole_generic_argument(
         &mut self,
         (callee, generic): (&Callee<'_>, GenericId),
-        (declared, access): (&Type, Access),
+        access: Access,
         value: &TextValue,
     ) {
         let variable = Slot::top(SlotOwner::Variable(self.call.span, generic));
@@ -103,17 +103,10 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
             let node = graph.node(variable.clone());
             graph.unite(node, need);
         }
-        match (declared, value.place()) {
-            (Type::Mut(..), Some(place)) => {
-                let graph = self.context.graph();
-                let node = graph.node(variable);
-                graph.unite(node, place);
-            }
-            _ => self.pour(
-                &variable,
-                &value.clone().transferred(Transfer::through(access)),
-            ),
-        }
+        self.pour(
+            &variable,
+            &value.clone().transferred(Transfer::through(access)),
+        );
     }
 
     fn argument_position(

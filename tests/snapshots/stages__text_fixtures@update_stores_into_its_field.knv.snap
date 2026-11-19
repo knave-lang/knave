@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/update_stores_into_its_field.knv
+---
+struct user
+  name: mixed, written a view

@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/global_text_is_static.knv
+---
+struct user
+  name: a 'static view, written a view

@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/written_string_parameter_that_only_reads_is_a_view.knv
+---
+defn size-of
+  text: a view, written owned

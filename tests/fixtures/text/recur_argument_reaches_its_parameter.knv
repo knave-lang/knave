@@ -1,0 +1,11 @@
+(defstruct user
+  :name str)
+
+(defn named (count label)
+  (if (= count 0)
+    (->user :name label)
+    (recur (- count 1)
+           (as-str (str label "x")))))
+
+(defn main ()
+  (println (:name (named 2 "a"))))

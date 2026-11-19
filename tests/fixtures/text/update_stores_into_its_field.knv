@@ -1,0 +1,8 @@
+(defstruct user
+  :name str
+  :age int)
+
+(defn main ()
+  (let (ana (->user :name "Ana" :age 1)
+        renamed (assoc ana :name (as-str (str "Bo" 1))))
+    (println (:name renamed))))

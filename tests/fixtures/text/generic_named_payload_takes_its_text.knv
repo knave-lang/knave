@@ -1,0 +1,12 @@
+(defenum (held value)
+  (boxed :item value)
+  empty)
+
+(defn main ()
+  (let (loud true
+        kept (if loud
+               (held/boxed (as-str (str "a" 1)))
+               (held/boxed "b")))
+    (println (match kept
+               ((boxed item) item)
+               (empty "none")))))

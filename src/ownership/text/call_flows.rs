@@ -9,10 +9,10 @@ use super::scheme_position::SchemePosition;
 use super::scheme_positions::SchemePositions;
 use super::slot::Slot;
 use super::slot_owner::SlotOwner;
-use super::slot_reads::SlotReads;
 use super::source::Source;
 use super::text_conversion::TextConversion;
 use super::text_position::TextPositions;
+use super::text_read::TextRead;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
 use super::type_path::TypePath;
@@ -33,7 +33,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         let program = self.context.program();
         match (Callee::of(callee, program), &callee.ty) {
             (Some(signature), _) if signature.is_inline() && self.shares_nested_text(values) => {
-                InlineFlows::new(self.context.graph(), self.call).value(values)
+                InlineFlows::new(self.context, self.call).value(values)
             }
             (Some(signature), Type::Function(_, parameters, result)) => {
                 self.through(&signature, (parameters, result), values)
@@ -103,9 +103,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         let variable = Slot::from(SlotOwner::Variable(self.call.span, generic));
         let program = self.context.program();
         if !value.sources().is_empty() && callee.needs_owned_text(generic, program) {
-            self.context
-                .graph()
-                .require(variable.clone(), Need::OwnedOrMixed);
+            self.context.require(variable.clone(), Need::OwnedOrMixed);
         }
         self.pour(
             &variable,
@@ -137,7 +135,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
     fn pour_owned_argument(&mut self, value: &TextValue) {
         let argument = Slot::from(SlotOwner::Argument(self.call.span));
         self.pour(&argument, value);
-        self.context.graph().require(argument, Need::Owned);
+        self.context.require(argument, Need::Owned);
     }
 
     fn nested_at(value: &TextValue, path: &TypePath) -> Option<NodeId> {
@@ -150,9 +148,8 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
 
     fn unite_with_variable(&mut self, generic: GenericId, inner: &TypePath, argument: NodeId) {
         let slot = Slot::new(SlotOwner::Variable(self.call.span, generic), inner.clone());
-        let graph = self.context.graph();
-        let variable = graph.node(slot);
-        graph.unite(variable, argument);
+        let variable = self.context.node(slot);
+        self.context.unite(variable, argument);
     }
 
     fn result(
@@ -210,16 +207,15 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         (path, access): (&TypePath, Access),
     ) -> NodeId {
         let variable = Slot::new(SlotOwner::Variable(self.call.span, generic), inner.clone());
-        let graph = self.context.graph();
-        let node = graph.node(variable);
+        let node = self.context.node(variable);
         match access {
             Access::Direct => node,
             Access::Referenced => {
                 let read = Slot::new(SlotOwner::Value(self.call.span), path.clone());
                 let reference = TextValue::from(Source::Slot(node), self.call.span)
                     .transferred(Transfer::Refer);
-                graph.receive(&read, &reference);
-                graph.node(read)
+                self.context.receive(&read, &reference);
+                self.context.node(read)
             }
         }
     }
@@ -230,7 +226,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         }
         let slot = Slot::new(SlotOwner::Value(self.call.span), path.clone());
         self.pour(&slot, &made);
-        let node = self.context.graph().node(slot);
+        let node = self.context.node(slot);
         value.nesting(path.clone(), node)
     }
 
@@ -248,10 +244,15 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
     }
 
     fn read(&mut self, owner: &SlotOwner, ty: &Type, transfer: Transfer) -> TextValue {
-        SlotReads::new(self.context.graph()).read(owner, (ty, self.call.span), transfer)
+        let read = TextRead {
+            ty,
+            span: self.call.span,
+            transfer,
+        };
+        self.context.read(owner, read)
     }
 
     fn pour(&mut self, slot: &Slot, value: &TextValue) {
-        self.context.graph().receive(slot, value);
+        self.context.receive(slot, value);
     }
 }

@@ -30,6 +30,7 @@ mod text_facts;
 mod text_names;
 mod text_position;
 mod text_program;
+mod text_read;
 mod text_refusals;
 mod text_report;
 mod text_value;

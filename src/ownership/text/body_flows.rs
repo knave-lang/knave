@@ -3,10 +3,11 @@ use rustc_hash::FxHashSet;
 use super::call_flows::CallFlows;
 use super::reaching_text::ReachingText;
 use super::slot::Slot;
+use super::slot_listing::SlotListing;
 use super::slot_owner::SlotOwner;
-use super::slot_reads::SlotReads;
 use super::source::Source;
 use super::text_position::TextPositions;
+use super::text_read::TextRead;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
 use super::type_path::TypePath;
@@ -17,17 +18,23 @@ use crate::types::{
     TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
 };
 
-pub struct BodyFlows<'b, 'w, 'p> {
-    walk: &'b mut WalkContext<'w, 'p>,
+pub struct BodyFlows<'b, 'p> {
+    context: WalkContext<'b, 'p>,
+    listing: &'b mut SlotListing,
     function: BindingId,
     parameters: Vec<BindingId>,
     opaque: FxHashSet<BindingId>,
 }
 
-impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
-    pub fn new(walk: &'b mut WalkContext<'w, 'p>, function: BindingId) -> Self {
+impl<'b, 'p> BodyFlows<'b, 'p> {
+    pub fn new(
+        context: WalkContext<'b, 'p>,
+        listing: &'b mut SlotListing,
+        function: BindingId,
+    ) -> Self {
         Self {
-            walk,
+            context,
+            listing,
             function,
             parameters: Vec::new(),
             opaque: FxHashSet::default(),
@@ -43,7 +50,7 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
         if let Some(result) = self.result_type() {
             let owner = SlotOwner::Result(self.function);
             self.list(&owner, &result);
-            self.walk.graph().receive(&Slot::from(owner), &value);
+            self.context.receive(&Slot::from(owner), &value);
         }
     }
 
@@ -81,11 +88,11 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
         if !matches!(callee.kind, TypedExprKind::Leaf(_)) {
             self.value(callee);
         }
-        CallFlows::new(self.walk, expr).value(callee, &values)
+        CallFlows::new(&mut self.context, expr).value(callee, &values)
     }
 
     fn result_type(&self) -> Option<Type> {
-        let definition = self.walk.program().definition(self.function)?;
+        let definition = self.context.program().definition(self.function)?;
         match &definition.value.ty {
             Type::Function(_, _, result) if TextPositions::holds_text(result) => {
                 Some(result.as_ref().clone())
@@ -95,7 +102,7 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
     }
 
     fn list(&mut self, owner: &SlotOwner, ty: &Type) {
-        self.walk.listing().list(owner, ty);
+        self.listing.list(owner, ty);
     }
 
     fn leaf(&mut self, leaf: &TypedLeaf, expr: &TypedExpr) -> TextValue {
@@ -127,7 +134,12 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
     }
 
     fn slot_value(&mut self, owner: &SlotOwner, expr: &TypedExpr, transfer: Transfer) -> TextValue {
-        SlotReads::new(self.walk.graph()).read(owner, (&expr.ty, expr.span), transfer)
+        let read = TextRead {
+            ty: &expr.ty,
+            span: expr.span,
+            transfer,
+        };
+        self.context.read(owner, read)
     }
 
     fn closure(&mut self, lambda: &TypedLambda) -> TextValue {
@@ -141,8 +153,7 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
         let parameters = self.parameters.clone();
         for (parameter, argument) in parameters.into_iter().zip(arguments) {
             let value = self.value(argument);
-            self.walk
-                .graph()
+            self.context
                 .receive(&Slot::from(SlotOwner::Parameter(parameter)), &value);
         }
         TextValue::default()
@@ -164,7 +175,7 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
         if TextPositions::holds_text(ty) {
             let owner = SlotOwner::Local(binding);
             self.list(&owner, ty);
-            self.walk.graph().receive(&Slot::from(owner), &value);
+            self.context.receive(&Slot::from(owner), &value);
         }
         TextValue::default()
     }
@@ -200,7 +211,7 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
             }
             TypedStructExpr::Field(owner, label) => {
                 self.value(owner);
-                match self.walk.program().structure_of(&owner.ty) {
+                match self.context.program().structure_of(&owner.ty) {
                     Some((binding, _)) => {
                         let field = SlotOwner::Field(binding, label.name.clone());
                         self.slot_value(&field, expr, Transfer::Refer)
@@ -215,7 +226,7 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
         for (label, value) in fields {
             let value = self.value(value);
             let owner = SlotOwner::Field(binding, label.name.clone());
-            self.walk.graph().receive(&Slot::from(owner), &value);
+            self.context.receive(&Slot::from(owner), &value);
         }
         TextValue::default()
     }
@@ -229,16 +240,16 @@ impl<'b, 'w, 'p> BodyFlows<'b, 'w, 'p> {
         for (written, payload) in payloads.iter().enumerate() {
             let field = order.field_of(written);
             let value = self.value(payload);
-            let slot = match self.walk.program().payload_argument(binding, field) {
+            let slot = match self.context.program().payload_argument(binding, field) {
                 Some(argument) => Slot::new(
                     SlotOwner::Value(expr.span),
                     TypePath::default().child(argument),
                 ),
                 None => Slot::from(SlotOwner::Field(binding, field.to_string().into())),
             };
-            self.walk.graph().receive(&slot, &value);
+            self.context.receive(&slot, &value);
         }
-        SlotReads::new(self.walk.graph()).nested(&SlotOwner::Value(expr.span), &expr.ty)
+        self.slot_value(&SlotOwner::Value(expr.span), expr, Transfer::Move)
     }
 
     fn discarded(&mut self, children: Vec<&TypedExpr>) -> TextValue {

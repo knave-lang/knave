@@ -279,6 +279,7 @@ diagnostic_codes! {
     UNREACHABLE_DEFINITION = "L0807",
     UNUSED_IMPORT = "L0808",
     NEEDLESS_TYPE = "L0809",
+    TEST_OUTSIDE_TESTS = "L0810",
 }
 
 impl DiagnosticCode {

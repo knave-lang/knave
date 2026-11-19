@@ -176,7 +176,7 @@ metadata:
 5. If one error remains after three fixes, stop and show the error to the user.
 6. If you need the value of a form, run `knave eval <file> '<form>'`.
 7. If you run the application, pass its arguments after `--`, as `knave run -- 10`.
-8. Write a test beside each pure function, as `(deftest name (assert (= actual expected)))`. Write one test for each error case, as `(assert (= actual (err (enum/case value))))`. NEVER compare the text of `pr-str`. Run the tests with `knave test <file>`.
+8. Write a test for each exported pure function in a file under `tests/`, as `(deftest name (assert (= actual expected)))`. Test a private function through the exported functions that use it. Write one test for each error case, as `(assert (= actual (err (enum/case value))))`. NEVER compare the text of `pr-str`. Run the tests with `knave test`.
 9. Before you finish, run `knave fmt` and `knave lint`. Fix each warning that `knave lint` prints.
 
 ## Rust habits that fail

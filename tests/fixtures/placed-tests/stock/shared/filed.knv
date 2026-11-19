@@ -1,0 +1,4 @@
+(use units restock)
+
+(deftest restocks-through-a-file-link
+  (assert (= (restock 2 2) 4)))

@@ -7859,6 +7859,102 @@ fn repl_resolves_use_from_the_project_source_root() {
     assert_eq!(repl.assert_exit_code(0).stdout(), "\"b!\"\n");
 }
 
+struct PlacedTestsFixture;
+
+impl PlacedTestsFixture {
+    fn link(sandbox: &Sandbox, link: &str, target: &str) {
+        std::os::unix::fs::symlink(target, sandbox.directory.join(link))
+            .expect("the sandbox accepts symbolic links");
+    }
+
+    fn at_level(name: &str, level: &str) -> Sandbox {
+        Sandbox::new(name)
+            .with_fixture_tree("placed-tests")
+            .with_file(
+                &format!("stock/{}", Language::project_file_name()),
+                &format!("(defproject stock\n  (libraries (shelving :path \"src/vendor/shelving\"))\n  (lints (test-outside-tests {level})))\n"),
+            )
+    }
+}
+
+#[test]
+fn test_keeps_silent_on_a_test_linked_under_the_tests_directory() {
+    let sandbox = PlacedTestsFixture::at_level("placed_tests_linked", "warn");
+    PlacedTestsFixture::link(&sandbox, "stock/tests/aliased.knv", "../shared/filed.knv");
+    PlacedTestsFixture::link(&sandbox, "stock/tests/shelf", "../shelf");
+    let test = sandbox.compiler_in("stock", &["test"]);
+    let stdout = test.assert_exit_code(0).stdout();
+    let stderr = test.stderr();
+    assert!(
+        stdout.contains("test aliased/restocks-through-a-file-link ... ok"),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("test shelf/outside/restocks-through-a-folder-link ... ok"),
+        "{stdout}"
+    );
+    assert!(!stderr.contains("through-a-file-link"), "{stderr}");
+    assert!(!stderr.contains("through-a-folder-link"), "{stderr}");
+}
+
+#[test]
+fn test_keeps_silent_on_a_test_file_linked_into_the_tasks_directory() {
+    let sandbox = PlacedTestsFixture::at_level("placed_tests_linked_task", "warn");
+    PlacedTestsFixture::link(&sandbox, "stock/tests/tasked.knv", "../tasks/restock.knv");
+    let test = sandbox.compiler_in("stock", &["test"]);
+    let stdout = test.assert_exit_code(0).stdout();
+    let stderr = test.stderr();
+    assert!(
+        stdout.contains("test tasked/restocks-a-shelf ... ok"),
+        "{stdout}"
+    );
+    assert!(!stderr.contains("tests/tasked.knv"), "{stderr}");
+}
+
+#[test]
+fn check_keeps_silent_on_a_test_in_a_library_under_the_tasks_directory() {
+    let sandbox = Sandbox::new("placed_tests_task_library").with_fixture_tree("placed-tests");
+    let check = sandbox.compiler_in("stock", &["check"]);
+    let stderr = check.assert_exit_code(0).stderr();
+    assert!(stderr.contains("restocks-a-shelf"), "{stderr}");
+    assert!(!stderr.contains("counts-crates"), "{stderr}");
+}
+
+#[test]
+fn check_warns_of_a_source_link_into_the_tests_directory() {
+    let sandbox = Sandbox::new("placed_tests_source_link").with_fixture_tree("placed-tests");
+    PlacedTestsFixture::link(
+        &sandbox,
+        "stock/src/borrowed.knv",
+        "../tests/deep/counting.knv",
+    );
+    let check = sandbox.compiler_in("stock", &["check", "src/borrowed.knv"]);
+    insta::assert_snapshot!(check.assert_exit_code(0).stderr());
+}
+
+#[test]
+fn test_warns_of_each_test_outside_the_tests_directory_and_runs_it() {
+    let sandbox = PlacedTestsFixture::at_level("placed_tests_warn", "warn");
+    let test = sandbox.compiler_in("stock", &["test"]);
+    test.assert_exit_code(0);
+    insta::assert_snapshot!(format!("{}\n{}", test.stdout(), test.stderr()));
+}
+
+#[test]
+fn test_fails_on_a_denied_test_outside_the_tests_directory() {
+    let sandbox = PlacedTestsFixture::at_level("placed_tests_deny", "deny");
+    let test = sandbox.compiler_in("stock", &["test"]);
+    let stderr = test.assert_exit_code(1).stderr();
+    assert!(stderr.contains("error[L0810]"), "{stderr}");
+}
+
+#[test]
+fn check_warns_of_each_test_outside_the_tests_directory() {
+    let sandbox = Sandbox::new("placed_tests_check").with_fixture_tree("placed-tests");
+    let check = sandbox.compiler_in("stock", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(0).stderr());
+}
+
 #[test]
 fn test_skips_the_project_file_in_a_directory() {
     let sandbox = Sandbox::new("project_test")

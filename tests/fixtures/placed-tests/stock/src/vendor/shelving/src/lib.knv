@@ -1,0 +1,6 @@
+(export shelf-count)
+
+(defn shelf-count () 3)
+
+(deftest counts-shelves
+  (assert (= (shelf-count) 3)))

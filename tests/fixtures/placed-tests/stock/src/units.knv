@@ -1,0 +1,13 @@
+(export restock)
+
+(defn add-units (count amount) (+ count amount))
+
+(defn restock (count amount)
+  "Adds `amount` units to `count`.
+
+  (restock 2 3)
+  => 5"
+  (add-units count amount))
+
+(deftest adds-units
+  (assert (= (add-units 1 1) 2)))

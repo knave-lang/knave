@@ -1,0 +1,39 @@
+---
+source: tests/cli.rs
+expression: "format!(\"{}\\n{}\", test.stdout(), test.stderr())"
+---
+running 6 tests
+test deep/counting/counts ... ok
+test units/adds-units ... ok
+test restocking/restocks ... ok
+test main/restocks-from-main ... ok
+test written/shelf-holds ... ok
+test units/doc:restock ... ok
+6 passed, 0 failed
+
+warning[L0810]: test `adds-units` lies outside `tests/`
+  --> src/units.knv:12:10
+   |
+12 | (deftest adds-units
+   |          ^^^^^^^^^^ outside `tests/`
+   |
+   = help: move this test into a file under `tests/`, and test the module through the functions it exports
+   = note: run `knave doc L0810` for an explanation
+
+warning[L0810]: test `restocks-from-main` lies outside `tests/`
+ --> src/main.knv:8:10
+  |
+8 | (deftest restocks-from-main
+  |          ^^^^^^^^^^^^^^^^^^ outside `tests/`
+  |
+  = help: move this test into a file under `tests/`, and test the module through the functions it exports
+  = note: run `knave doc L0810` for an explanation
+
+warning[L0810]: test `shelf-holds` lies outside `tests/`
+ --> src/written.knv:6:15
+  |
+6 | (checks-shelf shelf-holds)
+  |               ^^^^^^^^^^^ outside `tests/`
+  |
+  = help: move this test into a file under `tests/`, and test the module through the functions it exports
+  = note: run `knave doc L0810` for an explanation

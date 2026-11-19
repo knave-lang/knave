@@ -1,0 +1,4 @@
+(use units restock)
+
+(deftest counts
+  (assert (= (restock 0 1) 1)))

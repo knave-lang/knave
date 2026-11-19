@@ -1,0 +1,39 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(0).stderr()
+---
+warning[L0810]: test `restocks-from-main` lies outside `tests/`
+ --> src/main.knv:8:10
+  |
+8 | (deftest restocks-from-main
+  |          ^^^^^^^^^^^^^^^^^^ outside `tests/`
+  |
+  = help: move this test into a file under `tests/`, and test the module through the functions it exports
+  = note: run `knave doc L0810` for an explanation
+
+warning[L0810]: test `adds-units` lies outside `tests/`
+  --> src/units.knv:12:10
+   |
+12 | (deftest adds-units
+   |          ^^^^^^^^^^ outside `tests/`
+   |
+   = help: move this test into a file under `tests/`, and test the module through the functions it exports
+   = note: run `knave doc L0810` for an explanation
+
+warning[L0810]: test `shelf-holds` lies outside `tests/`
+ --> src/written.knv:6:15
+  |
+6 | (checks-shelf shelf-holds)
+  |               ^^^^^^^^^^^ outside `tests/`
+  |
+  = help: move this test into a file under `tests/`, and test the module through the functions it exports
+  = note: run `knave doc L0810` for an explanation
+
+warning[L0810]: test `restocks-a-shelf` lies outside `tests/`
+ --> tasks/restock.knv:9:10
+  |
+9 | (deftest restocks-a-shelf
+  |          ^^^^^^^^^^^^^^^^ outside `tests/`
+  |
+  = help: move the code this test tests into a module under the source root, and test that module from a file under `tests/`
+  = note: run `knave doc L0810` for an explanation

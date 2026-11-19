@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/clone_of_an_owned_field_is_owned.knv
+---
+struct person
+  name: owned
+defn main
+  local copy: owned

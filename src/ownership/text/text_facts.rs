@@ -5,6 +5,7 @@ use super::node_id::NodeId;
 use super::reaching_text::ReachingText;
 use super::slot_classes::SlotClasses;
 use super::source::Source;
+use super::transfer::Transfer;
 
 pub struct TextFacts<'c, 'g> {
     classes: &'c SlotClasses<'g>,
@@ -26,7 +27,7 @@ impl<'c, 'g> TextFacts<'c, 'g> {
     }
 
     pub fn arriving(&self, flow: &Flow) -> ReachingText {
-        flow.transfer.carry(self.emitted(flow))
+        self.transfer(flow).carry(self.emitted(flow))
     }
 
     fn spread_once(&mut self) -> bool {
@@ -50,6 +51,15 @@ impl<'c, 'g> TextFacts<'c, 'g> {
                 ReachingText::BORROWED
             }
             Source::Slot(node) => self.at(self.classes.class(node)),
+        }
+    }
+
+    fn transfer(&self, flow: &Flow) -> Transfer {
+        match flow.source {
+            Source::Slot(node) if self.classes.is_read_only_parameter(node) => {
+                flow.transfer.without_referent()
+            }
+            _ => flow.transfer,
         }
     }
 

@@ -5,6 +5,7 @@ use super::reaching_text::ReachingText;
 pub enum Transfer {
     Move,
     Refer,
+    Lend,
     View,
 }
 
@@ -16,10 +17,33 @@ impl Transfer {
         }
     }
 
+    pub fn lending(access: Access) -> Self {
+        match access {
+            Access::Direct => Self::Move,
+            Access::Referenced => Self::Lend,
+        }
+    }
+
+    pub fn lends(self) -> bool {
+        matches!(self, Self::Refer | Self::Lend)
+    }
+
+    pub fn without_referent(self) -> Self {
+        match self {
+            Self::Lend => Self::Refer,
+            other => other,
+        }
+    }
+
     pub fn carry(self, text: ReachingText) -> ReachingText {
         match self {
             Self::Move => text,
             Self::Refer => Self::replace(text, ReachingText::OWNED, ReachingText::LENT),
+            Self::Lend => Self::replace(
+                text,
+                ReachingText::OWNED,
+                ReachingText::OWNED.with(ReachingText::LENT),
+            ),
             Self::View => Self::replace(
                 text,
                 ReachingText::OWNED.with(ReachingText::LENT),
@@ -32,6 +56,7 @@ impl Transfer {
         match (self, next) {
             (Self::Move, other) | (other, Self::Move) => other,
             (Self::View, _) | (_, Self::View) => Self::View,
+            (Self::Lend, _) | (_, Self::Lend) => Self::Lend,
             (Self::Refer, Self::Refer) => Self::Refer,
         }
     }
@@ -104,6 +129,46 @@ mod tests {
     fn a_move_leaves_the_other_transfer() {
         assert_eq!(Transfer::Move.then(Transfer::Refer), Transfer::Refer);
         assert_eq!(Transfer::Refer.then(Transfer::Move), Transfer::Refer);
+    }
+
+    #[test]
+    fn a_loan_of_owned_text_keeps_its_owned_referent() {
+        assert_eq!(
+            Transfer::Lend.carry(ReachingText::OWNED),
+            ReachingText::OWNED.with(ReachingText::LENT)
+        );
+        assert_eq!(
+            Transfer::Lend.carry(ReachingText::STATIC),
+            ReachingText::STATIC
+        );
+    }
+
+    #[test]
+    fn a_loan_of_a_reference_is_a_loan() {
+        assert_eq!(Transfer::Refer.then(Transfer::Lend), Transfer::Lend);
+        assert_eq!(Transfer::Lend.then(Transfer::Refer), Transfer::Lend);
+        assert_eq!(Transfer::Lend.then(Transfer::View), Transfer::View);
+    }
+
+    #[test]
+    fn a_loan_without_its_referent_is_a_reference() {
+        assert_eq!(Transfer::Lend.without_referent(), Transfer::Refer);
+        assert_eq!(Transfer::Move.without_referent(), Transfer::Move);
+    }
+
+    #[test]
+    fn references_and_loans_lend_and_moves_do_not() {
+        assert!(Transfer::Lend.lends());
+        assert!(Transfer::Refer.lends());
+        assert!(!Transfer::Move.lends());
+        assert!(!Transfer::View.lends());
+    }
+
+    #[test]
+    fn a_referenced_argument_is_lent_and_a_direct_one_moved() {
+        use super::Access;
+        assert_eq!(Transfer::lending(Access::Referenced), Transfer::Lend);
+        assert_eq!(Transfer::lending(Access::Direct), Transfer::Move);
     }
 
     #[test]

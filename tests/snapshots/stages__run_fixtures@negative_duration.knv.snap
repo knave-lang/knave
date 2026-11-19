@@ -5,7 +5,7 @@ input_file: tests/fixtures/run/negative_duration.knv
 ---
 stderr:
 
-thread 'main' panicked at main.rs:14:33:
+thread 'main' panicked at main.rs:4:24:
 a duration cannot be negative: (seconds -3)
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 exit code: 101

@@ -1,19 +1,36 @@
 impl Show for std::time::Duration {
     fn write_form(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let nanos = self.as_nanos();
-        let (unit, per_unit) = DURATION_UNITS
-            .into_iter()
-            .find(|&(_, per_unit)| nanos.is_multiple_of(per_unit))
-            .unwrap_or(NANOS);
-        write!(out, "({unit} {})", nanos / per_unit)
+        let unit = DURATION_UNITS
+            .iter()
+            .find(|unit| nanos.is_multiple_of(unit.nanos))
+            .unwrap_or(&NANOS);
+        write!(out, "({} {})", unit.name, nanos / unit.nanos)
     }
 }
 
-const NANOS: (&str, u128) = ("nanos", 1);
+struct DurationUnit {
+    name: &'static str,
+    nanos: u128,
+}
 
-const DURATION_UNITS: [(&str, u128); 4] = [
-    ("seconds", 1_000_000_000),
-    ("millis", 1_000_000),
-    ("micros", 1_000),
+const NANOS: DurationUnit = DurationUnit {
+    name: "nanos",
+    nanos: 1,
+};
+
+const DURATION_UNITS: [DurationUnit; 4] = [
+    DurationUnit {
+        name: "seconds",
+        nanos: 1_000_000_000,
+    },
+    DurationUnit {
+        name: "millis",
+        nanos: 1_000_000,
+    },
+    DurationUnit {
+        name: "micros",
+        nanos: 1_000,
+    },
     NANOS,
 ];

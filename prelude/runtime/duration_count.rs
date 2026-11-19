@@ -1,4 +1,7 @@
+#[track_caller]
 fn duration_count(unit: &str, count: i64) -> u64 {
-    u64::try_from(count)
-        .unwrap_or_else(|_| panic!("a duration cannot be negative: ({unit} {count})"))
+    match u64::try_from(count) {
+        Ok(count) => count,
+        Err(_) => panic!("a duration cannot be negative: ({unit} {count})"),
+    }
 }

@@ -41,7 +41,10 @@ impl<'w, 'p> TextWalk<'w, 'p> {
     }
 
     fn list_struct(&mut self, binding: BindingId) {
-        let Some((_, structure)) = self.program.structure_of(&Type::Named(binding, Vec::new()))
+        let Some((_, structure)) = self
+            .program
+            .types()
+            .structure_of(&Type::Named(binding, Vec::new()))
         else {
             return;
         };

@@ -2,11 +2,10 @@ use rustc_hash::FxHashMap;
 
 use super::text_names::TextNames;
 use super::text_traits::TextTraits;
-use crate::core::{BindingId, BindingKind};
+use super::text_types::TextTypes;
+use crate::core::BindingId;
 use crate::modules::ModuleSources;
-use crate::types::{
-    Collection, StructDefinition, Type, TypedDefinition, TypedModule, TypedProgram, VariantPayload,
-};
+use crate::types::{TypedDefinition, TypedModule, TypedProgram};
 
 pub struct TextProgram<'p> {
     program: &'p TypedProgram,
@@ -38,48 +37,15 @@ impl<'p> TextProgram<'p> {
         self.definitions.get(&binding).copied()
     }
 
-    pub fn structure_of(&self, ty: &Type) -> Option<(BindingId, &'p StructDefinition)> {
-        match ty {
-            Type::Ref(_, inner) | Type::Mut(_, inner) => self.structure_of(inner),
-            Type::Named(binding, _) => self
-                .program
-                .declarations
-                .types()
-                .structs()
-                .get(*binding)
-                .map(|structure| (*binding, structure)),
-            _ => None,
-        }
-    }
-
-    pub fn payload_argument(&self, variant: BindingId, field: usize) -> Option<usize> {
-        let BindingKind::Variant(_, info) = self.program.bindings.get(variant).kind() else {
-            return None;
-        };
-        let definition = self.program.declarations.types().enums().get(info.owner)?;
-        let payload = match &definition.variants.get(info.index)?.payload {
-            VariantPayload::Positional(types) => types.get(field)?,
-            VariantPayload::Named(fields) => &fields.get(field)?.1,
-            VariantPayload::None => return None,
-        };
-        match payload {
-            Type::Generic(generic) => definition
-                .params
-                .iter()
-                .position(|param| param.id == *generic),
-            _ => None,
-        }
-    }
-
-    pub fn collection_of(&self, ty: &Type) -> Option<Collection> {
-        Collection::of(ty, self.program.declarations.types().rust_types())
-    }
-
     pub fn traits(&self) -> TextTraits<'p> {
         TextTraits::new(self.program.declarations.traits().table())
     }
 
     pub fn names(&self) -> TextNames<'p> {
         TextNames::new(self.program)
+    }
+
+    pub fn types(&self) -> TextTypes<'p> {
+        TextTypes::new(self.program)
     }
 }

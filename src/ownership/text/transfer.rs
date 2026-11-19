@@ -1,5 +1,6 @@
 use super::access::Access;
 use super::reaching_text::ReachingText;
+use crate::types::Borrow;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Transfer {
@@ -14,6 +15,13 @@ impl Transfer {
         match access {
             Access::Direct => Self::Move,
             Access::Referenced => Self::Refer,
+        }
+    }
+
+    pub fn passing(borrow: &Borrow) -> Self {
+        match borrow {
+            Borrow::Deref(_) => Self::Lend,
+            _ => Self::Move,
         }
     }
 
@@ -169,6 +177,13 @@ mod tests {
         use super::Access;
         assert_eq!(Transfer::lending(Access::Referenced), Transfer::Lend);
         assert_eq!(Transfer::lending(Access::Direct), Transfer::Move);
+    }
+
+    #[test]
+    fn a_dereferenced_argument_is_lent_and_any_other_moved() {
+        use crate::types::Borrow;
+        assert_eq!(Transfer::passing(&Borrow::Deref(1)), Transfer::Lend);
+        assert_eq!(Transfer::passing(&Borrow::Shared), Transfer::Move);
     }
 
     #[test]

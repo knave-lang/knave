@@ -202,6 +202,7 @@ mod ty;
 mod type_declaration_collector;
 mod type_declarations;
 mod type_declarations_builder;
+mod type_depths;
 mod type_text;
 mod type_text_writer;
 mod type_variables;

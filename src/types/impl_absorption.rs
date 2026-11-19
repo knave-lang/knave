@@ -179,8 +179,42 @@ mod tests {
             (trait t1 (t1 (fn ((ref self)) bool)))
             (impl t1 (w1 {held}) (t1 (w) (do (local _copy (clone (:value w))) true)))";
 
-        fn inferred_expressions(held: &str) -> usize {
-            let source = Self::TOP_DOWN_CHAIN.replace(Self::HELD, held);
+        const DISPLAY_MAIN: &str = "
+            (defn main () (println (->b2 :inner (->b1 :inner (->b0 :value (str \"x\"))))))";
+
+        const DISPLAY_IMPLS_OUTERMOST_FIRST: [&str; 3] = [
+            "(defstruct (b2 a) :inner (b1 a))
+            (display (b2 {held}) (x) \"[\" (:inner x) \"]\")",
+            "(defstruct (b1 a) :inner (b0 a))
+            (display (b1 {held}) (x) \"[\" (:inner x) \"]\")",
+            "(defstruct (b0 a) :value a)
+            (display (b0 {held}) (x) \"<\" (:value x) \">\")",
+        ];
+
+        const SIBLING_METHOD_CHAIN: &str = "
+            (defn main () (println (t2 (ref (->w2 :inner (->w1 :value (str \"x\")))))))
+            (defstruct (w2 a) :inner (w1 a))
+            (trait t2 (t2 (fn ((ref self)) bool)))
+            (impl t2 (w2 {held}) (t2 (w) (first (ref (:inner w)))))
+            (defstruct (w1 a) :value a)
+            (trait pair-check (first (fn ((ref self)) bool)) (second (fn ((ref self)) bool)))
+            (impl pair-check (w1 {held})
+              (first (w) true)
+              (second (w) (do (local _copy (clone (:value w))) true)))";
+
+        fn display_chain(impls: impl Iterator<Item = &'static str>) -> String {
+            std::iter::once(Self::DISPLAY_MAIN)
+                .chain(impls)
+                .collect::<Vec<_>>()
+                .join("\n")
+        }
+
+        fn checks_in_one_round(chain: &str) -> bool {
+            Self::inferred_expressions(chain, "a") == Self::inferred_expressions(chain, "string")
+        }
+
+        fn inferred_expressions(chain: &str, held: &str) -> usize {
+            let source = chain.replace(Self::HELD, held);
             TypedSource::expand(&source)
                 .typed()
                 .checking
@@ -190,9 +224,33 @@ mod tests {
 
     #[test]
     fn a_top_down_chain_of_impls_whose_bodies_need_a_bound_checks_in_one_round() {
-        assert_eq!(
-            ChainFixture::inferred_expressions("a"),
-            ChainFixture::inferred_expressions("string")
-        );
+        assert!(ChainFixture::checks_in_one_round(
+            ChainFixture::TOP_DOWN_CHAIN
+        ));
+    }
+
+    #[test]
+    fn a_top_down_chain_of_display_impls_checks_in_one_round() {
+        let impls = ChainFixture::DISPLAY_IMPLS_OUTERMOST_FIRST.into_iter();
+        assert!(ChainFixture::checks_in_one_round(
+            &ChainFixture::display_chain(impls)
+        ));
+    }
+
+    #[test]
+    fn a_bottom_up_chain_of_display_impls_checks_in_one_round() {
+        let impls = ChainFixture::DISPLAY_IMPLS_OUTERMOST_FIRST
+            .into_iter()
+            .rev();
+        assert!(ChainFixture::checks_in_one_round(
+            &ChainFixture::display_chain(impls)
+        ));
+    }
+
+    #[test]
+    fn a_call_to_one_method_of_an_impl_waits_for_its_sibling_methods() {
+        assert!(ChainFixture::checks_in_one_round(
+            ChainFixture::SIBLING_METHOD_CHAIN
+        ));
     }
 }

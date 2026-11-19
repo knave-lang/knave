@@ -1,5 +1,6 @@
 use super::argument_start::ArgumentStart;
 use super::format_string::{FormatString, PassedArgument};
+use super::identifier::Identifier;
 use super::open_delimiter::OpenDelimiter;
 use super::operator::RustText;
 use crate::core::Piece;
@@ -21,7 +22,6 @@ struct FormatMacro {
 
 impl<'p> FormatArguments<'p> {
     const PLACED_VALUE: &'static str = "_";
-    const MACRO_CALL: char = '!';
 
     pub(super) fn new(pieces: &'p [Piece]) -> Self {
         Self { pieces }
@@ -47,9 +47,10 @@ impl<'p> FormatArguments<'p> {
     }
 
     fn calls_a_macro(&self) -> bool {
-        self.pieces
-            .iter()
-            .any(|piece| matches!(piece, Piece::Literal(text) if text.contains(Self::MACRO_CALL)))
+        self.pieces.iter().any(|piece| match piece {
+            Piece::Literal(text) => FormatMacro::is_called_in(text),
+            _ => false,
+        })
     }
 
     fn is_whole_argument(&self, position: usize, start: Option<&ArgumentStart<'_>>) -> bool {
@@ -122,6 +123,17 @@ impl FormatMacro {
             name,
             format_string,
         }
+    }
+
+    const CALL: &'static str = "!(";
+
+    fn is_called_in(text: &str) -> bool {
+        text.match_indices(Self::CALL).any(|(call, _)| {
+            let name = Identifier::ending(&text[..call]).text();
+            Self::ALL
+                .iter()
+                .any(|format_macro| format_macro.name == name)
+        })
     }
 
     fn called_by(open: &OpenDelimiter<'_>) -> Option<&'static Self> {

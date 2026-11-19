@@ -116,7 +116,7 @@ impl<'a> RustText<'a> {
     }
 
     pub fn closes_every_delimiter(&self) -> bool {
-        TokenScanner::scan(self.text).open.is_empty()
+        TokenScanner::scan(self.text).depth == 0
     }
 
     pub fn argument_starts(&self, marks: &[usize]) -> Vec<Option<ArgumentStart<'a>>> {
@@ -135,7 +135,9 @@ struct TokenScanner<'a> {
     text: &'a str,
     tokens: Vec<&'a str>,
     start: Option<usize>,
+    depth: usize,
     open: Vec<OpenDelimiter<'a>>,
+    tracks_calls: bool,
     literal: Literal,
     literal_start: usize,
     escaped: bool,
@@ -155,7 +157,10 @@ impl<'a> TokenScanner<'a> {
     }
 
     fn scan_marking(text: &'a str, marks: &[usize]) -> (Self, Vec<Option<ArgumentStart<'a>>>) {
-        let mut scanner = Self::new(text);
+        let mut scanner = Self {
+            tracks_calls: true,
+            ..Self::new(text)
+        };
         let mut starts = Vec::with_capacity(marks.len());
         let mut characters = text.char_indices().peekable();
         while let Some((position, character)) = characters.next() {
@@ -172,13 +177,16 @@ impl<'a> TokenScanner<'a> {
             text,
             tokens: Vec::new(),
             start: None,
+            depth: 0,
             open: Vec::new(),
+            tracks_calls: false,
             literal: Literal::Outside,
             literal_start: 0,
             escaped: false,
         }
     }
 
+    #[inline]
     fn read(
         &mut self,
         position: usize,
@@ -191,7 +199,7 @@ impl<'a> TokenScanner<'a> {
         {
             return;
         }
-        if character.is_whitespace() && self.open.is_empty() {
+        if character.is_whitespace() && self.depth == 0 {
             self.flush(position);
         } else {
             self.start.get_or_insert(position);
@@ -254,7 +262,7 @@ impl<'a> TokenScanner<'a> {
         character: char,
         characters: &mut std::iter::Peekable<std::str::CharIndices<'a>>,
     ) -> bool {
-        if character != '.' || !self.open.is_empty() {
+        if character != '.' || self.depth != 0 {
             return false;
         }
         if characters.peek().is_none_or(|(_, next)| *next != '.') {
@@ -275,9 +283,7 @@ impl<'a> TokenScanner<'a> {
             '\'' if self.opens_character(position) => self.literal = Literal::Character,
             '(' => self.open(Some(&self.text[..position])),
             '[' | '{' => self.open(None),
-            ')' | ']' | '}' => {
-                self.open.pop();
-            }
+            ')' | ']' | '}' => self.close(),
             ',' => return self.count_argument(),
             _ => return false,
         }
@@ -286,7 +292,15 @@ impl<'a> TokenScanner<'a> {
     }
 
     fn open(&mut self, called_after: Option<&'a str>) {
-        self.open.push(OpenDelimiter::new(called_after));
+        self.depth += 1;
+        if self.tracks_calls {
+            self.open.push(OpenDelimiter::new(called_after));
+        }
+    }
+
+    fn close(&mut self) {
+        self.depth = self.depth.saturating_sub(1);
+        self.open.pop();
     }
 
     fn count_argument(&mut self) -> bool {

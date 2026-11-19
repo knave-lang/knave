@@ -1,0 +1,18 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/lint/needless_type/generic_by_value.knv
+---
+warning[L0809]: `keep` does not need its `type` declaration
+ --> lint/needless_type/generic_by_value.knv:5:1
+  |
+5 | / (type keep
+6 | |   (where (a) (fn ((ref pair) a) a)))
+  | |____________________________________^ inference gives this type, except that `p` passes by value
+  |
+help: remove the declaration, and `p` passes by value, because it is small enough to copy
+  |
+5 - (type keep
+6 -   (where (a) (fn ((ref pair) a) a)))
+  |
+  = note: run `knave doc L0809` for an explanation

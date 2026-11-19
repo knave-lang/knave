@@ -1,0 +1,4 @@
+(use exported_unchecked_alone/stock factorial nothing)
+
+(defn main ()
+  (println (factorial (unwrap-or nothing 3))))

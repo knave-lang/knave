@@ -1,0 +1,13 @@
+(defstruct point
+  :x int
+  :y int)
+
+(type distance
+  (fn ((ref point) (ref point)) int))
+
+(defn distance (from to)
+  (+ (- (:x to) (:x from))
+     (- (:y to) (:y from))))
+
+(defn main ()
+  (println (distance (->point :x 1 :y 2) (->point :x 4 :y 6))))

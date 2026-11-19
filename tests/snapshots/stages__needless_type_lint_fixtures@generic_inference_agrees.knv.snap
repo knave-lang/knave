@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/needless_type/generic_inference_agrees.knv
+---
+warning[L0809]: `identity` does not need its `type` declaration
+ --> lint/needless_type/generic_inference_agrees.knv:1:1
+  |
+1 | (type identity (where (a) (fn (a) a)))
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inference gives this type
+  |
+help: remove the declaration
+  |
+1 - (type identity (where (a) (fn (a) a)))
+  |
+  = note: run `knave doc L0809` for an explanation

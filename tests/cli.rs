@@ -2146,6 +2146,65 @@ fn lint_exits_one_on_an_unused_import() {
 }
 
 #[test]
+fn lint_exits_one_on_a_denied_needless_type_that_check_does_not_print() {
+    let sandbox = NeedlessTypeProject::at_level("lint_needless_type_deny", "deny");
+    let lint_stderr = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert!(lint_stderr.starts_with("error[L0809]: "), "{lint_stderr}");
+    let check = sandbox.compiler(&["check"]);
+    check.assert_exit_code(0);
+    assert_eq!(check.stderr(), "");
+}
+
+#[test]
+fn lint_prints_a_warned_needless_type_and_exits_zero() {
+    let sandbox = NeedlessTypeProject::at_level("lint_needless_type_warn", "warn");
+    let stderr = sandbox.compiler(&["lint"]).assert_exit_code(0).stderr();
+    assert!(stderr.starts_with("warning[L0809]: "), "{stderr}");
+}
+
+#[test]
+fn lint_leaves_needless_type_off_unless_the_project_turns_it_on() {
+    let sandbox =
+        NeedlessTypeProject::with_project_file("lint_needless_type_off", "(defproject demo)\n");
+    let lint = sandbox.compiler(&["lint"]);
+    lint.assert_exit_code(0);
+    assert_eq!(lint.stderr(), "");
+}
+
+#[test]
+fn lint_tries_an_exported_type_in_its_own_module() {
+    let sandbox = NeedlessTypeProject::at_level("lint_exported_needless_type", "deny")
+        .with_file(
+            "src/geometry.knv",
+            "(export area double)\n\n(type area (fn (int int) int))\n\n(defn area (w h) (* w h))\n\n(type double (fn (int) int))\n\n(defn double (x) (* 2 x))\n",
+        )
+        .with_file(
+            "src/main.knv",
+            "(use geometry area double)\n\n(defn main () (println (double (area 2 3))))\n",
+        );
+    let stderr = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert!(stderr.contains("`double` does not need"), "{stderr}");
+    assert!(!stderr.contains("`area`"), "{stderr}");
+}
+
+struct NeedlessTypeProject;
+
+impl NeedlessTypeProject {
+    const TWICE: &str = "(type twice (fn (int) int))\n\n(defn twice (x) (* 2 x))\n\n(defn main () (println (twice 4)))\n";
+
+    fn at_level(name: &str, level: &str) -> Sandbox {
+        let project_file = format!("(defproject demo (lints (needless-type {level})))\n");
+        Self::with_project_file(name, &project_file)
+    }
+
+    fn with_project_file(name: &str, project_file: &str) -> Sandbox {
+        Sandbox::new(name)
+            .with_file(&Language::project_file_name(), project_file)
+            .with_file("src/main.knv", Self::TWICE)
+    }
+}
+
+#[test]
 fn lint_exits_one_on_an_unreachable_arm() {
     let sandbox = Sandbox::new("lint_unreachable_arm").with_file("pick.knv", UNREACHABLE_ARM);
     let stderr = sandbox

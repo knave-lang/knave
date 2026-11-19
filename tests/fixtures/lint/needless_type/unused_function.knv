@@ -1,0 +1,5 @@
+(type add (fn (int int) int))
+
+(defn add (left right) (+ left right))
+
+(defn main () (println 1))

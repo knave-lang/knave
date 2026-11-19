@@ -1,0 +1,5 @@
+(type zero (fn () u8))
+
+(defn zero () 0)
+
+(defn main () (println (zero)))

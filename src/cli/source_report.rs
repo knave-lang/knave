@@ -2,6 +2,7 @@ use super::diagnostic_output::DiagnosticOutput;
 use super::exit_status::ExitStatus;
 use super::leveled_diagnostics::LeveledDiagnostics;
 use super::lint_levels::LintLevels;
+use super::lint_report::LintReport;
 use crate::diagnostic::Diagnostics;
 use crate::source::SourceMap;
 
@@ -28,6 +29,10 @@ impl<'a> SourceReport<'a> {
         self.sources
     }
 
+    pub fn lints(&self) -> LintReport<'a> {
+        LintReport::new(self.sources, self.output, self.lint_levels)
+    }
+
     pub fn report(&self, diagnostics: &Diagnostics) -> ExitStatus {
         let leveled = LeveledDiagnostics::new(diagnostics, self.lint_levels);
         self.output.report(self.sources, &leveled.shown())
@@ -37,19 +42,6 @@ impl<'a> SourceReport<'a> {
     pub fn print(&self, diagnostics: &Diagnostics) -> ExitStatus {
         let leveled = LeveledDiagnostics::new(diagnostics, self.lint_levels);
         self.output.print(self.sources, &leveled.shown())
-    }
-
-    #[must_use]
-    pub fn print_lints(&self, diagnostics: &Diagnostics) -> ExitStatus {
-        let leveled = LeveledDiagnostics::new(diagnostics, self.lint_levels);
-        match self.output.print(self.sources, &leveled.shown()) {
-            ExitStatus::Success if leveled.fails_lint() => ExitStatus::ProgramErrors,
-            printed => printed,
-        }
-    }
-
-    pub fn denied_lints(&self, diagnostics: &Diagnostics) -> Option<Diagnostics> {
-        LeveledDiagnostics::new(diagnostics, self.lint_levels).denied()
     }
 
     pub fn note(&self, message: &str) {
@@ -147,21 +139,6 @@ mod tests {
             .report(&fixture.errors_and_an_unused_binding());
         assert_eq!(status, ExitStatus::ProgramErrors);
         assert_eq!(fixture.output.writes(), ["1 diagnostics"]);
-    }
-
-    #[test]
-    fn prints_a_lint_with_no_level_as_a_failure_of_knave_lint() {
-        let fixture = ReportFixture::new();
-        let status = fixture.report().print_lints(&fixture.unused_binding());
-        assert_eq!(status, ExitStatus::ProgramErrors);
-        assert_eq!(fixture.output.writes(), ["1 diagnostics"]);
-    }
-
-    #[test]
-    fn prints_a_warned_lint_as_a_pass_of_knave_lint() {
-        let fixture = ReportFixture::leveling_unused_bindings(&[LintLevel::Warn]);
-        let status = fixture.report().print_lints(&fixture.unused_binding());
-        assert_eq!(status, ExitStatus::Success);
     }
 
     #[test]

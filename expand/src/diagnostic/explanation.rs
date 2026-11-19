@@ -262,6 +262,7 @@ written_explanations! {
     "L0803",
     "L0804",
     "L0805",
+    "L0809",
 }
 
 pub struct Explanation {

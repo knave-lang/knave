@@ -34,7 +34,7 @@ use knave::format::FormatFailure;
 use knave::language::Language;
 use knave::modules::ModuleSources;
 use knave::ownership::{EnforcedOwnership, LoanFacts, WaivedOwnership};
-use knave::project::ProjectReader;
+use knave::project::{Project, ProjectReader};
 use knave::reader::Reader;
 use knave::source::{SourceId, SourceMap, Span};
 use knave::types::TypedProgram;
@@ -107,14 +107,19 @@ impl Fixture {
     }
 
     pub fn project_report(&self) -> String {
-        let file = self.sources.file(self.entry);
-        let whole_file = Span::new(self.entry, 0..file.text().len());
-        let read = Reader::new(file).read();
-        let reader = ProjectReader::new(EmbeddedPrelude::project_vocabulary());
-        match read.and_then(|forms| reader.read(&forms, whole_file)) {
+        match self.project() {
             Ok(project) => format!("{project:#?}\n"),
             Err(diagnostics) => self.render(&diagnostics),
         }
+    }
+
+    pub fn project(&self) -> Result<Project, Diagnostics> {
+        let file = self.sources.file(self.entry);
+        let whole_file = Span::new(self.entry, 0..file.text().len());
+        let reader = ProjectReader::new(EmbeddedPrelude::project_vocabulary());
+        Reader::new(file)
+            .read()
+            .and_then(|forms| reader.read(&forms, whole_file))
     }
 
     pub fn format_report(&self) -> String {

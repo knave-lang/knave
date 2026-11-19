@@ -70,6 +70,7 @@ mod library_walk;
 mod lint;
 mod lint_levels;
 mod lint_pages;
+mod lint_report;
 mod lint_setting;
 mod loan_report_command;
 mod located_program;
@@ -137,6 +138,8 @@ mod tree_bounds;
 mod tree_file;
 mod tree_modules;
 mod tree_walk;
+mod trial_runs;
+mod trial_stages;
 mod types;
 mod unreadable_file;
 mod user_label_output;
@@ -147,7 +150,9 @@ mod working_directory;
 mod written_printer;
 
 pub use embedded_prelude::EmbeddedPrelude;
+pub use module_alone::ModuleAlone;
 pub use reference_pages::ReferencePages;
+pub use trial_stages::TrialStages;
 
 use std::env;
 use std::ffi::OsString;

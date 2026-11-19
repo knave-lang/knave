@@ -1,0 +1,3 @@
+(use exported_warns/maths factorial)
+
+(defn main () (println (factorial 5)))

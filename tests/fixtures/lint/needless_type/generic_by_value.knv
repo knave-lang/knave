@@ -1,0 +1,15 @@
+(defstruct pair
+  :left int
+  :right int)
+
+(type keep
+  (where (a) (fn ((ref pair) a) a)))
+
+(defn keep (p value)
+  (println (:left p))
+  value)
+
+(defn main ()
+  (let (shared (->pair :left 1 :right 2))
+    (println (keep shared 7))
+    (println (keep shared "kept"))))

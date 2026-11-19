@@ -1,0 +1,28 @@
+(defstruct grid
+  :width int
+  :height int
+  :cells (vec bool))
+
+(defstruct position
+  :x int
+  :y int)
+
+(type cell-count (fn ((ref grid)) int))
+
+(defn cell-count (grid)
+  (* (:width grid) (:height grid)))
+
+(type inside?
+  (fn ((ref grid) (ref position)) bool))
+
+(defn inside? (grid position)
+  (and (<= 0 (:x position) (dec (:width grid)))
+       (<= 0
+           (:y position)
+           (dec (:height grid)))))
+
+(defn main ()
+  (let (field (->grid :width 3 :height 4 :cells (vec))
+        spot (->position :x 1 :y 2))
+    (println (cell-count field))
+    (println (inside? field spot))))

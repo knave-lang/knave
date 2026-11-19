@@ -1,0 +1,8 @@
+(type first-word
+  (where ('a)
+    (fn ((ref 'a str)) (ref 'a str))))
+
+(defn first-word (text) text)
+
+(defn main ()
+  (println (first-word "pear tree")))

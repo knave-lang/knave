@@ -2,6 +2,7 @@ use rustc_hash::FxHashMap;
 
 use super::lint_setting::LintSetting;
 use crate::diagnostic::{CodeStage, Diagnostic, DiagnosticCode};
+use crate::lint::LintDefaults;
 use crate::project::{LintLevel, LintTable};
 
 #[derive(Clone, Default)]
@@ -26,10 +27,13 @@ impl LintLevels {
             .code()
             .filter(|code| CodeStage::LINTS.contains(code))?;
         Some(
-            self.levels
-                .get(code)
-                .map_or(LintSetting::Unwritten, |level| LintSetting::Written(*level)),
+            self.level_of(code)
+                .map_or(LintSetting::Unset, LintSetting::Level),
         )
+    }
+
+    pub(super) fn level_of(&self, code: &DiagnosticCode) -> Option<LintLevel> {
+        LintDefaults::level_of(code, self.levels.get(code).copied())
     }
 }
 

@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/needless_type/mutual_recursion.knv
+---
+warning[L0809]: `ping` does not need its `type` declaration
+ --> lint/needless_type/mutual_recursion.knv:1:1
+  |
+1 | (type ping (fn (int) int))
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ inference gives this type
+  |
+help: remove the declaration
+  |
+1 - (type ping (fn (int) int))
+  |
+  = note: run `knave doc L0809` for an explanation
+
+warning[L0809]: `pong` does not need its `type` declaration
+ --> lint/needless_type/mutual_recursion.knv:6:1
+  |
+6 | (type pong (fn (int) int))
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^ inference gives this type
+  |
+help: remove the declaration
+  |
+6 - (type pong (fn (int) int))
+  |
+  = note: run `knave doc L0809` for an explanation

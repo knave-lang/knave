@@ -1,0 +1,5 @@
+(type area (fn (int int) int))
+
+(defn area (width height) (* width height))
+
+(export area)

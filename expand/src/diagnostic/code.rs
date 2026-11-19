@@ -277,6 +277,7 @@ diagnostic_codes! {
     UNUSED_PARAMETER = "L0806",
     UNREACHABLE_DEFINITION = "L0807",
     UNUSED_IMPORT = "L0808",
+    NEEDLESS_TYPE = "L0809",
 }
 
 impl DiagnosticCode {

@@ -1,0 +1,30 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/needless_type/owner_example.knv
+---
+warning[L0809]: `cell-count` does not need its `type` declaration
+  --> lint/needless_type/owner_example.knv:10:1
+   |
+10 | (type cell-count (fn ((ref grid)) int))
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inference gives this type
+   |
+help: remove the declaration
+   |
+10 - (type cell-count (fn ((ref grid)) int))
+   |
+   = note: run `knave doc L0809` for an explanation
+
+warning[L0809]: `inside?` does not need its `type` declaration
+  --> lint/needless_type/owner_example.knv:15:1
+   |
+15 | / (type inside?
+16 | |   (fn ((ref grid) (ref position)) bool))
+   | |________________________________________^ inference gives this type, except that `position` passes by value
+   |
+help: remove the declaration, and `position` passes by value, because it is small enough to copy
+   |
+15 - (type inside?
+16 -   (fn ((ref grid) (ref position)) bool))
+   |
+   = note: run `knave doc L0809` for an explanation

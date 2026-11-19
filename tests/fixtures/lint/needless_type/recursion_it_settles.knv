@@ -1,0 +1,5 @@
+(type spin (fn (int) int))
+
+(defn spin (count) (spin count))
+
+(defn main () (println (spin 1)))

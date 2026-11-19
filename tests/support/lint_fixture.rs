@@ -1,14 +1,16 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use knave::check::ProgramChecker;
+use knave::cli::{ModuleAlone, TrialStages};
 use knave::core::ModulePath;
-use knave::diagnostic::{DiagnosticRenderer, Diagnostics};
+use knave::diagnostic::{DiagnosticCode, DiagnosticRenderer, Diagnostics};
 use knave::expand::{Expander, Program};
-use knave::lint::{Linter, RuleProgram};
+use knave::language::Language;
+use knave::lint::{LintDefaults, Linter, NeedlessTypeLint, ProgramRun, RuleProgram};
 use knave::modules::ModuleSources;
-use knave::ownership::EnforcedOwnership;
-use knave::source::{SourceId, SourceMap};
+use knave::project::LintLevel;
+use knave::source::{SourceId, SourceMap, Span};
+use knave::types::TypedProgram;
 
 use super::Fixture;
 
@@ -36,19 +38,48 @@ impl LintFixture {
 
     pub fn report(mut self) -> String {
         let diagnostics = match self.expand() {
-            Ok(program) => self.checked_warnings(&program),
+            Ok(program) => self.checked_warnings(program),
             Err(errors) => errors,
         };
         DiagnosticRenderer::plain(&self.sources).render_all(&diagnostics)
     }
 
-    fn checked_warnings(&self, program: &Program) -> Diagnostics {
-        let mut warnings = match ProgramChecker::check::<EnforcedOwnership>(program) {
-            Ok(typed) => typed.warnings,
+    fn checked_warnings(&mut self, mut program: Program) -> Diagnostics {
+        let mut typed = match TrialStages::check(&program) {
+            Ok(typed) => typed,
             Err(errors) => return errors,
         };
-        warnings.extend(self.lint_warnings(program));
+        let mut warnings = std::mem::take(&mut typed.warnings);
+        warnings.extend(self.lint_warnings(&program));
+        warnings.extend(self.needless_types(&mut program, typed));
         warnings
+    }
+
+    fn needless_types(&mut self, program: &mut Program, typed: TypedProgram) -> Diagnostics {
+        let level = LintDefaults::level_of(
+            &DiagnosticCode::NEEDLESS_TYPE,
+            self.written_needless_type_level(),
+        );
+        let mut runs = FixtureRuns {
+            sources: &mut self.sources,
+            path: &self.path,
+            entry: self.entry,
+        };
+        NeedlessTypeLint::new(&mut runs).warnings(level, program, typed)
+    }
+
+    fn written_needless_type_level(&self) -> Option<LintLevel> {
+        let project = self.path.with_file_name(Language::project_file_name());
+        if !project.exists() {
+            return None;
+        }
+        Fixture::load(&project)
+            .project()
+            .expect("the fixture project file is a project")
+            .lints
+            .levels()
+            .find(|(code, _)| **code == DiagnosticCode::NEEDLESS_TYPE)
+            .map(|(_, level)| level)
     }
 
     fn lint_warnings(&self, program: &Program) -> Diagnostics {
@@ -59,22 +90,53 @@ impl LintFixture {
     }
 
     fn expand(&mut self) -> Result<Program, Diagnostics> {
-        let stem = self.path.file_stem().expect("fixtures have a file name");
-        let directory = self
-            .path
+        FixtureRuns::expander(&mut self.sources, &self.path)
+            .expand(FixtureRuns::module_path(&self.path), self.entry)
+    }
+}
+
+struct FixtureRuns<'f> {
+    sources: &'f mut SourceMap,
+    path: &'f Path,
+    entry: SourceId,
+}
+
+impl FixtureRuns<'_> {
+    fn expander<'s>(sources: &'s mut SourceMap, path: &Path) -> Expander<'s> {
+        let directory = path
             .parent()
             .expect("fixtures live in a directory")
             .to_path_buf();
-        Expander::new(
-            &mut self.sources,
-            ModuleSources::new(
-                directory.clone(),
-                PathBuf::from(Fixture::display_name(&directory)),
-            ),
-        )
-        .expand(
-            ModulePath::new(stem.to_string_lossy().into_owned()),
-            self.entry,
-        )
+        let display = PathBuf::from(Fixture::display_name(&directory));
+        Expander::new(sources, ModuleSources::new(directory, display))
+    }
+
+    fn module_path(path: &Path) -> ModulePath {
+        let stem = path.file_stem().expect("fixtures have a file name");
+        ModulePath::new(stem.to_string_lossy().into_owned())
+    }
+
+    fn expanded_alone(&mut self, module: &ModulePath) -> Result<Program, Diagnostics> {
+        let entry = self
+            .sources
+            .add(Fixture::display_name(self.path), String::new());
+        let mut session =
+            Self::expander(self.sources, self.path).open(Self::module_path(self.path), &[entry])?;
+        ModuleAlone::load(&mut session, module.as_str())?;
+        session.finish()
+    }
+}
+
+impl ProgramRun for FixtureRuns<'_> {
+    fn check(&mut self, program: &Program) -> Result<TypedProgram, Diagnostics> {
+        TrialStages::check(program)
+    }
+
+    fn emit(&self, typed: &TypedProgram) -> Option<String> {
+        TrialStages::emit(typed, Span::new(self.entry, 0..0))
+    }
+
+    fn module_alone(&mut self, module: &ModulePath) -> Option<Program> {
+        self.expanded_alone(module).ok()
     }
 }

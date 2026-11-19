@@ -1,0 +1,8 @@
+(type factorial (fn (int) int))
+
+(defn factorial (count)
+  (if (= count 0)
+    1
+    (* count (factorial (dec count)))))
+
+(defn main () (println (factorial 5)))

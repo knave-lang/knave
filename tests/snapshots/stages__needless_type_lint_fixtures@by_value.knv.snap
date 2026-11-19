@@ -1,0 +1,18 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/needless_type/by_value.knv
+---
+warning[L0809]: `distance` does not need its `type` declaration
+ --> lint/needless_type/by_value.knv:5:1
+  |
+5 | / (type distance
+6 | |   (fn ((ref point) (ref point)) int))
+  | |_____________________________________^ inference gives this type, except that `from` and `to` pass by value
+  |
+help: remove the declaration, and `from` and `to` pass by value, because they are small enough to copy
+  |
+5 - (type distance
+6 -   (fn ((ref point) (ref point)) int))
+  |
+  = note: run `knave doc L0809` for an explanation

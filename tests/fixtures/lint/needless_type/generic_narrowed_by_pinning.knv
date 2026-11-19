@@ -1,0 +1,9 @@
+(type shout
+  (where ((a ord display))
+    (fn ((ref a)) unit)))
+
+(defn shout (value) (println value))
+
+(defn main ()
+  (shout 1)
+  (shout 2))

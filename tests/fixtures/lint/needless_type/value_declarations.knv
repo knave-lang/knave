@@ -1,0 +1,11 @@
+(type limit int)
+
+(def limit 3)
+
+(defn twice (x) (* 2 x))
+
+(type pick (fn (int) int))
+
+(def pick twice)
+
+(defn main () (println (pick limit)))

@@ -1,0 +1,3 @@
+(use exported_silent/geometry area)
+
+(defn main () (println (area 2 3)))

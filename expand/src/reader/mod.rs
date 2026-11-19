@@ -36,13 +36,7 @@ pub struct Reader<'a> {
 
 impl<'a> Reader<'a> {
     pub fn new(source: &'a SourceFile) -> Self {
-        Self {
-            source,
-            cursor: Self::excerpt_cursor(source),
-            diagnostics: Diagnostics::default(),
-            string_ran_to_end: false,
-            open_lists: 0,
-        }
+        Self::starting_at(source, source.excerpt_range().start)
     }
 
     pub fn read_form_at(source: &'a SourceFile, offset: usize) -> Option<Form> {
@@ -50,11 +44,18 @@ impl<'a> Reader<'a> {
         if !excerpt.contains(&offset) {
             return None;
         }
-        let mut reader = Self {
+        Self::starting_at(source, offset).read_one_form()
+    }
+
+    fn starting_at(source: &'a SourceFile, offset: usize) -> Self {
+        let excerpt = source.excerpt_range();
+        Self {
+            source,
             cursor: Cursor::starting_at(&source.text()[..excerpt.end], offset),
-            ..Self::new(source)
-        };
-        reader.read_one_form()
+            diagnostics: Diagnostics::default(),
+            string_ran_to_end: false,
+            open_lists: 0,
+        }
     }
 
     fn read_one_form(&mut self) -> Option<Form> {
@@ -63,11 +64,6 @@ impl<'a> Reader<'a> {
         }
         let form = self.read_form()?;
         self.diagnostics.is_empty().then_some(form)
-    }
-
-    fn excerpt_cursor(source: &'a SourceFile) -> Cursor<'a> {
-        let excerpt = source.excerpt_range();
-        Cursor::starting_at(&source.text()[..excerpt.end], excerpt.start)
     }
 
     pub fn read(mut self) -> Result<Vec<Form>, Diagnostics> {
@@ -264,8 +260,8 @@ impl<'a> Reader<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Form, ListClose, Reader};
-    use crate::source::{SourceId, SourceMap, TextPosition};
+    use super::{Form, ListClose, Reader, Syntax};
+    use crate::source::{SourceId, SourceMap, Span, TextPosition};
 
     struct ReadFixture {
         sources: SourceMap,
@@ -302,9 +298,28 @@ mod tests {
         fn close_after(text: &str, head: &str) -> usize {
             let mut sources = SourceMap::default();
             let file = sources.add("close.knv", text);
-            let offset = text.find(head).expect("the text holds the head") + head.len();
-            ListClose::after(sources.file(file), offset)
+            let start = text.find(head).expect("the text holds the head");
+            let head = Span::new(file, start..start + head.len());
+            ListClose::of(&sources, Span::new(file, start..start), head)
         }
+
+        fn close_of_list(text: &str, head: &str) -> usize {
+            let mut sources = SourceMap::default();
+            let file = sources.add("close.knv", text);
+            let start = text.find(head).expect("the text holds the head");
+            let head = Span::new(file, start..start + head.len());
+            let list_start = start - Syntax::OPEN.len_utf8();
+            ListClose::of(&sources, Span::new(file, list_start..text.len()), head)
+        }
+    }
+
+    #[test]
+    fn a_head_that_opens_the_list_takes_the_close_of_the_list_span() {
+        let text = "(use x) y)";
+        assert_eq!(
+            ListCloseFixture::close_of_list(text, "use"),
+            text.len() - Syntax::CLOSE.len_utf8()
+        );
     }
 
     #[test]

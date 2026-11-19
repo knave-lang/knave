@@ -1,47 +1,32 @@
 use super::Reader;
-use super::cursor::Cursor;
-use super::string_literal::StringLiteralReader;
 use super::syntax::Syntax;
-use crate::source::SourceFile;
+use crate::source::{SourceMap, Span};
 
-pub struct ListClose<'a> {
-    reader: Reader<'a>,
-    unclosed: usize,
-}
+pub struct ListClose;
 
-impl<'a> ListClose<'a> {
-    pub fn after(source: &'a SourceFile, offset: usize) -> usize {
-        let text = &source.text()[..source.excerpt_range().end];
-        let reader = Reader {
-            cursor: Cursor::starting_at(text, offset),
-            ..Reader::new(source)
-        };
-        let mut scan = Self {
-            reader,
-            unclosed: 0,
-        };
-        scan.close_position()
+impl ListClose {
+    pub fn of(sources: &SourceMap, list: Span, head: Span) -> usize {
+        if Self::opens(list, head) {
+            list.range().end - Syntax::CLOSE.len_utf8()
+        } else {
+            Self::after(sources, head)
+        }
     }
 
-    fn close_position(&mut self) -> usize {
-        while let Some(next) = self.reader.skip_trivia() {
-            match next {
-                Syntax::CLOSE if self.unclosed == 0 => return self.reader.cursor.position(),
-                Syntax::OPEN | Syntax::CLOSE => {
-                    self.unclosed = self.reader.skip_list_part(next, self.unclosed);
-                }
-                Syntax::QUOTE => {
-                    StringLiteralReader::read(&mut self.reader.cursor);
-                }
-                _ => self.skip_atom(),
+    fn opens(list: Span, head: Span) -> bool {
+        list.source() == head.source()
+            && list.range().start + Syntax::OPEN.len_utf8() == head.range().start
+    }
+
+    fn after(sources: &SourceMap, head: Span) -> usize {
+        let mut reader = Reader::starting_at(sources.file(head.source()), head.range().end);
+        let mut unclosed = 0;
+        while let Some(next) = reader.skip_trivia() {
+            if next == Syntax::CLOSE && unclosed == 0 {
+                break;
             }
+            unclosed = reader.skip_list_part(next, unclosed);
         }
-        self.reader.cursor.position()
-    }
-
-    fn skip_atom(&mut self) {
-        if self.reader.cursor.advance_atom().is_empty() {
-            self.reader.cursor.advance();
-        }
+        reader.cursor.position()
     }
 }

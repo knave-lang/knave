@@ -3,7 +3,7 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/push_in_macro.knv
 ---
-error[L0316]: map operations only exist at runtime
+error[L0316]: collection pushes only exist at runtime
  --> check/push_in_macro.knv:1:24
   |
 1 | (defmacro grow (items) (push! items 1))

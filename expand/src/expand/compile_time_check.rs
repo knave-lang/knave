@@ -51,8 +51,11 @@ impl Expander<'_> {
             ExprKind::Assoc(..) => {
                 InterpretProblems::runtime_only("collection updates", expr.span())
             }
-            ExprKind::MapAt(..) | ExprKind::PushAt(..) | ExprKind::SetAt(..) => {
+            ExprKind::MapAt(..) | ExprKind::SetAt(..) => {
                 InterpretProblems::runtime_only("map operations", expr.span())
+            }
+            ExprKind::PushAt(..) => {
+                InterpretProblems::runtime_only("collection pushes", expr.span())
             }
             ExprKind::Try(_) => InterpretProblems::runtime_only("`try` forms", expr.span()),
             ExprKind::Infer(_) => InterpretProblems::runtime_only("`infer` forms", expr.span()),

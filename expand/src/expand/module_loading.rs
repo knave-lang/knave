@@ -14,8 +14,8 @@ use super::text_module_load::TextModuleLoad;
 use super::text_module_record::TextModuleRecord;
 use crate::core::{
     BindingId, BindingKind, Builtin, BuiltinModule, DefinitionForm, ImportedBindings,
-    KernelConstants, KernelForm, KernelType, ModuleId, ModulePath, Namespace, UnnamedPartPath,
-    WrittenName, WrittenUse,
+    KernelConstants, KernelForm, KernelType, ModuleId, ModulePath, Namespace, Provenance,
+    UnnamedPartPath, WrittenName, WrittenUse,
 };
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
@@ -174,6 +174,7 @@ impl Expander<'_> {
             module: target,
             names: names.collect(),
             listed: items.len() - 2,
+            provenance: Provenance::Written,
         }))
     }
 

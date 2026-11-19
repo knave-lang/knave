@@ -1,0 +1,8 @@
+(use code list)
+
+(defmacro spliced (form)
+  (list (quote do) form))
+
+(spliced (use modules/format shout))
+
+(defn main () (println 1))

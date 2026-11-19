@@ -1,0 +1,8 @@
+(use code concat list located)
+
+(defmacro u (form)
+  (located form (concat form (list))))
+
+(u (use modules/format shout))
+
+(defn main () (println 1))

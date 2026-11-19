@@ -72,6 +72,15 @@ pub(super) enum PendingItem {
     Use(crate::core::WrittenUse),
 }
 
+impl PendingItem {
+    fn mark(self, provenance: crate::core::Provenance) -> Self {
+        match self {
+            Self::Use(used) => Self::Use(crate::core::WrittenUse { provenance, ..used }),
+            item => item,
+        }
+    }
+}
+
 impl Expander<'_> {
     const SECOND_REQUIRES_HELP: &'static str = "merge the two `requires` clauses into one";
     const EMPTY_REQUIRES_HELP: &'static str =
@@ -167,7 +176,8 @@ impl Expander<'_> {
     ) -> Result<(), Diagnostic> {
         let written_span = form.span();
         let mut spliced = SplicedForms::default();
-        pending.extend(self.register_top_level(module, form, context, &mut spliced)?);
+        let written = SplicedForm::written(form);
+        pending.extend(self.register_top_level(module, written, context, &mut spliced)?);
         self.register_spliced_forms(module, spliced, context, pending);
         self.report_misplaced_expressions(written_span);
         Ok(())
@@ -208,43 +218,42 @@ impl Expander<'_> {
         context: &mut DefinitionContext,
         queue: &mut SplicedForms,
     ) -> Result<Option<PendingItem>, Diagnostic> {
-        if spliced_form.splices > Form::NESTING_LIMIT {
-            return Err(self.nests_too_deep(spliced_form.form.span()));
+        if spliced_form.nests_deeper_than(Form::NESTING_LIMIT) {
+            return Err(self.nests_too_deep(spliced_form.form().span()));
         }
-        self.register_top_level(module, spliced_form.form, context, queue)
+        self.register_top_level(module, spliced_form, context, queue)
     }
 
     fn register_top_level(
         &mut self,
         module: ModuleId,
-        form: Form,
+        top_level: SplicedForm,
         context: &mut DefinitionContext,
         queue: &mut SplicedForms,
     ) -> Result<Option<PendingItem>, Diagnostic> {
-        let written_span = form.span();
-        let form = self.expand_top_level_head(form, context)?;
-        match self.definition_head(&form) {
+        let written_span = top_level.form().span();
+        let expanded = self.expand_top_level_head(top_level, context)?;
+        match self.definition_head(expanded.form()) {
             Ok(KernelForm::Definition(definition)) => {
                 self.evaluated_forms.note_definition(written_span);
-                self.register_definition(definition, module, form, context)
+                let register = |form| self.register_definition(definition, module, form, context);
+                expanded.registered_by(register, PendingItem::mark)
             }
             Ok(KernelForm::Expression(ExpressionForm::Control(ControlForm::Do))) => {
-                self.evaluated_forms.splice(
-                    written_span,
-                    Self::spliced_items(&form).iter().map(Form::span),
-                );
-                Self::splice(&form, queue);
+                self.evaluated_forms
+                    .splice(written_span, expanded.items().iter().map(Form::span));
+                queue.splice_items_of(&expanded);
                 Ok(None)
             }
             _ if self.evaluated_forms.holds(written_span) => {
                 self.evaluated_forms.leave_out(written_span);
                 Ok(None)
             }
-            _ if self.failed_macro_use(&form).is_some() => {
-                self.bind_failed_call_names(&form, context);
+            _ if self.failed_macro_use(expanded.form()).is_some() => {
+                self.bind_failed_call_names(expanded.form(), context);
                 Ok(None)
             }
-            Ok(_) => Err(ExpandProblems::not_a_definition(form.span())),
+            Ok(_) => Err(ExpandProblems::not_a_definition(expanded.form().span())),
             Err(diagnostic) => Err(diagnostic),
         }
     }
@@ -515,15 +524,6 @@ impl Expander<'_> {
             BindingKind::KernelForm(kernel) => Ok(kernel),
             _ => Err(not_a_definition()),
         }
-    }
-
-    fn splice(form: &Form, queue: &mut SplicedForms) {
-        queue.splice_into_taken(Self::spliced_items(form));
-    }
-
-    fn spliced_items(form: &Form) -> &[Form] {
-        let items = form.as_list().unwrap_or_default();
-        items.get(1..).unwrap_or_default()
     }
 
     fn register_def(

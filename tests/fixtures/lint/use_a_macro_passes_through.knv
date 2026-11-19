@@ -1,0 +1,5 @@
+(defmacro w (form) form)
+
+(w (use modules/format shout))
+
+(defn main () (println 1))

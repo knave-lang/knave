@@ -4,7 +4,9 @@ use super::rule_target::RuleTarget;
 use super::spanned_forms::SpannedForms;
 use std::rc::Rc;
 
-use crate::core::{BindingId, BindingKind, DefinitionForm, Import, ImportedName, KernelForm};
+use crate::core::{
+    BindingId, BindingKind, DefinitionForm, Import, ImportedName, KernelForm, Provenance,
+};
 use crate::diagnostic::Diagnostic;
 use crate::expand::Program;
 use crate::interpret::ListNesting;
@@ -20,6 +22,7 @@ pub struct ModuleTable<'p> {
 impl<'p> ModuleTable<'p> {
     const MACRO_ONLY: &'static str = "macro";
     const MODULE_READ: &'static str = "module-read";
+    const MACRO_CALL: &'static str = "macro-call";
     const MEMBERS: &'static str = "members";
 
     pub fn new(program: &'p Program, sources: &'p SourceMap, reach: DefinitionReach) -> Self {
@@ -100,6 +103,9 @@ impl<'p> ModuleTable<'p> {
         ];
         if import.module_read {
             parts.push(SpannedForms::symbol(Self::MODULE_READ, span));
+        }
+        if import.provenance == Provenance::ThroughMacroCall {
+            parts.push(SpannedForms::symbol(Self::MACRO_CALL, span));
         }
         SpannedForms::list(parts, span)
     }

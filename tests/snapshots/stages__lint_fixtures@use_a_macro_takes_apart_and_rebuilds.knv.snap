@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/use_a_macro_takes_apart_and_rebuilds.knv
+---
+warning[L0808]: `shout` is imported but never used
+ --> lint/use_a_macro_takes_apart_and_rebuilds.knv:8:24
+  |
+8 | (u (use modules/format shout))
+  |                        ^^^^^ never used
+  |
+  = note: run `knave doc L0808` for an explanation

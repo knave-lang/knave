@@ -9,5 +9,4 @@ warning[L0808]: `shout` is imported but never used
 6 | (u (use modules/format shout) pad-left)
   |                        ^^^^^ never used
   |
-  = help: remove `shout` from this `use`
   = note: run `knave doc L0808` for an explanation

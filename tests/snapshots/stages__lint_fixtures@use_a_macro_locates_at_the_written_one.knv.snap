@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/use_a_macro_locates_at_the_written_one.knv
+---
+warning[L0808]: nothing this `use` brings in is used
+ --> lint/use_a_macro_locates_at_the_written_one.knv:6:4
+  |
+6 | (u (use modules/format shout))
+  |    ^^^^^^^^^^^^^^^^^^^^^^^^^^ nothing this brings in is used
+  |
+  = note: run `knave doc L0808` for an explanation

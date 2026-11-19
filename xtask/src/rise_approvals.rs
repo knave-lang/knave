@@ -12,11 +12,8 @@ impl RiseApprovals {
 
     pub fn since(git: &Git, base: &str) -> Result<Self, TaskFailure> {
         let format = format!("--format=%(trailers:key={},valueonly)", Self::TRAILER);
-        let output = git.run(&["log", &format, &format!("{base}..HEAD")])?;
-        if !output.status.success() {
-            return Err(TaskFailure::tool_failed("git log", &output.stderr));
-        }
-        Ok(Self::parse(&String::from_utf8_lossy(&output.stdout)))
+        let log = git.succeed(&["log", &format, &format!("{base}..HEAD")])?;
+        Ok(Self::parse(&String::from_utf8_lossy(&log)))
     }
 
     pub fn parse(log: &str) -> Self {

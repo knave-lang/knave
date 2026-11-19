@@ -1,6 +1,5 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Output;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::failure::TaskFailure;
@@ -42,22 +41,9 @@ impl BaseTree {
     fn check_out(&self, git: &Git, revision: &str) -> Result<(), TaskFailure> {
         let index = self.directory.join(Self::INDEX);
         let prefix = format!("--prefix={}{}", self.root.display(), Self::PREFIX_SEPARATOR);
-        Self::succeed(
-            git.run_with_index(&index, &["read-tree", revision])?,
-            "git read-tree",
-        )?;
-        Self::succeed(
-            git.run_with_index(&index, &["checkout-index", "--all", &prefix])?,
-            "git checkout-index",
-        )
-    }
-
-    fn succeed(output: Output, tool: &str) -> Result<(), TaskFailure> {
-        if output.status.success() {
-            Ok(())
-        } else {
-            Err(TaskFailure::tool_failed(tool, &output.stderr))
-        }
+        git.succeed_with_index(&index, &["read-tree", revision])?;
+        git.succeed_with_index(&index, &["checkout-index", "--all", &prefix])?;
+        Ok(())
     }
 }
 

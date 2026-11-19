@@ -162,6 +162,7 @@ The exceptions are:
 - To stop a compiling `cargo` that runs too long, set `KNAVE_BUILD_TIME_LIMIT` to a positive whole number of seconds. The limit counts from when the command takes a slot, not from when the command starts to wait for one.
 - `knave` runs `cargo` from `PATH` and knows nothing of build slots. In the dev shell, a project build through Cargo takes a slot.
 - A `knave` under `cargo test` or `cargo run` inherits `KNAVE_BUILD_SLOT_HELD`. Its `cargo` then takes no second slot and no time limit of its own.
+- Outside CI, the dev shell stops the sccache server after 120 idle seconds. Set `SCCACHE_IDLE_TIMEOUT` to change the timeout.
 
 ### Commits
 

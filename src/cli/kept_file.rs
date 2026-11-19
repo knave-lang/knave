@@ -9,8 +9,8 @@ pub struct KeptFile<'f> {
     written: &'f str,
 }
 
-struct BaseText {
-    version: &'static str,
+struct BaseText<'w> {
+    version: &'w str,
     name: String,
     text: String,
 }
@@ -39,14 +39,17 @@ impl<'f> KeptFile<'f> {
         self.file.path().display().to_string()
     }
 
-    fn closest_base(&self) -> BaseText {
+    fn closest_base(&self) -> BaseText<'f> {
         let version_written = self.file.version_in(self.written);
         self.file
             .bases()
-            .map(|(version, text)| BaseText {
-                version,
-                name: format!("{} (Knave {version})", self.shown()),
-                text: text.filled_as(version_written.unwrap_or(version)),
+            .map(|(kept_version, text)| {
+                let version = version_written.unwrap_or(kept_version);
+                BaseText {
+                    version,
+                    name: format!("{} (Knave {version})", self.shown()),
+                    text: text.filled_as(version),
+                }
             })
             .min_by_key(|base| Self::changed_lines(&base.text, self.written))
             .expect("an owned file has a current text")
@@ -60,7 +63,7 @@ impl<'f> KeptFile<'f> {
     }
 }
 
-impl BaseText {
+impl BaseText<'_> {
     fn changes_to(&self, changed: &str, changed_name: &str) -> String {
         TextDiff::from_lines(self.text.as_str(), changed)
             .unified_diff()

@@ -33,22 +33,12 @@ impl LocatedProject {
         terminal: &mut Terminal,
         store: impl LibraryStore,
     ) -> Result<Option<Self>, ExitStatus> {
-        let located = Self::enter(directory, terminal, store)?;
+        let located = Self::enter_unchecked(directory, terminal, store)?;
         Self::check_compiler(located.as_ref(), terminal, &CompilerCheck::EVERY_MISMATCH)?;
         Ok(located)
     }
 
-    pub fn enter_to_upgrade(
-        directory: &Path,
-        terminal: &mut Terminal,
-        store: impl LibraryStore,
-    ) -> Result<Option<Self>, ExitStatus> {
-        let located = Self::enter(directory, terminal, store)?;
-        Self::check_compiler(located.as_ref(), terminal, &CompilerCheck::OLDER_COMPILER)?;
-        Ok(located)
-    }
-
-    fn enter(
+    pub fn enter_unchecked(
         directory: &Path,
         terminal: &mut Terminal,
         store: impl LibraryStore,
@@ -67,7 +57,9 @@ impl LocatedProject {
         check: &CompilerCheck,
     ) -> Result<(), ExitStatus> {
         match located {
-            Some(entered) => check.report(&entered.project, &entered.project_file(), terminal),
+            Some(entered) => {
+                check.report_located(&entered.project, &entered.project_file(), terminal)
+            }
             None => Ok(()),
         }
     }

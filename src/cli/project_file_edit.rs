@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 
+use super::compiler_check::CompilerCheck;
 use super::crate_section::CrateSection;
 use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
@@ -33,11 +34,11 @@ impl ProjectFileEdit {
 
     pub fn to_upgrade(terminal: &mut Terminal, command: &str) -> Result<Self, ExitStatus> {
         let working_directory = WorkingDirectory::path();
-        let located = LocatedProject::enter_to_upgrade(
-            working_directory,
-            terminal,
-            FetchingStore::default(),
-        )?;
+        let located =
+            LocatedProject::enter_unchecked(working_directory, terminal, FetchingStore::default())?;
+        if let Some(project) = &located {
+            CompilerCheck::OLDER_COMPILER.report(&project.project_file(), terminal)?;
+        }
         Self::of_located(located, command)
     }
 

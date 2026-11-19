@@ -145,9 +145,13 @@ impl Piece {
 
     pub(super) fn access_for(&self, argument: usize) -> Option<Access> {
         match self {
-            Self::Placeholder { index, access, .. } if *index == argument => Some(*access),
+            Self::Placeholder { access, .. } if self.is_placeholder_of(argument) => Some(*access),
             _ => None,
         }
+    }
+
+    pub fn is_placeholder_of(&self, argument: usize) -> bool {
+        matches!(self, Self::Placeholder { index, .. } if *index == argument)
     }
 }
 

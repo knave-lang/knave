@@ -25,7 +25,6 @@ impl Template {
     const UNARY_OPERATORS: [char; 4] = ['-', '!', '*', '&'];
     const POSTFIX_OPERATORS: [char; 4] = ['.', '[', '(', '?'];
     const SEPARATORS_BEFORE: [char; 3] = ['(', ',', '['];
-    const SEPARATORS_AFTER: [char; 3] = [',', ')', ']'];
 
     pub fn new(text: &str) -> Self {
         Self {
@@ -46,7 +45,7 @@ impl Template {
     }
 
     pub(super) fn written_role(&self, argument: usize) -> Option<ArgumentRole> {
-        if FormatArguments::new(self.parsed.pieces()).holds_only(argument) {
+        if FormatArguments::new(self.parsed.pieces()).formats_whole(argument) {
             let role = if self.parsed.borrows(argument) {
                 ArgumentRole::Formatted
             } else {
@@ -61,9 +60,11 @@ impl Template {
         if argument > 0 || !self.parsed.receives(argument) || uses.nth(1).is_some() {
             return None;
         }
-        let position = self.parsed.pieces().iter().position(
-            |piece| matches!(piece, Piece::Placeholder { index, .. } if *index == argument),
-        )?;
+        let position = self
+            .parsed
+            .pieces()
+            .iter()
+            .position(|piece| piece.is_placeholder_of(argument))?;
         self.literal_at(position + 1).map(ArgumentRole::receiving)
     }
 
@@ -343,7 +344,7 @@ impl Template {
             .literal_at(position + 1)
             .and_then(|text| text.trim_start().chars().next());
         before.is_some_and(|character| Self::SEPARATORS_BEFORE.contains(&character))
-            && after.is_some_and(|character| Self::SEPARATORS_AFTER.contains(&character))
+            && after.is_some_and(|character| RustText::ARGUMENT_ENDS.contains(&character))
     }
 
     fn literal_at(&self, position: usize) -> Option<&str> {

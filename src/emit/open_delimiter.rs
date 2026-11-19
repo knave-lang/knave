@@ -1,6 +1,8 @@
+use super::identifier::Identifier;
+
 #[derive(Clone)]
 pub struct OpenDelimiter<'a> {
-    callee: Option<&'a str>,
+    called_after: Option<&'a str>,
     arguments: usize,
     texts: Vec<TextArgument<'a>>,
 }
@@ -12,9 +14,9 @@ struct TextArgument<'a> {
 }
 
 impl<'a> OpenDelimiter<'a> {
-    pub(super) fn new(callee: Option<&'a str>) -> Self {
+    pub(super) fn new(called_after: Option<&'a str>) -> Self {
         Self {
-            callee,
+            called_after,
             arguments: 0,
             texts: Vec::new(),
         }
@@ -32,7 +34,8 @@ impl<'a> OpenDelimiter<'a> {
     }
 
     pub fn callee(&self) -> Option<&'a str> {
-        self.callee
+        let path = self.called_after?.trim_end().strip_suffix('!')?;
+        Some(Identifier::ending(path).text())
     }
 
     pub fn passed_arguments(&self) -> usize {

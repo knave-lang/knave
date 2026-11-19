@@ -71,17 +71,25 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
                 self.value(inner).transferred(Transfer::Refer)
             }
             TypedExprKind::Borrow(_, inner) | TypedExprKind::Deref(inner) => self.value(inner),
+            _ => self.built(expr),
+        }
+    }
+
+    fn built(&mut self, expr: &TypedExpr) -> TextValue {
+        match &expr.kind {
             TypedExprKind::Control(control) => self.control(control),
             TypedExprKind::Struct(structure) => self.structure(structure, expr),
             TypedExprKind::Variant(binding, payloads, order) => {
                 self.variant((*binding, order), payloads, expr)
             }
             TypedExprKind::Try { value, conversion } => self.tried(value, *conversion, expr),
-            TypedExprKind::Infer(_) => {
-                TextValue::from(Source::Text(ReachingText::STATIC), expr.span)
-            }
             TypedExprKind::Assoc(base, keys, item) => self.associated(base, (keys, item), expr),
-            TypedExprKind::TraitObject(inner, _) => self.discarded(inner),
+            _ => {
+                expr.children().into_iter().for_each(|child| {
+                    self.value(child);
+                });
+                TextValue::default()
+            }
         }
     }
 
@@ -296,10 +304,5 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         let keys: Vec<TextValue> = keys.iter().map(|key| self.value(key)).collect();
         let item = self.value(item);
         AssocFlows::new(&mut self.context, expr).value(&base, (&keys, &item))
-    }
-
-    fn discarded(&mut self, inner: &TypedExpr) -> TextValue {
-        self.value(inner);
-        TextValue::default()
     }
 }

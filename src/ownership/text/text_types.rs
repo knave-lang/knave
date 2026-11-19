@@ -30,17 +30,21 @@ impl<'p> TextTypes<'p> {
             return None;
         };
         let definition = self.program.declarations.types().enums().get(info.owner)?;
-        let payload = match &definition.variants.get(info.index)?.payload {
-            VariantPayload::Positional(types) => types.get(field)?,
-            VariantPayload::Named(fields) => &fields.get(field)?.1,
-            VariantPayload::None => return None,
+        let payload = Self::payload_type(&definition.variants.get(info.index)?.payload, field)?;
+        let Type::Generic(generic) = payload else {
+            return None;
         };
+        definition
+            .params
+            .iter()
+            .position(|param| param.id == *generic)
+    }
+
+    fn payload_type(payload: &VariantPayload, field: usize) -> Option<&Type> {
         match payload {
-            Type::Generic(generic) => definition
-                .params
-                .iter()
-                .position(|param| param.id == *generic),
-            _ => None,
+            VariantPayload::Positional(types) => types.get(field),
+            VariantPayload::Named(fields) => fields.get(field).map(|(_, ty)| ty),
+            VariantPayload::None => None,
         }
     }
 

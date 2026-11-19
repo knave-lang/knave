@@ -1,4 +1,4 @@
-use crate::core::{Expr, ExprKind, ExpressionForm, MapOperation};
+use crate::core::{CollectionForm, Expr, ExprKind, MapOperation};
 use crate::diagnostic::Diagnostic;
 use crate::expand::Expander;
 use crate::expand::shape::Shape;
@@ -17,19 +17,18 @@ impl<'e, 'x> CollectionLowering<'e, 'x> {
 
     pub(super) fn lower(
         &mut self,
-        form: ExpressionForm,
+        form: CollectionForm,
         shape: &Shape,
     ) -> Result<ExprKind, Diagnostic> {
         match form {
-            ExpressionForm::Assoc => self
+            CollectionForm::Assoc => self
                 .keyed(shape)
                 .map(|(value, keys, item)| ExprKind::Assoc(value, keys, item)),
-            ExpressionForm::MapAt => self.map_at(shape),
-            ExpressionForm::PushAt => self.push_at(shape),
-            ExpressionForm::SetAt => self
+            CollectionForm::MapAt => self.map_at(shape),
+            CollectionForm::PushAt => self.push_at(shape),
+            CollectionForm::SetAt => self
                 .keyed(shape)
                 .map(|(value, keys, item)| ExprKind::SetAt(value, keys, item)),
-            _ => unreachable!("the caller matches a collection form"),
         }
     }
 

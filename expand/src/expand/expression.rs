@@ -397,10 +397,7 @@ impl Expander<'_> {
         shape: &Shape,
     ) -> Result<ExprKind, Diagnostic> {
         match expression {
-            ExpressionForm::Assoc
-            | ExpressionForm::MapAt
-            | ExpressionForm::PushAt
-            | ExpressionForm::SetAt => CollectionLowering::new(self).lower(expression, shape),
+            ExpressionForm::Collection(form) => CollectionLowering::new(self).lower(form, shape),
             other => self.lower_simple_expression(other, shape),
         }
     }

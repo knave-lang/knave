@@ -1,14 +1,15 @@
 use super::form_reader::FormReader;
 use super::spanned_forms::SpannedForms;
 use crate::core::{
-    BindingId, Expr, ExprKind, ExpressionForm, FieldLabel, KernelForm, StructExpr, StructForm,
+    BindingId, CollectionForm, Expr, ExprKind, ExpressionForm, FieldLabel, KernelForm, StructExpr,
+    StructForm,
 };
 use crate::reader::Form;
 use crate::source::Span;
 
 pub struct CompositeForms;
 
-type KeyedUpdate<'e> = (ExpressionForm, &'e Expr, &'e [Expr], &'e Expr);
+type KeyedUpdate<'e> = (CollectionForm, &'e Expr, &'e [Expr], &'e Expr);
 
 impl CompositeForms {
     const UPDATED_STRUCT: &'static str = "_";
@@ -30,10 +31,10 @@ impl CompositeForms {
     fn collection_form(forms: &mut dyn FormReader<'_>, kind: &ExprKind, span: Span) -> Form {
         match kind {
             ExprKind::Assoc(value, keys, item) => {
-                Self::keyed(forms, (ExpressionForm::Assoc, value, keys, item), span)
+                Self::keyed(forms, (CollectionForm::Assoc, value, keys, item), span)
             }
             ExprKind::SetAt(value, keys, item) => {
-                Self::keyed(forms, (ExpressionForm::SetAt, value, keys, item), span)
+                Self::keyed(forms, (CollectionForm::SetAt, value, keys, item), span)
             }
             ExprKind::PushAt(target, item) => Self::push_at(forms, (target, item), span),
             other => Self::map_at(forms, other, span),
@@ -44,7 +45,10 @@ impl CompositeForms {
         let (target, item) = push;
         let row = forms.writer().open();
         let parts = vec![
-            forms.kernel_head(KernelForm::Expression(ExpressionForm::PushAt), span),
+            forms.kernel_head(
+                KernelForm::Expression(ExpressionForm::Collection(CollectionForm::PushAt)),
+                span,
+            ),
             forms.expr(target),
             forms.expr(item),
         ];
@@ -57,7 +61,10 @@ impl CompositeForms {
         };
         let row = forms.writer().open();
         let mut parts = vec![
-            forms.kernel_head(KernelForm::Expression(ExpressionForm::MapAt), span),
+            forms.kernel_head(
+                KernelForm::Expression(ExpressionForm::Collection(CollectionForm::MapAt)),
+                span,
+            ),
             forms
                 .writer()
                 .leaf(SpannedForms::symbol(operation.keyword(), span)),
@@ -151,7 +158,10 @@ impl CompositeForms {
     fn keyed(forms: &mut dyn FormReader<'_>, update: KeyedUpdate<'_>, span: Span) -> Form {
         let (form, value, keys, item) = update;
         let row = forms.writer().open();
-        let head = forms.kernel_head(KernelForm::Expression(form), span);
+        let head = forms.kernel_head(
+            KernelForm::Expression(ExpressionForm::Collection(form)),
+            span,
+        );
         let value = forms.expr(value);
         let keys_row = forms.writer().open();
         let keys = keys.iter().map(|key| forms.expr(key)).collect();

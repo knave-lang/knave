@@ -340,12 +340,30 @@ A copy writes the known read, as `x.age + 1`.
 
    A struct that stores the field as a borrow never implements the changing trait, because a `set!` of that field on a known value is `L0401` on `main`, as `(set! (:name u) "bob")` on a `str` field is. A call that passes such a struct to a reader that changes the field is `L0467` at the call, with the known `set!`'s reason. Open detail 1 asks the owner to confirm the trait.
 3. **A struct update or a collection update on a generic owner stays an error.** `(assoc p :x 2)` builds a new value of the owner's struct, and a field trait has no constructor. Rule 4 gives the error its new text.
-4. **A generic owner is Copy only when every struct that reaches the reader is Copy.** Then a by-value use copies it, as `main` copies a known Copy struct, and otherwise it follows `main`'s rule for a value that is not Copy, in a trait reader and in each copy alike, so each struct keeps the verdict that `main` gives it known. A struct counts as Copy at its instantiation when its emitted Rust is Copy there, and a generic struct with an open parameter is not, as `main` gives `(defn get (b) (local c b) (local d b) (:title b))` over `boxed` alone `L0501`.
+4. **A generic owner is Copy only when every struct that reaches the reader is Copy.** Then a by-value use copies it, as `main` copies a known Copy struct, and otherwise it follows `main`'s rule for a value that is not Copy, in a trait reader and in each copy alike, so each struct keeps the verdict that `main` gives it known. A struct without parameters counts as Copy when its emitted Rust is Copy. A generic struct counts as Copy only when it is Copy with its parameters open, the test that `main`'s sole-candidate path applies when it generalizes the owner to `(boxed a)`, so a generic struct whose parameter can hold a type that is not Copy is not Copy at any instantiation, `(boxed int)` included. So `(defn get (b) (local c b) (local d b) (:title b))` is `L0501` over `(boxed 5)` alone, as on `main`, and stays `L0501` when a `tag` call joins it, whether or not the field's other structs are Copy.
 
-   - **Every struct is Copy.** A body that only reads the owner takes `ref`, which keeps decision 1's `hello` at `x: &A`. A body that uses it by value after a by-value use copies it: the owner's bound prints `copy`, as `(where ((a (has :name (ref str)) copy)) (fn (a) string))`, a trait reader takes it by value under `A: Copy`, and a copy takes its struct by value, as `main` does for that struct known. So `(defn hello (x) (local y x) (str "hello " (:name x) " " (:name y)))` over `user` and `animal` emits `fn hello<'a, A: HasName<'a> + Copy>(x: A) -> String { let y = x; ... }`, and `(defn f (b) (local c b) (local d b) (:age b))` over `cat` and `dog` emits `fn f<A: HasAge + Copy>(b: A) -> i64`, and over `cat` and a `drone` with `:age u8` emits `fn f_cat(b: Cat) -> i64` and `fn f_drone(b: Drone) -> u8`.
-   - **Some struct is not Copy.** A body that only reads the owner takes `ref`, a `set!` takes `mut`, a by-value use, as `(local c b)`, moves it and takes `own`, and a second by-value use is `L0501`, ``use of moved value `b` ``, as `main` gives it for a known struct that is not Copy. So `get` with two `local`s over `book` and `film` is `L0501` at the second `local`.
+   - **Every struct is Copy.** A body that only reads the owner takes `ref`, which keeps decision 1's `hello` at `x: &A`. A body with one by-value use and no later use takes `own`, as `main` infers for a bare variable used once, with no `copy` in the bound: `(defn f (b) (local c b) (:age c))` over `cat` and `dog` emits `fn f<A: HasAge>(b: A) -> i64`. A body that uses the owner at all after a by-value use, a read included, copies it: the owner's bound prints `copy` first, in the order `main` prints a variable's bounds, as `(where ((a copy (has :name (ref str)))) (fn (a) string))`, a trait reader takes it by value under `A: Copy`, and a copy takes its struct by value, as `main` does for that struct known. So `(defn hello (x) (local y x) (str "hello " (:name x) " " (:name y)))` over `user` and `animal` emits `fn hello<'a, A: HasName<'a> + Copy>(x: A) -> String { let y = x; ... }`, and `(defn f (b) (local c b) (local d b) (:age b))` over `cat` and `dog` emits `fn f<A: HasAge + Copy>(b: A) -> i64`, and over `cat` and a `drone` with `:age u8` emits `fn f_cat(b: Cat) -> i64` and `fn f_drone(b: Drone) -> u8`.
+   - **Some struct is not Copy.** A body that only reads the owner takes `ref`, a `set!` takes `mut`, a by-value use, as `(local c b)`, moves it and takes `own`, and a use after it is `L0501`, ``use of moved value `b` ``, as `main` gives it for a known struct that is not Copy. So `get` with two `local`s over `book` and `film` is `L0501` at the second `local`. One `L0501` reports per body, as on `main`, and it names the cause, since the body may compile for every other struct: a note, written in `OwnershipProblems`, names the first struct in source order that is not Copy, and a secondary label marks the first call that passes it, or the call of the generic caller it reaches the reader through:
 
-   A reader that takes its owner by value, copied or moved, and returns a read that borrows the struct, as `(defn get (b) (local c b) (:title c))` over `boxed` and `film`, returns a borrow of its own parameter. Its Rust names the lifetime as `main` does for a known `book`, `fn get_film(b: Film) -> &'static String`, so it is the same rustc `E0515` that `main` gives that body over a known struct, which the build inherits as Rule 3 does, until tracked item 550 makes it `L0510`.
+     ```text
+     error[L0501]: use of moved value `b`
+      --> moved.knv:6:10
+       |
+     5 |   (local c b)
+       |          - value moved here
+     6 |   (local d b)
+       |          ^ value used here after move
+       |
+      ::: moved.knv:10:12
+       |
+     10 |   (println (f (->pet 2 (vec 1))))
+       |            -------------------- this call passes a `pet`, which is not Copy
+       |
+       = note: `b` is not Copy because `f` is called with `pet`
+       = help: clone the value if both places need it
+     ```
+
+   A reader that takes its owner by value, copied or moved, and returns a read that borrows the struct, returns a borrow of its own parameter. Its Rust names the lifetime as `main` does for a known `book`. `(defn get (b) (local c b) (:title c))` over `(boxed int)` and `film` copies, as `fn get_boxed_int(b: Boxed<i64>) -> &'static i64` and `fn get_film(b: Film) -> &'static String`. Over `(boxed string)` and `film`, whose reads agree, it is a trait reader, `fn get<A: HasTitle + 'static>(b: A) -> &'static String`, where `A: 'static` keeps the error to the one `main` gives. Each is the rustc `E0515` that `main` gives that body over a known struct, which the build inherits as Rule 3 does, until tracked item 550 makes it `L0510`.
 
 ### 4. Diagnostics with several candidates
 
@@ -427,7 +445,7 @@ No prelude or example file reaches the lookup, so no other output changes.
 | alone | `emit/field_trait_unpassed_struct.knv` | `cat`, `dog` with `:age int`, and `user` with `:age str` that no reader takes | `age-of`: `(where ((a (has :age int))) (fn (a) int))`, as with `cat` and `dog` alone | none | `trait HasAge { fn age(&self) -> i64; }`, no impl for `User` |
 | alone | `emit/field_trait_plain_value_lifetime.knv` | `user` with `:name str`, and `car`, `boat` with `:owner user` | `owner-of`: `(where ((a (has :owner user))) (fn (a) user))` | none | `trait HasOwner<'u> { fn owner(&self) -> User<'u>; }` |
 
-A check fixture, `check/field_owner_moved.knv`, holds `L0501` for a `get` with two `local`s over `book` and `film`, and a run fixture holds the same body's copies over `user` and `animal` and over `cat` and `dog`, through `A: Copy`, and over `cat` and `drone`, as copies that take each struct by value. Run fixtures cover the programs the reviews raised: a name read from a temporary through the trait and through a copy, `trimmed`, `birthday!` with `:bonus`, `grow!` on `cat` and `drone`, `pick` over `user` and `product`, `start-x` over `line` and `span`, `tag-of` over `a1` and `a2`, `show-p` over `a1`, `a2` and a deeper stored borrow, `uppercase-name` over `user`, `person` and `holder`, a function value that picks its copy, a recursive group over `cat` and `user`, two generic levels of callers, and `(boxed a)` read at `string` and `int` by one generic `get`.
+A check fixture, `check/field_owner_moved.knv`, holds `L0501` with its note and label for an `f` with two `local`s over `cat` and a `pet` that is not Copy, and for `(boxed 5)` beside a `tag`, and a run fixture holds the same body's copies over `user` and `animal` and over `cat` and `dog`, through `A: Copy`, and over `cat` and `drone`, as copies that take each struct by value. Run fixtures cover the programs the reviews raised: a name read from a temporary through the trait and through a copy, `trimmed`, `birthday!` with `:bonus`, `grow!` on `cat` and `drone`, `pick` over `user` and `product`, `start-x` over `line` and `span`, `tag-of` over `a1` and `a2`, `show-p` over `a1`, `a2` and a deeper stored borrow, `uppercase-name` over `user`, `person` and `holder`, a function value that picks its copy, a recursive group over `cat` and `user`, two generic levels of callers, and `(boxed a)` read at `string` and `int` by one generic `get`.
 
 ### 6. Interplay
 
@@ -456,7 +474,7 @@ The change lives in the type rule of the existing kernel form `field`, and in on
 
 ## Prototype
 
-`target/scratch/proto14/mix.rs`, `target/scratch/proto15/round10.rs`, `target/scratch/proto16/solebox.rs`, `target/scratch/proto17/round11.rs`, `target/scratch/proto18/round12.rs`, `target/scratch/proto19/round13.rs` and `target/scratch/proto20/round15.rs` held the prototype, which is not part of this pull request. rustc 2024 compiled and ran it. `proto14/mix.rs` emits, under refinement 14, one module per probe program of the first nine reviews, and `proto15` to `proto20` hold the programs of the tenth to the fifteenth. `proto14/mix.rs` printed one line per module:
+`target/scratch/proto14/mix.rs`, `target/scratch/proto15/round10.rs`, `target/scratch/proto16/solebox.rs`, `target/scratch/proto17/round11.rs`, `target/scratch/proto18/round12.rs`, `target/scratch/proto19/round13.rs`, `target/scratch/proto20/round15.rs` and `target/scratch/proto21/ownread.rs` held the prototype, which is not part of this pull request. rustc 2024 compiled and ran it. `proto14/mix.rs` emits, under refinement 14, one module per probe program of the first nine reviews, and `proto15` to `proto21` hold the programs of the tenth to the sixteenth. `proto14/mix.rs` printed one line per module:
 
 - decision 1, with `hello`, a name read from a temporary and `trimmed` through `HasName<'u>`: `hello ana hello rex ana rex`
 - decision 2, with `uppercase-name` through the trait and `describe_user` and `describe_product`: `ANA REX name: ana name: 7`
@@ -470,7 +488,7 @@ The change lives in the type rule of the existing kernel form `field`, and in on
 - stored borrows of two types and two uniform readers that disagree: `3 2 3 4 old new`
 - two generic levels of callers: `old 3 4 [5] 7`
 
-`proto20/round15.rs` held Rule 3.4's Copy owner on the fifteenth review's probes: `hello` with a `local` alias over `user` and `animal` through `HasName<'a> + Copy`, printing `hello ana ana | hello rex rex`, `f` with two `local`s over `cat` and `dog` through `HasAge + Copy`, printing `1 2`, and over `cat` and `drone` as by-value copies, printing `1 3`.
+`proto21/ownread.rs` held the own-mode trait reader over `(boxed string)` and `film` under `A: HasTitle + 'static`, which rustc rejects with `E0515` alone. `proto20/round15.rs` held Rule 3.4's Copy owner on the fifteenth review's probes: `hello` with a `local` alias over `user` and `animal` through `HasName<'a> + Copy`, printing `hello ana ana | hello rex rex`, `f` with two `local`s over `cat` and `dog` through `HasAge + Copy`, printing `1 2`, and over `cat` and `drone` as by-value copies, printing `1 3`.
 
 `proto19/round13.rs` held the thirteenth review's fixes: `get_boxed_int` and `get_tag` taking a borrow although their bodies copy the owner, printing `5 3`, and `wrap<A>` calling the open copy `get_boxed_a` while a `film` call makes `get` copy, printing `5 x f`.
 

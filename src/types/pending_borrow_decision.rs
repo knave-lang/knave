@@ -128,6 +128,40 @@ mod tests {
     }
 
     #[test]
+    fn the_parameter_type_itself_passes_as_is() {
+        let mut fixture = PassingFixture::new();
+        let parameter = fixture.unifier().fresh();
+        let decided = fixture
+            .argument_passing()
+            .decide(&PassingFixture::pending_borrow(
+                &parameter,
+                parameter.clone(),
+            ));
+        assert_eq!(decided.expect("the borrow is decided"), Borrow::None);
+        let Type::Var(var) = parameter else {
+            unreachable!("fresh makes a variable")
+        };
+        assert!(fixture.unifier().bounds(var).is_empty());
+    }
+
+    #[test]
+    fn a_str_view_parameter_collapses_a_known_referent() {
+        let mut fixture = PassingFixture::new();
+        let parameter = fixture.unifier().fresh();
+        let Type::Var(var) = parameter else {
+            unreachable!("fresh makes a variable")
+        };
+        fixture
+            .unifier()
+            .bind(var, Type::shared(PassingFixture::str()));
+        let argument = Type::shared(Type::shared(PassingFixture::str()));
+        let decided = fixture
+            .argument_passing()
+            .decide(&PassingFixture::pending_borrow(&parameter, argument));
+        assert_eq!(decided.expect("the borrow is decided"), Borrow::Collapse(1));
+    }
+
+    #[test]
     fn a_borrow_of_the_parameter_type_copies_it() {
         let mut fixture = PassingFixture::new();
         let parameter = fixture.unifier().fresh();

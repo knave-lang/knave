@@ -36,6 +36,7 @@ mod module_tree;
 mod mutable_locals;
 mod number_literal;
 mod opaque_borrows;
+mod open_delimiter;
 mod open_literals;
 mod operator;
 mod plan;

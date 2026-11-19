@@ -1,3 +1,5 @@
+use super::open_delimiter::OpenDelimiter;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Side {
     Left,
@@ -161,30 +163,6 @@ impl<'a> ArgumentStart<'a> {
     }
 }
 
-#[derive(Clone)]
-pub struct OpenDelimiter<'a> {
-    callee: Option<&'a str>,
-    arguments: usize,
-    texts: Vec<(usize, &'a str)>,
-}
-
-impl<'a> OpenDelimiter<'a> {
-    pub fn callee(&self) -> Option<&'a str> {
-        self.callee
-    }
-
-    pub fn passed_arguments(&self) -> usize {
-        self.arguments
-    }
-
-    pub fn text_at(&self, argument: usize) -> Option<&'a str> {
-        self.texts
-            .iter()
-            .find(|(position, _)| *position == argument)
-            .map(|(_, text)| *text)
-    }
-}
-
 struct TokenScanner<'a> {
     text: &'a str,
     tokens: Vec<&'a str>,
@@ -245,8 +223,7 @@ impl<'a> TokenScanner<'a> {
 
     fn close_literal(&mut self, end: usize) {
         if let (Literal::String, Some(open)) = (self.literal, self.open.last_mut()) {
-            let text = &self.text[self.literal_start + 1..end];
-            open.texts.push((open.arguments, text));
+            open.hold_text(&self.text[self.literal_start + 1..end]);
         }
         self.literal = Literal::Outside;
     }
@@ -294,16 +271,12 @@ impl<'a> TokenScanner<'a> {
     }
 
     fn open(&mut self, callee: Option<&'a str>) {
-        self.open.push(OpenDelimiter {
-            callee,
-            arguments: 0,
-            texts: Vec::new(),
-        });
+        self.open.push(OpenDelimiter::new(callee));
     }
 
     fn count_argument(&mut self) -> bool {
         if let Some(open) = self.open.last_mut() {
-            open.arguments += 1;
+            open.count_argument();
         }
         false
     }

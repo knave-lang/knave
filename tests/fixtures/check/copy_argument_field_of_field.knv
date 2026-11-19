@@ -1,0 +1,15 @@
+(def bump
+  (rust "*{0} += 1" (fn ((mut i64)) unit)))
+
+(defstruct counter
+  :count i64)
+
+(defstruct holder
+  :inner counter)
+
+(defn count-of (c) (:count c))
+
+(defn main ()
+  (local h (->holder (->counter 0)))
+  (bump (count-of (:inner h)))
+  (println (:count (:inner h))))

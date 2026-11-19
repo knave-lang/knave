@@ -1,0 +1,37 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/reference_parameter_from_unknown_argument.knv
+---
+fn first_or(value: &Option<i64>) -> i64 {
+    match value {
+        Some(n) => *n,
+        None => 0,
+    }
+}
+
+fn relay(value: Option<i64>) -> i64 {
+    first_or(&value)
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", relay(Some(3)))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

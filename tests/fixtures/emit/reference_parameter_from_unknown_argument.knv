@@ -1,0 +1,10 @@
+(type first-or
+  (fn ((ref (option i64))) i64))
+
+(defn first-or (value)
+  (match value ((some n) n) (none 0)))
+
+(defn relay (value) (first-or value))
+
+(defn main ()
+  (println (relay (some 3))))

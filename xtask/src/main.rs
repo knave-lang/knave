@@ -35,6 +35,7 @@ mod rise_approvals;
 mod source_file;
 mod source_format;
 mod source_format_paths;
+mod template_history;
 #[cfg(test)]
 mod temporary_repository;
 mod test_code;
